@@ -85,14 +85,14 @@ leafstring(cxobj *x)
     cxobj *c;
 
     if (xml_type(x) != CX_ELMNT)
-	return NULL;
+        return NULL;
     if (xml_child_nr(x) != 1)
-	return NULL;
+        return NULL;
     c = xml_child_i(x, 0);
     if (xml_child_nr(c) != 0)
-	return NULL;
+        return NULL;
     if (xml_type(c) != CX_BODY)
-	return NULL;
+        return NULL;
     return xml_value(c);
 }
 
@@ -106,8 +106,8 @@ leafstring(cxobj *x)
  */
 static int
 xml_filter_recursive(cxobj *xfilter, 
-		     cxobj *xparent, 
-		     int   *remove_me)
+                     cxobj *xparent, 
+                     int   *remove_me)
 {
     cxobj *s;
     cxobj *sprev;
@@ -123,63 +123,63 @@ xml_filter_recursive(cxobj *xfilter,
     *remove_me = 0;
     /* 1. Check selection */
     if (xml_child_nr(xfilter) == 0) 
-	goto match;
+        goto match;
 
     /* Count containment/selection nodes in filter */
     f = NULL;
     containments = 0;
     while ((f = xml_child_each(xfilter, f, CX_ELMNT)) != NULL) {
-	if (leafstring(f))
-	    continue;
-	containments++;
+        if (leafstring(f))
+            continue;
+        containments++;
     }
 
     /* 2. Check attribute match */
     attr = NULL;
     while ((attr = xml_child_each(xfilter, attr, CX_ATTR)) != NULL) {
-	af = xml_value(attr);
-	an = xml_find_value(xfilter, xml_name(attr));
-	if (af && an && strcmp(af, an)==0)
-	    ; // match
-	else
-	    goto nomatch;
+        af = xml_value(attr);
+        an = xml_find_value(xfilter, xml_name(attr));
+        if (af && an && strcmp(af, an)==0)
+            ; // match
+        else
+            goto nomatch;
     }
     /* 3. Check content match */
     f = NULL;
     while ((f = xml_child_each(xfilter, f, CX_ELMNT)) != NULL) {
-	if ((fstr = leafstring(f)) == NULL)
-	    continue;
-	if ((s = xml_find(xparent, xml_name(f))) == NULL)
-	    goto nomatch;
-	if ((sstr = leafstring(s)) == NULL)
-	    continue;
-	if (strcmp(fstr, sstr))
-	    goto nomatch;
+        if ((fstr = leafstring(f)) == NULL)
+            continue;
+        if ((s = xml_find(xparent, xml_name(f))) == NULL)
+            goto nomatch;
+        if ((sstr = leafstring(s)) == NULL)
+            continue;
+        if (strcmp(fstr, sstr))
+            goto nomatch;
     }
     /* If filter has no further specifiers, accept */
     if (!containments)
-	goto match;
+        goto match;
     /* Check recursively the rest of the siblings */
     sprev = s = NULL;
     while ((s = xml_child_each(xparent, s, CX_ELMNT)) != NULL) {
-	if ((f = xml_find(xfilter, xml_name(s))) == NULL){
-	    xml_purge(s);
-	    s = sprev;
-	    continue;
-	}
-	if (leafstring(f)){
-	    sprev = s;
-	    continue; // unsure?sk=lf
-	}
-	// XXX: s can be removed itself in the recursive call !
-	remove_s = 0;
-	if (xml_filter_recursive(f, s, &remove_s) < 0)
-	    return -1;
-	if (remove_s){
-	    xml_purge(s);
-	    s = sprev;
-	}
-	sprev = s;
+        if ((f = xml_find(xfilter, xml_name(s))) == NULL){
+            xml_purge(s);
+            s = sprev;
+            continue;
+        }
+        if (leafstring(f)){
+            sprev = s;
+            continue; // unsure?sk=lf
+        }
+        // XXX: s can be removed itself in the recursive call !
+        remove_s = 0;
+        if (xml_filter_recursive(f, s, &remove_s) < 0)
+            return -1;
+        if (remove_s){
+            xml_purge(s);
+            s = sprev;
+        }
+        sprev = s;
     }
 
   match:
@@ -198,15 +198,15 @@ xml_filter_recursive(cxobj *xfilter,
  */
 int
 xml_filter(cxobj *xfilter, 
-	   cxobj *xconfig)
+           cxobj *xconfig)
 {
     int retval;
     int remove_s;
 
     /* Call recursive variant */
     retval = xml_filter_recursive(xfilter, 
-				  xconfig, 
-				  &remove_s);
+                                  xconfig, 
+                                  &remove_s);
     return retval;
 }
 

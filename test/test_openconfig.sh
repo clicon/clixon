@@ -37,28 +37,28 @@ for f in $files; do
     let m=0; # Nr of modules
     let s=0; # Nr of modules
     if [ -n "$(head -15 $f|grep '^[ ]*module')" ]; then
-	let m++;
-	let ms++;
+        let m++;
+        let ms++;
     elif [ -n "$(head -15 $f|grep '^[ ]*submodule')" ]; then
-	let s++;
-	let ss++;
+        let s++;
+        let ss++;
     else
-	echo "No module or submodule found $f"
-	exit
+        echo "No module or submodule found $f"
+        exit
     fi
     if [ $m -eq 1 -a $s -eq 1 ]; then
-	echo "Double match $f"
-	exit
+        echo "Double match $f"
+        exit
     fi
 done
 
 new "Openconfig test: $clixon_cli -1f $cfg show version ($m modules)"
 for f in $files; do
     if [ -n "$(head -1 $f|grep '^module')" ]; then
-	modname=$(basename $f | awk -F "." '{print $1}')
-	# Generate autocli for these modules
-	AUTOCLI=$(autocli_config $modname kw-nokey false)
-	
+        modname=$(basename $f | awk -F "." '{print $1}')
+        # Generate autocli for these modules
+        AUTOCLI=$(autocli_config $modname kw-nokey false)
+        
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -76,8 +76,8 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-	new "$clixon_cli -D $DBG  -1f $cfg -o CLICON_YANG_MAIN_FILE=$f show version"
-	expectpart "$($clixon_cli -D $DBG -1f $cfg -y $f show version)" 0 "${CLIXON_VERSION}"
+        new "$clixon_cli -D $DBG  -1f $cfg -o CLICON_YANG_MAIN_FILE=$f show version"
+        expectpart "$($clixon_cli -D $DBG -1f $cfg -y $f show version)" 0 "${CLIXON_VERSION}"
     fi
 done
 

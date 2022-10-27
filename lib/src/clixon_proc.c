@@ -59,12 +59,12 @@
 
      2. It is stopped due to a rpc or configuration remove: 
         The parent kills the process and enters EXITING waiting for a SIGCHLD that triggers a wait,
-	therafter it goes to STOPPED
+        therafter it goes to STOPPED
            RUNNING --stop--> EXITING  --sigchld/wait--> STOPPED
      
      3. It is restarted due to rpc or config change (eg a server is added, a key modified, etc). 
         The parent kills the process and enters EXITING waiting for a SIGCHLD that triggers a wait,
-	therafter a new process is started and it goes to RUNNING with a new pid
+        therafter a new process is started and it goes to RUNNING with a new pid
 
            RUNNING --restart--> EXITING  --sigchld/wait + restart --> RUNNING(pid)
 
@@ -72,7 +72,7 @@
 
       STOPPED  --(re)start-->     RUNNING(pid)
           ^   <--1.wait(kill)---   |  ^
-	  |                   stop/|  | 
+          |                   stop/|  | 
           |                 restart|  | restart
           |                        v  |
           wait(stop) ------- EXITING(dying pid) <----> kill after timeout
@@ -172,8 +172,8 @@ clixon_proc_sigint(int sig)
  */
 int
 clixon_proc_socket(char **argv,
-		   pid_t *pid,
-		   int   *sock)
+                   pid_t *pid,
+                   int   *sock)
 {
     int      retval = -1;
     int      sp[2] = {-1, -1};
@@ -189,23 +189,23 @@ clixon_proc_socket(char **argv,
 #endif
     
     if (argv == NULL){
-	clicon_err(OE_UNIX, EINVAL, "argv is NULL");
-	goto done;
+        clicon_err(OE_UNIX, EINVAL, "argv is NULL");
+        goto done;
     }
     if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
-	clicon_err(OE_UNIX, errno, "socketpair");
-	goto done;
+        clicon_err(OE_UNIX, errno, "socketpair");
+        goto done;
     }
 
 #ifdef __APPLE__
     if (fcntl(sp[0], O_CLOEXEC)) {
-	clicon_err(OE_UNIX, errno, "fcntl, sp[0]");
-	goto done;
+        clicon_err(OE_UNIX, errno, "fcntl, sp[0]");
+        goto done;
     }
 
     if (fcntl(sp[1], O_CLOEXEC)) {
-	clicon_err(OE_UNIX, errno, "fcntl, sp[1]");
-	goto done;
+        clicon_err(OE_UNIX, errno, "fcntl, sp[1]");
+        goto done;
     }
 #endif
 
@@ -213,32 +213,32 @@ clixon_proc_socket(char **argv,
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);
     sig++;
     if ((child = fork()) < 0) {
-	clicon_err(OE_UNIX, errno, "fork");
-	goto done;
+        clicon_err(OE_UNIX, errno, "fork");
+        goto done;
     }
-    if (child == 0) {	/* Child */
-	/* Unblock all signals except TSTP */
-	clicon_signal_unblock(0);
-	signal(SIGTSTP, SIG_IGN);
+    if (child == 0) {   /* Child */
+        /* Unblock all signals except TSTP */
+        clicon_signal_unblock(0);
+        signal(SIGTSTP, SIG_IGN);
 
-	close(sp[0]);
-	close(0);
-	if (dup2(sp[1], STDIN_FILENO) < 0){
-	    perror("dup2");
-	    return -1;
-	}
-	close(1);
-	if (dup2(sp[1], STDOUT_FILENO) < 0){
-	    perror("dup2");
-	    return -1;
-	}
-	close(sp[1]); 
-	
-	if (execvp(argv[0], argv) < 0){
-	    perror("execvp");
-	    return -1;
-	}
-	exit(-1); 	 /* Shouldnt reach here */
+        close(sp[0]);
+        close(0);
+        if (dup2(sp[1], STDIN_FILENO) < 0){
+            perror("dup2");
+            return -1;
+        }
+        close(1);
+        if (dup2(sp[1], STDOUT_FILENO) < 0){
+            perror("dup2");
+            return -1;
+        }
+        close(sp[1]); 
+        
+        if (execvp(argv[0], argv) < 0){
+            perror("execvp");
+            return -1;
+        }
+        exit(-1);        /* Shouldnt reach here */
     }
     /* Parent */
     close(sp[1]);
@@ -246,9 +246,9 @@ clixon_proc_socket(char **argv,
     *sock = sp[0];
     retval = 0;
  done:
-    if (sig){ 	/* Restore sigmask and fn */
-	sigprocmask(SIG_SETMASK, &oset, NULL);
-	set_signal(SIGINT, oldhandler, NULL);
+    if (sig){   /* Restore sigmask and fn */
+        sigprocmask(SIG_SETMASK, &oset, NULL);
+        set_signal(SIGINT, oldhandler, NULL);
     }
     return retval;
 }
@@ -258,17 +258,17 @@ clixon_proc_socket(char **argv,
  */
 int
 clixon_proc_socket_close(pid_t pid,
-			 int   sock)
+                         int   sock)
 {
     int retval = -1;
     int status;
 
     if (sock != -1)
-	close(sock); /* usually kills */
+        close(sock); /* usually kills */
     kill(pid, SIGTERM);
     //    usleep(100000);     /* Wait for child to finish */
     if(waitpid(pid, &status, 0) == pid)
-	retval = WEXITSTATUS(status);
+        retval = WEXITSTATUS(status);
     return retval;
 }
 
@@ -282,8 +282,8 @@ clixon_proc_socket_close(pid_t pid,
  */
 int
 clixon_proc_background(char       **argv,
-		       const char  *netns,
-		       pid_t       *pid0)
+                       const char  *netns,
+                       pid_t       *pid0)
 {
     int           retval = -1;
     pid_t         child = 0;
@@ -295,74 +295,74 @@ clixon_proc_background(char       **argv,
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (argv == NULL){
-	clicon_err(OE_UNIX, EINVAL, "argv is NULL");
-	goto quit;
+        clicon_err(OE_UNIX, EINVAL, "argv is NULL");
+        goto quit;
     }
     if (clicon_debug_get()){
-	i = 0;
-	while (argv[i]){
-	    clicon_debug(1, "%s argv[%d]:%s", __FUNCTION__, i, argv[i]);
-	    i++;
-	}
+        i = 0;
+        while (argv[i]){
+            clicon_debug(1, "%s argv[%d]:%s", __FUNCTION__, i, argv[i]);
+            i++;
+        }
     }
     /* Sanity check: program exists */
     if (stat(argv[0], &fstat) < 0) {
-	clicon_err(OE_FATAL, errno, "%s", argv[0]);
-	goto quit;
+        clicon_err(OE_FATAL, errno, "%s", argv[0]);
+        goto quit;
     }
     /* Before here call quit on error */
     sigprocmask(0, NULL, &oset);
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);
     /* Now call done on error */
     if ((child = fork()) < 0) {
-	clicon_err(OE_UNIX, errno, "fork");
-	goto done;
+        clicon_err(OE_UNIX, errno, "fork");
+        goto done;
     }
     if (child == 0)  { /* Child */
 #ifdef HAVE_SETNS
         char nsfile[PATH_MAX];
-	int  nsfd;
+        int  nsfd;
 #endif
 
-	clicon_debug(1, "%s child", __FUNCTION__);
-	clicon_signal_unblock(0);
-	signal(SIGTSTP, SIG_IGN);
-	if (chdir("/") < 0){
-	    clicon_err(OE_UNIX, errno, "chdirq");
-	    exit(1);
-	}
-	/* Close open descriptors */
-	if ( ! getrlimit(RLIMIT_NOFILE, &rlim))
-	    for (i = 0; i < rlim.rlim_cur; i++)
-		close(i);
+        clicon_debug(1, "%s child", __FUNCTION__);
+        clicon_signal_unblock(0);
+        signal(SIGTSTP, SIG_IGN);
+        if (chdir("/") < 0){
+            clicon_err(OE_UNIX, errno, "chdirq");
+            exit(1);
+        }
+        /* Close open descriptors */
+        if ( ! getrlimit(RLIMIT_NOFILE, &rlim))
+            for (i = 0; i < rlim.rlim_cur; i++)
+                close(i);
 #ifdef HAVE_SETNS /* linux network namespaces */
-	/* If network namespace is defined, let child join it 
-	 * XXX: this is work-in-progress
-	 */
-	if (netns != NULL) {
-	    snprintf(nsfile, PATH_MAX, "/var/run/netns/%s", netns); /* see man setns / ip netns */
-	    clicon_debug(1, "%s nsfile:%s", __FUNCTION__, nsfile);
-	    /* Change network namespace */
-	    if ((nsfd = open(nsfile, O_RDONLY | O_CLOEXEC)) < 0){
-		clicon_err(OE_UNIX, errno, "open");
-		exit(1);
-	    }
-	    if (setns(nsfd, 0) < 0){       /* Join that namespace */
-		clicon_err(OE_UNIX, errno, "setns");
-		exit(1);
-	    }
-	    close(nsfd);
-	    if (unshare(CLONE_NEWNS) < 0){
-		clicon_err(OE_UNIX, errno, "unshare");
-		exit(1);
-	    }
-	}
+        /* If network namespace is defined, let child join it 
+         * XXX: this is work-in-progress
+         */
+        if (netns != NULL) {
+            snprintf(nsfile, PATH_MAX, "/var/run/netns/%s", netns); /* see man setns / ip netns */
+            clicon_debug(1, "%s nsfile:%s", __FUNCTION__, nsfile);
+            /* Change network namespace */
+            if ((nsfd = open(nsfile, O_RDONLY | O_CLOEXEC)) < 0){
+                clicon_err(OE_UNIX, errno, "open");
+                exit(1);
+            }
+            if (setns(nsfd, 0) < 0){       /* Join that namespace */
+                clicon_err(OE_UNIX, errno, "setns");
+                exit(1);
+            }
+            close(nsfd);
+            if (unshare(CLONE_NEWNS) < 0){
+                clicon_err(OE_UNIX, errno, "unshare");
+                exit(1);
+            }
+        }
 #endif /* HAVE_SETNS */
-	if (execvp(argv[0], argv) < 0) {
-	    clicon_err(OE_UNIX, errno, "execv(%s)", argv[0]);
-	    exit(1);
-	}
-	/* Not reached */
+        if (execvp(argv[0], argv) < 0) {
+            clicon_err(OE_UNIX, errno, "execv(%s)", argv[0]);
+            exit(1);
+        }
+        /* Not reached */
     }
  done:
     sigprocmask(SIG_SETMASK, &oset, NULL);
@@ -417,19 +417,19 @@ clixon_process_op_str2int(char *opstr)
  */
 int
 clixon_process_argv_get(clicon_handle h,
-			const char   *name,
-			char       ***argv,
-			int          *argc)
+                        const char   *name,
+                        char       ***argv,
+                        int          *argc)
 {
     process_entry_t *pe;
 
     pe = _proc_entry_list;
     do {
-	if (strcmp(pe->pe_name, name) == 0){
-	    *argv = pe->pe_argv;
-	    *argc = pe->pe_argc;
-	}
-	pe = NEXTQ(process_entry_t *, pe);
+        if (strcmp(pe->pe_name, name) == 0){
+            *argv = pe->pe_argv;
+            *argc = pe->pe_argc;
+        }
+        pe = NEXTQ(process_entry_t *, pe);
     } while (pe != _proc_entry_list);
     return 0;
 }
@@ -449,59 +449,59 @@ clixon_process_argv_get(clicon_handle h,
  */
 int
 clixon_process_register(clicon_handle h,
-			const char   *name,
-			const char   *description,
-			const char   *netns,
-			proc_cb_t    *callback,
-		        char        **argv,
-			int           argc)
+                        const char   *name,
+                        const char   *description,
+                        const char   *netns,
+                        proc_cb_t    *callback,
+                        char        **argv,
+                        int           argc)
 {
     int              retval = -1;
     process_entry_t *pe = NULL;
     int              i;
-	
+        
     if (name == NULL){
-	clicon_err(OE_DB, EINVAL, "name is NULL");
-	goto done;
+        clicon_err(OE_DB, EINVAL, "name is NULL");
+        goto done;
     }
     if (argv == NULL){
-	clicon_err(OE_DB, EINVAL, "argv is NULL");
-	goto done;
+        clicon_err(OE_DB, EINVAL, "argv is NULL");
+        goto done;
     }
     if ((pe = malloc(sizeof(process_entry_t))) == NULL) {
-	clicon_err(OE_DB, errno, "malloc");
-	goto done;
+        clicon_err(OE_DB, errno, "malloc");
+        goto done;
     }
     memset(pe, 0, sizeof(*pe));
     if ((pe->pe_name = strdup(name)) == NULL){
-	clicon_err(OE_DB, errno, "strdup name");
-	goto done;
+        clicon_err(OE_DB, errno, "strdup name");
+        goto done;
     }
     if (description && (pe->pe_description = strdup(description)) == NULL){
-	clicon_err(OE_DB, errno, "strdup description");
-	goto done;
+        clicon_err(OE_DB, errno, "strdup description");
+        goto done;
     }
     if (netns && (pe->pe_netns = strdup(netns)) == NULL){
-	clicon_err(OE_DB, errno, "strdup netns");
-	goto done;
+        clicon_err(OE_DB, errno, "strdup netns");
+        goto done;
     }
     pe->pe_argc = argc;
     if ((pe->pe_argv = calloc(argc, sizeof(char *))) == NULL){
-	clicon_err(OE_UNIX, errno, "calloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
     }
     for (i=0; i<argc; i++){
-	if (argv[i] != NULL &&
-	    (pe->pe_argv[i] = strdup(argv[i])) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
+        if (argv[i] != NULL &&
+            (pe->pe_argv[i] = strdup(argv[i])) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
     }
     pe->pe_callback = callback;
     clicon_debug(1, "%s %s ----> %s", __FUNCTION__,
-		 pe->pe_name, 
-		 clicon_int2str(proc_state_map, PROC_STATE_STOPPED)
-		 );
+                 pe->pe_name, 
+                 clicon_int2str(proc_state_map, PROC_STATE_STOPPED)
+                 );
     pe->pe_state = PROC_STATE_STOPPED;
     ADDQ(pe, _proc_entry_list);
     retval = 0;
@@ -515,17 +515,17 @@ clixon_process_delete_only(process_entry_t *pe)
     char           **pa;
 
     if (pe->pe_name)
-	free(pe->pe_name);
+        free(pe->pe_name);
     if (pe->pe_description)
-	free(pe->pe_description);
+        free(pe->pe_description);
     if (pe->pe_netns)
-	free(pe->pe_netns);
+        free(pe->pe_netns);
     if (pe->pe_argv){
-	for (pa = pe->pe_argv; *pa != NULL; pa++){
-	    if (*pa)
-		free(*pa);
-	}
-	free(pe->pe_argv);
+        for (pa = pe->pe_argv; *pa != NULL; pa++){
+            if (*pa)
+                free(*pa);
+        }
+        free(pe->pe_argv);
     }
     free(pe);
     return 0;
@@ -539,8 +539,8 @@ clixon_process_delete_all(clicon_handle h)
     process_entry_t *pe;
 
     while((pe = _proc_entry_list) != NULL) {
-	DELQ(pe, _proc_entry_list, process_entry_t *);
-	clixon_process_delete_only(pe);
+        DELQ(pe, _proc_entry_list, process_entry_t *);
+        clixon_process_delete_only(pe);
     }
     return 0;
 }
@@ -549,7 +549,7 @@ clixon_process_delete_all(clicon_handle h)
  */
 static int
 proc_op_run(pid_t pid0,
-	    int  *runp)
+            int  *runp)
 {
     int   retval = -1;
     int   run;
@@ -557,20 +557,20 @@ proc_op_run(pid_t pid0,
 
     run = 0;
     if ((pid = pid0) != 0){ /* if 0 stopped */
-	/* Check if alive */
-	run = 1;
-	if ((kill(pid, 0)) < 0){
-	    if (errno == ESRCH){
-		run = 0;
-	    }
-	    else{
-		clicon_err(OE_UNIX, errno, "kill(%d)", pid);
-		goto done;
-	    }
-	}
+        /* Check if alive */
+        run = 1;
+        if ((kill(pid, 0)) < 0){
+            if (errno == ESRCH){
+                run = 0;
+            }
+            else{
+                clicon_err(OE_UNIX, errno, "kill(%d)", pid);
+                goto done;
+            }
+        }
     }
     if (runp)
-	*runp = run;
+        *runp = run;
     retval = 0;
  done:
     return retval;
@@ -625,9 +625,9 @@ done:
  */
 int
 clixon_process_operation(clicon_handle  h,
-			 const char    *name,
-			 proc_operation op0,
-			 int            wrapit)
+                         const char    *name,
+                         proc_operation op0,
+                         int            wrapit)
 {
     int              retval = -1;
     process_entry_t *pe;
@@ -638,50 +638,50 @@ clixon_process_operation(clicon_handle  h,
     
     clicon_debug(1, "%s name:%s op:%s", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));
     if (_proc_entry_list == NULL)
-	goto ok;
+        goto ok;
     if ((pe = _proc_entry_list) != NULL)
-	do {
-	if (strcmp(pe->pe_name, name) == 0){
-	    /* Call wrapper function that eg changes op1 based on config */
-	    op = op0;
-	    if (wrapit && pe->pe_callback != NULL)
-		if (pe->pe_callback(h, pe, &op) < 0)
-		    goto done;
-	    if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
-		pe->pe_operation = op;
-		clicon_debug(1, "%s scheduling name: %s pid:%d op: %s", __FUNCTION__,
-			     name, pe->pe_pid,
-			     clicon_int2str(proc_operation_map, pe->pe_operation));
-		if (pe->pe_state==PROC_STATE_RUNNING &&
-		    (op == PROC_OP_STOP || op == PROC_OP_RESTART)){
-		    isrunning = 0;
-		    if (proc_op_run(pe->pe_pid, &isrunning) < 0)
-			goto done;
-		    if (isrunning) {
-			clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
-				   pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
-			kill(pe->pe_pid, SIGTERM);
-			delay = 1;
-		    }
-		    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
-				 pe->pe_name, pe->pe_pid,
-				 clicon_int2str(proc_state_map, pe->pe_state),
-				 clicon_int2str(proc_operation_map, pe->pe_operation),
-				 clicon_int2str(proc_state_map, PROC_STATE_EXITING)
-				 );
-		    pe->pe_state = PROC_STATE_EXITING; /* Keep operation stop/restart */
-		}
-		sched++;/* start: immediate stop/restart: not immediate: wait timeout */
-	    }
-	    else{
-		clicon_debug(1, "%s name:%s op %s cancelled by wrap", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));		
-	    }
-	    break; 	    /* hit break here */
-	}
-	pe = NEXTQ(process_entry_t *, pe);
+        do {
+        if (strcmp(pe->pe_name, name) == 0){
+            /* Call wrapper function that eg changes op1 based on config */
+            op = op0;
+            if (wrapit && pe->pe_callback != NULL)
+                if (pe->pe_callback(h, pe, &op) < 0)
+                    goto done;
+            if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
+                pe->pe_operation = op;
+                clicon_debug(1, "%s scheduling name: %s pid:%d op: %s", __FUNCTION__,
+                             name, pe->pe_pid,
+                             clicon_int2str(proc_operation_map, pe->pe_operation));
+                if (pe->pe_state==PROC_STATE_RUNNING &&
+                    (op == PROC_OP_STOP || op == PROC_OP_RESTART)){
+                    isrunning = 0;
+                    if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+                        goto done;
+                    if (isrunning) {
+                        clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
+                                   pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
+                        kill(pe->pe_pid, SIGTERM);
+                        delay = 1;
+                    }
+                    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
+                                 pe->pe_name, pe->pe_pid,
+                                 clicon_int2str(proc_state_map, pe->pe_state),
+                                 clicon_int2str(proc_operation_map, pe->pe_operation),
+                                 clicon_int2str(proc_state_map, PROC_STATE_EXITING)
+                                 );
+                    pe->pe_state = PROC_STATE_EXITING; /* Keep operation stop/restart */
+                }
+                sched++;/* start: immediate stop/restart: not immediate: wait timeout */
+            }
+            else{
+                clicon_debug(1, "%s name:%s op %s cancelled by wrap", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));             
+            }
+            break;          /* hit break here */
+        }
+        pe = NEXTQ(process_entry_t *, pe);
     } while (pe != _proc_entry_list);
     if (sched && clixon_process_sched_register(h, delay) < 0)
-	goto done;
+        goto done;
  ok:
     retval = 0;
  done:
@@ -699,9 +699,9 @@ clixon_process_operation(clicon_handle  h,
  */
 int
 clixon_process_status(clicon_handle  h,
-		      const char    *name,
-		      cbuf          *cbret)
-		      
+                      const char    *name,
+                      cbuf          *cbret)
+                      
 {
     int              retval = -1;
     process_entry_t *pe;
@@ -711,50 +711,50 @@ clixon_process_status(clicon_handle  h,
     int              match = 0;
 
     if (_proc_entry_list != NULL){
-	pe = _proc_entry_list;
-	do {
-	    if (strcmp(pe->pe_name, name) == 0){
-		clicon_debug(1, "%s found %s pid:%d", __FUNCTION__, name, pe->pe_pid);
-		/* Check if running */
-		run = 0;
-		if (pe->pe_pid && proc_op_run(pe->pe_pid, &run) < 0)
-		    goto done;
-		cprintf(cbret, "<rpc-reply xmlns=\"%s\"><active xmlns=\"%s\">%s</active>",
-			NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS, run?"true":"false");
-		if (pe->pe_description)
-		    cprintf(cbret, "<description xmlns=\"%s\">%s</description>", CLIXON_LIB_NS, pe->pe_description);
-		cprintf(cbret, "<command xmlns=\"%s\">", CLIXON_LIB_NS);
-		/* The command may include any data, including XML (such as restconf -R 
-		 * command) and therefore needs explicit encoding */
-		for (i=0; i<pe->pe_argc-1; i++){
-		    if (i)
-			if (xml_chardata_cbuf_append(cbret, " ") < 0)
-			    goto done;
-		    if (xml_chardata_cbuf_append(cbret, pe->pe_argv[i]) < 0)
-			goto done;
-		}
-		cprintf(cbret, "</command>");
-		cprintf(cbret, "<status xmlns=\"%s\">%s</status>", CLIXON_LIB_NS,
-			clicon_int2str(proc_state_map, pe->pe_state));
-		if (timerisset(&pe->pe_starttime)){
-		    if (time2str(pe->pe_starttime, timestr, sizeof(timestr)) < 0){
-			clicon_err(OE_UNIX, errno, "time2str");
-			goto done;
-		    }
-		    cprintf(cbret, "<starttime xmlns=\"%s\">%s</starttime>", CLIXON_LIB_NS, timestr);
-		}
-		if (pe->pe_pid)
-		    cprintf(cbret, "<pid xmlns=\"%s\">%u</pid>", CLIXON_LIB_NS, pe->pe_pid);
-		cprintf(cbret, "</rpc-reply>");
-		match++;
-		break; 	    /* hit break here */
-	    }
-	    pe = NEXTQ(process_entry_t *, pe);
-	} while (pe != _proc_entry_list);
+        pe = _proc_entry_list;
+        do {
+            if (strcmp(pe->pe_name, name) == 0){
+                clicon_debug(1, "%s found %s pid:%d", __FUNCTION__, name, pe->pe_pid);
+                /* Check if running */
+                run = 0;
+                if (pe->pe_pid && proc_op_run(pe->pe_pid, &run) < 0)
+                    goto done;
+                cprintf(cbret, "<rpc-reply xmlns=\"%s\"><active xmlns=\"%s\">%s</active>",
+                        NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS, run?"true":"false");
+                if (pe->pe_description)
+                    cprintf(cbret, "<description xmlns=\"%s\">%s</description>", CLIXON_LIB_NS, pe->pe_description);
+                cprintf(cbret, "<command xmlns=\"%s\">", CLIXON_LIB_NS);
+                /* The command may include any data, including XML (such as restconf -R 
+                 * command) and therefore needs explicit encoding */
+                for (i=0; i<pe->pe_argc-1; i++){
+                    if (i)
+                        if (xml_chardata_cbuf_append(cbret, " ") < 0)
+                            goto done;
+                    if (xml_chardata_cbuf_append(cbret, pe->pe_argv[i]) < 0)
+                        goto done;
+                }
+                cprintf(cbret, "</command>");
+                cprintf(cbret, "<status xmlns=\"%s\">%s</status>", CLIXON_LIB_NS,
+                        clicon_int2str(proc_state_map, pe->pe_state));
+                if (timerisset(&pe->pe_starttime)){
+                    if (time2str(pe->pe_starttime, timestr, sizeof(timestr)) < 0){
+                        clicon_err(OE_UNIX, errno, "time2str");
+                        goto done;
+                    }
+                    cprintf(cbret, "<starttime xmlns=\"%s\">%s</starttime>", CLIXON_LIB_NS, timestr);
+                }
+                if (pe->pe_pid)
+                    cprintf(cbret, "<pid xmlns=\"%s\">%u</pid>", CLIXON_LIB_NS, pe->pe_pid);
+                cprintf(cbret, "</rpc-reply>");
+                match++;
+                break;      /* hit break here */
+            }
+            pe = NEXTQ(process_entry_t *, pe);
+        } while (pe != _proc_entry_list);
     }
     if (!match){ /* No match, return error */
-	if (netconf_unknown_element(cbret, "application", (char*)name, "Process service is not known") < 0)
-	    goto done;	    
+        if (netconf_unknown_element(cbret, "application", (char*)name, "Process service is not known") < 0)
+            goto done;      
     }
     retval = 0;
  done:
@@ -777,22 +777,22 @@ clixon_process_start_all(clicon_handle h)
 
     clicon_debug(1, "%s",__FUNCTION__);
     if (_proc_entry_list == NULL)
-	goto ok;
+        goto ok;
     pe = _proc_entry_list;
     do {
-	op = PROC_OP_START;
-	/* Call wrapper function that eg changes op based on config */
-	if (pe->pe_callback != NULL)
-	    if (pe->pe_callback(h, pe, &op) < 0)
-		goto done;
-	if (op == PROC_OP_START){
-	    pe->pe_operation = op;
-	    sched++; /* Immediate dont delay for start */
-	}
-	pe = NEXTQ(process_entry_t *, pe);
+        op = PROC_OP_START;
+        /* Call wrapper function that eg changes op based on config */
+        if (pe->pe_callback != NULL)
+            if (pe->pe_callback(h, pe, &op) < 0)
+                goto done;
+        if (op == PROC_OP_START){
+            pe->pe_operation = op;
+            sched++; /* Immediate dont delay for start */
+        }
+        pe = NEXTQ(process_entry_t *, pe);
     } while (pe != _proc_entry_list);
     if (sched && clixon_process_sched_register(h, 0) < 0)
-	goto done;
+        goto done;
  ok:
     retval = 0;
  done:
@@ -811,7 +811,7 @@ clixon_process_start_all(clicon_handle h)
  */
 static int
 clixon_process_sched(int           fd,
-		     clicon_handle h)
+                     clicon_handle h)
 {
     int              retval = -1;
     process_entry_t *pe;
@@ -820,87 +820,87 @@ clixon_process_sched(int           fd,
 
     clicon_debug(1, "%s",__FUNCTION__);
     if (_proc_entry_list == NULL)
-	goto ok;
+        goto ok;
     pe = _proc_entry_list;
     do {
-	clicon_debug(1, "%s name: %s pid:%d %s --op:%s-->", __FUNCTION__,
-		     pe->pe_name, pe->pe_pid, clicon_int2str(proc_state_map, pe->pe_state), clicon_int2str(proc_operation_map, pe->pe_operation));
-	/* Execute pending operations and not already exiting */
-	if (pe->pe_operation != PROC_OP_NONE){
-	    switch (pe->pe_state){
-	    case PROC_STATE_EXITING:
-		switch (pe->pe_operation){
-		case PROC_OP_STOP: 
-		case PROC_OP_RESTART: /* Kill again */
-		    isrunning = 0;
-		    if (proc_op_run(pe->pe_pid, &isrunning) < 0)
-			goto done;		    
-		    if (isrunning) {
-			clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
-				   pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
-			kill(pe->pe_pid, SIGTERM);
-			sched++; /* Not immediate: wait timeout */
-		    }
-		default:
-		    break;
-		}
-		break; /* only clixon_process_waitpid can change state in exiting */
-	    case PROC_STATE_STOPPED:
-		switch (pe->pe_operation){
-		case PROC_OP_RESTART: /* stopped -> restart can happen if its externall stopped */
-		case PROC_OP_START:
-		    /* Check if actual running using kill(0) */
-		    isrunning = 0;
-		    if (proc_op_run(pe->pe_pid, &isrunning) < 0)
-			goto done;
-		    if (!isrunning)
-			if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &pe->pe_pid) < 0)
-			    goto done;
-		    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
-				 pe->pe_name, pe->pe_pid,
-				 clicon_int2str(proc_state_map, pe->pe_state),
-				 clicon_int2str(proc_operation_map, pe->pe_operation),
-				 clicon_int2str(proc_state_map, PROC_STATE_RUNNING)
-				 );
-		    pe->pe_state = PROC_STATE_RUNNING;
-		    gettimeofday(&pe->pe_starttime, NULL);
-		    pe->pe_operation = PROC_OP_NONE;
-		    break;
-		default:
-		    break;
-		}
-		break;
-	    case PROC_STATE_RUNNING:
-		/* Check if actual running using kill(0) */
-		isrunning = 0;
-		if (proc_op_run(pe->pe_pid, &isrunning) < 0)
-		    goto done;
-		switch (pe->pe_operation){
-		case PROC_OP_START:
-		    if (isrunning) /* Already runs */
-			break;
-		    if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &pe->pe_pid) < 0)
-			goto done;
-		    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
-				 pe->pe_name, pe->pe_pid,
-				 clicon_int2str(proc_state_map, pe->pe_state),
-				 clicon_int2str(proc_operation_map, pe->pe_operation),
-				 clicon_int2str(proc_state_map, PROC_STATE_RUNNING)
-				 );
-		    gettimeofday(&pe->pe_starttime, NULL);
-		    pe->pe_operation = PROC_OP_NONE;
-		    break;
-		default:
-		    break;
-		}/* switch pe_state */
-	    default:
-		break;
-	    } /* switch pe_state */
-	}
-	pe = NEXTQ(process_entry_t *, pe);
+        clicon_debug(1, "%s name: %s pid:%d %s --op:%s-->", __FUNCTION__,
+                     pe->pe_name, pe->pe_pid, clicon_int2str(proc_state_map, pe->pe_state), clicon_int2str(proc_operation_map, pe->pe_operation));
+        /* Execute pending operations and not already exiting */
+        if (pe->pe_operation != PROC_OP_NONE){
+            switch (pe->pe_state){
+            case PROC_STATE_EXITING:
+                switch (pe->pe_operation){
+                case PROC_OP_STOP: 
+                case PROC_OP_RESTART: /* Kill again */
+                    isrunning = 0;
+                    if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+                        goto done;                  
+                    if (isrunning) {
+                        clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
+                                   pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
+                        kill(pe->pe_pid, SIGTERM);
+                        sched++; /* Not immediate: wait timeout */
+                    }
+                default:
+                    break;
+                }
+                break; /* only clixon_process_waitpid can change state in exiting */
+            case PROC_STATE_STOPPED:
+                switch (pe->pe_operation){
+                case PROC_OP_RESTART: /* stopped -> restart can happen if its externall stopped */
+                case PROC_OP_START:
+                    /* Check if actual running using kill(0) */
+                    isrunning = 0;
+                    if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+                        goto done;
+                    if (!isrunning)
+                        if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &pe->pe_pid) < 0)
+                            goto done;
+                    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
+                                 pe->pe_name, pe->pe_pid,
+                                 clicon_int2str(proc_state_map, pe->pe_state),
+                                 clicon_int2str(proc_operation_map, pe->pe_operation),
+                                 clicon_int2str(proc_state_map, PROC_STATE_RUNNING)
+                                 );
+                    pe->pe_state = PROC_STATE_RUNNING;
+                    gettimeofday(&pe->pe_starttime, NULL);
+                    pe->pe_operation = PROC_OP_NONE;
+                    break;
+                default:
+                    break;
+                }
+                break;
+            case PROC_STATE_RUNNING:
+                /* Check if actual running using kill(0) */
+                isrunning = 0;
+                if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+                    goto done;
+                switch (pe->pe_operation){
+                case PROC_OP_START:
+                    if (isrunning) /* Already runs */
+                        break;
+                    if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &pe->pe_pid) < 0)
+                        goto done;
+                    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
+                                 pe->pe_name, pe->pe_pid,
+                                 clicon_int2str(proc_state_map, pe->pe_state),
+                                 clicon_int2str(proc_operation_map, pe->pe_operation),
+                                 clicon_int2str(proc_state_map, PROC_STATE_RUNNING)
+                                 );
+                    gettimeofday(&pe->pe_starttime, NULL);
+                    pe->pe_operation = PROC_OP_NONE;
+                    break;
+                default:
+                    break;
+                }/* switch pe_state */
+            default:
+                break;
+            } /* switch pe_state */
+        }
+        pe = NEXTQ(process_entry_t *, pe);
     } while (pe != _proc_entry_list);
     if (sched && clixon_process_sched_register(h, 1) < 0)
-	goto done;
+        goto done;
  ok:
     retval = 0;
  done:
@@ -918,7 +918,7 @@ clixon_process_sched(int           fd,
  */
 static int
 clixon_process_sched_register(clicon_handle h,
-			      int           delay)
+                              int           delay)
 {
     int            retval = -1;
     struct timeval t;
@@ -927,9 +927,9 @@ clixon_process_sched_register(clicon_handle h,
     clicon_debug(2, "%s", __FUNCTION__);
     gettimeofday(&t, NULL);
     if (delay)
-	timeradd(&t, &t1, &t);
+        timeradd(&t, &t1, &t);
     if (clixon_event_reg_timeout(t, clixon_process_sched, h, "process") < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
@@ -951,59 +951,59 @@ clixon_process_waitpid(clicon_handle h)
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (_proc_entry_list == NULL)
-	goto ok;
+        goto ok;
     if ((pe = _proc_entry_list) != NULL)
-	do {
-	clicon_debug(1, "%s %s(%d) %s op:%s", __FUNCTION__,
-		     pe->pe_name, pe->pe_pid,
-		     clicon_int2str(proc_state_map, pe->pe_state),
-		     clicon_int2str(proc_operation_map, pe->pe_operation));
-	if (pe->pe_pid != 0
-	    && (pe->pe_state == PROC_STATE_RUNNING || pe->pe_state == PROC_STATE_EXITING)
-	    //	    && (pe->pe_operation == PROC_OP_STOP || pe->pe_operation == PROC_OP_RESTART)
-	    ){
-	    clicon_debug(1, "%s %s waitpid(%d)", __FUNCTION__, pe->pe_name, pe->pe_pid);
-	    if ((wpid = waitpid(pe->pe_pid, &status, WNOHANG)) == pe->pe_pid){
-		clicon_debug(1, "%s waitpid(%d) waited", __FUNCTION__, pe->pe_pid);
-		pe->pe_exit_status = status;
-		switch (pe->pe_operation){
-		case PROC_OP_NONE: /* Spontaneous / External termination */
-		case PROC_OP_STOP:
-		    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
-				 pe->pe_name, pe->pe_pid,
-				 clicon_int2str(proc_state_map, pe->pe_state),
-				 clicon_int2str(proc_operation_map, pe->pe_operation),
-				 clicon_int2str(proc_state_map, PROC_STATE_STOPPED)
-				 );
-		    pe->pe_state = PROC_STATE_STOPPED;
-		    pe->pe_pid = 0;       
-		    timerclear(&pe->pe_starttime);
-		    break;
-		case PROC_OP_RESTART:
-		    /* This is the case where there is an existing process running.
-		     * it was killed above but still runs and needs to be reaped */
-		    if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &pe->pe_pid) < 0)
-			goto done;
-		    gettimeofday(&pe->pe_starttime, NULL);
-		    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
-				 pe->pe_name, pe->pe_pid,
-				 clicon_int2str(proc_state_map, pe->pe_state),
-				 clicon_int2str(proc_operation_map, pe->pe_operation),
-				 clicon_int2str(proc_state_map, PROC_STATE_RUNNING)
-				 );
-		    pe->pe_state = PROC_STATE_RUNNING;
-		    gettimeofday(&pe->pe_starttime, NULL);
-		    break;
-		default:
-		    break;
-		}
-		pe->pe_operation = PROC_OP_NONE;
-		break; /* pid is unique */
-	    }
-	    else
-		clicon_debug(1, "%s waitpid(%d) nomatch:%d", __FUNCTION__, pe->pe_pid, wpid);
-	}
-    	pe = NEXTQ(process_entry_t *, pe);
+        do {
+        clicon_debug(1, "%s %s(%d) %s op:%s", __FUNCTION__,
+                     pe->pe_name, pe->pe_pid,
+                     clicon_int2str(proc_state_map, pe->pe_state),
+                     clicon_int2str(proc_operation_map, pe->pe_operation));
+        if (pe->pe_pid != 0
+            && (pe->pe_state == PROC_STATE_RUNNING || pe->pe_state == PROC_STATE_EXITING)
+            //      && (pe->pe_operation == PROC_OP_STOP || pe->pe_operation == PROC_OP_RESTART)
+            ){
+            clicon_debug(1, "%s %s waitpid(%d)", __FUNCTION__, pe->pe_name, pe->pe_pid);
+            if ((wpid = waitpid(pe->pe_pid, &status, WNOHANG)) == pe->pe_pid){
+                clicon_debug(1, "%s waitpid(%d) waited", __FUNCTION__, pe->pe_pid);
+                pe->pe_exit_status = status;
+                switch (pe->pe_operation){
+                case PROC_OP_NONE: /* Spontaneous / External termination */
+                case PROC_OP_STOP:
+                    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
+                                 pe->pe_name, pe->pe_pid,
+                                 clicon_int2str(proc_state_map, pe->pe_state),
+                                 clicon_int2str(proc_operation_map, pe->pe_operation),
+                                 clicon_int2str(proc_state_map, PROC_STATE_STOPPED)
+                                 );
+                    pe->pe_state = PROC_STATE_STOPPED;
+                    pe->pe_pid = 0;       
+                    timerclear(&pe->pe_starttime);
+                    break;
+                case PROC_OP_RESTART:
+                    /* This is the case where there is an existing process running.
+                     * it was killed above but still runs and needs to be reaped */
+                    if (clixon_proc_background(pe->pe_argv, pe->pe_netns, &pe->pe_pid) < 0)
+                        goto done;
+                    gettimeofday(&pe->pe_starttime, NULL);
+                    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
+                                 pe->pe_name, pe->pe_pid,
+                                 clicon_int2str(proc_state_map, pe->pe_state),
+                                 clicon_int2str(proc_operation_map, pe->pe_operation),
+                                 clicon_int2str(proc_state_map, PROC_STATE_RUNNING)
+                                 );
+                    pe->pe_state = PROC_STATE_RUNNING;
+                    gettimeofday(&pe->pe_starttime, NULL);
+                    break;
+                default:
+                    break;
+                }
+                pe->pe_operation = PROC_OP_NONE;
+                break; /* pid is unique */
+            }
+            else
+                clicon_debug(1, "%s waitpid(%d) nomatch:%d", __FUNCTION__, pe->pe_pid, wpid);
+        }
+        pe = NEXTQ(process_entry_t *, pe);
     } while (pe && pe != _proc_entry_list);
  ok:
     retval = 0;

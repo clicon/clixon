@@ -37,9 +37,9 @@ cat <<EOF > $cfg
       <log-destination>file</log-destination>
       <socket>
          <namespace>default</namespace>
-	 <address>0.0.0.0</address>
-	 <port>8088</port>
-	 <ssl>false</ssl>
+         <address>0.0.0.0</address>
+         <port>8088</port>
+         <ssl>false</ssl>
       </socket>
    </restconf>
 </clixon-config>

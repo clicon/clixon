@@ -46,7 +46,7 @@
 */
 struct yang_type_cache{
     int        yc_options;  /* See YANG_OPTIONS_* that determines pattern/
-			       fraction fields. */
+                               fraction fields. */
     cvec      *yc_cvv;      /* Range and length restriction. (if YANG_OPTION_
                                LENGTH|RANGE. Can be a vector if multiple 
                                ranges*/
@@ -75,27 +75,27 @@ struct yang_stmt{
                                         1) Augmented nodes "belong" to the module where the 
                                            augment is declared, which may be differnt from
                                            the direct ancestor module 
-					2) Unknown nodes "belong" to where the extension is
+                                        2) Unknown nodes "belong" to where the extension is
                                            declared
                                       */
     cg_var            *ys_cv;        /* cligen variable. See ys_populate()
-					Following stmts have cv:s:
-				        leaf: for default value
-					leaf-list, 
-					config: boolean true or false
-					mandatory: boolean true or false
-					require-instance: true or false
-					fraction-digits for fraction-digits
-					revision (uint32)
-					unknown-stmt (optional argument)
-				     */
+                                        Following stmts have cv:s:
+                                        leaf: for default value
+                                        leaf-list, 
+                                        config: boolean true or false
+                                        mandatory: boolean true or false
+                                        require-instance: true or false
+                                        fraction-digits for fraction-digits
+                                        revision (uint32)
+                                        unknown-stmt (optional argument)
+                                     */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
-					Y_RANGE: range_min, range_max 
-					Y_LIST: vector of keys
-					Y_TYPE & identity: store all derived 
-					   types as <module>:<id> list
-					Y_UNIQUE: vector of descendant schema node ids
-				     */
+                                        Y_RANGE: range_min, range_max 
+                                        Y_LIST: vector of keys
+                                        Y_TYPE & identity: store all derived 
+                                           types as <module>:<id> list
+                                        Y_UNIQUE: vector of descendant schema node ids
+                                     */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
     char              *ys_when_xpath; /* Special conditional for a "when"-associated augment/uses xpath */
     cvec              *ys_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */

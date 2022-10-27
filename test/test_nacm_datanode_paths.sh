@@ -94,7 +94,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s startup -f $cfg"
     start_backend -s startup -f $cfg
@@ -160,7 +160,7 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

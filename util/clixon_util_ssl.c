@@ -92,9 +92,9 @@ typedef struct {
 #if 1 /* DEBUG */
 static void
 print_header(const uint8_t *name,
-	     size_t         namelen,
-	     const uint8_t *value,
-	     size_t         valuelen)
+             size_t         namelen,
+             const uint8_t *value,
+             size_t         valuelen)
 {
     clicon_debug(1, "%s %s", name, value);
 }
@@ -104,7 +104,7 @@ print_header(const uint8_t *name,
    octets, therefore they may contain non-printable characters. */
 static void
 print_headers(nghttp2_nv *nva,
-	      size_t      nvlen)
+              size_t      nvlen)
 {
   size_t i;
 
@@ -119,10 +119,10 @@ print_headers(nghttp2_nv *nva,
  */
 static ssize_t
 send_callback(nghttp2_session *session,
-	      const uint8_t   *data,
-	      size_t           length,
-	      int              flags,
-	      void            *user_data)
+              const uint8_t   *data,
+              size_t           length,
+              int              flags,
+              void            *user_data)
 {
     session_data *sd = (session_data*)user_data;
     int           ret;
@@ -130,15 +130,15 @@ send_callback(nghttp2_session *session,
     clicon_debug(1, "%s %zu:", __FUNCTION__, length);
 #if 0
     {
-	int           i;
-	for (i=0; i<length; i++)
-	    fprintf(stderr, "%02x", data[i]&255);
-	fprintf(stderr, "\n");
+        int           i;
+        for (i=0; i<length; i++)
+            fprintf(stderr, "%02x", data[i]&255);
+        fprintf(stderr, "\n");
     }
 #endif
     /* encrypt & send message */
     if ((ret = SSL_write(sd->sd_ssl, data, length)) < 0)
-	return ret;
+        return ret;
     return ret;
 }
 
@@ -146,15 +146,15 @@ send_callback(nghttp2_session *session,
  */
 static int
 on_frame_recv_callback(nghttp2_session     *session,
-		       const nghttp2_frame *frame,
-		       void                *user_data)
+                       const nghttp2_frame *frame,
+                       void                *user_data)
 {
     //session_data *sd = (session_data*)user_data;
     
     clicon_debug(1, "%s %d", __FUNCTION__, frame->hd.stream_id);
     if (frame->hd.type == NGHTTP2_HEADERS &&
-	frame->headers.cat == NGHTTP2_HCAT_RESPONSE)
-	clicon_debug(1, "All headers received %d", frame->hd.stream_id);
+        frame->headers.cat == NGHTTP2_HCAT_RESPONSE)
+        clicon_debug(1, "All headers received %d", frame->hd.stream_id);
 
     return 0;
 }
@@ -163,18 +163,18 @@ on_frame_recv_callback(nghttp2_session     *session,
  */
 static int
 on_data_chunk_recv_callback(nghttp2_session *session,
-			    uint8_t          flags,
-			    int32_t          stream_id,
-			    const uint8_t   *data,
-			    size_t           len,
-			    void            *user_data)
+                            uint8_t          flags,
+                            int32_t          stream_id,
+                            const uint8_t   *data,
+                            size_t           len,
+                            void            *user_data)
 {
     session_data *sd = (session_data*)user_data;
     
-    clicon_debug(1, "%s %d", __FUNCTION__, stream_id);	
+    clicon_debug(1, "%s %d", __FUNCTION__, stream_id);  
     if (sd->sd_session == session &&
-	sd->sd_stream_id == stream_id)
-	fwrite(data, 1, len, stdout); /* This is where data is printed */
+        sd->sd_stream_id == stream_id)
+        fwrite(data, 1, len, stdout); /* This is where data is printed */
     return 0;
 }
 
@@ -182,12 +182,12 @@ on_data_chunk_recv_callback(nghttp2_session *session,
  */
 static int
 on_stream_close_callback(nghttp2_session   *session,
-			 int32_t            stream_id,
-			 nghttp2_error_code error_code,
-			 void              *user_data)
+                         int32_t            stream_id,
+                         nghttp2_error_code error_code,
+                         void              *user_data)
 {
     //session_data *sd = (session_data*)user_data;
-	
+        
     clicon_debug(1, "%s", __FUNCTION__);
     return 0;
 }
@@ -196,20 +196,20 @@ on_stream_close_callback(nghttp2_session   *session,
  */
 static int
 on_header_callback(nghttp2_session     *session,
-		   const nghttp2_frame *frame,
-		   const uint8_t       *name,
-		   size_t              namelen,
-		   const uint8_t      *value,
-		   size_t              valuelen,
-		   uint8_t             flags,
-		   void               *user_data)
+                   const nghttp2_frame *frame,
+                   const uint8_t       *name,
+                   size_t              namelen,
+                   const uint8_t      *value,
+                   size_t              valuelen,
+                   uint8_t             flags,
+                   void               *user_data)
 {
     //    session_data *sd = (session_data*)user_data;
     
     if (frame->hd.type == NGHTTP2_HEADERS &&
-	frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
-	clicon_debug(1, "%s %d:", __FUNCTION__, frame->hd.stream_id);
-	print_header(name, namelen, value, valuelen);
+        frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
+        clicon_debug(1, "%s %d:", __FUNCTION__, frame->hd.stream_id);
+        print_header(name, namelen, value, valuelen);
     }
     return 0;
 }
@@ -218,15 +218,15 @@ on_header_callback(nghttp2_session     *session,
  */
 static int
 on_begin_headers_callback(nghttp2_session     *session,
-			  const nghttp2_frame *frame,
-			  void                *user_data)
+                          const nghttp2_frame *frame,
+                          void                *user_data)
 {
     //    session_data *sd = (session_data*)user_data;
 
     if (frame->hd.type == NGHTTP2_HEADERS &&
-	frame->headers.cat == NGHTTP2_HCAT_RESPONSE)
-	clicon_debug(1, "%s Response headers %d",
-		     __FUNCTION__, frame->hd.stream_id);
+        frame->headers.cat == NGHTTP2_HCAT_RESPONSE)
+        clicon_debug(1, "%s Response headers %d",
+                     __FUNCTION__, frame->hd.stream_id);
     return 0;
 }
 
@@ -234,22 +234,22 @@ on_begin_headers_callback(nghttp2_session     *session,
  */
 static int
 session_init(nghttp2_session **session,
-	     session_data     *sd)
+             session_data     *sd)
 {
     nghttp2_session_callbacks *callbacks = NULL;
 
     nghttp2_session_callbacks_new(&callbacks);
     nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
     nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
-							 on_frame_recv_callback);
+                                                         on_frame_recv_callback);
     nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
-							      callbacks, on_data_chunk_recv_callback);
+                                                              callbacks, on_data_chunk_recv_callback);
     nghttp2_session_callbacks_set_on_stream_close_callback(
-							   callbacks, on_stream_close_callback);
+                                                           callbacks, on_stream_close_callback);
     nghttp2_session_callbacks_set_on_header_callback(callbacks,
-						     on_header_callback);
+                                                     on_header_callback);
     nghttp2_session_callbacks_set_on_begin_headers_callback(
-							    callbacks, on_begin_headers_callback);
+                                                            callbacks, on_begin_headers_callback);
     nghttp2_session_client_new(session, callbacks, sd);
 
     nghttp2_session_callbacks_del(callbacks);
@@ -261,15 +261,15 @@ send_client_connection_header(nghttp2_session *session)
 {
     int                    retval = -1;
     nghttp2_settings_entry iv[1] = {
-	{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
+        {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
     int                    rv;
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* client 24 bytes magic string will be sent by nghttp2 library */
     rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, ARRLEN(iv));
     if (rv != 0) {
-	clicon_err(OE_XML, 0, "Could not submit SETTINGS: %s", nghttp2_strerror(rv));
-	goto done;
+        clicon_err(OE_XML, 0, "Could not submit SETTINGS: %s", nghttp2_strerror(rv));
+        goto done;
     }
     retval = 0;
  done:
@@ -282,29 +282,29 @@ send_client_connection_header(nghttp2_session *session)
  */
 static int
 submit_request(session_data *sd,
-	       char         *schema,
-	       char         *hostname,
-	       char         *path)
+               char         *schema,
+               char         *hostname,
+               char         *path)
 {
     int              retval = -1;
     nghttp2_nv       hdrs[] = {
-	MAKE_NV2(":method", "GET"),
-	MAKE_NV(":scheme", schema, strlen(schema)),
-	MAKE_NV(":authority", hostname, strlen(hostname)),
-	MAKE_NV(":path", path, strlen(path))
+        MAKE_NV2(":method", "GET"),
+        MAKE_NV(":scheme", schema, strlen(schema)),
+        MAKE_NV(":authority", hostname, strlen(hostname)),
+        MAKE_NV(":path", path, strlen(path))
     };
 
     clicon_debug(1, "%s Request headers:", __FUNCTION__);
     print_headers(hdrs, ARRLEN(hdrs));
     if ((sd->sd_stream_id = nghttp2_submit_request(sd->sd_session,
-					    NULL,
-					    hdrs,
-					    ARRLEN(hdrs),
-					    NULL,
-					    NULL)) < 0){
-	clicon_err(OE_XML, 0, "Could not submit HTTP request: %s",
-		   nghttp2_strerror(sd->sd_stream_id));
-	goto done;
+                                            NULL,
+                                            hdrs,
+                                            ARRLEN(hdrs),
+                                            NULL,
+                                            NULL)) < 0){
+        clicon_err(OE_XML, 0, "Could not submit HTTP request: %s",
+                   nghttp2_strerror(sd->sd_stream_id));
+        goto done;
     }
 
     retval = 0;
@@ -314,8 +314,8 @@ submit_request(session_data *sd,
 
 static int
 socket_connect_inet(char              *hostname,
-		    uint16_t           port,
-		    int               *sock0)
+                    uint16_t           port,
+                    int               *sock0)
 {
     int                retval = -1;
     int                s = -1;
@@ -329,34 +329,34 @@ socket_connect_inet(char              *hostname,
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     if ((ret = inet_pton(addr.sin_family, hostname, &addr.sin_addr)) < 0){
-	clicon_err(OE_UNIX, errno, "inet_pton");
-	goto done;
+        clicon_err(OE_UNIX, errno, "inet_pton");
+        goto done;
     }
     if (ret == 0){ /* Try DNS NOTE OBSOLETE */
-	if ((host = gethostbyname(hostname)) == NULL){
-	    clicon_err(OE_UNIX, errno, "gethostbyname");
-	    goto done;
-	}
-	addr.sin_addr.s_addr = *(long*)(host->h_addr); /* XXX Just to get it to work */
+        if ((host = gethostbyname(hostname)) == NULL){
+            clicon_err(OE_UNIX, errno, "gethostbyname");
+            goto done;
+        }
+        addr.sin_addr.s_addr = *(long*)(host->h_addr); /* XXX Just to get it to work */
     }
     /* special error handling to get understandable messages (otherwise ENOENT) */
     if ((s = socket(addr.sin_family, SOCK_STREAM, 0)) < 0) {
-	clicon_err(OE_CFG, errno, "socket");
-	return -1;
+        clicon_err(OE_CFG, errno, "socket");
+        return -1;
     }
     if (connect(s, (struct sockaddr*)&addr, sizeof(addr)) < 0){
-	clicon_err(OE_CFG, errno, "connecting socket inet4");
-	close(s);
-	goto done;
+        clicon_err(OE_CFG, errno, "connecting socket inet4");
+        close(s);
+        goto done;
     }
     /* libev requires this */
     setsockopt(s, IPPROTO_TCP, TCP_NODELAY, (char *)&one, sizeof(one));
     if (sock0 != NULL)
-	*sock0 = s;
+        *sock0 = s;
     retval = 0;
   done:
     if (sock0 == NULL && s >= 0)
-	close(s);
+        close(s);
     return retval;
 }
 
@@ -365,15 +365,15 @@ socket_connect_inet(char              *hostname,
    the program. */
 static int
 select_next_proto_cb(SSL *ssl,
-		     unsigned char      **out,
-		     unsigned char       *outlen,
-		     const unsigned char *in,
-		     unsigned int         inlen,
-		     void                *arg)
+                     unsigned char      **out,
+                     unsigned char       *outlen,
+                     const unsigned char *in,
+                     unsigned int         inlen,
+                     void                *arg)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     if (nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) 
-	return -1;
+        return -1;
     clicon_debug(1, "%s out: %s in:%s", __FUNCTION__, *out, in);
     return SSL_TLSEXT_ERR_OK;
 }
@@ -394,14 +394,14 @@ InitCTX(void)
 #endif
     /* Create new context */
     if ((ctx = SSL_CTX_new(method)) == NULL){
-	clicon_err(OE_XML, errno, "SSL_CTX_new");
-	goto done;
+        clicon_err(OE_XML, errno, "SSL_CTX_new");
+        goto done;
     }
 
     SSL_CTX_set_options(ctx,
-			SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
-			SSL_OP_NO_COMPRESSION |
-			SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+                        SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
+                        SSL_OP_NO_COMPRESSION |
+                        SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 #ifndef OPENSSL_NO_NEXTPROTONEG
     SSL_CTX_set_next_proto_select_cb(ctx, select_next_proto_cb, NULL);
 #endif
@@ -415,7 +415,7 @@ InitCTX(void)
 
 static int
 ssl_input_cb(int   s, 
-	     void *arg)
+             void *arg)
 {
     int           retval = -1;
     session_data *sd = (session_data *)arg;
@@ -429,16 +429,16 @@ ssl_input_cb(int   s,
     session = sd->sd_session;
     /* get reply & decrypt */
     if ((n = SSL_read(ssl, buf, sizeof(buf))) < 0){
-	clicon_err(OE_XML, errno, "SSL_read");
-	goto done;
+        clicon_err(OE_XML, errno, "SSL_read");
+        goto done;
     }
     if (n == 0){
-	fprintf(stdout, "%s closed\n", __FUNCTION__);
-	goto done;
+        fprintf(stdout, "%s closed\n", __FUNCTION__);
+        goto done;
     }
     if ((readlen = nghttp2_session_mem_recv(session, (unsigned char*)buf, n)) < 0){
-	clicon_err(OE_XML, errno, "nghttp2_session_mem_recv");
-	goto done;
+        clicon_err(OE_XML, errno, "nghttp2_session_mem_recv");
+        goto done;
     }
     nghttp2_session_send(session);
 #if 0
@@ -454,12 +454,12 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options] with xml on stdin\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \tDebug\n"
-	    "\t-H <hostname> \tURI hostname\n"
-	    ,
-	    argv0);
+            "\t-D <level> \tDebug\n"
+            "\t-H <hostname> \tURI hostname\n"
+            ,
+            argv0);
     exit(0);
 }
 
@@ -484,70 +484,70 @@ main(int    argc,
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
 
     if ((h = clicon_handle_init()) == NULL)
-	goto done;
+        goto done;
     while ((c = getopt(argc, argv, UTIL_SSL_OPTS)) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv[0]);
-	    break;
-    	case 'D':
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(argv[0]);
-	    break;
-	case 'H': /* hostname */
-	    hostname = optarg;
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv[0]);
+            break;
+        case 'D':
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(argv[0]);
+            break;
+        case 'H': /* hostname */
+            hostname = optarg;
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     if (hostname == NULL){
-	fprintf(stderr, "-H <hostname> is mandatory\n");
-	usage(argv[0]);
+        fprintf(stderr, "-H <hostname> is mandatory\n");
+        usage(argv[0]);
     }
     clicon_debug_init(dbg, NULL);
     SSL_library_init();
     if ((ctx = InitCTX()) == NULL)
-	goto done;
+        goto done;
     if (socket_connect_inet(hostname, port, &ss) < 0)
-	goto done;
+        goto done;
     ssl = SSL_new(ctx);     /* create new SSL connection state */
     SSL_set_fd(ssl, ss);    /* attach the socket descriptor */
     /* perform the connection */
     if ((ret = SSL_connect(ssl)) < 0){
-	clicon_err(OE_XML, errno, "SSL_connect");
-	goto done;
+        clicon_err(OE_XML, errno, "SSL_connect");
+        goto done;
     }
     /* In the nghttp2 code, there is an asynchronous step for
      * a connected socket, here I just assume it is connected. */
     if ((sd = malloc(sizeof(*sd))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(sd, 0, sizeof(*sd));
     sd->sd_s = ss;
     sd->sd_ssl = ssl;
     if (session_init(&session, sd) < 0)
-	goto done;
+        goto done;
     sd->sd_session = session;
     if (send_client_connection_header(session) < 0)
-	goto done;
+        goto done;
     if (submit_request(sd, "https", hostname, "/") < 0)
-	goto done;
+        goto done;
     if (nghttp2_session_send(session) != 0){
-	clicon_err(OE_XML, errno, "nghttp2_session_send");
-	goto done;
+        clicon_err(OE_XML, errno, "nghttp2_session_send");
+        goto done;
     }
     if (clixon_event_reg_fd(ss, ssl_input_cb, sd, "ssl socket") < 0)
-	goto done;
+        goto done;
     if (clixon_event_loop(h) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (ss != -1)
-	close(ss);
+        close(ss);
     if (ctx)
-	SSL_CTX_free(ctx);        /* release context */
+        SSL_CTX_free(ctx);        /* release context */
     return retval;
 }
 

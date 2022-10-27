@@ -37,10 +37,10 @@ module example {
     revision 2019-01-13;
     container c{
       list a{
-	key x;
-	leaf x{
-	    type int32;
-	}
+        key x;
+        leaf x{
+            type int32;
+        }
       }
     }
 }
@@ -62,13 +62,13 @@ function testrun(){
     r0=$($clixon_util_xml_mod -y $fyang -x "$xi" -b "$x0" -p $xp $OPTS)
     # If both are null something is amiss
     if [ -z "$r0" -a -z "$rs" ]; then
-	err "length of retval is zero"
+        err "length of retval is zero"
     fi
  #   echo "rs:$rs"
  #   echo "r0:$r0"
     # Check they are equal
     if [[ "$r0" != "$rs" ]]; then
-	err "$rs" "$r0"
+        err "$rs" "$r0"
     fi
 }
 
@@ -178,10 +178,10 @@ module example {
           }
       }
       list d{
-	key x;
-	leaf x{
-	    type int32;
-	}
+        key x;
+        leaf x{
+            type int32;
+        }
         ordered-by user;
       }
       leaf-list e{

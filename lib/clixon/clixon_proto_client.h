@@ -49,17 +49,17 @@ int clicon_rpc_netconf(clicon_handle h, char *xmlst, cxobj **xret, int *sp);
 int clicon_rpc_netconf_xml(clicon_handle h, cxobj *xml, cxobj **xret, int *sp);
 int clicon_rpc_get_config(clicon_handle h, char *username, char *db, char *xpath, cvec *nsc, char *defaults, cxobj **xret);
 int clicon_rpc_edit_config(clicon_handle h, char *db, enum operation_type op, 
-			   char *xml);
+                           char *xml);
 int clicon_rpc_copy_config(clicon_handle h, char *db1, char *db2);
 int clicon_rpc_delete_config(clicon_handle h, char *db);
 int clicon_rpc_lock(clicon_handle h, char *db);
 int clicon_rpc_unlock(clicon_handle h, char *db);
 int clicon_rpc_get(clicon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, cxobj **xret);
 int clicon_rpc_get_pageable_list(clicon_handle h, char *datastore, char *xpath, 
-				 cvec *nsc, netconf_content content, int32_t depth, char *defaults,
-				 uint32_t offset, uint32_t limit,
-				 char *direction, char *sort, char *where,
-				 cxobj **xt);
+                                 cvec *nsc, netconf_content content, int32_t depth, char *defaults,
+                                 uint32_t offset, uint32_t limit,
+                                 char *direction, char *sort, char *where,
+                                 cxobj **xt);
 int clicon_rpc_close_session(clicon_handle h);
 int clicon_rpc_kill_session(clicon_handle h, uint32_t session_id);
 int clicon_rpc_validate(clicon_handle h, char *db);

@@ -61,128 +61,128 @@ function testrun()
 
     new "test params: -f $cfg -- -s"
     if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	sudo pkill -f clixon_backend # to be sure
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        sudo pkill -f clixon_backend # to be sure
 
-	new "start backend -s init -f $cfg"
-	start_backend -s init -f $cfg
+        new "start backend -s init -f $cfg"
+        start_backend -s init -f $cfg
     fi
 
     new "wait backend"
     wait_backend
 
     if [ $RC -ne 0 ]; then
-	new "kill old restconf daemon"
-	stop_restconf_pre
+        new "kill old restconf daemon"
+        stop_restconf_pre
 
-	new "start restconf daemon -o CLICON_RESTCONF_HTTP2_PLAIN=${h2enable}"
-	start_restconf -f $cfg -o CLICON_RESTCONF_HTTP2_PLAIN=${h2enable}
+        new "start restconf daemon -o CLICON_RESTCONF_HTTP2_PLAIN=${h2enable}"
+        start_restconf -f $cfg -o CLICON_RESTCONF_HTTP2_PLAIN=${h2enable}
     fi
 
 
 
     if [ ${HAVE_LIBNGHTTP2} = false -a ${HAVE_HTTP1} = true ]; then    # http/1 only
 
-	new "wait restconf"
-	wait_restconf
+        new "wait restconf"
+        wait_restconf
 
-	# http/1-only always stays on http/1 in http/1 + http/2 mode
-	new "restconf http1.1 no upgrade (h2:$h2enable)"
-	echo "curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta"
-	expectpart "$(curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta)" 0 "HTTP/1.1 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>" --not-- "HTTP/2"
-	
-	# http/1->http/2 switched if h2enable, otherwise it stays in http/1
-	new "restconf upgrade http1->http2 (h2:$h2enable)"
-	echo "curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta"
-	# stay on http/1
-	expectpart "$(curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta)" 0 "HTTP/1.1 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"  --not-- "HTTP/2"
+        # http/1-only always stays on http/1 in http/1 + http/2 mode
+        new "restconf http1.1 no upgrade (h2:$h2enable)"
+        echo "curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta"
+        expectpart "$(curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta)" 0 "HTTP/1.1 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>" --not-- "HTTP/2"
+        
+        # http/1->http/2 switched if h2enable, otherwise it stays in http/1
+        new "restconf upgrade http1->http2 (h2:$h2enable)"
+        echo "curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta"
+        # stay on http/1
+        expectpart "$(curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta)" 0 "HTTP/1.1 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"  --not-- "HTTP/2"
 
-	# http/2-only is always an error in http/1 + http/2 mode
-	new "restconf http2 prior-knowledge (h2:$h2enable)"
-	echo "curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta"
-	expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" "16 52 55"
+        # http/2-only is always an error in http/1 + http/2 mode
+        new "restconf http2 prior-knowledge (h2:$h2enable)"
+        echo "curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta"
+        expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" "16 52 55"
 
     elif [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_HTTP1} = false ]; then  # http/2 only
 
-	sleep 2 # Cannot do wait restconf
-	
-	# http/1-only always stays on http/1 in http/1 + http/2 mode
-	new "restconf http1.1 no upgrade (h2:$h2enable)"
-	echo "curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta"
-	# XXX cannot use expectpart due to null in pipe
-	curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta
-	if [ $? == 0 ]; then
-	    err "NULL" "sucess"
-	fi
+        sleep 2 # Cannot do wait restconf
+        
+        # http/1-only always stays on http/1 in http/1 + http/2 mode
+        new "restconf http1.1 no upgrade (h2:$h2enable)"
+        echo "curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta"
+        # XXX cannot use expectpart due to null in pipe
+        curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta
+        if [ $? == 0 ]; then
+            err "NULL" "sucess"
+        fi
 
-	# http/1->http/2 switched if h2enable, otherwise it stays in http/1
-	new "restconf upgrade http1->http2 (h2:$h2enable)"
-	echo "curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta"
-	# stay on http/1
-	curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta
-	if [ $? == 0 ]; then
-	    err "NULL" "sucess"
-	fi
+        # http/1->http/2 switched if h2enable, otherwise it stays in http/1
+        new "restconf upgrade http1->http2 (h2:$h2enable)"
+        echo "curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta"
+        # stay on http/1
+        curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta
+        if [ $? == 0 ]; then
+            err "NULL" "sucess"
+        fi
 
-	# http/2-only is always an error in http/1 + http/2 mode
-	new "restconf http2 prior-knowledge (h2:$h2enable)"
-	echo "curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta"
-	if $h2enable; then
-	    new "wait restconf"
-	    wait_restconf
+        # http/2-only is always an error in http/1 + http/2 mode
+        new "restconf http2 prior-knowledge (h2:$h2enable)"
+        echo "curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta"
+        if $h2enable; then
+            new "wait restconf"
+            wait_restconf
 
-	    expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" 0 "HTTP/2 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>" --not-- "HTTP/1.1"
+            expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" 0 "HTTP/2 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>" --not-- "HTTP/1.1"
 
-	else
-	    expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" 0 "HTTP/2 405"
-	fi
+        else
+            expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" 0 "HTTP/2 405"
+        fi
 
     elif [ ${HAVE_LIBNGHTTP2} = true -a ${HAVE_HTTP1} = true ]; then  # http/1 + http/2
 
-	new "wait restconf"
-	wait_restconf
-	
-	# http/1-only always stays on http/1 in http/1 + http/2 mode
-	new "restconf http1.1 no upgrade (h2:$h2enable)"
-	echo "curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta"
-	expectpart "$(curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta)" 0 "HTTP/1.1 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>" --not-- "HTTP/2"
-	
-	# http/1->http/2 switched if h2enable, otherwise it stays in http/1
-	new "restconf upgrade http1->http2 (h2:$h2enable)"
-	echo "curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta"
-	if $h2enable; then
-	    # switch to http/2
-	    expectpart "$(curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta)" 0 "HTTP/2 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"  "HTTP/1.1 101 Switching" "HTTP/2 200" --not-- "HTTP/1.1 200"
-	else
-	    # stay on http/1
-	    expectpart "$(curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta)" 0 "HTTP/1.1 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"  --not-- "HTTP/2"
-	fi
+        new "wait restconf"
+        wait_restconf
+        
+        # http/1-only always stays on http/1 in http/1 + http/2 mode
+        new "restconf http1.1 no upgrade (h2:$h2enable)"
+        echo "curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta"
+        expectpart "$(curl -Ssik --http1.1 -X GET http://localhost/.well-known/host-meta)" 0 "HTTP/1.1 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>" --not-- "HTTP/2"
+        
+        # http/1->http/2 switched if h2enable, otherwise it stays in http/1
+        new "restconf upgrade http1->http2 (h2:$h2enable)"
+        echo "curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta"
+        if $h2enable; then
+            # switch to http/2
+            expectpart "$(curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta)" 0 "HTTP/2 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"  "HTTP/1.1 101 Switching" "HTTP/2 200" --not-- "HTTP/1.1 200"
+        else
+            # stay on http/1
+            expectpart "$(curl -Ssik --http2 -X GET http://localhost/.well-known/host-meta)" 0 "HTTP/1.1 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"  --not-- "HTTP/2"
+        fi
 
-	# http/2-only is always an error in http/1 + http/2 mode
-	new "restconf http2 prior-knowledge (h2:$h2enable)"
-	echo "curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta"
-	expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" "16 52 55"
+        # http/2-only is always an error in http/1 + http/2 mode
+        new "restconf http2 prior-knowledge (h2:$h2enable)"
+        echo "curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta"
+        expectpart "$(curl -Ssik --http2-prior-knowledge -X GET http://localhost/.well-known/host-meta 2>&1)" "16 52 55"
 
     fi
 
     if [ $RC -ne 0 ]; then
-	new "Kill restconf daemon"
-	stop_restconf
+        new "Kill restconf daemon"
+        stop_restconf
     fi
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 

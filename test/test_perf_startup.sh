@@ -74,7 +74,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg -y $fyang
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
 fi
 
@@ -105,10 +105,10 @@ cat<<EOF >  $sxpp
             <x>
 EOF
     for (( i=0; i<$perfnr; i++ )); do  
-	echo "               <y>" >> $sxpp
-	echo "                  <a>$i</a>" >> $sxpp
-	echo "                  <b>$i</b>" >> $sxpp
-	echo "               </y>" >> $sxpp
+        echo "               <y>" >> $sxpp
+        echo "                  <a>$i</a>" >> $sxpp
+        echo "                  <b>$i</b>" >> $sxpp
+        echo "               </y>" >> $sxpp
     done
 cat<<EOF >>  $sxpp
             </x>
@@ -123,9 +123,9 @@ new "generate pretty-printed json startup config ($sj) with $perfnr entries"
 echo -n '{"config": {"scaling:x":{"y":[' > $sj
 for (( i=0; i<$perfnr; i++ )); do  
     if [ $i -ne 0 ]; then
-	echo -n ",{\"a\":$i,\"b\":$i}" >> $sj
+        echo -n ",{\"a\":$i,\"b\":$i}" >> $sj
     else
-	echo -n "{\"a\":$i,\"b\":$i}" >> $sj
+        echo -n "{\"a\":$i,\"b\":$i}" >> $sj
     fi
 
 done
@@ -139,13 +139,13 @@ sdb=$dir/${mode}_db
 for variant in prefix plain pretty; do
     case $variant in
         plain)
-	    f=$sx
+            f=$sx
             ;;
-	pretty)
-	    f=$sxpp
+        pretty)
+            f=$sxpp
             ;;
-	prefix)
-	    f=$sxpre
+        prefix)
+            f=$sxpre
             ;;
        esac
 

@@ -112,12 +112,12 @@ identifier {namestart}{namechar}*
                      return IDENTIFIER; } 
 <INIT>.            { clixon_api_path_parseerror(_AY, "LEXICAL ERROR\n"); return -1; }
 
-<KEYV>\,           { return COMMA; }			    
+<KEYV>\,           { return COMMA; }                        
 <KEYV>\/           { BEGIN(INIT); return SLASH; }
 <KEYV>[^:/?#\[\]@,]+ { clixon_api_path_parselval.string = strdup(yytext);
                      return STRING;}
 <KEYV>.            { clixon_api_path_parseerror(_AY, "LEXICAL ERROR\n"); return -1; }
-		     
+                     
 %%
 
 /*! Initialize scanner.

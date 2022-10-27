@@ -90,7 +90,7 @@
  * If such an attribute its found, its string value is returned.
  * @param[in]  x         XML node (where to look for attribute)
  * @param[in]  name      Attribute name
- * @param[in]  ns	     (Expected)Namespace of attribute
+ * @param[in]  ns            (Expected)Namespace of attribute
  * @param[out] cbret     Error message (if retval=0)
  * @param[out] valp      Pointer to value (if retval=1)
  * @retval    -1         Error
@@ -99,10 +99,10 @@
  */
 static int
 attr_ns_value(cxobj *x,
-	      char  *name,
-	      char  *ns,
-	      cbuf  *cbret,
-	      char **valp)
+              char  *name,
+              char  *ns,
+              cbuf  *cbret,
+              char **valp)
 {
     int    retval = -1;
     cxobj *xa;
@@ -111,17 +111,17 @@ attr_ns_value(cxobj *x,
 
     /* prefix=NULL since we do not know the prefix */
     if ((xa = xml_find_type(x, NULL, name, CX_ATTR)) != NULL){ 
-	if (xml2ns(xa, xml_prefix(xa), &ans) < 0)
-	    goto done;
-	if (ans == NULL){ /* the attribute exists, but no namespace */
-	    if (netconf_bad_attribute(cbret, "application", name, "Unresolved attribute prefix (no namespace?)") < 0)
-		goto done;
-	    goto fail;
-	}
-	/* the attribute exists, but not w expected namespace */
-	if (ns == NULL ||
-	    strcmp(ans, ns) == 0)
-	    val = xml_value(xa);
+        if (xml2ns(xa, xml_prefix(xa), &ans) < 0)
+            goto done;
+        if (ans == NULL){ /* the attribute exists, but no namespace */
+            if (netconf_bad_attribute(cbret, "application", name, "Unresolved attribute prefix (no namespace?)") < 0)
+                goto done;
+            goto fail;
+        }
+        /* the attribute exists, but not w expected namespace */
+        if (ns == NULL ||
+            strcmp(ans, ns) == 0)
+            val = xml_value(xa);
     }
     *valp = val;
     retval = 1;
@@ -149,11 +149,11 @@ attr_ns_value(cxobj *x,
  */
 static int
 check_body_namespace(cxobj     *x0,
-		     cxobj     *x0p,		  
-		     cxobj     *x1,
-		     char      *x1bstr,
-		     yang_stmt *y,
-		     cbuf      *cbret)		     
+                     cxobj     *x0p,              
+                     cxobj     *x1,
+                     char      *x1bstr,
+                     yang_stmt *y,
+                     cbuf      *cbret)               
 {
     int        retval = -1;
     char      *prefix = NULL;
@@ -167,53 +167,53 @@ check_body_namespace(cxobj     *x0,
 
     /* XXX: need to identify root better than hiereustics and strcmp,... */
     isroot = xml_parent(x0p)==NULL &&
-	strcmp(xml_name(x0p), DATASTORE_TOP_SYMBOL) == 0 &&
-	xml_prefix(x0p)==NULL;
+        strcmp(xml_name(x0p), DATASTORE_TOP_SYMBOL) == 0 &&
+        xml_prefix(x0p)==NULL;
     if (nodeid_split(x1bstr, &prefix, NULL) < 0)
-	goto done;
+        goto done;
     if (prefix == NULL)
-	goto ok; /* skip */
+        goto ok; /* skip */
     if (xml2ns(x1, prefix, &ns0) < 0)
-	goto done;
+        goto done;
     if (xml2ns(x0, prefix, &ns1) < 0)
-	goto done;
+        goto done;
     if (ns0 != NULL && ns1 != NULL){  /* namespace exists in both x1 and x0 */
-	if (strcmp(ns0, ns1)){
-	    /* prefixes in x1 and x0 refers to different namespaces 
-	     * XXX return netconf error instead 
+        if (strcmp(ns0, ns1)){
+            /* prefixes in x1 and x0 refers to different namespaces 
+             * XXX return netconf error instead 
 bad-attribue?
-	     */
-	    if ((cberr = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    cprintf(cberr, "identityref: \"%s\": namespace collision %s vs %s", x1bstr, ns0, ns1);
-	    if (netconf_invalid_value(cbret, "application", cbuf_get(cberr)) < 0)
-		goto done;
-	    goto fail;
-	}
+             */
+            if ((cberr = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cberr, "identityref: \"%s\": namespace collision %s vs %s", x1bstr, ns0, ns1);
+            if (netconf_invalid_value(cbret, "application", cbuf_get(cberr)) < 0)
+                goto done;
+            goto fail;
+        }
     }
     else if (ns0 != NULL && ns1 == NULL){ /* namespace exists in x0 but not in x1: add it to x1*/
-	if (isroot)
-	    x = x0;
-	else
-	    x = x0p;
-	if (nscache_set(x, prefix, ns0) < 0)
-	    goto done;
-	/* Create xmlns attribute to x0 XXX same code ^*/
-	if (prefix){
-	    if ((xa = xml_new(prefix, x, CX_ATTR)) == NULL)
-		goto done;
-	    if (xml_prefix_set(xa, "xmlns") < 0)
-		goto done;
-	}
-	else{
-	    if ((xa = xml_new("xmlns", x, CX_ATTR)) == NULL)
-		goto done;
-	}
-	if (xml_value_set(xa, ns0) < 0)
-	    goto done;
-	xml_sort(x); /* Ensure attr is first / XXX xml_insert? */
+        if (isroot)
+            x = x0;
+        else
+            x = x0p;
+        if (nscache_set(x, prefix, ns0) < 0)
+            goto done;
+        /* Create xmlns attribute to x0 XXX same code ^*/
+        if (prefix){
+            if ((xa = xml_new(prefix, x, CX_ATTR)) == NULL)
+                goto done;
+            if (xml_prefix_set(xa, "xmlns") < 0)
+                goto done;
+        }
+        else{
+            if ((xa = xml_new("xmlns", x, CX_ATTR)) == NULL)
+                goto done;
+        }
+        if (xml_value_set(xa, ns0) < 0)
+            goto done;
+        xml_sort(x); /* Ensure attr is first / XXX xml_insert? */
     }
 #if 0
     else if (ns0 == NULL && ns1 != NULL){ /* namespace exists in x1 but not in x0: OK (but request is realy invalid */
@@ -221,39 +221,39 @@ bad-attribue?
 #endif
     else{ /* Namespace does not exist in x0: error */
 #ifdef IDENTITYREF_KLUDGE
-	if (ns1 == NULL){
-	    if ((ret = yang_find_namespace_by_prefix(y, prefix, &ns0)) < 0)
-		goto done;
-	    if (ret == 0){ /* no such namespace in yang */
-		;
-	    }
-	    else{ /* Add it according to the kludge,... */
-		if ((xa = xml_new(prefix, x0, CX_ATTR)) == NULL)
-		    goto done;
-		if (xml_prefix_set(xa, "xmlns") < 0)
-		    goto done;
-		if (xml_value_set(xa, ns0) < 0)
-		    goto done;
-	    }
-	}
+        if (ns1 == NULL){
+            if ((ret = yang_find_namespace_by_prefix(y, prefix, &ns0)) < 0)
+                goto done;
+            if (ret == 0){ /* no such namespace in yang */
+                ;
+            }
+            else{ /* Add it according to the kludge,... */
+                if ((xa = xml_new(prefix, x0, CX_ATTR)) == NULL)
+                    goto done;
+                if (xml_prefix_set(xa, "xmlns") < 0)
+                    goto done;
+                if (xml_value_set(xa, ns0) < 0)
+                    goto done;
+            }
+        }
 #else
-	if ((cberr = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(cberr, "identityref: \"%s\": prefix \"%s\" has no associated namespace", x1bstr, prefix);
-	if (netconf_invalid_value(cbret, "application", cbuf_get(cberr)) < 0)
-	    goto done;
-	goto fail;
+        if ((cberr = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cberr, "identityref: \"%s\": prefix \"%s\" has no associated namespace", x1bstr, prefix);
+        if (netconf_invalid_value(cbret, "application", cbuf_get(cberr)) < 0)
+            goto done;
+        goto fail;
 #endif
     }
  ok:
     retval = 1;
  done:
     if (cberr)
-	cbuf_free(cberr);
+        cbuf_free(cberr);
     if (prefix)
-	free(prefix);
+        free(prefix);
     return retval;
  fail:
     retval = 0;
@@ -281,9 +281,9 @@ bad-attribue?
  */
 static int
 check_when_condition(cxobj              *x0p,
-		     cxobj              *x1,
-		     yang_stmt          *y0,
-		     cbuf               *cbret)
+                     cxobj              *x1,
+                     yang_stmt          *y0,
+                     cbuf               *cbret)
 {
     int       retval = -1;
     char      *xpath = NULL;
@@ -294,37 +294,37 @@ check_when_condition(cxobj              *x0p,
     cxobj     *x1p;
 
     if ((y = y0) != NULL ||
-	(y = (yang_stmt*)xml_spec(x1)) != NULL){
-	if ((xpath = yang_when_xpath_get(y)) != NULL){ 
-	    nsc = yang_when_nsc_get(y);
-	    x1p = xml_parent(x1);
-	    if ((nr = xpath_vec_bool(x1p, nsc, "%s", xpath)) < 0) /* Try request */
-		goto done;
-	    if (nr == 0){
-		/* Try existing tree */
-		if ((nr = xpath_vec_bool(x0p, nsc, "%s", xpath)) < 0)
-		    goto done;
-		if (nr == 0){
-		    if ((cberr = cbuf_new()) == NULL){
-			clicon_err(OE_UNIX, errno, "cbuf_new");
-			goto done;
-		    }
-		    cprintf(cberr, "Node '%s' tagged with 'when' condition '%s' in module '%s' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)",
-			    yang_argument_get(y),
-			    xpath,
-			    yang_argument_get(ys_module(y)));
-		    if (netconf_unknown_element(cbret, "application", yang_argument_get(y),
-						cbuf_get(cberr)) < 0)
-			goto done;
-		    goto fail;
-		}
-	    }
-	}
+        (y = (yang_stmt*)xml_spec(x1)) != NULL){
+        if ((xpath = yang_when_xpath_get(y)) != NULL){ 
+            nsc = yang_when_nsc_get(y);
+            x1p = xml_parent(x1);
+            if ((nr = xpath_vec_bool(x1p, nsc, "%s", xpath)) < 0) /* Try request */
+                goto done;
+            if (nr == 0){
+                /* Try existing tree */
+                if ((nr = xpath_vec_bool(x0p, nsc, "%s", xpath)) < 0)
+                    goto done;
+                if (nr == 0){
+                    if ((cberr = cbuf_new()) == NULL){
+                        clicon_err(OE_UNIX, errno, "cbuf_new");
+                        goto done;
+                    }
+                    cprintf(cberr, "Node '%s' tagged with 'when' condition '%s' in module '%s' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)",
+                            yang_argument_get(y),
+                            xpath,
+                            yang_argument_get(ys_module(y)));
+                    if (netconf_unknown_element(cbret, "application", yang_argument_get(y),
+                                                cbuf_get(cberr)) < 0)
+                        goto done;
+                    goto fail;
+                }
+            }
+        }
     }
     retval = 1;
  done:
     if (cberr)
-	cbuf_free(cberr);
+        cbuf_free(cberr);
     return retval;
  fail:
     retval = 0;
@@ -335,22 +335,22 @@ check_when_condition(cxobj              *x0p,
  */
 static int
 choice_case_get(yang_stmt  *yc,
-		yang_stmt **ycase,
-		yang_stmt **ychoice)
+                yang_stmt **ycase,
+                yang_stmt **ychoice)
 {
     yang_stmt *yp;
 
     if ((yp = yang_parent_get(yc)) == NULL)
-	return 0;
+        return 0;
     if (yang_keyword_get(yp) == Y_CASE){
-	*ycase = yp;
-	*ychoice = yang_parent_get(yp);
-	return 1;
+        *ycase = yp;
+        *ychoice = yang_parent_get(yp);
+        return 1;
     }
     else if (yang_keyword_get(yp) == Y_CHOICE){
-	*ycase = NULL;
-	*ychoice = yp;
-	return 1;
+        *ycase = NULL;
+        *ychoice = yp;
+        return 1;
     }
     return 0;
 }
@@ -361,34 +361,34 @@ choice_case_get(yang_stmt  *yc,
  */
 static int
 choice_is_other(yang_stmt *y0c,
-		yang_stmt *y0case,
-		yang_stmt *y0choice,
-		yang_stmt *y1c,
-		yang_stmt *y1case,
-		yang_stmt *y1choice)
+                yang_stmt *y0case,
+                yang_stmt *y0choice,
+                yang_stmt *y1c,
+                yang_stmt *y1case,
+                yang_stmt *y1choice)
 {
     yang_stmt *ycase;
     yang_stmt *ychoice;
 
     if (y0choice == y1choice){
-	if ((y0case == NULL && y0c != y1c) ||
-	    y0case != y1case){
-	    return 1;
-	}
+        if ((y0case == NULL && y0c != y1c) ||
+            y0case != y1case){
+            return 1;
+        }
     }
     else {
-	/* First recurse y0 */
-	if (choice_case_get(y0choice, &ycase, &ychoice)){
-	    if (choice_is_other(y0choice, ycase, ychoice,
-				y1c, y1case, y1choice) == 1)
-		return 1;
-	}
-	/* Second  recurse y1 */
-	if (choice_case_get(y1choice, &ycase, &ychoice)){
-	    if (choice_is_other(y0choice, y0case, y0choice,
-				y1choice, ycase, ychoice) == 1)
-		return 1;
-	}
+        /* First recurse y0 */
+        if (choice_case_get(y0choice, &ycase, &ychoice)){
+            if (choice_is_other(y0choice, ycase, ychoice,
+                                y1c, y1case, y1choice) == 1)
+                return 1;
+        }
+        /* Second  recurse y1 */
+        if (choice_case_get(y1choice, &ycase, &ychoice)){
+            if (choice_is_other(y0choice, y0case, y0choice,
+                                y1choice, ycase, ychoice) == 1)
+                return 1;
+        }
     }
     return 0;
 }
@@ -412,7 +412,7 @@ choice_is_other(yang_stmt *y0c,
  */
 static int
 choice_delete_other(cxobj     *x0,
-		    yang_stmt *y1c)
+                    yang_stmt *y1c)
 {
     int        retval = -1;
     cxobj     *x0c;
@@ -424,27 +424,27 @@ choice_delete_other(cxobj     *x0,
     yang_stmt *y1choice = NULL;
     
     if (choice_case_get(y1c, &y1case, &y1choice) == 0)
-	goto ok;
+        goto ok;
     x0prev = NULL;
     x0c = NULL;
     while ((x0c = xml_child_each(x0, x0c, CX_ELMNT)) != NULL) {
-	if ((y0c = xml_spec(x0c)) == NULL ||
-	    yang_parent_get(y0c) == NULL){
-	    x0prev = x0c;
-	    continue;
-	}
-	if (choice_case_get(y0c, &y0case, &y0choice) == 0){
-	    x0prev = x0c;
-	    continue;
-	}
-	/* Check if x0/y0 is part of other choice/case than y1 recursively , if so purge */
-	if (choice_is_other(y0c, y0case, y0choice, y1c, y1case, y1choice) == 1){
-	    if (xml_purge(x0c) < 0)
-		goto done;
-	    x0c = x0prev;
-		continue;
-	}
-	x0prev = x0c;
+        if ((y0c = xml_spec(x0c)) == NULL ||
+            yang_parent_get(y0c) == NULL){
+            x0prev = x0c;
+            continue;
+        }
+        if (choice_case_get(y0c, &y0case, &y0choice) == 0){
+            x0prev = x0c;
+            continue;
+        }
+        /* Check if x0/y0 is part of other choice/case than y1 recursively , if so purge */
+        if (choice_is_other(y0c, y0case, y0choice, y1c, y1case, y1choice) == 1){
+            if (xml_purge(x0c) < 0)
+                goto done;
+            x0c = x0prev;
+                continue;
+        }
+        x0prev = x0c;
     }
  ok:
     retval = 0;
@@ -477,17 +477,17 @@ choice_delete_other(cxobj     *x0,
  */
 static int
 text_modify(clicon_handle       h,
-	    cxobj              *x0,
-	    cxobj              *x0p,
-	    cxobj              *x0t,
-	    cxobj              *x1,
-	    cxobj              *x1t,
-	    yang_stmt          *y0,
-	    enum operation_type op,
-	    char               *username,
-	    cxobj              *xnacm,
-	    int                 permit,
-	    cbuf               *cbret)
+            cxobj              *x0,
+            cxobj              *x0p,
+            cxobj              *x0t,
+            cxobj              *x1,
+            cxobj              *x1t,
+            yang_stmt          *y0,
+            enum operation_type op,
+            char               *username,
+            cxobj              *xnacm,
+            int                 permit,
+            cbuf               *cbret)
 {
     int        retval = -1;
     char      *opstr = NULL;
@@ -508,468 +508,468 @@ text_modify(clicon_handle       h,
     enum insert_type insert = INS_LAST;
     int        changed = 0; /* Only if x0p's children have changed-> sort necessary */
     cvec      *nscx1 = NULL;
-    char      *createstr = NULL;	
+    char      *createstr = NULL;        
     yang_stmt *yrestype = NULL;
     char      *restype;
     
     if (x1 == NULL){
-	clicon_err(OE_XML, EINVAL, "x1 is missing");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "x1 is missing");
+        goto done;
     }
     if ((ret = check_when_condition(x0p, x1, y0, cbret)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     /* Check for operations embedded in tree according to netconf */
     if ((ret = attr_ns_value(x1, "operation", NETCONF_BASE_NAMESPACE,
-			     cbret, &opstr)) < 0)
-	goto done;
+                             cbret, &opstr)) < 0)
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     if (opstr != NULL)
-	if (xml_operation(opstr, &op) < 0)
-	    goto done;
+        if (xml_operation(opstr, &op) < 0)
+            goto done;
     if ((ret = attr_ns_value(x1, "objectcreate", NULL, cbret, &createstr)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     if (createstr != NULL &&
-	(op == OP_REPLACE || op == OP_MERGE || op == OP_CREATE)){
-	if (x0 == NULL || xml_defaults_nopresence(x0, 0)){ /* does not exist or is default */
-	    if (strcmp(createstr, "false")==0){
-		/* RFC 8040 4.6 PATCH:
-		 * If the target resource instance does not exist, the server MUST NOT create it. 
-		 */
-		if (netconf_data_missing(cbret, 
-	  "RFC 8040 4.6. PATCH: If the target resource instance does not exist, the server MUST NOT create it") < 0)
-		    goto done;
-		goto fail;
-	    }
-	    clicon_data_set(h, "objectexisted", "false");
-	}
-	else{  /* exists */
-	    clicon_data_set(h, "objectexisted", "true");
-	}
+        (op == OP_REPLACE || op == OP_MERGE || op == OP_CREATE)){
+        if (x0 == NULL || xml_defaults_nopresence(x0, 0)){ /* does not exist or is default */
+            if (strcmp(createstr, "false")==0){
+                /* RFC 8040 4.6 PATCH:
+                 * If the target resource instance does not exist, the server MUST NOT create it. 
+                 */
+                if (netconf_data_missing(cbret, 
+          "RFC 8040 4.6. PATCH: If the target resource instance does not exist, the server MUST NOT create it") < 0)
+                    goto done;
+                goto fail;
+            }
+            clicon_data_set(h, "objectexisted", "false");
+        }
+        else{  /* exists */
+            clicon_data_set(h, "objectexisted", "true");
+        }
     }
     x1name = xml_name(x1);
     if (yang_keyword_get(y0) == Y_LEAF_LIST ||
-	yang_keyword_get(y0) == Y_LEAF){
-	/* This is a check that a leaf does not have sub-elements 
-	 * such as: <leaf>a <leaf>b</leaf> </leaf> 
-	 */	    
-	if (xml_child_nr_type(x1, CX_ELMNT)){
-	    if (netconf_unknown_element(cbret, "application", x1name, "Leaf contains sub-element") < 0)
-		goto done;
-	    goto fail;
-	}
-	/* If leaf-list and ordered-by user, then get yang:insert attribute
-	 * See RFC 7950 Sec 7.7.9
-	 */
-	if (yang_keyword_get(y0) == Y_LEAF_LIST &&
-	    yang_find(y0, Y_ORDERED_BY, "user") != NULL){
-	    if ((ret = attr_ns_value(x1,
-				     "insert", YANG_XML_NAMESPACE,
-				     cbret, &instr)) < 0)
-		goto done;
-	    if (ret == 0)
-		goto fail;
-	    if (instr != NULL &&
-		xml_attr_insert2val(instr, &insert) < 0)
-		goto done;
-	    if ((ret = attr_ns_value(x1,
-				     "value", YANG_XML_NAMESPACE,
-				     cbret, &valstr)) < 0)
-		goto done;
-	    /* if insert/before, value attribute must be there */
-	    if ((insert == INS_AFTER || insert == INS_BEFORE) &&
-		valstr == NULL){
-		if (netconf_missing_attribute(cbret, "application", "<bad-attribute>value</bad-attribute>", "Missing value attribute when insert is before or after") < 0)
-		    goto done;
-		goto fail;
-	    }
-	}
-	x1bstr = xml_body(x1);
-	switch(op){ 
-	case OP_CREATE:
-	    if (x0){
-		if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
-		    goto done;
-		goto fail;
-	    }
-	case OP_REPLACE: /* fall thru */
-	case OP_MERGE:
-	    if (!(op == OP_MERGE && instr==NULL)){
-		/* Remove existing, also applies to merge in the special case
-		 * of ordered-by user and (changed) insert attribute.
-		 */
-		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		    permit = 1;
-		}
-		/* XXX: Note, if there is an error in adding the object later, the
-		 * original object is not reverted.
-		 */
-		if (x0){
-		    xml_purge(x0);
-		    x0 = NULL;
-		}
-	    } /* OP_MERGE & insert */
-	case OP_NONE: /* fall thru */
-	    if (x0==NULL){
-		if ((op != OP_NONE) && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, x1, x1t, NACM_CREATE, username, xnacm, cbret)) < 0) 
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		    permit = 1;
-		}
-		/* Add new xml node but without parent - insert when node fully
-		   copied (see changed conditional below) */
-		if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
-		    goto done;
-		xml_spec_set(x0, y0);
+        yang_keyword_get(y0) == Y_LEAF){
+        /* This is a check that a leaf does not have sub-elements 
+         * such as: <leaf>a <leaf>b</leaf> </leaf> 
+         */         
+        if (xml_child_nr_type(x1, CX_ELMNT)){
+            if (netconf_unknown_element(cbret, "application", x1name, "Leaf contains sub-element") < 0)
+                goto done;
+            goto fail;
+        }
+        /* If leaf-list and ordered-by user, then get yang:insert attribute
+         * See RFC 7950 Sec 7.7.9
+         */
+        if (yang_keyword_get(y0) == Y_LEAF_LIST &&
+            yang_find(y0, Y_ORDERED_BY, "user") != NULL){
+            if ((ret = attr_ns_value(x1,
+                                     "insert", YANG_XML_NAMESPACE,
+                                     cbret, &instr)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+            if (instr != NULL &&
+                xml_attr_insert2val(instr, &insert) < 0)
+                goto done;
+            if ((ret = attr_ns_value(x1,
+                                     "value", YANG_XML_NAMESPACE,
+                                     cbret, &valstr)) < 0)
+                goto done;
+            /* if insert/before, value attribute must be there */
+            if ((insert == INS_AFTER || insert == INS_BEFORE) &&
+                valstr == NULL){
+                if (netconf_missing_attribute(cbret, "application", "<bad-attribute>value</bad-attribute>", "Missing value attribute when insert is before or after") < 0)
+                    goto done;
+                goto fail;
+            }
+        }
+        x1bstr = xml_body(x1);
+        switch(op){ 
+        case OP_CREATE:
+            if (x0){
+                if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
+                    goto done;
+                goto fail;
+            }
+        case OP_REPLACE: /* fall thru */
+        case OP_MERGE:
+            if (!(op == OP_MERGE && instr==NULL)){
+                /* Remove existing, also applies to merge in the special case
+                 * of ordered-by user and (changed) insert attribute.
+                 */
+                if (!permit && xnacm){
+                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                    permit = 1;
+                }
+                /* XXX: Note, if there is an error in adding the object later, the
+                 * original object is not reverted.
+                 */
+                if (x0){
+                    xml_purge(x0);
+                    x0 = NULL;
+                }
+            } /* OP_MERGE & insert */
+        case OP_NONE: /* fall thru */
+            if (x0==NULL){
+                if ((op != OP_NONE) && !permit && xnacm){
+                    if ((ret = nacm_datanode_write(h, x1, x1t, NACM_CREATE, username, xnacm, cbret)) < 0) 
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                    permit = 1;
+                }
+                /* Add new xml node but without parent - insert when node fully
+                   copied (see changed conditional below) */
+                if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
+                    goto done;
+                xml_spec_set(x0, y0);
 
-		/* Get namespace from x1
-		 * Check if namespace exists in x0 parent
-		 * if not add new binding and replace in x0.
-		 * See also xmlns copying of attributes in the body section below
-		 * Note that this may add "unnecessary" namespace declarations
-		 */
-		if (assign_namespace_element(x1, x0, x0p) < 0)
-		    goto done;
-		changed++;
-		if (op==OP_NONE)
-		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
-		if (x1bstr){ /* empty type does not have body */ /* XXX Here x0 = <b></b> */
-		    if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
-			goto done; 
-		}
-	    }
-	    /* Some bodies (eg identityref) requires proper namespace setup, so a type lookup is
-	     * necessary.
-	     */
-	    if (yang_type_get(y0, NULL, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
-		goto done;
-	    if (yrestype == NULL){
-		clicon_err(OE_CFG, EFAULT, "No restype (internal error)");
-		goto done;
-	    }
-	    restype = yang_argument_get(yrestype);
-	    /* Differentiate between an empty type (NULL) and an empty string "" */
-	    if (x1bstr==NULL && strcmp(restype, "string")==0)
-		x1bstr="";
-	    if (x1bstr){
-		if (strcmp(restype, "identityref") == 0){
-		    x1bstr = clixon_trim2(x1bstr, " \t\n"); 
-		    if ((ret = check_body_namespace(x0, x0p, x1, x1bstr, y0, cbret)) < 0)
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		}
-		else{
-		    /* Some bodies strip pretty-printed here, unsure where to do this,.. */
-		    if (strcmp(restype, "enumeration") == 0 ||
-			strcmp(restype, "bits") == 0)
-			x1bstr = clixon_trim2(x1bstr, " \t\n"); 
-		    /* If origin body has namespace definitions, copy them. The reason is that
-		     * some bodies rely on namespace prefixes, such as NACM path, but there is 
-		     * no way we can know this here.
-		     * However, this may lead to namespace collisions if these prefixes are not
-		     * canonical, and may collide with the assign_namespace_element() above (but that 
-		     * is for element symbols)
-		     * Oh well.
-		     */
-		    if (assign_namespace_body(x1, x0) < 0)
-			goto done;
-		}
-		/* XXX here x1bstr is checked for null, while adding an empty string above */
-		if ((x0b = xml_body_get(x0)) == NULL && x1bstr && strlen(x1bstr)){
-		    if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
-			goto done;
-		}
-		x0bstr = xml_value(x0b);
-		if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){
-		    if ((op != OP_NONE) && !permit && xnacm){
-			if ((ret = nacm_datanode_write(h, x1, x1t,
-						       x0bstr==NULL?NACM_CREATE:NACM_UPDATE,
-						       username, xnacm, cbret)) < 0)
-			    goto done;
-			if (ret == 0)
-			    goto fail;
-		    }
-		    if (xml_value_set(x0b, x1bstr) < 0)
-			goto done;
-		    /* If a default value ies replaced, then reset default flag */
-		    if (xml_flag(x0, XML_FLAG_DEFAULT))
-			xml_flag_reset(x0, XML_FLAG_DEFAULT);
-		}
-	    } /* x1bstr */
-	    if (changed){ 
-		if (xml_insert(x0p, x0, insert, valstr, NULL) < 0) 
-		    goto done;
-	    }
-	    break;
-	case OP_DELETE:
-	    if (x0==NULL){
-		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
-		    goto done;
-		goto fail;
-	    }
-	case OP_REMOVE: /* fall thru */
-	    if (x0){
-		if ((op != OP_NONE) && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0)
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		}
-		x0bstr = xml_body(x0); 
-		/* Purge if x1 value is NULL(match-all) or both values are equal */
-		if ((x1bstr == NULL) ||
-		    ((x0bstr=xml_body(x0)) != NULL && strcmp(x0bstr, x1bstr)==0)){
-		    if (xml_purge(x0) < 0)
-			goto done;
-		}
-		else {
-		    if (op == OP_DELETE){
-			if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
-			    goto done;
-			goto fail;
-		    }
-		}
-	    }
-	    break;
-	default:
-	    break;
-	} /* switch op */
+                /* Get namespace from x1
+                 * Check if namespace exists in x0 parent
+                 * if not add new binding and replace in x0.
+                 * See also xmlns copying of attributes in the body section below
+                 * Note that this may add "unnecessary" namespace declarations
+                 */
+                if (assign_namespace_element(x1, x0, x0p) < 0)
+                    goto done;
+                changed++;
+                if (op==OP_NONE)
+                    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
+                if (x1bstr){ /* empty type does not have body */ /* XXX Here x0 = <b></b> */
+                    if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
+                        goto done; 
+                }
+            }
+            /* Some bodies (eg identityref) requires proper namespace setup, so a type lookup is
+             * necessary.
+             */
+            if (yang_type_get(y0, NULL, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+                goto done;
+            if (yrestype == NULL){
+                clicon_err(OE_CFG, EFAULT, "No restype (internal error)");
+                goto done;
+            }
+            restype = yang_argument_get(yrestype);
+            /* Differentiate between an empty type (NULL) and an empty string "" */
+            if (x1bstr==NULL && strcmp(restype, "string")==0)
+                x1bstr="";
+            if (x1bstr){
+                if (strcmp(restype, "identityref") == 0){
+                    x1bstr = clixon_trim2(x1bstr, " \t\n"); 
+                    if ((ret = check_body_namespace(x0, x0p, x1, x1bstr, y0, cbret)) < 0)
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                }
+                else{
+                    /* Some bodies strip pretty-printed here, unsure where to do this,.. */
+                    if (strcmp(restype, "enumeration") == 0 ||
+                        strcmp(restype, "bits") == 0)
+                        x1bstr = clixon_trim2(x1bstr, " \t\n"); 
+                    /* If origin body has namespace definitions, copy them. The reason is that
+                     * some bodies rely on namespace prefixes, such as NACM path, but there is 
+                     * no way we can know this here.
+                     * However, this may lead to namespace collisions if these prefixes are not
+                     * canonical, and may collide with the assign_namespace_element() above (but that 
+                     * is for element symbols)
+                     * Oh well.
+                     */
+                    if (assign_namespace_body(x1, x0) < 0)
+                        goto done;
+                }
+                /* XXX here x1bstr is checked for null, while adding an empty string above */
+                if ((x0b = xml_body_get(x0)) == NULL && x1bstr && strlen(x1bstr)){
+                    if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
+                        goto done;
+                }
+                x0bstr = xml_value(x0b);
+                if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){
+                    if ((op != OP_NONE) && !permit && xnacm){
+                        if ((ret = nacm_datanode_write(h, x1, x1t,
+                                                       x0bstr==NULL?NACM_CREATE:NACM_UPDATE,
+                                                       username, xnacm, cbret)) < 0)
+                            goto done;
+                        if (ret == 0)
+                            goto fail;
+                    }
+                    if (xml_value_set(x0b, x1bstr) < 0)
+                        goto done;
+                    /* If a default value ies replaced, then reset default flag */
+                    if (xml_flag(x0, XML_FLAG_DEFAULT))
+                        xml_flag_reset(x0, XML_FLAG_DEFAULT);
+                }
+            } /* x1bstr */
+            if (changed){ 
+                if (xml_insert(x0p, x0, insert, valstr, NULL) < 0) 
+                    goto done;
+            }
+            break;
+        case OP_DELETE:
+            if (x0==NULL){
+                if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+                    goto done;
+                goto fail;
+            }
+        case OP_REMOVE: /* fall thru */
+            if (x0){
+                if ((op != OP_NONE) && !permit && xnacm){
+                    if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0)
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                }
+                x0bstr = xml_body(x0); 
+                /* Purge if x1 value is NULL(match-all) or both values are equal */
+                if ((x1bstr == NULL) ||
+                    ((x0bstr=xml_body(x0)) != NULL && strcmp(x0bstr, x1bstr)==0)){
+                    if (xml_purge(x0) < 0)
+                        goto done;
+                }
+                else {
+                    if (op == OP_DELETE){
+                        if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+                            goto done;
+                        goto fail;
+                    }
+                }
+            }
+            break;
+        default:
+            break;
+        } /* switch op */
     } /* if LEAF|LEAF_LIST */
     else { /* eg Y_CONTAINER, Y_LIST, Y_ANYXML  */
-	/* If list and ordered-by user, then get insert attribute
+        /* If list and ordered-by user, then get insert attribute
              <user nc:operation="create"
                    yang:insert="after"
                    yang:key="[ex:first-name='fred']
                              [ex:surname='flintstone']">
-	 * See RFC 7950 Sec 7.8.6
-	 */
-	if (yang_keyword_get(y0) == Y_LIST &&
-	    yang_find(y0, Y_ORDERED_BY, "user") != NULL){
-	    if ((ret = attr_ns_value(x1,
-				     "insert", YANG_XML_NAMESPACE,
-				     cbret, &instr)) < 0)
-		goto done;
-	    if (ret == 0)
-		goto fail;
-	    if (instr != NULL &&
-		xml_attr_insert2val(instr, &insert) < 0)
-		goto done;
-	    if ((ret = attr_ns_value(x1,
-				     "key", YANG_XML_NAMESPACE,
-				     cbret, &keystr)) < 0)
-		goto done;
+         * See RFC 7950 Sec 7.8.6
+         */
+        if (yang_keyword_get(y0) == Y_LIST &&
+            yang_find(y0, Y_ORDERED_BY, "user") != NULL){
+            if ((ret = attr_ns_value(x1,
+                                     "insert", YANG_XML_NAMESPACE,
+                                     cbret, &instr)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+            if (instr != NULL &&
+                xml_attr_insert2val(instr, &insert) < 0)
+                goto done;
+            if ((ret = attr_ns_value(x1,
+                                     "key", YANG_XML_NAMESPACE,
+                                     cbret, &keystr)) < 0)
+                goto done;
 
-	    /* if insert/before, key attribute must be there */
-	    if ((insert == INS_AFTER || insert == INS_BEFORE) &&
-		keystr == NULL){
-		if (netconf_missing_attribute(cbret, "application", "<bad-attribute>key</bad-attribute>", "Missing key attribute when insert is before or after") < 0)
-		    goto done;
-		goto fail;
-	    }
-	    /* If keystr is set, need a full namespace context */
-	    if (keystr && xml_nsctx_node(x1, &nscx1) < 0)
-		goto done;
-	}
-	switch(op){ 
-	case OP_CREATE:
-	    if (x0){
-		if (xml_defaults_nopresence(x0, 0) == 0){
-		    if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
-			goto done;
-		    goto fail;
-		}
-	    }
-	case OP_REPLACE: /* fall thru */
-	case OP_MERGE:  
-	    if (!(op == OP_MERGE && instr==NULL)){
-		/* Remove existing, also applies to merge in the special case
-		 * of ordered-by user and (changed) insert attribute.
-		 */
-		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		    permit = 1;
-		}
-		/* XXX: Note, if there is an error in adding the object later, the
-		 * original object is not reverted.
-		 */
-		if (x0){
-		    xml_purge(x0);
-		    x0 = NULL;
-		}
-	    } /* OP_MERGE & insert */
-	case OP_NONE: /* fall thru */
-	    /* Special case: anyxml, just replace tree, 
-	       See rfc6020 7.10.3
-	       An anyxml node is treated as an opaque chunk of data.  This data
-	       can be modified in its entirety only.
-	       Any "operation" attributes present on subelements of an anyxml 
-	       node are ignored by the NETCONF server.*/
-	    if (yang_keyword_get(y0) == Y_ANYXML ||
-		yang_keyword_get(y0) == Y_ANYDATA){
-		if (op == OP_NONE)
-		    break;
-		if (op==OP_MERGE && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		    permit = 1;
-		}
-		if (x0){
-		    xml_purge(x0);
-		}
-		if ((x0 = xml_new(x1name, x0p, CX_ELMNT)) == NULL)
-		    goto done;
-		if (xml_copy(x1, x0) < 0)
-		    goto done;
-		break;
-	    } /* anyxml, anydata */
-	    if (x0==NULL){
-		if (op==OP_MERGE && !permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, x1, x1t, NACM_CREATE, username, xnacm, cbret)) < 0) 
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		    permit = 1;
-		}
-		/* Add new xml node but without parent - insert when node fully
-		 * copied (see changed conditional below) 
-		 * Note x0 may dangle cases if exit before changed conditional
-		 */
-		if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
-		    goto done;
-		xml_spec_set(x0, y0);
+            /* if insert/before, key attribute must be there */
+            if ((insert == INS_AFTER || insert == INS_BEFORE) &&
+                keystr == NULL){
+                if (netconf_missing_attribute(cbret, "application", "<bad-attribute>key</bad-attribute>", "Missing key attribute when insert is before or after") < 0)
+                    goto done;
+                goto fail;
+            }
+            /* If keystr is set, need a full namespace context */
+            if (keystr && xml_nsctx_node(x1, &nscx1) < 0)
+                goto done;
+        }
+        switch(op){ 
+        case OP_CREATE:
+            if (x0){
+                if (xml_defaults_nopresence(x0, 0) == 0){
+                    if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
+                        goto done;
+                    goto fail;
+                }
+            }
+        case OP_REPLACE: /* fall thru */
+        case OP_MERGE:  
+            if (!(op == OP_MERGE && instr==NULL)){
+                /* Remove existing, also applies to merge in the special case
+                 * of ordered-by user and (changed) insert attribute.
+                 */
+                if (!permit && xnacm){
+                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                    permit = 1;
+                }
+                /* XXX: Note, if there is an error in adding the object later, the
+                 * original object is not reverted.
+                 */
+                if (x0){
+                    xml_purge(x0);
+                    x0 = NULL;
+                }
+            } /* OP_MERGE & insert */
+        case OP_NONE: /* fall thru */
+            /* Special case: anyxml, just replace tree, 
+               See rfc6020 7.10.3
+               An anyxml node is treated as an opaque chunk of data.  This data
+               can be modified in its entirety only.
+               Any "operation" attributes present on subelements of an anyxml 
+               node are ignored by the NETCONF server.*/
+            if (yang_keyword_get(y0) == Y_ANYXML ||
+                yang_keyword_get(y0) == Y_ANYDATA){
+                if (op == OP_NONE)
+                    break;
+                if (op==OP_MERGE && !permit && xnacm){
+                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                    permit = 1;
+                }
+                if (x0){
+                    xml_purge(x0);
+                }
+                if ((x0 = xml_new(x1name, x0p, CX_ELMNT)) == NULL)
+                    goto done;
+                if (xml_copy(x1, x0) < 0)
+                    goto done;
+                break;
+            } /* anyxml, anydata */
+            if (x0==NULL){
+                if (op==OP_MERGE && !permit && xnacm){
+                    if ((ret = nacm_datanode_write(h, x1, x1t, NACM_CREATE, username, xnacm, cbret)) < 0) 
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                    permit = 1;
+                }
+                /* Add new xml node but without parent - insert when node fully
+                 * copied (see changed conditional below) 
+                 * Note x0 may dangle cases if exit before changed conditional
+                 */
+                if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
+                    goto done;
+                xml_spec_set(x0, y0);
 #ifdef XML_PARENT_CANDIDATE
-		xml_parent_candidate_set(x0, x0p);
+                xml_parent_candidate_set(x0, x0p);
 #endif
-		changed++;
-		/* Get namespace from x1
-		 * Check if namespace exists in x0 parent
-		 * if not add new binding and replace in x0.
-		 */
-		if (assign_namespace_element(x1, x0, x0p) < 0)
-		    goto done;
-		if (op==OP_NONE)
-		    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
-	    }
-	    /* First pass: Loop through children of the x1 modification tree 
-	     * collect matching nodes from x0 in x0vec (no changes to x0 children)
-	     */
-	    if ((x0vec = calloc(xml_child_nr_type(x1, CX_ELMNT), sizeof(x1))) == NULL){
-		clicon_err(OE_UNIX, errno, "calloc");
-		goto done;
-	    }
-	    x1c = NULL; 
-	    i = 0;
-	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) { 
-		x1cname = xml_name(x1c);
-		/* Get yang spec of the child by child matching */
-		yc = yang_find_datanode(y0, x1cname);
-		if (yc == NULL){
-		    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
-			/* Add dummy Y_ANYDATA yang stmt, see ysp_add */
-			if ((yc = yang_anydata_add(y0, x1cname)) < 0)
-			    goto done;
-			xml_spec_set(x1c, yc);
-			clicon_log(LOG_WARNING,
-				   "%s: %d: No YANG spec for %s, anydata used",
-				   __FUNCTION__, __LINE__, x1cname);
-		    }
-		    else{
-			if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
-			    goto done;
-			goto fail;
-		    }
-		}
-		/* There is a cornercase (eg augment) of multi-namespace trees where
-		 * the yang child has a different namespace.
-		 * As an alternative, return in populate where this is detected first time.
-		 */
-		if (yc != xml_spec(x1c)){
-		    clicon_err(OE_YANG, errno, "XML node %s not in namespace %s",
-			       x1cname, yang_find_mynamespace(y0));
-		    goto done;
-		}
-		/* Check if existing choice/case should be deleted */
-		if (choice_delete_other(x0, yc) < 0)
-		    goto done;
-		/* See if there is a corresponding node in the base tree */
-		x0c = NULL;
-		if (match_base_child(x0, x1c, yc, &x0c) < 0)
-		    goto done;
-		x0vec[i++] = x0c; /* != NULL if x0c is matching x1c */
-	    }
-	    /* Second pass: Loop through children of the x1 modification tree again
-	     * Now potentially modify x0:s children 
-	     * Here x0vec contains one-to-one matching nodes of x1:s children.
-	     */
-	    x1c = NULL;
-	    i = 0;
-	    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
-		x0c = x0vec[i++];
-		x1cname = xml_name(x1c);
-		yc = yang_find_datanode(y0, x1cname);
-		if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
-				       yc, op,
-				       username, xnacm, permit, cbret)) < 0)
-		    goto done;
-		/* If xml return - ie netconf error xml tree, then stop and return OK */
-		if (ret == 0)
-		    goto fail;
-	    }
-	    if (changed){
+                changed++;
+                /* Get namespace from x1
+                 * Check if namespace exists in x0 parent
+                 * if not add new binding and replace in x0.
+                 */
+                if (assign_namespace_element(x1, x0, x0p) < 0)
+                    goto done;
+                if (op==OP_NONE)
+                    xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
+            }
+            /* First pass: Loop through children of the x1 modification tree 
+             * collect matching nodes from x0 in x0vec (no changes to x0 children)
+             */
+            if ((x0vec = calloc(xml_child_nr_type(x1, CX_ELMNT), sizeof(x1))) == NULL){
+                clicon_err(OE_UNIX, errno, "calloc");
+                goto done;
+            }
+            x1c = NULL; 
+            i = 0;
+            while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) { 
+                x1cname = xml_name(x1c);
+                /* Get yang spec of the child by child matching */
+                yc = yang_find_datanode(y0, x1cname);
+                if (yc == NULL){
+                    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
+                        /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
+                        if ((yc = yang_anydata_add(y0, x1cname)) < 0)
+                            goto done;
+                        xml_spec_set(x1c, yc);
+                        clicon_log(LOG_WARNING,
+                                   "%s: %d: No YANG spec for %s, anydata used",
+                                   __FUNCTION__, __LINE__, x1cname);
+                    }
+                    else{
+                        if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
+                            goto done;
+                        goto fail;
+                    }
+                }
+                /* There is a cornercase (eg augment) of multi-namespace trees where
+                 * the yang child has a different namespace.
+                 * As an alternative, return in populate where this is detected first time.
+                 */
+                if (yc != xml_spec(x1c)){
+                    clicon_err(OE_YANG, errno, "XML node %s not in namespace %s",
+                               x1cname, yang_find_mynamespace(y0));
+                    goto done;
+                }
+                /* Check if existing choice/case should be deleted */
+                if (choice_delete_other(x0, yc) < 0)
+                    goto done;
+                /* See if there is a corresponding node in the base tree */
+                x0c = NULL;
+                if (match_base_child(x0, x1c, yc, &x0c) < 0)
+                    goto done;
+                x0vec[i++] = x0c; /* != NULL if x0c is matching x1c */
+            }
+            /* Second pass: Loop through children of the x1 modification tree again
+             * Now potentially modify x0:s children 
+             * Here x0vec contains one-to-one matching nodes of x1:s children.
+             */
+            x1c = NULL;
+            i = 0;
+            while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+                x0c = x0vec[i++];
+                x1cname = xml_name(x1c);
+                yc = yang_find_datanode(y0, x1cname);
+                if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
+                                       yc, op,
+                                       username, xnacm, permit, cbret)) < 0)
+                    goto done;
+                /* If xml return - ie netconf error xml tree, then stop and return OK */
+                if (ret == 0)
+                    goto fail;
+            }
+            if (changed){
 #ifdef XML_PARENT_CANDIDATE
-		xml_parent_candidate_set(x0, NULL);
+                xml_parent_candidate_set(x0, NULL);
 #endif
-		if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
-		    goto done;
-	    }
-	    break;
-	case OP_DELETE:
-	    if (x0==NULL){
-		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
-		    goto done;
-		goto fail;
-	    }
-	case OP_REMOVE: /* fall thru */
-	    if (x0){
-		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0) 
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		}
-		if (xml_purge(x0) < 0)
-		    goto done;
-	    }
-	    break;
-	default:
-	    break;
-	} /* CONTAINER switch op */
+                if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
+                    goto done;
+            }
+            break;
+        case OP_DELETE:
+            if (x0==NULL){
+                if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+                    goto done;
+                goto fail;
+            }
+        case OP_REMOVE: /* fall thru */
+            if (x0){
+                if (!permit && xnacm){
+                    if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0) 
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                }
+                if (xml_purge(x0) < 0)
+                    goto done;
+            }
+            break;
+        default:
+            break;
+        } /* CONTAINER switch op */
     } /* else Y_CONTAINER  */
     retval = 1;
  done:
     if (nscx1)
-	xml_nsctx_free(nscx1);
+        xml_nsctx_free(nscx1);
     /* Remove dangling added objects */
     if (changed && x0 && xml_parent(x0)==NULL)
-	xml_purge(x0);
+        xml_purge(x0);
     if (x0vec)
-	free(x0vec);
+        free(x0vec);
     return retval;
  fail: /* cbret set */
     retval = 0;
@@ -995,16 +995,16 @@ text_modify(clicon_handle       h,
  */
 static int
 text_modify_top(clicon_handle       h,
-		cxobj              *x0,
-		cxobj              *x0t,
-		cxobj              *x1,
-		cxobj              *x1t,
-		yang_stmt          *yspec,
-		enum operation_type op,
-		char               *username,
-		cxobj              *xnacm,
-		int                 permit,
-		cbuf               *cbret)
+                cxobj              *x0,
+                cxobj              *x0t,
+                cxobj              *x1,
+                cxobj              *x1t,
+                yang_stmt          *yspec,
+                enum operation_type op,
+                char               *username,
+                cxobj              *xnacm,
+                int                 permit,
+                cbuf               *cbret)
 {
     int        retval = -1;
     char      *x1cname; /* child name */
@@ -1018,119 +1018,119 @@ text_modify_top(clicon_handle       h,
     
     /* Check for operations embedded in tree according to netconf */
     if ((ret = attr_ns_value(x1,
-			     "operation", NETCONF_BASE_NAMESPACE,
-			     cbret, &opstr)) < 0)
-	goto done;
+                             "operation", NETCONF_BASE_NAMESPACE,
+                             cbret, &opstr)) < 0)
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     if (opstr != NULL)
-	if (xml_operation(opstr, &op) < 0)
-	    goto done;
+        if (xml_operation(opstr, &op) < 0)
+            goto done;
     if ((ret = attr_ns_value(x1, "objectcreate", NULL, cbret, &createstr)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     /* Special case if incoming x1 is empty, top-level only <config/> */
     if (xml_child_nr_type(x1, CX_ELMNT) == 0){ 
-	if (xml_child_nr_type(x0, CX_ELMNT)){ /* base tree not empty */
-	    switch(op){ 
-	    case OP_DELETE:
-	    case OP_REMOVE:
-	    case OP_REPLACE:
-		if (!permit && xnacm){
-		    if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0)
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		    permit = 1;
-		}
-		while ((x0c = xml_child_i(x0, 0)) != 0)
-		    if (xml_purge(x0c) < 0)
-			goto done;
-		break;
-	    default:
-		break;
-	    }
-	}
-	else /* base tree empty */
-	    switch(op){ 
+        if (xml_child_nr_type(x0, CX_ELMNT)){ /* base tree not empty */
+            switch(op){ 
+            case OP_DELETE:
+            case OP_REMOVE:
+            case OP_REPLACE:
+                if (!permit && xnacm){
+                    if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0)
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                    permit = 1;
+                }
+                while ((x0c = xml_child_i(x0, 0)) != 0)
+                    if (xml_purge(x0c) < 0)
+                        goto done;
+                break;
+            default:
+                break;
+            }
+        }
+        else /* base tree empty */
+            switch(op){ 
 #if 0 /* According to RFC6020 7.5.8 you cant delete a non-existing object.
-	 On the other hand, the top-level cannot be removed anyway.
-	 Additionally, I think this is irritating so I disable it.
-	 I.e., curl -u andy:bar -sS -X DELETE http://localhost/restconf/data
+         On the other hand, the top-level cannot be removed anyway.
+         Additionally, I think this is irritating so I disable it.
+         I.e., curl -u andy:bar -sS -X DELETE http://localhost/restconf/data
       */
-	    case OP_DELETE:
-		if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
-		    goto done;
-		goto fail;
-		break;
+            case OP_DELETE:
+                if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+                    goto done;
+                goto fail;
+                break;
 #endif
-	    default:
-		break;
-	    }
+            default:
+                break;
+            }
     }
     /* Special case top-level replace */
     else if (op == OP_REPLACE || op == OP_DELETE){
-	if (createstr != NULL){
-	    if (xml_child_nr_type(x0, CX_ELMNT)) /* base tree not empty */
-		clicon_data_set(h, "objectexisted", "true");
-	    else
-		clicon_data_set(h, "objectexisted", "false");
-	}
-	if (!permit && xnacm){
-	    if ((ret = nacm_datanode_write(h, x1, x1t, NACM_UPDATE, username, xnacm, cbret)) < 0) 
-		goto done;
-	    if (ret == 0)
-		goto fail;
-	    permit = 1;
-	}
-	while ((x0c = xml_child_i(x0, 0)) != 0)
-	    if (xml_purge(x0c) < 0)
-		goto done;
+        if (createstr != NULL){
+            if (xml_child_nr_type(x0, CX_ELMNT)) /* base tree not empty */
+                clicon_data_set(h, "objectexisted", "true");
+            else
+                clicon_data_set(h, "objectexisted", "false");
+        }
+        if (!permit && xnacm){
+            if ((ret = nacm_datanode_write(h, x1, x1t, NACM_UPDATE, username, xnacm, cbret)) < 0) 
+                goto done;
+            if (ret == 0)
+                goto fail;
+            permit = 1;
+        }
+        while ((x0c = xml_child_i(x0, 0)) != 0)
+            if (xml_purge(x0c) < 0)
+                goto done;
     }
     /* Loop through children of the modification tree */
     x1c = NULL;
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
-	x1cname = xml_name(x1c);
-	/* Get yang spec of the child */
-	yc = NULL;
-	if (ys_module_by_xml(yspec, x1c, &ymod) <0)
-	    goto done;
-	if (ymod != NULL)
-	    yc = yang_find_datanode(ymod, x1cname);
-	if (yc == NULL){
-	    if (ymod != NULL &&
-		clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
-		/* Add dummy Y_ANYDATA yang stmt, see ysp_add */
-		if ((yc = yang_anydata_add(ymod, x1cname)) < 0)
-		    goto done;
-		xml_spec_set(x1c, yc);
-		clicon_log(LOG_WARNING,
-			   "%s: %d: No YANG spec for %s, anydata used",
-			   __FUNCTION__, __LINE__, x1cname);
-	    }
-	    else{
-		if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
-		    goto done;
-		goto fail;
-	    }
-	}
-	/* See if there is a corresponding node in the base tree */
-	if (match_base_child(x0, x1c, yc, &x0c) < 0)
-	    goto done;
-	if (x0c && (yc != xml_spec(x0c))){
-	    /* There is a match but is should be replaced (choice)*/
-	    if (xml_purge(x0c) < 0)
-		goto done;
-	    x0c = NULL;
-	}
-	if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
-			       yc, op,
-			       username, xnacm, permit, cbret)) < 0)
-	    goto done;
-	/* If xml return - ie netconf error xml tree, then stop and return OK */
-	if (ret == 0)
-	    goto fail;
+        x1cname = xml_name(x1c);
+        /* Get yang spec of the child */
+        yc = NULL;
+        if (ys_module_by_xml(yspec, x1c, &ymod) <0)
+            goto done;
+        if (ymod != NULL)
+            yc = yang_find_datanode(ymod, x1cname);
+        if (yc == NULL){
+            if (ymod != NULL &&
+                clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
+                /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
+                if ((yc = yang_anydata_add(ymod, x1cname)) < 0)
+                    goto done;
+                xml_spec_set(x1c, yc);
+                clicon_log(LOG_WARNING,
+                           "%s: %d: No YANG spec for %s, anydata used",
+                           __FUNCTION__, __LINE__, x1cname);
+            }
+            else{
+                if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
+                    goto done;
+                goto fail;
+            }
+        }
+        /* See if there is a corresponding node in the base tree */
+        if (match_base_child(x0, x1c, yc, &x0c) < 0)
+            goto done;
+        if (x0c && (yc != xml_spec(x0c))){
+            /* There is a match but is should be replaced (choice)*/
+            if (xml_purge(x0c) < 0)
+                goto done;
+            x0c = NULL;
+        }
+        if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
+                               yc, op,
+                               username, xnacm, permit, cbret)) < 0)
+            goto done;
+        /* If xml return - ie netconf error xml tree, then stop and return OK */
+        if (ret == 0)
+            goto fail;
     }
     // ok:
     retval = 1;
@@ -1167,11 +1167,11 @@ text_modify_top(clicon_handle       h,
  */
 int
 xmldb_put(clicon_handle       h,
-	  const char         *db, 
-	  enum operation_type op,
-	  cxobj              *x1,
-	  char               *username,
-	  cbuf               *cbret)
+          const char         *db, 
+          enum operation_type op,
+          cxobj              *x1,
+          char               *username,
+          cbuf               *cbret)
 {
     int         retval = -1;
     char       *dbfile = NULL;
@@ -1192,42 +1192,42 @@ xmldb_put(clicon_handle       h,
     cxobj      *xerr = NULL;
 
     if (cbret == NULL){
-	clicon_err(OE_XML, EINVAL, "cbret is NULL");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "cbret is NULL");
+        goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
     }
     if (x1 && strcmp(xml_name(x1), NETCONF_INPUT_CONFIG) != 0){
-	clicon_err(OE_XML, 0, "Top-level symbol of modification tree is %s, expected \"%s\"",
-		   xml_name(x1), NETCONF_INPUT_CONFIG);
-	goto done;
+        clicon_err(OE_XML, 0, "Top-level symbol of modification tree is %s, expected \"%s\"",
+                   xml_name(x1), NETCONF_INPUT_CONFIG);
+        goto done;
     }
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-	if (clicon_datastore_cache(h) != DATASTORE_NOCACHE)
-	    x0 = de->de_xml; /* XXX flag is not XML_FLAG_TOP */
+        if (clicon_datastore_cache(h) != DATASTORE_NOCACHE)
+            x0 = de->de_xml; /* XXX flag is not XML_FLAG_TOP */
     }
     /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
-	firsttime++; /* to avoid leakage on error, see fail from text_modify */
-	/* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
-	if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &x0, de, NULL, &xerr)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        firsttime++; /* to avoid leakage on error, see fail from text_modify */
+        /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
+        if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &x0, de, NULL, &xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     if (strcmp(xml_name(x0), DATASTORE_TOP_SYMBOL) !=0 ||
-	xml_flag(x0, XML_FLAG_TOP) == 0){
-	clicon_err(OE_XML, 0, "Top-level symbol is %s, expected \"%s\"",
-		   xml_name(x0), DATASTORE_TOP_SYMBOL);
-	goto done;
+        xml_flag(x0, XML_FLAG_TOP) == 0){
+        clicon_err(OE_XML, 0, "Top-level symbol is %s, expected \"%s\"",
+                   xml_name(x0), DATASTORE_TOP_SYMBOL);
+        goto done;
     }
     /* Here x0 looks like: <config>...</config> */
 
 #if 0 /* debug */
     if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
-	clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
+        clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
 #endif
 
     xnacm = clicon_nacm_cache(h);
@@ -1240,89 +1240,89 @@ xmldb_put(clicon_handle       h,
      * new tree is made.
      */
     if ((ret = text_modify_top(h, x0, x0, x1, x1, yspec, op, username, xnacm, permit, cbret)) < 0)
-	goto done;
+        goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
     if (ret == 0){
-	/* If first time and quit here, x0 is not written back into cache and leaks */
-	if (firsttime && x0){
-	    xml_free(x0);
-	    x0 = NULL;
-	}
-	goto fail;
+        /* If first time and quit here, x0 is not written back into cache and leaks */
+        if (firsttime && x0){
+            xml_free(x0);
+            x0 = NULL;
+        }
+        goto fail;
     }
 
     /* Remove NONE nodes if all subs recursively are also NONE */
     if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
-	goto done;
+        goto done;
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
-		  (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
-	goto done;
+                  (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
+        goto done;
     /* Remove global defaults and empty non-presence containers */
     if (xml_defaults_nopresence(x0, 2) < 0)
-	goto done;
+        goto done;
 #if 0 /* debug */
     if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
-	clicon_log(LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
+        clicon_log(LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
 #endif
 
     /* Write back to datastore cache if first time */
     if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
-	db_elmnt de0 = {0,};
-	if (de != NULL)
-	    de0 = *de;
-	if (de0.de_xml == NULL)
-	    de0.de_xml = x0;
-	de0.de_empty = (xml_child_nr(de0.de_xml) == 0);
-	clicon_db_elmnt_set(h, db, &de0);
+        db_elmnt de0 = {0,};
+        if (de != NULL)
+            de0 = *de;
+        if (de0.de_xml == NULL)
+            de0.de_xml = x0;
+        de0.de_empty = (xml_child_nr(de0.de_xml) == 0);
+        clicon_db_elmnt_set(h, db, &de0);
     }
     if (xmldb_db2file(h, db, &dbfile) < 0)
-	goto done;
+        goto done;
     if (dbfile==NULL){
-	clicon_err(OE_XML, 0, "dbfile NULL");
-	goto done;
+        clicon_err(OE_XML, 0, "dbfile NULL");
+        goto done;
     }
     /* Add module revision info before writing to file)
      * Only if CLICON_XMLDB_MODSTATE is set
      */
     if ((x = clicon_modst_cache_get(h, 1)) != NULL){
-	if ((xmodst = xml_dup(x)) == NULL)
-	    goto done;
-	if (xml_addsub(x0, xmodst) < 0)
-	    goto done;
+        if ((xmodst = xml_dup(x)) == NULL)
+            goto done;
+        if (xml_addsub(x0, xmodst) < 0)
+            goto done;
     }
     if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
-	clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
-	goto done;
+        clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
+        goto done;
     }
     if ((f = fopen(dbfile, "w")) == NULL){
-	clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
-	goto done;
+        clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
+        goto done;
     } 
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
     if (strcmp(format,"json")==0){
-	if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
-	    goto done;
+        if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
+            goto done;
     }
     else if (clixon_xml2file(f, x0, 0, pretty, fprintf, 0, 0) < 0)
-	goto done;
+        goto done;
     /* Remove modules state after writing to file
      */
     if (xmodst && xml_purge(xmodst) < 0)
-	goto done;
+        goto done;
     retval = 1;
  done:
     if (f != NULL)
-	fclose(f);
+        fclose(f);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (dbfile)
-	free(dbfile);
+        free(dbfile);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (x0 && clicon_datastore_cache(h) == DATASTORE_NOCACHE)
-	xml_free(x0);
+        xml_free(x0);
     return retval;
  fail:
     retval = 0;
@@ -1333,8 +1333,8 @@ xmldb_put(clicon_handle       h,
  */
 int
 xmldb_dump(clicon_handle   h,
-	   FILE           *f,
-	   cxobj          *xt)
+           FILE           *f,
+           cxobj          *xt)
 {
     int    retval = -1;
     cxobj *x;
@@ -1344,25 +1344,25 @@ xmldb_dump(clicon_handle   h,
     
     /* clear XML tree of defaults */
     if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
-	goto done;
+        goto done;
     /* Add modstate first */
     if ((x = clicon_modst_cache_get(h, 1)) != NULL){
-	if ((xmodst = xml_dup(x)) == NULL)
-	    goto done;
-	if (xml_child_insert_pos(xt, xmodst, 0) < 0)
-	    goto done;
+        if ((xmodst = xml_dup(x)) == NULL)
+            goto done;
+        if (xml_child_insert_pos(xt, xmodst, 0) < 0)
+            goto done;
     }
     if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
-	clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
-	goto done;
+        clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
+        goto done;
     }
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
     if (strcmp(format,"json")==0){
-	if (clixon_json2file(f, xt, pretty, fprintf, 0, 0) < 0)
-	    goto done;
+        if (clixon_json2file(f, xt, pretty, fprintf, 0, 0) < 0)
+            goto done;
     }
     else if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 0) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;

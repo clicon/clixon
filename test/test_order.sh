@@ -202,7 +202,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend"
     start_backend -s running -f $cfg -- -s
@@ -304,14 +304,14 @@ expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS
 
 for s in int uint; do
     for t in 8 16 32 64; do
-	type=$s$t
-	new "put leaf-list $type (10,2,1)"
-	expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><types xmlns=\"urn:example:order\">
+        type=$s$t
+        new "put leaf-list $type (10,2,1)"
+        expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><types xmlns=\"urn:example:order\">
 <my$type>10</my$type><my$type>2</my$type><my$type>1</my$type>
 </types></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-	new "check leaf-list $type order (1,2,10)"
-	expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/exo:types/exo:my$type\" xmlns:exo=\"urn:example:order\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><types xmlns=\"urn:example:order\"><my$type>1</my$type><my$type>2</my$type><my$type>10</my$type></types></data></rpc-reply>"
+        new "check leaf-list $type order (1,2,10)"
+        expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/exo:types/exo:my$type\" xmlns:exo=\"urn:example:order\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><types xmlns=\"urn:example:order\"><my$type>1</my$type><my$type>2</my$type><my$type>10</my$type></types></data></rpc-reply>"
     done
 done
 
@@ -449,7 +449,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

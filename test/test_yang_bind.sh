@@ -53,8 +53,8 @@ module match{
          description "Note same as parent to catch false positives 2a/2b";
          key k;
          leaf k{
-	    type uint32;
-	 }
+            type uint32;
+         }
       }
       anyxml any;
    }

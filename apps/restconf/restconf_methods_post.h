@@ -42,13 +42,13 @@
  * Prototypes
  */
 int api_data_post(clicon_handle h, void *req, char *api_path,
-		  int pi, cvec *qvec, char *data,
-		  int pretty,
-		  restconf_media media_in, 
-		  restconf_media media_out, ietf_ds_t ds);
+                  int pi, cvec *qvec, char *data,
+                  int pretty,
+                  restconf_media media_in, 
+                  restconf_media media_out, ietf_ds_t ds);
 
 int api_operations_post(clicon_handle h, void *req, char *api_path,
-			int pi,	cvec *qvec, char *data,
-			int pretty, restconf_media media_out);
+                        int pi, cvec *qvec, char *data,
+                        int pretty, restconf_media media_out);
 
 #endif /* _RESTCONF_METHODS_POST_H_ */

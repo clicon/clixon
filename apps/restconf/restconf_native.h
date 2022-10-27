@@ -120,7 +120,7 @@ typedef struct restconf_conn {
 #endif
     restconf_socket      *rc_socket;    /* Backpointer to restconf_socket needed for callhome */
     struct timeval        rc_t;         /* Timestamp of last read/write activity, used by callhome
-					   idle-timeout algorithm */
+                                           idle-timeout algorithm */
 } restconf_conn;
 
 /* Restconf per socket handle
@@ -136,9 +136,9 @@ typedef struct restconf_socket{
     char         *rs_description; /* Description */
     int           rs_callhome;  /* 0: listen, 1: callhome */
     int           rs_ss;        /* Listen: Server socket, ready for accept
-				 * XXXCallhome: connect socket (same as restconf_conn->rc_s) 
-				 * Callhome: No-op, see restconf_conn->rc_s
-				 */
+                                 * XXXCallhome: connect socket (same as restconf_conn->rc_s) 
+                                 * Callhome: No-op, see restconf_conn->rc_s
+                                 */
     int           rs_ssl;       /* 0: Not SSL socket, 1:SSL socket */
     char         *rs_addrtype;  /* Address type according to ietf-inet-types:
                                    eg inet:ipv4-address or inet:ipv6-address */
@@ -150,10 +150,10 @@ typedef struct restconf_socket{
     uint16_t      rs_idle_timeout; /* Max underlying TCP session remains idle (if callhome and periodic) (in seconds)*/
     uint64_t      rs_start;     /* First period start, next is start+periods*period */
     uint64_t      rs_period_nr; /* Dynamic succeeding or timed out periods. 
-				   Set in restconf_callhome_timer*/
+                                   Set in restconf_callhome_timer*/
     uint8_t       rs_attempts;  /* Dynamic connect attempts in this round (if callhome) 
-				 * Set in restconf_callhome_cb
-				 */
+                                 * Set in restconf_callhome_cb
+                                 */
     restconf_conn *rs_conns;  /* List of transient connect sockets */
 } restconf_socket;
 
@@ -185,7 +185,7 @@ int               restconf_idle_timer(restconf_conn *rc);
 int               restconf_callhome_timer_unreg(restconf_socket *rsock);
 int               restconf_callhome_timer(restconf_socket *rsock, int status);
 int               restconf_socket_extract(clicon_handle h, cxobj *xs, cvec *nsc, restconf_socket *rsock,
-					  char **namespace, char **address, char **addrtype, uint16_t *port);
+                                          char **namespace, char **address, char **addrtype, uint16_t *port);
     
 #endif /* _RESTCONF_NATIVE_H_ */
 

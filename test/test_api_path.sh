@@ -243,7 +243,7 @@ echo -n '<x6 xmlns="urn:example:b">' > $xml6
 for (( i=0; i<$nr; i++ )); do  
     echo -n "<yy><kk1>b$i</kk1><kk2>b$i</kk2><zz>foo$i</zz>" >> $xml6
     for (( j=0; j<3; j++ )); do
-	echo -n "<y xmlns=\"urn:example:a\"><k1>a$j</k1><k2>a$j</k2><z>foo$j</z></y>" >> $xml6
+        echo -n "<y xmlns=\"urn:example:a\"><k1>a$j</k1><k2>a$j</k2><z>foo$j</z></y>" >> $xml6
     done
     echo -n "</yy>" >> $xml6
 done

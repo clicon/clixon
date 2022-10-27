@@ -93,7 +93,7 @@
  */
 int
 regexp_xsd2posix(char  *xsd,
-		 char **posix)
+                 char **posix)
 {
     int   retval = -1;
     cbuf *cb = NULL;
@@ -105,111 +105,111 @@ regexp_xsd2posix(char  *xsd,
     size_t len;
     
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     esc=0;
     len = strlen(xsd);
     for (i=0; i<len; i++){
-	x = xsd[i];
-	if (esc){
-	    esc = 0;
-	    switch (x){
-	    case '-': /* \- is translated to -], ie must be last in bracket */
-		minus++;
-		break;
-	    case 'c': /* xml namechar */
-		cprintf(cb, "[0-9a-zA-Z._:-]"); /* also interpunct */
-		break;
-	    case 'd':
-		cprintf(cb, "[0-9]");
-		break;
-	    case 'i': /* initial */
-		cprintf(cb, "[a-zA-Z_:]");
-		break;
-	    case 'n': /* non-printable \n */
-		cprintf(cb, "\n");
-		break;
-	    case 'p': /* category escape: \p{IsCategory} */
-		j = i+1;
-		if (j+2 < strlen(xsd) &&
-		    xsd[j] == '{' &&
-		    (xsd[j+2] == '}' || xsd[j+3] == '}')){
-		    switch (xsd[j+1]){
-		    case 'L': /* Letters */
-			cprintf(cb, "a-zA-Z"); /* assume in [] */
-			break;
-		    case 'M': /* Marks */
-			cprintf(cb, "\?!"); /* assume in [] */
-			break;
-		    case 'N': /* Numbers */
-			cprintf(cb, "0-9");
-			break;
-		    case 'P': /* Punctuation */
-			cprintf(cb, "a-zA-Z"); /* assume in [] */
-			break;
-		    case 'Z': /* Separators */
-			cprintf(cb, "\t "); /* assume in [] */
-			break;
-		    case 'S': /* Symbols */
-			 /* assume in [] */
-			break;
-		    case 'C': /* Others */
-			 /* assume in [] */
-			break;
-		    default:
-			break;
-		    }
-		    if (xsd[j+2] == '}')
-			i = j+2;
-		    else
-			i = j+3;
-		}
-		/* if syntax error, just leave it */
-		break;
-	    case 'r': /* non-printable */
-		cprintf(cb, "\r");
-		break;
-	    case 's':
-		cprintf(cb, "[ \t\r\n]");
-		break;
-	    case 'S':
-		cprintf(cb, "[^ \t\r\n]");
-		break;
-	    case 't': /* non-printable */
-		cprintf(cb, "\t");
-		break;
-	    case 'w': /* word */
-		//cprintf(cb, "[0-9a-zA-Z_\\\\-]")
-		cprintf(cb, "[[:alnum:]|_]"); 
-		break;
-	    case 'W': /* inverse of \w */
-		cprintf(cb, "[^[[:alnum:]|_]]"); 
-		break;
-	    default:
-		cprintf(cb, "\\%c", x);
-		break;
-	    }
-	}
-	else if (x == '\\')
-	    esc++;
-	else if (x == '$' && i != strlen(xsd)-1) /* Escape $ unless it is last */
-	    cprintf(cb, "\\%c", x);
-	else if (x == ']' && minus){
-	    cprintf(cb, "-]");
-	    minus = 0;
-	}
-	else
-	    cprintf(cb, "%c", x);
+        x = xsd[i];
+        if (esc){
+            esc = 0;
+            switch (x){
+            case '-': /* \- is translated to -], ie must be last in bracket */
+                minus++;
+                break;
+            case 'c': /* xml namechar */
+                cprintf(cb, "[0-9a-zA-Z._:-]"); /* also interpunct */
+                break;
+            case 'd':
+                cprintf(cb, "[0-9]");
+                break;
+            case 'i': /* initial */
+                cprintf(cb, "[a-zA-Z_:]");
+                break;
+            case 'n': /* non-printable \n */
+                cprintf(cb, "\n");
+                break;
+            case 'p': /* category escape: \p{IsCategory} */
+                j = i+1;
+                if (j+2 < strlen(xsd) &&
+                    xsd[j] == '{' &&
+                    (xsd[j+2] == '}' || xsd[j+3] == '}')){
+                    switch (xsd[j+1]){
+                    case 'L': /* Letters */
+                        cprintf(cb, "a-zA-Z"); /* assume in [] */
+                        break;
+                    case 'M': /* Marks */
+                        cprintf(cb, "\?!"); /* assume in [] */
+                        break;
+                    case 'N': /* Numbers */
+                        cprintf(cb, "0-9");
+                        break;
+                    case 'P': /* Punctuation */
+                        cprintf(cb, "a-zA-Z"); /* assume in [] */
+                        break;
+                    case 'Z': /* Separators */
+                        cprintf(cb, "\t "); /* assume in [] */
+                        break;
+                    case 'S': /* Symbols */
+                         /* assume in [] */
+                        break;
+                    case 'C': /* Others */
+                         /* assume in [] */
+                        break;
+                    default:
+                        break;
+                    }
+                    if (xsd[j+2] == '}')
+                        i = j+2;
+                    else
+                        i = j+3;
+                }
+                /* if syntax error, just leave it */
+                break;
+            case 'r': /* non-printable */
+                cprintf(cb, "\r");
+                break;
+            case 's':
+                cprintf(cb, "[ \t\r\n]");
+                break;
+            case 'S':
+                cprintf(cb, "[^ \t\r\n]");
+                break;
+            case 't': /* non-printable */
+                cprintf(cb, "\t");
+                break;
+            case 'w': /* word */
+                //cprintf(cb, "[0-9a-zA-Z_\\\\-]")
+                cprintf(cb, "[[:alnum:]|_]"); 
+                break;
+            case 'W': /* inverse of \w */
+                cprintf(cb, "[^[[:alnum:]|_]]"); 
+                break;
+            default:
+                cprintf(cb, "\\%c", x);
+                break;
+            }
+        }
+        else if (x == '\\')
+            esc++;
+        else if (x == '$' && i != strlen(xsd)-1) /* Escape $ unless it is last */
+            cprintf(cb, "\\%c", x);
+        else if (x == ']' && minus){
+            cprintf(cb, "-]");
+            minus = 0;
+        }
+        else
+            cprintf(cb, "%c", x);
     }
     if ((*posix = strdup(cbuf_get(cb))) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	goto done;
+        clicon_err(OE_UNIX, errno, "strdup");
+        goto done;
     }
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -228,29 +228,29 @@ regexp_xsd2posix(char  *xsd,
  */
 int
 regex_compile(clicon_handle h,
-	      char         *regexp,
-	      void        **recomp)
+              char         *regexp,
+              void        **recomp)
 {
     int              retval = -1;
     char            *posix = NULL;    /* Transform to posix regex */
 
     switch (clicon_yang_regexp(h)){
     case REGEXP_POSIX:
-	if (regexp_xsd2posix(regexp, &posix) < 0)
-	    goto done;
-	retval = cligen_regex_posix_compile(posix, recomp);
-	break;
+        if (regexp_xsd2posix(regexp, &posix) < 0)
+            goto done;
+        retval = cligen_regex_posix_compile(posix, recomp);
+        break;
     case REGEXP_LIBXML2:
-	retval = cligen_regex_libxml2_compile(regexp, recomp);
-	break;
+        retval = cligen_regex_libxml2_compile(regexp, recomp);
+        break;
     default:
-    	clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
-	break;
+        clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
+        break;
     }
     /* retval from fns above */
  done:
     if (posix)
-	free(posix);
+        free(posix);
     return retval;
 }
 
@@ -261,22 +261,22 @@ regex_compile(clicon_handle h,
  */
 int
 regex_exec(clicon_handle h,
-	   void         *recomp,
-	   char         *string)
+           void         *recomp,
+           char         *string)
 {
     int   retval = -1;
 
     switch (clicon_yang_regexp(h)){
     case REGEXP_POSIX:
-	retval = cligen_regex_posix_exec(recomp, string);
-	break;
+        retval = cligen_regex_posix_exec(recomp, string);
+        break;
     case REGEXP_LIBXML2:
-	retval = cligen_regex_libxml2_exec(recomp, string);
-	break;
+        retval = cligen_regex_libxml2_exec(recomp, string);
+        break;
     default:
-    	clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d",
-		   clicon_yang_regexp(h));
-	goto done;
+        clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d",
+                   clicon_yang_regexp(h));
+        goto done;
     }
     /* retval from fns above */
  done:
@@ -289,20 +289,20 @@ regex_exec(clicon_handle h,
  */
 int
 regex_free(clicon_handle h,
-	   void         *recomp)
+           void         *recomp)
 {
     int   retval = -1;
 
     switch (clicon_yang_regexp(h)){
     case REGEXP_POSIX:
-	retval = cligen_regex_posix_free(recomp);
-	break;
+        retval = cligen_regex_posix_free(recomp);
+        break;
     case REGEXP_LIBXML2:
-	retval = cligen_regex_libxml2_free(recomp);
-	break;
+        retval = cligen_regex_libxml2_free(recomp);
+        break;
     default:
-    	clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
-	goto done;
+        clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
+        goto done;
     }
     /* retval from fns above */
  done:

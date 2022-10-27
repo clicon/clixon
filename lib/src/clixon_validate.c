@@ -114,9 +114,9 @@
  */
 static int
 validate_leafref(cxobj     *xt,
-		 yang_stmt *ys,
-		 yang_stmt *ytype,
-		 cxobj    **xret)
+                 yang_stmt *ys,
+                 yang_stmt *ytype,
+                 cxobj    **xret)
 {
     int          retval = -1;
     yang_stmt   *ypath;
@@ -136,65 +136,65 @@ validate_leafref(cxobj     *xt,
     
     /* require instance */
     if ((yreqi = yang_find(ytype, Y_REQUIRE_INSTANCE, NULL)) != NULL){
-	if ((cv = yang_cv_get(yreqi)) != NULL) /* shouldnt happen */
-	    require_instance = cv_bool_get(cv);	
+        if ((cv = yang_cv_get(yreqi)) != NULL) /* shouldnt happen */
+            require_instance = cv_bool_get(cv); 
     }
     /* Find referred XML instances */
     if (require_instance == 0)
-	goto ok;
+        goto ok;
     if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-	if ((cberr = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(cberr, "Leafref requires path statement");
-	if (xret && netconf_missing_element_xml(xret, "application",
-						yang_argument_get(ytype),
-						cbuf_get(cberr)) < 0)
-	    goto done;
-	goto fail;
+        if ((cberr = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cberr, "Leafref requires path statement");
+        if (xret && netconf_missing_element_xml(xret, "application",
+                                                yang_argument_get(ytype),
+                                                cbuf_get(cberr)) < 0)
+            goto done;
+        goto fail;
     }
     if ((path_arg = yang_argument_get(ypath)) == NULL){
-	clicon_err(OE_YANG, 0, "No argument for Y_PATH");
-	goto done;
+        clicon_err(OE_YANG, 0, "No argument for Y_PATH");
+        goto done;
     }
     if ((leafrefbody = xml_body(xt)) == NULL)
-	goto ok;
+        goto ok;
     if (xml_nsctx_yang(ys, &nsc) < 0)
-	goto done;
+        goto done;
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, path_arg) < 0) 
-	goto done;
+        goto done;
     for (i = 0; i < xlen; i++) {
-	x = xvec[i];
-	if ((leafbody = xml_body(x)) == NULL)
-	    continue;
-	if (strcmp(leafbody, leafrefbody) == 0)
-	    break;
+        x = xvec[i];
+        if ((leafbody = xml_body(x)) == NULL)
+            continue;
+        if (strcmp(leafbody, leafrefbody) == 0)
+            break;
     }
     if (i==xlen){
-	if ((cberr = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	ymod = ys_module(ys);
-	cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s in %s.yang:%d",
-		leafrefbody,
-		path_arg,
-		yang_argument_get(ymod),
-		yang_linenum_get(ys));
-	if (xret && netconf_bad_element_xml(xret, "application", leafrefbody, cbuf_get(cberr)) < 0)
-	    goto done;
-	goto fail;
+        if ((cberr = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        ymod = ys_module(ys);
+        cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s in %s.yang:%d",
+                leafrefbody,
+                path_arg,
+                yang_argument_get(ymod),
+                yang_linenum_get(ys));
+        if (xret && netconf_bad_element_xml(xret, "application", leafrefbody, cbuf_get(cberr)) < 0)
+            goto done;
+        goto fail;
     }
  ok:
     retval = 1;
  done:
     if (cberr)
-	cbuf_free(cberr);
+        cbuf_free(cberr);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (xvec)
-	free(xvec);
+        free(xvec);
     return retval;
  fail:
     retval = 0;
@@ -225,9 +225,9 @@ validate_leafref(cxobj     *xt,
  */
 static int
 validate_identityref(cxobj     *xt,
-		     yang_stmt *ys,
-		     yang_stmt *ytype,
-		     cxobj    **xret)
+                     yang_stmt *ys,
+                     yang_stmt *ytype,
+                     cxobj    **xret)
 {
     int         retval = -1;
     char       *node = NULL;
@@ -242,79 +242,79 @@ validate_identityref(cxobj     *xt,
     yang_stmt  *ymod;
     
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new"); 
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new"); 
+        goto done;
     }
     if ((cberr = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new"); 
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new"); 
+        goto done;
     }
     /* Get idref value. Then see if this value is derived from ytype.
      */
     if ((node = xml_body(xt)) == NULL){ /* It may not be empty */
-	if (xret && netconf_bad_element_xml(xret, "application", xml_name(xt), "Identityref should not be empty") < 0)
-	    goto done;
-	goto fail;
+        if (xret && netconf_bad_element_xml(xret, "application", xml_name(xt), "Identityref should not be empty") < 0)
+            goto done;
+        goto fail;
     }
     if (nodeid_split(node, &prefix, &id) < 0)
-	goto done;
+        goto done;
     /* This is the type's base reference */
     if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) == NULL){
-	if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(ytype), "Identityref validation failed, no base") < 0)
-	    goto done;
-	goto fail;
+        if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(ytype), "Identityref validation failed, no base") < 0)
+            goto done;
+        goto fail;
     }
     /* This is the actual base identity */
     if ((ybaseid = yang_find_identity(ybaseref, yang_argument_get(ybaseref))) == NULL){
-	if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(ybaseref), "Identityref validation failed, no base identity") < 0)
-	    goto done;
-	goto fail;
+        if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(ybaseref), "Identityref validation failed, no base identity") < 0)
+            goto done;
+        goto fail;
     }
 
     /* idref from prefix:id to module:id */
     if (prefix == NULL)
-	ymod = ys_module(ys);
+        ymod = ys_module(ys);
     else{ /* from prefix to name */
 #if 1 /* IDENTITYREF_KLUDGE  */
-	ymod = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
+        ymod = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
 #endif
     }
     if (ymod == NULL){
-	cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d", 
-		node,
-		yang_argument_get(ybaseid),
-		yang_argument_get(ys_module(ybaseid)),
-		yang_linenum_get(ybaseid));
-	if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
-	    goto done;
-	goto fail;
+        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d", 
+                node,
+                yang_argument_get(ybaseid),
+                yang_argument_get(ys_module(ybaseid)),
+                yang_linenum_get(ybaseid));
+        if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
+            goto done;
+        goto fail;
     }
     cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-    idref = cbuf_get(cb);	
+    idref = cbuf_get(cb);       
     /* Here check if node is in the derived node list of the base identity 
      * The derived node list is a cvec computed XXX
      */
     idrefvec = yang_cvec_get(ybaseid);
     if (cvec_find(idrefvec, idref) == NULL){
-	cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d", 
-		node,
-		yang_argument_get(ybaseid),
-		yang_argument_get(ys_module(ybaseid)),
-		yang_linenum_get(ybaseid));
-	if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
-	    goto done;
-	goto fail;
+        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d", 
+                node,
+                yang_argument_get(ybaseid),
+                yang_argument_get(ys_module(ybaseid)),
+                yang_linenum_get(ybaseid));
+        if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
+            goto done;
+        goto fail;
     }
     retval = 1;
  done:
     if (cberr)
-	cbuf_free(cberr);
+        cbuf_free(cberr);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (id)
-	free(id);
+        free(id);
     if (prefix)
-	free(prefix);
+        free(prefix);
     return retval;
  fail:
     retval = 0;
@@ -365,8 +365,8 @@ validate_identityref(cxobj     *xt,
  */
 int
 xml_yang_validate_rpc(clicon_handle h,
-		      cxobj        *xrpc,
-		      cxobj       **xret)
+                      cxobj        *xrpc,
+                      cxobj       **xret)
 {
     int        retval = -1;
     cxobj     *xn;       /* rpc name */
@@ -375,36 +375,36 @@ xml_yang_validate_rpc(clicon_handle h,
     int        ret;
     
     if (strcmp(xml_name(xrpc), "rpc")){
-	clicon_err(OE_XML, EINVAL, "Expected RPC");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "Expected RPC");
+        goto done;
     }
     rpcprefix = xml_prefix(xrpc);
     if (xml2ns(xrpc, rpcprefix, &namespace) < 0)
-	goto done;
+        goto done;
     /* Only accept resolved NETCONF base namespace */
     if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	if (xret && netconf_unknown_namespace_xml(xret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
-	    goto done;
-	goto fail;
+        if (xret && netconf_unknown_namespace_xml(xret, "protocol", rpcprefix, "No appropriate namespace associated with prefix")< 0)
+            goto done;
+        goto fail;
     }
     xn = NULL;
     /* xn is name of rpc, ie <rcp><xn/></rpc> */
     while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
-	if (xml_spec(xn) == NULL){
-	    if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
-		goto done;
-	    goto fail;
-	}
-	if ((ret = xml_yang_validate_all(h, xn, xret)) < 0) 
-	    goto done; /* error or validation fail */
-	if (ret == 0)
-	    goto fail;
-	if ((ret = xml_yang_validate_add(h, xn, xret)) < 0)
-	    goto done; /* error or validation fail */
-	if (ret == 0)
-	    goto fail;
-	if (xml_default_recurse(xn, 0) < 0)
-	    goto done;
+        if (xml_spec(xn) == NULL){
+            if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
+                goto done;
+            goto fail;
+        }
+        if ((ret = xml_yang_validate_all(h, xn, xret)) < 0) 
+            goto done; /* error or validation fail */
+        if (ret == 0)
+            goto fail;
+        if ((ret = xml_yang_validate_add(h, xn, xret)) < 0)
+            goto done; /* error or validation fail */
+        if (ret == 0)
+            goto fail;
+        if (xml_default_recurse(xn, 0) < 0)
+            goto done;
     }
     // ok: /* pass validation */
     retval = 1;
@@ -412,15 +412,15 @@ xml_yang_validate_rpc(clicon_handle h,
     return retval;
  fail:
     if (xret && *xret && clixon_xml_attr_copy(xrpc, *xret, "message-id") < 0)
-	goto done;
+        goto done;
     retval = 0;
     goto done;
 }
 
 int
 xml_yang_validate_rpc_reply(clicon_handle h,
-			    cxobj        *xrpc,
-			    cxobj       **xret)
+                            cxobj        *xrpc,
+                            cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *yn=NULL;  /* rpc name */
@@ -430,42 +430,42 @@ xml_yang_validate_rpc_reply(clicon_handle h,
     int        ret;
     
     if (strcmp(xml_name(xrpc), "rpc-reply")){
-	clicon_err(OE_XML, EINVAL, "Expected RPC");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "Expected RPC");
+        goto done;
     }
     rpcprefix = xml_prefix(xrpc);
     if (xml2ns(xrpc, rpcprefix, &namespace) < 0)
-	goto done;
+        goto done;
     /* Only accept resolved NETCONF base namespace */
     if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
-	if (xret && netconf_unknown_namespace_xml(xret, "protocol",
-						  rpcprefix?rpcprefix:"null",
-						  "No appropriate namespace associated with prefix")< 0)
-	    goto done;
-	goto fail;
+        if (xret && netconf_unknown_namespace_xml(xret, "protocol",
+                                                  rpcprefix?rpcprefix:"null",
+                                                  "No appropriate namespace associated with prefix")< 0)
+            goto done;
+        goto fail;
     }
     xn = NULL;
     /* xn is name of rpc, ie <rcp><xn/></rpc> */
     while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
-	/* OK and rpc-error are not explicit in ietf-netconf.yang.  Why are they hardcoded ? */
-	if (strcmp(xml_name(xn), "ok") == 0 || strcmp(xml_name(xn), "rpc-error") == 0){
-	    continue;
-	}
-	if ((yn = xml_spec(xn)) == NULL){
-	    if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
-		goto done;
-	    goto fail;
-	}
-	if ((ret = xml_yang_validate_all(h, xn, xret)) < 0) 
-	    goto done; /* error or validation fail */
-	if (ret == 0)
-	    goto fail;
-	if ((ret = xml_yang_validate_add(h, xn, xret)) < 0)
-	    goto done; /* error or validation fail */
-	if (ret == 0)
-	    goto fail;
-	if (xml_default_recurse(xn, 0) < 0)
-	    goto done;
+        /* OK and rpc-error are not explicit in ietf-netconf.yang.  Why are they hardcoded ? */
+        if (strcmp(xml_name(xn), "ok") == 0 || strcmp(xml_name(xn), "rpc-error") == 0){
+            continue;
+        }
+        if ((yn = xml_spec(xn)) == NULL){
+            if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
+                goto done;
+            goto fail;
+        }
+        if ((ret = xml_yang_validate_all(h, xn, xret)) < 0) 
+            goto done; /* error or validation fail */
+        if (ret == 0)
+            goto fail;
+        if ((ret = xml_yang_validate_add(h, xn, xret)) < 0)
+            goto done; /* error or validation fail */
+        if (ret == 0)
+            goto fail;
+        if (xml_default_recurse(xn, 0) < 0)
+            goto done;
     }
     // ok: /* pass validation */
     retval = 1;
@@ -473,7 +473,7 @@ xml_yang_validate_rpc_reply(clicon_handle h,
     return retval;
  fail:
     if (xret && *xret && clixon_xml_attr_copy(xrpc, *xret, "message-id") < 0)
-	goto done;
+        goto done;
     retval = 0;
     goto done;
 }
@@ -489,8 +489,8 @@ xml_yang_validate_rpc_reply(clicon_handle h,
  */
 static int
 check_choice(cxobj     *xt, 
-	     yang_stmt *yt,
-	     cxobj    **xret)
+             yang_stmt *yt,
+             cxobj    **xret)
 {
     int        retval = -1;
     yang_stmt *y;
@@ -502,48 +502,48 @@ check_choice(cxobj     *xt,
     cxobj     *xp;
     
     if ((ytp = yang_parent_get(yt)) == NULL)
-	goto ok;
+        goto ok;
     /* Return OK if xt is not choice */
     switch (yang_keyword_get(ytp)){
     case Y_CASE:
-	ytcase = ytp;
-	ytchoice = yang_parent_get(ytp);
-	break;
+        ytcase = ytp;
+        ytchoice = yang_parent_get(ytp);
+        break;
     case Y_CHOICE:
-	ytchoice = ytp;
-	break;
+        ytchoice = ytp;
+        break;
     default:
-	goto ok;  /* Not choice */
-	break;
+        goto ok;  /* Not choice */
+        break;
     }
     if ((xp = xml_parent(xt)) == NULL)
-	goto ok;
+        goto ok;
     x = NULL; /* Find a child with same yang spec */
     while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
-	if (x == xt)
-	    continue;
-	y = xml_spec(x);
-	if (y == yt) /* eg same list */
-	    continue;
-	yp = yang_parent_get(y);
-	switch (yang_keyword_get(yp)){
-	case Y_CASE:
-	    if (yang_parent_get(yp) != ytchoice) /* Not same choice (not relevant)  */
-		continue;
-	    if (yp == ytcase) /* same choice but different case */
-		continue;
-	    break;
-	case Y_CHOICE:
-	    if (yp != ytchoice) /* Not same choice (not relevant) */
-		continue;
-	    break;
-	default:
-	    continue; /* not choice */
-	    break;
-	}
-	if (xret && netconf_bad_element_xml(xret, "application", xml_name(x), "Element in choice statement already exists") < 0)
-	    goto done;
-	goto fail;
+        if (x == xt)
+            continue;
+        y = xml_spec(x);
+        if (y == yt) /* eg same list */
+            continue;
+        yp = yang_parent_get(y);
+        switch (yang_keyword_get(yp)){
+        case Y_CASE:
+            if (yang_parent_get(yp) != ytchoice) /* Not same choice (not relevant)  */
+                continue;
+            if (yp == ytcase) /* same choice but different case */
+                continue;
+            break;
+        case Y_CHOICE:
+            if (yp != ytchoice) /* Not same choice (not relevant) */
+                continue;
+            break;
+        default:
+            continue; /* not choice */
+            break;
+        }
+        if (xret && netconf_bad_element_xml(xret, "application", xml_name(x), "Element in choice statement already exists") < 0)
+            goto done;
+        goto fail;
     } /* while */
  ok:
     retval = 1;
@@ -569,8 +569,8 @@ check_choice(cxobj     *xt,
  */
 static int
 check_list_key(cxobj     *xt, 
-	       yang_stmt *yt,
-	       cxobj    **xret)
+               yang_stmt *yt,
+               cxobj    **xret)
 
 {
     int        retval = -1;
@@ -580,24 +580,24 @@ check_list_key(cxobj     *xt,
     char      *keyname;
     
     if (yt == NULL || !yang_config(yt) || yang_keyword_get(yt) != Y_LIST){
-	clicon_err(OE_YANG, EINVAL, "yt is not a config true list node");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "yt is not a config true list node");
+        goto done;
     }
     yc = NULL;
     while ((yc = yn_each(yt, yc)) != NULL) {
-	if (yang_keyword_get(yc) != Y_KEY)
-	    continue;
-	/* Check if a list does not have mandatory key leafs */
-	cvk = yang_cvec_get(yt); /* Use Y_LIST cache, see ys_populate_list() */
-	cvi = NULL;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	    keyname = cv_string_get(cvi);	    
-	    if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
-		if (xret && netconf_missing_element_xml(xret, "application", keyname, "Mandatory key") < 0)
-		    goto done;
-		goto fail;
-	    }
-	}
+        if (yang_keyword_get(yc) != Y_KEY)
+            continue;
+        /* Check if a list does not have mandatory key leafs */
+        cvk = yang_cvec_get(yt); /* Use Y_LIST cache, see ys_populate_list() */
+        cvi = NULL;
+        while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+            keyname = cv_string_get(cvi);           
+            if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
+                if (xret && netconf_missing_element_xml(xret, "application", keyname, "Mandatory key") < 0)
+                    goto done;
+                goto fail;
+            }
+        }
     }
     retval = 1;
  done:
@@ -614,8 +614,8 @@ check_list_key(cxobj     *xt,
  */
 static int
 choice_mandatory_check(cxobj     *xt,
-		       yang_stmt *ycase,
-		       cxobj    **xret)
+                       yang_stmt *ycase,
+                       cxobj    **xret)
 {
     int        retval = -1;
     yang_stmt *yc = NULL;
@@ -624,34 +624,34 @@ choice_mandatory_check(cxobj     *xt,
     int        ret;
 
     while ((yc = yn_each(ycase, yc)) != NULL) {
-	if ((ret = yang_xml_mandatory(xt, yc)) < 0)
-	    goto done;
-	if (ret == 1){
-	    if (yang_flag_get(yc, YANG_FLAG_MARK))
-		yang_flag_reset(yc, YANG_FLAG_MARK);
-	    else if (fail == 0){
-		fail++;
-		if (xret){
-		    if ((cb = cbuf_new()) == NULL){
-			clicon_err(OE_UNIX, errno, "cbuf_new");
-			goto done;
-		    }
-		    cprintf(cb, "Mandatory variable %s in module %s",
-			    yang_argument_get(yc),
-			    yang_argument_get(ys_module(ycase)));
-		    if (netconf_missing_element_xml(xret, "application", yang_argument_get(yc), cbuf_get(cb)) < 0)
-			goto done;
-		}
-	    }
-	}
+        if ((ret = yang_xml_mandatory(xt, yc)) < 0)
+            goto done;
+        if (ret == 1){
+            if (yang_flag_get(yc, YANG_FLAG_MARK))
+                yang_flag_reset(yc, YANG_FLAG_MARK);
+            else if (fail == 0){
+                fail++;
+                if (xret){
+                    if ((cb = cbuf_new()) == NULL){
+                        clicon_err(OE_UNIX, errno, "cbuf_new");
+                        goto done;
+                    }
+                    cprintf(cb, "Mandatory variable %s in module %s",
+                            yang_argument_get(yc),
+                            yang_argument_get(ys_module(ycase)));
+                    if (netconf_missing_element_xml(xret, "application", yang_argument_get(yc), cbuf_get(cb)) < 0)
+                        goto done;
+                }
+            }
+        }
     }
     if (fail)
-	retval = 0;
+        retval = 0;
     else
-	retval = 1;
+        retval = 1;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -665,9 +665,9 @@ choice_mandatory_check(cxobj     *xt,
  */
 static int
 yang_ancestor_child(yang_stmt  *ys,
-		    yang_stmt  *ytop,
-		    yang_stmt **ym,
-		    yang_stmt **ymp)
+                    yang_stmt  *ytop,
+                    yang_stmt **ym,
+                    yang_stmt **ymp)
 {
     yang_stmt *y;
     yang_stmt *yprev = NULL;
@@ -675,14 +675,14 @@ yang_ancestor_child(yang_stmt  *ys,
     
     y = ys;
     while (y != NULL){
-	yp = yang_parent_get(y);
-	if (yp != NULL && yp == ytop){
-	    *ym = yprev;
-	    *ymp = y;
-	    return 1;
-	}
-	yprev = y;
-	y = yp;
+        yp = yang_parent_get(y);
+        if (yp != NULL && yp == ytop){
+            *ym = yprev;
+            *ymp = y;
+            return 1;
+        }
+        yprev = y;
+        y = yp;
     }
     *ym = NULL;
     *ymp = NULL;
@@ -715,8 +715,8 @@ yang_ancestor_child(yang_stmt  *ys,
  */
 static int
 check_mandatory_case(cxobj     *xt,
-		     yang_stmt *yc,
-		     cxobj    **xret)
+                     yang_stmt *yc,
+                     cxobj    **xret)
 {
     int retval = 0;
     cxobj     *x;
@@ -729,46 +729,46 @@ check_mandatory_case(cxobj     *xt,
     ycase = NULL;
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((y = xml_spec(x)) != NULL &&
-	    yang_ancestor_child(y, yc, &ym, &ycnew) != 0 &&
-	    yang_keyword_get(ycnew) == Y_CASE){
-	    if (ym){
-		if ((ret = yang_xml_mandatory(xt, ym)) < 0)
-		    goto done;
-		if (ret == 1){
-		if (yang_flag_get(ym, YANG_FLAG_MARK) != 0){
-		    clicon_debug(1, "%s Already marked, shouldnt happen", __FUNCTION__);
-		}
-		yang_flag_set(ym, YANG_FLAG_MARK);
-		}
-	    }
-	    if (ycase != NULL){
-		if (ycnew != ycase){ /* End of case, new case */
-		    /* Check and clear marked mandatory */
-		    if ((ret = choice_mandatory_check(xt, ycase, xret)) < 0)
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		    ycase = ycnew;
-		}
-	    }
-	    else /* New case */
-		ycase = ycnew;
-	}
-	else if (ycase != NULL){ /* End of case */
-	    /* Check and clear marked mandatory */
-	    if ((ret = choice_mandatory_check(xt, ycase, xret)) < 0)
-		goto done;
-	    if (ret == 0)
-		goto fail;
-	    ycase = NULL;
-	}
+        if ((y = xml_spec(x)) != NULL &&
+            yang_ancestor_child(y, yc, &ym, &ycnew) != 0 &&
+            yang_keyword_get(ycnew) == Y_CASE){
+            if (ym){
+                if ((ret = yang_xml_mandatory(xt, ym)) < 0)
+                    goto done;
+                if (ret == 1){
+                if (yang_flag_get(ym, YANG_FLAG_MARK) != 0){
+                    clicon_debug(1, "%s Already marked, shouldnt happen", __FUNCTION__);
+                }
+                yang_flag_set(ym, YANG_FLAG_MARK);
+                }
+            }
+            if (ycase != NULL){
+                if (ycnew != ycase){ /* End of case, new case */
+                    /* Check and clear marked mandatory */
+                    if ((ret = choice_mandatory_check(xt, ycase, xret)) < 0)
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                    ycase = ycnew;
+                }
+            }
+            else /* New case */
+                ycase = ycnew;
+        }
+        else if (ycase != NULL){ /* End of case */
+            /* Check and clear marked mandatory */
+            if ((ret = choice_mandatory_check(xt, ycase, xret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+            ycase = NULL;
+        }
     }
     if (ycase){
-	if ((ret = choice_mandatory_check(xt, ycase, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = choice_mandatory_check(xt, ycase, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     retval = 1;
  done:
@@ -788,8 +788,8 @@ check_mandatory_case(cxobj     *xt,
  */
 static int
 check_mandatory(cxobj     *xt, 
-		yang_stmt *yt,
-		cxobj    **xret)
+                yang_stmt *yt,
+                cxobj    **xret)
 
 {
     int        retval = -1;
@@ -801,79 +801,79 @@ check_mandatory(cxobj     *xt,
     int        ret;
     
     if (yt == NULL || !yang_config(yt)){
-	clicon_err(OE_YANG, EINVAL, "yt is not config true");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "yt is not config true");
+        goto done;
     }
     if (yang_keyword_get(yt) == Y_LIST){
-	if ((ret = check_list_key(xt, yt, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = check_list_key(xt, yt, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     yc = NULL;
     while ((yc = yn_each(yt, yc)) != NULL) {
-	/* Choice is more complex because of choice/case structure and possibly hierarchical */
-	if (yang_keyword_get(yc) == Y_CHOICE){ 
-	    if (yang_xml_mandatory(xt, yc)){
-		x = NULL;
-		while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-		    if ((y = xml_spec(x)) != NULL &&
-			(yp = yang_choice(y)) != NULL &&
-			yp == yc){
-			break; /* leave loop with x set */
-		    }
-		}
-		if (x == NULL){
-		    /* @see RFC7950: 15.6 Error Message for Data That Violates 
-		     * a Mandatory "choice" Statement */
-		    if (xret && netconf_missing_choice_xml(xret, xt, yang_argument_get(yc), NULL) < 0)
-			goto done;
-		    goto fail;
-		}
-	    }
-	    /*! Check mandatory nodes in case according to RFC7950 7.9.4 */
-	    if ((ret = check_mandatory_case(xt, yc, xret)) < 0)
-		goto done;
-	    if (ret == 0)
-		goto fail;
-	}
-	if ((ret = yang_xml_mandatory(xt, yc)) < 0) /* Rest of yangs are immediate children */
-	    goto done;
-	if (ret == 0)
-	    continue;
-	switch (yang_keyword_get(yc)){
-	case Y_CONTAINER:
-	case Y_ANYDATA:
-	case Y_ANYXML:
-	case Y_LEAF: 
-	    if (yang_config(yc)==0) 
-		 break;
-	    /* Find a child with the mandatory yang */
-	    x = NULL;
-	    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-		if ((y = xml_spec(x)) != NULL
-		    && y==yc)
-		    break; /* got it */
-	    }
-	    if (x == NULL){
-		if ((cb = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cb, "Mandatory variable of %s in module %s", xml_name(xt), yang_argument_get(ys_module(yc)));
-		if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(yc), cbuf_get(cb)) < 0)
-			    goto done;
-		goto fail;
-	    }
-	    break;
-	default:
-	    break;
-	} /* switch */
+        /* Choice is more complex because of choice/case structure and possibly hierarchical */
+        if (yang_keyword_get(yc) == Y_CHOICE){ 
+            if (yang_xml_mandatory(xt, yc)){
+                x = NULL;
+                while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+                    if ((y = xml_spec(x)) != NULL &&
+                        (yp = yang_choice(y)) != NULL &&
+                        yp == yc){
+                        break; /* leave loop with x set */
+                    }
+                }
+                if (x == NULL){
+                    /* @see RFC7950: 15.6 Error Message for Data That Violates 
+                     * a Mandatory "choice" Statement */
+                    if (xret && netconf_missing_choice_xml(xret, xt, yang_argument_get(yc), NULL) < 0)
+                        goto done;
+                    goto fail;
+                }
+            }
+            /*! Check mandatory nodes in case according to RFC7950 7.9.4 */
+            if ((ret = check_mandatory_case(xt, yc, xret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
+        if ((ret = yang_xml_mandatory(xt, yc)) < 0) /* Rest of yangs are immediate children */
+            goto done;
+        if (ret == 0)
+            continue;
+        switch (yang_keyword_get(yc)){
+        case Y_CONTAINER:
+        case Y_ANYDATA:
+        case Y_ANYXML:
+        case Y_LEAF: 
+            if (yang_config(yc)==0) 
+                 break;
+            /* Find a child with the mandatory yang */
+            x = NULL;
+            while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+                if ((y = xml_spec(x)) != NULL
+                    && y==yc)
+                    break; /* got it */
+            }
+            if (x == NULL){
+                if ((cb = cbuf_new()) == NULL){
+                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cb, "Mandatory variable of %s in module %s", xml_name(xt), yang_argument_get(ys_module(yc)));
+                if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(yc), cbuf_get(cb)) < 0)
+                            goto done;
+                goto fail;
+            }
+            break;
+        default:
+            break;
+        } /* switch */
     }
     retval = 1;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
  fail:
     retval = 0;
@@ -902,8 +902,8 @@ check_mandatory(cxobj     *xt,
  */
 int
 xml_yang_validate_add(clicon_handle h,
-		      cxobj        *xt, 
-		      cxobj       **xret)
+                      cxobj        *xt, 
+                      cxobj       **xret)
 {
     int          retval = -1;
     cg_var      *cv = NULL;
@@ -918,68 +918,68 @@ xml_yang_validate_add(clicon_handle h,
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
-	if ((ret = check_choice(xt, yt, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	/* Check leaf values */
-	switch (yang_keyword_get(yt)){
-	case Y_LEAF:
-	    /* fall thru */
-	case Y_LEAF_LIST:
-	    /* validate value against ranges, etc */
-	    if ((cv0 = yang_cv_get(yt)) == NULL)
-		break;
-	    if ((cv = cv_dup(cv0)) == NULL){
-		clicon_err(OE_UNIX, errno, "cv_dup");
-		goto done;
-	    }
-	    /* In the union and leafref case, value is parsed as generic REST type,
-	     * needs to be reparsed when concrete type is selected
-	     * see ys_cv_validate_union_one and ys_cv_validate_leafref
-	     */
-	    if ((body = xml_body(xt)) == NULL){
-		/* We do not allow ints to be empty. Otherwise NULL strings
-		 * are considered as "" */
-		cvtype = cv_type_get(cv);
-		if (cv_isint(cvtype) || cvtype == CGV_BOOL || cvtype == CGV_DEC64){
-		    if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), "Invalid NULL value") < 0)
-			goto done;
-		    goto fail;
-		}
-	    }
-	    else{
-		if (cv_parse1(body, cv, &reason) != 1){
-		    if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
-			goto done;
-		    goto fail;
-		}
-	    }
-	    if ((ret = ys_cv_validate(h, cv, yt, NULL, &reason)) < 0)
-		goto done;
-	    if (ret == 0){
-		if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
-		    goto done;
-		goto fail;
-	    }
-	    break;
-	default:
-	    break;
-	}
+        if ((ret = check_choice(xt, yt, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        /* Check leaf values */
+        switch (yang_keyword_get(yt)){
+        case Y_LEAF:
+            /* fall thru */
+        case Y_LEAF_LIST:
+            /* validate value against ranges, etc */
+            if ((cv0 = yang_cv_get(yt)) == NULL)
+                break;
+            if ((cv = cv_dup(cv0)) == NULL){
+                clicon_err(OE_UNIX, errno, "cv_dup");
+                goto done;
+            }
+            /* In the union and leafref case, value is parsed as generic REST type,
+             * needs to be reparsed when concrete type is selected
+             * see ys_cv_validate_union_one and ys_cv_validate_leafref
+             */
+            if ((body = xml_body(xt)) == NULL){
+                /* We do not allow ints to be empty. Otherwise NULL strings
+                 * are considered as "" */
+                cvtype = cv_type_get(cv);
+                if (cv_isint(cvtype) || cvtype == CGV_BOOL || cvtype == CGV_DEC64){
+                    if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), "Invalid NULL value") < 0)
+                        goto done;
+                    goto fail;
+                }
+            }
+            else{
+                if (cv_parse1(body, cv, &reason) != 1){
+                    if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
+                        goto done;
+                    goto fail;
+                }
+            }
+            if ((ret = ys_cv_validate(h, cv, yt, NULL, &reason)) < 0)
+                goto done;
+            if (ret == 0){
+                if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
+                    goto done;
+                goto fail;
+            }
+            break;
+        default:
+            break;
+        }
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_add(h, x, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = xml_yang_validate_add(h, x, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     retval = 1;
  done:
     if (cv)
-	cv_free(cv);
+        cv_free(cv);
     if (reason)
-	free(reason);
+        free(reason);
     return retval;
  fail:
     retval = 0;
@@ -992,7 +992,7 @@ xml_yang_validate_add(clicon_handle h,
  */
 int
 xml_yang_validate_list_key_only(cxobj        *xt, 
-				cxobj       **xret)
+                                cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *yt;   /* yang spec of xt going in */
@@ -1002,19 +1002,19 @@ xml_yang_validate_list_key_only(cxobj        *xt,
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL &&
-	yang_config(yt) != 0 &&
-	yang_keyword_get(yt) == Y_LIST){
-	if ((ret = check_list_key(xt, yt, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        yang_config(yt) != 0 &&
+        yang_keyword_get(yt) == Y_LIST){
+        if ((ret = check_list_key(xt, yt, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_list_key_only(x, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = xml_yang_validate_list_key_only(x, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     retval = 1;
  done:
@@ -1026,10 +1026,10 @@ xml_yang_validate_list_key_only(cxobj        *xt,
 
 static int
 xml_yang_validate_leaf_union(clicon_handle h,
-			     cxobj        *xt,
-			     yang_stmt    *yt,
-			     yang_stmt    *yrestype,
-			     cxobj       **xret)
+                             cxobj        *xt,
+                             yang_stmt    *yt,
+                             yang_stmt    *yrestype,
+                             cxobj       **xret)
 {
     int        retval = -1;
     int        ret;
@@ -1038,39 +1038,39 @@ xml_yang_validate_leaf_union(clicon_handle h,
     
     /* Enough that one is valid, eg returns 1,otherwise fail */
     while ((yc = yn_each(yrestype, yc)) != NULL){
-	if (yang_keyword_get(yc) != Y_TYPE)
-	    continue;
-	ret = 1; /* If not leafref/identityref it is valid on this level */
-	if (strcmp(yang_argument_get(yc), "leafref") == 0){
-	    if ((ret = validate_leafref(xt, yt, yc, &xret1)) < 0)
-		goto done;
-	}
-	else if (strcmp(yang_argument_get(yc), "identityref") == 0){
-	    if ((ret = validate_identityref(xt, yt, yc, &xret1)) < 0)
-		goto done;
-	}
-	else if (strcmp("union", yang_argument_get(yc)) == 0){
-	    if ((ret = xml_yang_validate_leaf_union(h, xt, yt, yc, &xret1)) < 0)
-		goto done;
-	}
-	if (ret == 1)
-	    break;
-	if (ret == 0 && xret1 != NULL) {
-	    /* If validation failed, save reason, reset error and continue,
-	     * save latest reason if nothing validates.
-	     */
-	    if (*xret)
-		xml_free(*xret);
-	    *xret = xret1;
-	    xret1 = NULL;
-	}
+        if (yang_keyword_get(yc) != Y_TYPE)
+            continue;
+        ret = 1; /* If not leafref/identityref it is valid on this level */
+        if (strcmp(yang_argument_get(yc), "leafref") == 0){
+            if ((ret = validate_leafref(xt, yt, yc, &xret1)) < 0)
+                goto done;
+        }
+        else if (strcmp(yang_argument_get(yc), "identityref") == 0){
+            if ((ret = validate_identityref(xt, yt, yc, &xret1)) < 0)
+                goto done;
+        }
+        else if (strcmp("union", yang_argument_get(yc)) == 0){
+            if ((ret = xml_yang_validate_leaf_union(h, xt, yt, yc, &xret1)) < 0)
+                goto done;
+        }
+        if (ret == 1)
+            break;
+        if (ret == 0 && xret1 != NULL) {
+            /* If validation failed, save reason, reset error and continue,
+             * save latest reason if nothing validates.
+             */
+            if (*xret)
+                xml_free(*xret);
+            *xret = xret1;
+            xret1 = NULL;
+        }
     }
     if (yc == NULL)
-	goto fail;
+        goto fail;
     retval = 1;
  done:
     if (xret1)
-	xml_free(xret1);
+        xml_free(xret1);
     return retval;
  fail:
     retval = 0;
@@ -1098,8 +1098,8 @@ xml_yang_validate_leaf_union(clicon_handle h,
  */
 int
 xml_yang_validate_all(clicon_handle h,
-		      cxobj        *xt, 
-		      cxobj       **xret)
+                      cxobj        *xt, 
+                      cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *yt;  /* yang node associated with xt */
@@ -1118,141 +1118,141 @@ xml_yang_validate_all(clicon_handle h,
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) == NULL){
-	if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1) {
-	    clicon_log(LOG_WARNING,
-		       "%s: %d: No YANG spec for %s, validation skipped",
-		       __FUNCTION__, __LINE__, xml_name(xt));
-	    goto ok;
-	}
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(cb, "Failed to find YANG spec of XML node: %s", xml_name(xt));
-	if ((xp = xml_parent(xt)) != NULL)
-	    cprintf(cb, " with parent: %s", xml_name(xp));
-	if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
-	    goto done;
-	if (ns)
-	    cprintf(cb, " in namespace: %s", ns);
-	if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
-	    goto done;
-	goto fail;
+        if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1) {
+            clicon_log(LOG_WARNING,
+                       "%s: %d: No YANG spec for %s, validation skipped",
+                       __FUNCTION__, __LINE__, xml_name(xt));
+            goto ok;
+        }
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "Failed to find YANG spec of XML node: %s", xml_name(xt));
+        if ((xp = xml_parent(xt)) != NULL)
+            cprintf(cb, " with parent: %s", xml_name(xp));
+        if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
+            goto done;
+        if (ns)
+            cprintf(cb, " in namespace: %s", ns);
+        if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
+            goto done;
+        goto fail;
     }
     if (yang_config(yt) != 0){
-	if (yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath) < 0)
-	    goto done;
-	if (hit && nr == 0){
-	    if ((cb = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    cprintf(cb, "Failed WHEN condition of %s in module %s (WHEN xpath is %s)",
-		    xml_name(xt),
-		    yang_argument_get(ys_module(yt)),
-		    xpath);
-	    if (xret && netconf_operation_failed_xml(xret, "application", 
-						     cbuf_get(cb)) < 0)
-		goto done;
-	    goto fail;
-	}
-	if ((ret = check_mandatory(xt, yt, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	/* Node-specific validation */
-	switch (yang_keyword_get(yt)){
-	case Y_ANYXML:
-	case Y_ANYDATA:
-	    goto ok;
-	    break;
-	case Y_LEAF:
-	    /* fall thru */
-	case Y_LEAF_LIST:
-	    /* Special case if leaf is leafref, then first check against
-	       current xml tree
- 	    */
-	    /* Get base type yc */
-	    if (yang_type_get(yt, NULL, &yc, NULL, NULL, NULL, NULL, NULL) < 0)
-		goto done;
-	    if (strcmp(yang_argument_get(yc), "leafref") == 0){
-		if ((ret = validate_leafref(xt, yt, yc, xret)) < 0)
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-		}
-	    else if (strcmp(yang_argument_get(yc), "identityref") == 0){
-		if ((ret = validate_identityref(xt, yt, yc, xret)) < 0)
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-	    }
-	    else if (strcmp("union", yang_argument_get(yc)) == 0){
-		if ((ret = xml_yang_validate_leaf_union(h, xt, yt, yc, xret)) < 0)
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-	    }
-	    break;
-	default:
-	    break;
-	}
-	/* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
-	 * XXX. use yang path instead? */
-	yc = NULL;
-	while ((yc = yn_each(yt, yc)) != NULL) {
-	    if (yang_keyword_get(yc) != Y_MUST)
-		continue;
-	    xpath = yang_argument_get(yc); /* "must" has xpath argument */
-	    /* the context node is the node in the accessible tree for
-	     * which the "must" statement is defined. 
-	     * The set of namespace declarations is the set of all "import" statements' 
-	     */
+        if (yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath) < 0)
+            goto done;
+        if (hit && nr == 0){
+            if ((cb = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cb, "Failed WHEN condition of %s in module %s (WHEN xpath is %s)",
+                    xml_name(xt),
+                    yang_argument_get(ys_module(yt)),
+                    xpath);
+            if (xret && netconf_operation_failed_xml(xret, "application", 
+                                                     cbuf_get(cb)) < 0)
+                goto done;
+            goto fail;
+        }
+        if ((ret = check_mandatory(xt, yt, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        /* Node-specific validation */
+        switch (yang_keyword_get(yt)){
+        case Y_ANYXML:
+        case Y_ANYDATA:
+            goto ok;
+            break;
+        case Y_LEAF:
+            /* fall thru */
+        case Y_LEAF_LIST:
+            /* Special case if leaf is leafref, then first check against
+               current xml tree
+            */
+            /* Get base type yc */
+            if (yang_type_get(yt, NULL, &yc, NULL, NULL, NULL, NULL, NULL) < 0)
+                goto done;
+            if (strcmp(yang_argument_get(yc), "leafref") == 0){
+                if ((ret = validate_leafref(xt, yt, yc, xret)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+                }
+            else if (strcmp(yang_argument_get(yc), "identityref") == 0){
+                if ((ret = validate_identityref(xt, yt, yc, xret)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+            }
+            else if (strcmp("union", yang_argument_get(yc)) == 0){
+                if ((ret = xml_yang_validate_leaf_union(h, xt, yt, yc, xret)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+            }
+            break;
+        default:
+            break;
+        }
+        /* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
+         * XXX. use yang path instead? */
+        yc = NULL;
+        while ((yc = yn_each(yt, yc)) != NULL) {
+            if (yang_keyword_get(yc) != Y_MUST)
+                continue;
+            xpath = yang_argument_get(yc); /* "must" has xpath argument */
+            /* the context node is the node in the accessible tree for
+             * which the "must" statement is defined. 
+             * The set of namespace declarations is the set of all "import" statements' 
+             */
            if (xml_nsctx_yang(yc, &nsc) < 0)
                goto done;
-	    if ((nr = xpath_vec_bool(xt, nsc, "%s", xpath)) < 0)
-		goto done;
-	    if (!nr){
-		ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
-		if ((cb = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cb, "Failed MUST xpath '%s' of '%s' in module %s",
-			xpath, xml_name(xt),  yang_argument_get(ys_module(yt)));
-		if (xret && netconf_operation_failed_xml(xret, "application", 
-						 ye?yang_argument_get(ye):cbuf_get(cb)) < 0)
-		    goto done;
-		goto fail;
-	    }
-	    if (nsc){
-		xml_nsctx_free(nsc);
-		nsc = NULL;
-	    }
-	}
+            if ((nr = xpath_vec_bool(xt, nsc, "%s", xpath)) < 0)
+                goto done;
+            if (!nr){
+                ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
+                if ((cb = cbuf_new()) == NULL){
+                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cb, "Failed MUST xpath '%s' of '%s' in module %s",
+                        xpath, xml_name(xt),  yang_argument_get(ys_module(yt)));
+                if (xret && netconf_operation_failed_xml(xret, "application", 
+                                                 ye?yang_argument_get(ye):cbuf_get(cb)) < 0)
+                    goto done;
+                goto fail;
+            }
+            if (nsc){
+                xml_nsctx_free(nsc);
+                nsc = NULL;
+            }
+        }
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_all(h, x, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = xml_yang_validate_all(h, x, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     /* Check unique and min-max after choice test for example*/
     if (yang_config(yt) != 0){
-	/* Checks if next level contains any unique list constraints */
-	if ((ret = xml_yang_minmax_recurse(xt, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        /* Checks if next level contains any unique list constraints */
+        if ((ret = xml_yang_minmax_recurse(xt, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
  ok:
     retval = 1;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     return retval;
  fail:
     retval = 0;
@@ -1267,19 +1267,19 @@ xml_yang_validate_all(clicon_handle h,
  */
 int
 xml_yang_validate_all_top(clicon_handle h,
-			  cxobj        *xt, 
-			  cxobj       **xret)
+                          cxobj        *xt, 
+                          cxobj       **xret)
 {
     int    ret;
     cxobj *x;
 
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_yang_validate_all(h, x, xret)) < 1)
-	    return ret;
+        if ((ret = xml_yang_validate_all(h, x, xret)) < 1)
+            return ret;
     }
     if ((ret = xml_yang_minmax_recurse(xt, xret)) < 1)
-	return ret;
+        return ret;
     return 1;
 }
 
@@ -1291,8 +1291,8 @@ xml_yang_validate_all_top(clicon_handle h,
  */
 int
 rpc_reply_check(clicon_handle h,
-		char         *rpcname,
-		cbuf         *cbret)
+                char         *rpcname,
+                cbuf         *cbret)
 {
     int        retval = -1;
     cxobj     *x = NULL;
@@ -1301,45 +1301,45 @@ rpc_reply_check(clicon_handle h,
     yang_stmt *yspec;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec9");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "No yang spec9");
+        goto done;
     }
     /* Validate outgoing RPC */
     if ((ret = clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, &x, NULL)) < 0)
-	goto done;
+        goto done;
     if (xml_child_nr(x) == 0){
-	cbuf_reset(cbret);
-	if (netconf_operation_failed(cbret, "application",
-				     "Internal error: Outgoing reply is empty")< 0)
-	    goto done;
-	goto fail;
+        cbuf_reset(cbret);
+        if (netconf_operation_failed(cbret, "application",
+                                     "Internal error: Outgoing reply is empty")< 0)
+            goto done;
+        goto fail;
     }
     if (xml_rootchild(x, 0, &x) < 0)
-	goto done;
+        goto done;
     if ((ret = xml_bind_yang_rpc_reply(x, rpcname, yspec, &xret)) < 0)
-	goto done;
+        goto done;
     if (ret == 0){
-	clicon_debug(1, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
-	cbuf_reset(cbret);
-	if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
-	    goto done;
-	goto fail;
+        clicon_debug(1, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
+        cbuf_reset(cbret);
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+            goto done;
+        goto fail;
     }
     if ((ret = xml_yang_validate_rpc_reply(h, x, &xret)) < 0)
-	goto done;
+        goto done;
     if (ret == 0){
-	clicon_debug(1, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
-	cbuf_reset(cbret);
-	if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
-	    goto done;
-	goto fail;
+        clicon_debug(1, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
+        cbuf_reset(cbret);
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+            goto done;
+        goto fail;
     }
     retval = 1;
  done:
     if (x)
-	xml_free(x);
+        xml_free(x);
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     return retval;
  fail:
     retval = 0;

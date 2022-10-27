@@ -68,11 +68,11 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options] # input yang spec on stdin\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \tDebug\n"
-	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n",
-	    argv0);
+            "\t-D <level> \tDebug\n"
+            "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n",
+            argv0);
     exit(0);
 }
 
@@ -87,34 +87,34 @@ main(int argc, char **argv)
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, "hD:l:")) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv[0]);
-	    break;
-    	case 'D':
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(argv[0]);
-	    break;
-	case 'l': /* Log destination: s|e|o|f */
-	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
-		usage(argv[0]);
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv[0]);
+            break;
+        case 'D':
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(argv[0]);
+            break;
+        case 'l': /* Log destination: s|e|o|f */
+            if ((logdst = clicon_log_opt(optarg[0])) < 0)
+                usage(argv[0]);
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     clicon_log_init("clixon_util_yang", dbg?LOG_DEBUG:LOG_INFO, logdst);
     clicon_debug_init(dbg, NULL);
     if ((yspec = yspec_new()) == NULL)
-	goto done;
+        goto done;
     if (yang_parse_file(stdin, "yang test", yspec) == NULL){
-	fprintf(stderr, "yang parse error %s\n", clicon_err_reason);
-	return -1;
+        fprintf(stderr, "yang parse error %s\n", clicon_err_reason);
+        return -1;
     }
     yang_print(stdout, yspec);
  done:
     if (yspec)
-	ys_free(yspec);
+        ys_free(yspec);
      return 0;
 }
 

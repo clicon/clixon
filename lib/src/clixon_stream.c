@@ -97,18 +97,18 @@
  */
 event_stream_t *
 stream_find(clicon_handle h,
-	    const char   *name)
+            const char   *name)
 {
     event_stream_t *es0;
     event_stream_t *es = NULL;
 
     es0 = clicon_stream(h);
     if ((es = es0) != NULL)
-	do {
-	    if (strcmp(name, es->es_name)==0)
-		return es;
-	    es = NEXTQ(struct event_stream *, es);
-	} while (es && es != es0);
+        do {
+            if (strcmp(name, es->es_name)==0)
+                return es;
+            es = NEXTQ(struct event_stream *, es);
+        } while (es && es != es0);
     return NULL;
 }
 
@@ -121,32 +121,32 @@ stream_find(clicon_handle h,
  */
 int
 stream_add(clicon_handle   h,
-	   const char     *name, 
-	   const char     *description,
-	   const int       replay_enabled,
-	   struct timeval *retention) 
+           const char     *name, 
+           const char     *description,
+           const int       replay_enabled,
+           struct timeval *retention) 
 {
     int             retval = -1;
     event_stream_t *es;
 
     if ((es = stream_find(h, name)) != NULL)
-	goto ok;
+        goto ok;
     if ((es = malloc(sizeof(event_stream_t))) == NULL){
-	clicon_err(OE_XML, errno, "malloc");
-	goto done;
+        clicon_err(OE_XML, errno, "malloc");
+        goto done;
     }
     memset(es, 0, sizeof(event_stream_t));
     if ((es->es_name = strdup(name)) == NULL){
-	clicon_err(OE_XML, errno, "strdup");
-	goto done;
+        clicon_err(OE_XML, errno, "strdup");
+        goto done;
     }
     if ((es->es_description = strdup(description)) == NULL){
-	clicon_err(OE_XML, errno, "strdup");
-	goto done;
+        clicon_err(OE_XML, errno, "strdup");
+        goto done;
     }
     es->es_replay_enabled = replay_enabled;
     if (retention)
-	es->es_retention = *retention;
+        es->es_retention = *retention;
     clicon_stream_append(h, es);
  ok:
     retval = 0;
@@ -160,7 +160,7 @@ stream_add(clicon_handle   h,
  */
 int
 stream_delete_all(clicon_handle h,
-		  int           force)
+                  int           force)
 {
     struct stream_replay *r;
     struct stream_subscription *ss;
@@ -168,21 +168,21 @@ stream_delete_all(clicon_handle h,
     event_stream_t       *head = clicon_stream(h);
     
     while ((es = clicon_stream(h)) != NULL){
-	DELQ(es, head, event_stream_t *);
-	clicon_stream_set(h, head);
-	if (es->es_name)
-	    free(es->es_name);
-	if (es->es_description)
-	    free(es->es_description);
-	while ((ss = es->es_subscription) != NULL)
-	    stream_ss_rm(h, es, ss, force); /* XXX in some cases leaks memory due to DONT clause in stream_ss_rm() */
-	while ((r = es->es_replay) != NULL){
-	    DELQ(r, es->es_replay, struct stream_replay *);
-	    if (r->r_xml)
-		xml_free(r->r_xml);
-	    free(r);
-	}
-	free(es);
+        DELQ(es, head, event_stream_t *);
+        clicon_stream_set(h, head);
+        if (es->es_name)
+            free(es->es_name);
+        if (es->es_description)
+            free(es->es_description);
+        while ((ss = es->es_subscription) != NULL)
+            stream_ss_rm(h, es, ss, force); /* XXX in some cases leaks memory due to DONT clause in stream_ss_rm() */
+        while ((r = es->es_replay) != NULL){
+            DELQ(r, es->es_replay, struct stream_replay *);
+            if (r->r_xml)
+                xml_free(r->r_xml);
+            free(r);
+        }
+        free(es);
     }
     return 0;
 }
@@ -196,8 +196,8 @@ stream_delete_all(clicon_handle h,
  */ 
 int
 stream_get_xml(clicon_handle h,
-	       int           access,
-	       cbuf         *cb)
+               int           access,
+               cbuf         *cb)
 {
     event_stream_t *es = NULL;
     char           *url_prefix;
@@ -205,25 +205,25 @@ stream_get_xml(clicon_handle h,
 
     cprintf(cb, "<streams>");
     if ((es = clicon_stream(h)) != NULL){
-	do {
-	    cprintf(cb, "<stream>");
-	    cprintf(cb, "<name>%s</name>", es->es_name);
-	    if (es->es_description)
-		cprintf(cb, "<description>%s</description>", es->es_description);
-	    cprintf(cb, "<replay-support>%s</replay-support>",
-		    es->es_replay_enabled?"true":"false");
-	    if (access){
-		cprintf(cb, "<access>");
-		cprintf(cb, "<encoding>xml</encoding>");
-		url_prefix = clicon_option_str(h, "CLICON_STREAM_URL");
-		stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
-		cprintf(cb, "<location>%s/%s/%s</location>", 
-			url_prefix, stream_path, es->es_name);
-		cprintf(cb, "</access>");
-	    }
-	    cprintf(cb, "</stream>");
-	    es = NEXTQ(struct event_stream *, es);
-	} while (es && es != clicon_stream(h));
+        do {
+            cprintf(cb, "<stream>");
+            cprintf(cb, "<name>%s</name>", es->es_name);
+            if (es->es_description)
+                cprintf(cb, "<description>%s</description>", es->es_description);
+            cprintf(cb, "<replay-support>%s</replay-support>",
+                    es->es_replay_enabled?"true":"false");
+            if (access){
+                cprintf(cb, "<access>");
+                cprintf(cb, "<encoding>xml</encoding>");
+                url_prefix = clicon_option_str(h, "CLICON_STREAM_URL");
+                stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
+                cprintf(cb, "<location>%s/%s/%s</location>", 
+                        url_prefix, stream_path, es->es_name);
+                cprintf(cb, "</access>");
+            }
+            cprintf(cb, "</stream>");
+            es = NEXTQ(struct event_stream *, es);
+        } while (es && es != clicon_stream(h));
     }
     cprintf(cb, "</streams>");
     return 0;
@@ -236,7 +236,7 @@ stream_get_xml(clicon_handle h,
  */
 int
 stream_timer_setup(int   fd,
-		   void *arg)
+                   void *arg)
 {
     int                          retval = -1;
     clicon_handle                h = (clicon_handle)arg;
@@ -261,47 +261,47 @@ stream_timer_setup(int   fd,
      * 2) Go throughreplay buffer and remove entries with passed retention time
      */
     if ((es = clicon_stream(h)) != NULL){
-	do {
+        do {
    /* 1) Go through subscriptions, if stop-time and its past, remove it */
-	    if ((ss = es->es_subscription) != NULL)
-		do {
-		    if (timerisset(&ss->ss_stoptime) && timercmp(&ss->ss_stoptime, &now, <)){
-			ss1 = NEXTQ(struct stream_subscription *, ss);
-			/* Signal to remove stream for upper levels */
-			if (stream_ss_rm(h, es, ss, 0) < 0)
-			    goto done;
-			ss = ss1;
-		    }
-		    else
-			ss = NEXTQ(struct stream_subscription *, ss);
-		} while (ss && ss != es->es_subscription);
+            if ((ss = es->es_subscription) != NULL)
+                do {
+                    if (timerisset(&ss->ss_stoptime) && timercmp(&ss->ss_stoptime, &now, <)){
+                        ss1 = NEXTQ(struct stream_subscription *, ss);
+                        /* Signal to remove stream for upper levels */
+                        if (stream_ss_rm(h, es, ss, 0) < 0)
+                            goto done;
+                        ss = ss1;
+                    }
+                    else
+                        ss = NEXTQ(struct stream_subscription *, ss);
+                } while (ss && ss != es->es_subscription);
   /* 2) Go throughreplay buffer and remove entries with passed retention time */
-	    if (timerisset(&es->es_retention) &&
-		(r = es->es_replay) != NULL){
-		timersub(&now, &es->es_retention, &tret);
-		do {
-		    if (timercmp(&r->r_tv, &tret, <)){
-			r1 = NEXTQ(struct stream_replay *, r);
-			DELQ(r, es->es_replay, struct stream_replay *);
-			if (r->r_xml)
-			    xml_free(r->r_xml);
-			free(r);
-			r = r1;
-		    }
-		    else
-			r = NEXTQ(struct stream_replay *, r);
-		} while (r && r!=es->es_replay);
-	    }
-	    es = NEXTQ(struct event_stream *, es);
-	} while (es && es != clicon_stream(h));
+            if (timerisset(&es->es_retention) &&
+                (r = es->es_replay) != NULL){
+                timersub(&now, &es->es_retention, &tret);
+                do {
+                    if (timercmp(&r->r_tv, &tret, <)){
+                        r1 = NEXTQ(struct stream_replay *, r);
+                        DELQ(r, es->es_replay, struct stream_replay *);
+                        if (r->r_xml)
+                            xml_free(r->r_xml);
+                        free(r);
+                        r = r1;
+                    }
+                    else
+                        r = NEXTQ(struct stream_replay *, r);
+                } while (r && r!=es->es_replay);
+            }
+            es = NEXTQ(struct event_stream *, es);
+        } while (es && es != clicon_stream(h));
     }
     /* Initiate new timer */
     timeradd(&now, &t1, &t);
     if (clixon_event_reg_timeout(t,
-			  stream_timer_setup, /* this function */
-			  h,                  /* clicon handle */
-			  "stream timer setup") < 0)
-	goto done;
+                          stream_timer_setup, /* this function */
+                          h,                  /* clicon handle */
+                          "stream timer setup") < 0)
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -331,37 +331,37 @@ stream_del()
  */
 struct stream_subscription *
 stream_ss_add(clicon_handle     h,
-	      char             *stream,
-	      char             *xpath,
-	      struct timeval   *starttime,
-	      struct timeval   *stoptime,
-	      stream_fn_t       fn,
-	      void             *arg)
+              char             *stream,
+              char             *xpath,
+              struct timeval   *starttime,
+              struct timeval   *stoptime,
+              stream_fn_t       fn,
+              void             *arg)
 {
     event_stream_t             *es;
     struct stream_subscription *ss = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((es = stream_find(h, stream)) == NULL){
-	clicon_err(OE_CFG, ENOENT, "Stream %s not found", stream);
-	goto done;
+        clicon_err(OE_CFG, ENOENT, "Stream %s not found", stream);
+        goto done;
     }
     if ((ss = malloc(sizeof(*ss))) == NULL){
-	clicon_err(OE_CFG, errno, "malloc");
-	goto done;
+        clicon_err(OE_CFG, errno, "malloc");
+        goto done;
     }
     memset(ss, 0, sizeof(*ss));
     if ((ss->ss_stream = strdup(stream)) == NULL){
-	clicon_err(OE_CFG, errno, "strdup");
-	goto done;
+        clicon_err(OE_CFG, errno, "strdup");
+        goto done;
     }
     if (stoptime)
-	ss->ss_stoptime = *stoptime;
+        ss->ss_stoptime = *stoptime;
     if (starttime)
-	ss->ss_starttime = *starttime;
+        ss->ss_starttime = *starttime;
     if (xpath && (ss->ss_xpath = strdup(xpath)) == NULL){
-	clicon_err(OE_CFG, errno, "strdup");
-	goto done;
+        clicon_err(OE_CFG, errno, "strdup");
+        goto done;
     }
     ss->ss_fn     = fn;
     ss->ss_arg    = arg;
@@ -369,7 +369,7 @@ stream_ss_add(clicon_handle     h,
     return ss;
   done:
     if (ss)
-	free(ss);
+        free(ss);
     return NULL;
 }
 
@@ -383,20 +383,20 @@ stream_ss_add(clicon_handle     h,
  */
 int
 stream_ss_rm(clicon_handle                h,
-	     event_stream_t              *es,
-	     struct stream_subscription  *ss,
-	     int                          force)
+             event_stream_t              *es,
+             struct stream_subscription  *ss,
+             int                          force)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     DELQ(ss, es->es_subscription, struct stream_subscription *);
     /* Remove from upper layers - close socket etc. */
     (*ss->ss_fn)(h, 1, NULL, ss->ss_arg);
     if (force){
-	if (ss->ss_stream)
-	    free(ss->ss_stream);
-	if (ss->ss_xpath)
-	    free(ss->ss_xpath);
-	free(ss);
+        if (ss->ss_stream)
+            free(ss->ss_stream);
+        if (ss->ss_xpath)
+            free(ss->ss_xpath);
+        free(ss);
     }
     clicon_debug(1, "%s retval: 0", __FUNCTION__);
     return 0;
@@ -411,17 +411,17 @@ stream_ss_rm(clicon_handle                h,
  */
 struct stream_subscription *
 stream_ss_find(event_stream_t   *es,
-	       stream_fn_t       fn,
-	       void             *arg)
+               stream_fn_t       fn,
+               void             *arg)
 {
     struct stream_subscription  *ss;
 
     if ((ss = es->es_subscription) != NULL)
-	do {
-	    if (fn == ss->ss_fn && arg == ss->ss_arg)
-		return ss;
-	    ss = NEXTQ(struct stream_subscription *, ss);
-	} while (ss && ss != es->es_subscription);
+        do {
+            if (fn == ss->ss_fn && arg == ss->ss_arg)
+                return ss;
+            ss = NEXTQ(struct stream_subscription *, ss);
+        } while (ss && ss != es->es_subscription);
     return NULL;
 }
 
@@ -433,22 +433,22 @@ stream_ss_find(event_stream_t   *es,
  */
 int
 stream_ss_delete_all(clicon_handle     h,
-		     stream_fn_t       fn,
-		     void             *arg)
+                     stream_fn_t       fn,
+                     void             *arg)
 {
     int                          retval = -1;
     event_stream_t              *es;
     struct stream_subscription  *ss;
 
     if ((es = clicon_stream(h)) != NULL){
-	do {
-	    if ((ss = stream_ss_find(es, fn, arg)) != NULL){
-		if (stream_ss_rm(h, es, ss, 1) < 0)
-		    goto done;
-	    }
-	    es = NEXTQ(struct event_stream *, es);
-	} while (es && es != clicon_stream(h));
-    }	    
+        do {
+            if ((ss = stream_ss_find(es, fn, arg)) != NULL){
+                if (stream_ss_rm(h, es, ss, 1) < 0)
+                    goto done;
+            }
+            es = NEXTQ(struct event_stream *, es);
+        } while (es && es != clicon_stream(h));
+    }       
     retval = 0;
  done:
     return retval;
@@ -459,24 +459,24 @@ stream_ss_delete_all(clicon_handle     h,
  */
 int
 stream_ss_delete(clicon_handle     h,
-		 char             *name,
-		 stream_fn_t       fn,
-		 void             *arg)
+                 char             *name,
+                 stream_fn_t       fn,
+                 void             *arg)
 {
     int                          retval = -1;
     event_stream_t              *es;
     struct stream_subscription  *ss;
 
     if ((es = clicon_stream(h)) != NULL){
-	do {
-	    if (strcmp(name, es->es_name)==0)
-		if ((ss = stream_ss_find(es, fn, arg)) != NULL){
-		    if (stream_ss_rm(h, es, ss, 0) < 0)
-			goto done;
-		}
-	    es = NEXTQ(struct event_stream *, es);
-	} while (es && es != clicon_stream(h));
-    }	    
+        do {
+            if (strcmp(name, es->es_name)==0)
+                if ((ss = stream_ss_find(es, fn, arg)) != NULL){
+                    if (stream_ss_rm(h, es, ss, 0) < 0)
+                        goto done;
+                }
+            es = NEXTQ(struct event_stream *, es);
+        } while (es && es != clicon_stream(h));
+    }       
     retval = 0;
  done:
     return retval;
@@ -494,9 +494,9 @@ stream_ss_delete(clicon_handle     h,
  */
 static int
 stream_notify1(clicon_handle   h, 
-	       event_stream_t *es,
-	       struct timeval *tv,
-	       cxobj          *xevent)
+               event_stream_t *es,
+               struct timeval *tv,
+               cxobj          *xevent)
 {
     int                         retval = -1;
     struct stream_subscription *ss;
@@ -504,25 +504,25 @@ stream_notify1(clicon_handle   h,
     clicon_debug(2, "%s", __FUNCTION__);
     /* Go thru all subscriptions and find matches */
     if ((ss = es->es_subscription) != NULL)
-	do {
-	    if (timerisset(&ss->ss_stoptime) && /* stoptime has passed */
-		timercmp(&ss->ss_stoptime, tv, <)){
-		struct stream_subscription *ss1;
-		ss1 = NEXTQ(struct stream_subscription *, ss);
-		/* Signal to remove stream for upper levels */
-		if (stream_ss_rm(h, es, ss, 1) < 0)
-		    goto done;
-		ss = ss1;
-	    }
-	    else{  /* xpath match */
-		if (ss->ss_xpath == NULL ||
-		    strlen(ss->ss_xpath)==0 ||
-		    xpath_first(xevent, NULL, "%s", ss->ss_xpath) != NULL)
-		    if ((*ss->ss_fn)(h, 0, xevent, ss->ss_arg) < 0)
-			goto done;
-		ss = NEXTQ(struct stream_subscription *, ss);
-	    }
-	} while (es->es_subscription && ss != es->es_subscription);
+        do {
+            if (timerisset(&ss->ss_stoptime) && /* stoptime has passed */
+                timercmp(&ss->ss_stoptime, tv, <)){
+                struct stream_subscription *ss1;
+                ss1 = NEXTQ(struct stream_subscription *, ss);
+                /* Signal to remove stream for upper levels */
+                if (stream_ss_rm(h, es, ss, 1) < 0)
+                    goto done;
+                ss = ss1;
+            }
+            else{  /* xpath match */
+                if (ss->ss_xpath == NULL ||
+                    strlen(ss->ss_xpath)==0 ||
+                    xpath_first(xevent, NULL, "%s", ss->ss_xpath) != NULL)
+                    if ((*ss->ss_fn)(h, 0, xevent, ss->ss_arg) < 0)
+                        goto done;
+                ss = NEXTQ(struct stream_subscription *, ss);
+            }
+        } while (es->es_subscription && ss != es->es_subscription);
     retval = 0;
   done:
     return retval;
@@ -542,8 +542,8 @@ stream_notify1(clicon_handle   h,
  */
 int
 stream_notify(clicon_handle h, 
-	      char         *stream, 
-	      const char   *event, ...)
+              char         *stream, 
+              const char   *event, ...)
 {
     int        retval = -1;
     va_list    args;
@@ -558,54 +558,54 @@ stream_notify(clicon_handle h,
 
     clicon_debug(2, "%s", __FUNCTION__);
     if ((es = stream_find(h, stream)) == NULL)
-	goto ok;
+        goto ok;
     va_start(args, event);
     len = vsnprintf(NULL, 0, event, args) + 1;
     va_end(args);
     if ((str = malloc(len)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(str, 0, len);
     va_start(args, event);
     len = vsnprintf(str, len, event, args) + 1;
     va_end(args);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, 0, "No yang spec");
-	goto done;
+        clicon_err(OE_YANG, 0, "No yang spec");
+        goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     gettimeofday(&tv, NULL);
     if (time2str(tv, timestr, sizeof(timestr)) < 0){
-	clicon_err(OE_UNIX, errno, "time2str");
-	goto done;
+        clicon_err(OE_UNIX, errno, "time2str");
+        goto done;
     }
     /* From RFC5277 */
     cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>%s</notification>",
-	    NOTIFICATION_RFC5277_NAMESPACE, timestr, str);
+            NOTIFICATION_RFC5277_NAMESPACE, timestr, str);
     if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &xev, NULL) < 0)
-	goto done;
+        goto done;
     if (xml_rootchild(xev, 0, &xev) < 0)
-	goto done;
+        goto done;
     if (stream_notify1(h, es, &tv, xev) < 0)
-	goto done;
+        goto done;
     if (es->es_replay_enabled){
-	if (stream_replay_add(es, &tv, xev) < 0)
-	    goto done;
-	xev = NULL; /* xml stored in replay_add and should not be freed */
+        if (stream_replay_add(es, &tv, xev) < 0)
+            goto done;
+        xev = NULL; /* xml stored in replay_add and should not be freed */
     }
  ok:
     retval = 0;
   done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (xev)
-	xml_free(xev);
+        xml_free(xev);
     if (str)
-	free(str);
+        free(str);
     return retval;
 }
 
@@ -619,8 +619,8 @@ stream_notify(clicon_handle h,
  */
 int
 stream_notify_xml(clicon_handle h, 
-		  char         *stream, 
-		  cxobj        *xml)
+                  char         *stream, 
+                  cxobj        *xml)
 {
     int        retval = -1;
     cxobj     *xev = NULL;
@@ -634,47 +634,47 @@ stream_notify_xml(clicon_handle h,
 
     clicon_debug(2, "%s", __FUNCTION__);
     if ((es = stream_find(h, stream)) == NULL)
-	goto ok;
+        goto ok;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, 0, "No yang spec");
-	goto done;
+        clicon_err(OE_YANG, 0, "No yang spec");
+        goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     gettimeofday(&tv, NULL);
     if (time2str(tv, timestr, sizeof(timestr)) < 0){
-	clicon_err(OE_UNIX, errno, "time2str");
-	goto done;
+        clicon_err(OE_UNIX, errno, "time2str");
+        goto done;
     }
     cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>NULL</notification>",
-	    NOTIFICATION_RFC5277_NAMESPACE,
-	    timestr); /* XXX str is always NULL */
+            NOTIFICATION_RFC5277_NAMESPACE,
+            timestr); /* XXX str is always NULL */
     if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, yspec, &xev, NULL) < 0)
-	goto done;
+        goto done;
     if (xml_rootchild(xev, 0, &xev) < 0)
-	goto done;
+        goto done;
     if ((xml2 = xml_dup(xml)) == NULL)
-	goto done;
+        goto done;
     if (xml_addsub(xev, xml2) < 0)
-	goto done;
+        goto done;
     if (stream_notify1(h, es, &tv, xev) < 0)
-	goto done;
+        goto done;
     if (es->es_replay_enabled){
-	if (stream_replay_add(es, &tv, xev) < 0)
-	    goto done;
-	xev = NULL; /* xml stored in replay_add and should not be freed */
+        if (stream_replay_add(es, &tv, xev) < 0)
+            goto done;
+        xev = NULL; /* xml stored in replay_add and should not be freed */
     }
  ok:
     retval = 0;
   done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (xev)
-	xml_free(xev);
+        xml_free(xev);
     if (str)
-	free(str);
+        free(str);
     return retval;
 }
 
@@ -701,41 +701,41 @@ stream_notify_xml(clicon_handle h,
          the future are valid.  This parameter is of type dateTime and
          compliant to [RFC3339].  Implementations must support time
          zones.
-	 
+         
  * Assume no future sample timestamps.
  */
 static int
 stream_replay_notify(clicon_handle               h,
-		     event_stream_t             *es,
-		     struct stream_subscription *ss)
+                     event_stream_t             *es,
+                     struct stream_subscription *ss)
 {
     int                   retval = -1;
     struct stream_replay *r;
 
     /* If <startTime> is not present, this is not a replay */
     if (!timerisset(&ss->ss_starttime))
-	goto ok;
+        goto ok;
     if (!es->es_replay_enabled)
-	goto ok;
+        goto ok;
     /* Get replay linked list */
     if ((r = es->es_replay) == NULL)
-	goto ok;
+        goto ok;
     /* First loop to skip until start */
     do {
-	if (timercmp(&r->r_tv, &ss->ss_starttime, >=))
-	    break;
-	r = NEXTQ(struct stream_replay *, r);
+        if (timercmp(&r->r_tv, &ss->ss_starttime, >=))
+            break;
+        r = NEXTQ(struct stream_replay *, r);
     } while (r && r!=es->es_replay);
     if (r == NULL)
-	goto ok; /* No samples to replay */
+        goto ok; /* No samples to replay */
     /* Then notify until stop */
     do {
-	if (timerisset(&ss->ss_stoptime) &&
-	    timercmp(&r->r_tv, &ss->ss_stoptime, >))
-	    break;
-	if ((*ss->ss_fn)(h, 0, r->r_xml, ss->ss_arg) < 0)
-	    goto done;
-	r = NEXTQ(struct stream_replay *, r);
+        if (timerisset(&ss->ss_stoptime) &&
+            timercmp(&r->r_tv, &ss->ss_stoptime, >))
+            break;
+        if ((*ss->ss_fn)(h, 0, r->r_xml, ss->ss_arg) < 0)
+            goto done;
+        r = NEXTQ(struct stream_replay *, r);
     } while (r && r!=es->es_replay);
  ok:
     retval = 0;
@@ -750,15 +750,15 @@ stream_replay_notify(clicon_handle               h,
  */
 int
 stream_replay_add(event_stream_t *es,
-		  struct timeval *tv,
-		  cxobj          *xv)
+                  struct timeval *tv,
+                  cxobj          *xv)
 {
     int                   retval = -1;
     struct stream_replay *new;
 
     if ((new = malloc(sizeof *new)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(new, 0, (sizeof *new));
     new->r_tv = *tv;
@@ -785,7 +785,7 @@ struct replay_arg{
  */
 static int
 stream_replay_cb(int   fd,
-		 void *arg)
+                 void *arg)
 {
     int                         retval = -1;
     struct replay_arg          *ra= (struct replay_arg*)arg;
@@ -793,22 +793,22 @@ stream_replay_cb(int   fd,
     struct stream_subscription *ss;
     
     if (ra == NULL)
-	goto ok;
+        goto ok;
     if (ra->ra_stream == NULL)
-	goto ok;
+        goto ok;
     if ((es = stream_find(ra->ra_h, ra->ra_stream)) == NULL)
-	goto ok;
+        goto ok;
     if ((ss = stream_ss_find(es, ra->ra_fn, ra->ra_arg)) == NULL)
-	goto ok;
+        goto ok;
     if (stream_replay_notify(ra->ra_h, es, ss) < 0)
-	goto done;
+        goto done;
  ok:
     retval = 0;
  done:
     if (ra){
-	if (ra->ra_stream)
-	    free(ra->ra_stream);
-	free(ra);
+        if (ra->ra_stream)
+            free(ra->ra_stream);
+        free(ra);
     }
     return retval;
 }
@@ -822,30 +822,30 @@ stream_replay_cb(int   fd,
  */
 int
 stream_replay_trigger(clicon_handle h,
-		      char         *stream,
-		      stream_fn_t   fn,
-		      void         *arg)
+                      char         *stream,
+                      stream_fn_t   fn,
+                      void         *arg)
 {
     int retval = -1;
     struct timeval now;
     struct replay_arg *ra;
 
     if ((ra = malloc(sizeof(*ra))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(ra, 0, sizeof(*ra));
     ra->ra_h = h;
     if ((ra->ra_stream = strdup(stream)) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	goto done;
+        clicon_err(OE_UNIX, errno, "strdup");
+        goto done;
     }
     ra->ra_fn = fn;
     ra->ra_arg = arg;
     gettimeofday(&now, NULL);
     if (clixon_event_reg_timeout(now, stream_replay_cb, ra,
-			  "create-subscribtion stream replay") < 0)
-	goto done;
+                          "create-subscribtion stream replay") < 0)
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -874,16 +874,16 @@ struct curlbuf{
  */
 static size_t
 curl_get_cb(void *ptr, 
-	    size_t size, 
-	    size_t nmemb, 
-	    void *userdata)
+            size_t size, 
+            size_t nmemb, 
+            void *userdata)
 {
     struct curlbuf *buf = (struct curlbuf *)userdata;
     int len;
 
     len = size*nmemb;
     if ((buf->b_buf = realloc(buf->b_buf, buf->b_len+len+1)) == NULL)
-	return 0;
+        return 0;
     memcpy(buf->b_buf+buf->b_len, ptr, len);
     buf->b_len += len;
     buf->b_buf[buf->b_len] = '\0';
@@ -900,8 +900,8 @@ curl_get_cb(void *ptr,
  */
 static int
 url_post(char *url, 
-	 char *postfields, 
-	 char **getdata)
+         char *postfields, 
+         char **getdata)
 {
     int            retval = -1;
     CURL          *curl = NULL;
@@ -911,15 +911,15 @@ url_post(char *url,
 
     /* Try it with  curl -X PUT -d '*/
     clicon_debug(1, "%s:  curl -X POST -d '%s' %s",
-	__FUNCTION__, postfields, url);
+        __FUNCTION__, postfields, url);
     /* Set up curl for doing the communication with the controller */
     if ((curl = curl_easy_init()) == NULL) {
-	clicon_debug(1, "curl_easy_init");
-	goto done;
+        clicon_debug(1, "curl_easy_init");
+        goto done;
     }
     if ((err = malloc(CURL_ERROR_SIZE)) == NULL) {
-	clicon_debug(1, "%s: malloc", __FUNCTION__);
-	goto done;
+        clicon_debug(1, "%s: malloc", __FUNCTION__);
+        goto done;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_get_cb);
@@ -930,24 +930,24 @@ url_post(char *url,
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postfields));
 
     if (clicon_debug_get())
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);   
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);   
     if ((errcode = curl_easy_perform(curl)) != CURLE_OK){
-	clicon_debug(1, "%s: curl: %s(%d)", __FUNCTION__, err, errcode);
-	retval = 0;
-	goto done; 
+        clicon_debug(1, "%s: curl: %s(%d)", __FUNCTION__, err, errcode);
+        retval = 0;
+        goto done; 
     }
     if (getdata && cb.b_buf){
-	*getdata = cb.b_buf;
-	cb.b_buf = NULL;
+        *getdata = cb.b_buf;
+        cb.b_buf = NULL;
     }
     retval = 1;
   done:
     if (err)
-	free(err);
+        free(err);
     if (cb.b_buf)
-	free(cb.b_buf);
+        free(cb.b_buf);
     if (curl)
-	curl_easy_cleanup(curl);   /* cleanup */ 
+        curl_easy_cleanup(curl);   /* cleanup */ 
     return retval;
 }
 
@@ -961,9 +961,9 @@ url_post(char *url,
  */
 static int 
 stream_publish_cb(clicon_handle h, 
-		  int           op,
-		  cxobj        *event,
-		  void         *arg)
+                  int           op,
+                  cxobj        *event,
+                  void         *arg)
 {
     int   retval = -1;
     cbuf *u = NULL; /* stream pub (push) url */
@@ -974,39 +974,39 @@ stream_publish_cb(clicon_handle h,
 
     clicon_debug(1, "%s", __FUNCTION__); 
     if (op != 0)
-	goto ok;
+        goto ok;
     /* Create pub url */
     if ((u = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
     }
     if ((pub_prefix = clicon_option_str(h, "CLICON_STREAM_PUB")) == NULL){
-	clicon_err(OE_CFG, ENOENT, "CLICON_STREAM_PUB not defined");
-	goto done;
+        clicon_err(OE_CFG, ENOENT, "CLICON_STREAM_PUB not defined");
+        goto done;
     }
     cprintf(u, "%s/%s", pub_prefix, stream);
     /* Create XML data as string */
     if ((d = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
     }
     if (clixon_xml2cbuf(d, event, 0, 0, -1, 0) < 0)
-	goto done;
+        goto done;
     if (url_post(cbuf_get(u),     /* url+stream */
-		 cbuf_get(d),     /* postfields */
-		 &result) < 0)    /* result as xml */
-	goto done;
+                 cbuf_get(d),     /* postfields */
+                 &result) < 0)    /* result as xml */
+        goto done;
     if (result)
-	clicon_debug(1, "%s: %s", __FUNCTION__, result);
+        clicon_debug(1, "%s: %s", __FUNCTION__, result);
  ok:
     retval = 0;
  done:
     if (u)
-	cbuf_free(u);
+        cbuf_free(u);
     if (d)
-	cbuf_free(d);
+        cbuf_free(d);
     if (result)
-	free(result);
+        free(result);
     return retval;
 }
 #endif /* CLIXON_PUBLISH_STREAMS */
@@ -1015,13 +1015,13 @@ stream_publish_cb(clicon_handle h,
  */
 int
 stream_publish(clicon_handle h,
-	       char         *stream)
+               char         *stream)
 {
 #ifdef CLIXON_PUBLISH_STREAMS
     int retval = -1;
 
     if (stream_ss_add(h, stream, NULL, NULL, NULL, stream_publish_cb, (void*)stream) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -1039,8 +1039,8 @@ stream_publish_init()
     int retval = -1;
 
     if (curl_global_init(CURL_GLOBAL_ALL) != 0){
-	clicon_err(OE_PLUGIN, errno, "curl_global_init");
-	goto done;
+        clicon_err(OE_PLUGIN, errno, "curl_global_init");
+        goto done;
     }    
     retval = 0;
  done:

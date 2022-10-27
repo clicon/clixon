@@ -272,10 +272,10 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
                             BEGIN(_YY->yy_lex_state); 
                             str[0] = '\\';
                             str[1] = yytext[0];
-			    str[2] = '\0';
+                            str[2] = '\0';
                             clixon_yang_parselval.string = str; 
                             return CHARS; }
-			     
+                             
 <COMMENT1>[^*\n]*        /* eat anything that's not a '*' */
 <COMMENT1>"*"+[^*/\n]*   /* eat up '*'s not followed by '/'s */
 <COMMENT1>"*"+"/"        BEGIN(_YY->yy_lex_state);

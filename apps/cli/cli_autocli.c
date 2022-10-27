@@ -111,8 +111,8 @@ autocli_listkw_int2str(int listkw)
  */
 int
 autocli_module(clicon_handle    h,
-	       char            *modname,
-	       int             *enablep)
+               char            *modname,
+               int             *enablep)
 {
     int    retval = -1;
     cxobj *xrule;
@@ -124,50 +124,50 @@ autocli_module(clicon_handle    h,
     char  *body;
 
     if (enablep == NULL){
-	clicon_err(OE_YANG, EINVAL, "Argument is NULL");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        goto done;
     }
     enable = 0;
     if ((xautocli = clicon_conf_autocli(h)) == NULL)
-	goto ok;
+        goto ok;
     /* Default rule */
     if ((str = xml_find_body(xautocli, "module-default")) == NULL){
-	clicon_err(OE_XML, EINVAL, "No module-default rule");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "No module-default rule");
+        goto done;
     }
     enable = strcmp(str, "true") == 0;
     if (!enable){
-	xrule = NULL;
-	while ((xrule = xml_child_each(xautocli, xrule, CX_ELMNT)) != NULL) {
-	    if (strcmp(xml_name(xrule), "rule") != 0)
-		continue;
-	    if ((str = xml_find_body(xrule, "operation")) == NULL)
-		continue;
-	    /* Peek in element of rule to skip non-compress operations */
-	    if (autocli_str2op(str) != AUTOCLI_OP_ENABLE)
-		continue;
-	    /* At this point this rule is a compress rule
-	     * enable rules logic is:
-	     * - If match, break, done
-	     */
-	    xmod = NULL;
-	    while ((xmod = xml_child_each(xrule, xmod, CX_ELMNT)) != NULL) {
-		if ((element = xml_name(xmod)) == NULL)
-		    continue;
-		if (strcmp(element, "module-name") == 0){
-		    if (modname == NULL)
-			break; /* match */
-		    if ((body = xml_body(xmod)) == NULL)
-			continue; /* invalid rule? */
-		    if (fnmatch(body, modname, 0) == 0)
-			break; /* match */
-		}
-	    }
-	    if (xmod != NULL){ /* break: found match */
-		enable = 1;
-		break;
-	    }
-	}
+        xrule = NULL;
+        while ((xrule = xml_child_each(xautocli, xrule, CX_ELMNT)) != NULL) {
+            if (strcmp(xml_name(xrule), "rule") != 0)
+                continue;
+            if ((str = xml_find_body(xrule, "operation")) == NULL)
+                continue;
+            /* Peek in element of rule to skip non-compress operations */
+            if (autocli_str2op(str) != AUTOCLI_OP_ENABLE)
+                continue;
+            /* At this point this rule is a compress rule
+             * enable rules logic is:
+             * - If match, break, done
+             */
+            xmod = NULL;
+            while ((xmod = xml_child_each(xrule, xmod, CX_ELMNT)) != NULL) {
+                if ((element = xml_name(xmod)) == NULL)
+                    continue;
+                if (strcmp(element, "module-name") == 0){
+                    if (modname == NULL)
+                        break; /* match */
+                    if ((body = xml_body(xmod)) == NULL)
+                        continue; /* invalid rule? */
+                    if (fnmatch(body, modname, 0) == 0)
+                        break; /* match */
+                }
+            }
+            if (xmod != NULL){ /* break: found match */
+                enable = 1;
+                break;
+            }
+        }
     }
  ok:
     *enablep = enable;
@@ -180,9 +180,9 @@ autocli_module(clicon_handle    h,
  */
 static int
 autocli_compress_extension(yang_stmt *ys,
-			   yang_stmt *ymod,
-			   char      *body,
-			   int       *match)
+                           yang_stmt *ymod,
+                           char      *body,
+                           int       *match)
 {
     int   retval = -1;
     char *prefix = NULL;
@@ -190,29 +190,29 @@ autocli_compress_extension(yang_stmt *ys,
     char *ns = NULL;
     int   exist = 0;
     int   ret;
-		    
+                    
     if (nodeid_split(body, &prefix, &id) < 0)
-	goto done;
+        goto done;
     if (prefix != NULL){
-	if ((ret = yang_find_namespace_by_prefix(ys, prefix, &ns)) < 0)
-	    goto done;
-	if (ret == 1){
-	    /* First try local node, then try module */
-	    if (yang_extension_value(ys, id, ns, &exist, NULL) < 0)
-		goto done;
-	    if (exist == 0)
-		if (yang_extension_value(ymod, id, ns, &exist, NULL) < 0)
-		    goto done;
-	    if (exist == 0)
-		*match = 0;
-	}
+        if ((ret = yang_find_namespace_by_prefix(ys, prefix, &ns)) < 0)
+            goto done;
+        if (ret == 1){
+            /* First try local node, then try module */
+            if (yang_extension_value(ys, id, ns, &exist, NULL) < 0)
+                goto done;
+            if (exist == 0)
+                if (yang_extension_value(ymod, id, ns, &exist, NULL) < 0)
+                    goto done;
+            if (exist == 0)
+                *match = 0;
+        }
     }
     retval = 0;
  done:
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (id)
-	free(id);
+        free(id);
     return retval;
 }
 
@@ -245,8 +245,8 @@ The surrounding container entities are removed from list nodes.
  */
 int
 autocli_compress(clicon_handle h,
-		 yang_stmt    *ys,
-		 int          *compress)
+                 yang_stmt    *ys,
+                 int          *compress)
 {
     int        retval = -1;
     cxobj     *xautocli = NULL;
@@ -263,12 +263,12 @@ autocli_compress(clicon_handle h,
     char      *body;
     
     if (compress == NULL){
-	clicon_err(OE_YANG, EINVAL, "Argument is NULL");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        goto done;
     }
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-	clicon_err(OE_YANG, 0, "No clixon-autocli");
-	goto done;
+        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        goto done;
     }
     ymod = ys_module(ys);
     modname = yang_argument_get(ymod);
@@ -277,63 +277,63 @@ autocli_compress(clicon_handle h,
     nodeid = yang_argument_get(ys);
     xrule = NULL;
     while ((xrule = xml_child_each(xautocli, xrule, CX_ELMNT)) != NULL) {
-	if (strcmp(xml_name(xrule), "rule") != 0)
-	    continue;
-	if ((str = xml_find_body(xrule, "operation")) == NULL)
-	    continue;
-	/* Peek in element of rule to skip non-compress operations */
-	if (autocli_str2op(str) != AUTOCLI_OP_COMPRESS)
-	    continue;
-	/* At this point this rule is a compress rule
-	 * compress rule logic is "OR", the logic is:
-	 * - If match, break, done
-	 * - If not match, continue to next rule
-	 */
-	match = 1;
-	xmod = NULL;
-	while ((xmod = xml_child_each(xrule, xmod, CX_ELMNT)) != NULL) {
-	    if ((element = xml_name(xmod)) == NULL)
-		continue;
-	    if (strcmp(element, "name") == 0 ||
-		strcmp(element, "operation") == 0)
-		continue;
-	    if ((body = xml_body(xmod)) == NULL)
-		continue;
-	    if (strcmp(element, "yang-keyword") == 0){
-		if (strcmp(body, keywstr) != 0){
-		    match = 0;
-		    break;
-		}
-	    }
-	    else if (strcmp(element, "schema-nodeid") == 0){
-		if (strcmp(body, nodeid) != 0){
-		    match = 0;
-		    break;
-		}
-	    }
-	    else if (strcmp(element, "module-name") == 0){
-		if (fnmatch(body, modname, 0) != 0){
-		    match = 0;
-		    break;
-		}
-	    }
-	    else if (strcmp(element, "extension") == 0){
-		if (autocli_compress_extension(ys, ymod, body, &match) < 0)
-		    goto done;
-		if (match == 0)
-		    break;
-	    }
-	    else if (strcmp(element, "yang-keyword-child") == 0){
-		enum rfc_6020 subkeyw;
-		subkeyw = yang_str2key(body);
-		if (yang_single_child_type(ys, subkeyw) == 0){
-		    match = 0;
-		    break;
-		}
-	    }
-	}
-	if (match) /* At least one compress rule matches */
-	    break;
+        if (strcmp(xml_name(xrule), "rule") != 0)
+            continue;
+        if ((str = xml_find_body(xrule, "operation")) == NULL)
+            continue;
+        /* Peek in element of rule to skip non-compress operations */
+        if (autocli_str2op(str) != AUTOCLI_OP_COMPRESS)
+            continue;
+        /* At this point this rule is a compress rule
+         * compress rule logic is "OR", the logic is:
+         * - If match, break, done
+         * - If not match, continue to next rule
+         */
+        match = 1;
+        xmod = NULL;
+        while ((xmod = xml_child_each(xrule, xmod, CX_ELMNT)) != NULL) {
+            if ((element = xml_name(xmod)) == NULL)
+                continue;
+            if (strcmp(element, "name") == 0 ||
+                strcmp(element, "operation") == 0)
+                continue;
+            if ((body = xml_body(xmod)) == NULL)
+                continue;
+            if (strcmp(element, "yang-keyword") == 0){
+                if (strcmp(body, keywstr) != 0){
+                    match = 0;
+                    break;
+                }
+            }
+            else if (strcmp(element, "schema-nodeid") == 0){
+                if (strcmp(body, nodeid) != 0){
+                    match = 0;
+                    break;
+                }
+            }
+            else if (strcmp(element, "module-name") == 0){
+                if (fnmatch(body, modname, 0) != 0){
+                    match = 0;
+                    break;
+                }
+            }
+            else if (strcmp(element, "extension") == 0){
+                if (autocli_compress_extension(ys, ymod, body, &match) < 0)
+                    goto done;
+                if (match == 0)
+                    break;
+            }
+            else if (strcmp(element, "yang-keyword-child") == 0){
+                enum rfc_6020 subkeyw;
+                subkeyw = yang_str2key(body);
+                if (yang_single_child_type(ys, subkeyw) == 0){
+                    match = 0;
+                    break;
+                }
+            }
+        }
+        if (match) /* At least one compress rule matches */
+            break;
     }
     *compress = match;
     retval = 0;
@@ -351,7 +351,7 @@ autocli_compress(clicon_handle h,
  */
 int
 autocli_completion(clicon_handle h,
-    		   int          *completion)
+                   int          *completion)
 {
     int     retval = -1;
     char   *str;
@@ -361,26 +361,26 @@ autocli_completion(clicon_handle h,
     cxobj  *xautocli;
     
     if (completion == NULL){
-	clicon_err(OE_YANG, EINVAL, "Argument is NULL");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        goto done;
     }
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-	clicon_err(OE_YANG, 0, "No clixon-autocli");
-	goto done;
+        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        goto done;
     }
     if ((str = xml_find_body(xautocli, "completion-default")) == NULL){
-	clicon_err(OE_XML, EINVAL, "No completion-default rule");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "No completion-default rule");
+        goto done;
     }
     if ((ret = parse_bool(str, &val, &reason)) < 0){
-	clicon_err(OE_CFG, errno, "parse_bool");
+        clicon_err(OE_CFG, errno, "parse_bool");
         goto done;
     }
     *completion = val;
     retval = 0; 
  done:
     if (reason)
-	free(reason);
+        free(reason);
     return retval;
 }
 
@@ -394,23 +394,23 @@ autocli_completion(clicon_handle h,
  */
 int
 autocli_list_keyword(clicon_handle     h,
-		     autocli_listkw_t *listkw)
+                     autocli_listkw_t *listkw)
 {
     int    retval = -1;
     char  *str;
     cxobj *xautocli = NULL;
     
     if (listkw == NULL){
-	clicon_err(OE_YANG, EINVAL, "Argument is NULL");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        goto done;
     }
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-	clicon_err(OE_YANG, 0, "No clixon-autocli");
-	goto done;
+        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        goto done;
     }
     if ((str = xml_find_body(xautocli, "list-keyword-default")) == NULL){
-	clicon_err(OE_XML, EINVAL, "No list-keyword-default rule");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "No list-keyword-default rule");
+        goto done;
     }
     *listkw = autocli_listkw_str2int(str);
     retval = 0; 
@@ -427,7 +427,7 @@ autocli_list_keyword(clicon_handle     h,
  */
 int
 autocli_treeref_state(clicon_handle h,
-		      int          *treeref_state)
+                      int          *treeref_state)
 {
     int     retval = -1;
     char   *str;
@@ -437,26 +437,26 @@ autocli_treeref_state(clicon_handle h,
     cxobj  *xautocli;
     
     if (treeref_state == NULL){
-	clicon_err(OE_YANG, EINVAL, "Argument is NULL");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        goto done;
     }
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-	clicon_err(OE_YANG, 0, "No clixon-autocli");
-	goto done;
+        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        goto done;
     }
     if ((str = xml_find_body(xautocli, "treeref-state-default")) == NULL){
-	clicon_err(OE_XML, EINVAL, "No treeref-state-default rule");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "No treeref-state-default rule");
+        goto done;
     }
     if ((ret = parse_bool(str, &val, &reason)) < 0){
-	clicon_err(OE_CFG, errno, "parse_bool");
+        clicon_err(OE_CFG, errno, "parse_bool");
         goto done;
     }
     *treeref_state = val;
     retval = 0; 
  done:
     if (reason)
-	free(reason);
+        free(reason);
     return retval;
 }
 
@@ -471,8 +471,8 @@ autocli_treeref_state(clicon_handle h,
  */
 int
 autocli_edit_mode(clicon_handle h,
-		  char         *keyw,
-		  int          *flag)
+                  char         *keyw,
+                  int          *flag)
 {
     int     retval = -1;
     char   *str;
@@ -483,30 +483,30 @@ autocli_edit_mode(clicon_handle h,
     int     i;
     
     if (flag == NULL){
-	clicon_err(OE_YANG, EINVAL, "Argument is NULL");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        goto done;
     }
     *flag = 0;
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-	clicon_err(OE_YANG, 0, "No clixon-autocli");
-	goto done;
+        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        goto done;
     }
     if ((str = xml_find_body(xautocli, "edit-mode-default")) == NULL){
-	clicon_err(OE_XML, EINVAL, "No edit-mode-default rule");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "No edit-mode-default rule");
+        goto done;
     }
     if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
-	goto done;
+        goto done;
     for (i=0; i<nvec; i++){
-	v = vec[i];
-	if (strcmp(v, keyw) == 0){
-	    *flag = 1;
-	    break;
-	}
+        v = vec[i];
+        if (strcmp(v, keyw) == 0){
+            *flag = 1;
+            break;
+        }
     }
     retval = 0; 
  done:
     if (vec)
-	free(vec);
+        free(vec);
     return retval;
 }

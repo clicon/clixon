@@ -101,9 +101,9 @@ enum array_element_type{
 
 enum childtype{
     NULL_CHILD=0, /* eg <a/> no children. Translated to null if in 
-		   * array or leaf terminal, and to {} if proper object, ie container.
-		   * anyxml/anydata?
-		   */
+                   * array or leaf terminal, and to {} if proper object, ie container.
+                   * anyxml/anydata?
+                   */
     BODY_CHILD,   /* eg one child which is a body, eg <a>1</a> */
     ANY_CHILD,    /* eg <a><b/></a> or <a><b/><c/></a> */
 };
@@ -120,22 +120,22 @@ child_type(cxobj *x)
 
     clen = xml_child_nr_notype(x, CX_ATTR);
     if (xml_type(x) != CX_ELMNT)
-	return -1; /* n/a */
+        return -1; /* n/a */
     if (clen == 0)
-    	return NULL_CHILD;
+        return NULL_CHILD;
     if (clen > 1)
-	return ANY_CHILD;
+        return ANY_CHILD;
     /* From here exactly one noattr child, get it */
     xc = NULL;
     while ((xc = xml_child_each(x, xc, -1)) != NULL)
-	if (xml_type(xc) != CX_ATTR)
-	    break;
+        if (xml_type(xc) != CX_ATTR)
+            break;
     if (xc == NULL)
-	return -2; /* n/a */
+        return -2; /* n/a */
     if (xml_child_nr_notype(xc, CX_ATTR) == 0 && xml_type(xc)==CX_BODY)
-	return BODY_CHILD;
+        return BODY_CHILD;
     else
-	return ANY_CHILD;
+        return ANY_CHILD;
 }
 
 static char*
@@ -143,14 +143,14 @@ childtype2str(enum childtype lt)
 {
     switch(lt){
     case NULL_CHILD:
-	return "null";
-	break;
+        return "null";
+        break;
     case BODY_CHILD:
-	return "body";
-	break;
+        return "body";
+        break;
     case ANY_CHILD:
-	return "any";
-	break;
+        return "any";
+        break;
     }
     return "";
 }
@@ -160,23 +160,23 @@ arraytype2str(enum array_element_type lt)
 {
     switch(lt){
     case NO_ARRAY:
-	return "no";
-	break;
+        return "no";
+        break;
     case FIRST_ARRAY:
-	return "first";
-	break;
+        return "first";
+        break;
     case MIDDLE_ARRAY:
-	return "middle";
-	break;
+        return "middle";
+        break;
     case LAST_ARRAY:
-	return "last";
-	break;
+        return "last";
+        break;
     case SINGLE_ARRAY:
-	return "single";
-	break;
+        return "single";
+        break;
     case BODY_ARRAY:
-	return "body";
-	break;
+        return "body";
+        break;
     }
     return "";
 }
@@ -193,8 +193,8 @@ arraytype2str(enum array_element_type lt)
  */
 static enum array_element_type
 array_eval(cxobj *xprev, 
-	   cxobj *x, 
-	   cxobj *xnext)
+           cxobj *x, 
+           cxobj *xnext)
 {
     enum array_element_type arraytype = NO_ARRAY;
     int                     eqprev=0;
@@ -205,39 +205,39 @@ array_eval(cxobj *xprev,
 
     nsx = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
     if (xml_type(x) != CX_ELMNT){
-	arraytype = BODY_ARRAY;
-	goto done;
+        arraytype = BODY_ARRAY;
+        goto done;
     }
     if (xnext && 
-	xml_type(xnext)==CX_ELMNT &&
-	strcmp(xml_name(x), xml_name(xnext))==0){
+        xml_type(xnext)==CX_ELMNT &&
+        strcmp(xml_name(x), xml_name(xnext))==0){
         ns2 = xml_find_type_value(xnext, NULL, "xmlns", CX_ATTR);
-	if ((!nsx && !ns2)
-	    || (nsx && ns2 && strcmp(nsx,ns2)==0))
-	    eqnext++;
+        if ((!nsx && !ns2)
+            || (nsx && ns2 && strcmp(nsx,ns2)==0))
+            eqnext++;
     }
     if (xprev &&
-	xml_type(xprev)==CX_ELMNT &&
-	strcmp(xml_name(x),xml_name(xprev))==0){
-	ns2 = xml_find_type_value(xprev, NULL, "xmlns", CX_ATTR);
-	if ((!nsx && !ns2)
-	    || (nsx && ns2 && strcmp(nsx,ns2)==0))
-	    eqprev++;
+        xml_type(xprev)==CX_ELMNT &&
+        strcmp(xml_name(x),xml_name(xprev))==0){
+        ns2 = xml_find_type_value(xprev, NULL, "xmlns", CX_ATTR);
+        if ((!nsx && !ns2)
+            || (nsx && ns2 && strcmp(nsx,ns2)==0))
+            eqprev++;
     }
     if (eqprev && eqnext)
-	arraytype = MIDDLE_ARRAY;
+        arraytype = MIDDLE_ARRAY;
     else if (eqprev)
-	arraytype = LAST_ARRAY;
+        arraytype = LAST_ARRAY;
     else if (eqnext)
-	arraytype = FIRST_ARRAY;
+        arraytype = FIRST_ARRAY;
     else if ((ys = xml_spec(x)) != NULL) {
-	if (yang_keyword_get(ys) == Y_LIST || yang_keyword_get(ys) == Y_LEAF_LIST)
-	    arraytype = SINGLE_ARRAY;
-	else
-	    arraytype = NO_ARRAY;
+        if (yang_keyword_get(ys) == Y_LIST || yang_keyword_get(ys) == Y_LEAF_LIST)
+            arraytype = SINGLE_ARRAY;
+        else
+            arraytype = NO_ARRAY;
     }
     else
-	arraytype = NO_ARRAY;
+        arraytype = NO_ARRAY;
  done:
     return arraytype;
 }
@@ -248,7 +248,7 @@ array_eval(cxobj *xprev,
  */
 static int
 json_str_escape_cdata(cbuf *cb,
-		      char *str)
+                      char *str)
 {
     int   retval = -1;
     int   i;
@@ -259,40 +259,40 @@ json_str_escape_cdata(cbuf *cb,
     
     len = strlen(str);
     for (i=0; i<len; i++)
-	switch (str[i]){
-	case '\n':
-	    cprintf(cb, "\\n");
-	    break;
-	case '\"':
-	    cprintf(cb, "\\\"");
-	    break;
-	case '\\':
-	    cprintf(cb, "\\\\");
-	    break;
+        switch (str[i]){
+        case '\n':
+            cprintf(cb, "\\n");
+            break;
+        case '\"':
+            cprintf(cb, "\\\"");
+            break;
+        case '\\':
+            cprintf(cb, "\\\\");
+            break;
 #ifdef JSON_CDATA_STRIP
-	case '<':
-	    if (!esc &&
-		strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
-		esc=1;
-		i += strlen("<![CDATA[")-1;
-	    }
-	    else
-		cprintf(cb, "%c", str[i]);
-	    break;
-	case ']':
-	    if (esc &&
-		strncmp(&str[i], "]]>", strlen("]]>")) == 0){
-		esc=0;
-		i += strlen("]]>")-1;
-	    }
-	    else
-		cprintf(cb, "%c", str[i]);
-	    break;
+        case '<':
+            if (!esc &&
+                strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+                esc=1;
+                i += strlen("<![CDATA[")-1;
+            }
+            else
+                cprintf(cb, "%c", str[i]);
+            break;
+        case ']':
+            if (esc &&
+                strncmp(&str[i], "]]>", strlen("]]>")) == 0){
+                esc=0;
+                i += strlen("]]>")-1;
+            }
+            else
+                cprintf(cb, "%c", str[i]);
+            break;
 #endif /* JSON_CDATA_STRIP */
-	default: /* fall thru */
-	    cprintf(cb, "%c", str[i]);
-	    break;
-	}
+        default: /* fall thru */
+            cprintf(cb, "%c", str[i]);
+            break;
+        }
     retval = 0;
     // done:
     return retval;
@@ -311,8 +311,8 @@ json_str_escape_cdata(cbuf *cb,
  */
 static int
 json2xml_decode_identityref(cxobj     *x,
-			    yang_stmt *y,
-			    cxobj    **xerr)
+                            yang_stmt *y,
+                            cxobj    **xerr)
 {
     int        retval = -1;
     char      *ns;
@@ -330,80 +330,80 @@ json2xml_decode_identityref(cxobj     *x,
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = ys_spec(y);
     if ((xb = xml_body_get(x)) == NULL)
-	goto ok;
+        goto ok;
     body = xml_value(xb);
     if (nodeid_split(body, &prefix, &id) < 0)
-	goto done;
+        goto done;
     /* prefix is a module name -> find module */
     if (prefix){
-	if ((ymod = yang_find_module_by_name(yspec, prefix)) != NULL){
-	    ns = yang_find_mynamespace(ymod);
-	    /* Is this namespace in the xml context?
-	     * (yes) use its prefix (unless it is NULL)
-	     * (no)  insert a xmlns:<prefix> statement
-	     * Get the whole namespace context from x
-	     */
-	    if (xml_nsctx_node(x, &nsc) < 0)
-		goto done;
-	    clicon_debug(1, "%s prefix:%s body:%s namespace:%s",
-			 __FUNCTION__, prefix, body, ns);
-	    if (!xml_nsctx_get_prefix(nsc, ns, &prefix2)){
-		/* (no)  insert a xmlns:<prefix> statement
-		 * Get yang prefix from import statement of my mod */
-		if (yang_find_prefix_by_namespace(y, ns, &prefix2) == 0){
+        if ((ymod = yang_find_module_by_name(yspec, prefix)) != NULL){
+            ns = yang_find_mynamespace(ymod);
+            /* Is this namespace in the xml context?
+             * (yes) use its prefix (unless it is NULL)
+             * (no)  insert a xmlns:<prefix> statement
+             * Get the whole namespace context from x
+             */
+            if (xml_nsctx_node(x, &nsc) < 0)
+                goto done;
+            clicon_debug(1, "%s prefix:%s body:%s namespace:%s",
+                         __FUNCTION__, prefix, body, ns);
+            if (!xml_nsctx_get_prefix(nsc, ns, &prefix2)){
+                /* (no)  insert a xmlns:<prefix> statement
+                 * Get yang prefix from import statement of my mod */
+                if (yang_find_prefix_by_namespace(y, ns, &prefix2) == 0){
 #ifndef IDENTITYREF_KLUDGE
-		    /* Just get the prefix from the module's own namespace */
-		    if (xerr && netconf_unknown_namespace_xml(xerr, "application",
-						      ns,
-						      "No local prefix corresponding to namespace") < 0)
-			goto done;
-		    goto fail;
+                    /* Just get the prefix from the module's own namespace */
+                    if (xerr && netconf_unknown_namespace_xml(xerr, "application",
+                                                      ns,
+                                                      "No local prefix corresponding to namespace") < 0)
+                        goto done;
+                    goto fail;
 #endif
-		}
-		/* if prefix2 is NULL here, we get the canonical prefix */
-		if (prefix2 == NULL)
-		    prefix2 = yang_find_myprefix(ymod);
-		/* Add "xmlns:prefix2=namespace" */
-		if ((xa = xml_new(prefix2, x, CX_ATTR)) == NULL)
-		    goto done;
-		if (xml_prefix_set(xa, "xmlns") < 0)
-		    goto done;
-		if (xml_value_set(xa, ns) < 0)
-		    goto done;
-	    }
-	    /* Here prefix2 is valid and can be NULL
-	       Change body prefix to prefix2:id */
-	    if ((cbv = cbuf_new()) == NULL){
-		clicon_err(OE_JSON, errno, "cbuf_new");
-		goto done;
-	    }
-	    if (prefix2)
-		cprintf(cbv, "%s:%s", prefix2, id);
-	    else
-		cprintf(cbv, "%s", id);
+                }
+                /* if prefix2 is NULL here, we get the canonical prefix */
+                if (prefix2 == NULL)
+                    prefix2 = yang_find_myprefix(ymod);
+                /* Add "xmlns:prefix2=namespace" */
+                if ((xa = xml_new(prefix2, x, CX_ATTR)) == NULL)
+                    goto done;
+                if (xml_prefix_set(xa, "xmlns") < 0)
+                    goto done;
+                if (xml_value_set(xa, ns) < 0)
+                    goto done;
+            }
+            /* Here prefix2 is valid and can be NULL
+               Change body prefix to prefix2:id */
+            if ((cbv = cbuf_new()) == NULL){
+                clicon_err(OE_JSON, errno, "cbuf_new");
+                goto done;
+            }
+            if (prefix2)
+                cprintf(cbv, "%s:%s", prefix2, id);
+            else
+                cprintf(cbv, "%s", id);
 
-	    if (xml_value_set(xb, cbuf_get(cbv)) < 0)
-		goto done;
-	}
-	else{
-	    if (xerr && netconf_unknown_namespace_xml(xerr, "application",
-					      prefix,
-					      "No module corresponding to prefix") < 0)		
-		goto done;
-	    goto fail;
-	}
+            if (xml_value_set(xb, cbuf_get(cbv)) < 0)
+                goto done;
+        }
+        else{
+            if (xerr && netconf_unknown_namespace_xml(xerr, "application",
+                                              prefix,
+                                              "No module corresponding to prefix") < 0)         
+                goto done;
+            goto fail;
+        }
     } /* prefix */
  ok:
     retval = 1;
  done:
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (id)
-	free(id);
+        free(id);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (cbv)
-	cbuf_free(cbv);
+        cbuf_free(cbv);
     return retval;
  fail:
     retval = 0;
@@ -425,7 +425,7 @@ json2xml_decode_identityref(cxobj     *x,
  */
 int
 json2xml_decode(cxobj     *x,
-		cxobj    **xerr)
+                cxobj    **xerr)
 {
     int           retval = -1;
     yang_stmt    *y;
@@ -435,29 +435,29 @@ json2xml_decode(cxobj     *x,
     yang_stmt    *ytype = NULL;
 
     if ((y = xml_spec(x)) != NULL){
-	keyword = yang_keyword_get(y);
-	if (keyword == Y_LEAF || keyword == Y_LEAF_LIST){
-	    if (yang_type_get(y, NULL, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
-		goto done;
+        keyword = yang_keyword_get(y);
+        if (keyword == Y_LEAF || keyword == Y_LEAF_LIST){
+            if (yang_type_get(y, NULL, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
+                goto done;
 
-	    if (ytype){
-		if (strcmp(yang_argument_get(ytype), "identityref")==0){
-		    if ((ret = json2xml_decode_identityref(x, y, xerr)) < 0)
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		}
-		else if (strcmp(yang_argument_get(ytype), "empty")==0)
-		    ; /* dont need to do anything */
-	    }
-	}
+            if (ytype){
+                if (strcmp(yang_argument_get(ytype), "identityref")==0){
+                    if ((ret = json2xml_decode_identityref(x, y, xerr)) < 0)
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                }
+                else if (strcmp(yang_argument_get(ytype), "empty")==0)
+                    ; /* dont need to do anything */
+            }
+        }
     }
     xc = NULL;
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL){
-	if ((ret = json2xml_decode(xc, xerr)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = json2xml_decode(xc, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     retval = 1;
  done:
@@ -475,9 +475,9 @@ json2xml_decode(cxobj     *x,
  */
 static int
 xml2json_encode_identityref(cxobj     *xb,
-			    char      *body,
-			    yang_stmt *yp,
-			    cbuf      *cb)
+                            char      *body,
+                            yang_stmt *yp,
+                            cbuf      *cb)
 {
     int        retval = -1;
     char      *prefix = NULL;
@@ -491,10 +491,10 @@ xml2json_encode_identityref(cxobj     *xb,
     my_ymod = ys_module(yp);
     yspec = ys_spec(yp);
     if (nodeid_split(body, &prefix, &id) < 0)
-	goto done;
+        goto done;
     /* prefix is xml local -> get namespace */
     if (xml2ns(xb, prefix, &namespace) < 0)
-	goto done;
+        goto done;
     /* We got the namespace, now get the module */
     //    clicon_debug(1, "%s body:%s prefix:%s namespace:%s", __FUNCTION__, body, prefix, namespace);
 #ifdef IDENTITYREF_KLUDGE
@@ -503,31 +503,31 @@ xml2json_encode_identityref(cxobj     *xb,
      * xmlns that should be there, as a kludge we search for its (own)
      * prefix in mymodule.
     */
-	if ((ymod = yang_find_module_by_prefix_yspec(yspec, prefix)) != NULL)
-	    cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-	else
-	    cprintf(cb, "%s", id);
+        if ((ymod = yang_find_module_by_prefix_yspec(yspec, prefix)) != NULL)
+            cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
+        else
+            cprintf(cb, "%s", id);
     }
     else
 #endif
-	{
+        {
     if ((ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
-	
-	if (ymod == my_ymod)
-	    cprintf(cb, "%s", id);
-	else{
-	    cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-	}
+        
+        if (ymod == my_ymod)
+            cprintf(cb, "%s", id);
+        else{
+            cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
+        }
     }
     else
-	cprintf(cb, "%s", id);
-	}
+        cprintf(cb, "%s", id);
+        }
     retval = 0;
  done:
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (id)
-	free(id);
+        free(id);
     return retval;
 }
 
@@ -539,9 +539,9 @@ xml2json_encode_identityref(cxobj     *xb,
  */
 static int
 xml2json_encode_leafs(cxobj     *xb,
-		      cxobj     *xp,
-		      yang_stmt *yp,
-		      cbuf      *cb0)
+                      cxobj     *xp,
+                      yang_stmt *yp,
+                      cbuf      *cb0)
 {
     int           retval = -1;
     enum rfc_6020 keyword;
@@ -554,103 +554,103 @@ xml2json_encode_leafs(cxobj     *xb,
     cbuf         *cb = NULL; /* the variable itself */
 
     if ((cb = cbuf_new()) ==NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
     }
     body = xb?xml_value(xb):NULL;
     if (yp == NULL){
-	cprintf(cb, "%s", body?body:"null"); 
-	goto ok; /* unknown */
+        cprintf(cb, "%s", body?body:"null"); 
+        goto ok; /* unknown */
     }
     keyword = yang_keyword_get(yp);
     switch (keyword){
     case Y_LEAF:
     case Y_LEAF_LIST:
-	if (yang_type_get(yp, &origtype, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
-	    goto done;
-	restype = ytype?yang_argument_get(ytype):NULL;
-	cvtype = yang_type2cv(yp);
-	switch (cvtype){ 
-	case CGV_STRING:
-	case CGV_REST:
-	    if (body==NULL)
-		; /* empty: "" */
-	    else if (ytype){
-		if (strcmp(restype, "identityref")==0){
-		    if (xml2json_encode_identityref(xb, body, yp, cb) < 0)
-			goto done;
-		}
-		else{
-		    cprintf(cb, "%s", body);
-		}
-	    }
-	    else
-		cprintf(cb, "%s", body);
-	    break;
-	case CGV_INT64:
-	case CGV_UINT64:
-	case CGV_DEC64:
-		// [RFC7951] JSON Encoding of YANG Data
-		// 6.1 Numeric Types - A value of the "int64", "uint64", or "decimal64" type is represented as a JSON string
-		if (yang_keyword_get(yp) == Y_LEAF_LIST && xml_child_nr_type(xml_parent(xp), CX_ELMNT) == 1) {
-			cprintf(cb, "[%s]", body);
-		}
-		else {
-			cprintf(cb, "%s", body);
-		}
-		quote = 1;
-		break;
-	case CGV_INT8:
-	case CGV_INT16:
-	case CGV_INT32:
-	case CGV_UINT8:
-	case CGV_UINT16:
-	case CGV_UINT32:
-	case CGV_BOOL:
-	    cprintf(cb, "%s", body);
-	    quote = 0;
-	    break;
-	case CGV_VOID:
-	    /* special case YANG empty type */
-	    if (body == NULL && strcmp(restype, "empty")==0){
-		quote = 0;
-		if (keyword == Y_LEAF)
-		    cprintf(cb, "[null]");
-		else if (keyword == Y_LEAF_LIST && strcmp(restype, "empty") == 0)
-		    cprintf(cb, "[null]");
-		else
-		    cprintf(cb, "null");
-	    }
-	    break;
-	default:
-	    if (body)
-		cprintf(cb, "%s", body);
-	    else
-		cprintf(cb, "{}"); /* dont know */
-	}
-	break;
+        if (yang_type_get(yp, &origtype, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
+            goto done;
+        restype = ytype?yang_argument_get(ytype):NULL;
+        cvtype = yang_type2cv(yp);
+        switch (cvtype){ 
+        case CGV_STRING:
+        case CGV_REST:
+            if (body==NULL)
+                ; /* empty: "" */
+            else if (ytype){
+                if (strcmp(restype, "identityref")==0){
+                    if (xml2json_encode_identityref(xb, body, yp, cb) < 0)
+                        goto done;
+                }
+                else{
+                    cprintf(cb, "%s", body);
+                }
+            }
+            else
+                cprintf(cb, "%s", body);
+            break;
+        case CGV_INT64:
+        case CGV_UINT64:
+        case CGV_DEC64:
+                // [RFC7951] JSON Encoding of YANG Data
+                // 6.1 Numeric Types - A value of the "int64", "uint64", or "decimal64" type is represented as a JSON string
+                if (yang_keyword_get(yp) == Y_LEAF_LIST && xml_child_nr_type(xml_parent(xp), CX_ELMNT) == 1) {
+                        cprintf(cb, "[%s]", body);
+                }
+                else {
+                        cprintf(cb, "%s", body);
+                }
+                quote = 1;
+                break;
+        case CGV_INT8:
+        case CGV_INT16:
+        case CGV_INT32:
+        case CGV_UINT8:
+        case CGV_UINT16:
+        case CGV_UINT32:
+        case CGV_BOOL:
+            cprintf(cb, "%s", body);
+            quote = 0;
+            break;
+        case CGV_VOID:
+            /* special case YANG empty type */
+            if (body == NULL && strcmp(restype, "empty")==0){
+                quote = 0;
+                if (keyword == Y_LEAF)
+                    cprintf(cb, "[null]");
+                else if (keyword == Y_LEAF_LIST && strcmp(restype, "empty") == 0)
+                    cprintf(cb, "[null]");
+                else
+                    cprintf(cb, "null");
+            }
+            break;
+        default:
+            if (body)
+                cprintf(cb, "%s", body);
+            else
+                cprintf(cb, "{}"); /* dont know */
+        }
+        break;
     default:
-	cprintf(cb, "%s", body);
-	break;
+        cprintf(cb, "%s", body);
+        break;
     }
  ok:
     /* write into original cb0
      * includign quoting and encoding 
      */
     if (quote){
-	cprintf(cb0, "\"");
-	json_str_escape_cdata(cb0, cbuf_get(cb));
+        cprintf(cb0, "\"");
+        json_str_escape_cdata(cb0, cbuf_get(cb));
     }
     else
-	cprintf(cb0, "%s", cbuf_get(cb));
+        cprintf(cb0, "%s", cbuf_get(cb));
     if (quote)
-	cprintf(cb0, "\"");
+        cprintf(cb0, "\"");
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (origtype)
-	free(origtype);
+        free(origtype);
     return retval;
 }
 
@@ -661,36 +661,36 @@ xml2json_encode_leafs(cxobj     *xb,
  */
 static int
 nullchild(cbuf      *cb,
-	  cxobj     *x,
-	  yang_stmt *y)
+          cxobj     *x,
+          yang_stmt *y)
 {
     int           retval = -1;
 
     if (y == NULL){
-	/* This is very problematic.
-	 * RFC 7951 explicitly forbids "null" to be used unless for empty types in [null]
-	 */
-	cprintf(cb, "{}");
+        /* This is very problematic.
+         * RFC 7951 explicitly forbids "null" to be used unless for empty types in [null]
+         */
+        cprintf(cb, "{}");
     }
     else{
-	switch (yang_keyword_get(y)){
-	case Y_ANYXML:
-	case Y_ANYDATA:
-	case Y_CONTAINER:
-	    cprintf(cb, "{}");
-	    break;
-	case Y_LEAF:
-	case Y_LEAF_LIST:
-	    if (xml2json_encode_leafs(NULL, x, y, cb) < 0)
-		goto done;
-	    break;
-	default:
-	    /* This is very problematic.
-	     * RFC 7951 explicitly forbids "null" to be used unless for empty types in [null]
-	     */
-	    cprintf(cb, "{}");
-	    break;
-	}
+        switch (yang_keyword_get(y)){
+        case Y_ANYXML:
+        case Y_ANYDATA:
+        case Y_CONTAINER:
+            cprintf(cb, "{}");
+            break;
+        case Y_LEAF:
+        case Y_LEAF_LIST:
+            if (xml2json_encode_leafs(NULL, x, y, cb) < 0)
+                goto done;
+            break;
+        default:
+            /* This is very problematic.
+             * RFC 7951 explicitly forbids "null" to be used unless for empty types in [null]
+             */
+            cprintf(cb, "{}");
+            break;
+        }
     }
     retval = 0;
  done:
@@ -715,27 +715,27 @@ nullchild(cbuf      *cb,
  */
 static int
 json_metadata_encoding(cbuf  *cb,
-		       cxobj *x,
-		       int    level,
-		       int    pretty,
-		       char  *prefix,
-    		       char  *name,
-		       char  *modname2,
-    		       char  *name2,
-		       char  *val,
-		       int    list)
+                       cxobj *x,
+                       int    level,
+                       int    pretty,
+                       char  *prefix,
+                       char  *name,
+                       char  *modname2,
+                       char  *name2,
+                       char  *val,
+                       int    list)
 {
     cprintf(cb, ",\"@");
     if (prefix)
-	cprintf(cb, "%s:", prefix);
+        cprintf(cb, "%s:", prefix);
     cprintf(cb, "%s\":", name);
     if (list)
-	cprintf(cb, "[");
+        cprintf(cb, "[");
     cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "{");
     cprintf(cb, "\"%s:%s\":%s", modname2, name2, val);
     cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "}");
     if (list)
-	cprintf(cb, "%*s", pretty?(level*JSON_INDENT):0, "]");
+        cprintf(cb, "%*s", pretty?(level*JSON_INDENT):0, "]");
     return 0;
 }
 
@@ -760,12 +760,12 @@ json_metadata_encoding(cbuf  *cb,
  */
 static int
 xml2json_encode_attr(cxobj     *xa,
-		     cxobj     *xp,
-		     yang_stmt *yp,
-		     int        level,
-		     int        pretty,
-		     char      *modname,
-		     cbuf      *metacb)
+                     cxobj     *xp,
+                     yang_stmt *yp,
+                     int        level,
+                     int        pretty,
+                     char      *modname,
+                     cbuf      *metacb)
 {
     int           retval = -1;
     int           ismeta = 0;
@@ -774,34 +774,34 @@ xml2json_encode_attr(cxobj     *xa,
     enum rfc_6020 ykeyw;
     
     if (xml2ns(xa, xml_prefix(xa), &namespace) < 0)
-	goto done;
+        goto done;
     /* Check for (1) registered meta-data */
     if (namespace != NULL && yp){
-	ykeyw = yang_keyword_get(yp);
-	if ((ymod = yang_find_module_by_namespace(ys_spec(yp), namespace)) != NULL){
-	    if (yang_metadata_annotation_check(xa, ymod, &ismeta) < 0)
-		goto done;
-	    if (ismeta)
-		if (json_metadata_encoding(metacb, xp, level, pretty,
-					   modname, xml_name(xp),
-					   yang_argument_get(ymod),
-					   xml_name(xa),
-					   xml_value(xa),
-					   ykeyw == Y_LEAF_LIST || ykeyw == Y_LIST) < 0)
-		    goto done;
-	}
-	/* Check for (2) assigned - hardcoded for now */
-	else if (strcmp(namespace, "urn:ietf:params:xml:ns:netconf:default:1.0") == 0 &&
-		 strcmp(xml_name(xa), "default") == 0){
-	    /* RFC 7952 / RFC 8040 defaults attribute */
-	    if (json_metadata_encoding(metacb, xp, level, pretty,
-				       modname, xml_name(xp),
-				       "ietf-netconf-with-defaults",
-				       xml_name(xa),
-				       xml_value(xa),
-				       ykeyw == Y_LEAF_LIST || ykeyw == Y_LIST) < 0)
-		goto done;
-	}
+        ykeyw = yang_keyword_get(yp);
+        if ((ymod = yang_find_module_by_namespace(ys_spec(yp), namespace)) != NULL){
+            if (yang_metadata_annotation_check(xa, ymod, &ismeta) < 0)
+                goto done;
+            if (ismeta)
+                if (json_metadata_encoding(metacb, xp, level, pretty,
+                                           modname, xml_name(xp),
+                                           yang_argument_get(ymod),
+                                           xml_name(xa),
+                                           xml_value(xa),
+                                           ykeyw == Y_LEAF_LIST || ykeyw == Y_LIST) < 0)
+                    goto done;
+        }
+        /* Check for (2) assigned - hardcoded for now */
+        else if (strcmp(namespace, "urn:ietf:params:xml:ns:netconf:default:1.0") == 0 &&
+                 strcmp(xml_name(xa), "default") == 0){
+            /* RFC 7952 / RFC 8040 defaults attribute */
+            if (json_metadata_encoding(metacb, xp, level, pretty,
+                                       modname, xml_name(xp),
+                                       "ietf-netconf-with-defaults",
+                                       xml_name(xa),
+                                       xml_value(xa),
+                                       ykeyw == Y_LEAF_LIST || ykeyw == Y_LIST) < 0)
+                goto done;
+        }
     }
     retval = 0;
  done:
@@ -848,13 +848,13 @@ xml2json_encode_attr(cxobj     *xa,
  */
 static int 
 xml2json1_cbuf(cbuf                   *cb,
-	       cxobj                  *x,
-	       enum array_element_type arraytype,
-	       int                     level,
-	       int                     pretty,
-	       int                     flat,
-	       char                   *modname0,
-	       cbuf                   *metacbp)
+               cxobj                  *x,
+               enum array_element_type arraytype,
+               int                     level,
+               int                     pretty,
+               int                     flat,
+               char                   *modname0,
+               cbuf                   *metacbp)
 {
     int              retval = -1;
     int              i;
@@ -869,101 +869,101 @@ xml2json1_cbuf(cbuf                   *cb,
     cbuf            *metacbc = NULL;
 
     if ((ys = xml_spec(x)) != NULL){
-	if (ys_real_module(ys, &ymod) < 0)
-	    goto done;
-	modname = yang_argument_get(ymod);
-	/* Special case for ietf-netconf -> ietf-restconf translation 
-	 * A special case is for return data on the form {"data":...}
-	 * See also json_xmlns_translate()
-	 */
-	if (strcmp(modname, "ietf-netconf") == 0)
-	    modname = "ietf-restconf";
-	if (modname0 && strcmp(modname, modname0) == 0)
-	    modname=NULL;
-	else
-	    modname0 = modname; /* modname0 is ancestor ns passed to child */
+        if (ys_real_module(ys, &ymod) < 0)
+            goto done;
+        modname = yang_argument_get(ymod);
+        /* Special case for ietf-netconf -> ietf-restconf translation 
+         * A special case is for return data on the form {"data":...}
+         * See also json_xmlns_translate()
+         */
+        if (strcmp(modname, "ietf-netconf") == 0)
+            modname = "ietf-restconf";
+        if (modname0 && strcmp(modname, modname0) == 0)
+            modname=NULL;
+        else
+            modname0 = modname; /* modname0 is ancestor ns passed to child */
     }
     childt = child_type(x);
     if (pretty==2)
-	cprintf(cb, "#%s_array, %s_child ", 
-		arraytype2str(arraytype),
-		childtype2str(childt));
+        cprintf(cb, "#%s_array, %s_child ", 
+                arraytype2str(arraytype),
+                childtype2str(childt));
     switch(arraytype){
     case BODY_ARRAY: /* Only place in fn where body is printed (except nullchild) */
-	xp = xml_parent(x);
-	if (xml2json_encode_leafs(x, xp, xml_spec(xp), cb) < 0)
-	    goto done;
-	break;
+        xp = xml_parent(x);
+        if (xml2json_encode_leafs(x, xp, xml_spec(xp), cb) < 0)
+            goto done;
+        break;
     case NO_ARRAY:
-	if (!flat){
-	    cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
-	    if (modname) 
-		cprintf(cb, "%s:", modname);
-	    cprintf(cb, "%s\":%s", xml_name(x), pretty?" ":"");
-	}
-	switch (childt){
-	case NULL_CHILD:
-	    if (nullchild(cb, x, ys) < 0)
-		goto done;
-	    break;
-	case BODY_CHILD:
-	    break;
-	case ANY_CHILD:
-	    cprintf(cb, "{%s", pretty?"\n":"");
-	    break;
-	default:
-	    break;
-	}
-	break;
+        if (!flat){
+            cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
+            if (modname) 
+                cprintf(cb, "%s:", modname);
+            cprintf(cb, "%s\":%s", xml_name(x), pretty?" ":"");
+        }
+        switch (childt){
+        case NULL_CHILD:
+            if (nullchild(cb, x, ys) < 0)
+                goto done;
+            break;
+        case BODY_CHILD:
+            break;
+        case ANY_CHILD:
+            cprintf(cb, "{%s", pretty?"\n":"");
+            break;
+        default:
+            break;
+        }
+        break;
     case FIRST_ARRAY:
     case SINGLE_ARRAY:
-	cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
-	if (modname)
-	    cprintf(cb, "%s:", modname);
-	cprintf(cb, "%s\":%s", xml_name(x), pretty?" ":"");
-	level++;
-	cprintf(cb, "[%s%*s", 
-		pretty?"\n":"",
-		pretty?(level*JSON_INDENT):0, "");
-	switch (childt){
-	case NULL_CHILD:
-	    if (nullchild(cb, x, ys) < 0)
-		goto done;
-	    break;
-	case BODY_CHILD:
-	    break;
-	case ANY_CHILD:
-	    cprintf(cb, "{%s", pretty?"\n":"");
-	    break;
-	default:
-	    break;
-	}
-	break;
+        cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
+        if (modname)
+            cprintf(cb, "%s:", modname);
+        cprintf(cb, "%s\":%s", xml_name(x), pretty?" ":"");
+        level++;
+        cprintf(cb, "[%s%*s", 
+                pretty?"\n":"",
+                pretty?(level*JSON_INDENT):0, "");
+        switch (childt){
+        case NULL_CHILD:
+            if (nullchild(cb, x, ys) < 0)
+                goto done;
+            break;
+        case BODY_CHILD:
+            break;
+        case ANY_CHILD:
+            cprintf(cb, "{%s", pretty?"\n":"");
+            break;
+        default:
+            break;
+        }
+        break;
     case MIDDLE_ARRAY:
     case LAST_ARRAY:
-	level++;
-	cprintf(cb, "%*s", 
-		pretty?(level*JSON_INDENT):0, "");
-	switch (childt){
-	case NULL_CHILD:
-	    if (nullchild(cb, x, ys) < 0)
-		goto done;
-	    break;
-	case BODY_CHILD:
-	    break;
-	case ANY_CHILD:
-	    cprintf(cb, "{%s", pretty?"\n":"");
-	    break;
-	default:
-	    break;
-	}
-	break;
+        level++;
+        cprintf(cb, "%*s", 
+                pretty?(level*JSON_INDENT):0, "");
+        switch (childt){
+        case NULL_CHILD:
+            if (nullchild(cb, x, ys) < 0)
+                goto done;
+            break;
+        case BODY_CHILD:
+            break;
+        case ANY_CHILD:
+            cprintf(cb, "{%s", pretty?"\n":"");
+            break;
+        default:
+            break;
+        }
+        break;
     default:
-	break;
+        break;
     }
     if ((metacbc = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     /* Check for typed sub-body if:
      * arraytype=* but child-type is BODY_CHILD 
@@ -971,92 +971,92 @@ xml2json1_cbuf(cbuf                   *cb,
      */
     commas = xml_child_nr_notype(x, CX_ATTR) - 1;
     for (i=0; i<xml_child_nr(x); i++){
-	xc = xml_child_i(x, i);
-	if (xml_type(xc) == CX_ATTR){
-	    if (metacbp &&
-		xml2json_encode_attr(xc, x, ys, level, pretty, modname, metacbp) < 0)
-		goto done;
-	    continue;
-	}
-	xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
-				xc, 
-				xml_child_i(x, i+1));
-	if (xml2json1_cbuf(cb, 
-			   xc, 
-			   xc_arraytype,
-			   level+1, pretty, 0, modname0,
-			   metacbc) < 0)
-	    goto done;
-	if (commas > 0) {
-	    cprintf(cb, ",%s", pretty?"\n":"");
-	    --commas;
-	}
+        xc = xml_child_i(x, i);
+        if (xml_type(xc) == CX_ATTR){
+            if (metacbp &&
+                xml2json_encode_attr(xc, x, ys, level, pretty, modname, metacbp) < 0)
+                goto done;
+            continue;
+        }
+        xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL, 
+                                xc, 
+                                xml_child_i(x, i+1));
+        if (xml2json1_cbuf(cb, 
+                           xc, 
+                           xc_arraytype,
+                           level+1, pretty, 0, modname0,
+                           metacbc) < 0)
+            goto done;
+        if (commas > 0) {
+            cprintf(cb, ",%s", pretty?"\n":"");
+            --commas;
+        }
     }
     if (cbuf_len(metacbc)){
-	cprintf(cb, "%s", cbuf_get(metacbc));
+        cprintf(cb, "%s", cbuf_get(metacbc));
     }
 
     switch (arraytype){
     case BODY_ARRAY:
-	break;
+        break;
     case NO_ARRAY:
-	switch (childt){
-	case NULL_CHILD:
-	case BODY_CHILD:
-	    break;
-	case ANY_CHILD:
-	    cprintf(cb, "%s%*s}", 
-		    pretty?"\n":"",
-		    pretty?(level*JSON_INDENT):0, "");
-	    break;
-	default:
-	    break;
-	}
-	level--;
-	break;
+        switch (childt){
+        case NULL_CHILD:
+        case BODY_CHILD:
+            break;
+        case ANY_CHILD:
+            cprintf(cb, "%s%*s}", 
+                    pretty?"\n":"",
+                    pretty?(level*JSON_INDENT):0, "");
+            break;
+        default:
+            break;
+        }
+        level--;
+        break;
     case FIRST_ARRAY:
     case MIDDLE_ARRAY:
-	switch (childt){
-	case NULL_CHILD:
-	case BODY_CHILD:
-	    break;
-	case ANY_CHILD:
-	    cprintf(cb, "%s%*s}", 
-		    pretty?"\n":"",
-		    pretty?(level*JSON_INDENT):0, "");
-	    level--;
-	    break;
-	default:
-	    break;
-	}
-	break;
+        switch (childt){
+        case NULL_CHILD:
+        case BODY_CHILD:
+            break;
+        case ANY_CHILD:
+            cprintf(cb, "%s%*s}", 
+                    pretty?"\n":"",
+                    pretty?(level*JSON_INDENT):0, "");
+            level--;
+            break;
+        default:
+            break;
+        }
+        break;
     case SINGLE_ARRAY:
     case LAST_ARRAY:
-	switch (childt){
-	case NULL_CHILD:
-	case BODY_CHILD:
-	    cprintf(cb, "%s",pretty?"\n":"");
-	    break;
-	case ANY_CHILD:
-	    cprintf(cb, "%s%*s}", 
-		    pretty?"\n":"",
-		    pretty?(level*JSON_INDENT):0, "");
-	    cprintf(cb, "%s",pretty?"\n":"");
-	    level--;
-	    break;
-	default:
-	    break;
-	}
-	cprintf(cb, "%*s]",
-		pretty?(level*JSON_INDENT):0,"");
-	break;
+        switch (childt){
+        case NULL_CHILD:
+        case BODY_CHILD:
+            cprintf(cb, "%s",pretty?"\n":"");
+            break;
+        case ANY_CHILD:
+            cprintf(cb, "%s%*s}", 
+                    pretty?"\n":"",
+                    pretty?(level*JSON_INDENT):0, "");
+            cprintf(cb, "%s",pretty?"\n":"");
+            level--;
+            break;
+        default:
+            break;
+        }
+        cprintf(cb, "%*s]",
+                pretty?(level*JSON_INDENT):0,"");
+        break;
     default:
-	break;
+        break;
     }
     retval = 0;
  done:
     if (metacbc)
-	cbuf_free(metacbc);
+        cbuf_free(metacbc);
     return retval;
 }
 
@@ -1077,51 +1077,51 @@ xml2json1_cbuf(cbuf                   *cb,
  */
 static int 
 xml2json_cbuf1(cbuf   *cb, 
-	       cxobj  *x, 
-	       int     pretty,
-	       int     autocliext)
+               cxobj  *x, 
+               int     pretty,
+               int     autocliext)
 {
     int                     retval = 1;
     int                     level = 0;
     yang_stmt              *y;
     enum array_element_type arraytype = NO_ARRAY;
     int                     exist = 0;
-	
+        
     y = xml_spec(x);
     if (autocliext && y != NULL) {
-	if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
-	    goto done;
-	if (exist)
-	    goto ok;
+        if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+            goto done;
+        if (exist)
+            goto ok;
     }
     cprintf(cb, "%*s{%s", 
-	    pretty?level*JSON_INDENT:0,"", 
-	    pretty?"\n":"");
+            pretty?level*JSON_INDENT:0,"", 
+            pretty?"\n":"");
     
     if (y != NULL){
-	switch (yang_keyword_get(y)){
-	case Y_LEAF_LIST:
-	case Y_LIST:
-	    arraytype = SINGLE_ARRAY;
-	    break;
-	default:
-	    arraytype = NO_ARRAY;
-	    break;
-	}
+        switch (yang_keyword_get(y)){
+        case Y_LEAF_LIST:
+        case Y_LIST:
+            arraytype = SINGLE_ARRAY;
+            break;
+        default:
+            arraytype = NO_ARRAY;
+            break;
+        }
     }
     if (xml2json1_cbuf(cb, 
-		       x, 
-		       arraytype,
-		       level+1,
-		       pretty,
-		       0,
-		       NULL, /* ancestor modname / namespace */
-		       NULL) < 0)
-	goto done;
+                       x, 
+                       arraytype,
+                       level+1,
+                       pretty,
+                       0,
+                       NULL, /* ancestor modname / namespace */
+                       NULL) < 0)
+        goto done;
     cprintf(cb, "%s%*s}%s", 
-	    pretty?"\n":"",
-	    pretty?level*JSON_INDENT:0,"",
-	    pretty?"\n":"");
+            pretty?"\n":"",
+            pretty?level*JSON_INDENT:0,"",
+            pretty?"\n":"");
  ok:
     retval = 0;
  done:
@@ -1150,23 +1150,23 @@ xml2json_cbuf1(cbuf   *cb,
  */
 int 
 clixon_json2cbuf(cbuf  *cb, 
-		 cxobj *xt, 
-		 int    pretty,
-		 int    skiptop,
-		 int    autocliext)
+                 cxobj *xt, 
+                 int    pretty,
+                 int    skiptop,
+                 int    autocliext)
 {
     int    retval = -1;
     cxobj *xc;
 
     if (skiptop){
-	xc = NULL;
-	while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
-	    if (xml2json_cbuf1(cb, xc, pretty, autocliext) < 0)
-		goto done;
+        xc = NULL;
+        while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
+            if (xml2json_cbuf1(cb, xc, pretty, autocliext) < 0)
+                goto done;
     }
     else {
-	if (xml2json_cbuf1(cb, xt, pretty, autocliext) < 0)
-	    goto done;
+        if (xml2json_cbuf1(cb, xt, pretty, autocliext) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -1188,9 +1188,9 @@ clixon_json2cbuf(cbuf  *cb,
  */
 int 
 xml2json_cbuf_vec(cbuf      *cb, 
-		  cxobj    **vec,
-		  size_t     veclen,
-		  int        pretty)
+                  cxobj    **vec,
+                  size_t     veclen,
+                  int        pretty)
 {
     int    retval = -1;
     int    level = 0;
@@ -1200,41 +1200,41 @@ xml2json_cbuf_vec(cbuf      *cb,
     cvec  *nsc = NULL; 
 
     if ((xp = xml_new("xml2json", NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     /* Make a copy of old and graft it into new top-object
      * Also copy namespace context */
     for (i=0; i<veclen; i++){
-	if (xml_nsctx_node(vec[i], &nsc) < 0)
-	    goto done;
-	if ((xc = xml_dup(vec[i])) == NULL)
-	    goto done;
-	xml_addsub(xp, xc);
-	nscache_replace(xc, nsc); 
-	nsc = NULL; /* nsc consumed */
+        if (xml_nsctx_node(vec[i], &nsc) < 0)
+            goto done;
+        if ((xc = xml_dup(vec[i])) == NULL)
+            goto done;
+        xml_addsub(xp, xc);
+        nscache_replace(xc, nsc); 
+        nsc = NULL; /* nsc consumed */
     }
     if (0){
-	cprintf(cb, "[%s", pretty?"\n":" ");
-	level++;
+        cprintf(cb, "[%s", pretty?"\n":" ");
+        level++;
     }
     if (xml2json1_cbuf(cb, 
-		       xp, 
-		       NO_ARRAY,
-		       level+1, pretty,
-		       1, NULL, NULL) < 0)
-	goto done;
+                       xp, 
+                       NO_ARRAY,
+                       level+1, pretty,
+                       1, NULL, NULL) < 0)
+        goto done;
 
     if (0){
-	level--;
-	cprintf(cb, "%s]%s", 
-	    pretty?"\n":"",
-	    pretty?"\n":""); /* top object */
+        level--;
+        cprintf(cb, "%s]%s", 
+            pretty?"\n":"",
+            pretty?"\n":""); /* top object */
     }
     retval = 0;
  done:
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (xp)
-	xml_free(xp);
+        xml_free(xp);
     return retval;
 }
 
@@ -1257,28 +1257,28 @@ xml2json_cbuf_vec(cbuf      *cb,
  */
 int 
 clixon_json2file(FILE             *f, 
-		 cxobj            *xn,
-		 int               pretty,
-		 clicon_output_cb *fn,
-		 int               skiptop,
-		 int               autocliext)
+                 cxobj            *xn,
+                 int               pretty,
+                 clicon_output_cb *fn,
+                 int               skiptop,
+                 int               autocliext)
 {
     int   retval = 1;
     cbuf *cb = NULL;
 
     if (fn == NULL)
-	fn = fprintf;
+        fn = fprintf;
     if ((cb = cbuf_new()) ==NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
     }
     if (clixon_json2cbuf(cb, xn, pretty, skiptop, autocliext) < 0)
-	goto done;
+        goto done;
     (*fn)(f, "%s", cbuf_get(cb));
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -1289,7 +1289,7 @@ clixon_json2file(FILE             *f,
  */
 int
 json_print(FILE  *f, 
-	   cxobj *x)
+           cxobj *x)
 {
     return clixon_json2file(f, x, 1, fprintf, 0, 0);
 }
@@ -1309,24 +1309,24 @@ json_print(FILE  *f,
  */
 int 
 xml2json_vec(FILE      *f, 
-	     cxobj    **vec,
-	     size_t     veclen,
-	     int        pretty)
+             cxobj    **vec,
+             size_t     veclen,
+             int        pretty)
 {
     int   retval = 1;
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
     }
     if (xml2json_cbuf_vec(cb, vec, veclen, pretty) < 0)
-	goto done;
+        goto done;
     fprintf(f, "%s", cbuf_get(cb));
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -1346,8 +1346,8 @@ xml2json_vec(FILE      *f,
  */
 static int
 json_xmlns_translate(yang_stmt *yspec,
-		     cxobj     *x,
-		     cxobj    **xerr)
+                     cxobj     *x,
+                     cxobj    **xerr)
 {
     int        retval = -1;
     yang_stmt *ymod;
@@ -1357,36 +1357,36 @@ json_xmlns_translate(yang_stmt *yspec,
     int        ret;
     
     if ((modname = xml_prefix(x)) != NULL){ /* prefix is here module name */
-	/* Special case for ietf-netconf -> ietf-restconf translation 
-	 * A special case is for return data on the form {"data":...}
-	 * See also xml2json1_cbuf
-	 */
-	if (strcmp(modname, "ietf-restconf") == 0)
-	    modname = "ietf-netconf";
-	if ((ymod = yang_find_module_by_name(yspec, modname)) == NULL){
-	    if (xerr &&
-		netconf_unknown_namespace_xml(xerr, "application",
-					      modname,
-					      "No yang module found corresponding to prefix") < 0)
-		goto done;
-	    goto fail;
-	}
-	namespace = yang_find_mynamespace(ymod);
-	/* It would be possible to use canonical prefixes here, but probably not
-	 * necessary or even right. Therefore, the namespace given by the JSON prefix / module
-	 * is always the default namespace with prefix NULL.
-	 * If not, this would be the prefix to pass instead of NULL
-	 * prefix = yang_find_myprefix(ymod);
-	 */
-	if (xml_namespace_change(x, namespace, NULL) < 0)
-	    goto done;
+        /* Special case for ietf-netconf -> ietf-restconf translation 
+         * A special case is for return data on the form {"data":...}
+         * See also xml2json1_cbuf
+         */
+        if (strcmp(modname, "ietf-restconf") == 0)
+            modname = "ietf-netconf";
+        if ((ymod = yang_find_module_by_name(yspec, modname)) == NULL){
+            if (xerr &&
+                netconf_unknown_namespace_xml(xerr, "application",
+                                              modname,
+                                              "No yang module found corresponding to prefix") < 0)
+                goto done;
+            goto fail;
+        }
+        namespace = yang_find_mynamespace(ymod);
+        /* It would be possible to use canonical prefixes here, but probably not
+         * necessary or even right. Therefore, the namespace given by the JSON prefix / module
+         * is always the default namespace with prefix NULL.
+         * If not, this would be the prefix to pass instead of NULL
+         * prefix = yang_find_myprefix(ymod);
+         */
+        if (xml_namespace_change(x, namespace, NULL) < 0)
+            goto done;
     }
     xc = NULL;
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL){
-	if ((ret = json_xmlns_translate(yspec, xc, xerr)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = json_xmlns_translate(yspec, xc, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     retval = 1;
  done:
@@ -1417,11 +1417,11 @@ json_xmlns_translate(yang_stmt *yspec,
  */
 static int 
 _json_parse(char      *str, 
-	    int        rfc7951,
-	    yang_bind  yb,
-	    yang_stmt *yspec,
-	    cxobj     *xt,
-	    cxobj    **xerr)
+            int        rfc7951,
+            yang_bind  yb,
+            yang_stmt *yspec,
+            cxobj     *xt,
+            cxobj    **xerr)
 {
     int              retval = -1;
     clixon_json_yacc jy = {0,};
@@ -1437,93 +1437,93 @@ _json_parse(char      *str,
     jy.jy_current = xt;
     jy.jy_xtop = xt;
     if (json_scan_init(&jy) < 0)
-	goto done;
+        goto done;
     if (json_parse_init(&jy) < 0)
-	goto done;
+        goto done;
     if (clixon_json_parseparse(&jy) != 0) { /* yacc returns 1 on error */
-	clicon_log(LOG_NOTICE, "JSON error: line %d", jy.jy_linenum);
-	if (clicon_errno == 0)
-	    clicon_err(OE_JSON, 0, "JSON parser error with no error code (should not happen)");
-	goto done;
+        clicon_log(LOG_NOTICE, "JSON error: line %d", jy.jy_linenum);
+        if (clicon_errno == 0)
+            clicon_err(OE_JSON, 0, "JSON parser error with no error code (should not happen)");
+        goto done;
     }
     /* Traverse new objects */
     for (i = 0; i < jy.jy_xlen; i++) {
-	x = jy.jy_xvec[i];
-	/* RFC 7951 Section 4: A namespace-qualified member name MUST be used for all 
-	 * members of a top-level JSON object 
-	 */
-	if (rfc7951 && xml_prefix(x) == NULL){
-	    /* XXX: For top-level config file: */
-	    if (yb != YB_NONE || strcmp(xml_name(x),DATASTORE_TOP_SYMBOL)!=0){
-		if ((cberr = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cberr, "Top-level JSON object %s is not qualified with namespace which is a MUST according to RFC 7951", xml_name(x));
-		if (xerr && netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
-		    goto done;
-		goto fail;
-	    }
-	}
-	/* Names are split into name/prefix, but now add namespace info */
-	if ((ret = json_xmlns_translate(yspec, x, xerr)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	/* Now assign yang stmts to each XML node 
-	 * XXX should be xml_bind_yang0_parent() sometimes.
-	 */
-	switch (yb){
-	case YB_PARENT:
-	    if ((ret = xml_bind_yang0(x, yb, yspec, xerr)) < 0)
-		    goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
-	case YB_MODULE_NEXT:
-	    if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
-	case YB_MODULE:
-	    if ((ret = xml_bind_yang0(x, yb, yspec, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
-	case YB_NONE:
-	    break;
-	case YB_RPC: 
-	    if ((ret = xml_bind_yang_rpc(x, yspec, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
-	}
-	/* Now find leafs with identityrefs (+transitive) and translate 
-	 * prefixes in values to XML namespaces */
-	if ((ret = json2xml_decode(x, xerr)) < 0)
-	    goto done;
-	if (ret == 0) /* XXX necessary? */
-	    goto fail;
+        x = jy.jy_xvec[i];
+        /* RFC 7951 Section 4: A namespace-qualified member name MUST be used for all 
+         * members of a top-level JSON object 
+         */
+        if (rfc7951 && xml_prefix(x) == NULL){
+            /* XXX: For top-level config file: */
+            if (yb != YB_NONE || strcmp(xml_name(x),DATASTORE_TOP_SYMBOL)!=0){
+                if ((cberr = cbuf_new()) == NULL){
+                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cberr, "Top-level JSON object %s is not qualified with namespace which is a MUST according to RFC 7951", xml_name(x));
+                if (xerr && netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
+                    goto done;
+                goto fail;
+            }
+        }
+        /* Names are split into name/prefix, but now add namespace info */
+        if ((ret = json_xmlns_translate(yspec, x, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        /* Now assign yang stmts to each XML node 
+         * XXX should be xml_bind_yang0_parent() sometimes.
+         */
+        switch (yb){
+        case YB_PARENT:
+            if ((ret = xml_bind_yang0(x, yb, yspec, xerr)) < 0)
+                    goto done;
+            if (ret == 0)
+                failed++;
+            break;
+        case YB_MODULE_NEXT:
+            if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                failed++;
+            break;
+        case YB_MODULE:
+            if ((ret = xml_bind_yang0(x, yb, yspec, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                failed++;
+            break;
+        case YB_NONE:
+            break;
+        case YB_RPC: 
+            if ((ret = xml_bind_yang_rpc(x, yspec, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                failed++;
+            break;
+        }
+        /* Now find leafs with identityrefs (+transitive) and translate 
+         * prefixes in values to XML namespaces */
+        if ((ret = json2xml_decode(x, xerr)) < 0)
+            goto done;
+        if (ret == 0) /* XXX necessary? */
+            goto fail;
     }
     if (failed)
-	goto fail;
+        goto fail;
     /* Sort the complete tree after parsing. Sorting is not really meaningful if Yang 
        not bound */
     if (yb != YB_NONE)
-	if (xml_sort_recurse(xt) < 0)
-	    goto done;
+        if (xml_sort_recurse(xt) < 0)
+            goto done;
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
-	cbuf_free(cberr);
+        cbuf_free(cberr);
     json_parse_exit(&jy);
     json_scan_exit(&jy);
     if (jy.jy_xvec)
-	free(jy.jy_xvec);
+        free(jy.jy_xvec);
     return retval; 
  fail: /* invalid */
     retval = 0;
@@ -1554,20 +1554,20 @@ _json_parse(char      *str,
  */
 int 
 clixon_json_parse_string(char      *str, 
-			 int        rfc7951,
-			 yang_bind  yb,
-			 yang_stmt *yspec,
-			 cxobj    **xt,
-			 cxobj    **xerr)
+                         int        rfc7951,
+                         yang_bind  yb,
+                         yang_stmt *yspec,
+                         cxobj    **xt,
+                         cxobj    **xerr)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     if (xt==NULL){
-	clicon_err(OE_JSON, EINVAL, "xt is NULL");
-	return -1;
+        clicon_err(OE_JSON, EINVAL, "xt is NULL");
+        return -1;
     }
     if (*xt == NULL){
-	if ((*xt = xml_new("top", NULL, CX_ELMNT)) == NULL)
-	    return -1;
+        if ((*xt = xml_new("top", NULL, CX_ELMNT)) == NULL)
+            return -1;
     }
     return _json_parse(str, rfc7951, yb, yspec, *xt, xerr);
 }
@@ -1610,11 +1610,11 @@ clixon_json_parse_string(char      *str,
  */
 int
 clixon_json_parse_file(FILE      *fp,
-		       int        rfc7951,
-		       yang_bind  yb,
-		       yang_stmt *yspec,
-		       cxobj    **xt,
-		       cxobj    **xerr)
+                       int        rfc7951,
+                       yang_bind  yb,
+                       yang_stmt *yspec,
+                       cxobj    **xt,
+                       cxobj    **xerr)
 {
     int       retval = -1;
     int       ret;
@@ -1626,53 +1626,53 @@ clixon_json_parse_file(FILE      *fp,
     int       len = 0;
 
     if (xt==NULL){
-	clicon_err(OE_JSON, EINVAL, "xt is NULL");
-	return -1;
+        clicon_err(OE_JSON, EINVAL, "xt is NULL");
+        return -1;
     }
     if ((jsonbuf = malloc(jsonbuflen)) == NULL){
-	clicon_err(OE_JSON, errno, "malloc");
-	goto done;
+        clicon_err(OE_JSON, errno, "malloc");
+        goto done;
     }
     memset(jsonbuf, 0, jsonbuflen);
     ptr = jsonbuf;
     while (1){
-	if ((ret = fread(&ch, 1, 1, fp)) < 0){
-	    clicon_err(OE_JSON, errno, "read");
-	    break;
-	}
-	if (ret != 0)
-	    jsonbuf[len++] = ch;
-	if (ret == 0){
-	    if (*xt == NULL)
-		if ((*xt = xml_new(JSON_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-		    goto done;
-	    if (len){
-		if ((ret = _json_parse(ptr, rfc7951, yb, yspec, *xt, xerr)) < 0)
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-	    }
-	    break;
-	}
-	if (len >= jsonbuflen-1){ /* Space: one for the null character */
-	    oldjsonbuflen = jsonbuflen;
-	    jsonbuflen *= 2;
-	    if ((jsonbuf = realloc(jsonbuf, jsonbuflen)) == NULL){
-		clicon_err(OE_JSON, errno, "realloc");
-		goto done;
-	    }
-	    memset(jsonbuf+oldjsonbuflen, 0, jsonbuflen-oldjsonbuflen);
-	    ptr = jsonbuf;
-	}
+        if ((ret = fread(&ch, 1, 1, fp)) < 0){
+            clicon_err(OE_JSON, errno, "read");
+            break;
+        }
+        if (ret != 0)
+            jsonbuf[len++] = ch;
+        if (ret == 0){
+            if (*xt == NULL)
+                if ((*xt = xml_new(JSON_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+                    goto done;
+            if (len){
+                if ((ret = _json_parse(ptr, rfc7951, yb, yspec, *xt, xerr)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+            }
+            break;
+        }
+        if (len >= jsonbuflen-1){ /* Space: one for the null character */
+            oldjsonbuflen = jsonbuflen;
+            jsonbuflen *= 2;
+            if ((jsonbuf = realloc(jsonbuf, jsonbuflen)) == NULL){
+                clicon_err(OE_JSON, errno, "realloc");
+                goto done;
+            }
+            memset(jsonbuf+oldjsonbuflen, 0, jsonbuflen-oldjsonbuflen);
+            ptr = jsonbuf;
+        }
     }
     retval = 1;
  done:
     if (retval < 0 && *xt){
-	free(*xt);
-	*xt = NULL;
+        free(*xt);
+        *xt = NULL;
     }
     if (jsonbuf)
-	free(jsonbuf);
+        free(jsonbuf);
     return retval;    
  fail:
     retval = 0;

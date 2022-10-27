@@ -93,8 +93,8 @@ fdpass(int nfd)
 {
     struct msghdr mh;
     union {
-	struct cmsghdr hdr;
-	char buf[CMSG_SPACE(sizeof(int))];
+        struct cmsghdr hdr;
+        char buf[CMSG_SPACE(sizeof(int))];
     } cmsgbuf;
     struct cmsghdr *cmsg;
     struct iovec iov;
@@ -104,8 +104,8 @@ fdpass(int nfd)
 
     /* Avoid obvious stupidity */
     if (isatty(STDOUT_FILENO)){
-	perror("Cannot pass file descriptor to tty");
-	return -1;
+        perror("Cannot pass file descriptor to tty");
+        return -1;
     }
     memset(&mh, 0, sizeof(mh));
     memset(&cmsgbuf, 0, sizeof(cmsgbuf));
@@ -128,25 +128,25 @@ fdpass(int nfd)
     pfd.fd = STDOUT_FILENO;
     pfd.events = POLLOUT;
     for (;;) {
-	r = sendmsg(STDOUT_FILENO, &mh, 0);
-	if (r == -1) {
-	    if (errno == EAGAIN || errno == EINTR) {
-		if (poll(&pfd, 1, -1) == -1){
-		    perror("poll");
-		    return -1;
-		}
-		continue;
-	    }
-	    perror("sendmsg");
-	    return -1;
-	} else if (r != 1){
-	    perror("sendmsg: unexpected return value");
-	    return -1;
-	}
-	else
-	    break;
+        r = sendmsg(STDOUT_FILENO, &mh, 0);
+        if (r == -1) {
+            if (errno == EAGAIN || errno == EINTR) {
+                if (poll(&pfd, 1, -1) == -1){
+                    perror("poll");
+                    return -1;
+                }
+                continue;
+            }
+            perror("sendmsg");
+            return -1;
+        } else if (r != 1){
+            perror("sendmsg: unexpected return value");
+            return -1;
+        }
+        else
+            break;
     }
-    //	exit(0);
+    //  exit(0);
     return 0;
 }
 
@@ -158,52 +158,52 @@ fdpass(int nfd)
  */
 int
 callhome_bind(struct sockaddr *sa,
-	      size_t           sin_len,		    
-	      int              backlog,
-	      int             *sock)
+              size_t           sin_len,             
+              int              backlog,
+              int             *sock)
 {
     int    retval = -1;
     int    s = -1;
     int    on = 1;
     
     if (sock == NULL){
-	errno = EINVAL;
-	perror("sock");
-	goto done;
+        errno = EINVAL;
+        perror("sock");
+        goto done;
     }
     /* create inet socket */
     if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
-	perror("socket");
-	goto done;
+        perror("socket");
+        goto done;
     }
     if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, sizeof(on)) == -1) {
-	perror("setsockopt SO_KEEPALIVE");
-	goto done;
+        perror("setsockopt SO_KEEPALIVE");
+        goto done;
     }
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)) == -1) {
-	perror("setsockopt SO_REUSEADDR");
-	goto done;
+        perror("setsockopt SO_REUSEADDR");
+        goto done;
     }
     /* only bind ipv6, otherwise it may bind to ipv4 as well which is strange but seems default */
     if (sa->sa_family == AF_INET6 &&
-	setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
-	perror("setsockopt IPPROTO_IPV6");
-	goto done;
+        setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
+        perror("setsockopt IPPROTO_IPV6");
+        goto done;
     }
     if (bind(s, sa, sin_len) == -1) {
-	perror("bind");
-	goto done;
+        perror("bind");
+        goto done;
     }
     if (listen(s, backlog) < 0){
-	perror("listen");
-	goto done;
+        perror("listen");
+        goto done;
     }
     if (sock)
-	*sock = s;
+        *sock = s;
     retval = 0;
  done:
     if (retval != 0 && s != -1)
-	close(s);
+        close(s);
     return retval;
 }
 
@@ -211,14 +211,14 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options]\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h           \tHelp\n"
-    	    "\t-D <level>   \tDebug\n"
-	    "\t-f ipv4|ipv6 \tSocket address family(ipv4 default)\n"
-	    "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
-	    "\t-p <port>    \tPort (default 4334)\n"
-	    ,
-	    argv0);
+            "\t-D <level>   \tDebug\n"
+            "\t-f ipv4|ipv6 \tSocket address family(ipv4 default)\n"
+            "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
+            "\t-p <port>    \tPort (default 4334)\n"
+            ,
+            argv0);
     exit(0);
 }
 
@@ -244,42 +244,42 @@ main(int    argc,
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, UTIL_OPTS)) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv[0]);
-	    break;
-    	case 'D':
-	    dbg++; /* not used */
-	    break;
-	case 'f':
-	    family = optarg;
-	    break;
-	case 'a':
-	    addr = optarg;
-	    break;
-	case 'p':
-	    port = atoi(optarg);
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv[0]);
+            break;
+        case 'D':
+            dbg++; /* not used */
+            break;
+        case 'f':
+            family = optarg;
+            break;
+        case 'a':
+            addr = optarg;
+            break;
+        case 'p':
+            port = atoi(optarg);
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     if (port == 0){
-	fprintf(stderr, "-p <port> is invalid\n");
-	usage(argv[0]);
-	goto done;
+        fprintf(stderr, "-p <port> is invalid\n");
+        usage(argv[0]);
+        goto done;
     }
     if (addr == NULL){
-	fprintf(stderr, "-a <addr> is NULL\n");
-	usage(argv[0]);
-	goto done;
+        fprintf(stderr, "-a <addr> is NULL\n");
+        usage(argv[0]);
+        goto done;
     }
     if (strcmp(family, "ipv6") == 0){
         sin_len          = sizeof(struct sockaddr_in6);
         sin6.sin6_port   = htons(port);
         sin6.sin6_family = AF_INET6;
         inet_pton(AF_INET6, addr, &sin6.sin6_addr);
-        sa = (struct sockaddr *)&sin6;	
+        sa = (struct sockaddr *)&sin6;  
     }
     else if (strcmp(family, "ipv4") == 0){
         sin_len             = sizeof(struct sockaddr_in);
@@ -289,21 +289,21 @@ main(int    argc,
         sa = (struct sockaddr *)&sin;
     }
     else{
-	fprintf(stderr, "-f <%s> is invalid family\n", family);
-	goto done;
+        fprintf(stderr, "-f <%s> is invalid family\n", family);
+        goto done;
     }
     /* Bind port */
     if (callhome_bind(sa, sin_len, 1, &ss) < 0) 
-	goto done;
+        goto done;
     /* Wait until connect */
     len = sizeof(from);
     if ((s = accept(ss, &from, &len)) < 0){
-	perror("accept");
-	goto done;
+        perror("accept");
+        goto done;
     }
     /* s Pass the first connected socket using sendmsg(2) to stdout and exit. */
     if (fdpass(s) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;

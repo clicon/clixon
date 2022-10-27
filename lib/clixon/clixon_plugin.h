@@ -98,11 +98,11 @@ typedef int (*clicon_upgrade_cb)(
  */
 enum clixon_auth_type {
     CLIXON_AUTH_NONE = 0,           /* Message is authenticated automatically to 
-				       anonymous user, maye be changed by ca-auth callback 
-				       FEATURE clixon-restconf:allow-auth-none must be enabled */
+                                       anonymous user, maye be changed by ca-auth callback 
+                                       FEATURE clixon-restconf:allow-auth-none must be enabled */
     CLIXON_AUTH_CLIENT_CERTIFICATE, /* TLS Client certification authentication */
     CLIXON_AUTH_USER,               /* User-defined authentication according to ca-auth callback. 
-				       Such as "password" authentication */
+                                       Such as "password" authentication */
 };
 typedef enum clixon_auth_type clixon_auth_type_t;
 
@@ -130,7 +130,7 @@ typedef int (plgdaemon_t)(clicon_handle);              /* Plugin pre/post daemon
 /* Called just before plugin unloaded. 
  * @param[in] h    Clixon handle
  */
-typedef int (plgexit_t)(clicon_handle);		       /* Plugin exit */
+typedef int (plgexit_t)(clicon_handle);                /* Plugin exit */
 
 /* For yang extension handling. 
  * Called at parsing of yang module containing a statement of an extension.
@@ -293,36 +293,36 @@ struct clixon_plugin_api{
     char              ca_name[MAXPATHLEN]; /* Name of plugin (given by plugin) */
     plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
     plgstart_t       *ca_start;          /* Plugin start */
-    plgexit_t        *ca_exit;	         /* Plugin exit */
+    plgexit_t        *ca_exit;           /* Plugin exit */
     plgextension_t   *ca_extension;      /* Yang extension handler */
     union {
-	struct { /* cli-specific */
-	    cli_prompthook_t *ci_prompt;         /* Prompt hook */
-	    cligen_susp_cb_t *ci_suspend;        /* Ctrl-Z hook, see cligen getline */
-	    cligen_interrupt_cb_t *ci_interrupt; /* Ctrl-C, see cligen getline */
-	} cau_cli;
-	struct { /* restconf-specific */
-	    plgauth_t        *cr_auth;           /* Auth credentials */
-	} cau_restconf;
-	struct { /* netconf-specific */
-	} cau_netconf;
-	struct { /* backend-specific */
+        struct { /* cli-specific */
+            cli_prompthook_t *ci_prompt;         /* Prompt hook */
+            cligen_susp_cb_t *ci_suspend;        /* Ctrl-Z hook, see cligen getline */
+            cligen_interrupt_cb_t *ci_interrupt; /* Ctrl-C, see cligen getline */
+        } cau_cli;
+        struct { /* restconf-specific */
+            plgauth_t        *cr_auth;           /* Auth credentials */
+        } cau_restconf;
+        struct { /* netconf-specific */
+        } cau_netconf;
+        struct { /* backend-specific */
             plgdaemon_t      *cb_pre_daemon;     /* Plugin just before daemonization (only daemon) */
             plgdaemon_t      *cb_daemon;         /* Plugin daemonized (always called) */
-	    plgreset_t       *cb_reset;          /* Reset system status */
+            plgreset_t       *cb_reset;          /* Reset system status */
 
-	    plgstatedata_t   *cb_statedata;      /* Provide state data XML from plugin */
-	    plglockdb_t      *cb_lockdb;         /* Database lock changed state */
-	    trans_cb_t       *cb_trans_begin;	 /* Transaction start */
-	    trans_cb_t       *cb_trans_validate; /* Transaction validation */
-	    trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
-	    trans_cb_t       *cb_trans_commit;   /* Transaction commit */
-	    trans_cb_t       *cb_trans_commit_done; /* Transaction when commit done */
-	    trans_cb_t       *cb_trans_revert;   /* Transaction revert */
-	    trans_cb_t       *cb_trans_end;	 /* Transaction completed  */
-    	    trans_cb_t       *cb_trans_abort;	 /* Transaction aborted */
-	    datastore_upgrade_t *cb_datastore_upgrade; /* General-purpose datastore upgrade */
-	} cau_backend;
+            plgstatedata_t   *cb_statedata;      /* Provide state data XML from plugin */
+            plglockdb_t      *cb_lockdb;         /* Database lock changed state */
+            trans_cb_t       *cb_trans_begin;    /* Transaction start */
+            trans_cb_t       *cb_trans_validate; /* Transaction validation */
+            trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
+            trans_cb_t       *cb_trans_commit;   /* Transaction commit */
+            trans_cb_t       *cb_trans_commit_done; /* Transaction when commit done */
+            trans_cb_t       *cb_trans_revert;   /* Transaction revert */
+            trans_cb_t       *cb_trans_end;      /* Transaction completed  */
+            trans_cb_t       *cb_trans_abort;    /* Transaction aborted */
+            datastore_upgrade_t *cb_datastore_upgrade; /* General-purpose datastore upgrade */
+        } cau_backend;
     } u;
 };
 /* Access fields */
@@ -373,11 +373,11 @@ typedef struct plugin_context plugin_context_t;
  * When namespace and name match, the callback is made
  */
 typedef struct {
-    qelem_t       rc_qelem;	/* List header */
+    qelem_t       rc_qelem;     /* List header */
     clicon_rpc_cb rc_callback;  /* RPC Callback */
-    void         *rc_arg;	/* Application specific argument to cb */
+    void         *rc_arg;       /* Application specific argument to cb */
     char         *rc_namespace;/* Namespace to combine with name tag */
-    char         *rc_name;	/* Xml/json tag/name */
+    char         *rc_name;      /* Xml/json tag/name */
 } rpc_callback_t;
 
 /*

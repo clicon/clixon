@@ -59,87 +59,87 @@ module example-leafref{
     }
     /* Basic config data */
     container table{
-	list parameter{
-	    key name;
-	    leaf name{
-		type uint32;
-	    }
-	    leaf value{
-		type string;
-	    }
+        list parameter{
+            key name;
+            leaf name{
+                type uint32;
+            }
+            leaf value{
+                type string;
+            }
         }
     }
     /* first level leafref */
     container leafrefs {
         description "Leafref relative path, no require-instance";
-	list leafref{
-	   key name;
-	   leaf name {
-   	      type leafref{
+        list leafref{
+           key name;
+           leaf name {
+              type leafref{
                  path "../../../table/parameter/name";
-		 require-instance false;
+                 require-instance false;
               }
            }
         }
     }
-    /* first level leafref absolute */	
+    /* first level leafref absolute */  
     container leafrefsabs {
         description "Leafref absolute path, no require-instance";
-	list leafref{
-	   key name;
-	   leaf name {
-   	      type leafref{
+        list leafref{
+           key name;
+           leaf name {
+              type leafref{
                  path "/table/parameter/name";
-		 require-instance false;
+                 require-instance false;
               }
            }
         }
     }
-    /* first level leafref require-instance */	
+    /* first level leafref require-instance */  
     container leafrefsreqinst {
         description "Leafref absolute path, require-instance true";
-	list leafref{
-	   key name;
-	   leaf name {
-   	      type leafref{
+        list leafref{
+           key name;
+           leaf name {
+              type leafref{
                  path "/table/parameter/name";
-		 require-instance true;
+                 require-instance true;
               }
            }
         }
     }
     /* first level identityrefs */
     container identityrefs {
-	list identityref{
-	   description "Identityref base";
-	   key name;
-	   leaf name {
-   	      type identityref{
-	         base "ex:crypto-alg";
+        list identityref{
+           description "Identityref base";
+           key name;
+           leaf name {
+              type identityref{
+                 base "ex:crypto-alg";
               }
            }
         }
     }
     /* second level leafref */
     container leafrefs2 {
-	list leafref{
-	   key name;
-	   leaf name {
-   	      type leafref{
+        list leafref{
+           key name;
+           leaf name {
+              type leafref{
                  path "../../../leafrefs/leafref/name";
-		 require-instance false;
+                 require-instance false;
               }
            }
         }
     }
     /* second level identityref */
     container identityrefs2 {
-	list identityref{
-	   key name;
-	   leaf name {
-   	      type leafref{
+        list identityref{
+           key name;
+           leaf name {
+              type leafref{
                  path "../../../identityrefs/identityref/name";
-		 require-instance false;
+                 require-instance false;
               }
            }
         }
@@ -196,7 +196,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s startup -f $cfg"
     start_backend -s startup -f $cfg
@@ -296,7 +296,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

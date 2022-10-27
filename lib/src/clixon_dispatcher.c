@@ -113,8 +113,8 @@
  */
 static int
 split_path(char   *path,
-	   char ***plist,
-	   size_t *plist_len)
+           char ***plist,
+           size_t *plist_len)
 {
     int    retval = -1;
     size_t allocated = PATH_CHUNKS;
@@ -125,14 +125,14 @@ split_path(char   *path,
     char  *new_element;
 
     if ((work = strdup(path)) == NULL)
-	goto done;
+        goto done;
     if ((list = malloc(allocated * sizeof(char *))) == NULL)
-	goto done;
+        goto done;
     memset(list, 0, allocated * sizeof(char *));
     ptr = work;
     if (*ptr == '/') {
-	if ((new_element = strdup("/")) == NULL)
-	    goto done;
+        if ((new_element = strdup("/")) == NULL)
+            goto done;
         list[len++] = new_element;
         ptr++;
     }
@@ -144,11 +144,11 @@ split_path(char   *path,
             /* we've run out of space, allocate a bigger list */
             allocated += PATH_CHUNKS;
             if ((list = realloc(list, allocated * sizeof(char *))) == NULL)
-		goto done;
+                goto done;
         }
 
         if ((new_element = strdup(ptr)) == NULL)
-	    goto done;
+            goto done;
         list[len++] = new_element;
 
         ptr = strtok(NULL, "/");
@@ -170,7 +170,7 @@ split_path(char   *path,
  */
 static void
 split_path_free(char **list,
-		size_t len)
+                size_t len)
 {
     size_t i;
 
@@ -219,14 +219,14 @@ find_peer(dispatcher_entry_t *node, char *node_name)
  */
 static dispatcher_entry_t *
 add_peer_node(dispatcher_entry_t *node,
-	      char               *name)
+              char               *name)
 {
     dispatcher_entry_t *new_node = NULL;
     dispatcher_entry_t *eptr;
 
     if ((new_node = malloc(sizeof(dispatcher_entry_t))) == NULL)
-	return NULL;
-	
+        return NULL;
+        
     memset(new_node, 0, sizeof(dispatcher_entry_t));
     if (node == NULL) {
         /* this is a new node */
@@ -279,12 +279,12 @@ add_peer_node(dispatcher_entry_t *node,
 
 static dispatcher_entry_t *
 add_child_node(dispatcher_entry_t *node,
-	       char               *name)
+               char               *name)
 {
     dispatcher_entry_t *child_ptr;
 
     if ((child_ptr = add_peer_node(node->children, name)) == NULL)
-	return NULL;
+        return NULL;
     node->children = child_ptr->peer_head;
 
     return child_ptr;
@@ -299,7 +299,7 @@ add_child_node(dispatcher_entry_t *node,
  */
 static dispatcher_entry_t *
 get_entry(dispatcher_entry_t *root,
-	  char               *path)
+          char               *path)
 {
     char              **split_path_list = NULL;
     size_t              split_path_len = 0;
@@ -308,12 +308,12 @@ get_entry(dispatcher_entry_t *root,
 
     /* cut the path up into individual elements */
     if (split_path(path, &split_path_list, &split_path_len) < 0)
-	return NULL;
+        return NULL;
 
     /* some elements may have keys defined, strip them off */
     for (int i = 0; i < split_path_len; i++) {
-	char *kptr = split_path_list[i];
-	strsep(&kptr, "=[]");
+        char *kptr = split_path_list[i];
+        strsep(&kptr, "=[]");
     }
 
     /* search down the tree */
@@ -321,7 +321,7 @@ get_entry(dispatcher_entry_t *root,
 
         char *query = split_path_list[i];
         if ((ptr = find_peer(ptr, query)) == NULL) {
-	    split_path_free(split_path_list, split_path_len);
+            split_path_free(split_path_list, split_path_len);
             /* we ran out of matches, use last found handler */
             return best;
         }
@@ -350,9 +350,9 @@ get_entry(dispatcher_entry_t *root,
  */
 static int
 call_handler_helper(dispatcher_entry_t *entry,
-		    void               *handle,
-		    char               *path,
-		    void               *user_args)
+                    void               *handle,
+                    char               *path,
+                    void               *user_args)
 {
     if (entry->children != NULL) {
         call_handler_helper(entry->children, handle, path, user_args);
@@ -382,14 +382,14 @@ call_handler_helper(dispatcher_entry_t *entry,
  */
 int
 dispatcher_register_handler(dispatcher_entry_t   **root,
-			    dispatcher_definition *x)
+                            dispatcher_definition *x)
 {
     char              **split_path_list = NULL;
     size_t              split_path_len = 0;
     dispatcher_entry_t *ptr;
 
     if (*x->dd_path != '/') {
-	errno = EINVAL;
+        errno = EINVAL;
         return -1;
     }
 
@@ -398,7 +398,7 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
      * up to create the elements of the dispatcher table
      */
     if (split_path(x->dd_path, &split_path_list, &split_path_len) < 0)
-	return -1;
+        return -1;
 
     /*
      * the first element is always a peer to the top level
@@ -406,14 +406,14 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
     ptr = *root;
 
     if ((ptr = add_peer_node(ptr, split_path_list[0])) == NULL)
-	return -1;
+        return -1;
     if (*root == NULL) {
         *root = ptr;
     }
 
     for (size_t i = 1; i < split_path_len; i++) {
         if ((ptr = add_child_node(ptr, split_path_list[i])) == NULL)
-	    return -1;
+            return -1;
     }
 
     /* when we get here, ptr points at last entry added */
@@ -442,16 +442,16 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
  */
 int
 dispatcher_call_handlers(dispatcher_entry_t *root,
-			 void               *handle,
-			 char               *path,
-			 void               *user_args)
+                         void               *handle,
+                         char               *path,
+                         void               *user_args)
 {
     int                 ret = 0;
     dispatcher_entry_t *best;
 
     if ((best = get_entry(root, path)) == NULL){
-	errno = ENOENT;
-	return -1;
+        errno = ENOENT;
+        return -1;
     }
     if (best->children != NULL) {
         call_handler_helper(best->children, handle, path, user_args);
@@ -468,13 +468,13 @@ int
 dispatcher_free(dispatcher_entry_t *root)
 {
     if (root == NULL)
-	return 0;
+        return 0;
     if (root->children)
-	dispatcher_free(root->children);
+        dispatcher_free(root->children);
     if (root->peer)
-	dispatcher_free(root->peer);
+        dispatcher_free(root->peer);
     if (root->node_name)
-	free(root->node_name);
+        free(root->node_name);
     free(root);
     return 0;
 }
@@ -484,18 +484,18 @@ dispatcher_free(dispatcher_entry_t *root)
 #define INDENT 3
 int
 dispatcher_print(FILE               *f,
-		 int                 level,
-		 dispatcher_entry_t *de)
+                 int                 level,
+                 dispatcher_entry_t *de)
 {
     fprintf(f, "%*s%s", level*INDENT, "", de->node_name);
     if (de->handler)
-	fprintf(f, " %p", de->handler);
+        fprintf(f, " %p", de->handler);
     if (de->arg)
-	fprintf(f, " (%p)", de->arg);
+        fprintf(f, " (%p)", de->arg);
     fprintf(f, "\n");
     if (de->children)
-	dispatcher_print(f, level+1, de->children);
+        dispatcher_print(f, level+1, de->children);
     if (de->peer)
-	dispatcher_print(f, level, de->peer);
+        dispatcher_print(f, level, de->peer);
     return 0;
 }

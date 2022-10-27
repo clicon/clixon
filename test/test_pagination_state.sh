@@ -101,15 +101,15 @@ function testrun_start()
 
     new "test params: -f $cfg -s init -- -siS $fstate -x $xpath"
     if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	sudo pkill -f clixon_backend # to be sure
-	
-	new "start backend -s init -f $cfg -- -siS $fstate -x $xpath"
-	start_backend -s init -f $cfg -- -siS $fstate -x $xpath
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        sudo pkill -f clixon_backend # to be sure
+        
+        new "start backend -s init -f $cfg -- -siS $fstate -x $xpath"
+        start_backend -s init -f $cfg -- -siS $fstate -x $xpath
     fi
     
     new "wait backend"
@@ -119,14 +119,14 @@ function testrun_start()
 function testrun_stop()
 {
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 
@@ -166,7 +166,7 @@ if [ -n "$(type expect 2> /dev/null)" ]; then
     new "CLI scroll test using expect"
     expect ./test_pagination_expect.exp "$cfg" "$xpath" bob3 bob4
     if [ $? -ne 0 ]; then
-	err1 "Failed: CLI show paginate state scroll using expect"
+        err1 "Failed: CLI show paginate state scroll using expect"
     fi
 
     testrun_stop

@@ -84,21 +84,21 @@
  */
 static int
 client_get_capabilities(clicon_handle h,
-			yang_stmt    *yspec,
-			char         *xpath,
-			cxobj       **xret)
+                        yang_stmt    *yspec,
+                        char         *xpath,
+                        cxobj       **xret)
 {
     int     retval = -1;
     cxobj  *xrstate = NULL; /* xml restconf-state node */
     cbuf   *cb = NULL;
     
     if ((xrstate = xpath_first(*xret, NULL, "restconf-state")) == NULL){
-	clicon_err(OE_YANG, ENOENT, "restconf-state not found in config node");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "restconf-state not found in config node");
+        goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     cprintf(cb, "<capabilities>");
     cprintf(cb, "<capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability>");
@@ -106,11 +106,11 @@ client_get_capabilities(clicon_handle h,
     cprintf(cb, "<capability>urn:ietf:params:restconf:capability:with-defaults:1.0</capability>");
     cprintf(cb, "</capabilities>");
     if (clixon_xml_parse_string(cbuf_get(cb), YB_PARENT, NULL, &xrstate, NULL) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -127,11 +127,11 @@ client_get_capabilities(clicon_handle h,
  */
 static int
 client_get_streams(clicon_handle   h,
-		   yang_stmt      *yspec,
-		   char           *xpath,
-		   yang_stmt      *ymod,
-		   char           *top,
-		   cxobj         **xret)
+                   yang_stmt      *yspec,
+                   char           *xpath,
+                   yang_stmt      *ymod,
+                   char           *top,
+                   cxobj         **xret)
 {
     int            retval = -1;
     yang_stmt     *yns = NULL;  /* yang namespace */
@@ -140,36 +140,36 @@ client_get_streams(clicon_handle   h,
     int            ret;
 
     if ((yns = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL){
-	clicon_err(OE_YANG, 0, "%s yang namespace not found", yang_argument_get(ymod));
-	goto done;
+        clicon_err(OE_YANG, 0, "%s yang namespace not found", yang_argument_get(ymod));
+        goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     cprintf(cb, "<%s xmlns=\"%s\">", top, yang_argument_get(yns));
     /* Second argument is a hack to have the same function for the
      * RFC5277 and 8040 stream cases
      */
     if (stream_get_xml(h, strcmp(top,"restconf-state")==0, cb) < 0)
-	goto done;
+        goto done;
     cprintf(cb,"</%s>", top);
 
     if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &x, NULL) < 0){
-	if (xret && netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
-	    goto done;
-	goto fail;
+        if (xret && netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
+            goto done;
+        goto fail;
     }
     if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     retval = 1;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (x)
-	xml_free(x);
+        xml_free(x);
     return retval;
  fail:
     retval = 0;
@@ -187,9 +187,9 @@ client_get_streams(clicon_handle   h,
  */
 static int
 get_client_statedata(clicon_handle h,
-		     char         *xpath,
-		     cvec         *nsc,
-		     cxobj       **xret)
+                     char         *xpath,
+                     cvec         *nsc,
+                     cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -200,73 +200,73 @@ get_client_statedata(clicon_handle h,
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277")){
-	if ((ymod = yang_find_module_by_name(yspec, "clixon-rfc5277")) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "yang module clixon-rfc5277 not found");
-	    goto done;
-	}
-	if ((namespace = yang_find_mynamespace(ymod)) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "clixon-rfc5277 namespace not found");
-	    goto done;
-	}
-	cprintf(cb, "<netconf xmlns=\"%s\"/>", namespace);
-	if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
-	    goto done;
-	if ((ret = client_get_streams(h, yspec, xpath, ymod, "netconf", xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ymod = yang_find_module_by_name(yspec, "clixon-rfc5277")) == NULL){
+            clicon_err(OE_YANG, ENOENT, "yang module clixon-rfc5277 not found");
+            goto done;
+        }
+        if ((namespace = yang_find_mynamespace(ymod)) == NULL){
+            clicon_err(OE_YANG, ENOENT, "clixon-rfc5277 namespace not found");
+            goto done;
+        }
+        cprintf(cb, "<netconf xmlns=\"%s\"/>", namespace);
+        if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
+            goto done;
+        if ((ret = client_get_streams(h, yspec, xpath, ymod, "netconf", xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040")){
-	if ((ymod = yang_find_module_by_name(yspec, "ietf-restconf-monitoring")) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "yang module ietf-restconf-monitoring not found");
-	    goto done;
-	}
-	if ((namespace = yang_find_mynamespace(ymod)) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "ietf-restconf-monitoring namespace not found");
-	    goto done;
-	}
-	cbuf_reset(cb);
-	/* XXX This code does not filter state data with  xpath */
-	cprintf(cb, "<restconf-state xmlns=\"%s\"/>", namespace);
-	if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
-	    goto done;
-	if ((ret = client_get_streams(h, yspec, xpath, ymod, "restconf-state", xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	if ((ret = client_get_capabilities(h, yspec, xpath, xret)) < 0)
-	    goto done;
+        if ((ymod = yang_find_module_by_name(yspec, "ietf-restconf-monitoring")) == NULL){
+            clicon_err(OE_YANG, ENOENT, "yang module ietf-restconf-monitoring not found");
+            goto done;
+        }
+        if ((namespace = yang_find_mynamespace(ymod)) == NULL){
+            clicon_err(OE_YANG, ENOENT, "ietf-restconf-monitoring namespace not found");
+            goto done;
+        }
+        cbuf_reset(cb);
+        /* XXX This code does not filter state data with  xpath */
+        cprintf(cb, "<restconf-state xmlns=\"%s\"/>", namespace);
+        if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
+            goto done;
+        if ((ret = client_get_streams(h, yspec, xpath, ymod, "restconf-state", xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        if ((ret = client_get_capabilities(h, yspec, xpath, xret)) < 0)
+            goto done;
     }
     if (clicon_option_bool(h, "CLICON_YANG_LIBRARY")){
-	if ((ret = yang_modules_state_get(h, yspec, xpath, nsc, 0, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = yang_modules_state_get(h, yspec, xpath, nsc, 0, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     /* Use plugin state callbacks */
     if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, xret)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     /* Add default state to config if present */
     if (xml_default_recurse(*xret, 1) < 0)
-	goto done;
+        goto done;
     /* Add default global state */
     if (xml_global_defaults(h, *xret, nsc, xpath, yspec, 1) < 0)
-	goto done;
+        goto done;
     retval = 1; /* OK */
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
  fail:
     retval = 0;
@@ -294,35 +294,35 @@ get_client_statedata(clicon_handle h,
  */
 static int
 filter_xpath_again(clicon_handle h,
-		   yang_stmt    *yspec,
-		   cxobj        *xret,
-		   cxobj       **xvec,
-		   size_t        xlen,
-		   char         *xpath,
-		   cvec         *nsc)
+                   yang_stmt    *yspec,
+                   cxobj        *xret,
+                   cxobj       **xvec,
+                   size_t        xlen,
+                   char         *xpath,
+                   cvec         *nsc)
 {
     int     retval = -1;
     int     i;
 
     if (xret == NULL){
-	clicon_err(OE_PLUGIN, EINVAL, "xret is NULL");
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "xret is NULL");
+        goto done;
     }
     /* If vectors are specified then mark the nodes found and
      * then filter out everything else,
      * otherwise return complete tree.
      */
     if (xvec != NULL){
-	for (i=0; i<xlen; i++)
-	    xml_flag_set(xvec[i], XML_FLAG_MARK);
+        for (i=0; i<xlen; i++)
+            xml_flag_set(xvec[i], XML_FLAG_MARK);
     }
     /* Remove everything that is not marked */
     if (!xml_flag(xret, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
-	    goto done;
+        if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
+            goto done;
     /* reset flag */
     if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -344,14 +344,14 @@ filter_xpath_again(clicon_handle h,
  */
 static int
 get_nacm_and_reply(clicon_handle h,
-		   cxobj        *xret,
-		   cxobj       **xvec,
-		   size_t        xlen,
-		   char         *xpath,
-		   cvec         *nsc,
-		   char         *username,
-		   int32_t       depth,
-		   cbuf         *cbret)
+                   cxobj        *xret,
+                   cxobj       **xvec,
+                   size_t        xlen,
+                   char         *xpath,
+                   cvec         *nsc,
+                   char         *username,
+                   int32_t       depth,
+                   cbuf         *cbret)
 {
     int     retval = -1;
     cxobj  *xnacm = NULL;
@@ -359,19 +359,19 @@ get_nacm_and_reply(clicon_handle h,
     /* Pre-NACM access step */
     xnacm = clicon_nacm_cache(h);
     if (xnacm != NULL){ /* Do NACM validation */
-	/* NACM datanode/module read validation */
-	if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
-	    goto done;
+        /* NACM datanode/module read validation */
+        if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
+            goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);     /* OK */
     if (xret==NULL)
-	cprintf(cbret, "<data/>");
+        cprintf(cbret, "<data/>");
     else{
-	if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
-	    goto done;
-	/* Top level is data, so add 1 to depth if significant */
-	if (clixon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth, 0) < 0)
-	    goto done;
+        if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
+            goto done;
+        /* Top level is data, so add 1 to depth if significant */
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth, 0) < 0)
+            goto done;
     }
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
@@ -393,52 +393,52 @@ get_nacm_and_reply(clicon_handle h,
  */
 static int
 element2value(clicon_handle  h,
-	      cxobj         *xe,
-	      char          *name,
-	      char          *defaultstr,
-	      cbuf          *cbret,
-	      uint32_t      *value)
+              cxobj         *xe,
+              char          *name,
+              char          *defaultstr,
+              cbuf          *cbret,
+              uint32_t      *value)
 {
     char  *valstr;
     cxobj *x;
     
     *value = 0;
     if ((x = xml_find_type(xe, NULL, name, CX_ELMNT)) != NULL &&
-	(valstr = xml_body(x)) != NULL){
-	return netconf_parse_uint32(name, valstr, defaultstr, 0, cbret, value);
+        (valstr = xml_body(x)) != NULL){
+        return netconf_parse_uint32(name, valstr, defaultstr, 0, cbret, value);
     }
     return 1;
 }
 
 /*! Set flag on node having schema default value.
- * @param[in]   x	XML node
- * @param[in]   flag	Flag to be used
- * @retval      0    	OK
+ * @param[in]   x       XML node
+ * @param[in]   flag    Flag to be used
+ * @retval      0       OK
  */
 static int
 xml_flag_default_value(cxobj *x,
-		       uint16_t flag)
+                       uint16_t flag)
 {
-    yang_stmt	*y;
-    cg_var	*cv;
-    char	*yv;
-    char	*xv;
+    yang_stmt   *y;
+    cg_var      *cv;
+    char        *yv;
+    char        *xv;
 
     xml_flag_reset(x, flag); /* Assume not default value */
     if ((xv = xml_body(x)) == NULL)
- 	goto done;
+        goto done;
     if ((y = xml_spec(x)) == NULL)
-	goto done;
+        goto done;
     if ((cv = yang_cv_get(y)) == NULL)
-	goto done;
+        goto done;
     if ((cv = yang_cv_get(y)) == NULL)
-	goto done;
+        goto done;
     if (cv_name_get(cv) == NULL)
-	goto done;
+        goto done;
     if ((yv = cv2str_dup(cv)) == NULL)
-	goto done;
+        goto done;
     if (strcmp(xv, yv) == 0)
-	xml_flag_set(x, flag); /* Actual value same as default value */
+        xml_flag_set(x, flag); /* Actual value same as default value */
     free(yv);
 
   done:
@@ -446,26 +446,26 @@ xml_flag_default_value(cxobj *x,
 }
 
 /*! Add default attribute to node with default value.
- * @param[in]   x      	XML node
- * @param[in]   flags 	Flags indicatiing default nodes
- * @retval      0    	OK
- * @retval     -1    	Error
+ * @param[in]   x       XML node
+ * @param[in]   flags   Flags indicatiing default nodes
+ * @retval      0       OK
+ * @retval     -1       Error
  */
 static int
 xml_add_default_tag(cxobj *x,
-		    uint16_t flags)
+                    uint16_t flags)
 {
     int retval = -1;
     cxobj *xattr;
 
     if (xml_flag(x, flags)) {
-	/* set default attribute */
-	if ((xattr = xml_new("default", x, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_value_set(xattr, "true") < 0)
-	    goto done;
-	if (xml_prefix_set(xattr, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX) < 0)
-	    goto done;
+        /* set default attribute */
+        if ((xattr = xml_new("default", x, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_value_set(xattr, "true") < 0)
+            goto done;
+        if (xml_prefix_set(xattr, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -475,12 +475,12 @@ xml_add_default_tag(cxobj *x,
 /*! Update XML return tree according to RFC6243: with-defaults
  * @param[in]   xe      Request: <rpc><xn></rpc>
  * @param[in]   xret    XML return tree to be updated
- * @retval      0    	OK
- * @retval     -1    	Error
+ * @retval      0       OK
+ * @retval     -1       Error
  */
 static int
 with_defaults(cxobj *xe,
-	      cxobj *xret)
+              cxobj *xret)
 {
     int    retval = -1;
     cxobj *xfind;
@@ -488,56 +488,56 @@ with_defaults(cxobj *xe,
     cxobj *x;
 
     if ((xfind = xml_find(xe, "with-defaults")) != NULL) {
-	if ((mode = xml_find_value(xfind, "body")) == NULL)
-	    goto done;
+        if ((mode = xml_find_value(xfind, "body")) == NULL)
+            goto done;
 
-	if (strcmp(mode, "explicit") == 0) {
-	    /* Clear marked nodes */
-	    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_reset,(void*) XML_FLAG_MARK) < 0)
-		goto done;
-	    /* Mark state nodes */
-	    if (xml_non_config_data(xret, NULL) < 0)
-		goto done;
-	    /* Remove default configuration nodes */
-	    if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_MARK | XML_FLAG_DEFAULT) < 0)
-		goto done;
-	    /* Remove empty containers */
-	    if (xml_defaults_nopresence(xret, 1) < 0)
-	    	goto done;
-	    goto ok;
-	}
-	else if (strcmp(mode, "trim") == 0) {
-	    /* Remove default nodes from XML */
-	    if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_DEFAULT) < 0)
-		goto done;
-	    /* Mark and remove nodes having schema default values */
-	    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-		goto done;
-	    if (xml_tree_prune_flags(xret, XML_FLAG_MARK, XML_FLAG_MARK)
-		    < 0)
-		goto done;
-	    /* Remove empty containers */
-	    if (xml_defaults_nopresence(xret, 1) < 0)
-	    	goto done;
-	    goto ok;
-	}
-	else if (strcmp(mode, "report-all-tagged") == 0) {
-	    x = NULL;
-	    while ((x = xml_child_each(xret, x, CX_ELMNT)) != NULL)
-		if (xmlns_set(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
-		    goto done;
-	    /* Mark nodes having default schema values */
-	    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-		goto done;
-	    /* Add tag attributes to default nodes */
-	    if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
-		goto done;
-	    goto ok;
-	}
-	else if (strcmp(mode, "report-all") == 0) {
-	    /* Accept mode, do nothing */
-	    goto ok;
-	}
+        if (strcmp(mode, "explicit") == 0) {
+            /* Clear marked nodes */
+            if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_reset,(void*) XML_FLAG_MARK) < 0)
+                goto done;
+            /* Mark state nodes */
+            if (xml_non_config_data(xret, NULL) < 0)
+                goto done;
+            /* Remove default configuration nodes */
+            if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_MARK | XML_FLAG_DEFAULT) < 0)
+                goto done;
+            /* Remove empty containers */
+            if (xml_defaults_nopresence(xret, 1) < 0)
+                goto done;
+            goto ok;
+        }
+        else if (strcmp(mode, "trim") == 0) {
+            /* Remove default nodes from XML */
+            if (xml_tree_prune_flags(xret, XML_FLAG_DEFAULT, XML_FLAG_DEFAULT) < 0)
+                goto done;
+            /* Mark and remove nodes having schema default values */
+            if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+                goto done;
+            if (xml_tree_prune_flags(xret, XML_FLAG_MARK, XML_FLAG_MARK)
+                    < 0)
+                goto done;
+            /* Remove empty containers */
+            if (xml_defaults_nopresence(xret, 1) < 0)
+                goto done;
+            goto ok;
+        }
+        else if (strcmp(mode, "report-all-tagged") == 0) {
+            x = NULL;
+            while ((x = xml_child_each(xret, x, CX_ELMNT)) != NULL)
+                if (xmlns_set(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
+                    goto done;
+            /* Mark nodes having default schema values */
+            if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+                goto done;
+            /* Add tag attributes to default nodes */
+            if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
+                goto done;
+            goto ok;
+        }
+        else if (strcmp(mode, "report-all") == 0) {
+            /* Accept mode, do nothing */
+            goto ok;
+        }
     }
     ok:
         retval = 0;
@@ -565,17 +565,17 @@ with_defaults(cxobj *xe,
  */
 static int
 get_list_pagination(clicon_handle        h,
-		    struct client_entry *ce,
-		    cxobj               *xe,
-		    netconf_content      content,
-		    char                *db,
-		    int32_t              depth,
-		    yang_stmt           *yspec,
-		    char                *xpath,
-		    cvec                *nsc,
-		    char                *username,
-		    cbuf                *cbret
-		    )
+                    struct client_entry *ce,
+                    cxobj               *xe,
+                    netconf_content      content,
+                    char                *db,
+                    int32_t              depth,
+                    yang_stmt           *yspec,
+                    char                *xpath,
+                    cvec                *nsc,
+                    char                *username,
+                    cbuf                *cbret
+                    )
 {
     int             retval = -1;
     uint32_t        offset = 0;
@@ -602,219 +602,219 @@ get_list_pagination(clicon_handle        h,
 
     /* Check if list/leaf-list */
     if (yang_path_arg(yspec, xpath?xpath:"/", &ylist) < 0)
-	goto done;
+        goto done;
     if (ylist == NULL){
-	if ((cbmsg = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	/* error reason should be in clicon_err_reason */
-	cprintf(cbmsg, "Netconf get list-pagination: \"%s\" not found", xpath);
-	if (netconf_invalid_value(cbret, "application", cbuf_get(cbmsg)) < 0)
-	    goto done;
-	goto ok;
+        if ((cbmsg = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        /* error reason should be in clicon_err_reason */
+        cprintf(cbmsg, "Netconf get list-pagination: \"%s\" not found", xpath);
+        if (netconf_invalid_value(cbret, "application", cbuf_get(cbmsg)) < 0)
+            goto done;
+        goto ok;
     }
     if (yang_keyword_get(ylist) != Y_LIST &&
-	yang_keyword_get(ylist) != Y_LEAF_LIST){
-	if (netconf_invalid_value(cbret, "application", "list-pagination is enabled but target is not list or leaf-list") < 0)
-	    goto done;
-	goto ok;
+        yang_keyword_get(ylist) != Y_LEAF_LIST){
+        if (netconf_invalid_value(cbret, "application", "list-pagination is enabled but target is not list or leaf-list") < 0)
+            goto done;
+        goto ok;
     }
     /* Sanity checks on state/config */
     if ((list_config = yang_config_ancestor(ylist)) != 0){ /* config list */
-	if (content == CONTENT_NONCONFIG){
-	    if (netconf_invalid_value(cbret, "application", "list-pagination targets a config list but content request is nonconfig") < 0)
-		goto done;
-	    goto ok;
-	}
+        if (content == CONTENT_NONCONFIG){
+            if (netconf_invalid_value(cbret, "application", "list-pagination targets a config list but content request is nonconfig") < 0)
+                goto done;
+            goto ok;
+        }
     }
     else { /* state list */
-	if (content == CONTENT_CONFIG){
-	    if (netconf_invalid_value(cbret, "application", "list-pagination targets a state list but content request is config") < 0)
-		goto done;
-	    goto ok;
-	}
+        if (content == CONTENT_CONFIG){
+            if (netconf_invalid_value(cbret, "application", "list-pagination targets a state list but content request is config") < 0)
+                goto done;
+            goto ok;
+        }
     }
     /* offset */
     if ((ret = element2value(h, xe, "offset", "none", cbret, &offset)) < 0)
-	goto done;
+        goto done;
     /* limit */
     if (ret && (ret = element2value(h, xe, "limit", "unbounded", cbret, &limit)) < 0)
-	goto done;
+        goto done;
 #ifdef NOTYET
     /* direction */
     if (ret && (x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL){
-	direction = xml_body(x);
-	if (strcmp(direction, "forward") != 0 && strcmp(direction, "reverse") != 0){
-	    if (netconf_bad_attribute(cbret, "application",
-				      "direction", "Unrecognized value of direction attribute") < 0)
-		goto done;
-	    goto ok;
-	}
+        direction = xml_body(x);
+        if (strcmp(direction, "forward") != 0 && strcmp(direction, "reverse") != 0){
+            if (netconf_bad_attribute(cbret, "application",
+                                      "direction", "Unrecognized value of direction attribute") < 0)
+                goto done;
+            goto ok;
+        }
     }
     /* sort */
     if (ret && (x = xml_find_type(xe, NULL, "sort-by", CX_ELMNT)) != NULL)
-	sort = xml_body(x);
+        sort = xml_body(x);
     if (sort) {
-	/* XXX: nothing yet */
+        /* XXX: nothing yet */
     }
     /* where */
     if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
-	where = xml_body(x);
+        where = xml_body(x);
 #endif
     /* Read config */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
     case CONTENT_ALL:       /* both config and state */
-	/* Build a "predicate" cbuf 
-	 * This solution uses xpath predicates to translate "limit" and "offset" to
-	 * relational operators <>.
-	 */
-	if ((cbpath = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	/* This uses xpath. Maybe limit should use parameters */
-	if (xpath)
-	    cprintf(cbpath, "%s", xpath);
-	else
-	    cprintf(cbpath, "/");
+        /* Build a "predicate" cbuf 
+         * This solution uses xpath predicates to translate "limit" and "offset" to
+         * relational operators <>.
+         */
+        if ((cbpath = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        /* This uses xpath. Maybe limit should use parameters */
+        if (xpath)
+            cprintf(cbpath, "%s", xpath);
+        else
+            cprintf(cbpath, "/");
 #ifdef NOTYET
-	if (where)
-	    cprintf(cbpath, "[%s]", where);
+        if (where)
+            cprintf(cbpath, "[%s]", where);
 #endif
-	if (offset){
-	    cprintf(cbpath, "[%u <= position()", offset);
-	    if (limit)
-		cprintf(cbpath, " and position() < %u", limit+offset);
-	    cprintf(cbpath, "]");
-	}
-	else if (limit)
-	    cprintf(cbpath, "[position() < %u]", limit);
+        if (offset){
+            cprintf(cbpath, "[%u <= position()", offset);
+            if (limit)
+                cprintf(cbpath, " and position() < %u", limit+offset);
+            cprintf(cbpath, "]");
+        }
+        else if (limit)
+            cprintf(cbpath, "[position() < %u]", limit);
 
-	/* Append predicate to original xpath and replace it */
-	xpath2 = cbuf_get(cbpath);
-	/* specific xpath */
-	if (xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, &xret, NULL, NULL) < 0) {
-	    if ((cbmsg = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
-	    if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
-		goto done;
-	    goto ok;
-	}
-	break;
+        /* Append predicate to original xpath and replace it */
+        xpath2 = cbuf_get(cbpath);
+        /* specific xpath */
+        if (xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, &xret, NULL, NULL) < 0) {
+            if ((cbmsg = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
+            if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+                goto done;
+            goto ok;
+        }
+        break;
     case CONTENT_NONCONFIG: /* state data only */
-	if ((xret = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)/* Only top tree */
-	    goto done;
-	break;
+        if ((xret = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)/* Only top tree */
+            goto done;
+        break;
     }/* switch content */
 
     if (list_config){
 #ifdef LIST_PAGINATION_REMAINING
-	/* Get total/remaining
-	 * XXX: Works only for cache
-	 */
-	if ((xcache = xmldb_cache_get(h, db)) != NULL){
-	    if (xpath_count(xcache, nsc, xpath, &total) < 0)
-		goto done;
-	    if (total >= (offset + limit))
-		remaining = total - (offset + limit);
-	}
+        /* Get total/remaining
+         * XXX: Works only for cache
+         */
+        if ((xcache = xmldb_cache_get(h, db)) != NULL){
+            if (xpath_count(xcache, nsc, xpath, &total) < 0)
+                goto done;
+            if (total >= (offset + limit))
+                remaining = total - (offset + limit);
+        }
 #endif
     }
     else {/* Check if running locked (by this session) */
-	if ((iddb = xmldb_islocked(h, "running")) != 0 &&
-	    iddb == ce->ce_id)
-	    locked = 1;
-	else
-	    locked = 0;
-	if ((ret = clixon_pagination_cb_call(h, xpath, locked,
-					     offset, limit,
-					     xret)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if ((cberr = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    /* error reason should be in clicon_err_reason */
-	    cprintf(cberr, "Internal error, pagination state callback invalid return : %s",
-		    clicon_err_reason);
-	    if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
-		goto done;
-	    if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        if ((iddb = xmldb_islocked(h, "running")) != 0 &&
+            iddb == ce->ce_id)
+            locked = 1;
+        else
+            locked = 0;
+        if ((ret = clixon_pagination_cb_call(h, xpath, locked,
+                                             offset, limit,
+                                             xret)) < 0)
+            goto done;
+        if (ret == 0){
+            if ((cberr = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            /* error reason should be in clicon_err_reason */
+            cprintf(cberr, "Internal error, pagination state callback invalid return : %s",
+                    clicon_err_reason);
+            if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
+                goto done;
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+                goto done;
+            goto ok;
+        }
 
-	/* System makes the binding */
-	if ((ret = xml_bind_yang(xret, YB_MODULE, yspec, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if (clicon_debug_get() && xret)
-		clicon_log_xml(LOG_DEBUG, xret, "Yang bind pagination state");
-	    if (clixon_netconf_internal_error(xerr,
-					      ". Internal error, state callback returned invalid XML",
-					      NULL) < 0)
-		goto done;
-	    if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        /* System makes the binding */
+        if ((ret = xml_bind_yang(xret, YB_MODULE, yspec, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if (clicon_debug_get() && xret)
+                clicon_log_xml(LOG_DEBUG, xret, "Yang bind pagination state");
+            if (clixon_netconf_internal_error(xerr,
+                                              ". Internal error, state callback returned invalid XML",
+                                              NULL) < 0)
+                goto done;
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+                goto done;
+            goto ok;
+        }
     }
     if (with_defaults(xml_parent(xe), xret) < 0)
-	goto done;
+        goto done;
     if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	goto done;
+        goto done;
     /* Help function to filter out anything that is outside of xpath */
     if (filter_xpath_again(h, yspec, xret, xvec, xlen, xpath, nsc) < 0)
-	goto done;
+        goto done;
 #ifdef LIST_PAGINATION_REMAINING
     /* Add remaining attribute Sec 3.1.5: 
        Any list or leaf-list that is limited includes, on the first element in the result set, 
        a metadata value [RFC7952] called "remaining"*/
     if (limit && x1){ 
-	cxobj *xa;
-	cbuf  *cba = NULL;
+        cxobj *xa;
+        cbuf  *cba = NULL;
 
-	/* Add remaining attribute */
-	if ((xa = xml_new("remaining", x1, CX_ATTR)) == NULL)
-	    goto done;
-	if ((cba = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(cba, "%u", remaining);
-	if (xml_value_set(xa, cbuf_get(cba)) < 0)
-	    goto done;
-	if (xml_prefix_set(xa, "cp") < 0)
-	    goto done;
-	if (xmlns_set(x1, "cp", "http://clicon.org/clixon-netconf-list-pagination") < 0)
-	    goto done;
-	if (cba)
-	    cbuf_free(cba);
+        /* Add remaining attribute */
+        if ((xa = xml_new("remaining", x1, CX_ATTR)) == NULL)
+            goto done;
+        if ((cba = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cba, "%u", remaining);
+        if (xml_value_set(xa, cbuf_get(cba)) < 0)
+            goto done;
+        if (xml_prefix_set(xa, "cp") < 0)
+            goto done;
+        if (xmlns_set(x1, "cp", "http://clicon.org/clixon-netconf-list-pagination") < 0)
+            goto done;
+        if (cba)
+            cbuf_free(cba);
     }
 #endif /* LIST_PAGINATION_REMAINING */
     if (get_nacm_and_reply(h, xret, xvec, xlen, xpath, nsc, username, depth, cbret) < 0)
-	goto done;
+        goto done;
  ok:
     retval = 0;
  done:
     if (xvec)
-	free(xvec);
+        free(xvec);
     if (cbmsg)
-	cbuf_free(cbmsg);
+        cbuf_free(cbmsg);
     if (cbpath)
-	cbuf_free(cbpath);
+        cbuf_free(cbpath);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (cberr)
-	cbuf_free(cberr);
+        cbuf_free(cberr);
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     return retval;
 }
 
@@ -833,12 +833,12 @@ get_list_pagination(clicon_handle        h,
  */
 static int
 get_common(clicon_handle        h,
-	   struct client_entry *ce,
-	   cxobj               *xe,
-	   netconf_content      content,
-	   char                *db,
-	   cbuf                *cbret
-	   )
+           struct client_entry *ce,
+           cxobj               *xe,
+           netconf_content      content,
+           char                *db,
+           cbuf                *cbret
+           )
 {
     int             retval = -1;
     cxobj          *xfilter;
@@ -864,103 +864,103 @@ get_common(clicon_handle        h,
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec9");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "No yang spec9");
+        goto done;
     }
     if ((xfilter = xml_find(xe, "filter")) != NULL){
-	if ((xpath0 = xml_find_value(xfilter, "select"))==NULL)
-	    xpath0 = "/";
-	/* Create namespace context for xpath from <filter>
-	 *  The set of namespace declarations are those in scope on the
-	 * <filter> element.
-	 */
-	else
-	    if (xml_nsctx_node(xfilter, &nsc0) < 0)
-		goto done;
-	if ((ret = xpath2canonical(xpath0, nsc0, yspec, &xpath, &nsc, &cbreason)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if (netconf_bad_attribute(cbret, "application",
-				      "select", cbuf_get(cbreason)) < 0)
-		goto done;
-	    goto ok;
-	}
+        if ((xpath0 = xml_find_value(xfilter, "select"))==NULL)
+            xpath0 = "/";
+        /* Create namespace context for xpath from <filter>
+         *  The set of namespace declarations are those in scope on the
+         * <filter> element.
+         */
+        else
+            if (xml_nsctx_node(xfilter, &nsc0) < 0)
+                goto done;
+        if ((ret = xpath2canonical(xpath0, nsc0, yspec, &xpath, &nsc, &cbreason)) < 0)
+            goto done;
+        if (ret == 0){
+            if (netconf_bad_attribute(cbret, "application",
+                                      "select", cbuf_get(cbreason)) < 0)
+                goto done;
+            goto ok;
+        }
     }
     /* Clixon extensions: depth */
     if ((attr = xml_find_value(xe, "depth")) != NULL){
-	if ((ret = parse_int32(attr, &depth, &reason)) < 0){
-	    clicon_err(OE_XML, errno, "parse_int32");
-	    goto done;
-	}
-	if (ret == 0){
-	    if (netconf_bad_attribute(cbret, "application",
-				      "depth", "Unrecognized value of depth attribute") < 0)
-		goto done;
-	    goto ok;
-	}
+        if ((ret = parse_int32(attr, &depth, &reason)) < 0){
+            clicon_err(OE_XML, errno, "parse_int32");
+            goto done;
+        }
+        if (ret == 0){
+            if (netconf_bad_attribute(cbret, "application",
+                                      "depth", "Unrecognized value of depth attribute") < 0)
+                goto done;
+            goto ok;
+        }
     }
     /* Check if list pagination */
     if ((xfind = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL)
-	list_pagination = 1;
+        list_pagination = 1;
     /* Sanity check for list pagination: path must be a list/leaf-list, if it is,
      * check config/state
      */
     if (list_pagination){
-	if (get_list_pagination(h, ce,
-				xfind,
-				content, db,
-				depth, yspec, xpath, nsc, username,
-				cbret) < 0)
-	    goto done;
-	goto ok;
+        if (get_list_pagination(h, ce,
+                                xfind,
+                                content, db,
+                                depth, yspec, xpath, nsc, username,
+                                cbret) < 0)
+            goto done;
+        goto ok;
     }
     /* Read configuration */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
-	/* specific xpath */
-	if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, &xret, NULL, NULL) < 0) {
-	    if ((cbmsg = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
-	    if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
-		goto done;
-	    goto ok;
-	}
-	break;
+        /* specific xpath */
+        if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, &xret, NULL, NULL) < 0) {
+            if ((cbmsg = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
+            if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+                goto done;
+            goto ok;
+        }
+        break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
-	if (clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
-	    /* Whole config tree, for validate debug */
-	    if (xmldb_get0(h, "running", YB_MODULE, nsc, NULL, 1, &xret, NULL, NULL) < 0) {
-		if ((cbmsg = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
-		if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
-		    goto done;
-		goto ok;
-	    }
-	}
-	else if (content == CONTENT_ALL){
-	    /* specific xpath */
-	    if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, &xret, NULL, NULL) < 0) {
-		if ((cbmsg = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
-		if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
-		    goto done;
-		goto ok;
-	    }
-	}
-	/* CONTENT_NONCONFIG */
-	else if ((xret = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)/* Only top tree */
-	    goto done;
-	break;
+        if (clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
+            /* Whole config tree, for validate debug */
+            if (xmldb_get0(h, "running", YB_MODULE, nsc, NULL, 1, &xret, NULL, NULL) < 0) {
+                if ((cbmsg = cbuf_new()) == NULL){
+                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
+                if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+                    goto done;
+                goto ok;
+            }
+        }
+        else if (content == CONTENT_ALL){
+            /* specific xpath */
+            if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, &xret, NULL, NULL) < 0) {
+                if ((cbmsg = cbuf_new()) == NULL){
+                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
+                if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+                    goto done;
+                goto ok;
+            }
+        }
+        /* CONTENT_NONCONFIG */
+        else if ((xret = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)/* Only top tree */
+            goto done;
+        break;
     }/* switch content */
     /* If not only config,
      * get state data from plugins as defined by plugin_statedata(), if any 
@@ -968,83 +968,83 @@ get_common(clicon_handle        h,
     /* Read state */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
-	break;
+        break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
-	if ((ret = get_client_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
-	    goto done;
-	if (ret == 0){ /* Error from callback (error in xret) */
-	    if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	break;
+        if ((ret = get_client_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
+            goto done;
+        if (ret == 0){ /* Error from callback (error in xret) */
+            if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        break;
     }
     if (with_defaults(xe, xret) < 0)
-	goto done;
+        goto done;
     if (content != CONTENT_CONFIG &&
-	clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
-	/* Check XML  by validating it. return internal error with error cause 
-	 * Primarily intended for user-supplied state-data.
-	 * The whole config tree must be present in case the state data references config data
-	 */
-	if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0) 
-	    goto done;
-	if (ret > 0 &&
-	    (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if (clicon_debug_get())
-		clicon_log_xml(LOG_DEBUG, xret, "VALIDATE_STATE");
-	    if (clixon_netconf_internal_error(xerr,
-					      ". Internal error, state callback returned invalid XML",
-					      NULL) < 0)
-		goto done;
-	    if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
+        /* Check XML  by validating it. return internal error with error cause 
+         * Primarily intended for user-supplied state-data.
+         * The whole config tree must be present in case the state data references config data
+         */
+        if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0) 
+            goto done;
+        if (ret > 0 &&
+            (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if (clicon_debug_get())
+                clicon_log_xml(LOG_DEBUG, xret, "VALIDATE_STATE");
+            if (clixon_netconf_internal_error(xerr,
+                                              ". Internal error, state callback returned invalid XML",
+                                              NULL) < 0)
+                goto done;
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+                goto done;
+            goto ok;
+        }
     } /* CLICON_VALIDATE_STATE_XML */
 
     if (content == CONTENT_NONCONFIG){ /* state only, all config should be removed now */
-	/* Keep state data only, remove everything that is config. Note that state data
-	 * may be a sub-part in a config tree, we need to traverse to find all
-	 */
-	if (xml_non_config_data(xret, NULL) < 0)
-	    goto done;
-	if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
-	    goto done;
-	if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-	    goto done;
+        /* Keep state data only, remove everything that is config. Note that state data
+         * may be a sub-part in a config tree, we need to traverse to find all
+         */
+        if (xml_non_config_data(xret, NULL) < 0)
+            goto done;
+        if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
+            goto done;
+        if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
+            goto done;
     }
     if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	goto done;
+        goto done;
     if (filter_xpath_again(h, yspec, xret, xvec, xlen, xpath, nsc) < 0)
-	goto done;
+        goto done;
     if (get_nacm_and_reply(h, xret, xvec, xlen, xpath, nsc, username, depth, cbret) < 0)
-	goto done;
+        goto done;
  ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
-	free(xvec);
+        free(xvec);
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     if (cbreason)
-	cbuf_free(cbreason);
+        cbuf_free(cbreason);
     if (nsc0)
-	xml_nsctx_free(nsc0);
+        xml_nsctx_free(nsc0);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (cbmsg)
-	cbuf_free(cbmsg);
+        cbuf_free(cbmsg);
     if (reason)
-	free(reason);
+        free(reason);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (xpath)
-	free(xpath);
+        free(xpath);
     return retval;
 }
 
@@ -1061,18 +1061,18 @@ get_common(clicon_handle        h,
  */
 int
 from_client_get_config(clicon_handle h,
-		       cxobj        *xe,
-		       cbuf         *cbret,
-		       void         *arg,
-		       void         *regarg)
+                       cxobj        *xe,
+                       cbuf         *cbret,
+                       void         *arg,
+                       void         *regarg)
 {
     int                  retval = -1;
     char                *db;
     struct client_entry *ce = (struct client_entry *)arg;
 
     if ((db = netconf_db_find(xe, "source")) == NULL){
-	clicon_err(OE_XML, 0, "db not found");
-	goto done;
+        clicon_err(OE_XML, 0, "db not found");
+        goto done;
     }
     retval = get_common(h, ce, xe, CONTENT_CONFIG, db, cbret);
  done:
@@ -1093,10 +1093,10 @@ from_client_get_config(clicon_handle h,
  */
 int
 from_client_get(clicon_handle h,
-		cxobj        *xe,
-		cbuf         *cbret,
-		void         *arg, 
-		void         *regarg)
+                cxobj        *xe,
+                cbuf         *cbret,
+                void         *arg, 
+                void         *regarg)
 {
     netconf_content      content = CONTENT_ALL;
     char                *attr;
@@ -1104,6 +1104,6 @@ from_client_get(clicon_handle h,
     
     /* Clixon extensions: content */
     if ((attr = xml_find_value(xe, "content")) != NULL)
-	content = netconf_content_str2int(attr);
+        content = netconf_content_str2int(attr);
     return get_common(h, ce, xe, content, "running", cbret);
 }

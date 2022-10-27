@@ -168,7 +168,7 @@ cat<<EOF > $fstate
       <member-id>alice</member-id>
       <stats>
           <joined>2020-07-08T12:38:32Z</joined>
-	  <membership-level>admin</membership-level>
+          <membership-level>admin</membership-level>
           <last-activity>2021-04-01T02:51:11Z</last-activity>
       </stats>
    </member>
@@ -176,7 +176,7 @@ cat<<EOF > $fstate
       <member-id>bob</member-id>
       <stats>
           <joined>2020-08-14T03:30:00Z</joined>
-	  <membership-level>standard</membership-level>
+          <membership-level>standard</membership-level>
           <last-activity>2020-08-14T03:34:30Z</last-activity>
       </stats>
    </member>
@@ -184,7 +184,7 @@ cat<<EOF > $fstate
       <member-id>eric</member-id>
       <stats>
           <joined>2020-09-17T19:38:32Z</joined>
-	  <membership-level>pro</membership-level>
+          <membership-level>pro</membership-level>
           <last-activity>2020-09-17T18:02:04Z</last-activity>
       </stats>
    </member>
@@ -192,7 +192,7 @@ cat<<EOF > $fstate
       <member-id>lin</member-id>
       <stats>
           <joined>2020-07-09T12:38:32Z</joined>
-	  <membership-level>standard</membership-level>
+          <membership-level>standard</membership-level>
           <last-activity>2021-04-01T02:51:11Z</last-activity>
       </stats>
    </member>
@@ -200,7 +200,7 @@ cat<<EOF > $fstate
       <member-id>joe</member-id>
       <stats>
           <joined>2020-10-08T12:38:32Z</joined>
-	  <membership-level>pro</membership-level>
+          <membership-level>pro</membership-level>
           <last-activity>2021-04-01T02:51:11Z</last-activity>
       </stats>
    </member>
@@ -279,73 +279,73 @@ function testlimit()
     let i=0
 
     for li in $list; do
-	if [ $i = 0 ]; then
-	    # Note: if REMAINING is enabled:
-	    #	    if [ $limit == 0 ]; then
-	    if true; then
-		el="<uint8-numbers>$li</uint8-numbers>"
-		el2="<uint8-numbers xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"
-	    else
-		el="<uint8-numbers lp:remaining=\"$remaining\" xmlns:lp=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">$li</uint8-numbers>"
-		el2="<uint8-numbers lp:remaining=\"$remaining\" xmlns:lp=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\" xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"
-		jsonmeta=",\"@example-social:uint8-numbers\":\[{\"ietf-list-pagination:remaining\":$remaining}\]"
-	    fi
-	    jsonlist="$li"
-	else
-	    el="<uint8-numbers>$li</uint8-numbers>"
-	    el2="<uint8-numbers xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"	       jsonlist="$jsonlist,$li"
-	fi
-	xmllist="$xmllist$el"
-	xmllist2="$xmllist2$el2"
-	let i++
+        if [ $i = 0 ]; then
+            # Note: if REMAINING is enabled:
+            #       if [ $limit == 0 ]; then
+            if true; then
+                el="<uint8-numbers>$li</uint8-numbers>"
+                el2="<uint8-numbers xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"
+            else
+                el="<uint8-numbers lp:remaining=\"$remaining\" xmlns:lp=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">$li</uint8-numbers>"
+                el2="<uint8-numbers lp:remaining=\"$remaining\" xmlns:lp=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\" xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"
+                jsonmeta=",\"@example-social:uint8-numbers\":\[{\"ietf-list-pagination:remaining\":$remaining}\]"
+            fi
+            jsonlist="$li"
+        else
+            el="<uint8-numbers>$li</uint8-numbers>"
+            el2="<uint8-numbers xmlns=\"http://example.com/ns/example-social\">$li</uint8-numbers>"            jsonlist="$jsonlist,$li"
+        fi
+        xmllist="$xmllist$el"
+        xmllist2="$xmllist2$el2"
+        let i++
     done
 
     jsonstr=""
     if [ $limit -eq 0 ]; then
-	limitxmlstr=""
+        limitxmlstr=""
     else
-	limitxmlstr="<limit>$limit</limit>"
-	jsonstr="?limit=$limit"
+        limitxmlstr="<limit>$limit</limit>"
+        jsonstr="?limit=$limit"
     fi
     if [ $offset -eq 0 ]; then
-	offsetxmlstr=""
+        offsetxmlstr=""
     else
-	offsetxmlstr="<offset>$offset</offset>"
-	if [ -z "$jsonstr" ]; then
-	    jsonstr="?offset=$offset"
-	else
-	    jsonstr="${jsonstr}&offset=$offset"
-	fi
+        offsetxmlstr="<offset>$offset</offset>"
+        if [ -z "$jsonstr" ]; then
+            jsonstr="?offset=$offset"
+        else
+            jsonstr="${jsonstr}&offset=$offset"
+        fi
     fi
 
     if [ -z "$list" ]; then
-	reply="<rpc-reply $DEFAULTNS><data/></rpc-reply>"
+        reply="<rpc-reply $DEFAULTNS><data/></rpc-reply>"
     else
-	reply="<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><favorites>$xmllist</favorites></member></members></data></rpc-reply>"
+        reply="<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><favorites>$xmllist</favorites></member></members></data></rpc-reply>"
     fi
     new "limit=$limit offset=$offset NETCONF get-config"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\">$limitxmlstr$offsetxmlstr</list-pagination></get-config></rpc>" "" "$reply"
 
     if [ -z "$list" ]; then
-	reply="<rpc-reply $DEFAULTNS><data/></rpc-reply>"
+        reply="<rpc-reply $DEFAULTNS><data/></rpc-reply>"
     else
-	reply="<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><favorites>$xmllist</favorites></member></members></data></rpc-reply>"
+        reply="<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><favorites>$xmllist</favorites></member></members></data></rpc-reply>"
     fi
     new "limit=$limit offset=$offset NETCONF get"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\">$limitxmlstr$offsetxmlstr</list-pagination></get></rpc>" "" "$reply"
 
     if [ -z "$list" ]; then
-	reply="<xml-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\"/>"
+        reply="<xml-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\"/>"
     else
-	reply="<xml-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">$xmllist2</xml-list>"
+        reply="<xml-list xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">$xmllist2</xml-list>"
     fi
     new "limit=$limit offset=$offset Parameter RESTCONF xml"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml-list" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+xml-list" "$reply"
     if [ -z "$list" ]; then
-	#	reply="{\"xml-list\":{}}"
-	reply="{}"
+        #       reply="{\"xml-list\":{}}"
+        reply="{}"
     else
-	reply="{\"example-social:uint8-numbers\":\[$jsonlist\]}"
+        reply="{\"example-social:uint8-numbers\":\[$jsonlist\]}"
     fi
     new "limit=$limit offset=$offset Parameter RESTCONF json"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-social:members/member=alice/favorites/uint8-numbers${jsonstr})" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+json" "$reply" --not-- "xml-list"
@@ -357,7 +357,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     sudo pkill -f clixon_backend # to be sure
 
@@ -420,7 +420,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

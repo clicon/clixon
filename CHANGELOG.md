@@ -74,6 +74,8 @@ Developers may need to change their code
 	
 ### Minor features
 
+* [Code formatting: Change indentation style to space](https://github.com/clicon/clixon/issues/379)
+  * Applies to all c/h/y/l/sh files and .editorconfig
 * Added warning if modstate is not present in datastore if `CLICON_XMLDB_MODSTATE` is set.
 
 ### Corrected Bugs

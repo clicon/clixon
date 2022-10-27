@@ -71,7 +71,7 @@
  */
 int
 group_name2gid(const char *name, 
-	       gid_t      *gid)
+               gid_t      *gid)
 {
     int           retval = -1;
     char          buf[1024]; 
@@ -82,15 +82,15 @@ group_name2gid(const char *name,
     gr = &g0; 
     /* This leaks memory in ubuntu */
     if (getgrnam_r(name, gr, buf, sizeof(buf), &gtmp) < 0){
-	clicon_err(OE_UNIX, errno, "getgrnam_r(%s)", name);
-	goto done;
+        clicon_err(OE_UNIX, errno, "getgrnam_r(%s)", name);
+        goto done;
     }
     if (gtmp == NULL){
-	clicon_err(OE_UNIX, 0, "No such group: %s", name);
-	goto done;
+        clicon_err(OE_UNIX, 0, "No such group: %s", name);
+        goto done;
     }
     if (gid)
-	*gid = gr->gr_gid;
+        *gid = gr->gr_gid;
     retval = 0;
  done:
     return retval;
@@ -104,7 +104,7 @@ group_name2gid(const char *name,
  */
 int
 name2uid(const char *name,
-	 uid_t      *uid)
+         uid_t      *uid)
 {
     int            retval = -1;
     char           buf[1024]; 
@@ -112,15 +112,15 @@ name2uid(const char *name,
     struct passwd *pwbufp = NULL;
 
     if (getpwnam_r(name, &pwbuf, buf, sizeof(buf), &pwbufp) != 0){
-	clicon_err(OE_UNIX, errno, "getpwnam_r(%s)", name);
-	goto done;
+        clicon_err(OE_UNIX, errno, "getpwnam_r(%s)", name);
+        goto done;
     }
     if (pwbufp == NULL){
-	clicon_err(OE_UNIX, 0, "No such user: %s", name);
-	goto done;
+        clicon_err(OE_UNIX, 0, "No such user: %s", name);
+        goto done;
     }
     if (uid)
-	*uid = pwbufp->pw_uid;
+        *uid = pwbufp->pw_uid;
     retval = 0;
  done:
     return retval;
@@ -134,7 +134,7 @@ name2uid(const char *name,
  */
 int
 uid2name(const uid_t uid,
-	 char      **name)
+         char      **name)
 {
     int            retval = -1;
     char           buf[1024]; 
@@ -142,19 +142,19 @@ uid2name(const uid_t uid,
     struct passwd *pwbufp = NULL;
     
     if (getpwuid_r(uid, &pwbuf, buf, sizeof(buf), &pwbufp) != 0){
-	clicon_err(OE_UNIX, errno, "getpwuid_r(%u)", uid);
-	goto done;
+        clicon_err(OE_UNIX, errno, "getpwuid_r(%u)", uid);
+        goto done;
     }
     if (pwbufp == NULL){
-	clicon_err(OE_UNIX, ENOENT, "No such user: %u", uid);
-	goto done;
+        clicon_err(OE_UNIX, ENOENT, "No such user: %u", uid);
+        goto done;
     }
 
     if (name){
-	if ((*name = strdup(pwbufp->pw_name)) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
+        if ((*name = strdup(pwbufp->pw_name)) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
     }
     retval = 0;
  done:
@@ -175,12 +175,12 @@ drop_priv_temp(uid_t new_uid)
     
     /* XXX: implicit declaration of function 'setresuid' on travis */
     if (setresuid(-1, new_uid, geteuid()) < 0){
-	clicon_err(OE_UNIX, errno, "setresuid");
-	goto done;
+        clicon_err(OE_UNIX, errno, "setresuid");
+        goto done;
     }
     if (geteuid() != new_uid){
-	clicon_err(OE_UNIX, errno, "geteuid");
-	goto done;
+        clicon_err(OE_UNIX, errno, "geteuid");
+        goto done;
     }
     retval = 0;
  done:
@@ -204,18 +204,18 @@ drop_priv_perm(uid_t new_uid)
     uid_t suid;
 
     if (setresuid(new_uid, new_uid, new_uid) < 0){
-	clicon_err(OE_UNIX, errno, "setresuid");
-	goto done;
+        clicon_err(OE_UNIX, errno, "setresuid");
+        goto done;
     }
     if (getresuid(&ruid, &euid, &suid) < 0){
-	clicon_err(OE_UNIX, errno, "getresuid");
-	goto done;
+        clicon_err(OE_UNIX, errno, "getresuid");
+        goto done;
     }
     if (ruid != new_uid ||
-	euid != new_uid ||
-	suid != new_uid){
-	clicon_err(OE_UNIX, EINVAL, "Non-matching uid");
-	goto done;
+        euid != new_uid ||
+        suid != new_uid){
+        clicon_err(OE_UNIX, EINVAL, "Non-matching uid");
+        goto done;
     }
     retval = 0;
  done:
@@ -237,16 +237,16 @@ restore_priv(void)
     uid_t suid;
     
     if (getresuid(&ruid, &euid, &suid) < 0){
-	clicon_err(OE_UNIX, errno, "setresuid");
-	goto done;
+        clicon_err(OE_UNIX, errno, "setresuid");
+        goto done;
     }
     if (setresuid(-1, suid, -1) < 0){
-	clicon_err(OE_UNIX, errno, "setresuid");
-	goto done;
+        clicon_err(OE_UNIX, errno, "setresuid");
+        goto done;
     }
     if (geteuid() != suid){
-	clicon_err(OE_UNIX, EINVAL, "Non-matching uid");
-	goto done;
+        clicon_err(OE_UNIX, EINVAL, "Non-matching uid");
+        goto done;
     }
     retval = 0;
  done:

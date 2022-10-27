@@ -54,7 +54,7 @@
 #define RESTCONF_EXAMPLE_OPTS ""
 
 static const char Base64[] =
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char Pad64 = '=';
 
 /* skips all whitespace anywhere.
@@ -65,8 +65,8 @@ static const char Pad64 = '=';
  */
 int
 b64_decode(const char *src, 
-	   char       *target, 
-	   size_t      targsize)
+           char       *target, 
+           size_t      targsize)
 {
     int tarindex, state, ch;
     char *pos;
@@ -75,59 +75,59 @@ b64_decode(const char *src,
     tarindex = 0;
 
     while ((ch = *src++) != '\0') {
-	if (isspace(ch))	/* Skip whitespace anywhere. */
-	    continue;
+        if (isspace(ch))        /* Skip whitespace anywhere. */
+            continue;
 
-	if (ch == Pad64)
-	    break;
+        if (ch == Pad64)
+            break;
 
-	pos = strchr(Base64, ch);
-	if (pos == 0) 		/* A non-base64 character. */
-	    return (-1);
+        pos = strchr(Base64, ch);
+        if (pos == 0)           /* A non-base64 character. */
+            return (-1);
 
-	switch (state) {
-	case 0:
-	    if (target) {
-		if ((size_t)tarindex >= targsize)
-		    return (-1);
-		target[tarindex] = (pos - Base64) << 2;
-	    }
-	    state = 1;
-	    break;
-	case 1:
-	    if (target) {
-		if ((size_t)tarindex + 1 >= targsize)
-		    return (-1);
-		target[tarindex]   |=  (pos - Base64) >> 4;
-		target[tarindex+1]  = ((pos - Base64) & 0x0f)
-		    << 4 ;
-	    }
-	    tarindex++;
-	    state = 2;
-	    break;
-	case 2:
-	    if (target) {
-		if ((size_t)tarindex + 1 >= targsize)
-		    return (-1);
-		target[tarindex]   |=  (pos - Base64) >> 2;
-		target[tarindex+1]  = ((pos - Base64) & 0x03)
-		    << 6;
-	    }
-	    tarindex++;
-	    state = 3;
-	    break;
-	case 3:
-	    if (target) {
-		if ((size_t)tarindex >= targsize)
-		    return (-1);
-		target[tarindex] |= (pos - Base64);
-	    }
-	    tarindex++;
-	    state = 0;
-	    break;
-	default:
-	    return -1;
-	}
+        switch (state) {
+        case 0:
+            if (target) {
+                if ((size_t)tarindex >= targsize)
+                    return (-1);
+                target[tarindex] = (pos - Base64) << 2;
+            }
+            state = 1;
+            break;
+        case 1:
+            if (target) {
+                if ((size_t)tarindex + 1 >= targsize)
+                    return (-1);
+                target[tarindex]   |=  (pos - Base64) >> 4;
+                target[tarindex+1]  = ((pos - Base64) & 0x0f)
+                    << 4 ;
+            }
+            tarindex++;
+            state = 2;
+            break;
+        case 2:
+            if (target) {
+                if ((size_t)tarindex + 1 >= targsize)
+                    return (-1);
+                target[tarindex]   |=  (pos - Base64) >> 2;
+                target[tarindex+1]  = ((pos - Base64) & 0x03)
+                    << 6;
+            }
+            tarindex++;
+            state = 3;
+            break;
+        case 3:
+            if (target) {
+                if ((size_t)tarindex >= targsize)
+                    return (-1);
+                target[tarindex] |= (pos - Base64);
+            }
+            tarindex++;
+            state = 0;
+            break;
+        default:
+            return -1;
+        }
     }
 
     /*
@@ -135,50 +135,50 @@ b64_decode(const char *src,
      * on a byte boundary, and/or with erroneous trailing characters.
      */
 
-    if (ch == Pad64) {		/* We got a pad char. */
-	ch = *src++;		/* Skip it, get next. */
-	switch (state) {
-	case 0:		/* Invalid = in first position */
-	case 1:		/* Invalid = in second position */
-	    return (-1);
+    if (ch == Pad64) {          /* We got a pad char. */
+        ch = *src++;            /* Skip it, get next. */
+        switch (state) {
+        case 0:         /* Invalid = in first position */
+        case 1:         /* Invalid = in second position */
+            return (-1);
 
-	case 2:		/* Valid, means one byte of info */
-			/* Skip any number of spaces. */
-	    for ((void)NULL; ch != '\0'; ch = *src++)
-		if (!isspace(ch))
-		    break;
-	    /* Make sure there is another trailing = sign. */
-	    if (ch != Pad64)
-		return (-1);
-	    ch = *src++;		/* Skip the = */
-	    /* Fall through to "single trailing =" case. */
-	    /* FALLTHROUGH */
+        case 2:         /* Valid, means one byte of info */
+                        /* Skip any number of spaces. */
+            for ((void)NULL; ch != '\0'; ch = *src++)
+                if (!isspace(ch))
+                    break;
+            /* Make sure there is another trailing = sign. */
+            if (ch != Pad64)
+                return (-1);
+            ch = *src++;                /* Skip the = */
+            /* Fall through to "single trailing =" case. */
+            /* FALLTHROUGH */
 
-	case 3:		/* Valid, means two bytes of info */
-			/*
-			 * We know this char is an =.  Is there anything but
-			 * whitespace after it?
-			 */
-	    for ((void)NULL; ch != '\0'; ch = *src++)
-		if (!isspace(ch))
-		    return (-1);
+        case 3:         /* Valid, means two bytes of info */
+                        /*
+                         * We know this char is an =.  Is there anything but
+                         * whitespace after it?
+                         */
+            for ((void)NULL; ch != '\0'; ch = *src++)
+                if (!isspace(ch))
+                    return (-1);
 
-	    /*
-	     * Now make sure for cases 2 and 3 that the "extra"
-	     * bits that slopped past the last full byte were
-	     * zeros.  If we don't check them, they become a
-	     * subliminal channel.
-	     */
-	    if (target && target[tarindex] != 0)
-		return (-1);
-	}
+            /*
+             * Now make sure for cases 2 and 3 that the "extra"
+             * bits that slopped past the last full byte were
+             * zeros.  If we don't check them, they become a
+             * subliminal channel.
+             */
+            if (target && target[tarindex] != 0)
+                return (-1);
+        }
     } else {
-	/*
-	 * We ended by seeing the end of the string.  Make sure we
-	 * have no partial bytes lying around.
-	 */
-	if (state != 0)
-	    return (-1);
+        /*
+         * We ended by seeing the end of the string.  Make sure we
+         * have no partial bytes lying around.
+         */
+        if (state != 0)
+            return (-1);
     }
 
     return (tarindex);
@@ -198,8 +198,8 @@ b64_decode(const char *src,
  */
 static int
 example_basic_auth(clicon_handle      h,
-		   void              *req,
-		   char             **authp)
+                   void              *req,
+                   char             **authp)
 {
     int     retval = -1;
     cxobj  *xt = NULL;
@@ -213,41 +213,41 @@ example_basic_auth(clicon_handle      h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (authp == NULL){
-	clicon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
+        goto done;
     }    
     /* At this point in the code we must use HTTP basic authentication */
     if ((auth = restconf_param_get(h, "HTTP_AUTHORIZATION")) == NULL)
-	goto fail; 
+        goto fail; 
     if (strlen(auth) < strlen("Basic "))
-	goto fail;
+        goto fail;
     if (strncmp("Basic ", auth, strlen("Basic ")))
-	goto fail;
+        goto fail;
     auth += strlen("Basic ");
     authlen = strlen(auth)*2;
     if ((user = malloc(authlen)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(user, 0, authlen);
     if ((ret = b64_decode(auth, user, authlen)) < 0)
-	goto done;
+        goto done;
     /* auth string is on the format user:passwd */
     if ((passwd = index(user,':')) == NULL)
-	goto fail;
+        goto fail;
     *passwd = '\0';
     passwd++;
     clicon_debug(1, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
     /* Here get auth sub-tree where all the users are */
     if ((cb = cbuf_new()) == NULL)
-	goto done;
+        goto done;
     /* XXX Three hardcoded user/passwd (from RFC8341 A.1)*/
     if (strcmp(user, "wilma")==0 || strcmp(user, "andy")==0 ||
-	strcmp(user, "guest")==0){
-	passwd2 = "bar";
+        strcmp(user, "guest")==0){
+        passwd2 = "bar";
     }
     if (strcmp(passwd, passwd2))
-	goto fail;
+        goto fail;
     *authp = user;     /* authenticated */
     user=NULL; /* to avoid free below */
     retval = 1;
@@ -256,7 +256,7 @@ example_basic_auth(clicon_handle      h,
     if (user)
        free(user);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (xt)
         xml_free(xt);
     return retval;
@@ -280,24 +280,24 @@ example_basic_auth(clicon_handle      h,
  */
 int
 example_restconf_credentials(clicon_handle      h,
-			     void              *req,
-			     clixon_auth_type_t auth_type,
-			     char             **authp)
+                             void              *req,
+                             clixon_auth_type_t auth_type,
+                             char             **authp)
 {
     int retval = -1;
     
     clicon_debug(1, "%s auth:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
     switch (auth_type){
     case CLIXON_AUTH_NONE: /* FEATURE clixon-restconf:allow-auth-none must be enabled */
-	retval = 0;
-	break;
+        retval = 0;
+        break;
     case CLIXON_AUTH_CLIENT_CERTIFICATE:
-	retval = 0; /* Ignore, use default */
-	break;
+        retval = 0; /* Ignore, use default */
+        break;
     case CLIXON_AUTH_USER:
-	if ((retval = example_basic_auth(h, req, authp)) < 0)
-	    goto done;
-	break;
+        if ((retval = example_basic_auth(h, req, authp)) < 0)
+            goto done;
+        break;
     }
  done:
     clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
@@ -308,10 +308,10 @@ example_restconf_credentials(clicon_handle      h,
  */
 int
 restconf_client_rpc(clicon_handle h, 
-		    cxobj        *xe,      
-		    cbuf         *cbret,    
-		    void         *arg,
-		    void         *regarg)
+                    cxobj        *xe,      
+                    cbuf         *cbret,    
+                    void         *arg,
+                    void         *regarg)
 {
     int    retval = -1;
     cxobj *x = NULL;
@@ -319,19 +319,19 @@ restconf_client_rpc(clicon_handle h,
 
     /* get namespace from rpc name, return back in each output parameter */
     if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
-	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
-	goto done;
+        clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+        goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     if (!xml_child_nr_type(xe, CX_ELMNT))
-	cprintf(cbret, "<ok/>");
+        cprintf(cbret, "<ok/>");
     else {
-	while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
-	    if (xmlns_set(x, NULL, namespace) < 0)
-		goto done;
-	}
-	if (clixon_xml2cbuf(cbret, xe, 0, 0, -1, 1) < 0)
-	    goto done;
+        while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+            if (xmlns_set(x, NULL, namespace) < 0)
+                goto done;
+        }
+        if (clixon_xml2cbuf(cbret, xe, 0, 0, -1, 1) < 0)
+            goto done;
     }
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
@@ -374,16 +374,16 @@ clixon_plugin_init(clicon_handle h)
     clicon_debug(1, "%s restconf", __FUNCTION__);
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
-	return NULL;
+        return NULL;
     opterr = 0;
     optind = 1;
     while ((c = getopt(argc, argv, RESTCONF_EXAMPLE_OPTS)) != -1)
-	switch (c) {
-	default:
-	    break;
-	}
+        switch (c) {
+        default:
+            break;
+        }
     /* Register local netconf rpc client (note not backend rpc client) */
     if (rpc_callback_register(h, restconf_client_rpc, NULL, "urn:example:clixon", "client-rpc") < 0)
-	return NULL;
+        return NULL;
     return &api;
 }

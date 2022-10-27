@@ -92,12 +92,12 @@ confirmed_commit_init(clicon_handle h)
     struct confirmed_commit *cc = NULL;
 
     if ((cc = calloc(1, sizeof(*cc))) == NULL){
-	clicon_err(OE_UNIX, errno, "calloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
     }
     cc->cc_state = INACTIVE;
     if (clicon_ptr_set(h, "confirmed-commit-struct", cc) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -114,9 +114,9 @@ confirmed_commit_free(clicon_handle h)
     
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     if (cc != NULL){
-	if (cc->cc_persist_id != NULL)
-	    free (cc->cc_persist_id);
-	free(cc);
+        if (cc->cc_persist_id != NULL)
+            free (cc->cc_persist_id);
+        free(cc);
     }
     clicon_ptr_del(h, "confirmed-commit-struct");
     return 0;
@@ -136,7 +136,7 @@ confirmed_commit_state_get(clicon_handle h)
 
 static int
 confirmed_commit_state_set(clicon_handle h,
-			   enum confirmed_commit_state state)
+                           enum confirmed_commit_state state)
 {
     struct confirmed_commit *cc = NULL;
     
@@ -156,21 +156,21 @@ confirmed_commit_persist_id_get(clicon_handle h)
 
 static int
 confirmed_commit_persist_id_set(clicon_handle h,
-				char         *persist_id)
+                                char         *persist_id)
 {
     struct confirmed_commit *cc = NULL;
     
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     if (cc->cc_persist_id)
-	free(cc->cc_persist_id);
+        free(cc->cc_persist_id);
     if (persist_id){
-	if ((cc->cc_persist_id = strdup4(persist_id)) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup4");
-	    return -1;
-	}
+        if ((cc->cc_persist_id = strdup4(persist_id)) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup4");
+            return -1;
+        }
     }
     else
-	cc->cc_persist_id = NULL;
+        cc->cc_persist_id = NULL;
     return 0;
 }
 
@@ -185,7 +185,7 @@ confirmed_commit_session_id_get(clicon_handle h)
 
 static int
 confirmed_commit_session_id_set(clicon_handle h,
-	                        uint32_t      session_id)
+                                uint32_t      session_id)
 {
     struct confirmed_commit *cc = NULL;
     
@@ -196,8 +196,8 @@ confirmed_commit_session_id_set(clicon_handle h,
 
 static int
 confirmed_commit_fn_arg_get(clicon_handle h,
-			    int        (**fn)(int, void*),
-			    void        **arg)
+                            int        (**fn)(int, void*),
+                            void        **arg)
 {
     struct confirmed_commit *cc = NULL;
     
@@ -209,8 +209,8 @@ confirmed_commit_fn_arg_get(clicon_handle h,
 
 static int
 confirmed_commit_fn_arg_set(clicon_handle h,
-			    int        (*fn)(int, void*),
-			    void        *arg)
+                            int        (*fn)(int, void*),
+                            void        *arg)
 {
     struct confirmed_commit *cc = NULL;
     
@@ -239,13 +239,13 @@ xe_confirmed(cxobj *xe)
  */
 static int
 xe_persist(cxobj *xe,
-	   char **str)
+           char **str)
 {
     cxobj *xml;
 
     if ((xml = xml_find_type(xe, NULL, "persist", CX_ELMNT)) != NULL){
-	*str = xml_body(xml);
-	return 1;
+        *str = xml_body(xml);
+        return 1;
     }
     *str = NULL;
     return 0;
@@ -260,13 +260,13 @@ xe_persist(cxobj *xe,
  */
 static int
 xe_persist_id(cxobj *xe,
-	      char **str)
+              char **str)
 {
     cxobj *xml;
 
     if ((xml = xml_find_type(xe, NULL, "persist-id", CX_ELMNT)) != NULL){
-	*str = xml_body(xml);
-	return 1;
+        *str = xml_body(xml);
+        return 1;
     }
     *str = NULL;
     return 0;
@@ -283,8 +283,8 @@ xe_timeout(cxobj *xe)
     char  *str;
     
     if ((xml = xml_find_type(xe, NULL, "confirm-timeout", CX_ELMNT)) != NULL &&
-	(str = xml_body(xml)) != NULL)
-	return strtoul(str, NULL, 10);
+        (str = xml_body(xml)) != NULL)
+        return strtoul(str, NULL, 10);
     return 0;
 }
 
@@ -382,14 +382,14 @@ cancel_confirmed_commit(clicon_handle h)
     cancel_rollback_event(h);
 
     if (confirmed_commit_state_get(h) == PERSISTENT &&
-	confirmed_commit_persist_id_get(h) != NULL) {
-	confirmed_commit_persist_id_set(h, NULL);
+        confirmed_commit_persist_id_get(h) != NULL) {
+        confirmed_commit_persist_id_set(h, NULL);
     }
 
     confirmed_commit_state_set(h, INACTIVE);
 
     if (xmldb_delete(h, "rollback") < 0)
-	clicon_err(OE_DB, 0, "Error deleting the rollback configuration");
+        clicon_err(OE_DB, 0, "Error deleting the rollback configuration");
     return 0;
 }
 
@@ -409,34 +409,34 @@ cancel_confirmed_commit(clicon_handle h)
  */
 static int
 check_valid_confirming_commit(clicon_handle h,
-			      cxobj        *xe,
+                              cxobj        *xe,
                               uint32_t      myid)
 {
     int retval = -1;
     char *persist_id = NULL;
 
     if (xe == NULL){
-	clicon_err(OE_CFG, EINVAL, "xe is NULL");
-	goto done;
+        clicon_err(OE_CFG, EINVAL, "xe is NULL");
+        goto done;
     }
     switch (confirmed_commit_state_get(h)) {
         case PERSISTENT:
             if (xe_persist_id(xe, &persist_id)) {
-		if (clicon_strcmp(persist_id, confirmed_commit_persist_id_get(h)) == 0) {
+                if (clicon_strcmp(persist_id, confirmed_commit_persist_id_get(h)) == 0) {
                     /* the RPC included a <persist-id> matching the prior confirming-commit's <persist> */
                     break; // valid
                 }
-		else {
+                else {
                     clicon_log(LOG_INFO,
                                "a persistent confirmed-commit is in progress but the client issued a "
                                "confirming-commit with an incorrect persist-id");
-		    goto invalid;
+                    goto invalid;
                 }
             } else {
                 clicon_log(LOG_INFO,
                            "a persistent confirmed-commit is in progress but the client issued a confirming-commit"
                            "without a persist-id");
-		goto invalid;
+                goto invalid;
             }
         case EPHEMERAL:
             if (myid == confirmed_commit_session_id_get(h)) {
@@ -447,10 +447,10 @@ check_valid_confirming_commit(clicon_handle h,
             }
             clicon_log(LOG_DEBUG, "an ephemeral confirmed-commit is in progress, but there confirming-commit was"
                                   "not issued on the same session as the confirmed-commit");
-	    goto invalid;
+            goto invalid;
         default:
             clicon_debug(1, "commit-confirmed state !? %d", confirmed_commit_state_get(h));
-	    goto invalid;
+            goto invalid;
     }
     retval = 1; // valid
  done:
@@ -475,7 +475,7 @@ check_valid_confirming_commit(clicon_handle h,
  */
 int
 handle_confirmed_commit(clicon_handle h,
-			cxobj        *xe)
+                        cxobj        *xe)
 {
     int           retval = -1;
     uint32_t      session_id;
@@ -485,13 +485,13 @@ handle_confirmed_commit(clicon_handle h,
     int           db_exists;
 
     if (xe == NULL){
-	clicon_err(OE_CFG, EINVAL, "xe is NULL");
+        clicon_err(OE_CFG, EINVAL, "xe is NULL");
         goto done;
     }
     if (clicon_session_id_get(h, &session_id) < 0) {
-	clicon_err(OE_DAEMON, 0,
-		   "an ephemeral confirmed-commit was issued, but the session-id could not be determined");
-	goto done;
+        clicon_err(OE_DAEMON, 0,
+                   "an ephemeral confirmed-commit was issued, but the session-id could not be determined");
+        goto done;
     };
     /* The case of a valid confirming-commit is also handled in the first phase, but only if there is no subsequent
      * confirmed-commit.  It is tested again here as the case of a valid confirming-commit *with* a subsequent
@@ -505,45 +505,45 @@ handle_confirmed_commit(clicon_handle h,
         }
 
         if (confirmed_commit_state_get(h) == PERSISTENT &&
-	    confirmed_commit_persist_id_get(h) != NULL) {
-	    confirmed_commit_persist_id_set(h, NULL);
+            confirmed_commit_persist_id_get(h) != NULL) {
+            confirmed_commit_persist_id_set(h, NULL);
         }
 
-	confirmed_commit_state_set(h, INACTIVE);
+        confirmed_commit_state_set(h, INACTIVE);
     }
 
     /* Now, determine if there is a subsequent confirmed-commit */
     if (xe_confirmed(xe)){
         /* There is, get it's confirm-timeout value, which will default per the yang schema if not client-specified */
         /* Clixon also pre-validates input according to the schema, so bounds checking here is redundant */
-	confirm_timeout = xe_timeout(xe);
-	if (xe_persist(xe, &persist)){
+        confirm_timeout = xe_timeout(xe);
+        if (xe_persist(xe, &persist)){
             if (persist == NULL) {
-		confirmed_commit_persist_id_set(h, NULL);
+                confirmed_commit_persist_id_set(h, NULL);
             }
-	    else if (confirmed_commit_persist_id_set(h, persist) < 0){
+            else if (confirmed_commit_persist_id_set(h, persist) < 0){
                 goto done;
             }
 
             /* The client has passed <persist>; the confirming-commit MUST now be accompanied by a matching
              * <persist-id>
              */
-	    confirmed_commit_state_set(h, PERSISTENT);
+            confirmed_commit_state_set(h, PERSISTENT);
             clicon_log(LOG_INFO,
                        "a persistent confirmed-commit has been requested with persist id of '%s' and a timeout of %lu seconds",
                        confirmed_commit_persist_id_get(h), confirm_timeout);
         }
 
-	else {
+        else {
             /* The client did not pass a value for <persist> and therefore any subsequent confirming-commit must be
              * issued within the same session.
              */
-	    confirmed_commit_session_id_set(h, session_id);
-	    confirmed_commit_state_set(h, EPHEMERAL);
+            confirmed_commit_session_id_set(h, session_id);
+            confirmed_commit_state_set(h, EPHEMERAL);
 
             clicon_log(LOG_INFO,
                        "an ephemeral confirmed-commit has been requested by session-id %u and a timeout of %lu seconds",
-		       confirmed_commit_session_id_get(h),
+                       confirmed_commit_session_id_get(h),
                        confirm_timeout);
         }
 
@@ -627,7 +627,7 @@ handle_confirmed_commit(clicon_handle h,
  */
 int
 do_rollback(clicon_handle h,
-	    uint8_t      *errs)
+            uint8_t      *errs)
 {
     int     retval = -1;
     uint8_t errstate = 0;
@@ -646,8 +646,8 @@ do_rollback(clicon_handle h,
     }
 
     if (confirmed_commit_state_get(h) == PERSISTENT &&
-	confirmed_commit_persist_id_get(h) != NULL) {
-	confirmed_commit_persist_id_set(h, NULL);
+        confirmed_commit_persist_id_get(h) != NULL) {
+        confirmed_commit_persist_id_set(h, NULL);
     }
     confirmed_commit_state_set(h, ROLLBACK);
     if (candidate_commit(h, NULL, "rollback", cbret) < 0) { /* Assume validation fail, nofatal */
@@ -708,10 +708,10 @@ do_rollback(clicon_handle h,
  */
 int
 from_client_cancel_commit(clicon_handle h,
-			  cxobj        *xe,
-			  cbuf         *cbret,
-			  void         *arg,
-			  void         *regarg)
+                          cxobj        *xe,
+                          cbuf         *cbret,
+                          void         *arg,
+                          void         *regarg)
 {
     cxobj   *persist_id_xml;
     char    *persist_id = NULL;
@@ -737,37 +737,37 @@ from_client_cancel_commit(clicon_handle h,
                 if (netconf_invalid_value(cbret, "protocol", "confirming-commit must be given within session that gave the confirmed-commit") < 0)
                     goto done;
             }
-	    else
-		rollback++;
-	    break;
+            else
+                rollback++;
+            break;
         case PERSISTENT:
             if (persist_id_xml == NULL) {
                 if (netconf_invalid_value(cbret, "protocol", "persist-id is required") < 0)
                     goto done;
             }
-	    else if (clicon_strcmp(persist_id, confirmed_commit_persist_id_get(h)) != 0){
-		if (netconf_invalid_value(cbret, "application", "a confirmed-commit with the given persist-id was not found") < 0)
-		    goto done;
-	    }
-	    else
-		rollback++;
-	    break;
+            else if (clicon_strcmp(persist_id, confirmed_commit_persist_id_get(h)) != 0){
+                if (netconf_invalid_value(cbret, "application", "a confirmed-commit with the given persist-id was not found") < 0)
+                    goto done;
+            }
+            else
+                rollback++;
+            break;
         case INACTIVE:
             if (netconf_invalid_value(cbret, "application", "no confirmed-commit is in progress") < 0)
                 goto done;
-	    break;
+            break;
         default:
             if (netconf_invalid_value(cbret, "application", "server error") < 0)
                 goto done;
-	    break;
+            break;
     }
     /* all invalid conditions jump to done: and valid code paths jump to or fall through to here. */
     if (rollback){
         cancel_rollback_event(h);
         if (do_rollback(h, NULL) < 0)
-	    goto done;
-	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
-	clicon_log(LOG_INFO, "a confirmed-commit has been cancelled by client request");
+            goto done;
+        cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
+        clicon_log(LOG_INFO, "a confirmed-commit has been cancelled by client request");
     }
     retval = 0;
  done:
@@ -785,20 +785,20 @@ from_client_cancel_commit(clicon_handle h,
  */
 int
 from_client_confirmed_commit(clicon_handle h,
-			     cxobj        *xe,
-			     uint32_t      myid,
-			     cbuf         *cbret)
+                             cxobj        *xe,
+                             uint32_t      myid,
+                             cbuf         *cbret)
 {
     int retval = -1;
     int cc_valid;
 
     if ((cc_valid = check_valid_confirming_commit(h, xe, myid)) < 0)
-	goto done;
+        goto done;
     /* If <confirmed/> is *not* present, this will conclude the confirmed-commit, so cancel the rollback. */
     if (!xe_confirmed(xe) && cc_valid) {
-	cancel_confirmed_commit(h);
-	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
-	goto dontcommit;
+        cancel_confirmed_commit(h);
+        cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
+        goto dontcommit;
     }
     retval = 1;
  done:

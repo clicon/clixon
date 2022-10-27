@@ -80,36 +80,36 @@
 
 static int
 changelog_rename(clicon_handle h,
-		 cxobj        *xt,
-		 cxobj        *xw,
-		 cvec         *nsc,
-		 char         *tag)
+                 cxobj        *xt,
+                 cxobj        *xw,
+                 cvec         *nsc,
+                 char         *tag)
 {
     int     retval = -1;
     xp_ctx *xctx = NULL;
     char   *str = NULL;
     
     if (tag == NULL){
-	clicon_err(OE_XML, 0, "tag required");
-	goto done;
+        clicon_err(OE_XML, 0, "tag required");
+        goto done;
     }
     if (xpath_vec_ctx(xw, nsc, tag, 0, &xctx) < 0)
-	goto done;
+        goto done;
     if (ctx2string(xctx, &str) < 0)
-	goto done;
+        goto done;
     if (!strlen(str)){
-	clicon_err(OE_XML, 0, "invalid rename tag: \"%s\"", str);
-	goto done;
+        clicon_err(OE_XML, 0, "invalid rename tag: \"%s\"", str);
+        goto done;
     }
     if (xml_name_set(xw, str) < 0)
-	goto done;
+        goto done;
     // ok:
     retval = 1;
  done:
     if (xctx)
-	ctx_free(xctx);
+        ctx_free(xctx);
     if (str)
-	free(str);
+        free(str);
     return retval;
     // fail:
     retval = 0;
@@ -119,9 +119,9 @@ changelog_rename(clicon_handle h,
 /* replace target XML */
 static int
 changelog_replace(clicon_handle h,
-		  cxobj        *xt,
-		  cxobj        *xw,
-		  cxobj        *xnew)
+                  cxobj        *xt,
+                  cxobj        *xw,
+                  cxobj        *xnew)
 {
     int    retval = -1;
     cxobj *x;
@@ -129,22 +129,22 @@ changelog_replace(clicon_handle h,
     /* create a new node by parsing fttransform string and insert it at 
        target */
     if (xnew == NULL){
-	clicon_err(OE_XML, 0, "new required");
-	goto done;
+        clicon_err(OE_XML, 0, "new required");
+        goto done;
     }
     /* replace: remove all children of target */
     while ((x = xml_child_i(xw, 0)) != NULL)
-	if (xml_purge(x) < 0)
-	    goto done;
+        if (xml_purge(x) < 0)
+            goto done;
     /* replace: first single node under <new> */
     if (xml_child_nr(xnew) != 1){
-	clicon_err(OE_XML, 0, "Single child to <new> required");
-	goto done;
+        clicon_err(OE_XML, 0, "Single child to <new> required");
+        goto done;
     }
     x = xml_child_i(xnew, 0);
     /* Copy from xnew to (now) empty target */
     if (xml_copy(x, xw) < 0)
-	goto done;
+        goto done;
     retval = 1;
  done:
     return retval;
@@ -154,21 +154,21 @@ changelog_replace(clicon_handle h,
    target */
 static int
 changelog_insert(clicon_handle h,
-		 cxobj        *xt,
-		 cxobj        *xw,
-		 cxobj        *xnew)
+                 cxobj        *xt,
+                 cxobj        *xw,
+                 cxobj        *xnew)
 {
     int    retval = -1;
     cxobj *x;
     
     if (xnew == NULL){
-	clicon_err(OE_XML, 0, "new required");
-	goto done;
+        clicon_err(OE_XML, 0, "new required");
+        goto done;
     }
     /* replace: add all new children to target */
     while ((x = xml_child_i(xnew, 0)) != NULL)
-	if (xml_addsub(xw, x) < 0)
-	    goto done;
+        if (xml_addsub(xw, x) < 0)
+            goto done;
     // ok:
     retval = 1;
  done:
@@ -181,13 +181,13 @@ changelog_insert(clicon_handle h,
 /* delete target */
 static int
 changelog_delete(clicon_handle h,
-		 cxobj        *xt,
-		 cxobj        *xw)
+                 cxobj        *xt,
+                 cxobj        *xw)
 {
     int retval = -1;
 
     if (xml_purge(xw) < 0)
-	goto done;
+        goto done;
     retval = 1;
  done:
     return retval;
@@ -196,20 +196,20 @@ changelog_delete(clicon_handle h,
 /* Move target node to location */
 static int
 changelog_move(clicon_handle h,
-	       cxobj        *xt,
-	       cxobj        *xw,
-	       cvec         *nsc,
-	       char         *dst)
+               cxobj        *xt,
+               cxobj        *xw,
+               cvec         *nsc,
+               char         *dst)
 {
     int    retval = -1;
     cxobj *xp;       /* destination parent node */
 
     if ((xp = xpath_first(xt, nsc, "%s", dst)) == NULL){
-	clicon_err(OE_XML, 0, "path required");
-	goto done;
+        clicon_err(OE_XML, 0, "path required");
+        goto done;
     }
     if (xml_addsub(xp, xw) < 0)
-	goto done;
+        goto done;
     retval = 1;
  done:
     return retval;
@@ -225,8 +225,8 @@ changelog_move(clicon_handle h,
 */
 static int
 changelog_op(clicon_handle h,
-	     cxobj        *xt,
-	     cxobj        *xi)
+             cxobj        *xt,
+             cxobj        *xi)
 
 {
     int     retval = -1;
@@ -246,16 +246,16 @@ changelog_op(clicon_handle h,
 
     /* Get namespace context from changelog item */
     if (xml_nsctx_node(xi, &nsc) < 0)
-	goto done;
+        goto done;
     if ((op = xml_find_body(xi, "op")) == NULL)
-	goto ok;
+        goto ok;
     /* get common variables that may be used in the operations below */
     tag = xml_find_body(xi, "tag");
     dst = xml_find_body(xi, "dst");
     xnew = xml_find(xi, "new");
     whenxpath = xml_find_body(xi, "when");
     if ((wxpath = xml_find_body(xi, "where")) == NULL)
-	goto ok;
+        goto ok;
     /* Get vector of target nodes meeting the where requirement */
     if (xpath_vec(xt, nsc, "%s", &wvec, &wlen, wxpath) < 0)
        goto done;
@@ -263,51 +263,51 @@ changelog_op(clicon_handle h,
        xw = wvec[i];
        /* If 'when' exists and is false, skip this target */
        if (whenxpath){
-	   if (xpath_vec_ctx(xw, nsc, whenxpath, 0, &xctx) < 0)
-	       goto done;
-	   if ((ret = ctx2boolean(xctx)) < 0)
-	       goto done;
-	   if (xctx){
-	       ctx_free(xctx);
-	       xctx = NULL;
-	   }
-	   if (ret == 0)
-	       continue;
+           if (xpath_vec_ctx(xw, nsc, whenxpath, 0, &xctx) < 0)
+               goto done;
+           if ((ret = ctx2boolean(xctx)) < 0)
+               goto done;
+           if (xctx){
+               ctx_free(xctx);
+               xctx = NULL;
+           }
+           if (ret == 0)
+               continue;
        }
        /* Now switch on operation */
        if (strcmp(op, "rename") == 0){
-	   ret = changelog_rename(h, xt, xw, nsc, tag);
+           ret = changelog_rename(h, xt, xw, nsc, tag);
        }
        else if (strcmp(op, "replace") == 0){
-	   ret = changelog_replace(h, xt, xw, xnew);
+           ret = changelog_replace(h, xt, xw, xnew);
        }
        else if (strcmp(op, "insert") == 0){
-	   ret = changelog_insert(h, xt, xw, xnew);
+           ret = changelog_insert(h, xt, xw, xnew);
        }
        else if (strcmp(op, "delete") == 0){
-	   ret = changelog_delete(h, xt, xw);
+           ret = changelog_delete(h, xt, xw);
        }
        else if (strcmp(op, "move") == 0){
-	   ret = changelog_move(h, xt, xw, nsc, dst);
+           ret = changelog_move(h, xt, xw, nsc, dst);
        }
        else{
-	   clicon_err(OE_XML, 0, "Unknown operation: %s", op);
-	   goto done;
+           clicon_err(OE_XML, 0, "Unknown operation: %s", op);
+           goto done;
        }
        if (ret < 0)
-	   goto done;
+           goto done;
        if (ret == 0)
-	   goto fail;
+           goto fail;
    }
  ok:
     retval = 1;
  done:
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (wvec)
-	free(wvec);
+        free(wvec);
     if (xctx)
-	ctx_free(xctx);
+        ctx_free(xctx);
     return retval;
  fail:
     retval = 0;
@@ -322,8 +322,8 @@ changelog_op(clicon_handle h,
  */
 static int
 changelog_iterate(clicon_handle h,
-    		  cxobj        *xt,
-		  cxobj        *xch)
+                  cxobj        *xt,
+                  cxobj        *xch)
 
 {
     int        retval = -1;
@@ -333,19 +333,19 @@ changelog_iterate(clicon_handle h,
     int        i;
     
     if (xpath_vec(xch, NULL, "step", &vec, &veclen) < 0)
-	goto done;
+        goto done;
     /* Iterate through changelog items */
     for (i=0; i<veclen; i++){
-	if ((ret = changelog_op(h, xt, vec[i])) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = changelog_op(h, xt, vec[i])) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     retval = 1;
  done:
     clicon_debug(1, "%s retval: %d", __FUNCTION__, retval);
     if (vec)
-	free(vec);
+        free(vec);
     return retval;
  fail:
     retval = 0;
@@ -368,13 +368,13 @@ changelog_iterate(clicon_handle h,
  */
 int
 xml_changelog_upgrade(clicon_handle h,       
-		      cxobj        *xt,      
-		      char         *ns,
-		      uint16_t      op,
-		      uint32_t      from,
-		      uint32_t      to,
-		      void         *arg,     
-		      cbuf         *cbret)
+                      cxobj        *xt,      
+                      char         *ns,
+                      uint16_t      op,
+                      uint32_t      from,
+                      uint32_t      to,
+                      void         *arg,     
+                      cbuf         *cbret)
 {
     int        retval = -1;
     cxobj     *xchlog; /* changelog */
@@ -389,40 +389,40 @@ xml_changelog_upgrade(clicon_handle h,
 
     /* Check if changelog enabled */
     if (!clicon_option_bool(h, "CLICON_XML_CHANGELOG"))
-	goto ok;
+        goto ok;
     /* Get changelog */
     if ((xchlog = clicon_xml_changelog_get(h)) == NULL)
-	goto ok;
+        goto ok;
 
     /* Iterate and find relevant changelog entries in the interval:
      * - find all changelogs in the interval: [from, to]
      * - note it t=0 then no changelog is applied
      */
     if (xpath_vec(xchlog, NULL, "changelog[namespace=\"%s\"]", 
-		  &vec, &veclen, ns) < 0)
-	goto done;
+                  &vec, &veclen, ns) < 0)
+        goto done;
     /* Get all changelogs in the interval [from,to]*/
     for (i=0; i<veclen; i++){
-	xch = vec[i];
-	f = t = 0;
-	if ((b = xml_find_body(xch, "revfrom")) != NULL)
-	    if (ys_parse_date_arg(b, &f) < 0)
-		goto done;
-	if ((b = xml_find_body(xch, "revision")) != NULL)
-	    if (ys_parse_date_arg(b, &t) < 0)
-		goto done;
-	if ((f && from>f) || to<t)
-	    continue;
-	if ((ret = changelog_iterate(h, xt, xch)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        xch = vec[i];
+        f = t = 0;
+        if ((b = xml_find_body(xch, "revfrom")) != NULL)
+            if (ys_parse_date_arg(b, &f) < 0)
+                goto done;
+        if ((b = xml_find_body(xch, "revision")) != NULL)
+            if (ys_parse_date_arg(b, &t) < 0)
+                goto done;
+        if ((f && from>f) || to<t)
+            continue;
+        if ((ret = changelog_iterate(h, xt, xch)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
  ok:
     retval = 1;
  done:
     if (vec)
-	free(vec);
+        free(vec);
     return retval;
  fail:
     retval = 0;
@@ -445,42 +445,42 @@ clixon_xml_changelog_init(clicon_handle h)
 
     yspec = clicon_dbspec_yang(h);
     if ((filename = clicon_option_str(h, "CLICON_XML_CHANGELOG_FILE")) != NULL){
-	if ((fp = fopen(filename, "r")) == NULL){
-	    clicon_err(OE_UNIX, errno, "fopen(%s)", filename);
-	    goto done;
-	}    
-	if (clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL) < 0)
-	    goto done;
-	if (xml_rootchild(xt, 0, &xt) < 0)
-	    goto done;
-	if ((ret = xml_yang_validate_all(h, xt, &xret)) < 0)
-	    goto done;
-	if (ret==1 && (ret = xml_yang_validate_add(h, xt, &xret)) < 0)
-	    goto done;
-	if (ret == 0){ /* validation failed */
-	    if ((cbret = cbuf_new()) ==NULL){
-		clicon_err(OE_XML, errno, "cbuf_new");
-		goto done;
-	    }
-	    if (netconf_err2cb(xret, cbret) < 0)
-		goto done;
-	    clicon_err(OE_YANG, 0, "validation failed: %s", cbuf_get(cbret));
-	    goto done;
-	}   
-	if (clicon_xml_changelog_set(h, xt) < 0)
-	    goto done;
-	xt = NULL;
+        if ((fp = fopen(filename, "r")) == NULL){
+            clicon_err(OE_UNIX, errno, "fopen(%s)", filename);
+            goto done;
+        }    
+        if (clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL) < 0)
+            goto done;
+        if (xml_rootchild(xt, 0, &xt) < 0)
+            goto done;
+        if ((ret = xml_yang_validate_all(h, xt, &xret)) < 0)
+            goto done;
+        if (ret==1 && (ret = xml_yang_validate_add(h, xt, &xret)) < 0)
+            goto done;
+        if (ret == 0){ /* validation failed */
+            if ((cbret = cbuf_new()) ==NULL){
+                clicon_err(OE_XML, errno, "cbuf_new");
+                goto done;
+            }
+            if (netconf_err2cb(xret, cbret) < 0)
+                goto done;
+            clicon_err(OE_YANG, 0, "validation failed: %s", cbuf_get(cbret));
+            goto done;
+        }   
+        if (clicon_xml_changelog_set(h, xt) < 0)
+            goto done;
+        xt = NULL;
     }
     retval = 0;
  done:
     if (cbret)
-	cbuf_free(cbret);
+        cbuf_free(cbret);
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     if (fp)
-	fclose(fp);
+        fclose(fp);
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     return retval;
 }
 
@@ -499,10 +499,10 @@ clixon_xml_changelog_init(clicon_handle h)
  */
 int
 xml_namespace_vec(clicon_handle h,
-		  cxobj        *xt,
-		  char         *ns,
-		  cxobj      ***vecp,
-		  size_t       *veclenp)
+                  cxobj        *xt,
+                  char         *ns,
+                  cxobj      ***vecp,
+                  size_t       *veclenp)
 {
     int     retval = -1;
     cxobj **xvec = NULL;
@@ -516,18 +516,18 @@ xml_namespace_vec(clicon_handle h,
      */
     xlen = xml_child_nr_type(xt, CX_ELMNT)+1;
     if ((xvec = calloc(xlen, sizeof(cxobj*))) == NULL){
-	clicon_err(OE_UNIX, errno, "calloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
     }
     /* Iterate and find xml nodes with assoctaed namespace */
     xc = NULL;
     i = 0;
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-	if (xml2ns(xc, NULL, &ns0) < 0) /* Get namespace of XML */
-	    goto done;       
-	if (strcmp(ns, ns0))
-	    continue; /* no match */
-	xvec[i++] = xc;
+        if (xml2ns(xc, NULL, &ns0) < 0) /* Get namespace of XML */
+            goto done;       
+        if (strcmp(ns, ns0))
+            continue; /* no match */
+        xvec[i++] = xc;
     }
     *vecp = xvec;
     *veclenp = i;

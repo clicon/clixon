@@ -66,7 +66,7 @@
  */
 static int
 clicon_file_dirent_sort(const void* arg1, 
-			const void* arg2)
+                        const void* arg2)
 {
     struct dirent *d1 = (struct dirent *)arg1;
     struct dirent *d2 = (struct dirent *)arg2;
@@ -79,8 +79,8 @@ clicon_file_dirent_sort(const void* arg1,
  */
 static int
 clicon_files_recursive1(const char *dir,
-			regex_t    *re,
-			cvec       *cvv)
+                        regex_t    *re,
+                        cvec       *cvv)
 {
     int retval = -1;
     struct  dirent *dent = NULL;
@@ -90,41 +90,41 @@ clicon_files_recursive1(const char *dir,
     struct stat    st;
     
     if (dir == NULL){
-	clicon_err(OE_UNIX, EINVAL, "Requires dir != NULL");
-	goto done;
+        clicon_err(OE_UNIX, EINVAL, "Requires dir != NULL");
+        goto done;
     }
     if ((dirp = opendir(dir)) != NULL)
-	while ((dent = readdir(dirp)) != NULL) {
-	    if (dent->d_type == DT_DIR) {
-		/* If we find a directory we might want to enter it, unless it
-		   is the current directory (.) or parent (..) */
-		if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) 
-		    continue;
+        while ((dent = readdir(dirp)) != NULL) {
+            if (dent->d_type == DT_DIR) {
+                /* If we find a directory we might want to enter it, unless it
+                   is the current directory (.) or parent (..) */
+                if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) 
+                    continue;
 
-		/* Build the new directory and enter it. */
-		sprintf(path, "%s/%s", dir, dent->d_name);
-		if (clicon_files_recursive1(path, re, cvv) < 0)
-		    goto done;
-	    }
-	    else if (dent->d_type == DT_REG) {
-		/* If we encounter a file, match it against the regexp and
-		   add it to the list of found files.*/
-		if (re != NULL &&
-		    regexec(re, dent->d_name, (size_t)0, NULL, 0) != 0)
-		    continue;
-		snprintf(path, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
-		if ((res = lstat(path, &st)) != 0){
-		    clicon_err(OE_UNIX, errno, "lstat");
-		    goto done;
-		}
-		if ((st.st_mode & S_IFREG) == 0)
-		    continue;
-		if (cvec_add_string(cvv, dent->d_name, path) < 0){
-		    clicon_err(OE_UNIX, errno, "cvec_add_string");
-		    goto done;
-		}
-	    }
-	}
+                /* Build the new directory and enter it. */
+                sprintf(path, "%s/%s", dir, dent->d_name);
+                if (clicon_files_recursive1(path, re, cvv) < 0)
+                    goto done;
+            }
+            else if (dent->d_type == DT_REG) {
+                /* If we encounter a file, match it against the regexp and
+                   add it to the list of found files.*/
+                if (re != NULL &&
+                    regexec(re, dent->d_name, (size_t)0, NULL, 0) != 0)
+                    continue;
+                snprintf(path, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
+                if ((res = lstat(path, &st)) != 0){
+                    clicon_err(OE_UNIX, errno, "lstat");
+                    goto done;
+                }
+                if ((st.st_mode & S_IFREG) == 0)
+                    continue;
+                if (cvec_add_string(cvv, dent->d_name, path) < 0){
+                    clicon_err(OE_UNIX, errno, "cvec_add_string");
+                    goto done;
+                }
+            }
+        }
     retval = 0;
  done:
     if (dirp)
@@ -137,7 +137,7 @@ clicon_files_recursive1(const char *dir,
 int
 clicon_files_recursive(const char *dir,
                        const char *regexp,
-		       cvec       *cvv)
+                       cvec       *cvv)
 {
     int     retval = -1;
     regex_t re = {0,};
@@ -148,10 +148,10 @@ clicon_files_recursive(const char *dir,
     if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
         regerror(res, &re, errbuf, sizeof(errbuf));
         clicon_err(OE_DB, 0, "regcomp: %s", errbuf);
-	goto done;
+        goto done;
     }
     if (clicon_files_recursive1(dir, &re, cvv) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (regexp)
@@ -186,9 +186,9 @@ clicon_files_recursive(const char *dir,
 */
 int
 clicon_file_dirent(const char     *dir,
-		   struct dirent **ent,
-		   const char     *regexp,
-		   mode_t          type)
+                   struct dirent **ent,
+                   const char     *regexp,
+                   mode_t          type)
 {
    int            retval = -1;
    DIR           *dirp = NULL;
@@ -219,29 +219,29 @@ clicon_file_dirent(const char     *dir,
    while((dent = readdir(dirp)) != NULL) {
        /* Filename matching */
        if (regexp) {
-	   if (regexec(&re, dent->d_name, (size_t) 0, NULL, 0) != 0)
-	       continue;
+           if (regexec(&re, dent->d_name, (size_t) 0, NULL, 0) != 0)
+               continue;
        }
        /* File type matching */
        if (type) {
-	   snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
-	   res = lstat(filename, &st);
-	   if (res != 0) {
-	       clicon_err(OE_UNIX, errno, "lstat");
-	       goto quit;
-	   }
-	   if ((type & st.st_mode) == 0)
-	       continue;
+           snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
+           res = lstat(filename, &st);
+           if (res != 0) {
+               clicon_err(OE_UNIX, errno, "lstat");
+               goto quit;
+           }
+           if ((type & st.st_mode) == 0)
+               continue;
        }
        direntStructSize = offsetof(struct dirent, d_name) + strlen(dent->d_name) + 1;
        if ((new = realloc(new, (nent+1)*sizeof(struct dirent))) == NULL) {
-	   clicon_err(OE_UNIX, errno, "realloc");
-	   goto quit;
+           clicon_err(OE_UNIX, errno, "realloc");
+           goto quit;
        } /* realloc */
        clicon_debug(2, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
        /* man (3) readdir: 
-	* By implication, the  use sizeof(struct dirent) to capture the size of the record including 
-	* the size of d_name is also incorrect. */
+        * By implication, the  use sizeof(struct dirent) to capture the size of the record including 
+        * the size of d_name is also incorrect. */
        memset(&new[nent], 0, sizeof(struct dirent));
        memcpy(&new[nent], dent, direntStructSize);
        nent++;
@@ -267,7 +267,7 @@ quit:
  */
 int
 clicon_file_copy(char *src, 
-		 char *target)
+                 char *target)
 {
     int         retval = -1;
     int         inF = 0, ouF = 0;
@@ -277,30 +277,30 @@ clicon_file_copy(char *src,
     struct stat st;
 
     if (stat(src, &st) != 0){
-	clicon_err(OE_UNIX, errno, "stat");
-	return -1;
+        clicon_err(OE_UNIX, errno, "stat");
+        return -1;
     }
     if((inF = open(src, O_RDONLY)) == -1) {
-	clicon_err(OE_UNIX, errno, "open(%s) for read", src);
-	return -1;
+        clicon_err(OE_UNIX, errno, "open(%s) for read", src);
+        return -1;
     }
     if((ouF = open(target, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode)) == -1) {
-	clicon_err(OE_UNIX, errno, "open(%s) for write", target);
-	err = errno;
-	goto error;
+        clicon_err(OE_UNIX, errno, "open(%s) for write", target);
+        err = errno;
+        goto error;
     }
     while((bytes = read(inF, line, sizeof(line))) > 0)
-	if (write(ouF, line, bytes) < 0){
-	    clicon_err(OE_UNIX, errno, "write(%s)", src);
-	    err = errno;
-	    goto error;
-	}
+        if (write(ouF, line, bytes) < 0){
+            clicon_err(OE_UNIX, errno, "write(%s)", src);
+            err = errno;
+            goto error;
+        }
     retval = 0;
   error:
     close(inF);
     if (ouF)
-	close(ouF);
+        close(ouF);
     if (retval < 0)
-	errno = err;
+        errno = err;
     return retval;
 }

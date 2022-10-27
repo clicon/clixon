@@ -67,4 +67,4 @@ int clixon_http1_parselex(void *);
 int clixon_http1_parseparse(void *);
 void clixon_http1_parseerror(void *, char*);
 
-#endif	/* _CLIXON_HTTP1_PARSE_H_ */
+#endif  /* _CLIXON_HTTP1_PARSE_H_ */

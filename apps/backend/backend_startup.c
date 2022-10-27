@@ -78,16 +78,16 @@
  */
 static int
 db_merge(clicon_handle h,
- 	 const char   *db1,
-    	 const char   *db2,
-	 cbuf         *cbret)
+         const char   *db1,
+         const char   *db2,
+         cbuf         *cbret)
 {
     int    retval = -1;
     cxobj *xt = NULL;
     
     /* Get data as xml from db1 */
     if (xmldb_get0(h, (char*)db1, YB_MODULE, NULL, NULL, 0, &xt, NULL, NULL) < 0)
-	goto done;
+        goto done;
     xml_name_set(xt, NETCONF_INPUT_CONFIG);
     /* Merge xml into db2. Without commit */
     retval = xmldb_put(h, (char*)db2, OP_MERGE, xt, clicon_username_get(h), cbret);
@@ -129,8 +129,8 @@ startup       --+-------------------------------------> BROKEN XML
  */
 int
 startup_mode_startup(clicon_handle        h,
-		     char                *db,
-		     cbuf                *cbret)
+                     char                *db,
+                     cbuf                *cbret)
 {
     int        retval = -1;
     int        ret = 0;
@@ -138,13 +138,13 @@ startup_mode_startup(clicon_handle        h,
     yang_stmt *yspec = clicon_dbspec_yang(h);
     
     if (strcmp(db, "running")==0){
-	clicon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
-	goto done;
+        clicon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
+        goto done;
     }
     /* If startup does not exist, create it empty */
     if (xmldb_exists(h, db) != 1){ /* diff */
-	if (xmldb_create(h, db) < 0) /* diff */
-	    return -1;
+        if (xmldb_create(h, db) < 0) /* diff */
+            return -1;
     }
 
     /* When a confirming-commit is issued, the confirmed-commit timeout
@@ -159,7 +159,7 @@ startup_mode_startup(clicon_handle        h,
             clicon_err(OE_DAEMON, 0, "Error checking for the existence of the rollback database");
             goto done;
         }
-	if (rollback_exists == 1) {
+        if (rollback_exists == 1) {
             ret = startup_commit(h, "rollback", cbret);
             switch(ret) {
                 case -1:
@@ -180,18 +180,18 @@ startup_mode_startup(clicon_handle        h,
                     goto fail;
             }
         }
-	else {
-	    if ((ret = startup_commit(h, db, cbret)) < 0)
-		goto done;
-	    if (ret == 0)
-		goto fail;
-	}
+        else {
+            if ((ret = startup_commit(h, db, cbret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
     }
     else {
-	if ((ret = startup_commit(h, db, cbret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = startup_commit(h, db, cbret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
  ok:
     retval = 1;
@@ -209,9 +209,9 @@ startup_mode_startup(clicon_handle        h,
  */
 static int
 load_extraxml(clicon_handle h,
-	      char         *filename,
-	      const char   *db,
-	      cbuf         *cbret)
+              char         *filename,
+              const char   *db,
+              cbuf         *cbret)
 {
     int        retval =  -1;
     cxobj     *xt = NULL;
@@ -221,38 +221,38 @@ load_extraxml(clicon_handle h,
     int        ret;
 
     if (filename == NULL)
-	return 1;
+        return 1;
     if ((fp = fopen(filename, "r")) == NULL){
-	clicon_err(OE_UNIX, errno, "open(%s)", filename);
-	goto done;
+        clicon_err(OE_UNIX, errno, "open(%s)", filename);
+        goto done;
     }
     yspec = clicon_dbspec_yang(h);
     /* No yang check yet because it has <config> as top symbol, do it later after that is removed */
     if (clixon_xml_parse_file(fp, YB_NONE, yspec, &xt, &xerr) < 0)
-	goto done;
+        goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)
-    	goto done;
+        goto done;
     /* Ensure edit-config "config" statement */
     if (xt)
-	xml_name_set(xt, NETCONF_INPUT_CONFIG);
+        xml_name_set(xt, NETCONF_INPUT_CONFIG);
     /* Now we can yang bind */
     if ((ret = xml_bind_yang(xt, YB_MODULE, yspec, &xerr)) < 0)
-	goto done;
+        goto done;
     if (ret == 0){
-	if (netconf_err2cb(xerr, cbret) < 0)
-	    goto done;
-	retval = 0;
-	goto done;
+        if (netconf_err2cb(xerr, cbret) < 0)
+            goto done;
+        retval = 0;
+        goto done;
     }
 
     /* Merge user reset state */
     retval = xmldb_put(h, (char*)db, OP_MERGE, xt, clicon_username_get(h), cbret);
  done:
     if (fp)
-	fclose(fp);
+        fclose(fp);
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     return retval;
 }
 
@@ -277,28 +277,28 @@ tmp     |-------+-----+-----+
  */
 int
 startup_extraxml(clicon_handle        h,
-		 char                *file,
-		 cbuf                *cbret)
+                 char                *file,
+                 cbuf                *cbret)
 {
     int         retval = -1;
     char       *tmp_db = "tmp";
     int         ret;
-    cxobj	*xt0 = NULL; 
-    cxobj	*xt = NULL; 
+    cxobj       *xt0 = NULL; 
+    cxobj       *xt = NULL; 
     
     /* Clear tmp db */
     if (xmldb_db_reset(h, tmp_db) < 0)
-	goto done;
+        goto done;
     /* Application may define extra xml in its reset function */
     if (clixon_plugin_reset_all(h, tmp_db) < 0)   
-	goto done;
+        goto done;
     /* Extra XML can also be added via file */
     if (file){
-	/* Parse and load file into tmp db */
-	if ((ret = load_extraxml(h, file, tmp_db, cbret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        /* Parse and load file into tmp db */
+        if ((ret = load_extraxml(h, file, tmp_db, cbret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     /* 
      * Check if tmp db is empty. 
@@ -306,33 +306,33 @@ startup_extraxml(clicon_handle        h,
      * then skip validation.
      */
     if (xmldb_get(h, tmp_db, NULL, NULL, &xt0) < 0)
-	goto done;
+        goto done;
     if ((ret = xmldb_empty_get(h, tmp_db)) < 0)
-	goto done;
+        goto done;
     if (ret == 1)
-	goto ok;
+        goto ok;
     xt = NULL;
     /* Validate the tmp db and return possibly upgraded xml in xt
      */
     if ((ret = startup_validate(h, tmp_db, &xt, cbret)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     if (xt==NULL || xml_child_nr(xt)==0) 
-	goto ok;
+        goto ok;
     /* Merge tmp into running (no commit) */
     if ((ret = db_merge(h, tmp_db, "running", cbret)) < 0)
-	goto fail;
+        goto fail;
     if (ret == 0)
-	goto fail;
+        goto fail;
  ok:
     retval = 1;
  done:
     if (xt0)
-	xml_free(xt0);
+        xml_free(xt0);
     xmldb_get0_free(h, &xt);
     if (xmldb_delete(h, tmp_db) != 0 && errno != ENOENT) 
-	return -1;
+        return -1;
     return retval;
  fail:
     retval = 0;
@@ -347,25 +347,25 @@ startup_extraxml(clicon_handle        h,
  */
 int
 startup_module_state(clicon_handle h,
-		     yang_stmt    *yspec)
+                     yang_stmt    *yspec)
 {
     int    retval = -1;
     cxobj *x = NULL;
     int    ret;
-	
+        
     if (!clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
-	goto ok;
+        goto ok;
     /* Set up cache 
      * Now, access brief module cache with clicon_modst_cache_get(h, 1) */
     if ((ret = yang_modules_state_get(h, yspec, NULL, NULL, 1, &x)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
  ok:
     retval = 1;
  done:
     if (x)
-	xml_free(x);
+        xml_free(x);
     return retval;
  fail:
     retval = 0;

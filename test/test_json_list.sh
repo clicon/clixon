@@ -18,12 +18,12 @@ module json{
       }
       list l2{
          key name;
- 	 leaf name{
-	    type int32;
-	 }
-	 leaf value{
-	    type string;
-	 }
+         leaf name{
+            type int32;
+         }
+         leaf value{
+            type string;
+         }
       }
       leaf extra{
          type string;

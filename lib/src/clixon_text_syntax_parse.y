@@ -91,29 +91,29 @@
     
 void 
 clixon_text_syntax_parseerror(void *arg,
-			      char *s) 
+                              char *s) 
 {
     clixon_text_syntax_yacc *ts = (clixon_text_syntax_yacc *)arg;
 
     clicon_err(OE_XML, XMLPARSE_ERRNO, "text_syntax_parse: line %d: %s: at or before: %s", 
-	       ts->ts_linenum,
-	       s,
-	       clixon_text_syntax_parsetext); 
+               ts->ts_linenum,
+               s,
+               clixon_text_syntax_parsetext); 
     return;
 }
 
 static cxobj*
 text_add_value(cxobj *xn,
-	       char  *value)
+               char  *value)
 {
     cxobj *xb = NULL;
 
     if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
-	goto done;
+        goto done;
     if (xml_value_set(xb,  value) < 0){
-	xml_free(xb);
-	xb = NULL;
-	goto done;
+        xml_free(xb);
+        xb = NULL;
+        goto done;
     }
  done:
     return xb;
@@ -123,7 +123,7 @@ text_add_value(cxobj *xn,
  */
 static cxobj*
 text_create_node(clixon_text_syntax_yacc *ts,
-		 char                    *name)
+                 char                    *name)
 {
     cxobj     *xn = NULL;
     yang_stmt *ymod;
@@ -132,26 +132,26 @@ text_create_node(clixon_text_syntax_yacc *ts,
     char      *id = NULL;
 
     if (nodeid_split(name, &prefix, &id) < 0)
-	goto done;
+        goto done;
     if ((xn = xml_new(id, NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     if (prefix && ts->ts_yspec){
-	/* Silently ignore if module name not found */
-	if ((ymod = yang_find(ts->ts_yspec, Y_MODULE, prefix)) != NULL){
-	    if ((ns = yang_find_mynamespace(ymod)) == NULL){
-		clicon_err(OE_YANG, 0, "No namespace");
-		goto done;
-	    }
-	    /* Set default namespace */
-	    if (xmlns_set(xn, NULL, ns) < 0)
-		goto done;
-	}
+        /* Silently ignore if module name not found */
+        if ((ymod = yang_find(ts->ts_yspec, Y_MODULE, prefix)) != NULL){
+            if ((ns = yang_find_mynamespace(ymod)) == NULL){
+                clicon_err(OE_YANG, 0, "No namespace");
+                goto done;
+            }
+            /* Set default namespace */
+            if (xmlns_set(xn, NULL, ns) < 0)
+                goto done;
+        }
     }
  done:
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (id)
-	free(id);
+        free(id);
     return xn;
 }
 
@@ -165,8 +165,8 @@ strjoin(char *str0,
     len0 = str0?strlen(str0):0;
     len = len0 + strlen(str1) + 1;
     if ((str0 = realloc(str0, len)) == NULL){
-	clicon_err(OE_YANG, errno, "realloc");
-	return NULL;
+        clicon_err(OE_YANG, errno, "realloc");
+        return NULL;
     }
     strcpy(str0+len0, str1);
     return str0;
@@ -176,8 +176,8 @@ strjoin(char *str0,
  */
 static int
 text_element_create(clixon_xvec *xvec0,
-		     cxobj       *x1,
-		     clixon_xvec *xvec1)
+                     cxobj       *x1,
+                     clixon_xvec *xvec1)
 {
     int    retval = -1;
     cxobj *xb;
@@ -185,13 +185,13 @@ text_element_create(clixon_xvec *xvec0,
     int    i;
 
     for (i=0; i<clixon_xvec_len(xvec1); i++){
-	xb = clixon_xvec_i(xvec1, i);
-	if ((x2 = xml_dup(x1)) == NULL)
-	    goto done;
-	if (xml_addsub(x2, xb) < 0)
-	    goto done;
-	if (clixon_xvec_append(xvec0, x2) < 0)
-	    goto done;
+        xb = clixon_xvec_i(xvec1, i);
+        if ((x2 = xml_dup(x1)) == NULL)
+            goto done;
+        if (xml_addsub(x2, xb) < 0)
+            goto done;
+        if (clixon_xvec_append(xvec0, x2) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -208,8 +208,8 @@ text_mark_bodies(clixon_xvec *xv)
     cxobj *xb;
     
     for (i=0; i<clixon_xvec_len(xv); i++){
-	xb = clixon_xvec_i(xv, i);
-	xml_flag_set(xb, XML_FLAG_BODYKEY);
+        xb = clixon_xvec_i(xv, i);
+        xml_flag_set(xb, XML_FLAG_BODYKEY);
     }
     return 0;
 }
@@ -219,15 +219,15 @@ text_mark_bodies(clixon_xvec *xv)
 %%
 
 top        : stmt MY_EOF       { _PARSE_DEBUG("top->stmt");
-				 if (clixon_child_xvec_append(_TS->ts_xtop, $1) < 0) YYERROR;
-				 clixon_xvec_free($1);
+                                 if (clixon_child_xvec_append(_TS->ts_xtop, $1) < 0) YYERROR;
+                                 clixon_xvec_free($1);
                                  YYACCEPT; }
            ;
 
 stmts      : stmts stmt        { _PARSE_DEBUG("stmts->stmts stmt");
                                  if (clixon_xvec_merge($1, $2) < 0) YYERROR;
-				 clixon_xvec_free($2);
-				 $$ = $1;
+                                 clixon_xvec_free($2);
+                                 $$ = $1;
                                } 
            |                   { _PARSE_DEBUG("stmts->stmt");
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;
@@ -237,46 +237,46 @@ stmts      : stmts stmt        { _PARSE_DEBUG("stmts->stmts stmt");
 stmt       : id values ';'     { _PARSE_DEBUG("stmt-> id value ;");
                                  text_mark_bodies($2);
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;
-				 if (text_element_create($$, $1, $2) < 0) YYERROR;
-				 xml_free($1);
-				 clixon_xvec_free($2);
+                                 if (text_element_create($$, $1, $2) < 0) YYERROR;
+                                 xml_free($1);
+                                 clixon_xvec_free($2);
                                }
            | id values '{' stmts '}'  { _PARSE_DEBUG("stmt-> id values { stmts }");
                                  text_mark_bodies($2);
-     				 if (clixon_child_xvec_append($1, $2) < 0) YYERROR;
-				 clixon_xvec_free($2);
-     				 if (clixon_child_xvec_append($1, $4) < 0) YYERROR;
-				 clixon_xvec_free($4);
+                                 if (clixon_child_xvec_append($1, $2) < 0) YYERROR;
+                                 clixon_xvec_free($2);
+                                 if (clixon_child_xvec_append($1, $4) < 0) YYERROR;
+                                 clixon_xvec_free($4);
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;
-				 if (clixon_xvec_append($$, $1) < 0) YYERROR;
-	                       }
+                                 if (clixon_xvec_append($$, $1) < 0) YYERROR;
+                               }
            | id '[' values ']'
-		               { _PARSE_DEBUG("stmt-> id [ values ]");
+                               { _PARSE_DEBUG("stmt-> id [ values ]");
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;
-				 if (text_element_create($$, $1, $3) < 0) YYERROR;
-				 xml_free($1);
-				 clixon_xvec_free($3);
-	                       }
+                                 if (text_element_create($$, $1, $3) < 0) YYERROR;
+                                 xml_free($1);
+                                 clixon_xvec_free($3);
+                               }
            ;
 
 id         : TOKEN             { _PARSE_DEBUG("id->TOKEN");
                                  if (($$ = text_create_node(_TS, $1)) == NULL) YYERROR;
-				 free($1);
+                                 free($1);
                                }
            ;
 
 /* Array of body objects, possibly empty */
 values     : values value      { _PARSE_DEBUG("values->values value");
                                  cxobj* x;
-				 if ((x = text_add_value(NULL, $2)) == NULL) YYERROR;;
-				 free($2);
+                                 if ((x = text_add_value(NULL, $2)) == NULL) YYERROR;;
+                                 free($2);
                                  if (clixon_xvec_append($1, x) < 0) YYERROR;
-				 $$ = $1;
+                                 $$ = $1;
                                }
            |                   { _PARSE_DEBUG("values->value");
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;
-	                       }
-	   ;
+                               }
+           ;
 
 /* Returns single string either as a single token or contained by double quotes  */
 value      : TOKEN             { _PARSE_DEBUG("value->TOKEN");
@@ -284,7 +284,7 @@ value      : TOKEN             { _PARSE_DEBUG("value->TOKEN");
                                }
            | '"' substr '"'  { _PARSE_DEBUG("value-> \" substr \"");
                                  $$=$2;
-	                       }
+                               }
            ;
 
 /* Value within quotes merged to single string, has separate lexical scope  */

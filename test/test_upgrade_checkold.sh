@@ -102,46 +102,46 @@ module A{
 }
 EOF
     else
-	rm -f $fyang1
+        rm -f $fyang1
     fi
     for modstate in true false; do
-	if $modstate; then
-	    modstatestr="<yang-library xmlns=\"urn:example:a\"><module-set><name>default</name><content-id>42</content-id><module><name>A</name><revision>2016-01-01</revision><namespace>urn:example:a</namespace></module></module-set></yang-library>"
-#	    modstatestr="<modules-state xmlns=\"urn:example:a\"><module-set-id>42</module-set-id><module><name>A</name><revision>2016-01-01</revision><namespace>urn:example:a</namespace></module></modules-state>"
-	else
-	    modstatestr=""
-	fi
-	for xml in true false; do
-	    if $xml; then
-		xmltag="old"
-		expectxml="<error-message>Failed to find YANG spec of XML node: $xmltag with parent: config in namespace: urn:example:a</error-message>"
-		if $oldyang; then
-		    if $modstate; then
-			expectxml="<upgraded xmlns=\"urn:example:a\"/>"
-		    fi
-		elif $modstate; then
-		    expectxml="<error-message>Internal error: No yang files found matching \"A@2016-01-01\" in the list of CLICON_YANG_DIRs</error-message>"
-		fi
-	    else # xml false
-		xmltag="wrong"
-		expectxml="<error-message>Failed to find YANG spec of XML node: $xmltag with parent: config in namespace: urn:example:a</error-message>"
-		if ! $oldyang; then
-		    if $modstate; then
-			expectxml="<error-message>Internal error: No yang files found matching \"A@2016-01-01\" in the list of CLICON_YANG_DIRs</error-message>"
-		    fi
-		fi
-	    fi
-	    cat <<EOF > $dir/startup_db
-	    <${DATASTORE_TOP}>
-	      $modstatestr
-	      <$xmltag xmlns="urn:example:a"/>
-	    </${DATASTORE_TOP}>
+        if $modstate; then
+            modstatestr="<yang-library xmlns=\"urn:example:a\"><module-set><name>default</name><content-id>42</content-id><module><name>A</name><revision>2016-01-01</revision><namespace>urn:example:a</namespace></module></module-set></yang-library>"
+#           modstatestr="<modules-state xmlns=\"urn:example:a\"><module-set-id>42</module-set-id><module><name>A</name><revision>2016-01-01</revision><namespace>urn:example:a</namespace></module></modules-state>"
+        else
+            modstatestr=""
+        fi
+        for xml in true false; do
+            if $xml; then
+                xmltag="old"
+                expectxml="<error-message>Failed to find YANG spec of XML node: $xmltag with parent: config in namespace: urn:example:a</error-message>"
+                if $oldyang; then
+                    if $modstate; then
+                        expectxml="<upgraded xmlns=\"urn:example:a\"/>"
+                    fi
+                elif $modstate; then
+                    expectxml="<error-message>Internal error: No yang files found matching \"A@2016-01-01\" in the list of CLICON_YANG_DIRs</error-message>"
+                fi
+            else # xml false
+                xmltag="wrong"
+                expectxml="<error-message>Failed to find YANG spec of XML node: $xmltag with parent: config in namespace: urn:example:a</error-message>"
+                if ! $oldyang; then
+                    if $modstate; then
+                        expectxml="<error-message>Internal error: No yang files found matching \"A@2016-01-01\" in the list of CLICON_YANG_DIRs</error-message>"
+                    fi
+                fi
+            fi
+            cat <<EOF > $dir/startup_db
+            <${DATASTORE_TOP}>
+              $modstatestr
+              <$xmltag xmlns="urn:example:a"/>
+            </${DATASTORE_TOP}>
 EOF
-	    # Here is actual call
-	    new "$j. checkold:$checkold oldyang:$oldyang modstate:$modstate xmlok:$xml"
-	    testrun "$checkold" "$expectxml"
-	    let j++
-	done
+            # Here is actual call
+            new "$j. checkold:$checkold oldyang:$oldyang modstate:$modstate xmlok:$xml"
+            testrun "$checkold" "$expectxml"
+            let j++
+        done
     done
 done
 done

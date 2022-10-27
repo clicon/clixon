@@ -1,39 +1,39 @@
 module ietf-list-pagination {
     yang-version 1.1;
     namespace
-	"urn:ietf:params:xml:ns:yang:ietf-list-pagination";
+        "urn:ietf:params:xml:ns:yang:ietf-list-pagination";
     prefix lpg;
 
     import ietf-yang-types {
-	prefix yang;
-	reference
-	    "RFC 6991: Common YANG Data Types";
+        prefix yang;
+        reference
+            "RFC 6991: Common YANG Data Types";
     }
 
     import ietf-yang-metadata {
-	prefix md;
-	reference
-	    "RFC 7952: Defining and Using Metadata with YANG";
+        prefix md;
+        reference
+            "RFC 7952: Defining and Using Metadata with YANG";
     }
 
     /* XXX Clixon FIXME: system-capabilities brings in NACM that breaks clixon testing
     import ietf-system-capabilities  {
-	prefix sysc;
-	reference
-	    "draft-ietf-netconf-notification-capabilities:
+        prefix sysc;
+        reference
+            "draft-ietf-netconf-notification-capabilities:
        YANG Modules describing Capabilities for
        Systems and Datastore Update Notifications";
     }
     */
     organization
-	"IETF NETCONF (Network Configuration) Working Group";
+        "IETF NETCONF (Network Configuration) Working Group";
 
     contact
-	"WG Web:   https://datatracker.ietf.org/wg/netconf
+        "WG Web:   https://datatracker.ietf.org/wg/netconf
      WG List:  NETCONF WG list <mailto:netconf@ietf.org>";
 
     description
-	"This module is used by servers to 1) indicate they support
+        "This module is used by servers to 1) indicate they support
      pagination on 'list' and 'leaf-list' resources, 2) define a
      grouping for each list-pagination parameter, and 3) indicate
      which 'config false' lists have constrained 'where' and
@@ -61,28 +61,28 @@ module ietf-list-pagination {
      capitals, as shown here.";
 
     revision 2022-07-24 {
-	description
-	    "Initial revision.";
-	reference
-	    "RFC XXXX: List Pagination for YANG-driven Protocols";
+        description
+            "Initial revision.";
+        reference
+            "RFC XXXX: List Pagination for YANG-driven Protocols";
     }
 
     // Annotations
 
     md:annotation remaining {
-	type union {
-	    type uint32;
-	    type enumeration {
-		enum "unknown" {
-		    description
-			"Indicates that number of remaining entries is unknown
+        type union {
+            type uint32;
+            type enumeration {
+                enum "unknown" {
+                    description
+                        "Indicates that number of remaining entries is unknown
              to the server in case, e.g., the server has determined
              that counting would be prohibitively expensive.";
-		}
-	    }
-	}
-	description
-	    "This annotation contains the number of elements not included
+                }
+            }
+        }
+        description
+            "This annotation contains the number of elements not included
        in the result set (a positive value) due to a 'limit' or
        'sublist-limit' operation.  If no elements were removed,
        this annotation MUST NOT appear.  The minimum value (0),
@@ -95,37 +95,37 @@ module ietf-list-pagination {
     // Identities
 
     identity list-pagination-error {
-	description
-	    "Base identity for list-pagination errors.";
+        description
+            "Base identity for list-pagination errors.";
     }
 
     identity offset-out-of-range {
-	base list-pagination-error;
-	description
-	    "The 'offset' query parameter value is greater than the number
+        base list-pagination-error;
+        description
+            "The 'offset' query parameter value is greater than the number
        of instances in the target list or leaf-list resource.";
     }
 
     // Groupings
 
     grouping where-param-grouping {
-	description
-	    "This grouping may be used by protocol-specific YANG modules
+        description
+            "This grouping may be used by protocol-specific YANG modules
        to define a protocol-specific query parameter.";
-	leaf where {
-	    type union {
-		type yang:xpath1.0;
-		type enumeration {
-		    enum "unfiltered" {
-			description
-			    "Indicates that no entries are to be filtered
+        leaf where {
+            type union {
+                type yang:xpath1.0;
+                type enumeration {
+                    enum "unfiltered" {
+                        description
+                            "Indicates that no entries are to be filtered
                from the working result-set.";
-		    }
-		}
-	    }
-	    default "unfiltered";
-	    description
-		"The 'where' parameter specifies a boolean expression
+                    }
+                }
+            }
+            default "unfiltered";
+            description
+                "The 'where' parameter specifies a boolean expression
          that result-set entries must match.
 
          It is an error if the XPath expression references a node
@@ -134,166 +134,166 @@ module ietf-list-pagination {
          false' lists and leaf-lists, if the node identifier does
          not point to a node having the 'indexed' extension
          statement applied to it (see RFC XXXX).";
-	}
+        }
     }
 
     grouping sort-by-param-grouping {
-	description
-	    "This grouping may be used by protocol-specific YANG modules
+        description
+            "This grouping may be used by protocol-specific YANG modules
        to define a protocol-specific query parameter.";
-	leaf sort-by {
-	    type union {
-		type string {
-		    // An RFC 7950 'descendant-schema-nodeid'.
-		    pattern '([0-9a-fA-F]*:)?[0-9a-fA-F]*'
-			+ '(/([0-9a-fA-F]*:)?[0-9a-fA-F]*)*';
-		}
-		type enumeration {
-		    enum "none" {
-			description
-			    "Indicates that the list or leaf-list's default
+        leaf sort-by {
+            type union {
+                type string {
+                    // An RFC 7950 'descendant-schema-nodeid'.
+                    pattern '([0-9a-fA-F]*:)?[0-9a-fA-F]*'
+                        + '(/([0-9a-fA-F]*:)?[0-9a-fA-F]*)*';
+                }
+                type enumeration {
+                    enum "none" {
+                        description
+                            "Indicates that the list or leaf-list's default
                order is to be used, per the YANG 'ordered-by'
                statement.";
-		    }
-		}
-	    }
-	    default "none";
-	    description
-		"The 'sort-by' parameter indicates the node in the
+                    }
+                }
+            }
+            default "none";
+            description
+                "The 'sort-by' parameter indicates the node in the
          working result-set (i.e., after the 'where' parameter
          has been applied) that entries should be sorted by.
 
          Sorts are in ascending order (e.g., '1' before '9',
          'a' before 'z', etc.).  Missing values are sorted to
          the end (e.g., after all nodes having values).";
-	}
+        }
     }
 
     grouping direction-param-grouping {
-	description
-	    "This grouping may be used by protocol-specific YANG modules
+        description
+            "This grouping may be used by protocol-specific YANG modules
        to define a protocol-specific query parameter.";
-	leaf direction {
-	    type enumeration {
-		enum forwards {
-		    description
-		    "Indicates that entries should be traversed from
+        leaf direction {
+            type enumeration {
+                enum forwards {
+                    description
+                    "Indicates that entries should be traversed from
               the first to last item in the working result set.";
-		}
-		enum backwards {
-		    description
-		    "Indicates that entries should be traversed from
+                }
+                enum backwards {
+                    description
+                    "Indicates that entries should be traversed from
               the last to first item in the working result set.";
-		}
-	    }
-	    default "forwards";
-	    description
-		"The 'direction' parameter indicates how the entries in the
+                }
+            }
+            default "forwards";
+            description
+                "The 'direction' parameter indicates how the entries in the
          working result-set (i.e., after the 'sort-by' parameter
          has been applied) should be traversed.";
-	}
+        }
     }
 
     grouping offset-param-grouping {
-	description
-	    "This grouping may be used by protocol-specific YANG modules
+        description
+            "This grouping may be used by protocol-specific YANG modules
        to define a protocol-specific query parameter.";
-	leaf offset {
-	    type uint32;
-	    default 0;
-	    description
-		"The 'offset' parameter indicates the number of entries
+        leaf offset {
+            type uint32;
+            default 0;
+            description
+                "The 'offset' parameter indicates the number of entries
          in the working result-set (i.e., after the 'direction'
          parameter has been applied) that should be skipped over
          when preparing the response.";
-	}
+        }
     }
 
     grouping limit-param-grouping {
-	description
-	    "This grouping may be used by protocol-specific YANG modules
+        description
+            "This grouping may be used by protocol-specific YANG modules
        to define a protocol-specific query parameter.";
-	leaf limit {
-	    type union {
-		type uint32 {
-		    range "1..max";
-		}
-		type enumeration {
-		    enum "unbounded" {
-			description
-			    "Indicates that the number of entries that may be
+        leaf limit {
+            type union {
+                type uint32 {
+                    range "1..max";
+                }
+                type enumeration {
+                    enum "unbounded" {
+                        description
+                            "Indicates that the number of entries that may be
                returned is unbounded.";
-		    }
-		}
-	    }
-	    default "unbounded";
-	    description
-		"The 'limit' parameter limits the number of entries returned
+                    }
+                }
+            }
+            default "unbounded";
+            description
+                "The 'limit' parameter limits the number of entries returned
          from the working result-set (i.e., after the 'offset'
          parameter has been applied).
 
          Any result-set that is limited includes, somewhere in its
          encoding, the metadata value 'remaining' to indicate the
          number entries not included in the result set.";
-	}
+        }
     }
 
     grouping sublist-limit-param-grouping {
-	description
-	    "This grouping may be used by protocol-specific YANG modules
+        description
+            "This grouping may be used by protocol-specific YANG modules
        to define a protocol-specific query parameter.";
-	leaf sublist-limit {
-	    type union {
-		type uint32 {
-		    range "1..max";
-		}
-		type enumeration {
-		    enum "unbounded" {
-			description
-			    "Indicates that the number of entries that may be
+        leaf sublist-limit {
+            type union {
+                type uint32 {
+                    range "1..max";
+                }
+                type enumeration {
+                    enum "unbounded" {
+                        description
+                            "Indicates that the number of entries that may be
                returned is unbounded.";
-		    }
-		}
-	    }
-	    default "unbounded";
-	    description
-		"The 'sublist-limit' parameter limits the number of entries
+                    }
+                }
+            }
+            default "unbounded";
+            description
+                "The 'sublist-limit' parameter limits the number of entries
          for descendent lists and leaf-lists.
 
          Any result-set that is limited includes, somewhere in
          its encoding, the metadata value 'remaining' to indicate
          the number entries not included in the result set.";
-	}
+        }
     }
 
     /* XXX Clixon FIXME: system-capabilities brings in NACM that breaks clixon testing
     // Protocol-accessible nodes
     augment // FIXME: ensure datastore == <operational>
-	"/sysc:system-capabilities/sysc:datastore-capabilities"
-	+ "/sysc:per-node-capabilities" {
-	description
-	    "Defines some leafs that MAY be used by the server to
+        "/sysc:system-capabilities/sysc:datastore-capabilities"
+        + "/sysc:per-node-capabilities" {
+        description
+            "Defines some leafs that MAY be used by the server to
        describe constraints imposed of the 'where' filters and
        'sort-by' parameters used in list pagination queries.";
-	leaf constrained {
-	    type empty;
-	    description
-		"Indicates that 'where' filters and 'sort-by' parameters
+        leaf constrained {
+            type empty;
+            description
+                "Indicates that 'where' filters and 'sort-by' parameters
          on the targeted 'config false' list node are constrained.
          If a list is not 'constrained', then full XPath 1.0
          expressions may be used in 'where' filters and all node
          identifiers are usable by 'sort-by'.";
-	}
-	leaf indexed {
-	    type empty;
-	    description
-		"Indicates that the targeted  descendent node of a
+        }
+        leaf indexed {
+            type empty;
+            description
+                "Indicates that the targeted  descendent node of a
          'constrained' list (see the 'constrained' leaf) may be
          used in 'where' filters and/or 'sort-by' parameters.
          If a descendent node of a 'constrained' list is not
          'indexed', then it MUST NOT be used in 'where' filters
          or 'sort-by' parameters.";
-	}
+        }
     }
     */
 }

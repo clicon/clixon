@@ -143,52 +143,52 @@ static FILE *_event_f = NULL; /* set to stdout in main */
  */
 int
 callhome_bind(struct sockaddr *sa,
-	      size_t           sin_len,		    
-	      int              backlog,
-	      int             *sock)
+              size_t           sin_len,             
+              int              backlog,
+              int             *sock)
 {
     int    retval = -1;
     int    s = -1;
     int    on = 1;
     
     if (sock == NULL){
-	errno = EINVAL;
-	perror("sock");
-	goto done;
+        errno = EINVAL;
+        perror("sock");
+        goto done;
     }
     /* create inet socket */
     if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
-	perror("socket");
-	goto done;
+        perror("socket");
+        goto done;
     }
     if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, sizeof(on)) == -1) {
-	perror("setsockopt SO_KEEPALIVE");
-	goto done;
+        perror("setsockopt SO_KEEPALIVE");
+        goto done;
     }
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)) == -1) {
-	perror("setsockopt SO_REUSEADDR");
-	goto done;
+        perror("setsockopt SO_REUSEADDR");
+        goto done;
     }
     /* only bind ipv6, otherwise it may bind to ipv4 as well which is strange but seems default */
     if (sa->sa_family == AF_INET6 &&
-	setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
-	perror("setsockopt IPPROTO_IPV6");
-	goto done;
+        setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
+        perror("setsockopt IPPROTO_IPV6");
+        goto done;
     }
     if (bind(s, sa, sin_len) == -1) {
-	perror("bind");
-	goto done;
+        perror("bind");
+        goto done;
     }
     if (listen(s, backlog) < 0){
-	perror("listen");
-	goto done;
+        perror("listen");
+        goto done;
     }
     if (sock)
-	*sock = s;
+        *sock = s;
     retval = 0;
  done:
     if (retval != 0 && s != -1)
-	close(s);
+        close(s);
     return retval;
 }
 
@@ -198,8 +198,8 @@ callhome_bind(struct sockaddr *sa,
  */
 static int
 read_data_file(FILE   *fe,
-	       char  **bufp,
-	       size_t *lenp)
+               char  **bufp,
+               size_t *lenp)
 {
     int    retval = -1;
     char  *buf = NULL;
@@ -209,21 +209,21 @@ read_data_file(FILE   *fe,
     int    ret;
 
     if ((buf = malloc(buflen)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(buf, 0, buflen);
     /* Start file form beginning */
     rewind(fe);
     while (1){
-	if ((ret = fread(&ch, 1, 1, fe)) < 0){
-	    clicon_err(OE_JSON, errno, "fread");
-	    goto done;
-	}
-	if (ret == 0)
-	    break;
-	buf[len++] = ch;
-	// XXX No realloc, can overflow
+        if ((ret = fread(&ch, 1, 1, fe)) < 0){
+            clicon_err(OE_JSON, errno, "fread");
+            goto done;
+        }
+        if (ret == 0)
+            break;
+        buf[len++] = ch;
+        // XXX No realloc, can overflow
     }
     *bufp = buf;
     *lenp = len;
@@ -236,7 +236,7 @@ read_data_file(FILE   *fe,
  */
 static int
 tls_write_file(FILE *fp,
-	       SSL  *ssl)
+               SSL  *ssl)
 {
     int    retval = -1;
     char  *buf = NULL;
@@ -246,15 +246,15 @@ tls_write_file(FILE *fp,
     
     clicon_debug(1, "%s", __FUNCTION__);
     if (read_data_file(fp, &buf, &len) < 0)
-	goto done;
+        goto done;
     if ((ret = SSL_write(ssl, buf, len)) < 1){
-	sslerr = SSL_get_error(ssl, ret);
-	clicon_debug(1, "%s SSL_write() n:%d errno:%d sslerr:%d", __FUNCTION__, ret, errno, sslerr);
+        sslerr = SSL_get_error(ssl, ret);
+        clicon_debug(1, "%s SSL_write() n:%d errno:%d sslerr:%d", __FUNCTION__, ret, errno, sslerr);
     }
     retval = 0;
  done:
     if (buf)
-	free(buf);
+        free(buf);
     return retval;
 }
 
@@ -265,7 +265,7 @@ tls_write_file(FILE *fp,
  */
 static int
 tls_server_reply_cb(int   s, 
-		    void *arg)
+                    void *arg)
 {
     int            retval = -1;
     tls_session_data *sd = (tls_session_data *)arg;
@@ -276,73 +276,73 @@ tls_server_reply_cb(int   s,
     struct timeval now;
     struct timeval td;
     static int     seq = 0; // from start
-	
+        
     //    clicon_debug(1, "%s", __FUNCTION__);
     ssl = sd->sd_ssl;
     /* get reply & decrypt */
     if ((n = SSL_read(ssl, buf, sizeof(buf))) < 0){
-	clicon_err(OE_XML, errno, "SSL_read");
-	goto done;
+        clicon_err(OE_XML, errno, "SSL_read");
+        goto done;
     }
     clicon_debug(1, "%s n:%d", __FUNCTION__, n);
     gettimeofday(&now, NULL);
     timersub(&now, &sd->sd_t0, &td); /* from start of connection */
     if (n == 0){ /* Server closed socket */
-	SSL_free(ssl);
-	clixon_event_unreg_fd(s, tls_server_reply_cb);
-	if (_event_trace)
-	    fprintf(_event_f, "Close: %d remote at t=%lu\n", _n_accepts, td.tv_sec);
-	close(s);
-	free(sd);
-	if (_accepts == 0)
-	    ;
-	else if (_accepts == 1){
-	    clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */
-	    fprintf(_event_f, "Exit: %s remote\n", __FUNCTION__);
-	}
-	else
-	    _accepts--;
-	goto ok;
+        SSL_free(ssl);
+        clixon_event_unreg_fd(s, tls_server_reply_cb);
+        if (_event_trace)
+            fprintf(_event_f, "Close: %d remote at t=%lu\n", _n_accepts, td.tv_sec);
+        close(s);
+        free(sd);
+        if (_accepts == 0)
+            ;
+        else if (_accepts == 1){
+            clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */
+            fprintf(_event_f, "Exit: %s remote\n", __FUNCTION__);
+        }
+        else
+            _accepts--;
+        goto ok;
     }
     seq++;
     buf[n] = 0;
     if (_event_trace){
-	fprintf(_event_f, "Reply: %d t=%lu\n", seq, td.tv_sec);
-	if (_event_trace > 1)
-	    fprintf(_event_f, "%s\n", buf);
+        fprintf(_event_f, "Reply: %d t=%lu\n", seq, td.tv_sec);
+        if (_event_trace > 1)
+            fprintf(_event_f, "%s\n", buf);
     }
     /* See if we should send more requests on this socket */
     if (sd->sd_t0.tv_sec + _data_timeout_s > now.tv_sec){
-	/* Send another packet */
-	usleep(100000); /* XXX This is a blocking timeout */
-	/* Write HTTP request on socket */
-	if (tls_write_file(_input_file, sd->sd_ssl) < 0)
-	    goto done;	
-	
+        /* Send another packet */
+        usleep(100000); /* XXX This is a blocking timeout */
+        /* Write HTTP request on socket */
+        if (tls_write_file(_input_file, sd->sd_ssl) < 0)
+            goto done;  
+        
     }
     else if (!_idle){
-	clicon_debug(1, "%s idle", __FUNCTION__);
-	SSL_shutdown(ssl);
-	SSL_free(ssl);
-	clixon_event_unreg_fd(s, tls_server_reply_cb);
-	if (_event_trace)
-	    fprintf(_event_f, "Close: %d local at t=%lu\n", _n_accepts, td.tv_sec);
-	close(s);
-	if (_accepts == 0)
-	    ;
-	else if (_accepts == 1){
-	    clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */ 
-	    fprintf(_event_f, "Exit: %s idle\n", __FUNCTION__);
-	}
-	else
-	    _accepts--;
-	free(sd);
+        clicon_debug(1, "%s idle", __FUNCTION__);
+        SSL_shutdown(ssl);
+        SSL_free(ssl);
+        clixon_event_unreg_fd(s, tls_server_reply_cb);
+        if (_event_trace)
+            fprintf(_event_f, "Close: %d local at t=%lu\n", _n_accepts, td.tv_sec);
+        close(s);
+        if (_accepts == 0)
+            ;
+        else if (_accepts == 1){
+            clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */ 
+            fprintf(_event_f, "Exit: %s idle\n", __FUNCTION__);
+        }
+        else
+            _accepts--;
+        free(sd);
     }
  ok:
     retval = 0;
  done:
     if (expbuf)
-	free(expbuf);
+        free(expbuf);
     clicon_debug(1, "%s ret:%d", __FUNCTION__, retval);
     return retval;
 }
@@ -351,8 +351,8 @@ tls_server_reply_cb(int   s,
  */
 static int
 tls_ssl_init_connect(SSL_CTX *ctx,
-		     int      s,
-		     SSL    **sslp)
+                     int      s,
+                     SSL    **sslp)
 {
     int           retval = -1;
     SSL          *ssl = NULL;
@@ -363,7 +363,7 @@ tls_ssl_init_connect(SSL_CTX *ctx,
     
     /* create new SSL connection state */
     if ((ssl = SSL_new(ctx)) == NULL){
-	clicon_err(OE_SSL, 0, "SSL_new.");
+        clicon_err(OE_SSL, 0, "SSL_new.");
         goto done;
     }
     SSL_set_fd(ssl, s);    /* attach the socket descriptor */
@@ -372,8 +372,8 @@ tls_ssl_init_connect(SSL_CTX *ctx,
     protos[0] = 8;
     strncpy((char*)&protos[1], "http/1.1",  9);
     if ((retval = SSL_set_alpn_protos(ssl, protos, 9)) != 0){
-	clicon_err(OE_SSL, retval, "SSL_set_alpn_protos.");
-	goto done;
+        clicon_err(OE_SSL, retval, "SSL_set_alpn_protos.");
+        goto done;
     }
 #if 0
     SSL_get0_next_proto_negotiated(conn_.tls.ssl, &next_proto, &next_proto_len);
@@ -384,31 +384,31 @@ tls_ssl_init_connect(SSL_CTX *ctx,
        TLSEXT_TYPE_application_layer_protocol_negotiation
        int SSL_set_alpn_protos(SSL *ssl, const unsigned char *protos,
                          unsigned int protos_len);
-			 see 
+                         see 
     https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set_alpn_select_cb.html
     */
   if ((ret = SSL_connect(ssl)) < 1){
-	sslerr = SSL_get_error(ssl, ret);
-	clicon_debug(1, "%s SSL_read() n:%d errno:%d sslerr:%d", __FUNCTION__, ret, errno, sslerr);
+        sslerr = SSL_get_error(ssl, ret);
+        clicon_debug(1, "%s SSL_read() n:%d errno:%d sslerr:%d", __FUNCTION__, ret, errno, sslerr);
 
-	switch (sslerr){
-	case SSL_ERROR_SSL:                  /* 1 */
-	    goto done;
-	    break;
-	default:
-	    clicon_err(OE_XML, errno, "SSL_connect");
-	    goto done;
-	    break;
-	}
+        switch (sslerr){
+        case SSL_ERROR_SSL:                  /* 1 */
+            goto done;
+            break;
+        default:
+            clicon_err(OE_XML, errno, "SSL_connect");
+            goto done;
+            break;
+        }
     }
     /* check certificate verification result */
     verify = SSL_get_verify_result(ssl);
     switch (verify) {
     case X509_V_OK:
-	break;
+        break;
     default:
-	clicon_err(OE_SSL, errno, "verify problems: %d", verify);
-	goto done;
+        clicon_err(OE_SSL, errno, "verify problems: %d", verify);
+        goto done;
     }
     *sslp = ssl;
     retval = 0;
@@ -418,7 +418,7 @@ tls_ssl_init_connect(SSL_CTX *ctx,
 
 static int
 tls_timeout_cb(int   fd,
-	       void *arg)
+               void *arg)
 {
     fprintf(_event_f, "Exit: %s\n", __FUNCTION__);
     exit(200);
@@ -441,10 +441,10 @@ tls_client_timeout(void *arg)
     t1.tv_sec = _accept_timeout_s;
     timeradd(&now, &t1, &t);
     if (clixon_event_reg_timeout(t,
-				 tls_timeout_cb,
-				 arg,
-				 "tls client timeout") < 0)
-	goto done;
+                                 tls_timeout_cb,
+                                 arg,
+                                 "tls client timeout") < 0)
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -454,7 +454,7 @@ tls_client_timeout(void *arg)
  */
 static int
 tls_server_accept_cb(int   ss, 
-		     void *arg)
+                     void *arg)
 {
     int                retval = -1;
     tls_accept_handle *ta = (tls_accept_handle *)arg;
@@ -468,16 +468,16 @@ tls_server_accept_cb(int   ss,
     clicon_debug(1, "%s", __FUNCTION__);
     len = sizeof(from);
     if ((s = accept(ss, &from, &len)) < 0){
-	perror("accept");
-	goto done;
+        perror("accept");
+        goto done;
     }
     clicon_debug(1, "accepted");
     if (tls_ssl_init_connect(ta->ta_ctx, s, &ssl) < 0)
-	goto done;
+        goto done;
     clicon_debug(1, "connected");
     if ((sd = malloc(sizeof(*sd))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(sd, 0, sizeof(*sd));
     sd->sd_s = s;
@@ -486,17 +486,17 @@ tls_server_accept_cb(int   ss,
     timersub(&sd->sd_t0, &ta->ta_t0, &td); /* from start of connection */
     _n_accepts++;
     if (_event_trace)
-	fprintf(_event_f, "Accept: %d at t=%lu\n", _n_accepts, td.tv_sec);
+        fprintf(_event_f, "Accept: %d at t=%lu\n", _n_accepts, td.tv_sec);
 
     /* Always write one HTTP request on socket, maybe more if _data_timeout_s > 0 */
     if (tls_write_file(_input_file, ssl) < 0)
-	goto done;
+        goto done;
     /* register callback for reply */
     if (clixon_event_reg_fd(s, tls_server_reply_cb, sd, "tls server reply") < 0)
-	goto done;
+        goto done;
     /* Unregister old + register new timeout */
     if (tls_client_timeout(ta) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -507,11 +507,11 @@ tls_server_accept_cb(int   ss,
  */
 static int
 tls_proto_select_cb(SSL *s,
-		    unsigned char **out,
-		    unsigned char *outlen,
-		    const unsigned char *in,
-		    unsigned int inlen,
-		    void *arg)
+                    unsigned char **out,
+                    unsigned char *outlen,
+                    const unsigned char *in,
+                    unsigned int inlen,
+                    void *arg)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     return 0;
@@ -524,36 +524,36 @@ tls_proto_select_cb(SSL *s,
  */
 static int
 tls_auth_verify_callback(int             preverify_ok,
-			 X509_STORE_CTX *x509_ctx)
+                         X509_STORE_CTX *x509_ctx)
 {
     return 1; /* success */
 }
 
 static SSL_CTX *
 tls_ctx_init(const char *cert_path,
-	     const char *key_path,
-	     const char *ca_cert_path)
+             const char *key_path,
+             const char *ca_cert_path)
 {
     SSL_CTX *ctx = NULL;
     
     if ((ctx = SSL_CTX_new(TLS_client_method())) == NULL) {
-	clicon_err(OE_SSL, 0, "SSL_CTX_new");
-	goto done;
+        clicon_err(OE_SSL, 0, "SSL_CTX_new");
+        goto done;
     }
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, tls_auth_verify_callback);
     /* get peer certificate 
        nc_client_tls_update_opts */
     if (SSL_CTX_use_certificate_file(ctx, cert_path, SSL_FILETYPE_PEM) != 1) {
-	clicon_err(OE_SSL, 0, "SSL_CTX_use_certificate_file");
-	goto done;
+        clicon_err(OE_SSL, 0, "SSL_CTX_use_certificate_file");
+        goto done;
     }
     if (SSL_CTX_use_PrivateKey_file(ctx, key_path, SSL_FILETYPE_PEM) != 1) {
-	clicon_err(OE_SSL, 0, "SSL_CTX_use_PrivateKey_file");
-	goto done;
+        clicon_err(OE_SSL, 0, "SSL_CTX_use_PrivateKey_file");
+        goto done;
     }
     if (SSL_CTX_load_verify_locations(ctx, ca_cert_path, NULL) != 1) {
-	clicon_err(OE_SSL, 0, "SSL_CTX_load_verify_locations");
-	goto done;
+        clicon_err(OE_SSL, 0, "SSL_CTX_load_verify_locations");
+        goto done;
     }
     (void)SSL_CTX_set_next_proto_select_cb(ctx, tls_proto_select_cb, NULL);
     return ctx;
@@ -565,25 +565,25 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options]\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \tDebug\n"
-	    "\t-f <file> \tHTTP input file (overrides stdin)\n"
-	    "\t-F ipv4|ipv6 \tSocket address family(ipv4 default)\n"
-	    "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
-	    "\t-p <port>    \tPort (default %d)\n"
-	    "\t-c <path> \tcert\n"
-	    "\t-C <path> \tcacert\n"
-   	    "\t-k <path> \tkey\n"
-	    "\t-n <nr>   \tQuit after this many incoming connections, 0 means no limit. Default: 1\n"
-	    "\t-t <sec>  \tTimeout in seconds after each accept, if fired just exit. Default: %ds\n"
-	    "\t-d <sec>  \tTimeout of data requests on a connection in seconds after each accept, if fired either close or keep idle (see -i). Default: 0s\n"
-	    "\t-i        \tIdle after receiving last reply. Otherwise close directly after receiving last reply\n"
-	    "\t-e <nr> \tEvent trace on stdout, 1: terse, 2: full\n"
-	    ,
-	    argv0,
-	    RESTCONF_CH_TLS,
-	    _accept_timeout_s);
+            "\t-D <level> \tDebug\n"
+            "\t-f <file> \tHTTP input file (overrides stdin)\n"
+            "\t-F ipv4|ipv6 \tSocket address family(ipv4 default)\n"
+            "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
+            "\t-p <port>    \tPort (default %d)\n"
+            "\t-c <path> \tcert\n"
+            "\t-C <path> \tcacert\n"
+            "\t-k <path> \tkey\n"
+            "\t-n <nr>   \tQuit after this many incoming connections, 0 means no limit. Default: 1\n"
+            "\t-t <sec>  \tTimeout in seconds after each accept, if fired just exit. Default: %ds\n"
+            "\t-d <sec>  \tTimeout of data requests on a connection in seconds after each accept, if fired either close or keep idle (see -i). Default: 0s\n"
+            "\t-i        \tIdle after receiving last reply. Otherwise close directly after receiving last reply\n"
+            "\t-e <nr> \tEvent trace on stdout, 1: terse, 2: full\n"
+            ,
+            argv0,
+            RESTCONF_CH_TLS,
+            _accept_timeout_s);
     exit(0);
 }
 
@@ -613,130 +613,130 @@ main(int    argc,
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
     if ((h = clicon_handle_init()) == NULL)
-	goto done;
+        goto done;
     while ((c = getopt(argc, argv, UTIL_TLS_OPTS)) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv[0]);
-	    break;
-    	case 'D':
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(argv[0]);
-	    break;
-	case 'f':
-	    if (optarg == NULL || *optarg == '-')
-		usage(argv[0]);
-	    input_filename = optarg;
-	    break;
-	case 'F':
-	    family = optarg;
-	    break;
-	case 'a':
-	    addr = optarg;
-	    break;
-	case 'p':
-	    if (sscanf(optarg, "%hu", &port) != 1)
-		usage(argv[0]);
-	    break;
-	case 'c':
-	    if (optarg == NULL || *optarg == '-')
-		usage(argv[0]);
-	    cert_path = optarg;
-	    break;
-	case 'C':
-	    if (optarg == NULL || *optarg == '-')
-		usage(argv[0]);
-	    ca_cert_path = optarg;
-	    break;
-	case 'k':
-	    if (optarg == NULL || *optarg == '-')
-		usage(argv[0]);
-	    key_path = optarg;
-	    break;
-	case 'n':
-	    if (optarg == NULL || *optarg == '-')
-		usage(argv[0]);
-	    _accepts = atoi(optarg);
-	    break;
-	case 'i': /* keep open, do not close after first reply */
-	    _idle = 1;
-	    break;
-	case 't': /* accept timeout */
-	    if (optarg == NULL || *optarg == '-')
-		usage(argv[0]);
-	    _accept_timeout_s = atoi(optarg);
-	    break;
-	case 'd': /* data timeout */
-	    if (optarg == NULL || *optarg == '-')
-		usage(argv[0]);
-	    _data_timeout_s = atoi(optarg);
-	    break;
-	case 'e': /* Event trace */
-	    if (optarg == NULL || *optarg == '-')
-		usage(argv[0]);
-	    _event_trace = atoi(optarg);
-	    _event_f = stdout;
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv[0]);
+            break;
+        case 'D':
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(argv[0]);
+            break;
+        case 'f':
+            if (optarg == NULL || *optarg == '-')
+                usage(argv[0]);
+            input_filename = optarg;
+            break;
+        case 'F':
+            family = optarg;
+            break;
+        case 'a':
+            addr = optarg;
+            break;
+        case 'p':
+            if (sscanf(optarg, "%hu", &port) != 1)
+                usage(argv[0]);
+            break;
+        case 'c':
+            if (optarg == NULL || *optarg == '-')
+                usage(argv[0]);
+            cert_path = optarg;
+            break;
+        case 'C':
+            if (optarg == NULL || *optarg == '-')
+                usage(argv[0]);
+            ca_cert_path = optarg;
+            break;
+        case 'k':
+            if (optarg == NULL || *optarg == '-')
+                usage(argv[0]);
+            key_path = optarg;
+            break;
+        case 'n':
+            if (optarg == NULL || *optarg == '-')
+                usage(argv[0]);
+            _accepts = atoi(optarg);
+            break;
+        case 'i': /* keep open, do not close after first reply */
+            _idle = 1;
+            break;
+        case 't': /* accept timeout */
+            if (optarg == NULL || *optarg == '-')
+                usage(argv[0]);
+            _accept_timeout_s = atoi(optarg);
+            break;
+        case 'd': /* data timeout */
+            if (optarg == NULL || *optarg == '-')
+                usage(argv[0]);
+            _data_timeout_s = atoi(optarg);
+            break;
+        case 'e': /* Event trace */
+            if (optarg == NULL || *optarg == '-')
+                usage(argv[0]);
+            _event_trace = atoi(optarg);
+            _event_f = stdout;
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     if (cert_path == NULL || key_path == NULL || ca_cert_path == NULL){
-	fprintf(stderr, "-c <cert path> and -k <key path> -C <ca-cert> are mandatory\n");
-	usage(argv[0]);
+        fprintf(stderr, "-c <cert path> and -k <key path> -C <ca-cert> are mandatory\n");
+        usage(argv[0]);
     }
     clicon_debug_init(dbg, NULL);
 
     if (input_filename){
-	if ((_input_file = fopen(input_filename, "r")) == NULL){
-	    clicon_err(OE_YANG, errno, "open(%s)", input_filename);	
-	    goto done;
-	}
+        if ((_input_file = fopen(input_filename, "r")) == NULL){
+            clicon_err(OE_YANG, errno, "open(%s)", input_filename);     
+            goto done;
+        }
     }
     if ((ctx = tls_ctx_init(cert_path, key_path, ca_cert_path)) == NULL)
-	goto done;
+        goto done;
     if (port == 0){
-	fprintf(stderr, "-p <port> is invalid\n");
-	usage(argv[0]);
-	goto done;
+        fprintf(stderr, "-p <port> is invalid\n");
+        usage(argv[0]);
+        goto done;
     }
     if (addr == NULL){
-	fprintf(stderr, "-a <addr> is NULL\n");
-	usage(argv[0]);
-	goto done;
+        fprintf(stderr, "-a <addr> is NULL\n");
+        usage(argv[0]);
+        goto done;
     }
     if (clixon_inet2sin(family, addr, port, sa, &sa_len) < 0)
-	goto done;
+        goto done;
    /* Bind port */
     if (callhome_bind(sa, sa_len, 1, &ss) < 0) 
-	goto done;
+        goto done;
     clicon_debug(1, "callhome_bind %s:%hu", addr, port);
     if ((ta = malloc(sizeof(*ta))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(ta, 0, sizeof(*ta));
     ta->ta_ctx = ctx;
     ta->ta_ss = ss;
     gettimeofday(&ta->ta_t0, NULL);
     if (clixon_event_reg_fd(ss, tls_server_accept_cb, ta, "tls server accept") < 0)
-	goto done;
+        goto done;
     if (tls_client_timeout(ta) < 0)
-	goto done;
+        goto done;
     if (clixon_event_loop(h) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (ss != -1)
-	clixon_event_unreg_fd(ss, tls_server_accept_cb);
+        clixon_event_unreg_fd(ss, tls_server_accept_cb);
     if (ta)
-	free(ta);
+        free(ta);
     if (fp)
-	fclose(fp);
+        fclose(fp);
     if (ss != -1)
-	close(ss);
+        close(ss);
     if (ctx)
-	SSL_CTX_free(ctx);        /* release context */
+        SSL_CTX_free(ctx);        /* release context */
     clicon_handle_exit(h); /* frees h and options (and streams) */
     clixon_err_exit();
     clicon_debug(1, "clixon_restconf_callhome_client pid:%u done", getpid());

@@ -129,7 +129,7 @@ sh> clixon_netconf -qf /usr/local/etc/example.xml
          <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
             <interface>
                <name>eth1</name>
-	       <type>ianaift:ip</type>
+               <type>ianaift:ip</type>
                <enabled>true</enabled>
                <ipv4 xmlns="urn:ietf:params:xml:ns:yang:ietf-ip">
                   <address>
@@ -179,9 +179,9 @@ In the example, a restconf config is included in the [config file](example.xml):
      <auth-type>none</auth-type>
      <socket>
         <namespace>default</namespace>
-	<address>0.0.0.0</address>
-	<port>80</port>
-	<ssl>false</ssl>
+        <address>0.0.0.0</address>
+        <port>80</port>
+        <ssl>false</ssl>
      </socket>
   </restconf>
 ```
@@ -221,20 +221,20 @@ For example, using nginx, install, and edit config file: /etc/nginx/sites-availa
 ```
 server {
         ...
-	location / {
-	    root /usr/share/nginx/html/restconf;
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
+        location / {
+            root /usr/share/nginx/html/restconf;
+            fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+            include fastcgi_params;
         }
-	location /restconf {
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
+        location /restconf {
+            fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+            include fastcgi_params;
         }
-	location /streams {
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
- 	    proxy_http_version 1.1;
-	    proxy_set_header Connection "";
+        location /streams {
+            fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+            include fastcgi_params;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
         }
 }
 ```
@@ -315,10 +315,10 @@ curl -X POST  http://localhost/restconf/operations/clixon-example:example -H "Co
 The example works by defining an RPC in clixon-example.yang:
 ```
     rpc example {
-	description "Some example input/output for testing RFC7950 7.14.
+        description "Some example input/output for testing RFC7950 7.14.
                      RPC simply echoes the input for debugging.";
-    	input {
-	    leaf x {
+        input {
+            leaf x {
         ...
 ```
 
@@ -328,10 +328,10 @@ The clixon backend  plugin [example_backend.c] reveives the netconf call and rep
 ```
 static int 
 example_rpc(clicon_handle h, 
-	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	    void         *arg,          /* Client session */
-	    void         *regarg)       /* Argument given at register */
+            cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+            cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+            void         *arg,          /* Client session */
+            void         *regarg)       /* Argument given at register */
 {
     /* code that echoes the request */
     return 0;
@@ -375,9 +375,9 @@ The example backend implements an "example:e4" Yang extension, as follows:
 ```
     extension e4 {
        description
-	   "The first child of the ex:e4 (unknown) statement is inserted into 
-	    the module as a regular data statement. This means that 'uses bar;'
-	    in the ex:e4 statement below is a valid data node";
+           "The first child of the ex:e4 (unknown) statement is inserted into 
+            the module as a regular data statement. This means that 'uses bar;'
+            in the ex:e4 statement below is a valid data node";
        argument arg;
     }
     ex:e4 arg1{

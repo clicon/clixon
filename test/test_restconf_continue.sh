@@ -53,9 +53,9 @@ module example{
          key name;
          leaf name{
             type string;
-	 }
-	 leaf value{
-	    type string;
+         }
+         leaf value{
+            type string;
          }
       }
    }
@@ -68,7 +68,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     sudo pkill -f clixon_backend # to be sure
 
@@ -98,7 +98,7 @@ echo -n '{"example:table":{"parameter":[' > $fjson
 nr=1000
 for (( i=0; i<$nr; i++ )); do  
     if [ $i -ne 0 ]; then
-	echo -n ",
+        echo -n ",
 " >> $fjson
     fi
     echo -n "{\"name\":\"A$i\",\"value\":\"$i\"}" >> $fjson
@@ -124,7 +124,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

@@ -85,7 +85,7 @@
  */
 static int
 xml_cv_cache(cxobj   *x,
-	     cg_var **cvp)
+             cg_var **cvp)
 {
     int          retval = -1;
     cg_var      *cv = NULL;
@@ -97,49 +97,49 @@ xml_cv_cache(cxobj   *x,
     int          options = 0;
     uint8_t      fraction = 0;
     char        *body;
-		 
+                 
     if ((body = xml_body(x)) == NULL)
-	body="";
+        body="";
     if ((cv = xml_cv(x)) != NULL)
-	goto ok;
+        goto ok;
     if ((y = xml_spec(x)) == NULL){
-	clicon_err(OE_XML, EFAULT, "Yang binding missing for xml symbol %s, body:%s", xml_name(x), body);
-	goto done;
+        clicon_err(OE_XML, EFAULT, "Yang binding missing for xml symbol %s, body:%s", xml_name(x), body);
+        goto done;
     }
     if (yang_type_get(y, NULL, &yrestype, &options, NULL, NULL, NULL, &fraction) < 0)
-	goto done;
+        goto done;
     yang2cv_type(yang_argument_get(yrestype), &cvtype);
     if (cvtype==CGV_ERR){
-	clicon_err(OE_YANG, errno, "yang->cligen type %s mapping failed",
-		   yang_argument_get(yrestype));
-	goto done;
+        clicon_err(OE_YANG, errno, "yang->cligen type %s mapping failed",
+                   yang_argument_get(yrestype));
+        goto done;
     }
     if ((cv = cv_new(cvtype)) == NULL){
-	clicon_err(OE_YANG, errno, "cv_new");
-	goto done;
+        clicon_err(OE_YANG, errno, "cv_new");
+        goto done;
     }
     if (cvtype == CGV_DEC64)
-	cv_dec64_n_set(cv, fraction);
-	
+        cv_dec64_n_set(cv, fraction);
+        
     if ((ret = cv_parse1(body, cv, &reason)) < 0){
-	clicon_err(OE_YANG, errno, "cv_parse1");
-	goto done;
+        clicon_err(OE_YANG, errno, "cv_parse1");
+        goto done;
     }
     if (ret == 0){
-	clicon_err(OE_YANG, EINVAL, "cv parse error: %s\n", reason);
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "cv parse error: %s\n", reason);
+        goto done;
     }
     if (xml_cv_set(x, cv) < 0)
-	goto done;
+        goto done;
  ok:
     *cvp = cv;
     cv = NULL;
     retval = 0;
  done:
     if (reason)
-	free(reason);
+        free(reason);
     if (cv)
-	cv_free(cv);
+        cv_free(cv);
     return retval;
 }
 
@@ -150,8 +150,8 @@ xml_cv_cache_clear(cxobj *xt)
     cxobj *x = NULL;
 
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL)
-	if (xml_cv_set(x, NULL) < 0)
-	    goto done;
+        if (xml_cv_set(x, NULL) < 0)
+            goto done;
     retval = 0;
  done:
     return retval;
@@ -197,10 +197,10 @@ xml_cv_cache_clear(cxobj *xt)
  */
 int
 xml_cmp(cxobj  *x1,
-	cxobj  *x2,
-	int     same,
-    	int     skip1,
-	char   *indexvar)
+        cxobj  *x2,
+        int     same,
+        int     skip1,
+        char   *indexvar)
 {
     yang_stmt  *y1;
     yang_stmt  *y2;
@@ -222,29 +222,29 @@ xml_cmp(cxobj  *x1,
     enum cxobj_type xt2;
 
     if (x1==NULL || x2==NULL)
-	goto done; /* shouldnt happen */
+        goto done; /* shouldnt happen */
     /* Sort according to attributes first */
     if ((xt1 = xml_type(x1)) != (xt2 = xml_type(x2))){
-	if (xt1 == CX_ATTR){
-	    equal = -1;
-	    goto done;
-	}
-	else if (xt2 == CX_ATTR){
-	    equal = 1;
-	    goto done;
-	}
+        if (xt1 == CX_ATTR){
+            equal = -1;
+            goto done;
+        }
+        else if (xt2 == CX_ATTR){
+            equal = 1;
+            goto done;
+        }
     }
     /* Here x1 and x2 are same type */
     y1 = xml_spec(x1);
     y2 = xml_spec(x2);
     if (same){
-	nr1 = xml_enumerate_get(x1);
-	nr2 = xml_enumerate_get(x2);
+        nr1 = xml_enumerate_get(x1);
+        nr2 = xml_enumerate_get(x2);
     }
     if (y1==NULL && y2==NULL){
-	if (same)
-	    equal = nr1-nr2;
-	goto done;
+        if (same)
+            equal = nr1-nr2;
+        goto done;
     }
     if (y1==NULL){
         equal = -1;
@@ -255,12 +255,12 @@ xml_cmp(cxobj  *x1,
         goto done;
     }
     if (y1 != y2){ 
-	/* XXX handle errors */
-	yi1 = yang_order(y1);
-	yi2 = yang_order(y2);
-	/* this is for choice */
-	if ((equal = yi1-yi2) != 0)
-	    goto done;
+        /* XXX handle errors */
+        yi1 = yang_order(y1);
+        yi2 = yang_order(y2);
+        /* this is for choice */
+        if ((equal = yi1-yi2) != 0)
+            goto done;
     }
     /* Now y1==y2, same Yang spec, can only be list or leaf-list,
      * But first check exceptions, eg config false or ordered-by user
@@ -270,118 +270,118 @@ xml_cmp(cxobj  *x1,
      * existing list.
      */
     if (same &&
-	(
+        (
 #ifndef STATE_ORDERED_BY_SYSTEM
-	 yang_config(y1)==0 ||
+         yang_config(y1)==0 ||
 #endif
-	 yang_find(y1, Y_ORDERED_BY, "user") != NULL)){
-	    equal = nr1-nr2;
-	    goto done; /* Ordered by user or state data : maintain existing order */
-	}
+         yang_find(y1, Y_ORDERED_BY, "user") != NULL)){
+            equal = nr1-nr2;
+            goto done; /* Ordered by user or state data : maintain existing order */
+        }
     switch (yang_keyword_get(y1)){
     case Y_LEAF_LIST: /* Match with name and value */
-	b1 = xml_body(x1);
-	b2 = xml_body(x2);
-	if (b1 == NULL && b2 == NULL)
-	    ;
-	else if (b1 == NULL)
-	    equal = -1;
-	else if (b2 == NULL)
-	    equal = 1;
-	else{
-	    if (xml_cv_cache(x1, &cv1) < 0) /* error case */
-		goto done;
-	    if (xml_cv_cache(x2, &cv2) < 0) /* error case */
-		goto done;
-	    if (cv1 != NULL && cv2 != NULL)
-		equal = cv_cmp(cv1, cv2);
-	    else if (cv1 == NULL && cv2 == NULL)
-		equal = 0;
-	    else if (cv1 == NULL)
-		equal = -1;
-	    else
-		equal = 1;
-	}
-	break;
+        b1 = xml_body(x1);
+        b2 = xml_body(x2);
+        if (b1 == NULL && b2 == NULL)
+            ;
+        else if (b1 == NULL)
+            equal = -1;
+        else if (b2 == NULL)
+            equal = 1;
+        else{
+            if (xml_cv_cache(x1, &cv1) < 0) /* error case */
+                goto done;
+            if (xml_cv_cache(x2, &cv2) < 0) /* error case */
+                goto done;
+            if (cv1 != NULL && cv2 != NULL)
+                equal = cv_cmp(cv1, cv2);
+            else if (cv1 == NULL && cv2 == NULL)
+                equal = 0;
+            else if (cv1 == NULL)
+                equal = -1;
+            else
+                equal = 1;
+        }
+        break;
     case Y_LIST: /* Match with key values  */
-	if (indexvar != NULL){
+        if (indexvar != NULL){
 #ifdef XML_EXPLICIT_INDEX
-	    x1b = xml_find(x1, indexvar);
-	    x2b = xml_find(x2, indexvar);
-	    if (x1b == NULL && x2b == NULL)
-		;
-	    else if (x1b == NULL)
-		equal = -1;
-	    else if (x2b == NULL)
-		equal = 1;
-	    else{
-		b1 = xml_body(x1b);
-		b2 = xml_body(x2b);
-		if (b1 == NULL && b2 == NULL)
-		    ;
-		else if (b1 == NULL)
-		    equal = -1;
-		else if (b2 == NULL)
-		    equal = 1;
-		else{
-		    if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
-			goto done;
-		    if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
-			goto done;
-		    assert(cv1 && cv2);
-		    equal = cv_cmp(cv1, cv2);
-		}
-	    }
-	    if (equal)
-		break;
+            x1b = xml_find(x1, indexvar);
+            x2b = xml_find(x2, indexvar);
+            if (x1b == NULL && x2b == NULL)
+                ;
+            else if (x1b == NULL)
+                equal = -1;
+            else if (x2b == NULL)
+                equal = 1;
+            else{
+                b1 = xml_body(x1b);
+                b2 = xml_body(x2b);
+                if (b1 == NULL && b2 == NULL)
+                    ;
+                else if (b1 == NULL)
+                    equal = -1;
+                else if (b2 == NULL)
+                    equal = 1;
+                else{
+                    if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
+                        goto done;
+                    if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
+                        goto done;
+                    assert(cv1 && cv2);
+                    equal = cv_cmp(cv1, cv2);
+                }
+            }
+            if (equal)
+                break;
 #endif /* XML_EXPLICIT_INDEX */
-	}
-	else {
-	/* Use Y_LIST cache (see struct yang_stmt) */
-	cvk = yang_cvec_get(y1); /* Use Y_LIST cache, see ys_populate_list() */
-	cvi = NULL;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	    keyname = cv_string_get(cvi); /* operational data may have NULL keys*/
-	    x1b = xml_find(x1, keyname);
-	    /* match1: key matching skipped for keys not in x1 (see explanation) */
-	    if (skip1 && x1b == NULL)
-		continue;
-	    x2b = xml_find(x2, keyname);
-	    if (x1b == NULL && x2b == NULL)
-		;
-	    else if (x1b == NULL)
-		equal = -1;
-	    else if (x2b == NULL)
-		equal = 1;
-	    else{
-		b1 = xml_body(x1b);
-		b2 = xml_body(x2b);
-		if (b1 == NULL && b2 == NULL)
-		    ;
-		else if (b1 == NULL)
-		    equal = -1;
-		else if (b2 == NULL)
-		    equal = 1;
-		else{
-		    if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
-			goto done;
-		    if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
-			goto done;
-		    assert(cv1 && cv2);
-		    equal = cv_cmp(cv1, cv2);
-		}
-	    }
-	    if (equal)
-		break;
-	} /* while cvi */
-	}
-	break;
+        }
+        else {
+        /* Use Y_LIST cache (see struct yang_stmt) */
+        cvk = yang_cvec_get(y1); /* Use Y_LIST cache, see ys_populate_list() */
+        cvi = NULL;
+        while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+            keyname = cv_string_get(cvi); /* operational data may have NULL keys*/
+            x1b = xml_find(x1, keyname);
+            /* match1: key matching skipped for keys not in x1 (see explanation) */
+            if (skip1 && x1b == NULL)
+                continue;
+            x2b = xml_find(x2, keyname);
+            if (x1b == NULL && x2b == NULL)
+                ;
+            else if (x1b == NULL)
+                equal = -1;
+            else if (x2b == NULL)
+                equal = 1;
+            else{
+                b1 = xml_body(x1b);
+                b2 = xml_body(x2b);
+                if (b1 == NULL && b2 == NULL)
+                    ;
+                else if (b1 == NULL)
+                    equal = -1;
+                else if (b2 == NULL)
+                    equal = 1;
+                else{
+                    if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
+                        goto done;
+                    if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
+                        goto done;
+                    assert(cv1 && cv2);
+                    equal = cv_cmp(cv1, cv2);
+                }
+            }
+            if (equal)
+                break;
+        } /* while cvi */
+        }
+        break;
     default:
-	/* This is a very special case such as for two choices - which is not validation correct, but we
-	   should sort them according to nr1, nr2 since their yang is equal order */
-	if (same)
-	    equal = nr1-nr2;
-	break;
+        /* This is a very special case such as for two choices - which is not validation correct, but we
+           should sort them according to nr1, nr2 since their yang is equal order */
+        if (same)
+            equal = nr1-nr2;
+        break;
     } /* switch */
  done:
     clicon_debug(3, "%s %s %s eq:%d nr: %d %d yi: %d %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal, nr1, nr2, yi1, yi2);
@@ -393,7 +393,7 @@ xml_cmp(cxobj  *x1,
  */
 static int
 xml_cmp_qsort(const void* arg1, 
-	      const void* arg2)
+              const void* arg2)
 {
     return xml_cmp(*(struct xml**)arg1, *(struct xml**)arg2, 1, 0, NULL);
 }
@@ -414,8 +414,8 @@ xml_sort(cxobj *x)
     yang_stmt *ys;
     
     /* Abort sort if non-config (=state) data */
-    if ((ys = xml_spec(x)) != 0	&& yang_config(ys)==0)
-	return 1;
+    if ((ys = xml_spec(x)) != 0 && yang_config(ys)==0)
+        return 1;
 #endif
     xml_enumerate_children(x); /* This is to make sorting "stable", ie not change existing order */
     qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort);
@@ -434,19 +434,19 @@ xml_sort_recurse(cxobj *xn)
     
     ret = xml_sort_verify(xn, NULL);
     if (ret == 1) /* This node is not sortable */
-	goto ok;
+        goto ok;
     if (ret == -1){ /* not sorted */
-	if ((ret = xml_sort(xn)) < 0)
-	    goto done;
-	if (ret == 1) /* This node is not sortable */
-	    goto ok;
+        if ((ret = xml_sort(xn)) < 0)
+            goto done;
+        if (ret == 1) /* This node is not sortable */
+            goto ok;
     }
     if (xml_cv_cache_clear(xn) < 0)
-	goto done;
+        goto done;
     x = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-	if (xml_sort_recurse(x) < 0)
-	    goto done;
+        if (xml_sort_recurse(x) < 0)
+            goto done;
     }
  ok:
     retval = 0;
@@ -467,11 +467,11 @@ xml_sort_recurse(cxobj *xn)
  */
 static int
 xml_find_keys_notsorted(cxobj   *xp,
-			cxobj   *x1,
-			int      yangi,
-			int      mid,
-			int      skip1,
-			clixon_xvec *xvec)
+                        cxobj   *x1,
+                        int      yangi,
+                        int      mid,
+                        int      skip1,
+                        clixon_xvec *xvec)
 {
     int        retval = -1;
     int        i;
@@ -480,30 +480,30 @@ xml_find_keys_notsorted(cxobj   *xp,
     int        yi;
     
     for (i=mid+1; i<xml_child_nr(xp); i++){ /* First increment */
-	xc = xml_child_i(xp, i);
-	yc = xml_spec(xc);
-	if ((yi = yang_order(yc)) < -1)
-	    goto done;
-	if (yangi != yi) /* wrong yang */
-	    break;
-	if (xml_cmp(xc, x1, 0, skip1, NULL) == 0){
-	    if (clixon_xvec_append(xvec, xc) < 0)
-		goto done;
-	    goto ok; /* found */
-	}
+        xc = xml_child_i(xp, i);
+        yc = xml_spec(xc);
+        if ((yi = yang_order(yc)) < -1)
+            goto done;
+        if (yangi != yi) /* wrong yang */
+            break;
+        if (xml_cmp(xc, x1, 0, skip1, NULL) == 0){
+            if (clixon_xvec_append(xvec, xc) < 0)
+                goto done;
+            goto ok; /* found */
+        }
     }
     for (i=mid-1; i>=0; i--){ /* Then decrement */
-	xc = xml_child_i(xp, i);
-	yc = xml_spec(xc);
-	if ((yi = yang_order(yc)) < -1)
-	    goto done;
-	if (yangi != yi) /* wrong yang */
-	    break;
-	if (xml_cmp(xc, x1, 0, skip1, NULL) == 0){
-	    if (clixon_xvec_append(xvec, xc) < 0)
-		goto done;
-	    goto ok; /* found */
-	}
+        xc = xml_child_i(xp, i);
+        yc = xml_spec(xc);
+        if ((yi = yang_order(yc)) < -1)
+            goto done;
+        if (yangi != yi) /* wrong yang */
+            break;
+        if (xml_cmp(xc, x1, 0, skip1, NULL) == 0){
+            if (clixon_xvec_append(xvec, xc) < 0)
+                goto done;
+            goto ok; /* found */
+        }
     }
  ok:
     retval = 0;
@@ -523,12 +523,12 @@ xml_find_keys_notsorted(cxobj   *xp,
  */
 static int
 search_multi_equals(cxobj  **childvec,
-		    size_t   childlen,
-		    cxobj   *x1,
-		    int      yangi,
-		    int      mid,
-		    int      skip1,
-		    clixon_xvec *xvec)
+                    size_t   childlen,
+                    cxobj   *x1,
+                    int      yangi,
+                    int      mid,
+                    int      skip1,
+                    clixon_xvec *xvec)
 {
     int        retval = -1;
     int        i;
@@ -537,28 +537,28 @@ search_multi_equals(cxobj  **childvec,
     int        yi;
     
     for (i=mid-1; i>=0; i--){ /* First decrement */
-	xc = childvec[i];
-	yc = xml_spec(xc);
-	if ((yi = yang_order(yc)) < -1)
-	    goto done;
-	if (yangi != yi) /* wrong yang */
-	    break;
-	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
-	    break;
-	if (clixon_xvec_prepend(xvec, xc) < 0)
-	    goto done;
+        xc = childvec[i];
+        yc = xml_spec(xc);
+        if ((yi = yang_order(yc)) < -1)
+            goto done;
+        if (yangi != yi) /* wrong yang */
+            break;
+        if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
+            break;
+        if (clixon_xvec_prepend(xvec, xc) < 0)
+            goto done;
     }
     for (i=mid+1; i<childlen; i++){ /* Then increment */
-	xc = childvec[i];
-	yc = xml_spec(xc);
-	if ((yi = yang_order(yc)) < -1)
-	    goto done;
-	if (yangi != yi) /* wrong yang */
-	    break;
-	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
-	    break;
-	if (clixon_xvec_append(xvec, xc) < 0)
-	    goto done;
+        xc = childvec[i];
+        yc = xml_spec(xc);
+        if ((yi = yang_order(yc)) < -1)
+            goto done;
+        if (yangi != yi) /* wrong yang */
+            break;
+        if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
+            break;
+        if (clixon_xvec_append(xvec, xc) < 0)
+            goto done;
     }
 
     retval = 0;
@@ -570,11 +570,11 @@ search_multi_equals(cxobj  **childvec,
 /* XXX unify with search_multi_equals */
 static int
 search_multi_equals_xvec(clixon_xvec  *childvec,
-			 cxobj        *x1,
-			 int           yangi,
-			 int           mid,
-			 int           skip1,
-			 clixon_xvec  *xvec)
+                         cxobj        *x1,
+                         int           yangi,
+                         int           mid,
+                         int           skip1,
+                         clixon_xvec  *xvec)
 {
     int        retval = -1;
     int        i;
@@ -583,28 +583,28 @@ search_multi_equals_xvec(clixon_xvec  *childvec,
     int        yi;
     
     for (i=mid-1; i>=0; i--){ /* First decrement */
-	xc = clixon_xvec_i(childvec, i);
-	yc = xml_spec(xc);
-	if ((yi = yang_order(yc)) < -1)
-	    goto done;
-	if (yangi != yi) /* wrong yang */
-	    break;
-	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
-	    break;
-	if (clixon_xvec_prepend(xvec, xc) < 0)
-	    goto done;
+        xc = clixon_xvec_i(childvec, i);
+        yc = xml_spec(xc);
+        if ((yi = yang_order(yc)) < -1)
+            goto done;
+        if (yangi != yi) /* wrong yang */
+            break;
+        if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
+            break;
+        if (clixon_xvec_prepend(xvec, xc) < 0)
+            goto done;
     }
     for (i=mid+1; i<clixon_xvec_len(childvec); i++){ /* Then increment */
-	xc = clixon_xvec_i(childvec, i);
-	yc = xml_spec(xc);
-	if ((yi = yang_order(yc)) < -1)
-	    goto done;
-	if (yangi != yi) /* wrong yang */
-	    break;
-	if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
-	    break;
-	if (clixon_xvec_append(xvec, xc) < 0)
-	    goto done;
+        xc = clixon_xvec_i(childvec, i);
+        yc = xml_spec(xc);
+        if ((yi = yang_order(yc)) < -1)
+            goto done;
+        if (yangi != yi) /* wrong yang */
+            break;
+        if (xml_cmp(x1, xc, 0, skip1, NULL) != 0)
+            break;
+        if (clixon_xvec_append(xvec, xc) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -625,12 +625,12 @@ search_multi_equals_xvec(clixon_xvec  *childvec,
  */
 int
 xml_search_indexvar_binary_pos(cxobj       *x1,
-			       char        *indexvar,
-			       clixon_xvec *ivec,
-			       int          low, 
-			       int          upper,
-			       int          max,
-			       int         *eq)
+                               char        *indexvar,
+                               clixon_xvec *ivec,
+                               int          low, 
+                               int          upper,
+                               int          max,
+                               int         *eq)
 {
     int        retval = -1;
     int        mid;
@@ -638,17 +638,17 @@ xml_search_indexvar_binary_pos(cxobj       *x1,
     cxobj     *xc;
     
     if (upper < low){  /* beyond range */
-	clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);	
-	goto done;
+        clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);   
+        goto done;
     }
     if (low == upper){
-	retval = low;
-	goto done;
+        retval = low;
+        goto done;
     }
     mid = (low + upper) / 2;
     if (mid >= max){  /* beyond range */
-	clicon_err(OE_XML, 0, "Beyond range %d %d %d", low, mid, upper);	
-	goto done;
+        clicon_err(OE_XML, 0, "Beyond range %d %d %d", low, mid, upper);        
+        goto done;
     }
     xc = clixon_xvec_i(ivec, mid);
     /* >0 means search upper interval, <0 lower interval, = 0 is equal */
@@ -656,25 +656,25 @@ xml_search_indexvar_binary_pos(cxobj       *x1,
     if (low +1 == upper){ /* termination criterium */
     }
     if (cmp == 0){
-	retval = mid; /* equal */
-	if (eq)
-	    *eq = 1;
-	goto done;
+        retval = mid; /* equal */
+        if (eq)
+            *eq = 1;
+        goto done;
     }
     else {
-	if (low +1 == upper){ /* termination criterium */
-	    if (eq)           /* No exact match */
-		*eq = 0;
-	    if (cmp < 0)      /* return either 0 if cmp<0 or +1 if cmp>0 */
-		retval = mid; 
-	    else
-		retval = mid+1; 
-	    goto done;
-	}
-	if (cmp < 0)
-	    return xml_search_indexvar_binary_pos(x1, indexvar, ivec, low, mid, max, eq);
-	else 
-	    return xml_search_indexvar_binary_pos(x1, indexvar, ivec, mid+1, upper, max, eq);
+        if (low +1 == upper){ /* termination criterium */
+            if (eq)           /* No exact match */
+                *eq = 0;
+            if (cmp < 0)      /* return either 0 if cmp<0 or +1 if cmp>0 */
+                retval = mid; 
+            else
+                retval = mid+1; 
+            goto done;
+        }
+        if (cmp < 0)
+            return xml_search_indexvar_binary_pos(x1, indexvar, ivec, low, mid, max, eq);
+        else 
+            return xml_search_indexvar_binary_pos(x1, indexvar, ivec, mid+1, upper, max, eq);
     }
  done:
     return retval;
@@ -682,12 +682,12 @@ xml_search_indexvar_binary_pos(cxobj       *x1,
 
 static int
 xml_search_indexvar(cxobj   *xp,
-		    cxobj   *x1,
-		    int      yangi,
-		    int      low, 
-		    int      upper,
-		    char    *indexvar,
-		    clixon_xvec *xvec)
+                    cxobj   *x1,
+                    int      yangi,
+                    int      low, 
+                    int      upper,
+                    char    *indexvar,
+                    clixon_xvec *xvec)
 {
     int          retval = -1;
     clixon_xvec *ivec = NULL;
@@ -698,22 +698,22 @@ xml_search_indexvar(cxobj   *xp,
 
     /* Check if (exactly one) explicit indexes in cvk */
     if (xml_search_vector_get(xp, indexvar, &ivec) < 0)
-	goto done;
+        goto done;
     if (ivec){
-	ilen = clixon_xvec_len(ivec);
-	if ((pos = xml_search_indexvar_binary_pos(x1, indexvar,
-						  ivec, 0,
-						  ilen, ilen, &eq)) < 0)
-	    goto done;
-	if (eq){ /* Found */
-	    xc = clixon_xvec_i(ivec, pos);
-	    if (clixon_xvec_append(xvec, xc) < 0)
-		goto done;
-	    /* there may be more? */
-	    if (search_multi_equals_xvec(ivec, x1, yangi, pos,
-					 0, xvec) < 0)
-		goto done;
-	}
+        ilen = clixon_xvec_len(ivec);
+        if ((pos = xml_search_indexvar_binary_pos(x1, indexvar,
+                                                  ivec, 0,
+                                                  ilen, ilen, &eq)) < 0)
+            goto done;
+        if (eq){ /* Found */
+            xc = clixon_xvec_i(ivec, pos);
+            if (clixon_xvec_append(xvec, xc) < 0)
+                goto done;
+            /* there may be more? */
+            if (search_multi_equals_xvec(ivec, x1, yangi, pos,
+                                         0, xvec) < 0)
+                goto done;
+        }
     }
     retval = 0;
  done:
@@ -736,14 +736,14 @@ xml_search_indexvar(cxobj   *xp,
  */
 static int
 xml_search_binary(cxobj   *xp,
-		  cxobj   *x1,
-		  int      sorted,
-		  int      yangi,
-		  int      low, 
-		  int      upper,
-		  int      skip1,
-		  char    *indexvar,
-		  clixon_xvec *xvec)
+                  cxobj   *x1,
+                  int      sorted,
+                  int      yangi,
+                  int      low, 
+                  int      upper,
+                  int      skip1,
+                  char    *indexvar,
+                  clixon_xvec *xvec)
 {
     int        retval = -1;
     int        mid;
@@ -753,44 +753,44 @@ xml_search_binary(cxobj   *xp,
     int        yi;
 
     if (upper < low)
-    	goto ok;
+        goto ok;
     mid = (low + upper) / 2;
     if (mid >= xml_child_nr(xp))  /* beyond range */
-    	goto ok;
+        goto ok;
     xc = xml_child_i(xp, mid);
     if ((y = xml_spec(xc)) == NULL)
-	goto ok;
+        goto ok;
     if ((yi = yang_order(y)) < -1)
-	goto done;
+        goto done;
     cmp = yangi - yi;
     /* Here is right yang order == same yang? */
     if (cmp == 0){
 #ifdef XML_EXPLICIT_INDEX
-	if (indexvar){
-	    if (xml_search_indexvar(xp, x1, yangi, low, upper, indexvar, xvec) < 0)
-		goto done;
-	    goto ok;
-	}
+        if (indexvar){
+            if (xml_search_indexvar(xp, x1, yangi, low, upper, indexvar, xvec) < 0)
+                goto done;
+            goto ok;
+        }
 #endif
-	/* >0 means search upper interval, <0 lower interval, = 0 is equal */
-	cmp = xml_cmp(x1, xc, 0, skip1, NULL);
-	if (cmp && !sorted){ /* Ordered by user (if not equal) */
-	    retval = xml_find_keys_notsorted(xp, x1, yangi, mid, skip1, xvec);
-	    goto done;
-	}
+        /* >0 means search upper interval, <0 lower interval, = 0 is equal */
+        cmp = xml_cmp(x1, xc, 0, skip1, NULL);
+        if (cmp && !sorted){ /* Ordered by user (if not equal) */
+            retval = xml_find_keys_notsorted(xp, x1, yangi, mid, skip1, xvec);
+            goto done;
+        }
     }
     if (cmp == 0){
-	if (clixon_xvec_append(xvec, xc) < 0)
-	    goto done;
-	/* there may be more? */
-	if (search_multi_equals(xml_childvec_get(xp), xml_child_nr(xp),
-				x1, yangi, mid,	skip1, xvec) < 0)
-	    goto done;
+        if (clixon_xvec_append(xvec, xc) < 0)
+            goto done;
+        /* there may be more? */
+        if (search_multi_equals(xml_childvec_get(xp), xml_child_nr(xp),
+                                x1, yangi, mid, skip1, xvec) < 0)
+            goto done;
     }
     else if (cmp < 0)
-	xml_search_binary(xp, x1, sorted, yangi, low, mid-1, skip1, indexvar, xvec);
+        xml_search_binary(xp, x1, sorted, yangi, low, mid-1, skip1, indexvar, xvec);
     else 
-	xml_search_binary(xp, x1, sorted, yangi, mid+1, upper, skip1, indexvar, xvec);
+        xml_search_binary(xp, x1, sorted, yangi, mid+1, upper, skip1, indexvar, xvec);
  ok:
     retval = 0;
  done:
@@ -815,11 +815,11 @@ xml_search_binary(cxobj   *xp,
  */
 static int
 xml_search_yang(cxobj       *xp,
-		cxobj       *x1,
-		yang_stmt   *yc,
-		int          skip1,
-	        char        *indexvar,
-		clixon_xvec *xvec)
+                cxobj       *x1,
+                yang_stmt   *yc,
+                int          skip1,
+                char        *indexvar,
+                clixon_xvec *xvec)
 {
     int    retval = -1;
     cxobj *xa;
@@ -829,27 +829,27 @@ xml_search_yang(cxobj       *xp,
     int    yangi;
     
     if (xp == NULL){
-	clicon_err(OE_XML, EINVAL, "xp is NULL");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "xp is NULL");
+        goto done;
     }
     upper = xml_child_nr(xp);
     /* Assume if there are any attributes, they are first in the list, mask
        them by raising low to skip them */
     for (low=0; low<upper; low++)
-	if ((xa = xml_child_i(xp, low)) == NULL || xml_type(xa) != CX_ATTR)
-	    break;
+        if ((xa = xml_child_i(xp, low)) == NULL || xml_type(xa) != CX_ATTR)
+            break;
 #ifndef STATE_ORDERED_BY_SYSTEM
     /* Find if non-config and if ordered-by-user */
     if (yang_config_ancestor(yc)==0)
-	sorted = 0;
+        sorted = 0;
     else
 #endif
-	if (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST)
-	    sorted = (yang_find(yc, Y_ORDERED_BY, "user") == NULL);
+        if (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST)
+            sorted = (yang_find(yc, Y_ORDERED_BY, "user") == NULL);
     if ((yangi = yang_order(yc)) < -1)
-	goto done;
+        goto done;
     if (xml_search_binary(xp, x1, sorted, yangi, low, upper, skip1, indexvar, xvec) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -876,12 +876,12 @@ xml_search_yang(cxobj       *xp,
  */
 static int
 xml_insert_userorder(cxobj           *xp,
-		     cxobj           *xn,
-		     yang_stmt       *yn,
-		     int              mid,
-		     enum insert_type ins,
-		     char            *key_val,
-		     cvec            *nsc_key)
+                     cxobj           *xn,
+                     yang_stmt       *yn,
+                     int              mid,
+                     enum insert_type ins,
+                     char            *key_val,
+                     cvec            *nsc_key)
 {
     int        retval = -1;
     int        i;
@@ -890,59 +890,59 @@ xml_insert_userorder(cxobj           *xp,
 
     switch (ins){
     case INS_FIRST:
-	for (i=mid-1; i>=0; i--){ /* decrement */
-	    xc = xml_child_i(xp, i);
-	    yc = xml_spec(xc);
-	    if (yc != yn){
-		retval = i+1;
-		goto done;
-	    }
-	}
-	retval = i+1;
-	break;
+        for (i=mid-1; i>=0; i--){ /* decrement */
+            xc = xml_child_i(xp, i);
+            yc = xml_spec(xc);
+            if (yc != yn){
+                retval = i+1;
+                goto done;
+            }
+        }
+        retval = i+1;
+        break;
     case INS_LAST:
-	for (i=mid+1; i<xml_child_nr(xp); i++){ /* First increment */
-	    xc = xml_child_i(xp, i);
-	    yc = xml_spec(xc);
-	    if (yc != yn){
-		retval = i;
-		goto done;
-	    }
-	}
-	retval = i;
-	break;
+        for (i=mid+1; i<xml_child_nr(xp); i++){ /* First increment */
+            xc = xml_child_i(xp, i);
+            yc = xml_spec(xc);
+            if (yc != yn){
+                retval = i;
+                goto done;
+            }
+        }
+        retval = i;
+        break;
     case INS_BEFORE:
     case INS_AFTER: /* see retval handling different between before and after */
-	if (key_val == NULL)
-	    /* shouldnt happen */
-	    clicon_err(OE_YANG, 0, "Missing key/value attribute when insert is before");
-	else{
-	    switch (yang_keyword_get(yn)){
-	    case Y_LEAF_LIST:
-		if ((xc = xpath_first(xp, nsc_key, "%s[.='%s']", xml_name(xn), key_val)) == NULL)
-		    clicon_err(OE_YANG, 0, "bad-attribute: value, missing-instance: %s", key_val);				    
-		else {
-		    if ((i = xml_child_order(xp, xc)) < 0)
-			clicon_err(OE_YANG, 0, "internal error xpath found but not in child list");
-		    else
-			retval = (ins==INS_BEFORE)?i:i+1; 
-		}
-		break;
-	    case Y_LIST:
-		if ((xc = xpath_first(xp, nsc_key, "%s%s", xml_name(xn), key_val)) == NULL)
-		    clicon_err(OE_YANG, 0, "bad-attribute: key, missing-instance: %s", key_val);				    
-		else {
-		    if ((i = xml_child_order(xp, xc)) < 0)
-			clicon_err(OE_YANG, 0, "internal error xpath found but not in child list");
-		    else
-			retval = (ins==INS_BEFORE)?i:i+1; 
-		}
-		break;
-	    default:
-		clicon_err(OE_YANG, 0, "insert only for leaf or leaf-list");
-		break;
-	    } /* switch */
-	}
+        if (key_val == NULL)
+            /* shouldnt happen */
+            clicon_err(OE_YANG, 0, "Missing key/value attribute when insert is before");
+        else{
+            switch (yang_keyword_get(yn)){
+            case Y_LEAF_LIST:
+                if ((xc = xpath_first(xp, nsc_key, "%s[.='%s']", xml_name(xn), key_val)) == NULL)
+                    clicon_err(OE_YANG, 0, "bad-attribute: value, missing-instance: %s", key_val);                                  
+                else {
+                    if ((i = xml_child_order(xp, xc)) < 0)
+                        clicon_err(OE_YANG, 0, "internal error xpath found but not in child list");
+                    else
+                        retval = (ins==INS_BEFORE)?i:i+1; 
+                }
+                break;
+            case Y_LIST:
+                if ((xc = xpath_first(xp, nsc_key, "%s%s", xml_name(xn), key_val)) == NULL)
+                    clicon_err(OE_YANG, 0, "bad-attribute: key, missing-instance: %s", key_val);                                    
+                else {
+                    if ((i = xml_child_order(xp, xc)) < 0)
+                        clicon_err(OE_YANG, 0, "internal error xpath found but not in child list");
+                    else
+                        retval = (ins==INS_BEFORE)?i:i+1; 
+                }
+                break;
+            default:
+                clicon_err(OE_YANG, 0, "insert only for leaf or leaf-list");
+                break;
+            } /* switch */
+        }
     }
  done:
     return retval;
@@ -966,15 +966,15 @@ xml_insert_userorder(cxobj           *xp,
  */
 static int
 xml_insert2(cxobj           *xp,
-	    cxobj           *xn,
-	    yang_stmt       *yn,
-	    int              yni,
-	    int              userorder,
-	    enum insert_type ins,
-	    char            *key_val,
-	    cvec            *nsc_key,
-	    int              low, 
-	    int              upper)
+            cxobj           *xn,
+            yang_stmt       *yn,
+            int              yni,
+            int              userorder,
+            enum insert_type ins,
+            char            *key_val,
+            cvec            *nsc_key,
+            int              low, 
+            int              upper)
 {
     int        retval = -1;
     int        mid;
@@ -984,60 +984,60 @@ xml_insert2(cxobj           *xp,
     int        yi;
     
     if (low > upper){  /* beyond range */
-	clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);	
-	goto done;
+        clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);   
+        goto done;
     }
     if (low == upper){
-	retval = low;
-	goto done;
+        retval = low;
+        goto done;
     }
     mid = (low + upper) / 2;
     if (mid >= xml_child_nr(xp)){  /* beyond range */
-	clicon_err(OE_XML, 0, "Beyond range %d %d %d", low, mid, upper);	
-	goto done;
+        clicon_err(OE_XML, 0, "Beyond range %d %d %d", low, mid, upper);        
+        goto done;
     }
     xc = xml_child_i(xp, mid);
     if ((yc = xml_spec(xc)) == NULL){
-	if (xml_type(xc) != CX_ELMNT)
-	    clicon_err(OE_XML, 0, "No spec found %s (wrong xml type:%s)",
-		       xml_name(xc), xml_type2str(xml_type(xc)));
-	else
-	    clicon_err(OE_XML, 0, "No spec found %s", xml_name(xc));	
-	goto done;
+        if (xml_type(xc) != CX_ELMNT)
+            clicon_err(OE_XML, 0, "No spec found %s (wrong xml type:%s)",
+                       xml_name(xc), xml_type2str(xml_type(xc)));
+        else
+            clicon_err(OE_XML, 0, "No spec found %s", xml_name(xc));    
+        goto done;
     }
     if (yc == yn){ /* Same yang */
-	if (userorder){ /* append: increment linearly until no longer equal */
-	    retval = xml_insert_userorder(xp, xn, yn, mid, ins, key_val, nsc_key);
-	    goto done;
-	}
-	else /* Ordered by system */
-	    cmp = xml_cmp(xn, xc, 0, 0, NULL);
+        if (userorder){ /* append: increment linearly until no longer equal */
+            retval = xml_insert_userorder(xp, xn, yn, mid, ins, key_val, nsc_key);
+            goto done;
+        }
+        else /* Ordered by system */
+            cmp = xml_cmp(xn, xc, 0, 0, NULL);
     }
     else{ /* Not equal yang - compute diff */
-	if ((yi = yang_order(yc)) < -1)
-	    goto done;
-	cmp = yni - yi;
-	/* One case is a choice where 
-	 * xc = <tcp/>, xn = <udp/>
-	 * same order but different yang spec
-	 */
+        if ((yi = yang_order(yc)) < -1)
+            goto done;
+        cmp = yni - yi;
+        /* One case is a choice where 
+         * xc = <tcp/>, xn = <udp/>
+         * same order but different yang spec
+         */
     }
     if (low +1 == upper){ /* termination criterium */
-	if (cmp<0) {
-	    retval = mid;
-	    goto done;
-	}
-	retval = mid+1;
-	goto done;
+        if (cmp<0) {
+            retval = mid;
+            goto done;
+        }
+        retval = mid+1;
+        goto done;
     }
     if (cmp == 0){
-	retval = mid;
-	goto done;
+        retval = mid;
+        goto done;
     }
     else if (cmp < 0)
-	return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, nsc_key, low, mid);
+        return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, nsc_key, low, mid);
     else 
-	return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, nsc_key, mid+1, upper);
+        return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, nsc_key, mid+1, upper);
  done:
     return retval;
 }
@@ -1055,10 +1055,10 @@ xml_insert2(cxobj           *xp,
  */
 int
 xml_insert(cxobj           *xp,
-	   cxobj           *xi,
-	   enum insert_type ins,
-	   char            *key_val,
-	   cvec            *nsc_key)
+           cxobj           *xi,
+           enum insert_type ins,
+           char            *key_val,
+           cvec            *nsc_key)
 {
     int        retval = -1;
     cxobj     *xa;
@@ -1073,35 +1073,35 @@ xml_insert(cxobj           *xp,
      * added as a child
      */
     if (xml_parent(xi) != NULL){
-	clicon_err(OE_XML, 0, "XML node %s should not have parent", xml_name(xi));
-	goto done;
+        clicon_err(OE_XML, 0, "XML node %s should not have parent", xml_name(xi));
+        goto done;
     }
     if ((y = xml_spec(xi)) == NULL){
-	clicon_err(OE_XML, 0, "No spec found %s", xml_name(xi));
-	goto done;
+        clicon_err(OE_XML, 0, "No spec found %s", xml_name(xi));
+        goto done;
     }
     upper = xml_child_nr(xp);
     /* Assume if there are any attributes, they are first in the list, mask
        them by raising low to skip them */
     for (low=0; low<upper; low++)
-	if ((xa = xml_child_i(xp, low)) == NULL || xml_type(xa)!=CX_ATTR)
-	    break;
+        if ((xa = xml_child_i(xp, low)) == NULL || xml_type(xa)!=CX_ATTR)
+            break;
     /* Find if non-config and if ordered-by-user */
 #ifndef STATE_ORDERED_BY_SYSTEM
     if (yang_config_ancestor(y)==0)
-	userorder = 1;
+        userorder = 1;
     else
 #endif
-	if (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)
-	    userorder = (yang_find(y, Y_ORDERED_BY, "user") != NULL);
+        if (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)
+            userorder = (yang_find(y, Y_ORDERED_BY, "user") != NULL);
     if ((yi = yang_order(y)) < -1)
-	goto done;
+        goto done;
     if ((i = xml_insert2(xp, xi, y, yi,
-			 userorder, ins, key_val, nsc_key,
-			 low, upper)) < 0)
-	goto done;
+                         userorder, ins, key_val, nsc_key,
+                         low, upper)) < 0)
+        goto done;
     if (xml_child_insert_pos(xp, xi, i) < 0)
-	goto done;
+        goto done;
     xml_parent_set(xi, xp);
     /* clear namespace context cache of child */
     nscache_clear(xi);
@@ -1121,7 +1121,7 @@ xml_insert(cxobj           *xp,
  */
 int
 xml_sort_verify(cxobj *x0,
-		void  *arg)
+                void  *arg)
 {
     int    retval = -1;
     cxobj *x = NULL;
@@ -1131,19 +1131,19 @@ xml_sort_verify(cxobj *x0,
     
     /* Abort sort if non-config (=state) data */
     if ((ys = xml_spec(x0)) != 0 && yang_config_ancestor(ys)==0){
-	retval = 1;
-	goto done;
+        retval = 1;
+        goto done;
     }
 #endif
     if (xml_type(x0) == CX_ELMNT){
-	xml_enumerate_children(x0);
-	while ((x = xml_child_each(x0, x, -1)) != NULL) {
-	    if (xprev != NULL){ /* Check xprev <= x */
-		if (xml_cmp(xprev, x, 1, 0, NULL) > 0)
-		    goto done;
-	    }
-	    xprev = x;
-	}
+        xml_enumerate_children(x0);
+        while ((x = xml_child_each(x0, x, -1)) != NULL) {
+            if (xprev != NULL){ /* Check xprev <= x */
+                if (xml_cmp(xprev, x, 1, 0, NULL) > 0)
+                    goto done;
+            }
+            xprev = x;
+        }
     }
     retval = 0;
  done:
@@ -1162,9 +1162,9 @@ xml_sort_verify(cxobj *x0,
  */
 int
 match_base_child(cxobj      *x0, 
-		 cxobj      *x1c,
-		 yang_stmt  *yc,
-		 cxobj     **x0cp)
+                 cxobj      *x1c,
+                 yang_stmt  *yc,
+                 cxobj     **x0cp)
 {
     int          retval = -1;
     cvec        *cvk = NULL; /* vector of index keys */
@@ -1176,40 +1176,40 @@ match_base_child(cxobj      *x0,
     *x0cp = NULL; /* init return value */
     /* Revert to simple xml lookup if no yang */
     if (yc == NULL){ 
-	*x0cp = xml_find(x0, xml_name(x1c));
-	goto ok;
+        *x0cp = xml_find(x0, xml_name(x1c));
+        goto ok;
     }
     switch (yang_keyword_get(yc)){
-    case Y_CONTAINER: 	/* Equal regardless */
-    case Y_LEAF: 	/* Equal regardless */
-	break;
+    case Y_CONTAINER:   /* Equal regardless */
+    case Y_LEAF:        /* Equal regardless */
+        break;
     case Y_LEAF_LIST: /* Match with name and value */
-	if (xml_body(x1c) == NULL) /* Treat as empty string */
-	    goto ok;
-	break;
+        if (xml_body(x1c) == NULL) /* Treat as empty string */
+            goto ok;
+        break;
     case Y_LIST: /* Match with key values */
-	cvk = yang_cvec_get(yc); /* Use Y_LIST cache, see ys_populate_list() */
-	cvi = NULL; 
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	    keyname = cv_string_get(cvi);
-	    if ((xb = xml_find(x1c, keyname)) == NULL)
-		goto ok;
-	}
+        cvk = yang_cvec_get(yc); /* Use Y_LIST cache, see ys_populate_list() */
+        cvi = NULL; 
+        while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+            keyname = cv_string_get(cvi);
+            if ((xb = xml_find(x1c, keyname)) == NULL)
+                goto ok;
+        }
     default:
-	break;
+        break;
     }
     if ((xvec = clixon_xvec_new()) == NULL)
-	goto done;
+        goto done;
     /* Get match. */
     if (xml_search_yang(x0, x1c, yc, 0, 0, xvec) < 0)
-	goto done;
+        goto done;
     if (clixon_xvec_len(xvec))
-	*x0cp = clixon_xvec_i(xvec, 0);
+        *x0cp = clixon_xvec_i(xvec, 0);
  ok:
     retval = 0;
  done:
     if (xvec)
-	clixon_xvec_free(xvec);
+        clixon_xvec_free(xvec);
     return retval;
 }
 
@@ -1217,9 +1217,9 @@ match_base_child(cxobj      *x0,
  */
 static int
 xml_find_noyang_cvk(char        *ns0,
-		    cxobj       *xc,
-		    cvec        *cvk,
-		    clixon_xvec *xvec)
+                    cxobj       *xc,
+                    cvec        *cvk,
+                    clixon_xvec *xvec)
 {
     int     retval = -1;
     cg_var *cvi;
@@ -1232,39 +1232,39 @@ xml_find_noyang_cvk(char        *ns0,
     cvi = NULL;
     /* Loop through index variables. xc should match all, on exit if cvi=NULL it macthes */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	keyname = cv_name_get(cvi);
-	keyval = cv_string_get(cvi);
-	if (keyname==NULL || strcmp(keyname, ".")==0){ 	    /* Index variable on form .=<val> (self) */
-	    body = xml_body(xc);
-	    if ((body==NULL && (keyval==NULL || strlen(keyval) == 0)) || /* both null, break */
-		(body != NULL && strcmp(body, keyval) == 0)) /* Name match, break */
-		continue; /* match */
-	    break; /* nomatch */
-	}
-	else{
-	    /* Index variable on form <id>=<val>
-	     * Loop through children of the matched x (to match keyname and value) */
-	    xcc = NULL;
-	    while ((xcc = xml_child_each(xc, xcc, CX_ELMNT)) != NULL) {
-		if (xml2ns(xcc, xml_prefix(xcc), &ns) < 0)
-		    goto done;
-		if (strcmp(ns0, ns) != 0) /* Namespace does not match, skip */
-		    continue;
-		if (strcmp(keyname, xml_name(xcc)) != 0) /* Name does not match, skip */
-		    continue;
-		body = xml_body(xcc);
-		if (body==NULL && (keyval==NULL || strlen(keyval) == 0)) /* both null, break */
-		    break;
-		if (body != NULL &&	strcmp(body, keyval) == 0) /* Name match, break */
-		    break;
-	    }
-	    if (xcc == NULL)
-		break; /* No match found */
-	}
+        keyname = cv_name_get(cvi);
+        keyval = cv_string_get(cvi);
+        if (keyname==NULL || strcmp(keyname, ".")==0){      /* Index variable on form .=<val> (self) */
+            body = xml_body(xc);
+            if ((body==NULL && (keyval==NULL || strlen(keyval) == 0)) || /* both null, break */
+                (body != NULL && strcmp(body, keyval) == 0)) /* Name match, break */
+                continue; /* match */
+            break; /* nomatch */
+        }
+        else{
+            /* Index variable on form <id>=<val>
+             * Loop through children of the matched x (to match keyname and value) */
+            xcc = NULL;
+            while ((xcc = xml_child_each(xc, xcc, CX_ELMNT)) != NULL) {
+                if (xml2ns(xcc, xml_prefix(xcc), &ns) < 0)
+                    goto done;
+                if (strcmp(ns0, ns) != 0) /* Namespace does not match, skip */
+                    continue;
+                if (strcmp(keyname, xml_name(xcc)) != 0) /* Name does not match, skip */
+                    continue;
+                body = xml_body(xcc);
+                if (body==NULL && (keyval==NULL || strlen(keyval) == 0)) /* both null, break */
+                    break;
+                if (body != NULL &&     strcmp(body, keyval) == 0) /* Name match, break */
+                    break;
+            }
+            if (xcc == NULL)
+                break; /* No match found */
+        }
     }
     if (cvi == NULL) /* means we iterated through all indexes without breaks */
-	if (clixon_xvec_append(xvec, xc) < 0)
-	    goto done;
+        if (clixon_xvec_append(xvec, xc) < 0)
+            goto done;
     retval = 0;
  done:
     return retval;
@@ -1275,10 +1275,10 @@ xml_find_noyang_cvk(char        *ns0,
  */
 static int
 xml_find_noyang_name(cxobj       *xp,
-		     char        *ns0,
-		     char        *name,
-		     cvec        *cvk,
-		     clixon_xvec *xvec)
+                     char        *ns0,
+                     char        *name,
+                     cvec        *cvk,
+                     clixon_xvec *xvec)
 
 {
     int     retval = -1;
@@ -1286,28 +1286,28 @@ xml_find_noyang_name(cxobj       *xp,
     char   *ns;
 
     if (name == NULL || ns0 == NULL){
-	clicon_err(OE_XML, EINVAL, "name and namespace required");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "name and namespace required");
+        goto done;
     }
     /* Go through children linearly */
     xc = NULL;
     while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL) {
-	ns = NULL;
-	if (xml2ns(xc, xml_prefix(xc), &ns) < 0)
-	    goto done;
-	if (ns == NULL)
-	    continue;
-	if (strcmp(ns0, ns) != 0) /* Namespace does not match, skip */
-	    continue;
-	if (strcmp(name, xml_name(xc)) != 0) /* Namespace does not match, skip */
-	    continue;
-	if (cvk){ 	/* Check indexes */
-	    if (xml_find_noyang_cvk(ns0, xc, cvk, xvec) < 0)
-		goto done;
-	}
-	else /* No index variables: just add node to found list */
-	    if (clixon_xvec_append(xvec, xc) < 0)
-		goto done;
+        ns = NULL;
+        if (xml2ns(xc, xml_prefix(xc), &ns) < 0)
+            goto done;
+        if (ns == NULL)
+            continue;
+        if (strcmp(ns0, ns) != 0) /* Namespace does not match, skip */
+            continue;
+        if (strcmp(name, xml_name(xc)) != 0) /* Namespace does not match, skip */
+            continue;
+        if (cvk){       /* Check indexes */
+            if (xml_find_noyang_cvk(ns0, xc, cvk, xvec) < 0)
+                goto done;
+        }
+        else /* No index variables: just add node to found list */
+            if (clixon_xvec_append(xvec, xc) < 0)
+                goto done;
     }
     retval = 0;
  done:
@@ -1333,9 +1333,9 @@ xml_find_noyang_name(cxobj       *xp,
  */
 static int
 xml_find_index_yang(cxobj       *xp,
-		    yang_stmt   *yc,
-		    cvec        *cvk,
-		    clixon_xvec *xvec)
+                    yang_stmt   *yc,
+                    cvec        *cvk,
+                    clixon_xvec *xvec)
 {
     int        retval = -1;
     cxobj     *xc = NULL;
@@ -1353,106 +1353,106 @@ xml_find_index_yang(cxobj       *xp,
     char      *indexvar = NULL;
 
     if (xp == NULL){
-	clicon_err(OE_XML, EINVAL, "xp is NULL");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "xp is NULL");
+        goto done;
     }
     name = yang_argument_get(yc);
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     switch (yang_keyword_get(yc)){
     case Y_LIST:
-	cprintf(cb, "<%s>", name);
-	ycvk = yang_cvec_get(yc); /* Check that those are proper index keys */
-	cvi = NULL;
-	if (cvk == NULL){ /* If list and no keys, all should match */
-	    revert++;
-	    break;
-	}
-	i = 0;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	    if ((kname = cv_name_get(cvi)) == NULL){
-		clicon_err(OE_YANG, ENOENT, "missing yang key name in cvk");
-		goto done;
-	    }
-	    /* Parameter in cvk is not key or not in right key order, then we cannot call
-	     * xml_find_keys and we need to revert to noyang
-	     */
-	    if ((ycv = cvec_i(ycvk, i)) == NULL || strcmp(kname, cv_string_get(ycv))){
-		revert++;
-		break;
-	    }
-	    if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
-		goto done;
-	    cprintf(cb, "<%s>%s</%s>", kname, encstr, kname);
-	    free(encstr);
-	    i++;
-	}
-	if (revert)
-	    break;
-	cprintf(cb, "</%s>", name);
-	break;
+        cprintf(cb, "<%s>", name);
+        ycvk = yang_cvec_get(yc); /* Check that those are proper index keys */
+        cvi = NULL;
+        if (cvk == NULL){ /* If list and no keys, all should match */
+            revert++;
+            break;
+        }
+        i = 0;
+        while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+            if ((kname = cv_name_get(cvi)) == NULL){
+                clicon_err(OE_YANG, ENOENT, "missing yang key name in cvk");
+                goto done;
+            }
+            /* Parameter in cvk is not key or not in right key order, then we cannot call
+             * xml_find_keys and we need to revert to noyang
+             */
+            if ((ycv = cvec_i(ycvk, i)) == NULL || strcmp(kname, cv_string_get(ycv))){
+                revert++;
+                break;
+            }
+            if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
+                goto done;
+            cprintf(cb, "<%s>%s</%s>", kname, encstr, kname);
+            free(encstr);
+            i++;
+        }
+        if (revert)
+            break;
+        cprintf(cb, "</%s>", name);
+        break;
     case Y_LEAF_LIST:
-	if (cvec_len(cvk) != 1){
-	    clicon_err(OE_YANG, ENOENT, "expected exactly one leaf-list key");
-	    goto done;
-	}
-	cvi = cvec_i(cvk, 0);
-	if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
-	    goto done;
-	cprintf(cb, "<%s>%s</%s>", name, encstr, name);
-	free(encstr);
-	break;
+        if (cvec_len(cvk) != 1){
+            clicon_err(OE_YANG, ENOENT, "expected exactly one leaf-list key");
+            goto done;
+        }
+        cvi = cvec_i(cvk, 0);
+        if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
+            goto done;
+        cprintf(cb, "<%s>%s</%s>", name, encstr, name);
+        free(encstr);
+        break;
     default:
-	cprintf(cb, "<%s/>", name);
-	break;
+        cprintf(cb, "<%s/>", name);
+        break;
     }
 #ifdef XML_EXPLICIT_INDEX
     if (revert){
-	char      *iname;
-	yang_stmt *yi;
-	if (cvec_len(cvk) != 1 ||
-	    (cvi = cvec_i(cvk, 0)) == NULL ||
-	    (iname = cv_name_get(cvi)) == NULL ||
-	    (yi = yang_find_datanode(yc, iname)) == NULL ||
-	    yang_flag_get(yi, YANG_FLAG_INDEX) == 0)
-	    goto revert;
-	cbuf_reset(cb);
-	if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
-	    goto done;
-	cprintf(cb, "<%s><%s>%s</%s></%s>", name, iname, encstr, iname, name);
-	free(encstr);
-	indexvar = iname;
+        char      *iname;
+        yang_stmt *yi;
+        if (cvec_len(cvk) != 1 ||
+            (cvi = cvec_i(cvk, 0)) == NULL ||
+            (iname = cv_name_get(cvi)) == NULL ||
+            (yi = yang_find_datanode(yc, iname)) == NULL ||
+            yang_flag_get(yi, YANG_FLAG_INDEX) == 0)
+            goto revert;
+        cbuf_reset(cb);
+        if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
+            goto done;
+        cprintf(cb, "<%s><%s>%s</%s></%s>", name, iname, encstr, iname, name);
+        free(encstr);
+        indexvar = iname;
     }
 #else
     if (revert)
-	goto revert;
+        goto revert;
 #endif
     if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xc, NULL) < 0)
-	goto done;
+        goto done;
     if (xml_rootchild(xc, 0, &xc) < 0)
-	goto done;
+        goto done;
     /* Populate created XML tree with yang specs */
     if (xml_spec_set(xc, yc) < 0)
-	goto done;
+        goto done;
     xk = NULL;
     while ((xk = xml_child_each(xc, xk, CX_ELMNT)) != NULL) {
-	if ((yk = yang_find(yc, Y_LEAF, xml_name(xk))) == NULL){
-	    clicon_err(OE_YANG, ENOENT, "yang spec of key %s not found", xml_name(xk));
-	    goto done; 
-	}
-	if (xml_spec_set(xk, yk) < 0) 
-	    goto done;
+        if ((yk = yang_find(yc, Y_LEAF, xml_name(xk))) == NULL){
+            clicon_err(OE_YANG, ENOENT, "yang spec of key %s not found", xml_name(xk));
+            goto done; 
+        }
+        if (xml_spec_set(xk, yk) < 0) 
+            goto done;
     }
     if (xml_search_yang(xp, xc, yc, 1, indexvar, xvec) < 0)
-	goto done;
+        goto done;
     retval = 1; /* OK */
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (xc)
-	xml_free(xc);
+        xml_free(xc);
     return retval;
  revert: /* means give up yang/key search, try next (eg explicit/noyang) */
     retval = 0;
@@ -1513,45 +1513,45 @@ xml_find_index_yang(cxobj       *xp,
  */
 int
 clixon_xml_find_index(cxobj        *xp,
-		      yang_stmt    *yp,
-		      char         *ns,
-		      char         *name,
-		      cvec         *cvk,
-		      clixon_xvec  *xvec)
+                      yang_stmt    *yp,
+                      char         *ns,
+                      char         *name,
+                      cvec         *cvk,
+                      clixon_xvec  *xvec)
 {
     int        retval = -1;
     int        ret;
     yang_stmt *yc = NULL;
     
     if (xvec == NULL){
-	clicon_err(OE_YANG, EINVAL, "xvec");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "xvec");
+        goto done;
     }
     if (name == NULL){
-	clicon_err(OE_YANG, EINVAL, "name");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "name");
+        goto done;
     }
     if (yp == NULL)
-	yp = xml_spec(xp);
+        yp = xml_spec(xp);
     if (yp){/* 2. YANG spec of parent + name derives yc. If not found use just name. */
-	if (yang_keyword_get(yp) == Y_SPEC)
-	    yp = yang_find_module_by_namespace(yp, ns);
-	if (yp)
-	    yc = yang_find_datanode(yp, name);
+        if (yang_keyword_get(yp) == Y_SPEC)
+            yp = yang_find_module_by_namespace(yp, ns);
+        if (yp)
+            yc = yang_find_datanode(yp, name);
     }
     if (yc){
-	if ((ret = xml_find_index_yang(xp, yc, cvk, xvec)) < 0)
-	    goto done;
-	if (ret == 0){ /* This means yang method did not work for some reason 
-			* such as not being list key indexes in cvk, for example
-			*/
-	    if (xml_find_noyang_name(xp, ns, name, cvk, xvec) < 0)
-		goto done;
-	}
+        if ((ret = xml_find_index_yang(xp, yc, cvk, xvec)) < 0)
+            goto done;
+        if (ret == 0){ /* This means yang method did not work for some reason 
+                        * such as not being list key indexes in cvk, for example
+                        */
+            if (xml_find_noyang_name(xp, ns, name, cvk, xvec) < 0)
+                goto done;
+        }
     }
     else
-	if (xml_find_noyang_name(xp, ns, name, cvk, xvec) < 0)
-	    goto done;
+        if (xml_find_noyang_name(xp, ns, name, cvk, xvec) < 0)
+            goto done;
     retval = 0;
  done:
     return retval;
@@ -1569,9 +1569,9 @@ clixon_xml_find_index(cxobj        *xp,
  */
 int
 clixon_xml_find_pos(cxobj        *xp,
-		    yang_stmt    *yc,
-		    uint32_t      pos,
-		    clixon_xvec  *xvec)
+                    yang_stmt    *yc,
+                    uint32_t      pos,
+                    clixon_xvec  *xvec)
 {
     int        retval = -1;
     cxobj     *xc = NULL;
@@ -1579,20 +1579,20 @@ clixon_xml_find_pos(cxobj        *xp,
     uint32_t   u;
 
     if (yc == NULL){
-	clicon_err(OE_YANG, ENOENT, "yang spec not found");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "yang spec not found");
+        goto done;
     }
     name = yang_argument_get(yc);
     u = 0;
     xc = NULL;
     while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL) {
-	if (strcmp(name, xml_name(xc)))
-	    continue;
-	if (pos == u++){ /* Found */
-	    if (clixon_xvec_append(xvec, xc) < 0)
-		goto done;
-	    break;
-	}
+        if (strcmp(name, xml_name(xc)))
+            continue;
+        if (pos == u++){ /* Found */
+            if (clixon_xvec_append(xvec, xc) < 0)
+                goto done;
+            break;
+        }
     }
     retval = 0;
  done:

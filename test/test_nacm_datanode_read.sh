@@ -206,9 +206,9 @@ function testrun(){
 
     new "get table"
     if $test3; then
-	expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table?depth=1)" 0 "HTTP/$HVER 200" '{"nacm-example:table":{}}'
+        expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table?depth=1)" 0 "HTTP/$HVER 200" '{"nacm-example:table":{}}'
     else
-	expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table?depth=1)" 0 "HTTP/$HVER 404" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+        expectpart "$(curl -u wilma:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/nacm-example:table?depth=1)" 0 "HTTP/$HVER 404" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
     fi
     new "get parameter"
     if $test4; then
@@ -225,7 +225,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -291,7 +291,7 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

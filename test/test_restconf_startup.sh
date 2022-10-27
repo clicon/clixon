@@ -57,24 +57,24 @@ function testrun(){
 
     new "test params: -f $cfg -y $fyang $option"
     if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s init -f $cfg -y $fyang $option"
-	start_backend -s init -f $cfg -y $fyang $option
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s init -f $cfg -y $fyang $option"
+        start_backend -s init -f $cfg -y $fyang $option
     fi
     
     new "wait backend"
     wait_backend
     
     if [ $RC -ne 0 ]; then
-	new "kill old restconf daemon"
-	stop_restconf_pre
+        new "kill old restconf daemon"
+        stop_restconf_pre
     
-	new "start restconf daemon"
-	start_restconf -f $cfg -y $fyang $option
+        new "start restconf daemon"
+        start_restconf -f $cfg -y $fyang $option
     fi
     
     new "wait restconf"
@@ -93,19 +93,19 @@ function testrun(){
     expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/example:x/y=42)" 0 "HTTP/$HVER 204"
 
     if [ $RC -ne 0 ]; then
-	new "Kill restconf daemon"
-	stop_restconf 
+        new "Kill restconf daemon"
+        stop_restconf 
     fi
     
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 

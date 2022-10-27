@@ -31,29 +31,29 @@ module example{
     namespace "urn:example:clixon";
     prefix ex;
     import ietf-interfaces {
-	prefix if;
+        prefix if;
     }
     import ietf-ip {
       prefix ip;
     }
     identity eth {
-	base if:interface-type;
+        base if:interface-type;
     }
     identity lo {
-	base if:interface-type;
+        base if:interface-type;
     }
     container default-address {
          leaf absname {
              description "Absolute references existing interfaces in if module";
              type leafref {
                  path "/if:interfaces/if:interface/if:name";
-		 require-instance true;
+                 require-instance true;
              }
          }
          leaf relname {
              type leafref {
                  path "../../if:interfaces/if:interface/if:name";
-		 require-instance true;		 		 
+                 require-instance true;                          
              }
          }
          leaf address {
@@ -61,14 +61,14 @@ module example{
              type leafref {
                  path "../../if:interfaces/if:interface[if:name = current()/../relname]"
                     + "/ip:ipv4/ip:address/ip:ip";
-		 require-instance true;
+                 require-instance true;
             }
          }
          leaf wrong {
              description "References leading nowhere in yang";
              type leafref {
                  path "/ip:interfaces/ip:interface/ip:name";
-		 require-instance true;
+                 require-instance true;
              }
          }
     }
@@ -80,7 +80,7 @@ module example{
         leaf template{
             type leafref{
                 path "/sender/name";
-		require-instance true;	
+                require-instance true;  
             }
         }
     }
@@ -123,7 +123,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend  -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -197,7 +197,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

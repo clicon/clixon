@@ -116,8 +116,8 @@ static const map_str2int nghttp2_frame_type_map[] = {
  */
 int
 clixon_nghttp2_log_cb(void *handle,
-		      int   suberr,
-		      cbuf *cb)
+                      int   suberr,
+                      cbuf *cb)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     cprintf(cb, "Fatal error: %s", nghttp2_strerror(suberr));
@@ -127,9 +127,9 @@ clixon_nghttp2_log_cb(void *handle,
 #ifdef NOTUSED
 static void
 nghttp2_print_header(const uint8_t *name,
-		     size_t         namelen,
-		     const uint8_t *value,
-		     size_t         valuelen)
+                     size_t         namelen,
+                     const uint8_t *value,
+                     size_t         valuelen)
 {
     clicon_debug(1, "%s %s", name, value);
 }
@@ -139,7 +139,7 @@ nghttp2_print_header(const uint8_t *name,
    octets, therefore they may contain non-printable characters. */
 static void
 nghttp2_print_headers(nghttp2_nv *nva,
-		      size_t      nvlen)
+                      size_t      nvlen)
 {
   size_t i;
 
@@ -160,10 +160,10 @@ nghttp2_print_headers(nghttp2_nv *nva,
  */
 static ssize_t
 session_send_callback(nghttp2_session *session,
-		      const uint8_t   *buf,
-		      size_t           buflen,
-		      int              flags,
-		      void            *user_data)
+                      const uint8_t   *buf,
+                      size_t           buflen,
+                      int              flags,
+                      void            *user_data)
 {
     int            retval = NGHTTP2_ERR_CALLBACK_FAILURE;
     restconf_conn *rc = (restconf_conn *)user_data;
@@ -176,76 +176,76 @@ session_send_callback(nghttp2_session *session,
     clicon_debug(1, "%s buflen:%zu", __FUNCTION__, buflen);
     s = rc->rc_s;
     while (totlen < buflen){
-	if (rc->rc_ssl){
-	    if ((len = SSL_write(rc->rc_ssl, buf+totlen, buflen-totlen)) <= 0){
-		er = errno;
-		sslerr = SSL_get_error(rc->rc_ssl, len);
-		clicon_debug(1, "%s errno:%d sslerr:%d", __FUNCTION__, er, sslerr);
-		switch (sslerr){
-		case SSL_ERROR_WANT_WRITE:           /* 3 */
-		    clicon_debug(1, "%s write SSL_ERROR_WANT_WRITE", __FUNCTION__);
-		    usleep(1000);
-		    continue;
-		    break;
-		case SSL_ERROR_SYSCALL:              /* 5 */
-		    if (er == ECONNRESET || /* Connection reset by peer */
-			er == EPIPE) {      /* Reading end of socket is closed */
-			goto done; /* Cleanup in http2_recv() */
-		    }
-		    else if (er == EAGAIN){
-			/* same as want_write above, but different behaviour on different 
-			 * platforms, linux here, freebsd want_write, or possibly differnt
-			 * ssl lib versions?
-			 */
-			clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
-			usleep(1000);
-			continue;
-		    }
-		    else{
-			clicon_err(OE_RESTCONF, er, "SSL_write %d", sslerr);
-			goto done;
-		    }
-		    break;
-		default:
-		    clicon_err(OE_SSL, 0, "SSL_write");
-		    goto done;
-		    break;
-		}
-		goto done;
-	    }
-	}
-	else{
-	    if ((len = write(s, buf+totlen, buflen-totlen)) < 0){
-		if (errno == EAGAIN){
-		    clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
-		    usleep(10000);
-		    continue;
-		}
+        if (rc->rc_ssl){
+            if ((len = SSL_write(rc->rc_ssl, buf+totlen, buflen-totlen)) <= 0){
+                er = errno;
+                sslerr = SSL_get_error(rc->rc_ssl, len);
+                clicon_debug(1, "%s errno:%d sslerr:%d", __FUNCTION__, er, sslerr);
+                switch (sslerr){
+                case SSL_ERROR_WANT_WRITE:           /* 3 */
+                    clicon_debug(1, "%s write SSL_ERROR_WANT_WRITE", __FUNCTION__);
+                    usleep(1000);
+                    continue;
+                    break;
+                case SSL_ERROR_SYSCALL:              /* 5 */
+                    if (er == ECONNRESET || /* Connection reset by peer */
+                        er == EPIPE) {      /* Reading end of socket is closed */
+                        goto done; /* Cleanup in http2_recv() */
+                    }
+                    else if (er == EAGAIN){
+                        /* same as want_write above, but different behaviour on different 
+                         * platforms, linux here, freebsd want_write, or possibly differnt
+                         * ssl lib versions?
+                         */
+                        clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
+                        usleep(1000);
+                        continue;
+                    }
+                    else{
+                        clicon_err(OE_RESTCONF, er, "SSL_write %d", sslerr);
+                        goto done;
+                    }
+                    break;
+                default:
+                    clicon_err(OE_SSL, 0, "SSL_write");
+                    goto done;
+                    break;
+                }
+                goto done;
+            }
+        }
+        else{
+            if ((len = write(s, buf+totlen, buflen-totlen)) < 0){
+                if (errno == EAGAIN){
+                    clicon_debug(1, "%s write EAGAIN", __FUNCTION__);
+                    usleep(10000);
+                    continue;
+                }
 #if 1
-		else if (errno == ECONNRESET) {/* Connection reset by peer */
-		    close(s);
-		    // XXXUnclear why this is commented, maybe should call
-		    // restconf_connection_close?
-		    //  clixon_event_unreg_fd(s, restconf_connection);
+                else if (errno == ECONNRESET) {/* Connection reset by peer */
+                    close(s);
+                    // XXXUnclear why this is commented, maybe should call
+                    // restconf_connection_close?
+                    //  clixon_event_unreg_fd(s, restconf_connection);
 
-		    goto ok; /* Close socket and ssl */
-		}
+                    goto ok; /* Close socket and ssl */
+                }
 #endif
-		else{
-		    clicon_err(OE_UNIX, errno, "write");
-		    goto done;
-		}
-	    }
-	    assert(len != 0);
-	}
-	totlen += len;
+                else{
+                    clicon_err(OE_UNIX, errno, "write");
+                    goto done;
+                }
+            }
+            assert(len != 0);
+        }
+        totlen += len;
     } /* while */
  ok:
     retval = 0;
  done:
     if (retval < 0){
-	clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
-	return retval;
+        clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+        return retval;
     }
     clicon_debug(1, "%s retval:%zd", __FUNCTION__, totlen);
     return retval == 0 ? totlen : retval;
@@ -255,10 +255,10 @@ session_send_callback(nghttp2_session *session,
  */
 static ssize_t
 recv_callback(nghttp2_session *session,
-	      uint8_t         *buf,
-	      size_t           length,
-	      int              flags,
-	      void            *user_data)
+              uint8_t         *buf,
+              size_t           length,
+              int              flags,
+              void            *user_data)
 {
     // restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -289,60 +289,60 @@ restconf_nghttp2_path(restconf_stream_data *sd)
     clicon_debug(1, "------------");
     rc = sd->sd_conn;
     if ((h = rc->rc_h) == NULL){
-	clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
-	goto done;
+        clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
+        goto done;
     }
     if (rc->rc_ssl != NULL){
-	/* Slightly awkward way of taking SSL cert subject and CN and add it to restconf parameters
-	 * instead of accessing it directly 
-	 * SSL subject fields, eg CN (Common Name) , can add more here? */
-	if (ssl_x509_name_oneline(rc->rc_ssl, &oneline) < 0)
-	    goto done;
-	if (oneline != NULL) {
-	    if (uri_str2cvec(oneline, '/', '=', 1, &cvv) < 0)
-		goto done;
-	    if ((cn = cvec_find_str(cvv, "CN")) != NULL){
-		if (restconf_param_set(h, "SSL_CN", cn) < 0)
-		    goto done;
-	    }
-	}
+        /* Slightly awkward way of taking SSL cert subject and CN and add it to restconf parameters
+         * instead of accessing it directly 
+         * SSL subject fields, eg CN (Common Name) , can add more here? */
+        if (ssl_x509_name_oneline(rc->rc_ssl, &oneline) < 0)
+            goto done;
+        if (oneline != NULL) {
+            if (uri_str2cvec(oneline, '/', '=', 1, &cvv) < 0)
+                goto done;
+            if ((cn = cvec_find_str(cvv, "CN")) != NULL){
+                if (restconf_param_set(h, "SSL_CN", cn) < 0)
+                    goto done;
+            }
+        }
     }
     /* Check sanity of session, eg ssl client cert validation, may set rc_exit */
     if (restconf_connection_sanity(h, rc, sd) < 0)
-	goto done;
+        goto done;
     if (!rc->rc_exit){
-	/* Matching algorithm:
-	 * 1. try well-known
-	 * 2. try /restconf
-	 * 3. try /data
-	 * 4. call restconf anyway (because it handles errors)
-	 * This is for the situation where data is / and /restconf is more specific
-	 */
-	if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
-	    if (api_well_known(h, sd) < 0)
-		goto done;
-	}
-	else if (api_path_is_restconf(h)){
-	    if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
-		goto done;	    
-	}
-	else if (api_path_is_data(h)){
-	    if (api_http_data(h, sd, sd->sd_qvec) < 0)
-		goto done;
-	}
-	else if (api_root_restconf(h, sd, sd->sd_qvec) < 0) /* error handling */
-	    goto done;	    
+        /* Matching algorithm:
+         * 1. try well-known
+         * 2. try /restconf
+         * 3. try /data
+         * 4. call restconf anyway (because it handles errors)
+         * This is for the situation where data is / and /restconf is more specific
+         */
+        if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
+            if (api_well_known(h, sd) < 0)
+                goto done;
+        }
+        else if (api_path_is_restconf(h)){
+            if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
+                goto done;          
+        }
+        else if (api_path_is_data(h)){
+            if (api_http_data(h, sd, sd->sd_qvec) < 0)
+                goto done;
+        }
+        else if (api_root_restconf(h, sd, sd->sd_qvec) < 0) /* error handling */
+            goto done;      
     }
     /* Clear (fcgi) paramaters from this request */
     if (restconf_param_del_all(h) < 0)
-    	goto done;
+        goto done;
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (cvv)
-	cvec_free(cvv);
+        cvec_free(cvv);
     if (oneline)
-	free(oneline);
+        free(oneline);
     return retval; /* void */
 }
 
@@ -351,12 +351,12 @@ restconf_nghttp2_path(restconf_stream_data *sd)
  */
 static ssize_t
 restconf_sd_read(nghttp2_session     *session,
-		 int32_t              stream_id,
-		 uint8_t             *buf,
-		 size_t               length,
-		 uint32_t            *data_flags,
-		 nghttp2_data_source *source,
-		 void                *user_data)
+                 int32_t              stream_id,
+                 uint8_t             *buf,
+                 size_t               length,
+                 uint32_t            *data_flags,
+                 nghttp2_data_source *source,
+                 void                *user_data)
 {
     restconf_stream_data *sd = (restconf_stream_data *)source->ptr;
     cbuf                 *cb;
@@ -364,16 +364,16 @@ restconf_sd_read(nghttp2_session     *session,
     size_t                remain;
 
     if ((cb = sd->sd_body) == NULL){ /* shouldnt happen */
-	*data_flags |= NGHTTP2_DATA_FLAG_EOF;
-	return 0;
+        *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+        return 0;
     }
 #if 0
     if (cbuf_len(cb) <= length){
-	len = remain;
-	*data_flags |= NGHTTP2_DATA_FLAG_EOF;
+        len = remain;
+        *data_flags |= NGHTTP2_DATA_FLAG_EOF;
     }
     else{
-	len = length;
+        len = length;
     }
     memcpy(buf, cbuf_get(cb) + sd->sd_body_offset, len);
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
@@ -382,18 +382,18 @@ restconf_sd_read(nghttp2_session     *session,
     assert(cbuf_len(cb) > sd->sd_body_offset);
     remain = cbuf_len(cb) - sd->sd_body_offset;
     clicon_debug(1, "%s length:%zu totlen:%zu, offset:%zu remain:%zu",
-		 __FUNCTION__,
-		 length,
-		 cbuf_len(cb),
-		 sd->sd_body_offset,
-		 remain);
+                 __FUNCTION__,
+                 length,
+                 cbuf_len(cb),
+                 sd->sd_body_offset,
+                 remain);
 
     if (remain <= length){
-	len = remain;
-	*data_flags |= NGHTTP2_DATA_FLAG_EOF;
+        len = remain;
+        *data_flags |= NGHTTP2_DATA_FLAG_EOF;
     }
     else{
-	len = length;
+        len = length;
     }
     memcpy(buf, cbuf_get(cb) + sd->sd_body_offset, len);
     sd->sd_body_offset += len;
@@ -403,9 +403,9 @@ restconf_sd_read(nghttp2_session     *session,
 
 static int
 restconf_submit_response(nghttp2_session      *session,
-			 restconf_conn        *rc,
-			 int                   stream_id,
-			 restconf_stream_data *sd)
+                         restconf_conn        *rc,
+                         int                   stream_id,
+                         restconf_stream_data *sd)
 {
     int                   retval = -1;
     nghttp2_data_provider data_prd;
@@ -419,8 +419,8 @@ restconf_submit_response(nghttp2_session      *session,
     data_prd.source.ptr = sd;
     data_prd.read_callback = restconf_sd_read;
     if ((hdrs = (nghttp2_nv*)calloc(1+cvec_len(sd->sd_outp_hdrs), sizeof(nghttp2_nv))) == NULL){
-	clicon_err(OE_UNIX, errno, "calloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
     }
     hdr = &hdrs[i++];
     hdr->name = (uint8_t*)":status";
@@ -433,26 +433,26 @@ restconf_submit_response(nghttp2_session      *session,
 
     cv = NULL;
     while ((cv = cvec_each(sd->sd_outp_hdrs, cv)) != NULL){
-	hdr = &hdrs[i++];
-	hdr->name = (uint8_t*)cv_name_get(cv);
-	clicon_debug(1, "%s hdr: %s", __FUNCTION__, hdr->name);
-	hdr->value = (uint8_t*)cv_string_get(cv);
-	hdr->namelen = strlen(cv_name_get(cv));
-	hdr->valuelen = strlen(cv_string_get(cv));
-	hdr->flags = 0;
+        hdr = &hdrs[i++];
+        hdr->name = (uint8_t*)cv_name_get(cv);
+        clicon_debug(1, "%s hdr: %s", __FUNCTION__, hdr->name);
+        hdr->value = (uint8_t*)cv_string_get(cv);
+        hdr->namelen = strlen(cv_name_get(cv));
+        hdr->valuelen = strlen(cv_string_get(cv));
+        hdr->flags = 0;
     }
     if ((ngerr = nghttp2_submit_response(session,
-					 stream_id,
-					 hdrs, i,
-					 (data_prd.source.ptr != NULL)?&data_prd:NULL)) < 0){
-	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_response");
-	goto done;
+                                         stream_id,
+                                         hdrs, i,
+                                         (data_prd.source.ptr != NULL)?&data_prd:NULL)) < 0){
+        clicon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_response");
+        goto done;
     }
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (hdrs)
-	free(hdrs);
+        free(hdrs);
     return retval;
 }
 
@@ -460,31 +460,31 @@ restconf_submit_response(nghttp2_session      *session,
  */
 int
 http2_exec(restconf_conn        *rc,
-	   restconf_stream_data *sd,
-	   nghttp2_session     *session,
-	   int32_t              stream_id)
+           restconf_stream_data *sd,
+           nghttp2_session     *session,
+           int32_t              stream_id)
 {
     int retval = -1;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (sd->sd_path){
-	free(sd->sd_path);
-	sd->sd_path = NULL;
+        free(sd->sd_path);
+        sd->sd_path = NULL;
     }
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
-	goto done;
+        goto done;
     sd->sd_proto = HTTP_2; /* XXX is this necessary? */
     if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0
-	|| api_path_is_restconf(rc->rc_h)
-	|| api_path_is_data(rc->rc_h)){
-	if (restconf_nghttp2_path(sd) < 0)
-	    goto done;
+        || api_path_is_restconf(rc->rc_h)
+        || api_path_is_data(rc->rc_h)){
+        if (restconf_nghttp2_path(sd) < 0)
+            goto done;
     }
     else{
-	sd->sd_code = 404;    /* not found */
+        sd->sd_code = 404;    /* not found */
     }
     if (restconf_param_del_all(rc->rc_h) < 0) // XXX
-    	goto done;
+        goto done;
 
     /* If body, add a content-length header 
      *    A server MUST NOT send a Content-Length header field in any response
@@ -494,14 +494,14 @@ http2_exec(restconf_conn        *rc,
      * [RFC7231]).
      */
     if (sd->sd_code != 204 && sd->sd_code > 199 && sd->sd_body_len)
-	if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
-	    goto done;	
+        if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
+            goto done;  
     if (sd->sd_code){
-	if (restconf_submit_response(session, rc, stream_id, sd) < 0)
-	    goto done;
+        if (restconf_submit_response(session, rc, stream_id, sd) < 0)
+            goto done;
     }
     else {
-	/* 500 Internal server error ? */
+        /* 500 Internal server error ? */
     }
     retval = 0;
  done:
@@ -513,8 +513,8 @@ http2_exec(restconf_conn        *rc,
  */
 static int
 on_frame_recv_callback(nghttp2_session     *session,
-		       const nghttp2_frame *frame,
-		       void                *user_data)
+                       const nghttp2_frame *frame,
+                       void                *user_data)
 {
     int                   retval = -1;
     restconf_conn        *rc = (restconf_conn *)user_data;
@@ -522,32 +522,32 @@ on_frame_recv_callback(nghttp2_session     *session,
     char                 *query;
     
     clicon_debug(1, "%s %s %d", __FUNCTION__, 
-		 clicon_int2str(nghttp2_frame_type_map, frame->hd.type),
-		 frame->hd.stream_id);
+                 clicon_int2str(nghttp2_frame_type_map, frame->hd.type),
+                 frame->hd.stream_id);
     switch (frame->hd.type) {
     case NGHTTP2_DATA:
     case NGHTTP2_HEADERS:
-	/* Check that the client request has finished */
-	if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-	    /* For DATA and HEADERS frame, this callback may be called after
-	     * on_stream_close_callback. Check that stream still alive. 
-	     */
-	    if ((sd = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id)) == NULL)
-		return 0;
-	    /* Query vector, ie the ?a=x&b=y stuff */
-	    query = restconf_param_get(rc->rc_h, "REQUEST_URI");
-	    if ((query = index(query, '?')) != NULL){
-		query++;
-		if (strlen(query) &&
-		    uri_str2cvec(query, '&', '=', 1, &sd->sd_qvec) < 0)
-		    goto done;
-	    }
-	    if (http2_exec(rc, sd, session, frame->hd.stream_id) < 0)
-		goto done;
-	}
-	break;
+        /* Check that the client request has finished */
+        if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+            /* For DATA and HEADERS frame, this callback may be called after
+             * on_stream_close_callback. Check that stream still alive. 
+             */
+            if ((sd = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id)) == NULL)
+                return 0;
+            /* Query vector, ie the ?a=x&b=y stuff */
+            query = restconf_param_get(rc->rc_h, "REQUEST_URI");
+            if ((query = index(query, '?')) != NULL){
+                query++;
+                if (strlen(query) &&
+                    uri_str2cvec(query, '&', '=', 1, &sd->sd_qvec) < 0)
+                    goto done;
+            }
+            if (http2_exec(rc, sd, session, frame->hd.stream_id) < 0)
+                goto done;
+        }
+        break;
     default:
-	break;
+        break;
     }
     retval = 0;
  done:
@@ -558,9 +558,9 @@ on_frame_recv_callback(nghttp2_session     *session,
  */
 static int
 on_invalid_frame_recv_callback(nghttp2_session *session,
-			       const nghttp2_frame *frame,
-			       int lib_error_code,
-			       void *user_data)
+                               const nghttp2_frame *frame,
+                               int lib_error_code,
+                               void *user_data)
 {
     // restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -576,18 +576,18 @@ on_invalid_frame_recv_callback(nghttp2_session *session,
  */
 static int
 on_data_chunk_recv_callback(nghttp2_session *session,
-			    uint8_t          flags,
-			    int32_t          stream_id,
-			    const uint8_t   *data,
-			    size_t           len,
-			    void            *user_data)
+                            uint8_t          flags,
+                            int32_t          stream_id,
+                            const uint8_t   *data,
+                            size_t           len,
+                            void            *user_data)
 {
     restconf_conn *rc = (restconf_conn *)user_data;
     restconf_stream_data *sd;
 
-    clicon_debug(1, "%s %d", __FUNCTION__, stream_id);	
+    clicon_debug(1, "%s %d", __FUNCTION__, stream_id);  
     if ((sd = restconf_stream_find(rc, stream_id)) != NULL){
-	cbuf_append_buf(sd->sd_indata, (void*)data, len); 
+        cbuf_append_buf(sd->sd_indata, (void*)data, len); 
     }
     return 0;
 }
@@ -596,8 +596,8 @@ on_data_chunk_recv_callback(nghttp2_session *session,
  */
 static int
 before_frame_send_callback(nghttp2_session     *session,
-			   const nghttp2_frame *frame,
-			   void                *user_data)
+                           const nghttp2_frame *frame,
+                           void                *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -608,8 +608,8 @@ before_frame_send_callback(nghttp2_session     *session,
  */
 static int
 on_frame_send_callback(nghttp2_session     *session,
-		       const nghttp2_frame *frame,
-		       void                *user_data)
+                       const nghttp2_frame *frame,
+                       void                *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -620,9 +620,9 @@ on_frame_send_callback(nghttp2_session     *session,
  */
 static int
 on_frame_not_send_callback(nghttp2_session *session,
-			   const nghttp2_frame *frame,
-			   int lib_error_code,
-			   void *user_data)
+                           const nghttp2_frame *frame,
+                           int lib_error_code,
+                           void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -633,17 +633,17 @@ on_frame_not_send_callback(nghttp2_session *session,
  */
 static int
 on_stream_close_callback(nghttp2_session   *session,
-			 int32_t            stream_id,
-			 nghttp2_error_code error_code,
-			 void              *user_data)
+                         int32_t            stream_id,
+                         nghttp2_error_code error_code,
+                         void              *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
 
     clicon_debug(1, "%s %d %s", __FUNCTION__, error_code, nghttp2_strerror(error_code));
 #if 0 // NOTNEEDED /* XXX think this is not necessary? */
     if (error_code){
-	if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
-	    return -1;
+        if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+            return -1;
     }
 #endif
     return 0;
@@ -653,17 +653,17 @@ on_stream_close_callback(nghttp2_session   *session,
  */
 static int
 on_begin_headers_callback(nghttp2_session     *session,
-			  const nghttp2_frame *frame,
-			  void                *user_data)
+                          const nghttp2_frame *frame,
+                          void                *user_data)
 {
     restconf_conn      *rc = (restconf_conn *)user_data;
     restconf_stream_data *sd;
 
     clicon_debug(1, "%s %s", __FUNCTION__, clicon_int2str(nghttp2_frame_type_map, frame->hd.type));
     if (frame->hd.type == NGHTTP2_HEADERS &&
-	frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-	sd = restconf_stream_data_new(rc, frame->hd.stream_id);
-	nghttp2_session_set_stream_user_data(session, frame->hd.stream_id, sd);
+        frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
+        sd = restconf_stream_data_new(rc, frame->hd.stream_id);
+        nghttp2_session_set_stream_user_data(session, frame->hd.stream_id, sd);
     }
     return 0;
 }
@@ -673,31 +673,31 @@ on_begin_headers_callback(nghttp2_session     *session,
  */
 static int
 nghttp2_hdr2clixon(clicon_handle  h,
-		   char          *name,
-		   char          *value)
+                   char          *name,
+                   char          *value)
 {
     int retval = -1;
 
     if (strcmp(name, ":path") == 0){
-	/* Including ?args, call restconf_uripath() to get only path */
-	if (restconf_param_set(h, "REQUEST_URI", value) < 0) 
-	    goto done;
+        /* Including ?args, call restconf_uripath() to get only path */
+        if (restconf_param_set(h, "REQUEST_URI", value) < 0) 
+            goto done;
     }
     else if (strcmp(name, ":method") == 0){
-	if (restconf_param_set(h, "REQUEST_METHOD", value) < 0)
-	    goto done;
+        if (restconf_param_set(h, "REQUEST_METHOD", value) < 0)
+            goto done;
     }
     else if (strcmp(name, ":scheme") == 0){
-	if (strcmp(value, "https") == 0 &&
-	    restconf_param_set(h, "HTTPS", "https") < 0) /* some string or NULL */
-	    goto done;
+        if (strcmp(value, "https") == 0 &&
+            restconf_param_set(h, "HTTPS", "https") < 0) /* some string or NULL */
+            goto done;
     }
     else if (strcmp(name, ":authority") == 0){
-	if (restconf_param_set(h, "HTTP_HOST", value) < 0)
-	    goto done;
+        if (restconf_param_set(h, "HTTP_HOST", value) < 0)
+            goto done;
     }
     else if (restconf_convert_hdr(h, name, value) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -711,27 +711,27 @@ nghttp2_hdr2clixon(clicon_handle  h,
  */
 static int
 on_header_callback(nghttp2_session     *session,
-		   const nghttp2_frame *frame,
-		   const uint8_t       *name,
-		   size_t              namelen,
-		   const uint8_t      *value,
-		   size_t              valuelen,
-		   uint8_t             flags,
-		   void               *user_data)
+                   const nghttp2_frame *frame,
+                   const uint8_t       *name,
+                   size_t              namelen,
+                   const uint8_t      *value,
+                   size_t              valuelen,
+                   uint8_t             flags,
+                   void               *user_data)
 {
     int                   retval = -1;
     restconf_conn      *rc = (restconf_conn *)user_data;
 
     switch (frame->hd.type){
     case NGHTTP2_HEADERS:
-	assert (frame->headers.cat == NGHTTP2_HCAT_REQUEST);
-	clicon_debug(1, "%s HEADERS %s %s", __FUNCTION__, name, value);
- 	if (nghttp2_hdr2clixon(rc->rc_h, (char*)name, (char*)value) < 0)
-	    goto done;
-	break;
+        assert (frame->headers.cat == NGHTTP2_HCAT_REQUEST);
+        clicon_debug(1, "%s HEADERS %s %s", __FUNCTION__, name, value);
+        if (nghttp2_hdr2clixon(rc->rc_h, (char*)name, (char*)value) < 0)
+            goto done;
+        break;
     default:
-	clicon_debug(1, "%s %s %s", __FUNCTION__, clicon_int2str(nghttp2_frame_type_map, frame->hd.type), name);
-	break;
+        clicon_debug(1, "%s %s %s", __FUNCTION__, clicon_int2str(nghttp2_frame_type_map, frame->hd.type), name);
+        break;
     }
     retval = 0;
  done:
@@ -743,9 +743,9 @@ on_header_callback(nghttp2_session     *session,
  */
 static ssize_t
 select_padding_callback(nghttp2_session *session,
-			const nghttp2_frame *frame,
-			size_t max_payloadlen,
-			void *user_data)
+                        const nghttp2_frame *frame,
+                        size_t max_payloadlen,
+                        void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -756,12 +756,12 @@ select_padding_callback(nghttp2_session *session,
  */
 static ssize_t
 data_source_read_length_callback(nghttp2_session *session,
-				 uint8_t frame_type,
-				 int32_t stream_id,
-				 int32_t session_remote_window_size,
-				 int32_t stream_remote_window_size,
-				 uint32_t remote_max_frame_size,
-				 void *user_data)
+                                 uint8_t frame_type,
+                                 int32_t stream_id,
+                                 int32_t session_remote_window_size,
+                                 int32_t stream_remote_window_size,
+                                 uint32_t remote_max_frame_size,
+                                 void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -775,13 +775,13 @@ data_source_read_length_callback(nghttp2_session *session,
  */
 static int
 on_begin_frame_callback(nghttp2_session *session,
-			const nghttp2_frame_hd *hd,
-			void *user_data)
+                        const nghttp2_frame_hd *hd,
+                        void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s %s", __FUNCTION__, clicon_int2str(nghttp2_frame_type_map, hd->type));
     if (hd->type == NGHTTP2_CONTINUATION)
-	assert(0);
+        assert(0);
     return 0;
 }
 
@@ -792,10 +792,10 @@ on_begin_frame_callback(nghttp2_session *session,
  */
 static int
 send_data_callback(nghttp2_session *session,
-		   nghttp2_frame *frame,
-		   const uint8_t *framehd, size_t length,
-		   nghttp2_data_source *source,
-		   void *user_data)
+                   nghttp2_frame *frame,
+                   const uint8_t *framehd, size_t length,
+                   nghttp2_data_source *source,
+                   void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -807,9 +807,9 @@ send_data_callback(nghttp2_session *session,
  */
 static ssize_t
 pack_extension_callback(nghttp2_session *session,
-			uint8_t *buf, size_t len,
-			const nghttp2_frame *frame,
-			void *user_data)
+                        uint8_t *buf, size_t len,
+                        const nghttp2_frame *frame,
+                        void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -820,9 +820,9 @@ pack_extension_callback(nghttp2_session *session,
  */
 static int
 unpack_extension_callback(nghttp2_session *session,
-			  void **payload,
-			  const nghttp2_frame_hd *hd,
-			  void *user_data)
+                          void **payload,
+                          const nghttp2_frame_hd *hd,
+                          void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -834,10 +834,10 @@ unpack_extension_callback(nghttp2_session *session,
  */
 static int
 on_extension_chunk_recv_callback(nghttp2_session *session,
-				 const nghttp2_frame_hd *hd,
-				 const uint8_t *data,
-				 size_t len,
-				 void *user_data)
+                                 const nghttp2_frame_hd *hd,
+                                 const uint8_t *data,
+                                 size_t len,
+                                 void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -848,9 +848,9 @@ on_extension_chunk_recv_callback(nghttp2_session *session,
  */
 static int
 error_callback(nghttp2_session *session,
-	       const char *msg,
-	       size_t len,
-	       void *user_data)
+               const char *msg,
+               size_t len,
+               void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -862,10 +862,10 @@ error_callback(nghttp2_session *session,
  */
 static int
 error_callback2(nghttp2_session *session,
-		int lib_error_code,
-		const char *msg,
-		size_t len,
-		void *user_data)
+                int lib_error_code,
+                const char *msg,
+                size_t len,
+                void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clicon_debug(1, "%s", __FUNCTION__);
@@ -885,34 +885,34 @@ error_callback2(nghttp2_session *session,
  */
 int
 http2_recv(restconf_conn       *rc,
-	   const unsigned char *buf,
-	   size_t               n)
+           const unsigned char *buf,
+           size_t               n)
 {
     int           retval = -1;
     nghttp2_error ngerr;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if (rc->rc_ngsession == NULL){
-	/* http2_session_init not called */
-	clicon_err(OE_RESTCONF, EINVAL, "No nghttp2 session"); 
-	goto done;
+        /* http2_session_init not called */
+        clicon_err(OE_RESTCONF, EINVAL, "No nghttp2 session"); 
+        goto done;
     }
     /* may make additional pending frames */
     if ((ngerr = nghttp2_session_mem_recv(rc->rc_ngsession, buf, n)) < 0){
-	if (ngerr == NGHTTP2_ERR_BAD_CLIENT_MAGIC){
-	    /* :enum:`NGHTTP2_ERR_BAD_CLIENT_MAGIC`
-	     *     Invalid client magic was detected.  This error only returns
-	     *     when |session| was configured as server and
-	     *     `nghttp2_option_set_no_recv_client_magic()` is not used with
-	     *     nonzero value. */
-	    clicon_log(LOG_INFO, "%s Received bad client magic byte strin", __FUNCTION__);
-	    /* unsure if this does anything, byt does not seem to hurt */
-	    if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, ngerr)) < 0)
-		clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
-	    goto fail;
-	}
-	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_mem_recv");
-	goto done;
+        if (ngerr == NGHTTP2_ERR_BAD_CLIENT_MAGIC){
+            /* :enum:`NGHTTP2_ERR_BAD_CLIENT_MAGIC`
+             *     Invalid client magic was detected.  This error only returns
+             *     when |session| was configured as server and
+             *     `nghttp2_option_set_no_recv_client_magic()` is not used with
+             *     nonzero value. */
+            clicon_log(LOG_INFO, "%s Received bad client magic byte strin", __FUNCTION__);
+            /* unsure if this does anything, byt does not seem to hurt */
+            if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, ngerr)) < 0)
+                clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
+            goto fail;
+        }
+        clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_mem_recv");
+        goto done;
     }
     /* sends highest prio frame from outbound queue to remote peer.  It does this as
      * many as possible until user callback :type:`nghttp2_send_callback` returns
@@ -921,10 +921,10 @@ http2_recv(restconf_conn       *rc,
      */
     clicon_err_reset();
     if ((ngerr = nghttp2_session_send(rc->rc_ngsession)) != 0){
-	if (clicon_errno) 
-	    goto done;
-	else
-	    goto fail; /* Not fatal error */
+        if (clicon_errno) 
+            goto done;
+        else
+            goto fail; /* Not fatal error */
     }
     retval = 1; /* OK */
  done:
@@ -942,20 +942,20 @@ http2_send_server_connection(restconf_conn *rc)
 {
     int                    retval = -1;
     nghttp2_settings_entry iv[2] = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}
-				    ,{NGHTTP2_SETTINGS_ENABLE_PUSH, 0}};
+                                    ,{NGHTTP2_SETTINGS_ENABLE_PUSH, 0}};
     nghttp2_error          ngerr;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((ngerr = nghttp2_submit_settings(rc->rc_ngsession,
-					 NGHTTP2_FLAG_NONE,
-					 iv,
-					 ARRLEN(iv))) != 0){
-	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_settings");
-	goto done;
+                                         NGHTTP2_FLAG_NONE,
+                                         iv,
+                                         ARRLEN(iv))) != 0){
+        clicon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_settings");
+        goto done;
     }
     if ((ngerr = nghttp2_session_send(rc->rc_ngsession)) != 0){
-	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_send");
-	goto done;
+        clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_send");
+        goto done;
     }
     retval = 0;
  done:
@@ -1004,8 +1004,8 @@ http2_session_init(restconf_conn *rc)
 
     /* Create session for server use, register callbacks */
     if ((ngerr = nghttp2_session_server_new3(&session, callbacks, rc, NULL, NULL)) < 0){
-	clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_server_new");
-	goto done;
+        clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_server_new");
+        goto done;
     }
     nghttp2_session_callbacks_del(callbacks);
     rc->rc_ngsession = session;

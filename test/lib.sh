@@ -34,7 +34,7 @@
 if [ -f ./config.sh ]; then
     . ./config.sh
     if [ $? -ne 0 ]; then
-	return -1 # error
+        return -1 # error
     fi
 fi
 
@@ -130,11 +130,11 @@ fi
 
 if [ ${HVER} = 2 ]; then
     if ${HAVE_HTTP1}; then
-	# This is if http/1 is enabled (unset proto=HTTP_2 in restconf_accept_client)
-	CURLOPTS="${CURLOPTS} --http2"
+        # This is if http/1 is enabled (unset proto=HTTP_2 in restconf_accept_client)
+        CURLOPTS="${CURLOPTS} --http2"
     else
-	# This is if http/1 is disabled (set proto=HTTP_2 in restconf_accept_client)
-	CURLOPTS="${CURLOPTS} --http2-prior-knowledge"
+        # This is if http/1 is disabled (set proto=HTTP_2 in restconf_accept_client)
+        CURLOPTS="${CURLOPTS} --http2-prior-knowledge"
     fi
 else
     CURLOPTS="${CURLOPTS} --http1.1"
@@ -199,14 +199,14 @@ BUSER=clicon
 if [ -f ./site.sh ]; then
     . ./site.sh
     if [ $? -ne 0 ]; then
-	return -1 # skip
+        return -1 # skip
     fi
     # test skiplist.
     for f in $SKIPLIST; do
-	if [ "$testfile" = "$f" ]; then
-	    echo "...skipped (see site.sh)"
-	    return -1 # skip
-	fi
+        if [ "$testfile" = "$f" ]; then
+            echo "...skipped (see site.sh)"
+            return -1 # skip
+        fi
     done
 fi
 
@@ -229,10 +229,10 @@ if $SNMPCHECK; then
     snmptranslate="$(type -p snmptranslate) "
 
     if [ "${ENABLE_NETSNMP}" == "yes" ]; then
-	    pgrep snmpd > /dev/null
+            pgrep snmpd > /dev/null
         if [ $? != 0 ]; then
-		    echo -e "\e[31m\nenable-netsnmp set but snmpd not running, start with:"
-		    echo "systemctl start snmpd"
+                    echo -e "\e[31m\nenable-netsnmp set but snmpd not running, start with:"
+                    echo "systemctl start snmpd"
             echo ""
             echo "snmpd must be configured to use a Unix socket for agent communication"
             echo "and have a rwcommunity configured, make sure the following lines are"
@@ -244,8 +244,8 @@ if $SNMPCHECK; then
             echo ""
             echo "If you don't rely on systemd you can configure the lines above"
             echo "and start snmpd manually with 'snmpd -Lo -p /var/run/snmpd.pid'."
-		    echo -e "\e[0m"
-		    exit -1
+                    echo -e "\e[0m"
+                    exit -1
         fi
     fi
 
@@ -292,23 +292,23 @@ fi
 # Sanity nginx running on systemd platforms
 if $NGINXCHECK; then
     if systemctl > /dev/null 2>&1 ; then
-	# even if systemd exists, nginx may be started in other ways
-	nginxactive=$(systemctl show nginx |grep ActiveState=active)
-	if [ "${WITH_RESTCONF}" = "fcgi" ]; then
-	    if [ -z "$nginxactive"  -a ! -f /var/run/nginx.pid ]; then
-		echo -e "\e[31m\nwith-restconf=fcgi set but nginx not running, start with:"
-		echo "systemctl start nginx"
-		echo -e "\e[0m"
-		exit -1
-	    fi
-	else
-	    if [ -n "$nginxactive" -o -f /var/run/nginx.pid ]; then
-		echo -e "\e[31m\nwith-restconf=fcgi not set but nginx running, stop with:"
-		echo "systemctl stop nginx"
-		echo -e "\e[0m"
-		exit -1
-	    fi
-	fi
+        # even if systemd exists, nginx may be started in other ways
+        nginxactive=$(systemctl show nginx |grep ActiveState=active)
+        if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+            if [ -z "$nginxactive"  -a ! -f /var/run/nginx.pid ]; then
+                echo -e "\e[31m\nwith-restconf=fcgi set but nginx not running, start with:"
+                echo "systemctl start nginx"
+                echo -e "\e[0m"
+                exit -1
+            fi
+        else
+            if [ -n "$nginxactive" -o -f /var/run/nginx.pid ]; then
+                echo -e "\e[31m\nwith-restconf=fcgi not set but nginx running, stop with:"
+                echo "systemctl stop nginx"
+                echo -e "\e[0m"
+                exit -1
+            fi
+        fi
     fi # systemctl
 fi
 
@@ -335,40 +335,40 @@ function restconf_config()
 
     # Change this to fixed parameters
     if [ $# -gt 2 ]; then
-	myproto=$3
+        myproto=$3
     else
-    	myproto=$RCPROTO
+        myproto=$RCPROTO
     fi
     if [ $# -gt 3 ]; then
-	myhttpdata=$4
+        myhttpdata=$4
     else
-    	myhttpdata=false
+        myhttpdata=false
     fi
     
     echo -n "<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
     if [ $myproto = http ]; then
-	echo -n "<restconf><enable>true</enable>"
-	if ${myhttpdata}; then
-	    echo -n "<enable-http-data>true</enable-http-data>"
-	fi
-	echo "<auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
+        echo -n "<restconf><enable>true</enable>"
+        if ${myhttpdata}; then
+            echo -n "<enable-http-data>true</enable-http-data>"
+        fi
+        echo "<auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket></restconf>"
     else
-	certdir=$dir/certs
-	if [ ! -f ${dir}/clixon-server-crt.pem ]; then
-	    certdir=$dir/certs
-	    test -d $certdir || mkdir $certdir
-	    srvcert=${certdir}/clixon-server-crt.pem
-	    srvkey=${certdir}/clixon-server-key.pem
-	    cacert=${certdir}/clixon-ca-crt.pem
-	    cakey=${certdir}/clixon-ca-key.pem
-	    cacerts $cakey $cacert
-	    servercerts $cakey $cacert $srvkey $srvcert
-	fi
-	echo -n "<restconf><enable>true</enable>"
-	if ${myhttpdata}; then
-	    echo -n "<enable-http-data>true</enable-http-data>"
-	fi
-	echo "<auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
+        certdir=$dir/certs
+        if [ ! -f ${dir}/clixon-server-crt.pem ]; then
+            certdir=$dir/certs
+            test -d $certdir || mkdir $certdir
+            srvcert=${certdir}/clixon-server-crt.pem
+            srvkey=${certdir}/clixon-server-key.pem
+            cacert=${certdir}/clixon-ca-crt.pem
+            cakey=${certdir}/clixon-ca-key.pem
+            cacerts $cakey $cacert
+            servercerts $cakey $cacert $srvkey $srvcert
+        fi
+        echo -n "<restconf><enable>true</enable>"
+        if ${myhttpdata}; then
+            echo -n "<enable-http-data>true</enable-http-data>"
+        fi
+        echo "<auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
     fi
 }
 
@@ -457,19 +457,19 @@ function err1(){
 # Test is previous test had valgrind errors if so quit
 function checkvalgrind(){
     if [ -f $valgrindfile ]; then
-	res=$(cat $valgrindfile | grep -e "Invalid" |awk '{print  $4}' | grep -v '^0$')
-	if [ -n "$res" ]; then
-	    >&2 cat $valgrindfile
-	    sudo rm -f $valgrindfile
-	    exit -1	    
-	fi
-	res=$(cat $valgrindfile | grep -e "reachable" -e "lost:"|awk '{print  $4}' | grep -v '^0$')
-	if [ -n "$res" ]; then
-	    >&2 cat $valgrindfile
-	    sudo rm -f $valgrindfile
-	    exit -1	    
-	fi
-	sudo rm -f $valgrindfile
+        res=$(cat $valgrindfile | grep -e "Invalid" |awk '{print  $4}' | grep -v '^0$')
+        if [ -n "$res" ]; then
+            >&2 cat $valgrindfile
+            sudo rm -f $valgrindfile
+            exit -1         
+        fi
+        res=$(cat $valgrindfile | grep -e "reachable" -e "lost:"|awk '{print  $4}' | grep -v '^0$')
+        if [ -n "$res" ]; then
+            >&2 cat $valgrindfile
+            sudo rm -f $valgrindfile
+            exit -1         
+        fi
+        sudo rm -f $valgrindfile
     fi
 }
 
@@ -480,9 +480,9 @@ function chunked_equal()
     echo "1:$1"
     echo "2:$2"
     if [ "$1" == "$2" ]; then
-	return 0
+        return 0
     else
-	return 255
+        return 255
     fi
 }
 
@@ -506,18 +506,18 @@ function start_snmp(){
     $clixon_snmp -f $cfg -D $DBG &
 
     if [ $? -ne 0 ]; then
-	    err
+            err
     fi
 }
 
 # Stop clixon_snmp and Valgrind if needed
 function stop_snmp(){
     if [ $valgrindtest -eq 4 ]; then 
-	pkill -f clixon_snmp
-	sleep 1
-	checkvalgrind
+        pkill -f clixon_snmp
+        sleep 1
+        checkvalgrind
     else
-	killall -q clixon_snmp
+        killall -q clixon_snmp
     fi
     rm -f ${clixon_snmp_pidfile}
 }
@@ -526,25 +526,25 @@ function stop_snmp(){
 # If valgrindtest == 2, start valgrind
 function start_backend(){
     if [ $valgrindtest -eq 2 ]; then
-	# Start in background since daemon version creates two traces: parent,
-	# child. If background then only the single relevant.
-	sudo $clixon_backend -F -D $DBG $* &
+        # Start in background since daemon version creates two traces: parent,
+        # child. If background then only the single relevant.
+        sudo $clixon_backend -F -D $DBG $* &
     else
-	sudo $clixon_backend -D $DBG $*
+        sudo $clixon_backend -D $DBG $*
     fi
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
 }
 
 function stop_backend(){
     sudo clixon_backend -z $*
     if [ $? -ne 0 ]; then
-	err "kill backend"
+        err "kill backend"
     fi
     if [ $valgrindtest -eq 2 ]; then 
-	sleep 1
-	checkvalgrind
+        sleep 1
+        checkvalgrind
     fi
     sudo pkill -f clixon_backend # extra ($BUSER?)
 }
@@ -557,15 +557,15 @@ function wait_backend(){
 #    chunked_equal "$reply" "$freply"
     let i=0;
     while [[ $reply != *"<rpc-reply"* ]]; do
-#	echo "sleep $DEMSLEEP"
-	sleep $DEMSLEEP
-	reply=$(echo "<rpc $ÐEFAULTSNS $LIBNS><ping/></rpc>]]>]]>" | clixon_netconf -qef $cfg 2> /dev/null)
-#	echo "reply:$reply"
-	let i++;
-#	echo "wait_backend  $i"
-	if [ $i -ge $DEMLOOP ]; then
-	    err "backend timeout $DEMWAIT seconds"
-	fi
+#       echo "sleep $DEMSLEEP"
+        sleep $DEMSLEEP
+        reply=$(echo "<rpc $ÐEFAULTSNS $LIBNS><ping/></rpc>]]>]]>" | clixon_netconf -qef $cfg 2> /dev/null)
+#       echo "reply:$reply"
+        let i++;
+#       echo "wait_backend  $i"
+        if [ $i -ge $DEMLOOP ]; then
+            err "backend timeout $DEMWAIT seconds"
+        fi
     done
 }
 
@@ -577,7 +577,7 @@ function start_restconf(){
     echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
     sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* </dev/null &>/dev/null &
     if [ $? -ne 0 ]; then
-	err1 "expected 0" "$?"
+        err1 "expected 0" "$?"
     fi
 }
 
@@ -594,8 +594,8 @@ function stop_restconf_pre(){
 function stop_restconf(){
     sudo pkill -f clixon_restconf
     if [ $valgrindtest -eq 3 ]; then 
-	sleep 1
-	checkvalgrind
+        sleep 1
+        checkvalgrind
     fi
 }
 
@@ -607,27 +607,27 @@ function stop_restconf(){
 # 1: (optional) override RCPROTO with http or https
 function wait_restconf(){
     if [ $# = 1 ]; then
-	myproto=$1
+        myproto=$1
     else
-	myproto=${RCPROTO}
+        myproto=${RCPROTO}
     fi
 #    echo "curl $CURLOPTS -X GET $myproto://localhost/restconf"
     hdr=$(curl $CURLOPTS -X GET $myproto://localhost/restconf 2> /dev/null)
 #    echo "hdr:\"$hdr\""
     let i=0;
     while [[ "$hdr" != *"200"* ]]; do
-#	echo "wait_restconf $i"
-	if [ $i -ge $DEMLOOP ]; then
-	    err1 "restconf timeout $DEMWAIT seconds"
-	fi
-	sleep $DEMSLEEP
-#	echo "curl $CURLOPTS -X GET $myproto://localhost/restconf"
-	hdr=$(curl $CURLOPTS -X GET $myproto://localhost/restconf 2> /dev/null)
-#	echo "hdr:\"$hdr\""
-	let i++;
+#       echo "wait_restconf $i"
+        if [ $i -ge $DEMLOOP ]; then
+            err1 "restconf timeout $DEMWAIT seconds"
+        fi
+        sleep $DEMSLEEP
+#       echo "curl $CURLOPTS -X GET $myproto://localhost/restconf"
+        hdr=$(curl $CURLOPTS -X GET $myproto://localhost/restconf 2> /dev/null)
+#       echo "hdr:\"$hdr\""
+        let i++;
     done
     if [ $valgrindtest -eq 3 ]; then 
-	sleep 2 # some problems with valgrind
+        sleep 2 # some problems with valgrind
     fi
 
   stty $STTYSETTINGS
@@ -642,17 +642,17 @@ function wait_restconf_stopped(){
 #    echo "hdr:\"$hdr\""
     let i=0;
     while [[ $hdr = *"200 OK"* ]]; do
-#	echo "wait_restconf_stopped $i"
-	if [ $i -ge $DEMLOOP ]; then
-	    err1 "restconf timeout $DEMWAIT seconds"
-	fi
-	sleep $DEMSLEEP
-	hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
-#	echo "hdr:\"$hdr\""
-	let i++;
+#       echo "wait_restconf_stopped $i"
+        if [ $i -ge $DEMLOOP ]; then
+            err1 "restconf timeout $DEMWAIT seconds"
+        fi
+        sleep $DEMSLEEP
+        hdr=$(curl $CURLOPTS $* $RCPROTO://localhost/restconf 2> /dev/null)
+#       echo "hdr:\"$hdr\""
+        let i++;
     done
     if [ $valgrindtest -eq 3 ]; then 
-	sleep 2 # some problems with valgrind
+        sleep 2 # some problems with valgrind
     fi
 }
 
@@ -661,11 +661,11 @@ function wait_snmp()
 {
     let i=0;
     while [ ! -f ${clixon_snmp_pidfile} ]; do
-	if [ $i -ge $DEMLOOP ]; then
-	    err1 "snmp timeout $DEMWAIT seconds"
-	fi
-	sleep $DEMSLEEP
-	let i++;
+        if [ $i -ge $DEMLOOP ]; then
+            err1 "snmp timeout $DEMWAIT seconds"
+        fi
+        sleep $DEMSLEEP
+        let i++;
     done
 }
     
@@ -674,7 +674,7 @@ function wait_snmp()
 function endtest()
 {
     if [ $valgrindtest -eq 1 ]; then 
-	checkvalgrind
+        checkvalgrind
     fi
 }
 
@@ -715,21 +715,21 @@ function expectpart(){
 #  echo "expect:\"$expect\""
   if [ "$retval" -eq "$retval" 2> /dev/null ] ; then # single retval
       if [ $r != $retval ]; then 
-	  echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
-	  echo -e "\e[0m:"
-	  exit -1
+          echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+          echo -e "\e[0m:"
+          exit -1
       fi
   else # List of retvals
       found=0
       for rv in $retval; do
-	  if [ $r == $rv ]; then 
-	      found=1
-	  fi
+          if [ $r == $rv ]; then 
+              found=1
+          fi
       done
       if [ $found -eq 0 ]; then
-	  echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
-	  echo -e "\e[0m:"
-	  exit -1
+          echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+          echo -e "\e[0m:"
+          exit -1
       fi
   fi
   if [ -z "$ret" -a -z "$expect" ]; then
@@ -742,22 +742,22 @@ function expectpart(){
   let i=0;
   for exp in "$@"; do
       if [ $i -gt 1 ]; then
-	  if [ "$exp" == "--not--" ]; then
-	      positive=false;
-	  else
-#	   echo "echo \"$ret\" | grep --null -o \"$exp"\"
-	      match=$(echo "$ret" | grep --null -i -o "$exp") #-i ignore case XXX -EZo: -E cant handle {}
-	      r=$? 
-	      if $positive; then
-		  if [ $r != 0 ]; then
-		      err "$exp" "$ret"
-		  fi
-	      else
-		  if [ $r == 0 ]; then
-		      err "not $exp" "$ret"
-		  fi
-	      fi
-	  fi
+          if [ "$exp" == "--not--" ]; then
+              positive=false;
+          else
+#          echo "echo \"$ret\" | grep --null -o \"$exp"\"
+              match=$(echo "$ret" | grep --null -i -o "$exp") #-i ignore case XXX -EZo: -E cant handle {}
+              r=$? 
+              if $positive; then
+                  if [ $r != 0 ]; then
+                      err "$exp" "$ret"
+                  fi
+              else
+                  if [ $r == 0 ]; then
+                      err "not $exp" "$ret"
+                  fi
+              fi
+          fi
       fi
       let i++;
   done
@@ -786,7 +786,7 @@ function expecteof(){
       ret=$($cmd 2> $errfile <<EOF 
 $input
 EOF
-	 )
+         )
       r=$? 
   else
 # Do while read stuff
@@ -810,18 +810,18 @@ EOF
       : # null
   else
       # -G for basic regexp (eg ^$). -E for extended regular expression - differs in \
-	  # --null for nul character, -x for implicit ^$ -q for quiet
+          # --null for nul character, -x for implicit ^$ -q for quiet
       # -o only matching
       # Two variants: --null -Eo and -Fxq
       #  match=`echo "$ret" | grep --null -Fo "$expect"`
       if [ $# -gt 4 ]; then # stderr
-	  rerr=$(cat $errfile)
-	  rm -f $errfile
-	  r=$(echo "$rerr" | grep --null -Go "$expecterr")
-	  match=$?
-	  if [ $match -ne 0 ]; then
-	      err "$expecterr" "$rerr"
-	  fi
+          rerr=$(cat $errfile)
+          rm -f $errfile
+          r=$(echo "$rerr" | grep --null -Go "$expecterr")
+          match=$?
+          if [ $match -ne 0 ]; then
+              err "$expecterr" "$rerr"
+          fi
       fi
 
       r=$(echo "$ret" | grep --null -Go "$expect")
@@ -832,7 +832,7 @@ EOF
 #  echo "expect:\"$expect\""
 #  echo "match:\"$match\""
       if [ $match -ne 0 ]; then
-	  err "$expect" "$ret"
+          err "$expect" "$ret"
       fi
   fi
 }
@@ -891,7 +891,7 @@ EOF
       r=$(echo "$ret" | grep --null -Go "$expect1")
       match=$?
       if [ $match -ne 0 ]; then
-	  err "$expect1" "$ret"
+          err "$expect1" "$ret"
       fi
   fi
   if [ -z "$ret" -a -z "$expectenc" ]; then
@@ -899,14 +899,14 @@ EOF
   else
       while read i
       do
-	  # -F fixed strings
-	  # -G basic regexp
-	  # r=$(echo "$ret" | grep --null -Go "$i")
-	  r=$(echo "$ret" | grep --null -Fo "$i")
-	  match=$?
-	  if [ $match -ne 0 ]; then
-	      err "$expectenc" "$ret"
-	  fi
+          # -F fixed strings
+          # -G basic regexp
+          # r=$(echo "$ret" | grep --null -Go "$i")
+          r=$(echo "$ret" | grep --null -Fo "$i")
+          match=$?
+          if [ $match -ne 0 ]; then
+              err "$expectenc" "$ret"
+          fi
       done <<< "$expectenc"
   fi
 }
@@ -1063,8 +1063,8 @@ function expectwait(){
     read -t 20 r
 #    echo "r:<$r>"
     if [ -z "$r" ]; then
-	sleep 1
-	continue
+        sleep 1
+        continue
     fi
     # Append $r to $ret
     ret="$ret$r"
@@ -1074,38 +1074,38 @@ function expectwait(){
     let ok=0
     let fail=0
     for exp in "$@"; do
-	if [ $i -gt 4 ]; then
-#	    echo "i:$i"
-#	    echo "exp:$exp"
-	    if [ "$exp" == "--not--" ]; then
-		positive=false;
-	    else
-		match=$(echo "$ret" | grep --null -i -o "$exp")
-#		match=$(echo "$ret" | grep -Eo "$exp");
-		r=$?
-		if $positive; then
-		    if [ $r != 0 ]; then
-#			echo "fail: $exp"
-			let fail++
-			break
-		    fi
-		else
-		    if [ $r == 0 ]; then
-#			echo "fail: $exp"
-			let fail++
-			break
-		    fi
-		fi
-	    fi
-	fi
-	let i++;
+        if [ $i -gt 4 ]; then
+#           echo "i:$i"
+#           echo "exp:$exp"
+            if [ "$exp" == "--not--" ]; then
+                positive=false;
+            else
+                match=$(echo "$ret" | grep --null -i -o "$exp")
+#               match=$(echo "$ret" | grep -Eo "$exp");
+                r=$?
+                if $positive; then
+                    if [ $r != 0 ]; then
+#                       echo "fail: $exp"
+                        let fail++
+                        break
+                    fi
+                else
+                    if [ $r == 0 ]; then
+#                       echo "fail: $exp"
+                        let fail++
+                        break
+                    fi
+                fi
+            fi
+        fi
+        let i++;
     done # for exp
 #    echo "fail:$fail"
     if [ $fail -eq 0 ]; then
-#	echo ok
-	echo ok > $dir/expectwaitresult	
-	#	break
-	exit 0
+#       echo ok
+        echo ok > $dir/expectwaitresult 
+        #       break
+        exit 0
     fi
   done
 #  cat $dir/expectwaitresult
@@ -1126,23 +1126,23 @@ function expectmatch(){
 #    echo "expret:$expret"
 #    echo "expect:$expect"
     if [ $r != $expret ]; then
-	echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
-	echo -e "\e[0m:"
-	exit -1
+        echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
+        echo -e "\e[0m:"
+        exit -1
     fi
     if [ -z "$ret" -a -z "$expect" ]; then
-	echo > /dev/null
+        echo > /dev/null
     else
-	match=$(echo "$ret" | grep -Eo "$expect")
-	if [ -z "$match" ]; then
-	    err "$expect" "$ret"
-	fi
-	if [ -n "$expect2" ]; then
-	    match=`echo "$ret" | grep --null -Eo "$expect2"`
-	    if [ -z "$match" ]; then
-		err $expect "$ret"
-	    fi
-	fi
+        match=$(echo "$ret" | grep -Eo "$expect")
+        if [ -z "$match" ]; then
+            err "$expect" "$ret"
+        fi
+        if [ -n "$expect2" ]; then
+            match=`echo "$ret" | grep --null -Eo "$expect2"`
+            if [ -z "$match" ]; then
+                err $expect "$ret"
+            fi
+        fi
     fi
 }
 
@@ -1154,8 +1154,8 @@ function expectmatch(){
 function cacerts()
 {
     if [ $# -ne 2 ]; then
-	echo "cacerts function: Expected: cakey cacert"
-	exit 1
+        echo "cacerts function: Expected: cakey cacert"
+        exit 1
     fi
     local cakey=$1
     local cacert=$2
@@ -1215,8 +1215,8 @@ EOF
 function servercerts()
 {
     if [ $# -ne 4 ]; then
-	echo "servercerts function: Expected: cakey cacert srvkey srvcert"
-	exit 1
+        echo "servercerts function: Expected: cakey cacert srvkey srvcert"
+        exit 1
     fi
     cakey=$1
     cacert=$2

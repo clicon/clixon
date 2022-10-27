@@ -70,14 +70,14 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options] JSON as input on stdin\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \tDebug\n"
-	    "\t-j \t\tOutput as JSON (default is as XML)\n"
-	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n"
-	    "\t-p \t\tPretty-print output\n"
-	    "\t-y <filename> \tyang filename to parse (must be stand-alone)\n"	    ,
-	    argv0);
+            "\t-D <level> \tDebug\n"
+            "\t-j \t\tOutput as JSON (default is as XML)\n"
+            "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n"
+            "\t-p \t\tPretty-print output\n"
+            "\t-y <filename> \tyang filename to parse (must be stand-alone)\n"      ,
+            argv0);
     exit(0);
 }
 
@@ -101,63 +101,63 @@ main(int    argc,
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, "hD:jl:py:")) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv[0]);
-	    break;
-    	case 'D':
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(argv[0]);
-	    break;
-	case 'j':
-	    json++;
-	    break;
-	case 'l': /* Log destination: s|e|o|f */
-	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
-		usage(argv[0]);
-	    break;
-	case 'p':
-	    pretty++;
-	    break;
-	case 'y':
-	    yang_filename = optarg;
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv[0]);
+            break;
+        case 'D':
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(argv[0]);
+            break;
+        case 'j':
+            json++;
+            break;
+        case 'l': /* Log destination: s|e|o|f */
+            if ((logdst = clicon_log_opt(optarg[0])) < 0)
+                usage(argv[0]);
+            break;
+        case 'p':
+            pretty++;
+            break;
+        case 'y':
+            yang_filename = optarg;
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, logdst);
     clicon_debug_init(dbg, NULL);
 
     if (yang_filename){
-	if ((yspec = yspec_new()) == NULL)
-	    goto done;
-	if (yang_parse_filename(yang_filename, yspec) == NULL){
-	    fprintf(stderr, "yang parse error %s\n", clicon_err_reason);
-	    return -1;
-	}
+        if ((yspec = yspec_new()) == NULL)
+            goto done;
+        if (yang_parse_filename(yang_filename, yspec) == NULL){
+            fprintf(stderr, "yang parse error %s\n", clicon_err_reason);
+            return -1;
+        }
     }
     if ((ret = clixon_json_parse_file(stdin, yspec?1:0, yspec?YB_MODULE:YB_NONE, yspec, &xt, &xerr)) < 0)
-	goto done;
+        goto done;
     if (ret == 0){
-	xml_print(stderr, xerr);
-	goto done;
+        xml_print(stderr, xerr);
+        goto done;
     }
     if (json){
-	if (clixon_json2cbuf(cb, xt, pretty, 1, 0) < 0)
-	    goto done;
+        if (clixon_json2cbuf(cb, xt, pretty, 1, 0) < 0)
+            goto done;
     }
     else if (clixon_xml2cbuf(cb, xt, 0, pretty, -1, 1) < 0)
-	goto done;
+        goto done;
     fprintf(stdout, "%s", cbuf_get(cb));
     fflush(stdout);
     retval = 0;
  done:
     if (yspec)
-	ys_free(yspec);
+        ys_free(yspec);
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }

@@ -39,15 +39,15 @@ module example {
 
     /* Generic config data */
     container table{
-	list parameter{
-	    key name;
-	    leaf name{
-		type string;
-	    }
-	    leaf value{
-		type string;
-	    }
-	}
+        list parameter{
+            key name;
+            leaf name{
+                type string;
+            }
+            leaf value{
+                type string;
+            }
+        }
     }
 }
 EOF
@@ -57,7 +57,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -89,7 +89,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

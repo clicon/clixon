@@ -109,22 +109,22 @@ clicon_handle_init0(int size)
     clicon_handle         h = NULL;
 
     if ((ch = malloc(size)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(ch, 0, size);
     ch->ch_magic = CLICON_MAGIC;
     if ((ch->ch_copt = clicon_hash_init()) == NULL){
-	clicon_handle_exit((clicon_handle)ch);
-	goto done;
+        clicon_handle_exit((clicon_handle)ch);
+        goto done;
     }
     if ((ch->ch_data = clicon_hash_init()) == NULL){
-	clicon_handle_exit((clicon_handle)ch);
-	goto done;
+        clicon_handle_exit((clicon_handle)ch);
+        goto done;
     }
     if ((ch->ch_db_elmnt = clicon_hash_init()) == NULL){
-	clicon_handle_exit((clicon_handle)ch);
-	goto done;
+        clicon_handle_exit((clicon_handle)ch);
+        goto done;
     }
     h = (clicon_handle)ch;
   done:
@@ -157,11 +157,11 @@ clicon_handle_exit(clicon_handle h)
     clicon_hash_t        *ha;
 
     if ((ha = clicon_options(h)) != NULL)
-	clicon_hash_free(ha);
+        clicon_hash_free(ha);
     if ((ha = clicon_data(h)) != NULL)
-	clicon_hash_free(ha);
+        clicon_hash_free(ha);
     if ((ha = clicon_db_elmnt(h)) != NULL)
-	clicon_hash_free(ha);
+        clicon_hash_free(ha);
     stream_delete_all(h, 1);
     free(ch);
     retval = 0;
@@ -228,7 +228,7 @@ clicon_stream(clicon_handle h)
 
 int
 clicon_stream_set(clicon_handle   h,
-		  event_stream_t *es)
+                  event_stream_t *es)
 {
     struct clicon_handle *ch = handle(h);
 
@@ -238,7 +238,7 @@ clicon_stream_set(clicon_handle   h,
 
 int
 clicon_stream_append(clicon_handle h,
-		     event_stream_t *es)
+                     event_stream_t *es)
 {
     struct clicon_handle *ch = handle(h);
     

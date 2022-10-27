@@ -45,20 +45,20 @@ module clixon-example {
     prefix ex;
     /* Generic config data */
     container table{
-	list parameter{
-	    key name;
-	    leaf name{
-		type string;
-	    }
-	    leaf value{
-		type string;
-	    }
-	    leaf stat{
-		description "Inline state data for example application";
-		config false;
-		type int32;
-	    }
-	}
+        list parameter{
+            key name;
+            leaf name{
+                type string;
+            }
+            leaf value{
+                type string;
+            }
+            leaf stat{
+                description "Inline state data for example application";
+                config false;
+                type int32;
+            }
+        }
     }
 }
 EOF
@@ -81,11 +81,11 @@ commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 show("Show a particular state of the system"){
     configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
-	    xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", false, false);
-	    cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", false, false, "report-all", "set ");
-	    netconf("Show configuration as netconf edit-config operation"), cli_show_auto_mode("candidate", "netconf", false, false);
-	    text("Show configuration as text"), cli_show_auto_mode("candidate", "text", false, false);
-	    json("Show configuration as JSON"), cli_show_auto_mode("candidate", "json", false, false);
+            xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", false, false);
+            cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", false, false, "report-all", "set ");
+            netconf("Show configuration as netconf edit-config operation"), cli_show_auto_mode("candidate", "netconf", false, false);
+            text("Show configuration as text"), cli_show_auto_mode("candidate", "text", false, false);
+            json("Show configuration as JSON"), cli_show_auto_mode("candidate", "json", false, false);
     }
     state("Show configuration and state"), cli_show_auto_mode("running", "xml", false, true);
 }
@@ -117,7 +117,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s startup -f $cfg -- -sS $fstate"
     start_backend -s startup -f $cfg -- -sS $fstate
@@ -325,7 +325,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

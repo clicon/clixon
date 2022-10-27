@@ -39,13 +39,13 @@ new "Check installed files libclixon${SUFFIX}"
 # This is a problem on some platforms that dont have /usr/local/ in LD_LIBRARY_PATH
 if [ ! ${LIBOPT} $dir/usr/local/lib/libclixon${SUFFIX} ]; then
     if [ ! ${LIBOPT} $dir/usr/lib/libclixon${SUFFIX} ]; then
-	err $dir/usr/local/lib/libclixon${SUFFIX}
+        err $dir/usr/local/lib/libclixon${SUFFIX}
     fi
 fi
 new "Check installed files libclixon_backend${SUFFIX}"
 if [ ! ${LIBOPT} $dir/usr/local/lib/libclixon_backend${SUFFIX} ]; then
     if [ ! ${LIBOPT} $dir/usr/lib/libclixon_backend${SUFFIX} ]; then
-	err $dir/usr/local/lib/libclixon_backend${SUFFIX}
+        err $dir/usr/local/lib/libclixon_backend${SUFFIX}
     fi
 fi
 

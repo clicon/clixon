@@ -270,9 +270,9 @@ restconf_content_type(clicon_handle h)
     restconf_media m;
 
     if ((str = restconf_param_get(h, "HTTP_CONTENT_TYPE")) == NULL)
-	return -1;
+        return -1;
     if ((int)(m = restconf_media_str2int(str)) == -1)
-	return -1;
+        return -1;
     return m;
 }
 
@@ -281,8 +281,8 @@ restconf_content_type(clicon_handle h)
  */
 int
 restconf_convert_hdr(clicon_handle h,
-		     char         *name,
-		     char         *val)
+                     char         *name,
+                     char         *val)
 {
     int           retval = -1;
     cbuf         *cb = NULL;
@@ -291,27 +291,27 @@ restconf_convert_hdr(clicon_handle h,
     size_t       len;
     
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     /* convert key name */
     cprintf(cb, "HTTP_");
     len = strlen(name);
     for (i=0; i<len; i++){
-	c = name[i] & 0xff;
-	if (islower(c))
-	    cprintf(cb, "%c", toupper(c));
-	else if (c == '-')
-	    cprintf(cb, "_");
-	else
-	    cprintf(cb, "%c", c);
+        c = name[i] & 0xff;
+        if (islower(c))
+            cprintf(cb, "%c", toupper(c));
+        else if (c == '-')
+            cprintf(cb, "_");
+        else
+            cprintf(cb, "%c", c);
     }
     if (restconf_param_set(h, cbuf_get(cb), val) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -322,23 +322,23 @@ restconf_convert_hdr(clicon_handle h,
  */
 int
 get_user_cookie(char  *cookiestr, 
-		char  *attribute, 
-		char **val)
+                char  *attribute, 
+                char **val)
 {
     int    retval = -1;
     cvec  *cvv = NULL;
     char  *c;
 
     if (uri_str2cvec(cookiestr, ';', '=', 1, &cvv) < 0)
-	goto done;
+        goto done;
     if ((c = cvec_find_str(cvv, attribute)) != NULL){
-	if ((*val = strdup(c)) == NULL)
-	    goto done;
+        if ((*val = strdup(c)) == NULL)
+            goto done;
     }
     retval = 0;
  done:
     if (cvv)
-	cvec_free(cvv);
+        cvec_free(cvv);
     return retval;
 }
 
@@ -356,19 +356,19 @@ restconf_terminate(clicon_handle h)
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((fs = clicon_socket_get(h)) != -1)
-	close(fs);
+        close(fs);
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
 
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
-	ys_free(yspec);
+        ys_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
-	ys_free(yspec);
+        ys_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
-	cvec_free(nsctx);
+        cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
-	xml_free(x);
+        xml_free(x);
     xpath_optimize_exit();
     restconf_handle_exit(h);
     clixon_err_exit();
@@ -402,7 +402,7 @@ restconf_terminate(clicon_handle h)
  */
 int
 restconf_insert_attributes(cxobj *xdata,
-			   cvec  *qvec)
+                           cvec  *qvec)
 {
     int        retval = -1;
     cxobj     *xa;
@@ -419,79 +419,79 @@ restconf_insert_attributes(cxobj *xdata,
 
     y = xml_spec(xdata);
     if ((instr = cvec_find_str(qvec, "insert")) != NULL){
-	/* First add xmlns:yang attribute */
-	if (xmlns_set(xdata, "yang", YANG_XML_NAMESPACE) < 0)
-	    goto done;
-	/* Then add insert attribute */
-	if ((xa = xml_new("insert", xdata, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_prefix_set(xa, "yang") < 0)
-	    goto done;
-	if (xml_value_set(xa, instr) < 0)
-	    goto done;
+        /* First add xmlns:yang attribute */
+        if (xmlns_set(xdata, "yang", YANG_XML_NAMESPACE) < 0)
+            goto done;
+        /* Then add insert attribute */
+        if ((xa = xml_new("insert", xdata, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_prefix_set(xa, "yang") < 0)
+            goto done;
+        if (xml_value_set(xa, instr) < 0)
+            goto done;
     }
     if ((pstr = cvec_find_str(qvec, "point")) != NULL){
-	if (y == NULL){
-	    clicon_err(OE_YANG, 0, "Cannot yang resolve %s", xml_name(xdata));
-	    goto done;
-	}
-	if (yang_keyword_get(y) == Y_LIST)
-	    attrname="key";
-	else
-	    attrname="value";
-	/* Then add value/key attribute */
-	if ((xa = xml_new(attrname, xdata, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_prefix_set(xa, "yang") < 0)
-	    goto done;
-	if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &nsc, NULL)) < 0)
-	    goto done;
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	if (yang_keyword_get(y) == Y_LIST){
-	    /* translate /../x[] --> []*/
-	    if ((p = rindex(xpath,'/')) == NULL)
-		p = xpath;
-	    p = index(p, '[');
-	    cprintf(cb, "%s", p);
-	}
-	else{ /* LEAF_LIST */
-	    /* translate /../x[.='x'] --> x */
-	    if ((p = rindex(xpath,'\'')) == NULL){
-		clicon_err(OE_YANG, 0, "Translated api->xpath %s->%s not on leaf-list canonical form: ../[.='x']", pstr, xpath);
-		goto done;
-	    }
-	    *p = '\0';
-	    if ((p = rindex(xpath,'\'')) == NULL){
-		clicon_err(OE_YANG, 0, "Translated api->xpath %s->%s not on leaf-list canonical form: ../[.='x']", pstr, xpath);
-		goto done;
-	    }
-	    p++;
-	    cprintf(cb, "%s", p);
-	}
-	if (xml_value_set(xa, cbuf_get(cb)) < 0)
-	    goto done;
+        if (y == NULL){
+            clicon_err(OE_YANG, 0, "Cannot yang resolve %s", xml_name(xdata));
+            goto done;
+        }
+        if (yang_keyword_get(y) == Y_LIST)
+            attrname="key";
+        else
+            attrname="value";
+        /* Then add value/key attribute */
+        if ((xa = xml_new(attrname, xdata, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_prefix_set(xa, "yang") < 0)
+            goto done;
+        if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &nsc, NULL)) < 0)
+            goto done;
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if (yang_keyword_get(y) == Y_LIST){
+            /* translate /../x[] --> []*/
+            if ((p = rindex(xpath,'/')) == NULL)
+                p = xpath;
+            p = index(p, '[');
+            cprintf(cb, "%s", p);
+        }
+        else{ /* LEAF_LIST */
+            /* translate /../x[.='x'] --> x */
+            if ((p = rindex(xpath,'\'')) == NULL){
+                clicon_err(OE_YANG, 0, "Translated api->xpath %s->%s not on leaf-list canonical form: ../[.='x']", pstr, xpath);
+                goto done;
+            }
+            *p = '\0';
+            if ((p = rindex(xpath,'\'')) == NULL){
+                clicon_err(OE_YANG, 0, "Translated api->xpath %s->%s not on leaf-list canonical form: ../[.='x']", pstr, xpath);
+                goto done;
+            }
+            p++;
+            cprintf(cb, "%s", p);
+        }
+        if (xml_value_set(xa, cbuf_get(cb)) < 0)
+            goto done;
     }
     /* Add prefix/namespaces used in attributes */
     cv = NULL;
     while ((cv = cvec_each(nsc, cv)) != NULL){
-	char *ns = cv_string_get(cv);
-	if (xmlns_set(xdata, cv_name_get(cv), ns) < 0)
-	    goto done;
+        char *ns = cv_string_get(cv);
+        if (xmlns_set(xdata, cv_name_get(cv), ns) < 0)
+            goto done;
     }
     if (nsc)
-	xml_sort(xdata); /* Ensure attr is first */
+        xml_sort(xdata); /* Ensure attr is first */
     cprintf(cb, "/>");
     retval = 0;
  done:
     if (xpath)
-	free(xpath);
+        free(xpath);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -512,8 +512,8 @@ restconf_insert_attributes(cxobj *xdata,
  */
 int
 restconf_main_extension_cb(clicon_handle h,
-			   yang_stmt    *yext,
-			   yang_stmt    *ys)
+                           yang_stmt    *yext,
+                           yang_stmt    *ys)
 {
     int        retval = -1;
     char      *extname;
@@ -526,17 +526,17 @@ restconf_main_extension_cb(clicon_handle h,
     modname = yang_argument_get(ymod);
     extname = yang_argument_get(yext);
     if (strcmp(modname, "ietf-restconf") != 0 || strcmp(extname, "yang-data") != 0)
-	goto ok;
+        goto ok;
     clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
     if ((yc = yang_find(ys, 0, NULL)) == NULL)
-	goto ok;
+        goto ok;
     if ((yn = ys_dup(yc)) == NULL)
-	goto done;
+        goto done;
     /* yang-data extension: The list-stmt is not required to have a key-stmt defined.
      */
     yang_flag_set(yn, YANG_FLAG_NOKEY);
     if (yn_insert(yang_parent_get(ys), yn) < 0)
-	goto done;
+        goto done;
  ok:
     retval = 0;
  done:
@@ -557,15 +557,15 @@ restconf_uripath(clicon_handle h)
     char *q;
 
     if ((path = restconf_param_get(h, "REQUEST_URI")) == NULL){
-	clicon_err(OE_RESTCONF, 0, "No REQUEST_URI");
-	return NULL;
+        clicon_err(OE_RESTCONF, 0, "No REQUEST_URI");
+        return NULL;
     }
     if ((path2 = strdup(path)) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	return NULL;
+        clicon_err(OE_UNIX, errno, "strdup");
+        return NULL;
     }
     if ((q = index(path2, '?')) != NULL)
-	*q = '\0';
+        *q = '\0';
     return path2;
 }
 
@@ -587,60 +587,60 @@ restconf_drop_privileges(clicon_handle h)
     clicon_debug(1, "%s", __FUNCTION__);
     /* Sanity check: backend group exists */
     if ((group = clicon_sock_group(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
-	return -1;
+        clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
+        return -1;
     }
     if (group_name2gid(group, &gid) < 0){
-	clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group." /* \n required here due to multi-line log */
-		   "The config daemon requires a valid group to create a server UNIX socket\n"
-		   "Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
-		   "or create the group and add the user to it. Check documentation for how to do this on your platform",
-		   group,
-		   clicon_configfile(h));
-	goto done;
+        clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group." /* \n required here due to multi-line log */
+                   "The config daemon requires a valid group to create a server UNIX socket\n"
+                   "Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
+                   "or create the group and add the user to it. Check documentation for how to do this on your platform",
+                   group,
+                   clicon_configfile(h));
+        goto done;
     }
 
     /* Get privileges mode (for dropping privileges) */
     if ((priv_mode = clicon_restconf_privileges_mode(h)) == PM_NONE)
-	goto ok;
+        goto ok;
     if ((user = clicon_option_str(h, "CLICON_RESTCONF_USER")) == NULL)
-	goto ok;
+        goto ok;
 
     /* Get (wanted) new www user id */
     if (name2uid(user, &newuid) < 0){
-	clicon_err(OE_DAEMON, errno, "'%s' is not a valid user .\n", user);
-	goto done;
+        clicon_err(OE_DAEMON, errno, "'%s' is not a valid user .\n", user);
+        goto done;
     }
     /* get current userid, if already at this level OK */
     if ((uid = getuid()) == newuid)
-	goto ok;
+        goto ok;
     if (uid != 0){
-	clicon_err(OE_DAEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
-	goto done;
+        clicon_err(OE_DAEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
+        goto done;
     }
     if (setgid(gid) == -1) {
-	clicon_err(OE_DAEMON, errno, "setgid %d", gid);
-	goto done;
+        clicon_err(OE_DAEMON, errno, "setgid %d", gid);
+        goto done;
     }
     switch (priv_mode){
     case PM_DROP_PERM:
-	if (drop_priv_perm(newuid) < 0)
-	    goto done;
-	/* Verify you cannot regain root privileges */
-	if (setuid(0) != -1){
-	    clicon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
-	    goto done;
-	}
-	break;
+        if (drop_priv_perm(newuid) < 0)
+            goto done;
+        /* Verify you cannot regain root privileges */
+        if (setuid(0) != -1){
+            clicon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
+            goto done;
+        }
+        break;
     case PM_DROP_TEMP:
-	if (drop_priv_temp(newuid) < 0)
-	    goto done;
-	break;
+        if (drop_priv_temp(newuid) < 0)
+            goto done;
+        break;
     case PM_NONE:
-	break; /* catched above */
+        break; /* catched above */
     }
     clicon_debug(1, "%s dropped privileges from root to %s(%d)",
-		 __FUNCTION__, user, newuid);
+                 __FUNCTION__, user, newuid);
  ok:
     retval = 0;
  done:
@@ -658,9 +658,9 @@ restconf_drop_privileges(clicon_handle h)
  */
 int
 restconf_authentication_cb(clicon_handle  h,
-			   void          *req,
-			   int            pretty,
-			   restconf_media media_out)
+                           void          *req,
+                           int            pretty,
+                           restconf_media media_out)
 {
     int                retval = -1;
     clixon_auth_type_t auth_type;
@@ -677,59 +677,59 @@ restconf_authentication_cb(clicon_handle  h,
     authenticated = 0;
     /* ret: -1 Error, 0: Ignore/not handled, 1: OK see authenticated parameter */
     if ((ret = clixon_plugin_auth_all(h, req,
-				      auth_type,
-				      &username)) < 0)
-	goto done;
+                                      auth_type,
+                                      &username)) < 0)
+        goto done;
     if (ret == 1){ /* OK, tag username to handle */
-	if (username != NULL){
-	    authenticated = 1;
-	    clicon_username_set(h, username);
-	}
+        if (username != NULL){
+            authenticated = 1;
+            clicon_username_set(h, username);
+        }
     }
     else {         /* Default behaviour */
-	switch (auth_type){
-	case CLIXON_AUTH_NONE:
-	    /* if not handled by callback, use anonymous user */
-	    if ((anonymous = clicon_option_str(h, "CLICON_ANONYMOUS_USER")) == NULL){
-		break; /* not authenticated */
-	    }
-	    clicon_username_set(h, anonymous);	
-	    authenticated = 1;
-	    break;
-	case CLIXON_AUTH_CLIENT_CERTIFICATE: {
-	    char *cn;
-	    /* Check for cert subject common name (CN) */
-	    if ((cn = restconf_param_get(h, "SSL_CN")) != NULL){
-		clicon_username_set(h, cn);
-		authenticated = 1;
-	    }
-	    break;
-	}
-	case CLIXON_AUTH_USER:           
-	    authenticated = 0;
-	    break;
-	}
+        switch (auth_type){
+        case CLIXON_AUTH_NONE:
+            /* if not handled by callback, use anonymous user */
+            if ((anonymous = clicon_option_str(h, "CLICON_ANONYMOUS_USER")) == NULL){
+                break; /* not authenticated */
+            }
+            clicon_username_set(h, anonymous);  
+            authenticated = 1;
+            break;
+        case CLIXON_AUTH_CLIENT_CERTIFICATE: {
+            char *cn;
+            /* Check for cert subject common name (CN) */
+            if ((cn = restconf_param_get(h, "SSL_CN")) != NULL){
+                clicon_username_set(h, cn);
+                authenticated = 1;
+            }
+            break;
+        }
+        case CLIXON_AUTH_USER:           
+            authenticated = 0;
+            break;
+        }
     }
     if (authenticated == 0){ /* Message is not authenticated (401 returned) */
-	if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
-	    goto done;
-	if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	    if (api_return_err(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto notauth;
-	}
-	retval = 0;
-	goto notauth;
+        if (netconf_access_denied_xml(&xret, "protocol", "The requested URL was unauthorized") < 0)
+            goto done;
+        if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+            if (api_return_err(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto notauth;
+        }
+        retval = 0;
+        goto notauth;
     }
     /* If set but no user, set a dummy user */
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d authenticated:%d user:%s",
-		 __FUNCTION__, retval, authenticated, clicon_username_get(h));
+                 __FUNCTION__, retval, authenticated, clicon_username_get(h));
     if (username)
-	free(username);
+        free(username);
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     return retval;
  notauth:
     retval = 0;
@@ -745,7 +745,7 @@ restconf_authentication_cb(clicon_handle  h,
  */
 int
 restconf_config_init(clicon_handle h,
-		     cxobj        *xrestconf)
+                     cxobj        *xrestconf)
 {
     int    retval = -1;
     char  *enable;
@@ -757,59 +757,59 @@ restconf_config_init(clicon_handle h,
     yang_stmt *y;
     
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
+        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
     }
     /* Apply default values (removed in clear function) */
     if (xml_default_recurse(xrestconf, 0) < 0)
-	goto done;
+        goto done;
     if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
-	(enable = xml_body(x)) != NULL){
-	if (strcmp(enable, "false") == 0){
-	    clicon_debug(1, "%s restconf disabled", __FUNCTION__);
-	    goto disable;
-	}
+        (enable = xml_body(x)) != NULL){
+        if (strcmp(enable, "false") == 0){
+            clicon_debug(1, "%s restconf disabled", __FUNCTION__);
+            goto disable;
+        }
     }
     /* get common fields */
     if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL &&
-	(bstr = xml_body(x)) != NULL){
-	if ((auth_type = clixon_auth_type_str2int(bstr)) < 0){
-	    clicon_err(OE_CFG, EFAULT, "Invalid restconf auth-type: %s", bstr);
-	    goto done;
-	}
-	restconf_auth_type_set(h, auth_type);
+        (bstr = xml_body(x)) != NULL){
+        if ((auth_type = clixon_auth_type_str2int(bstr)) < 0){
+            clicon_err(OE_CFG, EFAULT, "Invalid restconf auth-type: %s", bstr);
+            goto done;
+        }
+        restconf_auth_type_set(h, auth_type);
     }
     if ((x = xpath_first(xrestconf, nsc, "pretty")) != NULL &&
-	(bstr = xml_body(x)) != NULL){
-	if (strcmp(bstr, "true") == 0)
-	    restconf_pretty_set(h, 1);
-	else if (strcmp(bstr, "false") == 0)
-	    restconf_pretty_set(h, 0);
+        (bstr = xml_body(x)) != NULL){
+        if (strcmp(bstr, "true") == 0)
+            restconf_pretty_set(h, 1);
+        else if (strcmp(bstr, "false") == 0)
+            restconf_pretty_set(h, 0);
     }
     /* Check if enable-http-data is true and that feature is enabled
      * It is protected by if-feature http-data, which means if the feature is not enabled, its
      * YANG spec will exist but by ANYDATA
      */
     if ((x = xpath_first(xrestconf, nsc, "enable-http-data")) != NULL &&
-	(y = xml_spec(x)) != NULL &&
-	yang_keyword_get(y) != Y_ANYDATA &&
-	(bstr = xml_body(x)) != NULL &&
-	strcmp(bstr, "true") == 0) {
-	restconf_http_data_set(h, 1);
+        (y = xml_spec(x)) != NULL &&
+        yang_keyword_get(y) != Y_ANYDATA &&
+        (bstr = xml_body(x)) != NULL &&
+        strcmp(bstr, "true") == 0) {
+        restconf_http_data_set(h, 1);
     }
     else 
-	restconf_http_data_set(h, 0);
+        restconf_http_data_set(h, 0);
 
     /* Check if fcgi-socket is true and that feature is enabled
      * It is protected by if-feature fcgi, which means if the feature is not enabled, then 
      * YANG spec will exist but by ANYDATA
      */
     if ((x = xpath_first(xrestconf, nsc, "fcgi-socket")) != NULL &&
-	(y = xml_spec(x)) != NULL &&
-	yang_keyword_get(y) != Y_ANYDATA &&
-	(bstr = xml_body(x)) != NULL){
-	if (restconf_fcgi_socket_set(h, bstr) < 0)
-	    goto done;
+        (y = xml_spec(x)) != NULL &&
+        yang_keyword_get(y) != Y_ANYDATA &&
+        (bstr = xml_body(x)) != NULL){
+        if (restconf_fcgi_socket_set(h, bstr) < 0)
+            goto done;
     }
     retval = 1;
  done:
@@ -832,12 +832,12 @@ restconf_config_init(clicon_handle h,
  */
 int
 restconf_socket_init(const char   *netns0,
-		     const char   *addrstr,
-		     const char   *addrtype,
-		     uint16_t      port,
-		     int           backlog,
-		     int           flags,
-		     int          *ss)
+                     const char   *addrstr,
+                     const char   *addrtype,
+                     uint16_t      port,
+                     int           backlog,
+                     int           flags,
+                     int          *ss)
 {
     int                 retval = -1;
     struct sockaddr_in6 sin6 = {0,}; // because its larger than sin and sa
@@ -848,13 +848,13 @@ restconf_socket_init(const char   *netns0,
     clicon_debug(1, "%s %s %s %s %hu", __FUNCTION__, netns0, addrtype, addrstr, port);
     /* netns default -> NULL */
     if (netns0 != NULL && strcmp(netns0, RESTCONF_NETNS_DEFAULT)==0)
-	netns = NULL;
+        netns = NULL;
     else
-	netns = netns0;
+        netns = netns0;
     if (clixon_inet2sin(addrtype, addrstr, port, sa, &sa_len) < 0)
-	goto done;
+        goto done;
     if (clixon_netns_socket(netns, sa, sa_len, backlog, flags, addrstr, ss) < 0)
-	goto done;
+        goto done;
     clicon_debug(1, "%s ss=%d", __FUNCTION__, *ss);
     retval = 0;
  done:

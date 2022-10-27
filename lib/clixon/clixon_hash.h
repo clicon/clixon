@@ -39,9 +39,9 @@
 #define _CLIXON_HASH_H_
 
 struct clicon_hash {
-    qelem_t	h_qelem;
+    qelem_t     h_qelem;
     char       *h_key;
-    size_t	h_vlen;
+    size_t      h_vlen;
     void       *h_val;
 };
 typedef struct clicon_hash *clicon_hash_t;
@@ -71,13 +71,13 @@ int            clicon_hash_keys(clicon_hash_t *hash, char ***vector, size_t *nke
  *       printf ("%s = %s\n", k, (char *)clicon_hash_value(h, k, NULL));
  *     } hash_each_end();
 */
-#define clicon_hash_each(__hash__, __key__) 					\
-{									\
-    int __i__;								\
-    size_t __n__;							\
-    char **__k__ = hash_keys((__hash__),&__n__);			\
-    if (__k__) {							\
+#define clicon_hash_each(__hash__, __key__)                                     \
+{                                                                       \
+    int __i__;                                                          \
+    size_t __n__;                                                       \
+    char **__k__ = hash_keys((__hash__),&__n__);                        \
+    if (__k__) {                                                        \
         for(__i__ = 0; __i__ < __n__ && ((__key__) = __k__[__i__]); __i__++)
-#define clicon_hash_each_end(__hash__)	 if (__k__) free(__k__);  } }
+#define clicon_hash_each_end(__hash__)   if (__k__) free(__k__);  } }
 
 #endif /* _CLIXON_HASH_H_ */

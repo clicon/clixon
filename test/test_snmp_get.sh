@@ -133,14 +133,14 @@ function testinit(){
 function testexit(){
     stop_snmp
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 

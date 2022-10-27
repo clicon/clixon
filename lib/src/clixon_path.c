@@ -118,13 +118,13 @@
  *     err;
  *   ...
  *   if (cplist)
- *	clixon_path_free(cplist);
+ *      clixon_path_free(cplist);
  * @endcode
  * @see clixon_path_free 
  */
 static int
 api_path_parse(char         *api_path,
-	       clixon_path **cplist)
+               clixon_path **cplist)
 {
     int                  retval = -1;
     clixon_api_path_yacc ay = {0,};
@@ -134,14 +134,14 @@ api_path_parse(char         *api_path,
     ay.ay_name = "api-path parser";
     ay.ay_linenum = 1;
     if (api_path_scan_init(&ay) < 0)
-	goto done;
+        goto done;
     if (api_path_parse_init(&ay) < 0)
-	goto done;
+        goto done;
     if (clixon_api_path_parseparse(&ay) != 0) { /* yacc returns 1 on error */
-	clicon_log(LOG_NOTICE, "API-PATH error: on line %d", ay.ay_linenum);
-	if (clicon_errno == 0)
-	    clicon_err(OE_XML, 0, "API-PATH parser error with no error code (should not happen)");
-	goto done;
+        clicon_log(LOG_NOTICE, "API-PATH error: on line %d", ay.ay_linenum);
+        if (clicon_errno == 0)
+            clicon_err(OE_XML, 0, "API-PATH parser error with no error code (should not happen)");
+        goto done;
     }
     api_path_parse_exit(&ay);
     api_path_scan_exit(&ay);
@@ -163,13 +163,13 @@ api_path_parse(char         *api_path,
  *     err;
  *   ...
  *   if (cplist)
- *	clixon_path_free(cplist);
+ *      clixon_path_free(cplist);
  * @endcode
  * @see clixon_path_free 
  */
 static int
 instance_id_parse(char         *path,
-		  clixon_path **cplist)
+                  clixon_path **cplist)
 {
     int                     retval = -1;
     clixon_instance_id_yacc iy = {0,};
@@ -179,14 +179,14 @@ instance_id_parse(char         *path,
     iy.iy_name = "instance-id parser";
     iy.iy_linenum = 1;
     if (instance_id_scan_init(&iy) < 0)
-	goto done;
+        goto done;
     if (instance_id_parse_init(&iy) < 0)
-	goto done;
+        goto done;
     if (clixon_instance_id_parseparse(&iy) != 0) { /* yacc returns 1 on error */
-	clicon_log(LOG_NOTICE, "Instance-id error: on line %d", iy.iy_linenum);
-	if (clicon_errno == 0)
-	    clicon_err(OE_XML, 0, "Instance-id parser error with no error code (should not happen)");
-	goto done;
+        clicon_log(LOG_NOTICE, "Instance-id error: on line %d", iy.iy_linenum);
+        if (clicon_errno == 0)
+            clicon_err(OE_XML, 0, "Instance-id parser error with no error code (should not happen)");
+        goto done;
     }
     instance_id_parse_exit(&iy);
     instance_id_scan_exit(&iy);
@@ -202,14 +202,14 @@ clixon_path_free(clixon_path *cplist)
     clixon_path *cp;
     
     while ((cp = cplist) != NULL){
-	DELQ(cp, cplist, clixon_path *);
-	if (cp->cp_prefix)
-	    free(cp->cp_prefix);
-	if (cp->cp_id)
-	    free(cp->cp_id);
-	if (cp->cp_cvk)
-	    cvec_free(cp->cp_cvk);
-	free(cp);
+        DELQ(cp, cplist, clixon_path *);
+        if (cp->cp_prefix)
+            free(cp->cp_prefix);
+        if (cp->cp_id)
+            free(cp->cp_id);
+        if (cp->cp_cvk)
+            cvec_free(cp->cp_cvk);
+        free(cp);
     }
     return 0;
 }
@@ -218,32 +218,32 @@ clixon_path_free(clixon_path *cplist)
  */
 static int
 clixon_path_print(FILE        *f,
-		  clixon_path *cplist)
+                  clixon_path *cplist)
 {
     clixon_path *cp;
     cg_var      *cv;
     
     if ((cp = cplist) != NULL){
-	do {
-	    fprintf(f, "/");
-	    if (cp->cp_prefix)
-		fprintf(f, "%s:", cp->cp_prefix);
-	    fprintf(f, "%s", cp->cp_id);
-	    if (cp->cp_cvk){
-		fprintf(f, "=");
-		cv = NULL;
-		while ((cv = cvec_each(cp->cp_cvk, cv)) != NULL){
-		    fprintf(f, "[");
-		    /* If cvk has one integer argument, interpret as position, eg x/y[42] */
-		    if (cvec_len(cp->cp_cvk) == 1 && (cv_type_get(cv) == CGV_UINT32))
-			fprintf(f, "%u", cv_uint32_get(cv));
-		    else
-			fprintf(f, "%s=\"%s\"", cv_name_get(cv), cv_string_get(cv));
-		    fprintf(f, "]");
-		}
-	    }
-	    cp = NEXTQ(clixon_path *, cp); 
-	} while (cp && cp != cplist);
+        do {
+            fprintf(f, "/");
+            if (cp->cp_prefix)
+                fprintf(f, "%s:", cp->cp_prefix);
+            fprintf(f, "%s", cp->cp_id);
+            if (cp->cp_cvk){
+                fprintf(f, "=");
+                cv = NULL;
+                while ((cv = cvec_each(cp->cp_cvk, cv)) != NULL){
+                    fprintf(f, "[");
+                    /* If cvk has one integer argument, interpret as position, eg x/y[42] */
+                    if (cvec_len(cp->cp_cvk) == 1 && (cv_type_get(cv) == CGV_UINT32))
+                        fprintf(f, "%u", cv_uint32_get(cv));
+                    else
+                        fprintf(f, "%s=\"%s\"", cv_name_get(cv), cv_string_get(cv));
+                    fprintf(f, "]");
+                }
+            }
+            cp = NEXTQ(clixon_path *, cp); 
+        } while (cp && cp != cplist);
     }
     fprintf(f, "\n");
     return 0;
@@ -258,7 +258,7 @@ clixon_path_print(FILE        *f,
  */
 int
 xml_yang_root(cxobj  *x,
-	      cxobj **xr)
+              cxobj **xr)
 {
     int        retval = -1;
     cxobj     *xp;
@@ -266,14 +266,14 @@ xml_yang_root(cxobj  *x,
     yang_stmt *yp;
     
     while ((xp = xml_parent(x)) != NULL){
-	if ((y = xml_spec(x)) != NULL &&
-	    (yp = yang_parent_get(y)) != NULL)
-	    /* Actually, maybe only the Y_MODULE clause is relevant */
-	    if (yp==NULL ||
-		yang_keyword_get(yp) == Y_MODULE ||
-		yang_keyword_get(yp) == Y_SUBMODULE)
-		break; /* x is the root */
-	x = xp;
+        if ((y = xml_spec(x)) != NULL &&
+            (yp = yang_parent_get(y)) != NULL)
+            /* Actually, maybe only the Y_MODULE clause is relevant */
+            if (yp==NULL ||
+                yang_keyword_get(yp) == Y_MODULE ||
+                yang_keyword_get(yp) == Y_SUBMODULE)
+                break; /* x is the root */
+        x = xp;
     }
     *xr = x;
     retval = 0;
@@ -294,8 +294,8 @@ xml_yang_root(cxobj  *x,
  */ 
 static int
 yang2api_path_fmt_1(yang_stmt *ys, 
-		    int        inclkey,
-		    cbuf      *cb)
+                    int        inclkey,
+                    cbuf      *cb)
 {
     yang_stmt *yp; /* parent */
     yang_stmt *ymod = NULL;
@@ -305,73 +305,73 @@ yang2api_path_fmt_1(yang_stmt *ys,
     int        retval = -1;
     
     if ((yp = yang_parent_get(ys)) == NULL){
-	clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
+        goto done;
     }
     if (yp != NULL && /* XXX rm */
-	yang_keyword_get(yp) != Y_MODULE && 
-	yang_keyword_get(yp) != Y_SUBMODULE){
+        yang_keyword_get(yp) != Y_MODULE && 
+        yang_keyword_get(yp) != Y_SUBMODULE){
 
-	if (yang2api_path_fmt_1((yang_stmt *)yp, 1, cb) < 0) /* recursive call */
-	    goto done;
-	if (yang_keyword_get(yp) != Y_CHOICE && yang_keyword_get(yp) != Y_CASE){
+        if (yang2api_path_fmt_1((yang_stmt *)yp, 1, cb) < 0) /* recursive call */
+            goto done;
+        if (yang_keyword_get(yp) != Y_CHOICE && yang_keyword_get(yp) != Y_CASE){
 #if 0
-	    /* In some cases, such as cli_show_auto, a trailing '/' should
-	     * NOT be present if ys is a key in a list.
-	     * But in other cases (I think most), the / should be there,
-	     * so a patch is added in cli_show_auto instead.
-	     */
-		if (yang_keyword_get(ys) == Y_LEAF && yp && 
-		    yang_keyword_get(yp) == Y_LIST &&
-		    yang_key_match(yp, ys->ys_argument, NULL) == 1)
-		;
-	    else
+            /* In some cases, such as cli_show_auto, a trailing '/' should
+             * NOT be present if ys is a key in a list.
+             * But in other cases (I think most), the / should be there,
+             * so a patch is added in cli_show_auto instead.
+             */
+                if (yang_keyword_get(ys) == Y_LEAF && yp && 
+                    yang_keyword_get(yp) == Y_LIST &&
+                    yang_key_match(yp, ys->ys_argument, NULL) == 1)
+                ;
+            else
 #endif
-		cprintf(cb, "/");
-	}
-	/* If parent namespace/module is different from child -> add child prefix */
-	if (ys_real_module(yp, &ypmod) < 0)
-	    goto done;
-	if (ys_real_module(ys, &ymod) < 0)
-	    goto done;
-	if (ypmod != ymod)
-	    cprintf(cb, "%s:", yang_argument_get(ymod));
+                cprintf(cb, "/");
+        }
+        /* If parent namespace/module is different from child -> add child prefix */
+        if (ys_real_module(yp, &ypmod) < 0)
+            goto done;
+        if (ys_real_module(ys, &ymod) < 0)
+            goto done;
+        if (ypmod != ymod)
+            cprintf(cb, "%s:", yang_argument_get(ymod));
     }
     else /* top symbol - mark with name prefix */
-	cprintf(cb, "/%s:", yang_argument_get(yp));
+        cprintf(cb, "/%s:", yang_argument_get(yp));
 
     if (inclkey){
-	if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
-	    cprintf(cb, "%s", yang_argument_get(ys));
+        if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
+            cprintf(cb, "%s", yang_argument_get(ys));
     }
     else{
-	if (yang_keyword_get(ys) == Y_LEAF && yp && 
-	    yang_keyword_get(yp) == Y_LIST){
-	    if (yang_key_match(yp, yang_argument_get(ys), NULL) == 0)
-		cprintf(cb, "%s", yang_argument_get(ys)); /* Not if leaf and key */
-	}
-	else  
-	    if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
-		cprintf(cb, "%s", yang_argument_get(ys));
+        if (yang_keyword_get(ys) == Y_LEAF && yp && 
+            yang_keyword_get(yp) == Y_LIST){
+            if (yang_key_match(yp, yang_argument_get(ys), NULL) == 0)
+                cprintf(cb, "%s", yang_argument_get(ys)); /* Not if leaf and key */
+        }
+        else  
+            if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
+                cprintf(cb, "%s", yang_argument_get(ys));
     }
 
     switch (yang_keyword_get(ys)){
     case Y_LIST:
-	cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
-	if (cvec_len(cvk))
-	    cprintf(cb, "=");
-	/* Iterate over individual keys  */
-	for (i=0; i<cvec_len(cvk); i++){
-	    if (i)
-		cprintf(cb, ",");
-	    cprintf(cb, "%%s");
-	}
-	break;
+        cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
+        if (cvec_len(cvk))
+            cprintf(cb, "=");
+        /* Iterate over individual keys  */
+        for (i=0; i<cvec_len(cvk); i++){
+            if (i)
+                cprintf(cb, ",");
+            cprintf(cb, "%%s");
+        }
+        break;
     case Y_LEAF_LIST:
-	cprintf(cb, "=%%s");
-	break;
+        cprintf(cb, "=%%s");
+        break;
     default:
-	break;
+        break;
     } /* switch */
     retval = 0;
  done:
@@ -392,26 +392,26 @@ yang2api_path_fmt_1(yang_stmt *ys,
  */ 
 int
 yang2api_path_fmt(yang_stmt   *ys, 
-		  int          inclkey,
-		  char       **api_path_fmt)
+                  int          inclkey,
+                  char       **api_path_fmt)
 {
     int   retval = -1;
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     if (yang2api_path_fmt_1(ys, inclkey, cb) < 0)
-	goto done;
+        goto done;
     if ((*api_path_fmt = strdup(cbuf_get(cb))) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	goto done;
+        clicon_err(OE_UNIX, errno, "strdup");
+        goto done;
     }
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -449,9 +449,9 @@ yang2api_path_fmt(yang_stmt   *ys,
  */
 int
 api_path_fmt2api_path(const char *api_path_fmt, 
-		      cvec       *cvv, 
-		      char      **api_path,
-		      int        *cvv_i)
+                      cvec       *cvv, 
+                      char      **api_path,
+                      int        *cvv_i)
 {
     int     retval = -1;
     char    c;
@@ -465,55 +465,55 @@ api_path_fmt2api_path(const char *api_path_fmt,
     size_t  len;
     
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     j = 1; /* j==0 is cli string */
     len = strlen(api_path_fmt);
     for (i=0; i<len; i++){
-	c = api_path_fmt[i];
-	if (esc){
-	    esc = 0;
-	    if (c!='s')
-		continue;
-	    if (j == cvec_len(cvv)) /* last element */
-		;
-	    else{
-		if ((cv = cvec_i(cvv, j++)) == NULL){
-		    clicon_err(OE_XML, 0, "Number of elements in cvv does not match api_path_fmt string");
-		    goto done;
-		}
-		if ((str = cv2str_dup(cv)) == NULL){
-		    clicon_err(OE_UNIX, errno, "cv2str_dup");
-		    goto done;
-		}
-		if (uri_percent_encode(&strenc, "%s", str) < 0)
-		    goto done;
-		cprintf(cb, "%s", strenc); 
-		free(strenc); strenc = NULL;
-		free(str); str = NULL;
-	    }
-	}
-	else
-	    if (c == '%')
-		esc++;
-	    else{
-		if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%' && j == cvec_len(cvv))
-		    ; /* skip */
-		else
-		    cprintf(cb, "%c", c);
-	    }
+        c = api_path_fmt[i];
+        if (esc){
+            esc = 0;
+            if (c!='s')
+                continue;
+            if (j == cvec_len(cvv)) /* last element */
+                ;
+            else{
+                if ((cv = cvec_i(cvv, j++)) == NULL){
+                    clicon_err(OE_XML, 0, "Number of elements in cvv does not match api_path_fmt string");
+                    goto done;
+                }
+                if ((str = cv2str_dup(cv)) == NULL){
+                    clicon_err(OE_UNIX, errno, "cv2str_dup");
+                    goto done;
+                }
+                if (uri_percent_encode(&strenc, "%s", str) < 0)
+                    goto done;
+                cprintf(cb, "%s", strenc); 
+                free(strenc); strenc = NULL;
+                free(str); str = NULL;
+            }
+        }
+        else
+            if (c == '%')
+                esc++;
+            else{
+                if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%' && j == cvec_len(cvv))
+                    ; /* skip */
+                else
+                    cprintf(cb, "%c", c);
+            }
     }
     if ((*api_path = strdup(cbuf_get(cb))) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	goto done;
+        clicon_err(OE_UNIX, errno, "strdup");
+        goto done;
     }
     if (cvv_i) /* Last entry in cvv used */
-	*cvv_i = j; 
+        *cvv_i = j; 
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -542,8 +542,8 @@ api_path_fmt2api_path(const char *api_path_fmt,
  */ 
 int
 api_path_fmt2xpath(char  *api_path_fmt, 
-		   cvec  *cvv, 
-		   char **xpath)
+                   cvec  *cvv, 
+                   char **xpath)
 {
     int     retval = -1;
     char    c;
@@ -556,47 +556,47 @@ api_path_fmt2xpath(char  *api_path_fmt,
     size_t  len;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     j = 1; /* j==0 is cli string */
     len = strlen(api_path_fmt);
     for (i=0; i<len; i++){
-	c = api_path_fmt[i];
-	if (esc){
-	    esc = 0;
-	    if (c!='s')
-		continue;
-	    if (j == cvec_len(cvv)) /* last element */
-		;
-	    else{
-		cv = cvec_i(cvv, j++);
-		if ((str = cv2str_dup(cv)) == NULL){
-		    clicon_err(OE_UNIX, errno, "cv2str_dup");
-		    goto done;
-		}
-		cprintf(cb, "[%s='%s']", cv_name_get(cv), str);
-		free(str);
-	    }
-	}
-	else /* regular char */
-	    if (c == '%')
-		esc++;
-	    else{
-		if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%')
-		    ; /* skip */
-		else
-		    cprintf(cb, "%c", c);
-	    }
+        c = api_path_fmt[i];
+        if (esc){
+            esc = 0;
+            if (c!='s')
+                continue;
+            if (j == cvec_len(cvv)) /* last element */
+                ;
+            else{
+                cv = cvec_i(cvv, j++);
+                if ((str = cv2str_dup(cv)) == NULL){
+                    clicon_err(OE_UNIX, errno, "cv2str_dup");
+                    goto done;
+                }
+                cprintf(cb, "[%s='%s']", cv_name_get(cv), str);
+                free(str);
+            }
+        }
+        else /* regular char */
+            if (c == '%')
+                esc++;
+            else{
+                if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%')
+                    ; /* skip */
+                else
+                    cprintf(cb, "%c", c);
+            }
     }
     if ((*xpath = strdup4(cbuf_get(cb))) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	goto done;
+        clicon_err(OE_UNIX, errno, "strdup");
+        goto done;
     }
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -638,11 +638,11 @@ api_path_fmt2xpath(char  *api_path_fmt,
  */
 static int
 api_path2xpath_cvv(cvec       *api_path,
-		   int         offset,
-		   yang_stmt  *yspec,
-		   cbuf       *xpath,
-		   cvec      **nscp,
-		   cxobj     **xerr)
+                   int         offset,
+                   yang_stmt  *yspec,
+                   cbuf       *xpath,
+                   cvec      **nscp,
+                   cxobj     **xerr)
 {
     int        retval = -1;
     int        i;
@@ -664,158 +664,158 @@ api_path2xpath_cvv(cvec       *api_path,
     cvec      *nsc = NULL;
     char      *val1;
     char      *decval;
-			
+                        
     cprintf(xpath, "/");
     /* Initialize namespace context */
     if ((nsc = xml_nsctx_init(NULL, NULL)) == NULL)
-	goto done;
+        goto done;
     if ((cberr = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     for (i=offset; i<cvec_len(api_path); i++){
         cv = cvec_i(api_path, i);
-	nodeid = cv_name_get(cv);
-	/* api-path: prefix points to module */
-	if (nodeid_split(nodeid, &prefix, &name) < 0)
-	    goto done;
-	clicon_debug(1, "%s [%d] cvname: %s:%s",
-		     __FUNCTION__, i, prefix?prefix:"", name);
-	/* top-node must have prefix */
-	if (i == offset && prefix == NULL){
-	    cprintf(cberr, "'%s': Expected prefix:name", nodeid);
-	    if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
-		goto done;
-	    goto fail;
-	}
-	ymod = NULL;
-	if (prefix){ /* if prefix -> get module + change namespace */
-	    if ((ymod = yang_find_module_by_name(yspec, prefix)) == NULL){
-		cprintf(cberr, "No such yang module: %s", prefix);
-		if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
-		    goto done;
-		goto fail;
-	    }
-	    namespace = yang_find_mynamespace(ymod); /* change namespace */
-	}
-	if (i == offset && ymod) /* root */
-	    y = yang_find_datanode(ymod, name);
-	else
-	    y = yang_find_datanode(y, name);
-	if (y == NULL){
-	    if (xerr && netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
-		goto done;
-	    goto fail;
-	}
+        nodeid = cv_name_get(cv);
+        /* api-path: prefix points to module */
+        if (nodeid_split(nodeid, &prefix, &name) < 0)
+            goto done;
+        clicon_debug(1, "%s [%d] cvname: %s:%s",
+                     __FUNCTION__, i, prefix?prefix:"", name);
+        /* top-node must have prefix */
+        if (i == offset && prefix == NULL){
+            cprintf(cberr, "'%s': Expected prefix:name", nodeid);
+            if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+                goto done;
+            goto fail;
+        }
+        ymod = NULL;
+        if (prefix){ /* if prefix -> get module + change namespace */
+            if ((ymod = yang_find_module_by_name(yspec, prefix)) == NULL){
+                cprintf(cberr, "No such yang module: %s", prefix);
+                if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+                    goto done;
+                goto fail;
+            }
+            namespace = yang_find_mynamespace(ymod); /* change namespace */
+        }
+        if (i == offset && ymod) /* root */
+            y = yang_find_datanode(ymod, name);
+        else
+            y = yang_find_datanode(y, name);
+        if (y == NULL){
+            if (xerr && netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
+                goto done;
+            goto fail;
+        }
 
-	/* Get XML/xpath prefix given namespace.
-	 * note different from api-path prefix
-	 */
-	if (xml_nsctx_get_prefix(nsc, namespace, &xprefix) == 0){
-	    xprefix = yang_find_myprefix(y);
-	    clicon_debug(1, "%s prefix not found add it %s", __FUNCTION__, xprefix);
-	    /* not found, add it to nsc 
-	     * XXX: do we always have to add it? It could be default?
-	     */
-	    //	    if (xml2prefix(x1, namespace, &pexisting));
-	    if (xml_nsctx_add(nsc, xprefix, namespace) < 0)
-		goto done;
-	}
-	/* Check if has value, means '=' */
-	if (cv_type_get(cv) == CGV_STRING){
-	    /* val is uri percent encoded, eg x%2Cy,z */
+        /* Get XML/xpath prefix given namespace.
+         * note different from api-path prefix
+         */
+        if (xml_nsctx_get_prefix(nsc, namespace, &xprefix) == 0){
+            xprefix = yang_find_myprefix(y);
+            clicon_debug(1, "%s prefix not found add it %s", __FUNCTION__, xprefix);
+            /* not found, add it to nsc 
+             * XXX: do we always have to add it? It could be default?
+             */
+            //      if (xml2prefix(x1, namespace, &pexisting));
+            if (xml_nsctx_add(nsc, xprefix, namespace) < 0)
+                goto done;
+        }
+        /* Check if has value, means '=' */
+        if (cv_type_get(cv) == CGV_STRING){
+            /* val is uri percent encoded, eg x%2Cy,z */
             if ((val = cv2str_dup(cv)) == NULL)
                 goto done;
-	    switch (yang_keyword_get(y)){
-	    case Y_LIST:
-		/* Transform value "a,b,c" to "a" "b" "c" (nvalvec=3)
-		 * Note that vnr can be < length of cvk, due to empty or unset values
-		 */
-		if (valvec){ /* loop, valvec may have been used before */
-		    free(valvec);
-		    valvec = NULL;
-		}
-		if ((valvec = clicon_strsep(val, ",", &nvalvec)) == NULL)
-		    goto done;
-		cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
-		cvi = NULL;
-		/* Iterate over individual yang keys  */
-		if (i != offset)
-		    cprintf(xpath, "/");
-		if (xprefix)
-		    cprintf(xpath, "%s:", xprefix);
-		cprintf(xpath, "%s", name);
-		vi = 0;
-		while ((cvi = cvec_each(cvk, cvi)) != NULL && vi<nvalvec){
-		    cprintf(xpath, "[");
-		    if (xprefix)
-			cprintf(xpath, "%s:", xprefix);
-		    val1 = valvec[vi++];
-		    /* valvec is uri encoded, needs decoding */
-		    if (uri_percent_decode(val1, &decval) < 0)
-			goto done;
-		    cprintf(xpath, "%s='%s']", cv_string_get(cvi), decval);
-		    if (decval){
-			free(decval);
-			decval = NULL;
-		    }
-		}
-		break;
-	    case Y_LEAF_LIST: /* XXX: LOOP? */
-		if (i != offset)
-		    cprintf(xpath, "/");
-		if (xprefix)
-		    cprintf(xpath, "%s:", xprefix);
-		cprintf(xpath, "%s", name);
-		if (val)
-		    cprintf(xpath, "[.='%s']", val);
-		else
-		    cprintf(xpath, "[.='']");
-		break;
-	    default:
-		if (i != offset)
-		    cprintf(xpath, "/");
-		if (xprefix)
-		    cprintf(xpath, "%s:", xprefix);
-		cprintf(xpath, "%s", name);
-		break;
-	    }
-	    if (val)
-		free(val);
+            switch (yang_keyword_get(y)){
+            case Y_LIST:
+                /* Transform value "a,b,c" to "a" "b" "c" (nvalvec=3)
+                 * Note that vnr can be < length of cvk, due to empty or unset values
+                 */
+                if (valvec){ /* loop, valvec may have been used before */
+                    free(valvec);
+                    valvec = NULL;
+                }
+                if ((valvec = clicon_strsep(val, ",", &nvalvec)) == NULL)
+                    goto done;
+                cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
+                cvi = NULL;
+                /* Iterate over individual yang keys  */
+                if (i != offset)
+                    cprintf(xpath, "/");
+                if (xprefix)
+                    cprintf(xpath, "%s:", xprefix);
+                cprintf(xpath, "%s", name);
+                vi = 0;
+                while ((cvi = cvec_each(cvk, cvi)) != NULL && vi<nvalvec){
+                    cprintf(xpath, "[");
+                    if (xprefix)
+                        cprintf(xpath, "%s:", xprefix);
+                    val1 = valvec[vi++];
+                    /* valvec is uri encoded, needs decoding */
+                    if (uri_percent_decode(val1, &decval) < 0)
+                        goto done;
+                    cprintf(xpath, "%s='%s']", cv_string_get(cvi), decval);
+                    if (decval){
+                        free(decval);
+                        decval = NULL;
+                    }
+                }
+                break;
+            case Y_LEAF_LIST: /* XXX: LOOP? */
+                if (i != offset)
+                    cprintf(xpath, "/");
+                if (xprefix)
+                    cprintf(xpath, "%s:", xprefix);
+                cprintf(xpath, "%s", name);
+                if (val)
+                    cprintf(xpath, "[.='%s']", val);
+                else
+                    cprintf(xpath, "[.='']");
+                break;
+            default:
+                if (i != offset)
+                    cprintf(xpath, "/");
+                if (xprefix)
+                    cprintf(xpath, "%s:", xprefix);
+                cprintf(xpath, "%s", name);
+                break;
+            }
+            if (val)
+                free(val);
         }
         else{
-	    if (i != offset)
-		cprintf(xpath, "/");
-	    if (xprefix)
-		cprintf(xpath, "%s:", xprefix);
-	    cprintf(xpath, "%s", name);
-	}
-	if (prefix){
-	    free(prefix);
-	    prefix = NULL;
-	}
-	if (name){
-	    free(name);
-	    name = NULL;
-	}
+            if (i != offset)
+                cprintf(xpath, "/");
+            if (xprefix)
+                cprintf(xpath, "%s:", xprefix);
+            cprintf(xpath, "%s", name);
+        }
+        if (prefix){
+            free(prefix);
+            prefix = NULL;
+        }
+        if (name){
+            free(name);
+            name = NULL;
+        }
     } /* for */
     retval = 1; /* OK */
     if (nscp){
-	*nscp = nsc;
-	nsc = NULL;
+        *nscp = nsc;
+        nsc = NULL;
     }
  done:
     clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
-	cbuf_free(cberr);
+        cbuf_free(cberr);
     if (valvec)
-	free(valvec);
+        free(valvec);
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (nsc)
-	cvec_free(nsc);
+        cvec_free(nsc);
     if (name)
-	free(name);
+        free(name);
     return retval;
  fail:
     retval = 0; /* Validation failed */
@@ -846,10 +846,10 @@ api_path2xpath_cvv(cvec       *api_path,
  */
 int
 api_path2xpath(char       *api_path,
-	       yang_stmt  *yspec,
-	       char      **xpathp,
-	       cvec      **nsc,
-	       cxobj     **xerr)
+               yang_stmt  *yspec,
+               char      **xpathp,
+               cvec      **nsc,
+               cxobj     **xerr)
 {
     int    retval = -1;
     cvec  *cvv = NULL; /* api-path vector */
@@ -857,39 +857,39 @@ api_path2xpath(char       *api_path,
     int    ret;
 
     if (api_path == NULL){
-	clicon_err(OE_XML, EINVAL, "api_path is NULL");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "api_path is NULL");
+        goto done;
     }
     /* Special case: "//" is not handled proerly by uri_str2cvec 
      * and is an invalid api-path
      */
     if (strlen(api_path)>1 && api_path[0] == '/' && api_path[1] == '/'){
-	if (xerr && netconf_invalid_value_xml(xerr, "application", "Invalid api-path beginning with //") < 0)
-	    goto done;
-	goto fail;
+        if (xerr && netconf_invalid_value_xml(xerr, "application", "Invalid api-path beginning with //") < 0)
+            goto done;
+        goto fail;
     }
     /* Split api-path into cligen variable vector, 
      * dont decode since api_path2xpath_cvv takes uri encode as input */
     if (uri_str2cvec(api_path, '/', '=', 0, &cvv) < 0)
-	goto done;
+        goto done;
     if ((xpath = cbuf_new()) == NULL)
         goto done;
     if ((ret = api_path2xpath_cvv(cvv, 0, yspec, xpath, nsc, xerr)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     /* prepare output xpath parameter */
     if (xpathp)
-	if ((*xpathp = strdup(cbuf_get(xpath))) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
+        if ((*xpathp = strdup(cbuf_get(xpath))) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
     retval = 1;
  done:
     if (cvv)
-	cvec_free(cvv);
+        cvec_free(cvv);
     if (xpath)
-	cbuf_free(xpath);
+        cbuf_free(xpath);
     return retval;
  fail:
     retval = 0; /* Validation failed */
@@ -916,14 +916,14 @@ api_path2xpath(char       *api_path,
  */
 static int
 api_path2xml_vec(char      **vec,
-		 int         nvec,
-		 cxobj      *x0,
-		 yang_stmt  *y0,
-		 yang_class  nodeclass,
-		 int         strict,
-		 cxobj     **xbotp,
-		 yang_stmt **ybotp,
-		 cxobj     **xerr)
+                 int         nvec,
+                 cxobj      *x0,
+                 yang_stmt  *y0,
+                 yang_class  nodeclass,
+                 int         strict,
+                 cxobj     **xbotp,
+                 yang_stmt **ybotp,
+                 cxobj     **xerr)
 {
     int        retval = -1;
     char      *nodeid;
@@ -947,190 +947,190 @@ api_path2xml_vec(char      **vec,
     char      *val = NULL;
 
     if ((nodeid = vec[0]) == NULL || strlen(nodeid)==0){
-	if (xbotp)
-	    *xbotp = x0;
-	if (ybotp)
-	    *ybotp = y0;
-	goto ok;
+        if (xbotp)
+            *xbotp = x0;
+        if (ybotp)
+            *ybotp = y0;
+        goto ok;
     } /* E.g "x=1,2" -> nodeid:x restval=1,2 */
     if ((cberr = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     /* restval is RFC 3896 encoded */
     if ((restval = index(nodeid, '=')) != NULL){
-	*restval = '\0';
-	restval++;
+        *restval = '\0';
+        restval++;
     }
     /* Split into prefix and localname */
     if (nodeid_split(nodeid, &prefix, &name) < 0)
-	goto done;
+        goto done;
     if (yang_keyword_get(y0) == Y_SPEC){ /* top-node */
-	if (prefix == NULL){
-	    cprintf(cberr, "api-path element '%s', expected prefix:name", nodeid);
-	    if (xerr &&
-		netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
-		goto done;
-	    goto fail;
-	}
-	if ((ymod = yang_find_module_by_name(y0, prefix)) == NULL){
-	    cprintf(cberr, "No such yang module prefix");
-	    if (xerr &&
-		netconf_unknown_element_xml(xerr, "application", prefix, cbuf_get(cberr)) < 0)
-		goto done;
-	    goto fail;
-	}
-	namespace = yang_find_mynamespace(ymod);
-	y0 = ymod;
+        if (prefix == NULL){
+            cprintf(cberr, "api-path element '%s', expected prefix:name", nodeid);
+            if (xerr &&
+                netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+                goto done;
+            goto fail;
+        }
+        if ((ymod = yang_find_module_by_name(y0, prefix)) == NULL){
+            cprintf(cberr, "No such yang module prefix");
+            if (xerr &&
+                netconf_unknown_element_xml(xerr, "application", prefix, cbuf_get(cberr)) < 0)
+                goto done;
+            goto fail;
+        }
+        namespace = yang_find_mynamespace(ymod);
+        y0 = ymod;
     }
     y = (nodeclass==YC_SCHEMANODE)?
-	yang_find_schemanode(y0, name):
-	yang_find_datanode(y0, name);
+        yang_find_schemanode(y0, name):
+        yang_find_datanode(y0, name);
     if (y == NULL){
-	if (xerr &&
-	    netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
-	    goto done;
-	goto fail;
+        if (xerr &&
+            netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
+            goto done;
+        goto fail;
     }
     if (prefix && namespace == NULL){
-	if ((ymod = yang_find_module_by_name(ys_spec(y0), prefix)) == NULL){
-	    cprintf(cberr, "api-path element prefix: '%s', no such yang module", prefix);
-	    if (xerr &&
-		netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
-		goto done;
-	    goto fail;
-	}
-	namespace = yang_find_mynamespace(ymod);
+        if ((ymod = yang_find_module_by_name(ys_spec(y0), prefix)) == NULL){
+            cprintf(cberr, "api-path element prefix: '%s', no such yang module", prefix);
+            if (xerr &&
+                netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+                goto done;
+            goto fail;
+        }
+        namespace = yang_find_mynamespace(ymod);
     }
     switch (yang_keyword_get(y)){
     case Y_LEAF_LIST:
 #if 0
-	if (restval==NULL){
-	    clicon_err(OE_XML, 0, "malformed key, expected '=restval'");
-	    goto done;
-	}
+        if (restval==NULL){
+            clicon_err(OE_XML, 0, "malformed key, expected '=restval'");
+            goto done;
+        }
 #endif
-	if (x0 == NULL)
-	    break;
-	if ((x = xml_new(yang_argument_get(y), x0, CX_ELMNT)) == NULL)
-	    goto done;
-	xml_spec_set(x, y);
-	if ((xb = xml_new("body", x, CX_BODY)) == NULL)
-	    goto done; 
-	if (restval){
-	    if (uri_percent_decode(restval, &val) < 0)
-		goto done;
-	}
-	if (val && xml_value_set(xb, val) < 0)
-	    goto done;
-	break;
+        if (x0 == NULL)
+            break;
+        if ((x = xml_new(yang_argument_get(y), x0, CX_ELMNT)) == NULL)
+            goto done;
+        xml_spec_set(x, y);
+        if ((xb = xml_new("body", x, CX_BODY)) == NULL)
+            goto done; 
+        if (restval){
+            if (uri_percent_decode(restval, &val) < 0)
+                goto done;
+        }
+        if (val && xml_value_set(xb, val) < 0)
+            goto done;
+        break;
     case Y_LIST:
-	cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
-	if (restval==NULL){
-	    if (strict){
-		cprintf(cberr, "malformed key =%s, expected '=restval'", nodeid);
-		if (xerr &&
-		    netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
-		    goto done;
-	        goto fail;
-	    }
-	}
-	else{
-	    /* Transform restval "a,b,c" to "a" "b" "c" (nvalvec=3) 
-	     * Note that vnr can be < length of cvk, due to empty or unset values
-	     * Note also that valvec entries are encoded
-	     */
-	    if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
-		goto done;
-	    if ((nvalvec != cvec_len(cvk)) && strict){ 	    
-		cprintf(cberr, "List key %s length mismatch", name);
-		if (xerr &&
-		    netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
-		    goto done;
-		goto fail;
-	    }
-	}
-	cvi = NULL;
-	/* create list object */
-	if (x0){
-	    if ((x = xml_new(name, x0, CX_ELMNT)) == NULL)
-		goto done;
-	    xml_spec_set(x, y);
-	}
-	vi = 0;
-	/* Create keys */
-	while ((cvi = cvec_each(cvk, cvi)) != NULL){
-	    keyname = cv_string_get(cvi);
-	    if ((ykey = yang_find(y, Y_LEAF, keyname)) == NULL){
-		cprintf(cberr, "List statement \"%s\" has no key leaf \"%s\"",
-			yang_argument_get(y), keyname);
-		if (xerr &&
-		    netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
-		    goto done;
-		goto fail;
-	    }
-	    if (x != NULL){
-		if ((xn = xml_new(keyname, x, CX_ELMNT)) == NULL)
-		    goto done; 
-		xml_spec_set(xn, ykey);
-		if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
-		    goto done;
-		if (vi++ < nvalvec){
-		    /* Here assign and decode key values */
-		    val = NULL;
-		    if (uri_percent_decode(valvec[vi-1], &val) < 0)
-			goto done;
-		    if (xml_value_set(xb, val) < 0)
-			goto done;
-		    if (val){
-			free(val);
-			val = NULL;
-		    }
-		}
-	    }
-	}
-	break;
+        cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
+        if (restval==NULL){
+            if (strict){
+                cprintf(cberr, "malformed key =%s, expected '=restval'", nodeid);
+                if (xerr &&
+                    netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
+                    goto done;
+                goto fail;
+            }
+        }
+        else{
+            /* Transform restval "a,b,c" to "a" "b" "c" (nvalvec=3) 
+             * Note that vnr can be < length of cvk, due to empty or unset values
+             * Note also that valvec entries are encoded
+             */
+            if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
+                goto done;
+            if ((nvalvec != cvec_len(cvk)) && strict){      
+                cprintf(cberr, "List key %s length mismatch", name);
+                if (xerr &&
+                    netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
+                    goto done;
+                goto fail;
+            }
+        }
+        cvi = NULL;
+        /* create list object */
+        if (x0){
+            if ((x = xml_new(name, x0, CX_ELMNT)) == NULL)
+                goto done;
+            xml_spec_set(x, y);
+        }
+        vi = 0;
+        /* Create keys */
+        while ((cvi = cvec_each(cvk, cvi)) != NULL){
+            keyname = cv_string_get(cvi);
+            if ((ykey = yang_find(y, Y_LEAF, keyname)) == NULL){
+                cprintf(cberr, "List statement \"%s\" has no key leaf \"%s\"",
+                        yang_argument_get(y), keyname);
+                if (xerr &&
+                    netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+                    goto done;
+                goto fail;
+            }
+            if (x != NULL){
+                if ((xn = xml_new(keyname, x, CX_ELMNT)) == NULL)
+                    goto done; 
+                xml_spec_set(xn, ykey);
+                if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
+                    goto done;
+                if (vi++ < nvalvec){
+                    /* Here assign and decode key values */
+                    val = NULL;
+                    if (uri_percent_decode(valvec[vi-1], &val) < 0)
+                        goto done;
+                    if (xml_value_set(xb, val) < 0)
+                        goto done;
+                    if (val){
+                        free(val);
+                        val = NULL;
+                    }
+                }
+            }
+        }
+        break;
     default: /* eg Y_CONTAINER, Y_LEAF */
-	if (restval != NULL){
-	    if (strict){
-		cprintf(cberr, "malformed api-path, =%s not expected", restval);
-		if (xerr &&
-		    netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
-		    goto done;
-	        goto fail;
-	    }
-	}
-	if (x0 &&
-	    (x = xml_find_type(x0, NULL, name, CX_ELMNT)) == NULL){ /* eg key of list */
-	    if ((x = xml_new(name, x0, CX_ELMNT)) == NULL)
-		goto done;
-	    xml_spec_set(x, y);
-	}
-	break;
+        if (restval != NULL){
+            if (strict){
+                cprintf(cberr, "malformed api-path, =%s not expected", restval);
+                if (xerr &&
+                    netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
+                    goto done;
+                goto fail;
+            }
+        }
+        if (x0 &&
+            (x = xml_find_type(x0, NULL, name, CX_ELMNT)) == NULL){ /* eg key of list */
+            if ((x = xml_new(name, x0, CX_ELMNT)) == NULL)
+                goto done;
+            xml_spec_set(x, y);
+        }
+        break;
     }
     if (x && namespace){
-	if (xmlns_set(x, NULL, namespace) < 0)
-	    goto done;
+        if (xmlns_set(x, NULL, namespace) < 0)
+            goto done;
     }
     if ((retval = api_path2xml_vec(vec+1, nvec-1, 
-				   x, y, 
-				   nodeclass, strict, 
-				   xbotp, ybotp, xerr)) < 1)
-	goto done;
+                                   x, y, 
+                                   nodeclass, strict, 
+                                   xbotp, ybotp, xerr)) < 1)
+        goto done;
  ok:
     retval = 1; /* OK */
  done:
     clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
-	cbuf_free(cberr);
+        cbuf_free(cberr);
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (name)
-	free(name);
+        free(name);
     if (valvec)
-	free(valvec);
+        free(valvec);
     if (val)
-	free(val);
+        free(val);
     return retval;
  fail:
     retval = 0; /* invalid api-path or XML */
@@ -1171,13 +1171,13 @@ api_path2xml_vec(char      **vec,
  */
 int
 api_path2xml(char       *api_path,
-	     yang_stmt  *yspec,
-	     cxobj      *xtop,
-	     yang_class  nodeclass,
-	     int         strict,
-	     cxobj     **xbotp,
-	     yang_stmt **ybotp,
-	     cxobj     **xerr)
+             yang_stmt  *yspec,
+             cxobj      *xtop,
+             yang_class  nodeclass,
+             int         strict,
+             cxobj     **xbotp,
+             yang_stmt **ybotp,
+             cxobj     **xerr)
 {
     int    retval = -1;
     char **vec = NULL;
@@ -1187,44 +1187,44 @@ api_path2xml(char       *api_path,
 
     clicon_debug(2, "%s api_path:%s", __FUNCTION__, api_path);
     if ((cberr = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     if (*api_path != '/'){
-	cprintf(cberr, "Invalid api-path: %s (must start with '/')", api_path);
-	if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
-	    goto done;
-	goto fail;
+        cprintf(cberr, "Invalid api-path: %s (must start with '/')", api_path);
+        if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+            goto done;
+        goto fail;
     }
     if ((vec = clicon_strsep(api_path, "/", &nvec)) == NULL)
-	goto done;
+        goto done;
     /* Remove trailing '/'. Like in /a/ -> /a */
     if (nvec > 1 && !strlen(vec[nvec-1]))
-	nvec--;
+        nvec--;
     if (nvec < 1){
-	cprintf(cberr, "Malformed api-path: %s: too short)", api_path);
-	if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
-	    goto done;
-	goto fail;
+        cprintf(cberr, "Malformed api-path: %s: too short)", api_path);
+        if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+            goto done;
+        goto fail;
     }
     nvec--; /* NULL-terminated */
     if ((retval = api_path2xml_vec(vec+1, nvec,
-				   xtop, yspec, nodeclass, strict, 
-				   xbotp, ybotp, xerr)) < 1)
-	goto done;
+                                   xtop, yspec, nodeclass, strict, 
+                                   xbotp, ybotp, xerr)) < 1)
+        goto done;
     /* Fix namespace */
     if (xbotp){
-	xml_yang_root(*xbotp, &xroot);
-	if (xmlns_assign(xroot) < 0)
-	    goto done;
+        xml_yang_root(*xbotp, &xroot);
+        if (xmlns_assign(xroot) < 0)
+            goto done;
     }
     // ok:
     retval = 1;
  done:
     if (cberr)
-	cbuf_free(cberr);
+        cbuf_free(cberr);
     if (vec)
-	free(vec);
+        free(vec);
     return retval;
  fail:
     retval = 0;
@@ -1242,7 +1242,7 @@ api_path2xml(char       *api_path,
 int
 xml2api_path_1(cxobj *x,
 
-	       cbuf  *cb)
+               cbuf  *cb)
 {
     int           retval = -1;
     yang_stmt    *y = NULL;
@@ -1259,59 +1259,59 @@ xml2api_path_1(cxobj *x,
     cxobj        *xp;
     
     if ((y = xml_spec(x)) == NULL){
-	cprintf(cb, "/%s", xml_name(x));
-	goto ok;
+        cprintf(cb, "/%s", xml_name(x));
+        goto ok;
     }
     ymod = ys_module(y);
     xp = xml_parent(x);
     if (ymod && xp && xml_spec(xp)==NULL) /* Add prefix only if root */
-	cprintf(cb, "/%s:%s", yang_argument_get(ymod), xml_name(x));
+        cprintf(cb, "/%s:%s", yang_argument_get(ymod), xml_name(x));
     else
-	cprintf(cb, "/%s", xml_name(x));
+        cprintf(cb, "/%s", xml_name(x));
     keyword = yang_keyword_get(y);
     switch (keyword){
     case Y_LEAF_LIST:
-	b = xml_body(x);
-	enc = NULL;
-	if (uri_percent_encode(&enc, "%s", b) < 0)
-	    goto done;
-	cprintf(cb, "=%s", enc?enc:"");
-	if (enc)
-	    free(enc);
-	break;
+        b = xml_body(x);
+        enc = NULL;
+        if (uri_percent_encode(&enc, "%s", b) < 0)
+            goto done;
+        cprintf(cb, "=%s", enc?enc:"");
+        if (enc)
+            free(enc);
+        break;
     case Y_LIST:
-	cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
-	if (cvec_len(cvk))
-	    cprintf(cb, "=");
-	/* Iterate over individual keys  */
-	cvi = NULL;
-	i = 0;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	    keyname = cv_string_get(cvi);
-	    if ((xkey = xml_find(x, keyname)) == NULL)
-		goto done; /* No key in xml */
-	    if ((xb = xml_find(x, keyname)) == NULL)
-		goto done;
-	    if (i++)
-		cprintf(cb, ",");
-	    b = xml_body(xb);
-	    enc = NULL;
-	    if (uri_percent_encode(&enc, "%s", b) < 0)
-		goto done;
-	    cprintf(cb, "%s", enc?enc:"");
-	    if (enc)
-		free(enc);
-	}
-	break;
+        cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
+        if (cvec_len(cvk))
+            cprintf(cb, "=");
+        /* Iterate over individual keys  */
+        cvi = NULL;
+        i = 0;
+        while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+            keyname = cv_string_get(cvi);
+            if ((xkey = xml_find(x, keyname)) == NULL)
+                goto done; /* No key in xml */
+            if ((xb = xml_find(x, keyname)) == NULL)
+                goto done;
+            if (i++)
+                cprintf(cb, ",");
+            b = xml_body(xb);
+            enc = NULL;
+            if (uri_percent_encode(&enc, "%s", b) < 0)
+                goto done;
+            cprintf(cb, "%s", enc?enc:"");
+            if (enc)
+                free(enc);
+        }
+        break;
     default:
-	break;
+        break;
     }
 #if 0
     { /* Just for testing */
-	cxobj *xc;
-	if ((xc = xml_child_i_type(x, 0, CX_ELMNT)) != NULL)
-	    if (xml2api_path_1(xc, cb) < 0)
-		goto done;
+        cxobj *xc;
+        if ((xc = xml_child_i_type(x, 0, CX_ELMNT)) != NULL)
+            if (xml2api_path_1(xc, cb) < 0)
+                goto done;
     }
 #endif
  ok:
@@ -1336,7 +1336,7 @@ xml2api_path_1(cxobj *x,
  */
 static int
 api_path_resolve(clixon_path *cplist,
-		 yang_stmt   *yt)
+                 yang_stmt   *yt)
 {
     int          retval = -1;
     clixon_path *cp;
@@ -1346,56 +1346,56 @@ api_path_resolve(clixon_path *cplist,
     cg_var      *cvy;
     
     if ((cp = cplist) != NULL){
-	do {
-	    if (yang_keyword_get(yt) == Y_SPEC){
-		if (cp->cp_prefix == NULL){
-		    clicon_err(OE_YANG, ENOENT, "Modulename not defined for top-level id.");
-		    goto fail;
-		}
-		if ((yt = yang_find_module_by_name(yt, cp->cp_prefix)) == NULL){
-		    clicon_err(OE_YANG, ENOENT, "Modulename in api-path does not correspond to existing module");
-		    goto fail;
-		}
-	    }
-	    if ((yc = yang_find_datanode(yt, cp->cp_id)) == NULL){
-		clicon_err(OE_YANG, ENOENT, "Corresponding yang node for id not found");
-		goto fail;
-	    }
-	    cp->cp_yang = yc;
-	    if (cp->cp_cvk){
-		/* Iterate over yang list keys and assign as names (or "." for leaf-list) in cvk */
-		if (yang_keyword_get(yc) == Y_LEAF_LIST){
-		    cva = NULL;
-		    while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
-			if (cv_name_get(cva) == NULL)
-			    cv_name_set(cva, ".");
-		    }
-		}
-		else if (yang_keyword_get(yc) == Y_LIST){
-		    if (cvec_len(cp->cp_cvk) > cvec_len(yang_cvec_get(yc))){
-			clicon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list");
-			goto fail;
-		    }
-		    i = 0;
-		    cva = NULL;
-		    while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
-			if (cv_name_get(cva) != NULL){
-			    clicon_err(OE_YANG, ENOENT, "Unexpected named key %s (shouldnt happen)",
-				       cv_name_get(cva));
-			    goto fail;
-			}
-			cvy = cvec_i(yang_cvec_get(yc), i++);
-			cv_name_set(cva, cv_string_get(cvy));
-		    }
-		}
-		else{
-		    clicon_err(OE_YANG, ENOENT, "key-values only defined for list or leaf-list");
-		    goto fail;
-		}
-	    }
-	    yt = yc;
-    	    cp = NEXTQ(clixon_path *, cp);
-	} while (cp && cp != cplist);
+        do {
+            if (yang_keyword_get(yt) == Y_SPEC){
+                if (cp->cp_prefix == NULL){
+                    clicon_err(OE_YANG, ENOENT, "Modulename not defined for top-level id.");
+                    goto fail;
+                }
+                if ((yt = yang_find_module_by_name(yt, cp->cp_prefix)) == NULL){
+                    clicon_err(OE_YANG, ENOENT, "Modulename in api-path does not correspond to existing module");
+                    goto fail;
+                }
+            }
+            if ((yc = yang_find_datanode(yt, cp->cp_id)) == NULL){
+                clicon_err(OE_YANG, ENOENT, "Corresponding yang node for id not found");
+                goto fail;
+            }
+            cp->cp_yang = yc;
+            if (cp->cp_cvk){
+                /* Iterate over yang list keys and assign as names (or "." for leaf-list) in cvk */
+                if (yang_keyword_get(yc) == Y_LEAF_LIST){
+                    cva = NULL;
+                    while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
+                        if (cv_name_get(cva) == NULL)
+                            cv_name_set(cva, ".");
+                    }
+                }
+                else if (yang_keyword_get(yc) == Y_LIST){
+                    if (cvec_len(cp->cp_cvk) > cvec_len(yang_cvec_get(yc))){
+                        clicon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list");
+                        goto fail;
+                    }
+                    i = 0;
+                    cva = NULL;
+                    while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
+                        if (cv_name_get(cva) != NULL){
+                            clicon_err(OE_YANG, ENOENT, "Unexpected named key %s (shouldnt happen)",
+                                       cv_name_get(cva));
+                            goto fail;
+                        }
+                        cvy = cvec_i(yang_cvec_get(yc), i++);
+                        cv_name_set(cva, cv_string_get(cvy));
+                    }
+                }
+                else{
+                    clicon_err(OE_YANG, ENOENT, "key-values only defined for list or leaf-list");
+                    goto fail;
+                }
+            }
+            yt = yc;
+            cp = NEXTQ(clixon_path *, cp);
+        } while (cp && cp != cplist);
     }
     retval = 1;
  done:
@@ -1426,7 +1426,7 @@ api_path_resolve(clixon_path *cplist,
  */
 static int
 instance_id_resolve(clixon_path *cplist,
-		    yang_stmt   *yt)
+                    yang_stmt   *yt)
 {
     int          retval = -1;
     clixon_path *cp;
@@ -1437,64 +1437,64 @@ instance_id_resolve(clixon_path *cplist,
     
     yspec = ys_spec(yt);
     if ((cp = cplist) != NULL){
-	do {
-	    if (cp->cp_prefix == NULL){
-		clicon_err(OE_YANG, ENOENT, "No prefix of identifier (keynames may omit prefix)");
-		goto fail;
-	    }
-	    if (yang_keyword_get(yt) == Y_SPEC){
-		if ((yt = yang_find_module_by_prefix_yspec(yspec, cp->cp_prefix)) == NULL){
-		    clicon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
-		    goto fail;
-		}
-	    }
-	    if ((yc = yang_find_datanode(yt, cp->cp_id)) == NULL){
-		clicon_err(OE_YANG, ENOENT, "Node %s used in path has no corresponding yang node",
-			   cp->cp_id);
-		goto fail;
-	    }
-	    cp->cp_yang = yc;
-	    switch (yang_keyword_get(yc)){
-	    case Y_LIST:
-		if (cp->cp_cvk == NULL){
+        do {
+            if (cp->cp_prefix == NULL){
+                clicon_err(OE_YANG, ENOENT, "No prefix of identifier (keynames may omit prefix)");
+                goto fail;
+            }
+            if (yang_keyword_get(yt) == Y_SPEC){
+                if ((yt = yang_find_module_by_prefix_yspec(yspec, cp->cp_prefix)) == NULL){
+                    clicon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
+                    goto fail;
+                }
+            }
+            if ((yc = yang_find_datanode(yt, cp->cp_id)) == NULL){
+                clicon_err(OE_YANG, ENOENT, "Node %s used in path has no corresponding yang node",
+                           cp->cp_id);
+                goto fail;
+            }
+            cp->cp_yang = yc;
+            switch (yang_keyword_get(yc)){
+            case Y_LIST:
+                if (cp->cp_cvk == NULL){
 #if 0 /* see key-value presence in lists note above */
-		    clicon_err(OE_YANG, ENOENT, "key-values mandatory for lists");
-		    goto fail;		    
+                    clicon_err(OE_YANG, ENOENT, "key-values mandatory for lists");
+                    goto fail;              
 #endif
-		    break;
-		}
+                    break;
+                }
 #if 0 /* see key-value presence in lists note above */
-		if (cvec_len(cp->cp_cvk) > cvec_len(yang_cvec_get(yc))){
-		    clicon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list ");
-		    goto fail;
-		}
+                if (cvec_len(cp->cp_cvk) > cvec_len(yang_cvec_get(yc))){
+                    clicon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list ");
+                    goto fail;
+                }
 #endif
-		cva = NULL;
-		while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
-		    if ((kname = cv_name_get(cva)) != NULL){ /* Check var exists */
-			if (yang_find(yc, 0, kname) == NULL){
-			    clicon_err(OE_YANG, ENOENT, "Index variable %s used in path is not child of Yang node %s",
-				       kname, yang_argument_get(yc));
-			    goto fail;
-			}
-		    }
-		    else{ /* Assume index */
-			
-		    }
-		}
-		break;
-	    case Y_LEAF_LIST:
-		break;
-	    default:
-		if (cp->cp_cvk != NULL){
-		    clicon_err(OE_YANG, ENOENT, "key-values only defined for list or leaf-list");
-		    goto fail;
-		}
-		break;
-	    }
-	    yt = yc;
-    	    cp = NEXTQ(clixon_path *, cp);
-	} while (cp && cp != cplist);
+                cva = NULL;
+                while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
+                    if ((kname = cv_name_get(cva)) != NULL){ /* Check var exists */
+                        if (yang_find(yc, 0, kname) == NULL){
+                            clicon_err(OE_YANG, ENOENT, "Index variable %s used in path is not child of Yang node %s",
+                                       kname, yang_argument_get(yc));
+                            goto fail;
+                        }
+                    }
+                    else{ /* Assume index */
+                        
+                    }
+                }
+                break;
+            case Y_LEAF_LIST:
+                break;
+            default:
+                if (cp->cp_cvk != NULL){
+                    clicon_err(OE_YANG, ENOENT, "key-values only defined for list or leaf-list");
+                    goto fail;
+                }
+                break;
+            }
+            yt = yc;
+            cp = NEXTQ(clixon_path *, cp);
+        } while (cp && cp != cplist);
     }
     retval = 1;
  done:
@@ -1516,9 +1516,9 @@ instance_id_resolve(clixon_path *cplist,
  */
 static int
 clixon_path_search(cxobj        *xt,
-		   yang_stmt    *yt,
-		   clixon_path  *cplist,
-		   clixon_xvec **xvec0)
+                   yang_stmt    *yt,
+                   clixon_path  *cplist,
+                   clixon_xvec **xvec0)
 {
     int          retval = -1;
     char        *modns; /* Module namespace of api-path */
@@ -1526,54 +1526,54 @@ clixon_path_search(cxobj        *xt,
     clixon_xvec *xvecp = NULL;
     clixon_xvec *xvecc = NULL;
     yang_stmt   *yc;
-    cxobj       *xp;	
+    cxobj       *xp;    
     int          i;
     cg_var      *cv;
 
     if ((xvecp = clixon_xvec_new()) == NULL)
-	goto done;    
+        goto done;    
     modns = NULL;
     if ((cp = cplist) != NULL){
-	if (clixon_xvec_append(xvecp, xt) < 0)
-	    goto done;
-	do {
-	    yc = cp->cp_yang;
-	    if ((modns = yang_find_mynamespace(yc)) == NULL)
-		goto fail;
-	    if (xvecp){
-		if ((xvecc = clixon_xvec_new()) == NULL)
-		    goto done;
-		for (i=0; i<clixon_xvec_len(xvecp); i++){
-		    xp = clixon_xvec_i(xvecp, i); /* Iterate over parent set */
-		    if (cp->cp_cvk && /* cornercase for instance-id [<pos>] special case */
-			(yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST) &&
-			cvec_len(cp->cp_cvk) == 1 && (cv = cvec_i(cp->cp_cvk,0)) &&
-			(cv_type_get(cv) == CGV_UINT32)){
-			if (clixon_xml_find_pos(xp, yc, cv_uint32_get(cv), xvecc) < 0)
-			    goto done;
-		    }
-		    else if (clixon_xml_find_index(xp, yang_parent_get(yc),
-						   modns, yang_argument_get(yc),
-						   cp->cp_cvk, xvecc) < 0)
-			goto done;
-		    /* XXX: xvecc append! either here or in the functions */
-		} /* for */
-	    }
-	    if (xvecp)
-		clixon_xvec_free(xvecp);
-	    xvecp = xvecc;
-	    xvecc = NULL;
-	    cp = NEXTQ(clixon_path *, cp);
-	} while (cp && cp != cplist);
-	*xvec0 = xvecp;
-	xvecp = NULL;
+        if (clixon_xvec_append(xvecp, xt) < 0)
+            goto done;
+        do {
+            yc = cp->cp_yang;
+            if ((modns = yang_find_mynamespace(yc)) == NULL)
+                goto fail;
+            if (xvecp){
+                if ((xvecc = clixon_xvec_new()) == NULL)
+                    goto done;
+                for (i=0; i<clixon_xvec_len(xvecp); i++){
+                    xp = clixon_xvec_i(xvecp, i); /* Iterate over parent set */
+                    if (cp->cp_cvk && /* cornercase for instance-id [<pos>] special case */
+                        (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST) &&
+                        cvec_len(cp->cp_cvk) == 1 && (cv = cvec_i(cp->cp_cvk,0)) &&
+                        (cv_type_get(cv) == CGV_UINT32)){
+                        if (clixon_xml_find_pos(xp, yc, cv_uint32_get(cv), xvecc) < 0)
+                            goto done;
+                    }
+                    else if (clixon_xml_find_index(xp, yang_parent_get(yc),
+                                                   modns, yang_argument_get(yc),
+                                                   cp->cp_cvk, xvecc) < 0)
+                        goto done;
+                    /* XXX: xvecc append! either here or in the functions */
+                } /* for */
+            }
+            if (xvecp)
+                clixon_xvec_free(xvecp);
+            xvecp = xvecc;
+            xvecc = NULL;
+            cp = NEXTQ(clixon_path *, cp);
+        } while (cp && cp != cplist);
+        *xvec0 = xvecp;
+        xvecp = NULL;
     } /* if */
     retval = 1;
  done:
     if (xvecp)
-	clixon_xvec_free(xvecp);
+        clixon_xvec_free(xvecp);
     if (xvecc)
-	clixon_xvec_free(xvecc);
+        clixon_xvec_free(xvecc);
     return retval;
  fail: /* eg no yang for api-path, no match */
     *xvec0 = NULL;
@@ -1609,11 +1609,11 @@ clixon_path_search(cxobj        *xt,
  */
 int
 clixon_xml_find_api_path(cxobj        *xt, 
-			 yang_stmt    *yt,
-			 cxobj      ***xvec,
-			 int          *xlen,
-			 const char   *format,
-			 ...)
+                         yang_stmt    *yt,
+                         cxobj      ***xvec,
+                         int          *xlen,
+                         const char   *format,
+                         ...)
 {
     int              retval = -1;
     va_list          ap;
@@ -1628,42 +1628,42 @@ clixon_xml_find_api_path(cxobj        *xt,
     va_end(ap);
     /* allocate an api-path string exactly fitting the length */
     if ((api_path = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: actually compute api-path string content */
     va_start(ap, format);
     if (vsnprintf(api_path, len+1, format, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     /* Parse api-path string to structured clixon-path data */
     if (api_path_parse(api_path, &cplist) < 0)
-	goto done;
+        goto done;
     if (clicon_debug_get())
-	clixon_path_print(stderr, cplist);
+        clixon_path_print(stderr, cplist);
     /* Resolve module:name to yang-stmt, fail if not successful */
     if ((ret = api_path_resolve(cplist, yt)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     if ((ret = clixon_path_search(xt, yt, cplist, &xv)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     /* Convert to api xvec format */
     if (clixon_xvec_extract(xv, xvec, xlen, NULL) < 0)
-	goto done;
+        goto done;
     retval = 1;
  done:
     if (xv)
-	clixon_xvec_free(xv);
+        clixon_xvec_free(xv);
     if (cplist)
-	clixon_path_free(cplist);
+        clixon_path_free(cplist);
     if (api_path)
-	free(api_path);
+        free(api_path);
     return retval;
  fail:
     retval = 0;
@@ -1703,11 +1703,11 @@ clixon_xml_find_api_path(cxobj        *xt,
  */
 int
 clixon_xml_find_instance_id(cxobj     *xt, 
-			    yang_stmt *yt,
-			    cxobj   ***xvec,
-			    int       *xlen,
-			    const char *format,
-			    ...)
+                            yang_stmt *yt,
+                            cxobj   ***xvec,
+                            int       *xlen,
+                            const char *format,
+                            ...)
 {
     int          retval = -1;
     va_list      ap;
@@ -1722,41 +1722,41 @@ clixon_xml_find_instance_id(cxobj     *xt,
     va_end(ap);
     /* allocate a path string exactly fitting the length */
     if ((path = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: actually compute api-path string content */
     va_start(ap, format);
     if (vsnprintf(path, len+1, format, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     if (instance_id_parse(path, &cplist) < 0)
-	goto done;
+        goto done;
     if (clicon_debug_get())
-	clixon_path_print(stderr, cplist);
+        clixon_path_print(stderr, cplist);
     /* Resolve module:name to pointer to yang-stmt, fail if not successful */
     if ((ret = instance_id_resolve(cplist, yt)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     if ((ret = clixon_path_search(xt, yt, cplist, &xv)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     /* Convert to api xvec format */
     if (xv && clixon_xvec_extract(xv, xvec, xlen, NULL) < 0)
-	goto done;
+        goto done;
     retval = 1;
  done:
     if (xv)
-	clixon_xvec_free(xv);
+        clixon_xvec_free(xv);
     if (cplist)
-	clixon_path_free(cplist);
+        clixon_path_free(cplist);
     if (path)
-	free(path);
+        free(path);
     return retval;
  fail:
     retval = 0;
@@ -1792,9 +1792,9 @@ clixon_xml_find_instance_id(cxobj     *xt,
  */
 int
 clixon_instance_id_bind(yang_stmt  *yt,
-			cvec       *nsctx,
-			const char *format,
-			...)
+                        cvec       *nsctx,
+                        const char *format,
+                        ...)
 {
     int          retval = -1;
     va_list      ap;
@@ -1810,45 +1810,45 @@ clixon_instance_id_bind(yang_stmt  *yt,
     va_end(ap);
     /* allocate a path string exactly fitting the length */
     if ((path = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: actually compute api-path string content */
     va_start(ap, format);
     if (vsnprintf(path, len+1, format, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     if (instance_id_parse(path, &cplist) < 0)
-	goto done;
+        goto done;
     if (clicon_debug_get())
-	clixon_path_print(stderr, cplist);
+        clixon_path_print(stderr, cplist);
     /* Resolve module:name to pointer to yang-stmt, fail if not successful */
     if ((ret = instance_id_resolve(cplist, yt)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     /* Loop through prefixes used */
     if ((cp = cplist) != NULL){
-	do {
-	    if (cp->cp_prefix &&
-		cp->cp_yang &&
-		(namespace = yang_find_mynamespace(cp->cp_yang)) != NULL){
-		if (xml_nsctx_get(nsctx, cp->cp_prefix) == NULL)
-		    if (xml_nsctx_add(nsctx, cp->cp_prefix, namespace) < 0)
-			goto done;
-	    }
-	    cp = NEXTQ(clixon_path *, cp);
-	} while (cp && cp != cplist);
+        do {
+            if (cp->cp_prefix &&
+                cp->cp_yang &&
+                (namespace = yang_find_mynamespace(cp->cp_yang)) != NULL){
+                if (xml_nsctx_get(nsctx, cp->cp_prefix) == NULL)
+                    if (xml_nsctx_add(nsctx, cp->cp_prefix, namespace) < 0)
+                        goto done;
+            }
+            cp = NEXTQ(clixon_path *, cp);
+        } while (cp && cp != cplist);
     }
     retval = 1;
  done:
     if (cplist)
-	clixon_path_free(cplist);
+        clixon_path_free(cplist);
     if (path)
-	free(path);
+        free(path);
     return retval;
  fail:
     retval = 0;
@@ -1869,10 +1869,10 @@ clixon_instance_id_bind(yang_stmt  *yt,
  */
 int
 clixon_instance_id_parse(yang_stmt    *yt,
-			 clixon_path **cplistp,
-			 cxobj       **xerr,
-			 const char   *format,
-			 ...)
+                         clixon_path **cplistp,
+                         cxobj       **xerr,
+                         const char   *format,
+                         ...)
 {
     int          retval = -1;
     va_list      ap;
@@ -1886,39 +1886,39 @@ clixon_instance_id_parse(yang_stmt    *yt,
     va_end(ap);
     /* allocate a path string exactly fitting the length */
     if ((path = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: actually compute api-path string content */
     va_start(ap, format);
     if (vsnprintf(path, len+1, format, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     if (instance_id_parse(path, &cplist) < 0)
-	goto done;
+        goto done;
     if (clicon_debug_get())
-	clixon_path_print(stderr, cplist);
+        clixon_path_print(stderr, cplist);
     /* Resolve module:name to pointer to yang-stmt, fail if not successful */
     if ((ret = instance_id_resolve(cplist, yt)) < 0)
-	goto done;
+        goto done;
     if (ret == 0){
-	if (xerr && netconf_invalid_value_xml(xerr, "application", clicon_err_reason) < 0)
-	    goto done;
-	goto fail;
+        if (xerr && netconf_invalid_value_xml(xerr, "application", clicon_err_reason) < 0)
+            goto done;
+        goto fail;
     }
     if (cplistp){
-	*cplistp = cplist;
-	cplist = NULL;
+        *cplistp = cplist;
+        cplist = NULL;
     }
     retval = 1;
  done:
     if (cplist)
-	clixon_path_free(cplist);
+        clixon_path_free(cplist);
     if (path)
-	free(path);
+        free(path);
     return retval;
  fail:
     retval = 0;

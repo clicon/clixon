@@ -63,8 +63,8 @@
  */
 int
 set_signal(int     signo, 
-	   void  (*handler)(int), 
-	   void (**oldhandler)(int))
+           void  (*handler)(int), 
+           void (**oldhandler)(int))
 {
 #if defined(HAVE_SIGACTION)
     struct sigaction sold, snew;
@@ -73,11 +73,11 @@ set_signal(int     signo,
     sigemptyset(&snew.sa_mask);
      snew.sa_flags = SA_RESTART;
      if (sigaction(signo, &snew, &sold) < 0){
-	clicon_err(OE_UNIX, errno, "sigaction");
-	return -1;
+        clicon_err(OE_UNIX, errno, "sigaction");
+        return -1;
      }
      if (oldhandler)
-	 *oldhandler = sold.sa_handler;
+         *oldhandler = sold.sa_handler;
     return 0;
 #elif defined(HAVE_SIGVEC)
     assert(0);
@@ -91,16 +91,16 @@ set_signal(int     signo,
 void
 clicon_signal_block(int sig)
 {
-	sigset_t
-		set;
+        sigset_t
+                set;
 
-	sigemptyset(&set);
-	if (sig)
-		sigaddset(&set, sig);
-	else 
-		sigfillset(&set);
+        sigemptyset(&set);
+        if (sig)
+                sigaddset(&set, sig);
+        else 
+                sigfillset(&set);
 
-	sigprocmask(SIG_BLOCK, &set, NULL);
+        sigprocmask(SIG_BLOCK, &set, NULL);
 }
 
 /*! Unblock signal. 
@@ -109,36 +109,36 @@ clicon_signal_block(int sig)
 void
 clicon_signal_unblock(int sig)
 {
-	sigset_t
-		set;
+        sigset_t
+                set;
 
-	sigemptyset(&set);
-	if (sig)
-		sigaddset(&set, sig);
-	else 
-		sigfillset(&set);
+        sigemptyset(&set);
+        if (sig)
+                sigaddset(&set, sig);
+        else 
+                sigfillset(&set);
 
-	sigprocmask(SIG_UNBLOCK, &set, NULL);
+        sigprocmask(SIG_UNBLOCK, &set, NULL);
 }
 
 /*! Save complete signal context
  */
 int
 clixon_signal_save(sigset_t        *sigset,
-		   struct sigaction sigaction_vec[32])
+                   struct sigaction sigaction_vec[32])
 {
     int retval = -1;
     int i;
     
     if (sigprocmask(0, NULL, sigset) < 0){
-	clicon_err(OE_UNIX, errno, "sigprocmask");
-	goto done;
+        clicon_err(OE_UNIX, errno, "sigprocmask");
+        goto done;
     }
     for (i=1; i<32; i++){
-	if (sigaction(i, NULL, &sigaction_vec[i]) < 0){
-	    clicon_err(OE_UNIX, errno, "sigaction");
-	    goto done;
-	}
+        if (sigaction(i, NULL, &sigaction_vec[i]) < 0){
+            clicon_err(OE_UNIX, errno, "sigaction");
+            goto done;
+        }
     }
     retval = 0;
  done:
@@ -151,22 +151,22 @@ clixon_signal_save(sigset_t        *sigset,
  */
 int
 clixon_signal_restore(sigset_t        *sigset,
-		      struct sigaction sigaction_vec[32])
+                      struct sigaction sigaction_vec[32])
 {
     int retval = -1;
     int i;
     
     if (sigprocmask(SIG_SETMASK, sigset, NULL) < 0){
-	clicon_err(OE_UNIX, errno, "sigprocmask");
-	goto done;
+        clicon_err(OE_UNIX, errno, "sigprocmask");
+        goto done;
     }
     for (i=1; i<32; i++){
-	if (i == SIGKILL || i == SIGSTOP)
-	    continue;
-	if (sigaction(i, &sigaction_vec[i], NULL) < 0){
-	    clicon_err(OE_UNIX, errno, "sigaction");
-	    goto done;
-	}
+        if (i == SIGKILL || i == SIGSTOP)
+            continue;
+        if (sigaction(i, &sigaction_vec[i], NULL) < 0){
+            clicon_err(OE_UNIX, errno, "sigaction");
+            goto done;
+        }
     }
     retval = 0;
  done:
@@ -182,7 +182,7 @@ clixon_signal_restore(sigset_t        *sigset,
  */
 int
 pidfile_get_fd(FILE  *f,
-		pid_t *pid0)
+                pid_t *pid0)
 {
     char   *ptr;
     char    buf[32];
@@ -191,10 +191,10 @@ pidfile_get_fd(FILE  *f,
     *pid0 = 0;
     ptr = fgets(buf, sizeof(buf), f);
     if (ptr != NULL && (pid = atoi(ptr)) > 1) {
-	if (kill(pid, 0) == 0 || errno != ESRCH) {
-	    /* Yes there is a process */
-	    *pid0 = pid;
-	}
+        if (kill(pid, 0) == 0 || errno != ESRCH) {
+            /* Yes there is a process */
+            *pid0 = pid;
+        }
     }
     return 0;
 }
@@ -208,14 +208,14 @@ pidfile_get_fd(FILE  *f,
  */
 int
 pidfile_get(char  *pidfile, 
-	    pid_t *pid)
+            pid_t *pid)
 {
     FILE   *f;
 
     *pid = 0;
     if ((f = fopen(pidfile, "r")) != NULL){
-	pidfile_get_fd(f, pid);
-	fclose(f);
+        pidfile_get_fd(f, pid);
+        fclose(f);
     }
     return 0;
 }
@@ -264,20 +264,20 @@ pidfile_write(char *pidfile)
 
     /* Here, there should be no old agent and no pidfile */
     if ((f = fopen(pidfile, "w")) == NULL){
-	if (errno == EACCES)
-	    clicon_err(OE_DAEMON, errno, "Creating pid-file %s (Try run as root?)", pidfile);
-	else
-	    clicon_err(OE_DAEMON, errno, "Creating pid-file %s", pidfile);
-	goto done;
+        if (errno == EACCES)
+            clicon_err(OE_DAEMON, errno, "Creating pid-file %s (Try run as root?)", pidfile);
+        else
+            clicon_err(OE_DAEMON, errno, "Creating pid-file %s", pidfile);
+        goto done;
     } 
     if ((retval = fprintf(f, "%ld\n", (long) getpid())) < 1){
-	clicon_err(OE_DAEMON, errno, "Could not write pid to %s", pidfile);
-	goto done;
+        clicon_err(OE_DAEMON, errno, "Could not write pid to %s", pidfile);
+        goto done;
     }
     clicon_debug(1, "Opened pidfile %s with pid %d", pidfile, getpid());
     retval = 0;
  done:
     if (f != NULL)
-	fclose(f);
+        fclose(f);
     return retval;
 }

@@ -20,69 +20,69 @@ function memonce(){
     clixon_restconf=
     clixon_snmp=
     case "$what" in
-	'cli')
-	    valgrindtest=1
-	    : ${DEMWAIT:=5} # valgrind backend needs some time to get up 
-	    clixon_cli="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp  --track-fds=yes --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_cli"
-	    ;;
-	'netconf')
-	    valgrindtest=1
-    	    : ${DEMWAIT:=5} # valgrind backend needs some time to get up 
-	    clixon_netconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp  --track-fds=yes  --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_netconf"
-	    ;;
-	'backend')
-	    valgrindtest=2 # This means backend valgrind test
-	    : ${DEMWAIT:=10} # valgrind backend needs some time to get up 
-	    # trace-children=no for test_restconf_rpc.sh
-	    clixon_backend="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no --log-file=$valgrindfile clixon_backend"
-	    ;;
-	'restconf')
-	    valgrindtest=3 # This means restconf valgrind test
-	    sudo chmod 660 $valgrindfile
-	    sudo chown www-data $valgrindfile
-	    : ${DEMWAIT:=15} # valgrind backend needs some time to get up 
-	    clixon_restconf="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile clixon_restconf"
-
-	    ;;
-	'snmp')
-	    valgrindtest=4 # This means snmp valgrind test
+        'cli')
+            valgrindtest=1
+            : ${DEMWAIT:=5} # valgrind backend needs some time to get up 
+            clixon_cli="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp  --track-fds=yes --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_cli"
+            ;;
+        'netconf')
+            valgrindtest=1
+            : ${DEMWAIT:=5} # valgrind backend needs some time to get up 
+            clixon_netconf="/usr/bin/valgrind --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp  --track-fds=yes  --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_netconf"
+            ;;
+        'backend')
+            valgrindtest=2 # This means backend valgrind test
+            : ${DEMWAIT:=10} # valgrind backend needs some time to get up 
+            # trace-children=no for test_restconf_rpc.sh
+            clixon_backend="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no --log-file=$valgrindfile clixon_backend"
+            ;;
+        'restconf')
+            valgrindtest=3 # This means restconf valgrind test
             sudo chmod 660 $valgrindfile
-	    : ${DEMWAIT:=15} # valgrind snmp needs some time to get up
-	    clixon_snmp="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile clixon_snmp"
-	    ;;
+            sudo chown www-data $valgrindfile
+            : ${DEMWAIT:=15} # valgrind backend needs some time to get up 
+            clixon_restconf="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile clixon_restconf"
 
-	*)
-	    echo "usage: $0 cli|netconf|restconf|backend|snmp" # valgrind memleak checks
-	    rm -f $valgrindfile
-	    exit -1
-	    ;;
+            ;;
+        'snmp')
+            valgrindtest=4 # This means snmp valgrind test
+            sudo chmod 660 $valgrindfile
+            : ${DEMWAIT:=15} # valgrind snmp needs some time to get up
+            clixon_snmp="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile clixon_snmp"
+            ;;
+
+        *)
+            echo "usage: $0 cli|netconf|restconf|backend|snmp" # valgrind memleak checks
+            rm -f $valgrindfile
+            exit -1
+            ;;
     esac
 
 
     memerr=0
     for test in $pattern; do
-	# Can happen if no pattern, eg pattern=foo but "foo" does not exist
-	if [ ! -f $test ]; then
-	    echo -e "\e[31mNo such file: $test"
-	    echo -ne "\e[0m"
-	    exit -1
-	fi
-	if [ $testnr != 0 ]; then echo; fi
-	perfnr=1000 # Limit performance tests
-	testfile=$test
-	. ./$test 
-	errcode=$?
-	endsuite
-	if [ $errcode -ne 0 ]; then
-	    memerr=1
-	    echo -e "\e[31mError in $test errcode=$errcode"
-	    echo -ne "\e[0m"
-	    exit $errcode
-	fi
+        # Can happen if no pattern, eg pattern=foo but "foo" does not exist
+        if [ ! -f $test ]; then
+            echo -e "\e[31mNo such file: $test"
+            echo -ne "\e[0m"
+            exit -1
+        fi
+        if [ $testnr != 0 ]; then echo; fi
+        perfnr=1000 # Limit performance tests
+        testfile=$test
+        . ./$test 
+        errcode=$?
+        endsuite
+        if [ $errcode -ne 0 ]; then
+            memerr=1
+            echo -e "\e[31mError in $test errcode=$errcode"
+            echo -ne "\e[0m"
+            exit $errcode
+        fi
     done
     if [ $valgrindtest -eq 1 ]; then
-	checkvalgrind
-	sudo rm -f $valgrindfile
+        checkvalgrind
+        sudo rm -f $valgrindfile
     fi
 }
 
@@ -93,8 +93,8 @@ function println(){
     length=$(echo "$str" | wc -c)
     let i=1
     while [ $i -lt $length ]; do
-	echo -n "="
-	let i++
+        echo -n "="
+        let i++
     done
     echo
 }
@@ -108,10 +108,10 @@ fi
 # First run sanity
 for c in $cmds; do
     if [ $c != cli -a $c != netconf -a $c != restconf -a $c != backend -a $c != snmp ]; then
-	echo "c:$c"
-	echo "usage: $0 [cli|netconf|restconf|backend|snmp]+"
-	echo "          with no args run all"
-	exit -1
+        echo "c:$c"
+        echo "usage: $0 [cli|netconf|restconf|backend|snmp]+"
+        echo "          with no args run all"
+        exit -1
     fi
 done
 

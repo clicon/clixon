@@ -37,13 +37,13 @@ module $APPNAME {
     namespace "urn:example:simple";
     prefix he;
     revision 2019-04-17 {
-	description
-	    "Clixon hello world example";
+        description
+            "Clixon hello world example";
     }
     container hello{
-	container world{
-	    presence true;
-	}
+        container world{
+            presence true;
+        }
     }
 }
 EOF
@@ -55,7 +55,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -78,7 +78,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg
@@ -91,17 +91,17 @@ module $APPNAME {
     namespace "urn:example:simple";
     prefix he;
     revision 2020-01-01 {
-	description
-	    "Test new revision";
+        description
+            "Test new revision";
     }
     revision 2019-04-17 {
-	description
-	    "Clixon hello world example";
+        description
+            "Clixon hello world example";
     }
     container hello{
-	container world{
-	    presence true;
-	}
+        container world{
+            presence true;
+        }
     }
 }
 EOF
@@ -124,7 +124,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

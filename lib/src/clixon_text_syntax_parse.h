@@ -66,4 +66,4 @@ int clixon_text_syntax_parsel_linenr(void);
 int clixon_text_syntax_parselex(void *);
 int clixon_text_syntax_parseparse(void *);
 
-#endif	/* _CLIXON_TEXT_SYNTAX_PARSE_H_ */
+#endif  /* _CLIXON_TEXT_SYNTAX_PARSE_H_ */

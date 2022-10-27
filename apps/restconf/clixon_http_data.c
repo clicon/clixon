@@ -98,21 +98,21 @@ api_path_is_data(clicon_handle h)
     char  *http_data_path;
 
     if (restconf_http_data_get(h) == 0)
-	goto done;
+        goto done;
     if ((path = restconf_uripath(h)) == NULL)
-	goto done;
+        goto done;
     if ((http_data_path = clicon_option_str(h, "CLICON_HTTP_DATA_PATH")) == NULL)
-	goto done;
+        goto done;
     if (strlen(path) < strlen(http_data_path)) 
-	goto done;
+        goto done;
     if (path[0] != '/')
-	goto done;
+        goto done;
     if (strncmp(path, http_data_path, strlen(http_data_path)) != 0)
-	goto done;
+        goto done;
     retval = 1;
  done:
     if (path)
-	free(path);
+        free(path);
     return retval;
 }
 
@@ -124,19 +124,19 @@ api_path_is_data(clicon_handle h)
  */
 static int
 api_http_data_err(clicon_handle  h,
-		 void          *req,
-		 int            code)
+                 void          *req,
+                 int            code)
 {
     int        retval = -1;
     cbuf      *cb = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
-	goto done;
+        goto done;
     cprintf(cb, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\r\n");
     cprintf(cb, "<html><head>\r\n");
     cprintf(cb, "<title>%d %s</title>\r\n", code, restconf_code2reason(code));
@@ -147,7 +147,7 @@ api_http_data_err(clicon_handle  h,
 #endif
     cprintf(cb, "</body></html>\r\n");
     if (restconf_reply_send(req, code, cb, 0) < 0)
-	goto done;
+        goto done;
     cb = NULL;
     // ok:
     retval = 0;
@@ -172,11 +172,11 @@ api_http_data_err(clicon_handle  h,
  */
 static int
 http_data_check_file_path(clicon_handle h,
-			  void         *req,
-			  char         *prefix,
-			  cbuf         *cbpath,
-			  FILE        **fp,
-			  off_t        *fsz)
+                          void         *req,
+                          char         *prefix,
+                          cbuf         *cbpath,
+                          FILE        **fp,
+                          off_t        *fsz)
 {
     int         retval = -1;
     struct stat fstat;
@@ -186,71 +186,71 @@ http_data_check_file_path(clicon_handle h,
     FILE       *f;
 
     if (prefix == NULL || cbpath == NULL || fp == NULL){
-	clicon_err(OE_UNIX, EINVAL, "prefix, cbpath0 or fp is NULL");
-	goto done;
+        clicon_err(OE_UNIX, EINVAL, "prefix, cbpath0 or fp is NULL");
+        goto done;
     }
     p = cbuf_get(cbpath);
     clicon_debug(1, "%s %s", __FUNCTION__, p);
     if (strncmp(prefix, p, strlen(prefix)) != 0){
-	clicon_err(OE_UNIX, EINVAL, "prefix is not prefix of cbpath");
-	goto done;
+        clicon_err(OE_UNIX, EINVAL, "prefix is not prefix of cbpath");
+        goto done;
     }
     for (i=strlen(prefix); i<strlen(p); i++){
-	if (p[i] == '/'){ /* Check valid dir */
-	    p[i] = '\0';
-	    /* Ensure not soft link */
-	    if (lstat(p, &fstat) < 0){
-		clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
-		code = 404;
-		goto invalid;
-	    }
-	    if (!S_ISDIR(fstat.st_mode)){
-		clicon_debug(1, "%s Error lstat(%s): Not dir", __FUNCTION__, p);
-		code = 403;
-		goto invalid;
-	    }
-	    p[i] = '/';
-	}
-	else if (p[i] == '~'){
-	    clicon_debug(1, "%s Error lstat(%s): ~ not allowed in file path", __FUNCTION__, p);
-	    code = 403;
-	    goto invalid;
-	}
-	else if (p[i] == '.' && i>strlen(prefix) && p[i-1] == '.'){
-	    clicon_debug(1, "%s Error lstat(%s): .. not allowed in file path", __FUNCTION__, p);
-	    code = 403;
-	    goto invalid;
-	}
+        if (p[i] == '/'){ /* Check valid dir */
+            p[i] = '\0';
+            /* Ensure not soft link */
+            if (lstat(p, &fstat) < 0){
+                clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
+                code = 404;
+                goto invalid;
+            }
+            if (!S_ISDIR(fstat.st_mode)){
+                clicon_debug(1, "%s Error lstat(%s): Not dir", __FUNCTION__, p);
+                code = 403;
+                goto invalid;
+            }
+            p[i] = '/';
+        }
+        else if (p[i] == '~'){
+            clicon_debug(1, "%s Error lstat(%s): ~ not allowed in file path", __FUNCTION__, p);
+            code = 403;
+            goto invalid;
+        }
+        else if (p[i] == '.' && i>strlen(prefix) && p[i-1] == '.'){
+            clicon_debug(1, "%s Error lstat(%s): .. not allowed in file path", __FUNCTION__, p);
+            code = 403;
+            goto invalid;
+        }
     }
     /* Resulting file (ensure not soft link) */
     if (lstat(p, &fstat) < 0){
-	clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
-	code = 404;
-	goto invalid;
+        clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
+        code = 404;
+        goto invalid;
     }
 #ifdef HTTP_DATA_INTERNAL_REDIRECT
     /* If dir try redirect, not cbpath is extended */
     if (S_ISDIR(fstat.st_mode)){
-	cprintf(cbpath, "/%s", HTTP_DATA_INTERNAL_REDIRECT);
-	p = cbuf_get(cbpath);
-	clicon_debug(1, "%s internal redirect: %s", __FUNCTION__, p);
-	if (lstat(p, &fstat) < 0){
-	    clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
-	    code = 404;
-	    goto invalid;
-	}	
+        cprintf(cbpath, "/%s", HTTP_DATA_INTERNAL_REDIRECT);
+        p = cbuf_get(cbpath);
+        clicon_debug(1, "%s internal redirect: %s", __FUNCTION__, p);
+        if (lstat(p, &fstat) < 0){
+            clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
+            code = 404;
+            goto invalid;
+        }       
     }
 #endif
     if (!S_ISREG(fstat.st_mode)){
-	clicon_debug(1, "%s Error lstat(%s): Not regular file", __FUNCTION__, p);
-	code = 403;
-	goto invalid;
+        clicon_debug(1, "%s Error lstat(%s): Not regular file", __FUNCTION__, p);
+        code = 403;
+        goto invalid;
     }
     *fsz = fstat.st_size;
     if ((f = fopen(p, "rb")) == NULL){
-	clicon_debug(1, "%s Error fopen(%s) %s", __FUNCTION__, p, strerror(errno));
-	code = 403;
-	goto invalid;
+        clicon_debug(1, "%s Error fopen(%s) %s", __FUNCTION__, p, strerror(errno));
+        code = 403;
+        goto invalid;
     }
     *fp = f;
     retval = 1; /* OK */
@@ -258,11 +258,11 @@ http_data_check_file_path(clicon_handle h,
     return retval;
  invalid:
     if (api_http_data_err(h, req, code) < 0) 
-	goto done;
+        goto done;
     retval = 0;
     goto done;
 }
-		   
+                   
 /*! Read file data request
  * @param[in]  h         Clicon handle
  * @param[in]  req       Generic Www handle (can be part of clixon handle)
@@ -273,9 +273,9 @@ http_data_check_file_path(clicon_handle h,
  */
 static int
 api_http_data_file(clicon_handle h,
-		   void         *req,
-		   char         *pathname,
-		   int           head)
+                   void         *req,
+                   char         *pathname,
+                   int           head)
 {
     int         retval = -1;
     cbuf       *cbfile = NULL;
@@ -293,38 +293,38 @@ api_http_data_file(clicon_handle h,
 
     clicon_debug(1, "%s", __FUNCTION__);    
     if ((cbfile = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     if ((www_data_root = clicon_option_str(h, "CLICON_HTTP_DATA_ROOT")) == NULL){
-	clicon_err(OE_RESTCONF, ENOENT, "CLICON_HTTP_DATA_ROOT missing");
-	goto done;
+        clicon_err(OE_RESTCONF, ENOENT, "CLICON_HTTP_DATA_ROOT missing");
+        goto done;
     }
 
     cprintf(cbfile, "%s", www_data_root);
     if (pathname){
-	if (strlen(pathname) && pathname[0] != '/'){
-	    clicon_debug(1, "%s Error fopen(%s) pathname not prefixed with /",
-			 __FUNCTION__, pathname);
-	    if (api_http_data_err(h, req, 404) < 0) 
-		goto done;
-	    goto ok;
-	}
-	cprintf(cbfile, "%s", pathname); /* Assume pathname starts with '/' */
+        if (strlen(pathname) && pathname[0] != '/'){
+            clicon_debug(1, "%s Error fopen(%s) pathname not prefixed with /",
+                         __FUNCTION__, pathname);
+            if (api_http_data_err(h, req, 404) < 0) 
+                goto done;
+            goto ok;
+        }
+        cprintf(cbfile, "%s", pathname); /* Assume pathname starts with '/' */
     }
     if ((ret = http_data_check_file_path(h, req, www_data_root, cbfile, &f, &fsz)) < 0)
-	goto done;
+        goto done;
     if (ret == 0) /* Invalid, return code set */
-	goto ok;
+        goto ok;
     filename = cbuf_get(cbfile);
     /* Find media from file suffix, note there may have been internal indirection */
     if ((suffix = rindex(filename, '.')) == NULL){
-	media = "application/octet-stream";
+        media = "application/octet-stream";
     }
     else {
-	suffix++;
-	if ((media = clicon_str2str(mime_map, suffix)) == NULL)
-	    media = "application/octet-stream";
+        suffix++;
+        if ((media = clicon_str2str(mime_map, suffix)) == NULL)
+            media = "application/octet-stream";
     }
     /* Size could have been taken from stat() but this reduces the race condition interval 
      * There is still one without flock
@@ -333,55 +333,55 @@ api_http_data_file(clicon_handle h,
     fsize = ftell(f);
     /* Extra sanity check, had some problems with wrong file types */
     if (fsz != fsize){
-	clicon_debug(1, "%s Error file %s size mismatch sz:%zu vs %li",
-		     __FUNCTION__, filename, (size_t)fsz, fsize);
-	if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
-	    goto done;
-	goto ok;
+        clicon_debug(1, "%s Error file %s size mismatch sz:%zu vs %li",
+                     __FUNCTION__, filename, (size_t)fsz, fsize);
+        if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
+            goto done;
+        goto ok;
     }
     fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
     if ((cbdata = cbuf_new_alloc(fsize+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new_alloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new_alloc");
+        goto done;
     }
     /* Unoptimized, no direct read but requires an extra copy,
      * the cligen buf API should have some mechanism for this case without the extra copy.
      */
     if ((buf = malloc(fsize)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     if ((sz = fread(buf, fsize, 1, f)) < 0){
-	clicon_err(OE_UNIX, errno, "fread");
-	goto done;
+        clicon_err(OE_UNIX, errno, "fread");
+        goto done;
     }
     if (sz != 1){
-	clicon_debug(1, "%s Error fread(%s) sz:%zu", __FUNCTION__, filename, sz);
-	if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
-	    goto done;
-	goto ok;
+        clicon_debug(1, "%s Error fread(%s) sz:%zu", __FUNCTION__, filename, sz);
+        if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
+            goto done;
+        goto ok;
     }
     if (cbuf_append_buf(cbdata, buf, fsize) < 0){
-	clicon_err(OE_UNIX, errno, "cbuf_append_str");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_append_str");
+        goto done;
     }
     if (restconf_reply_header(req, "Content-Type", "%s", media) < 0)
-	goto done;
+        goto done;
     if (restconf_reply_send(req, 200, cbdata, head) < 0)
-	goto done;
+        goto done;
     cbdata = NULL; /* consumed by reply-send */
     clicon_debug(1, "%s Read %s OK", __FUNCTION__, filename);
  ok:
     retval = 0;
  done:
     if (buf)
-	free(buf);
+        free(buf);
     if (f)
-	fclose(f);
+        fclose(f);
     if (cbfile)
-	cbuf_free(cbfile);
+        cbuf_free(cbfile);
     if (cbdata)
-	cbuf_free(cbdata);
+        cbuf_free(cbdata);
  return retval;
 }
 
@@ -403,8 +403,8 @@ api_http_data_file(clicon_handle h,
  */
 int
 api_http_data(clicon_handle  h,
-	      void          *req,
-	      cvec          *qvec)
+              void          *req,
+              cvec          *qvec)
 {
     int   retval = -1;
     char *request_method = NULL;
@@ -417,15 +417,15 @@ api_http_data(clicon_handle  h,
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (req == NULL){
-	errno = EINVAL;
-	goto done;
+        errno = EINVAL;
+        goto done;
     }
     /* 1. path: with stripped prefix, ultimately: dir/filename 
      */
     if (!api_path_is_data(h)){
-	if (api_http_data_err(h, req, 404) < 0) /* not found */
-	    goto done;
-	goto ok;
+        if (api_http_data_err(h, req, 404) < 0) /* not found */
+            goto done;
+        goto ok;
     }
     path = restconf_uripath(h);
     /* 2. operation GET or HEAD */
@@ -433,63 +433,63 @@ api_http_data(clicon_handle  h,
     if (strcmp(request_method, "GET") == 0){
     }
     else if (strcmp(request_method, "HEAD") == 0){
-	head = 1;
+        head = 1;
     }
     else if (strcmp(request_method, "OPTIONS") == 0){
-	options = 1;
+        options = 1;
     }
     else {
-	if (api_http_data_err(h, req, 405) < 0) /* method not allowed */
-	    goto done;
-	goto ok;	
+        if (api_http_data_err(h, req, 405) < 0) /* method not allowed */
+            goto done;
+        goto ok;        
     }
     /* 3. query parameters not accepted */
     if (qvec != NULL){
-	if (api_http_data_err(h, req, 400) < 0) /* bad request */
-	    goto done;
-	goto ok;
+        if (api_http_data_err(h, req, 400) < 0) /* bad request */
+            goto done;
+        goto ok;
     }
     /* 4. indata should be NULL (no write operations) */
     if ((indata = restconf_get_indata(req)) == NULL) {
-	clicon_err(OE_RESTCONF, ENOENT, "Unexpected no input cbuf");
-	goto done;
+        clicon_err(OE_RESTCONF, ENOENT, "Unexpected no input cbuf");
+        goto done;
     }
     if (cbuf_len(indata)){
-	if (api_http_data_err(h, req, 400) < 0) /* bad request */
-	    goto done;
-	goto ok;
+        if (api_http_data_err(h, req, 400) < 0) /* bad request */
+            goto done;
+        goto ok;
     }
     /* 5. Accepted media_out: should check text/html, JavaScript, image, and css 
      */
     if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
     }
     else if (strcmp(media_str, "*/*") != 0 &&
-	     strcmp(media_str, "text/html") != 0){
+             strcmp(media_str, "text/html") != 0){
 #ifdef NOTYET
-	clicon_log(LOG_NOTICE, "%s: media error %s", __FUNCTION__, media_str);
-	goto done;
+        clicon_log(LOG_NOTICE, "%s: media error %s", __FUNCTION__, media_str);
+        goto done;
 #endif
     }
     /* 6. Authenticate
      * Note, error handling may need change since it is restconf based
      */
     if ((ret = restconf_authentication_cb(h, req, 1, 0 /*media_out */)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto ok;
+        goto ok;
     if (options){
-	if (restconf_reply_header(req, "Allow", "OPTIONS,HEAD,GET") < 0)
-	    goto done;
-	if (restconf_reply_send(req, 200, NULL, 0) < 0)
-	    goto done;
+        if (restconf_reply_header(req, "Allow", "OPTIONS,HEAD,GET") < 0)
+            goto done;
+        if (restconf_reply_send(req, 200, NULL, 0) < 0)
+            goto done;
     }
     else if (api_http_data_file(h, req, path, head) < 0)
-	goto done;
+        goto done;
  ok:
     retval = 0;
  done:
     if (path)
-	free(path);
+        free(path);
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     return retval;
 }

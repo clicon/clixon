@@ -39,30 +39,30 @@ module $APPNAME{
    container ex {
       list x{
          key "a b" ;
-	 leaf a {
-	    type string;
-	 }
-	 leaf b {
-	    type enumeration{
-		enum v1;
-		enum v2;
-		enum v3;
-	    }
-	}
+         leaf a {
+            type string;
+         }
+         leaf b {
+            type enumeration{
+                enum v1;
+                enum v2;
+                enum v3;
+            }
+        }
       }
       list y{
          key "a b" ;
          ordered-by user;
-	 leaf a {
-	    type string;
-	 }
-	 leaf b {
-	    type enumeration{
-		enum v1;
-		enum v2;
-		enum v3;
-	    }
-	}
+         leaf a {
+            type string;
+         }
+         leaf b {
+            type enumeration{
+                enum v1;
+                enum v2;
+                enum v3;
+            }
+        }
       }
    }
 }
@@ -73,7 +73,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -130,7 +130,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

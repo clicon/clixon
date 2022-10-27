@@ -69,20 +69,20 @@ function testrun(){
     new "test params: -f $cfg"
 
     if [ $BE -ne 0 ]; then
-	new "generate config with $nr list entries"
-	echo -n "<${DATASTORE_TOP}><x xmlns=\"urn:example:clixon\">" > $dir/startup_db
-	for (( i=0; i<$nr; i++ )); do  
-	    echo -n "<y><a>$i</a><b>$i</b></y>" >> $dir/startup_db
-	done
-	echo "</x></${DATASTORE_TOP}>" >> $dir/startup_db
+        new "generate config with $nr list entries"
+        echo -n "<${DATASTORE_TOP}><x xmlns=\"urn:example:clixon\">" > $dir/startup_db
+        for (( i=0; i<$nr; i++ )); do  
+            echo -n "<y><a>$i</a><b>$i</b></y>" >> $dir/startup_db
+        done
+        echo "</x></${DATASTORE_TOP}>" >> $dir/startup_db
 
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s startup -f $cfg"
-	start_backend -s startup -f $cfg
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s startup -f $cfg"
+        start_backend -s startup -f $cfg
     fi
 
     new "wait backend"
@@ -97,7 +97,7 @@ function testrun(){
     err0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/rpc-error")
     err=${err0#"nodeset:"}
     if [ -n "$err" ]; then
-	err1 "<rpc-reply><global>" "$err"
+        err1 "<rpc-reply><global>" "$err"
     fi
     objects=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/global/xmlnr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}')
 
@@ -106,42 +106,42 @@ function testrun(){
 
 #
     if [ -f /proc/$pid/statm ]; then     # This only works on Linux 
-#	cat /proc/$pid/statm
-	echo -n "   /proc/$pid/statm: "
-	cat /proc/$pid/statm|awk '{print $1*4/1000 "M"}'
+#       cat /proc/$pid/statm
+        echo -n "   /proc/$pid/statm: "
+        cat /proc/$pid/statm|awk '{print $1*4/1000 "M"}'
     fi
     for db in running candidate startup; do
-	echo "$db"
-	resdb0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/datastore[name=\"$db\"]")
-	resdb=${resdb0#"nodeset:0:"}
-	if [ "$resdb0" = "$resdb" ]; then
-	    err1 "nodeset:0:" "$resdb0"
-	fi
-	echo -n "   objects: "
-	echo $resdb | $clixon_util_xpath -p "datastore/nr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
-	echo -n "   mem: "
-	echo $resdb | $clixon_util_xpath -p "datastore/size" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}' | awk '{print $1/1000000 "M"}'
+        echo "$db"
+        resdb0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/datastore[name=\"$db\"]")
+        resdb=${resdb0#"nodeset:0:"}
+        if [ "$resdb0" = "$resdb" ]; then
+            err1 "nodeset:0:" "$resdb0"
+        fi
+        echo -n "   objects: "
+        echo $resdb | $clixon_util_xpath -p "datastore/nr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
+        echo -n "   mem: "
+        echo $resdb | $clixon_util_xpath -p "datastore/size" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}' | awk '{print $1/1000000 "M"}'
     done
     for mod in clixon-config; do
-	echo "$mod"
-	resmod0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/module[name=\"$mod\"]")
-	resmod=${resmod0#"nodeset:0:"}
-	echo -n "   objects: "
-	echo $resmod | $clixon_util_xpath -p "module/nr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
-	echo -n "   mem: "
-	echo $resmod | $clixon_util_xpath -p "module/size" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}' | awk '{print $1/1000000 "M"}'
+        echo "$mod"
+        resmod0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/module[name=\"$mod\"]")
+        resmod=${resmod0#"nodeset:0:"}
+        echo -n "   objects: "
+        echo $resmod | $clixon_util_xpath -p "module/nr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
+        echo -n "   mem: "
+        echo $resmod | $clixon_util_xpath -p "module/size" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}' | awk '{print $1/1000000 "M"}'
     done
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
 
-	new "Zap backend"
-	stop_backend -f $cfg
+        new "Zap backend"
+        stop_backend -f $cfg
     fi
 }
 

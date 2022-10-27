@@ -93,12 +93,12 @@
     
 void 
 clixon_xml_parseerror(void *_xy,
-		      char *s) 
+                      char *s) 
 { 
     clicon_err(OE_XML, XMLPARSE_ERRNO, "xml_parse: line %d: %s: at or before: %s", 
-	       _XY->xy_linenum,
-	       s,
-	       clixon_xml_parsetext); 
+               _XY->xy_linenum,
+               s,
+               clixon_xml_parsetext); 
     return;
 }
 
@@ -110,7 +110,7 @@ clixon_xml_parseerror(void *_xy,
  */
 static int
 xml_parse_content(clixon_xml_yacc *xy, 
-		  char            *str)
+                  char            *str)
 {
     cxobj *xn = xy->xy_xelement;
     cxobj *xp = xy->xy_xparent;
@@ -118,11 +118,11 @@ xml_parse_content(clixon_xml_yacc *xy,
 
     xy->xy_xelement = NULL; /* init */
     if (xn == NULL){
-	if ((xn = xml_new("body", xp, CX_BODY)) == NULL)
-	    goto done; 
+        if ((xn = xml_new("body", xp, CX_BODY)) == NULL)
+            goto done; 
     }
     if (xml_value_append(xn, str) < 0)
-	goto done; 
+        goto done; 
     xy->xy_xelement = xn;
     retval = 0;
   done:
@@ -135,7 +135,7 @@ xml_parse_content(clixon_xml_yacc *xy,
  */
 static int
 xml_parse_whitespace(clixon_xml_yacc *xy,
-		     char            *str)
+                     char            *str)
 {
     cxobj *xn = xy->xy_xelement;
     cxobj *xp = xy->xy_xparent;
@@ -150,15 +150,15 @@ xml_parse_whitespace(clixon_xml_yacc *xy,
      * then the whitespace body is pretty-prints and should be stripped (later)
      */
     for (i=0; i<xml_child_nr(xp); i++){
-	if (xml_type(xml_child_i(xp, i)) == CX_ELMNT)
-	    goto ok; /* Skip if already element */
+        if (xml_type(xml_child_i(xp, i)) == CX_ELMNT)
+            goto ok; /* Skip if already element */
     }
     if (xn == NULL){
-	if ((xn = xml_new("body", xp, CX_BODY)) == NULL)
-	    goto done; 
+        if ((xn = xml_new("body", xp, CX_BODY)) == NULL)
+            goto done; 
     }
     if (xml_value_append(xn, str) < 0)
-	goto done; 
+        goto done; 
     xy->xy_xelement = xn;
  ok:
     retval = 0;
@@ -168,15 +168,15 @@ xml_parse_whitespace(clixon_xml_yacc *xy,
  
 static int
 xml_parse_version(clixon_xml_yacc *xy,
-		  char            *ver)
+                  char            *ver)
 {
     if(strcmp(ver, "1.0")){
-	clicon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML version: %s expected 1.0", ver);
-	free(ver);
-	return -1;
+        clicon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML version: %s expected 1.0", ver);
+        free(ver);
+        return -1;
     }
     if (ver)
-	free(ver);
+        free(ver);
     return 0;
 }
 
@@ -195,12 +195,12 @@ xml_parse_version(clixon_xml_yacc *xy,
  */
 static int
 xml_parse_encoding(clixon_xml_yacc *xy,
-		   char            *enc)
+                   char            *enc)
 {
     if(strcasecmp(enc, "UTF-8")){
-	clicon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML encoding: %s expected UTF-8", enc);
-	free(enc);
-	return -1;
+        clicon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML encoding: %s expected UTF-8", enc);
+        free(enc);
+        return -1;
     }
     return 0;
 }
@@ -214,8 +214,8 @@ xml_parse_encoding(clixon_xml_yacc *xy,
  */
 static int
 xml_parse_prefixed_name(clixon_xml_yacc *xy,
-			char            *prefix,
-			char            *name)
+                        char            *prefix,
+                        char            *name)
 {
     int        retval = -1;
     cxobj     *x;
@@ -223,23 +223,23 @@ xml_parse_prefixed_name(clixon_xml_yacc *xy,
 
     xp = xy->xy_xparent;
     if ((x = xml_new(name, xp, CX_ELMNT)) == NULL) 
-	goto done;
+        goto done;
     /* Cant check namespaces here since local xmlns attributes loaded after */
     if (xml_prefix_set(x, prefix) < 0)
-	goto done;
+        goto done;
 
     xy->xy_xelement = x;
     /* If topmost, add to top-list created list */
     if (xp == xy->xy_xtop){
-	if (cxvec_append(x, &xy->xy_xvec, &xy->xy_xlen) < 0)
-	    goto done;
+        if (cxvec_append(x, &xy->xy_xvec, &xy->xy_xlen) < 0)
+            goto done;
     }
     retval = 0;
  done:
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (name)
-	free(name);
+        free(name);
     return retval;
 }
 
@@ -255,9 +255,9 @@ static int
 xml_parse_endslash_mid(clixon_xml_yacc *xy)
 {
     if (xy->xy_xelement != NULL)
-	xy->xy_xelement = xml_parent(xy->xy_xelement);
+        xy->xy_xelement = xml_parent(xy->xy_xelement);
     else
-	xy->xy_xelement = xy->xy_xparent;
+        xy->xy_xelement = xy->xy_xparent;
     xy->xy_xparent = xml_parent(xy->xy_xelement);
     return 0;
 }
@@ -280,8 +280,8 @@ xml_parse_endslash_post(clixon_xml_yacc *xy)
  */
 static int
 xml_parse_bslash(clixon_xml_yacc *xy, 
-		 char            *prefix,
-		 char            *name)
+                 char            *prefix,
+                 char            *name)
 {
     int    retval = -1;
     cxobj *x = xy->xy_xelement;
@@ -294,11 +294,11 @@ xml_parse_bslash(clixon_xml_yacc *xy,
     name0 = xml_name(x);
     /* Check name or prerix unequal from begin-tag */
     if (clicon_strcmp(name0, name) || 
-	clicon_strcmp(prefix0, prefix)){ 
-	clicon_err(OE_XML, XMLPARSE_ERRNO, "Sanity check failed: %s%s%s vs %s%s%s", 
-		   prefix0?prefix0:"", prefix0?":":"", name0,
-		   prefix?prefix:"", prefix?":":"", name);
-	goto done;
+        clicon_strcmp(prefix0, prefix)){ 
+        clicon_err(OE_XML, XMLPARSE_ERRNO, "Sanity check failed: %s%s%s vs %s%s%s", 
+                   prefix0?prefix0:"", prefix0?":":"", name0,
+                   prefix?prefix:"", prefix?":":"", name);
+        goto done;
     }
     /* Strip pretty-print. Ad-hoc algorithm
      * It ok with x:[body], but not with x:[ex,body]
@@ -310,17 +310,17 @@ xml_parse_bslash(clixon_xml_yacc *xy,
      */
     xc = NULL;
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
-	break;
+        break;
     if (xc != NULL){ /* at least one element */
-	if (xml_rm_children(x, CX_BODY) < 0) /* remove all bodies */
-	    goto done;
+        if (xml_rm_children(x, CX_BODY) < 0) /* remove all bodies */
+            goto done;
     }
     retval = 0;
   done:
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (name)
-	free(name);
+        free(name);
     return retval;
 }
 
@@ -331,27 +331,27 @@ xml_parse_bslash(clixon_xml_yacc *xy,
  */
 static int
 xml_parse_attr(clixon_xml_yacc *xy,
-	       char            *prefix,
-	       char            *name,
-	       char            *attval)
+               char            *prefix,
+               char            *name,
+               char            *attval)
 {
     int    retval = -1;
     cxobj *xa = NULL; 
 
     if ((xa = xml_find_type(xy->xy_xelement, prefix, name, CX_ATTR)) == NULL){
-	if ((xa = xml_new(name, xy->xy_xelement, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_prefix_set(xa, prefix) < 0)
-	    goto done;
+        if ((xa = xml_new(name, xy->xy_xelement, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_prefix_set(xa, prefix) < 0)
+            goto done;
 
     }
     if (xml_value_set(xa, attval) < 0)
-	goto done;
+        goto done;
     retval = 0;
   done:
     free(name);
     if (prefix)
-	free(prefix);
+        free(prefix);
     free(attval);
     return retval;
 }
@@ -362,47 +362,47 @@ xml_parse_attr(clixon_xml_yacc *xy,
  /* [1] document ::= prolog element Misc* */
 document    : prolog element misclist  MY_EOF
                  { _PARSE_DEBUG("document->prolog element misc* ACCEPT"); 
-		   YYACCEPT; }
+                   YYACCEPT; }
             | elist MY_EOF
-	    { _PARSE_DEBUG("document->elist ACCEPT");  /* internal exception*/
-		   YYACCEPT; }
+            { _PARSE_DEBUG("document->elist ACCEPT");  /* internal exception*/
+                   YYACCEPT; }
             ;
 /* [22] prolog ::=  XMLDecl? Misc* (doctypedecl Misc*)? */
 prolog      : xmldcl misclist
                 { _PARSE_DEBUG("prolog->xmldcl misc*"); }
             | misclist
-	        { _PARSE_DEBUG("prolog->misc*"); }
+                { _PARSE_DEBUG("prolog->misc*"); }
             ;
 
 misclist    : misclist misc { _PARSE_DEBUG("misclist->misclist misc"); }
             |     { _PARSE_DEBUG("misclist->"); }
             ;
 
-/* [27]	Misc ::=  Comment | PI | S */
+/* [27] Misc ::=  Comment | PI | S */
 misc        : comment    { _PARSE_DEBUG("misc->comment"); }
-	    | pi         { _PARSE_DEBUG("misc->pi"); }
+            | pi         { _PARSE_DEBUG("misc->pi"); }
             | WHITESPACE { _PARSE_DEBUG("misc->white space"); }
-	    ;
+            ;
 
-/* [23] XMLDecl ::=   	'<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'*/
+/* [23] XMLDecl ::=     '<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'*/
 xmldcl      : BXMLDCL verinfo encodingdecl sddecl EQMARK
-	          { _PARSE_DEBUG("xmldcl->verinfo encodingdecl? sddecl?"); }
+                  { _PARSE_DEBUG("xmldcl->verinfo encodingdecl? sddecl?"); }
             ;
 
 verinfo     : VER '=' '\"' STRING '\"' 
                  { if (xml_parse_version(_XY, $4) <0) YYABORT;
-		     _PARSE_DEBUG("verinfo->version=\"STRING\"");}
+                     _PARSE_DEBUG("verinfo->version=\"STRING\"");}
             | VER '=' '\'' STRING '\'' 
-         	 { if (xml_parse_version(_XY, $4) <0) YYABORT;
-		     _PARSE_DEBUG("verinfo->version='STRING'");}
+                 { if (xml_parse_version(_XY, $4) <0) YYABORT;
+                     _PARSE_DEBUG("verinfo->version='STRING'");}
             ;
 
 encodingdecl : ENC '=' '\"' STRING '\"'
                  { if (xml_parse_encoding(_XY, $4) <0) YYABORT; if ($4)free($4);
-		     _PARSE_DEBUG("encodingdecl-> encoding = \" STRING \"");}
+                     _PARSE_DEBUG("encodingdecl-> encoding = \" STRING \"");}
             | ENC '=' '\'' STRING '\''
-	         { if (xml_parse_encoding(_XY, $4) <0) YYABORT; if ($4)free($4);
-		     _PARSE_DEBUG("encodingdecl-> encoding = ' STRING '");}
+                 { if (xml_parse_encoding(_XY, $4) <0) YYABORT; if ($4)free($4);
+                     _PARSE_DEBUG("encodingdecl-> encoding = ' STRING '");}
             |
             ;
 
@@ -413,7 +413,7 @@ sddecl      : SD '=' '\"' STRING '\"' {if ($4)free($4);}
 /* [39] element ::= EmptyElemTag | STag content ETag */
 element     : '<' qname  attrs element1 
                    { _PARSE_DEBUG("element -> < qname attrs element1"); }
-	    ;
+            ;
 
 qname       : NAME           { if (xml_parse_prefixed_name(_XY, NULL, $1) < 0) YYABORT; 
                                 _PARSE_DEBUG("qname -> NAME");}
@@ -431,11 +431,11 @@ element1    :  ESLASH         {_XY->xy_xelement = NULL;
 
 endtag      : BSLASH NAME '>'          
                        { _PARSE_DEBUG("endtag -> < </ NAME>");
-			   if (xml_parse_bslash(_XY, NULL, $2) < 0) YYABORT; }
+                           if (xml_parse_bslash(_XY, NULL, $2) < 0) YYABORT; }
 
             | BSLASH NAME ':' NAME '>' 
                        { if (xml_parse_bslash(_XY, $2, $4) < 0) YYABORT; 
-			 _PARSE_DEBUG("endtag -> < </ NAME:NAME >"); }
+                         _PARSE_DEBUG("endtag -> < </ NAME:NAME >"); }
             ;
 
 elist       : elist content { _PARSE_DEBUG("elist -> elist content"); }
@@ -458,7 +458,7 @@ comment     : BCOMMENT ECOMMENT
 
 pi          : BQMARK NAME EQMARK {_PARSE_DEBUG("pi -> <? NAME ?>"); free($2); }
             | BQMARK NAME STRING EQMARK
- 	        { _PARSE_DEBUG("pi -> <? NAME STRING ?>"); free($2); free($3);}
+                { _PARSE_DEBUG("pi -> <? NAME STRING ?>"); free($2); free($3);}
             ;
 
 

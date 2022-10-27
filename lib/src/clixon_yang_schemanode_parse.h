@@ -64,4 +64,4 @@ int clixon_yang_schemanode_parsel_linenr(void);
 int clixon_yang_schemanode_parselex(void *);
 int clixon_yang_schemanode_parseparse(void *);
 
-#endif	/* _CLIXON_YANG_SCHEMANODE_PARSE_H_ */
+#endif  /* _CLIXON_YANG_SCHEMANODE_PARSE_H_ */

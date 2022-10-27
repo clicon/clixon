@@ -81,17 +81,17 @@ module augment{
    prefix aug;
    description "Used as a base for augment";
    container route-config {
-	description
-	    "Root container for routing models";
-	container dynamic {
-	}
+        description
+            "Root container for routing models";
+        container dynamic {
+        }
    }
    container route-state {
-	description
-	    "Root container for routing models";
-	config "false";
-	container dynamic {
-	}
+        description
+            "Root container for routing models";
+        config "false";
+        container dynamic {
+        }
    }
 }
 EOF
@@ -103,7 +103,7 @@ module example{
    prefix ex;
    import augment {
         description "Just for augment";
-	prefix "aug";
+        prefix "aug";
    }
 
    list a {
@@ -130,7 +130,7 @@ module example{
    augment "/aug:route-config/aug:dynamic" {
       container ospf {
          leaf reference-bandwidth {
-	    type uint32;
+            type uint32;
          }
       }
    }
@@ -139,23 +139,23 @@ module example{
       description "Just for generating a invalid XML";
       list parameter{
          key name;
- 	 leaf name{
-	    type string;
-	 }
-	 leaf value{
-	    type string;
-	 }
+         leaf name{
+            type string;
+         }
+         leaf value{
+            type string;
+         }
       }
    }
    container table{
       list parameter{
          key name;
- 	 leaf name{
-	    type string;
-	 }
-	 leaf value{
-	    type string;
-	 }
+         leaf name{
+            type string;
+         }
+         leaf value{
+            type string;
+         }
       }
    }
 }
@@ -183,7 +183,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     sudo pkill -f clixon_backend # to be sure
     new "start backend -s init -f $cfg -- -sS $fstate -v /table/parameter[name=\"4242\"]"
@@ -330,7 +330,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

@@ -115,20 +115,20 @@ function testrun(){
     echo "<${DATASTORE_TOP}>$edb</${DATASTORE_TOP}>" > $dir/extra_db
 
     if [ $BE -ne 0 ]; then     # Bring your own backend
-	# kill old backend (if any)
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
+        # kill old backend (if any)
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
         new "start backend -f $cfg -s $mode -c $dir/extra_db"
-	start_backend -s $mode -f $cfg -c $dir/extra_db
+        start_backend -s $mode -f $cfg -c $dir/extra_db
 
-	new "wait backend"
-	wait_backend
+        new "wait backend"
+        wait_backend
     else
-	new "Restart backend as eg follows: -Ff $cfg -s $mode -c $dir/extra_db # $BETIMEOUT s"
-	sleep $BETIMEOUT
+        new "Restart backend as eg follows: -Ff $cfg -s $mode -c $dir/extra_db # $BETIMEOUT s"
+        sleep $BETIMEOUT
     fi
     new "Startup test for $mode mode, check running"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS>$exprun</rpc-reply>"
@@ -143,7 +143,7 @@ function testrun(){
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg
@@ -167,13 +167,13 @@ function testfail(){
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -f $cfg -s $mode -c $dir/extra_db"
     ret=$(start_backend -1 -s $mode -f $cfg -c $dir/extra_db 2> /dev/null)
     r=$?
     if [ $r -ne 255 ]; then
-	err "Unexpected retval" $r
+        err "Unexpected retval" $r
     fi
     # permission kludges
     sudo chmod 666 $dir/running_db
@@ -181,18 +181,18 @@ function testfail(){
     new "Checking running unchanged"
     ret=$(diff $dir/running_db <(echo "<${DATASTORE_TOP}>$rdb</${DATASTORE_TOP}>"))
     if [ $? -ne 0 ]; then
-	err "<${DATASTORE_TOP}>$rdb</${DATASTORE_TOP}>" "$ret"
-    fi	
+        err "<${DATASTORE_TOP}>$rdb</${DATASTORE_TOP}>" "$ret"
+    fi  
     new "Checking startup unchanged"
     ret=$(diff $dir/startup_db <(echo "<${DATASTORE_TOP}>$sdb</${DATASTORE_TOP}>"))
     if [ $? -ne 0 ]; then
-	err "<${DATASTORE_TOP}>$sdb</${DATASTORE_TOP}>" "$ret"
+        err "<${DATASTORE_TOP}>$sdb</${DATASTORE_TOP}>" "$ret"
     fi
 
     new "Checking extra unchanged"
     ret=$(diff $dir/extra_db <(echo "<${DATASTORE_TOP}>$edb</${DATASTORE_TOP}>"))
     if [ $? -ne 0 ]; then
-	err "<${DATASTORE_TOP}>$edb</${DATASTORE_TOP}>" "$ret"
+        err "<${DATASTORE_TOP}>$edb</${DATASTORE_TOP}>" "$ret"
     fi
 }
 

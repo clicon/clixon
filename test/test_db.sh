@@ -40,18 +40,18 @@ module clixon-example{
     prefix ex;
     /* Generic config data */
     container table{
-	list parameter{
-	    key name;
-	    leaf name{
-		type string;
-	    }
-	    leaf value{
-		type string;
-	    }
-	    container two{
-	       leaf a{
-	          type string;
- 	       }
+        list parameter{
+            key name;
+            leaf name{
+                type string;
+            }
+            leaf value{
+                type string;
+            }
+            container two{
+               leaf a{
+                  type string;
+               }
             }
         }
     }
@@ -95,13 +95,13 @@ function testrun()
     pretty=$2
     
     if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -z -f $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s init -f $cfg -o CLICON_XMLDB_FORMAT=$format -o CLICON_XMLDB_PRETTY=$pretty"
-	start_backend -s init -f $cfg -o CLICON_XMLDB_FORMAT=$format -o CLICON_XMLDB_PRETTY=$pretty
+        new "kill old backend"
+        sudo clixon_backend -z -f $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s init -f $cfg -o CLICON_XMLDB_FORMAT=$format -o CLICON_XMLDB_PRETTY=$pretty"
+        start_backend -s init -f $cfg -o CLICON_XMLDB_FORMAT=$format -o CLICON_XMLDB_PRETTY=$pretty
     fi
 
     new "wait backend"
@@ -117,12 +117,12 @@ function testrun()
     # permission kludges
     sudo chmod 666 $dir/candidate_db
     if [ "$format" = xml ]; then
-	if [ "$pretty" = false ]; then
-	    cat <<EOF > $dir/expect
+        if [ "$pretty" = false ]; then
+            cat <<EOF > $dir/expect
 <${DATASTORE_TOP}><table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table></${DATASTORE_TOP}>
 EOF
-	else
-	    cat <<EOF > $dir/expect
+        else
+            cat <<EOF > $dir/expect
 <${DATASTORE_TOP}>
    <table xmlns="urn:example:clixon">
       <parameter>
@@ -132,14 +132,14 @@ EOF
    </table>
 </${DATASTORE_TOP}>
 EOF
-	fi
+        fi
     else
-	if [ "$pretty" = false ]; then
-	    cat <<EOF > $dir/expect
+        if [ "$pretty" = false ]; then
+            cat <<EOF > $dir/expect
 {"$DATASTORE_TOP":{"clixon-example:table":{"parameter":[{"name":"a","value":"42"}]}}}
 EOF
-	else
-	    cat <<EOF > $dir/expect
+        else
+            cat <<EOF > $dir/expect
 {
   "${DATASTORE_TOP}": {
     "clixon-example:table": {
@@ -153,13 +153,13 @@ EOF
   }
 }
 EOF
-	fi
+        fi
     fi
 
     # -w ignore white space
     ret=$(diff -w $dir/candidate_db $dir/expect)
     if [ $? -ne 0 ]; then
-	err "$(cat $dir/expect)" "$(cat $dir/candidate_db)"
+        err "$(cat $dir/expect)" "$(cat $dir/candidate_db)"
     fi
     
     new "save config file"
@@ -175,14 +175,14 @@ EOF
     expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<table xmlns=\"urn:example:clixon\"><parameter><name>a</name><value>42</value></parameter></table>$"
     
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 
@@ -190,8 +190,8 @@ new "test params: -f $cfg"
 
 for format in xml json; do
     for pretty in false true; do
-	new "test db $format pretty=$pretty"
-	testrun xml false
+        new "test db $format pretty=$pretty"
+        testrun xml false
     done
 done
 
@@ -200,7 +200,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg -o CLICON_XMLDB_FORMAT=$format -o CLICON_XMLDB_PRETTY=$pretty"
     start_backend -s init -f $cfg -o CLICON_XMLDB_FORMAT=$format -o CLICON_XMLDB_PRETTY=$pretty
@@ -237,8 +237,8 @@ cat <<EOF > $dir/myconfig
       <parameter>
          <name>a</name>
          <value>42</value>
-	 <two><a>1</a></two>
-	 <two><a>2</a></two>
+         <two><a>1</a></two>
+         <two><a>2</a></two>
       </parameter>
    </table>
 </${DATASTORE_TOP}>
@@ -256,7 +256,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

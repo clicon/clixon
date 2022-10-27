@@ -42,3 +42,12 @@
    fun:*
    fun:OS_LibInit
 }
+{
+   supp7
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*
+   fun:*
+   fun:*
+   fun:_dl_map_object
+}

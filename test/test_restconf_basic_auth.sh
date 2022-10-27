@@ -68,12 +68,12 @@ module myexample{
   namespace "urn:example:auth";
   prefix ex;
   import ietf-netconf-acm {
-	prefix nacm;
+        prefix nacm;
   }
   container top {
      leaf anonymous{
         type string;
-     }	   
+     }     
      leaf wilma {
         type string;
      }
@@ -121,7 +121,7 @@ cat <<EOF > $dir/startup_db
          <path xmlns:ex="urn:example:auth">/ex:top/ex:anonymous</path>
          <action>permit</action>
        </rule>
-     </rule-list>	
+     </rule-list>       
      <rule-list>
        <name>data-limited</name>
        <group>limited</group>
@@ -204,11 +204,11 @@ function testrun()
 EOF
 
     if [ $RC -ne 0 ]; then
-	new "kill old restconf daemon"
-	stop_restconf_pre
+        new "kill old restconf daemon"
+        stop_restconf_pre
 
-	new "start restconf daemon"
-	start_restconf -f $cfg
+        new "start restconf daemon"
+        start_restconf -f $cfg
     fi
 
     new "wait restconf"
@@ -218,8 +218,8 @@ EOF
     expectpart "$(curl $CURLOPTS $user -X GET $RCPROTO://localhost/restconf/data/myexample:top)" 0 $expectcode "$expectmsg"
 
     if [ $RC -ne 0 ]; then
-	new "Kill restconf daemon"
-	stop_restconf
+        new "Kill restconf daemon"
+        stop_restconf
     fi
 }
 
@@ -227,7 +227,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     sudo pkill -f clixon_backend # to be sure
     
@@ -281,7 +281,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

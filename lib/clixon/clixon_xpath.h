@@ -137,7 +137,7 @@ int   xpath_vec_ctx(cxobj *xcur, cvec *nsc, const char *xpath, int localonly, xp
 
 int    xpath_vec_bool(cxobj *xcur, cvec *nsc, const char *xpformat, ...) __attribute__ ((format (printf, 3, 4)));
 int    xpath_vec_flag(cxobj *xcur, cvec *nsc, const char *xpformat, uint16_t flags, 
-		   cxobj ***vec, int *veclen, ...) __attribute__ ((format (printf, 3, 7)));
+                   cxobj ***vec, int *veclen, ...) __attribute__ ((format (printf, 3, 7)));
 
 /* Functions with explicit namespace context (nsc) set. If you do not need 
  * explicit namespace contexts (most do not) consider using the API functions

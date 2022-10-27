@@ -15,7 +15,7 @@
 dir=/var/tmp/$0
 if $detail; then
     if [ ! -d $dir ]; then
-	mkdir $dir
+        mkdir $dir
     fi
 fi
 
@@ -40,18 +40,18 @@ let sumerr=0 # error counter
 for testfile in $pattern; do # For lib.sh the variable must be called testfile
     echo "Running $testfile"
     if $detail; then
-	./$testfile  > $dir/err.log 2>&1
+        ./$testfile  > $dir/err.log 2>&1
     else
-	./$testfile  > /dev/null 2>&1
+        ./$testfile  > /dev/null 2>&1
     fi
     errcode=$?
     if [ $errcode -ne 0 ]; then
         let sumerr++
-	echo -e "\e[31mError in $testfile errcode=$errcode"
-	echo -ne "\e[0m"
-	if $detail; then
-	    detail=false; # Just once for now, print at end
-	fi
+        echo -e "\e[31mError in $testfile errcode=$errcode"
+        echo -ne "\e[0m"
+        if $detail; then
+            detail=false; # Just once for now, print at end
+        fi
     fi
 done
 if [ $sumerr -eq 0 ]; then 
@@ -59,10 +59,10 @@ if [ $sumerr -eq 0 ]; then
 else
     echo -e "\e[31m"
     if [ -f $dir/err.log ]; then
-	echo "Detailed output of first error:"
-	echo -ne "\e[0m"
-	cat $dir/err.log	
-	echo
+        echo "Detailed output of first error:"
+        echo -ne "\e[0m"
+        cat $dir/err.log        
+        echo
     fi
     echo -e "\e[31m${sumerr} Errors"
     echo -ne "\e[0m"

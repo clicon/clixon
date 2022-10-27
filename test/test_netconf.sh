@@ -24,7 +24,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -45,90 +45,90 @@ module clixon-example{
    namespace "urn:example:clixon";
    prefix ex;
    import ietf-interfaces { 
-	prefix if;
+        prefix if;
    }
    import ietf-ip {
-	prefix ip;
+        prefix ip;
    }
    /* Example interface type for tests, local callbacks, etc */
    identity eth {
-	base if:interface-type;
+        base if:interface-type;
    }
     /* Generic config data */
     container table{
-	list parameter{
-	    key name;
-	    leaf name{
-		type string;
-	    }
-	}
+        list parameter{
+            key name;
+            leaf name{
+                type string;
+            }
+        }
     }
    /* State data (not config) for the example application*/
    container state {
-	config false;
-	description "state data for the example application (must be here for example get operation)";
-	leaf-list op {
+        config false;
+        description "state data for the example application (must be here for example get operation)";
+        leaf-list op {
             type string;
-	}
+        }
    }
    augment "/if:interfaces/if:interface" {
-	container my-status {
-	    config false;
-	    description "For testing augment+state";
-	    leaf int {
-		type int32;
-	    }
-	    leaf str {
-		type string;
-	    }
-	}
+        container my-status {
+            config false;
+            description "For testing augment+state";
+            leaf int {
+                type int32;
+            }
+            leaf str {
+                type string;
+            }
+        }
     }
     rpc client-rpc {
-	description "Example local client-side RPC that is processed by the
+        description "Example local client-side RPC that is processed by the
                      the netconf/restconf and not sent to the backend.
                      This is a clixon implementation detail: some rpc:s
                      are better processed by the client for API or perf reasons";
-	input {
-	    leaf x {
-		type string;
-	    }
-	}
-	output {
-	    leaf x {
-		type string;
-	    }
-	}
+        input {
+            leaf x {
+                type string;
+            }
+        }
+        output {
+            leaf x {
+                type string;
+            }
+        }
     }
     rpc empty {
-	description "Smallest possible RPC with no input or output sections";
+        description "Smallest possible RPC with no input or output sections";
     }
     rpc example {
-	description "Some example input/output for testing RFC7950 7.14.
+        description "Some example input/output for testing RFC7950 7.14.
                      RPC simply echoes the input for debugging.";
-	input {
-	    leaf x {
-		description
-         	    "If a leaf in the input tree has a 'mandatory' statement with
+        input {
+            leaf x {
+                description
+                    "If a leaf in the input tree has a 'mandatory' statement with
                    the value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		mandatory true;
-	    }
-	    leaf y {
-		description
-		    "If a leaf in the input tree has a 'mandatory' statement with the
+                type string;
+                mandatory true;
+            }
+            leaf y {
+                description
+                    "If a leaf in the input tree has a 'mandatory' statement with the
                   value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		default "42";
-	    }
-	}
-	output {
-	    leaf x {
-		type string;
-	    }
-	    leaf y {
-		type string;
-	    }
-	}
+                type string;
+                default "42";
+            }
+        }
+        output {
+            leaf x {
+                type string;
+            }
+            leaf y {
+                type string;
+            }
+        }
     }
 
 }
@@ -141,7 +141,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend  -s init -f $cfg -- -s"
     start_backend -s init -f $cfg -- -s
@@ -439,7 +439,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

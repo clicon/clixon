@@ -90,20 +90,20 @@ EOF
 # argument: <n> <proto>
 function genfile(){
     if [ $2 = netconf ]; then
-	echo -n "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fxml
-	for (( i=0; i<$1; i++ )); do  
-	    echo -n "<y><a>$i</a><b>$i</b></y>" >> $fxml
-	done
-	echo "</x></config></edit-config></rpc>]]>]]>" >> $fxml    
+        echo -n "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fxml
+        for (( i=0; i<$1; i++ )); do  
+            echo -n "<y><a>$i</a><b>$i</b></y>" >> $fxml
+        done
+        echo "</x></config></edit-config></rpc>]]>]]>" >> $fxml    
     else # restconf
-	echo -n '{"scaling:x":{"y":[' > $fjson
-	for (( i=0; i<$1; i++ )); do  
-	    if [ $i -ne 0 ]; then
-	    	echo -n ',' >> $fjson
-	    fi
-	    echo -n "{\"a\":$i,\"b\":\"$i\"}" >> $fjson
-	done
-	echo ']}}' >> $fjson
+        echo -n '{"scaling:x":{"y":[' > $fjson
+        for (( i=0; i<$1; i++ )); do  
+            if [ $i -ne 0 ]; then
+                echo -n ',' >> $fjson
+            fi
+            echo -n "{\"a\":$i,\"b\":\"$i\"}" >> $fjson
+        done
+        echo ']}}' >> $fjson
     fi
 }
 
@@ -121,40 +121,40 @@ function runnet(){
     file=$resdir/$op-netconf-$reqs-$arch
     echo -n "$nr " >>  $file
     case $op in
-	put)
-	    if [ $reqs = 0 ]; then # Write all in one go
-		genfile $nr netconf;
-		{ time -p cat $fxml | $clixon_netconf -qf $cfg -y $fyang ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
-	    else # reqs != 0
-		{ time -p for (( i=0; i<$reqs; i++ )); do
-	rnd=$(( ( RANDOM % $nr ) ));
-	echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>";
+        put)
+            if [ $reqs = 0 ]; then # Write all in one go
+                genfile $nr netconf;
+                { time -p cat $fxml | $clixon_netconf -qf $cfg -y $fyang ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
+            else # reqs != 0
+                { time -p for (( i=0; i<$reqs; i++ )); do
+        rnd=$(( ( RANDOM % $nr ) ));
+        echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>";
     done | $clixon_netconf -qf $cfg -y $fyang > /dev/null; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
-	    fi
-	    ;;
-	get)
-	    if [ $reqs = 0 ]; then # Read all in one go
-		{ time -p  echo "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" | $clixon_netconf -qf $cfg -y $fyang > /dev/null ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
-	    else # reqs != 0
-		{ time -p for (( i=0; i<$reqs; i++ )); do
-	rnd=$(( ( RANDOM % $nr ) ))
-	echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
-		done | $clixon_netconf -qf $cfg -y $fyang > /dev/null; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
-	    fi
-	    ;;
-	delete)
-	    { time -p for (( i=0; i<$reqs; i++ )); do
-	rnd=$(( ( RANDOM % $nr ) ))
-	echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
+            fi
+            ;;
+        get)
+            if [ $reqs = 0 ]; then # Read all in one go
+                { time -p  echo "<rpc><get-config><source><running/></source></get-config></rpc>]]>]]>" | $clixon_netconf -qf $cfg -y $fyang > /dev/null ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
+            else # reqs != 0
+                { time -p for (( i=0; i<$reqs; i++ )); do
+        rnd=$(( ( RANDOM % $nr ) ))
+        echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
+                done | $clixon_netconf -qf $cfg -y $fyang > /dev/null; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
+            fi
+            ;;
+        delete)
+            { time -p for (( i=0; i<$reqs; i++ )); do
+        rnd=$(( ( RANDOM % $nr ) ))
+        echo "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>$rnd</a><b>$rnd</b></y></x></config></edit-config></rpc>]]>]]>"
 done | $clixon_netconf -qf $cfg -y $fyang; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
-	    ;;
-	commit)
-	    { time -p  echo "<rpc><commit/></rpc>]]>]]>" | $clixon_netconf -qf $cfg -y $fyang > /dev/null ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
-	    ;;
-	    *)
-	err "Operation not supported" "$op"
-	exit
-	;;
+            ;;
+        commit)
+            { time -p  echo "<rpc><commit/></rpc>]]>]]>" | $clixon_netconf -qf $cfg -y $fyang > /dev/null ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
+            ;;
+            *)
+        err "Operation not supported" "$op"
+        exit
+        ;;
     esac
 }
 
@@ -172,39 +172,39 @@ function runrest(){
     file=$resdir/$op-restconf-$reqs-$arch
     echo -n "$nr " >>  $file
     case $op in
-	put)
-	    if [ $reqs = 0 ]; then # Write all in one go
-		genfile $nr restconf
-		# restconf @- means from stdin
-		{ time -p curl $CURLOPTS -X PUT -d @$fjson http://localhost/restconf/data/scaling:x ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
-	    else # Small requests
-		{ time -p for (( i=0; i<$reqs; i++ )); do
-	rnd=$(( ( RANDOM % $nr ) ));
-	curl $CURLOPTS -X PUT http://localhost/restconf/data/scaling:x/y=$rnd -d "{\"scaling:y\":{\"a\":$rnd,\"b\":\"$rnd\"}}" 
+        put)
+            if [ $reqs = 0 ]; then # Write all in one go
+                genfile $nr restconf
+                # restconf @- means from stdin
+                { time -p curl $CURLOPTS -X PUT -d @$fjson http://localhost/restconf/data/scaling:x ; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
+            else # Small requests
+                { time -p for (( i=0; i<$reqs; i++ )); do
+        rnd=$(( ( RANDOM % $nr ) ));
+        curl $CURLOPTS -X PUT http://localhost/restconf/data/scaling:x/y=$rnd -d "{\"scaling:y\":{\"a\":$rnd,\"b\":\"$rnd\"}}" 
     done ; } 2>&1 | awk '/real/ {print $2}' | tr , .>> $file
-		# 
-	    fi
-	    ;;
-	get)
-	    if [ $reqs = 0 ]; then # Read all in one go
-		{ time -p curl $CURLOPTS -X GET http://localhost/restconf/data/scaling:x > /dev/null; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
-	    else # Small requests
-		{ time -p for (( i=0; i<$reqs; i++ )); do
-	rnd=$(( ( RANDOM % $nr ) ));
-	curl $CURLOPTS -X GET http://localhost/restconf/data/scaling:x/y=$rnd  
+                # 
+            fi
+            ;;
+        get)
+            if [ $reqs = 0 ]; then # Read all in one go
+                { time -p curl $CURLOPTS -X GET http://localhost/restconf/data/scaling:x > /dev/null; } 2>&1 | awk '/real/ {print $2}' | tr , . >> $file
+            else # Small requests
+                { time -p for (( i=0; i<$reqs; i++ )); do
+        rnd=$(( ( RANDOM % $nr ) ));
+        curl $CURLOPTS -X GET http://localhost/restconf/data/scaling:x/y=$rnd  
     done ; } 2>&1 | awk '/real/ {print $2}' | tr , .>> $file
-	    fi
-	    ;;
-	delete)
-		{ time -p for (( i=0; i<$reqs; i++ )); do
-	rnd=$(( ( RANDOM % $nr ) ));
-	curl $CURLOPTS -X GET http://localhost/restconf/data/scaling:x/y=$rnd  
+            fi
+            ;;
+        delete)
+                { time -p for (( i=0; i<$reqs; i++ )); do
+        rnd=$(( ( RANDOM % $nr ) ));
+        curl $CURLOPTS -X GET http://localhost/restconf/data/scaling:x/y=$rnd  
     done ; } 2>&1 | awk '/real/ {print $2}' | tr , .>> $file
-		;;
-	    *)
-	err "Operation not supported" "$op"
-	exit
-	;;
+                ;;
+            *)
+        err "Operation not supported" "$op"
+        exit
+        ;;
     esac
 }
 
@@ -246,26 +246,26 @@ function plot(){
     run=$8
 
     if [ $# -ne 8 ]; then
-	exit "plot should be called with 8 arguments, got $#"
+        exit "plot should be called with 8 arguments, got $#"
     fi
     
     # reset file
     new "Create file $resdir/$op-$proto-$reqs-$arch"
     echo -n "" > $resdir/$op-$proto-$reqs-$arch
     for (( n=$from; n<=$to; n=$n+$step )); do  
-	reset
-	if [ $can = n ]; then 
-	    load $n
-	    if [ $run = n ]; then 
-		commit
-	    fi
-	fi
-	new "$op-$proto-$reqs-$arch $n"
-	if [ $proto = netconf ]; then
-	    runnet $op $n $reqs
-	else
-	    runrest $op $n $reqs
-	fi
+        reset
+        if [ $can = n ]; then 
+            load $n
+            if [ $run = n ]; then 
+                commit
+            fi
+        fi
+        new "$op-$proto-$reqs-$arch $n"
+        if [ $proto = netconf ]; then
+            runnet $op $n $reqs
+        else
+            runrest $op $n $reqs
+        fi
     done
     echo # newline
 }
@@ -281,7 +281,7 @@ function startup(){
     mode=startup
 
     if [ $# -ne 3 ]; then
-	exit "plot should be called with 3 arguments, got $#"
+        exit "plot should be called with 3 arguments, got $#"
     fi
 
     # gnuplot file
@@ -294,17 +294,17 @@ function startup(){
     sudo touch $dbfile
     sudo chmod 666 $dbfile
     for (( n=$from; n<=$to; n=$n+$step )); do  
-	new "startup-$arch $n"
-	new "Generate $n entries to $dbfile"
-	echo -n "<config><x xmlns=\"urn:example:clixon\">" > $dbfile
-	for (( i=0; i<$n; i++ )); do  
-	    echo -n "<y><a>$i</a><b>$i</b></y>" >> $dbfile
-	done
-	echo "</x></config>" >> $dbfile
+        new "startup-$arch $n"
+        new "Generate $n entries to $dbfile"
+        echo -n "<config><x xmlns=\"urn:example:clixon\">" > $dbfile
+        for (( i=0; i<$n; i++ )); do  
+            echo -n "<y><a>$i</a><b>$i</b></y>" >> $dbfile
+        done
+        echo "</x></config>" >> $dbfile
 
-	new "Startup backend once -s $mode -f $cfg -y $fyang"
-	echo -n "$n " >>  $gfile
-	{ time -p sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang 2> /dev/null; } 2>&1 |  awk '/real/ {print $2}' | tr , . >> $gfile
+        new "Startup backend once -s $mode -f $cfg -y $fyang"
+        echo -n "$n " >>  $gfile
+        { time -p sudo $clixon_backend -F1 -D $DBG -s $mode -f $cfg -y $fyang 2> /dev/null; } 2>&1 |  awk '/real/ {print $2}' | tr , . >> $gfile
 
     done
     echo # newline
@@ -318,13 +318,13 @@ if $run; then
 
     new "test params: -f $cfg -y $fyang"
     if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg -y $fyang
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s init -f $cfg -y $fyang"
-	start_backend -s init -f $cfg -y $fyang
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg -y $fyang
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s init -f $cfg -y $fyang"
+        start_backend -s init -f $cfg -y $fyang
     fi
 
     new "kill old restconf daemon"
@@ -343,14 +343,14 @@ if $run; then
 
     # Put all tests
     for proto in netconf restconf; do
-	new "$proto put all entries to candidate (restconf:running)"
-	plot put  $proto  $step $step $to 0 0 0 # all candidate 0 running 0
+        new "$proto put all entries to candidate (restconf:running)"
+        plot put  $proto  $step $step $to 0 0 0 # all candidate 0 running 0
     done
 
     # Get all tests
     for proto in netconf restconf; do
-	new "$proto get all entries from running"
-	plot get $proto  $step $step $to 0 n n # start w full datastore
+        new "$proto get all entries from running"
+        plot get $proto  $step $step $to 0 n n # start w full datastore
     done
 
     # Netconf commit all
@@ -360,28 +360,28 @@ if $run; then
     # Transactions get/put/delete
     reqs=$reqs0
     for proto in netconf restconf; do
-	new "$proto get $reqs from full database"
-	plot get $proto $step $step $to $reqs n n 
+        new "$proto get $reqs from full database"
+        plot get $proto $step $step $to $reqs n n 
 
-	new "$proto put $reqs to full database(replace / alter values)"
-	plot put $proto $step $step $to $reqs n n
+        new "$proto put $reqs to full database(replace / alter values)"
+        plot put $proto $step $step $to $reqs n n
 
-	new "$proto delete $reqs from full database(replace / alter values)"
-	plot delete $proto $step $step $to $reqs n n
+        new "$proto delete $reqs from full database(replace / alter values)"
+        plot delete $proto $step $step $to $reqs n n
     done
 
     new "Kill restconf daemon"
     stop_restconf
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=`pgrep -u root -f clixon_backend`
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=`pgrep -u root -f clixon_backend`
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 fi # if run
 

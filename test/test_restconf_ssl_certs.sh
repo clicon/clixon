@@ -54,7 +54,7 @@ module example{
   namespace "urn:example:example";
   prefix ex;
   import ietf-netconf-acm {
-	prefix nacm;
+        prefix nacm;
   }
   leaf x{
     type int32;
@@ -104,7 +104,7 @@ if $genkeys; then
     
     # create client certs
     for name in $users $x1users; do
-	cat<<EOF > $dir/$name.cnf
+        cat<<EOF > $dir/$name.cnf
 [req]
 prompt = no
 distinguished_name = dn
@@ -115,25 +115,25 @@ O = Clixon
 L = Stockholm
 C = SE
 EOF
-	# Create client key
-	openssl genpkey -algorithm RSA -out "$certdir/$name.key" ||  err "Generate client key"
+        # Create client key
+        openssl genpkey -algorithm RSA -out "$certdir/$name.key" ||  err "Generate client key"
 
-	# Generate CSR (signing request)
-	openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
+        # Generate CSR (signing request)
+        openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
 
-	# Sign by CA
-	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt  ||  err "Generate signing client cert"
+        # Sign by CA
+        openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt  ||  err "Generate signing client cert"
     done # client key
 
     # invalid (days = 0)
     for name in $x1users; do
-	openssl x509 -req -extfile $dir/$name.cnf -days 0 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt ||  err "Generate signing client cert"
+        openssl x509 -req -extfile $dir/$name.cnf -days 0 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -out $certdir/$name.crt ||  err "Generate signing client cert"
     done # invalid
 
     
         # create client certs with md5 -- too weak ca
     for name in $x3users; do
-	cat<<EOF > $dir/$name.cnf
+        cat<<EOF > $dir/$name.cnf
 [req]
 prompt = no
 distinguished_name = dn
@@ -144,20 +144,20 @@ O = Clixon
 L = Stockholm
 C = SE
 EOF
-	# Create client key
-	openssl genpkey -algorithm RSA -out "$certdir/$name.key" ||  err "Generate client key"
+        # Create client key
+        openssl genpkey -algorithm RSA -out "$certdir/$name.key" ||  err "Generate client key"
 
-	# Generate CSR (signing request)
-	openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
+        # Generate CSR (signing request)
+        openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
 
-	# Sign by CA
-	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -md5 -out $certdir/$name.crt  ||  err "Generate signing client cert"
+        # Sign by CA
+        openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $cacert -CAkey $cakey -CAcreateserial -md5 -out $certdir/$name.crt  ||  err "Generate signing client cert"
     done # too weak ca
     
     if false; then # XXX: How do you generate an "invalid" cert?
     # create client certs from invalid CA
     for name in $x2users; do
-	cat<<EOF > $dir/$name.cnf
+        cat<<EOF > $dir/$name.cnf
 [req]
 prompt = no
 distinguished_name = dn
@@ -168,14 +168,14 @@ O = Clixon
 L = Stockholm
 C = SE
 EOF
-	# Create client key
-	openssl genpkey -algorithm RSA -out "$certdir/$name.key" ||  err "Generate client key"
+        # Create client key
+        openssl genpkey -algorithm RSA -out "$certdir/$name.key" ||  err "Generate client key"
 
-	# Generate CSR (signing request)
-	openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
+        # Generate CSR (signing request)
+        openssl req -new -config $dir/$name.cnf -key $certdir/$name.key -out $certdir/$name.csr
 
-	# Sign by CA
-	openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $xcacert -CAkey $xcakey -CAcreateserial -out $certdir/$name.crt
+        # Sign by CA
+        openssl x509 -req -extfile $dir/$name.cnf -days 1 -passin "pass:password" -in $certdir/$name.csr -CA $xcacert -CAkey $xcakey -CAcreateserial -out $certdir/$name.crt
     done # invalid ca
     fi # XXX
 
@@ -229,26 +229,26 @@ function testrun()
     </${DATASTORE_TOP}>
 EOF
     if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	sudo pkill -f clixon_backend # to be sure
-	
-	new "start backend -s startup -f $cfg"
-	start_backend -s startup -f $cfg
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        sudo pkill -f clixon_backend # to be sure
+        
+        new "start backend -s startup -f $cfg"
+        start_backend -s startup -f $cfg
     fi
 
     new "wait for backend"
     wait_backend
 
     if [ $RC -ne 0 ]; then
-	new "kill old restconf daemon"
-	stop_restconf_pre
+        new "kill old restconf daemon"
+        stop_restconf_pre
 
-	new "start restconf daemon"
-	start_restconf -f $cfg
+        new "start restconf daemon"
+        start_restconf -f $cfg
     fi
 
     # Note, the root resource is accessed by wait_restconf to detect liveness.
@@ -288,7 +288,7 @@ EOF
     expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/$HVER 401"
     # Unsure if clixon should fail early with SSL_VERIFY_FAIL_IF_NO_PEER_CERT, instead now fail later in
     # code
-#	expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/$HVER 400"
+#       expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0 "HTTP/$HVER 400"
 
     new "limited invalid cert"
     expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0  "HTTP/$HVER 400" "\"error-message\": \"HTTP cert verification failed: certificate has expired"
@@ -327,18 +327,18 @@ EOF
     expectpart "$(curl $CURLOPTS --key $certdir/andy.key --cert $certdir/andy.crt -X GET $RCPROTO://localhost/restconf/data/example:x)" 0 "HTTP/$HVER 200" '{"example:x":42}'
 
     if [ $RC -ne 0 ]; then
-	new "Kill restconf daemon"
-	stop_restconf
+        new "Kill restconf daemon"
+        stop_restconf
     fi
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 

@@ -26,37 +26,37 @@ module example {
     prefix ex;
     typedef uniontype {
         type union {
-	    type enumeration {
+            type enumeration {
                 enum u1;
                 enum u2;
             }
-	    type string;
+            type string;
         }
     }
     /* Generic config data */
     container tableleaf{
-	list parleaf{
-	    description "leaf is union type";
-	    key name;
-	    leaf name{
-		type string;
-	    }
-	    leaf value{
-		type uniontype;
-	    }
-	}
+        list parleaf{
+            description "leaf is union type";
+            key name;
+            leaf name{
+                type string;
+            }
+            leaf value{
+                type uniontype;
+            }
+        }
     }
     container tablekey{
-	list parkey{
-	    description "key is union type";
-	    key name;
-	    leaf name{
-		type uniontype;
-	    }
-	    leaf value{
-		type string;
-	    }
-	}
+        list parkey{
+            description "key is union type";
+            key name;
+            leaf name{
+                type uniontype;
+            }
+            leaf value{
+                type string;
+            }
+        }
     }
 }
 EOF
@@ -115,7 +115,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -169,7 +169,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

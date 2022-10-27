@@ -480,8 +480,8 @@ static int _yc_exist[Y_SPEC] = {0,};
  */
 int
 yang_cardinality(clicon_handle h,
-		 yang_stmt    *yt,
-		 char         *modname)
+                 yang_stmt    *yt,
+                 char         *modname)
 {
     int                 retval = -1;
     yang_stmt          *ys = NULL;
@@ -495,69 +495,69 @@ yang_cardinality(clicon_handle h,
     
     pk = yang_keyword_get(yt);
     if (_yc_exist[pk] == 0)
-	goto ok;
+        goto ok;
     /* 1) For all children, if neither in 0..n, 0..1, 1 or 1..n   ->ERROR  
      * Also: check monotonically increasing order
      */
     order = 0;
     ys = NULL;
     while ((ys = yn_each(yt, ys)) != NULL) {
-	ck = yang_keyword_get(ys);
-	if (pk == Y_UNKNOWN || ck == Y_UNKNOWN) /* special case */
-	    continue;
-	/* Find entry in yang cardinality table from parent/child keyword pair */
-	if ((yc = _yc_search[pk][ck]) == NULL){
-	    clicon_err(OE_YANG, 0, "%s: \"%s\"(%s) is child of \"%s\"(%s), but should not be",
-		       modname,
-		       yang_key2str(ck),
-		       yang_argument_get(ys),
-		       yang_key2str(pk),
-		       yang_argument_get(yt));
-	    goto done;
-	}
-	if (order > yc->yc_order){
-	    clicon_err(OE_YANG, 0, "%s: yang node \"%s\"(%s) which is child of \"%s\"(%s) is not in correct order (should not be after \"%s\"(%s))",
-		       modname,
-		       yang_key2str(ck),
-		       yang_argument_get(ys),
-		       yang_key2str(pk),
-		       yang_argument_get(yt),
-		       yang_key2str(yang_keyword_get(yprev)),
-		       yang_argument_get(yprev));
-	    goto done;	    
-	}
-	if (order < yc->yc_order)
-	    order = yc->yc_order;
-	yprev = ys;
+        ck = yang_keyword_get(ys);
+        if (pk == Y_UNKNOWN || ck == Y_UNKNOWN) /* special case */
+            continue;
+        /* Find entry in yang cardinality table from parent/child keyword pair */
+        if ((yc = _yc_search[pk][ck]) == NULL){
+            clicon_err(OE_YANG, 0, "%s: \"%s\"(%s) is child of \"%s\"(%s), but should not be",
+                       modname,
+                       yang_key2str(ck),
+                       yang_argument_get(ys),
+                       yang_key2str(pk),
+                       yang_argument_get(yt));
+            goto done;
+        }
+        if (order > yc->yc_order){
+            clicon_err(OE_YANG, 0, "%s: yang node \"%s\"(%s) which is child of \"%s\"(%s) is not in correct order (should not be after \"%s\"(%s))",
+                       modname,
+                       yang_key2str(ck),
+                       yang_argument_get(ys),
+                       yang_key2str(pk),
+                       yang_argument_get(yt),
+                       yang_key2str(yang_keyword_get(yprev)),
+                       yang_argument_get(yprev));
+            goto done;      
+        }
+        if (order < yc->yc_order)
+            order = yc->yc_order;
+        yprev = ys;
    }
     /* 2) For all in 1 and 1..n list, if 0 such children          ->ERROR */
     for (i=0; i<Y_SPEC; i++){
-	yc = _yc_search[pk][i];
-	if (yc == NULL)
-	    continue;
-	if (yc->yc_min  &&
-	    yang_find(yt, yc->yc_child, NULL) == NULL){
-	    clicon_err(OE_YANG, 0, "%s: \"%s\" is missing but is mandatory child of \"%s\"",
-		       modname, yang_key2str(yc->yc_child), yang_key2str(pk));
-	    goto done;
-	}
-	if (yc->yc_max<NMAX &&
-	    (nr = yang_match(yt, yc->yc_child, NULL)) > yc->yc_max){
-	    clicon_err(OE_YANG, 0, "%s: \"%s\" has %d children of type \"%s\", but only %d allowed",
-		       modname,
-		       yang_key2str(pk),
-		       nr,
-		       yang_key2str(yc->yc_child),
-		       yc->yc_max);
-	    goto done;
-	}
+        yc = _yc_search[pk][i];
+        if (yc == NULL)
+            continue;
+        if (yc->yc_min  &&
+            yang_find(yt, yc->yc_child, NULL) == NULL){
+            clicon_err(OE_YANG, 0, "%s: \"%s\" is missing but is mandatory child of \"%s\"",
+                       modname, yang_key2str(yc->yc_child), yang_key2str(pk));
+            goto done;
+        }
+        if (yc->yc_max<NMAX &&
+            (nr = yang_match(yt, yc->yc_child, NULL)) > yc->yc_max){
+            clicon_err(OE_YANG, 0, "%s: \"%s\" has %d children of type \"%s\", but only %d allowed",
+                       modname,
+                       yang_key2str(pk),
+                       nr,
+                       yang_key2str(yc->yc_child),
+                       yc->yc_max);
+            goto done;
+        }
     }
     /* 4) Recurse */
     i = 0;
     while (i< yang_len_get(yt)){ /* Note, children may be removed cant use yn_each */
-	ys = yang_child_i(yt, i++);
-	if (yang_cardinality(h, ys, modname) < 0)
-	    goto done;
+        ys = yang_child_i(yt, i++);
+        if (yang_cardinality(h, ys, modname) < 0)
+            goto done;
     }
  ok:
     retval = 0;
@@ -575,18 +575,18 @@ yang_cardinality(clicon_handle h,
  */
 int
 yang_cardinality_interval(clicon_handle h,
-			  enum rfc_6020 parent_key,
-			  enum rfc_6020 child_key,
-			  int          *min,
-			  int          *max)
+                          enum rfc_6020 parent_key,
+                          enum rfc_6020 child_key,
+                          int          *min,
+                          int          *max)
 {
     int                 retval = -1;
     const struct ycard *ycplist; /* ycard parent table*/
     
     if ((ycplist = _yc_search[parent_key][child_key]) == NULL){
-	clicon_err(OE_YANG, EINVAL, "keys %d %d do not have cardinality",
-		   parent_key, child_key);
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "keys %d %d do not have cardinality",
+                   parent_key, child_key);
+        goto done;
     }
     *min = ycplist->yc_min;
     *max = ycplist->yc_max;
@@ -602,8 +602,8 @@ yang_cardinality_init(clicon_handle h)
      const struct ycard *yc;
     
      for (yc = &_yclist[0]; (int)yc->yc_parent; yc++){
-	 _yc_exist[yc->yc_parent] = 1;
-	 _yc_search[yc->yc_parent][yc->yc_child] = yc;
+         _yc_exist[yc->yc_parent] = 1;
+         _yc_search[yc->yc_parent][yc->yc_child] = yc;
      }
      return 0;
 }

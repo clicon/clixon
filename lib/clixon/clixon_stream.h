@@ -68,7 +68,7 @@
  * @param[in]  arg   Extra argument provided in stream_ss_add
  * @see stream_ss_add
  */
-typedef	int (*stream_fn_t)(clicon_handle h, int op, cxobj *event, void *arg);
+typedef int (*stream_fn_t)(clicon_handle h, int op, cxobj *event, void *arg);
 
 struct stream_subscription{
     qelem_t                     ss_q;   /* queue header */
@@ -111,11 +111,11 @@ int stream_get_xml(clicon_handle h, int access, cbuf *cb);
 int stream_timer_setup(int fd, void *arg);
 /* Subscriptions */
 struct stream_subscription *stream_ss_add(clicon_handle h, char *stream,
-		  char *xpath, struct timeval *start, struct timeval *stop,
-		  stream_fn_t fn, void *arg);
+                  char *xpath, struct timeval *start, struct timeval *stop,
+                  stream_fn_t fn, void *arg);
 int stream_ss_rm(clicon_handle h, event_stream_t *es, struct stream_subscription *ss, int force);
 struct stream_subscription *stream_ss_find(event_stream_t *es,
-					   stream_fn_t fn, void *arg);
+                                           stream_fn_t fn, void *arg);
 int stream_ss_delete_all(clicon_handle h, stream_fn_t fn, void *arg);
 int stream_ss_delete(clicon_handle h, char *name, stream_fn_t fn, void *arg);
 

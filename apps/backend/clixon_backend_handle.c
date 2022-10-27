@@ -114,11 +114,11 @@ backend_handle_exit(clicon_handle h)
 
     /* only delete client structs, not close sockets, etc, see backend_client_rm WHY NOT? */
     while ((ce = backend_client_list(h)) != NULL){
-	if (ce->ce_s){
-	    close(ce->ce_s);
-	    ce->ce_s = 0;
-	}
-	backend_client_delete(h, ce);
+        if (ce->ce_s){
+            close(ce->ce_s);
+            ce->ce_s = 0;
+        }
+        backend_client_delete(h, ce);
     }
     clicon_handle_exit(h); /* frees h and options (and streams) */
     return 0;
@@ -132,14 +132,14 @@ backend_handle_exit(clicon_handle h)
  */
 struct client_entry *
 backend_client_add(clicon_handle    h, 
-		   struct sockaddr *addr)
+                   struct sockaddr *addr)
 {
     struct backend_handle *bh = handle(h);
     struct client_entry   *ce;
 
     if ((ce = (struct client_entry *)malloc(sizeof(*ce))) == NULL){
-	clicon_err(OE_PLUGIN, errno, "malloc");
-	return NULL;
+        clicon_err(OE_PLUGIN, errno, "malloc");
+        return NULL;
     }
     memset(ce, 0, sizeof(*ce));
     ce->ce_nr = bh->bh_ce_nr++; /* Session-id ? */
@@ -168,7 +168,7 @@ backend_client_list(clicon_handle h)
  */
 int
 backend_client_delete(clicon_handle        h,
-		      struct client_entry *ce)
+                      struct client_entry *ce)
 {
     struct client_entry   *c;
     struct client_entry  **ce_prev;
@@ -176,14 +176,14 @@ backend_client_delete(clicon_handle        h,
 
     ce_prev = &bh->bh_ce_list;
     for (c = *ce_prev; c; c = c->ce_next){
-	if (c == ce){
-	    *ce_prev = c->ce_next;
-	    if (ce->ce_username)
-		free(ce->ce_username);
-	    free(ce);
-	    break;
-	}
-	ce_prev = &c->ce_next;
+        if (c == ce){
+            *ce_prev = c->ce_next;
+            if (ce->ce_username)
+                free(ce->ce_username);
+            free(ce);
+            break;
+        }
+        ce_prev = &c->ce_next;
     }
     return 0;
 }
@@ -194,18 +194,18 @@ backend_client_delete(clicon_handle        h,
  */
 int
 backend_client_print(clicon_handle h,
-		     FILE         *f)
+                     FILE         *f)
 {
     struct backend_handle *bh = handle(h);
     struct client_entry   *ce;
 
     for (ce = bh->bh_ce_list; ce; ce = ce->ce_next){
-	fprintf(f, "Client:     %d\n", ce->ce_nr);
-	fprintf(f, "  Session:  %d\n", ce->ce_id);
-	fprintf(f, "  Socket:   %d\n", ce->ce_s);
-	fprintf(f, "  Msgs in:  %d\n", ce->ce_stat_in);
-	fprintf(f, "  Msgs out: %d\n", ce->ce_stat_out);
-	fprintf(f, "  Username: %s\n", ce->ce_username);
+        fprintf(f, "Client:     %d\n", ce->ce_nr);
+        fprintf(f, "  Session:  %d\n", ce->ce_id);
+        fprintf(f, "  Socket:   %d\n", ce->ce_s);
+        fprintf(f, "  Msgs in:  %d\n", ce->ce_stat_in);
+        fprintf(f, "  Msgs out: %d\n", ce->ce_stat_out);
+        fprintf(f, "  Username: %s\n", ce->ce_username);
     }
     return 0;
 }

@@ -70,16 +70,16 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options]\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \t Debug - print dispatch tree\n"
-	    "\t-a <string>\t Argument to callback (default: NULL)\n"
-	    "\t-i <int>   \t Function index: 1..3 (default: 1)\n"
-	    "\t-p <path>  \t Registered path (default: /)\n"
-	    "\t-r         \t Register callback (based on -a/-i/-p setting)\n"
-	    "\t-c <path>  \t Call dispatcher with path\n",
-	    argv0
-	    );
+            "\t-D <level> \t Debug - print dispatch tree\n"
+            "\t-a <string>\t Argument to callback (default: NULL)\n"
+            "\t-i <int>   \t Function index: 1..3 (default: 1)\n"
+            "\t-p <path>  \t Registered path (default: /)\n"
+            "\t-r         \t Register callback (based on -a/-i/-p setting)\n"
+            "\t-c <path>  \t Call dispatcher with path\n",
+            argv0
+            );
     exit(0);
 }
 
@@ -118,72 +118,72 @@ main(int    argc,
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, DISPATCHER_OPTS)) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv0);
-	    break;
-    	case 'D':
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(argv0);
-	    break;
+        switch (c) {
+        case 'h':
+            usage(argv0);
+            break;
+        case 'D':
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(argv0);
+            break;
 
-	case 'a' :
-	case 'i' :
-	case 'p' :
-	case 'r' :
-	case 'c' :
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        case 'a' :
+        case 'i' :
+        case 'p' :
+        case 'r' :
+        case 'c' :
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
     clicon_log_init("xpath", dbg?LOG_DEBUG:LOG_INFO, logdst);
     
     clicon_debug_init(dbg, NULL);
-	    
+            
     /* Now rest of options */   
     opterr = 0;
     optind = 1;
     while ((c = getopt(argc, argv, DISPATCHER_OPTS)) != -1){
-	switch (c) {
-	case 'D' : /* debug */
-	    break; /* see above */
-	case 'a' : /* arg string */
-	    arg = optarg;
-	    break;
-	case 'i' : /* dispatcher function: 1..3 */
-	    switch (atoi(optarg)){
-	    case 1: fn = cb1; break;
-	    case 2: fn = cb2; break;
-		//	    case 3: fn = cb3; break;
-	    }
-	    break;
-	case 'p' : /* register path */
-	    regpath = optarg;
-	    break;
-	case 'r' :{ /* register callback based on -a/-i/-p*/
-	    dispatcher_definition     x = {regpath, fn, arg};
-	    if (dispatcher_register_handler(&htable, &x) < 0)
-		goto done;	    
-	    break;
-	}
-	case 'c':{ /* Execute a call using path */
-	    char *path = optarg;
-	    if ((ret = dispatcher_call_handlers(htable, NULL, path, NULL)) < 0)
-		goto done;
-	    fprintf(stderr, "path:%s ret:%d\n", path, ret);
-	    break;
-	}
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'D' : /* debug */
+            break; /* see above */
+        case 'a' : /* arg string */
+            arg = optarg;
+            break;
+        case 'i' : /* dispatcher function: 1..3 */
+            switch (atoi(optarg)){
+            case 1: fn = cb1; break;
+            case 2: fn = cb2; break;
+                //          case 3: fn = cb3; break;
+            }
+            break;
+        case 'p' : /* register path */
+            regpath = optarg;
+            break;
+        case 'r' :{ /* register callback based on -a/-i/-p*/
+            dispatcher_definition     x = {regpath, fn, arg};
+            if (dispatcher_register_handler(&htable, &x) < 0)
+                goto done;          
+            break;
+        }
+        case 'c':{ /* Execute a call using path */
+            char *path = optarg;
+            if ((ret = dispatcher_call_handlers(htable, NULL, path, NULL)) < 0)
+                goto done;
+            fprintf(stderr, "path:%s ret:%d\n", path, ret);
+            break;
+        }
+        default:
+            usage(argv[0]);
+            break;
+        }
     }
     if (dbg)
-	dispatcher_print(stderr, 0, htable);
+        dispatcher_print(stderr, 0, htable);
     dispatcher_free(htable);
     retval = 0;
  done:

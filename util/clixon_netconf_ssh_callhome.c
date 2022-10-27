@@ -84,20 +84,20 @@ sudo clixon_netconf_ssh_callhome -a 127.0.0.1 -c /var/tmp/./test_netconf_ssh_cal
 
 static int
 callhome_connect(struct sockaddr *sa,
-		 size_t           sa_len,
-		 int             *sp)
+                 size_t           sa_len,
+                 int             *sp)
 {
     int retval = -1;
     int s;
 
     if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
-	perror("socket");
-	goto done;
+        perror("socket");
+        goto done;
     }
     if (connect(s, sa, sa_len) < 0){
-	perror("connect");
-	close(s);
-	goto done;
+        perror("connect");
+        close(s);
+        goto done;
     }
     *sp = s;
     retval = 0;
@@ -108,31 +108,31 @@ callhome_connect(struct sockaddr *sa,
 /* @see clixon_inet2sin */
 static int
 inet2sin(const char       *addrtype,
-	 const char       *addrstr,
-	 uint16_t          port,
-	 struct sockaddr  *sa,
-	 size_t           *sa_len)
+         const char       *addrstr,
+         uint16_t          port,
+         struct sockaddr  *sa,
+         size_t           *sa_len)
 {
     struct sockaddr_in6 *sin6;
     struct sockaddr_in  *sin;
 
     if (strcmp(addrtype, "inet:ipv6-address") == 0) {
-	sin6 = (struct sockaddr_in6 *)sa;
+        sin6 = (struct sockaddr_in6 *)sa;
         *sa_len           = sizeof(struct sockaddr_in6);
         sin6->sin6_port   = htons(port);
         sin6->sin6_family = AF_INET6;
         inet_pton(AF_INET6, addrstr, &sin6->sin6_addr);
     }
     else if (strcmp(addrtype, "inet:ipv4-address") == 0) {
-	sin = (struct sockaddr_in *)sa;
+        sin = (struct sockaddr_in *)sa;
         *sa_len              = sizeof(struct sockaddr_in);
         sin->sin_family      = AF_INET;
         sin->sin_port        = htons(port);
         sin->sin_addr.s_addr = inet_addr(addrstr);
     }
     else{
-	fprintf(stderr, "Unexpected addrtype: %s\n", addrtype);
-	return -1;
+        fprintf(stderr, "Unexpected addrtype: %s\n", addrtype);
+        return -1;
     }
     return 0;
 }
@@ -140,10 +140,10 @@ inet2sin(const char       *addrtype,
 
 static int
 ssh_server_exec(int   s,
-	  char *sshdbin,
-	  char *sshdconfigfile,
-    	  char *clixonconfigfile,
-	  int   dbg)
+          char *sshdbin,
+          char *sshdconfigfile,
+          char *clixonconfigfile,
+          int   dbg)
 {
     int    retval = -1;
     char **argv = NULL;
@@ -154,39 +154,39 @@ ssh_server_exec(int   s,
     const char *formatstr = "Subsystem netconf /usr/local/bin/clixon_netconf -f %s";
 
     if (s < 0){
-	errno = EINVAL;
-	perror("socket s");
-	goto done;
+        errno = EINVAL;
+        perror("socket s");
+        goto done;
     }
     if (sshdbin == NULL){
-	errno = EINVAL;
-	perror("sshdbin");
-	goto done;
+        errno = EINVAL;
+        perror("sshdbin");
+        goto done;
     }
     if (sshdconfigfile == NULL){
-	errno = EINVAL;
-	perror("sshdconfigfile");
-	goto done;
+        errno = EINVAL;
+        perror("sshdconfigfile");
+        goto done;
     }
     if (clixonconfigfile == NULL){
-	errno = EINVAL;
-	perror("clixonconfigfile");
-	goto done;
+        errno = EINVAL;
+        perror("clixonconfigfile");
+        goto done;
     }
     /* Construct subsystem string */
     len = strlen(formatstr)+strlen(clixonconfigfile)+1;
     if ((optstr = malloc(len)) == NULL){
-	perror("malloc");
-	goto done;
+        perror("malloc");
+        goto done;
     }
     snprintf(optstr, len, formatstr, clixonconfigfile);
 
     nr = 9; /* See below */
     if (dbg)
-	nr++;
+        nr++;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
-	perror("calloc");
-	goto done;
+        perror("calloc");
+        goto done;
     }
 
     i = 0;
@@ -195,7 +195,7 @@ ssh_server_exec(int   s,
     argv[i++] = "-i"; /* Specifies that sshd is being run from inetd(8) */
     argv[i++] = "-D";  /* Foreground ? */
     if (dbg)
-	argv[i++] = "-d"; /* Debug mode */
+        argv[i++] = "-d"; /* Debug mode */
     argv[i++] = "-e"; /* write debug logs to stderr */
     argv[i++] = "-o"; /* option */
     argv[i++] = optstr;
@@ -204,22 +204,22 @@ ssh_server_exec(int   s,
     argv[i++] = NULL;
     assert(i==nr);
     if (setreuid(0, 0) < 0){
-	perror("setreuid");
-	goto done;
+        perror("setreuid");
+        goto done;
     }
     close(0);
     close(1);
     if (dup2(s, STDIN_FILENO) < 0){
-	perror("dup2");
-	return -1;
+        perror("dup2");
+        return -1;
     }
     if (dup2(s, STDOUT_FILENO) < 0){
-	perror("dup2");
-	return -1;
+        perror("dup2");
+        return -1;
     }
     if (execv(argv[0], argv) < 0) {
-	perror("execv");
-	exit(1);
+        perror("execv");
+        exit(1);
     }
     /* Should reach here */
     retval = 0;
@@ -231,17 +231,17 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options]\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h           \tHelp\n"
-    	    "\t-D <level>   \tDebug\n"
-	    "\t-f ipv4|ipv6 \tSocket address family(inet:ipv4-address default)\n"
-	    "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
-	    "\t-p <port>    \tPort (default 4334)\n"
-	    "\t-c <file>    \tClixon config file - (default /usr/local/etc/clixon.xml)\n"
-	    "\t-C <file>    \tSSHD config file - (default /dev/null)\n"
-	    "\t-s <sshd>    \tPath to sshd binary, default %s\n"
-	    ,
-	    argv0, SSHDBIN_DEFAULT);
+            "\t-D <level>   \tDebug\n"
+            "\t-f ipv4|ipv6 \tSocket address family(inet:ipv4-address default)\n"
+            "\t-a <addrstr> \tIP address (eg 1.2.3.4) - mandatory\n"
+            "\t-p <port>    \tPort (default 4334)\n"
+            "\t-c <file>    \tClixon config file - (default /usr/local/etc/clixon.xml)\n"
+            "\t-C <file>    \tSSHD config file - (default /dev/null)\n"
+            "\t-s <sshd>    \tPath to sshd binary, default %s\n"
+            ,
+            argv0, SSHDBIN_DEFAULT);
     exit(0);
 }
 
@@ -266,55 +266,55 @@ main(int    argc,
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, UTIL_OPTS)) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv[0]);
-	    break;
-    	case 'D':
-	    dbg++;
-	    break;
-	case 'f':
-	    family = optarg;
-	    break;
-	case 'a':
-	    addr = optarg;
-	    break;
-	case 'p':
-	    port = atoi(optarg);
-	    break;
-	case 'C':
-	    sshdconfigfile = optarg;
-	    break;
-	case 'c':
-	    clixonconfigfile = optarg;
-	    break;
-	case 's':
-	    sshdbin = optarg;
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv[0]);
+            break;
+        case 'D':
+            dbg++;
+            break;
+        case 'f':
+            family = optarg;
+            break;
+        case 'a':
+            addr = optarg;
+            break;
+        case 'p':
+            port = atoi(optarg);
+            break;
+        case 'C':
+            sshdconfigfile = optarg;
+            break;
+        case 'c':
+            clixonconfigfile = optarg;
+            break;
+        case 's':
+            sshdbin = optarg;
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     if (port == 0){
-	fprintf(stderr, "-p <port> is invalid\n");
-	usage(argv[0]);
-	goto done;
+        fprintf(stderr, "-p <port> is invalid\n");
+        usage(argv[0]);
+        goto done;
     }
     if (addr == NULL){
-	fprintf(stderr, "-a <addr> is NULL\n");
-	usage(argv[0]);
-	goto done;
+        fprintf(stderr, "-a <addr> is NULL\n");
+        usage(argv[0]);
+        goto done;
     }
     if (inet2sin(family, addr, port, sa, &sa_len) < 0)
-	goto done;
+        goto done;
     if (callhome_connect(sa, sa_len, &s) < 0)
-	goto done;
+        goto done;
     /* For some reason this sshd returns -1 which is unclear why */
     if (ssh_server_exec(s, sshdbin, sshdconfigfile, clixonconfigfile, dbg) < 0)
-	goto done;
+        goto done;
     /* Should not reach here */
     if (s >= 0)
-	close(s);
+        close(s);
     retval = 0;
  done:
     return retval;

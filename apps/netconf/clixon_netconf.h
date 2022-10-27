@@ -46,9 +46,9 @@
  * (Duplicated. Also in netconf_*.h)
  */
 int netconf_xpath(cxobj *xsearch,
-		  cxobj *xfilter, 
-		   cbuf *xf, cbuf *xf_err, 
-		  cxobj *xt);
+                  cxobj *xfilter, 
+                   cbuf *xf, cbuf *xf_err, 
+                  cxobj *xt);
 
 
 #endif /* _CLIXON_NETCONF_H_ */

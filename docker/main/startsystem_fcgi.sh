@@ -62,21 +62,21 @@ server {
         listen 80 default_server;
         listen localhost:80 default_server;
         listen [::]:80 default_server;
-	server_name localhost;
-	server_name _;
-	location / {
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
+        server_name localhost;
+        server_name _;
+        location / {
+            fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+            include fastcgi_params;
         }
-	location /restconf {
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
+        location /restconf {
+            fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+            include fastcgi_params;
         }
-	location /streams {
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
- 	    proxy_http_version 1.1;
-	    proxy_set_header Connection "";
+        location /streams {
+            fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+            include fastcgi_params;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
         }
 }
 EOF

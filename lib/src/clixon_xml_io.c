@@ -104,11 +104,11 @@
  */
 static int
 xml2file_recurse(FILE             *f, 
-		 cxobj            *x, 
-		 int               level, 
-		 int               pretty,
-		 clicon_output_cb *fn,
-		 int               autocliext)
+                 cxobj            *x, 
+                 int               level, 
+                 int               pretty,
+                 clicon_output_cb *fn,
+                 int               autocliext)
 {
     int    retval = -1;
     char  *name;
@@ -120,90 +120,90 @@ xml2file_recurse(FILE             *f,
     char  *encstr = NULL; /* xml encoded string */
     int    exist = 0;
     yang_stmt *y;
-	
+        
     if (x == NULL)
-	goto ok;
+        goto ok;
     if (autocliext &&
-	(y = xml_spec(x)) != NULL){
-	if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
-	    goto done;
-	if (exist)
-	    goto ok;
+        (y = xml_spec(x)) != NULL){
+        if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+            goto done;
+        if (exist)
+            goto ok;
     }
     name = xml_name(x);
     namespace = xml_prefix(x);
     switch(xml_type(x)){
     case CX_BODY:
-	if ((val = xml_value(x)) == NULL) /* incomplete tree */
-	    break;
-	if (xml_chardata_encode(&encstr, "%s", val) < 0)
-	    goto done;
-	(*fn)(f, "%s", encstr);
-	break;
+        if ((val = xml_value(x)) == NULL) /* incomplete tree */
+            break;
+        if (xml_chardata_encode(&encstr, "%s", val) < 0)
+            goto done;
+        (*fn)(f, "%s", encstr);
+        break;
     case CX_ATTR:
-	(*fn)(f, " ");
-	if (namespace)
-	    (*fn)(f, "%s:", namespace);
-	(*fn)(f, "%s=\"%s\"", name, xml_value(x));
-	break;
+        (*fn)(f, " ");
+        if (namespace)
+            (*fn)(f, "%s:", namespace);
+        (*fn)(f, "%s=\"%s\"", name, xml_value(x));
+        break;
     case CX_ELMNT:
-	(*fn)(f, "%*s<", pretty?(level*XML_INDENT):0, "");
-	if (namespace)
-	    (*fn)(f, "%s:", namespace);
-	(*fn)(f, "%s", name);
-	hasbody = 0;
-	haselement = 0;
-	xc = NULL;
-	/* print attributes only */
-	while ((xc = xml_child_each(x, xc, -1)) != NULL) {
-	    switch (xml_type(xc)){
-	    case CX_ATTR:
-		if (xml2file_recurse(f, xc, level+1, pretty, fn, autocliext) <0)
-		    goto done;
-		break;
-	    case CX_BODY:
-		hasbody=1;
-		break;
-	    case CX_ELMNT:
-		haselement=1;
-		break;
-	    default:
-		break;
-	    }
-	}
-	/* Check for special case <a/> instead of <a></a>:
-	 * Ie, no CX_BODY or CX_ELMNT child.
-	 */
-	if (hasbody==0 && haselement==0) 
-	    (*fn)(f, "/>");
-	else{
-	    (*fn)(f, ">");
-	    if (pretty && hasbody == 0)
-		    (*fn)(f, "\n");
-	    xc = NULL;
-	    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
-		if (xml_type(xc) != CX_ATTR)
-		    if (xml2file_recurse(f, xc, level+1, pretty, fn, autocliext) <0)
-			goto done;
-	    }
-	    if (pretty && hasbody==0)
-		(*fn)(f, "%*s", level*XML_INDENT, "");
-	    (*fn)(f, "</");
-	    if (namespace)
-		(*fn)(f, "%s:", namespace);
-	    (*fn)(f, "%s>", name);
-	}
-	if (pretty)
-	    (*fn)(f, "\n");
-	break;
+        (*fn)(f, "%*s<", pretty?(level*XML_INDENT):0, "");
+        if (namespace)
+            (*fn)(f, "%s:", namespace);
+        (*fn)(f, "%s", name);
+        hasbody = 0;
+        haselement = 0;
+        xc = NULL;
+        /* print attributes only */
+        while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+            switch (xml_type(xc)){
+            case CX_ATTR:
+                if (xml2file_recurse(f, xc, level+1, pretty, fn, autocliext) <0)
+                    goto done;
+                break;
+            case CX_BODY:
+                hasbody=1;
+                break;
+            case CX_ELMNT:
+                haselement=1;
+                break;
+            default:
+                break;
+            }
+        }
+        /* Check for special case <a/> instead of <a></a>:
+         * Ie, no CX_BODY or CX_ELMNT child.
+         */
+        if (hasbody==0 && haselement==0) 
+            (*fn)(f, "/>");
+        else{
+            (*fn)(f, ">");
+            if (pretty && hasbody == 0)
+                    (*fn)(f, "\n");
+            xc = NULL;
+            while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+                if (xml_type(xc) != CX_ATTR)
+                    if (xml2file_recurse(f, xc, level+1, pretty, fn, autocliext) <0)
+                        goto done;
+            }
+            if (pretty && hasbody==0)
+                (*fn)(f, "%*s", level*XML_INDENT, "");
+            (*fn)(f, "</");
+            if (namespace)
+                (*fn)(f, "%s:", namespace);
+            (*fn)(f, "%s>", name);
+        }
+        if (pretty)
+            (*fn)(f, "\n");
+        break;
     default:
-	break;
+        break;
     }/* switch */
  ok:
     retval = 0;
  done:
     if (encstr)
-	free(encstr);
+        free(encstr);
     return retval;
 }
 
@@ -224,27 +224,27 @@ xml2file_recurse(FILE             *f,
  */
 int
 clixon_xml2file(FILE             *f, 
-		cxobj            *xn, 
-		int               level, 
-		int               pretty,
-		clicon_output_cb *fn,
-		int               skiptop,
-		int               autocliext)
+                cxobj            *xn, 
+                int               level, 
+                int               pretty,
+                clicon_output_cb *fn,
+                int               skiptop,
+                int               autocliext)
 {
     int   retval = 1;
     cxobj *xc;
 
     if (fn == NULL)
-	fn = fprintf;
+        fn = fprintf;
     if (skiptop){
-	xc = NULL;
-	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-	    if (xml2file_recurse(f, xc, level, pretty, fn, autocliext) < 0)
-		goto done;
+        xc = NULL;
+        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+            if (xml2file_recurse(f, xc, level, pretty, fn, autocliext) < 0)
+                goto done;
     }
     else {
-	if (xml2file_recurse(f, xn, level, pretty, fn, autocliext) < 0)
-	    goto done;
+        if (xml2file_recurse(f, xn, level, pretty, fn, autocliext) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -262,7 +262,7 @@ clixon_xml2file(FILE             *f,
  */
 int
 xml_print(FILE  *f, 
-	  cxobj *x)
+          cxobj *x)
 {
     return xml2file_recurse(f, x, 0, 1, fprintf, 0);
 }
@@ -271,34 +271,34 @@ xml_print(FILE  *f,
  */
 static int
 xml_dump1(FILE  *f, 
-	  cxobj *x,
-	  int    indent)
+          cxobj *x,
+          int    indent)
 {
     cxobj *xc;
     
     if (xml_type(x) != CX_ELMNT)
-	return 0;
+        return 0;
     fprintf(stderr, "%*s %s(%s)",
-	    indent*3, "",
-	    //	    x,
-	    xml_name(x),
-	    xml_type2str(xml_type(x)));
+            indent*3, "",
+            //      x,
+            xml_name(x),
+            xml_type2str(xml_type(x)));
     if (xml_flag(x, XML_FLAG_ADD))
-	fprintf(stderr, " add");
+        fprintf(stderr, " add");
     if (xml_flag(x, XML_FLAG_DEL))
-	fprintf(stderr, " delete");
+        fprintf(stderr, " delete");
     if (xml_flag(x, XML_FLAG_CHANGE))
-	fprintf(stderr, " change");
+        fprintf(stderr, " change");
     if (xml_flag(x, XML_FLAG_MARK))
-	fprintf(stderr, " mark");
+        fprintf(stderr, " mark");
     fprintf(stderr, "\n");
     xc = NULL;
     while ((xc = xml_child_each(x, xc, -1)) != NULL) {
-	xml_dump1(f, xc, indent+1);
+        xml_dump1(f, xc, indent+1);
     }
     return 0;
 }
-	 
+         
 /*! Dump cxobj structure with pointers and flags for debugging
  *
  * @param[in]   f    UNIX output stream
@@ -307,7 +307,7 @@ xml_dump1(FILE  *f,
  */
 int
 xml_dump(FILE  *f, 
-	 cxobj *x)
+         cxobj *x)
 {
     return xml_dump1(f, x, 0);
 }
@@ -322,10 +322,10 @@ xml_dump(FILE  *f,
  */
 static int
 clixon_xml2cbuf1(cbuf   *cb, 
-		 cxobj  *x, 
-		 int     level,
-		 int     pretty,
-		 int32_t depth)
+                 cxobj  *x, 
+                 int     level,
+                 int     pretty,
+                 int32_t depth)
 {
     int    retval = -1;
     cxobj *xc;
@@ -336,80 +336,80 @@ clixon_xml2cbuf1(cbuf   *cb,
     char  *val;
     
     if (depth == 0)
-	goto ok;
+        goto ok;
     name = xml_name(x);
     namespace = xml_prefix(x);
     switch(xml_type(x)){
     case CX_BODY:
-	if ((val = xml_value(x)) == NULL) /* incomplete tree */
-	    break;
-	if (xml_chardata_cbuf_append(cb, val) < 0)
-	    goto done;
-	break;
+        if ((val = xml_value(x)) == NULL) /* incomplete tree */
+            break;
+        if (xml_chardata_cbuf_append(cb, val) < 0)
+            goto done;
+        break;
     case CX_ATTR:
-	cbuf_append_str(cb, " ");
-	if (namespace){
-	    cbuf_append_str(cb, namespace);
-	    cbuf_append_str(cb, ":");
-	}
-	cprintf(cb, "%s=\"%s\"", name, xml_value(x));
-	break;
+        cbuf_append_str(cb, " ");
+        if (namespace){
+            cbuf_append_str(cb, namespace);
+            cbuf_append_str(cb, ":");
+        }
+        cprintf(cb, "%s=\"%s\"", name, xml_value(x));
+        break;
     case CX_ELMNT:
-	if (pretty)
-	    cprintf(cb, "%*s<", level*XML_INDENT, "");
-	else
-	    cbuf_append_str(cb, "<");
-	if (namespace){
-	    cbuf_append_str(cb, namespace);
-	    cbuf_append_str(cb, ":");
-	}
-	cbuf_append_str(cb, name);
-	hasbody = 0;
-	haselement = 0;
-	xc = NULL;
-	/* print attributes only */
-	while ((xc = xml_child_each(x, xc, -1)) != NULL) 
-	    switch (xml_type(xc)){
-	    case CX_ATTR:
-		if (clixon_xml2cbuf1(cb, xc, level+1, pretty, -1) < 0)
-		    goto done;
-		break;
-	    case CX_BODY:
-		hasbody=1;
-		break;
-	    case CX_ELMNT:
-		haselement=1;
-		break;
-	    default:
-		break;
-	    }
-	/* Check for special case <a/> instead of <a></a> */
-	if (hasbody==0 && haselement==0) 
-	    cbuf_append_str(cb, "/>");
-	else{
-	    cbuf_append_str(cb, ">");
-	    if (pretty && hasbody == 0)
-		cbuf_append_str(cb, "\n");
-	    xc = NULL;
-	    while ((xc = xml_child_each(x, xc, -1)) != NULL) 
-		if (xml_type(xc) != CX_ATTR)
-		    if (clixon_xml2cbuf1(cb, xc, level+1, pretty, depth-1) < 0)
-			goto done;
-	    if (pretty && hasbody == 0)
-		cprintf(cb, "%*s", level*XML_INDENT, "");
-	    cbuf_append_str(cb, "</");
-	    if (namespace){
-		cbuf_append_str(cb, namespace);
-		cbuf_append_str(cb, ":");
-	    }
-	    cbuf_append_str(cb, name);
-	    cbuf_append_str(cb, ">");
-	}
-	if (pretty)
-	    cbuf_append_str(cb, "\n");
-	break;
+        if (pretty)
+            cprintf(cb, "%*s<", level*XML_INDENT, "");
+        else
+            cbuf_append_str(cb, "<");
+        if (namespace){
+            cbuf_append_str(cb, namespace);
+            cbuf_append_str(cb, ":");
+        }
+        cbuf_append_str(cb, name);
+        hasbody = 0;
+        haselement = 0;
+        xc = NULL;
+        /* print attributes only */
+        while ((xc = xml_child_each(x, xc, -1)) != NULL) 
+            switch (xml_type(xc)){
+            case CX_ATTR:
+                if (clixon_xml2cbuf1(cb, xc, level+1, pretty, -1) < 0)
+                    goto done;
+                break;
+            case CX_BODY:
+                hasbody=1;
+                break;
+            case CX_ELMNT:
+                haselement=1;
+                break;
+            default:
+                break;
+            }
+        /* Check for special case <a/> instead of <a></a> */
+        if (hasbody==0 && haselement==0) 
+            cbuf_append_str(cb, "/>");
+        else{
+            cbuf_append_str(cb, ">");
+            if (pretty && hasbody == 0)
+                cbuf_append_str(cb, "\n");
+            xc = NULL;
+            while ((xc = xml_child_each(x, xc, -1)) != NULL) 
+                if (xml_type(xc) != CX_ATTR)
+                    if (clixon_xml2cbuf1(cb, xc, level+1, pretty, depth-1) < 0)
+                        goto done;
+            if (pretty && hasbody == 0)
+                cprintf(cb, "%*s", level*XML_INDENT, "");
+            cbuf_append_str(cb, "</");
+            if (namespace){
+                cbuf_append_str(cb, namespace);
+                cbuf_append_str(cb, ":");
+            }
+            cbuf_append_str(cb, name);
+            cbuf_append_str(cb, ">");
+        }
+        if (pretty)
+            cbuf_append_str(cb, "\n");
+        break;
     default:
-	break;
+        break;
     }/* switch */
  ok:
     retval = 0;
@@ -439,24 +439,24 @@ clixon_xml2cbuf1(cbuf   *cb,
  */
 int
 clixon_xml2cbuf(cbuf   *cb, 
-		cxobj  *xn,
-		int     level,
-		int     pretty,
-		int32_t depth,
-		int     skiptop)
+                cxobj  *xn,
+                int     level,
+                int     pretty,
+                int32_t depth,
+                int     skiptop)
 {
     int    retval = -1;
     cxobj *xc;
     
     if (skiptop){
-	xc = NULL;
-	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-	    if (clixon_xml2cbuf1(cb, xc, level, pretty, depth) < 0)
-		goto done;
+        xc = NULL;
+        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+            if (clixon_xml2cbuf1(cb, xc, level, pretty, depth) < 0)
+                goto done;
     }
     else {
-	if (clixon_xml2cbuf1(cb, xn, level, pretty, depth) < 0)
-	    goto done;
+        if (clixon_xml2cbuf1(cb, xn, level, pretty, depth) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -470,34 +470,34 @@ clixon_xml2cbuf(cbuf   *cb,
  */
 int
 xmltree2cbuf(cbuf  *cb, 
-	     cxobj *x,
-	     int    level)
+             cxobj *x,
+             int    level)
 {
     cxobj *xc;
     int    i;
 
     for (i=0; i<level*XML_INDENT; i++)
-	cprintf(cb, " ");
+        cprintf(cb, " ");
     if (xml_type(x) != CX_BODY)
-	cprintf(cb, "%s", xml_type2str(xml_type(x)));
+        cprintf(cb, "%s", xml_type2str(xml_type(x)));
     if (xml_prefix(x)==NULL)
-	cprintf(cb, " %s", xml_name(x));
+        cprintf(cb, " %s", xml_name(x));
     else
-	cprintf(cb, " %s:%s", xml_prefix(x), xml_name(x));
+        cprintf(cb, " %s:%s", xml_prefix(x), xml_name(x));
     if (xml_value(x))
-	cprintf(cb, " value:\"%s\"", xml_value(x));
+        cprintf(cb, " value:\"%s\"", xml_value(x));
     if (xml_flag(x, 0xff))
-	cprintf(cb, " flags:0x%x", xml_flag(x, 0xff));
+        cprintf(cb, " flags:0x%x", xml_flag(x, 0xff));
     if (xml_child_nr(x))
-	cprintf(cb, " {");
+        cprintf(cb, " {");
     cprintf(cb, "\n");
     xc = NULL;
     while ((xc = xml_child_each(x, xc, -1)) != NULL) 
-	xmltree2cbuf(cb, xc, level+1);
+        xmltree2cbuf(cb, xc, level+1);
     if (xml_child_nr(x)){
-	for (i=0; i<level*XML_INDENT; i++)
-	    cprintf(cb, " ");
-	cprintf(cb, "}\n");
+        for (i=0; i<level*XML_INDENT; i++)
+            cprintf(cb, " ");
+        cprintf(cb, "}\n");
     }
     return 0;
 }
@@ -532,10 +532,10 @@ xmltree2cbuf(cbuf  *cb,
  */
 static int 
 _xml_parse(const char *str, 
-	   yang_bind   yb,
-	   yang_stmt  *yspec,
-	   cxobj      *xt,
-	   cxobj     **xerr)
+           yang_bind   yb,
+           yang_stmt  *yspec,
+           cxobj      *xt,
+           cxobj     **xerr)
 {
     int             retval = -1;
     clixon_xml_yacc xy = {0,};
@@ -546,88 +546,88 @@ _xml_parse(const char *str,
 
     clicon_debug(2, "%s", __FUNCTION__);
     if (strlen(str) == 0){
-	return 1; /* OK */
+        return 1; /* OK */
     }
     if (xt == NULL){
-	clicon_err(OE_XML, errno, "Unexpected NULL XML");
-	return -1;	
+        clicon_err(OE_XML, errno, "Unexpected NULL XML");
+        return -1;      
     }
     if ((xy.xy_parse_string = strdup(str)) == NULL){
-	clicon_err(OE_XML, errno, "strdup");
-	return -1;
+        clicon_err(OE_XML, errno, "strdup");
+        return -1;
     }
     xy.xy_xtop = xt;
     xy.xy_xparent = xt;
     xy.xy_yspec = yspec;
     if (clixon_xml_parsel_init(&xy) < 0)
-	goto done;    
+        goto done;    
     if (clixon_xml_parseparse(&xy) != 0)  /* yacc returns 1 on error */
-	goto done;
+        goto done;
     /* Purge all top-level body objects */
     x = NULL;
     while ((x = xml_find_type(xt, NULL, "body", CX_BODY)) != NULL)
-	xml_purge(x);
+        xml_purge(x);
     /* Traverse new objects */
     for (i = 0; i < xy.xy_xlen; i++) {
-	x = xy.xy_xvec[i];
-	/* Verify namespaces after parsing */
-	if (xml2ns_recurse(x) < 0)
-	    goto done;
-	/* Populate, ie associate xml nodes with yang specs 
-	 */
-	switch (yb){
-	case YB_NONE:
-	    break;
-	case YB_PARENT:
-	    /* xt:n         Has spec
-	     * x:   <a> <-- populate from parent
-	     */
-	    if ((ret = xml_bind_yang0(x, YB_PARENT, NULL, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
+        x = xy.xy_xvec[i];
+        /* Verify namespaces after parsing */
+        if (xml2ns_recurse(x) < 0)
+            goto done;
+        /* Populate, ie associate xml nodes with yang specs 
+         */
+        switch (yb){
+        case YB_NONE:
+            break;
+        case YB_PARENT:
+            /* xt:n         Has spec
+             * x:   <a> <-- populate from parent
+             */
+            if ((ret = xml_bind_yang0(x, YB_PARENT, NULL, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                failed++;
+            break;
 
-	case YB_MODULE_NEXT:
-	    if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
-	case YB_MODULE:
-	    /* xt:<top>     nospec
-	     * x:   <a> <-- populate from modules
-	     */
-	    if ((ret = xml_bind_yang0(x, YB_MODULE, yspec, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
-	case YB_RPC:
-	    if ((ret = xml_bind_yang_rpc(x, yspec, xerr)) < 0)
-		goto done;
-	    if (ret == 0){ /* Add message-id */
-		if (*xerr && clixon_xml_attr_copy(x, *xerr, "message-id") < 0)
-		    goto done;
-		failed++;
-	    }
-	    break;
-	} /* switch */
+        case YB_MODULE_NEXT:
+            if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                failed++;
+            break;
+        case YB_MODULE:
+            /* xt:<top>     nospec
+             * x:   <a> <-- populate from modules
+             */
+            if ((ret = xml_bind_yang0(x, YB_MODULE, yspec, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                failed++;
+            break;
+        case YB_RPC:
+            if ((ret = xml_bind_yang_rpc(x, yspec, xerr)) < 0)
+                goto done;
+            if (ret == 0){ /* Add message-id */
+                if (*xerr && clixon_xml_attr_copy(x, *xerr, "message-id") < 0)
+                    goto done;
+                failed++;
+            }
+            break;
+        } /* switch */
     }
     if (failed)
-	goto fail;
+        goto fail;
     /* Sort the complete tree after parsing. Sorting is not really meaningful if Yang
        not bound */
     if (yb != YB_NONE)
-	if (xml_sort_recurse(xt) < 0)
-	    goto done;
+        if (xml_sort_recurse(xt) < 0)
+            goto done;
     retval = 1;
   done:
     clixon_xml_parsel_exit(&xy);
     if (xy.xy_parse_string != NULL)
-	free(xy.xy_parse_string);
+        free(xy.xy_parse_string);
     if (xy.xy_xvec)
-	free(xy.xy_xvec);
+        free(xy.xy_xvec);
     return retval; 
  fail: /* invalid */
     retval = 0;
@@ -662,10 +662,10 @@ _xml_parse(const char *str,
  */
 int 
 clixon_xml_parse_file(FILE      *fp, 
-		      yang_bind  yb,
-		      yang_stmt *yspec,
-		      cxobj    **xt,
-		      cxobj    **xerr)
+                      yang_bind  yb,
+                      yang_stmt *yspec,
+                      cxobj    **xt,
+                      cxobj    **xerr)
 {
     int   retval = -1;
     int   ret;
@@ -678,56 +678,56 @@ clixon_xml_parse_file(FILE      *fp,
     int   failed = 0;
 
     if (xt==NULL || fp == NULL){
-	clicon_err(OE_XML, EINVAL, "arg is NULL");
-	return -1;
+        clicon_err(OE_XML, EINVAL, "arg is NULL");
+        return -1;
     }
     if (yb == YB_MODULE && yspec == NULL){
-	clicon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
-	return -1;
+        clicon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
+        return -1;
     }
     if ((xmlbuf = malloc(xmlbuflen)) == NULL){
-	clicon_err(OE_XML, errno, "malloc");
-	goto done;
+        clicon_err(OE_XML, errno, "malloc");
+        goto done;
     }
     memset(xmlbuf, 0, xmlbuflen);
     ptr = xmlbuf;
     while (1){
-	if ((ret = fread(&ch, 1, 1, fp)) < 0){
-	    clicon_err(OE_XML, errno, "read");
-	    break;
-	}
-	if (ret != 0){
-	    xmlbuf[len++] = ch;
-	}
-	if (ret == 0) {
-	    if (*xt == NULL)
-		if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-		    goto done;
-	    if ((ret = _xml_parse(ptr, yb, yspec, *xt, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
-	}
-	if (len >= xmlbuflen-1){ /* Space: one for the null character */
-	    oldxmlbuflen = xmlbuflen;
-	    xmlbuflen *= 2;
-	    if ((xmlbuf = realloc(xmlbuf, xmlbuflen)) == NULL){
-		clicon_err(OE_XML, errno, "realloc");
-		goto done;
-	    }
-	    memset(xmlbuf+oldxmlbuflen, 0, xmlbuflen-oldxmlbuflen);
-	    ptr = xmlbuf;
-	}
+        if ((ret = fread(&ch, 1, 1, fp)) < 0){
+            clicon_err(OE_XML, errno, "read");
+            break;
+        }
+        if (ret != 0){
+            xmlbuf[len++] = ch;
+        }
+        if (ret == 0) {
+            if (*xt == NULL)
+                if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+                    goto done;
+            if ((ret = _xml_parse(ptr, yb, yspec, *xt, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                failed++;
+            break;
+        }
+        if (len >= xmlbuflen-1){ /* Space: one for the null character */
+            oldxmlbuflen = xmlbuflen;
+            xmlbuflen *= 2;
+            if ((xmlbuf = realloc(xmlbuf, xmlbuflen)) == NULL){
+                clicon_err(OE_XML, errno, "realloc");
+                goto done;
+            }
+            memset(xmlbuf+oldxmlbuflen, 0, xmlbuflen-oldxmlbuflen);
+            ptr = xmlbuf;
+        }
     } /* while */
     retval = (failed==0) ? 1 : 0;
  done:
     if (retval < 0 && *xt){
-	free(*xt);
-	*xt = NULL;
+        free(*xt);
+        *xt = NULL;
     }
     if (xmlbuf)
-	free(xmlbuf);
+        free(xmlbuf);
     return retval;
 }
 
@@ -757,22 +757,22 @@ clixon_xml_parse_file(FILE      *fp,
  */
 int 
 clixon_xml_parse_string(const char *str, 
-			yang_bind   yb,
-			yang_stmt  *yspec,
-			cxobj     **xt,
-			cxobj     **xerr)
+                        yang_bind   yb,
+                        yang_stmt  *yspec,
+                        cxobj     **xt,
+                        cxobj     **xerr)
 {
     if (xt==NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
-	return -1;
+        clicon_err(OE_XML, EINVAL, "xt is NULL");
+        return -1;
     }
     if (yb == YB_MODULE && yspec == NULL){
-	clicon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
-	return -1;
+        clicon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
+        return -1;
     }
     if (*xt == NULL){
-	if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-	    return -1;
+        if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+            return -1;
     }
     return _xml_parse(str, yb, yspec, *xt, xerr);
 }
@@ -803,10 +803,10 @@ clixon_xml_parse_string(const char *str,
  */
 int 
 clixon_xml_parse_va(yang_bind   yb,
-		    yang_stmt  *yspec,		 
-		    cxobj     **xtop,
-		    cxobj     **xerr,
-		    const char *format, ...)
+                    yang_stmt  *yspec,           
+                    cxobj     **xtop,
+                    cxobj     **xerr,
+                    const char *format, ...)
 {
     int     retval = -1;
     va_list args;
@@ -817,8 +817,8 @@ clixon_xml_parse_va(yang_bind   yb,
     len = vsnprintf(NULL, 0, format, args) + 1;
     va_end(args);
     if ((str = malloc(len)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(str, 0, len);
     va_start(args, format);
@@ -827,7 +827,7 @@ clixon_xml_parse_va(yang_bind   yb,
     retval = clixon_xml_parse_string(str, yb, yspec, xtop, xerr); 
  done:
     if (str)
-	free(str);
+        free(str);
     return retval;
 }
 
@@ -845,22 +845,22 @@ clixon_xml_parse_va(yang_bind   yb,
  */
 int
 clixon_xml_attr_copy(cxobj *xin,
-		     cxobj *xout,
-		     char  *name)
+                     cxobj *xout,
+                     char  *name)
 {
     int    retval = -1;
     char  *msgid;
     cxobj *xa;
 
     if (xin == NULL || xout == NULL){
-	clicon_err(OE_XML, EINVAL, "xin or xout NULL");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "xin or xout NULL");
+        goto done;
     }
     if ((msgid = xml_find_value(xin, name)) != NULL){
-	if ((xa = xml_new(name, xout, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_value_set(xa, msgid) < 0)
-	    goto done;
+        if ((xa = xml_new(name, xout, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_value_set(xa, msgid) < 0)
+            goto done;
     }
     retval = 0;
  done:

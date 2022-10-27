@@ -70,11 +70,11 @@
  */
 int
 yang_subparse(char                      *str,
-	      yang_stmt                 *ys,
-	      enum yang_sub_parse_accept accept,
-	      const char                *mainfile,
-	      int                        linenum,
-	      int                       *enabled)
+              yang_stmt                 *ys,
+              enum yang_sub_parse_accept accept,
+              const char                *mainfile,
+              int                        linenum,
+              int                       *enabled)
 {
     int                    retval = -1;
     clixon_yang_sub_parse_yacc ife = {0,};
@@ -83,18 +83,18 @@ yang_subparse(char                      *str,
     ife.if_parse_string = str;
     ife.if_linenum = linenum;
     if (enabled)
-	ife.if_ys = ys; /* Used as trigger to check if enabled */
+        ife.if_ys = ys; /* Used as trigger to check if enabled */
     ife.if_accept = accept;
     ife.if_mainfile = mainfile;
     if (clixon_yang_sub_parsel_init(&ife) < 0)
-	goto done;
+        goto done;
     if (clixon_yang_sub_parseparse(&ife) != 0) { /* yacc returns 1 on error */
-	if (clicon_errno == 0)
-	    clicon_err(OE_YANG, 0, "If-feature parser error with no error code (should not happen)");
-	goto done;
+        if (clicon_errno == 0)
+            clicon_err(OE_YANG, 0, "If-feature parser error with no error code (should not happen)");
+        goto done;
     }
     if (enabled)
-	*enabled = ife.if_enabled;
+        *enabled = ife.if_enabled;
     retval = 0;
  done:
     clixon_yang_sub_parsel_exit(&ife);
@@ -113,9 +113,9 @@ yang_subparse(char                      *str,
  */
 int
 yang_schema_nodeid_subparse(char                      *str,
-			    enum yang_sub_parse_accept accept,
-			    const char                *mainfile,
-			    int                        linenum)
+                            enum yang_sub_parse_accept accept,
+                            const char                *mainfile,
+                            int                        linenum)
 {
     int                         retval = -1;
     clixon_yang_schemanode_yacc ife = {0,};
@@ -126,11 +126,11 @@ yang_schema_nodeid_subparse(char                      *str,
     ife.if_mainfile = mainfile;
     ife.if_accept = accept; /* accept absolute-schema-nodeid */
     if (clixon_yang_schemanode_parsel_init(&ife) < 0)
-	goto done;
+        goto done;
     if (clixon_yang_schemanode_parseparse(&ife) != 0) { /* yacc returns 1 on error */
-	if (clicon_errno == 0)
-	    clicon_err(OE_YANG, 0, "descendant-schema-nodeid parser error with no error code (should not happen)");
-	goto done;
+        if (clicon_errno == 0)
+            clicon_err(OE_YANG, 0, "descendant-schema-nodeid parser error with no error code (should not happen)");
+        goto done;
     }
     retval = 0;
  done:

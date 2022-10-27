@@ -81,8 +81,8 @@
  */
 char **
 clicon_strsep(char *string, 
-	      char *delim, 
-	      int  *nvec0)
+              char *delim, 
+              int  *nvec0)
 {
     char **vec = NULL;
     char  *ptr;
@@ -94,24 +94,24 @@ clicon_strsep(char *string,
     char *d;
     
     if ((s = string)==NULL)
-	goto done;
+        goto done;
     while (*s){
-	if ((d = index(delim, *s)) != NULL)
-	    nvec++;
-	s++;
+        if ((d = index(delim, *s)) != NULL)
+            nvec++;
+        s++;
     }
     /* alloc vector and append copy of string */
     siz = (nvec+1)* sizeof(char*) + strlen(string)+1;
     if ((vec = (char**)malloc(siz)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc"); 
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc"); 
+        goto done;
     } 
     memset(vec, 0, siz);
     ptr = (char*)vec + (nvec+1)* sizeof(char*); /* this is where ptr starts */
     strcpy(ptr, string);
     i = 0;
     while ((p = strsep(&ptr, delim)) != NULL)
-	vec[i++] = p;
+        vec[i++] = p;
     *nvec0 = nvec;
  done:
     return vec;
@@ -125,8 +125,8 @@ clicon_strsep(char *string,
  */
 char *
 clicon_strjoin(int         argc, 
-	       char      **argv, 
-	       char       *delim)
+               char      **argv, 
+               char       *delim)
 {
     int i;
     int len;
@@ -134,17 +134,17 @@ clicon_strjoin(int         argc,
 
     len = 0;
     for (i = 0; i < argc; i++)
-	len += strlen(argv[i]);
+        len += strlen(argv[i]);
     if (delim)
-	len += (strlen(delim) * argc);
+        len += (strlen(delim) * argc);
     len += 1; /* '\0' */
     if ((str = malloc(len)) == NULL)
-	return NULL;
+        return NULL;
     memset(str, '\0', len);
     for (i = 0; i < argc; i++) {
-	if (i != 0)
-	    strncat(str, delim, len - strlen(str));
-	strncat(str, argv[i], len - strlen(str));
+        if (i != 0)
+            strncat(str, delim, len - strlen(str));
+        strncat(str, argv[i], len - strlen(str));
     }
     return str;
 }
@@ -158,30 +158,30 @@ clicon_strjoin(int         argc,
  */
 char*
 clixon_string_del_join(char *str1,
-		       char *del,
-		       char *str2)
+                       char *del,
+                       char *str2)
 {
     char *str;
     int   len;
     
     if (str2 == NULL){
-	clicon_err(OE_UNIX, EINVAL, "str2 is NULL");
-	return NULL;
+        clicon_err(OE_UNIX, EINVAL, "str2 is NULL");
+        return NULL;
     }
     len = strlen(str2) + 1;
     if (str1)
-	len += strlen(str1);
+        len += strlen(str1);
     len += strlen(del);
     if ((str = malloc(len)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	return NULL;
+        clicon_err(OE_UNIX, errno, "malloc");
+        return NULL;
     }
     if (str1){
-	snprintf(str, len, "%s%s%s", str1, del, str2);
-	free(str1);
+        snprintf(str, len, "%s%s%s", str1, del, str2);
+        free(str1);
     }
     else
-	snprintf(str, len, "%s%s", del, str2);
+        snprintf(str, len, "%s%s", del, str2);
     return str;
 }
 
@@ -196,42 +196,42 @@ clixon_string_del_join(char *str1,
  *    char      *a = NULL;
  *    char      *b = NULL;
  *    if (clixon_strsplit(nodeid, ':', &a, &b) < 0)
- *	 goto done;
+ *       goto done;
  *    if (a)
- *	 free(a);
+ *       free(a);
  *    if (b)
- *	 free(b);
+ *       free(b);
  * @note caller need to free prefix and suffix after use
  * @see clicon_strsep  not just single split
  */
 int
 clixon_strsplit(char     *string,
-		const int delim,
-		char    **prefix,
-		char    **suffix)
+                const int delim,
+                char    **prefix,
+                char    **suffix)
 {
     int   retval = -1;
     char *str;
     
     if ((str = strchr(string, delim)) == NULL){
-	if (suffix && (*suffix = strdup(string)) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
-	}
+        if (suffix && (*suffix = strdup(string)) == NULL){
+            clicon_err(OE_YANG, errno, "strdup");
+            goto done;
+        }
     }
     else {
-	if (prefix){
-	    if ((*prefix = strdup(string)) == NULL){
-		clicon_err(OE_YANG, errno, "strdup");
-		goto done;
-	    }
-	    (*prefix)[str-string] = '\0';
-	}
-	str++;
-	if (suffix && (*suffix = strdup(str)) == NULL){
-	    clicon_err(OE_YANG, errno, "strdup");
-	    goto done;
-	}
+        if (prefix){
+            if ((*prefix = strdup(string)) == NULL){
+                clicon_err(OE_YANG, errno, "strdup");
+                goto done;
+            }
+            (*prefix)[str-string] = '\0';
+        }
+        str++;
+        if (suffix && (*suffix = strdup(str)) == NULL){
+            clicon_err(OE_YANG, errno, "strdup");
+            goto done;
+        }
     }
     retval = 0;
  done:
@@ -255,9 +255,9 @@ uri_unreserved(unsigned char in)
     case 'P': case 'Q': case 'R': case 'S': case 'T':
     case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
     case '-': case '.': case '_': case '~':
-	return 1;
+        return 1;
     default:
-	break;
+        break;
     }
     return 0;
 }
@@ -281,7 +281,7 @@ uri_unreserved(unsigned char in)
  */
 int
 uri_percent_encode(char **encp, 
-		   const char *fmt, ...)
+                   const char *fmt, ...)
 {
     int     retval = -1;
     char   *str = NULL;  /* Expanded format string w stdarg */
@@ -296,8 +296,8 @@ uri_percent_encode(char **encp,
     fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
     va_end(args);
     if ((str = malloc(fmtlen)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(str, 0, fmtlen);
     va_start(args, fmt); /* real */
@@ -309,27 +309,27 @@ uri_percent_encode(char **encp,
     /* This is max */
     len = strlen(str)*3+1;
     if ((enc = malloc(len)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc"); 
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc"); 
+        goto done;
     }
     memset(enc, 0, len);
     len = strlen(str);
     j = 0;
     for (i=0; i<len; i++){
-	if (uri_unreserved(str[i]))
-	    enc[j++] = str[i];
-	else{
-	    snprintf(&enc[j], 4, "%%%02X", str[i]&0xff);
-	    j += 3;
-	}
+        if (uri_unreserved(str[i]))
+            enc[j++] = str[i];
+        else{
+            snprintf(&enc[j], 4, "%%%02X", str[i]&0xff);
+            j += 3;
+        }
     }
     *encp = enc;
     retval = 0;
  done:
     if (str)
-	free(str);
+        free(str);
     if (retval < 0 && enc)
-	free(enc);
+        free(enc);
     return retval;
 }
 
@@ -343,7 +343,7 @@ uri_percent_encode(char **encp,
  */
 int
 uri_percent_decode(char  *enc, 
-		   char **strp)
+                   char **strp)
 {
     int   retval = -1;
     char *str = NULL;
@@ -353,37 +353,37 @@ uri_percent_decode(char  *enc,
     char *ptr;
     
     if (enc == NULL){
-	clicon_err(OE_UNIX, EINVAL, "enc is NULL");
-	goto done;
+        clicon_err(OE_UNIX, EINVAL, "enc is NULL");
+        goto done;
     }
     /* This is max */
     len = strlen(enc)+1;
     if ((str = malloc(len)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc"); 
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc"); 
+        goto done;
     }
     memset(str, 0, len);
     len = strlen(enc);
     j = 0;
     for (i=0; i<len; i++){
-	if (enc[i] == '%' && strlen(enc)-i > 2 && 
-	    isxdigit(enc[i+1]) && isxdigit(enc[i+2])){
-	    hstr[0] = enc[i+1];
-	    hstr[1] = enc[i+2];
-	    hstr[2] = 0;
-	    str[j] = strtoul(hstr, &ptr, 16);
-	    i += 2;
-	}
-	else
-	    str[j] = enc[i];
-	j++;
+        if (enc[i] == '%' && strlen(enc)-i > 2 && 
+            isxdigit(enc[i+1]) && isxdigit(enc[i+2])){
+            hstr[0] = enc[i+1];
+            hstr[1] = enc[i+2];
+            hstr[2] = 0;
+            str[j] = strtoul(hstr, &ptr, 16);
+            i += 2;
+        }
+        else
+            str[j] = enc[i];
+        j++;
     }
     str[j++] = '\0';
     *strp = str;
     retval = 0;
  done:
     if (retval < 0 && str)
-	free(str);
+        free(str);
     return retval;
 }
 
@@ -413,7 +413,7 @@ uri_percent_decode(char  *enc,
  */
 int
 xml_chardata_encode(char      **escp,
-		    const char *fmt,...)
+                    const char *fmt,...)
 {
     int     retval = -1;
     char   *str = NULL;  /* Expanded format string w stdarg */
@@ -431,8 +431,8 @@ xml_chardata_encode(char      **escp,
     fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
     va_end(args);
     if ((str = malloc(fmtlen)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(str, 0, fmtlen);
     va_start(args, fmt); /* real */
@@ -445,36 +445,36 @@ xml_chardata_encode(char      **escp,
     len = 0; cdata = 0;
     slen = strlen(str);
     for (i=0; i<slen; i++){
-	if (cdata){
-	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0)
-		cdata = 0;
-	    len++;
-	}
-	else
-	    switch (str[i]){
-	    case '&':
-		len += strlen("&amp;");
-		break;
-	    case '<':
-		if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
-		    len++;
-		    cdata++;
-		}
-		else
-		    len += strlen("&lt;");
-		break;
-	    case '>':
-		len += strlen("&gt;");
-		break;
-	    default:
-		len++;
-	    }
+        if (cdata){
+            if (strncmp(&str[i], "]]>", strlen("]]>")) == 0)
+                cdata = 0;
+            len++;
+        }
+        else
+            switch (str[i]){
+            case '&':
+                len += strlen("&amp;");
+                break;
+            case '<':
+                if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+                    len++;
+                    cdata++;
+                }
+                else
+                    len += strlen("&lt;");
+                break;
+            case '>':
+                len += strlen("&gt;");
+                break;
+            default:
+                len++;
+            }
     }
     len++; /* trailing \0 */
     /* We know length, allocate encoding buffer  */
     if ((esc = malloc(len)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc"); 
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc"); 
+        goto done;
     }
     memset(esc, 0, len);
 
@@ -482,53 +482,53 @@ xml_chardata_encode(char      **escp,
     j = 0; cdata = 0;
     slen = strlen(str);
     for (i=0; i<slen; i++){
-	if (cdata){
-	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0){
-		cdata = 0;
-		esc[j++] = str[i++];
-		esc[j++] = str[i++];
-	    }
-	    esc[j++] = str[i];
-	}
-	else
-	switch (str[i]){
-	case '&':
-	    if ((l=snprintf(&esc[j], 6, "&amp;")) < 0){
-		clicon_err(OE_UNIX, errno, "snprintf");
-		goto done;
-	    }
-	    j += l;
-	    break;
-	case '<':
-	    if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
-		esc[j++] = str[i];
-		cdata++;
-		break;
-	    }
-	    if ((l=snprintf(&esc[j], 5, "&lt;")) < 0){
-		clicon_err(OE_UNIX, errno, "snprintf");
-		goto done;
-	    }
-	    j += l;
-	    break;
-	case '>':
-	    if ((l=snprintf(&esc[j], 5, "&gt;")) < 0){
-		clicon_err(OE_UNIX, errno, "snprintf");
-		goto done;
-	    }
-	    j += l;
-	    break;
-	default:
-	    esc[j++] = str[i];
-	}
+        if (cdata){
+            if (strncmp(&str[i], "]]>", strlen("]]>")) == 0){
+                cdata = 0;
+                esc[j++] = str[i++];
+                esc[j++] = str[i++];
+            }
+            esc[j++] = str[i];
+        }
+        else
+        switch (str[i]){
+        case '&':
+            if ((l=snprintf(&esc[j], 6, "&amp;")) < 0){
+                clicon_err(OE_UNIX, errno, "snprintf");
+                goto done;
+            }
+            j += l;
+            break;
+        case '<':
+            if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+                esc[j++] = str[i];
+                cdata++;
+                break;
+            }
+            if ((l=snprintf(&esc[j], 5, "&lt;")) < 0){
+                clicon_err(OE_UNIX, errno, "snprintf");
+                goto done;
+            }
+            j += l;
+            break;
+        case '>':
+            if ((l=snprintf(&esc[j], 5, "&gt;")) < 0){
+                clicon_err(OE_UNIX, errno, "snprintf");
+                goto done;
+            }
+            j += l;
+            break;
+        default:
+            esc[j++] = str[i];
+        }
     }
     *escp = esc;
     retval = 0;
  done:
     if (str)
-	free(str);
+        free(str);
     if (retval < 0 && esc)
-	free(esc);
+        free(esc);
     return retval;
 }
 
@@ -540,7 +540,7 @@ xml_chardata_encode(char      **escp,
  */
 int
 xml_chardata_cbuf_append(cbuf *cb,
-			 char *str)
+                         char *str)
 {
     int  retval = -1;
     int  i;
@@ -554,33 +554,33 @@ xml_chardata_cbuf_append(cbuf *cb,
 
     len = strlen(str);
     for (i=0; i<len; i++){
-	if (cdata){
-	    if (strncmp(&str[i], "]]>", strlen("]]>")) == 0){
-		cdata = 0;
-		cbuf_append(cb, str[i++]);
-		cbuf_append(cb, str[i++]);
-	    }
-	    cbuf_append(cb, str[i]);
-	}
-	else
-	switch (str[i]){
-	case '&':
-	    cbuf_append_str(cb, "&amp;");
-	    break;
-	case '<':
-	    if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
-		cbuf_append(cb, str[i]);
-		cdata++;
-		break;
-	    }
-	    cbuf_append_str(cb, "&lt;");
-	    break;
-	case '>':
-	    cbuf_append_str(cb, "&gt;");
-	    break;
-	default:
-	    cbuf_append(cb, str[i]);
-	}
+        if (cdata){
+            if (strncmp(&str[i], "]]>", strlen("]]>")) == 0){
+                cdata = 0;
+                cbuf_append(cb, str[i++]);
+                cbuf_append(cb, str[i++]);
+            }
+            cbuf_append(cb, str[i]);
+        }
+        else
+        switch (str[i]){
+        case '&':
+            cbuf_append_str(cb, "&amp;");
+            break;
+        case '<':
+            if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+                cbuf_append(cb, str[i]);
+                cdata++;
+                break;
+            }
+            cbuf_append_str(cb, "&lt;");
+            break;
+        case '>':
+            cbuf_append_str(cb, "&gt;");
+            break;
+        default:
+            cbuf_append(cb, str[i]);
+        }
     }
     retval = 0;
     // done:
@@ -612,10 +612,10 @@ xml_chardata_cbuf_append(cbuf *cb,
  */
 int
 uri_str2cvec(char  *string, 
-	     char   delim1, 
-	     char   delim2, 
-	     int    decode,
-	     cvec **cvp)
+             char   delim1, 
+             char   delim2, 
+             int    decode,
+             cvec **cvp)
 {
     int     retval = -1;
     char   *s;
@@ -627,66 +627,66 @@ uri_str2cvec(char  *string,
     cg_var *cv;
 
     if ((s0 = strdup(string)) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	goto err;
+        clicon_err(OE_UNIX, errno, "strdup");
+        goto err;
     }
     s = s0;
     if ((cvv = cvec_new(0)) ==NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto err;
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto err;
     }
     while (s != NULL) {
-	/*
-	 * In the pointer algorithm below:
-	 * name1=val1;  name2=val2;
-	 * ^     ^      ^
-	 * |     |      |
-	 * s     val    snext
-	 */
-	if ((snext = index(s, delim1)) != NULL)
-	    *(snext++) = '\0';
-	if ((val = index(s, delim2)) != NULL){
-	    *(val++) = '\0';
-	    if (decode){
-		if (uri_percent_decode(val, &valu) < 0)
-		    goto err;
-	    }
-	    else
-		if ((valu = strdup(val)) == NULL){
-		    clicon_err(OE_UNIX, errno, "strdup");
-		    goto err;
-		}
-	    if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
-		clicon_err(OE_UNIX, errno, "cvec_add");
-		goto err;
-	    }
-	    while ((strlen(s) > 0) && isblank(*s))
-		s++;
-	    cv_name_set(cv, s);
-	    cv_string_set(cv, valu);
-	    free(valu); valu = NULL;
-	}
-	else{
-	    if (strlen(s)){
-		if ((cv = cvec_add(cvv, CGV_EMPTY)) == NULL){
-		    clicon_err(OE_UNIX, errno, "cvec_add");
-		    goto err;
-		}
-		cv_name_set(cv, s);
-	    }
-	}
-	s = snext;
+        /*
+         * In the pointer algorithm below:
+         * name1=val1;  name2=val2;
+         * ^     ^      ^
+         * |     |      |
+         * s     val    snext
+         */
+        if ((snext = index(s, delim1)) != NULL)
+            *(snext++) = '\0';
+        if ((val = index(s, delim2)) != NULL){
+            *(val++) = '\0';
+            if (decode){
+                if (uri_percent_decode(val, &valu) < 0)
+                    goto err;
+            }
+            else
+                if ((valu = strdup(val)) == NULL){
+                    clicon_err(OE_UNIX, errno, "strdup");
+                    goto err;
+                }
+            if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
+                clicon_err(OE_UNIX, errno, "cvec_add");
+                goto err;
+            }
+            while ((strlen(s) > 0) && isblank(*s))
+                s++;
+            cv_name_set(cv, s);
+            cv_string_set(cv, valu);
+            free(valu); valu = NULL;
+        }
+        else{
+            if (strlen(s)){
+                if ((cv = cvec_add(cvv, CGV_EMPTY)) == NULL){
+                    clicon_err(OE_UNIX, errno, "cvec_add");
+                    goto err;
+                }
+                cv_name_set(cv, s);
+            }
+        }
+        s = snext;
     }
     retval = 0;
  done:
     *cvp = cvv;
     if (s0)
-	free(s0);
+        free(s0);
     return retval;
  err:
     if (cvv){
-	cvec_free(cvv);
-	cvv = NULL;
+        cvec_free(cvv);
+        cvv = NULL;
     }
     goto done;
 }
@@ -700,13 +700,13 @@ uri_str2cvec(char  *string,
  */
 const char *
 clicon_int2str(const map_str2int *mstab, 
-	       int                i)
+               int                i)
 {
     const struct map_str2int *ms;
 
     for (ms = &mstab[0]; ms->ms_str; ms++)
-	if (ms->ms_int == i)
-	    return ms->ms_str;
+        if (ms->ms_int == i)
+            return ms->ms_str;
     return NULL;
 }
 
@@ -719,13 +719,13 @@ clicon_int2str(const map_str2int *mstab,
  */
 int
 clicon_str2int(const map_str2int *mstab, 
-	       char              *str)
+               char              *str)
 {
     const struct map_str2int *ms;
 
     for (ms = &mstab[0]; ms->ms_str; ms++)
-	if (strcmp(ms->ms_str, str) == 0)
-	    return ms->ms_int;
+        if (strcmp(ms->ms_str, str) == 0)
+            return ms->ms_int;
     return -1;
 }
 
@@ -742,30 +742,30 @@ clicon_str2int(const map_str2int *mstab,
  */
 static int
 str2int_search1(const map_str2int *mstab, 
-		char              *str,
-		int                low,
-		int                upper,
-		int                len,
-		int               *found)
+                char              *str,
+                int                low,
+                int                upper,
+                int                len,
+                int               *found)
 {
     const struct map_str2int *ms;
     int                       mid;
     int                       cmp;
 
     if (upper < low)
-	return 0; /* not found */
+        return 0; /* not found */
     mid = (low + upper) / 2;
     if (mid >= len)  /* beyond range */
-	return 0; /* not found */
+        return 0; /* not found */
     ms = &mstab[mid];
     if ((cmp = strcmp(str, ms->ms_str)) == 0){
-	*found = ms->ms_int;
-	return 1; /* found */
+        *found = ms->ms_int;
+        return 1; /* found */
     }
     else if (cmp < 0)
-	return str2int_search1(mstab, str, low, mid-1, len, found);
+        return str2int_search1(mstab, str, low, mid-1, len, found);
     else
-	return str2int_search1(mstab, str, mid+1, upper, len, found);
+        return str2int_search1(mstab, str, mid+1, upper, len, found);
 }
 
 /*! Map from string to int using str2int map
@@ -778,13 +778,13 @@ str2int_search1(const map_str2int *mstab,
  */
 int
 clicon_str2int_search(const map_str2int *mstab, 
-		      char              *str,
-		      int                len)
+                      char              *str,
+                      int                len)
 {
     int found;
 
     if (str2int_search1(mstab, str, 0, len, len, &found)) 
-	return found;
+        return found;
     return -1; /* not found */
 }
 
@@ -796,13 +796,13 @@ clicon_str2int_search(const map_str2int *mstab,
  */
 char*
 clicon_str2str(const map_str2str *mstab, 
-	       char              *str)
+               char              *str)
 {
     const struct map_str2str *ms;
 
     for (ms = &mstab[0]; ms->ms_s0; ms++)
-	if (strcmp(ms->ms_s0, str) == 0)
-	    return ms->ms_s1;
+        if (strcmp(ms->ms_s0, str) == 0)
+            return ms->ms_s1;
     return NULL;
 }
 
@@ -816,17 +816,17 @@ clicon_str2str(const map_str2str *mstab,
  *    char      *prefix = NULL;
  *    char      *id = NULL;
  *    if (nodeid_split(nodeid, &prefix, &id) < 0)
- *	 goto done;
+ *       goto done;
  *    if (prefix)
- *	 free(prefix);
+ *       free(prefix);
  *    if (id)
- *	 free(id);
+ *       free(id);
  * @note caller need to free id and prefix after use
  */
 int
 nodeid_split(char  *nodeid,
-	     char **prefix,
-	     char **id)
+             char **prefix,
+             char **id)
 {
     return clixon_strsplit(nodeid, ':', prefix, id);
 }
@@ -842,12 +842,12 @@ clixon_trim(char *str)
     int   i;
 
     while (strlen(s) && isblank(s[0])) /* trim from front */
-	s++;
+        s++;
     for (i=strlen(s)-1; i>=0; i--){ /* trim from rear */
-	if (isblank(s[i]))
-	    s[i] = '\0';
-	else
-	    break;
+        if (isblank(s[i]))
+            s[i] = '\0';
+        else
+            break;
     }
     return s;
 }
@@ -859,18 +859,18 @@ clixon_trim(char *str)
  */
 char *
 clixon_trim2(char *str,
-	     char *trims)
+             char *trims)
 {
     char *s = str;
     int   i;
 
     while (strlen(s) && index(trims, s[0])) /* trim from front */
-	s++;
+        s++;
     for (i=strlen(s)-1; i>=0; i--){ /* trim from rear */
-	if (index(trims, s[i]))
-	    s[i] = '\0';
-	else
-	    break;
+        if (index(trims, s[i]))
+            s[i] = '\0';
+        else
+            break;
     }
     return s;
 }
@@ -884,14 +884,14 @@ clixon_trim2(char *str,
  */
 int
 clicon_strcmp(char *s1, 
-	      char *s2)
+              char *s2)
 {
     if (s1 == NULL && s2 == NULL) 
-	return 0;
+        return 0;
     if (s1 == NULL) /* empty string first */
-	return -1;
+        return -1;
     if (s2 == NULL)
-	return 1;
+        return 1;
     return strcmp(s1, s2);
 }
 
@@ -901,7 +901,7 @@ clicon_strcmp(char *s1,
 #ifndef HAVE_STRNDUP
 char *
 clicon_strndup(const char *str, 
-	       size_t      len)
+               size_t      len)
 {
   char *new;
   size_t slen;
@@ -946,17 +946,17 @@ main(int argc, char **argv)
     int   i;
 
     if (argc != 2){
-	usage(argv[0]);
-	return 0;
+        usage(argv[0]);
+        return 0;
     }
     str0 = argv[1];
     if ((vec = clicon_strsep(str0, " \t", &nvec)) == NULL)
-	return -1;
+        return -1;
     fprintf(stderr, "nvec: %d\n", nvec);
     for (i=0; i<nvec+1; i++)
-	fprintf(stderr, "vec[%d]: %s\n", i, vec[i]);
+        fprintf(stderr, "vec[%d]: %s\n", i, vec[i]);
     if ((str1 = clicon_strjoin(nvec, vec, " ")) == NULL)
-	return -1;
+        return -1;
     fprintf(stderr, "join: %s\n", str1);
     free(vec);
     free(str1);

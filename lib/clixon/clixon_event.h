@@ -60,7 +60,7 @@ int clixon_event_reg_fd(int fd, int (*fn)(int, void*), void *arg, char *str);
 int clixon_event_unreg_fd(int s, int (*fn)(int, void*));
 
 int clixon_event_reg_timeout(struct timeval t,  int (*fn)(int, void*), 
-			     void *arg, char *str);
+                             void *arg, char *str);
 
 int clixon_event_unreg_timeout(int (*fn)(int, void*), void *arg);
 

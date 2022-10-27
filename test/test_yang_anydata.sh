@@ -52,12 +52,12 @@ module any{
      anydata u4;
    }
    rpc myrpc {
-	input {
-	    anydata u7;
-	}
-	output {
-	    anydata u8;
-	}
+        input {
+            anydata u7;
+        }
+        output {
+            anydata u8;
+        }
    }
 }
 EOF
@@ -112,21 +112,21 @@ function testrun()
     unknown=$2
 
     if $unknown; then # treat unknown as anydata or not
-	if $startup; then # If startup
-	    XML="$XMLA$XMLU"
-	else
-	    XML="$XMLA"
-	    unknownreply="<rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u3</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: u3 with parent: b in namespace: urn:example:unknown</error-message></rpc-error>"
-	fi
+        if $startup; then # If startup
+            XML="$XMLA$XMLU"
+        else
+            XML="$XMLA"
+            unknownreply="<rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u3</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: u3 with parent: b in namespace: urn:example:unknown</error-message></rpc-error>"
+        fi
     else
-	XML="$XMLA"
-	unknownreply="<rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u3</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: u3 with parent: b in namespace: urn:example:unknown</error-message></rpc-error>"
+        XML="$XMLA"
+        unknownreply="<rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u3</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: u3 with parent: b in namespace: urn:example:unknown</error-message></rpc-error>"
     fi
 
     if $startup; then # get config from startup
-	F="<CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>"
+        F="<CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>"
     else
-	F=""
+        F=""
     fi
     cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -152,9 +152,9 @@ function testrun()
 EOF
 
     if $startup; then
-	# Only positive startup test, ie dont add XMLU if unknown not treated as anyxml
-	# and check for errors
-	cat <<EOF > $dir/startup_db
+        # Only positive startup test, ie dont add XMLU if unknown not treated as anyxml
+        # and check for errors
+        cat <<EOF > $dir/startup_db
 <${DATASTORE_TOP}>    
   $XML
 </${DATASTORE_TOP}>
@@ -162,42 +162,42 @@ EOF
     fi
 
     if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	if $startup; then
-	    new "start backend -s startup -f $cfg -- -sS $fstate"
-	    start_backend -s startup -f $cfg -- -sS $fstate
-	else
-	    new "start backend -s init -f $cfg -- -sS $fstate"
-	    start_backend -s init -f $cfg -- -sS $fstate
-	fi
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        if $startup; then
+            new "start backend -s startup -f $cfg -- -sS $fstate"
+            start_backend -s startup -f $cfg -- -sS $fstate
+        else
+            new "start backend -s init -f $cfg -- -sS $fstate"
+            start_backend -s init -f $cfg -- -sS $fstate
+        fi
     fi
     new "wait backend"
     wait_backend
 
     if [ $RC -ne 0 ]; then
-	new "kill old restconf daemon"
-	stop_restconf_pre
+        new "kill old restconf daemon"
+        stop_restconf_pre
 
-	new "start restconf daemon"
-	start_restconf -f $cfg
+        new "start restconf daemon"
+        start_restconf -f $cfg
 
     fi
     new "wait restconf"
     wait_restconf
 
     if ! $startup; then # If not startup, add xml using netconf
-	new "Put anydata"
-	expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XMLA</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+        new "Put anydata"
+        expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XMLA</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-	new "Put unknown"
-	expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XMLU</config></edit-config></rpc>" "$unknownreply"
+        new "Put unknown"
+        expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XMLU</config></edit-config></rpc>" "$unknownreply"
 
-	new "commit"
-	expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+        new "commit"
+        expecteof_netconf "$clixon_netconf -qf $cfg -D $DBG" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
     fi
     
     new "Get candidate"
@@ -231,7 +231,7 @@ EOF
     new "Get state (negative test)"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get content=\"nonconfig\"></get></rpc>" "error-message>Failed to find YANG spec of XML node: u5 with parent: sb in namespace: urn:example:unknown. Internal error, state callback returned invalid XML from plugin: example_backend</error-message>" ""
 
-	new "restconf get state(negative)"
+        new "restconf get state(negative)"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/$HVER 412" "<error-tag>operation-failed</error-tag><error-info><bad-element>u5</bad-element></error-info>"
 
     # RPC:s take "not-supported" as OK: syntax OK and according to mdeol, just not implemented in
@@ -247,20 +247,20 @@ EOF
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><myrpc xmlns=\"urn:example:unknown\"><u7><u8>88</u8></u7></myrpc></rpc>" "<error-tag>unknown-element</error-tag>" ""
 
     if [ $RC -ne 0 ]; then
-	new "Kill restconf daemon"
-	stop_restconf
+        new "Kill restconf daemon"
+        stop_restconf
     fi
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
-	sudo pkill -u root -f clixon_backend
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
+        sudo pkill -u root -f clixon_backend
     fi
 }
 

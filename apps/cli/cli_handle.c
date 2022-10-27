@@ -87,7 +87,7 @@ struct cli_handle {
     /* ------ end of common handle ------ */
 
     cligen_handle   cl_cligen;   /* cligen handle */
-    cli_syntax_t   *cl_stx;	 /* CLI syntax structure */
+    cli_syntax_t   *cl_stx;      /* CLI syntax structure */
 };
 
 /*! Return a clicon handle for other CLICON API calls
@@ -100,11 +100,11 @@ cli_handle_init(void)
     clicon_handle      h = NULL;
 
     if ((cl = (struct cli_handle *)clicon_handle_init0(sizeof(struct cli_handle))) == NULL)
-	return NULL;
+        return NULL;
 
     if ((clih = cligen_init()) == NULL){
-	clicon_handle_exit((clicon_handle)cl);
-	goto done;
+        clicon_handle_exit((clicon_handle)cl);
+        goto done;
     }
     cligen_userhandle_set(clih, cl);
     cligen_eval_wrap_fn_set(clih, plugin_context_check, cl);
@@ -124,7 +124,7 @@ cli_handle_exit(clicon_handle h)
     struct cli_handle *cl = handle(h);
 
     if (cl->cl_stx)
-	free(cl->cl_stx);
+        free(cl->cl_stx);
     clicon_handle_exit(h); /* frees h and options */
     
     cligen_exit(ch);
@@ -147,12 +147,12 @@ cli_syntax(clicon_handle h)
 /*! Set current syntax-group */
 int
 cli_syntax_set(clicon_handle h, 
-	       cli_syntax_t *stx)
+               cli_syntax_t *stx)
 {
     struct cli_handle *cl = handle(h);
 
     if (cl->cl_stx)
-	free(cl->cl_stx);
+        free(cl->cl_stx);
     cl->cl_stx = stx;
     return 0;
 }
@@ -167,10 +167,10 @@ cli_cligen(clicon_handle h)
 
 int
 cli_parse_file(clicon_handle h,
-	       FILE         *f,
-	       char         *name, /* just for errs */
-	       parse_tree   *pt,
-	       cvec         *globals)
+               FILE         *f,
+               char         *name, /* just for errs */
+               parse_tree   *pt,
+               cvec         *globals)
 {
     cligen_handle ch = cligen(h);
 
@@ -179,7 +179,7 @@ cli_parse_file(clicon_handle h,
 
 int
 cli_susp_hook(clicon_handle     h,
-	      cligen_susp_cb_t *fn)
+              cligen_susp_cb_t *fn)
 {
     cligen_handle ch = cligen(h);
 
@@ -188,7 +188,7 @@ cli_susp_hook(clicon_handle     h,
 }
 int
 cli_interrupt_hook(clicon_handle          h,
-		   cligen_interrupt_cb_t *fn)
+                   cligen_interrupt_cb_t *fn)
 {
     cligen_handle ch = cligen(h);
 
@@ -198,7 +198,7 @@ cli_interrupt_hook(clicon_handle          h,
 
 int
 cli_prompt_set(clicon_handle h,
-	       char         *prompt)
+               char         *prompt)
 {
     cligen_handle ch = cligen(h);
     return cligen_prompt_set(ch, prompt);
@@ -206,7 +206,7 @@ cli_prompt_set(clicon_handle h,
 
 int
 cli_logsyntax_set(clicon_handle h,
-		  int           status)
+                  int           status)
 {
     cligen_handle ch = cligen(h);
     return cligen_logsyntax_set(ch, status);

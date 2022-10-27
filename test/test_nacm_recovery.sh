@@ -29,7 +29,7 @@ module nacm-example{
   namespace "urn:example:nacm";
   prefix nex;
   import ietf-netconf-acm {
-	prefix nacm;
+        prefix nacm;
   }
   leaf x{
     type int32;
@@ -61,9 +61,9 @@ function testrun()
     putp=$6
 
     if [ "$realuser" = "root" ]; then
-	prefix="sudo "
+        prefix="sudo "
     else
-	prefix=""
+        prefix=""
     fi
     
 cat <<EOF > $cfg
@@ -87,62 +87,62 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
     if [ $BE -ne 0 ]; then
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s init -f $cfg"
-	start_backend -s init -f $cfg
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s init -f $cfg"
+        start_backend -s init -f $cfg
     fi
 
     new "wait backend"
     wait_backend
 
     if [ $RC -ne 0 ]; then
-	new "kill old restconf daemon"
-	stop_restconf_pre
+        new "kill old restconf daemon"
+        stop_restconf_pre
 
-	new "start restconf daemon"
-	start_restconf -f $cfg
+        new "start restconf daemon"
+        start_restconf -f $cfg
     fi
 
     new "wait restconf"
     wait_restconf
 
     if $getp; then
-	# default is read allowed so this should always succeed.
-	new "get startup default ok"
-	expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$DEFAULT</data></rpc-reply>"
-	# This would normally not work except in recovery situations
+        # default is read allowed so this should always succeed.
+        new "get startup default ok"
+        expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$DEFAULT</data></rpc-reply>"
+        # This would normally not work except in recovery situations
     else
-	new "get startup not ok"
-	expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>User $realuser credential not matching NACM user $pseudo</error-message></rpc-error></rpc-reply>"
+        new "get startup not ok"
+        expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>User $realuser credential not matching NACM user $pseudo</error-message></rpc-error></rpc-reply>"
     fi
-	
+        
     if $putp; then
-	new "put, expect ok"
-	expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+        new "put, expect ok"
+        expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-	new "get rules ok"
-	expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$RULES</data></rpc-reply>"
+        new "get rules ok"
+        expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$RULES</data></rpc-reply>"
     else
-	new "put, expect fail"
-	expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>" "" # default deny</error-message></rpc-error></rpc-reply>"
+        new "put, expect fail"
+        expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$RULES</config></edit-config></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>" "" # default deny</error-message></rpc-error></rpc-reply>"
     fi
     if [ $RC -ne 0 ]; then
-	new "Kill restconf daemon"
-	stop_restconf 
+        new "Kill restconf daemon"
+        stop_restconf 
     fi
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 

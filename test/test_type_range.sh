@@ -222,10 +222,10 @@ function testrange(){
     post=$4
 
     if [ $t = "string" ]; then # special case for string type error msg
-	len=$(echo -n "$eval" | wc -c | awk '{print $1}'; )
-	errmsg="String length $len out of range: 1$post - 10$post, 14$post - 20$post"
+        len=$(echo -n "$eval" | wc -c | awk '{print $1}'; )
+        errmsg="String length $len out of range: 1$post - 10$post, 14$post - 20$post"
     else
-	errmsg="Number $eval$post out of range: 1$post - 10$post, 14$post - 20$post"
+        errmsg="Number $eval$post out of range: 1$post - 10$post, 14$post - 20$post"
     fi
 
     new "generated cli set $t leaf invalid"
@@ -271,7 +271,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -322,7 +322,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

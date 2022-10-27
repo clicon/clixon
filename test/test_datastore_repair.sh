@@ -85,14 +85,14 @@ function testrun(){
     new "test params: -f $cfg -- -U" # -U : upgrade
     # Bring your own backend
     if [ $BE -ne 0 ]; then
-	# kill old backend (if any)
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s startup -f $cfg -- -U"
-	start_backend -s startup -f $cfg -- -U
+        # kill old backend (if any)
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s startup -f $cfg -- -U"
+        start_backend -s startup -f $cfg -- -U
     fi
 
     new "wait backend"
@@ -102,14 +102,14 @@ function testrun(){
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$AFTER</data></rpc-reply>"
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 
 } # end testrun

@@ -56,34 +56,34 @@ module leafref{
     namespace "urn:example:example";
     prefix example;
     typedef sender-ref {
-	description "For testing leafref across augment and grouping";
-	type leafref {
-	    path "/ex:sender/ex:name";
- 	    require-instance true;	
-	}
+        description "For testing leafref across augment and grouping";
+        type leafref {
+            path "/ex:sender/ex:name";
+            require-instance true;      
+        }
     }
     typedef sender-ref-local {
-	description "For testing leafref local";
-	type leafref {
-	    path "/example:sender/example:name";
-	    require-instance true;
-	}
+        description "For testing leafref local";
+        type leafref {
+            path "/example:sender/example:name";
+            require-instance true;
+        }
     }
     list sender{
         key name;
         leaf name{
            type string;
         }
-	container stub{
-	   description "Here is where augmentation is done";
+        container stub{
+           description "Here is where augmentation is done";
         }
         leaf ref{
            description "top-level ref (wrong prefix)";
-	   type sender-ref;
+           type sender-ref;
         }
         leaf ref-local{
            description "top-level ref (right prefix)";
-	   type sender-ref-local;
+           type sender-ref-local;
         }
     }
 }
@@ -96,7 +96,7 @@ module augment{
     prefix aug;
     import leafref {
         description "Note different from canonical (leafref module own prefix is 'example'";
-	prefix "ex"; 
+        prefix "ex"; 
     }
     grouping attributes {
        container track{
@@ -112,19 +112,19 @@ module augment{
             description "reference using path inline in data (not typedef)";
             key name;
             leaf name{
-        	type leafref {
-		    path "/ex:sender/ex:name";
-		    require-instance true;
-		 }
+                type leafref {
+                    path "/ex:sender/ex:name";
+                    require-instance true;
+                 }
             }
           }
        }
     }
     augment "/ex:sender/ex:stub" {
-	description "Main leafref/sender stub.";
+        description "Main leafref/sender stub.";
         container extra{
-	   presence "ensuring it is there";
-	   uses attributes;
+           presence "ensuring it is there";
+           uses attributes;
         }
     }
 }
@@ -137,7 +137,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend  -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -251,7 +251,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

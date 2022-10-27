@@ -169,23 +169,23 @@ function checklog(){
     new "Check $s in log on line $l0"
     t=$(grep -n "$s" $log)
     if [ -z "$t" ]; then
-	echo -e "\e[31m\nError in Test$testnr [$testname]:"
-	if [ $# -gt 0 ]; then 
-	    echo "Not found in log"
-	    echo
-	fi
-	echo -e "\e[0m"
-	exit -1
+        echo -e "\e[31m\nError in Test$testnr [$testname]:"
+        if [ $# -gt 0 ]; then 
+            echo "Not found in log"
+            echo
+        fi
+        echo -e "\e[0m"
+        exit -1
     fi
     l1=$(echo "$t" | awk -F ":" '{print $1}')
     if [ $l1 -ne $l0 ]; then
-	echo -e "\e[31m\nError in Test$testnr [$testname]:"
-	if [ $# -gt 0 ]; then 
-	    echo "Expected match on line $l0, found on $l1"
-	    echo
-	fi
-	echo -e "\e[0m"
-	exit -1
+        echo -e "\e[31m\nError in Test$testnr [$testname]:"
+        if [ $# -gt 0 ]; then 
+            echo "Expected match on line $l0, found on $l1"
+            echo
+        fi
+        echo -e "\e[0m"
+        exit -1
     fi
 }
 
@@ -198,13 +198,13 @@ function checknolog(){
     t=$(grep -n "$s" $log)
 #    echo "t:$t"
     if [ -n "$t" ]; then
-	echo -e "\e[31m\nError in Test$testnr [$testname]:"
-	if [ $# -gt 0 ]; then 
-	    echo "$s found in log"
-	    echo
-	fi
-	echo -e "\e[0m"
-	exit -1
+        echo -e "\e[31m\nError in Test$testnr [$testname]:"
+        if [ $# -gt 0 ]; then 
+            echo "$s found in log"
+            echo
+        fi
+        echo -e "\e[0m"
+        exit -1
     fi
 }
 
@@ -224,34 +224,34 @@ function testrun(){
     new "test params: -f $cfg"
     # Bring your own backend
     if [ $BE -ne 0 ]; then
-	# kill old backend (if any)
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s startup -f $cfg -l f$log -- -u"
-	start_backend -s startup -f $cfg -l f$log  -- -u
+        # kill old backend (if any)
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s startup -f $cfg -l f$log -- -u"
+        start_backend -s startup -f $cfg -l f$log  -- -u
     fi
 
     new "wait backend"
     wait_backend
 
     if $flag; then
-	checklog "$match" $line
+        checklog "$match" $line
     else
-	checknolog "$match"
+        checknolog "$match"
     fi
     
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 

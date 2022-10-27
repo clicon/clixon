@@ -177,30 +177,30 @@ xpath_tree_int2str(int nodetype)
 /*! Print XPATH parse tree */
 static int
 xpath_tree_print0(cbuf       *cb,
-		  xpath_tree *xs,
-		  int         level)
+                  xpath_tree *xs,
+                  int         level)
 {
     cprintf(cb, "%*s%s:", level*3, "", xpath_tree_int2str(xs->xs_type));
     if (xs->xs_s0)
-	cprintf(cb, "\"%s\" ", xs->xs_s0);
+        cprintf(cb, "\"%s\" ", xs->xs_s0);
     if (xs->xs_s1)
-	cprintf(cb,"\"%s\" ", xs->xs_s1);
+        cprintf(cb,"\"%s\" ", xs->xs_s1);
     if (xs->xs_int)
-	switch (xs->xs_type){
-	case XP_STEP:
-	    cprintf(cb, "%s", axis_type_int2str(xs->xs_int));
-	    break;
-	default:
-	    cprintf(cb, "%d ", xs->xs_int);
-	    break;
-	}
+        switch (xs->xs_type){
+        case XP_STEP:
+            cprintf(cb, "%s", axis_type_int2str(xs->xs_int));
+            break;
+        default:
+            cprintf(cb, "%d ", xs->xs_int);
+            break;
+        }
     if (xs->xs_strnr)
-	cprintf(cb,"%s ", xs->xs_strnr);
+        cprintf(cb,"%s ", xs->xs_strnr);
     cprintf(cb, "\n");
     if (xs->xs_c0)
-	xpath_tree_print0(cb, xs->xs_c0,level+1);
+        xpath_tree_print0(cb, xs->xs_c0,level+1);
     if (xs->xs_c1)
-	xpath_tree_print0(cb, xs->xs_c1, level+1);
+        xpath_tree_print0(cb, xs->xs_c1, level+1);
     return 0;
 }
 
@@ -210,7 +210,7 @@ xpath_tree_print0(cbuf       *cb,
  */
 int
 xpath_tree_print_cb(cbuf       *cb,
-		    xpath_tree *xs)
+                    xpath_tree *xs)
 {
     xpath_tree_print0(cb, xs, 0);
     return 0;
@@ -223,17 +223,17 @@ xpath_tree_print_cb(cbuf       *cb,
  */
 int
 xpath_tree_print(FILE       *f, 
-		 xpath_tree *xs)
+                 xpath_tree *xs)
 {
     int   retval = -1;
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     if (xpath_tree_print0(cb, xs, 0) < 0)
-	goto done;
+        goto done;
     fprintf(f, "%s", cbuf_get(cb));
     retval = 0;
  done:
@@ -247,101 +247,101 @@ xpath_tree_print(FILE       *f,
  */
 int
 xpath_tree2cbuf(xpath_tree *xs,
-		cbuf       *xcb)
+                cbuf       *xcb)
 {
     int   retval = -1;
 
     /* 1. Before first child */
     switch (xs->xs_type){
     case XP_ABSPATH:
-	if (xs->xs_int == A_DESCENDANT_OR_SELF)
-	    cprintf(xcb, "/");
-	cprintf(xcb, "/");
-	break;
+        if (xs->xs_int == A_DESCENDANT_OR_SELF)
+            cprintf(xcb, "/");
+        cprintf(xcb, "/");
+        break;
     case XP_STEP:
-	switch (xs->xs_int){
-	case A_SELF:
-	    cprintf(xcb, ".");
-	    break;
-	case A_PARENT:
-	    cprintf(xcb, "..");
-	    break;
-	default:
-	    break;
-	}
-	break;
+        switch (xs->xs_int){
+        case A_SELF:
+            cprintf(xcb, ".");
+            break;
+        case A_PARENT:
+            cprintf(xcb, "..");
+            break;
+        default:
+            break;
+        }
+        break;
     case XP_NODE: /* s0 is namespace prefix, s1 is name */
-	if (xs->xs_s0)
-	    cprintf(xcb, "%s:", xs->xs_s0);
-	cprintf(xcb, "%s", xs->xs_s1);
-	break;
+        if (xs->xs_s0)
+            cprintf(xcb, "%s:", xs->xs_s0);
+        cprintf(xcb, "%s", xs->xs_s1);
+        break;
     case XP_PRIME_NR:
-	cprintf(xcb, "%s", xs->xs_strnr?xs->xs_strnr:"0"); 
-	break;
+        cprintf(xcb, "%s", xs->xs_strnr?xs->xs_strnr:"0"); 
+        break;
     case XP_PRIME_STR:
-	cprintf(xcb, "'%s'", xs->xs_s0?xs->xs_s0:"");
-	break;
+        cprintf(xcb, "'%s'", xs->xs_s0?xs->xs_s0:"");
+        break;
     case XP_PRIME_FN:
-	if (xs->xs_s0)
-	    cprintf(xcb, "%s(", xs->xs_s0);
-	break;
+        if (xs->xs_s0)
+            cprintf(xcb, "%s(", xs->xs_s0);
+        break;
     default:
-	break;
+        break;
     }
     /* 2. First child */
     if (xs->xs_c0 && xpath_tree2cbuf(xs->xs_c0, xcb) < 0)
-	goto done;
+        goto done;
     /* 3. Between first and second child */
     switch (xs->xs_type){
     case XP_AND: /* and or */
     case XP_ADD: /* div mod + * - */
-	if (xs->xs_c1)
-	    cprintf(xcb, " %s ", clicon_int2str(xpopmap, xs->xs_int));
-	break;
+        if (xs->xs_c1)
+            cprintf(xcb, " %s ", clicon_int2str(xpopmap, xs->xs_int));
+        break;
     case XP_RELEX: /* !=, >= <= < > = */
     case XP_UNION: /* | */
-	if (xs->xs_c1)
-	    cprintf(xcb, "%s", clicon_int2str(xpopmap, xs->xs_int));
-	break;
+        if (xs->xs_c1)
+            cprintf(xcb, "%s", clicon_int2str(xpopmap, xs->xs_int));
+        break;
     case XP_PATHEXPR:
-	/* [19]    PathExpr ::=  | FilterExpr '/' RelativeLocationPath	
-		                 | FilterExpr '//' RelativeLocationPath	
-	*/
-	if (xs->xs_s0)
-	    cprintf(xcb, "%s", xs->xs_s0);
-	break;
+        /* [19]    PathExpr ::=  | FilterExpr '/' RelativeLocationPath  
+                                 | FilterExpr '//' RelativeLocationPath 
+        */
+        if (xs->xs_s0)
+            cprintf(xcb, "%s", xs->xs_s0);
+        break;
     case XP_RELLOCPATH:
-	if (xs->xs_c1){
-	    if (xs->xs_int == A_DESCENDANT_OR_SELF)
-		cprintf(xcb, "/");
-	    cprintf(xcb, "/");
-	}
-	break;
+        if (xs->xs_c1){
+            if (xs->xs_int == A_DESCENDANT_OR_SELF)
+                cprintf(xcb, "/");
+            cprintf(xcb, "/");
+        }
+        break;
     case XP_PRED:
-	if (xs->xs_c1)
-	    cprintf(xcb, "[");
-	break;
+        if (xs->xs_c1)
+            cprintf(xcb, "[");
+        break;
     case XP_EXP:
-	if (xs->xs_c0 && xs->xs_c1) /* Function name and two arguments, insert , */
-	    cprintf(xcb, ",");
-	break;
+        if (xs->xs_c0 && xs->xs_c1) /* Function name and two arguments, insert , */
+            cprintf(xcb, ",");
+        break;
     default:
-	break;
+        break;
     }
     /* 4. Second child */
     if (xs->xs_c1 && xpath_tree2cbuf(xs->xs_c1, xcb) < 0)
-	goto done;
+        goto done;
     /* 5. After second child */
     switch (xs->xs_type){
     case XP_PRED:
-	if (xs->xs_c1)
-	    cprintf(xcb, "]");
-	break;
+        if (xs->xs_c1)
+            cprintf(xcb, "]");
+        break;
     case XP_PRIME_FN:
-	if (xs->xs_s0)
-	    cprintf(xcb, ")");
+        if (xs->xs_s0)
+            cprintf(xcb, ")");
     default:
-	break;
+        break;
     }
     retval = 0;
  done:
@@ -350,14 +350,14 @@ xpath_tree2cbuf(xpath_tree *xs,
 
 static int
 xpath_tree_append(xpath_tree   *xt, 
-		  xpath_tree ***vec, 
-		  size_t       *len)
+                  xpath_tree ***vec, 
+                  size_t       *len)
 {
     int retval = -1;
 
     if ((*vec = realloc(*vec, sizeof(xpath_tree *) * (*len+1))) == NULL){
-	clicon_err(OE_XML, errno, "realloc");
-	goto done;
+        clicon_err(OE_XML, errno, "realloc");
+        goto done;
     }
     (*vec)[(*len)++] = xt;
     retval = 0;
@@ -377,9 +377,9 @@ xpath_tree_append(xpath_tree   *xt,
  */
 int
 xpath_tree_eq(xpath_tree   *xt1, /* pattern */
-	      xpath_tree   *xt2,
-	      xpath_tree ***vec, 
-	      size_t       *len)
+              xpath_tree   *xt2,
+              xpath_tree ***vec, 
+              size_t       *len)
 {
     int         retval = -1; /* Error */
     xpath_tree *xc1;
@@ -389,64 +389,64 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
     /* node type */
     if (xt1->xs_type != xt2->xs_type
 #if 1 /* special case that they are expressions but of different types */
-	&& !((xt1->xs_type == XP_PRIME_NR || xt1->xs_type == XP_PRIME_STR) &&
-	     (xt2->xs_type == XP_PRIME_NR || xt2->xs_type == XP_PRIME_STR))
+        && !((xt1->xs_type == XP_PRIME_NR || xt1->xs_type == XP_PRIME_STR) &&
+             (xt2->xs_type == XP_PRIME_NR || xt2->xs_type == XP_PRIME_STR))
 #endif
-	){
-	clicon_debug(2, "%s type %s vs %s\n", __FUNCTION__,
-		xpath_tree_int2str(xt1->xs_type),
-		xpath_tree_int2str(xt2->xs_type));
-	goto neq;
+        ){
+        clicon_debug(2, "%s type %s vs %s\n", __FUNCTION__,
+                xpath_tree_int2str(xt1->xs_type),
+                xpath_tree_int2str(xt2->xs_type));
+        goto neq;
     }
     /* check match, if set, store and go directly to ok */
     if (xt1->xs_match){
-	if (xpath_tree_append(xt2, vec, len) < 0)
-	    goto done;
-	goto eq;
+        if (xpath_tree_append(xt2, vec, len) < 0)
+            goto done;
+        goto eq;
     }
     if (xt1->xs_int != xt2->xs_int){
-	clicon_debug(2, "%s int\n", __FUNCTION__);
-	goto neq;
+        clicon_debug(2, "%s int\n", __FUNCTION__);
+        goto neq;
     }
     if (xt1->xs_double != xt2->xs_double){
-	clicon_debug(2, "%s double\n", __FUNCTION__);
-	goto neq;
+        clicon_debug(2, "%s double\n", __FUNCTION__);
+        goto neq;
     }
     if (clicon_strcmp(xt1->xs_s0, xt2->xs_s0)){
-	clicon_debug(2, "%s s0\n", __FUNCTION__);
-	goto neq;
+        clicon_debug(2, "%s s0\n", __FUNCTION__);
+        goto neq;
     }
     if (clicon_strcmp(xt1->xs_s1, xt2->xs_s1)){
-	clicon_debug(2, "%s s1\n", __FUNCTION__);
-	goto neq;
+        clicon_debug(2, "%s s1\n", __FUNCTION__);
+        goto neq;
     }
     xc1 = xt1->xs_c0;
     xc2 = xt2->xs_c0;
     if (xc1 == NULL && xc2 == NULL)
-	;
+        ;
     else{
-	if (xc1 == NULL || xc2 == NULL){
-	    clicon_debug(2, "%s NULL\n", __FUNCTION__);
-	    goto neq;
-	}
-	if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto neq;
+        if (xc1 == NULL || xc2 == NULL){
+            clicon_debug(2, "%s NULL\n", __FUNCTION__);
+            goto neq;
+        }
+        if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
+            goto done;
+        if (ret == 0)
+            goto neq;
     }
     xc1 = xt1->xs_c1;
     xc2 = xt2->xs_c1;
     if (xc1 == NULL && xc2 == NULL)
-	;
+        ;
     else{
-	if (xc1 == NULL || xc2 == NULL){
-	    clicon_debug(2, "%s NULL\n", __FUNCTION__);
-	    goto neq;
-	}
-	if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto neq;
+        if (xc1 == NULL || xc2 == NULL){
+            clicon_debug(2, "%s NULL\n", __FUNCTION__);
+            goto neq;
+        }
+        if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
+            goto done;
+        if (ret == 0)
+            goto neq;
     }
  eq:
     retval = 1; /* equal */
@@ -464,7 +464,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
  */
 xpath_tree *
 xpath_tree_traverse(xpath_tree *xt,
-		    ...)
+                    ...)
 {
     va_list     ap;
     int         i;
@@ -472,16 +472,16 @@ xpath_tree_traverse(xpath_tree *xt,
 
     va_start(ap, xt);
     for (i = va_arg(ap, int); i >= 0; i = va_arg(ap, int)){
-	switch (i){
-	case 0:
-	    xs = xs->xs_c0;
-	    break;
-	case 1:
-	    xs = xs->xs_c1;
-	    break;
-	default:
-	    break;
-	}
+        switch (i){
+        case 0:
+            xs = xs->xs_c0;
+            break;
+        case 1:
+            xs = xs->xs_c1;
+            break;
+        default:
+            break;
+        }
     }
     va_end(ap);
     return xs;
@@ -495,15 +495,15 @@ int
 xpath_tree_free(xpath_tree *xs)
 {
     if (xs->xs_strnr)
-	free(xs->xs_strnr);
+        free(xs->xs_strnr);
     if (xs->xs_s0)
-	free(xs->xs_s0);
+        free(xs->xs_s0);
     if (xs->xs_s1)
-	free(xs->xs_s1);
+        free(xs->xs_s1);
     if (xs->xs_c0)
-	xpath_tree_free(xs->xs_c0);
+        xpath_tree_free(xs->xs_c0);
     if (xs->xs_c1)
-	xpath_tree_free(xs->xs_c1);
+        xpath_tree_free(xs->xs_c1);
     free(xs);
     return 0;
 }
@@ -518,58 +518,58 @@ xpath_tree_free(xpath_tree *xs)
  *   if (xpath_parse(xpath, &xpt) < 0)
  *     err;
  *   if (xpt)
- *	xpath_tree_free(xpt);
+ *      xpath_tree_free(xpt);
  * @endcode
  * @see xpath_tree_free 
  * @see xpath_tree2cbuf  for unparsing, ie producing an original xpath string
  */
 int
 xpath_parse(const char  *xpath,
-	    xpath_tree **xptree)
+            xpath_tree **xptree)
 {
     int               retval = -1;
     clixon_xpath_yacc xpy = {0,};
     cbuf             *cb = NULL;    
 
     if (xpath == NULL){
-	clicon_err(OE_XML, EINVAL, "XPath is NULL");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "XPath is NULL");
+        goto done;
     }
     xpy.xpy_parse_string = xpath;
     xpy.xpy_name = "xpath parser";
     xpy.xpy_linenum = 1;
     if (xpath_scan_init(&xpy) < 0)
-	goto done;
+        goto done;
     if (xpath_parse_init(&xpy) < 0)
-	goto done;
+        goto done;
     clicon_debug(2,"%s",__FUNCTION__);
     if (clixon_xpath_parseparse(&xpy) != 0) { /* yacc returns 1 on error */
-	clicon_log(LOG_NOTICE, "XPATH error: on line %d", xpy.xpy_linenum);
-	if (clicon_errno == 0)
-	    clicon_err(OE_XML, 0, "XPATH parser error with no error code (should not happen)");
-	xpath_scan_exit(&xpy);
-	goto done;
+        clicon_log(LOG_NOTICE, "XPATH error: on line %d", xpy.xpy_linenum);
+        if (clicon_errno == 0)
+            clicon_err(OE_XML, 0, "XPATH parser error with no error code (should not happen)");
+        xpath_scan_exit(&xpy);
+        goto done;
     }
     if (clicon_debug_get() > 1){
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done;
-	}
-	xpath_tree_print_cb(cb, xpy.xpy_top);
-	clicon_debug(2, "xpath parse tree:\n%s", cbuf_get(cb));
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        xpath_tree_print_cb(cb, xpy.xpy_top);
+        clicon_debug(2, "xpath parse tree:\n%s", cbuf_get(cb));
     }
     xpath_parse_exit(&xpy);
     xpath_scan_exit(&xpy);
     if (xptree){
-	*xptree = xpy.xpy_top;
-	xpy.xpy_top = NULL;
+        *xptree = xpy.xpy_top;
+        xpy.xpy_top = NULL;
     }
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (xpy.xpy_top)
-	xpath_tree_free(xpy.xpy_top);
+        xpath_tree_free(xpy.xpy_top);
     return retval;
 }
 
@@ -588,37 +588,37 @@ xpath_parse(const char  *xpath,
  *   if (xpath_vec_ctx(x, NULL, xpath, 0, &xc) < 0)
  *     err;
  *   if (xc)
- *	ctx_free(xc);
+ *      ctx_free(xc);
  * @endcode
  */
 int
 xpath_vec_ctx(cxobj      *xcur, 
-	      cvec       *nsc,
-	      const char *xpath,
-	      int         localonly,
-	      xp_ctx    **xrp)
+              cvec       *nsc,
+              const char *xpath,
+              int         localonly,
+              xp_ctx    **xrp)
 {
     int         retval = -1;
     xpath_tree *xptree = NULL;
     xp_ctx      xc = {0,};
     
     if (xpath_parse(xpath, &xptree) < 0)
-	goto done;
+        goto done;
     xc.xc_type = XT_NODESET;
     xc.xc_node = xcur;
     xc.xc_initial = xcur;
     if (cxvec_append(xcur, &xc.xc_nodeset, &xc.xc_size) < 0)
-	goto done;
+        goto done;
     if (xp_eval(&xc, xptree, nsc, localonly, xrp) < 0)
-	goto done;
+        goto done;
     if (xc.xc_nodeset){
-	free(xc.xc_nodeset);
-	xc.xc_nodeset = NULL;
+        free(xc.xc_nodeset);
+        xc.xc_nodeset = NULL;
     }
     retval = 0;
  done:
     if (xptree)
-	xpath_tree_free(xptree);
+        xpath_tree_free(xptree);
     return retval;
 }
 
@@ -645,9 +645,9 @@ xpath_vec_ctx(cxobj      *xcur,
  */
 cxobj *
 xpath_first(cxobj      *xcur, 
-	    cvec       *nsc,
-	    const char *xpformat, 
-	    ...)
+            cvec       *nsc,
+            const char *xpformat, 
+            ...)
 {
     cxobj     *cx = NULL;
     va_list    ap;
@@ -660,26 +660,26 @@ xpath_first(cxobj      *xcur,
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: compute write message from reason and args */
     va_start(ap, xpformat);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     if (xpath_vec_ctx(xcur, nsc, xpath, 0, &xr) < 0)
-	goto done;
+        goto done;
     if (xr && xr->xc_type == XT_NODESET && xr->xc_size)
-	cx = xr->xc_nodeset[0];
+        cx = xr->xc_nodeset[0];
  done:
     if (xr)
-	ctx_free(xr);
+        ctx_free(xr);
     if (xpath)
-	free(xpath);
+        free(xpath);
     return cx;
 }
 
@@ -705,8 +705,8 @@ xpath_first(cxobj      *xcur,
  */
 cxobj *
 xpath_first_localonly(cxobj      *xcur, 
-		      const char *xpformat, 
-		      ...)
+                      const char *xpformat, 
+                      ...)
 {
     cxobj     *cx = NULL;
     va_list    ap;
@@ -719,26 +719,26 @@ xpath_first_localonly(cxobj      *xcur,
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: compute write message from reason and args */
     va_start(ap, xpformat);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     if (xpath_vec_ctx(xcur, NULL, xpath, 1, &xr) < 0)
-	goto done;
+        goto done;
     if (xr && xr->xc_type == XT_NODESET && xr->xc_size)
-	cx = xr->xc_nodeset[0];
+        cx = xr->xc_nodeset[0];
  done:
     if (xr)
-	ctx_free(xr);
+        ctx_free(xr);
     if (xpath)
-	free(xpath);
+        free(xpath);
     return cx;
 }
 
@@ -766,49 +766,49 @@ xpath_first_localonly(cxobj      *xcur,
  */
 int
 xpath_vec(cxobj      *xcur, 
-	  cvec       *nsc,
-	  const char *xpformat, 
-	  cxobj    ***vec, 
-	  size_t     *veclen,
-	  ...)
+          cvec       *nsc,
+          const char *xpformat, 
+          cxobj    ***vec, 
+          size_t     *veclen,
+          ...)
 {
     int        retval = -1;
     va_list    ap;
     size_t     len;
     char      *xpath = NULL;
     xp_ctx    *xr = NULL; 
-	
+        
     va_start(ap, veclen);    
     len = vsnprintf(NULL, 0, xpformat, ap);
     va_end(ap);
     /* allocate an xpath string exactly fitting the length */
     if ((xpath = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: actually compute xpath string content */
     va_start(ap, veclen);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     *vec=NULL;
     *veclen = 0;
     if (xpath_vec_ctx(xcur, nsc, xpath, 0, &xr) < 0)
-	goto done;
+        goto done;
     if (xr && xr->xc_type == XT_NODESET){
-	*vec    = xr->xc_nodeset;
-	xr->xc_nodeset = NULL;
-	*veclen = xr->xc_size;
+        *vec    = xr->xc_nodeset;
+        xr->xc_nodeset = NULL;
+        *veclen = xr->xc_size;
     }
     retval = 0;
  done:
     if (xr)
-	ctx_free(xr);
+        ctx_free(xr);
     if (xpath)
-	free(xpath);
+        free(xpath);
     return retval;
 }
 
@@ -838,12 +838,12 @@ xpath_vec(cxobj      *xcur,
  */
 int
 xpath_vec_flag(cxobj      *xcur, 
-	       cvec       *nsc,
-	       const char *xpformat, 
-	       uint16_t    flags,
-	       cxobj    ***vec, 
-	       int        *veclen,
-	       ...)
+               cvec       *nsc,
+               const char *xpformat, 
+               uint16_t    flags,
+               cxobj    ***vec, 
+               int        *veclen,
+               ...)
 {
     int        retval = -1;
     va_list    ap;
@@ -858,35 +858,35 @@ xpath_vec_flag(cxobj      *xcur,
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: compute write message from reason and args */
     va_start(ap, veclen);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     *vec=NULL;
     *veclen = 0;
     if (xpath_vec_ctx(xcur, nsc, xpath, 0, &xr) < 0)
-	goto done;
+        goto done;
     if (xr && xr->xc_type == XT_NODESET){
-	for (i=0; i<xr->xc_size; i++){
-	    x = xr->xc_nodeset[i];
-	    if (flags==0x0 || xml_flag(x, flags))
-		if (cxvec_append(x, vec, veclen) < 0)
-		    goto done;		
-	}
+        for (i=0; i<xr->xc_size; i++){
+            x = xr->xc_nodeset[i];
+            if (flags==0x0 || xml_flag(x, flags))
+                if (cxvec_append(x, vec, veclen) < 0)
+                    goto done;          
+        }
     }
     retval = 0;
  done:
     if (xr)
-	ctx_free(xr);
+        ctx_free(xr);
     if (xpath)
-	free(xpath);
+        free(xpath);
     return retval;
 }
 
@@ -901,9 +901,9 @@ xpath_vec_flag(cxobj      *xcur,
  */
 int
 xpath_vec_bool(cxobj      *xcur, 
-	       cvec       *nsc,
-	       const char *xpformat, 
-	       ...)
+               cvec       *nsc,
+               const char *xpformat, 
+               ...)
 {
     int        retval = -1;
     va_list    ap;
@@ -916,26 +916,26 @@ xpath_vec_bool(cxobj      *xcur,
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: compute write message from reason and args */
     va_start(ap, xpformat);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     if (xpath_vec_ctx(xcur, nsc, xpath, 0, &xr) < 0)
-	goto done;
+        goto done;
     if (xr)
-	retval = ctx2boolean(xr);
+        retval = ctx2boolean(xr);
  done:
     if (xr)
-	ctx_free(xr);
+        ctx_free(xr);
     if (xpath)
-	free(xpath);
+        free(xpath);
     return retval;
 }
 
@@ -952,10 +952,10 @@ xpath_vec_bool(cxobj      *xcur,
  */
 static int
 traverse_canonical(xpath_tree *xs,
-		   yang_stmt  *yspec,
-		   cvec       *nsc0,
-		   cvec       *nsc1,
-		   cbuf      **reason)
+                   yang_stmt  *yspec,
+                   cvec       *nsc0,
+                   cvec       *nsc1,
+                   cbuf      **reason)
 {
     int        retval = -1;
     char      *prefix0;
@@ -967,67 +967,67 @@ traverse_canonical(xpath_tree *xs,
 
     switch (xs->xs_type){
     case XP_NODE: /* s0 is namespace prefix, s1 is name */
-	/* Nodetest = * needs no prefix */
-	if (xs->xs_s1 && strcmp(xs->xs_s1, "*") == 0)
-	    break;
-	prefix0 = xs->xs_s0;
-	if ((namespace = xml_nsctx_get(nsc0, prefix0)) == NULL){
-	    if ((cb = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    cprintf(cb, "No namespace found for prefix: %s", prefix0);
-	    if (reason)
-		*reason = cb;
-	    goto failed;
-	}
-	if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
-	    if ((cb = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    cprintf(cb, "No modules found for namespace: %s", namespace);	    
-	    if (reason)
-		*reason = cb;
-	    goto failed;
-	}
-	if ((prefix1 = yang_find_myprefix(ymod)) == NULL){
-	    if ((cb = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    cprintf(cb, "No prefix found in module: %s", yang_argument_get(ymod));	    
-	    if (reason)
-		*reason = cb;
-	    goto failed;
-	}
-	if (xml_nsctx_get(nsc1, prefix1) == NULL)
-	    if (xml_nsctx_add(nsc1, prefix1, namespace) < 0)
-		goto done;
-	if (prefix0==NULL || strcmp(prefix0, prefix1) != 0){
-	    if (xs->xs_s0)
-		free(xs->xs_s0);
-	    if ((xs->xs_s0 = strdup(prefix1)) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		goto done;
-	    }
-	}
-	break;
+        /* Nodetest = * needs no prefix */
+        if (xs->xs_s1 && strcmp(xs->xs_s1, "*") == 0)
+            break;
+        prefix0 = xs->xs_s0;
+        if ((namespace = xml_nsctx_get(nsc0, prefix0)) == NULL){
+            if ((cb = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cb, "No namespace found for prefix: %s", prefix0);
+            if (reason)
+                *reason = cb;
+            goto failed;
+        }
+        if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
+            if ((cb = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cb, "No modules found for namespace: %s", namespace);           
+            if (reason)
+                *reason = cb;
+            goto failed;
+        }
+        if ((prefix1 = yang_find_myprefix(ymod)) == NULL){
+            if ((cb = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cb, "No prefix found in module: %s", yang_argument_get(ymod));          
+            if (reason)
+                *reason = cb;
+            goto failed;
+        }
+        if (xml_nsctx_get(nsc1, prefix1) == NULL)
+            if (xml_nsctx_add(nsc1, prefix1, namespace) < 0)
+                goto done;
+        if (prefix0==NULL || strcmp(prefix0, prefix1) != 0){
+            if (xs->xs_s0)
+                free(xs->xs_s0);
+            if ((xs->xs_s0 = strdup(prefix1)) == NULL){
+                clicon_err(OE_UNIX, errno, "strdup");
+                goto done;
+            }
+        }
+        break;
     default:
-	break;
-    }	
+        break;
+    }   
     if (xs->xs_c0){
-	if ((ret = traverse_canonical(xs->xs_c0, yspec, nsc0, nsc1, reason)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto failed;
+        if ((ret = traverse_canonical(xs->xs_c0, yspec, nsc0, nsc1, reason)) < 0)
+            goto done;
+        if (ret == 0)
+            goto failed;
     }
     if (xs->xs_c1){
-	if ((ret = traverse_canonical(xs->xs_c1, yspec, nsc0, nsc1, reason)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto failed;
-    }	
+        if ((ret = traverse_canonical(xs->xs_c1, yspec, nsc0, nsc1, reason)) < 0)
+            goto done;
+        if (ret == 0)
+            goto failed;
+    }   
     retval = 1;
  done:
     return retval;
@@ -1068,11 +1068,11 @@ traverse_canonical(xpath_tree *xs,
  */
 int
 xpath2canonical(const char *xpath0,
-		cvec       *nsc0,
-		yang_stmt  *yspec,
-		char      **xpath1,
-		cvec      **nsc1p,
-		cbuf      **cbreason)
+                cvec       *nsc0,
+                yang_stmt  *yspec,
+                char      **xpath1,
+                cvec      **nsc1p,
+                cbuf      **cbreason)
 {
     int         retval = -1;
     xpath_tree *xpt = NULL;
@@ -1082,42 +1082,42 @@ xpath2canonical(const char *xpath0,
 
     /* Parse input xpath into an xpath-tree */
     if (xpath_parse(xpath0, &xpt) < 0)
-	goto done;
+        goto done;
     /* Create new nsc */
      if ((nsc1 = xml_nsctx_init(NULL, NULL)) == NULL)
-	 goto done;
+         goto done;
     /* Traverse tree to find prefixes, transform them to canonical form and
      * create a canonical network namespace
      */
      if ((ret = traverse_canonical(xpt, yspec, nsc0, nsc1, cbreason)) < 0)
-	goto done;
+        goto done;
      if (ret == 0)
-	 goto failed;
+         goto failed;
      /* Print tree with new prefixes */
      if ((xcb = cbuf_new()) == NULL){
-	 clicon_err(OE_XML, errno, "cbuf_new");
-	 goto done;
+         clicon_err(OE_XML, errno, "cbuf_new");
+         goto done;
      }
      if (xpath_tree2cbuf(xpt, xcb) < 0)
-	 goto done;
+         goto done;
      if (xpath1){
-	 if ((*xpath1 = strdup(cbuf_get(xcb))) == NULL){
-	     clicon_err(OE_UNIX, errno, "strdup");
-	     goto done;
-	 }
+         if ((*xpath1 = strdup(cbuf_get(xcb))) == NULL){
+             clicon_err(OE_UNIX, errno, "strdup");
+             goto done;
+         }
      }
     if (nsc1p){
-	*nsc1p = nsc1;
-	nsc1 = NULL;
+        *nsc1p = nsc1;
+        nsc1 = NULL;
     }
     retval = 1;
  done:
     if (xcb)
-	cbuf_free(xcb);
+        cbuf_free(xcb);
     if (nsc1)
-	xml_nsctx_free(nsc1);
+        xml_nsctx_free(nsc1);
     if (xpt)
-	xpath_tree_free(xpt);
+        xpath_tree_free(xpt);
     return retval;
  failed:
     retval = 0;
@@ -1134,30 +1134,30 @@ xpath2canonical(const char *xpath0,
  */
 int
 xpath_count(cxobj      *xcur, 
-	    cvec       *nsc,
-	    const char *xpath,
-	    uint32_t   *count)
+            cvec       *nsc,
+            const char *xpath,
+            uint32_t   *count)
 {
     int     retval = -1;
     xp_ctx *xc = NULL;
     cbuf   *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     cprintf(cb, "count(%s)", xpath);
     if (xpath_vec_ctx(xcur, nsc, cbuf_get(cb), 0, &xc) < 0)
-	goto done;
+        goto done;
     if (xc && xc->xc_type == XT_NUMBER && xc->xc_number != NAN)
-	*count = (uint32_t)xc->xc_number;
+        *count = (uint32_t)xc->xc_number;
     else
-	*count = 0;
+        *count = 0;
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (xc)
-	ctx_free(xc);
+        ctx_free(xc);
     return retval;
 }

@@ -138,7 +138,7 @@ module example-augment {
           when 'derived-from-or-self(if:type, "mymod:some-new-iftype")'; 
           container ospf { /* moved from test_restconf_err (two-level augment) */
             leaf reference-bandwidth {
-	      type uint32;
+              type uint32;
             }
           }
           leaf mandatory-leaf {
@@ -161,7 +161,7 @@ module example-augment {
               default 80;
             }
             refine ip {
-	      description "double refine triggered mem error";             
+              description "double refine triggered mem error";             
             }
           }
           uses localgroup {
@@ -174,7 +174,7 @@ module example-augment {
        /* augment choice */
        augment "/if:target" {
            case datastore {
-	      leaf two{
+              leaf two{
                  type uint32;
               }
            }
@@ -188,13 +188,13 @@ module example-augment {
        /* augment a list */
        augment "/if:interfaces" {
           list ports{
-	     key id;
-	     leaf id {
+             key id;
+             leaf id {
                 type int32;
-	     }
-	     leaf str {
+             }
+             leaf str {
                 type string;
-	     }
+             }
           }
        }
 }
@@ -207,7 +207,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -337,7 +337,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

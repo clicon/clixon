@@ -45,12 +45,12 @@ module example{
     namespace "urn:example:clixon";
     prefix ex;
     leaf r1 { 
-      description "Top level leaf";	
+      description "Top level leaf";     
         type uint32; 
         default 11;  /* should be set */
     }
     leaf r2 { 
-      description "Top level leaf";	
+      description "Top level leaf";     
         type uint32; 
         default 22;  /* should be set on startup */
     }
@@ -69,13 +69,13 @@ module example{
       /* Extra rules to check when condition */
       leaf npleaf{
         when "../s3 = '99'";
-	type uint32;
+        type uint32;
         default 98; 
       } 
       container npcont{
         when "../s3 = '99'";
         leaf npext{
-  	  type uint32;
+          type uint32;
           default 99; 
         }
       }
@@ -88,8 +88,8 @@ module example{
         default 44; 
       } 
       container np45{
-        description "No presence container";	
-	leaf s5 {
+        description "No presence container";    
+        leaf s5 {
           type uint32;
           default 45; 
         }   
@@ -97,22 +97,22 @@ module example{
     }
     container xs-config {
         description "Typical contruct where a list element has a default leaf";
-	list x {
-	    key "name";
-	    leaf name {
-		type string;
-	    }
-	    container y {
-		leaf inside {
-		    type boolean;
-		    default false;
-		}
+        list x {
+            key "name";
+            leaf name {
+                type string;
             }
-   	    leaf outside {
-	        type boolean;
-		default false;
-	    }
-	 }
+            container y {
+                leaf inside {
+                    type boolean;
+                    default false;
+                }
+            }
+            leaf outside {
+                type boolean;
+                default false;
+            }
+         }
      }
 }
 EOF
@@ -126,7 +126,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend  -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -168,7 +168,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg
@@ -187,7 +187,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend  -s startup -f $cfg"
     start_backend -s startup -f $cfg
@@ -210,7 +210,7 @@ moreret=$(diff $dir/running_db <(echo "<${DATASTORE_TOP}>
 </${DATASTORE_TOP}>"))
 if [ $? -ne 0 ]; then
     err "<${DATASTORE_TOP}>$SXML</${DATASTORE_TOP}>" "$moreret"
-fi	
+fi      
 
 new "Change default value r2"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><r2 xmlns=\"urn:example:clixon\">88</r2></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -226,14 +226,14 @@ moreret=$(diff $dir/running_db <(echo "<${DATASTORE_TOP}>
 </${DATASTORE_TOP}>"))
 if [ $? -ne 0 ]; then
     err "<${DATASTORE_TOP}>$SXML<r2 xmlns=\"urn:example:clixon\">88</r2></${DATASTORE_TOP}>" "$moreret"
-fi	
+fi      
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
 fi
 
@@ -248,7 +248,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend  -s startup -f $cfg"
     start_backend -s startup -f $cfg
@@ -265,7 +265,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
 fi
 
@@ -280,7 +280,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend  -s startup -f $cfg"
     start_backend -s startup -f $cfg
@@ -297,7 +297,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
 fi
 

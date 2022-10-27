@@ -4,15 +4,15 @@ module clixon-xml-changelog {
     prefix ml;
 
     import ietf-yang-library {
-	prefix yanglib;
+        prefix yanglib;
     }
     import ietf-yang-types {
-	prefix yang;
+        prefix yang;
     }
 
     organization    "Clixon";
     contact
-	"Olof Hagsand <olof@hagsand.se>";
+        "Olof Hagsand <olof@hagsand.se>";
     description
         "This is experimental XML changelog module with several influences:
        1) draft-wang-netmod-module-revision-management-01, by:
@@ -21,13 +21,13 @@ module clixon-xml-changelog {
        2) XProc https://www.w3.org/TR/xproc/#xpath-context";
 
     revision 2019-03-21 {
-	description
-	    "Initial Clixon derived version";
+        description
+            "Initial Clixon derived version";
     }
 
     typedef operation_type {
-	description
-	    "From: https://en.wikipedia.org/wiki/XML_pipeline:
+        description
+            "From: https://en.wikipedia.org/wiki/XML_pipeline:
               Rename - renames elements or attributes without modifying the content
               Replace - replaces elements or attributes
               Insert - adds a new data element to the output stream at a specified point
@@ -35,111 +35,111 @@ module clixon-xml-changelog {
               Wrap - wraps elements with additional elements
               Reorder - changes the order of elements
              More inspiration in XProc: https://www.w3.org/TR/xproc/#ex2";
-	type enumeration{
-	    enum rename {
-		description
-		"Rename the 'where' node, ie XML label
+        type enumeration{
+            enum rename {
+                description
+                "Rename the 'where' node, ie XML label
                  Synopsis: rename(where:targets, when:bool, tag:string)";
-	    }
-	    enum replace {
-		description
-		"Replace the target data node modification is given by the leaf
+            }
+            enum replace {
+                description
+                "Replace the target data node modification is given by the leaf
                  transform which is a string with %s where the original value
                  is inserted.
                  Synopsis: replace(where:targets, when:bool, new:xml)";
-	    }
-	    enum insert {
-		description
-		"Create new data nodes and insert under an existing node.
+            }
+            enum insert {
+                description
+                "Create new data nodes and insert under an existing node.
                  Synopsis: insert(where:parents, when:bool, new:xml)";
-	    }
-	    enum delete {
-		description
-		"Delete the target node.
+            }
+            enum delete {
+                description
+                "Delete the target node.
                  Synopsis: delete(where:parents, when:bool)";
-	    }
-	    enum move {
-		description
-		"Move the target node(Added).
+            }
+            enum move {
+                description
+                "Move the target node(Added).
                  Synopsis: move(where:parents, when:bool, dst:node)";
-	    }
-	}
+            }
+        }
     }
     container changelogs {
-	config false;
-	list changelog {
-	    key "namespace revision";
-	    leaf namespace {
-		type string;
-		description
-		    "The YANG namespace identifying a module or submodule.
+        config false;
+        list changelog {
+            key "namespace revision";
+            leaf namespace {
+                type string;
+                description
+                    "The YANG namespace identifying a module or submodule.
                XML needs to be identified by namespace, translation to
                module name may not always be possible.";
-	    }
-	    leaf revision {
-		type yanglib:revision-identifier;
-		description
-		    "The YANG module or submodule revision date. 
+            }
+            leaf revision {
+                type yanglib:revision-identifier;
+                description
+                    "The YANG module or submodule revision date. 
            This is the actual date of the changlelog items. 
            Note however if the terminate flag is set, this is a virtual
            revision just in place to terminate the XML, such as removing or
            moving items,.";
-	    }
-	    leaf revfrom {
-		type yanglib:revision-identifier;
-		description
-		    "Optional revision from date. This changelog is effective in the
+            }
+            leaf revfrom {
+                type yanglib:revision-identifier;
+                description
+                    "Optional revision from date. This changelog is effective in the
            range [from,to]. If from is not given the changelog is open-ended.
            Several changelogs may be applied if the upgrade spans multiple
            ranges: [from0,to0],..[fromN,toN]";
-	    }
-	    list step {
-		description
-		    "List for module revision change log";
-		key "name";
-		leaf name {
-		    type string;
-		    description
-			"Unique step name";
-		}
-		leaf op {
-		    type operation_type;
-		    mandatory true;
-		    description
-			"This leaf indicate the change operation, such as create, move, delete, modify, etc.";
-		}
-		leaf where {
-		    type yang:xpath1.0;
-		    mandatory true;
-		    description
-			"Identifies the target data node for update.
+            }
+            list step {
+                description
+                    "List for module revision change log";
+                key "name";
+                leaf name {
+                    type string;
+                    description
+                        "Unique step name";
+                }
+                leaf op {
+                    type operation_type;
+                    mandatory true;
+                    description
+                        "This leaf indicate the change operation, such as create, move, delete, modify, etc.";
+                }
+                leaf where {
+                    type yang:xpath1.0;
+                    mandatory true;
+                    description
+                        "Identifies the target data node for update.
                          for move, modify or delete the target-node points to 
                          the data node of the old version.
                          For create, it is the parent where it should be
                          inserted.";
-		}
-		leaf when {
-		    type yang:xpath1.0;
-		    description
-			"Boolean XPATH. Execute this step if this xpath exists
+                }
+                leaf when {
+                    type yang:xpath1.0;
+                    description
+                        "Boolean XPATH. Execute this step if this xpath exists
                          and evaluates to true";
-		}
-		leaf tag {
-		    description
-			"For rename, a string XPath definining the new tag.";
-		    type yang:xpath1.0;
-		}
-		leaf dst {
-		    description
-		    "For move, a destination XPath definining the parent where
+                }
+                leaf tag {
+                    description
+                        "For rename, a string XPath definining the new tag.";
+                    type yang:xpath1.0;
+                }
+                leaf dst {
+                    description
+                    "For move, a destination XPath definining the parent where
                      to insert.";
-		    type yang:xpath1.0;
-		}
-		anydata new {
-		    description
-		    "If op is replace or insert, new XML for the new node.";
-		}
-	    }
-	}
+                    type yang:xpath1.0;
+                }
+                anydata new {
+                    description
+                    "If op is replace or insert, new XML for the new node.";
+                }
+            }
+        }
     }
 }

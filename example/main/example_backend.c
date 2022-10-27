@@ -157,37 +157,37 @@ static int example_stream_timer_setup(clicon_handle h);
 
 int
 main_begin(clicon_handle    h, 
-	   transaction_data td)
+           transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 /*! This is called on validate (and commit). Check validity of candidate
  */
 int
 main_validate(clicon_handle    h, 
-	      transaction_data td)
+              transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     if (_validate_fail_xpath){
-	if (_validate_fail_toggle==0 &&
-	    xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
-	    _validate_fail_toggle = 1; /* toggle if triggered */
-	    clicon_err(OE_XML, 0, "User error");
-	    return -1; /* induce fail */
-	}
+        if (_validate_fail_toggle==0 &&
+            xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
+            _validate_fail_toggle = 1; /* toggle if triggered */
+            clicon_err(OE_XML, 0, "User error");
+            return -1; /* induce fail */
+        }
     }
     return 0;
 }
 
 int
 main_complete(clicon_handle    h, 
-	      transaction_data td)
+              transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
@@ -195,7 +195,7 @@ main_complete(clicon_handle    h,
  */
 int
 main_commit(clicon_handle    h, 
-	    transaction_data td)
+            transaction_data td)
 {
     cxobj  *target = transaction_target(td); /* wanted XML tree */
     cxobj **vec = NULL;
@@ -204,67 +204,67 @@ main_commit(clicon_handle    h,
     cvec   *nsc = NULL;
 
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     if (_validate_fail_xpath){
-	if (_validate_fail_toggle==1 &&
-	    xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
-	    _validate_fail_toggle = 0; /* toggle if triggered */
-	    clicon_err(OE_XML, 0, "User error");
-	    return -1; /* induce fail */
-	}
+        if (_validate_fail_toggle==1 &&
+            xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
+            _validate_fail_toggle = 0; /* toggle if triggered */
+            clicon_err(OE_XML, 0, "User error");
+            return -1; /* induce fail */
+        }
     }
 
     /* Create namespace context for xpath */
     if ((nsc = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
-	goto done;
+        goto done;
 
     /* Get all added i/fs */
     if (xpath_vec_flag(target, nsc, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
-	return -1;
+        return -1;
     if (clicon_debug_get())
-	for (i=0; i<len; i++)             /* Loop over added i/fs */
-	    xml_print(stdout, vec[i]); /* Print the added interface */
+        for (i=0; i<len; i++)             /* Loop over added i/fs */
+            xml_print(stdout, vec[i]); /* Print the added interface */
   done:
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (vec)
-	free(vec);
+        free(vec);
     return 0;
 }
 
 int
 main_commit_done(clicon_handle    h, 
-		 transaction_data td)
+                 transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
 int
 main_revert(clicon_handle    h, 
-	    transaction_data td)
+            transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
 int
 main_end(clicon_handle    h, 
-	 transaction_data td)
+         transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
 int
 main_abort(clicon_handle    h, 
-	   transaction_data td)
+           transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
@@ -272,16 +272,16 @@ main_abort(clicon_handle    h,
  */
 static int
 example_stream_timer(int   fd, 
-		     void *arg)
+                     void *arg)
 {
     int                    retval = -1;
     clicon_handle          h = (clicon_handle)arg;
 
     /* XXX Change to actual netconf notifications and namespace */
     if (stream_notify(h, "EXAMPLE", "<event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
-	goto done;
+        goto done;
     if (example_stream_timer_setup(h) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -308,10 +308,10 @@ example_stream_timer_setup(clicon_handle h)
  */
 static int 
 empty_rpc(clicon_handle h,            /* Clicon handle */
-	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg,          /* client_entry */
-	  void         *regarg)       /* Argument given at register */
+          cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+          cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+          void         *arg,          /* client_entry */
+          void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     return 0;
@@ -322,10 +322,10 @@ empty_rpc(clicon_handle h,            /* Clicon handle */
  */
 static int 
 example_rpc(clicon_handle h,            /* Clicon handle */
-	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	    void         *arg,          /* client_entry */
-	    void         *regarg)       /* Argument given at register */
+            cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+            cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+            void         *arg,          /* client_entry */
+            void         *regarg)       /* Argument given at register */
 {
     int    retval = -1;
     cxobj *x = NULL;
@@ -335,24 +335,24 @@ example_rpc(clicon_handle h,            /* Clicon handle */
 
     /* get namespace from rpc name, return back in each output parameter */
     if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
-	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
-	goto done;
+        clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+        goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     if ((xp = xml_parent(xe)) != NULL &&
-	(msgid = xml_find_value(xp, "message-id"))){
-	cprintf(cbret, " message-id=\"%s\"", msgid);
+        (msgid = xml_find_value(xp, "message-id"))){
+        cprintf(cbret, " message-id=\"%s\"", msgid);
     }
     cprintf(cbret, ">");
     if (!xml_child_nr_type(xe, CX_ELMNT))
-	cprintf(cbret, "<ok/>");
+        cprintf(cbret, "<ok/>");
     else {
-	while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
-	    if (xmlns_set(x, NULL, namespace) < 0)
-		goto done;
-	}
-	if (clixon_xml2cbuf(cbret, xe, 0, 0, -1, 1) < 0)
-	    goto done;
+        while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+            if (xmlns_set(x, NULL, namespace) < 0)
+                goto done;
+        }
+        if (clixon_xml2cbuf(cbret, xe, 0, 0, -1, 1) < 0)
+            goto done;
     }
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
@@ -364,10 +364,10 @@ example_rpc(clicon_handle h,            /* Clicon handle */
  */
 static int 
 example_copy_extra(clicon_handle h,            /* Clicon handle */
-		   cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-		   cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-		   void         *arg,          /* client_entry */
-		   void         *regarg)       /* Argument given at register */
+                   cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+                   cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+                   void         *arg,          /* client_entry */
+                   void         *regarg)       /* Argument given at register */
 {
     int    retval = -1;
 
@@ -382,18 +382,18 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
  */
 static int 
 example_action_reset(clicon_handle h,            /* Clicon handle */
-		     cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-		     cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-		     void         *arg,          /* client_entry */
-		     void         *regarg)       /* Argument given at register */
+                     cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+                     cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+                     void         *arg,          /* client_entry */
+                     void         *regarg)       /* Argument given at register */
 {
     int    retval = -1;
     char *reset_at;
 
     if ((reset_at = xml_find_body(xe, "reset-at")) != NULL)
-	/* Just copy input to output */
-	cprintf(cbret, "<rpc-reply xmlns=\"%s\"><reset-finished-at xmlns=\"urn:example:server-farm\">%s</reset-finished-at></rpc-reply>",
-		NETCONF_BASE_NAMESPACE, reset_at);
+        /* Just copy input to output */
+        cprintf(cbret, "<rpc-reply xmlns=\"%s\"><reset-finished-at xmlns=\"urn:example:server-farm\">%s</reset-finished-at></rpc-reply>",
+                NETCONF_BASE_NAMESPACE, reset_at);
     retval = 0;
     // done:
     return retval;
@@ -421,9 +421,9 @@ example_action_reset(clicon_handle h,            /* Clicon handle */
  */
 int 
 example_statedata(clicon_handle   h, 
-		  cvec           *nsc,
-		  char           *xpath,
-		  cxobj          *xstate)
+                  cvec           *nsc,
+                  char           *xpath,
+                  cxobj          *xstate)
 {
     int        retval = -1;
     cxobj    **xvec = NULL;
@@ -436,65 +436,65 @@ example_statedata(clicon_handle   h,
     yang_stmt *yspec = NULL;
 
     if (!_state)
-	goto ok;
+        goto ok;
     yspec = clicon_dbspec_yang(h);
     /* Example of statedata, in this case merging state data with 
      * state information. In this case adding dummy interface operation state
      * to configured interfaces.
      * Get config according to xpath */
     if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
-	goto done;
+        goto done;
     if (xmldb_get0(h, "running", YB_MODULE, nsc1, "/interfaces/interface/name", 1, &xt, NULL, NULL) < 0)
-	goto done;
+        goto done;
     if (xpath_vec(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
-	goto done;
+        goto done;
     if (xlen){
-	cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
-	for (i=0; i<xlen; i++){
-	    name = xml_body(xvec[i]);
-	    cprintf(cb, "<interface xmlns:ex=\"urn:example:clixon\"><name>%s</name><type>ex:eth</type><oper-status>up</oper-status>", name);
-	    cprintf(cb, "<ex:my-status><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status>");
-	    cprintf(cb, "</interface>");
-	}
-	cprintf(cb, "</interfaces>");
-	if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xstate, NULL) < 0)
-	    goto done;
+        cprintf(cb, "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">");
+        for (i=0; i<xlen; i++){
+            name = xml_body(xvec[i]);
+            cprintf(cb, "<interface xmlns:ex=\"urn:example:clixon\"><name>%s</name><type>ex:eth</type><oper-status>up</oper-status>", name);
+            cprintf(cb, "<ex:my-status><ex:int>42</ex:int><ex:str>foo</ex:str></ex:my-status>");
+            cprintf(cb, "</interface>");
+        }
+        cprintf(cb, "</interfaces>");
+        if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xstate, NULL) < 0)
+            goto done;
     }
     /* State in test_yang.sh , test_restconf.sh and test_order.sh */
     if (yang_find_module_by_namespace(yspec, "urn:example:clixon") != NULL){
-	if (clixon_xml_parse_string("<state xmlns=\"urn:example:clixon\">"
-				    "<op>42</op>"
-				    "<op>41</op>"
-				    "<op>43</op>" /* should not be ordered */
-				    "</state>",
-				    YB_NONE,
-				    NULL, &xstate, NULL) < 0)
-	    goto done; /* For the case when urn:example:clixon is not loaded */
+        if (clixon_xml_parse_string("<state xmlns=\"urn:example:clixon\">"
+                                    "<op>42</op>"
+                                    "<op>41</op>"
+                                    "<op>43</op>" /* should not be ordered */
+                                    "</state>",
+                                    YB_NONE,
+                                    NULL, &xstate, NULL) < 0)
+            goto done; /* For the case when urn:example:clixon is not loaded */
     }
     /* Event state from RFC8040 Appendix B.3.1 
      * Note: (1) order is by-system so is different, 
      *       (2) event-count is XOR on name, so is not 42 and 4
      */
     if (yang_find_module_by_namespace(yspec, "urn:example:events") != NULL){
-	cbuf_reset(cb);
-	cprintf(cb, "<events xmlns=\"urn:example:events\">");
-	cprintf(cb, "<event><name>interface-down</name><event-count>90</event-count></event>");
-	cprintf(cb, "<event><name>interface-up</name><event-count>77</event-count></event>");
-	cprintf(cb, "</events>");
-	if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xstate, NULL) < 0)
-	    goto done;
+        cbuf_reset(cb);
+        cprintf(cb, "<events xmlns=\"urn:example:events\">");
+        cprintf(cb, "<event><name>interface-down</name><event-count>90</event-count></event>");
+        cprintf(cb, "<event><name>interface-up</name><event-count>77</event-count></event>");
+        cprintf(cb, "</events>");
+        if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xstate, NULL) < 0)
+            goto done;
     }
  ok:
     retval = 0;
  done:
     if (nsc1)
-	xml_nsctx_free(nsc1);
+        xml_nsctx_free(nsc1);
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (xvec)
-	free(xvec);
+        free(xvec);
     return retval;
 }
 
@@ -513,9 +513,9 @@ example_statedata(clicon_handle   h,
  */
 int 
 example_statefile(clicon_handle     h, 
-		  cvec             *nsc,
-		  char             *xpath,
-		  cxobj            *xstate)
+                  cvec             *nsc,
+                  char             *xpath,
+                  cxobj            *xstate)
 {
     int        retval = -1;
     cxobj    **xvec = NULL;
@@ -529,57 +529,57 @@ example_statefile(clicon_handle     h,
 
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
-	goto ok;
+        goto ok;
     yspec = clicon_dbspec_yang(h);
     /* Read state file if either not cached, or the cache is NULL */
     if (_state_file_cached == 0 ||
-	_state_xml_cache == NULL){
-	if ((fp = fopen(_state_file, "r")) == NULL){
-	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
-	    goto done;
-	}
-	if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
-	    goto done;
-	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
-	    goto done;
-	if (_state_file_cached)
-	    _state_xml_cache = xt;
+        _state_xml_cache == NULL){
+        if ((fp = fopen(_state_file, "r")) == NULL){
+            clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
+            goto done;
+        }
+        if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
+            goto done;
+        if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
+            goto done;
+        if (_state_file_cached)
+            _state_xml_cache = xt;
     }
     if (_state_file_cached)
-	xt = _state_xml_cache;
+        xt = _state_xml_cache;
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
-	goto done;	
+        goto done;      
     /* Mark elements to copy:
      * For every node found in x0, mark the tree as changed 
      */
     for (i=0; i<xlen; i++){
-	if ((x1 = xvec[i]) == NULL)
-	    break;
-	xml_flag_set(x1, XML_FLAG_MARK);
-	xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+        if ((x1 = xvec[i]) == NULL)
+            break;
+        xml_flag_set(x1, XML_FLAG_MARK);
+        xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
     /* Copy the marked elements: 
      * note is yang-aware for copying of keys which means XML must be bound 
      */
     if (xml_copy_marked(xt, xstate) < 0) 
-	goto done;
+        goto done;
     /* Unmark original tree */
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
-	goto done;
+        goto done;
     /* Unmark returned state tree */
     if (xml_apply(xstate, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
-	goto done;
+        goto done;
     if (_state_file_cached)
-	xt = NULL; /* ensure cache is not cleared */
+        xt = NULL; /* ensure cache is not cleared */
  ok:
     retval = 0;
  done:
     if (fp)
-	fclose(fp);
+        fclose(fp);
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (xvec)
-	free(xvec);
+        free(xvec);
     return retval;
 }
 
@@ -592,9 +592,9 @@ example_statefile(clicon_handle     h,
  */
 int 
 example_pagination(void            *h0,
-		   char            *xpath,
-		   pagination_data  pd,
-		   void            *arg)
+                   char            *xpath,
+                   pagination_data  pd,
+                   void            *arg)
 {
     int               retval = -1;
     clicon_handle     h = (clicon_handle)h0;
@@ -616,7 +616,7 @@ example_pagination(void            *h0,
     
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
-	goto ok;
+        goto ok;
 
     locked = pagination_locked(pd); 
     offset = pagination_offset(pd); 
@@ -625,69 +625,69 @@ example_pagination(void            *h0,
     
     /* Get canonical namespace context */
     if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-	goto done;
+        goto done;
     yspec = clicon_dbspec_yang(h);
     /* Read state file if either not cached, or the cache is NULL */
     if (_state_file_cached == 0 ||
-	_state_xml_cache == NULL){
-	if ((fp = fopen(_state_file, "r")) == NULL){
-	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
-	    goto done;
-	}
-	if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
-	    goto done;
-	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
-	    goto done;
-	if (_state_file_cached)
-	    _state_xml_cache = xt;
+        _state_xml_cache == NULL){
+        if ((fp = fopen(_state_file, "r")) == NULL){
+            clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
+            goto done;
+        }
+        if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
+            goto done;
+        if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
+            goto done;
+        if (_state_file_cached)
+            _state_xml_cache = xt;
     }
     if (_state_file_cached)
-	xt = _state_xml_cache;
+        xt = _state_xml_cache;
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
-	goto done;	
+        goto done;      
     lower = offset;
     if (limit == 0)
-	upper = xlen;
+        upper = xlen;
     else{
-	if ((upper = offset+limit) > xlen)
-	    upper = xlen;
+        if ((upper = offset+limit) > xlen)
+            upper = xlen;
     }
     /* Mark elements to copy:
      * For every node found in x0, mark the tree as changed 
      */
     for (i=lower; i<upper; i++){
-	if ((x1 = xvec[i]) == NULL)
-	    break;
-	xml_flag_set(x1, XML_FLAG_MARK);
-	xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+        if ((x1 = xvec[i]) == NULL)
+            break;
+        xml_flag_set(x1, XML_FLAG_MARK);
+        xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
     /* Copy the marked elements: 
      * note is yang-aware for copying of keys which means XML must be bound 
      */
     if (xml_copy_marked(xt, xstate) < 0) /* Copy the marked elements */
-	goto done;
+        goto done;
     /* Unmark original tree */
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
-	goto done;
+        goto done;
     /* Unmark returned state tree */
     if (xml_apply(xstate, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
-	goto done;
+        goto done;
     if (_state_file_cached){
-	xt = NULL; /* ensure cache is not cleared */
+        xt = NULL; /* ensure cache is not cleared */
     }
     if (locked)
-	_state_file_transaction++;
+        _state_file_transaction++;
  ok:
     retval = 0;
  done:
     if (fp)
-	fclose(fp);
+        fclose(fp);
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (xvec)
-	free(xvec);
+        free(xvec);
     if (nsc)
-	cvec_free(nsc);
+        cvec_free(nsc);
     return retval;    
 }
 
@@ -701,9 +701,9 @@ example_pagination(void            *h0,
 */
 int
 example_lockdb(clicon_handle h,
-	       char         *db,
-	       int           lock,
-	       int           id)
+               char         *db,
+               int           lock,
+               int           id)
 {
     int retval = -1;
 
@@ -712,12 +712,12 @@ example_lockdb(clicon_handle h,
     /* Part of cached pagination example
      */
     if (strcmp(db, "running") == 0 && lock == 0 &&
-	_state && _state_file && _state_file_cached && _state_file_transaction){
-	if (_state_xml_cache){
-	    xml_free(_state_xml_cache);
-	    _state_xml_cache = NULL;
-	}
-	_state_file_transaction = 0;
+        _state && _state_file && _state_file_cached && _state_file_transaction){
+        if (_state_xml_cache){
+            xml_free(_state_xml_cache);
+            _state_xml_cache = NULL;
+        }
+        _state_file_transaction = 0;
     }
 
     retval = 0;
@@ -735,8 +735,8 @@ example_lockdb(clicon_handle h,
  */
 int
 example_extension(clicon_handle h,     
-		  yang_stmt    *yext,
-		  yang_stmt    *ys)
+                  yang_stmt    *yext,
+                  yang_stmt    *ys)
 {
     int        retval = -1;
     char      *extname;
@@ -749,14 +749,14 @@ example_extension(clicon_handle h,
     modname = yang_argument_get(ymod);
     extname = yang_argument_get(yext);
     if (strcmp(modname, "example") != 0 || strcmp(extname, "e4") != 0)
-	goto ok;
+        goto ok;
     clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
     if ((yc = yang_find(ys, 0, NULL)) == NULL)
-	goto ok;
+        goto ok;
     if ((yn = ys_dup(yc)) == NULL)
-	goto done;
+        goto done;
     if (yn_insert(yang_parent_get(ys), yn) < 0)
-	goto done;
+        goto done;
  ok:
     retval = 0;
  done:
@@ -799,9 +799,9 @@ static const map_str2str namespace_map[] = {
  */
 int
 example_upgrade(clicon_handle    h,
-		const char      *db,
-		cxobj           *xt,
-		modstate_diff_t *msd)
+                const char      *db,
+                cxobj           *xt,
+                modstate_diff_t *msd)
 {
     int                       retval = -1;
     cvec                     *nsc = NULL;    /* Canonical namespace */
@@ -813,66 +813,66 @@ example_upgrade(clicon_handle    h,
     const char              **pp;
 
     if (_general_upgrade == 0)
-	goto ok;
+        goto ok;
     if (strcmp(db, "startup") != 0) /* skip other than startup datastore */
-	goto ok;
+        goto ok;
     if (msd && msd->md_status) /* skip if there is proper module-state in datastore */
-	goto ok;
+        goto ok;
     yspec = clicon_dbspec_yang(h);     /* Get all yangs */
     /* Get canonical namespaces for using "normalized" prefixes */
     if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-	goto done;
+        goto done;
     /* 1. Remove paths */
     for (pp = remove_map; *pp; ++pp){
-	/* Find all nodes matching n */
-	if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, *pp) < 0) 
-	    goto done;
-	/* Remove them */
-	/* Loop through all nodes matching mypath and change theoir namespace */
-	for (i=0; i<xlen; i++){
-	    if (xml_purge(xvec[i]) < 0)
-		goto done;
-	}
-	if (xvec){
-	    free(xvec);
-	    xvec = NULL;
-	}
+        /* Find all nodes matching n */
+        if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, *pp) < 0) 
+            goto done;
+        /* Remove them */
+        /* Loop through all nodes matching mypath and change theoir namespace */
+        for (i=0; i<xlen; i++){
+            if (xml_purge(xvec[i]) < 0)
+                goto done;
+        }
+        if (xvec){
+            free(xvec);
+            xvec = NULL;
+        }
     }
     /* 2. Rename namespaces of the paths declared in the namespace map
      */
     for (ms = &namespace_map[0]; ms->ms_s0; ms++){
-	char *mypath;
-	char *mynamespace;
-	char *myprefix = NULL;
+        char *mypath;
+        char *mynamespace;
+        char *myprefix = NULL;
 
-	mypath = ms->ms_s0;
-	mynamespace = ms->ms_s1;
-	if (xml_nsctx_get_prefix(nsc, mynamespace, &myprefix) == 0){
-	    clicon_err(OE_XML, ENOENT, "Namespace %s not found in canonical namespace map",
-		       mynamespace);
-	    goto done;
-	}
-	/* Find all nodes matching mypath */
-	if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, mypath) < 0) 
-	    goto done;
-	/* Loop through all nodes matching mypath and change theoir namespace */
-	for (i=0; i<xlen; i++){
-	    /* Change namespace of this node (using myprefix) */ 
-	    if (xml_namespace_change(xvec[i], mynamespace, myprefix) < 0)
-		goto done;
-	}
-	if (xvec){
-	    free(xvec);
-	    xvec = NULL;
-	}
+        mypath = ms->ms_s0;
+        mynamespace = ms->ms_s1;
+        if (xml_nsctx_get_prefix(nsc, mynamespace, &myprefix) == 0){
+            clicon_err(OE_XML, ENOENT, "Namespace %s not found in canonical namespace map",
+                       mynamespace);
+            goto done;
+        }
+        /* Find all nodes matching mypath */
+        if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, mypath) < 0) 
+            goto done;
+        /* Loop through all nodes matching mypath and change theoir namespace */
+        for (i=0; i<xlen; i++){
+            /* Change namespace of this node (using myprefix) */ 
+            if (xml_namespace_change(xvec[i], mynamespace, myprefix) < 0)
+                goto done;
+        }
+        if (xvec){
+            free(xvec);
+            xvec = NULL;
+        }
     }
  ok:
     retval = 0;
  done:
     if (xvec)
-	free(xvec);
+        free(xvec);
     if (nsc)
-	cvec_free(nsc);
+        cvec_free(nsc);
     return retval;
 }
 
@@ -900,13 +900,13 @@ example_upgrade(clicon_handle    h,
  */
 static int
 upgrade_2014_to_2016(clicon_handle h,       
-		     cxobj        *xt,      
-		     char         *ns,
-		     uint16_t      op,
-		     uint32_t      from,
-		     uint32_t      to,
-		     void         *arg,     
-		     cbuf         *cbret)
+                     cxobj        *xt,      
+                     char         *ns,
+                     uint16_t      op,
+                     uint32_t      from,
+                     uint32_t      to,
+                     void         *arg,     
+                     cbuf         *cbret)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -922,61 +922,61 @@ upgrade_2014_to_2016(clicon_handle h,
 
     clicon_debug(1, "%s from:%d to:%d", __FUNCTION__, from, to);
     if (op != XML_FLAG_CHANGE) /* Only treat fully present modules */
-    	goto ok;
+        goto ok;
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
-    yspec = clicon_dbspec_yang(h);	
+    yspec = clicon_dbspec_yang(h);      
     if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
-	goto ok; /* shouldnt happen */
+        goto ok; /* shouldnt happen */
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
-	goto done;
+        goto done;
     for (i=0; i<vlen; i++){
-	xc = vec[i];
-	/* Iterate through interfaces-state */
-	if (strcmp(xml_name(xc),"interfaces-state") == 0){
-	    /* Note you cannot delete or move xml objects directly under xc
-	     * in the loop (eg xi objects) but you CAN move children of xi
-	     */
-	    xi = NULL;
-	    while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
-		if (strcmp(xml_name(xi), "interface"))
-		    continue;
-		if ((name = xml_find_body(xi, "name")) == NULL)
-		    continue; /* shouldnt happen */
-		/* Get corresponding /interfaces/interface entry */
-		xif = xpath_first(xt, NULL, "/interfaces/interface[name=\"%s\"]", name);
-		/* - Move /if:interfaces-state/if:interface/if:admin-status to 
-		 *        /if:interfaces/if:interface/ */
-		if ((x = xml_find(xi, "admin-status")) != NULL && xif){
-		    if (xml_addsub(xif, x) < 0)
-			goto done;
-		}
-		/* - Move /if:interfaces-state/if:interface/if:statistics to
-		 *        /if:interfaces/if:interface/*/
-		if ((x = xml_find(xi, "statistics")) != NULL){
-		    if (xml_addsub(xif, x) < 0)
-			goto done;
-		}
-	    }
-	}
-	else if (strcmp(xml_name(xc),"interfaces") == 0){
-	    /* Iterate through interfaces */
-	    xi = NULL;
-	    while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
-		if (strcmp(xml_name(xi), "interface"))
-		    continue;
-		/* Rename /interfaces/interface/description to descr */
-		if ((x = xml_find(xi, "description")) != NULL)
-		    if (xml_name_set(x, "descr") < 0)
-			goto done;
-	    }
-	}
+        xc = vec[i];
+        /* Iterate through interfaces-state */
+        if (strcmp(xml_name(xc),"interfaces-state") == 0){
+            /* Note you cannot delete or move xml objects directly under xc
+             * in the loop (eg xi objects) but you CAN move children of xi
+             */
+            xi = NULL;
+            while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
+                if (strcmp(xml_name(xi), "interface"))
+                    continue;
+                if ((name = xml_find_body(xi, "name")) == NULL)
+                    continue; /* shouldnt happen */
+                /* Get corresponding /interfaces/interface entry */
+                xif = xpath_first(xt, NULL, "/interfaces/interface[name=\"%s\"]", name);
+                /* - Move /if:interfaces-state/if:interface/if:admin-status to 
+                 *        /if:interfaces/if:interface/ */
+                if ((x = xml_find(xi, "admin-status")) != NULL && xif){
+                    if (xml_addsub(xif, x) < 0)
+                        goto done;
+                }
+                /* - Move /if:interfaces-state/if:interface/if:statistics to
+                 *        /if:interfaces/if:interface/*/
+                if ((x = xml_find(xi, "statistics")) != NULL){
+                    if (xml_addsub(xif, x) < 0)
+                        goto done;
+                }
+            }
+        }
+        else if (strcmp(xml_name(xc),"interfaces") == 0){
+            /* Iterate through interfaces */
+            xi = NULL;
+            while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
+                if (strcmp(xml_name(xi), "interface"))
+                    continue;
+                /* Rename /interfaces/interface/description to descr */
+                if ((x = xml_find(xi, "description")) != NULL)
+                    if (xml_name_set(x, "descr") < 0)
+                        goto done;
+            }
+        }
     }
  ok:
     retval = 1;
  done:
     if (vec)
-	free(vec);
+        free(vec);
     return retval;
 }
 
@@ -1003,13 +1003,13 @@ upgrade_2014_to_2016(clicon_handle h,
  */
 static int
 upgrade_2016_to_2018(clicon_handle h,       
-		     cxobj        *xt,      
-		     char         *ns,
-		     uint16_t      op,
-		     uint32_t      from,
-		     uint32_t      to,
-		     void         *arg,     
-		     cbuf         *cbret)
+                     cxobj        *xt,      
+                     char         *ns,
+                     uint16_t      op,
+                     uint32_t      from,
+                     uint32_t      to,
+                     void         *arg,     
+                     cbuf         *cbret)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -1024,52 +1024,52 @@ upgrade_2016_to_2018(clicon_handle h,
 
     clicon_debug(1, "%s from:%d to:%d", __FUNCTION__, from, to);
     if (op != XML_FLAG_CHANGE) /* Only treat fully present modules */
-    	goto ok;
+        goto ok;
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
-    yspec = clicon_dbspec_yang(h);	
+    yspec = clicon_dbspec_yang(h);      
     if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
-	goto ok; /* shouldnt happen */
+        goto ok; /* shouldnt happen */
     clicon_debug(1, "%s module %s", __FUNCTION__, ym?yang_argument_get(ym):"none");
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
-	goto done;
+        goto done;
     for (i=0; i<vlen; i++){
-	xc = vec[i];
-	/* Delete /if:interfaces-state */
-	if (strcmp(xml_name(xc), "interfaces-state") == 0)
-	    xml_purge(xc);
-	/* Iterate through interfaces */
-	else if (strcmp(xml_name(xc),"interfaces") == 0){
-	    /* Iterate through interfaces */
-	    xi = NULL;
-	    while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
-		if (strcmp(xml_name(xi), "interface"))
-		    continue;
-		/* Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr */
-		if ((x = xml_find(xi, "descr")) != NULL)
-		    if (xml_wrap(x, "docs") < 0)
-			goto done;
-		/* Change type /interfaces/interface/statistics/in-octets to 
-		 * decimal64 with fraction-digits 3 and divide values with 1000 
-		 */
-		if ((x = xpath_first(xi, NULL, "statistics/in-octets")) != NULL){
-		    if ((xb = xml_body_get(x)) != NULL){
-			uint64_t u64;
-			cbuf *cb = cbuf_new();
-			parse_uint64(xml_value(xb), &u64, NULL);
-			cprintf(cb, "%" PRIu64 ".%03d", u64/1000, (int)(u64%1000));
-			xml_value_set(xb, cbuf_get(cb));
-			cbuf_free(cb);
-		    }
-		}
-	    }
-	}
+        xc = vec[i];
+        /* Delete /if:interfaces-state */
+        if (strcmp(xml_name(xc), "interfaces-state") == 0)
+            xml_purge(xc);
+        /* Iterate through interfaces */
+        else if (strcmp(xml_name(xc),"interfaces") == 0){
+            /* Iterate through interfaces */
+            xi = NULL;
+            while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
+                if (strcmp(xml_name(xi), "interface"))
+                    continue;
+                /* Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr */
+                if ((x = xml_find(xi, "descr")) != NULL)
+                    if (xml_wrap(x, "docs") < 0)
+                        goto done;
+                /* Change type /interfaces/interface/statistics/in-octets to 
+                 * decimal64 with fraction-digits 3 and divide values with 1000 
+                 */
+                if ((x = xpath_first(xi, NULL, "statistics/in-octets")) != NULL){
+                    if ((xb = xml_body_get(x)) != NULL){
+                        uint64_t u64;
+                        cbuf *cb = cbuf_new();
+                        parse_uint64(xml_value(xb), &u64, NULL);
+                        cprintf(cb, "%" PRIu64 ".%03d", u64/1000, (int)(u64%1000));
+                        xml_value_set(xb, cbuf_get(cb));
+                        cbuf_free(cb);
+                    }
+                }
+            }
+        }
     }
  ok:
     retval = 1;
  done:
     if (vec)
-	free(vec);
+        free(vec);
     return retval;
 }
 
@@ -1097,32 +1097,32 @@ upgrade_2016_to_2018(clicon_handle h,
  */
 static int
 upgrade_interfaces(clicon_handle h,       
-		   cxobj        *xt,      
-		   char         *ns,
-		   uint16_t      op,
-		   uint32_t      from,
-		   uint32_t      to,
-		   void         *arg,     
-		   cbuf         *cbret)
+                   cxobj        *xt,      
+                   char         *ns,
+                   uint16_t      op,
+                   uint32_t      from,
+                   uint32_t      to,
+                   void         *arg,     
+                   cbuf         *cbret)
 {
     int retval = -1;
 
     if (_module_upgrade) /* For testing */
-	clicon_log(LOG_NOTICE, "%s %s op:%s from:%d to:%d",
-		   __FUNCTION__, ns,
-		   (op&XML_FLAG_ADD)?"ADD":(op&XML_FLAG_DEL)?"DEL":"CHANGE",
-		   from, to);
+        clicon_log(LOG_NOTICE, "%s %s op:%s from:%d to:%d",
+                   __FUNCTION__, ns,
+                   (op&XML_FLAG_ADD)?"ADD":(op&XML_FLAG_DEL)?"DEL":"CHANGE",
+                   from, to);
     if (from <= 20140508){
-	if ((retval = upgrade_2014_to_2016(h, xt, ns, op, from, to, arg, cbret)) < 0)
-	    goto done;
-	if (retval == 0)
-	    goto done;
+        if ((retval = upgrade_2014_to_2016(h, xt, ns, op, from, to, arg, cbret)) < 0)
+            goto done;
+        if (retval == 0)
+            goto done;
     }
     if (from <= 20160101){
-    	if ((retval = upgrade_2016_to_2018(h, xt, ns, op, from, to, arg, cbret)) < 0)
-	    goto done;
-	if (retval == 0)
-	    goto done;
+        if ((retval = upgrade_2016_to_2018(h, xt, ns, op, from, to, arg, cbret)) < 0)
+            goto done;
+        if (retval == 0)
+            goto done;
     }
     // ok:
     retval = 1;
@@ -1146,7 +1146,7 @@ upgrade_interfaces(clicon_handle h,
  */
 int
 example_reset(clicon_handle h,
-	      const char   *db)
+              const char   *db)
 {
     int    retval = -1;
     cxobj *xt = NULL;
@@ -1155,35 +1155,35 @@ example_reset(clicon_handle h,
     yang_stmt *yspec;
 
     if (!_reset)
-	goto ok; /* Note not enabled by default */
-	
-    yspec = clicon_dbspec_yang(h);	
+        goto ok; /* Note not enabled by default */
+        
+    yspec = clicon_dbspec_yang(h);      
     if (clixon_xml_parse_string("<config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">"
-				"<interface><name>lo</name><type>ex:loopback</type>"
-				"</interface></interfaces></config>", YB_MODULE, yspec, &xt, NULL) < 0)
-	goto done;
+                                "<interface><name>lo</name><type>ex:loopback</type>"
+                                "</interface></interfaces></config>", YB_MODULE, yspec, &xt, NULL) < 0)
+        goto done;
     /* Replace parent w first child */
     if (xml_rootchild(xt, 0, &xt) < 0)
-	goto done;
+        goto done;
     if ((cbret = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     /* Merge user reset state */
     if ((ret = xmldb_put(h, (char*)db, OP_MERGE, xt, clicon_username_get(h), cbret)) < 0)
-	goto done;
+        goto done;
     if (ret == 0){
-	clicon_err(OE_XML, 0, "Error when writing to XML database: %s",
-		   cbuf_get(cbret));
-	goto done;
+        clicon_err(OE_XML, 0, "Error when writing to XML database: %s",
+                   cbuf_get(cbret));
+        goto done;
     }
  ok:
     retval = 0;
  done:
     if (cbret)
-	cbuf_free(cbret);
+        cbuf_free(cbret);
     if (xt != NULL)
-	xml_free(xt);
+        xml_free(xt);
     return retval;
 }
 
@@ -1208,14 +1208,14 @@ example_start(clicon_handle h)
      * such as "/sfarm:server/sfarm:reset"
      */
     if (_action_instanceid){
-	if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	    clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	    goto done;
-	}
-	if (yang_abs_schema_nodeid(yspec, _action_instanceid, &ya) == 0){
-	    if (ya && action_callback_register(h, ya, example_action_reset, NULL) < 0)
-		goto done;
-	}
+        if ((yspec = clicon_dbspec_yang(h)) == NULL){
+            clicon_err(OE_FATAL, 0, "No DB_SPEC");
+            goto done;
+        }
+        if (yang_abs_schema_nodeid(yspec, _action_instanceid, &ya) == 0){
+            if (ya && action_callback_register(h, ya, example_action_reset, NULL) < 0)
+                goto done;
+        }
     }
     retval = 0;
  done:
@@ -1239,24 +1239,24 @@ example_daemon(clicon_handle h)
 
     /* Read state file (or should this be in init/start?) */
     if (_state && _state_file && _state_file_cached){
-	yspec = clicon_dbspec_yang(h);
-	if ((fp = fopen(_state_file, "r")) == NULL){
-	    clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
-	    goto done;
-	}
-	/* Need to be yang bound for eg xml_copy_marked() in example_pagination
-	 */
-	if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &_state_xml_cache, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    xml_print(stderr, xerr);
-	    goto done;
-	}
+        yspec = clicon_dbspec_yang(h);
+        if ((fp = fopen(_state_file, "r")) == NULL){
+            clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
+            goto done;
+        }
+        /* Need to be yang bound for eg xml_copy_marked() in example_pagination
+         */
+        if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &_state_xml_cache, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            xml_print(stderr, xerr);
+            goto done;
+        }
     }
     retval = 0;
  done:
     if (fp)
-	fclose(fp);
+        fclose(fp);
     return retval;
 }
 
@@ -1264,8 +1264,8 @@ int
 example_exit(clicon_handle h)
 {
     if (_state_xml_cache){
-	xml_free(_state_xml_cache);
-	_state_xml_cache = NULL;
+        xml_free(_state_xml_cache);
+        _state_xml_cache = NULL;
     }
     return 0;
 }
@@ -1313,121 +1313,121 @@ clixon_plugin_init(clicon_handle h)
 
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
-	goto done;
+        goto done;
     opterr = 0;
     optind = 1;
     while ((c = getopt(argc, argv, BACKEND_EXAMPLE_OPTS)) != -1)
-	switch (c) {
-	case 'a':
-	    _action_instanceid = optarg;
-	    break;
-	case 'n':
-	    _notification_stream = 1;
-	    break;
-	case 'r':
-	    _reset = 1;
-	    break;
-	case 's': /* state callback */
-	    _state = 1;
-	    break;
-	case 'S': /* state file (requires -s) */
-	    _state_file = optarg;
-	    break;
-	case 'x': /* state xpath (requires -sS) */
-	    _state_xpath = optarg;
-	    break;
-	case 'i': /* read state file on init not by request (requires -sS <file> */
-	    _state_file_cached = 1;
-	    break;
+        switch (c) {
+        case 'a':
+            _action_instanceid = optarg;
+            break;
+        case 'n':
+            _notification_stream = 1;
+            break;
+        case 'r':
+            _reset = 1;
+            break;
+        case 's': /* state callback */
+            _state = 1;
+            break;
+        case 'S': /* state file (requires -s) */
+            _state_file = optarg;
+            break;
+        case 'x': /* state xpath (requires -sS) */
+            _state_xpath = optarg;
+            break;
+        case 'i': /* read state file on init not by request (requires -sS <file> */
+            _state_file_cached = 1;
+            break;
        case 'u': /* module-specific upgrade */
            _module_upgrade = 1;
            break;
        case 'U': /* general-purpose upgrade */
            _general_upgrade = 1;
-	   break;
-	case 't': /* transaction log */
-	    _transaction_log = 1;
-	    break;
-	case 'V': /* validate fail */
-	    _validate_fail_xpath = optarg;
-	    break;
-	}
+           break;
+        case 't': /* transaction log */
+            _transaction_log = 1;
+            break;
+        case 'V': /* validate fail */
+            _validate_fail_xpath = optarg;
+            break;
+        }
 
     if (_state_file){
-	api.ca_statedata = example_statefile; /* Switch state data callback */
-	if (_state_xpath){
-	    /* State pagination callbacks */
-	    if (clixon_pagination_cb_register(h,
-					      example_pagination,
-					      _state_xpath,
-					      NULL) < 0)
-		goto done;
-	}
+        api.ca_statedata = example_statefile; /* Switch state data callback */
+        if (_state_xpath){
+            /* State pagination callbacks */
+            if (clixon_pagination_cb_register(h,
+                                              example_pagination,
+                                              _state_xpath,
+                                              NULL) < 0)
+                goto done;
+        }
     }
-	
+        
     if (_notification_stream){
-	/* Example stream initialization:
-	 * 1) Register EXAMPLE stream 
-	 * 2) setup timer for notifications, so something happens on stream
-	 * 3) setup stream callbacks for notification to push channel
-	 */
-	if (clicon_option_exists(h, "CLICON_STREAM_RETENTION"))
-	    retention.tv_sec = clicon_option_int(h, "CLICON_STREAM_RETENTION");
-	if (stream_add(h, "EXAMPLE", "Example event stream", 1, &retention) < 0)
-	    goto done;
-	/* Enable nchan pub/sub streams
-	 * assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
-	 */
-	if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
-	    stream_publish(h, "EXAMPLE") < 0)
-	    goto done;
-	if (example_stream_timer_setup(h) < 0)
-	    goto done;
+        /* Example stream initialization:
+         * 1) Register EXAMPLE stream 
+         * 2) setup timer for notifications, so something happens on stream
+         * 3) setup stream callbacks for notification to push channel
+         */
+        if (clicon_option_exists(h, "CLICON_STREAM_RETENTION"))
+            retention.tv_sec = clicon_option_int(h, "CLICON_STREAM_RETENTION");
+        if (stream_add(h, "EXAMPLE", "Example event stream", 1, &retention) < 0)
+            goto done;
+        /* Enable nchan pub/sub streams
+         * assumes: CLIXON_PUBLISH_STREAMS, eg configure --enable-publish
+         */
+        if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
+            stream_publish(h, "EXAMPLE") < 0)
+            goto done;
+        if (example_stream_timer_setup(h) < 0)
+            goto done;
     }
     /* Register callback for routing rpc calls 
      */
     /* From example.yang (clicon) */
     if (rpc_callback_register(h, empty_rpc, 
-			      NULL, 
-			      "urn:example:clixon",
-			      "empty"/* Xml tag when callback is made */
-			      ) < 0)
-	goto done;
+                              NULL, 
+                              "urn:example:clixon",
+                              "empty"/* Xml tag when callback is made */
+                              ) < 0)
+        goto done;
     /* Same as example but with optional input/output */
     if (rpc_callback_register(h, example_rpc, 
-			      NULL, 
-			      "urn:example:clixon",
-			      "optional"/* Xml tag when callback is made */
-			      ) < 0)
-	goto done;
+                              NULL, 
+                              "urn:example:clixon",
+                              "optional"/* Xml tag when callback is made */
+                              ) < 0)
+        goto done;
         /* Same as example but with optional input/output */
     if (rpc_callback_register(h, example_rpc, 
-			      NULL, 
-			      "urn:example:clixon",
-			      "example"/* Xml tag when callback is made */
-			      ) < 0)
-	goto done;
+                              NULL, 
+                              "urn:example:clixon",
+                              "example"/* Xml tag when callback is made */
+                              ) < 0)
+        goto done;
     /* Called before the regular system copy_config callback 
      * If you want to have it called _after_ the system callback, place this call in 
      * the _start function.
      */
     if (rpc_callback_register(h, example_copy_extra, 
-			      NULL, 
-			      NETCONF_BASE_NAMESPACE,
-			      "copy-config"
-			      ) < 0)
-	goto done;
+                              NULL, 
+                              NETCONF_BASE_NAMESPACE,
+                              "copy-config"
+                              ) < 0)
+        goto done;
 
     /* Upgrade callback: if you start the backend with -- -u you will get the
      * test interface example. Otherwise the auto-upgrade feature is enabled.
      */
     if (_module_upgrade){
-	if (upgrade_callback_register(h, upgrade_interfaces, "urn:example:interfaces", NULL) < 0)
-	    goto done;
+        if (upgrade_callback_register(h, upgrade_interfaces, "urn:example:interfaces", NULL) < 0)
+            goto done;
     }
     else
-	if (upgrade_callback_register(h, xml_changelog_upgrade, NULL, NULL) < 0)
-	    goto done;
+        if (upgrade_callback_register(h, xml_changelog_upgrade, NULL, NULL) < 0)
+            goto done;
     /* Return plugin API */
     return &api;
  done:

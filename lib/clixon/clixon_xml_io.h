@@ -51,7 +51,7 @@ int   xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 int   clixon_xml_parse_file(FILE *f, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 int   clixon_xml_parse_string(const char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 int   clixon_xml_parse_va(yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr, 
-			const char *format, ...)  __attribute__ ((format (printf, 5, 6)));
+                        const char *format, ...)  __attribute__ ((format (printf, 5, 6)));
 int   clixon_xml_attr_copy(cxobj *xin, cxobj *xout, char *name);
 
-#endif	/* _CLIXON_XML_IO_H_ */
+#endif  /* _CLIXON_XML_IO_H_ */

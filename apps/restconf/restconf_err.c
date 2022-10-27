@@ -77,25 +77,25 @@
  */
 int
 restconf_method_notallowed(clicon_handle  h,
-			   void          *req,
-			   char          *allow,
-			   int            pretty,
-			   restconf_media media)
+                           void          *req,
+                           char          *allow,
+                           int            pretty,
+                           restconf_media media)
 {
     int    retval = -1;
     cxobj *xerr = NULL;
 
     if (netconf_operation_not_supported_xml(&xerr, "protocol", "Method not allowed") < 0)
-	goto done;
+        goto done;
     /* Assume not-supported mapped to Not Allowed with allow header */
     if (restconf_reply_header(req, "Allow", "%s", allow) < 0)
-	goto done;
+        goto done;
     if (api_return_err0(h, req, xerr, pretty, YANG_DATA_JSON, 0) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     return retval;
 }
 
@@ -107,22 +107,22 @@ restconf_method_notallowed(clicon_handle  h,
  */
 int
 restconf_unsupported_media(clicon_handle  h,
-			   void          *req,
-			   int            pretty,
-			   restconf_media media)
+                           void          *req,
+                           int            pretty,
+                           restconf_media media)
 {
     int    retval = -1;
     cxobj *xerr = NULL;
 
     if (netconf_operation_not_supported_xml(&xerr, "protocol", "Unsupported Media Type") < 0)
-	goto done;
+        goto done;
     /* override with 415 netconf->restoconf translation which gives a 405 */
     if (api_return_err0(h, req, xerr, pretty, media, 415) < 0) 
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     return retval;
 }
 
@@ -135,20 +135,20 @@ restconf_unsupported_media(clicon_handle  h,
  */
 int
 restconf_not_acceptable(clicon_handle  h,
-			void          *req,
-			int            pretty,
-			restconf_media media)
+                        void          *req,
+                        int            pretty,
+                        restconf_media media)
 {
     int    retval = -1;
     cxobj *xerr = NULL;
 
     if (netconf_operation_not_supported_xml(&xerr, "protocol", "Unacceptable output encoding") < 0)
-	goto done;
+        goto done;
     /* Override with 415 netconf->restoconf translation which gives a 405 */
     if (api_return_err0(h, req, xerr, pretty, media, 415) < 0) 
-	goto done;
+        goto done;
     if (restconf_reply_send(req, 415, NULL, 0) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -159,22 +159,22 @@ restconf_not_acceptable(clicon_handle  h,
  */
 int
 restconf_notimplemented(clicon_handle  h,
-			void          *req,
-			int            pretty,
-			restconf_media media)
+                        void          *req,
+                        int            pretty,
+                        restconf_media media)
 {
     int   retval = -1;
     cxobj *xerr = NULL;
 
     if (netconf_operation_not_supported_xml(&xerr, "protocol", "Not Implemented") < 0)
-	goto done;
+        goto done;
     /* Override with 501 Not Implemented netconf->restoconf translation which gives a 405 */
     if (api_return_err0(h, req, xerr, pretty, YANG_DATA_JSON, 501) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     return retval;
 }
 
@@ -191,130 +191,130 @@ restconf_notimplemented(clicon_handle  h,
  */
 int
 api_return_err(clicon_handle  h,
-	       void          *req,
-	       cxobj         *xerr,
-	       int            pretty,
-	       restconf_media media,
-	       int            code0)
+               void          *req,
+               cxobj         *xerr,
+               int            pretty,
+               restconf_media media,
+               int            code0)
 {
     int        retval = -1;
     cbuf      *cb = NULL;
     cbuf      *cberr = NULL;
     cxobj     *xtag;
     char      *tagstr;
-    int        code;	
+    int        code;    
     cxobj     *xerr2 = NULL;
     cxobj     *xmsg;
     char      *mb;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     /* A well-formed error message when entering here should look like:
      * <rpc-error>...<error-tag>invalid-value</error-tag>
      * Check this is so, otherwise generate an internal error.
      */
     if (strcmp(xml_name(xerr), "rpc-error") != 0 ||
-	(xtag = xpath_first(xerr, NULL, "error-tag")) == NULL){
-	if ((cberr = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new");
-	    goto done;
-	}
-	cprintf(cberr, "Internal error, system returned invalid error message: ");
-	if (netconf_err2cb(xerr, cberr) < 0)
-	    goto done;
-	if (netconf_operation_failed_xml(&xerr2, "application",
-					 cbuf_get(cberr)) < 0)
-	    goto done;
-	if ((xerr = xpath_first(xerr2, NULL, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, 0, "Internal error, shouldnt happen");
-	    goto done;
-	}
-	if ((xtag = xpath_first(xerr, NULL, "error-tag")) == NULL){
-	    clicon_err(OE_XML, 0, "Internal error, shouldnt happen");
-	    goto done;
-	}
+        (xtag = xpath_first(xerr, NULL, "error-tag")) == NULL){
+        if ((cberr = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cberr, "Internal error, system returned invalid error message: ");
+        if (netconf_err2cb(xerr, cberr) < 0)
+            goto done;
+        if (netconf_operation_failed_xml(&xerr2, "application",
+                                         cbuf_get(cberr)) < 0)
+            goto done;
+        if ((xerr = xpath_first(xerr2, NULL, "rpc-error")) == NULL){
+            clicon_err(OE_XML, 0, "Internal error, shouldnt happen");
+            goto done;
+        }
+        if ((xtag = xpath_first(xerr, NULL, "error-tag")) == NULL){
+            clicon_err(OE_XML, 0, "Internal error, shouldnt happen");
+            goto done;
+        }
     }
 #if 1
     if (clicon_debug_get())
-	clicon_log_xml(LOG_DEBUG, xerr, "%s Send error:", __FUNCTION__);
+        clicon_log_xml(LOG_DEBUG, xerr, "%s Send error:", __FUNCTION__);
 #endif
     if (xml_name_set(xerr, "error") < 0)
-	goto done;
+        goto done;
     tagstr = xml_body(xtag);
     if (code0 != 0)
-	code = code0;
+        code = code0;
     else{
-	if ((code = restconf_err2code(tagstr)) < 0)
-	    code = 500; /* internal server error */
-	if (code == 403){
-	    /* Special case: netconf only has "access denied" while restconf 
-	     * differentiates between:
-	     *   401 Unauthorized If the RESTCONF client is not authenticated (sec 2.5)
-	     *   403 Forbidden    If the user is not authorized to access a target resource or invoke 
-	     *                    an operation
-	     */
-	    if ((xmsg = xpath_first(xerr, NULL, "error-message")) != NULL &&
-		(mb = xml_body(xmsg)) != NULL &&
-		strcmp(mb, "The requested URL was unauthorized") == 0)
-		code = 401; /* Unauthorized */
-	}
-	/* Special case #2 */
-	if (code == 400){
-	    if (strcmp(tagstr, "invalid-value") == 0 &&
-		(xmsg = xpath_first(xerr, NULL, "error-message")) != NULL &&
-		(mb = xml_body(xmsg)) != NULL &&
-		strcmp(mb, "Invalid HTTP data method") == 0) 
-		code = 404; /* Not found */
-	}
+        if ((code = restconf_err2code(tagstr)) < 0)
+            code = 500; /* internal server error */
+        if (code == 403){
+            /* Special case: netconf only has "access denied" while restconf 
+             * differentiates between:
+             *   401 Unauthorized If the RESTCONF client is not authenticated (sec 2.5)
+             *   403 Forbidden    If the user is not authorized to access a target resource or invoke 
+             *                    an operation
+             */
+            if ((xmsg = xpath_first(xerr, NULL, "error-message")) != NULL &&
+                (mb = xml_body(xmsg)) != NULL &&
+                strcmp(mb, "The requested URL was unauthorized") == 0)
+                code = 401; /* Unauthorized */
+        }
+        /* Special case #2 */
+        if (code == 400){
+            if (strcmp(tagstr, "invalid-value") == 0 &&
+                (xmsg = xpath_first(xerr, NULL, "error-message")) != NULL &&
+                (mb = xml_body(xmsg)) != NULL &&
+                strcmp(mb, "Invalid HTTP data method") == 0) 
+                code = 404; /* Not found */
+        }
     }  
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media)) < 0) // XXX
-	goto done;
+        goto done;
     switch (media){
     case YANG_DATA_XML:
     case YANG_PATCH_XML:
     case YANG_PAGINATION_XML:
-	clicon_debug(1, "%s code:%d", __FUNCTION__, code);
-	if (pretty){
-	    cprintf(cb, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n");
-	    if (clixon_xml2cbuf(cb, xerr, 2, pretty, -1, 0) < 0)
-		goto done;
-	    cprintf(cb, "    </errors>\r\n");
-	}
-	else {
-	    cprintf(cb, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">");
-	    if (clixon_xml2cbuf(cb, xerr, 2, pretty, -1, 0) < 0)
-		goto done;
-	    cprintf(cb, "</errors>\r\n");
-	}
-	break;
+        clicon_debug(1, "%s code:%d", __FUNCTION__, code);
+        if (pretty){
+            cprintf(cb, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n");
+            if (clixon_xml2cbuf(cb, xerr, 2, pretty, -1, 0) < 0)
+                goto done;
+            cprintf(cb, "    </errors>\r\n");
+        }
+        else {
+            cprintf(cb, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">");
+            if (clixon_xml2cbuf(cb, xerr, 2, pretty, -1, 0) < 0)
+                goto done;
+            cprintf(cb, "</errors>\r\n");
+        }
+        break;
     case YANG_DATA_JSON:
     case YANG_PATCH_JSON:
-	clicon_debug(1, "%s code:%d", __FUNCTION__, code);
-	if (pretty){
-	    cprintf(cb, "{\n\"ietf-restconf:errors\" : ");
-	    if (clixon_json2cbuf(cb, xerr, pretty, 0, 0) < 0)
-		goto done;
-	    cprintf(cb, "\n}\r\n");
-	}
-	else{
-	    cprintf(cb, "{");
-	    cprintf(cb, "\"ietf-restconf:errors\":");
-	    if (clixon_json2cbuf(cb, xerr, pretty, 0, 0) < 0)
-		goto done;
-	    cprintf(cb, "}\r\n");
-	}
-	break;
+        clicon_debug(1, "%s code:%d", __FUNCTION__, code);
+        if (pretty){
+            cprintf(cb, "{\n\"ietf-restconf:errors\" : ");
+            if (clixon_json2cbuf(cb, xerr, pretty, 0, 0) < 0)
+                goto done;
+            cprintf(cb, "\n}\r\n");
+        }
+        else{
+            cprintf(cb, "{");
+            cprintf(cb, "\"ietf-restconf:errors\":");
+            if (clixon_json2cbuf(cb, xerr, pretty, 0, 0) < 0)
+                goto done;
+            cprintf(cb, "}\r\n");
+        }
+        break;
     default: /* Just ignore the body so that there is a reply */
-	clicon_err(OE_YANG, EINVAL, "Invalid media type %d", media);
-	goto done;
-	break;
+        clicon_err(OE_YANG, EINVAL, "Invalid media type %d", media);
+        goto done;
+        break;
     } /* switch media */
     assert(cbuf_len(cb));
     if (restconf_reply_send(req, code, cb, 0) < 0)
-	goto done;
+        goto done;
     cb = NULL;
     // ok:
     retval = 0;
@@ -342,21 +342,21 @@ api_return_err(clicon_handle  h,
  */
 int
 api_return_err0(clicon_handle h,
-		void         *req,
-		cxobj        *xerr,
-		int           pretty,
-		restconf_media media,
-		int           code)
+                void         *req,
+                cxobj        *xerr,
+                int           pretty,
+                restconf_media media,
+                int           code)
 {
     int    retval = -1;
     cxobj *xe;
 
     if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-	clicon_err(OE_XML, EINVAL, "Expected xml on the form <rpc-error>..");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "Expected xml on the form <rpc-error>..");
+        goto done;
     }
     if (api_return_err(h, req, xe, pretty, media, code) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;

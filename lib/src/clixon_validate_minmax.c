@@ -93,10 +93,10 @@
  */
 static int
 unique_search_xpath(cxobj  *x,
-		    char   *xpath,
-		    cvec   *nsc,
-		    char ***svec,
-		    size_t *slen)
+                    char   *xpath,
+                    cvec   *nsc,
+                    char ***svec,
+                    size_t *slen)
 {
     int     retval = -1;
     cxobj **xvec = NULL;
@@ -108,30 +108,30 @@ unique_search_xpath(cxobj  *x,
 
     /* Collect tuples */
     if (xpath_vec(x, nsc, "%s", &xvec, &xveclen, xpath) < 0) 
-	goto done;	
+        goto done;      
     for (i=0; i<xveclen; i++){
-	xi = xvec[i];
-	if ((bi = xml_body(xi)) == NULL)
-	    break;
-	/* Check if bi is duplicate? 
-	 * XXX: sort svec?
-	 */
-	for (s=0; s<(*slen); s++){
-	    if (strcmp(bi, (*svec)[s]) == 0){
-		goto fail;
-	    }
-	}
-	(*slen) ++;
-	if (((*svec) = realloc((*svec), (*slen)*sizeof(char*))) == NULL){
-	    clicon_err(OE_UNIX, errno, "realloc");
-	    goto done;
-	}
-	(*svec)[(*slen)-1] = bi;
+        xi = xvec[i];
+        if ((bi = xml_body(xi)) == NULL)
+            break;
+        /* Check if bi is duplicate? 
+         * XXX: sort svec?
+         */
+        for (s=0; s<(*slen); s++){
+            if (strcmp(bi, (*svec)[s]) == 0){
+                goto fail;
+            }
+        }
+        (*slen) ++;
+        if (((*svec) = realloc((*svec), (*slen)*sizeof(char*))) == NULL){
+            clicon_err(OE_UNIX, errno, "realloc");
+            goto done;
+        }
+        (*svec)[(*slen)-1] = bi;
     } /* i search results */
     retval = 1;
  done:
     if (xvec)
-	free(xvec);    
+        free(xvec);    
     return retval;
  fail:
     retval = 0;
@@ -150,38 +150,38 @@ unique_search_xpath(cxobj  *x,
  */
 static int
 check_insert_duplicate(char **vec,
-		       int    i1,
-		       int    vlen,
-		       int    sorted)
+                       int    i1,
+                       int    vlen,
+                       int    sorted)
 {
     int i;
     int v;
     char *b;
 
     if (sorted){
-	/* Just go look at previous element to see if it is duplicate (sorted by system) */
-	if (i1 == 0)
-	    return 0;
-	i = i1-1;
-	for (v=0; v<vlen; v++){
-	    b = vec[i*vlen+v];
-	    if (b == NULL || strcmp(b, vec[i1*vlen+v]))
-		return 0;
-	}
-	/* here we have passed thru all keys of previous element and they are all equal */
-	return -1;
+        /* Just go look at previous element to see if it is duplicate (sorted by system) */
+        if (i1 == 0)
+            return 0;
+        i = i1-1;
+        for (v=0; v<vlen; v++){
+            b = vec[i*vlen+v];
+            if (b == NULL || strcmp(b, vec[i1*vlen+v]))
+                return 0;
+        }
+        /* here we have passed thru all keys of previous element and they are all equal */
+        return -1;
     }
     else{
-	for (i=0; i<i1; i++){
-	    for (v=0; v<vlen; v++){
-		b = vec[i*vlen+v];
-		if (b == NULL || strcmp(b, vec[i1*vlen+v]))
-		    break;
-	    }
-	    if (v==vlen) /* duplicate */
-		break;
-	}
-	return i==i1?0:-1;
+        for (i=0; i<i1; i++){
+            for (v=0; v<vlen; v++){
+                b = vec[i*vlen+v];
+                if (b == NULL || strcmp(b, vec[i1*vlen+v]))
+                    break;
+            }
+            if (v==vlen) /* duplicate */
+                break;
+        }
+        return i==i1?0:-1;
     }
 }
 
@@ -210,10 +210,10 @@ check_insert_duplicate(char **vec,
  */
 static int
 check_unique_list_direct(cxobj     *x, 
-			 cxobj     *xt, 
-			 yang_stmt *y,
-			 yang_stmt *yu,
-			 cxobj    **xret)
+                         cxobj     *xt, 
+                         yang_stmt *y,
+                         yang_stmt *yu,
+                         cxobj    **xret)
 {
     int       retval = -1;
     cg_var    *cvi; /* unique node name */
@@ -233,56 +233,56 @@ check_unique_list_direct(cxobj     *x,
      * This second case COULD be optimized if binary insert is made on the vec vector.
      */
     sorted = (yang_keyword_get(yu) == Y_LIST &&
-	      yang_find(y, Y_ORDERED_BY, "user") == NULL);
+              yang_find(y, Y_ORDERED_BY, "user") == NULL);
     cvk = yang_cvec_get(yu);
     /* nr of unique elements to check */
     if ((clen = cvec_len(cvk)) == 0){ 
-	/* No keys: no checks necessary */
-	goto ok;
+        /* No keys: no checks necessary */
+        goto ok;
     }
     if ((vec = calloc(clen*xml_child_nr(xt), sizeof(char*))) == NULL){
-	clicon_err(OE_UNIX, errno, "calloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
     }
     /* A vector is built with key-values, for each iteration check "backward" in the vector
      * for duplicates
      */
     i = 0; /* x element index */
     do {
-	cvi = NULL;
-	v = 0; /* index in each tuple */
-	/* XXX Quadratic if clen > 1 */
-	while ((cvi = cvec_each(cvk, cvi)) != NULL){
-	    /* RFC7950: Sec 7.8.3.1: entries that do not have value for all
-	     * referenced leafs are not taken into account */
-	    str = cv_string_get(cvi);
-	    if (index(str, '/') != NULL){
-		clicon_err(OE_YANG, 0, "Multiple descendant nodes not allowed (w /)");
-		goto done;
-	    }
-	    if ((xi = xml_find(x, str)) == NULL)
-		break;
-	    if ((bi = xml_body(xi)) == NULL)
-		break;
-	    vec[i*clen + v++] = bi;
-	}
-	if (cvi==NULL){
-	    /* Last element (i) is newly inserted, see if it is already there */
-	    if (check_insert_duplicate(vec, i, clen, sorted) < 0){
-		if (xret && netconf_data_not_unique_xml(xret, x, cvk) < 0)
-		    goto done;
-		goto fail;
-	    }
-	}
-	x = xml_child_each(xt, x, CX_ELMNT);
-	i++;
+        cvi = NULL;
+        v = 0; /* index in each tuple */
+        /* XXX Quadratic if clen > 1 */
+        while ((cvi = cvec_each(cvk, cvi)) != NULL){
+            /* RFC7950: Sec 7.8.3.1: entries that do not have value for all
+             * referenced leafs are not taken into account */
+            str = cv_string_get(cvi);
+            if (index(str, '/') != NULL){
+                clicon_err(OE_YANG, 0, "Multiple descendant nodes not allowed (w /)");
+                goto done;
+            }
+            if ((xi = xml_find(x, str)) == NULL)
+                break;
+            if ((bi = xml_body(xi)) == NULL)
+                break;
+            vec[i*clen + v++] = bi;
+        }
+        if (cvi==NULL){
+            /* Last element (i) is newly inserted, see if it is already there */
+            if (check_insert_duplicate(vec, i, clen, sorted) < 0){
+                if (xret && netconf_data_not_unique_xml(xret, x, cvk) < 0)
+                    goto done;
+                goto fail;
+            }
+        }
+        x = xml_child_each(xt, x, CX_ELMNT);
+        i++;
     } while (x && y == xml_spec(x));  /* stop if list ends, others may follow */
  ok:
     /* It would be possible to cache vec here as an optimization */
     retval = 1;
  done:
     if (vec)
-	free(vec);
+        free(vec);
     return retval;
  fail:
     retval = 0;
@@ -314,10 +314,10 @@ check_unique_list_direct(cxobj     *x,
  */
 static int
 check_unique_list(cxobj     *x, 
-		  cxobj     *xt, 
-		  yang_stmt *y,
-		  yang_stmt *yu,
-		  cxobj    **xret)
+                  cxobj     *xt, 
+                  yang_stmt *y,
+                  yang_stmt *yu,
+                  cxobj    **xret)
 {
     int       retval = -1;
     cg_var    *cvi; /* unique node name */
@@ -333,50 +333,50 @@ check_unique_list(cxobj     *x,
     /* Check if multiple direct children */
     cvk = yang_cvec_get(yu);
     if (cvec_len(cvk) > 1){
-	retval = check_unique_list_direct(x, xt, y, yu, xret);
-	goto done;
+        retval = check_unique_list_direct(x, xt, y, yu, xret);
+        goto done;
     }
     cvi = cvec_i(cvk, 0);
     if (cvi == NULL || (xpath0 = cv_string_get(cvi)) == NULL){
-	clicon_err(OE_YANG, 0, "No descendant schemanode");
-	goto done;
+        clicon_err(OE_YANG, 0, "No descendant schemanode");
+        goto done;
     }
     /* Check if direct schmeanode-id , ie not xpath */
     if (index(xpath0, '/') == NULL){ 
-	retval = check_unique_list_direct(x, xt, y, yu, xret);
-	goto done;
+        retval = check_unique_list_direct(x, xt, y, yu, xret);
+        goto done;
     }
     /* Here proper xpath with at least one slash (can there be a descendant schemanodeid w/o slash?) */
     if (xml_nsctx_yang(yu, &nsc0) < 0)
-    	goto done;
+        goto done;
     if ((ret = xpath2canonical(xpath0, nsc0, ys_spec(y),
-			       &xpath1, &nsc1, NULL)) < 0)
-	goto done;
+                               &xpath1, &nsc1, NULL)) < 0)
+        goto done;
     if (ret == 0)
-	goto fail; // XXX set xret
+        goto fail; // XXX set xret
     do {
-	/* Collect search results from one */
-	if ((ret = unique_search_xpath(x, xpath1, nsc1, &svec, &slen)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if (xret && netconf_data_not_unique_xml(xret, x, cvk) < 0)
-		goto done;
-	    goto fail;
-	}
-    	x = xml_child_each(xt, x, CX_ELMNT);
+        /* Collect search results from one */
+        if ((ret = unique_search_xpath(x, xpath1, nsc1, &svec, &slen)) < 0)
+            goto done;
+        if (ret == 0){
+            if (xret && netconf_data_not_unique_xml(xret, x, cvk) < 0)
+                goto done;
+            goto fail;
+        }
+        x = xml_child_each(xt, x, CX_ELMNT);
     } while (x && y == xml_spec(x));  /* stop if list ends, others may follow */
     // ok:
     /* It would be possible to cache vec here as an optimization */
     retval = 1;
  done:
     if (nsc0)
-	cvec_free(nsc0);
+        cvec_free(nsc0);
     if (nsc1)
-	cvec_free(nsc1);
+        cvec_free(nsc1);
     if (xpath1)
-	free(xpath1);
+        free(xpath1);
     if (svec)
-	free(svec);
+        free(svec);
     return retval;
  fail:
     retval = 0;
@@ -397,9 +397,9 @@ check_unique_list(cxobj     *x,
  */
 static int
 check_minmax(cxobj     *xp,
-	     yang_stmt *y,
-	     int        nr,
-	     cxobj     **xret)
+             yang_stmt *y,
+             int        nr,
+             cxobj     **xret)
 {
     int         retval = -1;
     yang_stmt  *ymin; /* yang min */
@@ -407,21 +407,21 @@ check_minmax(cxobj     *xp,
     cg_var     *cv;
     
     if ((ymin = yang_find(y, Y_MIN_ELEMENTS, NULL)) != NULL){
-	cv = yang_cv_get(ymin);
-	if (nr < cv_uint32_get(cv)){
-	    if (xret && netconf_minmax_elements_xml(xret, xp, yang_argument_get(y), 0) < 0)
-		goto done;
-	    goto fail;
-	}
+        cv = yang_cv_get(ymin);
+        if (nr < cv_uint32_get(cv)){
+            if (xret && netconf_minmax_elements_xml(xret, xp, yang_argument_get(y), 0) < 0)
+                goto done;
+            goto fail;
+        }
     }
     if ((ymax = yang_find(y, Y_MAX_ELEMENTS, NULL)) != NULL){
-	cv = yang_cv_get(ymax);
-	if (cv_uint32_get(cv) > 0 && /* 0 means unbounded */
-	    nr > cv_uint32_get(cv)){
-	    if (xret && netconf_minmax_elements_xml(xret, xp, yang_argument_get(y), 1) < 0)
-		goto done;
-	    goto fail;
-	}
+        cv = yang_cv_get(ymax);
+        if (cv_uint32_get(cv) > 0 && /* 0 means unbounded */
+            nr > cv_uint32_get(cv)){
+            if (xret && netconf_minmax_elements_xml(xret, xp, yang_argument_get(y), 1) < 0)
+                goto done;
+            goto fail;
+        }
     }
     retval = 1;
  done:
@@ -442,32 +442,32 @@ check_minmax(cxobj     *xp,
  */
 static int
 check_empty_list_minmax(cxobj     *xt,
-			yang_stmt *ye,
-			cxobj    **xret)
+                        yang_stmt *ye,
+                        cxobj    **xret)
 {
     int        retval = -1;
     int        ret;
     yang_stmt *yprev = NULL;
 
     if (yang_config(ye) == 1){
-	if(yang_keyword_get(ye) == Y_CONTAINER &&
-	   yang_find(ye, Y_PRESENCE, NULL) == NULL){
-	    yprev = NULL;
-	    while ((yprev = yn_each(ye, yprev)) != NULL) {
-		if ((ret = check_empty_list_minmax(xt, yprev, xret)) < 0)
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-	    }
-	}
-	else if (yang_keyword_get(ye) == Y_LIST ||
-		 yang_keyword_get(ye) == Y_LEAF_LIST){
-	    /* Check if the list length violates min/max */
-	    if ((ret = check_minmax(xt, ye, 0, xret)) < 0)
-		goto done;
-	    if (ret == 0)
-		goto fail;
-	}
+        if(yang_keyword_get(ye) == Y_CONTAINER &&
+           yang_find(ye, Y_PRESENCE, NULL) == NULL){
+            yprev = NULL;
+            while ((yprev = yn_each(ye, yprev)) != NULL) {
+                if ((ret = check_empty_list_minmax(xt, yprev, xret)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+            }
+        }
+        else if (yang_keyword_get(ye) == Y_LIST ||
+                 yang_keyword_get(ye) == Y_LEAF_LIST){
+            /* Check if the list length violates min/max */
+            if ((ret = check_minmax(xt, ye, 0, xret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
     }
     retval = 1;
  done:
@@ -479,9 +479,9 @@ check_empty_list_minmax(cxobj     *xt,
 
 static int
 xml_yang_minmax_newlist(cxobj     *x,
-			cxobj     *xt,
-			yang_stmt *y,
-			cxobj    **xret)
+                        cxobj     *xt,
+                        yang_stmt *y,
+                        cxobj    **xret)
 {
     int        retval = -1;
     yang_stmt *yu;
@@ -491,26 +491,26 @@ xml_yang_minmax_newlist(cxobj     *x,
      * First check unique keys direct children
      */
     if ((ret = check_unique_list_direct(x, xt, y, y, xret)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     /* Check if there is a unique constraint on the list
      */
     yu = NULL;
     while ((yu = yn_each(y, yu)) != NULL) {
-	if (yang_keyword_get(yu) != Y_UNIQUE)
-	    continue;
-	/* Here is a list w unique constraints identified by:
-	 * its first element x, its yang spec y, its parent xt, and 
-	 * a unique yang spec yu,
-	 * Two cases: 
-	 * 1) multiple direct children (no prefixes), eg "a b"
-	 * 2) single xpath with canonical prefixes, eg "/ex:a/ex:b"
-	 */
-	if ((ret = check_unique_list(x, xt, y, yu, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if (yang_keyword_get(yu) != Y_UNIQUE)
+            continue;
+        /* Here is a list w unique constraints identified by:
+         * its first element x, its yang spec y, its parent xt, and 
+         * a unique yang spec yu,
+         * Two cases: 
+         * 1) multiple direct children (no prefixes), eg "a b"
+         * 2) single xpath with canonical prefixes, eg "/ex:a/ex:b"
+         */
+        if ((ret = check_unique_list(x, xt, y, yu, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     retval = 1;
  done:
@@ -538,10 +538,10 @@ xml_yang_minmax_newlist(cxobj     *x,
  */
 static int
 xml_yang_minmax_gap_analysis(cxobj      *xt,
-			     yang_stmt  *y,
-			     yang_stmt  *yt,
-			     yang_stmt **yep,
-			     cxobj     **xret)
+                             yang_stmt  *y,
+                             yang_stmt  *yt,
+                             yang_stmt **yep,
+                             cxobj     **xret)
 {
     int        retval = -1;
     yang_stmt *ye;
@@ -550,24 +550,24 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
 
     ye = *yep;
     if (y && (ych = yang_choice(y)) == NULL)
-	ych = y;
+        ych = y;
     /* Gap analysis: Check if there is any empty list between y and yprevlist
      * Note, does not detect empty choice list (too complicated)
      */
     if (yt != NULL && ych != ye){
-	/* Skip analysis if Yang spec is unknown OR
-	 * if we are still iterating the same Y_CASE w multiple lists
-	 */
-	ye = yn_each(yt, ye);
-	if (ye && ych != ye)
-	    do {
-		if ((ret = check_empty_list_minmax(xt, ye, xret)) < 0)
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-		ye = yn_each(yt, ye);
-	    } while(ye != NULL && /* to avoid livelock (shouldnt happen) */
-		    ye != ych); 
+        /* Skip analysis if Yang spec is unknown OR
+         * if we are still iterating the same Y_CASE w multiple lists
+         */
+        ye = yn_each(yt, ye);
+        if (ye && ych != ye)
+            do {
+                if ((ret = check_empty_list_minmax(xt, ye, xret)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+                ye = yn_each(yt, ye);
+            } while(ye != NULL && /* to avoid livelock (shouldnt happen) */
+                    ye != ych); 
     }
     *yep = ye;
     retval = 1;
@@ -644,7 +644,7 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
  */
 int
 xml_yang_minmax_recurse(cxobj  *xt,
-			cxobj **xret)
+                        cxobj **xret)
 {
     int           retval = -1;
     cxobj        *x = NULL;
@@ -658,70 +658,70 @@ xml_yang_minmax_recurse(cxobj  *xt,
     
     yt = xml_spec(xt); /* If yt == NULL, then no gap-analysis is done */
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-	if ((y = xml_spec(x)) == NULL)
-	    continue;
-	keyw = yang_keyword_get(y);
-	if (keyw == Y_LIST || keyw == Y_LEAF_LIST){
-	    /* equal: just continue*/
-	    if (y == yprev){
-		nr++;
-		continue;
-	    }
-	    /* gap analysis */
-	    if ((ret = xml_yang_minmax_gap_analysis(xt, y, yt, &ye, xret)) < 0)
-		goto done;
-	    /* check-minmax of previous list */
-	    if (ret &&
-		yprev &&
-		(yang_keyword_get(yprev) == Y_LIST || yang_keyword_get(yprev) == Y_LEAF_LIST)){
-		/* Check if the list length violates min/max */
-		if ((ret = check_minmax(xt, yprev, nr, xret)) < 0)
-		    goto done;
-	    }
-	    nr=1;
-	    /* new list check */
-	    if (ret &&
-		keyw == Y_LIST)
-		if ((ret = xml_yang_minmax_newlist(x, xt, y, xret)) < 0)
-		    goto done;
-	    if (ret == 0)
-		goto fail;
-	    yprev = y;
-	}
-	else{
-	    /* equal: error */
-	    if (y == yprev){ 
-		/* Only lists and leaf-lists are allowed to be more than one */
-		if (xret && netconf_minmax_elements_xml(xret, xml_parent(x), xml_name(x), 1) < 0)
-		    goto done;
-		goto fail;
-	    }
-	    /* gap analysis */
-	    if ((ret = xml_yang_minmax_gap_analysis(xt, y, yt, &ye, xret)) < 0)
-		goto done;
-	    /* check-minmax of previous list */
-	    if (ret &&
-		yprev &&
-		(yang_keyword_get(yprev) == Y_LIST || yang_keyword_get(yprev) == Y_LEAF_LIST)){
-		/* Check if the list length violates min/max */
-		if ((ret = check_minmax(xt, yprev, nr, xret)) < 0)
-		    goto done;
-		nr = 0;
-	    }
-	    if (ret == 0)
-		goto fail;
-	    if (keyw == Y_CONTAINER &&
-		yang_find(y, Y_PRESENCE, NULL) == NULL){
-		yang_stmt *yc = NULL;
-		while ((yc = yn_each(y, yc)) != NULL) {
-		    if ((ret = xml_yang_minmax_recurse(x, xret)) < 0)
-			goto done;
-		    if (ret == 0)
-			goto fail;
-		}		
-	    }
-	    yprev = y; 	  
-	}	    
+        if ((y = xml_spec(x)) == NULL)
+            continue;
+        keyw = yang_keyword_get(y);
+        if (keyw == Y_LIST || keyw == Y_LEAF_LIST){
+            /* equal: just continue*/
+            if (y == yprev){
+                nr++;
+                continue;
+            }
+            /* gap analysis */
+            if ((ret = xml_yang_minmax_gap_analysis(xt, y, yt, &ye, xret)) < 0)
+                goto done;
+            /* check-minmax of previous list */
+            if (ret &&
+                yprev &&
+                (yang_keyword_get(yprev) == Y_LIST || yang_keyword_get(yprev) == Y_LEAF_LIST)){
+                /* Check if the list length violates min/max */
+                if ((ret = check_minmax(xt, yprev, nr, xret)) < 0)
+                    goto done;
+            }
+            nr=1;
+            /* new list check */
+            if (ret &&
+                keyw == Y_LIST)
+                if ((ret = xml_yang_minmax_newlist(x, xt, y, xret)) < 0)
+                    goto done;
+            if (ret == 0)
+                goto fail;
+            yprev = y;
+        }
+        else{
+            /* equal: error */
+            if (y == yprev){ 
+                /* Only lists and leaf-lists are allowed to be more than one */
+                if (xret && netconf_minmax_elements_xml(xret, xml_parent(x), xml_name(x), 1) < 0)
+                    goto done;
+                goto fail;
+            }
+            /* gap analysis */
+            if ((ret = xml_yang_minmax_gap_analysis(xt, y, yt, &ye, xret)) < 0)
+                goto done;
+            /* check-minmax of previous list */
+            if (ret &&
+                yprev &&
+                (yang_keyword_get(yprev) == Y_LIST || yang_keyword_get(yprev) == Y_LEAF_LIST)){
+                /* Check if the list length violates min/max */
+                if ((ret = check_minmax(xt, yprev, nr, xret)) < 0)
+                    goto done;
+                nr = 0;
+            }
+            if (ret == 0)
+                goto fail;
+            if (keyw == Y_CONTAINER &&
+                yang_find(y, Y_PRESENCE, NULL) == NULL){
+                yang_stmt *yc = NULL;
+                while ((yc = yn_each(y, yc)) != NULL) {
+                    if ((ret = xml_yang_minmax_recurse(x, xret)) < 0)
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                }               
+            }
+            yprev = y;    
+        }           
     }
     /* After traversal checks;
        gap analysis */
@@ -730,28 +730,28 @@ xml_yang_minmax_recurse(cxobj  *xt,
      * XXX: try to unify with xml_yang_minmax_gap_analysis()
      */
     if ((ye = yn_each(yt, ye)) != NULL){
-	do {
-	    if ((ret = check_empty_list_minmax(xt, ye, xret)) < 0)
-		goto done;
-	    if (ret == 0)
-		goto fail;	    
-	} while((ye = yn_each(yt, ye)) != NULL);
+        do {
+            if ((ret = check_empty_list_minmax(xt, ye, xret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;          
+        } while((ye = yn_each(yt, ye)) != NULL);
     }
     ret = 1;
 #else
     if ((ret = xml_yang_minmax_gap_analysis(xt, NULL, yt, &ye, xret)) < 0)
-	goto done;
+        goto done;
 #endif
     /* check-minmax of previous list */
     if (ret &&
-	yprev &&
-	(yang_keyword_get(yprev) == Y_LEAF || yang_keyword_get(yprev) == Y_LEAF_LIST)){
-	/* Check if the list length violates min/max */
-	if ((ret = check_minmax(xt, yprev, nr, xret)) < 0)
-	    goto done;
+        yprev &&
+        (yang_keyword_get(yprev) == Y_LEAF || yang_keyword_get(yprev) == Y_LEAF_LIST)){
+        /* Check if the list length violates min/max */
+        if ((ret = check_minmax(xt, yprev, nr, xret)) < 0)
+            goto done;
     }
     if (ret == 0)
-	goto fail;
+        goto fail;
     retval = 1;
  done:
     return retval;

@@ -77,8 +77,8 @@ cligen_handle cli_cligen(clicon_handle h);
 
 /* cli_common.c */
 int cli_notification_register(clicon_handle h, char *stream, enum format_enum format,
-			      char *filter, int status, 
-			      int (*fn)(int, void*), void *arg);
+                              char *filter, int status, 
+                              int (*fn)(int, void*), void *arg);
 
 /* cli_common.c: CLIgen new vector callbacks */
 
@@ -134,7 +134,7 @@ int cli_help(clicon_handle h, cvec *vars, cvec *argv);
 
 /* In cli_show.c */
 int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv, 
-		  cvec *commands, cvec *helptexts);
+                  cvec *commands, cvec *helptexts);
 int clixon_cli2file(clicon_handle h, FILE *f, cxobj *xn, char *prepend, clicon_output_cb *fn, int skiptop);
 
 /* cli_show.c: CLIgen new vector arg callbacks */
@@ -161,7 +161,7 @@ int cli_auto_show(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_show_auto_mode(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_set(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_merge(clicon_handle h, cvec *cvv, cvec *argv);
-int cli_auto_create(clicon_handle h, cvec *cvv,	cvec *argv);
+int cli_auto_create(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_del(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_sub_enter(clicon_handle h, cvec *cvv, cvec *argv);
 

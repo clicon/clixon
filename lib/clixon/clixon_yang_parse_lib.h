@@ -54,7 +54,7 @@
 yang_stmt *yang_parse_file(FILE *fp, const char *name, yang_stmt *ysp);
 yang_stmt *yang_parse_filename(const char *filename, yang_stmt  *ysp);
 int        yang_spec_parse_module(clicon_handle h, const char *module,
-				  const char *revision, yang_stmt *yspec);
+                                  const char *revision, yang_stmt *yspec);
 int        yang_spec_parse_file(clicon_handle h, char *filename, yang_stmt *yspec);
 int        yang_spec_load_dir(clicon_handle h, char *dir, yang_stmt *yspec);
 int        ys_parse_date_arg(char *datearg, uint32_t *dateint);

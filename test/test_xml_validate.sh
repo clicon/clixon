@@ -19,8 +19,8 @@ module example {
     revision 2019-01-13;
     container a{
         container b{
-	  leaf c {
-	    type string;
+          leaf c {
+            type string;
           }
         }
     }

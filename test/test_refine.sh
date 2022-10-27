@@ -42,20 +42,20 @@ module clixon-example {
       mandatory true;
       case local {
         container local-definition {
-	  presence true;
-	  leaf dummy1{
+          presence true;
+          leaf dummy1{
             type string;
-	   default "foo1";	
-	  }
+           default "foo1";      
+          }
         }
       }
       case keystore {
         container keystore-reference {
-	  presence true;
-	  leaf dummy2{
+          presence true;
+          leaf dummy2{
             type string;
-	   default "bar1";	
-	  }
+           default "bar1";      
+          }
         }
       }
     }
@@ -64,11 +64,11 @@ module clixon-example {
      description  "See ietf-tls-server@2022-05-24.yang";
      uses ex:mygrouping{
         refine "mykeystore/local/local-definition/dummy1" {
-	   default "foo2";
+           default "foo2";
         }
         refine "mykeystore/keystore/keystore-reference"
                    + "/dummy2" {
-	   default "bar2";
+           default "bar2";
            }
         }
     }
@@ -83,7 +83,7 @@ if [ $BE -ne 0 ]; then
     sudo clixon_backend -zf $cfg
 
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -109,7 +109,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

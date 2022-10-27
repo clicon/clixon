@@ -67,29 +67,29 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
     fprintf(stderr, "arg = %s\n", cv_string_get(cvec_i(argv,0))); /* get string value */
 
     if ((nsc = xml_nsctx_init(NULL, "urn:example:clixon")) == NULL)
-	goto done;
+        goto done;
     /* Show eth0 interfaces config using XPATH */
     if (clicon_rpc_get_config(h, NULL, "running",
-			      "/interfaces/interface[name='eth0']",
-			      nsc, NULL, 
-			      &xret) < 0)
-	goto done;
+                              "/interfaces/interface[name='eth0']",
+                              nsc, NULL, 
+                              &xret) < 0)
+        goto done;
     if (clixon_xml2file(stdout, xret, 0, 1, cligen_output, 0, 1) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     return retval;
 }
 
 /*! Example "downcall", ie initiate an RPC to the backend */
 int
 example_client_rpc(clicon_handle h, 
-		   cvec         *cvv, 
-		   cvec         *argv)
+                   cvec         *cvv, 
+                   cvec         *argv)
 {
     int        retval = -1;
     cg_var    *cva;
@@ -102,25 +102,25 @@ example_client_rpc(clicon_handle h,
     cva = cvec_find(cvv, "a"); /* get a cligen variable from vector */
     /* Create XML for example netconf RPC */
     if (clixon_xml_parse_va(YB_NONE, NULL, &xtop, NULL,
-			    "<rpc xmlns=\"%s\" username=\"%s\" %s>"
-			    "<example xmlns=\"urn:example:clixon\"><x>%s</x></example></rpc>",
-			    NETCONF_BASE_NAMESPACE,
-			    clicon_username_get(h),
-			    NETCONF_MESSAGE_ID_ATTR,
-			    cv_string_get(cva)) < 0)
-	goto done;
+                            "<rpc xmlns=\"%s\" username=\"%s\" %s>"
+                            "<example xmlns=\"urn:example:clixon\"><x>%s</x></example></rpc>",
+                            NETCONF_BASE_NAMESPACE,
+                            clicon_username_get(h),
+                            NETCONF_MESSAGE_ID_ATTR,
+                            cv_string_get(cva)) < 0)
+        goto done;
     /* Skip top-level */
     xrpc = xml_child_i(xtop, 0);
     /* Send to backend */
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
-	goto done;
+        goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	clixon_netconf_error(xerr, "Get configuration", NULL);
-	goto done;
+        clixon_netconf_error(xerr, "Get configuration", NULL);
+        goto done;
     }
     /* Print result */
     if (clixon_xml2file(stdout, xml_child_i(xret, 0), 0, 0, cligen_output, 0, 1) < 0)
-	goto done;
+        goto done;
     fprintf(stdout,"\n");
 
     /* pretty-print:
@@ -129,9 +129,9 @@ example_client_rpc(clicon_handle h,
     retval = 0;
  done:
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     if (xtop)
-	xml_free(xtop);
+        xml_free(xtop);
     return retval;
 }
 
@@ -168,7 +168,7 @@ clixon_plugin_init(clicon_handle h)
  */
 int
 cli_incstr(cligen_handle h,
-	   cg_var       *cv)
+           cg_var       *cv)
 {
     char *str;
     int i;
@@ -176,12 +176,12 @@ cli_incstr(cligen_handle h,
     /* Filter out other than strings 
      * this is specific to this example, one can do translation */
     if (cv == NULL || cv_type_get(cv) != CGV_STRING)
-	return 0;
+        return 0;
     if ((str = cv_string_get(cv)) == NULL){
-	clicon_err(OE_PLUGIN, EINVAL, "cv string is NULL");
-	return -1;
+        clicon_err(OE_PLUGIN, EINVAL, "cv string is NULL");
+        return -1;
     }
     for (i=0; i<strlen(str); i++)
-	str[i]++;
+        str[i]++;
     return 0;
 }

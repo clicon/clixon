@@ -82,37 +82,37 @@ static int   _validate_fail_toggle = 0; /* fail at validate and commit */
 
 int
 nacm_begin(clicon_handle    h, 
-	   transaction_data td)
+           transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 /*! This is called on validate (and commit). Check validity of candidate
  */
 int
 nacm_validate(clicon_handle    h, 
-	      transaction_data td)
+              transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     if (_validate_fail_xpath){
-	if (_validate_fail_toggle==0 &&
-	    xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
-	    _validate_fail_toggle = 1; /* toggle if triggered */
-	    clicon_err(OE_XML, 0, "User error");
-	    return -1; /* induce fail */
-	}
+        if (_validate_fail_toggle==0 &&
+            xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
+            _validate_fail_toggle = 1; /* toggle if triggered */
+            clicon_err(OE_XML, 0, "User error");
+            return -1; /* induce fail */
+        }
     }
     return 0;
 }
 
 int
 nacm_complete(clicon_handle    h, 
-	      transaction_data td)
+              transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
@@ -120,54 +120,54 @@ nacm_complete(clicon_handle    h,
  */
 int
 nacm_commit(clicon_handle    h, 
-	    transaction_data td)
+            transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     if (_validate_fail_xpath){
-	if (_validate_fail_toggle==1 &&
-	    xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
-	    _validate_fail_toggle = 0; /* toggle if triggered */
-	    clicon_err(OE_XML, 0, "User error");
-	    return -1; /* induce fail */
-	}
+        if (_validate_fail_toggle==1 &&
+            xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
+            _validate_fail_toggle = 0; /* toggle if triggered */
+            clicon_err(OE_XML, 0, "User error");
+            return -1; /* induce fail */
+        }
     }
     return 0;
 }
 
 int
 nacm_commit_done(clicon_handle    h, 
-		 transaction_data td)
+                 transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
 int
 nacm_revert(clicon_handle    h, 
-	    transaction_data td)
+            transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
 int
 nacm_end(clicon_handle    h, 
-	 transaction_data td)
+         transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
 
 int
 nacm_abort(clicon_handle    h, 
-	   transaction_data td)
+           transaction_data td)
 {
     if (_transaction_log)
-	transaction_log(h, td, LOG_NOTICE,  __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE,  __FUNCTION__);
     return 0;
 }
 
@@ -184,24 +184,24 @@ nacm_abort(clicon_handle    h,
  */
 int 
 nacm_statedata(clicon_handle h, 
-	       cvec         *nsc,
-	       char         *xpath,
-	       cxobj        *xstate)
+               cvec         *nsc,
+               char         *xpath,
+               cxobj        *xstate)
 {
     int     retval = -1;
     cxobj **xvec = NULL;
 
     /* Example of (static) statedata, real code would poll state */
     if (clixon_xml_parse_string("<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-				"<denied-data-writes>0</denied-data-writes>"
-				"<denied-operations>0</denied-operations>"
-				"<denied-notifications>0</denied-notifications>"
-				"</nacm>", YB_NONE, NULL, &xstate, NULL) < 0)
-	goto done;
+                                "<denied-data-writes>0</denied-data-writes>"
+                                "<denied-operations>0</denied-operations>"
+                                "<denied-notifications>0</denied-notifications>"
+                                "</nacm>", YB_NONE, NULL, &xstate, NULL) < 0)
+        goto done;
     retval = 0;
  done:
     if (xvec)
-	free(xvec);
+        free(xvec);
     return retval;
 }
 
@@ -239,25 +239,25 @@ clixon_plugin_init(clicon_handle h)
     clicon_debug(1, "%s backend nacm", __FUNCTION__);
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
-	goto done;
+        goto done;
     opterr = 0;
     optind = 1;
     while ((c = getopt(argc, argv, BACKEND_NACM_OPTS)) != -1)
-	switch (c) {
-	case 't': /* transaction log */
-	    _transaction_log = 1;
-	    break;
-	case 'v': /* validate fail */
-	    _validate_fail_xpath = optarg;
-	    break;
-	}
+        switch (c) {
+        case 't': /* transaction log */
+            _transaction_log = 1;
+            break;
+        case 'v': /* validate fail */
+            _validate_fail_xpath = optarg;
+            break;
+        }
 
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (nacm_mode==NULL || strcmp(nacm_mode, "disabled") == 0){
-	clicon_log(LOG_DEBUG, "%s CLICON_NACM_MODE not enabled: example nacm module disabled", __FUNCTION__);
-	/* Skip nacm module if not enabled _unless_ we use transaction tests */
-	if (_transaction_log == 0) 
-	    return NULL;
+        clicon_log(LOG_DEBUG, "%s CLICON_NACM_MODE not enabled: example nacm module disabled", __FUNCTION__);
+        /* Skip nacm module if not enabled _unless_ we use transaction tests */
+        if (_transaction_log == 0) 
+            return NULL;
     }
     /* Return plugin API */
     return &api;

@@ -1,7 +1,7 @@
 # README for Clixon developers
 
   * [Code documentation](#documentation)
-  * [C style](#c-style)	
+  * [C style](#c-style) 
   * [How to work in git (how-to-work-in-git)](#how-to-work-in-git)
   * [How the meta-configure stuff works](#meta-configure)
   * [How to debug](#debug)

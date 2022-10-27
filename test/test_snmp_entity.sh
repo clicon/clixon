@@ -122,12 +122,12 @@ function testinit(){
     wait_backend
 
     if [ $SN -ne 0 ]; then
-	# Kill old clixon_snmp, if any
-	new "Terminating any old clixon_snmp processes"
-	sudo killall -q clixon_snmp
+        # Kill old clixon_snmp, if any
+        new "Terminating any old clixon_snmp processes"
+        sudo killall -q clixon_snmp
 
-	new "Starting clixon_snmp"
-	start_snmp $cfg &
+        new "Starting clixon_snmp"
+        start_snmp $cfg &
     fi
 
     new "wait snmp"
@@ -138,14 +138,14 @@ function testexit(){
     stop_snmp
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 

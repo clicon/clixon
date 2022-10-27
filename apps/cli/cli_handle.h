@@ -44,10 +44,10 @@
  * Internal prototypes. For exported functions see clixon_cli_api.h
  */
 int cli_parse_file(clicon_handle h,
-		   FILE *f,
-		   char *name, /* just for errs */
-		   parse_tree *pt,
-		   cvec *globals);
+                   FILE *f,
+                   char *name, /* just for errs */
+                   parse_tree *pt,
+                   cvec *globals);
 
 int cli_susp_hook(clicon_handle h, cligen_susp_cb_t *fn);
 

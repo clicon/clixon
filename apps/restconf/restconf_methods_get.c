@@ -96,13 +96,13 @@ static int api_data_pagination(clicon_handle h, void *req, char *api_path, int p
  */
 static int
 api_data_get2(clicon_handle  h,
-	      void          *req,
-	      char          *api_path, 
-	      int            pi,
-	      cvec          *qvec,
-	      int            pretty,
-	      restconf_media media_out,
-	      int            head)
+              void          *req,
+              char          *api_path, 
+              int            pi,
+              cvec          *qvec,
+              int            pretty,
+              restconf_media media_out,
+              int            head)
 {
     int        retval = -1;
     char      *xpath = NULL;
@@ -128,196 +128,196 @@ api_data_get2(clicon_handle  h,
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
+        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
     }
     /* strip /... from start */
     for (i=0; i<pi; i++)
-	api_path = index(api_path+1, '/');
+        api_path = index(api_path+1, '/');
     if (api_path){
-	if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
-	    goto done;
-	/* Translate api-path to xml, but to validate the api-path, note: strict=1 
-	 * xtop and xbot unnecessary for this function but needed by function
-	 */
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
-	    goto done;
-	/* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */
-	if (ret != 0 &&
-	    (ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){ /* validation failed */
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	/* Ad-hoc method to determine json pagination request:
-	 * address list and one of "item/offset/.." is defined
-	 */
-	if (!head &&
-	    (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST) &&
-	    (cvec_find(qvec, "where")     || cvec_find(qvec, "sort-by") ||
-	     cvec_find(qvec, "direction") || cvec_find(qvec, "offset") ||
-	     cvec_find(qvec, "limit")     || cvec_find(qvec, "sublist-limit"))){
-	    if (api_data_pagination(h, req, api_path, 0, qvec, pretty, media_out) < 0)
-		goto done;
-	    goto ok;
-	}
+        if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
+            goto done;
+        /* Translate api-path to xml, but to validate the api-path, note: strict=1 
+         * xtop and xbot unnecessary for this function but needed by function
+         */
+        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
+            goto done;
+        /* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */
+        if (ret != 0 &&
+            (ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
+            goto done;
+        if (ret == 0){ /* validation failed */
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        /* Ad-hoc method to determine json pagination request:
+         * address list and one of "item/offset/.." is defined
+         */
+        if (!head &&
+            (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST) &&
+            (cvec_find(qvec, "where")     || cvec_find(qvec, "sort-by") ||
+             cvec_find(qvec, "direction") || cvec_find(qvec, "offset") ||
+             cvec_find(qvec, "limit")     || cvec_find(qvec, "sublist-limit"))){
+            if (api_data_pagination(h, req, api_path, 0, qvec, pretty, media_out) < 0)
+                goto done;
+            goto ok;
+        }
     }
     /* Check for content attribute */
     if ((attr = cvec_find_str(qvec, "content")) != NULL){
-	clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
-	if ((int)(content = netconf_content_str2int(attr)) == -1){
-	    if (netconf_bad_attribute_xml(&xerr, "application",
-					  "content", "Unrecognized value of content attribute") < 0)
-		goto done;
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
+        if ((int)(content = netconf_content_str2int(attr)) == -1){
+            if (netconf_bad_attribute_xml(&xerr, "application",
+                                          "content", "Unrecognized value of content attribute") < 0)
+                goto done;
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
     }
     /* Check for depth attribute */
     if ((attr = cvec_find_str(qvec, "depth")) != NULL){
-	clicon_debug(1, "%s depth=%s", __FUNCTION__, attr);
-	if (strcmp(attr, "unbounded") != 0){
-	    char *reason = NULL;
-	    if ((ret = parse_int32(attr, &depth, &reason)) < 0){
-		clicon_err(OE_XML, errno, "parse_int32");
-		goto done;
-	    }
-	    if (ret==0){
-		if (netconf_bad_attribute_xml(&xerr, "application",
-					      "depth", "Unrecognized value of depth attribute") < 0)
-		    goto done;
-		if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		    goto done;
-		goto ok;
-	    }
-	}
+        clicon_debug(1, "%s depth=%s", __FUNCTION__, attr);
+        if (strcmp(attr, "unbounded") != 0){
+            char *reason = NULL;
+            if ((ret = parse_int32(attr, &depth, &reason)) < 0){
+                clicon_err(OE_XML, errno, "parse_int32");
+                goto done;
+            }
+            if (ret==0){
+                if (netconf_bad_attribute_xml(&xerr, "application",
+                                              "depth", "Unrecognized value of depth attribute") < 0)
+                    goto done;
+                if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                    goto done;
+                goto ok;
+            }
+        }
     }
     if ((attr = cvec_find_str(qvec, "with-defaults")) != NULL){
-    	clicon_debug(1, "%s with_defaults=%s", __FUNCTION__, attr);
-    	defaults = attr;
+        clicon_debug(1, "%s with_defaults=%s", __FUNCTION__, attr);
+        defaults = attr;
     }
 
     clicon_debug(1, "%s path:%s", __FUNCTION__, xpath);
     ret = clicon_rpc_get(h, xpath, nsc, content, depth, defaults, &xret);
 
     if (ret < 0){
-	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
-	    goto done;
-	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
+        if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+            goto done;
+        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+            goto done;
+        goto ok;
     }
     /* We get return via netconf which is complete tree from root 
      * We need to cut that tree to only the object.
      */
 #if 0 /* DEBUG */
     if (clicon_debug_get())
-	clicon_log_xml(LOG_DEBUG, xret, "%s xret:", __FUNCTION__);
+        clicon_log_xml(LOG_DEBUG, xret, "%s xret:", __FUNCTION__);
 #endif
     /* Check if error return  */
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
+        if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+            goto done;
+        goto ok;
     }
     /* Normal return, no error */
     if ((cbx = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     if (xpath==NULL || strcmp(xpath,"/")==0){ /* Special case: data root */
-	switch (media_out){
-	case YANG_DATA_XML:
-	    if (clixon_xml2cbuf(cbx, xret, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
-		goto done;
-	    break;
-	case YANG_DATA_JSON:
-	    if (clixon_json2cbuf(cbx, xret, pretty, 0, 0) < 0)
-		goto done;
-	    break;
-	default:
-	    break;
-	}
+        switch (media_out){
+        case YANG_DATA_XML:
+            if (clixon_xml2cbuf(cbx, xret, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
+                goto done;
+            break;
+        case YANG_DATA_JSON:
+            if (clixon_json2cbuf(cbx, xret, pretty, 0, 0) < 0)
+                goto done;
+            break;
+        default:
+            break;
+        }
     }
     else{
-	if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0){
-	    if (netconf_operation_failed_xml(&xerr, "application", clicon_err_reason) < 0)
-		goto done;
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	/* Check if not exists */
-	if (xlen == 0){
-	    /* 4.3: If a retrieval request for a data resource represents an 
-	       instance that does not exist, then an error response containing 
-	       a "404 Not Found" status-line MUST be returned by the server.  
-	       The error-tag value "invalid-value" is used in this case. */
-	    if (netconf_invalid_value_xml(&xerr, "application", "Instance does not exist") < 0)
-		goto done;
-	    /* override invalid-value default 400 with 404 */
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 404) < 0)
-		goto done;
-	    goto ok;
-	}
-	switch (media_out){
-	case YANG_DATA_XML:
-	    for (i=0; i<xlen; i++){
-		x = xvec[i];
-		if (xml_nsctx_node(x, &nscd) < 0)
-		    goto done;
-		if (xmlns_set_all(x, nscd) < 0)
-		    goto done;
-		if (nscd){
-		    cvec_free(nscd);
-		    nscd = NULL;
-		}
-		if (clixon_xml2cbuf(cbx, x, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
-		    goto done;
-	    }
-	    break;
-	case YANG_DATA_JSON:
-	    /* In: <x xmlns="urn:example:clixon">0</x>
-	     * Out: {"example:x": {"0"}}
-	     */
-	    if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
-		goto done;
-	    break;
-	default:
-	    break;
-	}
+        if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0){
+            if (netconf_operation_failed_xml(&xerr, "application", clicon_err_reason) < 0)
+                goto done;
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        /* Check if not exists */
+        if (xlen == 0){
+            /* 4.3: If a retrieval request for a data resource represents an 
+               instance that does not exist, then an error response containing 
+               a "404 Not Found" status-line MUST be returned by the server.  
+               The error-tag value "invalid-value" is used in this case. */
+            if (netconf_invalid_value_xml(&xerr, "application", "Instance does not exist") < 0)
+                goto done;
+            /* override invalid-value default 400 with 404 */
+            if (api_return_err0(h, req, xerr, pretty, media_out, 404) < 0)
+                goto done;
+            goto ok;
+        }
+        switch (media_out){
+        case YANG_DATA_XML:
+            for (i=0; i<xlen; i++){
+                x = xvec[i];
+                if (xml_nsctx_node(x, &nscd) < 0)
+                    goto done;
+                if (xmlns_set_all(x, nscd) < 0)
+                    goto done;
+                if (nscd){
+                    cvec_free(nscd);
+                    nscd = NULL;
+                }
+                if (clixon_xml2cbuf(cbx, x, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
+                    goto done;
+            }
+            break;
+        case YANG_DATA_JSON:
+            /* In: <x xmlns="urn:example:clixon">0</x>
+             * Out: {"example:x": {"0"}}
+             */
+            if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
+                goto done;
+            break;
+        default:
+            break;
+        }
     }
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
-	goto done;
+        goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
-	goto done;
+        goto done;
     if (restconf_reply_send(req, 200, cbx, head) < 0)
-	goto done;
+        goto done;
     cbx = NULL;
  ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xpath)
-	free(xpath);
+        free(xpath);
     if (nscd)
-	cvec_free(nscd);
+        cvec_free(nscd);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (xtop)
         xml_free(xtop);
     if (cbx)
         cbuf_free(cbx);
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (xvec)
-	free(xvec);
+        free(xvec);
     return retval;
 }
 
@@ -341,12 +341,12 @@ api_data_get2(clicon_handle  h,
  */
 static int
 api_data_pagination(clicon_handle  h,
-		    void          *req,
-		    char          *api_path, 
-		    int            pi,
-		    cvec          *qvec,
-		    int            pretty,
-		    restconf_media media_out)
+                    void          *req,
+                    char          *api_path, 
+                    int            pi,
+                    cvec          *qvec,
+                    int            pretty,
+                    restconf_media media_out)
 {
     int        retval = -1;
     char      *xpath = NULL;
@@ -378,145 +378,145 @@ api_data_pagination(clicon_handle  h,
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
+        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
     }
     /* strip /... from start */
     for (i=0; i<pi; i++)
-	api_path = index(api_path+1, '/');
+        api_path = index(api_path+1, '/');
     if (api_path){
-	if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
-	    goto done;
-	/* Translate api-path to xml, but to validate the api-path, note: strict=1 
-	 * xtop and xbot unnecessary for this function but needed by function
-	 * Set strict=0 to accept list uri:s with =keys syntax
-	 */
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
-	    goto done;
-	/* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) 
-	 * XXX: xpath not used in collection?
-	 */
-	if (ret != 0 &&
-	    (ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){ /* validation failed */
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST){
-    	    if (netconf_bad_element_xml(&xerr, "application",
-					yang_argument_get(y),
-					"Element is not list or leaf-list which is required for GET paginate") < 0)
-		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
+            goto done;
+        /* Translate api-path to xml, but to validate the api-path, note: strict=1 
+         * xtop and xbot unnecessary for this function but needed by function
+         * Set strict=0 to accept list uri:s with =keys syntax
+         */
+        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
+            goto done;
+        /* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) 
+         * XXX: xpath not used in collection?
+         */
+        if (ret != 0 &&
+            (ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
+            goto done;
+        if (ret == 0){ /* validation failed */
+            if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+                clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+                goto done;
+            }
+            if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        if (yang_keyword_get(y) != Y_LIST && yang_keyword_get(y) != Y_LEAF_LIST){
+            if (netconf_bad_element_xml(&xerr, "application",
+                                        yang_argument_get(y),
+                                        "Element is not list or leaf-list which is required for GET paginate") < 0)
+                goto done;
+            if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+                clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+                goto done;
+            }
+            if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
     }
 
     /* Check for content attribute */
     if ((attr = cvec_find_str(qvec, "content")) != NULL){
-	clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
-	if ((int)(content = netconf_content_str2int(attr)) == -1){
-	    if (netconf_bad_attribute_xml(&xerr, "application",
-					  "content", "Unrecognized value of content attribute") < 0)
-		goto done;
-	    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-		clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-		goto done;
-	    }
-	    if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
+        if ((int)(content = netconf_content_str2int(attr)) == -1){
+            if (netconf_bad_attribute_xml(&xerr, "application",
+                                          "content", "Unrecognized value of content attribute") < 0)
+                goto done;
+            if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+                clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+                goto done;
+            }
+            if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
     }
     clicon_debug(1, "%s path:%s", __FUNCTION__, xpath);
     if (content != CONTENT_CONFIG && content != CONTENT_NONCONFIG && content != CONTENT_ALL){
-	clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
-	goto done;
+        clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
+        goto done;
     }
     /* Clixon extensions and collection attributes */
     /* Check for depth attribute */
     if ((attr = cvec_find_str(qvec, "depth")) != NULL){
-	clicon_debug(1, "%s depth=%s", __FUNCTION__, attr);
-	if (strcmp(attr, "unbounded") != 0){
-	    char *reason = NULL;
-	    if ((ret = parse_int32(attr, &depth, &reason)) < 0){
-		clicon_err(OE_XML, errno, "parse_int32");
-		goto done;
-	    }
-	    if (ret==0){
-		if (netconf_bad_attribute_xml(&xerr, "application",
-					      "depth", "Unrecognized value of depth attribute") < 0)
-		    goto done;
-		if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		    goto done;
-		goto ok;
-	    }
-	}
+        clicon_debug(1, "%s depth=%s", __FUNCTION__, attr);
+        if (strcmp(attr, "unbounded") != 0){
+            char *reason = NULL;
+            if ((ret = parse_int32(attr, &depth, &reason)) < 0){
+                clicon_err(OE_XML, errno, "parse_int32");
+                goto done;
+            }
+            if (ret==0){
+                if (netconf_bad_attribute_xml(&xerr, "application",
+                                              "depth", "Unrecognized value of depth attribute") < 0)
+                    goto done;
+                if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                    goto done;
+                goto ok;
+            }
+        }
     }
     if ((attr = cvec_find_str(qvec, "limit")) != NULL){   /* 1-uint32 or "unbounded" */
-	if ((ret = netconf_parse_uint32_xml("limit", attr, "unbounded", 0, &xerr, &limit)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        if ((ret = netconf_parse_uint32_xml("limit", attr, "unbounded", 0, &xerr, &limit)) < 0)
+            goto done;
+        if (ret == 0){
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
     }
     if ((attr = cvec_find_str(qvec, "offset")) != NULL){   /* 1-uint32 or "none" */
-	if ((ret = netconf_parse_uint32_xml("offset", attr, "none", 0, &xerr, &offset)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        if ((ret = netconf_parse_uint32_xml("offset", attr, "none", 0, &xerr, &offset)) < 0)
+            goto done;
+        if (ret == 0){
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
     }
     direction = cvec_find_str(qvec, "direction");
     sort = cvec_find_str(qvec, "sort-by");
     where = cvec_find_str(qvec, "where");
     if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc, content,
-				     depth, NULL, offset, limit, direction, sort, where, 
-				     &xret) < 0){
-	if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
-	    goto done;
-	if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-	    clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
-	    goto done;
-	}
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
+                                     depth, NULL, offset, limit, direction, sort, where, 
+                                     &xret) < 0){
+        if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+            goto done;
+        if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+            clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+            goto done;
+        }
+        if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+            goto done;
+        goto ok;
     }
     /* We get return via netconf which is complete tree from root 
      * We need to cut that tree to only the object.
      */
 #if 0 /* DEBUG */
     if (clicon_debug_get())
-	clicon_log_xml(LOG_DEBUG, xret, "%s xret:", __FUNCTION__);
+        clicon_log_xml(LOG_DEBUG, xret, "%s xret:", __FUNCTION__);
 #endif
     /* Check if error return  */
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
+        if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+            goto done;
+        goto ok;
     }
     if ((xpr = xml_new("xml-list", NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     if (xmlns_set(xpr, NULL, IETF_PAGINATON_NAMESPACE) < 0)
-	goto done;
+        goto done;
     if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0)
-	goto done;
+        goto done;
     /* Note, the netconf GET pageable list can not distinguish between:
      * - not-exists, ie there are no entries
      * - no matching entries, eg there are entries, just not that match
@@ -525,51 +525,51 @@ api_data_pagination(clicon_handle  h,
     */
     /* Normal return, no error */
     if ((cbx = cbuf_new()) == NULL)
-	goto done;
+        goto done;
     switch (media_out){
     case YANG_PAGINATION_XML:
-	for (i=0; i<xlen; i++){
-	    xp = xvec[i];
-	    ns = NULL;
-	    if (xml2ns(xp, NULL, &ns) < 0)
-		goto done;
-	    if (ns != NULL){
-		if (xmlns_set(xp, NULL, ns) < 0)
-		    goto done;
-	    }
-	    if (xml_rm(xp) < 0)
-		goto done;
-	    if (xml_insert(xpr, xp, INS_LAST, NULL, NULL) < 0) 
-		goto done;
-	}
-	if (clixon_xml2cbuf(cbx, xpr, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
-	    goto done;
-	break;
+        for (i=0; i<xlen; i++){
+            xp = xvec[i];
+            ns = NULL;
+            if (xml2ns(xp, NULL, &ns) < 0)
+                goto done;
+            if (ns != NULL){
+                if (xmlns_set(xp, NULL, ns) < 0)
+                    goto done;
+            }
+            if (xml_rm(xp) < 0)
+                goto done;
+            if (xml_insert(xpr, xp, INS_LAST, NULL, NULL) < 0) 
+                goto done;
+        }
+        if (clixon_xml2cbuf(cbx, xpr, 0, pretty, -1, 0) < 0) /* Dont print top object?  */
+            goto done;
+        break;
     case YANG_DATA_JSON:
-	if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
-	    goto done;
-	break;
+        if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
+            goto done;
+        break;
     default:
-	break;
+        break;
     }
     clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
-	goto done;
+        goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
-	goto done;
+        goto done;
     if (restconf_reply_send(req, 200, cbx, 0 /* XXX head */) < 0)
-	goto done;
+        goto done;
     cbx = NULL; /* is consumed by above */
  ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cbrpc)
-	cbuf_free(cbrpc);
+        cbuf_free(cbrpc);
     if (xpath)
-	free(xpath);
+        free(xpath);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (xpr)
         xml_free(xpr);
     if (xtop)
@@ -577,11 +577,11 @@ api_data_pagination(clicon_handle  h,
     if (cbx)
         cbuf_free(cbx);
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (xvec)
-	free(xvec);
+        free(xvec);
     return retval;
 }
 
@@ -602,13 +602,13 @@ api_data_pagination(clicon_handle  h,
  */
 int
 api_data_head(clicon_handle h,
-	      void         *req,
-	      char         *api_path,
-	      int           pi,
-	      cvec         *qvec,
-	      int           pretty,
-	      restconf_media media_out,
-	      ietf_ds_t     ds)
+              void         *req,
+              char         *api_path,
+              int           pi,
+              cvec         *qvec,
+              int           pretty,
+              restconf_media media_out,
+              ietf_ds_t     ds)
 {
     return api_data_get2(h, req, api_path, pi, qvec, pretty, media_out, 1);
 }
@@ -640,27 +640,27 @@ api_data_head(clicon_handle h,
  */
 int
 api_data_get(clicon_handle h,
-	     void         *req,
-	     char         *api_path, 
+             void         *req,
+             char         *api_path, 
              int           pi,
              cvec         *qvec,
-	     int           pretty,
-	     restconf_media media_out,
-	     ietf_ds_t     ds)
+             int           pretty,
+             restconf_media media_out,
+             ietf_ds_t     ds)
 {
     int retval = -1;
     
     switch (media_out){
     case YANG_DATA_XML:
     case YANG_DATA_JSON: /* ad-hoc algorithm in get to determine if a paginated request */
-	if (api_data_get2(h, req, api_path, pi, qvec, pretty, media_out, 0) < 0)
-	    goto done;
-	break;
+        if (api_data_get2(h, req, api_path, pi, qvec, pretty, media_out, 0) < 0)
+            goto done;
+        break;
     case YANG_PAGINATION_XML:
-	if (api_data_pagination(h, req, api_path, pi, qvec, pretty, media_out) < 0)
-	    goto done;
+        if (api_data_pagination(h, req, api_path, pi, qvec, pretty, media_out) < 0)
+            goto done;
     default:
-	break;
+        break;
     }
     retval = 0;
  done:
@@ -693,13 +693,13 @@ api_data_get(clicon_handle h,
  */
 int
 api_operations_get(clicon_handle h,
-		   void         *req,
-		   char         *path, 
-		   int           pi,
-		   cvec         *qvec, 
-		   char         *data,
-		   int           pretty,
-		   restconf_media media_out)
+                   void         *req,
+                   char         *path, 
+                   int           pi,
+                   cvec         *qvec, 
+                   char         *data,
+                   int           pretty,
+                   restconf_media media_out)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -713,67 +713,67 @@ api_operations_get(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h);
     if ((cbx = cbuf_new()) == NULL)
-	goto done;
+        goto done;
     switch (media_out){
     case YANG_DATA_XML:
-	cprintf(cbx, "<operations>");
-	break;
+        cprintf(cbx, "<operations>");
+        break;
     case YANG_DATA_JSON:
-	if (pretty)
-	    cprintf(cbx, "{\"operations\": {\n");
-	else
-	    cprintf(cbx, "{\"operations\":{");
-	break;
+        if (pretty)
+            cprintf(cbx, "{\"operations\": {\n");
+        else
+            cprintf(cbx, "{\"operations\":{");
+        break;
     default:
-	break;
+        break;
     }
     ymod = NULL;
     i = 0;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	namespace = yang_find_mynamespace(ymod);
-	yc = NULL; 
-	while ((yc = yn_each(ymod, yc)) != NULL) {
-	    if (yang_keyword_get(yc) != Y_RPC)
-		continue;
-	    switch (media_out){
-	    case YANG_DATA_XML:
-		cprintf(cbx, "<%s xmlns=\"%s\"/>", yang_argument_get(yc), namespace);
-		break;
-	    case YANG_DATA_JSON:
-		if (i++){
-		    cprintf(cbx, ",");
-		    if (pretty)
-			cprintf(cbx, "\n\t");
-		}
-		if (pretty)
-		    cprintf(cbx, "\"%s:%s\": [null]", yang_argument_get(ymod), yang_argument_get(yc));
-		else
-		    cprintf(cbx, "\"%s:%s\":[null]", yang_argument_get(ymod), yang_argument_get(yc));
-		break;
-	    default:
-		break;
-	    }
-	}
+        namespace = yang_find_mynamespace(ymod);
+        yc = NULL; 
+        while ((yc = yn_each(ymod, yc)) != NULL) {
+            if (yang_keyword_get(yc) != Y_RPC)
+                continue;
+            switch (media_out){
+            case YANG_DATA_XML:
+                cprintf(cbx, "<%s xmlns=\"%s\"/>", yang_argument_get(yc), namespace);
+                break;
+            case YANG_DATA_JSON:
+                if (i++){
+                    cprintf(cbx, ",");
+                    if (pretty)
+                        cprintf(cbx, "\n\t");
+                }
+                if (pretty)
+                    cprintf(cbx, "\"%s:%s\": [null]", yang_argument_get(ymod), yang_argument_get(yc));
+                else
+                    cprintf(cbx, "\"%s:%s\":[null]", yang_argument_get(ymod), yang_argument_get(yc));
+                break;
+            default:
+                break;
+            }
+        }
     }
     switch (media_out){
     case YANG_DATA_XML:
-	cprintf(cbx, "</operations>");
-	break;
+        cprintf(cbx, "</operations>");
+        break;
     case YANG_DATA_JSON:
-	if (pretty)
-	    cprintf(cbx, "}\n}");
-	else
-	    cprintf(cbx, "}}");
-	break;
+        if (pretty)
+            cprintf(cbx, "}\n}");
+        else
+            cprintf(cbx, "}}");
+        break;
     default:
-	break;
+        break;
     }
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
-	goto done;
+        goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
-	goto done;
+        goto done;
     if (restconf_reply_send(req, 200, cbx, 0) < 0)
-	goto done;
+        goto done;
     cbx = NULL;
     // ok:
     retval = 0;
@@ -782,7 +782,7 @@ api_operations_get(clicon_handle h,
     if (cbx)
         cbuf_free(cbx);
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     return retval;
 }
 

@@ -60,70 +60,70 @@ module interfaces{
     prefix "if";
     
     import ietf-yang-types {
-	prefix yang;
+        prefix yang;
     }
     revision 2014-05-08 {
-	description
-	    "Initial revision.";
-	reference
-	    "RFC 7223: A YANG Data Model for Interface Management";
+        description
+            "Initial revision.";
+        reference
+            "RFC 7223: A YANG Data Model for Interface Management";
     }
     feature if-mib {
-	description
-	    "This feature indicates that the device implements
+        description
+            "This feature indicates that the device implements
        the IF-MIB.";
-	reference
-	    "RFC 2863: The Interfaces Group MIB";
+        reference
+            "RFC 2863: The Interfaces Group MIB";
     }
     container interfaces {
-	description
-	    "Interface configuration parameters.";
+        description
+            "Interface configuration parameters.";
 
-	list interface {
-	    key "name";
-	    leaf name {
-		type string;
-	    }
-	    leaf description {
-		type string;
-	    }
-	    leaf type {
-		type string;
-		mandatory true;
-	    }
-	    leaf link-up-down-trap-enable {
-		if-feature if-mib;
-		type enumeration {
-		    enum enabled;
-		    enum disabled;
-		}
-	    }
-	}
+        list interface {
+            key "name";
+            leaf name {
+                type string;
+            }
+            leaf description {
+                type string;
+            }
+            leaf type {
+                type string;
+                mandatory true;
+            }
+            leaf link-up-down-trap-enable {
+                if-feature if-mib;
+                type enumeration {
+                    enum enabled;
+                    enum disabled;
+                }
+            }
+        }
     }
     container interfaces-state {
-	list interface {
-	    key "name";
-	    leaf name {
-		type string;
-	    }
-	    leaf admin-status {
-		if-feature if-mib;
-		type enumeration {
-		    enum up;
-		    enum down;
-		    enum testing;
-		}
-		mandatory true;
-	    }
-	    container statistics {
-		leaf in-octets {
-		    type yang:counter64;
-		}
-		leaf in-unicast-pkts {
-		    type yang:counter64;
-		}
-	    }
-	}
+        list interface {
+            key "name";
+            leaf name {
+                type string;
+            }
+            leaf admin-status {
+                if-feature if-mib;
+                type enumeration {
+                    enum up;
+                    enum down;
+                    enum testing;
+                }
+                mandatory true;
+            }
+            container statistics {
+                leaf in-octets {
+                    type yang:counter64;
+                }
+                leaf in-unicast-pkts {
+                    type yang:counter64;
+                }
+            }
+        }
     }
 }
 EOF
@@ -135,7 +135,7 @@ module interfaces{
     prefix "if";
     
     import ietf-yang-types {
-	prefix yang;
+        prefix yang;
     }
     revision 2018-02-20 {
      description
@@ -144,64 +144,64 @@ module interfaces{
       "RFC 8343: A YANG Data Model for Interface Management";
     }
     revision 2014-05-08 {
-	description
-	    "Initial revision.";
-	reference
-	    "RFC 7223: A YANG Data Model for Interface Management";
+        description
+            "Initial revision.";
+        reference
+            "RFC 7223: A YANG Data Model for Interface Management";
     }
     feature if-mib {
-	description
-	    "This feature indicates that the device implements
+        description
+            "This feature indicates that the device implements
        the IF-MIB.";
-	reference
-	    "RFC 2863: The Interfaces Group MIB";
+        reference
+            "RFC 2863: The Interfaces Group MIB";
     }
     container interfaces {
-	description
-	    "Interface configuration parameters.";
+        description
+            "Interface configuration parameters.";
 
-	list interface {
-	    key "name";
-	    leaf name {
-		type string;
-	    }
-	    container docs{
-               description "Original description is wrapped and renamed";
-  	       leaf descr {
-	 	 type string;
-	      }
+        list interface {
+            key "name";
+            leaf name {
+                type string;
             }
-	    leaf type {
-		type string;
-		mandatory true;
-	    }
-	    leaf link-up-down-trap-enable {
-		if-feature if-mib;
-		type enumeration {
-		    enum enabled;
-		    enum disabled;
-		}
-	    }
-	    leaf admin-status {
-		if-feature if-mib;
-		type enumeration {
-		    enum up;
-		    enum down;
-		    enum testing;
-		}
-		mandatory true;
-	    }
-	    container statistics {
-		leaf in-octets {
-		    type decimal64{
+            container docs{
+               description "Original description is wrapped and renamed";
+               leaf descr {
+                 type string;
+              }
+            }
+            leaf type {
+                type string;
+                mandatory true;
+            }
+            leaf link-up-down-trap-enable {
+                if-feature if-mib;
+                type enumeration {
+                    enum enabled;
+                    enum disabled;
+                }
+            }
+            leaf admin-status {
+                if-feature if-mib;
+                type enumeration {
+                    enum up;
+                    enum down;
+                    enum testing;
+                }
+                mandatory true;
+            }
+            container statistics {
+                leaf in-octets {
+                    type decimal64{
                        fraction-digits 3;
                     }
-		}
-		leaf in-unicast-pkts {
-		    type yang:counter64;
-		}
-	    }
-	}
+                }
+                leaf in-unicast-pkts {
+                    type yang:counter64;
+                }
+            }
+        }
     }
 }
 EOF
@@ -258,14 +258,14 @@ function testrun(){
     new "test params: -s startup -f $cfg -- -u"
     # Bring your own backend
     if [ $BE -ne 0 ]; then
-	# kill old backend (if any)
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s startup -f $cfg -- -u"
-	start_backend -s startup -f $cfg -- -u
+        # kill old backend (if any)
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s startup -f $cfg -- -u"
+        start_backend -s startup -f $cfg -- -u
     fi
 
     new "wait backend"
@@ -275,14 +275,14 @@ function testrun(){
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$runxml</data></rpc-reply>"
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 

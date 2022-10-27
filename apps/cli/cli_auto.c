@@ -87,13 +87,13 @@ co2apipath(cg_obj *co)
     cg_var      *cv;
     
     if (co == NULL)
-	return NULL;
+        return NULL;
     if ((cb = co->co_callbacks) == NULL)
-	return NULL;
+        return NULL;
     if ((cvv = cb->cc_cvec) == NULL)
-	return NULL;
+        return NULL;
     if ((cv = cvec_i(cvv, 0)) == NULL)
-	return NULL;
+        return NULL;
     return cv_string_get(cv);
 }
 
@@ -102,25 +102,25 @@ co2apipath(cg_obj *co)
  */
 static cvec*
 cvec_append(cvec *cvv0,
-	    cvec *cvv1)
+            cvec *cvv1)
 {
     cvec   *cvv2 = NULL;
     cg_var *cv;
     
     if (cvv0 == NULL){
-	if ((cvv2 = cvec_dup(cvv1)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cvec_dup");
-	    return NULL;
-	}
+        if ((cvv2 = cvec_dup(cvv1)) == NULL){
+            clicon_err(OE_UNIX, errno, "cvec_dup");
+            return NULL;
+        }
     }
     else{
-	if ((cvv2 = cvec_dup(cvv0)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cvec_dup");
-	    return NULL;
-	}
-	cv = NULL; 	/* Append cvv1 to cvv2 */
-	while ((cv = cvec_each1(cvv1, cv)) != NULL)
-	    cvec_append_var(cvv2, cv);
+        if ((cvv2 = cvec_dup(cvv0)) == NULL){
+            clicon_err(OE_UNIX, errno, "cvec_dup");
+            return NULL;
+        }
+        cv = NULL;      /* Append cvv1 to cvv2 */
+        while ((cv = cvec_each1(cvv1, cv)) != NULL)
+            cvec_append_var(cvv2, cv);
     }
     return cvv2;
 }
@@ -137,8 +137,8 @@ cvec_append(cvec *cvv0,
  */
 int
 cli_auto_edit(clicon_handle h,
-	      cvec         *cvv1,
-	      cvec         *argv)
+              cvec         *cvv1,
+              cvec         *argv)
 {
     int           retval = -1;
     char         *api_path_fmt;  /* xml key format */
@@ -151,61 +151,61 @@ cli_auto_edit(clicon_handle h,
     cvec         *cvv2 = NULL; /* cvv2 = cvv0 + cvv1 */
 
     if (cvec_len(argv) != 2){
-	clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>, <treename>)", __FUNCTION__);
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>, <treename>)", __FUNCTION__);
+        goto done;
     }
     cv = cvec_i(argv, 1);
     treename = cv_string_get(cv);
     /* Find current cligen tree */
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
-	goto done;
+        clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
+        goto done;
     }
     /* Find the matching cligen object 
      * Note, is complicated: either an instantiated tree (co_treeref_orig)
      * or actual tree (co_ref)
      */
     if ((co = cligen_co_match(cli_cligen(h))) != NULL){
-	if ((coorig = co->co_treeref_orig) != NULL ||
-	    (coorig = co->co_ref) != NULL)
-	    cligen_ph_workpoint_set(ph, coorig);
-	else {
-	    clicon_err(OE_YANG, EINVAL, "No workpoint found");
-	    goto done;
-	}
+        if ((coorig = co->co_treeref_orig) != NULL ||
+            (coorig = co->co_ref) != NULL)
+            cligen_ph_workpoint_set(ph, coorig);
+        else {
+            clicon_err(OE_YANG, EINVAL, "No workpoint found");
+            goto done;
+        }
     }
     else{
-	clicon_err(OE_YANG, EINVAL, "No workpoint found");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "No workpoint found");
+        goto done;
     }
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv1)) == NULL)
-	goto done;
+        goto done;
     /*  API_path format */
     if ((api_path_fmt = co2apipath(coorig)) == NULL){
-	clicon_err(OE_YANG, EINVAL, "No apipath found");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "No apipath found");
+        goto done;
     }
     /* get api-path and xpath */
     if (api_path_fmt2api_path(api_path_fmt, cvv2, &api_path, NULL) < 0)
-	goto done;
+        goto done;
     /* Store this as edit-mode */
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
-	goto done;
+        goto done;
     if (clicon_data_cvec_set(h, "cli-edit-cvv", cvv2) < 0)
-	goto done;
+        goto done;
     if (co->co_filter){
-	cvec *cvv3;
-	if ((cvv3 = cvec_dup(co->co_filter)) == NULL){
-	    clicon_err(OE_YANG, errno, "cvec_dup");
-	    goto done;
-	}
-	if (clicon_data_cvec_set(h, "cli-edit-filter", cvv3) < 0)
-	    goto done;
+        cvec *cvv3;
+        if ((cvv3 = cvec_dup(co->co_filter)) == NULL){
+            clicon_err(OE_YANG, errno, "cvec_dup");
+            goto done;
+        }
+        if (clicon_data_cvec_set(h, "cli-edit-filter", cvv3) < 0)
+            goto done;
     }
     retval = 0;
  done:
     if (api_path)
-	free(api_path);
+        free(api_path);
     return retval;
 }
 
@@ -218,8 +218,8 @@ cli_auto_edit(clicon_handle h,
  */
 int
 cli_auto_up(clicon_handle h,
-	    cvec         *cvv,
-	    cvec         *argv)
+            cvec         *cvv,
+            cvec         *argv)
 {
     int      retval = -1;
     cg_var  *cv;
@@ -238,41 +238,41 @@ cli_auto_up(clicon_handle h,
     cvec    *cvv_filter = NULL;
     
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
+        goto done;
     }
     cv = cvec_i(argv, 0);
     treename = cv_string_get(cv);
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
-	goto done;
+        clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
+        goto done;
     }
     if ((co0 = cligen_ph_workpoint_get(ph)) == NULL)
-	goto ok;
+        goto ok;
     cvv_filter = clicon_data_cvec_get(h, "cli-edit-filter");
     /* Find parent that has a callback, XXX has edit */
     for (co1 = co_up(co0); co1; co1 = co_up(co1)){
-	cg_obj *cot = NULL;
-	if (co_terminal(co1, &cot)){
-	    if (cot == NULL)
-		break; /* found top */
-	    if (cvv_filter){
-		cv = NULL;
-		while ((cv = cvec_each(cot->co_cvec, cv)) != NULL){
-		    if (co_isfilter(cvv_filter, cv_name_get(cv)))
-			break;
-		}
-		if (cv == NULL)
-		    break; /* no filter match */
-	    }
-	}
+        cg_obj *cot = NULL;
+        if (co_terminal(co1, &cot)){
+            if (cot == NULL)
+                break; /* found top */
+            if (cvv_filter){
+                cv = NULL;
+                while ((cv = cvec_each(cot->co_cvec, cv)) != NULL){
+                    if (co_isfilter(cvv_filter, cv_name_get(cv)))
+                        break;
+                }
+                if (cv == NULL)
+                    break; /* no filter match */
+            }
+        }
     }
     cligen_ph_workpoint_set(ph, co1);
     if (co1 == NULL){
-	clicon_data_set(h, "cli-edit-mode", "");
-	clicon_data_cvec_del(h, "cli-edit-cvv");
-	clicon_data_cvec_del(h, "cli-edit-filter");
-	goto ok;
+        clicon_data_set(h, "cli-edit-mode", "");
+        clicon_data_cvec_del(h, "cli-edit-cvv");
+        clicon_data_cvec_del(h, "cli-edit-filter");
+        goto ok;
     }
     /* get before and after api-path-fmt (as generated from yang) */
     api_path_fmt0 = co2apipath(co0);
@@ -283,16 +283,16 @@ cli_auto_up(clicon_handle h,
     j=0; /* count diffs */
     len = strlen(api_path_fmt0);
     for (i=strlen(api_path_fmt1); i<len; i++)
-	if (api_path_fmt0[i] == '%')
-	    j++;
+        if (api_path_fmt0[i] == '%')
+            j++;
     cvv1 = cvec_new(0);
     for (i=0; i<cvec_len(cvv0)-j; i++){
-	cv = cvec_i(cvv0, i);
-	cvec_append_var(cvv1, cv);	
+        cv = cvec_i(cvv0, i);
+        cvec_append_var(cvv1, cv);      
     }
     /* get api-path and xpath */
     if (api_path_fmt2api_path(api_path_fmt1, cvv1, &api_path, NULL) < 0)
-	goto done;
+        goto done;
     /* Store this as edit-mode */
     clicon_data_set(h, "cli-edit-mode", api_path);
     clicon_data_cvec_set(h, "cli-edit-cvv", cvv1);
@@ -300,7 +300,7 @@ cli_auto_up(clicon_handle h,
     retval = 0;
  done:
     if (api_path)
-	free(api_path);
+        free(api_path);
     return retval;
 }
 
@@ -313,8 +313,8 @@ cli_auto_up(clicon_handle h,
  */
 int
 cli_auto_top(clicon_handle h,
-	     cvec         *cvv,
-	     cvec         *argv)
+             cvec         *cvv,
+             cvec         *argv)
 {
     int      retval = -1;
     cg_var  *cv;
@@ -324,8 +324,8 @@ cli_auto_top(clicon_handle h,
     cv = cvec_i(argv, 0);
     treename = cv_string_get(cv);
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
-	goto done;
+        clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
+        goto done;
     }
     cligen_ph_workpoint_set(ph, NULL);
     /* Store this as edit-mode */
@@ -346,19 +346,19 @@ cli_auto_top(clicon_handle h,
  */
 int 
 cli_auto_set(clicon_handle h,
-	     cvec         *cvv,
-	     cvec         *argv)
+             cvec         *cvv,
+             cvec         *argv)
 {
     int   retval = -1;
     cvec *cvv2 = NULL;
     
     cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv);
     if (cli_dbxml(h, cvv2, argv, OP_REPLACE, NULL) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (cvv2)
-	cvec_free(cvv2);
+        cvec_free(cvv2);
     return retval;
 }
 
@@ -369,19 +369,19 @@ cli_auto_set(clicon_handle h,
  */
 int 
 cli_auto_merge(clicon_handle h,
-	       cvec         *cvv,
-	       cvec         *argv)
+               cvec         *cvv,
+               cvec         *argv)
 {
     int retval = -1;
     cvec *cvv2 = NULL;
     
     cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv);
     if (cli_dbxml(h, cvv2, argv, OP_MERGE, NULL) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (cvv2)
-	cvec_free(cvv2);
+        cvec_free(cvv2);
     return retval;
 }
 
@@ -392,19 +392,19 @@ cli_auto_merge(clicon_handle h,
  */
 int 
 cli_auto_create(clicon_handle h,
-		cvec         *cvv,
-		cvec         *argv)
+                cvec         *cvv,
+                cvec         *argv)
 {
     int retval = -1;
     cvec *cvv2 = NULL;
     
     cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv);
     if (cli_dbxml(h, cvv2, argv, OP_CREATE, NULL) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (cvv2)
-	cvec_free(cvv2);
+        cvec_free(cvv2);
     return retval;
 }
 
@@ -415,19 +415,19 @@ cli_auto_create(clicon_handle h,
  */
 int 
 cli_auto_del(clicon_handle h,
-	     cvec         *cvv,
-	     cvec         *argv)
+             cvec         *cvv,
+             cvec         *argv)
 {
     int   retval = -1;
     cvec *cvv2 = NULL;
     
     cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv);
     if (cli_dbxml(h, cvv2, argv, OP_REMOVE, NULL) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (cvv2)
-	cvec_free(cvv2);
+        cvec_free(cvv2);
     return retval;
 }
 
@@ -446,16 +446,16 @@ struct findpt_arg{
  */
 static int
 cli_auto_findpt(cg_obj *co,
-		void   *arg)
+                void   *arg)
 {
     struct findpt_arg *fa = (struct findpt_arg *)arg;
     cvec              *cvv;
 
     if (co->co_callbacks && (cvv = co->co_callbacks->cc_cvec))
-	if (strcmp(fa->fa_str, cv_string_get(cvec_i(cvv, 0))) == 0){
-	    fa->fa_co = co;
-	    return 1;
-	}
+        if (strcmp(fa->fa_str, cv_string_get(cvec_i(cvv, 0))) == 0){
+            fa->fa_co = co;
+            return 1;
+        }
     return 0;
 }
 
@@ -477,8 +477,8 @@ cli_auto_findpt(cg_obj *co,
  */
 int 
 cli_auto_sub_enter(clicon_handle h,
-		   cvec         *cvv,
-		   cvec         *argv)
+                   cvec         *cvv,
+                   cvec         *argv)
 {
     int           retval = -1;
     char         *api_path_fmt;    /* Contains wildcards as %.. */
@@ -492,8 +492,8 @@ cli_auto_sub_enter(clicon_handle h,
     struct findpt_arg fa = {0,};
     
     if (cvec_len(argv) < 2){
-	clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<tree> <api_path_fmt> (,vars)*)", __FUNCTION__);
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<tree> <api_path_fmt> (,vars)*)", __FUNCTION__);
+        goto done;
     }
     /* First argv argument: treename */
     cv = cvec_i(argv, 0);
@@ -511,48 +511,48 @@ cli_auto_sub_enter(clicon_handle h,
      */
     /* Create a cvv with variables to add to api-path */
     if ((cvv1 = cvec_new(0)) == NULL){ 
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
     }
     /* Append static variables (skip first treename) */
     for (i=1; i<cvec_len(argv); i++){
-	if (cvec_append_var(cvv1, cvec_i(argv, i)) < 0)
-	    goto done;
+        if (cvec_append_var(cvv1, cvec_i(argv, i)) < 0)
+            goto done;
     }
     /* Append dynamic variables from the command line (skip first contains whole command line) */
     for (i=1; i<cvec_len(cvv); i++){
-	if (cvec_append_var(cvv1, cvec_i(cvv, i)) < 0)
-	    goto done;
+        if (cvec_append_var(cvv1, cvec_i(cvv, i)) < 0)
+            goto done;
     }
     if (api_path_fmt2api_path(api_path_fmt, cvv1, &api_path, NULL) < 0)
-	goto done;
+        goto done;
     /* Assign the variables */
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv1)) == NULL)
-	goto done;
+        goto done;
     /* Store this as edit-mode */
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
-	goto done;
+        goto done;
     if (clicon_data_cvec_set(h, "cli-edit-cvv", cvv2) < 0)
-	goto done;
+        goto done;
     /* Find current cligen tree */
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
-	clicon_err(OE_PLUGIN, ENOENT, "No such parsetree header: %s", treename);
-	goto done;
+        clicon_err(OE_PLUGIN, ENOENT, "No such parsetree header: %s", treename);
+        goto done;
     }
     /* Find the point in the generated clispec tree where workpoint should be set */
     fa.fa_str = api_path_fmt;
     if (pt_apply(cligen_ph_parsetree_get(ph), cli_auto_findpt, INT32_MAX, &fa) < 0)
-	goto done;
+        goto done;
     if (fa.fa_co == NULL){
-	clicon_err(OE_PLUGIN, ENOENT, "No such cligen object found %s", api_path);
-	goto done;
+        clicon_err(OE_PLUGIN, ENOENT, "No such cligen object found %s", api_path);
+        goto done;
     }
     cligen_ph_workpoint_set(ph, fa.fa_co);
     retval = 0;
  done:
     if (api_path)
-	free(api_path);
+        free(api_path);
     if (cvv1)
-	cvec_free(cvv1);
+        cvec_free(cvv1);
     return retval;
 }

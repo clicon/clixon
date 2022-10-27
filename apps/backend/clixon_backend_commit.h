@@ -64,7 +64,7 @@ int cancel_rollback_event(clicon_handle h);
 int cancel_confirmed_commit(clicon_handle h);
 int handle_confirmed_commit(clicon_handle h, cxobj *xe);
 int do_rollback(clicon_handle h, uint8_t *errs);
-int from_client_cancel_commit(clicon_handle h,	cxobj *xe, cbuf *cbret, void *arg, void *regarg);
+int from_client_cancel_commit(clicon_handle h,  cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_confirmed_commit(clicon_handle h, cxobj *xe, uint32_t myid, cbuf *cbret);
 
 /* backend_commit.c */
@@ -73,7 +73,7 @@ int startup_commit(clicon_handle h, char *db, cbuf *cbret);
 int candidate_validate(clicon_handle h, char *db, cbuf *cbret);
 int candidate_commit(clicon_handle h, cxobj *xe, char *db, cbuf *cbret);
 
-int from_client_commit(clicon_handle h,	cxobj *xe, cbuf *cbret, void *arg, void *regarg);
+int from_client_commit(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_discard_changes(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_validate(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_restart_one(clicon_handle h, clixon_plugin_t *cp, cbuf *cbret);

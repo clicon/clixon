@@ -84,7 +84,7 @@
  */
 static int
 config_socket_init_ipv4(clicon_handle h,
-			char         *dst)
+                        char         *dst)
 {
     int                s;
     struct sockaddr_in addr;
@@ -95,25 +95,25 @@ config_socket_init_ipv4(clicon_handle h,
 
     /* create inet socket */
     if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-	clicon_err(OE_UNIX, errno, "socket");
-	return -1;
+        clicon_err(OE_UNIX, errno, "socket");
+        return -1;
     }
     setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one));
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     if (inet_pton(addr.sin_family, dst, &addr.sin_addr) != 1){
-	clicon_err(OE_UNIX, errno, "inet_pton: %s (Expected IPv4 address. Check settings of CLICON_SOCK_FAMILY and CLICON_SOCK)", dst);
-	goto err; /* Could check getaddrinfo */
+        clicon_err(OE_UNIX, errno, "inet_pton: %s (Expected IPv4 address. Check settings of CLICON_SOCK_FAMILY and CLICON_SOCK)", dst);
+        goto err; /* Could check getaddrinfo */
     }
     if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0){
-	clicon_err(OE_UNIX, errno, "bind");
-	goto err;
+        clicon_err(OE_UNIX, errno, "bind");
+        goto err;
     }
     clicon_debug(1, "Listen on server socket at %s:%hu", dst, port);
     if (listen(s, 5) < 0){
-	clicon_err(OE_UNIX, errno, "listen");
-	goto err;
+        clicon_err(OE_UNIX, errno, "listen");
+        goto err;
     }
     return s;
   err:
@@ -132,7 +132,7 @@ config_socket_init_ipv4(clicon_handle h,
  */
 static int
 config_socket_init_unix(clicon_handle h,
-			char         *sock)
+                        char         *sock)
 {
     int                s;
     struct sockaddr_un addr;
@@ -142,24 +142,24 @@ config_socket_init_unix(clicon_handle h,
     struct stat        st;
 
     if (lstat(sock, &st) == 0 && unlink(sock) < 0){
-	clicon_err(OE_UNIX, errno, "unlink(%s)", sock);
-	return -1;
+        clicon_err(OE_UNIX, errno, "unlink(%s)", sock);
+        return -1;
     }
     /* then find configuration group (for clients) and find its groupid */
     if ((config_group = clicon_sock_group(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
-	return -1;
+        clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
+        return -1;
     }
     if (group_name2gid(config_group, &gid) < 0)
-	return -1;
+        return -1;
 #if 0
     if (gid == 0) 
-	clicon_log(LOG_WARNING, "%s: No such group: %s", __FUNCTION__, config_group);
+        clicon_log(LOG_WARNING, "%s: No such group: %s", __FUNCTION__, config_group);
 #endif
     /* create unix socket */
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-	clicon_err(OE_UNIX, errno, "socket");
-	return -1;
+        clicon_err(OE_UNIX, errno, "socket");
+        return -1;
     }
 //    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one));
     memset(&addr, 0, sizeof(addr));
@@ -167,20 +167,20 @@ config_socket_init_unix(clicon_handle h,
     strncpy(addr.sun_path, sock, sizeof(addr.sun_path)-1);
     old_mask = umask(S_IRWXO | S_IXGRP | S_IXUSR);
     if (bind(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
-	clicon_err(OE_UNIX, errno, "bind");
-	umask(old_mask); 
-	goto err;
+        clicon_err(OE_UNIX, errno, "bind");
+        umask(old_mask); 
+        goto err;
     }
     umask(old_mask); 
     /* change socket path file group */
     if (lchown(sock, -1, gid) < 0){
-	clicon_err(OE_UNIX, errno, "lchown(%s, %s)", sock, config_group);
-	goto err;
+        clicon_err(OE_UNIX, errno, "lchown(%s, %s)", sock, config_group);
+        goto err;
     }
     clicon_debug(1, "Listen on server socket at %s", addr.sun_path);
     if (listen(s, 5) < 0){
-	clicon_err(OE_UNIX, errno, "listen");
-	goto err;
+        clicon_err(OE_UNIX, errno, "listen");
+        goto err;
     }
     return s;
   err:
@@ -200,20 +200,20 @@ backend_socket_init(clicon_handle h)
     char *sock; /* unix path or ip address string */
 
     if ((sock = clicon_sock_str(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
-	return -1;
+        clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
+        return -1;
     }
     switch (clicon_sock_family(h)){
     case AF_UNIX:
-	return config_socket_init_unix(h, sock);
-	break;
+        return config_socket_init_unix(h, sock);
+        break;
     case AF_INET:
-	return config_socket_init_ipv4(h, sock);
-	break;
+        return config_socket_init_ipv4(h, sock);
+        break;
     default:
-	clicon_err(OE_UNIX, EINVAL, "No such address family: %d",
-		   clicon_sock_family(h));
-	break;
+        clicon_err(OE_UNIX, EINVAL, "No such address family: %d",
+                   clicon_sock_family(h));
+        break;
     }
     return -1;
 }
@@ -224,7 +224,7 @@ backend_socket_init(clicon_handle h)
  */
 int
 backend_accept_client(int   fd,
-		      void *arg) 
+                      void *arg) 
 {
     int                  retval = -1;
     clicon_handle        h = (clicon_handle)arg;
@@ -244,11 +244,11 @@ backend_accept_client(int   fd,
     clicon_debug(2, "%s", __FUNCTION__);
     len = sizeof(from);
     if ((s = accept(fd, &from, &len)) < 0){
-	clicon_err(OE_UNIX, errno, "accept");
-	goto done;
+        clicon_err(OE_UNIX, errno, "accept");
+        goto done;
     }
     if ((ce = backend_client_add(h, &from)) == NULL)
-	goto done;
+        goto done;
     ce->ce_handle = h;
 
     /* 
@@ -257,35 +257,35 @@ backend_accept_client(int   fd,
     switch (from.sa_family){
     case AF_UNIX:
 #if defined(HAVE_SO_PEERCRED)
-	clen =  sizeof(cr);
-	if(getsockopt(s, SOL_SOCKET, SO_PEERCRED, &cr, &clen) < 0){
-	    clicon_err(OE_UNIX, errno, "getsockopt");
-	    goto done;
-	}
-	if (uid2name(cr.uid, &name) < 0)
-	    goto done;
+        clen =  sizeof(cr);
+        if(getsockopt(s, SOL_SOCKET, SO_PEERCRED, &cr, &clen) < 0){
+            clicon_err(OE_UNIX, errno, "getsockopt");
+            goto done;
+        }
+        if (uid2name(cr.uid, &name) < 0)
+            goto done;
 #elif defined(HAVE_GETPEEREID)
-	if (getpeereid(s, &euid, &guid) < 0)
-	    goto done;
-	if (uid2name(euid, &name) < 0)
-	    goto done;
+        if (getpeereid(s, &euid, &guid) < 0)
+            goto done;
+        if (uid2name(euid, &name) < 0)
+            goto done;
 #else
 #error "Need getsockopt O_PEERCRED or getpeereid for unix socket peer cred"
 #endif
-	if (name != NULL){
-	    if ((ce->ce_username = name) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		name = NULL;
-		goto done;
-	    }
-	    name = NULL;
-	}
-	break;
-    case AF_INET: 	
-	break;
+        if (name != NULL){
+            if ((ce->ce_username = name) == NULL){
+                clicon_err(OE_UNIX, errno, "strdup");
+                name = NULL;
+                goto done;
+            }
+            name = NULL;
+        }
+        break;
+    case AF_INET:       
+        break;
     case AF_INET6:
     default:
-	break;
+        break;
     }
     ce->ce_s = s;
 
@@ -293,10 +293,10 @@ backend_accept_client(int   fd,
      * Here we register callbacks for actual data socket 
      */
     if (clixon_event_reg_fd(s, from_client, (void*)ce, "local netconf client socket") < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (name)
-	free(name);
+        free(name);
     return retval;
 }

@@ -19,7 +19,7 @@ if [ ! $(id -u clicon) ]; then
    elif [ $release = "alpine" ]; then
       sudo adduser -D -H clicon
       sudo adduser $wwwuser clicon
-  else	
+  else  
       sudo useradd -M -U clicon;
       sudo usermod -a -G clicon vagrant; # start clixon tests as this users
       sudo usermod -a -G clicon $wwwuser;
@@ -29,7 +29,7 @@ fi
 # Fcgi restconf requires /www-data directory for fcgi socket
 if [ ${with_restconf} = fcgi ]; then
     if [ ! -d /www-data ]; then
-	sudo mkdir /www-data
+        sudo mkdir /www-data
     fi
     sudo chown $wwwuser /www-data 
     sudo chgrp $wwwuser /www-data

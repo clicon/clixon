@@ -106,7 +106,7 @@ EOF
 function rpcstatus()
 {
     if [ $# -ne 2 ]; then
-	err1 "rpcstatus: # arguments: 2" "$#"
+        err1 "rpcstatus: # arguments: 2" "$#"
     fi
     active=$1
     status=$2
@@ -122,23 +122,23 @@ EOF
     expect="<pid $LIBNS>[0-9]*</pid>"
     match=$(echo "$retx" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
-	pid=0
+        pid=0
     else
-	pid=$(echo "$match" | awk -F'[<>]' '{print $3}')
+        pid=$(echo "$match" | awk -F'[<>]' '{print $3}')
     fi
     if [ -z "$pid" ]; then
-	err "No pid return value" "$retx"
+        err "No pid return value" "$retx"
     fi
 
     if $active; then
-	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>$"
+        expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>$"
     else
-	# inactive, no startime or pid
-	expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status></rpc-reply>$"
+        # inactive, no startime or pid
+        expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status></rpc-reply>$"
     fi
     match=$(echo "$retx" | grep --null -Go "$expect")
     if [ -z "$match" ]; then
-	err "$expect" "$retx"
+        err "$expect" "$retx"
     fi
 }
 
@@ -160,7 +160,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -227,7 +227,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg
@@ -244,7 +244,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
 
     new "start backend -s init -f $cfg"
@@ -288,7 +288,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg
@@ -315,7 +315,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
 
     new "start backend -s init -f $cfg"
@@ -386,7 +386,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg
@@ -409,7 +409,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
 
     new "start backend -s init -f $cfg"
@@ -459,7 +459,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

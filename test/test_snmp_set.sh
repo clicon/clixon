@@ -97,18 +97,18 @@ cat <<EOF > $dir/startup_db
      </clixonExampleScalars>
   </CLIXON-TYPES-MIB>
   <IF-MIB xmlns="urn:ietf:params:xml:ns:yang:smiv2:IF-MIB">
-    <ifStackTable>	
-      <ifStackEntry>	
+    <ifStackTable>      
+      <ifStackEntry>    
         <ifStackHigherLayer>9</ifStackHigherLayer>
         <ifStackLowerLayer>9</ifStackLowerLayer>
-      </ifStackEntry>	
+      </ifStackEntry>   
     </ifStackTable> 
     <ifTable>
       <ifEntry>
         <ifIndex>1</ifIndex>
         <ifPhysAddress>aa:bb:cc:dd:ee:ff</ifPhysAddress>
       </ifEntry>
-    </ifTable>	
+    </ifTable>  
   </IF-MIB>
 </${DATASTORE_TOP}>
 EOF
@@ -118,29 +118,29 @@ function testinit(){
     new "test params: -f $cfg"
 
     if [ $BE -ne 0 ]; then
-	# Kill old backend and start a new one
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err "Failed to start backend"
-	fi
+        # Kill old backend and start a new one
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err "Failed to start backend"
+        fi
 
-	sudo pkill -f clixon_backend
+        sudo pkill -f clixon_backend
 
-	new "Starting backend"
-	start_backend -s startup -f $cfg
+        new "Starting backend"
+        start_backend -s startup -f $cfg
     fi
 
     new "wait backend"
     wait_backend
-	
+        
     if [ $SN -ne 0 ]; then
-	# Kill old clixon_snmp, if any
-	new "Terminating any old clixon_snmp processes"
-	sudo killall -q clixon_snmp
+        # Kill old clixon_snmp, if any
+        new "Terminating any old clixon_snmp processes"
+        sudo killall -q clixon_snmp
 
-	new "Starting clixon_snmp"
-	start_snmp $cfg &
+        new "Starting clixon_snmp"
+        start_snmp $cfg &
     fi
 
     new "wait snmp"
@@ -172,40 +172,40 @@ function testrun()
         "STRING")
             set_type="s"
             ;;
-	"HEX STRING")
+        "HEX STRING")
             set_type="x"
             ;;
         "TIMETICKS")
             set_type="t"
             ;;
-	"IPADDRESS")
+        "IPADDRESS")
             set_type="a"
             ;;
-	"OBJID")
+        "OBJID")
             set_type="o"
             ;;
-	"BITS")
+        "BITS")
             set_type="b"
             ;;
-	*)
-	    set_type="s"
-	    ;;
+        *)
+            set_type="s"
+            ;;
     esac
 
     new "Set $name via SNMP"
     if [ $type == "STRING" ]; then
-	echo "$snmpset $oid $set_type $value"
-	expectpart "$($snmpset $oid $set_type $value)" 0 "$type:" "$value"
+        echo "$snmpset $oid $set_type $value"
+        expectpart "$($snmpset $oid $set_type $value)" 0 "$type:" "$value"
     else
-	echo "$snmpset $oid $set_type $value2"
-	expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value2"
+        echo "$snmpset $oid $set_type $value2"
+        expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value2"
     fi
 
     new "Check $name via SNMP"
     if [ "$type" == "STRING" ]; then
-	expectpart "$($snmpget $oid)" 0 "$type:" "$value"
+        expectpart "$($snmpget $oid)" 0 "$type:" "$value"
     else
-	expectpart "$($snmpget $oid)" 0 "$type: $value2"
+        expectpart "$($snmpget $oid)" 0 "$type: $value2"
     fi
 
     new "Check $name via CLI"
@@ -216,14 +216,14 @@ function testexit(){
     stop_snmp
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 
@@ -263,7 +263,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err "Failed to start backend"
+        err "Failed to start backend"
     fi
     
     sudo pkill -f clixon_backend

@@ -88,8 +88,8 @@ modstate_diff_new(void)
     modstate_diff_t *md;
 
     if ((md = malloc(sizeof(modstate_diff_t))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	return NULL;
+        clicon_err(OE_UNIX, errno, "malloc");
+        return NULL;
     }
     memset(md, 0, sizeof(modstate_diff_t));
     return md;
@@ -99,11 +99,11 @@ int
 modstate_diff_free(modstate_diff_t *md)
 {
     if (md == NULL)
-	return 0;
+        return 0;
     if (md->md_content_id)
        free(md->md_content_id);
     if (md->md_diff)
-	xml_free(md->md_diff);
+        xml_free(md->md_diff);
     free(md);
     return 0;
 }
@@ -120,21 +120,21 @@ yang_modules_init(clicon_handle h)
     int        retval = -1;
     yang_stmt *yspec;
 
-    yspec = clicon_dbspec_yang(h);	
+    yspec = clicon_dbspec_yang(h);      
     if (!clicon_option_bool(h, "CLICON_YANG_LIBRARY"))
-	goto ok;
+        goto ok;
     /* Ensure module-set-id is set */
     if (!clicon_option_exists(h, "CLICON_MODULE_SET_ID")){
-	clicon_err(OE_CFG, ENOENT, "CLICON_MODULE_SET_ID must be defined when CLICON_YANG_LIBRARY is enabled");
-	goto done;
+        clicon_err(OE_CFG, ENOENT, "CLICON_MODULE_SET_ID must be defined when CLICON_YANG_LIBRARY is enabled");
+        goto done;
     }
     /* Ensure revision exists is set */
     if (yang_spec_parse_module(h, "ietf-yang-library", NULL, yspec)< 0)
-	goto done;
+        goto done;
     /* Find revision */
     if (yang_modules_revision(h) == NULL){
-	clicon_err(OE_CFG, ENOENT, "Yang client library yang spec has no revision");
-	goto done;
+        clicon_err(OE_CFG, ENOENT, "Yang client library yang spec has no revision");
+        goto done;
     }
  ok:
      retval = 0;
@@ -157,10 +157,10 @@ yang_modules_revision(clicon_handle h)
 
     yspec = clicon_dbspec_yang(h);
     if ((ymod = yang_find(yspec, Y_MODULE, "ietf-yang-library")) != NULL ||
-	(ymod = yang_find(yspec, Y_SUBMODULE, "ietf-yang-library")) != NULL){
-	if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
-	    revision = yang_argument_get(yrev);
-	}
+        (ymod = yang_find(yspec, Y_SUBMODULE, "ietf-yang-library")) != NULL){
+        if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
+            revision = yang_argument_get(yrev);
+        }
     }
     return revision;
 }
@@ -173,10 +173,10 @@ yang_modules_revision(clicon_handle h)
  */
 static int
 yms_build(clicon_handle    h,
-	  yang_stmt       *yspec,
-	  char            *msid,
-	  int              brief,
-	  cbuf            *cb)
+          yang_stmt       *yspec,
+          char            *msid,
+          int              brief,
+          cbuf            *cb)
 {
     int         retval = -1;
     yang_stmt  *ylib = NULL; /* ietf-yang-library */
@@ -190,80 +190,80 @@ yms_build(clicon_handle    h,
     char       *name;
 
     if ((ylib = yang_find(yspec, Y_MODULE, module)) == NULL &&
-	(ylib = yang_find(yspec, Y_SUBMODULE, module)) == NULL){
+        (ylib = yang_find(yspec, Y_SUBMODULE, module)) == NULL){
             clicon_err(OE_YANG, 0, "%s not found", module);
             goto done;
         }
     if ((yns = yang_find(ylib, Y_NAMESPACE, NULL)) == NULL){
-	clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
-	goto done;
+        clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
+        goto done;
     }
 
     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
-	cprintf(cb,"<modules-state xmlns=\"%s\">", yang_argument_get(yns));
-	cprintf(cb,"<module-set-id>%s</module-set-id>", msid);
+        cprintf(cb,"<modules-state xmlns=\"%s\">", yang_argument_get(yns));
+        cprintf(cb,"<module-set-id>%s</module-set-id>", msid);
     }
     else { /* RFC 8525 */
-	cprintf(cb,"<yang-library xmlns=\"%s\">", yang_argument_get(yns));
-	cprintf(cb,"<content-id>%s</content-id>", msid);
-	cprintf(cb,"<module-set><name>default</name>");
+        cprintf(cb,"<yang-library xmlns=\"%s\">", yang_argument_get(yns));
+        cprintf(cb,"<content-id>%s</content-id>", msid);
+        cprintf(cb,"<module-set><name>default</name>");
     }
     ymod = NULL;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	if (yang_keyword_get(ymod) != Y_MODULE)
-	    continue;
-	cprintf(cb,"<module>");
-	cprintf(cb,"<name>%s</name>", yang_argument_get(ymod));
-	if ((ys = yang_find(ymod, Y_REVISION, NULL)) != NULL)
-	    cprintf(cb,"<revision>%s</revision>", yang_argument_get(ys));
-	else{
-	    /* RFC7895 1 If no (such) revision statement exists, the module's or 
-	       submodule's revision is the zero-length string. */
-	    cprintf(cb,"<revision></revision>");
-	}
-	if ((ys = yang_find(ymod, Y_NAMESPACE, NULL)) != NULL)
-	    cprintf(cb,"<namespace>%s</namespace>", yang_argument_get(ys));
-	else
-	    cprintf(cb,"<namespace></namespace>");
-	/* This follows order in rfc 7895: feature, conformance-type, 
-	   submodules */
-	if (!brief){
-	    yc = NULL;
-	    while ((yc = yn_each(ymod, yc)) != NULL) {
-		switch(yang_keyword_get(yc)){
-		case Y_FEATURE:
-		    if (yang_cv_get(yc) && cv_bool_get(yang_cv_get(yc)))
-			cprintf(cb,"<feature>%s</feature>", yang_argument_get(yc));
-		    break;
-		default:
-		    break;
-		}
-	    }
-	    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
-		cprintf(cb, "<conformance-type>implement</conformance-type>");
-	}
-	yinc = NULL;
-	while ((yinc = yn_each(ymod, yinc)) != NULL) {
-	    if (yang_keyword_get(yinc) != Y_INCLUDE)
-		continue;
-	    cprintf(cb,"<submodule>");
-	    name = yang_argument_get(yinc);
-	    cprintf(cb,"<name>%s</name>", name);
-	    if ((ysub = yang_find(yspec, Y_SUBMODULE, name)) != NULL){
-		if ((ys = yang_find(ysub, Y_REVISION, NULL)) != NULL)
-		    cprintf(cb,"<revision>%s</revision>", yang_argument_get(ys));
-		else
-		    cprintf(cb,"<revision></revision>");
-	    }
-	    cprintf(cb,"</submodule>");
-	}
-	cprintf(cb,"</module>");
+        if (yang_keyword_get(ymod) != Y_MODULE)
+            continue;
+        cprintf(cb,"<module>");
+        cprintf(cb,"<name>%s</name>", yang_argument_get(ymod));
+        if ((ys = yang_find(ymod, Y_REVISION, NULL)) != NULL)
+            cprintf(cb,"<revision>%s</revision>", yang_argument_get(ys));
+        else{
+            /* RFC7895 1 If no (such) revision statement exists, the module's or 
+               submodule's revision is the zero-length string. */
+            cprintf(cb,"<revision></revision>");
+        }
+        if ((ys = yang_find(ymod, Y_NAMESPACE, NULL)) != NULL)
+            cprintf(cb,"<namespace>%s</namespace>", yang_argument_get(ys));
+        else
+            cprintf(cb,"<namespace></namespace>");
+        /* This follows order in rfc 7895: feature, conformance-type, 
+           submodules */
+        if (!brief){
+            yc = NULL;
+            while ((yc = yn_each(ymod, yc)) != NULL) {
+                switch(yang_keyword_get(yc)){
+                case Y_FEATURE:
+                    if (yang_cv_get(yc) && cv_bool_get(yang_cv_get(yc)))
+                        cprintf(cb,"<feature>%s</feature>", yang_argument_get(yc));
+                    break;
+                default:
+                    break;
+                }
+            }
+            if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
+                cprintf(cb, "<conformance-type>implement</conformance-type>");
+        }
+        yinc = NULL;
+        while ((yinc = yn_each(ymod, yinc)) != NULL) {
+            if (yang_keyword_get(yinc) != Y_INCLUDE)
+                continue;
+            cprintf(cb,"<submodule>");
+            name = yang_argument_get(yinc);
+            cprintf(cb,"<name>%s</name>", name);
+            if ((ysub = yang_find(yspec, Y_SUBMODULE, name)) != NULL){
+                if ((ys = yang_find(ysub, Y_REVISION, NULL)) != NULL)
+                    cprintf(cb,"<revision>%s</revision>", yang_argument_get(ys));
+                else
+                    cprintf(cb,"<revision></revision>");
+            }
+            cprintf(cb,"</submodule>");
+        }
+        cprintf(cb,"</module>");
     }
     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
-	cprintf(cb,"</modules-state>");
+        cprintf(cb,"</modules-state>");
     }
     else{
-	cprintf(cb,"</module-set></yang-library>");
+        cprintf(cb,"</module-set></yang-library>");
     }
     retval = 0;
  done:
@@ -303,8 +303,8 @@ int
 yang_modules_state_get(clicon_handle    h,
                        yang_stmt       *yspec,
                        char            *xpath,
-		       cvec            *nsc,
-		       int              brief,
+                       cvec            *nsc,
+                       int              brief,
                        cxobj          **xret)
 {
     int         retval = -1;
@@ -319,66 +319,66 @@ yang_modules_state_get(clicon_handle    h,
 
     msid = clicon_option_str(h, "CLICON_MODULE_SET_ID"); /* In RFC 8525 changed to "content-id" */
     if ((xc = clicon_modst_cache_get(h, brief)) != NULL){
-	cxobj *xw; /* tmp top wrap object */
-	/* xc is here: <modules-state>... 
-	 * need to wrap it for xpath: <top><modules-state> */
-	/* xc is also original tree, need to copy it */
-	if ((xw = xml_wrap(xc, "top")) == NULL)
-	    goto done;
+        cxobj *xw; /* tmp top wrap object */
+        /* xc is here: <modules-state>... 
+         * need to wrap it for xpath: <top><modules-state> */
+        /* xc is also original tree, need to copy it */
+        if ((xw = xml_wrap(xc, "top")) == NULL)
+            goto done;
         if (xpath_first(xw, nsc, "%s", xpath)){
             if ((x = xml_dup(xc)) == NULL) /* Make copy and use below */
                 goto done;
         }
-	if (xml_rootchild_node(xw, xc) < 0)  /* Unwrap x / free xw */
-	    goto done;
+        if (xml_rootchild_node(xw, xc) < 0)  /* Unwrap x / free xw */
+            goto done;
     }
     else { /* No cache -> build the tree */
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, 0, "clicon buffer");
-	    goto done;
-	}
-	/* Build a cb string: <modules-state>... */
-	if (yms_build(h, yspec, msid, brief, cb) < 0)
-	    goto done;
-	/* Parse cb, x is on the form: <top><modules-state>... 
-	 * Note, list is not sorted since it is state (should not be)
-	 */
-	if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &x, NULL) < 0){
-	    if (xret && netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
-		goto done;
-	    goto fail;
-	}
-	if (xml_rootchild(x, 0, &x) < 0)
-	    goto done;
-	/* x is now: <modules-state>... */
-	if (clicon_modst_cache_set(h, brief, x) < 0) /* move to fn above? */
-	    goto done;
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, 0, "clicon buffer");
+            goto done;
+        }
+        /* Build a cb string: <modules-state>... */
+        if (yms_build(h, yspec, msid, brief, cb) < 0)
+            goto done;
+        /* Parse cb, x is on the form: <top><modules-state>... 
+         * Note, list is not sorted since it is state (should not be)
+         */
+        if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &x, NULL) < 0){
+            if (xret && netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
+                goto done;
+            goto fail;
+        }
+        if (xml_rootchild(x, 0, &x) < 0)
+            goto done;
+        /* x is now: <modules-state>... */
+        if (clicon_modst_cache_set(h, brief, x) < 0) /* move to fn above? */
+            goto done;
     }
     if (x){ /* x is here a copy (This code is ugly and I think wrong) */
-	/* Wrap x (again) with new top-level node "top" which xpath wants */
-	if ((x = xml_wrap(x, "top")) < 0)
-	    goto done;
-	/* extract xpath part of module-state tree */
-	if (xpath_vec(x, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	    goto done;
-	if (xvec != NULL){
-	    for (i=0; i<xlen; i++)
-		xml_flag_set(xvec[i], XML_FLAG_MARK);
-	}
-	/* Remove everything that is not marked */
-	if (xml_tree_prune_flagged_sub(x, XML_FLAG_MARK, 1, NULL) < 0)
-	    goto done;
+        /* Wrap x (again) with new top-level node "top" which xpath wants */
+        if ((x = xml_wrap(x, "top")) < 0)
+            goto done;
+        /* extract xpath part of module-state tree */
+        if (xpath_vec(x, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+            goto done;
+        if (xvec != NULL){
+            for (i=0; i<xlen; i++)
+                xml_flag_set(xvec[i], XML_FLAG_MARK);
+        }
+        /* Remove everything that is not marked */
+        if (xml_tree_prune_flagged_sub(x, XML_FLAG_MARK, 1, NULL) < 0)
+            goto done;
 
-	if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     retval = 1;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (xvec)
-	free(xvec);
+        free(xvec);
     if (cb)
         cbuf_free(cb);
     if (x)
@@ -401,10 +401,10 @@ yang_modules_state_get(clicon_handle    h,
  */
 static int
 mod_ns_upgrade(clicon_handle h,
-	       cxobj        *xt,
-	       cxobj        *xmod,
-	       char         *ns,
-	       cbuf         *cbret)
+               cxobj        *xt,
+               cxobj        *xmod,
+               char         *ns,
+               cbuf         *cbret)
 {
     int        retval = -1;
     char      *b; /* string body */
@@ -417,28 +417,28 @@ mod_ns_upgrade(clicon_handle h,
 
     /* If modified or removed get from revision from file */
     if (xml_flag(xmod, (XML_FLAG_CHANGE|XML_FLAG_DEL)) != 0x0){
-	if ((b = xml_find_body(xmod, "revision")) != NULL) /* Module revision */
-	    if (ys_parse_date_arg(b, &from) < 0)
-		goto done;
+        if ((b = xml_find_body(xmod, "revision")) != NULL) /* Module revision */
+            if (ys_parse_date_arg(b, &from) < 0)
+                goto done;
     }
     /* If modified or added get to revision from system */
     if (xml_flag(xmod, (XML_FLAG_CHANGE|XML_FLAG_ADD)) != 0x0){
-	yspec = clicon_dbspec_yang(h);
-	if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL)
-	    goto fail;
-	if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL){
-	    retval = 1;
-	    goto done;
-	}
-	if (ys_parse_date_arg(yang_argument_get(yrev), &to) < 0)
-	    goto done;
+        yspec = clicon_dbspec_yang(h);
+        if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL)
+            goto fail;
+        if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL){
+            retval = 1;
+            goto done;
+        }
+        if (ys_parse_date_arg(yang_argument_get(yrev), &to) < 0)
+            goto done;
     }
     if ((ret = upgrade_callback_call(h, xt, ns,
-				     xml_flag(xmod, (XML_FLAG_ADD|XML_FLAG_DEL|XML_FLAG_CHANGE)),
-				     from, to, cbret)) < 0)
-	goto done;
+                                     xml_flag(xmod, (XML_FLAG_ADD|XML_FLAG_DEL|XML_FLAG_CHANGE)),
+                                     from, to, cbret)) < 0)
+        goto done;
     if (ret == 0) /* XXX ignore and continue? */
-	goto fail;
+        goto fail;
     retval = 1;
  done:
     return retval;
@@ -458,9 +458,9 @@ mod_ns_upgrade(clicon_handle h,
  */
 int
 clixon_module_upgrade(clicon_handle    h,
-		      cxobj           *xt,
-		      modstate_diff_t *msd,
-   		      cbuf            *cbret)
+                      cxobj           *xt,
+                      modstate_diff_t *msd,
+                      cbuf            *cbret)
 {
     int      retval = -1;
     char   *ns;           /* Namespace */
@@ -468,24 +468,24 @@ clixon_module_upgrade(clicon_handle    h,
     int     ret;
 
     if (msd == NULL){
-	clicon_err(OE_CFG, EINVAL, "No modstate");
-	goto done;
+        clicon_err(OE_CFG, EINVAL, "No modstate");
+        goto done;
     }
     if (msd->md_status == 0) /* No modstate in startup */
-	goto ok;
+        goto ok;
     /* Iterate through xml modified module state 
      * Note top-level here is typically module-set
      */
     xmod = NULL;
     while ((xmod = xml_child_each(msd->md_diff, xmod, CX_ELMNT)) != NULL) {
-	/* Extract namespace */
-	if ((ns = xml_find_body(xmod, "namespace")) == NULL)
-	    goto done;
-	/* Extract revisions and make callbacks */
-	if ((ret = mod_ns_upgrade(h, xt, xmod, ns, cbret)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        /* Extract namespace */
+        if ((ns = xml_find_body(xmod, "namespace")) == NULL)
+            goto done;
+        /* Extract revisions and make callbacks */
+        if ((ret = mod_ns_upgrade(h, xt, xmod, ns, cbret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
  ok:
     retval = 1;
@@ -509,7 +509,7 @@ clixon_module_upgrade(clicon_handle    h,
  */
 yang_stmt *
 yang_find_module_by_prefix(yang_stmt *ys, 
-			   char      *prefix)
+                           char      *prefix)
 {
     yang_stmt *yimport;
     yang_stmt *yprefix;
@@ -519,36 +519,36 @@ yang_find_module_by_prefix(yang_stmt *ys,
     char      *myprefix;
 
     if ((yspec = ys_spec(ys)) == NULL){
-	clicon_err(OE_YANG, 0, "My yang spec not found");
-	goto done;
+        clicon_err(OE_YANG, 0, "My yang spec not found");
+        goto done;
     }
     /* First try own module */
     if ((my_ymod = ys_module(ys)) == NULL){
-	clicon_err(OE_YANG, 0, "My yang module not found");
-	goto done;
+        clicon_err(OE_YANG, 0, "My yang module not found");
+        goto done;
     }
     myprefix = yang_find_myprefix(ys);
     if (myprefix && strcmp(myprefix, prefix) == 0){
-	ymod = my_ymod;
-	goto done;
+        ymod = my_ymod;
+        goto done;
     }
     /* If no match, try imported modules */
     yimport = NULL;
     while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
-	if (yang_keyword_get(yimport) != Y_IMPORT)
-	    continue;
-	if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) != NULL &&
-	    strcmp(yang_argument_get(yprefix), prefix) == 0){
-	    break;
-	}
+        if (yang_keyword_get(yimport) != Y_IMPORT)
+            continue;
+        if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) != NULL &&
+            strcmp(yang_argument_get(yprefix), prefix) == 0){
+            break;
+        }
     }
     if (yimport){
-	if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL){
-	    clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s", 
-		       prefix);	
-	    yimport = NULL;
-	    goto done; /* unresolved */
-	}
+        if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL){
+            clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s", 
+                       prefix); 
+            yimport = NULL;
+            goto done; /* unresolved */
+        }
     }
  done:
     return ymod;
@@ -561,16 +561,16 @@ yang_find_module_by_prefix(yang_stmt *ys,
  */ 
 yang_stmt *
 yang_find_module_by_prefix_yspec(yang_stmt *yspec, 
-				 char      *prefix)
+                                 char      *prefix)
 {
     yang_stmt *ymod = NULL;
     yang_stmt *yprefix;
     
     while ((ymod = yn_each(yspec, ymod)) != NULL) 
-	if (yang_keyword_get(ymod) == Y_MODULE &&
-	    (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
-	    strcmp(yang_argument_get(yprefix), prefix) == 0)
-	    return ymod;
+        if (yang_keyword_get(ymod) == Y_MODULE &&
+            (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
+            strcmp(yang_argument_get(yprefix), prefix) == 0)
+            return ymod;
     return NULL;
 }
 
@@ -586,15 +586,15 @@ yang_find_module_by_prefix_yspec(yang_stmt *yspec,
  */
 yang_stmt *
 yang_find_module_by_namespace(yang_stmt *yspec, 
-			      char      *ns)
+                              char      *ns)
 {
     yang_stmt *ymod = NULL;
 
     if (ns == NULL)
-	goto done;
+        goto done;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
-	    break;
+        if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
+            break;
     }
  done:
     return ymod;
@@ -612,25 +612,25 @@ yang_find_module_by_namespace(yang_stmt *yspec,
  */
 yang_stmt *
 yang_find_module_by_namespace_revision(yang_stmt  *yspec, 
-				       const char *ns,
-    				       const char *rev)
+                                       const char *ns,
+                                       const char *rev)
 {
     yang_stmt *ymod = NULL;
     yang_stmt *yrev;
     char      *rev1;
 
     if (ns == NULL || rev == NULL){
-	clicon_err(OE_CFG, EINVAL, "No ns or rev");
-	goto done;
+        clicon_err(OE_CFG, EINVAL, "No ns or rev");
+        goto done;
     }
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
-	    /* Get FIRST revision */
-	    if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
-		rev1 = yang_argument_get(yrev);
-		if (strcmp(rev, rev1) == 0)
-		    break; /* return this ymod */
-	    }
+        if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
+            /* Get FIRST revision */
+            if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
+                rev1 = yang_argument_get(yrev);
+                if (strcmp(rev, rev1) == 0)
+                    break; /* return this ymod */
+            }
     }
  done:
     return ymod;
@@ -648,30 +648,30 @@ yang_find_module_by_namespace_revision(yang_stmt  *yspec,
  */
 yang_stmt *
 yang_find_module_by_name_revision(yang_stmt  *yspec, 
-				  const char *name,
-				  const char *rev)
+                                  const char *name,
+                                  const char *rev)
 {
     yang_stmt *ymod = NULL;
     yang_stmt *yrev;
     char      *rev1;
 
     if (name == NULL){
-	clicon_err(OE_CFG, EINVAL, "No ns or rev");
-	goto done;
+        clicon_err(OE_CFG, EINVAL, "No ns or rev");
+        goto done;
     }
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
-	if (yang_keyword_get(ymod) != Y_MODULE)
-	    continue;
-	if (strcmp(yang_argument_get(ymod), name) != 0)
-	    continue;
-	if (rev == NULL)
-	    break; /* Matching revision is NULL, match that */
-	/* Get FIRST revision */
-	if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
-	    rev1 = yang_argument_get(yrev);
-	    if (strcmp(rev, rev1) == 0)
-		break; /* return this ymod */
-	}
+        if (yang_keyword_get(ymod) != Y_MODULE)
+            continue;
+        if (strcmp(yang_argument_get(ymod), name) != 0)
+            continue;
+        if (rev == NULL)
+            break; /* Matching revision is NULL, match that */
+        /* Get FIRST revision */
+        if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
+            rev1 = yang_argument_get(yrev);
+            if (strcmp(rev, rev1) == 0)
+                break; /* return this ymod */
+        }
     }
  done:
     return ymod;
@@ -688,14 +688,14 @@ yang_find_module_by_name_revision(yang_stmt  *yspec,
  */
 yang_stmt *
 yang_find_module_by_name(yang_stmt *yspec, 
-			 char      *name)
+                         char      *name)
 {
     yang_stmt *ymod = NULL;
     
     while ((ymod = yn_each(yspec, ymod)) != NULL) 
-	if ((yang_keyword_get(ymod) == Y_MODULE || yang_keyword_get(ymod) == Y_SUBMODULE) &&
-	    strcmp(yang_argument_get(ymod), name)==0)
-	    return ymod;
+        if ((yang_keyword_get(ymod) == Y_MODULE || yang_keyword_get(ymod) == Y_SUBMODULE) &&
+            strcmp(yang_argument_get(ymod), name)==0)
+            return ymod;
     return NULL;
 }
 
@@ -713,8 +713,8 @@ yang_find_module_by_name(yang_stmt *yspec,
  */
 static int
 ietf_yang_metadata_extension_cb(clicon_handle h,
-				yang_stmt    *yext,
-				yang_stmt    *ys)
+                                yang_stmt    *yext,
+                                yang_stmt    *ys)
 {
     int        retval = -1;
     char      *extname;
@@ -726,7 +726,7 @@ ietf_yang_metadata_extension_cb(clicon_handle h,
     modname = yang_argument_get(ymod);
     extname = yang_argument_get(yext);
     if (strcmp(modname, "ietf-yang-metadata") != 0 || strcmp(extname, "annotation") != 0)
-	goto ok;
+        goto ok;
     name = cv_string_get(yang_cv_get(ys));
     clicon_debug(1, "%s Enabled extension:%s:%s:%s", __FUNCTION__, modname, extname, name);
     /* XXX Nothing yet - this should signal that xml attribute annotations are allowed 
@@ -751,29 +751,29 @@ ietf_yang_metadata_extension_cb(clicon_handle h,
  */
 int
 yang_metadata_annotation_check(cxobj     *xa,
-			       yang_stmt *ymod,
-			       int       *ismeta)
+                               yang_stmt *ymod,
+                               int       *ismeta)
 {
     int        retval = -1;
     yang_stmt *yma = NULL;
     char      *name;
     cg_var    *cv;
-	    
+            
     /* Loop through annotations */
     while ((yma = yn_each(ymod, yma)) != NULL){ 
-	/* Assume here md:annotation is written using canonical prefix */
-	if (yang_keyword_get(yma) != Y_UNKNOWN)
-	    continue;
-	if (strcmp(yang_argument_get(yma), "md:annotation") != 0)
-	    continue;
-	if ((cv = yang_cv_get(yma)) != NULL &&
-	    (name = cv_string_get(cv)) != NULL){
-	    if (strcmp(name, xml_name(xa)) == 0){
-		/* XXX: yang_find(yma,Y_TYPE,0) */
-		*ismeta = 1;
-		break;
-	    }
-	}
+        /* Assume here md:annotation is written using canonical prefix */
+        if (yang_keyword_get(yma) != Y_UNKNOWN)
+            continue;
+        if (strcmp(yang_argument_get(yma), "md:annotation") != 0)
+            continue;
+        if ((cv = yang_cv_get(yma)) != NULL &&
+            (name = cv_string_get(cv)) != NULL){
+            if (strcmp(name, xml_name(xa)) == 0){
+                /* XXX: yang_find(yma,Y_TYPE,0) */
+                *ismeta = 1;
+                break;
+            }
+        }
     }
     retval = 0;
     // done:
@@ -794,7 +794,7 @@ yang_metadata_init(clicon_handle h)
      * yang-data extension for api-root top-level restconf function.
      */
     if (clixon_pseudo_plugin(h, "pseudo yang metadata", &cp) < 0)
-	goto done;
+        goto done;
     clixon_plugin_api_get(cp)->ca_extension = ietf_yang_metadata_extension_cb;
     retval = 0;
  done:
