@@ -74,16 +74,16 @@ struct curlbuf{
  */
 static size_t
 curl_get_cb(void  *ptr, 
-	    size_t size, 
-	    size_t nmemb, 
-	    void  *userdata)
+            size_t size, 
+            size_t nmemb, 
+            void  *userdata)
 {
     struct curlbuf *buf = (struct curlbuf *)userdata;
     int len;
 
     len = size*nmemb;
     if ((buf->b_buf = realloc(buf->b_buf, buf->b_len+len+1)) == NULL)
-	return 0;
+        return 0;
     memcpy(buf->b_buf+buf->b_len, ptr, len);
     buf->b_len += len;
     buf->b_buf[buf->b_len] = '\0';
@@ -105,10 +105,10 @@ curl_get_cb(void  *ptr,
  */
 int
 stream_url_get(char  *url, 
-	       char  *start,
-	       char  *stop, 
-	       int    timeout,
-	       char **getdata)
+               char  *start,
+               char  *stop, 
+               int    timeout,
+               char **getdata)
 {
     int        retval = -1;
     CURL      *curl;
@@ -120,18 +120,18 @@ stream_url_get(char  *url,
     int       ret;
 
     clicon_debug(1, "%s:  curl -G %s start-time=%s stop-time=%s",
-		 __FUNCTION__, url, start?start:"", stop?stop:"");
+                 __FUNCTION__, url, start?start:"", stop?stop:"");
     /* Set up curl for doing the communication with the controller */
     if ((curl = curl_easy_init()) == NULL) {
-	clicon_err(OE_PLUGIN, errno, "curl_easy_init");
-	goto done;
+        clicon_err(OE_PLUGIN, errno, "curl_easy_init");
+        goto done;
     }
     if ((cbf = cbuf_new()) == NULL)
-	goto done;
+        goto done;
 
     if ((err = malloc(CURL_ERROR_SIZE)) == NULL) {
-	clicon_debug(1, "%s: malloc", __FUNCTION__);
-	goto done;
+        clicon_debug(1, "%s: malloc", __FUNCTION__);
+        goto done;
     }
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
     /* HEADERS */
@@ -142,22 +142,22 @@ stream_url_get(char  *url,
     /* specify URL to get */ 
     cprintf(cbf, "%s", url);
     if (strlen(start)||strlen(stop))
-	cprintf(cbf, "?");
+        cprintf(cbf, "?");
     if (strlen(start)){
-	if ((encoded = curl_easy_escape(curl, start, 0)) == NULL)
-	    goto done;
-	cprintf(cbf, "start-time=%s", encoded);
-	curl_free(encoded);
-	encoded = NULL;
+        if ((encoded = curl_easy_escape(curl, start, 0)) == NULL)
+            goto done;
+        cprintf(cbf, "start-time=%s", encoded);
+        curl_free(encoded);
+        encoded = NULL;
     }
     if (strlen(stop)){
-	if (strlen(start))
-	    cprintf(cbf, "&");
-	if ((encoded = curl_easy_escape(curl, stop, 0)) == NULL)
-	    goto done;
-	cprintf(cbf, "stop-time=%s", encoded);
-	curl_free(encoded);
-	encoded = NULL;
+        if (strlen(start))
+            cprintf(cbf, "&");
+        if ((encoded = curl_easy_escape(curl, stop, 0)) == NULL)
+            goto done;
+        cprintf(cbf, "stop-time=%s", encoded);
+        curl_free(encoded);
+        encoded = NULL;
     }
     clicon_debug(1, "url: %s\n", cbuf_get(cbf));
     curl_easy_setopt(curl, CURLOPT_URL, cbuf_get(cbf));
@@ -172,25 +172,25 @@ stream_url_get(char  *url,
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);  
     ret = curl_easy_perform(curl);
     if (ret != CURLE_OPERATION_TIMEDOUT && ret != CURLE_OK){
-	fprintf(stderr, "curl: %s %d", err, ret);
-	goto done;
+        fprintf(stderr, "curl: %s %d", err, ret);
+        goto done;
     }
     if (getdata && cb.b_buf){
-	*getdata = cb.b_buf;
-	cb.b_buf = NULL;
+        *getdata = cb.b_buf;
+        cb.b_buf = NULL;
     }
     retval = 1;
   done:
     if (cbf)
-	cbuf_free(cbf);
+        cbuf_free(cbf);
     if (err)
-	free(err);
+        free(err);
     if (encoded)
-	curl_free(encoded);
+        curl_free(encoded);
     if (cb.b_buf)
-	free(cb.b_buf);
+        free(cb.b_buf);
     if (curl)
-	curl_easy_cleanup(curl);   /* cleanup */ 
+        curl_easy_cleanup(curl);   /* cleanup */ 
     return retval;
 }
 
@@ -198,14 +198,14 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s <options>*\n"
-	    "where options are:\n"
+            "where options are:\n"
             "\t-h\t\tHelp\n"
-    	    "\t-D <level>\tDebug level\n"
-	    "\t-u <url>\tURL (mandatory)\n"
-	    "\t-s <start>\tStart-time (format: 2018-10-21T19:22:16 OR +/-<x>s\n"
-	    "\t-e <end>\tStop-time (same format as start)\n"
-	    "\t-t <timeout>\tTimeout (default: 10)\n"
-	    , argv0);
+            "\t-D <level>\tDebug level\n"
+            "\t-u <url>\tURL (mandatory)\n"
+            "\t-s <start>\tStart-time (format: 2018-10-21T19:22:16 OR +/-<x>s\n"
+            "\t-e <end>\tStop-time (same format as start)\n"
+            "\t-t <timeout>\tTimeout (default: 10)\n"
+            , argv0);
 
     exit(0);
 }
@@ -229,60 +229,60 @@ main(int argc, char **argv)
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, "hDu:s:e:t:")) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv0);
-	    break;
-    	case 'D':
-	    dbg = 1;
-	    break;
-	case 'u': /* URL */
-	    url = optarg;
-	    break;
-	case 's': /* start-time */
-	    if (*optarg == '+' || *optarg == '-'){
-		struct timeval t;
-		t = now;
-		t.tv_sec += atoi(optarg);
-		if (time2str(t, start, sizeof(start)) < 0)
-		    goto done;
-	    }
-	    else
-		strcpy(start, optarg);
-	    break;
-	case 'e': /* stop-time */
-	    if (*optarg == '+' || *optarg == '-'){
-		struct timeval t;
-		t = now;
-		t.tv_sec += atoi(optarg);
-		if (time2str(t, stop, sizeof(stop)) < 0)
-		    goto done;
-	    }
-	    else
-		strcpy(stop, optarg);
-	    break;
-	case 't': /* timeout */
-	    timeout = atoi(optarg);
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv0);
+            break;
+        case 'D':
+            dbg = 1;
+            break;
+        case 'u': /* URL */
+            url = optarg;
+            break;
+        case 's': /* start-time */
+            if (*optarg == '+' || *optarg == '-'){
+                struct timeval t;
+                t = now;
+                t.tv_sec += atoi(optarg);
+                if (time2str(t, start, sizeof(start)) < 0)
+                    goto done;
+            }
+            else
+                strcpy(start, optarg);
+            break;
+        case 'e': /* stop-time */
+            if (*optarg == '+' || *optarg == '-'){
+                struct timeval t;
+                t = now;
+                t.tv_sec += atoi(optarg);
+                if (time2str(t, stop, sizeof(stop)) < 0)
+                    goto done;
+            }
+            else
+                strcpy(stop, optarg);
+            break;
+        case 't': /* timeout */
+            timeout = atoi(optarg);
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     clicon_debug_init(dbg, NULL);
     if (url == NULL)
-	usage(argv[0]);
+        usage(argv[0]);
     curl_global_init(0);
     if (stream_url_get(url, start, stop, timeout, &getdata) < 0)
-	goto done;
+        goto done;
     if (getdata)
-	fprintf(stdout, "%s", getdata);
+        fprintf(stdout, "%s", getdata);
     fflush(stdout);
  done:
     curl_global_cleanup();
     if (getdata)
-	free(getdata);
+        free(getdata);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return 0;
 }
 

@@ -86,22 +86,22 @@ static int _clixon_log_trunc = 0;
  * @param[in]  upto    log priority, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG (see syslog(3)).
  * @param[in]  flags   bitmask: if CLICON_LOG_STDERR, then print logs to stderr
  *                              if CLICON_LOG_SYSLOG, then print logs to syslog
- *				You can do a combination of both
+ *                              You can do a combination of both
  * @code
  *  clicon_log_init(__PROGRAM__, LOG_INFO, CLICON_LOG_STDERR); 
  * @endcode
  */
 int
 clicon_log_init(char         *ident, 
-		int           upto, 
-		int           flags)
+                int           upto, 
+                int           flags)
 {
     _logflags = flags;
     if (flags & CLICON_LOG_SYSLOG){
-	if (setlogmask(LOG_UPTO(upto)) < 0)
-	    /* Cant syslog here */
-	    fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno)); 
-	openlog(ident, LOG_PID, LOG_USER); /* LOG_PUSER is achieved by direct stderr logs in clicon_log */
+        if (setlogmask(LOG_UPTO(upto)) < 0)
+            /* Cant syslog here */
+            fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno)); 
+        openlog(ident, LOG_PID, LOG_USER); /* LOG_PUSER is achieved by direct stderr logs in clicon_log */
     }
     return 0;
 }
@@ -110,7 +110,7 @@ int
 clicon_log_exit(void)
 {
     if (_logfile)
-	fclose(_logfile);
+        fclose(_logfile);
     closelog(); /* optional */
     return 0;
 }
@@ -127,22 +127,22 @@ clicon_log_opt(char c)
 
     switch (c){
     case 's':
-	logdst = CLICON_LOG_SYSLOG;
-	break;
+        logdst = CLICON_LOG_SYSLOG;
+        break;
     case 'e':
-	logdst = CLICON_LOG_STDERR;
-	break;
+        logdst = CLICON_LOG_STDERR;
+        break;
     case 'o':
-	logdst = CLICON_LOG_STDOUT;
-	break;
+        logdst = CLICON_LOG_STDOUT;
+        break;
     case 'f':
-	logdst = CLICON_LOG_FILE;
-	break;
+        logdst = CLICON_LOG_FILE;
+        break;
     case 'n':
-	logdst = 0;
-	break;
+        logdst = 0;
+        break;
     default:
-	break;
+        break;
     } 
     return logdst;
 }
@@ -157,10 +157,10 @@ int
 clicon_log_file(char *filename)
 {
     if (_logfile)
-	fclose(_logfile);
+        fclose(_logfile);
     if ((_logfile = fopen(filename, "a")) == NULL){
-	fprintf(stderr, "fopen: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
-	return -1;
+        fprintf(stderr, "fopen: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        return -1;
     }
     return 0;
 }
@@ -199,8 +199,8 @@ flogtime(FILE *f)
     gettimeofday(&tv, NULL);
     localtime_r((time_t*)&tv.tv_sec, &tm);
     fprintf(f, "%s %2d %02d:%02d:%02d: ", 
-	    mon2name(tm.tm_mon), tm.tm_mday,
-	    tm.tm_hour, tm.tm_min, tm.tm_sec);
+            mon2name(tm.tm_mon), tm.tm_mday,
+            tm.tm_hour, tm.tm_min, tm.tm_sec);
     return 0;
 }
 
@@ -218,14 +218,14 @@ slogtime(void)
 
     /* Example: "Apr 14 11:30:52: " len=17+1 */
     if ((str = malloc(18)) == NULL){
-	fprintf(stderr, "%s: malloc: %s\n", __FUNCTION__, strerror(errno));
-	return NULL;
+        fprintf(stderr, "%s: malloc: %s\n", __FUNCTION__, strerror(errno));
+        return NULL;
     }
     gettimeofday(&tv, NULL);
     tm = localtime((time_t*)&tv.tv_sec);
     snprintf(str, 18, "%s %2d %02d:%02d:%02d: ", 
-	     mon2name(tm->tm_mon), tm->tm_mday,
-	     tm->tm_hour, tm->tm_min, tm->tm_sec);
+             mon2name(tm->tm_mon), tm->tm_mday,
+             tm->tm_hour, tm->tm_min, tm->tm_sec);
     return str;
 }
 #endif
@@ -238,29 +238,29 @@ slogtime(void)
  * @note syslog makes its own filtering, but if log to stderr we do it here
  * @see  clicon_debug
  */
-static int
+int
 clicon_log_str(int           level, 
-	       char         *msg)
+               char         *msg)
 {
     if (_logflags & CLICON_LOG_SYSLOG)
-	syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg);
+        syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg);
    /* syslog makes own filtering, we do it here:
     * if normal (not debug) then filter loglevels >= debug
     */
     if (_clixon_debug == 0 && level >= LOG_DEBUG)
-	goto done;
+        goto done;
     if (_logflags & CLICON_LOG_STDERR){
-	flogtime(stderr);
-	fprintf(stderr, "%s\n", msg);
+        flogtime(stderr);
+        fprintf(stderr, "%s\n", msg);
     }
     if (_logflags & CLICON_LOG_STDOUT){
-	flogtime(stdout);
-	fprintf(stdout, "%s\n", msg);
+        flogtime(stdout);
+        fprintf(stdout, "%s\n", msg);
     }
     if ((_logflags & CLICON_LOG_FILE) && _logfile){
-	flogtime(_logfile);
-	fprintf(_logfile, "%s\n", msg);
-	fflush(_logfile);
+        flogtime(_logfile);
+        fprintf(_logfile, "%s\n", msg);
+        fflush(_logfile);
     }
     /* Enable this if you want syslog in a stream. But there are problems with 
      * recursion
@@ -275,14 +275,14 @@ clicon_log_str(int           level,
  *                       is OR:d with facility == LOG_USER
  * @param[in]   format   Message to print as argv.
  * @code
-	clicon_log(LOG_NOTICE, "%s: dump to dtd not supported", __PROGRAM__);
+        clicon_log(LOG_NOTICE, "%s: dump to dtd not supported", __PROGRAM__);
  * @endcode
  * @see clicon_log_init clicon_log_str 
  * @see clicon_log_xml
  */
 int
 clicon_log(int         level, 
-	   const char *format, ...)
+           const char *format, ...)
 {
     va_list args;
     size_t  len;
@@ -297,20 +297,20 @@ clicon_log(int         level,
 
     /* Truncate long debug strings */
     if ((trunc = clicon_log_string_limit_get()) && trunc < len)
-	len = trunc;
+        len = trunc;
 
     /* allocate a message string exactly fitting the message length */
     if ((msg = malloc(len+1)) == NULL){
-	fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
-	goto done;
+        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        goto done;
     }
 
     /* second round: compute write message from format and args */
     va_start(args, format);
     if (vsnprintf(msg, len+1, format, args) < 0){
-	va_end(args);
-	fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
-	goto done;
+        va_end(args);
+        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        goto done;
     }
     va_end(args);
     /* Actually log it */
@@ -319,7 +319,7 @@ clicon_log(int         level,
     retval = 0;
   done:
     if (msg)
-	free(msg);
+        free(msg);
     return retval;
 }
 
@@ -337,19 +337,19 @@ clicon_log(int         level,
  *                      Note this is _not_ level from syslog(3)
  * @param[in] f         Debug-file. Open file where debug messages are directed. 
  *                      If not NULL, it overrides the clicon_log settings which is otherwise
- *			where debug messages are directed.
+ *                      where debug messages are directed.
  * @see clicon_log_file where a filename can be given
  */
 int
 clicon_debug_init(int   dbglevel,
-		  FILE *f)
+                  FILE *f)
 {
     _clixon_debug = dbglevel; /* Global variable */
     
     if (f != NULL){
-	if (_logfile)
-	    fclose(_logfile);
-	_logfile = f;
+        if (_logfile)
+            fclose(_logfile);
+        _logfile = f;
     }
     return 0;
 }
@@ -375,7 +375,7 @@ clicon_debug_get(void)
  */
 int
 clicon_debug(int         dbglevel, 
-	     const char *format, ...)
+             const char *format, ...)
 {
     va_list args;
     size_t  len;
@@ -384,7 +384,7 @@ clicon_debug(int         dbglevel,
     size_t  trunc;
     
     if (dbglevel > _clixon_debug) /* compare debug mask with global variable */
-	return 0;
+        return 0;
     /* first round: compute length of debug message */
     va_start(args, format);
     len = vsnprintf(NULL, 0, format, args);
@@ -392,26 +392,26 @@ clicon_debug(int         dbglevel,
 
     /* Truncate long debug strings */
     if ((trunc = clicon_log_string_limit_get()) && trunc < len)
-	len = trunc;
-	
+        len = trunc;
+        
     /* allocate a message string exactly fitting the message length */
     if ((msg = malloc(len+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: compute write message from format and args */
     va_start(args, format);
     if (vsnprintf(msg, len+1, format, args) < 0){
-	va_end(args);
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	goto done;
+        va_end(args);
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        goto done;
     }
     va_end(args);
     clicon_log_str(LOG_DEBUG, msg);
     retval = 0;
   done:
     if (msg)
-	free(msg);
+        free(msg);
     return retval;
 }
 
@@ -435,7 +435,7 @@ mon2name(int md)
     case 10: return "Nov";
     case 11: return "Dec";
     default:
-	break;
+        break;
     }
     return NULL;
 }

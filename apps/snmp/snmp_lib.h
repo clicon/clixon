@@ -74,7 +74,7 @@ struct clixon_snmp_handle {
     char         *sh_default;          /* MIB default value leaf only */
     cvec         *sh_cvk_orig;         /* Index/Key variable values (original) */
     netsnmp_table_registration_info *sh_table_info; /* To mimic table-handler in libnetsnmp code 
-						     * save only to free properly */
+                                                     * save only to free properly */
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;
 
@@ -93,11 +93,11 @@ void  *snmp_handle_clone(void *arg);
 void   snmp_handle_free(void *arg);
 int    type_yang2asn1(yang_stmt *ys, int *asn1_type, int extended);
 int    type_snmp2xml(yang_stmt                  *ys,
-		     int                        *asn1type,
-		     netsnmp_variable_list      *requestvb,
-		     netsnmp_agent_request_info *reqinfo,
-		     netsnmp_request_info       *requests,
-		     char                      **valstr);
+                     int                        *asn1type,
+                     netsnmp_variable_list      *requestvb,
+                     netsnmp_agent_request_info *reqinfo,
+                     netsnmp_request_info       *requests,
+                     char                      **valstr);
 int    type_xml2snmp_pre(char *xmlstr, yang_stmt *ys, char **snmpstr);
 int    type_xml2snmp(char *snmpstr, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
 int    snmp_yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);

@@ -98,20 +98,20 @@ module example {
            }
           }        
           container cedv {
-       		description 
-       		  "Container for test with explicit default value - EDV";
-           	leaf edv {
-       		  type string;
-           	  default "edv";
-           	}
+                description 
+                  "Container for test with explicit default value - EDV";
+                leaf edv {
+                  type string;
+                  default "edv";
+                }
           }
           container cdv {
-           	description 
-           	  "Container for test with  default value - DV";
-           	leaf dv {
-           	  type string;
-           	  default "dv";
-           	}
+                description 
+                  "Container for test with  default value - DV";
+                leaf dv {
+                  type string;
+                  default "dv";
+                }
           }
        }
      }
@@ -133,21 +133,21 @@ show("Show a particular state of the system"){
      xml("Show configuration and state as XML")
       default("With-default mode"){
           report-all @datamodelshow, cli_show_auto("candidate", "xml", false, false, "report-all");
-	  trim @datamodelshow, cli_show_auto("candidate", "xml", false, false, "trim");
-	  explicit @datamodelshow, cli_show_auto("candidate", "xml", false, false, "explicit");
-	  report-all-tagged @datamodelshow, cli_show_auto("candidate", "xml", false, false, "report-all-tagged");
-	  report-all-tagged-default @datamodelshow, cli_show_auto("candidate", "xml", false, false, "report-all-tagged-default");
-	  report-all-tagged-strip @datamodelshow, cli_show_auto("candidate", "xml", false, false, "report-all-tagged-strip");
+          trim @datamodelshow, cli_show_auto("candidate", "xml", false, false, "trim");
+          explicit @datamodelshow, cli_show_auto("candidate", "xml", false, false, "explicit");
+          report-all-tagged @datamodelshow, cli_show_auto("candidate", "xml", false, false, "report-all-tagged");
+          report-all-tagged-default @datamodelshow, cli_show_auto("candidate", "xml", false, false, "report-all-tagged-default");
+          report-all-tagged-strip @datamodelshow, cli_show_auto("candidate", "xml", false, false, "report-all-tagged-strip");
     }
     state("Show configuration and state")
      xml("Show configuration and state as XML")
       default("With-default mode"){
-    	  report-all @datamodelshow, cli_show_auto("running", "xml", false, true, "report-all");
-	  trim @datamodelshow, cli_show_auto("running", "xml", false, true, "trim");
-	  explicit @datamodelshow, cli_show_auto("running", "xml", false, true, "explicit");
-	  report-all-tagged @datamodelshow, cli_show_auto("running", "xml", false, true, "report-all-tagged");
-	  report-all-tagged-default @datamodelshow, cli_show_auto("running", "xml", false, true, "report-all-tagged-default");
-	  report-all-tagged-strip @datamodelshow, cli_show_auto("running", "xml", false, true, "report-all-tagged-strip");
+          report-all @datamodelshow, cli_show_auto("running", "xml", false, true, "report-all");
+          trim @datamodelshow, cli_show_auto("running", "xml", false, true, "trim");
+          explicit @datamodelshow, cli_show_auto("running", "xml", false, true, "explicit");
+          report-all-tagged @datamodelshow, cli_show_auto("running", "xml", false, true, "report-all-tagged");
+          report-all-tagged-default @datamodelshow, cli_show_auto("running", "xml", false, true, "report-all-tagged-default");
+          report-all-tagged-strip @datamodelshow, cli_show_auto("running", "xml", false, true, "report-all-tagged-strip");
     }
 }
 EOF
@@ -180,7 +180,7 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s $db -f $cfg -- -sS $fstate"
     start_backend  -s $db -f $cfg -- -sS $fstate
@@ -639,7 +639,7 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

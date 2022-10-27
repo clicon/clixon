@@ -42,7 +42,7 @@ tool. The existing [CLIgen](http://www.cligen.se) tool was for command-lines onl
 Users of Clixon currently include:
   * [Netgate](https://www.netgate.com) in particular the [Tnsr product](https://www.tnsr.com/product#architecture)
   * [CloudMon360](http://cloudmon360.com)
-  * [Grideye](http://hagsand.se/grideye)	
+  * [Grideye](http://hagsand.se/grideye)        
   * [Netclean](https://www.netclean.com/solutions/whitebox) # only CLIgen
   * [Prosilient's PTAnalyzer](https://prosilient.com) # only CLIgen
 

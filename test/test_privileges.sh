@@ -26,7 +26,7 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
@@ -68,7 +68,7 @@ function testrun(){
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err 
+        err 
     fi
     # Kill all backends regardless of user or pid files (we mess with them in this test)
     sudo pkill -f clixon_backend
@@ -78,42 +78,42 @@ function testrun(){
     new "start backend -f $cfg -s init -D $DBG -o CLICON_BACKEND_PRIVILEGES=$priv_mode -o CLICON_BACKEND_USER=$beuser"
     sudo -u $startuser $clixon_backend -f $cfg -s init -D $DBG -o CLICON_BACKEND_PRIVILEGES=$priv_mode -o CLICON_BACKEND_USER=$beuser
     if [ $? -ne 0 ]; then
-	err 
+        err 
     fi
     sleep 1 # wait for backend to exit
     
     pid=$(pgrep -f clixon_backend)    
     if [ $? -ne 0 ]; then
-	if [ $expecterr -eq 1 ]; then
-	    return 0
-	fi
-	err
+        if [ $expecterr -eq 1 ]; then
+            return 0
+        fi
+        err
     fi
 
     new "Number of clixon_backend processes"
     c=$(pgrep -c -f clixon_backend)
     if [ $c -ne 1 ]; then
-	err 1 $c
+        err 1 $c
     fi
 
-    new "waiting"
+    new "wait backend"
     wait_backend
 
     if [ $expecterr -eq 1 ]; then
-	err "Expected error"
+        err "Expected error"
     fi
     
     # Get uid now, and compare with expected user (tail to skip hdr)
     u=$(ps -p $pid -u | tail -1 | awk '{print $1}')
     if [ $u != $expectuser ]; then
-	err "$expectuser but user is $u"
+        err "$expectuser but user is $u"
     fi
 
     new "Kill backend"
     # Check if premature kill
     pid=$(pgrep -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

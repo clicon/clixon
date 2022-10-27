@@ -120,13 +120,13 @@
 
 void 
 clixon_api_path_parseerror(void *_ay,
-			   char *s) 
+                           char *s) 
 { 
     clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'", 
-	       _AY->ay_name,
-	       _AY->ay_linenum ,
-	       s, 
-	       clixon_api_path_parsetext); 
+               _AY->ay_name,
+               _AY->ay_linenum ,
+               s, 
+               clixon_api_path_parsetext); 
   return;
 }
 
@@ -146,11 +146,11 @@ api_path_parse_exit(clixon_api_path_yacc *ay)
  */
 static clixon_path *
 path_append(clixon_path *list,
-	    clixon_path *new)
+            clixon_path *new)
 {
     clicon_debug(3, "%s()", __FUNCTION__);
     if (new == NULL)
-	return NULL;
+        return NULL;
     ADDQ(new, list);
     return list;
 }
@@ -159,34 +159,34 @@ path_append(clixon_path *list,
  */
 static clixon_path *
 path_add_keyvalue(clixon_path *cp,
-		  cvec        *cvk)
+                  cvec        *cvk)
 {
     clicon_debug(3, "%s()", __FUNCTION__);
     if (cp)
-	cp->cp_cvk = cvk;
+        cp->cp_cvk = cvk;
     return cp;
 }
 
 static clixon_path *
 path_new(char *module_name,
-	 char *id)
+         char *id)
 {
     clixon_path *cp = NULL;
 
     clicon_debug(3, "%s(%s,%s)", __FUNCTION__, module_name, id);
     if ((cp = malloc(sizeof(*cp))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(cp, 0, sizeof(*cp));
     if (module_name)
-	if ((cp->cp_prefix = strdup(module_name)) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
+        if ((cp->cp_prefix = strdup(module_name)) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
     if ((cp->cp_id = strdup(id)) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	goto done;
+        clicon_err(OE_UNIX, errno, "strdup");
+        goto done;
     }
     return cp;
  done:
@@ -201,20 +201,20 @@ path_new(char *module_name,
  */
 static cvec *
 keyval_add(cvec   *cvv,
-	   cg_var *cv)
+           cg_var *cv)
 {
     clicon_debug(3, "%s()", __FUNCTION__);
     if (cv == NULL)
-	goto done;
+        goto done;
     if (cvv == NULL &&
-	(cvv = cvec_new(0)) == NULL) {
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
+        (cvv = cvec_new(0)) == NULL) {
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
     }
     if (cvec_append_var(cvv, cv) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_append_var");
-	cvv = NULL;
-	goto done;
+        clicon_err(OE_UNIX, errno, "cvec_append_var");
+        cvv = NULL;
+        goto done;
     }
     cv_free(cv);
  done:
@@ -231,18 +231,18 @@ keyval_set(char *name,
 
     clicon_debug(3, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
-	clicon_err(OE_UNIX, errno, "cv_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cv_new");
+        goto done;
     }
     if (name && cv_name_set(cv, name) == NULL){
-	clicon_err(OE_UNIX, errno, "cv_string_set");
-	cv = NULL;
-	goto done;
+        clicon_err(OE_UNIX, errno, "cv_string_set");
+        cv = NULL;
+        goto done;
     }
     if (cv_string_set(cv, val) == NULL){
-	clicon_err(OE_UNIX, errno, "cv_string_set");
-	cv = NULL;
-	goto done;
+        clicon_err(OE_UNIX, errno, "cv_string_set");
+        cv = NULL;
+        goto done;
     }
  done:
     return cv;

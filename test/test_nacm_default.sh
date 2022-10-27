@@ -44,7 +44,7 @@ module nacm-example{
   namespace "urn:example:nacm";
   prefix nex;
   import ietf-netconf-acm {
-	prefix nacm;
+        prefix nacm;
   }
   leaf x{
     type int32;
@@ -74,13 +74,13 @@ function testrun(){
     db=$8
 
     NACM=$(cat <<EOF
-    	       <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
-	            <enable-nacm>${enablenacm}</enable-nacm>
-		    <read-default>${readdefault}</read-default>
-		    <write-default>${writedefault}</write-default>
-		    <exec-default>${execdefault}</exec-default>
-		    <enable-external-groups>true</enable-external-groups>
-	       </nacm>
+               <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
+                    <enable-nacm>${enablenacm}</enable-nacm>
+                    <read-default>${readdefault}</read-default>
+                    <write-default>${writedefault}</write-default>
+                    <exec-default>${execdefault}</exec-default>
+                    <enable-external-groups>true</enable-external-groups>
+               </nacm>
 EOF
 )
     # Initial data
@@ -88,28 +88,28 @@ EOF
 
     # Use startup or set values with POST (below)
     if [ $db = startup ]; then
-	sudo echo "<${DATASTORE_TOP}>$NACM$XML</${DATASTORE_TOP}>" > $dir/startup_db
+        sudo echo "<${DATASTORE_TOP}>$NACM$XML</${DATASTORE_TOP}>" > $dir/startup_db
     fi
 
     if [ $BE -ne 0 ]; then     # Bring your own backend
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s $db -f $cfg"
-	start_backend -s $db -f $cfg
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s $db -f $cfg"
+        start_backend -s $db -f $cfg
     fi
 
     new "wait backend"
     wait_backend
     
     if [ $RC -ne 0 ]; then     # Bring your own restconf
-	new "kill old restconf daemon"
-	stop_restconf_pre
+        new "kill old restconf daemon"
+        stop_restconf_pre
 
-	new "start restconf daemon"
-	start_restconf -f $cfg
+        new "start restconf daemon"
+        start_restconf -f $cfg
     fi
 
     new "wait restconf"
@@ -118,27 +118,27 @@ EOF
     # Use  POST (instead of startup)
     # Note this only works because CLICON_NACM_DISABLED_ON_EMPTY is true
     if [ $db = init ]; then
-	# Must set NACM first
-	new "Set NACM using PATCH"
-	expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+xml" -d "<data>$NACM$XML</data>" $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
+        # Must set NACM first
+        new "Set NACM using PATCH"
+        expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+xml" -d "<data>$NACM$XML</data>" $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
-#	new "Set Initial data using POST"
-#	expectpart "$(curl -u guest:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d "$XML" $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
-	
+#       new "Set Initial data using POST"
+#       expectpart "$(curl -u guest:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" -d "$XML" $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
+        
 
     fi
     
     #----------- First get
     case "$ret1" in
-	0) ret='{"nacm-example:x":42}'
-	   status="HTTP/$HVER 200"
-	;;
-	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
-	   status="HTTP/$HVER 403"
-	   ;;
-	2) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
-	   status="HTTP/$HVER 404"
-	;;
+        0) ret='{"nacm-example:x":42}'
+           status="HTTP/$HVER 200"
+        ;;
+        1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+           status="HTTP/$HVER 403"
+           ;;
+        2) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+           status="HTTP/$HVER 404"
+        ;;
     esac
 
     new "get startup 42"
@@ -146,30 +146,30 @@ EOF
 
     #----------- Then edit
     case "$ret2" in
-	0) ret=''
-	   status="HTTP/$HVER 204"
-	;;
-	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
-	   status="HTTP/$HVER 403"
-	;;
+        0) ret=''
+           status="HTTP/$HVER 204"
+        ;;
+        1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+           status="HTTP/$HVER 403"
+        ;;
     esac
     new "edit new 99"
     expectpart "$(curl -u guest:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"nacm-example:x": 99}' $RCPROTO://localhost/restconf/data/nacm-example:x)" 0 "$status" "$ret"
 
     #----------- Then second get
     case "$ret3" in
-	0) ret='{"nacm-example:x":99}'
-	   status="HTTP/$HVER 200"
-	;;
-	1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
-	   status="HTTP/$HVER 403"
+        0) ret='{"nacm-example:x":99}'
+           status="HTTP/$HVER 200"
         ;;
-	2) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
-	   status="HTTP/$HVER 404"
-	   ;;
-	3) ret='{"nacm-example:x":42}'
-	   status="HTTP/$HVER 200"
-	   ;;
+        1) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}}'
+           status="HTTP/$HVER 403"
+        ;;
+        2) ret='{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
+           status="HTTP/$HVER 404"
+           ;;
+        3) ret='{"nacm-example:x":42}'
+           status="HTTP/$HVER 200"
+           ;;
     esac
 
     new "get 99"
@@ -178,19 +178,19 @@ EOF
     sleep $DEMSLEEP
 
     if [ $RC -ne 0 ]; then     # Bring your own restconf
-	new "Kill restconf daemon"
-	stop_restconf
+        new "Kill restconf daemon"
+        stop_restconf
     fi
     
     if [ $BE -ne 0 ]; then     # Bring your own backend
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 } # testrun
 

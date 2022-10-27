@@ -188,29 +188,29 @@ function testrun(){
     if $testu; then
     expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b -d '{"nacm-example:parameter":[{"name":"b","value":"92"}]}')" 0 "HTTP/$HVER 204"
     else
-	expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b -d '{"nacm-example:parameter":[{"name":"b","value":"92"}]}')" 0 "HTTP/$HVER 403"
-	# '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
+        expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b -d '{"nacm-example:parameter":[{"name":"b","value":"92"}]}')" 0 "HTTP/$HVER 403"
+        # '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"access denied"}}}'
     fi
 
     new "delete object b"
     if $testd; then
     expectpart "$(curl -u wilma:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 "HTTP/$HVER 204"
     else # XXX can vara olika
-	ret=$(curl -u wilma:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)
-	r=$?
-	if [ $r != 0 ]; then
-	    err "retval: $r" "0"
-	fi
-	match1=$(echo "$ret" | grep --null -o "HTTP/$HVER 403")
-	r1=$?
-	match2=$(echo "$ret" | grep --null -o "HTTP/$HVER 409")
-	r2=$?
-	if [ $r1 != 0 -a $r2 != 0 ]; then
-	    err "\"HTTP/$HVER 403\" or \"HTTP/$HVER 409\"" "$ret"
-	fi
-	# Ensure delete
-	new "ensure delete object b"
-	expectpart "$(curl -u andy:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 "HTTP/$HVER" # ignore error
+        ret=$(curl -u wilma:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)
+        r=$?
+        if [ $r != 0 ]; then
+            err "retval: $r" "0"
+        fi
+        match1=$(echo "$ret" | grep --null -o "HTTP/$HVER 403")
+        r1=$?
+        match2=$(echo "$ret" | grep --null -o "HTTP/$HVER 409")
+        r2=$?
+        if [ $r1 != 0 -a $r2 != 0 ]; then
+            err "\"HTTP/$HVER 403\" or \"HTTP/$HVER 409\"" "$ret"
+        fi
+        # Ensure delete
+        new "ensure delete object b"
+        expectpart "$(curl -u andy:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/nacm-example:table/parameter=a/next/parameter=b)" 0 "HTTP/$HVER" # ignore error
     fi
 
 } # testrun
@@ -221,13 +221,13 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
     
 if [ $RC -ne 0 ]; then
@@ -289,7 +289,7 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

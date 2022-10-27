@@ -4,16 +4,16 @@ module clixon-config {
     prefix cc;
 
     import clixon-restconf {
-	prefix clrc;
+        prefix clrc;
     }
     import clixon-autocli {
-	prefix autocli;
+        prefix autocli;
     }    
     organization
-	"Clicon / Clixon";
+        "Clicon / Clixon";
 
     contact
-	"Olof Hagsand <olof@hagsand.se>";
+        "Olof Hagsand <olof@hagsand.se>";
 
     description
       "Clixon configuration file
@@ -47,25 +47,25 @@ module clixon-config {
        ***** END LICENSE BLOCK *****";
 
     revision 2022-03-21 {
-	description
-	    "Added option:
+        description
+            "Added option:
                     CLICON_RESTCONF_API_ROOT
                     CLICON_NETCONF_BASE_CAPABILITY
                     CLICON_HTTP_DATA_PATH
                     CLICON_HTTP_DATA_ROOT
                     CLICON_CLI_EXPAND_LEAFREF
-	     Released in Clixon 5.7";
+             Released in Clixon 5.7";
     }
     revision 2022-02-11 {
-	description
-	    "Added option:
+        description
+            "Added option:
                     CLICON_LOG_STRING_LIMIT
                     CLICON_YANG_LIBRARY
              Changed default value:
-	            CLICON_MODULE_LIBRARY_RFC7895 to false
+                    CLICON_MODULE_LIBRARY_RFC7895 to false
              Removed (previosly marked) obsolete options:
-	            CLICON_RESTCONF_PATH
-	            CLICON_RESTCONF_PRETTY
+                    CLICON_RESTCONF_PATH
+                    CLICON_RESTCONF_PRETTY
                     CLICON_CLI_GENMODEL
                     CLICON_CLI_GENMODEL_TYPE
                     CLICON_CLI_GENMODEL_COMPLETION
@@ -74,8 +74,8 @@ module clixon-config {
              Released in Clixon 5.6";
     }
     revision 2021-12-05 {
-	description
-	    "Imported
+        description
+            "Imported
                     clixon-autocli.yang
              Removed (previosly marked) obsolete options:
                     CLICON_YANG_LIST_CHECK
@@ -88,321 +88,321 @@ module clixon-config {
              Released in Clixon 5.5";
     }
     revision 2021-11-11 {
-	description
-	    "Added option:
+        description
+            "Added option:
                     CLICON_PLUGIN_CALLBACK_CHECK
                     CLICON_YANG_AUGMENT_ACCEPT_BROKEN
-	     Modified options:
+             Modified options:
                     CLICON_CLI_GENMODEL_TYPE: added OC_COMPRESS enum
                     CLICON_YANG_DIR: recursive search
              Released in Clixon 5.4";
     }
     revision 2021-07-11 {
-	description
-	    "Added option:
+        description
+            "Added option:
                     CLICON_RESTCONF_HTTP2_PLAIN
              Removed default value:
-	            CLICON_RESTCONF_INSTALLDIR
+                    CLICON_RESTCONF_INSTALLDIR
              Marked as obsolete:
                      CLICON_YANG_LIST_CHECK
              Released in Clixon 5.3";
     }
     revision 2021-05-20 {
-	description
-	    "Added option:
-	            CLICON_RESTCONF_USER
-	            CLICON_RESTCONF_PRIVILEGES
-	            CLICON_RESTCONF_INSTALLDIR
-	            CLICON_RESTCONF_STARTUP_DONTUPDATE
+        description
+            "Added option:
+                    CLICON_RESTCONF_USER
+                    CLICON_RESTCONF_PRIVILEGES
+                    CLICON_RESTCONF_INSTALLDIR
+                    CLICON_RESTCONF_STARTUP_DONTUPDATE
                     CLICON_NETCONF_MESSAGE_ID_OPTIONAL
              Released in Clixon 5.2";
     }
     revision 2021-03-08 {
-	description
-	    "Added option:
+        description
+            "Added option:
                    CLICON_NETCONF_HELLO_OPTIONAL
-		   CLICON_CLI_AUTOCLI_EXCLUDE
-	           CLICON_XMLDB_UPGRADE_CHECKOLD
-	     Released in Clixon 5.1";
+                   CLICON_CLI_AUTOCLI_EXCLUDE
+                   CLICON_XMLDB_UPGRADE_CHECKOLD
+             Released in Clixon 5.1";
     }
     revision 2020-12-30 {
-	description
-	    "Added option:
+        description
+            "Added option:
                    CLICON_ANONYMOUS_USER
              Removed obsolete options:
-	           CLICON_RESTCONF_IPV4_ADDR
+                   CLICON_RESTCONF_IPV4_ADDR
                    CLICON_RESTCONF_IPV6_ADDR
-	           CLICON_RESTCONF_HTTP_PORT
+                   CLICON_RESTCONF_HTTP_PORT
                    CLICON_RESTCONF_HTTPS_PORT
-	           CLICON_SSL_SERVER_CERT
+                   CLICON_SSL_SERVER_CERT
                    CLICON_SSL_SERVER_KEY
-	           CLICON_SSL_CA_CERT
-	           CLICON_TRANSACTION_MOD
+                   CLICON_SSL_CA_CERT
+                   CLICON_TRANSACTION_MOD
              Marked as obsolete and moved to clixon-restconf.yang:
-	           CLICON_RESTCONF_PATH
+                   CLICON_RESTCONF_PATH
                    CLICON_RESTCONF_PRETTY";
     }
     revision 2020-11-03 {
-	description
-	    "Added CLICON_BACKEND_RESTCONF_PROCESS 
+        description
+            "Added CLICON_BACKEND_RESTCONF_PROCESS 
              Copied to clixon-restconf.yang and marked as obsolete:
-	           CLICON_RESTCONF_IPV4_ADDR
+                   CLICON_RESTCONF_IPV4_ADDR
                    CLICON_RESTCONF_IPV6_ADDR
-	           CLICON_RESTCONF_HTTP_PORT
+                   CLICON_RESTCONF_HTTP_PORT
                    CLICON_RESTCONF_HTTPS_PORT
-	           CLICON_SSL_SERVER_CERT
+                   CLICON_SSL_SERVER_CERT
                    CLICON_SSL_SERVER_KEY
-	           CLICON_SSL_CA_CERT
+                   CLICON_SSL_CA_CERT
              Removed obsolete option CLICON_TRANSACTION_MOD";
     }
     revision 2020-10-01 {
-	description
-	    "Added: CLICON_CONFIGDIR.";
+        description
+            "Added: CLICON_CONFIGDIR.";
     }
     revision 2020-08-17 {
-	description
-	    "Added: CLICON_RESTCONF_IPV4_ADDR, CLICON_RESTCONF_IPV6_ADDR, 
+        description
+            "Added: CLICON_RESTCONF_IPV4_ADDR, CLICON_RESTCONF_IPV6_ADDR, 
                     CLICON_RESTCONF_HTTP_PORT, CLICON_RESTCONF_HTTPS_PORT
                     CLICON_NAMESPACE_NETCONF_DEFAULT, 
                     CLICON_CLI_HELPSTRING_TRUNCATE, CLICON_CLI_HELPSTRING_LINES";
     }
     revision 2020-06-17 {
-	description
-	    "Added: CLICON_CLI_LINES_DEFAULT
+        description
+            "Added: CLICON_CLI_LINES_DEFAULT
              Added enum HIDE to CLICON_CLI_GENMODEL
              Added CLICON_SSL_SERVER_CERT, CLICON_SSL_SERVER_KEY, CLICON_SSL_CA_CERT
              Added CLICON_NACM_DISABLED_ON_EMPTY
              Removed default valude of CLICON_NACM_RECOVERY_USER";
     }
     revision 2020-04-23 {
-	description
-	    "Added: CLICON_YANG_UNKNOWN_ANYDATA  to treat unknown XML (wrt YANG) as anydata.
+        description
+            "Added: CLICON_YANG_UNKNOWN_ANYDATA  to treat unknown XML (wrt YANG) as anydata.
              Deleted: xml-stats non-config data (replaced by rpc stats in clixon-lib.yang)";
     }
     revision 2020-02-22 {
-	description
-	    "Added: search index extension,
+        description
+            "Added: search index extension,
              Added: clixon-stats state for clixon XML and memory statistics.
              Added: CLICON_CLI_BUF_START and CLICON_CLI_BUF_THRESHOLD for quadratic and linear
                     growth of CLIgen buffers (cbuf:s)
              Added: CLICON_VALIDATE_STATE_XML for controling validation of user state XML
-	     Added: CLICON_CLICON_YANG_LIST_CHECK to skip list key checks";
+             Added: CLICON_CLICON_YANG_LIST_CHECK to skip list key checks";
     }
     revision 2019-09-11 {
-	description
-	    "Added: CLICON_BACKEND_USER: drop of privileges to user,
+        description
+            "Added: CLICON_BACKEND_USER: drop of privileges to user,
                     CLICON_BACKEND_PRIVILEGES: how to drop privileges
                     CLICON_NACM_CREDENTIALS: If and how to check backend sock privileges with NACM
                     CLICON_NACM_RECOVERY_USER: Name of NACM recovery user.";
     }
     revision 2019-06-05 {
-	description
-	    "Added: CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE, 
+        description
+            "Added: CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE, 
                     CLICON_CLI_HIST_FILE, CLICON_CLI_HIST_SIZE, 
                     CLICON_XML_CHANGELOG, CLICON_XML_CHANGELOG_FILE;
              Renamed CLICON_XMLDB_CACHE to CLICON_DATASTORE_CACHE (changed type)
              Deleted: CLICON_XMLDB_PLUGIN, CLICON_USE_STARTUP_CONFIG";
     }
     revision 2019-03-05{ 
-	description
-	    "Changed URN. Changed top-level symbol to clixon-config.
+        description
+            "Changed URN. Changed top-level symbol to clixon-config.
              Released in Clixon 3.10";
     }
     revision 2019-02-06 {
-	description
-	    "Released in Clixon 3.9";
+        description
+            "Released in Clixon 3.9";
     }
     revision 2018-10-21 {
-	description
-	    "Released in Clixon 3.8";
+        description
+            "Released in Clixon 3.8";
     }
     extension search_index {
       description "This list argument acts as a search index using optimized binary search.
                   ";
     }
     typedef startup_mode{
-	description
-	    "Which method to boot/start clicon backend.
+        description
+            "Which method to boot/start clicon backend.
              The methods differ in how they reach a running state
              Which source database to commit from, if any.";
-	type enumeration{
-	    enum none{
-		description
-		"Do not touch running state
+        type enumeration{
+            enum none{
+                description
+                "Do not touch running state
                  Typically after crash when running state and db are synched";
-	    }
-	    enum init{
-		description
-		"Initialize running state.
+            }
+            enum init{
+                description
+                "Initialize running state.
                  Start with a completely clean running state";
-	    }
-	    enum running{
-		description
-		"Commit running db configuration into running state
+            }
+            enum running{
+                description
+                "Commit running db configuration into running state
                  After reboot if a persistent running db exists";
-	    }
-	    enum startup{
-		description
-		"Commit startup configuration into running state
+            }
+            enum startup{
+                description
+                "Commit startup configuration into running state
                  After reboot when no persistent running db exists";
-	    }
-	    enum running-startup{
-		description
-		    "First try running db, if it is empty try startup db.";
-	    }
-	}
+            }
+            enum running-startup{
+                description
+                    "First try running db, if it is empty try startup db.";
+            }
+        }
     }
     typedef datastore_format{
-	description
-	    "Datastore format.";
-	type enumeration{
-	    enum xml{
-		description
-		"Save and load xmldb as XML
+        description
+            "Datastore format.";
+        type enumeration{
+            enum xml{
+                description
+                "Save and load xmldb as XML
                  More specifically, such a file looks like: <config>...</config> provided
                  DATASTORE_TOP_SYMBOL is 'config'";
-	    }
-	    enum json{
-		description "Save and load xmldb as JSON";
-	    }
-	}
+            }
+            enum json{
+                description "Save and load xmldb as JSON";
+            }
+        }
     }
     typedef datastore_cache{
-	description
-	    "XML configuration, ie running/candididate/ datastore cache behaviour.";
-	type enumeration{
-	    enum nocache{
-		description "No cache always work directly with file";
-	    }
-	    enum cache{
-		description "Use in-memory cache. 
+        description
+            "XML configuration, ie running/candididate/ datastore cache behaviour.";
+        type enumeration{
+            enum nocache{
+                description "No cache always work directly with file";
+            }
+            enum cache{
+                description "Use in-memory cache. 
                              Make copies when accessing internally.";
-	    }
-	    enum cache-zerocopy{
-		description "Use in-memory cache and dont copy.
+            }
+            enum cache-zerocopy{
+                description "Use in-memory cache and dont copy.
                              Fastest but opens up for callbacks changing cache.";
-	    }
-	}
+            }
+        }
     }
     typedef nacm_mode{
-	description
-	    "Mode of RFC8341 Network Configuration Access Control Model.
+        description
+            "Mode of RFC8341 Network Configuration Access Control Model.
              It is unclear from the RFC whether NACM rules are internal
              in a configuration (ie embedded in regular config) or external/OOB
              in s separate, specific NACM-config";
-	type enumeration{
-	    enum disabled{
-		description "NACM is disabled";
-	    }
-	    enum internal{
-		description "NACM is enabled and available in the regular config";
-	    }
-	    enum external{
-		description "NACM is enabled and available in a separate config";
-	    }
-	}
+        type enumeration{
+            enum disabled{
+                description "NACM is disabled";
+            }
+            enum internal{
+                description "NACM is enabled and available in the regular config";
+            }
+            enum external{
+                description "NACM is enabled and available in a separate config";
+            }
+        }
     }
     typedef regexp_mode{
-	description
-	    "The regular expression engine Clixon uses in its validation of
+        description
+            "The regular expression engine Clixon uses in its validation of
              Yang patterns, and in the CLI.
              Yang RFC 7950 stipulates XSD XML Schema regexps
              according to W3 CXML Schema Part 2: Datatypes Second Edition,
              see http://www.w3.org/TR/2004/REC-xmlschema-2-20041028#regexs";
-	type enumeration{
-	    enum posix {
-		description
-		  "Translate XSD XML Schema regexp:s to Posix regexp. This is 
+        type enumeration{
+            enum posix {
+                description
+                  "Translate XSD XML Schema regexp:s to Posix regexp. This is 
                    not a complete translation, but can be considered good-enough
                    for Yang use-cases as defined by openconfig and yang-models
                    for example.";
-	    }
-	    enum libxml2 {
-		description
-		  "Use libxml2 XSD XML Schema regexp engine. This is a complete
+            }
+            enum libxml2 {
+                description
+                  "Use libxml2 XSD XML Schema regexp engine. This is a complete
                    XSD regexp engine..
                    Requires libxml2 to be available at configure time 
                    (HAVE_LIBXML2 should be set)";
-	    }
-	}
+            }
+        }
     }
     typedef priv_mode{
-	description
-	    "Privilege mode, used for dropping (or not) privileges to a non-provileged
+        description
+            "Privilege mode, used for dropping (or not) privileges to a non-provileged
              user after initialization";
-	type enumeration{
-	    enum none {
-		description
-		  "Make no drop/change in privileges.";
-	    }
-	    enum drop_perm {
-		description
-		  "After initialization, drop privileges permanently to a uid";
-	    }
-	    enum drop_temp {
-		description
-		  "After initialization, drop privileges temporarily to a euid";
-	    }
-	}
+        type enumeration{
+            enum none {
+                description
+                  "Make no drop/change in privileges.";
+            }
+            enum drop_perm {
+                description
+                  "After initialization, drop privileges permanently to a uid";
+            }
+            enum drop_temp {
+                description
+                  "After initialization, drop privileges temporarily to a euid";
+            }
+        }
     }
     typedef nacm_cred_mode{
-	description
-		"How NACM user should be matched with unix socket peer credentials.
+        description
+                "How NACM user should be matched with unix socket peer credentials.
                  This means nacm user must match socket peer user accessing the 
                  backend socket. For IP sockets only mode none makes sense.";
-	type enumeration{
-	    enum none {
-		description
-		  "Dont match NACM user to any user credentials. Any user can pose
+        type enumeration{
+            enum none {
+                description
+                  "Dont match NACM user to any user credentials. Any user can pose
                    as any other user. Set this for IP sockets, or dont use NACM.";
-	    }
-	    enum exact {
-		description
-		  "Exact match between NACM user and unix socket peer user.";
-	    }
-	    enum except {
-		description
-		  "Exact match between NACM user and unix socket peer user, except
+            }
+            enum exact {
+                description
+                  "Exact match between NACM user and unix socket peer user.";
+            }
+            enum except {
+                description
+                  "Exact match between NACM user and unix socket peer user, except
                    for root and www user (restconf).";
-	    }
-	}
+            }
+        }
     }
     typedef socket_address_family {
-	description "Address family for internal socket";
-	type enumeration{
-	    enum UNIX {
-		description "Unix domain socket";
-	    }
-	    enum IPv4 {
-		description "IPv4";
-	    }
-	    enum IPv6 {
-		description "IPv6";
-	    }
-	}
+        description "Address family for internal socket";
+        type enumeration{
+            enum UNIX {
+                description "Unix domain socket";
+            }
+            enum IPv4 {
+                description "IPv4";
+            }
+            enum IPv6 {
+                description "IPv6";
+            }
+        }
     }
     container clixon-config {
-	container restconf {
-	    uses clrc:clixon-restconf;
-	}
-	container autocli {
-	    uses autocli:clixon-autocli;
-	}
-	leaf-list CLICON_FEATURE {
-	    description
-		"Supported features as used by YANG feature/if-feature
-	        value is: <module>:<feature>, where <module> and <feature>
+        container restconf {
+            uses clrc:clixon-restconf;
+        }
+        container autocli {
+            uses autocli:clixon-autocli;
+        }
+        leaf-list CLICON_FEATURE {
+            description
+                "Supported features as used by YANG feature/if-feature
+                value is: <module>:<feature>, where <module> and <feature>
                 are either names, or the special character '*'.
                 *:* means enable all features
                 <module>:* means enable all features in the specified module
                 *:<feature> means enable the specific feature in all modules";
-	    type string;
+            type string;
         }
-	leaf-list CLICON_YANG_DIR {
-	    ordered-by user;
-	    type string;
-	    description
-		"Yang directory path for finding module and submodule files. 
+        leaf-list CLICON_YANG_DIR {
+            ordered-by user;
+            type string;
+            description
+                "Yang directory path for finding module and submodule files. 
                  A list of these options should be in the configuration. 
                  When loading a Yang module, Clixon searches this list in the order
                  they appear. 
@@ -410,19 +410,19 @@ module clixon-config {
                  directory itself. 
                  Ensure that YANG_INSTALLDIR (default 
                  /usr/local/share/clixon) is present in the path";
-	}
-	leaf CLICON_CONFIGFILE{
-	    type string;
-	    description
-		"Location of the main configuration-file.
+        }
+        leaf CLICON_CONFIGFILE{
+            type string;
+            description
+                "Location of the main configuration-file.
                 Default is CLIXON_DEFAULT_CONFIG=/usr/local/etc/clicon.xml set in configure. 
                 Note that due to bootstrapping, this value is not actually read from file
                 and therefore a default value would be meaningless.";
-	}
-	leaf CLICON_CONFIGDIR{
-	    type string;
-	    description
-		"Location of directory of extra configuration files. 
+        }
+        leaf CLICON_CONFIGDIR{
+            type string;
+            description
+                "Location of directory of extra configuration files. 
                 If not given, only main configfile is read.
                 If given, and if the directory exists, all files in this directory will be loaded
                 AFTER the main config file (CLICON_CONFIGFILE) in the following way:
@@ -432,47 +432,47 @@ module clixon-config {
                 If the dir is given but does not exist will result in an error.
                 You can override file setting with -E <dir> command-line option.
                 Note that due to bootstraping this value is only meaningful in the main config file";
-	}
-	leaf CLICON_YANG_MAIN_FILE {
-	    type string;
-	    description
-		"If specified load a yang module in a specific absolute filename.
+        }
+        leaf CLICON_YANG_MAIN_FILE {
+            type string;
+            description
+                "If specified load a yang module in a specific absolute filename.
                  This corresponds to the -y command-line option in most CLixon
                  programs.";
-	}
-	leaf CLICON_YANG_MAIN_DIR {
-	    type string;
-	    description
-		"If given, load all modules in this directory (all .yang files)
+        }
+        leaf CLICON_YANG_MAIN_DIR {
+            type string;
+            description
+                "If given, load all modules in this directory (all .yang files)
                  See also CLICON_YANG_DIR which specifies a path of dirs";
-	}
-	leaf CLICON_YANG_MODULE_MAIN {
-	    type string;
-	    description
-		"Option used to construct initial yang file: 
+        }
+        leaf CLICON_YANG_MODULE_MAIN {
+            type string;
+            description
+                "Option used to construct initial yang file: 
                  <module>[@<revision>]";
-	}
-	leaf CLICON_YANG_MODULE_REVISION {
-	    type string;
-	    description
-		"Option used to construct initial yang file: 
+        }
+        leaf CLICON_YANG_MODULE_REVISION {
+            type string;
+            description
+                "Option used to construct initial yang file: 
                  <module>[@<revision>].
                  Used together with CLICON_YANG_MODULE_MAIN";
-	}
-	leaf CLICON_YANG_REGEXP {
-	    type regexp_mode;
-	    default posix;
-	    description
-		"The regular expression engine Clixon uses in its validation of
+        }
+        leaf CLICON_YANG_REGEXP {
+            type regexp_mode;
+            default posix;
+            description
+                "The regular expression engine Clixon uses in its validation of
                  Yang patterns, and in the CLI.
                  There is a 'good-enough' posix translation mode and a complete
                  libxml2 mode";
-	}
-	leaf CLICON_YANG_UNKNOWN_ANYDATA{
-	    type boolean;
-	    default false;
-	    description
-		"Treat unknown XML/JSON nodes as anydata when loading from startup db.
+        }
+        leaf CLICON_YANG_UNKNOWN_ANYDATA{
+            type boolean;
+            default false;
+            description
+                "Treat unknown XML/JSON nodes as anydata when loading from startup db.
                  This does not apply to namespaces, which means a top-level node: xxx:yyy
                  is accepted only if yyy is unknown, not xxx.
                  Note that this option has several caveats which needs to be fixed. Please
@@ -482,28 +482,28 @@ module clixon-config {
                  means that sanity checks of erroneous XML/JSON may not be properly signalled.
                  Note this is similar to what happens to YANG nodes that are disabled by a false
                  if-feature statement.";
-	}
-	leaf CLICON_BACKEND_DIR {
-	    type string;
-	    description
-		"Location of backend .so plugins. Load all .so 
-       	         plugins in this dir as backend plugins";
-	}
-	leaf CLICON_BACKEND_REGEXP {
-	    type string;
-	    description
-		"Regexp of matching backend plugins in CLICON_BACKEND_DIR";
-	    default "(.so)$";
-	}
-	leaf CLICON_NETCONF_DIR{
-	    type string;
-	    description "Location of netconf (frontend) .so plugins";
-	}
-	leaf CLICON_NETCONF_HELLO_OPTIONAL {
-	    type boolean;
-	    default false;
-	    description
-		"This option relates to RFC 6241 Sec 8.1 Capabilies Exchange where it says:
+        }
+        leaf CLICON_BACKEND_DIR {
+            type string;
+            description
+                "Location of backend .so plugins. Load all .so 
+                 plugins in this dir as backend plugins";
+        }
+        leaf CLICON_BACKEND_REGEXP {
+            type string;
+            description
+                "Regexp of matching backend plugins in CLICON_BACKEND_DIR";
+            default "(.so)$";
+        }
+        leaf CLICON_NETCONF_DIR{
+            type string;
+            description "Location of netconf (frontend) .so plugins";
+        }
+        leaf CLICON_NETCONF_HELLO_OPTIONAL {
+            type boolean;
+            default false;
+            description
+                "This option relates to RFC 6241 Sec 8.1 Capabilies Exchange where it says:
                    When the NETCONF session is opened, each peer (both client and server) MUST 
                    send a <hello> element...
                  If true, an RPC can be processed directly with no preceeding hello message.
@@ -512,22 +512,22 @@ module clixon-config {
                  That is, if clixon receives an rpc with no previous hello message, an error
                  is returned, which conforms to the RFC.
                  Note this applies only to external NETCONF, not the internal (IPC) netconf";
-	}
-	leaf CLICON_NETCONF_MESSAGE_ID_OPTIONAL {
-	    type boolean;
-	    default false;
-	    description
-		"This option relates to RFC 6241 Sec 4.1 <rpc> Element
+        }
+        leaf CLICON_NETCONF_MESSAGE_ID_OPTIONAL {
+            type boolean;
+            default false;
+            description
+                "This option relates to RFC 6241 Sec 4.1 <rpc> Element
                  The <rpc> element has a mandatory attribute 'message-id', which is a
                  string chosen by the sender of the RPC.
                  If true, an RPC can be sent without a message-id.
                  This applies to both  external NETCONF and internal (IPC) netconf";
-	}
-	leaf CLICON_NETCONF_BASE_CAPABILITY {
-	    type int32;
-	    default 1;
-	    description
-		"This option relates to RFC6241 Sec 8.1 capabilities exchange. 
+        }
+        leaf CLICON_NETCONF_BASE_CAPABILITY {
+            type int32;
+            default 1;
+            description
+                "This option relates to RFC6241 Sec 8.1 capabilities exchange. 
                  This number is the highest netconf  base capability announced during
                  the hello protocol. 
                  Specifically, If the option number is 0, only 'urn:ietf:params:netconf:base:1.0'
@@ -536,27 +536,27 @@ module clixon-config {
                  Base capability '1' includes switching over to chunked framing as defined in
                  RFC6242 for example.
                  This only applies to the external NETCONF";
-	}
-	leaf CLICON_RESTCONF_API_ROOT {
-	    type string;
-	    default "/restconf";
-	    description
-		"The RESTCONF API root path
+        }
+        leaf CLICON_RESTCONF_API_ROOT {
+            type string;
+            default "/restconf";
+            description
+                "The RESTCONF API root path
                  See RFC 8040 Sec 1.16 and 3.1";
-	}
-	leaf CLICON_RESTCONF_DIR {
-	    type string;
-	    description
-		"Location of restconf (frontend) .so plugins. Load all .so
-       	         plugins in this dir as restconf code plugins
+        }
+        leaf CLICON_RESTCONF_DIR {
+            type string;
+            description
+                "Location of restconf (frontend) .so plugins. Load all .so
+                 plugins in this dir as restconf code plugins
                  Note: This cannot be moved to clixon-restconf.yang because it is needed
                  early in the bootstrapping phase, before clixon-restconf.yang config may
                  be loaded.";
-	}
-	leaf CLICON_RESTCONF_INSTALLDIR {
-	    type string;
-	    description
-		"If set, path to dir of clixon-restconf daemon binary as used by backend if 
+        }
+        leaf CLICON_RESTCONF_INSTALLDIR {
+            type string;
+            description
+                "If set, path to dir of clixon-restconf daemon binary as used by backend if 
                  started internally (run-time).
                  If this path is not set, clixon_restconf will be looked for according to
                  configured installdir: $(sbindir) (install-time)
@@ -567,57 +567,57 @@ module clixon-config {
                  Note on the installdir, DESTDIR is not included since according to man pages:
                      by specifying DESTDIR should not change the operation of the software in 
                      any way, so its value should not be included in any file contents. ";
-	}
-	leaf CLICON_RESTCONF_STARTUP_DONTUPDATE {
-	    type boolean;
-	    default false;
-	    description
-		"According to RFC 8040 Sec 1.4:
+        }
+        leaf CLICON_RESTCONF_STARTUP_DONTUPDATE {
+            type boolean;
+            default false;
+            description
+                "According to RFC 8040 Sec 1.4:
                     If the NETCONF server supports :startup, the RESTCONF server MUST automatically
                     update the [...] startup configuration [...] as a consequence of a RESTCONF
                     edit operation.
                  Setting this option disables this behaviour, ie the startup configuration is NOT
                  automatically updated.
                  If this option is false, the startup is autoamtically updated following the RFC";
-	}
-	leaf CLICON_RESTCONF_USER {
-	    type string;
-	    description 
-		"Run clixon_daemon as this user
+        }
+        leaf CLICON_RESTCONF_USER {
+            type string;
+            description 
+                "Run clixon_daemon as this user
                  When drop privileges is used, the daemon will drop privileges to this user.
                  In pre-5.2 code this was configured as compile-time constant WWWUSER with
                  default value www-data
                  See also CLICON_PRIVILEGES setting";
-	    default www-data;
-	}
-	leaf CLICON_RESTCONF_PRIVILEGES {
-	    type priv_mode;
-	    default drop_perm;
-	    description 
-		"Restconf privileges mode. 
+            default www-data;
+        }
+        leaf CLICON_RESTCONF_PRIVILEGES {
+            type priv_mode;
+            default drop_perm;
+            description 
+                "Restconf privileges mode. 
                  If drop_perm or drop_temp then drop privileges to CLICON_RESTCONF_USER.
                  If the platform does not support getresuid and accompanying functions, the mode
                  must be set to 'none'.
                  ";
-	}
-	leaf CLICON_RESTCONF_HTTP2_PLAIN {
-	    type boolean;
-	    default false;
-	    description
-		"Applies to plain (non-tls) http/2 ie when clixon is configured with --enable-nghttp2
+        }
+        leaf CLICON_RESTCONF_HTTP2_PLAIN {
+            type boolean;
+            default false;
+            description
+                "Applies to plain (non-tls) http/2 ie when clixon is configured with --enable-nghttp2
                  If false, disable direct and upgrade for plain(non-tls) HTTP/2.
                  If true, allow direct and upgrade for plain(non-tls) HTTP/2.
                  It may especially useful to disable in http/1 + http/2 mode to avoid the complex
                  upgrade/switch from http/1 to http/2. 
                  Note this also disables plain http/2 in prior-knowledge, that is, in http/2-only mode.
                  HTTP/2 in https(TLS) is unaffected";
-	}
-	leaf CLICON_HTTP_DATA_PATH {
-	    if-feature "clrc:http-data";
-	    default "/";
-	    type string;
-    	    description
-		"URI match for http-data serving files specified by CLICON_HTTP_DATA_ROOT.
+        }
+        leaf CLICON_HTTP_DATA_PATH {
+            if-feature "clrc:http-data";
+            default "/";
+            type string;
+            description
+                "URI match for http-data serving files specified by CLICON_HTTP_DATA_ROOT.
                  Must start with / (example: /)
                  Restconf paths at /restconf is always done before data (or streams) 
                  The PATH is appended to CLICON_HTTP_DATA_ROOT to find a file.
@@ -625,77 +625,77 @@ module clixon-config {
                  corresponding file is '/www/data/index.html'
                  Both feature clixon-restconf:http-data and restconf/enable-http-data 
                  must be enabled for this match to occur.";
-	}
-	leaf CLICON_HTTP_DATA_ROOT{ 
-	    if-feature "clrc:http-data";
-	    type string;
-	    default "/var/www";
-    	    description
-		"Location in file system where http-data files are looked for.
+        }
+        leaf CLICON_HTTP_DATA_ROOT{ 
+            if-feature "clrc:http-data";
+            type string;
+            default "/var/www";
+            description
+                "Location in file system where http-data files are looked for.
                  Soft links, '..', '~' etc are not followed. 
                  See also CLICON_HTTP_DATA_PATH
                  Both feature clixon-restconf:http-data and restconf/enable-http-data 
                  must be enabled for this match to occur.";
-	}
-	leaf CLICON_CLI_DIR {
-	    type string;
-	    description
-		"Directory containing frontend cli loadable plugins. Load all .so 
+        }
+        leaf CLICON_CLI_DIR {
+            type string;
+            description
+                "Directory containing frontend cli loadable plugins. Load all .so 
                  plugins in this directory as CLI object plugins";
-	}
-	leaf CLICON_CLISPEC_DIR {
-	    type string;
-	    description
-		"Directory containing frontend cligen spec files. Load all .cli 
-       	         files in this directory as CLI specification files.
+        }
+        leaf CLICON_CLISPEC_DIR {
+            type string;
+            description
+                "Directory containing frontend cligen spec files. Load all .cli 
+                 files in this directory as CLI specification files.
                  See also CLICON_CLISPEC_FILE.";
-	}
-	leaf CLICON_CLISPEC_FILE {
-	    type string;
-	    description
-		"Specific frontend cligen spec file as alternative or complement
+        }
+        leaf CLICON_CLISPEC_FILE {
+            type string;
+            description
+                "Specific frontend cligen spec file as alternative or complement
                  to CLICON_CLISPEC_DIR. Also available as -c in clixon_cli.";
-	}
-	leaf CLICON_CLI_MODE {
-	    type string;
-	    default "base";
-	    description
-		"Startup CLI mode. This should match a CLICON_MODE variable set in
+        }
+        leaf CLICON_CLI_MODE {
+            type string;
+            default "base";
+            description
+                "Startup CLI mode. This should match a CLICON_MODE variable set in
                  one of the clispec files";
-	}
-	leaf CLICON_CLI_VARONLY {
-	    type int32;
-	    default 1;
-	    description
-		"Dont include keys in cvec in cli vars callbacks, 
-          	 ie a & k in 'a <b> k <c>' ignored
+        }
+        leaf CLICON_CLI_VARONLY {
+            type int32;
+            default 1;
+            description
+                "Dont include keys in cvec in cli vars callbacks, 
+                 ie a & k in 'a <b> k <c>' ignored
                  (consider boolean)";
-	}
-	leaf CLICON_CLI_LINESCROLLING {
-	    type int32;
-	    default 1;
-	    description
-		"Set to 0 if you want CLI to wrap to next line.
+        }
+        leaf CLICON_CLI_LINESCROLLING {
+            type int32;
+            default 1;
+            description
+                "Set to 0 if you want CLI to wrap to next line.
                  Set to 1 if you  want CLI to scroll sideways when approaching 
                       right margin";
-	}
-	leaf CLICON_CLI_LINES_DEFAULT {
-	    type int32;
-	    default 24;
-	    description
-		"Set to number of CLI terminal rows for scrolling. 0 means unlimited.
+        }
+        leaf CLICON_CLI_LINES_DEFAULT {
+            type int32;
+            default 24;
+            description
+                "Set to number of CLI terminal rows for scrolling. 0 means unlimited.
                  The number is set statically UNLESS:
                  - there is no terminal, such as file input, in which case nr lines is 0
                  - there is a terminal sufficiently powerful to read the number of lines from
                    ioctl calls.
                  In other words, this setting is used ONLY on raw terminals such as serial
                  consoles.";
-	}
-	leaf CLICON_CLI_TAB_MODE {
-	    type int8;
-	    default 0;
-	    description
-		"Set CLI tab mode. This is a bitfield of three bits:
+        }
+        leaf CLICON_CLI_TAB_MODE {
+            type int8;
+            default 0;
+            description
+                "Set CLI tab mode. This is a bitfield of three bits:
                  bit 1: 0: <tab> shows short info of available commands
                         1: <tab> has same output as <?>, ie line per command
                  bit 2: 0: On <tab>, select a command over a <var> if both exist
@@ -703,71 +703,71 @@ module clixon-config {
                  bit 3: 0: On <tab>, never complete more than one level per <tab>
                         1: Complete all levels at once if possible.
                 ";
-	}
-	leaf CLICON_CLI_UTF8 {
-	    type int8;
-	    default 0;
-	    description
-		"Set to 1 to enable CLIgen UTF-8 experimental mode.
+        }
+        leaf CLICON_CLI_UTF8 {
+            type int8;
+            default 0;
+            description
+                "Set to 1 to enable CLIgen UTF-8 experimental mode.
                  Note that this feature is EXPERIMENTAL and may not properly handle 
                  scrolling, control characters, etc
                  (consider boolean)";
-	}
-	leaf CLICON_CLI_HIST_FILE {
-	    type string;
-	    default "~/.clixon_cli_history";
-	    description
-		"Name of CLI history file. If not given, history is not saved.
+        }
+        leaf CLICON_CLI_HIST_FILE {
+            type string;
+            default "~/.clixon_cli_history";
+            description
+                "Name of CLI history file. If not given, history is not saved.
                  The number of lines is saved is given by CLICON_CLI_HIST_SIZE.";
-	}
-	leaf CLICON_CLI_HIST_SIZE {
-	    type int32;
-	    default 300;
-	    description
-		"Number of lines to save in CLI history. 
+        }
+        leaf CLICON_CLI_HIST_SIZE {
+            type int32;
+            default 300;
+            description
+                "Number of lines to save in CLI history. 
                  Also, if CLICON_CLI_HIST_FILE is set, also the size in lines
                  of the saved history.";
-	}
-	leaf CLICON_CLI_BUF_START {
-	    type uint32;
-	    default 256;
-	    description
-		"CLIgen buffer (cbuf) initial size. 
+        }
+        leaf CLICON_CLI_BUF_START {
+            type uint32;
+            default 256;
+            description
+                "CLIgen buffer (cbuf) initial size. 
                  When the buffer needs to grow, the allocation grows quadratic up to a threshold
                  after which linear growth continues. 
                  See CLICON_CLI_BUF_THRESHOLD";
-	}
-	leaf CLICON_CLI_BUF_THRESHOLD {
-	    type uint32;
-	    default 65536;
-	    description
-		"CLIgen buffer (cbuf) threshold size.
+        }
+        leaf CLICON_CLI_BUF_THRESHOLD {
+            type uint32;
+            default 65536;
+            description
+                "CLIgen buffer (cbuf) threshold size.
                  When the buffer exceeds the threshold, the allocation grows by adding the threshold
                  value to the buffer length.
                  If 0, the growth continues with quadratic growth.
                  See CLICON_CLI_BUF_THRESHOLD";
-	}
-	leaf CLICON_CLI_HELPSTRING_TRUNCATE {
-	    type boolean;
-	    default false;
-	    description
-		"CLIgen help string on query (?): Truncate help string on right margin mode
+        }
+        leaf CLICON_CLI_HELPSTRING_TRUNCATE {
+            type boolean;
+            default false;
+            description
+                "CLIgen help string on query (?): Truncate help string on right margin mode
                  This only applies if you have long help strings, such as when generating them from a
                  spec such as the autocli";
-	}
-	leaf CLICON_CLI_HELPSTRING_LINES {
-	    type int32;
-	    default 0;
-	    description
-		"CLIgen help string on query (?) limit of number of lines to show, 0 means unlimited.
+        }
+        leaf CLICON_CLI_HELPSTRING_LINES {
+            type int32;
+            default 0;
+            description
+                "CLIgen help string on query (?) limit of number of lines to show, 0 means unlimited.
                  This only applies if you have multi-line help strings, such as when generating 
                  from a spec, such as in the autocli.";
-	}
-	leaf CLICON_CLI_EXPAND_LEAFREF {
-	    type boolean;
-	    default false;
-	    description
-		"If true, then CLI expansion of leafrefs (in expand_dbvar) are done using the 
+        }
+        leaf CLICON_CLI_EXPAND_LEAFREF {
+            type boolean;
+            default false;
+            description
+                "If true, then CLI expansion of leafrefs (in expand_dbvar) are done using the 
                  source values, not the references. 
                  This applies to the autocli but also in a handcrafted CLI if expand_dbvar is used. 
                  Example, assume ifref with leafref pointing to source if values:
@@ -777,48 +777,48 @@ module clixon-config {
                  If false, expansion will suggest b (destination ifref values)
                  While setting this value makes sense for adding new values, it makes less sense for
                  deleting.";
-	}
-	leaf CLICON_SOCK_FAMILY {
-	    type socket_address_family;
-	    default UNIX;
-	    description
-		"Address family for communicating with clixon_backend with one of:
+        }
+        leaf CLICON_SOCK_FAMILY {
+            type socket_address_family;
+            default UNIX;
+            description
+                "Address family for communicating with clixon_backend with one of:
                  Note IPv6 not implemented.
                  Note that UNIX socket makes credential check as follows:
                  (1) client needs rw access to the socket 
                  (2) NACM credentials can be checked according to CLICON_NACM_CREDENTIALS
                  Warning: Only UNIX (not IPv4) sockets have credential mechanism.
                  ";
-	}
-	leaf CLICON_SOCK {
-	    type string;
-	    mandatory true;
-	    description
-		"String description of Clixon Internal (IPC) socket that connects a clixon
+        }
+        leaf CLICON_SOCK {
+            type string;
+            mandatory true;
+            description
+                "String description of Clixon Internal (IPC) socket that connects a clixon
                  client to the clixon backend. This string is dependent on family.
                  If CLICON_SOCK_FAMILY is:
                  - UNIX: The value is a Unix socket path
                  - IPv4: IPv4 address string
                  - IPv6: IPv6 address string (NYI)";
-	}
-	leaf CLICON_SOCK_PORT {
-	    type int32;
-	    default 4535;
-	    description
-		"Inet socket port for communicating with clixon_backend 
+        }
+        leaf CLICON_SOCK_PORT {
+            type int32;
+            default 4535;
+            description
+                "Inet socket port for communicating with clixon_backend 
                  (only IPv4|IPv6)";
-	}
-	leaf CLICON_SOCK_GROUP {
-	    type string;
-	    default "clicon";
-	    description
-		"Group membership to access clixon_backend unix socket and gid for 
+        }
+        leaf CLICON_SOCK_GROUP {
+            type string;
+            default "clicon";
+            description
+                "Group membership to access clixon_backend unix socket and gid for 
                  deamon";
-	}
-	leaf CLICON_BACKEND_USER {
-	    type string;
-	    description 
-		"User name for backend (both foreground and daemonized).
+        }
+        leaf CLICON_BACKEND_USER {
+            type string;
+            description 
+                "User name for backend (both foreground and daemonized).
                  If you set this value the backend if started as root will lower 
                  the privileges after initialization. 
                  The ownership of files created by the backend will also be set to this
@@ -826,25 +826,25 @@ module clixon-config {
                  It also sets the backend unix socket owner to this user, but its group
                  is set by CLICON_SOCK_GROUP.
                  See also CLICON_BACKEND_PRIVILEGES setting";
-	}
-	leaf CLICON_BACKEND_PRIVILEGES {
-	    type priv_mode;
-	    default none;
-	    description 
-		"Backend privileges mode. 
+        }
+        leaf CLICON_BACKEND_PRIVILEGES {
+            type priv_mode;
+            default none;
+            description 
+                "Backend privileges mode. 
                  If CLICON_BACKEND_USER user is set, mode can be set to drop_perm or 
                  drop_temp.";
-	}
-	leaf CLICON_BACKEND_PIDFILE {
-	    type string;
-	    mandatory true;
-	    description "Process-id file of backend daemon";
-	}
-	leaf CLICON_BACKEND_RESTCONF_PROCESS {
-	    type boolean;
-	    default false;
-	    description
-		"If set, enable process-control of restconf daemon, ie start/stop restconf 
+        }
+        leaf CLICON_BACKEND_PIDFILE {
+            type string;
+            mandatory true;
+            description "Process-id file of backend daemon";
+        }
+        leaf CLICON_BACKEND_RESTCONF_PROCESS {
+            type boolean;
+            default false;
+            description
+                "If set, enable process-control of restconf daemon, ie start/stop restconf 
                  daemon internally from backend daemon.
                  Also, if set, restconf daemon queries backend for its config
                  if not set, restconf daemon reads its config from main config file
@@ -855,79 +855,81 @@ module clixon-config {
                  - on backend start make the state as configured
                  - on enable change, make the state as configured
                  Disable if you start the restconf daemon by other means.";
-	}
-	leaf CLICON_AUTOCOMMIT {
-	    type int32;
-	    default 0;
-	    description
-		"Set if all configuration changes are committed automatically 
+        }
+        leaf CLICON_AUTOCOMMIT {
+            type int32;
+            default 0;
+            description
+                "Set if all configuration changes are committed automatically 
                  on every edit change. Explicit commit commands unnecessary
+                 If confirm-commit, follow RESTCONF semantics: commit ephemeral but fail on
+                 persistent confirming commit.
                  (consider boolean)";
-	}
-	leaf CLICON_XMLDB_DIR {
-	    type string;
-	    mandatory true;
-	    description
-		"Directory where \"running\", \"candidate\" and \"startup\" are placed.";
-	}
-	leaf CLICON_DATASTORE_CACHE {
-	    type datastore_cache;
-	    default cache;
-	    description
-		"Clixon datastore cache behaviour. There are three values: no cache, 
+        }
+        leaf CLICON_XMLDB_DIR {
+            type string;
+            mandatory true;
+            description
+                "Directory where \"running\", \"candidate\" and \"startup\" are placed.";
+        }
+        leaf CLICON_DATASTORE_CACHE {
+            type datastore_cache;
+            default cache;
+            description
+                "Clixon datastore cache behaviour. There are three values: no cache, 
                  cache with copy, or cache without copy.
                  Note: 'cache' is default value and supported with regressions etc.
                  Others are experimental (in Clixon 5.5)";
-	}
-	leaf CLICON_XMLDB_FORMAT {
-	    type datastore_format;
-	    default xml;
-	    description	"XMLDB datastore format.";
-	}
-	leaf CLICON_XMLDB_PRETTY {
-	    type boolean;
-	    default true;
-	    description
-		"XMLDB datastore pretty print. 
+        }
+        leaf CLICON_XMLDB_FORMAT {
+            type datastore_format;
+            default xml;
+            description "XMLDB datastore format.";
+        }
+        leaf CLICON_XMLDB_PRETTY {
+            type boolean;
+            default true;
+            description
+                "XMLDB datastore pretty print. 
                  If set, insert spaces and line-feeds making the XML/JSON human
                  readable. If not set, make the XML/JSON more compact.";
-	}
-	leaf CLICON_XMLDB_MODSTATE {
-	    type boolean;
-	    default false;
-       	    description
-		"If set, tag datastores with RFC 8525 YANG Module Library 
+        }
+        leaf CLICON_XMLDB_MODSTATE {
+            type boolean;
+            default false;
+            description
+                "If set, tag datastores with RFC 8525 YANG Module Library 
                  info. When loaded at startup, a check is made if the system
                  yang modules match.
                  See also CLICON_MODULE_LIBRARY_RFC7895";
-	}
-	leaf CLICON_XMLDB_UPGRADE_CHECKOLD {
-	    type boolean;
-	    default true;
-	    description
-		"Controls behavior of check of startup in upgrade scenarios.
+        }
+        leaf CLICON_XMLDB_UPGRADE_CHECKOLD {
+            type boolean;
+            default true;
+            description
+                "Controls behavior of check of startup in upgrade scenarios.
                  If set, yang bind and check datastore syntax against the old Yang. 
                  The old yang must be accessible via YANG_DIR.
                  Will fail startup if old yang not found or if old config does not match.
                  If not set, no yang check of old config is made until it is upgraded to new yang.";
-	}
-	leaf CLICON_XML_CHANGELOG {
-	    type boolean;
-	    default false;
-	    description "If true enable automatic upgrade using yang clixon
+        }
+        leaf CLICON_XML_CHANGELOG {
+            type boolean;
+            default false;
+            description "If true enable automatic upgrade using yang clixon
                          changelog.";
-	}
-	leaf CLICON_XML_CHANGELOG_FILE {
-	    type string;
-	    description "Name of file with module revision changelog.
+        }
+        leaf CLICON_XML_CHANGELOG_FILE {
+            type string;
+            description "Name of file with module revision changelog.
                          If CLICON_XML_CHANGELOG is true, Clixon
                          reads the module changelog from this file.";
-	}
-	leaf CLICON_VALIDATE_STATE_XML {
-	    type boolean;
-	    default false;
-	    description
-		"Validate user state callback content.
+        }
+        leaf CLICON_VALIDATE_STATE_XML {
+            type boolean;
+            default false;
+            description
+                "Validate user state callback content.
                  Users may register state callbacks using ca_statedata callback
                  When set, the XML returned from the callback is validated after merging with 
                  the running db. If it fails, an internal error is returned to the originating 
@@ -936,12 +938,12 @@ module clixon-config {
                  Note that enabling currently causes a large performance overhead for large
                  lists, therefore it is recommended to enable it during development and debugging
                  but disable it in production, until this has been resolved.";
-	}
-	leaf CLICON_PLUGIN_CALLBACK_CHECK {
-	    type int32;
-	    default 0;
-	    description
-		"Debug option.
+        }
+        leaf CLICON_PLUGIN_CALLBACK_CHECK {
+            type int32;
+            default 0;
+            description
+                "Debug option.
                  If >0, make a check of resources before and after each plugin callback code
                  to check if the plugin violated resources.
                  This is primarily intended for development and debugging but may also be enabled 
@@ -954,12 +956,12 @@ module clixon-config {
                  The checks will be made for all callbacks as defined in struct clixon_plugin_api
                  as well as the CLIgen callbacks.
                  See https://clixon-docs.readthedocs.io/en/latest/backend.html#plugin-callback-guidelines";
-	}
-	leaf CLICON_YANG_AUGMENT_ACCEPT_BROKEN {
-	    type boolean;
-	    default false;
-	    description
-		"Debug option. If enabled, accept broken augments on the form:
+        }
+        leaf CLICON_YANG_AUGMENT_ACCEPT_BROKEN {
+            type boolean;
+            default false;
+            description
+                "Debug option. If enabled, accept broken augments on the form:
                     augment <target> { ... }
                  where <target> is an XPath which MUST be an existing node but for many
                  yangmodels do not.
@@ -969,77 +971,77 @@ module clixon-config {
                  - wrong XPaths, etc
                  This option should be enabled only for passing some testcases it should 
                  normally never be enabled in system YANGs that are used in a system.";
-	}
-	leaf CLICON_NAMESPACE_NETCONF_DEFAULT {
-	    type boolean;
-	    default false;
-	    description
-		"Undefine if you want to ensure strict namespace assignment on all netconf
+        }
+        leaf CLICON_NAMESPACE_NETCONF_DEFAULT {
+            type boolean;
+            default false;
+            description
+                "Undefine if you want to ensure strict namespace assignment on all netconf
                  and XML statements according to the standard RFC 6241.
                  If defined, top-level rpc calls need not have namespaces (eg using xmlns=<ns>) 
                  since the default NETCONF namespace will be assumed. (This is not standard).
                  See rfc6241 3.1: urn:ietf:params:xml:ns:netconf:base:1.0.";
 
-	}
-	leaf CLICON_STARTUP_MODE {
-	    type startup_mode;
-	    description "Which method to boot/start clicon backend";
-	}
+        }
+        leaf CLICON_STARTUP_MODE {
+            type startup_mode;
+            description "Which method to boot/start clicon backend";
+        }
         leaf CLICON_ANONYMOUS_USER {
-	    type string;
-	    default "anonymous";
-	    description
-		"Name of anonymous user.
+            type string;
+            default "anonymous";
+            description
+                "Name of anonymous user.
                  The current only case where such a user is used is in RESTCONF authentication when
                  auth-type=none and no known user is known.";
-	}
-	leaf CLICON_NACM_MODE {
-	    type nacm_mode;
-	    default disabled;
-	    description
-		"RFC8341 network access configuration control model (NACM) mode: disabled, 
+        }
+        leaf CLICON_NACM_MODE {
+            type nacm_mode;
+            default disabled;
+            description
+                "RFC8341 network access configuration control model (NACM) mode: disabled, 
                  in regular (internal) config or separate external file given by CLICON_NACM_FILE";
-	}
-	leaf CLICON_NACM_FILE {
-	    type string;
-	    description
-		"RFC8341 NACM external configuration file (if CLIXON_NACM_MODE is external)";
-	}
-	leaf CLICON_NACM_CREDENTIALS {
-	    type nacm_cred_mode;
-	    default except;
-	    description
-		"Verify nacm user credentials with unix socket peer cred.
+        }
+        leaf CLICON_NACM_FILE {
+            type string;
+            description
+                "RFC8341 NACM external configuration file (if CLIXON_NACM_MODE is external)";
+        }
+        leaf CLICON_NACM_CREDENTIALS {
+            type nacm_cred_mode;
+            default except;
+            description
+                "Verify nacm user credentials with unix socket peer cred.
                  This means nacm user must match unix user accessing the backend
                  socket.";
-	}
+        }
         leaf CLICON_NACM_RECOVERY_USER {
-	    type string;
-	    description
-		"RFC8341 defines a 'recovery session' as outside its scope. Clixon
+            type string;
+            description
+                "RFC8341 defines a 'recovery session' as outside its scope. Clixon
                  defines this user as having special admin rights to exempt from
                  all access control enforcements.
                  Note setting of CLICON_NACM_CREDENTIALS is important, if set to
                  exact for example, this user must exist and be used, otherwise
                  another user (such as root or www) can pose as the recovery user.";
-	}
-	leaf CLICON_NACM_DISABLED_ON_EMPTY {
-	    type boolean;
-	    default false;
-	    description
-		"RFC 8341 and ietf-netconf-acm@2018-02-14.yang defines enable-nacm as true by
+        }
+        leaf CLICON_NACM_DISABLED_ON_EMPTY {
+            type boolean;
+            default false;
+            description
+                "RFC 8341 and ietf-netconf-acm@2018-02-14.yang defines enable-nacm as true by
                  default. Since also write-default is deny by default it leads to that empty 
                  configs can not be edited.
                  This means that a startup config must always have a NACM configuration or
                  that the NACM recovery session is used to edit an empty config.
                  If this option is set, Clixon disables NACM if a datastore does NOT contain a
                  NACM config on load.";
-	}
-	leaf CLICON_YANG_LIBRARY {
-	    type boolean;
-	    default true;
-	    description
-		"Enable YANG library support as state data according to RFC8525. 
+        }
+        leaf CLICON_YANG_LIBRARY {
+            type boolean;
+            default true;
+            description
+                "Enable YANG library support as state data according to RFC8525. 
                  If enabled, module info will appear when doing netconf get or 
                  restconf GET.
                  The module state data is on the form:
@@ -1049,115 +1051,115 @@ module clixon-config {
                        <modules-state>...
                  See also CLICON_XMLDB_MODSTATE where the module state info is used to tag datastores
                  with module information.";
-	}
-	leaf CLICON_MODULE_LIBRARY_RFC7895 {
-	    type boolean;
-	    default false;
-	    description
-		"Enable RFC 7895 YANG Module library support as state data, instead of RFC8525.
+        }
+        leaf CLICON_MODULE_LIBRARY_RFC7895 {
+            type boolean;
+            default false;
+            description
+                "Enable RFC 7895 YANG Module library support as state data, instead of RFC8525.
                  Note CLICON_YANG_LIBRARY must be enabled for this to have effect.
                  See also CLICON_YANG_LIBRARY and CLICON_MODULE_SET_ID";
-	    status obsolete;
-	}
-	leaf CLICON_MODULE_SET_ID {
-	    type string;
-	    default "0";
-	    description
-		"Only if CLICON_YANG_LIBRARY enabled.
+            status obsolete;
+        }
+        leaf CLICON_MODULE_SET_ID {
+            type string;
+            default "0";
+            description
+                "Only if CLICON_YANG_LIBRARY enabled.
                  Contains a server-specific identifier representing the current set of modules 
                  and submodules.  The server MUST change the value of this leaf if the
                  information represented by the 'module' list instances has changed.
                  The /yang-library/content-id state-data leaf is set with this value
                  If CLICON_MODULE_LIBRARY_RFC7895 is enabled, it sets the modules-state/module-set-id 
                  instead";
-	}
-	leaf CLICON_STREAM_DISCOVERY_RFC5277 {
-	    type boolean;
-	    default false;
-	    description
-		"Enable event stream discovery as described in RFC 5277
+        }
+        leaf CLICON_STREAM_DISCOVERY_RFC5277 {
+            type boolean;
+            default false;
+            description
+                "Enable event stream discovery as described in RFC 5277
                  sections 3.2. If enabled, available streams will appear
                  when doing netconf get or restconf GET";
-	}
-	leaf CLICON_STREAM_DISCOVERY_RFC8040 {
-	    type boolean;
-	    default false;
-    	    description
-		"Enable monitoring information for the RESTCONF protocol from RFC 8040 as specified
+        }
+        leaf CLICON_STREAM_DISCOVERY_RFC8040 {
+            type boolean;
+            default false;
+            description
+                "Enable monitoring information for the RESTCONF protocol from RFC 8040 as specified
                  in module ietf-restconf-monitoring.yang
                  Note that the name of this option is misleading, the monitoring module defines state
                  for both capabilities and streams, not only streams which the name indicates.
                  Also, consider changinf default to true.";
-	}
-	leaf CLICON_STREAM_PATH {
-	    type string;
-    	    default "streams";
-    	    description
-		"Stream path appended to CLICON_STREAM_URL to form
+        }
+        leaf CLICON_STREAM_PATH {
+            type string;
+            default "streams";
+            description
+                "Stream path appended to CLICON_STREAM_URL to form
                  stream subscription URL.
                  See CLICON_RESTCONF_API_ROOT and CLICON_HTTP_DATA_ROOT
                  Should be changed to include '/' ";
-	}
-	leaf CLICON_STREAM_URL {
-	    type string;
-	    default "https://localhost";
-    	    description "Prepend this to CLICON_STREAM_PATH to form URL.
+        }
+        leaf CLICON_STREAM_URL {
+            type string;
+            default "https://localhost";
+            description "Prepend this to CLICON_STREAM_PATH to form URL.
                   See RFC 8040 Sec 9.3 location leaf: 
-	          'Contains a URL that represents the entry point for 
-		  establishing notification delivery via server-sent events.'
-		  Prepend this constant to name of stream.
+                  'Contains a URL that represents the entry point for 
+                  establishing notification delivery via server-sent events.'
+                  Prepend this constant to name of stream.
                   Example: https://localhost/streams/NETCONF. Note this is the
-		  external URL, not local behind a reverse-proxy.
+                  external URL, not local behind a reverse-proxy.
                   Note that -s <stream> command-line option to clixon_restconf
                   should correspond to last path of url (eg 'streams')";
-	}
-	leaf CLICON_STREAM_PUB {
-	    type string;
-    	    description "For stream publish using eg nchan, the base address
-	          to publish to. Example value: http://localhost/pub
+        }
+        leaf CLICON_STREAM_PUB {
+            type string;
+            description "For stream publish using eg nchan, the base address
+                  to publish to. Example value: http://localhost/pub
                   Example: stream NETCONF would then be pushed to
                   http://localhost/pub/NETCONF. 
                   Note this may be a local/provate URL behind reverse-proxy.
                   If not given, do NOT enable stream publishing using NCHAN.";
-	}
-	leaf CLICON_STREAM_RETENTION {
-	    type uint32;
-	    default 3600;
-	    units s;
-	    description "Retention for stream replay buffers in seconds, ie how much
+        }
+        leaf CLICON_STREAM_RETENTION {
+            type uint32;
+            default 3600;
+            units s;
+            description "Retention for stream replay buffers in seconds, ie how much
                          data to store before dropping. 0 means no retention";
 
-	}
-	leaf CLICON_LOG_STRING_LIMIT {
-	    type uint32;
-	    default 0;
-	    description
-		"Length limitation of debug and log strings. 
+        }
+        leaf CLICON_LOG_STRING_LIMIT {
+            type uint32;
+            default 0;
+            description
+                "Length limitation of debug and log strings. 
                  Especially useful for dynamic debug strings, such as packet dumps.
                  0 means no limit";
 
-	}
-	leaf-list CLICON_SNMP_MIB {
-	    description
-		"Names of MIBs that are used by clixon_snmp. 
+        }
+        leaf-list CLICON_SNMP_MIB {
+            description
+                "Names of MIBs that are used by clixon_snmp. 
                  For each MIB M, a YANG file M.yang is expected to be found.
                  If not found, an error is genereated.
                  The YANG file M.yang is typically generated from the source MIB but can also
                  be handcrafted. An example of such a script is scripts/mib_to_yang.sh.
                  A list of these options should be in the configuration.";
-	    type string;
-	}
-	leaf CLICON_SNMP_AGENT_SOCK {
-	    type string;
-	    default "unix:/tmp/clixon_snmp.sock";
-	    description
-		"String description of AgentX socket that clixon_snmp listens to.
+            type string;
+        }
+        leaf CLICON_SNMP_AGENT_SOCK {
+            type string;
+            default "unix:/tmp/clixon_snmp.sock";
+            description
+                "String description of AgentX socket that clixon_snmp listens to.
                  For example, for net-snmpd, the socket is created by using the following:
                       --agentXSocket=unix:<path>
                  This string currently only supports UNIX socket path.
                  Note also that the user should consider setting permissions appropriately
                  XXX: This should be in later yang revision and documented as added when
                  merged with master";
-	}
+        }
     }
 }

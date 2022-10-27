@@ -93,30 +93,30 @@
  */
 int
 xmldb_db2file(clicon_handle  h, 
-	      const char    *db,
-	      char         **filename)
+              const char    *db,
+              char         **filename)
 {
     int   retval = -1;
     cbuf *cb = NULL;
     char *dir;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
     }
     if ((dir = clicon_xmldb_dir(h)) == NULL){
-	clicon_err(OE_XML, errno, "dbdir not set");
-	goto done;
+        clicon_err(OE_XML, errno, "dbdir not set");
+        goto done;
     }
     cprintf(cb, "%s/%s_db", dir, db);
     if ((*filename = strdup4(cbuf_get(cb))) == NULL){
-	clicon_err(OE_UNIX, errno, "strdup");
-	goto done;
+        clicon_err(OE_UNIX, errno, "strdup");
+        goto done;
     }
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -130,10 +130,10 @@ int
 xmldb_validate_db(const char *db)
 {
     if (strcmp(db, "running") != 0 && 
-	strcmp(db, "candidate") != 0 && 
-	strcmp(db, "startup") != 0 && 
-	strcmp(db, "tmp") != 0)
-	return -1;
+        strcmp(db, "candidate") != 0 && 
+        strcmp(db, "startup") != 0 && 
+        strcmp(db, "tmp") != 0)
+        return -1;
     return 0;
 }
 
@@ -163,18 +163,18 @@ xmldb_disconnect(clicon_handle h)
     db_elmnt *de;
     
     if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
-	goto done;
+        goto done;
     for(i = 0; i < klen; i++) 
-	if ((de = clicon_hash_value(clicon_db_elmnt(h), keys[i], NULL)) != NULL){
-	    if (de->de_xml){
-		xml_free(de->de_xml);
-		de->de_xml = NULL;
-	    }
-	}
+        if ((de = clicon_hash_value(clicon_db_elmnt(h), keys[i], NULL)) != NULL){
+            if (de->de_xml){
+                xml_free(de->de_xml);
+                de->de_xml = NULL;
+            }
+        }
     retval = 0;
  done:
     if (keys)
-	free(keys);
+        free(keys);
     return retval;
 }
 
@@ -187,8 +187,8 @@ xmldb_disconnect(clicon_handle h)
   */
 int 
 xmldb_copy(clicon_handle h, 
-	   const char   *from, 
-	   const char   *to)
+           const char   *from, 
+           const char   *to)
 {
     int                 retval = -1;
     char               *fromfile = NULL;
@@ -199,60 +199,60 @@ xmldb_copy(clicon_handle h,
     cxobj              *x1 = NULL;  /* from */
     cxobj              *x2 = NULL;  /* to */
 
+    clicon_debug(1, "%s %s %s", __FUNCTION__, from, to);
     /* XXX lock */
     if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
-	/* Copy in-memory cache */
-	/* 1. "to" xml tree in x1 */
-	if ((de1 = clicon_db_elmnt_get(h, from)) != NULL)
-	    x1 = de1->de_xml;
-	if ((de2 = clicon_db_elmnt_get(h, to)) != NULL)
-	    x2 = de2->de_xml;
-	if (x1 == NULL && x2 == NULL){
-	    /* do nothing */
-	}
-	else if (x1 == NULL){  /* free x2 and set to NULL */
-	    xml_free(x2);
-	    x2 = NULL;
-	}
-	else  if (x2 == NULL){ /* create x2 and copy from x1 */
-	    if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
-		goto done;
-	    xml_flag_set(x2, XML_FLAG_TOP);
-	    if (xml_copy(x1, x2) < 0) 
-		goto done;
-	}
-	else{ /* copy x1 to x2 */
-	    xml_free(x2);
-	    if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
-		goto done;
-	    xml_flag_set(x2, XML_FLAG_TOP);
-	    if (xml_copy(x1, x2) < 0) 
-		goto done;
-	}
-	/* always set cache although not strictly necessary in case 1
-	 * above, but logic gets complicated due to differences with
-	 * de and de->de_xml */
-	if (de2)
-	    de0 = *de2;
-	de0.de_xml = x2; /* The new tree */
+        /* Copy in-memory cache */
+        /* 1. "to" xml tree in x1 */
+        if ((de1 = clicon_db_elmnt_get(h, from)) != NULL)
+            x1 = de1->de_xml;
+        if ((de2 = clicon_db_elmnt_get(h, to)) != NULL)
+            x2 = de2->de_xml;
+        if (x1 == NULL && x2 == NULL){
+            /* do nothing */
+        }
+        else if (x1 == NULL){  /* free x2 and set to NULL */
+            xml_free(x2);
+            x2 = NULL;
+        }
+        else  if (x2 == NULL){ /* create x2 and copy from x1 */
+            if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
+                goto done;
+            xml_flag_set(x2, XML_FLAG_TOP);
+            if (xml_copy(x1, x2) < 0) 
+                goto done;
+        }
+        else{ /* copy x1 to x2 */
+            xml_free(x2);
+            if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
+                goto done;
+            xml_flag_set(x2, XML_FLAG_TOP);
+            if (xml_copy(x1, x2) < 0) 
+                goto done;
+        }
+        /* always set cache although not strictly necessary in case 1
+         * above, but logic gets complicated due to differences with
+         * de and de->de_xml */
+        if (de2)
+            de0 = *de2;
+        de0.de_xml = x2; /* The new tree */
     }
     clicon_db_elmnt_set(h, to, &de0);
 
     /* Copy the files themselves (above only in-memory cache) */
     if (xmldb_db2file(h, from, &fromfile) < 0)
-	goto done;
+        goto done;
     if (xmldb_db2file(h, to, &tofile) < 0)
-	goto done;
+        goto done;
     if (clicon_file_copy(fromfile, tofile) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (fromfile)
-	free(fromfile);
+        free(fromfile);
     if (tofile)
-	free(tofile);
+        free(tofile);
     return retval;
-
 }
 
 /*! Lock database
@@ -264,14 +264,14 @@ xmldb_copy(clicon_handle h,
  */
 int 
 xmldb_lock(clicon_handle h, 
-	   const char   *db, 
-	   uint32_t      id)
+           const char   *db, 
+           uint32_t      id)
 {
     db_elmnt  *de = NULL;
     db_elmnt   de0 = {0,};
 
     if ((de = clicon_db_elmnt_get(h, db)) != NULL)
-	de0 = *de;
+        de0 = *de;
     de0.de_id = id;
     clicon_db_elmnt_set(h, db, &de0);
     clicon_debug(1, "%s: locked by %u",  db, id);
@@ -287,13 +287,13 @@ xmldb_lock(clicon_handle h,
  */
 int 
 xmldb_unlock(clicon_handle h, 
-	     const char   *db)
+             const char   *db)
 {
     db_elmnt  *de = NULL;
 
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-	de->de_id = 0;
-	clicon_db_elmnt_set(h, db, de);
+        de->de_id = 0;
+        clicon_db_elmnt_set(h, db, de);
     }
     return 0;
 }
@@ -306,7 +306,7 @@ xmldb_unlock(clicon_handle h,
  */
 int
 xmldb_unlock_all(clicon_handle h, 
-		 uint32_t      id)
+                 uint32_t      id)
 {
     int       retval = -1;
     char    **keys = NULL;
@@ -316,19 +316,19 @@ xmldb_unlock_all(clicon_handle h,
 
     /* get all db:s */
     if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
-	goto done;
+        goto done;
     /* Identify the ones locked by client id */
     for (i = 0; i < klen; i++) {
-	if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
-	    de->de_id == id){
-	    de->de_id = 0;
-	    clicon_db_elmnt_set(h, keys[i], de);
-	}
+        if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
+            de->de_id == id){
+            de->de_id = 0;
+            clicon_db_elmnt_set(h, keys[i], de);
+        }
     }
     retval = 0;
  done:
     if (keys)
-	free(keys);
+        free(keys);
     return retval;
 }
 
@@ -341,39 +341,46 @@ xmldb_unlock_all(clicon_handle h,
   */
 uint32_t
 xmldb_islocked(clicon_handle h, 
-	       const char   *db)
+               const char   *db)
 {
     db_elmnt  *de;
 
     if ((de = clicon_db_elmnt_get(h, db)) == NULL)
-	return 0;
+        return 0;
     return de->de_id;
 }
 
-/*! Check if db exists 
+/*! Check if db exists or is empty
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
  * @retval -1  Error
  * @retval  0  No it does not exist
  * @retval  1  Yes it exists
+ * @note  An empty datastore is treated as not existent so that a backend after dropping priviliges can re-create it
  */
 int 
 xmldb_exists(clicon_handle h, 
-	     const char   *db)
+             const char   *db)
 {
     int                 retval = -1;
     char               *filename = NULL;
     struct stat         sb;
 
+    clicon_debug(2, "%s %s", __FUNCTION__, db);
     if (xmldb_db2file(h, db, &filename) < 0)
-	goto done;
+        goto done;
     if (lstat(filename, &sb) < 0)
-	retval = 0;
-    else
-	retval = 1;
+        retval = 0;
+
+    else{
+        if (sb.st_size == 0)
+            retval = 0;
+        else
+            retval = 1;
+    }
  done:
     if (filename)
-	free(filename);
+        free(filename);
     return retval;
 }
 
@@ -385,16 +392,16 @@ xmldb_exists(clicon_handle h,
  */
 int 
 xmldb_clear(clicon_handle h, 
-	    const char   *db)
+            const char   *db)
 {
     cxobj    *xt = NULL;
     db_elmnt *de = NULL;
     
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-	if ((xt = de->de_xml) != NULL){
-	    xml_free(xt);
-	    de->de_xml = NULL;
-	}
+        if ((xt = de->de_xml) != NULL){
+            xml_free(xt);
+            de->de_xml = NULL;
+        }
     }
     return 0;
 }
@@ -404,28 +411,30 @@ xmldb_clear(clicon_handle h,
  * @param[in]  db  Database
  * @retval -1  Error
  * @retval  0  OK
+ * @note  Datastore is not actually deleted so that a backend after dropping priviliges can re-create it
  */
 int 
 xmldb_delete(clicon_handle h, 
-	     const char   *db)
+             const char   *db)
 {
     int                 retval = -1;
     char               *filename = NULL;
     struct stat         sb;
     
+    clicon_debug(2, "%s %s", __FUNCTION__, db);
     if (xmldb_clear(h, db) < 0)
-	goto done;
+        goto done;
     if (xmldb_db2file(h, db, &filename) < 0)
-	goto done;
+        goto done;
     if (lstat(filename, &sb) == 0)
-	if (truncate(filename, 0) < 0){
-	    clicon_err(OE_DB, errno, "truncate %s", filename);
-	    goto done;
-	}
+        if (truncate(filename, 0) < 0){
+            clicon_err(OE_DB, errno, "truncate %s", filename);
+            goto done;
+        }
     retval = 0;
  done:
     if (filename)
-	free(filename);
+        free(filename);
     return retval;
 }
 
@@ -437,7 +446,7 @@ xmldb_delete(clicon_handle h,
  */
 int 
 xmldb_create(clicon_handle h, 
-	     const char   *db)
+             const char   *db)
 {
     int                 retval = -1;
     char               *filename = NULL;
@@ -445,24 +454,25 @@ xmldb_create(clicon_handle h,
     db_elmnt           *de = NULL;
     cxobj              *xt = NULL;
 
+    clicon_debug(2, "%s %s", __FUNCTION__, db);
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-	if ((xt = de->de_xml) != NULL){
-	    xml_free(xt);
-	    de->de_xml = NULL;
-	}
+        if ((xt = de->de_xml) != NULL){
+            xml_free(xt);
+            de->de_xml = NULL;
+        }
     }
     if (xmldb_db2file(h, db, &filename) < 0)
-	goto done;
+        goto done;
     if ((fd = open(filename, O_CREAT|O_WRONLY, S_IRWXU)) == -1) {
-	clicon_err(OE_UNIX, errno, "open(%s)", filename);
-	goto done;
+        clicon_err(OE_UNIX, errno, "open(%s)", filename);
+        goto done;
     }
    retval = 0;
  done:
     if (filename)
-	free(filename);
+        free(filename);
     if (fd != -1)
-	close(fd);
+        close(fd);
     return retval;
 }
 
@@ -473,14 +483,14 @@ xmldb_create(clicon_handle h,
  */
 int
 xmldb_db_reset(clicon_handle h, 
-	       const char   *db)
+               const char   *db)
 {
     if (xmldb_exists(h, db) == 1){
-	if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
-	    return -1;
+        if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
+            return -1;
     }
     if (xmldb_create(h, db) < 0)
-	return -1;
+        return -1;
     return 0;
 }
 
@@ -491,12 +501,12 @@ xmldb_db_reset(clicon_handle h,
  */
 cxobj *
 xmldb_cache_get(clicon_handle h,
-		const char   *db)
+                const char   *db)
 {
     db_elmnt *de;
     
     if ((de = clicon_db_elmnt_get(h, db)) == NULL)
-	return NULL;
+        return NULL;
     return de->de_xml;
 }
 
@@ -511,13 +521,13 @@ xmldb_cache_get(clicon_handle h,
  */
 int
 xmldb_modified_get(clicon_handle h,
-		   const char   *db)
+                   const char   *db)
 {
     db_elmnt *de;
     
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-	clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
-	return -1;
+        clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
     }
     return de->de_modified;
 }
@@ -531,13 +541,13 @@ xmldb_modified_get(clicon_handle h,
  */
 int
 xmldb_empty_get(clicon_handle h,
-		const char   *db)
+                const char   *db)
 {
     db_elmnt *de;
     
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-	clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
-	return -1;
+        clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
     }
     return de->de_empty;
 }
@@ -553,14 +563,14 @@ xmldb_empty_get(clicon_handle h,
  */
 int
 xmldb_modified_set(clicon_handle h,
-		   const char   *db,
-		   int           value)
+                   const char   *db,
+                   int           value)
 {
     db_elmnt *de;
     
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-	clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
-	return -1;
+        clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
     }
     de->de_modified = value;
     return 0;
@@ -570,7 +580,7 @@ xmldb_modified_set(clicon_handle h,
  */
 int
 xmldb_print(clicon_handle h,
-	    FILE         *f)
+            FILE         *f)
 {
     int       retval = -1;
     db_elmnt *de = NULL;    
@@ -579,18 +589,63 @@ xmldb_print(clicon_handle h,
     int       i;
 
     if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
-	goto done;
+        goto done;
     for (i = 0; i < klen; i++){
-	/* XXX name */
-	if ((de = clicon_db_elmnt_get(h, keys[i])) == NULL)
-	    continue;
-	fprintf(f, "Datastore:  %s\n", keys[i]);
-	fprintf(f, "  Session:  %u\n", de->de_id);
-	fprintf(f, "  XML:      %p\n", de->de_xml);
-	fprintf(f, "  Modified: %d\n", de->de_modified);
-	fprintf(f, "  Empty:    %d\n", de->de_empty);
+        /* XXX name */
+        if ((de = clicon_db_elmnt_get(h, keys[i])) == NULL)
+            continue;
+        fprintf(f, "Datastore:  %s\n", keys[i]);
+        fprintf(f, "  Session:  %u\n", de->de_id);
+        fprintf(f, "  XML:      %p\n", de->de_xml);
+        fprintf(f, "  Modified: %d\n", de->de_modified);
+        fprintf(f, "  Empty:    %d\n", de->de_empty);
     }
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Rename an XML database
+ * @param[in]  h        Clicon handle
+ * @param[in]  db       Database name
+ * @param[in]  newdb    New Database name; if NULL, then same as old
+ * @param[in]  suffix   Suffix to append to new database name
+ * @retval    -1        Error
+ * @retval     0        OK
+ * @note if newdb and suffix are null, OK is returned as it is a no-op
+ */
+int
+xmldb_rename(clicon_handle h,
+             const char    *db,
+             const char    *newdb,
+             const char    *suffix)
+{
+    int    retval = -1;
+    char  *old;
+    char  *fname = NULL;
+    cbuf  *cb = NULL;
+
+    if ((xmldb_db2file(h, db, &old)) < 0)
+        goto done;
+    if (newdb == NULL && suffix == NULL)        // no-op
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "%s", newdb == NULL ? old : newdb);
+    if (suffix)
+        cprintf(cb, "%s", suffix);
+    fname = cbuf_get(cb);
+    if ((rename(old, fname)) < 0) {
+        clicon_err(OE_UNIX, errno, "rename: %s", strerror(errno));
+        goto done;
+    };
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (old)
+        free(old);
     return retval;
 }

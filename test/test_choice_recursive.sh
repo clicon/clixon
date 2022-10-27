@@ -37,43 +37,43 @@ module system{
     namespace "urn:example:config";
     prefix ex;
     container c {
-	choice top{
-	    case topA {
-		choice A{
-		    mandatory true;
-		    case A1{
-			leaf A1x{
-			    type string;
-			}
+        choice top{
+            case topA {
+                choice A{
+                    mandatory true;
+                    case A1{
+                        leaf A1x{
+                            type string;
+                        }
                     }
-		    case A2{
-			leaf A2x{
-			    type string;
-			}
+                    case A2{
+                        leaf A2x{
+                            type string;
+                        }
                     }
-		}
-		leaf Ay{
-		    type string;
-		}
-	    }
-	    case topB{
-		choice B{
-		    case B1{
-			leaf B1x{
-			    type string;
-			}
-		    }
-		    case B2{
-			leaf B2x{
-			    type string;
-			}
-		    }
-		}
-		leaf By{
-		    type string;
-		}
-	    }
-	}
+                }
+                leaf Ay{
+                    type string;
+                }
+            }
+            case topB{
+                choice B{
+                    case B1{
+                        leaf B1x{
+                            type string;
+                        }
+                    }
+                    case B2{
+                        leaf B2x{
+                            type string;
+                        }
+                    }
+                }
+                leaf By{
+                    type string;
+                }
+            }
+        }
     }
 }
 EOF
@@ -106,7 +106,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     sudo pkill -f clixon_backend # to be sure
     
@@ -167,7 +167,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

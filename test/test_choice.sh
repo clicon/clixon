@@ -111,16 +111,16 @@ module system{
        presence true;
          choice name {
              container udp {
-	       leaf udp1{
-	         type string;
+               leaf udp1{
+                 type string;
                }
-	       leaf udp2{
-	         type string;
+               leaf udp2{
+                 type string;
                }
              }
              container tcp {
-	       leaf tcp1{
-	         type string;
+               leaf tcp1{
+                 type string;
                }
              }
          }
@@ -131,27 +131,27 @@ module system{
      choice name {
         case a {
            leaf a1 {
-	      type string;
+              type string;
            }
            leaf a2 {
-	      mandatory true;
-	      type string;
+              mandatory true;
+              type string;
            }
         }
         case b {
            leaf b1 {
-	      type string;
+              type string;
            }
         }
         case c {
-	   leaf c1 {
-	      mandatory true;
-	      type string;
+           leaf c1 {
+              mandatory true;
+              type string;
            }
-	   choice c2 {
-	      case cc1 {
-	        leaf ccc1 {
-	          type string;
+           choice c2 {
+              case cc1 {
+                leaf ccc1 {
+                  type string;
                 }
               }
            }
@@ -166,14 +166,14 @@ module system{
      choice c {
        case c1 {
          leaf c1 {
-	    mandatory true;
-	    type string;
-	 }
-	 choice c1c {
-	    case c1c1 {
-	       leaf c1c1l {
+            mandatory true;
+            type string;
+         }
+         choice c1c {
+            case c1c1 {
+               leaf c1c1l {
                  type string;
- 	       }
+               }
             }
          }
       }
@@ -201,8 +201,8 @@ discard("Discard edits (rollback 0)"), discard_changes();
 
 show("Show a particular state of the system"){
     configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
-	    cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
-	    xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false, NULL);
+            cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
+            xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false, NULL);
     }
 }
 EOF
@@ -213,7 +213,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     sudo pkill -f clixon_backend # to be sure
     
@@ -479,7 +479,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

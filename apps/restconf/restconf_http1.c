@@ -82,9 +82,9 @@
  */
 static int 
 _http1_parse(clicon_handle  h,
-	     restconf_conn *rc,
-	     char          *str,
-	     const char    *filename)
+             restconf_conn *rc,
+             char          *str,
+             const char    *filename)
 {
     int               retval = -1;
     clixon_http1_yacc hy = {0,};
@@ -92,29 +92,29 @@ _http1_parse(clicon_handle  h,
 
     clicon_debug(1, "%s:\n%s", __FUNCTION__, str);
     if (strlen(str) == 0)
-	goto ok;
+        goto ok;
     hy.hy_parse_string = str;
     hy.hy_name = filename;
     hy.hy_h = h;
     hy.hy_rc = rc;
     hy.hy_linenum = 1;
     if (http1_scan_init(&hy) < 0)
-	goto done;
+        goto done;
     if (http1_parse_init(&hy) < 0)
-	goto done;
+        goto done;
     ret = clixon_http1_parseparse(&hy); /* yacc returns 1 on error */
     /* yacc/lex terminates parsing after headers. 
      * Look for body after headers assuming str terminating with \n\n\0 and then <body> */
     http1_parse_exit(&hy);
     http1_scan_exit(&hy);
     if (ret != 0){
-	if (filename)
-	    clicon_log(LOG_NOTICE, "HTTP1 error: on line %d in %s", hy.hy_linenum, filename);
-	else
-	    clicon_log(LOG_NOTICE, "HTTP1 error: on line %d", hy.hy_linenum);
-	if (clicon_errno == 0)
-	    clicon_err(OE_RESTCONF, 0, "HTTP1 parser error with no error code (should not happen)");
-	goto done;
+        if (filename)
+            clicon_log(LOG_NOTICE, "HTTP1 error: on line %d in %s", hy.hy_linenum, filename);
+        else
+            clicon_log(LOG_NOTICE, "HTTP1 error: on line %d", hy.hy_linenum);
+        if (clicon_errno == 0)
+            clicon_err(OE_RESTCONF, 0, "HTTP1 parser error with no error code (should not happen)");
+        goto done;
     }
  ok:
     retval = 0;
@@ -134,9 +134,9 @@ _http1_parse(clicon_handle  h,
  */
 int
 clixon_http1_parse_file(clicon_handle  h,
-			restconf_conn *rc,
-			FILE          *f,
-			const char    *filename)
+                        restconf_conn *rc,
+                        FILE          *f,
+                        const char    *filename)
 {
     int   retval = -1;
     int   ret;
@@ -149,43 +149,43 @@ clixon_http1_parse_file(clicon_handle  h,
 
     clicon_debug(1, "%s %s", __FUNCTION__, filename);
     if (f == NULL){
-	clicon_err(OE_RESTCONF, EINVAL, "f is NULL");
-	goto done;
+        clicon_err(OE_RESTCONF, EINVAL, "f is NULL");
+        goto done;
     }
     if ((buf = malloc(buflen)) == NULL){
-	clicon_err(OE_XML, errno, "malloc");
-	goto done;
+        clicon_err(OE_XML, errno, "malloc");
+        goto done;
     }
     memset(buf, 0, buflen);
     ptr = buf;
     while (1){
-	if ((ret = fread(&ch, 1, 1, f)) < 0){
-	    clicon_err(OE_XML, errno, "read");
-	    break;
-	}
-	if (ret != 0){
-	    buf[len++] = ch;
-	}
-	if (ret == 0) { /* buffer read */
-	    if (_http1_parse(h, rc, ptr, filename) < 0)
-		goto done;
-	    break;
-	}
-	if (len >= buflen-1){ /* Space: one for the null character */
-	    oldbuflen = buflen;
-	    buflen *= 2;
-	    if ((buf = realloc(buf, buflen)) == NULL){
-		clicon_err(OE_XML, errno, "realloc");
-		goto done;
-	    }
-	    memset(buf+oldbuflen, 0, buflen-oldbuflen);
-	    ptr = buf;
-	}
+        if ((ret = fread(&ch, 1, 1, f)) < 0){
+            clicon_err(OE_XML, errno, "read");
+            break;
+        }
+        if (ret != 0){
+            buf[len++] = ch;
+        }
+        if (ret == 0) { /* buffer read */
+            if (_http1_parse(h, rc, ptr, filename) < 0)
+                goto done;
+            break;
+        }
+        if (len >= buflen-1){ /* Space: one for the null character */
+            oldbuflen = buflen;
+            buflen *= 2;
+            if ((buf = realloc(buf, buflen)) == NULL){
+                clicon_err(OE_XML, errno, "realloc");
+                goto done;
+            }
+            memset(buf+oldbuflen, 0, buflen-oldbuflen);
+            ptr = buf;
+        }
     } /* while */
     retval = 0;
  done:
     if (buf)
-	free(buf);
+        free(buf);
     return retval;
 }
 
@@ -199,8 +199,8 @@ clixon_http1_parse_file(clicon_handle  h,
  */
 int 
 clixon_http1_parse_string(clicon_handle  h,
-			  restconf_conn *rc,
-			  char          *str)
+                          restconf_conn *rc,
+                          char          *str)
 {
     return _http1_parse(h, rc, str, "http1-parse");
 }
@@ -219,16 +219,16 @@ clixon_http1_parse_string(clicon_handle  h,
  */
 int 
 clixon_http1_parse_buf(clicon_handle  h,
-		       restconf_conn *rc,
-		       char          *buf,
-		       size_t         n)
+                       restconf_conn *rc,
+                       char          *buf,
+                       size_t         n)
 {
     char *str = NULL;
     int   ret;
     
     if ((str = malloc(n+1)) == NULL){
-	clicon_err(OE_RESTCONF, errno, "malloc");
-	return -1;
+        clicon_err(OE_RESTCONF, errno, "malloc");
+        return -1;
     }
     memcpy(str, buf, n);
     str[n] = '\0';
@@ -250,43 +250,43 @@ clixon_http1_parse_buf(clicon_handle  h,
  */
 static int
 http1_upgrade_http2(clicon_handle         h,
-		    restconf_stream_data *sd)
+                    restconf_stream_data *sd)
 {
     int    retval = -1;
     char  *str;
     char  *settings;
     cxobj *xerr = NULL;
-	
+        
     if ((str = restconf_param_get(h, "HTTP_UPGRADE")) != NULL &&
-	clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 1){
-	/* Only accept "h2c" */
-	if (strcmp(str, "h2c") != 0){
-	    if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid upgrade token") < 0)
-		goto done; 
-	    if (api_return_err0(h, sd, xerr, 1, YANG_DATA_JSON, 0) < 0)
-		goto done;
-	    if (xerr)
-		xml_free(xerr);
-	}
-	else {
-	    if (restconf_reply_header(sd, "Connection", "Upgrade") < 0)
-		goto done;
-	    if (restconf_reply_header(sd, "Upgrade", "h2c") < 0)
-		goto done;
-	    if (restconf_reply_send(sd, 101, NULL, 0) < 0) /* Switch protocol */
-		goto done;
-	    /* Signal http/2 upgrade to http/2 to upper restconf_connection handling */
-	    sd->sd_upgrade2 = 1;
-	    if ((settings = restconf_param_get(h, "HTTP_HTTP2_Settings")) != NULL &&
-		(sd->sd_settings2 = (uint8_t*)strdup(settings)) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		goto done;
-	    }
-	}
-	retval = 0; /* Yes, upgrade or error */
+        clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 1){
+        /* Only accept "h2c" */
+        if (strcmp(str, "h2c") != 0){
+            if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid upgrade token") < 0)
+                goto done; 
+            if (api_return_err0(h, sd, xerr, 1, YANG_DATA_JSON, 0) < 0)
+                goto done;
+            if (xerr)
+                xml_free(xerr);
+        }
+        else {
+            if (restconf_reply_header(sd, "Connection", "Upgrade") < 0)
+                goto done;
+            if (restconf_reply_header(sd, "Upgrade", "h2c") < 0)
+                goto done;
+            if (restconf_reply_send(sd, 101, NULL, 0) < 0) /* Switch protocol */
+                goto done;
+            /* Signal http/2 upgrade to http/2 to upper restconf_connection handling */
+            sd->sd_upgrade2 = 1;
+            if ((settings = restconf_param_get(h, "HTTP_HTTP2_Settings")) != NULL &&
+                (sd->sd_settings2 = (uint8_t*)strdup(settings)) == NULL){
+                clicon_err(OE_UNIX, errno, "strdup");
+                goto done;
+            }
+        }
+        retval = 0; /* Yes, upgrade or error */
     }
     else
-	retval = 1; /* No upgrade, proceed with request */
+        retval = 1; /* No upgrade, proceed with request */
  done:
     return retval;
 }
@@ -296,7 +296,7 @@ http1_upgrade_http2(clicon_handle         h,
  */
 static int
 restconf_http1_reply(restconf_conn        *rc,
-		     restconf_stream_data *sd)
+                     restconf_stream_data *sd)
 {
     int     retval = -1;
     cg_var *cv;
@@ -310,32 +310,32 @@ restconf_http1_reply(restconf_conn        *rc,
      * [RFC7231]).
      */
     if (sd->sd_code != 204 && sd->sd_code > 199)
-	if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
-	    goto done;	
+        if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
+            goto done;  
     /* Create reply and write headers */
 #if 0 /* XXX need some keep-alive logic here */
     /* protocol is HTTP/1.0 and clients wants to keep established */
     if (restconf_reply_header(sd, "Connection", "keep-alive") < 0)
-	goto done;
+        goto done;
 #endif
     cprintf(sd->sd_outp_buf, "HTTP/%u.%u %u %s\r\n",
-	    rc->rc_proto_d1,
-	    rc->rc_proto_d2,
-	    sd->sd_code,
-	    restconf_code2reason(sd->sd_code));
+            rc->rc_proto_d1,
+            rc->rc_proto_d2,
+            sd->sd_code,
+            restconf_code2reason(sd->sd_code));
     /* Loop over headers */
     cv = NULL;
     while ((cv = cvec_each(sd->sd_outp_hdrs, cv)) != NULL)
-	cprintf(sd->sd_outp_buf, "%s: %s\r\n", cv_name_get(cv), cv_string_get(cv));
+        cprintf(sd->sd_outp_buf, "%s: %s\r\n", cv_name_get(cv), cv_string_get(cv));
     cprintf(sd->sd_outp_buf, "\r\n");
     /* Write a body */
     if (sd->sd_body){
-	if (cbuf_append_buf(sd->sd_outp_buf, cbuf_get(sd->sd_body), cbuf_len(sd->sd_body)) < 0){
-	    clicon_err(OE_RESTCONF, errno, "cbuf_append_buf");
-	    goto done;
-	}
-	cbuf_free(sd->sd_body);
-	sd->sd_body = NULL;
+        if (cbuf_append_buf(sd->sd_outp_buf, cbuf_get(sd->sd_body), cbuf_len(sd->sd_body)) < 0){
+            clicon_err(OE_RESTCONF, errno, "cbuf_append_buf");
+            goto done;
+        }
+        cbuf_free(sd->sd_body);
+        sd->sd_body = NULL;
     }
     retval = 0;
  done:
@@ -348,7 +348,7 @@ restconf_http1_reply(restconf_conn        *rc,
  */
 int
 restconf_http1_path_root(clicon_handle  h,
-			 restconf_conn *rc)
+                         restconf_conn *rc)
 {
     int                   retval = -1;
     restconf_stream_data *sd = NULL;
@@ -364,68 +364,68 @@ restconf_http1_path_root(clicon_handle  h,
     clicon_debug(1, "------------");
     pretty = restconf_pretty_get(h);
     if ((sd = restconf_stream_find(rc, 0)) == NULL){
-	clicon_err(OE_RESTCONF, EINVAL, "No stream_data");
-	goto done;
+        clicon_err(OE_RESTCONF, EINVAL, "No stream_data");
+        goto done;
     }
     /* Sanity check */
     if (restconf_param_get(h, "REQUEST_URI") == NULL){
-	if (netconf_invalid_value_xml(&xerr, "protocol", "Missing REQUEST_URI ") < 0)
-	    goto done;
-	/* Select json as default since content-type header may not be accessible yet */
-	if (api_return_err0(h, sd, xerr, pretty, YANG_DATA_JSON, 0) < 0)
-	    goto done;
-	goto fail;
+        if (netconf_invalid_value_xml(&xerr, "protocol", "Missing REQUEST_URI ") < 0)
+            goto done;
+        /* Select json as default since content-type header may not be accessible yet */
+        if (api_return_err0(h, sd, xerr, pretty, YANG_DATA_JSON, 0) < 0)
+            goto done;
+        goto fail;
     }
     if ((rc->rc_proto != HTTP_10 && rc->rc_proto != HTTP_11) ||
-	rc->rc_proto_d1 != 1 ||
-	(rc->rc_proto_d2 != 0 && rc->rc_proto_d2 != 1)){
-	if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid HTTP version number") < 0)
-	    goto done;
-	/* Select json as default since content-type header may not be accessible yet */
-	if (api_return_err0(h, sd, xerr, pretty, YANG_DATA_JSON, 0) < 0)
-	    goto done;
-	goto fail;
+        rc->rc_proto_d1 != 1 ||
+        (rc->rc_proto_d2 != 0 && rc->rc_proto_d2 != 1)){
+        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid HTTP version number") < 0)
+            goto done;
+        /* Select json as default since content-type header may not be accessible yet */
+        if (api_return_err0(h, sd, xerr, pretty, YANG_DATA_JSON, 0) < 0)
+            goto done;
+        goto fail;
     }
 #if 1
     /* XXX gives mem leak in multiple requests, 
      * but maybe the error is that sd is not freed.
      */
     if (sd->sd_path != NULL){
-	free(sd->sd_path);
-	sd->sd_path = NULL; 
+        free(sd->sd_path);
+        sd->sd_path = NULL; 
     }
 #endif
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
-	goto done; // XXX SHOULDNT EXIT if no REQUEST_URI
+        goto done; // XXX SHOULDNT EXIT if no REQUEST_URI
     if (rc->rc_proto_d2 == 0 && rc->rc_proto == HTTP_11)
-	rc->rc_proto = HTTP_10;
+        rc->rc_proto = HTTP_10;
     else if (rc->rc_proto_d2 == 1 && rc->rc_proto != HTTP_10)
-	rc->rc_proto = HTTP_11;
+        rc->rc_proto = HTTP_11;
     if (rc->rc_ssl != NULL){
-	/* Slightly awkward way of taking SSL cert subject and CN and add it to restconf parameters
-	 * instead of accessing it directly 
-	 * SSL subject fields, eg CN (Common Name) , can add more here? */
-	if (ssl_x509_name_oneline(rc->rc_ssl, &subject) < 0)
-	    goto done;
-	if (subject != NULL) {
-	    if (uri_str2cvec(subject, '/', '=', 1, &cvv) < 0)
-		goto done;
-	    if ((cn = cvec_find_str(cvv, "CN")) != NULL){
-		if (restconf_param_set(h, "SSL_CN", cn) < 0)
-		    goto done;
-	    }
-	}
+        /* Slightly awkward way of taking SSL cert subject and CN and add it to restconf parameters
+         * instead of accessing it directly 
+         * SSL subject fields, eg CN (Common Name) , can add more here? */
+        if (ssl_x509_name_oneline(rc->rc_ssl, &subject) < 0)
+            goto done;
+        if (subject != NULL) {
+            if (uri_str2cvec(subject, '/', '=', 1, &cvv) < 0)
+                goto done;
+            if ((cn = cvec_find_str(cvv, "CN")) != NULL){
+                if (restconf_param_set(h, "SSL_CN", cn) < 0)
+                    goto done;
+            }
+        }
     }
     /* Check sanity of session, eg ssl client cert validation, may set rc_exit */
     if (restconf_connection_sanity(h, rc, sd) < 0)
-	goto done;
+        goto done;
     if (rc->rc_exit)
-	goto fail;
+        goto fail;
 #ifdef HAVE_LIBNGHTTP2
     if ((ret = http1_upgrade_http2(h, sd)) < 0)
-	goto done;
+        goto done;
     if (ret == 0) /* upgrade */
-	goto upgrade;
+        goto upgrade;
 #endif
     /* Matching algorithm:
      * 1. try well-known
@@ -435,37 +435,37 @@ restconf_http1_path_root(clicon_handle  h,
      * This is for the situation where data is / and /restconf is more specific
      */
     if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0){
-	if (api_well_known(h, sd) < 0)
-	    goto done;
+        if (api_well_known(h, sd) < 0)
+            goto done;
     }
     else if (api_path_is_restconf(h)){
-	if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
-	    goto done;
+        if (api_root_restconf(h, sd, sd->sd_qvec) < 0)
+            goto done;
     }
     else if (api_path_is_data(h)){
-	if (api_http_data(h, sd, sd->sd_qvec) < 0)
-	    goto done;
+        if (api_http_data(h, sd, sd->sd_qvec) < 0)
+            goto done;
     }
     else
-	sd->sd_code = 404; /* catch all without body/media */
+        sd->sd_code = 404; /* catch all without body/media */
  fail:
    if (restconf_param_del_all(h) < 0)
-	goto done;
+        goto done;
 #ifdef HAVE_LIBNGHTTP2
  upgrade:
 #endif
     if (sd->sd_code)
-	if (restconf_http1_reply(rc, sd) < 0)
-	    goto done;
+        if (restconf_http1_reply(rc, sd) < 0)
+            goto done;
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (subject)
-	free(subject);
+        free(subject);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (cvv)
-	cvec_free(cvv);
+        cvec_free(cvv);
     return retval;
 }
 
@@ -481,21 +481,21 @@ restconf_http1_path_root(clicon_handle  h,
  */
 int
 http1_check_expect(clicon_handle         h,
-		   restconf_conn        *rc,
-		   restconf_stream_data *sd)
+                   restconf_conn        *rc,
+                   restconf_stream_data *sd)
 {
     int    retval = -1;
     char  *val;
     
     if ((val = restconf_param_get(h, "HTTP_EXPECT")) != NULL &&
-	strcmp(val, "100-continue") == 0){ /* just drop if not well-formed */
-	sd->sd_code = 100;
-	if (restconf_http1_reply(rc, sd) < 0)
-	    goto done;
-	retval = 1; /* send continue by flushing stream buffer after the call */
+        strcmp(val, "100-continue") == 0){ /* just drop if not well-formed */
+        sd->sd_code = 100;
+        if (restconf_http1_reply(rc, sd) < 0)
+            goto done;
+        retval = 1; /* send continue by flushing stream buffer after the call */
     }
     else
-	retval = 0;
+        retval = 0;
  done:
     return retval;
 }
@@ -515,21 +515,21 @@ http1_check_expect(clicon_handle         h,
  */
 int
 http1_check_content_length(clicon_handle         h,
-			   restconf_stream_data *sd,
-			   int                  *status)
+                           restconf_stream_data *sd,
+                           int                  *status)
 {
     int   retval = -1;
     char *val;
     int   len;
     
     if ((val = restconf_param_get(h, "HTTP_CONTENT_LENGTH")) == NULL ||
-	(len = atoi(val)) == 0)
-	*status = 0;
+        (len = atoi(val)) == 0)
+        *status = 0;
     else{
-	if (cbuf_len(sd->sd_indata) < len)
-	    *status = 1;
-	else
-	    *status = 2;
+        if (cbuf_len(sd->sd_indata) < len)
+            *status = 1;
+        else
+            *status = 2;
     }
     retval = 0;
     return retval;

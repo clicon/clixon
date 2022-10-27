@@ -107,7 +107,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     sudo pkill -f clixon_backend # to be sure
     
@@ -128,7 +128,7 @@ if [ $RC -ne 0 ]; then
     echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg"
     sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg &
     if [ $? -ne 0 ]; then
-	err1 "expected 0" "$?"
+        err1 "expected 0" "$?"
     fi
 fi
 
@@ -142,7 +142,7 @@ result=$(nmap --script ssl-ccs-injection -p 443 127.0.0.1)
 # echo "result:$result"
 while [[ "$result" = *"No reply from server"* ]]; do
     if [ $i -ge 10 ]; then
-	err "ssl-ccs-injection"
+        err "ssl-ccs-injection"
     fi
     sleep 1
     let i++;
@@ -194,7 +194,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

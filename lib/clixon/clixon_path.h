@@ -66,9 +66,9 @@ typedef struct {
     char       *cp_prefix;   /* Prefix or module name, should be resolved + id to cp_yang */
     char       *cp_id;       /* Identifier */
     cvec       *cp_cvk;      /* Key values: list of (name:value) pairs alt (NULL:value) 
-			      * Can also be single uint32, if so positional eg x/y[42]
-			      * This seems kludgy but follows RFC 7950 Sec 9.13
-			      */
+                              * Can also be single uint32, if so positional eg x/y[42]
+                              * This seems kludgy but follows RFC 7950 Sec 9.13
+                              */
     yang_stmt  *cp_yang;     /* Corresponding yang spec (after XML match - ie resolved) */
 } clixon_path;
 
@@ -82,13 +82,13 @@ int api_path_fmt2api_path(const char *api_path_fmt, cvec *cvv, char **api_path, 
 int api_path_fmt2xpath(char *api_path_fmt, cvec *cvv, char **xpath);
 int api_path2xpath(char *api_path, yang_stmt *yspec, char **xpath, cvec **nsc, cxobj **xerr);
 int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop, 
-		 yang_class nodeclass, int strict,
-		 cxobj **xpathp, yang_stmt **ypathp, cxobj **xerr);
+                 yang_class nodeclass, int strict,
+                 cxobj **xpathp, yang_stmt **ypathp, cxobj **xerr);
 int xml2api_path_1(cxobj *x, cbuf *cb);
 int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen, const char *format,
-		     ...) __attribute__ ((format (printf, 5, 6)));;
+                     ...) __attribute__ ((format (printf, 5, 6)));;
 int clixon_xml_find_instance_id(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen, const char *format,
-		     ...) __attribute__ ((format (printf, 5, 6)));;
+                     ...) __attribute__ ((format (printf, 5, 6)));;
 int clixon_instance_id_bind(yang_stmt *yt, cvec *nsctx, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
 int clixon_instance_id_parse(yang_stmt *yt, clixon_path **cplistp, cxobj **xerr, const char *format, ...) __attribute__ ((format (printf, 4, 5)));
 

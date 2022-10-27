@@ -29,18 +29,18 @@ linuxrelease()
     box=$1
     release="unknown"
     for r in freebsd openbsd opensuse ubuntu centos coreos alpine debian arch gentoo fedora rhel; do
-	# -i ignore case
-	if [ -n "$(echo "$box" | grep -io "$r")" ]; then	
-	    release=$r
-	    break
-	fi
+        # -i ignore case
+        if [ -n "$(echo "$box" | grep -io "$r")" ]; then        
+            release=$r
+            break
+        fi
     done
     # Special cases
     if [ "$release" = "unknown" ]; then
-	if [ -n "$(echo "$box" | grep -io "bionic")" ]; then
-	    release=ubuntu
-	    break;
-	fi
+        if [ -n "$(echo "$box" | grep -io "bionic")" ]; then
+            release=ubuntu
+            break;
+        fi
     fi
     echo "$release"
 }
@@ -112,148 +112,148 @@ system=$($sshcmd uname) # we use the release "hack" instead
 buildfcgi=false
 case $release in
     openbsd)
-	# packages for building
-	$sshcmd sudo pkg install -y git gmake bash
-	# cligen
-	$sshcmd sudo pkg install -y bison flex
-	# Add restconf user
-	if [ ! $($sshcmd id -u $wwwuser) ]; then
-	    $sshcmd sudo pw useradd $wwwuser -d /nonexistent -s /usr/sbin/nologin 
-	fi
-	case ${with_restconf} in
-	    fcgi)
-		$sshcmd sudo pkg install -y fcgi-devkit nginx
-		;;
-	    native)
-		;;
-	esac
+        # packages for building
+        $sshcmd sudo pkg install -y git gmake bash
+        # cligen
+        $sshcmd sudo pkg install -y bison flex
+        # Add restconf user
+        if [ ! $($sshcmd id -u $wwwuser) ]; then
+            $sshcmd sudo pw useradd $wwwuser -d /nonexistent -s /usr/sbin/nologin 
+        fi
+        case ${with_restconf} in
+            fcgi)
+                $sshcmd sudo pkg install -y fcgi-devkit nginx
+                ;;
+            native)
+                ;;
+        esac
     ;;
     freebsd)
-	# packages for building
-	$sshcmd sudo pkg install -y git gmake bash
-	# cligen
-	$sshcmd sudo pkg install -y bison flex
-	# Add restconf user
-	if [ ! $($sshcmd id -u $wwwuser) ]; then
-	    $sshcmd sudo pw useradd $wwwuser -d /nonexistent -s /usr/sbin/nologin 
-	fi
-	case ${with_restconf} in
-	    fcgi)
-		$sshcmd sudo pkg install -y fcgi-devkit nginx
-		;;
-	    native)
-		;;
-	esac
-	;;
+        # packages for building
+        $sshcmd sudo pkg install -y git gmake bash
+        # cligen
+        $sshcmd sudo pkg install -y bison flex
+        # Add restconf user
+        if [ ! $($sshcmd id -u $wwwuser) ]; then
+            $sshcmd sudo pw useradd $wwwuser -d /nonexistent -s /usr/sbin/nologin 
+        fi
+        case ${with_restconf} in
+            fcgi)
+                $sshcmd sudo pkg install -y fcgi-devkit nginx
+                ;;
+            native)
+                ;;
+        esac
+        ;;
     centos)
         # enable ipv6
         $sshcmd sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
-	# add restconf user: $wwwuser
-	if [ ! $($sshcmd id -u $wwwuser) ]; then
-	    $sshcmd sudo useradd -M $wwwuser    
-	fi
-	# packages for building
-	$sshcmd sudo yum install -y git make
-	# cligen
-	$sshcmd sudo yum install -y bison flex
-	# clixon utilities
-	$sshcmd sudo yum install -y time libcurl-devel gcc-c++
-	# restconf
-	case ${with_restconf} in
-	    fcgi)
-		buildfcgi=true # build fcgi from source
-		$sshcmd sudo yum install -y epel-release
-		#			$sshcmd sudo yum update
-		$sshcmd sudo yum install -y nginx
-		;;
-	    native)
-		$sshcmd sudo yum install -y openssl
-		$sshcmd sudo yum install -y openssl-devel
-		$sshcmd sudo yum-config-manager --enable powertools
-		$sshcmd sudo yum install -y libnghttp2-devel
-		;;
-	esac
-	;;
+        # add restconf user: $wwwuser
+        if [ ! $($sshcmd id -u $wwwuser) ]; then
+            $sshcmd sudo useradd -M $wwwuser    
+        fi
+        # packages for building
+        $sshcmd sudo yum install -y git make
+        # cligen
+        $sshcmd sudo yum install -y bison flex
+        # clixon utilities
+        $sshcmd sudo yum install -y time libcurl-devel gcc-c++
+        # restconf
+        case ${with_restconf} in
+            fcgi)
+                buildfcgi=true # build fcgi from source
+                $sshcmd sudo yum install -y epel-release
+                #                       $sshcmd sudo yum update
+                $sshcmd sudo yum install -y nginx
+                ;;
+            native)
+                $sshcmd sudo yum install -y openssl
+                $sshcmd sudo yum install -y openssl-devel
+                $sshcmd sudo yum-config-manager --enable powertools
+                $sshcmd sudo yum install -y libnghttp2-devel
+                ;;
+        esac
+        ;;
     opensuse) # opensuse42
-	# restconf user: $wwwuser
-	if [ ! $($sshcmd id -u $wwwuser) ]; then
-	    $sshcmd sudo useradd -M -U $wwwuser    
-	fi
-	# packages for building
-	$sshcmd sudo zypper install -y git
-	# cligen
-	$sshcmd sudo zypper install -y bison flex
-	# clixon utilities
-	$sshcmd sudo zypper install -y libcurl-devel gcc-c++
-	# restconf
-	case ${with_restconf} in
-	    fcgi)
-		$sshcmd sudo zypper install -y nginx
-		buildfcgi=true # build fcgi from source
-		;;
-	    native)
-		;;
-	esac
-	;;
+        # restconf user: $wwwuser
+        if [ ! $($sshcmd id -u $wwwuser) ]; then
+            $sshcmd sudo useradd -M -U $wwwuser    
+        fi
+        # packages for building
+        $sshcmd sudo zypper install -y git
+        # cligen
+        $sshcmd sudo zypper install -y bison flex
+        # clixon utilities
+        $sshcmd sudo zypper install -y libcurl-devel gcc-c++
+        # restconf
+        case ${with_restconf} in
+            fcgi)
+                $sshcmd sudo zypper install -y nginx
+                buildfcgi=true # build fcgi from source
+                ;;
+            native)
+                ;;
+        esac
+        ;;
     ubuntu) # ubuntu/apt based
         # enable ipv6
         $sshcmd sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
 
-	$sshcmd sudo apt-get update --fix-missing
-	$sshcmd sudo apt install -y git
-	# restconf user: $wwwuser
-	if [ ! $($sshcmd id -u $wwwuser) ]; then
-	    $sshcmd sudo useradd -M $wwwuser    
-	fi
-	# cligen
-	$sshcmd sudo apt install -y bison flex make
-	# clixon utilities
-	$sshcmd sudo apt install -y libcurl4-openssl-dev
-	$sshcmd sudo apt install -y g++
-	# restconf
-	case ${with_restconf} in
-	    fcgi)
-		buildfcgi=true # some ubuntu dont have fcgi-dev
-		$sshcmd sudo apt install -y nginx
-		;;
-	    native)
-		$sshcmd sudo apt install -y libssl-dev
-		$sshcmd sudo apt install -y libnghttp2-dev # nghttp2
-		;;
-	esac
-	;;
+        $sshcmd sudo apt-get update --fix-missing
+        $sshcmd sudo apt install -y git
+        # restconf user: $wwwuser
+        if [ ! $($sshcmd id -u $wwwuser) ]; then
+            $sshcmd sudo useradd -M $wwwuser    
+        fi
+        # cligen
+        $sshcmd sudo apt install -y bison flex make
+        # clixon utilities
+        $sshcmd sudo apt install -y libcurl4-openssl-dev
+        $sshcmd sudo apt install -y g++
+        # restconf
+        case ${with_restconf} in
+            fcgi)
+                buildfcgi=true # some ubuntu dont have fcgi-dev
+                $sshcmd sudo apt install -y nginx
+                ;;
+            native)
+                $sshcmd sudo apt install -y libssl-dev
+                $sshcmd sudo apt install -y libnghttp2-dev # nghttp2
+                ;;
+        esac
+        ;;
     alpine)
-	if [ ! $($sshcmd id -u $wwwuser) ]; then
+        if [ ! $($sshcmd id -u $wwwuser) ]; then
             $sshcmd sudo adduser -D -H $wwwuser
-	fi
-	$sshcmd sudo apk add --update git make build-base gcc flex bison curl-dev g++
-	# restconf
-	case ${with_restconf} in
-	    fcgi)
-		$sshcmd sudo apk add --update nginx fcgi-dev
-		;;
-	    native)
-		;;
-	esac
-	;;
+        fi
+        $sshcmd sudo apk add --update git make build-base gcc flex bison curl-dev g++
+        # restconf
+        case ${with_restconf} in
+            fcgi)
+                $sshcmd sudo apk add --update nginx fcgi-dev
+                ;;
+            native)
+                ;;
+        esac
+        ;;
     arch)
-	$sshcmd sudo useradd -M $wwwuser    
-	useradd -m -G additional_groups -s login_shell username
-	$sshcmd sudo pacman -Syu --noconfirm git
-	# cligen
-	$sshcmd sudo pacman -Syu --noconfirm bison flex make
-	# restconf
-	case ${with_restconf} in
-	    fcgi)
-		$sshcmd	sudo pacman -Syu --noconfirm nginx fcgi
-		;;
-	    native)
-		;;
-	esac
-	;;
+        $sshcmd sudo useradd -M $wwwuser    
+        useradd -m -G additional_groups -s login_shell username
+        $sshcmd sudo pacman -Syu --noconfirm git
+        # cligen
+        $sshcmd sudo pacman -Syu --noconfirm bison flex make
+        # restconf
+        case ${with_restconf} in
+            fcgi)
+                $sshcmd sudo pacman -Syu --noconfirm nginx fcgi
+                ;;
+            native)
+                ;;
+        esac
+        ;;
     *)
-	echo "Unknown release: $release"
-	;;
+        echo "Unknown release: $release"
+        ;;
 esac
 
 # Some platforms dont have fcgi, build the source (should all?)
@@ -266,11 +266,11 @@ fi
 
 case ${with_restconf} in
     fcgi)
-	# Hide all complex nginx config in sub-script
-	. ./nginx.sh $dir $idfile $port $wwwuser
-	;;
+        # Hide all complex nginx config in sub-script
+        . ./nginx.sh $dir $idfile $port $wwwuser
+        ;;
     native)
-	;;
+        ;;
 esac
 
 # Setup cligen and clixon

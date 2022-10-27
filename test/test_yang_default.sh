@@ -47,8 +47,8 @@ module example-default {
       }
       container a{
         leaf d0 {
-	  description "container default";
-	  type int32;
+          description "container default";
+          type int32;
           default 88;
         }
         list b {
@@ -57,12 +57,12 @@ module example-default {
             type string;
           }
           leaf d1 {
-	    description "direct default";
-	    type string;
+            description "direct default";
+            type string;
             default "foo";
           }
           leaf d2 { /* <-- ys */
-	    description "default in type";
+            description "default in type";
             type def;
           }
         }
@@ -81,7 +81,7 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s $db -f $cfg"
     start_backend -s $db -f $cfg
@@ -148,7 +148,7 @@ if [ $BE -ne 0 ]; then     # Bring your own backend
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

@@ -79,16 +79,16 @@ One of the examples is [a hello world example](https://github.com/clicon/clixon-
 ## How do you build and install Clixon?
 Clixon: 
 ```
-	./configure
-	make; 
-	sudo make install; 
+        ./configure
+        make; 
+        sudo make install; 
 ```
 
 The main example:
 ```
-	 cd example; 
-	 make; 
-	 sudo make install
+         cd example; 
+         make; 
+         sudo make install
 ```
 
 ## How do I run Clixon example commands?
@@ -162,11 +162,11 @@ clixon_netconf -qf /usr/local/etc/example.xml
 However, more useful is to run clixon_netconf as an SSH
 subsystem. Register the subsystem in /etc/sshd_config:
 ```
-	Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/example.xml
+        Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/example.xml
 ```
 and then invoke it from a client using
 ```
-	ssh -s <host> netconf
+        ssh -s <host> netconf
 ```
 
 ## How do I use restconf?
@@ -481,10 +481,10 @@ information using access functions as defined in clixon_backend_transaction.h
 You use XPATHs on the XML trees in the transaction commit callback.
 Suppose you want to print all added interfaces:
 ```
-	cxobj *target = transaction_target(td); # wanted XML tree
-	vec = xpath_vec_flag(target, NULL, "//interface", &len, XML_FLAG_ADD); /* Get added i/fs */
-	for (i=0; i<len; i++)             /* Loop over added i/fs */
-	  clicon_xml2file(stdout, vec[i], 0, 1); /* Print the added interface */
+        cxobj *target = transaction_target(td); # wanted XML tree
+        vec = xpath_vec_flag(target, NULL, "//interface", &len, XML_FLAG_ADD); /* Get added i/fs */
+        for (i=0; i<len; i++)             /* Loop over added i/fs */
+          clicon_xml2file(stdout, vec[i], 0, 1); /* Print the added interface */
 ```
 You can look for added, deleted and changed entries in this way.
 
@@ -560,10 +560,10 @@ And then define the callback itself:
 ```
 static int 
 example_rpc(clicon_handle h,            /* Clicon handle */
-	    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	    void         *arg,          /* Client session */
-	    void         *regarg)       /* Argument given at register */
+            cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+            cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+            void         *arg,          /* Client session */
+            void         *regarg)       /* Argument given at register */
 {
     cprintf(cbret, "<rpc-reply><ok/></rpc-reply>");    
     return 0;
@@ -582,10 +582,10 @@ the original operation:
 ```
 static int 
 my_copy(clicon_handle h,            /* Clicon handle */
-  	cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	void         *arg,          /* Client session */
-	void         *regarg)       /* Argument given at register */
+        cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+        cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+        void         *arg,          /* Client session */
+        void         *regarg)       /* Argument given at register */
 {
     /* Do something */
     return 0;
@@ -606,7 +606,7 @@ You can specify an authentication callback for restconf as follows:
 ```
 int
 plugin_credentials(clicon_handle h,     
-		   void         *arg)
+                   void         *arg)
 {
     FCGX_Request *r = (FCGX_Request *)arg;
     ...

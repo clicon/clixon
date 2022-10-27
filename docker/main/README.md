@@ -12,7 +12,7 @@ The directory contains the following files:
   - Dockerfile.fcgi  Docker build instructions with nginx/fcgi restconf (this is default)
   - Dockerfile.native Docker build instructions with native restconf
   - Makefile.in      "make docker" builds the container
-  - README.md	     This file
+  - README.md        This file
   - start.sh         Start containers
   - startsystem.sh   Internal start script copied to inside the container (dont run from shell).
   - startsystem_fcgi.sh  Variant for nginx/fcgi (default)

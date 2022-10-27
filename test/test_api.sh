@@ -81,7 +81,7 @@ module example-api{
       }
     }
     rpc trigger {
-	description "trigger an action in the backend";
+        description "trigger an action in the backend";
     }
 }
 EOF
@@ -107,10 +107,10 @@ cat<<EOF > $cfile
 
 static int 
 trigger_rpc(clicon_handle h,          /* Clicon handle */
-	  cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-	  cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-	  void         *arg,          /* client_entry */
-	  void         *regarg)       /* Argument given at register */
+          cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+          cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+          void         *arg,          /* client_entry */
+          void         *regarg)       /* Argument given at register */
 {
     int          retval = -1;
     cxobj       *xret = NULL;
@@ -152,11 +152,11 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
     val = NULL;
     /* Add key/value vector */
     if ((cvk = cvec_new(0)) == NULL){
-	clicon_err(OE_YANG, errno, "cvec_new");	
-	goto done;
+        clicon_err(OE_YANG, errno, "cvec_new"); 
+        goto done;
     }
     if ((cv = cvec_add(cvk, CGV_STRING)) == NULL)
-	goto done;
+        goto done;
     cv_name_set(cv, "k");
     cv_string_set(cv, "5");
     if ((xv = clixon_xvec_new()) == NULL)
@@ -175,7 +175,7 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
   done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cvk)
-	cvec_free(cvk);
+        cvec_free(cvk);
     if (xret)
         xml_free(xret);
     if (xv)
@@ -202,11 +202,11 @@ clixon_plugin_init(clicon_handle h)
 
     /* From example.yang (clicon) */
     if (rpc_callback_register(h, trigger_rpc, 
-			      NULL, 
-			      "urn:example:api",
-			      "trigger"/* Xml tag when callback is made */
-			      ) < 0)
-	return NULL;
+                              NULL, 
+                              "urn:example:api",
+                              "trigger"/* Xml tag when callback is made */
+                              ) < 0)
+        return NULL;
     return &api;
 }
 
@@ -222,13 +222,13 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend"
     start_backend -s init -f $cfg
  fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -264,7 +264,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=`pgrep -u root -f clixon_backend`
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

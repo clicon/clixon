@@ -66,15 +66,15 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options] with xml on stdin (unless -f)\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \tDebug\n"
-	    "\t-a <family>\tSocket address family (default UNIX)\n"
-	    "\t-s <sockpath> \tPath to unix domain socket (or IP addr)\n"
-	    "\t-f <file>\tXML input file (overrides stdin)\n"
-	    "\t-J \t\tInput as JSON (instead of XML)\n"
-	    ,
-	    argv0);
+            "\t-D <level> \tDebug\n"
+            "\t-a <family>\tSocket address family (default UNIX)\n"
+            "\t-s <sockpath> \tPath to unix domain socket (or IP addr)\n"
+            "\t-f <file>\tXML input file (overrides stdin)\n"
+            "\t-J \t\tInput as JSON (instead of XML)\n"
+            ,
+            argv0);
     exit(0);
 }
 
@@ -106,94 +106,94 @@ main(int    argc,
     clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
 
     if ((h = clicon_handle_init()) == NULL)
-	goto done;
+        goto done;
 
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, "hD:s:f:Ja:")) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv[0]);
-	    break;
-    	case 'D':
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(argv[0]);
-	    break;
-	case 's':
-	    sockpath = optarg;
-	    break;
-	case 'f':
-	    input_filename = optarg;
-	    break;
-	case 'J':
-	    jsonin++;
-	    break;
-	case 'a':
-	    family = optarg;
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv[0]);
+            break;
+        case 'D':
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(argv[0]);
+            break;
+        case 's':
+            sockpath = optarg;
+            break;
+        case 'f':
+            input_filename = optarg;
+            break;
+        case 'J':
+            jsonin++;
+            break;
+        case 'a':
+            family = optarg;
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, logdst);
     clicon_debug_init(dbg, NULL);
 
     if (sockpath == NULL){
-	fprintf(stderr, "Mandatory option missing: -s <sockpath>\n");
-	usage(argv[0]);
+        fprintf(stderr, "Mandatory option missing: -s <sockpath>\n");
+        usage(argv[0]);
     }
     if (input_filename){
-	if ((fp = fopen(input_filename, "r")) == NULL){
-	    clicon_err(OE_YANG, errno, "open(%s)", input_filename);	
-	    goto done;
-	}
+        if ((fp = fopen(input_filename, "r")) == NULL){
+            clicon_err(OE_YANG, errno, "open(%s)", input_filename);     
+            goto done;
+        }
     }
     /* 2. Parse data (xml/json) */
     if (jsonin){
-	if ((ret = clixon_json_parse_file(fp, 0, YB_NONE, NULL, &xt, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    fprintf(stderr, "Invalid JSON\n");
-	    goto done;
-	}
+        if ((ret = clixon_json_parse_file(fp, 0, YB_NONE, NULL, &xt, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            fprintf(stderr, "Invalid JSON\n");
+            goto done;
+        }
     }
     else{
-	if (clixon_xml_parse_file(fp, YB_NONE, NULL, &xt, NULL) < 0){
-	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
-	    goto done;
-	}
+        if (clixon_xml_parse_file(fp, YB_NONE, NULL, &xt, NULL) < 0){
+            fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
+            goto done;
+        }
     }
     if ((xc = xml_child_i(xt, 0)) == NULL){
-	fprintf(stderr, "No xml\n");
-	goto done;
+        fprintf(stderr, "No xml\n");
+        goto done;
     }
     if (clixon_xml2cbuf(cb, xc, 0, 0, -1, 0) < 0)
-	goto done;
+        goto done;
     if ((msg = clicon_msg_encode(getpid(), "%s", cbuf_get(cb))) < 0)
-	goto done;
+        goto done;
     if (strcmp(family, "UNIX")==0){
-	if (clicon_rpc_connect_unix(h, sockpath, &s) < 0)
-	    goto done;
+        if (clicon_rpc_connect_unix(h, sockpath, &s) < 0)
+            goto done;
     }
     else
-	if (clicon_rpc_connect_inet(h, sockpath, 4535, &s) < 0)
-	    goto done;
+        if (clicon_rpc_connect_inet(h, sockpath, 4535, &s) < 0)
+            goto done;
     if (clicon_rpc(s, msg, &retdata, &eof) < 0)
-	goto done;
+        goto done;
     close(s);
     fprintf(stdout, "%s\n", retdata);
     retval = 0;
  done:
     if (fp)
-	fclose(fp);
+        fclose(fp);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (msg)
-	free(msg);
+        free(msg);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 

@@ -132,6 +132,16 @@ function testinit(){
 
 function testexit(){
     stop_snmp
+    if [ $BE -ne 0 ]; then
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
+    fi
 }
 
 new "SNMP tests"
@@ -279,6 +289,9 @@ expectpart "$($snmpget $OID19)" 0 "$OID19 = Hex-STRING: 74 65 73 74 00"
 
 new "Test SNMP getnext netSnmpHostName"
 expectpart "$($snmpgetnext $OID19)" 0 "$OID20 = INTEGER: 1"
+
+new "Negative test: Try to set object"
+expectpart "$($snmpset $OID1 i 4 2> /dev/null)" 2 "^$"
 
 new "Cleaning up"
 testexit

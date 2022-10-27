@@ -61,16 +61,16 @@ module $APPNAME{
       list mylist{ /* contains */
          key id;
          leaf id {
- 	    type string;
-	 }
- 	 leaf site {
-	   /* If the XPath expression is defined in a substatement to a data
- 	    * node that represents configuration, the accessible tree is the
- 	    * data in the datastore where the context node exists.
-	    * The "when" statement makes its parent data definition statement conditional.
- 	    */
-	    when "contains(../../class,'foo') or contains(../../class,'bar')";
- 	    type int32;
+            type string;
+         }
+         leaf site {
+           /* If the XPath expression is defined in a substatement to a data
+            * node that represents configuration, the accessible tree is the
+            * data in the datastore where the context node exists.
+            * The "when" statement makes its parent data definition statement conditional.
+            */
+            when "contains(../../class,'foo') or contains(../../class,'bar')";
+            type int32;
          }
       }
    }
@@ -87,9 +87,9 @@ module $APPNAME{
      leaf flags {
        description "See RFC 7950 Sec 10.6.1";
        type bits{
-	    bit UP;
-	    bit PROMISCUOUS;
-	    bit DISABLED;
+            bit UP;
+            bit PROMISCUOUS;
+            bit DISABLED;
        }
       }
    }
@@ -97,13 +97,13 @@ module $APPNAME{
       when 'derived-from(type, "ex:ethernet")';
       leaf mtu {
          type uint32;
-      }	 
+      }  
    }
    augment "/ex:interface" {
       when 'derived-from-or-self(type, "ex:ethernet")';
       leaf crc {
          type uint32;
-      }	 
+      }  
    }
    /* Example derved from yangmodels ietf-mpls-ldp.yang */
    container mustnot{
@@ -114,7 +114,7 @@ module $APPNAME{
        }
        container mycont{
           must "not (../../ex:mustlist[ex:name!=current()/../ex:name])" {
-	     description
+             description
                 "Only one list instance is allowed.";
           }
          leaf foo{
@@ -129,8 +129,8 @@ module $APPNAME{
    container system {
        container ntp {
               presence
-	              "Enables the NTP client unless the 'enabled' leaf
-	               (which defaults to 'true') is set to 'false'";
+                      "Enables the NTP client unless the 'enabled' leaf
+                       (which defaults to 'true') is set to 'false'";
       }
    }
    container ntp {
@@ -143,7 +143,7 @@ module $APPNAME{
                  from the 'ntp/associations' list.";
        leaf port {
          type int16;
-       }		 
+       }                 
    }
 }
 EOF
@@ -154,7 +154,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -246,7 +246,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

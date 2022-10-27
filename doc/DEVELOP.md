@@ -1,7 +1,7 @@
 # README for Clixon developers
 
   * [Code documentation](#documentation)
-  * [C style](#c-style)	
+  * [C style](#c-style) 
   * [How to work in git (how-to-work-in-git)](#how-to-work-in-git)
   * [How the meta-configure stuff works](#meta-configure)
   * [How to debug](#debug)
@@ -47,14 +47,13 @@ myfn(int           par1,
     ms = NULL;
 ```
 Notes:
-1. the return type of the function and all qualifers on first line (`static int`)
-2. function name and first parameter on second line, thereafter each parameter on own line
+1. The return type of the function and all qualifers on first line (`static int`)
+2. Function name and first parameter on second line, thereafter each parameter on own line
 3. Each parameter indented to match the "longest" (`my_structure`)
 4. Pointer declarations written: `type *p`, not: `type* p`.
 5. All local variables in a function declared at top of function, not inline with C-statements.
 6. Local variables can be initialized with scalars or constants, not eg malloc or functions with return values that need to be  checked for errors
 7. There is a single empty line between local variable declarations and the first function statement.
-
 
 Function signatures are declared in include files or in forward declaration using "one-line" syntax, unless very long:
 ```
@@ -122,6 +121,28 @@ difficult to analyze and understand. If include statements are only placed in .c
 files, there is only a single level of include file dependencies.
 
 The drawback is that the same include file may need to be repeated in many .c files.
+
+### Structs
+
+Struct fields should have a prefix to distinguish them from other struct fields. The prefix should use an abbreviation of the struct name.
+
+Example:
+```
+struct my_struct{
+  int   ms_foo;
+  char *ms_string[42];
+}
+```
+where `ms_` is the prefix and is an abbreviation of `my_struct`.
+
+### Global variables
+
+Try to avoid global variables.
+
+If you absolutely need one, try to contain it as static within a
+single C-file, ie do not declare it extern and use it elsewhere. 
+
+Also, always prepend a global variable with `_`, underscore.
 
 ## How to work in git
 

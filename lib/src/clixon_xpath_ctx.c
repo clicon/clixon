@@ -79,9 +79,9 @@ int
 ctx_free(xp_ctx *xc)
 {
     if (xc->xc_nodeset)
-	free(xc->xc_nodeset);
+        free(xc->xc_nodeset);
     if (xc->xc_string)
-	free(xc->xc_string);
+        free(xc->xc_string);
     free(xc);
     return 0;
 }
@@ -93,23 +93,23 @@ ctx_dup(xp_ctx *xc0)
     xp_ctx *xc = NULL;
     
     if ((xc = malloc(sizeof(*xc))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xc, 0, sizeof(*xc));
     *xc = *xc0;
     if (xc0->xc_size){
-	if ((xc->xc_nodeset = calloc(xc0->xc_size, sizeof(cxobj*))) == NULL){
-	    clicon_err(OE_UNIX, errno, "calloc");
-	    goto done;
-	}
-	memcpy(xc->xc_nodeset, xc0->xc_nodeset, xc->xc_size*sizeof(cxobj*));
+        if ((xc->xc_nodeset = calloc(xc0->xc_size, sizeof(cxobj*))) == NULL){
+            clicon_err(OE_UNIX, errno, "calloc");
+            goto done;
+        }
+        memcpy(xc->xc_nodeset, xc0->xc_nodeset, xc->xc_size*sizeof(cxobj*));
     }
     if (xc0->xc_string)
-	if ((xc->xc_string = strdup(xc0->xc_string)) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
+        if ((xc->xc_string = strdup(xc0->xc_string)) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
  done:
     return xc;
 }
@@ -122,35 +122,35 @@ ctx_dup(xp_ctx *xc0)
  */
 int
 ctx_print_cb(cbuf   *cb,
-	     xp_ctx *xc,
-	     int     ind,
-	     char   *str)
+             xp_ctx *xc,
+             int     ind,
+             char   *str)
 {
     static int indent = 0;
     int        i;
 
     if (ind<0)
-	indent += ind;
+        indent += ind;
     cprintf(cb, "%*s%s ", indent, "", str?str:"");
     if (ind>0)
-	indent += ind;
+        indent += ind;
     if (xc){
-	cprintf(cb, "%s: ", (char*)clicon_int2str(ctxmap, xc->xc_type));
-	switch (xc->xc_type){
-	case XT_NODESET:
-	    for (i=0; i<xc->xc_size; i++)
-		cprintf(cb, "%s ", xml_name(xc->xc_nodeset[i]));
-	    break;
-	case XT_BOOL:
-	    cprintf(cb, "%s", xc->xc_bool?"true":"false");
-	    break;
-	case XT_NUMBER:
-	    cprintf(cb, "%lf", xc->xc_number);
-	    break;
-	case XT_STRING:
-	    cprintf(cb, "%s", xc->xc_string);
-	    break;
-	}
+        cprintf(cb, "%s: ", (char*)clicon_int2str(ctxmap, xc->xc_type));
+        switch (xc->xc_type){
+        case XT_NODESET:
+            for (i=0; i<xc->xc_size; i++)
+                cprintf(cb, "%s ", xml_name(xc->xc_nodeset[i]));
+            break;
+        case XT_BOOL:
+            cprintf(cb, "%s", xc->xc_bool?"true":"false");
+            break;
+        case XT_NUMBER:
+            cprintf(cb, "%lf", xc->xc_number);
+            break;
+        case XT_STRING:
+            cprintf(cb, "%s", xc->xc_string);
+            break;
+        }
     }
     return 0;
 }
@@ -162,22 +162,22 @@ ctx_print_cb(cbuf   *cb,
  */
 int
 ctx_print(FILE   *f,
-	  xp_ctx *xc,
-	  char   *str)
+          xp_ctx *xc,
+          char   *str)
 {
     int   retval = -1;
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_UNIX, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     ctx_print_cb(cb, xc, 0, str);
     fprintf(f, "%s", cbuf_get(cb));
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -197,17 +197,17 @@ ctx2boolean(xp_ctx *xc)
     int b = -1;
     switch (xc->xc_type){
     case XT_NODESET:
-	b = (xc->xc_size != 0);
-	break;
+        b = (xc->xc_size != 0);
+        break;
     case XT_BOOL:
-	b = xc->xc_bool;
-	break;
+        b = xc->xc_bool;
+        break;
     case XT_NUMBER:
-	b = (xc->xc_number != 0.0 && xc->xc_number != NAN);
-	break;
+        b = (xc->xc_number != 0.0 && xc->xc_number != NAN);
+        break;
     case XT_STRING:
-	b = (xc->xc_string && strlen(xc->xc_string));
-	break;
+        b = (xc->xc_string && strlen(xc->xc_string));
+        break;
     }
     return b;
 }
@@ -221,7 +221,7 @@ ctx2boolean(xp_ctx *xc)
  */
 int
 ctx2string(xp_ctx *xc,
-	   char  **str0)
+           char  **str0)
 {
     int     retval = -1;
     char   *str = NULL;
@@ -230,39 +230,39 @@ ctx2string(xp_ctx *xc,
     
     switch (xc->xc_type){
     case XT_NODESET:
-	if (xc->xc_size && (b = xml_body(xc->xc_nodeset[0]))){
-	    if ((str = strdup(b)) == NULL){
-		clicon_err(OE_XML, errno, "strdup");
-		goto done;
-	    }
-	}
-	else
-	   if ((str = strdup("")) == NULL){
-		clicon_err(OE_XML, errno, "strdup");
-		goto done;
-	    } 
-	break;
+        if (xc->xc_size && (b = xml_body(xc->xc_nodeset[0]))){
+            if ((str = strdup(b)) == NULL){
+                clicon_err(OE_XML, errno, "strdup");
+                goto done;
+            }
+        }
+        else
+           if ((str = strdup("")) == NULL){
+                clicon_err(OE_XML, errno, "strdup");
+                goto done;
+            } 
+        break;
     case XT_BOOL:
-	if ((str = strdup(xc->xc_bool == 0?"false":"true")) == NULL){
-	    clicon_err(OE_XML, errno, "strdup");
-	    goto done;
-	}
-	break;
+        if ((str = strdup(xc->xc_bool == 0?"false":"true")) == NULL){
+            clicon_err(OE_XML, errno, "strdup");
+            goto done;
+        }
+        break;
     case XT_NUMBER:
-	len = snprintf(NULL, 0, "%0lf", xc->xc_number);
-	len++;
-	if ((str = malloc(len)) == NULL){
-	    clicon_err(OE_XML, errno, "malloc");
-	    goto done;
-	}
-	snprintf(str, len, "%0lf", xc->xc_number);
-	break;
+        len = snprintf(NULL, 0, "%0lf", xc->xc_number);
+        len++;
+        if ((str = malloc(len)) == NULL){
+            clicon_err(OE_XML, errno, "malloc");
+            goto done;
+        }
+        snprintf(str, len, "%0lf", xc->xc_number);
+        break;
     case XT_STRING:
-	if ((str = strdup(xc->xc_string)) == NULL){
-	    clicon_err(OE_XML, errno, "strdup");
-	    goto done;
-	}
-	break;
+        if ((str = strdup(xc->xc_string)) == NULL){
+            clicon_err(OE_XML, errno, "strdup");
+            goto done;
+        }
+        break;
     }
     *str0 = str;
     retval = 0;
@@ -278,7 +278,7 @@ ctx2string(xp_ctx *xc,
  */
 int
 ctx2number(xp_ctx *xc,
-	   double *n0)
+           double *n0)
 {
     int     retval = -1;
     char   *str = NULL;
@@ -286,27 +286,27 @@ ctx2number(xp_ctx *xc,
     
     switch (xc->xc_type){
     case XT_NODESET:
-	if (ctx2string(xc, &str) < 0)
-	    goto done;
-	if (sscanf(str, "%lf",&n) != 1)
-	    n = NAN;
-	break;
+        if (ctx2string(xc, &str) < 0)
+            goto done;
+        if (sscanf(str, "%lf",&n) != 1)
+            n = NAN;
+        break;
     case XT_BOOL:
-	n = (double)xc->xc_bool;
-	break;
+        n = (double)xc->xc_bool;
+        break;
     case XT_NUMBER:
-	n = xc->xc_number;
-	break;
+        n = xc->xc_number;
+        break;
     case XT_STRING:
-	if (sscanf(xc->xc_string, "%lf",&n) != 1)
-	    n = NAN;
-	break;
+        if (sscanf(xc->xc_string, "%lf",&n) != 1)
+            n = NAN;
+        break;
     }
     *n0 = n;
     retval = 0;
  done:
     if (str)
-	free(str);
+        free(str);
     return retval;
 }
 
@@ -314,11 +314,11 @@ ctx2number(xp_ctx *xc,
  */
 int
 ctx_nodeset_replace(xp_ctx   *xc,
-		    cxobj   **vec,
-		    size_t    veclen)
+                    cxobj   **vec,
+                    size_t    veclen)
 {
     if (xc->xc_nodeset)
-	free(xc->xc_nodeset);
+        free(xc->xc_nodeset);
     xc->xc_nodeset = vec;
     xc->xc_size = veclen;
     return 0;

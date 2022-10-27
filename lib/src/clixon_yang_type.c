@@ -166,7 +166,7 @@ static int
 yang_builtin(char *type)
 {
     if (clicon_str2int_search(ytmap2, type, (sizeof(ytmap)/sizeof(map_str2int))-2) != -1)
-	return 1;
+        return 1;
     return 0;
 }
 
@@ -182,8 +182,8 @@ yang_builtin(char *type)
  */
 static int
 compile_pattern2regexp(clicon_handle h,
-		       cvec         *patterns,
-		       cvec         *regexps)
+                       cvec         *patterns,
+                       cvec         *regexps)
 {
     int     retval = -1;
     cg_var *pcv; /* pattern cv */
@@ -194,26 +194,26 @@ compile_pattern2regexp(clicon_handle h,
 
     pcv = NULL;
     while ((pcv = cvec_each(patterns, pcv)) != NULL){
-	pattern = cv_string_get(pcv);
-	/* Compile yang pattern. handle necessary to select regex engine */
-	if ((ret = regex_compile(h, pattern, &re)) < 0)
-	    goto done;
-	if (ret == 0){
-	    clicon_err(OE_YANG, errno, "regexp compile fail: \"%s\"",
-		       pattern);
-	    goto done;
-	    break;
-	}
-	if ((rcv = cvec_add(regexps, CGV_VOID)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cvec_add");
-	    goto done;
-	}
-	if (re != NULL)
-	    cv_void_set(rcv, re);
-	re = NULL;
-	/* invert pattern check */
-	if (cv_flag(pcv, V_INVERT))
-	    cv_flag_set(rcv, V_INVERT);
+        pattern = cv_string_get(pcv);
+        /* Compile yang pattern. handle necessary to select regex engine */
+        if ((ret = regex_compile(h, pattern, &re)) < 0)
+            goto done;
+        if (ret == 0){
+            clicon_err(OE_YANG, errno, "regexp compile fail: \"%s\"",
+                       pattern);
+            goto done;
+            break;
+        }
+        if ((rcv = cvec_add(regexps, CGV_VOID)) == NULL){
+            clicon_err(OE_UNIX, errno, "cvec_add");
+            goto done;
+        }
+        if (re != NULL)
+            cv_void_set(rcv, re);
+        re = NULL;
+        /* invert pattern check */
+        if (cv_flag(pcv, V_INVERT))
+            cv_flag_set(rcv, V_INVERT);
     }
     retval = 1;
  done:
@@ -228,7 +228,7 @@ compile_pattern2regexp(clicon_handle h,
  */
 int
 ys_resolve_type(yang_stmt    *ys, 
-		void         *arg)
+                void         *arg)
 {
     //    clicon_handle     h = (clicon_handle)arg;
     int               retval = -1;
@@ -239,8 +239,8 @@ ys_resolve_type(yang_stmt    *ys,
     yang_stmt        *resolved = NULL;
 
     if (yang_keyword_get(ys) != Y_TYPE){
-	clicon_err(OE_YANG, EINVAL, "Expected Y_TYPE");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "Expected Y_TYPE");
+        goto done;
     }
     if ((patterns = cvec_new(0)) == NULL){
        clicon_err(OE_UNIX, errno, "cvec_new");
@@ -250,23 +250,23 @@ ys_resolve_type(yang_stmt    *ys,
      * Note that the resolved type could be ys itself.
      */
     if (yang_type_resolve(yang_parent_get(ys), yang_parent_get(ys),
-			  ys, &resolved,
-			  &options, &cvv, patterns, NULL, &fraction) < 0)
-	goto done;
+                          ys, &resolved,
+                          &options, &cvv, patterns, NULL, &fraction) < 0)
+        goto done;
     if (resolved == NULL){
-	clicon_err(OE_YANG, 0, "result-type should not be NULL");
-	goto done;
+        clicon_err(OE_YANG, 0, "result-type should not be NULL");
+        goto done;
     }
     /* Cache the type resolving locally. Only place where this is done. 
      * Why not do it in yang_type_resolve? (compile regexps needs clicon_handle)
      */
     if (yang_type_cache_set(ys, resolved, options, cvv,
-			    patterns, fraction) < 0)
-	goto done;
+                            patterns, fraction) < 0)
+        goto done;
     retval = 0;
  done:
     if (patterns)
-	cvec_free(patterns);
+        cvec_free(patterns);
     return retval;
 }
 
@@ -280,15 +280,15 @@ ys_resolve_type(yang_stmt    *ys,
  */
 int
 yang2cv_type(char         *ytype, 
-	     enum cv_type *cv_type)
+             enum cv_type *cv_type)
 {
     int                ret;
 
     *cv_type = CGV_ERR;
     /* built-in types */
     if ((ret = clicon_str2int_search(ytmap2, ytype, (sizeof(ytmap)/sizeof(map_str2int))-2)) != -1){
-	*cv_type = ret;
-	return 0;
+        *cv_type = ret;
+        return 0;
     }
     return 0;
 }
@@ -304,29 +304,29 @@ cv2yang_type(enum cv_type cv_type)
     ytype = "empty";
     /* built-in types */
     if ((str = clicon_int2str(ytmap, cv_type)) != NULL)
-	return (char*)str;
+        return (char*)str;
 
     /* special derived types */
     if (cv_type == CGV_IPV4ADDR) /* RFC6991 */
-	return "ipv4-address";
+        return "ipv4-address";
 
     if (cv_type == CGV_IPV6ADDR) /* RFC6991 */
-	return "ipv6-address";
+        return "ipv6-address";
 
     if (cv_type == CGV_IPV4PFX) /* RFC6991 */
-	return "ipv4-prefix";
+        return "ipv4-prefix";
 
     if (cv_type == CGV_IPV6PFX) /* RFC6991 */
-	return "ipv6-prefix";
+        return "ipv6-prefix";
 
     if (cv_type == CGV_TIME) /* RFC6991 */
-	return "date-and-time";
+        return "date-and-time";
 
     if (cv_type == CGV_MACADDR) /* RFC6991 */
-	return "mac-address";
+        return "mac-address";
 
     if (cv_type == CGV_UUID) /* RFC6991 */
-	return "uuid";
+        return "uuid";
 
     return ytype;
 }
@@ -343,9 +343,9 @@ cv2yang_type(enum cv_type cv_type)
  */
 int
 clicon_type2cv(char         *origtype, 
-	       char         *restype, 
-	       yang_stmt    *ys,
-	       enum cv_type *cvtype)
+               char         *restype, 
+               yang_stmt    *ys,
+               enum cv_type *cvtype)
 {
     int        retval = -1;
     yang_stmt *ym;
@@ -353,24 +353,24 @@ clicon_type2cv(char         *origtype,
     *cvtype = CGV_ERR;
     ym = ys_module(ys);
     if (restype == NULL){ 
-	/* 
-	 * Not resolved, but we can use special cligen types, eg ipv4addr 
-	 * Note this is a kludge or at least if we intend of using rfc types
-	 */
-	yang2cv_type(origtype, cvtype);
-	if (*cvtype == CGV_ERR){
-	    clicon_err(OE_YANG, 0, "%s:\"%s\": type not resolved",
-		       yang_argument_get(ym), origtype);
-	    goto done;
-	}
+        /* 
+         * Not resolved, but we can use special cligen types, eg ipv4addr 
+         * Note this is a kludge or at least if we intend of using rfc types
+         */
+        yang2cv_type(origtype, cvtype);
+        if (*cvtype == CGV_ERR){
+            clicon_err(OE_YANG, 0, "%s:\"%s\": type not resolved",
+                       yang_argument_get(ym), origtype);
+            goto done;
+        }
     }
     else {
-	yang2cv_type(restype, cvtype);
-	if (*cvtype == CGV_ERR){
-	    clicon_err(OE_YANG, 0, "%s: \"%s\" type not translated",
-		       yang_argument_get(ym), restype);
-	    goto done;
-	}
+        yang2cv_type(restype, cvtype);
+        if (*cvtype == CGV_ERR){
+            clicon_err(OE_YANG, 0, "%s: \"%s\" type not translated",
+                       yang_argument_get(ym), restype);
+            goto done;
+        }
 
     }
     retval = 0;
@@ -388,10 +388,10 @@ clicon_type2cv(char         *origtype,
  */
 static int
 cv_validate_pattern(clicon_handle h,
-		    cvec         *regexps,
-		    yang_stmt    *yrestype,
-		    char         *str,
-		    char        **reason)
+                    cvec         *regexps,
+                    yang_stmt    *yrestype,
+                    char         *str,
+                    char        **reason)
 {
     int     retval = -1;
     cg_var *cvr;
@@ -400,18 +400,18 @@ cv_validate_pattern(clicon_handle h,
 
     cvr = NULL; /* Loop over compiled regexps */
     while ((cvr = cvec_each(regexps, cvr)) != NULL){
-	re = cv_void_get(cvr);
-	if ((ret = regex_exec(h, re, str?str:"")) < 0)
-	    goto done;
-	if (cv_flag(cvr, V_INVERT))
-	    ret = !ret; /* swap 0 and 1 */
-	if (ret == 0){
-	    if (reason)
-		*reason = cligen_reason("regexp match fail: pattern does not match %s",
-					str);
-	    goto fail;
-	    break;
-	}	
+        re = cv_void_get(cvr);
+        if ((ret = regex_exec(h, re, str?str:"")) < 0)
+            goto done;
+        if (cv_flag(cvr, V_INVERT))
+            ret = !ret; /* swap 0 and 1 */
+        if (ret == 0){
+            if (reason)
+                *reason = cligen_reason("regexp match fail: pattern does not match %s",
+                                        str);
+            goto fail;
+            break;
+        }       
     }
     retval = 1; /* match */
  done:
@@ -433,8 +433,8 @@ cv_validate_pattern(clicon_handle h,
  */
 static int
 outofrange(cg_var *cv0,
-	   cvec   *cvv,
-	   char  **reason)
+           cvec   *cvv,
+           char  **reason)
 {
     int     retval = -1;
     cbuf   *cb = NULL;
@@ -443,7 +443,7 @@ outofrange(cg_var *cv0,
     int     i;
 
     if ((cb = cbuf_new()) == NULL)
-	goto done;
+        goto done;
     cprintf(cb, "Number ");
     cv2cbuf(cv0, cb);
     cprintf(cb, " out of range: ");
@@ -451,28 +451,28 @@ outofrange(cg_var *cv0,
        cv_validate1 */
     i = 0;
     while (i<cvec_len(cvv)){
-	cv1 = cvec_i(cvv, i++); /* Increment to check for max pair */
-	if (strcmp(cv_name_get(cv1),"range_min") != 0){
-	    clicon_err(OE_YANG, EINVAL, "Internal error, expected range_min");
-	    goto done;
-	}
-	if (i<cvec_len(cvv) &&
-	    (cv2 = cvec_i(cvv, i)) != NULL &&
-	    strcmp(cv_name_get(cv2),"range_max") == 0){
-	    i++;
-	}
-	else
-	    cv2 = cv1;
-	if (i>2)
-	    cprintf(cb, ", ");
-	cv2cbuf(cv1, cb);
-	cprintf(cb, " - ");
-	cv2cbuf(cv2, cb);
+        cv1 = cvec_i(cvv, i++); /* Increment to check for max pair */
+        if (strcmp(cv_name_get(cv1),"range_min") != 0){
+            clicon_err(OE_YANG, EINVAL, "Internal error, expected range_min");
+            goto done;
+        }
+        if (i<cvec_len(cvv) &&
+            (cv2 = cvec_i(cvv, i)) != NULL &&
+            strcmp(cv_name_get(cv2),"range_max") == 0){
+            i++;
+        }
+        else
+            cv2 = cv1;
+        if (i>2)
+            cprintf(cb, ", ");
+        cv2cbuf(cv1, cb);
+        cprintf(cb, " - ");
+        cv2cbuf(cv2, cb);
     }
     if (reason && (*reason = strdup(cbuf_get(cb))) == NULL)
-	goto done;
+        goto done;
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     retval = 0;
  done:
     return retval;
@@ -483,8 +483,8 @@ outofrange(cg_var *cv0,
  */
 static int
 outoflength(uint64_t    u64,
-	    cvec       *cvv,
-	    char      **reason)
+            cvec       *cvv,
+            char      **reason)
 {
     int     retval = -1;
     cbuf   *cb = NULL;
@@ -493,35 +493,35 @@ outoflength(uint64_t    u64,
     int     i;
 
     if ((cb = cbuf_new()) == NULL)
-	goto done;
+        goto done;
     cprintf(cb, "String length %" PRIu64 " out of range: ", u64);
 
     /* Kludge: need to repeat the same loop as in the main function in 
        cv_validate1 */
     i = 0;
     while (i<cvec_len(cvv)){
-	cv1 = cvec_i(cvv, i++); /* Increment to check for max pair */
-	if (strcmp(cv_name_get(cv1),"range_min") != 0){
-	    clicon_err(OE_YANG, EINVAL, "Internal error, expected range_min");
-	    goto done;
-	}
-	if (i<cvec_len(cvv) &&
-	    (cv2 = cvec_i(cvv, i)) != NULL &&
-	    strcmp(cv_name_get(cv2),"range_max") == 0){
-	    i++;
-	}
-	else
-	    cv2 = cv1;
-	if (i>2)
-	    cprintf(cb, ", ");
-	cv2cbuf(cv1, cb);
-	cprintf(cb, " - ");
-	cv2cbuf(cv2, cb);
+        cv1 = cvec_i(cvv, i++); /* Increment to check for max pair */
+        if (strcmp(cv_name_get(cv1),"range_min") != 0){
+            clicon_err(OE_YANG, EINVAL, "Internal error, expected range_min");
+            goto done;
+        }
+        if (i<cvec_len(cvv) &&
+            (cv2 = cvec_i(cvv, i)) != NULL &&
+            strcmp(cv_name_get(cv2),"range_max") == 0){
+            i++;
+        }
+        else
+            cv2 = cv1;
+        if (i>2)
+            cprintf(cb, ", ");
+        cv2cbuf(cv1, cb);
+        cprintf(cb, " - ");
+        cv2cbuf(cv2, cb);
     }
     if (reason && (*reason = strdup(cbuf_get(cb))) == NULL)
-	goto done;
+        goto done;
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     retval = 0;
  done:
     return retval;
@@ -543,14 +543,14 @@ outoflength(uint64_t    u64,
  */
 static int
 cv_validate1(clicon_handle h,
-	     cg_var      *cv,
-	     enum cv_type cvtype, 
-	     int          options, 
-	     cvec        *cvv,
-	     cvec        *regexps,
-	     yang_stmt   *yrestype,
-	     char        *restype,
-	     char       **reason)
+             cg_var      *cv,
+             enum cv_type cvtype, 
+             int          options, 
+             cvec        *cvv,
+             cvec        *regexps,
+             yang_stmt   *yrestype,
+             char        *restype,
+             char       **reason)
 {
     int             retval = 1; /* OK */
     cg_var         *cv1;
@@ -570,175 +570,175 @@ cv_validate1(clicon_handle h,
     int             rets;
 
     if (reason && *reason){
-	free(*reason);
-	*reason = NULL;
+        free(*reason);
+        *reason = NULL;
     }
     /* check options first for length and range */
     if ((options & YANG_OPTIONS_RANGE) != 0 ||
-	(options & YANG_OPTIONS_LENGTH) != 0){
-	i = 0;
-	while (i<cvec_len(cvv)){
-	    cv1 = cvec_i(cvv, i++); /* Increment to check for max pair */
-	    if (strcmp(cv_name_get(cv1),"range_min") != 0){
-		clicon_err(OE_YANG, EINVAL, "Internal error, expected range_min");
-		goto done;
-	    }
-	    if (i<cvec_len(cvv) &&
-		(cv2 = cvec_i(cvv, i)) != NULL &&
-		strcmp(cv_name_get(cv2),"range_max") == 0){
-		i++;
-	    }
-	    else
-		cv2 = cv1;
-	    reti = 0; retu = 0; rets = 0;
-	    switch (cvtype){ 
-	    case CGV_INT8:
-		ii =  cv_int8_get(cv);
-		reti = range_check(ii, cv1, cv2, int8);
-		break;
-	    case CGV_INT16:
-		ii =  cv_int16_get(cv);
-		reti = range_check(ii, cv1, cv2, int16);
-		break;
-	    case CGV_INT32:
-		ii =  cv_int32_get(cv);
-		reti = range_check(ii, cv1, cv2, int32);
-		break;
-	    case CGV_DEC64: /* XXX look at fraction-digit? */
-	    case CGV_INT64:
-		ii =  cv_int64_get(cv);
-		reti = range_check(ii, cv1, cv2, int64);
-		break;
-	    case CGV_UINT8:
-		uu =  cv_uint8_get(cv);
-		retu = range_check(uu, cv1, cv2, uint8);
-		break;
-	    case CGV_UINT16:
-		uu =  cv_uint16_get(cv);
-		retu = range_check(uu, cv1, cv2, uint16);
-		break;
-	    case CGV_UINT32:
-		uu =  cv_uint32_get(cv);
-		retu = range_check(uu, cv1, cv2, uint32);
-		break;
-	    case CGV_UINT64:
-		uu =  cv_uint32_get(cv);
-		retu = range_check(uu, cv1, cv2, uint64);
-		break;
-	    case CGV_STRING:
-	    case CGV_REST:
-		if ((str = cv_string_get(cv)) == NULL)
-		    uu = 0; /* equal no string with empty string for range check */
-		else
-		    uu = strlen(str);
-		rets = range_check(uu, cv1, cv2, uint64);
-		break;
-	    default:
-		break;
-	    }
-	    /* Error handling for signed and unsigned, strings in switch 
-	     * OK: if check OK
-	     * Failure: check fails and it is the last
-	     */
-	    if ((reti==0 && retu==0 && rets == 0))
-		goto step1ok;
-	    /* Check fails */
-	    if (i==cvec_len(cvv)){ /* And it is last */
-		if (reason){
-		    if (reti || retu){
-			if (outofrange(cv, cvv, reason) < 0)
-			    goto done;
-		    }
-		    else 
-			if (outoflength(uu, cvv, reason) < 0)
-			    goto done;
-		}
-		goto fail;
-	    }
-	} /* while i<cvec_len(cvv) */
+        (options & YANG_OPTIONS_LENGTH) != 0){
+        i = 0;
+        while (i<cvec_len(cvv)){
+            cv1 = cvec_i(cvv, i++); /* Increment to check for max pair */
+            if (strcmp(cv_name_get(cv1),"range_min") != 0){
+                clicon_err(OE_YANG, EINVAL, "Internal error, expected range_min");
+                goto done;
+            }
+            if (i<cvec_len(cvv) &&
+                (cv2 = cvec_i(cvv, i)) != NULL &&
+                strcmp(cv_name_get(cv2),"range_max") == 0){
+                i++;
+            }
+            else
+                cv2 = cv1;
+            reti = 0; retu = 0; rets = 0;
+            switch (cvtype){ 
+            case CGV_INT8:
+                ii =  cv_int8_get(cv);
+                reti = range_check(ii, cv1, cv2, int8);
+                break;
+            case CGV_INT16:
+                ii =  cv_int16_get(cv);
+                reti = range_check(ii, cv1, cv2, int16);
+                break;
+            case CGV_INT32:
+                ii =  cv_int32_get(cv);
+                reti = range_check(ii, cv1, cv2, int32);
+                break;
+            case CGV_DEC64: /* XXX look at fraction-digit? */
+            case CGV_INT64:
+                ii =  cv_int64_get(cv);
+                reti = range_check(ii, cv1, cv2, int64);
+                break;
+            case CGV_UINT8:
+                uu =  cv_uint8_get(cv);
+                retu = range_check(uu, cv1, cv2, uint8);
+                break;
+            case CGV_UINT16:
+                uu =  cv_uint16_get(cv);
+                retu = range_check(uu, cv1, cv2, uint16);
+                break;
+            case CGV_UINT32:
+                uu =  cv_uint32_get(cv);
+                retu = range_check(uu, cv1, cv2, uint32);
+                break;
+            case CGV_UINT64:
+                uu =  cv_uint32_get(cv);
+                retu = range_check(uu, cv1, cv2, uint64);
+                break;
+            case CGV_STRING:
+            case CGV_REST:
+                if ((str = cv_string_get(cv)) == NULL)
+                    uu = 0; /* equal no string with empty string for range check */
+                else
+                    uu = strlen(str);
+                rets = range_check(uu, cv1, cv2, uint64);
+                break;
+            default:
+                break;
+            }
+            /* Error handling for signed and unsigned, strings in switch 
+             * OK: if check OK
+             * Failure: check fails and it is the last
+             */
+            if ((reti==0 && retu==0 && rets == 0))
+                goto step1ok;
+            /* Check fails */
+            if (i==cvec_len(cvv)){ /* And it is last */
+                if (reason){
+                    if (reti || retu){
+                        if (outofrange(cv, cvv, reason) < 0)
+                            goto done;
+                    }
+                    else 
+                        if (outoflength(uu, cvv, reason) < 0)
+                            goto done;
+                }
+                goto fail;
+            }
+        } /* while i<cvec_len(cvv) */
     }
  step1ok:
     /* then check options for others */
     switch (cvtype){
     case CGV_STRING:
     case CGV_REST:
-	str = cv_string_get(cv);
-	/* Note, if there is no value, eg <s/>, str is NULL. 
-	 */
-	if (restype){
-	    if (strcmp(restype, "enumeration") == 0){
-		found = 0;
-		yi = NULL;
-		if (str != NULL) {
-		    //		    str = clixon_trim2(str, " \t\n"); /* May be misplaced, strip earlier? */
-		    while ((yi = yn_each(yrestype, yi)) != NULL){
-			if (yang_keyword_get(yi) != Y_ENUM)
-			    continue;
-			if (strcmp(yang_argument_get(yi), str) == 0){
-			    found++;
-			    break;
-			}
-		    }
-		}
-		if (!found){
-		    if (reason)
-			*reason = cligen_reason("'%s' does not match enumeration", str);
-		    goto fail;
-		}
-	    }
-	    if (strcmp(restype, "bits") == 0 && str != NULL){
-		/* The lexical representation of the bits type is a space-separated list
-		 * of the names of the bits that are set.  A zero-length string thus
-		 * represents a value where no bits are set.
-		 */
-		str = clixon_trim2(str, " \t\n"); /* May be misplaced, strip earlier? */
-		nvec = 0;
-		if ((vec = clicon_strsep(str, " \t", &nvec)) == NULL)
-		    goto done;
-		for (i=0; i<nvec; i++){
-		    if ((v = vec[i]) == NULL || !strlen(v))
-			continue;
-		    found = 0;
-		    yi = NULL;
-		    while ((yi = yn_each(yrestype, yi)) != NULL){
-			if (yang_keyword_get(yi) != Y_BIT)
-			    continue;
-			if (strcmp(yang_argument_get(yi), v) == 0){
-			    found++;
-			    break;
-			}
-		    }
-		    if (!found){
-			if (reason)
-			    *reason = cligen_reason("'%s' does not match enumeration", v);
-			goto fail;
-			break;
-		    }
-		}
-	    }
-	}
-	if (regexps && cvec_len(regexps)) {
-	    if ((ret = cv_validate_pattern(h, regexps, yrestype, str, reason)) < 0)
-		goto done;
-	    if (ret == 0)
-		goto fail;
-	}
-	break;
+        str = cv_string_get(cv);
+        /* Note, if there is no value, eg <s/>, str is NULL. 
+         */
+        if (restype){
+            if (strcmp(restype, "enumeration") == 0){
+                found = 0;
+                yi = NULL;
+                if (str != NULL) {
+                    //              str = clixon_trim2(str, " \t\n"); /* May be misplaced, strip earlier? */
+                    while ((yi = yn_each(yrestype, yi)) != NULL){
+                        if (yang_keyword_get(yi) != Y_ENUM)
+                            continue;
+                        if (strcmp(yang_argument_get(yi), str) == 0){
+                            found++;
+                            break;
+                        }
+                    }
+                }
+                if (!found){
+                    if (reason)
+                        *reason = cligen_reason("'%s' does not match enumeration", str);
+                    goto fail;
+                }
+            }
+            if (strcmp(restype, "bits") == 0 && str != NULL){
+                /* The lexical representation of the bits type is a space-separated list
+                 * of the names of the bits that are set.  A zero-length string thus
+                 * represents a value where no bits are set.
+                 */
+                str = clixon_trim2(str, " \t\n"); /* May be misplaced, strip earlier? */
+                nvec = 0;
+                if ((vec = clicon_strsep(str, " \t", &nvec)) == NULL)
+                    goto done;
+                for (i=0; i<nvec; i++){
+                    if ((v = vec[i]) == NULL || !strlen(v))
+                        continue;
+                    found = 0;
+                    yi = NULL;
+                    while ((yi = yn_each(yrestype, yi)) != NULL){
+                        if (yang_keyword_get(yi) != Y_BIT)
+                            continue;
+                        if (strcmp(yang_argument_get(yi), v) == 0){
+                            found++;
+                            break;
+                        }
+                    }
+                    if (!found){
+                        if (reason)
+                            *reason = cligen_reason("'%s' does not match enumeration", v);
+                        goto fail;
+                        break;
+                    }
+                }
+            }
+        }
+        if (regexps && cvec_len(regexps)) {
+            if ((ret = cv_validate_pattern(h, regexps, yrestype, str, reason)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
+        break;
     case CGV_VOID:
-	break; /* empty type OK */
+        break; /* empty type OK */
     case CGV_ERR:
-	retval = 0;
-	if (reason)
-	    *reason = cligen_reason("Invalid cv");
-	goto fail;
-	break;
+        retval = 0;
+        if (reason)
+            *reason = cligen_reason("Invalid cv");
+        goto fail;
+        break;
     default:
-	break;
+        break;
     }
     retval = 1; /* validation OK */
  done:
     if (vec)
-	free(vec);
+        free(vec);
     return retval;
  fail:
     retval = 0; /* validation failed */
@@ -747,15 +747,15 @@ cv_validate1(clicon_handle h,
 
 /* Forward */
 static int ys_cv_validate_union(clicon_handle h,yang_stmt *ys, char **reason,
-				yang_stmt *yrestype, char *type, char *val, yang_stmt **ysubp);
+                                yang_stmt *yrestype, char *type, char *val, yang_stmt **ysubp);
 
 static int
 ys_cv_validate_leafref(clicon_handle h,
-		       char         *body,
-		       yang_stmt    *ys,
-		       yang_stmt    *yrestype,
-		       yang_stmt   **ysub, 
-		       char        **reason)
+                       char         *body,
+                       yang_stmt    *ys,
+                       yang_stmt    *yrestype,
+                       yang_stmt   **ysub, 
+                       char        **reason)
 {
     int        retval = -1;
     yang_stmt *yref = NULL;
@@ -765,35 +765,35 @@ ys_cv_validate_leafref(clicon_handle h,
     int        ret;
 
     if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
-	clicon_err(OE_YANG, 0, "No Y_PATH for leafref");
-	goto done;
+        clicon_err(OE_YANG, 0, "No Y_PATH for leafref");
+        goto done;
     }
     if ((path_arg = yang_argument_get(ypath)) == NULL){
-	clicon_err(OE_YANG, 0, "No argument for Y_PATH");
-	goto done;
+        clicon_err(OE_YANG, 0, "No argument for Y_PATH");
+        goto done;
     }
     if (yang_path_arg(ys, path_arg, &yref) < 0)
-	goto done;
+        goto done;
     if (yref == NULL){ 
-	clicon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", path_arg);
-	goto done;
+        clicon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", path_arg);
+        goto done;
     }
     /* reparse cv with new type */
     if ((cv = cv_dup(yang_cv_get(yref))) == NULL){
-	clicon_err(OE_UNIX, errno, "cv_dup");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cv_dup");
+        goto done;
     }
     if ((ret = cv_parse1(body, cv, reason)) < 0){
-	clicon_err(OE_UNIX, errno, "cv_parse");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cv_parse");
+        goto done;
     }
     if (ret == 0)
-	goto fail;
+        goto fail;
     /* Recursive call to this function, but using refererred YANG node */
     retval = ys_cv_validate(h, cv, yref, ysub, reason);
  done:
     if (cv)
-	cv_free(cv);
+        cv_free(cv);
     return retval;
  fail:
     retval = 0;
@@ -813,11 +813,11 @@ ys_cv_validate_leafref(clicon_handle h,
  */
 static int
 ys_cv_validate_union_one(clicon_handle h,
-			 yang_stmt    *ys,
-			 char        **reason,
-			 yang_stmt    *yt,
-			 char         *type,  /* orig type */
-			 char         *val)
+                         yang_stmt    *ys,
+                         char        **reason,
+                         yang_stmt    *yt,
+                         char         *type,  /* orig type */
+                         char         *val)
 {
     int          retval = -1;
     yang_stmt   *yrestype;      /* union subtype */
@@ -832,72 +832,72 @@ ys_cv_validate_union_one(clicon_handle h,
     yang_stmt   *ysubt = NULL;
 
     if ((regexps = cvec_new(0)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
     }
     if ((patterns = cvec_new(0)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
     }
     if (yang_type_resolve(ys, ys, yt, &yrestype, &options, &cvv, patterns, regexps,
-			  &fraction) < 0)
-	goto done;
+                          &fraction) < 0)
+        goto done;
     if (yrestype == NULL){
-	clicon_err(OE_YANG, 0, "result-type should not be NULL");
-	goto done;
+        clicon_err(OE_YANG, 0, "result-type should not be NULL");
+        goto done;
     }
     restype = yrestype?yang_argument_get(yrestype):NULL;
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
-	if ((retval = ys_cv_validate_union(h, ys, reason, yrestype, type, val, &ysubt)) < 0)
-	    goto done;
+        if ((retval = ys_cv_validate_union(h, ys, reason, yrestype, type, val, &ysubt)) < 0)
+            goto done;
     }
-	/* Leafref needs to resolve referred node for type information */
+        /* Leafref needs to resolve referred node for type information */
     else if (restype && strcmp(restype,"leafref") == 0){
-	if ((retval = ys_cv_validate_leafref(h, val, ys, yrestype, NULL, reason)) < 0)  /* XXX: ysub? */
-	    goto done;
+        if ((retval = ys_cv_validate_leafref(h, val, ys, yrestype, NULL, reason)) < 0)  /* XXX: ysub? */
+            goto done;
     }
     else {
-	if (clicon_type2cv(type, restype, ys, &cvtype) < 0)
-	    goto done;
-	/* reparse value with the new type */
-	if ((cvt = cv_new(cvtype)) == NULL){
-	    clicon_err(OE_UNIX, errno, "cv_new");
-	    goto done;
-	}
-	if (cvtype == CGV_DEC64)
-	    cv_dec64_n_set(cvt, fraction);
-	if (val == NULL){ /* Fail validation on NULL */
-	    retval = 0;
-	    goto done;
-	}
-	if ((retval = cv_parse1(val, cvt, reason)) < 0){
-	    clicon_err(OE_UNIX, errno, "cv_parse");
-	    goto done;
-	}
-	if (retval == 0)
-	    goto done;
-	/* The regexp cache may be invalidated, in that case re-compile
-	 * eg due to copying
-	 */
-	if (cvec_len(patterns)!=0 && cvec_len(regexps)==0){
-	    if (compile_pattern2regexp(h, patterns, regexps) < 1)
-		goto done;
-	    if (yang_type_cache_regexp_set(yt,
-					   clicon_yang_regexp(h),
-					   regexps) < 0)
-		goto done;
-	}
-	if ((retval = cv_validate1(h, cvt, cvtype, options, cvv, 
-				   regexps, yrestype, restype, reason)) < 0)
-	    goto done;
+        if (clicon_type2cv(type, restype, ys, &cvtype) < 0)
+            goto done;
+        /* reparse value with the new type */
+        if ((cvt = cv_new(cvtype)) == NULL){
+            clicon_err(OE_UNIX, errno, "cv_new");
+            goto done;
+        }
+        if (cvtype == CGV_DEC64)
+            cv_dec64_n_set(cvt, fraction);
+        if (val == NULL){ /* Fail validation on NULL */
+            retval = 0;
+            goto done;
+        }
+        if ((retval = cv_parse1(val, cvt, reason)) < 0){
+            clicon_err(OE_UNIX, errno, "cv_parse");
+            goto done;
+        }
+        if (retval == 0)
+            goto done;
+        /* The regexp cache may be invalidated, in that case re-compile
+         * eg due to copying
+         */
+        if (cvec_len(patterns)!=0 && cvec_len(regexps)==0){
+            if (compile_pattern2regexp(h, patterns, regexps) < 1)
+                goto done;
+            if (yang_type_cache_regexp_set(yt,
+                                           clicon_yang_regexp(h),
+                                           regexps) < 0)
+                goto done;
+        }
+        if ((retval = cv_validate1(h, cvt, cvtype, options, cvv, 
+                                   regexps, yrestype, restype, reason)) < 0)
+            goto done;
     }
  done:
     if (patterns)
-	cvec_free(patterns);
+        cvec_free(patterns);
     if (regexps)
-	cvec_free(regexps);
+        cvec_free(regexps);
     if (cvt)
-	cv_free(cvt);
+        cv_free(cvt);
     return retval;
 }
 
@@ -915,46 +915,46 @@ ys_cv_validate_union_one(clicon_handle h,
  */
 static int
 ys_cv_validate_union(clicon_handle h,
-		     yang_stmt    *ys,
-		     char        **reason,
-		     yang_stmt    *yrestype,
-		     char         *type,  
-		     char         *val,
-		     yang_stmt   **ysubp)
+                     yang_stmt    *ys,
+                     char        **reason,
+                     yang_stmt    *yrestype,
+                     char         *type,  
+                     char         *val,
+                     yang_stmt   **ysubp)
 {
     int        retval = 1; /* valid */
     yang_stmt *yt = NULL;
     char      *reason1 = NULL;  /* saved reason */
 
     while ((yt = yn_each(yrestype, yt)) != NULL){
-	if (yang_keyword_get(yt) != Y_TYPE)
-	    continue;
-	if ((retval = ys_cv_validate_union_one(h, ys, reason, yt, type, val)) < 0)
-	    goto done;
-	/* If validation failed, save reason, reset error and continue,
-	 * save latest reason if noithing validates.
-	 */
-	if (retval == 0 && reason && *reason != NULL){
-	    if (reason1)
-		free(reason1);
-	    reason1 = *reason;
-	    *reason = NULL;
-	}
-	/* Enough that one type validates value, return that value
-	 */
-	if (retval == 1) {
-	    if (ysubp)
-		*ysubp = yt;
-	    break;
-	}
+        if (yang_keyword_get(yt) != Y_TYPE)
+            continue;
+        if ((retval = ys_cv_validate_union_one(h, ys, reason, yt, type, val)) < 0)
+            goto done;
+        /* If validation failed, save reason, reset error and continue,
+         * save latest reason if noithing validates.
+         */
+        if (retval == 0 && reason && *reason != NULL){
+            if (reason1)
+                free(reason1);
+            reason1 = *reason;
+            *reason = NULL;
+        }
+        /* Enough that one type validates value, return that value
+         */
+        if (retval == 1) {
+            if (ysubp)
+                *ysubp = yt;
+            break;
+        }
     }
  done:
     if (retval == 0 && reason1){
-	*reason = reason1;
-	reason1 = NULL;
+        *reason = reason1;
+        reason1 = NULL;
     }
     if (reason1)
-	free(reason1);
+        free(reason1);
     return retval;
 }
 
@@ -974,10 +974,10 @@ ys_cv_validate_union(clicon_handle h,
  */
 int
 ys_cv_validate(clicon_handle h,
-	       cg_var       *cv, 
-	       yang_stmt    *ys, 
-	       yang_stmt   **ysub, 
-	       char        **reason)
+               cg_var       *cv, 
+               yang_stmt    *ys, 
+               yang_stmt   **ysub, 
+               char        **reason)
 {
     int             retval = -1; 
     cg_var         *ycv;        /* cv of yang-statement */  
@@ -995,105 +995,105 @@ ys_cv_validate(clicon_handle h,
     cg_var         *cvt=NULL;
 
     if (reason)
-	*reason=NULL;
+        *reason=NULL;
     if (yang_keyword_get(ys) != Y_LEAF && yang_keyword_get(ys) != Y_LEAF_LIST){
-	retval = 1;
-	goto done;
+        retval = 1;
+        goto done;
     }
     ycv = yang_cv_get(ys);
     if ((regexps = cvec_new(0)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
     }
     if ((patterns = cvec_new(0)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
     }
     if (yang_type_get(ys, &origtype, &yrestype, 
-		      &options, &cvv,
-		      patterns, regexps,
-		      &fraction) < 0)
-	goto done;
+                      &options, &cvv,
+                      patterns, regexps,
+                      &fraction) < 0)
+        goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
     if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
-	goto done;
+        goto done;
 
     if (cv_type_get(ycv) != cvtype){
-	/* special case: dbkey has rest syntax-> cv but yang cant have that */
-	if (cvtype == CGV_STRING && cv_type_get(ycv) == CGV_REST)
-	    ;
-	else {
-	    clicon_err(OE_DB, 0, "Type mismatch data:%s != yang:%s", 
-		       cv_type2str(cvtype), cv_type2str(cv_type_get(ycv)));
-	    goto done;
-	}
+        /* special case: dbkey has rest syntax-> cv but yang cant have that */
+        if (cvtype == CGV_STRING && cv_type_get(ycv) == CGV_REST)
+            ;
+        else {
+            clicon_err(OE_DB, 0, "Type mismatch data:%s != yang:%s", 
+                       cv_type2str(cvtype), cv_type2str(cv_type_get(ycv)));
+            goto done;
+        }
     }
     /* Note restype can be NULL here for example with unresolved hardcoded uuid */
     if (restype && strcmp(restype, "union") == 0){ 
-	if (cvtype != CGV_REST){
-	    clicon_err(OE_YANG, 0, "union must be rest cv type but is %d", cvtype);
-	    goto done;
-	}
-	/* Instead of NULL, give an empty string to validate, this is to avoid cv_parse
-	 * errors and may actually be the wrong thing to do.
-	 */
-	if ((val = cv_string_get(cv)) == NULL)
-	    val = "";
-	if ((retval2 = ys_cv_validate_union(h, ys, reason, yrestype, origtype, val, ysub)) < 0)
-	    goto done;
-	retval = retval2; /* invalid (0) with latest reason or valid 1 */
+        if (cvtype != CGV_REST){
+            clicon_err(OE_YANG, 0, "union must be rest cv type but is %d", cvtype);
+            goto done;
+        }
+        /* Instead of NULL, give an empty string to validate, this is to avoid cv_parse
+         * errors and may actually be the wrong thing to do.
+         */
+        if ((val = cv_string_get(cv)) == NULL)
+            val = "";
+        if ((retval2 = ys_cv_validate_union(h, ys, reason, yrestype, origtype, val, ysub)) < 0)
+            goto done;
+        retval = retval2; /* invalid (0) with latest reason or valid 1 */
     }
     else{
-	/* The regexp cache may be invalidated, in that case re-compile
-	 * eg due to copying
-	 */
-	if (cvec_len(patterns)!=0 && cvec_len(regexps)==0){
-	    yang_stmt      *yt;
-	    if (compile_pattern2regexp(h, patterns, regexps) < 1)
-		goto done;
-	    yt = yang_find(ys, Y_TYPE, NULL);
-	    if (yang_type_cache_regexp_set(yt,
-					   clicon_yang_regexp(h),
-					   regexps) < 0)
-		goto done;
-	}
-	/* Leafref needs to resolve referred node for type information 
-	 * From rfc7950 Sec 9.9:
-	 * The leafref built-in type is restricted to the value space of some
-	 * leaf or leaf-list node in the schema tree and optionally further
-	 * restricted by corresponding instance nodes in the data tree.  The
-	 * "path" substatement (Section 9.9.2) is used to identify the referred
-	 * leaf or leaf-list node in the schema tree.  The value space of the
-	 * referring node is the value space of the referred node.
-	 */
-	if (restype && strcmp(restype,"leafref") == 0){
-	    if (cvtype != CGV_REST){
-		clicon_err(OE_YANG, 0, "leafref must be rest cv type but is %d", cvtype);
-		goto done;
-	    }
-	    /* Instead of NULL, give an empty string to validate, this is to avoid cv_parse
-	     * errors and may actually be the wrong thing to do.
-	     */
-	    if ((val = cv_string_get(cv)) == NULL)
-		val = "";
-	    retval = ys_cv_validate_leafref(h, val, ys, yrestype, ysub, reason);
-	    goto done;
-	}
-	if ((retval = cv_validate1(h, cv, cvtype, options, cvv,
-				   regexps, yrestype, restype, reason)) < 0)
-	    goto done;
-	if (ysub)
-	    *ysub = ys;
+        /* The regexp cache may be invalidated, in that case re-compile
+         * eg due to copying
+         */
+        if (cvec_len(patterns)!=0 && cvec_len(regexps)==0){
+            yang_stmt      *yt;
+            if (compile_pattern2regexp(h, patterns, regexps) < 1)
+                goto done;
+            yt = yang_find(ys, Y_TYPE, NULL);
+            if (yang_type_cache_regexp_set(yt,
+                                           clicon_yang_regexp(h),
+                                           regexps) < 0)
+                goto done;
+        }
+        /* Leafref needs to resolve referred node for type information 
+         * From rfc7950 Sec 9.9:
+         * The leafref built-in type is restricted to the value space of some
+         * leaf or leaf-list node in the schema tree and optionally further
+         * restricted by corresponding instance nodes in the data tree.  The
+         * "path" substatement (Section 9.9.2) is used to identify the referred
+         * leaf or leaf-list node in the schema tree.  The value space of the
+         * referring node is the value space of the referred node.
+         */
+        if (restype && strcmp(restype,"leafref") == 0){
+            if (cvtype != CGV_REST){
+                clicon_err(OE_YANG, 0, "leafref must be rest cv type but is %d", cvtype);
+                goto done;
+            }
+            /* Instead of NULL, give an empty string to validate, this is to avoid cv_parse
+             * errors and may actually be the wrong thing to do.
+             */
+            if ((val = cv_string_get(cv)) == NULL)
+                val = "";
+            retval = ys_cv_validate_leafref(h, val, ys, yrestype, ysub, reason);
+            goto done;
+        }
+        if ((retval = cv_validate1(h, cv, cvtype, options, cvv,
+                                   regexps, yrestype, restype, reason)) < 0)
+            goto done;
+        if (ysub)
+            *ysub = ys;
     }
   done:
     if (origtype)
-	free(origtype);
+        free(origtype);
     if (regexps)
-	cvec_free(regexps);
+        cvec_free(regexps);
     if (patterns)
-	cvec_free(patterns);
+        cvec_free(patterns);
     if (cvt)
-	cv_free(cvt);
+        cv_free(cvt);
     return retval;
 }
 
@@ -1105,7 +1105,7 @@ static inline int
 ys_typedef(yang_stmt *ys)
 {
     return yang_keyword_get(ys) == Y_MODULE || yang_keyword_get(ys) == Y_SUBMODULE ||
-	yang_keyword_get(ys) == Y_CONTAINER || yang_keyword_get(ys) == Y_LIST;
+        yang_keyword_get(ys) == Y_CONTAINER || yang_keyword_get(ys) == Y_LIST;
 }
 
 /* find next ys up which can contain a typedef */
@@ -1115,11 +1115,11 @@ ys_typedef_up(yang_stmt *ys)
     yang_stmt *yn;
 
     while (ys != NULL && !ys_typedef(ys)){
-	yn = yang_parent_get(ys);
-	/* Some extra stuff to ensure ys is a stmt */
-	if (yn && yang_keyword_get(yn) == Y_SPEC)
-	    yn = NULL;
-	ys = (yang_stmt*)yn;
+        yn = yang_parent_get(ys);
+        /* Some extra stuff to ensure ys is a stmt */
+        if (yn && yang_keyword_get(yn) == Y_SPEC)
+            yn = NULL;
+        ys = (yang_stmt*)yn;
     }
     /* Here it is either NULL or is a typedef-kind yang-stmt */
     return (yang_stmt*)ys;
@@ -1136,7 +1136,7 @@ ys_typedef_up(yang_stmt *ys)
  */
 yang_stmt *
 yang_find_identity(yang_stmt *ys, 
-		   char      *identity)
+                   char      *identity)
 {
     char        *id = NULL;
     char        *prefix = NULL;
@@ -1145,35 +1145,35 @@ yang_find_identity(yang_stmt *ys,
     yang_stmt   *yn;
 
     if (nodeid_split(identity, &prefix, &id) < 0)
-	goto done;
+        goto done;
     /* No, now check if identityref is derived from base */
     if (prefix){ /* Go to top and find import that matches */
-	if ((ymodule = yang_find_module_by_prefix(ys, prefix)) == NULL)
-	    goto done;
-	/* if ymodule is a sub-module, the identity may be found in a
-	 * sub-module of ymod */
-	yid = yang_find(ymodule, Y_IDENTITY, id);
+        if ((ymodule = yang_find_module_by_prefix(ys, prefix)) == NULL)
+            goto done;
+        /* if ymodule is a sub-module, the identity may be found in a
+         * sub-module of ymod */
+        yid = yang_find(ymodule, Y_IDENTITY, id);
     }
     else{
-	while (1){
-	    /* Check upwards in hierarchy for matching typedefs */
-	    if ((ys = ys_typedef_up(ys)) == NULL) /* If reach top */
-		break;
-	    /* Here find identity */
-	    if ((yid = yang_find(ys, Y_IDENTITY, id)) != NULL)
-		break;
-	    /* Did not find a matching typedef there, proceed to next level */
-	    yn = yang_parent_get(ys);
-	    if (yn && yang_keyword_get(yn) == Y_SPEC)
-		yn = NULL;
-	    ys = (yang_stmt*)yn;
-	}
+        while (1){
+            /* Check upwards in hierarchy for matching typedefs */
+            if ((ys = ys_typedef_up(ys)) == NULL) /* If reach top */
+                break;
+            /* Here find identity */
+            if ((yid = yang_find(ys, Y_IDENTITY, id)) != NULL)
+                break;
+            /* Did not find a matching typedef there, proceed to next level */
+            yn = yang_parent_get(ys);
+            if (yn && yang_keyword_get(yn) == Y_SPEC)
+                yn = NULL;
+            ys = (yang_stmt*)yn;
+        }
     }
   done:
     if (id)
-	free(id);
+        free(id);
     if (prefix)
-	free(prefix);
+        free(prefix);
     return yid;
 }
 
@@ -1189,8 +1189,8 @@ yang_find_identity(yang_stmt *ys,
  */
 yang_stmt *
 yang_find_identity_nsc(yang_stmt *yspec, 
-		       char      *identity,
-		       cvec      *nsc)
+                       char      *identity,
+                       cvec      *nsc)
 {
     char        *id = NULL;
     char        *prefix = NULL;
@@ -1199,19 +1199,19 @@ yang_find_identity_nsc(yang_stmt *yspec,
     char        *ns = NULL;
     
     if (nodeid_split(identity, &prefix, &id) < 0)
-	goto done;
+        goto done;
     if ((ns = xml_nsctx_get(nsc, prefix)) == NULL)
-	goto done;
+        goto done;
     if ((ymodule = yang_find_module_by_namespace(yspec, ns)) == NULL)
-	goto done;
+        goto done;
     /* if ymodule is a sub-module, the identity may be found in a
      * sub-module of ymod */
     yid = yang_find(ymodule, Y_IDENTITY, id);
   done:
     if (id)
-	free(id);
+        free(id);
     if (prefix)
-	free(prefix);
+        free(prefix);
     return yid;
 }
 
@@ -1230,10 +1230,10 @@ yang_find_identity_nsc(yang_stmt *yspec,
  */
 static int
 yang_type_resolve_restrictions(yang_stmt   *ytype,
-			       int         *options, 
-			       cvec       **cvv, 
-			       cvec        *regexps,
-			       uint8_t     *fraction)
+                               int         *options, 
+                               cvec       **cvv, 
+                               cvec        *regexps,
+                               uint8_t     *fraction)
 {
     int        retval = -1;
     yang_stmt *ys;
@@ -1241,36 +1241,36 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
     char      *pattern;
 
     if (options && cvv &&
-	(ys = yang_find(ytype, Y_RANGE, NULL)) != NULL){
-	*cvv = yang_cvec_get(ys);
-	*options  |= YANG_OPTIONS_RANGE;
+        (ys = yang_find(ytype, Y_RANGE, NULL)) != NULL){
+        *cvv = yang_cvec_get(ys);
+        *options  |= YANG_OPTIONS_RANGE;
     }
     if (options && cvv &&
-	(ys = yang_find(ytype, Y_LENGTH, NULL)) != NULL){
-	*cvv = yang_cvec_get(ys);
-	*options  |= YANG_OPTIONS_LENGTH;
+        (ys = yang_find(ytype, Y_LENGTH, NULL)) != NULL){
+        *cvv = yang_cvec_get(ys);
+        *options  |= YANG_OPTIONS_LENGTH;
     }
     /* Find all patterns */
     if (options && regexps){
-	ys = NULL;
-	while ((ys = yn_each(ytype, ys)) != NULL) {
-	    if (yang_keyword_get(ys) != Y_PATTERN)
-		continue;
-	    if ((cv = cvec_add(regexps, CGV_STRING)) == NULL){
-		clicon_err(OE_UNIX, errno, "cvec_add");
-		goto done;
-	    }
-	    pattern = yang_argument_get(ys); /* clear text pattern */
-	    /* Check 1.1 invert pattern */
-	    if (yang_find(ys, Y_MODIFIER, "invert-match") != NULL)
-		cv_flag_set(cv, V_INVERT);
-	    cv_string_set(cv, pattern);
-	}
+        ys = NULL;
+        while ((ys = yn_each(ytype, ys)) != NULL) {
+            if (yang_keyword_get(ys) != Y_PATTERN)
+                continue;
+            if ((cv = cvec_add(regexps, CGV_STRING)) == NULL){
+                clicon_err(OE_UNIX, errno, "cvec_add");
+                goto done;
+            }
+            pattern = yang_argument_get(ys); /* clear text pattern */
+            /* Check 1.1 invert pattern */
+            if (yang_find(ys, Y_MODIFIER, "invert-match") != NULL)
+                cv_flag_set(cv, V_INVERT);
+            cv_string_set(cv, pattern);
+        }
     }
     if (options && fraction && 
-	(ys = yang_find(ytype, Y_FRACTION_DIGITS, NULL)) != NULL){
-	*fraction  = cv_uint8_get(yang_cv_get(ys));
-	*options  |= YANG_OPTIONS_FRACTION_DIGITS;
+        (ys = yang_find(ytype, Y_FRACTION_DIGITS, NULL)) != NULL){
+        *fraction  = cv_uint8_get(yang_cv_get(ys));
+        *options  |= YANG_OPTIONS_FRACTION_DIGITS;
     }
     retval = 0;
  done:
@@ -1302,14 +1302,14 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
  */
 int 
 yang_type_resolve(yang_stmt   *yorig,
-		  yang_stmt   *ys, 
-		  yang_stmt   *ytype, 
-		  yang_stmt  **yrestype, 
-		  int         *options, 
-		  cvec       **cvv, 
-		  cvec        *patterns,
-		  cvec        *regexps,
-		  uint8_t     *fraction)
+                  yang_stmt   *ys, 
+                  yang_stmt   *ytype, 
+                  yang_stmt  **yrestype, 
+                  int         *options, 
+                  cvec       **cvv, 
+                  cvec        *patterns,
+                  cvec        *regexps,
+                  uint8_t     *fraction)
 {
     yang_stmt   *rytypedef = NULL; /* Resolved typedef of ytype */
     yang_stmt   *rytype;           /* Resolved type of ytype */
@@ -1321,94 +1321,94 @@ yang_type_resolve(yang_stmt   *yorig,
     int          ret;
 
     if (options)
-	*options = 0x0;
+        *options = 0x0;
     *yrestype    = NULL; /* Initialization of resolved type that may not be necessary */
 
     if (nodeid_split(yang_argument_get(ytype), &prefix, &type) < 0)
-	goto done;
+        goto done;
     /* Cache does not work for eg string length 32? */
 #if 1
     if ((ret = yang_type_cache_get(ytype, yrestype,
-				   options, cvv, patterns, NULL, regexps, fraction)) < 0)
-	goto done;
+                                   options, cvv, patterns, NULL, regexps, fraction)) < 0)
+        goto done;
     if (ret == 1)
-	goto ok;
+        goto ok;
 #else
     if (ytype->ys_typecache != NULL){
-	if (yang_type_cache_get(ytype, yrestype,
-				options, cvv, patterns, NULL, regexps, fraction) < 0)
-	    goto done;
-	goto ok;
+        if (yang_type_cache_get(ytype, yrestype,
+                                options, cvv, patterns, NULL, regexps, fraction) < 0)
+            goto done;
+        goto ok;
     }
 #endif
     /* Check if type is basic type. If so, return that */
     if ((prefix == NULL && yang_builtin(type))){
-	*yrestype = ytype; 
-	if (yang_type_resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
-	    goto done;
-	goto ok;
+        *yrestype = ytype; 
+        if (yang_type_resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
+            goto done;
+        goto ok;
     }
 
     /* Not basic type. Now check if prefix which means we look in other module */
     if (prefix){ /* Go to top and find import that matches */
-	if ((yrmod = yang_find_module_by_prefix(ytype, prefix)) == NULL){
-	    clicon_err(OE_DB, 0, "Type not resolved: \"%s:%s\" in module %s",
-		       prefix, type, yang_argument_get(ys_module(yorig)));
-	    goto done;
-	}
-	if ((rytypedef = yang_find(yrmod, Y_TYPEDEF, type)) == NULL)
-	    goto ok; /* unresolved */
-	ys = rytypedef;
+        if ((yrmod = yang_find_module_by_prefix(ytype, prefix)) == NULL){
+            clicon_err(OE_DB, 0, "Type not resolved: \"%s:%s\" in module %s",
+                       prefix, type, yang_argument_get(ys_module(yorig)));
+            goto done;
+        }
+        if ((rytypedef = yang_find(yrmod, Y_TYPEDEF, type)) == NULL)
+            goto ok; /* unresolved */
+        ys = rytypedef;
     }
     else
-	while (1){
-	    /* Check upwards in hierarchy for matching typedefs */
-	    if ((ys = ys_typedef_up(ys)) == NULL){ /* If reach top */
-		*yrestype = NULL;
-		break;
-	    }
-	    /* Here find typedef */
-	    if ((rytypedef = yang_find(ys, Y_TYPEDEF, type)) != NULL)
-		break;
-	    /* Did not find a matching typedef there, proceed to next level */
-	    yn = yang_parent_get(ys);
-	    if (yn && (yang_keyword_get(yn) == Y_SPEC))
-		yn = NULL;
-	    ys = (yang_stmt*)yn;
-	}
+        while (1){
+            /* Check upwards in hierarchy for matching typedefs */
+            if ((ys = ys_typedef_up(ys)) == NULL){ /* If reach top */
+                *yrestype = NULL;
+                break;
+            }
+            /* Here find typedef */
+            if ((rytypedef = yang_find(ys, Y_TYPEDEF, type)) != NULL)
+                break;
+            /* Did not find a matching typedef there, proceed to next level */
+            yn = yang_parent_get(ys);
+            if (yn && (yang_keyword_get(yn) == Y_SPEC))
+                yn = NULL;
+            ys = (yang_stmt*)yn;
+        }
     if (rytypedef != NULL){     /* We have found a typedef */
-	/* Find associated type statement */
-	if ((rytype = yang_find(rytypedef, Y_TYPE, NULL)) == NULL){
-	    clicon_err(OE_DB, 0, "mandatory type object is not found");
-	    goto done;
-	}
-	/* recursively resolve this new type */
-	if (yang_type_resolve(yorig, ys, rytype, yrestype, 
-			      options, cvv,
-			      patterns, regexps,
-			      fraction) < 0)
-	    goto done;
-	if (yrestype && *yrestype == NULL){
-	    clicon_err(OE_YANG, 0, "result-type should not be NULL");
-	    goto done;
-	}
-	/* appends patterns, overwrites others if any */
-	if (yang_type_resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
-	    goto done;
+        /* Find associated type statement */
+        if ((rytype = yang_find(rytypedef, Y_TYPE, NULL)) == NULL){
+            clicon_err(OE_DB, 0, "mandatory type object is not found");
+            goto done;
+        }
+        /* recursively resolve this new type */
+        if (yang_type_resolve(yorig, ys, rytype, yrestype, 
+                              options, cvv,
+                              patterns, regexps,
+                              fraction) < 0)
+            goto done;
+        if (yrestype && *yrestype == NULL){
+            clicon_err(OE_YANG, 0, "result-type should not be NULL");
+            goto done;
+        }
+        /* appends patterns, overwrites others if any */
+        if (yang_type_resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
+            goto done;
     }
   ok:
     retval = 0;
   done:
 #if 1
     if (retval == 0 && yrestype != NULL && *yrestype == NULL){
-	clicon_err(OE_YANG, 0, "No such type: \"%s\"", type);
-	retval = -1;
+        clicon_err(OE_YANG, 0, "No such type: \"%s\"", type);
+        retval = -1;
     }
 #endif
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (type)
-	free(type);
+        free(type);
     return retval;
 }
 
@@ -1454,13 +1454,13 @@ yang_type_resolve(yang_stmt   *yorig,
  */
 int 
 yang_type_get(yang_stmt    *ys, 
-	      char        **origtype, 
-	      yang_stmt   **yrestype, 
-	      int          *options, 
-	      cvec        **cvv, 
-	      cvec         *patterns,
-	      cvec         *regexps,
-	      uint8_t      *fraction
+              char        **origtype, 
+              yang_stmt   **yrestype, 
+              int          *options, 
+              cvec        **cvv, 
+              cvec         *patterns,
+              cvec         *regexps,
+              uint8_t      *fraction
     )
 {
     int retval = -1;
@@ -1468,31 +1468,31 @@ yang_type_get(yang_stmt    *ys,
     char         *type = NULL;
 
     if (options)
-	*options = 0x0;
+        *options = 0x0;
     /* Find mandatory type */
     if ((ytype = yang_find(ys, Y_TYPE, NULL)) == NULL){
-	clicon_err(OE_DB, ENOENT, "mandatory type object is not found");
-	goto done;
+        clicon_err(OE_DB, ENOENT, "mandatory type object is not found");
+        goto done;
     }
     /* XXX: here we seem to have some problems if type is union */
     if (nodeid_split(yang_argument_get(ytype), NULL, &type) < 0)
-	goto done;
+        goto done;
     if (origtype &&
-	(*origtype = strdup(type)) == NULL){
-	clicon_err(OE_XML, errno, "stdup");
-	goto done;
+        (*origtype = strdup(type)) == NULL){
+        clicon_err(OE_XML, errno, "stdup");
+        goto done;
     }
     if (yang_type_resolve(ys, ys, ytype, yrestype, 
-			  options, cvv, patterns, regexps, fraction) < 0)
-	goto done;
+                          options, cvv, patterns, regexps, fraction) < 0)
+        goto done;
     if (yrestype && *yrestype == NULL){
-	clicon_err(OE_YANG, 0, "result-type should not be NULL");
-	goto done;
+        clicon_err(OE_YANG, 0, "result-type should not be NULL");
+        goto done;
     }
     retval = 0;
   done:
     if (type)
-	free(type);
+        free(type);
     return retval;
 }
 
@@ -1510,12 +1510,12 @@ yang_type2cv(yang_stmt  *ys)
     /* Find type specification */
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL)
  < 0)
-	goto done;
+        goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
     if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0) /* This handles non-resolved also */
-	goto done;
+        goto done;
  done:
     if (origtype)
-	free(origtype);
+        free(origtype);
     return cvtype;
 }

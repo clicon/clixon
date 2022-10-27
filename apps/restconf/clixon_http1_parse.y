@@ -122,13 +122,13 @@
 
 void 
 clixon_http1_parseerror(void *_hy,
-			char *s) 
+                        char *s) 
 { 
     clicon_err(OE_RESTCONF, 0, "%s on line %d: %s at or before: '%s'", 
-	       _HY->hy_name,
-	       _HY->hy_linenum ,
-	       s, 
-	       clixon_http1_parsetext); 
+               _HY->hy_name,
+               _HY->hy_linenum ,
+               s, 
+               clixon_http1_parsetext); 
   return;
 }
 
@@ -146,18 +146,18 @@ http1_parse_exit(clixon_http1_yacc *hy)
 
 static int
 http1_parse_query(clixon_http1_yacc *hy,
-		  char              *query)
+                  char              *query)
 {
     int                   retval = -1;
     restconf_stream_data *sd = NULL;
 
     clicon_debug(1, "%s: ?%s ", __FUNCTION__, query);
     if ((sd = restconf_stream_find(hy->hy_rc, 0)) == NULL){
-	clicon_err(OE_RESTCONF, 0, "stream 0 not found");
-	goto done;
+        clicon_err(OE_RESTCONF, 0, "stream 0 not found");
+        goto done;
     }
     if (uri_str2cvec(query, '&', '=', 1, &sd->sd_qvec) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -165,19 +165,19 @@ http1_parse_query(clixon_http1_yacc *hy,
 
 static int
 http1_body(clixon_http1_yacc *hy,
-	   char              *body)
+           char              *body)
 {
     int                   retval = -1;
     restconf_stream_data *sd = NULL;
 
     clicon_debug(1, "%s: %s ", __FUNCTION__, body);
     if ((sd = restconf_stream_find(hy->hy_rc, 0)) == NULL){
-	clicon_err(OE_RESTCONF, 0, "stream 0 not found");
-	goto done;
+        clicon_err(OE_RESTCONF, 0, "stream 0 not found");
+        goto done;
     }
     if (cbuf_append_buf(sd->sd_indata, body, strlen(body)) < 0){
-	clicon_err(OE_RESTCONF, errno, "cbuf_append_buf");
-	goto done;
+        clicon_err(OE_RESTCONF, errno, "cbuf_append_buf");
+        goto done;
     }
     retval = 0;
  done:
@@ -188,13 +188,13 @@ http1_body(clixon_http1_yacc *hy,
  */
 static int
 http1_parse_header_field(clixon_http1_yacc *hy,
-			 char              *name,
-    			 char              *field)
+                         char              *name,
+                         char              *field)
 {
     int retval = -1;
 
     if (restconf_convert_hdr(hy->hy_h, name, field) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -209,34 +209,34 @@ http1_parse_header_field(clixon_http1_yacc *hy,
  */
 http_message  :  request_line header_fields CRLF body X_EOF
                    {
-		       if ($4) {
-			   if (http1_body(_HY, $4) < 0) YYABORT;
-			   free($4);
-		       }
-		       _PARSE_DEBUG("http-message -> request-line header-fields body");
-		       YYACCEPT;
-		   } 
+                       if ($4) {
+                           if (http1_body(_HY, $4) < 0) YYABORT;
+                           free($4);
+                       }
+                       _PARSE_DEBUG("http-message -> request-line header-fields body");
+                       YYACCEPT;
+                   } 
 ;
 
 body          : body BODY
                  {
-		     if (($$ = clixon_string_del_join($1, "", $2)) == NULL) {
-			 free($2);
-			 YYABORT;
-		     }
-		     else 
-			 free($2);
-		     _PARSE_DEBUG("body -> body BODY");
-		 }
+                     if (($$ = clixon_string_del_join($1, "", $2)) == NULL) {
+                         free($2);
+                         YYABORT;
+                     }
+                     else 
+                         free($2);
+                     _PARSE_DEBUG("body -> body BODY");
+                 }
               | ERROR   { _PARSE_DEBUG("body -> ERROR"); YYABORT; /* shouldnt happen */ } 
-              |	    	{ _PARSE_DEBUG("body -> "); $$ = NULL; } 
+              |         { _PARSE_DEBUG("body -> "); $$ = NULL; } 
 ;
 
 /* request-line = method SP request-target SP HTTP-version CRLF */
 request_line  : method SP request_target SP HTTP_version CRLF
                { 
-   		   _PARSE_DEBUG("request-line -> method request-target HTTP_version CRLF");
-	       }
+                   _PARSE_DEBUG("request-line -> method request-target HTTP_version CRLF");
+               }
 ;
 
 /*   
@@ -246,11 +246,11 @@ The request methods defined by this specification can be found in
 */
 method        : TOKEN
                   {
-		      if (restconf_param_set(_HY->hy_h, "REQUEST_METHOD", $1) < 0)
-			  YYABORT;
-		      free($1);
-		      _PARSE_DEBUG("method -> TOKEN");
-		  }
+                      if (restconf_param_set(_HY->hy_h, "REQUEST_METHOD", $1) < 0)
+                          YYABORT;
+                      free($1);
+                      _PARSE_DEBUG("method -> TOKEN");
+                  }
 ;
 
 /* request-target = origin-form / absolute-form / authority-form / asterisk-form *
@@ -260,21 +260,21 @@ method        : TOKEN
  */
 request_target : absolute_paths1
                  {
-		     if (restconf_param_set(_HY->hy_h, "REQUEST_URI", cbuf_get($1)) < 0)
-			  YYABORT;
-		      cbuf_free($1);
-		     _PARSE_DEBUG("request-target -> absolute-paths1");
-		 }
-	        | absolute_paths1 QMARK QUERY
-		  {
-		      if (restconf_param_set(_HY->hy_h, "REQUEST_URI", cbuf_get($1)) < 0)
-			  YYABORT;
-		      cbuf_free($1);
-		      if (http1_parse_query(_HY, $3) < 0)
-			  YYABORT;
-		      free($3);
-		      _PARSE_DEBUG("request-target -> absolute-paths1 ? query");
-		  }
+                     if (restconf_param_set(_HY->hy_h, "REQUEST_URI", cbuf_get($1)) < 0)
+                          YYABORT;
+                      cbuf_free($1);
+                     _PARSE_DEBUG("request-target -> absolute-paths1");
+                 }
+                | absolute_paths1 QMARK QUERY
+                  {
+                      if (restconf_param_set(_HY->hy_h, "REQUEST_URI", cbuf_get($1)) < 0)
+                          YYABORT;
+                      cbuf_free($1);
+                      if (http1_parse_query(_HY, $3) < 0)
+                          YYABORT;
+                      free($3);
+                      _PARSE_DEBUG("request-target -> absolute-paths1 ? query");
+                  }
 ;
 
 /* absolute-paths1 = absolute-paths ["/"] 
@@ -283,27 +283,27 @@ request_target : absolute_paths1
 absolute_paths1 : absolute_paths
                       { $$ = $1;_PARSE_DEBUG("absolute-paths1 -> absolute-paths "); }
                 | absolute_paths SLASH
-		      { $$ = $1;_PARSE_DEBUG("absolute-paths1 -> absolute-paths / "); }
+                      { $$ = $1;_PARSE_DEBUG("absolute-paths1 -> absolute-paths / "); }
 ;
 
 /* absolute-path = 1*( "/" segment ) 
 */
 absolute_paths : absolute_paths absolute_path
                  {
-		     $$ = $1;
-		     cprintf($$, "/");
-		     if ($2)
-			 cprintf($$, "%s", $2);
-		     _PARSE_DEBUG("absolute-paths -> absolute-paths absolute-path");
-		  }
+                     $$ = $1;
+                     cprintf($$, "/");
+                     if ($2)
+                         cprintf($$, "%s", $2);
+                     _PARSE_DEBUG("absolute-paths -> absolute-paths absolute-path");
+                  }
                | absolute_path
-	         {
-		     if (($$ = cbuf_new()) == NULL){ YYABORT;}
-		     cprintf($$, "/");
-		     if ($1)
-			 cprintf($$, "%s", $1);
-		     _PARSE_DEBUG("absolute-paths -> absolute-path");
-	         }
+                 {
+                     if (($$ = cbuf_new()) == NULL){ YYABORT;}
+                     cprintf($$, "/");
+                     if ($1)
+                         cprintf($$, "%s", $1);
+                     _PARSE_DEBUG("absolute-paths -> absolute-path");
+                 }
 ;
 /* segment = <segment, see [RFC3986], Section 3.3> 
  * segment = *pchar
@@ -315,25 +315,25 @@ absolute_paths : absolute_paths absolute_path
  */
 absolute_path   : SLASH PCHARS
                    {
-		       $$ = $2;
-		       _PARSE_DEBUG("absolute-path -> / PCHARS");
-		   }
+                       $$ = $2;
+                       _PARSE_DEBUG("absolute-path -> / PCHARS");
+                   }
                    | SLASH
                    {
-		       $$ = NULL;
-		       _PARSE_DEBUG("absolute-path -> /");
-		   }
+                       $$ = NULL;
+                       _PARSE_DEBUG("absolute-path -> /");
+                   }
 ;
 
 /* HTTP-version = HTTP-name "/" DIGIT "." DIGIT */
 HTTP_version    : HTTP SLASH DIGIT DOT DIGIT
                    {
-		       /* make sanity check later */
-		       _HY->hy_rc->rc_proto_d1 = $3;
-		       _HY->hy_rc->rc_proto_d2 = $5;
-		       clicon_debug(1, "clixon_http1_parse: http/%d.%d", $3, $5);
-		       _PARSE_DEBUG("HTTP-version -> HTTP / DIGIT . DIGIT");
-		   }
+                       /* make sanity check later */
+                       _HY->hy_rc->rc_proto_d1 = $3;
+                       _HY->hy_rc->rc_proto_d2 = $5;
+                       clicon_debug(1, "clixon_http1_parse: http/%d.%d", $3, $5);
+                       _PARSE_DEBUG("HTTP-version -> HTTP / DIGIT . DIGIT");
+                   }
 ;
 
 /*------------------------------------------ hdr fields 
@@ -347,14 +347,14 @@ header_fields : header_fields header_field CRLF
    field-name = token */
 header_field  : TOKEN COLON ows field_values ows
                  {
-		     if ($4){
-			 if (http1_parse_header_field(_HY, $1, $4) < 0)
-			     YYABORT;
-			 free($4);
-		     }
-		     free($1);
-		     _PARSE_DEBUG("header-field -> field-name : field-values");
-	         }
+                     if ($4){
+                         if (http1_parse_header_field(_HY, $1, $4) < 0)
+                             YYABORT;
+                         free($4);
+                     }
+                     free($1);
+                     _PARSE_DEBUG("header-field -> field-name : field-values");
+                 }
 ;
 
 /* field-value = *( field-content / obs-fold ) 
@@ -362,24 +362,24 @@ header_field  : TOKEN COLON ows field_values ows
    field-vchar = VCHAR / obs-text */
 field_values   : field_vchars
                            {
-			       $$ = $1; // XXX is there more than one??
-			       _PARSE_DEBUG("field-values -> field-values field-vchars");
-			   }
+                               $$ = $1; // XXX is there more than one??
+                               _PARSE_DEBUG("field-values -> field-values field-vchars");
+                           }
                |           { $$ = NULL; _PARSE_DEBUG("field-values -> "); }
 ;
 
 
 field_vchars   : field_vchars RWS VCHARS
                      {
-			 if (($$ = clixon_string_del_join($1, " ", $3)) == NULL) YYABORT;
-			 free($3);
-			 _PARSE_DEBUG("field-vchars -> field-vchars VCHARS");
-		     }
+                         if (($$ = clixon_string_del_join($1, " ", $3)) == NULL) YYABORT;
+                         free($3);
+                         _PARSE_DEBUG("field-vchars -> field-vchars VCHARS");
+                     }
                | VCHARS
-	             {
-			 $$ = $1;
-			 _PARSE_DEBUG("field-vchars -> VCHARS");
-		     }
+                     {
+                         $$ = $1;
+                         _PARSE_DEBUG("field-vchars -> VCHARS");
+                     }
 ;
 
 /* The OWS rule is used where zero or more linear whitespace octets 

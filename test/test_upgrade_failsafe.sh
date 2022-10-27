@@ -275,16 +275,16 @@ runtest(){
     new "test params: -f $cfg"
     # Bring your own backend
     if [ $BE -ne 0 ]; then
-	# kill old backend (if any)
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s $mode -f $cfg -o \"CLICON_XMLDB_MODSTATE=$modstate\""
-	start_backend -s $mode -f $cfg -o "CLICON_XMLDB_MODSTATE=$modstate"
+        # kill old backend (if any)
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s $mode -f $cfg -o \"CLICON_XMLDB_MODSTATE=$modstate\""
+        start_backend -s $mode -f $cfg -o "CLICON_XMLDB_MODSTATE=$modstate"
 
-#	new "Restart backend as eg follows: -Ff $cfg -s $mode -o \"CLICON_XMLDB_MODSTATE=$modstate\" ($BETIMEOUT s)"
+#       new "Restart backend as eg follows: -Ff $cfg -s $mode -o \"CLICON_XMLDB_MODSTATE=$modstate\" ($BETIMEOUT s)"
     fi
 
     new "wait backend"
@@ -295,19 +295,19 @@ runtest(){
 
     # If given check startup db XML
     if [ -n "$expstart" ]; then 
-	new "Check startup db content"
-	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><startup/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS>$expstart</rpc-reply>"
+        new "Check startup db content"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><startup/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS>$expstart</rpc-reply>"
     fi
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 

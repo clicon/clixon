@@ -48,7 +48,15 @@ delete("Delete a configuration item") {
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 validate("Validate changes"), cli_validate();
-commit("Commit the changes"), cli_commit();
+commit("Commit the changes"), cli_commit(); {
+  [persist-id("Specify the 'persist' value of a previous confirmed-commit") <persist-id-val:string show:"string">("The 'persist' value of the persistent confirmed-commit")], cli_commit(); {
+    <cancel:string keyword:cancel>("Cancel an ongoing confirmed-commit"), cli_commit();
+    <confirmed:string keyword:confirmed>("Require a confirming commit") {
+       [persist("Make this confirmed-commit persistent") <persist-val:string show:"string">("The value that must be provided as 'persist-id' in the confirming-commit or cancel-commit")]
+       [<timeout:uint32 range[1:4294967295] show:"1..4294967295">("The rollback timeout in seconds")], cli_commit();
+    }
+  }
+}
 quit("Quit"), cli_quit();
 
 debug("Debugging parts of the system"){

@@ -39,10 +39,10 @@ module example {
         type int32;
       }
       list a{
-	key x;
-	leaf x{
-	    type int32;
-	}
+        key x;
+        leaf x{
+            type int32;
+        }
       }
     }
 }

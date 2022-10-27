@@ -93,18 +93,18 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options]\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level>\tDebug\n"
-	    "\t-o <op>   \tOperation: parent, insert or merge\n"
-	    "\t-y <file> \tYANG spec file\n"
-    	    "\t-Y <dir> \tYang dirs (can be several)\n"
-	    "\t-b <base> \tXML base expression\n"
-	    "\t-x <xml>  \tXML to insert\n"
-	    "\t-p <xpath>\tXpath to where in base and XML\n"
-	    "\t-s        \tSort output after operation\n",
-	    argv0
-	    );
+            "\t-D <level>\tDebug\n"
+            "\t-o <op>   \tOperation: parent, insert or merge\n"
+            "\t-y <file> \tYANG spec file\n"
+            "\t-Y <dir> \tYang dirs (can be several)\n"
+            "\t-b <base> \tXML base expression\n"
+            "\t-x <xml>  \tXML to insert\n"
+            "\t-p <xpath>\tXpath to where in base and XML\n"
+            "\t-s        \tSort output after operation\n",
+            argv0
+            );
     exit(0);
 }
 
@@ -136,175 +136,175 @@ main(int argc, char **argv)
     
     clicon_log_init("clixon_insert", LOG_DEBUG, CLICON_LOG_STDERR); 
     if ((h = clicon_handle_init()) == NULL)
-	goto done;
+        goto done;
     if ((xcfg = xml_new("clixon-config", NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     if (clicon_conf_xml_set(h, xcfg) < 0)
-	goto done;
+        goto done;
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, UTIL_XML_MOD_OPTS)) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv0);
-	    break;
-    	case 'D':
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(argv0);
-	    break;
-	case 'o': /* Operation */
-	    opx = opx_str2int(optarg);
-	    break;
-	case 'y': /* YANG spec file */
-	    yangfile = optarg;
-	    break;
-	case 'Y':
-	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
-		goto done;
-	    break;
-	case 'b': /* Base XML expression */
-	    x0str = optarg;
-	    break;
-	case 'x': /* XML to insert */
-	    x1str = optarg;
-	    break;
-	case 'p': /* XPATH base */
-	    xpath = optarg;
-	    break;
-	case 's': /* sort output after insert */
-	    sort++;
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv0);
+            break;
+        case 'D':
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(argv0);
+            break;
+        case 'o': /* Operation */
+            opx = opx_str2int(optarg);
+            break;
+        case 'y': /* YANG spec file */
+            yangfile = optarg;
+            break;
+        case 'Y':
+            if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+                goto done;
+            break;
+        case 'b': /* Base XML expression */
+            x0str = optarg;
+            break;
+        case 'x': /* XML to insert */
+            x1str = optarg;
+            break;
+        case 'p': /* XPATH base */
+            xpath = optarg;
+            break;
+        case 's': /* sort output after insert */
+            sort++;
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     /* Sanity check: check mandatory arguments */
     if (x1str == NULL || x0str == NULL || yangfile == NULL)
-	usage(argv0);
+        usage(argv0);
     if (opx == OPX_ERROR) 
-	usage(argv0);
+        usage(argv0);
     clicon_debug_init(dbg, NULL);
     if ((yspec = yspec_new()) == NULL)
-	goto done;
+        goto done;
     if (yang_spec_parse_file(h, yangfile, yspec) < 0)
-	goto done;
+        goto done;
     /* Parse base XML */
     if ((ret = clixon_xml_parse_string(x0str, YB_MODULE, yspec, &x0, &xerr)) < 0){
-	clicon_err(OE_XML, 0, "Parsing base xml: %s", x0str);
-	goto done;
+        clicon_err(OE_XML, 0, "Parsing base xml: %s", x0str);
+        goto done;
     }
     if (ret == 0){
-	clixon_netconf_error(xerr, "Parsing base xml", NULL);
-	goto done;
+        clixon_netconf_error(xerr, "Parsing base xml", NULL);
+        goto done;
     }
     /* Get base subtree by xpath */
     if (xpath == NULL)
-	xb = x0;
+        xb = x0;
     else if ((xb = xpath_first(x0, NULL, "%s", xpath)) == NULL){
-	clicon_err(OE_XML, 0, "xpath: %s not found in x0", xpath);
-	goto done;
+        clicon_err(OE_XML, 0, "xpath: %s not found in x0", xpath);
+        goto done;
     }
     if (clicon_debug_get()){
-	clicon_debug(1, "xb:");
-	xml_print(stderr, xb);
+        clicon_debug(1, "xb:");
+        xml_print(stderr, xb);
     }
     switch (opx){
     case OPX_PARENT:
-	/* Parse insert XML */
-	if ((ret = clixon_xml_parse_string(x1str, YB_PARENT, yspec, &xb, &xerr)) < 0){
-	    clicon_err(OE_XML, 0, "Parsing insert xml: %s", x1str);
-	    goto done;
-	}
-	if (ret == 0){
-	    clixon_netconf_error(xerr, "Parsing secondary xml", NULL);
-	    goto done;
-	}
-	break;
+        /* Parse insert XML */
+        if ((ret = clixon_xml_parse_string(x1str, YB_PARENT, yspec, &xb, &xerr)) < 0){
+            clicon_err(OE_XML, 0, "Parsing insert xml: %s", x1str);
+            goto done;
+        }
+        if (ret == 0){
+            clixon_netconf_error(xerr, "Parsing secondary xml", NULL);
+            goto done;
+        }
+        break;
     case OPX_MERGE:
-	/* Parse merge XML */
-	if ((ret = clixon_xml_parse_string(x1str, YB_MODULE, yspec, &x1, &xerr)) < 0){
-	    clicon_err(OE_XML, 0, "Parsing insert xml: %s", x1str);
-	    goto done;
-	}
-	if (ret == 0){
-	    clixon_netconf_error(xerr, "Parsing secondary xml", NULL);
-	    goto done;
-	}
-	if (xpath == NULL)
-	    xi = x1;
-	else if ((xi = xpath_first(x1, NULL, "%s", xpath)) == NULL){
-	    clicon_err(OE_XML, 0, "xpath: %s not found in xi", xpath);
-	    goto done;
-	}
-	if ((ret = xml_merge(xb, xi, yspec, &reason)) < 0) 
-	    goto done;
-	if (ret == 0){
-	    clicon_err(OE_XML, 0, "%s", reason);
-	    goto done;
-	}
-	break;
+        /* Parse merge XML */
+        if ((ret = clixon_xml_parse_string(x1str, YB_MODULE, yspec, &x1, &xerr)) < 0){
+            clicon_err(OE_XML, 0, "Parsing insert xml: %s", x1str);
+            goto done;
+        }
+        if (ret == 0){
+            clixon_netconf_error(xerr, "Parsing secondary xml", NULL);
+            goto done;
+        }
+        if (xpath == NULL)
+            xi = x1;
+        else if ((xi = xpath_first(x1, NULL, "%s", xpath)) == NULL){
+            clicon_err(OE_XML, 0, "xpath: %s not found in xi", xpath);
+            goto done;
+        }
+        if ((ret = xml_merge(xb, xi, yspec, &reason)) < 0) 
+            goto done;
+        if (ret == 0){
+            clicon_err(OE_XML, 0, "%s", reason);
+            goto done;
+        }
+        break;
     case OPX_INSERT:
-	/* Parse insert XML */
-	if ((ret = clixon_xml_parse_string(x1str, YB_MODULE, yspec, &x1, &xerr)) < 0){
-	    clicon_err(OE_XML, 0, "Parsing insert xml: %s", x1str);
-	    goto done;
-	}
-	if (ret == 0){
-	    clixon_netconf_error(xerr, "Parsing secondary xml", NULL);
-	    goto done;
-	}
-	/* Get secondary subtree by xpath */
-	if (xpath == NULL)
-	    xi = x1;
-	else if ((xi = xpath_first(x1, NULL, "%s", xpath)) == NULL){
-	    clicon_err(OE_XML, 0, "xpath: %s not found in xi", xpath);
-	    goto done;
-	}
+        /* Parse insert XML */
+        if ((ret = clixon_xml_parse_string(x1str, YB_MODULE, yspec, &x1, &xerr)) < 0){
+            clicon_err(OE_XML, 0, "Parsing insert xml: %s", x1str);
+            goto done;
+        }
+        if (ret == 0){
+            clixon_netconf_error(xerr, "Parsing secondary xml", NULL);
+            goto done;
+        }
+        /* Get secondary subtree by xpath */
+        if (xpath == NULL)
+            xi = x1;
+        else if ((xi = xpath_first(x1, NULL, "%s", xpath)) == NULL){
+            clicon_err(OE_XML, 0, "xpath: %s not found in xi", xpath);
+            goto done;
+        }
 
-	/* Find first element child of secondary */
-	if ((xi1 = xml_child_i_type(xi, 0, CX_ELMNT)) == NULL){
-	    clicon_err(OE_XML, 0, "xi has no element child");
-	    goto done;
-	}
-	/* Remove it from parent */
-	if (xml_rm(xi1) < 0)
-	    goto done;
-	if (xml_insert(xb, xi1, INS_LAST, NULL, NULL) < 0) 
-	    goto done;
-	break;
+        /* Find first element child of secondary */
+        if ((xi1 = xml_child_i_type(xi, 0, CX_ELMNT)) == NULL){
+            clicon_err(OE_XML, 0, "xi has no element child");
+            goto done;
+        }
+        /* Remove it from parent */
+        if (xml_rm(xi1) < 0)
+            goto done;
+        if (xml_insert(xb, xi1, INS_LAST, NULL, NULL) < 0) 
+            goto done;
+        break;
     default:
-	usage(argv0);
+        usage(argv0);
     }
     if (clicon_debug_get()){
-	clicon_debug(1, "x0:");
-	xml_print(stderr, x0);
+        clicon_debug(1, "x0:");
+        xml_print(stderr, x0);
     }
     if (sort)
-	xml_sort_recurse(xb);
+        xml_sort_recurse(xb);
     if (strcmp(xml_name(xb),"top")==0){
-	if (clixon_xml2file(stdout, xb, 0, 0, fprintf, 1, 0) < 0)
-	    goto done;
+        if (clixon_xml2file(stdout, xb, 0, 0, fprintf, 1, 0) < 0)
+            goto done;
     }
     else{
-	if (clixon_xml2file(stdout, xb, 0, 0, fprintf, 0, 0) < 0)
-	    goto done;
+        if (clixon_xml2file(stdout, xb, 0, 0, fprintf, 0, 0) < 0)
+            goto done;
     }
     fprintf(stdout, "\n");
     retval = 0;
  done:
     if (x0)
-	xml_free(x0);
+        xml_free(x0);
     if (x1)
-	xml_free(x1);
+        xml_free(x1);
     if (xcfg)
-	xml_free(xcfg);
+        xml_free(xcfg);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (reason)
-	free(reason);
+        free(reason);
     if (yspec)
-	ys_free(yspec);
+        ys_free(yspec);
     if (fd > 0)
-	close(fd);
+        close(fd);
     return retval;
 }

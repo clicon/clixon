@@ -109,9 +109,9 @@ enum insert_type{ /* edit-config insert */
 
 /* XML object types */
 enum cxobj_type {CX_ERROR=-1, 
-		 CX_ELMNT, 
-		 CX_ATTR, 
-		 CX_BODY};
+                 CX_ELMNT, 
+                 CX_ATTR, 
+                 CX_BODY};
 
 /* How to bind yang to XML top-level when parsing 
  * Assume an XML tree x with parent xp (or NULL) and a set of children c1,c2:   
@@ -147,13 +147,13 @@ enum cxobj_type {CX_ERROR=-1,
 enum yang_bind{ 
     YB_NONE=0,   /* Dont do Yang binding */
     YB_MODULE,   /* Search for matching yang binding among top-level symbols of Yang modules of direct
-		  * children
-		  * Ie, xml looks like: <top><x>... where "x" is a top-level symbol in a module
-		  */
+                  * children
+                  * Ie, xml looks like: <top><x>... where "x" is a top-level symbol in a module
+                  */
     YB_MODULE_NEXT, /* Search for matching yang binding among top-level symbols of Yang modules of
-		  * next-level children
-		  * Ie, xml looks like: <top><config><x>... where "x" is a top-level symbol in a module
-		  */
+                  * next-level children
+                  * Ie, xml looks like: <top><config><x>... where "x" is a top-level symbol in a module
+                  */
     YB_PARENT,   /* Assume yang binding of existing parent and match its children by name */
     YB_RPC,      /* Assume top-level xml is an incoming netconf RPC message (or hello) */
 
@@ -178,7 +178,7 @@ typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c
  * xml_flag() flags:
  */
 #define XML_FLAG_MARK      0x01 /* General-purpose eg expand and xpath_vec selection and
-				 * diffs between candidate and running */
+                                 * diffs between candidate and running */
 #define XML_FLAG_TRANSIENT 0x02 /* Marker for dynamic algorithms, unmark asap */
 #define XML_FLAG_ADD       0x04 /* Node is added (commits) or parent added rec*/
 #define XML_FLAG_DEL       0x08 /* Node is deleted (commits) or parent deleted rec */
@@ -201,7 +201,7 @@ int       xml_prefix_set(cxobj *xn, char *name);
 char     *nscache_get(cxobj *x, char *prefix);
 int       nscache_get_prefix(cxobj *x, char *ns, char **prefix);
 cvec     *nscache_get_all(cxobj *x);
-int       nscache_set(cxobj *x,	char *prefix, char *ns);
+int       nscache_set(cxobj *x, char *prefix, char *ns);
 int       nscache_clear(cxobj *x);
 int       nscache_replace(cxobj *x, cvec *ns);
 cxobj    *xml_parent(cxobj *xn);
@@ -255,7 +255,7 @@ int       xml_enumerate_get(cxobj *x);
 char     *xml_body(cxobj *xn);
 cxobj    *xml_body_get(cxobj *xn);
 char     *xml_find_type_value(cxobj *xn_parent, const char *prefix,
-			      const char *name, enum cxobj_type type);
+                              const char *name, enum cxobj_type type);
 cxobj    *xml_find_type(cxobj *xn_parent, const char *prefix, const char *name, enum cxobj_type type);
 char     *xml_find_value(cxobj *xn_parent, const char *name);
 char     *xml_find_body(cxobj *xn, const char *name);

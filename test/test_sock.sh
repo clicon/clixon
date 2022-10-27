@@ -40,7 +40,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>*:*</CLICON_FEATURE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
   <CLICON_SOCK_FAMILY>$family</CLICON_SOCK_FAMILY>
   <CLICON_SOCK_PORT>4535</CLICON_SOCK_PORT>
   <CLICON_SOCK>$sock</CLICON_SOCK>
@@ -56,13 +56,13 @@ EOF
 
     new "test params: -f $cfg"
     if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s init -f $cfg"
-	start_backend -s init -f $cfg
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s init -f $cfg"
+        start_backend -s init -f $cfg
     fi
 
     new "wait backend"
@@ -78,14 +78,14 @@ EOF
     expecteof "$clixon_util_socket -a $family -s $sock -D $DBG" 0 "<hello $DEFAULTONLY/>" "<hello $DEFAULTONLY><session-id>4</session-id></hello>"
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 

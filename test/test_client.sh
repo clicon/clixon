@@ -52,21 +52,21 @@ module clixon-client {
     namespace "urn:example:clixon-client";
     prefix exc;
     description
-	"Clixon client example yang";
+        "Clixon client example yang";
     revision 2021-01-14 {
         description "Added table/paramater/value as the primary data example";
     }
     /* Generic config data */
     container table{
       list parameter{
-	    key name;
-	    leaf name{
-		type string;
-	    }
-	    leaf value{
-		type uint32;
-	    }
-	}
+            key name;
+            leaf name{
+                type string;
+            }
+            leaf value{
+                type uint32;
+            }
+        }
     }
 }
 EOF
@@ -111,7 +111,7 @@ main(int    argc,
   done:
     clixon_client_disconnect(ch);
     clixon_client_terminate(h);
-    printf("done\n"); /* for test output */	
+    printf("done\n"); /* for test output */     
     return retval;
 }
 EOF
@@ -132,13 +132,13 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend"
     start_backend -s init -f $cfg
  fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -174,7 +174,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=`pgrep -u root -f clixon_backend`
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

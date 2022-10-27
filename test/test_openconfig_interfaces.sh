@@ -30,7 +30,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$OCDIR</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
@@ -89,7 +89,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     sudo pkill -f clixon_backend # to be sure
     
@@ -111,18 +111,18 @@ expectpart "$($clixon_cli -1 -f $cfg show conf xml)" 0 "^<interfaces xmlns=\"htt
 
 # XXX THIS REQUIRES PREFIX FOR IETF-INTERFACES
 #new "cli set interfaces interface <tab> complete: e"
-#expectpart "$(echo "set interfaces interface 	" | $clixon_cli -f $cfg)" 0 "interface e"
+#expectpart "$(echo "set interfaces interface   " | $clixon_cli -f $cfg)" 0 "interface e"
 
 # XXX See https://github.com/clicon/clixon/issues/218
 #new "cli set interfaces interface e <tab> complete: not ethernet"
-#expectpart "$(echo "set interfaces interface e 	" | $clixon_cli -f $cfg)" 0 config hold-time subinterfaces --not-- ethernet 
+#expectpart "$(echo "set interfaces interface e         " | $clixon_cli -f $cfg)" 0 config hold-time subinterfaces --not-- ethernet 
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg
@@ -173,7 +173,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     sudo pkill -f clixon_backend # to be sure
     
@@ -192,7 +192,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

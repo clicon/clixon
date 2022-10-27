@@ -50,18 +50,18 @@ http {
         listen 80 default_server;
         listen localhost:80 default_server;
         listen [::]:80 default_server;
-	server_name localhost;
-	server_name _;
+        server_name localhost;
+        server_name _;
       #:well-known is in root, otherwise restconf would be ok
-	location / {
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
+        location / {
+            fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+            include fastcgi_params;
         }
-	location /streams {
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
- 	    proxy_http_version 1.1;
-	    proxy_set_header Connection "";
+        location /streams {
+            fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+            include fastcgi_params;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
         }
   }
 }
@@ -74,20 +74,20 @@ cat<<'EOF' > $dir/startnginx.sh
     if [ $# -ne 0 -a $# -ne 1 ]; then 
        echo "usage: $0 [<prefix>"]
        exit
-    fi	   
+    fi     
     prefix=$1
     # start nginx
     sudo cp nginx.conf $prefix/etc/nginx/
 
     if [ -d /etc/rc.conf ]; then # freebsd
         if [ ! $(grep nginx_enable /etc/rc.conf) ]; then
-   	  sudo sh -c ' echo 'nginx_enable="YES"' >> /etc/rc.conf'
-        fi		
+          sudo sh -c ' echo 'nginx_enable="YES"' >> /etc/rc.conf'
+        fi              
         sudo /usr/local/etc/rc.d/nginx restart
-    else	 
-	sudo pkill nginx
+    else         
+        sudo pkill nginx
         nginxbin=$(sudo which nginx)
-	sudo $nginxbin -c $prefix/etc/nginx/nginx.conf
+        sudo $nginxbin -c $prefix/etc/nginx/nginx.conf
     fi
 EOF
 

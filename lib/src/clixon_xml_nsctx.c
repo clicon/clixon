@@ -78,7 +78,7 @@
  * See rfc6241 3.1: urn:ietf:params:xml:ns:netconf:base:1.0.
  */
 static int _USE_NAMESPACE_NETCONF_DEFAULT = 0;
-	    
+            
 /*! Set if use internal default namespace mechanism or not
  *
  * This function shouldnt really be here, it sets a local variable from the value of the
@@ -110,16 +110,16 @@ xml_nsctx_namespace_netconf_default(clicon_handle h)
  */
 cvec *
 xml_nsctx_init(char  *prefix,
-	       char  *ns)
+               char  *ns)
 {
     cvec *cvv = NULL;
 
     if ((cvv = cvec_new(0)) == NULL){
-	clicon_err(OE_XML, errno, "cvec_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cvec_new");
+        goto done;
     }
     if (ns && xml_nsctx_add(cvv, prefix, ns) < 0)
-	goto done;
+        goto done;
  done:
     return cvv;
 }
@@ -136,7 +136,7 @@ xml_nsctx_free(cvec *nsc)
     cvec *cvv = (cvec*)nsc;
 
     if (cvv)
-	cvec_free(cvv);
+        cvec_free(cvv);
     return 0;
 }
 
@@ -148,12 +148,12 @@ xml_nsctx_free(cvec *nsc)
  */
 char*
 xml_nsctx_get(cvec *cvv,
-	      char *prefix)
+              char *prefix)
 {
     cg_var *cv;
     
     if ((cv = cvec_find(cvv, prefix)) != NULL)
-	return cv_string_get(cv);
+        return cv_string_get(cv);
     return NULL;
 }
 
@@ -167,44 +167,44 @@ xml_nsctx_get(cvec *cvv,
  */
 int
 xml_nsctx_get_prefix(cvec  *cvv,
-		     char  *ns,
-		     char **prefix)
+                     char  *ns,
+                     char **prefix)
 {
     cg_var *cv = NULL;
     char   *ns0 = NULL;
 
     while ((cv = cvec_each(cvv, cv)) != NULL){
-	if ((ns0 = cv_string_get(cv)) != NULL &&
-	    strcmp(ns0, ns) == 0){
-	    if (prefix)
-		*prefix = cv_name_get(cv); /* can be NULL */
-	    return 1;
-	}
+        if ((ns0 = cv_string_get(cv)) != NULL &&
+            strcmp(ns0, ns) == 0){
+            if (prefix)
+                *prefix = cv_name_get(cv); /* can be NULL */
+            return 1;
+        }
     }
     if (prefix)
-	*prefix = NULL;
+        *prefix = NULL;
     return 0;
 }
 
 /*! Set or replace namespace in namespace context
  * @param[in] cvv       Namespace context
  * @param[in] prefix    Namespace prefix, or NULL for default
- * @param[in] ns	Cached namespace to set (assume non-null?)
+ * @param[in] ns        Cached namespace to set (assume non-null?)
  * @retval    0         OK
  * @retval   -1         Error
  */
 int
 xml_nsctx_add(cvec  *cvv,
-	      char  *prefix,
-	      char  *ns)
+              char  *prefix,
+              char  *ns)
 {
     int     retval = -1;
     cg_var *cv;
     
     if ((cv = cvec_find(cvv, prefix)) != NULL) /* found, replace that */
-	cv_string_set(cv, ns);
+        cv_string_set(cv, ns);
     else /* cvec exists, but not prefix */
-	cvec_add_string(cvv, prefix, ns);
+        cvec_add_string(cvv, prefix, ns);
     retval = 0;
     // done:
     return retval;
@@ -212,7 +212,7 @@ xml_nsctx_add(cvec  *cvv,
 
 static int
 xml_nsctx_node1(cxobj *xn,
-		cvec   *nsc)
+                cvec   *nsc)
 {
     int    retval = -1;
     cxobj *xa = NULL;
@@ -225,35 +225,35 @@ xml_nsctx_node1(cxobj *xn,
      * xmlns="<ns2>"   prefix:NULL   name:xmlns
      */
     while ((xa = xml_child_each(xn, xa, CX_ATTR)) != NULL){
-	pf = xml_prefix(xa);
-	nm = xml_name(xa);
-	if (pf == NULL){
-	    if (strcmp(nm, "xmlns")==0 && /* set default namespace context */
-		xml_nsctx_get(nsc, NULL) == NULL){
-		val = xml_value(xa);
-		if (xml_nsctx_add(nsc, NULL, val) < 0)
-		    goto done;
-	    }
-	}
-	else
-	    if (strcmp(pf, "xmlns")==0 && /* set prefixed namespace context */
-		xml_nsctx_get(nsc, nm) == NULL){
-		val = xml_value(xa);
-		if (xml_nsctx_add(nsc, nm, val) < 0)
-		    goto done;
-	    }
+        pf = xml_prefix(xa);
+        nm = xml_name(xa);
+        if (pf == NULL){
+            if (strcmp(nm, "xmlns")==0 && /* set default namespace context */
+                xml_nsctx_get(nsc, NULL) == NULL){
+                val = xml_value(xa);
+                if (xml_nsctx_add(nsc, NULL, val) < 0)
+                    goto done;
+            }
+        }
+        else
+            if (strcmp(pf, "xmlns")==0 && /* set prefixed namespace context */
+                xml_nsctx_get(nsc, nm) == NULL){
+                val = xml_value(xa);
+                if (xml_nsctx_add(nsc, nm, val) < 0)
+                    goto done;
+            }
     }
     if ((xp = xml_parent(xn)) == NULL){
-	if (_USE_NAMESPACE_NETCONF_DEFAULT){
-	    /* If not default namespace defined, use the base netconf ns as default */
-	    if (xml_nsctx_get(nsc, NULL) == NULL)
-		if (xml_nsctx_add(nsc, NULL, NETCONF_BASE_NAMESPACE) < 0)
-		    goto done;
-	}
+        if (_USE_NAMESPACE_NETCONF_DEFAULT){
+            /* If not default namespace defined, use the base netconf ns as default */
+            if (xml_nsctx_get(nsc, NULL) == NULL)
+                if (xml_nsctx_add(nsc, NULL, NETCONF_BASE_NAMESPACE) < 0)
+                    goto done;
+        }
     }
     else
-	if (xml_nsctx_node1(xp, nsc) < 0)
-	    goto done;
+        if (xml_nsctx_node1(xp, nsc) < 0)
+            goto done;
     retval = 0;
  done:
     return retval;
@@ -278,17 +278,17 @@ xml_nsctx_node1(cxobj *xn,
  */
 int
 xml_nsctx_node(cxobj *xn,
-	       cvec **ncp)
+               cvec **ncp)
 {
     int   retval = -1;
     cvec *nc = NULL;
     
     if ((nc = cvec_new(0)) == NULL){
-	clicon_err(OE_XML, errno, "cvec_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cvec_new");
+        goto done;
     }
     if (xml_nsctx_node1(xn, nc) < 0)
-	goto done;
+        goto done;
     *ncp = nc;
     retval = 0;
  done:
@@ -315,7 +315,7 @@ xml_nsctx_node(cxobj *xn,
  */
 int
 xml_nsctx_yang(yang_stmt *yn,
-	       cvec     **ncp)
+               cvec     **ncp)
 {
     int        retval = -1;
     cvec      *nc = NULL;
@@ -332,30 +332,30 @@ xml_nsctx_yang(yang_stmt *yn,
     char      *myprefix;
     
     if (yang_keyword_get(yn) == Y_SPEC){
-	clicon_err(OE_YANG, EINVAL, "yang spec node is invalid argument");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "yang spec node is invalid argument");
+        goto done;
     }
     if ((nc = cvec_new(0)) == NULL){
-	clicon_err(OE_XML, errno, "cvec_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cvec_new");
+        goto done;
     }
     if ((myprefix = yang_find_myprefix(yn)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "My yang prefix not found");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "My yang prefix not found");
+        goto done;
     }
     if ((mynamespace = yang_find_mynamespace(yn)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "My yang namespace not found");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "My yang namespace not found");
+        goto done;
     }
     /* Add my prefix and default namespace (from real module) */
     if (xml_nsctx_add(nc, NULL, mynamespace) < 0)
-	goto done;
+        goto done;
     if (xml_nsctx_add(nc, myprefix, mynamespace) < 0)
-	goto done;
+        goto done;
     /* Find top-most module or sub-module and get prefixes from that */
     if ((ymod = ys_module(yn)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "My yang module not found");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "My yang module not found");
+        goto done;
     }
     yspec = yang_parent_get(ymod); /* Assume yspec exists */
 
@@ -363,22 +363,22 @@ xml_nsctx_yang(yang_stmt *yn,
      */
     y = NULL;
     while ((y = yn_each(ymod, y)) != NULL) {
-	if (yang_keyword_get(y) == Y_IMPORT){
-	    if ((name = yang_argument_get(y)) == NULL)
-		continue; /* Just skip - shouldnt happen) */
-	    if ((yp = yang_find(y, Y_PREFIX, NULL)) == NULL)
-		continue; 
-	    if ((prefix = yang_argument_get(yp)) == NULL)
-		continue;
-	    if ((ym = yang_find(yspec, Y_MODULE, name)) == NULL)
-		continue;
-	    if ((yns = yang_find(ym, Y_NAMESPACE, NULL)) == NULL)
-		continue;
-	    if ((namespace = yang_argument_get(yns)) == NULL)
-		continue;
-	    if (xml_nsctx_add(nc, prefix, namespace) < 0)
-		goto done;
-	}
+        if (yang_keyword_get(y) == Y_IMPORT){
+            if ((name = yang_argument_get(y)) == NULL)
+                continue; /* Just skip - shouldnt happen) */
+            if ((yp = yang_find(y, Y_PREFIX, NULL)) == NULL)
+                continue; 
+            if ((prefix = yang_argument_get(yp)) == NULL)
+                continue;
+            if ((ym = yang_find(yspec, Y_MODULE, name)) == NULL)
+                continue;
+            if ((yns = yang_find(ym, Y_NAMESPACE, NULL)) == NULL)
+                continue;
+            if ((namespace = yang_argument_get(yns)) == NULL)
+                continue;
+            if (xml_nsctx_add(nc, prefix, namespace) < 0)
+                goto done;
+        }
     }
     *ncp = nc;
     retval = 0;
@@ -400,14 +400,14 @@ xml_nsctx_yang(yang_stmt *yn,
  *  cvec      *nsc = NULL;
  *  yang_stmt *yspec = clicon_dbspec_yang(h);
  *  if (xml_nsctx_yangspec(yspec, &nsc) < 0)
- *	goto done;
+ *      goto done;
  *  ...
  *  cvec_free(nsc);
  * @endcode
  */
 int
 xml_nsctx_yangspec(yang_stmt *yspec,
-		   cvec     **ncp)
+                   cvec     **ncp)
 {
     int        retval = -1;
     cvec      *nc = NULL;
@@ -416,25 +416,25 @@ xml_nsctx_yangspec(yang_stmt *yspec,
     yang_stmt *ynamespace;
 
     if ((nc = cvec_new(0)) == NULL){
-	clicon_err(OE_XML, errno, "cvec_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cvec_new");
+        goto done;
     }
     ymod = NULL;
     while ((ymod = yn_each(yspec, ymod)) != NULL){
-	if (yang_keyword_get(ymod) != Y_MODULE)
-	    continue;
-	if ((yprefix = yang_find(ymod, Y_PREFIX, NULL)) == NULL)
-	    continue;
-	if ((ynamespace = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL)
-	    continue;
-	if (xml_nsctx_add(nc, yang_argument_get(yprefix), yang_argument_get(ynamespace)) < 0)
-	    goto done;
+        if (yang_keyword_get(ymod) != Y_MODULE)
+            continue;
+        if ((yprefix = yang_find(ymod, Y_PREFIX, NULL)) == NULL)
+            continue;
+        if ((ynamespace = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL)
+            continue;
+        if (xml_nsctx_add(nc, yang_argument_get(yprefix), yang_argument_get(ynamespace)) < 0)
+            goto done;
     }
     /* Add base netconf namespace as default and "nc" prefix */
     if (xml_nsctx_add(nc,  NULL, NETCONF_BASE_NAMESPACE) < 0)
-	goto done;
+        goto done;
     if (xml_nsctx_add(nc,  NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE) < 0)
-	goto done;
+        goto done;
     *ncp = nc;
     retval = 0;
  done:
@@ -454,16 +454,16 @@ xml_nsctx_yangspec(yang_stmt *yspec,
  */
 int
 xml_nsctx_cbuf(cbuf *cb,
-	       cvec *nsc)
+               cvec *nsc)
 {
     cg_var *cv = NULL;
     char   *prefix;
     
     while ((cv = cvec_each(nsc, cv)) != NULL){
-	cprintf(cb, " xmlns");
-	if ((prefix = cv_name_get(cv)))
-	    cprintf(cb, ":%s", prefix);
-	cprintf(cb, "=\"%s\"", cv_string_get(cv));
+        cprintf(cb, " xmlns");
+        if ((prefix = cv_name_get(cv)))
+            cprintf(cb, ":%s", prefix);
+        cprintf(cb, "=\"%s\"", cv_string_get(cv));
     }
     return 0;
 }
@@ -493,37 +493,37 @@ xml2ns(cxobj *x,
     cxobj *xp;
     
     if ((ns = nscache_get(x, prefix)) != NULL)
-	goto ok;
+        goto ok;
     if (prefix != NULL) /* xmlns:<prefix>="<uri>" */
-	ns = xml_find_type_value(x, "xmlns", prefix, CX_ATTR);
+        ns = xml_find_type_value(x, "xmlns", prefix, CX_ATTR);
     else{                /* xmlns="<uri>" */
-    	ns = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
+        ns = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
     }
     /* namespace not found, try parent */
     if (ns == NULL){
-	if ((xp = xml_parent(x)) != NULL){
-	    if (xml2ns(xp, prefix, &ns) < 0)
-		goto done;
-	}
-	/* If no parent, return default namespace if defined */
-	else if (_USE_NAMESPACE_NETCONF_DEFAULT){
-	    if (prefix == NULL)
-		ns = NETCONF_BASE_NAMESPACE;
-	    else
-		ns = NULL;
-	}
+        if ((xp = xml_parent(x)) != NULL){
+            if (xml2ns(xp, prefix, &ns) < 0)
+                goto done;
+        }
+        /* If no parent, return default namespace if defined */
+        else if (_USE_NAMESPACE_NETCONF_DEFAULT){
+            if (prefix == NULL)
+                ns = NETCONF_BASE_NAMESPACE;
+            else
+                ns = NULL;
+        }
     }
     /* Set default namespace cache (since code is at this point,
      * no cache was found 
      * If not, this is devastating when populating deep yang structures
      */
     if (ns &&
-	xml_child_nr(x) > 1 && 	/* Dont set cache if few children: if 1 child typically a body */
-	nscache_set(x, prefix, ns) < 0)
-	goto done;
+        xml_child_nr(x) > 1 &&  /* Dont set cache if few children: if 1 child typically a body */
+        nscache_set(x, prefix, ns) < 0)
+        goto done;
  ok:
     if (namespace)
-	*namespace = ns;
+        *namespace = ns;
     retval = 0;
  done:
     return retval;
@@ -544,17 +544,17 @@ xml2ns_recurse(cxobj *xt)
 
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((prefix = xml_prefix(x)) != NULL){
-	    namespace = NULL;
-	    if (xml2ns(x, prefix, &namespace) < 0)
-		goto done;
-	    if (namespace == NULL){
-		clicon_err(OE_XML, ENOENT, "No namespace associated with %s:%s", prefix, xml_name(x));
-		goto done;
-	    }	    
-	}
-	if (xml2ns_recurse(x) < 0)
-	    goto done;
+        if ((prefix = xml_prefix(x)) != NULL){
+            namespace = NULL;
+            if (xml2ns(x, prefix, &namespace) < 0)
+                goto done;
+            if (namespace == NULL){
+                clicon_err(OE_XML, ENOENT, "No namespace associated with %s:%s", prefix, xml_name(x));
+                goto done;
+            }       
+        }
+        if (xml2ns_recurse(x) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -571,27 +571,27 @@ xml2ns_recurse(cxobj *xt)
  */
 int
 xmlns_set(cxobj *x,
-	  char  *prefix,
-	  char  *ns)
+          char  *prefix,
+          char  *ns)
 {
     int    retval = -1;
     cxobj *xa;
 
     if (prefix != NULL){ /* xmlns:<prefix>="<uri>" */
-	if ((xa = xml_new(prefix, x, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_prefix_set(xa, "xmlns") < 0)
-	    goto done;
+        if ((xa = xml_new(prefix, x, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_prefix_set(xa, "xmlns") < 0)
+            goto done;
     }
     else{                /* xmlns="<uri>" */
-	if ((xa = xml_new("xmlns", x, CX_ATTR)) == NULL)
-	    goto done;
+        if ((xa = xml_new("xmlns", x, CX_ATTR)) == NULL)
+            goto done;
     }
     if (xml_value_set(xa, ns) < 0)
-	goto done;
+        goto done;
     /* (re)set namespace cache (as used in xml2ns) */
     if (ns && nscache_set(x, prefix, ns) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -607,7 +607,7 @@ xmlns_set(cxobj *x,
  */
 int
 xmlns_set_all(cxobj *x,
-	      cvec  *nsc)
+              cvec  *nsc)
 {
     int     retval = -1;
     char   *ns;
@@ -615,18 +615,18 @@ xmlns_set_all(cxobj *x,
     cg_var *cv = NULL;
 
     while ((cv = cvec_each(nsc, cv)) != NULL){
-	pf = cv_name_get(cv);
-	/* Check already added */
-	if (pf != NULL) /* xmlns:<prefix>="<uri>" */
-	    ns = xml_find_type_value(x, "xmlns", pf, CX_ATTR);
-	else{                /* xmlns="<uri>" */
-	    ns = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
-	}
-	if (ns)
-	    continue;
-	ns = cv_string_get(cv);
-	if (ns && xmlns_set(x, pf, ns) < 0)
-	    goto done;
+        pf = cv_name_get(cv);
+        /* Check already added */
+        if (pf != NULL) /* xmlns:<prefix>="<uri>" */
+            ns = xml_find_type_value(x, "xmlns", pf, CX_ATTR);
+        else{                /* xmlns="<uri>" */
+            ns = xml_find_type_value(x, NULL, "xmlns", CX_ATTR);
+        }
+        if (ns)
+            continue;
+        ns = cv_string_get(cv);
+        if (ns && xmlns_set(x, pf, ns) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -645,8 +645,8 @@ xmlns_set_all(cxobj *x,
  */
 int
 xml2prefix(cxobj *xn,
-	   char  *namespace,
-	   char **prefixp)
+           char  *namespace,
+           char **prefixp)
 {
     int    retval = -1;
     cxobj *xa = NULL;
@@ -656,44 +656,44 @@ xml2prefix(cxobj *xn,
     int    ret;
 
     if (nscache_get_prefix(xn, namespace, &prefix) == 1) /* found */
-	goto found;
+        goto found;
     xa = NULL;
     while ((xa = xml_child_each(xn, xa, CX_ATTR)) != NULL) {
-	/* xmlns=namespace */
-	if (strcmp("xmlns", xml_name(xa)) == 0){ 
-	    if (strcmp(xml_value(xa), namespace) == 0){
-		if (nscache_set(xn, NULL, namespace) < 0)
-		    goto done;
-		prefix = NULL; /* Maybe should set all caches in ns:s children? */
-		goto found;
-	    }
-	}
-	/* xmlns:prefix=namespace */
-	else if ((xaprefix=xml_prefix(xa)) != NULL &&
-		 strcmp("xmlns", xaprefix) == 0){ 
-	    if (strcmp(xml_value(xa), namespace) == 0){
-		prefix = xml_name(xa);
-		if (nscache_set(xn, prefix, namespace) < 0)
-		    goto done;
-		goto found;
-	    }
-	}
+        /* xmlns=namespace */
+        if (strcmp("xmlns", xml_name(xa)) == 0){ 
+            if (strcmp(xml_value(xa), namespace) == 0){
+                if (nscache_set(xn, NULL, namespace) < 0)
+                    goto done;
+                prefix = NULL; /* Maybe should set all caches in ns:s children? */
+                goto found;
+            }
+        }
+        /* xmlns:prefix=namespace */
+        else if ((xaprefix=xml_prefix(xa)) != NULL &&
+                 strcmp("xmlns", xaprefix) == 0){ 
+            if (strcmp(xml_value(xa), namespace) == 0){
+                prefix = xml_name(xa);
+                if (nscache_set(xn, prefix, namespace) < 0)
+                    goto done;
+                goto found;
+            }
+        }
     }
     if ((xp = xml_parent(xn)) != NULL){
-	if ((ret = xml2prefix(xp, namespace, &prefix)) < 0)
-	    goto done;
-	if (ret == 1){
-	    if (nscache_set(xn, prefix, namespace) < 0)
-		goto done;
-	    goto found;
-	}
+        if ((ret = xml2prefix(xp, namespace, &prefix)) < 0)
+            goto done;
+        if (ret == 1){
+            if (nscache_set(xn, prefix, namespace) < 0)
+                goto done;
+            goto found;
+        }
     }
     retval = 0;
  done:
     return retval;
  found:
     if (prefixp)
-	*prefixp = prefix;
+        *prefixp = prefix;
     retval = 1;
     goto done;
 }

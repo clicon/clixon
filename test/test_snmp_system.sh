@@ -107,12 +107,14 @@ function testinit(){
     wait_backend
 
     if [ $SN -ne 0 ]; then
-    # Kill old clixon_snmp, if any
-    new "Terminating any old clixon_snmp processes"
-    sudo killall -q clixon_snmp
+        # Kill old clixon_snmp, if any
+        new "Terminating any old clixon_snmp processes"
+        sudo killall -q clixon_snmp
+        
+        new "Starting clixon_snmp"
+        # XXX augmented objects seem to be registered twice: error: duplicate registration: MIB modules snmpSetSerialNo and AgentX subagent 52, session 0x562087a70e20, subsession 0x562087a820c0 (oid .1.3.6.1.6.3.1.1.6.1).
 
-    new "Starting clixon_snmp"
-    start_snmp $cfg &
+        start_snmp $cfg &
     fi
 
     new "wait snmp"
@@ -121,6 +123,16 @@ function testinit(){
 
 function testexit(){
     stop_snmp
+    if [ $BE -ne 0 ]; then
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
+    fi
 }
 
 new "SNMP tests"
@@ -217,19 +229,19 @@ expectpart "$($snmptable $OID_ORTABLE)" 0 ".*Entry 2 description.*" "IF-MIB::ifT
 expectpart "$($snmptable $NAME_ORTABLE)" 0 ".*Entry 1 description.*" "IP-MIB::ip" "1:7:10:33.44"
 expectpart "$($snmptable $NAME_ORTABLE)" 0 ".*Entry 2 description.*" "IF-MIB::ifTable" "129:20:58:31.11"
 
-new "Walk the tabbles..."
-expectpart "$($snmpwalkstr system)" 0 "SNMPv2-MIB::sysDescr = STRING: System description." \
+new "Walk the tables..."
+expectpart "$($snmpwalkstr system)" 0 "SNMPv2-MIB::sysDescr = STRING: System description" \
     "SNMPv2-MIB::sysUpTime = Timeticks: (11223344) 1 day, 7:10:33.44" \
-    "SNMPv2-MIB::sysContact = STRING: clixon@clicon.com." \
-    "SNMPv2-MIB::sysName = STRING: Test." \
-    "SNMPv2-MIB::sysLocation = STRING: Clixon HQ." \
+    "SNMPv2-MIB::sysContact = STRING: clixon@clicon.com" \
+    "SNMPv2-MIB::sysName = STRING: Test" \
+    "SNMPv2-MIB::sysLocation = STRING: Clixon HQ" \
     "SNMPv2-MIB::sysServices = INTEGER: 72" \
     "SNMPv2-MIB::sysORIndex.1 = INTEGER: 1" \
     "SNMPv2-MIB::sysORIndex.2 = INTEGER: 2" \
     "SNMPv2-MIB::sysORID.1 = OID: IP-MIB::ip" \
     "SNMPv2-MIB::sysORID.2 = OID: IF-MIB::ifTable" \
-    "SNMPv2-MIB::sysORDescr.1 = STRING: Entry 1 description." \
-    "SNMPv2-MIB::sysORDescr.2 = STRING: Entry 2 description." \
+    "SNMPv2-MIB::sysORDescr.1 = STRING: Entry 1 description" \
+    "SNMPv2-MIB::sysORDescr.2 = STRING: Entry 2 description" \
     "SNMPv2-MIB::sysORUpTime.1 = Timeticks: (11223344) 1 day, 7:10:33.44" \
     "SNMPv2-MIB::sysORUpTime.2 = Timeticks: (1122111111) 129 days, 20:58:31.11"
 

@@ -48,10 +48,10 @@ module nacm-example{
   namespace "urn:example:nacm";
   prefix nex;
   import clixon-example {
-	prefix ex;
+        prefix ex;
   }
   import ietf-netconf-acm {
-	prefix nacm;
+        prefix nacm;
   }
   leaf x{
     type int32;
@@ -66,14 +66,14 @@ module clixon-example{
   namespace "urn:example:clixon";
   prefix ex;
   container table{
-	list parameter{
-	    key name;
-	    leaf name{
-		type string;
-	    }
-	    leaf value{
-		type string;
-	    }
+        list parameter{
+            key name;
+            leaf name{
+                type string;
+            }
+            leaf value{
+                type string;
+            }
      }
    }
     /* State data (not config) for the example application*/
@@ -85,31 +85,31 @@ module clixon-example{
          }
     }
     rpc example {
-	description "Some example input/output for testing RFC7950 7.14.
+        description "Some example input/output for testing RFC7950 7.14.
                      RPC simply echoes the input for debugging.";
-	input {
-	    leaf x {
-		description
-         	    "If a leaf in the input tree has a 'mandatory' statement with
+        input {
+            leaf x {
+                description
+                    "If a leaf in the input tree has a 'mandatory' statement with
                    the value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		mandatory true;
-	    }
-	    leaf y {
-		description
+                type string;
+                mandatory true;
+            }
+            leaf y {
+                description
                  "If a leaf in the input tree has a 'mandatory' statement with the
                   value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		default "42";
-	    }
+                type string;
+                default "42";
+            }
       }
       output {
-	    leaf x {
-		type string;
-	    }
-	    leaf y {
-		type string;
-	    }
+            leaf x {
+                type string;
+            }
+            leaf y {
+                type string;
+            }
       }
   }
 }
@@ -178,13 +178,13 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg -- -s"
     start_backend -s init -f $cfg -- -s
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -318,7 +318,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

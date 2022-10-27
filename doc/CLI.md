@@ -23,7 +23,7 @@ Clixon adds some features and structure to CLIgen which include:
   set    @datamodel, cli_set();
   merge  @datamodel, cli_merge();
   create @datamodel, cli_create();
-  show   @datamodel, cli_show_auto("running", "xml");		   
+  show   @datamodel, cli_show_auto("running", "xml");              
   ```
   The commands (eg `cli_set`) will be called with the first argument an api-path to the referenced object.
 * The CLIgen `treename` syntax does not work.

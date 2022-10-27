@@ -87,10 +87,10 @@ module example {
       }
       list index{
         key i;
-	leaf i{
-	  type string;
-	}
-	leaf iv{
+        leaf i{
+          type string;
+        }
+        leaf iv{
           type string;
         }
      }
@@ -170,7 +170,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -208,10 +208,10 @@ module example {
        }
        list index{
          key i;
-	 leaf i{
-	   type string;
-	 }
-	 leaf iv{
+         leaf i{
+           type string;
+         }
+         leaf iv{
            type string;
          }
        }
@@ -241,10 +241,10 @@ module example {
       }
       list index{
         key i;
-	leaf i{
-	  type string;
-	}
-	leaf iv{
+        leaf i{
+          type string;
+        }
+        leaf iv{
           type string;
         }
       }
@@ -336,10 +336,10 @@ module example-augment {
       }
       list index{
         key i;
-	leaf i{
-	  type string;
-	}
-	leaf iv{
+        leaf i{
+          type string;
+        }
+        leaf iv{
           type string;
         }
      }
@@ -355,7 +355,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

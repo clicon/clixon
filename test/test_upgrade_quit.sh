@@ -47,80 +47,80 @@ module interfaces{
     prefix "if";
     
     import ietf-yang-types {
-	prefix yang;
+        prefix yang;
     }
     revision 2014-05-08 {
-	description
-	    "Initial revision.";
-	reference
-	    "RFC 7223: A YANG Data Model for Interface Management";
+        description
+            "Initial revision.";
+        reference
+            "RFC 7223: A YANG Data Model for Interface Management";
     }
     feature if-mib {
-	description
-	    "This feature indicates that the device implements
+        description
+            "This feature indicates that the device implements
        the IF-MIB.";
-	reference
-	    "RFC 2863: The Interfaces Group MIB";
+        reference
+            "RFC 2863: The Interfaces Group MIB";
     }
     leaf foo{
          description "Should not appear";
-    	 type string;
-	 default "bar";
+         type string;
+         default "bar";
     }
     container interfaces {
-	description
-	    "Interface configuration parameters.";
+        description
+            "Interface configuration parameters.";
 
-	list interface {
-	    key "name";
-	    leaf name {
-		type string;
-	    }
-	    leaf description {
-		type string;
-	    }
+        list interface {
+            key "name";
+            leaf name {
+                type string;
+            }
+            leaf description {
+                type string;
+            }
             leaf foo{
               description "Should not appear";
               type string;
-	      default "bar";
+              default "bar";
             }
-	    leaf type {
-		type string;
-		mandatory true;
-	    }
-	    leaf link-up-down-trap-enable {
-		if-feature if-mib;
-		type enumeration {
-		    enum enabled;
-		    enum disabled;
-		}
-	    }
-	}
+            leaf type {
+                type string;
+                mandatory true;
+            }
+            leaf link-up-down-trap-enable {
+                if-feature if-mib;
+                type enumeration {
+                    enum enabled;
+                    enum disabled;
+                }
+            }
+        }
     }
     container interfaces-state {
-	list interface {
-	    key "name";
-	    leaf name {
-		type string;
-	    }
-	    leaf admin-status {
-		if-feature if-mib;
-		type enumeration {
-		    enum up;
-		    enum down;
-		    enum testing;
-		}
-		mandatory true;
-	    }
-	    container statistics {
-		leaf in-octets {
-		    type yang:counter64;
-		}
-		leaf in-unicast-pkts {
-		    type yang:counter64;
-		}
-	    }
-	}
+        list interface {
+            key "name";
+            leaf name {
+                type string;
+            }
+            leaf admin-status {
+                if-feature if-mib;
+                type enumeration {
+                    enum up;
+                    enum down;
+                    enum testing;
+                }
+                mandatory true;
+            }
+            container statistics {
+                leaf in-octets {
+                    type yang:counter64;
+                }
+                leaf in-unicast-pkts {
+                    type yang:counter64;
+                }
+            }
+        }
     }
 }
 
@@ -133,7 +133,7 @@ module interfaces{
     prefix "if";
     
     import ietf-yang-types {
-	prefix yang;
+        prefix yang;
     }
     revision 2018-02-20 {
      description
@@ -142,74 +142,74 @@ module interfaces{
       "RFC 8343: A YANG Data Model for Interface Management";
     }
     revision 2014-05-08 {
-	description
-	    "Initial revision.";
-	reference
-	    "RFC 7223: A YANG Data Model for Interface Management";
+        description
+            "Initial revision.";
+        reference
+            "RFC 7223: A YANG Data Model for Interface Management";
     }
     feature if-mib {
-	description
-	    "This feature indicates that the device implements
+        description
+            "This feature indicates that the device implements
        the IF-MIB.";
-	reference
-	    "RFC 2863: The Interfaces Group MIB";
+        reference
+            "RFC 2863: The Interfaces Group MIB";
     }
     leaf foo{
          description "Should not appear";
-    	 type string;
-	 default "fie";
+         type string;
+         default "fie";
     }
     container interfaces {
-	description
-	    "Interface configuration parameters.";
+        description
+            "Interface configuration parameters.";
 
-	list interface {
-	    key "name";
-	    leaf name {
-		type string;
-	    }
+        list interface {
+            key "name";
+            leaf name {
+                type string;
+            }
             leaf foo{
               description "Should not appear";
               type string;
-	      default "bar";
+              default "bar";
             }
-	    container docs{
+            container docs{
                description "Original description is wrapped and renamed";
-  	       leaf descr {
-	 	 type string;
-	       }
+               leaf descr {
+                 type string;
+               }
             }
-	    leaf type {
-		type string;
-		mandatory true;
-	    }
-	    leaf link-up-down-trap-enable {
-		if-feature if-mib;
-		type enumeration {
-		    enum enabled;
-		    enum disabled;
-		}
-	    }
-	    leaf admin-status {
-		if-feature if-mib;
-		type enumeration {
-		    enum up;
-		    enum down;
-		    enum testing;
-		}
-		mandatory true;
-	    }
-	    container statistics {
-		leaf in-octets {
-		    type decimal64{
+            leaf type {
+                type string;
+                mandatory true;
+            }
+            leaf link-up-down-trap-enable {
+                if-feature if-mib;
+                type enumeration {
+                    enum enabled;
+                    enum disabled;
+                }
+            }
+            leaf admin-status {
+                if-feature if-mib;
+                type enumeration {
+                    enum up;
+                    enum down;
+                    enum testing;
+                }
+                mandatory true;
+            }
+            container statistics {
+                leaf in-octets {
+                    type decimal64{
                        fraction-digits 3;
                     }
-		}
-		leaf in-unicast-pkts {
-		    type yang:counter64;
-		}
-	    }
-	}
+                }
+                leaf in-unicast-pkts {
+                    type yang:counter64;
+                }
+            }
+        }
     }
 }
 EOF

@@ -72,9 +72,9 @@
  */
 int
 restconf_reply_header(void       *req0,
-		      const char *name,
-		      const char *vfmt,
-		      ...)
+                      const char *name,
+                      const char *vfmt,
+                      ...)
 {
     int                   retval = -1;
     restconf_stream_data *sd = (restconf_stream_data *)req0;
@@ -85,12 +85,12 @@ restconf_reply_header(void       *req0,
 
     clicon_debug(1, "%s %s", __FUNCTION__, name);
     if (sd == NULL || name == NULL || vfmt == NULL){
-	clicon_err(OE_CFG, EINVAL, "sd, name or value is NULL");
-	goto done;
+        clicon_err(OE_CFG, EINVAL, "sd, name or value is NULL");
+        goto done;
     }
     if ((rc = sd->sd_conn) == NULL){
-	clicon_err(OE_CFG, EINVAL, "rc is NULL");
-	goto done;
+        clicon_err(OE_CFG, EINVAL, "rc is NULL");
+        goto done;
     }
     /* First round: compute vlen and allocate value */
     va_start(ap, vfmt);
@@ -98,25 +98,25 @@ restconf_reply_header(void       *req0,
     va_end(ap);
     /* allocate value string exactly fitting */
     if ((value = malloc(vlen+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* Second round: compute actual value */
     va_start(ap, vfmt);    
     if (vsnprintf(value, vlen+1, vfmt, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     if (cvec_add_string(sd->sd_outp_hdrs, (char*)name, value) < 0){
-	clicon_err(OE_RESTCONF, errno, "cvec_add_string");
-	goto done;
+        clicon_err(OE_RESTCONF, errno, "cvec_add_string");
+        goto done;
     }
     retval = 0;
  done:
     if (value)
-    	free(value);
+        free(value);
     return retval;
 }
 
@@ -130,37 +130,37 @@ restconf_reply_header(void       *req0,
  */
 int
 restconf_reply_send(void  *req0,
-		    int    code,
-		    cbuf  *cb,
-		    int    head)
+                    int    code,
+                    cbuf  *cb,
+                    int    head)
 {
     int                   retval = -1;
     restconf_stream_data *sd = (restconf_stream_data *)req0;
 
     clicon_debug(1, "%s code:%d", __FUNCTION__, code);
     if (sd == NULL){
-	clicon_err(OE_CFG, EINVAL, "sd is NULL");
-	goto done;
+        clicon_err(OE_CFG, EINVAL, "sd is NULL");
+        goto done;
     }
     sd->sd_code = code;
     if (cb != NULL){
-	if (cbuf_len(cb)){
-	    sd->sd_body_len = cbuf_len(cb); 
-	    if (head){
-		cbuf_free(cb);
-	    }
-	    else{
-		sd->sd_body = cb;
-		sd->sd_body_offset = 0;
-	    }
-	}
-	else{
-	    cbuf_free(cb);
-	    sd->sd_body_len = 0; 
-	}
+        if (cbuf_len(cb)){
+            sd->sd_body_len = cbuf_len(cb); 
+            if (head){
+                cbuf_free(cb);
+            }
+            else{
+                sd->sd_body = cb;
+                sd->sd_body_offset = 0;
+            }
+        }
+        else{
+            cbuf_free(cb);
+            sd->sd_body_len = 0; 
+        }
     }
     else
-	sd->sd_body_len = 0; 
+        sd->sd_body_len = 0; 
     retval = 0;
  done:
     return retval;
@@ -177,8 +177,8 @@ restconf_get_indata(void *req0)
     cbuf                 *cb = NULL;
     
     if (sd == NULL){
-	clicon_err(OE_CFG, EINVAL, "sd is NULL");
-	goto done;
+        clicon_err(OE_CFG, EINVAL, "sd is NULL");
+        goto done;
     }
     cb = sd->sd_indata;
  done:

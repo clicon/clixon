@@ -35,7 +35,7 @@ module $APPNAME{
    namespace "urn:example:clixon";
    include example-types;
     revision 2020-12-01 {
-	description "Added table/parameter/value as the primary data example";
+        description "Added table/parameter/value as the primary data example";
     }
    extension c-define {
       description "Example from RFC 6020";
@@ -158,7 +158,7 @@ show("Show a particular state of the system"){
     xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
     yang("Show yang specs"), show_yang(); {
         example("Show example yang spec"), show_yang("example");
-    }		   
+    }              
 }
 EOF
 
@@ -168,7 +168,7 @@ if [ "$BE" -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf "$cfg"
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f "$cfg"
@@ -308,7 +308,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f "$cfg"

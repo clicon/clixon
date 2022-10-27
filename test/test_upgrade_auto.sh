@@ -29,33 +29,33 @@ module example-a{
     organization "foo.";
     contact "fo@example.com";
     description
-	"foo.";
+        "foo.";
 
     revision 2017-12-01 {
-	description "Initial revision.";
+        description "Initial revision.";
     }
 
     container system {
-	leaf a {
-	    type string;
-	    description "no change";
-	}
-	leaf b {
-	    type string;
-	    description "rename tag";
-	}
-	leaf x {
-	    type string;
-	    description "delete";
-	}
-	leaf host-name {
-	    type uint32;
-	    description "modify type";
-	}
-	leaf z {
-	    description "move to alt";
-	    type string;
-	}
+        leaf a {
+            type string;
+            description "no change";
+        }
+        leaf b {
+            type string;
+            description "rename tag";
+        }
+        leaf x {
+            type string;
+            description "delete";
+        }
+        leaf host-name {
+            type uint32;
+            description "modify type";
+        }
+        leaf z {
+            description "move to alt";
+            type string;
+        }
     }
     container alt {
     }
@@ -71,37 +71,37 @@ module example-a {
     organization "foo.";
     contact "fo@example.com";
     description
-	"foo.";
+        "foo.";
 
     revision 2017-12-20 {
-	description "Create y, delete x, replace host-name, move z";
+        description "Create y, delete x, replace host-name, move z";
     }
     revision 2017-12-01 {
-	description "Initial revision.";
+        description "Initial revision.";
     }
     container system {
-	leaf a {
-	    type string;
-	    description "no change";
-	}
-	leaf c {
-	    type string;
-	    description "rename tag";
-	}
-	leaf host-name {
-	    type string;
-	    description "replace";
-	}
-	leaf y {
-	    type string;
-	    description "create";
-	}
+        leaf a {
+            type string;
+            description "no change";
+        }
+        leaf c {
+            type string;
+            description "rename tag";
+        }
+        leaf host-name {
+            type string;
+            description "replace";
+        }
+        leaf y {
+            type string;
+            description "create";
+        }
     }
     container alt {
-	leaf z {
-	    description "move to alt";
-	    type string;
-	}
+        leaf z {
+            description "move to alt";
+            type string;
+        }
     }
 }
 EOF
@@ -116,10 +116,10 @@ module example-b {
     organization "foo.";
     contact "fo@example.com";
     description
-	"foo.";
+        "foo.";
 
     revision 2017-12-20 {
-	description "Remove all";
+        description "Remove all";
     }
 }
 EOF
@@ -252,13 +252,13 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s $mode -f $cfg"
     start_backend -s $mode -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 new "Check running db content"
@@ -269,7 +269,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

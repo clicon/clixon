@@ -45,60 +45,60 @@ module clixon-example {
     namespace "urn:example:clixon";
     prefix ex;
     import ietf-interfaces { 
-	prefix if;
+        prefix if;
     }
     import ietf-ip {
-	prefix ip;
+        prefix ip;
     }
     import iana-if-type {
-	prefix ianaift;
+        prefix ianaift;
     }
     import clixon-autocli{
-	prefix autocli;
+        prefix autocli;
     }
     /* Example interface type for tests, local callbacks, etc */
     identity eth {
-	base if:interface-type;
+        base if:interface-type;
     }
     /* Generic config data */
     container table{
-	list parameter{
-	    key name;
-	    leaf name{
-		type string;
-	    }
-	    leaf value{
-		type string;
-	    }
-	}
+        list parameter{
+            key name;
+            leaf name{
+                type string;
+            }
+            leaf value{
+                type string;
+            }
+        }
     }
     rpc example {
-	description "Some example input/output for testing RFC7950 7.14.
+        description "Some example input/output for testing RFC7950 7.14.
                      RPC simply echoes the input for debugging.";
-	input {
-	    leaf x {
-		description
-         	    "If a leaf in the input tree has a 'mandatory' statement with
+        input {
+            leaf x {
+                description
+                    "If a leaf in the input tree has a 'mandatory' statement with
                    the value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		mandatory true;
-	    }
-	    leaf y {
-		description
-		    "If a leaf in the input tree has a 'mandatory' statement with the
+                type string;
+                mandatory true;
+            }
+            leaf y {
+                description
+                    "If a leaf in the input tree has a 'mandatory' statement with the
                   value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		default "42";
-	    }
-	}
-	output {
-	    leaf x {
-		type string;
-	    }
-	    leaf y {
-		type string;
-	    }
-	}
+                type string;
+                default "42";
+            }
+        }
+        output {
+            leaf x {
+                type string;
+            }
+            leaf y {
+                type string;
+            }
+        }
     }
 }
 EOF
@@ -120,23 +120,23 @@ quit("Quit"), cli_quit();
 shell("System command") <source:rest>, cli_start_shell("bash");
 copy("Copy and create a new object"){
      interface("Copy interface"){
-	(<name:string>|<name:string expand_dbvar("candidate","/ietf-interfaces:interfaces/interface=%s/name")>("name of interface to copy from")) to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s='%s']","urn:ietf:params:xml:ns:yang:ietf-interfaces","name","name","toname");
+        (<name:string>|<name:string expand_dbvar("candidate","/ietf-interfaces:interfaces/interface=%s/name")>("name of interface to copy from")) to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s='%s']","urn:ietf:params:xml:ns:yang:ietf-interfaces","name","name","toname");
     }
 }
 discard("Discard edits (rollback 0)"), discard_changes();
 debug("Debugging parts of the system"){
-    cli("Set cli debug")	 <level:int32>("Set debug level (0..n)"), cli_debug_cli();
+    cli("Set cli debug")         <level:int32>("Set debug level (0..n)"), cli_debug_cli();
 }
 show("Show a particular state of the system"){
     xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
     compare("Compare candidate and running databases"), compare_dbs((int32)0);{
-    		     xml("Show comparison in xml"), compare_dbs((int32)0);
-		     text("Show comparison in text"), compare_dbs((int32)1);
+                     xml("Show comparison in xml"), compare_dbs((int32)0);
+                     text("Show comparison in text"), compare_dbs((int32)1);
     }
     configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
-	    cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
-	    xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false);
-	    text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", true, false);
+            cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
+            xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false);
+            text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", true, false);
   }
 }
 save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename", "xml"){
@@ -146,10 +146,10 @@ save("Save candidate configuration to XML file") <filename:string>("Filename (lo
     text("Save configuration as TEXT"), save_config_file("candidate","filename", "text");
 }
 load("Load configuration from XML file") <filename:string>("Filename (local filename)"),load_config_file("filename", "replace");{
-	cli("Replace candidate with file containing CLI commands"), load_config_file("filename", "replace", "cli");
-	xml("Replace candidate with file containing XML"), load_config_file("filename", "replace", "xml");
-	json("Replace candidate with file containing JSON"), load_config_file("filename", "replace", "json");
-	text("Replace candidate with file containing TEXT"), load_config_file("filename", "replace", "text");
+        cli("Replace candidate with file containing CLI commands"), load_config_file("filename", "replace", "cli");
+        xml("Replace candidate with file containing XML"), load_config_file("filename", "replace", "xml");
+        json("Replace candidate with file containing JSON"), load_config_file("filename", "replace", "json");
+        text("Replace candidate with file containing TEXT"), load_config_file("filename", "replace", "text");
 }
 
 rpc("example rpc") <a:string>("routing instance"), example_client_rpc("");
@@ -167,7 +167,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -272,7 +272,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

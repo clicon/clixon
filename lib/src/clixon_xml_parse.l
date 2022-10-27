@@ -80,9 +80,9 @@ int clixon_xml_parsewrap(void)
  * From https://www.w3.org/TR/2008/REC-xml-20081126:
  * [4]* NameStartChar ::= ":" | [A-Z] | "_" | [a-z]   | [#xC0-#xD6] | [#xD8-#xF6] ...
  * [4a] NameChar      ::= NameStartChar | "-" | "." | [0-9]     | #xB7| 
- * [5]  Name	      ::= NameStartChar (NameChar)*
+ * [5]  Name          ::= NameStartChar (NameChar)*
  * NOTE: From https://www.w3.org/TR/2009/REC-xml-names-20091208:
- * [4] 	NCName	      ::= Name - (Char* ':' Char*)  An XML Name, minus the ":"
+ * [4]  NCName        ::= Name - (Char* ':' Char*)  An XML Name, minus the ":"
  * --> namestart and name below is NCNAME
  */
 
@@ -140,7 +140,7 @@ ncname     {namestart}{namechar}*
 <STATEA>\n            { clixon_xml_parselval.string = "\n"; _XY->xy_linenum++;return WHITESPACE; }
 <STATEA>[^&\r\n \t\<]+ { clixon_xml_parselval.string = yytext; return CHARDATA; /* Optimized */}
 
-	/* @see xml_chardata_encode */
+        /* @see xml_chardata_encode */
 <AMPERSAND>"amp;"    { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = "&"; return CHARDATA;}
 <AMPERSAND>"lt;"     { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = "<"; return CHARDATA;}
 <AMPERSAND>"gt;"     { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = ">"; return CHARDATA;}

@@ -46,7 +46,7 @@
  * An application can use any flags above that
  * @see cv_flag
  */
-#define V_UNSET	  0x10	/* Used by XML code to denote a value is not default */
+#define V_UNSET   0x10  /* Used by XML code to denote a value is not default */
 
 /*
  * Yang flags used in 
@@ -54,12 +54,12 @@
 #define YANG_FLAG_MARK  0x01  /* (Dynamic) marker for dynamic algorithms, eg expand and DAG */
 #define YANG_FLAG_TMP   0x02  /* (Dynamic) marker for dynamic algorithms, eg DAG detection */
 #define YANG_FLAG_NOKEY 0x04  /* Key not mandatory in this list, see eg yang-data extension in
-			       * RFC 8040 / ietf-restconf.yang
-			       * see restconf_main_extension_cb
-			       */
+                               * RFC 8040 / ietf-restconf.yang
+                               * see restconf_main_extension_cb
+                               */
 #ifdef XML_EXPLICIT_INDEX
 #define YANG_FLAG_INDEX 0x08  /* This yang node under list is (extra) index. --> you can access
-			       * list elements using this index with binary search */
+                               * list elements using this index with binary search */
 #endif
 #ifdef USE_CONFIG_FLAG_CACHE
 #define YANG_FLAG_CONFIG_CACHE 0x10  /* Ancestor config cache is active */
@@ -67,9 +67,9 @@
 #endif
 
 #define YANG_FLAG_DISABLED     0x40  /* Disabled due to if-feature evaluate to false 
-				      * Transformed to ANYDATA but some code may need to check
-				      * why it is an ANYDATA
-				      */
+                                      * Transformed to ANYDATA but some code may need to check
+                                      * why it is an ANYDATA
+                                      */
 
 /*
  * Types
@@ -272,7 +272,6 @@ int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, int f
 int        yang_datanode(yang_stmt *ys);
 int        yang_abs_schema_nodeid(yang_stmt *ys, char *schema_nodeid, yang_stmt **yres);
 int        yang_desc_schema_nodeid(yang_stmt *yn, char *schema_nodeid, yang_stmt **yres);
-int        yang_mandatory(yang_stmt *ys);
 int        yang_config(yang_stmt *ys);
 int        yang_config_ancestor(yang_stmt *ys);
 int        yang_features(clicon_handle h, yang_stmt *yt);
@@ -280,9 +279,9 @@ cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_stmt *yn, char *name, int *lastkey);
 int        yang_type_cache_regexp_set(yang_stmt *ytype, int rxmode, cvec *regexps);
 int        yang_type_cache_get(yang_stmt *ytype, yang_stmt **resolved, int *options,
-		   cvec **cvv, cvec *patterns, int *rxmode, cvec *regexps, uint8_t *fraction);
+                   cvec **cvv, cvec *patterns, int *rxmode, cvec *regexps, uint8_t *fraction);
 int        yang_type_cache_set(yang_stmt *ys, yang_stmt *resolved, int options, cvec *cvv,
-			       cvec *patterns, uint8_t fraction);
+                               cvec *patterns, uint8_t fraction);
 yang_stmt *yang_anydata_add(yang_stmt *yp, char *name);
 int        yang_extension_value(yang_stmt *ys, char *name, char *ns, int *exist, char **value);
 int        yang_sort_subelements(yang_stmt *ys);

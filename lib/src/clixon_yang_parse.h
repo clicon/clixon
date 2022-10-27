@@ -53,7 +53,7 @@ struct ys_stack{
 
 struct clixon_yang_yacc {
     char                 *yy_name;         /* Name of syntax, typically filename 
-					      (for error string) */
+                                              (for error string) */
     int                   yy_linenum;      /* Number of \n in parsed buffer */
     char                 *yy_parse_string; /* original (copy of) parse string */
     void                 *yy_lexbuf;       /* internal parse buffer from lex */
@@ -70,10 +70,10 @@ typedef struct clixon_yang_yacc clixon_yang_yacc;
  */
 struct yang_userdata{
     char             *du_indexvar;  /* (clicon) This command is a list and
-				       this string is the key/index of the list 
-				    */
+                                       this string is the key/index of the list 
+                                    */
     char             *du_yang;    /* (clicon) Save yang key for cli 
-				       generation */
+                                       generation */
     int               du_optional; /* (clicon) Optional element in list */
     struct cg_var    *du_default;   /* default value(clicon) */
     char              du_vector;    /* (clicon) Possibly more than one element */
@@ -100,4 +100,4 @@ void clixon_yang_parseerror(void *_ya, char*);
 int ystack_pop(clixon_yang_yacc *ya);
 struct ys_stack *ystack_push(clixon_yang_yacc *ya, yang_stmt *yn);
 
-#endif	/* _CLIXON_YANG_PARSE_H_ */
+#endif  /* _CLIXON_YANG_PARSE_H_ */

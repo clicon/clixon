@@ -165,28 +165,28 @@ EOF
 function testinit(){
     new "test params: -f $cfg -- -sS $fstate"
     if [ $BE -ne 0 ]; then
-	# Kill old backend and start a new one
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
+        # Kill old backend and start a new one
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
             err "Failed to start backend"
-	fi
-	sudo pkill -f clixon_backend
+        fi
+        sudo pkill -f clixon_backend
 
-	new "Starting backend"
-	start_backend -s init -f $cfg -- -sS $fstate
+        new "Starting backend"
+        start_backend -s init -f $cfg -- -sS $fstate
     fi
 
     new "wait backend"
     wait_backend
 
     if [ $SN -ne 0 ]; then
-	# Kill old clixon_snmp, if any
-	new "Terminating any old clixon_snmp processes"
-	sudo killall -q clixon_snmp
+        # Kill old clixon_snmp, if any
+        new "Terminating any old clixon_snmp processes"
+        sudo killall -q clixon_snmp
 
-	new "Starting clixon_snmp"
-	start_snmp $cfg &
+        new "Starting clixon_snmp"
+        start_snmp $cfg &
     fi
 
     new "wait snmp"
@@ -195,12 +195,20 @@ function testinit(){
 
 function testexit(){
     stop_snmp
+    if [ $BE -ne 0 ]; then
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
+    fi
 }
-
 
 new "SNMP tests"
 testinit
-
 
 # IF-MIB::interfaces
 MIB=".1.3.6.1.2.1"
@@ -370,8 +378,8 @@ expectpart "$($snmptable IF-MIB::ifTable)" 0 "Test 2" "1400" "1000" "11:22:33:44
 new "Walk the walk..."
 expectpart "$($snmpwalk IF-MIB::ifTable)" 0 "IF-MIB::ifIndex.1 = INTEGER: 1" \
            "IF-MIB::ifIndex.2 = INTEGER: 2" \
-           "IF-MIB::ifDescr.1 = STRING: Test." \
-           "IF-MIB::ifDescr.2 = STRING: Test 2." \
+           "IF-MIB::ifDescr.1 = STRING: Test" \
+           "IF-MIB::ifDescr.2 = STRING: Test 2" \
            "IF-MIB::ifType.1 = INTEGER: ethernetCsmacd(6)" \
            "IF-MIB::ifType.2 = INTEGER: ethernetCsmacd(6)" \
            "IF-MIB::ifMtu.1 = INTEGER: 1500" \

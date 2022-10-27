@@ -92,17 +92,17 @@
  */
 int
 api_data_options(clicon_handle h,
-		 void         *req)
+                 void         *req)
 {
     int retval = -1;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (restconf_reply_header(req, "Allow", "OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE") < 0)
-	goto done;
+        goto done;
     if (restconf_reply_header(req, "Accept-Patch", "application/yang-data+xml,application/yang-data+json") < 0)
-	goto done;
+        goto done;
     if (restconf_reply_send(req, 200, NULL, 0) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -128,8 +128,8 @@ api_data_options(clicon_handle h,
  */
 static int
 match_list_keys(yang_stmt *y,
-		cxobj     *x1,
-		cxobj     *x2)
+                cxobj     *x1,
+                cxobj     *x2)
 {
     int        retval = -1;
     cvec      *cvk = NULL; /* vector of index keys */
@@ -143,32 +143,32 @@ match_list_keys(yang_stmt *y,
     clicon_debug(1, "%s", __FUNCTION__);
     switch (yang_keyword_get(y)){
     case Y_LIST:
-	cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
-	cvi = NULL;
-	while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	    keyname = cv_string_get(cvi);	    
-	    if ((xkey2 = xml_find(x2, keyname)) == NULL)
-		goto done; /* No key in api-path */
-	    if ((key2 = xml_body(xkey2)) == NULL)
-		goto done;
-	    if ((xkey1 = xml_find(x1, keyname)) == NULL)
-		goto done; /* No key in data */
-	    if ((key1 = xml_body(xkey1)) == NULL)
-		goto done;
-	    if (strcmp(key2, key1) != 0)
-		goto done; /* keys dont match */
-	}
-	break;
+        cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
+        cvi = NULL;
+        while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+            keyname = cv_string_get(cvi);           
+            if ((xkey2 = xml_find(x2, keyname)) == NULL)
+                goto done; /* No key in api-path */
+            if ((key2 = xml_body(xkey2)) == NULL)
+                goto done;
+            if ((xkey1 = xml_find(x1, keyname)) == NULL)
+                goto done; /* No key in data */
+            if ((key1 = xml_body(xkey1)) == NULL)
+                goto done;
+            if (strcmp(key2, key1) != 0)
+                goto done; /* keys dont match */
+        }
+        break;
     case Y_LEAF_LIST:
-	if ((key2 = xml_body(x2)) == NULL)
-	    goto done; /* No key in api-path */
-	if ((key1 = xml_body(x1)) == NULL)
-	    goto done; /* No key in data */
-	if (strcmp(key2, key1) != 0)
-	    goto done; /* keys dont match */
-	break;
+        if ((key2 = xml_body(x2)) == NULL)
+            goto done; /* No key in api-path */
+        if ((key1 = xml_body(x1)) == NULL)
+            goto done; /* No key in data */
+        if (strcmp(key2, key1) != 0)
+            goto done; /* keys dont match */
+        break;
     default:
-	goto ok;
+        goto ok;
     }
  ok:
     retval = 0;
@@ -189,16 +189,16 @@ match_list_keys(yang_stmt *y,
  */ 
 int
 api_data_write(clicon_handle h,
-	       void         *req, 
-	       char         *api_path0, 
-	       int           pi,
-	       cvec         *qvec, 
-	       char         *data,
-	       int           pretty,
-	       restconf_media media_in,
-	       restconf_media media_out,
-	       int            plain_patch,
-	       ietf_ds_t      ds)
+               void         *req, 
+               char         *api_path0, 
+               int           pi,
+               cvec         *qvec, 
+               char         *data,
+               int           pretty,
+               restconf_media media_in,
+               restconf_media media_out,
+               int            plain_patch,
+               ietf_ds_t      ds)
 {
     int            retval = -1;
     enum operation_type op;
@@ -229,89 +229,89 @@ api_data_write(clicon_handle h,
     yang_bind      yb;
     char          *xpath = NULL;
     char          *attr;
-	
+        
     clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
     clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
+        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
     }
     api_path=api_path0;
     /* strip /... from start */
     for (i=0; i<pi; i++)
-	api_path = index(api_path+1, '/');
+        api_path = index(api_path+1, '/');
     if (api_path){
-	/* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */
-	if ((ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){ /* validation failed */
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        /* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */
+        if ((ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
+            goto done;
+        if (ret == 0){ /* validation failed */
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
     }
     if (plain_patch)
-	op = OP_MERGE; /* bad request if it does not exist */
+        op = OP_MERGE; /* bad request if it does not exist */
     else
-	op = OP_REPLACE; /* OP_CREATE if it does not exist */
+        op = OP_REPLACE; /* OP_CREATE if it does not exist */
     /* Create config top-of-tree */
     if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     /* Translate api_path to xml in the form of xtop/xbot */
     xbot = xtop;
     if (api_path){ /* If URI, otherwise top data/config object */
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){ /* validation failed */
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	if (ybot){
-	    if (ys_real_module(ybot, &ymodapi) < 0)
-		goto done;
-	}
+        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot, &xerr)) < 0)
+            goto done;
+        if (ret == 0){ /* validation failed */
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        if (ybot){
+            if (ys_real_module(ybot, &ymodapi) < 0)
+                goto done;
+        }
     }
     /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource.  (tested again below)
      */
     if (data == NULL || strlen(data) == 0){
-	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
-	    goto done;
-	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
+        if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
+            goto done;
+        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+            goto done;
+        goto ok;
     }
     /* Create a dummy data tree parent to hook in the parsed data.
      */
     if ((xdata0 = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     if (api_path){ /* XXX mv to copy? */
-	cxobj *xfrom;
-	cxobj *xac;
-	
-	if (api_path && (strcmp(api_path, "/") != 0))
-	    xfrom = xml_parent(xbot);
-	else
-	    xfrom = xbot; // XXX xbot is /config has NULL parent
-	if (xml_copy_one(xfrom, xdata0) < 0)
-	    goto done;
-	xa = NULL;
-	while ((xa = xml_child_each(xfrom, xa, CX_ATTR)) != NULL) {
-	    if ((xac = xml_new(xml_name(xa), xdata0, CX_ATTR)) == NULL)
-		goto done;
-	    if (xml_copy(xa, xac) < 0) /* recursion */
-		goto done;
-	}
+        cxobj *xfrom;
+        cxobj *xac;
+        
+        if (api_path && (strcmp(api_path, "/") != 0))
+            xfrom = xml_parent(xbot);
+        else
+            xfrom = xbot; // XXX xbot is /config has NULL parent
+        if (xml_copy_one(xfrom, xdata0) < 0)
+            goto done;
+        xa = NULL;
+        while ((xa = xml_child_each(xfrom, xa, CX_ATTR)) != NULL) {
+            if ((xac = xml_new(xml_name(xa), xdata0, CX_ATTR)) == NULL)
+                goto done;
+            if (xml_copy(xa, xac) < 0) /* recursion */
+                goto done;
+        }
     }
     if (xml_spec(xdata0)==NULL){
-	if (api_path==NULL)
-	    yb = YB_MODULE_NEXT; /*  data is eg: <data><x> */
-	else
-	    yb = YB_MODULE;      /*  data is eg: <x> */
+        if (api_path==NULL)
+            yb = YB_MODULE_NEXT; /*  data is eg: <data><x> */
+        else
+            yb = YB_MODULE;      /*  data is eg: <x> */
     }
     else
-	yb = YB_PARENT;
+        yb = YB_PARENT;
 
     /* Parse input data as json or xml into xml 
      * Note that in POST (api_data_post) the new object is grafted on xbot, since it is a new
@@ -321,48 +321,48 @@ api_data_write(clicon_handle h,
      */
     switch (media_in){
     case YANG_DATA_XML:
-	if ((ret = clixon_xml_parse_string(data, yb, yspec, &xdata0, &xerr)) < 0){
-	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-		goto done;
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	if (ret == 0){
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	break;
+        if ((ret = clixon_xml_parse_string(data, yb, yspec, &xdata0, &xerr)) < 0){
+            if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+                goto done;
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        if (ret == 0){
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        break;
     case YANG_DATA_JSON:
-	if ((ret = clixon_json_parse_string(data, 1, yb, yspec, &xdata0, &xerr)) < 0){
-	    if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
-		goto done;
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	if (ret == 0){
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	break;
+        if ((ret = clixon_json_parse_string(data, 1, yb, yspec, &xdata0, &xerr)) < 0){
+            if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+                goto done;
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        if (ret == 0){
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        break;
     default:
-	restconf_unsupported_media(h, req, pretty, media_out);
-	goto ok;
-	break;
+        restconf_unsupported_media(h, req, pretty, media_out);
+        goto ok;
+        break;
     } /* switch media_in */
 
     /* The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
     if (xml_child_nr_type(xdata0, CX_ELMNT) != 1){
-	if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
-	    goto done;
-	if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
+        if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
+            goto done;
+        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+            goto done;
+        goto ok;
     }
     xdata = xml_child_i_type(xdata0, 0, CX_ELMNT);
     /* If the api-path (above) defines a module, then xdata must have a prefix
@@ -370,158 +370,158 @@ api_data_write(clicon_handle h,
      * This does not apply if api-path is / (no module)
      */
     if (ys_module_by_xml(yspec, xdata, &ymoddata) < 0)
-	goto done;
+        goto done;
     if (ymoddata && ymodapi){
-	if (ymoddata != ymodapi){
-	    if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
-		goto done;
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        if (ymoddata != ymodapi){
+            if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
+                goto done;
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
     }
 
     /* Add operation create as attribute. If that fails with Conflict, then 
      * try "replace" (see comment in function header)
      */
     if ((xa = xml_new("operation", xdata, CX_ATTR)) == NULL)
-	goto done;
+        goto done;
     if (xml_prefix_set(xa, NETCONF_BASE_PREFIX) < 0)
-	goto done;
+        goto done;
     if (xml_value_set(xa, xml_operation2str(op)) < 0) /* XXX here is where op is used */
-	goto done;
+        goto done;
     if ((xa = xml_new("objectcreate", xdata, CX_ATTR)) == NULL)
-	goto done;
+        goto done;
     if (plain_patch){
-	/* RFC 8040 4.6. PATCH:
-	 * If the target resource instance does not exist, the server MUST NOT create it. 
-	 */
-	if (xml_value_set(xa, "false") < 0)
-	    goto done;
+        /* RFC 8040 4.6. PATCH:
+         * If the target resource instance does not exist, the server MUST NOT create it. 
+         */
+        if (xml_value_set(xa, "false") < 0)
+            goto done;
     }
     else
-	if (xml_value_set(xa, "true") < 0)
-	    goto done;
+        if (xml_value_set(xa, "true") < 0)
+            goto done;
     /* Top-of tree, no api-path
      * Replace xparent with x, ie bottom of api-path with data 
-     */	    
+     */     
     dname = xml_name(xdata);
     if (api_path==NULL) {
-	if (strcmp(dname, NETCONF_OUTPUT_DATA)!=0){
-	    if (netconf_bad_element_xml(&xerr, "application", dname,
-					"Data element does not match top-level data") < 0)
-		goto done;
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	if (xml_addsub(NULL, xdata) < 0)
-	    goto done;
-	if (xtop) /* also xbot */
-	    xml_free(xtop);
-	xtop = xdata;
-	xml_name_set(xtop, NETCONF_INPUT_CONFIG);
-	/* remove default namespace */
-	if ((xa = xml_find_type(xtop, NULL, "xmlns", CX_ATTR)) != NULL){
-	    if (xml_rm(xa) < 0)
-		goto done;
-	    if (xml_free(xa) < 0)
-		goto done;
-	}
+        if (strcmp(dname, NETCONF_OUTPUT_DATA)!=0){
+            if (netconf_bad_element_xml(&xerr, "application", dname,
+                                        "Data element does not match top-level data") < 0)
+                goto done;
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        if (xml_addsub(NULL, xdata) < 0)
+            goto done;
+        if (xtop) /* also xbot */
+            xml_free(xtop);
+        xtop = xdata;
+        xml_name_set(xtop, NETCONF_INPUT_CONFIG);
+        /* remove default namespace */
+        if ((xa = xml_find_type(xtop, NULL, "xmlns", CX_ATTR)) != NULL){
+            if (xml_rm(xa) < 0)
+                goto done;
+            if (xml_free(xa) < 0)
+                goto done;
+        }
     }
     else { /* api-path != NULL */
-	/* There is an api-path that defines an element in the datastore tree.
-	 * Not top-of-tree.
-	 */
-	clicon_debug(1, "%s Comparing bottom-of api-path (%s) with top-of-data (%s)",__FUNCTION__, xml_name(xbot), dname);
+        /* There is an api-path that defines an element in the datastore tree.
+         * Not top-of-tree.
+         */
+        clicon_debug(1, "%s Comparing bottom-of api-path (%s) with top-of-data (%s)",__FUNCTION__, xml_name(xbot), dname);
 
-	/* Check same symbol in api-path as data */	    
-	if (strcmp(dname, xml_name(xbot))){
-	    if (netconf_bad_element_xml(&xerr, "application", dname,
-					"Data element does not match api-path") < 0)
-		goto done;
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
-	/* If list or leaf-list, api-path keys must match data keys 
-	 * There are two cases, either the object is the list element itself,
-	 *   eg xpath:obj=a  data:<obj><key>b</key></obj>
-	 * or the object is the key element:
-	 *   eg xpath:obj=a/key  data:<key>b</key>
-	 * That is why the conditional is somewhat hairy
-	 */	    
-	xparent = xml_parent(xbot);
-	if (ybot){
-	    /* Ensure list keys match between uri and data. That is:
-	     * If data is on the form: -d {"a":{"k":1}} where a is list or leaf-list
-	     * then uri-path must be ../a=1
-	     * match_list_key() checks if this is true
-	     */
-	    if (match_list_keys(ybot, xdata, xbot) < 0){
-		if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
-		    goto done;
-		if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		    goto done;
-		goto ok;
-	    }
-	    /* Ensure keys in lists are not changed. That is:
-	     * If data is on the form: -d {"k":1} and its parent is a list "a"
-	     * then the uri-path must be "../a=1 (you cannot change a's key)"
-	     */
-	    if ((yp = yang_parent_get(ybot)) != NULL &&
-		yang_keyword_get(yp) == Y_LIST){
-		if ((ret = yang_key_match(yp, dname, NULL)) < 0)
-		    goto done;
-		if (ret == 1){ /* Match: xdata is a key */
-		    char *parbod = xml_find_body(xparent, dname);
-		    /* Check if the key is different from the one in uri-path,
-		     * or does not exist
-		     */
-		    if (parbod == NULL || strcmp(parbod, xml_body(xdata))){
-			if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
-			    goto done;
-			if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-			    goto done;
-			goto ok;
-		    }
-		}
-	    }
-	}
-	if (xtop != xbot) /* Should always be true */
-	    xml_purge(xbot);
-	if (xml_addsub(xparent, xdata) < 0) 
-	    goto done;
-	/* If restconf insert/point attributes are present, translate to netconf */
-	if (restconf_insert_attributes(xdata, qvec) < 0)
-	    goto done;
-	/* If we already have that default namespace, remove it in child */
-	if ((xa = xml_find_type(xdata, NULL, "xmlns", CX_ATTR)) != NULL){
-	    if (xml2ns(xparent, NULL, &namespace) < 0){
-		clicon_debug(1, "%s G done",  __FUNCTION__);
-		goto done;
-	    }
-	    if (namespace == NULL){
-		clicon_log_xml(LOG_DEBUG, xparent, "%s xparent:", __FUNCTION__);
-		/* XXX */
-	    }
-	    /* Set xmlns="" default namespace attribute (if diff from default) */
-	    if (namespace && strcmp(namespace, xml_value(xa))==0)
-		xml_purge(xa);
-	}
+        /* Check same symbol in api-path as data */         
+        if (strcmp(dname, xml_name(xbot))){
+            if (netconf_bad_element_xml(&xerr, "application", dname,
+                                        "Data element does not match api-path") < 0)
+                goto done;
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        /* If list or leaf-list, api-path keys must match data keys 
+         * There are two cases, either the object is the list element itself,
+         *   eg xpath:obj=a  data:<obj><key>b</key></obj>
+         * or the object is the key element:
+         *   eg xpath:obj=a/key  data:<key>b</key>
+         * That is why the conditional is somewhat hairy
+         */         
+        xparent = xml_parent(xbot);
+        if (ybot){
+            /* Ensure list keys match between uri and data. That is:
+             * If data is on the form: -d {"a":{"k":1}} where a is list or leaf-list
+             * then uri-path must be ../a=1
+             * match_list_key() checks if this is true
+             */
+            if (match_list_keys(ybot, xdata, xbot) < 0){
+                if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
+                    goto done;
+                if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                    goto done;
+                goto ok;
+            }
+            /* Ensure keys in lists are not changed. That is:
+             * If data is on the form: -d {"k":1} and its parent is a list "a"
+             * then the uri-path must be "../a=1 (you cannot change a's key)"
+             */
+            if ((yp = yang_parent_get(ybot)) != NULL &&
+                yang_keyword_get(yp) == Y_LIST){
+                if ((ret = yang_key_match(yp, dname, NULL)) < 0)
+                    goto done;
+                if (ret == 1){ /* Match: xdata is a key */
+                    char *parbod = xml_find_body(xparent, dname);
+                    /* Check if the key is different from the one in uri-path,
+                     * or does not exist
+                     */
+                    if (parbod == NULL || strcmp(parbod, xml_body(xdata))){
+                        if (netconf_operation_failed_xml(&xerr, "protocol", "api-path keys do not match data keys") < 0)
+                            goto done;
+                        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                            goto done;
+                        goto ok;
+                    }
+                }
+            }
+        }
+        if (xtop != xbot) /* Should always be true */
+            xml_purge(xbot);
+        if (xml_addsub(xparent, xdata) < 0) 
+            goto done;
+        /* If restconf insert/point attributes are present, translate to netconf */
+        if (restconf_insert_attributes(xdata, qvec) < 0)
+            goto done;
+        /* If we already have that default namespace, remove it in child */
+        if ((xa = xml_find_type(xdata, NULL, "xmlns", CX_ATTR)) != NULL){
+            if (xml2ns(xparent, NULL, &namespace) < 0){
+                clicon_debug(1, "%s G done",  __FUNCTION__);
+                goto done;
+            }
+            if (namespace == NULL){
+                clicon_log_xml(LOG_DEBUG, xparent, "%s xparent:", __FUNCTION__);
+                /* XXX */
+            }
+            /* Set xmlns="" default namespace attribute (if diff from default) */
+            if (namespace && strcmp(namespace, xml_value(xa))==0)
+                xml_purge(xa);
+        }
     } /* api-path != NULL */
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
-	goto done;
+        goto done;
     cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\" %s>",
-	    NETCONF_BASE_NAMESPACE,
-	    username?username:"",
-	    NETCONF_BASE_PREFIX,
-	    NETCONF_BASE_NAMESPACE,  /* bind nc to netconf namespace */
-	    NETCONF_MESSAGE_ID_ATTR);
+            NETCONF_BASE_NAMESPACE,
+            username?username:"",
+            NETCONF_BASE_PREFIX,
+            NETCONF_BASE_NAMESPACE,  /* bind nc to netconf namespace */
+            NETCONF_MESSAGE_ID_ATTR);
     cprintf(cbx, "<edit-config");
     /* RFC8040 Sec 1.4:
      * If this is a "data" request and the NETCONF server supports :startup,
@@ -530,55 +530,55 @@ api_data_write(clicon_handle h,
      * as a consequence of a RESTCONF edit operation.
      */
     if ((IETF_DS_NONE == ds) &&
-	if_feature(yspec, "ietf-netconf", "startup") &&
-	!clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
-	cprintf(cbx, " copystartup=\"true\"");
+        if_feature(yspec, "ietf-netconf", "startup") &&
+        !clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
+        cprintf(cbx, " copystartup=\"true\"");
     }
     cprintf(cbx, " autocommit=\"true\"");
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clixon_xml2cbuf(cbx, xtop, 0, 0, -1, 0) < 0)
-	goto done;
+        goto done;
     cprintf(cbx, "</edit-config></rpc>");
     clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
-	goto done;
+        goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-	    goto done;	    
-	goto ok;
+        if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+            goto done;      
+        goto ok;
     }
     if ((xe = xpath_first(xret, NULL, "//ok")) != NULL &&
-	(attr = xml_find_value(xe, "objectexisted")) != NULL &&
-	strcmp(attr, "false")==0){
-	if (restconf_reply_send(req, 201, NULL, 0) < 0) /* Created */
-	    goto done;
+        (attr = xml_find_value(xe, "objectexisted")) != NULL &&
+        strcmp(attr, "false")==0){
+        if (restconf_reply_send(req, 201, NULL, 0) < 0) /* Created */
+            goto done;
     }
     else
-	if (restconf_reply_send(req, 204, NULL, 0) < 0) /* No content */
-	    goto done;	
+        if (restconf_reply_send(req, 204, NULL, 0) < 0) /* No content */
+            goto done;  
  ok:
     retval = 0;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (xpath)
-	free(xpath);
+        free(xpath);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (xretcom)
-	xml_free(xretcom);
+        xml_free(xretcom);
     if (xretdis)
-	xml_free(xretdis);
+        xml_free(xretdis);
     if (xtop)
-	xml_free(xtop);
+        xml_free(xtop);
     if (xdata0)
-	xml_free(xdata0);
+        xml_free(xdata0);
      if (cbx)
-	cbuf_free(cbx); 
+        cbuf_free(cbx); 
    return retval;
 } /* api_data_write */
 
@@ -618,20 +618,20 @@ api_data_write(clicon_handle h,
  */
 int
 api_data_put(clicon_handle h,
-	     void         *req, 
-	     char         *api_path0, 
-	     int           pi,
-	     cvec         *qvec, 
-	     char         *data,
-	     int           pretty,
-	     restconf_media media_out,
-	     ietf_ds_t     ds)
+             void         *req, 
+             char         *api_path0, 
+             int           pi,
+             cvec         *qvec, 
+             char         *data,
+             int           pretty,
+             restconf_media media_out,
+             ietf_ds_t     ds)
 {
     restconf_media media_in;
 
     media_in = restconf_content_type(h);
     return api_data_write(h, req, api_path0, pi, qvec, data, pretty,
-			  media_in, media_out, 0, ds);
+                          media_in, media_out, 0, ds);
 } 
 
 /*! Generic REST PATCH method for plain patch 
@@ -653,14 +653,14 @@ api_data_put(clicon_handle h,
  */
 int
 api_data_patch(clicon_handle h,
-	       void         *req, 
-	       char         *api_path0, 
-	       int           pi,
-	       cvec         *qvec, 
-	       char         *data,
-	       int           pretty,
-	       restconf_media media_out,
-	       ietf_ds_t     ds)
+               void         *req, 
+               char         *api_path0, 
+               int           pi,
+               cvec         *qvec, 
+               char         *data,
+               int           pretty,
+               restconf_media media_out,
+               ietf_ds_t     ds)
 {
     restconf_media media_in;
     int ret = -1;
@@ -668,23 +668,23 @@ api_data_patch(clicon_handle h,
     media_in = restconf_content_type(h);
     switch (media_in){
     case YANG_DATA_XML:
-    case YANG_DATA_JSON: 	/* plain patch */
-	ret = api_data_write(h, req, api_path0, pi, qvec, data, pretty,
-			     media_in, media_out, 1, ds);
-	break;
-    case YANG_PATCH_JSON: 	/* RFC 8072 patch */
+    case YANG_DATA_JSON:        /* plain patch */
+        ret = api_data_write(h, req, api_path0, pi, qvec, data, pretty,
+                             media_in, media_out, 1, ds);
+        break;
+    case YANG_PATCH_JSON:       /* RFC 8072 patch */
     case YANG_PATCH_XML:
 #ifdef CLIXON_YANG_PATCH
-	ret = api_data_yang_patch(h, req, api_path0, pcvec, pi, qvec, data, pretty,
-				  media_in, media_out, ds);
+        ret = api_data_yang_patch(h, req, api_path0, pcvec, pi, qvec, data, pretty,
+                                  media_in, media_out, ds);
 #else
-	ret = restconf_notimplemented(h, req, pretty, media_out);
+        ret = restconf_notimplemented(h, req, pretty, media_out);
 #endif
-	break;
+        break;
     break;
     default:
-	ret = restconf_unsupported_media(h, req, pretty, media_out);
-	break;
+        ret = restconf_unsupported_media(h, req, pretty, media_out);
+        break;
     }
     return ret;
 } 
@@ -704,12 +704,12 @@ api_data_patch(clicon_handle h,
  */
 int
 api_data_delete(clicon_handle h,
-		void         *req, 
-		char         *api_path,
-		int           pi,
-		int           pretty,
-		restconf_media media_out,
-		ietf_ds_t     ds)
+                void         *req, 
+                char         *api_path,
+                int           pi,
+                int           pretty,
+                restconf_media media_out,
+                ietf_ds_t     ds)
 {
     int        retval = -1;
     int        i;
@@ -730,42 +730,42 @@ api_data_delete(clicon_handle h,
 
     clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
+        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
     }
     for (i=0; i<pi; i++)
-	api_path = index(api_path+1, '/');
+        api_path = index(api_path+1, '/');
     /* Create config top-of-tree */
     if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     xbot = xtop;
     if (api_path){
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){ /* validation failed */
-	    if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-		goto done;
-	    goto ok;
-	}
+        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
+            goto done;
+        if (ret == 0){ /* validation failed */
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
     }
     if ((xa = xml_new("operation", xbot, CX_ATTR)) == NULL)
-	goto done;
+        goto done;
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
-	goto done;
+        goto done;
     if (xml_namespace_change(xa, NETCONF_BASE_NAMESPACE, NETCONF_BASE_PREFIX) < 0)
-	goto done;
+        goto done;
 
     if ((cbx = cbuf_new()) == NULL)
-	goto done;
+        goto done;
     /* For internal XML protocol: add username attribute for access control
      */
     username = clicon_username_get(h);
     cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\" %s>",
-	    NETCONF_BASE_NAMESPACE,
-	    username?username:"",
-	    NETCONF_BASE_PREFIX,
-	    NETCONF_BASE_NAMESPACE,
-	    NETCONF_MESSAGE_ID_ATTR); /* bind nc to netconf namespace */
+            NETCONF_BASE_NAMESPACE,
+            username?username:"",
+            NETCONF_BASE_PREFIX,
+            NETCONF_BASE_NAMESPACE,
+            NETCONF_MESSAGE_ID_ATTR); /* bind nc to netconf namespace */
 
     cprintf(cbx, "<edit-config");
     /* RFC8040 Sec 1.4:
@@ -775,38 +775,38 @@ api_data_delete(clicon_handle h,
      * as a consequence of a RESTCONF edit operation.
      */
     if ((IETF_DS_NONE == ds) &&
-	if_feature(yspec, "ietf-netconf", "startup") &&
-	!clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
-	cprintf(cbx, " copystartup=\"true\"");
+        if_feature(yspec, "ietf-netconf", "startup") &&
+        !clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
+        cprintf(cbx, " copystartup=\"true\"");
     }
     cprintf(cbx, " autocommit=\"true\"");
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clixon_xml2cbuf(cbx, xtop, 0, 0, -1, 0) < 0)
-	goto done;
+        goto done;
     cprintf(cbx, "</edit-config></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
-	goto done;
+        goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-	if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-	    goto done;
-	goto ok;
+        if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
+            goto done;
+        goto ok;
     }
     if (restconf_reply_send(req, 204, NULL, 0) < 0)
-	goto done;	
+        goto done;      
  ok:
     retval = 0;
  done:
     if (cbx)
-	cbuf_free(cbx); 
+        cbuf_free(cbx); 
     if (xret)
-	xml_free(xret);
+        xml_free(xret);
     if (xretcom)
-	xml_free(xretcom);
+        xml_free(xretcom);
     if (xretdis)
-	xml_free(xretdis);
+        xml_free(xretdis);
     if (xtop)
-	xml_free(xtop);
+        xml_free(xtop);
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
    return retval;
 }

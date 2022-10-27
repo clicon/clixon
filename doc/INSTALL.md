@@ -31,7 +31,7 @@ Add a user group, using groupadd and usermod:
 
 ### Build from source
 ```
-     configure	       	       # Configure clixon to platform
+     configure                 # Configure clixon to platform
      make                      # Compile
      sudo make install         # Install libs, binaries, and config-files
      sudo make install-include # Install include files (for compiling)

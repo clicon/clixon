@@ -67,9 +67,9 @@
  */
 static int
 regex_libxml2(char *regexp0,
-	      char *content0,
-	      int   nr,
-	      int   debug)
+              char *content0,
+              int   nr,
+              int   debug)
     
 {
     int        retval = -1;
@@ -81,12 +81,12 @@ regex_libxml2(char *regexp0,
     int        i;
     
     if ((xrp = xmlRegexpCompile(regexp)) == NULL)
-	goto done;
+        goto done;
     if (nr==0)
-	return 1;
+        return 1;
     for (i=0; i<nr; i++)
-	if ((ret = xmlRegexpExec(xrp, content)) < 0)
-	    goto done;
+        if ((ret = xmlRegexpExec(xrp, content)) < 0)
+            goto done;
     return ret;
  done:
 #endif
@@ -95,9 +95,9 @@ regex_libxml2(char *regexp0,
 
 static int
 regex_posix(char *regexp,
-	    char *content,
-	    int   nr,
-	    int   debug)
+            char *content,
+            int   nr,
+            int   debug)
 {
     int     retval = -1;
     char   *posix = NULL;
@@ -109,32 +109,32 @@ regex_posix(char *regexp,
     int     i;
     
     if (regexp_xsd2posix(regexp, &posix) < 0)
-	goto done;
+        goto done;
     clicon_debug(1, "posix: %s", posix);
     len0 = strlen(posix);
     if (len0 > sizeof(pattern)-5){
-	fprintf(stderr, "pattern too long\n");
-	return -1;
+        fprintf(stderr, "pattern too long\n");
+        return -1;
     }
     /* note following two lines trigger [-Wstringop-truncation] warnings, but see no actual error */
     strncpy(pattern, "^(", 3);
     strncpy(pattern+2, posix, sizeof(pattern)-3);
     strncat(pattern, ")$",  sizeof(pattern)-len0-1);
     if (regcomp(&re, pattern, REG_NOSUB|REG_EXTENDED) != 0) 
-	return(0);      /* report error */
+        return(0);      /* report error */
     if (nr==0)
-	return 1;
+        return 1;
     for (i=0; i<nr; i++)
-	status = regexec(&re, content, (size_t) 0, NULL, 0);
+        status = regexec(&re, content, (size_t) 0, NULL, 0);
     regfree(&re);
     if (status != 0) {
-	regerror(status, &re, errbuf, sizeof(errbuf)); /* XXX error is ignored */
-	return(0);      /* report error */
+        regerror(status, &re, errbuf, sizeof(errbuf)); /* XXX error is ignored */
+        return(0);      /* report error */
     }
     return(1);
  done:
     if (posix)
-	free(posix);
+        free(posix);
     return retval;
 }
 
@@ -142,16 +142,16 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options]\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level>\tDebug\n"
-	    "\t-p          \txsd->posix translation regexp (default)\n"
-	    "\t-x          \tlibxml2 regexp (alternative to -p)\n"
-	    "\t-n <nr>     \tIterate content match (default: 1, 0: no match only compile)\n"
-	    "\t-r <regexp> \tregexp (mandatory)\n"
-	    "\t-c <string> \tValue content string(mandatory if -n > 0)\n",
-	    argv0
-	    );
+            "\t-D <level>\tDebug\n"
+            "\t-p          \txsd->posix translation regexp (default)\n"
+            "\t-x          \tlibxml2 regexp (alternative to -p)\n"
+            "\t-n <nr>     \tIterate content match (default: 1, 0: no match only compile)\n"
+            "\t-r <regexp> \tregexp (mandatory)\n"
+            "\t-c <string> \tValue content string(mandatory if -n > 0)\n",
+            argv0
+            );
     exit(0);
 }
 
@@ -172,62 +172,62 @@ main(int    argc,
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, "hD:pxn:r:c:")) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv0);
-	    break;
-    	case 'D':
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(argv0);
-	    break;
-	case 'p': /* xsd->posix */
-	    mode = 0;
-	    break;
-	case 'n': /* Number of iterations */
-	    if ((nr = atoi(optarg)) < 0)
-		usage(argv0);
-	    break;
-	case 'x': /* libxml2 */
-	    mode = 1;
-	    break;
-	case 'r': /* regexp */
-	    regexp = optarg;
-	    break;
-	case 'c': /* value content string */
-	    content = optarg;
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv0);
+            break;
+        case 'D':
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(argv0);
+            break;
+        case 'p': /* xsd->posix */
+            mode = 0;
+            break;
+        case 'n': /* Number of iterations */
+            if ((nr = atoi(optarg)) < 0)
+                usage(argv0);
+            break;
+        case 'x': /* libxml2 */
+            mode = 1;
+            break;
+        case 'r': /* regexp */
+            regexp = optarg;
+            break;
+        case 'c': /* value content string */
+            content = optarg;
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR); 
     clicon_debug_init(dbg, NULL);
 
     if (regexp == NULL){
-	fprintf(stderr, "-r mandatory\n");
-	usage(argv0);
+        fprintf(stderr, "-r mandatory\n");
+        usage(argv0);
     }
     if (nr > 0 && content == NULL){
-	fprintf(stderr, "-c mandatory (if -n > 0)\n");
-	usage(argv0);
+        fprintf(stderr, "-c mandatory (if -n > 0)\n");
+        usage(argv0);
     }
     if (mode != 0 && mode != 1){
-	fprintf(stderr, "Neither posix or libxml2 set\n");
-	usage(argv0);
+        fprintf(stderr, "Neither posix or libxml2 set\n");
+        usage(argv0);
     }
     clicon_debug(1, "regexp:%s", regexp);
     clicon_debug(1, "content:%s", content);
     if (mode == 0){
-	if ((ret = regex_posix(regexp, content, nr, dbg)) < 0)
-	    goto done;
+        if ((ret = regex_posix(regexp, content, nr, dbg)) < 0)
+            goto done;
 
     }
     else if (mode == 1){
-	if ((ret = regex_libxml2(regexp, content, nr, dbg)) < 0)
-	    goto done;
+        if ((ret = regex_libxml2(regexp, content, nr, dbg)) < 0)
+            goto done;
     }
     else
-	usage(argv0);
+        usage(argv0);
     fprintf(stdout, "%d\n", ret);
     exit(ret);
     retval = 0;

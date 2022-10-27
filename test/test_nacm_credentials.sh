@@ -27,7 +27,7 @@ module nacm-example{
   namespace "urn:example:nacm";
   prefix nex;
   import ietf-netconf-acm {
-	prefix nacm;
+        prefix nacm;
   }
   leaf x{
     type int32;
@@ -126,16 +126,16 @@ EOF
 
     new "test params: -f $cfg"
     if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	new "start backend -s init -f $cfg"
-	start_backend -s init -f $cfg 
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend -s init -f $cfg"
+        start_backend -s init -f $cfg 
     fi
     
-    new "waiting"
+    new "wait backend"
     wait_backend
 
     # First push in nacm rules via regular means
@@ -150,23 +150,23 @@ EOF
 
     #  raw socket test
     if [ -n "$username" ]; then
-	XML="<rpc $DEFAULTNS username=\"$username\"><get-config><source><running/></source><filter type=\"xpath\" select=\"/ex:x\" xmlns:ex=\"urn:example:nacm\"/></get-config></rpc>"
+        XML="<rpc $DEFAULTNS username=\"$username\"><get-config><source><running/></source><filter type=\"xpath\" select=\"/ex:x\" xmlns:ex=\"urn:example:nacm\"/></get-config></rpc>"
     else
-	XML="<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/ex:x\" xmlns:ex=\"urn:example:nacm\"/></get-config></rpc>"
+        XML="<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/ex:x\" xmlns:ex=\"urn:example:nacm\"/></get-config></rpc>"
     fi
 
     new "get-config mode:$mode user:$username $family $precmd"
     expecteof_netconf "$precmd $clixon_util_socket -a $family -s $sock -D $DBG" 0 "" "$XML" "$ex"
     
     if [ $BE -ne 0 ]; then     # Bring your own backend
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 } # testrun
 

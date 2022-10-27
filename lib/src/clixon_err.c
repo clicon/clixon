@@ -131,13 +131,13 @@ static struct errvec EV[] = {
 
 static char *
 clicon_strerror1(int           err,
-		 struct errvec vec[])
+                 struct errvec vec[])
 {
     struct errvec *ev;
 
     for (ev=vec; ev->ev_err != -1; ev++)
-	if (ev->ev_err == err)
-	    break;
+        if (ev->ev_err == err)
+            break;
     return ev?(ev->ev_str?ev->ev_str:"unknown"):"CLICON unknown error";
 }
 
@@ -163,13 +163,13 @@ find_category(int category)
     int              found = 0;
 
     if ((cec = _err_cat_list) != NULL){
-	do {
-	    if (cec->cec_category == category){
-		found++;
-		break;
-	    }
-	    cec = NEXTQ(clixon_err_cats *, cec);
-	} while (cec && cec != _err_cat_list);
+        do {
+            if (cec->cec_category == category){
+                found++;
+                break;
+            }
+            cec = NEXTQ(clixon_err_cats *, cec);
+        } while (cec && cec != _err_cat_list);
     }
     return found?cec:NULL;
 }
@@ -192,10 +192,10 @@ find_category(int category)
  */
 int
 clicon_err_fn(const char *fn,
-	      const int  line,
-	      int        category,
-	      int        suberr,
-	      const char *format, ...) 
+              const int  line,
+              int        category,
+              int        suberr,
+              const char *format, ...) 
 {
     va_list args;
     int     len;
@@ -214,77 +214,77 @@ clicon_err_fn(const char *fn,
 
     /* allocate a message string exactly fitting the message length */
     if ((msg = malloc(len+1)) == NULL){
-	fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
-	goto done;
+        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        goto done;
     }
 
     /* second round: compute write message from format and args */
     va_start(args, format);
     if (vsnprintf(msg, len+1, format, args) < 0){
-	va_end(args);
-	fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
-	goto done;
+        va_end(args);
+        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        goto done;
     }
     va_end(args);
     strncpy(clicon_err_reason, msg, ERR_STRLEN-1);
 
     /* Check category callbacks as defined in clixon_err_cat_reg */
     if ((cec = find_category(category)) != NULL &&
-	cec->cec_logfn){
-	cbuf *cb = NULL;
-	if ((cb = cbuf_new()) == NULL){
-	    fprintf(stderr, "cbuf_new: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
-	    goto done;
-	}
-	if (cec->cec_logfn(cec->cec_handle, suberr, cb) < 0)
-	    goto done;
-	/* Here we could take care of specific errno, like application-defined errors */
-	if (fn)
-	    clicon_log(LOG_ERR, "%s: %d: %s: %s: %s",
-		       fn,
-		       line,
-		       clicon_strerror(category),
-		       cbuf_get(cb),
-		       msg);
-	else
-	    clicon_log(LOG_ERR, "%s: %s: %s",
-		       clicon_strerror(category),
-		       cbuf_get(cb),
-		       msg);
-	if (cb)
-	    cbuf_free(cb);
+        cec->cec_logfn){
+        cbuf *cb = NULL;
+        if ((cb = cbuf_new()) == NULL){
+            fprintf(stderr, "cbuf_new: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+            goto done;
+        }
+        if (cec->cec_logfn(cec->cec_handle, suberr, cb) < 0)
+            goto done;
+        /* Here we could take care of specific errno, like application-defined errors */
+        if (fn)
+            clicon_log(LOG_ERR, "%s: %d: %s: %s: %s",
+                       fn,
+                       line,
+                       clicon_strerror(category),
+                       cbuf_get(cb),
+                       msg);
+        else
+            clicon_log(LOG_ERR, "%s: %s: %s",
+                       clicon_strerror(category),
+                       cbuf_get(cb),
+                       msg);
+        if (cb)
+            cbuf_free(cb);
     }
     else if (suberr){   /* Actually log it */
-	/* Here we could take care of specific errno, like application-defined errors */
-	if (fn)
-	    clicon_log(LOG_ERR, "%s: %d: %s: %s: %s", 
-		       fn,
-		       line,
-		       clicon_strerror(category),
-		       msg,
-		       suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
-	else
-	    clicon_log(LOG_ERR, "%s: %s: %s", 
-		       clicon_strerror(category),
-		       msg,
-		       suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
+        /* Here we could take care of specific errno, like application-defined errors */
+        if (fn)
+            clicon_log(LOG_ERR, "%s: %d: %s: %s: %s", 
+                       fn,
+                       line,
+                       clicon_strerror(category),
+                       msg,
+                       suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
+        else
+            clicon_log(LOG_ERR, "%s: %s: %s", 
+                       clicon_strerror(category),
+                       msg,
+                       suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
     }
     else{
-	if (fn)
-	    clicon_log(LOG_ERR, "%s: %d: %s: %s", 
-		       fn,
-		       line,
-		       clicon_strerror(category),
-		       msg);
-	else
-	    clicon_log(LOG_ERR, "%s: %s", 
-		       clicon_strerror(category),
-		       msg);
+        if (fn)
+            clicon_log(LOG_ERR, "%s: %d: %s: %s", 
+                       fn,
+                       line,
+                       clicon_strerror(category),
+                       msg);
+        else
+            clicon_log(LOG_ERR, "%s: %s", 
+                       clicon_strerror(category),
+                       msg);
     }
     retval = 0;
   done:
     if (msg)
-	free(msg);
+        free(msg);
     return retval;
 }
 
@@ -304,7 +304,7 @@ clicon_err_save(void)
     struct err_state *es;
 
     if ((es = malloc(sizeof(*es))) == NULL)
-	return NULL;
+        return NULL;
     es->es_errno = clicon_errno;
     es->es_suberrno = clicon_suberrno;
     strncpy(es->es_reason, clicon_err_reason, ERR_STRLEN);
@@ -319,10 +319,10 @@ clicon_err_restore(void* handle)
     struct err_state *es;
 
     if ((es = (struct err_state *)handle) != NULL){
-	clicon_errno = es->es_errno;
-	clicon_suberrno = es->es_suberrno;
-	strncpy(clicon_err_reason, es->es_reason, ERR_STRLEN);
-	free(es);
+        clicon_errno = es->es_errno;
+        clicon_suberrno = es->es_suberrno;
+        strncpy(clicon_err_reason, es->es_reason, ERR_STRLEN);
+        free(es);
     }
     return 0;
 }
@@ -334,14 +334,14 @@ clicon_err_restore(void* handle)
  */
 int
 clixon_err_cat_reg(enum clicon_err       category,
-		   void                 *handle,
-		   clixon_cat_log_cb     logfn)
+                   void                 *handle,
+                   clixon_cat_log_cb     logfn)
 {
     clixon_err_cats *cec;
 
     if ((cec = malloc(sizeof *cec)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	return -1;
+        clicon_err(OE_UNIX, errno, "malloc");
+        return -1;
     }
     memset(cec, 0, sizeof *cec);
     cec->cec_category = category;
@@ -357,8 +357,8 @@ clixon_err_exit(void)
     clixon_err_cats *cec = NULL;
 
     while ((cec = _err_cat_list) != NULL){
-	DELQ(cec, _err_cat_list, clixon_err_cats *);
-	free(cec);
+        DELQ(cec, _err_cat_list, clixon_err_cats *);
+        free(cec);
     } 
     return 0;
 }

@@ -174,7 +174,7 @@ expecteof "$clixon_util_xml -o" 0 '<?foo something else ?><a/>' '<a/>'
 
 new "prolog element misc*"
 expecteof "$clixon_util_xml -o" 0 '<?foo something ?><a/><?bar more stuff ?><!-- a comment-->' '<a/>'
-					
+                                        
 # We allow it as an internal necessity for parsing of xml fragments
 #new "double element error"
 #expecteof "$clixon_util_xml" 255 '<a/><b/>' ''

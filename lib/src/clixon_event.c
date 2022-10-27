@@ -131,7 +131,7 @@ static int
 clixon_exit_decr(void)
 {
     if (_clicon_exit > 1)
-	_clicon_exit--;
+        _clicon_exit--;
     return 0;
 }
 
@@ -176,15 +176,15 @@ clicon_sig_ignore_get(void)
  */
 int
 clixon_event_reg_fd(int   fd, 
-		    int (*fn)(int, void*), 
-		    void *arg, 
-		    char *str)
+                    int (*fn)(int, void*), 
+                    void *arg, 
+                    char *str)
 {
     struct event_data *e;
 
     if ((e = (struct event_data *)malloc(sizeof(struct event_data))) == NULL){
-	clicon_err(OE_EVENTS, errno, "malloc");
-	return -1;
+        clicon_err(OE_EVENTS, errno, "malloc");
+        return -1;
     }
     memset(e, 0, sizeof(struct event_data));
     strncpy(e->e_string, str, EVENT_STRLEN-1);
@@ -207,21 +207,21 @@ clixon_event_reg_fd(int   fd,
  */
 int
 clixon_event_unreg_fd(int   s, 
-		      int (*fn)(int, void*))
+                      int (*fn)(int, void*))
 {
     struct event_data *e, **e_prev;
     int found = 0;
 
     e_prev = &ee;
     for (e = ee; e; e = e->e_next){
-	if (fn == e->e_fn && s == e->e_fd) {
-	    found++;
-	    *e_prev = e->e_next;
-	    _ee_unreg++;
-	    free(e);
-	    break;
-	}
-	e_prev = &e->e_next;
+        if (fn == e->e_fn && s == e->e_fd) {
+            found++;
+            *e_prev = e->e_next;
+            _ee_unreg++;
+            free(e);
+            break;
+        }
+        e_prev = &e->e_next;
     }
     return found?0:-1;
 }
@@ -251,15 +251,15 @@ clixon_event_unreg_fd(int   s,
  */
 int
 clixon_event_reg_timeout(struct timeval t,  
-			 int          (*fn)(int, void*), 
-			 void          *arg, 
-			 char          *str)
+                         int          (*fn)(int, void*), 
+                         void          *arg, 
+                         char          *str)
 {
     struct event_data *e, *e1, **e_prev;
 
     if ((e = (struct event_data *)malloc(sizeof(struct event_data))) == NULL){
-	clicon_err(OE_EVENTS, errno, "malloc");
-	return -1;
+        clicon_err(OE_EVENTS, errno, "malloc");
+        return -1;
     }
     memset(e, 0, sizeof(struct event_data));
     strncpy(e->e_string, str, EVENT_STRLEN-1);
@@ -270,9 +270,9 @@ clixon_event_reg_timeout(struct timeval t,
     /* Sort into right place */
     e_prev = &ee_timers;
     for (e1=ee_timers; e1; e1=e1->e_next){
-	if (timercmp(&e->e_time, &e1->e_time, <))
-	    break;
-	e_prev = &e1->e_next;
+        if (timercmp(&e->e_time, &e1->e_time, <))
+            break;
+        e_prev = &e1->e_next;
     }
     e->e_next = e1;
     *e_prev = e;
@@ -293,20 +293,20 @@ clixon_event_reg_timeout(struct timeval t,
  */
 int
 clixon_event_unreg_timeout(int (*fn)(int, void*), 
-			   void *arg)
+                           void *arg)
 {
     struct event_data *e, **e_prev;
     int found = 0;
 
     e_prev = &ee_timers;
     for (e = ee_timers; e; e = e->e_next){
-	if (fn == e->e_fn && arg == e->e_arg) {
-	    found++;
-	    *e_prev = e->e_next;
-	    free(e);
-	    break;
-	}
-	e_prev = &e->e_next;
+        if (fn == e->e_fn && arg == e->e_arg) {
+            found++;
+            *e_prev = e->e_next;
+            free(e);
+            break;
+        }
+        e_prev = &e->e_next;
     }
     return found?0:-1;
 }
@@ -327,7 +327,7 @@ clixon_event_poll(int fd)
     FD_ZERO(&fdset);
     FD_SET(fd, &fdset);
     if ((retval = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull)) < 0)
-	clicon_err(OE_EVENTS, errno, "select");
+        clicon_err(OE_EVENTS, errno, "select");
     return retval;
 }
 
@@ -350,100 +350,100 @@ clixon_event_loop(clicon_handle h)
     int                retval = -1;
 
     while (clixon_exit_get() != 1){
-	FD_ZERO(&fdset);
-	if (clicon_sig_child_get()){
-	    /* Go through processes and wait for child processes */
-	    if (clixon_process_waitpid(h) < 0)
-		goto err;
-	    clicon_sig_child_set(0);
-	}
-	for (e=ee; e; e=e->e_next)
-	    if (e->e_type == EVENT_FD)
-		FD_SET(e->e_fd, &fdset);
-	if (ee_timers != NULL){
-	    gettimeofday(&t0, NULL);
-	    timersub(&ee_timers->e_time, &t0, &t); 
-	    if (t.tv_sec < 0)
-		n = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull); 
-	    else
-		n = select(FD_SETSIZE, &fdset, NULL, NULL, &t); 
-	}
-	else
-	    n = select(FD_SETSIZE, &fdset, NULL, NULL, NULL);
-	if (clixon_exit_get() == 1){
-	    break;
-	}
-	if (n == -1) {
-	    if (errno == EINTR){
-		/* Signals are checked and are in three classes:
-		 * (1) Signals that exit gracefully, the function returns 0
-		 *     Must be registered such as by set_signal() of SIGTERM,SIGINT, etc with a handler that calls
-		 *     clicon_exit_set().
-		 * (2) SIGCHILD Childs that exit(), go through clixon_proc list and cal waitpid
-		 *     New select loop is called
-		 * (2) Signals are ignored, and the select is rerun, ie handler calls clicon_sig_ignore_get
-		 *     New select loop is called
-		 * (3) Other signals result in an error and return -1.
-		 */
-		clicon_debug(1, "%s select: %s", __FUNCTION__, strerror(errno));
-		if (clixon_exit_get() == 1){
-		    clicon_err(OE_EVENTS, errno, "select");
-		    retval = 0;
-		}
-		else if (clicon_sig_child_get()){
-		    /* Go through processes and wait for child processes */
-		    if (clixon_process_waitpid(h) < 0)
-			goto err;
-		    clicon_sig_child_set(0);
-		    continue;
-		}
-		else if (clicon_sig_ignore_get()){
-		    clicon_sig_ignore_set(0);
-		    continue;
-		}
-		else
-		    clicon_err(OE_EVENTS, errno, "select");
-	    }
-	    else
-		clicon_err(OE_EVENTS, errno, "select");
-	    goto err;
-	}
-	if (n==0){ /* Timeout */
-	    e = ee_timers;
-	    ee_timers = ee_timers->e_next;
-	    clicon_debug(2, "%s timeout: %s", __FUNCTION__, e->e_string);
-	    if ((*e->e_fn)(0, e->e_arg) < 0){
-		free(e);
-		goto err;
-	    }
-	    free(e);
-	}
-	_ee_unreg = 0;
-	for (e=ee; e; e=e_next){
-	    if (clixon_exit_get() == 1){
-		break;
-	    }
-	    e_next = e->e_next;
-	    if(e->e_type == EVENT_FD && FD_ISSET(e->e_fd, &fdset)){
-		clicon_debug(2, "%s: FD_ISSET: %s", __FUNCTION__, e->e_string);
-		if ((*e->e_fn)(e->e_fd, e->e_arg) < 0){
-		    clicon_debug(1, "%s Error in: %s", __FUNCTION__, e->e_string);
-		    goto err;
-		}
-		if (_ee_unreg){
-		    _ee_unreg = 0;
-		    break;
-		}
-	    }
-	}
-	clixon_exit_decr(); /* If exit is set and > 1, decrement it (and exit when 1) */
-	continue;
+        FD_ZERO(&fdset);
+        if (clicon_sig_child_get()){
+            /* Go through processes and wait for child processes */
+            if (clixon_process_waitpid(h) < 0)
+                goto err;
+            clicon_sig_child_set(0);
+        }
+        for (e=ee; e; e=e->e_next)
+            if (e->e_type == EVENT_FD)
+                FD_SET(e->e_fd, &fdset);
+        if (ee_timers != NULL){
+            gettimeofday(&t0, NULL);
+            timersub(&ee_timers->e_time, &t0, &t); 
+            if (t.tv_sec < 0)
+                n = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull); 
+            else
+                n = select(FD_SETSIZE, &fdset, NULL, NULL, &t); 
+        }
+        else
+            n = select(FD_SETSIZE, &fdset, NULL, NULL, NULL);
+        if (clixon_exit_get() == 1){
+            break;
+        }
+        if (n == -1) {
+            if (errno == EINTR){
+                /* Signals are checked and are in three classes:
+                 * (1) Signals that exit gracefully, the function returns 0
+                 *     Must be registered such as by set_signal() of SIGTERM,SIGINT, etc with a handler that calls
+                 *     clicon_exit_set().
+                 * (2) SIGCHILD Childs that exit(), go through clixon_proc list and cal waitpid
+                 *     New select loop is called
+                 * (2) Signals are ignored, and the select is rerun, ie handler calls clicon_sig_ignore_get
+                 *     New select loop is called
+                 * (3) Other signals result in an error and return -1.
+                 */
+                clicon_debug(1, "%s select: %s", __FUNCTION__, strerror(errno));
+                if (clixon_exit_get() == 1){
+                    clicon_err(OE_EVENTS, errno, "select");
+                    retval = 0;
+                }
+                else if (clicon_sig_child_get()){
+                    /* Go through processes and wait for child processes */
+                    if (clixon_process_waitpid(h) < 0)
+                        goto err;
+                    clicon_sig_child_set(0);
+                    continue;
+                }
+                else if (clicon_sig_ignore_get()){
+                    clicon_sig_ignore_set(0);
+                    continue;
+                }
+                else
+                    clicon_err(OE_EVENTS, errno, "select");
+            }
+            else
+                clicon_err(OE_EVENTS, errno, "select");
+            goto err;
+        }
+        if (n==0){ /* Timeout */
+            e = ee_timers;
+            ee_timers = ee_timers->e_next;
+            clicon_debug(2, "%s timeout: %s", __FUNCTION__, e->e_string);
+            if ((*e->e_fn)(0, e->e_arg) < 0){
+                free(e);
+                goto err;
+            }
+            free(e);
+        }
+        _ee_unreg = 0;
+        for (e=ee; e; e=e_next){
+            if (clixon_exit_get() == 1){
+                break;
+            }
+            e_next = e->e_next;
+            if(e->e_type == EVENT_FD && FD_ISSET(e->e_fd, &fdset)){
+                clicon_debug(2, "%s: FD_ISSET: %s", __FUNCTION__, e->e_string);
+                if ((*e->e_fn)(e->e_fd, e->e_arg) < 0){
+                    clicon_debug(1, "%s Error in: %s", __FUNCTION__, e->e_string);
+                    goto err;
+                }
+                if (_ee_unreg){
+                    _ee_unreg = 0;
+                    break;
+                }
+            }
+        }
+        clixon_exit_decr(); /* If exit is set and > 1, decrement it (and exit when 1) */
+        continue;
       err:
-	clicon_debug(1, "%s err", __FUNCTION__);
-	break;
+        clicon_debug(1, "%s err", __FUNCTION__);
+        break;
     }
     if (clixon_exit_get() == 1)
-	retval = 0;
+        retval = 0;
     clicon_debug(1, "%s done:%d", __FUNCTION__, retval);
     return retval;
 }
@@ -455,14 +455,14 @@ clixon_event_exit(void)
     
     e_next = ee;
     while ((e = e_next) != NULL){
-	e_next = e->e_next;
-	free(e);
+        e_next = e->e_next;
+        free(e);
     }
     ee = NULL;
     e_next = ee_timers;
     while ((e = e_next) != NULL){
-	e_next = e->e_next;
-	free(e);
+        e_next = e->e_next;
+        free(e);
     }
     ee_timers = NULL;
     return 0;

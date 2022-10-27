@@ -66,30 +66,30 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options]\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \tDebug\n"
-	    "\t-f <file>  \tXML file\n"
-	    "\t-p <xpath> \tPrimary XPATH string\n"
-	    "\t-i <xpath0>\t(optional) Initial XPATH string\n"
+            "\t-D <level> \tDebug\n"
+            "\t-f <file>  \tXML file\n"
+            "\t-p <xpath> \tPrimary XPATH string\n"
+            "\t-i <xpath0>\t(optional) Initial XPATH string\n"
             "\t-I \t\tCheck inverse, map back xml result to xpath and check if equal\n"
-	    "\t-n <pfx:id>\tNamespace binding (pfx=NULL for default)\n"
-	    "\t-c \t\tMap xpath to canonical form\n"
-	    "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
-	    "\t-y <filename> \tYang filename or dir (load all files)\n"
-    	    "\t-Y <dir> \tYang dirs (can be several)\n"
-	    "and the following extra rules:\n"
-	    "\tif -f is not given, XML input is expected on stdin\n"
-	    "\tif -p is not given, <xpath> is expected as the first line on stdin\n"
-	    "This means that with no arguments, <xpath> and XML is expected on stdin.\n",
-	    argv0
-	    );
+            "\t-n <pfx:id>\tNamespace binding (pfx=NULL for default)\n"
+            "\t-c \t\tMap xpath to canonical form\n"
+            "\t-l <s|e|o|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut or (f)ile (stderr is default)\n"
+            "\t-y <filename> \tYang filename or dir (load all files)\n"
+            "\t-Y <dir> \tYang dirs (can be several)\n"
+            "and the following extra rules:\n"
+            "\tif -f is not given, XML input is expected on stdin\n"
+            "\tif -p is not given, <xpath> is expected as the first line on stdin\n"
+            "This means that with no arguments, <xpath> and XML is expected on stdin.\n",
+            argv0
+            );
     exit(0);
 }
 
 static int
 ctx_print2(cbuf   *cb,
-	   xp_ctx *xc)
+           xp_ctx *xc)
 {
     int retval = -1;
     int i;
@@ -97,21 +97,21 @@ ctx_print2(cbuf   *cb,
     cprintf(cb, "%s:", (char*)clicon_int2str(ctxmap, xc->xc_type));
     switch (xc->xc_type){
     case XT_NODESET:
-	for (i=0; i<xc->xc_size; i++){
-	    cprintf(cb, "%d:", i);
-	    if (clixon_xml2cbuf(cb, xc->xc_nodeset[i], 0, 0, -1, 0) < 0)
-		goto done;
-	}
-	break;
+        for (i=0; i<xc->xc_size; i++){
+            cprintf(cb, "%d:", i);
+            if (clixon_xml2cbuf(cb, xc->xc_nodeset[i], 0, 0, -1, 0) < 0)
+                goto done;
+        }
+        break;
     case XT_BOOL:
-	cprintf(cb, "%s", xc->xc_bool?"true":"false");
-	break;
+        cprintf(cb, "%s", xc->xc_bool?"true":"false");
+        break;
     case XT_NUMBER:
-	cprintf(cb, "%lf", xc->xc_number);
-	break;
+        cprintf(cb, "%lf", xc->xc_number);
+        break;
     case XT_STRING:
-	cprintf(cb, "%s", xc->xc_string);
-	break;
+        cprintf(cb, "%s", xc->xc_string);
+        break;
     }
     retval = 0;
  done:
@@ -154,82 +154,82 @@ main(int    argc,
     clicon_log_init("xpath", LOG_DEBUG, logdst); 
     /* Initialize clixon handle */
     if ((h = clicon_handle_init()) == NULL)
-	goto done;
+        goto done;
     /* Initialize config tree (needed for -Y below) */
     if ((xcfg = xml_new("clixon-config", NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     if (clicon_conf_xml_set(h, xcfg) < 0)
-	goto done;
+        goto done;
     
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, XPATH_OPTS)) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv0);
-	    break;
-    	case 'D':
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(argv0);
-	    break;
-	case 'f': /* XML file */
-	    filename = optarg;
-	    if ((fp = fopen(filename, "r")) == NULL){
-		clicon_err(OE_UNIX, errno, "fopen(%s)", optarg);
-		goto done;
-	    }
-	    break;
-	case 'p': /* Primary XPATH string */
-	    xpath = optarg;
-	    break;
-	case 'i': /* Optional initial XPATH string */
-	    xpath0 = optarg;
-	    break;
-	case 'I': /* Check inverse */
-	    xpath_inverse++;
-	    break;
-	case 'n':{ /* Namespace binding */
-	    char *prefix;
-	    char *id;
-	    if (nsc == NULL &&
-		(nsc = xml_nsctx_init(NULL, NULL)) == NULL)
-		goto done;
-	    if (nodeid_split(optarg, &prefix, &id) < 0)
-		goto done;
-	    if (prefix && strcmp(prefix, "null")==0){
-		free(prefix);
-		prefix = NULL;
-	    }
-	    if (xml_nsctx_add(nsc, prefix, id) < 0)
-		goto done;
-	    if (prefix)
-		free(prefix);
-	    if (id)
-		free(id);
-	    break;
-	}
-	case 'c': /* Map namespace to canonical form */
-	    canonical = 1;
-	    break;
-	case 'l': /* Log destination: s|e|o|f */
-	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
-		usage(argv[0]);
-	    if (logdst == CLICON_LOG_FILE &&
-		strlen(optarg)>1 &&
-		clicon_log_file(optarg+1) < 0)
-		goto done;
-	    break;
-	case 'y':
-	    yang_file_dir = optarg;
-	    break;
-	case 'Y':
-	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
-		goto done;
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv0);
+            break;
+        case 'D':
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(argv0);
+            break;
+        case 'f': /* XML file */
+            filename = optarg;
+            if ((fp = fopen(filename, "r")) == NULL){
+                clicon_err(OE_UNIX, errno, "fopen(%s)", optarg);
+                goto done;
+            }
+            break;
+        case 'p': /* Primary XPATH string */
+            xpath = optarg;
+            break;
+        case 'i': /* Optional initial XPATH string */
+            xpath0 = optarg;
+            break;
+        case 'I': /* Check inverse */
+            xpath_inverse++;
+            break;
+        case 'n':{ /* Namespace binding */
+            char *prefix;
+            char *id;
+            if (nsc == NULL &&
+                (nsc = xml_nsctx_init(NULL, NULL)) == NULL)
+                goto done;
+            if (nodeid_split(optarg, &prefix, &id) < 0)
+                goto done;
+            if (prefix && strcmp(prefix, "null")==0){
+                free(prefix);
+                prefix = NULL;
+            }
+            if (xml_nsctx_add(nsc, prefix, id) < 0)
+                goto done;
+            if (prefix)
+                free(prefix);
+            if (id)
+                free(id);
+            break;
+        }
+        case 'c': /* Map namespace to canonical form */
+            canonical = 1;
+            break;
+        case 'l': /* Log destination: s|e|o|f */
+            if ((logdst = clicon_log_opt(optarg[0])) < 0)
+                usage(argv[0]);
+            if (logdst == CLICON_LOG_FILE &&
+                strlen(optarg)>1 &&
+                clicon_log_file(optarg+1) < 0)
+                goto done;
+            break;
+        case 'y':
+            yang_file_dir = optarg;
+            break;
+        case 'Y':
+            if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+                goto done;
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
@@ -240,150 +240,150 @@ main(int    argc,
     
     /* Parse yang */
     if (yang_file_dir){
-	if ((yspec = yspec_new()) == NULL)
-	    goto done;
-	if (stat(yang_file_dir, &st) < 0){
-	    clicon_err(OE_YANG, errno, "%s not found", yang_file_dir);
-	    goto done;
-	}
-	if (S_ISDIR(st.st_mode)){
-	    if (yang_spec_load_dir(h, yang_file_dir, yspec) < 0)
-		goto done;
-	}
-	else{
-	    if (yang_spec_parse_file(h, yang_file_dir, yspec) < 0)
-		goto done;
-	}
+        if ((yspec = yspec_new()) == NULL)
+            goto done;
+        if (stat(yang_file_dir, &st) < 0){
+            clicon_err(OE_YANG, errno, "%s not found", yang_file_dir);
+            goto done;
+        }
+        if (S_ISDIR(st.st_mode)){
+            if (yang_spec_load_dir(h, yang_file_dir, yspec) < 0)
+                goto done;
+        }
+        else{
+            if (yang_spec_parse_file(h, yang_file_dir, yspec) < 0)
+                goto done;
+        }
     }
 
     if (xpath==NULL){
-	/* First read xpath */
-	len = 1024; /* any number is fine */
-	if ((buf = malloc(len)) == NULL){
-	    perror("pt_file malloc");
-	    return -1;
-	}
-	memset(buf, 0, len);
-	i = 0;
-	while (1){ 
-	    if ((ret = read(0, &c, 1)) < 0){
-		perror("read");
-		goto done;
-	    }
-	    if (ret == 0)
-		break;
-	    if (c == '\n')
-		break;
-	    if (len==i){
-		if ((buf = realloc(buf, 2*len)) == NULL){
-		    fprintf(stderr, "%s: realloc: %s\n", __FUNCTION__, strerror(errno));
-		    return -1;
-		}	    
-		memset(buf+len, 0, len);
-		len *= 2;
-	    }
-	    buf[i++] = (char)(c&0xff);
-	}
-	xpath = buf;
+        /* First read xpath */
+        len = 1024; /* any number is fine */
+        if ((buf = malloc(len)) == NULL){
+            perror("pt_file malloc");
+            return -1;
+        }
+        memset(buf, 0, len);
+        i = 0;
+        while (1){ 
+            if ((ret = read(0, &c, 1)) < 0){
+                perror("read");
+                goto done;
+            }
+            if (ret == 0)
+                break;
+            if (c == '\n')
+                break;
+            if (len==i){
+                if ((buf = realloc(buf, 2*len)) == NULL){
+                    fprintf(stderr, "%s: realloc: %s\n", __FUNCTION__, strerror(errno));
+                    return -1;
+                }           
+                memset(buf+len, 0, len);
+                len *= 2;
+            }
+            buf[i++] = (char)(c&0xff);
+        }
+        xpath = buf;
     }
 
     /* If canonical, translate nsc and xpath to canonical form */
     if (canonical){
-	char *xpath1 = NULL;
-	cvec *nsc1 = NULL;
-	cbuf *cbreason = NULL;
-	
-	if ((ret = xpath2canonical(xpath, nsc, yspec, &xpath1, &nsc1, &cbreason)) < 0)
-	    goto done;
-	if (ret == 0){
-	    fprintf(stderr, "Error with %s: %s", xpath, cbuf_get(cbreason));
-	    goto ok;
-	}
-	xpath = xpath1;
-	if (xpath)
-	    fprintf(stdout, "%s\n", xpath);
-	if (nsc)
-	    xml_nsctx_free(nsc);
-	nsc = nsc1;
-	if (nsc)
-	    cvec_print(stdout, nsc);
-	goto ok; /* need a switch to continue, now just print and quit */
+        char *xpath1 = NULL;
+        cvec *nsc1 = NULL;
+        cbuf *cbreason = NULL;
+        
+        if ((ret = xpath2canonical(xpath, nsc, yspec, &xpath1, &nsc1, &cbreason)) < 0)
+            goto done;
+        if (ret == 0){
+            fprintf(stderr, "Error with %s: %s", xpath, cbuf_get(cbreason));
+            goto ok;
+        }
+        xpath = xpath1;
+        if (xpath)
+            fprintf(stdout, "%s\n", xpath);
+        if (nsc)
+            xml_nsctx_free(nsc);
+        nsc = nsc1;
+        if (nsc)
+            cvec_print(stdout, nsc);
+        goto ok; /* need a switch to continue, now just print and quit */
     }
     /* 
      * If fp=stdin, then continue reading from stdin (after CR)
      * XXX Note 0 above, stdin here
      */
     if (clixon_xml_parse_file(fp, YB_NONE, NULL, &x0, NULL) < 0){
-	fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
-	goto done;
+        fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
+        goto done;
     }
 
     /* Validate XML as well */
     if (yang_file_dir){
-	/* Populate */
-	if ((ret = xml_bind_yang(x0, YB_MODULE, yspec, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if ((cbret = cbuf_new()) ==NULL){
-		clicon_err(OE_XML, errno, "cbuf_new");
-		goto done;
-	    }
-	    if (netconf_err2cb(xerr, cbret) < 0)
-		goto done;
-	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
-	    goto done;
-	}
-	/* Sort */
-	if (xml_sort_recurse(x0) < 0)
-	    goto done;
+        /* Populate */
+        if ((ret = xml_bind_yang(x0, YB_MODULE, yspec, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if ((cbret = cbuf_new()) ==NULL){
+                clicon_err(OE_XML, errno, "cbuf_new");
+                goto done;
+            }
+            if (netconf_err2cb(xerr, cbret) < 0)
+                goto done;
+            fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
+            goto done;
+        }
+        /* Sort */
+        if (xml_sort_recurse(x0) < 0)
+            goto done;
 
-	/* Add default values */
-	if (xml_default_recurse(x0, 0) < 0)
-	    goto done;
-	if (xml_apply0(x0, -1, xml_sort_verify, h) < 0)
-	    clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
-	if ((ret = xml_yang_validate_all_top(h, x0, &xerr)) < 0) 
-	    goto done;
-	if (ret > 0 && (ret = xml_yang_validate_add(h, x0, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if ((cbret = cbuf_new()) ==NULL){
-		clicon_err(OE_XML, errno, "cbuf_new");
-		goto done;
-	    }
-	    if (netconf_err2cb(xerr, cbret) < 0)
-		goto done;
-	    fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
-	    goto done;
-	}
+        /* Add default values */
+        if (xml_default_recurse(x0, 0) < 0)
+            goto done;
+        if (xml_apply0(x0, -1, xml_sort_verify, h) < 0)
+            clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
+        if ((ret = xml_yang_validate_all_top(h, x0, &xerr)) < 0) 
+            goto done;
+        if (ret > 0 && (ret = xml_yang_validate_add(h, x0, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if ((cbret = cbuf_new()) ==NULL){
+                clicon_err(OE_XML, errno, "cbuf_new");
+                goto done;
+            }
+            if (netconf_err2cb(xerr, cbret) < 0)
+                goto done;
+            fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
+            goto done;
+        }
     }
     
     /* If xpath0 given, position current x (ie somewhere else than root) */
     if (xpath0){
-	if ((x = xpath_first(x0, NULL, "%s", xpath0)) == NULL){
-	    fprintf(stderr, "Error: xpath0 returned NULL\n");
-	    return -1;
-	}
+        if ((x = xpath_first(x0, NULL, "%s", xpath0)) == NULL){
+            fprintf(stderr, "Error: xpath0 returned NULL\n");
+            return -1;
+        }
     }
     else
-	x = x0;
+        x = x0;
     if (xpath_vec_ctx(x, nsc, xpath, 0, &xc) < 0)
-	return -1;
+        return -1;
     /* Check inverse, eg XML back to xpath and compare with original, only if nodes */
     if (xpath_inverse && xc->xc_type == XT_NODESET){
-	cxobj *xi;
-	char  *xpathi = NULL;
-	for (i=0; i<xc->xc_size; i++){
-	    xi = xc->xc_nodeset[i];
-	    if (xml2xpath(xi, nsc, &xpathi) < 0)
-		goto done;
-	    fprintf(stdout, "Inverse: %s\n", xpathi);
-	    if (xpathi){
-		free(xpathi);
-		xpathi = NULL;
-	    }
-	}
-	goto ok;
+        cxobj *xi;
+        char  *xpathi = NULL;
+        for (i=0; i<xc->xc_size; i++){
+            xi = xc->xc_nodeset[i];
+            if (xml2xpath(xi, nsc, &xpathi) < 0)
+                goto done;
+            fprintf(stdout, "Inverse: %s\n", xpathi);
+            if (xpathi){
+                free(xpathi);
+                xpathi = NULL;
+            }
+        }
+        goto ok;
     }
 
     /* Print results */
@@ -394,20 +394,20 @@ main(int    argc,
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (xc)
-	ctx_free(xc);
+        ctx_free(xc);
     if (xcfg)
-	xml_free(xcfg);
+        xml_free(xcfg);
     if (buf)
-	free(buf);
+        free(buf);
     if (x0)
-	xml_free(x0);
+        xml_free(x0);
     if (fp)
-	fclose(fp);
+        fclose(fp);
     if (h)
-	clicon_handle_exit(h);
+        clicon_handle_exit(h);
     return retval;
 }

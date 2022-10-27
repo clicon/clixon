@@ -19,7 +19,7 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
   <CLICON_BACKEND_DIR>$dir/backend</CLICON_BACKEND_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -36,32 +36,32 @@ module clixon-example{
   namespace "urn:example:clixon";
   prefix ex;
   rpc example {
-	description "Some example input/output for testing RFC7950 7.14.
+        description "Some example input/output for testing RFC7950 7.14.
                      RPC simply echoes the input for debugging.";
-	input {
-	    leaf x {
-		description
-         	    "If a leaf in the input tree has a 'mandatory' statement with
+        input {
+            leaf x {
+                description
+                    "If a leaf in the input tree has a 'mandatory' statement with
                    the value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		mandatory true;
-	    }
-	    leaf y {
-		description
+                type string;
+                mandatory true;
+            }
+            leaf y {
+                description
                  "If a leaf in the input tree has a 'mandatory' statement with the
                   value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		default "42";
-	    }
-	}
-	output {
-	    leaf x {
-		type string;
-	    }
-	    leaf y {
-		type string;
-	    }
-	}
+                type string;
+                default "42";
+            }
+        }
+        output {
+            leaf x {
+                type string;
+            }
+            leaf y {
+                type string;
+            }
+        }
     }
 }
 EOF
@@ -122,10 +122,10 @@ static netconf_test api(clixon_plugin_init, plugin_start, plugin_exit);
 /*! Local example netconf rpc callback
  */
 int example_rpc(clicon_handle h,
-		   cxobj        *xe,
-		   cbuf         *cbret,
-		   void         *arg,
-		   void         *regarg)
+                   cxobj        *xe,
+                   cbuf         *cbret,
+                   void         *arg,
+                   void         *regarg)
 {
     int    retval = -1;
     cxobj *x = NULL;
@@ -134,12 +134,12 @@ int example_rpc(clicon_handle h,
     /* get namespace from rpc name, return back in each output parameter */
     if ((ns = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL)
     {
-	      clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
-	      goto done;
+              clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+              goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     if (!xml_child_nr_type(xe, CX_ELMNT))
-	      cprintf(cbret, "<ok/>");
+              cprintf(cbret, "<ok/>");
     else{
         while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
             if (xmlns_set(x, NULL, ns) < 0)
@@ -165,7 +165,7 @@ clixon_plugin_api* clixon_plugin_init(clicon_handle h)
     clicon_debug(1, "%s netconf", __FUNCTION__);
     /* Register local netconf rpc client (note not backend rpc client) */
     if (rpc_callback_register(h, example_rpc, NULL, "urn:example:clixon", "example") < 0)
-	      return NULL;
+              return NULL;
 
     return api.get_api();
 }
@@ -180,7 +180,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg

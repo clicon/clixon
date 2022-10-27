@@ -2,6 +2,7 @@
 # snmpset. This requires deviation of MIB-YANG to make write operations
 # Get default value, set new value via SNMP and check it, set new value via NETCONF and check
 # Selected types from CLIXON/IF-MIB/ENTITY mib
+# Also an incomplete commit failed test
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -33,6 +34,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>CLIXON-TYPES-MIB</CLICON_SNMP_MIB>
@@ -95,18 +97,18 @@ cat <<EOF > $dir/startup_db
      </clixonExampleScalars>
   </CLIXON-TYPES-MIB>
   <IF-MIB xmlns="urn:ietf:params:xml:ns:yang:smiv2:IF-MIB">
-    <ifStackTable>	
-      <ifStackEntry>	
+    <ifStackTable>      
+      <ifStackEntry>    
         <ifStackHigherLayer>9</ifStackHigherLayer>
         <ifStackLowerLayer>9</ifStackLowerLayer>
-      </ifStackEntry>	
+      </ifStackEntry>   
     </ifStackTable> 
     <ifTable>
       <ifEntry>
         <ifIndex>1</ifIndex>
         <ifPhysAddress>aa:bb:cc:dd:ee:ff</ifPhysAddress>
       </ifEntry>
-    </ifTable>	
+    </ifTable>  
   </IF-MIB>
 </${DATASTORE_TOP}>
 EOF
@@ -116,29 +118,29 @@ function testinit(){
     new "test params: -f $cfg"
 
     if [ $BE -ne 0 ]; then
-	# Kill old backend and start a new one
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err "Failed to start backend"
-	fi
+        # Kill old backend and start a new one
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err "Failed to start backend"
+        fi
 
-	sudo pkill -f clixon_backend
+        sudo pkill -f clixon_backend
 
-	new "Starting backend"
-	start_backend -s startup -f $cfg
+        new "Starting backend"
+        start_backend -s startup -f $cfg
     fi
 
     new "wait backend"
     wait_backend
-	
+        
     if [ $SN -ne 0 ]; then
-	# Kill old clixon_snmp, if any
-	new "Terminating any old clixon_snmp processes"
-	sudo killall -q clixon_snmp
+        # Kill old clixon_snmp, if any
+        new "Terminating any old clixon_snmp processes"
+        sudo killall -q clixon_snmp
 
-	new "Starting clixon_snmp"
-	start_snmp $cfg &
+        new "Starting clixon_snmp"
+        start_snmp $cfg &
     fi
 
     new "wait snmp"
@@ -170,39 +172,40 @@ function testrun()
         "STRING")
             set_type="s"
             ;;
-	"HEX STRING")
+        "HEX STRING")
             set_type="x"
             ;;
         "TIMETICKS")
             set_type="t"
             ;;
-	"IPADDRESS")
+        "IPADDRESS")
             set_type="a"
             ;;
-	"OBJID")
+        "OBJID")
             set_type="o"
             ;;
-	"BITS")
+        "BITS")
             set_type="b"
             ;;
-	*)
-	    set_type="s"
-	    ;;
+        *)
+            set_type="s"
+            ;;
     esac
 
     new "Set $name via SNMP"
     if [ $type == "STRING" ]; then
-	echo "$snmpset $oid $set_type $value"
-	expectpart "$($snmpset $oid $set_type $value)" 0 "$type:" "$value"
+        echo "$snmpset $oid $set_type $value"
+        expectpart "$($snmpset $oid $set_type $value)" 0 "$type:" "$value"
     else
-	echo "$snmpset $oid $set_type $value"
-	expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value2"
+        echo "$snmpset $oid $set_type $value2"
+        expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value2"
     fi
+
     new "Check $name via SNMP"
     if [ "$type" == "STRING" ]; then
-	expectpart "$($snmpget $oid)" 0 "$type:" "$value"
+        expectpart "$($snmpget $oid)" 0 "$type:" "$value"
     else
-	expectpart "$($snmpget $oid)" 0 "$type: $value2"
+        expectpart "$($snmpget $oid)" 0 "$type: $value2"
     fi
 
     new "Check $name via CLI"
@@ -211,6 +214,17 @@ function testrun()
 
 function testexit(){
     stop_snmp
+
+    if [ $BE -ne 0 ]; then
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
+    fi
 }
 
 new "SNMP tests"
@@ -225,7 +239,8 @@ testrun clixonExampleSleeper INTEGER -1 -1 -1 ${MIB}.1.2
 testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3
 testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10 # boolean
 testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13 # InetAddress
-testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
+# XXX It was supposed to test writing hardware address type, but it is also read-only
+#testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
 
 # Inline testrun for rowstatus complicated logic
 name=ifStackStatus
@@ -240,6 +255,28 @@ expectpart "$($snmpget $oid)" 0 "$type: active(1)"
 
 new "Check $name via CLI"
 expectpart "$($clixon_cli -1 -f $cfg show config xml)" 0 "<$name>active</$name>"    
+
+# restart backend with synthetic validation failure
+# Incomplete commit failed test: the commit fails by logging but this is not actually checked
+if [ $BE -ne 0 ]; then
+    # Kill old backend and start a new one
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+        err "Failed to start backend"
+    fi
+    
+    sudo pkill -f clixon_backend
+    
+    new "Starting backend"
+    start_backend -s startup -f $cfg -- -V CLIXON-TYPES-MIB/clixonExampleScalars/clixonExampleInteger
+fi
+
+new "wait backend"
+wait_backend
+
+new "set value with error"
+expectpart "$($snmpset ${MIB}.1.1  i 4321 2>&1)" 2 "commitFailed"
 
 new "Cleaning up"
 testexit

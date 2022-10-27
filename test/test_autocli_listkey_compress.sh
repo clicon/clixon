@@ -66,26 +66,26 @@ module $APPNAME {
        type string;
       }
       container config {
-	leaf enabled {
-	  type boolean;
-	  default false;
-	  description "Whether the interface is enabled or not.";
-	}
+        leaf enabled {
+          type boolean;
+          default false;
+          description "Whether the interface is enabled or not.";
+        }
       }
       container state {
-	config false;
-	leaf oper-status {
-	  type enumeration {
-	    enum UP {
-	      value 1;
-	      description "Ready to pass packets.";
-	    }
-	    enum DOWN {
-	      value 2;
-	      description "The interface does not pass any packets.";
-	    }
-	  }
-	}
+        config false;
+        leaf oper-status {
+          type enumeration {
+            enum UP {
+              value 1;
+              description "Ready to pass packets.";
+            }
+            enum DOWN {
+              value 2;
+              description "The interface does not pass any packets.";
+            }
+          }
+        }
       }
     }
   }
@@ -105,26 +105,26 @@ module ${APPNAME}2 {
        type string;
       }
       container config {
-	leaf enabled {
-	  type boolean;
-	  default false;
-	  description "Whether the interface is enabled or not.";
-	}
+        leaf enabled {
+          type boolean;
+          default false;
+          description "Whether the interface is enabled or not.";
+        }
       }
       container state {
-	config false;
-	leaf oper-status {
-	  type enumeration {
-	    enum UP {
-	      value 1;
-	      description "Ready to pass packets.";
-	    }
-	    enum DOWN {
-	      value 2;
-	      description "The interface does not pass any packets.";
-	    }
-	  }
-	}
+        config false;
+        leaf oper-status {
+          type enumeration {
+            enum UP {
+              value 1;
+              description "Ready to pass packets.";
+            }
+            enum DOWN {
+              value 2;
+              description "The interface does not pass any packets.";
+            }
+          }
+        }
       }
     }
   }
@@ -176,29 +176,29 @@ COMPRESS=$(cat <<EOF
       <rule>
          <name>compress</name>
          <operation>compress</operation>
-	 <yang-keyword>container</yang-keyword>
-	 <yang-keyword-child>list</yang-keyword-child>
+         <yang-keyword>container</yang-keyword>
+         <yang-keyword-child>list</yang-keyword-child>
       </rule>
 EOF
 )
     else
-	COMPRESS=""
+        COMPRESS=""
     fi
     if $openconfig; then
 OCOMPRESS=$(cat <<EOF
       <rule>
          <name>openconfig compress</name>
-	 <operation>compress</operation>
-	 <yang-keyword>container</yang-keyword>
-	 <schema-nodeid>config</schema-nodeid>
-	 <!--schema-nodeid>state</schema-nodeid-->
-	 <!--module-name>openconfig*</module-name-->
-	 <extension>oc-ext:openconfig-version</extension>
+         <operation>compress</operation>
+         <yang-keyword>container</yang-keyword>
+         <schema-nodeid>config</schema-nodeid>
+         <!--schema-nodeid>state</schema-nodeid-->
+         <!--module-name>openconfig*</module-name-->
+         <extension>oc-ext:openconfig-version</extension>
       </rule>"
 EOF
 )
     else
-	OCOMPRESS=""
+        OCOMPRESS=""
     fi
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -239,7 +239,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg -- -sS $fstate"
     start_backend -s init -f $cfg -- -sS $fstate
@@ -258,14 +258,14 @@ function testrun()
     compress=$2
 
     if [ $listkw = kw-all ]; then
-	name=" name"
+        name=" name"
     else
-	name=
+        name=
     fi
     if $compress; then
-	table=
+        table=
     else
-	table=" table"
+        table=" table"
     fi
 
     new "set a"
@@ -392,7 +392,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

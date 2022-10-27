@@ -122,23 +122,23 @@ function checklog(){
     echo "grep \"transaction_log $s line:$l0\"  $flog"
     t=$(grep -n "transaction_log $s" $flog)
     if [ -z "$t" ]; then
-	echo -e "\e[31m\nError in Test$testnr [$testname]:"
-	if [ $# -gt 0 ]; then 
-	    echo "Not found \"$s\" on line $l0"
-	    echo
-	fi
-	echo -e "\e[0m"
-	exit -1
+        echo -e "\e[31m\nError in Test$testnr [$testname]:"
+        if [ $# -gt 0 ]; then 
+            echo "Not found \"$s\" on line $l0"
+            echo
+        fi
+        echo -e "\e[0m"
+        exit -1
     fi
     l1=$(echo "$t" | awk -F ":" '{print $1}')
     if [ $l1 -ne $l0 ]; then
-	echo -e "\e[31m\nError in Test$testnr [$testname]:"
-	if [ $# -gt 0 ]; then 
-	    echo "Expected match on line $l0, found on $l1"
-	    echo
-	fi
-	echo -e "\e[0m"
-	exit -1
+        echo -e "\e[31m\nError in Test$testnr [$testname]:"
+        if [ $# -gt 0 ]; then 
+            echo "Expected match on line $l0, found on $l1"
+            echo
+        fi
+        echo -e "\e[0m"
+        exit -1
     fi
 }
 
@@ -149,7 +149,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend  -s init -f $cfg -l f$flog -- -t -v \"/x/y[a='$errnr']\""
     start_backend -s init -f $cfg -l f$flog -- -t -v "/x/y[a='$errnr']" # -t means transaction logging
@@ -451,7 +451,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

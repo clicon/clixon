@@ -63,7 +63,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -85,14 +85,14 @@ cat <<EOF > $cfg
      <socket>
         <description>callhome persistent</description>
         <namespace>default</namespace>
-	<call-home>
-	   <connection-type>
-	      <persistent/>
-	   </connection-type>
-	   <reconnect-strategy>
-	      <max-attempts>1</max-attempts>
-	   </reconnect-strategy>
-	</call-home>
+        <call-home>
+           <connection-type>
+              <persistent/>
+           </connection-type>
+           <reconnect-strategy>
+              <max-attempts>1</max-attempts>
+           </reconnect-strategy>
+        </call-home>
         <address>127.0.0.1</address>
         <port>4336</port>
         <ssl>true</ssl>
@@ -100,23 +100,23 @@ cat <<EOF > $cfg
       <socket>
         <description>callhome periodic</description>
         <namespace>default</namespace>
-	<call-home>
-	   <connection-type>
-	      <periodic>
-		<period>${PERIOD_S}</period>
-		<idle-timeout>${IDLE_TIMEOUT_S}</idle-timeout>
-	      </periodic>
-	   </connection-type>
-	   <reconnect-strategy>
-	      <max-attempts>3</max-attempts>
-	   </reconnect-strategy>
-	</call-home>
+        <call-home>
+           <connection-type>
+              <periodic>
+                <period>${PERIOD_S}</period>
+                <idle-timeout>${IDLE_TIMEOUT_S}</idle-timeout>
+              </periodic>
+           </connection-type>
+           <reconnect-strategy>
+              <max-attempts>3</max-attempts>
+           </reconnect-strategy>
+        </call-home>
         <address>127.0.0.1</address>
         <port>8336</port>
         <ssl>true</ssl>
       </socket>
       <socket>
-         <description>listen</description>	
+         <description>listen</description>      
          <namespace>default</namespace>
          <address>0.0.0.0</address>
          <port>443</port>
@@ -163,11 +163,11 @@ module clixon-example{
    container table{
       list parameter{
          key name;
-	 leaf name{
-	    type string;
-	 }
-	 leaf value{
-	    type string;
+         leaf name{
+            type string;
+         }
+         leaf value{
+            type string;
          }
       }
    }
@@ -220,11 +220,11 @@ commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
 show("Show a particular state of the system"){
     configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
-	    xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false);
-	    cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", false, false, "report-all", "set ");
-	    netconf("Show configuration as netconf edit-config operation"), cli_show_auto_mode("candidate", "netconf", false, false);
-	    text("Show configuration as text"), cli_show_auto_mode("candidate", "text", false, false);
-	    json("Show configuration as JSON"), cli_show_auto_mode("candidate", "json", false, false);
+            xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false);
+            cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", false, false, "report-all", "set ");
+            netconf("Show configuration as netconf edit-config operation"), cli_show_auto_mode("candidate", "netconf", false, false);
+            text("Show configuration as text"), cli_show_auto_mode("candidate", "text", false, false);
+            json("Show configuration as JSON"), cli_show_auto_mode("candidate", "json", false, false);
     }
     state("Show configuration and state"), cli_show_auto_mode("running", "xml", false, true);
 }
@@ -282,7 +282,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
 
     new "start backend  -s startup -f $cfg"
@@ -373,7 +373,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

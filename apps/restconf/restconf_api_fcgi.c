@@ -93,9 +93,9 @@ restconf_reply_body_start(void  *req0)
  */
 int
 restconf_reply_header(void       *req0,
-		      const char *name,
-		      const char *vfmt,
-		      ...)
+                      const char *name,
+                      const char *vfmt,
+                      ...)
 {
     FCGX_Request *req = (FCGX_Request *)req0;
     int        retval = -1;
@@ -104,30 +104,30 @@ restconf_reply_header(void       *req0,
     va_list    ap;
     
     if (req == NULL || name == NULL || vfmt == NULL){
-	clicon_err(OE_CFG, EINVAL, "req, name or value is NULL");
-	return -1;
+        clicon_err(OE_CFG, EINVAL, "req, name or value is NULL");
+        return -1;
     }
     va_start(ap, vfmt);
     vlen = vsnprintf(NULL, 0, vfmt, ap);
     va_end(ap);
     /* allocate value string exactly fitting */
     if ((value = malloc(vlen+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: compute actual value */
     va_start(ap, vfmt);    
     if (vsnprintf(value, vlen+1, vfmt, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     FCGX_FPrintF(req->out, "%s: %s\r\n", name, value); 
     retval = 0;
  done:
     if (value)
-	free(value);
+        free(value);
     return retval;
 }
 
@@ -139,9 +139,9 @@ restconf_reply_header(void       *req0,
  */
 int
 restconf_reply_body_add(void     *req0,
-			size_t   *content_len,
-			char     *bfmt,
-			...)
+                        size_t   *content_len,
+                        char     *bfmt,
+                        ...)
 {
     FCGX_Request *req = (FCGX_Request *)req0;
     int     retval = -1;
@@ -151,35 +151,35 @@ restconf_reply_body_add(void     *req0,
     va_list ap;
 
     if (req == NULL || bfmt == NULL){
-	clicon_err(OE_CFG, EINVAL, "req or body is NULL");
-	return -1;
+        clicon_err(OE_CFG, EINVAL, "req or body is NULL");
+        return -1;
     }
     va_start(ap, bfmt);
     blen = vsnprintf(NULL, 0, bfmt, ap);
     va_end(ap);
     /* allocate body string exactly fitting */
     if ((body = malloc(blen+1)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     /* second round: compute actual body */
     va_start(ap, bfmt);    
     if (vsnprintf(body, blen+1, bfmt, ap) < 0){
-	clicon_err(OE_UNIX, errno, "vsnprintf");
-	va_end(ap);
-	goto done;
+        clicon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
     }
     va_end(ap);
     FCGX_FPrintF(req->out, "%s", body); 
     /* Increment in/out Content-Length parameter */
     if (content_len){
-	sz = strlen(body);
-	*content_len += sz;
+        sz = strlen(body);
+        *content_len += sz;
     }
     retval = 0;
  done:
     if (body)
-	free(body);
+        free(body);
     return retval;
 }
 
@@ -193,9 +193,9 @@ restconf_reply_body_add(void     *req0,
  */
 int
 restconf_reply_send(void  *req0,
-		    int    code,
-		    cbuf  *cb,
-		    int    head)
+                    int    code,
+                    cbuf  *cb,
+                    int    head)
 {
     FCGX_Request *req = (FCGX_Request *)req0;
     int           retval = -1;
@@ -203,17 +203,17 @@ restconf_reply_send(void  *req0,
 
     FCGX_SetExitStatus(code, req->out);
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
-	reason_phrase="";
+        reason_phrase="";
     if (restconf_reply_header(req, "Status", "%d %s", code, reason_phrase) < 0)
-	goto done;
+        goto done;
     FCGX_FPrintF(req->out, "\r\n");
     /* Write a body if cbuf is nonzero */
     if (cb != NULL){
-	if (!head && cbuf_len(cb)){
-	    FCGX_FPrintF(req->out, "%s", cbuf_get(cb));
-	    FCGX_FPrintF(req->out, "\r\n");
-	}
-	cbuf_free(cb);
+        if (!head && cbuf_len(cb)){
+            FCGX_FPrintF(req->out, "%s", cbuf_get(cb));
+            FCGX_FPrintF(req->out, "\r\n");
+        }
+        cbuf_free(cb);
     }
     FCGX_FFlush(req->out); /* Is this only for notification ? */
     retval = 0;
@@ -235,8 +235,8 @@ restconf_get_indata(void *req0)
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL)
-	return NULL;
+        return NULL;
     while ((c = FCGX_GetChar(req->in)) != -1)
-	cprintf(cb, "%c", c);
+        cprintf(cb, "%c", c);
     return cb;
 }

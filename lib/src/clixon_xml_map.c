@@ -98,12 +98,12 @@ isxmlns(cxobj *x)
     char *prefix = NULL;
 
     if (xml_type(x) != CX_ATTR)
-	return 0;
+        return 0;
     if (strcmp(xml_name(x), "xmlns")==0)
-	return 1;
+        return 1;
     if ((prefix = xml_prefix(x)) != NULL
-	&& strcmp(xml_prefix(x), "xmlns")==0)
-	return 1;
+        && strcmp(xml_prefix(x), "xmlns")==0)
+        return 1;
     return 0;
 }
 
@@ -131,8 +131,8 @@ isxmlns(cxobj *x)
  */
 int
 xml2cvec(cxobj      *xt, 
-	 yang_stmt  *yt, 
-	 cvec      **cvv0)
+         yang_stmt  *yt, 
+         cvec      **cvv0)
 {
     int               retval = -1;
     cvec             *cvv = NULL;
@@ -148,71 +148,71 @@ xml2cvec(cxobj      *xt,
     xc = NULL;
     /* Tried to allocate whole cvv here, but some cg_vars may be invalid */
     if ((cvv = cvec_new(0)) == NULL){
-	clicon_err(OE_UNIX, errno, "cvec_new");
-	goto err;
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto err;
     }
     xc = NULL;
     /* Go through all children of the xml tree */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
-	name = xml_name(xc);
-	if ((ys = yang_find_datanode(yt, name)) == NULL){
-	    clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
-			 __FUNCTION__, name, yang_argument_get(yt));
-	    if ((body = xml_body(xc)) != NULL){
-		if ((cv = cv_new(CGV_STRING)) == NULL){
-		    clicon_err(OE_PLUGIN, errno, "cv_new");
-		    goto err;
-		}
-		cv_name_set(cv, name);
-		if ((ret = cv_parse1(body, cv, &reason)) < 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_parse %s",name);
-		    goto err;
-		}
-		/* If value is out-of-range, log and skip value, and continue */
-		if (ret == 0){
-		    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason); 
-		    if (reason)
-			free(reason);
-		}
-		else
-		    cvec_append_var(cvv, cv); /* Add to variable vector */
-		cv_free(cv);
-	    }
-	}
-	else if ((ycv = yang_cv_get(ys)) != NULL){
-	    if ((body = xml_body(xc)) != NULL){
-		if ((cv = cv_new(CGV_STRING)) == NULL){
-		    clicon_err(OE_PLUGIN, errno, "cv_new");
-		    goto err;
-		}
-		if (cv_cp(cv, ycv) < 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_cp");
-		    goto err;
-		}
-		if ((ret = cv_parse1(body, cv, &reason)) < 0){
-		    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", name);
-		    goto err;
-		}
-		if (ret == 0){
-		    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason);
-		    if (reason)
-			free(reason);
-		}
-		else
-		    cvec_append_var(cvv, cv); /* Add to variable vector */
-		cv_free(cv);
-	    }
-	}
+        name = xml_name(xc);
+        if ((ys = yang_find_datanode(yt, name)) == NULL){
+            clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
+                         __FUNCTION__, name, yang_argument_get(yt));
+            if ((body = xml_body(xc)) != NULL){
+                if ((cv = cv_new(CGV_STRING)) == NULL){
+                    clicon_err(OE_PLUGIN, errno, "cv_new");
+                    goto err;
+                }
+                cv_name_set(cv, name);
+                if ((ret = cv_parse1(body, cv, &reason)) < 0){
+                    clicon_err(OE_PLUGIN, errno, "cv_parse %s",name);
+                    goto err;
+                }
+                /* If value is out-of-range, log and skip value, and continue */
+                if (ret == 0){
+                    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason); 
+                    if (reason)
+                        free(reason);
+                }
+                else
+                    cvec_append_var(cvv, cv); /* Add to variable vector */
+                cv_free(cv);
+            }
+        }
+        else if ((ycv = yang_cv_get(ys)) != NULL){
+            if ((body = xml_body(xc)) != NULL){
+                if ((cv = cv_new(CGV_STRING)) == NULL){
+                    clicon_err(OE_PLUGIN, errno, "cv_new");
+                    goto err;
+                }
+                if (cv_cp(cv, ycv) < 0){
+                    clicon_err(OE_PLUGIN, errno, "cv_cp");
+                    goto err;
+                }
+                if ((ret = cv_parse1(body, cv, &reason)) < 0){
+                    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", name);
+                    goto err;
+                }
+                if (ret == 0){
+                    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason);
+                    if (reason)
+                        free(reason);
+                }
+                else
+                    cvec_append_var(cvv, cv); /* Add to variable vector */
+                cv_free(cv);
+            }
+        }
     }
     if (clicon_debug_get() > 1){
-	clicon_debug(2, "%s cvv:\n", __FUNCTION__);
-	cvec_print(stderr, cvv);
+        clicon_debug(2, "%s cvv:\n", __FUNCTION__);
+        cvec_print(stderr, cvv);
     }
     *cvv0 = cvv;
     return 0;
  err:
     if (cvv)
-	cvec_free(cvv);
+        cvec_free(cvv);
     return retval;
 }
 
@@ -228,9 +228,9 @@ xml2cvec(cxobj      *xt,
 */
 int
 cvec2xml_1(cvec   *cvv, 
-	   char   *toptag, 
-	   cxobj  *xp,
-	   cxobj **xt0)
+           char   *toptag, 
+           cxobj  *xp,
+           cxobj **xt0)
 {
     int               retval = -1;
     cxobj            *xt = NULL;
@@ -243,32 +243,32 @@ cvec2xml_1(cvec   *cvv,
 
     cv = NULL;
     while ((cv = cvec_each(cvv, cv)) != NULL) 
-	len++;
+        len++;
     if ((xt = xml_new(toptag, xp, CX_ELMNT)) == NULL)
-	goto err;
+        goto err;
     if (xml_childvec_set(xt, len) < 0)
-	goto err;
+        goto err;
     cv = NULL;
     i = 0;
     while ((cv = cvec_each(cvv, cv)) != NULL) {
-	if (cv_type_get(cv)==CGV_ERR || cv_name_get(cv) == NULL)
-	    continue;
-	if ((xn = xml_new(cv_name_get(cv), NULL, CX_ELMNT)) == NULL) /* this leaks */
-	    goto err;
-	xml_parent_set(xn, xt);
-	xml_child_i_set(xt, i++, xn);
-	if ((xb = xml_new("body", xn, CX_BODY)) == NULL) /* this leaks */
-	    goto err;
-	val = cv2str_dup(cv);
-	xml_value_set(xb, val); /* this leaks */
-	if (val)
-	    free(val);
+        if (cv_type_get(cv)==CGV_ERR || cv_name_get(cv) == NULL)
+            continue;
+        if ((xn = xml_new(cv_name_get(cv), NULL, CX_ELMNT)) == NULL) /* this leaks */
+            goto err;
+        xml_parent_set(xn, xt);
+        xml_child_i_set(xt, i++, xn);
+        if ((xb = xml_new("body", xn, CX_BODY)) == NULL) /* this leaks */
+            goto err;
+        val = cv2str_dup(cv);
+        xml_value_set(xb, val); /* this leaks */
+        if (val)
+            free(val);
     }
     *xt0 = xt;
     return 0;
  err:
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     return retval;
 }
 
@@ -298,14 +298,14 @@ cvec2xml_1(cvec   *cvv,
  */
 static int
 xml_diff1(cxobj     *x0, 
-	  cxobj     *x1,
-	  cxobj   ***x0vec,
-	  int       *x0veclen,
-	  cxobj   ***x1vec,
-	  int       *x1veclen,
-	  cxobj   ***changed_x0,
-	  cxobj   ***changed_x1,
-	  int       *changedlen)
+          cxobj     *x1,
+          cxobj   ***x0vec,
+          int       *x0veclen,
+          cxobj   ***x1vec,
+          int       *x1veclen,
+          cxobj   ***changed_x0,
+          cxobj   ***changed_x1,
+          int       *changedlen)
 {
     int        retval = -1;
     cxobj     *x0c = NULL; /* x0 child */
@@ -321,71 +321,71 @@ xml_diff1(cxobj     *x0,
     x0c = xml_child_each(x0, x0c, CX_ELMNT);
     x1c = xml_child_each(x1, x1c, CX_ELMNT);
     for (;;){
-	if (x0c == NULL && x1c == NULL)
-	    goto ok;
-	else if (x0c == NULL){
-	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
-		goto done;
-	    x1c = xml_child_each(x1, x1c, CX_ELMNT);
-	    continue;
-	}
-	else if (x1c == NULL){
-	    if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
-		goto done;
-	    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-	    continue;
-	}
-	/* Both x0c and x1c exists, check if they are yang-equal. */
-	eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-	if (eq < 0){
-	    if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
-		goto done;
-	    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-	    continue;
-	}
-	else if (eq > 0){
-	    if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
-		goto done;
-	    x1c = xml_child_each(x1, x1c, CX_ELMNT);
-	    continue;
-	}
-	else{ /* equal */
-	    /* xml-spec NULL could happen with anydata children for example,
-	     * if so, continute compare children but without yang
-	     */
-	    yc0 = xml_spec(x0c);
-	    yc1 = xml_spec(x1c);
-	    if (yc0 && yc1 && yc0 != yc1){ /* choice */
-		if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
-		    goto done;
-		if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
-		    goto done;
-	    }
-	    else
-		if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
-		    /* if x0c and x1c are leafs w bodies, then they may be changed */
-		    b1 = xml_body(x0c);
-		    b2 = xml_body(x1c);
-		    if (b1 == NULL && b2 == NULL)
-			;
-		    else if (b1 == NULL || b2 == NULL
-			     || strcmp(b1, b2) != 0 
-			     ){
-			if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
-			    goto done;
-			(*changedlen)--; /* append two vectors */
-			if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
-			    goto done;
-		    }
-		}
-		else if (xml_diff1(x0c, x1c,   
-				   x0vec, x0veclen, 
-				   x1vec, x1veclen, 
-				   changed_x0, changed_x1, changedlen)< 0)
-		    goto done;
-	}
-	x0c = xml_child_each(x0, x0c, CX_ELMNT);
-	x1c = xml_child_each(x1, x1c, CX_ELMNT);
+        if (x0c == NULL && x1c == NULL)
+            goto ok;
+        else if (x0c == NULL){
+            if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
+                goto done;
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        else if (x1c == NULL){
+            if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
+                goto done;
+            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            continue;
+        }
+        /* Both x0c and x1c exists, check if they are yang-equal. */
+        eq = xml_cmp(x0c, x1c, 0, 0, NULL);
+        if (eq < 0){
+            if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
+                goto done;
+            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            continue;
+        }
+        else if (eq > 0){
+            if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
+                goto done;
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        else{ /* equal */
+            /* xml-spec NULL could happen with anydata children for example,
+             * if so, continute compare children but without yang
+             */
+            yc0 = xml_spec(x0c);
+            yc1 = xml_spec(x1c);
+            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+                if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
+                    goto done;
+                if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
+                    goto done;
+            }
+            else
+                if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+                    /* if x0c and x1c are leafs w bodies, then they may be changed */
+                    b1 = xml_body(x0c);
+                    b2 = xml_body(x1c);
+                    if (b1 == NULL && b2 == NULL)
+                        ;
+                    else if (b1 == NULL || b2 == NULL
+                             || strcmp(b1, b2) != 0 
+                             ){
+                        if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
+                            goto done;
+                        (*changedlen)--; /* append two vectors */
+                        if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
+                            goto done;
+                    }
+                }
+                else if (xml_diff1(x0c, x1c,   
+                                   x0vec, x0veclen, 
+                                   x1vec, x1veclen, 
+                                   changed_x0, changed_x1, changedlen)< 0)
+                    goto done;
+        }
+        x0c = xml_child_each(x0, x0c, CX_ELMNT);
+        x1c = xml_child_each(x1, x1c, CX_ELMNT);
     }
  ok:
     retval = 0;
@@ -408,15 +408,15 @@ xml_diff1(cxobj     *x0,
  */
 int
 xml_diff(yang_stmt *yspec, 
-	 cxobj     *x0, 
-	 cxobj     *x1,
-	 cxobj   ***first,
-	 int       *firstlen,
-	 cxobj   ***second,
-	 int       *secondlen,
-	 cxobj   ***changed_x0,
-	 cxobj   ***changed_x1,
-	 int       *changedlen)
+         cxobj     *x0, 
+         cxobj     *x1,
+         cxobj   ***first,
+         int       *firstlen,
+         cxobj   ***second,
+         int       *secondlen,
+         cxobj   ***changed_x0,
+         cxobj   ***changed_x1,
+         int       *changedlen)
 {
     int retval = -1;
 
@@ -424,22 +424,22 @@ xml_diff(yang_stmt *yspec,
     *secondlen = 0;    
     *changedlen = 0;
     if (x0 == NULL && x1 == NULL)
-	return 0;
+        return 0;
     if (x1 == NULL){
-	if (cxvec_append(x0, first, firstlen) < 0) 
-	    goto done;
-	goto ok;
+        if (cxvec_append(x0, first, firstlen) < 0) 
+            goto done;
+        goto ok;
     }
     if (x0 == NULL){
-	if (cxvec_append(x0, second, secondlen) < 0) 
-	    goto done;
-	goto ok;
+        if (cxvec_append(x0, second, secondlen) < 0) 
+            goto done;
+        goto ok;
     }
     if (xml_diff1(x0, x1,
-		  first, firstlen, 
-		  second, secondlen, 
-		  changed_x0, changed_x1, changedlen) < 0)
-	goto done;
+                  first, firstlen, 
+                  second, secondlen, 
+                  changed_x0, changed_x1, changedlen) < 0)
+        goto done;
  ok:
     retval = 0;
  done:
@@ -463,9 +463,9 @@ xml_diff(yang_stmt *yspec,
  */
 int
 xml_tree_prune_flagged_sub(cxobj *xt, 
-			   int    flag,
-			   int    test,
-			   int   *upmark)
+                           int    flag,
+                           int    test,
+                           int   *upmark)
 {
     int        retval = -1;
     int        submark;
@@ -481,55 +481,55 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     x = NULL;
     xprev = x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if (xml_flag(x, flag) == test?flag:0){
-	    /* Pass test */
-	    mark++;
-	    xprev = x;
-	    continue; /* mark and stop here */
-	}
-	/* If it is key dont remove it yet (see second round) */
-	if (yt){
-	    if ((iskey = yang_key_match(yt, xml_name(x), NULL)) < 0)
-		goto done;
-	    if (iskey){
-		anykey++;
-		xprev = x; /* skip if this is key */
-		continue;
-	    }
-	}
-	if (xml_tree_prune_flagged_sub(x, flag, test, &submark) < 0)
-	    goto done;
-	/* if xt is list and submark anywhere, then key subs are also marked
-	 */
-	if (submark)
-	    mark++;
-	else{ /* Safe with xml_child_each if last */
-	    if (xml_purge(x) < 0)
-		goto done;
-	    x = xprev;
-	}
-	xprev = x;
+        if (xml_flag(x, flag) == test?flag:0){
+            /* Pass test */
+            mark++;
+            xprev = x;
+            continue; /* mark and stop here */
+        }
+        /* If it is key dont remove it yet (see second round) */
+        if (yt){
+            if ((iskey = yang_key_match(yt, xml_name(x), NULL)) < 0)
+                goto done;
+            if (iskey){
+                anykey++;
+                xprev = x; /* skip if this is key */
+                continue;
+            }
+        }
+        if (xml_tree_prune_flagged_sub(x, flag, test, &submark) < 0)
+            goto done;
+        /* if xt is list and submark anywhere, then key subs are also marked
+         */
+        if (submark)
+            mark++;
+        else{ /* Safe with xml_child_each if last */
+            if (xml_purge(x) < 0)
+                goto done;
+            x = xprev;
+        }
+        xprev = x;
     }
     /* Second round: if any keys were found, and no marks detected, purge now */
     if (anykey && !mark){
-	x = NULL;
-	xprev = x = NULL;
-	while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	    /* If it is key remove it here */
-	    if (yt){
-		if ((iskey = yang_key_match(yt, xml_name(x), NULL)) < 0)
-		    goto done;
-		if (iskey && xml_purge(x) < 0)
-		    goto done;
-		x = xprev;
-	    }
-	    xprev = x; 
-	}
+        x = NULL;
+        xprev = x = NULL;
+        while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+            /* If it is key remove it here */
+            if (yt){
+                if ((iskey = yang_key_match(yt, xml_name(x), NULL)) < 0)
+                    goto done;
+                if (iskey && xml_purge(x) < 0)
+                    goto done;
+                x = xprev;
+            }
+            xprev = x; 
+        }
     }
     retval = 0;
  done:
     if (upmark)
-	*upmark = mark;
+        *upmark = mark;
     return retval;
 }
 
@@ -544,8 +544,8 @@ xml_tree_prune_flagged_sub(cxobj *xt,
  */
 int
 xml_tree_prune_flagged(cxobj *xt, 
-		       int    flag,
-		       int    test)
+                       int    flag,
+                       int    test)
 {
     int        retval = -1;
     cxobj     *x;
@@ -554,15 +554,15 @@ xml_tree_prune_flagged(cxobj *xt,
     x = NULL;
     xprev = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if (xml_flag(x, flag) == (test?flag:0)){ 	/* Pass test means purge */
-	    if (xml_purge(x) < 0)
-		goto done;
-	    x = xprev;
-	    continue; 
-	}
-	if (xml_tree_prune_flagged(x, flag, test) < 0)
-	    goto done;
-	xprev = x;
+        if (xml_flag(x, flag) == (test?flag:0)){        /* Pass test means purge */
+            if (xml_purge(x) < 0)
+                goto done;
+            x = xprev;
+            continue; 
+        }
+        if (xml_tree_prune_flagged(x, flag, test) < 0)
+            goto done;
+        xprev = x;
     }
     retval = 0;
  done:
@@ -580,8 +580,8 @@ xml_tree_prune_flagged(cxobj *xt,
  */
 int
 xml_tree_prune_flags(cxobj *xt,
-		       int    flags,
-		       int    mask)
+                       int    flags,
+                       int    mask)
 {
     int        retval = -1;
     cxobj     *x;
@@ -590,15 +590,15 @@ xml_tree_prune_flags(cxobj *xt,
     x = NULL;
     xprev = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if (xml_flag(x, mask) == flags){ 	/* Pass test means purge */
-	    if (xml_purge(x) < 0)
-		goto done;
-	    x = xprev;
-	    continue;
-	}
-	if (xml_tree_prune_flags(x, flags, mask) < 0)
-	    goto done;
-	xprev = x;
+        if (xml_flag(x, mask) == flags){        /* Pass test means purge */
+            if (xml_purge(x) < 0)
+                goto done;
+            x = xprev;
+            continue;
+        }
+        if (xml_tree_prune_flags(x, flags, mask) < 0)
+            goto done;
+        xprev = x;
     }
     retval = 0;
  done:
@@ -614,9 +614,9 @@ xml_tree_prune_flags(cxobj *xt,
  */
 static int
 add_namespace(cxobj *x,
-	      cxobj *xp,
-	      char  *prefix,
-	      char  *namespace)
+              cxobj *xp,
+              char  *prefix,
+              char  *namespace)
 {
     int    retval = -1;
     cxobj *xa = NULL;
@@ -625,20 +625,20 @@ add_namespace(cxobj *x,
      * end up in adding it to large number of siblings 
      */
     if (nscache_set(x, prefix, namespace) < 0)
-	goto done;
+        goto done;
     /* Create xmlns attribute to x1p/x1 XXX same code v */
     if (prefix){
-	if ((xa = xml_new(prefix, xp, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_prefix_set(xa, "xmlns") < 0)
-	    goto done;
+        if ((xa = xml_new(prefix, xp, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_prefix_set(xa, "xmlns") < 0)
+            goto done;
     }
     else{
-	if ((xa = xml_new("xmlns", xp, CX_ATTR)) == NULL)
-	    goto done;
+        if ((xa = xml_new("xmlns", xp, CX_ATTR)) == NULL)
+            goto done;
     }
     if (xml_value_set(xa, namespace) < 0)
-	goto done;
+        goto done;
     xml_sort(xp); /* Ensure attr is first / XXX xml_insert? */
     retval = 0;
  done:
@@ -667,7 +667,7 @@ xml_namespace_change(cxobj *x,
     if (xml2ns(x, xml_prefix(x), &ns0) < 0)
        goto done;
     if (ns0 && strcmp(ns0, ns) == 0)
-	goto ok; /* Already has right namespace */ 
+        goto ok; /* Already has right namespace */ 
     /* Is namespace already declared? */
     if (xml2prefix(x, ns, &prefix0) == 1){
        /* Yes it is declared and the prefix is prefix0 */
@@ -675,18 +675,18 @@ xml_namespace_change(cxobj *x,
            goto done;
     }
     else{ /* Namespace does not exist, add it */
-	/* Clear old prefix if any */
+        /* Clear old prefix if any */
        if (xml_prefix_set(x, NULL) < 0)
            goto done;
        if (xml_type(x) == CX_ELMNT) /* If not element, do the namespace addition to the element */
-	   xp = x;
+           xp = x;
        else
-	   xp = xml_parent(x);
+           xp = xml_parent(x);
        if (add_namespace(x, xp, prefix, ns) < 0)
-	   goto done;	   
+           goto done;      
        /* Add prefix to x, if any */
        if (prefix && xml_prefix_set(x, prefix) < 0)
-	   goto done;
+           goto done;
        
     }
  ok:
@@ -699,8 +699,8 @@ xml_namespace_change(cxobj *x,
  */
 static int
 xml_default_create1(yang_stmt *y,
-		    cxobj     *xt,
-		    cxobj    **xcp)
+                    cxobj     *xt,
+                    cxobj    **xcp)
 {
     int        retval = -1;
     char      *namespace;
@@ -709,29 +709,29 @@ xml_default_create1(yang_stmt *y,
     cxobj     *xc = NULL;
 
     if ((xc = xml_new(yang_argument_get(y), NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     xml_spec_set(xc, y);
     
     /* assign right prefix */
     if ((namespace = yang_find_mynamespace(y)) != NULL){
-	prefix = NULL;
-	if ((ret = xml2prefix(xt, namespace, &prefix)) < 0)
-	    goto done;
-	if (ret){ /* Namespace found, prefix returned in prefix */
-	    if (xml_prefix_set(xc, prefix) < 0)
-		goto done;
-	}
-	else{ /* Namespace does not exist in target, must add it w xmlns attr. 
-		 use source prefix */
-	    if (add_namespace(xc, xc, prefix, namespace) < 0)
-		goto done;
-	    /* Add prefix to x, if any */
-	    if (prefix && xml_prefix_set(xc, prefix) < 0)
-		goto done;
-	}
+        prefix = NULL;
+        if ((ret = xml2prefix(xt, namespace, &prefix)) < 0)
+            goto done;
+        if (ret){ /* Namespace found, prefix returned in prefix */
+            if (xml_prefix_set(xc, prefix) < 0)
+                goto done;
+        }
+        else{ /* Namespace does not exist in target, must add it w xmlns attr. 
+                 use source prefix */
+            if (add_namespace(xc, xc, prefix, namespace) < 0)
+                goto done;
+            /* Add prefix to x, if any */
+            if (prefix && xml_prefix_set(xc, prefix) < 0)
+                goto done;
+        }
     }
     if (xml_addsub(xt, xc) < 0)
-	goto done;
+        goto done;
     *xcp = xc;
     retval = 0;
  done:
@@ -748,30 +748,30 @@ xml_default_create1(yang_stmt *y,
  */
 static int
 xml_default_create(yang_stmt *y,
-		   cxobj     *xt,
-		   int        top)
+                   cxobj     *xt,
+                   int        top)
 {
     int        retval = -1;
     cxobj     *xc = NULL;
     cxobj     *xb;
     char      *str;
     cg_var    *cv;
-	
+        
     if (xml_default_create1(y, xt, &xc) < 0)
-	goto done;
+        goto done;
     xml_flag_set(xc, XML_FLAG_DEFAULT);
     if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
-	goto done;
+        goto done;
     if ((cv = yang_cv_get(y)) == NULL){
-	clicon_err(OE_UNIX, ENOENT, "No yang cv of %s", yang_argument_get(y));
-	goto done;
+        clicon_err(OE_UNIX, ENOENT, "No yang cv of %s", yang_argument_get(y));
+        goto done;
     }
     if ((str = cv2str_dup(cv)) == NULL){
-	clicon_err(OE_UNIX, errno, "cv2str_dup");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cv2str_dup");
+        goto done;
     }
     if (xml_value_set(xb, str) < 0)
-	goto done;
+        goto done;
     free(str);
     retval = 0;
  done:
@@ -787,40 +787,40 @@ xml_default_create(yang_stmt *y,
  */
 static int
 xml_nopresence_try(yang_stmt *yt,
-		   int       *createp)
+                   int       *createp)
 {
     int        retval = -1;
     yang_stmt *y;
     
     if (yt == NULL || yang_keyword_get(yt) != Y_CONTAINER){
-	clicon_err(OE_XML, EINVAL, "yt argument is not container");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "yt argument is not container");
+        goto done;
     }
     *createp = 0;
     y = NULL;
     while ((y = yn_each(yt, y)) != NULL) {
-	switch (yang_keyword_get(y)){
-	case Y_LEAF:
-	    if (!cv_flag(yang_cv_get(y), V_UNSET)){  /* Default value exists */
-		/* Need to create container */
-		*createp = 1;
-		goto ok;
-	    }
-	    break;
-	case Y_CONTAINER:
-	    if (yang_find(y, Y_PRESENCE, NULL) == NULL){
-		/* If this is non-presence, (and it does not exist in xt) call recursively 
-		 * and create nodes if any default value exist first. Then continue and populate?
-		 */
-		if (xml_nopresence_try(y, createp) < 0)
-		    goto done;
-		if (*createp)
-		    goto ok;
-	    }
-	    break;
-	default:
-	    break;
-	} /* switch */
+        switch (yang_keyword_get(y)){
+        case Y_LEAF:
+            if (!cv_flag(yang_cv_get(y), V_UNSET)){  /* Default value exists */
+                /* Need to create container */
+                *createp = 1;
+                goto ok;
+            }
+            break;
+        case Y_CONTAINER:
+            if (yang_find(y, Y_PRESENCE, NULL) == NULL){
+                /* If this is non-presence, (and it does not exist in xt) call recursively 
+                 * and create nodes if any default value exist first. Then continue and populate?
+                 */
+                if (xml_nopresence_try(y, createp) < 0)
+                    goto done;
+                if (*createp)
+                    goto ok;
+            }
+            break;
+        default:
+            break;
+        } /* switch */
     }
  ok:
     retval = 0;
@@ -840,8 +840,8 @@ xml_nopresence_try(yang_stmt *yt,
  */
 static int
 xml_default1(yang_stmt *yt,
-	     cxobj     *xt,
-	     int        state)
+             cxobj     *xt,
+             int        state)
 {
     int        retval = -1;
     yang_stmt *yc;
@@ -854,77 +854,77 @@ xml_default1(yang_stmt *yt,
     cg_var    *cv;
 
     if (xt == NULL){ /* No xml */
-	clicon_err(OE_XML, EINVAL, "No XML argument");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "No XML argument");
+        goto done;
     }
     switch (yang_keyword_get(yt)){
     case Y_MODULE:
     case Y_SUBMODULE:
-	top++;
+        top++;
     case Y_CONTAINER: /* XXX maybe check for non-presence here as well */
     case Y_LIST:
     case Y_INPUT:
     case Y_OUTPUT:
-	yc = NULL;
-	while ((yc = yn_each(yt, yc)) != NULL) {
-	    if (!state && !yang_config(yc)) 
-		continue;
-	    switch (yang_keyword_get(yc)){
-	    case Y_LEAF:
-		if ((cv = yang_cv_get(yc)) == NULL){
-		    clicon_err(OE_YANG,0, "Internal error: yang leaf %s not populated with cv as it should",
-			       yang_argument_get(yc));
-		    goto done;
-		}
-		if (!cv_flag(cv, V_UNSET)){  /* Default value exists */
-		    /* Check when condition */
-		    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
-			goto done;
-		    if (hit && nr == 0)
-			break; /* Do not create default if xpath fails */
-		    if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
-			/* No such child exist, create this leaf */
-			if (xml_default_create(yc, xt, top) < 0)
-			    goto done;
-			xml_sort(xt);
-		    }
-		}
-		break;
-	    case Y_CONTAINER:
-		if (yang_find(yc, Y_PRESENCE, NULL) == NULL){
-		    /* Check when condition */
-		    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
-			goto done;
-		    if (hit && nr == 0)
-			break; /* Do not create default if xpath fails */
-		    /* If this is non-presence, (and it does not exist in xt) call 
-		     * recursively and create nodes if any default value exist first. 
-		     * Then continue and populate?
-		     */
-		    if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
-			/* No such container exist, recursively try if needed */
-			if (xml_nopresence_try(yc, &create) < 0)
-			    goto done;
-			if (create){
-			    /* Retval shows there is a default value need to create the 
-			     * container */
-			    if (xml_default_create1(yc, xt, &xc) < 0)
-				goto done;
-			    xml_sort(xt);
-			    /* Then call it recursively */
-			    if (xml_default1(yc, xc, state) < 0)
-				goto done;
-			}
-		    }
-		}
-		break;
-	    default:
-		break;
-	    }
-	}
-	break;
+        yc = NULL;
+        while ((yc = yn_each(yt, yc)) != NULL) {
+            if (!state && !yang_config(yc)) 
+                continue;
+            switch (yang_keyword_get(yc)){
+            case Y_LEAF:
+                if ((cv = yang_cv_get(yc)) == NULL){
+                    clicon_err(OE_YANG,0, "Internal error: yang leaf %s not populated with cv as it should",
+                               yang_argument_get(yc));
+                    goto done;
+                }
+                if (!cv_flag(cv, V_UNSET)){  /* Default value exists */
+                    /* Check when condition */
+                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+                        goto done;
+                    if (hit && nr == 0)
+                        break; /* Do not create default if xpath fails */
+                    if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
+                        /* No such child exist, create this leaf */
+                        if (xml_default_create(yc, xt, top) < 0)
+                            goto done;
+                        xml_sort(xt);
+                    }
+                }
+                break;
+            case Y_CONTAINER:
+                if (yang_find(yc, Y_PRESENCE, NULL) == NULL){
+                    /* Check when condition */
+                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+                        goto done;
+                    if (hit && nr == 0)
+                        break; /* Do not create default if xpath fails */
+                    /* If this is non-presence, (and it does not exist in xt) call 
+                     * recursively and create nodes if any default value exist first. 
+                     * Then continue and populate?
+                     */
+                    if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
+                        /* No such container exist, recursively try if needed */
+                        if (xml_nopresence_try(yc, &create) < 0)
+                            goto done;
+                        if (create){
+                            /* Retval shows there is a default value need to create the 
+                             * container */
+                            if (xml_default_create1(yc, xt, &xc) < 0)
+                                goto done;
+                            xml_sort(xt);
+                            /* Then call it recursively */
+                            if (xml_default1(yc, xc, state) < 0)
+                                goto done;
+                        }
+                    }
+                }
+                break;
+            default:
+                break;
+            }
+        }
+        break;
     default:
-	break;
+        break;
     } /* switch */
     retval = 0;
  done:
@@ -941,17 +941,17 @@ xml_default1(yang_stmt *yt,
  */
 static int
 xml_default(cxobj *xt,
-	    int    state)
+            int    state)
 {
     int        retval = -1;
     yang_stmt *ys;
     
     if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
-	retval = 0;
-	goto done;
+        retval = 0;
+        goto done;
     }
     if (xml_default1(ys, xt, state) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -966,22 +966,22 @@ xml_default(cxobj *xt,
  */
 int
 xml_default_recurse(cxobj *xn,
-		    int    state)
+                    int    state)
 {
     int        retval = -1;
     cxobj     *x;
     yang_stmt *y;
     
     if (xml_default(xn, state) < 0)
-	goto done;
+        goto done;
     x = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-	if ((y = (yang_stmt*)xml_spec(x)) != NULL){
-	    if (!state && !yang_config(y))
-		continue;
-	}
-	if (xml_default_recurse(x, state) < 0)
-	    goto done;
+        if ((y = (yang_stmt*)xml_spec(x)) != NULL){
+            if (!state && !yang_config(y))
+                continue;
+        }
+        if (xml_default_recurse(x, state) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -999,20 +999,20 @@ xml_default_recurse(cxobj *xn,
  */
 static int
 xml_global_defaults_create(cxobj     *xt,
-			   yang_stmt *yspec,
-			   int        state)
+                           yang_stmt *yspec,
+                           int        state)
 
 {
     int        retval = -1;
     yang_stmt *ymod = NULL;
 
     if (yspec == NULL || yang_keyword_get(yspec) != Y_SPEC){
-	clicon_err(OE_XML, EINVAL, "yspec argument is not yang spec");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "yspec argument is not yang spec");
+        goto done;
     }
     while ((ymod = yn_each(yspec, ymod)) != NULL) 
-	if (xml_default1(ymod, xt, state) < 0)
-	    goto done;
+        if (xml_default1(ymod, xt, state) < 0)
+            goto done;
     retval = 0;
  done:
     return retval;
@@ -1033,11 +1033,11 @@ xml_global_defaults_create(cxobj     *xt,
  */
 int
 xml_global_defaults(clicon_handle h,
-		    cxobj        *xt,
-		    cvec         *nsc,
-		    const char   *xpath,
-		    yang_stmt    *yspec,
-		    int           state)
+                    cxobj        *xt,
+                    cvec         *nsc,
+                    const char   *xpath,
+                    yang_stmt    *yspec,
+                    int           state)
 {
     int        retval = -1;
     db_elmnt   de0 = {0,};
@@ -1055,48 +1055,48 @@ xml_global_defaults(clicon_handle h,
     key = state ? "global-defaults-state" : "global-defaults-config";
     /* First get or compute global xml tree cache */
     if ((de = clicon_db_elmnt_get(h, key)) == NULL){
-	/* Create it */
-	if ((xcache = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-	    goto done;
-	if (xml_global_defaults_create(xcache, yspec, state) < 0)
-	    goto done;
-	de0.de_xml = xcache;
-	clicon_db_elmnt_set(h, key, &de0);
+        /* Create it */
+        if ((xcache = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+            goto done;
+        if (xml_global_defaults_create(xcache, yspec, state) < 0)
+            goto done;
+        de0.de_xml = xcache;
+        clicon_db_elmnt_set(h, key, &de0);
     }
     else
-	xcache = de->de_xml;
+        xcache = de->de_xml;
 
     /* Here xcache has all global defaults. Now find the matching nodes 
      * XXX: nsc as 2nd argument
      */
     if (xpath_vec(xcache, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	goto done;
+        goto done;
     /* Iterate through match vector
      * For every node found in x0, mark the tree up to t1
      */
     for (i=0; i<xlen; i++){
-	x0 = xvec[i];
-	xml_flag_set(x0, XML_FLAG_MARK);
-	xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+        x0 = xvec[i];
+        xml_flag_set(x0, XML_FLAG_MARK);
+        xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
     /* Create a new tree and copy over the parts from the cache that matches xpath */
     if ((xpart = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     if (xml_copy_marked(xcache, xpart) < 0) /* config */
-	goto done;
+        goto done;
     if (xml_apply(xcache, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
-	goto done;
+        goto done;
     if (xml_apply(xpart, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
-	goto done;
+        goto done;
     /* Merge global pruned tree with xt */
     if ((ret = xml_merge(xt, xpart, yspec, NULL)) < 1) /* XXX reason */
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (xpart)
-	xml_free(xpart);
+        xml_free(xpart);
     if (xvec)
-	free(xvec);
+        free(xvec);
     return retval;
 }
 
@@ -1105,7 +1105,7 @@ xml_global_defaults(clicon_handle h,
  * @param[in] xn       XML tree
  * @param[in] purge    0: Dont remove any nodes
  *                     1: Remove config sub-nodes that are empty non-presence container or default leaf
- *		       2: Remove all sub-nodes that are empty non-presence container or default leaf
+ *                     2: Remove all sub-nodes that are empty non-presence container or default leaf
  * @retval    1        Node is an (recursive) empty non-presence container or default leaf
  * @retval    0        Other node
  * @retval   -1        Error
@@ -1114,7 +1114,7 @@ xml_global_defaults(clicon_handle h,
  */
 int
 xml_defaults_nopresence(cxobj *xn,
-			int    purge)
+                        int    purge)
 {
     int           retval = -1;
     cxobj        *x;
@@ -1127,42 +1127,42 @@ xml_defaults_nopresence(cxobj *xn,
     int           config = 1;
     
     if ((yn = xml_spec(xn)) != NULL){
-	keyw = yang_keyword_get(yn);
-	if (keyw == Y_CONTAINER &&
-	    yang_find(yn, Y_PRESENCE, NULL) == NULL)
-	    rmx = 1;
-	else if (keyw == Y_LEAF &&
-		 xml_flag(xn, XML_FLAG_DEFAULT))
-	    rmx = 1;
-	config = yang_config_ancestor(yn);
+        keyw = yang_keyword_get(yn);
+        if (keyw == Y_CONTAINER &&
+            yang_find(yn, Y_PRESENCE, NULL) == NULL)
+            rmx = 1;
+        else if (keyw == Y_LEAF &&
+                 xml_flag(xn, XML_FLAG_DEFAULT))
+            rmx = 1;
+        config = yang_config_ancestor(yn);
     }
     /* Loop thru children */
     x = NULL;
     xprev = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml_defaults_nopresence(x, purge)) < 0)
-	    goto done;
-	if (ret == 1){
-	    switch (purge){
-	    case 1: /* config nodes only */
-		if (!config)
-		    break;
-		if ((y = xml_spec(x)) != NULL &&
-		    !yang_config(y))
-		    break;
-		/* fall thru */
-	    case 2: /* purge all nodes */
-		if (xml_purge(x) < 0)
-		    goto done;
-		x = xprev;
-		break;
-	    default:
-		break;
-	    }
-	}
-	else if (rmx)
-	    /* May switch an empty non-presence container (rmx=1) to non-empty non-presence container (rmx=0) */
-	    rmx = 0; 
+        if ((ret = xml_defaults_nopresence(x, purge)) < 0)
+            goto done;
+        if (ret == 1){
+            switch (purge){
+            case 1: /* config nodes only */
+                if (!config)
+                    break;
+                if ((y = xml_spec(x)) != NULL &&
+                    !yang_config(y))
+                    break;
+                /* fall thru */
+            case 2: /* purge all nodes */
+                if (xml_purge(x) < 0)
+                    goto done;
+                x = xprev;
+                break;
+            default:
+                break;
+            }
+        }
+        else if (rmx)
+            /* May switch an empty non-presence container (rmx=1) to non-empty non-presence container (rmx=0) */
+            rmx = 0; 
     }
     retval = rmx;
  done:
@@ -1174,21 +1174,21 @@ xml_defaults_nopresence(cxobj *xn,
  */
 int
 xml_sanity(cxobj *xt, 
-	   void  *arg)
+           void  *arg)
 {
     int        retval = -1;
     yang_stmt *ys;
     char      *name;
 
     if ((ys = (yang_stmt*)xml_spec(xt)) == NULL){
-	retval = 0;
-	goto done;
+        retval = 0;
+        goto done;
     }
     name = xml_name(xt);
     if (strstr(yang_argument_get(ys), name)==NULL){
-	clicon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'", 
-		   name, yang_argument_get(ys));
-	goto done;
+        clicon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'", 
+                   name, yang_argument_get(ys));
+        goto done;
     }
     retval = 0;
  done:
@@ -1205,7 +1205,7 @@ xml_sanity(cxobj *xt,
  */
 int
 xml_non_config_data(cxobj  *xt, 
-		    cxobj **xerr) 
+                    cxobj **xerr) 
 {
     int        retval = -1;
     cxobj     *x;
@@ -1215,34 +1215,34 @@ xml_non_config_data(cxobj  *xt,
     
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-	if ((y = (yang_stmt*)xml_spec(x)) == NULL)
-	    goto ok;
-	if (!yang_config(y)){ /* config == false means state data */
-	    if (xerr){        /* behaviour 1: return on error */
-		if ((cb = cbuf_new()) == NULL){
-		    clicon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cb, "module %s: state data node unexpected", yang_argument_get(ys_module(y)));
-		if (netconf_bad_element_xml(xerr, "application", yang_argument_get(y), cbuf_get(cb)) < 0)
-		    goto done;
-		retval = 0;
-		goto done;
-	    }
-	    xml_flag_set(x, XML_FLAG_MARK); /* behaviour 2: mark and continue */
-	}
-	if ((ret = xml_non_config_data(x, xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    retval = 0;
-	    goto done;
-	}
+        if ((y = (yang_stmt*)xml_spec(x)) == NULL)
+            goto ok;
+        if (!yang_config(y)){ /* config == false means state data */
+            if (xerr){        /* behaviour 1: return on error */
+                if ((cb = cbuf_new()) == NULL){
+                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cb, "module %s: state data node unexpected", yang_argument_get(ys_module(y)));
+                if (netconf_bad_element_xml(xerr, "application", yang_argument_get(y), cbuf_get(cb)) < 0)
+                    goto done;
+                retval = 0;
+                goto done;
+            }
+            xml_flag_set(x, XML_FLAG_MARK); /* behaviour 2: mark and continue */
+        }
+        if ((ret = xml_non_config_data(x, xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            retval = 0;
+            goto done;
+        }
     }
  ok:
     retval = 1;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -1255,8 +1255,8 @@ xml_non_config_data(cxobj  *xt,
  */
 static int
 xml2xpath1(cxobj *x,
-	   cvec  *nsc,
-	   cbuf  *cb)
+           cvec  *nsc,
+           cbuf  *cb)
 {
     int           retval = -1;
     cxobj        *xp;
@@ -1272,54 +1272,54 @@ xml2xpath1(cxobj *x,
     char         *namespace;
     
     if ((xp = xml_parent(x)) == NULL)
-	goto ok;
+        goto ok;
     if (xml2xpath1(xp, nsc, cb) < 0)
-	goto done;
+        goto done;
     if (nsc){
-	if (xml2ns(x, xml_prefix(x), &namespace) < 0)
-	    goto done;
-	if (namespace){
-	    if (xml_nsctx_get_prefix(nsc, namespace, &prefix) == 0)
-		; /* maybe NULL? */
-	}
-	else
-	    prefix = xml_prefix(x); /* maybe NULL? */
+        if (xml2ns(x, xml_prefix(x), &namespace) < 0)
+            goto done;
+        if (namespace){
+            if (xml_nsctx_get_prefix(nsc, namespace, &prefix) == 0)
+                ; /* maybe NULL? */
+        }
+        else
+            prefix = xml_prefix(x); /* maybe NULL? */
     }
     else
-	prefix = xml_prefix(x);
+        prefix = xml_prefix(x);
     /* XXX: sometimes there should be a /, sometimes not */
     cprintf(cb, "/");
     if (prefix)
-	cprintf(cb, "%s:", prefix);
+        cprintf(cb, "%s:", prefix);
     cprintf(cb, "%s", xml_name(x));
     if ((y = xml_spec(x)) != NULL){
-	keyword = yang_keyword_get(y);
-	switch (keyword){
-	case Y_LEAF_LIST:
-	    if ((b = xml_body(x)) != NULL)
-		cprintf(cb, "[.=\"%s\"]", b);
-	    else
-		cprintf(cb, "[.=\"\"]");
-	    break;
-	case Y_LIST:
-	    cvk = yang_cvec_get(y);
-	    cvi = NULL;
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);
-		if ((xkey = xml_find(x, keyname)) == NULL)
-		    goto done; /* No key in xml */
-		if ((xb = xml_find(x, keyname)) == NULL)
-		    goto done;
-		b = xml_body(xb);
-		cprintf(cb, "[");
-		if (prefix)
-		    cprintf(cb, "%s:", prefix);
-		cprintf(cb, "%s=\"%s\"]", keyname, b?b:"");
-	    }
-	    break;
-	default:
-	    break;
-	}
+        keyword = yang_keyword_get(y);
+        switch (keyword){
+        case Y_LEAF_LIST:
+            if ((b = xml_body(x)) != NULL)
+                cprintf(cb, "[.=\"%s\"]", b);
+            else
+                cprintf(cb, "[.=\"\"]");
+            break;
+        case Y_LIST:
+            cvk = yang_cvec_get(y);
+            cvi = NULL;
+            while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+                keyname = cv_string_get(cvi);
+                if ((xkey = xml_find(x, keyname)) == NULL)
+                    goto done; /* No key in xml */
+                if ((xb = xml_find(x, keyname)) == NULL)
+                    goto done;
+                b = xml_body(xb);
+                cprintf(cb, "[");
+                if (prefix)
+                    cprintf(cb, "%s:", prefix);
+                cprintf(cb, "%s=\"%s\"]", keyname, b?b:"");
+            }
+            break;
+        default:
+            break;
+        }
     }
  ok:
     retval = 0;
@@ -1343,32 +1343,32 @@ xml2xpath1(cxobj *x,
  */
 int
 xml2xpath(cxobj *x,
-	  cvec  *nsc,
-	  char **xpathp)
+          cvec  *nsc,
+          char **xpathp)
 {
     int   retval = -1;
     cbuf *cb;
     char *xpath = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
     }
     if (xml2xpath1(x, nsc, cb) < 0)
-	goto done;
+        goto done;
     /* XXX: see xpath in test statement,.. */
     xpath = cbuf_get(cb);
     if (xpathp){
-	if ((*xpathp = strdup(xpath)) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
-	xpath = NULL;
+        if ((*xpathp = strdup(xpath)) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+        xpath = NULL;
     }
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -1394,23 +1394,23 @@ xmlns_assign(cxobj *x)
     char      *ns_xml;     /* may be null or incorrect */
 
     if ((y = xml_spec(x)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "XML %s does not have yang spec", xml_name(x));
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "XML %s does not have yang spec", xml_name(x));
+        goto done;
     }
     /* 1. Check which namespace x should have (via yang). This is correct namespace. */
     if ((ns_correct = yang_find_mynamespace(y)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "yang node %s does not have namespace", yang_argument_get(y));
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "yang node %s does not have namespace", yang_argument_get(y));
+        goto done;
     }
     /* 2. Check which namespace x has via its XML tree */
     if (xml2ns(x, NULL, &ns_xml) < 0)
-	goto done;
+        goto done;
     /* 3. If equal, OK, 4. Else, find root of XML tree */
     if (ns_xml && strcmp(ns_xml, ns_correct)==0)
-	goto ok;
+        goto ok;
     /* 4. Assign the correct namespace */
     if (xmlns_set(x, NULL, ns_correct) < 0)
-	goto done;
+        goto done;
  ok:
     retval = 0;
  done:
@@ -1426,10 +1426,10 @@ xmlns_assign(cxobj *x)
  */
 static int
 assign_namespace(cxobj     *x1, /* target */
-		 cxobj     *x1p,
-		 int        isroot,
-		 char      *ns,
-		 char      *prefix0)
+                 cxobj     *x1p,
+                 int        isroot,
+                 char      *ns,
+                 char      *prefix0)
 {
     int    retval = -1;
     char  *prefix1 = NULL;
@@ -1439,70 +1439,70 @@ assign_namespace(cxobj     *x1, /* target */
     
     /* 2a. Detect if namespace is declared in x1 target parent */
     if (xml2prefix(x1p, ns, &pexist) == 1){
-	/* Yes, and it has prefix pexist */
-	if (pexist){
-	    if ((prefix1 = strdup(pexist)) == NULL){
-		clicon_err(OE_UNIX, errno, "strdup");
-		goto done;
-	    }
-	}
-	else
-	    prefix1 = NULL;
-	/* 3. If yes, assign prefix to x1 */
-	if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
-	    goto done;
-	/* And copy namespace context from parent to child */
-	if ((nsc0 = nscache_get_all(x1p)) != NULL){
-	    if ((nsc = cvec_dup(nsc0)) == NULL){
-		clicon_err(OE_UNIX, errno, "cvec_dup");
-		goto done;
-	    }
-	    nscache_replace(x1, nsc);
-	}
-	/* Just in case */
-	if (nscache_set(x1, prefix1, ns) < 0)
-	    goto done;
+        /* Yes, and it has prefix pexist */
+        if (pexist){
+            if ((prefix1 = strdup(pexist)) == NULL){
+                clicon_err(OE_UNIX, errno, "strdup");
+                goto done;
+            }
+        }
+        else
+            prefix1 = NULL;
+        /* 3. If yes, assign prefix to x1 */
+        if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
+            goto done;
+        /* And copy namespace context from parent to child */
+        if ((nsc0 = nscache_get_all(x1p)) != NULL){
+            if ((nsc = cvec_dup(nsc0)) == NULL){
+                clicon_err(OE_UNIX, errno, "cvec_dup");
+                goto done;
+            }
+            nscache_replace(x1, nsc);
+        }
+        /* Just in case */
+        if (nscache_set(x1, prefix1, ns) < 0)
+            goto done;
     }
     else{ /* No, namespace does not exist in x1 _parent_ 
-	   * Check if it is exists in x1 itself */
-	if (xml2prefix(x1, ns, &pexist) == 1){
-	    /* Yes it exists, but is it equal? */
-	    if (clicon_strcmp(pexist, prefix0) == 0)
-		; /* Equal, reuse */
-	    else{ /* namespace exist, but not equal, use existing */
-		/* Add prefix to x1, if any */
-		if (pexist && xml_prefix_set(x1, pexist) < 0)
-		    goto done;
-	    }
-	    goto ok; /* skip */
-	}
-	else { /* namespace does not exist in target x1, 
-		*/
-	    if (isroot){
-		if (prefix0 && (prefix1 = strdup(prefix0)) == NULL){
-		    clicon_err(OE_UNIX, errno, "strdup");
-		    goto done;
-		}
-	    }
-	    else{
-		if (prefix0 == NULL){ /* Use default namespace, may break use of previous default 
-				       * somewhere in x1
-				       */
-		    prefix1 = NULL;
-		}
-	    }
-	}
-	if (add_namespace(x1, x1, prefix1, ns) < 0)
-	    goto done;
-	if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
-	    goto done;	    
+           * Check if it is exists in x1 itself */
+        if (xml2prefix(x1, ns, &pexist) == 1){
+            /* Yes it exists, but is it equal? */
+            if (clicon_strcmp(pexist, prefix0) == 0)
+                ; /* Equal, reuse */
+            else{ /* namespace exist, but not equal, use existing */
+                /* Add prefix to x1, if any */
+                if (pexist && xml_prefix_set(x1, pexist) < 0)
+                    goto done;
+            }
+            goto ok; /* skip */
+        }
+        else { /* namespace does not exist in target x1, 
+                */
+            if (isroot){
+                if (prefix0 && (prefix1 = strdup(prefix0)) == NULL){
+                    clicon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
+            }
+            else{
+                if (prefix0 == NULL){ /* Use default namespace, may break use of previous default 
+                                       * somewhere in x1
+                                       */
+                    prefix1 = NULL;
+                }
+            }
+        }
+        if (add_namespace(x1, x1, prefix1, ns) < 0)
+            goto done;
+        if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
+            goto done;      
     }
  ok:
     /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
     retval = 0;
  done:
     if (prefix1)
-	free(prefix1);
+        free(prefix1);
     return retval;
 }
 
@@ -1524,8 +1524,8 @@ assign_namespace(cxobj     *x1, /* target */
 */
 int
 assign_namespace_element(cxobj *x0, /* source */
-			 cxobj *x1, /* target */
-			 cxobj *x1p)
+                         cxobj *x1, /* target */
+                         cxobj *x1p)
 {
     int        retval = -1;
     char      *namespace = NULL;
@@ -1533,19 +1533,19 @@ assign_namespace_element(cxobj *x0, /* source */
     int        isroot;
     
     isroot = xml_parent(x1p)==NULL &&
-	xml_flag(x1p, XML_FLAG_TOP) &&
-	xml_prefix(x1p)==NULL;
+        xml_flag(x1p, XML_FLAG_TOP) &&
+        xml_prefix(x1p)==NULL;
     /* 1. Find N=namespace(x0) in x0 element */
     prefix0 = xml_prefix(x0);
     if (xml2ns(x0, prefix0, &namespace) < 0)
-	goto done;
+        goto done;
     if (namespace == NULL){
-	clicon_err(OE_XML, ENOENT, "No namespace found for prefix:%s",
-		   prefix0?prefix0:"NULL");
-	goto done;
+        clicon_err(OE_XML, ENOENT, "No namespace found for prefix:%s",
+                   prefix0?prefix0:"NULL");
+        goto done;
     }
     if (assign_namespace(x1, x1p, isroot, namespace, prefix0) < 0)
-	goto done;
+        goto done;
     /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
     retval = 0;
  done:
@@ -1566,7 +1566,7 @@ assign_namespace_element(cxobj *x0, /* source */
  */
 int
 assign_namespace_body(cxobj *x0, /* source */
-		      cxobj *x1) /* target */
+                      cxobj *x1) /* target */
 {
     int    retval = -1;
     char  *namespace = NULL;
@@ -1578,29 +1578,29 @@ assign_namespace_body(cxobj *x0, /* source */
     
     xa = NULL;
     while ((xa = xml_child_each(x0, xa, CX_ATTR)) != NULL) {
-	prefix0 = xml_prefix(xa);
-	name = xml_name(xa);
-	namespace = xml_value(xa);
-	if ((strcmp(name, "xmlns")==0 && prefix0==NULL) ||
-	    (prefix0 != NULL && strcmp(prefix0, "xmlns")==0)){
-	    if (prefix0 == NULL)
-		prefix1 = NULL;
-	    else
-		prefix1 = name;
-	    /* prefix1 contains actual prefix or NULL, prefix0 can be xmlns */
-	    if (strcmp(namespace, NETCONF_BASE_NAMESPACE) ==0 ||
-		strcmp(namespace, YANG_XML_NAMESPACE) ==0)
-		continue;
-	    /* Detect if prefix:namespace is declared already? */
-	    if (xml2ns(x1, prefix1, &namespace1) == 1)
-		continue;
-	    /* Does prefix already point at right namespace? */
-	    if (namespace1 && strcmp(namespace, namespace1)==0)
-		continue;
-	    /* No, add entry */
-	    if (add_namespace(x1, x1, prefix1, namespace) < 0)
-		goto done;
-	}
+        prefix0 = xml_prefix(xa);
+        name = xml_name(xa);
+        namespace = xml_value(xa);
+        if ((strcmp(name, "xmlns")==0 && prefix0==NULL) ||
+            (prefix0 != NULL && strcmp(prefix0, "xmlns")==0)){
+            if (prefix0 == NULL)
+                prefix1 = NULL;
+            else
+                prefix1 = name;
+            /* prefix1 contains actual prefix or NULL, prefix0 can be xmlns */
+            if (strcmp(namespace, NETCONF_BASE_NAMESPACE) ==0 ||
+                strcmp(namespace, YANG_XML_NAMESPACE) ==0)
+                continue;
+            /* Detect if prefix:namespace is declared already? */
+            if (xml2ns(x1, prefix1, &namespace1) == 1)
+                continue;
+            /* Does prefix already point at right namespace? */
+            if (namespace1 && strcmp(namespace, namespace1)==0)
+                continue;
+            /* No, add entry */
+            if (add_namespace(x1, x1, prefix1, namespace) < 0)
+                goto done;
+        }
     }
     /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
     retval = 0;
@@ -1621,10 +1621,10 @@ assign_namespace_body(cxobj *x0, /* source */
  */
 static int
 xml_merge1(cxobj              *x0,  /* the target */
-	   yang_stmt          *y0,
-	   cxobj              *x0p,
-	   cxobj              *x1,  /* the source */
-	   char              **reason)
+           yang_stmt          *y0,
+           cxobj              *x0p,
+           cxobj              *x1,  /* the source */
+           char              **reason)
 {
     int             retval = -1;
     char           *x1cname; /* child name */
@@ -1645,124 +1645,124 @@ xml_merge1(cxobj              *x0,  /* the target */
     char           *pxe;
     
     if (x1 == NULL || xml_type(x1) != CX_ELMNT || y0 == NULL){
-	clicon_err(OE_XML, EINVAL, "x1 is NULL or not XML element, or lacks yang spec");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "x1 is NULL or not XML element, or lacks yang spec");
+        goto done;
     }
     if (x0 == NULL){
-	if (xml_nsctx_node(x1, &nsc) < 0)
-	    goto done;
-	if (xml_rm(x1) < 0)
-	    goto done;
-	/* This is to make the anydata case a little more robust, more could be done */
+        if (xml_nsctx_node(x1, &nsc) < 0)
+            goto done;
+        if (xml_rm(x1) < 0)
+            goto done;
+        /* This is to make the anydata case a little more robust, more could be done */
         if (xml_spec(x1) == NULL){
             if (xml_addsub(x0p, x1) < 0)
                 goto done;
         }
         else
-	    if (xml_insert(x0p, x1, INS_LAST, NULL, NULL) < 0)
-		goto done;
-	cv = NULL;
-	while ((cv = cvec_each(nsc, cv)) != NULL){
-	    px = cv_name_get(cv);
-	    ns = cv_string_get(cv);
-	    /* Check if namespace exists */
-	    if ((ret = xml2prefix(x1, ns, &pxe)) < 0)
-		goto done;
-	    if (ret == 0 ||  /* Not exist */
-		clicon_strcmp(px, pxe) != 0){ /* Exists and not equal (can be NULL) */
-		if (xmlns_set(x1, px, ns) < 0)
-		    goto done;
-		xml_sort(x1);
-	    }
-	}
-	goto ok;
+            if (xml_insert(x0p, x1, INS_LAST, NULL, NULL) < 0)
+                goto done;
+        cv = NULL;
+        while ((cv = cvec_each(nsc, cv)) != NULL){
+            px = cv_name_get(cv);
+            ns = cv_string_get(cv);
+            /* Check if namespace exists */
+            if ((ret = xml2prefix(x1, ns, &pxe)) < 0)
+                goto done;
+            if (ret == 0 ||  /* Not exist */
+                clicon_strcmp(px, pxe) != 0){ /* Exists and not equal (can be NULL) */
+                if (xmlns_set(x1, px, ns) < 0)
+                    goto done;
+                xml_sort(x1);
+            }
+        }
+        goto ok;
     }
     if (yang_keyword_get(y0) == Y_LEAF_LIST || yang_keyword_get(y0) == Y_LEAF){
-	x1bstr = xml_body(x1);
-	if (x1bstr){
-	    if ((x0b = xml_body_get(x0)) == NULL){
-		if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
-		    goto done; 
-	    }
-	    if (xml_value_set(x0b, x1bstr) < 0)
-		goto done;
-	}
-	if (xml_parent(x0) == NULL &&
-	    xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
-	    goto done;
-	if (assign_namespace_element(x1, x0, x0p) < 0)
-	    goto done;
+        x1bstr = xml_body(x1);
+        if (x1bstr){
+            if ((x0b = xml_body_get(x0)) == NULL){
+                if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
+                    goto done; 
+            }
+            if (xml_value_set(x0b, x1bstr) < 0)
+                goto done;
+        }
+        if (xml_parent(x0) == NULL &&
+            xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
+            goto done;
+        if (assign_namespace_element(x1, x0, x0p) < 0)
+            goto done;
     } /* if LEAF|LEAF_LIST */
     else { /* eg Y_CONTAINER, Y_LIST  */
-	if (assign_namespace_element(x1, x0, x0p) < 0)
-	    goto done;
-	twophase_len = xml_child_nr(x1);
-	if ((twophase = calloc(twophase_len, sizeof(*twophase))) == NULL){
-	    clicon_err(OE_UNIX, errno, "calloc");
-	    goto done;
-	}
-	i = 0;
-	/* Loop through children of the modification tree */
-	x1c = NULL;
-	while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
-	    x1cname = xml_name(x1c);
-	    /* Get yang spec of the child */
-	    if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
-		if (reason){
-		    if ((cbr = cbuf_new()) == NULL){
-			clicon_err(OE_XML, errno, "cbuf_new");
-			goto done;
-		    }
-		    cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?", xml_name(x1), x1cname);
-		    if ((*reason = strdup(cbuf_get(cbr))) == NULL){
-			clicon_err(OE_UNIX, errno, "strdup");
-			goto done;
-		    }
-		}
-		goto fail;
-	    }
-	    /* See if there is a corresponding node in the base tree */
-	    x0c = NULL;
-	    if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
-		goto done;
-	    /* If x0 already has a value, do not replace it with a default value in x1 */
-	    if (x0c && xml_flag(x1c, XML_FLAG_DEFAULT))
-		continue;
-	    /* Save x0c, x1c, yc and merge in second wave, so that x1c entries dont "interfer"
-	     * with itself, ie that later searches are among earlier objects already added
-	     * to x0 */
-	    twophase[i].mt_x0c = x0c;
-	    twophase[i].mt_x1c = x1c;
-	    twophase[i].mt_yc  = yc;
-	    i++;
-	} /* while */
-	twophase_len = i; /* Inital length included non-elements */
-	/* Second run where actual merging is done 
-	 * Loop through children of the modification tree */
-	for (i=0; i<twophase_len; i++){
-	    assert(twophase[i].mt_x1c);
-	    if ((ret = xml_merge1(twophase[i].mt_x0c,
-			   twophase[i].mt_yc,
-			   x0,
-			   twophase[i].mt_x1c,
-				  reason)) < 0)
-		goto done;
-	    if (ret == 0)
-		goto fail;
-	}
-	if (xml_parent(x0) == NULL &&
-	    xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
-	    goto done;
+        if (assign_namespace_element(x1, x0, x0p) < 0)
+            goto done;
+        twophase_len = xml_child_nr(x1);
+        if ((twophase = calloc(twophase_len, sizeof(*twophase))) == NULL){
+            clicon_err(OE_UNIX, errno, "calloc");
+            goto done;
+        }
+        i = 0;
+        /* Loop through children of the modification tree */
+        x1c = NULL;
+        while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+            x1cname = xml_name(x1c);
+            /* Get yang spec of the child */
+            if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
+                if (reason){
+                    if ((cbr = cbuf_new()) == NULL){
+                        clicon_err(OE_XML, errno, "cbuf_new");
+                        goto done;
+                    }
+                    cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?", xml_name(x1), x1cname);
+                    if ((*reason = strdup(cbuf_get(cbr))) == NULL){
+                        clicon_err(OE_UNIX, errno, "strdup");
+                        goto done;
+                    }
+                }
+                goto fail;
+            }
+            /* See if there is a corresponding node in the base tree */
+            x0c = NULL;
+            if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
+                goto done;
+            /* If x0 already has a value, do not replace it with a default value in x1 */
+            if (x0c && xml_flag(x1c, XML_FLAG_DEFAULT))
+                continue;
+            /* Save x0c, x1c, yc and merge in second wave, so that x1c entries dont "interfer"
+             * with itself, ie that later searches are among earlier objects already added
+             * to x0 */
+            twophase[i].mt_x0c = x0c;
+            twophase[i].mt_x1c = x1c;
+            twophase[i].mt_yc  = yc;
+            i++;
+        } /* while */
+        twophase_len = i; /* Inital length included non-elements */
+        /* Second run where actual merging is done 
+         * Loop through children of the modification tree */
+        for (i=0; i<twophase_len; i++){
+            assert(twophase[i].mt_x1c);
+            if ((ret = xml_merge1(twophase[i].mt_x0c,
+                           twophase[i].mt_yc,
+                           x0,
+                           twophase[i].mt_x1c,
+                                  reason)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
+        if (xml_parent(x0) == NULL &&
+            xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
+            goto done;
     } /* else Y_CONTAINER  */
  ok:
     retval = 1;
  done:
     if (nsc)
-	cvec_free(nsc);
+        cvec_free(nsc);
     if (twophase)
-	free(twophase);
+        free(twophase);
     if (cbr)
-	cbuf_free(cbr);
+        cbuf_free(cbr);
     return retval;
  fail:
     retval = 0;
@@ -1781,9 +1781,9 @@ xml_merge1(cxobj              *x0,  /* the target */
  */
 int
 xml_merge(cxobj     *x0,
-	  cxobj     *x1,
-	  yang_stmt *yspec,
-	  char     **reason)
+          cxobj     *x1,
+          yang_stmt *yspec,
+          char     **reason)
 {
     int        retval = -1;
     char      *x1cname; /* child name */
@@ -1798,79 +1798,79 @@ xml_merge(cxobj     *x0,
     int        ret;
 
     if (x0 == NULL || x1 == NULL){
-	clicon_err(OE_UNIX, EINVAL, "parameters x0 or x1 is NULL");
-	goto done;
+        clicon_err(OE_UNIX, EINVAL, "parameters x0 or x1 is NULL");
+        goto done;
     }
     twophase_len = xml_child_nr(x1);
     if ((twophase = calloc(twophase_len, sizeof(*twophase))) == NULL){
-	clicon_err(OE_UNIX, errno, "calloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
     }
     /* Loop through children of the modification tree */
     i = 0;
     x1c = NULL;
     while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
-	x1cname = xml_name(x1c);
-	if ((ys_module_by_xml(yspec, x1c, &ymod)) < 0)
-	    goto done;
-	if (ymod == NULL){
-	    if (reason &&
-		(*reason = strdup("Namespace not found or yang spec not loaded")) == NULL){
-		    clicon_err(OE_UNIX, errno, "strdup");
-		    goto done;
-	    }
-	    goto fail;	
-	}
-	/* Get yang spec of the child */
-	if ((yc = yang_find_datanode(ymod, x1cname)) == NULL){
-	    if (reason){
-		if ((cbr = cbuf_new()) == NULL){
-		    clicon_err(OE_XML, errno, "cbuf_new");
-		    goto done;
-		}
-		cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?)", xml_name(x1), x1cname);
-		if ((*reason = strdup(cbuf_get(cbr))) == NULL){
-		    clicon_err(OE_UNIX, errno, "strdup");
-		    goto done;
-		}
-	    }
-	    goto fail;
-	}
-	x0c = NULL;
-	/* See if there is a corresponding node (x1c) in the base tree (x0) */
-	if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
-	    goto done;
-	/* If x0 already has a value, do not replace it with a default value in x1 */
-	if (x0c && xml_flag(x1c, XML_FLAG_DEFAULT))
-	    continue;
-	/* Save x0c, x1c, yc and merge in second wave, so that x1c entries don't "interfere"
-	 * with itself, ie that later searches are among earlier objects already added
-	 * to x0 */
-	twophase[i].mt_x0c = x0c;
-	twophase[i].mt_x1c = x1c;
-	twophase[i].mt_yc  = yc;
-	i++;
+        x1cname = xml_name(x1c);
+        if ((ys_module_by_xml(yspec, x1c, &ymod)) < 0)
+            goto done;
+        if (ymod == NULL){
+            if (reason &&
+                (*reason = strdup("Namespace not found or yang spec not loaded")) == NULL){
+                    clicon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+            }
+            goto fail;  
+        }
+        /* Get yang spec of the child */
+        if ((yc = yang_find_datanode(ymod, x1cname)) == NULL){
+            if (reason){
+                if ((cbr = cbuf_new()) == NULL){
+                    clicon_err(OE_XML, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?)", xml_name(x1), x1cname);
+                if ((*reason = strdup(cbuf_get(cbr))) == NULL){
+                    clicon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
+            }
+            goto fail;
+        }
+        x0c = NULL;
+        /* See if there is a corresponding node (x1c) in the base tree (x0) */
+        if (yc && match_base_child(x0, x1c, yc, &x0c) < 0)
+            goto done;
+        /* If x0 already has a value, do not replace it with a default value in x1 */
+        if (x0c && xml_flag(x1c, XML_FLAG_DEFAULT))
+            continue;
+        /* Save x0c, x1c, yc and merge in second wave, so that x1c entries don't "interfere"
+         * with itself, ie that later searches are among earlier objects already added
+         * to x0 */
+        twophase[i].mt_x0c = x0c;
+        twophase[i].mt_x1c = x1c;
+        twophase[i].mt_yc  = yc;
+        i++;
     }
     twophase_len = i; /* Inital length included non-elements */
     /* Second run where actual merging is done 
      * Loop through children of the modification tree */
     for (i=0; i<twophase_len; i++){
-	assert(twophase[i].mt_x1c);
-	if ((ret = xml_merge1(twophase[i].mt_x0c,
-			      twophase[i].mt_yc,
-			      x0,
-			      twophase[i].mt_x1c,
-			      reason)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
+        assert(twophase[i].mt_x1c);
+        if ((ret = xml_merge1(twophase[i].mt_x0c,
+                              twophase[i].mt_yc,
+                              x0,
+                              twophase[i].mt_x1c,
+                              reason)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
     }
     retval = 1; /* OK */
  done:
     if (twophase)
-	free(twophase);
+        free(twophase);
     if (cbr)
-	cbuf_free(cbr);
+        cbuf_free(cbr);
     return retval;
  fail:
     retval = 0;
@@ -1885,25 +1885,25 @@ xml_merge(cxobj     *x0,
  */
 int
 yang_valstr2enum(yang_stmt *ytype,
-		 char      *valstr,
-		 char     **enumstr)
+                 char      *valstr,
+                 char     **enumstr)
 {
     int        retval = -1;
     yang_stmt *yenum = NULL;
     yang_stmt *yval; 
 
     if (enumstr == NULL){
-	clicon_err(OE_UNIX, EINVAL, "str is NULL");
-	goto done;
+        clicon_err(OE_UNIX, EINVAL, "str is NULL");
+        goto done;
     }
     while ((yenum = yn_each(ytype, yenum)) != NULL) {
-	if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
-	    goto done;
-	if (strcmp(yang_argument_get(yval), valstr) == 0)
-	    break;
+        if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
+            goto done;
+        if (strcmp(yang_argument_get(yval), valstr) == 0)
+            break;
     }
     if (yenum)
-	*enumstr = yang_argument_get(yenum);
+        *enumstr = yang_argument_get(yenum);
     retval = 0;
  done:
     return retval;
@@ -1920,22 +1920,22 @@ yang_valstr2enum(yang_stmt *ytype,
  */
 int
 yang_enum2valstr(yang_stmt *ytype,
-		 char      *enumstr,
-		 char     **valstr)
+                 char      *enumstr,
+                 char     **valstr)
 {
     int        retval = -1;
     yang_stmt *yenum; 
     yang_stmt *yval; 
 
     if (valstr == NULL){
-	clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
-	goto done;
+        clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
+        goto done;
     }
     if ((yenum = yang_find(ytype, Y_ENUM, enumstr)) == NULL)
-	goto fail;
+        goto fail;
     /* Should assign value if yval not found */
     if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
-	goto done;
+        goto done;
     *valstr = yang_argument_get(yval);
     retval = 1;
  done:
@@ -1960,7 +1960,7 @@ yang_enum2valstr(yang_stmt *ytype,
  */
 int
 yang_enum_int_value(cxobj   *node, 
-		    int32_t *val)
+                    int32_t *val)
 {
     int retval = -1;
     yang_stmt *yspec;
@@ -1971,27 +1971,27 @@ yang_enum_int_value(cxobj   *node,
     char      *intstr = NULL;
 
     if (node == NULL)
-	goto done;
+        goto done;
     if ((ys = (yang_stmt *) xml_spec(node)) == NULL)
-	goto done;
+        goto done;
     if ((yspec = ys_spec(ys)) == NULL)
-	goto done;
+        goto done;
     if ((ytype = yang_find(ys, Y_TYPE, NULL)) == NULL)
-	goto done;
+        goto done;
     if (yang_type_resolve(ys, ys, ytype, &yrestype, 
-			  NULL, NULL, NULL, NULL, NULL) < 0)
-	goto done;
+                          NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
     if (yrestype == NULL){
-	clicon_err(OE_YANG, 0, "result-type should not be NULL");
-	goto done;
+        clicon_err(OE_YANG, 0, "result-type should not be NULL");
+        goto done;
     }
     if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
-	goto done;
+        goto done;
     if (yang_enum2valstr(yrestype, xml_body(node), &intstr) < 0)
-	goto done;
+        goto done;
     /* reason is string containing why int could not be parsed */
     if (parse_int32(intstr, val, &reason) < 0)
-	goto done;
+        goto done;
     retval = 0;
 done:
     return retval;
@@ -2009,7 +2009,7 @@ done:
  */
 int
 xml_copy_marked(cxobj *x0, 
-		cxobj *x1)
+                cxobj *x1)
 {
     int        retval = -1;
     int        mark;
@@ -2025,17 +2025,17 @@ xml_copy_marked(cxobj *x0,
     xml_spec_set(x1, yt);
    /* Copy prefix*/
     if ((prefix = xml_prefix(x0)) != NULL)
-	if (xml_prefix_set(x1, prefix) < 0)
-	    goto done;
+        if (xml_prefix_set(x1, prefix) < 0)
+            goto done;
     
     /* Copy all attributes */
     x = NULL;
     while ((x = xml_child_each(x0, x, CX_ATTR)) != NULL) {
-	name = xml_name(x);
-	if ((xcopy = xml_new(name, x1, CX_ATTR)) == NULL)
-	    goto done;
-	if (xml_copy(x, xcopy) < 0) 
-	    goto done;
+        name = xml_name(x);
+        if ((xcopy = xml_new(name, x1, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_copy(x, xcopy) < 0) 
+            goto done;
     }
 
     /* Go through children to detect any marked nodes:
@@ -2045,42 +2045,42 @@ xml_copy_marked(cxobj *x0,
     mark = 0;
     x = NULL;
     while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
-	if (xml_flag(x, XML_FLAG_MARK|XML_FLAG_CHANGE)){
-	    mark++;
-	    break;
-	}
+        if (xml_flag(x, XML_FLAG_MARK|XML_FLAG_CHANGE)){
+            mark++;
+            break;
+        }
     }
     x = NULL;
     while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
-	name = xml_name(x);
-	if (xml_flag(x, XML_FLAG_MARK)){
-	    /* (2) the complete subtree of that node is copied. */
-	    if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
-		goto done;
-	    if (xml_copy(x, xcopy) < 0) 
-		goto done;
-	    continue; 
-	}
-	if (xml_flag(x, XML_FLAG_CHANGE)){
-	    /*  Copy individual nodes marked with XML_FLAG_CHANGE */
-	    if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
-		goto done;
-	    if (xml_copy_marked(x, xcopy) < 0) /*  */
-		goto done;
-	}
-	/* (3) Special case: key nodes in lists are copied if any 
-	 * node in list is marked */
-	if (mark && yt && yang_keyword_get(yt) == Y_LIST){
-	    /* XXX: I think yang_key_match is suboptimal here */
-	    if ((iskey = yang_key_match(yt, name, NULL)) < 0)
-		goto done;
-	    if (iskey){
-		if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
-		    goto done;
-		if (xml_copy(x, xcopy) < 0) 
-		    goto done;
-	    }
-	}
+        name = xml_name(x);
+        if (xml_flag(x, XML_FLAG_MARK)){
+            /* (2) the complete subtree of that node is copied. */
+            if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
+                goto done;
+            if (xml_copy(x, xcopy) < 0) 
+                goto done;
+            continue; 
+        }
+        if (xml_flag(x, XML_FLAG_CHANGE)){
+            /*  Copy individual nodes marked with XML_FLAG_CHANGE */
+            if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
+                goto done;
+            if (xml_copy_marked(x, xcopy) < 0) /*  */
+                goto done;
+        }
+        /* (3) Special case: key nodes in lists are copied if any 
+         * node in list is marked */
+        if (mark && yt && yang_keyword_get(yt) == Y_LIST){
+            /* XXX: I think yang_key_match is suboptimal here */
+            if ((iskey = yang_key_match(yt, name, NULL)) < 0)
+                goto done;
+            if (iskey){
+                if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
+                    goto done;
+                if (xml_copy(x, xcopy) < 0) 
+                    goto done;
+            }
+        }
     }
     retval = 0;
  done:
@@ -2089,20 +2089,24 @@ xml_copy_marked(cxobj *x0,
 
 /*! Check when condition 
  * 
- * @param[in]   h    Clixon handle
- * @param[in]   xn   XML node, can be NULL, in which case it is added as dummy under xp
- * @param[in]   xp   XML parent
- * @param[in]   ys   Yang node
+ * @param[in]   xn     XML node, can be NULL, in which case it is added as dummy under xp
+ * @param[in]   xp     XML parent
+ * @param[in]   yn     Yang node
+ * @param[out]  hit    when statement found
+ * @param[out]  nrp    1: when stmt evaluates to true
+ * @param[out]  xpathp when stmts xpath
+ * @retval      0      OK
+ * @retval      -1     Error
  * First variants of WHEN: Augmented and uses when using special info in node
  * Second variant of when, actual "when" sub-node RFC 7950 Sec 7.21.5. Can only be one.
  */
 int
 yang_check_when_xpath(cxobj        *xn,
-		      cxobj        *xp,
-		      yang_stmt    *yn,
-		      int          *hit,
-		      int          *nrp,
-		      char        **xpathp)
+                      cxobj        *xp,
+                      yang_stmt    *yn,
+                      int          *hit,
+                      int          *nrp,
+                      char        **xpathp)
 {
     int        retval = 1;
     yang_stmt *yc;
@@ -2115,44 +2119,115 @@ yang_check_when_xpath(cxobj        *xn,
 
     /* First variant */
     if ((xpath = yang_when_xpath_get(yn)) != NULL){
-	x = xp;
-	nsc = yang_when_nsc_get(yn);
-	*hit = 1;
+        x = xp;
+        nsc = yang_when_nsc_get(yn);
+        *hit = 1;
     }
     /* Second variant */
     else if ((yc = yang_find(yn, Y_WHEN, NULL)) != NULL){
-	xpath = yang_argument_get(yc); /* "when" has xpath argument */
-	/* Create dummy */
-	if (xn == NULL){
-	    if ((x = xml_new(yang_argument_get(yn), xp, CX_ELMNT)) == NULL)
-		goto done;
-	    xml_spec_set(x, yn);
-	    xmalloc++;
-	}
-	else
-	    x = xn;
-	if (xml_nsctx_yang(yn, &nsc) < 0)
-	    goto done;
-	nscmalloc++;
-	*hit = 1;
+        xpath = yang_argument_get(yc); /* "when" has xpath argument */
+        /* Create dummy */
+        if (xn == NULL){
+            if ((x = xml_new(yang_argument_get(yn), xp, CX_ELMNT)) == NULL)
+                goto done;
+            xml_spec_set(x, yn);
+            xmalloc++;
+        }
+        else
+            x = xn;
+        if (xml_nsctx_yang(yn, &nsc) < 0)
+            goto done;
+        nscmalloc++;
+        *hit = 1;
     }
     else
-	*hit = 0;
+        *hit = 0;
     if (x && xpath){
-	if ((nr = xpath_vec_bool(x, nsc, "%s", xpath)) < 0)
-	    goto done;
+        if ((nr = xpath_vec_bool(x, nsc, "%s", xpath)) < 0)
+            goto done;
     }
     if (nrp)
-	*nrp = nr;
+        *nrp = nr;
     if (xpathp)
-	*xpathp = xpath;
+        *xpathp = xpath;
     retval = 0;
  done:
     if (xmalloc)
-	xml_purge(x);
+        xml_purge(x);
     if (nsc && nscmalloc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     return retval;
+}
+
+/*! Check if node is (recursively) mandatory also checking when conditional
+ *
+ * @param[in]  xn  Optional XML node
+ * @param[in]  xp  XML parent
+ * @param[in]  ys  YANG node
+ * @retval     1   Recursively contains a mandatory node
+ * @retval     0   Does not contain a mandatory node
+ * @retval    -1   Error
+ * @see RFC7950 Sec 3:
+ *   o  mandatory node: A mandatory node is one of:
+ *      1)  A leaf, choice, anydata, or anyxml node with a "mandatory"
+ *         statement with the value "true".
+ *      2) # see below
+ *      3)  A container node without a "presence" statement and that has at
+ *         least one mandatory node as a child.
+ */
+int
+yang_xml_mandatory(cxobj     *xt,
+                   yang_stmt *ys)
+{
+    int           retval = -1;
+    yang_stmt    *ym;
+    cg_var       *cv;
+    enum rfc_6020 keyw;
+    cxobj        *xs = NULL;
+    int           ret;
+    yang_stmt    *yc;
+    int           hit;
+    int           nr;
+
+    /* Create dummy xs if not exist */
+    if ((xs = xml_new(yang_argument_get(ys), xt, CX_ELMNT)) == NULL)
+        goto done;
+    xml_spec_set(xs, ys);
+    if (yang_check_when_xpath(xs, xt, ys, &hit, &nr, NULL) < 0)
+        goto done;
+    if (hit && !nr){
+        retval = 0;
+        goto done;
+    }
+    keyw = yang_keyword_get(ys);
+    if (keyw == Y_LEAF || keyw == Y_CHOICE || keyw == Y_ANYDATA || keyw == Y_ANYXML){
+        if ((ym = yang_find(ys, Y_MANDATORY, NULL)) != NULL){
+            if ((cv = yang_cv_get(ym)) != NULL){ /* shouldnt happen */
+                retval = cv_bool_get(cv);
+                goto done;
+            }
+        }
+    }
+    /* 3) A container node without a "presence" statement and that has at
+     *    least one mandatory node as a child. */
+    else if (keyw == Y_CONTAINER && 
+             yang_find(ys, Y_PRESENCE, NULL) == NULL){
+        yc = NULL;
+        while ((yc = yn_each(ys, yc)) != NULL) {
+            if ((ret = yang_xml_mandatory(xs, yc)) < 0)
+                goto done;
+            if (ret == 1)
+                goto mandatory;
+        }
+    }
+    retval = 0; /* Does not contain mandatory node */
+ done:
+    if (xs != NULL)
+        xml_purge(xs);
+    return retval;
+ mandatory:
+    retval = 1;
+    goto done;
 }
 
 /*! Is XML node (ie under <rpc>) an action, ie name action and belong to YANG_XML_NAMESPACE?
@@ -2168,11 +2243,11 @@ xml_rpc_isaction(cxobj *xn)
     char *ns = NULL;
 
     if (strcmp(xml_name(xn), "action") != 0)
-	goto fail;
+        goto fail;
     if (xml2ns(xn, xml_prefix(xn), &ns) < 0)
-	goto done;
+        goto done;
     if (strcmp(YANG_XML_NAMESPACE, ns) != 0)
-	goto fail;
+        goto fail;
     retval = 1; // is action
  done:
     return retval;
@@ -2193,26 +2268,26 @@ xml_rpc_isaction(cxobj *xn)
  */
 int
 xml_find_action(cxobj  *xn,
-		int     top,
-		cxobj **xap)
+                int     top,
+                cxobj **xap)
 {
     int        retval = -1;
     cxobj     *xc = NULL;
     yang_stmt *yc;
 
     while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL) {
-	if ((yc = xml_spec(xc)) == NULL)
-	    continue;
-	if (!top && yang_keyword_get(yc) == Y_ACTION){
-	    *xap = xc;
-	    break;
-	}
-	if (yang_keyword_get(yc) != Y_CONTAINER && yang_keyword_get(yc) != Y_LIST)
-	    continue;
-	/* XXX check key */
-	if (xml_find_action(xc, 0, xap) < 0)
-	    goto done;
-	break;
+        if ((yc = xml_spec(xc)) == NULL)
+            continue;
+        if (!top && yang_keyword_get(yc) == Y_ACTION){
+            *xap = xc;
+            break;
+        }
+        if (yang_keyword_get(yc) != Y_CONTAINER && yang_keyword_get(yc) != Y_LIST)
+            continue;
+        /* XXX check key */
+        if (xml_find_action(xc, 0, xap) < 0)
+            goto done;
+        break;
     }
     retval = 0;
  done:
@@ -2229,10 +2304,10 @@ xml_find_action(cxobj  *xn,
  */
 int
 purge_tagged_nodes(cxobj *xn,
-		   char  *ns,
-		   char  *name,
-		   char  *value,
-		   int    keepnode)
+                   char  *ns,
+                   char  *name,
+                   char  *value,
+                   int    keepnode)
 {
     int    retval = -1;
     cxobj *x;
@@ -2245,23 +2320,23 @@ purge_tagged_nodes(cxobj *xn,
     x = NULL;
     xprev = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-	if ((ret = xml2prefix(x, ns, &prefix)) < 0)
-	    goto done;
-	if (ret == 0)
-	    continue;
-	if ((xa = xml_find_type(x, prefix, "default", CX_ATTR)) != NULL){
-	    if (!keepnode &&
-		(v = xml_value(xa)) != NULL &&
-		strcmp(v, value) == 0){
-		xml_purge(x);
-		x = xprev;
-		continue;
-	    }
-	    xml_purge(xa); /* remove attribute regardless */
-	}
-	if (purge_tagged_nodes(x, ns, name, value, keepnode) < 0)
-	    goto done;
-	xprev = x;
+        if ((ret = xml2prefix(x, ns, &prefix)) < 0)
+            goto done;
+        if (ret == 0)
+            continue;
+        if ((xa = xml_find_type(x, prefix, "default", CX_ATTR)) != NULL){
+            if (!keepnode &&
+                (v = xml_value(xa)) != NULL &&
+                strcmp(v, value) == 0){
+                xml_purge(x);
+                x = xprev;
+                continue;
+            }
+            xml_purge(xa); /* remove attribute regardless */
+        }
+        if (purge_tagged_nodes(x, ns, name, value, keepnode) < 0)
+            goto done;
+        xprev = x;
     }
     retval = 0;
  done:

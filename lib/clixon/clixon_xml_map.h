@@ -53,10 +53,10 @@ int isxmlns(cxobj *x);
 int xmlns_assign(cxobj *x);
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
 int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
-int xml_diff(yang_stmt *yspec, cxobj *x0, cxobj *x1, 	 
-	     cxobj ***first, int *firstlen, 
-	     cxobj ***second, int *secondlen, 
-	     cxobj ***changed_x0, cxobj ***changed_x1, int *changedlen);
+int xml_diff(yang_stmt *yspec, cxobj *x0, cxobj *x1,     
+             cxobj ***first, int *firstlen, 
+             cxobj ***second, int *secondlen, 
+             cxobj ***changed_x0, cxobj ***changed_x1, int *changedlen);
 int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
 int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_tree_prune_flags(cxobj *xt, int flags, int mask);
@@ -75,6 +75,7 @@ int yang_enum2valstr(yang_stmt *ytype, char *enumstr, char **valstr);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 int xml_copy_marked(cxobj *x0, cxobj *x1);
 int yang_check_when_xpath(cxobj *xn, cxobj *xp, yang_stmt *yn, int *hit, int *nrp, char **xpathp);
+int yang_xml_mandatory(cxobj *xt, yang_stmt *ys);
 int xml_rpc_isaction(cxobj *xn);
 int xml_find_action(cxobj *xn, int top, cxobj **xap);
 int purge_tagged_nodes(cxobj *xn, char *ns, char *name, char *value, int keepnode);

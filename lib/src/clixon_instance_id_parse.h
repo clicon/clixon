@@ -68,4 +68,4 @@ int clixon_instance_id_parselex(void *);
 int clixon_instance_id_parseparse(void *);
 void clixon_instance_id_parseerror(void *, char*);
 
-#endif	/* _CLIXON_INSTANCE_ID_PARSE_H_ */
+#endif  /* _CLIXON_INSTANCE_ID_PARSE_H_ */

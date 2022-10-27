@@ -34,10 +34,10 @@ for test in $pattern; do
     errcode=$?
     endsuite
     if [ $errcode -ne 0 ]; then
-	allerr=1
-	echo -e "\e[31mError in $test errcode=$errcode"
-	echo -ne "\e[0m"
-	exit $errcode
+        allerr=1
+        echo -e "\e[31mError in $test errcode=$errcode"
+        echo -ne "\e[0m"
+        exit $errcode
     fi
 done
 if [ $allerr -eq 0 ]; then 

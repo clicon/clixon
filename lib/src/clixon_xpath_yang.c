@@ -88,14 +88,14 @@ xy_dup(xp_yang_ctx *xy0)
     xp_yang_ctx *xy = NULL;
     
     if ((xy = malloc(sizeof(*xy))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xy, 0, sizeof(*xy));
     if (xy0)
-	*xy = *xy0;
+        *xy = *xy0;
     else
-	xy->xy_type = XT_NODESET;
+        xy->xy_type = XT_NODESET;
  done:
     return xy;
 }
@@ -110,17 +110,17 @@ xy_dup(xp_yang_ctx *xy0)
  */
 static int
 xp_yang_op_eq(xp_yang_ctx *xy1,
-	     xp_yang_ctx  *xy2,
-    	     xp_yang_ctx **xyr)
+             xp_yang_ctx  *xy2,
+             xp_yang_ctx **xyr)
 {
     int          retval = -1;
     xp_yang_ctx *xy = NULL;
     
     if ((xy = xy_dup(xy1)) == NULL)
-	goto done;
+        goto done;
     if (xy1 == NULL || xy2 == NULL || xy1->xy_node == NULL || xy2->xy_node == NULL){
-	clicon_err(OE_YANG, EINVAL, "Invalid path-arg (Error in xy1 or xy2) ");
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "Invalid path-arg (Error in xy1 or xy2) ");
+        goto done;
     }
     xy->xy_type = XT_BOOL;
     xy->xy_bool = 1;
@@ -142,8 +142,8 @@ xp_yang_op_eq(xp_yang_ctx *xy1,
  */
 static int
 xp_yang_eval_step(xp_yang_ctx  *xy0,
-		  xpath_tree   *xptree,
-		  xp_yang_ctx **xyr)
+                  xpath_tree   *xptree,
+                  xp_yang_ctx **xyr)
 {
     int          retval = -1;
     xpath_tree  *nodetest; /* needed if child */
@@ -154,67 +154,67 @@ xp_yang_eval_step(xp_yang_ctx  *xy0,
 
     /* Create new xy */
     if ((xy = xy_dup(xy0)) == NULL)
-	goto done;
+        goto done;
     ys = xy->xy_node;
     switch (xptree->xs_int){
     case A_CHILD: 
-	if ((nodetest = xptree->xs_c0) == NULL){
-	    clicon_err(OE_YANG, 0, "child step nodetest expected");
-	    goto done;
-	}
-	switch (nodetest->xs_type){
-	case XP_NODE:
-	    if ((prefix = nodetest->xs_s0) != NULL){
-		/* XXX: Kludge with prefixes */
-		if (yang_keyword_get(ys) == Y_SPEC){ /* This means top */
-		    if ((ys1 = yang_find_module_by_prefix_yspec(ys, prefix)) != NULL)
-			ys = ys1;
-		}
-		else if (yang_keyword_get(ys) == Y_MODULE){ /* This means top */
-		    if ((ys1 = yang_find_module_by_prefix(ys, prefix)) == NULL)
-			ys1 = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
-		    if (ys1 != NULL)
-			ys = ys1;
-		}
-	    }
-	    xy->xy_node = yang_find_schemanode(ys, nodetest->xs_s1);
-	    if (xy->xy_node == NULL){
-		*xyr = xy;
-		xy = NULL;
-		goto ok;
-	    }
-	    break;
-	case XP_NODE_FN:
-	    break;
-	default:
-	    clicon_err(OE_YANG, 0, "Invalid xpath-tree nodetest: %s",
-		       xpath_tree_int2str(nodetest->xs_type));
-	    goto done;
-	    break;
-	} /* nodetest xs_type */
-	break;
+        if ((nodetest = xptree->xs_c0) == NULL){
+            clicon_err(OE_YANG, 0, "child step nodetest expected");
+            goto done;
+        }
+        switch (nodetest->xs_type){
+        case XP_NODE:
+            if ((prefix = nodetest->xs_s0) != NULL){
+                /* XXX: Kludge with prefixes */
+                if (yang_keyword_get(ys) == Y_SPEC){ /* This means top */
+                    if ((ys1 = yang_find_module_by_prefix_yspec(ys, prefix)) != NULL)
+                        ys = ys1;
+                }
+                else if (yang_keyword_get(ys) == Y_MODULE){ /* This means top */
+                    if ((ys1 = yang_find_module_by_prefix(ys, prefix)) == NULL)
+                        ys1 = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
+                    if (ys1 != NULL)
+                        ys = ys1;
+                }
+            }
+            xy->xy_node = yang_find_schemanode(ys, nodetest->xs_s1);
+            if (xy->xy_node == NULL){
+                *xyr = xy;
+                xy = NULL;
+                goto ok;
+            }
+            break;
+        case XP_NODE_FN:
+            break;
+        default:
+            clicon_err(OE_YANG, 0, "Invalid xpath-tree nodetest: %s",
+                       xpath_tree_int2str(nodetest->xs_type));
+            goto done;
+            break;
+        } /* nodetest xs_type */
+        break;
     case A_PARENT:
-	xy->xy_node = yang_parent_get(ys);
-	break;
+        xy->xy_node = yang_parent_get(ys);
+        break;
     default:
-	clicon_err(OE_YANG, 0, "Invalid path-arg step: %s",
-		   axis_type_int2str(xptree->xs_int));
-	goto done;
-	break;
+        clicon_err(OE_YANG, 0, "Invalid path-arg step: %s",
+                   axis_type_int2str(xptree->xs_int));
+        goto done;
+        break;
     }
     if (xptree->xs_c1){
-	if (xp_yang_eval(xy, xptree->xs_c1, xyr) < 0)
-	    goto done;
+        if (xp_yang_eval(xy, xptree->xs_c1, xyr) < 0)
+            goto done;
     }
     else{
-	*xyr = xy;
-	xy = NULL;
+        *xyr = xy;
+        xy = NULL;
     }
  ok:
     retval = 0;
  done:
     if (xy)
-	free(xy);
+        free(xy);
     return retval;
 }
 
@@ -229,41 +229,41 @@ xp_yang_eval_step(xp_yang_ctx  *xy0,
  */
 static int
 xp_yang_eval_predicate(xp_yang_ctx  *xy,
-		       xpath_tree   *xptree,
-		       xp_yang_ctx **xyr)
+                       xpath_tree   *xptree,
+                       xp_yang_ctx **xyr)
 {
     int         retval = -1;
     xp_yang_ctx *xy0 = NULL;
     xp_yang_ctx *xy1 = NULL;
 
     if (xptree->xs_c0 != NULL){ /* eval previous predicates */
-	if (xp_yang_eval(xy, xptree->xs_c0, &xy0) < 0) 	
-	    goto done;
+        if (xp_yang_eval(xy, xptree->xs_c0, &xy0) < 0)  
+            goto done;
     }
     else{  /* empty */
-	if ((xy0 = xy_dup(xy)) == NULL)
-	    goto done;
+        if ((xy0 = xy_dup(xy)) == NULL)
+            goto done;
     }
     if (xptree->xs_c1){ /* Second child */
-	//	if ((xy1 = xy_dup(xy)) == NULL)
-	//	    goto done;
-	/* the PredicateExpr is evaluated with the node as the context node */
-	if (xp_yang_eval(xy0, xptree->xs_c1, &xy1) < 0)
-	    goto done;
-	/* Check xrc: if "true" then xyr=xy0? */
-	if (xy1->xy_type == XT_BOOL && xy1->xy_bool)
-	    ;
-	else
-	    xy0->xy_node = NULL;
+        //      if ((xy1 = xy_dup(xy)) == NULL)
+        //          goto done;
+        /* the PredicateExpr is evaluated with the node as the context node */
+        if (xp_yang_eval(xy0, xptree->xs_c1, &xy1) < 0)
+            goto done;
+        /* Check xrc: if "true" then xyr=xy0? */
+        if (xy1->xy_type == XT_BOOL && xy1->xy_bool)
+            ;
+        else
+            xy0->xy_node = NULL;
     }
     *xyr = xy0;
     xy0 = NULL;
     retval = 0;
  done:
     if (xy0)
-	free(xy0);
+        free(xy0);
     if (xy1)
-	free(xy1);
+        free(xy1);
    return retval;
 }
 
@@ -278,8 +278,8 @@ xp_yang_eval_predicate(xp_yang_ctx  *xy,
  */
 static int
 xp_yang_eval(xp_yang_ctx  *xy,
-	     xpath_tree   *xptree,
-	     xp_yang_ctx **xyr)
+             xpath_tree   *xptree,
+             xp_yang_ctx **xyr)
 {
     int          retval = -1;
     int          use_xy0 = 0;
@@ -289,7 +289,7 @@ xp_yang_eval(xp_yang_ctx  *xy,
 
     /* If empty npodeset, quit, cannot continue */
     if (xy->xy_type == XT_NODESET && xy->xy_node == NULL)
-	goto ok;
+        goto ok;
     /* Pre-actions before check first child c0
      */
     switch (xptree->xs_type){
@@ -297,136 +297,136 @@ xp_yang_eval(xp_yang_ctx  *xy,
     case XP_AND:
     case XP_ADD:
     case XP_UNION:
-	if (xptree->xs_c1 != NULL){
-	    clicon_err(OE_XML, 0, "Function %s having two args is invalid for path-arg", xptree->xs_s0);
-	    goto done;
-	}
-	break;
+        if (xptree->xs_c1 != NULL){
+            clicon_err(OE_XML, 0, "Function %s having two args is invalid for path-arg", xptree->xs_s0);
+            goto done;
+        }
+        break;
     case XP_RELEX:
     case XP_PATHEXPR:
     case XP_FILTEREXPR:
-	break;
+        break;
     case XP_LOCPATH:
     case XP_NODE:
     case XP_NODE_FN:
-	break;
+        break;
     case XP_RELLOCPATH:
-	break;
+        break;
     case XP_PRIME_FN:
-	if (xptree->xs_s0){
-	    switch (xptree->xs_int){
-	    case XPATHFN_CURRENT:
-		if ((*xyr = xy_dup(xy)) == NULL)
-		    goto done;
-		(*xyr)->xy_node = (*xyr)->xy_initial;
-		goto ok;
-		break;
-	    default:
-		clicon_err(OE_XML, 0, "Function %s invalid for path-arg", xptree->xs_s0);
-		goto done;
-	    }
-	}
-	break;
+        if (xptree->xs_s0){
+            switch (xptree->xs_int){
+            case XPATHFN_CURRENT:
+                if ((*xyr = xy_dup(xy)) == NULL)
+                    goto done;
+                (*xyr)->xy_node = (*xyr)->xy_initial;
+                goto ok;
+                break;
+            default:
+                clicon_err(OE_XML, 0, "Function %s invalid for path-arg", xptree->xs_s0);
+                goto done;
+            }
+        }
+        break;
     case XP_PRIME_STR:
-	if ((*xyr = xy_dup(xy)) == NULL)
-	    goto done;
-	goto ok;
-	break;
+        if ((*xyr = xy_dup(xy)) == NULL)
+            goto done;
+        goto ok;
+        break;
     case XP_ABSPATH:
-	/* Set context node to top node, and nodeset to that node only */
-	if (yang_keyword_get(xy->xy_node) != Y_SPEC)
-	    xy->xy_node = ys_module(xy->xy_node);
-	break;
+        /* Set context node to top node, and nodeset to that node only */
+        if (yang_keyword_get(xy->xy_node) != Y_SPEC)
+            xy->xy_node = ys_module(xy->xy_node);
+        break;
     case XP_PRED:
-	if (xp_yang_eval_predicate(xy, xptree, xyr) < 0)
-	    goto done;
-	goto ok; /* Skip generic child traverse */
-	break;
+        if (xp_yang_eval_predicate(xy, xptree, xyr) < 0)
+            goto done;
+        goto ok; /* Skip generic child traverse */
+        break;
     case XP_STEP:    /* XP_NODE is first argument -not called explicitly */
-	if (xp_yang_eval_step(xy, xptree, xyr) < 0)
-	    goto done;
-	goto ok; /* Skip generic child traverse */
-	break;
+        if (xp_yang_eval_step(xy, xptree, xyr) < 0)
+            goto done;
+        goto ok; /* Skip generic child traverse */
+        break;
     default: /* Here we explicitly fail on node types for those not appearing in path-arg */
-	clicon_err(OE_YANG, 0, "Invalid xpath-tree node name: %s",
-		   xpath_tree_int2str(xptree->xs_type));
-	goto done;
-	break;
+        clicon_err(OE_YANG, 0, "Invalid xpath-tree node name: %s",
+                   xpath_tree_int2str(xptree->xs_type));
+        goto done;
+        break;
     }
     /* Eval first child c0
      */
     if (xptree->xs_c0){
-	if (xp_yang_eval(xy, xptree->xs_c0, &xy0) < 0) 	
-	    goto done;
+        if (xp_yang_eval(xy, xptree->xs_c0, &xy0) < 0)  
+            goto done;
     }
     /* Actions between first and second child
      */
     switch (xptree->xs_type){
     case XP_RELLOCPATH:
     case XP_ABSPATH:
-	use_xy0++;
-	break;
+        use_xy0++;
+        break;
     case XP_PATHEXPR:
-	if (xptree->xs_c1)
-	    use_xy0++;
-	break;
+        if (xptree->xs_c1)
+            use_xy0++;
+        break;
     default:
-	break;
+        break;
     }
     /* Eval second child c1
      * Note, some operators like locationpath, need transitive context (use_xr0)
      */
     if (xptree->xs_c1){
-	if (xp_yang_eval(use_xy0?xy0:xy, xptree->xs_c1, &xy1) < 0) 	
-	    goto done;
-	/* Actions after second child
-	 */
-	switch (xptree->xs_type){
-	case XP_RELEX: /* relexpr --> addexpr | relexpr relop addexpr */
-	    /* Check op: only EQ allowed in path-arg */
-	    if (xptree->xs_int != XO_EQ){
-		clicon_err(OE_YANG, 0, "Invalid xpath-tree relational operator: %d, only eq allowed",
-			   xptree->xs_int);
-		goto done;
-	    }
-	    if (xp_yang_op_eq(xy0, xy1, &xy2) < 0)
-		goto done;
-	    break;
-	default:
-	    break;
-	}
+        if (xp_yang_eval(use_xy0?xy0:xy, xptree->xs_c1, &xy1) < 0)      
+            goto done;
+        /* Actions after second child
+         */
+        switch (xptree->xs_type){
+        case XP_RELEX: /* relexpr --> addexpr | relexpr relop addexpr */
+            /* Check op: only EQ allowed in path-arg */
+            if (xptree->xs_int != XO_EQ){
+                clicon_err(OE_YANG, 0, "Invalid xpath-tree relational operator: %d, only eq allowed",
+                           xptree->xs_int);
+                goto done;
+            }
+            if (xp_yang_op_eq(xy0, xy1, &xy2) < 0)
+                goto done;
+            break;
+        default:
+            break;
+        }
     }
     if (xy0 == NULL && xy1 == NULL && xy2 == NULL){
-	if (xptree->xs_type == XP_ABSPATH){
-	    if ((*xyr = xy_dup(xy)) == NULL)
-		goto done;
-	}
-	else {
-	    clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
-	    goto done;
-	}
+        if (xptree->xs_type == XP_ABSPATH){
+            if ((*xyr = xy_dup(xy)) == NULL)
+                goto done;
+        }
+        else {
+            clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
+            goto done;
+        }
     }
     if (xy2){
-	*xyr = xy2;
-	xy2 = NULL;
+        *xyr = xy2;
+        xy2 = NULL;
     }
     else if (xy1){
-	*xyr = xy1;
-	xy1 = NULL;
+        *xyr = xy1;
+        xy1 = NULL;
     }
     else if (xy0){
-	*xyr = xy0;
-	xy0 = NULL;
+        *xyr = xy0;
+        xy0 = NULL;
     }
  ok:
     retval = 0;
  done:
     if (xy2)
-	free(xy2);
+        free(xy2);
     if (xy1)
-	free(xy1);
+        free(xy1);
     if (xy0)
-	free(xy0);
+        free(xy0);
     return retval;
 }
 
@@ -458,8 +458,8 @@ xp_yang_eval(xp_yang_ctx  *xy,
  */
 int
 yang_path_arg(yang_stmt  *ys,
-	      const char *path_arg,
-	      yang_stmt **yref)
+              const char *path_arg,
+              yang_stmt **yref)
 {
     int          retval = -1;
     xpath_tree  *xptree = NULL;
@@ -467,26 +467,26 @@ yang_path_arg(yang_stmt  *ys,
     xp_yang_ctx *xy = NULL;
 
     if (path_arg == NULL){
-	clicon_err(OE_XML, EINVAL, "path-arg is NULL");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "path-arg is NULL");
+        goto done;
     }
     if (xpath_parse(path_arg, &xptree) < 0)
-	goto done;
+        goto done;
     if ((xy = xy_dup(NULL)) == NULL)
-	goto done;
+        goto done;
     xy->xy_node = ys;
     xy->xy_initial = ys;
     if (xp_yang_eval(xy, xptree, &xyr) < 0)
-	goto done;
+        goto done;
     if (xyr != NULL)
-	*yref = xyr->xy_node;
+        *yref = xyr->xy_node;
     retval = 0;
  done:
     if (xptree)
-	xpath_tree_free(xptree);
+        xpath_tree_free(xptree);
     if (xyr)
-	free(xyr);
+        free(xyr);
     if (xy)
-	free(xy);
+        free(xy);
     return retval;
 }

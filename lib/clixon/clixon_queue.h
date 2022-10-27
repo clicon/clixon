@@ -50,8 +50,8 @@
  * @endcode
  */
 typedef struct _qelem_t {
-	struct _qelem_t  *q_next;
-	struct _qelem_t  *q_prev;
+        struct _qelem_t  *q_next;
+        struct _qelem_t  *q_prev;
 } qelem_t;
 
 /*! Append element 'elem' to queue.
@@ -64,17 +64,17 @@ typedef struct _qelem_t {
  * @endcode
  */
 #define ADDQ(elem, pred) { \
-	register qelem_t *Xe = (qelem_t *) (elem);	\
-	register qelem_t *Xp = (qelem_t *) (pred);	\
-	if (pred) {					\
-	    Xe->q_next = Xp;				\
-	    Xe->q_prev = Xp->q_prev;			\
-	    Xp->q_prev->q_next = Xe;			\
-	    Xp->q_prev = Xe;				\
-	} else {					\
-	    Xe->q_next = Xe->q_prev = Xe;		\
-	    pred = elem;				\
-	}						\
+        register qelem_t *Xe = (qelem_t *) (elem);      \
+        register qelem_t *Xp = (qelem_t *) (pred);      \
+        if (pred) {                                     \
+            Xe->q_next = Xp;                            \
+            Xe->q_prev = Xp->q_prev;                    \
+            Xp->q_prev->q_next = Xe;                    \
+            Xp->q_prev = Xe;                            \
+        } else {                                        \
+            Xe->q_next = Xe->q_prev = Xe;               \
+            pred = elem;                                \
+        }                                               \
     }
 
 /*! Insert element 'elem' in queue after 'pred'
@@ -87,17 +87,17 @@ typedef struct _qelem_t {
  * @endcode
  */
 #define INSQ(elem, pred) { \
-		register qelem_t *Xe = (qelem_t *) (elem); \
-		register qelem_t *Xp = (qelem_t *) (pred); \
-		if (pred) {				   \
-		    Xe->q_next = Xp;			   \
-		    Xe->q_prev = Xp->q_prev;		   \
-		    Xp->q_prev->q_next = Xe;		   \
-		    Xp->q_prev = Xe;			   \
-		} else {				   \
-		    Xe->q_next = Xe->q_prev = Xe;	   \
-		}					   \
-		pred = elem;				   \
+                register qelem_t *Xe = (qelem_t *) (elem); \
+                register qelem_t *Xp = (qelem_t *) (pred); \
+                if (pred) {                                \
+                    Xe->q_next = Xp;                       \
+                    Xe->q_prev = Xp->q_prev;               \
+                    Xp->q_prev->q_next = Xe;               \
+                    Xp->q_prev = Xe;                       \
+                } else {                                   \
+                    Xe->q_next = Xe->q_prev = Xe;          \
+                }                                          \
+                pred = elem;                               \
     }
 
 /*! Remove element 'elem' from queue. 'head' is the pointer to the queue and 
@@ -111,15 +111,15 @@ typedef struct _qelem_t {
  *  DELQ(el, list, struct a*);
  * @endcode
  */
-#define	DELQ(elem, head, type)	{ \
-    		register qelem_t *Xe = (qelem_t *) elem; \
-		if (Xe->q_next == Xe) \
-			head = NULL; \
-		(Xe->q_prev->q_next = Xe->q_next)->q_prev = Xe->q_prev; \
-		if (elem == head) \
-			head = (type)Xe->q_next; \
-	}
-	
+#define DELQ(elem, head, type)  { \
+                register qelem_t *Xe = (qelem_t *) elem; \
+                if (Xe->q_next == Xe) \
+                        head = NULL; \
+                (Xe->q_prev->q_next = Xe->q_next)->q_prev = Xe->q_prev; \
+                if (elem == head) \
+                        head = (type)Xe->q_next; \
+        }
+        
 /*! Get next entry in list
  * @param[in]  type  Type of element
  * @param[in]  el    Return next element after elem.
@@ -127,7 +127,7 @@ typedef struct _qelem_t {
  *  struct a *list; # existing element (or list)
  *  NEXTQ(struct a*, el);
  */
-#define NEXTQ(type, elem)	((type)((elem)?((qelem_t *)(elem))->q_next:NULL))
-#define PREVQ(type, elem)	((type)((elem)?((qelem_t *)(elem))->q_prev:NULL))
+#define NEXTQ(type, elem)       ((type)((elem)?((qelem_t *)(elem))->q_next:NULL))
+#define PREVQ(type, elem)       ((type)((elem)?((qelem_t *)(elem))->q_prev:NULL))
 
-#endif	/* _CLIXON_QUEUE_H_ */
+#endif  /* _CLIXON_QUEUE_H_ */

@@ -49,18 +49,18 @@ module clixon-example {
     prefix ex;
     /* Generic config data */
     container table{
-	list parameter{
-	    key name;
-	    leaf name{
-		type string;
-	    }
-	    leaf value{
-		type string;
-	    }
-	    leaf-list array1{
-	      type string;
+        list parameter{
+            key name;
+            leaf name{
+                type string;
             }
-	}
+            leaf value{
+                type string;
+            }
+            leaf-list array1{
+              type string;
+            }
+        }
     }
 }
 EOF
@@ -75,8 +75,8 @@ module clixon-augment {
     }
     augment "/ex:table/ex:parameter" {
         leaf-list array2{
-	      type string;
-        }	        
+              type string;
+        }               
     }
 }
 EOF
@@ -100,13 +100,13 @@ discard("Discard edits (rollback 0)"), discard_changes();
 show("Show a particular state of the system"){
     xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
     compare("Compare candidate and running databases"), compare_dbs((int32)0);{
-    		     xml("Show comparison in xml"), compare_dbs((int32)0);
-		     text("Show comparison in text"), compare_dbs((int32)1);
+                     xml("Show comparison in xml"), compare_dbs((int32)0);
+                     text("Show comparison in text"), compare_dbs((int32)1);
     }
     configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
-	    cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
-	    xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false);
-	    text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", true, false);
+            cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
+            xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false);
+            text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", true, false);
   }
 }
 save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename", "xml"){
@@ -116,10 +116,10 @@ save("Save candidate configuration to XML file") <filename:string>("Filename (lo
     text("Save configuration as TEXT"), save_config_file("candidate","filename", "text");
 }
 load("Load configuration from XML file") <filename:string>("Filename (local filename)"),load_config_file("filename", "replace");{
-	cli("Replace candidate with file containing CLI commands"), load_config_file("filename", "replace", "cli");
-	xml("Replace candidate with file containing XML"), load_config_file("filename", "replace", "xml");
-	json("Replace candidate with file containing JSON"), load_config_file("filename", "replace", "json");
-	text("Replace candidate with file containing TEXT"), load_config_file("filename", "replace", "text");
+        cli("Replace candidate with file containing CLI commands"), load_config_file("filename", "replace", "cli");
+        xml("Replace candidate with file containing XML"), load_config_file("filename", "replace", "xml");
+        json("Replace candidate with file containing JSON"), load_config_file("filename", "replace", "json");
+        text("Replace candidate with file containing TEXT"), load_config_file("filename", "replace", "text");
 }
 
 EOF
@@ -129,7 +129,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -z -f $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
@@ -162,8 +162,8 @@ for format in cli text xml json; do
     expectpart "$($clixon_cli -1 -f $cfg -l o load $formatdir/config.$format $format)" 0 "^$"
 
     if [ $format != json ]; then # XXX JSON identity problem
-	new "cli check compare $format"
-	expectpart "$($clixon_cli -1 -f $cfg -l o show compare xml)" 0 "^$" --not-- "i" # interface?
+        new "cli check compare $format"
+        expectpart "$($clixon_cli -1 -f $cfg -l o show compare xml)" 0 "^$" --not-- "i" # interface?
     fi
 
 done
@@ -173,7 +173,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

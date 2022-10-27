@@ -37,7 +37,6 @@ datarootdir	= @datarootdir@
 docdir		= @docdir@
 pdflatex	= @PDFLATEX@
 
-
 SUBDIRS = 
 
 .PHONY: clean all doc $(SUBDIRS)

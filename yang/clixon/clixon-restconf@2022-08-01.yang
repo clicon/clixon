@@ -4,17 +4,17 @@ module clixon-restconf {
     prefix "clrc";
 
     import ietf-inet-types {
-	prefix inet;
+        prefix inet;
     }
 
     organization
-	"Clixon";
+        "Clixon";
 
     contact
-	"Olof Hagsand <olof@hagsand.se>";
+        "Olof Hagsand <olof@hagsand.se>";
 
     description
-	"This YANG module provides a data-model for the Clixon RESTCONF daemon.
+        "This YANG module provides a data-model for the Clixon RESTCONF daemon.
          There is also clixon-config also including some restconf options.
          The separation is not always logical but there are some reasons for the split:
          1. Some data (ie 'socket') is structurally complex and cannot be expressed as a 
@@ -28,40 +28,40 @@ module clixon-restconf {
        Some of this spec if in-lined from ietf-restconf-server@2022-05-24.yang 
        ";
     revision 2022-08-01 {
-	description
-	    "Added socket/call-home container
+        description
+            "Added socket/call-home container
              Released in Clixon 5.9";
     }
     revision 2022-03-21 {
-	description
-	    "Added feature:
+        description
+            "Added feature:
                     http-data - Limited static http server
              Released in Clixon 5.7";
     }
     revision 2021-05-20 {
-	description
-	    "Added log-destination for restconf
+        description
+            "Added log-destination for restconf
              Released in Clixon 5.2";
     }
     revision 2021-03-15 {
-	description
-	    "make authentication-type none a feature
-	     Added flag to enable core dumps
+        description
+            "make authentication-type none a feature
+             Added flag to enable core dumps
              Released in Clixon 5.1";
     }
     revision 2020-12-30 {
-	description
-	    "Added: debug field
+        description
+            "Added: debug field
              Added 'none' as default value for auth-type
              Changed http-auth-type enum from 'password' to 'user'";
     }
     revision 2020-10-30 {
-	description
-	    "Initial release";
+        description
+            "Initial release";
     }
     feature fcgi {
-	description
-	    "This feature indicates that the restconf server supports the fast-cgi reverse
+        description
+            "This feature indicates that the restconf server supports the fast-cgi reverse
              proxy solution.
              That is, a reverse proxy is the HTTP front-end and the restconf daemon listens
              to a fcgi socket.
@@ -70,12 +70,12 @@ module clixon-restconf {
 
     feature allow-auth-none {
         description
-	  "This feature allows the use of authentication-type none.";
+          "This feature allows the use of authentication-type none.";
     }
 
     feature http-data {
-	description
-	    "This feature allows for a very limited static http-data function as
+        description
+            "This feature allows for a very limited static http-data function as
              addition to RESTCONF.
              It is limited to:
              1. path: Local static files within WWW_DATA_ROOT
@@ -87,98 +87,98 @@ module clixon-restconf {
              7. HTTP/1+2, TLS as restconf";
     }
     typedef http-auth-type {
-	type enumeration {
-	    enum none {
-		if-feature "allow-auth-none";
-		description
-		    "Incoming message are set to authenticated by default. No ca-auth callback is called,
+        type enumeration {
+            enum none {
+                if-feature "allow-auth-none";
+                description
+                    "Incoming message are set to authenticated by default. No ca-auth callback is called,
                      Authenticated user is set to special user 'none'.
                      Typically assumes NACM is not enabled.";
-	    }
-	    enum client-certificate {
-		description
-		    "TLS client certificate validation is made on each incoming message. If it passes
+            }
+            enum client-certificate {
+                description
+                    "TLS client certificate validation is made on each incoming message. If it passes
                     the authenticated user is extracted from the SSL_CN parameter
                      The ca-auth callback can be used to revise this behavior.";
-	    }
-	    enum user {
-		description
-		    "User-defined authentication as defined by the ca-auth callback.
+            }
+            enum user {
+                description
+                    "User-defined authentication as defined by the ca-auth callback.
                      One example is some form of password authentication, such as basic auth.";
-	    }
-	}
-	description
-	    "Enumeration of HTTP authorization types.";
+            }
+        }
+        description
+            "Enumeration of HTTP authorization types.";
     }
     typedef log-destination {
-	type enumeration {
-	    enum syslog {
-		description
-		"Log to syslog with:
+        type enumeration {
+            enum syslog {
+                description
+                "Log to syslog with:
                     ident: clixon_restconf and PID
                     facility: LOG_USER";
-	    }
-	    enum file {
-		description
-		"Log to generated file at /var/log/clixon_restconf.log";
-	    }
-	}
+            }
+            enum file {
+                description
+                "Log to generated file at /var/log/clixon_restconf.log";
+            }
+        }
     }
     grouping clixon-restconf{
-	description
-	    "HTTP RESTCONF configuration.";
-	leaf enable {
-	    type boolean;
-	    default "false";
-	    description
-		"Enables RESTCONF functionality.
+        description
+            "HTTP RESTCONF configuration.";
+        leaf enable {
+            type boolean;
+            default "false";
+            description
+                "Enables RESTCONF functionality.
                  Note that starting/stopping of a restconf daemon is different from it being
                  enabled or not.
                  For example, if the restconf daemon is under systemd management, the restconf
                  daemon will only start if enable=true.";
-	}
-	leaf enable-http-data {
-	    type boolean;
-	    default "false";
-	    if-feature "http-data";
-	    description
-		"Enables Limited static http-data functionality.
+        }
+        leaf enable-http-data {
+            type boolean;
+            default "false";
+            if-feature "http-data";
+            description
+                "Enables Limited static http-data functionality.
                  enable must be true for this option to be meaningful.";
-	}
-	leaf auth-type {
-	    type http-auth-type;
-	    description
-		"The authentication type.
+        }
+        leaf auth-type {
+            type http-auth-type;
+            description
+                "The authentication type.
                  Note client-certificate applies only if ssl-enable is true and socket has ssl";
-	    default user;
-	}
-	leaf debug {
-	    description
-		"Set debug level of restconf daemon.
+            default user;
+        }
+        leaf debug {
+            description
+                "Set debug level of restconf daemon.
                  0 is no debug, 1 is debugging, more is detailed debug.
                  Debug logs will be directed to log-destination with LOG_DEBUG level (for syslog)";
-	    type uint32;
-	    default 0;
-	}
-	leaf log-destination {
-	    description
-		"Log destination. 
+            type uint32;
+            default 0;
+        }
+        leaf log-destination {
+            description
+                "Log destination. 
                  If debug is not set, only notice, error and warning will be logged";
-	    type log-destination;
-	    default syslog;
-	}
-	leaf enable-core-dump {
-	    description
-	        "enable core dumps.
+            type log-destination;
+            default syslog;
+        }
+        leaf enable-core-dump {
+            description
+                "enable core dumps.
                  this is a no-op on systems that don't support it.";
-	    type boolean;
-	    default false;
-	}
-	leaf pretty {
-	    type boolean;
-	    default true;
-	    description
-		"Restconf return value pretty print.
+            type boolean;
+            default false;
+        }
+        leaf pretty {
+            type boolean;
+            default true;
+            description
+                "Restconf return value pretty print.
                  Restconf clients may add HTTP header:
                       Accept: application/yang-data+json, or
                       Accept: application/yang-data+xml
@@ -187,141 +187,141 @@ module clixon-restconf {
                  Setting this value to false makes restconf return not pretty-printed
                  which may be desirable for performance or tests
                  This replaces the CLICON_RESTCONF_PRETTY option in clixon-config.yang";
-	}
-	/* From this point only specific options
-	 * First fcgi-specific options
-	 */
-	leaf fcgi-socket {
-	    if-feature fcgi; /* Set by default by fcgi clixon_restconf daemon */
-	    type string;
-	    default "/www-data/fastcgi_restconf.sock";
-	    description
-		"Path to FastCGI unix socket. Should be specified in webserver
-         	 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
+        }
+        /* From this point only specific options
+         * First fcgi-specific options
+         */
+        leaf fcgi-socket {
+            if-feature fcgi; /* Set by default by fcgi clixon_restconf daemon */
+            type string;
+            default "/www-data/fastcgi_restconf.sock";
+            description
+                "Path to FastCGI unix socket. Should be specified in webserver
+                 Eg in nginx: fastcgi_pass unix:/www-data/clicon_restconf.sock
                  Only if with-restconf=fcgi, NOT native
                  This replaces CLICON_RESTCONF_PATH option in clixon-config.yang";
-	}
-	/* Second, local native options */
-	leaf server-cert-path {
-	    type string;
-	    description
-		"Path to server certificate file.
+        }
+        /* Second, local native options */
+        leaf server-cert-path {
+            type string;
+            description
+                "Path to server certificate file.
                  Note only applies if socket has ssl enabled";
-	}
-	leaf server-key-path {
-	    type string;
-	    description
-		"Path to server key file
+        }
+        leaf server-key-path {
+            type string;
+            description
+                "Path to server key file
                  Note only applies if socket has ssl enabled";
-	}
-	leaf server-ca-cert-path {
-	    type string;
-	    description
-		"Path to server CA cert file
-	         Note only applies if socket has ssl enabled";
-	}
-	list socket {
-	    description
-		"List of server sockets that the restconf daemon listens to.
+        }
+        leaf server-ca-cert-path {
+            type string;
+            description
+                "Path to server CA cert file
+                 Note only applies if socket has ssl enabled";
+        }
+        list socket {
+            description
+                "List of server sockets that the restconf daemon listens to.
                  Not fcgi";
-	    key "namespace address port";
-	    leaf namespace {
-		type string;
-		description
-		    "Network namespace.
+            key "namespace address port";
+            leaf namespace {
+                type string;
+                description
+                    "Network namespace.
                      On platforms where namespaces are not suppported, 'default'
                      Default value can be changed by RESTCONF_NETNS_DEFAULT";
-	    }
-	    leaf description{
-		type string;
-	    }
-	    leaf address {
-		type inet:ip-address;
-		description "IP address to bind to";
-	    }
-	    leaf port {
-		type inet:port-number;
-		description "TCP port to bind to";
-	    }
-	    leaf ssl {
-		type boolean;
-		default true;
-		description "Enable for HTTPS otherwise HTTP protocol";
-	    }
-	    /* Some of this in-lined from ietf-restconf-server@2022-05-24.yang */
-	    container call-home {
-		presence
-		    "Identifies that the server has been configured to initiate
+            }
+            leaf description{
+                type string;
+            }
+            leaf address {
+                type inet:ip-address;
+                description "IP address to bind to";
+            }
+            leaf port {
+                type inet:port-number;
+                description "TCP port to bind to";
+            }
+            leaf ssl {
+                type boolean;
+                default true;
+                description "Enable for HTTPS otherwise HTTP protocol";
+            }
+            /* Some of this in-lined from ietf-restconf-server@2022-05-24.yang */
+            container call-home {
+                presence
+                    "Identifies that the server has been configured to initiate
                      call home connections. 
-		     If set, address/port refers to destination.";
-		description
-		    "See RFC 8071 NETCONF Call Home and RESTCONF Call Home";
-		container connection-type {
-		    description
-			"Indicates the RESTCONF server's preference for how the
+                     If set, address/port refers to destination.";
+                description
+                    "See RFC 8071 NETCONF Call Home and RESTCONF Call Home";
+                container connection-type {
+                    description
+                        "Indicates the RESTCONF server's preference for how the
                          RESTCONF connection is maintained.";
-		    choice connection-type {
-			mandatory true;
-			description
-			    "Selects between available connection types.";
-			case persistent-connection {
-			    container persistent {
- 				presence
-				    "Indicates that a persistent connection is to be
+                    choice connection-type {
+                        mandatory true;
+                        description
+                            "Selects between available connection types.";
+                        case persistent-connection {
+                            container persistent {
+                                presence
+                                    "Indicates that a persistent connection is to be
                                      maintained.";
-			    }
-			}
-			case periodic-connection {
-			    container periodic {
-				presence
-				    "Indicates periodic connects";
-				leaf period {
-				    type uint32;     /* XXX: note uit16 in std */
-				    units "seconds"; /* XXX: note minutes in draft */
-				    default "3600";  /* XXX: same: 60min in draft */
-				    description
-					"Duration of time between periodic connections.";
-				}
-				leaf idle-timeout {
-				    type uint16;
-				    units "seconds";
-				    default "120"; // two minutes
-				    description
-					"Specifies the maximum number of seconds that
+                            }
+                        }
+                        case periodic-connection {
+                            container periodic {
+                                presence
+                                    "Indicates periodic connects";
+                                leaf period {
+                                    type uint32;     /* XXX: note uit16 in std */
+                                    units "seconds"; /* XXX: note minutes in draft */
+                                    default "3600";  /* XXX: same: 60min in draft */
+                                    description
+                                        "Duration of time between periodic connections.";
+                                }
+                                leaf idle-timeout {
+                                    type uint16;
+                                    units "seconds";
+                                    default "120"; // two minutes
+                                    description
+                                        "Specifies the maximum number of seconds that
                                          the underlying TCP session may remain idle.
                                          A TCP session will be dropped if it is idle
                                          for an interval longer than this number of
                                          seconds.  If set to zero, then the server
                                          will never drop a session because it is idle.";
                 }
-			    }
-			}
-		    }
-		}
-		container reconnect-strategy {
-		    leaf max-attempts {
-			type uint8 {
-			    range "1..max";
-			}
-			default "3";
-			description
-			    "Specifies the number times the RESTCONF server tries
+                            }
+                        }
+                    }
+                }
+                container reconnect-strategy {
+                    leaf max-attempts {
+                        type uint8 {
+                            range "1..max";
+                        }
+                        default "3";
+                        description
+                            "Specifies the number times the RESTCONF server tries
                              to connect to a specific endpoint before moving on to
                              the next endpoint in the list (round robin).";
-		    }
-		}
-	    }
-	}
+                    }
+                }
+            }
+        }
     }
     container restconf {
-	description
-	    "This presence is strictly not necessary since the enable flag
+        description
+            "This presence is strictly not necessary since the enable flag
              in clixon-restconf is the flag bearing the actual semantics.
              However, removing the presence leads to default config in all
              clixon installations, even those which do not use backend-started restconf.
              One could see this as mostly cosmetically annoying.
              Alternative would be to make the inclusion of this yang conditional.";
-	presence "Enables RESTCONF";
-	uses clixon-restconf;
+        presence "Enables RESTCONF";
+        uses clixon-restconf;
     }
 }

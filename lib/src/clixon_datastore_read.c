@@ -92,7 +92,7 @@
  */
 static int
 singleconfigroot(cxobj  *xt, 
-		 cxobj **xp)
+                 cxobj **xp)
 {
     int    retval = -1;
     cxobj *x = NULL;
@@ -101,25 +101,25 @@ singleconfigroot(cxobj  *xt,
     /* There should only be one element and called config */
     x = NULL;
     while ((x = xml_child_each(xt, x,  CX_ELMNT)) != NULL){
-	i++;
-	if (strcmp(xml_name(x), DATASTORE_TOP_SYMBOL)){
-	    clicon_err(OE_DB, ENOENT, "Wrong top-element %s expected %s", 
-		       xml_name(x), DATASTORE_TOP_SYMBOL);
-	    goto done;
-	}
+        i++;
+        if (strcmp(xml_name(x), DATASTORE_TOP_SYMBOL)){
+            clicon_err(OE_DB, ENOENT, "Wrong top-element %s expected %s", 
+                       xml_name(x), DATASTORE_TOP_SYMBOL);
+            goto done;
+        }
     }
     if (i != 1){
-	clicon_err(OE_DB, ENOENT, "Top-element is not unique, expecting single config");
-	goto done;
+        clicon_err(OE_DB, ENOENT, "Top-element is not unique, expecting single config");
+        goto done;
     }
     x = NULL;
     while ((x = xml_child_each(xt, x,  CX_ELMNT)) != NULL){
-	if (xml_rm(x) < 0)
-	    goto done;
-	if (xml_free(xt) < 0)
-	    goto done;
-	*xp = x;
-	break;
+        if (xml_rm(x) < 0)
+            goto done;
+        if (xml_free(xt) < 0)
+            goto done;
+        *xp = x;
+        break;
     }
     retval = 0;
  done:
@@ -132,9 +132,9 @@ singleconfigroot(cxobj  *xt,
  */
 static int
 xml_copy_bottom_recurse(cxobj  *x0t, 
-			cxobj  *x0,
-			cxobj  *x1t,
-			cxobj **x1pp)
+                        cxobj  *x0,
+                        cxobj  *x1t,
+                        cxobj **x1pp)
 {
     int        retval = -1;
     cxobj     *x0p = NULL;
@@ -150,52 +150,52 @@ xml_copy_bottom_recurse(cxobj  *x0t,
     char      *keyname;
 
     if (x0 == x0t){
-	*x1pp = x1t;
-	goto ok;
+        *x1pp = x1t;
+        goto ok;
     }
     if ((x0p = xml_parent(x0)) == NULL){
-	clicon_err(OE_XML, EFAULT, "Reached top of tree");
-	goto done;
+        clicon_err(OE_XML, EFAULT, "Reached top of tree");
+        goto done;
     }
     if (xml_copy_bottom_recurse(x0t, x0p, x1t, &x1p) < 0)
-	goto done;
+        goto done;
     y = xml_spec(x0);
     /* Look if it exists */
     if (match_base_child(x1p, x0, y, &x1) < 0)
-	goto done;
+        goto done;
     if (x1 == NULL){ /* If not, create it and copy it one level only */
-	if ((x1 = xml_new(xml_name(x0), x1p, CX_ELMNT)) == NULL)
-	    goto done;
-	if (xml_copy_one(x0, x1) < 0)
-	    goto done;
-	/* Copy all attributes */
-	x0a = NULL;
-	while ((x0a = xml_child_each(x0, x0a, -1)) != NULL) {
-	    /* Assume ordered, skip after attributes */
-	    if (xml_type(x0a) != CX_ATTR)
-		break;
-	    if ((x1a = xml_new(xml_name(x0a), x1, CX_ATTR)) == NULL)
-		goto done;
-	    if (xml_copy_one(x0a, x1a) < 0)
-		goto done;
-	}
-	/* Key nodes in lists are copied */
-	if (y && yang_keyword_get(y) == Y_LIST){
-	    /* Loop over all key variables */
-	    cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
-	    cvi = NULL;
-	    /* Iterate over individual keys  */
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		keyname = cv_string_get(cvi);	    
-		if ((x0k = xml_find_type(x0, NULL, keyname, CX_ELMNT)) != NULL){
-		    if ((x1k = xml_new(keyname, x1, CX_ELMNT)) == NULL)
-			goto done;
-		    if (xml_copy(x0k, x1k) < 0) 
-			goto done;
-		}
+        if ((x1 = xml_new(xml_name(x0), x1p, CX_ELMNT)) == NULL)
+            goto done;
+        if (xml_copy_one(x0, x1) < 0)
+            goto done;
+        /* Copy all attributes */
+        x0a = NULL;
+        while ((x0a = xml_child_each(x0, x0a, -1)) != NULL) {
+            /* Assume ordered, skip after attributes */
+            if (xml_type(x0a) != CX_ATTR)
+                break;
+            if ((x1a = xml_new(xml_name(x0a), x1, CX_ATTR)) == NULL)
+                goto done;
+            if (xml_copy_one(x0a, x1a) < 0)
+                goto done;
+        }
+        /* Key nodes in lists are copied */
+        if (y && yang_keyword_get(y) == Y_LIST){
+            /* Loop over all key variables */
+            cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
+            cvi = NULL;
+            /* Iterate over individual keys  */
+            while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+                keyname = cv_string_get(cvi);       
+                if ((x0k = xml_find_type(x0, NULL, keyname, CX_ELMNT)) != NULL){
+                    if ((x1k = xml_new(keyname, x1, CX_ELMNT)) == NULL)
+                        goto done;
+                    if (xml_copy(x0k, x1k) < 0) 
+                        goto done;
+                }
 
-	    }
-	}
+            }
+        }
     }
     *x1pp = x1;
  ok:
@@ -210,8 +210,8 @@ xml_copy_bottom_recurse(cxobj  *x0t,
  */
 static int
 xml_copy_from_bottom(cxobj  *x0t, 
-		     cxobj  *x0,
-		     cxobj  *x1t)
+                     cxobj  *x0,
+                     cxobj  *x1t)
 {
     int        retval = -1;
     cxobj     *x1p    = NULL;
@@ -220,20 +220,20 @@ xml_copy_from_bottom(cxobj  *x0t,
     yang_stmt *y      = NULL;
     
     if (x0 == x0t)
-	goto ok;
+        goto ok;
     x0p = xml_parent(x0);
     if (xml_copy_bottom_recurse(x0t, x0p, x1t, &x1p) < 0)
-	goto done;
+        goto done;
     if ((y = xml_spec(x0)) != NULL){
-	/* Look if it exists */
-	if (match_base_child(x1p, x0, y, &x1) < 0)
-	    goto done;
+        /* Look if it exists */
+        if (match_base_child(x1p, x0, y, &x1) < 0)
+            goto done;
     }
     if (x1 == NULL){ /* If not, create it and copy complete tree */
-	if ((x1 = xml_new(xml_name(x0), x1p, CX_ELMNT)) == NULL)
-	    goto done;
-	if (xml_copy(x0, x1) < 0)
-	    goto done;
+        if ((x1 = xml_new(xml_name(x0), x1p, CX_ELMNT)) == NULL)
+            goto done;
+        if (xml_copy(x0, x1) < 0)
+            goto done;
     }
  ok:
     retval = 0;
@@ -270,9 +270,9 @@ xml_copy_from_bottom(cxobj  *x0t,
  */
 static int
 text_read_modstate(clicon_handle       h,
-		   yang_stmt          *yspec,
-		   cxobj              *xt,
-		   modstate_diff_t    *msdiff)
+                   yang_stmt          *yspec,
+                   cxobj              *xt,
+                   modstate_diff_t    *msdiff)
 {
     int    retval = -1;
     cxobj *xmodfile = NULL;   /* modstate of system (loaded yang modules in runtime) */
@@ -290,102 +290,102 @@ text_read_modstate(clicon_handle       h,
 
     /* Read module-state as computed at startup, see startup_module_state() */
     if ((xmodcache = clicon_modst_cache_get(h, 1)) != NULL)
-	xmodsystem = xml_find_type(xmodcache, NULL, "module-set", CX_ELMNT);
+        xmodsystem = xml_find_type(xmodcache, NULL, "module-set", CX_ELMNT);
 
     xyanglib = xml_find_type(xt, NULL, "yang-library", CX_ELMNT);
     if ((xmodfile = xpath_first(xt, NULL, "yang-library/module-set")) != NULL)
-	;
+        ;
     else if ((xmodfile = xml_find_type(xt, NULL, "modules-state", CX_ELMNT)) != NULL)
-	rfc7895++;
+        rfc7895++;
     if (xmodfile && xmodsystem && msdiff){
-	msdiff->md_status = 1;  /* There is module state in the file */
-	/* Create modstate tree for this file 
-	 * Note, module-set is not a top-level symbol, so cannot bind using module-set
-	 */
-	if (clixon_xml_parse_string("<module-set xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>",
-				    YB_NONE, yspec, &msdiff->md_diff, NULL) < 0)
-	    goto done;
-	if (xml_rootchild(msdiff->md_diff, 0, &msdiff->md_diff) < 0) 
-	    goto done;
+        msdiff->md_status = 1;  /* There is module state in the file */
+        /* Create modstate tree for this file 
+         * Note, module-set is not a top-level symbol, so cannot bind using module-set
+         */
+        if (clixon_xml_parse_string("<module-set xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>",
+                                    YB_NONE, yspec, &msdiff->md_diff, NULL) < 0)
+            goto done;
+        if (xml_rootchild(msdiff->md_diff, 0, &msdiff->md_diff) < 0) 
+            goto done;
 
-	if (!rfc7895){
-	    if ((xf = xpath_first(xt, NULL, "yang-library/content-id")) != NULL){
-		if (xml_body(xf) && (msdiff->md_content_id = strdup(xml_body(xf))) == NULL){
-		    clicon_err(OE_UNIX, errno, "strdup");
-		    goto done;
-		}
-	    }
-	}
-	/* 3) For each module state m in the file */
-	xf = NULL;
-	while ((xf = xml_child_each(xmodfile, xf, CX_ELMNT)) != NULL) {
-	    if (rfc7895){
-		if (strcmp(xml_name(xf), "module-set-id") == 0){
-		    if (xml_body(xf) && (msdiff->md_content_id = strdup(xml_body(xf))) == NULL){
-			clicon_err(OE_UNIX, errno, "strdup");
-			goto done;
-		    }
-		    continue;
-		}
-	    }
-	    if (strcmp(xml_name(xf), "module"))
-		continue; /* ignore other tags, such as module-set-id */
-	    if ((name = xml_find_body(xf, "name")) == NULL)
-		continue;
-	    /* 3a) There is no such module in the system */
-	    if ((xs = xpath_first(xmodsystem, NULL, "module[name=\"%s\"]", name)) == NULL){
-		if ((xf2 = xml_dup(xf)) == NULL) 	  /* Make a copy of this modstate */
-		    goto done;
-		if (xml_addsub(msdiff->md_diff, xf2) < 0)   /* Add it to modstatediff */
-		    goto done;
-		xml_flag_set(xf2, XML_FLAG_DEL);
-		continue;
-	    }
-	    /* These two shouldnt happen since revision is key, just ignore */
-	    if ((frev = xml_find_body(xf, "revision")) == NULL)
-		continue;
-	    if ((srev = xml_find_body(xs, "revision")) == NULL)
-		continue;
-	    if (strcmp(frev, srev) != 0){
-		/* 3c) File module-state does not match system */
-		if ((xf2 = xml_dup(xf)) == NULL)
-		    goto done;
-		if (xml_addsub(msdiff->md_diff, xf2) < 0)
-		    goto done;
-		xml_flag_set(xf2, XML_FLAG_CHANGE);
-	    }
-	}
-	/* 4) For each module state s in the system (xmodsystem) */
-	xs = NULL;
-	while ((xs = xml_child_each(xmodsystem, xs, CX_ELMNT)) != NULL) {
-	    if (strcmp(xml_name(xs), "module"))
-		continue; /* ignore other tags, such as module-set-id */
-	    if ((name = xml_find_body(xs, "name")) == NULL)
-		continue;
-	    /* 4a) If there is no such module in the file -> add to list mark as ADD */	    
-	    if ((xf = xpath_first(xmodfile, NULL, "module[name=\"%s\"]", name)) == NULL){
-		if ((xs2 = xml_dup(xs)) == NULL) 	  /* Make a copy of this modstate */
-		    goto done;
-		if (xml_addsub(msdiff->md_diff, xs2) < 0)   /* Add it to modstatediff */
-		    goto done;
-		xml_flag_set(xs2, XML_FLAG_ADD);
-		continue;
-	    }
-	}
+        if (!rfc7895){
+            if ((xf = xpath_first(xt, NULL, "yang-library/content-id")) != NULL){
+                if (xml_body(xf) && (msdiff->md_content_id = strdup(xml_body(xf))) == NULL){
+                    clicon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
+            }
+        }
+        /* 3) For each module state m in the file */
+        xf = NULL;
+        while ((xf = xml_child_each(xmodfile, xf, CX_ELMNT)) != NULL) {
+            if (rfc7895){
+                if (strcmp(xml_name(xf), "module-set-id") == 0){
+                    if (xml_body(xf) && (msdiff->md_content_id = strdup(xml_body(xf))) == NULL){
+                        clicon_err(OE_UNIX, errno, "strdup");
+                        goto done;
+                    }
+                    continue;
+                }
+            }
+            if (strcmp(xml_name(xf), "module"))
+                continue; /* ignore other tags, such as module-set-id */
+            if ((name = xml_find_body(xf, "name")) == NULL)
+                continue;
+            /* 3a) There is no such module in the system */
+            if ((xs = xpath_first(xmodsystem, NULL, "module[name=\"%s\"]", name)) == NULL){
+                if ((xf2 = xml_dup(xf)) == NULL)          /* Make a copy of this modstate */
+                    goto done;
+                if (xml_addsub(msdiff->md_diff, xf2) < 0)   /* Add it to modstatediff */
+                    goto done;
+                xml_flag_set(xf2, XML_FLAG_DEL);
+                continue;
+            }
+            /* These two shouldnt happen since revision is key, just ignore */
+            if ((frev = xml_find_body(xf, "revision")) == NULL)
+                continue;
+            if ((srev = xml_find_body(xs, "revision")) == NULL)
+                continue;
+            if (strcmp(frev, srev) != 0){
+                /* 3c) File module-state does not match system */
+                if ((xf2 = xml_dup(xf)) == NULL)
+                    goto done;
+                if (xml_addsub(msdiff->md_diff, xf2) < 0)
+                    goto done;
+                xml_flag_set(xf2, XML_FLAG_CHANGE);
+            }
+        }
+        /* 4) For each module state s in the system (xmodsystem) */
+        xs = NULL;
+        while ((xs = xml_child_each(xmodsystem, xs, CX_ELMNT)) != NULL) {
+            if (strcmp(xml_name(xs), "module"))
+                continue; /* ignore other tags, such as module-set-id */
+            if ((name = xml_find_body(xs, "name")) == NULL)
+                continue;
+            /* 4a) If there is no such module in the file -> add to list mark as ADD */     
+            if ((xf = xpath_first(xmodfile, NULL, "module[name=\"%s\"]", name)) == NULL){
+                if ((xs2 = xml_dup(xs)) == NULL)          /* Make a copy of this modstate */
+                    goto done;
+                if (xml_addsub(msdiff->md_diff, xs2) < 0)   /* Add it to modstatediff */
+                    goto done;
+                xml_flag_set(xs2, XML_FLAG_ADD);
+                continue;
+            }
+        }
     }
     /* The module-state is removed from the input XML tree. This is done
      * in all cases, whether CLICON_XMLDB_MODSTATE is on or not.
      * Clixon systems with CLICON_XMLDB_MODSTATE disabled ignores it
      */
     if (rfc7895){
-	if (xmodfile){
-	    if (xml_purge(xmodfile) < 0)
-		goto done;
-	}
+        if (xmodfile){
+            if (xml_purge(xmodfile) < 0)
+                goto done;
+        }
     }
     else if (xyanglib)
-	if (xml_purge(xyanglib) < 0)
-		goto done;
+        if (xml_purge(xyanglib) < 0)
+                goto done;
     retval = 0;
  done:
     return retval;
@@ -399,7 +399,7 @@ text_read_modstate(clicon_handle       h,
  */
 static int
 disable_nacm_on_empty(cxobj     *xt,
-		      yang_stmt *yspec)
+                      yang_stmt *yspec)
 {
     int        retval = -1;
     yang_stmt *ymod;
@@ -410,27 +410,27 @@ disable_nacm_on_empty(cxobj     *xt,
     cxobj     *xb;
 
     if ((ymod = yang_find(yspec, Y_MODULE, "ietf-netconf-acm")) == NULL)
-	goto ok;
+        goto ok;
     if ((xnacm = xpath_first(xt, NULL, "nacm")) == NULL)
-	goto ok;
+        goto ok;
     /* Go through all children and check all are defaults, otherwise quit */
     x = NULL;
     while ((x = xml_child_each(xnacm, x, CX_ELMNT)) != NULL) {
-	if (!xml_flag(x, XML_FLAG_DEFAULT))
-	    break;
+        if (!xml_flag(x, XML_FLAG_DEFAULT))
+            break;
     }
     if (x != NULL)
-	goto ok; /* not empty, at least one non-default child of nacm */
+        goto ok; /* not empty, at least one non-default child of nacm */
     if (clixon_xml_find_instance_id(xt, yspec, &vec, &len, "/nacm:nacm/nacm:enable-nacm") < 1)
-	goto done;
+        goto done;
     if (len){
-	if ((xb = xml_body_get(vec[0])) == NULL)
-	    goto done; 
-	if (xml_value_set(xb, "false") < 0)
-	    goto done;
+        if ((xb = xml_body_get(vec[0])) == NULL)
+            goto done; 
+        if (xml_value_set(xb, "false") < 0)
+            goto done;
     }
     if (vec)
-	free(vec);
+        free(vec);
  ok:
     retval = 0;
  done:
@@ -455,13 +455,13 @@ disable_nacm_on_empty(cxobj     *xt,
  */
 int
 xmldb_readfile(clicon_handle    h,
-	       const char      *db,
-	       yang_bind        yb,
-	       yang_stmt       *yspec,
-	       cxobj          **xp,
-	       db_elmnt        *de,
-	       modstate_diff_t *msdiff0,
-    	       cxobj          **xerr)
+               const char      *db,
+               yang_bind        yb,
+               yang_stmt       *yspec,
+               cxobj          **xp,
+               db_elmnt        *de,
+               modstate_diff_t *msdiff0,
+               cxobj          **xerr)
 {
     int              retval = -1;
     cxobj           *x0 = NULL;
@@ -481,23 +481,23 @@ xmldb_readfile(clicon_handle    h,
     yang_stmt       *yspec1 = NULL;
 
     if (yb != YB_MODULE && yb != YB_NONE){
-	clicon_err(OE_XML, EINVAL, "yb is %d but should be module or none", yb);
-	goto done;
+        clicon_err(OE_XML, EINVAL, "yb is %d but should be module or none", yb);
+        goto done;
     }
     if (xmldb_db2file(h, db, &dbfile) < 0)
-	goto done;
+        goto done;
     if (dbfile==NULL){
-	clicon_err(OE_XML, 0, "dbfile NULL");
-	goto done;
+        clicon_err(OE_XML, 0, "dbfile NULL");
+        goto done;
     }
     if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
-	clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
-	goto done;
+        clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
+        goto done;
     }
     /* Parse file into internal XML tree from different formats */
     if ((fp = fopen(dbfile, "r")) == NULL) {
-	clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
-	goto done;
+        clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
+        goto done;
     }    
     /* Read whole datastore file on the form:
      * <config>
@@ -506,147 +506,147 @@ xmldb_readfile(clicon_handle    h,
      * </config>
      * ret == 0 should not happen with YB_NONE. Binding is done later */
     if (strcmp(format, "json")==0){
-	if (clixon_json_parse_file(fp, 1, YB_NONE, yspec, &x0, xerr) < 0) 
-	    goto done;
+        if (clixon_json_parse_file(fp, 1, YB_NONE, yspec, &x0, xerr) < 0) 
+            goto done;
     }
     else {
-	if (clixon_xml_parse_file(fp, YB_NONE, yspec, &x0, xerr) < 0){
-	    goto done;
-	}
+        if (clixon_xml_parse_file(fp, YB_NONE, yspec, &x0, xerr) < 0){
+            goto done;
+        }
     }
     /* Always assert a top-level called "config". 
      * To ensure that, deal with two cases:
      * 1. File is empty <top/> -> rename top-level to "config" 
      */
     if (xml_child_nr(x0) == 0){ 
-	if (xml_name_set(x0, DATASTORE_TOP_SYMBOL) < 0)
-	    goto done;     
+        if (xml_name_set(x0, DATASTORE_TOP_SYMBOL) < 0)
+            goto done;     
     }
     /* 2. File is not empty <top><config>...</config></top> -> replace root */
     else{ 
-	/* There should only be one element and called config */
-	if (singleconfigroot(x0, &x0) < 0)
-	    goto done;
+        /* There should only be one element and called config */
+        if (singleconfigroot(x0, &x0) < 0)
+            goto done;
     }
     /* Purge all top-level body objects */
     x = NULL;
     while ((x = xml_find_type(x0, NULL, "body", CX_BODY)) != NULL)
-	xml_purge(x);
+        xml_purge(x);
 
     xml_flag_set(x0, XML_FLAG_TOP);
     if (xml_child_nr(x0) == 0 && de)
-	de->de_empty = 1;
+        de->de_empty = 1;
     /* Check if we support modstate */
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
-	if ((msdiff = modstate_diff_new()) == NULL)
-	    goto done;
+        if ((msdiff = modstate_diff_new()) == NULL)
+            goto done;
     /* First try RFC8525, but also backward compatible RFC7895 */
     if ((x = xpath_first(x0, NULL, "yang-library/module-set")) != NULL ||
-	(x = xml_find_type(x0, NULL, "modules-state", CX_ELMNT)) != NULL){
-	if ((xmodfile = xml_dup(x)) == NULL)
-	    goto done;
+        (x = xml_find_type(x0, NULL, "modules-state", CX_ELMNT)) != NULL){
+        if ((xmodfile = xml_dup(x)) == NULL)
+            goto done;
     }
     /* Datastore files may contain module-state defining
      * which modules are used in the file. 
      * Strip module-state, analyze it with CHANGE/ADD/RM and return msdiff
      */
     if (text_read_modstate(h, yspec, x0, msdiff) < 0)
-	goto done;
+        goto done;
     if (yb == YB_MODULE){
-	if (msdiff){
-	    /* Check if old/deleted yangs not present in the loaded/running yangspec.
-	     * If so, append them to the global yspec
-	     */
-	    needclone = 0;
-	    xmsd = NULL;
-	    while ((xmsd = xml_child_each(msdiff->md_diff, xmsd, CX_ELMNT)) != NULL) {
-		if (xml_flag(xmsd, XML_FLAG_CHANGE|XML_FLAG_DEL) == 0)
-		    continue;
-		needclone++;
-		/* Extract name, namespace, and revision */
-		if ((name = xml_find_body(xmsd, "name")) == NULL)
-		    continue;
-		if ((ns = xml_find_body(xmsd, "namespace")) == NULL)
-		    continue;
-		/* Extract revision */
-		if ((rev = xml_find_body(xmsd, "revision")) == NULL)
-		    continue;
-		/* Add old/deleted yangs not present in the loaded/running yangspec. */
-		if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL){
-		    /* YANG Module not found, look for it and append if found */
-		    if (yang_spec_parse_module(h, name, rev, yspec) < 0){
-			/* Special case: file-not-found errors */
-			if (clicon_suberrno == ENOENT){
-			    cbuf *cberr = NULL;
-			    if ((cberr = cbuf_new()) == NULL){
-				clicon_err(OE_XML, errno, "cbuf_new");
-				goto done;
-			    }
-			    cprintf(cberr, "Internal error: %s", clicon_err_reason);
-			    clicon_err_reset();
-			    if (xerr && netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr))< 0)
-				goto done;
-			    cbuf_free(cberr);
-			    goto fail;
-			}
-			goto done;
-		    }
-		}
-	    }
-	    /* If we found an obsolete yang module, we need to make a clone yspec with the
-	     * exactly the yang modules found 
-	     * Same ymodules are inserted into yspec1, ie pointers only
-	     */
-	    if (needclone && xmodfile){
-		if ((yspec1 = yspec_new()) == NULL)
-		    goto done;
-		xmsd = NULL;
-		while ((xmsd = xml_child_each(xmodfile, xmsd, CX_ELMNT)) != NULL) {
-		    if (strcmp(xml_name(xmsd), "module"))
-			continue;
-		    if ((ns = xml_find_body(xmsd, "namespace")) == NULL)
-			continue;
-		    if ((rev = xml_find_body(xmsd, "revision")) == NULL)
-			continue;
-		    if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL)
-			continue; // XXX error?
-		    if (yn_insert1(yspec1, ymod) < 0)
-			goto done;
-		}
-	    }
-	} /* if msdiff */
-	/* xml looks like: <top><config><x>... actually YB_MODULE_NEXT 
-	 */
-	if ((ret = xml_bind_yang(x0, YB_MODULE, yspec1?yspec1:yspec, xerr)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	if (xml_sort_recurse(x0) < 0)
-	    goto done;
+        if (msdiff){
+            /* Check if old/deleted yangs not present in the loaded/running yangspec.
+             * If so, append them to the global yspec
+             */
+            needclone = 0;
+            xmsd = NULL;
+            while ((xmsd = xml_child_each(msdiff->md_diff, xmsd, CX_ELMNT)) != NULL) {
+                if (xml_flag(xmsd, XML_FLAG_CHANGE|XML_FLAG_DEL) == 0)
+                    continue;
+                needclone++;
+                /* Extract name, namespace, and revision */
+                if ((name = xml_find_body(xmsd, "name")) == NULL)
+                    continue;
+                if ((ns = xml_find_body(xmsd, "namespace")) == NULL)
+                    continue;
+                /* Extract revision */
+                if ((rev = xml_find_body(xmsd, "revision")) == NULL)
+                    continue;
+                /* Add old/deleted yangs not present in the loaded/running yangspec. */
+                if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL){
+                    /* YANG Module not found, look for it and append if found */
+                    if (yang_spec_parse_module(h, name, rev, yspec) < 0){
+                        /* Special case: file-not-found errors */
+                        if (clicon_suberrno == ENOENT){
+                            cbuf *cberr = NULL;
+                            if ((cberr = cbuf_new()) == NULL){
+                                clicon_err(OE_XML, errno, "cbuf_new");
+                                goto done;
+                            }
+                            cprintf(cberr, "Internal error: %s", clicon_err_reason);
+                            clicon_err_reset();
+                            if (xerr && netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr))< 0)
+                                goto done;
+                            cbuf_free(cberr);
+                            goto fail;
+                        }
+                        goto done;
+                    }
+                }
+            }
+            /* If we found an obsolete yang module, we need to make a clone yspec with the
+             * exactly the yang modules found 
+             * Same ymodules are inserted into yspec1, ie pointers only
+             */
+            if (needclone && xmodfile){
+                if ((yspec1 = yspec_new()) == NULL)
+                    goto done;
+                xmsd = NULL;
+                while ((xmsd = xml_child_each(xmodfile, xmsd, CX_ELMNT)) != NULL) {
+                    if (strcmp(xml_name(xmsd), "module"))
+                        continue;
+                    if ((ns = xml_find_body(xmsd, "namespace")) == NULL)
+                        continue;
+                    if ((rev = xml_find_body(xmsd, "revision")) == NULL)
+                        continue;
+                    if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL)
+                        continue; // XXX error?
+                    if (yn_insert1(yspec1, ymod) < 0)
+                        goto done;
+                }
+            }
+        } /* if msdiff */
+        /* xml looks like: <top><config><x>... actually YB_MODULE_NEXT 
+         */
+        if ((ret = xml_bind_yang(x0, YB_MODULE, yspec1?yspec1:yspec, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        if (xml_sort_recurse(x0) < 0)
+            goto done;
     }
     if (xp){
-	*xp = x0;
-	x0 = NULL;
+        *xp = x0;
+        x0 = NULL;
     }
     if (msdiff0){
-	*msdiff0 = *msdiff;
-	free(msdiff); /* Just body */
-	msdiff = NULL;
+        *msdiff0 = *msdiff;
+        free(msdiff); /* Just body */
+        msdiff = NULL;
     }
     retval = 1;
  done:
     if (yspec1)
-	ys_free1(yspec1, 1);
+        ys_free1(yspec1, 1);
     if (xmodfile)
-	xml_free(xmodfile);
+        xml_free(xmodfile);
     if (msdiff)
-	modstate_diff_free(msdiff);
+        modstate_diff_free(msdiff);
     if (fp)
-	fclose(fp);
+        fclose(fp);
     if (dbfile)
-	free(dbfile);
+        free(dbfile);
     if (x0)
-	xml_free(x0);
+        xml_free(x0);
     return retval;
  fail:
     retval = 0;
@@ -673,13 +673,13 @@ xmldb_readfile(clicon_handle    h,
  */
 static int
 xmldb_get_nocache(clicon_handle    h,
-		  const char      *db, 
-		  yang_bind        yb,
-		  cvec            *nsc,
-		  const char      *xpath,
-		  cxobj          **xtop,
-		  modstate_diff_t *msdiff,
-		  cxobj          **xerr)
+                  const char      *db, 
+                  yang_bind        yb,
+                  cvec            *nsc,
+                  const char      *xpath,
+                  cxobj          **xtop,
+                  modstate_diff_t *msdiff,
+                  cxobj          **xerr)
 {
     int        retval = -1;
     char      *dbfile = NULL;
@@ -694,71 +694,71 @@ xmldb_get_nocache(clicon_handle    h,
     db_elmnt   de0 = {0,};
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
     }
     /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
     if ((ret = xmldb_readfile(h, db, yb, yspec, &xt, &de0, msdiff, xerr)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     clicon_db_elmnt_set(h, db, &de0); /* Content is copied */    
     
     /* Here xt looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec */
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	goto done;
+        goto done;
 
     /* If vectors are specified then mark the nodes found with all ancestors
      * and filter out everything else,
      * otherwise return complete tree.
      */
     if (xvec != NULL)
-	for (i=0; i<xlen; i++){
-	    x = xvec[i];
-	    xml_flag_set(x, XML_FLAG_MARK);
-	}
+        for (i=0; i<xlen; i++){
+            x = xvec[i];
+            xml_flag_set(x, XML_FLAG_MARK);
+        }
     /* Remove everything that is not marked */
     if (!xml_flag(xt, XML_FLAG_MARK))
-	if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
-	    goto done;
+        if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
+            goto done;
     /* reset flag */
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-	goto done;
+        goto done;
 
     if (yb != YB_NONE){
-	/* Add global defaults. */
-	if (xml_global_defaults(h, xt, nsc, xpath, yspec, 0) < 0)
-	    goto done;
-	/* Add default values (if not set) */
-	if (xml_default_recurse(xt, 0) < 0)
-	    goto done;
+        /* Add global defaults. */
+        if (xml_global_defaults(h, xt, nsc, xpath, yspec, 0) < 0)
+            goto done;
+        /* Add default values (if not set) */
+        if (xml_default_recurse(xt, 0) < 0)
+            goto done;
     }
     /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
-	if (disable_nacm_on_empty(xt, yspec) < 0)
-	    goto done;
+        if (disable_nacm_on_empty(xt, yspec) < 0)
+            goto done;
     }
 #if 0 /* debug */
     if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
-	clicon_log(LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
+        clicon_log(LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
 #endif
     if (clicon_debug_get()>1)
-    	if (clixon_xml2file(stderr, xt, 0, 1, fprintf, 0, 0) < 0)
-	    goto done;
+        if (clixon_xml2file(stderr, xt, 0, 1, fprintf, 0, 0) < 0)
+            goto done;
     *xtop = xt;
     xt = NULL;
     retval = 1;
  done:
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (dbfile)
-	free(dbfile);
+        free(dbfile);
     if (xvec)
-	free(xvec);
+        free(xvec);
     if (fd != -1)
-	close(fd);
+        close(fd);
     return retval;
  fail:
     retval = 0;
@@ -785,13 +785,13 @@ xmldb_get_nocache(clicon_handle    h,
  */
 static int
 xmldb_get_cache(clicon_handle    h,
-		const char      *db, 
-		yang_bind        yb,
-		cvec            *nsc,
-		const char      *xpath,
-		cxobj          **xtop,
-		modstate_diff_t *msdiff,
-		cxobj          **xerr)
+                const char      *db, 
+                yang_bind        yb,
+                cvec            *nsc,
+                const char      *xpath,
+                cxobj          **xtop,
+                modstate_diff_t *msdiff,
+                cxobj          **xerr)
 
 {
     int        retval = -1;
@@ -807,41 +807,41 @@ xmldb_get_cache(clicon_handle    h,
     int        ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
     }
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
-	/* If there is no xml x0 tree (in cache), then read it from file */
-	/* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
-	if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, &de0, msdiff, xerr)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	/* Should we validate file if read from disk? 
-	 * No, argument against: we may want to have a semantically wrong file and wish to edit?
-	 */
-	de0.de_xml = x0t;
-	if (de)
-	    de0.de_id = de->de_id;
-	clicon_db_elmnt_set(h, db, &de0); /* Content is copied */
+        /* If there is no xml x0 tree (in cache), then read it from file */
+        /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
+        if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, &de0, msdiff, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        /* Should we validate file if read from disk? 
+         * No, argument against: we may want to have a semantically wrong file and wish to edit?
+         */
+        de0.de_xml = x0t;
+        if (de)
+            de0.de_id = de->de_id;
+        clicon_db_elmnt_set(h, db, &de0); /* Content is copied */
     } /* x0t == NULL */
     else
-	x0t = de->de_xml;
+        x0t = de->de_xml;
 
     if (yb == YB_MODULE && !xml_spec(x0t)){
-	if ((ret = xml_bind_yang(x0t, YB_MODULE, yspec, xerr)) < 0)
-	    goto done;
-	if (ret == 0)
-	    ; /* XXX */
-	else {
-	    /* Add default global values (to make xpath below include defaults) */
-	    if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
-		goto done;
-	    /* Add default recursive values */
-	    if (xml_default_recurse(x0t, 0) < 0)
-		goto done;
-	}
+        if ((ret = xml_bind_yang(x0t, YB_MODULE, yspec, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            ; /* XXX */
+        else {
+            /* Add default global values (to make xpath below include defaults) */
+            if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
+                goto done;
+            /* Add default recursive values */
+            if (xml_default_recurse(x0t, 0) < 0)
+                goto done;
+        }
     }
     /* Here x0t looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec 
@@ -853,71 +853,71 @@ xmldb_get_cache(clicon_handle    h,
      *   b) if config dont dont state data
      */
     if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	goto done;
+        goto done;
 
     /* Make new tree by copying top-of-tree from x0t to x1t */
     if ((x1t = xml_new(xml_name(x0t), NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     xml_flag_set(x1t, XML_FLAG_TOP);    
     xml_spec_set(x1t, xml_spec(x0t));
     
     if (xlen < 1000){
-	/* This is optimized for the case when the tree is large and xlen is small
-	 * If the tree is large and xlen too, then the other is better.
-	 * This only works if yang bind
-	 */
-	for (i=0; i<xlen; i++){
-	    x0 = xvec[i];
-	    if (xml_copy_from_bottom(x0t, x0, x1t) < 0) /* config */
-		goto done;
-	}
+        /* This is optimized for the case when the tree is large and xlen is small
+         * If the tree is large and xlen too, then the other is better.
+         * This only works if yang bind
+         */
+        for (i=0; i<xlen; i++){
+            x0 = xvec[i];
+            if (xml_copy_from_bottom(x0t, x0, x1t) < 0) /* config */
+                goto done;
+        }
     }
     else {
-	/* Iterate through the match vector
-	 * For every node found in x0, mark the tree up to t1
-	 * XXX can we do this directly from xvec?
-	 */
-	for (i=0; i<xlen; i++){
-	    x0 = xvec[i];
-	    xml_flag_set(x0, XML_FLAG_MARK);
-	    xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-	}
-	if (xml_copy_marked(x0t, x1t) < 0) /* config */
-	    goto done;
-	if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
-	    goto done;
-	if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
-	    goto done;
+        /* Iterate through the match vector
+         * For every node found in x0, mark the tree up to t1
+         * XXX can we do this directly from xvec?
+         */
+        for (i=0; i<xlen; i++){
+            x0 = xvec[i];
+            xml_flag_set(x0, XML_FLAG_MARK);
+            xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+        }
+        if (xml_copy_marked(x0t, x1t) < 0) /* config */
+            goto done;
+        if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+            goto done;
+        if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+            goto done;
     }
     /* Remove global defaults and empty non-presence containers */
     if (xml_defaults_nopresence(x0t, 2) < 0)
-	goto done;
+        goto done;
     if (yb != YB_NONE){
-	/* Add default global values */
-	if (xml_global_defaults(h, x1t, nsc, xpath, yspec, 0) < 0)
-	    goto done;
-	/* Add default recursive values */
-	if (xml_default_recurse(x1t, 0) < 0)
-	    goto done;
+        /* Add default global values */
+        if (xml_global_defaults(h, x1t, nsc, xpath, yspec, 0) < 0)
+            goto done;
+        /* Add default recursive values */
+        if (xml_default_recurse(x1t, 0) < 0)
+            goto done;
     }
     /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
-	if (disable_nacm_on_empty(x1t, yspec) < 0)
-	    goto done;
+        if (disable_nacm_on_empty(x1t, yspec) < 0)
+            goto done;
     }
     /* Copy the matching parts of the (relevant) XML tree.
      * If cache was empty, also update to datastore cache
      */
     if (clicon_debug_get()>1)
-    	if (clixon_xml2file(stderr, x1t, 0, 1, fprintf, 0, 0) < 0)
-	    goto done;
+        if (clixon_xml2file(stderr, x1t, 0, 1, fprintf, 0, 0) < 0)
+            goto done;
     *xtop = x1t;
     retval = 1;
  done:
     clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
-	free(xvec);
+        free(xvec);
     return retval;
  fail:
     retval = 0;
@@ -943,13 +943,13 @@ xmldb_get_cache(clicon_handle    h,
  */
 static int
 xmldb_get_zerocopy(clicon_handle    h,
-		   const char      *db, 
-		   yang_bind        yb,
-		   cvec            *nsc,
-		   const char      *xpath,
-		   cxobj          **xtop,
-		   modstate_diff_t *msdiff,
-		   cxobj          **xerr)
+                   const char      *db, 
+                   yang_bind        yb,
+                   cvec            *nsc,
+                   const char      *xpath,
+                   cxobj          **xtop,
+                   modstate_diff_t *msdiff,
+                   cxobj          **xerr)
 
 {
     int             retval = -1;
@@ -964,62 +964,62 @@ xmldb_get_zerocopy(clicon_handle    h,
     int             ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_YANG, ENOENT, "No yang spec");
-	goto done;
+        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
     }
     de = clicon_db_elmnt_get(h, db);
     if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
-	/* If there is no xml x0 tree (in cache), then read it from file */
-	/* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
-	if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, &de0, msdiff, xerr)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto fail;
-	/* Should we validate file if read from disk? 
-	 * No, argument against: we may want to have a semantically wrong file and wish to edit?
-	 */
-	de0.de_xml = x0t;
-	if (de)
-	    de0.de_id = de->de_id;
-	clicon_db_elmnt_set(h, db, &de0);
+        /* If there is no xml x0 tree (in cache), then read it from file */
+        /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
+        if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, &de0, msdiff, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        /* Should we validate file if read from disk? 
+         * No, argument against: we may want to have a semantically wrong file and wish to edit?
+         */
+        de0.de_xml = x0t;
+        if (de)
+            de0.de_id = de->de_id;
+        clicon_db_elmnt_set(h, db, &de0);
     } /* x0t == NULL */
     else
-	x0t = de->de_xml;
+        x0t = de->de_xml;
 
     /* Here xt looks like: <config>...</config> */
     if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-	goto done;
+        goto done;
     /* Iterate through the match vector
      * For every node found in x0, mark the tree up to t1
      */
     for (i=0; i<xlen; i++){
-	x0 = xvec[i];
-	xml_flag_set(x0, XML_FLAG_MARK);
-	xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+        x0 = xvec[i];
+        xml_flag_set(x0, XML_FLAG_MARK);
+        xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
     if (yb != YB_NONE){
-	/* Add global defaults. */
-	if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
-	    goto done;
-	/* Apply default values (removed in clear function) */
-	if (xml_default_recurse(x0t, 0) < 0)
-	    goto done;
+        /* Add global defaults. */
+        if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
+            goto done;
+        /* Apply default values (removed in clear function) */
+        if (xml_default_recurse(x0t, 0) < 0)
+            goto done;
     }
     /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
-	if (disable_nacm_on_empty(x0t, yspec) < 0)
-	    goto done;
+        if (disable_nacm_on_empty(x0t, yspec) < 0)
+            goto done;
     }
     if (clicon_debug_get() > 1)
-    	if (clixon_xml2file(stderr, x0t, 0, 1, fprintf, 0, 0) < 0)
-	    goto done;
+        if (clixon_xml2file(stderr, x0t, 0, 1, fprintf, 0, 0) < 0)
+            goto done;
     *xtop = x0t;
     retval = 1;
  done:
     clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
-	free(xvec);
+        free(xvec);
     return retval;
  fail:
     retval = 0;
@@ -1045,10 +1045,10 @@ xmldb_get_zerocopy(clicon_handle    h,
  */
 int 
 xmldb_get(clicon_handle    h, 
-	  const char      *db, 
-	  cvec            *nsc,
-	  char            *xpath,
-	  cxobj          **xret)
+          const char      *db, 
+          cvec            *nsc,
+          char            *xpath,
+          cxobj          **xret)
 {
     return xmldb_get0(h, db, YB_MODULE, nsc, xpath, 1, xret, NULL, NULL);
 }
@@ -1105,42 +1105,42 @@ xmldb_get(clicon_handle    h,
  */
 int 
 xmldb_get0(clicon_handle    h, 
-	   const char      *db, 
-	   yang_bind        yb,
-	   cvec            *nsc,
-	   const char      *xpath,
-	   int              copy,
-	   cxobj          **xret,
-	   modstate_diff_t *msdiff,
-	   cxobj          **xerr)
+           const char      *db, 
+           yang_bind        yb,
+           cvec            *nsc,
+           const char      *xpath,
+           int              copy,
+           cxobj          **xret,
+           modstate_diff_t *msdiff,
+           cxobj          **xerr)
 {
     int               retval = -1;
 
     switch (clicon_datastore_cache(h)){
     case DATASTORE_NOCACHE:
-	/* Read from file into created/copy tree, prune non-matching xpath 
-	 * Add default values in copy
-	 * Copy deleted by xmldb_free
-	 */
-	retval = xmldb_get_nocache(h, db, yb, nsc, xpath, xret, msdiff, xerr);
-	break;
+        /* Read from file into created/copy tree, prune non-matching xpath 
+         * Add default values in copy
+         * Copy deleted by xmldb_free
+         */
+        retval = xmldb_get_nocache(h, db, yb, nsc, xpath, xret, msdiff, xerr);
+        break;
     case DATASTORE_CACHE_ZEROCOPY:
-	/* Get cache (file if empty) mark xpath match in original tree 
-	 * add default values in original tree and return that.
-	 * Default values and markings removed in xmldb_clear
-	 */
-	if (!copy){
-	    retval = xmldb_get_zerocopy(h, db, yb, nsc, xpath, xret, msdiff, xerr);
-	    break;
-	}
-	/* fall through */
+        /* Get cache (file if empty) mark xpath match in original tree 
+         * add default values in original tree and return that.
+         * Default values and markings removed in xmldb_clear
+         */
+        if (!copy){
+            retval = xmldb_get_zerocopy(h, db, yb, nsc, xpath, xret, msdiff, xerr);
+            break;
+        }
+        /* fall through */
     case DATASTORE_CACHE:
-	/* Get cache (file if empty) mark xpath match and copy marked into copy 
-	 * Add default values in copy, return copy
-	 * Copy deleted by xmldb_free
-	 */
-	retval = xmldb_get_cache(h, db, yb, nsc, xpath, xret, msdiff, xerr);
-	break;
+        /* Get cache (file if empty) mark xpath match and copy marked into copy 
+         * Add default values in copy, return copy
+         * Copy deleted by xmldb_free
+         */
+        retval = xmldb_get_cache(h, db, yb, nsc, xpath, xret, msdiff, xerr);
+        break;
     }
     return retval;
 }
@@ -1156,21 +1156,21 @@ xmldb_get0(clicon_handle    h,
  */
 int 
 xmldb_get0_clear(clicon_handle    h, 
-		 cxobj           *x)
+                 cxobj           *x)
 {
     int        retval = -1;
     
     if (x == NULL)
-	goto ok;
+        goto ok;
     /* Remove global defaults and empty non-presence containers */
     if (xml_defaults_nopresence(x, 2) < 0)
-	goto done;
+        goto done;
     /* Clear XML tree of defaults */
     if (xml_tree_prune_flagged(x, XML_FLAG_TRANSIENT, 1) < 0)
-	goto done;
+        goto done;
     /* clear mark and change */
     xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-	       (void*)(XML_FLAG_MARK|XML_FLAG_ADD|XML_FLAG_CHANGE));
+               (void*)(XML_FLAG_MARK|XML_FLAG_ADD|XML_FLAG_CHANGE));
  ok:
     retval = 0;
  done:
@@ -1185,14 +1185,14 @@ xmldb_get0_clear(clicon_handle    h,
  */
 int 
 xmldb_get0_free(clicon_handle    h, 
-	       cxobj          **xp)
+               cxobj          **xp)
 {
     if (*xp == NULL)
-	return 0;
+        return 0;
     /* Note that if clicon_datastore_cache(h) fails (returns -1), the following
      * xml_free can fail (if **xp not obtained using xmldb_get0) */
     if (clicon_datastore_cache(h) != DATASTORE_CACHE_ZEROCOPY)
-	xml_free(*xp);
+        xml_free(*xp);
     *xp = NULL;
     return 0;
 }

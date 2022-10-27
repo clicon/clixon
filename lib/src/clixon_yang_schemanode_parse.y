@@ -101,16 +101,16 @@
  
 void 
 clixon_yang_schemanode_parseerror(void *arg,
-				  char *s) 
+                                  char *s) 
 {
     clixon_yang_schemanode_yacc *ife = (clixon_yang_schemanode_yacc *)arg;
 
     clicon_err_fn(NULL, 0, OE_YANG, 0, "yang_schemanode_parse: file:%s:%d \"%s\" %s: at or before: %s", 
-	       ife->if_mainfile,
-	       ife->if_linenum,
-	       ife->if_parse_string,
-	       s,
-	       clixon_yang_schemanode_parsetext); 
+               ife->if_mainfile,
+               ife->if_linenum,
+               ife->if_parse_string,
+               s,
+               clixon_yang_schemanode_parsetext); 
     return;
 }
 
@@ -121,77 +121,77 @@ clixon_yang_schemanode_parseerror(void *arg,
 /* See RFC 7950 Sec 14 refine-arg-str / usage-augment-arg-str */
 top        : descendant_schema_nodeid MY_EOF
                     {
-			_PARSE_DEBUG("top->descendant-schema-nodeid");
-			if (_IF->if_accept == YA_DESC_SCHEMANODEID){
-			    YYACCEPT;
-			}
-			else{
-			    _YYERROR("descendant-schema-nodeid unexpected"); 
-			}
-		    }
+                        _PARSE_DEBUG("top->descendant-schema-nodeid");
+                        if (_IF->if_accept == YA_DESC_SCHEMANODEID){
+                            YYACCEPT;
+                        }
+                        else{
+                            _YYERROR("descendant-schema-nodeid unexpected"); 
+                        }
+                    }
            | absolute_schema_nodeid MY_EOF
                     {
-			_PARSE_DEBUG("top->absolute-schema-nodeid");
-			if (_IF->if_accept == YA_ABS_SCHEMANODEID){
-			    YYACCEPT;
-			}
-			else{
-			    _YYERROR("absolute-schema-nodeid unexpected"); 
-			}
-		    }
+                        _PARSE_DEBUG("top->absolute-schema-nodeid");
+                        if (_IF->if_accept == YA_ABS_SCHEMANODEID){
+                            YYACCEPT;
+                        }
+                        else{
+                            _YYERROR("absolute-schema-nodeid unexpected"); 
+                        }
+                    }
            ;
 
 descendant_schema_nodeid
            : node_identifier
                     {
-			_PARSE_DEBUG("descendant-schema-nodeid->node-identifier");
-		    }
+                        _PARSE_DEBUG("descendant-schema-nodeid->node-identifier");
+                    }
            | node_identifier absolute_schema_nodeid
-	            {
-			_PARSE_DEBUG("descendant-schema-nodeid->absolute-schema-nodeid");
-		    }
+                    {
+                        _PARSE_DEBUG("descendant-schema-nodeid->absolute-schema-nodeid");
+                    }
            ;
 
 absolute_schema_nodeid
            : absolute_schema_nodeid '/'  node_identifier 
                     {
-			_PARSE_DEBUG("absolute-schema-nodeid->absolute-schema-nodeid '/' node-identifier");
-		    }
+                        _PARSE_DEBUG("absolute-schema-nodeid->absolute-schema-nodeid '/' node-identifier");
+                    }
            | '/'  node_identifier 
-	            {
-			_PARSE_DEBUG("absolute-schema-nodeid->'/' node-identifier");
-		    }
+                    {
+                        _PARSE_DEBUG("absolute-schema-nodeid->'/' node-identifier");
+                    }
            ;
 
 /*   node-identifier     = [prefix ":"] identifier */
 node_identifier : identifier
-		   {
-		       _PARSE_DEBUG("node-identifier -> identifier");
-		       if (_IF->if_accept == YA_ID_REF){
-			   YYACCEPT;
-		       }
-		   }
+                   {
+                       _PARSE_DEBUG("node-identifier -> identifier");
+                       if (_IF->if_accept == YA_ID_REF){
+                           YYACCEPT;
+                       }
+                   }
                 | prefix ':' identifier
-		{
-		    _PARSE_DEBUG("node_identifier -> prefix : identifier");
-		    if (_IF->if_accept == YA_ID_REF){
-			YYACCEPT;
-		    }
-		}
+                {
+                    _PARSE_DEBUG("node_identifier -> prefix : identifier");
+                    if (_IF->if_accept == YA_ID_REF){
+                        YYACCEPT;
+                    }
+                }
                 ;
 
 prefix   : IDENTIFIER
-		{
-		    _PARSE_DEBUG("prefix -> IDENTIFIER");
-		    free($1);
-		}
+                {
+                    _PARSE_DEBUG("prefix -> IDENTIFIER");
+                    free($1);
+                }
          ;
 
 identifier : IDENTIFIER
-		{
-		    _PARSE_DEBUG("identifier -> IDENTIFIER");
-		    free($1);
-		}
+                {
+                    _PARSE_DEBUG("identifier -> IDENTIFIER");
+                    free($1);
+                }
          ;
 
 %%

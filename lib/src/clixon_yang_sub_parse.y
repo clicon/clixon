@@ -111,16 +111,16 @@
     
 void 
 clixon_yang_sub_parseerror(void *arg,
-			     char *s) 
+                             char *s) 
 {
     clixon_yang_sub_parse_yacc *ife = (clixon_yang_sub_parse_yacc *)arg;
 
     clicon_err_fn(NULL, 0, OE_YANG, 0, "yang_sub_parse: file:%s:%d \"%s\" %s: at or before: %s", 
-	       ife->if_mainfile,
-	       ife->if_linenum,
-	       ife->if_parse_string,
-	       s,
-	       clixon_yang_sub_parsetext); 
+               ife->if_mainfile,
+               ife->if_linenum,
+               ife->if_parse_string,
+               s,
+               clixon_yang_sub_parsetext); 
     return;
 }
 
@@ -130,7 +130,7 @@ clixon_yang_sub_parseerror(void *arg,
  */
 static int
 if_feature_check(clixon_yang_sub_parse_yacc *ife,
-		 char                       *str)
+                 char                       *str)
 {
     int         retval = -1;
     char       *prefix = NULL;
@@ -141,36 +141,36 @@ if_feature_check(clixon_yang_sub_parse_yacc *ife,
     yang_stmt  *ys;
     
     if ((ys = ife->if_ys) == NULL)
-	return 0;
+        return 0;
     if (nodeid_split(str, &prefix, &feature) < 0)
-	goto done;
+        goto done;
     /* Specifically need to handle? strcmp(prefix, myprefix)) */
     if (prefix == NULL)
-	ymod = ys_module(ys);
+        ymod = ys_module(ys);
     else
-	ymod = yang_find_module_by_prefix(ys, prefix);
+        ymod = yang_find_module_by_prefix(ys, prefix);
     if (ymod == NULL)
-	goto done;
+        goto done;
     /* Check if feature exists, and is set, otherwise remove */
     if ((yfeat = yang_find(ymod, Y_FEATURE, feature)) == NULL){
-	clicon_err(OE_YANG, EINVAL, "Yang module %s has IF_FEATURE %s, but no such FEATURE statement exists",
-		   ymod?yang_argument_get(ymod):"none",
-		   feature);
-	goto done;
+        clicon_err(OE_YANG, EINVAL, "Yang module %s has IF_FEATURE %s, but no such FEATURE statement exists",
+                   ymod?yang_argument_get(ymod):"none",
+                   feature);
+        goto done;
     }
     /* Check if this feature is enabled or not 
      * Continue loop to catch unbound features and make verdict at end
      */
     cv = yang_cv_get(yfeat);
     if (cv == NULL || !cv_bool_get(cv))    /* disabled */
-	retval = 0;
+        retval = 0;
     else                                  /* enabled */
-	retval = 1;
+        retval = 1;
  done:
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (feature)
-	free(feature);
+        free(feature);
     return retval;
 }
  
@@ -181,84 +181,84 @@ if_feature_check(clixon_yang_sub_parse_yacc *ife,
 /* See RFC 7950 Sec 14 if-feature-expr-str */
 top        : if_feature_expr MY_EOF
                     {
-			_PARSE_DEBUG("top->if-feature-expr");
-			_IF->if_enabled = $1;
-			if (_IF->if_accept == YA_IF_FEATURE){
-			    YYACCEPT;
-			}
-			else{
-			    _YYERROR("Expected if-feature-expr"); 
-			}
-		    }
+                        _PARSE_DEBUG("top->if-feature-expr");
+                        _IF->if_enabled = $1;
+                        if (_IF->if_accept == YA_IF_FEATURE){
+                            YYACCEPT;
+                        }
+                        else{
+                            _YYERROR("Expected if-feature-expr"); 
+                        }
+                    }
            ;
 
 if_feature_expr     : if_feature_factor sep1 OR sep1 if_feature_expr
                     {
-			_PARSE_DEBUG("if-feature-expr->if-feature-factor sep OR sep expr");
-			$$ = $1 || $5;
-		    }
+                        _PARSE_DEBUG("if-feature-expr->if-feature-factor sep OR sep expr");
+                        $$ = $1 || $5;
+                    }
            | if_feature_factor sep1 AND sep1 if_feature_expr
-	            {
-			_PARSE_DEBUG("if-feature-expr->if-feature-factor sep AND sep if-feature-expr");
-			$$ = $1 && $5;
-		    }
+                    {
+                        _PARSE_DEBUG("if-feature-expr->if-feature-factor sep AND sep if-feature-expr");
+                        $$ = $1 && $5;
+                    }
            | if_feature_factor
-	            {
-			_PARSE_DEBUG("if-feature-expr->if-feature-factor");
-			$$ = $1;
-		    }
+                    {
+                        _PARSE_DEBUG("if-feature-expr->if-feature-factor");
+                        $$ = $1;
+                    }
            ;
 
 if_feature_factor   : NOT sep1 if_feature_factor
                               { _PARSE_DEBUG("if-feature-factor-> NOT sep if-feature-factor");
-				  $$ = !$3; }
+                                  $$ = !$3; }
            | '(' optsep if_feature_expr optsep ')'
-		                   { _PARSE_DEBUG("if-feature-factor-> ( optsep if-feature-expr optsep )");
-		                     $$ = $3; }
+                                   { _PARSE_DEBUG("if-feature-factor-> ( optsep if-feature-expr optsep )");
+                                     $$ = $3; }
            | identifier_ref  {
-	       _PARSE_DEBUG("if-feature-factor-> identifier-ref");
-	       if (($$ = if_feature_check(_IF, $1)) < 0) {
-		   free($1);
-		   YYERROR;
-	       }
-	       free($1);
-	     }
+               _PARSE_DEBUG("if-feature-factor-> identifier-ref");
+               if (($$ = if_feature_check(_IF, $1)) < 0) {
+                   free($1);
+                   YYERROR;
+               }
+               free($1);
+             }
            ;
 
 /*   identifier-ref     = [prefix ":"] identifier */
 identifier_ref : identifier
-		   {
-		       // XXX memory leak?
-		       _PARSE_DEBUG("identifier-ref -> identifier");
-			if (_IF->if_accept == YA_ID_REF){
-			    YYACCEPT;
-			}
-		       $$=$1;
-		   }
+                   {
+                       // XXX memory leak?
+                       _PARSE_DEBUG("identifier-ref -> identifier");
+                        if (_IF->if_accept == YA_ID_REF){
+                            YYACCEPT;
+                        }
+                       $$=$1;
+                   }
                 | prefix ':' identifier
-		{
-		    if (($$=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("identifier_ref");
-		    free($3);
-		    if (_IF->if_accept == YA_ID_REF){
-			YYACCEPT;
-		    }
-		    _PARSE_DEBUG("identifier-ref -> prefix : identifier");
-		}
+                {
+                    if (($$=clixon_string_del_join($1, ":", $3)) == NULL) _YYERROR("identifier_ref");
+                    free($3);
+                    if (_IF->if_accept == YA_ID_REF){
+                        YYACCEPT;
+                    }
+                    _PARSE_DEBUG("identifier-ref -> prefix : identifier");
+                }
                 ;
 
 prefix   : IDENTIFIER
-		{
-		    _PARSE_DEBUG("prefix -> IDENTIFIER");
-		    $$=$1;
+                {
+                    _PARSE_DEBUG("prefix -> IDENTIFIER");
+                    $$=$1;
 
-		}
+                }
          ;
 
 identifier : IDENTIFIER
-		{
-		    _PARSE_DEBUG("identifier -> IDENTIFIER");
-		    $$=$1;
-		}
+                {
+                    _PARSE_DEBUG("identifier -> IDENTIFIER");
+                    $$=$1;
+                }
          ;
 
 optsep     : sep1                  { _PARSE_DEBUG("optsep->sep"); }

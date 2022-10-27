@@ -40,6 +40,19 @@
 ## 6.0.0
 Expected: End of 2022
 
+### New features
+
+* Confirmed-commit capability
+  * Standards
+    * RFC 4741 "NETCONF Configuration Protocol": Section 8.4
+    * RFC 6241 "Network Configuration Protocol (NETCONF)": Section 8.4
+  * Features
+    * `:confirmed-commit:1.0` capability
+    * `:confirmed-commit:1.1` capability
+  * Added support for relevant arguments to CLI commit
+    * See [example_cli.cli](https://github.com/clicon/clixon/blob/master/example/main/example_cli.cli)
+  * See [Netconf Confirmed Commit Capability](https://github.com/clicon/clixon/issues/255)
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
@@ -53,9 +66,29 @@ Developers may need to change their code
 
 * C API changes
   * Added `defaults` parameter to `clicon_rpc_get_pageable_list()`
+  * `clicon_rpc_commit()` and `cli_commit`
+    * Added `confirmed`, `cancel`, `timeout`, `persist-id`, and `persist-id-val` parameters to
+  * `clicon_rpc_commit()` and `clicon_rpc_validate`
+    * Added three-value return.
+    * Code need to be changed from: checking for `<0` to `<1` to keep same semantics
+	
+### Minor features
+
+* [Code formatting: Change indentation style to space](https://github.com/clicon/clixon/issues/379)
+  * Applies to all c/h/y/l/sh files and .editorconfig
+* Added warning if modstate is not present in datastore if `CLICON_XMLDB_MODSTATE` is set.
 
 ### Corrected Bugs
 
+* Fixed: [Non-obvious behavior of clixon_snmp after snmpset command when transaction validation returns an error](https://github.com/clicon/clixon/issues/375)
+  * Fixed by validating writes on ACTION instead of COMMIT since libnetsnmp seems not to accept commit errors
+* Fixed: [YANG when condition evaluated as false combined with a mandatory leaf does not work](https://github.com/clicon/clixon/issues/380)
+* Fixed: [Trying to change the "read-only" node through snmpset](https://github.com/clicon/clixon/issues/376)
+* Fixed: [Trying to change the "config false" node through snmpset](https://github.com/clicon/clixon/issues/377)
+  * Fixed by returning `SNMP_ERR_NOTWRITABLE` when trying to reserve object
+* Fixed: [Non-obvious behavior of clixon_snmp after snmpset command when transaction validation returns an error](https://github.com/clicon/clixon/issues/375)
+* Fixed: [clixon_snmp module crashes on snmpwalk command](https://github.com/clicon/clixon/issues/378)
+* Fixed: [unneeded trailing zero character on SNMP strings](https://github.com/clicon/clixon/issues/367)
 * Fixed: [message-id present on netconf app "hello"](https://github.com/clicon/clixon/issues/369)
 * Fixed: [SNMP "smiv2" yang extension doesn't work on augmented nodes](https://github.com/clicon/clixon/issues/366)
 

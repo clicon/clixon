@@ -87,15 +87,15 @@
  */
 int
 clicon_data_get(clicon_handle h,
-		const char   *name,
-		char        **val)
+                const char   *name,
+                char        **val)
 {
     clicon_hash_t *cdat = clicon_data(h);
 
     if (clicon_hash_lookup(cdat, (char*)name) == NULL)
-	return -1;
+        return -1;
     if (val)
-	*val = clicon_hash_value(cdat, (char*)name, NULL);
+        *val = clicon_hash_value(cdat, (char*)name, NULL);
     return 0;
 }
 
@@ -109,8 +109,8 @@ clicon_data_get(clicon_handle h,
  */
 int
 clicon_data_set(clicon_handle h, 
-		const char   *name,
-		char         *val)
+                const char   *name,
+                char         *val)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
@@ -126,7 +126,7 @@ clicon_data_set(clicon_handle h,
  */
 int
 clicon_data_del(clicon_handle h, 
-		const char   *name)
+                const char   *name)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
@@ -143,18 +143,18 @@ clicon_data_del(clicon_handle h,
  */
 int
 clicon_ptr_get(clicon_handle h,
-		const char  *name,
-		void       **ptr)
+                const char  *name,
+                void       **ptr)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void          *p;
     size_t         vlen;
 
     if (clicon_hash_lookup(cdat, (char*)name) == NULL)
-	return -1;
+        return -1;
     if (ptr){
-	p = clicon_hash_value(cdat, (char*)name, &vlen);
-	memcpy(ptr, p, vlen);
+        p = clicon_hash_value(cdat, (char*)name, &vlen);
+        memcpy(ptr, p, vlen);
     }
     return 0;
 }
@@ -169,8 +169,8 @@ clicon_ptr_get(clicon_handle h,
  */
 int
 clicon_ptr_set(clicon_handle h, 
-	       const char   *name,
-	       void         *ptr)
+               const char   *name,
+               void         *ptr)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
@@ -186,7 +186,7 @@ clicon_ptr_set(clicon_handle h,
  */
 int
 clicon_ptr_del(clicon_handle h, 
-	       const char   *name)
+               const char   *name)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
@@ -207,12 +207,12 @@ clicon_ptr_del(clicon_handle h,
  */
 cvec *
 clicon_data_cvec_get(clicon_handle h,
-		     const char   *name)
+                     const char   *name)
 {
     cvec *cvv = NULL;
     
     if (clicon_ptr_get(h, name, (void**)&cvv) < 0)
-	return NULL;
+        return NULL;
     return cvv;
 }
 
@@ -223,14 +223,14 @@ clicon_data_cvec_get(clicon_handle h,
  */
 int
 clicon_data_cvec_set(clicon_handle h,
-		     const char   *name,
-		     cvec         *cvv)
+                     const char   *name,
+                     cvec         *cvv)
 {
     cvec *cvv0 = NULL;
 
     clicon_ptr_get(h, name, (void**)&cvv0);
     if (cvv0)
-	cvec_free(cvv0);
+        cvec_free(cvv0);
     return clicon_ptr_set(h, name, cvv);
 }
 
@@ -240,13 +240,13 @@ clicon_data_cvec_set(clicon_handle h,
  */
 int
 clicon_data_cvec_del(clicon_handle h,
-		     const char   *name)
+                     const char   *name)
 {
     cvec *cvv = NULL;
 
     clicon_ptr_get(h, name, (void**)&cvv);
     if (cvv)
-	cvec_free(cvv);
+        cvec_free(cvv);
     return clicon_ptr_del(h, name);
 }
 
@@ -261,7 +261,7 @@ clicon_dbspec_yang(clicon_handle h)
     yang_stmt *ys = NULL;
     
     if (clicon_ptr_get(h, "dbspec_yang", (void**)&ys) < 0)
-	return NULL;
+        return NULL;
     return ys;
 }
 
@@ -272,7 +272,7 @@ clicon_dbspec_yang(clicon_handle h)
  */
 int
 clicon_dbspec_yang_set(clicon_handle h, 
-		       yang_stmt    *ys)
+                       yang_stmt    *ys)
 {
     return clicon_ptr_set(h, "dbspec_yang", ys);
 }
@@ -288,7 +288,7 @@ clicon_config_yang(clicon_handle h)
     yang_stmt *ys = NULL;
     
     if (clicon_ptr_get(h, "control_yang", (void**)&ys) < 0)
-	return NULL;
+        return NULL;
     return ys;
 }
 
@@ -299,7 +299,7 @@ clicon_config_yang(clicon_handle h)
  */
 int
 clicon_config_yang_set(clicon_handle   h, 
-		       yang_stmt      *ys)
+                       yang_stmt      *ys)
 {
     return clicon_ptr_set(h, "control_yang", ys);
 }
@@ -315,7 +315,7 @@ clicon_nacm_ext_yang(clicon_handle h)
     yang_stmt *ys = NULL;
     
     if (clicon_ptr_get(h, "nacm_ext_yang", (void**)&ys) < 0)
-	return NULL;
+        return NULL;
     return ys;
 }
 
@@ -326,7 +326,7 @@ clicon_nacm_ext_yang(clicon_handle h)
  */
 int
 clicon_nacm_ext_yang_set(clicon_handle   h, 
-			 yang_stmt      *ys)
+                         yang_stmt      *ys)
 {
     return clicon_ptr_set(h, "nacm_ext_yang", ys);
 }
@@ -346,7 +346,7 @@ clicon_nsctx_global_get(clicon_handle h)
     cvec *cvv = NULL;
     
     if (clicon_ptr_get(h, "nsctx_global", (void**)&cvv) < 0)
-	return NULL;
+        return NULL;
     return cvv;
 }
 
@@ -357,7 +357,7 @@ clicon_nsctx_global_get(clicon_handle h)
  */
 int
 clicon_nsctx_global_set(clicon_handle h,
-			cvec         *nsctx)
+                        cvec         *nsctx)
 {
     return clicon_ptr_set(h, "nsctx_global", nsctx);
 }
@@ -374,7 +374,7 @@ clicon_nacm_ext(clicon_handle h)
     cxobj *x = NULL;
     
     if (clicon_ptr_get(h, "nacm_xml", (void**)&x) < 0)
-	return NULL;
+        return NULL;
     return x;
 }
 
@@ -386,12 +386,12 @@ clicon_nacm_ext(clicon_handle h)
  */
 int
 clicon_nacm_ext_set(clicon_handle h,
-		     cxobj        *x)
+                     cxobj        *x)
 {
     cxobj *x0 = NULL;
 
     if ((x0 = clicon_nacm_ext(h)) != NULL)
-	xml_free(x0);
+        xml_free(x0);
     return clicon_ptr_set(h, "nacm_xml", x);
 }
 
@@ -407,7 +407,7 @@ clicon_nacm_cache(clicon_handle h)
     cxobj *x = NULL;
     
     if (clicon_ptr_get(h, "nacm_cache", (void**)&x) < 0)
-	return NULL;
+        return NULL;
     return x;
 }
 
@@ -419,7 +419,7 @@ clicon_nacm_cache(clicon_handle h)
  */
 int
 clicon_nacm_cache_set(clicon_handle h,
-		      cxobj        *xn)
+                      cxobj        *xn)
 {
     return clicon_ptr_set(h, "nacm_cache", xn);
 }
@@ -441,7 +441,7 @@ clicon_conf_xml(clicon_handle h)
     cxobj *x = NULL;
     
     if (clicon_ptr_get(h, "clixon_conf", (void**)&x) < 0)
-	return NULL;
+        return NULL;
     return x;
 }
 
@@ -450,7 +450,7 @@ clicon_conf_xml(clicon_handle h)
  */
 int
 clicon_conf_xml_set(clicon_handle h, 
-		    cxobj        *x)
+                    cxobj        *x)
 {
     return clicon_ptr_set(h, "clixon_conf", x);
 }
@@ -471,8 +471,8 @@ clicon_conf_restconf(clicon_handle h)
 {
     cxobj  *xconfig = NULL;
 
-    if ((xconfig = clicon_conf_xml(h)) != NULL)  	 /* Get local config */
-	return xpath_first(xconfig, NULL, "restconf");
+    if ((xconfig = clicon_conf_xml(h)) != NULL)          /* Get local config */
+        return xpath_first(xconfig, NULL, "restconf");
     return NULL;
 }
 
@@ -490,8 +490,8 @@ clicon_conf_autocli(clicon_handle h)
 {
     cxobj  *xconfig = NULL;
 
-    if ((xconfig = clicon_conf_xml(h)) != NULL)  	 /* Get local config */
-	return xpath_first(xconfig, NULL, "autocli");
+    if ((xconfig = clicon_conf_xml(h)) != NULL)          /* Get local config */
+        return xpath_first(xconfig, NULL, "autocli");
     return NULL;
 }
 
@@ -514,12 +514,12 @@ clicon_username_get(clicon_handle h)
  */
 int
 clicon_username_set(clicon_handle h, 
-		    void         *username)
+                    void         *username)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
     if (username == NULL)
-	return clicon_hash_del(cdat, "username");
+        return clicon_hash_del(cdat, "username");
     return clicon_hash_add(cdat, "username", username, strlen(username)+1)==NULL?-1:0;
 }
 
@@ -546,7 +546,7 @@ clicon_startup_status_get(clicon_handle h)
  */
 int
 clicon_startup_status_set(clicon_handle       h,
-			  enum startup_status status)
+                          enum startup_status status)
 {
     clicon_hash_t  *cdat = clicon_data(h);
     if (clicon_hash_add(cdat, "startup_status", &status, sizeof(status))==NULL)
@@ -566,7 +566,7 @@ clicon_socket_get(clicon_handle h)
     void           *p;
 
     if ((p = clicon_hash_value(cdat, "socket", NULL)) == NULL)
-	return -1;
+        return -1;
     return *(int*)p;
 }
 
@@ -578,12 +578,12 @@ clicon_socket_get(clicon_handle h)
  */
 int
 clicon_socket_set(clicon_handle h, 
-		  int           s)
+                  int           s)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
     if (s == -1)
-	return clicon_hash_del(cdat, "socket");
+        return clicon_hash_del(cdat, "socket");
     return clicon_hash_add(cdat, "socket", &s, sizeof(int))==NULL?-1:0;
 }
 
@@ -599,7 +599,7 @@ clicon_client_socket_get(clicon_handle h)
     void           *p;
 
     if ((p = clicon_hash_value(cdat, "client-socket", NULL)) == NULL)
-	return -1;
+        return -1;
     return *(int*)p;
 }
 
@@ -611,12 +611,12 @@ clicon_client_socket_get(clicon_handle h)
  */
 int
 clicon_client_socket_set(clicon_handle h, 
-			 int           s)
+                         int           s)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
     if (s == -1)
-	return clicon_hash_del(cdat, "client-socket");
+        return clicon_hash_del(cdat, "client-socket");
     return clicon_hash_add(cdat, "client-socket", &s, sizeof(int))==NULL?-1:0;
 }
 
@@ -628,13 +628,13 @@ clicon_client_socket_set(clicon_handle h,
  */
 cxobj *
 clicon_modst_cache_get(clicon_handle h,
-		       int           brief)
+                       int           brief)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void           *p;
 
     if ((p = clicon_hash_value(cdat, brief?"modst_brief":"modst_full", NULL)) != NULL)
-	return *(cxobj **)p;
+        return *(cxobj **)p;
     return NULL;
 }
 
@@ -647,20 +647,20 @@ clicon_modst_cache_get(clicon_handle h,
  */
 int
 clicon_modst_cache_set(clicon_handle h,
-		       int           brief,
-			cxobj        *xms)
+                       int           brief,
+                        cxobj        *xms)
 {
     clicon_hash_t  *cdat = clicon_data(h);
     cxobj          *x;
 
     if ((x = clicon_modst_cache_get(h, brief)) != NULL)
-	xml_free(x);
+        xml_free(x);
     if (xms == NULL)
-	goto ok;
+        goto ok;
     if ((x = xml_dup(xms)) == NULL)
-	return -1;
+        return -1;
     if (clicon_hash_add(cdat, brief?"modst_brief":"modst_full", &x, sizeof(x))==NULL)
-	return -1;
+        return -1;
  ok:
     return 0;
 }
@@ -677,7 +677,7 @@ clicon_xml_changelog_get(clicon_handle h)
     void          *p;
 
     if ((p = clicon_hash_value(cdat, "xml-changelog", NULL)) != NULL)
-	return *(cxobj **)p;
+        return *(cxobj **)p;
     return NULL;
 }
 
@@ -690,12 +690,12 @@ clicon_xml_changelog_get(clicon_handle h)
  */
 int
 clicon_xml_changelog_set(clicon_handle h, 
-			 cxobj        *xchlog)
+                         cxobj        *xchlog)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
     if (clicon_hash_add(cdat, "xml-changelog", &xchlog, sizeof(xchlog))==NULL)
-	return -1;
+        return -1;
     return 0;
 }
 
@@ -708,22 +708,22 @@ clicon_xml_changelog_set(clicon_handle h,
  */
 int
 clicon_argv_get(clicon_handle h,
-		int          *argc,
-		char       ***argv)
-		
+                int          *argc,
+                char       ***argv)
+                
 {
     clicon_hash_t *cdat = clicon_data(h);
     void          *p;
 
     if (argc){
-	if ((p = clicon_hash_value(cdat, "argc", NULL)) == NULL)
-	    return -1;
-	*argc = *(int*)p;
+        if ((p = clicon_hash_value(cdat, "argc", NULL)) == NULL)
+            return -1;
+        *argc = *(int*)p;
     }
     if (argv){
-	if ((p = clicon_hash_value(cdat, "argv", NULL)) == NULL)
-	    return -1;
-	*argv = (char**)p;
+        if ((p = clicon_hash_value(cdat, "argv", NULL)) == NULL)
+            return -1;
+        *argv = (char**)p;
     }
     return 0;
 }
@@ -739,9 +739,9 @@ clicon_argv_get(clicon_handle h,
  */
 int
 clicon_argv_set(clicon_handle h, 
-		char         *prgm,
-		int           argc,
-		char        **argv)
+                char         *prgm,
+                int           argc,
+                char        **argv)
 {
     int             retval = -1;
     clicon_hash_t  *cdat = clicon_data(h);
@@ -751,21 +751,21 @@ clicon_argv_set(clicon_handle h,
     /* add space for null-termination and argv[0] program name */
     len = argc+2;
     if ((argvv = calloc(len, sizeof(char*))) == NULL){
-	clicon_err(OE_UNIX, errno, "calloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
     }
     memcpy(argvv+1, argv, argc*sizeof(char*));
     argvv[0] = prgm;
     /* Note the value is the argv vector (which is copied) */
     if (clicon_hash_add(cdat, "argv", argvv, len*sizeof(char*))==NULL) 
-	goto done;
+        goto done;
     argc += 1;
     if (clicon_hash_add(cdat, "argc", &argc, sizeof(argc))==NULL)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (argvv)
-	free(argvv);
+        free(argvv);
     return retval;
 }
 
@@ -777,13 +777,13 @@ clicon_argv_set(clicon_handle h,
  */
 db_elmnt *
 clicon_db_elmnt_get(clicon_handle h,
-		    const char   *db)
+                    const char   *db)
 {
     clicon_hash_t *cdat = clicon_db_elmnt(h);
     void          *p;
 
     if ((p = clicon_hash_value(cdat, db, NULL)) != NULL)
-	return (db_elmnt *)p;
+        return (db_elmnt *)p;
     return NULL;
 }
 
@@ -797,13 +797,13 @@ clicon_db_elmnt_get(clicon_handle h,
 */
 int
 clicon_db_elmnt_set(clicon_handle h, 
-		    const char   *db,
-		    db_elmnt     *de)
+                    const char   *db,
+                    db_elmnt     *de)
 {
     clicon_hash_t  *cdat = clicon_db_elmnt(h);
 
     if (clicon_hash_add(cdat, db, de, sizeof(*de))==NULL)
-	return -1;
+        return -1;
     return 0;
 }
 
@@ -817,13 +817,13 @@ clicon_db_elmnt_set(clicon_handle h,
  */
 int
 clicon_session_id_get(clicon_handle h,
-		      uint32_t     *id)
+                      uint32_t     *id)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void           *p;
 
     if ((p = clicon_hash_value(cdat, "session-id", NULL)) == NULL)
-	return -1;
+        return -1;
     *id = *(uint32_t*)p;
     return 0;
 }
@@ -837,7 +837,7 @@ clicon_session_id_get(clicon_handle h,
  */
 int
 clicon_session_id_set(clicon_handle h, 
-		      uint32_t      id)
+                      uint32_t      id)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
@@ -858,7 +858,7 @@ clicon_quit_upgrade_get(clicon_handle h)
     void           *p;
 
     if ((p = clicon_hash_value(cdat, "quit-after-upgrade", NULL)) == NULL)
-	return 0;
+        return 0;
     return *(int*)p;
 }
 
@@ -871,7 +871,7 @@ clicon_quit_upgrade_get(clicon_handle h)
  */
 int
 clicon_quit_upgrade_set(clicon_handle h, 
-			int           val)
+                        int           val)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 

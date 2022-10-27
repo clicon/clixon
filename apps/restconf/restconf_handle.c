@@ -119,7 +119,7 @@ restconf_handle_exit(clicon_handle h)
     struct restconf_handle *rh = handle(h);
     
     if (rh->rh_fcgi_socket)
-	free(rh->rh_fcgi_socket);
+        free(rh->rh_fcgi_socket);
     clicon_handle_exit(h); /* frees h and options (and streams) */
     return 0;
 }
@@ -132,12 +132,12 @@ restconf_handle_exit(clicon_handle h)
  */
 char *
 restconf_param_get(clicon_handle h,
-		   const char   *param)
+                   const char   *param)
 {
     struct restconf_handle *rh = handle(h);
 
     if (rh->rh_params == NULL)
-	return NULL;
+        return NULL;
     return (char*)clicon_hash_value(rh->rh_params, param, NULL);
 }
 
@@ -151,15 +151,15 @@ restconf_param_get(clicon_handle h,
  */
 int
 restconf_param_set(clicon_handle h,
-		   const char   *param,
-		   char         *val)
+                   const char   *param,
+                   char         *val)
 {
     struct restconf_handle *rh = handle(h);
 
     clicon_debug(1, "%s: %s=%s", __FUNCTION__, param, val);
     if (rh->rh_params == NULL)
-	if ((rh->rh_params = clicon_hash_init()) == NULL)
-	    return -1;
+        if ((rh->rh_params = clicon_hash_init()) == NULL)
+            return -1;
     return clicon_hash_add(rh->rh_params, param, val, strlen(val)+1)==NULL?-1:0;
 }
 
@@ -177,9 +177,9 @@ restconf_param_del_all(clicon_handle h)
     struct restconf_handle *rh = handle(h);
     
     if (rh->rh_params != NULL){
-	if (clicon_hash_free(rh->rh_params) < 0)
-	    goto done;
-	rh->rh_params = NULL;
+        if (clicon_hash_free(rh->rh_params) < 0)
+            goto done;
+        rh->rh_params = NULL;
     }
     retval = 0;
  done:
@@ -208,7 +208,7 @@ restconf_auth_type_get(clicon_handle h)
  */
 int
 restconf_auth_type_set(clicon_handle        h,
-		       clixon_auth_type_t type)
+                       clixon_auth_type_t type)
 {
     struct restconf_handle *rh = handle(h);
 
@@ -236,7 +236,7 @@ restconf_pretty_get(clicon_handle h)
  */
 int
 restconf_pretty_set(clicon_handle h,
-		    int           pretty)
+                    int           pretty)
 {
     struct restconf_handle *rh = handle(h);
 
@@ -264,7 +264,7 @@ restconf_http_data_get(clicon_handle h)
  */
 int
 restconf_http_data_set(clicon_handle h,
-		       int           http_data)
+                       int           http_data)
 {
     struct restconf_handle *rh = handle(h);
 
@@ -294,13 +294,13 @@ restconf_fcgi_socket_get(clicon_handle h)
  */
 int
 restconf_fcgi_socket_set(clicon_handle h,
-			 char         *socketpath)
+                         char         *socketpath)
 {
     struct restconf_handle *rh = handle(h);
 
     if ((rh->rh_fcgi_socket = strdup(socketpath)) == NULL){
-	clicon_err(OE_RESTCONF, errno, "strdup");
-	return -1;
+        clicon_err(OE_RESTCONF, errno, "strdup");
+        return -1;
     }
     return 0;
 }

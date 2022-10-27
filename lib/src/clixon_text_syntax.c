@@ -83,16 +83,16 @@ tleaf(cxobj *x)
     cxobj *xc;
 
     if (xml_type(x) != CX_ELMNT)
-	return 0;
+        return 0;
     if (xml_child_nr_notype(x, CX_ATTR) != 1)
-	return 0;
+        return 0;
     /* From here exactly one noattr child, get it */
     xc = NULL;
     while ((xc = xml_child_each(x, xc, -1)) != NULL)
-	if (xml_type(xc) != CX_ATTR)
-	    break;
+        if (xml_type(xc) != CX_ATTR)
+            break;
     if (xc == NULL)
-	return -1; /* n/a */
+        return -1; /* n/a */
     return (xml_child_nr_notype(xc, CX_ATTR) == 0);
 }
 
@@ -110,12 +110,12 @@ tleaf(cxobj *x)
  */
 static int
 xml2txt1(cxobj            *xn,
-	 clicon_output_cb *fn,
-	 FILE             *f, 
-	 int               level,
-	 int               autocliext,
-	 int              *leafl,
-    	 char            **leaflname)
+         clicon_output_cb *fn,
+         FILE             *f, 
+         int               level,
+         int               autocliext,
+         int              *leafl,
+         char            **leaflname)
 
 {
     cxobj     *xc = NULL;
@@ -134,128 +134,128 @@ xml2txt1(cxobj            *xn,
     char      *prefix = NULL;
 #endif
     if (xn == NULL || fn == NULL){
-	clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
+        goto done;
     }
     if ((yn = xml_spec(xn)) != NULL){
-	if (autocliext){
-	    if (yang_extension_value(yn, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
-		goto done;
-	    if (exist)
-		goto ok;
-	}
+        if (autocliext){
+            if (yang_extension_value(yn, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+                goto done;
+            if (exist)
+                goto ok;
+        }
 #ifndef TEXT_SYNTAX_NOPREFIX
-	/* Find out prefix if needed: topmost or new module a la API-PATH */
-	if (ys_real_module(yn, &ymod) < 0)
-	    goto done;
-	if ((yp = yang_parent_get(yn)) != NULL &&
-	    yp != ymod){
-	    if (ys_real_module(yp, &ypmod) < 0)
-		goto done;
-	    if (ypmod != ymod)
-		prefix = yang_argument_get(ymod);
-	}
-	else
-	    prefix = yang_argument_get(ymod);
+        /* Find out prefix if needed: topmost or new module a la API-PATH */
+        if (ys_real_module(yn, &ymod) < 0)
+            goto done;
+        if ((yp = yang_parent_get(yn)) != NULL &&
+            yp != ymod){
+            if (ys_real_module(yp, &ypmod) < 0)
+                goto done;
+            if (ypmod != ymod)
+                prefix = yang_argument_get(ymod);
+        }
+        else
+            prefix = yang_argument_get(ymod);
 #endif
-	if (yang_keyword_get(yn) == Y_LIST){
-	    if ((cvk = yang_cvec_get(yn)) == NULL){
-		clicon_err(OE_YANG, 0, "No keys");
-		goto done;
-	    }
-	}
+        if (yang_keyword_get(yn) == Y_LIST){
+            if ((cvk = yang_cvec_get(yn)) == NULL){
+                clicon_err(OE_YANG, 0, "No keys");
+                goto done;
+            }
+        }
     }
-    if (*leafl && yn){	
-	if (yang_keyword_get(yn) == Y_LEAF_LIST && strcmp(*leaflname, yang_argument_get(yn)) == 0)
-	    ;
-	else{
-	    *leafl = 0;
-	    *leaflname = NULL;
-	    (*fn)(f, "%*s\n", 4*(level), "]");
-	}
+    if (*leafl && yn){  
+        if (yang_keyword_get(yn) == Y_LEAF_LIST && strcmp(*leaflname, yang_argument_get(yn)) == 0)
+            ;
+        else{
+            *leafl = 0;
+            *leaflname = NULL;
+            (*fn)(f, "%*s\n", 4*(level), "]");
+        }
     }
     xc = NULL;     /* count children (elements and bodies, not attributes) */
     while ((xc = xml_child_each(xn, xc, -1)) != NULL)
-	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
-	    children++;
+        if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
+            children++;
     if (children == 0){ /* If no children print line */
-	switch (xml_type(xn)){
-	case CX_BODY:{
-	    if ((cb = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    value = xml_value(xn);
-	    if (index(value, ' ') != NULL)
-		cprintf(cb, "\"%s\"", value);
-	    else
-		cprintf(cb, "%s", value);
-	    if (*leafl)                            /* Skip keyword if leaflist */
-		(*fn)(f, "%*s%s\n", 4*level, "", cbuf_get(cb));
-	    else
-		(*fn)(f, "%s;\n", cbuf_get(cb));
-	    break;
-	}
-	case CX_ELMNT:
-	    (*fn)(f, "%*s%s", 4*level, "", xml_name(xn));
-	    cvi = NULL; 	    /* Lists only */
-	    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-		if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
-		    (*fn)(f, " %s", xml_body(xc));
-	    }
-	    (*fn)(f, ";\n");
-	    break;
-	default:
-	    break;
-	}
-	goto ok;
+        switch (xml_type(xn)){
+        case CX_BODY:{
+            if ((cb = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            value = xml_value(xn);
+            if (index(value, ' ') != NULL)
+                cprintf(cb, "\"%s\"", value);
+            else
+                cprintf(cb, "%s", value);
+            if (*leafl)                            /* Skip keyword if leaflist */
+                (*fn)(f, "%*s%s\n", 4*level, "", cbuf_get(cb));
+            else
+                (*fn)(f, "%s;\n", cbuf_get(cb));
+            break;
+        }
+        case CX_ELMNT:
+            (*fn)(f, "%*s%s", 4*level, "", xml_name(xn));
+            cvi = NULL;             /* Lists only */
+            while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+                if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
+                    (*fn)(f, " %s", xml_body(xc));
+            }
+            (*fn)(f, ";\n");
+            break;
+        default:
+            break;
+        }
+        goto ok;
     }
     if (*leafl == 0){
-	(*fn)(f, "%*s", 4*level, "");
+        (*fn)(f, "%*s", 4*level, "");
 #ifndef TEXT_SYNTAX_NOPREFIX
-	if (prefix)
-	    (*fn)(f, "%s:", prefix);
+        if (prefix)
+            (*fn)(f, "%s:", prefix);
 #endif
-	(*fn)(f, "%s", xml_name(xn));
+        (*fn)(f, "%s", xml_name(xn));
     }
-    cvi = NULL; 	/* Lists only */
+    cvi = NULL;         /* Lists only */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
-	    (*fn)(f, " %s", xml_body(xc));
+        if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
+            (*fn)(f, " %s", xml_body(xc));
     }
     if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leafl){
-	;
+        ;
     }
     else if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leafl == 0){
-	*leafl = 1;
-	*leaflname = yang_argument_get(yn);
-	(*fn)(f, " [\n");
+        *leafl = 1;
+        *leaflname = yang_argument_get(yn);
+        (*fn)(f, " [\n");
     }
     else if (!tleaf(xn))
-	(*fn)(f, " {\n");
+        (*fn)(f, " {\n");
     else
-	(*fn)(f, " ");
+        (*fn)(f, " ");
     xc = NULL;
     while ((xc = xml_child_each(xn, xc, -1)) != NULL){
-	if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
-	    if (yn && yang_key_match(yn, xml_name(xc), NULL))
-		continue; /* Skip keys, already printed */
-	    if (xml2txt1(xc, fn, f, level+1, autocliext, leafl, leaflname) < 0)
-		break;
-	}
+        if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
+            if (yn && yang_key_match(yn, xml_name(xc), NULL))
+                continue; /* Skip keys, already printed */
+            if (xml2txt1(xc, fn, f, level+1, autocliext, leafl, leaflname) < 0)
+                break;
+        }
     }
     /* Stop leaf-list printing (ie []) if no longer leaflist and same name */
     if (yn && yang_keyword_get(yn) != Y_LEAF_LIST && *leafl != 0){
-	*leafl = 0;
-	(*fn)(f, "%*s\n", 4*(level+1), "]");
+        *leafl = 0;
+        (*fn)(f, "%*s\n", 4*(level+1), "]");
     }
     if (!tleaf(xn))
-	(*fn)(f, "%*s}\n", 4*level, "");
+        (*fn)(f, "%*s}\n", 4*level, "");
  ok:
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -272,11 +272,11 @@ xml2txt1(cxobj            *xn,
  */
 int
 clixon_txt2file(FILE             *f,
-		cxobj            *xn, 
-		int               level,
-		clicon_output_cb *fn,
-		int               skiptop,
-		int               autocliext)
+                cxobj            *xn, 
+                int               level,
+                clicon_output_cb *fn,
+                int               skiptop,
+                int               autocliext)
 {
     int    retval = 1;
     cxobj *xc;
@@ -284,16 +284,16 @@ clixon_txt2file(FILE             *f,
     char  *leaflname = NULL;
 
     if (fn == NULL)
-	fn = fprintf;
+        fn = fprintf;
     if (skiptop){
-	xc = NULL;
-	while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-	    if (xml2txt1(xc, fn, f, level, autocliext, &leafl, &leaflname) < 0)
-		goto done;
+        xc = NULL;
+        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+            if (xml2txt1(xc, fn, f, level, autocliext, &leafl, &leaflname) < 0)
+                goto done;
     }
     else {
-	if (xml2txt1(xn, fn, f, level, autocliext, &leafl, &leaflname) < 0)
-	    goto done;
+        if (xml2txt1(xn, fn, f, level, autocliext, &leafl, &leaflname) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -324,37 +324,37 @@ text_populate_list(cxobj *xn)
     char      *namei;
 
     if ((yn = xml_spec(xn)) == NULL)
-	goto ok;
+        goto ok;
     if (yang_keyword_get(yn) == Y_LIST){
-	cvk = yang_cvec_get(yn);
-	/* Loop over bodies and keys and create key leafs 
-	 */
-	cvi = NULL;
-	xb = NULL;
-	while ((xb = xml_find_type(xn, NULL, NULL, CX_BODY)) != NULL) {
-	    if (!xml_flag(xb, XML_FLAG_BODYKEY))
-		continue;
-	    xml_flag_reset(xb, XML_FLAG_BODYKEY);
-	    if ((cvi = cvec_next(cvk, cvi)) == NULL){
-		clicon_err(OE_XML, 0, "text parser, key and body mismatch");
-		goto done;
-	    }
-	    namei = cv_string_get(cvi);
-	    if ((xc = xml_new(namei, xn, CX_ELMNT)) == NULL)
-		goto done;
-	    yc = yang_find(yn, Y_LEAF, namei);
-	    xml_spec_set(xc, yc);
-	    if ((xml_addsub(xc, xb)) < 0)
-		goto done;
+        cvk = yang_cvec_get(yn);
+        /* Loop over bodies and keys and create key leafs 
+         */
+        cvi = NULL;
+        xb = NULL;
+        while ((xb = xml_find_type(xn, NULL, NULL, CX_BODY)) != NULL) {
+            if (!xml_flag(xb, XML_FLAG_BODYKEY))
+                continue;
+            xml_flag_reset(xb, XML_FLAG_BODYKEY);
+            if ((cvi = cvec_next(cvk, cvi)) == NULL){
+                clicon_err(OE_XML, 0, "text parser, key and body mismatch");
+                goto done;
+            }
+            namei = cv_string_get(cvi);
+            if ((xc = xml_new(namei, xn, CX_ELMNT)) == NULL)
+                goto done;
+            yc = yang_find(yn, Y_LEAF, namei);
+            xml_spec_set(xc, yc);
+            if ((xml_addsub(xc, xb)) < 0)
+                goto done;
 
-	}
-	if (xml_sort(xn) < 0)
-	    goto done;
+        }
+        if (xml_sort(xn) < 0)
+            goto done;
     }
     xc = NULL;
     while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL) {    
-	if (text_populate_list(xc) < 0)
-	    goto done;
+        if (text_populate_list(xc) < 0)
+            goto done;
     }
  ok:
     retval = 0;
@@ -379,10 +379,10 @@ text_populate_list(cxobj *xn)
  */
 static int 
 _text_syntax_parse(char      *str, 
-		   yang_bind  yb,
-		   yang_stmt *yspec,
-		   cxobj     *xt,
-		   cxobj    **xerr)
+                   yang_bind  yb,
+                   yang_stmt *yspec,
+                   cxobj     *xt,
+                   cxobj    **xerr)
 {
     int                     retval = -1;
     clixon_text_syntax_yacc ts = {0,};
@@ -394,64 +394,64 @@ _text_syntax_parse(char      *str,
     
     clicon_debug(1, "%s %d %s", __FUNCTION__, yb, str);
     if (yb != YB_MODULE && yb != YB_MODULE_NEXT){
-	clicon_err(OE_YANG, EINVAL, "yb must be YB_MODULE or YB_MODULE_NEXT");
-	return -1;
+        clicon_err(OE_YANG, EINVAL, "yb must be YB_MODULE or YB_MODULE_NEXT");
+        return -1;
     }
     ts.ts_parse_string = str;
     ts.ts_linenum = 1;
     ts.ts_xtop = xt;
     ts.ts_yspec = yspec;
     if (clixon_text_syntax_parsel_init(&ts) < 0)
-	goto done;
+        goto done;
     if (clixon_text_syntax_parseparse(&ts) != 0) { /* yacc returns 1 on error */
-	clicon_log(LOG_NOTICE, "TEXT SYNTAX error: line %d", ts.ts_linenum);
-	if (clicon_errno == 0)
-	    clicon_err(OE_JSON, 0, "TEXT SYNTAX parser error with no error code (should not happen)");
-	goto done;
+        clicon_log(LOG_NOTICE, "TEXT SYNTAX error: line %d", ts.ts_linenum);
+        if (clicon_errno == 0)
+            clicon_err(OE_JSON, 0, "TEXT SYNTAX parser error with no error code (should not happen)");
+        goto done;
     }
 
     x = NULL;
     while ((x = xml_child_each(ts.ts_xtop, x, CX_ELMNT)) != NULL) {
-	/* Populate, ie associate xml nodes with yang specs 
-	 */
-	switch (yb){
-	case YB_MODULE_NEXT:
-	    if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
-	case YB_MODULE:
-	    /* xt:<top>     nospec
-	     * x:   <a> <-- populate from modules
-	     */
-	    if ((ret = xml_bind_yang0(x, YB_MODULE, yspec, xerr)) < 0)
-		goto done;
-	    if (ret == 0)
-		failed++;
-	    break;
-	default: /* shouldnt happen */
-	    break; 
-	} /* switch */
-	/*! Look for YANG lists nodes and convert bodies to keys */
-	xc = NULL;
-	while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
-	    if (text_populate_list(xc) < 0)
-		goto done;
+        /* Populate, ie associate xml nodes with yang specs 
+         */
+        switch (yb){
+        case YB_MODULE_NEXT:
+            if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                failed++;
+            break;
+        case YB_MODULE:
+            /* xt:<top>     nospec
+             * x:   <a> <-- populate from modules
+             */
+            if ((ret = xml_bind_yang0(x, YB_MODULE, yspec, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                failed++;
+            break;
+        default: /* shouldnt happen */
+            break; 
+        } /* switch */
+        /*! Look for YANG lists nodes and convert bodies to keys */
+        xc = NULL;
+        while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
+            if (text_populate_list(xc) < 0)
+                goto done;
     }
     if (failed)
-	goto fail;
+        goto fail;
 
     /* Sort the complete tree after parsing. Sorting is not really meaningful if Yang 
        not bound */
     if (yb != YB_NONE)
-	if (xml_sort_recurse(xt) < 0)
-	    goto done;
+        if (xml_sort_recurse(xt) < 0)
+            goto done;
     retval = 1;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
-	cbuf_free(cberr);
+        cbuf_free(cberr);
     clixon_text_syntax_parsel_exit(&ts);
     return retval; 
  fail: /* invalid */
@@ -481,19 +481,19 @@ _text_syntax_parse(char      *str,
  */
 int 
 clixon_text_syntax_parse_string(char      *str, 
-				yang_bind  yb,
-				yang_stmt *yspec,
-				cxobj    **xt,
-				cxobj    **xerr)
+                                yang_bind  yb,
+                                yang_stmt *yspec,
+                                cxobj    **xt,
+                                cxobj    **xerr)
 {
     clicon_debug(1, "%s", __FUNCTION__);
     if (xt==NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
-	return -1;
+        clicon_err(OE_XML, EINVAL, "xt is NULL");
+        return -1;
     }
     if (*xt == NULL){
-	if ((*xt = xml_new("top", NULL, CX_ELMNT)) == NULL)
-	    return -1;
+        if ((*xt = xml_new("top", NULL, CX_ELMNT)) == NULL)
+            return -1;
     }
     return _text_syntax_parse(str, yb, yspec, *xt, xerr);
 }
@@ -530,10 +530,10 @@ clixon_text_syntax_parse_string(char      *str,
  */
 int
 clixon_text_syntax_parse_file(FILE      *fp,
-			      yang_bind  yb,
-			      yang_stmt *yspec,
-			      cxobj    **xt,
-			      cxobj    **xerr)
+                              yang_bind  yb,
+                              yang_stmt *yspec,
+                              cxobj    **xt,
+                              cxobj    **xerr)
 {
     int       retval = -1;
     int       ret;
@@ -545,53 +545,53 @@ clixon_text_syntax_parse_file(FILE      *fp,
     int       len = 0;
 
     if (xt == NULL){
-	clicon_err(OE_XML, EINVAL, "xt is NULL");
-	return -1;
+        clicon_err(OE_XML, EINVAL, "xt is NULL");
+        return -1;
     }
     if ((textbuf = malloc(textbuflen)) == NULL){
-	clicon_err(OE_XML, errno, "malloc");
-	goto done;
+        clicon_err(OE_XML, errno, "malloc");
+        goto done;
     }
     memset(textbuf, 0, textbuflen);
     ptr = textbuf;
     while (1){
-	if ((ret = fread(&ch, 1, 1, fp)) < 0){
-	    clicon_err(OE_XML, errno, "read");
-	    break;
-	}
-	if (ret != 0)
-	    textbuf[len++] = ch;
-	if (ret == 0){
-	    if (*xt == NULL)
-		if ((*xt = xml_new(TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-		    goto done;
-	    if (len){
-		if ((ret = _text_syntax_parse(ptr, yb, yspec, *xt, xerr)) < 0)
-		    goto done;
-		if (ret == 0)
-		    goto fail;
-	    }
-	    break;
-	}
-	if (len >= textbuflen-1){ /* Space: one for the null character */
-	    oldtextbuflen = textbuflen;
-	    textbuflen *= 2;
-	    if ((textbuf = realloc(textbuf, textbuflen)) == NULL){
-		clicon_err(OE_XML, errno, "realloc");
-		goto done;
-	    }
-	    memset(textbuf+oldtextbuflen, 0, textbuflen-oldtextbuflen);
-	    ptr = textbuf;
-	}
+        if ((ret = fread(&ch, 1, 1, fp)) < 0){
+            clicon_err(OE_XML, errno, "read");
+            break;
+        }
+        if (ret != 0)
+            textbuf[len++] = ch;
+        if (ret == 0){
+            if (*xt == NULL)
+                if ((*xt = xml_new(TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+                    goto done;
+            if (len){
+                if ((ret = _text_syntax_parse(ptr, yb, yspec, *xt, xerr)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+            }
+            break;
+        }
+        if (len >= textbuflen-1){ /* Space: one for the null character */
+            oldtextbuflen = textbuflen;
+            textbuflen *= 2;
+            if ((textbuf = realloc(textbuf, textbuflen)) == NULL){
+                clicon_err(OE_XML, errno, "realloc");
+                goto done;
+            }
+            memset(textbuf+oldtextbuflen, 0, textbuflen-oldtextbuflen);
+            ptr = textbuf;
+        }
     }
     retval = 1;
  done:
     if (retval < 0 && *xt){
-	free(*xt);
-	*xt = NULL;
+        free(*xt);
+        *xt = NULL;
     }
     if (textbuf)
-	free(textbuf);
+        free(textbuf);
     return retval;    
  fail:
     retval = 0;

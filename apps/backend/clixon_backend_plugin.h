@@ -99,13 +99,13 @@ int clixon_plugin_pre_daemon_all(clicon_handle h);
 int clixon_plugin_daemon_all(clicon_handle h);
 
 int clixon_plugin_statedata_all(clicon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath,
-				cxobj **xtop);
+                                cxobj **xtop);
 int clixon_plugin_lockdb_all(clicon_handle h, char *db, int lock, int id);
 
 int clixon_pagination_cb_register(clicon_handle h, handler_function fn, char *path, void *arg);
 int clixon_pagination_cb_call(clicon_handle h, char *xpath, int locked,
-			      uint32_t offset, uint32_t limit, 
-			      cxobj *xstate);
+                              uint32_t offset, uint32_t limit, 
+                              cxobj *xstate);
 int clixon_pagination_free(clicon_handle h);
 
 transaction_data_t * transaction_new(void);

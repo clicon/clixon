@@ -90,7 +90,7 @@ static void
 clixon_snmp_sig_term(int arg)
 {
     clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
-	       __PROGRAM__, __FUNCTION__, getpid(), arg);
+               __PROGRAM__, __FUNCTION__, getpid(), arg);
     /* This should ensure no more accepts or incoming packets are processed because next time eventloop
      * is entered, it will terminate.
      * However there may be a case of sockets closing rather abruptly for clients
@@ -114,25 +114,25 @@ snmp_terminate(clicon_handle h)
     shutdown_agent();
     clixon_snmp_api_agent_cleanup();
     if (clicon_ptr_get(h, "snmp-rowstatus-tree", (void**)&x) == 0 && x){
-	xml_free(x);
-	x = NULL;
+        xml_free(x);
+        x = NULL;
     }
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
-	ys_free(yspec);
+        ys_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
-	ys_free(yspec);
+        ys_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
-	cvec_free(nsctx);
+        cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
-	xml_free(x);
+        xml_free(x);
     xpath_optimize_exit();
     clixon_event_exit();
     clicon_handle_exit(h);
     clixon_err_exit();
     clicon_log_exit();
     if (pidfile)
-	unlink(pidfile);
+        unlink(pidfile);
     return 0;
 }
 
@@ -148,7 +148,7 @@ snmp_terminate(clicon_handle h)
  */
 static int
 clixon_snmp_fdset_register(clicon_handle h,
-			   int           regfd)
+                           int           regfd)
 {
     int             retval = -1;
     int             numfds = 0;
@@ -160,23 +160,23 @@ clixon_snmp_fdset_register(clicon_handle h,
 
     FD_ZERO(&readfds);
     if ((nr = snmp_sess_select_info(NULL, &numfds, &readfds, &timeout, &block)) < 0){
-	clicon_err(OE_XML, errno, "snmp_select_error");
-	goto done;
+        clicon_err(OE_XML, errno, "snmp_select_error");
+        goto done;
     }
     /* eg 4, 6, 8 */
     for (s=0; s<numfds; s++){
-	if (FD_ISSET(s, &readfds)){
-	    clicon_debug(1, "%s %d", __FUNCTION__, s);
-	    if (regfd){
-		if (clixon_event_reg_fd(s, clixon_snmp_input_cb, h, "snmp socket") < 0)
-		    goto done;
-	    }
-	    else{
-		if (clixon_event_unreg_fd(s, clixon_snmp_input_cb) < 0)
-		    goto done;
-		close(s);
-	    }
-	}
+        if (FD_ISSET(s, &readfds)){
+            clicon_debug(1, "%s %d", __FUNCTION__, s);
+            if (regfd){
+                if (clixon_event_reg_fd(s, clixon_snmp_input_cb, h, "snmp socket") < 0)
+                    goto done;
+            }
+            else{
+                if (clixon_event_unreg_fd(s, clixon_snmp_input_cb) < 0)
+                    goto done;
+                close(s);
+            }
+        }
     }
     retval = 0;
  done:
@@ -191,40 +191,40 @@ clixon_snmp_fdset_register(clicon_handle h,
  */
 static int
 clixon_snmp_input_cb(int   s, 
-		     void *arg)
+                     void *arg)
 {
     int            retval = -1;
     fd_set         readfds;
     clicon_handle  h = (clicon_handle)arg;
     int            ret;
 
-    clicon_debug(1, "%s %d", __FUNCTION__, s);
+    clicon_debug(2, "%s %d", __FUNCTION__, s);
     FD_ZERO(&readfds);
     FD_SET(s, &readfds);
     (void)snmp_read(&readfds);
     if (clixon_event_poll(s) < 0){
-	if (errno == EBADF){
-	    clicon_err_reset();
-	    /* Close the active socket */
-	    if (clixon_event_unreg_fd(s, clixon_snmp_input_cb) < 0)
-		goto done;
-	    close(s);
-	    /* and then the others */
-	    if (clixon_snmp_fdset_register(h, 0) < 0)
-		goto done;
-	    if ((ret = snmp_close_sessions()) != 1){
-		clicon_err(OE_SNMP, ret, "snmp_close_sessions");
-		goto done;
-	    }
-	    /* Signal normal exit to upper layers (=event handling)
-	     * One can signal error and return -1, but it is nicer with an orderly exit
-	     */
-	    clixon_exit_set(1);
-	}
-	else {
-	    clicon_err(OE_UNIX, errno, "poll");
-	    goto done;
-	}
+        if (errno == EBADF){
+            clicon_err_reset();
+            /* Close the active socket */
+            if (clixon_event_unreg_fd(s, clixon_snmp_input_cb) < 0)
+                goto done;
+            close(s);
+            /* and then the others */
+            if (clixon_snmp_fdset_register(h, 0) < 0)
+                goto done;
+            if ((ret = snmp_close_sessions()) != 1){
+                clicon_err(OE_SNMP, ret, "snmp_close_sessions");
+                goto done;
+            }
+            /* Signal normal exit to upper layers (=event handling)
+             * One can signal error and return -1, but it is nicer with an orderly exit
+             */
+            clixon_exit_set(1);
+        }
+        else {
+            clicon_err(OE_UNIX, errno, "poll");
+            goto done;
+        }
     }
     retval = 0;
  done:
@@ -238,16 +238,16 @@ clixon_snmp_input_cb(int   s,
  */
 static int
 clixon_snmp_init_subagent(clicon_handle h,
-			  int           logdst)
+                          int           logdst)
 {
     int   retval = -1;
     char *sockpath = NULL;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (logdst == CLICON_LOG_SYSLOG)
-	snmp_enable_calllog();
+        snmp_enable_calllog();
     else
-	snmp_enable_stderrlog();
+        snmp_enable_stderrlog();
     /* 0 if master, 1 if client */
     netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_ROLE, 1);
     /* don't load config and don't load/save persistent file */
@@ -258,11 +258,11 @@ clixon_snmp_init_subagent(clicon_handle h,
     netsnmp_ds_set_boolean(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_DISABLE_PERSISTENT_SAVE, 1);    
 
     if (clicon_debug_get())
-	netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_VERBOSE, 1);
+        netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_VERBOSE, 1);
 
     if ((sockpath = clicon_option_str(h, "CLICON_SNMP_AGENT_SOCK")) == NULL){
-	clicon_err(OE_XML, 0, "CLICON_SNMP_AGENT_SOCK not set");
-	goto done;
+        clicon_err(OE_XML, 0, "CLICON_SNMP_AGENT_SOCK not set");
+        goto done;
     }
     /* XXX: This should be configurable. */
     netsnmp_ds_set_string(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_X_SOCKET, sockpath);
@@ -274,25 +274,25 @@ clixon_snmp_init_subagent(clicon_handle h,
     init_snmp(__PROGRAM__);
 
     if (!clixon_snmp_api_agent_check()){
-	clicon_err(OE_DAEMON, 0, "Connection to SNMP agent failed");
-	goto done;
+        clicon_err(OE_DAEMON, 0, "Connection to SNMP agent failed");
+        goto done;
     }
-	
+        
     if (set_signal(SIGTERM, clixon_snmp_sig_term, NULL) < 0){
-	clicon_err(OE_DAEMON, errno, "Setting signal");
-	goto done;
+        clicon_err(OE_DAEMON, errno, "Setting signal");
+        goto done;
     }
     if (set_signal(SIGINT, clixon_snmp_sig_term, NULL) < 0){
-	clicon_err(OE_DAEMON, errno, "Setting signal");
-	goto done;
+        clicon_err(OE_DAEMON, errno, "Setting signal");
+        goto done;
     }
     if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
-	clicon_err(OE_UNIX, errno, "Setting SIGPIPE signal");
-	goto done;
+        clicon_err(OE_UNIX, errno, "Setting SIGPIPE signal");
+        goto done;
     }
    /* Workaround for netsnmps API use of fdset:s instead of sockets */
     if (clixon_snmp_fdset_register(h, 1) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -307,15 +307,15 @@ usage(clicon_handle h,
       char         *argv0)
 {
     fprintf(stderr, "usage:%s\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h\t\tHelp\n"
-	    "\t-D <level>\tDebug level\n"
-    	    "\t-f <file>\tConfiguration file (mandatory)\n"
-	    "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
-    	    "\t-z\t\tKill other %s daemon and exit\n"
-	    "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
-	    argv0, argv0
-	    );
+            "\t-D <level>\tDebug level (>1 for extensive libnetsnmp debug)\n"
+            "\t-f <file>\tConfiguration file (mandatory)\n"
+            "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
+            "\t-z\t\tKill other %s daemon and exit\n"
+            "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
+            argv0, argv0
+            );
     exit(0);
 }
 
@@ -344,88 +344,90 @@ main(int    argc,
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
-	return -1;
+        return -1;
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
 
     /* Set username to clixon handle. Use in all communication to backend */
     if ((pw = getpwuid(getuid())) == NULL){
-	clicon_err(OE_UNIX, errno, "getpwuid");
-	goto done;
+        clicon_err(OE_UNIX, errno, "getpwuid");
+        goto done;
     }
     if (clicon_username_set(h, pw->pw_name) < 0)
-	goto done;
+        goto done;
     while ((c = getopt(argc, argv, SNMP_OPTS)) != -1)
-	switch (c) {
-	case 'h' : /* help */
-	    usage(h, argv[0]);
-	    break;
-	case 'D' : /* debug */
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(h, argv[0]);
-	    break;
-	 case 'f': /* override config file */
-	    if (!strlen(optarg))
-		usage(h, argv[0]);
-	    clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
-	    break;
-	 case 'l': /* Log destination: s|e|o */
-	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
-		usage(h, argv[0]);
-	    if (logdst == CLICON_LOG_FILE &&
-		strlen(optarg)>1 &&
-		clicon_log_file(optarg+1) < 0)
-		goto done;
-	     break;
-	}
+        switch (c) {
+        case 'h' : /* help */
+            usage(h, argv[0]);
+            break;
+        case 'D' : /* debug */
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(h, argv[0]);
+            break;
+         case 'f': /* override config file */
+            if (!strlen(optarg))
+                usage(h, argv[0]);
+            clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
+            break;
+         case 'l': /* Log destination: s|e|o */
+            if ((logdst = clicon_log_opt(optarg[0])) < 0)
+                usage(h, argv[0]);
+            if (logdst == CLICON_LOG_FILE &&
+                strlen(optarg)>1 &&
+                clicon_log_file(optarg+1) < 0)
+                goto done;
+             break;
+        }
 
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
     clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
     clicon_debug_init(dbg, NULL); 
-
+    /* This is netsnmplib debugging which is quite extensive + only if compiled w debug */
+    if (dbg > 1)
+        snmp_set_do_debugging(1);
     /*
      * Register error category and error/log callbacks for netsnmp special error handling
      */
     if (clixon_err_cat_reg(OE_SNMP,              /* category */
-			   h,                    /* handle (can be NULL) */
-			   clixon_snmp_err_cb    /* log fn */
-			   ) < 0)
-	goto done;
+                           h,                    /* handle (can be NULL) */
+                           clixon_snmp_err_cb    /* log fn */
+                           ) < 0)
+        goto done;
     
     yang_init(h);
     
     /* Find, read and parse configfile */
     if (clicon_options_main(h) < 0)
-	goto done;
+        goto done;
     
     /* Now rest of options */
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, SNMP_OPTS)) != -1)
-	switch (c) {
-	case 'h' : /* help */
-	case 'D' : /* debug */
-	case 'f':  /* config file */
-	case 'l':  /* log  */
-	    break; /* see above */
-	case 'o':{ /* Configuration option */
-	    char          *val;
-	    if ((val = index(optarg, '=')) == NULL)
-		usage(h, argv0);
-	    *val++ = '\0';
-	    if (clicon_option_add(h, optarg, val) < 0)
-		goto done;
-	    break;
-	}
-	case 'z': /* Zap other process */
-	    zap++;
-	    break;
-	default:
-	    usage(h, argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h' : /* help */
+        case 'D' : /* debug */
+        case 'f':  /* config file */
+        case 'l':  /* log  */
+            break; /* see above */
+        case 'o':{ /* Configuration option */
+            char          *val;
+            if ((val = index(optarg, '=')) == NULL)
+                usage(h, argv0);
+            *val++ = '\0';
+            if (clicon_option_add(h, optarg, val) < 0)
+                goto done;
+            break;
+        }
+        case 'z': /* Zap other process */
+            zap++;
+            break;
+        default:
+            usage(h, argv[0]);
+            break;
+        }
     argc -= optind;
     argv += optind;
 
@@ -434,27 +436,27 @@ main(int    argc,
 
     /* Check pid-file, if zap kill the old daemon, else return here */
     if ((pidfile = clicon_snmp_pidfile(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "pidfile not set");
-	goto done;
+        clicon_err(OE_FATAL, 0, "pidfile not set");
+        goto done;
     }
     if (pidfile_get(pidfile, &pid) < 0)
-	goto done;
+        goto done;
     if (zap){
-	if (pid && pidfile_zapold(pid) < 0)
-	    return -1;
-	if (lstat(pidfile, &st) == 0)
-	    unlink(pidfile);   
-	snmp_terminate(h);
-	exit(0); /* OK */
+        if (pid && pidfile_zapold(pid) < 0)
+            return -1;
+        if (lstat(pidfile, &st) == 0)
+            unlink(pidfile);   
+        snmp_terminate(h);
+        exit(0); /* OK */
     }
     else if (pid){
-	clicon_err(OE_DAEMON, 0, "Clixon_snmp daemon already running with pid %d\n(Try killing it with %s -z)", 
-		   pid, argv0);
-	return -1; /* goto done deletes pidfile */
+        clicon_err(OE_DAEMON, 0, "Clixon_snmp daemon already running with pid %d\n(Try killing it with %s -z)", 
+                   pid, argv0);
+        return -1; /* goto done deletes pidfile */
     }
     /* Here there is either no old process or we have killed it,.. */
     if (lstat(pidfile, &st) == 0)
-	unlink(pidfile);   
+        unlink(pidfile);   
 
     /* Init cligen buffers */
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
@@ -462,7 +464,7 @@ main(int    argc,
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
 
     if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
-	clicon_log_string_limit_set(sz);
+        clicon_log_string_limit_set(sz);
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
@@ -471,49 +473,49 @@ main(int    argc,
      * Otherwise it is loaded in netconf_module_load below
      */
     if (netconf_module_features(h) < 0)
-	goto done;
+        goto done;
 
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
-	goto done;
-    clicon_dbspec_yang_set(h, yspec);	
+        goto done;
+    clicon_dbspec_yang_set(h, yspec);   
 
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
     if ((str = clicon_yang_main_file(h)) != NULL){
-	if (yang_spec_parse_file(h, str, yspec) < 0)
-	    goto done;
+        if (yang_spec_parse_file(h, str, yspec) < 0)
+            goto done;
     }
     /* 2. Load a (single) main module */
     if ((str = clicon_yang_module_main(h)) != NULL){
-	if (yang_spec_parse_module(h, str, clicon_yang_module_revision(h),
-				   yspec) < 0)
-	    goto done;
+        if (yang_spec_parse_module(h, str, clicon_yang_module_revision(h),
+                                   yspec) < 0)
+            goto done;
     }
     /* 3. Load all modules in a directory */
     if ((str = clicon_yang_main_dir(h)) != NULL){
-	if (yang_spec_load_dir(h, str, yspec) < 0)
-	    goto done;
+        if (yang_spec_load_dir(h, str, yspec) < 0)
+            goto done;
     }
     /* Load clixon lib yang module */
     if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
-	goto done;
+        goto done;
      /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
-	goto done;
+        goto done;
     /* Add netconf yang spec, used by netconf client and as internal protocol */
     if (netconf_module_load(h) < 0)
-	goto done;
+        goto done;
     /* Here all modules are loaded 
      * Compute and set canonical namespace context
      */
     if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
-	goto done;
+        goto done;
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
-	goto done;
+        goto done;
 
     if (dbg)
-	clicon_option_dump(h, dbg);
+        clicon_option_dump(h, dbg);
     
     /* Get session id from backend hello */
     clicon_session_id_set(h, getpid()); 
@@ -524,23 +526,23 @@ main(int    argc,
      * each message sent to the backend.
      */
     if (clicon_hello_req(h, &id) < 0)
-	goto done;
+        goto done;
     clicon_session_id_set(h, id);
     
     /* Init snmp as subagent */
     if (clixon_snmp_init_subagent(h, logdst) < 0)
-	goto done;
+        goto done;
 
     /* Init and traverse mib-translated yangs and register callbacks */
     if (clixon_snmp_traverse_mibyangs(h) < 0)
-	goto done;
+        goto done;
 
     /* Write pid-file */
     if (pidfile_write(pidfile) <  0)
-	goto done;
+        goto done;
     /* main event loop */
     if (clixon_event_loop(h) < 0)
-	goto done;
+        goto done;
     retval = 0;
   done:
     snmp_terminate(h);

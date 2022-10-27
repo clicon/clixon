@@ -69,4 +69,4 @@ int clixon_json_parselex(void *);
 int clixon_json_parseparse(void *);
 void clixon_json_parseerror(void *, char*);
 
-#endif	/* _CLIXON_JSON_PARSE_H_ */
+#endif  /* _CLIXON_JSON_PARSE_H_ */

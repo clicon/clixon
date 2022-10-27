@@ -53,11 +53,11 @@ A JSON value is an object, array, number, string, true, false, or null
 
 value    ::= object  |
              array   |
-	     number  |
-	     string  |
-	     'true'  |
-	     'false' |
-	     'null'  ;
+             number  |
+             string  |
+             'true'  |
+             'false' |
+             'null'  ;
 
 object   ::= '{' [objlist] '}';
 objlist  ::= pair [',' objlist];
@@ -149,12 +149,12 @@ extern int clixon_json_parseget_lineno  (void);
 
 void 
 clixon_json_parseerror(void *_jy,
-		       char *s) 
+                       char *s) 
 { 
     clicon_err(OE_JSON, XMLPARSE_ERRNO, "json_parse: line %d: %s at or before: '%s'", 
-	       _JY->jy_linenum ,
-	       s, 
-	       clixon_json_parsetext); 
+               _JY->jy_linenum ,
+               s, 
+               clixon_json_parsetext); 
   return;
 }
 
@@ -176,7 +176,7 @@ json_parse_exit(clixon_json_yacc *jy)
  */
 static int
 json_current_new(clixon_json_yacc *jy,
-		 char             *name)
+                 char             *name)
 {
     int        retval = -1;
     cxobj     *x;
@@ -186,24 +186,24 @@ json_current_new(clixon_json_yacc *jy,
     clicon_debug(2, "%s", __FUNCTION__);
     /* Find colon separator and if found split into prefix:name */
     if (nodeid_split(name, &prefix, &id) < 0)
-	goto done;
+        goto done;
     if ((x = xml_new(id, jy->jy_current, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     if (xml_prefix_set(x, prefix) < 0)
-	goto done;
+        goto done;
 
     /* If topmost, add to top-list created list */
     if (jy->jy_current == jy->jy_xtop){
-	if (cxvec_append(x, &jy->jy_xvec, &jy->jy_xlen) < 0)
-	    goto done;
+        if (cxvec_append(x, &jy->jy_xvec, &jy->jy_xlen) < 0)
+            goto done;
     }
     jy->jy_current = x;
     retval = 0;
  done:
     if (prefix)
-	free(prefix);
+        free(prefix);
     if (id)
-	free(id);
+        free(id);
     return retval;
 }
 
@@ -212,7 +212,7 @@ json_current_pop(clixon_json_yacc *jy)
 {
     clicon_debug(2, "%s", __FUNCTION__);
     if (jy->jy_current) 
-	jy->jy_current = xml_parent(jy->jy_current);
+        jy->jy_current = xml_parent(jy->jy_current);
     return 0;
 }
 
@@ -249,16 +249,16 @@ json_current_clone(clixon_json_yacc *jy)
 
 static int
 json_current_body(clixon_json_yacc *jy, 
-		  char             *value)
+                  char             *value)
 {
     int retval = -1;
     cxobj *xn;
 
     clicon_debug(2, "%s", __FUNCTION__);
     if ((xn = xml_new("body", jy->jy_current, CX_BODY)) == NULL)
-	goto done; 
+        goto done; 
     if (value && xml_value_append(xn, value) < 0)
-	goto done; 
+        goto done; 
     retval = 0;
  done:
     return retval;
@@ -279,7 +279,7 @@ value         : J_TRUE  { json_current_body(_JY, "true");       _PARSE_DEBUG("va
               | J_FALSE { json_current_body(_JY, "false");      _PARSE_DEBUG("value->FALSE");}
               | J_NULL  { json_current_body(_JY, NULL);         _PARSE_DEBUG("value->NULL");}
               | object                                        { _PARSE_DEBUG("value->object"); }
-	      | array                                         { _PARSE_DEBUG("value->array"); }
+              | array                                         { _PARSE_DEBUG("value->array"); }
               | number  { json_current_body(_JY, $1); free($1); _PARSE_DEBUG("value->number");}
               | string  { json_current_body(_JY, cbuf_get($1)); cbuf_free($1); _PARSE_DEBUG("value->string");}
 
@@ -314,10 +314,10 @@ string        : J_DQ ustring J_DQ { _PARSE_DEBUG("string->\" ustring \"");$$=$2;
 /* unquoted string: can be optimized by reading whole string in lex */
 ustring       : ustring J_CHAR 
                      {
-			 cbuf_append_str($1,$2); $$=$1; free($2);
-		     }
+                         cbuf_append_str($1,$2); $$=$1; free($2);
+                     }
               | J_CHAR 
-	      { cbuf *cb = cbuf_new(); cbuf_append_str(cb,$1); $$=cb; free($1);} 
+              { cbuf *cb = cbuf_new(); cbuf_append_str(cb,$1); $$=cb; free($1);} 
               ;
 
 number        : J_NUMBER { $$ = $1; }

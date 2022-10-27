@@ -124,7 +124,7 @@ uint       [1-9][0-9]*
 <STRSQ>[^\']+         { clixon_instance_id_parselval.string = strdup(yytext); return STRING; }
 <STRSQ>\'             { BEGIN(_IY->iy_lex_state); return SQUOTE; }
 
-		     
+                     
 %%
 
 /*! Initialize scanner.

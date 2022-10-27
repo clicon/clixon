@@ -94,16 +94,16 @@ clixon_xvec_inc(clixon_xvec *xv)
     
     xv->xv_len++;
     if (xv->xv_len > xv->xv_max){
-	if (xv->xv_max < XVEC_MAX_DEFAULT)
-	    xv->xv_max = XVEC_MAX_DEFAULT;
-	else if (xv->xv_max < XVEC_MAX_THRESHOLD)
-	    xv->xv_max *= 2;                  /* Double the space - exponential */
-	else
-	    xv->xv_max += XVEC_MAX_THRESHOLD; /* Add - linear growth */
-	if ((xv->xv_vec = realloc(xv->xv_vec, sizeof(cxobj *) * xv->xv_max)) == NULL){
-	    clicon_err(OE_XML, errno, "realloc");
-	    goto done;
-	}
+        if (xv->xv_max < XVEC_MAX_DEFAULT)
+            xv->xv_max = XVEC_MAX_DEFAULT;
+        else if (xv->xv_max < XVEC_MAX_THRESHOLD)
+            xv->xv_max *= 2;                  /* Double the space - exponential */
+        else
+            xv->xv_max += XVEC_MAX_THRESHOLD; /* Add - linear growth */
+        if ((xv->xv_vec = realloc(xv->xv_vec, sizeof(cxobj *) * xv->xv_max)) == NULL){
+            clicon_err(OE_XML, errno, "realloc");
+            goto done;
+        }
     }
     retval = 0;
  done:
@@ -123,8 +123,8 @@ clixon_xvec_new(void)
     clixon_xvec *xv = NULL;
 
     if ((xv = malloc(sizeof(*xv))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xv, 0, sizeof(*xv));
     xv->xv_len = 0;
@@ -146,15 +146,15 @@ clixon_xvec_dup(clixon_xvec *xv0)
     clixon_xvec *xv1 = NULL; /* retval */
 
     if ((xv1 = clixon_xvec_new()) == NULL)
-	goto done;
+        goto done;
     *xv1 = *xv0;
     xv1->xv_vec = NULL;
     if (xv1->xv_max &&
-	(xv1->xv_vec = calloc(xv1->xv_max, sizeof(cxobj*))) == NULL){
-	clicon_err(OE_UNIX, errno, "calloc");
-	free(xv1);
-	xv1 = NULL;
-	goto done;
+        (xv1->xv_vec = calloc(xv1->xv_max, sizeof(cxobj*))) == NULL){
+        clicon_err(OE_UNIX, errno, "calloc");
+        free(xv1);
+        xv1 = NULL;
+        goto done;
     }
     memcpy(xv1->xv_vec, xv0->xv_vec, xv0->xv_len*sizeof(cxobj*));
  done:
@@ -167,9 +167,9 @@ int
 clixon_xvec_free(clixon_xvec *xv)
 {
     if (xv->xv_vec)
-	free(xv->xv_vec);
+        free(xv->xv_vec);
     if (xv)
-	free(xv);
+        free(xv);
     return 0;
 }
 
@@ -190,12 +190,12 @@ clixon_xvec_len(clixon_xvec *xv)
  */
 cxobj*
 clixon_xvec_i(clixon_xvec *xv,
-	      int          i)
+              int          i)
 {
     if (i < xv->xv_len)
-	return xv->xv_vec[i];
+        return xv->xv_vec[i];
     else
-	return NULL;
+        return NULL;
 }
 
 /*! Return whole XML object vector and null it in original xvec, essentially moving it
@@ -210,24 +210,24 @@ clixon_xvec_i(clixon_xvec *xv,
  */
 int
 clixon_xvec_extract(clixon_xvec *xv,
-		    cxobj     ***xvec,
-		    int         *xlen,
-		    int         *xmax)
+                    cxobj     ***xvec,
+                    int         *xlen,
+                    int         *xmax)
 {
     int retval = -1;
     
     if (xv == NULL){
-	clicon_err(OE_XML, EINVAL, "xv is NULL");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "xv is NULL");
+        goto done;
     }
     *xvec = xv->xv_vec;
     *xlen = xv->xv_len;
     if (xmax)
-	*xmax = xv->xv_max;
+        *xmax = xv->xv_max;
     if (xv->xv_vec != NULL){
-	xv->xv_len = 0;
-	xv->xv_max = 0;
-	xv->xv_vec = NULL;
+        xv->xv_len = 0;
+        xv->xv_max = 0;
+        xv->xv_vec = NULL;
     }
     retval = 0;
  done:
@@ -248,13 +248,13 @@ clixon_xvec_extract(clixon_xvec *xv,
  */
 int
 clixon_xvec_append(clixon_xvec *xv,
-		   cxobj       *x)
-		   
+                   cxobj       *x)
+                   
 {
     int retval = -1;
 
     if (clixon_xvec_inc(xv) < 0)
-	goto done;
+        goto done;
     xv->xv_vec[xv->xv_len-1] = x;
     retval = 0;
  done:
@@ -274,17 +274,17 @@ clixon_xvec_append(clixon_xvec *xv,
  */
 int
 clixon_xvec_merge(clixon_xvec *xv0,
-		  clixon_xvec *xv1)
+                  clixon_xvec *xv1)
 {
     int    retval = -1;
     cxobj *x;
     int    i;
 
     for (i=0; i<clixon_xvec_len(xv1); i++){
-	x = clixon_xvec_i(xv1, i);
-	if (clixon_xvec_inc(xv0) < 0)
-	    goto done;
-	xv0->xv_vec[xv0->xv_len-1] = x;
+        x = clixon_xvec_i(xv1, i);
+        if (clixon_xvec_inc(xv0) < 0)
+            goto done;
+        xv0->xv_vec[xv0->xv_len-1] = x;
     }
     retval = 0;
  done:
@@ -305,12 +305,12 @@ clixon_xvec_merge(clixon_xvec *xv0,
  */
 int
 clixon_xvec_prepend(clixon_xvec *xv,
-		    cxobj       *x)
+                    cxobj       *x)
 {
     int retval = -1;
 
     if (clixon_xvec_inc(xv) < 0)
-	goto done;
+        goto done;
     memmove(&xv->xv_vec[1], &xv->xv_vec[0], sizeof(cxobj *) * (xv->xv_len-1));
     xv->xv_vec[0] = x;
     retval = 0;
@@ -328,14 +328,14 @@ clixon_xvec_prepend(clixon_xvec *xv,
  */
 int
 clixon_xvec_insert_pos(clixon_xvec *xv,
-		       cxobj       *x,
-		       int          i)
+                       cxobj       *x,
+                       int          i)
 {
     int    retval = -1;
     size_t size;
     
     if (clixon_xvec_inc(xv) < 0)
-	goto done;
+        goto done;
     size = (xv->xv_len - i -1)*sizeof(cxobj *);
     memmove(&xv->xv_vec[i+1], &xv->xv_vec[i], size);
     xv->xv_vec[i] = x;
@@ -353,7 +353,7 @@ clixon_xvec_insert_pos(clixon_xvec *xv,
  */
 int
 clixon_xvec_rm_pos(clixon_xvec *xv,
-		   int          i)
+                   int          i)
 {
     size_t size;
     
@@ -372,13 +372,13 @@ clixon_xvec_rm_pos(clixon_xvec *xv,
  */
 int
 clixon_xvec_print(FILE        *f,
-		  clixon_xvec *xv)
+                  clixon_xvec *xv)
 {
     int i;
     
     for (i=0; i<xv->xv_len; i++)
-	if (clixon_xml2file(f, xv->xv_vec[i], 0, 1, fprintf, 0, 0) < 0)
-	    return -1;
+        if (clixon_xml2file(f, xv->xv_vec[i], 0, 1, fprintf, 0, 0) < 0)
+            return -1;
     return 0;
 }
 

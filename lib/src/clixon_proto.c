@@ -107,8 +107,8 @@ format_int2str(enum format_enum showas)
     struct formatvec *fv;
 
     for (fv=_FORMATS; fv->fv_int != -1; fv++)
-	if (fv->fv_int == showas)
-	    break;
+        if (fv->fv_int == showas)
+            break;
     return fv?(fv->fv_str?fv->fv_str:"unknown"):"unknown";
 }
 
@@ -122,8 +122,8 @@ format_str2int(char *str)
     struct formatvec *fv;
 
     for (fv=_FORMATS; fv->fv_int != -1; fv++)
-	if (strcmp(fv->fv_str, str) == 0)
-	    break;
+        if (strcmp(fv->fv_str, str) == 0)
+            break;
     return fv?fv->fv_int:-1;
 }
 
@@ -138,7 +138,7 @@ format_str2int(char *str)
  */
 struct clicon_msg *
 clicon_msg_encode(uint32_t      id,
-		  const char   *format, ...)
+                  const char   *format, ...)
 {
     va_list            args;
     uint32_t           xmllen;
@@ -152,8 +152,8 @@ clicon_msg_encode(uint32_t      id,
 
     len = hdrlen + xmllen;
     if ((msg = (struct clicon_msg *)malloc(len)) == NULL){
-	clicon_err(OE_PROTO, errno, "malloc");
-	return NULL;
+        clicon_err(OE_PROTO, errno, "malloc");
+        return NULL;
     }
     memset(msg, 0, len);
     /* hdr */
@@ -180,10 +180,10 @@ clicon_msg_encode(uint32_t      id,
  */
 int
 clicon_msg_decode(struct clicon_msg *msg, 
-		  yang_stmt         *yspec,
-		  uint32_t          *id,
-		  cxobj            **xml,
-		  cxobj            **xerr)
+                  yang_stmt         *yspec,
+                  uint32_t          *id,
+                  cxobj            **xml,
+                  cxobj            **xerr)
 {
     int    retval = -1;
     char  *xmlstr;
@@ -191,14 +191,14 @@ clicon_msg_decode(struct clicon_msg *msg,
 
     /* hdr */
     if (id)
-	*id = ntohl(msg->op_id);
+        *id = ntohl(msg->op_id);
     /* body */
     xmlstr = msg->op_body;
     clicon_debug(1, "%s %s", __FUNCTION__, xmlstr);
     if ((ret = clixon_xml_parse_string(xmlstr, yspec?YB_RPC:YB_NONE, yspec, xml, xerr)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto fail;
+        goto fail;
     retval = 1;
  done:
     return retval;
@@ -215,15 +215,15 @@ clicon_msg_decode(struct clicon_msg *msg,
  */
 int
 clicon_connect_unix(clicon_handle h,
-		    char         *sockpath)
+                    char         *sockpath)
 {
     struct sockaddr_un addr;
     int retval = -1;
     int s;
 
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-	clicon_err(OE_CFG, errno, "socket");
-	return -1;
+        clicon_err(OE_CFG, errno, "socket");
+        return -1;
     }
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
@@ -231,14 +231,14 @@ clicon_connect_unix(clicon_handle h,
 
     clicon_debug(2, "%s: connecting to %s", __FUNCTION__, addr.sun_path);
     if (connect(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
-	if (errno == EACCES)
-	    clicon_err(OE_CFG, errno, "connecting unix socket: %s. "
-		       "Is user not member of group: \"%s\"?", 
-		       sockpath, clicon_sock_group(h));
-	else
-	    clicon_err(OE_CFG, errno, "connecting unix socket: %s", sockpath);
-	close(s);
-	goto done;
+        if (errno == EACCES)
+            clicon_err(OE_CFG, errno, "connecting unix socket: %s. "
+                       "Is user not member of group: \"%s\"?", 
+                       sockpath, clicon_sock_group(h));
+        else
+            clicon_err(OE_CFG, errno, "connecting unix socket: %s", sockpath);
+        close(s);
+        goto done;
     }
     retval = s;
   done:
@@ -259,35 +259,35 @@ atomicio_sig_handler(int arg)
  */
 static ssize_t
 atomicio(ssize_t (*fn) (int, void *, size_t), 
-	 int       fd, 
-	 void     *s0, 
-	 size_t    n)
+         int       fd, 
+         void     *s0, 
+         size_t    n)
 {
     char *s = s0;
     ssize_t res, pos = 0;
 
     while (n > pos) {
-	_atomicio_sig = 0;
-	res = (fn)(fd, s + pos, n - pos);
-	switch (res) {
-	case -1:
-	    if (errno == EINTR){
-		if (!_atomicio_sig)
-		    continue;
-	    }
-	    else if (errno == EAGAIN)
-		continue;
-	    else if (errno == ECONNRESET)/* Connection reset by peer */
-		res = 0;
-	    else if (errno == EPIPE)     /* Client shutdown */
-		res = 0;
-	    else if (errno == EBADF)     /* client shutdown - freebsd */
-		res = 0;
-	case 0: /* fall thru */
-	    return (res);
-	default:
-	    pos += res;
-	}
+        _atomicio_sig = 0;
+        res = (fn)(fd, s + pos, n - pos);
+        switch (res) {
+        case -1:
+            if (errno == EINTR){
+                if (!_atomicio_sig)
+                    continue;
+            }
+            else if (errno == EAGAIN)
+                continue;
+            else if (errno == ECONNRESET)/* Connection reset by peer */
+                res = 0;
+            else if (errno == EPIPE)     /* Client shutdown */
+                res = 0;
+            else if (errno == EBADF)     /* client shutdown - freebsd */
+                res = 0;
+        case 0: /* fall thru */
+            return (res);
+        default:
+            pos += res;
+        }
     }
     return (pos);
 }
@@ -303,26 +303,26 @@ msg_dump(struct clicon_msg *msg)
     int   i;
     
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_CFG, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_CFG, errno, "cbuf_new");
+        goto done;
     }
     cprintf(cb, "%s:", __FUNCTION__);
     for (i=0; i<ntohl(msg->op_len); i++){
-	cprintf(cb, "%02x", ((char*)msg)[i]&0xff);
-	if ((i+1)%32==0){
-	    clicon_debug(2, "%s", cbuf_get(cb));
-	    cbuf_reset(cb);
-	    cprintf(cb, "%s:", __FUNCTION__);
-	}
-	else
-	    if ((i+1)%4==0)
-		cprintf(cb, " ");
+        cprintf(cb, "%02x", ((char*)msg)[i]&0xff);
+        if ((i+1)%32==0){
+            clicon_debug(2, "%s", cbuf_get(cb));
+            cbuf_reset(cb);
+            cprintf(cb, "%s:", __FUNCTION__);
+        }
+        else
+            if ((i+1)%4==0)
+                cprintf(cb, " ");
     }
     clicon_debug(2, "%s", cbuf_get(cb));
     retval = 0;
  done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -334,22 +334,22 @@ msg_dump(struct clicon_msg *msg)
  */
 int
 clicon_msg_send(int                s, 
-		struct clicon_msg *msg)
+                struct clicon_msg *msg)
 { 
     int retval = -1;
     int e;
 
     clicon_debug(2, "%s: send msg len=%d", 
-		 __FUNCTION__, ntohl(msg->op_len));
+                 __FUNCTION__, ntohl(msg->op_len));
     if (clicon_debug_get() > 2)
-	msg_dump(msg);
+        msg_dump(msg);
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
-		 s, msg, ntohl(msg->op_len)) < 0){
-	e = errno;
-	clicon_err(OE_CFG, e, "atomicio");
-	clicon_log(LOG_WARNING, "%s: write: %s len:%u msg:%s", __FUNCTION__,
-		   strerror(e), ntohs(msg->op_len), msg->op_body);
-	goto done;
+                 s, msg, ntohl(msg->op_len)) < 0){
+        e = errno;
+        clicon_err(OE_CFG, e, "atomicio");
+        clicon_log(LOG_WARNING, "%s: write: %s len:%u msg:%s", __FUNCTION__,
+                   strerror(e), ntohs(msg->op_len), msg->op_body);
+        goto done;
     }
     retval = 0;
   done:
@@ -374,8 +374,8 @@ clicon_msg_send(int                s,
  */
 int
 clicon_msg_rcv(int                s,
-	       struct clicon_msg **msg,
-	       int                *eof)
+               struct clicon_msg **msg,
+               int                *eof)
 { 
     int       retval = -1;
     struct clicon_msg hdr;
@@ -386,43 +386,43 @@ clicon_msg_rcv(int                s,
 
     *eof = 0;
     if (0)
-	set_signal(SIGINT, atomicio_sig_handler, &oldhandler);
+        set_signal(SIGINT, atomicio_sig_handler, &oldhandler);
 
     if ((hlen = atomicio(read, s, &hdr, sizeof(hdr))) < 0){ 
-	clicon_err(OE_CFG, errno, "atomicio");
-	goto done;
+        clicon_err(OE_CFG, errno, "atomicio");
+        goto done;
     }
     if (hlen == 0){
-	retval = 0;
-	*eof = 1;
-	goto done;
+        retval = 0;
+        *eof = 1;
+        goto done;
     }
     if (hlen != sizeof(hdr)){
-	clicon_err(OE_CFG, errno, "header too short (%d)", hlen);
-	goto done;
+        clicon_err(OE_CFG, errno, "header too short (%d)", hlen);
+        goto done;
     }
     mlen = ntohl(hdr.op_len);
     clicon_debug(2, "%s: rcv msg len=%d",  
-		 __FUNCTION__, mlen);
+                 __FUNCTION__, mlen);
     if ((*msg = (struct clicon_msg *)malloc(mlen)) == NULL){
-	clicon_err(OE_CFG, errno, "malloc");
-	goto done;
+        clicon_err(OE_CFG, errno, "malloc");
+        goto done;
     }
     memcpy(*msg, &hdr, hlen);
     if ((len2 = atomicio(read, s, (*msg)->op_body, mlen - sizeof(hdr))) < 0){ 
- 	clicon_err(OE_CFG, errno, "read");
-	goto done;
+        clicon_err(OE_CFG, errno, "read");
+        goto done;
     }
     if (len2 != mlen - sizeof(hdr)){
-	clicon_err(OE_CFG, errno, "body too short");
-	goto done;
+        clicon_err(OE_CFG, errno, "body too short");
+        goto done;
     }
     if (clicon_debug_get() > 1)
-	msg_dump(*msg);
+        msg_dump(*msg);
     retval = 0;
   done:
     if (0)
-	set_signal(SIGINT, oldhandler, NULL);
+        set_signal(SIGINT, oldhandler, NULL);
     return retval;
 }
 
@@ -436,8 +436,8 @@ clicon_msg_rcv(int                s,
  */
 int
 clicon_msg_rcv1(int   s,
-		cbuf *cb,
-		int  *eof)
+                cbuf *cb,
+                int  *eof)
 {
     int           retval = -1;
     unsigned char buf[BUFSIZ];
@@ -459,7 +459,7 @@ clicon_msg_rcv1(int   s,
            }
        } /* read */
        if (len == 0){  /* EOF */
-	   *eof = 1;
+           *eof = 1;
            close(s);
            goto ok;
        }
@@ -497,15 +497,15 @@ clicon_msg_rcv1(int   s,
  */
 int
 clicon_msg_send1(int   s, 
-		 cbuf *cb)
+                 cbuf *cb)
 { 
     int retval = -1;
 
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
-		 s, cbuf_get(cb), cbuf_len(cb)+1) < 0){
-	clicon_err(OE_CFG, errno, "atomicio");
-	clicon_log(LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
-	goto done;
+                 s, cbuf_get(cb), cbuf_len(cb)+1) < 0){
+        clicon_err(OE_CFG, errno, "atomicio");
+        clicon_log(LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
+        goto done;
     }
     retval = 0;
   done:
@@ -525,8 +525,8 @@ clicon_msg_send1(int   s,
  */
 int
 clicon_rpc_connect_unix(clicon_handle      h,
-			char              *sockpath,
-			int               *sock0)
+                        char              *sockpath,
+                        int               *sock0)
 {
     int         retval = -1;
     int         s = -1;
@@ -534,20 +534,20 @@ clicon_rpc_connect_unix(clicon_handle      h,
 
     clicon_debug(1, "Send msg on %s", sockpath);
     if (sock0 == NULL){
-	clicon_err(OE_NETCONF, EINVAL, "sock0 expected");
-	goto done;
+        clicon_err(OE_NETCONF, EINVAL, "sock0 expected");
+        goto done;
     }
     /* special error handling to get understandable messages (otherwise ENOENT) */
     if (stat(sockpath, &sb) < 0){
-	clicon_err(OE_PROTO, errno, "%s: config daemon not running?", sockpath);
-	goto done;
+        clicon_err(OE_PROTO, errno, "%s: config daemon not running?", sockpath);
+        goto done;
     }
     if (!S_ISSOCK(sb.st_mode)){
-	clicon_err(OE_PROTO, EIO, "%s: Not unix socket", sockpath);
-	goto done;
+        clicon_err(OE_PROTO, EIO, "%s: Not unix socket", sockpath);
+        goto done;
     }
     if ((s = clicon_connect_unix(h, sockpath)) < 0)
-	goto done;
+        goto done;
     *sock0 = s;
     retval = 0;
   done:
@@ -567,9 +567,9 @@ clicon_rpc_connect_unix(clicon_handle      h,
  */
 int
 clicon_rpc_connect_inet(clicon_handle      h,
-			char              *dst,
-			uint16_t           port,
-			int               *sock0)
+                        char              *dst,
+                        uint16_t           port,
+                        int               *sock0)
 {
     int                retval = -1;
     int                s = -1;
@@ -577,24 +577,24 @@ clicon_rpc_connect_inet(clicon_handle      h,
 
     clicon_debug(1, "Send msg to %s:%hu", dst, port);
     if (sock0 == NULL){
-	clicon_err(OE_NETCONF, EINVAL, "sock0 expected");
-	goto done;
+        clicon_err(OE_NETCONF, EINVAL, "sock0 expected");
+        goto done;
     }
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     if (inet_pton(addr.sin_family, dst, &addr.sin_addr) != 1)
-	goto done; /* Could check getaddrinfo */
+        goto done; /* Could check getaddrinfo */
     
     /* special error handling to get understandable messages (otherwise ENOENT) */
     if ((s = socket(addr.sin_family, SOCK_STREAM, 0)) < 0) {
-	clicon_err(OE_CFG, errno, "socket");
-	return -1;
+        clicon_err(OE_CFG, errno, "socket");
+        return -1;
     }
     if (connect(s, (struct sockaddr*)&addr, sizeof(addr)) < 0){
-	clicon_err(OE_CFG, errno, "connecting socket inet4");
-	close(s);
-	goto done;
+        clicon_err(OE_CFG, errno, "connecting socket inet4");
+        close(s);
+        goto done;
     }
     *sock0 = s;
     retval = 0;
@@ -619,31 +619,31 @@ clicon_rpc_connect_inet(clicon_handle      h,
  */
 int
 clicon_rpc(int                sock,
-	   struct clicon_msg *msg, 
-	   char             **ret,
-	   int               *eof)
+           struct clicon_msg *msg, 
+           char             **ret,
+           int               *eof)
 {
     int                retval = -1;
     struct clicon_msg *reply = NULL;
     char              *data = NULL;
 
     if (clicon_msg_send(sock, msg) < 0)
-	goto done;
+        goto done;
     if (clicon_msg_rcv(sock, &reply, eof) < 0)
-	goto done;
+        goto done;
     if (*eof)
-	goto ok;
+        goto ok;
     data = reply->op_body; /* assume string */
     if (ret && data)
-	if ((*ret = strdup(data)) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
+        if ((*ret = strdup(data)) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
  ok:
     retval = 0;
   done:
     if (reply)
-	free(reply);
+        free(reply);
     return retval;
 }
 
@@ -661,21 +661,21 @@ clicon_rpc(int                sock,
  */
 int
 clicon_rpc1(int   sock,
-	    cbuf *msg,
-	    cbuf *msgret,
-	    int  *eof)
+            cbuf *msg,
+            cbuf *msgret,
+            int  *eof)
 {
     int    retval = -1;
 
     clicon_debug(1, "%s", __FUNCTION__);
     if (netconf_framing_preamble(NETCONF_SSH_CHUNKED, msg) < 0)
-	goto done;
+        goto done;
     if (netconf_framing_postamble(NETCONF_SSH_CHUNKED, msg) < 0)
-	goto done;
+        goto done;
     if (clicon_msg_send1(sock, msg) < 0)
-	goto done;
+        goto done;
     if (clicon_msg_rcv1(sock, msgret, eof) < 0)
-	goto done;
+        goto done;
     retval = 0;
   done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
@@ -692,8 +692,8 @@ clicon_rpc1(int   sock,
  */
 int 
 send_msg_reply(int      s, 
-	       char    *data, 
-	       uint32_t datalen)
+               char    *data, 
+               uint32_t datalen)
 {
     int                retval = -1;
     struct clicon_msg *reply = NULL;
@@ -701,17 +701,17 @@ send_msg_reply(int      s,
 
     len = sizeof(*reply) + datalen;
     if ((reply = (struct clicon_msg *)malloc(len)) == NULL)
-	goto done;
+        goto done;
     memset(reply, 0, len);
     reply->op_len = htonl(len);
     if (datalen > 0)
       memcpy(reply->op_body, data, datalen);
     if (clicon_msg_send(s, reply) < 0)
-	goto done;
+        goto done;
     retval = 0;
   done:
     if (reply)
-	free(reply);
+        free(reply);
     return retval;
 }
 
@@ -726,19 +726,19 @@ send_msg_reply(int      s,
  */
 static int
 send_msg_notify(int           s, 
-		char         *event)
+                char         *event)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
 
     if ((msg=clicon_msg_encode(0, "%s", event)) == NULL)
-	goto done;
+        goto done;
     if (clicon_msg_send(s, msg) < 0)
-	goto done;
+        goto done;
     retval = 0;
   done:
     if (msg)
-	free(msg);
+        free(msg);
     return retval;
 }
 
@@ -753,25 +753,25 @@ send_msg_notify(int           s,
  */
 int
 send_msg_notify_xml(clicon_handle h,
-		    int           s, 
-		    cxobj        *xev)
+                    int           s, 
+                    cxobj        *xev)
 {
     int                retval = -1;
     cbuf              *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_PLUGIN, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        goto done;
     }
     if (clixon_xml2cbuf(cb, xev, 0, 0, -1, 0) < 0)
-	goto done;
+        goto done;
     if (send_msg_notify(s, cbuf_get(cb)) < 0)
-	goto done;
+        goto done;
     retval = 0;
   done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 
@@ -794,20 +794,20 @@ send_msg_notify_xml(clicon_handle h,
  */
 int
 detect_endtag(char *tag, 
-	      char  ch, 
-	      int  *state)
+              char  ch, 
+              int  *state)
 {
     int retval = 0;
 
     if (tag[*state] == ch){
-	(*state)++;
-	if (*state == strlen(tag)){
-	    *state = 0;
-	    retval = 1;
-	}
+        (*state)++;
+        if (*state == strlen(tag)){
+            *state = 0;
+            retval = 1;
+        }
     }
     else
-	*state = 0;
+        *state = 0;
     return retval;
 }
 
@@ -829,31 +829,31 @@ detect_endtag(char *tag,
  */
 int
 clixon_inet2sin(const char       *addrtype,
-		const char       *addrstr,
-		uint16_t          port,
-		struct sockaddr  *sa,
-		size_t           *sa_len)
+                const char       *addrstr,
+                uint16_t          port,
+                struct sockaddr  *sa,
+                size_t           *sa_len)
 {
     struct sockaddr_in6 *sin6;
     struct sockaddr_in  *sin;
 
     if (strcmp(addrtype, "inet:ipv6-address") == 0) {
-	sin6 = (struct sockaddr_in6 *)sa;
+        sin6 = (struct sockaddr_in6 *)sa;
         *sa_len          = sizeof(struct sockaddr_in6);
         sin6->sin6_port   = htons(port);
         sin6->sin6_family = AF_INET6;
         inet_pton(AF_INET6, addrstr, &sin6->sin6_addr);
     }
     else if (strcmp(addrtype, "inet:ipv4-address") == 0) {
-	sin = (struct sockaddr_in *)sa;
+        sin = (struct sockaddr_in *)sa;
         *sa_len             = sizeof(struct sockaddr_in);
         sin->sin_family      = AF_INET;
         sin->sin_port        = htons(port);
         sin->sin_addr.s_addr = inet_addr(addrstr);
     }
     else{
-	clicon_err(OE_XML, EINVAL, "Unexpected addrtype: %s", addrtype);
-	return -1;
+        clicon_err(OE_XML, EINVAL, "Unexpected addrtype: %s", addrtype);
+        return -1;
     }
     return 0;
 }

@@ -4,13 +4,13 @@ module clixon-lib {
     prefix cl;
 
     import ietf-yang-types {
-	prefix yang;
+        prefix yang;
     }    
     organization
-	"Clicon / Clixon";
+        "Clicon / Clixon";
 
     contact
-	"Olof Hagsand <olof@hagsand.se>";
+        "Olof Hagsand <olof@hagsand.se>";
 
     description
       "Clixon Netconf extensions for communication between clients and backend.
@@ -45,43 +45,43 @@ module clixon-lib {
        ***** END LICENSE BLOCK *****";
 
     revision 2021-12-05 {
-	description
-	    "Obsoleted: extension autocli-op";
+        description
+            "Obsoleted: extension autocli-op";
     }
     revision 2021-11-11 {
-	description
-	    "Changed: RPC stats extended with YANG stats";
+        description
+            "Changed: RPC stats extended with YANG stats";
     }
     revision 2021-03-08 {
-	description
-	    "Changed: RPC process-control output to choice dependent on operation";
+        description
+            "Changed: RPC process-control output to choice dependent on operation";
     }
     revision 2020-12-30 {
-	description
-	    "Changed: RPC process-control output parameter status to pid";
+        description
+            "Changed: RPC process-control output parameter status to pid";
     }
     revision 2020-12-08 {
-	description
-	    "Added: autocli-op extension.
+        description
+            "Added: autocli-op extension.
                     rpc process-control for process/daemon management
              Released in clixon 4.9";
     }
     revision 2020-04-23 {
-	description
-	    "Added: stats RPC for clixon XML and memory statistics.
+        description
+            "Added: stats RPC for clixon XML and memory statistics.
              Added: restart-plugin RPC for restarting individual plugins without restarting backend.";
     }
     revision 2019-08-13 {
-	description
-	    "No changes (reverted change)";
+        description
+            "No changes (reverted change)";
     }
     revision 2019-06-05 {
-	description
-	    "ping rpc added for liveness";
+        description
+            "ping rpc added for liveness";
     }
     revision 2019-01-02 {
-	description
-	    "Released in Clixon 3.9";
+        description
+            "Released in Clixon 3.9";
     }
     typedef service-operation {
         type enumeration {
@@ -111,158 +111,158 @@ module clixon-lib {
          this point in the YANG tree for the automated generated CLI.
          Note that this extension is only used in clixon_cli.
          Operations is expected to be extended, but the following operations are defined:
-         - hide  		 				  This command is active but not shown by ? or TAB (meaning, it hides the auto-completion of commands)
-		 - hide-database 				  This command hides the database
+         - hide                                                   This command is active but not shown by ? or TAB (meaning, it hides the auto-completion of commands)
+                 - hide-database                                  This command hides the database
          - hide-database-auto-completion  This command hides the database and the auto completion (meaning, this command acts as both commands above)
          Obsolete: use clixon-autocli:hide and clixon-autocli:hide-show  instead";
       argument cliop;
       status obsolete;
    }
    rpc debug {
-	description "Set debug level of backend.";
-	input {
-	    leaf level {
-		type uint32;
-	    }
-	}
+        description "Set debug level of backend.";
+        input {
+            leaf level {
+                type uint32;
+            }
+        }
     }
     rpc ping {
         description "Check aliveness of backend daemon.";
     }
     rpc stats {
         description "Clixon XML statistics.";
-	output {
-	    container global{
-		description
-		    "Clixon global statistics. 
+        output {
+            container global{
+                description
+                    "Clixon global statistics. 
                      These are global counters incremented by new() and decreased by free() calls.
                      This number is higher than the sum of all datastore/module residing objects, since
                      objects may be used for other purposes than datastore/modules";
-		leaf xmlnr{
-		    description
-			"Number of existing XML objects: number of residing xml/json objects
+                leaf xmlnr{
+                    description
+                        "Number of existing XML objects: number of residing xml/json objects
                          in the internal 'cxobj' representation.";
-		    type uint64;
-		}
-		leaf yangnr{
-		    description
-			"Number of resident YANG objects. ";
-		    type uint64;
-		}
-	    }
-	    list datastore{
-		description "Per datastore statistics for cxobj";
-		key "name";
-		leaf name{
-		    description "Name of datastore (eg running).";
-		    type string;
-		}
-		leaf nr{
-		    description "Number of XML objects. That is number of residing xml/json objects
+                    type uint64;
+                }
+                leaf yangnr{
+                    description
+                        "Number of resident YANG objects. ";
+                    type uint64;
+                }
+            }
+            list datastore{
+                description "Per datastore statistics for cxobj";
+                key "name";
+                leaf name{
+                    description "Name of datastore (eg running).";
+                    type string;
+                }
+                leaf nr{
+                    description "Number of XML objects. That is number of residing xml/json objects
                              in the internal 'cxobj' representation.";
-		    type uint64;
-		}
-		leaf size{
-		    description "Size in bytes of internal datastore cache of datastore tree.";
-		    type uint64;
-		}
-	    }
-	    list module{
-		description "Per YANG module statistics";
-		key "name";
-		leaf name{
-		    description "Name of YANG module.";
-		    type string;
-		}
-		leaf nr{
-		    description
-			"Number of YANG objects. That is number of residing YANG objects";
-		    type uint64;
-		}
-		leaf size{
-		    description
-			"Size in bytes of internal YANG object representation.";
-		    type uint64;
-		}
-	    }
-	}
+                    type uint64;
+                }
+                leaf size{
+                    description "Size in bytes of internal datastore cache of datastore tree.";
+                    type uint64;
+                }
+            }
+            list module{
+                description "Per YANG module statistics";
+                key "name";
+                leaf name{
+                    description "Name of YANG module.";
+                    type string;
+                }
+                leaf nr{
+                    description
+                        "Number of YANG objects. That is number of residing YANG objects";
+                    type uint64;
+                }
+                leaf size{
+                    description
+                        "Size in bytes of internal YANG object representation.";
+                    type uint64;
+                }
+            }
+        }
     }
     rpc restart-plugin {
-	description "Restart specific backend plugins.";
-	input {
-	    leaf-list plugin {
-		description "Name of plugin to restart";
-		type string;
-	    }
-	}
+        description "Restart specific backend plugins.";
+        input {
+            leaf-list plugin {
+                description "Name of plugin to restart";
+                type string;
+            }
+        }
     }
 
     rpc process-control {
-	description
-	    "Control a specific process or daemon: start/stop, etc.
+        description
+            "Control a specific process or daemon: start/stop, etc.
              This is for direct managing of a process by the backend. 
              Alternatively one can manage a daemon via systemd, containerd, kubernetes, etc.";
-	input {
-	    leaf name {
-		description "Name of process";
-		type string;
-		mandatory true;
-	    }
-	    leaf operation {
-		type service-operation;
-		mandatory true;
-		description
-		    "One of the strings 'start', 'stop', 'restart', or 'status'.";
-	    }
-	}
-	output {
-	    choice result {
-		case status {
-		    description
-			"Output from status rpc";
-		    leaf active {
-			description
-			    "True if process is running, false if not. 
+        input {
+            leaf name {
+                description "Name of process";
+                type string;
+                mandatory true;
+            }
+            leaf operation {
+                type service-operation;
+                mandatory true;
+                description
+                    "One of the strings 'start', 'stop', 'restart', or 'status'.";
+            }
+        }
+        output {
+            choice result {
+                case status {
+                    description
+                        "Output from status rpc";
+                    leaf active {
+                        description
+                            "True if process is running, false if not. 
                              More specifically, there is a process-id and it exists (in Linux: kill(pid,0).
                              Note that this is actual state and status is administrative state,
                              which means that changing the administrative state, eg stopped->running
                              may not immediately switch active to true.";
-			type boolean;
-		    }
-		    leaf description {
-			type string;
-			description "Description of process. This is a static string";
-		    }
-		    leaf command {
-			type string;
-			description "Start command with arguments";
-		    }
-		    leaf status {
-			description
-			    "Administrative status (except on external kill where it enters stopped
+                        type boolean;
+                    }
+                    leaf description {
+                        type string;
+                        description "Description of process. This is a static string";
+                    }
+                    leaf command {
+                        type string;
+                        description "Start command with arguments";
+                    }
+                    leaf status {
+                        description
+                            "Administrative status (except on external kill where it enters stopped
                              directly from running):
                              stopped: pid=0,   No process running
                              running: pid set, Process started and believed to be running
                              exiting: pid set, Process is killed by parent but not waited for";
-			type string;
-		    }
-		    leaf starttime {
-			description "Time of starting process UTC";
-			type yang:date-and-time;
-		    }
-		    leaf pid {
-			description "Process-id of main running process (if active)";
-			type uint32;
-		    }
-		}
-		case other {
-		    description
-			"Output from start/stop/restart rpc";
-		    leaf ok {
-			type empty;
-		    }
-		}
-	    }
-	}
+                        type string;
+                    }
+                    leaf starttime {
+                        description "Time of starting process UTC";
+                        type yang:date-and-time;
+                    }
+                    leaf pid {
+                        description "Process-id of main running process (if active)";
+                        type uint32;
+                    }
+                }
+                case other {
+                    description
+                        "Output from start/stop/restart rpc";
+                    leaf ok {
+                        type empty;
+                    }
+                }
+            }
+        }
     }
 }

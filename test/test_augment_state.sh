@@ -44,11 +44,11 @@ module example-lib {
       description "Global base default state";
       type string;
       default "gbds";
-    }	  
+    }     
     leaf gbos{
       description "Global base optional state";
       type string;
-    }	  
+    }     
     container nopres{
       description "This should be removed";
     }
@@ -57,18 +57,18 @@ module example-lib {
     list parameter{
       key name;
       leaf name{
-	type string;
+        type string;
       }
       container param-state {
         config false;
         leaf lbds{
-	  description "Local base default state";
-  	  type string;
-	  default "lbds";
+          description "Local base default state";
+          type string;
+          default "lbds";
         }
         leaf lbos{
-	  description "Local base optional state";
-  	  type string;
+          description "Local base optional state";
+          type string;
         }
       }
     }    
@@ -92,11 +92,11 @@ module example-augment {
       description "Global augmented default state";
       type string;
       default "gads";
-    }	  
+    }     
     leaf gaos{
       description "Global augmented optional state";
       type string;
-    }	  
+    }     
   }
   /* Augments state in config in-line */
   augment "/lib:base-config/lib:parameter/lib:param-state" {
@@ -104,11 +104,11 @@ module example-augment {
       description "Local augmented default state";
       type string;
       default "lads";
-    }	  
+    }     
     leaf laos{
       description "Local augmented optional state";
       type string;
-    }	  
+    }     
   }
 }
 EOF
@@ -124,9 +124,9 @@ function testrun()
 
     new "get config"
     if [ -z "$config" ]; then
-	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>$"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>$"
     else
-	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "^<rpc-reply $DEFAULTNS><data>$config</data></rpc-reply>$"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "^<rpc-reply $DEFAULTNS><data>$config</data></rpc-reply>$"
     fi
 
     new "get state"
@@ -139,12 +139,13 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg -- -sS $fstate"
     start_backend -s init -f $cfg -- -sS $fstate
 fi
-new "waiting"
+
+new "wait backend"
 wait_backend
 
 #-----------------------------
@@ -252,7 +253,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

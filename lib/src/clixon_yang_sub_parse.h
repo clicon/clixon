@@ -76,4 +76,4 @@ int clixon_yang_sub_parseparse(void *);
 int  yang_subparse(char *str, yang_stmt *ys, enum yang_sub_parse_accept accept, const char *mainfile, int linenum, int *enabled);
 int  yang_schema_nodeid_subparse(char *str, enum yang_sub_parse_accept accept, const char *mainfile, int linenum);
 
-#endif	/* _CLIXON_YANG_SUB_PARSER_H_ */
+#endif  /* _CLIXON_YANG_SUB_PARSER_H_ */

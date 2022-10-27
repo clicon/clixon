@@ -51,7 +51,7 @@
  */
 static int
 send_sock(int usock,
-	  int fd)
+          int fd)
 {
     int             retval = -1;
     int            *fdptr;
@@ -70,8 +70,8 @@ send_sock(int usock,
     memcpy(fdptr,&fd,sizeof(fd));
     msg.msg_controllen=CMSG_SPACE(sizeof(fd));
     if (sendmsg(usock, &msg, 0) < 0){
-	clicon_err(OE_UNIX, errno, "sendmsg");
-	goto done;
+        clicon_err(OE_UNIX, errno, "sendmsg");
+        goto done;
     }
     retval = 0;
  done:
@@ -83,7 +83,7 @@ send_sock(int usock,
  */
 static int
 get_sock(int  usock,
-	 int *fd)
+         int *fd)
 {
     int             retval = -1;
     struct msghdr   msg={0};
@@ -96,8 +96,8 @@ get_sock(int  usock,
     msg.msg_controllen=sizeof(buf);
     /* Block here */
     if (recvmsg(usock, &msg, 0) < 0){
-	clicon_err(OE_UNIX, errno, "recvmsg");
-	goto done;
+        clicon_err(OE_UNIX, errno, "recvmsg");
+        goto done;
     }
     cmsg=CMSG_FIRSTHDR(&msg);
     memcpy(fd, CMSG_DATA(cmsg), sizeof(*fd));
@@ -118,11 +118,11 @@ get_sock(int  usock,
  */
 static int
 create_socket(struct sockaddr *sa,
-	      size_t           sin_len,		    
-	      int              backlog,
-	      int              flags,
-	      const char      *addrstr,
-	      int             *sock)
+              size_t           sin_len,             
+              int              backlog,
+              int              flags,
+              const char      *addrstr,
+              int             *sock)
 {
     int    retval = -1;
     int    s = -1;
@@ -130,8 +130,8 @@ create_socket(struct sockaddr *sa,
     
     clicon_debug(1, "%s", __FUNCTION__);
     if (sock == NULL){
-	clicon_err(OE_PROTO, EINVAL, "Requires socket output parameter");
-	goto done;
+        clicon_err(OE_PROTO, EINVAL, "Requires socket output parameter");
+        goto done;
     }
     /* create inet socket */
 
@@ -142,49 +142,49 @@ create_socket(struct sockaddr *sa,
 #endif
 
     if ((s = socket(sa->sa_family, flags,
-		    0)) < 0) {
-	clicon_err(OE_UNIX, errno, "socket");
-	goto done;
+                    0)) < 0) {
+        clicon_err(OE_UNIX, errno, "socket");
+        goto done;
     }
 
 #ifdef __APPLE__
     if (fcntl(s, O_CLOEXEC)) {
-	clicon_err(OE_UNIX, errno, "fcntl");
-	goto done;
+        clicon_err(OE_UNIX, errno, "fcntl");
+        goto done;
     }
 #endif
 
     if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, sizeof(on)) == -1) {
-	clicon_err(OE_UNIX, errno, "setsockopt SO_KEEPALIVE");
-	goto done;
+        clicon_err(OE_UNIX, errno, "setsockopt SO_KEEPALIVE");
+        goto done;
     }
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)) == -1) {
-	clicon_err(OE_UNIX, errno, "setsockopt SO_REUSEADDR");
-	goto done;
+        clicon_err(OE_UNIX, errno, "setsockopt SO_REUSEADDR");
+        goto done;
     }
 
     /* only bind ipv6, otherwise it may bind to ipv4 as well which is strange but seems default */
     if (sa->sa_family == AF_INET6 &&
-	setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
-	clicon_err(OE_UNIX, errno, "setsockopt IPPROTO_IPV6");
-	goto done;
+        setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
+        clicon_err(OE_UNIX, errno, "setsockopt IPPROTO_IPV6");
+        goto done;
     }
     if (bind(s, sa, sin_len) == -1) {
-	/* Note may be ignored in upper layer by checking for EADDRNOTAVAIL, see eg restconf_openssl_init */
-	clicon_err(OE_UNIX, errno, "bind(%s)", addrstr);
-	goto done;
+        /* Note may be ignored in upper layer by checking for EADDRNOTAVAIL, see eg restconf_openssl_init */
+        clicon_err(OE_UNIX, errno, "bind(%s)", addrstr);
+        goto done;
     }
     if (listen(s, backlog ) < 0){
-	clicon_err(OE_UNIX, errno, "listen");
-	goto done;
+        clicon_err(OE_UNIX, errno, "listen");
+        goto done;
     }
     if (sock)
-	*sock = s;
+        *sock = s;
     retval = 0;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (retval != 0 && s != -1)
-	close(s);
+        close(s);
     return retval;
 }
 
@@ -201,12 +201,12 @@ create_socket(struct sockaddr *sa,
  */
 static int
 fork_netns_socket(const char      *netns,
-		  struct sockaddr *sa,
-		  size_t           sin_len,		    
-		  int              backlog,
-		  int              flags,
-		  const char      *addrstr,
-		  int             *sock)
+                  struct sockaddr *sa,
+                  size_t           sin_len,                 
+                  int              backlog,
+                  int              flags,
+                  const char      *addrstr,
+                  int             *sock)
 {
     int         retval = -1;
     int         sp[2] = {-1, -1};
@@ -223,75 +223,75 @@ fork_netns_socket(const char      *netns,
 
     clicon_debug(1, "%s %s", __FUNCTION__, netns);
     if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
-	clicon_err(OE_UNIX, errno, "socketpair");
-	goto done;
+        clicon_err(OE_UNIX, errno, "socketpair");
+        goto done;
     }
 
 #ifdef __APPLE__
     if (fcntl(sp[0], O_CLOEXEC)) {
-	clicon_err(OE_UNIX, errno, "fcntl, sp[0]");
-	goto done;
+        clicon_err(OE_UNIX, errno, "fcntl, sp[0]");
+        goto done;
     }
 
     if (fcntl(sp[1], O_CLOEXEC)) {
-	clicon_err(OE_UNIX, errno, "fcntl, sp[1]");
-	goto done;
+        clicon_err(OE_UNIX, errno, "fcntl, sp[1]");
+        goto done;
     }
 #endif
 
     /* Check namespace exists */
-    sprintf(nspath,"/var/run/netns/%s", netns);	
+    sprintf(nspath,"/var/run/netns/%s", netns); 
     if (stat(nspath, &st) < 0){
- 	clicon_err(OE_UNIX, errno, ": stat(%s)", nspath);
-	goto done;
+        clicon_err(OE_UNIX, errno, ": stat(%s)", nspath);
+        goto done;
     }
     if ((child = fork()) < 0) {
-	clicon_err(OE_UNIX, errno, "fork");
-	goto done;
+        clicon_err(OE_UNIX, errno, "fork");
+        goto done;
     }
-    if (child == 0) {	/* Child */
-	int  fd;
-	int  s = -1;
+    if (child == 0) {   /* Child */
+        int  fd;
+        int  s = -1;
 
-	close(sp[0]);
-	/* Switch to namespace */
-	if ((fd=open(nspath, O_RDONLY)) < 0) {
-	    clicon_err(OE_UNIX, errno, "open(%s)", nspath);
-	    send_sock(sp[1], sp[1]); /* Dummy to wake parent */
-	    exit(1); /* Dont do return here, need to exit child */
-	}
+        close(sp[0]);
+        /* Switch to namespace */
+        if ((fd=open(nspath, O_RDONLY)) < 0) {
+            clicon_err(OE_UNIX, errno, "open(%s)", nspath);
+            send_sock(sp[1], sp[1]); /* Dummy to wake parent */
+            exit(1); /* Dont do return here, need to exit child */
+        }
 #ifdef HAVE_SETNS
-	if (setns(fd, CLONE_NEWNET) < 0){
-	    clicon_err(OE_UNIX, errno, "setns(%s)", netns);
-	    send_sock(sp[1], sp[1]); /* Dummy to wake parent */
-	    exit(1); /* Dont do return here, need to exit child */
-	}
+        if (setns(fd, CLONE_NEWNET) < 0){
+            clicon_err(OE_UNIX, errno, "setns(%s)", netns);
+            send_sock(sp[1], sp[1]); /* Dummy to wake parent */
+            exit(1); /* Dont do return here, need to exit child */
+        }
 #endif
-	close(fd);
-	/* Create socket in this namespace */
-	if (create_socket(sa, sin_len, backlog, flags, addrstr, &s) < 0){
-	    send_sock(sp[1], sp[1]); /* Dummy to wake parent */
-	    exit(1); /* Dont do return here, need to exit child */
-	}
-	/* Send socket to parent */
-	if (send_sock(sp[1], s) < 0)
-	    exit(1); /* Dont do return here, need to exit child */
-	close(s);
-	close(sp[1]);
-	exit(0);
+        close(fd);
+        /* Create socket in this namespace */
+        if (create_socket(sa, sin_len, backlog, flags, addrstr, &s) < 0){
+            send_sock(sp[1], sp[1]); /* Dummy to wake parent */
+            exit(1); /* Dont do return here, need to exit child */
+        }
+        /* Send socket to parent */
+        if (send_sock(sp[1], s) < 0)
+            exit(1); /* Dont do return here, need to exit child */
+        close(s);
+        close(sp[1]);
+        exit(0);
     }
     /* Parent */
     close(sp[1]);
     if (get_sock(sp[0], sock) < 0)
-	goto done;
+        goto done;
     close(sp[0]);
     if(waitpid(child, &wstatus, 0) == child)
-	; // retval = WEXITSTATUS(status); /* Dont know what to do with status */
+        ; // retval = WEXITSTATUS(status); /* Dont know what to do with status */
     if (WEXITSTATUS(wstatus)){
-	clicon_debug(1, "%s wstatus:%d", __FUNCTION__, WEXITSTATUS(wstatus));
-	*sock = -1;
-	clicon_err(OE_UNIX, EADDRNOTAVAIL, "bind(%s)", addrstr);
-	goto done;
+        clicon_debug(1, "%s wstatus:%d", __FUNCTION__, WEXITSTATUS(wstatus));
+        *sock = -1;
+        clicon_err(OE_UNIX, EADDRNOTAVAIL, "bind(%s)", addrstr);
+        goto done;
     }
     retval = 0;
  done:
@@ -311,28 +311,28 @@ fork_netns_socket(const char      *netns,
  */
 int
 clixon_netns_socket(const char      *netns,
-		    struct sockaddr *sa,
-		    size_t           sin_len,		    
-		    int              backlog,
-		    int              flags,
-		    const char      *addrstr,
-		    int             *sock)
+                    struct sockaddr *sa,
+                    size_t           sin_len,               
+                    int              backlog,
+                    int              flags,
+                    const char      *addrstr,
+                    int             *sock)
 {
     int    retval = -1;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if (netns == NULL){
-	if (create_socket(sa, sin_len, backlog, flags, addrstr, sock) < 0)
-	    goto done;
-	goto ok;
+        if (create_socket(sa, sin_len, backlog, flags, addrstr, sock) < 0)
+            goto done;
+        goto ok;
     }
     else {
 #ifdef HAVE_SETNS
-	if (fork_netns_socket(netns, sa, sin_len, backlog, flags, addrstr, sock) < 0)
-	    goto done;
+        if (fork_netns_socket(netns, sa, sin_len, backlog, flags, addrstr, sock) < 0)
+            goto done;
 #else
-	clicon_err(OE_UNIX, errno, "No namespace support on platform: %s", netns);
-	return -1;	
+        clicon_err(OE_UNIX, errno, "No namespace support on platform: %s", netns);
+        return -1;      
 #endif
     }
  ok:

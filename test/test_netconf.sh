@@ -19,11 +19,12 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-netconf:confirmed-commit</CLICON_FEATURE>
   <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -44,90 +45,90 @@ module clixon-example{
    namespace "urn:example:clixon";
    prefix ex;
    import ietf-interfaces { 
-	prefix if;
+        prefix if;
    }
    import ietf-ip {
-	prefix ip;
+        prefix ip;
    }
    /* Example interface type for tests, local callbacks, etc */
    identity eth {
-	base if:interface-type;
+        base if:interface-type;
    }
     /* Generic config data */
     container table{
-	list parameter{
-	    key name;
-	    leaf name{
-		type string;
-	    }
-	}
+        list parameter{
+            key name;
+            leaf name{
+                type string;
+            }
+        }
     }
    /* State data (not config) for the example application*/
    container state {
-	config false;
-	description "state data for the example application (must be here for example get operation)";
-	leaf-list op {
+        config false;
+        description "state data for the example application (must be here for example get operation)";
+        leaf-list op {
             type string;
-	}
+        }
    }
    augment "/if:interfaces/if:interface" {
-	container my-status {
-	    config false;
-	    description "For testing augment+state";
-	    leaf int {
-		type int32;
-	    }
-	    leaf str {
-		type string;
-	    }
-	}
+        container my-status {
+            config false;
+            description "For testing augment+state";
+            leaf int {
+                type int32;
+            }
+            leaf str {
+                type string;
+            }
+        }
     }
     rpc client-rpc {
-	description "Example local client-side RPC that is processed by the
+        description "Example local client-side RPC that is processed by the
                      the netconf/restconf and not sent to the backend.
                      This is a clixon implementation detail: some rpc:s
                      are better processed by the client for API or perf reasons";
-	input {
-	    leaf x {
-		type string;
-	    }
-	}
-	output {
-	    leaf x {
-		type string;
-	    }
-	}
+        input {
+            leaf x {
+                type string;
+            }
+        }
+        output {
+            leaf x {
+                type string;
+            }
+        }
     }
     rpc empty {
-	description "Smallest possible RPC with no input or output sections";
+        description "Smallest possible RPC with no input or output sections";
     }
     rpc example {
-	description "Some example input/output for testing RFC7950 7.14.
+        description "Some example input/output for testing RFC7950 7.14.
                      RPC simply echoes the input for debugging.";
-	input {
-	    leaf x {
-		description
-         	    "If a leaf in the input tree has a 'mandatory' statement with
+        input {
+            leaf x {
+                description
+                    "If a leaf in the input tree has a 'mandatory' statement with
                    the value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		mandatory true;
-	    }
-	    leaf y {
-		description
-		    "If a leaf in the input tree has a 'mandatory' statement with the
+                type string;
+                mandatory true;
+            }
+            leaf y {
+                description
+                    "If a leaf in the input tree has a 'mandatory' statement with the
                   value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		default "42";
-	    }
-	}
-	output {
-	    leaf x {
-		type string;
-	    }
-	    leaf y {
-		type string;
-	    }
-	}
+                type string;
+                default "42";
+            }
+        }
+        output {
+            leaf x {
+                type string;
+            }
+            leaf y {
+                type string;
+            }
+        }
     }
 
 }
@@ -140,7 +141,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend  -s init -f $cfg -- -s"
     start_backend -s init -f $cfg -- -s
@@ -356,6 +357,30 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "kill-session using prefix xx"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:kill-session><xx:session-id>44</xx:session-id></xx:kill-session></xx:rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><ok/></rpc-reply>"
 
+new "asynchronous lock running"
+sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><lock><target><running/></target></lock></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
+
+PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
+
+new "try commit should fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>in-use</error-tag><error-severity>error</error-severity><error-message>Operation failed, lock is already held</error-message></rpc-error></rpc-reply>"
+
+new "soft kill ${PIDS[0]}"
+kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st
+
+new "asynchronous confirmed commit"
+sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><commit><confirmed/><confirm-timeout>60</confirm-timeout></commit></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
+PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
+
+new "try lock should fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><lock><target><running/></target></lock></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>[0-9]*</session-id></error-info><error-severity>error</error-severity><error-message>Operation failed, another session has an ongoing confirmed commit</error-message></rpc-error></rpc-reply>"
+
+new "soft kill ${PIDS[0]}"
+kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 # modify candidate, then lock, should fail.
 new "netconf edit config"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>a</name></parameter></table></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -414,7 +439,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

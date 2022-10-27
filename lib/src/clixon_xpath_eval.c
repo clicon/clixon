@@ -116,8 +116,8 @@ const map_str2int xpopmap[] = {
  */
 static int
 nodetest_eval_node(cxobj      *x,
-		   xpath_tree *xs,
-		   cvec       *nsc)
+                   xpath_tree *xs,
+                   cvec       *nsc)
 {
     int  retval = -1;
     char *name1 = xml_name(x);
@@ -129,16 +129,16 @@ nodetest_eval_node(cxobj      *x,
 
     /* Namespaces is s0, name is s1 */
     if (strcmp(xs->xs_s1, "*")==0)
-	return 1;
+        return 1;
     /* get namespace of xml tree */
     if (xml2ns(x, prefix1, &nsxml) < 0)
-	goto done;
+        goto done;
     prefix2 = xs->xs_s0;
     name2 = xs->xs_s1;
     /* Before going into namespaces, check name equality and filter out noteq  */
     if (strcmp(name1, name2) != 0){
-	retval = 0; /* no match */
-	goto done;
+        retval = 0; /* no match */
+        goto done;
     }
     /* Here names are equal 
      * Now look for namespaces
@@ -148,36 +148,36 @@ nodetest_eval_node(cxobj      *x,
      * (2) without yang
      */
     if (nsc != NULL) { /* solution (1) */
-	nsxpath = xml_nsctx_get(nsc, prefix2);
-	if (nsxml != NULL && nsxpath != NULL)
-	    retval = (strcmp(nsxml, nsxpath) == 0);
-	else if (nsxpath == NULL){
-	    /* We have a namespace from xml, but none in yang.
-	     * This can happen in eg augments and ../foo, where foo is
-	     * augmented from another namespace
-	     */
-	    retval = 1; 
-	}
-	else
-	    retval = (nsxml == nsxpath); /* True only if both are NULL */
+        nsxpath = xml_nsctx_get(nsc, prefix2);
+        if (nsxml != NULL && nsxpath != NULL)
+            retval = (strcmp(nsxml, nsxpath) == 0);
+        else if (nsxpath == NULL){
+            /* We have a namespace from xml, but none in yang.
+             * This can happen in eg augments and ../foo, where foo is
+             * augmented from another namespace
+             */
+            retval = 1; 
+        }
+        else
+            retval = (nsxml == nsxpath); /* True only if both are NULL */
     }
     else{ /* solution (2) */
-	if (prefix1 == NULL && prefix2 == NULL)
-	    retval = 1;
-	else if (prefix1 == NULL || prefix2 == NULL)
-	    retval = 0;
-	else
-	    retval = strcmp(prefix1, prefix2) == 0;
+        if (prefix1 == NULL && prefix2 == NULL)
+            retval = 1;
+        else if (prefix1 == NULL || prefix2 == NULL)
+            retval = 0;
+        else
+            retval = strcmp(prefix1, prefix2) == 0;
     }
 #if 0 /* debugging */
     /* If retval == 0 here, then there is name match, but not ns match */
     if (retval == 0){
-	fprintf(stderr, "%s NOMATCH xml: (%s)%s\n\t\t xpath: (%s)%s\n", __FUNCTION__,
-		name1, nsxml,
-		name2, nsxpath);
+        fprintf(stderr, "%s NOMATCH xml: (%s)%s\n\t\t xpath: (%s)%s\n", __FUNCTION__,
+                name1, nsxml,
+                name2, nsxpath);
     }
 #endif
- done:	/* retval set in preceding statement */
+ done:  /* retval set in preceding statement */
     return retval;
 }
 
@@ -186,8 +186,8 @@ nodetest_eval_node(cxobj      *x,
  */
 static int
 nodetest_eval_node_localonly(cxobj      *x,
-			     xpath_tree *xs,
-			     cvec       *nsc)
+                             xpath_tree *xs,
+                             cvec       *nsc)
 {
     int   retval = -1;
     char *name1 = xml_name(x);
@@ -195,17 +195,17 @@ nodetest_eval_node_localonly(cxobj      *x,
 
     /* Namespaces is s0, name is s1 */
     if (strcmp(xs->xs_s1, "*")==0){
-	retval = 1;
-	goto done;
+        retval = 1;
+        goto done;
     }
     name2 = xs->xs_s1;
     /* Before going into namespaces, check name equality and filter out noteq  */
     if (strcmp(name1, name2) == 0){
-	retval = 1;
-	goto done;
+        retval = 1;
+        goto done;
     }
     retval = 0; /* no match */
- done:	/* retval set in preceding statement */
+ done:  /* retval set in preceding statement */
     return retval;
 }
 
@@ -222,27 +222,27 @@ nodetest_eval_node_localonly(cxobj      *x,
  */
 static int
 nodetest_eval(cxobj      *x,
-	      xpath_tree *xs,
-	      cvec       *nsc,
-	      int         localonly)
+              xpath_tree *xs,
+              cvec       *nsc,
+              int         localonly)
 {
     int   retval = 0; /* NB: no match is default (not error) */
 
     if (xs->xs_type == XP_NODE){
-	if (localonly)
-	    retval = nodetest_eval_node_localonly(x, xs, nsc);
-	else
-	    retval = nodetest_eval_node(x, xs, nsc);
+        if (localonly)
+            retval = nodetest_eval_node_localonly(x, xs, nsc);
+        else
+            retval = nodetest_eval_node(x, xs, nsc);
     }
     else if (xs->xs_type == XP_NODE_FN){
-	switch (xs->xs_int){
-	case XPATHFN_NODE:
-	case XPATHFN_TEXT:
-	    retval = 1;
-	    break;
-	default:
-	    break;
-	}
+        switch (xs->xs_int){
+        case XPATHFN_NODE:
+        case XPATHFN_TEXT:
+            retval = 1;
+            break;
+        default:
+            break;
+        }
     }
     /* note, retval set by previous statement */
     return retval;
@@ -260,13 +260,13 @@ nodetest_eval(cxobj      *x,
  */
 int
 nodetest_recursive(cxobj      *xn, 
-		   xpath_tree *nodetest,
-		   int         node_type,
-		   uint16_t    flags,
-		   cvec       *nsc,
-		   int         localonly,
-		   cxobj    ***vec0,
-		   int        *vec0len)
+                   xpath_tree *nodetest,
+                   int         node_type,
+                   uint16_t    flags,
+                   cvec       *nsc,
+                   int         localonly,
+                   cxobj    ***vec0,
+                   int        *vec0len)
 {
     int     retval = -1;
     cxobj  *xsub; 
@@ -275,15 +275,15 @@ nodetest_recursive(cxobj      *xn,
 
     xsub = NULL;
     while ((xsub = xml_child_each(xn, xsub, node_type)) != NULL) {
-	if (nodetest_eval(xsub, nodetest, nsc, localonly) == 1){
-	    clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xsub, flags));
-	    if (flags==0x0 || xml_flag(xsub, flags))
-		if (cxvec_append(xsub, &vec, &veclen) < 0)
-		    goto done;
-	    //	    continue; /* Dont go deeper */
-	}
-	if (nodetest_recursive(xsub, nodetest, node_type, flags, nsc, localonly, &vec, &veclen) < 0)
-	    goto done;
+        if (nodetest_eval(xsub, nodetest, nsc, localonly) == 1){
+            clicon_debug(2, "%s %x %x", __FUNCTION__, flags, xml_flag(xsub, flags));
+            if (flags==0x0 || xml_flag(xsub, flags))
+                if (cxvec_append(xsub, &vec, &veclen) < 0)
+                    goto done;
+            //      continue; /* Dont go deeper */
+        }
+        if (nodetest_recursive(xsub, nodetest, node_type, flags, nsc, localonly, &vec, &veclen) < 0)
+            goto done;
     }
     retval = 0;
     *vec0 = vec;
@@ -308,10 +308,10 @@ nodetest_recursive(cxobj      *xn,
  */
 static int
 xp_eval_step(xp_ctx     *xc0,
-	     xpath_tree *xs,
-	     cvec       *nsc,
-	     int         localonly,
-	     xp_ctx    **xrp)
+             xpath_tree *xs,
+             cvec       *nsc,
+             int         localonly,
+             xp_ctx    **xrp)
 {
     int         retval = -1;
     int         i;
@@ -326,118 +326,118 @@ xp_eval_step(xp_ctx     *xc0,
     
     /* Create new xc */
     if ((xc = ctx_dup(xc0)) == NULL)
-	goto done;
+        goto done;
     switch (xs->xs_int){
     case A_ANCESTOR:
-	break;
+        break;
     case A_ANCESTOR_OR_SELF:
-	break;
+        break;
     case A_ATTRIBUTE: /* principal node type is attribute */
-	break;
+        break;
     case A_CHILD:
-	if (xc->xc_descendant){
-	    for (i=0; i<xc->xc_size; i++){
-		xv = xc->xc_nodeset[i];
-		if (nodetest_recursive(xv, nodetest, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)
-		    goto done;
-	    }
-	    xc->xc_descendant = 0;
-	}
-	else{
-	    for (i=0; i<xc->xc_size; i++){ 
-		xv = xc->xc_nodeset[i];
-		x = NULL; 
-		if ((ret = xpath_optimize_check(xs, xv, &vec, &veclen)) < 0)
-		    goto done;
-		if (ret == 0){/* regular code, no optimization made */
-		    while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
-			/* xs->xs_c0 is nodetest */
-			if (nodetest == NULL ||
-			    nodetest_eval(x, nodetest, nsc, localonly) == 1){
-			    if (cxvec_append(x, &vec, &veclen) < 0)
-				goto done;
-			}
-		    }
-		} 
-	    }
-	}
-	ctx_nodeset_replace(xc, vec, veclen);
-	break;
+        if (xc->xc_descendant){
+            for (i=0; i<xc->xc_size; i++){
+                xv = xc->xc_nodeset[i];
+                if (nodetest_recursive(xv, nodetest, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)
+                    goto done;
+            }
+            xc->xc_descendant = 0;
+        }
+        else{
+            for (i=0; i<xc->xc_size; i++){ 
+                xv = xc->xc_nodeset[i];
+                x = NULL; 
+                if ((ret = xpath_optimize_check(xs, xv, &vec, &veclen)) < 0)
+                    goto done;
+                if (ret == 0){/* regular code, no optimization made */
+                    while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
+                        /* xs->xs_c0 is nodetest */
+                        if (nodetest == NULL ||
+                            nodetest_eval(x, nodetest, nsc, localonly) == 1){
+                            if (cxvec_append(x, &vec, &veclen) < 0)
+                                goto done;
+                        }
+                    }
+                } 
+            }
+        }
+        ctx_nodeset_replace(xc, vec, veclen);
+        break;
     case A_DESCENDANT_OR_SELF:
-	for (i=0; i<xc->xc_size; i++){
-	    xv = xc->xc_nodeset[i];
-	    if (nodetest_recursive(xv, xs->xs_c0, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)
-		goto done;
-	}
-	for (i=0; i<veclen; i++){
-	    x = vec[i];
-	    if (cxvec_append(x, &xc->xc_nodeset, &xc->xc_size) < 0)
-		goto done;
-	}
-	if (vec){
-	    free(vec);
-	    vec = NULL;
-	}
-	break;
+        for (i=0; i<xc->xc_size; i++){
+            xv = xc->xc_nodeset[i];
+            if (nodetest_recursive(xv, xs->xs_c0, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)
+                goto done;
+        }
+        for (i=0; i<veclen; i++){
+            x = vec[i];
+            if (cxvec_append(x, &xc->xc_nodeset, &xc->xc_size) < 0)
+                goto done;
+        }
+        if (vec){
+            free(vec);
+            vec = NULL;
+        }
+        break;
     case A_DESCENDANT:
-	for (i=0; i<xc->xc_size; i++){
-	    xv = xc->xc_nodeset[i];
-	    if (nodetest_recursive(xv, xs->xs_c0, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)
-		goto done;
-	}
-	ctx_nodeset_replace(xc, vec, veclen);
-	break;
+        for (i=0; i<xc->xc_size; i++){
+            xv = xc->xc_nodeset[i];
+            if (nodetest_recursive(xv, xs->xs_c0, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)
+                goto done;
+        }
+        ctx_nodeset_replace(xc, vec, veclen);
+        break;
     case A_FOLLOWING:
-	break;
+        break;
     case A_FOLLOWING_SIBLING:
-	break;
+        break;
     case A_NAMESPACE: /* principal node type is namespace */
-	break;
+        break;
     case A_PARENT:
-	veclen = xc->xc_size;
-	vec = xc->xc_nodeset;
-	xc->xc_size = 0;
-	xc->xc_nodeset = NULL;
-	for (i=0; i<veclen; i++){
-	    x = vec[i];
-	    if ((xp = xml_parent(x)) != NULL
+        veclen = xc->xc_size;
+        vec = xc->xc_nodeset;
+        xc->xc_size = 0;
+        xc->xc_nodeset = NULL;
+        for (i=0; i<veclen; i++){
+            x = vec[i];
+            if ((xp = xml_parent(x)) != NULL
 #ifdef XML_PARENT_CANDIDATE
-		/* Also check "candidate" parent for special when use-case */
-		|| (xp = xml_parent_candidate(x)) != NULL
+                /* Also check "candidate" parent for special when use-case */
+                || (xp = xml_parent_candidate(x)) != NULL
 #endif /* XML_PARENT_CANDIDATE */
-		)
-		if (cxvec_append(xp, &xc->xc_nodeset, &xc->xc_size) < 0)
-		    goto done;
-	}
-	if (vec){
-	    free(vec);
-	    vec = NULL;
-	}
-	break;
+                )
+                if (cxvec_append(xp, &xc->xc_nodeset, &xc->xc_size) < 0)
+                    goto done;
+        }
+        if (vec){
+            free(vec);
+            vec = NULL;
+        }
+        break;
     case A_PRECEDING:
-	break;
+        break;
     case A_PRECEDING_SIBLING:
-	break;
+        break;
     case A_SELF:
-	break;
+        break;
     default:
-	clicon_err(OE_XML, 0, "No such axisname: %d", xs->xs_int);
-	goto done;
-	break;
+        clicon_err(OE_XML, 0, "No such axisname: %d", xs->xs_int);
+        goto done;
+        break;
     }
     if (xs->xs_c1){
-	if (xp_eval(xc, xs->xs_c1, nsc, localonly, xrp) < 0)
-	    goto done;
+        if (xp_eval(xc, xs->xs_c1, nsc, localonly, xrp) < 0)
+            goto done;
     }
     else{
-	*xrp = xc;
-	xc = NULL;
+        *xrp = xc;
+        xc = NULL;
     }
     assert(*xrp);
     retval = 0;
  done:
     if (xc)
-	ctx_free(xc);
+        ctx_free(xc);
     return retval;
 }
 
@@ -467,10 +467,10 @@ xp_eval_step(xp_ctx     *xc0,
  */
 static int
 xp_eval_predicate(xp_ctx     *xc,
-		  xpath_tree *xs,
-		  cvec       *nsc,
-		  int         localonly,
-		  xp_ctx    **xrp)
+                  xpath_tree *xs,
+                  cvec       *nsc,
+                  int         localonly,
+                  xp_ctx    **xrp)
 {
     int      retval = -1;
     xp_ctx  *xr0 = NULL;
@@ -481,80 +481,80 @@ xp_eval_predicate(xp_ctx     *xc,
     xp_ctx  *xcc;
     
     if (xs->xs_c0 != NULL){ /* eval previous predicates */
-	if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0) 	
-	    goto done;	
+        if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)   
+            goto done;  
     }
     else{ /* empty */
-	if ((xr0 = ctx_dup(xc)) == NULL)
-	    goto done;
+        if ((xr0 = ctx_dup(xc)) == NULL)
+            goto done;
     }
     if (xs->xs_c1){ /* Second child */
-	/* Loop over each node in the nodeset */
-	assert (xr0->xc_type == XT_NODESET);
-	if ((xr1 = malloc(sizeof(*xr1))) == NULL){
-	    clicon_err(OE_UNIX, errno, "malloc");
-	    goto done;
-	}
-	memset(xr1, 0, sizeof(*xr1));
-	xr1->xc_type = XT_NODESET;
-	xr1->xc_node = xc->xc_node;
-	xr1->xc_initial = xc->xc_initial;
-	for (i=0; i<xr0->xc_size; i++){
-	    x = xr0->xc_nodeset[i];
-	    /* Create new context */
-	    if ((xcc = malloc(sizeof(*xcc))) == NULL){
-		clicon_err(OE_XML, errno, "malloc");
-		goto done;
-	    }
-	    memset(xcc, 0, sizeof(*xcc));
-	    xcc->xc_type = XT_NODESET;
-	    xcc->xc_initial = xc->xc_initial;
-	    xcc->xc_node = x;
-	    xcc->xc_position = i;
-	    /* For each node in the node-set to be filtered, the PredicateExpr is
-	     * evaluated with that node as the context node */
-	    if (cxvec_append(x, &xcc->xc_nodeset, &xcc->xc_size) < 0)
-		goto done;
-	    if (xp_eval(xcc, xs->xs_c1, nsc, localonly, &xrc) < 0)
-		goto done;
-	    if (xcc)
-		ctx_free(xcc);
-	    if (xrc->xc_type == XT_NUMBER){
-		/* If the result is a number, the result will be converted to true
-		   if the number is equal to the context position */
-		if ((int)xrc->xc_number == i)
-		    if (cxvec_append(x, &xr1->xc_nodeset, &xr1->xc_size) < 0)
-			goto done;		    
-	    }
-	    else {
-		/* if PredicateExpr evaluates to true for that node, the node is 
-		   included in the new node-set */
-		if (ctx2boolean(xrc))
-		    if (cxvec_append(x, &xr1->xc_nodeset, &xr1->xc_size) < 0)
-			goto done;		    
-	    }
-	    if (xrc)
-		ctx_free(xrc);
-	}
+        /* Loop over each node in the nodeset */
+        assert (xr0->xc_type == XT_NODESET);
+        if ((xr1 = malloc(sizeof(*xr1))) == NULL){
+            clicon_err(OE_UNIX, errno, "malloc");
+            goto done;
+        }
+        memset(xr1, 0, sizeof(*xr1));
+        xr1->xc_type = XT_NODESET;
+        xr1->xc_node = xc->xc_node;
+        xr1->xc_initial = xc->xc_initial;
+        for (i=0; i<xr0->xc_size; i++){
+            x = xr0->xc_nodeset[i];
+            /* Create new context */
+            if ((xcc = malloc(sizeof(*xcc))) == NULL){
+                clicon_err(OE_XML, errno, "malloc");
+                goto done;
+            }
+            memset(xcc, 0, sizeof(*xcc));
+            xcc->xc_type = XT_NODESET;
+            xcc->xc_initial = xc->xc_initial;
+            xcc->xc_node = x;
+            xcc->xc_position = i;
+            /* For each node in the node-set to be filtered, the PredicateExpr is
+             * evaluated with that node as the context node */
+            if (cxvec_append(x, &xcc->xc_nodeset, &xcc->xc_size) < 0)
+                goto done;
+            if (xp_eval(xcc, xs->xs_c1, nsc, localonly, &xrc) < 0)
+                goto done;
+            if (xcc)
+                ctx_free(xcc);
+            if (xrc->xc_type == XT_NUMBER){
+                /* If the result is a number, the result will be converted to true
+                   if the number is equal to the context position */
+                if ((int)xrc->xc_number == i)
+                    if (cxvec_append(x, &xr1->xc_nodeset, &xr1->xc_size) < 0)
+                        goto done;                  
+            }
+            else {
+                /* if PredicateExpr evaluates to true for that node, the node is 
+                   included in the new node-set */
+                if (ctx2boolean(xrc))
+                    if (cxvec_append(x, &xr1->xc_nodeset, &xr1->xc_size) < 0)
+                        goto done;                  
+            }
+            if (xrc)
+                ctx_free(xrc);
+        }
     }
     if (xr0 == NULL && xr1 == NULL){
-	clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
-	goto done;
+        clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
+        goto done;
     }
     if (xr1){
-	*xrp = xr1;
-	xr1 = NULL;
+        *xrp = xr1;
+        xr1 = NULL;
     }
     else if (xr0){
-	*xrp = xr0;
-	xr0 = NULL;
+        *xrp = xr0;
+        xr0 = NULL;
     }
     retval = 0;
  done:
     if (xr0)
-	ctx_free(xr0);
+        ctx_free(xr0);
     if (xr1)
-	ctx_free(xr1);
+        ctx_free(xr1);
     return retval;
 }
 
@@ -569,9 +569,9 @@ xp_eval_predicate(xp_ctx     *xc,
  */
 static int
 xp_logop(xp_ctx    *xc1,
-	 xp_ctx    *xc2,
-	 enum xp_op op,
-	 xp_ctx   **xrp)
+         xp_ctx    *xc2,
+         enum xp_op op,
+         xp_ctx   **xrp)
 {
     int     retval = -1;
     xp_ctx *xr = NULL;
@@ -579,27 +579,27 @@ xp_logop(xp_ctx    *xc1,
     int     b2;
     
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_initial = xc1->xc_initial;
     xr->xc_type = XT_BOOL;
     if ((b1 = ctx2boolean(xc1)) < 0)
-	goto done;
+        goto done;
     if ((b2 = ctx2boolean(xc2)) < 0)
-	goto done;
+        goto done;
     switch (op){
     case XO_AND:
-	xr->xc_bool = b1 && b2;
-	break;
+        xr->xc_bool = b1 && b2;
+        break;
     case XO_OR:
-	xr->xc_bool = b1 || b2;
-	break;
+        xr->xc_bool = b1 || b2;
+        break;
     default:
-	clicon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
-		   __FUNCTION__, clicon_int2str(xpopmap,op));
-	goto done;
+        clicon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
+                   __FUNCTION__, clicon_int2str(xpopmap,op));
+        goto done;
     }
     *xrp = xr;
     retval = 0;
@@ -619,9 +619,9 @@ xp_logop(xp_ctx    *xc1,
  */
 static int
 xp_numop(xp_ctx    *xc1,
-	 xp_ctx    *xc2,
-	 enum xp_op op,
-	 xp_ctx   **xrp)
+         xp_ctx    *xc2,
+         enum xp_op op,
+         xp_ctx   **xrp)
 {
     int     retval = -1;
     xp_ctx *xr = NULL;
@@ -629,40 +629,40 @@ xp_numop(xp_ctx    *xc1,
     double  n2;
     
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_initial = xc1->xc_initial;
     xr->xc_type = XT_NUMBER;
     if (ctx2number(xc1, &n1) < 0)
-	goto done;
+        goto done;
     if (ctx2number(xc2, &n2) < 0)
-	goto done;
+        goto done;
     if (isnan(n1) || isnan(n2))
-	xr->xc_number = NAN;
+        xr->xc_number = NAN;
     else
-	switch (op){
-	case XO_DIV:
-	    xr->xc_number = n1/n2;
-	    break;
-	case XO_MOD:
-	    xr->xc_number = ((int)n1)%((int)n2);
-	    break;
-	case XO_ADD:
-	    xr->xc_number = n1+n2;
-	    break;
-	case XO_MULT:
-	    xr->xc_number = n1*n2;
-	    break;
-	case XO_SUB:
-	    xr->xc_number = n1-n2;
-	    break;
-	default:
-	    clicon_err(OE_UNIX, errno, "Invalid operator %s in this context",
-		       clicon_int2str(xpopmap,op));
-	    goto done;
-	}
+        switch (op){
+        case XO_DIV:
+            xr->xc_number = n1/n2;
+            break;
+        case XO_MOD:
+            xr->xc_number = ((int)n1)%((int)n2);
+            break;
+        case XO_ADD:
+            xr->xc_number = n1+n2;
+            break;
+        case XO_MULT:
+            xr->xc_number = n1*n2;
+            break;
+        case XO_SUB:
+            xr->xc_number = n1-n2;
+            break;
+        default:
+            clicon_err(OE_UNIX, errno, "Invalid operator %s in this context",
+                       clicon_int2str(xpopmap,op));
+            goto done;
+        }
     *xrp = xr;
     retval = 0;
  done:
@@ -692,9 +692,9 @@ xp_numop(xp_ctx    *xc1,
  */
 static int
 xp_relop(xp_ctx    *xc1,
-	 xp_ctx    *xc2,
-	 enum xp_op op,
-	 xp_ctx   **xrp)
+         xp_ctx    *xc2,
+         enum xp_op op,
+         xp_ctx   **xrp)
 {
     int     retval = -1;
     xp_ctx *xr = NULL;
@@ -709,206 +709,206 @@ xp_relop(xp_ctx    *xc1,
     double  n1, n2;
     
     if (xc1 == NULL || xc2 == NULL){
-	clicon_err(OE_UNIX, EINVAL, "xc1 or xc2 NULL");
-	goto done;
+        clicon_err(OE_UNIX, EINVAL, "xc1 or xc2 NULL");
+        goto done;
     }
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_initial = xc1->xc_initial;
     xr->xc_type = XT_BOOL;
     if (xc1->xc_type == xc2->xc_type){ /* cases (2-3) above */
-	switch (xc1->xc_type){
-	case XT_NODESET:
-	    /* If both are node-sets, then it is true iff the string value of one 
-	       node in the first node-set and one in the second node-set is true */
-	    for (i=0; i<xc1->xc_size; i++){
-		if ((s1 = xml_body(xc1->xc_nodeset[i])) == NULL){
-		    xr->xc_bool = 0;
-		    goto ok;
-		}
-		for (j=0; j<xc2->xc_size; j++){
-		    if ((s2 = xml_body(xc2->xc_nodeset[j])) == NULL){
-			xr->xc_bool = 0;
-			goto ok;
-		    }
-		    switch(op){
-		    case XO_EQ:
-			xr->xc_bool = (strcmp(s1, s2)==0);
-			break;
-		    case XO_NE:
-			xr->xc_bool = (strcmp(s1, s2)!=0);
-			break;
-		    case XO_GE:
-			xr->xc_bool = (strcmp(s1, s2)>=0);
-			break;
-		    case XO_LE:
-			xr->xc_bool = (strcmp(s1, s2)<=0);
-			break;
-		    case XO_LT:
-			xr->xc_bool = (strcmp(s1, s2)<0);
-			break;
-		    case XO_GT:
-			xr->xc_bool = (strcmp(s1, s2)>0);
-			break;
-		    default:
-			clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
-			goto done;
-			break;
-		    }	    
-		    if (xr->xc_bool) /* enough to find a single node */
-			break;
-		}
-		if (xr->xc_bool) /* enough to find a single node */
-		    break;
-	    }
-	    break;
-	case XT_BOOL:
-	    xr->xc_bool = (xc1->xc_bool == xc2->xc_bool);
-	    break;
-	case XT_NUMBER:
-	    switch(op){
-	    case XO_EQ:
-		xr->xc_bool = (xc1->xc_number == xc2->xc_number);
-		break;
-	    case XO_NE:
-		xr->xc_bool = (xc1->xc_number != xc2->xc_number);
-		break;
-	    case XO_GE:
-		xr->xc_bool = (xc1->xc_number >= xc2->xc_number);
-		break;
-	    case XO_LE:
-		xr->xc_bool = (xc1->xc_number <= xc2->xc_number);
-		break;
-	    case XO_LT:
-		xr->xc_bool = (xc1->xc_number < xc2->xc_number);
-		break;
-	    case XO_GT:
-		xr->xc_bool = (xc1->xc_number > xc2->xc_number);
-		break;
-	    default:
-		clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
-		goto done;
-		break;
-	    }
-	    break;
-	case XT_STRING:
-	    xr->xc_bool = (strcmp(xc1->xc_string, xc2->xc_string)==0);
-	    break;
-	} /* switch xc1 */
+        switch (xc1->xc_type){
+        case XT_NODESET:
+            /* If both are node-sets, then it is true iff the string value of one 
+               node in the first node-set and one in the second node-set is true */
+            for (i=0; i<xc1->xc_size; i++){
+                if ((s1 = xml_body(xc1->xc_nodeset[i])) == NULL){
+                    xr->xc_bool = 0;
+                    goto ok;
+                }
+                for (j=0; j<xc2->xc_size; j++){
+                    if ((s2 = xml_body(xc2->xc_nodeset[j])) == NULL){
+                        xr->xc_bool = 0;
+                        goto ok;
+                    }
+                    switch(op){
+                    case XO_EQ:
+                        xr->xc_bool = (strcmp(s1, s2)==0);
+                        break;
+                    case XO_NE:
+                        xr->xc_bool = (strcmp(s1, s2)!=0);
+                        break;
+                    case XO_GE:
+                        xr->xc_bool = (strcmp(s1, s2)>=0);
+                        break;
+                    case XO_LE:
+                        xr->xc_bool = (strcmp(s1, s2)<=0);
+                        break;
+                    case XO_LT:
+                        xr->xc_bool = (strcmp(s1, s2)<0);
+                        break;
+                    case XO_GT:
+                        xr->xc_bool = (strcmp(s1, s2)>0);
+                        break;
+                    default:
+                        clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
+                        goto done;
+                        break;
+                    }       
+                    if (xr->xc_bool) /* enough to find a single node */
+                        break;
+                }
+                if (xr->xc_bool) /* enough to find a single node */
+                    break;
+            }
+            break;
+        case XT_BOOL:
+            xr->xc_bool = (xc1->xc_bool == xc2->xc_bool);
+            break;
+        case XT_NUMBER:
+            switch(op){
+            case XO_EQ:
+                xr->xc_bool = (xc1->xc_number == xc2->xc_number);
+                break;
+            case XO_NE:
+                xr->xc_bool = (xc1->xc_number != xc2->xc_number);
+                break;
+            case XO_GE:
+                xr->xc_bool = (xc1->xc_number >= xc2->xc_number);
+                break;
+            case XO_LE:
+                xr->xc_bool = (xc1->xc_number <= xc2->xc_number);
+                break;
+            case XO_LT:
+                xr->xc_bool = (xc1->xc_number < xc2->xc_number);
+                break;
+            case XO_GT:
+                xr->xc_bool = (xc1->xc_number > xc2->xc_number);
+                break;
+            default:
+                clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
+                goto done;
+                break;
+            }
+            break;
+        case XT_STRING:
+            xr->xc_bool = (strcmp(xc1->xc_string, xc2->xc_string)==0);
+            break;
+        } /* switch xc1 */
     }
     else if (xc1->xc_type != XT_NODESET &&
-	     xc2->xc_type != XT_NODESET){
-	clicon_err(OE_XML, 0, "Mixed types not supported, %d %d", xc1->xc_type, xc2->xc_type);
-	goto done;
+             xc2->xc_type != XT_NODESET){
+        clicon_err(OE_XML, 0, "Mixed types not supported, %d %d", xc1->xc_type, xc2->xc_type);
+        goto done;
     }
     else{ /* one is nodeset, ie (1) above */
-	if (xc2->xc_type == XT_NODESET){
-	    xc = xc2;
-	    xc2 = xc1;
-	    xc1 = xc;
-	    reverse++; /* reverse */
-	}
-	/* xc1 is nodeset 
-	 * xc2 is something else */
-	switch (xc2->xc_type){
-	case XT_BOOL:
-	    /* comparison on the boolean and the result of converting the 
-	       node-set to a boolean using the boolean function is true. */
-	    b = ctx2boolean(xc1);
-	    switch(op){
-	    case XO_EQ:
-		xr->xc_bool = (b == xc2->xc_bool);
-		break;
-	    case XO_NE:
-		xr->xc_bool = (b != xc2->xc_bool);
-		break;
-	    default:
-		clicon_err(OE_XML, 0, "Operator %s not supported for nodeset and bool", clicon_int2str(xpopmap,op));
-		goto done;
-		break;
-	    } /* switch op */
-	    break;
-	case XT_STRING:
-	    /* If one object to be compared is a node-set and the
-	       other is a string, then the comparison will be true if and only
-	       if there is a node in the node-set such that the result of
-	       performing the comparison on the string-value of the node and 
-	       the other string is true.*/
-	    s2 = xc2->xc_string;
-	    for (i=0; i<xc1->xc_size; i++){
-		x = xc1->xc_nodeset[i]; /* node in nodeset */
-		s1 = xml_body(x);
-		switch(op){
-		case XO_EQ:
-		    if (s1 == NULL && s2 == NULL)
-			xr->xc_bool = 1;
-		    else if (s1 == NULL && strlen(s2) == 0)
-			xr->xc_bool = 1;
-		    else if (strlen(s1) == 0 && s2 == NULL)
-			xr->xc_bool = 1;
-		    else
-			xr->xc_bool = (strcmp(s1, s2)==0);
-		    break;
-		case XO_NE:
-		    if (s1 == NULL || s2 == NULL)
-			xr->xc_bool = !(s1==NULL && s2 == NULL);
-		    else
-			xr->xc_bool = (strcmp(s1, s2));
-		    break;
-		default:
-		    clicon_err(OE_XML, 0, "Operator %s not supported for nodeset and string", clicon_int2str(xpopmap,op));
-		goto done;
-		    break;
-		}
-		if (xr->xc_bool) /* enough to find a single node */
-		    break;
-	    }
-	    break;
-	case XT_NUMBER:
-	    for (i=0; i<xc1->xc_size; i++){
-		x = xc1->xc_nodeset[i]; /* node in nodeset */
-		if (sscanf(xml_body(x), "%lf", &n1) != 1)
-		    n1 = NAN;
-		n2 = xc2->xc_number;
-		switch(op){
-		case XO_EQ:
-		    xr->xc_bool = (n1 == n2);
-		    break;
-		case XO_NE:
-		    xr->xc_bool = (n1 != n2);
-		    break;
-		case XO_GE:
-		    xr->xc_bool = reverse?(n2 >= n1):(n1 >= n2);
-		    break;
-		case XO_LE:
-		    xr->xc_bool = reverse?(n2 <= n1):(n1 <= n2);
-		    break;
-		case XO_LT:
-		    xr->xc_bool = reverse?(n2 < n1):(n1 < n2);
-		    break;
-		case XO_GT:
-		    xr->xc_bool = reverse?(n2 > n1):(n1 > n2);
-		    break;
-		default:
-		    clicon_err(OE_XML, 0, "Operator %s not supported for nodeset and number", clicon_int2str(xpopmap,op));
-		goto done;
-		    break;
-		}
-		if (xr->xc_bool) /* enough to find a single node */
-		    break;
-	    }
-	    break;
-	default:
-	    clicon_err(OE_XML, 0, "Type %d not supported", xc2->xc_type);
-	} /* switch type */
+        if (xc2->xc_type == XT_NODESET){
+            xc = xc2;
+            xc2 = xc1;
+            xc1 = xc;
+            reverse++; /* reverse */
+        }
+        /* xc1 is nodeset 
+         * xc2 is something else */
+        switch (xc2->xc_type){
+        case XT_BOOL:
+            /* comparison on the boolean and the result of converting the 
+               node-set to a boolean using the boolean function is true. */
+            b = ctx2boolean(xc1);
+            switch(op){
+            case XO_EQ:
+                xr->xc_bool = (b == xc2->xc_bool);
+                break;
+            case XO_NE:
+                xr->xc_bool = (b != xc2->xc_bool);
+                break;
+            default:
+                clicon_err(OE_XML, 0, "Operator %s not supported for nodeset and bool", clicon_int2str(xpopmap,op));
+                goto done;
+                break;
+            } /* switch op */
+            break;
+        case XT_STRING:
+            /* If one object to be compared is a node-set and the
+               other is a string, then the comparison will be true if and only
+               if there is a node in the node-set such that the result of
+               performing the comparison on the string-value of the node and 
+               the other string is true.*/
+            s2 = xc2->xc_string;
+            for (i=0; i<xc1->xc_size; i++){
+                x = xc1->xc_nodeset[i]; /* node in nodeset */
+                s1 = xml_body(x);
+                switch(op){
+                case XO_EQ:
+                    if (s1 == NULL && s2 == NULL)
+                        xr->xc_bool = 1;
+                    else if (s1 == NULL && strlen(s2) == 0)
+                        xr->xc_bool = 1;
+                    else if (strlen(s1) == 0 && s2 == NULL)
+                        xr->xc_bool = 1;
+                    else
+                        xr->xc_bool = (strcmp(s1, s2)==0);
+                    break;
+                case XO_NE:
+                    if (s1 == NULL || s2 == NULL)
+                        xr->xc_bool = !(s1==NULL && s2 == NULL);
+                    else
+                        xr->xc_bool = (strcmp(s1, s2));
+                    break;
+                default:
+                    clicon_err(OE_XML, 0, "Operator %s not supported for nodeset and string", clicon_int2str(xpopmap,op));
+                goto done;
+                    break;
+                }
+                if (xr->xc_bool) /* enough to find a single node */
+                    break;
+            }
+            break;
+        case XT_NUMBER:
+            for (i=0; i<xc1->xc_size; i++){
+                x = xc1->xc_nodeset[i]; /* node in nodeset */
+                if (sscanf(xml_body(x), "%lf", &n1) != 1)
+                    n1 = NAN;
+                n2 = xc2->xc_number;
+                switch(op){
+                case XO_EQ:
+                    xr->xc_bool = (n1 == n2);
+                    break;
+                case XO_NE:
+                    xr->xc_bool = (n1 != n2);
+                    break;
+                case XO_GE:
+                    xr->xc_bool = reverse?(n2 >= n1):(n1 >= n2);
+                    break;
+                case XO_LE:
+                    xr->xc_bool = reverse?(n2 <= n1):(n1 <= n2);
+                    break;
+                case XO_LT:
+                    xr->xc_bool = reverse?(n2 < n1):(n1 < n2);
+                    break;
+                case XO_GT:
+                    xr->xc_bool = reverse?(n2 > n1):(n1 > n2);
+                    break;
+                default:
+                    clicon_err(OE_XML, 0, "Operator %s not supported for nodeset and number", clicon_int2str(xpopmap,op));
+                goto done;
+                    break;
+                }
+                if (xr->xc_bool) /* enough to find a single node */
+                    break;
+            }
+            break;
+        default:
+            clicon_err(OE_XML, 0, "Type %d not supported", xc2->xc_type);
+        } /* switch type */
     }
  ok:
     /* Just ensure bool is 0 or 1 */
     if (xr->xc_type == XT_BOOL && xr->xc_bool != 0)
-	xr->xc_bool = 1;
+        xr->xc_bool = 1;
     *xrp = xr;
     retval = 0;
  done:
@@ -926,33 +926,33 @@ xp_relop(xp_ctx    *xc1,
  */
 static int
 xp_union(xp_ctx    *xc1,
-	 xp_ctx    *xc2,
-	 enum xp_op op,
-	 xp_ctx   **xrp)
+         xp_ctx    *xc2,
+         enum xp_op op,
+         xp_ctx   **xrp)
 {
     int     retval = -1;
     xp_ctx *xr = NULL;
     int     i;
     
     if (op != XO_UNION){
-	clicon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
-		   __FUNCTION__, clicon_int2str(xpopmap,op));
-	goto done;
+        clicon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
+                   __FUNCTION__, clicon_int2str(xpopmap,op));
+        goto done;
     }
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_initial = xc1->xc_initial;
     xr->xc_type = XT_NODESET;
 
     for (i=0; i<xc1->xc_size; i++)
-	if (cxvec_append(xc1->xc_nodeset[i], &xr->xc_nodeset, &xr->xc_size) < 0)
-	    goto done;
+        if (cxvec_append(xc1->xc_nodeset[i], &xr->xc_nodeset, &xr->xc_size) < 0)
+            goto done;
     for (i=0; i<xc2->xc_size; i++){
-	if (cxvec_append(xc2->xc_nodeset[i], &xr->xc_nodeset, &xr->xc_size) < 0)
-	    goto done;
+        if (cxvec_append(xc2->xc_nodeset[i], &xr->xc_nodeset, &xr->xc_size) < 0)
+            goto done;
     }
     *xrp = xr;
     retval = 0;
@@ -974,10 +974,10 @@ xp_union(xp_ctx    *xc1,
  */
 int
 xp_eval(xp_ctx     *xc,
-	xpath_tree *xs,
-	cvec       *nsc,
-	int         localonly,
-	xp_ctx    **xrp)
+        xpath_tree *xs,
+        cvec       *nsc,
+        int         localonly,
+        xp_ctx    **xrp)
 {
     int        retval = -1;
     cxobj     *x;
@@ -987,255 +987,255 @@ xp_eval(xp_ctx     *xc,
     int        use_xr0 = 0; /* In 2nd child use transitively result of 1st child */
     
     if (clicon_debug_get() > 1)
-	ctx_print(stderr, xc, xpath_tree_int2str(xs->xs_type));
+        ctx_print(stderr, xc, xpath_tree_int2str(xs->xs_type));
     /* Pre-actions before check first child c0
      */
     switch (xs->xs_type){
     case XP_RELLOCPATH:
-	if (xs->xs_int == A_DESCENDANT_OR_SELF)
-	    xc->xc_descendant = 1; /* XXX need to set to 0 in sub */
-	break;
+        if (xs->xs_int == A_DESCENDANT_OR_SELF)
+            xc->xc_descendant = 1; /* XXX need to set to 0 in sub */
+        break;
     case XP_ABSPATH:
-	/* Set context node to top node, and nodeset to that node only */
-	x = xc->xc_node;
+        /* Set context node to top node, and nodeset to that node only */
+        x = xc->xc_node;
 #ifdef XML_PARENT_CANDIDATE
-	while (xml_parent(x) != NULL || xml_parent_candidate(x) != NULL)
-	    x = xml_parent(x)?xml_parent(x):xml_parent_candidate(x);
+        while (xml_parent(x) != NULL || xml_parent_candidate(x) != NULL)
+            x = xml_parent(x)?xml_parent(x):xml_parent_candidate(x);
 #else
-	while (xml_parent(x) != NULL)
-	    x = xml_parent(x);
+        while (xml_parent(x) != NULL)
+            x = xml_parent(x);
 #endif
-	xc->xc_node = x;
-	xc->xc_nodeset[0] = x;
-	xc->xc_size=1;
-	/* // is short for /descendant-or-self::node()/ */
-	if (xs->xs_int == A_DESCENDANT_OR_SELF)
-	    xc->xc_descendant = 1; /* XXX need to set to 0 in sub */
-	break;
+        xc->xc_node = x;
+        xc->xc_nodeset[0] = x;
+        xc->xc_size=1;
+        /* // is short for /descendant-or-self::node()/ */
+        if (xs->xs_int == A_DESCENDANT_OR_SELF)
+            xc->xc_descendant = 1; /* XXX need to set to 0 in sub */
+        break;
     case XP_STEP:    /* XP_NODE is first argument -not called explicitly */
-	if (xp_eval_step(xc, xs, nsc, localonly, xrp) < 0)
-	    goto done;
-	goto ok; /* Skip generic child traverse */
-	break;
+        if (xp_eval_step(xc, xs, nsc, localonly, xrp) < 0)
+            goto done;
+        goto ok; /* Skip generic child traverse */
+        break;
     case XP_PRED:
-	if (xp_eval_predicate(xc, xs, nsc, localonly, xrp) < 0)
-	    goto done;
-	goto ok;
-	break;
+        if (xp_eval_predicate(xc, xs, nsc, localonly, xrp) < 0)
+            goto done;
+        goto ok;
+        break;
     case XP_PRIME_FN:
-	if (xs->xs_s0){
-	    switch (xs->xs_int){
-	    case XPATHFN_CURRENT:
-		if (xp_function_current(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_DEREF:
-		if (xp_function_deref(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_DERIVED_FROM:
-		if (xp_function_derived_from(xc, xs->xs_c0, nsc, localonly, 0, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_DERIVED_FROM_OR_SELF:
-		if (xp_function_derived_from(xc, xs->xs_c0, nsc, localonly, 1, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_BIT_IS_SET:
-		if (xp_function_bit_is_set(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_POSITION:
-		if (xp_function_position(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_COUNT:
-		if (xp_function_count(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_NAME:
-		if (xp_function_name(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_CONTAINS:
-		if (xp_function_contains(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_BOOLEAN:
-		if (xp_function_boolean(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_NOT:
-		if (xp_function_not(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_TRUE:
-		if (xp_function_true(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    case XPATHFN_FALSE:
-		if (xp_function_false(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
-		    goto done;
-		goto ok;
-		break;
-	    default:
-		clicon_err(OE_XML, EFAULT, "XPATH function not implemented: %s", xs->xs_s0);
-		goto done;
-		break;
-	    }
-	}
-	break;
+        if (xs->xs_s0){
+            switch (xs->xs_int){
+            case XPATHFN_CURRENT:
+                if (xp_function_current(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_DEREF:
+                if (xp_function_deref(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_DERIVED_FROM:
+                if (xp_function_derived_from(xc, xs->xs_c0, nsc, localonly, 0, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_DERIVED_FROM_OR_SELF:
+                if (xp_function_derived_from(xc, xs->xs_c0, nsc, localonly, 1, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_BIT_IS_SET:
+                if (xp_function_bit_is_set(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_POSITION:
+                if (xp_function_position(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_COUNT:
+                if (xp_function_count(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_NAME:
+                if (xp_function_name(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_CONTAINS:
+                if (xp_function_contains(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_BOOLEAN:
+                if (xp_function_boolean(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_NOT:
+                if (xp_function_not(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_TRUE:
+                if (xp_function_true(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_FALSE:
+                if (xp_function_false(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            default:
+                clicon_err(OE_XML, EFAULT, "XPATH function not implemented: %s", xs->xs_s0);
+                goto done;
+                break;
+            }
+        }
+        break;
     default:
-	break;
+        break;
     }
     /* Eval first child c0
      */
     if (xs->xs_c0){
-	if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0) 	
-	    goto done;
+        if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)   
+            goto done;
     }
     /* Actions between first and second child
      */
     switch (xs->xs_type){
     case XP_EXP:
-	break;
+        break;
     case XP_AND:
-	break;
+        break;
     case XP_RELEX: /* relexpr --> addexpr | relexpr relop addexpr */
-	break;
+        break;
     case XP_ADD: /* combine mult and add ops */
-	break;
+        break;
     case XP_UNION:
-	break;
+        break;
     case XP_PATHEXPR:
-	if (xs->xs_c1)
-	    use_xr0++;
-	break;
+        if (xs->xs_c1)
+            use_xr0++;
+        break;
     case XP_FILTEREXPR:
-	break;
+        break;
     case XP_LOCPATH:
-	break;
+        break;
     case XP_ABSPATH:
-	use_xr0++;
-	/* Special case, no c0 or c1, single "/" */
-	if (xs->xs_c0 == NULL){
-	    if ((xr0 = malloc(sizeof(*xr0))) == NULL){
-		clicon_err(OE_UNIX, errno, "malloc");
-		goto done;
-	    }
-	    memset(xr0, 0, sizeof(*xr0));
-	    xr0->xc_initial = xc->xc_initial;
-	    xr0->xc_type = XT_NODESET;
-	    x = NULL;
-	    while ((x = xml_child_each(xc->xc_node, x, CX_ELMNT)) != NULL) {
-		if (cxvec_append(x, &xr0->xc_nodeset, &xr0->xc_size) < 0)
-		    goto done;
-	    }
-	}
-	break;
+        use_xr0++;
+        /* Special case, no c0 or c1, single "/" */
+        if (xs->xs_c0 == NULL){
+            if ((xr0 = malloc(sizeof(*xr0))) == NULL){
+                clicon_err(OE_UNIX, errno, "malloc");
+                goto done;
+            }
+            memset(xr0, 0, sizeof(*xr0));
+            xr0->xc_initial = xc->xc_initial;
+            xr0->xc_type = XT_NODESET;
+            x = NULL;
+            while ((x = xml_child_each(xc->xc_node, x, CX_ELMNT)) != NULL) {
+                if (cxvec_append(x, &xr0->xc_nodeset, &xr0->xc_size) < 0)
+                    goto done;
+            }
+        }
+        break;
     case XP_RELLOCPATH:
-	use_xr0++;
-	if (xs->xs_int == A_DESCENDANT_OR_SELF)
-	    xc->xc_descendant = 1; /* XXX need to set to 0 in sub */
-	break;
+        use_xr0++;
+        if (xs->xs_int == A_DESCENDANT_OR_SELF)
+            xc->xc_descendant = 1; /* XXX need to set to 0 in sub */
+        break;
     case XP_NODE:
-	break;
+        break;
     case XP_NODE_FN:
-	break;
+        break;
     case XP_PRI0:
-	break;
+        break;
     case XP_PRIME_NR: /* primaryexpr -> [<number>] */
-	if ((xr0 = malloc(sizeof(*xr0))) == NULL){
-	    clicon_err(OE_UNIX, errno, "malloc");
-	    goto done;
-	}
-	memset(xr0, 0, sizeof(*xr0));
-	xr0->xc_initial = xc->xc_initial;
-	xr0->xc_type = XT_NUMBER;
-	xr0->xc_number = xs->xs_double;
-	break;
+        if ((xr0 = malloc(sizeof(*xr0))) == NULL){
+            clicon_err(OE_UNIX, errno, "malloc");
+            goto done;
+        }
+        memset(xr0, 0, sizeof(*xr0));
+        xr0->xc_initial = xc->xc_initial;
+        xr0->xc_type = XT_NUMBER;
+        xr0->xc_number = xs->xs_double;
+        break;
     case XP_PRIME_STR:
-	if ((xr0 = malloc(sizeof(*xr0))) == NULL){
-	    clicon_err(OE_UNIX, errno, "malloc");
-	    goto done;
-	}
-	memset(xr0, 0, sizeof(*xr0));
-	xr0->xc_initial = xc->xc_initial;
-	xr0->xc_type = XT_STRING;
-	xr0->xc_string = xs->xs_s0?strdup(xs->xs_s0):NULL;
-	break;
+        if ((xr0 = malloc(sizeof(*xr0))) == NULL){
+            clicon_err(OE_UNIX, errno, "malloc");
+            goto done;
+        }
+        memset(xr0, 0, sizeof(*xr0));
+        xr0->xc_initial = xc->xc_initial;
+        xr0->xc_type = XT_STRING;
+        xr0->xc_string = xs->xs_s0?strdup(xs->xs_s0):NULL;
+        break;
     default:
-	break;
+        break;
     }
     /* Eval second child c1
      * Note, some operators like locationpath, need transitive context (use_xr0)
      */
     if (xs->xs_c1){
-	if (xp_eval(use_xr0?xr0:xc, xs->xs_c1, nsc, localonly, &xr1) < 0) 
-	    goto done;
-	/* Actions after second child
-	 */
-	switch (xs->xs_type){
-	case XP_AND: /* combine and and or ops */
-	    if (xp_logop(xr0, xr1, xs->xs_int, &xr2) < 0)
-		goto done;
-	    break;
-	case XP_RELEX: /* relexpr --> addexpr | relexpr relop addexpr */
-	    if (xp_relop(xr0, xr1, xs->xs_int, &xr2) < 0)
-		goto done;
-	    break;
-	case XP_ADD: /* combine mult and add ops */
-	    if (xp_numop(xr0, xr1, xs->xs_int, &xr2) < 0)
-		goto done;
-	    break;
-	case XP_UNION: /* combine and and or ops */
-	    if (xp_union(xr0, xr1, xs->xs_int, &xr2) < 0)
-		goto done;
-	default:
-	    break;
-	}
+        if (xp_eval(use_xr0?xr0:xc, xs->xs_c1, nsc, localonly, &xr1) < 0) 
+            goto done;
+        /* Actions after second child
+         */
+        switch (xs->xs_type){
+        case XP_AND: /* combine and and or ops */
+            if (xp_logop(xr0, xr1, xs->xs_int, &xr2) < 0)
+                goto done;
+            break;
+        case XP_RELEX: /* relexpr --> addexpr | relexpr relop addexpr */
+            if (xp_relop(xr0, xr1, xs->xs_int, &xr2) < 0)
+                goto done;
+            break;
+        case XP_ADD: /* combine mult and add ops */
+            if (xp_numop(xr0, xr1, xs->xs_int, &xr2) < 0)
+                goto done;
+            break;
+        case XP_UNION: /* combine and and or ops */
+            if (xp_union(xr0, xr1, xs->xs_int, &xr2) < 0)
+                goto done;
+        default:
+            break;
+        }
     }
     xc->xc_descendant = 0;
     if (xr0 == NULL && xr1 == NULL && xr2 == NULL){
-	clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
-	goto done;
+        clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
+        goto done;
     }
     if (xr2){
-	*xrp = xr2;
-	xr2 = NULL;
+        *xrp = xr2;
+        xr2 = NULL;
     }
     else if (xr1){
-	*xrp = xr1;
-	xr1 = NULL;
+        *xrp = xr1;
+        xr1 = NULL;
     }
     else
-	if (xr0){
-	    *xrp = xr0;
-	    xr0 = NULL;
-	}
+        if (xr0){
+            *xrp = xr0;
+            xr0 = NULL;
+        }
  ok:
     if (clicon_debug_get() > 1)
-	ctx_print(stderr, *xrp, xpath_tree_int2str(xs->xs_type));
+        ctx_print(stderr, *xrp, xpath_tree_int2str(xs->xs_type));
     retval = 0;
  done:
     if (xr2)
-	ctx_free(xr2);
+        ctx_free(xr2);
     if (xr1)
-	ctx_free(xr1);
+        ctx_free(xr1);
     if (xr0)
-	ctx_free(xr0);
+        ctx_free(xr0);
     return retval;
 } /* xp_eval */
 

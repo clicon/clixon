@@ -119,7 +119,7 @@ cat <<EOF > $fexample
          leaf-list following {
            type leafref {
              path "/members/member/member-id";
-	     require-instance false;
+             require-instance false;
            }
            description
              "Other members this members is following.";
@@ -217,8 +217,8 @@ cat <<EOF > $fexample
            description
              "Operational state members values.";
            leaf-list numbers {
-	     description "config false extension";
-	     type int32;
+             description "config false extension";
+             type int32;
            }
            leaf joined {
              type yang:date-and-time;

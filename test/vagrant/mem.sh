@@ -13,7 +13,7 @@ for pid in $pids; do
 #    echo "ps -o rss,vsize,cmd -h -p $pid"
     line=$(ps -o rss,vsize,cmd -h -p $pid)
     if [ -z "$line" ]; then
-	continue;
+        continue;
     fi
     rss=$(echo "$line"| awk '{print $1}')
     let rss=rss/1000

@@ -71,8 +71,8 @@
 
 static int
 validate_tree(clicon_handle h,
-	      cxobj        *xt,
-	      yang_stmt    *yspec)
+              cxobj        *xt,
+              yang_stmt    *yspec)
 {
     int    retval = -1;
     int    ret;
@@ -82,29 +82,29 @@ validate_tree(clicon_handle h,
     /* should already be populated */
     /* Add default values */
     if (xml_default_recurse(xt, 0) < 0)
-	goto done;
+        goto done;
     if (xml_apply(xt, -1, xml_sort_verify, h) < 0)
-	clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
+        clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
     if ((ret = xml_yang_validate_all_top(h, xt, &xerr)) < 0) 
-	goto done;
+        goto done;
     if (ret > 0 && (ret = xml_yang_validate_add(h, xt, &xerr)) < 0)
-	goto done;
+        goto done;
     if (ret == 0){
-	if ((cbret = cbuf_new()) ==NULL){
-	    clicon_err(OE_XML, errno, "cbuf_new");
-	    goto done;
-	}
-	if (netconf_err2cb(xerr, cbret) < 0)
-	    goto done;
-	fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
-	goto done;
+        if ((cbret = cbuf_new()) ==NULL){
+            clicon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        if (netconf_err2cb(xerr, cbret) < 0)
+            goto done;
+        fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
+        goto done;
     }
     retval = 0;
  done:
     if (cbret)
-	cbuf_free(cbret);
+        cbuf_free(cbret);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     return retval;
 }
 
@@ -112,24 +112,24 @@ static int
 usage(char *argv0)
 {
     fprintf(stderr, "usage:%s [options] with xml on stdin (unless -f)\n"
-	    "where options are\n"
+            "where options are\n"
             "\t-h \t\tHelp\n"
-    	    "\t-D <level> \tDebug\n"
-	    "\t-f <file>\tXML input file (overrides stdin)\n"
-	    "\t-J \t\tInput as JSON\n"
-	    "\t-j \t\tOutput as JSON\n"
-	    "\t-X \t\tOutput as TEXT \n"
-	    "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n"
-	    "\t-o \t\tOutput the file\n"
-	    "\t-v \t\tValidate the result in terms of Yang model (requires -y)\n"
-	    "\t-p \t\tPretty-print output\n"
-	    "\t-y <filename> \tYang filename or dir (load all files)\n"
-    	    "\t-Y <dir> \tYang dirs (can be several)\n"
-   	    "\t-t <file>\tXML top input file (where base tree is pasted to)\n"
-	    "\t-T <path>\tXPath to where in top input file base should be pasted\n"
-	    "\t-u \t\tTreat unknown XML as anydata\n"
-	    ,
-	    argv0);
+            "\t-D <level> \tDebug\n"
+            "\t-f <file>\tXML input file (overrides stdin)\n"
+            "\t-J \t\tInput as JSON\n"
+            "\t-j \t\tOutput as JSON\n"
+            "\t-X \t\tOutput as TEXT \n"
+            "\t-l <s|e|o> \tLog on (s)yslog, std(e)rr, std(o)ut (stderr is default)\n"
+            "\t-o \t\tOutput the file\n"
+            "\t-v \t\tValidate the result in terms of Yang model (requires -y)\n"
+            "\t-p \t\tPretty-print output\n"
+            "\t-y <filename> \tYang filename or dir (load all files)\n"
+            "\t-Y <dir> \tYang dirs (can be several)\n"
+            "\t-t <file>\tXML top input file (where base tree is pasted to)\n"
+            "\t-T <path>\tXPath to where in top input file base should be pasted\n"
+            "\t-u \t\tTreat unknown XML as anydata\n"
+            ,
+            argv0);
     exit(0);
 }
 
@@ -172,77 +172,77 @@ main(int    argc,
 
     /* Initialize clixon handle */
     if ((h = clicon_handle_init()) == NULL)
-	goto done;
+        goto done;
     if ((xcfg = xml_new("clixon-config", NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     if (clicon_conf_xml_set(h, xcfg) < 0)
-	goto done;
+        goto done;
 
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, UTIL_XML_OPTS)) != -1)
-	switch (c) {
-	case 'h':
-	    usage(argv[0]);
-	    break;
-    	case 'D':
-	    if (sscanf(optarg, "%d", &dbg) != 1)
-		usage(argv[0]);
-	    break;
-	case 'f':
-	    input_filename = optarg;
-	    break;
-	case 'J':
-	    jsonin++;
-	    break;
-	case 'j':
-	    jsonout++;
-	    break;
-	case 'X':
-	    textout++;
-	    break;
-	case 'l': /* Log destination: s|e|o|f */
-	    if ((logdst = clicon_log_opt(optarg[0])) < 0)
-		usage(argv[0]);
-	    break;
-	case 'o':
-	    output++;
-	    break;
-	case 'v':
-	    validate++;
-	    break;
-	case 'p':
-	    pretty++;
-	    break;
-	case 'y':
-	    yang_file_dir = optarg;
-	    break;
-	case 'Y':
-	    if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
-		goto done;
-	    break;
-	case 't':
-	    top_input_filename = optarg;
-	    break;
-	case 'T': /* top file xpath */
-	    top_path = optarg;
-	    break;
-	case 'u':
-	    if (clicon_option_bool_set(h, "CLICON_YANG_UNKNOWN_ANYDATA", 1) < 0)
-		goto done;
-	    xml_bind_yang_unknown_anydata(1);
-	    break;
-	default:
-	    usage(argv[0]);
-	    break;
-	}
+        switch (c) {
+        case 'h':
+            usage(argv[0]);
+            break;
+        case 'D':
+            if (sscanf(optarg, "%d", &dbg) != 1)
+                usage(argv[0]);
+            break;
+        case 'f':
+            input_filename = optarg;
+            break;
+        case 'J':
+            jsonin++;
+            break;
+        case 'j':
+            jsonout++;
+            break;
+        case 'X':
+            textout++;
+            break;
+        case 'l': /* Log destination: s|e|o|f */
+            if ((logdst = clicon_log_opt(optarg[0])) < 0)
+                usage(argv[0]);
+            break;
+        case 'o':
+            output++;
+            break;
+        case 'v':
+            validate++;
+            break;
+        case 'p':
+            pretty++;
+            break;
+        case 'y':
+            yang_file_dir = optarg;
+            break;
+        case 'Y':
+            if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
+                goto done;
+            break;
+        case 't':
+            top_input_filename = optarg;
+            break;
+        case 'T': /* top file xpath */
+            top_path = optarg;
+            break;
+        case 'u':
+            if (clicon_option_bool_set(h, "CLICON_YANG_UNKNOWN_ANYDATA", 1) < 0)
+                goto done;
+            xml_bind_yang_unknown_anydata(1);
+            break;
+        default:
+            usage(argv[0]);
+            break;
+        }
     if (validate && !yang_file_dir){
-	fprintf(stderr, "-v requires -y\n");
-	usage(argv[0]);
+        fprintf(stderr, "-v requires -y\n");
+        usage(argv[0]);
     }
     if (top_input_filename && top_path == NULL){
-	fprintf(stderr, "-t requires -T\n");
-	usage(argv[0]);
+        fprintf(stderr, "-t requires -T\n");
+        usage(argv[0]);
     }
     clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, logdst);
     clicon_debug_init(dbg, NULL);
@@ -250,122 +250,122 @@ main(int    argc,
     
     /* 1. Parse yang */
     if (yang_file_dir){
-	if ((yspec = yspec_new()) == NULL)
-	    goto done;
-	if (stat(yang_file_dir, &st) < 0){
-	    clicon_err(OE_YANG, errno, "%s not found", yang_file_dir);
-	    goto done;
-	}
-	if (S_ISDIR(st.st_mode)){
-	    if (yang_spec_load_dir(h, yang_file_dir, yspec) < 0)
-		goto done;
-	}
-	else{
-	    if (yang_spec_parse_file(h, yang_file_dir, yspec) < 0)
-		goto done;
-	}
+        if ((yspec = yspec_new()) == NULL)
+            goto done;
+        if (stat(yang_file_dir, &st) < 0){
+            clicon_err(OE_YANG, errno, "%s not found", yang_file_dir);
+            goto done;
+        }
+        if (S_ISDIR(st.st_mode)){
+            if (yang_spec_load_dir(h, yang_file_dir, yspec) < 0)
+                goto done;
+        }
+        else{
+            if (yang_spec_parse_file(h, yang_file_dir, yspec) < 0)
+                goto done;
+        }
     }
     /* If top file is declared, the base XML/JSON is pasted as child to the top-file.
      * This is to emulate sub-tress, not just top-level parsing.
      * Always validated
      */
     if (top_input_filename){
-	if ((tfp = fopen(top_input_filename, "r")) == NULL){
-	    clicon_err(OE_YANG, errno, "fopen(%s)", top_input_filename);	
-	    goto done;
-	}
-	if ((ret = clixon_xml_parse_file(tfp, YB_MODULE, yspec, &xtop, &xerr)) < 0){
-	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
-	    goto done;
-	}
-	if (ret == 0){
-	    clixon_netconf_error(xerr, "Parse top file", NULL);
-	    goto done;
-	}
-	if (validate_tree(h, xtop, yspec) < 0)
-	    goto done;
+        if ((tfp = fopen(top_input_filename, "r")) == NULL){
+            clicon_err(OE_YANG, errno, "fopen(%s)", top_input_filename);        
+            goto done;
+        }
+        if ((ret = clixon_xml_parse_file(tfp, YB_MODULE, yspec, &xtop, &xerr)) < 0){
+            fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
+            goto done;
+        }
+        if (ret == 0){
+            clixon_netconf_error(xerr, "Parse top file", NULL);
+            goto done;
+        }
+        if (validate_tree(h, xtop, yspec) < 0)
+            goto done;
 
-	/* Compute canonical namespace context */
-	if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-	    goto done;
-	if ((xbot = xpath_first(xtop, nsc, "%s", top_path)) == NULL){
-	    fprintf(stderr, "Path not found in top tree: %s\n", top_path);
-	    goto done;
-	}
-	xt = xbot;
+        /* Compute canonical namespace context */
+        if (xml_nsctx_yangspec(yspec, &nsc) < 0)
+            goto done;
+        if ((xbot = xpath_first(xtop, nsc, "%s", top_path)) == NULL){
+            fprintf(stderr, "Path not found in top tree: %s\n", top_path);
+            goto done;
+        }
+        xt = xbot;
     }
     if (input_filename){
-	if ((fp = fopen(input_filename, "r")) == NULL){
-	    clicon_err(OE_YANG, errno, "open(%s)", input_filename);	
-	    goto done;
-	}
+        if ((fp = fopen(input_filename, "r")) == NULL){
+            clicon_err(OE_YANG, errno, "open(%s)", input_filename);     
+            goto done;
+        }
     }
     /* 2. Parse data (xml/json) */
     if (jsonin){
-	if ((ret = clixon_json_parse_file(fp, 1, top_input_filename?YB_PARENT:YB_MODULE, yspec, &xt, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    clixon_netconf_error(xerr, "util_xml", NULL);
-	    goto done;
-	}
+        if ((ret = clixon_json_parse_file(fp, 1, top_input_filename?YB_PARENT:YB_MODULE, yspec, &xt, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_netconf_error(xerr, "util_xml", NULL);
+            goto done;
+        }
     }
     else{ /* XML */
-	if (!yang_file_dir)
-	    yb = YB_NONE;
-	else if (xt == NULL)
-	    yb = YB_MODULE;
-	else
-	    yb = YB_PARENT;
-	if ((ret = clixon_xml_parse_file(fp, yb, yspec, &xt, &xerr)) < 0){
-	    fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
-	    goto done;
-	}
-	if (ret == 0){
-	    clixon_netconf_error(xerr, "util_xml", NULL);
-	    goto done;
-	}
+        if (!yang_file_dir)
+            yb = YB_NONE;
+        else if (xt == NULL)
+            yb = YB_MODULE;
+        else
+            yb = YB_PARENT;
+        if ((ret = clixon_xml_parse_file(fp, yb, yspec, &xt, &xerr)) < 0){
+            fprintf(stderr, "xml parse error: %s\n", clicon_err_reason);
+            goto done;
+        }
+        if (ret == 0){
+            clixon_netconf_error(xerr, "util_xml", NULL);
+            goto done;
+        }
     }
 
     /* 3. Validate data (if yspec) */
     if (validate){
-	if (validate_tree(h, xt, yspec) < 0)
-	    goto done;
+        if (validate_tree(h, xt, yspec) < 0)
+            goto done;
     }
     /* 4. Output data (xml/json/text) */
     if (output){
-	if (textout){
-	    if (clixon_txt2file(stdout, xt, 0, fprintf, 1, 0) < 0)
-		goto done;
-	}
-	else if (jsonout){
-	    if (clixon_json2cbuf(cb, xt, pretty, 1, 0) < 0)
-		goto done;
-	}
-	else if (clixon_xml2cbuf(cb, xt, 0, pretty, -1, 1) < 0)
-	    goto done;
-	fprintf(stdout, "%s", cbuf_get(cb));
-	fflush(stdout);
+        if (textout){
+            if (clixon_txt2file(stdout, xt, 0, fprintf, 1, 0) < 0)
+                goto done;
+        }
+        else if (jsonout){
+            if (clixon_json2cbuf(cb, xt, pretty, 1, 0) < 0)
+                goto done;
+        }
+        else if (clixon_xml2cbuf(cb, xt, 0, pretty, -1, 1) < 0)
+            goto done;
+        fprintf(stdout, "%s", cbuf_get(cb));
+        fflush(stdout);
     }
     retval = 0;
  done:
     if (tfp)
-	fclose(tfp);
+        fclose(tfp);
     if (fp)
-	fclose(fp);
+        fclose(fp);
     if (nsc)
-	cvec_free(nsc);
+        cvec_free(nsc);
     if (cbret)
-	cbuf_free(cbret);
+        cbuf_free(cbret);
     if (xcfg)
-	xml_free(xcfg);
+        xml_free(xcfg);
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (xtop)
-	xml_free(xtop);
+        xml_free(xtop);
     else if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     return retval;
 }
 

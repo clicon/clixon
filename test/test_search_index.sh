@@ -50,7 +50,7 @@ module moda{
       leaf i{
         description "explicit index variable";
         type int32;
-	cc:search_index;
+        cc:search_index;
       }
       leaf j{
         description "non-index variable";

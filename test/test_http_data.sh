@@ -130,13 +130,13 @@ function testrun()
     RESTCONFIG=$(restconf_config none false $proto $enable)
 
     if true; then
-	# Proper test setup
-	datapath=/data
-	wdir=$dir/www
+        # Proper test setup
+        datapath=/data
+        wdir=$dir/www
     else
-	# Experiments with local host
-	datapath=/
-	wdir=/var/www/html
+        # Experiments with local host
+        datapath=/
+        wdir=/var/www/html
     fi
     # Clixon config
     cat <<EOF > $cfg
@@ -165,26 +165,26 @@ EOF
 
     new "test params: -f $cfg"
     if [ $BE -ne 0 ]; then
-	new "kill old backend"
-	sudo clixon_backend -zf $cfg
-	if [ $? -ne 0 ]; then
-	    err
-	fi
-	sudo pkill -f clixon_backend # to be sure
-	
-	new "start backend -s init -f $cfg"
-	start_backend -s init -f $cfg
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        sudo pkill -f clixon_backend # to be sure
+        
+        new "start backend -s init -f $cfg"
+        start_backend -s init -f $cfg
     fi
 
     new "wait backend"
     wait_backend
 
     if [ $RC -ne 0 ]; then
-	new "kill old restconf daemon"
-	stop_restconf_pre
+        new "kill old restconf daemon"
+        stop_restconf_pre
 
-	new "start restconf daemon"
-	start_restconf -f $cfg
+        new "start restconf daemon"
+        start_restconf -f $cfg
     fi
 
     new "wait restconf"
@@ -193,95 +193,95 @@ EOF
 #    echo "curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html"
 
     if ! $enable; then
-	# XXX or bad request?
-	new "WWW get html, not enabled, expect not found"
-#	echo "curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html"
-	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 404"
+        # XXX or bad request?
+        new "WWW get html, not enabled, expect not found"
+#       echo "curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 404"
     else
-	new "WWW get root expect 404 without body"
-	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/)" 0 "HTTP/$HVER 404" --not-- "Content-Type"
-	
-	new "WWW get index.html"
-	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
-	
-	new "WWW get dir -> expect index.html"
-	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
+        new "WWW get root expect 404 without body"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/)" 0 "HTTP/$HVER 404" --not-- "Content-Type"
+        
+        new "WWW get index.html"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
+        
+        new "WWW get dir -> expect index.html"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
 
-	# remove index
-	mv $dir/www/data/index.html $dir/www/data/tmp.index.html
+        # remove index
+        mv $dir/www/data/index.html $dir/www/data/tmp.index.html
 
-	new "WWW get dir -> no indirection expect 404"
-	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data)" 0 "HTTP/$HVER 404" "Content-Type: text/html" "<title>404 Not Found</title>"
+        new "WWW get dir -> no indirection expect 404"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data)" 0 "HTTP/$HVER 404" "Content-Type: text/html" "<title>404 Not Found</title>"
 
-	# move index back
-	mv $dir/www/data/tmp.index.html $dir/www/data/index.html 
-	
-	new "WWW get css"
-	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
+        # move index back
+        mv $dir/www/data/tmp.index.html $dir/www/data/index.html 
+        
+        new "WWW get css"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
 
-	new "WWW head"
-	expectpart "$(curl $CURLOPTS --head -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" --not-- "<title>Welcome to Clixon!</title>"
+        new "WWW head"
+        expectpart "$(curl $CURLOPTS --head -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" --not-- "<title>Welcome to Clixon!</title>"
 
-	new "WWW options"
-	expectpart "$(curl $CURLOPTS -X OPTIONS $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "allow: OPTIONS,HEAD,GET" 
+        new "WWW options"
+        expectpart "$(curl $CURLOPTS -X OPTIONS $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "allow: OPTIONS,HEAD,GET" 
 
-	# Remove -i option for binary transfer
-	CURLOPTS2=$(echo $CURLOPTS | sed 's/i//')
-	new "WWW binary bitmap"
-	curl $CURLOPTS2 -X GET $proto://localhost/data/clixon.png -o $dir/foo.png
-	cmp $dir/foo.png $dir/www/data/clixon.png
-	if [ $? -ne 0 ]; then
-	    err1 "$dir/foo.png $dir/www/data/example.css should be equal" "Not equal"
-	fi
+        # Remove -i option for binary transfer
+        CURLOPTS2=$(echo $CURLOPTS | sed 's/i//')
+        new "WWW binary bitmap"
+        curl $CURLOPTS2 -X GET $proto://localhost/data/clixon.png -o $dir/foo.png
+        cmp $dir/foo.png $dir/www/data/clixon.png
+        if [ $? -ne 0 ]; then
+            err1 "$dir/foo.png $dir/www/data/example.css should be equal" "Not equal"
+        fi
 
-	# negative errors
-	new "WWW get http not found"
-	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/notfound.html)" 0 "HTTP/$HVER 404" "Content-Type: text/html" "<title>404 Not Found</title>"
+        # negative errors
+        new "WWW get http not found"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/notfound.html)" 0 "HTTP/$HVER 404" "Content-Type: text/html" "<title>404 Not Found</title>"
 
-	new "WWW get http soft link"
-	expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/inside.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>" --not-- "<title>Dont access this</title>"
-	
-	# Two cases where the privileges test is not run:
-	# 1) Docker in alpine for some reason
-	# 2) Restconf run explicitly as root (eg coverage)
-	if [ ! -f /.dockerenv ] ; then  
+        new "WWW get http soft link"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/inside.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>" --not-- "<title>Dont access this</title>"
+        
+        # Two cases where the privileges test is not run:
+        # 1) Docker in alpine for some reason
+        # 2) Restconf run explicitly as root (eg coverage)
+        if [ ! -f /.dockerenv ] ; then  
             if [[ "$clixon_restconf" != *"-r"* ]]; then
-		new "WWW get http not read access"
-		expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/noread.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>"
+                new "WWW get http not read access"
+                expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/noread.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>"
             fi
-	fi
+        fi
 
-	# Try .. Cannot get .. in path to work in curl (it seems to remove it)
-	if [ "$proto" = http -a -n "$netcat" ]; then    
-	    new "WWW get outside using .. netcat"
-	    expectpart "$(${netcat} 127.0.0.1 80 <<EOF
+        # Try .. Cannot get .. in path to work in curl (it seems to remove it)
+        if [ "$proto" = http -a -n "$netcat" ]; then    
+            new "WWW get outside using .. netcat"
+            expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 GET /data/../../outside.html HTTP/1.1
 Host: localhost
 Accept: text_html
 
 EOF
 )" 0 "HTTP/1.1 403" "Forbidden"
-	fi
+        fi
 
-	new "WWW post not allowed"
-	expectpart "$(curl $CURLOPTS -X POST -H 'Accept: text/html' -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' $proto://localhost/data/notfound.html)" 0 "HTTP/$HVER 405" "Content-Type: text/html" "<title>405 Method Not Allowed</title>"
+        new "WWW post not allowed"
+        expectpart "$(curl $CURLOPTS -X POST -H 'Accept: text/html' -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interfaces":{"interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}}' $proto://localhost/data/notfound.html)" 0 "HTTP/$HVER 405" "Content-Type: text/html" "<title>405 Method Not Allowed</title>"
 
     fi 
 
     if [ $RC -ne 0 ]; then
-	new "Kill restconf daemon"
-	stop_restconf
+        new "Kill restconf daemon"
+        stop_restconf
     fi
 
     if [ $BE -ne 0 ]; then
-	new "Kill backend"
-	# Check if premature kill
-	pid=$(pgrep -u root -f clixon_backend)
-	if [ -z "$pid" ]; then
-	    err "backend already dead"
-	fi
-	# kill backend
-	stop_backend -f $cfg
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
     fi
 }
 
@@ -299,8 +299,8 @@ fi
 
 for proto in $protos; do
     for enable in true false; do    # false
-	new "http-data proto:$proto enabled:$enable"
-	testrun $proto $enable
+        new "http-data proto:$proto enabled:$enable"
+        testrun $proto $enable
     done
 done
 

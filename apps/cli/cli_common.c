@@ -82,12 +82,12 @@
  */
 int
 cli_notification_register(clicon_handle    h, 
-			  char            *stream, 
-			  enum format_enum format,
-			  char            *filter, 
-			  int              status, 
-			  int            (*fn)(int, void*),
-			  void            *arg)
+                          char            *stream, 
+                          enum format_enum format,
+                          char            *filter, 
+                          int              status, 
+                          int            (*fn)(int, void*),
+                          void            *arg)
 {
     int              retval = -1;
     char            *logname = NULL;
@@ -99,39 +99,39 @@ cli_notification_register(clicon_handle    h,
 
     len = strlen("log_socket_") + strlen(stream) + 1;
     if ((logname = malloc(len)) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
-    }	
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }   
     snprintf(logname, len, "log_socket_%s", stream);
     if ((p = clicon_hash_value(cdat, logname, &len)) != NULL)
-	s_exist = *(int*)p;
+        s_exist = *(int*)p;
 
     if (status){ /* start */
-	if (s_exist!=-1){
-	    clicon_err(OE_PLUGIN, 0, "Result log socket already exists");
-	    goto done;
-	}
-	if (clicon_rpc_create_subscription(h, stream, filter, &s) < 0)
-	    goto done;
-	if (cligen_regfd(s, fn, arg) < 0)
-	    goto done;
-	if (clicon_hash_add(cdat, logname, &s, sizeof(s)) == NULL)
-	    goto done;
+        if (s_exist!=-1){
+            clicon_err(OE_PLUGIN, 0, "Result log socket already exists");
+            goto done;
+        }
+        if (clicon_rpc_create_subscription(h, stream, filter, &s) < 0)
+            goto done;
+        if (cligen_regfd(s, fn, arg) < 0)
+            goto done;
+        if (clicon_hash_add(cdat, logname, &s, sizeof(s)) == NULL)
+            goto done;
     }
     else{ /* stop */
-	if (s_exist != -1){
-	    cligen_unregfd(s_exist);
-	}
-	clicon_hash_del(cdat, logname);
+        if (s_exist != -1){
+            cligen_unregfd(s_exist);
+        }
+        clicon_hash_del(cdat, logname);
 #if 0 /* cant turn off */
-	if (clicon_rpc_create_subscription(h, status, stream, format, filter, NULL) < 0)
-	    goto done;
+        if (clicon_rpc_create_subscription(h, status, stream, format, filter, NULL) < 0)
+            goto done;
 #endif
     }
     retval = 0;
   done:
     if (logname)
-	free(logname);
+        free(logname);
     return retval;
 }
 
@@ -139,20 +139,20 @@ cli_notification_register(clicon_handle    h,
 void
 cli_signal_block(clicon_handle h)
 {
-	clicon_signal_block (SIGTSTP);
-	clicon_signal_block (SIGQUIT);
-	clicon_signal_block (SIGCHLD);
-	if (!clicon_quiet_mode(h))
-	    clicon_signal_block (SIGINT);
+        clicon_signal_block (SIGTSTP);
+        clicon_signal_block (SIGQUIT);
+        clicon_signal_block (SIGCHLD);
+        if (!clicon_quiet_mode(h))
+            clicon_signal_block (SIGINT);
 }
 
 void
 cli_signal_unblock(clicon_handle h)
 {
-	clicon_signal_unblock (SIGTSTP);
-	clicon_signal_unblock (SIGQUIT);
-	clicon_signal_unblock (SIGCHLD);
-	clicon_signal_unblock (SIGINT);
+        clicon_signal_unblock (SIGTSTP);
+        clicon_signal_unblock (SIGQUIT);
+        clicon_signal_unblock (SIGCHLD);
+        clicon_signal_unblock (SIGINT);
 }
 
 /*
@@ -186,7 +186,7 @@ cli_signal_flush(clicon_handle h)
  */
 static int
 dbxml_body(cxobj     *xbot,
-	   cvec      *cvv)
+           cvec      *cvv)
 {
     int     retval = -1;
     char   *str = NULL;
@@ -197,17 +197,17 @@ dbxml_body(cxobj     *xbot,
     len = cvec_len(cvv);
     cval = cvec_i(cvv, len-1); 
     if ((str = cv2str_dup(cval)) == NULL){
-	clicon_err(OE_UNIX, errno, "cv2str_dup");
-	goto done;
+        clicon_err(OE_UNIX, errno, "cv2str_dup");
+        goto done;
     }
     if ((xb = xml_new("body", xbot, CX_BODY)) == NULL)
-	goto done; 
+        goto done; 
     if (xml_value_set(xb,  str) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (str)
-	free(str);
+        free(str);
     return retval;
 }
 
@@ -233,10 +233,10 @@ dbxml_body(cxobj     *xbot,
  */
 int
 cli_dbxml(clicon_handle       h, 
-	  cvec               *cvv, 
-	  cvec               *argv, 
-	  enum operation_type op,
-	  cvec               *nsctx)
+          cvec               *cvv, 
+          cvec               *argv, 
+          enum operation_type op,
+          cvec               *nsctx)
 {
     int        retval = -1;
     char      *api_path_fmt;    /* xml key format */
@@ -254,91 +254,91 @@ cli_dbxml(clicon_handle       h,
     int        cvv_i = 0;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be xml key format string");
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be xml key format string");
+        goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
+        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
     }
     arg = cvec_i(argv, 0);
     api_path_fmt = cv_string_get(arg);
 
     /* Remove all keywords */
     if (cvec_exclude_keys(cvv) < 0)
-	goto done;
+        goto done;
     /* Transform template format string + cvv to actual api-path 
      * cvv_i indicates if all cvv entries were used
      */
 
     if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvv_i) < 0)
-	goto done;
+        goto done;
     /* Create config top-of-tree */
     if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     xbot = xtop;
     if (api_path){
-	if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    if ((cb = cbuf_new()) == NULL){
-		clicon_err(OE_UNIX, errno, "cbuf_new");
-		goto done;
-	    }
-	    cprintf(cb, "api-path syntax error \"%s\": ", api_path_fmt);
-	    if (netconf_err2cb(xerr, cb) < 0)
-		goto done;
-	    clicon_err(OE_CFG, EINVAL, "%s", cbuf_get(cb));
-	    goto done;
-	}
+        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if ((cb = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cb, "api-path syntax error \"%s\": ", api_path_fmt);
+            if (netconf_err2cb(xerr, cb) < 0)
+                goto done;
+            clicon_err(OE_CFG, EINVAL, "%s", cbuf_get(cb));
+            goto done;
+        }
     }
     if ((xa = xml_new("operation", xbot, CX_ATTR)) == NULL)
-	goto done;
+        goto done;
     if (xml_prefix_set(xa, NETCONF_BASE_PREFIX) < 0)
-	goto done;
+        goto done;
     if (xml_value_set(xa, xml_operation2str(op)) < 0)
-	goto done;
+        goto done;
     /* Add body last in case of leaf */
     if (cvec_len(cvv) > 1 &&
-	(yang_keyword_get(y) == Y_LEAF)){
-	/* Add the body last if there is remaining element that was not used in the
-	 * earlier api-path transformation.
-	 * This is to handle differences between:
-	 * DELETE <foo>bar</foo> and DELETE <foo/>
-	 * i.e., (1) deletion of a specific leaf entry vs (2) deletion of any entry
-	 * Discussion: one can claim (1) is "bad" usage but one could see cases where
-	 * you would want to delete a value if it has a specific value but not otherwise
-	 */
-	if (cvv_i != cvec_len(cvv))
-	    if (dbxml_body(xbot, cvv) < 0)
-		goto done;
-	/* Loop over namespace context and add them to this leaf node */
-	cv = NULL;
-	while ((cv = cvec_each(nsctx, cv)) != NULL){
-	    char *ns = cv_string_get(cv);
-	    char *pf = cv_name_get(cv);
-	    if (ns && pf && xmlns_set(xbot, pf, ns) < 0)
-		goto done;
-	}
+        (yang_keyword_get(y) == Y_LEAF)){
+        /* Add the body last if there is remaining element that was not used in the
+         * earlier api-path transformation.
+         * This is to handle differences between:
+         * DELETE <foo>bar</foo> and DELETE <foo/>
+         * i.e., (1) deletion of a specific leaf entry vs (2) deletion of any entry
+         * Discussion: one can claim (1) is "bad" usage but one could see cases where
+         * you would want to delete a value if it has a specific value but not otherwise
+         */
+        if (cvv_i != cvec_len(cvv))
+            if (dbxml_body(xbot, cvv) < 0)
+                goto done;
+        /* Loop over namespace context and add them to this leaf node */
+        cv = NULL;
+        while ((cv = cvec_each(nsctx, cv)) != NULL){
+            char *ns = cv_string_get(cv);
+            char *pf = cv_name_get(cv);
+            if (ns && pf && xmlns_set(xbot, pf, ns) < 0)
+                goto done;
+        }
     }
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_XML, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
     }
     if (clixon_xml2cbuf(cb, xtop, 0, 0, -1, 0) < 0)
-	goto done;
+        goto done;
     if (clicon_rpc_edit_config(h, "candidate", OP_NONE, cbuf_get(cb)) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (api_path)
-	free(api_path);  
+        free(api_path);  
     if (xtop)
-	xml_free(xtop);
+        xml_free(xtop);
     return retval;
 }
 
@@ -349,13 +349,13 @@ cli_dbxml(clicon_handle       h,
  */
 int 
 cli_set(clicon_handle h,
-	cvec         *cvv,
-	cvec         *argv)
+        cvec         *cvv,
+        cvec         *argv)
 {
     int retval = -1;
 
     if (cli_dbxml(h, cvv, argv, OP_REPLACE, NULL) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -368,13 +368,13 @@ cli_set(clicon_handle h,
  */
 int 
 cli_merge(clicon_handle h,
-	  cvec         *cvv,
-	  cvec         *argv)
+          cvec         *cvv,
+          cvec         *argv)
 {
     int retval = -1;
 
     if (cli_dbxml(h, cvv, argv, OP_MERGE, NULL) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -387,13 +387,13 @@ cli_merge(clicon_handle h,
  */
 int 
 cli_create(clicon_handle h,
-	   cvec         *cvv,
-	   cvec         *argv)
+           cvec         *cvv,
+           cvec         *argv)
 {
     int retval = -1;
 
     if (cli_dbxml(h, cvv, argv, OP_CREATE, NULL) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -406,13 +406,13 @@ cli_create(clicon_handle h,
  */
 int 
 cli_remove(clicon_handle h,
-	   cvec         *cvv,
-	   cvec         *argv)
+           cvec         *cvv,
+           cvec         *argv)
 {
     int retval = -1;
 
     if (cli_dbxml(h, cvv, argv, OP_REMOVE, NULL) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -425,13 +425,13 @@ cli_remove(clicon_handle h,
  */
 int 
 cli_del(clicon_handle h,
-	cvec         *cvv,
-	cvec         *argv)
+        cvec         *cvv,
+        cvec         *argv)
 {
     int   retval = -1;
 
     if (cli_dbxml(h, cvv, argv, OP_REMOVE, NULL) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -446,19 +446,19 @@ cli_del(clicon_handle h,
  */
 int
 cli_debug_cli(clicon_handle h, 
-	       cvec         *vars, 
-	       cvec         *argv)
+               cvec         *vars, 
+               cvec         *argv)
 {
     int     retval = -1;
     cg_var *cv;
     int     level;
 
     if ((cv = cvec_find_var(vars, "level")) == NULL){
-	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
-	    goto done;
-	}
-	cv = cvec_i(argv, 0);
+        if (cvec_len(argv) != 1){
+            clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
+            goto done;
+        }
+        cv = cvec_i(argv, 0);
     }
     level = cv_int32_get(cv);
     /* cli */
@@ -477,19 +477,19 @@ cli_debug_cli(clicon_handle h,
  */
 int
 cli_debug_backend(clicon_handle h, 
-		  cvec         *vars, 
-		  cvec         *argv)
+                  cvec         *vars, 
+                  cvec         *argv)
 {
     int     retval = -1;
     cg_var *cv;
     int     level;
 
     if ((cv = cvec_find_var(vars, "level")) == NULL){
-	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
-	    goto done;
-	}
-	cv = cvec_i(argv, 0);
+        if (cvec_len(argv) != 1){
+            clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
+            goto done;
+        }
+        cv = cvec_i(argv, 0);
     }
     level = cv_int32_get(cv);
     /* config daemon */
@@ -511,19 +511,19 @@ cli_debug_backend(clicon_handle h,
  */
 int
 cli_debug_restconf(clicon_handle h, 
-		   cvec         *vars, 
-		   cvec         *argv)
+                   cvec         *vars, 
+                   cvec         *argv)
 {
     int     retval = -1;
     cg_var *cv;
     int     level;
 
     if ((cv = cvec_find_var(vars, "level")) == NULL){
-	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
-	    goto done;
-	}
-	cv = cvec_i(argv, 0);
+        if (cvec_len(argv) != 1){
+            clicon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
+            goto done;
+        }
+        cv = cvec_i(argv, 0);
     }
     level = cv_int32_get(cv);
     /* restconf daemon */
@@ -537,15 +537,15 @@ cli_debug_restconf(clicon_handle h,
  */
 int
 cli_set_mode(clicon_handle h, 
-	      cvec         *vars, 
-	      cvec         *argv)
+              cvec         *vars, 
+              cvec         *argv)
 {
     int     retval = -1;
     char   *str = NULL;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be cli mode");
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be cli mode");
+        goto done;
     }
     str = cv_string_get(cvec_i(argv, 0));
     cli_set_syntax_mode(h, str);
@@ -562,8 +562,8 @@ cli_set_mode(clicon_handle h,
  */ 
 int
 cli_start_shell(clicon_handle h, 
-		cvec         *vars, 
-		cvec         *argv)
+                cvec         *vars, 
+                cvec         *argv)
 {
     char          *cmd;
     char          *shcmd = "sh";
@@ -575,54 +575,54 @@ cli_start_shell(clicon_handle h,
     struct sigaction oldsigaction[32] = {0,};
     
     if (cvec_len(argv) > 1){
-	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: [<shell>]",
-		   cvec_len(argv));
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: [<shell>]",
+                   cvec_len(argv));
+        goto done;
     }
     if (cvec_len(argv) == 1){
-	shcmd = cv_string_get(cvec_i(argv, 0));
+        shcmd = cv_string_get(cvec_i(argv, 0));
     }
     cmd = (cvec_len(vars)>1 ? cv_string_get(cv1) : NULL);
     if ((pw = getpwuid(getuid())) == NULL){
-	clicon_err(OE_UNIX, errno, "getpwuid");
-	goto done;
+        clicon_err(OE_UNIX, errno, "getpwuid");
+        goto done;
     }
     if (chdir(pw->pw_dir) < 0){
-	clicon_err(OE_UNIX, errno, "chdir");
-	endpwent();
-	goto done;
+        clicon_err(OE_UNIX, errno, "chdir");
+        endpwent();
+        goto done;
     }
     endpwent();
 
     if (clixon_signal_save(&oldsigset, oldsigaction) < 0)
-	goto done;
+        goto done;
     cli_signal_flush(h);
     cli_signal_unblock(h);
     if (cmd){
-	snprintf(bcmd, 128, "%s -c \"%s\"", shcmd, cmd);
-	if (system(bcmd) < 0){
-	    cli_signal_block(h);
-	    clicon_err(OE_UNIX, errno, "system(bash -c)");
-	    goto done;
-	}
+        snprintf(bcmd, 128, "%s -c \"%s\"", shcmd, cmd);
+        if (system(bcmd) < 0){
+            cli_signal_block(h);
+            clicon_err(OE_UNIX, errno, "system(bash -c)");
+            goto done;
+        }
     }
     else{
-	snprintf(bcmd, 128, "%s ", shcmd); /* -l (login shell) but is applicable to bash only */
-	if (system(bcmd) < 0){
-	    cli_signal_block(h);
-	    clicon_err(OE_UNIX, errno, "system(bash)");
-	    goto done;
-	}
+        snprintf(bcmd, 128, "%s ", shcmd); /* -l (login shell) but is applicable to bash only */
+        if (system(bcmd) < 0){
+            cli_signal_block(h);
+            clicon_err(OE_UNIX, errno, "system(bash)");
+            goto done;
+        }
     }
     cli_signal_block(h);
 #if 0 /* Allow errcodes from bash */
     if (retval != 0){
-	clicon_err(OE_UNIX, errno, "system(%s) %d", cmd, retval);
-	goto done;
+        clicon_err(OE_UNIX, errno, "system(%s) %d", cmd, retval);
+        goto done;
     }
 #endif
     if (clixon_signal_restore(&oldsigset, oldsigaction) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -632,8 +632,8 @@ cli_start_shell(clicon_handle h,
  */
 int 
 cli_quit(clicon_handle h, 
-	  cvec         *vars, 
-	  cvec         *argv)
+          cvec         *vars, 
+          cvec         *argv)
 {
     cligen_exiting_set(cli_cligen(h), 1);
     return 0;
@@ -644,13 +644,28 @@ cli_quit(clicon_handle h,
  */
 int
 cli_commit(clicon_handle h, 
-	    cvec         *vars, 
-	    cvec         *argv)
+            cvec         *vars, 
+            cvec         *argv)
 {
     int            retval = -1;
+    uint32_t       timeout = 0; /* any non-zero value means "confirmed-commit" */
+    cg_var        *timeout_var;
+    char          *persist = NULL;
+    char          *persist_id = NULL;
+
+    int confirmed = (cvec_find_str(vars, "confirmed") != NULL);
+    int cancel = (cvec_find_str(vars, "cancel") != NULL);
+
+    if ((timeout_var = cvec_find(vars, "timeout")) != NULL) {
+        timeout = cv_uint32_get(timeout_var);
+        clicon_debug(1, "commit confirmed with timeout %ul", timeout);
+    }
+
+    persist = cvec_find_str(vars, "persist-val");
+    persist_id = cvec_find_str(vars, "persist-id-val");
     
-    if ((retval = clicon_rpc_commit(h)) < 0)
-	goto done;
+    if (clicon_rpc_commit(h, confirmed, cancel, timeout, persist, persist_id) < 1)
+        goto done;
     retval = 0;
   done:
     return retval;
@@ -660,13 +675,13 @@ cli_commit(clicon_handle h,
  */
 int
 cli_validate(clicon_handle h, 
-	      cvec         *vars, 
-	      cvec         *argv)
+              cvec         *vars, 
+              cvec         *argv)
 {
     int     retval = -1;
 
-    if ((retval = clicon_rpc_validate(h, "candidate")) < 0)
-	goto done;
+    if (clicon_rpc_validate(h, "candidate") < 1)
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -676,8 +691,8 @@ cli_validate(clicon_handle h,
  */
 static int
 compare_xmls(cxobj           *xc1,
-	     cxobj           *xc2,
-	     enum format_enum format)
+             cxobj           *xc2,
+             enum format_enum format)
 {
     int    fd;
     FILE  *f;
@@ -689,60 +704,60 @@ compare_xmls(cxobj           *xc1,
     snprintf(filename1, sizeof(filename1), "/tmp/cliconXXXXXX");
     snprintf(filename2, sizeof(filename2), "/tmp/cliconXXXXXX");
     if ((fd = mkstemp(filename1)) < 0){
-	clicon_err(OE_UNDEF, errno, "tmpfile");
-	goto done;
+        clicon_err(OE_UNDEF, errno, "tmpfile");
+        goto done;
     }
     if ((f = fdopen(fd, "w")) == NULL)
-	goto done;
+        goto done;
     switch(format){
     case FORMAT_TEXT:
-	if (clixon_txt2file(f, xc1, 0, cligen_output, 1, 1) < 0)
-	    goto done;
-	break;
+        if (clixon_txt2file(f, xc1, 0, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
     case FORMAT_XML:
     default:
-	if (clixon_xml2file(f, xc1, 0, 1, cligen_output, 1, 1) < 0)
-	    goto done;
-	break;
+        if (clixon_xml2file(f, xc1, 0, 1, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
     }
     fclose(f);
     close(fd);
 
     if ((fd = mkstemp(filename2)) < 0){
-	clicon_err(OE_UNDEF, errno, "mkstemp: %s", strerror(errno));
-	goto done;
+        clicon_err(OE_UNDEF, errno, "mkstemp: %s", strerror(errno));
+        goto done;
     }
     if ((f = fdopen(fd, "w")) == NULL)
-	goto done;
+        goto done;
 
     switch(format){
     case FORMAT_TEXT:
-	if (clixon_txt2file(f, xc2, 0, cligen_output, 1, 1) < 0)
-	    goto done;
-	break;
+        if (clixon_txt2file(f, xc2, 0, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
     case FORMAT_XML:
     default:
-	if (clixon_xml2file(f, xc2, 0, 1, cligen_output, 1, 1) < 0)
-	    goto done;
-	break;
+        if (clixon_xml2file(f, xc2, 0, 1, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
     }
 
     fclose(f);
     close(fd);
 
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_CFG, errno, "cbuf_new");
-	goto done;
+        clicon_err(OE_CFG, errno, "cbuf_new");
+        goto done;
     }
     cprintf(cb, "diff -dU 1 %s %s |  grep -v @@ | sed 1,2d",
-	    filename1, filename2);
+            filename1, filename2);
     if (system(cbuf_get(cb)) < 0)
-	goto done;
+        goto done;
 
     retval = 0;
   done:
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     unlink(filename1);
     unlink(filename2);
     return retval;
@@ -755,8 +770,8 @@ compare_xmls(cxobj           *xc1,
  */
 int
 compare_dbs(clicon_handle h, 
-	    cvec         *cvv, 
-	    cvec         *argv)
+            cvec         *cvv, 
+            cvec         *argv)
 {
     cxobj *xc1 = NULL; /* running xml */
     cxobj *xc2 = NULL; /* candidate xml */
@@ -765,33 +780,33 @@ compare_dbs(clicon_handle h,
     enum format_enum format;
 
     if (cvec_len(argv) > 1){
-	clicon_err(OE_PLUGIN, EINVAL, "Requires 0 or 1 element. If given: astext flag 0|1");
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Requires 0 or 1 element. If given: astext flag 0|1");
+        goto done;
     }
     if (cvec_len(argv) && cv_int32_get(cvec_i(argv, 0)) == 1)
-	format = FORMAT_TEXT;
+        format = FORMAT_TEXT;
     else
-	format = FORMAT_XML;
+        format = FORMAT_XML;
     if (clicon_rpc_get_config(h, NULL, "running", "/", NULL, NULL, &xc1) < 0)
-	goto done;
+        goto done;
     if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(xerr, "Get configuration", NULL);
-	goto done;
+        clixon_netconf_error(xerr, "Get configuration", NULL);
+        goto done;
     }
     if (clicon_rpc_get_config(h, NULL, "candidate", "/", NULL, NULL, &xc2) < 0)
-	goto done;
+        goto done;
     if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(xerr, "Get configuration", NULL);
-	goto done;
+        clixon_netconf_error(xerr, "Get configuration", NULL);
+        goto done;
     }
     if (compare_xmls(xc1, xc2, format) < 0) /* astext? */
-	goto done;
+        goto done;
     retval = 0;
   done:
     if (xc1)
-	xml_free(xc1);    
+        xml_free(xc1);    
     if (xc2)
-	xml_free(xc2);
+        xml_free(xc2);
     return retval;
 }
 
@@ -815,8 +830,8 @@ compare_dbs(clicon_handle h,
  */
 int 
 load_config_file(clicon_handle h, 
-		 cvec         *cvv, 
-		 cvec         *argv)
+                 cvec         *cvv, 
+                 cvec         *argv)
 {
     int              ret = -1;
     struct stat      st;
@@ -836,135 +851,135 @@ load_config_file(clicon_handle h,
     char            *lineptr = NULL;
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 4){
-	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<varname>[,<format>]",
-		   cvec_len(argv));
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<varname>[,<format>]",
+                   cvec_len(argv));
+        goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-	clicon_err(OE_FATAL, 0, "No DB_SPEC");
-	goto done;
+        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
     }
     if (cvec_len(argv) > 2){
-	formatstr = cv_string_get(cvec_i(argv, 2));
-	if ((int)(format = format_str2int(formatstr)) < 0){
-	    clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
-	    goto done;
-	}
+        formatstr = cv_string_get(cvec_i(argv, 2));
+        if ((int)(format = format_str2int(formatstr)) < 0){
+            clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+            goto done;
+        }
     }
     varstr = cv_string_get(cvec_i(argv, 0));
     opstr  = cv_string_get(cvec_i(argv, 1));
     if (strcmp(opstr, "merge") == 0) 
-	replace = 0;
+        replace = 0;
     else if (strcmp(opstr, "replace") == 0) 
-	replace = 1;
+        replace = 1;
     else{
-	clicon_err(OE_PLUGIN, 0, "No such op: %s, expected merge or replace", opstr);	
-	goto done;
+        clicon_err(OE_PLUGIN, 0, "No such op: %s, expected merge or replace", opstr);   
+        goto done;
     }
     if ((cv = cvec_find(cvv, varstr)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
-	goto done;
+        clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);       
+        goto done;
     }
     filename = cv_string_get(cv);
     if (stat(filename, &st) < 0){
- 	clicon_err(OE_UNIX, errno, "load_config: stat(%s)", filename);
-	goto done;
+        clicon_err(OE_UNIX, errno, "load_config: stat(%s)", filename);
+        goto done;
     }
     /* Open and parse local file into xml */
     if ((fp = fopen(filename, "r")) == NULL){
-	clicon_err(OE_UNIX, errno, "fopen(%s)", filename);
-	goto done;
+        clicon_err(OE_UNIX, errno, "fopen(%s)", filename);
+        goto done;
     }
     switch (format){
     case FORMAT_XML:
-	if ((ret = clixon_xml_parse_file(fp, YB_NONE, yspec, &xt, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    clixon_netconf_error(xerr, "Loading", filename);
-	    goto done;
-	}
-	break;
+        if ((ret = clixon_xml_parse_file(fp, YB_NONE, yspec, &xt, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_netconf_error(xerr, "Loading", filename);
+            goto done;
+        }
+        break;
     case FORMAT_JSON:
-	if ((ret = clixon_json_parse_file(fp, 1, YB_NONE, yspec, &xt, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    clixon_netconf_error(xerr, "Loading", filename);
-	    goto done;
-	}
-	break;
+        if ((ret = clixon_json_parse_file(fp, 1, YB_NONE, yspec, &xt, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_netconf_error(xerr, "Loading", filename);
+            goto done;
+        }
+        break;
     case FORMAT_TEXT:
-	/* text parser requires YANG and since load/save files have a "config" top-level 
-	 * the yang-bind parameter must be YB_MODULE_NEXT
-	 */
-	if ((ret = clixon_text_syntax_parse_file(fp, YB_MODULE_NEXT, yspec, &xt, &xerr)) < 0)
-	    goto done;
-	if (ret == 0){
-	    clixon_netconf_error(xerr, "Loading", filename);
-	    goto done;
-	}
-	break;
+        /* text parser requires YANG and since load/save files have a "config" top-level 
+         * the yang-bind parameter must be YB_MODULE_NEXT
+         */
+        if ((ret = clixon_text_syntax_parse_file(fp, YB_MODULE_NEXT, yspec, &xt, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_netconf_error(xerr, "Loading", filename);
+            goto done;
+        }
+        break;
     case FORMAT_CLI:
-	{
-	    char         *mode = cli_syntax_mode(h);
-	    cligen_result result;            /* match result */
-	    int           evalresult = 0;    /* if result == 1, calback result */
-	    size_t        n;
+        {
+            char         *mode = cli_syntax_mode(h);
+            cligen_result result;            /* match result */
+            int           evalresult = 0;    /* if result == 1, calback result */
+            size_t        n;
 
-	    while(!cligen_exiting(cli_cligen(h))) {
-		lineptr = NULL; n = 0;
-		if (getline(&lineptr, &n, fp) < 0){
-		    if (errno){
-			clicon_err(OE_UNIX, errno, "getline");
-			goto done;
-		    }
-		    goto ok; /* eof, skip backend rpc since this is done by cli code */
-		}
-		if (clicon_parse(h, lineptr, &mode, &result, &evalresult) < 0)
-		    goto done;	
-		if (result != 1) /* Not unique match */
-		    goto done;
-		if (evalresult < 0)
-		    goto done;
-		if (lineptr){
-		    free(lineptr);
-		    lineptr = NULL;
-		}
-	    }
-	    break;
-	}
+            while(!cligen_exiting(cli_cligen(h))) {
+                lineptr = NULL; n = 0;
+                if (getline(&lineptr, &n, fp) < 0){
+                    if (errno){
+                        clicon_err(OE_UNIX, errno, "getline");
+                        goto done;
+                    }
+                    goto ok; /* eof, skip backend rpc since this is done by cli code */
+                }
+                if (clicon_parse(h, lineptr, &mode, &result, &evalresult) < 0)
+                    goto done;  
+                if (result != 1) /* Not unique match */
+                    goto done;
+                if (evalresult < 0)
+                    goto done;
+                if (lineptr){
+                    free(lineptr);
+                    lineptr = NULL;
+                }
+            }
+            break;
+        }
     default:
-	clicon_err(OE_PLUGIN, 0, "format: %s not implemented", formatstr);
-	goto done;
-	break;
+        clicon_err(OE_PLUGIN, 0, "format: %s not implemented", formatstr);
+        goto done;
+        break;
     }
     if (xt == NULL)
-	goto done;
+        goto done;
     if ((cbxml = cbuf_new()) == NULL)
-	goto done;
+        goto done;
     x = NULL;
     while ((x = xml_child_each(xt, x, -1)) != NULL) {
-	/* Read as datastore-top but transformed into an edit-config "config" */
-	xml_name_set(x, NETCONF_INPUT_CONFIG);
+        /* Read as datastore-top but transformed into an edit-config "config" */
+        xml_name_set(x, NETCONF_INPUT_CONFIG);
     }
     if (clixon_xml2cbuf(cbxml, xt, 0, 0, -1, 1) < 0)
-	goto done;
+        goto done;
     if (clicon_rpc_edit_config(h, "candidate",
-			       replace?OP_REPLACE:OP_MERGE, 
-			       cbuf_get(cbxml)) < 0)
-	goto done;
+                               replace?OP_REPLACE:OP_MERGE, 
+                               cbuf_get(cbxml)) < 0)
+        goto done;
  ok:
     ret = 0;
  done:
     if (cbxml)
-	cbuf_free(cbxml);
+        cbuf_free(cbxml);
     if (lineptr)
-	free(lineptr); 
+        free(lineptr); 
    if (xerr)
-	xml_free(xerr);
+        xml_free(xerr);
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (fp)
-	fclose(fp);
+        fclose(fp);
     return ret;
 }
 
@@ -987,8 +1002,8 @@ load_config_file(clicon_handle h,
  */
 int
 save_config_file(clicon_handle h, 
-		 cvec         *cvv, 
-		 cvec         *argv)
+                 cvec         *cvv, 
+                 cvec         *argv)
 {
     int                retval = -1;
     char              *filename = NULL;
@@ -1004,82 +1019,82 @@ save_config_file(clicon_handle h,
     int                pretty = 1;     /* XXX hardcoded */
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 4){
-	clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<varname>[,<format>]",
-		   cvec_len(argv));
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<varname>[,<format>]",
+                   cvec_len(argv));
+        goto done;
     }
     if (cvec_len(argv) > 2){
-	formatstr = cv_string_get(cvec_i(argv, 2));
-	if ((int)(format = format_str2int(formatstr)) < 0){
-	    clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
-	    goto done;
-	}
+        formatstr = cv_string_get(cvec_i(argv, 2));
+        if ((int)(format = format_str2int(formatstr)) < 0){
+            clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+            goto done;
+        }
     }
     dbstr = cv_string_get(cvec_i(argv, 0));
     if (strcmp(dbstr, "running") != 0 && 
-	strcmp(dbstr, "candidate") != 0 &&
-	strcmp(dbstr, "startup") != 0) {
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
-	goto done;
+        strcmp(dbstr, "candidate") != 0 &&
+        strcmp(dbstr, "startup") != 0) {
+        clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr); 
+        goto done;
     }
     varstr  = cv_string_get(cvec_i(argv, 1));
     if ((cv = cvec_find(cvv, varstr)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);	
-	goto done;
+        clicon_err(OE_PLUGIN, 0, "No such var name: %s", varstr);       
+        goto done;
     }
     filename = cv_string_get(cv);
     if (clicon_rpc_get_config(h, NULL, dbstr,"/", NULL, NULL, &xt) < 0)
-	goto done;
+        goto done;
     if (xt == NULL){
-	clicon_err(OE_CFG, 0, "get config: empty tree"); /* Shouldnt happen */
-	goto done;
+        clicon_err(OE_CFG, 0, "get config: empty tree"); /* Shouldnt happen */
+        goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(xerr, "Get configuration", NULL);
-	goto done;
+        clixon_netconf_error(xerr, "Get configuration", NULL);
+        goto done;
     }
     /* get-config returns a <data> tree. Save as <config> tree so it can be used
      * as data-store.
      */
     if (xml_name_set(xt, DATASTORE_TOP_SYMBOL) < 0)
-	goto done;
+        goto done;
     if ((f = fopen(filename, "w")) == NULL){
-	clicon_err(OE_CFG, errno, "Creating file %s", filename);
-	goto done;
+        clicon_err(OE_CFG, errno, "Creating file %s", filename);
+        goto done;
     } 
     switch (format){
     case FORMAT_XML:
-	if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 1) < 0)
-	    goto done;
-	break;
+        if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 1) < 0)
+            goto done;
+        break;
     case FORMAT_JSON:
-	if (clixon_json2file(f, xt, pretty, fprintf, 0, 1) < 0)
-	    goto done;
-	break;
+        if (clixon_json2file(f, xt, pretty, fprintf, 0, 1) < 0)
+            goto done;
+        break;
     case FORMAT_TEXT:
-	if (clixon_txt2file(f, xt, 0, fprintf, 0, 1) < 0)
-	    goto done;
-	break;
+        if (clixon_txt2file(f, xt, 0, fprintf, 0, 1) < 0)
+            goto done;
+        break;
     case FORMAT_CLI:
-	if (clixon_cli2file(h, f, xt, prefix, fprintf, 1) < 0)
-	    goto done;
-	break;
+        if (clixon_cli2file(h, f, xt, prefix, fprintf, 1) < 0)
+            goto done;
+        break;
     case FORMAT_NETCONF:
-	fprintf(f, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target>",
-		NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
-	fprintf(f, "\n");
-	if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 1) < 0)
-	    goto done;
-	fprintf(f, "</edit-config></rpc>]]>]]>\n");
-	break;
+        fprintf(f, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target>",
+                NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
+        fprintf(f, "\n");
+        if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 1) < 0)
+            goto done;
+        fprintf(f, "</edit-config></rpc>]]>]]>\n");
+        break;
     } /* switch */
     retval = 0;
     /* Fall through */
   done:
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (f != NULL)
-	fclose(f);
+        fclose(f);
     return retval;
 }
 
@@ -1088,25 +1103,25 @@ save_config_file(clicon_handle h,
  */
 int
 delete_all(clicon_handle h, 
-	   cvec         *cvv, 
-	   cvec         *argv)
+           cvec         *cvv, 
+           cvec         *argv)
 {
     char            *dbstr;
     int              retval = -1;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, EINVAL, "Requires one element: dbname");
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Requires one element: dbname");
+        goto done;
     }
     dbstr = cv_string_get(cvec_i(argv, 0));
     if (strcmp(dbstr, "running") != 0 && 
-	strcmp(dbstr, "candidate") != 0 &&
-	strcmp(dbstr, "startup") != 0){
-	clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);	
-	goto done;
+        strcmp(dbstr, "candidate") != 0 &&
+        strcmp(dbstr, "startup") != 0){
+        clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr); 
+        goto done;
     }
     if (clicon_rpc_delete_config(h, dbstr) < 0)
-	goto done;
+        goto done;
     retval = 0;
   done:
     return retval;
@@ -1116,8 +1131,8 @@ delete_all(clicon_handle h,
  */
 int
 discard_changes(clicon_handle h, 
-		cvec         *cvv, 
-		cvec         *argv)
+                cvec         *cvv, 
+                cvec         *argv)
 {
     return clicon_rpc_discard_changes(h);
 
@@ -1127,8 +1142,8 @@ discard_changes(clicon_handle h,
  */
 int
 db_copy(clicon_handle h, 
-	cvec         *cvv, 
-	cvec         *argv)
+        cvec         *cvv, 
+        cvec         *argv)
 {
     char *db1;
     char *db2;
@@ -1144,7 +1159,7 @@ db_copy(clicon_handle h,
  */
 static int
 cli_notification_cb(int   s, 
-		    void *arg)
+                    void *arg)
 {
     struct clicon_msg *reply = NULL;
     int                eof;
@@ -1155,42 +1170,42 @@ cli_notification_cb(int   s,
     
     /* get msg (this is the reason this function is called) */
     if (clicon_msg_rcv(s, &reply, &eof) < 0)
-	goto done;
+        goto done;
     if (eof){
-	clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
-	close(s);
-	errno = ESHUTDOWN;
-	clixon_event_unreg_fd(s, cli_notification_cb);
-	goto done;
+        clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
+        close(s);
+        errno = ESHUTDOWN;
+        clixon_event_unreg_fd(s, cli_notification_cb);
+        goto done;
     }
     /* XXX pass yang_spec and use xerr*/
     if ((ret = clicon_msg_decode(reply, NULL, NULL, &xt, NULL)) < 0) 
-	goto done;
+        goto done;
     if (ret == 0){ /* will not happen since no yspec ^*/
-	clicon_err(OE_NETCONF, EFAULT, "Notification malformed");
-	goto done;
+        clicon_err(OE_NETCONF, EFAULT, "Notification malformed");
+        goto done;
     }
     switch (format){
     case FORMAT_JSON:
-	if (clixon_json2file(stdout, xt, 1, cligen_output, 1, 1) < 0)
-	    goto done;
+        if (clixon_json2file(stdout, xt, 1, cligen_output, 1, 1) < 0)
+            goto done;
     case FORMAT_TEXT:
-	if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
-	    goto done;
-	break;
+        if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
     case FORMAT_XML:
-	if (clixon_xml2file(stdout, xt, 0, 1, cligen_output, 1, 1) < 0)
-	    goto done;
-	break;
+        if (clixon_xml2file(stdout, xt, 0, 1, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
     default:
-	break;
+        break;
     }
     retval = 0;
   done:
     if (xt)
-	xml_free(xt);
+        xml_free(xt);
     if (reply)
-	free(reply);
+        free(reply);
     return retval;
 }
 
@@ -1209,8 +1224,8 @@ cli_notification_cb(int   s,
  */
 int
 cli_notify(clicon_handle h, 
-	   cvec         *cvv, 
-	   cvec         *argv)
+           cvec         *cvv, 
+           cvec         *argv)
 {
     char            *stream = NULL;
     int              retval = -1;
@@ -1219,23 +1234,23 @@ cli_notify(clicon_handle h,
     enum format_enum format = FORMAT_TEXT;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
-	clicon_err(OE_PLUGIN, EINVAL, "Requires arguments: <logstream> <status> [<format>]");
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Requires arguments: <logstream> <status> [<format>]");
+        goto done;
     }
     stream = cv_string_get(cvec_i(argv, 0));
     status  = atoi(cv_string_get(cvec_i(argv, 1)));
     if (cvec_len(argv) > 2){
-	formatstr = cv_string_get(cvec_i(argv, 2));
-	format = format_str2int(formatstr);
+        formatstr = cv_string_get(cvec_i(argv, 2));
+        format = format_str2int(formatstr);
     }
     if (cli_notification_register(h, 
-				  stream, 
-				  format,
-				  "", 
-				  status, 
-				  cli_notification_cb, 
-				  (void*)format) < 0)
-	goto done;
+                                  stream, 
+                                  format,
+                                  "", 
+                                  status, 
+                                  cli_notification_cb, 
+                                  (void*)format) < 0)
+        goto done;
 
     retval = 0;
   done:
@@ -1254,19 +1269,19 @@ cli_notify(clicon_handle h,
  */
 int
 cli_lock(clicon_handle h, 
-	 cvec         *cvv, 
-	 cvec         *argv)
+         cvec         *cvv, 
+         cvec         *argv)
 {
     char            *db;
     int              retval = -1;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, EINVAL, "Requires arguments: <db>");
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Requires arguments: <db>");
+        goto done;
     }
     db = cv_string_get(cvec_i(argv, 0));
     if (clicon_rpc_lock(h, db) < 0) 
-	goto done;
+        goto done;
     retval = 0;
   done:
     return retval;
@@ -1284,19 +1299,19 @@ cli_lock(clicon_handle h,
  */
 int
 cli_unlock(clicon_handle h, 
-	   cvec         *cvv, 
-	   cvec         *argv)
+           cvec         *cvv, 
+           cvec         *argv)
 {
     char            *db;
     int              retval = -1;
 
     if (cvec_len(argv) != 1){
-	clicon_err(OE_PLUGIN, EINVAL, "Requires arguments: <db>");
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Requires arguments: <db>");
+        goto done;
     }
     db = cv_string_get(cvec_i(argv, 0));
     if (clicon_rpc_unlock(h, db) < 0) 
-	goto done;
+        goto done;
     retval = 0;
   done:
     return retval;
@@ -1306,8 +1321,8 @@ cli_unlock(clicon_handle h,
  *
  * Works for objects that are items in a yang list with a keyname, eg as:
  *   list sender{ 
- *      key name;	
- *	leaf name{...
+ *      key name;       
+ *      leaf name{...
  *
  * @param[in]  h    CLICON handle
  * @param[in]  cvv  Vector of variables from CLIgen command-line
@@ -1328,8 +1343,8 @@ cli_unlock(clicon_handle h,
  */
 int
 cli_copy_config(clicon_handle h, 
-		cvec         *cvv, 
-		cvec         *argv)
+                cvec         *cvv, 
+                cvec         *argv)
 {
     int          retval = -1;
     char        *db;
@@ -1353,8 +1368,8 @@ cli_copy_config(clicon_handle h,
     size_t       len;
 
     if (cvec_len(argv) != 6){
-	clicon_err(OE_PLUGIN, EINVAL, "Requires 6 elements: <db> <xpath> <namespace> <keyname> <from> <to>");
-	goto done;
+        clicon_err(OE_PLUGIN, EINVAL, "Requires 6 elements: <db> <xpath> <namespace> <keyname> <from> <to>");
+        goto done;
     }
     /* First argv argument: Database */
     db = cv_string_get(cvec_i(argv, 0));
@@ -1371,55 +1386,55 @@ cli_copy_config(clicon_handle h,
     
     /* Get from variable -> cv -> from name */
     if ((fromcv = cvec_find(cvv, fromvar)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "fromvar '%s' not found in cligen var list", fromvar);	
-	goto done;
+        clicon_err(OE_PLUGIN, 0, "fromvar '%s' not found in cligen var list", fromvar); 
+        goto done;
     }
     /* Get from name from cv */
     fromname = cv_string_get(fromcv);
     /* Create xpath */
     if ((cb = cbuf_new()) == NULL){
-	clicon_err(OE_PLUGIN, errno, "cbuf_new");	
-	goto done;
+        clicon_err(OE_PLUGIN, errno, "cbuf_new");       
+        goto done;
     }
     /* Sanity check that xpath contains exactly two %s, ie [%s='%s'] */
     len = strlen(xpath);
     j = 0;
     for (i=0; i<len; i++){
-	if (xpath[i] == '%')
-	    j++;
+        if (xpath[i] == '%')
+            j++;
     }
     if (j != 2){
-	clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have two '%%'", xpath);	
-	goto done;
+        clicon_err(OE_PLUGIN, 0, "xpath '%s' does not have two '%%'", xpath);   
+        goto done;
     }
-    cprintf(cb, xpath, keyname, fromname);	
+    cprintf(cb, xpath, keyname, fromname);      
     if ((nsc = xml_nsctx_init(NULL, namespace)) == NULL)
-	goto done;
+        goto done;
     /* Get from object configuration and store in x1 */
     if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cb), nsc, NULL, &x1) < 0)
-	goto done;
+        goto done;
     if ((xerr = xpath_first(x1, NULL, "/rpc-error")) != NULL){
-	clixon_netconf_error(xerr, "Get configuration", NULL);
-	goto done;
+        clixon_netconf_error(xerr, "Get configuration", NULL);
+        goto done;
     }
 
     /* Get to variable -> cv -> to name */
     if ((tocv = cvec_find(cvv, tovar)) == NULL){
-	clicon_err(OE_PLUGIN, 0, "tovar '%s' not found in cligen var list", tovar);
-	goto done;
+        clicon_err(OE_PLUGIN, 0, "tovar '%s' not found in cligen var list", tovar);
+        goto done;
     }
     toname = cv_string_get(tocv);
     /* Create copy xml tree x2 */
     if ((x2 = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
-	goto done;
+        goto done;
     if (xml_copy(x1, x2) < 0)
-	goto done;
+        goto done;
     xml_name_set(x2, NETCONF_INPUT_CONFIG);
-    cprintf(cb, "/%s", keyname);	
+    cprintf(cb, "/%s", keyname);        
 
     if ((x = xpath_first(x2, nsc, "%s", cbuf_get(cb))) == NULL){
-	clicon_err(OE_PLUGIN, 0, "Field %s not found in copy tree", keyname);
-	goto done;
+        clicon_err(OE_PLUGIN, 0, "Field %s not found in copy tree", keyname);
+        goto done;
     }
     x = xml_find(x, "body");
     xml_value_set(x, toname);
@@ -1427,19 +1442,19 @@ cli_copy_config(clicon_handle h,
     cbuf_reset(cb);
     /* create xml copy tree and merge it with database configuration */
     if (clixon_xml2cbuf(cb, x2, 0, 0, -1, 0) < 0)
-	goto done;
+        goto done;
     if (clicon_rpc_edit_config(h, db, OP_MERGE, cbuf_get(cb)) < 0)
-	goto done;
+        goto done;
     retval = 0;
  done:
     if (nsc)
-	xml_nsctx_free(nsc);
+        xml_nsctx_free(nsc);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (x1 != NULL)
-	xml_free(x1);
+        xml_free(x1);
     if (x2 != NULL)
-	xml_free(x2);
+        xml_free(x2);
     return retval;
 }
 
@@ -1464,19 +1479,19 @@ cli_help(clicon_handle h, cvec *vars, cvec *argv)
  */
 int 
 cli_restart_plugin(clicon_handle h,
-		   cvec         *cvv,
-	    cvec         *argv)
+                   cvec         *cvv,
+            cvec         *argv)
 {
     int     retval = -1;
     cg_var *cv;
     char   *plugin;
 
     if ((cv = cvec_find_var(cvv, "plugin")) == NULL){
-	if (cvec_len(argv) != 1){
-	    clicon_err(OE_PLUGIN, EINVAL, "Requires plugin variable");
-	    goto done;
-	}
-	cv = cvec_i(argv, 0);
+        if (cvec_len(argv) != 1){
+            clicon_err(OE_PLUGIN, EINVAL, "Requires plugin variable");
+            goto done;
+        }
+        cv = cvec_i(argv, 0);
     }
     plugin = cv_string_get(cv);
     retval = clicon_rpc_restart_plugin(h, plugin);    

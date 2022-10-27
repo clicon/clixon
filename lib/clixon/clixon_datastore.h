@@ -52,8 +52,8 @@ int xmldb_disconnect(clicon_handle h);
  /* in clixon_datastore_read.[ch] */
 int xmldb_get(clicon_handle h, const char *db, cvec *nsc, char *xpath, cxobj **xtop);
 int xmldb_get0(clicon_handle h, const char *db, yang_bind yb,
-	       cvec *nsc, const char *xpath,
-	       int copy, cxobj **xtop, modstate_diff_t *msd, cxobj **xerr); 
+               cvec *nsc, const char *xpath,
+               int copy, cxobj **xtop, modstate_diff_t *msd, cxobj **xerr); 
 int xmldb_get0_clear(clicon_handle h, cxobj *x);
 int xmldb_get0_free(clicon_handle h, cxobj **xp);
 int xmldb_put(clicon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret); /* in clixon_datastore_write.[ch] */
@@ -76,5 +76,6 @@ int xmldb_modified_set(clicon_handle h, const char *db, int value);
 int xmldb_empty_get(clicon_handle h, const char *db);
 int xmldb_dump(clicon_handle h, FILE *f, cxobj *xt);
 int xmldb_print(clicon_handle h, FILE *f);
+int xmldb_rename(clicon_handle h, const char *db, const char *newdb, const char *suffix);
 
 #endif /* _CLIXON_DATASTORE_H */

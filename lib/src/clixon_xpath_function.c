@@ -136,10 +136,10 @@ xp_fnname_int2str(enum clixon_xpath_function code)
 
 int
 xp_function_current(xp_ctx            *xc0,
-		    struct xpath_tree *xs,
-		    cvec              *nsc,
-		    int                localonly,
-		    xp_ctx           **xrp)
+                    struct xpath_tree *xs,
+                    cvec              *nsc,
+                    int                localonly,
+                    xp_ctx           **xrp)
 {
     int         retval = -1;
     cxobj     **vec = NULL;
@@ -147,25 +147,25 @@ xp_function_current(xp_ctx            *xc0,
     xp_ctx     *xc = NULL;
     
     if ((xc = ctx_dup(xc0)) == NULL)
-	goto done;
+        goto done;
     if (cxvec_append(xc->xc_initial, &vec, &veclen) < 0)
-	goto done;
+        goto done;
     ctx_nodeset_replace(xc, vec, veclen);
     *xrp = xc;
     xc = NULL;
     retval = 0;
  done:
     if (xc)
-	ctx_free(xc);
+        ctx_free(xc);
     return retval;
 }
 
 int
 xp_function_deref(xp_ctx            *xc0,
-		  struct xpath_tree *xs,
-		  cvec              *nsc,
-		  int                localonly,
-		  xp_ctx           **xrp)
+                  struct xpath_tree *xs,
+                  cvec              *nsc,
+                  int                localonly,
+                  xp_ctx           **xrp)
 {
     int         retval = -1;
     xp_ctx     *xc = NULL;
@@ -181,32 +181,32 @@ xp_function_deref(xp_ctx            *xc0,
     
     /* Create new xc */
     if ((xc = ctx_dup(xc0)) == NULL)
-	goto done;
+        goto done;
     for (i=0; i<xc->xc_size; i++){
-	xv = xc->xc_nodeset[i];
-	if ((ys = xml_spec(xv)) == NULL)
-	    continue;
-	/* Get base type yc */
-	if (yang_type_get(ys, NULL, &yt, NULL, NULL, NULL, NULL, NULL) < 0)
-	    goto done;
-	if (strcmp(yang_argument_get(yt), "leafref") == 0){
-	    if ((ypath = yang_find(yt, Y_PATH, NULL)) != NULL){
-		path = yang_argument_get(ypath);
-		if ((xref = xpath_first(xv, nsc, "%s", path)) != NULL)
-		    if (cxvec_append(xref, &vec, &veclen) < 0)
-			goto done;
-	    }
-	    ctx_nodeset_replace(xc, vec, veclen);
-	}
-	else if (strcmp(yang_argument_get(yt), "identityref") == 0){
-	}
+        xv = xc->xc_nodeset[i];
+        if ((ys = xml_spec(xv)) == NULL)
+            continue;
+        /* Get base type yc */
+        if (yang_type_get(ys, NULL, &yt, NULL, NULL, NULL, NULL, NULL) < 0)
+            goto done;
+        if (strcmp(yang_argument_get(yt), "leafref") == 0){
+            if ((ypath = yang_find(yt, Y_PATH, NULL)) != NULL){
+                path = yang_argument_get(ypath);
+                if ((xref = xpath_first(xv, nsc, "%s", path)) != NULL)
+                    if (cxvec_append(xref, &vec, &veclen) < 0)
+                        goto done;
+            }
+            ctx_nodeset_replace(xc, vec, veclen);
+        }
+        else if (strcmp(yang_argument_get(yt), "identityref") == 0){
+        }
     }
     *xrp = xc;
     xc = NULL;
     retval = 0;
  done:
     if (xc)
-	ctx_free(xc);
+        ctx_free(xc);
     return retval;
 }
 
@@ -219,9 +219,9 @@ xp_function_deref(xp_ctx            *xc0,
  */
 static int
 derived_from_one(char  *baseidentity,
-		 cvec  *nsc,
-		 cxobj *xleaf,
-		 int    self)
+                 cvec  *nsc,
+                 cxobj *xleaf,
+                 int    self)
 {
     int        retval = -1;
     yang_stmt *yleaf;
@@ -237,16 +237,16 @@ derived_from_one(char  *baseidentity,
 
     /* Split baseidentity to get its id (w/o prefix) */
     if (nodeid_split(baseidentity, NULL, &baseid) < 0)
-	goto done;
+        goto done;
     if ((yleaf = xml_spec(xleaf)) == NULL)
-	goto nomatch;
+        goto nomatch;
     if (yang_keyword_get(yleaf) != Y_LEAF && yang_keyword_get(yleaf) != Y_LEAF_LIST)
-    	goto nomatch;
+        goto nomatch;
     /* Node is of type identityref */
     if (yang_type_get(yleaf, NULL, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
-	goto done;
+        goto done;
     if (ytype == NULL || strcmp(yang_argument_get(ytype), "identityref"))
-    	goto nomatch;
+        goto nomatch;
     /* Find if the derivation chain is: identity ->...-> ytype
      * Example: 
      * identity is ex:ethernet
@@ -255,50 +255,50 @@ derived_from_one(char  *baseidentity,
      */
     /* Just get the object corresponding to the base identity */
     if ((ybaseid = yang_find_identity_nsc(ys_spec(yleaf), baseidentity, nsc)) == NULL)
-    	goto nomatch;
+        goto nomatch;
     /* Get its list of derived identities  */
     idrefvec = yang_cvec_get(ybaseid);
     /* Get and split the leaf id reference */
     if ((node = xml_body(xleaf)) == NULL) /* It may not be empty */
-    	goto nomatch;
+        goto nomatch;
     if (nodeid_split(node, &prefix, &id) < 0)
-	goto done;
+        goto done;
     /* Get its module (prefixes are not used here) */
     if (prefix == NULL)
-	ymod = ys_module(yleaf);
+        ymod = ys_module(yleaf);
     else{ /* from prefix to name */
 #if 1 /* IDENTITYREF_KLUDGE  */
-	ymod = yang_find_module_by_prefix_yspec(ys_spec(yleaf), prefix);
+        ymod = yang_find_module_by_prefix_yspec(ys_spec(yleaf), prefix);
 #endif
     }
     if (ymod == NULL)
-    	goto nomatch;
+        goto nomatch;
     /* self special case, ie that the xleaf has a ref to itself */
     if (self &&
-	ymod == ys_module(ybaseid) &&
-	strcmp(baseid, id) == 0){
-	; /* match */
+        ymod == ys_module(ybaseid) &&
+        strcmp(baseid, id) == 0){
+        ; /* match */
     }
     else {
-	/* Allocate cbuf */
-	if ((cb = cbuf_new()) == NULL){
-	    clicon_err(OE_UNIX, errno, "cbuf_new"); 
-	    goto done;
-	}
-	cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-	if (cvec_find(idrefvec, cbuf_get(cb)) == NULL)
-	    goto nomatch;
+        /* Allocate cbuf */
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new"); 
+            goto done;
+        }
+        cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
+        if (cvec_find(idrefvec, cbuf_get(cb)) == NULL)
+            goto nomatch;
     }
     retval = 1;
  done:
     if (baseid)
-	free(baseid);
+        free(baseid);
     if (cb)
-	cbuf_free(cb);
+        cbuf_free(cb);
     if (id)
-	free(id);
+        free(id);
     if (prefix)
-	free(prefix);
+        free(prefix);
     return retval;
  nomatch:
     retval = 0;
@@ -322,11 +322,11 @@ derived_from_one(char  *baseidentity,
  */
 int
 xp_function_derived_from(xp_ctx            *xc,
-			 struct xpath_tree *xs,
-			 cvec              *nsc,
-			 int                localonly,
-			 int                self,
-			 xp_ctx           **xrp)
+                         struct xpath_tree *xs,
+                         cvec              *nsc,
+                         int                localonly,
+                         int                self,
+                         xp_ctx           **xrp)
 {
     int        retval = -1;
     xp_ctx    *xr0 = NULL;
@@ -337,33 +337,33 @@ xp_function_derived_from(xp_ctx            *xc,
     int        ret = 0;
     
     if (xs == NULL || xs->xs_c0 == NULL || xs->xs_c1 == NULL){
-	clicon_err(OE_XML, EINVAL, "derived-from expects but did not get two arguments");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "derived-from expects but did not get two arguments");
+        goto done;
     }
     /* contains two arguments in xs: boolean derived-from(node-set, string) */
     /* This evolves to a set of (identityref) nodes */
-    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0) 	
-	goto done;
+    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)       
+        goto done;
     if (xr0->xc_type != XT_NODESET)
-	goto done;
+        goto done;
     /* This evolves to a string identity */
-    if (xp_eval(xc, xs->xs_c1, nsc, localonly, &xr1) < 0) 	
-	goto done;
+    if (xp_eval(xc, xs->xs_c1, nsc, localonly, &xr1) < 0)       
+        goto done;
     if (ctx2string(xr1, &identity) < 0)
-	goto done;
+        goto done;
     /* Allocate a return struct of type boolean */
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_BOOL;
     /* ANY node is an identityref and its value an identity that is derived ... */
     for (i=0; i<xr0->xc_size; i++){
-	if ((ret = derived_from_one(identity, nsc, xr0->xc_nodeset[i], self)) < 0)
-	    goto done;
-	if (ret == 1)
-	    break;
+        if ((ret = derived_from_one(identity, nsc, xr0->xc_nodeset[i], self)) < 0)
+            goto done;
+        if (ret == 1)
+            break;
     }
     xr->xc_bool = ret;
     *xrp = xr;
@@ -371,11 +371,11 @@ xp_function_derived_from(xp_ctx            *xc,
     retval = 0;
  done:
     if (xr0)
-	ctx_free(xr0);
+        ctx_free(xr0);
     if (xr1)
-	ctx_free(xr1);
+        ctx_free(xr1);
     if (identity)
-	free(identity);
+        free(identity);
     return retval;
 }
 
@@ -401,10 +401,10 @@ xp_function_derived_from(xp_ctx            *xc,
  */
 int
 xp_function_bit_is_set(xp_ctx            *xc,
-		       struct xpath_tree *xs,
-		       cvec              *nsc,
-		       int                localonly,
-		       xp_ctx           **xrp)
+                       struct xpath_tree *xs,
+                       cvec              *nsc,
+                       int                localonly,
+                       xp_ctx           **xrp)
 {
     int     retval = -1;
     xp_ctx *xr = NULL;
@@ -415,20 +415,20 @@ xp_function_bit_is_set(xp_ctx            *xc,
     char   *body;
     
     if (xs == NULL || xs->xs_c0 == NULL || xs->xs_c1 == NULL){
-	clicon_err(OE_XML, EINVAL, "contains expects but did not get two arguments");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "contains expects but did not get two arguments");
+        goto done;
     }
     /* First node-set argument */
-    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0) 	
-	goto done;
+    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)       
+        goto done;
     /* Second string argument */
-    if (xp_eval(xc, xs->xs_c1, nsc, localonly, &xr1) < 0) 	
-	goto done;
+    if (xp_eval(xc, xs->xs_c1, nsc, localonly, &xr1) < 0)       
+        goto done;
     if (ctx2string(xr1, &s1) < 0)
-	goto done;
+        goto done;
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_BOOL;
@@ -437,19 +437,19 @@ xp_function_bit_is_set(xp_ctx            *xc,
      * its value has the bit "bit-name" set
     */
     if (xr0->xc_size &&
-	(x = xr0->xc_nodeset[0]) != NULL &&
-	(body = xml_body(x)) != NULL){
-	xr->xc_bool = strstr(body, s1) != NULL;
+        (x = xr0->xc_nodeset[0]) != NULL &&
+        (body = xml_body(x)) != NULL){
+        xr->xc_bool = strstr(body, s1) != NULL;
     }
     *xrp = xr;
     retval = 0;
  done:
     if (xr0)
-	ctx_free(xr0);
+        ctx_free(xr0);
     if (xr1)
-	ctx_free(xr1);
+        ctx_free(xr1);
     if (s1)
-	free(s1);
+        free(s1);
     return retval;
 }
 
@@ -466,17 +466,17 @@ xp_function_bit_is_set(xp_ctx            *xc,
  */
 int
 xp_function_position(xp_ctx            *xc,
-		     struct xpath_tree *xs,
-		     cvec              *nsc,
-		     int                localonly,
-		     xp_ctx           **xrp)
+                     struct xpath_tree *xs,
+                     cvec              *nsc,
+                     int                localonly,
+                     xp_ctx           **xrp)
 {
     int         retval = -1;
     xp_ctx     *xr = NULL;
     
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_initial = xc->xc_initial;
@@ -494,24 +494,24 @@ xp_function_position(xp_ctx            *xc,
  */
 int
 xp_function_count(xp_ctx            *xc,
-		  struct xpath_tree *xs,
-		  cvec              *nsc,
-		  int                localonly,
-		  xp_ctx           **xrp)
+                  struct xpath_tree *xs,
+                  cvec              *nsc,
+                  int                localonly,
+                  xp_ctx           **xrp)
 {
     int         retval = -1;
     xp_ctx     *xr = NULL;
     xp_ctx     *xr0 = NULL;
     
     if (xs == NULL || xs->xs_c0 == NULL){
-	clicon_err(OE_XML, EINVAL, "count expects but did not get one argument");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "count expects but did not get one argument");
+        goto done;
     }
-    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0) 	
-	goto done;
+    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)       
+        goto done;
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_NUMBER;
@@ -520,7 +520,7 @@ xp_function_count(xp_ctx            *xc,
     retval = 0;
  done:
     if (xr0)
-	ctx_free(xr0);
+        ctx_free(xr0);
     return retval;
 }
 
@@ -533,10 +533,10 @@ xp_function_count(xp_ctx            *xc,
  */
 int
 xp_function_name(xp_ctx            *xc,
-		 struct xpath_tree *xs,
-		 cvec              *nsc,
-		 int                localonly,
-		 xp_ctx           **xrp)
+                 struct xpath_tree *xs,
+                 cvec              *nsc,
+                 int                localonly,
+                 xp_ctx           **xrp)
 {
     int         retval = -1;
     xp_ctx     *xr = NULL;
@@ -546,33 +546,33 @@ xp_function_name(xp_ctx            *xc,
     cxobj      *x;
     
     if (xs == NULL || xs->xs_c0 == NULL){
-	clicon_err(OE_XML, EINVAL, "not expects but did not get one argument");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "not expects but did not get one argument");
+        goto done;
     }
-    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0) 	
-	goto done;
+    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)       
+        goto done;
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_STRING;
     for (i=0; i<xr0->xc_size; i++){
-	if ((x = xr0->xc_nodeset[i]) == NULL)
-	    continue;
-	if ((xr->xc_string = strdup(xml_name(x))) == NULL){
-	    clicon_err(OE_UNIX, errno, "strdup");
-	    goto done;
-	}
-	break;
+        if ((x = xr0->xc_nodeset[i]) == NULL)
+            continue;
+        if ((xr->xc_string = strdup(xml_name(x))) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+        break;
     }
     *xrp = xr;
     retval = 0;
  done:
     if (xr0)
-	ctx_free(xr0);
+        ctx_free(xr0);
     if (s0)
-	free(s0);
+        free(s0);
     return retval;
 }
 
@@ -588,10 +588,10 @@ xp_function_name(xp_ctx            *xc,
  */
 int
 xp_function_contains(xp_ctx            *xc,
-		     struct xpath_tree *xs,
-		     cvec              *nsc,
-		     int                localonly,
-		     xp_ctx           **xrp)
+                     struct xpath_tree *xs,
+                     cvec              *nsc,
+                     int                localonly,
+                     xp_ctx           **xrp)
 {
     int                retval = -1;
     xp_ctx            *xr0 = NULL;
@@ -601,21 +601,21 @@ xp_function_contains(xp_ctx            *xc,
     char              *s1 = NULL;
 
     if (xs == NULL || xs->xs_c0 == NULL || xs->xs_c1 == NULL){
-	clicon_err(OE_XML, EINVAL, "contains expects but did not get two arguments");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "contains expects but did not get two arguments");
+        goto done;
     }
     /* contains two arguments in xs: boolean contains(string, string) */
-    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0) 	
-	goto done;
+    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)       
+        goto done;
     if (ctx2string(xr0, &s0) < 0)
-	goto done;
-    if (xp_eval(xc, xs->xs_c1, nsc, localonly, &xr1) < 0) 	
-	goto done;
+        goto done;
+    if (xp_eval(xc, xs->xs_c1, nsc, localonly, &xr1) < 0)       
+        goto done;
     if (ctx2string(xr1, &s1) < 0)
-	goto done;
+        goto done;
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_BOOL;
@@ -625,13 +625,13 @@ xp_function_contains(xp_ctx            *xc,
     retval = 0;
  done:
     if (xr0)
-	ctx_free(xr0);
+        ctx_free(xr0);
     if (xr1)
-	ctx_free(xr1);
+        ctx_free(xr1);
     if (s0)
-	free(s0);
+        free(s0);
     if (s1)
-	free(s1);
+        free(s1);
     return retval;
 }
 
@@ -647,10 +647,10 @@ xp_function_contains(xp_ctx            *xc,
  */
 int
 xp_function_boolean(xp_ctx            *xc,
-		    struct xpath_tree *xs,
-		    cvec              *nsc,
-		    int                localonly,
-		    xp_ctx           **xrp)
+                    struct xpath_tree *xs,
+                    cvec              *nsc,
+                    int                localonly,
+                    xp_ctx           **xrp)
 {
     int         retval = -1;
     xp_ctx     *xr = NULL;
@@ -658,15 +658,15 @@ xp_function_boolean(xp_ctx            *xc,
     int         bool;
     
     if (xs == NULL || xs->xs_c0 == NULL){
-	clicon_err(OE_XML, EINVAL, "not expects but did not get one argument");
-	goto done;
+        clicon_err(OE_XML, EINVAL, "not expects but did not get one argument");
+        goto done;
     }
-    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0) 	
-	goto done;
+    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)       
+        goto done;
     bool = ctx2boolean(xr0);
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_BOOL;
@@ -675,7 +675,7 @@ xp_function_boolean(xp_ctx            *xc,
     retval = 0;
  done:
     if (xr0)
-	ctx_free(xr0);
+        ctx_free(xr0);
     return retval;
 }
 
@@ -685,13 +685,13 @@ xp_function_boolean(xp_ctx            *xc,
  */
 int
 xp_function_not(xp_ctx            *xc,
-		struct xpath_tree *xs,
-		cvec              *nsc,
-		int                localonly,
-		xp_ctx           **xrp)
+                struct xpath_tree *xs,
+                cvec              *nsc,
+                int                localonly,
+                xp_ctx           **xrp)
 {
     if (xp_function_boolean(xc, xs, nsc, localonly, xrp) < 0)
-	return -1;
+        return -1;
     (*xrp)->xc_bool = !(*xrp)->xc_bool;
     return 0;
 }
@@ -702,17 +702,17 @@ xp_function_not(xp_ctx            *xc,
  */
 int
 xp_function_true(xp_ctx            *xc,
-		 struct xpath_tree *xs,
-		 cvec              *nsc,
-		 int                localonly,
-		 xp_ctx           **xrp)
+                 struct xpath_tree *xs,
+                 cvec              *nsc,
+                 int                localonly,
+                 xp_ctx           **xrp)
 {
     int         retval = -1;
     xp_ctx     *xr = NULL;
     
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_BOOL;
@@ -729,17 +729,17 @@ xp_function_true(xp_ctx            *xc,
  */
 int
 xp_function_false(xp_ctx            *xc,
-		  struct xpath_tree *xs,
-		  cvec              *nsc,
-		  int                localonly,
-		  xp_ctx           **xrp)
+                  struct xpath_tree *xs,
+                  cvec              *nsc,
+                  int                localonly,
+                  xp_ctx           **xrp)
 {
     int         retval = -1;
     xp_ctx     *xr = NULL;
     
     if ((xr = malloc(sizeof(*xr))) == NULL){
-	clicon_err(OE_UNIX, errno, "malloc");
-	goto done;
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_BOOL;

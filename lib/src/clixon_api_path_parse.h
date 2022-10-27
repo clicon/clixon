@@ -67,4 +67,4 @@ int clixon_api_path_parselex(void *);
 int clixon_api_path_parseparse(void *);
 void clixon_api_path_parseerror(void *, char*);
 
-#endif	/* _CLIXON_API_PATH_PARSE_H_ */
+#endif  /* _CLIXON_API_PATH_PARSE_H_ */

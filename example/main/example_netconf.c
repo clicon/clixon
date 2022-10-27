@@ -68,10 +68,10 @@ plugin_exit(clicon_handle h)
  */
 int
 netconf_client_rpc(clicon_handle h, 
-		   cxobj        *xe,      
-		   cbuf         *cbret,    
-		   void         *arg,
-		   void         *regarg)
+                   cxobj        *xe,      
+                   cbuf         *cbret,    
+                   void         *arg,
+                   void         *regarg)
 {
     int    retval = -1;
     cxobj *x = NULL;
@@ -79,19 +79,19 @@ netconf_client_rpc(clicon_handle h,
 
     /* get namespace from rpc name, return back in each output parameter */
     if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
-	clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
-	goto done;
+        clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+        goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     if (!xml_child_nr_type(xe, CX_ELMNT))
-	cprintf(cbret, "<ok/>");
+        cprintf(cbret, "<ok/>");
     else{
-	while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
-	    if (xmlns_set(x, NULL, namespace) < 0)
-		goto done;
-	}
-	if (clixon_xml2cbuf(cbret, xe, 0, 0, -1, 1) < 0)
-	    goto done;
+        while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+            if (xmlns_set(x, NULL, namespace) < 0)
+                goto done;
+        }
+        if (clixon_xml2cbuf(cbret, xe, 0, 0, -1, 1) < 0)
+            goto done;
     }
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
@@ -121,8 +121,8 @@ clixon_plugin_init(clicon_handle h)
     clicon_debug(1, "%s restconf", __FUNCTION__);
     /* Register local netconf rpc client (note not backend rpc client) */
     if (rpc_callback_register(h, netconf_client_rpc, NULL,
-			      "urn:example:clixon", "client-rpc") < 0)
-	return NULL;
+                              "urn:example:clixon", "client-rpc") < 0)
+        return NULL;
     return &api;
 }
 

@@ -4,7 +4,7 @@
   * [Nginx](#nginx)
   * [Streams](#streams)
   * [Nchan Streams](#nchan)
-  * [Debugging](#debugging)	
+  * [Debugging](#debugging)     
 
 There are two installation instructions: for native and nginx.
 
@@ -135,11 +135,11 @@ You may access a restconf streams using curl.
 
 Add the following to extend the nginx configuration file with the following statements (for example):
 ```
-	location /streams {
-	    fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
-	    include fastcgi_params;
- 	    proxy_http_version 1.1;
-	    proxy_set_header Connection "";
+        location /streams {
+            fastcgi_pass unix:/www-data/fastcgi_restconf.sock;
+            include fastcgi_params;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
         }
 ```
 

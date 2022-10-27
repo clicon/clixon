@@ -73,4 +73,4 @@ int clixon_xml_parsel_linenr(void);
 int clixon_xml_parselex(void *);
 int clixon_xml_parseparse(void *);
 
-#endif	/* _CLIXON_XML_PARSE_H_ */
+#endif  /* _CLIXON_XML_PARSE_H_ */

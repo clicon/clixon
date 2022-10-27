@@ -23,7 +23,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>	
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -42,69 +42,69 @@ module clixon-example{
   prefix ex;
 
   rpc empty {
-	description "Smallest possible RPC with no input or output sections";
+        description "Smallest possible RPC with no input or output sections";
   }
   rpc optional {
-	description "Small RPC with optional input and output";
-	input {
-	    leaf x {
-		type string;
-	    }
-	}
-	output {
-	    leaf x {
-		type string;
-	    }
-	}
+        description "Small RPC with optional input and output";
+        input {
+            leaf x {
+                type string;
+            }
+        }
+        output {
+            leaf x {
+                type string;
+            }
+        }
   }
   rpc example {
-	description "Some example input/output for testing RFC7950 7.14.
+        description "Some example input/output for testing RFC7950 7.14.
                      RPC simply echoes the input for debugging.";
-	input {
-	    leaf x {
-		description
-         	    "If a leaf in the input tree has a 'mandatory' statement with
+        input {
+            leaf x {
+                description
+                    "If a leaf in the input tree has a 'mandatory' statement with
                    the value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		mandatory true;
-	    }
-	    leaf y {
-		description
+                type string;
+                mandatory true;
+            }
+            leaf y {
+                description
                  "If a leaf in the input tree has a 'mandatory' statement with the
                   value 'true', the leaf MUST be present in an RPC invocation.";
-		type string;
-		default "42";
-	    }
-	    leaf-list z {
-		description
-		    "If a leaf-list in the input tree has one or more default 
+                type string;
+                default "42";
+            }
+            leaf-list z {
+                description
+                    "If a leaf-list in the input tree has one or more default 
                      values, the server MUST use these values (XXX not supported)";
-		type string;
-	    }
+                type string;
+            }
 
-	    leaf w {
-		description
-		    "If any node has a 'when' statement that would evaluate to 
+            leaf w {
+                description
+                    "If any node has a 'when' statement that would evaluate to 
                     'false',then this node MUST NOT be present in the input tree.
                      (XXX not supported)";
-		type string;
-	    }
-	    list u0 {
-		description "list without key";
-		leaf uk{
-		    type string;
-		}
-	    }
-    	    list u1 {
-		description "list with key";
-		key uk;
-		leaf uk{
-		    type string;
-		}
-		leaf val{
-		    type string;
-		}
-	    }
+                type string;
+            }
+            list u0 {
+                description "list without key";
+                leaf uk{
+                    type string;
+                }
+            }
+            list u1 {
+                description "list with key";
+                key uk;
+                leaf uk{
+                    type string;
+                }
+                leaf val{
+                    type string;
+                }
+            }
             choice par1 {
                leaf a1{
                  type string;
@@ -128,35 +128,35 @@ module clixon-example{
                    }
                }
             }
-	}
-	output {
-	    leaf x {
-		type string;
-	    }
-	    leaf y {
-		type string;
-	    }
-	    leaf z {
-		type string;
-	    }
-	    leaf w {
-		type string;
-	    }
+        }
+        output {
+            leaf x {
+                type string;
+            }
+            leaf y {
+                type string;
+            }
+            leaf z {
+                type string;
+            }
+            leaf w {
+                type string;
+            }
 
-	    list u0 {
-		leaf uk{
-		    type string;
-		}
-	    } 
-    	    list u1 {
-		key uk;
-		leaf uk{
-		    type string;
-		}
-		leaf val{
-		    type string;
-		}
-	    }
+            list u0 {
+                leaf uk{
+                    type string;
+                }
+            } 
+            list u1 {
+                key uk;
+                leaf uk{
+                    type string;
+                }
+                leaf val{
+                    type string;
+                }
+            }
             choice par1 {
                leaf a1{
                  type string;
@@ -180,7 +180,7 @@ module clixon-example{
                    }
                }
             }
-	}
+        }
     }
 }
 EOF
@@ -190,13 +190,13 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 fi
 
-new "waiting"
+new "wait backend"
 wait_backend
 
 if [ $RC -ne 0 ]; then
@@ -335,7 +335,7 @@ for expect in "<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">mandatory</
     new "expect:$expect"
     match=`echo $ret | grep --null -Eo "$expect"`
     if [ -z "$match" ]; then
-	err "$expect" "$ret"
+        err "$expect" "$ret"
     fi
 done
 
@@ -370,7 +370,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg

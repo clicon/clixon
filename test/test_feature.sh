@@ -50,7 +50,7 @@ module example{
    namespace "urn:example:clixon";
    prefix ex;
    import ietf-routing {
-	prefix rt;
+        prefix rt;
    }
    feature A{
       description "This test feature is enabled";
@@ -119,13 +119,13 @@ module example{
    }
    leaf m9{
      if-feature "(A or B "
-      	       + "or B1) and A1";
+               + "or B1) and A1";
      description "Enabled";
      type "string";
    }
    leaf m10{
      if-feature "(A and A1 "
-      	       + "and B1) or not A";
+               + "and B1) or not A";
      description "Disabled";
      type "string";
    }
@@ -155,14 +155,14 @@ function testrun()
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
     if $enabled; then
-	new "netconf set extra element under $node (expect fail)"
-	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\"><kallekaka/></$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>kallekaka</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: kallekaka with parent: $node in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>"
+        new "netconf set extra element under $node (expect fail)"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\"><kallekaka/></$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>kallekaka</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: kallekaka with parent: $node in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>"
     else
-	new "netconf set extra element under $node"
-	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\"><kallekaka/></$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+        new "netconf set extra element under $node"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\"><kallekaka/></$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-	new "netconf validate $node"
-	expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+        new "netconf validate $node"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
     fi
 
     new "netconf discard-changes"
@@ -174,7 +174,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
 
     new "start backend -s init -f $cfg"
@@ -296,7 +296,7 @@ if [ $BE -ne 0 ]; then
     # Check if premature kill
     pid=$(pgrep -u root -f clixon_backend)
     if [ -z "$pid" ]; then
-	err "backend already dead"
+        err "backend already dead"
     fi
     # kill backend
     stop_backend -f $cfg
@@ -324,7 +324,7 @@ if [ $BE -ne 0 ]; then
     new "kill old backend"
     sudo clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
-	err
+        err
     fi
 
     new "start backend -s init -f $cfg: feature missing expected fail"

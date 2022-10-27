@@ -68,4 +68,4 @@ int clixon_xpath_parselex(void *);
 int clixon_xpath_parseparse(void *);
 void clixon_xpath_parseerror(void *, char*);
 
-#endif	/* _CLIXON_XPATH_PARSE_H_ */
+#endif  /* _CLIXON_XPATH_PARSE_H_ */

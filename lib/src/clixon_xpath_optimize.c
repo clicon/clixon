@@ -106,7 +106,7 @@ xpath_optimize_exit(void)
 {
 #ifdef XPATH_LIST_OPTIMIZE
     if (_xmtop)
-	xpath_tree_free(_xmtop);
+        xpath_tree_free(_xmtop);
 #endif
 }
 
@@ -117,37 +117,37 @@ xpath_optimize_exit(void)
  */
 int
 xpath_optimize_init(xpath_tree **xm,
-		    xpath_tree **xe)
+                    xpath_tree **xe)
 {
     int         retval = -1;
     xpath_tree *xs;
     
     if (_xm == NULL){
-	/* Initialize xpath-tree */
-	if (xpath_parse("_x[_y='_z']", &_xmtop) < 0) 
-	    goto done;
-	/* Go down two steps */
-	if ((_xm = xpath_tree_traverse(_xmtop, 0, 0, -1)) == NULL)
-	    goto done;
-	/* get nodetest tree (_x) */
-	if ((xs = xpath_tree_traverse(_xm, 0, -1)) == NULL)
-	    goto done;
-	xs->xs_match++;
-	/* get predicates [_y=_z][z=2] */
-	if ((xs = xpath_tree_traverse(_xm, 1, -1)) == NULL)
-	    goto done;
-	xs->xs_match++;
-	/* get expression [_y=_z] */
-	if ((_xe = xpath_tree_traverse(xs, 1, -1)) == NULL)
-	    goto done;
-	/* get keyname (_y) */
-	if ((xs = xpath_tree_traverse(_xe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1)) == NULL)
-	    goto done;
-	xs->xs_match++; /* in loop_preds get name in xs_s1 XXX: leaf-list is different */
-	/* get keyval (_z) */
-	if ((xs = xpath_tree_traverse(_xe, 0, 0, 1, 0, 0, 0, 0, -1)) == NULL)
-	    goto done;
-	xs->xs_match++; /* in loop_preds get value in xs_s0 or xs_strnr */
+        /* Initialize xpath-tree */
+        if (xpath_parse("_x[_y='_z']", &_xmtop) < 0) 
+            goto done;
+        /* Go down two steps */
+        if ((_xm = xpath_tree_traverse(_xmtop, 0, 0, -1)) == NULL)
+            goto done;
+        /* get nodetest tree (_x) */
+        if ((xs = xpath_tree_traverse(_xm, 0, -1)) == NULL)
+            goto done;
+        xs->xs_match++;
+        /* get predicates [_y=_z][z=2] */
+        if ((xs = xpath_tree_traverse(_xm, 1, -1)) == NULL)
+            goto done;
+        xs->xs_match++;
+        /* get expression [_y=_z] */
+        if ((_xe = xpath_tree_traverse(xs, 1, -1)) == NULL)
+            goto done;
+        /* get keyname (_y) */
+        if ((xs = xpath_tree_traverse(_xe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1)) == NULL)
+            goto done;
+        xs->xs_match++; /* in loop_preds get name in xs_s1 XXX: leaf-list is different */
+        /* get keyval (_z) */
+        if ((xs = xpath_tree_traverse(_xe, 0, 0, 1, 0, 0, 0, 0, -1)) == NULL)
+            goto done;
+        xs->xs_match++; /* in loop_preds get value in xs_s0 or xs_strnr */
     }
     *xm = _xm;
     *xe = _xe;
@@ -169,8 +169,8 @@ xpath_optimize_init(xpath_tree **xm,
  */
 static int
 loop_preds(xpath_tree *xt,
-	   xpath_tree *xepat,
-	   cvec       *cvk)
+           xpath_tree *xepat,
+           cvec       *cvk)
 {
     int          retval = -1;
     int          ret;
@@ -178,34 +178,34 @@ loop_preds(xpath_tree *xt,
     xpath_tree **vec = NULL;
     size_t       veclen = 0;
     cg_var      *cvi;
-	
+        
     if (xt->xs_type == XP_PRED && xt->xs_c0){
-	if ((ret = loop_preds(xt->xs_c0, xepat, cvk)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto ok;
+        if ((ret = loop_preds(xt->xs_c0, xepat, cvk)) < 0)
+            goto done;
+        if (ret == 0)
+            goto ok;
     }
     if ((xe = xt->xs_c1) && (xe->xs_type == XP_EXP)){
-	if ((ret = xpath_tree_eq(xepat, xe, &vec, &veclen)) < 0)
-	    goto done;
-	if (ret == 0)
-	    goto ok;
-	if (veclen != 2)
-	    goto ok;
-	if ((cvi = cvec_add(cvk, CGV_STRING)) == NULL){
-	    clicon_err(OE_XML, errno, "cvec_add");	
-	    goto done;
-	}
-	cv_name_set(cvi, vec[0]->xs_s1);
-	if (vec[1]->xs_type == XP_PRIME_NR)
-	    cv_string_set(cvi, vec[1]->xs_strnr);
-	else
-	    cv_string_set(cvi, vec[1]->xs_s0);
+        if ((ret = xpath_tree_eq(xepat, xe, &vec, &veclen)) < 0)
+            goto done;
+        if (ret == 0)
+            goto ok;
+        if (veclen != 2)
+            goto ok;
+        if ((cvi = cvec_add(cvk, CGV_STRING)) == NULL){
+            clicon_err(OE_XML, errno, "cvec_add");      
+            goto done;
+        }
+        cv_name_set(cvi, vec[0]->xs_s1);
+        if (vec[1]->xs_type == XP_PRIME_NR)
+            cv_string_set(cvi, vec[1]->xs_strnr);
+        else
+            cv_string_set(cvi, vec[1]->xs_s0);
     }
     retval = 1;
  done:
     if (vec)
-	free(vec);
+        free(vec);
     return retval;
  ok: /* no match, not special case */
     retval = 0;
@@ -228,8 +228,8 @@ loop_preds(xpath_tree *xt,
  */
 static int
 xpath_list_optimize_fn(xpath_tree  *xt,
-		       cxobj       *xv,
-		       clixon_xvec *xvec)
+                       cxobj       *xv,
+                       clixon_xvec *xvec)
 {
     int          retval = -1;
     xpath_tree  *xm = NULL;
@@ -249,15 +249,15 @@ xpath_list_optimize_fn(xpath_tree  *xt,
     
     /* revert to non-optimized if no yang */
     if ((yp = xml_spec(xv)) == NULL)
-	goto ok;
+        goto ok;
     /* or if not config data (state data should not be ordered) */
     if (yang_config_ancestor(yp) == 0)
-	goto ok;
+        goto ok;
     /* Check that there is no "outer" list. */
     ypp = yp;
     do {
-	if (yang_keyword_get(ypp) == Y_LIST)
-	    goto ok;
+        if (yang_keyword_get(ypp) == Y_LIST)
+            goto ok;
     } while((ypp = yang_parent_get(ypp)) != NULL);
     /* Check yang and that only a list with key as index is a special case can do bin search 
      * That is, ONLY check optimize cases of this type:_x[_y='_z']
@@ -267,49 +267,49 @@ xpath_list_optimize_fn(xpath_tree  *xt,
     /* Here is where pattern is checked for equality and where variable binding is made (if
      * equal) */
     if ((ret = xpath_tree_eq(xm, xt, &vec, &veclen)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto ok; /* no match */
+        goto ok; /* no match */
     if (veclen != 2)
-	goto ok;
+        goto ok;
     name = vec[0]->xs_s1;
     /* Extract variables */
     if ((yc = yang_find(yp, Y_LIST, name)) == NULL)
 #ifdef NOTYET /* leaf-list is not detected by xpath optimize detection */
-	if ((yc = yang_find(yp, Y_LEAF_LIST, name)) == NULL) /* XXX */
+        if ((yc = yang_find(yp, Y_LEAF_LIST, name)) == NULL) /* XXX */
 #endif
-	    goto ok; 
+            goto ok; 
     /* Validate keys */
     if ((cvv = yang_cvec_get(yc)) == NULL)
-	goto ok;
+        goto ok;
     xtp = vec[1];
     if ((cvk = cvec_new(0)) == NULL){
-	clicon_err(OE_YANG, errno, "cvec_new");	
-	goto done;
+        clicon_err(OE_YANG, errno, "cvec_new"); 
+        goto done;
     }
     if ((ret = loop_preds(xtp, xem, cvk)) < 0)
-	goto done;
+        goto done;
     if (ret == 0)
-	goto ok;
+        goto ok;
 
     if (cvec_len(cvv) != cvec_len(cvk))
-	goto ok;
+        goto ok;
     i = 0;
     cvi = NULL;
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-	if (strcmp(cv_name_get(cvi), cv_string_get(cvec_i(cvv,i))))
-	    goto ok;
-	i++;
+        if (strcmp(cv_name_get(cvi), cv_string_get(cvec_i(cvv,i))))
+            goto ok;
+        i++;
     }
     /* Use 2a form since yc allready given to compute cvk */
     if (clixon_xml_find_index(xv, yp, NULL, name, cvk, xvec) < 0)
-	goto done;
+        goto done;
     retval = 1; /* match */
  done:
     if (vec)
-	free(vec);
+        free(vec);
     if (cvk)
-	cvec_free(cvk);
+        cvec_free(cvk);
     return retval;
  ok: /* no match, not special case */
     retval = 0;
@@ -327,30 +327,30 @@ xpath_list_optimize_fn(xpath_tree  *xt,
 int
 xpath_optimize_check(xpath_tree *xs,
                      cxobj      *xv,
-	             cxobj    ***xvec0, 
-	             int        *xlen0)
+                     cxobj    ***xvec0, 
+                     int        *xlen0)
 {
 #ifdef XPATH_LIST_OPTIMIZE
     int          ret;
     clixon_xvec *xvec = NULL;
     
     if (!_optimize_enable)
-	return 0; /* use regular code */
+        return 0; /* use regular code */
     if ((xvec = clixon_xvec_new()) == NULL)
-	return -1;
+        return -1;
     /* Glue code since xpath code uses (old) cxobj ** and search code uses (new) clixon_xvec */
     if ((ret = xpath_list_optimize_fn(xs, xv, xvec)) < 0)
-	return -1;
+        return -1;
     if (ret == 1){
-	if (clixon_xvec_extract(xvec, xvec0, xlen0, NULL) < 0)
-	    return -1;
-	clixon_xvec_free(xvec);
-	_optimize_hits++;
-	return 1; /* Optimized */
+        if (clixon_xvec_extract(xvec, xvec0, xlen0, NULL) < 0)
+            return -1;
+        clixon_xvec_free(xvec);
+        _optimize_hits++;
+        return 1; /* Optimized */
     }
     else{
-	clixon_xvec_free(xvec);
-	return 0; /* use regular code */
+        clixon_xvec_free(xvec);
+        return 0; /* use regular code */
     }
 #else
     return 0; /* use regular code */

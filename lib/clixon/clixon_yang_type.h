@@ -63,14 +63,14 @@ yang_stmt *yang_find_identity_nsc(yang_stmt *yspec, char *identity, cvec *nsc);
 int        ys_cv_validate(clicon_handle h, cg_var *cv, yang_stmt *ys, yang_stmt **ysub, char **reason);
 int        clicon_type2cv(char *type, char *rtype, yang_stmt *ys, enum cv_type *cvtype);
 int        yang_type_get(yang_stmt *ys, char **otype, yang_stmt **restype, 
-			 int *options, cvec **cvv,
-			 cvec *patterns, cvec *regexps,
+                         int *options, cvec **cvv,
+                         cvec *patterns, cvec *regexps,
                          uint8_t *fraction_digits);
 int        yang_type_resolve(yang_stmt *yorig, yang_stmt *ys,
-			     yang_stmt *ytype, 
-			     yang_stmt **restype, int *options, 
-			     cvec **cvv, cvec *patterns, cvec *regexps,
-			     uint8_t *fraction);
+                             yang_stmt *ytype, 
+                             yang_stmt **restype, int *options, 
+                             cvec **cvv, cvec *patterns, cvec *regexps,
+                             uint8_t *fraction);
 enum cv_type yang_type2cv(yang_stmt *ys);
 
 

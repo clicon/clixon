@@ -79,7 +79,7 @@ static inline char * strdup4(char *str)
     int len;
     len = align4(strlen(str)+1);
     if ((dup = (char*) malloc(len)) == NULL)
-	return NULL;
+        return NULL;
     memcpy(dup, str, strlen(str)+1);
     return dup;
 }
