@@ -67,7 +67,7 @@ new "json parse empty list to xml"
 expecteofx "$clixon_util_json" 0 '{"a":[]}' "<a/>"
 
 new "json parse list json" # should be {"a":[0,1,2,3]}
-expecteofx "$clixon_util_json -j" 0 '{"a":[0,1,2,3]}' '{"a":"0"}{"a":"1"}{"a":"2"}{"a":"3"}'
+expecteofx "$clixon_util_json -j" 0 '{"a":[0,1,2,3]}' '{"a":"0"},{"a":"1"},{"a":"2"},{"a":"3"}'
 
 # Multi-line JSON not pretty-print
 JSON='{"json:c":{"a":42,"s":"string"}}'

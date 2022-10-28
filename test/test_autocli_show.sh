@@ -60,6 +60,9 @@ module clixon-example {
             }
         }
     }
+    container table2{
+        presence true;
+    }
 }
 EOF
 
@@ -110,7 +113,7 @@ fi
 new "wait backend"
 wait_backend
 
-# Create two lists
+# Create two lists elements
 new "cli create list table x"
 expectpart "$($clixon_cli -1 -f $cfg -l o set table parameter x value 1)" 0 "^$"
 
@@ -127,14 +130,19 @@ expectpart "$($clixon_cli -1 -f $cfg -l o set table parameter x array1 b)" 0 "^$
 new "cli commit"
 expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
 
+# Create a second top-level element
+new "cli create list table2"
+expectpart "$($clixon_cli -1 -f $cfg -l o set table2)" 0 "^$"
+
 # XML
 format=xml
 
 new "cli check show config $format"
-X='<table xmlns="urn:example:clixon"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table>'
+X='<table xmlns="urn:example:clixon"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table><table2 xmlns="urn:example:clixon"/>'
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "^$X$"
 
 new "cli check show auto $format table"
+X='<table xmlns="urn:example:clixon"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table>'
 expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 "^$X$"
 
 new "cli check show auto $format table parameter"
@@ -153,10 +161,11 @@ expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table parameter x ar
 format=json
 
 new "cli check show config $format"
-X='{"clixon-example:table":{"parameter":\[{"name":"x","value":"1","array1":\["a","b"\]},{"name":"y","value":"2"}\]}}'
+X='{"clixon-example:table":{"parameter":\[{"name":"x","value":"1","array1":\["a","b"\]},{"name":"y","value":"2"}\]},"clixon-example:table2":{}}'
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "^$X$"
 
 new "cli check show auto $format table"
+X='{"clixon-example:table":{"parameter":\[{"name":"x","value":"1","array1":\["a","b"\]},{"name":"y","value":"2"}\]}}'
 expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 "^$X$"
 
 new "cli check show auto $format table parameter"
@@ -207,10 +216,11 @@ format=netconf
 
 # XXX netconf base capability 0, EOM framing
 new "cli check show config $format"
-X='<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="42"><edit-config><target><candidate/></target><config><table xmlns="urn:example:clixon"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table></config></edit-config></rpc>]]>]]>'
+X='<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="42"><edit-config><target><candidate/></target><config><table xmlns="urn:example:clixon"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table><table2 xmlns="urn:example:clixon"/></config></edit-config></rpc>]]>]]>'
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "^$X$"
 
 new "cli check show auto $format table"
+X='<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="42"><edit-config><target><candidate/></target><config><table xmlns="urn:example:clixon"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table></config></edit-config></rpc>]]>]]>'
 expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 "^$X$"
 
 # XXX rest does not print whole NETCONF path to root, eg does not include "table"

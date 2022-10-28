@@ -91,6 +91,7 @@ show("Show a particular state of the system"){
 }
 EOF
 
+# Note: a b/71 entry added later in test
 cat <<EOF > $dir/startup_db
 <${DATASTORE_TOP}>
   <table xmlns="urn:example:clixon">
@@ -239,6 +240,7 @@ cat <<EOF > $fin
 edit table parameter b
 show config xml
 EOF
+
 new "edit table parameter b; show"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table/parameter=b/>" --not-- "<name>a</name><value>42</value>"  '<table xmlns="urn:example:clixon">' "<parameter>"
 
@@ -248,8 +250,18 @@ set value 71
 up
 show config xml
 EOF
-new "set value 71"
+new "add b = 71"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "/clixon-example:table>" "<parameter><name>a</name><value>42</value></parameter><parameter><name>b</name><value>71</value></parameter>"
+
+new "show top tree"
+expectpart "$(echo "show config xml" | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter><parameter><name>b</name><value>71</value></parameter></table>'
+
+cat <<EOF > $fin
+up
+show config xml
+EOF
+new "up show"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '<table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter><parameter><name>b</name><value>71</value></parameter></table>'
 
 cat <<EOF > $fin
 edit table parameter a
@@ -289,11 +301,21 @@ expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<parameter><name>a</name>
 
 # Show other formats
 cat <<EOF > $fin
+edit table parameter b
+set value 71
+EOF
+new "add b = 71"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0
+
+new "show top tree json"
+expectpart "$(echo "show config json" | $clixon_cli -f $cfg 2>&1)" 0 '{"clixon-example:table":{"parameter":\[{"name":"a","value":"42"},{"name":"b","value":"71"}\]}}'
+
+cat <<EOF > $fin
 edit table
 show config json
 EOF
 new "show config json"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '{"clixon-example:parameter":\[{"name":"a","value":"42"}\]}'
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 '{"clixon-example:parameter":\[{"name":"a","value":"42"},{"name":"b","value":"71"}\]}'
 
 cat <<EOF > $fin
 edit table

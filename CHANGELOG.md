@@ -71,7 +71,8 @@ Developers may need to change their code
   * `clicon_rpc_commit()` and `clicon_rpc_validate`
     * Added three-value return.
     * Code need to be changed from: checking for `<0` to `<1` to keep same semantics
-	
+  * Added `skiptop` parameter to `xml2json_vec()`
+  
 ### Minor features
 
 * [Code formatting: Change indentation style to space](https://github.com/clicon/clixon/issues/379)
@@ -80,6 +81,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [CLI Show config JSON with multiple top-level elements is broken](https://github.com/clicon/clixon/issues/381)
 * Fixed: [Non-obvious behavior of clixon_snmp after snmpset command when transaction validation returns an error](https://github.com/clicon/clixon/issues/375)
   * Fixed by validating writes on ACTION instead of COMMIT since libnetsnmp seems not to accept commit errors
 * Fixed: [YANG when condition evaluated as false combined with a mandatory leaf does not work](https://github.com/clicon/clixon/issues/380)

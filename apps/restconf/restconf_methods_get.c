@@ -283,7 +283,7 @@ api_data_get2(clicon_handle  h,
             /* In: <x xmlns="urn:example:clixon">0</x>
              * Out: {"example:x": {"0"}}
              */
-            if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
+            if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty, 0) < 0)
                 goto done;
             break;
         default:
@@ -546,7 +546,7 @@ api_data_pagination(clicon_handle  h,
             goto done;
         break;
     case YANG_DATA_JSON:
-        if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty) < 0)
+        if (xml2json_cbuf_vec(cbx, xvec, xlen, pretty, 0) < 0)
             goto done;
         break;
     default:

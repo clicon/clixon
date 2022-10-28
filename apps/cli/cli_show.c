@@ -414,7 +414,7 @@ show_yang(clicon_handle h,
  * @param[in] prefix       CLI prefix to prepend cli syntax, eg "set "
  * @param[in] xpath        XPath
  * @param[in] nsc          Namespace mapping for xpath
- * @param[in] skiproot     If set, do not show object itself, only its children
+ * @param[in] skiptop      If set, do not show object itself, only its children
   */
 static int
 cli_show_common(clicon_handle    h,
@@ -427,7 +427,7 @@ cli_show_common(clicon_handle    h,
                 char            *prefix,
                 char            *xpath,
                 cvec            *nsc,
-                int              skiproot
+                int              skiptop
                 )
 {
     int           retval = -1;    
@@ -477,10 +477,10 @@ cli_show_common(clicon_handle    h,
         else
             ys_keyword = 0;
         /* Special case LIST */
-        if ((ys_keyword == Y_LIST || ys_keyword == Y_LEAF_LIST) && format == FORMAT_JSON){
+        if (format == FORMAT_JSON){
             switch (format){        
             case FORMAT_JSON:
-                if (xml2json_vec(stdout, vec, veclen, pretty) < 0) // XXX cligen_output
+                if (xml2json_vec(stdout, vec, veclen, pretty, skiptop) < 0) // XXX cligen_output
                     goto done;
                 break;
             default:
@@ -497,21 +497,17 @@ cli_show_common(clicon_handle    h,
                 /* Print configuration according to format */
                 switch (format){
                 case FORMAT_XML:
-                    if (clixon_xml2file(stdout, xp, 0, pretty, cligen_output, skiproot, 1) < 0)
+                    if (clixon_xml2file(stdout, xp, 0, pretty, cligen_output, skiptop, 1) < 0)
                         goto done;
                     if (!pretty && i == veclen-1)
                         cligen_output(stdout, "\n");
                     break;
-                case FORMAT_JSON:
-                    if (clixon_json2file(stdout, xp, pretty, cligen_output, skiproot, 1) < 0)
-                        goto done;
-                    break;
                 case FORMAT_TEXT: /* XXX does not handle multiple leaf-list */
-                    if (clixon_txt2file(stdout, xp, 0, cligen_output, skiproot, 1) < 0)
+                    if (clixon_txt2file(stdout, xp, 0, cligen_output, skiptop, 1) < 0)
                         goto done;
                     break;
                 case FORMAT_CLI:
-                    if (clixon_cli2file(h, stdout, xp, prefix, cligen_output, skiproot) < 0) /* cli syntax */
+                    if (clixon_cli2file(h, stdout, xp, prefix, cligen_output, skiptop) < 0) /* cli syntax */
                         goto done;
                     break;
                 case FORMAT_NETCONF:
@@ -521,10 +517,12 @@ cli_show_common(clicon_handle    h,
                         if (pretty)
                             cligen_output(stdout, "\n");
                     }
-                    if (clixon_xml2file(stdout, xp, 2, pretty, cligen_output, skiproot, 1) < 0)
+                    if (clixon_xml2file(stdout, xp, 2, pretty, cligen_output, skiptop, 1) < 0)
                         goto done;
                     if (i == veclen-1)
                         cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
+                    break;
+                default:
                     break;
                 }
             }
@@ -693,7 +691,6 @@ cli_show_config(clicon_handle h,
     char            *withdefault = NULL; /* RFC 6243 modes */
     char            *extdefault = NULL; /* with extended tagged modes */
     int              argc = 0;
-    int              skiproot = 0;
     char            *xpath = "/";
     char            *namespace = NULL;
     
@@ -733,7 +730,7 @@ cli_show_config(clicon_handle h,
     }
     if (cli_show_common(h, dbname, format, pretty, state,
                         withdefault, extdefault,
-                        prefix, xpath, nsc, skiproot) < 0)
+                        prefix, xpath, nsc, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -865,7 +862,6 @@ cli_show_auto(clicon_handle h,
     char            *withdefault = NULL; /* RFC 6243 modes */
     char            *extdefault = NULL; /* with extended tagged modes */
     int              argc = 0;
-    int              skiproot = 0;
     char            *xpath = NULL;
     yang_stmt       *yspec;
     char            *api_path = NULL;
@@ -912,7 +908,7 @@ cli_show_auto(clicon_handle h,
     }
     if (cli_show_common(h, dbname, format, pretty, state,
                         withdefault, extdefault,
-                        prefix, xpath, nsc, skiproot) < 0)
+                        prefix, xpath, nsc, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -973,7 +969,7 @@ cli_show_auto_mode(clicon_handle h,
     char            *withdefault = NULL; /* RFC 6243 modes */
     char            *extdefault = NULL; /* with extended tagged modes */
     int              argc = 0;
-    int              skiproot = 0;
+    int              skiptop = 0;
     char            *xpath = NULL;
     yang_stmt       *yspec;
     char            *api_path = NULL;
@@ -1018,10 +1014,10 @@ cli_show_auto_mode(clicon_handle h,
         clicon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
         goto done;
     }
-    skiproot = (strcmp(xpath,"/") != 0);
+    skiptop = (strcmp(xpath,"/") != 0);
     if (cli_show_common(h, dbname, format, pretty, state,
                         withdefault, extdefault,
-                        prefix, xpath, nsc, skiproot) < 0)
+                        prefix, xpath, nsc, skiptop) < 0)
         goto done;
     retval = 0;
  done:

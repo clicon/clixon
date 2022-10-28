@@ -1157,12 +1157,16 @@ clixon_json2cbuf(cbuf  *cb,
 {
     int    retval = -1;
     cxobj *xc;
+    int    i=0;
 
     if (skiptop){
         xc = NULL;
-        while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL)
+        while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
+            if (i++)
+                cprintf(cb, ",");
             if (xml2json_cbuf1(cb, xc, pretty, autocliext) < 0)
                 goto done;
+        }
     }
     else {
         if (xml2json_cbuf1(cb, xt, pretty, autocliext) < 0)
@@ -1180,6 +1184,7 @@ clixon_json2cbuf(cbuf  *cb,
  * @param[in]  vec    Vector of xml objecst
  * @param[in]  veclen Length of vector
  * @param[in]  pretty Set if output is pretty-printed (2 for debug)
+ * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
  * @retval     0      OK
  * @retval    -1      Error
  * @note This only works if the vector is uniform, ie same object name.
@@ -1190,12 +1195,14 @@ int
 xml2json_cbuf_vec(cbuf      *cb, 
                   cxobj    **vec,
                   size_t     veclen,
-                  int        pretty)
+                  int        pretty,
+                  int        skiptop)
 {
     int    retval = -1;
     int    level = 0;
     cxobj *xp = NULL;
     int    i;
+    cxobj *xc0;
     cxobj *xc;
     cvec  *nsc = NULL; 
 
@@ -1204,12 +1211,25 @@ xml2json_cbuf_vec(cbuf      *cb,
     /* Make a copy of old and graft it into new top-object
      * Also copy namespace context */
     for (i=0; i<veclen; i++){
-        if (xml_nsctx_node(vec[i], &nsc) < 0)
+        xc0 = vec[i];
+        if (xml_nsctx_node(xc0, &nsc) < 0)
             goto done;
-        if ((xc = xml_dup(vec[i])) == NULL)
-            goto done;
-        xml_addsub(xp, xc);
-        nscache_replace(xc, nsc); 
+        if (skiptop){
+            cxobj *x = NULL;
+            while ((x = xml_child_each(xc0, x, CX_ELMNT)) != NULL) {
+                if ((xc = xml_dup(x)) == NULL)
+                    goto done;
+                xml_addsub(xp, xc);
+                xmlns_set_all(xc, nsc); // ?
+            }
+            cvec_free(nsc);
+        }
+        else {
+                if ((xc = xml_dup(xc0)) == NULL)
+                    goto done;
+                xml_addsub(xp, xc);
+                nscache_replace(xc, nsc);
+            }
         nsc = NULL; /* nsc consumed */
     }
     if (0){
@@ -1301,6 +1321,7 @@ json_print(FILE  *f,
  * @param[in]  vec    Vector of xml objecst
  * @param[in]  veclen Length of vector
  * @param[in]  pretty Set if output is pretty-printed (2 for debug)
+ * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
  * @retval     0      OK
  * @retval    -1      Error
  * @note This only works if the vector is uniform, ie same object name.
@@ -1311,7 +1332,8 @@ int
 xml2json_vec(FILE      *f, 
              cxobj    **vec,
              size_t     veclen,
-             int        pretty)
+             int        pretty,
+             int        skiptop)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -1320,9 +1342,11 @@ xml2json_vec(FILE      *f,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    if (xml2json_cbuf_vec(cb, vec, veclen, pretty) < 0)
+    if (xml2json_cbuf_vec(cb, vec, veclen, pretty, skiptop) < 0)
         goto done;
     fprintf(f, "%s", cbuf_get(cb));
+    if (!pretty)
+        fprintf(f, "\n");
     retval = 0;
  done:
     if (cb)
