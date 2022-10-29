@@ -436,8 +436,6 @@ cli_show_common(clicon_handle    h,
     cxobj       **vec = NULL;
     size_t        veclen;
     cxobj        *xp;
-    yang_stmt    *yp;
-    enum rfc_6020 ys_keyword;
     int           i;
 
     if (state && strcmp(db, "running") != 0){
@@ -471,11 +469,6 @@ cli_show_common(clicon_handle    h,
     if (xpath_vec(xt, nsc, "%s", &vec, &veclen, xpath) < 0) 
         goto done;
     if (veclen){
-        xp = vec[0]; /* First peek to see if it is special case yang list */
-        if ((yp = xml_spec(xp)) != NULL)
-            ys_keyword = yang_keyword_get(xml_spec(xp));
-        else
-            ys_keyword = 0;
         /* Special case LIST */
         if (format == FORMAT_JSON){
             switch (format){        
@@ -490,10 +483,6 @@ cli_show_common(clicon_handle    h,
         else    /* Default */
             for (i=0; i<veclen; i++){
                 xp = vec[i];
-                if ((yp = xml_spec(xp)) != NULL)
-                    ys_keyword = yang_keyword_get(xml_spec(xp));
-                else
-                    ys_keyword = 0;
                 /* Print configuration according to format */
                 switch (format){
                 case FORMAT_XML:

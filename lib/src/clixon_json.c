@@ -1344,9 +1344,7 @@ xml2json_vec(FILE      *f,
     }
     if (xml2json_cbuf_vec(cb, vec, veclen, pretty, skiptop) < 0)
         goto done;
-    fprintf(f, "%s", cbuf_get(cb));
-    if (!pretty)
-        fprintf(f, "\n");
+    fprintf(f, "%s\n", cbuf_get(cb));
     retval = 0;
  done:
     if (cb)
