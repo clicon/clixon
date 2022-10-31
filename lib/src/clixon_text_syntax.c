@@ -71,8 +71,11 @@
 /* Size of json read buffer when reading from file*/
 #define BUFLEN 1024
 
-/* Name of xml top object created by parse functions */
-#define TOP_SYMBOL "top"
+/* Name of xml top object created by parse functions
+ * See also DATASTORE_TOP_SYMBOL which is the clixon datastore top symbol. By default also config
+ */
+
+#define TEXT_TOP_SYMBOL "top"
 
 /*! x is element and has eactly one child which in turn has none 
  * @see child_type in clixon_json.c
@@ -100,7 +103,7 @@ tleaf(cxobj *x)
  * @param[in]     xn       XML object to print
  * @param[in]     fn       Callback to make print function
  * @param[in]     f        File to print to
- * @param[in]     level    Print 4 spaces per level in front of each line
+ * @param[in]     level    Print PRETTYPRINT_INDENT spaces per level in front of each line
  * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @param[in,out] leafl    Leaflist state for keeping track of when [] ends
  * @param[in,out] leaflname Leaflist state for [] 
@@ -171,7 +174,7 @@ xml2txt1(cxobj            *xn,
         else{
             *leafl = 0;
             *leaflname = NULL;
-            (*fn)(f, "%*s\n", 4*(level), "]");
+            (*fn)(f, "%*s\n", PRETTYPRINT_INDENT*(level), "]");
         }
     }
     xc = NULL;     /* count children (elements and bodies, not attributes) */
@@ -191,13 +194,13 @@ xml2txt1(cxobj            *xn,
             else
                 cprintf(cb, "%s", value);
             if (*leafl)                            /* Skip keyword if leaflist */
-                (*fn)(f, "%*s%s\n", 4*level, "", cbuf_get(cb));
+                (*fn)(f, "%*s%s\n", PRETTYPRINT_INDENT*level, "", cbuf_get(cb));
             else
                 (*fn)(f, "%s;\n", cbuf_get(cb));
             break;
         }
         case CX_ELMNT:
-            (*fn)(f, "%*s%s", 4*level, "", xml_name(xn));
+            (*fn)(f, "%*s%s", PRETTYPRINT_INDENT*level, "", xml_name(xn));
             cvi = NULL;             /* Lists only */
             while ((cvi = cvec_each(cvk, cvi)) != NULL) {
                 if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
@@ -211,7 +214,7 @@ xml2txt1(cxobj            *xn,
         goto ok;
     }
     if (*leafl == 0){
-        (*fn)(f, "%*s", 4*level, "");
+        (*fn)(f, "%*s", PRETTYPRINT_INDENT*level, "");
 #ifndef TEXT_SYNTAX_NOPREFIX
         if (prefix)
             (*fn)(f, "%s:", prefix);
@@ -247,10 +250,10 @@ xml2txt1(cxobj            *xn,
     /* Stop leaf-list printing (ie []) if no longer leaflist and same name */
     if (yn && yang_keyword_get(yn) != Y_LEAF_LIST && *leafl != 0){
         *leafl = 0;
-        (*fn)(f, "%*s\n", 4*(level+1), "]");
+        (*fn)(f, "%*s\n", PRETTYPRINT_INDENT*(level+1), "]");
     }
     if (!tleaf(xn))
-        (*fn)(f, "%*s}\n", 4*level, "");
+        (*fn)(f, "%*s}\n", PRETTYPRINT_INDENT*level, "");
  ok:
     retval = 0;
  done:
@@ -263,7 +266,7 @@ xml2txt1(cxobj            *xn,
  *
  * @param[in]  f        File to print to
  * @param[in]  xn       XML object to print
- * @param[in]  level    Print 4 spaces per level in front of each line
+ * @param[in]  level    Print PRETTYPRINT_INDENT spaces per level in front of each line
  * @param[in]  fn       File print function (if NULL, use fprintf)
  * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
  * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
@@ -563,7 +566,7 @@ clixon_text_syntax_parse_file(FILE      *fp,
             textbuf[len++] = ch;
         if (ret == 0){
             if (*xt == NULL)
-                if ((*xt = xml_new(TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+                if ((*xt = xml_new(TEXT_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
                     goto done;
             if (len){
                 if ((ret = _text_syntax_parse(ptr, yb, yspec, *xt, xerr)) < 0)

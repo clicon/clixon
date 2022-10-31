@@ -179,3 +179,8 @@
  *     // Here "s" is still open and you can reply on the non-ssl underlying socket
  */
 #define HTTP_ON_HTTPS_REPLY
+
+/*! Indentation number of spaces for XML, JSON and TEXT pretty-printed output.
+ * Consider moving to configure.ac(compile-time) or to clixon-config.yang(run-time)
+ */
+#define PRETTYPRINT_INDENT 3

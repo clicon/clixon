@@ -73,10 +73,10 @@ expecteofx "$clixon_util_json -j" 0 '{"a":[0,1,2,3]}' '{"a":"0"},{"a":"1"},{"a":
 JSON='{"json:c":{"a":42,"s":"string"}}'
 # Same with pretty-print
 JSONP='{
-  "json:c": {
-    "a": 42,
-    "s": "string"
-  }
+   "json:c": {
+      "a": 42,
+      "s": "string"
+   }
 }'
 
 new "json no pp in/out"

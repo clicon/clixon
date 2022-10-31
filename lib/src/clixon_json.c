@@ -77,8 +77,6 @@
 #include "clixon_json.h"
 #include "clixon_json_parse.h"
 
-#define JSON_INDENT 2 /* maybe we should set this programmatically? */
-
 /* Let xml2json_cbuf_vec() return json array: [a,b].
    ALternative is to create a pseudo-object and return that: {top:{a,b}}
 */
@@ -731,11 +729,11 @@ json_metadata_encoding(cbuf  *cb,
     cprintf(cb, "%s\":", name);
     if (list)
         cprintf(cb, "[");
-    cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "{");
+    cprintf(cb, "%*s", pretty?((level+1)*PRETTYPRINT_INDENT):0, "{");
     cprintf(cb, "\"%s:%s\":%s", modname2, name2, val);
-    cprintf(cb, "%*s", pretty?((level+1)*JSON_INDENT):0, "}");
+    cprintf(cb, "%*s", pretty?((level+1)*PRETTYPRINT_INDENT):0, "}");
     if (list)
-        cprintf(cb, "%*s", pretty?(level*JSON_INDENT):0, "]");
+        cprintf(cb, "%*s", pretty?(level*PRETTYPRINT_INDENT):0, "]");
     return 0;
 }
 
@@ -896,7 +894,7 @@ xml2json1_cbuf(cbuf                   *cb,
         break;
     case NO_ARRAY:
         if (!flat){
-            cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
+            cprintf(cb, "%*s\"", pretty?(level*PRETTYPRINT_INDENT):0, "");
             if (modname) 
                 cprintf(cb, "%s:", modname);
             cprintf(cb, "%s\":%s", xml_name(x), pretty?" ":"");
@@ -917,14 +915,14 @@ xml2json1_cbuf(cbuf                   *cb,
         break;
     case FIRST_ARRAY:
     case SINGLE_ARRAY:
-        cprintf(cb, "%*s\"", pretty?(level*JSON_INDENT):0, "");
+        cprintf(cb, "%*s\"", pretty?(level*PRETTYPRINT_INDENT):0, "");
         if (modname)
             cprintf(cb, "%s:", modname);
         cprintf(cb, "%s\":%s", xml_name(x), pretty?" ":"");
         level++;
         cprintf(cb, "[%s%*s", 
                 pretty?"\n":"",
-                pretty?(level*JSON_INDENT):0, "");
+                pretty?(level*PRETTYPRINT_INDENT):0, "");
         switch (childt){
         case NULL_CHILD:
             if (nullchild(cb, x, ys) < 0)
@@ -943,7 +941,7 @@ xml2json1_cbuf(cbuf                   *cb,
     case LAST_ARRAY:
         level++;
         cprintf(cb, "%*s", 
-                pretty?(level*JSON_INDENT):0, "");
+                pretty?(level*PRETTYPRINT_INDENT):0, "");
         switch (childt){
         case NULL_CHILD:
             if (nullchild(cb, x, ys) < 0)
@@ -1007,7 +1005,7 @@ xml2json1_cbuf(cbuf                   *cb,
         case ANY_CHILD:
             cprintf(cb, "%s%*s}", 
                     pretty?"\n":"",
-                    pretty?(level*JSON_INDENT):0, "");
+                    pretty?(level*PRETTYPRINT_INDENT):0, "");
             break;
         default:
             break;
@@ -1023,7 +1021,7 @@ xml2json1_cbuf(cbuf                   *cb,
         case ANY_CHILD:
             cprintf(cb, "%s%*s}", 
                     pretty?"\n":"",
-                    pretty?(level*JSON_INDENT):0, "");
+                    pretty?(level*PRETTYPRINT_INDENT):0, "");
             level--;
             break;
         default:
@@ -1040,7 +1038,7 @@ xml2json1_cbuf(cbuf                   *cb,
         case ANY_CHILD:
             cprintf(cb, "%s%*s}", 
                     pretty?"\n":"",
-                    pretty?(level*JSON_INDENT):0, "");
+                    pretty?(level*PRETTYPRINT_INDENT):0, "");
             cprintf(cb, "%s",pretty?"\n":"");
             level--;
             break;
@@ -1048,7 +1046,7 @@ xml2json1_cbuf(cbuf                   *cb,
             break;
         }
         cprintf(cb, "%*s]",
-                pretty?(level*JSON_INDENT):0,"");
+                pretty?(level*PRETTYPRINT_INDENT):0,"");
         break;
     default:
         break;
@@ -1095,7 +1093,7 @@ xml2json_cbuf1(cbuf   *cb,
             goto ok;
     }
     cprintf(cb, "%*s{%s", 
-            pretty?level*JSON_INDENT:0,"", 
+            pretty?level*PRETTYPRINT_INDENT:0,"", 
             pretty?"\n":"");
     
     if (y != NULL){
@@ -1120,7 +1118,7 @@ xml2json_cbuf1(cbuf   *cb,
         goto done;
     cprintf(cb, "%s%*s}%s", 
             pretty?"\n":"",
-            pretty?level*JSON_INDENT:0,"",
+            pretty?level*PRETTYPRINT_INDENT:0,"",
             pretty?"\n":"");
  ok:
     retval = 0;
@@ -1239,11 +1237,7 @@ xml2json_cbuf_vec(cbuf      *cb,
     if (xml2json1_cbuf(cb, 
                        xp, 
                        NO_ARRAY,
-#if 1
                        level,
-#else
-                       level+1,
-#endif
                        pretty,
                        1, NULL, NULL) < 0)
         goto done;

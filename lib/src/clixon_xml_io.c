@@ -80,8 +80,6 @@
  */
 /* Size of xml read buffer */
 #define BUFLEN 1024  
-/* Indentation for xml pretty-print. Consider option? */
-#define XML_INDENT 3
 
 /*------------------------------------------------------------------------
  * XML printing functions. Output a parse tree to file, string cligen buf
@@ -147,7 +145,7 @@ xml2file_recurse(FILE             *f,
         (*fn)(f, "%s=\"%s\"", name, xml_value(x));
         break;
     case CX_ELMNT:
-        (*fn)(f, "%*s<", pretty?(level*XML_INDENT):0, "");
+        (*fn)(f, "%*s<", pretty?(level*PRETTYPRINT_INDENT):0, "");
         if (namespace)
             (*fn)(f, "%s:", namespace);
         (*fn)(f, "%s", name);
@@ -187,7 +185,7 @@ xml2file_recurse(FILE             *f,
                         goto done;
             }
             if (pretty && hasbody==0)
-                (*fn)(f, "%*s", level*XML_INDENT, "");
+                (*fn)(f, "%*s", level*PRETTYPRINT_INDENT, "");
             (*fn)(f, "</");
             if (namespace)
                 (*fn)(f, "%s:", namespace);
@@ -249,7 +247,6 @@ clixon_xml2file(FILE             *f,
     retval = 0;
  done:
     return retval;
-
 }
 
 /*! Print an XML tree structure to an output stream
@@ -356,7 +353,7 @@ clixon_xml2cbuf1(cbuf   *cb,
         break;
     case CX_ELMNT:
         if (pretty)
-            cprintf(cb, "%*s<", level*XML_INDENT, "");
+            cprintf(cb, "%*s<", level*PRETTYPRINT_INDENT, "");
         else
             cbuf_append_str(cb, "<");
         if (namespace){
@@ -396,7 +393,7 @@ clixon_xml2cbuf1(cbuf   *cb,
                     if (clixon_xml2cbuf1(cb, xc, level+1, pretty, depth-1) < 0)
                         goto done;
             if (pretty && hasbody == 0)
-                cprintf(cb, "%*s", level*XML_INDENT, "");
+                cprintf(cb, "%*s", level*PRETTYPRINT_INDENT, "");
             cbuf_append_str(cb, "</");
             if (namespace){
                 cbuf_append_str(cb, namespace);
@@ -476,7 +473,7 @@ xmltree2cbuf(cbuf  *cb,
     cxobj *xc;
     int    i;
 
-    for (i=0; i<level*XML_INDENT; i++)
+    for (i=0; i<level*PRETTYPRINT_INDENT; i++)
         cprintf(cb, " ");
     if (xml_type(x) != CX_BODY)
         cprintf(cb, "%s", xml_type2str(xml_type(x)));
@@ -495,7 +492,7 @@ xmltree2cbuf(cbuf  *cb,
     while ((xc = xml_child_each(x, xc, -1)) != NULL) 
         xmltree2cbuf(cb, xc, level+1);
     if (xml_child_nr(x)){
-        for (i=0; i<level*XML_INDENT; i++)
+        for (i=0; i<level*PRETTYPRINT_INDENT; i++)
             cprintf(cb, " ");
         cprintf(cb, "}\n");
     }

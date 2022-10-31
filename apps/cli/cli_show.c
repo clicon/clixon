@@ -411,7 +411,7 @@ show_yang(clicon_handle h,
  * @param[in] state
  * @param[in] withdefault  RFC 6243 with-default modes
  * @param[in] extdefault   with-defaults with propriatary extensions
- * @param[in] prefix       CLI prefix to prepend cli syntax, eg "set "
+ * @param[in] prepend      CLI prefix to prepend cli syntax, eg "set "
  * @param[in] xpath        XPath
  * @param[in] nsc          Namespace mapping for xpath
  * @param[in] skiptop      If set, do not show object itself, only its children
@@ -424,7 +424,7 @@ cli_show_common(clicon_handle    h,
                 int              state,
                 char            *withdefault,
                 char            *extdefault,
-                char            *prefix,
+                char            *prepend,
                 char            *xpath,
                 cvec            *nsc,
                 int              skiptop
@@ -496,7 +496,7 @@ cli_show_common(clicon_handle    h,
                         goto done;
                     break;
                 case FORMAT_CLI:
-                    if (clixon_cli2file(h, stdout, xp, prefix, cligen_output, skiptop) < 0) /* cli syntax */
+                    if (clixon_cli2file(h, stdout, xp, prepend, cligen_output, skiptop) < 0) /* cli syntax */
                         goto done;
                     break;
                 case FORMAT_NETCONF:
@@ -648,7 +648,7 @@ cli_show_option_withdefault(cvec  *argv,
  *   <state>         true|false: also print state
  *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
  *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
- *   <prefix>        CLI prefix: prepend before cli syntax output
+ *   <prepend>       CLI prefix: prepend before cli syntax output
  * @code
  *   clispec:
  *      show config, cli_show_config("running","xml");
@@ -675,7 +675,7 @@ cli_show_config(clicon_handle h,
     enum format_enum format = FORMAT_XML;
     cvec            *nsc = NULL;
     int              pretty = 1;
-    char            *prefix = NULL;
+    char            *prepend = NULL;
     int              state = 0;
     char            *withdefault = NULL; /* RFC 6243 modes */
     char            *extdefault = NULL; /* with extended tagged modes */
@@ -684,7 +684,7 @@ cli_show_config(clicon_handle h,
     char            *namespace = NULL;
     
     if (cvec_len(argv) < 2 || cvec_len(argv) > 8){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname> [<format><xpath> <namespace> <pretty> <state> <default> <prefix>]", cvec_len(argv));
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname> [<format><xpath> <namespace> <pretty> <state> <default> <prepend>]", cvec_len(argv));
         goto done;
     }
     dbname = cv_string_get(cvec_i(argv, argc++));
@@ -715,11 +715,11 @@ cli_show_config(clicon_handle h,
             goto done;
     }
     if (cvec_len(argv) > argc){
-        prefix = cv_string_get(cvec_i(argv, argc++));
+        prepend = cv_string_get(cvec_i(argv, argc++));
     }
     if (cli_show_common(h, dbname, format, pretty, state,
                         withdefault, extdefault,
-                        prefix, xpath, nsc, 0) < 0)
+                        prepend, xpath, nsc, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -811,7 +811,7 @@ int cli_show_version(clicon_handle h,
  * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of variables from CLIgen command-line
  * @param[in]  argv  String vector of show options, format:
- *   <api_path_fmt>  Generated API PATH
+ *   <api_path_fmt>  Generated API PATH (this is added implicitly, not actually given in the cvv)
  *   <dbname>        Name of datastore, such as "running"
  * -- from here optional:
  *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
@@ -819,7 +819,7 @@ int cli_show_version(clicon_handle h,
  *   <state>         true|false: also print state
  *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
  *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
- *   <prefix>        CLI prefix: prepend before cli syntax output
+ *   <prepend>       CLI prefix: prepend before cli syntax output
  * @code
  *   clispec: 
  *      show config @datamodelshow, cli_show_auto("candidate", "xml");
@@ -846,7 +846,7 @@ cli_show_auto(clicon_handle h,
     enum format_enum format = FORMAT_XML;
     cvec            *nsc = NULL;
     int              pretty = 1;
-    char            *prefix = NULL;
+    char            *prepend = NULL;
     int              state = 0;
     char            *withdefault = NULL; /* RFC 6243 modes */
     char            *extdefault = NULL; /* with extended tagged modes */
@@ -858,7 +858,7 @@ cli_show_auto(clicon_handle h,
     char            *api_path_fmt;  /* xml key format */
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 7){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <api-path-fmt>* <database> [<format> <pretty> <state> <default> <cli-prefix>]", cvec_len(argv));
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <api-path-fmt>* <database> [<format> <pretty> <state> <default> <prepend>]", cvec_len(argv));
         goto done;
     }
     api_path_fmt = cv_string_get(cvec_i(argv, argc++));
@@ -881,7 +881,7 @@ cli_show_auto(clicon_handle h,
             goto done;
     }
     if (cvec_len(argv) > argc){
-        prefix = cv_string_get(cvec_i(argv, argc++));
+        prepend = cv_string_get(cvec_i(argv, argc++));
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -897,7 +897,7 @@ cli_show_auto(clicon_handle h,
     }
     if (cli_show_common(h, dbname, format, pretty, state,
                         withdefault, extdefault,
-                        prefix, xpath, nsc, 0) < 0)
+                        prepend, xpath, nsc, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -925,7 +925,7 @@ cli_show_auto(clicon_handle h,
  *   <state>         true|false: also print state
  *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
  *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
- *   <prefix>        CLI prefix: prepend before cli syntax output
+ *   <prepend>       CLI prefix: prepend before cli syntax output
  * @code
  *   clispec:
  *      show config, cli_show_auto_mode("candidate");
@@ -953,7 +953,7 @@ cli_show_auto_mode(clicon_handle h,
     enum format_enum format = FORMAT_XML;
     cvec            *nsc = NULL;
     int              pretty = 1;
-    char            *prefix = NULL;
+    char            *prepend = NULL;
     int              state = 0;
     char            *withdefault = NULL; /* RFC 6243 modes */
     char            *extdefault = NULL; /* with extended tagged modes */
@@ -986,7 +986,7 @@ cli_show_auto_mode(clicon_handle h,
             goto done;
     }
     if (cvec_len(argv) > argc){
-        prefix = cv_string_get(cvec_i(argv, argc++));
+        prepend = cv_string_get(cvec_i(argv, argc++));
     }
     /* Store this as edit-mode */
     if (clicon_data_get(h, "cli-edit-mode", &api_path) == 0 && strlen(api_path))
@@ -1006,7 +1006,7 @@ cli_show_auto_mode(clicon_handle h,
     skiptop = (strcmp(xpath,"/") != 0);
     if (cli_show_common(h, dbname, format, pretty, state,
                         withdefault, extdefault,
-                        prefix, xpath, nsc, skiptop) < 0)
+                        prepend, xpath, nsc, skiptop) < 0)
         goto done;
     retval = 0;
  done:
@@ -1017,6 +1017,7 @@ cli_show_auto_mode(clicon_handle h,
     return retval;
 }
 
+#if 1 // OBSOLETE
 /*! Obsolete Show configuration callback for autocli edit modes using tree working point
  *
  * @note Please use cli_show_auto_mode instead,
@@ -1050,6 +1051,7 @@ cli_auto_show(clicon_handle h,
         cvec_free(argv1);
     return retval;
 }
+#endif
 
 /*! Show clixon configuration options as loaded
  */

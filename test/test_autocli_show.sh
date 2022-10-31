@@ -2,8 +2,8 @@
 # Autocli show tests
 # Go through all formats and show for all formats
 # Formats: XML, JSON, TEXT, CLI, NETCONF
-# Pretty-print: false, true   XXXX: align spaces
-# API: cli_show_auto_mode(), cli_show_auto(), cli_show_config() XXX
+# Pretty-print: false, true, indentation-level is 3 (see PRETTYPRINT_INDENT)
+# API: cli_show_auto_mode(), cli_show_auto(), cli_show_config()
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -183,7 +183,7 @@ X='{"clixon-example:table":{"parameter":\[{"name":"x","value":"1","array1":\["a"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "^$X$"
 
 new "cli check show config $format pretty-print"
-expectpart "$($clixon_cli -1 -f $cfg -l o show config $format pretty-print)" 0 '  "clixon-example:table": {' --not-- '    "clixon-example:table": {'
+expectpart "$($clixon_cli -1 -f $cfg -l o show config $format pretty-print)" 0 '   "clixon-example:table": {' --not-- '    "clixon-example:table": {'
 
 new "cli check show config $format non-auto"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format config)" 0 "$X"
@@ -211,7 +211,7 @@ new "cli check show config $format"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "clixon-example:table {" "parameter x {" "array1 \[" "parameter y {"
 
 new "cli check show config $format pretty-print"
-expectpart "$($clixon_cli -1 -f $cfg -l o show config $format pretty-print)" 0 "    parameter x {" --not-- "     parameter x {"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config $format pretty-print)" 0 "   parameter x {" --not-- "    parameter x {"
 
 new "cli check show config $format non-auto"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format config)" 0 "clixon-example:table {" "parameter x {" "array1 \[" "parameter y {"

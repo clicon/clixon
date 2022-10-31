@@ -57,6 +57,8 @@ Expected: End of 2022
 
 Users may have to change how they access the system
 
+* Added `PRETTYPRINT_INDENT` compile-time option controlling indentation level for XML,JSON and TEXT
+  * Default value is `3`
 * NETCONF: Removed `message-id` from hello protocol following RFC 6241
   * See [message-id present on netconf app "hello"](https://github.com/clicon/clixon/issues/369)
   
@@ -64,6 +66,8 @@ Users may have to change how they access the system
 
 Developers may need to change their code
 
+* [Code formatting: Change indentation style to space](https://github.com/clicon/clixon/issues/379)
+  * Applies to all c/h/y/l/sh files and .editorconfig
 * C API changes
   * Added `defaults` parameter to `clicon_rpc_get_pageable_list()`
   * `clicon_rpc_commit()` and `cli_commit`
@@ -75,8 +79,6 @@ Developers may need to change their code
   
 ### Minor features
 
-* [Code formatting: Change indentation style to space](https://github.com/clicon/clixon/issues/379)
-  * Applies to all c/h/y/l/sh files and .editorconfig
 * Added warning if modstate is not present in datastore if `CLICON_XMLDB_MODSTATE` is set.
 
 ### Corrected Bugs
