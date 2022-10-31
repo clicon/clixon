@@ -1239,7 +1239,12 @@ xml2json_cbuf_vec(cbuf      *cb,
     if (xml2json1_cbuf(cb, 
                        xp, 
                        NO_ARRAY,
-                       level+1, pretty,
+#if 1
+                       level,
+#else
+                       level+1,
+#endif
+                       pretty,
                        1, NULL, NULL) < 0)
         goto done;
 

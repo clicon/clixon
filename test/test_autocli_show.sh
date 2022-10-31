@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Autocli show tests
 # Go through all formats and show for all formats
+# Formats: XML, JSON, TEXT, CLI, NETCONF
+# Pretty-print: false, true   XXXX: align spaces
+# API: cli_show_auto_mode(), cli_show_auto(), cli_show_config() XXX
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -83,9 +86,18 @@ quit("Quit"), cli_quit();
 discard("Discard edits (rollback 0)"), discard_changes();
 show("Show a particular state of the system"){
    configuration("Show configuration"){
-      xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", false, false);
-      json("Show configuration as JSON"), cli_show_auto_mode("candidate", "json", false, false);
-      text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", false, false);
+      xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", false, false);{
+         pretty-print, cli_show_auto_mode("candidate", "xml", true, false);
+         config, cli_show_config("candidate", "xml", "/", NULL, false, false);
+      }
+      json("Show configuration as JSON"), cli_show_auto_mode("candidate", "json", false, false);{
+         pretty-print, cli_show_auto_mode("candidate", "json", true, false);
+         config, cli_show_config("candidate", "json", "/", NULL, false, false);
+       }
+      text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", false, false);{
+         pretty-print, cli_show_auto_mode("candidate", "text", true, false);
+         config, cli_show_config("candidate", "text", "/", NULL, false, false);
+      }
       cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", false, false, NULL, "set ");
       netconf("Show configuration as NETCONF"), cli_show_auto_mode("candidate", "netconf", false, false);
    }
@@ -141,6 +153,12 @@ new "cli check show config $format"
 X='<table xmlns="urn:example:clixon"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table><table2 xmlns="urn:example:clixon"/>'
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "^$X$"
 
+new "cli check show config $format pretty-print"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config $format pretty-print)" 0 "      <name>x</name>" --not-- "       <name>x</name>"
+
+new "cli check show config $format non-auto"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config $format config)" 0 "$X"
+
 new "cli check show auto $format table"
 X='<table xmlns="urn:example:clixon"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table>'
 expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 "^$X$"
@@ -164,6 +182,12 @@ new "cli check show config $format"
 X='{"clixon-example:table":{"parameter":\[{"name":"x","value":"1","array1":\["a","b"\]},{"name":"y","value":"2"}\]},"clixon-example:table2":{}}'
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "^$X$"
 
+new "cli check show config $format pretty-print"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config $format pretty-print)" 0 '  "clixon-example:table": {' --not-- '    "clixon-example:table": {'
+
+new "cli check show config $format non-auto"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config $format config)" 0 "$X"
+
 new "cli check show auto $format table"
 X='{"clixon-example:table":{"parameter":\[{"name":"x","value":"1","array1":\["a","b"\]},{"name":"y","value":"2"}\]}}'
 expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 "^$X$"
@@ -185,6 +209,12 @@ format=text
 
 new "cli check show config $format"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "clixon-example:table {" "parameter x {" "array1 \[" "parameter y {"
+
+new "cli check show config $format pretty-print"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config $format pretty-print)" 0 "    parameter x {" --not-- "     parameter x {"
+
+new "cli check show config $format non-auto"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config $format config)" 0 "clixon-example:table {" "parameter x {" "array1 \[" "parameter y {"
 
 new "cli check show auto $format table"
 expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 
