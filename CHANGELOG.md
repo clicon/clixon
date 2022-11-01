@@ -83,6 +83,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: SEGV when using NETCONF get filter xpath and non-existent key
+  * eg `select="/ex:table[ex:non-exist='a']`
 * Fixed: [CLI Show config JSON with multiple top-level elements is broken](https://github.com/clicon/clixon/issues/381)
 * Fixed: [Non-obvious behavior of clixon_snmp after snmpset command when transaction validation returns an error](https://github.com/clicon/clixon/issues/375)
   * Fixed by validating writes on ACTION instead of COMMIT since libnetsnmp seems not to accept commit errors

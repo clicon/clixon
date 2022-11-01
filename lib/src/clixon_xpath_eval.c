@@ -845,10 +845,18 @@ xp_relop(xp_ctx    *xc1,
                 case XO_EQ:
                     if (s1 == NULL && s2 == NULL)
                         xr->xc_bool = 1;
-                    else if (s1 == NULL && strlen(s2) == 0)
-                        xr->xc_bool = 1;
-                    else if (strlen(s1) == 0 && s2 == NULL)
-                        xr->xc_bool = 1;
+                    if (s1 == NULL){
+                        if (strlen(s2) == 0)
+                            xr->xc_bool = 1;
+                        else
+                            xr->xc_bool = 0;
+                    }
+                    else if (s2 == NULL){
+                        if (strlen(s1) == 0)
+                            xr->xc_bool = 1;
+                        else
+                            xr->xc_bool = 0;
+                    }
                     else
                         xr->xc_bool = (strcmp(s1, s2)==0);
                     break;
