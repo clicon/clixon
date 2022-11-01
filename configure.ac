@@ -363,6 +363,7 @@ AC_MSG_RESULT(Clixon yang files are installed in ${YANG_INSTALLDIR})
 # YANG_STANDARD_DIR is where clixon assumes standard IETF are
 # This is NOT installed by Clixon and is not needed for core system
 # However, it is required by the main example and some of the tests
+# You can download them at https://github.com/YangModels/yang
 AC_ARG_WITH(yang-standard-dir,
             [AS_HELP_STRING([--with-yang-standard-dir=DIR],[Directory of standard IETF/IEEE YANG specs (default: $prefix/share/yang/standard)])],
 	    [YANG_STANDARD_DIR="$withval"],

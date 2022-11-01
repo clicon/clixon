@@ -206,6 +206,7 @@ Then access:
    ]
 ```
 Read more in the [restconf](../apps/restconf) docs.
+
 ## What about reference documentation?
 Clixon uses [Doxygen](http://www.doxygen.nl/index.html) for reference documentation.
 You need to install doxygen and graphviz on your system.
@@ -320,6 +321,16 @@ Note that using `CLICON_YANG_MAIN_DIR` Clixon may find several files
 containing the same Yang module. Clixon will prefer the one without a
 revision date if such a file exists. If no file has a revision date,
 Clixon will prefer the newest.
+
+## How do I download standard YANGs?
+
+Some clixon tests rely on standard IETF YANG modules which you need to download. By default, these are in `/usr/local/share/yang/standard`. You can change this location with configure option `--with-yang-standard-dir=DIR`
+
+To download the yang models required for some tests:
+```
+   cd /usr/local/share/yang
+   git clone https://github.com/YangModels/yang
+```
 
 ## How do I enable Yang features?
 

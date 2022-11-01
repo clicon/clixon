@@ -79,6 +79,8 @@ Developers may need to change their code
   
 ### Minor features
 
+* Main example: Removed dependency of external IETF RFCs
+  * See [Can't initiate clixon_backend](https://github.com/clicon/clixon/issues/382)
 * Added warning if modstate is not present in datastore if `CLICON_XMLDB_MODSTATE` is set.
 
 ### Corrected Bugs

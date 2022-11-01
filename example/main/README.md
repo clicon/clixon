@@ -17,10 +17,20 @@
 
 ## Background
 
-The aim of the main clixon example is to illustrate common features
-and for internal testing.  See the simpler [hello world](https://github.com/clicon/clixon-examples/tree/master/hello) if you want to start from the simplest possible example.
+The aim of the main clixon example is to illustrate common
+features. See the simpler [hello
+world](https://github.com/clicon/clixon-examples/tree/master/hello) if
+you want to start from the simplest possible example.
 
 See also other examples in: [clixon-examples](https://github.com/clicon/clixon-examples).
+
+Historically the main example was also used for internal
+testing. However, it proved difficult to have all test features in a
+single example, therefore specific YANGs are encapsulated in the test
+directory instead. Therefore, it may be that some features present in
+the C plugins do not have corresponding YANG support in
+clixon-example.yang. They may instead present in an internal test
+YANG.
 
 ## Content
 
@@ -47,10 +57,16 @@ Before you start,
     make && sudo make install
 ```
 
-Ensure standard IETF YANG files needed for the example are in `/usr/local/share/yang`. If elsewhere, use `./configure --with-yang-standard-dir=DIR`. Example to checkout yang models:
+For some tests, you need to ensure standard IETF YANG files needed for the example are in `/usr/local/share/yang`. But this is not necessary just to start the main example. 
+If elsewhere, use `./configure --with-yang-standard-dir=DIR`. Example to checkout only standard yang models using "sparse checkout":
 ```
-# cd /usr/local/share
-# git clone https://github.com/YangModels/yang
+   cd /usr/local/share/yang
+   git init
+   git remote add -f origin https://github.com/YangModels/yang
+   git config core.sparseCheckout true
+   echo "standard/" >> .git/info/sparse-checkout
+   echo "experimental/" >> .git/info/sparse-checkout
+   git pull origin main
 ```
 
 Start backend:
@@ -82,63 +98,40 @@ There are also many other commands available as examples. View the source file (
 The following example shows how to add an interface in candidate, validate and commit it to running, then look at it (as xml) and finally delete it.
 ```
 clixon_cli -f /usr/local/etc/example.xml 
-cli> set interfaces interface eth1 ?
+cli> set table parameter a ?
   <cr>
-  description           A textual description of the interface.
-  enabled               This leaf contains the configured, desired state of the
-                        interface.
-  ipv4                  Parameters for the IPv4 address family.
-  ipv6                  Parameters for the IPv6 address family.
-  type                  The type of the interface.
-cli> set interfaces interface eth1 type ianaift:ip
-cli> set interfaces interface eth1 enabled true
-cli> set interfaces interface eth1 ipv4 address 1.2.3.4 prefix-length 24
+  value   
+cli> set table parameter a value 42
 cli> validate 
 cli> commit 
 cli> show configuration xml 
-<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
-   <interface>
-      <name>eth1</name>
-      <type>ianaift:ip</type>
-      <enabled>true</enabled>
-      <ip:ipv4 xmlns:ip="urn:ietf:params:xml:ns:yang:ietf-ip">
-         <ip:enabled>true</ip:enabled>
-         <ip:forwarding>false</ip:forwarding>
-         <ip:address>
-            <ip:ip>1.2.3.4</ip:ip>
-            <ip:prefix-length>24</ip:prefix-length>
-         </ip:address>
-      </ip:ipv4>
-   </interface>
-</interfaces>
-cli> delete interfaces interface eth1
+<table xmlns="urn:example:clixon">
+   <parameter>
+      <name>a</name>
+      <value>42</value>
+   </parameter>
+</table>
+cli> delete interfaces interface eth1table parameter a
 cli> commit
 ```
 
 ## Using Netconf
 
-The following example shows how to set data using netconf:
+The following example shows how to set data using netconf (Use `-0` for EOM framing that can be used in shell):
 ```
 sh> clixon_netconf -qf /usr/local/etc/example.xml
 <?xml version="1.0" encoding="UTF-8"?>
-<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>
+<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability></capabilities></hello>]]>]]>
 <rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="0">
    <edit-config>
       <target><candidate/></target>
       <config>
-         <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
-            <interface>
-               <name>eth1</name>
-               <type>ianaift:ip</type>
-               <enabled>true</enabled>
-               <ipv4 xmlns="urn:ietf:params:xml:ns:yang:ietf-ip">
-                  <address>
-                     <ip>1.2.3.4</ip>
-                     <prefix-length>24</prefix-length>
-                  </address>
-               </ipv4>
-            </interface>
-         </interfaces>
+         <table xmlns="urn:example:clixon">
+            <parameter>
+               <name>a</name>
+               <value>42</value>
+            </parameter>
+         </table>
       </config>
    </edit-config>
 </rpc>]]>]]>
@@ -156,12 +149,18 @@ Getting data:
       <source><candidate/></source>
    </get-config>
 </rpc>]]>]]>
-# Reply: <rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="2"><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth1</name><type>ianaift:ip</type><enabled>true</enabled><ip:ipv4 xmlns:ip="urn:ietf:params:xml:ns:yang:ietf-ip"><ip:enabled>true</ip:enabled><ip:forwarding>false</ip:forwarding><ip:address><ip:ip>1.2.3.4</ip:ip><ip:prefix-length>24</ip:prefix-length></ip:address></ip:ipv4></interface></interfaces></data></rpc-reply>]]>]]>
+# Reply: <rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="2"><data><table xmlns="urn:example:clixon"><parameter><name>a</name><value>42</value></parameter></table></data></rpc-reply>]]>]]>
 ```
 
 Examples of a filtered GET statement:
+
 ```
-<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="1"><get-config><source><candidate/></source><filter type="xpath" select="/if:interfaces/if:interface[if:name='eth1']" xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces"/></get-config></rpc>]]>]]>
+<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="1">
+   <get-config>
+      <source><candidate/></source>
+      <filter type="xpath" select="/ex:table/ex:parameter[ex:name='a']" xmlns:ex="urn:example:clixon"/>
+   </get-config>
+</rpc>]]>]]>
 ```
 
 ## Restconf 
@@ -251,7 +250,7 @@ Start the clixon restconf daemon
 ```
 then access using curl or wget:
 ```
-   curl -X GET http://127.0.0.1/restconf/data/ietf-interfaces:interfaces/interface=eth1/type
+   curl -X GET http://127.0.0.1/restconf/data/clixon-example:table/parameter=a/value
 ```
 
 ## Streams
