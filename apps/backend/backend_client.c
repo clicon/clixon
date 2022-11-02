@@ -1388,7 +1388,7 @@ from_client_msg(clicon_handle        h,
         goto reply;
     }
     ce->ce_id = id;
-    if ((ret = xml_yang_validate_rpc(h, x, &xret)) < 0)
+    if ((ret = xml_yang_validate_rpc(h, x, 1, &xret)) < 0)
         goto done;
     if (ret == 0){
         if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)

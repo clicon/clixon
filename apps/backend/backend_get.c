@@ -385,11 +385,11 @@ get_nacm_and_reply(clicon_handle h,
  * @param[in]     h          Clixon handle
  * @param[in]     name       Name of attribute
  * @param[in]     defaultstr Default string which is accepted and sets value to 0
- * @param[in,out] cbret      Output buffer for internal RPC message if invalid
+ * @param[in,out] cbret      Output buffer for internal bad-element RPC message if invalid
  * @param[out]    value      Value
  * @retval       -1          Error
- * @retval        0          Invalid, cbret set
- * @retval        1          OK
+ * @retval        0          Invalid, netconf bad-element error cbret set
+ * @retval        1          OK (or not found)
  */
 static int
 element2value(clicon_handle  h,
@@ -545,6 +545,36 @@ with_defaults(cxobj *xe,
         return retval;
 }
 
+/*! Extract offset and limit from get/list-pagination
+ *
+ * @param[in]  h      Clicon handle 
+ * @param[in]  xe     Request: <rpc><xn></rpc> 
+ * @param[out] offset Number of entries in the working result-set that should be skipped
+ * @param[out] limit  Limits the number of entries returned from the working result-set
+ * @param[out] cbret  Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @retval    -1      Error
+ * @retval     0      Invalid, netconf bad-element error cbret set
+ * @retval     1      OK
+ */
+static int
+list_pagination_hdr(clicon_handle h,
+                    cxobj        *xe,
+                    uint32_t     *offset,
+                    uint32_t     *limit,
+                    cbuf         *cbret)
+{
+    int retval = -1;
+    
+    /* offset */
+    if ((retval = element2value(h, xe, "offset", "none", cbret, offset)) < 0)
+        goto done;
+    /* limit */
+    if (retval && (retval = element2value(h, xe, "limit", "unbounded", cbret, limit)) < 0)
+        goto done;
+ done:
+    return retval;
+}
+
 /*! Specialized get for list-pagination
  *
  * It is specialized enough to have its own function. Specifically, extra attributes as well
@@ -600,6 +630,10 @@ get_list_pagination(clicon_handle        h,
     char           *where = NULL;
 #endif
 
+    if (cbret == NULL){
+        clicon_err(OE_PLUGIN, EINVAL, "cbret is NULL");
+        goto done;
+    }
     /* Check if list/leaf-list */
     if (yang_path_arg(yspec, xpath?xpath:"/", &ylist) < 0)
         goto done;
@@ -635,11 +669,7 @@ get_list_pagination(clicon_handle        h,
             goto ok;
         }
     }
-    /* offset */
-    if ((ret = element2value(h, xe, "offset", "none", cbret, &offset)) < 0)
-        goto done;
-    /* limit */
-    if (ret && (ret = element2value(h, xe, "limit", "unbounded", cbret, &limit)) < 0)
+    if ((ret = list_pagination_hdr(h, xe, &offset, &limit, cbret)) < 0)
         goto done;
 #ifdef NOTYET
     /* direction */
@@ -662,6 +692,8 @@ get_list_pagination(clicon_handle        h,
     if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
         where = xml_body(x);
 #endif
+    if (ret == 0)
+        goto ok;
     /* Read config */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
@@ -860,6 +892,8 @@ get_common(clicon_handle        h,
     cxobj         **xvec = NULL;
     size_t          xlen;
     cxobj          *xfind;
+    uint32_t        offset = 0;
+    uint32_t        limit = 0;
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);
@@ -900,8 +934,21 @@ get_common(clicon_handle        h,
         }
     }
     /* Check if list pagination */
-    if ((xfind = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL)
-        list_pagination = 1;
+    if ((xfind = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL){
+        /* with non-presence list-pagination, use ad-hoc algorithm to determine
+         * whether list-pagination is enabled:
+         * offset!=0 && limit!=unbounded
+         */
+        /* offset */
+        if ((ret = element2value(h, xfind, "offset", "none", cbret, &offset)) < 0)
+            goto done;
+        /* limit */
+        if (ret && (ret = element2value(h, xfind, "limit", "unbounded", cbret, &limit)) < 0)
+            goto done;
+        if (ret == 0)
+            goto ok;
+        list_pagination = (offset != 0 || limit != 0);
+    }
     /* Sanity check for list pagination: path must be a list/leaf-list, if it is,
      * check config/state
      */

@@ -69,6 +69,7 @@ Developers may need to change their code
 * [Code formatting: Change indentation style to space](https://github.com/clicon/clixon/issues/379)
   * Applies to all c/h/y/l/sh files and .editorconfig
 * C API changes
+  * Added `expanddefault` parameter to `xml_yang_validate_rpc()`
   * Added `defaults` parameter to `clicon_rpc_get_pageable_list()`
   * `clicon_rpc_commit()` and `cli_commit`
     * Added `confirmed`, `cancel`, `timeout`, `persist-id`, and `persist-id-val` parameters to
@@ -79,6 +80,7 @@ Developers may need to change their code
   
 ### Minor features
 
+* List-pagination: Adhere to ietf-draft: Removed list-pagination "presence"
 * Main example: Removed dependency of external IETF RFCs
   * See [Can't initiate clixon_backend](https://github.com/clicon/clixon/issues/382)
 * Added warning if modstate is not present in datastore if `CLICON_XMLDB_MODSTATE` is set.

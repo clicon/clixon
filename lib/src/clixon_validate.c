@@ -324,6 +324,7 @@ validate_identityref(cxobj     *xt,
 /*! Validate an RPC node
  * @param[in]  h     Clicon handle
  * @param[in]  xrpc  XML node to be validated
+ * @param[in]  expanddefault 
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed
@@ -366,6 +367,7 @@ validate_identityref(cxobj     *xt,
 int
 xml_yang_validate_rpc(clicon_handle h,
                       cxobj        *xrpc,
+                      int           expanddefault,
                       cxobj       **xret)
 {
     int        retval = -1;
@@ -403,7 +405,7 @@ xml_yang_validate_rpc(clicon_handle h,
             goto done; /* error or validation fail */
         if (ret == 0)
             goto fail;
-        if (xml_default_recurse(xn, 0) < 0)
+        if (expanddefault && xml_default_recurse(xn, 0) < 0)
             goto done;
     }
     // ok: /* pass validation */

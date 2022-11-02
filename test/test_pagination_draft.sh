@@ -379,6 +379,9 @@ fi
 new "wait restconf"
 wait_restconf
 
+new "Baseline: no pagination"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"http://example.com/ns/example-social\"/></get></rpc>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"http://example.com/ns/example-social\"><member><member-id>alice</member-id><favorite"
+
 new "A.3.1.1. limit=1"
 testlimit 0 1 5 "17"
 

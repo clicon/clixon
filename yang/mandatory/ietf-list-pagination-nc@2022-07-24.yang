@@ -1,35 +1,35 @@
 module ietf-list-pagination-nc {
-    yang-version 1.1;
-    namespace "urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc";
-    prefix lpgnc;
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc";
+  prefix lpgnc;
 
-    import ietf-netconf {
-        prefix nc;
-        reference
-            "RFC 6241: Network Configuration Protocol (NETCONF)";
-    }
+  import ietf-netconf {
+    prefix nc;
+    reference
+      "RFC 6241: Network Configuration Protocol (NETCONF)";
+  }
 
-    import ietf-netconf-nmda {
-        prefix ncds;
-        reference
-            "RFC 8526: NETCONF Extensions to Support the
+  import ietf-netconf-nmda {
+    prefix ncds;
+    reference
+      "RFC 8526: NETCONF Extensions to Support the
                  Network Management Datastore Architecture";
-    }
+  }
 
-    import ietf-list-pagination {
-        prefix lp;
-        reference
-            "RFC XXXX: List Pagination for YANG-driven Protocols";
-    }
+  import ietf-list-pagination {
+    prefix lp;
+    reference
+      "RFC XXXX: List Pagination for YANG-driven Protocols";
+  }
 
-    organization
-        "IETF NETCONF (Network Configuration) Working Group";
+  organization
+    "IETF NETCONF (Network Configuration) Working Group";
 
-    contact
-        "WG Web:   https://datatracker.ietf.org/wg/netconf
+  contact
+      "WG Web:   https://datatracker.ietf.org/wg/netconf
        WG List:  NETCONF WG list <mailto:netconf@ietf.org>";
-    description
-        "This module augments the <get>, <get-config>, and <get-data>
+  description
+    "This module augments the <get>, <get-config>, and <get-data>
      'rpc' statements to support list pagination.
 
      Copyright (c) 2021 IETF Trust and the persons identified
@@ -53,48 +53,47 @@ module ietf-list-pagination-nc {
      (RFC 8174) when, and only when, they appear in all
      capitals, as shown here.";
 
-    revision 2022-07-24 {
-        description
-            "Initial revision.";
-        reference
-            "RFC XXXX: NETCONF Extensions to Support List Pagination";
-    }
+  revision 2022-07-24 {
+    description
+      "Initial revision.";
+    reference
+      "RFC XXXX: NETCONF Extensions to Support List Pagination";
+  }
 
-    grouping pagination-parameters {
-        description "A grouping for list pagination parameters.";
-        container list-pagination {
-            description "List pagination parameters.";
-            presence "Flag that request contains pagination parameters";
-            uses lp:where-param-grouping;
-            uses lp:sort-by-param-grouping;
-            uses lp:direction-param-grouping;
-            uses lp:offset-param-grouping;
-            uses lp:limit-param-grouping;
-            uses lp:sublist-limit-param-grouping;
-        }
+  grouping pagination-parameters {
+    description "A grouping for list pagination parameters.";
+    container list-pagination {
+      description "List pagination parameters.";
+      uses lp:where-param-grouping;
+      uses lp:sort-by-param-grouping;
+      uses lp:direction-param-grouping;
+      uses lp:offset-param-grouping;
+      uses lp:limit-param-grouping;
+      uses lp:sublist-limit-param-grouping;
     }
+  }
 
-    augment "/nc:get/nc:input" {
-        description
-            "Allow the 'get' operation to use content filter
+  augment "/nc:get/nc:input" {
+    description
+      "Allow the 'get' operation to use content filter
        parameter for specifying the YANG list or leaf-list
        that is to be retrieved";
-        uses pagination-parameters;
-    }
+    uses pagination-parameters;
+  }
 
-    augment "/nc:get-config/nc:input" {
-        description
-            "Allow the 'get-config' operation to use content filter
+  augment "/nc:get-config/nc:input" {
+    description
+      "Allow the 'get-config' operation to use content filter
        parameter for specifying the YANG list or leaf-list
        that is to be retrieved";
-        uses pagination-parameters;
-    }
+    uses pagination-parameters;
+  }
 
-    augment "/ncds:get-data/ncds:input" {
-        description
-            "Allow the 'get-data' operation to use content filter
+  augment "/ncds:get-data/ncds:input" {
+    description
+      "Allow the 'get-data' operation to use content filter
        parameter for specifying the YANG list or leaf-list
        that is to be retrieved";
-        uses pagination-parameters;
-    }
+    uses pagination-parameters;
+  }
 }

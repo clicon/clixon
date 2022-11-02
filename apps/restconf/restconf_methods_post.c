@@ -806,7 +806,7 @@ api_operations_post(clicon_handle h,
             goto done;
         goto ok;
     }
-    if ((ret = xml_yang_validate_rpc(h, xtop, &xerr)) < 0)
+    if ((ret = xml_yang_validate_rpc(h, xtop, 0, &xerr)) < 0)
         goto done;
     if (ret == 0){
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)

@@ -223,7 +223,7 @@ netconf_rpc_message(clicon_handle h,
     if ((ret = xml_bind_yang_rpc(xrpc, yspec, &xret)) < 0)
         goto done;
     if (ret > 0 &&
-        (ret = xml_yang_validate_rpc(h, xrpc, &xret)) < 0) 
+        (ret = xml_yang_validate_rpc(h, xrpc, 0, &xret)) < 0) 
         goto done;
     if (ret == 0){
         if (netconf_add_request_attr(xrpc, xret) < 0)
