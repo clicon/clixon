@@ -351,10 +351,11 @@ api_http_data_file(clicon_handle h,
         clicon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
-    if ((sz = fread(buf, fsize, 1, f)) < 0){
+    if ((ret = fread(buf, fsize, 1, f)) < 0){
         clicon_err(OE_UNIX, errno, "fread");
         goto done;
     }
+    sz = (size_t)ret;
     if (sz != 1){
         clicon_debug(1, "%s Error fread(%s) sz:%zu", __FUNCTION__, filename, sz);
         if (api_http_data_err(h, req, 500) < 0) /* Internal error? */

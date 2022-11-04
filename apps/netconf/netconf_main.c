@@ -533,9 +533,11 @@ netconf_input_cb(int   s,
             goto done;
     if (clicon_option_exists(h, NETCONF_FRAME_SIZE) == 0)
         frame_size = 0;
-    else
-        if ((frame_size = clicon_option_int(h, NETCONF_FRAME_SIZE)) < 0)
+    else{
+        if ((ret = clicon_option_int(h, NETCONF_FRAME_SIZE)) < 0)
             goto done;
+        frame_size = (size_t)ret;
+    }
     if ((ptr = clicon_hash_value(cdat, NETCONF_HASH_BUF, &cdatlen)) != NULL){
         if (cdatlen != sizeof(cb)){
             clicon_err(OE_XML, errno, "size mismatch %lu %lu",

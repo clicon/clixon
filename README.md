@@ -19,4 +19,4 @@ Clixon interaction is best done posting issues, pull requests, or joining the
 [slack channel](https://clixondev.slack.com).
 [Slack invite](https://join.slack.com/t/clixondev/shared_invite/zt-1fz8at20n-KGNmKD7KH2j2jIFGU_EhMQ)(updated 15/9 2022, valid 30d)
 
-Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/)
+Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/) and [Akamai Technologies, Inc.](https://www.akamai.com).

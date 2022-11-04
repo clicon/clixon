@@ -457,7 +457,7 @@ static const struct ycard _yclist[] = {
 };
 
 /* Search matrix for lookups */
-static const struct ycard *_yc_search[Y_SPEC][Y_SPEC] = {0,};
+static const struct ycard *_yc_search[Y_SPEC][Y_SPEC] = {{0,},{0,}};
 
 /* Set to 1 if exists in search 
  * Some yang statements are not explicitly given cardinalities in RFC7950, although they are

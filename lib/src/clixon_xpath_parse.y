@@ -330,8 +330,9 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
     xpath_tree                *xtret = NULL;
     cbuf                      *cb = NULL;
     enum clixon_xpath_function fn;
+    int                        ret;
 
-    if ((fn = xp_fnname_str2int(name)) < 0){
+    if ((ret = xp_fnname_str2int(name)) < 0){
         if ((cb = cbuf_new()) == NULL){
             clicon_err(OE_XML, errno, "cbuf_new");
             goto done;
@@ -340,6 +341,7 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
         clixon_xpath_parseerror(xpy, cbuf_get(cb));
         goto done;
     }
+    fn = (enum clixon_xpath_function)ret;
     switch (fn){
     case XPATHFN_COMMENT:  /* Group of not implemented node functions */
     case XPATHFN_PROCESSING_INSTRUCTIONS:

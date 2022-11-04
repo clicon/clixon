@@ -80,13 +80,15 @@ Developers may need to change their code
   
 ### Minor features
 
-* List-pagination: Adhere to ietf-draft: Removed list-pagination "presence"
+* Added fuzz code for xpath
+* List-pagination: Follow ietf-draft 100%: Removed list-pagination "presence"
 * Main example: Removed dependency of external IETF RFCs
   * See [Can't initiate clixon_backend](https://github.com/clicon/clixon/issues/382)
 * Added warning if modstate is not present in datastore if `CLICON_XMLDB_MODSTATE` is set.
 
 ### Corrected Bugs
 
+* Fixed several xpath crashes discovered by unit xpath fuzzing
 * Fixed: SEGV when using NETCONF get filter xpath and non-existent key
   * eg `select="/ex:table[ex:non-exist='a']`
 * Fixed: [CLI Show config JSON with multiple top-level elements is broken](https://github.com/clicon/clixon/issues/381)

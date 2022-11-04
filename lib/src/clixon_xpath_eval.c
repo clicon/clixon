@@ -433,7 +433,10 @@ xp_eval_step(xp_ctx     *xc0,
         *xrp = xc;
         xc = NULL;
     }
-    assert(*xrp);
+    if (*xrp == NULL){
+        clicon_err(OE_XML, 0, "Internal error xrp is NULL");
+        goto done;
+    }
     retval = 0;
  done:
     if (xc)
@@ -488,9 +491,11 @@ xp_eval_predicate(xp_ctx     *xc,
         if ((xr0 = ctx_dup(xc)) == NULL)
             goto done;
     }
-    if (xs->xs_c1){ /* Second child */
-        /* Loop over each node in the nodeset */
-        assert (xr0->xc_type == XT_NODESET);
+    // alt set nodeset to NULL
+    if (xs->xs_c1 && xr0->xc_type == XT_NODESET){ /* Second child */
+        /* Loop over each node in the nodeset 
+         * XXX: alt to check xr0 is nodeset: set new var nodeset to NULL
+         */
         if ((xr1 = malloc(sizeof(*xr1))) == NULL){
             clicon_err(OE_UNIX, errno, "malloc");
             goto done;
@@ -707,6 +712,7 @@ xp_relop(xp_ctx    *xc1,
     char   *s2;
     int     reverse = 0;
     double  n1, n2;
+    char   *xb;
     
     if (xc1 == NULL || xc2 == NULL){
         clicon_err(OE_UNIX, EINVAL, "xc1 or xc2 NULL");
@@ -725,12 +731,15 @@ xp_relop(xp_ctx    *xc1,
             /* If both are node-sets, then it is true iff the string value of one 
                node in the first node-set and one in the second node-set is true */
             for (i=0; i<xc1->xc_size; i++){
-                if ((s1 = xml_body(xc1->xc_nodeset[i])) == NULL){
+                /* node in nodeset */
+                if ((x = xc1->xc_nodeset[i]) == NULL ||
+                    (s1 = xml_body(x)) == NULL){
                     xr->xc_bool = 0;
                     goto ok;
                 }
                 for (j=0; j<xc2->xc_size; j++){
-                    if ((s2 = xml_body(xc2->xc_nodeset[j])) == NULL){
+                    if ((x = xc2->xc_nodeset[j]) == NULL ||
+                        (s2 = xml_body(x)) == NULL){
                         xr->xc_bool = 0;
                         goto ok;
                     }
@@ -839,8 +848,11 @@ xp_relop(xp_ctx    *xc1,
                the other string is true.*/
             s2 = xc2->xc_string;
             for (i=0; i<xc1->xc_size; i++){
-                x = xc1->xc_nodeset[i]; /* node in nodeset */
-                s1 = xml_body(x);
+                /* node in nodeset */
+                if ((x = xc1->xc_nodeset[i]) == NULL)
+                    s1 = NULL;
+                else
+                    s1 = xml_body(x);
                 switch(op){
                 case XO_EQ:
                     if (s1 == NULL && s2 == NULL)
@@ -877,8 +889,10 @@ xp_relop(xp_ctx    *xc1,
             break;
         case XT_NUMBER:
             for (i=0; i<xc1->xc_size; i++){
-                x = xc1->xc_nodeset[i]; /* node in nodeset */
-                if (sscanf(xml_body(x), "%lf", &n1) != 1)
+                /* node in nodeset */
+                if ((x = xc1->xc_nodeset[i]) == NULL ||
+                    (xb = xml_body(x)) == NULL ||
+                    sscanf(xb, "%lf", &n1) != 1)
                     n1 = NAN;
                 n2 = xc2->xc_number;
                 switch(op){

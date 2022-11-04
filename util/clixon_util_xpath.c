@@ -367,8 +367,16 @@ main(int    argc,
     }
     else
         x = x0;
+#if 0 // filter syntax errors
+    {
+        xpath_tree *xptree = NULL;
+        if (xpath_parse(xpath, &xptree) < 0)
+            goto ok; // Parse errors returns OK
+    }
+#endif
     if (xpath_vec_ctx(x, nsc, xpath, 0, &xc) < 0)
         return -1;
+
     /* Check inverse, eg XML back to xpath and compare with original, only if nodes */
     if (xpath_inverse && xc->xc_type == XT_NODESET){
         cxobj *xi;

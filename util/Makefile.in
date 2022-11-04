@@ -83,9 +83,9 @@ endif
 
 # For dependency. A little strange that we rely on it being built in the src dir
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
-LIBDEPS	    = $(top_srcdir)/apps/backend/$(CLIXON_BACKEND_LIB)
-LIBDEPS	   += $(top_srcdir)/lib/src/$(CLIXON_LIB)
 
+LIBDEPS	   = $(top_srcdir)/lib/src/$(CLIXON_LIB)
+BELIBDEPS  = $(top_srcdir)/apps/backend/$(CLIXON_BACKEND_LIB)
 
 # Utilities, unit testings. Not installed.
 APPSRC    = clixon_util_xml.c
@@ -155,11 +155,11 @@ clixon_util_regexp: clixon_util_regexp.c $(LIBDEPS)
 clixon_util_socket: clixon_util_socket.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ $(LIBS) -o $@
 
-clixon_util_validate: clixon_util_validate.c $(LIBDEPS) 
-	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ -l clixon_backend -o $@ $(LIBS)
+clixon_util_validate: clixon_util_validate.c $(LIBDEPS) $(BELIBDEPS) 
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ -l clixon_backend -o $@ $(LIBS) $(BELIBS)
 
-clixon_util_dispatcher: clixon_util_dispatcher.c $(LIBDEPS) 
-	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ -l clixon_backend -o $@ $(LIBS)
+clixon_util_dispatcher: clixon_util_dispatcher.c $(LIBDEPS) $(BELIBDEPS) 
+	$(CC) $(INCLUDES) $(CPPFLAGS) @CFLAGS@ $(LDFLAGS) $^ -l clixon_backend -o $@ $(LIBS) $(BELIBS)
 
 ifdef with_restconf
 clixon_util_stream: clixon_util_stream.c $(LIBDEPS)

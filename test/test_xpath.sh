@@ -120,7 +120,6 @@ cat <<EOF > $xmlfn
 </root>
 EOF
 
-
 new "xpath not(aaa)"
 expectpart "$($clixon_util_xpath -D $DBG -f $xml -p "not(aaa)")" 0 "bool:false"
 
@@ -169,6 +168,9 @@ expectpart "$($clixon_util_xpath -D $DBG -f $xml -p //bbb[0])" 0 "^nodeset:0:<bb
 
 new "xpath //bbb[ccc=99]"
 expectpart "$($clixon_util_xpath -D $DBG -f $xml -p //bbb[ccc=99])" 0 "^nodeset:0:<bbb x=\"bye\"><ccc>99</ccc></bbb>$"
+
+new "Negative: xpath [x=] on a variable that has no body"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml -p "/aaa[bbb='a']")" 0 "nodeset:"
 
 new "xpath ../connection-type = 'responder-only'"
 expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "../connection-type='responder-only'" -i /aaa/bbb/here)" 0 "^bool:true$"
@@ -322,6 +324,72 @@ expectpart "$($clixon_util_xpath -D $DBG -f $xmlfn -p "root/count/node[99=ancest
 
 new "xpath functions as ncname: functioname:count"
 expectpart "$($clixon_util_xpath -D $DBG -f $xmlfn -p "root/node/ancestor[73=count]")" 0 "<ancestor><count>73</count></ancestor>"
+
+# Negative tests from fuzz crashes
+cat <<EOF > $dir/1.xml
+<table xmlns="urn:example:clixon">
+   <parameter>
+      <name>x</name>
+      <value>42</value>
+   </parameter>
+</table>
+EOF
+
+cat <<EOF > $dir/1.xpath
+/ex:table=ex*paramet
+EOF
+
+new "negative xpath 1"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y /usr/local/share/clixon/clixon-example@${CLIXON_EXAMPLE_REV}.yang  -Y /usr/local/share/clixon < $dir/1.xpath)" 0 "bool:false"
+
+cat <<EOF > $dir/1.xpath
+ter='x'/ex:table[exmeter='x']
+EOF
+
+new "negative xpath 2"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y /usr/local/share/clixon/clixon-example@${CLIXON_EXAMPLE_REV}.yang  -Y /usr/local/share/clixon < $dir/1.xpath)" 0 "bool:false"
+
+cat <<EOF > $dir/1.xpath
+/ex:table<ex*ptramble
+EOF
+
+new "negative xpath 3"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y /usr/local/share/clixon/clixon-example@${CLIXON_EXAMPLE_REV}.yang  -Y /usr/local/share/clixon < $dir/1.xpath)" 0 "bool:false"
+
+cat <<EOF > $dir/1.xpath
+7/ex:table['x']
+EOF
+
+new "negative xpath 4"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y /usr/local/share/clixon/clixon-example@${CLIXON_EXAMPLE_REV}.yang  -Y /usr/local/share/clixon < $dir/1.xpath)" 0 "number:7"
+
+cat <<EOF > $dir/1.xpath
+/>meter*//ter
+EOF
+
+new "negative xpath 5"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y /usr/local/share/clixon/clixon-example@${CLIXON_EXAMPLE_REV}.yang  -Y /usr/local/share/clixon < $dir/1.xpath)" 0 "bool:false"
+
+cat <<EOF > $dir/1.xpath
+7=/ ter
+EOF
+
+new "negative xpath 6"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y /usr/local/share/clixon/clixon-example@${CLIXON_EXAMPLE_REV}.yang  -Y /usr/local/share/clixon < $dir/1.xpath)" 0 "bool:false"
+
+cat <<EOF > $dir/1.xpath
+/=7 ter
+EOF
+
+new "negative xpath 7"
+#expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y /usr/local/share/clixon/clixon-example@${CLIXON_EXAMPLE_REV}.yang  -Y /usr/local/share/clixon < $dir/1.xpath)" 0 "bool:false"
+
+cat <<EOF > $dir/1.xpath
+*<-9****
+EOF
+
+new "negative xpath 8"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y /usr/local/share/clixon/clixon-example@${CLIXON_EXAMPLE_REV}.yang  -Y /usr/local/share/clixon < $dir/1.xpath)" 0 "bool:false"
 
 rm -rf $dir
 
