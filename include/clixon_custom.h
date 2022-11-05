@@ -55,8 +55,10 @@
  * needs to generate a netconf statement with correct xmlns binding.
  * The easy way to do this is to always generate all prefix/namespace bindings 
  * on the top-level for the modules involved in the netconf operation.
+ * Update 2022-11: seems most cornercases are covered and this is now disabled.
+ * I am sure there are remaining cases but undef this for now and close #90
  */
-#define IDENTITYREF_KLUDGE
+#undef IDENTITYREF_KLUDGE
 
 /*! Optimize special list key searches in XPATH finds
  * Identify xpaths that search for exactly a list key, eg: "y[k='3']" and then call

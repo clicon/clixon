@@ -275,9 +275,7 @@ validate_identityref(cxobj     *xt,
     if (prefix == NULL)
         ymod = ys_module(ys);
     else{ /* from prefix to name */
-#if 1 /* IDENTITYREF_KLUDGE  */
         ymod = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
-#endif
     }
     if (ymod == NULL){
         cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d", 

@@ -267,9 +267,7 @@ derived_from_one(char  *baseidentity,
     if (prefix == NULL)
         ymod = ys_module(yleaf);
     else{ /* from prefix to name */
-#if 1 /* IDENTITYREF_KLUDGE  */
         ymod = yang_find_module_by_prefix_yspec(ys_spec(yleaf), prefix);
-#endif
     }
     if (ymod == NULL)
         goto nomatch;

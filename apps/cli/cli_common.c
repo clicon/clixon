@@ -572,7 +572,7 @@ cli_start_shell(clicon_handle h,
     char           bcmd[128];
     cg_var        *cv1 = cvec_i(vars, 1);
     sigset_t       oldsigset;
-    struct sigaction oldsigaction[32] = {0,};
+    struct sigaction oldsigaction[32] = {{{0,},},};
     
     if (cvec_len(argv) > 1){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: [<shell>]",
