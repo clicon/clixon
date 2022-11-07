@@ -127,17 +127,6 @@
  */
 #undef LIST_PAGINATION_REMAINING
 
-/*! XML CDATA encoding in payload is stripped when translating to JSON
- * Example: XML: "<s><![CDATA[  z > x  & x < y ]]></s>" is translated to
- * JSON: {"s":"  z > x  & x < y "}
- * If not set:
- * JSON: {"s":"<![CDATA[  z > x  & x < y ]]>"}`
- * Clixon stripped CDATA in 5.3 and earlier versions.
- * To keep this backward-compatible enable this option
- * Consider removing this option after 5.4
- */
-#undef JSON_CDATA_STRIP
-
 /*! 
  * RFC 7950 generally does not specify an XML/JSON encoding order of sub-elements of list or
  * containers. See sections 7.5.7 and 7.8.5
