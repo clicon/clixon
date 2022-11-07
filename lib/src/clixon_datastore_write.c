@@ -163,7 +163,6 @@ check_body_namespace(cxobj     *x0,
     cxobj     *x;
     int        isroot;
     cbuf      *cberr = NULL;
-    int        ret;
 
     /* XXX: need to identify root better than hiereustics and strcmp,... */
     isroot = xml_parent(x0p)==NULL &&
@@ -221,6 +220,7 @@ bad-attribue?
 #endif
     else{ /* Namespace does not exist in x0: error */
 #ifdef IDENTITYREF_KLUDGE
+        int ret;
         if (ns1 == NULL){
             if ((ret = yang_find_namespace_by_prefix(y, prefix, &ns0)) < 0)
                 goto done;

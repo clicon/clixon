@@ -347,17 +347,11 @@ json2xml_decode_identityref(cxobj     *x,
                          __FUNCTION__, prefix, body, ns);
             if (!xml_nsctx_get_prefix(nsc, ns, &prefix2)){
                 /* (no)  insert a xmlns:<prefix> statement
-                 * Get yang prefix from import statement of my mod */
-                if (yang_find_prefix_by_namespace(y, ns, &prefix2) == 0){
-#ifndef IDENTITYREF_KLUDGE
-                    /* Just get the prefix from the module's own namespace */
-                    if (xerr && netconf_unknown_namespace_xml(xerr, "application",
-                                                      ns,
-                                                      "No local prefix corresponding to namespace") < 0)
-                        goto done;
-                    goto fail;
-#endif
-                }
+                 * Get yang prefix from import statement of my mod 
+                 * I am not sure this is correct
+                 */
+                if (yang_find_prefix_by_namespace(y, ns, &prefix2) < 0)
+                    goto done;
                 /* if prefix2 is NULL here, we get the canonical prefix */
                 if (prefix2 == NULL)
                     prefix2 = yang_find_myprefix(ymod);

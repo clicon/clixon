@@ -280,7 +280,7 @@ new "cli validate"
 expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 0 "^$"
 
 new "Netconf set acl-type"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><acls xmlns=\"urn:example:my-crypto\"><acl><name>x</name><type>mc:ipv4-acl-type</type></acl></acls></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><acls xmlns=\"urn:example:my-crypto\"><acl><name>x</name><type xmlns:mc=\"urn:example:my-crypto\">mc:ipv4-acl-type</type></acl></acls></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf validate "
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
