@@ -80,6 +80,8 @@ Developers may need to change their code
   
 ### Minor features
 
+* Removed `YANG_ORDERING_WHEN_LAST` compile-time option (obsolete since 5.4)
+  * See https://github.com/clicon/clixon/issues/287
 * Removed `JSON_CDATA_STRIP` compile-time option (obsolete since 5.4)
 * Added fuzz code for xpath
 * List-pagination: Follow ietf-draft 100%: Removed list-pagination "presence"

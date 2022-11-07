@@ -127,17 +127,6 @@
  */
 #undef LIST_PAGINATION_REMAINING
 
-/*! 
- * RFC 7950 generally does not specify an XML/JSON encoding order of sub-elements of list or
- * containers. See sections 7.5.7 and 7.8.5
- * There are some exceptions, eg rpc/action input/output or list key elements
- * Clixon by default encodes them in yang order.
- * Set this option if you want sub-elements with WHEN sub-statements last
- * See https://github.com/clicon/clixon/issues/287
- * Consider enabling this option permanently after 5.4 
- */
-#define YANG_ORDERING_WHEN_LAST
-
 /*! Use Ancestor config cache 
  * The cache uses two yang stmt flag bits. One to say it is active, the second its value
  */

@@ -3673,7 +3673,6 @@ yang_extension_value(yang_stmt *ys,
     return retval;
 }
 
-#ifdef YANG_ORDERING_WHEN_LAST
 /* Sort substatements with when:s last */
 static int
 yang_sort_subelements_fn(const void* arg1,
@@ -3694,7 +3693,6 @@ yang_sort_subelements_fn(const void* arg1,
         return -1;
     else return ys1->_ys_vector_i - ys2->_ys_vector_i;
 }
-#endif
 
 /*! Experimental code for sorting YANG children
  *
@@ -3707,19 +3705,15 @@ yang_sort_subelements_fn(const void* arg1,
 int
 yang_sort_subelements(yang_stmt *ys)
 {
-    int retval = -1;
+    int        retval = -1;
+    yang_stmt *yc = NULL;
 
-#ifdef YANG_ORDERING_WHEN_LAST
     if ((yang_keyword_get(ys) == Y_CONTAINER ||
          yang_keyword_get(ys) == Y_LIST)){
-        yang_stmt *yc = NULL;
-
         /* This enumerates _ys_vector_i in ys->ys_stmt vector */
         while ((yc = yn_each(ys, yc)) != NULL) ;
         qsort(ys->ys_stmt, ys->ys_len, sizeof(ys), yang_sort_subelements_fn);
     }
-#endif
-
     retval = 0;
     // done:
     return retval;
