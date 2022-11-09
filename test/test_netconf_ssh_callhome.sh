@@ -31,8 +31,18 @@ keydir=$dir/keydir
 test -d $keydir || mkdir $keydir
 chmod 700 $keydir
 key=$keydir/mykey
-# XXX cant get it to work with this file under tmp dir so have to place it in homedir
-authfile=$HOME/.ssh/clixon_authorized_keys_removeme 
+
+# Cant get it to work with this file under tmp dir so have to place it in homedir
+if [ ! -d $HOME/.ssh ]; then
+    mkdir $HOME/.ssh
+    chmod 700 $HOME/.ssh
+fi
+authfile=$HOME/.ssh/clixon_authorized_keys_removeme
+
+# Not created in docker ubuntu-22.04
+if [ ! -d /run/sshd ]; then
+    mkdir /run/sshd
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

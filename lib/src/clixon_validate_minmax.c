@@ -82,7 +82,7 @@
 /*! New element last in list, check if already exists if sp return -1
  * @param[in]  vec   Vector of existing entries (new is last)
  * @param[in]  i1    The new entry is placed at vec[i1]
- * @param[in]  vlen  Lenght of entry
+ * @param[in]  vlen  Length of entry
  * @param[in]  sorted Sorted by system, ie sorted by key, otherwise no assumption
  * @retval     0     OK, entry is unique
  * @retval    -1     Duplicate detected

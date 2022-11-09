@@ -642,7 +642,6 @@ candidate_validate(clicon_handle h,
  * do something more drastic?
  * @param[in]  h          Clicon handle
  * @param[in]  xe         Request: <rpc><xn></rpc>  (or NULL)
- * @param[in]  session_id Client session id, only if xe
  * @param[in]  db         A candidate database, not necessarily "candidate"
  * @param[out] cbret      Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @retval    -1          Error - or validation failed 

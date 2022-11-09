@@ -77,6 +77,7 @@ Developers may need to change their code
     * Added three-value return.
     * Code need to be changed from: checking for `<0` to `<1` to keep same semantics
   * Added `skiptop` parameter to `xml2json_vec()`
+  * Added `xe` argument to `candidate_commit` for confirmed commit extra parameters
   
 ### Minor features
 
