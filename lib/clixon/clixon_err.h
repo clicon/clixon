@@ -101,7 +101,7 @@ extern char clicon_err_reason[ERR_STRLEN];
 /*
  * Macros
  */
-#define clicon_err(e,s,_fmt, args...)  clicon_err_fn(__FUNCTION__, __LINE__, (e), (s), _fmt , ##args)
+#define clicon_err(e,s,_fmt, args...) clicon_err_fn(__FUNCTION__, __LINE__, (e), (s), _fmt , ##args)
 
 /*
  * Prototypes

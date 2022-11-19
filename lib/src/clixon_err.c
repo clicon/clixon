@@ -97,8 +97,8 @@ static clixon_err_cats *_err_cat_list = NULL;
 /*
  * Variables
  */
-int  clicon_errno  = 0;    /* See enum clicon_err XXX: hide this and change to err_category */
-int  clicon_suberrno  = 0; /* Corresponds to errno.h XXX: change to errno */
+int  clicon_errno         = 0; /* See enum clicon_err XXX: hide this and change to err_category */
+int  clicon_suberrno      = 0; /* Corresponds to errno.h XXX: change to errno */
 char clicon_err_reason[ERR_STRLEN] = {0, };
 
 /*
@@ -155,6 +155,10 @@ clicon_err_reset(void)
 }
 
 /*! Find error category struct given name
+ *
+ * @param[in] category Error category
+ * @retval    cec      error category callback structs
+ * @retval    NULL     Not found
  */
 static struct clixon_err_cats *
 find_category(int category)
@@ -181,6 +185,13 @@ find_category(int category)
  * - Logs to syslog with LOG_ERR
  * - Set global error variable name clicon_errno
  * - Set global reason string clicon_err_reason
+ * Typically a call to clicon_err() is followed by a return -1 (or NULL) that signals 
+ * a fatal error that fails early and loud.
+ * However there are some cases where such an error does not cause an exit. This includes
+ * CLI operations of callbacks and expand functions. The reason is that user-defined errors
+ * should just signal an error and not terminate. To override this one can set a suberr to 
+ * ESHUTDOWN.
+ *
  * @note: err direction (syslog and/or stderr) controlled by clicon_log_init()
  *
  * @param[in]    fn       Inline function name (when called from clicon_err() macro)
@@ -227,7 +238,6 @@ clicon_err_fn(const char *fn,
     }
     va_end(args);
     strncpy(clicon_err_reason, msg, ERR_STRLEN-1);
-
     /* Check category callbacks as defined in clixon_err_cat_reg */
     if ((cec = find_category(category)) != NULL &&
         cec->cec_logfn){
@@ -282,7 +292,7 @@ clicon_err_fn(const char *fn,
                        msg);
     }
     retval = 0;
-  done:
+ done:
     if (msg)
         free(msg);
     return retval;

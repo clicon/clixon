@@ -516,15 +516,17 @@ cli_plugin_finish(clicon_handle h)
 int 
 cli_handler_err(FILE *f)
 {
-    if (clicon_errno &&
-        (clicon_get_logflags() & CLICON_LOG_STDERR) == 0){
-        fprintf(f,  "%s: %s", clicon_strerror(clicon_errno), clicon_err_reason);
-        if (clicon_suberrno)
-            fprintf(f, ": %s", strerror(clicon_suberrno));
-        fprintf(f,  "\n");
+    if (clicon_errno){
+        /* Check if error is already logged on stderr */
+        if ((clicon_get_logflags() & CLICON_LOG_STDERR) == 0){
+            fprintf(f,  "%s: %s", clicon_strerror(clicon_errno), clicon_err_reason);
+            if (clicon_suberrno)
+                fprintf(f, ": %s", strerror(clicon_suberrno));
+            fprintf(f,  "\n");
+        }
+        else
+            fprintf(f, "CLI command error\n");
     }
-    else
-        fprintf(f, "CLI command error\n");
     return 0;
 }
 
@@ -595,8 +597,8 @@ clicon_parse(clicon_handle  h,
         clicon_debug(1, "%s result:%d command: \"%s\"", __FUNCTION__, *result, cmd);
         switch (*result) {
         case CG_EOF: /* eof */
-        case CG_ERROR:
-            fprintf(f, "CLI parse error: %s\n", cmd);
+        case CG_ERROR: 
+            fprintf(f, "CLI parse error: %s\n", cmd); // In practice never happens
             break;
         case CG_NOMATCH: /* no match */
             fprintf(f, "CLI syntax error: \"%s\": %s\n", cmd, reason);
@@ -741,7 +743,8 @@ cli_prompt_get(clicon_handle h,
 /*! Read command from CLIgen's cliread() using current syntax mode.
  * @param[in]  h       Clicon handle
  * @param[out] stringp Pointer to command buffer or NULL on EOF
- * @retval     0       OK
+ * @retval     1       OK
+ * @retval     0       Fail but continue
  * @retval    -1       Error
  */
 int
@@ -755,7 +758,7 @@ clicon_cliread(clicon_handle h,
     cli_prompthook_t *fn;
     clixon_plugin_t  *cp;
     char             *promptstr;
-    
+
     stx = cli_syntax(h);
     mode = stx->stx_active_mode;
     /* Get prompt from plugin callback? */
@@ -776,15 +779,22 @@ clicon_cliread(clicon_handle h,
     }
     cligen_ph_active_set_byname(cli_cligen(h), mode->csm_name);
 
+    clicon_err_reset();
     if (cliread(cli_cligen(h), stringp) < 0){
-        clicon_err(OE_FATAL, errno, "CLIgen");
-        goto done;
+        cli_handler_err(stdout);
+        if (clicon_suberrno == ESHUTDOWN)
+            goto done;
+        goto fail;
     }
-    retval = 0;
+
+    retval = 1;
  done:
     if (pfmt)
         free(pfmt);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*

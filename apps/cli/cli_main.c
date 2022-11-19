@@ -156,7 +156,6 @@ cli_history_save(clicon_handle h)
     return retval;
 }
 
-
 /*! Clean and close all state of cli process (but dont exit). 
  * Cannot use h after this 
  * @param[in]  h  Clixon handle
@@ -183,7 +182,7 @@ cli_terminate(clicon_handle h)
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
     /* Delete CLI syntax et al */
-    cli_plugin_finish(h);  
+    cli_plugin_finish(h);
 
     cli_history_save(h);
     cli_handle_exit(h);
@@ -208,7 +207,7 @@ static int
 cli_signal_init (clicon_handle h)
 {
     int retval = -1;
-    
+
     cli_signal_block(h);
     if (set_signal(SIGTERM, cli_sig_term, NULL) < 0){
         clicon_err(OE_UNIX, errno, "Setting SIGTERM signal");
@@ -236,17 +235,22 @@ cli_interactive(clicon_handle h)
     char         *cmd;
     char         *new_mode;
     cligen_result result;
-    
+    int           ret;
+
     /* Loop through all commands */
     while(!cligen_exiting(cli_cligen(h))) {
         new_mode = cli_syntax_mode(h);
         cmd = NULL;
-        if (clicon_cliread(h, &cmd) < 0)
+        /* Read a CLI string, including expand handling */
+        if ((ret = clicon_cliread(h, &cmd)) < 0)
             goto done;
+        if (ret == 0)
+            continue;
         if (cmd == NULL) { /* EOF */
-            cligen_exiting_set(cli_cligen(h), 1); 
+            cligen_exiting_set(cli_cligen(h), 1);
             continue;
         }
+        /* Here errors are handled */
         if (clicon_parse(h, cmd, &new_mode, &result, NULL) < 0)
             goto done;
         /* Why not check result? */
@@ -265,7 +269,7 @@ autocli_trees_default(clicon_handle h)
     int         retval = -1;
     cbuf       *cb = NULL;
     int         mode = 0;
-    parse_tree *pt = NULL; 
+    parse_tree *pt = NULL;
     pt_head    *ph;
 
     /* Create backward compatible tree: @datamodel */
@@ -446,7 +450,7 @@ main(int    argc,
      char **argv)
 {
     int            retval = -1;
-    int            c;    
+    int            c;
     int            once;
     char          *tmp;
     char          *argv0 = argv[0];
@@ -470,7 +474,7 @@ main(int    argc,
     once = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
+    clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
 
     /* Initiate CLICON handle. CLIgen is also initialized */
     if ((h = cli_handle_init()) == NULL)
@@ -502,7 +506,7 @@ main(int    argc,
                But this means that we need to check if 'help' is set before 
                exiting, and then call usage() before exit.
             */
-            help = 1; 
+            help = 1;
             break;
         case 'D' : /* debug */
             if (sscanf(optarg, "%d", &dbg) != 1)
@@ -531,7 +535,7 @@ main(int    argc,
      * Logs, error and debug to stderr or syslog, set debug level
      */
     clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
-    clicon_debug_init(dbg, NULL); 
+    clicon_debug_init(dbg, NULL);
     yang_init(h);
 
     /* Find, read and parse configfile */
@@ -555,7 +559,7 @@ main(int    argc,
                 fprintf(stderr, "freopen: %s\n", strerror(errno));
                 return -1;
             }
-            break; 
+            break;
         case '1' : /* Quit after reading database once - dont wait for events */
             once = 1;
             break;
@@ -672,7 +676,7 @@ main(int    argc,
        Should be 0 but default is 1 since all legacy apps use 1
        Test legacy before shifting default to 0
      */
-    cligen_exclude_keys_set(cli_cligen(h), clicon_cli_varonly(h)); 
+    cligen_exclude_keys_set(cli_cligen(h), clicon_cli_varonly(h));
 
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
@@ -702,7 +706,7 @@ main(int    argc,
     /* Create top-level and store as option */
     if ((yspec = yspec_new()) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);   
+    clicon_dbspec_yang_set(h, yspec);
     
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
@@ -814,7 +818,6 @@ main(int    argc,
         if (evalresult < 0)
             goto done;
     }
-
 
     /* Go into event-loop unless -1 command-line */
     if (!once){
