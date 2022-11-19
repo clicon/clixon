@@ -516,6 +516,8 @@ cli_show_common(clicon_handle    h,
                 }
             }
     }
+    else if (format == FORMAT_JSON)
+        cligen_output(stdout, "{}\n");
     retval = 0;
 done:
     if (vec)
