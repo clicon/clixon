@@ -60,6 +60,7 @@ YANGSPECS += ietf-netconf-nmda@2019-01-07.yang
 # For remaining attribute in ietf-netconf-nmda
 YANGSPECS += ietf-origin@2018-02-14.yang
 YANGSPECS += ietf-netconf-with-defaults@2011-06-01.yang
+YANGSPECS += ietf-netconf-monitoring@2010-10-04.yang
 
 # in draft-ietf-netconf-list-pagination-00.html
 YANGSPECS += ietf-list-pagination@2022-07-24.yang

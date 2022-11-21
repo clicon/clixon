@@ -1597,8 +1597,11 @@ netconf_module_load(clicon_handle h)
     /* Load ietf list pagination netconf */
     if (yang_spec_parse_module(h, "ietf-list-pagination-nc", NULL, yspec)< 0)
         goto done;
-    /* Load rfc6243 with-defaults module explicit (imported by ietf-list-pagination-nc) */
+    /* RFC6243 With-defaults Capability for NETCONF */
     if (yang_spec_parse_module(h, "ietf-netconf-with-defaults", NULL, yspec)< 0)
+        goto done;
+    /* RFC6022 YANG Module for NETCONF Monitoring */
+    if (yang_spec_parse_module(h, "ietf-netconf-monitoring", NULL, yspec)< 0)
         goto done;
     /* Framing: If hello protocol skipped, set framing direct, ie fix chunked framing if NETCONF-1.1
      * But start with default: RFC 4741 EOM ]]>]]>
