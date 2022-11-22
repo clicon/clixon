@@ -65,6 +65,143 @@
 
 /*-------------------------- POSIX translation -------------------------*/
 
+/* parse 4 digit hexadecimal number */
+static unsigned
+parse_hex4(const unsigned char *const input, unsigned int *h)
+{
+    size_t i = 0;
+
+    for (i = 0; i < 4; i++) {
+        /* parse digit */
+        if ((input[i] >= '0') && (input[i] <= '9')) {
+            *h += (unsigned int) input[i] - '0';
+        } else if ((input[i] >= 'A') && (input[i] <= 'F')) {
+            *h += (unsigned int) 10 + input[i] - 'A';
+        } else if ((input[i] >= 'a') && (input[i] <= 'f')) {
+            *h += (unsigned int) 10 + input[i] - 'a';
+        } else { /* invalid */
+            return -1;
+        }
+
+        if (i < 3) {
+            /* shift left to make place for the next nibble */
+            *h = *h << 4;
+        }
+    }
+
+    return 0;
+}
+
+/* converts a UTF-16 literal to UTF-8
+ * A literal can be one or two sequences of the form \uXXXX */
+static unsigned char
+utf16_literal_to_utf8(const unsigned char *const input, int len,
+    unsigned char **output)
+{
+    long unsigned int codepoint = 0;
+    unsigned int first_code = 0;
+    const unsigned char *first_sequence = input;
+    unsigned char utf8_length = 0;
+    unsigned char utf8_position = 0;
+    unsigned char sequence_length = 0;
+    unsigned char first_byte_mark = 0;
+    int retval = -1;
+
+    if (len < 6) {
+        /* input ends unexpectedly */
+        goto fail;
+    }
+
+    /* get the first utf16 sequence */
+    retval = parse_hex4(first_sequence + 2, &first_code);
+    if (retval != 0) {
+        goto fail;
+    }
+
+    /* check that the code is valid */
+    if (((first_code >= 0xDC00) && (first_code <= 0xDFFF))) {
+        goto fail;
+    }
+
+    /* UTF16 surrogate pair */
+    if ((first_code >= 0xD800) && (first_code <= 0xDBFF)) {
+        const unsigned char *second_sequence = first_sequence + 6;
+        unsigned int second_code = 0;
+        sequence_length = 12; /* \uXXXX\uXXXX */
+
+        if (len < 12) {
+            /* input ends unexpectedly */
+            goto fail;
+        }
+
+        if ((second_sequence[0] != '\\') || (second_sequence[1] != 'u')) {
+            /* missing second half of the surrogate pair */
+            goto fail;
+        }
+
+        /* get the second utf16 sequence */
+        retval = parse_hex4(second_sequence + 2, &second_code);
+        if (retval != 0) {
+            goto fail;
+        }
+        /* check that the code is valid */
+        if ((second_code < 0xDC00) || (second_code > 0xDFFF)) {
+            /* invalid second half of the surrogate pair */
+            goto fail;
+        }
+
+
+        /* calculate the unicode codepoint from the surrogate pair */
+        codepoint = 0x10000 + (((first_code & 0x3FF) << 10) | (second_code & 0x3FF));
+    } else {
+        sequence_length = 6; /* \uXXXX */
+        codepoint = first_code;
+    }
+
+    /* encode as UTF-8
+     * takes at maximum 4 bytes to encode:
+     * 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx */
+    if (codepoint < 0x80) {
+        /* normal ascii, encoding 0xxxxxxx */
+        utf8_length = 1;
+    } else if (codepoint < 0x800) {
+        /* two bytes, encoding 110xxxxx 10xxxxxx */
+        utf8_length = 2;
+        first_byte_mark = 0xC0; /* 11000000 */
+    } else if (codepoint < 0x10000) {
+        /* three bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx */
+        utf8_length = 3;
+        first_byte_mark = 0xE0; /* 11100000 */
+    } else if (codepoint <= 0x10FFFF) {
+        /* four bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx 10xxxxxx */
+        utf8_length = 4;
+        first_byte_mark = 0xF0; /* 11110000 */
+    } else {
+        /* invalid unicode codepoint */
+        goto fail;
+    }
+
+    /* encode as utf8 */
+    for (utf8_position = (unsigned char)(utf8_length - 1); utf8_position > 0; utf8_position--) {
+        /* 10xxxxxx */
+        (*output)[utf8_position] = (unsigned char)((codepoint | 0x80) & 0xBF);
+        codepoint >>= 6;
+    }
+    /* encode first byte */
+    if (utf8_length > 1) {
+        (*output)[0] = (unsigned char)((codepoint | first_byte_mark) & 0xFF);
+    } else {
+        (*output)[0] = (unsigned char)(codepoint & 0x7F);
+    }
+
+    *output += utf8_length;
+
+    return sequence_length;
+
+fail:
+    return 0;
+}
+
 /*! Transform from XSD regex to posix ERE
  * The usecase is that Yang (RFC7950) supports XSD regular expressions but
  * CLIgen supports POSIX ERE
@@ -186,6 +323,20 @@ regexp_xsd2posix(char  *xsd,
             case 'W': /* inverse of \w */
                 cprintf(cb, "[^[[:alnum:]|_]]"); 
                 break;
+            case 'u': {
+                int   n;
+                char utf8[4];
+                char *ptr = utf8;
+
+                n = utf16_literal_to_utf8((void*)(xsd + i - 1),
+                    strlen(xsd) - i + 1, (void*)&ptr);
+                if (n == 0) {
+                    goto done;
+                }
+                cbuf_append_buf(cb, utf8, ptr - utf8);
+                i += n - 2;
+            }
+            break;
             default:
                 cprintf(cb, "\\%c", x);
                 break;

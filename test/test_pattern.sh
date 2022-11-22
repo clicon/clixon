@@ -376,6 +376,18 @@ module pattern{
              }
          }
       }
+      leaf p48 {
+         description "Chinese characters in unicode format";
+         type string {
+             pattern '[\u4E00-\u9FA5]+';
+         }
+      }
+      leaf p49 {
+         description "Arabic characters in unicode format";
+         type string {
+             pattern '[\u0600-\u06FF]+';
+         }
+      }
    }
 }
 EOF
@@ -751,8 +763,17 @@ testrun "p$pnr" false '248:197.7.89/8'
 
 let pnr=47 # '.*[\n].*
 testrun "p$pnr" true 'Ensure all nights are cold'
-testrun "p$pnr" false 'kallefoo'
+testrun "p$pnr" false 'kalle
+foo'
 testrun "p$pnr" false '01234567890123456789012345678901234567890123456789012345678901234567890123456789zzz'
+
+let pnr=48
+testrun "p$pnr" true '你好'
+testrun "p$pnr" false 'hello'
+
+let pnr=49
+testrun "p$pnr" true 'مرحبا'
+testrun "p$pnr" false 'hello'
 
 # CLI tests
 new "CLI tests for RFC7950 Sec 9.4.7 ex 2 AB"
