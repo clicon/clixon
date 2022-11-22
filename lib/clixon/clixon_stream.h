@@ -41,22 +41,6 @@
 /*
  * Constants
  */
-/* Default STREAM namespace (see rfc5277 3.1)
- * From RFC8040: 
- *  The structure of the event data is based on the <notification>
- *  element definition in Section 4 of [RFC5277].  It MUST conform to the
- *  schema for the <notification> element in Section 4 of [RFC5277],
- *  using the XML namespace as defined in the XSD as follows:
- *     urn:ietf:params:xml:ns:netconf:notification:1.0
- * It is used everywhere in yangmodels, but not in openconfig
- */
-#define NOTIFICATION_RFC5277_NAMESPACE "urn:ietf:params:xml:ns:netconf:notification:1.0"
-
-/*
- * Then there is also this namespace that is only used in RFC5277 seems to be for "netconf"
- * events. The usage seems wrong here,...
- */
-#define EVENT_RFC5277_NAMESPACE "urn:ietf:params:xml:ns:netmod:notification"
 
 /*
  * Types

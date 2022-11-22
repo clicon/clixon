@@ -722,7 +722,7 @@ from_client_lock(clicon_handle h,
     yang_stmt           *yspec;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No yang spec9");
+        clicon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
     if ((db = netconf_db_find(xe, "target")) == NULL){
@@ -1041,6 +1041,109 @@ from_client_create_subscription(clicon_handle h,
  ok:
     retval = 0;
   done:
+    if (nsc)
+        xml_nsctx_free(nsc);
+    return retval;
+}
+
+/*! Retrieve a schema from the NETCONF server.
+ *
+ * @param[in]  h       Clicon handle 
+ * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see RFC6022, ietf-netconf-monitoring.yang
+ */
+static int
+from_client_get_schema(clicon_handle h,
+                       cxobj        *xe,
+                       cbuf         *cbret,
+                       void         *arg, 
+                       void         *regarg)
+{
+    int        retval = -1;
+    cxobj     *x; /* Generic xml tree */
+    cvec      *nsc = NULL;
+    char      *identifier = NULL;
+    char      *version = NULL;
+    char      *format = NULL;
+    yang_stmt *yspec;
+    yang_stmt *ymod;
+    yang_stmt *ymatch;
+    yang_stmt *yrev;
+    cbuf      *cbyang = NULL;
+    
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
+    }
+    if ((nsc = xml_nsctx_init(NULL, NETCONF_MONITORING_NAMESPACE)) == NULL)
+        goto done;
+    if ((x = xpath_first(xe, nsc, "identifier")) == NULL){
+        if (netconf_missing_element(cbret, "protocol", "identifier", NULL) < 0)
+            goto done;
+        goto ok;
+    }
+    identifier = xml_body(x);
+    if ((x = xpath_first(xe, nsc, "version")) != NULL)
+        version = xml_body(x);
+    if ((x = xpath_first(xe, nsc, "format")) != NULL)
+        format = xml_body(x);
+    ymatch = NULL;
+    ymod = NULL;
+    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+        if (yang_keyword_get(ymod) != Y_MODULE &&
+            yang_keyword_get(ymod) != Y_SUBMODULE)
+            continue;
+        if (strcmp(identifier, yang_argument_get(ymod)) != 0)
+            continue;
+        if (version){
+            if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL)
+                continue;
+            if (strcmp(version, yang_argument_get(yrev)) != 0)
+                continue;
+            ymatch = ymod;
+            break;
+        }
+        else if (ymatch){
+            /* If more than one schema matches the requested parameters, the
+             * <error-tag> is 'operation-failed', and <error-app-tag> is
+             * 'data-not-unique'.
+             */
+            if (netconf_data_not_unique(cbret, NULL, NULL)< 0)
+                goto done;
+            goto ok;
+        }
+        else
+            ymatch = ymod;
+    }
+    if (ymatch == NULL){
+        if (netconf_invalid_value(cbret, "protocol", "No such schema") < 0)
+            goto done;
+        goto ok;
+    }
+    if (format && strcmp(format, "yang") != 0){
+        if (netconf_invalid_value(cbret, "protocol", "Format not supported") < 0)
+            goto done;
+        goto ok;
+    }
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><data xmlns=\"%s\">",
+            NETCONF_BASE_NAMESPACE, NETCONF_MONITORING_NAMESPACE);
+    if ((cbyang = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    yang_print_cbuf(cbyang, ymatch, 0, 0);
+    xml_chardata_cbuf_append(cbret, cbuf_get(cbyang));
+    cprintf(cbret, "</data></rpc-reply>");
+ ok:
+    retval = 0;
+ done:
+    if (cbyang)
+        cbuf_free(cbyang);
     if (nsc)
         xml_nsctx_free(nsc);
     return retval;
@@ -1388,6 +1491,10 @@ from_client_msg(clicon_handle        h,
         goto reply;
     }
     ce->ce_id = id;
+    /* As a side-effect, this expands xt with default values according to "report-all"
+     * This may not be correct, the RFC does not mention expanding default values for
+     * input RPC
+     */
     if ((ret = xml_yang_validate_rpc(h, x, 1, &xret)) < 0)
         goto done;
     if (ret == 0){
@@ -1603,6 +1710,10 @@ backend_rpc_init(clicon_handle h)
     /* In backend_client.? RPC from RFC 5277 */
     if (rpc_callback_register(h, from_client_create_subscription, NULL,
                       EVENT_RFC5277_NAMESPACE, "create-subscription") < 0)
+        goto done;
+    /* RFC 6022 */
+    if (rpc_callback_register(h, from_client_get_schema, NULL,
+                      NETCONF_MONITORING_NAMESPACE, "get-schema") < 0)
         goto done;
     /* Clixon RPC */
     if (rpc_callback_register(h, from_client_debug, NULL,

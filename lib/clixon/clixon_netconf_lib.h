@@ -68,7 +68,29 @@
  * operations, <error-info> content, and the <action> element.
  */
 #define YANG_XML_NAMESPACE "urn:ietf:params:xml:ns:yang:1"
- 
+
+/* RFC 6022 YANG Module for NETCONF Monitoring
+ */
+#define NETCONF_MONITORING_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring"
+
+/* Default STREAM namespace (see rfc5277 3.1)
+ * From RFC8040: 
+ *  The structure of the event data is based on the <notification>
+ *  element definition in Section 4 of [RFC5277].  It MUST conform to the
+ *  schema for the <notification> element in Section 4 of [RFC5277],
+ *  using the XML namespace as defined in the XSD as follows:
+ *     urn:ietf:params:xml:ns:netconf:notification:1.0
+ * It is used everywhere in yangmodels, but not in openconfig
+ */
+#define NETCONF_NOTIFICATION_NAMESPACE "urn:ietf:params:xml:ns:netconf:notification:1.0"
+#define NETCONF_NOTIFICATION_CAPABILITY "urn:ietf:params:netconf:capability:notification:1.0"
+
+/*
+ * Then there is also this namespace that is only used in RFC5277 seems to be for "netconf"
+ * events. The usage seems wrong here,...
+ */
+#define EVENT_RFC5277_NAMESPACE "urn:ietf:params:xml:ns:netmod:notification"
+
 /*
  * Types
  */
@@ -152,6 +174,7 @@ int netconf_operation_failed(cbuf *cb, char *type, char *message);
 int netconf_operation_failed_xml(cxobj **xret, char *type, char *message);
 int netconf_malformed_message(cbuf *cb, char *message);
 int netconf_malformed_message_xml(cxobj **xret, char *message);
+int netconf_data_not_unique(cbuf *cb, cxobj *x, cvec *cvk);
 int netconf_data_not_unique_xml(cxobj **xret, cxobj *x, cvec *cvk);
 int netconf_minmax_elements_xml(cxobj **xret, cxobj *xp, char *name, int max);
 int netconf_trymerge(cxobj *x, yang_stmt *yspec, cxobj **xret);
@@ -161,6 +184,7 @@ char *netconf_db_find(cxobj *xn, char *name);
 int netconf_err2cb(cxobj *xerr, cbuf *cberr);
 const netconf_content netconf_content_str2int(char *str);
 const char *netconf_content_int2str(netconf_content nr);
+int netconf_capabilites(clicon_handle h, cbuf *cb);
 int netconf_hello_server(clicon_handle h, cbuf *cb, uint32_t session_id);
 int netconf_hello_req(clicon_handle h, cbuf *cb);
 int clixon_netconf_error_fn(const char *fn, const int line, cxobj *xerr, const char *fmt, const char *arg);

@@ -1245,7 +1245,7 @@ netconf_operation_failed_xml(cxobj **xret,
     return retval;
 }
 
-/*! Create Netconf malformed-message error XML tree according to RFC 6241 App A
+/*! Create Netconf malformed-message error cbuf according to RFC 6241 App A
  *
  * A message could not be handled because it failed to be parsed correctly.  
  * For example, the message is not well-formed XML or it uses an
@@ -1259,7 +1259,7 @@ int
 netconf_malformed_message(cbuf  *cb,
                           char  *message)
 {
-    int   retval = -1;
+    int    retval = -1;
     cxobj *xret = NULL;
 
     if (netconf_malformed_message_xml(&xret, message) < 0)
@@ -1329,6 +1329,35 @@ netconf_malformed_message_xml(cxobj **xret,
  done:
     if (encstr)
         free(encstr);
+    return retval;
+}
+
+/*! Create Netconf data-not-unique error message according to RFC 7950 15.1
+ *
+ * A NETCONF operation would result in configuration data where a
+ * "unique" constraint is invalidated.
+ * @param[out]  xret   Error XML tree. Free with xml_free after use
+ * @param[in]   x      List element containing duplicate
+ * @param[in]   cvk    List of components in x that are non-unique
+ * @see RFC7950 Sec 15.1
+ * @see netconf_data_not_unique_xml  Same but returns XML tree
+ */
+int
+netconf_data_not_unique(cbuf  *cb,
+                        cxobj  *x,
+                        cvec   *cvk)
+{
+    int    retval = -1;
+    cxobj *xret = NULL;
+
+    if (netconf_data_not_unique_xml(&xret, x, cvk) < 0)
+        goto done;
+    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (xret)
+        xml_free(xret);
     return retval;
 }
 
@@ -1714,22 +1743,8 @@ netconf_content_int2str(netconf_content nr)
     return clicon_int2str(netconf_content_map, nr);
 }
 
-/*! Create Netconf server hello. Single cap and defer individual to querying modules
-
- * @param[in]  h           Clicon handle
- * @param[in]  cb          Msg buffer
- * @param[in]  session_id  Id of client session
- * Lots of dependencies here. regarding the hello protocol.
- * RFC6241 NETCONF Protocol says: (8.1)
- *    MUST send a <hello> element containing a list of that peer's capabilities
- *    MUST send at least the base NETCONF capability, urn:ietf:params:netconf:base:1.1
- *    MAY include capabilities for previous NETCONF versions
- *    A server MUST include a <session-id>  
- *    A client MUST NOT include a <session-id> 
- *    A server receiving <session-id> MUST terminate the NETCONF session.  
- *    A client not receiving <session-id> MUST terminate w/o sending<close-session>
- * the example shows urn:ietf:params:netconf:capability:startup:1.0 
-
+/*! List capabilities
+ *
  * RFC5277 NETCONF Event Notifications
  *  urn:ietf:params:netconf:capability:notification:1.0 is advertised during the capability exchange
  *  
@@ -1750,29 +1765,18 @@ netconf_content_int2str(netconf_content nr)
  *   urn:ietf:params:netconf:capability:startup:1.0 (8.7)
  *   urn:ietf:params:netconf:capability:xpath:1.0 (8.9)
  *   urn:ietf:params:netconf:capability:notification:1.0 (RFC5277)
- *
- * @note the hello message is created bythe netconf application, not the 
- *  backend, and backend may implement more modules - please consider if using
- *  library routines for detecting capabilities here. In contrast, yang module 
- * list (RFC7895) is processed by the backend.
- * @note If you add new, remember to encode bodies if needed, see xml_chardata_encode()
- * @note
- * @see yang_modules_state_get
- * @see netconf_module_load
  */
 int
-netconf_hello_server(clicon_handle h,
-                     cbuf         *cb,
-                     uint32_t      session_id)
+netconf_capabilites(clicon_handle h,
+                    cbuf         *cb)
 {
-    int   retval = -1;
-    char *module_set_id;
-    char *ietf_yang_library_revision;
-    char *encstr = NULL;
+    int        retval = -1;
+    char      *encstr = NULL;
+    char      *ietf_yang_library_revision;
     yang_stmt *yspec = clicon_dbspec_yang(h);
+    char      *module_set_id;
 
     module_set_id = clicon_option_str(h, "CLICON_MODULE_SET_ID");
-    cprintf(cb, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cb, "<capabilities>");
     if (clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0){
         /* Each peer MUST send at least the base NETCONF capability, "urn:ietf:params:netconf:base:1.1" 
@@ -1810,20 +1814,59 @@ netconf_hello_server(clicon_handle h,
     xml_chardata_cbuf_append(cb, "urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all,trim,report-all-tagged");
     cprintf(cb, "</capability>");
     /* RFC5277 Notification Capability */
-    cprintf(cb, "<capability>urn:ietf:params:netconf:capability:notification:1.0</capability>");
+    cprintf(cb, "<capability>%s</capability>", NETCONF_NOTIFICATION_CAPABILITY);
+
     /* It is somewhat arbitrary why some features/capabilities are hardocded and why some are not
      * rfc 6241 Sec 8.4 confirmed-commit capabilities */
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit"))
         cprintf(cb, "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.1</capability>");
-
     cprintf(cb, "</capabilities>");
+    retval = 0;
+ done:
+    if (encstr)
+        free(encstr);
+    return retval;
+}
+
+/*! Create Netconf server hello. Single cap and defer individual to querying modules
+ * @param[in]  h           Clicon handle
+ * @param[in]  cb          Msg buffer
+ * @param[in]  session_id  Id of client session
+ * Lots of dependencies here. regarding the hello protocol.
+ * RFC6241 NETCONF Protocol says: (8.1)
+ *    MUST send a <hello> element containing a list of that peer's capabilities
+ *    MUST send at least the base NETCONF capability, urn:ietf:params:netconf:base:1.1
+ *    MAY include capabilities for previous NETCONF versions
+ *    A server MUST include a <session-id>  
+ *    A client MUST NOT include a <session-id> 
+ *    A server receiving <session-id> MUST terminate the NETCONF session.  
+ *    A client not receiving <session-id> MUST terminate w/o sending<close-session>
+ * the example shows urn:ietf:params:netconf:capability:startup:1.0 
+ *
+ * @note the hello message is created bythe netconf application, not the 
+ *  backend, and backend may implement more modules - please consider if using
+ *  library routines for detecting capabilities here. In contrast, yang module 
+ * list (RFC7895) is processed by the backend.
+ * @note If you add new, remember to encode bodies if needed, see xml_chardata_encode()
+ * @note
+ * @see yang_modules_state_get
+ * @see netconf_module_load
+ */
+int
+netconf_hello_server(clicon_handle h,
+                     cbuf         *cb,
+                     uint32_t      session_id)
+{
+    int   retval = -1;
+
+    cprintf(cb, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
+    if (netconf_capabilites(h, cb) < 0)
+        goto done;
     if (session_id) 
         cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)session_id);
     cprintf(cb, "</hello>");
     retval = 0;
  done:
-    if (encstr)
-        free(encstr);
     return retval;
 }
 

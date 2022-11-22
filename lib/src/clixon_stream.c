@@ -80,6 +80,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_io.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
@@ -585,7 +586,7 @@ stream_notify(clicon_handle h,
     }
     /* From RFC5277 */
     cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>%s</notification>",
-            NOTIFICATION_RFC5277_NAMESPACE, timestr, str);
+            NETCONF_NOTIFICATION_NAMESPACE, timestr, str);
     if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &xev, NULL) < 0)
         goto done;
     if (xml_rootchild(xev, 0, &xev) < 0)
@@ -649,7 +650,7 @@ stream_notify_xml(clicon_handle h,
         goto done;
     }
     cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>NULL</notification>",
-            NOTIFICATION_RFC5277_NAMESPACE,
+            NETCONF_NOTIFICATION_NAMESPACE,
             timestr); /* XXX str is always NULL */
     if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, yspec, &xev, NULL) < 0)
         goto done;

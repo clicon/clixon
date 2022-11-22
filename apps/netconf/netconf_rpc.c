@@ -470,7 +470,7 @@ netconf_notification_cb(int   s,
         clicon_err(OE_NETCONF, EFAULT, "Notification malformed");
         goto done;
     }
-    if ((nsc = xml_nsctx_init(NULL, NOTIFICATION_RFC5277_NAMESPACE)) == NULL)
+    if ((nsc = xml_nsctx_init(NULL, NETCONF_NOTIFICATION_NAMESPACE)) == NULL)
         goto done;
     if ((xn = xpath_first(xt, nsc, "notification")) == NULL)
         goto ok;

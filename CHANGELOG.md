@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.0.0](#600) Expected: End of 2022
+* [6.0.0](#600) Expected: Nov 2022
 * [5.9.0](#590) 24 September 2022
 * [5.8.0](#580) 28 July 2022
 * [5.7.0](#570) 17 May 2022
@@ -38,10 +38,16 @@
 * [3.3.1](#331) June 7 2017
 
 ## 6.0.0
-Expected: End of 2022
+Expected: Nov 2022
 
 ### New features
 
+* Netconf monitoring
+  * First part: Capabilities and schema state and get-schema
+  * Remains: Datastore, sessions and statistics state
+  * Standards
+    * RFC 6022 "YANG Module for NETCONF Monitoring"
+  * See [Feature Request: Support RFC 6022 (NETCONF Monitoring)](https://github.com/clicon/clixon/issues/370)
 * Confirmed-commit capability
   * Standards
     * RFC 4741 "NETCONF Configuration Protocol": Section 8.4
@@ -57,6 +63,10 @@ Expected: End of 2022
 
 Users may have to change how they access the system
 
+* New `clixon-config@2022-11-01.yang` revision
+  * Added option:
+    * `CLICON_NETCONF_MONITORING`
+    * `CLICON_NETCONF_MONITORING_LOCATION`
 * Added `PRETTYPRINT_INDENT` compile-time option controlling indentation level for XML,JSON and TEXT
   * Default value is `3`
 * NETCONF: Removed `message-id` from hello protocol following RFC 6241

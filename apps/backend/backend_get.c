@@ -251,6 +251,12 @@ get_client_statedata(clicon_handle h,
         if (ret == 0)
             goto fail;
     }
+    if (clicon_option_bool(h, "CLICON_NETCONF_MONITORING")){
+        if ((ret = netconf_monitoring_state_get(h, yspec, xpath, nsc, 0, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+    }
     /* Use plugin state callbacks */
     if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, xret)) < 0)
         goto done;
