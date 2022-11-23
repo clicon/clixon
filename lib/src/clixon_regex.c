@@ -5,6 +5,8 @@
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+  UTF code is MIT licensed by:
+  Copyright (c) 2009-2017 Dave Gamble and cJSON contributors
 
   This file is part of CLIXON.
 
