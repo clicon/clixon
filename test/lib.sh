@@ -492,8 +492,8 @@ function chunked_equal()
 function chunked_framing()
 {
     str=$1
-    length=${#str}
-   
+    length=$(echo -n "$str"|wc -c)
+
     printf "\n#%s\n%s\n##\n" ${length} "${str}"
 }
 
