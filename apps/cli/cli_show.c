@@ -387,19 +387,28 @@ show_yang(clicon_handle h,
           cvec         *cvv, 
           cvec         *argv)
 {
+    int        retval = -1;
     yang_stmt *yn;
     char      *str = NULL;
     yang_stmt *yspec;
 
     yspec = clicon_dbspec_yang(h);      
     if (cvec_len(argv) > 0){
-        str = cv_string_get(cvec_i(argv, 0));
-        yn = yang_find(yspec, 0, str);
+        if ((str = cv_string_get(cvec_i(argv, 0))) != NULL &&
+            (yn = yang_find(yspec, 0, str)) != NULL)
+            if (yang_print_cb(stdout, yn, cligen_output) < 0)
+                goto done;
     }
-    else
-        yn = yspec;
-    yang_print_cb(stdout, yn, cligen_output); /* Doesnt use cligen_output */
-    return 0;
+    else{
+        yn = NULL;
+        while ((yn = yn_each(yspec, yn)) != NULL) {
+            if (yang_print_cb(stdout, yn, cligen_output) < 0)
+                goto done;
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Common internal show routine for several show cli callbacks

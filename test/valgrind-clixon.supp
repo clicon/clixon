@@ -51,3 +51,11 @@
    fun:*
    fun:_dl_map_object
 }
+{
+   supp8
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*
+   fun:*
+   fun:_dl_close_worker
+}

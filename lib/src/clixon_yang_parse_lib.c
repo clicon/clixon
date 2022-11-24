@@ -918,11 +918,11 @@ yang_parse_find_match(clicon_handle h,
                       uint32_t     *revactual, 
                       cbuf         *fbuf)    
 {
-    int            retval = -1;
-    cbuf          *regex = NULL;
-    cxobj         *x;
-    cxobj         *xc;
-    char          *dir;
+    int           retval = -1;
+    cbuf         *regex = NULL;
+    cxobj        *x;
+    cxobj        *xc;
+    char         *dir;
     cvec         *cvv = NULL;
     cg_var       *cv = NULL;
     cg_var       *bestcv = NULL;
@@ -961,6 +961,8 @@ yang_parse_find_match(clicon_handle h,
              */
             if (ndp != 0){
                 cprintf(fbuf, "%s/%s", dir, dp[ndp-1].d_name);
+                if (dp)
+                    free(dp);
                 retval = 1;
                 goto done;
             }

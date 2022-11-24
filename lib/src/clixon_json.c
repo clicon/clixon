@@ -721,7 +721,6 @@ json_metadata_encoding(cbuf  *cb,
  * @param[in]     xp       XML node, parent of xa
  * @param[in]     yp       Yang spec of xp
  * @param[in]     level    Indentation level
- * @param[in]     level    Indentation level
  * @param[in]     pretty   Pretty-print output (2 means debug)
  * @param[in]     modname  Name of yang module
  * @param[in,out] metacb   Encode into cbuf

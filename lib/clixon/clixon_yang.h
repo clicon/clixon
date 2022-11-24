@@ -261,7 +261,7 @@ yang_stmt *yang_choice(yang_stmt *y);
 int        yang_order(yang_stmt *y);
 int        yang_print_cb(FILE *f, yang_stmt *yn, clicon_output_cb *fn);
 int        yang_print(FILE *f, yang_stmt *yn);
-int        yang_print_cbuf(cbuf *cb, yang_stmt *yn, int marginal);
+int        yang_print_cbuf(cbuf *cb, yang_stmt *yn, int marginal, int pretty);
 int        yang_deviation(yang_stmt *ys, void *arg);
 int        yang_spec_print(FILE *f, yang_stmt *yspec);
 int        yang_spec_dump(yang_stmt *yspec, int debuglevel);

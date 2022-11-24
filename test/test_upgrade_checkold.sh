@@ -106,7 +106,7 @@ EOF
     fi
     for modstate in true false; do
         if $modstate; then
-            modstatestr="<yang-library xmlns=\"urn:example:a\"><module-set><name>default</name><content-id>42</content-id><module><name>A</name><revision>2016-01-01</revision><namespace>urn:example:a</namespace></module></module-set></yang-library>"
+            modstatestr="<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>default</name><content-id>42</content-id><module><name>A</name><revision>2016-01-01</revision><namespace>urn:example:a</namespace></module></module-set></yang-library>"
 #           modstatestr="<modules-state xmlns=\"urn:example:a\"><module-set-id>42</module-set-id><module><name>A</name><revision>2016-01-01</revision><namespace>urn:example:a</namespace></module></modules-state>"
         else
             modstatestr=""

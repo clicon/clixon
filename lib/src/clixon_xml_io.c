@@ -742,8 +742,10 @@ clixon_xml_parse_file(FILE      *fp,
  * @code
  *  cxobj *xt = NULL;
  *  cxobj *xerr = NULL;
- *  if (clixon_xml_parse_string(str, YB_MODULE, yspec, &xt, &xerr) < 0)
+ *  if ((ret = clixon_xml_parse_string(str, YB_MODULE, yspec, &xt, &xerr)) < 0)
  *    err;
+ *  if (ret == 0)
+ *    // use xerr
  *  if (xml_rootchild(xt, 0, &xt) < 0) # If you want to remove TOP
  *    err;
  * @endcode

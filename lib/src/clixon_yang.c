@@ -1774,6 +1774,8 @@ quotedstring(char *s)
  * @param[in]  f     File to print to.
  * @param[in]  yn    Yang node to print
  * @param[in]  fn    Callback to make print function
+ * @retval     0         OK
+ * @retval    -1         Error
  * @see yang_print_cbuf
  */
 int
@@ -1788,7 +1790,7 @@ yang_print_cb(FILE             *f,
         clicon_err(OE_YANG, errno, "cbuf_new");
         goto done;
     }
-    if (yang_print_cbuf(cb, yn, 0) < 0)
+    if (yang_print_cbuf(cb, yn, 0, 1) < 0)
         goto done;
     (*fn)(f, "%s", cbuf_get(cb));
     if (cb)
@@ -1876,9 +1878,12 @@ yang_spec_dump(yang_stmt *yspec,
  * @param[in]  cb        Cligen buffer. This is where the pretty print is.
  * @param[in]  yn        Yang node to print
  * @param[in]  marginal  Tab indentation, mainly for recursion.
+ * @param[in]  pretty    Pretty-print output
+ * @retval     0         OK
+ * @retval    -1         Error
  * @code
  *  cbuf *cb = cbuf_new();
- *  yang_print_cbuf(cb, yn, 0);
+ *  yang_print_cbuf(cb, yn, 0, 1);
  *  // output is in cbuf_buf(cb);
  *  cbuf_free(cb);
  * @endcode
@@ -1886,31 +1891,58 @@ yang_spec_dump(yang_stmt *yspec,
 int
 yang_print_cbuf(cbuf      *cb,
                 yang_stmt *yn,
-                int        marginal)
+                int        marginal,
+                int        pretty)
 {
-    yang_stmt *ys = NULL;
+    int           retval = -1;
+    yang_stmt    *ys;
+    enum rfc_6020 keyw;
+    char         *arg;
 
-    while ((ys = yn_each(yn, ys)) != NULL) {
-        if (ys->ys_keyword == Y_UNKNOWN){ /* dont print unknown - proxy for extension*/
-            cprintf(cb, "%*s", marginal-1, "");
-        }
-        else
-            cprintf(cb, "%*s%s", marginal, "", yang_key2str(ys->ys_keyword));
-        if (ys->ys_argument){
-            if (quotedstring(ys->ys_argument))
-                cprintf(cb, " \"%s\"", ys->ys_argument);
-            else
-                cprintf(cb, " %s", ys->ys_argument);
-        }
-        if (ys->ys_len){
-            cprintf(cb, " {\n");
-            yang_print_cbuf(cb, ys, marginal+3);
-            cprintf(cb, "%*s%s\n", marginal, "", "}");
-        }
-        else
-            cprintf(cb, ";\n");
+    if (yn == NULL || cb == NULL){
+        clicon_err(OE_YANG, EINVAL, "cb or yn is NULL");
+        goto done;
     }
-    return 0;
+    keyw = yang_keyword_get(yn);
+    if (keyw == Y_UNKNOWN){ /* dont print unknown - proxy for extension*/
+        if (pretty)
+            cprintf(cb, "%*s", marginal-1, "");
+    }
+    else{
+        if (pretty)
+            cprintf(cb, "%*s%s", marginal, "", yang_key2str(keyw));
+        else
+            cprintf(cb, "%s", yang_key2str(keyw));
+    }
+    arg = yang_argument_get(yn);
+    if (arg){
+        if (quotedstring(arg))
+            cprintf(cb, " \"%s\"", arg);
+        else
+            cprintf(cb, " %s", arg);
+    }
+    if (yang_len_get(yn)){
+        cprintf(cb, " {");
+        if (pretty)
+            cprintf(cb, "\n");
+        ys = NULL;
+        while ((ys = yn_each(yn, ys)) != NULL) {
+            if (yang_print_cbuf(cb, ys, marginal + PRETTYPRINT_INDENT, pretty) < 0)
+                goto done;
+        }
+        if (pretty)
+            cprintf(cb, "%*s%s\n", marginal, "", "}");
+        else
+            cprintf(cb, "}");
+    }
+    else{
+        cprintf(cb, ";");
+        if (pretty)
+            cprintf(cb, "\n");
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Yang deviation/deviate 
