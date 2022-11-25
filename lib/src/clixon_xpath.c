@@ -611,12 +611,12 @@ xpath_vec_ctx(cxobj      *xcur,
         goto done;
     if (xp_eval(&xc, xptree, nsc, localonly, xrp) < 0)
         goto done;
+    retval = 0;
+ done:
     if (xc.xc_nodeset){
         free(xc.xc_nodeset);
         xc.xc_nodeset = NULL;
     }
-    retval = 0;
- done:
     if (xptree)
         xpath_tree_free(xptree);
     return retval;

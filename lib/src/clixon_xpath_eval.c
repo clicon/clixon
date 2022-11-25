@@ -481,7 +481,7 @@ xp_eval_predicate(xp_ctx     *xc,
     xp_ctx  *xrc = NULL;
     int      i;
     cxobj   *x;
-    xp_ctx  *xcc;
+    xp_ctx  *xcc = NULL;
     
     if (xs->xs_c0 != NULL){ /* eval previous predicates */
         if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)   
@@ -522,8 +522,8 @@ xp_eval_predicate(xp_ctx     *xc,
                 goto done;
             if (xp_eval(xcc, xs->xs_c1, nsc, localonly, &xrc) < 0)
                 goto done;
-            if (xcc)
-                ctx_free(xcc);
+            ctx_free(xcc);
+            xcc = NULL;
             if (xrc->xc_type == XT_NUMBER){
                 /* If the result is a number, the result will be converted to true
                    if the number is equal to the context position */
@@ -556,6 +556,8 @@ xp_eval_predicate(xp_ctx     *xc,
     }
     retval = 0;
  done:
+    if (xcc)
+        ctx_free(xcc);
     if (xr0)
         ctx_free(xr0);
     if (xr1)
@@ -932,8 +934,11 @@ xp_relop(xp_ctx    *xc1,
     if (xr->xc_type == XT_BOOL && xr->xc_bool != 0)
         xr->xc_bool = 1;
     *xrp = xr;
+    xr = NULL;
     retval = 0;
  done:
+    if (xr)
+        ctx_free(xr);
     return retval;
 }
 

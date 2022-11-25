@@ -4,6 +4,9 @@
 # TODO:
 # - privileges drop
 # - lock check
+# Notes:
+# 1. May tests without "new" which makes it difficult to debug
+# 2. Sleeps are difficult when running valgrind tests when startup times (eg netconf) increase
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -100,12 +103,13 @@ function edit_config() {
 function assert_config_equals() {
   TARGET="$1"
   EXPECTED="$2"
-#  new "get-config: $TARGET"
+  new "assert_config_equals $TARGET"
   rpc "<get-config><source><$TARGET/></source></get-config>" "$(data "$EXPECTED")"
 }
 
 # delete all
 function reset() {
+  new "reset"
   rpc "<edit-config><target><candidate/></target><default-operation>none</default-operation><config operation=\"delete\"/></edit-config>" "<ok/>"
   commit
   assert_config_equals "candidate" ""
@@ -139,11 +143,11 @@ fi
 new "wait backend"
 wait_backend
 
-new "Hello check confirm-commit capability"
+new "1. Hello check confirm-commit capability"
 expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.1</capability>" '^$'
 
 ################################################################################
-new "netconf ephemeral confirmed-commit rolls back after disconnect"
+new "2. netconf ephemeral confirmed-commit rolls back after disconnect"
 reset
 edit_config "candidate" "$CONFIGB"
 assert_config_equals "candidate" "$CONFIGB"
@@ -152,7 +156,7 @@ assert_config_equals "running" ""
 
 ################################################################################
 
-new "netconf persistent confirmed-commit"
+new "3.netconf persistent confirmed-commit"
 reset
 edit_config "candidate" "$CONFIGB"
 commit "<confirmed/><persist>a</persist>"
@@ -163,27 +167,27 @@ assert_config_equals "running" "$CONFIGBPLUSC"
 
 ################################################################################
 
-new "netconf cancel-commit with invalid persist-id"
+new "4. netconf cancel-commit with invalid persist-id"
 rpc "<cancel-commit><persist-id>abc</persist-id></cancel-commit>" "<rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>a confirmed-commit with the given persist-id was not found</error-message></rpc-error>"
 
 ################################################################################
 
-new "netconf cancel-commit with valid persist-id"
+new "5. netconf cancel-commit with valid persist-id"
 rpc "<cancel-commit><persist-id>ab</persist-id></cancel-commit>" "<ok/>"
 
 ################################################################################
 
-new "netconf persistent confirmed-commit with timeout"
+new "6. netconf persistent confirmed-commit with timeout"
 reset
 edit_config "candidate" "$CONFIGB"
-commit "<confirmed/><confirm-timeout>2</confirm-timeout><persist>abcd</persist>"
+commit "<confirmed/><confirm-timeout>3</confirm-timeout><persist>abcd</persist>"
 assert_config_equals "running" "$CONFIGB"
-sleep 2
+sleep 3
 assert_config_equals "running" ""
 
 ################################################################################
 
-new "netconf persistent confirmed-commit with reset timeout"
+new "7. netconf persistent confirmed-commit with reset timeout"
 reset
 edit_config "candidate" "$CONFIGB"
 commit "<confirmed/><persist>abcde</persist><confirm-timeout>5</confirm-timeout>"
@@ -199,7 +203,7 @@ assert_config_equals "running" ""
 
 ################################################################################
 
-new "netconf persistent confirming-commit to epehemeral confirmed-commit should rollback"
+new "8. netconf persistent confirming-commit to epehemeral confirmed-commit should rollback"
 reset
 edit_config "candidate" "$CONFIGB"
 commit "<confirmed/><persist/><confirm-timeout>10</confirm-timeout>"
@@ -209,7 +213,7 @@ assert_config_equals "running" ""
 
 ################################################################################
 
-new "netconf confirming-commit for persistent confirmed-commit with empty persist value"
+new "9. netconf confirming-commit for persistent confirmed-commit with empty persist value"
 reset
 edit_config "candidate" "$CONFIGB"
 commit "<confirmed/><persist/><confirm-timeout>10</confirm-timeout>"
@@ -221,7 +225,7 @@ assert_config_equals "running" "$CONFIGB"
 # TODO reconsider logic around presence/absence of rollback_db as a signal as dropping permissions may impact ability
 # to unlink and/or create that file. see clixon_datastore.c#xmldb_delete() and backend_startup.c#startup_mode_startup()
 
-new "backend loads rollback if present at startup"
+new "10. backend loads rollback if present at startup"
 reset
 edit_config "candidate" "$CONFIGB"
 commit ""
@@ -253,7 +257,7 @@ new "start backend -s init -f $cfg"
 start_backend -s init -f $cfg
 
 ################################################################################
-new "backend loads failsafe at startup if rollback present but cannot be loaded"
+new "11. backend loads failsafe at startup if rollback present but cannot be loaded"
 
 new "wait backend"
 wait_backend
@@ -301,7 +305,7 @@ wait_backend
 
 ################################################################################
 
-new "ephemeral confirmed-commit survives unrelated ephemeral session disconnect"
+new "12. ephemeral confirmed-commit survives unrelated ephemeral session disconnect"
 reset
 edit_config "candidate" "$CONFIGB"
 assert_config_equals "candidate" "$CONFIGB"
@@ -309,7 +313,10 @@ assert_config_equals "candidate" "$CONFIGB"
 # use HELLONO11 which uses older EOM framing
 sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><commit><confirmed/><confirm-timeout>60</confirm-timeout></commit></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
 PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
-assert_config_equals "running" "$CONFIGB"                       # assert config twice to prove it surives disconnect
+if [ $valgrindtest -eq 1 ]; then
+    sleep 1
+fi
+assert_config_equals "running" "$CONFIGB"                       # assert config twice to prove it survives disconnect
 assert_config_equals "running" "$CONFIGB"                       # of ephemeral sessions
 
 new "soft kill ${PIDS[0]}"
@@ -317,7 +324,7 @@ kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 
 
 ################################################################################
 
-new "cli ephemeral confirmed-commit rolls back after disconnect"
+new "13. cli ephemeral confirmed-commit rolls back after disconnect"
 reset
 
 tmppipe=$(mktemp -u)
@@ -340,7 +347,7 @@ rm $tmppipe
 
 ################################################################################
 
-new "cli persistent confirmed-commit"
+new "14. cli persistent confirmed-commit"
 reset
 
 cat << EOF | clixon_cli -f $cfg >> /dev/null
@@ -360,35 +367,35 @@ assert_config_equals "running" "$CONFIGBPLUSC"
 
 ################################################################################
 
-new "cli cancel-commit with invalid persist-id"
+new "15. cli cancel-commit with invalid persist-id"
 expectpart "$($clixon_cli -lo -1 -f $cfg commit persist-id abc cancel)" 255 "a confirmed-commit with the given persist-id was not found"
 
 ################################################################################
 
-new "cli cancel-commit with valid persist-id"
+new "16. cli cancel-commit with valid persist-id"
 expectpart "$($clixon_cli -lo -1 -f $cfg commit persist-id ab cancel)" 0 "^$"
 assert_config_equals "running" ""
 
 ################################################################################
 
-new "cli cancel-commit with no confirmed-commit in progress"
+new "17. cli cancel-commit with no confirmed-commit in progress"
 expectpart "$($clixon_cli -lo -1 -f $cfg commit persist-id ab cancel)" 255 "no confirmed-commit is in progress"
 
 ################################################################################
 
-new "cli persistent confirmed-commit with timeout"
+new "18. cli persistent confirmed-commit with timeout"
 reset
 cat << EOF | clixon_cli -f $cfg >> /dev/null
 set table parameter eth0
-commit confirmed persist abcd 2
+commit confirmed persist abcd 3
 EOF
 assert_config_equals "running" "$CONFIGB"
-sleep 2
+sleep 3
 assert_config_equals "running" ""
 
 ################################################################################
 
-new "cli persistent confirmed-commit with reset timeout"
+new "19. cli persistent confirmed-commit with reset timeout"
 reset
 cat << EOF | clixon_cli -f $cfg >> /dev/null
 set table parameter eth0
@@ -441,7 +448,7 @@ assert_config_equals "running" "$CONFIGBPLUSC"
 
 ################################################################################
 
-new "restconf persistid expect fail"
+new "20. restconf persistid expect fail"
 reset
 edit_config "candidate" "$CONFIGB"
 commit "<confirmed/><persist>a</persist>"

@@ -359,7 +359,9 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<xx:rpc xmlns:xx
 
 new "asynchronous lock running"
 sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><lock><target><running/></target></lock></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
-
+if [ $valgrindtest -eq 1 ]; then
+    sleep 1
+fi
 PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
 
 new "try commit should fail"
@@ -373,7 +375,7 @@ sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><commit><confirmed/><confirm-t
 PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
 
 new "try lock should fail"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><lock><target><running/></target></lock></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>[0-9]*</session-id></error-info><error-severity>error</error-severity><error-message>Operation failed, another session has an ongoing confirmed commit</error-message></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><lock><target><running/></target></lock></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>[0-9]*</session-id></error-info><error-severity>error</error-severity><error-message>Operation failed, "
 
 new "soft kill ${PIDS[0]}"
 kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st
