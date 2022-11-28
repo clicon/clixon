@@ -195,7 +195,6 @@ EOF
     if ! $enable; then
         # XXX or bad request?
         new "WWW get html, not enabled, expect not found"
-#       echo "curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html"
         expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 404"
     else
         new "WWW get root expect 404 without body"

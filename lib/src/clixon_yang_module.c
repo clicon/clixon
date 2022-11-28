@@ -424,8 +424,10 @@ mod_ns_upgrade(clicon_handle h,
     /* If modified or added get to revision from system */
     if (xml_flag(xmod, (XML_FLAG_CHANGE|XML_FLAG_ADD)) != 0x0){
         yspec = clicon_dbspec_yang(h);
-        if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL)
+        if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL){
+            cprintf(cbret, "Module-set upgrade header contains namespace %s, but is not found in running system", ns);
             goto fail;
+        }
         if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL){
             retval = 1;
             goto done;

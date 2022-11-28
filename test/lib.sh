@@ -427,7 +427,8 @@ function err(){
   ret=$2
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
-      echo "Expected: $1"
+      echo "Expected"
+      echo "$1"
       echo
   fi
   if [ $# -gt 1 ]; then 

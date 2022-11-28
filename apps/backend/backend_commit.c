@@ -221,8 +221,11 @@ startup_common(clicon_handle       h,
     if (msdiff){
         if ((ret = clixon_module_upgrade(h, xt, msdiff, cbret)) < 0)
             goto done;
-        if (ret == 0)
+        if (ret == 0){
+            if (cbuf_len(cbret) == 0)
+                cprintf(cbret, "Module-set upgrade function returned failure but lacks reason (cbret is not set)");
             goto fail;
+        }
     }
     /* Print upgraded db: -q backend switch for debugging/ showing upgraded config only */
     if (clicon_quit_upgrade_get(h) == 1){
