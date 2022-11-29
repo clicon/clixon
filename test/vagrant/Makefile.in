@@ -63,9 +63,11 @@ logs:
 # appear eg as generic/centos8.log
 $(VAGRANTS): logs
 ifdef LOGDIR
-	with_restconf=$(RESTCONF) ./vagrant.sh $@ 2>&1 > "$(LOGDIR)/$(subst /,-,$@)-$(RESTCONF).log"
+        with_restconf=$(RESTCONF) ./vagrant.sh $@ 2>&1 > "$(LOGDIR)/vagrant-$(RESTCONF)-$\
+(subst /,-,$@).log"
 else
-	with_restconf=$(RESTCONF) ./vagrant.sh $@ 2>&1 | tee "logs/$(subst /,-,$@)-$(RESTCONF).log"
+        with_restconf=$(RESTCONF) ./vagrant.sh $@ 2>&1 | tee "logs/vagrant-$(RESTCONF)-$(\
+subst /,-,$@).log"
 endif
 
 destroy:
