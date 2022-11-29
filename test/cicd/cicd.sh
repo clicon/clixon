@@ -54,5 +54,5 @@ if [ "$restconf" = "fcgi" ]; then
 else
     ssh -t $h sudo systemctl stop nginx
 fi
-ssh -t $h "(cd src/clixon/test; ./sum.sh)"
+ssh -t $h "(cd src/clixon/test; detail=true ./sum.sh)"
 exit 0

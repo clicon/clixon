@@ -42,12 +42,6 @@ Expected: Nov 2022
 
 ### New features
 
-* Netconf monitoring
-  * First part: Capabilities and schema state and get-schema
-  * Remains: Datastore, sessions and statistics state
-  * Standards
-    * RFC 6022 "YANG Module for NETCONF Monitoring"
-  * See [Feature Request: Support RFC 6022 (NETCONF Monitoring)](https://github.com/clicon/clixon/issues/370)
 * Confirmed-commit capability
   * Standards
     * RFC 4741 "NETCONF Configuration Protocol": Section 8.4
@@ -58,6 +52,12 @@ Expected: Nov 2022
   * Added support for relevant arguments to CLI commit
     * See [example_cli.cli](https://github.com/clicon/clixon/blob/master/example/main/example_cli.cli)
   * See [Netconf Confirmed Commit Capability](https://github.com/clicon/clixon/issues/255)
+* Netconf monitoring, part 1
+  * Capabilities and schema state and get-schema
+  * Remaining: Datastore, sessions and statistics state
+  * Standards
+    * RFC 6022 "YANG Module for NETCONF Monitoring"
+  * See [Feature Request: Support RFC 6022 (NETCONF Monitoring)](https://github.com/clicon/clixon/issues/370)
 
 ### API changes on existing protocol/config features
 
@@ -67,7 +67,7 @@ Users may have to change how they access the system
   * Added option:
     * `CLICON_NETCONF_MONITORING`
     * `CLICON_NETCONF_MONITORING_LOCATION`
-* Added `PRETTYPRINT_INDENT` compile-time option controlling indentation level for XML,JSON and TEXT
+* Added `PRETTYPRINT_INDENT` compile-time option controlling indentation level for XML, JSON, TEXT and YANG
   * Default value is `3`
 * NETCONF: Removed `message-id` from hello protocol following RFC 6241
   * See [message-id present on netconf app "hello"](https://github.com/clicon/clixon/issues/369)
@@ -78,7 +78,7 @@ Developers may need to change their code
 
 * [Code formatting: Change indentation style to space](https://github.com/clicon/clixon/issues/379)
   * Applies to all c/h/y/l/sh files and .editorconfig
-* C API changes
+* C API changes:
   * Added `expanddefault` parameter to `xml_yang_validate_rpc()`
   * Added `defaults` parameter to `clicon_rpc_get_pageable_list()`
   * `clicon_rpc_commit()` and `cli_commit`
@@ -91,9 +91,10 @@ Developers may need to change their code
   
 ### Minor features
 
-* Removed `YANG_ORDERING_WHEN_LAST` compile-time option (obsolete since 5.4)
-  * See https://github.com/clicon/clixon/issues/287
-* Removed `JSON_CDATA_STRIP` compile-time option (obsolete since 5.4)
+* Removed obsoleted compile-time options since 5.4:
+  * `YANG_ORDERING_WHEN_LAST`
+    * See https://github.com/clicon/clixon/issues/287
+  * `JSON_CDATA_STRIP`
 * Added fuzz code for xpath
 * List-pagination: Follow ietf-draft 100%: Removed list-pagination "presence"
 * Main example: Removed dependency of external IETF RFCs

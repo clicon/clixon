@@ -13,24 +13,22 @@ Note especially, the contribution license agreement (CLA) is described in the CL
 
 ## C style
 
-Clixon uses 4-char indentation, a la emacs "cc-mode".
+Clixon uses 4-char space indentation.
 
 ### Function declarations
 
 Functions in C code are written as follows:
 ```
-  static int
-  myfn(int           par1,
-       my_structure *par2)
-  {
-      int           retval = -1;
-      my_structure *ms;
+static int
+myfn(int           par1,
+     my_structure *par2)
+{
+    int           retval = -1;
+    my_structure *ms;
 
-      ms = NULL;
+    ms = NULL;
 ```
-
 Notes:
-
 1. The return type of the function and all qualifers on first line (`static int`)
 2. Function name and first parameter on second line, thereafter each parameter on own line
 3. Each parameter indented to match the "longest" (`my_structure`)
@@ -41,7 +39,7 @@ Notes:
 
 Function signatures are declared in include files or in forward declaration using "one-line" syntax, unless very long:
 ```
-  static int myfn(int par1, my_structure *par2);
+static int myfn(int par1, my_structure *par2);
 ```
 
 ### Errors
@@ -57,32 +55,29 @@ Errors are typically declared as follows:
 All function returns that have return values must be checked
 
 Default return values form a function are:
-
 - `0`  OK
 - `-1` Fatal Error
 
 In some cases, Clixon uses three-value returns as follows:
-
 - `1`  OK
-- `0`  Invalid (and usually a cxobj* return value)
+- `0`  Invalid
 - `-1` Fatal error
 
 ### Return values
 
-Clixon uses goto:s only to get a single point of exit functions as follows::
+Clixon uses goto:s only to get a single point of exit functions as follows:
 ```
-  {
-      int retval = -1;
-  
-      ...
-      retval = 0;
-    done:
-      return retval
-  }
+{
+    int retval = -1;
+
+    ...
+    retval = 0;
+  done:
+    return retval
+}
 ```
 
 Notes:
-
 1. Use only a single return statement in a function
 2. Do not use of goto:s in other ways
 
@@ -90,30 +85,47 @@ Notes:
 
 Use `/* */`. Use `//` only for temporal comments.
 
-Do not use `======`, `>>>>>` or `<<<<<<` in comments since git merge conflict uses that.
+Do not use "======", ">>>>>" or "<<<<<<" in comments since git merge conflict uses that.
 
-## Documentation
+### Format ints
 
-How to document the code:
+Use:
+
+- %zu for size_t
+- PRIu64 for uint64
+- %p for pointers
+
+### Include files
+
+Avoid include statements in .h files, place them in .c files whenever possible.
+
+The reason is to avoid deep include chains where file dependencies are
+difficult to analyze and understand. If include statements are only placed in .c
+files, there is only a single level of include file dependencies.
+
+The drawback is that the same include file may need to be repeated in many .c files.
+
+### Structs
+
+Struct fields should have a prefix to distinguish them from other struct fields. The prefix should use an abbreviation of the struct name.
+
+Example:
 ```
-  /*! This is a small comment on one line
-   *
-   * This is a detailed description
-   * spanning several lines.
-   *
-   * @param[in]     src     This is a description of the first parameter
-   * @param[in,out] dest    This is a description of the second parameter
-   * @retval        0       This is a description of the return value
-   * @retval       -1       This is a description of another return value
-   *
-   * Example usage:
-   * @code
-   *   fn(a, &b);
-   * @endcode
-   *
-   * @see                   See also this function
-   */
+  struct my_struct{
+    int   ms_foo;
+    char *ms_string[42];
+  }
 ```
+where `ms_` is the prefix and is an abbreviation of `my_struct`.
+
+### Global variables
+
+Try to avoid global variables.
+
+If you absolutely need a global variable, try to contain it as static within a
+single C-file, ie do not declare it extern and use it elsewhere. 
+
+Also, always prepend a global variable with `_`, underscore.
 
 ## Testing
 

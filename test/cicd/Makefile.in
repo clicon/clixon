@@ -58,9 +58,9 @@ all: $(HOSTS)
 # Real hosts reachable by ssh
 $(HOSTS): 
 ifdef LOGDIR
-	./cicd.sh $@ $(RESTCONF) 2>&1 > $(LOGDIR)/$@-$(RESTCONF).log
+	./cicd.sh $@ $(RESTCONF) 2>&1 > $(LOGDIR)/host-$(RESTCONF)-$@.log
 else
-	./cicd.sh $@ $(RESTCONF) 2>&1 | tee /$@-$(RESTCONF).log
+	./cicd.sh $@ $(RESTCONF) 2>&1 | tee /host-$(RESTCONF)-$@.log
 endif
 
 clean:

@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 # Test for RFC6022 YANG Module for NETCONF Monitoring
-# Tests the location scheme by using the clixon http-data feature
+# Tests the location scheme by using the clixon http-data feature (only restconf=native)
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
+
+# Does not work with fcgi
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    echo "...skipped: Must run with --with-restconf=native"
+    rm -rf $dir
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/clixon-example@2022-01-01.yang
