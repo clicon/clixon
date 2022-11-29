@@ -40,6 +40,9 @@
 ## 6.0.0
 29 Nov 2022
 
+The 6.0 release features confirmed-commit and an initial version of
+netconf monitoring along with many minor changes and bug fixes.
+
 ### New features
 
 * Confirmed-commit capability
