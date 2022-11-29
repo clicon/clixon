@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.0.0](#600) Expected: Nov 2022
+* [6.0.0](#600) 29 Nov 2022
 * [5.9.0](#590) 24 September 2022
 * [5.8.0](#580) 28 July 2022
 * [5.7.0](#570) 17 May 2022
@@ -38,7 +38,7 @@
 * [3.3.1](#331) June 7 2017
 
 ## 6.0.0
-Expected: Nov 2022
+29 Nov 2022
 
 ### New features
 
