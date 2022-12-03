@@ -83,10 +83,10 @@
  * @see rfc8040 Sections 9.1
  */
 static int
-client_get_capabilities(clicon_handle h,
-                        yang_stmt    *yspec,
-                        char         *xpath,
-                        cxobj       **xret)
+restconf_client_get_capabilities(clicon_handle h,
+                                 yang_stmt    *yspec,
+                                 char         *xpath,
+                                 cxobj       **xret)
 {
     int     retval = -1;
     cxobj  *xrstate = NULL; /* xml restconf-state node */
@@ -242,7 +242,7 @@ get_client_statedata(clicon_handle h,
             goto done;
         if (ret == 0)
             goto fail;
-        if ((ret = client_get_capabilities(h, yspec, xpath, xret)) < 0)
+        if ((ret = restconf_client_get_capabilities(h, yspec, xpath, xret)) < 0)
             goto done;
     }
     if (clicon_option_bool(h, "CLICON_YANG_LIBRARY")){
