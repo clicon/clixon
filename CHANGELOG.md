@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [6.1.0](#610) Expected: beginning of 2023
 * [6.0.0](#600) 29 Nov 2022
 * [5.9.0](#590) 24 September 2022
 * [5.8.0](#580) 28 July 2022
@@ -36,6 +37,15 @@
 * [3.3.3](#333) 25 November 2017
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
+
+## 6.1.0
+Expected: beginning of 2023
+
+### Corrected Bugs
+
+* Fixed [Netconf monitoring](https://github.com/clicon/clixon/issues/370)
+  - Announce module capability
+  - Return origin Yang file in get-schema
 
 ## 6.0.0
 29 Nov 2022

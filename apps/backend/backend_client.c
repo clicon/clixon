@@ -1064,18 +1064,20 @@ from_client_get_schema(clicon_handle h,
                        void         *arg, 
                        void         *regarg)
 {
-    int        retval = -1;
-    cxobj     *x; /* Generic xml tree */
-    cvec      *nsc = NULL;
-    char      *identifier = NULL;
-    char      *version = NULL;
-    char      *format = NULL;
-    yang_stmt *yspec;
-    yang_stmt *ymod;
-    yang_stmt *ymatch;
-    yang_stmt *yrev;
-    cbuf      *cbyang = NULL;
-    
+    int         retval = -1;
+    cxobj      *x; /* Generic xml tree */
+    cvec       *nsc = NULL;
+    char       *identifier = NULL;
+    char       *version = NULL;
+    char       *format = NULL;
+    yang_stmt  *yspec;
+    yang_stmt  *ymod;
+    yang_stmt  *ymatch;
+    yang_stmt  *yrev;
+    cbuf       *cbyang = NULL;
+    cbuf       *cbmsg = NULL;
+    const char *filename;    
+
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
@@ -1121,12 +1123,25 @@ from_client_get_schema(clicon_handle h,
             ymatch = ymod;
     }
     if (ymatch == NULL){
-        if (netconf_invalid_value(cbret, "protocol", "No such schema") < 0)
+        if ((cbmsg = cbuf_new()) == NULL){
+            clicon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }   
+        if (version)
+            cprintf(cbmsg, "No schema matching: %s@%s", identifier, version);
+        else
+            cprintf(cbmsg, "No schema matching: %s", identifier);
+        if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbmsg)) < 0)
             goto done;
         goto ok;
     }
     if (format && strcmp(format, "yang") != 0){
-        if (netconf_invalid_value(cbret, "protocol", "Format not supported") < 0)
+        if ((cbmsg = cbuf_new()) == NULL){
+            clicon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }   
+        cprintf(cbmsg, "Format not supported: %s", format);
+        if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbmsg)) < 0)
             goto done;
         goto ok;
     }
@@ -1136,12 +1151,17 @@ from_client_get_schema(clicon_handle h,
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    yang_print_cbuf(cbyang, ymatch, 0, 0);
+    if ((filename = yang_filename_get(ymatch)) != NULL){
+        if (clicon_file_cbuf(filename, cbyang) < 0)
+            goto done;
+    }
     xml_chardata_cbuf_append(cbret, cbuf_get(cbyang));
     cprintf(cbret, "</data></rpc-reply>");
  ok:
     retval = 0;
  done:
+    if (cbmsg)
+        cbuf_free(cbmsg);
     if (cbyang)
         cbuf_free(cbyang);
     if (nsc)

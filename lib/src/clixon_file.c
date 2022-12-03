@@ -160,9 +160,9 @@ clicon_files_recursive(const char *dir,
 }
 
 /*! Return alphabetically sorted files from a directory matching regexp
+ *
  * @param[in]  dir     Directory path 
  * @param[out] ent     Entries pointer, will be filled in with dir entries. Free
- *                     after use
  * @param[in]  regexp  Regexp filename matching 
  * @param[in]  type    File type matching, see stat(2) 
  *
@@ -262,8 +262,11 @@ quit:
 }
 
 /*! Make a copy of file src. Overwrite existing
- * @retval 0   OK
- * @retval -1  Error
+ *
+ * @param[in]  src     Source filename
+ * @param[out] target  Destination filename
+ * @retval     0       OK
+ * @retval     -1      Error
  */
 int
 clicon_file_copy(char *src, 
@@ -300,6 +303,46 @@ clicon_file_copy(char *src,
     close(inF);
     if (ouF)
         close(ouF);
+    if (retval < 0)
+        errno = err;
+    return retval;
+}
+
+/*! Read content of file into cbuf
+ *
+ * @param[in]   filename
+ * @param[out]  cb
+ * @retval 0    OK
+ * @retval -1   Error
+ */
+int
+clicon_file_cbuf(const char *filename, 
+                 cbuf       *cb)
+{
+    int         retval = -1;
+    int         fd = 0;
+    int         err = 0;
+    char        line[512];
+    int         bytes;
+    struct stat st;
+
+    if (stat(filename, &st) != 0){
+        clicon_err(OE_UNIX, errno, "stat");
+        return -1;
+    }
+    if ((fd = open(filename, O_RDONLY)) == -1) {
+        clicon_err(OE_UNIX, errno, "open(%s) for read", filename);
+        return -1;
+    }
+    while((bytes = read(fd, line, sizeof(line))) > 0)
+        if (cbuf_append_buf(cb, line, bytes) < 0){
+            clicon_err(OE_UNIX, errno, "cbuf_append_buf(%s)", filename);
+            err = errno;
+            goto error;
+        }
+    retval = 0;
+  error:
+    close(fd);
     if (retval < 0)
         errno = err;
     return retval;

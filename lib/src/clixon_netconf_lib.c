@@ -1815,6 +1815,11 @@ netconf_capabilites(clicon_handle h,
     cprintf(cb, "</capability>");
     /* RFC5277 Notification Capability */
     cprintf(cb, "<capability>%s</capability>", NETCONF_NOTIFICATION_CAPABILITY);
+    /* RFC6022 YANG Module for NETCONF Monitoring 
+     * This seems non-standard but necessary for most existing boxes and software
+     */
+    if (clicon_option_bool(h, "CLICON_NETCONF_MONITORING"))
+        cprintf(cb, "<capability>%s</capability>", NETCONF_MONITORING_NAMESPACE);
 
     /* It is somewhat arbitrary why some features/capabilities are hardocded and why some are not
      * rfc 6241 Sec 8.4 confirmed-commit capabilities */
