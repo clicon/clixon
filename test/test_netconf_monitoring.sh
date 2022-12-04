@@ -3,6 +3,7 @@
 # See eg Examples:
 # 4.1.  Retrieving Schema List via <get> Operation
 # 4.2.  Retrieving Schema Instances
+# Also: loop over all installed yang files and compare with get-schema
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -15,6 +16,7 @@ fyang=$dir/clixon-example@2022-01-01.yang
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <!-- The following are errors in ietf-l3vpn-ntw@2022-02-14.yang -->
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_YANG_LIBRARY>false</CLICON_YANG_LIBRARY>
@@ -97,6 +99,47 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+
+YANGDIR=$YANG_INSTALLDIR
+
+if [ $BE -ne 0 ]; then
+    new "start backend -s init -f $cfg -o CLICON_YANG_MAIN_DIR=$YANGDIR"
+    start_backend -s init -f $cfg -o CLICON_YANG_MAIN_DIR=$YANGDIR 
+fi
+new "wait backend"
+wait_backend
+
+new "Loop over all yangs in $YANGDIR"
+
+for f in ${YANGDIR}/*.yang; do
+    b=$(basename $f)
+    id=$(echo "$b" | sed 's/.yang//' | sed 's/@.*//')
+    version=$(echo "$b" | sed 's/.yang//' | sed 's/.*@//')
+    $clixon_netconf -qf $cfg <<EOF > $dir/ex.yang
+$HELLONO11
+<rpc $DEFAULTNS>
+   <get-schema xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring">
+      <identifier>$id</identifier>
+      <version>$version</version>
+      <format>yang</format>
+   </get-schema>
+</rpc>]]>]]>
+EOF
+    grep "<rpc-error>" $dir/ex.yang > /dev/null
+    if [ $? -eq 0 ]; then
+        continue
+    fi
+    # Mask netconf header and footer
+    sed -i -e "s/<rpc-reply $DEFAULTNS><data xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\">//" -e 's/<\/data><\/rpc-reply>]]>]]>//' /var/tmp/test_netconf_monitoring.sh/ex.yang
+    # Decode XML
+    sed -i -e 's/&gt;/>/g' -e 's/&lt;/</g' -e 's/\&amp;/\&/g' /var/tmp/test_netconf_monitoring.sh/ex.yang
+    new "get-schema check yang $b"
+    diff $dir/ex.yang $f
+    if [ $? -ne 0 ]; then
+        err1 "get-schema $f is different from original"
+        continue
+    fi
+done
 
 rm -rf $dir
 
