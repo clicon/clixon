@@ -53,7 +53,7 @@ enum format_enum{
 
 /* Protocol message header */
 struct clicon_msg {
-    uint32_t    op_len;     /* length of message. network byte order. */
+    uint32_t    op_len;     /* length of whole message: body+header, network byte order. */
     uint32_t    op_id;      /* session-id. network byte order. */
     char        op_body[0]; /* rest of message, actual data */
 };

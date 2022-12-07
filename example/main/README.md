@@ -13,7 +13,6 @@
   * [Systemd](#systemd)
   * [Docker](#docker)
   * [Plugins](#plugins)
-  
 
 ## Background
 

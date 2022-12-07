@@ -8,7 +8,7 @@
 # o  explicit
 # Clixon supports explicit, but the testcases define the other cases as well
 # in case others will be supported
-# XXX I dont think this is correct. Or at least it is not complete.
+# See test_yang_with_default for full RFC6243 tests
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

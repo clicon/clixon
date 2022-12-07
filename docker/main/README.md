@@ -47,7 +47,7 @@ As CLI:
 ```
 As netconf via stdin/stdout:
 ```
-  $ sudo docker exec -it clixon-system clixon_netconf
+  $ sudo docker exec -it clixon-system clixon_netconf -f /usr/local/etc/example.xml
 ```
 As restconf using curl on exposed port 80:
 ```

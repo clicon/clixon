@@ -117,7 +117,7 @@ AC_SUBST(LINKAGE)
 AC_SUBST(with_restconf)  # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(enable_netsnmp) # Enable build of apps/snmp
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
-AC_SUBST(HAVE_HTTP1,false) 
+AC_SUBST(HAVE_HTTP1,false)
 AC_SUBST(with_libxml2)  
 AC_SUBST(CLIXON_YANG_PATCH)
 # Where Clixon installs its YANG specs
@@ -146,6 +146,10 @@ AC_PROG_LEX
 if test "$LEX" = ":"; then
    AC_MSG_ERROR(CLIXON does not find lex or flex.)
 fi
+
+# SSH binary path
+AC_PATH_PROG(SSH_BIN, ssh)
+AC_DEFINE_UNQUOTED(SSH_BIN, $SSH_BIN, [SSH binary])
 
 # Get "bison" from bison -y or other string
 if test "$YACC" = "${YACC##bison}" ; then

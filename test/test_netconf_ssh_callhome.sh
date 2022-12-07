@@ -4,8 +4,10 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# Skip it if no openssh
-if ! [ -x "$(command -v ssh)" ]; then
+ssh_bin=${SSH_BIN}
+
+# Skip it if no ssh bin
+if ! [ -x "$ssh_bin" ]; then
     echo "...ssh not installed"
     rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
@@ -142,9 +144,9 @@ HashKnownHosts no
 EOF
 
 new "Start Listener client"
-echo "ssh -s -F $sshcfg -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand=\"clixon_netconf_ssh_callhome_client -a 127.0.0.1\" . netconf"
+echo "${ssh_bin} -s -F $sshcfg -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand=\"clixon_netconf_ssh_callhome_client -a 127.0.0.1\" . netconf"
 #-F $sshcfg
-expectpart "$(ssh -s -F $sshcfg -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand="${clixon_netconf_ssh_callhome_client} -a 127.0.0.1" . netconf < $rpccmd)" 0 "<hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability>.*</capabilities><session-id>2</session-id></hello>" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
+expectpart "$(${ssh_bin} -s -F $sshcfg -v -i $key -o ProxyUseFdpass=yes -o ProxyCommand="${clixon_netconf_ssh_callhome_client} -a 127.0.0.1" . netconf < $rpccmd)" 0 "<hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability>.*</capabilities><session-id>2</session-id></hello>" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
 
 # Wait 
 wait
