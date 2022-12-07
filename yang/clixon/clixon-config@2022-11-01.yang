@@ -51,7 +51,7 @@ module clixon-config {
             "Added option:
                     CLICON_NETCONF_MONITORING
                     CLICON_NETCONF_MONITORING_LOCATION
-             Released in Clixon 6.1";
+             Released in Clixon 6.0";
     }
     revision 2022-03-21 {
         description

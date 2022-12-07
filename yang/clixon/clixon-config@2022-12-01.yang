@@ -46,6 +46,19 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2022-12-01 {
+        description
+            "Added option:
+                    CLICON_NETCONF_WITHDEFAULTS_REPORTALL
+             Released in Clixon 6.1";
+    }
+    revision 2022-11-01 {
+        description
+            "Added option:
+                    CLICON_NETCONF_MONITORING
+                    CLICON_NETCONF_MONITORING_LOCATION
+             Released in Clixon 6.0";
+    }
     revision 2022-03-21 {
         description
             "Added option:
@@ -536,6 +549,16 @@ module clixon-config {
                  Base capability '1' includes switching over to chunked framing as defined in
                  RFC6242 for example.
                  This only applies to the external NETCONF";
+        }
+        leaf CLICON_NETCONF_WITHDEFAULTS_REPORTALL{
+            type boolean;
+            default "false";
+            description
+                "This option controls the basic mode retrieval defined in:
+                     RFC 6243: With-defaults Capability for NETCONF
+                 NETCONF with-defaults basic mode retrieval is set as follows:
+                 If false, set to explicit (this is default)
+                 If true, set to report-all (this is backward-compatible)";
         }
         leaf CLICON_RESTCONF_API_ROOT {
             type string;
@@ -1061,6 +1084,7 @@ module clixon-config {
                  See also CLICON_YANG_LIBRARY and CLICON_MODULE_SET_ID";
             status obsolete;
         }
+
         leaf CLICON_MODULE_SET_ID {
             type string;
             default "0";
@@ -1072,6 +1096,21 @@ module clixon-config {
                  The /yang-library/content-id state-data leaf is set with this value
                  If CLICON_MODULE_LIBRARY_RFC7895 is enabled, it sets the modules-state/module-set-id 
                  instead";
+        }
+        leaf CLICON_NETCONF_MONITORING {
+            type boolean;
+            default true;
+            description
+                "Enable Netconf monitoring support as state data according to RFC6022. 
+                 If enabled, netconf monitoring info will appear when doing netconf get or 
+                 restconf GET.";
+        }
+        leaf CLICON_NETCONF_MONITORING_LOCATION {
+            type string;
+            description
+                "Extra Netconf monitoring location directory where schemas can be retrieved
+                 apart from NETCONF.
+                 Only if CLICON_NETCONF_MONITORING";
         }
         leaf CLICON_STREAM_DISCOVERY_RFC5277 {
             type boolean;
