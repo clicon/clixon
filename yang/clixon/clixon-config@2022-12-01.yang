@@ -49,7 +49,7 @@ module clixon-config {
     revision 2022-12-01 {
         description
             "Added option:
-                    CLICON_NETCONF_WITHDEFAULTS_REPORTALL
+                    <nothing yet>
              Released in Clixon 6.1";
     }
     revision 2022-11-01 {
@@ -549,16 +549,6 @@ module clixon-config {
                  Base capability '1' includes switching over to chunked framing as defined in
                  RFC6242 for example.
                  This only applies to the external NETCONF";
-        }
-        leaf CLICON_NETCONF_WITHDEFAULTS_REPORTALL{
-            type boolean;
-            default "false";
-            description
-                "This option controls the basic mode retrieval defined in:
-                     RFC 6243: With-defaults Capability for NETCONF
-                 NETCONF with-defaults basic mode retrieval is set as follows:
-                 If false, set to explicit (this is default)
-                 If true, set to report-all (this is backward-compatible)";
         }
         leaf CLICON_RESTCONF_API_ROOT {
             type string;
