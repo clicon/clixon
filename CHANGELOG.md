@@ -41,6 +41,16 @@
 ## 6.1.0
 Expected: beginning of 2023
 
+### C/CLI-API changes on existing features
+Developers may need to change their code
+
+* C-API
+  * Added `sock_flags` parameter to `clixon_proc_socket()`
+  
+### Minor features
+
+* Added `CLIXON_CLIENT_SSH` to client API to communicate remotely via SSH netconf sub-system
+
 ### Corrected Bugs
 
 * Fixed [Netconf monitoring](https://github.com/clicon/clixon/issues/370)

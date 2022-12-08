@@ -42,11 +42,25 @@
 typedef void *clixon_handle;
 typedef void *clixon_client_handle;
 
-/* Connection type as parameter to connect */
+/* Connection type as parameter to connect 
+ */
 typedef enum {
-    CLIXON_CLIENT_IPC,      /* Internal IPC API, only experimental use */
-    CLIXON_CLIENT_NETCONF,  /* External Netconf */
-    CLIXON_CLIENT_SSH       /* NYI External Netconf over SSH */
+    /* Internal IPC API, connect directly on local UNIX domain socket to backend
+     * or using IP according to CLICON_SOCK_FAMILY setting
+     * see https://clixon-docs.readthedocs.io/en/latest/netconf.html#ipc 
+     * Must be local on device
+     */
+    CLIXON_CLIENT_IPC,      
+    /* Regular NETCONF via local netconf binary
+     * Fork clixon_netconf locally which in turn communicates with backend
+     * Must be local on device
+     */
+    CLIXON_CLIENT_NETCONF,  
+    /* Regular NETCONF using ssh sub-system via local SSH (openssh) client binary
+     * Fork ssh locally which in turn communicates remotely to device
+     * Must have openssh installed locally and device must have ssh sub-subsystem
+     */
+    CLIXON_CLIENT_SSH  
 } clixon_client_type;
 
 /*
@@ -59,7 +73,9 @@ extern "C" {
     
 clixon_handle clixon_client_init(const char *config_file);
 int   clixon_client_terminate(clixon_handle h);
-clixon_client_handle clixon_client_connect(clixon_handle h, clixon_client_type socktype);
+int   clixon_client_lock(int sock, const int lock, const char *db);
+int   clixon_client_hello(int sock, int version);
+clixon_client_handle clixon_client_connect(clixon_handle h, clixon_client_type socktype, const char *dest);
 int   clixon_client_disconnect(clixon_client_handle ch);
 int   clixon_client_get_bool(clixon_client_handle ch, int *rval, const char *xnamespace, const char *xpath);
 int   clixon_client_get_str(clixon_client_handle ch, char *rval, int n, const char *xnamespace, const char *xpath);

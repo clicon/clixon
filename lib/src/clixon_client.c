@@ -146,7 +146,7 @@ clixon_client_terminate(clicon_handle h)
  * @retval     0      OK
  * @retval     -1     Error
  */
-static int
+int
 clixon_client_lock(int         sock,
                    const int   lock,
                    const char *db)
@@ -204,15 +204,14 @@ clixon_client_lock(int         sock,
 
 /*! Internal function to construct the encoding and hello message
  *
- * @param[in]  sock      Socket
- * @param[in]  namespace Default namespace used for non-prefixed entries in xpath. (Alt use nsc)
- * @param[in]  xpath     XPath
- * @param[out] xdata     XML data tree (may or may not include the intended data)
- * @retval     0         OK
- * @retval     -1        Error
+ * @param[in]  sock     Socket to netconf server
+ * @param[in]  version  Netconf version for capability announcement
+ * @retval     0        OK
+ * @retval     -1       Error
  */
-static int
-clixon_client_hello(int sock)
+int
+clixon_client_hello(int sock,
+                    int version)
 {
     int   retval = -1;
     cbuf *msg = NULL;
@@ -222,9 +221,11 @@ clixon_client_hello(int sock)
         clicon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
-    cprintf(msg, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+    //    cprintf(msg, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     cprintf(msg, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
-    cprintf(msg, "<capabilities><capability>%s</capability></capabilities>", NETCONF_BASE_CAPABILITY_1_1);
+    cprintf(msg, "<capabilities>");
+    cprintf(msg, "<capability>%s</capability>", version==0?NETCONF_BASE_CAPABILITY_1_0:NETCONF_BASE_CAPABILITY_1_1);
+    cprintf(msg, "</capabilities>");
     cprintf(msg, "</hello>");
     cprintf(msg, "]]>]]>");
     if (clicon_msg_send1(sock, msg) < 0)
@@ -237,25 +238,112 @@ clixon_client_hello(int sock)
     return retval;
 }
 
+/*!
+ */
+static int
+clixon_client_connect_netconf(clicon_handle                h,
+                              struct clixon_client_handle *cch)
+{
+    int         retval = -1;
+    int         nr;
+    int         i;
+    char      **argv = NULL;
+    char       *netconf_bin = NULL;
+    struct stat st = {0,};
+    char        dbgstr[8];
+
+    nr = 7;
+    if (clicon_debug_get() != 0)
+        nr += 2;
+    if ((argv = calloc(nr, sizeof(char *))) == NULL){
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    i = 0;
+    if ((netconf_bin = getenv("CLIXON_NETCONF_BIN")) == NULL)
+        netconf_bin = CLIXON_NETCONF_BIN;
+    if (stat(netconf_bin, &st) < 0){
+        clicon_err(OE_NETCONF, errno, "netconf binary %s. Set with CLIXON_NETCONF_BIN=", 
+                   netconf_bin);
+        goto done;
+    }
+    argv[i++] = netconf_bin;
+    argv[i++] = "-q";
+    argv[i++] = "-f";
+    argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
+    argv[i++] = "-l"; /* log to syslog */
+    argv[i++] = "s";
+    if (clicon_debug_get() != 0){
+        argv[i++] = "-D";
+        snprintf(dbgstr, sizeof(dbgstr)-1, "%d", clicon_debug_get());
+        argv[i++] = dbgstr;
+    }
+    argv[i++] = NULL;
+    assert(i==nr);
+    if (clixon_proc_socket(argv, SOCK_DGRAM, &cch->cch_pid, &cch->cch_socket) < 0){
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*!
+ */
+static int
+clixon_client_connect_ssh(clicon_handle                h,
+                          struct clixon_client_handle *cch,
+                          const char                  *dest)
+{
+    int         retval = -1;
+    int         nr;
+    int         i;
+    char      **argv = NULL;
+    char       *ssh_bin = SSH_BIN;
+    struct stat st = {0,};
+
+    clicon_debug(1, "%s", __FUNCTION__);
+    nr = 5;
+    if ((argv = calloc(nr, sizeof(char *))) == NULL){
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    i = 0;
+    if (stat(ssh_bin, &st) < 0){
+        clicon_err(OE_NETCONF, errno, "ssh binary %s", ssh_bin);
+        goto done;
+    }
+    argv[i++] = ssh_bin;
+    argv[i++] = (char*)dest;
+    argv[i++] = "-s";
+    argv[i++] = "netconf";
+    argv[i++] = NULL;
+    assert(i==nr);
+    for (i=0;i<nr;i++)
+        clicon_debug(1, "%s: argv[%d]:%s", __FUNCTION__, i, argv[i]);
+    if (clixon_proc_socket(argv, SOCK_STREAM, &cch->cch_pid, &cch->cch_socket) < 0){
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Connect client to clixon backend according to config and return a socket
  * @param[in]  h        Clixon handle
  * @param[in]  socktype Type of socket, internal/external/netconf/ssh
+ * @param[in]  dest     Destination for some types
  * @retval     ch       Clixon session handler
  * @retval     NULL     Error
  * @see clixon_client_disconnect  Close the socket returned here
  */
 clixon_client_handle
 clixon_client_connect(clicon_handle      h,
-                      clixon_client_type socktype)
+                      clixon_client_type socktype,
+                      const char        *dest)
 {
     struct clixon_client_handle *cch = NULL;
-    char                       **argv = NULL;
-    int                          nr;
-    int                          i;
-    char                        *netconf_bin = NULL;
-    struct stat                  st = {0,};
     size_t                       sz = sizeof(struct clixon_client_handle);
-    char                         dbgstr[8];
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((cch = malloc(sz)) == NULL){
@@ -271,48 +359,19 @@ clixon_client_connect(clicon_handle      h,
             goto err;
         break;
     case CLIXON_CLIENT_NETCONF:
-        nr = 7;
-        if (clicon_debug_get() != 0)
-            nr += 2;
-        if ((argv = calloc(nr, sizeof(char *))) == NULL){
-            clicon_err(OE_UNIX, errno, "calloc");
-            goto err;
-        }
-        i = 0;
-        if ((netconf_bin = getenv("CLIXON_NETCONF_BIN")) == NULL)
-            netconf_bin = CLIXON_NETCONF_BIN;
-        if (stat(netconf_bin, &st) < 0){
-            clicon_err(OE_NETCONF, errno, "netconf binary %s. Set with CLIXON_NETCONF_BIN=", 
-                       netconf_bin);
-            goto err;
-        }
-        argv[i++] = netconf_bin;
-        argv[i++] = "-q";
-        argv[i++] = "-f";
-        argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
-        argv[i++] = "-l"; /* log to syslog */
-        argv[i++] = "s";
-        if (clicon_debug_get() != 0){
-            argv[i++] = "-D";
-            snprintf(dbgstr, sizeof(dbgstr)-1, "%d", clicon_debug_get());
-            argv[i++] = dbgstr;
-        }
-        argv[i++] = NULL;
-        assert(i==nr);
-        if (clixon_proc_socket(argv, &cch->cch_pid, &cch->cch_socket) < 0){
-            goto err;
-        }
-        /* Start with encoding and hello message */
-        if (clixon_client_hello(cch->cch_socket) < 0)
+        if (clixon_client_connect_netconf(h, cch) < 0)
             goto err;
         break;
+#ifdef SSH_BIN
     case CLIXON_CLIENT_SSH:
+        if (clixon_client_connect_ssh(h, cch, dest) < 0)
+            goto err;
+#else
+        clicon_err(OE_UNIX, 0, "No ssh bin");
+        goto done;
+#endif
         break;
     } /* switch */
-    /* lock */
-    if (clixon_client_lock(cch->cch_socket, 1, "running") < 0)
-        goto err;
-    cch->cch_locked = 1;
  done:
     clicon_debug(1, "%s retval:%p", __FUNCTION__, cch);
     return cch;
@@ -347,12 +406,11 @@ clixon_client_disconnect(clixon_client_handle ch)
     case CLIXON_CLIENT_IPC:
         close(cch->cch_socket);
         break;
+    case CLIXON_CLIENT_SSH:
     case CLIXON_CLIENT_NETCONF:
         if (clixon_proc_socket_close(cch->cch_pid,
                                      cch->cch_socket) < 0)
             goto done;
-        break;
-    case CLIXON_CLIENT_SSH:
         break;
     }
     free(cch);
@@ -403,6 +461,7 @@ clixon_xml_bottom(cxobj  *xtop,
  * @param[out] xdata     XML data tree (may or may not include the intended data)
  * @retval     0         OK
  * @retval     -1        Error
+ * @note configurable netconf framing type, now hardwired to 0
  */
 static int
 clixon_client_get_xdata(int         sock,
@@ -445,9 +504,11 @@ clixon_client_get_xdata(int         sock,
         cprintf(msg, "/>");
     }
     cprintf(msg, "</get-config></rpc>");
-    if (netconf_output_encap(NETCONF_SSH_CHUNKED, msg) < 0)
+    if (netconf_output_encap(0, msg) < 0) // XXX configurable session
         goto done;
-    if (clicon_rpc1(sock, msg, msgret, &eof) < 0)
+    if (clicon_msg_send1(sock, msg) < 0)
+        goto done;
+    if (clicon_msg_rcv1(sock, msgret, &eof) < 0)
         goto done;
     if (eof){
         close(sock);

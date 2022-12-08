@@ -4607,7 +4607,7 @@ fi
 
 
 cat >>confdefs.h <<_ACEOF
-#define SSH_BIN $SSH_BIN
+#define SSH_BIN "$SSH_BIN"
 _ACEOF
 
 

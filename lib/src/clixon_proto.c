@@ -433,6 +433,7 @@ clicon_msg_rcv(int                s,
  * @param[out]  eof    Set if eof encountered
  * @see netconf_input_cb()
  * @see clicon_msg_rcv using IPC message struct
+ * @note only NETCONF version 1.0 EOM framing
  */
 int
 clicon_msg_rcv1(int   s,
@@ -502,7 +503,7 @@ clicon_msg_send1(int   s,
     int retval = -1;
 
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
-                 s, cbuf_get(cb), cbuf_len(cb)+1) < 0){
+                 s, cbuf_get(cb), cbuf_len(cb)) < 0){
         clicon_err(OE_CFG, errno, "atomicio");
         clicon_log(LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
         goto done;

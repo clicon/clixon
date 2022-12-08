@@ -149,7 +149,7 @@ fi
 
 # SSH binary path
 AC_PATH_PROG(SSH_BIN, ssh)
-AC_DEFINE_UNQUOTED(SSH_BIN, $SSH_BIN, [SSH binary])
+AC_DEFINE_UNQUOTED(SSH_BIN, "$SSH_BIN", [SSH binary])
 
 # Get "bison" from bison -y or other string
 if test "$YACC" = "${YACC##bison}" ; then

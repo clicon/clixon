@@ -124,7 +124,7 @@ enum error_option{ /* edit-config */
 /* NETCONF framing
  */
 enum framing_type{ 
-    NETCONF_SSH_EOM,     /* RFC 4742, RFC 6242 hello msg (end-of-msg: ]]>]]>)*/
+    NETCONF_SSH_EOM=0,   /* RFC 4742, RFC 6242 hello msg (end-of-msg: ]]>]]>)*/
     NETCONF_SSH_CHUNKED, /* RFC 6242 Chunked framing */
 };
 typedef enum framing_type netconf_framing_type;

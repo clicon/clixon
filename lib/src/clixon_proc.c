@@ -163,15 +163,18 @@ clixon_proc_sigint(int sig)
 }
 
 /*! Fork a child, exec a child and setup socket to child and return to caller
- * @param[in]  argv    NULL-terminated Argument vector
- * @param[in]  doerr   If non-zero, stderr will be directed to the pipe as well. 
- * @param[out] s       Socket
- * @retval     O       OK
- * @retval     -1      Error.
+ * @param[in]  argv       NULL-terminated Argument vector
+ * @param[in]  sock_flags Socket type/flags, typically SOCK_DGRAM or SOCK_STREAM, see
+ * @param[out] pid        Process-id of child
+ * @param[out] sock       Socket
+ * @retval     O          OK
+ * @retval     -1         Error.
  * @see clixon_proc_socket_close  close sockets, kill child and wait for child termination
+ * @see for flags usage see man sockerpair(2)
  */
 int
 clixon_proc_socket(char **argv,
+                   int    sock_flags,
                    pid_t *pid,
                    int   *sock)
 {
@@ -182,12 +185,6 @@ clixon_proc_socket(char **argv,
     sigset_t oset;
     int      sig = 0;
 
-#ifdef __APPLE__
-    int         sock_flags = SOCK_DGRAM;
-#else
-    int         sock_flags = SOCK_DGRAM | SOCK_CLOEXEC;
-#endif
-    
     if (argv == NULL){
         clicon_err(OE_UNIX, EINVAL, "argv is NULL");
         goto done;
@@ -196,18 +193,6 @@ clixon_proc_socket(char **argv,
         clicon_err(OE_UNIX, errno, "socketpair");
         goto done;
     }
-
-#ifdef __APPLE__
-    if (fcntl(sp[0], O_CLOEXEC)) {
-        clicon_err(OE_UNIX, errno, "fcntl, sp[0]");
-        goto done;
-    }
-
-    if (fcntl(sp[1], O_CLOEXEC)) {
-        clicon_err(OE_UNIX, errno, "fcntl, sp[1]");
-        goto done;
-    }
-#endif
 
     sigprocmask(0, NULL, &oset);
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);

@@ -85,8 +85,9 @@ main(int    argc,
      char **argv)
 {
     int retval = -1;
-    clixon_handle         h = NULL; /* clixon handle */
+    clixon_handle        h = NULL; /* clixon handle */
     clixon_client_handle ch = NULL; /* clixon client handle */
+    int                  s;
 
     clicon_log_init("client", LOG_DEBUG, CLICON_LOG_STDERR);  // debug
     clicon_debug_init($debug, NULL);                          // debug
@@ -95,9 +96,11 @@ main(int    argc,
     if ((h = clixon_client_init("$cfg")) == NULL)
        return -1;
     /* Make a connection over netconf or ssh/netconf */
-    if ((ch = clixon_client_connect(h, CLIXON_CLIENT_NETCONF)) == NULL)
+    if ((ch = clixon_client_connect(h, CLIXON_CLIENT_NETCONF, NULL)) == NULL)
        return -1;
-
+    s = clixon_client_socket_get(ch);
+    if (clixon_client_hello(s, 0) < 0)
+      return -1;
     /* Here are read functions depending on an example YANG 
      * (Need an example YANG and XML input to confd)
      */
