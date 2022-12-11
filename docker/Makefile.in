@@ -41,8 +41,8 @@ LIBS    	= @LIBS@
 
 SHELL	= /bin/sh
 
-SUBDIRS  = base
-SUBDIRS  += main
+SUBDIRS  = example
+SUBDIRS  += test
 #SUBDIRS += cluster
 
 .PHONY: all clean distclean depend install-include install uninstall test $(SUBDIRS)
@@ -62,7 +62,7 @@ distclean: clean
 	do (cd $$i; $(MAKE) $(MFLAGS) $@); done
 
 test:
-	$(MAKE) -C main $(MFLAGS) $@
+	$(MAKE) -C test $(MFLAGS) $@
 
 depend:
 	for i in $(SUBDIRS); \

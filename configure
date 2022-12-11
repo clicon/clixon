@@ -5786,7 +5786,7 @@ fi
 
 
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml extras/rpm/Makefile docker/Makefile docker/base/Makefile docker/clixon-dev/Makefile docker/main/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml extras/rpm/Makefile docker/Makefile docker/clixon-dev/Makefile docker/example/Makefile docker/test/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -6498,9 +6498,9 @@ do
     "example/main/example.xml") CONFIG_FILES="$CONFIG_FILES example/main/example.xml" ;;
     "extras/rpm/Makefile") CONFIG_FILES="$CONFIG_FILES extras/rpm/Makefile" ;;
     "docker/Makefile") CONFIG_FILES="$CONFIG_FILES docker/Makefile" ;;
-    "docker/base/Makefile") CONFIG_FILES="$CONFIG_FILES docker/base/Makefile" ;;
     "docker/clixon-dev/Makefile") CONFIG_FILES="$CONFIG_FILES docker/clixon-dev/Makefile" ;;
-    "docker/main/Makefile") CONFIG_FILES="$CONFIG_FILES docker/main/Makefile" ;;
+    "docker/example/Makefile") CONFIG_FILES="$CONFIG_FILES docker/example/Makefile" ;;
+    "docker/test/Makefile") CONFIG_FILES="$CONFIG_FILES docker/test/Makefile" ;;
     "util/Makefile") CONFIG_FILES="$CONFIG_FILES util/Makefile" ;;
     "yang/Makefile") CONFIG_FILES="$CONFIG_FILES yang/Makefile" ;;
     "yang/clixon/Makefile") CONFIG_FILES="$CONFIG_FILES yang/clixon/Makefile" ;;

@@ -1,4 +1,4 @@
-#
+#!/bin/sh
 # ***** BEGIN LICENSE BLOCK *****
 # 
 # Copyright (C) 2017-2019 Olof Hagsand
@@ -30,45 +30,36 @@
 # the terms of any one of the Apache License version 2 or the GPL.
 #
 # ***** END LICENSE BLOCK *****
-#
-VPATH       	= @srcdir@
-srcdir  	= @srcdir@
-top_srcdir  	= @top_srcdir@
-CC		= @CC@
-CFLAGS  	= @CFLAGS@ 
-LDFLAGS 	= @LDFLAGS@
-LIBS    	= @LIBS@
 
-# docker.hub image. CHANGE THIS IF YOU PUSH YOUR OWN
-IMG   = clixon/clixon # base image
+# Clixon startscript for native restconf and https
+# This script is copied into the container on build time and runs
+# _inside_ the container at start in runtime. It gets environment variables
+# from the start.sh script.
+# It starts a backend, a restconf daemon and exposes ports for restconf, and the sleeps
+# See also Dockerfile of the example
+# Log msg, see with docker logs
 
-SHELL	= /bin/sh
+set -ux # e but clixon_backend may fail if test is run in parallell
 
-.PHONY: all clean distclean docker push depend install-include install uninstall
+>&2 echo "$0"
 
-all:	
-	echo "Run make docker to build docker image"
+# If set, enable debugging (of backend and restconf daemons)
+: ${DBG:=0}
 
-# (recursively) clone the repo from top-level - NOTE changes must be committed
-clixon:
-	git clone file://$(realpath ${top_srcdir})
+# Start sshd
+touch /run/openrc/softlevel
+/etc/init.d/sshd start
 
-clean:
-	rm -rf clixon # clone of top-srcdir
+# But dont use -s exposing local ports since there is problem with self-signed certs?
+#/usr/local/bin/clixon_restconf -l f/var/log/restconf.log -D $DBG &
+#>&2 echo "clixon_restconf started"
 
-distclean: clean
-	rm -f Makefile *~ .depend
+ln -s /usr/local/etc/example.xml clixon.xml
 
-docker: clixon Dockerfile
-	sudo docker build -t $(IMG) .  # --no-cache
+# Start clixon backend 
+/usr/local/sbin/clixon_backend -D $DBG -s running -l e -f /usr/local/etc/example.xml 
+>&2 echo "clixon_backend started"
 
-push:
-	sudo docker push $(IMG)
-depend:
-
-install-include:
-
-install:
-
-uninstall:
-
+# Alt: let backend be in foreground, but test scripts may
+# want to restart backend
+/bin/sleep 100000000

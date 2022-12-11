@@ -34,60 +34,41 @@
 VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
-prefix 		= @prefix@
-bindir 		= @bindir@
-includedir	= @includedir@
-datarootdir     = @datarootdir@
+CC		= @CC@
+CFLAGS  	= @CFLAGS@ 
+LDFLAGS 	= @LDFLAGS@
+LIBS    	= @LIBS@
 
-# Also clixon YANGs (see ../clixon)
-YANG_INSTALLDIR   = @YANG_INSTALLDIR@
+# docker.hub image. CHANGE THIS IF YOU PUSH YOUR OWN
+IMG   = clixon/clixon-example
 
-YANGSPECS += ietf-inet-types@2021-02-22.yang
-YANGSPECS += ietf-netconf@2011-06-01.yang
-YANGSPECS += ietf-netconf-acm@2018-02-14.yang
-YANGSPECS += ietf-restconf@2017-01-26.yang
-YANGSPECS += ietf-restconf-monitoring@2017-01-26.yang
-YANGSPECS += ietf-yang-library@2019-01-04.yang
-YANGSPECS += ietf-yang-types@2013-07-15.yang
-YANGSPECS += ietf-datastores@2018-02-14.yang
-YANGSPECS += ietf-yang-patch@2017-02-22.yang
-# In RFC 8528  YANG Schema Mount
+SHELL	= /bin/sh
 
-YANGSPECS += ietf-yang-schema-mount@2019-01-14.yang
-# For remaining attribute in list-pagination:
-YANGSPECS += ietf-yang-metadata@2016-08-05.yang
-# XXX brings in NACM which breaks tests
-# YANGSPECS += ietf-system-capabilities@2021-04-02.yang
-# For remaining attribute in list-pagination-nc:
-YANGSPECS += ietf-netconf-nmda@2019-01-07.yang
-# For remaining attribute in ietf-netconf-nmda
-YANGSPECS += ietf-origin@2018-02-14.yang
-YANGSPECS += ietf-netconf-with-defaults@2011-06-01.yang
-YANGSPECS += ietf-netconf-monitoring@2010-10-04.yang
-
-# in draft-ietf-netconf-list-pagination-00.html
-YANGSPECS += ietf-list-pagination@2022-07-24.yang
-# in draft-ietf-netconf-list-pagination-nc-00
-YANGSPECS += ietf-list-pagination-nc@2022-07-24.yang 
+.PHONY: all clean distclean docker push depend install-include install uninstall
 
 all:	
+	echo "Run make docker to build docker image"
+
+# (recursively) clone the repo from top-level - NOTE changes must be committed
+clixon:
+	git clone file://$(realpath ${top_srcdir})
 
 clean:
+	rm -rf clixon # clone of top-srcdir
 
 distclean: clean
 	rm -f Makefile *~ .depend
 
-install: $(YANGSPECS) 
-	install -d -m 0755 $(DESTDIR)$(YANG_INSTALLDIR)
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(YANG_INSTALLDIR)
+docker: clixon Dockerfile
+	sudo docker build -t $(IMG) $(DOCKERFLAGS) .
 
-uninstall:
-	(cd $(DESTDIR)$(YANG_INSTALLDIR); rm -rf *.yang)
-
-install-include:	
-
+push:
+	sudo docker push $(IMG)
 depend:
 
+install-include:
 
-#include .depend
+install:
+
+uninstall:
 

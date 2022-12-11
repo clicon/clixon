@@ -44,6 +44,12 @@ Expected: beginning of 2023
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Changed docker builds
+  * `clixon-test` built in `docker/test`
+    * Renamed from `clixon-system` built in `docker/main`
+  * `clixon-example` built in `docker/example`
+    * Added netconf ssh subsystem
+    * Renamed from `clixon` built in `docker/base`
 * C-API
   * Added `sock_flags` parameter to `clixon_proc_socket()`
   
