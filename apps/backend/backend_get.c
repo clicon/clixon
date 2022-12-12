@@ -815,7 +815,7 @@ get_common(clicon_handle        h,
     cxobj          *xfind;
     uint32_t        offset = 0;
     uint32_t        limit = 0;
-    withdefaults_type wdef = WITHDEFAULTS_REPORT_ALL;
+    withdefaults_type wdef = WITHDEFAULTS_EXPLICIT;
     char             *wdefstr;
     
     clicon_debug(1, "%s", __FUNCTION__);
