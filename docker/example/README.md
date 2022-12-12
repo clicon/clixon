@@ -6,7 +6,11 @@ This clixon example container uses native http.
 
 ## Build
 
-Perform the build by `make docker`. This copies the latest _committed_ clixon code into the container.
+Perform the build by:
+```
+  $ make docker
+```
+This copies the latest _committed_ clixon code into the container.
 
 ## Start
 
@@ -15,10 +19,15 @@ Start the container:
   $ ./start.sh 
 ```
 
-If you want to install your pre-existing pub rsa key in the container:
+If you want to install your pre-existing pub rsa key in the container, and change the name:
 
 ```
-  $ SSHKEY=true ./start.sh 
+  $ SSHKEY=true NAME=clixon-example22 ./start.sh 
+```
+
+You can combine make and start by:
+```
+  $ make start
 ```
 
 ## Run

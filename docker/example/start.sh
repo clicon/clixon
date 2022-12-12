@@ -35,7 +35,10 @@
 # Debug: DBG=1 ./startup.sh
 # See also cleanup.sh
 
-# If tru also install your users pubkey
+# Name of container
+: ${NAME:=clixon-example}
+
+# If true also install your users pubkey
 : ${SSHKEY:=false}
 
 >&2 echo "Running script: $0"
@@ -43,7 +46,7 @@
 sudo docker kill clixon-example 2> /dev/null # ignore errors
 
 # Start clixon-example backend
-sudo docker run --name clixon-example --rm -td clixon/clixon-example #|| err "Error starting clixon-example"
+sudo docker run --name ${NAME} --rm -td clixon/clixon-example #|| err "Error starting clixon-example"
 
 # Copy rsa pubkey 
 if $SSHKEY; then

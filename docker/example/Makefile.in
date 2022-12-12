@@ -62,6 +62,9 @@ distclean: clean
 docker: clixon Dockerfile
 	sudo docker build -t $(IMG) $(DOCKERFLAGS) .
 
+start: docker
+	./start.sh # kill (ignore error) and the start it
+
 push:
 	sudo docker push $(IMG)
 depend:

@@ -93,14 +93,18 @@ RUN apk add --update flex bison
 # need to add www user manually
 RUN adduser -D -H -G www-data www-data
 
-RUN apk add --update openssl
-
-# nghttp2 dependencies
-RUN apk add --update nghttp2
+# openssl and nghttp2 dependencies
+RUN apk add --update openssl nghttp2
 
 # Expose https port for restconf
 EXPOSE 80/tcp
 EXPOSE 443/tcp
+
+# Add sshd
+RUN apk add --update openrc openssh
+RUN rc-update add sshd
+RUN rc-status
+RUN echo "Subsystem netconf /usr/local/bin/clixon_netconf" >> /etc/ssh/sshd_config
 
 # Create clicon user and group
 RUN adduser -D -H clicon
