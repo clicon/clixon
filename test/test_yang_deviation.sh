@@ -124,7 +124,7 @@ function testrun()
         
     if $admindefault; then # add rule
         new "Get type admin expected"
-        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/base:system/base:user[base:name='bob']/base:type\" xmlns:base=\"urn:example:base\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:base\"><user><name>bob</name><type>admin</type></user></system></data></rpc-reply>"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><running/></source><filter type=\"xpath\" select=\"/base:system/base:user[base:name='bob']/base:type\" xmlns:base=\"urn:example:base\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:base\"><user><name>bob</name><type>admin</type></user></system></data></rpc-reply>"
     else
         new "Get type none expected"
         expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/base:system/base:user[base:name='bob']/base:type\" xmlns:base=\"urn:example:base\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"

@@ -136,7 +136,10 @@ new "wait backend"
 wait_backend
 
 new "get config"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
+
+new "get config(report-all)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
 
 new "Change default value r1"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><r1 xmlns=\"urn:example:clixon\">99</r1></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -144,24 +147,36 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "get config r1"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:r1\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><r1 xmlns=\"urn:example:clixon\">99</r1></data></rpc-reply>"
 
+new "get config(report-all) r1"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><candidate/></source><filter type=\"xpath\" select=\"/ex:r1\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><r1 xmlns=\"urn:example:clixon\">99</r1></data></rpc-reply>"
+
 new "Remove r1"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><r1 xmlns=\"urn:example:clixon\" nc:operation=\"delete\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">99</r1></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "get config"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
+
+new "get config(report-all)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
 
 new "Set x list element"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><xs-config xmlns=\"urn:example:clixon\"><x><name>a</name></x></xs-config></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "get config (should contain y/inside+outside)"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>"
+new "get config (should not contain y/inside+outside)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><xs-config xmlns=\"urn:example:clixon\"><x><name>a</name></x></xs-config></data></rpc-reply>"
+
+new "get config(report-all) (should contain y/inside+outside)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>"
 
 # Set s3 leaf to 99 triggering when condition for default values
 new "Set s3 to 99"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><np3 xmlns=\"urn:example:clixon\"><s3>99</s3></np3></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "get config np3 with npleaf and npext"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:np3\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><np3 xmlns=\"urn:example:clixon\"><s3>99</s3><np31><s31>31</s31></np31><npleaf>98</npleaf><npcont><npext>99</npext></npcont></np3></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:np3\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><np3 xmlns=\"urn:example:clixon\"><s3>99</s3></np3></data></rpc-reply>"
+
+new "get config(report-all) np3 with npleaf and npext"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><candidate/></source><filter type=\"xpath\" select=\"/ex:np3\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><np3 xmlns=\"urn:example:clixon\"><s3>99</s3><np31><s31>31</s31></np31><npleaf>98</npleaf><npcont><npext>99</npext></npcont></np3></data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -198,7 +213,11 @@ wait_backend
 
 new "get startup config"
 # Should have all defaults, except r1 that is set to 99
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$SXML</data></rpc-reply>"
+
+new "get(report-all) startup config"
+# Should have all defaults, except r1 that is set to 99
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
 
 # permission kludges
 sudo chmod 666 $dir/running_db
@@ -258,7 +277,10 @@ new "wait backend"
 wait_backend
 
 new "get startup config with presence"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><p4 xmlns=\"urn:example:clixon\"/></data></rpc-reply>"
+
+new "get(report-all) startup config with presence"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -290,7 +312,10 @@ new "wait backend"
 wait_backend
 
 new "get startup config with list default"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><xs-config xmlns=\"urn:example:clixon\"><x><name>a</name></x></xs-config></data></rpc-reply>"
+
+new "get(report-all) startup config with list default"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML<xs-config xmlns=\"urn:example:clixon\"><x><name>a</name><y><inside>false</inside></y><outside>false</outside></x></xs-config></data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
