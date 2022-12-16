@@ -900,7 +900,7 @@ text_modify(clicon_handle       h,
                  * As an alternative, return in populate where this is detected first time.
                  */
                 if (yc != xml_spec(x1c)){
-                    clicon_err(OE_YANG, errno, "XML node %s not in namespace %s",
+                    clicon_err(OE_YANG, errno, "XML node \"%s\" not in namespace %s",
                                x1cname, yang_find_mynamespace(y0));
                     goto done;
                 }
@@ -1146,7 +1146,7 @@ text_modify_top(clicon_handle       h,
  * @param[in]  h      CLICON handle
  * @param[in]  db     running or candidate
  * @param[in]  op     Top-level operation, can be superceded by other op in tree
- * @param[in]  xt     xml-tree. Top-level symbol is dummy
+ * @param[in]  x1     xml-tree. Top-level symbol is dummy
  * @param[in]  username User name for nacm
  * @param[out] cbret  Initialized cligen buffer. On exit contains XML if retval == 0
  * @retval     1      OK

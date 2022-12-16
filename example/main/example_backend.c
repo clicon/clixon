@@ -428,7 +428,7 @@ example_statedata(clicon_handle   h,
     int        retval = -1;
     cxobj    **xvec = NULL;
     size_t     xlen = 0;
-    cbuf      *cb = cbuf_new();
+    cbuf      *cb = NULL;
     int        i;
     cxobj     *xt = NULL;
     char      *name;
@@ -437,6 +437,10 @@ example_statedata(clicon_handle   h,
 
     if (!_state)
         goto ok;
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
     yspec = clicon_dbspec_yang(h);
     /* Example of statedata, in this case merging state data with 
      * state information. In this case adding dummy interface operation state
@@ -1055,7 +1059,13 @@ upgrade_2016_to_2018(clicon_handle h,
                 if ((x = xpath_first(xi, NULL, "statistics/in-octets")) != NULL){
                     if ((xb = xml_body_get(x)) != NULL){
                         uint64_t u64;
-                        cbuf *cb = cbuf_new();
+                        cbuf *cb;
+
+                        if ((cb = cbuf_new()) == NULL){
+                            clicon_err(OE_UNIX, errno, "cbuf_new");
+                            goto done;
+                        }
+
                         parse_uint64(xml_value(xb), &u64, NULL);
                         cprintf(cb, "%" PRIu64 ".%03d", u64/1000, (int)(u64%1000));
                         xml_value_set(xb, cbuf_get(cb));

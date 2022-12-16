@@ -241,7 +241,7 @@ typedef void *pagination_data;
 typedef int (plglockdb_t)(clicon_handle h, char *db, int lock, int id);
 
 /* Transaction-data type
- * @see clixon_backend_transaction.h for full transaction API 
+ * @see transaction_data_t and clixon_backend_transaction.h for full transaction API 
  */
 typedef void *transaction_data;
 

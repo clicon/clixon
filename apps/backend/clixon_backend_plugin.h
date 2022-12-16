@@ -51,7 +51,7 @@
  * It is up to the validate callbacks to ensure that these changes are OK
  * It is up to the commit callbacks to enforce these changes in the "state" of 
  * the system.
- * see also transaction_data in clixon_plugin.h
+ * @see transaction_data in clixon_plugin.h
  */
 typedef struct {
     uint64_t   td_id;       /* Transaction id */

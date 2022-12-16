@@ -452,7 +452,6 @@ clixon_xml_bottom(cxobj  *xtop,
     return retval;
 }
 
-
 /*! Internal function to construct a get-config and query a value from the backend
  *
  * @param[in]  sock      Socket
