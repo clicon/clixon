@@ -51,6 +51,7 @@ Developers may need to change their code
     * Added netconf ssh subsystem
     * Renamed from `clixon` built in `docker/base`
 * C-API
+  * Added `with-defaults` parameter (default 0) to `xmldb_get0()`
   * Added `sock_flags` parameter to `clixon_proc_socket()`
   
 ### Minor features

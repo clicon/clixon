@@ -79,5 +79,8 @@ int yang_xml_mandatory(cxobj *xt, yang_stmt *ys);
 int xml_rpc_isaction(cxobj *xn);
 int xml_find_action(cxobj *xn, int top, cxobj **xap);
 int purge_tagged_nodes(cxobj *xn, char *ns, char *name, char *value, int keepnode);
+int xml_add_default_tag(cxobj *x, uint16_t flags);
+int xml_flag_state_default_value(cxobj *x, uint16_t flag);
+int xml_flag_default_value(cxobj *x, uint16_t flag);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

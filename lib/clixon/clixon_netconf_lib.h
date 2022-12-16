@@ -129,6 +129,17 @@ enum framing_type{
 };
 typedef enum framing_type netconf_framing_type;
 
+/* NETCONF with-defaults
+ * @see RFC 6243
+ */
+enum withdefaults_type{ 
+    WITHDEFAULTS_REPORT_ALL = 0, /* default */
+    WITHDEFAULTS_TRIM,
+    WITHDEFAULTS_EXPLICIT,
+    WITHDEFAULTS_REPORT_ALL_TAGGED
+};
+typedef enum withdefaults_type withdefaults_type;
+
 /*
  * Macros
  */
@@ -142,6 +153,8 @@ typedef enum framing_type netconf_framing_type;
 /*
  * Prototypes
  */
+char *withdefaults_int2str(int keyword);
+int withdefaults_str2int(char *str);
 int netconf_in_use(cbuf *cb, char *type, char *message);
 int netconf_invalid_value(cbuf *cb, char *type, char *message);
 int netconf_invalid_value_xml(cxobj **xret, char *type, char *message);

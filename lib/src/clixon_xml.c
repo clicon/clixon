@@ -1725,7 +1725,7 @@ xml_find_type_value(cxobj           *xt,
  * @code
  * cxobj *x = xml_find_type(x, "prefix", "name", CX_ATTR);
  * @endcode
- * @see xml_find  which finds any child given name
+ * @see xml_find  which finds any child given name (and no prefix)
  * @see xml_find_value where a body can be found as well
  */
 cxobj *

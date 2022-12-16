@@ -99,7 +99,7 @@ int clixon_plugin_pre_daemon_all(clicon_handle h);
 int clixon_plugin_daemon_all(clicon_handle h);
 
 int clixon_plugin_statedata_all(clicon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath,
-                                cxobj **xtop);
+                                withdefaults_type wdef, cxobj **xtop);
 int clixon_plugin_lockdb_all(clicon_handle h, char *db, int lock, int id);
 
 int clixon_pagination_cb_register(clicon_handle h, handler_function fn, char *path, void *arg);

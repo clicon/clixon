@@ -180,7 +180,7 @@ startup_common(clicon_handle       h,
      * It is done below, later in this function
      */
     if (clicon_option_bool(h, "CLICON_XMLDB_UPGRADE_CHECKOLD")){
-        if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &xt, msdiff, &xerr)) < 0)
+        if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &xt, msdiff, &xerr)) < 0)
             goto done;
         if (ret == 0){     /* ret should not be 0 */
             /* Print upgraded db: -q backend switch for debugging/ showing upgraded config only */
@@ -197,7 +197,7 @@ startup_common(clicon_handle       h,
         }
     }
     else {
-        if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, &xt, msdiff, &xerr) < 0)
+        if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, 0, &xt, msdiff, &xerr) < 0)
             goto done;
     }
     if (msdiff && msdiff->md_status == 0){ // Possibly check for CLICON_XMLDB_MODSTATE
@@ -488,7 +488,7 @@ validate_common(clicon_handle       h,
         goto done;
     }   
     /* This is the state we are going to */
-    if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &td->td_target, NULL, xret)) < 0)
+    if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &td->td_target, NULL, xret)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -497,7 +497,7 @@ validate_common(clicon_handle       h,
                (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
     /* 2. Parse xml trees 
      * This is the state we are going from */
-    if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_src, NULL, xret)) < 0)
+    if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, 0, &td->td_src, NULL, xret)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -960,7 +960,7 @@ from_client_restart_one(clicon_handle h,
     if ((td = transaction_new()) == NULL)
         goto done;
     /* This is the state we are going to */
-    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, &td->td_target, NULL, NULL) < 0)
+    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, 0, &td->td_target, NULL, NULL) < 0)
         goto done;
     if ((ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
         goto done;
@@ -970,7 +970,7 @@ from_client_restart_one(clicon_handle h,
         goto fail;
     }
     /* This is the state we are going from */
-    if (xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, &td->td_src, NULL, NULL) < 0)
+    if (xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &td->td_src, NULL, NULL) < 0)
         goto done;
 
     /* 3. Compute differences */

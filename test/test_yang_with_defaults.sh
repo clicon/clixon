@@ -485,7 +485,6 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 <interface><name>eth1</name><mtu wd:default=\"true\">1500</mtu></interface>\
 <interface><name>eth2</name><mtu>9000</mtu></interface>\
 <interface><name>eth3</name><mtu wd:default=\"true\">1500</mtu></interface>\
-<cedv><edv wd:default=\"true\">edv</edv></cedv><cdv><dv wd:default=\"true\">dv</dv></cdv>\
 </interfaces></data></rpc-reply>"
 
 new "rfc8040 4.3. RESTCONF GET json"

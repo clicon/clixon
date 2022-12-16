@@ -75,6 +75,7 @@
 #include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_datastore.h"
 #include "clixon_datastore_write.h"
 #include "clixon_datastore_read.h"

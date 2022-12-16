@@ -662,6 +662,7 @@ xmldb_readfile(clicon_handle    h,
  * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
+ * @param[in]  wdef   With-defaults parameter, see RFC 6243
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff If set, return modules-state differences
  * @param[out] xerr   XML error if retval is 0
@@ -677,6 +678,7 @@ xmldb_get_nocache(clicon_handle    h,
                   yang_bind        yb,
                   cvec            *nsc,
                   const char      *xpath,
+                  withdefaults_type wdef,
                   cxobj          **xtop,
                   modstate_diff_t *msdiff,
                   cxobj          **xerr)
@@ -734,6 +736,54 @@ xmldb_get_nocache(clicon_handle    h,
         if (xml_default_recurse(xt, 0) < 0)
             goto done;
     }
+#if 1
+    /* Sub-optimal: first add  defaults, then remove them in some cases
+     * Reason is code is primarily test for _cache case and I dont have time to "revert" it here
+     */
+    switch (wdef){
+    case WITHDEFAULTS_REPORT_ALL:
+        break;
+    case WITHDEFAULTS_TRIM:
+        /* Mark and remove nodes having schema default values */
+        if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+            goto done;
+        if (xml_tree_prune_flags(xt, XML_FLAG_MARK, XML_FLAG_MARK)
+            < 0)
+            goto done;        
+        if (xml_defaults_nopresence(xt, 1) < 0)
+            goto done;
+        break;
+    case WITHDEFAULTS_EXPLICIT:
+        if (xml_defaults_nopresence(xt, 2) < 0)
+            goto done;
+        break;
+    case WITHDEFAULTS_REPORT_ALL_TAGGED:{
+        cxobj *x;
+        char  *ns;
+        x = NULL;
+        while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
+            ns = NULL;
+            if (xml2ns(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, &ns) < 0)
+                goto done;
+            if (ns == NULL){
+                if (xmlns_set(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
+                    goto done;
+            }
+            else if (strcmp(ns, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) != 0){
+                /* XXX: Assume if namespace is set that it is withdefaults otherwise just ignore?  */
+                    continue;
+            }
+        }
+        /* Mark nodes having default schema values */
+        if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+            goto done;
+        /* Add tag attributes to default nodes */
+        if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
+            goto done;
+        break;
+    }
+    } /* switch wdef */
+#endif
     /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
@@ -774,6 +824,7 @@ xmldb_get_nocache(clicon_handle    h,
  * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
+ * @param[in]  wdef   With-defaults parameter, see RFC 6243
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff If set, return modules-state differences
  * @param[out] xerr   XML error if retval is 0
@@ -789,6 +840,7 @@ xmldb_get_cache(clicon_handle    h,
                 yang_bind        yb,
                 cvec            *nsc,
                 const char      *xpath,
+                withdefaults_type wdef,
                 cxobj          **xtop,
                 modstate_diff_t *msdiff,
                 cxobj          **xerr)
@@ -889,17 +941,52 @@ xmldb_get_cache(clicon_handle    h,
         if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
             goto done;
     }
-    /* Remove global defaults and empty non-presence containers */
+    /* Original tree: Remove global defaults and empty non-presence containers */
     if (xml_defaults_nopresence(x0t, 2) < 0)
         goto done;
-    if (yb != YB_NONE){
-        /* Add default global values */
-        if (xml_global_defaults(h, x1t, nsc, xpath, yspec, 0) < 0)
+    switch (wdef){
+    case WITHDEFAULTS_REPORT_ALL:
+        break;
+    case WITHDEFAULTS_TRIM:
+        /* Mark and remove nodes having schema default values */
+        if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
             goto done;
-        /* Add default recursive values */
-        if (xml_default_recurse(x1t, 0) < 0)
+        if (xml_tree_prune_flags(x1t, XML_FLAG_MARK, XML_FLAG_MARK)
+            < 0)
+            goto done;        
+        if (xml_defaults_nopresence(x1t, 1) < 0)
             goto done;
+        break;
+    case WITHDEFAULTS_EXPLICIT:
+        if (xml_defaults_nopresence(x1t, 2) < 0)
+            goto done;
+        break;
+    case WITHDEFAULTS_REPORT_ALL_TAGGED:{
+        cxobj *x;
+        char  *ns;
+        x = NULL;
+        while ((x = xml_child_each(x1t, x, CX_ELMNT)) != NULL){
+            ns = NULL;
+            if (xml2ns(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, &ns) < 0)
+                goto done;
+            if (ns == NULL){
+                if (xmlns_set(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
+                    goto done;
+            }
+            else if (strcmp(ns, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) != 0){
+                /* XXX: Assume if namespace is set that it is withdefaults otherwise just ignore?  */
+                    continue;
+            }
+        }
+        /* Mark nodes having default schema values */
+        if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+            goto done;
+        /* Add tag attributes to default nodes */
+        if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
+            goto done;
+        break;
     }
+    } /* switch wdef */
     /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
@@ -932,7 +1019,7 @@ xmldb_get_cache(clicon_handle    h,
  * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
- * @param[in]  config If set only configuration data, else also state
+ * @param[in]  wdef   With-defaults parameter, see RFC 6243
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff If set, return modules-state differences
  * @param[out] xerr   XML error if retval is 0
@@ -947,6 +1034,7 @@ xmldb_get_zerocopy(clicon_handle    h,
                    yang_bind        yb,
                    cvec            *nsc,
                    const char      *xpath,
+                   withdefaults_type wdef,
                    cxobj          **xtop,
                    modstate_diff_t *msdiff,
                    cxobj          **xerr)
@@ -1005,6 +1093,54 @@ xmldb_get_zerocopy(clicon_handle    h,
         if (xml_default_recurse(x0t, 0) < 0)
             goto done;
     }
+#if 1
+    /* Sub-optimal: first add  defaults, then remove them in some cases
+     * Reason is code is primarily test for _cache case and I dont have time to "revert" it here
+     */
+    switch (wdef){
+    case WITHDEFAULTS_REPORT_ALL:
+        break;
+    case WITHDEFAULTS_TRIM:
+        /* Mark and remove nodes having schema default values */
+        if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+            goto done;
+        if (xml_tree_prune_flags(x0t, XML_FLAG_MARK, XML_FLAG_MARK)
+            < 0)
+            goto done;        
+        if (xml_defaults_nopresence(x0t, 1) < 0)
+            goto done;
+        break;
+    case WITHDEFAULTS_EXPLICIT:
+        if (xml_defaults_nopresence(x0t, 2) < 0)
+            goto done;
+        break;
+    case WITHDEFAULTS_REPORT_ALL_TAGGED:{
+        cxobj *x;
+        char  *ns;
+        x = NULL;
+        while ((x = xml_child_each(x0t, x, CX_ELMNT)) != NULL){
+            ns = NULL;
+            if (xml2ns(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, &ns) < 0)
+                goto done;
+            if (ns == NULL){
+                if (xmlns_set(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
+                    goto done;
+            }
+            else if (strcmp(ns, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) != 0){
+                /* XXX: Assume if namespace is set that it is withdefaults otherwise just ignore?  */
+                    continue;
+            }
+        }
+        /* Mark nodes having default schema values */
+        if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
+            goto done;
+        /* Add tag attributes to default nodes */
+        if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
+            goto done;
+        break;
+    }
+    } /* switch wdef */
+#endif
     /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
@@ -1050,7 +1186,7 @@ xmldb_get(clicon_handle    h,
           char            *xpath,
           cxobj          **xret)
 {
-    return xmldb_get0(h, db, YB_MODULE, nsc, xpath, 1, xret, NULL, NULL);
+    return xmldb_get0(h, db, YB_MODULE, nsc, xpath, 1, 0, xret, NULL, NULL);
 }
 
 /*! Zero-copy variant of get content of database
@@ -1067,6 +1203,7 @@ xmldb_get(clicon_handle    h,
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache 
+ * @param[in]  wdef   With-defaults parameter, see RFC 6243
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff If set, return modules-state differences (upgrade code)
  * @param[out] xerr   XML error if retval is 0
@@ -1077,7 +1214,7 @@ xmldb_get(clicon_handle    h,
  * @code
  *   cxobj   *xt;
  *   cxobj   *xerr = NULL;
- *   if (xmldb_get0(h, "running", YB_MODULE, nsc, "/interface[name="eth"]", 0, &xt, NULL, &xerr) < 0)
+ *   if (xmldb_get0(h, "running", YB_MODULE, nsc, "/interface[name="eth"]", 0, 0, &xt, NULL, &xerr) < 0)
  *      err;
  *   if (ret == 0){ # Not if YB_NONE
  *      # Error handling
@@ -1098,18 +1235,19 @@ xmldb_get(clicon_handle    h,
  *   And a db content:
  *      <c><x>1</x></c>
  *   With the following call:
- *      xmldb_get0(h, "running", NULL, NULL, "/c[x=0]", 1, &xt, NULL, NULL)
+ *      xmldb_get0(h, "running", NULL, NULL, "/c[x=0]", 1, 0, &xt, NULL, NULL)
  *   which result in a miss (there is no c with x=0), but when the returned xt is printed 
  *   (the existing tree is discarded), the default (empty) xml tree is:
  *      <c><x>0</x></c>
  */
 int 
-xmldb_get0(clicon_handle    h, 
+xmldb_get0(clicon_handle    h,
            const char      *db, 
            yang_bind        yb,
            cvec            *nsc,
            const char      *xpath,
            int              copy,
+           withdefaults_type wdef,
            cxobj          **xret,
            modstate_diff_t *msdiff,
            cxobj          **xerr)
@@ -1122,7 +1260,7 @@ xmldb_get0(clicon_handle    h,
          * Add default values in copy
          * Copy deleted by xmldb_free
          */
-        retval = xmldb_get_nocache(h, db, yb, nsc, xpath, xret, msdiff, xerr);
+        retval = xmldb_get_nocache(h, db, yb, nsc, xpath, wdef, xret, msdiff, xerr);
         break;
     case DATASTORE_CACHE_ZEROCOPY:
         /* Get cache (file if empty) mark xpath match in original tree 
@@ -1130,7 +1268,7 @@ xmldb_get0(clicon_handle    h,
          * Default values and markings removed in xmldb_clear
          */
         if (!copy){
-            retval = xmldb_get_zerocopy(h, db, yb, nsc, xpath, xret, msdiff, xerr);
+            retval = xmldb_get_zerocopy(h, db, yb, nsc, xpath, wdef, xret, msdiff, xerr);
             break;
         }
         /* fall through */
@@ -1139,7 +1277,7 @@ xmldb_get0(clicon_handle    h,
          * Add default values in copy, return copy
          * Copy deleted by xmldb_free
          */
-        retval = xmldb_get_cache(h, db, yb, nsc, xpath, xret, msdiff, xerr);
+        retval = xmldb_get_cache(h, db, yb, nsc, xpath, wdef, xret, msdiff, xerr);
         break;
     }
     return retval;

@@ -77,6 +77,35 @@
 
 #include "clixon_netconf_lib.h"
 
+/* Mapping between RFC6243 withdefaults strings <--> ints
+ */
+static const map_str2int wdmap[] = {
+    {"report-all",        WITHDEFAULTS_REPORT_ALL},
+    {"trim",              WITHDEFAULTS_TRIM},
+    {"explicit",          WITHDEFAULTS_EXPLICIT},
+    {"report-all-tagged", WITHDEFAULTS_REPORT_ALL_TAGGED}
+};
+
+/*! Map from with-defaults ints to strings
+ * @param[in] int  Integer representation of withdefaults values
+ * @retval    str  String representation of withdefaults values
+ */
+char *
+withdefaults_int2str(int keyword)
+{
+    return (char*)clicon_int2str(wdmap, keyword);
+}
+
+/*! Map from with-defaults strings to ints
+ * @param[in] str  String representation of withdefaults values
+ * @retval    int  Integer representation of withdefaults values
+ */
+int
+withdefaults_str2int(char *str)
+{
+    return clicon_str2int(wdmap, str);
+}
+
 /*! Create Netconf in-use error XML tree according to RFC 6241 Appendix A
  *
  * The request requires a resource that already is in use.

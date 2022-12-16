@@ -781,12 +781,14 @@ xml_default_create(yang_stmt *y,
 /*! Try to see if intermediate nodes are necessary for default values, create if so
  *
  * @param[in]   yt      Yang container (no-presence)
+ * @param[in]   state   Set if global state, otherwise config
  * @param[out]  createp Need to create XML container
  * @retval      0       OK
  * @retval      -1      Error
  */
 static int
 xml_nopresence_try(yang_stmt *yt,
+                   int        state,
                    int       *createp)
 {
     int        retval = -1;
@@ -801,9 +803,14 @@ xml_nopresence_try(yang_stmt *yt,
     while ((y = yn_each(yt, y)) != NULL) {
         switch (yang_keyword_get(y)){
         case Y_LEAF:
-            if (!cv_flag(yang_cv_get(y), V_UNSET)){  /* Default value exists */
-                /* Need to create container */
-                *createp = 1;
+            /* Default value exists */
+            if (!cv_flag(yang_cv_get(y), V_UNSET)){
+                /* Want to add state defaults, but this is config */
+                if (state && yang_config_ancestor(y))
+                    ;
+                else
+                    /* Need to create container */
+                    *createp = 1;
                 goto ok;
             }
             break;
@@ -812,7 +819,7 @@ xml_nopresence_try(yang_stmt *yt,
                 /* If this is non-presence, (and it does not exist in xt) call recursively 
                  * and create nodes if any default value exist first. Then continue and populate?
                  */
-                if (xml_nopresence_try(y, createp) < 0)
+                if (xml_nopresence_try(y, state, createp) < 0)
                     goto done;
                 if (*createp)
                     goto ok;
@@ -837,6 +844,8 @@ xml_nopresence_try(yang_stmt *yt,
  * @param[in]   state   Set if global state, otherwise config
  * @retval      0       OK
  * @retval      -1      Error
+ * XXX If state, should not add config defaults             
+ *      if (state && yang_config(yc)) 
  */
 static int
 xml_default1(yang_stmt *yt,
@@ -867,10 +876,14 @@ xml_default1(yang_stmt *yt,
     case Y_OUTPUT:
         yc = NULL;
         while ((yc = yn_each(yt, yc)) != NULL) {
+            /* If config parameter and local is config false */
             if (!state && !yang_config(yc)) 
                 continue;
             switch (yang_keyword_get(yc)){
             case Y_LEAF:
+                /* Want to add state defaults, but this is config */
+                if (state && yang_config_ancestor(yc)) 
+                    break;
                 if ((cv = yang_cv_get(yc)) == NULL){
                     clicon_err(OE_YANG,0, "Internal error: yang leaf %s not populated with cv as it should",
                                yang_argument_get(yc));
@@ -903,7 +916,7 @@ xml_default1(yang_stmt *yt,
                      */
                     if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
                         /* No such container exist, recursively try if needed */
-                        if (xml_nopresence_try(yc, &create) < 0)
+                        if (xml_nopresence_try(yc, state, &create) < 0)
                             goto done;
                         if (create){
                             /* Retval shows there is a default value need to create the 
@@ -2341,4 +2354,109 @@ purge_tagged_nodes(cxobj *xn,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Add default attribute to node with default value.
+ *
+ * Used in with-default code for report-all-tagged
+ * @param[in]   x       XML node
+ * @param[in]   flags   Flags indicatiing default nodes
+ * @retval      0       OK
+ * @retval     -1       Error
+ */
+int
+xml_add_default_tag(cxobj *x,
+                    uint16_t flags)
+{
+    int retval = -1;
+    cxobj *xattr;
+
+    if (xml_flag(x, flags)) {
+        /* set default attribute */
+        if ((xattr = xml_new("default", x, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_value_set(xattr, "true") < 0)
+            goto done;
+        if (xml_prefix_set(xattr, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Set flag on node having schema default value. (non-config)
+ *
+ * Used in with-default code for trim/report-all-tagged
+ * @param[in]   x       XML node
+ * @param[in]   flag    Flag to be used
+ * @retval      0       OK
+ * @see xml_flag_default_value for config default value
+ */
+int
+xml_flag_state_default_value(cxobj   *x,
+                             uint16_t flag)
+{
+    yang_stmt   *y;
+    cg_var      *cv;
+    char        *yv;
+    char        *xv;
+
+    xml_flag_reset(x, flag); /* Assume not default value */
+    if ((xv = xml_body(x)) == NULL)
+        goto done;
+    if ((y = xml_spec(x)) == NULL)
+        goto done;
+    if (yang_config_ancestor(y) == 1)
+        goto done;
+    if ((cv = yang_cv_get(y)) == NULL)
+        goto done;
+    if ((cv = yang_cv_get(y)) == NULL)
+        goto done;
+    if (cv_name_get(cv) == NULL)
+        goto done;
+    if ((yv = cv2str_dup(cv)) == NULL)
+        goto done;
+    if (strcmp(xv, yv) == 0)
+        xml_flag_set(x, flag); /* Actual value same as default value */
+    free(yv);
+  done:
+    return 0;
+}
+
+/*! Set flag on node having schema default value. (config)
+ *
+ * Used in with-default code for trim and report-all-tagged
+ * @param[in]   x       XML node
+ * @param[in]   flag    Flag to be used
+ * @retval      0       OK
+ * @see xml_flag_state_default_value for non-config default value
+ */
+int
+xml_flag_default_value(cxobj   *x,
+                             uint16_t flag)
+{
+    yang_stmt   *y;
+    cg_var      *cv;
+    char        *yv;
+    char        *xv;
+
+    xml_flag_reset(x, flag); /* Assume not default value */
+    if ((xv = xml_body(x)) == NULL)
+        goto done;
+    if ((y = xml_spec(x)) == NULL)
+        goto done;
+    if ((cv = yang_cv_get(y)) == NULL)
+        goto done;
+    if ((cv = yang_cv_get(y)) == NULL)
+        goto done;
+    if (cv_name_get(cv) == NULL)
+        goto done;
+    if ((yv = cv2str_dup(cv)) == NULL)
+        goto done;
+    if (strcmp(xv, yv) == 0)
+        xml_flag_set(x, flag); /* Actual value same as default value */
+    free(yv);
+  done:
+    return 0;
 }

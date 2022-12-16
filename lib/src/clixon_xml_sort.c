@@ -1501,7 +1501,7 @@ xml_find_index_yang(cxobj       *xp,
  *    if (clixon_xml_find_index(xp, yp, NULL, "a", ns, cvk, xv) < 0)
  *       err;
  *    for (i=0; i<clixon_xvec_len(xv); i++){
- *       x = clixon_xpath_i(xv, i);
+ *       x = clixon_xvec_i(xv, i);
  *       ...
  *    }
  *    clixon_xvec_free(xvec);

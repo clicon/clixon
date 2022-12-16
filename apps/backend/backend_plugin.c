@@ -320,10 +320,7 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
  * @param[in]     yspec   Yang spec
  * @param[in]     nsc     Namespace context
  * @param[in]     xpath   String with XPATH syntax. or NULL for all
- * @param[in]     pagmode List pagination mode
- * @param[in]     offset  Offset, for list pagination
- * @param[in]     limit   Limit, for list pagination
- * @param[out]    remaining Remaining elements (if limit is non-zero)
+ * @param[in]     wdef    With-defaults parameter, see RFC 6243
  * @param[in,out] xret    State XML tree is merged with existing tree.
  * @retval       -1       Error
  * @retval        0       Statedata callback failed (xret set with netconf-error)
@@ -335,6 +332,7 @@ clixon_plugin_statedata_all(clicon_handle   h,
                             yang_stmt      *yspec,
                             cvec           *nsc,
                             char           *xpath,
+                            withdefaults_type wdef,
                             cxobj         **xret)
 {
     int              retval = -1;
@@ -388,9 +386,8 @@ clixon_plugin_statedata_all(clicon_handle   h,
         if (xml_sort_recurse(x) < 0)
             goto done;
         /* Remove global defaults and empty non-presence containers */
+        /* XXX: only for state data and according to with-defaults setting */
         if (xml_defaults_nopresence(x, 2) < 0)
-            goto done;
-        if (xml_default_recurse(x, 1) < 0)
             goto done;
         if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
             goto done;

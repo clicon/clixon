@@ -1602,12 +1602,20 @@ yang_order(yang_stmt *y)
     return retval;
 }
 
+/*! Map from YANG keywords ints to strings
+ * @param[in] int  Integer representation of YANG keywords
+ * @retval    str  String representation of YANG keywords 
+ */
 char *
 yang_key2str(int keyword)
 {
     return (char*)clicon_int2str(ykmap, keyword);
 }
 
+/*! Map from yang keyword strings to ints
+ * @param[in] str  String representation of YANG keywords
+ * @retval    int  Integer representation of YANG keywords
+ */
 int
 yang_str2key(char *str)
 {
