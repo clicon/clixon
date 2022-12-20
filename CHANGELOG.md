@@ -56,6 +56,7 @@ Developers may need to change their code
   
 ### Minor features
 
+* Added `ISO/IEC 10646` encodings to XML parser: `&#[0-9]+;` and `&#[0-9a-fA-F]+;`
 * Added `CLIXON_CLIENT_SSH` to client API to communicate remotely via SSH netconf sub-system
 
 ### Corrected Bugs

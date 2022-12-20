@@ -92,7 +92,7 @@
  * @param[in]  name      Attribute name
  * @param[in]  ns            (Expected)Namespace of attribute
  * @param[out] cbret     Error message (if retval=0)
- * @param[out] valp      Pointer to value (if retval=1)
+ * @param[out] valp      Malloced value (if retval=1)
  * @retval    -1         Error
  * @retval     0         Failed (cbret set)
  * @retval     1         OK
@@ -120,8 +120,13 @@ attr_ns_value(cxobj *x,
         }
         /* the attribute exists, but not w expected namespace */
         if (ns == NULL ||
-            strcmp(ans, ns) == 0)
-            val = xml_value(xa);
+            strcmp(ans, ns) == 0){
+            if ((val = strdup(xml_value(xa))) == NULL){
+                clicon_err(OE_UNIX, errno, "malloc");
+                goto done;
+            }
+            xml_purge(xa);
+        }
     }
     *valp = val;
     retval = 1;
@@ -963,6 +968,8 @@ text_modify(clicon_handle       h,
     } /* else Y_CONTAINER  */
     retval = 1;
  done:
+    if (opstr)
+        free(opstr);
     if (nscx1)
         xml_nsctx_free(nscx1);
     /* Remove dangling added objects */
@@ -1135,6 +1142,8 @@ text_modify_top(clicon_handle       h,
     // ok:
     retval = 1;
  done:
+    if (opstr)
+        free(opstr);
     return retval;
  fail: /* cbret set */
     retval = 0;
