@@ -8,6 +8,9 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
+# Uncomment if defined at compile time
+# NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL="report-all"
+
 APPNAME=example
 
 cfg=$dir/conf_yang.xml
@@ -283,10 +286,10 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter></get></rpc>" "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
 <interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface>\
-<interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface>\
+<interface><name>eth1</name><status>ok</status></interface>\
 <interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface>\
 <interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface>\
-<cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv>\
+<cedv><edv>edv</edv></cedv>\
 </interfaces></data></rpc-reply>" ""
 
 new "rfc6243 2.3.3.  'explicit' <edit-config> and <copy-config> Behavior (part 1): create explicit node"
@@ -316,10 +319,10 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter></get></rpc>" "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
 <interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface>\
-<interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface>\
+<interface><name>eth1</name><status>ok</status></interface>\
 <interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface>\
 <interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface>\
-<cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv>\
+<cedv><edv>edv</edv></cedv>\
 </interfaces></data></rpc-reply>" ""
 
 new "rfc6243 2.3.3.  'explicit' <edit-config> and <copy-config> Behavior (part 2): create default node"
@@ -348,7 +351,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 <interface><name>eth1</name><mtu>3000</mtu><status>ok</status></interface>\
 <interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface>\
 <interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface>\
-<cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv>\
+<cedv><edv>edv</edv></cedv>\
 </interfaces></data></rpc-reply>" ""
 
 new "rfc6243 2.3.3.  'explicit' <edit-config> and <copy-config> Behavior (part 3): delete explicit node"
@@ -374,10 +377,10 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter></get></rpc>" "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
 <interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface>\
-<interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface>\
+<interface><name>eth1</name><status>ok</status></interface>\
 <interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface>\
 <interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface>\
-<cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv>\
+<cedv><edv>edv</edv></cedv>\
 </interfaces></data></rpc-reply>" ""
 
 new "rfc6243 2.3.3.  'explicit' <edit-config> and <copy-config> Behavior (part 4): delete default node"
@@ -408,10 +411,10 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><interfaces $EXAMPLENS/></filter></get></rpc>" "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
 <interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface>\
-<interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface>\
+<interface><name>eth1</name><status>ok</status></interface>\
 <interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface>\
 <interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface>\
-<cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv>\
+<cedv><edv>edv</edv></cedv>\
 </interfaces></data></rpc-reply>" ""
 
 new "Pagination"
@@ -423,7 +426,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
  </get-config></rpc>" \
 "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
-<interface><name>eth1</name><mtu>1500</mtu></interface>\
+<interface><name>eth1</name></interface>\
 <interface><name>eth2</name><mtu>9000</mtu></interface>\
 </interfaces></data></rpc-reply>"
 
@@ -493,7 +496,7 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCP
 "HTTP/$HVER 200" \
 "Content-Type: application/yang-data+json" \
 "Cache-Control: no-cache" \
-'{"example:interfaces":{"interface":\[{"name":"eth0","mtu":8192,"status":"ok"},{"name":"eth1","mtu":1500,"status":"ok"},{"name":"eth2","mtu":9000,"status":"not feeling so good"},{"name":"eth3","mtu":1500,"status":"waking up"}\],"cedv":{"edv":"edv"},"cdv":{"dv":"dv"}}}'
+'{"example:interfaces":{"interface":\[{"name":"eth0","mtu":8192,"status":"ok"},{"name":"eth1","status":"ok"},{"name":"eth2","mtu":9000,"status":"not feeling so good"},{"name":"eth3","mtu":1500,"status":"waking up"}\],"cedv":{"edv":"edv"}}}'
 
 new "rfc8040 4.3. RESTCONF GET xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:interfaces)" \
@@ -501,7 +504,7 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 "HTTP/$HVER 200" \
 "Content-Type: application/yang-data+xml" \
 "Cache-Control: no-cache" \
-'<interfaces xmlns="http://example.com/ns/interfaces"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><mtu>1500</mtu><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface><cedv><edv>edv</edv></cedv><cdv><dv>dv</dv></cdv></interfaces>'
+'<interfaces xmlns="http://example.com/ns/interfaces"><interface><name>eth0</name><mtu>8192</mtu><status>ok</status></interface><interface><name>eth1</name><status>ok</status></interface><interface><name>eth2</name><mtu>9000</mtu><status>not feeling so good</status></interface><interface><name>eth3</name><mtu>1500</mtu><status>waking up</status></interface><cedv><edv>edv</edv></cedv></interfaces>'
 
 new "rfc8040 B.1.3.  Retrieve the Server Capability Information json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/capabilities)" \

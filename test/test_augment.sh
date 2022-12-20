@@ -236,8 +236,11 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
     <mymod:mandatory-leaf>true</mymod:mandatory-leaf>
   </interface></interfaces></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
+new "netconf verify get with refined ports (report-all)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:mymod=\"urn:example:augment\"><name>e1</name><type>mymod:some-new-iftype</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface></interfaces>" ""
+
 new "netconf verify get with refined ports"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:mymod=\"urn:example:augment\"><name>e1</name><type>mymod:some-new-iftype</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf><mymod:port>80</mymod:port><mymod:lport>8080</mymod:lport></interface></interfaces>" ""
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:mymod=\"urn:example:augment\"><name>e1</name><type>mymod:some-new-iftype</type><mymod:mandatory-leaf>true</mymod:mandatory-leaf></interface></interfaces>" ""
 
 new "netconf set identity defined in other"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">
@@ -264,8 +267,11 @@ new "netconf commit ok"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 # restconf and augment
+new "restconf get augment json (report-all)"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces?with-defaults=report-all)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
+
 new "restconf get augment json"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true"},{"name":"e2","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi"},{"name":"e3","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:me":"you"}\]}}'
 
 new "restconf get augment xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" '<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
@@ -291,14 +297,23 @@ EOF
 new "restconf POST augment multi-namespace path e2 (middle path)"
 expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e2 -d "$XML" )" 0 "HTTP/$HVER 201"
 
+new "restconf GET augment multi-namespace top (report-all)"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces?with-defaults=report-all)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
+
 new "restconf GET augment multi-namespace top"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080},{"name":"e2","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi","example-augment:port":80,"example-augment:lport":8080},{"name":"e3","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:me":"you","example-augment:port":80,"example-augment:lport":8080}\]}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interfaces":{"interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true"},{"name":"e2","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:other":"ietf-interfaces:fddi"},{"name":"e3","type":"example-augment:some-new-iftype","example-augment:mandatory-leaf":"true","example-augment:me":"you"}\]}}'
+
+new "restconf GET augment multi-namespace level 1 (report-all)"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1?with-defaults=report-all)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080}\]}'
 
 new "restconf GET augment multi-namespace level 1"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true","example-augment:port":80,"example-augment:lport":8080}\]}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1)" 0 "HTTP/$HVER 200" '{"ietf-interfaces:interface":\[{"name":"e1","type":"example-augment:some-new-iftype","example-augment:ospf":{"reference-bandwidth":23},"example-augment:mandatory-leaf":"true"}\]}'
 
 new "restconf GET augment multi-namespace cross"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf)" 0 "HTTP/$HVER 200" '{"example-augment:ospf":{"reference-bandwidth":23}}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf?with-defaults=report-all)" 0 "HTTP/$HVER 200" '{"example-augment:ospf":{"reference-bandwidth":23}}'
+
+new "restconf GET augment multi-namespace cross level 2 (report-all)"
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf/reference-bandwidth?with-defaults=report-all)" 0 "HTTP/$HVER 200" '{"example-augment:reference-bandwidth":23}'
 
 new "restconf GET augment multi-namespace cross level 2"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e1/example-augment:ospf/reference-bandwidth)" 0 "HTTP/$HVER 200" '{"example-augment:reference-bandwidth":23}'

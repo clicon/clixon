@@ -204,7 +204,7 @@ new "rfc6243 2.3.1.  'explicit' Basic Mode Retrieval"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><wd $EXAMPLENS/></filter></get></rpc>" "" \
 "<rpc-reply $DEFAULTNS><data><wd $EXAMPLENS>\
-<wdc>1500</wdc><wdce>1500</wdce><wds>ok</wds>\
+<wdce>1500</wdce><wds>ok</wds>\
 </wd></data></rpc-reply>"
 
 

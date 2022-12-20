@@ -92,7 +92,7 @@ TRIM='<c xmlns="urn:example:default"><x><k>default</k></x><x><k>notset</k></x><x
 # explicit:  MUST consider any data node that is not explicitly set data to
 # be default data.
 # (SAME AS Input XML)
-EXPLICIT='<c xmlns="urn:example:default"><x><k>default</k><y>42</y></x><x><k>notset</k><y>42</y></x><x><k>other</k><y>99</y></x></c>'
+EXPLICIT='<c xmlns="urn:example:default"><x><k>default</k><y>42</y></x><x><k>notset</k></x><x><k>other</k><y>99</y></x></c>'
 
 new "Set defaults"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"

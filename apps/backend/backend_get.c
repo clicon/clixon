@@ -815,8 +815,15 @@ get_common(clicon_handle        h,
     cxobj          *xfind;
     uint32_t        offset = 0;
     uint32_t        limit = 0;
-    withdefaults_type wdef = WITHDEFAULTS_REPORT_ALL;
+    withdefaults_type wdef;
     char             *wdefstr;
+
+#ifdef NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL
+    /* Clixon 6.0 backward compatibly for NETCONF get/get-config behavior */
+    wdef = WITHDEFAULTS_REPORT_ALL;
+#else
+    wdef = WITHDEFAULTS_EXPLICIT;
+#endif
     
     clicon_debug(1, "%s", __FUNCTION__);
     username = clicon_username_get(h);

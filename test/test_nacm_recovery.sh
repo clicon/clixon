@@ -112,7 +112,7 @@ EOF
     if $getp; then
         # default is read allowed so this should always succeed.
         new "get startup default ok"
-        expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$DEFAULT</data></rpc-reply>"
+        expecteof_netconf "$prefix$clixon_netconf -qf $cfg -U $pseudo" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$DEFAULT</data></rpc-reply>"
         # This would normally not work except in recovery situations
     else
         new "get startup not ok"
