@@ -81,7 +81,6 @@ cat <<EOF > $dir/startup_db
       <config>
          <name>default</name>
          <type xmlns:oc-ni-types="http://openconfig.net/yang/network-instance-types">oc-ni-types:DEFAULT_INSTANCE</type>
-         <enabled>true</enabled>
          <router-id>1.2.3.4</router-id>
       </config>
     </network-instance>

@@ -825,7 +825,7 @@ xmldb_get_nocache(clicon_handle    h,
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPATH syntax. or NULL for all
  * @param[in]  wdef   With-defaults parameter, see RFC 6243
- * @param[out] xret   Single return XML tree. Free with xml_free()
+ * @param[out] xtop   Single return XML tree. Free with xml_free()
  * @param[out] msdiff If set, return modules-state differences
  * @param[out] xerr   XML error if retval is 0
  * @retval     -1     General error, check specific clicon_errno, clicon_suberrno
@@ -835,15 +835,15 @@ xmldb_get_nocache(clicon_handle    h,
  * @see xmldb_get  the generic API function
  */
 static int
-xmldb_get_cache(clicon_handle    h,
-                const char      *db, 
-                yang_bind        yb,
-                cvec            *nsc,
-                const char      *xpath,
+xmldb_get_cache(clicon_handle     h,
+                const char       *db, 
+                yang_bind         yb,
+                cvec             *nsc,
+                const char       *xpath,
                 withdefaults_type wdef,
-                cxobj          **xtop,
-                modstate_diff_t *msdiff,
-                cxobj          **xerr)
+                cxobj           **xtop,
+                modstate_diff_t  *msdiff,
+                cxobj           **xerr)
 
 {
     int        retval = -1;
@@ -1254,6 +1254,10 @@ xmldb_get0(clicon_handle    h,
 {
     int               retval = -1;
 
+    if (xret == NULL){
+        clicon_err(OE_DB, EINVAL, "xret is NULL");
+        goto done;
+    }
     switch (clicon_datastore_cache(h)){
     case DATASTORE_NOCACHE:
         /* Read from file into created/copy tree, prune non-matching xpath 
@@ -1280,6 +1284,7 @@ xmldb_get0(clicon_handle    h,
         retval = xmldb_get_cache(h, db, yb, nsc, xpath, wdef, xret, msdiff, xerr);
         break;
     }
+ done:
     return retval;
 }
 
