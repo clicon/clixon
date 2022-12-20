@@ -94,9 +94,7 @@ yang_modules(clicon_handle h,
         }
         cprintf(cb, "</version>");
         cprintf(cb, "<format>yang</format>");
-        if ((y1 = yang_find(ym, Y_NAMESPACE, NULL)) != NULL){
-            cprintf(cb, "<namespace>%s</namespace>", yang_argument_get(y1));
-        }
+        cprintf(cb, "<namespace>%s</namespace>", yang_find_mynamespace(ym));
         /* A local implementation may have other locations, how to configure? */
         cprintf(cb, "<location>NETCONF</location>");
         if ((dir = clicon_option_str(h,"CLICON_NETCONF_MONITORING_LOCATION")) != NULL){

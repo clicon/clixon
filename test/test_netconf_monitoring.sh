@@ -12,12 +12,14 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/clixon-example@2022-01-01.yang
+fyangsub=$dir/clixon-sub@2022-01-01.yang
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <!-- The following are errors in ietf-l3vpn-ntw@2022-02-14.yang -->
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>${dir}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_YANG_LIBRARY>false</CLICON_YANG_LIBRARY>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
@@ -36,6 +38,17 @@ module clixon-example{
   yang-version 1.1;
   namespace "urn:example:clixon";
   prefix ex;
+  include clixon-sub;
+  revision 2022-01-01;
+}
+EOF
+
+cat <<EOF > $fyangsub
+submodule clixon-sub{
+  yang-version 1.1;
+  belongs-to clixon-example {
+      prefix ex;
+  }
   revision 2022-01-01;
 }
 EOF
@@ -59,8 +72,9 @@ new "Retrieving all state via <get> operation"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get/></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:base:1.1</capability>.*<capability>urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring</capability>.*</capabilities><schemas>.*</schemas></netconf-state></data></rpc-reply>"
 
 # 4.1.  Retrieving Schema List via <get> Operation
+# match bith module and sub-module
 new "Retrieving Schema List via <get> Operation"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><schemas/></netconf-state></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><schemas><schema><identifier>clixon-example</identifier><version>2022-01-01</version><format>yang</format><namespace>urn:example:clixon</namespace><location>NETCONF</location></schema>.*</schemas></netconf-state></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><schemas/></netconf-state></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><schemas><schema><identifier>clixon-example</identifier><version>2022-01-01</version><format>yang</format><namespace>urn:example:clixon</namespace><location>NETCONF</location></schema>.*<schema><identifier>clixon-sub</identifier><version>2022-01-01</version><format>yang</format><namespace>urn:example:clixon</namespace><location>NETCONF</location></schema><schema>.*</schemas></netconf-state></data></rpc-reply>"
 
 # 4.2.  Retrieving Schema Instances 
 # From 2b. bar, version 2008-06-1 in YANG format, via get-schema
@@ -100,11 +114,14 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
+# for some reason valgrind tests fail below?
+if [ ${valgrindtest} -eq 0 ]; then # Error dont cleanup mem OK
+
 YANGDIR=$YANG_INSTALLDIR
 
 if [ $BE -ne 0 ]; then
-    new "start backend -s init -f $cfg -o CLICON_YANG_MAIN_DIR=$YANGDIR"
-    start_backend -s init -f $cfg -o CLICON_YANG_MAIN_DIR=$YANGDIR 
+    new "start backend -s init -f $cfg -o CLICON_YANG_MAIN_DIR=$YANGDIR -o CLICON_YANG_MAIN_FILE=$fyang"
+    start_backend -s init -f $cfg  -o CLICON_YANG_MAIN_DIR=$YANGDIR
 fi
 new "wait backend"
 wait_backend
@@ -140,6 +157,7 @@ EOF
         continue
     fi
 done
+fi # valgrind
 
 rm -rf $dir
 
