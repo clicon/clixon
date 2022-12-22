@@ -147,6 +147,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: XPath evaluation of two nodes reverted to strcmp even if both were numbers
 * Fixed: [Yang identityref XML encoding is not general](https://github.com/clicon/clixon/issues/90)
   * Revisiting this issue now seems to work, there are no regressions that fail when disabling IDENTITYREF_KLUDGE.
 * Fixed several xpath crashes discovered by unit xpath fuzzing

@@ -81,6 +81,7 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
+#include "clixon_yang_type.h"
 #include "clixon_xml.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
@@ -676,6 +677,76 @@ xp_numop(xp_ctx    *xc1,
     return retval;
 }
 
+/*! Get xml body value as cligen variable
+ * @param[in]  x   XML node (body and leaf/leaf-list)
+ * @param[out] cvp Pointer to cligen variable containing value of x body
+ * @retval     0   OK, cvp contains cv or NULL
+ * @retval    -1   Error
+ * @note only applicable if x is body and has yang-spec and is leaf or leaf-list
+ * Move to clixon_xml.c?
+ * As a side-effect sets the cache.
+ * Clear cache with xml_cv_set(x, NULL)
+ */
+static int
+xml_cv_cache(cxobj   *x,
+             cg_var **cvp)
+{
+    int          retval = -1;
+    cg_var      *cv = NULL;
+    yang_stmt   *y;
+    yang_stmt   *yrestype;
+    enum cv_type cvtype;
+    int          ret;
+    char        *reason=NULL;
+    int          options = 0;
+    uint8_t      fraction = 0;
+    char        *body;
+                 
+    if ((body = xml_body(x)) == NULL)
+        body="";
+    if ((cv = xml_cv(x)) != NULL)
+        goto ok;
+    if ((y = xml_spec(x)) == NULL){
+        clicon_err(OE_XML, EFAULT, "Yang binding missing for xml symbol %s, body:%s", xml_name(x), body);
+        goto done;
+    }
+    if (yang_type_get(y, NULL, &yrestype, &options, NULL, NULL, NULL, &fraction) < 0)
+        goto done;
+    yang2cv_type(yang_argument_get(yrestype), &cvtype);
+    if (cvtype==CGV_ERR){
+        clicon_err(OE_YANG, errno, "yang->cligen type %s mapping failed",
+                   yang_argument_get(yrestype));
+        goto done;
+    }
+    if ((cv = cv_new(cvtype)) == NULL){
+        clicon_err(OE_YANG, errno, "cv_new");
+        goto done;
+    }
+    if (cvtype == CGV_DEC64)
+        cv_dec64_n_set(cv, fraction);
+        
+    if ((ret = cv_parse1(body, cv, &reason)) < 0){
+        clicon_err(OE_YANG, errno, "cv_parse1");
+        goto done;
+    }
+    if (ret == 0){
+        clicon_err(OE_YANG, EINVAL, "cv parse error: %s\n", reason);
+        goto done;
+    }
+    if (xml_cv_set(x, cv) < 0)
+        goto done;
+ ok:
+    *cvp = cv;
+    cv = NULL;
+    retval = 0;
+ done:
+    if (reason)
+        free(reason);
+    if (cv)
+        cv_free(cv);
+    return retval;
+}
+
 /*! Given two XPATH contexts, eval relational operations: <>=
  * A RelationalExpr is evaluated by comparing the objects that result from 
  * evaluating the two operands.
@@ -706,7 +777,8 @@ xp_relop(xp_ctx    *xc1,
     int     retval = -1;
     xp_ctx *xr = NULL;
     xp_ctx *xc;
-    cxobj  *x;
+    cxobj  *x1;
+    cxobj  *x2;
     int     i;
     int     j;
     int     b;
@@ -715,6 +787,8 @@ xp_relop(xp_ctx    *xc1,
     int     reverse = 0;
     double  n1, n2;
     char   *xb;
+    cg_var *cv1, *cv2;
+    int     ret;
     
     if (xc1 == NULL || xc2 == NULL){
         clicon_err(OE_UNIX, EINVAL, "xc1 or xc2 NULL");
@@ -734,41 +808,82 @@ xp_relop(xp_ctx    *xc1,
                node in the first node-set and one in the second node-set is true */
             for (i=0; i<xc1->xc_size; i++){
                 /* node in nodeset */
-                if ((x = xc1->xc_nodeset[i]) == NULL ||
-                    (s1 = xml_body(x)) == NULL){
+                if ((x1 = xc1->xc_nodeset[i]) == NULL ||
+                    (s1 = xml_body(x1)) == NULL){
                     xr->xc_bool = 0;
                     goto ok;
                 }
                 for (j=0; j<xc2->xc_size; j++){
-                    if ((x = xc2->xc_nodeset[j]) == NULL ||
-                        (s2 = xml_body(x)) == NULL){
+                    if ((x2 = xc2->xc_nodeset[j]) == NULL ||
+                        (s2 = xml_body(x2)) == NULL){
                         xr->xc_bool = 0;
                         goto ok;
                     }
-                    switch(op){
-                    case XO_EQ:
-                        xr->xc_bool = (strcmp(s1, s2)==0);
-                        break;
-                    case XO_NE:
-                        xr->xc_bool = (strcmp(s1, s2)!=0);
-                        break;
-                    case XO_GE:
-                        xr->xc_bool = (strcmp(s1, s2)>=0);
-                        break;
-                    case XO_LE:
-                        xr->xc_bool = (strcmp(s1, s2)<=0);
-                        break;
-                    case XO_LT:
-                        xr->xc_bool = (strcmp(s1, s2)<0);
-                        break;
-                    case XO_GT:
-                        xr->xc_bool = (strcmp(s1, s2)>0);
-                        break;
-                    default:
-                        clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
-                        goto done;
-                        break;
-                    }       
+                    /* YANG bound, use cv evaluation, else strcmp */
+                    if (xml_spec(x1) && xml_spec(x2)){
+                        if (xml_cv_cache(x1, &cv1) < 0) /* error case */
+                            goto done;
+                        if (xml_cv_cache(x2, &cv2) < 0) /* error case */
+                            goto done;
+                        if (cv1 != NULL && cv2 != NULL)
+                            ret = cv_cmp(cv1, cv2);
+                        else if (cv1 == NULL && cv2 == NULL)
+                            ret = 0;
+                        else if (cv1 == NULL)
+                            ret = -1;
+                        else
+                            ret = 1;
+                        switch(op){
+                        case XO_EQ:
+                            xr->xc_bool = (ret == 0);
+                            break;
+                        case XO_NE:
+                            xr->xc_bool = (ret != 0);
+                            break;
+                        case XO_GE:
+                            xr->xc_bool = (ret >= 0);
+                            break;
+                        case XO_LE:
+                            xr->xc_bool = (ret <= 0);
+                            break;
+                        case XO_LT:
+                            xr->xc_bool = (ret < 0);
+                            break;
+                        case XO_GT:
+                            xr->xc_bool = (ret > 0);
+                            break;
+                        default:
+                            clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
+                            goto done;
+                            break;
+                        }
+                    }
+                    else{
+                        switch(op){
+                        case XO_EQ:
+                            xr->xc_bool = (strcmp(s1, s2)==0);
+                            break;
+                        case XO_NE:
+                            xr->xc_bool = (strcmp(s1, s2)!=0);
+                            break;
+                        case XO_GE:
+                            xr->xc_bool = (strcmp(s1, s2)>=0);
+                            break;
+                        case XO_LE:
+                            xr->xc_bool = (strcmp(s1, s2)<=0);
+                            break;
+                        case XO_LT:
+                            xr->xc_bool = (strcmp(s1, s2)<0);
+                            break;
+                        case XO_GT:
+                            xr->xc_bool = (strcmp(s1, s2)>0);
+                            break;
+                        default:
+                            clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
+                            goto done;
+                            break;
+                        }
+                    }
                     if (xr->xc_bool) /* enough to find a single node */
                         break;
                 }
@@ -851,10 +966,10 @@ xp_relop(xp_ctx    *xc1,
             s2 = xc2->xc_string;
             for (i=0; i<xc1->xc_size; i++){
                 /* node in nodeset */
-                if ((x = xc1->xc_nodeset[i]) == NULL)
+                if ((x1 = xc1->xc_nodeset[i]) == NULL)
                     s1 = NULL;
                 else
-                    s1 = xml_body(x);
+                    s1 = xml_body(x1);
                 switch(op){
                 case XO_EQ:
                     if (s1 == NULL && s2 == NULL)
@@ -892,8 +1007,8 @@ xp_relop(xp_ctx    *xc1,
         case XT_NUMBER:
             for (i=0; i<xc1->xc_size; i++){
                 /* node in nodeset */
-                if ((x = xc1->xc_nodeset[i]) == NULL ||
-                    (xb = xml_body(x)) == NULL ||
+                if ((x1 = xc1->xc_nodeset[i]) == NULL ||
+                    (xb = xml_body(x1)) == NULL ||
                     sscanf(xb, "%lf", &n1) != 1)
                     n1 = NAN;
                 n2 = xc2->xc_number;
