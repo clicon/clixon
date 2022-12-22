@@ -963,7 +963,7 @@ yn_insert1(yang_stmt *ys_parent,
 
 /*! Iterate through all yang statements from a yang node 
  *
- * @param[in] yparent  yang statement whose children should be iterated
+ * @param[in] yparent  yang statement whose children are iterated
  * @param[in] yprev    previous child, or NULL on init
  * @code
  *   yang_stmt *yprev = NULL;
@@ -1429,6 +1429,32 @@ yang_myroot(yang_stmt *ys)
         ys = yp;
     } 
     return NULL;
+}
+
+/*! Get closest yang case and choice, if any
+ */
+int
+choice_case_get(yang_stmt  *yc,
+                yang_stmt **ycase,
+                yang_stmt **ychoice)
+{
+    yang_stmt *yp;
+
+    if ((yp = yang_parent_get(yc)) == NULL)
+        return 0;
+    if (yang_keyword_get(yp) == Y_CASE){
+        if (ycase)
+            *ycase = yp;
+        *ychoice = yang_parent_get(yp);
+        return 1;
+    }
+    else if (yang_keyword_get(yp) == Y_CHOICE){
+        if (ycase)
+            *ycase = NULL;
+        *ychoice = yp;
+        return 1;
+    }
+    return 0;
 }
 
 /*! If a given yang stmt has a choice/case as parent, return the choice statement 

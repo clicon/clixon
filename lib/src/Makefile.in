@@ -81,7 +81,7 @@ INCLUDES = -I. @INCLUDES@ -I$(top_srcdir)/lib/clixon -I$(top_srcdir)/include -I$
 SRC     = clixon_sig.c clixon_uid.c clixon_log.c clixon_err.c clixon_event.c \
 	  clixon_string.c clixon_regex.c clixon_handle.c clixon_file.c \
 	  clixon_xml.c clixon_xml_io.c clixon_xml_sort.c clixon_xml_map.c clixon_xml_vec.c \
-	  clixon_xml_bind.c clixon_json.c clixon_proc.c \
+	  clixon_xml_default.c clixon_xml_bind.c clixon_json.c clixon_proc.c \
 	  clixon_yang.c clixon_yang_type.c clixon_yang_module.c clixon_netconf_monitoring.c \
 	  clixon_yang_parse_lib.c clixon_yang_sub_parse.c \
           clixon_yang_cardinality.c clixon_xml_changelog.c clixon_xml_nsctx.c \

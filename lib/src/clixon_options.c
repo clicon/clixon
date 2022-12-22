@@ -80,7 +80,7 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_io.h"
 #include "clixon_validate.h"
-#include "clixon_xml_map.h"
+#include "clixon_xml_default.h"
 
 /* Mapping between Clicon startup modes string <--> constants, 
    see clixon-config.yang type startup_mode */

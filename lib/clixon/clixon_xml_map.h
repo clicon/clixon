@@ -61,9 +61,6 @@ int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
 int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_tree_prune_flags(cxobj *xt, int flags, int mask);
 int xml_namespace_change(cxobj *x, char *ns, char *prefix);
-int xml_default_recurse(cxobj *xn, int state);
-int xml_global_defaults(clicon_handle h, cxobj *xn, cvec *nsc, const char *xpath, yang_stmt *yspec, int state);
-int xml_defaults_nopresence(cxobj *xn, int purge);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, cxobj **xerr);
 int xml2xpath(cxobj *x, cvec *nsc, char **xpath);
@@ -79,8 +76,5 @@ int yang_xml_mandatory(cxobj *xt, yang_stmt *ys);
 int xml_rpc_isaction(cxobj *xn);
 int xml_find_action(cxobj *xn, int top, cxobj **xap);
 int purge_tagged_nodes(cxobj *xn, char *ns, char *name, char *value, int keepnode);
-int xml_add_default_tag(cxobj *x, uint16_t flags);
-int xml_flag_state_default_value(cxobj *x, uint16_t flag);
-int xml_flag_default_value(cxobj *x, uint16_t flag);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

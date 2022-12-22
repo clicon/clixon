@@ -94,6 +94,7 @@ extern "C" {
 #include <clixon/clixon_data.h>
 #include <clixon/clixon_regex.h>
 #include <clixon/clixon_path.h>
+#include <clixon/clixon_xml_default.h>
 #include <clixon/clixon_xml_map.h>
 #include <clixon/clixon_xml_bind.h>
 #include <clixon/clixon_xml_io.h>

@@ -33,39 +33,27 @@
 
   ***** END LICENSE BLOCK *****
 
- * XML support functions.
- * @see     https://www.w3.org/TR/2009/REC-xml-names-20091208/
+ *
+ * XML default values
  */
-#ifndef _CLIXON_XML_NSCTX_H
-#define _CLIXON_XML_NSCTX_H
+
+#ifndef _CLIXON_XML_DEFAULT_H_
+#define _CLIXON_XML_DEFAULT_H_
 
 /*
- * An xml namespace context is a cligen variable vector containing a list of
- * <prefix,namespace> pairs.
- * It is encoded in a cvv as a list of string values, where the c name is the 
- * prefix and the string values are the namespace URI.
- * The default namespace is decoded as having the name NULL
+ * Types
  */
+/* Declared in clixon_yang_internal */
+typedef enum yang_class yang_class;
 
 /*
  * Prototypes
  */
-int     xml_nsctx_namespace_netconf_default(clicon_handle h);
-cvec   *xml_nsctx_init(char *prefix, char *ns);
-int     xml_nsctx_free(cvec *nsc);
-char   *xml_nsctx_get(cvec *nsc, char *prefix);
-int     xml_nsctx_get_prefix(cvec *cvv, char *ns, char **prefix);
-int     xml_nsctx_add(cvec *nsc, char *prefix, char *ns);
-int     xml_nsctx_node(cxobj *x, cvec **ncp);
-int     xml_nsctx_yang(yang_stmt *yn, cvec **ncp);
-int     xml_nsctx_yangspec(yang_stmt *yspec, cvec **ncp);
-int     xml_nsctx_cbuf(cbuf *cb, cvec *nsc);
+int xml_default_recurse(cxobj *xn, int state);
+int xml_global_defaults(clicon_handle h, cxobj *xn, cvec *nsc, const char *xpath, yang_stmt *yspec, int state);
+int xml_defaults_nopresence(cxobj *xn, int purge);
+int xml_add_default_tag(cxobj *x, uint16_t flags);
+int xml_flag_state_default_value(cxobj *x, uint16_t flag);
+int xml_flag_default_value(cxobj *x, uint16_t flag);
 
-int     xml2ns(cxobj *x, char *localname, char **ns);
-int     xml2ns_recurse(cxobj *x);
-int     xmlns_set(cxobj *x, char *prefix, char *ns);
-int     xmlns_set_all(cxobj *x, cvec  *nsc);
-int     xml2prefix(cxobj *xn, char *ns, char **prefixp);
-int     xml_add_namespace(cxobj *x, cxobj *xp, char *prefix, char *ns);
-
-#endif /* _CLIXON_XML_NSCTX_H */
+#endif  /* _CLIXON_XML_DEFAULT_H_ */

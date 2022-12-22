@@ -69,6 +69,7 @@
 #include "clixon_xml.h"
 #include "clixon_yang_module.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
 
 /* Undefine if you want to ensure strict namespace assignment on all netconf
@@ -699,3 +700,42 @@ xml2prefix(cxobj *xn,
 }
 
 
+/*! Add prefix:namespace pair to xml node, set cache, etc
+ * @param[in]  x         XML node whose namespace should change
+ * @param[in]  xp        XML node where namespace attribute should be declared (can be same)
+ * @param[in]  prefix1   Use this prefix
+ * @param[in]  namespace Use this namespace
+ * @note x and xp must be different if x is an attribute and may be different otherwise
+ */
+int
+xml_add_namespace(cxobj *x,
+                  cxobj *xp,
+                  char  *prefix,
+                  char  *namespace)
+{
+    int    retval = -1;
+    cxobj *xa = NULL;
+    
+    /* Add binding to x1p. We add to parent due to heurestics, so we dont
+     * end up in adding it to large number of siblings 
+     */
+    if (nscache_set(x, prefix, namespace) < 0)
+        goto done;
+    /* Create xmlns attribute to x1p/x1 XXX same code v */
+    if (prefix){
+        if ((xa = xml_new(prefix, xp, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_prefix_set(xa, "xmlns") < 0)
+            goto done;
+    }
+    else{
+        if ((xa = xml_new("xmlns", xp, CX_ATTR)) == NULL)
+            goto done;
+    }
+    if (xml_value_set(xa, namespace) < 0)
+        goto done;
+    xml_sort(xp); /* Ensure attr is first / XXX xml_insert? */
+    retval = 0;
+ done:
+    return retval;
+}

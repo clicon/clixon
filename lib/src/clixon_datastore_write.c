@@ -77,6 +77,7 @@
 #include "clixon_yang_module.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_io.h"
+#include "clixon_xml_default.h"
 #include "clixon_xml_map.h"
 #include "clixon_datastore.h"
 #include "clixon_datastore_write.h"
@@ -334,30 +335,6 @@ check_when_condition(cxobj              *x0p,
  fail:
     retval = 0;
     goto done;
-}
-
-/*! Get cloxest yang case and choice, if any
- */
-static int
-choice_case_get(yang_stmt  *yc,
-                yang_stmt **ycase,
-                yang_stmt **ychoice)
-{
-    yang_stmt *yp;
-
-    if ((yp = yang_parent_get(yc)) == NULL)
-        return 0;
-    if (yang_keyword_get(yp) == Y_CASE){
-        *ycase = yp;
-        *ychoice = yang_parent_get(yp);
-        return 1;
-    }
-    else if (yang_keyword_get(yp) == Y_CHOICE){
-        *ycase = NULL;
-        *ychoice = yp;
-        return 1;
-    }
-    return 0;
 }
 
 /*! Check if x0/y0 is part of other choice/case than y1 recursively , if so purge 

@@ -78,6 +78,7 @@
 #include "clixon_yang_module.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_xml_map.h"
+#include "clixon_xml_default.h"
 #include "clixon_xml_io.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_datastore.h"

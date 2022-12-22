@@ -41,6 +41,18 @@
 ## 6.1.0
 Expected: beginning of 2023
 
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* With-defaults default retrieval mode has changed from `REPORT-ALL` to `EXPLICIT`
+  * This means that all get operations without `with-defaults` parameter do no longer
+    return implicit default values, only explicitly set values.
+  * Applies to NETCONF `<get>`, `<get-config>` and RESTCONF `GET`
+  * To keep backward-compatible behavior, define option `NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL` in
+    include/clixon_custom.h
+  * Alternatively, change all get operation to include with-defaults parameter `report-all` 
+
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
@@ -61,7 +73,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
-* Fixed [Netconf monitoring](https://github.com/clicon/clixon/issues/370)
+* Fixed: [Defaults in choice does not work properly](https://github.com/clicon/clixon/issues/390)
+* Fixed: [Netconf monitoring](https://github.com/clicon/clixon/issues/370)
   - Announce module capability
   - Return origin Yang file in get-schema
 

@@ -76,6 +76,7 @@
 #include "clixon_yang_module.h"
 #include "clixon_yang_type.h"
 #include "clixon_xml_map.h"
+#include "clixon_xml_default.h"
 #include "clixon_xml_bind.h"
 #include "clixon_validate_minmax.h"
 #include "clixon_validate.h"
