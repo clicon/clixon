@@ -75,8 +75,8 @@
 #include "clixon_xpath.h"
 #include "clixon_yang_module.h"
 #include "clixon_yang_type.h"
-#include "clixon_xml_map.h"
 #include "clixon_xml_default.h"
+#include "clixon_xml_map.h"
 #include "clixon_xml_bind.h"
 #include "clixon_validate_minmax.h"
 #include "clixon_validate.h"
@@ -479,46 +479,34 @@ xml_yang_validate_rpc_reply(clicon_handle h,
     goto done;
 }
 
-/*! Check if an xml node is a part of a choice and have >1 siblings 
- * @param[in]  xt    XML node to be validated
- * @param[in]  yt    xt:s yang statement
- * @param[out] xret    Error XML tree. Free with xml_free after use
- * @retval     1     Validation OK
- * @retval     0     Validation failed (cbret set)
- * @retval    -1     Error
- * Check if xt is part of valid choice
+/*! Check if an xml choice node xp has children in same case
+ *
+ * @param[in]  xp       XML choice node to be validated
+ * @param[in]  ytchoice Yang spec of choice
+ * @param[in]  ytcase   Yang spec of case, optional
+ * @param[in]  xt       XML child
+ * @param[out] xret     Error XML tree. Free with xml_free after use
+ * @retval     1        Validation OK
+ * @retval     0        Validation failed (cbret set)
+ * @retval    -1        Error
+ * From RFC7950 Sec 7.9.3
+ *  1. Default case,  the default if no child nodes from any of the choice's cases exist
+ *  2. Default for child nodes under a case are only used if one of the nodes under that case
+ *     is present 
  */
 static int
-check_choice(cxobj     *xt, 
+check_choice(cxobj     *xp, 
+             yang_stmt *ytchoice,
+             yang_stmt *ytcase,
+             cxobj     *xt, 
              yang_stmt *yt,
              cxobj    **xret)
 {
     int        retval = -1;
-    yang_stmt *y;
-    yang_stmt *ytp;      /* yt:s parent */
-    yang_stmt *ytcase = NULL;   /* yt:s parent case if any */
-    yang_stmt *ytchoice = NULL; 
-    yang_stmt *yp;
     cxobj     *x;
-    cxobj     *xp;
+    yang_stmt *y;
+    yang_stmt *yp;
     
-    if ((ytp = yang_parent_get(yt)) == NULL)
-        goto ok;
-    /* Return OK if xt is not choice */
-    switch (yang_keyword_get(ytp)){
-    case Y_CASE:
-        ytcase = ytp;
-        ytchoice = yang_parent_get(ytp);
-        break;
-    case Y_CHOICE:
-        ytchoice = ytp;
-        break;
-    default:
-        goto ok;  /* Not choice */
-        break;
-    }
-    if ((xp = xml_parent(xt)) == NULL)
-        goto ok;
     x = NULL; /* Find a child with same yang spec */
     while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
         if (x == xt)
@@ -546,6 +534,93 @@ check_choice(cxobj     *xt,
             goto done;
         goto fail;
     } /* while */
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Check if an xml node xt is a part of a choice and have >1 siblings 
+ * @param[in]  xt    XML node to be validated
+ * @param[in]  yt    xt:s yang statement
+ * @param[out] xret  Error XML tree. Free with xml_free after use
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (cbret set)
+ * @retval    -1     Error
+ * Check if xt is part of valid choice
+ * XXX does not check: xt is choice and has n children, but there exists a default child
+ */
+static int
+check_choice_child(cxobj     *xt, 
+                   yang_stmt *yt,
+                   cxobj    **xret)
+{
+    int        retval = -1;
+
+    yang_stmt *ytp;      /* yt:s parent */
+    yang_stmt *ytcase = NULL;   /* yt:s parent case if any */
+    yang_stmt *ytchoice = NULL; 
+    int        ret;
+    cxobj     *xp;
+#if 0
+    cxobj     *x;
+    yang_stmt *yp;
+    yang_stmt *y;
+#endif
+    
+    if ((ytp = yang_parent_get(yt)) == NULL)
+        goto ok;
+    /* Return OK if xt is not choice */
+    switch (yang_keyword_get(ytp)){
+    case Y_CASE:
+        ytcase = ytp;
+        ytchoice = yang_parent_get(ytp);
+        break;
+    case Y_CHOICE:
+        ytchoice = ytp;
+        break;
+    default:
+        goto ok;  /* Not choice */
+        break;
+    }
+    if ((xp = xml_parent(xt)) == NULL)
+        goto ok;
+#if 1
+    if ((ret = check_choice(xp, ytchoice, ytcase, xt, yt, xret)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+#else
+    x = NULL; /* Find a child with same yang spec */
+    while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
+        if (x == xt)
+            continue;
+        y = xml_spec(x);
+        if (y == yt) /* eg same list */
+            continue;
+        yp = yang_parent_get(y);
+        switch (yang_keyword_get(yp)){
+        case Y_CASE:
+            if (yang_parent_get(yp) != ytchoice) /* Not same choice (not relevant)  */
+                continue;
+            if (yp == ytcase) /* same choice but different case */
+                continue;
+            break;
+        case Y_CHOICE:
+            if (yp != ytchoice) /* Not same choice (not relevant) */
+                continue;
+            break;
+        default:
+            continue; /* not choice */
+            break;
+        }
+        if (xret && netconf_bad_element_xml(xret, "application", xml_name(x), "Element in choice statement already exists") < 0)
+            goto done;
+        goto fail;
+    } /* while */
+#endif
  ok:
     retval = 1;
  done:
@@ -919,7 +994,7 @@ xml_yang_validate_add(clicon_handle h,
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
-        if ((ret = check_choice(xt, yt, xret)) < 0)
+        if ((ret = check_choice_child(xt, yt, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;

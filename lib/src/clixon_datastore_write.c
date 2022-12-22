@@ -130,8 +130,11 @@ attr_ns_value(cxobj *x,
         }
     }
     *valp = val;
+    val = NULL;
     retval = 1;
  done:
+    if (val)
+        free(val);
     return retval;
  fail:
     retval = 0;
@@ -945,8 +948,16 @@ text_modify(clicon_handle       h,
     } /* else Y_CONTAINER  */
     retval = 1;
  done:
+    if (valstr)
+        free(valstr);
+    if (keystr)
+        free(keystr);
+    if (instr)
+        free(instr);
     if (opstr)
         free(opstr);
+    if (createstr)
+        free(createstr);
     if (nscx1)
         xml_nsctx_free(nscx1);
     /* Remove dangling added objects */
@@ -996,7 +1007,7 @@ text_modify_top(clicon_handle       h,
     cxobj     *x1c; /* mod child */
     yang_stmt *yc;  /* yang child */
     yang_stmt *ymod;/* yang module */
-    char      *opstr;
+    char      *opstr = NULL;
     int        ret;
     char      *createstr = NULL;
     
@@ -1121,6 +1132,8 @@ text_modify_top(clicon_handle       h,
  done:
     if (opstr)
         free(opstr);
+    if (createstr)
+        free(createstr);
     return retval;
  fail: /* cbret set */
     retval = 0;
