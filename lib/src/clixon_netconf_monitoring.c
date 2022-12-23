@@ -56,23 +56,86 @@
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_yang_module.h"
 #include "clixon_xml_io.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_options.h"
 #include "clixon_err.h"
+#include "clixon_datastore.h"
 #include "clixon_netconf_monitoring.h"
 
-/*!
+static int
+per_datastore(clicon_handle h,
+              cbuf         *cb,
+              const char   *db)
+{
+    int            retval = -1;
+    uint32_t       sid;
+    struct timeval tv = {0,};
+    char           timestr[28];
+
+    cprintf(cb, "<datastore><name>%s</name>", db);
+    if ((sid = xmldb_islocked(h, db)) > 0){
+        cprintf(cb, "<locks>");
+        cprintf(cb, "<locked-by-session>%u</locked-by-session>", sid);
+        xmldb_lock_timestamp(h, db, &tv);
+        if (time2str(tv, timestr, sizeof(timestr)) < 0){
+            clicon_err(OE_UNIX, errno, "time2str");
+            goto done;
+        }
+        cprintf(cb, "<locked-time>%s</locked-time>", timestr);
+        cprintf(cb, "</locks>");
+    }
+    cprintf(cb, "</datastore>");
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Get netconf monitoring datastore state
+ *
  * @param[in]     h       Clicon handle
  * @param[in]     yspec   Yang spec
  * @param[in,out] cb      CLIgen buffer
  * @retval       -1       Error (fatal)
  * @retval        0       OK
+ * @see RFC 6022 Section 2.1.2
  */
 static int
-yang_modules(clicon_handle h,
-             yang_stmt    *yspec,
-             cbuf         *cb)
+netconf_monitoring_datastores(clicon_handle h,
+                              yang_stmt  *yspec,
+                              cbuf       *cb)
+{
+    int      retval = -1;
+
+    cprintf(cb, "<datastores>");
+    if (per_datastore(h, cb, "running") < 0)
+        goto done;
+    if (per_datastore(h, cb, "candidate") < 0)
+        goto done;
+    if (if_feature(yspec, "ietf-netconf", "startup")){
+        if (per_datastore(h, cb, "startup") < 0)
+            goto done;
+    }
+    cprintf(cb, "</datastores>");
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Get netconf monitoring schema state
+ *
+ * @param[in]     h       Clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in,out] cb      CLIgen buffer
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @see RFC 6022 Section 2.1.3
+ */
+static int
+netconf_monitoring_schemas(clicon_handle h,
+                           yang_stmt    *yspec,
+                           cbuf         *cb)
 {
     int        retval = -1;
     yang_stmt *ym = NULL;
@@ -111,7 +174,54 @@ yang_modules(clicon_handle h,
     return retval;
 }
 
-/*! Get modules state according to RFC 7895
+/*! Get netconf monitoring sessions state
+ *
+ * @param[in]     h       Clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in,out] cb      CLIgen buffer
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @see RFC 6022 Section 2.1.4
+ * XXX: NYI
+ */
+static int
+netconf_monitoring_sessions(clicon_handle h,
+                            yang_stmt    *yspec,
+                            cbuf         *cb)
+{
+    int        retval = -1;
+
+    retval = 0;
+    //done:
+    return retval;
+}
+
+/*! Get netconf monitoring statistics state
+ *
+ * @param[in]     h       Clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in,out] cb      CLIgen buffer
+ * @retval       -1       Error (fatal)
+ * @retval        0       OK
+ * @see RFC 6022 Section 2.1.5
+ * XXX: NYI
+ */
+static int
+netconf_monitoring_statistics(clicon_handle h,
+                              yang_stmt    *yspec,
+                              cbuf         *cb)
+{
+    int        retval = -1;
+
+    retval = 0;
+    //done:
+    return retval;
+}
+
+/*! Get netconf monitoring state
+ *
+ * Netconf monitoring state is:
+ *   capabilities, datastores, schemas, sessions, statistics
  * @param[in]     h       Clicon handle
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   XML Xpath
@@ -121,13 +231,7 @@ yang_modules(clicon_handle h,
  * @retval       -1       Error (fatal)
  * @retval        0       Statedata callback failed
  * @retval        1       OK
- * 2.1
- *   netconf-state
- *       /capabilities
- *       /datastores
- *       /schemas
- *       /sessions
- *       /statistics
+ * @see RFC 6022
  */
 int
 netconf_monitoring_state_get(clicon_handle h,
@@ -144,24 +248,17 @@ netconf_monitoring_state_get(clicon_handle h,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    /* capabilities 2.1.1 */
     cprintf(cb, "<netconf-state xmlns=\"%s\">", NETCONF_MONITORING_NAMESPACE);
     if (netconf_capabilites(h, cb) < 0)
         goto done;
-
-    /* datastores 2.1.2 */
-    // XXX
-
-    /* schemas 2.1.3 */
-    if (yang_modules(h, yspec, cb) < 0)
+    if (netconf_monitoring_datastores(h, yspec, cb) < 0)
         goto done;
-
-    /* sessions 2.1.4 */
-    // XXX
-
-    /* statistics 2.1.5 */
-    // XXX
-    
+    if (netconf_monitoring_schemas(h, yspec, cb) < 0)
+        goto done;
+    if (netconf_monitoring_sessions(h, yspec, cb) < 0)
+        goto done;
+    if (netconf_monitoring_statistics(h, yspec, cb) < 0)
+        goto done;
     cprintf(cb, "</netconf-state>");
     if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
         goto done;

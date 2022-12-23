@@ -41,6 +41,15 @@
 ## 6.1.0
 Expected: beginning of 2023
 
+### New features
+
+* Netconf monitoring, part 2
+  * Datastores
+  * Remaining: sessions and statistics state
+  * Standards
+    * RFC 6022 "YANG Module for NETCONF Monitoring"
+  * See [Feature Request: Support RFC 6022 (NETCONF Monitoring)](https://github.com/clicon/clixon/issues/370)
+
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system

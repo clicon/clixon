@@ -675,7 +675,7 @@ xml_flag_state_default_value(cxobj   *x,
  */
 int
 xml_flag_default_value(cxobj   *x,
-                             uint16_t flag)
+                       uint16_t flag)
 {
     yang_stmt   *y;
     cg_var      *cv;

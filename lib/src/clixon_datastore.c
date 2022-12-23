@@ -274,6 +274,7 @@ xmldb_lock(clicon_handle h,
     if ((de = clicon_db_elmnt_get(h, db)) != NULL)
         de0 = *de;
     de0.de_id = id;
+    gettimeofday(&de0.de_tv, NULL);
     clicon_db_elmnt_set(h, db, &de0);
     clicon_debug(1, "%s: locked by %u",  db, id);
     return 0;
@@ -294,6 +295,7 @@ xmldb_unlock(clicon_handle h,
 
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
         de->de_id = 0;
+        memset(&de->de_tv, 0, sizeof(struct timeval));
         clicon_db_elmnt_set(h, db, de);
     }
     return 0;
@@ -323,6 +325,7 @@ xmldb_unlock_all(clicon_handle h,
         if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
             de->de_id == id){
             de->de_id = 0;
+            memset(&de->de_tv, 0, sizeof(struct timeval));
             clicon_db_elmnt_set(h, keys[i], de);
         }
     }
@@ -349,6 +352,26 @@ xmldb_islocked(clicon_handle h,
     if ((de = clicon_db_elmnt_get(h, db)) == NULL)
         return 0;
     return de->de_id;
+}
+
+/*! Get timestamp of when database was locked
+ * @param[in]  h   Clicon handle
+ * @param[in]  db  Database
+ * @param[out] tv  Timestamp
+ * @retval    -1   No timestamp / not locked
+ * @retval     0   OK
+ */
+int
+xmldb_lock_timestamp(clicon_handle   h, 
+                     const char     *db,
+                     struct timeval *tv)
+{
+    db_elmnt  *de;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL)
+        return -1;
+    memcpy(tv, &de->de_tv, sizeof(*tv));
+    return 0;
 }
 
 /*! Check if db exists or is empty

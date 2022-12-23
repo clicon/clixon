@@ -62,6 +62,7 @@ int xmldb_lock(clicon_handle h, const char *db, uint32_t id);
 int xmldb_unlock(clicon_handle h, const char *db);
 int xmldb_unlock_all(clicon_handle h, uint32_t id);
 uint32_t xmldb_islocked(clicon_handle h, const char *db);
+int xmldb_lock_timestamp(clicon_handle h, const char *db, struct timeval *tv);
 int xmldb_exists(clicon_handle h, const char *db);
 int xmldb_clear(clicon_handle h, const char *db);
 int xmldb_delete(clicon_handle h, const char *db);
