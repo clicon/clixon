@@ -73,6 +73,7 @@
 #include <strings.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 /* cligen */
 #include <cligen/cligen.h>

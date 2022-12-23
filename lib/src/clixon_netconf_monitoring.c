@@ -45,6 +45,7 @@
 #include <limits.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 /* cligen */
 #include <cligen/cligen.h>

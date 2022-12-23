@@ -48,6 +48,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <syslog.h>
+#include <sys/time.h>
 
 /* cligen */
 #include <cligen/cligen.h>

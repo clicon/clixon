@@ -82,6 +82,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* [must statement check int value failed](https://github.com/clicon/clixon/issues/386)
 * Fixed: [Defaults in choice does not work properly](https://github.com/clicon/clixon/issues/390)
 * Fixed: [Netconf monitoring](https://github.com/clicon/clixon/issues/370)
   - Announce module capability
