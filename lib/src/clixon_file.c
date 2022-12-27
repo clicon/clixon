@@ -162,7 +162,7 @@ clicon_files_recursive(const char *dir,
 /*! Return alphabetically sorted files from a directory matching regexp
  *
  * @param[in]  dir     Directory path 
- * @param[out] ent     Entries pointer, will be filled in with dir entries. Free
+ * @param[out] ent     Entries pointer, will be filled in with dir entries. Free after use
  * @param[in]  regexp  Regexp filename matching 
  * @param[in]  type    File type matching, see stat(2) 
  *

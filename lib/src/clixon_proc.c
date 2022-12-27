@@ -100,6 +100,7 @@
 #endif
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/wait.h>
 #include <sys/param.h>
 #include <sys/user.h>
@@ -151,7 +152,6 @@ struct process_entry_t {
     struct timeval pe_starttime; /* Start time */
     proc_cb_t     *pe_callback; /* Wrapper function, may be called from process_operation  */
 };
-
 
 /* Forward declaration */
 static int clixon_process_sched_register(clicon_handle h, int delay);
