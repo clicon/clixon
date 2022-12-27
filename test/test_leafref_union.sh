@@ -50,6 +50,18 @@ module example{
     identity saab {
          base "airplane";
     }
+    typedef ref1 {
+      type leafref {
+        path "../x";
+          require-instance true;
+        }
+    }
+    typedef ref2 {
+      type leafref {
+        path "../y";
+        require-instance true;
+      }
+    }
     container c {
        leaf x {
           type string;
@@ -69,6 +81,13 @@ module example{
                 require-instance true;
             }
          }
+      }
+      leaf zdecl {
+         description "leafref union using declared types";
+          type union {
+             type ref1;
+             type ref2;
+          }
       }
       leaf w {
          description "idref union";

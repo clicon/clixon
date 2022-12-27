@@ -1109,24 +1109,32 @@ xml_yang_validate_leaf_union(clicon_handle h,
 {
     int        retval = -1;
     int        ret;
-    yang_stmt *yc = NULL;
+    yang_stmt *ytsub = NULL;
     cxobj     *xret1 = NULL;
+    yang_stmt *ytype; /* resolved type */
+    char      *restype;
     
     /* Enough that one is valid, eg returns 1,otherwise fail */
-    while ((yc = yn_each(yrestype, yc)) != NULL){
-        if (yang_keyword_get(yc) != Y_TYPE)
+    while ((ytsub = yn_each(yrestype, ytsub)) != NULL){
+        if (yang_keyword_get(ytsub) != Y_TYPE)
             continue;
+        /* Resolve the sub-union type to a resolved type */
+        if (yang_type_resolve(yt, yt, ytsub, /* in */
+                              &ytype, NULL, /* resolved type */
+                              NULL, NULL, NULL, NULL) < 0)
+            goto done;
+        restype = ytype?yang_argument_get(ytype):NULL;
         ret = 1; /* If not leafref/identityref it is valid on this level */
-        if (strcmp(yang_argument_get(yc), "leafref") == 0){
-            if ((ret = validate_leafref(xt, yt, yc, &xret1)) < 0)
+        if (strcmp(restype, "leafref") == 0){
+            if ((ret = validate_leafref(xt, yt, ytype, &xret1)) < 0) // XXX
                 goto done;
         }
-        else if (strcmp(yang_argument_get(yc), "identityref") == 0){
-            if ((ret = validate_identityref(xt, yt, yc, &xret1)) < 0)
+        else if (strcmp(restype, "identityref") == 0){
+            if ((ret = validate_identityref(xt, yt, ytype, &xret1)) < 0)
                 goto done;
         }
-        else if (strcmp("union", yang_argument_get(yc)) == 0){
-            if ((ret = xml_yang_validate_leaf_union(h, xt, yt, yc, &xret1)) < 0)
+        else if (strcmp("union", yang_argument_get(ytsub)) == 0){
+            if ((ret = xml_yang_validate_leaf_union(h, xt, yt, ytype, &xret1)) < 0)
                 goto done;
         }
         if (ret == 1)
@@ -1141,7 +1149,7 @@ xml_yang_validate_leaf_union(clicon_handle h,
             xret1 = NULL;
         }
     }
-    if (yc == NULL)
+    if (ytsub == NULL)
         goto fail;
     retval = 1;
  done:
