@@ -637,7 +637,6 @@ candidate_validate(clicon_handle h,
     goto done;
 }
 
-
 /*! Do a diff between candidate and running, then start a commit transaction
  *
  * The code reverts changes if the commit fails. But if the revert
@@ -646,7 +645,7 @@ candidate_validate(clicon_handle h,
  * @param[in]  h          Clicon handle
  * @param[in]  xe         Request: <rpc><xn></rpc>  (or NULL)
  * @param[in]  db         A candidate database, not necessarily "candidate"
- * @param[out] cbret      Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[out] cbret      Return xml tree, eg <rpc-reply>..., <rpc-error.. (if retval = 0)
  * @retval    -1          Error - or validation failed 
  * @retval     0          Validation failed (with cbret set)
  * @retval     1          Validation OK       

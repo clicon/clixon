@@ -823,7 +823,7 @@ xpath_vec(cxobj      *xcur,
  * @retval     -1       error.
  * @code
  *   cxobj **vec;
- *   int     veclen;
+ *   size_t  veclen;
  *   cvec   *nsc; // namespace context (not NULL)
  *   if (xpath_vec_flag(xcur, nsc, "//symbol/foo", XML_FLAG_ADD, &vec, &veclen) < 0) 
  *      goto err;
@@ -842,7 +842,7 @@ xpath_vec_flag(cxobj      *xcur,
                const char *xpformat, 
                uint16_t    flags,
                cxobj    ***vec, 
-               int        *veclen,
+               size_t     *veclen,
                ...)
 {
     int        retval = -1;
@@ -852,6 +852,7 @@ xpath_vec_flag(cxobj      *xcur,
     xp_ctx    *xr = NULL;
     int        i;
     cxobj     *x;
+    int        ilen = 0; /* change when cxvec_append uses size_t */
     
     va_start(ap, veclen);    
     len = vsnprintf(NULL, 0, xpformat, ap);
@@ -870,17 +871,18 @@ xpath_vec_flag(cxobj      *xcur,
     }
     va_end(ap);
     *vec=NULL;
-    *veclen = 0;
     if (xpath_vec_ctx(xcur, nsc, xpath, 0, &xr) < 0)
         goto done;
     if (xr && xr->xc_type == XT_NODESET){
         for (i=0; i<xr->xc_size; i++){
+            int ilen;
             x = xr->xc_nodeset[i];
             if (flags==0x0 || xml_flag(x, flags))
-                if (cxvec_append(x, vec, veclen) < 0)
+                if (cxvec_append(x, vec, &ilen) < 0)
                     goto done;          
         }
     }
+    *veclen = ilen;
     retval = 0;
  done:
     if (xr)

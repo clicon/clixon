@@ -370,6 +370,7 @@ xml_default(yang_stmt *yt,
             case Y_CHOICE:{
                 if (xml_default_choice(yc, xt, state) < 0)
                     goto done;
+                break;
             }
             default:
                 break;

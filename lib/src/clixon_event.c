@@ -332,10 +332,13 @@ clixon_event_poll(int fd)
 }
 
 /*! Dispatch file descriptor events (and timeouts) by invoking callbacks.
- * There is an issue with fairness that timeouts may take over all events
- * One could try to poll the file descriptors after a timeout?
- * @retval  0  OK
- * @retval -1  Error: eg select, callback, timer, 
+ *
+ * @param[in] h  Clixon handle
+ * @retval    0  OK
+ * @retval   -1  Error: eg select, callback, timer, 
+ * @note There is an issue with fairness between timeouts and events
+ *       Currently a socket that is not read/emptied properly starve timeouts.
+ *       One could try to poll the file descriptors after a timeout?
  */
 int
 clixon_event_loop(clicon_handle h)
