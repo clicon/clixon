@@ -146,8 +146,8 @@ ncname     {namestart}{namechar}*
 <AMPERSAND>"gt;"     { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = ">"; return CHARDATA;}
 <AMPERSAND>"apos;"   { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = "'"; return CHARDATA;}
 <AMPERSAND>"quot;"   { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = "\""; return CHARDATA;}
-<AMPERSAND>"#"[0-9]+";"  { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = "\""; return CHARDATA; /*  ISO/IEC 10646 */ }
-<AMPERSAND>"#x"[0-9a-fA-F]+";" { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = "\""; return CHARDATA;}
+<AMPERSAND>"#"[0-9]+";"  { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = yytext; return ENCODED; /*  ISO/IEC 10646 */ }
+<AMPERSAND>"#x"[0-9a-fA-F]+";" { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = yytext; return ENCODED;}
 
 <CDATA>\n             { clixon_xml_parselval.string = yytext;_XY->xy_linenum++; return (CHARDATA);}
 <CDATA>"]]>"          { BEGIN(_XY->xy_lex_state); clixon_xml_parselval.string = yytext; return CHARDATA;}

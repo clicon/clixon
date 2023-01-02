@@ -387,7 +387,7 @@ uri_percent_decode(char  *enc,
     return retval;
 }
 
-/*! Escape characters according to XML definition
+/*! Encode escape characters according to XML definition
  * @param[out]  encp   Encoded malloced output string
  * @param[in]   fmt    Not-encoded input string (stdarg format string)
  * @param[in]   ...    stdarg variable parameters
@@ -410,6 +410,7 @@ uri_percent_decode(char  *enc,
  * @see uri_percent_encode
  * @see AMPERSAND mode in clixon_xml_parse.l, implicit decoding
  * @see xml_chardata_cbuf_append for a specialized version
+ * @see xml_chardata_decode for decoding
  */
 int
 xml_chardata_encode(char      **escp,
@@ -586,6 +587,147 @@ xml_chardata_cbuf_append(cbuf *cb,
     // done:
     return retval;
 }
+
+/*! xml decode &...; 
+ *
+ * @param[in]     str Input string on the form &..; with & stripped
+ * @param[out]    ch  Decoded character 
+ * @param[in,out] ip
+ * @retval        1   OK and identified a decoding
+ * @retval        0   OK No identified decoding
+ * @retval       -1   Error
+ */
+static int
+xml_chardata_decode_ampersand(char *str,
+                              char *ch,
+                              int  *ip)
+{
+    int      retval = -1;
+    char    *semi;
+    char    *p;
+    size_t   len;
+    uint32_t code;
+    cbuf    *cb = NULL;
+    int      ret;
+    
+    if ((semi = index(str, ';')) == NULL)
+        goto fail;
+    *semi = '\0';
+    len = strlen(str);
+    p = str;
+    if (strcmp(p, "amp") == 0)
+        *ch = '&';
+    else if (strcmp(p, "lt") == 0)
+        *ch = '<';
+    else if (strcmp(p, "gt") == 0)
+        *ch = '>';
+    else if (strcmp(p, "apos") == 0)
+        *ch = '\'';
+    else if (strcmp(p, "quot") == 0)
+        *ch = '"';
+    else if (len > 0 && *p == '#'){
+        p++;
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "parse_uint32");
+            goto done;
+        }
+        if (len > 1 && *p == 'x'){
+            cprintf(cb, "0x");
+            p++;
+        }
+        cprintf(cb, "%s", p);
+        if ((ret = parse_uint32(cbuf_get(cb), &code, NULL)) < 0){
+            clicon_err(OE_UNIX, errno, "parse_uint32");
+            goto done;
+        }
+        if (ret == 0){
+            goto fail;
+        }
+        *ch = code;
+    }
+    else
+        goto fail;
+    *ip += len+1;
+    retval = 1;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+ fail:
+    retval = 0;
+    if (semi)
+        *semi = ';';
+    goto done;
+}
+
+/*! Decode escape characters according to XML definition
+ * @param[out]  decp   Decoded malloced output string
+ * @param[in]   fmt    Encoded input string (stdarg format string)
+ * @see xml_chardata_encode for encoding
+ */
+int
+xml_chardata_decode(char      **decp,
+                    const char *fmt,...)
+{
+    int     retval = -1;
+    char   *str = NULL;  /* Expanded encoded format string w stdarg */
+    char   *dec = NULL;
+    int     fmtlen;
+    va_list args;
+    size_t  slen;
+    int     i;
+    int     j;
+    char    ch;
+    int     ret;
+
+    /* Two steps: (1) read in the complete format string */
+    va_start(args, fmt); /* dryrun */
+    fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
+    va_end(args);
+    if ((str = malloc(fmtlen)) == NULL){
+        clicon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    memset(str, 0, fmtlen);
+    va_start(args, fmt); /* real */
+    fmtlen = vsnprintf(str, fmtlen, fmt, args) + 1;
+    va_end(args);
+    /* Now str is the combined fmt + ... */
+
+    /* Step (2) decode str --> dec 
+     * First allocate decoded string, encoded is always >= larger */
+    slen = strlen(str);
+    if ((dec = malloc(slen+1)) == NULL){
+        clicon_err(OE_UNIX, errno, "malloc"); 
+        goto done;
+    }
+    j = 0;
+    memset(dec, 0, slen+1);
+    for (i=0; i<slen; i++){
+        ch = str[i];
+        switch (ch){
+        case '&':
+            if ((ret = xml_chardata_decode_ampersand(&str[i+1], &ch, &i)) < 0)
+                goto done;
+            if (ret == 0)
+                dec[j++] = str[i];
+            else
+                dec[j++] = ch;
+            break;
+        default:
+            dec[j++] = str[i];
+        }
+    }
+    *decp = dec;
+    retval = 0;
+ done:
+    if (str)
+        free(str);
+    if (retval < 0 && dec)
+        free(dec);
+    return retval;
+}
+
 
 /*! Split a string into a cligen variable vector using 1st and 2nd delimiter
  * 

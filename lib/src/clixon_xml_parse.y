@@ -45,7 +45,7 @@
 
 %start document
 
-%token <string> NAME CHARDATA WHITESPACE STRING
+%token <string> NAME CHARDATA ENCODED WHITESPACE STRING
 %token MY_EOF
 %token VER ENC SD
 %token BSLASH ESLASH
@@ -104,12 +104,14 @@ clixon_xml_parseerror(void *_xy,
 
 /*! Parse XML content, eg chars between >...<
  * @param[in]  xy
+ * @param[in]  encoded set if ampersand encoded
  * @param[in]  str  Body string, direct pointer (copy before use, dont free)
  * Note that we dont handle escaped characters correctly 
  * there may also be some leakage here on NULL return
  */
 static int
 xml_parse_content(clixon_xml_yacc *xy, 
+                  int              encoded,
                   char            *str)
 {
     cxobj *xn = xy->xy_xelement;
@@ -121,6 +123,9 @@ xml_parse_content(clixon_xml_yacc *xy,
         if ((xn = xml_new("body", xp, CX_BODY)) == NULL)
             goto done; 
     }
+    if (encoded)
+        if (xml_value_append(xn, "&") < 0)
+            goto done; 
     if (xml_value_append(xn, str) < 0)
         goto done; 
     xy->xy_xelement = xn;
@@ -446,8 +451,10 @@ elist       : elist content { _PARSE_DEBUG("elist -> elist content"); }
 content     : element      { _PARSE_DEBUG("content -> element"); }
             | comment      { _PARSE_DEBUG("content -> comment"); }
             | pi           { _PARSE_DEBUG("content -> pi"); }
-            | CHARDATA     { if (xml_parse_content(_XY, $1) < 0) YYABORT;  
+            | CHARDATA     { if (xml_parse_content(_XY, 0, $1) < 0) YYABORT;  
                              _PARSE_DEBUG("content -> CHARDATA"); }
+            | ENCODED      { if (xml_parse_content(_XY, 1, $1) < 0) YYABORT;  
+                             _PARSE_DEBUG("content -> ENCODED"); }
             | WHITESPACE   { if (xml_parse_whitespace(_XY, $1) < 0) YYABORT;  
                              _PARSE_DEBUG("content -> WHITESPACE"); }
             |              { _PARSE_DEBUG("content -> "); }

@@ -759,7 +759,7 @@ yang_expand_grouping(yang_stmt *yn)
  * @retval    NULL   Error encountered
  * See top of file for diagram of calling order
  */
-static yang_stmt *
+yang_stmt *
 yang_parse_str(char         *str,
                const char   *name, /* just for errs */
                yang_stmt    *yspec)

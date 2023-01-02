@@ -95,6 +95,7 @@ int    uri_str2cvec(char *string, char delim1, char delim2, int decode, cvec **c
 int    uri_percent_encode(char **encp, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
 int    xml_chardata_encode(char **escp, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
 int    xml_chardata_cbuf_append(cbuf *cb, char *str);
+int    xml_chardata_decode(char **escp, const char *fmt,...);
 int    uri_percent_decode(char *enc, char **str);
 
 const char *clicon_int2str(const map_str2int *mstab, int i);
