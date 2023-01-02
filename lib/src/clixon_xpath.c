@@ -875,7 +875,6 @@ xpath_vec_flag(cxobj      *xcur,
         goto done;
     if (xr && xr->xc_type == XT_NODESET){
         for (i=0; i<xr->xc_size; i++){
-            int ilen;
             x = xr->xc_nodeset[i];
             if (flags==0x0 || xml_flag(x, flags))
                 if (cxvec_append(x, vec, &ilen) < 0)

@@ -159,8 +159,8 @@ release_all_dbs(clicon_handle h,
  * Finally actually remove client struct in handle
  * @param[in]  h   Clicon handle
  * @param[in]  ce  Client handle
- * @retval     -1  Error (fatal)
- * @retval      0  Ok
+ * @retval     0   Ok
+ * @retval    -1   Error (fatal)
  * @see backend_client_delete for actual deallocation of client entry struct
  */
 int
@@ -300,7 +300,7 @@ clixon_stats_module_get(clicon_handle h,
 /*! Loads all or part of a specified configuration to target configuration
  * 
  * @param[in]  h       Clicon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[in]  xn      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @param[in]  arg     client-entry
  * @param[in]  regarg  User argument given at rpc_callback_register() 
@@ -1402,10 +1402,10 @@ from_client_hello(clicon_handle       h,
 
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
  * @param[in]   h    Clicon handle
- * @param[in]   s    Socket where message arrived. read from this.
- * @param[in]   arg  Client entry (from).
+ * @param[in]   ce   Client entry (from)
+ * @param[in]   msg  Incoming message
  * @retval      0    OK
- * @retval      -1   Error Terminates backend and is never called). Instead errors are
+ * @retval     -1    Error Terminates backend and is never called). Instead errors are
  *                   propagated back to client.
  */
 static int
@@ -1637,7 +1637,7 @@ from_client_msg(clicon_handle        h,
  * @param[in]   s    Socket where message arrived. read from this.
  * @param[in]   arg  Client entry (from).
  * @retval      0    OK
- * @retval      -1   Error Terminates backend and is never called). Instead errors are
+ * @retval     -1    Error Terminates backend and is never called). Instead errors are
  *                   propagated back to client.
  */
 int
@@ -1672,8 +1672,8 @@ from_client(int   s,
 
 /*! Init backend rpc: Set up standard netconf rpc callbacks
  * @param[in]  h     Clicon handle
- * @retval       -1       Error (fatal)
- * @retval        0       OK
+ * @retval     0     OK
+ * @retval    -1     Error (fatal)
  * @see ietf-netconf@2011-06-01.yang 
  */
 int

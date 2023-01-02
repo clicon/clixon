@@ -80,12 +80,13 @@
  *    string regexp checked.
  * See also db_lv_set() where defaults are also filled in. The case here for defaults
  * are if code comes via XML/NETCONF.
+ * @param[in]   h       Clixon handle
  * @param[in]   yspec   Yang spec
  * @param[in]   td      Transaction data
  * @param[out]  xret    Error XML tree. Free with xml_free after use
- * @retval     -1       Error
- * @retval      0       Validation failed (with cbret set)
  * @retval      1       Validation OK       
+ * @retval      0       Validation failed (with cbret set)
+ * @retval     -1       Error
  */
 static int
 generic_validate(clicon_handle       h,
@@ -138,11 +139,11 @@ generic_validate(clicon_handle       h,
  * and call application callback validations.
  * @param[in]  h       Clicon handle
  * @param[in]  db      The startup database. The wanted backend state
- * @param[in]  td      Transaction
+ * @param[in]  td      Transaction data
  * @param[out] cbret   CLIgen buffer w error stmt if retval = 0
- * @retval    -1       Error - or validation failed (but cbret not set)
- * @retval     0       Validation failed (with cbret set)
  * @retval     1       Validation OK       
+ * @retval     0       Validation failed (with cbret set)
+ * @retval    -1       Error - or validation failed (but cbret not set)
  * @note Need to differentiate between error and validation fail 
  *
  * 1. Parse startup XML (or JSON)
@@ -336,9 +337,9 @@ startup_common(clicon_handle       h,
  * @param[in]  db      The startup database. The wanted backend state
  * @param[out] xtr     (Potentially) transformed XML
  * @param[out] cbret   CLIgen buffer w error stmt if retval = 0
- * @retval    -1       Error - or validation failed (but cbret not set)
- * @retval     0       Validation failed (with cbret set)
  * @retval     1       Validation OK       
+ * @retval     0       Validation failed (with cbret set)
+ * @retval    -1       Error - or validation failed (but cbret not set)
  */
 int
 startup_validate(clicon_handle  h, 
@@ -386,9 +387,9 @@ startup_validate(clicon_handle  h,
  * @param[in]  h       Clicon handle
  * @param[in]  db      The startup database. The wanted backend state
  * @param[out] cbret   CLIgen buffer w error stmt if retval = 0
- * @retval    -1       Error - or validation failed (but cbret not set)
- * @retval     0       Validation failed (with cbret set)
  * @retval     1       Validation OK       
+ * @retval     0       Validation failed (with cbret set)
+ * @retval    -1       Error - or validation failed (but cbret not set)
  * Only called from startup_mode_startup
  */
 int
@@ -461,12 +462,13 @@ startup_commit(clicon_handle  h,
 /*! Validate a candidate db and comnpare to running
  * Get both source and dest datastore, validate target, compute diffs
  * and call application callback validations.
- * @param[in]  h         Clicon handle
- * @param[in]  candidate The candidate database. The wanted backend state
- * @param[out] xret      Error XML tree, if retval is 0. Free with xml_free after use
- * @retval    -1         Error - or validation failed (but cbret not set)
- * @retval     0         Validation failed (with xret set)
- * @retval     1         Validation OK       
+ * @param[in]  h       Clicon handle
+ * @param[in]  db      The (candidate) database. The wanted backend state
+ * @param[in]  td      Transaction data
+ * @param[out] xret    Error XML tree, if retval is 0. Free with xml_free after use
+ * @retval     1       Validation OK       
+ * @retval     0       Validation failed (with xret set)
+ * @retval    -1       Error - or validation failed (but cbret not set)
  * @note Need to differentiate between error and validation fail 
  *       (only done for generic_validate)
  * @see startup_common  for startup scenario
@@ -567,11 +569,12 @@ validate_common(clicon_handle       h,
 
 /*! Start a validate transaction
  *
- * @param[in]  h    Clicon handle
- * @param[in]  db   A candidate database, typically "candidate" but not necessarily so
- * @retval    -1    Error - or validation failed 
- * @retval     0    Validation failed (with cbret set)
- * @retval     1    Validation OK       
+ * @param[in]  h      Clicon handle
+ * @param[in]  db     A candidate database, typically "candidate" but not necessarily so
+ * @param[out] cbret  CLIgen buffer w error stmt if retval = 0
+ * @retval     1      Validation OK       
+ * @retval     0      Validation failed (with cbret set)
+ * @retval    -1      Error - or validation failed 
  */
 int
 candidate_validate(clicon_handle h, 
@@ -646,9 +649,9 @@ candidate_validate(clicon_handle h,
  * @param[in]  xe         Request: <rpc><xn></rpc>  (or NULL)
  * @param[in]  db         A candidate database, not necessarily "candidate"
  * @param[out] cbret      Return xml tree, eg <rpc-reply>..., <rpc-error.. (if retval = 0)
- * @retval    -1          Error - or validation failed 
- * @retval     0          Validation failed (with cbret set)
  * @retval     1          Validation OK       
+ * @retval     0          Validation failed (with cbret set)
+ * @retval    -1          Error - or validation failed 
  */
 int
 candidate_commit(clicon_handle h, 
