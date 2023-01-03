@@ -83,6 +83,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [locally scoped YANG typedef in grouping does not work #394](https://github.com/clicon/clixon/issues/394)
 * Fixed: [leafref in new type no work in union type](https://github.com/clicon/clixon/issues/388)
 * Fixed: [must statement check int value failed](https://github.com/clicon/clixon/issues/386)
 * Fixed: [Defaults in choice does not work properly](https://github.com/clicon/clixon/issues/390)

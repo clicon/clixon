@@ -1105,7 +1105,9 @@ static inline int
 ys_typedef(yang_stmt *ys)
 {
     return yang_keyword_get(ys) == Y_MODULE || yang_keyword_get(ys) == Y_SUBMODULE ||
-        yang_keyword_get(ys) == Y_CONTAINER || yang_keyword_get(ys) == Y_LIST;
+        yang_keyword_get(ys) == Y_CONTAINER || yang_keyword_get(ys) == Y_LIST ||
+        yang_keyword_get(ys) == Y_GROUPING
+        ;
 }
 
 /* find next ys up which can contain a typedef */

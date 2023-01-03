@@ -68,6 +68,19 @@ module example{
    namespace "urn:example:clixon";
    prefix ex;
    import example2 { prefix ex2; }
+
+   grouping gt{
+     description "test of local scoped type as defined in RFC7950 Section 5.5";
+     typedef ag {
+         type string {
+           pattern
+             '(([c-g])\.){3}[c-g]';
+         }
+      }
+     leaf gr{
+       type ag;
+     }
+   }
    typedef ab {
        type string {
          pattern
@@ -206,6 +219,7 @@ module example{
       mandatory true;
     }
   }
+  uses gt;
 }
 EOF
 
@@ -622,6 +636,22 @@ EOF
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>man</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of manc in module example</error-message></rpc-error></rpc-reply>"
 
     new "netconf discard-changes"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+    #------ typedef scoped in grouping
+    new "type in grouping"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><gr xmlns=\"urn:example:clixon\">c.d.e.f</gr></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+    new "validate grouping ok"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+    new "type in grouping negatoive"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><gr xmlns=\"urn:example:clixon\">a.d.e.f</gr></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+    new "validate grouping expect fail"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag>" 
+
+        new "netconf discard-changes"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
     #------ minus
