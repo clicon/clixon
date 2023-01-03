@@ -1455,11 +1455,11 @@ yang_sort_modules(yang_stmt          *yspec,
  * 
  * @param[in] h      CLICON handle
  * @param[in] yspec  Yang specification. 
- * @param[in] modmin  Perform checks after this number, prior are already complete
+ * @param[in] modmin Perform checks after this number, prior are already complete
  * @retval    0      Everything OK
  * @retval   -1      Error encountered
  */
-static int
+int
 yang_parse_post(clicon_handle h,
                 yang_stmt    *yspec,
                 int           modmin)
