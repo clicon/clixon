@@ -2069,18 +2069,27 @@ yang_deviation(yang_stmt *ys,
             while ((yc = yn_each(yd, yc)) != NULL) {
                 /* The properties to replace MUST exist in the target node.*/
                 kw = yang_keyword_get(yc);
-                if ((ytc = yang_find(ytarget, kw, NULL)) == NULL){
-                    clicon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
-                               nodeid,
-                               yang_key2str(kw), yang_argument_get(yc),
-                               yang_argument_get(ytarget));
-                    goto done;
+                ytc = yang_find(ytarget, kw, NULL);
+                switch (kw){
+                case Y_CONFIG: /* special case: implicit default is config true */
+                    break;
+                default:
+                    if (ytc == NULL){
+                        clicon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
+                                   nodeid,
+                                   yang_key2str(kw), yang_argument_get(yc),
+                                   yang_argument_get(ytarget));
+                        goto done;
+                    }
+                    break;
                 }
-                /* Remove old */
-                if (ys_prune_self(ytc) < 0)
-                    goto done;
-                if (ys_free(ytc) < 0)
-                    goto done;
+                if (ytc){
+                    /* Remove old */
+                    if (ys_prune_self(ytc) < 0)
+                        goto done;
+                    if (ys_free(ytc) < 0)
+                        goto done;
+                }
                 /* Make a copy of deviate child and insert. */
                 if ((yc1 = ys_dup(yc)) == NULL)
                     goto done;
