@@ -194,7 +194,7 @@ clicon_msg_decode(struct clicon_msg *msg,
         *id = ntohl(msg->op_id);
     /* body */
     xmlstr = msg->op_body;
-    clicon_debug(1, "%s %s", __FUNCTION__, xmlstr);
+    clicon_debug(2, "%s %s", __FUNCTION__, xmlstr);
     if ((ret = clixon_xml_parse_string(xmlstr, yspec?YB_RPC:YB_NONE, yspec, xml, xerr)) < 0)
         goto done;
     if (ret == 0)

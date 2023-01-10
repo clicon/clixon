@@ -2909,7 +2909,7 @@ yang_features(clicon_handle h,
             ret = 0;
             if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, mainfile, 1, &ret) < 0)
                 goto done;
-            clicon_debug(1, "%s %s %d", __FUNCTION__, yang_argument_get(ys), ret);
+            clicon_debug(2, "%s %s %d", __FUNCTION__, yang_argument_get(ys), ret);
             if (ret == 0)
                 goto disabled;
         }

@@ -372,6 +372,7 @@ clicon_debug_get(void)
  *                       1 default level if passed -D
  *                       2.. Higher debug levels
  * @param[in] format     Message to print as argv.
+ * @see clicon_debug_xml Specialization for XML tree
  */
 int
 clicon_debug(int         dbglevel, 
@@ -383,7 +384,7 @@ clicon_debug(int         dbglevel,
     int     retval = -1;
     size_t  trunc;
     
-    if (dbglevel > _clixon_debug) /* compare debug mask with global variable */
+    if (dbglevel > clicon_debug_get()) /* compare debug level with global variable */
         return 0;
     /* first round: compute length of debug message */
     va_start(args, format);

@@ -15,6 +15,7 @@ docker/*/Makefile
 etc/Makefile
 example/Makefile
 example/*/Makefile
+example/main/example.xml
 lib/Makefile
 lib/*/Makefile
 test/Makefile
@@ -51,6 +52,7 @@ build-root/rpmbuild
 build-root/debbuild
 
 util/clixon_util_datastore
+util/clixon_util_dispatcher
 util/clixon_util_grpc
 util/clixon_util_insert
 util/clixon_util_json
@@ -58,12 +60,14 @@ util/clixon_util_path
 util/clixon_util_regexp
 util/clixon_util_socket
 util/clixon_util_stream
+util/clixon_util_validate
 util/clixon_util_xml
 util/clixon_util_xml_mod
 util/clixon_util_xpath
 util/clixon_util_yang
 util/clixon_netconf_ssh_callhome
 util/clixon_netconf_ssh_callhome_client
+util/clixon_restconf_callhome_client
 
 test/config.sh
 test/site.sh

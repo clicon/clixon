@@ -238,8 +238,7 @@ api_return_err(clicon_handle  h,
         }
     }
 #if 1
-    if (clicon_debug_get())
-        clicon_log_xml(LOG_DEBUG, xerr, "%s Send error:", __FUNCTION__);
+    clicon_debug_xml(1, xerr, "%s Send error:", __FUNCTION__);
 #endif
     if (xml_name_set(xerr, "error") < 0)
         goto done;

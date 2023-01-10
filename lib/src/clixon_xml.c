@@ -1401,8 +1401,7 @@ xml_purge(cxobj *xc)
  * @param[in]   i      Number of xml child node (to remove)
  * @retval      0      OK
  * @retval      -1
- * @note you should not remove xchild in loop (unless yoy keep track of xprev)
- *
+ * @note you should not remove xchild in loop (unless you keep track of xprev)
  * @see xml_rootchild
  * @see xml_rm     Remove the node itself from parent
  */
@@ -2368,11 +2367,14 @@ xml_add_attr(cxobj *xn,
     return retval;
 }
 
-/*! Specialization of clicon_debug with xml tree 
+/*! Specialization of clicon_log with xml tree 
+ *
+ * @param[in]  dbglevel 
  * @param[in]  level    log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. 
  * @param[in]  x        XML tree that is logged without prettyprint
  * @param[in]  format   Message to print as argv.
-*/
+ * @see clicon_debug_xml  which uses debug setting instead of direct syslog
+ */
 int
 clicon_log_xml(int         level, 
                cxobj      *x,
@@ -2418,6 +2420,71 @@ clicon_log_xml(int         level,
 
     /* Actually log it */
     clicon_log(level, "%s: %s", msg, cbuf_get(cb));
+
+    retval = 0;
+  done:
+    if (cb)
+        cbuf_free(cb);
+    if (msg)
+        free(msg);
+    return retval;
+}
+
+/*! Specialization of clicon_debug with xml tree 
+ *
+ * @param[in]  dbglevel 
+ * @param[in]  x        XML tree that is logged without prettyprint
+ * @param[in]  format   Message to print as argv.
+ * @see clicon_log_xml  For syslog
+ * @see clicon_debug    base function
+*/
+int
+clicon_debug_xml(int         dbglevel, 
+                 cxobj      *x,
+                 const char *format, ...)
+{
+    va_list args;
+    size_t  len;
+    char   *msg = NULL;
+    cbuf   *cb = NULL;
+    int     retval = -1;
+    size_t  trunc;
+
+    if (dbglevel > clicon_debug_get()) /* compare debug level with global variable */
+        return 0;
+    /* Print xml as cbuf */
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    if (clixon_xml2cbuf(cb, x, 0, 0, -1, 0) < 0)
+        goto done;
+    /* first round: compute length of debug message */
+    va_start(args, format);
+    len = vsnprintf(NULL, 0, format, args);
+    va_end(args);
+    
+    /* Truncate long debug strings */
+    if ((trunc = clicon_log_string_limit_get()) && trunc < len)
+        len = trunc;
+
+    /* allocate a message string exactly fitting the message length */
+    if ((msg = malloc(len+1)) == NULL){
+        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        goto done;
+    }
+
+    /* second round: compute write message from format and args */
+    va_start(args, format);
+    if (vsnprintf(msg, len+1, format, args) < 0){
+        va_end(args);
+        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        goto done;
+    }
+    va_end(args);
+
+    /* Actually log it */
+    clicon_debug(dbglevel, "%s: %s", msg, cbuf_get(cb));
 
     retval = 0;
   done:

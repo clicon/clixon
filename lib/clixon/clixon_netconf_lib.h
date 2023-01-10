@@ -52,7 +52,10 @@
 #define NETCONF_BASE_NAMESPACE "urn:ietf:params:xml:ns:netconf:base:1.0"
 #define NETCONF_BASE_PREFIX "nc"
 
-/* In cases where message-id is not given by external client, use this */
+/* In cases where message-id is not given by external client, use this 
+ * Note hardcoded message-id, which is ok for server, but a client should
+ * eg assign message-id:s incrementally
+ */
 #define NETCONF_MESSAGE_ID_DEFAULT "42"
 #define NETCONF_MESSAGE_ID_ATTR "message-id=\"42\""
 

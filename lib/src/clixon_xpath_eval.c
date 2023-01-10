@@ -1128,8 +1128,7 @@ xp_eval(xp_ctx     *xc,
     xp_ctx    *xr2 = NULL;
     int        use_xr0 = 0; /* In 2nd child use transitively result of 1st child */
     
-    if (clicon_debug_get() > 1)
-        ctx_print(stderr, xc, xpath_tree_int2str(xs->xs_type));
+    // ctx_print(stderr, xc, xpath_tree_int2str(xs->xs_type));
     /* Pre-actions before check first child c0
      */
     switch (xs->xs_type){
@@ -1368,8 +1367,7 @@ xp_eval(xp_ctx     *xc,
             xr0 = NULL;
         }
  ok:
-    if (clicon_debug_get() > 1)
-        ctx_print(stderr, *xrp, xpath_tree_int2str(xs->xs_type));
+    // ctx_print(stderr, *xrp, xpath_tree_int2str(xs->xs_type));
     retval = 0;
  done:
     if (xr2)

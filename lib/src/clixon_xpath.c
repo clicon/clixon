@@ -531,6 +531,7 @@ xpath_parse(const char  *xpath,
     clixon_xpath_yacc xpy = {0,};
     cbuf             *cb = NULL;    
 
+    clicon_debug(2, "%s", __FUNCTION__);
     if (xpath == NULL){
         clicon_err(OE_XML, EINVAL, "XPath is NULL");
         goto done;
@@ -542,7 +543,6 @@ xpath_parse(const char  *xpath,
         goto done;
     if (xpath_parse_init(&xpy) < 0)
         goto done;
-    clicon_debug(2,"%s",__FUNCTION__);
     if (clixon_xpath_parseparse(&xpy) != 0) { /* yacc returns 1 on error */
         clicon_log(LOG_NOTICE, "XPATH error: on line %d", xpy.xpy_linenum);
         if (clicon_errno == 0)
@@ -602,6 +602,7 @@ xpath_vec_ctx(cxobj      *xcur,
     xpath_tree *xptree = NULL;
     xp_ctx      xc = {0,};
     
+    clicon_debug(2, "%s", __FUNCTION__);
     if (xpath_parse(xpath, &xptree) < 0)
         goto done;
     xc.xc_type = XT_NODESET;
@@ -1081,6 +1082,7 @@ xpath2canonical(const char *xpath0,
     cbuf       *xcb = NULL;
     int         ret;
 
+    clicon_debug(2, "%s", __FUNCTION__);
     /* Parse input xpath into an xpath-tree */
     if (xpath_parse(xpath0, &xpt) < 0)
         goto done;

@@ -490,7 +490,7 @@ api_data_write(clicon_handle h,
                 goto done;
             }
             if (namespace == NULL){
-                clicon_log_xml(LOG_DEBUG, xparent, "%s xparent:", __FUNCTION__);
+                clicon_debug_xml(1, xparent, "%s xparent:", __FUNCTION__);
                 /* XXX */
             }
             /* Set xmlns="" default namespace attribute (if diff from default) */

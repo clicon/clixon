@@ -751,8 +751,7 @@ get_list_pagination(clicon_handle        h,
         if ((ret = xml_bind_yang(xret, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            if (clicon_debug_get() && xret)
-                clicon_log_xml(LOG_DEBUG, xret, "Yang bind pagination state");
+            clicon_debug_xml(1, xret, "Yang bind pagination state");
             if (clixon_netconf_internal_error(xerr,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
@@ -860,8 +859,7 @@ get_common(clicon_handle        h,
 #else
     wdef = WITHDEFAULTS_EXPLICIT;
 #endif
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(2, "%s", __FUNCTION__);
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_YANG, ENOENT, "No yang spec9");
@@ -1007,8 +1005,7 @@ get_common(clicon_handle        h,
             (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            if (clicon_debug_get())
-                clicon_log_xml(LOG_DEBUG, xret, "VALIDATE_STATE");
+            clicon_debug_xml(1, xret, "VALIDATE_STATE");
             if (clixon_netconf_internal_error(xerr,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
@@ -1039,7 +1036,7 @@ get_common(clicon_handle        h,
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     if (xret)

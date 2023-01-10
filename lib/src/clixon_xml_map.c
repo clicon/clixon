@@ -575,7 +575,7 @@ xml_tree_prune_flagged(cxobj *xt,
  * @param[in]   mask    Which flags to test for
  * The function removes all branches that does pass test
  * @code
- *    xml_tree_prune_flaggs(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT);
+ *    xml_tree_prune_flags(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT);
  * @endcode
  */
 int

@@ -466,6 +466,7 @@ yang_path_arg(yang_stmt  *ys,
     xp_yang_ctx *xyr = NULL;
     xp_yang_ctx *xy = NULL;
 
+    clicon_debug(2, "%s", __FUNCTION__);
     if (path_arg == NULL){
         clicon_err(OE_XML, EINVAL, "path-arg is NULL");
         goto done;

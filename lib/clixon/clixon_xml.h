@@ -281,6 +281,7 @@ char     *xml_operation2str(enum operation_type op);
 int       xml_attr_insert2val(char *instr, enum insert_type *ins);
 int       xml_add_attr(cxobj *xn, char *name, char *value, char *prefix, char *ns);
 int       clicon_log_xml(int level, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
+int       clicon_debug_xml(int dbglevel, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
 
 #ifdef XML_EXPLICIT_INDEX
 int       xml_search_index_p(cxobj *x);

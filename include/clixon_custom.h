@@ -32,8 +32,8 @@
   ***** END LICENSE BLOCK *****
 
   Custom file as boilerplate appended by clixon_config.h 
-  These are compile-time options. RUntime options are in clixon-config.yang.
-  In general they are kludges and "should be removed" when cod eis improved
+  These are compile-time options. Runtime options are in clixon-config.yang.
+  In general they are kludges and "should be removed" when code is improved
   and not proper system config options.
   Note that clixon_config.h is only included by clixon system files, not automatically by examples
   or apps

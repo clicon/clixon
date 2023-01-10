@@ -622,8 +622,7 @@ yang_patch_do_edit(clicon_handle  h,
     yang_stmt *ybot = NULL;
     yang_stmt *ymod;
 
-    
-    clicon_log_xml(LOG_DEBUG, xn, "%s %d xn:", __FUNCTION__, __LINE__);
+    clicon_debug_xml(1, xn, "%s %d xn:", __FUNCTION__, __LINE__);
     /* Create cbufs:s */
     if ((simple_patch_request_uri = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
