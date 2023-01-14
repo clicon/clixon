@@ -110,6 +110,15 @@ netconf_add_request_attr(cxobj *xrpc,
         /* If attribute already exists, dont copy it */
         if (xml_find_type(xrep, NULL, xml_name(xa), CX_ATTR) != NULL)
             continue; /* Skip already present (dont overwrite) */
+        /* Filter all clixon-lib attributes and namespace declaration 
+         * to acvoid leaking internal attributes to external NETCONF
+         * note this is only done on top-level.
+         */
+        if (xml_prefix(xa) && strcmp(xml_prefix(xa), CLIXON_LIB_PREFIX) == 0)
+            continue;
+        if (xml_prefix(xa) && strcmp(xml_prefix(xa), "xmlns") == 0 &&
+            strcmp(xml_name(xa), CLIXON_LIB_PREFIX) == 0)
+            continue;
         if ((xa2 = xml_dup(xa)) ==NULL)
             goto done;
         if (xml_addsub(xrep, xa2) < 0)
@@ -192,11 +201,11 @@ netconf_rpc_message(clicon_handle h,
                     yang_stmt    *yspec,
                     int          *eof)
 {
-    int    retval = -1;
-    cxobj *xret = NULL; /* Return (out) */
-    int    ret;
-    cbuf  *cbret = NULL;
-    cxobj *xc;
+    int                  retval = -1;
+    cxobj               *xret = NULL; /* Return (out) */
+    int                  ret;
+    cbuf                *cbret = NULL;
+    cxobj               *xc;
     netconf_framing_type framing;
 
     framing = clicon_option_int(h, "netconf-framing");
@@ -240,9 +249,9 @@ netconf_rpc_message(clicon_handle h,
             goto done;
         goto ok;
     }
-    if (netconf_rpc_dispatch(h, xrpc, &xret, eof) < 0){
+    if (netconf_rpc_dispatch(h, xrpc, &xret, eof) < 0)
         goto done;
-    }
+
     /* Is there a return message in xret? */
     if (xret == NULL){
         if (netconf_operation_failed_xml(&xret, "rpc", "Internal error: no xml return")< 0)
@@ -988,7 +997,7 @@ main(int    argc,
      * used by the client, even though new TCP sessions are created for
      * each message sent to the backend.
      */
-    if (clicon_hello_req(h, &id) < 0)
+    if (clicon_hello_req(h, "cl:netconf", NULL, &id) < 0)
         goto done;
     clicon_session_id_set(h, id);
     

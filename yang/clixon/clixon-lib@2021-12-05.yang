@@ -14,6 +14,19 @@ module clixon-lib {
 
     description
       "Clixon Netconf extensions for communication between clients and backend.
+
+       Clixon extends NETCONF for internal use with some internal attributes. These
+       are not visible for external usage bit belongs to the namespace of this YANG.
+       The internal attributes are:
+       - content (also RESTCONF)
+       - depth   (also RESTCONF)
+       - username
+       - autocommit
+       - copystartup
+       - transport (see RFC6022)
+       - source-host (see RFC6022)
+       - objectcreate
+       - objectexisted
       
        ***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2009-2019 Olof Hagsand

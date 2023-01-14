@@ -6,6 +6,9 @@ module clixon-lib {
     import ietf-yang-types {
         prefix yang;
     }    
+    import ietf-netconf-monitoring {
+        prefix ncm;
+    }    
     organization
         "Clicon / Clixon";
 
@@ -13,9 +16,7 @@ module clixon-lib {
         "Olof Hagsand <olof@hagsand.se>";
 
     description
-      "Clixon Netconf extensions for communication between clients and backend.
-      
-       ***** BEGIN LICENSE BLOCK *****
+      "***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2009-2019 Olof Hagsand
        Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
        
@@ -42,8 +43,37 @@ module clixon-lib {
        the provisions above, a recipient may use your version of this file under
        the terms of any one of the Apache License version 2 or the GPL.
 
-       ***** END LICENSE BLOCK *****";
+       ***** END LICENSE BLOCK *****
 
+       Clixon Netconf extensions for communication between clients and backend.
+       This scheme adds:
+       - Added values of RFC6022 transport identityref 
+       - RPCs for debug, stats and process-control
+       - Informal description of attributes
+
+       Additionally, Clixon extends NETCONF for internal use with some internal attributes. These
+       are not visible for external usage bit belongs to the namespace of this YANG.
+       The internal attributes are:
+       - content (also RESTCONF)
+       - depth   (also RESTCONF)
+       - username
+       - autocommit
+       - copystartup
+       - transport (see RFC6022)
+       - source-host (see RFC6022)
+       - objectcreate
+       - objectexisted
+      ";
+
+    revision 2022-12-01 {
+        description
+            "Added values of RFC6022 transport identityref 
+             Added description of internal netconf attributes";
+    }
+    revision 2021-12-05 {
+        description
+            "Obsoleted: extension autocli-op";
+    }
     revision 2021-11-11 {
         description
             "Changed: RPC stats extended with YANG stats";
@@ -101,6 +131,23 @@ module clixon-lib {
         description
             "Common operations that can be performed on a service";
     }
+    identity snmp {
+        description
+            "SNMP";
+        base ncm:transport;
+    }
+    identity netconf {
+        description
+            "Just NETCONF without specitic underlying transport, 
+             Clixon uses stdio for its netconf client and therefore does not know whether it is
+             invoked in a script, by a NETCONF/SSH subsystem, etc";
+        base ncm:transport;
+    }
+    identity restconf {
+        description
+            "RESTCONF either as HTTP/1 or /2, TLS or not, reverese proxy (eg fcgi/nginx) or native";
+        base ncm:transport;
+    }
     extension autocli-op {
       description 
         "Takes an argument an operation defing how to modify the clispec at 
@@ -109,8 +156,10 @@ module clixon-lib {
          Operations is expected to be extended, but the following operations are defined:
          - hide                                                   This command is active but not shown by ? or TAB (meaning, it hides the auto-completion of commands)
                  - hide-database                                  This command hides the database
-         - hide-database-auto-completion  This command hides the database and the auto completion (meaning, this command acts as both commands above)";
+         - hide-database-auto-completion  This command hides the database and the auto completion (meaning, this command acts as both commands above)
+         Obsolete: use clixon-autocli:hide and clixon-autocli:hide-show  instead";
       argument cliop;
+      status obsolete;
    }
    rpc debug {
         description "Set debug level of backend.";

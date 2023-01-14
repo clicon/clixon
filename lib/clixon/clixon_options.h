@@ -51,7 +51,9 @@
  * @see clixon-lib.yang
  */
 #define CLIXON_CONF_NS     "http://clicon.org/config"
+#define CLIXON_CONF_PREFIX "cc"
 #define CLIXON_LIB_NS      "http://clicon.org/lib"
+#define CLIXON_LIB_PREFIX  "cl"
 #define CLIXON_AUTOCLI_NS  "http://clicon.org/autocli"
 #define CLIXON_RESTCONF_NS "http://clicon.org/restconf"
 

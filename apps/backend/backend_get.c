@@ -181,10 +181,22 @@ client_get_streams(clicon_handle   h,
  * @param[in]     xpath   XPath selection, may be used to filter early
  * @param[in]     nsc     XML Namespace context for xpath
  * @param[in]     wdef    With-defaults parameter, see RFC 6243
- * @param[in,out] xret    Existing XML tree, merge x into this
+ * @param[in,out] xret    Existing XML tree, merge x into this, or rpc-error
  * @retval       -1       Error (fatal)
- * @retval        0       Statedata callback failed (clicon_err called)
+ * @retval        0       Statedata callback failed (error in xret)
  * @retval        1       OK
+ * @note This code in general does not look at xpath, needs to be filtered in retrospect
+ * @note Awkward error handling. Even if most of this is during development phase, except for plugin
+ * state callbacks.
+ * Present behavior:
+ *   - Present behavior: should be returned in xret with retval 0(error) or 1(ok)
+ *   - On error, previous content of xret is not freed
+ *   - xret is in turn translated to cbuf in calling function
+ * Instead, I think there should be a second out argument **xerr with the error message, see code
+ * for CLICON_NETCONF_MONITORING which is transformed in calling function(?) to an internal error
+ * message. But this needs to be explored in all sub-functions
+ * 
+ *
  */
 static int
 get_client_statedata(clicon_handle     h,
@@ -196,9 +208,11 @@ get_client_statedata(clicon_handle     h,
     int        retval = -1;
     yang_stmt *yspec;
     yang_stmt *ymod;
+    cxobj     *x1 = NULL;
     int        ret;
     char      *namespace;
     cbuf      *cb = NULL;
+    cxobj     *xerr = NULL;
     
     clicon_debug(1, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -236,7 +250,6 @@ get_client_statedata(clicon_handle     h,
             goto done;
         }
         cbuf_reset(cb);
-        /* XXX This code does not filter state data with  xpath */
         cprintf(cb, "<restconf-state xmlns=\"%s\"/>", namespace);
         if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
             goto done;
@@ -254,7 +267,32 @@ get_client_statedata(clicon_handle     h,
             goto fail;
     }
     if (clicon_option_bool(h, "CLICON_NETCONF_MONITORING")){
-        if ((ret = netconf_monitoring_state_get(h, yspec, xpath, nsc, 0, xret)) < 0)
+        if ((ret = netconf_monitoring_state_get(h, yspec, xpath, nsc, xret, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if (clixon_netconf_internal_error(xerr, " . Internal error, netconf_monitoring_state returned invalid XML", NULL) < 0)
+                goto done;
+            if (*xret)
+                xml_free(*xret);
+            *xret = xerr;
+            xerr = NULL;
+            goto fail;
+        }
+        /* Some state, client state, is avaliable in backend only, not in lib 
+         * Needs merge since same subtree as previous lib state
+         */
+        if ((ret = backend_monitoring_state_get(h, yspec, xpath, nsc, &x1, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if (clixon_netconf_internal_error(xerr, " . Internal error, baenckend_monitoring_state_get returned invalid XML", NULL) < 0)
+                goto done;
+            if (*xret)
+                xml_free(*xret);
+            *xret = xerr;
+            xerr = NULL;
+            goto fail;
+        }
+        if ((ret = netconf_trymerge(x1, yspec, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -320,6 +358,10 @@ get_client_statedata(clicon_handle     h,
     retval = 1; /* OK */
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    if (xerr)
+        xml_free(xerr);
+    if (x1)
+        xml_free(x1);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -734,19 +776,13 @@ get_list_pagination(clicon_handle        h,
         cbuf  *cba = NULL;
 
         /* Add remaining attribute */
-        if ((xa = xml_new("remaining", x1, CX_ATTR)) == NULL)
-            goto done;
         if ((cba = cbuf_new()) == NULL){
             clicon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cba, "%u", remaining);
-        if (xml_value_set(xa, cbuf_get(cba)) < 0)
-            goto done;
-        if (xml_prefix_set(xa, "cp") < 0)
-            goto done;
-        if (xmlns_set(x1, "cp", "http://clicon.org/clixon-netconf-list-pagination") < 0)
-            goto done;
+        if (xml_add_attr(x1, "remaining", cbuf_get(cba), "cp", "http://clicon.org/clixon-netconf-list-pagination") < 0)
+        goto done;
         if (cba)
             cbuf_free(cba);
     }

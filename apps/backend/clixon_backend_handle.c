@@ -145,6 +145,8 @@ backend_client_add(clicon_handle    h,
     ce->ce_nr = bh->bh_ce_nr++; /* Session-id ? */
     memcpy(&ce->ce_addr, addr, sizeof(*addr));
     ce->ce_next = bh->bh_ce_list;
+    ce->ce_handle = h;
+    gettimeofday(&ce->ce_time, NULL);
     bh->bh_ce_list = ce;
     return ce;
 }
@@ -180,6 +182,10 @@ backend_client_delete(clicon_handle        h,
             *ce_prev = c->ce_next;
             if (ce->ce_username)
                 free(ce->ce_username);
+            if (ce->ce_transport)
+                free(ce->ce_transport);
+            if (ce->ce_source_host)
+                free(ce->ce_source_host);
             free(ce);
             break;
         }
@@ -203,8 +209,9 @@ backend_client_print(clicon_handle h,
         fprintf(f, "Client:     %d\n", ce->ce_nr);
         fprintf(f, "  Session:  %d\n", ce->ce_id);
         fprintf(f, "  Socket:   %d\n", ce->ce_s);
-        fprintf(f, "  Msgs in:  %d\n", ce->ce_stat_in);
-        fprintf(f, "  Msgs out: %d\n", ce->ce_stat_out);
+        fprintf(f, "  RPCs in:  %u\n", ce->ce_in_rpcs);
+        fprintf(f, "  Bad RPCs in:  %u\n", ce->ce_in_bad_rpcs);
+        fprintf(f, "  Err RPCs out:  %u\n", ce->ce_out_rpc_errors);
         fprintf(f, "  Username: %s\n", ce->ce_username);
     }
     return 0;

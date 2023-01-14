@@ -82,6 +82,12 @@
 #include "clixon_xml_map.h"
 #include "clixon_yang_parse_lib.h"
 
+/*! Create modstate structure
+ *
+ * @retval     md    modstate struct
+ * @retval     NULL  Error
+ * @see modstate_diff_free
+ */
 modstate_diff_t *
 modstate_diff_new(void)
 {
@@ -95,6 +101,12 @@ modstate_diff_new(void)
     return md;
 }
 
+/*! Free modstate structure
+ *
+ * @param[in] md Modstate struct
+ * @retval    0     OK
+ * @see modstate_diff_new
+ */
 int
 modstate_diff_free(modstate_diff_t *md)
 {
@@ -111,7 +123,9 @@ modstate_diff_free(modstate_diff_t *md)
 /*! Init the Yang module library
  *
  * Load RFC7895 yang spec, module-set-id, etc.
- * @param[in]     h       Clicon handle
+ * @param[in]  h       Clicon handle
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see netconf_module_load
  */
 int
@@ -167,6 +181,13 @@ yang_modules_revision(clicon_handle h)
 
 /*! Actually build the yang modules state XML tree according to RFC8525
  *
+ * @param[in]  h     Clixon handle
+ * @param[in]  yspec
+ * @param[in]  msid
+ * @param[in]  brief
+ * @param[out] cb
+ * @retval     0     OK
+ * @retval    -1     Error
  * This assumes CLICON_YANG_LIBRARY is enabled
  * If also CLICON_MODULE_LIBRARY_RFC7895 is set, module-state is built according to RFC7895 instead
  * @see RFC8525 
@@ -277,9 +298,9 @@ yms_build(clicon_handle    h,
  * @param[in]     nsc     XML Namespace context for xpath
  * @param[in]     brief   Just name, revision and uri (no cache)
  * @param[in,out] xret    Existing XML tree, merge x into this
- * @retval       -1       Error (fatal)
- * @retval        0       Statedata callback failed
  * @retval        1       OK
+ * @retval        0       Statedata callback failed
+ * @retval       -1       Error (fatal)
  * @notes NYI: schema, deviation
 x      +--ro modules-state
 x         +--ro module-set-id    string

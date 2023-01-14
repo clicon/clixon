@@ -41,6 +41,6 @@
 /*
  * Prototypes
  */
-int netconf_monitoring_state_get(clicon_handle h, yang_stmt *yspec, char *xpath, cvec *nsc, int brief, cxobj **xret);
+int netconf_monitoring_state_get(clicon_handle h, yang_stmt *yspec, char *xpath, cvec *nsc, cxobj **xret, cxobj **xerr);
 
 #endif  /* _CLIXON_NETCONF_MONITORING_H_ */

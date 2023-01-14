@@ -818,7 +818,12 @@ main(int    argc,
         if (evalresult < 0)
             goto done;
     }
-
+    /* Set RFC6022 session parameters that will be sent in first hello,
+    * @see clicon_hello_req
+    */
+    clicon_data_set(h, "session-transport", "cl:cli");
+    clicon_data_set(h, "session-source-host", "localhost");
+    
     /* Go into event-loop unless -1 command-line */
     if (!once){
         retval = cli_interactive(h);

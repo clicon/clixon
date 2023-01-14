@@ -163,7 +163,7 @@ restconf_main_config(clicon_handle h,
     else {
         /* Loop to wait for backend starting, try again if not done */
         while (1){
-            if (clicon_hello_req(h, &id) < 0){
+            if (clicon_hello_req(h, "cl:restconf", NULL, &id) < 0){
                 if (errno == ENOENT){
                     fprintf(stderr, "waiting");
                     sleep(1);

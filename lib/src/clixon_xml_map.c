@@ -648,7 +648,6 @@ xml_namespace_change(cxobj *x,
        /* Add prefix to x, if any */
        if (prefix && xml_prefix_set(x, prefix) < 0)
            goto done;
-       
     }
  ok:
     retval = 0;

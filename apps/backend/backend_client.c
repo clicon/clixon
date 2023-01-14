@@ -78,7 +78,7 @@
  */
 static struct client_entry *
 ce_find_byid(struct client_entry *ce_list,
-             uint32_t            id)
+             uint32_t             id)
 {
     struct client_entry *ce;
 
@@ -152,6 +152,81 @@ release_all_dbs(clicon_handle h,
     if (keys)
         free(keys);
     return retval;
+}
+
+/*! Get backend-specific client netconf monitoring state
+ *
+ * Backend-specific netconf monitoring state is:
+ *   sessions
+ * @param[in]     h       Clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in]     xpath   XML Xpath
+ * @param[in]     nsc     XML Namespace context for xpath
+ * @param[in,out] xret    Existing XML tree, merge x into this
+ * @param[out]    xerr    XML error tree, if retval = 0
+ * @retval       -1       Error (fatal)
+ * @retval        0       Statedata callback failed, error in xerr
+ * @retval        1       OK
+ * @see RFC 6022
+ */
+int
+backend_monitoring_state_get(clicon_handle h,
+                             yang_stmt    *yspec,
+                             char         *xpath,
+                             cvec         *nsc,
+                             cxobj       **xret,
+                             cxobj       **xerr)
+{
+    int                  retval = -1;
+    cbuf                *cb = NULL;
+    struct client_entry *ce;
+    char                 timestr[28];
+    int                  ret;
+
+    if ((cb = cbuf_new()) ==NULL){
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<netconf-state xmlns=\"%s\">", NETCONF_MONITORING_NAMESPACE);
+    cprintf(cb, "<sessions>");
+    for (ce = backend_client_list(h); ce; ce = ce->ce_next){
+        cprintf(cb, "<session>");
+        cprintf(cb, "<session-id>%u</session-id>", ce->ce_id);
+        if (ce->ce_transport)
+            cprintf(cb, "<transport xmlns:%s=\"%s\">%s</transport>",
+                    CLIXON_LIB_PREFIX, CLIXON_LIB_NS,
+                    ce->ce_transport);
+        cprintf(cb, "<username>%s</username>", ce->ce_username);
+        if (ce->ce_source_host)
+            cprintf(cb, "<source-host>%s</source-host>", ce->ce_source_host);
+        if (ce->ce_time.tv_sec != 0){
+            if (time2str(ce->ce_time, timestr, sizeof(timestr)) < 0){
+                clicon_err(OE_UNIX, errno, "time2str");
+                goto done;
+            }
+            cprintf(cb, "<login-time>%s</login-time>", timestr);
+        }
+        cprintf(cb, "<in-rpcs>%u</in-rpcs>", ce->ce_in_rpcs);
+        cprintf(cb, "<in-bad-rpcs>%u</in-bad-rpcs>", ce->ce_in_bad_rpcs);
+        cprintf(cb, "<out-rpc-errors>%u</out-rpc-errors>", ce->ce_out_rpc_errors);
+        cprintf(cb, "<out-notifications>%u</out-notifications>", 0);
+        cprintf(cb, "</session>");
+    }
+    cprintf(cb, "</sessions>");
+    cprintf(cb, "</netconf-state>");
+    if ((ret = clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, xerr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    retval = 1;
+ done:
+    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Remove client entry state
@@ -451,7 +526,7 @@ from_client_edit_config(clicon_handle h,
     xmldb_modified_set(h, target, 1); /* mark as dirty */
     /* Clixon extension: autocommit */
     if ((attr = xml_find_value(xn, "autocommit")) != NULL &&
-        strcmp(attr,"true")==0)
+        strcmp(attr,"true") == 0)
         autocommit = 1;
     /* If autocommit option is set or requested by client */
     if (clicon_autocommit(h) || autocommit) {
@@ -513,7 +588,9 @@ from_client_edit_config(clicon_handle h,
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok", NETCONF_BASE_NAMESPACE);
     if (clicon_data_get(h, "objectexisted", &val) == 0)
-        cprintf(cbret, " objectexisted=\"%s\"", val);
+        cprintf(cbret, " %s:objectexisted=\"%s\" xmlns:%s=\"%s\"",
+                CLIXON_LIB_PREFIX, val,
+                CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     cprintf(cbret, "/></rpc-reply>");
  ok:
     retval = 0;
@@ -1375,6 +1452,11 @@ from_client_process_control(clicon_handle  h,
 }
 
 /*! Clixon hello to check liveness
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  x       Incoming XML of hello request
+ * @param[in]  ce      Client entry (from)
+ * @param[out] cbret   Hello reply
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -1386,10 +1468,23 @@ from_client_hello(clicon_handle       h,
 {
     int      retval = -1;
     uint32_t id;
+    char    *val;
 
     if (clicon_session_id_get(h, &id) < 0){
         clicon_err(OE_NETCONF, ENOENT, "session_id not set");
         goto done;
+    }
+    if ((val = xml_find_type_value(x, "cl", "transport", CX_ATTR)) != NULL){
+        if ((ce->ce_transport = strdup(val)) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+    }
+    if ((val = xml_find_type_value(x, "cl", "source-host", CX_ATTR)) != NULL){
+        if ((ce->ce_source_host = strdup(val)) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
     }
     id++;
     clicon_session_id_set(h, id);
@@ -1498,7 +1593,7 @@ from_client_msg(clicon_handle        h,
     }
 
     if (strcmp(rpcname, "rpc") == 0){
-        ; /* continue  below */
+        ce->ce_in_rpcs++; /* Track all RPCs */
     }
     else if (strcmp(rpcname, "hello") == 0){
         if ((ret = from_client_hello(h, x, ce, cbret)) <0)
@@ -1508,9 +1603,12 @@ from_client_msg(clicon_handle        h,
     else{
         if (netconf_unknown_element(cbret, "protocol", rpcname, "Unrecognized netconf operation")< 0)
             goto done;
+        ce->ce_in_bad_rpcs++; 
+        ce->ce_out_rpc_errors++; /*  Number of <rpc-reply> messages sent that contained an <rpc-error> */
         goto reply;
     }
     ce->ce_id = id;
+
     /* As a side-effect, this expands xt with default values according to "report-all"
      * This may not be correct, the RFC does not mention expanding default values for
      * input RPC
@@ -1520,6 +1618,8 @@ from_client_msg(clicon_handle        h,
     if (ret == 0){
         if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
             goto done;
+        ce->ce_in_bad_rpcs++;
+        ce->ce_in_rpcs--; /* Track all RPCs */
         goto reply;
     }
     xe = NULL;
@@ -1531,6 +1631,7 @@ from_client_msg(clicon_handle        h,
         if ((ye = xml_spec(xe)) == NULL){
             if (netconf_operation_not_supported(cbret, "protocol", rpc) < 0)
                 goto done;
+            ce->ce_out_rpc_errors++;
             goto reply;
         }
         if ((ymod = ys_module(ye)) == NULL){
@@ -1557,26 +1658,34 @@ from_client_msg(clicon_handle        h,
             creds = clicon_nacm_credentials(h);
             if ((ret = verify_nacm_user(h, creds, ce->ce_username, username, cbret)) < 0)
                 goto done;
-            if (ret == 0) /* credentials fail */
+            if (ret == 0){ /* credentials fail */
+                ce->ce_out_rpc_errors++;
                 goto reply;
+            }
             /* NACM rpc operation exec validation */
             if ((ret = nacm_rpc(rpc, module, username, xnacm, cbret)) < 0)
                 goto done;
-            if (ret == 0) /* Not permitted and cbret set */
+            if (ret == 0){ /* Not permitted and cbret set */
+                ce->ce_out_rpc_errors++;
                 goto reply;
+            }
         }
         clicon_err_reset();
         if ((ret = rpc_callback_call(h, xe, ce, &nr, cbret)) < 0){
             if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
                 goto done;
             clicon_log(LOG_NOTICE, "%s Error in rpc_callback_call:%s", __FUNCTION__, xml_name(xe));
+            ce->ce_out_rpc_errors++;
             goto reply; /* Dont quit here on user callbacks */
         }
-        if (ret == 0)
+        if (ret == 0){
+            ce->ce_out_rpc_errors++;
             goto reply;
+        }
         if (nr == 0){ /* not handled by callback */
             if (netconf_operation_not_supported(cbret, "application", "RPC operation not supported")< 0)
                 goto done;
+            ce->ce_out_rpc_errors++;
             goto reply;
         }
         if (xnacm){

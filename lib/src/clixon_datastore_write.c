@@ -168,7 +168,6 @@ check_body_namespace(cxobj     *x0,
     char      *prefix = NULL;
     char      *ns0 = NULL;
     char      *ns1 = NULL;
-    cxobj     *xa;
     cxobj     *x;
     int        isroot;
     cbuf      *cberr = NULL;
@@ -210,17 +209,12 @@ bad-attribue?
             goto done;
         /* Create xmlns attribute to x0 XXX same code ^*/
         if (prefix){
-            if ((xa = xml_new(prefix, x, CX_ATTR)) == NULL)
-                goto done;
-            if (xml_prefix_set(xa, "xmlns") < 0)
+            if (xml_add_attr(x, prefix, ns0, "xmlns", NULL) < 0)
                 goto done;
         }
-        else{
-            if ((xa = xml_new("xmlns", x, CX_ATTR)) == NULL)
+        else
+            if (xml_add_attr(x, "xmlns", ns0, NULL, NULL) < 0)
                 goto done;
-        }
-        if (xml_value_set(xa, ns0) < 0)
-            goto done;
         xml_sort(x); /* Ensure attr is first / XXX xml_insert? */
     }
 #if 0
@@ -237,11 +231,7 @@ bad-attribue?
                 ;
             }
             else{ /* Add it according to the kludge,... */
-                if ((xa = xml_new(prefix, x0, CX_ATTR)) == NULL)
-                    goto done;
-                if (xml_prefix_set(xa, "xmlns") < 0)
-                    goto done;
-                if (xml_value_set(xa, ns0) < 0)
+                if (xml_add_attr(x0, prefix, ns0, "xmlns", NULL) < 0)
                     goto done;
             }
         }

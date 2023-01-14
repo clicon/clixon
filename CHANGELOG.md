@@ -44,8 +44,8 @@ Expected: beginning of 2023
 ### New features
 
 * Netconf monitoring, part 2
-  * Datastores
-  * Remaining: sessions and statistics state
+  * Datastores and sessions
+  * Remaining: statistics state
   * Standards
     * RFC 6022 "YANG Module for NETCONF Monitoring"
   * See [Feature Request: Support RFC 6022 (NETCONF Monitoring)](https://github.com/clicon/clixon/issues/370)
@@ -54,6 +54,9 @@ Expected: beginning of 2023
 
 Users may have to change how they access the system
 
+* clixon-lib,yang
+  * Moved all extended internal NETCONF attributes to the clicon-lib namespace
+  * The internal attributes are documented in https://clixon-docs.readthedocs.io/en/latest/netconf.html
 * With-defaults default retrieval mode has changed from `REPORT-ALL` to `EXPLICIT`
   * This means that all get operations without `with-defaults` parameter do no longer
     return implicit default values, only explicitly set values.

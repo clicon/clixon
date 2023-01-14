@@ -161,7 +161,6 @@ netconf_invalid_value_xml(cxobj **xret,
     int    retval =-1;
     cxobj *xerr = NULL;
     char  *encstr = NULL;
-    cxobj *xa;
     
     if (xret == NULL){
         clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
@@ -173,9 +172,7 @@ netconf_invalid_value_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -282,7 +279,6 @@ netconf_missing_attribute_xml(cxobj **xret,
     int   retval = -1;
     cxobj *xerr = NULL;
     char  *encstr = NULL;
-    cxobj *xa;
 
     if (xret == NULL){
         clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
@@ -294,9 +290,7 @@ netconf_missing_attribute_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -394,7 +388,6 @@ netconf_bad_attribute_xml(cxobj **xret,
     int   retval = -1;
     cxobj *xerr = NULL;
     char  *encstr = NULL;
-    cxobj *xa;
 
     if (xret == NULL){
         clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
@@ -406,9 +399,7 @@ netconf_bad_attribute_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -491,7 +482,6 @@ netconf_common_xml(cxobj **xret,
     int    retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
-    cxobj *xa;
     
     if (xret == NULL){
         clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
@@ -500,9 +490,7 @@ netconf_common_xml(cxobj **xret,
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
             goto done;
-        if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-            goto done;
-        if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+        if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
             goto done;
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
@@ -751,7 +739,6 @@ netconf_access_denied_xml(cxobj **xret,
     int    retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
-    cxobj *xa;
 
     if (xret == NULL){
         clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
@@ -763,9 +750,7 @@ netconf_access_denied_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -987,7 +972,6 @@ netconf_data_missing_xml(cxobj **xret,
     int   retval = -1;
     char *encstr = NULL;
     cxobj *xerr;
-    cxobj *xa;
 
     if (xret == NULL){
         clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
@@ -999,9 +983,7 @@ netconf_data_missing_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -1045,7 +1027,6 @@ netconf_missing_choice_xml(cxobj **xret,
     int    retval = -1;
     char  *encstr = NULL;
     cxobj *xerr;
-    cxobj *xa;
     char  *path = NULL;
     char  *encpath = NULL;
 
@@ -1059,9 +1040,7 @@ netconf_missing_choice_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -1122,7 +1101,6 @@ netconf_operation_not_supported_xml(cxobj **xret,
     int   retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
-    cxobj *xa;
     
     if (xret == NULL){
         clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
@@ -1134,9 +1112,7 @@ netconf_operation_not_supported_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -1237,7 +1213,6 @@ netconf_operation_failed_xml(cxobj **xret,
     int   retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
-    cxobj *xa;
     
     if (xret == NULL){
         clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
@@ -1249,9 +1224,7 @@ netconf_operation_failed_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -1325,8 +1298,7 @@ netconf_malformed_message_xml(cxobj **xret,
     int    retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
-    cxobj *xa;
-    
+
     if (xret == NULL){
         clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
@@ -1337,9 +1309,7 @@ netconf_malformed_message_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -1408,7 +1378,6 @@ netconf_data_not_unique_xml(cxobj **xret,
     cg_var *cvi = NULL; 
     cxobj  *xerr;
     cxobj  *xinfo;
-    cxobj  *xa;
     char   *path = NULL;
     char  *encpath = NULL;
 
@@ -1422,9 +1391,7 @@ netconf_data_not_unique_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -1482,7 +1449,6 @@ netconf_minmax_elements_xml(cxobj **xret,
     cxobj *xerr;
     char  *path = NULL;
     char  *encpath = NULL;
-    cxobj *xa;
     
     if (xret == NULL){
         clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
@@ -1494,9 +1460,7 @@ netconf_minmax_elements_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-    if ((xa = xml_new("xmlns", *xret, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_value_set(xa, NETCONF_BASE_NAMESPACE) < 0)
+    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) < 0)
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
@@ -1528,9 +1492,9 @@ netconf_minmax_elements_xml(cxobj **xret,
  * @param[in]     x       XML tree
  * @param[in]     yspec   Yang spec
  * @param[in,out] xret    Existing XML tree, merge x into this
- * @retval       -1       Error (fatal)
- * @retval        0       Statedata callback failed
  * @retval        1       OK
+ * @retval        0       Statedata callback failed, error in xret?
+ * @retval       -1       Error (fatal)
  */
 int
 netconf_trymerge(cxobj       *x,
@@ -1995,9 +1959,9 @@ clixon_netconf_internal_error(cxobj *xerr,
  * @param[in]     defaultstr If given, default string which is accepted and sets value to 0
  * @param[in,out] cbret      Output buffer for internal RPC message if invalid
  * @param[out]    value      Value if valid
- * @retval       -1          Error
- * @retval        0          Invalid, cbret set
  * @retval        1          OK
+ * @retval        0          Invalid, cbret set
+ * @retval       -1          Error
  * @code
  *   char    *name = "a";
  *   char    *valstr = "322";
@@ -2238,10 +2202,10 @@ netconf_output_encap(netconf_framing_type framing,
  * @param[in]     ch     New input character
  * @param[in,out] state  State machine state
  * @param[in,out] size   Remaining expecting chunk bytes.
- * @retval       -1      Error
- * @retval        0      Framing char, not data
- * @retval        1      Chunk-data      
  * @retval        2      End-of-frame
+ * @retval        1      Chunk-data      
+ * @retval        0      Framing char, not data
+ * @retval       -1      Error
  * Example:
    C:  \n#4\n
    C:  <rpc
@@ -2352,3 +2316,4 @@ netconf_input_chunked_framing(char    ch,
     retval = -1; /* Error */
     goto done;
 }
+

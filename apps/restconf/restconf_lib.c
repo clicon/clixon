@@ -405,7 +405,6 @@ restconf_insert_attributes(cxobj *xdata,
                            cvec  *qvec)
 {
     int        retval = -1;
-    cxobj     *xa;
     char      *instr;
     char      *pstr;
     yang_stmt *y;
@@ -422,12 +421,7 @@ restconf_insert_attributes(cxobj *xdata,
         /* First add xmlns:yang attribute */
         if (xmlns_set(xdata, "yang", YANG_XML_NAMESPACE) < 0)
             goto done;
-        /* Then add insert attribute */
-        if ((xa = xml_new("insert", xdata, CX_ATTR)) == NULL)
-            goto done;
-        if (xml_prefix_set(xa, "yang") < 0)
-            goto done;
-        if (xml_value_set(xa, instr) < 0)
+        if (xml_add_attr(xdata, "insert", instr, "yang", NULL) < 0)
             goto done;
     }
     if ((pstr = cvec_find_str(qvec, "point")) != NULL){
@@ -439,11 +433,7 @@ restconf_insert_attributes(cxobj *xdata,
             attrname="key";
         else
             attrname="value";
-        /* Then add value/key attribute */
-        if ((xa = xml_new(attrname, xdata, CX_ATTR)) == NULL)
-            goto done;
-        if (xml_prefix_set(xa, "yang") < 0)
-            goto done;
+
         if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &nsc, NULL)) < 0)
             goto done;
         if ((cb = cbuf_new()) == NULL){
@@ -471,7 +461,7 @@ restconf_insert_attributes(cxobj *xdata,
             p++;
             cprintf(cb, "%s", p);
         }
-        if (xml_value_set(xa, cbuf_get(cb)) < 0)
+        if (xml_add_attr(xdata, attrname, cbuf_get(cb), "yang", NULL) < 0)
             goto done;
     }
     /* Add prefix/namespaces used in attributes */

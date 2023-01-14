@@ -611,15 +611,10 @@ xml_add_default_tag(cxobj *x,
                     uint16_t flags)
 {
     int retval = -1;
-    cxobj *xattr;
 
     if (xml_flag(x, flags)) {
         /* set default attribute */
-        if ((xattr = xml_new("default", x, CX_ATTR)) == NULL)
-            goto done;
-        if (xml_value_set(xattr, "true") < 0)
-            goto done;
-        if (xml_prefix_set(xattr, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX) < 0)
+        if (xml_add_attr(x, "default", "true", IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, NULL) < 0)
             goto done;
     }
     retval = 0;

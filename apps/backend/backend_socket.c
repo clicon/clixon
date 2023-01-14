@@ -249,7 +249,6 @@ backend_accept_client(int   fd,
     }
     if ((ce = backend_client_add(h, &from)) == NULL)
         goto done;
-    ce->ce_handle = h;
 
     /* 
      * Get credentials of connected peer - only for unix socket 

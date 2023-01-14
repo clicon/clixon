@@ -384,24 +384,12 @@ api_data_write(clicon_handle h,
     /* Add operation create as attribute. If that fails with Conflict, then 
      * try "replace" (see comment in function header)
      */
-    if ((xa = xml_new("operation", xdata, CX_ATTR)) == NULL)
+    if (xml_add_attr(xdata, "operation", xml_operation2str(op), NETCONF_BASE_PREFIX, NULL) < 0)
         goto done;
-    if (xml_prefix_set(xa, NETCONF_BASE_PREFIX) < 0)
+    if (xml_add_attr(xdata, "objectcreate",
+                     plain_patch?"false":"true",
+                     CLIXON_LIB_PREFIX, CLIXON_LIB_NS) < 0)
         goto done;
-    if (xml_value_set(xa, xml_operation2str(op)) < 0) /* XXX here is where op is used */
-        goto done;
-    if ((xa = xml_new("objectcreate", xdata, CX_ATTR)) == NULL)
-        goto done;
-    if (plain_patch){
-        /* RFC 8040 4.6. PATCH:
-         * If the target resource instance does not exist, the server MUST NOT create it. 
-         */
-        if (xml_value_set(xa, "false") < 0)
-            goto done;
-    }
-    else
-        if (xml_value_set(xa, "true") < 0)
-            goto done;
     /* Top-of tree, no api-path
      * Replace xparent with x, ie bottom of api-path with data 
      */     
@@ -512,16 +500,20 @@ api_data_write(clicon_handle h,
     } /* api-path != NULL */
     /* For internal XML protocol: add username attribute for access control
      */
-    username = clicon_username_get(h);
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL)
         goto done;
-    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\" %s>",
-            NETCONF_BASE_NAMESPACE,
-            username?username:"",
+    cprintf(cbx, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cbx, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cbx, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        cprintf(cbx, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    }
+    cprintf(cbx, " xmlns:%s=\"%s\"",
             NETCONF_BASE_PREFIX,
-            NETCONF_BASE_NAMESPACE,  /* bind nc to netconf namespace */
-            NETCONF_MESSAGE_ID_ATTR);
+            NETCONF_BASE_NAMESPACE);  /* bind nc to netconf namespace */
+    cprintf(cbx, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+    cprintf(cbx, ">");
     cprintf(cbx, "<edit-config");
     /* RFC8040 Sec 1.4:
      * If this is a "data" request and the NETCONF server supports :startup,
@@ -532,9 +524,11 @@ api_data_write(clicon_handle h,
     if ((IETF_DS_NONE == ds) &&
         if_feature(yspec, "ietf-netconf", "startup") &&
         !clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
-        cprintf(cbx, " copystartup=\"true\"");
+        cprintf(cbx, " %s:copystartup=\"true\"", CLIXON_LIB_PREFIX);
+        cprintf(cbx, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     }
-    cprintf(cbx, " autocommit=\"true\"");
+    cprintf(cbx, " %s:autocommit=\"true\" xmlns:%s=\"%s\"",
+            CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clixon_xml2cbuf(cbx, xtop, 0, 0, -1, 0) < 0)
@@ -759,14 +753,17 @@ api_data_delete(clicon_handle h,
         goto done;
     /* For internal XML protocol: add username attribute for access control
      */
-    username = clicon_username_get(h);
-    cprintf(cbx, "<rpc xmlns=\"%s\" username=\"%s\" xmlns:%s=\"%s\" %s>",
-            NETCONF_BASE_NAMESPACE,
-            username?username:"",
+    cprintf(cbx, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cbx, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cbx, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        cprintf(cbx, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    }
+    cprintf(cbx, " xmlns:%s=\"%s\"",
             NETCONF_BASE_PREFIX,
-            NETCONF_BASE_NAMESPACE,
-            NETCONF_MESSAGE_ID_ATTR); /* bind nc to netconf namespace */
-
+            NETCONF_BASE_NAMESPACE);
+    cprintf(cbx, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+    cprintf(cbx, ">");
     cprintf(cbx, "<edit-config");
     /* RFC8040 Sec 1.4:
      * If this is a "data" request and the NETCONF server supports :startup,
@@ -777,9 +774,11 @@ api_data_delete(clicon_handle h,
     if ((IETF_DS_NONE == ds) &&
         if_feature(yspec, "ietf-netconf", "startup") &&
         !clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
-        cprintf(cbx, " copystartup=\"true\"");
+        cprintf(cbx, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+        cprintf(cbx, " %s:copystartup=\"true\"", CLIXON_LIB_PREFIX);
     }
-    cprintf(cbx, " autocommit=\"true\"");
+    cprintf(cbx, " %s:autocommit=\"true\" xmlns:%s=\"%s\"",
+            CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clixon_xml2cbuf(cbx, xtop, 0, 0, -1, 0) < 0)

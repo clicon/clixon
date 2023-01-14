@@ -78,6 +78,7 @@ per_datastore(clicon_handle h,
     cprintf(cb, "<datastore><name>%s</name>", db);
     if ((sid = xmldb_islocked(h, db)) > 0){
         cprintf(cb, "<locks>");
+        cprintf(cb, "<global-lock>");
         cprintf(cb, "<locked-by-session>%u</locked-by-session>", sid);
         xmldb_lock_timestamp(h, db, &tv);
         if (time2str(tv, timestr, sizeof(timestr)) < 0){
@@ -85,6 +86,7 @@ per_datastore(clicon_handle h,
             goto done;
         }
         cprintf(cb, "<locked-time>%s</locked-time>", timestr);
+        cprintf(cb, "</global-lock>");
         cprintf(cb, "</locks>");
     }
     cprintf(cb, "</datastore>");
@@ -175,28 +177,6 @@ netconf_monitoring_schemas(clicon_handle h,
     return retval;
 }
 
-/*! Get netconf monitoring sessions state
- *
- * @param[in]     h       Clicon handle
- * @param[in]     yspec   Yang spec
- * @param[in,out] cb      CLIgen buffer
- * @retval       -1       Error (fatal)
- * @retval        0       OK
- * @see RFC 6022 Section 2.1.4
- * XXX: NYI
- */
-static int
-netconf_monitoring_sessions(clicon_handle h,
-                            yang_stmt    *yspec,
-                            cbuf         *cb)
-{
-    int        retval = -1;
-
-    retval = 0;
-    //done:
-    return retval;
-}
-
 /*! Get netconf monitoring statistics state
  *
  * @param[in]     h       Clicon handle
@@ -227,11 +207,12 @@ netconf_monitoring_statistics(clicon_handle h,
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   XML Xpath
  * @param[in]     nsc     XML Namespace context for xpath
- * @param[in]     brief   Just name, revision and uri (no cache)
  * @param[in,out] xret    Existing XML tree, merge x into this
+ * @param[out]    xerr    XML error tree, if retval = 0
  * @retval       -1       Error (fatal)
- * @retval        0       Statedata callback failed
+ * @retval        0       Statedata callback failed, error in xret
  * @retval        1       OK
+ * @see backend_monitoring_state_get
  * @see RFC 6022
  */
 int
@@ -239,11 +220,12 @@ netconf_monitoring_state_get(clicon_handle h,
                              yang_stmt    *yspec,
                              char         *xpath,
                              cvec         *nsc,
-                             int           brief,
-                             cxobj       **xret)
+                             cxobj       **xret,
+                             cxobj       **xerr)
 {
-    int   retval = -1;
-    cbuf *cb = NULL;
+    int    retval = -1;
+    cbuf  *cb = NULL;
+    int    ret;
     
     if ((cb = cbuf_new()) ==NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
@@ -256,20 +238,22 @@ netconf_monitoring_state_get(clicon_handle h,
         goto done;
     if (netconf_monitoring_schemas(h, yspec, cb) < 0)
         goto done;
-    if (netconf_monitoring_sessions(h, yspec, cb) < 0)
-        goto done;
+    /* sessions is backend-specific */
     if (netconf_monitoring_statistics(h, yspec, cb) < 0)
         goto done;
     cprintf(cb, "</netconf-state>");
-    if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0)
+    if ((ret = clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, xerr)) < 0)
         goto done;
+    if (ret == 0){
+        goto fail;
+    }
     retval = 1;
  done:
     clicon_debug(1, "%s %d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     return retval;
-    // fail:
-    //    retval = 0;
-    //    goto done;
+ fail:
+    retval = 0;
+    goto done;
 }

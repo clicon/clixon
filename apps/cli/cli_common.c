@@ -294,7 +294,6 @@ cli_dbxml(clicon_handle       h,
     cxobj     *xbot = NULL;     /* xpath, NULL if datastore */
     yang_stmt *y = NULL;        /* yang spec of xpath */
     cxobj     *xtop = NULL;     /* xpath root */
-    cxobj     *xa;              /* attribute */
     cxobj     *xerr = NULL;
     int        ret;
     cg_var    *cv;
@@ -338,11 +337,7 @@ cli_dbxml(clicon_handle       h,
             goto done;
         }
     }
-    if ((xa = xml_new("operation", xbot, CX_ATTR)) == NULL)
-        goto done;
-    if (xml_prefix_set(xa, NETCONF_BASE_PREFIX) < 0)
-        goto done;
-    if (xml_value_set(xa, xml_operation2str(op)) < 0)
+    if (xml_add_attr(xbot, "operation", xml_operation2str(op), NETCONF_BASE_PREFIX, NULL) < 0)
         goto done;
     /* Add body last in case of leaf */
     if (cvec_len(cvv) > 1 &&

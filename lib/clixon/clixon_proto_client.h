@@ -68,7 +68,7 @@ int clicon_rpc_discard_changes(clicon_handle h);
 int clicon_rpc_create_subscription(clicon_handle h, char *stream, char *filter, int *s);
 int clicon_rpc_debug(clicon_handle h, int level);
 int clicon_rpc_restconf_debug(clicon_handle h, int level);
-int clicon_hello_req(clicon_handle h, uint32_t *id);
+int clicon_hello_req(clicon_handle h, char *transport, char *source_host, uint32_t *id);
 int clicon_rpc_restart_plugin(clicon_handle h, char *plugin);
 
 #endif  /* _CLIXON_PROTO_CLIENT_H_ */

@@ -2332,6 +2332,42 @@ xml_attr_insert2val(char             *instr,
     return 0;
 }
 
+/*! Add attribute and value to an xml element as well as namespace mapping
+ *
+ * @param[in]  xn        XML element
+ * @param[in]  name      Attribute name
+ * @param[in]  value     Attribute value
+ * @param[in]  prefix    Attribute prefix, or NULL
+ * @param[in]  namespace Attribute prefix, if NULL do not add namespace mapping
+ */
+int
+xml_add_attr(cxobj *xn,
+             char  *name,
+             char  *value,
+             char  *prefix,
+             char  *namespace)
+{
+    int    retval = -1;
+    cxobj *xa;
+    char  *ns = NULL;
+
+    if ((xa = xml_new(name, xn, CX_ATTR)) == NULL)
+        goto done;
+    if (prefix && xml_prefix_set(xa, prefix) < 0) /* clixon lib */
+        goto done;
+    if (xml_value_set(xa, value) < 0)
+        goto done;
+    if (namespace){
+        if (xml2ns(xn, prefix, &ns) < 0)
+            goto done;
+        if (ns == NULL && xmlns_set(xn, prefix, namespace) < 0) 
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Specialization of clicon_debug with xml tree 
  * @param[in]  level    log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. 
  * @param[in]  x        XML tree that is logged without prettyprint

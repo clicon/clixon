@@ -569,6 +569,7 @@ xml2ns_recurse(cxobj *xt)
  * @retval     0          OK
  * @retval    -1          Error
  * @see xml2ns 
+ * @see xml_add_attr  generic method for adding an attribute
  */
 int
 xmlns_set(cxobj *x,

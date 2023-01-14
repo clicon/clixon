@@ -68,15 +68,12 @@ new "wait backend"
 wait_backend
 
 new "Retrieving all state via <get> operation"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get/></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:base:1.1</capability>.*<capability>urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring</capability>.*</capabilities><datastores><datastore><name>candidate</name></datastore><datastore><name>running</name></datastore></datastores><schemas>.*</schemas></netconf-state></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get/></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:base:1.1</capability>.*<capability>urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring</capability>.*</capabilities><datastores><datastore><name>candidate</name></datastore><datastore><name>running</name></datastore></datastores><schemas>.*</schemas><sessions>.*</sessions></netconf-state></data></rpc-reply>"
 
 # send multiple frames
 rpc=$(chunked_framing "<rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>")
 rpc="${rpc}
 $(chunked_framing "<rpc $DEFAULTNS><get><filter type=\"subtree\"><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><datastores><datastore><name>candidate</name></datastore></datastores></netconf-state></filter></get></rpc>")"
-
-reply=$(chunked_framing "<rpc-reply $DEFAULTNS><ok/>/rpc-reply")
-reply=${reply}$(chunked_framing "<rpc-reply $DEFAULTNS><data><netconf-state xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring"><datastores><datastore><name>candidate</name><locks><locked-by-session>3</locked-by-session><locked-time>2022-12-23T13:18:57.112204Z</locked-time></locks></datastore></datastores></netconf-state></data></rpc-reply")
 
 new "Get databases with lock"
 ret=$($clixon_netconf -q -f $cfg <<EOF 
@@ -87,7 +84,7 @@ r=$?
 if [ $r -ne 0 ]; then
     err "0" "$r"
 fi
-for expect in "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><datastores><datastore><name>candidate</name><locks><locked-by-session>[0-9]+</locked-by-session><locked-time>202.*Z</locked-time></locks></datastore></datastores></netconf-state></data></rpc-reply"; do
+for expect in "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><datastores><datastore><name>candidate</name><locks><global-lock><locked-by-session>[0-9]+</locked-by-session><locked-time>202.*Z</locked-time></global-lock></locks></datastore></datastores></netconf-state></data></rpc-reply"; do
     new "expect:$expect"
     match=`echo $ret | grep --null -Eo "$expect"`
     if [ -z "$match" ]; then
@@ -99,6 +96,10 @@ done
 # match bith module and sub-module
 new "Retrieving Schema List via <get> Operation"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><schemas/></netconf-state></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><schemas><schema><identifier>clixon-example</identifier><version>2022-01-01</version><format>yang</format><namespace>urn:example:clixon</namespace><location>NETCONF</location></schema>.*<schema><identifier>clixon-sub</identifier><version>2022-01-01</version><format>yang</format><namespace>urn:example:clixon</namespace><location>NETCONF</location></schema><schema>.*</schemas></netconf-state></data></rpc-reply>"
+
+# Session
+new "Retrieve Session"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><sessions/></netconf-state></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><sessions><session><session-id>[1-9][0-9]*</session-id><transport xmlns:cl=\"http://clicon.org/lib\">cl:netconf</transport><username>.*</username><login-time>.*</login-time><in-rpcs>[0-9][0-9]*</in-rpcs><in-bad-rpcs>[0-9][0-9]*</in-bad-rpcs><out-rpc-errors>[0-9][0-9]*</out-rpc-errors><out-notifications>[0-9][0-9]*</out-notifications></session>.*</sessions></netconf-state></data></rpc-reply>"
 
 # 4.2.  Retrieving Schema Instances 
 # From 2b. bar, version 2008-06-1 in YANG format, via get-schema

@@ -293,7 +293,6 @@ json2xml_decode_identityref(cxobj     *x,
     char      *ns;
     char      *body;
     cxobj     *xb;
-    cxobj     *xa;
     char      *prefix = NULL;
     char      *id = NULL;
     yang_stmt *ymod;
@@ -333,12 +332,9 @@ json2xml_decode_identityref(cxobj     *x,
                 if (prefix2 == NULL)
                     prefix2 = yang_find_myprefix(ymod);
                 /* Add "xmlns:prefix2=namespace" */
-                if ((xa = xml_new(prefix2, x, CX_ATTR)) == NULL)
+                if (xml_add_attr(x, prefix2, ns, "xmlns", NULL) < 0)
                     goto done;
-                if (xml_prefix_set(xa, "xmlns") < 0)
-                    goto done;
-                if (xml_value_set(xa, ns) < 0)
-                    goto done;
+
             }
             /* Here prefix2 is valid and can be NULL
                Change body prefix to prefix2:id */
