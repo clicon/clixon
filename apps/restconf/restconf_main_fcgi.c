@@ -572,11 +572,17 @@ main(int    argc,
         clicon_err(OE_UNIX, errno, "chmod");
         goto done;
     }
+
     /* Drop privileges if started as root to CLICON_RESTCONF_USER
      * and use drop mode: CLICON_RESTCONF_PRIVILEGES
      */
     if (restconf_drop_privileges(h) < 0)
         goto done;
+    /* Set RFC6022 session parameters that will be sent in first hello,
+     * @see clicon_hello_req
+     */
+    clicon_data_set(h, "session-transport", "cl:restconf");
+    
     if (FCGX_InitRequest(req, sock, 0) != 0){
         clicon_err(OE_CFG, errno, "FCGX_InitRequest");
         goto done;

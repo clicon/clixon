@@ -525,7 +525,7 @@ main(int    argc,
      * used by the client, even though new TCP sessions are created for
      * each message sent to the backend.
      */
-    if (clicon_hello_req(h, "cl:snmp", "localhost", &id) < 0)
+    if (clicon_hello_req(h, "cl:snmp", NULL, &id) < 0)
         goto done;
     clicon_session_id_set(h, id);
     

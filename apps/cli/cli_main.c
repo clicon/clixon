@@ -167,7 +167,8 @@ cli_terminate(clicon_handle h)
     cvec       *nsctx;
     cxobj      *x;
 
-    clicon_rpc_close_session(h);
+    if (clicon_data_get(h, "session-transport", NULL) == 0)
+        clicon_rpc_close_session(h); 
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
         ys_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
@@ -805,6 +806,12 @@ main(int    argc,
         goto done;
     /* Experimental utf8 mode */
     cligen_utf8_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_UTF8"));
+
+    /* Set RFC6022 session parameters that will be sent in first hello,
+     * @see clicon_hello_req
+     */
+    clicon_data_set(h, "session-transport", "cl:cli");
+
     /* Launch interfactive event loop, unless -1 */
     if (restarg != NULL && strlen(restarg)){
         char         *mode = cli_syntax_mode(h);
@@ -818,11 +825,6 @@ main(int    argc,
         if (evalresult < 0)
             goto done;
     }
-    /* Set RFC6022 session parameters that will be sent in first hello,
-    * @see clicon_hello_req
-    */
-    clicon_data_set(h, "session-transport", "cl:cli");
-    clicon_data_set(h, "session-source-host", "localhost");
     
     /* Go into event-loop unless -1 command-line */
     if (!once){

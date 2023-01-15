@@ -40,6 +40,7 @@ cat <<EOF > $cfg
   <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
   <CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>
   <CLICON_YANG_LIBRARY>true</CLICON_YANG_LIBRARY>
+  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   $RESTCONFIG
 </clixon-config>
 EOF
@@ -106,7 +107,7 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 # This just catches the header and the jukebox module, the RFC has foo and bar which
 # seems wrong to recreate
 new "B.1.2.  Retrieve the Server Module Information"
-expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/ietf-yang-library:yang-library)" 0 "HTTP/$HVER 200" 'Cache-Control: no-cache' "Content-Type: application/yang-data+json" "{\"ietf-yang-library:yang-library\":{\"module-set\":\[{\"name\":\"default\",\"module\":\[{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\"namespace\":\"http://clicon.org/lib\"}" '{"name":"example-events","revision":"","namespace":"urn:example:events"' '{"name":"example-jukebox","revision":"2016-08-15","namespace":"http://example.com/ns/example-jukebox"}'  '{"name":"example-system","revision":"","namespace":"http://example.com/ns/example-system"}'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/ietf-yang-library:yang-library)" 0 "HTTP/$HVER 200" 'Cache-Control: no-cache' "Content-Type: application/yang-data+json" "{\"ietf-yang-library:yang-library\":{\"module-set\":\[{\"name\":\"default\",\"module\":\[{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\"namespace\":\"http://clicon.org/lib\"}" '{"name":"example-events","namespace":"urn:example:events"' '{"name":"example-jukebox","revision":"2016-08-15","namespace":"http://example.com/ns/example-jukebox"}'  '{"name":"example-system","namespace":"http://example.com/ns/example-system"}'
 
 new "B.1.3.  Retrieve the Server Capability Information"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/capabilities)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+xml" 'Cache-Control: no-cache' '<capabilities xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability><capability>urn:ietf:params:restconf:capability:depth</capability>

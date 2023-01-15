@@ -26,7 +26,6 @@ APPNAME=example
 
 cfg=$dir/config.xml
 fyang=$dir/$APPNAME.yang
-fconfig=$dir/large.xml
 fstate=$dir/state.xml
 
 # Define default restconfig config: RESTCONFIG
@@ -49,6 +48,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/example/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   $RESTCONFIG
 </clixon-config>
 EOF

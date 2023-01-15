@@ -45,11 +45,13 @@ Expected: beginning of 2023
 
 * Netconf monitoring, part 2
   * Datastores and sessions
-  * Remaining: statistics state
+    * Added clixon-specific transport identities: cli, snmp, netconf, restconf
+    * Added source-host fro native restonf, but no other transports
   * Standards
     * RFC 6022 "YANG Module for NETCONF Monitoring"
   * See [Feature Request: Support RFC 6022 (NETCONF Monitoring)](https://github.com/clicon/clixon/issues/370)
-
+  * Remaining: statistics state
+  
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
@@ -87,6 +89,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: yang-library: Remove revision if empty instead of sending empty revision
+  * This was a change from RFC 7895 to RFC 8525
 * Fixed: [locally scoped YANG typedef in grouping does not work #394](https://github.com/clicon/clixon/issues/394)
 * Fixed: [leafref in new type no work in union type](https://github.com/clicon/clixon/issues/388)
 * Fixed: [must statement check int value failed](https://github.com/clicon/clixon/issues/386)

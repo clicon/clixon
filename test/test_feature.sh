@@ -41,6 +41,7 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
 </clixon-config>
 EOF
 
@@ -235,7 +236,7 @@ if [ -z "$match" ]; then
 fi
 
 new "netconf module A"
-expect="<module><name>example</name><revision/><namespace>urn:example:clixon</namespace><feature>A</feature><feature>A1</feature></module>"
+expect="<module><name>example</name><namespace>urn:example:clixon</namespace><feature>A</feature><feature>A1</feature></module>"
 match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"

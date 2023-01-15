@@ -540,22 +540,43 @@ restconf_accept_client(int   fd,
     struct sockaddr         from = {0,};
     socklen_t               len;
     char                   *name = NULL;
+    void                   *addr;
 
     clicon_debug(1, "%s %d", __FUNCTION__, fd);
     if ((rsock = (restconf_socket *)arg) == NULL){
         clicon_err(OE_YANG, EINVAL, "rsock is NULL");
         goto done;
    } 
-    clicon_debug(1, "%s type:%s addr:%s port:%hu", __FUNCTION__,
-                 rsock->rs_addrtype,
-                 rsock->rs_addrstr,
-                 rsock->rs_port);
     h = rsock->rs_h;
     len = sizeof(from);
     if ((s = accept(rsock->rs_ss, &from, &len)) < 0){
         clicon_err(OE_UNIX, errno, "accept");
         goto done;
     }
+    switch (from.sa_family){
+    case AF_INET:{
+        struct sockaddr_in *in = (struct sockaddr_in *)&from;
+        addr = &(in->sin_addr);
+        break;
+    }
+    case AF_INET6:{
+        struct sockaddr_in6 *in6 = (struct sockaddr_in6 *)&from;
+        addr = &(in6->sin6_addr);
+        break;
+    }
+    }
+    if ((rsock->rs_from_addr = calloc(INET6_ADDRSTRLEN, 1)) == NULL){
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    if (inet_ntop(from.sa_family, addr, rsock->rs_from_addr, INET6_ADDRSTRLEN) < 0)
+        goto done;
+    clicon_debug(1, "%s type:%s from:%s, dest:%s port:%hu", __FUNCTION__,
+                 rsock->rs_addrtype,
+                 rsock->rs_from_addr,
+                 rsock->rs_addrstr,
+                 rsock->rs_port);
+    clicon_data_set(h, "session-source-host", rsock->rs_from_addr);
     /* Accept SSL */
     if (restconf_ssl_accept_client(h, s, rsock, NULL) < 0)
         goto done;
@@ -601,6 +622,8 @@ restconf_native_terminate(clicon_handle h)
                 free(rsock->rs_addrstr);
             if (rsock->rs_addrtype)
                 free(rsock->rs_addrtype);
+            if (rsock->rs_from_addr)
+                free(rsock->rs_from_addr);
             free(rsock);
         }
         if (rn->rn_ctx)
@@ -1284,6 +1307,11 @@ main(int    argc,
      */
     if (restconf_drop_privileges(h) < 0)
         goto done;
+
+    /* Set RFC6022 session parameters that will be sent in first hello,
+     * @see clicon_hello_req
+     */
+    clicon_data_set(h, "session-transport", "cl:restconf");
 
     /* Main event loop */ 
     if (clixon_event_loop(h) < 0)

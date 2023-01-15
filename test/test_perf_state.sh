@@ -50,6 +50,7 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   $RESTCONFIG
 </clixon-config>
 EOF
@@ -121,19 +122,22 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "wait restconf"
-wait_restconf
+swait_restconf
 
 rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>"
 rpc+="<interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>"
 for (( i=0; i<$perfnr; i++ )); do  
-    rpc+="<interface><name>e$i</name><type>ex:eth</type></interface>"
+    rpc+="<interface><name>e$i</name><type>eth</type></interface>"
 done
 rpc+="</b></a></interfaces>"
-rpc+="$(cat $fconfig)"
+#rpc+="$(cat $fstate)"
 rpc+="</config></edit-config></rpc>"
-echo foo
+
 echo -n "$DEFAULTHELLO" > $fconfig
 echo "$(chunked_framing "$rpc")" >> $fconfig
+
+echo "fstate:$fstate"
+echo "fconfig:$fconfig"
 
 # Now take large config file and write it via netconf to candidate
 new "netconf write large config"
@@ -150,7 +154,7 @@ new "netconf get test single req"
 sel="/ex:interfaces/ex:a[ex:name='foo']/ex:b/ex:interface[ex:name='e1']"
 rpc=$(chunked_framing "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"$sel\" xmlns:ex=\"urn:example:clixon\"/></get></rpc>")
 
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "$rpc" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b><interface><name>e1</name><type>ex:eth</type><status>up</status></interface></b></a></interfaces></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "$rpc" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b><interface><name>e1</name><type>eth</type><status>up</status></interface></b></a></interfaces></data></rpc-reply>"
 
 new "netconf get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do
@@ -162,7 +166,7 @@ done | $clixon_netconf -qe1f $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
 # RESTCONF get
 new "restconf get test single req"
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 "HTTP/$HVER 200" '{"example:interface":\[{"name":"e1","type":"ex:eth","status":"up"}\]}'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:interfaces/a=foo/b/interface=e1)" 0 "HTTP/$HVER 200" '{"example:interface":\[{"name":"e1","type":"eth","status":"up"}\]}'
 
 new "restconf get $perfreq single reqs"
 #curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/ietf-interfaces:interfaces/interface=e67
@@ -178,7 +182,7 @@ edit interfaces a foo b interface e1
 show state xml
 EOF
 new "cli get test single req"
-expectpart "$($clixon_cli -F $fin -f $cfg)" 0 "<name>e1</name>" "<type>ex:eth</type>" "<status>up</status>$"
+expectpart "$($clixon_cli -F $fin -f $cfg)" 0 "<name>e1</name>" "<type>eth</type>" "<status>up</status>$"
 
 new "cli get $perfreq single reqs"
 { time -p for (( i=0; i<$perfreq; i++ )); do

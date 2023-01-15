@@ -148,6 +148,11 @@ module clixon-lib {
             "RESTCONF either as HTTP/1 or /2, TLS or not, reverese proxy (eg fcgi/nginx) or native";
         base ncm:transport;
     }
+    identity cli {
+        description
+            "A CLI session";
+        base ncm:transport;
+    }
     extension autocli-op {
       description 
         "Takes an argument an operation defing how to modify the clispec at 

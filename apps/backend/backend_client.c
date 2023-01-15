@@ -192,10 +192,13 @@ backend_monitoring_state_get(clicon_handle h,
     for (ce = backend_client_list(h); ce; ce = ce->ce_next){
         cprintf(cb, "<session>");
         cprintf(cb, "<session-id>%u</session-id>", ce->ce_id);
-        if (ce->ce_transport)
-            cprintf(cb, "<transport xmlns:%s=\"%s\">%s</transport>",
-                    CLIXON_LIB_PREFIX, CLIXON_LIB_NS,
-                    ce->ce_transport);
+        if (ce->ce_transport == NULL){
+            clicon_err(OE_XML, 0, "Mandatory element transport missing");
+            goto done;
+        }
+        cprintf(cb, "<transport xmlns:%s=\"%s\">%s</transport>",
+                CLIXON_LIB_PREFIX, CLIXON_LIB_NS,
+                ce->ce_transport);
         cprintf(cb, "<username>%s</username>", ce->ce_username);
         if (ce->ce_source_host)
             cprintf(cb, "<source-host>%s</source-host>", ce->ce_source_host);

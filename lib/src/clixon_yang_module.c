@@ -239,8 +239,12 @@ yms_build(clicon_handle    h,
             cprintf(cb,"<revision>%s</revision>", yang_argument_get(ys));
         else{
             /* RFC7895 1 If no (such) revision statement exists, the module's or 
-               submodule's revision is the zero-length string. */
-            cprintf(cb,"<revision></revision>");
+               submodule's revision is the zero-length string. 
+               But in RFC8525 this has changed to: 
+               If no revision statement is present in the YANG module or submodule, this
+               leaf is not instantiated.
+               cprintf(cb,"<revision></revision>");
+            */
         }
         if ((ys = yang_find(ymod, Y_NAMESPACE, NULL)) != NULL)
             cprintf(cb,"<namespace>%s</namespace>", yang_argument_get(ys));
@@ -273,8 +277,6 @@ yms_build(clicon_handle    h,
             if ((ysub = yang_find(yspec, Y_SUBMODULE, name)) != NULL){
                 if ((ys = yang_find(ysub, Y_REVISION, NULL)) != NULL)
                     cprintf(cb,"<revision>%s</revision>", yang_argument_get(ys));
-                else
-                    cprintf(cb,"<revision></revision>");
             }
             cprintf(cb,"</submodule>");
         }

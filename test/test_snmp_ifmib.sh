@@ -422,6 +422,12 @@ expectpart "$($snmpwalk IF-MIB::ifTable)" 0 "IF-MIB::ifIndex.1 = INTEGER: 1" \
            "IF-MIB::ifSpecific.1 = OID: SNMPv2-SMI::zeroDotZero" \
            "IF-MIB::ifSpecific.2 = OID: iso.2.3"
 
+
+# There is an intricate error in the return of this test that has to with validation of state data
+# clixon_snmp queries using xpath:
+#  if-mib:IF-MIB/if-mib:ifRcvAddressTable/if-mib:ifRcvAddressEntry[if-mib:ifIndex='1']
+# But if-mib:ifIndex is a leafref that point to a value outside the XPath, which make the validation fail
+# But if you set CLICON_VALIDATE_STATE_XML:true its ok
 new "Test $OID24"
 validate_oid $OID24 $OID24 "STRING" "11:bb:cc:dd:ee:ff"
 validate_oid $NAME24 $NAME24 "STRING" "11:bb:cc:dd:ee:ff" "IF-MIB::ifRcvAddressAddress.1.\"11:bb:cc:dd:ee:ff\" = STRING: 11:bb:cc:dd:ee:ff"
