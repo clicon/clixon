@@ -86,13 +86,9 @@ CONFIG=${CONFIG:-$CONFIG0}
 
 # Start clixon-example backend
 >&2 echo -n "Starting Backend..."
-sudo docker run -p $PORT:80 -p $SPORT:443 --name clixon-system --rm -e DBG=$DBG -e CONFIG="$CONFIG" -e STORE="$STORE" -td clixon/clixon-system || err "Error starting clixon-system"
+sudo docker run -p $PORT:80 -p $SPORT:443 --name clixon-test --rm -e DBG=$DBG -e CONFIG="$CONFIG" -e STORE="$STORE" -td clixon/clixon-test || err "Error starting clixon-test"
 
 # Wait for snmpd to start
-sudo docker exec -t clixon-system bash -c 'while [ ! -S /var/run/snmp.sock ]; do sleep 1; done'
+sudo docker exec -t clixon-test bash -c 'while [ ! -S /var/run/snmp.sock ]; do sleep 1; done'
 
->&2 echo "clixon-system started"
-
-
-
-
+>&2 echo "clixon-test started"

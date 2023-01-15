@@ -23,7 +23,7 @@ How to run the tests:
   $ make test
 ```
 
-How to build and start the container (called clixon-system):
+How to build and start the container (called clixon-test):
 ```
   $ make docker
   $ ./start.sh 
@@ -43,11 +43,11 @@ Example:
 Once running you can access it in different ways as follows:
 As CLI:
 ```
-  $ sudo docker exec -it clixon-system clixon_cli
+  $ sudo docker exec -it clixon-test clixon_cli
 ```
 As netconf via stdin/stdout:
 ```
-  $ sudo docker exec -it clixon-system clixon_netconf -f /usr/local/etc/example.xml
+  $ sudo docker exec -it clixon-test clixon_netconf -f /usr/local/etc/example.xml
 ```
 As restconf using curl on exposed port 80:
 ```
@@ -62,7 +62,7 @@ As restconf using curl on exposed port 80:
 ```
 Or run tests:
 ```
-  $ sudo docker exec -it clixon-system bash -c 'cd /usr/local/bin/test && ./all.sh'
+  $ sudo docker exec -it clixon-test bash -c 'cd /usr/local/bin/test && ./all.sh'
 ```
 
 To check status and then kill it:

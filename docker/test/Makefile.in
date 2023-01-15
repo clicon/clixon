@@ -31,7 +31,7 @@
 #
 # ***** END LICENSE BLOCK *****
 #
-# Build, compile and test a clixon-system container
+# Build, compile and test a clixon-test container
 # This is used in CI
 # NOTE: restconf config is controlled at install time with ./configure --with-restconf=... option
 
@@ -52,7 +52,7 @@ endif
 #DOCKERFLAGS="--no-cache"
 
 # Example docker image. CHANGE THIS IF YOU PUSH
-IMG   = clixon/clixon-system
+IMG   = clixon/clixon-test
 
 SHELL	= /bin/sh
 
@@ -77,13 +77,13 @@ docker: clixon $(DOCKERFILE)
 push:
 	sudo docker push $(IMG)
 
-# Start the clixon system container and run the test script
+# Start the clixon test container and run the test script
 # Note tests will kill the daemons started in the start scrips
 # Note when start.sh is completed, the internal startsystem.sh script may still be running
 #      therefore the sleep 1 before tests start
 test: docker
 	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
-	sudo docker exec -t clixon-system bash -c 'cd /usr/local/bin/test && detail=true ./sum.sh'
+	sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true ./sum.sh'
 
 depend:
 
