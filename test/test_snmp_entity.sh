@@ -468,12 +468,12 @@ validate_oid $OID29 $OID29 "INTEGER" "1"
 validate_oid $NAME29 $NAME29 "INTEGER" "true(1)"
 
 new "Get next fru, $OID29"
-validate_oid $OID29 $OID30 "INTEGER" "0"
-validate_oid $NAME29 $NAME30 "INTEGER" "0"
+validate_oid $OID29 $OID30 "INTEGER" "2"
+validate_oid $NAME29 $NAME30 "INTEGER" "false(2)"
 
 new "Get fru 2, $OID30"
-validate_oid $OID30 $OID30 "INTEGER" "0"
-validate_oid $NAME30 $NAME30 "INTEGER" "0"
+validate_oid $OID30 $OID30 "INTEGER" "2"
+validate_oid $NAME30 $NAME30 "INTEGER" "false(2)"
 
 new "Get next fru 2, $OID30"
 validate_oid $NAME30 $NAME31 "STRING" "12593-49-49,49:49:49.49"
@@ -519,7 +519,7 @@ expectpart "$($snmpwalk $ENTITY_OID)" 0 "SNMPv2-SMI::mib-2.47.1.1.1.1.1.1 = INTE
     "SNMPv2-SMI::mib-2.47.1.1.1.1.15.1 = STRING: \"Asset 123\"" \
     "SNMPv2-SMI::mib-2.47.1.1.1.1.15.2 = STRING: \"Asset 456\"" \
     "SNMPv2-SMI::mib-2.47.1.1.1.1.16.1 = INTEGER: 1" \
-    "SNMPv2-SMI::mib-2.47.1.1.1.1.16.2 = INTEGER: 0" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.16.2 = INTEGER: 2" \
 
 new "Cleaning up"
 testexit

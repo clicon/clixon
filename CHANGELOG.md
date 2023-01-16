@@ -89,6 +89,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [snmpwalk doesn't show properly SNMP boolean values which equal false](https://github.com/clicon/clixon/issues/400)
 * Fixed: yang-library: Remove revision if empty instead of sending empty revision
   * This was a change from RFC 7895 to RFC 8525
 * Fixed: [locally scoped YANG typedef in grouping does not work #394](https://github.com/clicon/clixon/issues/394)

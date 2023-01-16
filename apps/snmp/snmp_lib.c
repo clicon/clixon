@@ -651,11 +651,11 @@ type_xml2snmp_pre(char      *xmlstr0,
     /* special case for bool: although smidump translates TruthValue to boolean
      * and there is an ASN_BOOLEAN constant:
      * 1) there is no code for ASN_BOOLEAN and
-     * 2) Truthvalue actually translates to enum true(1)/false(0)
+     * 2) Truthvalue actually translates to enum true(1)/false(2)
      */
     else if (strcmp(restype, "boolean") == 0){  
         if (strcmp(xmlstr0, "false")==0)
-            str = "0";
+            str = "2";
         else
             str = "1";
     }
@@ -675,7 +675,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     goto done;
 }
 
-/*! Given snmp string value (as translated frm XML) parse into snmp value
+/*! Given snmp string value (as translated from XML) parse into snmp value
  *
  * @param[in]     snmpstr  SNMP type string
  * @param[in,out] asn1type ASN.1 type id
