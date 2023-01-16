@@ -828,6 +828,16 @@ clicon_session_id_get(clicon_handle h,
     return 0;
 }
 
+/*! Delete session id
+ */
+int
+clicon_session_id_del(clicon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+
+    return clicon_hash_del(cdat, (char*)"session-id");
+}
+
 /*! Set session id
  * @param[in]  h   Clicon handle
  * @param[in]  id  Session id

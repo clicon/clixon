@@ -223,7 +223,9 @@ clicon_rpc_msg(clicon_handle      h,
                 goto done;
             }
             /* To disable this restart, unset PROTO_RESTART_RECONNECT */
+            clicon_session_id_del(h);
             clicon_log(LOG_WARNING, "The backend was probably restarted and the client has reconnected to the backend. Any locks or candidate edits are lost.");
+
         }
 #else
         clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");

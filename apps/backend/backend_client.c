@@ -193,12 +193,18 @@ backend_monitoring_state_get(clicon_handle h,
         cprintf(cb, "<session>");
         cprintf(cb, "<session-id>%u</session-id>", ce->ce_id);
         if (ce->ce_transport == NULL){
+#ifdef NOTYET // XXX: too strict, race conditions in clixon_snmp
             clicon_err(OE_XML, 0, "Mandatory element transport missing");
             goto done;
+#else
+            cprintf(cb, "<transport xmlns:%s=\"%s\">cl:netconf</transport>",
+                    CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+#endif
         }
-        cprintf(cb, "<transport xmlns:%s=\"%s\">%s</transport>",
-                CLIXON_LIB_PREFIX, CLIXON_LIB_NS,
-                ce->ce_transport);
+        else
+            cprintf(cb, "<transport xmlns:%s=\"%s\">%s</transport>",
+                    CLIXON_LIB_PREFIX, CLIXON_LIB_NS,
+                    ce->ce_transport);
         cprintf(cb, "<username>%s</username>", ce->ce_username);
         if (ce->ce_source_host)
             cprintf(cb, "<source-host>%s</source-host>", ce->ce_source_host);

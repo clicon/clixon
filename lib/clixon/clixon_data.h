@@ -135,6 +135,7 @@ int clicon_argv_set(clicon_handle h, char *argv0, int argc, char **argv);
 /*! Set and get (client/backend) session id */
 int clicon_session_id_set(clicon_handle h, uint32_t id);
 int clicon_session_id_get(clicon_handle h, uint32_t *id);
+int clicon_session_id_del(clicon_handle h);
 
 /* If set, quit startup directly after upgrade */
 int clicon_quit_upgrade_get(clicon_handle h);
