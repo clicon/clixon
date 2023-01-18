@@ -365,6 +365,30 @@ yangext_oid_get(yang_stmt *yn,
     goto done;
 }
 
+
+
+/*! Given a YANG node, return 1 if leaf has oid directive in it, otherwise 0
+ * @param[in]  yn        Yang node
+ * @retval     1         found
+ * @retval     0         not found
+ */
+int  yangext_is_oid_exist(yang_stmt *yn) {
+ 
+    int        exist = 0;
+    char      *oidstr = NULL;
+ 
+    if ((yang_keyword_get(yn) != Y_LEAF) ||
+       (yang_extension_value(yn, "oid", IETF_YANG_SMIV2_NS, &exist, &oidstr) < 0) ||
+       (exist == 0) ||
+       (oidstr == NULL)) {
+        return 0;
+       } 
+    else {
+        return 1;
+    }
+}
+
+
 /*! Duplicate clixon snmp handler struct
  * Use signature of libnetsnmp data_clone field of netsnmp_mib_handler in agent_handler.h
  * @param[in]  arg

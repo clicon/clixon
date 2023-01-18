@@ -192,7 +192,7 @@ mibyang_leaf_register(clicon_handle h,
     }
     oid_cbuf(cboid, oid1, oid1len);
     clicon_debug(1, "%s register: %s %s", __FUNCTION__, name, cbuf_get(cboid));
- ok:
+  ok:
     retval = 0;
  done:
     if (cboid)
@@ -317,10 +317,12 @@ mibyang_table_register(clicon_handle h,
 
     /* Count columns */
     yleaf = NULL;
-    table_info->max_column = 0;    
+    table_info->max_column = 0;   
     while ((yleaf = yn_each(ylist, yleaf)) != NULL) {
-        if (yang_keyword_get(yleaf) == Y_LEAF)
-            table_info->max_column++;    
+           if ((yang_keyword_get(yleaf) != Y_LEAF) || (ret = yangext_is_oid_exist(yleaf)) != 1)
+            continue;
+
+        table_info->max_column++;    
     }
     if ((ret = netsnmp_register_table(nhreg, table_info)) != SNMPERR_SUCCESS){
         clicon_err(OE_SNMP, ret, "netsnmp_register_table");

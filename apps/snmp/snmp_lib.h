@@ -87,6 +87,7 @@ int    oid_cbuf(cbuf *cb, const oid *objid, size_t objidlen);
 int    oid_print(FILE *f, const oid *objid, size_t objidlen);
 int    snmp_yang_type_get(yang_stmt *ys, yang_stmt **yrefp, char **origtypep, yang_stmt **yrestypep, char **restypep);
 int    yangext_oid_get(yang_stmt *yn, oid *objid, size_t *objidlen, char **objidstr);
+int    yangext_is_oid_exist(yang_stmt *yn);
 int    snmp_access_str2int(char *modes_str);
 const char *snmp_msg_int2str(int msg);
 void  *snmp_handle_clone(void *arg);
