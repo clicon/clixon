@@ -62,7 +62,7 @@ enum confirmed_commit_state confirmed_commit_state_get(clicon_handle h);
 uint32_t confirmed_commit_session_id_get(clicon_handle h);
 int cancel_rollback_event(clicon_handle h);
 int cancel_confirmed_commit(clicon_handle h);
-int handle_confirmed_commit(clicon_handle h, cxobj *xe);
+int handle_confirmed_commit(clicon_handle h, cxobj *xe, uint32_t myid);
 int do_rollback(clicon_handle h, uint8_t *errs);
 int from_client_cancel_commit(clicon_handle h,  cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_confirmed_commit(clicon_handle h, cxobj *xe, uint32_t myid, cbuf *cbret);
@@ -71,7 +71,7 @@ int from_client_confirmed_commit(clicon_handle h, cxobj *xe, uint32_t myid, cbuf
 int startup_validate(clicon_handle h, char *db, cxobj **xtr, cbuf *cbret);
 int startup_commit(clicon_handle h, char *db, cbuf *cbret);
 int candidate_validate(clicon_handle h, char *db, cbuf *cbret);
-int candidate_commit(clicon_handle h, cxobj *xe, char *db, cbuf *cbret);
+int candidate_commit(clicon_handle h, cxobj *xe, char *db, uint32_t myid, cbuf *cbret);
 
 int from_client_commit(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_discard_changes(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);

@@ -808,12 +808,16 @@ clicon_db_elmnt_set(clicon_handle h,
 }
 
 /*! Get session id
+ *
  * @param[in]  h    Clicon handle
  * @param[out] sid  Session identifier
  * @retval     0    OK
  * @retval    -1    Session id not set
  * Session-ids survive TCP sessions that are created for each message sent to the backend.
  * The backend assigns session-id for clients: backend assigns, clients get it from backend.
+ * @note a client will get the currrent session-id of that client, BUT
+ *       a backend will get the next session-id to be assigned
+ *       A backend getting a session-id of an ongoing session should use ce->ce_id
  */
 int
 clicon_session_id_get(clicon_handle h,

@@ -93,6 +93,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Netconf commit confirm session-id mismatch #407](https://github.com/clicon/clixon/issues/407)
 * Fixed: Initialized session-id to 1 instead of 0 following ietf-netconf.yang
 * Fixed: [snmpwalk doesn't show properly SNMP boolean values which equal false](https://github.com/clicon/clixon/issues/400)
 * Fixed: yang-library: Remove revision if empty instead of sending empty revision

@@ -648,6 +648,7 @@ candidate_validate(clicon_handle h,
  * @param[in]  h          Clicon handle
  * @param[in]  xe         Request: <rpc><xn></rpc>  (or NULL)
  * @param[in]  db         A candidate database, not necessarily "candidate"
+ * @param[in]  myid       Client id of triggering incoming message (or 0)
  * @param[out] cbret      Return xml tree, eg <rpc-reply>..., <rpc-error.. (if retval = 0)
  * @retval     1          Validation OK       
  * @retval     0          Validation failed (with cbret set)
@@ -657,6 +658,7 @@ int
 candidate_commit(clicon_handle h, 
                  cxobj        *xe,
                  char         *db,
+                 uint32_t      myid,
                  cbuf         *cbret)
 {
     int                 retval = -1;
@@ -693,7 +695,7 @@ candidate_commit(clicon_handle h,
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")
         && confirmed_commit_state_get(h) != ROLLBACK
         && xe != NULL){
-        if (handle_confirmed_commit(h, xe) < 0)
+        if (handle_confirmed_commit(h, xe, myid) < 0)
             goto done;
     }
     if (ret == 0){
@@ -817,7 +819,7 @@ from_client_commit(clicon_handle h,
             goto done;
         goto ok;
     }
-    if ((ret = candidate_commit(h, xe, "candidate", cbret)) < 0){ /* Assume validation fail, nofatal */
+    if ((ret = candidate_commit(h, xe, "candidate", myid, cbret)) < 0){ /* Assume validation fail, nofatal */
         clicon_debug(1, "Commit candidate failed");
         if (ret < 0)
             if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
@@ -1084,7 +1086,7 @@ load_failsafe(clicon_handle h,
         goto done;
     if (xmldb_db_reset(h, "running") < 0)
         goto done;
-    ret = candidate_commit(h, NULL, db, cbret);
+    ret = candidate_commit(h, NULL, db, 0, cbret);
     if (ret != 1)
         if (xmldb_copy(h, "tmp", "running") < 0)
             goto done;

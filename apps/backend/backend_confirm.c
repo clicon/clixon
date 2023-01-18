@@ -401,7 +401,7 @@ cancel_confirmed_commit(clicon_handle h)
  *   2) be presented with a <persist-id> value that matches the <persist> value accompanying the prior confirmed-commit
  *
  * @param[in]   h       Clicon handle
- * @param[in]   xe       Request: <rpc><xn></rpc> 
+ * @param[in]   xe      Request: <rpc><xn></rpc> 
  * @param[in]   myid    current client session-id
  * @retval      1       The confirming-commit is valid
  * @retval      0       The confirming-commit is not valid
@@ -419,6 +419,8 @@ check_valid_confirming_commit(clicon_handle h,
         clicon_err(OE_CFG, EINVAL, "xe is NULL");
         goto done;
     }
+    if (myid == 0)
+        goto invalid;
     switch (confirmed_commit_state_get(h)) {
         case PERSISTENT:
             if (xe_persist_id(xe, &persist_id)) {
@@ -470,15 +472,18 @@ check_valid_confirming_commit(clicon_handle h,
  *
  * @param[in]   h          Clicon handle
  * @param[in]   xe         Commit rpc xml or NULL
+ * @param[in]   myid       Current session-id, only valid > 0 if call is made as a result of an incoming message
  * @retval      0          OK
  * @retval      -1         Error
+ * @note There are some calls to this function where myid is 0 (which is invalid). It is unclear if such calls
+ *       actually occur, and if so, if they are correctly handled. The calls are from do_rollback() and load_failsafe()
  */
 int
 handle_confirmed_commit(clicon_handle h,
-                        cxobj        *xe)
+                        cxobj        *xe,
+                        uint32_t      myid)
 {
     int           retval = -1;
-    uint32_t      session_id;
     char         *persist;
     unsigned long confirm_timeout = 0L;
     int           cc_valid;
@@ -488,17 +493,14 @@ handle_confirmed_commit(clicon_handle h,
         clicon_err(OE_CFG, EINVAL, "xe is NULL");
         goto done;
     }
-    if (clicon_session_id_get(h, &session_id) < 0) {
-        clicon_err(OE_DAEMON, 0,
-                   "an ephemeral confirmed-commit was issued, but the session-id could not be determined");
-        goto done;
-    };
+    if (myid == 0)
+        goto ok;
     /* The case of a valid confirming-commit is also handled in the first phase, but only if there is no subsequent
      * confirmed-commit.  It is tested again here as the case of a valid confirming-commit *with* a subsequent
      * confirmed-commit must be handled once the transaction has begun and after all the plugins' validate callbacks
      * have been called.
      */
-    cc_valid = check_valid_confirming_commit(h, xe, session_id);
+    cc_valid = check_valid_confirming_commit(h, xe, myid);
     if (cc_valid) {
         if (cancel_rollback_event(h) < 0) {
             clicon_err(OE_DAEMON, 0, "A valid confirming-commit was received, but the corresponding rollback event was not found");
@@ -538,7 +540,7 @@ handle_confirmed_commit(clicon_handle h,
             /* The client did not pass a value for <persist> and therefore any subsequent confirming-commit must be
              * issued within the same session.
              */
-            confirmed_commit_session_id_set(h, session_id);
+            confirmed_commit_session_id_set(h, myid);
             confirmed_commit_state_set(h, EPHEMERAL);
 
             clicon_log(LOG_INFO,
@@ -603,6 +605,7 @@ handle_confirmed_commit(clicon_handle h,
             goto done;
         }
     }
+ ok:
     retval = 0;
  done:
     return retval;
@@ -650,7 +653,7 @@ do_rollback(clicon_handle h,
         confirmed_commit_persist_id_set(h, NULL);
     }
     confirmed_commit_state_set(h, ROLLBACK);
-    if (candidate_commit(h, NULL, "rollback", cbret) < 0) { /* Assume validation fail, nofatal */
+    if (candidate_commit(h, NULL, "rollback", 0, cbret) < 0) { /* Assume validation fail, nofatal */
         /* theoretically, this should never error, since the rollback database was previously active and therefore
          * had itself been previously and successfully committed.
          */
@@ -713,12 +716,14 @@ from_client_cancel_commit(clicon_handle h,
                           void         *arg,
                           void         *regarg)
 {
-    cxobj   *persist_id_xml;
-    char    *persist_id = NULL;
-    uint32_t cur_session_id;
-    int      retval = -1;
-    int      rollback = 0;
+    cxobj               *persist_id_xml;
+    char                *persist_id = NULL;
+    uint32_t             myid;
+    int                  retval = -1;
+    int                  rollback = 0;
+    struct client_entry *ce = (struct client_entry *)arg;
 
+    myid = ce->ce_id;
     if ((persist_id_xml = xml_find_type(xe, NULL, "persist-id", CX_ELMNT)) != NULL) {
         /* persist == persist_id == NULL is legal */
         persist_id = xml_body(persist_id_xml);
@@ -729,11 +734,7 @@ from_client_cancel_commit(clicon_handle h,
                 if (netconf_invalid_value(cbret, "protocol", "current confirmed-commit is not persistent") < 0)
                     goto done;
             }
-            else if (clicon_session_id_get(h, &cur_session_id) < 0) {
-                if (netconf_invalid_value(cbret, "application", "session-id was not set") < 0)
-                    goto done;
-            }
-            else if (cur_session_id != confirmed_commit_session_id_get(h)) {
+            else if (myid != confirmed_commit_session_id_get(h)) {
                 if (netconf_invalid_value(cbret, "protocol", "confirming-commit must be given within session that gave the confirmed-commit") < 0)
                     goto done;
             }
