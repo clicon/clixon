@@ -517,9 +517,6 @@ main(int    argc,
     if (dbg)
         clicon_option_dump(h, dbg);
     
-    /* Get session id from backend hello */
-    clicon_session_id_set(h, getpid()); 
-
     /* Send hello request to backend to get session-id back
      * This is done once at the beginning of the session and then this is
      * used by the client, even though new TCP sessions are created for

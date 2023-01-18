@@ -1053,7 +1053,7 @@ main(int    argc,
         goto done;
 
     /* Start session-id for clients */
-    clicon_session_id_set(h, 0);
+    clicon_session_id_set(h, 1);
 #if 0 /* debug */
     /* Enable this to get prints of datastore and session status */
     if (0 && clicon_debug_get() && 

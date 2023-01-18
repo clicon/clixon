@@ -550,13 +550,13 @@ xpath_parse(const char  *xpath,
         xpath_scan_exit(&xpy);
         goto done;
     }
-    if (clicon_debug_get() > 1){
+    if (clicon_debug_get() > 2){
         if ((cb = cbuf_new()) == NULL){
             clicon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         xpath_tree_print_cb(cb, xpy.xpy_top);
-        clicon_debug(2, "xpath parse tree:\n%s", cbuf_get(cb));
+        clicon_debug(3, "xpath parse tree:\n%s", cbuf_get(cb));
     }
     xpath_parse_exit(&xpy);
     xpath_scan_exit(&xpy);

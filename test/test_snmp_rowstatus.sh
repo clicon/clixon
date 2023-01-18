@@ -65,7 +65,7 @@ cat <<EOF > $dir/startup_db
 EOF
 
 function testinit(){
-    new "test params: -f $cfg"
+    new "test params: -s startup -f $cfg"
 
     if [ $BE -ne 0 ]; then
         # Kill old backend and start a new one

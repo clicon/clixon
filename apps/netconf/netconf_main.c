@@ -987,10 +987,6 @@ main(int    argc,
     /* Call start function is all plugins before we go interactive */
     if (clixon_plugin_start_all(h) < 0)
         goto done;
-#if 1
-    /* XXX get session id from backend hello */
-    clicon_session_id_set(h, getpid()); 
-#endif
 
     /* Send hello request to backend to get session-id back
      * This is done once at the beginning of the session and then this is

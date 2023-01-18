@@ -417,7 +417,7 @@ clicon_msg_rcv(int                s,
         clicon_err(OE_CFG, errno, "body too short");
         goto done;
     }
-    if (clicon_debug_get() > 1)
+    if (clicon_debug_get() > 2)
         msg_dump(*msg);
     retval = 0;
   done:

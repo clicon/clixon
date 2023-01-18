@@ -1476,13 +1476,8 @@ from_client_hello(clicon_handle       h,
                   cbuf                *cbret)
 {
     int      retval = -1;
-    uint32_t id;
     char    *val;
 
-    if (clicon_session_id_get(h, &id) < 0){
-        clicon_err(OE_NETCONF, ENOENT, "session_id not set");
-        goto done;
-    }
     if ((val = xml_find_type_value(x, "cl", "transport", CX_ATTR)) != NULL){
         if ((ce->ce_transport = strdup(val)) == NULL){
             clicon_err(OE_UNIX, errno, "strdup");
@@ -1495,16 +1490,15 @@ from_client_hello(clicon_handle       h,
             goto done;
         }
     }
-    id++;
-    clicon_session_id_set(h, id);
     cprintf(cbret, "<hello xmlns=\"%s\"><session-id>%u</session-id></hello>",
-            NETCONF_BASE_NAMESPACE, id);
+            NETCONF_BASE_NAMESPACE, ce->ce_id);
     retval = 0;
  done:
     return retval;
 }
 
-/*! An internal clicon message has arrived from a client. Receive and dispatch.
+/*! An internal clixon NETCONF message has arrived from a local client. Receive and dispatch.
+ *
  * @param[in]   h    Clicon handle
  * @param[in]   ce   Client entry (from)
  * @param[in]   msg  Incoming message
@@ -1531,7 +1525,7 @@ from_client_msg(clicon_handle        h,
     yang_stmt           *ymod;
     cxobj               *xnacm = NULL;
     cxobj               *xret = NULL;
-    uint32_t             id;
+    uint32_t             op_id; /* session number from internal NETCONF protocol */
     enum nacm_credentials_t creds;
     char                *rpcname;
     char                *rpcprefix;
@@ -1550,7 +1544,7 @@ from_client_msg(clicon_handle        h,
     /* Decode msg from client -> xml top (ct) and session id 
      * Bind is a part of the decode function
      */
-    if ((ret = clicon_msg_decode(msg, yspec, &id, &xt, &xret)) < 0){
+    if ((ret = clicon_msg_decode(msg, yspec, &op_id, &xt, &xret)) < 0){
         if (netconf_malformed_message(cbret, "XML parse error") < 0)
             goto done;
         goto reply;
@@ -1559,6 +1553,14 @@ from_client_msg(clicon_handle        h,
         if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
             goto done;
         goto reply;
+    }
+    /* Sanity check:
+     * op_id from internal message can be out-of-sync from client's sessions-id for the following reasons:
+     * 1. Its a hello when the client starts with op_id=0 to get its proper id on hello reply
+     * 2. The backend has restarted and the client uses an old op_id
+     */
+    if (op_id != 0 && ce->ce_id != op_id){
+        clicon_debug(1, "%s out-of-order sequence op-id:%u ce_id:%u", __FUNCTION__, op_id, ce->ce_id);
     }
     /* Check for empty frame (no mesaages), return empty message, not clear from RFC what to do */
     if (xml_child_nr_type(xt, CX_ELMNT) == 0){
@@ -1616,8 +1618,6 @@ from_client_msg(clicon_handle        h,
         ce->ce_out_rpc_errors++; /*  Number of <rpc-reply> messages sent that contained an <rpc-error> */
         goto reply;
     }
-    ce->ce_id = id;
-
     /* As a side-effect, this expands xt with default values according to "report-all"
      * This may not be correct, the RFC does not mention expanding default values for
      * input RPC

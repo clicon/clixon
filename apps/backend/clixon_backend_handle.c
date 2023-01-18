@@ -146,6 +146,11 @@ backend_client_add(clicon_handle    h,
     memcpy(&ce->ce_addr, addr, sizeof(*addr));
     ce->ce_next = bh->bh_ce_list;
     ce->ce_handle = h;
+    if (clicon_session_id_get(h, &ce->ce_id) < 0){
+        clicon_err(OE_NETCONF, ENOENT, "session_id not set");
+        return NULL;
+    }
+    clicon_session_id_set(h, ce->ce_id + 1);
     gettimeofday(&ce->ce_time, NULL);
     bh->bh_ce_list = ce;
     return ce;

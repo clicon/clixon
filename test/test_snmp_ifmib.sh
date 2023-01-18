@@ -163,7 +163,7 @@ EOF
 #   IF-MIB::ifSpecific.1 = OID: SNMPv2-SMI::zeroDotZero
 
 function testinit(){
-    new "test params: -f $cfg -- -sS $fstate"
+    new "test params: -s init -f $cfg -- -sS $fstate"
     if [ $BE -ne 0 ]; then
         # Kill old backend and start a new one
         new "kill old backend"

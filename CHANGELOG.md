@@ -84,11 +84,16 @@ Developers may need to change their code
   
 ### Minor features
 
+* Clearer debug levels `clicon_debug()`:
+  * 1: Logical debug message
+  * 2: Input and output packets
+  * 3: Message dump in hex, xpath parse trees 
 * Added `ISO/IEC 10646` encodings to XML parser: `&#[0-9]+;` and `&#[0-9a-fA-F]+;`
 * Added `CLIXON_CLIENT_SSH` to client API to communicate remotely via SSH netconf sub-system
 
 ### Corrected Bugs
 
+* Fixed: Initialized session-id to 1 instead of 0 following ietf-netconf.yang
 * Fixed: [snmpwalk doesn't show properly SNMP boolean values which equal false](https://github.com/clicon/clixon/issues/400)
 * Fixed: yang-library: Remove revision if empty instead of sending empty revision
   * This was a change from RFC 7895 to RFC 8525

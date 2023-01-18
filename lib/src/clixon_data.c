@@ -840,7 +840,7 @@ clicon_session_id_del(clicon_handle h)
 
 /*! Set session id
  * @param[in]  h   Clicon handle
- * @param[in]  id  Session id
+ * @param[in]  id  Session id (in range 1..max uint32)
  * @retval     0   OK
  * @retval    -1   Error
  * Session-ids survive TCP sessions that are created for each message sent to the backend.
