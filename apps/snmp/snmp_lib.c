@@ -143,6 +143,22 @@ static const map_str2int snmp_msg_map[] = {
     {NULL,                   -1}
 };
 
+/* Map between yang type / SNMP type 
+   SNMP does not accept int8, int16 etc. Only int32, int64
+*/
+static const map_str2str yang_snmp_types[] = {
+    {"int8",    "int32"},
+    {"int16",   "int32"},
+    {"uint8",   "uint32"},
+    {"uint16",  "uint32"},
+    { NULL,    NULL} /* if not found */
+};
+char* yang_type_to_snmp(char* yang_type)
+{
+    char* ret = clicon_str2str(yang_snmp_types, yang_type);
+    return (NULL == ret) ? yang_type : ret;
+}
+
 /*! Translate from snmp string to int representation
  * @note Internal snmpd, maybe find something in netsnmpd?
  */
@@ -278,6 +294,7 @@ snmp_yang_type_get(yang_stmt  *ys,
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
         goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
+    restype = yang_type_to_snmp(restype);
     if (strcmp(restype, "leafref")==0){
         if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
             clicon_err(OE_YANG, 0, "No path in leafref");
