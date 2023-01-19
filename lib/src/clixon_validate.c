@@ -669,8 +669,24 @@ check_list_key(cxobj     *xt,
         while ((cvi = cvec_each(cvk, cvi)) != NULL) {
             keyname = cv_string_get(cvi);           
             if (xml_find_type(xt, NULL, keyname, CX_ELMNT) == NULL){
-                if (xret && netconf_missing_element_xml(xret, "application", keyname, "Mandatory key") < 0)
-                    goto done;
+                if (xret){
+                    cbuf         *cb = NULL;
+                    yang_stmt    *ymod;
+                    enum rfc_6020 keyw;
+
+                    if ((cb = cbuf_new()) == NULL){
+                        clicon_err(OE_UNIX, errno, "cbuf_new"); 
+                        goto done;
+                    }
+                    ymod = ys_module(yt);
+                    keyw = yang_keyword_get(yt);
+                    cprintf(cb, "Mandatory key in '%s %s' in %s.yang:%d",
+                            yang_key2str(keyw), xml_name(xt), yang_argument_get(ymod),
+                            yang_linenum_get(yc));
+                    if (netconf_missing_element_xml(xret, "application", keyname, cbuf_get(cb)) < 0)
+                        goto done;
+                    cbuf_free(cb);
+                }
                 goto fail;
             }
         }

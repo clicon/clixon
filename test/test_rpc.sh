@@ -345,7 +345,7 @@ expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS
 
 LIST='<u1 xmlns="urn:example:clixon"><uk>bar</uk><val>1</val></u1><u1 xmlns="urn:example:clixon"><val>2</val></u1>'
 new "netconf example rpc input key list without key (should fail)"
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>mandatory</x>$LIST</example></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>uk</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory key</error-message></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><example xmlns=\"urn:example:clixon\"><x>mandatory</x>$LIST</example></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>uk</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory key in 'list u1' in clixon-example.yang:62</error-message></rpc-error></rpc-reply>"
 
 LIST='<u1 xmlns="urn:example:clixon"><uk>bar</uk><val>1</val></u1><u1 xmlns="urn:example:clixon"><uk>bar</uk><val>2</val></u1>'
 new "netconf example rpc input list with non-unique keys (should fail)"
