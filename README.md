@@ -2,7 +2,7 @@
   <img src="https://www.clicon.org/Clixon_logga_liggande_med-ikon.png" width="400">
 </div>
 
-[![Build Status](https://github.com/clicon/clixon/actions/workflows/ci.yml/badge.svg)](https://github.com/clicon/clixon/actions/workflows/ci.yml) [![Documentation Status](https://readthedocs.org/projects/clixon-docs/badge/?version=latest)](https://clixon-docs.readthedocs.io/en/latest/?badge=latest) [![codecov](https://codecov.io/gh/clicon/clixon/branch/master/graph/badge.svg?token=qyc6ssg9E7)](https://codecov.io/gh/clicon/clixon)
+[![Build Status](https://github.com/clicon/clixon/actions/workflows/ci.yml/badge.svg)](https://github.com/clicon/clixon/actions/workflows/ci.yml) [![Documentation Status](https://readthedocs.org/projects/clixon-docs/badge/?version=latest)](https://clixon-docs.readthedocs.io/en/latest/?badge=latest) [![codecov](https://codecov.io/gh/clicon/clixon/branch/master/graph/badge.svg?token=qyc6ssg9E7)](https://codecov.io/gh/clicon/clixon) [![Join the chat at https://gitter.im/clicon/general](https://badges.gitter.im/clicon/general.svg)](https://gitter.im/clicon/general?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Clixon is a YANG-based configuration manager, with interactive CLI,
 NETCONF and RESTCONF interfaces, an embedded database and transaction
