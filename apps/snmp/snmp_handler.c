@@ -875,7 +875,7 @@ snmp_table_get(clicon_handle               h,
         if ((ret = yangext_oid_get(ys, oidleaf, &oidleaflen, NULL)) < 0)
             goto done;
         if (ret == 0)
-            goto done;
+            continue;
         if (oidtlen + 1 != oidleaflen) /* Indexes may be from other OID scope, skip those */
             continue;
         if (oids[oidleaflen-1] == oidleaf[oidleaflen-1])
@@ -1003,7 +1003,7 @@ snmp_table_set(clicon_handle               h,
         if ((ret = yangext_oid_get(yi, oidleaf, &oidleaflen, NULL)) < 0)
             goto done;
         if (ret == 0)
-            goto done;
+            continue;
         if (oidtlen + 1 != oidleaflen) /* Indexes may be from other OID scope, skip those */
             continue;
         if (oids[oidleaflen-1] == oidleaf[oidleaflen-1]){
@@ -1090,7 +1090,7 @@ snmp_table_set(clicon_handle               h,
                                             cvk_val,
                                             &rowstatus)) < 0)
             goto done;
-    }
+    } 
     else{
         /* If no rowstatus object, default to active */
         rowstatus = 1;
@@ -1231,6 +1231,8 @@ snmp_table_getnext(clicon_handle               h,
                     continue;
                 if ((ret = yangext_oid_get(ycol, oidc, &oidclen, NULL)) < 0)
                     goto done;
+                if (ret == 0)
+                    continue;
                 /* Append key oid */
                 if (oid_append(oidc, &oidclen, oidk, oidklen) < 0)
                     goto done;
