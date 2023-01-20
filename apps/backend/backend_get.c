@@ -297,6 +297,19 @@ get_client_statedata(clicon_handle     h,
         if (ret == 0)
             goto fail;
     }
+#ifdef YANG_SCHEMA_MOUNT
+    if ((ret = schema_mounts_state_get(h, yspec, xpath, nsc, xret, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        if (clixon_netconf_internal_error(xerr, " . Internal error, schema_mounts_state_get returned invalid XML", NULL) < 0)
+            goto done;
+        if (*xret)
+            xml_free(*xret);
+        *xret = xerr;
+        xerr = NULL;
+        goto fail;
+    }
+#endif
     /* Use plugin state callbacks */
     if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, wdef, xret)) < 0)
         goto done;

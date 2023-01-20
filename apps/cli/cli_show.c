@@ -266,12 +266,6 @@ expand_dbvar(void   *h,
     /* Transform api-path to xpath for netconf */
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
         goto done;
-    if (nsc != NULL){
-        cvec_free(nsc);
-        nsc = NULL;
-    }
-    if (xml_nsctx_yang(y, &nsc) < 0)
-        goto done;
     if ((cbxpath = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;

@@ -192,12 +192,12 @@ yang_modules_revision(clicon_handle h)
  * If also CLICON_MODULE_LIBRARY_RFC7895 is set, module-state is built according to RFC7895 instead
  * @see RFC8525 
  */
-static int
-yms_build(clicon_handle    h,
-          yang_stmt       *yspec,
-          char            *msid,
-          int              brief,
-          cbuf            *cb)
+int
+yang_modules_state_build(clicon_handle    h,
+                         yang_stmt       *yspec,
+                         char            *msid,
+                         int              brief,
+                         cbuf            *cb)
 {
     int         retval = -1;
     yang_stmt  *ylib = NULL; /* ietf-yang-library */
@@ -361,7 +361,7 @@ yang_modules_state_get(clicon_handle    h,
             goto done;
         }
         /* Build a cb string: <modules-state>... */
-        if (yms_build(h, yspec, msid, brief, cb) < 0)
+        if (yang_modules_state_build(h, yspec, msid, brief, cb) < 0)
             goto done;
         /* Parse cb, x is on the form: <top><modules-state>... 
          * Note, list is not sorted since it is state (should not be)
@@ -391,7 +391,6 @@ yang_modules_state_get(clicon_handle    h,
         /* Remove everything that is not marked */
         if (xml_tree_prune_flagged_sub(x, XML_FLAG_MARK, 1, NULL) < 0)
             goto done;
-
         if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
             goto done;
         if (ret == 0)

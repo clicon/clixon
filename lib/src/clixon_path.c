@@ -1344,6 +1344,7 @@ api_path_resolve(clixon_path *cplist,
     int          i;
     cg_var      *cva;
     cg_var      *cvy;
+    cvec        *cvk;
     
     if ((cp = cplist) != NULL){
         do {
@@ -1372,7 +1373,8 @@ api_path_resolve(clixon_path *cplist,
                     }
                 }
                 else if (yang_keyword_get(yc) == Y_LIST){
-                    if (cvec_len(cp->cp_cvk) > cvec_len(yang_cvec_get(yc))){
+                    cvk = yang_cvec_get(yc);
+                    if (cvec_len(cp->cp_cvk) > cvec_len(cvk)){
                         clicon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list");
                         goto fail;
                     }
@@ -1384,7 +1386,7 @@ api_path_resolve(clixon_path *cplist,
                                        cv_name_get(cva));
                             goto fail;
                         }
-                        cvy = cvec_i(yang_cvec_get(yc), i++);
+                        cvy = cvec_i(cvk, i++);
                         cv_name_set(cva, cv_string_get(cvy));
                     }
                 }

@@ -84,6 +84,7 @@
 #include "clixon_yang_parse_lib.h"
 #include "clixon_yang_cardinality.h"
 #include "clixon_yang_type.h"
+#include "clixon_yang_schema_mount.h"
 #include "clixon_yang_internal.h" /* internal included by this file only, not API*/
 
 #ifdef XML_EXPLICIT_INDEX
@@ -274,6 +275,7 @@ yang_cv_set(yang_stmt *ys,
 
 /*! Get yang statement CLIgen variable vector
  * @param[in] ys  Yang statement node
+ * @note  To add entries, use yang_cvec_add(), since this function may return NULL
  */
 cvec*
 yang_cvec_get(yang_stmt *ys)
@@ -295,6 +297,41 @@ yang_cvec_set(yang_stmt *ys,
         cvec_free(ys->ys_cvec);
     ys->ys_cvec = cvv;
     return 0;
+}
+
+/*! Add new value to yang cvec, create if not exist
+ *
+ * @param[in] ys    Yang statement
+ * @param[in] type  Append a new cv to the vector with this type
+ * @param[in] name  Name of variable
+ * @retval    cv    The new cligen variable
+ * @retval    NULL  Error
+ */
+static cg_var *
+yang_cvec_add(yang_stmt    *ys,
+              enum cv_type type,
+              char        *name)
+              
+{
+    cg_var *cv;
+    cvec   *cvv;
+
+    if ((cvv = yang_cvec_get(ys)) == NULL){
+        if ((cvv = cvec_new(0)) == NULL){ 
+            clicon_err(OE_YANG, errno, "cvec_new");
+            return NULL;
+        }
+        yang_cvec_set(ys, cvv);
+    }
+    if ((cv = cvec_add(cvv, type)) == NULL){
+        clicon_err(OE_YANG, errno, "cvec_add");
+        return NULL;
+    }
+    if (cv_name_set(cv, name) == NULL){
+        clicon_err(OE_YANG, errno, "cv_name_set(%s)", name);
+        return NULL;
+    }
+    return cv;
 }
 
 /*! Get yang stmt flags, used for internal algorithms
@@ -594,7 +631,6 @@ yang_stmt *
 ys_new(enum rfc_6020 keyw)
 {
     yang_stmt *ys;
-    cvec      *cvv;
 
     if ((ys = malloc(sizeof(*ys))) == NULL){
         clicon_err(OE_YANG, errno, "malloc");
@@ -602,13 +638,6 @@ ys_new(enum rfc_6020 keyw)
     }
     memset(ys, 0, sizeof(*ys));
     ys->ys_keyword    = keyw;
-    /* The cvec contains stmt-specific variables. Only few stmts need variables so the
-       cvec could be lazily created to save some heap and cycles. */
-    if ((cvv = cvec_new(0)) == NULL){ 
-        clicon_err(OE_YANG, errno, "cvec_new");
-        return NULL;
-    }
-    yang_cvec_set(ys, cvv);
     _stats_yang_nr++;
     return ys;
 }
@@ -1082,13 +1111,17 @@ yang_match(yang_stmt *yn,
     return match;
 }
 
+
 /*! Find child data node with matching argument (container, leaf, list, leaf-list)
  *
  * @param[in]  yn         Yang node, current context node.
- * @param[in]  argument   if NULL, match any(first) argument. XXX is that really a case?
+ * @param[in]  argument   Argument that child should match with
+ * @retval     ymatch     Matching child
+ * @retval     NULL       No match or error
  *
  * @see yang_find   Looks for any node
  * @note May deviate from RFC since it explores choice/case not just return it.
+ * XXX: differentiate between not found and error
  */
 yang_stmt *
 yang_find_datanode(yang_stmt *yn, 
@@ -1099,7 +1132,16 @@ yang_find_datanode(yang_stmt *yn,
     yang_stmt *yspec;
     yang_stmt *ysmatch = NULL;
     char      *name;
-
+#ifdef YANG_SCHEMA_MOUNT
+    int ret;
+    
+    /* Sanity-check mount-point extension */
+    if ((ret = yang_schema_mount_point(yn)) < 0)
+        goto done;
+    if (ret == 1){
+        ; // NYI
+    }
+#endif
     ys = NULL;
     while ((ys = yn_each(yn, ys)) != NULL){
         if (yang_keyword_get(ys) == Y_CHOICE){ /* Look for its children */
@@ -1109,14 +1151,11 @@ yang_find_datanode(yang_stmt *yn,
                     ysmatch = yang_find_datanode(yc, argument);
                 else
                     if (yang_datanode(yc)){
-                        if (argument == NULL)
+                        if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
                             ysmatch = yc;
-                        else
-                            if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
-                                ysmatch = yc;
                     }
                 if (ysmatch)
-                    goto match; // maybe break?
+                    goto done; // maybe break?
             }
         } /* Y_CHOICE */
         else if (yang_keyword_get(ys) == Y_INPUT ||
@@ -1131,7 +1170,7 @@ yang_find_datanode(yang_stmt *yn,
                 if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
                     ysmatch = ys;
             if (ysmatch)
-                goto match; // maybe break?
+                goto done; // maybe break?
         }
     }
     /* Special case: if not match and yang node is module or submodule, extend
@@ -1150,7 +1189,7 @@ yang_find_datanode(yang_stmt *yn,
             }
         }
     }
- match:
+ done:
     return ysmatch;
 }
 
@@ -2265,14 +2304,12 @@ bound_add(yang_stmt   *ys,
     char   *reason = NULL;
     int     ret = 1;
 
-    if ((cv = cvec_add(ys->ys_cvec, cvtype)) == NULL){
-        clicon_err(OE_YANG, errno, "cvec_add");
+    if (ys == NULL){
+        clicon_err(OE_YANG, EINVAL, "ys is NULL");
         goto done;
     }
-    if (cv_name_set(cv, name) == NULL){
-        clicon_err(OE_YANG, errno, "cv_name_set(%s)", name);
+    if ((cv = yang_cvec_add(ys, cvtype, name)) == NULL)
         goto done;
-    }
     if (cvtype == CGV_DEC64)
         cv_dec64_n_set(cv, fraction_digits);
     if (strcmp(val, "min") == 0)
@@ -2480,7 +2517,6 @@ ys_populate_identity(clicon_handle h,
     int             retval = -1;
     yang_stmt      *yc = NULL;
     yang_stmt      *ybaseid;
-    cg_var         *cv;
     char           *baseid;
     char           *prefix = NULL;
     char           *id = NULL;
@@ -2526,16 +2562,9 @@ ys_populate_identity(clicon_handle h,
         if (cvec_find(idrefvec, idref) != NULL)
             continue;
         /* Add derived id to ybaseid */
-        if ((cv = cv_new(CGV_STRING)) == NULL){
+        if (yang_cvec_add(ybaseid, CGV_STRING, idref) == NULL){
             clicon_err(OE_UNIX, errno, "cv_new"); 
             goto done;
-        }
-        /* add prefix */
-        cv_name_set(cv, idref);
-        cvec_append_var(idrefvec, cv); /* cv copied */
-        if (cv){
-            cv_free(cv);
-            cv = NULL;
         }
         /* Transitive to the root */
         if (ys_populate_identity(h, ybaseid, idref) < 0)
@@ -2662,11 +2691,20 @@ ys_populate_unique(clicon_handle h,
 }
 
 /*! Populate unknown node with extension
+ *
  * @param[in] h    Clicon handle
  * @param[in] ys   The yang statement (unknown) to populate.
+ * @retval    0    OK
+ * @retval   -1    Error
  * RFC 7950 Sec 7.19:
  * If no "argument" statement is present, the keyword expects no argument when
  * it is used.
+ * A pointer to the unknwon node is stored in the cvec of the extension:
+ *                     1              n
+ *   yang-extension ext1 (cvec) --->  unknown of ext1
+ *          (yext)               (ys)
+ *
+ * @note this breaks if yangs are freed
  * Note there is some complexity in different yang modules with unknown-statements.
  * y0) The location of the extension definition. E.g. extension autocli-op
  * y1) The location of the unknown-statement (ys). This is for example: cl:autocli-op hide.
@@ -2718,12 +2756,22 @@ ys_populate_unknown(clicon_handle h,
         return -1;
     }
 #endif
+#ifdef YANG_SCHEMA_MOUNT
+    if (yang_schema_unknown(h, yext, ys) < 0)
+        goto done;
+#endif
     /* Make extension callbacks that may alter yang structure 
      * Note: this may be a "layering" violation: assuming plugins are loaded
      * at yang parse time
      */
     if (clixon_plugin_extension_all(h, yext, ys) < 0)
         goto done;
+#if 1
+    /* Add unknown to vector in extension */
+    if ((cv = yang_cvec_add(yext, CGV_VOID, yang_argument_get(ys))) == NULL)
+        goto done;
+    cv_void_set(cv, ys);
+#endif
     retval = 0;
  done:
     if (prefix)

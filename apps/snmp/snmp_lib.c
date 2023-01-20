@@ -900,7 +900,8 @@ snmp_yang2xpath_cb(yang_stmt *ys,
     }
     switch (yang_keyword_get(ys)){
     case Y_LIST:
-        cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
+        if ((cvk = yang_cvec_get(ys)) == NULL) /* Use Y_LIST cache, see ys_populate_list() */
+            break;
         /* Iterate over individual keys  */
         assert(keyvec && cvec_len(cvk) == cvec_len(keyvec));
         for (i=0; i<cvec_len(cvk); i++){

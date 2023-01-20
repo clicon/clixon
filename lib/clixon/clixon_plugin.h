@@ -132,8 +132,8 @@ typedef int (plgdaemon_t)(clicon_handle);              /* Plugin pre/post daemon
  */
 typedef int (plgexit_t)(clicon_handle);                /* Plugin exit */
 
-/* For yang extension handling. 
- * Called at parsing of yang module containing a statement of an extension.
+/* For yang extension/unknown handling. 
+ * Called at parsing of yang module containing an unknown statement of an extension.
  * A plugin may identify the extension by its name, and perform actions
  * on the yang statement, such as transforming the yang.
  * A callback is made for every statement, which means that several calls per
@@ -294,7 +294,7 @@ struct clixon_plugin_api{
     plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
     plgstart_t       *ca_start;          /* Plugin start */
     plgexit_t        *ca_exit;           /* Plugin exit */
-    plgextension_t   *ca_extension;      /* Yang extension handler */
+    plgextension_t   *ca_extension;      /* Yang extension/unknown handler */
     union {
         struct { /* cli-specific */
             cli_prompthook_t *ci_prompt;         /* Prompt hook */

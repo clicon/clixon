@@ -84,7 +84,8 @@ SRC     = clixon_sig.c clixon_uid.c clixon_log.c clixon_err.c clixon_event.c \
 	  clixon_xml_default.c clixon_xml_bind.c clixon_json.c clixon_proc.c \
 	  clixon_yang.c clixon_yang_type.c clixon_yang_module.c clixon_netconf_monitoring.c \
 	  clixon_yang_parse_lib.c clixon_yang_sub_parse.c \
-          clixon_yang_cardinality.c clixon_xml_changelog.c clixon_xml_nsctx.c \
+          clixon_yang_cardinality.c clixon_yang_schema_mount.c \
+          clixon_xml_changelog.c clixon_xml_nsctx.c \
 	  clixon_path.c clixon_validate.c clixon_validate_minmax.c \
 	  clixon_hash.c clixon_options.c clixon_data.c clixon_plugin.c \
 	  clixon_proto.c clixon_proto_client.c \

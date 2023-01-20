@@ -49,7 +49,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <syslog.h>       
+#include <syslog.h>
 #include <fcntl.h>
 
 /* cligen */
@@ -527,6 +527,7 @@ text_modify(clicon_handle       h,
         }
     }
     x1name = xml_name(x1);
+
     if (yang_keyword_get(y0) == Y_LEAF_LIST ||
         yang_keyword_get(y0) == Y_LEAF){
         /* This is a check that a leaf does not have sub-elements 
@@ -897,6 +898,7 @@ text_modify(clicon_handle       h,
             while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
                 x0c = x0vec[i++];
                 x1cname = xml_name(x1c);
+
                 yc = yang_find_datanode(y0, x1cname);
                 if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
                                        yc, op,
@@ -963,10 +965,8 @@ text_modify(clicon_handle       h,
 
 /*! Modify a top-level base tree x0 with modification tree x1
  * @param[in]  h        Clicon handle
- * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
- * @param[in]  x0t      Top level of existing tree, eg needed for NACM rules
- * @param[in]  x1       XML tree which modifies base
- * @param[in]  x1t      Request root node (nacm needs this)
+ * @param[in]  x0t      Base xml tree (can be NULL in add scenarios)
+ * @param[in]  x1t       XML tree which modifies base
  * @param[in]  yspec    Top-level yang spec (if y is NULL)
  * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
  * @param[in]  username User name of requestor for nacm
@@ -980,9 +980,7 @@ text_modify(clicon_handle       h,
  */
 static int
 text_modify_top(clicon_handle       h,
-                cxobj              *x0,
                 cxobj              *x0t,
-                cxobj              *x1,
                 cxobj              *x1t,
                 yang_stmt          *yspec,
                 enum operation_type op,
@@ -1002,7 +1000,7 @@ text_modify_top(clicon_handle       h,
     char      *createstr = NULL;
     
     /* Check for operations embedded in tree according to netconf */
-    if ((ret = attr_ns_value(x1,
+    if ((ret = attr_ns_value(x1t,
                              "operation", NETCONF_BASE_NAMESPACE,
                              cbret, &opstr)) < 0)
         goto done;
@@ -1011,25 +1009,25 @@ text_modify_top(clicon_handle       h,
     if (opstr != NULL)
         if (xml_operation(opstr, &op) < 0)
             goto done;
-    if ((ret = attr_ns_value(x1, "objectcreate", NULL, cbret, &createstr)) < 0)
+    if ((ret = attr_ns_value(x1t, "objectcreate", NULL, cbret, &createstr)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
-    /* Special case if incoming x1 is empty, top-level only <config/> */
-    if (xml_child_nr_type(x1, CX_ELMNT) == 0){ 
-        if (xml_child_nr_type(x0, CX_ELMNT)){ /* base tree not empty */
+    /* Special case if incoming x1t is empty, top-level only <config/> */
+    if (xml_child_nr_type(x1t, CX_ELMNT) == 0){ 
+        if (xml_child_nr_type(x0t, CX_ELMNT)){ /* base tree not empty */
             switch(op){ 
             case OP_DELETE:
             case OP_REMOVE:
             case OP_REPLACE:
                 if (!permit && xnacm){
-                    if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0)
+                    if ((ret = nacm_datanode_write(h, x0t, x0t, NACM_DELETE, username, xnacm, cbret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
                     permit = 1;
                 }
-                while ((x0c = xml_child_i(x0, 0)) != 0)
+                while ((x0c = xml_child_i(x0t, 0)) != 0)
                     if (xml_purge(x0c) < 0)
                         goto done;
                 break;
@@ -1057,25 +1055,25 @@ text_modify_top(clicon_handle       h,
     /* Special case top-level replace */
     else if (op == OP_REPLACE || op == OP_DELETE){
         if (createstr != NULL){
-            if (xml_child_nr_type(x0, CX_ELMNT)) /* base tree not empty */
+            if (xml_child_nr_type(x0t, CX_ELMNT)) /* base tree not empty */
                 clicon_data_set(h, "objectexisted", "true");
             else
                 clicon_data_set(h, "objectexisted", "false");
         }
         if (!permit && xnacm){
-            if ((ret = nacm_datanode_write(h, x1, x1t, NACM_UPDATE, username, xnacm, cbret)) < 0) 
+            if ((ret = nacm_datanode_write(h, x1t, x1t, NACM_UPDATE, username, xnacm, cbret)) < 0) 
                 goto done;
             if (ret == 0)
                 goto fail;
             permit = 1;
         }
-        while ((x0c = xml_child_i(x0, 0)) != 0)
+        while ((x0c = xml_child_i(x0t, 0)) != 0)
             if (xml_purge(x0c) < 0)
                 goto done;
     }
     /* Loop through children of the modification tree */
     x1c = NULL;
-    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+    while ((x1c = xml_child_each(x1t, x1c, CX_ELMNT)) != NULL) {
         x1cname = xml_name(x1c);
         /* Get yang spec of the child */
         yc = NULL;
@@ -1101,7 +1099,7 @@ text_modify_top(clicon_handle       h,
             }
         }
         /* See if there is a corresponding node in the base tree */
-        if (match_base_child(x0, x1c, yc, &x0c) < 0)
+        if (match_base_child(x0t, x1c, yc, &x0c) < 0)
             goto done;
         if (x0c && (yc != xml_spec(x0c))){
             /* There is a match but is should be replaced (choice)*/
@@ -1109,7 +1107,7 @@ text_modify_top(clicon_handle       h,
                 goto done;
             x0c = NULL;
         }
-        if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
+        if ((ret = text_modify(h, x0c, x0t, x0t, x1c, x1t,
                                yc, op,
                                username, xnacm, permit, cbret)) < 0)
             goto done;
@@ -1228,7 +1226,7 @@ xmldb_put(clicon_handle       h,
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
      */
-    if ((ret = text_modify_top(h, x0, x0, x1, x1, yspec, op, username, xnacm, permit, cbret)) < 0)
+    if ((ret = text_modify_top(h, x0, x1, yspec, op, username, xnacm, permit, cbret)) < 0)
         goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
     if (ret == 0){

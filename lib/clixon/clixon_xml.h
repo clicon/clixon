@@ -165,6 +165,9 @@ typedef enum yang_bind yang_bind;
 typedef struct xml cxobj; /* struct defined in clicon_xml.c */
 
 /*! Callback function type for xml_apply 
+ *
+ * @param[in]  x    XML node  
+ * @param[in]  arg  General-purpose argument
  * @retval    -1    Error, aborted at first error encounter, return -1 to end user
  * @retval     0    OK, continue
  * @retval     1    Abort, dont continue with others, return 1 to end user

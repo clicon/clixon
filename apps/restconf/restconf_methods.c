@@ -143,7 +143,8 @@ match_list_keys(yang_stmt *y,
     clicon_debug(1, "%s", __FUNCTION__);
     switch (yang_keyword_get(y)){
     case Y_LIST:
-        cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
+        if ((cvk = yang_cvec_get(y)) == NULL) /* Use Y_LIST cache, see ys_populate_list() */
+            break;
         cvi = NULL;
         while ((cvi = cvec_each(cvk, cvi)) != NULL) {
             keyname = cv_string_get(cvi);           

@@ -137,8 +137,8 @@ strip_body_objects(cxobj *xt)
  *
  * @param[in]   xt     XML tree node
  * @param[out]  xerr   Reason for failure, or NULL
- * @retval      1      OK Yang assignment made
  * @retval      2      OK Yang assignment not made because yang parent is anyxml or anydata
+ * @retval      1      OK Yang assignment made
  * @retval      0      Yang assigment not made and xerr set
  * @retval     -1      Error
  * @note retval = 2 is special

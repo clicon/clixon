@@ -43,7 +43,12 @@ Expected: beginning of 2023
 
 ### New features
 
-* Netconf monitoring, part 2
+* YANG schema mount RFC 8528 (work in progress)
+  * Restrictions:
+    * only schema-ref=inline, not shared-schema
+  * Standards: RFC 8528
+  * Enable `YANG_SCHEMA_MOUNT`
+* Netconf monitoring RFC 6022 , part 2
   * Datastores and sessions
     * Added clixon-specific transport identities: cli, snmp, netconf, restconf
     * Added source-host fro native restonf, but no other transports
