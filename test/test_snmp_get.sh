@@ -148,18 +148,18 @@ new "SNMP tests"
 testinit
 
 MIB=".1.3.6.1.4.1.8072.200"
-OID1="${MIB}.1.1"      # netSnmpExampleInteger
-OID2="${MIB}.1.2"      # netSnmpExampleSleeper
-OID3="${MIB}.1.3"      # netSnmpExampleString
-OID4="${MIB}.1.4"      # ifTableLastChange 12345678
-OID5="${MIB}.1.5"      # ifType modem(48)
-OID6="${MIB}.1.6"      # ifSpeed 123123123
-OID7="${MIB}.1.7"      # ifAdminStatus testing(3)
-OID8="${MIB}.1.8"      # ifInOctets 123456
-OID9="${MIB}.1.9"      # ifHCInOctets 4294967296
-OID10="${MIB}.1.10"    # ifPromiscuousMode true(1)
-OID11="${MIB}.1.11"    # ifCounterDiscontinuityTime 1234567890 TimeStamp
-OID12="${MIB}.1.12"    # ifStackStatus active(1)
+OID1="${MIB}.1.1.0"      # netSnmpExampleInteger
+OID2="${MIB}.1.2.0"      # netSnmpExampleSleeper
+OID3="${MIB}.1.3.0"      # netSnmpExampleString
+OID4="${MIB}.1.4.0"      # ifTableLastChange 12345678
+OID5="${MIB}.1.5.0"      # ifType modem(48)
+OID6="${MIB}.1.6.0"      # ifSpeed 123123123
+OID7="${MIB}.1.7.0"      # ifAdminStatus testing(3)
+OID8="${MIB}.1.8.0"      # ifInOctets 123456
+OID9="${MIB}.1.9.0"      # ifHCInOctets 4294967296
+OID10="${MIB}.1.10.0"    # ifPromiscuousMode true(1)
+OID11="${MIB}.1.11.0"    # ifCounterDiscontinuityTime 1234567890 TimeStamp
+OID12="${MIB}.1.12.0"    # ifStackStatus active(1)
 OID13="${MIB}.2.1"     # netSnmpIETFWGTable
 OID14="${MIB}.2.1.1"   # netSnmpIETFWGEntry
 OID15="${MIB}.2.1.1.1.42" # nsIETFWGName

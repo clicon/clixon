@@ -558,6 +558,7 @@ mibyang_traverse(clicon_handle h,
     yang_stmt *ys = NULL;
     yang_stmt *yp;
     int        ret;
+    static oid zero_oid = 0;
         
     clicon_debug(1, "%s %s", __FUNCTION__, yang_argument_get(yn));
     switch(yang_keyword_get(yn)){
@@ -567,7 +568,7 @@ mibyang_traverse(clicon_handle h,
         goto ok;
         break;
     case Y_LEAF:
-        if (mibyang_leaf_register(h, yn, NULL, NULL, 0) < 0)
+        if (mibyang_leaf_register(h, yn, NULL, &zero_oid, OID_LENGTH(zero_oid)) < 0)
             goto done;
         break;
     case Y_CONTAINER: /* See list case */
