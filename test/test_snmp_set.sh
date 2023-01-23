@@ -154,7 +154,8 @@ function testinit(){
 # 3: value   SNMP value
 # 4: value2   SNMP value2 (as shown "after" snmpset)
 # 5: xvalue  XML/Clixon value
-# 6: OID
+# 6: OID in 
+# 7: OID out
 function testrun()
 {
     name=$1
@@ -162,7 +163,8 @@ function testrun()
     value=$3
     value2=$4
     xvalue=$5
-    oid=$6
+    oid_in=$6
+    oid_out=$7
 
     # Type from man snmpset 
     case $type in
@@ -194,18 +196,18 @@ function testrun()
 
     new "Set $name via SNMP"
     if [ $type == "STRING" ]; then
-        echo "$snmpset $oid $set_type $value"
-        expectpart "$($snmpset $oid $set_type $value)" 0 "$type:" "$value"
+        echo "$snmpset $oid_in $set_type $value"
+        expectpart "$($snmpset $oid_in $set_type $value)" 0 "$type:" "$value"
     else
-        echo "$snmpset $oid $set_type $value2"
-        expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value2"
+        echo "$snmpset $oid_in $set_type $value2"
+        expectpart "$($snmpset $oid_in $set_type $value)" 0 "$type: $value2"
     fi
 
     new "Check $name via SNMP"
     if [ "$type" == "STRING" ]; then
-        expectpart "$($snmpget $oid)" 0 "$type:" "$value"
+        expectpart "$($snmpget $oid_out)" 0 "$type:" "$value"
     else
-        expectpart "$($snmpget $oid)" 0 "$type: $value2"
+        expectpart "$($snmpget $oid_out)" 0 "$type: $value2"
     fi
 
     new "Check $name via CLI"
@@ -234,11 +236,11 @@ MIB=".1.3.6.1.4.1.8072.200"
 IFMIB=".1.3.6.1.2.1"
 ENTMIB=".1.3.6.1.2.1.47.1.1.1"
 
-testrun clixonExampleInteger INTEGER 1234 1234 1234 ${MIB}.1.1
-testrun clixonExampleSleeper INTEGER -1 -1 -1 ${MIB}.1.2
-testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3
-testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10 # boolean
-testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13 # InetAddress
+testrun clixonExampleInteger INTEGER 1234 1234 1234 ${MIB}.1.1.0 ${MIB}.1.1.0
+testrun clixonExampleSleeper INTEGER -1 -1 -1 ${MIB}.1.2.0 ${MIB}.1.2.0
+testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3.0 ${MIB}.1.3.0
+testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10.0  ${MIB}.1.10.0 # boolean
+testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13.0  ${MIB}.1.13.0 # InetAddress
 # XXX It was supposed to test writing hardware address type, but it is also read-only
 #testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
 
@@ -276,7 +278,7 @@ new "wait backend"
 wait_backend
 
 new "set value with error"
-expectpart "$($snmpset ${MIB}.1.1  i 4321 2>&1)" 2 "commitFailed"
+expectpart "$($snmpset ${MIB}.1.1.0  i 4321 2>&1)" 2 "commitFailed"
 
 new "Cleaning up"
 testexit
