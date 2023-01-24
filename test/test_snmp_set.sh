@@ -163,8 +163,8 @@ function testrun()
     value=$3
     value2=$4
     xvalue=$5
-    oid=$6
-    oid=$7
+    oid_in=$6
+    oid_out=$7
 
     # Type from man snmpset 
     case $type in
@@ -196,18 +196,18 @@ function testrun()
 
     new "Set $name via SNMP"
     if [ $type == "STRING" ]; then
-        echo "$snmpset $oid $set_type $value"
-        expectpart "$($snmpset $oid $set_type $value)" 0 "$type:" "$value"
+        echo "$snmpset $oid_in $set_type $value"
+        expectpart "$($snmpset $oid_in $set_type $value)" 0 "$type:" "$value"
     else
-        echo "$snmpset $oid $set_type $value2"
-        expectpart "$($snmpset $oid $set_type $value)" 0 "$type: $value2"
+        echo "$snmpset $oid_in $set_type $value2"
+        expectpart "$($snmpset $oid_in $set_type $value)" 0 "$type: $value2"
     fi
 
     new "Check $name via SNMP"
     if [ "$type" == "STRING" ]; then
-        expectpart "$($snmpget $oid)" 0 "$type:" "$value"
+        expectpart "$($snmpget $oid_out)" 0 "$type:" "$value"
     else
-        expectpart "$($snmpget $oid)" 0 "$type: $value2"
+        expectpart "$($snmpget $oid_out)" 0 "$type: $value2"
     fi
 
     new "Check $name via CLI"
