@@ -154,7 +154,8 @@ function testinit(){
 # 3: value   SNMP value
 # 4: value2   SNMP value2 (as shown "after" snmpset)
 # 5: xvalue  XML/Clixon value
-# 6: OID
+# 6: OID in 
+# 7: OID out
 function testrun()
 {
     name=$1
@@ -163,6 +164,7 @@ function testrun()
     value2=$4
     xvalue=$5
     oid=$6
+    oid=$7
 
     # Type from man snmpset 
     case $type in
@@ -234,11 +236,11 @@ MIB=".1.3.6.1.4.1.8072.200"
 IFMIB=".1.3.6.1.2.1"
 ENTMIB=".1.3.6.1.2.1.47.1.1.1"
 
-# testrun clixonExampleInteger INTEGER 1234 1234 1234 ${MIB}.1.1
-# testrun clixonExampleSleeper INTEGER -1 -1 -1 ${MIB}.1.2
-# testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3
-testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10 # boolean
-testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13 # InetAddress
+testrun clixonExampleInteger INTEGER 1234 1234 1234 ${MIB}.1.1 ${MIB}.1.1.0
+testrun clixonExampleSleeper INTEGER -1 -1 -1 ${MIB}.1.2 ${MIB}.1.2.0
+testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3 ${MIB}.1.3.0
+testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10  ${MIB}.1.10.0 # boolean
+testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13  ${MIB}.1.13.0 # InetAddress
 # XXX It was supposed to test writing hardware address type, but it is also read-only
 #testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
 
