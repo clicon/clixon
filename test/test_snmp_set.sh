@@ -236,11 +236,11 @@ MIB=".1.3.6.1.4.1.8072.200"
 IFMIB=".1.3.6.1.2.1"
 ENTMIB=".1.3.6.1.2.1.47.1.1.1"
 
-testrun clixonExampleInteger INTEGER 1234 1234 1234 ${MIB}.1.1 ${MIB}.1.1.0
-testrun clixonExampleSleeper INTEGER -1 -1 -1 ${MIB}.1.2 ${MIB}.1.2.0
-testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3 ${MIB}.1.3.0
-testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10  ${MIB}.1.10.0 # boolean
-testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13  ${MIB}.1.13.0 # InetAddress
+testrun clixonExampleInteger INTEGER 1234 1234 1234 ${MIB}.1.1.0 ${MIB}.1.1.0
+testrun clixonExampleSleeper INTEGER -1 -1 -1 ${MIB}.1.2.0 ${MIB}.1.2.0
+testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3.0 ${MIB}.1.3.0
+testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10.0  ${MIB}.1.10.0 # boolean
+testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13.0  ${MIB}.1.13.0 # InetAddress
 # XXX It was supposed to test writing hardware address type, but it is also read-only
 #testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
 
@@ -278,7 +278,7 @@ new "wait backend"
 wait_backend
 
 new "set value with error"
-expectpart "$($snmpset ${MIB}.1.1  i 4321 2>&1)" 2 "commitFailed"
+expectpart "$($snmpset ${MIB}.1.1.0  i 4321 2>&1)" 2 "commitFailed"
 
 new "Cleaning up"
 testexit

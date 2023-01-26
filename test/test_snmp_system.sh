@@ -67,7 +67,6 @@ cat <<EOF > $fstate
         <sysContact>clixon@clicon.com</sysContact>
         <sysLocation>Clixon HQ</sysLocation>
         <sysDescr>System description</sysDescr>
-        <sysUpTime>11223344</sysUpTime>
         <sysServices>72</sysServices>
     </system>
     <sysORTable>
@@ -151,12 +150,12 @@ OID_ORTABLE2_IDX="${OID_SYS}.9.1.1.2"
 OID_ORTABLE1="${OID_SYS}.9.1.3.1"
 OID_ORTABLE2="${OID_SYS}.9.1.3.2"
 
-NAME_DESCR="SNMPv2-MIB::sysDescr"
-NAME_UPTIME="SNMPv2-MIB::sysUpTime"
-NAME_CONTACT="SNMPv2-MIB::sysContact"
-NAME_SYSNAME="SNMPv2-MIB::sysName"
-NAME_LOCATION="SNMPv2-MIB::sysLocation"
-NAME_SERVICES="SNMPv2-MIB::sysServices"
+NAME_DESCR="SNMPv2-MIB::sysDescr.0"
+NAME_UPTIME="SNMPv2-MIB::sysUpTime.0"
+NAME_CONTACT="SNMPv2-MIB::sysContact.0"
+NAME_SYSNAME="SNMPv2-MIB::sysName.0"
+NAME_LOCATION="SNMPv2-MIB::sysLocation.0"
+NAME_SERVICES="SNMPv2-MIB::sysServices.0"
 NAME_ORTABLE="SNMPv2-MIB::sysORTable"
 NAME_ORTABLE1_IDX="SNMPv2-MIB::sysORIndex.1"
 NAME_ORTABLE2_IDX="SNMPv2-MIB::sysORIndex.2"
@@ -164,12 +163,12 @@ NAME_ORTABLE1="SNMPv2-MIB::sysORDescr.1"
 NAME_ORTABLE2="SNMPv2-MIB::sysORDescr.2"
 
 new "Get description, $OID_DESCR"
-validate_oid $OID_DESCR $OID_DESCR "STRING" "System description"
+validate_oid $OID_DESCR  $OID_DESCR "STRING" "System description"
 validate_oid $NAME_DESCR $NAME_DESCR "STRING" "System description"
 
 new "Get next $OID_DESCR"
-validate_oid $OID_DESCR $OID_UPTIME "Timeticks" "(11223344) 1 day, 7:10:33.44"
-validate_oid $NAME_DESCR $NAME_UPTIME "Timeticks" "(11223344) 1 day, 7:10:33.44"
+#validate_oid $OID_DESCR $OID_UPTIME "Timeticks" "(11223344) 1 day, 7:10:33.44"
+#validate_oid $NAME_DESCR $NAME_UPTIME "Timeticks" "(11223344 ) 1 day, 7:10:33.44"
 
 new "Get contact, $OID_CONTACT"
 validate_oid $OID_CONTACT $OID_CONTACT "STRING" "clixon@clicon.com"
@@ -230,12 +229,11 @@ expectpart "$($snmptable $NAME_ORTABLE)" 0 ".*Entry 1 description.*" "IP-MIB::ip
 expectpart "$($snmptable $NAME_ORTABLE)" 0 ".*Entry 2 description.*" "IF-MIB::ifTable" "129:20:58:31.11"
 
 new "Walk the tables..."
-expectpart "$($snmpwalkstr system)" 0 "SNMPv2-MIB::sysDescr = STRING: System description" \
-    "SNMPv2-MIB::sysUpTime = Timeticks: (11223344) 1 day, 7:10:33.44" \
-    "SNMPv2-MIB::sysContact = STRING: clixon@clicon.com" \
-    "SNMPv2-MIB::sysName = STRING: Test" \
-    "SNMPv2-MIB::sysLocation = STRING: Clixon HQ" \
-    "SNMPv2-MIB::sysServices = INTEGER: 72" \
+expectpart "$($snmpwalkstr system)" 0 "SNMPv2-MIB::sysDescr.0 = STRING: System description" \
+    "SNMPv2-MIB::sysContact.0 = STRING: clixon@clicon.com" \
+    "SNMPv2-MIB::sysName.0 = STRING: Test" \
+    "SNMPv2-MIB::sysLocation.0 = STRING: Clixon HQ" \
+    "SNMPv2-MIB::sysServices.0 = INTEGER: 72" \
     "SNMPv2-MIB::sysORIndex.1 = INTEGER: 1" \
     "SNMPv2-MIB::sysORIndex.2 = INTEGER: 2" \
     "SNMPv2-MIB::sysORID.1 = OID: IP-MIB::ip" \

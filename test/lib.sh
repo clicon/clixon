@@ -267,16 +267,7 @@ if $SNMPCHECK; then
             getnext=$snmpgetnextstr
         fi
 
-        oid_t1 = oid
-        if [ ${oid:(-2)} == ".0" ]; then
-            oid_t1=${Text/%$".0"}
-        fi
-        oid_t2 = oid_t2
-        if [ ${oid2:(-2)} == ".0" ]; then
-            oid_t2=${oid_t2/%$".0"}
-        fi
-
-        if [ $oid_t1 == $oid_t2 ]; then
+        if [ $oid == $oid2 ]; then
             if [ -z "$result" ]; then
                 result="$oid = $type: $value"
             fi
