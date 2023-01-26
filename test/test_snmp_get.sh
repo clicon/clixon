@@ -202,25 +202,25 @@ new "Get netSnmpExampleInteger"
 validate_oid $OID1 $OID1 "INTEGER" 2147483647
 validate_oid $OID1 $OID2 "INTEGER" -1
 validate_oid $NAME1 $NAME1.0 "INTEGER" 2147483647
-validate_oid $NAME1 $NAME2 "INTEGER" -1
+validate_oid $NAME1 $NAME2.0 "INTEGER" -1
 
 new "Get netSnmpExampleSleeper"
 validate_oid $OID2 $OID2 "INTEGER" -1
 validate_oid $OID2 $OID3 "STRING" "\"This is not default\""
-validate_oid $NAME2 $NAME2 "INTEGER" -1
-validate_oid $NAME2 $NAME3 "STRING" "This is not default"
+validate_oid $NAME2 $NAME2.0 "INTEGER" -1
+validate_oid $NAME2 $NAME3.0 "STRING" "This is not default"
 
 new "Get netSnmpExampleString"
 validate_oid $OID3 $OID3 "STRING" "\"This is not default\""
 validate_oid $OID3 $OID4 "Timeticks" "(12345) 0:02:03.45"
-validate_oid $NAME3 $NAME3 "STRING" "This is not default"
-validate_oid $NAME3 $NAME4 "Timeticks" "(12345) 0:02:03.45"
+validate_oid $NAME3 $NAME3.0 "STRING" "This is not default"
+validate_oid $NAME3 $NAME4.0 "Timeticks" "(12345) 0:02:03.45"
 
 new "Get ifTableLastChange"
 validate_oid $OID4 $OID4 "Timeticks" "(12345) 0:02:03.45"
 validate_oid $OID4 $OID5 "INTEGER" 48
-validate_oid $NAME4 $NAME4 "Timeticks" "(12345) 0:02:03.45"
-validate_oid $NAME4 $NAME5 "INTEGER" "modem(48)"
+validate_oid $NAME4 $NAME4.0 "Timeticks" "(12345) 0:02:03.45"
+validate_oid $NAME4 $NAME5.0 "INTEGER" "modem(48)"
 
 new "Get ifType"
 validate_oid $OID5 $OID5 "INTEGER" 48
