@@ -201,7 +201,7 @@ new "$snmpget"
 new "Get netSnmpExampleInteger"
 validate_oid $OID1 $OID1 "INTEGER" 2147483647
 validate_oid $OID1 $OID2 "INTEGER" -1
-validate_oid $NAME1 $NAME1 "INTEGER" 2147483647
+validate_oid $NAME1 $NAME1.0 "INTEGER" 2147483647
 validate_oid $NAME1 $NAME2 "INTEGER" -1
 
 new "Get netSnmpExampleSleeper"
