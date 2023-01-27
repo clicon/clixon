@@ -390,7 +390,7 @@ xmldb_exists(clicon_handle h,
     char               *filename = NULL;
     struct stat         sb;
 
-    clicon_debug(2, "%s %s", __FUNCTION__, db);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
     if (lstat(filename, &sb) < 0)
@@ -445,7 +445,7 @@ xmldb_delete(clicon_handle h,
     char               *filename = NULL;
     struct stat         sb;
     
-    clicon_debug(2, "%s %s", __FUNCTION__, db);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
     if (xmldb_clear(h, db) < 0)
         goto done;
     if (xmldb_db2file(h, db, &filename) < 0)
@@ -478,7 +478,7 @@ xmldb_create(clicon_handle h,
     db_elmnt           *de = NULL;
     cxobj              *xt = NULL;
 
-    clicon_debug(2, "%s %s", __FUNCTION__, db);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
         if ((xt = de->de_xml) != NULL){
             xml_free(xt);

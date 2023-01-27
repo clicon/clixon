@@ -236,7 +236,7 @@ yang_augment_node(clicon_handle h,
     }
     /* */
     schema_nodeid = yang_argument_get(ys);
-    clicon_debug(2, "%s %s", __FUNCTION__, schema_nodeid);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, schema_nodeid);
     /* Find the target */
     if (yang_abs_schema_nodeid(ys, schema_nodeid, &ytarget) < 0)
         goto done;
@@ -881,7 +881,7 @@ filename2revision(const char *filename,
         clicon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
-    clicon_debug(2, "%s %s", __FUNCTION__, base);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, base);
     if ((p = rindex(base, '.')) != NULL) /* strip postfix .yang */
         *p = '\0';
     if ((p = index(base, '@')) != NULL){ /* extract revision date */
@@ -904,19 +904,17 @@ filename2revision(const char *filename,
  * @param[in]  h        CLICON handle
  * @param[in]  module   Name of main YANG module. 
  * @param[in]  revision Revision or NULL
- * @param[out] revactual Actual revision (if retval=1)
- * @param[out] fbuf     Buffer containing filename (if retval=1)
- * @retval     1        Match found, Most recent entry returned in fbuf and revactual
+ * @param[out] fbuf     Buffer containing filename or NULL (if retval=1)
+ * @retval     1        Match found, Most recent entry returned in fbuf
  * @retval     0        No matching entry found
  * @retval    -1        Error 
  * @note for bootstrapping, dir may have to be set.
 */
-static int
-yang_parse_find_match(clicon_handle h, 
-                      const char   *module,
-                      const char   *revision,
-                      uint32_t     *revactual, 
-                      cbuf         *fbuf)    
+int
+yang_file_find_match(clicon_handle h, 
+                     const char   *module,
+                     const char   *revision,
+                     cbuf         *fbuf)    
 {
     int           retval = -1;
     cbuf         *regex = NULL;
@@ -960,7 +958,8 @@ yang_parse_find_match(clicon_handle h,
             /* Entries are sorted, last entry should be most recent date 
              */
             if (ndp != 0){
-                cprintf(fbuf, "%s/%s", dir, dp[ndp-1].d_name);
+                if (fbuf)
+                    cprintf(fbuf, "%s/%s", dir, dp[ndp-1].d_name);
                 if (dp)
                     free(dp);
                 retval = 1;
@@ -990,7 +989,8 @@ yang_parse_find_match(clicon_handle h,
                     bestcv = cv;
             }
             if (bestcv){
-                cprintf(fbuf, "%s", cv_string_get(bestcv));      /* file path */
+                if (fbuf)
+                    cprintf(fbuf, "%s", cv_string_get(bestcv));      /* file path */
                 retval = 1; /* found */
                 goto done;
             }
@@ -1080,7 +1080,7 @@ yang_parse_module(clicon_handle h,
         goto done;
     }
     /* Match a yang file with or without revision in yang-dir list */
-    if ((nr = yang_parse_find_match(h, module, revision, &revf, fbuf)) < 0)
+    if ((nr = yang_file_find_match(h, module, revision, fbuf)) < 0)
         goto done;
     if (nr == 0){
         if ((cb = cbuf_new()) == NULL){

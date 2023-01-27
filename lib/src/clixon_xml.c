@@ -2436,7 +2436,7 @@ clicon_log_xml(int         level,
  * @param[in]  x        XML tree that is logged without prettyprint
  * @param[in]  format   Message to print as argv.
  * @see clicon_log_xml  For syslog
- * @see clicon_debug    base function
+ * @see clicon_debug    base function and see CLIXON_DBG_* flags
 */
 int
 clicon_debug_xml(int         dbglevel, 
@@ -2450,7 +2450,8 @@ clicon_debug_xml(int         dbglevel,
     int     retval = -1;
     size_t  trunc;
 
-    if (dbglevel > clicon_debug_get()) /* compare debug level with global variable */
+    /* Mask debug level with global dbg variable */
+    if ((dbglevel & clicon_debug_get()) == 0) 
         return 0;
     /* Print xml as cbuf */
     if ((cb = cbuf_new()) == NULL){

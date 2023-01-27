@@ -367,12 +367,12 @@ clicon_debug_get(void)
  *      print message if level >= dbglevel.
  * The message is sent to clicon_log. EIther to syslog, stderr or both, depending on 
  * clicon_log_init() setting
- * The dbgdebug level strategy is:
- *                       1: Logical debug message
- *                       2: Input and output packets
- *                       3: Message dump in hex, xpath parse trees 
- * 
- * @param[in] dbglevel   0: No debug, 1-3: increasing levels of debug
+ * The dbgdebug level strategy is a mask of the following masks:
+ *                       1: Basic debug message, espcially initialization
+ *                       2: Input and output packets, read datastore
+ *                       4: Details: message dump in hex, xpath parse trees, etc
+ * See CLIXON_DBG_* flags
+ * @param[in] dbglevel   0: No debug, 1-7 combined of the CLIXON_DBG_ flags above
  * @param[in] format     Message to print as argv.
  * @see clicon_debug_xml Specialization for XML tree
  */
@@ -386,7 +386,8 @@ clicon_debug(int         dbglevel,
     int     retval = -1;
     size_t  trunc;
     
-    if (dbglevel > clicon_debug_get()) /* compare debug level with global variable */
+    /* Mask debug level with global dbg variable */
+    if ((dbglevel & clicon_debug_get()) == 0)
         return 0;
     /* first round: compute length of debug message */
     va_start(args, format);

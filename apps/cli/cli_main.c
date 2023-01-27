@@ -780,8 +780,7 @@ main(int    argc,
     if (logclisyntax)
         cli_logsyntax_set(h, logclisyntax);
 
-    if (dbg)
-        clicon_option_dump(h, dbg);
+    clicon_option_dump(h, 1);
     
     /* Join rest of argv to a single command */
     restarg = clicon_strjoin(argc, argv, " ");

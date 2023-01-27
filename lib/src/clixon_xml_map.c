@@ -205,7 +205,7 @@ xml2cvec(cxobj      *xt,
         }
     }
     if (clicon_debug_get() > 1){
-        clicon_debug(2, "%s cvv:\n", __FUNCTION__);
+        clicon_debug(CLIXON_DBG_DETAIL, "%s cvv:\n", __FUNCTION__);
         cvec_print(stderr, cvv);
     }
     *cvv0 = cvv;
@@ -825,6 +825,14 @@ xml2xpath1(cxobj *x,
  * @param[out] xpath  Malloced xpath string. Need to free() after use
  * @retval     0      OK
  * @retval    -1      Error. (eg XML malformed)
+ * @code
+ *    char  *xpath = NULL;
+ *    cxobj *x;
+ *    ... x is inside an xml tree ...
+ *    if (xml2xpath(x, nsc, &xpath) < 0)
+ *       err;
+ *    free(xpath);
+ * @endcode
  * @note x needs to be bound to YANG, see eg xml_bind_yang()
  */
 int

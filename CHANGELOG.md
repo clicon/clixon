@@ -89,15 +89,20 @@ Developers may need to change their code
   
 ### Minor features
 
-* Clearer debug levels `clicon_debug()`:
-  * 1: Logical debug message
-  * 2: Input and output packets
-  * 3: Message dump in hex, xpath parse trees 
+* Changed debug levels in `clicon_debug()` to be based on maskable flags:
+  * Added flag names: `CLIXON_DBG_*`
+  * Added maskable flags that can be combined when debugging:
+    * `DEFAULT` = 1: Basic debug message, espcially initialization
+    * `MSG` = 2: Input and output packets, read datastore
+    * `DETAIL` = 4: Details: message dump in hex, xpath parse trees, etc
+    * `EXTRA` = 8: Extra detailed logs
 * Added `ISO/IEC 10646` encodings to XML parser: `&#[0-9]+;` and `&#[0-9a-fA-F]+;`
 * Added `CLIXON_CLIENT_SSH` to client API to communicate remotely via SSH netconf sub-system
 
 ### Corrected Bugs
 
+* Fixed: [SNMP accepts only u32 & u64 #405](https://github.com/clicon/clixon/issues/405)
+* Fixed: [Yang leaves without smiv2:oid directive are not shown well in snmpwalk #398](https://github.com/clicon/clixon/issues/398)
 * Fixed: [Netconf commit confirm session-id mismatch #407](https://github.com/clicon/clixon/issues/407)
 * Fixed: Initialized session-id to 1 instead of 0 following ietf-netconf.yang
 * Fixed: [snmpwalk doesn't show properly SNMP boolean values which equal false](https://github.com/clicon/clixon/issues/400)

@@ -183,7 +183,7 @@ json_current_new(clixon_json_yacc *jy,
     char      *prefix = NULL;
     char      *id = NULL;
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Find colon separator and if found split into prefix:name */
     if (nodeid_split(name, &prefix, &id) < 0)
         goto done;
@@ -210,7 +210,7 @@ json_current_new(clixon_json_yacc *jy,
 static int
 json_current_pop(clixon_json_yacc *jy)
 {
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (jy->jy_current) 
         jy->jy_current = xml_parent(jy->jy_current);
     return 0;
@@ -221,7 +221,7 @@ json_current_clone(clixon_json_yacc *jy)
 {
     cxobj *xn;
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (jy->jy_current == NULL){
         return -1;
     }
@@ -254,7 +254,7 @@ json_current_body(clixon_json_yacc *jy,
     int retval = -1;
     cxobj *xn;
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if ((xn = xml_new("body", jy->jy_current, CX_BODY)) == NULL)
         goto done; 
     if (value && xml_value_append(xn, value) < 0)

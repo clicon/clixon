@@ -112,8 +112,9 @@ backend_terminate(clicon_handle h)
     /* Free changelog */
     if ((x = clicon_xml_changelog_get(h)) != NULL)
         xml_free(x);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL)
+    if ((yspec = clicon_dbspec_yang(h)) != NULL){
         ys_free(yspec);
+    }
     if ((yspec = clicon_config_yang(h)) != NULL)
         ys_free(yspec);
     if ((yspec = clicon_nacm_ext_yang(h)) != NULL)
@@ -133,6 +134,7 @@ backend_terminate(clicon_handle h)
 
     xpath_optimize_exit();
     clixon_pagination_free(h);
+    
     if (pidfile)
         unlink(pidfile);   
     if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)
@@ -1045,8 +1047,8 @@ main(int    argc,
         goto done;
     if (clicon_socket_set(h, ss) < 0)
         goto done;
-    if (dbg)
-        clicon_option_dump(h, dbg);
+    clicon_option_dump(h, 1);
+
     /* Depending on configure setting, privileges may be dropped here after
      * initializations */
     if (check_drop_priv(h, gid, yspec) < 0)

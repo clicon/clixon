@@ -55,9 +55,9 @@ EOF
 cat <<EOF > $dir/startup_db
 <${DATASTORE_TOP}>
   <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+     <content-id>42</content-id> <!-- XXX should be on yang-library level -->
      <module-set>
         <name>default</name>
-        <content-id>42</content-id>
         <module>
            <name>clixon-example</name>
            <revision>2000-01-01</revision>

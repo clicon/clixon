@@ -1014,7 +1014,6 @@ yn_each(yang_stmt *yparent,
         return NULL;
     for (i=yprev?yprev->_ys_vector_i+1:0; i<yparent->ys_len; i++){
         if ((yc = yparent->ys_stmt[i]) == NULL){
-            assert(yc); /* XXX Check if happens */
             continue;
         }
         /* make room for other conditionals */
@@ -1366,7 +1365,7 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     yang_stmt *yimport;
     yang_stmt *yprefix; 
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (prefix == NULL){
         clicon_err(OE_YANG, EINVAL, "prefix is NULL");
         goto done;
@@ -2957,7 +2956,7 @@ yang_features(clicon_handle h,
             ret = 0;
             if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, mainfile, 1, &ret) < 0)
                 goto done;
-            clicon_debug(2, "%s %s %d", __FUNCTION__, yang_argument_get(ys), ret);
+            clicon_debug(CLIXON_DBG_DETAIL, "%s %s %d", __FUNCTION__, yang_argument_get(ys), ret);
             if (ret == 0)
                 goto disabled;
         }

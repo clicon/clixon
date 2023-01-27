@@ -199,11 +199,11 @@ client_get_streams(clicon_handle   h,
  *
  */
 static int
-get_client_statedata(clicon_handle     h,
-                     char             *xpath,
-                     cvec             *nsc,
-                     withdefaults_type wdef,
-                     cxobj           **xret)
+get_statedata(clicon_handle     h,
+              char             *xpath,
+              cvec             *nsc,
+              withdefaults_type wdef,
+              cxobj           **xret)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -872,7 +872,8 @@ get_common(clicon_handle        h,
 #else
     wdef = WITHDEFAULTS_EXPLICIT;
 #endif
-    clicon_debug(2, "%s", __FUNCTION__);
+
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_YANG, ENOENT, "No yang spec9");
@@ -997,7 +998,7 @@ get_common(clicon_handle        h,
         break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
-        if ((ret = get_client_statedata(h, xpath?xpath:"/", nsc, wdef, &xret)) < 0)
+        if ((ret = get_statedata(h, xpath?xpath:"/", nsc, wdef, &xret)) < 0)
             goto done;
         if (ret == 0){ /* Error from callback (error in xret) */
             if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
@@ -1049,7 +1050,7 @@ get_common(clicon_handle        h,
  ok:
     retval = 0;
  done:
-    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     if (xret)

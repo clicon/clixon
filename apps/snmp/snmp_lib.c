@@ -639,7 +639,7 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     retval = 1;
  done:
-    clicon_debug(2, "%s %d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     if (origtype)
         free(origtype);
     if (cv)
@@ -709,7 +709,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     }
     retval = 1;
  done:
-    clicon_debug(2, "%s %d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     return retval;
  fail:
     retval = 0;
@@ -852,7 +852,7 @@ type_xml2snmp(char       *snmpstr,
     }
     retval = 1;
  done:
-    clicon_debug(2, "%s %d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     return retval;
  fail:
     retval = 0;

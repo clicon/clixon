@@ -994,16 +994,11 @@ xmldb_get_cache(clicon_handle     h,
         if (disable_nacm_on_empty(x1t, yspec) < 0)
             goto done;
     }
-    /* Copy the matching parts of the (relevant) XML tree.
-     * If cache was empty, also update to datastore cache
-     */
-    if (clicon_debug_get()>1)
-        if (clixon_xml2file(stderr, x1t, 0, 1, fprintf, 0, 0) < 0)
-            goto done;
+    clicon_debug_xml(CLIXON_DBG_DETAIL, x1t, "%s", __FUNCTION__);
     *xtop = x1t;
     retval = 1;
  done:
-    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     return retval;
@@ -1154,7 +1149,7 @@ xmldb_get_zerocopy(clicon_handle    h,
     *xtop = x0t;
     retval = 1;
  done:
-    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     return retval;

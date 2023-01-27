@@ -114,10 +114,21 @@
 #include "clixon_path.h"
 #include "clixon_api_path_parse.h"
 
-/* 
-   also called from yacc generated code *
-*/
+/* Best debugging is to enable PARSE_DEBUG below and add -d to the LEX compile statement in the Makefile
+ * And then run the testcase with -D 1
+ * Disable it to stop any calls to clicon_debug. Having it on by default would mean very large debug outputs.
+ */
+#if 0
+#define _PARSE_DEBUG(s) clicon_debug(1,(s))
+#define _PARSE_DEBUG1(s, s1) clicon_debug(1,(s), (s1))
+#else
+#define _PARSE_DEBUG(s)
+#define _PARSE_DEBUG1(s, s1)
+#endif
 
+/* 
+ * Also called from yacc generated code *
+ */
 void 
 clixon_api_path_parseerror(void *_ay,
                            char *s) 
@@ -148,7 +159,7 @@ static clixon_path *
 path_append(clixon_path *list,
             clixon_path *new)
 {
-    clicon_debug(3, "%s()", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (new == NULL)
         return NULL;
     ADDQ(new, list);
@@ -161,7 +172,7 @@ static clixon_path *
 path_add_keyvalue(clixon_path *cp,
                   cvec        *cvk)
 {
-    clicon_debug(3, "%s()", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cp)
         cp->cp_cvk = cvk;
     return cp;
@@ -173,7 +184,7 @@ path_new(char *module_name,
 {
     clixon_path *cp = NULL;
 
-    clicon_debug(3, "%s(%s,%s)", __FUNCTION__, module_name, id);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, module_name, id);
     if ((cp = malloc(sizeof(*cp))) == NULL){
         clicon_err(OE_UNIX, errno, "malloc");
         goto done;
@@ -203,7 +214,7 @@ static cvec *
 keyval_add(cvec   *cvv,
            cg_var *cv)
 {
-    clicon_debug(3, "%s()", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cv == NULL)
         goto done;
     if (cvv == NULL &&
@@ -229,7 +240,7 @@ keyval_set(char *name,
 {
     cg_var *cv = NULL;
 
-    clicon_debug(3, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
         clicon_err(OE_UNIX, errno, "cv_new");
         goto done;
@@ -256,43 +267,43 @@ keyval_set(char *name,
 /*
 */
 
-start          : list X_EOF        {clicon_debug(2,"top");_AY->ay_top=$1; YYACCEPT; } 
+start          : list X_EOF        {_PARSE_DEBUG("top");_AY->ay_top=$1; YYACCEPT; } 
                ;
 
 list           : list SLASH element { if (($$ = path_append($1, $3)) == NULL) YYABORT; 
-                                    clicon_debug(2,"list = list / element");}
+                                    _PARSE_DEBUG("list = list / element");}
                |                  { $$ = NULL;
-                                    clicon_debug(2,"list = ");}
+                                    _PARSE_DEBUG("list = ");}
                ;
 
 element        : api_identifier { $$=$1; 
-                                 clicon_debug(2,"element = api_identifier");}
+                                 _PARSE_DEBUG("element = api_identifier");}
                | list_instance  { $$=$1;
-                                 clicon_debug(2,"element = list_instance");}
+                                 _PARSE_DEBUG("element = list_instance");}
                ;
 
 api_identifier : module_name COLON IDENTIFIER { $$ = path_new($1, $3); free($1); free($3);
-                                clicon_debug(2,"api_identifier = module_name : IDENTIFIER");}
+                                _PARSE_DEBUG("api_identifier = module_name : IDENTIFIER");}
                | IDENTIFIER                 { $$ = path_new(NULL, $1); free($1);
-                                clicon_debug(2,"api_identifier = IDENTIFIER");}
+                                _PARSE_DEBUG("api_identifier = IDENTIFIER");}
                ;
 
 module_name    : IDENTIFIER                 { $$ = $1;
-                                clicon_debug(2,"module_name = IDENTIFIER");}
+                                _PARSE_DEBUG("module_name = IDENTIFIER");}
                ;
 
 list_instance  : api_identifier EQUAL key_values { $$ = path_add_keyvalue($1, $3);
-                                   clicon_debug(2,"list_instance->api_identifier = key_values");}
+                                   _PARSE_DEBUG("list_instance->api_identifier = key_values");}
                ;
 
 key_values     : key_values COMMA key_value  { if (($$ = keyval_add($1, $3)) == NULL) YYABORT;
-                                       clicon_debug(2,"key_values->key_values , key_value");}
+                                       _PARSE_DEBUG("key_values->key_values , key_value");}
                | key_value                 { if (($$ = keyval_add(NULL, $1)) == NULL) YYABORT;
-                                             clicon_debug(2,"key_values->key_value");}
+                                             _PARSE_DEBUG("key_values->key_value");}
                ;
 
-key_value      : STRING { $$ = keyval_set(NULL, $1); free($1); clicon_debug(2,"keyvalue->STRING"); }
-               |        { $$ = keyval_set(NULL, ""); clicon_debug(2,"keyvalue->"); }
+key_value      : STRING { $$ = keyval_set(NULL, $1); free($1); _PARSE_DEBUG("keyvalue->STRING"); }
+               |        { $$ = keyval_set(NULL, ""); _PARSE_DEBUG("keyvalue->"); }
                ;
 
 %%

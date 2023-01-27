@@ -1385,7 +1385,7 @@ yang2cli_yspec(clicon_handle      h,
             clicon_log(LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
                        __FUNCTION__, treename, cbuf_get(cb));
         else
-            clicon_debug(2, "%s: Top-level cli-spec %s:\n%s",
+            clicon_debug(CLIXON_DBG_DETAIL, "%s: Top-level cli-spec %s:\n%s",
                          __FUNCTION__, treename, cbuf_get(cb));
         if (cligen_parsetree_merge(pt0, NULL, pt) < 0){
             clicon_err(OE_YANG, errno, "cligen_parsetree_merge");

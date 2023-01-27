@@ -1532,7 +1532,7 @@ from_client_msg(clicon_handle        h,
     char                *namespace = NULL;
     int                  nr = 0;
     
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h); 
     /* Return netconf message. Should be filled in by the dispatch(sub) functions 
      * as wither rpc-error or by positive response.
@@ -1708,7 +1708,7 @@ from_client_msg(clicon_handle        h,
     if (cbuf_len(cbret) == 0)
         if (netconf_operation_failed(cbret, "application", clicon_errno?clicon_err_reason:"unknown")< 0)
             goto done;
-    clicon_debug(2, "%s cbret:%s", __FUNCTION__, cbuf_get(cbret));
+    // XXX    clicon_debug(CLIXON_DBG_MSG, "Reply:%s", cbuf_get(cbret));
     /* XXX problem here is that cbret has not been parsed so may contain 
        parse errors */
     if (send_msg_reply(ce->ce_s, cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
@@ -1731,7 +1731,7 @@ from_client_msg(clicon_handle        h,
     // ok:
     retval = 0;
   done:  
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xnacm){
         xml_free(xnacm);
         if (clicon_nacm_cache_set(h, NULL) < 0)
@@ -1768,7 +1768,7 @@ from_client(int   s,
     clicon_handle        h = ce->ce_handle;
     int                  eof = 0;
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (s != ce->ce_s){
         clicon_err(OE_NETCONF, EINVAL, "Internal error: s != ce->ce_s");
         goto done;
@@ -1782,7 +1782,7 @@ from_client(int   s,
             goto done;
     retval = 0;
   done:
-    clicon_debug(1, "%s retval=%d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval=%d", __FUNCTION__, retval);
     if (msg)
         free(msg);
     return retval; /* -1 here terminates backend */

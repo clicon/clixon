@@ -518,8 +518,7 @@ validate_common(clicon_handle       h,
                  &td->td_tcvec,     /* changed: wanted values */
                  &td->td_clen) < 0)
         goto done;
-    if (clicon_debug_get()>1)
-        transaction_print(stderr, td);
+    transaction_dbg(h, CLIXON_DBG_DEFAULT, td, __FUNCTION__);
     /* Mark as changed in tree */
     for (i=0; i<td->td_dlen; i++){ /* Also down */
         xn = td->td_dvec[i];

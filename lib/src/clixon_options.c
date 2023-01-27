@@ -211,7 +211,7 @@ parse_configfile_one(const char *filename,
         clicon_err(OE_UNIX, errno, "open configure file: %s", filename);
         return -1;
     }
-    clicon_debug(2, "%s: Reading config file %s", __FUNCTION__, filename);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: Reading config file %s", __FUNCTION__, filename);
     if ((ret = clixon_xml_parse_file(fp, yspec?YB_MODULE:YB_NONE, yspec, &xt, &xerr)) < 0)
         goto done;
     if (ret == 0){

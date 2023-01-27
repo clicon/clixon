@@ -241,7 +241,7 @@ backend_accept_client(int   fd,
     uid_t                guid;
 #endif
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     len = sizeof(from);
     if ((s = accept(fd, &from, &len)) < 0){
         clicon_err(OE_UNIX, errno, "accept");

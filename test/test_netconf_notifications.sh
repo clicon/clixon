@@ -22,7 +22,7 @@ NCWAIT=10 # Wait (netconf valgrind may need more time)
 DATE=$(date -u +"%Y-%m-%d")
 
 cfg=$dir/conf.xml
-fyang=$dir/stream.yang
+fyang=$dir/example.yang
 xml=$dir/xml.xml
 
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>

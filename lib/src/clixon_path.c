@@ -805,7 +805,7 @@ api_path2xpath_cvv(cvec       *api_path,
         nsc = NULL;
     }
  done:
-    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
         cbuf_free(cberr);
     if (valvec)
@@ -1120,7 +1120,7 @@ api_path2xml_vec(char      **vec,
  ok:
     retval = 1; /* OK */
  done:
-    clicon_debug(2, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
         cbuf_free(cberr);
     if (prefix)
@@ -1185,7 +1185,7 @@ api_path2xml(char       *api_path,
     cxobj *xroot;
     cbuf  *cberr = NULL;
 
-    clicon_debug(2, "%s api_path:%s", __FUNCTION__, api_path);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s api_path:%s", __FUNCTION__, api_path);
     if ((cberr = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;

@@ -115,7 +115,7 @@ clixon_plugin_reset_all(clicon_handle h,
     int             retval = -1;
     clixon_plugin_t  *cp = NULL;
     
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Loop through all plugins, call callbacks in each */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if (clixon_plugin_reset_one(cp, h, db) < 0)
@@ -176,7 +176,7 @@ clixon_plugin_pre_daemon_all(clicon_handle h)
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Loop through all plugins, call callbacks in each */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if (clixon_plugin_pre_daemon_one(cp, h) < 0)
@@ -238,7 +238,7 @@ clixon_plugin_daemon_all(clicon_handle h)
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
     
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Loop through all plugins, call callbacks in each */
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if (clixon_plugin_daemon_one(cp, h) < 0)
@@ -342,7 +342,7 @@ clixon_plugin_statedata_all(clicon_handle   h,
     cbuf            *cberr = NULL; 
     cxobj           *xerr = NULL;
     
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, &x)) < 0)
             goto done;
@@ -368,7 +368,7 @@ clixon_plugin_statedata_all(clicon_handle   h,
             x = NULL;
             continue;
         }
-        clicon_debug_xml(2, x, "%s %s STATE:", __FUNCTION__, clixon_plugin_name_get(cp));
+        clicon_debug_xml(CLIXON_DBG_DETAIL, x, "%s %s STATE:", __FUNCTION__, clixon_plugin_name_get(cp));
         /* XXX: ret == 0 invalid yang binding should be handled as internal error */
         if ((ret = xml_bind_yang(x, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
@@ -464,7 +464,7 @@ clixon_plugin_lockdb_all(clicon_handle h,
     int              retval = -1;
     clixon_plugin_t *cp = NULL;
     
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if (clixon_plugin_lockdb_one(cp, h, db, lock, id) < 0)
             goto done;
@@ -641,7 +641,7 @@ plugin_transaction_begin_all(clicon_handle       h,
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if (plugin_transaction_begin_one(cp, h, td) < 0)
             goto done;
@@ -976,7 +976,7 @@ plugin_transaction_end_all(clicon_handle h,
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if (plugin_transaction_end_one(cp, h, td) < 0)
             goto done;
@@ -1028,7 +1028,7 @@ plugin_transaction_abort_all(clicon_handle       h,
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if (plugin_transaction_abort_one(cp, h, td) < 0)
             ; /* dont abort on error */

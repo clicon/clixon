@@ -251,7 +251,7 @@ stream_timer_setup(int   fd,
     struct stream_replay        *r;
     struct stream_replay        *r1;
     
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Go thru callbacks and see if any have timed out, if so remove them 
      * Could also be done by a separate timer.
      */
@@ -502,7 +502,7 @@ stream_notify1(clicon_handle   h,
     int                         retval = -1;
     struct stream_subscription *ss;
     
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Go thru all subscriptions and find matches */
     if ((ss = es->es_subscription) != NULL)
         do {
@@ -557,7 +557,7 @@ stream_notify(clicon_handle h,
     struct timeval tv;
     event_stream_t *es;
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if ((es = stream_find(h, stream)) == NULL)
         goto ok;
     va_start(args, event);
@@ -633,7 +633,7 @@ stream_notify_xml(clicon_handle h,
     struct timeval tv;
     event_stream_t *es;
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if ((es = stream_find(h, stream)) == NULL)
         goto ok;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){

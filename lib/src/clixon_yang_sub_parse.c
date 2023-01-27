@@ -79,7 +79,7 @@ yang_subparse(char                      *str,
     int                    retval = -1;
     clixon_yang_sub_parse_yacc ife = {0,};
 
-    clicon_debug(2, "%s %s", __FUNCTION__, str);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, str);
     ife.if_parse_string = str;
     ife.if_linenum = linenum;
     if (enabled)
@@ -120,7 +120,7 @@ yang_schema_nodeid_subparse(char                      *str,
     int                         retval = -1;
     clixon_yang_schemanode_yacc ife = {0,};
 
-    clicon_debug(3, "%s %s", __FUNCTION__, str);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, str);
     ife.if_parse_string = str;
     ife.if_linenum = linenum;
     ife.if_mainfile = mainfile;

@@ -404,8 +404,8 @@ netconf_input_frame(clicon_handle h,
     int        ret;
     netconf_framing_type framing;
     
-    clicon_debug(1, "%s", __FUNCTION__);
-    clicon_debug(2, "%s: \"%s\"", __FUNCTION__, cbuf_get(cb));
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_MSG, "Recv ext: %s", cbuf_get(cb));
     framing = clicon_option_int(h, "netconf-framing");
     yspec = clicon_dbspec_yang(h);
     if ((str = strdup(cbuf_get(cb))) == NULL){
@@ -1011,8 +1011,7 @@ main(int    argc,
 #endif
     if (clixon_event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
         goto done;
-    if (dbg)
-        clicon_option_dump(h, dbg);
+    clicon_option_dump(h, 1);
     if (tv.tv_sec || tv.tv_usec){
         struct timeval t;
         gettimeofday(&t, NULL);

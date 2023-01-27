@@ -1589,7 +1589,9 @@ netconf_module_load(clicon_handle h)
     /* Load yang spec */
     if (yang_spec_parse_module(h, "ietf-netconf", NULL, yspec)< 0)
         goto done;
-    /* Load yang Netconf stream discovery */
+    /* Load yang Netconf stream discovery 
+     * Actually add by default since create-subscription is in this module
+     */
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277"))
         if (yang_spec_parse_module(h, "clixon-rfc5277", NULL, yspec)< 0)
             goto done;
@@ -1685,7 +1687,7 @@ netconf_db_find(cxobj *xn,
  *     printf("%s", cbuf_get(cb));
  *     cbuf_free(cb);
  * @endcode
- * @see clixon_netconf_error
+ * @see clixon_netconf_error_fn
  */
 int
 netconf_err2cb(cxobj *xerr,
@@ -1877,6 +1879,7 @@ netconf_hello_server(clicon_handle h,
  * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
  * @param[in]  format  Format string 
  * @param[in]  arg     String argument to format (optional)
+ * @see netconf_err2cb
  */
 int
 clixon_netconf_error_fn(const char *fn, 
@@ -2130,8 +2133,9 @@ netconf_output(int   s,
     char *buf = cbuf_get(cb);
     int   len = cbuf_len(cb);
 
-    clicon_debug(1, "SEND %s", msg);
-    if (clicon_debug_get() > 1){ /* XXX: below only works to stderr, clicon_debug may log to syslog */
+    clicon_debug(CLIXON_DBG_MSG, "Send ext: %s", cbuf_get(cb));
+#if 0 // Extra sanity check for debugging
+    {
         cxobj *xt = NULL;
         if (clixon_xml_parse_string(buf, YB_NONE, NULL, &xt, NULL) == 0){
             if (clixon_xml2file(stderr, xml_child_i(xt, 0), 0, 0, fprintf, 0, 0) < 0)
@@ -2140,6 +2144,7 @@ netconf_output(int   s,
             xml_free(xt);
         }
     }
+#endif
     if (write(s, buf, len) < 0){
         if (errno == EPIPE)
             clicon_debug(1, "%s write err SIGPIPE", __FUNCTION__);
@@ -2224,7 +2229,7 @@ netconf_input_chunked_framing(char    ch,
 {
     int retval = 0;
 
-    clicon_debug(2, "%s ch:%c(%d) state:%d size:%zu", __FUNCTION__, ch, ch, *state, *size);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s ch:%c(%d) state:%d size:%zu", __FUNCTION__, ch, ch, *state, *size);
     switch (*state){
     case 0:
         if (ch == '\n'){

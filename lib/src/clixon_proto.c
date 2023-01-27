@@ -189,12 +189,13 @@ clicon_msg_decode(struct clicon_msg *msg,
     char  *xmlstr;
     int    ret;
 
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* hdr */
     if (id)
         *id = ntohl(msg->op_id);
     /* body */
     xmlstr = msg->op_body;
-    clicon_debug(2, "%s %s", __FUNCTION__, xmlstr);
+    // XXX    clicon_debug(CLIXON_DBG_MSG, "Recv: %s", xmlstr);
     if ((ret = clixon_xml_parse_string(xmlstr, yspec?YB_RPC:YB_NONE, yspec, xml, xerr)) < 0)
         goto done;
     if (ret == 0)
@@ -229,7 +230,7 @@ clicon_connect_unix(clicon_handle h,
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, sockpath, sizeof(addr.sun_path)-1);
 
-    clicon_debug(2, "%s: connecting to %s", __FUNCTION__, addr.sun_path);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: connecting to %s", __FUNCTION__, addr.sun_path);
     if (connect(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
         if (errno == EACCES)
             clicon_err(OE_CFG, errno, "connecting unix socket: %s. "
@@ -292,16 +293,20 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
     return (pos);
 }
 
+#if 0 // Extra debug
 /*! Print message on debug. Log if syslog, stderr if not
  * @param[in]  msg    CLICON msg
  */
 static int
-msg_dump(struct clicon_msg *msg)
+msg_dump(int                dbglevel,
+         struct clicon_msg *msg)
 {
     int   retval = -1;
     cbuf *cb = NULL;
     int   i;
     
+    if ((dbglevel & clicon_debug_get()) == 0) /* compare debug level with global variable */
+        goto ok;
     if ((cb = cbuf_new()) == NULL){
         clicon_err(OE_CFG, errno, "cbuf_new");
         goto done;
@@ -310,7 +315,7 @@ msg_dump(struct clicon_msg *msg)
     for (i=0; i<ntohl(msg->op_len); i++){
         cprintf(cb, "%02x", ((char*)msg)[i]&0xff);
         if ((i+1)%32==0){
-            clicon_debug(2, "%s", cbuf_get(cb));
+            clicon_debug(CLIXON_DBG_DETAIL, "%s", cbuf_get(cb));
             cbuf_reset(cb);
             cprintf(cb, "%s:", __FUNCTION__);
         }
@@ -318,13 +323,15 @@ msg_dump(struct clicon_msg *msg)
             if ((i+1)%4==0)
                 cprintf(cb, " ");
     }
-    clicon_debug(2, "%s", cbuf_get(cb));
+    clicon_debug(dbglevel, "%s", cbuf_get(cb));
+ ok:
     retval = 0;
  done:
     if (cb)
         cbuf_free(cb);
     return retval;
 }
+#endif
 
 /*! Send a CLICON netconf message using internal IPC message
  *
@@ -339,10 +346,12 @@ clicon_msg_send(int                s,
     int retval = -1;
     int e;
 
-    clicon_debug(2, "%s: send msg len=%d", 
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: send msg len=%d", 
                  __FUNCTION__, ntohl(msg->op_len));
-    if (clicon_debug_get() > 2)
-        msg_dump(msg);
+#if 0 // Extra debug
+    msg_dump(CLIXON_DBG_EXTRA, msg);
+#endif
+    clicon_debug(CLIXON_DBG_MSG, "Send: %s", msg->op_body);
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
                  s, msg, ntohl(msg->op_len)) < 0){
         e = errno;
@@ -384,6 +393,7 @@ clicon_msg_rcv(int                s,
     sigfn_t   oldhandler;
     uint32_t  mlen;
 
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     *eof = 0;
     if (0)
         set_signal(SIGINT, atomicio_sig_handler, &oldhandler);
@@ -402,7 +412,7 @@ clicon_msg_rcv(int                s,
         goto done;
     }
     mlen = ntohl(hdr.op_len);
-    clicon_debug(2, "%s: rcv msg len=%d",  
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: rcv msg len=%d",  
                  __FUNCTION__, mlen);
     if ((*msg = (struct clicon_msg *)malloc(mlen)) == NULL){
         clicon_err(OE_CFG, errno, "malloc");
@@ -417,8 +427,10 @@ clicon_msg_rcv(int                s,
         clicon_err(OE_CFG, errno, "body too short");
         goto done;
     }
-    if (clicon_debug_get() > 2)
-        msg_dump(*msg);
+#if 0 // Extra debug
+    msg_dump(CLIXON_DBG_EXTRA, *msg);
+#endif
+    clicon_debug(CLIXON_DBG_MSG, "Recv: %s", (*msg)->op_body);
     retval = 0;
   done:
     if (0)
@@ -447,7 +459,7 @@ clicon_msg_rcv1(int   s,
     int           xml_state = 0;
     int           poll;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     *eof = 0;
     memset(buf, 0, sizeof(buf));
     while (1){
@@ -484,6 +496,7 @@ clicon_msg_rcv1(int   s,
            break; /* No data to read */
     } /* while */
  ok:
+    clicon_debug(CLIXON_DBG_MSG, "Recv: %s", cbuf_get(cb));
     retval = 0;
  done:
     clicon_debug(1, "%s done", __FUNCTION__);
@@ -502,6 +515,8 @@ clicon_msg_send1(int   s,
 { 
     int retval = -1;
 
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_MSG, "Send: %s", cbuf_get(cb));
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
                  s, cbuf_get(cb), cbuf_len(cb)) < 0){
         clicon_err(OE_CFG, errno, "atomicio");

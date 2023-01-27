@@ -43,10 +43,17 @@
 /*
  * Constants
  */
+/* Where to log (masks) */
 #define CLICON_LOG_SYSLOG 1 /* print logs on syslog */
 #define CLICON_LOG_STDERR 2 /* print logs on stderr */
 #define CLICON_LOG_STDOUT 4 /* print logs on stdout */
 #define CLICON_LOG_FILE   8 /* print logs on clicon_log_filename */
+
+/* Debug-level masks */
+#define CLIXON_DBG_DEFAULT 1 /* Default logs */
+#define CLIXON_DBG_MSG     2 /* In/out messages and datastore reads */
+#define CLIXON_DBG_DETAIL  4 /* Detailed logs */
+#define CLIXON_DBG_EXTRA   8 /* Extra Detailed logs */
 
 /*
  * Prototypes
