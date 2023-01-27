@@ -16,7 +16,6 @@ General Public License Version 2; you choose, see [LICENSE.md](LICENSE.md).
 Clixon has a master branch continuously tested with CI, but releases are made ca every second month. Latest 6.0.0 release is from November 2022. Next is planned for January 2023. See [CHANGELOG.md](CHANGELOG.md) release history.
 
 Clixon interaction is best done posting issues, pull requests, or joining the
-Matrix channels: https://matrix.to/#/#clixondev:matrix.org for general info and discussion, and
-https://matrix.to/#/#clixontech:matrix.org for technical details and issues.
+Matrix clixon forum https://matrix.to/#/#clixonforum:matrix.org.
 
 Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/) and [Akamai Technologies, Inc.](https://www.akamai.com).

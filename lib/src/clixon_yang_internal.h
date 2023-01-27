@@ -96,6 +96,7 @@ struct yang_stmt{
                                            types as <module>:<id> list
                                         Y_UNIQUE: vector of descendant schema node ids
                                         Y_EXTENSION: vector of instantiated UNKNOWNSo
+                                        Y_UNKNOWN: app-dep: yang-mount-points
                                      */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
     char              *ys_when_xpath; /* Special conditional for a "when"-associated augment/uses xpath */

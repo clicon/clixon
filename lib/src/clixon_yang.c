@@ -307,11 +307,10 @@ yang_cvec_set(yang_stmt *ys,
  * @retval    cv    The new cligen variable
  * @retval    NULL  Error
  */
-static cg_var *
+cg_var *
 yang_cvec_add(yang_stmt    *ys,
               enum cv_type type,
               char        *name)
-              
 {
     cg_var *cv;
     cvec   *cvv;
@@ -657,17 +656,26 @@ ys_free1(yang_stmt *ys,
     cg_var         *cv;
     rpc_callback_t *rc;
 
-    if (ys->ys_argument){
-        free(ys->ys_argument);
-        ys->ys_argument = NULL;
-    }
     if ((cv = yang_cv_get(ys)) != NULL){
         yang_cv_set(ys, NULL); /* only frees on replace */
         cv_free(cv);
     }
     if (ys->ys_cvec){
+#ifdef YANG_SCHEMA_MOUNT
+        /* Schema mount uses cvec in unknown to keep track of all yspecs
+         * Freed here once.
+         */
+        if (yang_keyword_get(ys) == Y_UNKNOWN &&
+            strcmp(yang_argument_get(ys), "yangmnt:mount-point")==0){
+            xml_yang_mount_freeall(ys->ys_cvec);
+        }
+#endif
         cvec_free(ys->ys_cvec);
         ys->ys_cvec = NULL;
+    }
+    if (ys->ys_argument){
+        free(ys->ys_argument);
+        ys->ys_argument = NULL;
     }
     if (ys->ys_typecache){
         yang_type_cache_free(ys->ys_typecache);
@@ -1131,16 +1139,7 @@ yang_find_datanode(yang_stmt *yn,
     yang_stmt *yspec;
     yang_stmt *ysmatch = NULL;
     char      *name;
-#ifdef YANG_SCHEMA_MOUNT
-    int ret;
-    
-    /* Sanity-check mount-point extension */
-    if ((ret = yang_schema_mount_point(yn)) < 0)
-        goto done;
-    if (ret == 1){
-        ; // NYI
-    }
-#endif
+
     ys = NULL;
     while ((ys = yn_each(yn, ys)) != NULL){
         if (yang_keyword_get(ys) == Y_CHOICE){ /* Look for its children */
@@ -1904,7 +1903,7 @@ yang_spec_print(FILE      *f,
         fprintf(f, "%s", yang_key2str(ym->ys_keyword));
         fprintf(f, " %s", ym->ys_argument);
         if ((yrev = yang_find(ym, Y_REVISION, NULL)) != NULL){
-            fprintf(f, "@%u", cv_uint32_get(yang_cv_get(yrev)));
+            fprintf(f, "@%s", yang_argument_get(yrev));
         }
         fprintf(f, ".yang");
         fprintf(f, "\n");
@@ -2754,10 +2753,6 @@ ys_populate_unknown(clicon_handle h,
         clicon_debug(1, "plugin_extension() failed");
         return -1;
     }
-#endif
-#ifdef YANG_SCHEMA_MOUNT
-    if (yang_schema_unknown(h, yext, ys) < 0)
-        goto done;
 #endif
     /* Make extension callbacks that may alter yang structure 
      * Note: this may be a "layering" violation: assuming plugins are loaded

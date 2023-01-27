@@ -433,6 +433,7 @@ clicon_msg_rcv(int                s,
     clicon_debug(CLIXON_DBG_MSG, "Recv: %s", (*msg)->op_body);
     retval = 0;
   done:
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (0)
         set_signal(SIGINT, oldhandler, NULL);
     return retval;
@@ -643,6 +644,7 @@ clicon_rpc(int                sock,
     struct clicon_msg *reply = NULL;
     char              *data = NULL;
 
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (clicon_msg_send(sock, msg) < 0)
         goto done;
     if (clicon_msg_rcv(sock, &reply, eof) < 0)
@@ -658,6 +660,7 @@ clicon_rpc(int                sock,
  ok:
     retval = 0;
   done:
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (reply)
         free(reply);
     return retval;

@@ -547,9 +547,9 @@ plugin_context_get(void)
  * @param[in,out] wh     Either: NULL for init, will be assigned, OR previous handle (will be freed)
  * @param[in]     name   Name of plugin for logging. Can be other name, context dependent
  * @param[in]     fn     Typically name of callback, or caller function
- * @retval       -1      Error
- * @retval        0      Fail, log on syslog using LOG_WARNING
  * @retval        1      OK
+ * @retval        0      Fail, log on syslog using LOG_WARNING
+ * @retval       -1      Error
  * @note Only logs error, does not generate error
  * @note name and fn are context dependent, since the env of callback calls are very different
  * @see plugin_context_get
@@ -786,9 +786,9 @@ clixon_plugin_exit_all(clicon_handle h)
  * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
  *                       String: Credentials OK, the associated user, must be mallloc:ed
  *                       Parameter signtificant only if retval is 1/OK
- * @retval    -1         Fatal error
- * @retval     0         Ignore, undecided, not handled, same as no callback
  * @retval     1         OK, see authp parameter on result.
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval    -1         Fatal error
  * @note If authenticated either a callback was called and clicon_username_set() 
  *       Or no callback was found.
  */
@@ -833,9 +833,9 @@ clixon_plugin_auth_one(clixon_plugin_t     *cp,
  * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
  *                       String: Credentials OK, the associated user, must be mallloc:ed
  *                       Parameter signtificant only if retval is 1/OK
- * @retval    -1         Fatal error
- * @retval     0         Ignore, undecided, not handled, same as no callback
  * @retval     1         OK, see authp parameter for result.
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval    -1         Fatal error
  * @note If authp returns string, it should be malloced
  */
 int
@@ -981,8 +981,8 @@ clixon_plugin_datastore_upgrade_one(clixon_plugin_t   *cp,
  * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
  * @param[in] xt   XML tree. Upgrade this "in place"
  * @param[in] msd  Module-state diff, info on datastore module-state
- * @retval   -1    Error
  * @retval    0    OK
+ * @retval   -1    Error
  * Upgrade datastore on load before or as an alternative to module-specific upgrading mechanism
  */
 int
@@ -997,6 +997,72 @@ clixon_plugin_datastore_upgrade_all(clicon_handle    h,
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if (clixon_plugin_datastore_upgrade_one(cp, h, db, xt, msd) < 0)
             goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Call plugin YANG schema mount
+ *
+
+ * (No need to be yang bound?
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       Clixon handle
+ * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] yanglib XML yang-lib module-set tree
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_plugin_yang_mount_one(clixon_plugin_t *cp,
+                             clicon_handle    h,
+                             cxobj           *xt,
+                             cxobj          **yanglib)
+{
+    int           retval = -1;
+    yang_mount_t *fn;
+    void         *wh = NULL;
+    
+    if ((fn = cp->cp_api.ca_yang_mount) != NULL){
+        wh = NULL;
+        if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+            goto done;
+        if (fn(h, xt, yanglib) < 0) {
+            if (clicon_errno < 0) 
+                clicon_log(LOG_WARNING, "%s: Internal error: Yang mount callback in plugin: %s returned -1 but did not make a clicon_err call",
+                           __FUNCTION__, cp->cp_name);
+            goto done;
+        }
+        if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Call plugin YANG schema mount in all plugins, break at first return
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] yanglib XML yang-lib module-set tree (freed by caller)
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_plugin_yang_mount_all(clicon_handle h,
+                             cxobj        *xt,
+                             cxobj       **yanglib)
+{
+    int            retval = -1;
+    clixon_plugin_t *cp = NULL;
+    
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+        if (clixon_plugin_yang_mount_one(cp, h, xt, yanglib) < 0)
+            goto done;
+        if (*yanglib)
+            break;
     }
     retval = 0;
  done:
@@ -1166,7 +1232,7 @@ rpc_callback_call(clicon_handle h,
         *nrp = nr;
     retval = 1; /* 0: none found, >0 nr of handlers called */
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     return retval;
  fail:
     retval = 0;
@@ -1373,9 +1439,9 @@ upgrade_callback_delete_all(clicon_handle h)
  * @param[in]  from    From revision on the form YYYYMMDD (if DEL or CHANGE)
  * @param[in]  to      To revision on the form YYYYMMDD (if ADD or CHANGE)
  * @param[out] cbret   Return XML (as string in CLIgen buffer), on invalid
- * @retval -1  Error
- * @retval  0  Invalid - cbret contains reason as netconf
  * @retval  1  OK
+ * @retval  0  Invalid - cbret contains reason as netconf
+ * @retval -1  Error
  * @see upgrade_callback_reg_fn  which registers the callbacks
  */
 int

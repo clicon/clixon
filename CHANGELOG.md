@@ -43,11 +43,14 @@ Expected: beginning of 2023
 
 ### New features
 
-* YANG schema mount RFC 8528 (work in progress)
+* YANG schema mount RFC 8528
+  * Experimental
   * Restrictions:
-    * only schema-ref=inline, not shared-schema
+    * Only schema-ref=inline, not shared-schema
+    * Only presence containers can be mount-points
+  * New plugin callback: `ca_yang_mount`
   * Standards: RFC 8528
-  * Enable `YANG_SCHEMA_MOUNT`
+  * To enable: define `YANG_SCHEMA_MOUNT`
 * Netconf monitoring RFC 6022 , part 2
   * Datastores and sessions
     * Added clixon-specific transport identities: cli, snmp, netconf, restconf

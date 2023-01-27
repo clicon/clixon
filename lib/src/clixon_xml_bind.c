@@ -69,6 +69,8 @@
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
+#include "clixon_yang_schema_mount.h"
+#include "clixon_plugin.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
@@ -451,7 +453,34 @@ xml_bind_yang0_opt(clicon_handle h,
         goto ok;
     strip_body_objects(xt);
     ybc = YB_PARENT;
+#ifdef YANG_SCHEMA_MOUNT // Maybe in populate?
+    yspec1 = NULL;
+    if ((ret = xml_yang_mount_get(xt, &yspec1)) < 0)
+        goto done;
+    if (ret == 0)
+        yspec1 = yspec;
+    else{
+        if (yspec1)
+            ybc = YB_MODULE;
+        else if (h == NULL)
+            goto ok; /* treat as anydata */
+        else{
+            if ((ret = yang_schema_yanglib_parse_mount(h, xt)) < 0)
+                goto done;
+            if (ret == 0)
+                goto ok;
+            /* Try again */
+            if ((ret = xml_yang_mount_get(xt, &yspec1)) < 0)
+                goto done;
+            if (yspec1)
+                ybc = YB_MODULE;
+            else
+                goto ok;
+        }
+    }
+#else
     yspec1 = yspec;
+#endif
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
         /* It is xml2ns in populate_self_parent that needs improvement */

@@ -75,6 +75,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_type.h"
 #include "clixon_yang_module.h"
+#include "clixon_yang_schema_mount.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_io.h"
 #include "clixon_xml_default.h"
@@ -854,21 +855,25 @@ text_modify(clicon_handle       h,
             while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) { 
                 x1cname = xml_name(x1c);
                 /* Get yang spec of the child by child matching */
-                yc = yang_find_datanode(y0, x1cname);
-                if (yc == NULL){
-                    if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
-                        /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
-                        if ((yc = yang_anydata_add(y0, x1cname)) < 0)
-                            goto done;
-                        xml_spec_set(x1c, yc);
-                        clicon_log(LOG_WARNING,
-                                   "%s: %d: No YANG spec for %s, anydata used",
-                                   __FUNCTION__, __LINE__, x1cname);
-                    }
-                    else{
-                        if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
-                            goto done;
-                        goto fail;
+                if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
+#ifdef YANG_SCHEMA_MOUNT
+                    yc = xml_spec(x1c);
+#endif
+                    if (yc == NULL){
+                        if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
+                            /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
+                            if ((yc = yang_anydata_add(y0, x1cname)) < 0)
+                                goto done;
+                            xml_spec_set(x1c, yc);
+                            clicon_log(LOG_WARNING,
+                                       "%s: %d: No YANG spec for %s, anydata used",
+                                       __FUNCTION__, __LINE__, x1cname);
+                        }
+                        else{
+                            if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
+                                goto done;
+                            goto fail;
+                        }
                     }
                 }
                 /* There is a cornercase (eg augment) of multi-namespace trees where
@@ -898,8 +903,11 @@ text_modify(clicon_handle       h,
             while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
                 x0c = x0vec[i++];
                 x1cname = xml_name(x1c);
-
-                yc = yang_find_datanode(y0, x1cname);
+                if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
+#ifdef YANG_SCHEMA_MOUNT
+                    yc = xml_spec(x1c);
+#endif
+                }
                 if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
                                        yc, op,
                                        username, xnacm, permit, cbret)) < 0)

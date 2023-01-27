@@ -298,7 +298,7 @@ get_statedata(clicon_handle     h,
             goto fail;
     }
 #ifdef YANG_SCHEMA_MOUNT
-    if ((ret = schema_mounts_state_get(h, yspec, xpath, nsc, xret, &xerr)) < 0)
+    if ((ret = yang_schema_mount_statedata(h, yspec, xpath, nsc, xret, &xerr)) < 0)
         goto done;
     if (ret == 0){
         if (clixon_netconf_internal_error(xerr, " . Internal error, schema_mounts_state_get returned invalid XML", NULL) < 0)

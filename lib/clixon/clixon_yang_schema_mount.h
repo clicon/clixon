@@ -44,12 +44,26 @@
  */
 #define YANG_SCHEMA_MOUNT_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount"
 
+/* Limitations/deviations from RFC 8528 */
+/*! Only support YANG presende containers as mount-points
+ * This is a limitation of othe current implementation
+ */
+#define YANG_SCHEMA_MOUNT_ONLY_PRESENCE_CONTAINERS
+
+/*! Force add ietf-yang-library@2019-01-04 on all mount-points
+ * This is a limitation of othe current implementation
+ */
+#define YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
+
 /*
  * Prototypes
  */
 int yang_schema_mount_point(yang_stmt *y);
-
-int schema_mounts_state_get(clicon_handle h, yang_stmt *yspec, char *xpath, cvec *nsc, cxobj **xret, cxobj **xerr);
-int yang_schema_unknown(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+int xml_yang_mount_get(cxobj *x, yang_stmt **yspec);
+int xml_yang_mount_set(cxobj *x,  yang_stmt *yspec);
+int xml_yang_mount_freeall(cvec *cvv);
+int yang_schema_mount_statedata(clicon_handle h, yang_stmt *yspec, char *xpath, cvec *nsc, cxobj **xret, cxobj **xerr);
+int yang_schema_yanglib_parse_mount(clicon_handle h, cxobj *xt);
+int yang_schema_get_child(clicon_handle h, cxobj *x1, cxobj *x1c, yang_stmt **yc);
 
 #endif  /* _CLIXON_YANG_SCHEMA_MOUNT_H_ */

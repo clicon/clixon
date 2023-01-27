@@ -880,6 +880,50 @@ example_upgrade(clicon_handle    h,
     return retval;
 }
 
+/*! Example YANG schema mount
+ *
+ * Given an XML mount-point xt, return XML yang-lib modules-set
+ * @param[in]  h       Clixon handle
+ * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] yanglib XML yang-lib module-set tree
+ * @retval     0       OK
+ * @retval    -1       Error
+ * XXX hardcoded to clixon-example@2022-11-01.yang regardless of xt
+ * @see RFC 8528
+ */
+int
+main_yang_mount(clicon_handle h,
+                cxobj        *xt,
+                cxobj       **yanglib)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
+    cprintf(cb, "<module-set>");
+    cprintf(cb, "<name>mount</name>");
+    cprintf(cb, "<module>");
+    cprintf(cb, "<name>clixon-example</name>");
+    cprintf(cb, "<revision>2022-11-01</revision>");
+    cprintf(cb, "<namespace>urn:example:urn</namespace>");
+    cprintf(cb, "</module>");
+    cprintf(cb, "</module-set>");
+    cprintf(cb, "</yang-library>");
+    if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, yanglib, NULL) < 0)
+        goto done;
+    if (xml_rootchild(*yanglib, 0, yanglib) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
 /*! Testcase module-specific upgrade function moving interfaces-state to interfaces
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
@@ -1302,6 +1346,7 @@ static clixon_plugin_api api = {
     .ca_trans_end=main_end,                 /* trans end */
     .ca_trans_abort=main_abort,             /* trans abort */
     .ca_datastore_upgrade=example_upgrade,  /* general-purpose upgrade. */
+    .ca_yang_mount=main_yang_mount          /* RFC 8528 schema mount */
 };
 
 /*! Backend plugin initialization

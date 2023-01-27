@@ -11,7 +11,6 @@ if true; then # enable YANG_SCHEMA_MOUNT
     if [ -z "${CLIXON_YANG_PATCH}" -a "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
-
 APPNAME=example
 
 cfg=$dir/conf_mount.xml
@@ -33,6 +32,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_NETCONF_MONITORING>true</CLICON_NETCONF_MONITORING>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
+  <CLICON_STREAM_DISCOVERY_RFC5277>true</CLICON_STREAM_DISCOVERY_RFC5277>
 </clixon-config>
 EOF
 
@@ -45,13 +45,16 @@ module clixon-example{
     prefix yangmnt;
   }
   container top{
-    list root{
+    list mylist{
       key name;
       leaf name{
         type string;
       }
-      yangmnt:mount-point "myroot"{
-         description "Root for other yang models";
+      container root{
+         presence "Otherwise root is not visible";
+         yangmnt:mount-point "myroot"{
+            description "Root for other yang models";
+         }
       }
     }
   }
@@ -73,19 +76,19 @@ fi
 new "wait backend"
 wait_backend
 
-new "Add two mountpoints: x and y"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><root><name>x</name></root><root><name>y</name></root></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
+new "Add two mountpoints: x and y"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root/></mylist><mylist><name>y</name><root/></mylist></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 new "netconf commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Retrieve schema-mounts with <get> Operation"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\"></schema-mounts></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\"><mount-point><module>clixon-example</module><label>myroot</label><config>true</config><inline/></mount-point></schema-mounts></data></rpc-reply>"
 
-if true; then
 new "get yang-lib at mountpoint"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><top xmlns=\"urn:example:clixon\"><root></root></top>></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><top xmlns=\"urn:example:clixon\"><root><name>x</name></root><root><name>y</name></root></top></data></rpc-reply>"
-fi
+# XXX maybe too many yangs here, difficult to maintain
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><top xmlns=\"urn:example:clixon\"><mylist/></top>></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root>
+<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>default</name><module><name>clixon-autocli</name><revision>2022-02-11</revision><namespace>http://clicon.org/autocli</namespace></module><module><name>clixon-example</name><revision>2022-11-01</revision><namespace>urn:example:clixon</namespace></module><module><name>ietf-datastores</name><revision>2018-02-14</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace></module><module><name>ietf-inet-types</name><revision>2021-02-22</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace></module><module><name>ietf-yang-library</name><revision>2019-01-04</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace></module><module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace></module></module-set><content-id>mount-point</content-id></yang-library></root></mylist><mylist><name>y</name><root><yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>default</name><module><name>clixon-autocli</name><revision>2022-02-11</revision><namespace>http://clicon.org/autocli</namespace></module><module><name>clixon-example</name><revision>2022-11-01</revision><namespace>urn:example:clixon</namespace></module><module><name>ietf-datastores</name><revision>2018-02-14</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace></module><module><name>ietf-inet-types</name><revision>2021-02-22</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace></module><module><name>ietf-yang-library</name><revision>2019-01-04</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace></module><module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace></module></module-set><content-id>mount-point</content-id></yang-library></root></mylist></top></data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -97,7 +100,6 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
-
 
 rm -rf $dir
 

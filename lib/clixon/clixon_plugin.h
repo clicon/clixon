@@ -269,6 +269,26 @@ typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
  */
 typedef int (datastore_upgrade_t)(clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 
+/*! YANG schema mount
+ *
+ * Given an XML mount-point xt, return XML yang-lib modules-set
+ * Return yanglib as XML tree on the RFC8525 form: 
+ *   <yang-library>
+ *      <module-set>
+ *         <module>...</module>
+ *         ...
+ *      </module-set>
+ *   </yang-library>
+ * No need to YANG bind.
+ * @param[in]  h       Clixon handle
+ * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] yanglib XML yang-lib module-set tree. Freed by caller.
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see RFC 8528 (schema-mount) and RFC 8525 (yang-lib)
+ */
+typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, cxobj **yanglib);
+
 /*! Startup status for use in startup-callback
  * Note that for STARTUP_ERR and STARTUP_INVALID, running runs in failsafe mode
  * and startup contains the erroneous or invalid database.
@@ -322,6 +342,7 @@ struct clixon_plugin_api{
             trans_cb_t       *cb_trans_end;      /* Transaction completed  */
             trans_cb_t       *cb_trans_abort;    /* Transaction aborted */
             datastore_upgrade_t *cb_datastore_upgrade; /* General-purpose datastore upgrade */
+            yang_mount_t     *cb_yang_mount;      /* RFC 8528 schema mount */
         } cau_backend;
     } u;
 };
@@ -344,6 +365,7 @@ struct clixon_plugin_api{
 #define ca_trans_end      u.cau_backend.cb_trans_end
 #define ca_trans_abort    u.cau_backend.cb_trans_abort
 #define ca_datastore_upgrade  u.cau_backend.cb_datastore_upgrade
+#define ca_yang_mount     u.cau_backend.cb_yang_mount
 
 /*
  * Macros
@@ -418,6 +440,9 @@ int clixon_plugin_extension_all(clicon_handle h, yang_stmt *yext, yang_stmt *ys)
 
 int clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp, clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 int clixon_plugin_datastore_upgrade_all(clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
+
+int clixon_plugin_yang_mount_one(clixon_plugin_t *cp, clicon_handle h, cxobj *xt, cxobj **yanglib);
+int clixon_plugin_yang_mount_all(clicon_handle h, cxobj *xt, cxobj **yanglib);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);

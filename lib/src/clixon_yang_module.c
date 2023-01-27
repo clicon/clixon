@@ -210,8 +210,10 @@ yang_modules_state_build(clicon_handle    h,
     yang_stmt  *ysub;
     char       *name;
 
-    if ((ylib = yang_find(yspec, Y_MODULE, module)) == NULL &&
-        (ylib = yang_find(yspec, Y_SUBMODULE, module)) == NULL){
+    /* In case of several mountpoints, this is always the top-level */
+    if ((ylib = yang_find(yspec, Y_MODULE, module)) == NULL
+        /* &&        (ylib = yang_find(yspec0, Y_SUBMODULE, module)) == NULL */
+        ){
             clicon_err(OE_YANG, 0, "%s not found", module);
             goto done;
         }
@@ -219,7 +221,6 @@ yang_modules_state_build(clicon_handle    h,
         clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
         goto done;
     }
-
     if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
         cprintf(cb,"<modules-state xmlns=\"%s\">", yang_argument_get(yns));
         cprintf(cb,"<module-set-id>%s</module-set-id>", msid);
@@ -671,7 +672,7 @@ yang_find_module_by_namespace_revision(yang_stmt  *yspec,
  * @note a module may have many revisions, but only the first is significant
  */
 yang_stmt *
-yang_find_module_by_name_revision(yang_stmt  *yspec, 
+yang_find_module_by_name_revision(yang_stmt  *yspec,
                                   const char *name,
                                   const char *rev)
 {
@@ -823,4 +824,56 @@ yang_metadata_init(clicon_handle h)
     retval = 0;
  done:
     return retval;
+}
+
+/*! Given a yang-lib module-set XML tree, parse all modules into an yspec
+ * 
+ * This function is used where a yang-lib module-set is available to populate an
+ * XML mount-point.
+ * @param[in] h      Clicon handle
+ * @param[in] xylib  yang-lib XML tree on the form <yang-lib>...
+ * @param[in] yspec  Will be populated with YANGs, is consumed
+ * @retval    1      OK
+ * @retval    0      Parse error
+ * @retval    -1     Error
+ * @see xml_schema_add_mount_points
+ */
+int
+yang_lib2yspec(clicon_handle h,
+               cxobj        *yanglib,
+               yang_stmt    *yspec)
+{
+    int        retval = -1;
+    cxobj     *xi;
+    char      *name;
+    char      *revision;
+    cvec      *nsc = NULL;
+    cxobj    **vec = NULL;
+    size_t     veclen;
+    int        i;
+
+    if (xpath_vec(yanglib, nsc, "module-set/module", &vec, &veclen) < 0) 
+        goto done;
+    for (i=0; i<veclen; i++){
+        xi = vec[i];
+        if ((name = xml_find_body(xi, "name")) == NULL)
+            continue;
+        if ((revision = xml_find_body(xi, "revision")) == NULL)
+            continue;
+        if (yang_spec_parse_module(h, name, revision, yspec) < 0)
+            goto fail;
+    }
+#ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
+    /* XXX: Ensure yang-lib is always there otherwise get state dont work for mountpoint */
+    if (yang_spec_parse_module(h, "ietf-yang-library", "2019-01-04", yspec) < 0)
+        goto fail;
+#endif
+    retval = 1;
+ done:
+    if (vec)
+        free(vec);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }

@@ -78,5 +78,6 @@ yang_stmt *yang_find_module_by_name_revision(yang_stmt *yspec, const char *name,
 yang_stmt *yang_find_module_by_name(yang_stmt *yspec, char *name);
 int        yang_metadata_annotation_check(cxobj *x, yang_stmt *ymod, int *ismeta);
 int        yang_metadata_init(clicon_handle h);
+int        yang_lib2yspec(clicon_handle h, cxobj *yanglib,yang_stmt *yspec);
 
 #endif  /* _CLIXON_YANG_MODULE_H_ */

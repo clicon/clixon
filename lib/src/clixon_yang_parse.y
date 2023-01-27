@@ -1028,11 +1028,14 @@ value_stmt   : K_VALUE integer_value_str stmtend
               ;
 
 /* Grouping */
-grouping_stmt  : K_GROUPING identifier_str 
+grouping_stmt  : K_GROUPING identifier_str ';'
+                    { if (ysp_add(_yy, Y_GROUPING, $2, NULL) == NULL) _YYERROR("grouping_stmt");
+                      _PARSE_DEBUG("grouping-stmt -> GROUPING id-arg-str ;"); }
+               | K_GROUPING identifier_str 
                     { if (ysp_add_push(_yy, Y_GROUPING, $2, NULL) == NULL) _YYERROR("grouping_stmt"); }
                '{' grouping_substmts '}' 
                     { if (ystack_pop(_yy) < 0) _YYERROR("grouping_stmt");
-                             _PARSE_DEBUG("grouping-stmt -> GROUPING id-arg-str { grouping-substmts }"); }
+                      _PARSE_DEBUG("grouping-stmt -> GROUPING id-arg-str { grouping-substmts }"); }
               ;
 
 grouping_substmts : grouping_substmts grouping_substmt 

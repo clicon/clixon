@@ -192,8 +192,8 @@
  */
 #undef NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL
 
-/*! Development option for RFC 8528 YANG schema mount
- * Work-in-progress
+/*! RFC 8528 YANG schema mount
+ * Experimental
  * See also test/test_yang_schema_mount.sh
  */
 #undef YANG_SCHEMA_MOUNT
