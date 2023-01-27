@@ -487,7 +487,7 @@ from_client_edit_config(clicon_handle h,
         xml_spec_set(xc, NULL);
     /* Populate XML with Yang spec (why not do this in parser?) 
      */
-    if ((ret = xml_bind_yang(xc, YB_MODULE, yspec, &xret)) < 0)
+    if ((ret = xml_bind_yang(h, xc, YB_MODULE, yspec, &xret)) < 0)
         goto done;
     if (ret == 0){
         if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)

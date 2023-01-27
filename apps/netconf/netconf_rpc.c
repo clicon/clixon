@@ -650,7 +650,7 @@ netconf_application_rpc(clicon_handle h,
         if ((youtput = yang_find(yrpc, Y_OUTPUT, NULL)) != NULL){
             xoutput=xpath_first(*xret, NULL, "/");
             xml_spec_set(xoutput, youtput); /* needed for xml_bind_yang */
-            if ((ret = xml_bind_yang(xoutput, YB_MODULE, yspec, &xerr)) < 0)
+            if ((ret = xml_bind_yang(h, xoutput, YB_MODULE, yspec, &xerr)) < 0)
                 goto done;
             if (ret > 0 && (ret = xml_yang_validate_all_top(h, xoutput, &xerr)) < 0)
                 goto done;

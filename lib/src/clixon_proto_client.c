@@ -449,7 +449,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
         xml_find_type(xreply, NULL, "rpc-error", CX_ELMNT) == NULL){
         yspec = clicon_dbspec_yang(h);
         /* Here use rpc name to bind to yang */
-        if ((ret = xml_bind_yang_rpc_reply(xreply, rpcname, yspec, &xerr)) < 0) 
+        if ((ret = xml_bind_yang_rpc_reply(h, xreply, rpcname, yspec, &xerr)) < 0) 
             goto done;
         if (ret == 0){
             /* Replace reply with error */
@@ -573,7 +573,7 @@ clicon_rpc_get_config(clicon_handle h,
     else{
         if (xml_bind_special(xd, yspec, "/nc:get-config/output/data") < 0)
             goto done;
-        if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
+        if ((ret = xml_bind_yang(h, xd, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if (clixon_netconf_internal_error(xerr,
@@ -1020,7 +1020,7 @@ clicon_rpc_get(clicon_handle   h,
     else{
         if (xml_bind_special(xd, yspec, "/nc:get/output/data") < 0)
             goto done;
-        if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
+        if ((ret = xml_bind_yang(h, xd, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if (clixon_netconf_internal_error(xerr,
@@ -1184,7 +1184,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     else{
         if (xml_bind_special(xd, yspec, "/nc:get/output/data") < 0)
             goto done;
-        if ((ret = xml_bind_yang(xd, YB_MODULE, yspec, &xerr)) < 0)
+        if ((ret = xml_bind_yang(h, xd, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if (clixon_netconf_internal_error(xerr,

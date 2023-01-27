@@ -144,7 +144,7 @@ clicon_files_recursive(const char *dir,
     int     res = 0;
     char    errbuf[128];
  
-    clicon_debug(2, "%s dir:%s", __FUNCTION__, dir);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s dir:%s", __FUNCTION__, dir);
     if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
         regerror(res, &re, errbuf, sizeof(errbuf));
         clicon_err(OE_DB, 0, "regcomp: %s", errbuf);
@@ -238,7 +238,7 @@ clicon_file_dirent(const char     *dir,
            clicon_err(OE_UNIX, errno, "realloc");
            goto quit;
        } /* realloc */
-       clicon_debug(2, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
+       clicon_debug(CLIXON_DBG_DETAIL, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
        /* man (3) readdir: 
         * By implication, the  use sizeof(struct dirent) to capture the size of the record including 
         * the size of d_name is also incorrect. */

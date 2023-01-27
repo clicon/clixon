@@ -1416,7 +1416,7 @@ rpc_reply_check(clicon_handle h,
     }
     if (xml_rootchild(x, 0, &x) < 0)
         goto done;
-    if ((ret = xml_bind_yang_rpc_reply(x, rpcname, yspec, &xret)) < 0)
+    if ((ret = xml_bind_yang_rpc_reply(h, x, rpcname, yspec, &xret)) < 0)
         goto done;
     if (ret == 0){
         clicon_debug(1, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));

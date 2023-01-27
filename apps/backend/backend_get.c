@@ -761,7 +761,7 @@ get_list_pagination(clicon_handle        h,
         }
 
         /* System makes the binding */
-        if ((ret = xml_bind_yang(xret, YB_MODULE, yspec, &xerr)) < 0)
+        if ((ret = xml_bind_yang(h, xret, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
             clicon_debug_xml(1, xret, "Yang bind pagination state");

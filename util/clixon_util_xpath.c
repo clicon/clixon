@@ -321,7 +321,7 @@ main(int    argc,
     /* Validate XML as well */
     if (yang_file_dir){
         /* Populate */
-        if ((ret = xml_bind_yang(x0, YB_MODULE, yspec, &xerr)) < 0)
+        if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if ((cbret = cbuf_new()) ==NULL){

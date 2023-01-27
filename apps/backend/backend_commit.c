@@ -231,7 +231,7 @@ startup_common(clicon_handle       h,
     /* Print upgraded db: -q backend switch for debugging/ showing upgraded config only */
     if (clicon_quit_upgrade_get(h) == 1){
         /* bind yang */
-        if ((ret = xml_bind_yang(xt, YB_MODULE, yspec, &xret)) < 1){
+        if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xret)) < 1){
             if (ret == 0){
                 /* invalid */
                 clicon_err(OE_XML, EFAULT, "invalid configuration");
@@ -257,7 +257,7 @@ startup_common(clicon_handle       h,
         goto ok;
     }
     /* After upgrading, XML tree needs to be sorted and yang spec populated */
-    if ((ret = xml_bind_yang(xt, YB_MODULE, yspec, &xret)) < 0)
+    if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xret)) < 0)
         goto done;
     if (ret == 0){
         if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)

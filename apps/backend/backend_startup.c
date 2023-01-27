@@ -237,7 +237,7 @@ load_extraxml(clicon_handle h,
     if (xt)
         xml_name_set(xt, NETCONF_INPUT_CONFIG);
     /* Now we can yang bind */
-    if ((ret = xml_bind_yang(xt, YB_MODULE, yspec, &xerr)) < 0)
+    if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xerr)) < 0)
         goto done;
     if (ret == 0){
         if (netconf_err2cb(xerr, cbret) < 0)

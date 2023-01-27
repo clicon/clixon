@@ -579,14 +579,14 @@ _xml_parse(const char *str,
             /* xt:n         Has spec
              * x:   <a> <-- populate from parent
              */
-            if ((ret = xml_bind_yang0(x, YB_PARENT, NULL, xerr)) < 0)
+            if ((ret = xml_bind_yang0(NULL, x, YB_PARENT, NULL, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
             break;
 
         case YB_MODULE_NEXT:
-            if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang(NULL, x, YB_MODULE, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
@@ -595,13 +595,13 @@ _xml_parse(const char *str,
             /* xt:<top>     nospec
              * x:   <a> <-- populate from modules
              */
-            if ((ret = xml_bind_yang0(x, YB_MODULE, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang0(NULL, x, YB_MODULE, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
             break;
         case YB_RPC:
-            if ((ret = xml_bind_yang_rpc(x, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang_rpc(NULL, x, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0){ /* Add message-id */
                 if (*xerr && clixon_xml_attr_copy(x, *xerr, "message-id") < 0)

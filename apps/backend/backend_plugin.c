@@ -370,7 +370,7 @@ clixon_plugin_statedata_all(clicon_handle   h,
         }
         clicon_debug_xml(CLIXON_DBG_DETAIL, x, "%s %s STATE:", __FUNCTION__, clixon_plugin_name_get(cp));
         /* XXX: ret == 0 invalid yang binding should be handled as internal error */
-        if ((ret = xml_bind_yang(x, YB_MODULE, yspec, &xerr)) < 0)
+        if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if (clixon_netconf_internal_error(xerr,

@@ -598,7 +598,7 @@ api_operations_post_output(clicon_handle h,
     if (youtput != NULL){
         xml_spec_set(xoutput, youtput); /* needed for xml_bind_yang */
 #ifdef notyet
-        if ((ret = xml_bind_yang(xoutput, YB_MODULE, yspec, &xerr)) < 0)
+        if ((ret = xml_bind_yang(h, xoutput, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret > 0 && (ret = xml_yang_validate_all(xoutput, &xerr)) < 0)
             goto done;
@@ -798,7 +798,7 @@ api_operations_post(clicon_handle h,
     clicon_debug_xml(1, xtop, "%s 5. Translate input args:", __FUNCTION__);
 #endif
     /* 6. Validate outgoing RPC and fill in defaults */
-    if ((ret = xml_bind_yang_rpc(xtop, yspec, &xerr)) < 0) /*  */
+    if ((ret = xml_bind_yang_rpc(h, xtop, yspec, &xerr)) < 0) /*  */
         goto done;
     if (ret == 0){
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)

@@ -82,6 +82,7 @@ Developers may need to change their code
     * Added netconf ssh subsystem
     * Renamed from `clixon` built in `docker/base`
 * C-API
+  * Added `clicon_handle` parameter to all `xml_bind_*` calls
   * All calls to `clicon_log_xml()` changed to new function `clicon_debug_xml()`
   * Changed type of `veclen` parameter to `size_t` in `xpath_vec_flag()`
   * Added `with-defaults` parameter (default 0) to `xmldb_get0()`

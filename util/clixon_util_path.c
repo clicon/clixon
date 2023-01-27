@@ -225,7 +225,7 @@ main(int    argc,
     /* Validate XML as well */
     if (yang_file_dir){
         /* Populate */
-        if ((ret = xml_bind_yang(x, YB_MODULE, yspec, &xerr)) < 0)
+        if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if ((cb = cbuf_new()) ==NULL){

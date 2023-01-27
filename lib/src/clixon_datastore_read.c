@@ -537,6 +537,7 @@ xmldb_readfile(clicon_handle    h,
     xml_flag_set(x0, XML_FLAG_TOP);
     if (xml_child_nr(x0) == 0 && de)
         de->de_empty = 1;
+
     /* Check if we support modstate */
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
         if ((msdiff = modstate_diff_new()) == NULL)
@@ -618,7 +619,7 @@ xmldb_readfile(clicon_handle    h,
         } /* if msdiff */
         /* xml looks like: <top><config><x>... actually YB_MODULE_NEXT 
          */
-        if ((ret = xml_bind_yang(x0, YB_MODULE, yspec1?yspec1:yspec, xerr)) < 0)
+        if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec1?yspec1:yspec, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -883,7 +884,7 @@ xmldb_get_cache(clicon_handle     h,
         x0t = de->de_xml;
 
     if (yb == YB_MODULE && !xml_spec(x0t)){
-        if ((ret = xml_bind_yang(x0t, YB_MODULE, yspec, xerr)) < 0)
+        if ((ret = xml_bind_yang(h, x0t, YB_MODULE, yspec, xerr)) < 0)
             goto done;
         if (ret == 0)
             ; /* XXX */

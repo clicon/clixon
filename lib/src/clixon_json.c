@@ -1462,19 +1462,19 @@ _json_parse(char      *str,
          */
         switch (yb){
         case YB_PARENT:
-            if ((ret = xml_bind_yang0(x, yb, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang0(NULL, x, yb, yspec, xerr)) < 0)
                     goto done;
             if (ret == 0)
                 failed++;
             break;
         case YB_MODULE_NEXT:
-            if ((ret = xml_bind_yang(x, YB_MODULE, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang(NULL, x, YB_MODULE, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
             break;
         case YB_MODULE:
-            if ((ret = xml_bind_yang0(x, yb, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang0(NULL, x, yb, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
@@ -1482,7 +1482,7 @@ _json_parse(char      *str,
         case YB_NONE:
             break;
         case YB_RPC: 
-            if ((ret = xml_bind_yang_rpc(x, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang_rpc(NULL, x, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;

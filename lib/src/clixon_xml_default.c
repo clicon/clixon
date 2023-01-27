@@ -178,7 +178,7 @@ xml_default_choice(yang_stmt *yc,
     yang_stmt *yca = NULL;
     yang_stmt *ydef;
 
-    clicon_debug(2, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* 1. Is there a default case and no child under this choice?
      */
     x = NULL;
