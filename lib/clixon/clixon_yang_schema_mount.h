@@ -50,11 +50,6 @@
  */
 #define YANG_SCHEMA_MOUNT_ONLY_PRESENCE_CONTAINERS
 
-/*! Force add ietf-yang-library@2019-01-04 on all mount-points
- * This is a limitation of othe current implementation
- */
-#define YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
-
 /*
  * Prototypes
  */

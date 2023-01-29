@@ -82,6 +82,11 @@
 #include "clixon_xml_map.h"
 #include "clixon_yang_parse_lib.h"
 
+/*! Force add ietf-yang-library@2019-01-04 on all mount-points
+ * This is a limitation of othe current implementation
+ */
+#define YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
+
 /*! Create modstate structure
  *
  * @retval     md    modstate struct
@@ -826,10 +831,10 @@ yang_metadata_init(clicon_handle h)
     return retval;
 }
 
-/*! Given a yang-lib module-set XML tree, parse all modules into an yspec
+/*! Given yang-lib module-set XML tree, parse all modules into an yspec
  * 
- * This function is used where a yang-lib module-set is available to populate an
- * XML mount-point.
+ * This function is used where a yang-lib module-set is available to populate
+ * an XML mount-point.
  * @param[in] h      Clicon handle
  * @param[in] xylib  yang-lib XML tree on the form <yang-lib>...
  * @param[in] yspec  Will be populated with YANGs, is consumed
@@ -860,14 +865,16 @@ yang_lib2yspec(clicon_handle h,
             continue;
         if ((revision = xml_find_body(xi, "revision")) == NULL)
             continue;
-        if (yang_spec_parse_module(h, name, revision, yspec) < 0)
+        if (yang_parse_module(h, name, revision, yspec, NULL) == NULL)
             goto fail;
     }
 #ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
     /* XXX: Ensure yang-lib is always there otherwise get state dont work for mountpoint */
-    if (yang_spec_parse_module(h, "ietf-yang-library", "2019-01-04", yspec) < 0)
+    if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, NULL) < 0)
         goto fail;
 #endif
+    if (yang_parse_post(h, yspec, 0) < 0)
+        goto done;
     retval = 1;
  done:
     if (vec)

@@ -75,6 +75,7 @@
 #include "clixon_xpath.h"
 #include "clixon_yang_module.h"
 #include "clixon_yang_type.h"
+#include "clixon_yang_schema_mount.h"
 #include "clixon_xml_default.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_bind.h"
@@ -1007,6 +1008,15 @@ xml_yang_validate_add(clicon_handle h,
     cg_var      *cv0;
     enum cv_type cvtype;
     
+#ifdef YANG_SCHEMA_MOUNT
+    /* Do not validate beyond mountpoints */
+    if ((ret = xml_yang_mount_get(xt, NULL)) < 0)
+        goto done;
+    if (ret == 1){
+        retval = 1;
+        goto done;
+    }
+#endif
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
@@ -1215,6 +1225,13 @@ xml_yang_validate_all(clicon_handle h,
     cvec      *nsc = NULL;
     int        hit = 0;
 
+#ifdef YANG_SCHEMA_MOUNT
+    /* Do not validate beyond mountpoints */
+    if ((ret = xml_yang_mount_get(xt, NULL)) < 0)
+        goto done;
+    if (ret == 1)
+        goto ok;
+#endif
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) == NULL){

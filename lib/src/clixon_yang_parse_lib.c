@@ -1059,7 +1059,7 @@ yang_parse_filename(const char *filename,
  *
  * See top of file for diagram of calling order
  */
-static yang_stmt *
+yang_stmt *
 yang_parse_module(clicon_handle h,
                   const char   *module, 
                   const char   *revision, 

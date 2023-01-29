@@ -71,7 +71,8 @@ int from_client_confirmed_commit(clicon_handle h, cxobj *xe, uint32_t myid, cbuf
 int startup_validate(clicon_handle h, char *db, cxobj **xtr, cbuf *cbret);
 int startup_commit(clicon_handle h, char *db, cbuf *cbret);
 int candidate_validate(clicon_handle h, char *db, cbuf *cbret);
-int candidate_commit(clicon_handle h, cxobj *xe, char *db, uint32_t myid, cbuf *cbret);
+int candidate_commit(clicon_handle h, cxobj *xe, char *db, uint32_t myid,
+                     validate_level vlev, cbuf *cbret);
 
 int from_client_commit(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_discard_changes(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);

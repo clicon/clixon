@@ -459,11 +459,6 @@ yang_schema_yanglib_parse_mount(clicon_handle h,
         goto done;
     if (ret == 0)
         goto anydata;
-#ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
-    /* XXX: Ensure yang-lib is always there otherwise get state dont work for mountpoint */
-    if (yang_spec_parse_module(h, "ietf-yang-library", "2019-01-04", yspec) < 0)
-        goto done;
-#endif
     if (xml_yang_mount_set(xt, yspec) < 0)
         goto done;
     retval = 1;

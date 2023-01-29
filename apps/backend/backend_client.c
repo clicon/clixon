@@ -567,7 +567,7 @@ from_client_edit_config(clicon_handle h,
                 break;
             }
         }
-        if ((ret = candidate_commit(h, NULL, "candidate", myid, cbret)) < 0){ /* Assume validation fail, nofatal */
+        if ((ret = candidate_commit(h, NULL, "candidate", myid, VL_FULL, cbret)) < 0){ /* Assume validation fail, nofatal */
             if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
                 goto done;
             xmldb_copy(h, "running", "candidate");

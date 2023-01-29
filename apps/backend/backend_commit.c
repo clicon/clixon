@@ -518,7 +518,7 @@ validate_common(clicon_handle       h,
                  &td->td_tcvec,     /* changed: wanted values */
                  &td->td_clen) < 0)
         goto done;
-    transaction_dbg(h, CLIXON_DBG_DEFAULT, td, __FUNCTION__);
+    transaction_dbg(h, CLIXON_DBG_DETAIL, td, __FUNCTION__);
     /* Mark as changed in tree */
     for (i=0; i<td->td_dlen; i++){ /* Also down */
         xn = td->td_dvec[i];
@@ -648,6 +648,7 @@ candidate_validate(clicon_handle h,
  * @param[in]  xe         Request: <rpc><xn></rpc>  (or NULL)
  * @param[in]  db         A candidate database, not necessarily "candidate"
  * @param[in]  myid       Client id of triggering incoming message (or 0)
+ * @param[in]  vlev       Validation level (0: full validation)
  * @param[out] cbret      Return xml tree, eg <rpc-reply>..., <rpc-error.. (if retval = 0)
  * @retval     1          Validation OK       
  * @retval     0          Validation failed (with cbret set)
@@ -658,6 +659,7 @@ candidate_commit(clicon_handle h,
                  cxobj        *xe,
                  char         *db,
                  uint32_t      myid,
+                 validate_level vlev,
                  cbuf         *cbret)
 {
     int                 retval = -1;
@@ -666,15 +668,22 @@ candidate_commit(clicon_handle h,
     cxobj              *xret = NULL;
     yang_stmt          *yspec;
 
-     /* 1. Start transaction */
+    /* 1. Start transaction */
     if ((td = transaction_new()) == NULL)
         goto done;
 
     /* Common steps (with validate). Load candidate and running and compute diffs
      * Note this is only call that uses 3-values
      */
-    if ((ret = validate_common(h, db, td, &xret)) < 0)
-        goto done;
+    switch (vlev){
+    case VL_FULL:
+        if ((ret = validate_common(h, db, td, &xret)) < 0)
+            goto done;
+        break;
+    default:
+        ret = 1;
+        break;
+    }
 
     /* If the confirmed-commit feature is enabled, execute phase 2:
      *  - If a valid confirming-commit, cancel the rollback event
@@ -703,51 +712,51 @@ candidate_commit(clicon_handle h,
         goto fail;
     }
 
-     /* 7. Call plugin transaction commit callbacks */
-     if (plugin_transaction_commit_all(h, td) < 0)
-         goto done;
-     /* After commit, make a post-commit call (sure that all plugins have committed) */
-     if (plugin_transaction_commit_done_all(h, td) < 0)
-         goto done;
+    /* 7. Call plugin transaction commit callbacks */
+    if (plugin_transaction_commit_all(h, td) < 0)
+        goto done;
+    /* After commit, make a post-commit call (sure that all plugins have committed) */
+    if (plugin_transaction_commit_done_all(h, td) < 0)
+        goto done;
      
-     /* Clear cached trees from default values and marking */
-     if (xmldb_get0_clear(h, td->td_target) < 0)
-         goto done;
-     if (xmldb_get0_clear(h, td->td_src) < 0)
-         goto done;
+    /* Clear cached trees from default values and marking */
+    if (xmldb_get0_clear(h, td->td_target) < 0)
+        goto done;
+    if (xmldb_get0_clear(h, td->td_src) < 0)
+        goto done;
 
-     /* 8. Success: Copy candidate to running 
-      */
-     if (xmldb_copy(h, db, "running") < 0)
-         goto done;
-     xmldb_modified_set(h, db, 0); /* reset dirty bit */
-     /* Here pointers to old (source) tree are obsolete */
-     if (td->td_dvec){
-         td->td_dlen = 0;
+    /* 8. Success: Copy candidate to running 
+     */
+    if (xmldb_copy(h, db, "running") < 0)
+        goto done;
+    xmldb_modified_set(h, db, 0); /* reset dirty bit */
+    /* Here pointers to old (source) tree are obsolete */
+    if (td->td_dvec){
+        td->td_dlen = 0;
         free(td->td_dvec);
         td->td_dvec = NULL;
-     }
-     if (td->td_scvec){
+    }
+    if (td->td_scvec){
         free(td->td_scvec);
         td->td_scvec = NULL;
-     }
+    }
 
     /* 9. Call plugin transaction end callbacks */
     plugin_transaction_end_all(h, td);
     
     retval = 1;
  done:
-     /* In case of failure (or error), call plugin transaction termination callbacks */
-     if (td){
-         if (retval < 1)
-             plugin_transaction_abort_all(h, td);
-         xmldb_get0_free(h, &td->td_target);
-         xmldb_get0_free(h, &td->td_src);
-         transaction_free(td);
-     }
-     if (xret)
-         xml_free(xret);
-     return retval;
+    /* In case of failure (or error), call plugin transaction termination callbacks */
+    if (td){
+        if (retval < 1)
+            plugin_transaction_abort_all(h, td);
+        xmldb_get0_free(h, &td->td_target);
+        xmldb_get0_free(h, &td->td_src);
+        transaction_free(td);
+    }
+    if (xret)
+        xml_free(xret);
+    return retval;
  fail:
     retval = 0;
     goto done;
@@ -818,7 +827,7 @@ from_client_commit(clicon_handle h,
             goto done;
         goto ok;
     }
-    if ((ret = candidate_commit(h, xe, "candidate", myid, cbret)) < 0){ /* Assume validation fail, nofatal */
+    if ((ret = candidate_commit(h, xe, "candidate", myid, VL_FULL, cbret)) < 0){ /* Assume validation fail, nofatal */
         clicon_debug(1, "Commit candidate failed");
         if (ret < 0)
             if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
@@ -1085,7 +1094,7 @@ load_failsafe(clicon_handle h,
         goto done;
     if (xmldb_db_reset(h, "running") < 0)
         goto done;
-    ret = candidate_commit(h, NULL, db, 0, cbret);
+    ret = candidate_commit(h, NULL, db, 0, VL_FULL, cbret);
     if (ret != 1)
         if (xmldb_copy(h, "tmp", "running") < 0)
             goto done;
