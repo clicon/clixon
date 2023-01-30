@@ -297,7 +297,7 @@ get_statedata(clicon_handle     h,
         if (ret == 0)
             goto fail;
     }
-#ifdef YANG_SCHEMA_MOUNT
+#ifdef CLIXON_YANG_SCHEMA_MOUNT
     if ((ret = yang_schema_mount_statedata(h, yspec, xpath, nsc, xret, &xerr)) < 0)
         goto done;
     if (ret == 0){

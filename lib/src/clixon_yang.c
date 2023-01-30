@@ -661,7 +661,7 @@ ys_free1(yang_stmt *ys,
         cv_free(cv);
     }
     if (ys->ys_cvec){
-#ifdef YANG_SCHEMA_MOUNT
+#ifdef CLIXON_YANG_SCHEMA_MOUNT
         /* Schema mount uses cvec in unknown to keep track of all yspecs
          * Freed here once.
          */

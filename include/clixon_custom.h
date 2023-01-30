@@ -191,9 +191,3 @@
  * To keep the previous behavior (as in 6.0) set this option with #define
  */
 #undef NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL
-
-/*! RFC 8528 YANG schema mount
- * Experimental
- * See also test/test_yang_schema_mount.sh
- */
-#undef YANG_SCHEMA_MOUNT

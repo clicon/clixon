@@ -5,10 +5,10 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-if true; then # enable YANG_SCHEMA_MOUNT
-    echo "...skipped: YANG_SCHEMA_MOUNT NYI"
+if [ -z "${CLIXON_YANG_SCHEMA_MOUNT}" ]; then
+    echo "...skipped. To enable configure with: --enable-yang-schema-mount"
     rm -rf $dir
-    if [ -z "${CLIXON_YANG_PATCH}" -a "$s" = $0 ]; then exit 0; else return 0; fi
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
 
 APPNAME=example

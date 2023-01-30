@@ -856,7 +856,7 @@ text_modify(clicon_handle       h,
                 x1cname = xml_name(x1c);
                 /* Get yang spec of the child by child matching */
                 if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
-#ifdef YANG_SCHEMA_MOUNT
+#ifdef CLIXON_YANG_SCHEMA_MOUNT
                     yc = xml_spec(x1c);
 #endif
                     if (yc == NULL){
@@ -904,7 +904,7 @@ text_modify(clicon_handle       h,
                 x0c = x0vec[i++];
                 x1cname = xml_name(x1c);
                 if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
-#ifdef YANG_SCHEMA_MOUNT
+#ifdef CLIXON_YANG_SCHEMA_MOUNT
                     yc = xml_spec(x1c);
 #endif
                 }

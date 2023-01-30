@@ -50,7 +50,7 @@ Expected: beginning of 2023
     * Only presence containers can be mount-points
   * New plugin callback: `ca_yang_mount`
   * Standards: RFC 8528
-  * To enable: define `YANG_SCHEMA_MOUNT`
+  * To enable configure with `--enable-yang-schema-mount`
 * Netconf monitoring RFC 6022 , part 2
   * Datastores and sessions
     * Added clixon-specific transport identities: cli, snmp, netconf, restconf

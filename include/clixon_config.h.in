@@ -21,6 +21,9 @@
 /* Enable YANG patch, RFC 8072 */
 #undef CLIXON_YANG_PATCH
 
+/* Enable YANG schema mount, RFC 8528 */
+#undef CLIXON_YANG_SCHEMA_MOUNT
+
 /* Define to 1 if you have the `alphasort' function. */
 #undef HAVE_ALPHASORT
 

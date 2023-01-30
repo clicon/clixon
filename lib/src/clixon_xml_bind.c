@@ -453,7 +453,7 @@ xml_bind_yang0_opt(clicon_handle h,
         goto ok;
     strip_body_objects(xt);
     ybc = YB_PARENT;
-#ifdef YANG_SCHEMA_MOUNT // Maybe in populate?
+#ifdef CLIXON_YANG_SCHEMA_MOUNT
     yspec1 = NULL;
     if ((ret = xml_yang_mount_get(xt, &yspec1)) < 0)
         goto done;

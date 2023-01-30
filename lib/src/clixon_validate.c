@@ -1008,7 +1008,7 @@ xml_yang_validate_add(clicon_handle h,
     cg_var      *cv0;
     enum cv_type cvtype;
     
-#ifdef YANG_SCHEMA_MOUNT
+#ifdef CLIXON_YANG_SCHEMA_MOUNT
     /* Do not validate beyond mountpoints */
     if ((ret = xml_yang_mount_get(xt, NULL)) < 0)
         goto done;
@@ -1225,7 +1225,7 @@ xml_yang_validate_all(clicon_handle h,
     cvec      *nsc = NULL;
     int        hit = 0;
 
-#ifdef YANG_SCHEMA_MOUNT
+#ifdef CLIXON_YANG_SCHEMA_MOUNT
     /* Do not validate beyond mountpoints */
     if ((ret = xml_yang_mount_get(xt, NULL)) < 0)
         goto done;
