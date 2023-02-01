@@ -105,6 +105,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [SNMP: snmpwalk is slow and can timeout #404 ](https://github.com/clicon/clixon/issues/404)
 * Fixed: [SNMP accepts only u32 & u64 #405](https://github.com/clicon/clixon/issues/405)
 * Fixed: [Yang leaves without smiv2:oid directive are not shown well in snmpwalk #398](https://github.com/clicon/clixon/issues/398)
 * Fixed: [Netconf commit confirm session-id mismatch #407](https://github.com/clicon/clixon/issues/407)

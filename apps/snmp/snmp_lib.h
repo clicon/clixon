@@ -86,6 +86,7 @@ int    oid_append(const oid *objid0, size_t *objid0len, const oid *objid1, size_
 int    oid_cbuf(cbuf *cb, const oid *objid, size_t objidlen);
 int    oid_print(FILE *f, const oid *objid, size_t objidlen);
 int    snmp_yang_type_get(yang_stmt *ys, yang_stmt **yrefp, char **origtypep, yang_stmt **yrestypep, char **restypep);
+int    yang_extension_value_opt(yang_stmt *ys, char *id, int *exist, char **value);
 int    yangext_oid_get(yang_stmt *yn, oid *objid, size_t *objidlen, char **objidstr);
 int    yangext_is_oid_exist(yang_stmt *yn);
 int    snmp_access_str2int(char *modes_str);

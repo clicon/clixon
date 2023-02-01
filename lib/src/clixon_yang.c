@@ -3734,6 +3734,7 @@ yang_anydata_add(yang_stmt *yp,
  *     }
  * @endcode
  * @see ys_populate_unknown  Called when parsing YANG
+ * XXX consider optimizing, the call to yang_find_prefix_by_namespace may be slow
  */
 int
 yang_extension_value(yang_stmt *ys,
@@ -3766,6 +3767,7 @@ yang_extension_value(yang_stmt *ys,
             continue;
         if ((ymod = ys_module(yext)) == NULL)
             continue;
+        /* XXX this is slow */
         if ((ret = yang_find_prefix_by_namespace(ymod, ns, &prefix)) < 0)
             goto done;
         if (ret == 0) /* not found (this may happen in augment and maybe should be treated otherwise) */

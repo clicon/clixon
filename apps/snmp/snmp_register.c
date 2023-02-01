@@ -127,7 +127,7 @@ mibyang_leaf_register(clicon_handle h,
     /* Check if already registered */
     if (clixon_snmp_api_oid_find(oid1, oid1len) == 1)
         goto ok;
-    if (yang_extension_value(ys, "max-access", IETF_YANG_SMIV2_NS, NULL, &modes_str) < 0)
+    if (yang_extension_value_opt(ys, "smiv2:max-access", NULL, &modes_str) < 0)
         goto done;
     /* Only for sanity check of types initially to fail early */
     if (type_yang2asn1(ys, NULL, 0) < 0)
@@ -141,9 +141,8 @@ mibyang_leaf_register(clicon_handle h,
 
     /* SMI default value, How is this different from yang defaults?
      */
-    if (yang_extension_value(ys, "defval", IETF_YANG_SMIV2_NS, NULL, &default_str) < 0)
+    if (yang_extension_value_opt(ys, "smiv2:defval", NULL, &default_str) < 0)
         goto done;
-
     name = yang_argument_get(ys);
     /* Stateless function, just returns ptr */ 
     if ((handler = netsnmp_create_handler(name, clixon_snmp_scalar_handler)) == NULL){

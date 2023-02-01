@@ -149,7 +149,7 @@ snmp_scalar_return(cxobj                      *xs,
 
     /* SMI default value, How is this different from yang defaults?
      */
-    if (yang_extension_value(ys, "defval", IETF_YANG_SMIV2_NS, NULL, &defaultval) < 0)
+    if (yang_extension_value_opt(ys, "smiv2:defval", NULL, &defaultval) < 0)
         goto done;
     if (xs != NULL && (body = xml_body(xs)) != NULL){
         if ((ret = type_xml2snmp_pre(body, ys, &xmlstr)) < 0) // XXX <---
@@ -887,7 +887,7 @@ snmp_table_get(clicon_handle               h,
     }
     /* SMI default value, How is this different from yang defaults?
      */
-    if (yang_extension_value(ys, "defval", IETF_YANG_SMIV2_NS, NULL, &defaultval) < 0)
+    if (yang_extension_value_opt(ys, "smiv2:defval", NULL, &defaultval) < 0)
         goto done;
     
     /* Create xpath with right keys from later part of OID 
@@ -1033,7 +1033,7 @@ snmp_table_set(clicon_handle               h,
         char *modes_str = NULL;
         int   modes;
 
-        if (yang_extension_value(ys, "max-access", IETF_YANG_SMIV2_NS, NULL, &modes_str) < 0)
+        if (yang_extension_value_opt(ys, "smiv2:max-access", NULL, &modes_str) < 0)
             goto done;
         if (modes_str){
             modes = snmp_access_str2int(modes_str);

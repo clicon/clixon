@@ -335,6 +335,56 @@ snmp_yang_type_get(yang_stmt  *ys,
     return retval;
 }
 
+/*! Specialized and optimized variant of yang_extension_value
+ * 
+ * In this optimized version, "id" on the form "<prefix>:<name>" is hardcoded
+ * and not derived from "name" and "namespace" in the original version.
+
+ * @param[in]  ys     Yang statement where unknown statement may occur referencing to extension
+ * @param[out] exist  The extension exists.
+ * @param[out] value  clispec operator (hide/none) - direct pointer into yang, dont free
+ * @retval     0      OK: Look in exist and value for return value
+ * @retval     -1     Error
+ *
+ * @note This optimizatoin may not work if the unknown statements are augmented in ys.
+ * @see yang_extension_value for the generic function
+ */
+int
+yang_extension_value_opt(yang_stmt *ys,
+                         char      *id,
+                         int       *exist,
+                         char     **value)
+{
+    int        retval = -1;
+    yang_stmt *yext;
+    cg_var    *cv;
+
+    if (ys == NULL){
+        clicon_err(OE_YANG, EINVAL, "ys is NULL");
+        goto done;
+    }
+    if (exist)
+        *exist = 0;
+    yext = NULL; /* This loop gets complicated in the case the extension is augmented */
+    while ((yext = yn_each(ys, yext)) != NULL) {
+        if (yang_keyword_get(yext) != Y_UNKNOWN)
+            continue;
+        if (strcmp(yang_argument_get(yext), id) != 0)
+            continue;
+        break;
+    }
+    if (yext != NULL){ /* Found */
+        if (exist)
+            *exist = 1;
+        if (value &&
+            (cv = yang_cv_get(yext)) != NULL)
+            *value = cv_string_get(cv);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Given a YANG node, return SMIv2 oid extension as OID 
  * @param[in]  yn        Yang node
  * @param[out] objid     OID vector, assume allocated with MAX_OID_LEN > oidlen
@@ -361,8 +411,8 @@ yangext_oid_get(yang_stmt *yn,
     }
     else
         yref = yn;
-    /* Get OID from table /list  */
-    if (yang_extension_value(yref, "oid", IETF_YANG_SMIV2_NS, &exist, &oidstr) < 0)
+    /* Get OID from table /list */
+    if (yang_extension_value_opt(yref, "smiv2:oid", &exist, &oidstr) < 0)
         goto done;
     if (exist == 0 || oidstr == NULL){
         clicon_debug(1, "OID not found as SMIv2 yang extension of %s", yang_argument_get(yref));
@@ -382,20 +432,19 @@ yangext_oid_get(yang_stmt *yn,
     goto done;
 }
 
-
-
 /*! Given a YANG node, return 1 if leaf has oid directive in it, otherwise 0
  * @param[in]  yn        Yang node
  * @retval     1         found
  * @retval     0         not found
  */
-int  yangext_is_oid_exist(yang_stmt *yn) {
+int
+yangext_is_oid_exist(yang_stmt *yn) {
  
     int        exist = 0;
     char      *oidstr = NULL;
  
     if ((yang_keyword_get(yn) != Y_LEAF) ||
-       (yang_extension_value(yn, "oid", IETF_YANG_SMIV2_NS, &exist, &oidstr) < 0) ||
+       (yang_extension_value_opt(yn, "smiv2:oid", &exist, &oidstr) < 0) ||
        (exist == 0) ||
        (oidstr == NULL)) {
         return 0;
@@ -495,8 +544,9 @@ type_yang2asn1(yang_stmt    *ys,
         yang_stmt *yrp;
         char *display_hint = NULL;
         yrp = yang_parent_get(yrestype);
-        if (yang_extension_value(yrp, "display-hint", IETF_YANG_SMIV2_NS, NULL, &display_hint) < 0)
+        if (yang_extension_value_opt(yrp, "smiv2:display-hint", NULL, &display_hint) < 0)
             goto done;  
+
         /* RFC2578/2579 but maybe all strings with display-hint should use this, eg exist>0? */
         if (display_hint &&
             (strcmp(display_hint, "255a")==0 ||
