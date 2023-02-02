@@ -905,13 +905,8 @@ main(int    argc,
             goto done;
     case SM_NONE: /* Fall through *
                    * Load plugins and call plugin_init() */
-        if (xmldb_db_reset(h, "tmp") < 0)
+        if ((ret = startup_extraxml(h, NULL, cbret)) < 0)
             goto done;
-        if (clixon_plugin_reset_all(h, "tmp") < 0)
-            goto done;
-        /* Copy tmp to running after reset where extra xml may have been introduced */
-        if (xmldb_copy(h, "tmp", "running") < 0)
-            goto done;        
         status = STARTUP_OK;
         break;
     case SM_RUNNING: /* Use running as startup */
