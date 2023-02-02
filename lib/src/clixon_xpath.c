@@ -795,7 +795,7 @@ xpath_vec(cxobj      *xcur,
         goto done;
     }
     va_end(ap);
-    *vec=NULL;
+    *vec = NULL;
     *veclen = 0;
     if (xpath_vec_ctx(xcur, nsc, xpath, 0, &xr) < 0)
         goto done;
