@@ -152,6 +152,7 @@ backend_client_add(clicon_handle    h,
     }
     clicon_session_id_set(h, ce->ce_id + 1);
     gettimeofday(&ce->ce_time, NULL);
+    netconf_monitoring_counter_inc(h, "in-sessions");
     bh->bh_ce_list = ce;
     return ce;
 }

@@ -62,6 +62,7 @@ struct client_entry{
     uint32_t              ce_in_rpcs ;       /* Number of correct <rpc> messages received. */
     uint32_t              ce_in_bad_rpcs;    /* Not correct <rpc> messages */
     uint32_t              ce_out_rpc_errors; /*  <rpc-error> messages*/
+    uint32_t              ce_out_notifications; /* Outgoing notifications */
 };
 
 /*

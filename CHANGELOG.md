@@ -51,14 +51,15 @@ Expected: beginning of 2023
   * New plugin callback: `ca_yang_mount`
   * Standards: RFC 8528
   * To enable configure with `--enable-yang-schema-mount`
-* Netconf monitoring RFC 6022 , part 2
-  * Datastores and sessions
+* Netconf monitoring RFC 6022
+  * This is part 2, first part was in 6.0
+  * Datastores, sessions and statistics
     * Added clixon-specific transport identities: cli, snmp, netconf, restconf
-    * Added source-host fro native restonf, but no other transports
+    * Added source-host from native restonf, but no other transports
+    * Hello statistics is based on backend statistics, hellos from RESTCONF, SNMP and CLI clients are included and dropped external NETCONF sessions are not
   * Standards
     * RFC 6022 "YANG Module for NETCONF Monitoring"
   * See [Feature Request: Support RFC 6022 (NETCONF Monitoring)](https://github.com/clicon/clixon/issues/370)
-  * Remaining: statistics state
   
 ### API changes on existing protocol/config features
 

@@ -1066,6 +1066,8 @@ main(int    argc,
     if (stream_timer_setup(0, h) < 0)
         goto done;
     /* Just before event-loop, after socket bind/listen */
+    if (netconf_monitoring_statistics_init(h) < 0)
+        goto done;
     clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (clixon_event_loop(h) < 0)
         goto done;

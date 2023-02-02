@@ -121,9 +121,9 @@ restconf_client_get_capabilities(clicon_handle h,
  * @param[in]     module  Name of yang module
  * @param[in]     top     Top symbol, ie netconf or restconf-state
  * @param[in,out] xret    Existing XML tree, merge x into this
- * @retval       -1       Error (fatal)
- * @retval        0       Statedata callback failed
  * @retval        1       OK
+ * @retval        0       Statedata callback failed
+ * @retval       -1       Error (fatal)
  */
 static int
 client_get_streams(clicon_handle   h,
@@ -182,9 +182,9 @@ client_get_streams(clicon_handle   h,
  * @param[in]     nsc     XML Namespace context for xpath
  * @param[in]     wdef    With-defaults parameter, see RFC 6243
  * @param[in,out] xret    Existing XML tree, merge x into this, or rpc-error
- * @retval       -1       Error (fatal)
- * @retval        0       Statedata callback failed (error in xret)
  * @retval        1       OK
+ * @retval        0       Statedata callback failed (error in xret)
+ * @retval       -1       Error (fatal)
  * @note This code in general does not look at xpath, needs to be filtered in retrospect
  * @note Awkward error handling. Even if most of this is during development phase, except for plugin
  * state callbacks.
@@ -497,9 +497,9 @@ get_nacm_and_reply(clicon_handle h,
  * @param[in]     defaultstr Default string which is accepted and sets value to 0
  * @param[in,out] cbret      Output buffer for internal bad-element RPC message if invalid
  * @param[out]    value      Value
- * @retval       -1          Error
- * @retval        0          Invalid, netconf bad-element error cbret set
  * @retval        1          OK (or not found)
+ * @retval        0          Invalid, netconf bad-element error cbret set
+ * @retval       -1          Error
  */
 static int
 element2value(clicon_handle  h,
@@ -527,9 +527,9 @@ element2value(clicon_handle  h,
  * @param[out] offset Number of entries in the working result-set that should be skipped
  * @param[out] limit  Limits the number of entries returned from the working result-set
  * @param[out] cbret  Return xml tree, eg <rpc-reply>..., <rpc-error.. 
- * @retval    -1      Error
- * @retval     0      Invalid, netconf bad-element error cbret set
  * @retval     1      OK
+ * @retval     0      Invalid, netconf bad-element error cbret set
+ * @retval    -1      Error
  */
 static int
 list_pagination_hdr(clicon_handle h,

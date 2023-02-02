@@ -231,7 +231,7 @@ xml_type2str(enum cxobj_type type)
     return (char*)clicon_int2str(xsmap, type);
 }
 
-/* Stats */
+/* Stats (too low-level to hang it on handle) */
 static uint64_t _stats_xml_nr = 0;
 
 /*! Get global statistics about XML objects

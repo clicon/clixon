@@ -102,7 +102,7 @@ clicon_data_get(clicon_handle h,
 /*! Set generic clixon data on the form <name>=<val> where <val> is string
  * @param[in]  h    Clicon handle
  * @param[in]  name Data name
- * @param[in]  val  Data value as null-terminated string
+ * @param[in]  val  Data value as null-terminated string (copied)
  * @retval     0    OK
  * @retval    -1    Error
  * @see clicon_option_str_set

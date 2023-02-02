@@ -32,7 +32,7 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
+  * note: there is also client code in clixon_backend_handle.c
  */
 
 #ifdef HAVE_CONFIG_H
@@ -117,6 +117,9 @@ ce_event_cb(clicon_handle h,
             }
             break;
         }
+        /* note there may be other notifications than RFC5277 streams */
+        ce->ce_out_notifications++;
+        netconf_monitoring_counter_inc(h, "out-notifications");
     }
     return 0;
 }
@@ -218,7 +221,7 @@ backend_monitoring_state_get(clicon_handle h,
         cprintf(cb, "<in-rpcs>%u</in-rpcs>", ce->ce_in_rpcs);
         cprintf(cb, "<in-bad-rpcs>%u</in-bad-rpcs>", ce->ce_in_bad_rpcs);
         cprintf(cb, "<out-rpc-errors>%u</out-rpc-errors>", ce->ce_out_rpc_errors);
-        cprintf(cb, "<out-notifications>%u</out-notifications>", 0);
+        cprintf(cb, "<out-notifications>%u</out-notifications>", ce->ce_out_notifications);
         cprintf(cb, "</session>");
     }
     cprintf(cb, "</sessions>");
@@ -263,7 +266,6 @@ backend_client_rm(clicon_handle        h,
         clicon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
         if (confirmed_commit_state_get(h) == EPHEMERAL) {
             /* See if this client is the origin */
@@ -301,9 +303,8 @@ backend_client_rm(clicon_handle        h,
         ce_prev = &c->ce_next;
     }
     retval = backend_client_delete(h, ce); /* actually purge it */
-
-    done:
-        return retval;
+ done:
+    return retval;
 }
 
 /*! Get clixon per datastore stats
@@ -325,7 +326,6 @@ clixon_stats_datastore_get(clicon_handle h,
     cxobj    *xn = NULL;
     
     /* This is the db cache */
-
     if ((xt = xmldb_cache_get(h, dbname)) == NULL){
         /* Trigger cache if no exist */
         if (xmldb_get(h, dbname, NULL, "/", &xn) < 0)
@@ -1604,7 +1604,6 @@ from_client_msg(clicon_handle        h,
     }
 
     if (strcmp(rpcname, "rpc") == 0){
-        ce->ce_in_rpcs++; /* Track all RPCs */
     }
     else if (strcmp(rpcname, "hello") == 0){
         if ((ret = from_client_hello(h, x, ce, cbret)) <0)
@@ -1614,23 +1613,31 @@ from_client_msg(clicon_handle        h,
     else{
         if (netconf_unknown_element(cbret, "protocol", rpcname, "Unrecognized netconf operation")< 0)
             goto done;
-        ce->ce_in_bad_rpcs++; 
+        ce->ce_in_bad_rpcs++;
         ce->ce_out_rpc_errors++; /*  Number of <rpc-reply> messages sent that contained an <rpc-error> */
+        netconf_monitoring_counter_inc(h, "in-bad-rpcs");
+        netconf_monitoring_counter_inc(h, "out-rpc-errors");
         goto reply;
     }
     /* As a side-effect, this expands xt with default values according to "report-all"
      * This may not be correct, the RFC does not mention expanding default values for
      * input RPC
      */
-    if ((ret = xml_yang_validate_rpc(h, x, 1, &xret)) < 0)
+    if ((ret = xml_yang_validate_rpc(h, x, 1, &xret)) < 0){
+        ce->ce_in_bad_rpcs++;
+        netconf_monitoring_counter_inc(h, "in-bad-rpcs");
         goto done;
+    }
     if (ret == 0){
         if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
             goto done;
         ce->ce_in_bad_rpcs++;
-        ce->ce_in_rpcs--; /* Track all RPCs */
+        netconf_monitoring_counter_inc(h, "in-bad-rpcs");
         goto reply;
     }
+    ce->ce_in_rpcs++; /* Track all RPCs */
+    netconf_monitoring_counter_inc(h, "in-rpcs");
+
     xe = NULL;
     username = xml_find_value(x, "username");
     /* May be used by callbacks, etc */
@@ -1641,6 +1648,7 @@ from_client_msg(clicon_handle        h,
             if (netconf_operation_not_supported(cbret, "protocol", rpc) < 0)
                 goto done;
             ce->ce_out_rpc_errors++;
+            netconf_monitoring_counter_inc(h, "out-rpc-errors");
             goto reply;
         }
         if ((ymod = ys_module(ye)) == NULL){
@@ -1669,6 +1677,7 @@ from_client_msg(clicon_handle        h,
                 goto done;
             if (ret == 0){ /* credentials fail */
                 ce->ce_out_rpc_errors++;
+                netconf_monitoring_counter_inc(h, "out-rpc-errors");
                 goto reply;
             }
             /* NACM rpc operation exec validation */
@@ -1676,6 +1685,7 @@ from_client_msg(clicon_handle        h,
                 goto done;
             if (ret == 0){ /* Not permitted and cbret set */
                 ce->ce_out_rpc_errors++;
+                netconf_monitoring_counter_inc(h, "out-rpc-errors");
                 goto reply;
             }
         }
@@ -1685,16 +1695,19 @@ from_client_msg(clicon_handle        h,
                 goto done;
             clicon_log(LOG_NOTICE, "%s Error in rpc_callback_call:%s", __FUNCTION__, xml_name(xe));
             ce->ce_out_rpc_errors++;
+            netconf_monitoring_counter_inc(h, "out-rpc-errors");
             goto reply; /* Dont quit here on user callbacks */
         }
         if (ret == 0){
             ce->ce_out_rpc_errors++;
+            netconf_monitoring_counter_inc(h, "out-rpc-errors");
             goto reply;
         }
         if (nr == 0){ /* not handled by callback */
             if (netconf_operation_not_supported(cbret, "application", "RPC operation not supported")< 0)
                 goto done;
             ce->ce_out_rpc_errors++;
+            netconf_monitoring_counter_inc(h, "out-rpc-errors");
             goto reply;
         }
         if (xnacm){
@@ -1775,8 +1788,10 @@ from_client(int   s,
     }
     if (clicon_msg_rcv(ce->ce_s, &msg, &eof) < 0)
         goto done;
-    if (eof)
+    if (eof){
         backend_client_rm(h, ce); 
+        netconf_monitoring_counter_inc(h, "dropped-sessions");
+    }
     else
         if (from_client_msg(h, ce, msg) < 0)
             goto done;

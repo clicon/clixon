@@ -768,7 +768,7 @@ send_msg_notify(int           s,
  * @param[in]  xev     Event as XML
  * @retval     0       OK
  * @retval     -1      Error
- * @see send_msg_notify XXX beauty contest
+ * @see send_msg_notify
  */
 int
 send_msg_notify_xml(clicon_handle h,
