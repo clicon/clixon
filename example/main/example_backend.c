@@ -1194,31 +1194,35 @@ upgrade_interfaces(clicon_handle h,
  * This involves creating default configuration files for various daemons, set interface
  * flags etc.
  * @param[in] h   Clicon handle
- * @param[in] db  Name of database. Not may be other than "running"
- * In this example, a loopback interface is added
- * @note This assumes example yang with interfaces/interface
+ * @param[in] db  Name of database. Not3 may be other than "running"
+ * In this example, a loopback parameter is added
  */
 int
 example_reset(clicon_handle h,
               const char   *db)
 {
-    int    retval = -1;
-    cxobj *xt = NULL;
-    int    ret;
-    cbuf  *cbret = NULL;
+    int        retval = -1;
+    cxobj     *xt = NULL;
+    int        ret;
+    cbuf      *cbret = NULL;
     yang_stmt *yspec;
+    cxobj     *xerr = NULL;
 
     if (!_reset)
         goto ok; /* Note not enabled by default */
         
     yspec = clicon_dbspec_yang(h);      
-    if (clixon_xml_parse_string("<config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">"
-                                "<interface><name>lo</name><type>ex:loopback</type>"
-                                "</interface></interfaces></config>", YB_MODULE, yspec, &xt, NULL) < 0)
+    /* Parse extra XML */
+    if ((ret = clixon_xml_parse_string("<table xmlns=\"urn:example:clixon\">"
+                                       "<parameter><name>loopback</name><value>99</value></parameter>"
+                                       "</table>", YB_MODULE, yspec, &xt, &xerr)) < 0)
         goto done;
-    /* Replace parent w first child */
-    if (xml_rootchild(xt, 0, &xt) < 0)
-        goto done;
+    if (ret == 0){
+        clicon_debug_xml(1, xerr, "Error when parsing XML");
+        goto ok;
+    }
+    /* xmldb_put requires modification tree to be: <config>... */
+    xml_name_set(xt, "config");
     if ((cbret = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -1236,6 +1240,8 @@ example_reset(clicon_handle h,
  done:
     if (cbret)
         cbuf_free(cbret);
+    if (xerr)
+        xml_free(xerr);
     if (xt != NULL)
         xml_free(xt);
     return retval;

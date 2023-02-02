@@ -918,6 +918,7 @@ main(int    argc,
         if (ret != 1)
             if (xmldb_copy(h, "tmp", "running") < 0)
                 goto done;
+        xmldb_delete(h, "tmp");
         if (ret2status(ret, &status) < 0)
             goto done;
         break;

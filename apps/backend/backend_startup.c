@@ -312,8 +312,9 @@ startup_extraxml(clicon_handle        h,
     if (ret == 1)
         goto ok;
     xt = NULL;
-    /* Validate the tmp db and return possibly upgraded xml in xt
-     */
+    /* Clear db cache so that it can be read by startup */
+    xmldb_clear(h, tmp_db);
+    /* Validate the tmp db and return possibly upgraded xml in xt */
     if ((ret = startup_validate(h, tmp_db, &xt, cbret)) < 0)
         goto done;
     if (ret == 0)
