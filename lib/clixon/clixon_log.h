@@ -52,7 +52,7 @@
 /* Debug-level masks */
 #define CLIXON_DBG_DEFAULT 1 /* Default logs */
 #define CLIXON_DBG_MSG     2 /* In/out messages and datastore reads */
-#define CLIXON_DBG_DETAIL  4 /* Detailed logs */
+#define CLIXON_DBG_DETAIL  4 /* Details: traces, parse trees, etc */
 #define CLIXON_DBG_EXTRA   8 /* Extra Detailed logs */
 
 /*

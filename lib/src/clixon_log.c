@@ -370,11 +370,12 @@ clicon_debug_get(void)
  * The dbgdebug level strategy is a mask of the following masks:
  *                       1: Basic debug message, espcially initialization
  *                       2: Input and output packets, read datastore
- *                       4: Details: message dump in hex, xpath parse trees, etc
- * See CLIXON_DBG_* flags
- * @param[in] dbglevel   0: No debug, 1-7 combined of the CLIXON_DBG_ flags above
+ *                       4: Details: traces, parse trees, etc
+ *                       8: Extra detailed logs, temporary logs
+ * @param[in] dbglevel   Debug level 0: No debug, 1-7 combined of the CLIXON_DBG_ flags above 
  * @param[in] format     Message to print as argv.
  * @see clicon_debug_xml Specialization for XML tree
+ * @see CLIXON_DBG_DEFAULT and other flags
  */
 int
 clicon_debug(int         dbglevel, 

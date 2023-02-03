@@ -293,13 +293,18 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
     return (pos);
 }
 
-#if 0 // Extra debug
-/*! Print message on debug. Log if syslog, stderr if not
- * @param[in]  msg    CLICON msg
+/*! Log message as hex on debug.
+ *
+ * @param[in]  dbglevel Debug level
+ * @param[in]  msg      Byte stream
+ * @param[in]  len      Length of byte stream
+ * @param[in]  file     Calling file name
  */
 static int
-msg_dump(int                dbglevel,
-         struct clicon_msg *msg)
+msg_hex(int         dbglevel,
+        const char *msg,
+        size_t      len,
+        char const *file)
 {
     int   retval = -1;
     cbuf *cb = NULL;
@@ -311,13 +316,13 @@ msg_dump(int                dbglevel,
         clicon_err(OE_CFG, errno, "cbuf_new");
         goto done;
     }
-    cprintf(cb, "%s:", __FUNCTION__);
-    for (i=0; i<ntohl(msg->op_len); i++){
+    cprintf(cb, "%s:", file);
+    for (i=0; i<len; i++){
         cprintf(cb, "%02x", ((char*)msg)[i]&0xff);
         if ((i+1)%32==0){
-            clicon_debug(CLIXON_DBG_DETAIL, "%s", cbuf_get(cb));
+            clicon_debug(dbglevel, "%s", cbuf_get(cb));
             cbuf_reset(cb);
-            cprintf(cb, "%s:", __FUNCTION__);
+            cprintf(cb, "%s:", file);
         }
         else
             if ((i+1)%4==0)
@@ -331,7 +336,6 @@ msg_dump(int                dbglevel,
         cbuf_free(cb);
     return retval;
 }
-#endif
 
 /*! Send a CLICON netconf message using internal IPC message
  *
@@ -346,12 +350,9 @@ clicon_msg_send(int                s,
     int retval = -1;
     int e;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s: send msg len=%d", 
-                 __FUNCTION__, ntohl(msg->op_len));
-#if 0 // Extra debug
-    msg_dump(CLIXON_DBG_EXTRA, msg);
-#endif
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: send msg len=%d", __FUNCTION__, ntohl(msg->op_len));
     clicon_debug(CLIXON_DBG_MSG, "Send: %s", msg->op_body);
+    msg_hex(CLIXON_DBG_EXTRA, (char*)msg,  ntohl(msg->op_len), __FUNCTION__);
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
                  s, msg, ntohl(msg->op_len)) < 0){
         e = errno;
@@ -402,35 +403,50 @@ clicon_msg_rcv(int                s,
         clicon_err(OE_CFG, errno, "atomicio");
         goto done;
     }
+    msg_hex(CLIXON_DBG_EXTRA, (char*)&hdr, hlen, __FUNCTION__);
     if (hlen == 0){
-        retval = 0;
         *eof = 1;
-        goto done;
+        goto ok;
     }
     if (hlen != sizeof(hdr)){
-        clicon_err(OE_CFG, errno, "header too short (%d)", hlen);
+        clicon_err(OE_PROTO, errno, "header too short (%d)", hlen);
         goto done;
     }
+
     mlen = ntohl(hdr.op_len);
+    clicon_debug(16, "op-len:%u op-id:%u",
+                 mlen, ntohl(hdr.op_id));
     clicon_debug(CLIXON_DBG_DETAIL, "%s: rcv msg len=%d",  
                  __FUNCTION__, mlen);
-    if ((*msg = (struct clicon_msg *)malloc(mlen)) == NULL){
-        clicon_err(OE_CFG, errno, "malloc");
+    if (mlen <= sizeof(hdr)){
+        clicon_err(OE_PROTO, 0, "op_len:%u too short", mlen);
+        *eof = 1;
+        assert(0);
+        goto ok;
+    }
+    if ((*msg = (struct clicon_msg *)malloc(mlen+1)) == NULL){
+        clicon_err(OE_PROTO, errno, "malloc");
         goto done;
     }
     memcpy(*msg, &hdr, hlen);
     if ((len2 = atomicio(read, s, (*msg)->op_body, mlen - sizeof(hdr))) < 0){ 
-        clicon_err(OE_CFG, errno, "read");
+        clicon_err(OE_PROTO, errno, "read");
         goto done;
     }
+    if (len2)
+        msg_hex(CLIXON_DBG_EXTRA, (*msg)->op_body, len2, __FUNCTION__);
     if (len2 != mlen - sizeof(hdr)){
-        clicon_err(OE_CFG, errno, "body too short");
-        goto done;
+        clicon_err(OE_PROTO, 0, "body too short");
+        *eof = 1;
+        goto ok;
     }
-#if 0 // Extra debug
-    msg_dump(CLIXON_DBG_EXTRA, *msg);
-#endif
+    if (((char*)*msg)[mlen-1] != '\0'){
+        clicon_err(OE_PROTO, 0, "body not NULL terminated");
+        *eof = 1;
+        goto ok;
+    }
     clicon_debug(CLIXON_DBG_MSG, "Recv: %s", (*msg)->op_body);
+ ok:
     retval = 0;
   done:
     clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
