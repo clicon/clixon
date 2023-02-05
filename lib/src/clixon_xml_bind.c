@@ -375,10 +375,10 @@ populate_self_top(cxobj     *xt,
  */
 int
 xml_bind_yang(clicon_handle h,
-              cxobj     *xt, 
-              yang_bind  yb,
-              yang_stmt *yspec,
-              cxobj    **xerr)
+              cxobj        *xt, 
+              yang_bind     yb,
+              yang_stmt    *yspec,
+              cxobj       **xerr)
 {
     int    retval = -1;
     cxobj *xc;         /* xml child */
@@ -414,11 +414,11 @@ xml_bind_yang(clicon_handle h,
  */
 static int
 xml_bind_yang0_opt(clicon_handle h,
-                   cxobj     *xt, 
-                   yang_bind  yb,
-                   yang_stmt *yspec,
-                   cxobj     *xsibling,
-                   cxobj    **xerr)
+                   cxobj        *xt, 
+                   yang_bind     yb,
+                   yang_stmt    *yspec,
+                   cxobj        *xsibling,
+                   cxobj       **xerr)
 {
     int        retval = -1;
     cxobj     *xc;           /* xml child */
@@ -531,10 +531,10 @@ xml_bind_yang0_opt(clicon_handle h,
  */
 int
 xml_bind_yang0(clicon_handle h,
-               cxobj     *xt, 
-               yang_bind  yb,
-               yang_stmt *yspec,
-               cxobj    **xerr)
+               cxobj        *xt, 
+               yang_bind     yb,
+               yang_stmt    *yspec,
+               cxobj       **xerr)
 {
     int        retval = -1;
     cxobj     *xc;           /* xml child */
@@ -579,14 +579,21 @@ xml_bind_yang0(clicon_handle h,
 }
 
 /*! RPC-specific
- * @param[in]   h      Clixon handle (sometimes NULL)
+ *
+ * @param[in]   h      Clixon handle
+ * @param[in]   xn     XML action node
+ * @param[in]   yspec  Yang spec
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      1      OK yang assignment made
+ * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
+ * @retval     -1      Error
  */
 static int
 xml_bind_yang_rpc_rpc(clicon_handle h,
-                      cxobj     *x,
-                      yang_stmt *yrpc,
-                      char      *rpcname,
-                      cxobj    **xerr)
+                      cxobj        *x,
+                      yang_stmt    *yrpc,
+                      char         *rpcname,
+                      cxobj       **xerr)
 {
     int        retval = -1;
     cbuf      *cb = NULL;
@@ -637,14 +644,20 @@ xml_bind_yang_rpc_rpc(clicon_handle h,
  * Find the innermost container or list containing an XML element that carries the name of the
  * defined action.
  * Only one action can be invoked in one rpc
- * @param[in]   h      Clixon handle (sometimes NULL)
+ * @param[in]   h      Clixon handle
+ * @param[in]   xn     XML action node
+ * @param[in]   yspec  Yang spec
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      1      OK yang assignment made
+ * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
+ * @retval     -1      Error
  * XXX if not more action, consider folding into calling function
  */
 static int
 xml_bind_yang_rpc_action(clicon_handle h,
-                         cxobj     *xn,
-                         yang_stmt *yspec,
-                         cxobj    **xerr)
+                         cxobj        *xn,
+                         yang_stmt    *yspec,
+                         cxobj       **xerr)
 {
     int        retval = -1;
     int        ret;
@@ -671,7 +684,7 @@ xml_bind_yang_rpc_action(clicon_handle h,
 /*! Find yang spec association of XML node for incoming RPC starting with <rpc>
  * 
  * Incoming RPC has an "input" structure that is not taken care of by xml_bind_yang
- * @param[in]   h      Clixon handle (sometimes NULL)
+ * @param[in]   h      Clixon handle
  * @param[in]   xrpc   XML rpc node
  * @param[in]   yspec  Yang spec
  * @param[out]  xerr   Reason for failure, or NULL
@@ -818,10 +831,10 @@ xml_bind_yang_rpc(clicon_handle h,
  */
 int
 xml_bind_yang_rpc_reply(clicon_handle h,
-                        cxobj     *xrpc,
-                        char      *name,
-                        yang_stmt *yspec,
-                        cxobj    **xerr)
+                        cxobj        *xrpc,
+                        char         *name,
+                        yang_stmt    *yspec,
+                        cxobj       **xerr)
 {
     int        retval = -1;
     yang_stmt *yrpc = NULL;    /* yang node */

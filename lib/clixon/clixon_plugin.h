@@ -289,6 +289,19 @@ typedef int (datastore_upgrade_t)(clicon_handle h, const char *db, cxobj *xt, mo
  */
 typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, cxobj **yanglib);
 
+/*! YANG module patch
+ *
+ * Given a parsed YANG module, give the ability to patch it before import recursion,
+ * grouping/uses checks, augments, etc
+ * Can be useful if YANG in some way needs modification.
+ * Deviations could be used as alternative (probably better)
+ * @param[in]  h       Clixon handle
+ * @param[in]  ymod    YANG module
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+typedef int (yang_patch_t)(clicon_handle h, yang_stmt *ymod);
+
 /*! Startup status for use in startup-callback
  * Note that for STARTUP_ERR and STARTUP_INVALID, running runs in failsafe mode
  * and startup contains the erroneous or invalid database.
@@ -315,6 +328,8 @@ struct clixon_plugin_api{
     plgstart_t       *ca_start;          /* Plugin start */
     plgexit_t        *ca_exit;           /* Plugin exit */
     plgextension_t   *ca_extension;      /* Yang extension/unknown handler */
+    yang_mount_t     *ca_yang_mount;      /* RFC 8528 schema mount */
+    yang_patch_t     *ca_yang_patch;      /* Patch yang after parse */
     union {
         struct { /* cli-specific */
             cli_prompthook_t *ci_prompt;         /* Prompt hook */
@@ -342,7 +357,6 @@ struct clixon_plugin_api{
             trans_cb_t       *cb_trans_end;      /* Transaction completed  */
             trans_cb_t       *cb_trans_abort;    /* Transaction aborted */
             datastore_upgrade_t *cb_datastore_upgrade; /* General-purpose datastore upgrade */
-            yang_mount_t     *cb_yang_mount;      /* RFC 8528 schema mount */
         } cau_backend;
     } u;
 };
@@ -365,7 +379,6 @@ struct clixon_plugin_api{
 #define ca_trans_end      u.cau_backend.cb_trans_end
 #define ca_trans_abort    u.cau_backend.cb_trans_abort
 #define ca_datastore_upgrade  u.cau_backend.cb_datastore_upgrade
-#define ca_yang_mount     u.cau_backend.cb_yang_mount
 
 /*
  * Macros
@@ -443,6 +456,9 @@ int clixon_plugin_datastore_upgrade_all(clicon_handle h, const char *db, cxobj *
 
 int clixon_plugin_yang_mount_one(clixon_plugin_t *cp, clicon_handle h, cxobj *xt, cxobj **yanglib);
 int clixon_plugin_yang_mount_all(clicon_handle h, cxobj *xt, cxobj **yanglib);
+
+int clixon_plugin_yang_patch_one(clixon_plugin_t *cp, clicon_handle h, yang_stmt *ymod);
+int clixon_plugin_yang_patch_all(clicon_handle h, yang_stmt *ymod);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);

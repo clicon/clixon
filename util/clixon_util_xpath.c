@@ -383,7 +383,7 @@ main(int    argc,
         char  *xpathi = NULL;
         for (i=0; i<xc->xc_size; i++){
             xi = xc->xc_nodeset[i];
-            if (xml2xpath(xi, nsc, &xpathi) < 0)
+            if (xml2xpath(xi, nsc, 0, &xpathi) < 0)
                 goto done;
             fprintf(stdout, "Inverse: %s\n", xpathi);
             if (xpathi){

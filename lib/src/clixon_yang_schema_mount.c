@@ -56,7 +56,6 @@
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
-#include <assert.h>
 #include <sys/param.h>
 
 /* cligen */
@@ -141,7 +140,7 @@ yang_schema_mount_point(yang_stmt *y)
  * @retval    -1     Error
  */
 int
-xml_yang_mount_get(cxobj      *x,
+xml_yang_mount_get(cxobj      *xt,
                    yang_stmt **yspec)
 {
     int        retval = -1;
@@ -152,16 +151,16 @@ xml_yang_mount_get(cxobj      *x,
     char      *xpath = NULL; // XXX free it    
     int        ret;
     
-    if ((y = xml_spec(x)) == NULL)
+    if ((y = xml_spec(xt)) == NULL)
         goto fail;
     if ((ret = yang_schema_mount_point(y)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
-    // XXX
+    // XXX hardcoded prefix: yangmnt
     if ((yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL)
         goto ok;
-    if (xml2xpath(x, NULL, &xpath) < 0)
+    if (xml2xpath(xt, NULL, 1, &xpath) < 0)
         goto done;
     if ((cvv = yang_cvec_get(yu)) == NULL)
         goto ok;
@@ -203,12 +202,11 @@ xml_yang_mount_set(cxobj     *x,
         (yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL){
         goto done;
     }
-    if (xml2xpath(x, NULL, &xpath) < 0)
+    if (xml2xpath(x, NULL, 0, &xpath) < 0)
         goto done;
     if ((cvv = yang_cvec_get(yu)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
         (yspec0 = cv_void_get(cv)) != NULL){
-        assert(0);
         ys_free(yspec0);
         cv_void_set(cv, NULL);
     }
@@ -222,7 +220,9 @@ xml_yang_mount_set(cxobj     *x,
 }
 
 /*! Free all yspec yang-mounts
- * @aparm[in] cvv   Cligen-variable vector containing xpath -> yspec mapping
+ *
+ * @param[in] cvv  Cligen-variable vector containing xpath -> yspec mapping
+ * @retval    0    OK
  */
 int
 xml_yang_mount_freeall(cvec *cvv)
@@ -243,10 +243,10 @@ xml_yang_mount_freeall(cvec *cvv)
  *
  * @param[in]  x    XML node  
  * @param[in]  arg  cvec, if match add node
- * @retval    -1    Error, aborted at first error encounter, return -1 to end user
- * @retval     0    OK, continue
- * @retval     1    Abort, dont continue with others, return 1 to end user
  * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
  */
 static int
 find_schema_mounts(cxobj *x,
@@ -277,7 +277,7 @@ find_schema_mounts(cxobj *x,
  *
  * Brute force: traverse whole XML, match all x that have ymount as yspec
  * Add yang-library state for all x
- * @param[in]     h       Clicon handle
+ * @param[in]     h       Clixon handle
  * @param[in]     xpath   XML Xpath
  * @param[in]     nsc     XML Namespace context for xpath
  * @param[in,out] xret    Existing XML tree, merge x into this
@@ -352,7 +352,7 @@ yang_schema_mount_statedata_yanglib(clicon_handle h,
 
 /*! Get schema mount-point state according to RFC 8528
  *
- * @param[in]     h       Clicon handle
+ * @param[in]     h       Clixon handle
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   XML Xpath
  * @param[in]     nsc     XML Namespace context for xpath
@@ -437,7 +437,12 @@ yang_schema_mount_statedata(clicon_handle h,
     goto done;
 }
 
-/*! Get yanglib, parse it and mount it
+/*! Get yanglib from user plugin callback, parse it and mount it
+ * 
+ * @param[in]     h     Clixon handle
+ * @param[in]     xt       
+ * @retval        0     OK
+ * @retval       -1     Error
  */
 int
 yang_schema_yanglib_parse_mount(clicon_handle h,
@@ -461,6 +466,7 @@ yang_schema_yanglib_parse_mount(clicon_handle h,
         goto anydata;
     if (xml_yang_mount_set(xt, yspec) < 0)
         goto done;
+    yspec = NULL;
     retval = 1;
  done:
     if (yspec)
@@ -474,7 +480,8 @@ yang_schema_yanglib_parse_mount(clicon_handle h,
 }
 
 /*! Check if XML nod is mount-point and return matching YANG child
- * @param[in]     h       Clicon handle
+ *
+ * @param[in]     h       Clixon handle
  * @param[in]     x1      XML node
  * @param[in]     x1c     A child of x1
  * @param[out]    yc      YANG child

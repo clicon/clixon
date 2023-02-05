@@ -487,7 +487,11 @@ text_modify(clicon_handle       h,
     char      *createstr = NULL;        
     yang_stmt *yrestype = NULL;
     char      *restype;
-    
+#ifdef CLIXON_YANG_SCHEMA_MOUNT
+    int        ismount = 0;
+    yang_stmt *mount_yspec = NULL;
+#endif
+
     if (x1 == NULL){
         clicon_err(OE_XML, EINVAL, "x1 is missing");
         goto done;
@@ -908,6 +912,15 @@ text_modify(clicon_handle       h,
                     yc = xml_spec(x1c);
 #endif
                 }
+#ifdef CLIXON_YANG_SCHEMA_MOUNT
+                /* Check if xc is unresolved mountpoint, ie no yang mount binding yet */
+                if ((ismount = xml_yang_mount_get(x1c, &mount_yspec)) < 0)
+                    goto done;
+                if (ismount && mount_yspec == NULL){
+                    ret = 1;
+                }
+                else
+#endif
                 if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
                                        yc, op,
                                        username, xnacm, permit, cbret)) < 0)

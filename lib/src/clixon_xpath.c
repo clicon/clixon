@@ -1164,3 +1164,143 @@ xpath_count(cxobj      *xcur,
         ctx_free(xc);
     return retval;
 }
+
+/*! Given an XML node, build an xpath recursively to root, internal function
+ * @param[in]  x      XML object
+ * @param[in]  nsc    Namespace context
+ * @param[in]  spec   If set, recursively continue only to root without spec
+ * @param[out] cb     XPath string as cbuf.
+ * @retval     0      OK
+ * @retval    -1      Error. eg XML malformed
+ */
+static int
+xml2xpath1(cxobj *x,
+           cvec  *nsc,
+           int    spec,
+           cbuf  *cb)
+{
+    int           retval = -1;
+    cxobj        *xp;
+    yang_stmt    *y = NULL;
+    cvec         *cvk = NULL; /* vector of index keys */
+    cg_var       *cvi;
+    char         *keyname;
+    cxobj        *xkey;
+    cxobj        *xb;
+    char         *b;
+    enum rfc_6020 keyword;
+    char         *prefix = NULL;
+    char         *namespace;
+    
+    if ((xp = xml_parent(x)) == NULL)
+        goto ok;
+    if (spec && xml_spec(x) == NULL)
+        goto ok;
+    if (xml2xpath1(xp, nsc, spec, cb) < 0)
+        goto done;
+    if (nsc){
+        if (xml2ns(x, xml_prefix(x), &namespace) < 0)
+            goto done;
+        if (namespace){
+            if (xml_nsctx_get_prefix(nsc, namespace, &prefix) == 0)
+                ; /* maybe NULL? */
+        }
+        else
+            prefix = xml_prefix(x); /* maybe NULL? */
+    }
+    else
+        prefix = xml_prefix(x);
+    /* XXX: sometimes there should be a /, sometimes not */
+    cprintf(cb, "/");
+    if (prefix)
+        cprintf(cb, "%s:", prefix);
+    cprintf(cb, "%s", xml_name(x));
+    if ((y = xml_spec(x)) != NULL){
+        keyword = yang_keyword_get(y);
+        switch (keyword){
+        case Y_LEAF_LIST:
+            if ((b = xml_body(x)) != NULL)
+                cprintf(cb, "[.=\"%s\"]", b);
+            else
+                cprintf(cb, "[.=\"\"]");
+            break;
+        case Y_LIST:
+            cvk = yang_cvec_get(y);
+            cvi = NULL;
+            while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+                keyname = cv_string_get(cvi);
+                if ((xkey = xml_find(x, keyname)) == NULL)
+                    goto done; /* No key in xml */
+                if ((xb = xml_find(x, keyname)) == NULL)
+                    goto done;
+                b = xml_body(xb);
+                cprintf(cb, "[");
+                if (prefix)
+                    cprintf(cb, "%s:", prefix);
+                cprintf(cb, "%s=\"%s\"]", keyname, b?b:"");
+            }
+            break;
+        default:
+            break;
+        }
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Given an XML node, build an xpath to root
+ *
+ * Creates an XPath from an XML node with some limitations, see notes below.
+ * The prefixes used are from the given namespace context if any, otherwise the native prefixes are used, if any.
+ * Note that this means that prefixes may be translated such as if the XML namespace mapping is different than the once used
+ * in the XML.
+ * Therefore, if nsc is "canonical", the returned xpath is also "canonical", even though the XML is not.
+ * @param[in]  x      XML object
+ * @param[in]  nsc    Namespace context
+ * @param[in]  spec   If set, recursively continue only to root without spec
+ * @param[out] xpath  Malloced xpath string. Need to free() after use
+ * @retval     0      OK
+ * @retval    -1      Error. (eg XML malformed)
+ * @code
+ *    char  *xpath = NULL;
+ *    cxobj *x;
+ *    ... x is inside an xml tree ...
+ *    if (xml2xpath(x, nsc, &xpath) < 0)
+ *       err;
+ *    free(xpath);
+ * @endcode
+ * @note x needs to be bound to YANG, see eg xml_bind_yang()
+ */
+int
+xml2xpath(cxobj *x,
+          cvec  *nsc,
+          int    spec,
+          char **xpathp)
+{
+    int   retval = -1;
+    cbuf *cb;
+    char *xpath = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    if (xml2xpath1(x, nsc, spec, cb) < 0)
+        goto done;
+    /* XXX: see xpath in test statement,.. */
+    xpath = cbuf_get(cb);
+    if (xpathp){
+        if ((*xpathp = strdup(xpath)) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+        xpath = NULL;
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}

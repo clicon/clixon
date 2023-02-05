@@ -63,7 +63,6 @@ int xml_tree_prune_flags(cxobj *xt, int flags, int mask);
 int xml_namespace_change(cxobj *x, char *ns, char *prefix);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, cxobj **xerr);
-int xml2xpath(cxobj *x, cvec *nsc, char **xpath);
 int assign_namespace_element(cxobj *x0, cxobj *x1, cxobj *x1p);
 int assign_namespace_body(cxobj *x0, cxobj *x1);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);

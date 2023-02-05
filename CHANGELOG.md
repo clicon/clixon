@@ -49,6 +49,7 @@ Expected: beginning of 2023
     * Only schema-ref=inline, not shared-schema
     * Only presence containers can be mount-points
   * New plugin callback: `ca_yang_mount`
+    * To specify which YANG modules should be mounted
   * Standards: RFC 8528
   * To enable configure with `--enable-yang-schema-mount`
 * Netconf monitoring RFC 6022
@@ -86,6 +87,7 @@ Developers may need to change their code
     * Added netconf ssh subsystem
     * Renamed from `clixon` built in `docker/base`
 * C-API
+  * Added `spec` parameter to `xml2xpath()`, default 0
   * Added `clicon_handle` parameter to all `xml_bind_*` calls
   * All calls to `clicon_log_xml()` changed to new function `clicon_debug_xml()`
   * Changed type of `veclen` parameter to `size_t` in `xpath_vec_flag()`
@@ -94,6 +96,9 @@ Developers may need to change their code
   
 ### Minor features
 
+* New plugin callbacks
+  * `ca_yang_mount` - see the RFC 8528 support
+  * `ca_yang_patch` - for modifying existing YANG modules
 * Changed debug levels in `clicon_debug()` to be based on maskable flags:
   * Added flag names: `CLIXON_DBG_*`
   * Added maskable flags that can be combined when debugging:

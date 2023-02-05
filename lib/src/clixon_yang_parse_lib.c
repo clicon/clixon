@@ -1013,6 +1013,7 @@ done:
 /*! Open a file, read into a string and invoke yang parsing
  *
  * Similar to clicon_yang_str(), just read a file first
+ * @param[in] h        Clixon handle (can be NULL, but then no callbacks)
  * @param[in] filename Name of file
  * @param[in] yspec    Yang specification. Should have been created by caller using yspec_new
  * @retval ymod        Top-level yang (sub)module
@@ -1022,8 +1023,9 @@ done:
  * See top of file for diagram of calling order
  */
 yang_stmt *
-yang_parse_filename(const char *filename, 
-                    yang_stmt  *yspec)
+yang_parse_filename(clicon_handle h,
+                    const char   *filename, 
+                    yang_stmt    *yspec)
 {
     yang_stmt    *ymod = NULL;
     FILE         *fp = NULL;
@@ -1039,6 +1041,9 @@ yang_parse_filename(const char *filename,
         goto done;
     }
     if ((ymod = yang_parse_file(fp, filename, yspec)) < 0)
+        goto done;
+    /* YANG patch hook */
+    if (h && clixon_plugin_yang_patch_all(h, ymod) < 0)
         goto done;
   done:
     if (fp)
@@ -1097,7 +1102,7 @@ yang_parse_module(clicon_handle h,
         goto done;
     }
     filename = cbuf_get(fbuf);
-    if ((ymod = yang_parse_filename(filename, yspec)) == NULL)
+    if ((ymod = yang_parse_filename(h, filename, yspec)) == NULL)
         goto done;
     /* Sanity check that requested module name matches loaded module
      * If this does not match, the filename and containing module do not match
@@ -1648,7 +1653,7 @@ yang_spec_parse_file(clicon_handle h,
         *index(base, '@') = '\0';
     if (yang_find(yspec, Y_MODULE, base) != NULL)
         goto ok;
-    if (yang_parse_filename(filename, yspec) == NULL)
+    if (yang_parse_filename(h, filename, yspec) == NULL)
         goto done;
     if (yang_parse_post(h, yspec, modmin) < 0)
         goto done;
@@ -1752,7 +1757,7 @@ yang_spec_load_dir(clicon_handle h,
         }
         /* Create full filename */
         snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
-        if ((ym = yang_parse_filename(filename, yspec)) == NULL)
+        if ((ym = yang_parse_filename(h, filename, yspec)) == NULL)
             goto done;
         revm = 0;
         if ((yrev = yang_find(ym, Y_REVISION, NULL)) != NULL)

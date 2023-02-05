@@ -132,7 +132,7 @@ main(int    argc,
     if (yang_filename){
         if ((yspec = yspec_new()) == NULL)
             goto done;
-        if (yang_parse_filename(yang_filename, yspec) == NULL){
+        if (yang_parse_filename(NULL, yang_filename, yspec) == NULL){
             fprintf(stderr, "yang parse error %s\n", clicon_err_reason);
             return -1;
         }

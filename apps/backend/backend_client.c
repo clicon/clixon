@@ -485,7 +485,8 @@ from_client_edit_config(clicon_handle h,
     /* <config> yang spec may be set to anyxml by ingress yang check,...*/
     if (xml_spec(xc) != NULL)
         xml_spec_set(xc, NULL);
-    /* Populate XML with Yang spec (why not do this in parser?) 
+    /* Populate XML with Yang spec. Binding is done in from_client_msg only frm an RPC perspective,
+     * where <config> is ANYDATA
      */
     if ((ret = xml_bind_yang(h, xc, YB_MODULE, yspec, &xret)) < 0)
         goto done;
@@ -1560,7 +1561,7 @@ from_client_msg(clicon_handle        h,
      * 2. The backend has restarted and the client uses an old op_id
      */
     if (op_id != 0 && ce->ce_id != op_id){
-        clicon_debug(1, "%s out-of-order sequence op-id:%u ce_id:%u", __FUNCTION__, op_id, ce->ce_id);
+        clicon_debug(1, "%s Warning: incoming session-id:%u does not match socket ce_id:%u", __FUNCTION__, op_id, ce->ce_id);
     }
     /* Check for empty frame (no mesaages), return empty message, not clear from RFC what to do */
     if (xml_child_nr_type(xt, CX_ELMNT) == 0){
