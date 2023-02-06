@@ -13,12 +13,6 @@ if [ ${ENABLE_NETSNMP} != "yes" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
-snmpd=$(type -p snmpd)
-snmpget="$(type -p snmpget) -On -c public -v2c localhost "
-snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
-snmptable="$(type -p snmptable) -c public -v2c localhost "
-snmpwalk="$(type -p snmpwalk) -c public -v2c localhost "
-
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
 fstate=$dir/state.xml
@@ -487,6 +481,10 @@ expectpart "$($snmpwalk IF-MIB::ifRcvAddressTable)" 0 "IF-MIB::ifRcvAddressAddre
            "IF-MIB::ifRcvAddressType.1.\"11:bb:cc:dd:ee:ff\" = INTEGER: other(1)" \
            "IF-MIB::ifRcvAddressType.2.\"aa:22:33:44:55:66\" = INTEGER: volatile(2)"
 
+# XXX with valgrind on backend this fails with:
+# Error in packet.
+# Reason: (genError) A general failure occured
+# Failed object: IF-MIB::ifName.2
 new "Walk ifXTable"
 expectpart "$($snmpwalk IF-MIB::ifXTable)" 0 "IF-MIB::ifName.1 = STRING: ifname1" \
            "IF-MIB::ifName.2 = STRING: ifname2"

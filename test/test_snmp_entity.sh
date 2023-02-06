@@ -519,7 +519,7 @@ expectpart "$($snmpwalk $ENTITY_OID)" 0 "SNMPv2-SMI::mib-2.47.1.1.1.1.1.1 = INTE
     "SNMPv2-SMI::mib-2.47.1.1.1.1.15.1 = STRING: \"Asset 123\"" \
     "SNMPv2-SMI::mib-2.47.1.1.1.1.15.2 = STRING: \"Asset 456\"" \
     "SNMPv2-SMI::mib-2.47.1.1.1.1.16.1 = INTEGER: 1" \
-    "SNMPv2-SMI::mib-2.47.1.1.1.1.16.2 = INTEGER: 2" \
+    "SNMPv2-SMI::mib-2.47.1.1.1.1.16.2 = INTEGER: 2" 
 
 new "Cleaning up"
 testexit

@@ -13,13 +13,6 @@ if [ ${ENABLE_NETSNMP} != "yes" ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
-snmpd=$(type -p snmpd)
-snmpget="$(type -p snmpget) -On -c public -v2c localhost "
-snmpwalk="$(type -p snmpwalk) -On -c public -v2c localhost "
-snmpwalkstr="$(type -p snmpwalk) -c public -v2c localhost "
-snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
-snmptable="$(type -p snmptable) -c public -v2c localhost "
-
 cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
 fstate=$dir/state.xml

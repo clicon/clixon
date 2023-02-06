@@ -224,8 +224,15 @@ if $SNMPCHECK; then
     snmpgetstr="$(type -p snmpget) -c public -v2c localhost "
     snmpgetnext="$(type -p snmpgetnext) -On -c public -v2c localhost "
     snmpgetnextstr="$(type -p snmpgetnext) -c public -v2c localhost "
-    snmptable="$(type -p snmptable) -c public -v2c localhost "
-    snmpwalk="$(type -p snmpwalk) -c public -v2c localhost "
+    if [ $valgrindtest -ne 0 ]; then 
+        # To avoid "Timeout: No Response from localhost" from netsnmp/snmpd set timeout to 10s
+        snmptable="$(type -p snmptable) -c public -v2c localhost -t 10 "
+        snmpwalk="$(type -p snmpwalk) -c public -v2c localhost -t 10 "
+    else
+        snmptable="$(type -p snmptable) -c public -v2c localhost "
+        snmpwalk="$(type -p snmpwalk) -c public -v2c localhost "
+    fi
+    snmpwalkstr="$(type -p snmpwalk) -c public -v2c localhost "
     snmptranslate="$(type -p snmptranslate) "
 
     if [ "${ENABLE_NETSNMP}" == "yes" ]; then
