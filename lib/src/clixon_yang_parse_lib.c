@@ -1043,7 +1043,7 @@ yang_parse_filename(clicon_handle h,
     if ((ymod = yang_parse_file(fp, filename, yspec)) < 0)
         goto done;
     /* YANG patch hook */
-    if (h && clixon_plugin_yang_patch_all(h, ymod) < 0)
+    if (ymod && h && clixon_plugin_yang_patch_all(h, ymod) < 0)
         goto done;
   done:
     if (fp)

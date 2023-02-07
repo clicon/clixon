@@ -255,8 +255,15 @@ clixon_event_reg_timeout(struct timeval t,
                          void          *arg, 
                          char          *str)
 {
-    struct event_data *e, *e1, **e_prev;
+    int                 retval = -1;
+    struct event_data  *e;
+    struct event_data  *e1;
+    struct event_data **e_prev;
 
+    if (str == NULL || fn == NULL){
+        clicon_err(OE_CFG, EINVAL, "str or fn is NULL");
+        goto done;
+    }
     if ((e = (struct event_data *)malloc(sizeof(struct event_data))) == NULL){
         clicon_err(OE_EVENTS, errno, "malloc");
         return -1;
@@ -277,7 +284,9 @@ clixon_event_reg_timeout(struct timeval t,
     e->e_next = e1;
     *e_prev = e;
     clicon_debug(CLIXON_DBG_DETAIL, "%s: %s", __FUNCTION__, str); 
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Deregister a timeout callback as previosly registered by clixon_event_reg_timeout()

@@ -334,8 +334,10 @@ xp_yang_eval(xp_yang_ctx  *xy,
         break;
     case XP_ABSPATH:
         /* Set context node to top node, and nodeset to that node only */
-        if (yang_keyword_get(xy->xy_node) != Y_SPEC)
-            xy->xy_node = ys_module(xy->xy_node);
+        if (yang_keyword_get(xy->xy_node) != Y_SPEC){
+            if (ys_real_module(xy->xy_node, &xy->xy_node) < 0)
+                goto done;
+        }
         break;
     case XP_PRED:
         if (xp_yang_eval_predicate(xy, xptree, xyr) < 0)
