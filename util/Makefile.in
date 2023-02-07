@@ -46,6 +46,7 @@ localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 HOST_VENDOR     = @host_vendor@
 with_restconf	= @with_restconf@
+with_libcurl	= @with_libcurl@
 LIBXML2_CFLAGS  = @LIBXML2_CFLAGS@
 
 SH_SUFFIX	= @SH_SUFFIX@
@@ -102,7 +103,9 @@ APPSRC   += clixon_util_dispatcher.c
 APPSRC   += clixon_netconf_ssh_callhome.c
 APPSRC   += clixon_netconf_ssh_callhome_client.c
 ifdef with_restconf
-APPSRC   += clixon_util_stream.c # Needs curl
+ifdef with_libcurl
+APPSRC   += clixon_util_stream.c
+endif
 ifeq ($(with_restconf), native)
 APPSRC   += clixon_restconf_callhome_client.c
 endif

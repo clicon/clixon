@@ -30,8 +30,8 @@
 /* Define to 1 if you have the <cligen/cligen.h> header file. */
 #undef HAVE_CLIGEN_CLIGEN_H
 
-/* Define to 1 if you have the <curl.h> header file. */
-#undef HAVE_CURL_H
+/* Define to 1 if you have the <curl/curl.h> header file. */
+#undef HAVE_CURL_CURL_H
 
 /* Define to 1 if you have the `getpeereid' function. */
 #undef HAVE_GETPEEREID

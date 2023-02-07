@@ -644,6 +644,7 @@ HAVE_HTTP1
 HAVE_LIBNGHTTP2
 enable_netsnmp
 with_restconf
+with_libcurl
 LINKAGE
 LIBSTATIC_SUFFIX
 SH_SUFFIX
@@ -724,6 +725,7 @@ enable_debug
 with_cligen
 enable_yang_patch
 enable_yang_schema_mount
+with_libcurl
 enable_publish
 with_restconf
 enable_http1
@@ -1391,6 +1393,8 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cligen=dir       Use CLIGEN installation in this dir
+  --without-libcurl       Disable use of libcurl, affects publish
+                          notification, including clixon_util_stream
   --with-restconf=native  Integration with embedded web server (DEFAULT)
   --with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg
                           nginx
@@ -4699,25 +4703,16 @@ $as_echo "#define CLIXON_YANG_SCHEMA_MOUNT 1" >>confdefs.h
 
 fi
 
-# Experimental: Curl publish notification stream to eg Nginx nchan.
-# Check whether --enable-publish was given.
-if test "${enable_publish+set}" = set; then :
-  enableval=$enable_publish;
-	  if test "$enableval" = no; then
-	      ac_enable_publish=no
-	  else
-	      ac_enable_publish=yes
-          fi
+# publish streams uses libcurl
 
+# Check whether --with-libcurl was given.
+if test "${with_libcurl+set}" = set; then :
+  withval=$with_libcurl; with_libcurl=$withval
 else
-   ac_enable_publish=no
+  with_libcurl=yes
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: publish is $ac_enable_publish" >&5
-$as_echo "publish is $ac_enable_publish" >&6; }
-
-if test "$ac_enable_publish" = "yes"; then
-   # publish streams uses libcurl
+if test "x${with_libcurl}" != "xno"; then
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
 $as_echo_n "checking for grep that handles long lines and -e... " >&6; }
@@ -4978,16 +4973,16 @@ fi
 done
 
 
-for ac_header in curl.h
+for ac_header in curl/curl.h
 do :
-  ac_fn_c_check_header_mongrel "$LINENO" "curl.h" "ac_cv_header_curl_h" "$ac_includes_default"
-if test "x$ac_cv_header_curl_h" = xyes; then :
+  ac_fn_c_check_header_mongrel "$LINENO" "curl/curl.h" "ac_cv_header_curl_curl_h" "$ac_includes_default"
+if test "x$ac_cv_header_curl_curl_h" = xyes; then :
   cat >>confdefs.h <<_ACEOF
-#define HAVE_CURL_H 1
+#define HAVE_CURL_CURL_H 1
 _ACEOF
 
 else
-  as_fn_error $? "curl missing" "$LINENO" 5
+  as_fn_error $? "curl header(s) missing" "$LINENO" 5
 fi
 
 done
@@ -5039,10 +5034,32 @@ else
   as_fn_error $? "libcurl missing" "$LINENO" 5
 fi
 
+fi
+
+# Experimental: Curl publish notification stream to eg Nginx nchan.
+# Check whether --enable-publish was given.
+if test "${enable_publish+set}" = set; then :
+  enableval=$enable_publish;
+	  if test "$enableval" = no; then
+	      ac_enable_publish=no
+	  else
+	      ac_enable_publish=yes
+          fi
+
+else
+   ac_enable_publish=no
+fi
+
+if test "$ac_enable_publish" = "yes"; then
+   if test "x${with_libcurl}" = "xno"; then
+      as_fn_error $? "--enable-publish conflicts with --without-libcurl" "$LINENO" 5
+   fi
 
 $as_echo "#define CLIXON_PUBLISH_STREAMS 1" >>confdefs.h
 
 fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: publish is $ac_enable_publish" >&5
+$as_echo "publish is $ac_enable_publish" >&6; }
 
 for ac_header in cligen/cligen.h
 do :

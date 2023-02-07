@@ -114,6 +114,7 @@ AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(LIBSTATIC_SUFFIX)
 AC_SUBST(LINKAGE)
+AC_SUBST(with_libcurl)
 AC_SUBST(with_restconf)  # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(enable_netsnmp) # Enable build of apps/snmp
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
@@ -213,8 +214,19 @@ if test "${enable_yang_schema_mount}" = "yes"; then
    AC_DEFINE(CLIXON_YANG_SCHEMA_MOUNT, 1, [Enable YANG schema mount, RFC 8528])
 fi
 
+# publish streams uses libcurl
+AC_ARG_WITH([libcurl],
+	[AS_HELP_STRING([--without-libcurl],
+	   [Disable use of libcurl, affects publish notification, including clixon_util_stream])],
+	[with_libcurl=$withval],[with_libcurl=yes])
+if test "x${with_libcurl}" != "xno"; then
+   AC_CHECK_HEADERS(curl/curl.h,[], AC_MSG_ERROR([curl header(s) missing]))
+   AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
+fi
+
 # Experimental: Curl publish notification stream to eg Nginx nchan. 
-AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],[Enable publish of notification streams using SSE and curl]),[
+AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],
+	[Enable publish of notification streams using SSE and curl]),[
 	  if test "$enableval" = no; then
 	      ac_enable_publish=no
 	  else	      
@@ -222,14 +234,13 @@ AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],[Enable publish of noti
           fi
         ],
 	[ ac_enable_publish=no])
-AC_MSG_RESULT(publish is $ac_enable_publish)	
-
 if test "$ac_enable_publish" = "yes"; then
-   # publish streams uses libcurl
-   AC_CHECK_HEADERS(curl.h,[], AC_MSG_ERROR([curl missing]))	
-   AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
+   if test "x${with_libcurl}" = "xno"; then
+      AC_MSG_ERROR([--enable-publish conflicts with --without-libcurl])
+   fi
    AC_DEFINE(CLIXON_PUBLISH_STREAMS, 1, [Enable publish of notification streams using SSE and curl])
 fi
+AC_MSG_RESULT(publish is $ac_enable_publish)
 
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR([CLIgen missing. Try: git clone https://github.com/clicon/cligen.git]))
 
