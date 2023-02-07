@@ -638,6 +638,7 @@ YANG_STANDARD_DIR
 YANG_INSTALLDIR
 CLIXON_YANG_SCHEMA_MOUNT
 CLIXON_YANG_PATCH
+LIBXML2_CFLAGS
 with_libxml2
 HAVE_HTTP1
 HAVE_LIBNGHTTP2
@@ -1398,7 +1399,8 @@ Optional Packages:
                           Directory of generated YANG specs (default:
                           $prefix/share/mib-yangs)
   --with-configfile=FILE  Set default path to config file
-  --with-libxml2          Use gnome/libxml2 regex engine
+  --with-libxml2[=/path/to/xml2-config]
+                          Use libxml2 regex engine
   --without-sigaction     Don't use sigaction
   --with-yang-installdir=DIR
                           Install Clixon yang files here (default:
@@ -5657,6 +5659,16 @@ fi
 
 if test "${with_libxml2}"; then
    # Find libxml2 lib
+   if test -x "${with_libxml2}" 2>/dev/null; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libxml2 header files and libs" >&5
+$as_echo_n "checking for libxml2 header files and libs... " >&6; }
+      LIBXML2_CFLAGS="`${with_libxml2} --cflags`"
+      LIBS="$LIBS `${with_libxml2} --libs`"
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: $LIBXML2_CFLAGS" >&5
+$as_echo "$LIBXML2_CFLAGS" >&6; }
+   else
+      LIBXML2_CFLAGS="-I/usr/include/libxml2"
+   fi
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for xmlRegexpCompile in -lxml2" >&5
 $as_echo_n "checking for xmlRegexpCompile in -lxml2... " >&6; }
 if ${ac_cv_lib_xml2_xmlRegexpCompile+:} false; then :
@@ -5731,7 +5743,7 @@ else
 fi
 
 
-if test "x${with_sigaction}" == "xyes"; then
+if test "x${with_sigaction}" = "xyes"; then
    for ac_func in sigaction
 do :
   ac_fn_c_check_func "$LINENO" "sigaction" "ac_cv_func_sigaction"

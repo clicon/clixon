@@ -46,7 +46,7 @@ localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 HOST_VENDOR     = @host_vendor@
 with_restconf	= @with_restconf@
-HAVE_LIBXML2	= @HAVE_LIBXML2@
+LIBXML2_CFLAGS  = @LIBXML2_CFLAGS@
 
 SH_SUFFIX	= @SH_SUFFIX@
 
@@ -150,7 +150,7 @@ clixon_util_xml_mod: clixon_util_xml_mod.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -D__PROGRAM__=\"$@\" $(LDFLAGS) $^ $(LIBS) -o $@
 
 clixon_util_regexp: clixon_util_regexp.c $(LIBDEPS)
-	$(CC) $(INCLUDES) -I /usr/include/libxml2 $(CPPFLAGS) -D__PROGRAM__=\"$@\" $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
+	$(CC) $(INCLUDES) $(LIBXML2_CFLAGS) $(CPPFLAGS) -D__PROGRAM__=\"$@\" $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
 clixon_util_socket: clixon_util_socket.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -D__PROGRAM__=\"$@\" $(LDFLAGS) $^ $(LIBS) -o $@

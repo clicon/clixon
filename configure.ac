@@ -118,7 +118,8 @@ AC_SUBST(with_restconf)  # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(enable_netsnmp) # Enable build of apps/snmp
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
 AC_SUBST(HAVE_HTTP1,false)
-AC_SUBST(with_libxml2)  
+AC_SUBST(with_libxml2)
+AC_SUBST(LIBXML2_CFLAGS)
 AC_SUBST(CLIXON_YANG_PATCH)
 AC_SUBST(CLIXON_YANG_SCHEMA_MOUNT)
 # Where Clixon installs its YANG specs
@@ -344,9 +345,17 @@ AC_CHECK_LIB(dl, dlopen)
 # Note this only enables the compiling of the code. In order to actually
 # use it you need to set Clixon config option CLICON_YANG_REGEXP to libxml2
 AC_ARG_WITH([libxml2],
-	[AS_HELP_STRING([--with-libxml2],[Use gnome/libxml2 regex engine])])
+	[AS_HELP_STRING([--with-libxml2[[=/path/to/xml2-config]]],[Use libxml2 regex engine])])
 if test "${with_libxml2}"; then
    # Find libxml2 lib
+   if test -x "${with_libxml2}" 2>/dev/null; then
+      AC_MSG_CHECKING([for libxml2 header files and libs])
+      LIBXML2_CFLAGS="`${with_libxml2} --cflags`"
+      LIBS="$LIBS `${with_libxml2} --libs`"
+      AC_MSG_RESULT([$LIBXML2_CFLAGS])
+   else
+      LIBXML2_CFLAGS="-I/usr/include/libxml2"
+   fi
    AC_CHECK_LIB(xml2, xmlRegexpCompile,[], AC_MSG_ERROR([libxml2 not found]))
 fi 
 
