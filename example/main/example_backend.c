@@ -70,6 +70,12 @@
 /* Command line options to be passed to getopt(3) */
 #define BACKEND_EXAMPLE_OPTS "a:nrsS:x:iuUtV:"
 
+/* Enabling this improves performance in tests, but there may trigger the "double XPath"
+ * problem.
+ * Disabling it makes perf go down but makes it safe for "double XPath"
+ */
+#define _STATEFILTER
+
 /*! Yang action
  * Start backend with -- -a <instance-id>
  * where instance-id points to an action node in some YANG
@@ -523,13 +529,15 @@ example_statefile(clicon_handle     h,
 {
     int        retval = -1;
     cxobj    **xvec = NULL;
-    size_t     xlen = 0;
-    int        i;
     cxobj     *xt = NULL;
     yang_stmt *yspec = NULL;
     FILE      *fp = NULL;
-    cxobj     *x1;
     int        ret;
+#ifdef _STATEFILTER
+    size_t     xlen = 0;
+    int        i;
+    cxobj     *x1;
+#endif
 
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
@@ -551,6 +559,7 @@ example_statefile(clicon_handle     h,
     }
     if (_state_file_cached)
         xt = _state_xml_cache;
+#ifdef _STATEFILTER
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
         goto done;      
     /* Mark elements to copy:
@@ -573,6 +582,10 @@ example_statefile(clicon_handle     h,
     /* Unmark returned state tree */
     if (xml_apply(xstate, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
         goto done;
+#else
+    if (xml_copy(xt, xstate) < 0) 
+        goto done;
+#endif
     if (_state_file_cached)
         xt = NULL; /* ensure cache is not cleared */
  ok:

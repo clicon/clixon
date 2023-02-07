@@ -122,7 +122,7 @@ if [ $RC -ne 0 ]; then
 fi
 
 new "wait restconf"
-swait_restconf
+wait_restconf
 
 rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>"
 rpc+="<interfaces xmlns=\"urn:example:clixon\"><a><name>foo</name><b>"

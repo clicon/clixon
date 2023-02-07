@@ -202,7 +202,7 @@ xml_yang_mount_set(cxobj     *x,
         (yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL){
         goto done;
     }
-    if (xml2xpath(x, NULL, 0, &xpath) < 0)
+    if (xml2xpath(x, NULL, 1, &xpath) < 0)
         goto done;
     if ((cvv = yang_cvec_get(yu)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&

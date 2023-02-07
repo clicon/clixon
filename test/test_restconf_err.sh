@@ -163,7 +163,7 @@ EOF
 
 # State file with error: wrong namespace
 cat <<EOF > $fstate
-<mystate xmlns="urn:example:foobar">
+<mystate xmlns="urn:example:clixon">
    <parameter>
       <name>x</name>
       <value>x</value>
@@ -305,6 +305,16 @@ new "restconf GET augment multi-namespace, no 2nd module in api-path, fail"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/augment:route-config/dynamic/ospf)" 0 "HTTP/$HVER 404" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
 #----------------------------------------------
+# State file with error: wrong namespace
+cat <<EOF > $fstate
+<mystate xmlns="urn:example:foobar">
+   <parameter>
+      <name>x</name>
+      <value>x</value>
+   </parameter>
+</mystate>
+EOF
+
 # Also generate an invalid state XML. This should generate an "Internal" error and the name of the
 new "restconf GET failed state"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/$HVER 412" '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: mystate with parent: config in namespace: urn:example:foobar. Internal error, state callback returned invalid XML from plugin: example_backend</error-message></error></errors>'
