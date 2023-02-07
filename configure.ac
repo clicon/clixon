@@ -129,6 +129,10 @@ AC_SUBST(YANG_INSTALLDIR)
 AC_SUBST(YANG_STANDARD_DIR)
 # SNMP tests require generated YANGs from MIBs
 AC_SUBST(MIB_GENERATED_YANG_DIR)
+# Used in expansion in, e.g., example/main/example.xml.in
+AC_SUBST(SYSCONFDIR)
+AC_SUBST(LIBDIR)
+AC_SUBST(LOCALSTATEDIR)
 
 #
 AC_PROG_CC()
@@ -419,6 +423,15 @@ AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location fo
 AC_ARG_ENABLE(nls)
 
 AH_BOTTOM([#include <clixon_custom.h>])
+
+# Expand for easy replacement in example/main/example.xml.in
+# Special case is $libdir, which is composed from $exec_prefix
+test "x$prefix" = xNONE && prefix=$ac_default_prefix
+test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+SYSCONFDIR=`eval echo $sysconfdir`
+LIBDIR=`eval echo $libdir`
+LIBDIR=`eval echo $LIBDIR`
+LOCALSTATEDIR=`eval echo $localstatedir`
 
 AC_OUTPUT(Makefile
 	  lib/Makefile

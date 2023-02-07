@@ -633,6 +633,9 @@ ac_ct_CXX
 CXXFLAGS
 CXX
 CPP
+LOCALSTATEDIR
+LIBDIR
+SYSCONFDIR
 MIB_GENERATED_YANG_DIR
 YANG_STANDARD_DIR
 YANG_INSTALLDIR
@@ -3419,6 +3422,7 @@ HAVE_HTTP1=false
 
 # SNMP tests require generated YANGs from MIBs
 
+# Used in expansion in, e.g., example/main/example.xml.in
 
 #
 ac_ext=c
@@ -5843,6 +5847,15 @@ fi
 
 
 
+
+# Expand for easy replacement in example/main/example.xml.in
+# Special case is $libdir, which is composed from $exec_prefix
+test "x$prefix" = xNONE && prefix=$ac_default_prefix
+test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+SYSCONFDIR=`eval echo $sysconfdir`
+LIBDIR=`eval echo $libdir`
+LIBDIR=`eval echo $LIBDIR`
+LOCALSTATEDIR=`eval echo $localstatedir`
 
 ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml extras/rpm/Makefile docker/Makefile docker/clixon-dev/Makefile docker/example/Makefile docker/test/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
 
