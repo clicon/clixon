@@ -69,7 +69,7 @@ endif
 
 with_restconf	= @with_restconf@
 
-INCLUDES 	= -I$(includedir) @INCLUDES@ 
+INCLUDES 	= -I$(DESTDIR)$(includedir) @INCLUDES@
 LINKAGE         = @LINKAGE@
 LDFLAGS 	= @LDFLAGS@
 CPPFLAGS  	= @CPPFLAGS@
