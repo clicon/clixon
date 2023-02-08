@@ -74,7 +74,7 @@ Run the Clixon main example, in the [example](../example) directory or [examples
 
 ## Hello world?
 
-One of the examples is [a hello world example](https://github.com/clicon/clixon-examples/hello). Please start with that.
+One of the examples is [a hello world example](https://github.com/clicon/clixon-examples/tree/master/hello). Please start with that.
 
 ## How do you build and install Clixon?
 Clixon: 
