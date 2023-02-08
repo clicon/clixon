@@ -564,6 +564,9 @@ restconf_accept_client(int   fd,
         addr = &(in6->sin6_addr);
         break;
     }
+    default:
+        errno = EAFNOSUPPORT;
+        goto done;
     }
     if ((rsock->rs_from_addr = calloc(INET6_ADDRSTRLEN, 1)) == NULL){
         clicon_err(OE_UNIX, errno, "calloc");
