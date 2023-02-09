@@ -5143,7 +5143,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: restconf mode ${with_restconf}" >&5
 $as_echo "restconf mode ${with_restconf}" >&6; }
 # Actions for each specific package
-if test "x${with_restconf}" == xfcgi; then
+if test "x${with_restconf}" = xfcgi; then
    # Lives in libfcgi-dev
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for FCGX_Init in -lfcgi" >&5
 $as_echo_n "checking for FCGX_Init in -lfcgi... " >&6; }
@@ -5195,7 +5195,7 @@ fi
 
 $as_echo "#define WITH_RESTCONF_FCGI 1" >>confdefs.h
  # For c-code that cant use strings
-elif test "x${with_restconf}" == xnative; then
+elif test "x${with_restconf}" = xnative; then
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
 $as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
 if ${ac_cv_lib_ssl_OPENSSL_init_ssl_+:} false; then :
@@ -5397,7 +5397,7 @@ fi
 
 $as_echo "#define WITH_RESTCONF_NATIVE 1" >>confdefs.h
  # For c-code that cant use strings
-elif test "x${with_restconf}" == xno; then
+elif test "x${with_restconf}" = xno; then
    # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
    with_restconf=
 else

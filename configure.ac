@@ -260,11 +260,11 @@ AC_ARG_WITH([restconf],
 	[with_restconf=native])
 AC_MSG_RESULT(restconf mode ${with_restconf})
 # Actions for each specific package
-if test "x${with_restconf}" == xfcgi; then
+if test "x${with_restconf}" = xfcgi; then
    # Lives in libfcgi-dev
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
    AC_DEFINE(WITH_RESTCONF_FCGI, 1, [Use fcgi restconf mode]) # For c-code that cant use strings
-elif test "x${with_restconf}" == xnative; then
+elif test "x${with_restconf}" = xnative; then
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
    # Check if http/1 enabled
@@ -299,7 +299,7 @@ elif test "x${with_restconf}" == xnative; then
       HAVE_LIBNGHTTP2=true 
    fi    
    AC_DEFINE(WITH_RESTCONF_NATIVE, 1, [Use native restconf mode]) # For c-code that cant use strings
-elif test "x${with_restconf}" == xno; then
+elif test "x${with_restconf}" = xno; then
    # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
    with_restconf=   
 else
@@ -385,7 +385,7 @@ AC_ARG_WITH(
 	[with_sigaction=yes]
 )
 
-if test "x${with_sigaction}" == "xyes"; then
+if test "x${with_sigaction}" = "xyes"; then
    AC_CHECK_FUNCS(sigaction)
 fi 
 
