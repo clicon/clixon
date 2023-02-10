@@ -350,8 +350,8 @@ xml_name(cxobj *xn)
 /*! Set name of xnode, name is copied
  * @param[in]  xn    xml node
  * @param[in]  name  new name, null-terminated string, copied by function
- * @retval     -1    on error with clicon-err set
  * @retval     0     OK
+ * @retval     -1    on error with clicon-err set
  */
 int
 xml_name_set(cxobj *xn, 
@@ -383,8 +383,8 @@ xml_prefix(cxobj *xn)
 /*! Set prefix of xnode, prefix is copied
  * @param[in]  xn      XML node
  * @param[in]  prefix  New prefix, null-terminated string, copied by function
- * @retval     -1      Error with clicon-err set
  * @retval     0       OK
+ * @retval     -1      Error with clicon-err set
  */
 int
 xml_prefix_set(cxobj *xn, 
@@ -425,8 +425,8 @@ nscache_get(cxobj *x,
  * @param[in]  x         XML node
  * @param[in]  namespace
  * @param[out] prefix
- * @retval     0      No prefix found
  * @retval     1      Prefix found
+ * @retval     0      No prefix found
  */
 int
 nscache_get_prefix(cxobj *x,
@@ -632,8 +632,8 @@ xml_value(cxobj *xn)
 /*! Set value of xml node, value is copied
  * @param[in]  xn    xml node
  * @param[in]  val   new value, null-terminated string, copied by function
- * @retval     -1    on error with clicon-err set
  * @retval     0     OK
+ * @retval     -1    on error with clicon-err set
  */
 int
 xml_value_set(cxobj *xn, 
@@ -666,8 +666,8 @@ xml_value_set(cxobj *xn,
 /*! Append value of xnode, value is copied
  * @param[in]  xn    xml node
  * @param[in]  val   appended value, null-terminated string, copied by function
- * @retval     NULL  on error with clicon-err set, or if value is set to NULL
  * @retval     new value
+ * @retval     NULL  on error with clicon-err set, or if value is set to NULL
  */
 int
 xml_value_append(cxobj *xn, 
@@ -854,7 +854,6 @@ xml_child_i_set(cxobj *xt,
 /*! Get the order of child
  * @param[in]  xp    xml parent node
  * @param[in]  xc    the xml child to look for
- * @retval     xml   The child xml node
  * @retval     i     The order of the child
  * @retval     -1    if no such child, or empty child
  * @see xml_child_i
@@ -1342,8 +1341,8 @@ xml_wrap_all(cxobj *xp,
  *  After:   xp --> xt(tag) --> xc
  * @param[in] xp   Parent xml node
  * @param[in] tag  Name of new xml child
- * @retval    NULL Error
  * @retval    xc   Return the new child (xc)
+ * @retval    NULL Error
  * @see xml_addsub (give the parent)
  * @see xml_wrap_all  (wrap all children of a node, not just one)
  */
@@ -2079,9 +2078,9 @@ cxvec_prepend(cxobj   *x,
  * @param[in]  type Matching type or -1 for any
  * @param[in]  fn   Callback
  * @param[in]  arg  Argument
- * @retval    -1    Error, aborted at first error encounter
- * @retval     0    OK, all nodes traversed (subparts may have been skipped)
  * @retval     1    OK, aborted on first fn returned 1
+ * @retval     0    OK, all nodes traversed (subparts may have been skipped)
+ * @retval    -1    Error, aborted at first error encounter
  *
  * @code
  * int x_fn(cxobj *x, void *arg)
@@ -2134,9 +2133,9 @@ xml_apply(cxobj          *xn,
  * @param[in]  type Matching type or -1 for any
  * @param[in]  fn   Callback
  * @param[in]  arg  Argument
- * @retval    -1    Error, aborted at first error encounter
- * @retval     0    OK, all nodes traversed (subparts may have been skipped)
  * @retval     1    OK, aborted on first fn returned 1
+ * @retval     0    OK, all nodes traversed (subparts may have been skipped)
+ * @retval    -1    Error, aborted at first error encounter
  * @see xml_apply not including top object
  */
 int
@@ -2167,9 +2166,9 @@ xml_apply0(cxobj          *xn,
  * @param[in]  xn   XML node
  * @param[in]  fn   Callback
  * @param[in]  arg  Argument
- * @retval    -1    Error, aborted at first error encounter
- * @retval     0    OK, all nodes traversed
  * @retval     n    OK, aborted at first encounter of first match
+ * @retval     0    OK, all nodes traversed
+ * @retval    -1    Error, aborted at first error encounter
  * @code
  * int x_fn(cxobj *x, void *arg)
  * {
@@ -2207,8 +2206,8 @@ xml_apply_ancestor(cxobj          *xn,
 /*! Is xpp ancestor of x?
  * @param[in]   x       XML node
  * @param[in]   xpp     Potential ancestor of x in XML tree
- * @retval      0       No, xpp is not ancestor of x
  * @retval      1       Yes, xpp is ancestor of x
+ * @retval      0       No, xpp is not ancestor of x
  */
 int
 xml_isancestor(cxobj *x,
@@ -2304,6 +2303,7 @@ xml_operation2str(enum operation_type op)
         return "none";
     }
 }
+
 /*! Map xml insert attribute from string to enumeration
  * @param[in]   instr String, eg "first"
  * @param[out]  ins   Enumeration, eg INS_FIRST

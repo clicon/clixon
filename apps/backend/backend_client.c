@@ -520,7 +520,6 @@ from_client_edit_config(clicon_handle h,
             goto done;
         goto ok;
     }
-
     /* Cant do this earlier since we dont have a yang spec to
      * the upper part of the tree, until we get the "config" tree.
      */

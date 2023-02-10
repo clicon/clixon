@@ -30,7 +30,7 @@
 # the terms of any one of the Apache License version 2 or the GPL.
 #
 # ***** END LICENSE BLOCK *****
-
+set -eux
 # Usage: ./startup.sh
 # Debug: DBG=1 ./startup.sh
 # See also cleanup.sh
@@ -38,23 +38,23 @@
 # Name of container
 : ${NAME:=clixon-example}
 
-# If true also install your users pubkey
-: ${SSHKEY:=false}
+# If set to filename also install your users pubkey
+: ${SSHKEY:=}
 
 >&2 echo "Running script: $0"
 
-sudo docker kill clixon-example 2> /dev/null # ignore errors
+sudo docker kill $NAME || true 2> /dev/null # ignore errors
 
 # Start clixon-example backend
 sudo docker run --name ${NAME} --rm -td clixon/clixon-example #|| err "Error starting clixon-example"
 
 # Copy rsa pubkey 
-if $SSHKEY; then
+if [ -n "$SSHKEY" ]; then
     # install user pub key 
-    sudo docker exec -it clixon-example mkdir -m 700 /root/.ssh
-    sudo docker cp ~/.ssh/id_rsa.pub clixon-example:/root/.ssh/authorized_keys
-    sudo docker exec -it clixon-example chown root /root/.ssh/authorized_keys
-    sudo docker exec -it clixon-example chgrp root /root/.ssh/authorized_keys
+    sudo docker exec -it $NAME mkdir -m 700 /root/.ssh
+    sudo docker cp $SSHKEY $NAME:/root/.ssh/authorized_keys
+    sudo docker exec -it $NAME chown root /root/.ssh/authorized_keys
+    sudo docker exec -it $NAME chgrp root /root/.ssh/authorized_keys
 fi
 
->&2 echo "clixon-example started"
+>&2 echo "$NAME started"

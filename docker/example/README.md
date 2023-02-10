@@ -22,7 +22,7 @@ Start the container:
 If you want to install your pre-existing pub rsa key in the container, and change the name:
 
 ```
-  $ SSHKEY=true NAME=clixon-example22 ./start.sh 
+  $ SSHKEY=/home/user/.ssh/id_rsa.pub NAME=clixon-example22 ./start.sh 
 ```
 
 You can combine make and start by:

@@ -481,7 +481,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     x = NULL;
     xprev = x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-        if (xml_flag(x, flag) == test?flag:0){
+        if (xml_flag(x, flag) == (test?flag:0)){
             /* Pass test */
             mark++;
             xprev = x;
