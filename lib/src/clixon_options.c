@@ -276,6 +276,7 @@ parse_configfile(clicon_handle  h,
     cxobj         *xt = NULL;
     cxobj         *xc = NULL;
     cxobj         *x = NULL;
+    yang_stmt     *y;
     char          *name;
     char          *body;
     clicon_hash_t *copt = clicon_options(h);
@@ -355,6 +356,17 @@ parse_configfile(clicon_handle  h,
             if (xe)
                 xml_free(xe);
             xe = NULL;
+        }
+    }
+    /* Check obsolete options before default expansion */
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+        if ((y = xml_spec(x)) != NULL){
+            if ((yang_find(y, Y_STATUS, "obsolete")) != NULL){
+                clicon_err(OE_CFG, 0, "Clixon option %s is obsolete but given in the config file which is considered an error",
+                           xml_name(x));
+                goto done;
+            }
         }
     }
     if (xml_default_recurse(xt, 0) < 0)

@@ -4,8 +4,7 @@ The clixon project welcomes contributions from the community.
 
 ## Licensing
 
-A contribution must follow the [CLIXON
-licensing](https://github.com/clicon/clixon/blob/master/LICENSE.md)
+A contribution must follow the [CLIXON licensing](https://github.com/clicon/clixon/blob/master/LICENSE.md)
 with the dual licensing: either Apache License, Version 2.0 or
 GNU General Public License Version 3.
 
@@ -138,3 +137,16 @@ include:
 - [CI on other platforms](https://github.com/clicon/clixon/tree/master/test/cicd). Other platforms include x86-64, 32-bit i686, and armv71
 - [Coverage tests](https://app.codecov.io/gh/clicon/clixon)
 - [Fuzzing](https://github.com/clicon/clixon/tree/master/test/fuzz) Fuzzing are run occasionally using AFL
+
+## Optimization
+
+Optimizating Clixon code should be based on an observable improvement
+of measurements of cycles or memory usage.
+
+Usually, new clixon code starts out with functional compliance
+with appropriate regression tests.
+
+Therafter "non-functional" analysis, including performance tests can
+be made. Performance improvements should be based on specific usecase
+and actual measurement. The benefit of an optimization should
+be larger than a potential increase of complexity.

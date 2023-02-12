@@ -64,6 +64,19 @@ module $APPNAME{
             }
         }
       }
+      list z{
+         key "a b" ;
+         leaf a {
+            type enumeration{
+                enum v1;
+                enum v2;
+                enum v3;
+            }
+         }
+         leaf b {
+            type string;
+        }
+      }
    }
 }
 EOF
@@ -82,48 +95,54 @@ fi
 new "wait backend"
 wait_backend
 
-new "set 1 v1"
+new "ordered by system"
+new "set x 1 v1"
 expectpart "$($clixon_cli -1 -f $cfg set ex x a 1 b v1)" 0 ""
 
-new "set 1 v2"
+new "set x 1 v2"
 expectpart "$($clixon_cli -1 -f $cfg set ex x a 1 b v2)" 0 ""
 
-new "set 1 v3"
+new "set x 1 v3"
 expectpart "$($clixon_cli -1 -f $cfg set ex x a 1 b v3)" 0 ""
 
-new "set 2 v1"
+new "set x 2 v1"
 expectpart "$($clixon_cli -1 -f $cfg set ex x a 2 b v1)" 0 ""
 
-new "set 2 v2"
+new "set x 2 v2"
 expectpart "$($clixon_cli -1 -f $cfg set ex x a 2 b v2)" 0 ""
 
-new "set 2 v3"
+new "set x 2 v3"
 expectpart "$($clixon_cli -1 -f $cfg set ex x a 2 b v3)" 0 ""
 
-new "set 1 v2 again"
+new "set x 1 v2 again"
 expectpart "$($clixon_cli -1 -f $cfg set ex x a 1 b v2)" 0 ""
 
 new "show conf"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><ex xmlns=\"urn:example:clixon\"><x><a>1</a><b>v1</b></x><x><a>1</a><b>v2</b></x><x><a>1</a><b>v3</b></x><x><a>2</a><b>v1</b></x><x><a>2</a><b>v2</b></x><x><a>2</a><b>v3</b></x></ex></data></rpc-reply>"
 
-# ordered-by user
-new "set 1 v1"
+new "ordered-by user"
+new "set y 1 v1"
 expectpart "$($clixon_cli -1 -f $cfg set ex y a 1 b v1)" 0 ""
 
-new "set 2 v1"
+new "set y 2 v1"
 expectpart "$($clixon_cli -1 -f $cfg set ex y a 2 b v1)" 0 ""
 
-new "set 1 v2"
+new "set y 1 v2"
 expectpart "$($clixon_cli -1 -f $cfg set ex y a 1 b v2)" 0 ""
 
-new "set 1 v3"
+new "set y 1 v3"
 expectpart "$($clixon_cli -1 -f $cfg set ex y a 1 b v3)" 0 ""
 
-new "set 2 v2"
+new "set y 2 v2"
 expectpart "$($clixon_cli -1 -f $cfg set ex y a 2 b v2)" 0 ""
 
 new "show conf"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><ex xmlns=\"urn:example:clixon\"><x><a>1</a><b>v1</b></x><x><a>1</a><b>v2</b></x><x><a>1</a><b>v3</b></x><x><a>2</a><b>v1</b></x><x><a>2</a><b>v2</b></x><x><a>2</a><b>v3</b></x><y><a>1</a><b>v1</b></y><y><a>2</a><b>v1</b></y><y><a>1</a><b>v2</b></y><y><a>1</a><b>v3</b></y><y><a>2</a><b>v2</b></y></ex></data></rpc-reply>"
+
+new "switch keys"
+# see https://github.com/clicon/clixon/issues/417
+new "set z 1 v1"
+expectpart "$(echo "set ex z a v1 ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 b --not-- "<cr>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

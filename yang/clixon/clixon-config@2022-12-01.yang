@@ -48,8 +48,8 @@ module clixon-config {
 
     revision 2022-12-01 {
         description
-            "Added option:
-                    <nothing yet>
+            "Removed (previosly marked) obsolete options:
+                    CLICON_MODULE_LIBRARY_RFC7895
              Released in Clixon 6.1";
     }
     revision 2022-11-01 {
@@ -913,8 +913,7 @@ module clixon-config {
             description
                 "If set, tag datastores with RFC 8525 YANG Module Library 
                  info. When loaded at startup, a check is made if the system
-                 yang modules match.
-                 See also CLICON_MODULE_LIBRARY_RFC7895";
+                 yang modules match.";
         }
         leaf CLICON_XMLDB_UPGRADE_CHECKOLD {
             type boolean;
@@ -1059,22 +1058,11 @@ module clixon-config {
                  restconf GET.
                  The module state data is on the form:
                        <yang-library><module-set>...
-                 If CLICON_MODULE_LIBRARY_RFC7895 is set (as well), the module state uses RFC7895
                  instead where the modile state is on the form:
                        <modules-state>...
                  See also CLICON_XMLDB_MODSTATE where the module state info is used to tag datastores
                  with module information.";
         }
-        leaf CLICON_MODULE_LIBRARY_RFC7895 {
-            type boolean;
-            default false;
-            description
-                "Enable RFC 7895 YANG Module library support as state data, instead of RFC8525.
-                 Note CLICON_YANG_LIBRARY must be enabled for this to have effect.
-                 See also CLICON_YANG_LIBRARY and CLICON_MODULE_SET_ID";
-            status obsolete;
-        }
-
         leaf CLICON_MODULE_SET_ID {
             type string;
             default "0";

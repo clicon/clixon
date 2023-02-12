@@ -125,7 +125,7 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 static int
 cli_expand_var_generate(clicon_handle h, 
                         yang_stmt    *ys, 
-                        char         *cvtypestr,
+                        const char   *cvtypestr,
                         int           options,
                         uint8_t       fraction_digits,
                         int           pre,
@@ -207,7 +207,7 @@ yang2cli_helptext(cbuf *cb,
 static int
 yang2cli_var_identityref(yang_stmt *ys,
                          yang_stmt *ytype,
-                         char      *cvtypestr,
+                         const char *cvtypestr,
                          char      *helptext,
                          cbuf      *cb)
 {
@@ -426,7 +426,7 @@ yang2cli_var_sub(clicon_handle h,
     yang_stmt    *yi = NULL;
     int           i = 0;
     int           j;
-    char         *cvtypestr;
+    const char   *cvtypestr;
     char         *arg;
     size_t       len;
 
@@ -601,7 +601,7 @@ yang2cli_var_leafref(clicon_handle h,
     int   retval = -1;
     char *type;
     int   completionp;
-    char *cvtypestr;
+    const char *cvtypestr;
     int   ret;
     int   flag;
     int   regular_value = 1; /* if strict-expand==0 then regular-value is false */
@@ -674,7 +674,7 @@ yang2cli_var(clicon_handle h,
     cvec         *patterns = NULL;
     uint8_t       fraction_digits = 0;
     enum cv_type  cvtype;
-    char         *cvtypestr;
+    const char   *cvtypestr;
     int           options = 0;
     int           result;
     int           completionp;

@@ -194,7 +194,6 @@ yang_modules_revision(clicon_handle h)
  * @retval     0     OK
  * @retval    -1     Error
  * This assumes CLICON_YANG_LIBRARY is enabled
- * If also CLICON_MODULE_LIBRARY_RFC7895 is set, module-state is built according to RFC7895 instead
  * @see RFC8525 
  */
 int
@@ -226,15 +225,10 @@ yang_modules_state_build(clicon_handle    h,
         clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
         goto done;
     }
-    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
-        cprintf(cb,"<modules-state xmlns=\"%s\">", yang_argument_get(yns));
-        cprintf(cb,"<module-set-id>%s</module-set-id>", msid);
-    }
-    else { /* RFC 8525 */
-        cprintf(cb,"<yang-library xmlns=\"%s\">", yang_argument_get(yns));
-        cprintf(cb,"<content-id>%s</content-id>", msid);
-        cprintf(cb,"<module-set><name>default</name>");
-    }
+    /* RFC 8525 */
+    cprintf(cb,"<yang-library xmlns=\"%s\">", yang_argument_get(yns));
+    cprintf(cb,"<content-id>%s</content-id>", msid);
+    cprintf(cb,"<module-set><name>default</name>");
     ymod = NULL;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
         if (yang_keyword_get(ymod) != Y_MODULE)
@@ -270,8 +264,6 @@ yang_modules_state_build(clicon_handle    h,
                     break;
                 }
             }
-            if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895"))
-                cprintf(cb, "<conformance-type>implement</conformance-type>");
         }
         yinc = NULL;
         while ((yinc = yn_each(ymod, yinc)) != NULL) {
@@ -288,12 +280,7 @@ yang_modules_state_build(clicon_handle    h,
         }
         cprintf(cb,"</module>");
     }
-    if (clicon_option_bool(h, "CLICON_MODULE_LIBRARY_RFC7895")){
-        cprintf(cb,"</modules-state>");
-    }
-    else{
-        cprintf(cb,"</module-set></yang-library>");
-    }
+    cprintf(cb,"</module-set></yang-library>");
     retval = 0;
  done:
     return retval;

@@ -66,8 +66,12 @@ Expected: beginning of 2023
 
 Users may have to change how they access the system
 
+* New `clixon-config@2022-12-01.yang` revision
+  * Removed obsolete option: `CLICON_MODULE_LIBRARY_RFC7895'
+* Obsolete config options given in the configuration file are considered an error
 * clixon-lib,yang
   * Moved all extended internal NETCONF attributes to the clicon-lib namespace
+    * These are: content, depth, username, autocommit, copystartup, transport, source-host, objectcreate, objectexisted.
   * The internal attributes are documented in https://clixon-docs.readthedocs.io/en/latest/netconf.html
 * With-defaults default retrieval mode has changed from `REPORT-ALL` to `EXPLICIT`
   * This means that all get operations without `with-defaults` parameter do no longer
@@ -111,6 +115,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [State XML validation error when CLICON_MODULE_LIBRARY_RFC7895=true and ietf-yang-library@2019-01-04 is loaded](https://github.com/clicon/clixon/issues/408)
 * Fixed: [SNMP: snmpwalk is slow and can timeout #404 ](https://github.com/clicon/clixon/issues/404)
 * Fixed: [SNMP accepts only u32 & u64 #405](https://github.com/clicon/clixon/issues/405)
 * Fixed: [Yang leaves without smiv2:oid directive are not shown well in snmpwalk #398](https://github.com/clicon/clixon/issues/398)
