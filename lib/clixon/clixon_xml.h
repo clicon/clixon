@@ -177,6 +177,15 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 
 typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c */
 
+/* Alternative formats */
+enum format_enum{
+    FORMAT_XML,  
+    FORMAT_JSON,  
+    FORMAT_TEXT,  
+    FORMAT_CLI,
+    FORMAT_NETCONF
+};
+
 /*
  * xml_flag() flags:
  */

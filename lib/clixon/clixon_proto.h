@@ -43,13 +43,6 @@
 /*
  * Types
  */
-enum format_enum{
-    FORMAT_XML,  
-    FORMAT_JSON,  
-    FORMAT_TEXT,  
-    FORMAT_CLI,
-    FORMAT_NETCONF
-};
 
 /* Protocol message header */
 struct clicon_msg {

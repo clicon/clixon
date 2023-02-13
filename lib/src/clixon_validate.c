@@ -1101,7 +1101,7 @@ xml_yang_validate_list_key_only(cxobj        *xt,
     int        ret;
     cxobj     *x;
     
-    /* if not given by argument (overide) use default link 
+    /* if not given by argument (override) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL &&
         yang_config(yt) != 0 &&
@@ -1229,8 +1229,8 @@ xml_yang_validate_all(clicon_handle h,
     /* Do not validate beyond mountpoints */
     if ((ret = xml_yang_mount_get(xt, NULL)) < 0)
         goto done;
-    if (ret == 1)
-        goto ok;
+    if (ret == 1) 
+        goto ok; /* Actually this may be somewhat too strict */
 #endif
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */

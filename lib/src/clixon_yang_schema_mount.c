@@ -162,6 +162,7 @@ xml_yang_mount_get(cxobj      *xt,
         goto ok;
     if (xml2xpath(xt, NULL, 1, &xpath) < 0)
         goto done;
+    /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
     if ((cvv = yang_cvec_get(yu)) == NULL)
         goto ok;
     if ((cv = cvec_find(cvv, xpath)) == NULL)

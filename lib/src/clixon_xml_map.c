@@ -77,6 +77,8 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_sort.h"
 #include "clixon_yang_type.h"
+#include "clixon_text_syntax.h"
+#include "clixon_xml_io.h"
 #include "clixon_xml_map.h"
 
 /* Local types 
@@ -1703,3 +1705,84 @@ purge_tagged_nodes(cxobj *xn,
     return retval;
 }
 
+/*! Compare two dbs using XML. Write to file and run diff
+ *
+ * @param[in]  xc1     XML tree 1
+ * @param[in]  xc2     XML tree 2
+ * @param[in]  format  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
+ * @param[in]  fn      File print function (if NULL, use fprintf)
+ */
+int
+clixon_compare_xmls(cxobj            *xc1,
+                    cxobj            *xc2,
+                    enum format_enum  format,
+                    clicon_output_cb *fn)
+{
+    int    fd;
+    FILE  *f;
+    char   filename1[MAXPATHLEN];
+    char   filename2[MAXPATHLEN];
+    int    retval = -1;
+    cbuf  *cb = NULL;
+
+    snprintf(filename1, sizeof(filename1), "/tmp/cliconXXXXXX");
+    snprintf(filename2, sizeof(filename2), "/tmp/cliconXXXXXX");
+    if ((fd = mkstemp(filename1)) < 0){
+        clicon_err(OE_UNDEF, errno, "tmpfile");
+        goto done;
+    }
+    if ((f = fdopen(fd, "w")) == NULL)
+        goto done;
+    switch(format){
+    case FORMAT_TEXT:
+        if (clixon_txt2file(f, xc1, 0, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
+    case FORMAT_XML:
+    default:
+        if (clixon_xml2file(f, xc1, 0, 1, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
+    }
+    fclose(f);
+    close(fd);
+
+    if ((fd = mkstemp(filename2)) < 0){
+        clicon_err(OE_UNDEF, errno, "mkstemp: %s", strerror(errno));
+        goto done;
+    }
+    if ((f = fdopen(fd, "w")) == NULL)
+        goto done;
+
+    switch(format){
+    case FORMAT_TEXT:
+        if (clixon_txt2file(f, xc2, 0, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
+    case FORMAT_XML:
+    default:
+        if (clixon_xml2file(f, xc2, 0, 1, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
+    }
+
+    fclose(f);
+    close(fd);
+
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_CFG, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "diff -dU 1 %s %s |  grep -v @@ | sed 1,2d",
+            filename1, filename2);
+    if (system(cbuf_get(cb)) < 0)
+        goto done;
+
+    retval = 0;
+  done:
+    if (cb)
+        cbuf_free(cb);
+    unlink(filename1);
+    unlink(filename2);
+    return retval;
+}
