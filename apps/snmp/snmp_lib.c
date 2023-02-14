@@ -108,6 +108,7 @@ static const map_str2int snmp_type_map[] = {
     {"uint64",       ASN_COUNTER64}, // 0x46 / 70
     {"boolean",      ASN_INTEGER},   // 2 special case -> enumeration
     {"string",       ASN_IPADDRESS}, // 64
+    {"decimal64",    ASN_OCTET_STR},
     {NULL,           -1}
 };
 
@@ -127,6 +128,7 @@ static const map_str2int snmp_orig_map[] = {
     {"ipv4-address",          ASN_IPADDRESS}, // 0x40 / 64 (This is used instead)
     {"RowStatus",             CLIXON_ASN_ROWSTATUS}, // 0x40 / 64 (This is used instead)
     {"phys-address",          CLIXON_ASN_PHYS_ADDR}, /* Clixon extended string type */
+    {"decimal64",             ASN_OCTET_STR},
     {NULL,                    -1}
 };
 
@@ -749,6 +751,21 @@ type_xml2snmp_pre(char      *xmlstr0,
             str = "2";
         else
             str = "1";
+    }
+    else if( strcmp(restype, "decimal64") == 0 ) {
+        char  **reason;
+        cbuf   *cb = cbuf_new();
+        cg_var* cv = yang_cv_get(ys);
+        int64_t num;
+        if( (ret = parse_dec64(xmlstr0, cv_dec64_n_get(cv), &num, reason)) < 0)
+            goto done;
+        if (ret == 0){
+            clicon_debug(1, "Invalid decimal64 valstr %s", xmlstr0);
+            goto fail;
+        }
+        cv_dec64_i_set(cv, num);
+        cv2cbuf(cv, cb);
+        str = cbuf_get(cb);
     }
     else{
         str = xmlstr0;
