@@ -100,6 +100,10 @@ Developers may need to change their code
   
 ### Minor features
 
+* [Request to suppress auto-completion for "deprecated" / "obsolete" status and warn the user.](https://github.com/clicon/clixon/issues/410)
+  * Solved by:
+    * Not generating any autocli syntax for obsolete YANG statements,
+    * Hide statements for deprecated YANG statements.
 * New plugin callbacks
   * `ca_yang_mount` - see the RFC 8528 support
   * `ca_yang_patch` - for modifying existing YANG modules

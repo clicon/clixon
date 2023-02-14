@@ -137,7 +137,11 @@ cli_expand_var_generate(clicon_handle h,
 
     if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
         goto done;
-    if (extvalue) {
+    if (extvalue
+#ifdef AUTOCLI_DEPRECATED_HIDE        
+        || yang_find(ys, Y_STATUS, "deprecated") != NULL
+#endif
+        ) {
         retval = 1;
         goto done;
     }
@@ -810,8 +814,13 @@ yang2cli_leaf(clicon_handle h,
         cprintf(cb, " ");
         if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &hideext, NULL) < 0)
             goto done;
-        if (hideext)
+        if (hideext
+#ifdef AUTOCLI_DEPRECATED_HIDE
+            || yang_find(ys, Y_STATUS, "deprecated") != NULL
+#endif
+            ){
             cprintf(cb, ", hide"); /* XXX ensure always { */
+        }
         if (extralevel){
             if (callback){
                 if (cli_callback_generate(h, ys, cb) < 0)
@@ -901,8 +910,13 @@ yang2cli_container(clicon_handle h,
             goto done;
         if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
             goto done;
-        if (extvalue)
+        if (extvalue
+#ifdef AUTOCLI_DEPRECATED_HIDE
+            || yang_find(ys, Y_STATUS, "deprecated") != NULL
+#endif
+            ){
             cprintf(cb, ", hide");
+        }
 #ifdef NYI /* This is for the mode extension, not yet supported */
         {
             int           mode = 0;
@@ -967,7 +981,11 @@ yang2cli_list(clicon_handle h,
     }
     if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
         goto done;
-    if (exist){
+    if (exist
+#ifdef AUTOCLI_DEPRECATED_HIDE
+        || yang_find(ys, Y_STATUS, "deprecated") != NULL
+#endif
+        ){
         cprintf(cb, ",hide");
     }
     /* Loop over all key variables */
@@ -1091,6 +1109,17 @@ yang2cli_stmt(clicon_handle h,
     int        retval = -1;
     int        treeref_state = 0;
     
+    if (ys == NULL){
+        clicon_err(OE_YANG, EINVAL, "No yang spec");
+        goto done;
+    }
+    if (yang_find(ys, Y_STATUS, "obsolete") != NULL){
+        clicon_debug(4, "%s obsolete: %s %s, skipped", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        goto ok;
+    }
+    if (yang_find(ys, Y_STATUS, "deprecated") != NULL){
+        clicon_debug(4, "%s deprecated: %s %s", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+    }
     /* Only produce autocli for YANG non-config only if autocli-treeref-state is true */
     if (autocli_treeref_state(h, &treeref_state) < 0)
         goto done;
@@ -1128,6 +1157,7 @@ yang2cli_stmt(clicon_handle h,
             break;
         }
     }
+ ok:
     retval = 0;
  done:
     return retval;

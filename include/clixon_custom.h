@@ -191,3 +191,13 @@
  * To keep the previous behavior (as in 6.0) set this option with #define
  */
 #undef NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL
+
+/*! Temporary backward-compatible option for not generating CLI for obsolete YANG
+ * Introduced in 6.1, remove in 6.2
+ */
+#define AUTOCLI_OBSOLETE_SKIP
+
+/*! Temporary backward-compatible option for hiding CLI for deprecated YANG
+ * Introduced in 6.1, remove in 6.2
+ */
+#define AUTOCLI_DEPRECATED_HIDE
