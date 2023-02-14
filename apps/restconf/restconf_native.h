@@ -155,7 +155,7 @@ typedef struct restconf_socket{
                                  * Set in restconf_callhome_cb
                                  */
     restconf_conn *rs_conns;  /* List of transient connect sockets */
-    char          *rs_from_addr; /* From IP address as seen by accept */
+    char          *rs_from_addr; /* From IP address as seen by accept (mv to rc?) */
 
 } restconf_socket;
 

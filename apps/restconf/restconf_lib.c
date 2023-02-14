@@ -256,6 +256,7 @@ restconf_proto2str(int proto)
 }
 
 /*! Return media_in from Content-Type, -1 if not found or unrecognized
+ *
  * @note media-type syntax does not support parameters
  * @see RFC7231 Sec 3.1.1.1 for media-type syntax type:
  *    media-type = type "/" subtype *( OWS ";" OWS parameter )
@@ -277,6 +278,7 @@ restconf_content_type(clicon_handle h)
 }
 
 /*! Translate http header by capitalizing, prepend w HTTP_ and - -> _
+ *
  * Example: Host -> HTTP_HOST 
  */
 int
@@ -316,6 +318,7 @@ restconf_convert_hdr(clicon_handle h,
 }
 
 /*! Parse a cookie string and return value of cookie attribute
+ *
  * @param[in]  cookiestr  cookie string according to rfc6265 (modified)
  * @param[in]  attribute  cookie attribute
  * @param[out] val        malloced cookie value, free with free()
@@ -343,6 +346,7 @@ get_user_cookie(char  *cookiestr,
 }
 
 /*! Clean and close all state of restconf process (but dont exit). 
+ *
  * Cannot use h after this 
  * @param[in]  h  Clixon handle
  */
@@ -486,7 +490,7 @@ restconf_insert_attributes(cxobj *xdata,
 }
 
 /*! Callback for yang extensions ietf-restconf:yang-data
- * @see ietf-restconf.yang
+ *
  * @param[in] h    Clixon handle
  * @param[in] yext Yang node of extension 
  * @param[in] ys   Yang node of (unknown) statement belonging to extension
@@ -499,6 +503,7 @@ restconf_insert_attributes(cxobj *xdata,
  *   - The available identity values for any 'identityref'
  *       leaf or leaf-list nodes are limited to the module containing this extension statement and
  *       the modules imported into that module.
+ * @see ietf-restconf.yang
  */
 int
 restconf_main_extension_cb(clicon_handle h,
@@ -560,6 +565,7 @@ restconf_uripath(clicon_handle h)
 }
 
 /*! Drop privileges from root to user (or already at user)
+ *
  * @param[in]  h    Clicon handle
  * Group set to CLICON_SOCK_GROUP to communicate with backend
  */
@@ -642,9 +648,9 @@ restconf_drop_privileges(clicon_handle h)
  * @param[in]  req       Generic Www handle (can be part of clixon handle)
  * @param[in]  pretty    Pretty-print
  * @param[in]  media_out Restconf output media
- * @retval    -1         Error
- * @retval     0         Not authenticated
  * @retval     1         Authenticated
+ * @retval     0         Not authenticated
+ * @retval    -1         Error
  */
 int
 restconf_authentication_cb(clicon_handle  h,
@@ -727,11 +733,12 @@ restconf_authentication_cb(clicon_handle  h,
 }
 
 /*! Basic config init, set auth-type, pretty, etc
+ *
  * @param[in]  h         Clixon handle
  * @param[in]  xrestconf XML config containing clixon-restconf top-level
- * @retval    -1         Error
- * @retval     0         Restconf is disable
  * @retval     1         OK
+ * @retval     0         Restconf is disable
+ * @retval    -1         Error
  */
 int
 restconf_config_init(clicon_handle h,
@@ -808,7 +815,6 @@ restconf_config_init(clicon_handle h,
     retval = 0;
     goto done;
 }
-
 
 /*! Create and bind restconf socket
  * 

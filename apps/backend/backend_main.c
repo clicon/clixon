@@ -121,6 +121,7 @@ backend_terminate(clicon_handle h)
         ys_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
+    clicon_data_cvec_del(h, "netconf-statistics");
     if ((x = clicon_nacm_ext(h)) != NULL)
         xml_free(x);
     if ((x = clicon_conf_xml(h)) != NULL)

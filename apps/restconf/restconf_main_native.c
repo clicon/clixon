@@ -180,6 +180,7 @@
 static int             session_id_context = 1;
 
 /*! Set restconf native handle
+ *
  * @param[in]  h     Clicon handle
  * @param[in]  rh    Restconf native handle (malloced pointer)
  */
@@ -321,6 +322,7 @@ alpn_proto_dump(const char *label,
 }
 
 /*! Application-layer Protocol Negotiation (alpn) callback
+ *
  * The value of the out, outlen vector should be set to the value of a single protocol selected from
  * the in, inlen vector. The out buffer may point directly into in, or to a buffer that outlives the
  * handshake.
@@ -524,6 +526,7 @@ restconf_checkcert_file(cxobj      *xrestconf,
 }
 
 /*! Accept new socket client
+ *
  * @param[in]  fd   Socket (unix or ip)
  * @param[in]  arg  typecast clicon_handle
  * @see openssl_init_socket where this callback is registered
@@ -564,6 +567,10 @@ restconf_accept_client(int   fd,
         addr = &(in6->sin6_addr);
         break;
     }
+    }
+    if (rsock->rs_from_addr != NULL){
+        free(rsock->rs_from_addr);
+        rsock->rs_from_addr = NULL;
     }
     if ((rsock->rs_from_addr = calloc(INET6_ADDRSTRLEN, 1)) == NULL){
         clicon_err(OE_UNIX, errno, "calloc");
@@ -635,6 +642,7 @@ restconf_native_terminate(clicon_handle h)
 }
 
 /*! Query backend of config.
+ *
  * Loop to wait for backend starting, try again if not done 
  * @param[in]  h         Clixon handle
  * @param[out] xrestconf XML restconf config, malloced (if retval = 1)
@@ -705,6 +713,7 @@ restconf_clixon_backend(clicon_handle h,
 }
 
 /*! Per-socket openssl inits
+ *
  * @param[in]  h        Clicon handle
  * @param[in]  xs       XML config of single restconf socket
  * @param[in]  nsc      Namespace context
@@ -893,6 +902,7 @@ restconf_openssl_init(clicon_handle h,
 }
 
 /*! Read restconf from config 
+ *
  * After SEVERAL iterations the code now does as follows:
  * - init clixon
  * - look for local config (in clixon-config file) 
@@ -1069,6 +1079,7 @@ restconf_clixon_init(clicon_handle h,
 }
 
 /*! Signal terminates process
+ *
  * Just set exit flag for proper exit in event loop
  */
 static void
@@ -1088,6 +1099,7 @@ restconf_sig_term(int arg)
 }
 
 /*! Usage help routine
+ *
  * @param[in]  argv0  command line
  * @param[in]  h      Clicon handle
  */
