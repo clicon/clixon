@@ -84,8 +84,5 @@ expectpart "$($clixon_util_xpath -If $xml1 -y $ydir -p /a:x/a:z[a:k='2'] -n b:ur
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset clixon_util_xpath
-
 new "endtest"
 endtest

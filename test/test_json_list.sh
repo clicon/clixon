@@ -94,9 +94,5 @@ testrun "three list" '{"json:c":{"l2":[{"name":1,"value":"x"},{"name":2,"value":
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset clixon_util_json
-unset clixon_util_xml
-
 new "endtest"
 endtest

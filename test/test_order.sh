@@ -457,8 +457,5 @@ fi
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset format
-
 new "endtest"
 endtest

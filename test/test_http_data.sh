@@ -303,10 +303,6 @@ for proto in $protos; do
     done
 done
 
-# unset conditional parameters
-unset RCPROTO
-unset RESTCONFIG
-
 rm -rf $dir
 
 new "endtest"

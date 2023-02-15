@@ -257,10 +257,6 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
-# Set by restconf_config
-unset RESTCONFIG
-unset ret
-
 rm -rf $dir
 
 new "endtest"

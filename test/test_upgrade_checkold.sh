@@ -147,6 +147,7 @@ done
 done
 rm -rf $dir
 
+# unset specific variables set in this script
 unset j
 unset xml
 unset xmltag

@@ -93,8 +93,5 @@ new "non-index search latency j=$rndi"
 
 rm -rf $dir
 
-unset nr
-unset clixon_util_path # for other script reusing it
-
 new "endtest"
 endtest

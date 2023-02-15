@@ -279,9 +279,6 @@ testrun false true
 new "4. startup, treat unknown as anydata----"
 testrun true true
 
-# Set by restconf_config
-unset RESTCONFIG
-
 rm -rf $dir
 
 new "endtest"

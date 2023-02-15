@@ -200,13 +200,6 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
-# unset conditional parameters
-unset RCPROTO
-
-# Set by restconf_config
-unset result
-unset RESTCONFIG
-
 rm -rf $dir
 
 new "endtest"

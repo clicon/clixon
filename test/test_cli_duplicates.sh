@@ -177,8 +177,5 @@ fi
 
 rm -rf $dir
 
-unset count
-unset ret
-
 new "endtest"
 endtest

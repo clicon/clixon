@@ -144,7 +144,5 @@ fi
 
 rm -rf $dir
 
-unset nr
-
 new "endtest"
 endtest

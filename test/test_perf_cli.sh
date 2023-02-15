@@ -162,10 +162,5 @@ fi
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset format
-unset perfnr
-unset perfreq
-
 new "endtest"
 endtest

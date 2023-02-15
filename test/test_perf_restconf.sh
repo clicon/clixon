@@ -240,20 +240,8 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+
 rm -rf $dir
-
-# Set by restconf_config
-unset RESTCONFIG
-unset HAVE_LIBNGHTTP2
-unset RCPROTO
-unset HVER
-unset CURLOPTS
-
-# unset conditional parameters 
-unset format
-unset perfnr
-unset perfreq
-unset ret
 
 new "endtest"
 endtest

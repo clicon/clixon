@@ -100,8 +100,5 @@ testrun IPv4 127.0.0.1
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset clixon_util_socket
-
 new "endtest"
 endtest

@@ -177,12 +177,12 @@ EOF
         continue
     fi
     # Mask netconf header and footer
-    sed -i -e "s/<rpc-reply $DEFAULTNS><data xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\">//" /var/tmp/test_netconf_monitoring.sh/ex.yang
-    sed -i -e 's/<\/data><\/rpc-reply>]]>]]>//' /var/tmp/test_netconf_monitoring.sh/ex.yang
+    sed -i -e "s/<rpc-reply $DEFAULTNS><data xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\">//" $dir/ex.yang
+    sed -i -e 's/<\/data><\/rpc-reply>]]>]]>//' $dir/ex.yang
     # Decode XML
-    sed -i -e 's/&gt;/>/g' /var/tmp/test_netconf_monitoring.sh/ex.yang
-    sed -i -e 's/&lt;/</g' /var/tmp/test_netconf_monitoring.sh/ex.yang
-    sed -i -e 's/\&amp;/\&/g' /var/tmp/test_netconf_monitoring.sh/ex.yang
+    sed -i -e 's/&gt;/>/g' $dir/ex.yang
+    sed -i -e 's/&lt;/</g' $dir/ex.yang
+    sed -i -e 's/\&amp;/\&/g' $dir/ex.yang
     new "get-schema check yang $b"
     diff $dir/ex.yang $f
     if [ $? -ne 0 ]; then

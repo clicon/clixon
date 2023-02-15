@@ -229,13 +229,10 @@ for db in startup init; do
 
 done
 
-endtest
-
 rm -rf $dir
 
-# Set by restconf_config
-unset RESTCONFIG
+new "endtest"
+endtest
 
-# unset conditional parameters 
-unset format
-unset ret
+
+

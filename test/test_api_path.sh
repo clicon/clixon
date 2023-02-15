@@ -255,10 +255,6 @@ expectpart "$($clixon_util_path -f $xml6 -y $ydir -p /modb:x6/yy=b$rnd,b$rnd)" 0
 new "api-path double string key k1=a$rnd,b$rnd in modb + augmented in moda"
 expectpart "$($clixon_util_path -f $xml6 -y $ydir -p /modb:x6/yy=b$rnd,b$rnd/moda:y=a1,a1/z=foo1)" 0 "0: <z>foo1</z>"
 
-# unset conditional parameters 
-unset nr
-unset clixon_util_path 
-
 rm -rf $dir
 
 new "endtest"

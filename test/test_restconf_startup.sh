@@ -136,9 +136,6 @@ if [ -f $dir/startup_db ]; then
     err "startup should not exist"
 fi
 
-# Set by restconf_config
-unset RESTCONFIG
-
 rm -rf $dir
 
 new "endtest"

@@ -696,14 +696,8 @@ for proto in $protos; do
     done
 done
 
-# unset conditional parameters
-unset HVER
-unset RCPROTO
-
 # Set by restconf_config
-unset RESTCONFIG
 unset RESTCONFIG1
-unset ret
 
 rm -rf $dir
 

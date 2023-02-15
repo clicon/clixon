@@ -194,9 +194,5 @@ expecteofx "$clixon_util_xml -ovJjy $fyang" 255 "$JSON" "" 2> /dev/null
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset clixon_util_json
-unset clixon_util_xml
-
 new "endtest"
 endtest

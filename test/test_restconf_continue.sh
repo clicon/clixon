@@ -130,13 +130,6 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
-# Set by restconf_config
-unset RESTCONFIG
-unset nr
-unset HAVE_LIBNGHTTP2
-unset CURLOPTS
-unset HVER
-
 rm -rf $dir
 
 new "endtest"

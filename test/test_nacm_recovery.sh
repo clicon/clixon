@@ -225,7 +225,4 @@ testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 new "endtest"
 endtest
 
-# Set by restconf_config
-unset RESTCONFIG
-
 rm -rf $dir

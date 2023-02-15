@@ -223,13 +223,5 @@ fi
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset format
-unset perfnr
-unset perfreq
-
-# Set by restconf_config
-unset RESTCONFIG
-
 new "endtest"
 endtest

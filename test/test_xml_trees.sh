@@ -124,7 +124,6 @@ testrun merge "$x0a<a><x>1</x></a><a><x>2</x></a>$x0b" "$x0a<a><x>2</x></a><a><x
 rm -rf $dir
 
 # unset conditional parameters 
-unset clixon_util_xml_mod
 unset retx
 
 new "endtest"

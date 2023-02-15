@@ -452,8 +452,5 @@ expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon 
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset clixon_util_xpath
-
 new "endtest"
 endtest

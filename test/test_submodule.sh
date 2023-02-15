@@ -286,9 +286,6 @@ if [ $BE -ne 0 ]; then
     sudo pkill -u root -f clixon_backend
 fi
 
-# Set by restconf_config
-unset RESTCONFIG
-
 rm -rf $dir
 
 new "endtest"

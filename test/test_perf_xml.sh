@@ -26,9 +26,5 @@ expecteof_file "time -p $clixon_util_xml" 0 "$fxml" 2>&1 | awk '/real/ {print $2
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset clixon_util_xml
-unset perfnr
-
 new "endtest"
 endtest

@@ -25,9 +25,5 @@ expecteof_file "time -p $clixon_util_json" 0 "$fjson" 2>&1 | awk '/real/ {print 
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset clixon_util_xml
-unset perfnr
-
 new "endtest"
 endtest

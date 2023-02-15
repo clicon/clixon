@@ -249,7 +249,5 @@ fi
 
 rm -rf $dir
 
-unset ret
-
 new "endtest"
 endtest

@@ -474,13 +474,10 @@ new "endtest"
 endtest
 
 # Set by restconf_config
-unset LOGDST
 unset LOGDST_CMD
 unset RESTCONFIG1
 unset RESTCONFIG2
 unset RESTCONFDBG
-unset RCPROTO
-unset HVER
 
 rm -rf $dir
 

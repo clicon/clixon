@@ -429,7 +429,6 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
-unset RESTCONFIG
 unset validatexml
 
 rm -rf $dir

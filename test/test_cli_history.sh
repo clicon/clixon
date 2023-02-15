@@ -141,7 +141,6 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
-unset nr
 rm -rf $dir
 
 new "endtest"

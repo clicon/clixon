@@ -268,7 +268,5 @@ fi
 
 rm -rf $dir
 
-unset format
-
 new "endtest"
 endtest

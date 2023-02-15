@@ -264,9 +264,5 @@ fi
 
 rm -rf $dir
 
-unset format
-unset pid
-unset ret
-
 new "endtest"
 endtest

@@ -347,7 +347,5 @@ testrun
 
 rm -rf $dir
 
-# unset conditional parameters
-unset RCPROTO
-
+new "endtest"
 endtest

@@ -679,16 +679,47 @@ function wait_snmp()
     
 # End of single test, final tests before normal exit of test
 # Note this is a single test started by new, not a total test suite
+# Unset common variables that may affect next test if run in sequence by
+# eg all.sh or mem.sh
 function endtest()
 {
     if [ $valgrindtest -eq 1 ]; then 
         checkvalgrind
     fi
+    # Unset common variables. More specific should be unset at end of script
+    unset RCPROTO
+    unset HAVE_LIBNGHTTP2
+    unset HVER
+    unset AUTOCLI
+    unset CURLOPTS
+    unset RESTCONFIG
+    unset LOGDST
+    unset fyang
+    unset ret
+    unset count
+    unset nr
+    unset format
+    unset perfnr
+    unset perfreq
+    unset pid
+    unset validatexml
+    unset xpath
+    unset clixon_util_datastore
+    unset clixon_util_json
+    unset clixon_util_xml
+    unset clixon_util_path
+    unset clixon_util_socket
+    unset clixon_util_stream
+    unset clixon_util_xpath
+    unset clixon_util_xml
+    unset clixon_util_xml_mod
 }
 
 # Increment test number and print a nice string
 function new(){
-    endtest # finalize previous test
+    if [ $valgrindtest -eq 1 ]; then 
+        checkvalgrind
+    fi
     testnr=`expr $testnr + 1`
     testi=`expr $testi + 1`
     testname=$1

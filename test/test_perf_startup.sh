@@ -161,9 +161,5 @@ done
 
 rm -rf $dir
 
-# unset conditional parameters 
-unset perfnr
-unset format
-
 new "endtest"
 endtest

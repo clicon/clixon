@@ -97,7 +97,6 @@ new "instance-id top-level parameter/next/parameter"
 expectpart "$($clixon_util_path -f $xml1 -y $ydir -p /ex:table/ex:parameter/ex:next/ex:parameter)" 0 "0: <parameter><name>a</name><value>11</value></parameter>" "1: <parameter><name>b</name><value>22</value></parameter>" "2: <parameter><name>a</name><value>33</value></parameter>"
 
 rm -rf $dir
-unset clixon_util_path # for other script reusing it
 
 new "endtest"
 endtest

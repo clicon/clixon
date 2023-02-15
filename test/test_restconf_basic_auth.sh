@@ -288,8 +288,6 @@ if [ $BE -ne 0 ]; then
 fi
 
 # unset conditional parameters
-unset RCPROTO
-unset HVER
 unset RESTCONFIG1
 unset MSGANON
 unset MSGWILMA

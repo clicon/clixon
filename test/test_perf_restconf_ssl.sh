@@ -256,16 +256,5 @@ if [ $BE -ne 0 ]; then
 fi
 rm -rf $dir
 
-# Set by restconf_config
-unset RESTCONFIG
-unset HAVE_LIBNGHTTP2
-unset RCPROTO
-
-# unset conditional parameters 
-unset format
-unset perfnr
-unset perfreq
-unset ret
-
 new "endtest"
 endtest

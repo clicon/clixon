@@ -173,9 +173,6 @@ if [ -n "$(type expect 2> /dev/null)" ]; then
 
 fi # expect
 
-unset validatexml
-unset perfnr
-unset xpath
 unset xpath0
 
 rm -rf $dir

@@ -192,10 +192,6 @@ testrun false
 new "enable plain http/2"
 testrun true
 
-# Set by restconf_config
-unset RESTCONFIG
-unset RCPROTO
-
 rm -rf $dir
 
 new "endtest"
