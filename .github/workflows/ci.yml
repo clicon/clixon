@@ -17,7 +17,7 @@ jobs:
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
     - name: install dependencies
-      run: sudo apt install -y libssl-dev libnghttp2-dev curl-dev
+      run: sudo apt install -y libssl-dev libnghttp2-dev libcurl4-openssl-dev
     - name: configure
       run: ./configure
 # 2) Use docker for tests
