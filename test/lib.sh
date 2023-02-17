@@ -554,7 +554,7 @@ function stop_backend(){
         sleep 1
         checkvalgrind
     fi
-    sudo pkill -f clixon_backend # extra ($BUSER?)
+#    sudo pkill -f clixon_backend # extra ($BUSER?)
 }
 
 # Wait for restconf to stop sending  502 Bad Gateway
@@ -638,7 +638,7 @@ function wait_restconf(){
         sleep 2 # some problems with valgrind
     fi
 
-  stty $STTYSETTINGS
+  stty $STTYSETTINGS >/dev/null
 }
 
 # Wait for restconf to stop 

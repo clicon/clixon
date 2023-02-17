@@ -567,6 +567,9 @@ restconf_accept_client(int   fd,
         addr = &(in6->sin6_addr);
         break;
     }
+    default:
+        errno = EAFNOSUPPORT;
+        goto done;
     }
     if (rsock->rs_from_addr != NULL){
         free(rsock->rs_from_addr);

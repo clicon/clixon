@@ -633,16 +633,21 @@ ac_ct_CXX
 CXXFLAGS
 CXX
 CPP
+LOCALSTATEDIR
+LIBDIR
+SYSCONFDIR
 MIB_GENERATED_YANG_DIR
 YANG_STANDARD_DIR
 YANG_INSTALLDIR
 CLIXON_YANG_SCHEMA_MOUNT
 CLIXON_YANG_PATCH
+LIBXML2_CFLAGS
 with_libxml2
 HAVE_HTTP1
 HAVE_LIBNGHTTP2
 enable_netsnmp
 with_restconf
+with_libcurl
 LINKAGE
 LIBSTATIC_SUFFIX
 SH_SUFFIX
@@ -723,6 +728,7 @@ enable_debug
 with_cligen
 enable_yang_patch
 enable_yang_schema_mount
+with_libcurl
 enable_publish
 with_restconf
 enable_http1
@@ -1390,6 +1396,8 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cligen=dir       Use CLIGEN installation in this dir
+  --without-libcurl       Disable use of libcurl, affects publish
+                          notification, including clixon_util_stream
   --with-restconf=native  Integration with embedded web server (DEFAULT)
   --with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg
                           nginx
@@ -1398,7 +1406,8 @@ Optional Packages:
                           Directory of generated YANG specs (default:
                           $prefix/share/mib-yangs)
   --with-configfile=FILE  Set default path to config file
-  --with-libxml2          Use gnome/libxml2 regex engine
+  --with-libxml2[=/path/to/xml2-config]
+                          Use libxml2 regex engine
   --without-sigaction     Don't use sigaction
   --with-yang-installdir=DIR
                           Install Clixon yang files here (default:
@@ -3413,6 +3422,7 @@ HAVE_HTTP1=false
 
 # SNMP tests require generated YANGs from MIBs
 
+# Used in expansion in, e.g., example/main/example.xml.in
 
 #
 ac_ext=c
@@ -4697,25 +4707,16 @@ $as_echo "#define CLIXON_YANG_SCHEMA_MOUNT 1" >>confdefs.h
 
 fi
 
-# Experimental: Curl publish notification stream to eg Nginx nchan.
-# Check whether --enable-publish was given.
-if test "${enable_publish+set}" = set; then :
-  enableval=$enable_publish;
-	  if test "$enableval" = no; then
-	      ac_enable_publish=no
-	  else
-	      ac_enable_publish=yes
-          fi
+# publish streams uses libcurl
 
+# Check whether --with-libcurl was given.
+if test "${with_libcurl+set}" = set; then :
+  withval=$with_libcurl; with_libcurl=$withval
 else
-   ac_enable_publish=no
+  with_libcurl=yes
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: publish is $ac_enable_publish" >&5
-$as_echo "publish is $ac_enable_publish" >&6; }
-
-if test "$ac_enable_publish" = "yes"; then
-   # publish streams uses libcurl
+if test "x${with_libcurl}" != "xno"; then
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
 $as_echo_n "checking for grep that handles long lines and -e... " >&6; }
@@ -4976,16 +4977,16 @@ fi
 done
 
 
-for ac_header in curl.h
+for ac_header in curl/curl.h
 do :
-  ac_fn_c_check_header_mongrel "$LINENO" "curl.h" "ac_cv_header_curl_h" "$ac_includes_default"
-if test "x$ac_cv_header_curl_h" = xyes; then :
+  ac_fn_c_check_header_mongrel "$LINENO" "curl/curl.h" "ac_cv_header_curl_curl_h" "$ac_includes_default"
+if test "x$ac_cv_header_curl_curl_h" = xyes; then :
   cat >>confdefs.h <<_ACEOF
-#define HAVE_CURL_H 1
+#define HAVE_CURL_CURL_H 1
 _ACEOF
 
 else
-  as_fn_error $? "curl missing" "$LINENO" 5
+  as_fn_error $? "curl header(s) missing" "$LINENO" 5
 fi
 
 done
@@ -5037,10 +5038,32 @@ else
   as_fn_error $? "libcurl missing" "$LINENO" 5
 fi
 
+fi
+
+# Experimental: Curl publish notification stream to eg Nginx nchan.
+# Check whether --enable-publish was given.
+if test "${enable_publish+set}" = set; then :
+  enableval=$enable_publish;
+	  if test "$enableval" = no; then
+	      ac_enable_publish=no
+	  else
+	      ac_enable_publish=yes
+          fi
+
+else
+   ac_enable_publish=no
+fi
+
+if test "$ac_enable_publish" = "yes"; then
+   if test "x${with_libcurl}" = "xno"; then
+      as_fn_error $? "--enable-publish conflicts with --without-libcurl" "$LINENO" 5
+   fi
 
 $as_echo "#define CLIXON_PUBLISH_STREAMS 1" >>confdefs.h
 
 fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: publish is $ac_enable_publish" >&5
+$as_echo "publish is $ac_enable_publish" >&6; }
 
 for ac_header in cligen/cligen.h
 do :
@@ -5120,7 +5143,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: restconf mode ${with_restconf}" >&5
 $as_echo "restconf mode ${with_restconf}" >&6; }
 # Actions for each specific package
-if test "x${with_restconf}" == xfcgi; then
+if test "x${with_restconf}" = xfcgi; then
    # Lives in libfcgi-dev
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for FCGX_Init in -lfcgi" >&5
 $as_echo_n "checking for FCGX_Init in -lfcgi... " >&6; }
@@ -5172,7 +5195,7 @@ fi
 
 $as_echo "#define WITH_RESTCONF_FCGI 1" >>confdefs.h
  # For c-code that cant use strings
-elif test "x${with_restconf}" == xnative; then
+elif test "x${with_restconf}" = xnative; then
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
 $as_echo_n "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
 if ${ac_cv_lib_ssl_OPENSSL_init_ssl_+:} false; then :
@@ -5374,7 +5397,7 @@ fi
 
 $as_echo "#define WITH_RESTCONF_NATIVE 1" >>confdefs.h
  # For c-code that cant use strings
-elif test "x${with_restconf}" == xno; then
+elif test "x${with_restconf}" = xno; then
    # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
    with_restconf=
 else
@@ -5657,6 +5680,16 @@ fi
 
 if test "${with_libxml2}"; then
    # Find libxml2 lib
+   if test -x "${with_libxml2}" 2>/dev/null; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libxml2 header files and libs" >&5
+$as_echo_n "checking for libxml2 header files and libs... " >&6; }
+      LIBXML2_CFLAGS="`${with_libxml2} --cflags`"
+      LIBS="$LIBS `${with_libxml2} --libs`"
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: $LIBXML2_CFLAGS" >&5
+$as_echo "$LIBXML2_CFLAGS" >&6; }
+   else
+      LIBXML2_CFLAGS="-I/usr/include/libxml2"
+   fi
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for xmlRegexpCompile in -lxml2" >&5
 $as_echo_n "checking for xmlRegexpCompile in -lxml2... " >&6; }
 if ${ac_cv_lib_xml2_xmlRegexpCompile+:} false; then :
@@ -5731,7 +5764,7 @@ else
 fi
 
 
-if test "x${with_sigaction}" == "xyes"; then
+if test "x${with_sigaction}" = "xyes"; then
    for ac_func in sigaction
 do :
   ac_fn_c_check_func "$LINENO" "sigaction" "ac_cv_func_sigaction"
@@ -5814,6 +5847,15 @@ fi
 
 
 
+
+# Expand for easy replacement in example/main/example.xml.in
+# Special case is $libdir, which is composed from $exec_prefix
+test "x$prefix" = xNONE && prefix=$ac_default_prefix
+test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+SYSCONFDIR=`eval echo $sysconfdir`
+LIBDIR=`eval echo $libdir`
+LIBDIR=`eval echo $LIBDIR`
+LOCALSTATEDIR=`eval echo $localstatedir`
 
 ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml extras/rpm/Makefile docker/Makefile docker/clixon-dev/Makefile docker/example/Makefile docker/test/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
 

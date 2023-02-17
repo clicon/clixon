@@ -115,7 +115,7 @@ EOF
         err "No pid return value" "$retx"
     fi
     if $active; then
-        expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>$"
+        expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>$"
     else
         # inactive, no startime or pid
         expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status></rpc-reply>$"
@@ -320,6 +320,7 @@ if [ $BE -ne 0 ]; then
     fi
     # kill backend
     stop_backend -f $cfg
+    killall clixon_restconf
 fi
 
 # Restconf is enabled and restconf was running but was killed by stop ^.

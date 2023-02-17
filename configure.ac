@@ -114,11 +114,13 @@ AC_SUBST(LIBS)
 AC_SUBST(SH_SUFFIX)
 AC_SUBST(LIBSTATIC_SUFFIX)
 AC_SUBST(LINKAGE)
+AC_SUBST(with_libcurl)
 AC_SUBST(with_restconf)  # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(enable_netsnmp) # Enable build of apps/snmp
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
 AC_SUBST(HAVE_HTTP1,false)
-AC_SUBST(with_libxml2)  
+AC_SUBST(with_libxml2)
+AC_SUBST(LIBXML2_CFLAGS)
 AC_SUBST(CLIXON_YANG_PATCH)
 AC_SUBST(CLIXON_YANG_SCHEMA_MOUNT)
 # Where Clixon installs its YANG specs
@@ -127,6 +129,10 @@ AC_SUBST(YANG_INSTALLDIR)
 AC_SUBST(YANG_STANDARD_DIR)
 # SNMP tests require generated YANGs from MIBs
 AC_SUBST(MIB_GENERATED_YANG_DIR)
+# Used in expansion in, e.g., example/main/example.xml.in
+AC_SUBST(SYSCONFDIR)
+AC_SUBST(LIBDIR)
+AC_SUBST(LOCALSTATEDIR)
 
 #
 AC_PROG_CC()
@@ -212,8 +218,19 @@ if test "${enable_yang_schema_mount}" = "yes"; then
    AC_DEFINE(CLIXON_YANG_SCHEMA_MOUNT, 1, [Enable YANG schema mount, RFC 8528])
 fi
 
+# publish streams uses libcurl
+AC_ARG_WITH([libcurl],
+	[AS_HELP_STRING([--without-libcurl],
+	   [Disable use of libcurl, affects publish notification, including clixon_util_stream])],
+	[with_libcurl=$withval],[with_libcurl=yes])
+if test "x${with_libcurl}" != "xno"; then
+   AC_CHECK_HEADERS(curl/curl.h,[], AC_MSG_ERROR([curl header(s) missing]))
+   AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
+fi
+
 # Experimental: Curl publish notification stream to eg Nginx nchan. 
-AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],[Enable publish of notification streams using SSE and curl]),[
+AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],
+	[Enable publish of notification streams using SSE and curl]),[
 	  if test "$enableval" = no; then
 	      ac_enable_publish=no
 	  else	      
@@ -221,14 +238,13 @@ AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],[Enable publish of noti
           fi
         ],
 	[ ac_enable_publish=no])
-AC_MSG_RESULT(publish is $ac_enable_publish)	
-
 if test "$ac_enable_publish" = "yes"; then
-   # publish streams uses libcurl
-   AC_CHECK_HEADERS(curl.h,[], AC_MSG_ERROR([curl missing]))	
-   AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
+   if test "x${with_libcurl}" = "xno"; then
+      AC_MSG_ERROR([--enable-publish conflicts with --without-libcurl])
+   fi
    AC_DEFINE(CLIXON_PUBLISH_STREAMS, 1, [Enable publish of notification streams using SSE and curl])
 fi
+AC_MSG_RESULT(publish is $ac_enable_publish)
 
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR([CLIgen missing. Try: git clone https://github.com/clicon/cligen.git]))
 
@@ -244,11 +260,11 @@ AC_ARG_WITH([restconf],
 	[with_restconf=native])
 AC_MSG_RESULT(restconf mode ${with_restconf})
 # Actions for each specific package
-if test "x${with_restconf}" == xfcgi; then
+if test "x${with_restconf}" = xfcgi; then
    # Lives in libfcgi-dev
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
    AC_DEFINE(WITH_RESTCONF_FCGI, 1, [Use fcgi restconf mode]) # For c-code that cant use strings
-elif test "x${with_restconf}" == xnative; then
+elif test "x${with_restconf}" = xnative; then
    AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
    AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
    # Check if http/1 enabled
@@ -283,7 +299,7 @@ elif test "x${with_restconf}" == xnative; then
       HAVE_LIBNGHTTP2=true 
    fi    
    AC_DEFINE(WITH_RESTCONF_NATIVE, 1, [Use native restconf mode]) # For c-code that cant use strings
-elif test "x${with_restconf}" == xno; then
+elif test "x${with_restconf}" = xno; then
    # Cant get around "no" as an answer for --without-restconf that is reset here to undefined
    with_restconf=   
 else
@@ -344,9 +360,17 @@ AC_CHECK_LIB(dl, dlopen)
 # Note this only enables the compiling of the code. In order to actually
 # use it you need to set Clixon config option CLICON_YANG_REGEXP to libxml2
 AC_ARG_WITH([libxml2],
-	[AS_HELP_STRING([--with-libxml2],[Use gnome/libxml2 regex engine])])
+	[AS_HELP_STRING([--with-libxml2[[=/path/to/xml2-config]]],[Use libxml2 regex engine])])
 if test "${with_libxml2}"; then
    # Find libxml2 lib
+   if test -x "${with_libxml2}" 2>/dev/null; then
+      AC_MSG_CHECKING([for libxml2 header files and libs])
+      LIBXML2_CFLAGS="`${with_libxml2} --cflags`"
+      LIBS="$LIBS `${with_libxml2} --libs`"
+      AC_MSG_RESULT([$LIBXML2_CFLAGS])
+   else
+      LIBXML2_CFLAGS="-I/usr/include/libxml2"
+   fi
    AC_CHECK_LIB(xml2, xmlRegexpCompile,[], AC_MSG_ERROR([libxml2 not found]))
 fi 
 
@@ -361,7 +385,7 @@ AC_ARG_WITH(
 	[with_sigaction=yes]
 )
 
-if test "x${with_sigaction}" == "xyes"; then
+if test "x${with_sigaction}" = "xyes"; then
    AC_CHECK_FUNCS(sigaction)
 fi 
 
@@ -399,6 +423,15 @@ AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location fo
 AC_ARG_ENABLE(nls)
 
 AH_BOTTOM([#include <clixon_custom.h>])
+
+# Expand for easy replacement in example/main/example.xml.in
+# Special case is $libdir, which is composed from $exec_prefix
+test "x$prefix" = xNONE && prefix=$ac_default_prefix
+test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+SYSCONFDIR=`eval echo $sysconfdir`
+LIBDIR=`eval echo $libdir`
+LIBDIR=`eval echo $LIBDIR`
+LOCALSTATEDIR=`eval echo $localstatedir`
 
 AC_OUTPUT(Makefile
 	  lib/Makefile
