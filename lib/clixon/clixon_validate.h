@@ -41,16 +41,6 @@
 #define _CLIXON_VALIDATE_H_
 
 /*
- * Types
- */
-/* Validation level at commit */
-enum validate_level_t {
-    VL_FULL = 0, /* Do full RFC 7950 validation , 0 : backward-compatible */
-    VL_NONE,     /* Do not do any validation */
-};
-typedef enum validate_level_t validate_level;
-
-/*
  * Prototypes
  */
 int xml_yang_validate_rpc(clicon_handle h, cxobj *xrpc, int expanddefault, cxobj **xret);

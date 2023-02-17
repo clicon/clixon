@@ -122,7 +122,6 @@ AC_SUBST(HAVE_HTTP1,false)
 AC_SUBST(with_libxml2)
 AC_SUBST(LIBXML2_CFLAGS)
 AC_SUBST(CLIXON_YANG_PATCH)
-AC_SUBST(CLIXON_YANG_SCHEMA_MOUNT)
 # Where Clixon installs its YANG specs
 AC_SUBST(YANG_INSTALLDIR) 
 # Examples require standard IETF YANGs. You need to provide these for example and tests
@@ -200,22 +199,6 @@ AC_MSG_RESULT(enable-yang-patch is ${enable_yang_patch})
 if test "${enable_yang_patch}" = "yes"; then
    CLIXON_YANG_PATCH=1
    AC_DEFINE(CLIXON_YANG_PATCH, 1, [Enable YANG patch, RFC 8072])
-fi
-
-# Enable/disable YANG schema mount RFC 8528
-AC_ARG_ENABLE(yang-schema-mount, AS_HELP_STRING([--enable-yang-schema-mount],[Enable YANG schema mount, RFC 8528, default: no]),[
-	  if test "$enableval" = no; then
-	      enable_yang_schema_mount=no
-	  else	      
-	      enable_yang_schema_mount=yes
-          fi
-        ],
-	[ enable_yang_schema_mount=no])
-
-AC_MSG_RESULT(enable-yang-schema-mount is ${enable_yang_schema_mount})
-if test "${enable_yang_schema_mount}" = "yes"; then
-   CLIXON_YANG_SCHEMA_MOUNT=1
-   AC_DEFINE(CLIXON_YANG_SCHEMA_MOUNT, 1, [Enable YANG schema mount, RFC 8528])
 fi
 
 # publish streams uses libcurl

@@ -282,12 +282,15 @@ typedef int (datastore_upgrade_t)(clicon_handle h, const char *db, cxobj *xt, mo
  * No need to YANG bind.
  * @param[in]  h       Clixon handle
  * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] config  If '0' all data nodes in the mounted schema are read-only
+ * @param[out] vallevel Do or dont do full RFC 7950 validation
  * @param[out] yanglib XML yang-lib module-set tree. Freed by caller.
  * @retval     0       OK
  * @retval    -1       Error
  * @see RFC 8528 (schema-mount) and RFC 8525 (yang-lib)
  */
-typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, cxobj **yanglib);
+typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, int *config,
+                           validate_level *vl, cxobj **yanglib);
 
 /*! YANG module patch
  *
@@ -454,8 +457,8 @@ int clixon_plugin_extension_all(clicon_handle h, yang_stmt *yext, yang_stmt *ys)
 int clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp, clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 int clixon_plugin_datastore_upgrade_all(clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 
-int clixon_plugin_yang_mount_one(clixon_plugin_t *cp, clicon_handle h, cxobj *xt, cxobj **yanglib);
-int clixon_plugin_yang_mount_all(clicon_handle h, cxobj *xt, cxobj **yanglib);
+int clixon_plugin_yang_mount_one(clixon_plugin_t *cp, clicon_handle h, cxobj *xt, int *config, validate_level *vl, cxobj **yanglib);
+int clixon_plugin_yang_mount_all(clicon_handle h, cxobj *xt, int *config, validate_level *vl, cxobj **yanglib);
 
 int clixon_plugin_yang_patch_one(clixon_plugin_t *cp, clicon_handle h, yang_stmt *ymod);
 int clixon_plugin_yang_patch_all(clicon_handle h, yang_stmt *ymod);

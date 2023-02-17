@@ -1010,6 +1010,8 @@ clixon_plugin_datastore_upgrade_all(clicon_handle    h,
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
  * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] config  If '0' all data nodes in the mounted schema are read-only
+ * @param[out] validate Do or dont do full RFC 7950 validation
  * @param[out] yanglib XML yang-lib module-set tree
  * @retval     0       OK
  * @retval    -1       Error
@@ -1018,6 +1020,8 @@ int
 clixon_plugin_yang_mount_one(clixon_plugin_t *cp,
                              clicon_handle    h,
                              cxobj           *xt,
+                             int             *config,
+                             validate_level  *vl,
                              cxobj          **yanglib)
 {
     int           retval = -1;
@@ -1028,7 +1032,7 @@ clixon_plugin_yang_mount_one(clixon_plugin_t *cp,
         wh = NULL;
         if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
-        if (fn(h, xt, yanglib) < 0) {
+        if (fn(h, xt, config, vl, yanglib) < 0) {
             if (clicon_errno < 0) 
                 clicon_log(LOG_WARNING, "%s: Internal error: Yang mount callback in plugin: %s returned -1 but did not make a clicon_err call",
                            __FUNCTION__, cp->cp_name);
@@ -1046,22 +1050,27 @@ clixon_plugin_yang_mount_one(clixon_plugin_t *cp,
  *
  * @param[in]  h       Clixon handle
  * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] config  If '0' all data nodes in the mounted schema are read-only
+ * @param[out] validate Do or dont do full RFC 7950 validation
  * @param[out] yanglib XML yang-lib module-set tree (freed by caller)
  * @retval     0       OK
  * @retval    -1       Error
  */
 int
-clixon_plugin_yang_mount_all(clicon_handle h,
-                             cxobj        *xt,
-                             cxobj       **yanglib)
+clixon_plugin_yang_mount_all(clicon_handle   h,
+                             cxobj          *xt,
+                             int            *config,
+                             validate_level *vl,
+                             cxobj         **yanglib)
 {
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
     
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-        if (clixon_plugin_yang_mount_one(cp, h, xt, yanglib) < 0)
+        if (clixon_plugin_yang_mount_one(cp, h, xt, config, vl, yanglib) < 0)
             goto done;
-        if (*yanglib)
+        /* Break if find yanglib */
+        if (yanglib && *yanglib)
             break;
     }
     retval = 0;

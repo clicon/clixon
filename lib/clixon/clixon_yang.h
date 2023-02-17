@@ -181,6 +181,12 @@ typedef struct yang_stmt yang_stmt;
  */
 typedef int (yang_applyfn_t)(yang_stmt *ys, void *arg);
 
+/* Validation level at commit */
+enum validate_level_t {
+    VL_FULL = 0, /* Do full RFC 7950 validation , 0 : backward-compatible */
+    VL_NONE,     /* Do not do any validation */
+};
+typedef enum validate_level_t validate_level;
 
 /* Yang data definition statement
  * See RFC 7950 Sec 3:

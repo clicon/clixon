@@ -487,10 +487,8 @@ text_modify(clicon_handle       h,
     char      *createstr = NULL;        
     yang_stmt *yrestype = NULL;
     char      *restype;
-#ifdef CLIXON_YANG_SCHEMA_MOUNT
     int        ismount = 0;
     yang_stmt *mount_yspec = NULL;
-#endif
 
     if (x1 == NULL){
         clicon_err(OE_XML, EINVAL, "x1 is missing");
@@ -860,9 +858,8 @@ text_modify(clicon_handle       h,
                 x1cname = xml_name(x1c);
                 /* Get yang spec of the child by child matching */
                 if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
-#ifdef CLIXON_YANG_SCHEMA_MOUNT
-                    yc = xml_spec(x1c);
-#endif
+                    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT"))
+                        yc = xml_spec(x1c);
                     if (yc == NULL){
                         if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
                             /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
@@ -908,22 +905,26 @@ text_modify(clicon_handle       h,
                 x0c = x0vec[i++];
                 x1cname = xml_name(x1c);
                 if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
-#ifdef CLIXON_YANG_SCHEMA_MOUNT
-                    yc = xml_spec(x1c);
-#endif
+                    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT"))
+                        yc = xml_spec(x1c);
                 }
-#ifdef CLIXON_YANG_SCHEMA_MOUNT
-                /* Check if xc is unresolved mountpoint, ie no yang mount binding yet */
-                if ((ismount = xml_yang_mount_get(x1c, &mount_yspec)) < 0)
-                    goto done;
-                if (ismount && mount_yspec == NULL){
-                    ret = 1;
+                if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
+                    /* Check if xc is unresolved mountpoint, ie no yang mount binding yet */
+                    if ((ismount = xml_yang_mount_get(h, x1c, NULL, &mount_yspec)) < 0)
+                        goto done;
+                    if (ismount && mount_yspec == NULL){
+                        ret = 1;
+                    }
+                    else{
+                        if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
+                                               yc, op,
+                                               username, xnacm, permit, cbret)) < 0)
+                            goto done;
+                    }
                 }
-                else
-#endif
-                if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
-                                       yc, op,
-                                       username, xnacm, permit, cbret)) < 0)
+                else if ((ret = text_modify(h, x0c, x0, x0t, x1c, x1t,
+                                            yc, op,
+                                            username, xnacm, permit, cbret)) < 0)
                     goto done;
                 /* If xml return - ie netconf error xml tree, then stop and return OK */
                 if (ret == 0)

@@ -639,7 +639,6 @@ SYSCONFDIR
 MIB_GENERATED_YANG_DIR
 YANG_STANDARD_DIR
 YANG_INSTALLDIR
-CLIXON_YANG_SCHEMA_MOUNT
 CLIXON_YANG_PATCH
 LIBXML2_CFLAGS
 with_libxml2
@@ -727,7 +726,6 @@ enable_option_checking
 enable_debug
 with_cligen
 enable_yang_patch
-enable_yang_schema_mount
 with_libcurl
 enable_publish
 with_restconf
@@ -1381,8 +1379,6 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-debug          Build with debug symbols, default: no
   --enable-yang-patch     Enable YANG patch, RFC 8072, default: no
-  --enable-yang-schema-mount
-                          Enable YANG schema mount, RFC 8528, default: no
   --enable-publish        Enable publish of notification streams using SSE and
                           curl
   --disable-http1         Disable http1 for native restconf http/1, ie http/2
@@ -3407,6 +3403,7 @@ test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
 
 
 
+
   # Set to native or fcgi -> compile apps/restconf
  # Enable build of apps/snmp
 HAVE_LIBNGHTTP2=false
@@ -3423,6 +3420,9 @@ HAVE_HTTP1=false
 # SNMP tests require generated YANGs from MIBs
 
 # Used in expansion in, e.g., example/main/example.xml.in
+
+
+
 
 #
 ac_ext=c
@@ -4680,30 +4680,6 @@ if test "${enable_yang_patch}" = "yes"; then
    CLIXON_YANG_PATCH=1
 
 $as_echo "#define CLIXON_YANG_PATCH 1" >>confdefs.h
-
-fi
-
-# Enable/disable YANG schema mount RFC 8528
-# Check whether --enable-yang-schema-mount was given.
-if test "${enable_yang_schema_mount+set}" = set; then :
-  enableval=$enable_yang_schema_mount;
-	  if test "$enableval" = no; then
-	      enable_yang_schema_mount=no
-	  else
-	      enable_yang_schema_mount=yes
-          fi
-
-else
-   enable_yang_schema_mount=no
-fi
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: enable-yang-schema-mount is ${enable_yang_schema_mount}" >&5
-$as_echo "enable-yang-schema-mount is ${enable_yang_schema_mount}" >&6; }
-if test "${enable_yang_schema_mount}" = "yes"; then
-   CLIXON_YANG_SCHEMA_MOUNT=1
-
-$as_echo "#define CLIXON_YANG_SCHEMA_MOUNT 1" >>confdefs.h
 
 fi
 

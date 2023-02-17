@@ -48,7 +48,9 @@ module clixon-config {
 
     revision 2022-12-01 {
         description
-            "Removed (previosly marked) obsolete options:
+            "Added options:
+                    CLICON_YANG_SCHEMA_MOUNT
+             Removed (previosly marked) obsolete options:
                     CLICON_MODULE_LIBRARY_RFC7895
              Released in Clixon 6.1";
     }
@@ -501,6 +503,12 @@ module clixon-config {
             description
                 "Location of backend .so plugins. Load all .so 
                  plugins in this dir as backend plugins";
+        }
+        leaf CLICON_YANG_SCHEMA_MOUNT{
+            type boolean;
+            description
+                "YANG schema mount, RFC 8528";
+            default false;
         }
         leaf CLICON_BACKEND_REGEXP {
             type string;

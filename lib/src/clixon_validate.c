@@ -1007,16 +1007,15 @@ xml_yang_validate_add(clicon_handle h,
     cxobj       *x;
     cg_var      *cv0;
     enum cv_type cvtype;
-    
-#ifdef CLIXON_YANG_SCHEMA_MOUNT
-    /* Do not validate beyond mountpoints */
-    if ((ret = xml_yang_mount_get(xt, NULL)) < 0)
-        goto done;
-    if (ret == 1){
-        retval = 1;
-        goto done;
+    validate_level vl = VL_NONE;
+
+    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
+        if ((ret = xml_yang_mount_get(h, xt, &vl, NULL)) < 0)
+            goto done;
+        /* Check if validate beyond mountpoints */
+        if (ret == 1 && vl == VL_NONE)
+            goto ok;
     }
-#endif
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
@@ -1076,6 +1075,7 @@ xml_yang_validate_add(clicon_handle h,
         if (ret == 0)
             goto fail;
     }
+  ok:
     retval = 1;
  done:
     if (cv)
@@ -1224,14 +1224,15 @@ xml_yang_validate_all(clicon_handle h,
     cbuf      *cb = NULL;
     cvec      *nsc = NULL;
     int        hit = 0;
+    validate_level vl = VL_NONE;
 
-#ifdef CLIXON_YANG_SCHEMA_MOUNT
-    /* Do not validate beyond mountpoints */
-    if ((ret = xml_yang_mount_get(xt, NULL)) < 0)
-        goto done;
-    if (ret == 1) 
-        goto ok; /* Actually this may be somewhat too strict */
-#endif
+    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
+        if ((ret = xml_yang_mount_get(h, xt, &vl, NULL)) < 0)
+            goto done;
+        /* Check if validate beyond mountpoints */
+        if (ret == 1 && vl == VL_NONE)
+            goto ok;
+    }
     /* if not given by argument (overide) use default link 
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) == NULL){

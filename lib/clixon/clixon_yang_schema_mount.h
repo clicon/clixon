@@ -54,7 +54,7 @@
  * Prototypes
  */
 int yang_schema_mount_point(yang_stmt *y);
-int xml_yang_mount_get(cxobj *x, yang_stmt **yspec);
+int xml_yang_mount_get(clicon_handle h, cxobj *x, validate_level *vl, yang_stmt **yspec);
 int xml_yang_mount_set(cxobj *x,  yang_stmt *yspec);
 int xml_yang_mount_freeall(cvec *cvv);
 int yang_schema_mount_statedata(clicon_handle h, yang_stmt *yspec, char *xpath, cvec *nsc, cxobj **xret, cxobj **xerr);

@@ -133,15 +133,19 @@ yang_schema_mount_point(yang_stmt *y)
 
 /*! Get yangspec mount-point
  *
+ * @param[in]  h     Clixon handle
  * @param[in]  x     XML moint-point node
+ * @param[out] vallevel Do or dont do full RFC 7950 validation
  * @param[out] yspec YANG stmt spec
  * @retval     1     x is a mount-point: yspec may be set
  * @retval     0     x is not a mount point
  * @retval    -1     Error
  */
 int
-xml_yang_mount_get(cxobj      *xt,
-                   yang_stmt **yspec)
+xml_yang_mount_get(clicon_handle   h,
+                   cxobj          *xt,
+                   validate_level *vl,
+                   yang_stmt     **yspec)
 {
     int        retval = -1;
     cvec      *cvv = NULL;
@@ -157,6 +161,9 @@ xml_yang_mount_get(cxobj      *xt,
         goto done;
     if (ret == 0)
         goto fail;
+    /* Check validate level */
+    if (clixon_plugin_yang_mount_all(h, xt, NULL, vl, NULL) < 0)
+        goto done;
     // XXX hardcoded prefix: yangmnt
     if ((yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL)
         goto ok;
@@ -168,6 +175,7 @@ xml_yang_mount_get(cxobj      *xt,
     if ((cv = cvec_find(cvv, xpath)) == NULL)
         goto ok;
     if (yspec)
+
         *yspec = cv_void_get(cv);
  ok:
     retval = 1;
@@ -301,14 +309,16 @@ yang_schema_mount_statedata_yanglib(clicon_handle h,
                                     cxobj       **xret,
                                     cxobj       **xerr)
 {
-    int        retval = -1;
-    cvec      *cvv = NULL;
-    cg_var    *cv;
-    cxobj     *xmp;          /* xml mount-point */
-    cxobj     *yanglib = NULL; /* xml yang-lib */
-    cbuf      *cb = NULL;
-    yang_stmt *yspec;
-    int        ret;
+    int            retval = -1;
+    cvec          *cvv = NULL;
+    cg_var        *cv;
+    cxobj         *xmp;          /* xml mount-point */
+    cxobj         *yanglib = NULL; /* xml yang-lib */
+    cbuf          *cb = NULL;
+    yang_stmt     *yspec;
+    int            ret;
+    int            config = 1;
+    validate_level vl = VL_FULL;
 
     if ((cb = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, 0, "clicon buffer");
@@ -325,12 +335,11 @@ yang_schema_mount_statedata_yanglib(clicon_handle h,
         xmp = cv_void_get(cv);
         yanglib = NULL;
         /* User callback */
-        if (clixon_plugin_yang_mount_all(h, xmp, &yanglib) < 0)
+        if (clixon_plugin_yang_mount_all(h, xmp, &config, &vl, &yanglib) < 0)
             goto done;
         if (yanglib == NULL)
             continue;
         yspec = clicon_dbspec_yang(h);
-        //        if ((ret = xml_bind_yang(h, yanglib, YB_NONE, yspec, &xerr)) < 0)
         if ((ret = xml_bind_yang0(h, yanglib, YB_MODULE, yspec, xerr)) < 0)
             goto done;
         if (ret == 0)
@@ -449,12 +458,14 @@ int
 yang_schema_yanglib_parse_mount(clicon_handle h,
                                 cxobj        *xt)
 {
-    int         retval = -1;
-    cxobj     *yanglib = NULL;
-    yang_stmt *yspec = NULL;
-    int        ret;
+    int            retval = -1;
+    cxobj         *yanglib = NULL;
+    yang_stmt     *yspec = NULL;
+    int            ret;
+    int            config = 1;
+    validate_level vl = VL_FULL;
 
-    if (clixon_plugin_yang_mount_all(h, xt, &yanglib) < 0)
+    if (clixon_plugin_yang_mount_all(h, xt, &config, &vl, &yanglib) < 0)
         goto done;
     if (yanglib == NULL)
         goto anydata;
@@ -504,7 +515,7 @@ yang_schema_get_child(clicon_handle h,
     int        ret;
 
     x1cname = xml_name(x1c);
-    if ((ret = xml_yang_mount_get(x1, &yspec1)) < 0)
+    if ((ret = xml_yang_mount_get(h, x1, NULL, &yspec1)) < 0)
         goto done;
     if (ret == 1 && yspec1 != NULL){
         if (ys_module_by_xml(yspec1, x1c, &ymod1) <0)

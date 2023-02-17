@@ -898,6 +898,8 @@ example_upgrade(clicon_handle    h,
  * Given an XML mount-point xt, return XML yang-lib modules-set
  * @param[in]  h       Clixon handle
  * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] config  If '0' all data nodes in the mounted schema are read-only
+ * @param[out] validate Do or dont do full RFC 7950 validation
  * @param[out] yanglib XML yang-lib module-set tree
  * @retval     0       OK
  * @retval    -1       Error
@@ -905,31 +907,40 @@ example_upgrade(clicon_handle    h,
  * @see RFC 8528
  */
 int
-main_yang_mount(clicon_handle h,
-                cxobj        *xt,
-                cxobj       **yanglib)
+main_yang_mount(clicon_handle   h,
+                cxobj          *xt,
+                int            *config,
+                validate_level *vl,
+                cxobj         **yanglib)
 {
     int   retval = -1;
     cbuf *cb = NULL;
 
-    if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
-        goto done;
+    if (config)
+        *config = 1;
+    if (vl)
+        *vl = VL_FULL;
+    if (yanglib){
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
+        cprintf(cb, "<module-set>");
+        cprintf(cb, "<name>mount</name>");
+        cprintf(cb, "<module>");
+        cprintf(cb, "<name>clixon-example</name>");
+        cprintf(cb, "<revision>2022-11-01</revision>");
+        cprintf(cb, "<namespace>urn:example:urn</namespace>");
+        cprintf(cb, "</module>");
+        cprintf(cb, "</module-set>");
+        cprintf(cb, "</yang-library>");
+        if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, yanglib, NULL) < 0)
+            goto done;
+        if (xml_rootchild(*yanglib, 0, yanglib) < 0)
+            goto done;
     }
-    cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
-    cprintf(cb, "<module-set>");
-    cprintf(cb, "<name>mount</name>");
-    cprintf(cb, "<module>");
-    cprintf(cb, "<name>clixon-example</name>");
-    cprintf(cb, "<revision>2022-11-01</revision>");
-    cprintf(cb, "<namespace>urn:example:urn</namespace>");
-    cprintf(cb, "</module>");
-    cprintf(cb, "</module-set>");
-    cprintf(cb, "</yang-library>");
-    if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, yanglib, NULL) < 0)
-        goto done;
-    if (xml_rootchild(*yanglib, 0, yanglib) < 0)
-        goto done;
+
     retval = 0;
  done:
     if (cb)

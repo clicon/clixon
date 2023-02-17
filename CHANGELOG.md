@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.1.0](#610) Expected: beginning of 2023
+* [6.1.0](#610) Expected: 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
 * [5.9.0](#590) 24 September 2022
 * [5.8.0](#580) 28 July 2022
@@ -39,26 +39,23 @@
 * [3.3.1](#331) June 7 2017
 
 ## 6.1.0
-Expected: beginning of 2023
+Expected: 19 Feb 2023
 
 ### New features
 
 * YANG schema mount RFC 8528
-  * Experimental
   * Restrictions:
     * Only schema-ref=inline, not shared-schema
-    * Only presence containers can be mount-points
+    * Mount-points must be presence containers, regular containers or lists are not supported.
   * New plugin callback: `ca_yang_mount`
     * To specify which YANG modules should be mounted
-  * Standards: RFC 8528
-  * To enable configure with `--enable-yang-schema-mount`
+  * To enable, set new option `CLICON_YANG_SCHEMA_MOUNT` to `true`
 * Netconf monitoring RFC 6022
   * This is part 2, first part was in 6.0
   * Datastores, sessions and statistics
     * Added clixon-specific transport identities: cli, snmp, netconf, restconf
     * Added source-host from native restonf, but no other transports
     * Hello statistics is based on backend statistics, hellos from RESTCONF, SNMP and CLI clients are included and dropped external NETCONF sessions are not
-  * Standards
     * RFC 6022 "YANG Module for NETCONF Monitoring"
   * See [Feature Request: Support RFC 6022 (NETCONF Monitoring)](https://github.com/clicon/clixon/issues/370)
   
@@ -66,9 +63,10 @@ Expected: beginning of 2023
 
 Users may have to change how they access the system
 
-* New `clixon-config@2022-12-01.yang` revision
-  * Removed obsolete option: `CLICON_MODULE_LIBRARY_RFC7895'
 * Obsolete config options given in the configuration file are considered an error
+* New `clixon-config@2022-12-01.yang` revision
+  * Added option: 'CLICON_YANG_SCHEMA_MOUNT`
+  * Removed obsolete option: `CLICON_MODULE_LIBRARY_RFC7895`
 * clixon-lib,yang
   * Moved all extended internal NETCONF attributes to the clicon-lib namespace
     * These are: content, depth, username, autocommit, copystartup, transport, source-host, objectcreate, objectexisted.
@@ -77,8 +75,7 @@ Users may have to change how they access the system
   * This means that all get operations without `with-defaults` parameter do no longer
     return implicit default values, only explicitly set values.
   * Applies to NETCONF `<get>`, `<get-config>` and RESTCONF `GET`
-  * To keep backward-compatible behavior, define option `NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL` in
-    include/clixon_custom.h
+  * To keep backward-compatible behavior, define option `NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL` in `include/clixon_custom.h`
   * Alternatively, change all get operation to include with-defaults parameter `report-all` 
 
 ### C/CLI-API changes on existing features
@@ -100,8 +97,8 @@ Developers may need to change their code
   
 ### Minor features
 
-* [Request to suppress auto-completion for "deprecated" / "obsolete" status and warn the user.](https://github.com/clicon/clixon/issues/410)
-  * Solved by:
+* Done: [Request to suppress auto-completion for "deprecated" / "obsolete" status and warn the user.](https://github.com/clicon/clixon/issues/410)
+  * Implemented by:
     * Not generating any autocli syntax for obsolete YANG statements,
     * Hide statements for deprecated YANG statements.
 * New plugin callbacks

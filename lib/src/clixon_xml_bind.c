@@ -453,34 +453,34 @@ xml_bind_yang0_opt(clicon_handle h,
         goto ok;
     strip_body_objects(xt);
     ybc = YB_PARENT;
-#ifdef CLIXON_YANG_SCHEMA_MOUNT
-    yspec1 = NULL;
-    if ((ret = xml_yang_mount_get(xt, &yspec1)) < 0)
-        goto done;
-    if (ret == 0)
-        yspec1 = yspec;
-    else{
-        if (yspec1)
-            ybc = YB_MODULE;
-        else if (h == NULL)
-            goto ok; /* treat as anydata */
+    if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
+        yspec1 = NULL;
+        if ((ret = xml_yang_mount_get(h, xt, NULL, &yspec1)) < 0)
+            goto done;
+        if (ret == 0)
+            yspec1 = yspec;
         else{
-            if ((ret = yang_schema_yanglib_parse_mount(h, xt)) < 0)
-                goto done;
-            if (ret == 0)
-                goto ok;
-            /* Try again */
-            if ((ret = xml_yang_mount_get(xt, &yspec1)) < 0)
-                goto done;
             if (yspec1)
                 ybc = YB_MODULE;
-            else
-                goto ok;
+            else if (h == NULL)
+                goto ok; /* treat as anydata */
+            else{
+                if ((ret = yang_schema_yanglib_parse_mount(h, xt)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto ok;
+                /* Try again */
+                if ((ret = xml_yang_mount_get(h, xt, NULL, &yspec1)) < 0)
+                    goto done;
+                if (yspec1)
+                    ybc = YB_MODULE;
+                else
+                    goto ok;
+            }
         }
     }
-#else
-    yspec1 = yspec;
-#endif
+    else
+        yspec1 = yspec;
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
         /* It is xml2ns in populate_self_parent that needs improvement */

@@ -5,12 +5,6 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-if [ -z "${CLIXON_YANG_SCHEMA_MOUNT}" ]; then
-    echo "...skipped. To enable configure with: --enable-yang-schema-mount"
-    rm -rf $dir
-    if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
-fi
-
 APPNAME=example
 
 cfg=$dir/conf_mount.xml
@@ -33,6 +27,7 @@ cat <<EOF > $cfg
   <CLICON_NETCONF_MONITORING>true</CLICON_NETCONF_MONITORING>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   <CLICON_STREAM_DISCOVERY_RFC5277>true</CLICON_STREAM_DISCOVERY_RFC5277>
+  <CLICON_YANG_SCHEMA_MOUNT>true</CLICON_YANG_SCHEMA_MOUNT>
 </clixon-config>
 EOF
 
