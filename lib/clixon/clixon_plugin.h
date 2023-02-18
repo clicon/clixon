@@ -294,7 +294,7 @@ typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, int *config,
 
 /*! YANG module patch
  *
- * Given a parsed YANG module, give the ability to patch it before import recursion,
+ * Given a parsed YANG module, provide a method to patch it before import recursion,
  * grouping/uses checks, augments, etc
  * Can be useful if YANG in some way needs modification.
  * Deviations could be used as alternative (probably better)
@@ -327,12 +327,12 @@ typedef struct clixon_plugin_api* (plginit2_t)(clicon_handle);    /* Clixon plug
 struct clixon_plugin_api{
     /*--- Common fields.  ---*/
     char              ca_name[MAXPATHLEN]; /* Name of plugin (given by plugin) */
-    plginit2_t       *ca_init;           /* Clixon plugin Init (implicit) */
-    plgstart_t       *ca_start;          /* Plugin start */
-    plgexit_t        *ca_exit;           /* Plugin exit */
-    plgextension_t   *ca_extension;      /* Yang extension/unknown handler */
-    yang_mount_t     *ca_yang_mount;      /* RFC 8528 schema mount */
-    yang_patch_t     *ca_yang_patch;      /* Patch yang after parse */
+    plginit2_t       *ca_init;             /* Clixon plugin Init (implicit) */
+    plgstart_t       *ca_start;            /* Plugin start */
+    plgexit_t        *ca_exit;             /* Plugin exit */
+    plgextension_t   *ca_extension;        /* Yang extension/unknown handler */
+    yang_mount_t     *ca_yang_mount;       /* RFC 8528 schema mount */
+    yang_patch_t     *ca_yang_patch;       /* Patch yang after parse */
     union {
         struct { /* cli-specific */
             cli_prompthook_t *ci_prompt;         /* Prompt hook */

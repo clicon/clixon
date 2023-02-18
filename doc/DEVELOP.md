@@ -1,5 +1,7 @@
 # README for Clixon developers
 
+(See also CONTRIBUTING.md)
+
   * [Code documentation](#documentation)
   * [How to work in git (how-to-work-in-git)](#how-to-work-in-git)
   * [How the meta-configure stuff works](#meta-configure)

@@ -2,6 +2,8 @@
 
 The clixon project welcomes contributions from the community.
 
+Contributions are best done posting issues and pull requests. Discussions are welcome on the Matrix clixon forum https://matrix.to/#/#clixonforum:matrix.org.
+
 ## Licensing
 
 A contribution must follow the [CLIXON licensing](https://github.com/clicon/clixon/blob/master/LICENSE.md)
@@ -122,7 +124,7 @@ where `ms_` is the prefix and is an abbreviation of `my_struct`.
 Try to avoid global variables.
 
 If you absolutely need a global variable, try to contain it as static within a
-single C-file, ie do not declare it extern and use it elsewhere. 
+single C-file, ie do not declare it extern and do not use it in other files.
 
 Also, always prepend a global variable with `_`, underscore.
 
@@ -150,3 +152,24 @@ Therafter "non-functional" analysis, including performance tests can
 be made. Performance improvements should be based on specific usecase
 and actual measurement. The benefit of an optimization should
 be larger than a potential increase of complexity.
+
+## How to document the code
+
+```
+/*! This is a small comment on one line
+ *
+ * This is a detailed description
+ * spanning several lines.
+ *
+ * Example usage:
+ * @code
+ *   fn(a, &b);
+ * @endcode
+ *
+ * @param[in]     src     This is a description of the first parameter
+ * @param[in,out] dest    This is a description of the second parameter
+ * @retval        0       This is a description of the return value
+ * @retval       -1       This is a description of another return value
+ * @see                   See also this function
+ */
+```

@@ -41,15 +41,20 @@
 ## 6.1.0
 Expected: 19 Feb 2023
 
+The Clixon 6.1 release completes Network monitoring (RFC 6022) and introduces a first version of YANG schema mount (RFC 8528). The main focus has been interoperability and basic support for the ongoing [Clixon controller](https://github.com/clicon/clixon-controller) work.
+
 ### New features
 
 * YANG schema mount RFC 8528
+  * The primary use-case is the clixon-controller but can be used independently
+  * New plugin callback: `ca_yang_mount`
+    * To specify which YANG modules should be mounted
+  * New plugin callback: `ca_yang_patch`
+    * A method to patch a YANG module
+  * To enable yang mounts, set new option `CLICON_YANG_SCHEMA_MOUNT` to `true`
   * Restrictions:
     * Only schema-ref=inline, not shared-schema
     * Mount-points must be presence containers, regular containers or lists are not supported.
-  * New plugin callback: `ca_yang_mount`
-    * To specify which YANG modules should be mounted
-  * To enable, set new option `CLICON_YANG_SCHEMA_MOUNT` to `true`
 * Netconf monitoring RFC 6022
   * This is part 2, first part was in 6.0
   * Datastores, sessions and statistics
