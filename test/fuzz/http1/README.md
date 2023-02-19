@@ -7,7 +7,6 @@ Install AFL, see [..](..)
 
 Enable `RESTCONF_HTTP1_UNITTEST` in `include/clixon_custom.h`.
 
-
 Build and install clixon libraries and restconf statically
 ```
   ./configure --disable-nghttp2 LINKAGE=static INSTALLFLAGS="" CC=/usr/bin/afl-clang-fast CFLAGS="-g"
@@ -16,7 +15,6 @@ Build and install clixon libraries and restconf statically
   sudo make install
   ./runfuzz.sh
 ```
-
 
 To view crashes
 ```

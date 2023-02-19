@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.1.0](#610) Expected: 19 Feb 2023
+* [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
 * [5.9.0](#590) 24 September 2022
 * [5.8.0](#580) 28 July 2022
@@ -39,7 +39,7 @@
 * [3.3.1](#331) June 7 2017
 
 ## 6.1.0
-Expected: 19 Feb 2023
+19 Feb 2023
 
 The Clixon 6.1 release completes Network monitoring (RFC 6022) and introduces a first version of YANG schema mount (RFC 8528). The main focus has been interoperability and basic support for the ongoing [Clixon controller](https://github.com/clicon/clixon-controller) work.
 
@@ -93,15 +93,27 @@ Developers may need to change their code
     * Added netconf ssh subsystem
     * Renamed from `clixon` built in `docker/base`
 * C-API
-  * Added `spec` parameter to `xml2xpath()`, default 0
-  * Added `clicon_handle` parameter to all `xml_bind_*` calls
-  * All calls to `clicon_log_xml()` changed to new function `clicon_debug_xml()`
-  * Changed type of `veclen` parameter to `size_t` in `xpath_vec_flag()`
-  * Added `with-defaults` parameter (default 0) to `xmldb_get0()`
-  * Added `sock_flags` parameter to `clixon_proc_socket()`
+  * `xml2xpath()`: Added `int spec` as third parameter, default 0
+    * This was for making an xpath to a yang-mount point (only for yang-mount)
+    * Example change:
+      * `xml2xpath(x, n, xp)` -> `xml2xpath(x, n, 0, xp)`
+  * `xml_bind_*()` functions: Added `clicon_handle h` as first parameter 
+    * Example change:
+      * `xml_bind_yang(x, y, yp, xe)` -> `xml_bind_yang(h, x, y, yp, xe)` -> 
+  * `xmldb_get0()`: Added `with-defaults` parameter, default 0
+    * Example change:
+       * `xmldb_get0(0, db, yb, n, xp, c, x, m, x)` -> `xmldb_get0(0, db, yb, n, xp, c, WITHDEFAULTS_REPORT_ALL, x, m, x)`
+  * `candidate_commit()`: Add myid as fourth and validate_level as fifth parameter, default 0
+    * Example change:
+       * `candidate_commit(h, x, d, c)` -> `candidate_commit(h, x, d, 0, VL_FULL, c)`
+  * `xpath_vec_flag()`: Changed type of sixth `veclen` parameter to `size_t *`
+  * `clicon_log_xml()`: All calls changed to new function `clicon_debug_xml()`
+  * `clixon_proc_socket()`: Added `sock_flags` parameter
   
 ### Minor features
 
+* Misc. build fixes encountered when cross-compiling by @troglobit in https://github.com/clicon/clixon/pull/418
+* Update FAQ.md hello world example url by @jarrodb in https://github.com/clicon/clixon/pull/419
 * Done: [Request to suppress auto-completion for "deprecated" / "obsolete" status and warn the user.](https://github.com/clicon/clixon/issues/410)
   * Implemented by:
     * Not generating any autocli syntax for obsolete YANG statements,
@@ -121,10 +133,13 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Added translation from Yang type to SNMP type by @StasSt-siklu in https://github.com/clicon/clixon/pull/406
 * Fixed: [State XML validation error when CLICON_MODULE_LIBRARY_RFC7895=true and ietf-yang-library@2019-01-04 is loaded](https://github.com/clicon/clixon/issues/408)
 * Fixed: [SNMP: snmpwalk is slow and can timeout #404 ](https://github.com/clicon/clixon/issues/404)
 * Fixed: [SNMP accepts only u32 & u64 #405](https://github.com/clicon/clixon/issues/405)
 * Fixed: [Yang leaves without smiv2:oid directive are not shown well in snmpwalk #398](https://github.com/clicon/clixon/issues/398)
+  * Yang leaves without smiv2:oid directive are not shown well in]… by @doron2020 in https://github.com/clicon/clixon/pull/402
+
 * Fixed: [Netconf commit confirm session-id mismatch #407](https://github.com/clicon/clixon/issues/407)
 * Fixed: Initialized session-id to 1 instead of 0 following ietf-netconf.yang
 * Fixed: [snmpwalk doesn't show properly SNMP boolean values which equal false](https://github.com/clicon/clixon/issues/400)

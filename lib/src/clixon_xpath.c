@@ -1259,7 +1259,7 @@ xml2xpath1(cxobj *x,
  * Therefore, if nsc is "canonical", the returned xpath is also "canonical", even though the XML is not.
  * @param[in]  x      XML object
  * @param[in]  nsc    Namespace context
- * @param[in]  spec   If set, recursively continue only to root without spec
+ * @param[in]  spec   If set, recursively continue only to root without spec (added in 6.1 for yang mount)
  * @param[out] xpath  Malloced xpath string. Need to free() after use
  * @retval     0      OK
  * @retval    -1      Error. (eg XML malformed)
@@ -1267,7 +1267,7 @@ xml2xpath1(cxobj *x,
  *    char  *xpath = NULL;
  *    cxobj *x;
  *    ... x is inside an xml tree ...
- *    if (xml2xpath(x, nsc, &xpath) < 0)
+ *    if (xml2xpath(x, nsc, 0, &xpath) < 0)
  *       err;
  *    free(xpath);
  * @endcode

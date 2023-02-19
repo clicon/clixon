@@ -693,7 +693,7 @@ xml_bind_yang_rpc_action(clicon_handle h,
  * @retval     -1      Error
  * The 
  * @code
- *   if ((ret = xml_bind_yang_rpc(x, NULL, &xerr)) < 0)
+ *   if ((ret = xml_bind_yang_rpc(h, x, NULL, &xerr)) < 0)
  *      err;
  * @endcode
  * @see xml_bind_yang  For other generic cases
@@ -824,7 +824,7 @@ xml_bind_yang_rpc(clicon_handle h,
  * @retval     -1      Error
  *
  * @code
- *   if ((ret = xml_bind_yang_rpc_reply(x, "get-config", yspec, &xerr)) < 0)
+ *   if ((ret = xml_bind_yang_rpc_reply(h, x, "get-config", yspec, &xerr)) < 0)
  *      err;
  * @endcode
  * @see xml_bind_yang  For other generic cases

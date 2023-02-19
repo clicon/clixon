@@ -412,7 +412,6 @@ clicon_msg_rcv(int                s,
         clicon_err(OE_PROTO, errno, "header too short (%d)", hlen);
         goto done;
     }
-
     mlen = ntohl(hdr.op_len);
     clicon_debug(16, "op-len:%u op-id:%u",
                  mlen, ntohl(hdr.op_id));

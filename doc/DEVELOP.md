@@ -2,33 +2,10 @@
 
 (See also CONTRIBUTING.md)
 
-  * [Code documentation](#documentation)
   * [How to work in git (how-to-work-in-git)](#how-to-work-in-git)
   * [How the meta-configure stuff works](#meta-configure)
   * [How to debug](#debug)
   * [New release](#new-release)
-
-## Documentation
-How to document the code
-
-```
-/*! This is a small comment on one line
- *
- * This is a detailed description
- * spanning several lines.
- *
- * Example usage:
- * @code
- *   fn(a, &b);
- * @endcode
- *
- * @param[in] src         This is a description of the first parameter
- * @param[in,out] dest    This is a description of the second parameter
- * @retval TRUE           This is a description of the return value
- * @retval FALSE          This is a description of another return value
- * @see                   See also this function
- */
-```
 
 ## How to work in git
 
@@ -180,10 +157,13 @@ gdb clixon_cli
 ```
 
 ## New release
+
 What to think about when doing a new release.
-* Ensure all tests run OK
-* review CHANGELOG, write one-liner
-* review README.md wording about latest release
+* Ensure all CI tests run OK
+* Ensure all extended tests run OK: valgrind, vagrant, afl
+* Review CHANGELOG, write one-liner
+  * Draft a new release and review generated release notes and use info to update CHANGELOG
+* Review README.md wording about latest release
 * New yang/clicon/clixon-config@XXX.yang revision?
 * In configure.ac, for minor releases change CLIXON_VERSION in configure.ac to eg: (minor should have been bumped):
 ```
@@ -196,7 +176,8 @@ What to think about when doing a new release.
   git tag -a <version>
   git push origin <version>
 ```
-* Add a github "release" and copy release info from CHANGELOG
+
+* Add a github release and copy release info from CHANGELOG
 
 After release:
 * Bump minor version and add a "PRE":
