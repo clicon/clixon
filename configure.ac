@@ -48,9 +48,9 @@ AC_INIT(lib/clixon/clixon.h.in)
 AC_CONFIG_AUX_DIR(config-aux)
 
 CLIXON_VERSION_MAJOR="6"
-CLIXON_VERSION_MINOR="1"
+CLIXON_VERSION_MINOR="2"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Debug flag
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
@@ -201,16 +201,10 @@ if test "${enable_yang_patch}" = "yes"; then
    AC_DEFINE(CLIXON_YANG_PATCH, 1, [Enable YANG patch, RFC 8072])
 fi
 
-# publish streams uses libcurl
-AC_ARG_WITH([libcurl],
-	[AS_HELP_STRING([--without-libcurl],
-	   [Disable use of libcurl, affects publish notification, including clixon_util_stream])],
-	[with_libcurl=$withval],[with_libcurl=yes])
-if test "x${with_libcurl}" != "xno"; then
-   AC_CHECK_HEADERS(curl/curl.h,[], AC_MSG_ERROR([curl header(s) missing]))
-   AC_CHECK_LIB(curl, curl_global_init,, AC_MSG_ERROR([libcurl missing]))
-fi
-
+# Check curl, needed for tests but not for clixon core
+AC_CHECK_HEADERS(curl/curl.h,[])
+AC_CHECK_LIB(curl, curl_global_init)
+   
 # Experimental: Curl publish notification stream to eg Nginx nchan. 
 AC_ARG_ENABLE(publish, AS_HELP_STRING([--enable-publish],
 	[Enable publish of notification streams using SSE and curl]),[

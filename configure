@@ -726,7 +726,6 @@ enable_option_checking
 enable_debug
 with_cligen
 enable_yang_patch
-with_libcurl
 enable_publish
 with_restconf
 enable_http1
@@ -1392,8 +1391,6 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cligen=dir       Use CLIGEN installation in this dir
-  --without-libcurl       Disable use of libcurl, affects publish
-                          notification, including clixon_util_stream
   --with-restconf=native  Integration with embedded web server (DEFAULT)
   --with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg
                           nginx
@@ -2284,9 +2281,9 @@ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 
 
 CLIXON_VERSION_MAJOR="6"
-CLIXON_VERSION_MINOR="1"
+CLIXON_VERSION_MINOR="2"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
 # Debug flag
 # Check whether --enable-debug was given.
@@ -4683,16 +4680,7 @@ $as_echo "#define CLIXON_YANG_PATCH 1" >>confdefs.h
 
 fi
 
-# publish streams uses libcurl
-
-# Check whether --with-libcurl was given.
-if test "${with_libcurl+set}" = set; then :
-  withval=$with_libcurl; with_libcurl=$withval
-else
-  with_libcurl=yes
-fi
-
-if test "x${with_libcurl}" != "xno"; then
+# Check curl, needed for tests but not for clixon core
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
 $as_echo_n "checking for grep that handles long lines and -e... " >&6; }
@@ -4961,13 +4949,11 @@ if test "x$ac_cv_header_curl_curl_h" = xyes; then :
 #define HAVE_CURL_CURL_H 1
 _ACEOF
 
-else
-  as_fn_error $? "curl header(s) missing" "$LINENO" 5
 fi
 
 done
 
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for curl_global_init in -lcurl" >&5
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for curl_global_init in -lcurl" >&5
 $as_echo_n "checking for curl_global_init in -lcurl... " >&6; }
 if ${ac_cv_lib_curl_curl_global_init+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -5010,11 +4996,8 @@ _ACEOF
 
   LIBS="-lcurl $LIBS"
 
-else
-  as_fn_error $? "libcurl missing" "$LINENO" 5
 fi
 
-fi
 
 # Experimental: Curl publish notification stream to eg Nginx nchan.
 # Check whether --enable-publish was given.
