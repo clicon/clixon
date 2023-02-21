@@ -1063,6 +1063,7 @@ yang_parse_filename(clicon_handle h,
  * @retval   -1        Error
  *
  * See top of file for diagram of calling order
+ * @note does not check wether the module is already loaded
  */
 yang_stmt *
 yang_parse_module(clicon_handle h,

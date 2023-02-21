@@ -665,7 +665,7 @@ ys_free1(yang_stmt *ys,
          * Freed here once.
          */
         if (yang_keyword_get(ys) == Y_UNKNOWN &&
-            strcmp(yang_argument_get(ys), "yangmnt:mount-point")==0){
+            strcmp(yang_argument_get(ys), "yangmnt:mount-point") == 0){
             xml_yang_mount_freeall(ys->ys_cvec);
         }
         cvec_free(ys->ys_cvec);

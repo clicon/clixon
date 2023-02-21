@@ -818,17 +818,19 @@ yang_metadata_init(clicon_handle h)
     return retval;
 }
 
-/*! Given yang-lib module-set XML tree, parse all modules into an yspec
+/*! Given yang-lib module-set XML tree, parse modules into an yspec
  * 
+ * Skip module if already loaded
  * This function is used where a yang-lib module-set is available to populate
  * an XML mount-point.
- * @param[in] h      Clicon handle
- * @param[in] xylib  yang-lib XML tree on the form <yang-lib>...
- * @param[in] yspec  Will be populated with YANGs, is consumed
- * @retval    1      OK
- * @retval    0      Parse error
- * @retval    -1     Error
+ * @param[in] h       Clicon handle
+ * @param[in] yanglib XML tree on the form <yang-lib>...
+ * @param[in] yspec   Will be populated with YANGs, is consumed
+ * @retval    1       OK
+ * @retval    0       Parse error
+ * @retval    -1      Error
  * @see xml_schema_add_mount_points
+ * XXX: Ensure yang-lib is always there otherwise get state dont work for mountpoint
  */
 int
 yang_lib2yspec(clicon_handle h,
@@ -843,6 +845,9 @@ yang_lib2yspec(clicon_handle h,
     cxobj    **vec = NULL;
     size_t     veclen;
     int        i;
+    yang_stmt *ymod;
+    yang_stmt *yrev;
+    int        modmin = 0;
 
     if (xpath_vec(yanglib, nsc, "module-set/module", &vec, &veclen) < 0) 
         goto done;
@@ -852,12 +857,31 @@ yang_lib2yspec(clicon_handle h,
             continue;
         if ((revision = xml_find_body(xi, "revision")) == NULL)
             continue;
+        if ((ymod = yang_find(yspec, Y_MODULE, name)) != NULL ||
+            (ymod = yang_find(yspec, Y_SUBMODULE, name)) != NULL){
+            /* Skip if matching or no revision 
+             * Note this algorithm does not work for multiple revisions
+             */
+            if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL){
+                modmin++;
+                continue;
+            }
+            if (strcmp(yang_argument_get(yrev), revision) == 0){
+                modmin++;
+                continue;
+            }
+        }
         if (yang_parse_module(h, name, revision, yspec, NULL) == NULL)
             goto fail;
     }
 #ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
     /* XXX: Ensure yang-lib is always there otherwise get state dont work for mountpoint */
-    if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, NULL) < 0)
+    if ((ymod = yang_find(yspec, Y_MODULE, "ietf-yang-library")) != NULL &&
+        (yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL &&
+        strcmp(yang_argument_get(yrev), "2019-01-04") == 0){
+        modmin++;
+    }
+    else if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, NULL) < 0)
         goto fail;
 #endif
     if (yang_parse_post(h, yspec, 0) < 0)

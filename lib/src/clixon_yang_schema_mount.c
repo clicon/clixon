@@ -216,7 +216,9 @@ xml_yang_mount_set(cxobj     *x,
     if ((cvv = yang_cvec_get(yu)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
         (yspec0 = cv_void_get(cv)) != NULL){
+#if 0 /* Problematic to free yang specs here, upper layers should handle it? */
         ys_free(yspec0);
+#endif
         cv_void_set(cv, NULL);
     }
     else if ((cv = yang_cvec_add(yu, CGV_VOID, xpath)) == NULL)
@@ -246,7 +248,6 @@ xml_yang_mount_freeall(cvec *cvv)
     }
     return 0;
 }
-
 
 /*! Find schema mounts - callback function for xml_apply
  *
