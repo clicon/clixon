@@ -465,6 +465,7 @@ startup_commit(clicon_handle  h,
  * @param[in]  h       Clicon handle
  * @param[in]  db      The (candidate) database. The wanted backend state
  * @param[in]  td      Transaction data
+ * @param[in]  vlev    Validation level (0: full validation)
  * @param[out] xret    Error XML tree, if retval is 0. Free with xml_free after use
  * @retval     1       Validation OK       
  * @retval     0       Validation failed (with xret set)
@@ -477,6 +478,7 @@ static int
 validate_common(clicon_handle       h, 
                 char               *db,
                 transaction_data_t *td,
+                validate_level      vlev,
                 cxobj             **xret)
 {
     int         retval = -1;
@@ -544,16 +546,18 @@ validate_common(clicon_handle       h,
     if (plugin_transaction_begin_all(h, td) < 0)
         goto done;
 
-    /* 5. Make generic validation on all new or changed data.
-       Note this is only call that uses 3-values */
-    if ((ret = generic_validate(h, yspec, td, xret)) < 0)
-        goto done;
-    if (ret == 0)
-        goto fail;
+    if (vlev == VL_FULL){
+        /* 5. Make generic validation on all new or changed data.
+           Note this is only call that uses 3-values */
+        if ((ret = generic_validate(h, yspec, td, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
 
-    /* 6. Call plugin transaction validate callbacks */
-    if (plugin_transaction_validate_all(h, td) < 0)
-        goto done;
+        /* 6. Call plugin transaction validate callbacks */
+        if (plugin_transaction_validate_all(h, td) < 0)
+            goto done;
+    }
 
     /* 7. Call plugin transaction complete callbacks */
     if (plugin_transaction_complete_all(h, td) < 0)
@@ -594,7 +598,7 @@ candidate_validate(clicon_handle h,
     if ((td = transaction_new()) == NULL)
         goto done;
         /* Common steps (with commit) */
-    if ((ret = validate_common(h, db, td, &xret)) < 0){
+    if ((ret = validate_common(h, db, td, VL_FULL, &xret)) < 0){
         /* A little complex due to several sources of validation fails or errors.
          * (1) xerr is set -> translate to cbret; (2) cbret set use that; otherwise
          * use clicon_err. 
@@ -675,15 +679,8 @@ candidate_commit(clicon_handle h,
     /* Common steps (with validate). Load candidate and running and compute diffs
      * Note this is only call that uses 3-values
      */
-    switch (vlev){
-    case VL_FULL:
-        if ((ret = validate_common(h, db, td, &xret)) < 0)
-            goto done;
-        break;
-    default:
-        ret = 1;
-        break;
-    }
+    if ((ret = validate_common(h, db, td, vlev, &xret)) < 0)
+        goto done;
 
     /* If the confirmed-commit feature is enabled, execute phase 2:
      *  - If a valid confirming-commit, cancel the rollback event

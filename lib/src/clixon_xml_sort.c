@@ -384,7 +384,7 @@ xml_cmp(cxobj  *x1,
         break;
     } /* switch */
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %s %s eq:%d nr: %d %d yi: %d %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal, nr1, nr2, yi1, yi2);
+    clicon_debug(CLIXON_DBG_EXTRA, "%s %s %s eq:%d nr: %d %d yi: %d %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal, nr1, nr2, yi1, yi2);
     return equal;
 }
 
