@@ -49,6 +49,10 @@ SHELL	= /bin/sh
 all:	
 	echo "Run make docker to build docker image"
 
+# Cannot use generated Makefile in docker since it uses tmp install dirs
+example.xml:
+	cp $(top_srcdir)/example/main/$@ $@
+
 # (recursively) clone the repo from top-level - NOTE changes must be committed
 clixon:
 	git clone file://$(realpath ${top_srcdir})
@@ -59,7 +63,7 @@ clean:
 distclean: clean
 	rm -f Makefile *~ .depend
 
-docker: clixon Dockerfile
+docker: clixon Dockerfile example.xml
 	sudo docker build -t $(IMG) $(DOCKERFLAGS) .
 
 start: docker

@@ -57,7 +57,6 @@ SPORT=${SPORT:-8443}
 
 # Initial running datastore content (other than empty)
 STORE=${STORE:-}
-
 CONFIG0=$(cat <<EOF
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>/usr/local/etc/example.xml</CLICON_CONFIGFILE>
@@ -84,8 +83,8 @@ EOF
 
 CONFIG=${CONFIG:-$CONFIG0}
 
-# Start clixon-example backend
->&2 echo -n "Starting Backend..."
+# Create clixon-test container
+>&2 echo -n "Starting Container..."
 sudo docker run -p $PORT:80 -p $SPORT:443 --name clixon-test --rm -e DBG=$DBG -e CONFIG="$CONFIG" -e STORE="$STORE" -td clixon/clixon-test || err "Error starting clixon-test"
 
 # Wait for snmpd to start

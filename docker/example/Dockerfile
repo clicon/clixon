@@ -111,6 +111,8 @@ RUN adduser -D -H clicon
 
 COPY --from=0 /clixon/build/ /usr/local/
 
+# Overwrite config file since install dirs are wrong
+COPY example.xml /usr/local/etc/example.xml
 # Create symlink so you can run clixon without -f arg
 RUN ln -s /usr/local/etc/example.xml /usr/local/etc/clixon.xml 
 

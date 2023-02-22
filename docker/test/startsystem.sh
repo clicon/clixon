@@ -78,9 +78,7 @@ echo "Set disable_coredump false" > /etc/sudo.conf
 
 chmod 775 /usr/local/bin/test/site.sh 
 
-# Start clixon backend (tests will kill this)
-/usr/local/sbin/clixon_backend -D $DBG -s running -l e # logs on docker logs
->&2 echo "clixon_backend started"
+# No backend is started since tests dont require it
 
 # Start snmpd, we need this for the SNMP tests and the app clixon_snmp. Log to stdout, then we can
 # use Docker logs to see what's happening.

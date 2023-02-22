@@ -188,7 +188,8 @@ ifdef with_restconf
 endif
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/clispec
 	install -m 0644 $(CLISPECS) $(DESTDIR)$(libdir)/$(APPNAME)/clispec
-	install -d -m 0755 $(DESTDIR)$(localstatedir)/$(APPNAME)
+	install -d -m 0755 $(DESTDIR)$(localstatedir)/$(APPNAME) # This is for XMLDB_DIR
+	install -d -m 0755 $(DESTDIR)$(localstatedir)/run # This is for PID and SOCK
 
 uninstall: 
 	rm -rf $(DESTDIR)$(sysconfdir)/$(APPNAME).xml
