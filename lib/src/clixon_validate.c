@@ -1359,7 +1359,7 @@ xml_yang_validate_all(clicon_handle h,
     /* Check unique and min-max after choice test for example*/
     if (yang_config(yt) != 0){
         /* Checks if next level contains any unique list constraints */
-        if ((ret = xml_yang_minmax_recurse(xt, xret)) < 0)
+        if ((ret = xml_yang_minmax_recurse(xt, 1, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -1396,7 +1396,7 @@ xml_yang_validate_all_top(clicon_handle h,
         if ((ret = xml_yang_validate_all(h, x, xret)) < 1)
             return ret;
     }
-    if ((ret = xml_yang_minmax_recurse(xt, xret)) < 1)
+    if ((ret = xml_yang_minmax_recurse(xt, 0, xret)) < 1)
         return ret;
     return 1;
 }

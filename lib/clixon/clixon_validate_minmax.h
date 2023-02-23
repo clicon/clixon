@@ -43,6 +43,6 @@
 /*
  * Prototypes
  */
-int xml_yang_minmax_recurse(cxobj *xt, cxobj **xret);
+int xml_yang_minmax_recurse(cxobj *xt, int recurse, cxobj **xret);
 
 #endif  /* _CLIXON_VALIDATE_MINMAX_H_ */

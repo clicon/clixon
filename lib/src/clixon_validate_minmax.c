@@ -633,6 +633,8 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
  * 7   null             nolist  neq   gap analysis; nopresence-check; 
  * 8   list             nolist  neq   gap analysis; yprev: check-minmax; nopresence-check; 
  * @param[in]  xt      XML parent (may have lists w unique constraints as child)
+ * @param[in]  recurse Set if called in a recursive loop (will recurse anyway), 
+ *                     otherwise non-presence containers will be traversed
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @retval     1       Validation OK
  * @retval     0       Validation failed (xret set)
@@ -643,6 +645,7 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
  */
 int
 xml_yang_minmax_recurse(cxobj  *xt,
+                        int     recurse,
                         cxobj **xret)
 {
     int           retval = -1;
@@ -709,11 +712,11 @@ xml_yang_minmax_recurse(cxobj  *xt,
             }
             if (ret == 0)
                 goto fail;
-            if (keyw == Y_CONTAINER &&
+            if (recurse && keyw == Y_CONTAINER &&
                 yang_find(y, Y_PRESENCE, NULL) == NULL){
                 yang_stmt *yc = NULL;
                 while ((yc = yn_each(y, yc)) != NULL) {
-                    if ((ret = xml_yang_minmax_recurse(x, xret)) < 0)
+                    if ((ret = xml_yang_minmax_recurse(x, recurse, xret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;

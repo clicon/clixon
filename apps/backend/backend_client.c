@@ -510,7 +510,7 @@ from_client_edit_config(clicon_handle h,
     }
     /* Limited validation of incoming payload
      */
-    if ((ret = xml_yang_minmax_recurse(xc, &xret)) < 0)
+    if ((ret = xml_yang_minmax_recurse(xc, 1, &xret)) < 0)
         goto done;
     /* xmldb_put (difflist handling) requires list keys */
     if (ret==1 && (ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
@@ -567,7 +567,7 @@ from_client_edit_config(clicon_handle h,
                 break;
             }
         }
-        if ((ret = candidate_commit(h, NULL, "candidate", myid, VL_FULL, cbret)) < 0){ /* Assume validation fail, nofatal */
+        if ((ret = candidate_commit(h, NULL, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
             if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
                 goto done;
             xmldb_copy(h, "running", "candidate");

@@ -653,7 +653,7 @@ do_rollback(clicon_handle h,
         confirmed_commit_persist_id_set(h, NULL);
     }
     confirmed_commit_state_set(h, ROLLBACK);
-    if (candidate_commit(h, NULL, "rollback", 0, VL_FULL, cbret) < 0) { /* Assume validation fail, nofatal */
+    if (candidate_commit(h, NULL, "rollback", 0, 0, cbret) < 0) { /* Assume validation fail, nofatal */
         /* theoretically, this should never error, since the rollback database was previously active and therefore
          * had itself been previously and successfully committed.
          */

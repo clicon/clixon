@@ -42,6 +42,9 @@
 ## 6.2.0
 Expected: April 2023
 
+* C-API
+  * `candidate_commit()`: validate_level (added in 6.1) marked obsolete
+	
 ## 6.1.0
 19 Feb 2023
 

@@ -46,7 +46,6 @@ top_srcdir  	= @top_srcdir@
 prefix 		= @prefix@
 bindir 		= @bindir@
 includedir	= @includedir@
-datarootdir     = @datarootdir@
 sysconfdir      = @sysconfdir@
 datarootdir	= @datarootdir@
 localstatedir   = @localstatedir@
