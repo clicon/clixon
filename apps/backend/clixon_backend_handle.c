@@ -61,7 +61,7 @@
 /* clicon */
 #include <clixon/clixon.h>
 
-#include "clixon_backend_handle.h"
+#include "clixon_backend_client.h"
 #include "backend_client.h"
 #include "backend_handle.h"
 

@@ -71,6 +71,7 @@
 
 #include "clixon_backend_transaction.h"
 #include "backend_socket.h"
+#include "clixon_backend_client.h"
 #include "backend_client.h"
 #include "clixon_backend_plugin.h"
 #include "clixon_backend_commit.h"

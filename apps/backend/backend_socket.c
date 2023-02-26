@@ -72,6 +72,7 @@
 #include <clixon/clixon.h>
 
 #include "backend_socket.h"
+#include "clixon_backend_client.h"
 #include "backend_client.h"
 #include "backend_handle.h"
 

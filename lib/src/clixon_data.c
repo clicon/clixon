@@ -136,7 +136,7 @@ clicon_data_del(clicon_handle h,
 /*! Get generic clixon data on the form <name>=<ptr> where <ptr> is void*
  * @param[in]  h    Clicon handle
  * @param[in]  name Data name
- * @param[out] val  Data value as string
+ * @param[out] ptr  Pointer
  * @retval     0    OK
  * @retval    -1    Not found (or error)
  * @see clicon_option_str
@@ -162,7 +162,7 @@ clicon_ptr_get(clicon_handle h,
 /*! Set generic clixon data on the form <name>=<ptr> where <ptr> is void*
  * @param[in]  h    Clicon handle
  * @param[in]  name Data name
- * @param[in]  val  Data value as null-terminated string
+ * @param[in]  ptr  Pointer
  * @retval     0    OK
  * @retval    -1    Error
  * @see clicon_option_str_set

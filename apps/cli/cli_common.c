@@ -1131,9 +1131,9 @@ static int
 cli_notification_cb(int   s, 
                     void *arg)
 {
+    int                retval = -1;
     struct clicon_msg *reply = NULL;
     int                eof;
-    int                retval = -1;
     cxobj             *xt = NULL;
     enum format_enum   format = (enum format_enum)arg;
     int                ret;

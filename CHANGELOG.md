@@ -42,9 +42,17 @@
 ## 6.2.0
 Expected: April 2023
 
+### C/CLI-API changes on existing features
+Developers may need to change their code
+
 * C-API
+  * Renamed include file: `clixon_backend_handle.h`to `clixon_backend_client.h`
   * `candidate_commit()`: validate_level (added in 6.1) marked obsolete
 	
+### Minor features
+
+* Fixed: [Add support decimal64 for SNMP](https://github.com/clicon/clixon/pull/422)
+
 ## 6.1.0
 19 Feb 2023
 
