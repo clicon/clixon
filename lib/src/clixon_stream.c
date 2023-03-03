@@ -546,15 +546,15 @@ stream_notify(clicon_handle h,
               char         *stream, 
               const char   *event, ...)
 {
-    int        retval = -1;
-    va_list    args;
-    int        len;
-    cxobj     *xev = NULL;
-    yang_stmt *yspec = NULL;
-    char      *str = NULL;
-    cbuf      *cb = NULL;
-    char       timestr[28];
-    struct timeval tv;
+    int             retval = -1;
+    va_list         args;
+    int             len;
+    cxobj          *xev = NULL;
+    yang_stmt      *yspec = NULL;
+    char           *str = NULL;
+    cbuf           *cb = NULL;
+    char            timestr[28];
+    struct timeval  tv;
     event_stream_t *es;
 
     clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);

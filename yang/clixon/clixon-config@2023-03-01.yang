@@ -46,6 +46,20 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2023-03-01 {
+        description
+            "Added options:
+                    CLICON_RESTCONF_NOALPN_DEFAULT
+             Released in Clixon 6.2";
+    }
+    revision 2022-12-01 {
+        description
+            "Added options:
+                    CLICON_YANG_SCHEMA_MOUNT
+             Removed (previosly marked) obsolete options:
+                    CLICON_MODULE_LIBRARY_RFC7895
+             Released in Clixon 6.1";
+    }
     revision 2022-11-01 {
         description
             "Added option:
@@ -496,6 +510,12 @@ module clixon-config {
                 "Location of backend .so plugins. Load all .so 
                  plugins in this dir as backend plugins";
         }
+        leaf CLICON_YANG_SCHEMA_MOUNT{
+            type boolean;
+            description
+                "YANG schema mount, RFC 8528";
+            default false;
+        }
         leaf CLICON_BACKEND_REGEXP {
             type string;
             description
@@ -618,6 +638,21 @@ module clixon-config {
                  upgrade/switch from http/1 to http/2. 
                  Note this also disables plain http/2 in prior-knowledge, that is, in http/2-only mode.
                  HTTP/2 in https(TLS) is unaffected";
+        }
+        leaf CLICON_NOALPN_DEFAULT {
+            type string;
+            description
+                "By default Clixon Restconf over TLS/HTTPS uses ALPN for protocol selection.
+                 This option controls the behavior if a client does NOT use ALPN for TLS.
+                 AND both http/1 and http/2 is configured in Clixon.
+                 If the value is not set (or other value), Clixon closes the socket(reset)
+                 If the value is 'http/1.1' then HTTP/1.1 is selected
+                 If the value is 'http/2' then HTTP/2 is selected
+                 Note that if Clixon is configured for only HTTP/1 (--disable-nghttp2), 
+                 then HTTP/1 is selected if the client does not use ALPN.
+                 Likewise, if Clixon is configured for only HTTP/2 (--disable-http1), 
+                 then HTTP/2 is selected if the client does not use ALPN.
+                 This option does not apply for plain (non-TLS) HTTP";
         }
         leaf CLICON_HTTP_DATA_PATH {
             if-feature "clrc:http-data";
@@ -907,8 +942,7 @@ module clixon-config {
             description
                 "If set, tag datastores with RFC 8525 YANG Module Library 
                  info. When loaded at startup, a check is made if the system
-                 yang modules match.
-                 See also CLICON_MODULE_LIBRARY_RFC7895";
+                 yang modules match.";
         }
         leaf CLICON_XMLDB_UPGRADE_CHECKOLD {
             type boolean;
@@ -1053,22 +1087,11 @@ module clixon-config {
                  restconf GET.
                  The module state data is on the form:
                        <yang-library><module-set>...
-                 If CLICON_MODULE_LIBRARY_RFC7895 is set (as well), the module state uses RFC7895
                  instead where the modile state is on the form:
                        <modules-state>...
                  See also CLICON_XMLDB_MODSTATE where the module state info is used to tag datastores
                  with module information.";
         }
-        leaf CLICON_MODULE_LIBRARY_RFC7895 {
-            type boolean;
-            default false;
-            description
-                "Enable RFC 7895 YANG Module library support as state data, instead of RFC8525.
-                 Note CLICON_YANG_LIBRARY must be enabled for this to have effect.
-                 See also CLICON_YANG_LIBRARY and CLICON_MODULE_SET_ID";
-            status obsolete;
-        }
-
         leaf CLICON_MODULE_SET_ID {
             type string;
             default "0";

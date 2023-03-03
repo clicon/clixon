@@ -42,6 +42,15 @@
 ## 6.2.0
 Expected: April 2023
 
+### New features
+
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* New `clixon-config@2022-12-01.yang` revision
+  * Added options: `CLICON_RESTCONF_NOALPN_DEFAULT`
+
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
@@ -51,7 +60,12 @@ Developers may need to change their code
 	
 ### Minor features
 
+* Restconf: Added fallback mechanism for non-ALPN HTTPS
+  * Set `CLICON_RESTCONF_NOALPN_DEFAULT` to `http/2` or `http/1.1`
+  * For http/1 or http/2 only, that will be the default if no ALPN is set.
 * Fixed: [Add support decimal64 for SNMP](https://github.com/clicon/clixon/pull/422)
+
+### Corrected Bugs
 
 ## 6.1.0
 19 Feb 2023

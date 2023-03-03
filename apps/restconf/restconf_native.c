@@ -210,7 +210,6 @@ restconf_conn_free(restconf_conn *rc)
         clicon_err(OE_RESTCONF, EINVAL, "rc is NULL");
         goto done;
     }
-    clicon_debug(1, "%s %p", __FUNCTION__, rc);
 #ifdef HAVE_LIBNGHTTP2
     if (rc->rc_ngsession)
         nghttp2_session_del(rc->rc_ngsession);
@@ -715,7 +714,12 @@ restconf_http1_process(restconf_conn *rc,
             cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>%s</error-message></error></errors>", clicon_err_reason);
             if ((ret = native_send_badrequest(h, "application/yang-data+xml", cbuf_get(cberr), rc)) < 0)
                 goto done;
-            goto ok;
+            if (http1_native_clear_input(h, sd) < 0)
+                goto done;
+            if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+                goto done;
+            rc = NULL;
+            goto closed;
         }
         /* Check for Continue and if so reply with 100 Continue 
          * ret == 1: send reply
@@ -732,8 +736,7 @@ restconf_http1_process(restconf_conn *rc,
                 if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
                     goto done;
                 rc = NULL;
-                retval = 0;
-                goto done;
+                goto closed;
             }
         }
     }
@@ -774,8 +777,7 @@ restconf_http1_process(restconf_conn *rc,
     if (ret == 0 || rc->rc_exit){  /* Server-initiated exit */
         if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
             goto done;
-        retval = 0;
-        goto done;
+        goto closed;
     }
  ok:
     retval = 1;
@@ -783,6 +785,9 @@ restconf_http1_process(restconf_conn *rc,
     if (cberr)
         cbuf_free(cberr);
     return retval;
+ closed:
+    retval = 0;
+    goto done;
 }
 #endif
 
@@ -982,9 +987,10 @@ restconf_connection(int   s,
         case HTTP_11:
             if ((ret = restconf_http1_process(rc, buf, n, &readmore)) < 0)
                 goto done;
-            gettimeofday(&rc->rc_t, NULL); /* activity timer */
-            if (ret == 0)
+            if (ret == 0){
                 goto ok;
+            }
+            gettimeofday(&rc->rc_t, NULL); /* activity timer */
             if (readmore)
                 continue;
 #ifdef HAVE_LIBNGHTTP2
@@ -1126,14 +1132,10 @@ ssl_alpn_check(clicon_handle        h,
     /* Alternatively, call  restconf_str2proto but alpn is not a proper string */
     if (alpn && alpnlen == 8 && memcmp("http/1.1", alpn, 8) == 0){
         *proto = HTTP_11;
-        retval = 1; /* http/1.1 */
-        goto done; 
     }
 #ifdef HAVE_LIBNGHTTP2
     else if (alpn && alpnlen == 2 && memcmp("h2", alpn, 2) == 0){
         *proto = HTTP_2;
-        retval = 1; /* http/2 */
-        goto done;
     }
 #endif
     else {
@@ -1148,20 +1150,43 @@ ssl_alpn_check(clicon_handle        h,
                                        "application/yang-data+xml",
                                        cbuf_get(cberr), rc) < 0)
                 goto done;
+            if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+                goto done;
+            goto fail;
         }
         else{
-            /* XXX Sending badrequest here gives a segv in SSL_shutdown() later or a SIGPIPE here */
-            clicon_log(LOG_INFO, "%s Warning: ALPN: No protocol selected, or no ALPN?", __FUNCTION__);
+#if defined(HAVE_HTTP1)
+#if defined(HAVE_LIBNGHTTP2)
+            char *pstr; /* Both http/1 and http/2 */
+            int  p = -1;
+            
+            pstr = clicon_option_str(h, "CLICON_NOALPN_DEFAULT");
+            if (pstr)
+                p = restconf_str2proto(pstr);
+            if (pstr == NULL || p == -1){
+                clicon_log(LOG_INFO, "%s Warning: ALPN: No protocol selected, or no ALPN?", __FUNCTION__);
+                if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+                    goto done;
+                goto fail;
+            }
+            *proto = p;
+#else
+            *proto = HTTP_11;   /* Only http/1 */
+#endif
+#else
+            *proto = HTTP_2;    /* Only http/1 */
+#endif
         }
-        if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
-            goto done;
     }
-    retval = 0; /* ALPN not OK */
+    retval = 1;
  done:
     clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
         cbuf_free(cberr);
     return retval;
+ fail:
+    retval = 0; /* ALPN not OK */
+    goto done;
 } /* ssl_alpn_check */
 
 /*! Accept new socket client. Note SSL not ip, this applies also to callhome
@@ -1310,14 +1335,15 @@ restconf_ssl_accept_client(clicon_handle    h,
 #ifndef OPENSSL_NO_NEXTPROTONEG
         SSL_get0_next_proto_negotiated(rc->rc_ssl, &alpn, &alpnlen);
 #endif /* !OPENSSL_NO_NEXTPROTONEG */
-        if (alpn == NULL) {
+        if (alpn == NULL){
             /* Returns a pointer to the selected protocol in data with length len. */
             SSL_get0_alpn_selected(rc->rc_ssl, &alpn, &alpnlen);
         }
         if ((ret = ssl_alpn_check(h, alpn, alpnlen, rc, &proto)) < 0)
             goto done;
-        if (ret == 0)
+        if (ret == 0){
             goto closed;
+        }
         clicon_debug(1, "%s proto:%s", __FUNCTION__, restconf_proto2str(proto));
 
 #if 0 /* Seems too early to fail here, instead let authentication callback deal with this */
