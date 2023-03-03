@@ -584,11 +584,11 @@ clicon_parse(clicon_handle  h,
     }
     if (csm != NULL){
         if (cligen_ph_active_set_byname(ch, modename) < 0){
-            fprintf(stderr, "No such parse-tree registered: %s\n", modename);
+            fprintf(f, "No such parse-tree registered: %s\n", modename);
             goto done;
         }
         if ((pt = cligen_pt_active_get(ch)) == NULL){
-            fprintf(stderr, "No such parse-tree registered: %s\n", modename);
+            fprintf(f, "No such parse-tree registered: %s\n", modename);
             goto done;
         }
         if (cliread_parse(ch, cmd, pt, &match_obj, &cvv, &callbacks, result, &reason) < 0)
@@ -633,6 +633,8 @@ clicon_parse(clicon_handle  h,
     }
     retval = 0;
 done:
+    fflush(f);
+
     if (callbacks)
         co_callbacks_free(&callbacks);
     if (reason)
