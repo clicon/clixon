@@ -725,6 +725,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     char      *restype = NULL;         /* resolved type */
     char      *str = NULL;
     int        ret;
+    cbuf      *cb = NULL;
 
     if (xmlstr0 == NULL || xmlstr1 == NULL){
         clicon_err(OE_UNIX, EINVAL, "xmlstr0/1 is NULL");
@@ -753,11 +754,14 @@ type_xml2snmp_pre(char      *xmlstr0,
             str = "1";
     }
     else if( strcmp(restype, "decimal64") == 0 ) {
-        char  **reason;
-        cbuf   *cb = cbuf_new();
         cg_var* cv = yang_cv_get(ys);
         int64_t num;
-        if( (ret = parse_dec64(xmlstr0, cv_dec64_n_get(cv), &num, reason)) < 0)
+
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if ((ret = parse_dec64(xmlstr0, cv_dec64_n_get(cv), &num, NULL)) < 0)
             goto done;
         if (ret == 0){
             clicon_debug(1, "Invalid decimal64 valstr %s", xmlstr0);
@@ -777,6 +781,8 @@ type_xml2snmp_pre(char      *xmlstr0,
     retval = 1;
  done:
     clicon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    if (cb)
+        cbuf_free(cb);
     return retval;
  fail:
     retval = 0;
