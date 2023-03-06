@@ -74,8 +74,8 @@
 #include "clixon_yang_module.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_plugin.h"
-
 #include "clixon_netconf_lib.h"
+#include "clixon_netconf_input.h"
 
 /* Mapping between RFC6243 withdefaults strings <--> ints
  */
@@ -465,6 +465,7 @@ netconf_unknown_attribute(cbuf *cb,
 }
 
 /*! Common Netconf element XML tree according to RFC 6241 App A
+ *
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  tag     Error tag
@@ -495,7 +496,6 @@ netconf_common_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
@@ -1631,10 +1631,10 @@ netconf_module_load(clicon_handle h)
      * But start with default: RFC 4741 EOM ]]>]]>
      * For now this only applies to external protocol
      */
-    clicon_data_int_set(h, "netconf-framing", NETCONF_SSH_EOM);
+    clicon_data_int_set(h, NETCONF_FRAMING_TYPE, NETCONF_SSH_EOM);
     if (clicon_option_bool(h, "CLICON_NETCONF_HELLO_OPTIONAL")){
         if (clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0) /* RFC 6241 */
-            clicon_data_int_set(h, "netconf-framing", NETCONF_SSH_CHUNKED);
+            clicon_data_int_set(h, NETCONF_FRAMING_TYPE, NETCONF_SSH_CHUNKED);
     }
     retval = 0;
  done:
@@ -1870,7 +1870,7 @@ netconf_hello_server(clicon_handle h,
     return retval;
 }
 
-/*! Generate textual error log from Netconf error message
+/*! Generate and print textual error log from Netconf error message
  *
  * Get a text error message from netconf error message and generate error on the form:
  *   <msg>: "<arg>": <netconf-error>   or   <msg>: <netconf-error>

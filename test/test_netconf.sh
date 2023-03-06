@@ -174,7 +174,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "" "<rpc $DEFAULTONLY><ge
 
 #<capability>urn:ietf:params:netconf:base:1.1</capability>
 new "netconf rcv hello, disable RFC7895/ietf-yang-library"
-expecteof_netconf "$clixon_netconf -f $cfg -o CLICON_YANG_LIBRARY=0" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qD 7 -lf/tmp/netconf0.log -f $cfg -o CLICON_YANG_LIBRARY=0" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
 
 new "netconf get-config nc prefix"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<nc:rpc xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><nc:get-config><nc:source><nc:candidate/></nc:source></nc:get-config></nc:rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><data/></rpc-reply>"

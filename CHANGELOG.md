@@ -73,6 +73,10 @@ Developers may need to change their code
 	
 ### Minor features
 
+* Unified netconf input function
+  * Three different implementations were used in external, internal and controller code
+  * The new clixon_netconf_input API unifies all three uses
+  * Code still experimental controlled by `NEW_NETCONF_INPUT`
 * RFC 8528 YANG schema mount
   * Made cli/autocli mount-point-aware
 * Internal NETCONF (client <-> backend)

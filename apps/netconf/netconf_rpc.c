@@ -482,7 +482,7 @@ netconf_notification_cb(int   s,
     if (clixon_xml2cbuf(cb, xn, 0, 0, NULL, -1, 0) < 0)
         goto done;
     /* Send it to listening client on stdout */
-    if (netconf_output_encap(clicon_option_int(h, "netconf-framing"), cb) < 0){
+    if (netconf_output_encap(clicon_data_int_get(h, NETCONF_FRAMING_TYPE), cb) < 0){
         goto done;
     }
     if (netconf_output(1, cb, "notification") < 0){
