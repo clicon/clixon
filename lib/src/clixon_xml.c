@@ -2432,7 +2432,7 @@ clicon_log_xml(int         level,
 
 /*! Specialization of clicon_debug with xml tree 
  *
- * @param[in]  dbglevel 
+ * @param[in]  dbglevel Mask of CLIXON_DBG_DEFAULT and other masks
  * @param[in]  x        XML tree that is logged without prettyprint
  * @param[in]  format   Message to print as argv.
  * @see clicon_log_xml  For syslog

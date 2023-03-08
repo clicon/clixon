@@ -66,18 +66,39 @@ set_signal(int     signo,
            void  (*handler)(int), 
            void (**oldhandler)(int))
 {
+    return set_signal_flags(signo,
+#if defined(HAVE_SIGACTION)
+                            SA_RESTART,
+#else
+                            0,
+#endif
+                            handler, oldhandler);
+}
+
+/*! Set a signal handler, but without SA_RESTART
+ * @param[in]  signo      Signal number 
+ * @param[in]  flags      Flags (to sigaction)
+ * @param[in]  handler    Function to call when signal occurs
+ * @param[out] oldhandler Pointer to old handler
+ */
+int
+set_signal_flags(int     signo, 
+                 int     flags,
+                 void  (*handler)(int), 
+                 void (**oldhandler)(int))
+{
 #if defined(HAVE_SIGACTION)
     struct sigaction sold, snew;
 
     snew.sa_handler = handler;
     sigemptyset(&snew.sa_mask);
-     snew.sa_flags = SA_RESTART;
-     if (sigaction(signo, &snew, &sold) < 0){
+    snew.sa_flags = flags;
+    if (sigaction(signo, &snew, &sold) < 0){
         clicon_err(OE_UNIX, errno, "sigaction");
         return -1;
-     }
-     if (oldhandler)
-         *oldhandler = sold.sa_handler;
+    }
+    if (oldhandler)
+        *oldhandler = sold.sa_handler;
     return 0;
 #elif defined(HAVE_SIGVEC)
     assert(0);

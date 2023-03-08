@@ -167,6 +167,8 @@ cli_terminate(clicon_handle h)
     cvec       *nsctx;
     cxobj      *x;
 
+    if (clixon_exit_get() == 0)
+        clixon_exit_set(1);
     if (clicon_data_get(h, "session-transport", NULL) == 0)
         clicon_rpc_close_session(h); 
     if ((yspec = clicon_dbspec_yang(h)) != NULL)

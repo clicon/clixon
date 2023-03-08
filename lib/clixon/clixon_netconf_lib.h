@@ -207,6 +207,7 @@ int clixon_netconf_error_fn(const char *fn, const int line, cxobj *xerr, const c
 int clixon_netconf_internal_error(cxobj *xerr, char *msg, char *arg);
 int netconf_parse_uint32(char *name, char *valstr, char *defaultstr, uint32_t defaultval, cbuf *cbret, uint32_t *value);
 int netconf_parse_uint32_xml(char *name, char *valstr, char *defaultstr, uint32_t defaultval, cxobj **xerr, uint32_t *value);
+int netconf_message_id_next(clicon_handle h);
 int netconf_framing_preamble(netconf_framing_type framing, cbuf *cb);
 int netconf_framing_postamble(netconf_framing_type framing, cbuf *cb);
 int netconf_output(int s, cbuf *xf, char *msg);

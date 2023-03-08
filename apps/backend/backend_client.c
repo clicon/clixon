@@ -1554,14 +1554,6 @@ from_client_msg(clicon_handle        h,
             goto done;
         goto reply;
     }
-    /* Sanity check:
-     * op_id from internal message can be out-of-sync from client's sessions-id for the following reasons:
-     * 1. Its a hello when the client starts with op_id=0 to get its proper id on hello reply
-     * 2. The backend has restarted and the client uses an old op_id
-     */
-    if (op_id != 0 && ce->ce_id != op_id){
-        clicon_debug(1, "%s Warning: incoming session-id:%u does not match socket ce_id:%u", __FUNCTION__, op_id, ce->ce_id);
-    }
     /* Check for empty frame (no mesaages), return empty message, not clear from RFC what to do */
     if (xml_child_nr_type(xt, CX_ELMNT) == 0){
         if (netconf_malformed_message(cbret, "Empty message in netconf rpc frame")< 0)
@@ -1580,6 +1572,15 @@ from_client_msg(clicon_handle        h,
     }
     rpcname = xml_name(x);
     rpcprefix = xml_prefix(x);
+    /* Sanity check:
+     * op_id from internal message can be out-of-sync from client's sessions-id for the following reasons:
+     * 1. Its a hello when the client starts with op_id=0 to get its proper id on hello reply
+     * 2. The backend has restarted and the client uses an old op_id
+     * 3. Its a create-subsciption message that uses a separate socket(=client) 
+     */
+    if (op_id != 0 && ce->ce_id != op_id && strcmp(rpcname, "create-subscription")){
+        clicon_debug(1, "%s Warning: incoming session-id:%u does not match ce_id:%u on socket: %d", __FUNCTION__, op_id, ce->ce_id, ce->ce_s);
+    }
     /* Note that this validation is also made in xml_yang_validate_rpc, but not for hello
      */
     if (xml2ns(x, rpcprefix, &namespace) < 0)
@@ -1786,7 +1787,7 @@ from_client(int   s,
         clicon_err(OE_NETCONF, EINVAL, "Internal error: s != ce->ce_s");
         goto done;
     }
-    if (clicon_msg_rcv(ce->ce_s, &msg, &eof) < 0)
+    if (clicon_msg_rcv(ce->ce_s, 0, &msg, &eof) < 0)
         goto done;
     if (eof){
         backend_client_rm(h, ce); 

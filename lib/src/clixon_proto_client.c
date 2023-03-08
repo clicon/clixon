@@ -139,16 +139,19 @@ clicon_rpc_connect(clicon_handle h,
     
 /*! Connect to backend or use cached socket and send RPC
  *
- * @param[in]  h     Clixon handle
- * @param[in]  msg   Encoded message
- * @param[out] xret  Returned data as netconf xml tree.
- * @param[out] eof   Set if eof encountered
- * @retval     0     OK
- * @retval    -1     Error
+ * @param[in]  h        Clixon handle
+ * @param[in]  msg      Encoded message
+ * @param[in]  cache    Use cached (client) socket, otherwise generate new socket
+ * @param[out] retdate  Returned data as string
+ * @param[out] eof      Set if eof encountered
+ * @param[out] sp       Returned socket
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 static int
 clicon_rpc_msg_once(clicon_handle      h,
                     struct clicon_msg *msg, 
+                    int                cache,
                     char             **retdata,
                     int               *eof,
                     int               *sp)
@@ -156,11 +159,15 @@ clicon_rpc_msg_once(clicon_handle      h,
     int retval = -1;
     int s;
     
-    if ((s = clicon_client_socket_get(h)) < 0){
-        if (clicon_rpc_connect(h, &s) < 0)
-            goto done;
-        clicon_client_socket_set(h, s);
+    if (cache){
+        if ((s = clicon_client_socket_get(h)) < 0){
+            if (clicon_rpc_connect(h, &s) < 0)
+                goto done;
+            clicon_client_socket_set(h, s);
+        }
     }
+    else if (clicon_rpc_connect(h, &s) < 0)
+        goto done;
     if (clicon_rpc(s, msg, retdata, eof) < 0){
         /* 2. check socket shutdown AFTER rpc */
         close(s);
@@ -203,7 +210,7 @@ clicon_rpc_msg(clicon_handle      h,
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
 #endif
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
-    if (clicon_rpc_msg_once(h, msg, &retdata, &eof, &s) < 0)
+    if (clicon_rpc_msg_once(h, msg, 1, &retdata, &eof, &s) < 0)
         goto done;
     if (eof){
         /* 2. check socket shutdown AFTER rpc */
@@ -212,7 +219,7 @@ clicon_rpc_msg(clicon_handle      h,
         clicon_client_socket_set(h, -1);
 #ifdef PROTO_RESTART_RECONNECT
         if (!clixon_exit_get()) { /* May be part of termination */
-            if (clicon_rpc_msg_once(h, msg, &retdata, &eof, NULL) < 0)
+            if (clicon_rpc_msg_once(h, msg, 1, &retdata, &eof, NULL) < 0)
                 goto done;
             if (eof){
                 close(s);
@@ -286,7 +293,7 @@ clicon_rpc_msg_persistent(clicon_handle      h,
 #endif
     clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
-    if (clicon_rpc_msg_once(h, msg, &retdata, &eof, &s) < 0)
+    if (clicon_rpc_msg_once(h, msg, 0, &retdata, &eof, &s) < 0)
         goto done;
     if (eof){
         /* 2. check socket shutdown AFTER rpc */
@@ -976,7 +983,7 @@ clicon_rpc_get(clicon_handle   h,
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     }
-    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+    cprintf(cb, " message-id=\"%d\"", netconf_message_id_next(h)); 
     cprintf(cb, "><get");
     /* Clixon extension, content=all,config, or nonconfig */
     if ((int)content != -1)

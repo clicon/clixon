@@ -2063,6 +2063,28 @@ netconf_parse_uint32_xml(char     *name,
     goto done;
 }
 
+/*! Get next netconf rpc message-id 
+ *
+ * @param[in]  h      Clixon handle
+ * @retval     msgid  Next message id
+ */
+int
+netconf_message_id_next(clicon_handle h)
+{
+    int msgid;
+    
+    if ((msgid=clicon_option_int(h, "netconf-message-id")) < 0){
+        clicon_option_str_set(h, "netconf-message-id", NETCONF_MESSAGE_ID_DEFAULT);
+        msgid = clicon_option_int(h, "netconf-message-id");
+    }
+    else {
+        msgid++;
+        msgid %= 0x7ffffff; /* Wrap at some number */
+        clicon_option_int_set(h, "netconf-message-id", msgid);
+    }
+    return msgid;
+}
+
 /*! Add netconf xml postamble of message. I.e, xml after the body of the message.
  *
  * @param[in]      framing Netconf framing

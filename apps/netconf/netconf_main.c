@@ -686,6 +686,8 @@ netconf_terminate(clicon_handle h)
     cvec       *nsctx;
     cxobj      *x;
     
+    if (clixon_exit_get() == 0)
+        clixon_exit_set(1);
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
     clicon_rpc_close_session(h);

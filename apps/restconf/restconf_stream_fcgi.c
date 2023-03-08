@@ -213,7 +213,7 @@ restconf_stream_cb(int   s,
     
     clicon_debug(1, "%s", __FUNCTION__);
     /* get msg (this is the reason this function is called) */
-    if (clicon_msg_rcv(s, &reply, &eof) < 0){
+    if (clicon_msg_rcv(s, 0, &reply, &eof) < 0){
         clicon_debug(1, "%s msg_rcv error", __FUNCTION__);
         goto done;
     }

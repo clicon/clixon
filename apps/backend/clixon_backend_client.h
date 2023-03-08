@@ -48,6 +48,11 @@
 /* Backend client entry.
  * Keep state about every connected client.
  * References from RFC 6022, ietf-netconf-monitoring.yang sessions container
+ * @note that there is a discrepancy here between a client and a session
+ * A session may have multiple client endpoints, most notably a regular 
+ * client socket and a separate notification client socket.
+ * But they are the same session. 
+ * But the clixon client-entry do not differentiate
  */
 struct client_entry{
     struct client_entry  *ce_next;    /* The clients linked list */

@@ -913,7 +913,7 @@ restconf_openssl_init(clicon_handle h,
  * - If no local config found, query backend for config and open sockets.
  * That is, EITHER local config OR read config from backend once
  * @param[in]  h             Clicon handle
- * @param[in]  inline_config XML restconf config, malloced (if retval = 1)
+ * @param[in]  inline_config If set, restconf conf is given by -R command-line
  * @param[out] xrestconf     XML restconf config, malloced (if retval = 1)
  * @retval     1             OK  (and xrestconf set)
  * @retval     0             Fail - no config

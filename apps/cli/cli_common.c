@@ -135,24 +135,26 @@ cli_notification_register(clicon_handle    h,
     return retval;
 }
 
-/* Signal functions, not exported to API */
+/* Signal functions
+ * This is for CLIgen to handle these signals, eg ^Ĉ means abort command, not program
+ */
 void
 cli_signal_block(clicon_handle h)
 {
-        clicon_signal_block (SIGTSTP);
-        clicon_signal_block (SIGQUIT);
-        clicon_signal_block (SIGCHLD);
-        if (!clicon_quiet_mode(h))
-            clicon_signal_block (SIGINT);
+    clicon_signal_block (SIGTSTP);
+    clicon_signal_block (SIGQUIT);
+    clicon_signal_block (SIGCHLD);
+    if (!clicon_quiet_mode(h))
+        clicon_signal_block (SIGINT);
 }
 
 void
 cli_signal_unblock(clicon_handle h)
 {
-        clicon_signal_unblock (SIGTSTP);
-        clicon_signal_unblock (SIGQUIT);
-        clicon_signal_unblock (SIGCHLD);
-        clicon_signal_unblock (SIGINT);
+    clicon_signal_unblock (SIGTSTP);
+    clicon_signal_unblock (SIGQUIT);
+    clicon_signal_unblock (SIGCHLD);
+    clicon_signal_unblock (SIGINT);
 }
 
 /*
@@ -1139,7 +1141,7 @@ cli_notification_cb(int   s,
     int                ret;
     
     /* get msg (this is the reason this function is called) */
-    if (clicon_msg_rcv(s, &reply, &eof) < 0)
+    if (clicon_msg_rcv(s, 0, &reply, &eof) < 0)
         goto done;
     if (eof){
         clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");

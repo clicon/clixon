@@ -504,6 +504,8 @@ xmldb_create(clicon_handle h,
  * Utility function.
  * @param[in]  h   Clixon handle
  * @param[in]  db  Symbolic database name, eg "candidate", "running"
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 int
 xmldb_db_reset(clicon_handle h, 

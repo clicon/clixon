@@ -80,7 +80,7 @@ int clicon_msg_send(int s, struct clicon_msg *msg);
 
 int clicon_msg_send1(int s, cbuf *cb);
 
-int clicon_msg_rcv(int s, struct clicon_msg **msg, int *eof);
+int clicon_msg_rcv(int s, int intr, struct clicon_msg **msg, int *eof);
 
 int clicon_msg_rcv1(int s, cbuf *cb, int *eof);
 

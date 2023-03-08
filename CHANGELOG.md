@@ -55,11 +55,15 @@ Users may have to change how they access the system
 Developers may need to change their code
 
 * C-API
+  * `clicon_msg_rcv`: Added `intr` parameter for interrupting on `^C` (default 0)
   * Renamed include file: `clixon_backend_handle.h`to `clixon_backend_client.h`
   * `candidate_commit()`: validate_level (added in 6.1) marked obsolete
 	
 ### Minor features
 
+* Internal NETCONF (client <-> backend)
+  * Ensure message-id increments
+  * Separated rpc from notification socket in same session
 * Restconf: Added fallback mechanism for non-ALPN HTTPS
   * Set `CLICON_RESTCONF_NOALPN_DEFAULT` to `http/2` or `http/1.1`
   * For http/1 or http/2 only, that will be the default if no ALPN is set.

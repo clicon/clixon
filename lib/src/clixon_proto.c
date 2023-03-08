@@ -273,7 +273,7 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
         switch (res) {
         case -1:
             if (errno == EINTR){
-                if (!_atomicio_sig)
+                if (_atomicio_sig == 0)
                     continue;
             }
             else if (errno == EAGAIN)
@@ -377,6 +377,7 @@ clicon_msg_send(int                s,
  * Now, ^C will interrupt the whole process, and this may not be what you want.
  *
  * @param[in]   s      socket (unix or inet) to communicate with backend
+ * @param[in]   intr   If set, make a ^C cause an error   
  * @param[out]  msg    CLICON msg data reply structure. Free with free()
  * @param[out]  eof    Set if eof encountered
  * Note: caller must ensure that s is closed if eof is set after call.
@@ -384,6 +385,7 @@ clicon_msg_send(int                s,
  */
 int
 clicon_msg_rcv(int                s,
+               int                intr,
                struct clicon_msg **msg,
                int                *eof)
 { 
@@ -396,11 +398,15 @@ clicon_msg_rcv(int                s,
 
     clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     *eof = 0;
-    if (0)
-        set_signal(SIGINT, atomicio_sig_handler, &oldhandler);
-
+    if (intr){
+        clicon_signal_unblock(SIGINT);
+        set_signal_flags(SIGINT, 0, atomicio_sig_handler, &oldhandler);
+    }
     if ((hlen = atomicio(read, s, &hdr, sizeof(hdr))) < 0){ 
-        clicon_err(OE_CFG, errno, "atomicio");
+        if (intr && _atomicio_sig)
+            ;
+        else
+            clicon_err(OE_CFG, errno, "atomicio");
         goto done;
     }
     msg_hex(CLIXON_DBG_EXTRA, (char*)&hdr, hlen, __FUNCTION__);
@@ -413,14 +419,13 @@ clicon_msg_rcv(int                s,
         goto done;
     }
     mlen = ntohl(hdr.op_len);
-    clicon_debug(16, "op-len:%u op-id:%u",
+    clicon_debug(CLIXON_DBG_EXTRA, "op-len:%u op-id:%u",
                  mlen, ntohl(hdr.op_id));
     clicon_debug(CLIXON_DBG_DETAIL, "%s: rcv msg len=%d",  
                  __FUNCTION__, mlen);
     if (mlen <= sizeof(hdr)){
         clicon_err(OE_PROTO, 0, "op_len:%u too short", mlen);
         *eof = 1;
-        assert(0);
         goto ok;
     }
     if ((*msg = (struct clicon_msg *)malloc(mlen+1)) == NULL){
@@ -449,8 +454,10 @@ clicon_msg_rcv(int                s,
     retval = 0;
   done:
     clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
-    if (0)
+    if (intr){
         set_signal(SIGINT, oldhandler, NULL);
+        clicon_signal_block(SIGINT);
+    }
     return retval;
 }
 
@@ -515,7 +522,7 @@ clicon_msg_rcv1(int   s,
     clicon_debug(CLIXON_DBG_MSG, "Recv: %s", cbuf_get(cb));
     retval = 0;
  done:
-    clicon_debug(1, "%s done", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s done", __FUNCTION__);
     return retval;
 }
 
@@ -564,7 +571,7 @@ clicon_rpc_connect_unix(clicon_handle      h,
     int         s = -1;
     struct stat sb = {0,};
 
-    clicon_debug(1, "Send msg on %s", sockpath);
+    clicon_debug(CLIXON_DBG_DETAIL, "Send msg on %s", sockpath);
     if (sock0 == NULL){
         clicon_err(OE_NETCONF, EINVAL, "sock0 expected");
         goto done;
@@ -607,7 +614,7 @@ clicon_rpc_connect_inet(clicon_handle      h,
     int                s = -1;
     struct sockaddr_in addr;
 
-    clicon_debug(1, "Send msg to %s:%hu", dst, port);
+    clicon_debug(CLIXON_DBG_DETAIL, "Send msg to %s:%hu", dst, port);
     if (sock0 == NULL){
         clicon_err(OE_NETCONF, EINVAL, "sock0 expected");
         goto done;
@@ -662,7 +669,7 @@ clicon_rpc(int                sock,
     clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (clicon_msg_send(sock, msg) < 0)
         goto done;
-    if (clicon_msg_rcv(sock, &reply, eof) < 0)
+    if (clicon_msg_rcv(sock, 0, &reply, eof) < 0)
         goto done;
     if (*eof)
         goto ok;
@@ -701,7 +708,7 @@ clicon_rpc1(int   sock,
 {
     int    retval = -1;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (netconf_framing_preamble(NETCONF_SSH_CHUNKED, msg) < 0)
         goto done;
     if (netconf_framing_postamble(NETCONF_SSH_CHUNKED, msg) < 0)
@@ -712,7 +719,7 @@ clicon_rpc1(int   sock,
         goto done;
     retval = 0;
   done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -803,7 +810,7 @@ send_msg_notify_xml(clicon_handle h,
         goto done;
     retval = 0;
   done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     return retval;

@@ -679,7 +679,7 @@ api_path2xpath_cvv(cvec       *api_path,
         /* api-path: prefix points to module */
         if (nodeid_split(nodeid, &prefix, &name) < 0)
             goto done;
-        clicon_debug(1, "%s [%d] cvname: %s:%s",
+        clicon_debug(CLIXON_DBG_DETAIL, "%s [%d] cvname: %s:%s",
                      __FUNCTION__, i, prefix?prefix:"", name);
         /* top-node must have prefix */
         if (i == offset && prefix == NULL){
@@ -713,7 +713,7 @@ api_path2xpath_cvv(cvec       *api_path,
          */
         if (xml_nsctx_get_prefix(nsc, namespace, &xprefix) == 0){
             xprefix = yang_find_myprefix(y);
-            clicon_debug(1, "%s prefix not found add it %s", __FUNCTION__, xprefix);
+            clicon_debug(CLIXON_DBG_DETAIL, "%s prefix not found add it %s", __FUNCTION__, xprefix);
             /* not found, add it to nsc 
              * XXX: do we always have to add it? It could be default?
              */
