@@ -133,6 +133,65 @@ yang_schema_mount_point(yang_stmt *y)
 
 /*! Get yangspec mount-point
  *
+ * @param[in]  yu     Yang unknown node to save the yspecs
+ * @param[in]  xpath  Key for yspec on yu
+ * @param[out] yspec YANG stmt spec
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+yang_mount_get(yang_stmt  *yu,
+               char       *xpath,
+               yang_stmt **yspec)
+{
+    cvec      *cvv = NULL;
+    cg_var    *cv;
+    
+    /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
+    if ((cvv = yang_cvec_get(yu)) != NULL &&
+        (cv = cvec_find(cvv, xpath)) != NULL &&
+        yspec)
+        *yspec = cv_void_get(cv);
+    return 0;
+}
+
+/*! Set yangspec mount-point on yang unknwon node
+ *
+ * Stored in a separate structure (not in XML config tree)
+ * @param[in]  yu     Yang unknown node to save the yspecs
+ * @param[in]  xpath  Key for yspec on yu
+ * @param[in]  yspec  Yangspec for this mount-point (consumed)
+ * @retval     0      OK
+ * @retval     -1     Error
+ */
+int
+yang_mount_set(yang_stmt *yu,
+               char      *xpath,
+               yang_stmt *yspec)
+{
+    int        retval = -1;
+    yang_stmt *yspec0;
+    cvec      *cvv;
+    cg_var    *cv;
+    
+    if ((cvv = yang_cvec_get(yu)) != NULL &&
+        (cv = cvec_find(cvv, xpath)) != NULL &&
+        (yspec0 = cv_void_get(cv)) != NULL){
+#if 0 /* Problematic to free yang specs here, upper layers should handle it? */
+        ys_free(yspec0);
+#endif
+        cv_void_set(cv, NULL);
+    }
+    else if ((cv = yang_cvec_add(yu, CGV_VOID, xpath)) == NULL)
+        goto done;
+    cv_void_set(cv, yspec);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Get yangspec mount-point
+ *
  * @param[in]  h     Clixon handle
  * @param[in]  x     XML moint-point node
  * @param[out] vallevel Do or dont do full RFC 7950 validation
@@ -148,8 +207,6 @@ xml_yang_mount_get(clicon_handle   h,
                    yang_stmt     **yspec)
 {
     int        retval = -1;
-    cvec      *cvv = NULL;
-    cg_var    *cv;
     yang_stmt *y;
     yang_stmt *yu;
     char      *xpath = NULL; // XXX free it    
@@ -162,21 +219,15 @@ xml_yang_mount_get(clicon_handle   h,
     if (ret == 0)
         goto fail;
     /* Check validate level */
-    if (clixon_plugin_yang_mount_all(h, xt, NULL, vl, NULL) < 0)
+    if (vl && clixon_plugin_yang_mount_all(h, xt, NULL, vl, NULL) < 0)
         goto done;
     // XXX hardcoded prefix: yangmnt
     if ((yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL)
         goto ok;
     if (xml2xpath(xt, NULL, 1, &xpath) < 0)
         goto done;
-    /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
-    if ((cvv = yang_cvec_get(yu)) == NULL)
-        goto ok;
-    if ((cv = cvec_find(cvv, xpath)) == NULL)
-        goto ok;
-    if (yspec)
-
-        *yspec = cv_void_get(cv);
+    if (yang_mount_get(yu, xpath, yspec) < 0)
+        goto done;
  ok:
     retval = 1;
  done:
@@ -188,7 +239,8 @@ xml_yang_mount_get(clicon_handle   h,
     goto done;
 }
 
-/*! Set yangspec mount-point
+
+/*! Set yangspec mount-point via XML mount-point node
  *
  * Stored in a separate structure (not in XML config tree)
  * @param[in]  x      XML moint-point node
@@ -200,12 +252,10 @@ int
 xml_yang_mount_set(cxobj     *x,
                    yang_stmt *yspec)
 {
-    cg_var    *cv;
+   int        retval = -1;
     yang_stmt *y;
     yang_stmt *yu;
-    yang_stmt *yspec0;
     char      *xpath = NULL;
-    cvec      *cvv;
     
     if ((y = xml_spec(x)) == NULL ||
         (yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL){
@@ -213,21 +263,13 @@ xml_yang_mount_set(cxobj     *x,
     }
     if (xml2xpath(x, NULL, 1, &xpath) < 0)
         goto done;
-    if ((cvv = yang_cvec_get(yu)) != NULL &&
-        (cv = cvec_find(cvv, xpath)) != NULL &&
-        (yspec0 = cv_void_get(cv)) != NULL){
-#if 0 /* Problematic to free yang specs here, upper layers should handle it? */
-        ys_free(yspec0);
-#endif
-        cv_void_set(cv, NULL);
-    }
-    else if ((cv = yang_cvec_add(yu, CGV_VOID, xpath)) == NULL)
-        return -1;
-    cv_void_set(cv, yspec);
+    if (yang_mount_set(yu, xpath, yspec) < 0)
+        goto done;
+    retval = 0;
  done:
     if (xpath)
         free(xpath);
-    return 0;
+    return retval;
 }
 
 /*! Free all yspec yang-mounts

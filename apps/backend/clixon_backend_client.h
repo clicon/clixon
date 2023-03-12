@@ -73,7 +73,7 @@ struct client_entry{
     uint32_t              ce_out_rpc_errors; /*  <rpc-error> messages*/
     uint32_t              ce_out_notifications; /* Outgoing notifications */
 };
-
+typedef struct client_entry client_entry;
 
 /*
  * Prototypes

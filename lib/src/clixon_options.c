@@ -129,6 +129,7 @@ static const map_str2int yang_regexp_map[] = {
 };
 
 /*! Print registry on file. For debugging.
+ *
  * @param[in] h        Clicon handle
  * @param[in] dbglevel Debug level
  * @retval    0        OK
@@ -190,6 +191,7 @@ clicon_option_dump(clicon_handle h,
 }
 
 /*! Open and parse single config file
+ *
  * @param[in]  filename
  * @param[in]  yspec
  * @param[out] xconfig   Pointer to xml config tree. Should be freed by caller
@@ -426,6 +428,7 @@ parse_configfile(clicon_handle  h,
 }
 
 /*! Add configuration option overriding file setting
+ *
  * Add to clicon_options hash, and to clicon_conf_xml tree
  * Assumes clicon_conf_xml_set has been called
  * @param[in]  h      Clicon handle
@@ -579,6 +582,7 @@ clicon_options_main(clicon_handle h)
 }
 
 /*! Check if a clicon option has a value
+ *
  * @param[in] h     clicon_handle
  * @param[in] name  option name
  * @retval  !=0     option exists
@@ -597,8 +601,8 @@ clicon_option_exists(clicon_handle h,
  *
  * @param[in] h       clicon_handle
  * @param[in] name    option name
- * @retval    NULL    If option not found, or value of option is NULL
  * @retval    string  value of option if found
+ * @retval    NULL    If option not found, or value of option is NULL
  * clicon options should be strings.
  * @note To differentiate the two reasons why NULL may be returned, use function 
  * clicon_option_exists() before the call
@@ -615,6 +619,7 @@ clicon_option_str(clicon_handle h,
 }
 
 /*! Set a single string option via handle 
+ *
  * @param[in] h       clicon_handle
  * @param[in] name    option name
  * @param[in] val     option value, must be null-terminated string
@@ -646,6 +651,7 @@ clicon_option_str_set(clicon_handle h,
  * Note that -1 can be both error and value.
  * This means that it should be used together with clicon_option_exists() and
  * supply a default value as shown in the example.
+ * @see clicon_data_int_get  for transient values (not clixon config file)
  */
 int
 clicon_option_int(clicon_handle h,
@@ -659,6 +665,7 @@ clicon_option_int(clicon_handle h,
 }
 
 /*! Set option given as int.
+ *
  * @param[in] h     Clicon handle
  * @param[in] name  Name of option to set
  * @param[in] val   Integer value
@@ -707,6 +714,7 @@ clicon_option_bool(clicon_handle h,
 }
 
 /*! Set option given as bool
+ *
  * @param[in] h     Clicon handle
  * @param[in] name  Name of option to set
  * @param[in] val   Boolean value, 0 or 1
@@ -730,6 +738,7 @@ clicon_option_bool_set(clicon_handle h,
 }
 
 /*! Delete option 
+ *
  * @param[in] h     Clicon handle
  * @param[in] name  Name of option to delete
  */
@@ -754,6 +763,7 @@ clicon_option_del(clicon_handle h,
  *-----------------------------------------------------------------*/
 
 /*! Get "do not include keys in cvec" in cli vars callbacks
+ *
  * @param[in] h     Clicon handle
  * @retval    flag  If set, get only vars
  * @see clixon-config@<date>.yang CLICON_CLI_VARONLY
@@ -770,6 +780,7 @@ clicon_cli_varonly(clicon_handle h)
 }
 
 /*! Get family of backend socket: AF_UNIX, AF_INET or AF_INET6 
+ *
  * @see clixon-config@<date>.yang CLICON_SOCK_FAMILY
  * @param[in] h     Clicon handle
  * @retval    fam   Socket family
@@ -792,6 +803,7 @@ clicon_sock_family(clicon_handle h)
 }
 
 /*! Get port for backend socket in case of AF_INET or AF_INET6 
+ *
  * @param[in] h     Clicon handle
  * @retval    port  Socket port
  * @see clixon-config@<date>.yang CLICON_SOCK_PORT
@@ -807,6 +819,7 @@ clicon_sock_port(clicon_handle h)
 }
 
 /*! Set if all configuration changes are committed automatically 
+ *
  * @param[in] h     Clicon handle
  * @retval    flag  Autocommit (or not)
  */
@@ -822,6 +835,7 @@ clicon_autocommit(clicon_handle h)
 }
 
 /*! Which method to boot/start clicon backend
+ *
  * @param[in] h     Clicon handle
  * @retval    mode  Startup mode
  */
@@ -836,6 +850,7 @@ clicon_startup_mode(clicon_handle h)
 }
 
 /*! Which privileges drop method to use for backend
+ *
  * @param[in] h     Clicon handle
  * @retval    mode  Privileges mode
  */
@@ -850,6 +865,7 @@ clicon_backend_privileges_mode(clicon_handle h)
 }
 
 /*! Which privileges drop method to use for restconf
+ *
  * @param[in] h     Clicon handle
  * @retval    mode  Privileges mode
  */
@@ -864,6 +880,7 @@ clicon_restconf_privileges_mode(clicon_handle h)
 }
 
 /*! Which privileges drop method to use
+ *
  * @param[in] h     Clicon handle
  * @retval    mode  Privileges mode
  */
@@ -878,6 +895,7 @@ clicon_nacm_credentials(clicon_handle h)
 }
 
 /*! Which datastore cache method to use
+ *
  * @param[in] h      Clicon handle
  * @retval    method Datastore cache method
  * @see clixon-config@<date>.yang CLICON_DATASTORE_CACHE
@@ -894,6 +912,7 @@ clicon_datastore_cache(clicon_handle h)
 }
 
 /*! Which Yang regexp/pattern engine to use
+ *
  * @param[in] h     Clicon handle
  * @retval    mode  Regexp engine to use
  * @see clixon-config@<date>.yang CLICON_YANG_REGEXP
@@ -916,6 +935,7 @@ clicon_yang_regexp(clicon_handle h)
  *--------------------------------------------------------------------*/
 
 /*! Get quiet mode eg -q option, do not print notifications on stdout 
+ *
  * @param[in] h      Clicon handle
  * @retval    flag   quiet mode on or off
  */
@@ -929,6 +949,7 @@ clicon_quiet_mode(clicon_handle h)
 }
 
 /*! Set quiet mode
+ *
  * @param[in] h      Clicon handle
  * @param[in] val    Flag value
  */
@@ -938,4 +959,3 @@ clicon_quiet_mode_set(clicon_handle h,
 {
     return clicon_option_int_set(h, "CLICON_QUIET", val);
 }
-

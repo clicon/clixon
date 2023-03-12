@@ -171,7 +171,7 @@ netconf_hello_msg(clicon_handle h,
             else if (strncmp(body, NETCONF_BASE_CAPABILITY_1_1, strlen(NETCONF_BASE_CAPABILITY_1_1)) == 0 &&
                      clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0){ /* RFC 6241 */
                 foundbase_11++;
-                clicon_option_int_set(h, "netconf-framing", NETCONF_SSH_CHUNKED); /* enable chunked enc */
+                clicon_data_int_set(h, "netconf-framing", NETCONF_SSH_CHUNKED); /* enable chunked enc */
             }
         }
     }
@@ -208,7 +208,7 @@ netconf_rpc_message(clicon_handle h,
     cxobj               *xc;
     netconf_framing_type framing;
 
-    framing = clicon_option_int(h, "netconf-framing");
+    framing = clicon_data_int_get(h, "netconf-framing");
     if (_netconf_hello_nr == 0 &&
         clicon_option_bool(h, "CLICON_NETCONF_HELLO_OPTIONAL") == 0){
         if (netconf_operation_failed_xml(&xret, "rpc", "Client must send an hello element before any RPC")< 0)
@@ -321,7 +321,7 @@ netconf_input_packet(clicon_handle h,
     clicon_debug(1, "%s", __FUNCTION__);
     rpcname = xml_name(xreq);
     rpcprefix = xml_prefix(xreq);
-    framing = clicon_option_int(h, "netconf-framing");
+    framing = clicon_data_int_get(h, "netconf-framing");
     if (xml2ns(xreq, rpcprefix, &namespace) < 0)
         goto done;
     if (strcmp(rpcname, "rpc") == 0){
@@ -406,7 +406,7 @@ netconf_input_frame(clicon_handle h,
     
     clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     clicon_debug(CLIXON_DBG_MSG, "Recv ext: %s", cbuf_get(cb));
-    framing = clicon_option_int(h, "netconf-framing");
+    framing = clicon_data_int_get(h, "netconf-framing");
     yspec = clicon_dbspec_yang(h);
     if ((str = strdup(cbuf_get(cb))) == NULL){
         clicon_err(OE_UNIX, errno, "strdup");
@@ -582,7 +582,7 @@ netconf_input_cb(int   s,
         for (i=0; i<len; i++){
             if (buf[i] == 0)
                 continue; /* Skip NULL chars (eg from terminals) */
-            if (clicon_option_int(h, "netconf-framing") == NETCONF_SSH_CHUNKED){
+            if (clicon_data_int_get(h, "netconf-framing") == NETCONF_SSH_CHUNKED){
                 /* Track chunked framing defined in RFC6242 */
                 if ((ret = netconf_input_chunked_framing(buf[i], &frame_state, &frame_size)) < 0)
                     goto done;
@@ -663,7 +663,7 @@ send_hello(clicon_handle h,
     }
     if (netconf_hello_server(h, cb, id) < 0)
         goto done;
-    framing = clicon_option_int(h, "netconf-framing");
+    framing = clicon_data_int_get(h, "netconf-framing");
     if (netconf_output_encap(framing, cb) < 0)
         goto done;
     if (netconf_output(s, cb, "hello") < 0)

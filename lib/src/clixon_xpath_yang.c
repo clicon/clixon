@@ -445,6 +445,8 @@ xp_yang_eval(xp_yang_ctx  *xy,
  * @param[in]   ys        YANG referring node
  * @param[in]   path_arg  path-arg
  * @param[out]  yref      YANG referred node
+ * @retval      0         OK
+ * @retval     -1         Error
  * @note this function uses XPATH parser, which is (much too) general
  * @code
  *   yang_stmt    *ys;              // source / referring node

@@ -495,6 +495,7 @@ xmldb_readfile(clicon_handle    h,
         clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
         goto done;
     }
+    clicon_debug(CLIXON_DBG_DEFAULT, "Reading datastore %s using %s", dbfile, format);
     /* Parse file into internal XML tree from different formats */
     if ((fp = fopen(dbfile, "r")) == NULL) {
         clicon_err(OE_UNIX, errno, "open(%s)", dbfile);
@@ -686,7 +687,6 @@ xmldb_get_nocache(clicon_handle    h,
                   cxobj          **xerr)
 {
     int        retval = -1;
-    char      *dbfile = NULL;
     yang_stmt *yspec;
     cxobj     *xt = NULL;
     cxobj     *x;
@@ -805,8 +805,6 @@ xmldb_get_nocache(clicon_handle    h,
  done:
     if (xt)
         xml_free(xt);
-    if (dbfile)
-        free(dbfile);
     if (xvec)
         free(xvec);
     if (fd != -1)

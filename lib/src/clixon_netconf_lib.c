@@ -1631,10 +1631,10 @@ netconf_module_load(clicon_handle h)
      * But start with default: RFC 4741 EOM ]]>]]>
      * For now this only applies to external protocol
      */
-    clicon_option_int_set(h, "netconf-framing", NETCONF_SSH_EOM);
+    clicon_data_int_set(h, "netconf-framing", NETCONF_SSH_EOM);
     if (clicon_option_bool(h, "CLICON_NETCONF_HELLO_OPTIONAL")){
         if (clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0) /* RFC 6241 */
-            clicon_option_int_set(h, "netconf-framing", NETCONF_SSH_CHUNKED);
+            clicon_data_int_set(h, "netconf-framing", NETCONF_SSH_CHUNKED);
     }
     retval = 0;
  done:

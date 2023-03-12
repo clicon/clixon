@@ -250,6 +250,65 @@ clicon_data_cvec_del(clicon_handle h,
     return clicon_ptr_del(h, name);
 }
 
+/*! Get data option as integer but store as string
+ *
+ * @param[in] h       clicon_handle
+ * @param[in] name    option name
+ * @retval    int     An integer as a result of atoi
+ * @retval   -1       If option does not exist
+ * Note that -1 can be both error and value.
+ * @see clicon_option_int   for values in clixon config file
+ */
+int
+clicon_data_int_get(clicon_handle h,
+                    const char   *name)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    char          *s;
+
+    if (clicon_hash_lookup(cdat, (char*)name) == NULL)
+        return -1;
+    s = clicon_hash_value(cdat, (char*)name, NULL);
+    return atoi(s);
+}
+
+/*! Set a single string data via handle 
+ *
+ * @param[in] h       clicon_handle
+ * @param[in] name    option name
+ * @param[in] val     option value, must be null-terminated string
+ * @retval    0       OK
+ * @retval   -1       Error
+ */
+int
+clicon_data_int_set(clicon_handle h,
+                    const char   *name,
+                    int           val)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+    char           s[64];
+
+    if (snprintf(s, sizeof(s)-1, "%u", val) < 0)
+        return -1;
+    return clicon_hash_add(cdat, (char*)name, s, strlen(s)+1)==NULL?-1:0;
+}
+
+/*! Delete single int data via handle 
+ *
+ * @param[in] h       clicon_handle
+ * @param[in] name    option name
+ * @retval    0       OK
+ * @retval   -1       Error
+ */
+int
+clicon_data_int_del(clicon_handle h,
+                    const char   *name)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+
+    return clicon_hash_del(cdat, (char*)name);
+}
+
 /*! Get data yangspec, yspec 
  * @param[in]  h     Clicon handle
  * @retval     yspec Yang spec

@@ -37,7 +37,7 @@
  * Access functions for clixon data. 
  * Free-typed values for runtime getting and setting.
  *            Accessed with clicon_data(h).
- * @see clixon_option.[ch] for clixon options
+ * @see clixon_option.[ch] for clixon options from Clixon configuration file
  */
 
 #ifndef _CLIXON_DATA_H_
@@ -75,6 +75,11 @@ int clicon_ptr_del(clicon_handle h, const char *name);
 cvec *clicon_data_cvec_get(clicon_handle h, const char *name);
 int   clicon_data_cvec_set(clicon_handle h, const char *name, cvec *cvv);
 int   clicon_data_cvec_del(clicon_handle h, const char *name);
+
+/* String options, default NULL */
+int   clicon_data_int_get(clicon_handle h, const char *name);
+int   clicon_data_int_set(clicon_handle h, const char *name, int val);
+int   clicon_data_int_del(clicon_handle h, const char *name);
 
 yang_stmt * clicon_dbspec_yang(clicon_handle h);
 int clicon_dbspec_yang_set(clicon_handle h, yang_stmt *ys);

@@ -177,7 +177,7 @@ startup_common(clicon_handle       h,
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
         if ((msdiff = modstate_diff_new()) == NULL)
             goto done;
-    clicon_debug(1, "Reading startup config from %s", db);
+    clicon_debug(1, "Reading initial config from %s", db);
     /* Get the startup datastore WITHOUT binding to YANG, sorting and default setting. 
      * It is done below, later in this function
      */
@@ -202,6 +202,7 @@ startup_common(clicon_handle       h,
         if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, 0, &xt, msdiff, &xerr) < 0)
             goto done;
     }
+    clicon_debug_xml(CLIXON_DBG_DETAIL, xt, "startup");
     if (msdiff && msdiff->md_status == 0){ // Possibly check for CLICON_XMLDB_MODSTATE
         clicon_log(LOG_WARNING, "Modstate expected in startup datastore but not found\n"
                    "This may indicate that the datastore is not initialized corrrectly, such as copy/pasted.\n"
@@ -439,6 +440,7 @@ startup_commit(clicon_handle  h,
          * edit-config
          */
         xml_name_set(td->td_target,  NETCONF_INPUT_CONFIG);
+
     if ((ret = xmldb_put(h, "running", OP_REPLACE, td->td_target,
                          clicon_username_get(h), cbret)) < 0)
         goto done;
