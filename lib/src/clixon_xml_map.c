@@ -314,8 +314,8 @@ xml_diff1(cxobj     *x0,
     cxobj     *x1c = NULL; /* x1 child */
     yang_stmt *yc0;
     yang_stmt *yc1;
+    char      *b0;
     char      *b1;
-    char      *b2;
     int        eq;
 
     /* Traverse x0 and x1 in lock-step */
@@ -366,12 +366,12 @@ xml_diff1(cxobj     *x0,
             else
                 if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
                     /* if x0c and x1c are leafs w bodies, then they may be changed */
-                    b1 = xml_body(x0c);
-                    b2 = xml_body(x1c);
-                    if (b1 == NULL && b2 == NULL)
+                    b0 = xml_body(x0c);
+                    b1 = xml_body(x1c);
+                    if (b0 == NULL && b1 == NULL)
                         ;
-                    else if (b1 == NULL || b2 == NULL
-                             || strcmp(b1, b2) != 0 
+                    else if (b0 == NULL || b1 == NULL
+                             || strcmp(b0, b1) != 0 
                              ){
                         if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
                             goto done;
@@ -396,7 +396,7 @@ xml_diff1(cxobj     *x0,
 }
 
 /*! Compute differences between two xml trees
- * @param[in]  yspec      Yang specification
+ *
  * @param[in]  x0         First XML tree
  * @param[in]  x1         Second XML tree
  * @param[out] first      Pointervector to XML nodes existing in only first tree
@@ -406,11 +406,13 @@ xml_diff1(cxobj     *x0,
  * @param[out] changed_x0 Pointervector to XML nodes changed orig value
  * @param[out] changed_x1 Pointervector to XML nodes changed wanted value
  * @param[out] changedlen Length of changed vector
+ * @retval     0          OK
+ * @retval    -1          Error
  * All xml vectors should be freed after use.
+ * @see xml_tree_equal  same algorithm but do not bother with what has changed
  */
 int
-xml_diff(yang_stmt *yspec, 
-         cxobj     *x0, 
+xml_diff(cxobj     *x0, 
          cxobj     *x1,
          cxobj   ***first,
          int       *firstlen,
@@ -442,6 +444,85 @@ xml_diff(yang_stmt *yspec,
                   second, secondlen, 
                   changed_x0, changed_x1, changedlen) < 0)
         goto done;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Compute if two XML trees are equal or not
+ *
+ * @param[in]  x0   First XML tree
+ * @param[in]  x1   Second XML tree
+ * @retval     1    Not equal
+ * @retval     0    Equal
+ * @see xml_diff
+ */
+int
+xml_tree_equal(cxobj     *x0, 
+               cxobj     *x1)
+{
+    int        retval = 1; /* Not equal */
+    int        eq;
+    yang_stmt *yc0;
+    yang_stmt *yc1;
+    char      *b0;
+    char      *b1;
+    cxobj     *x0c = NULL; /* x0 child */
+    cxobj     *x1c = NULL; /* x1 child */
+    
+    /* Traverse x0 and x1 in lock-step */
+    x0c = x1c = NULL;    
+    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    for (;;){
+        if (x0c == NULL && x1c == NULL)
+            goto ok;
+        else if (x0c == NULL){
+            goto done;
+        }
+        else if (x1c == NULL){
+            goto done;
+        }
+        /* Both x0c and x1c exists, check if they are yang-equal. */
+        eq = xml_cmp(x0c, x1c, 0, 0, NULL);
+        if (eq < 0){
+            goto done;
+        }
+        else if (eq > 0){
+            goto done;
+        }
+        else{ /* equal */
+            /* xml-spec NULL could happen with anydata children for example,
+             * if so, continute compare children but without yang
+             */
+            yc0 = xml_spec(x0c);
+            yc1 = xml_spec(x1c);
+            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+                goto done;
+            }
+            else
+                if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+                    /* if x0c and x1c are leafs w bodies, then they may be changed */
+                    b0 = xml_body(x0c);
+                    b1 = xml_body(x1c);
+                    if (b0 == NULL && b1 == NULL)
+                        ;
+                    else if (b0 == NULL || b1 == NULL
+                             || strcmp(b0, b1) != 0 
+                             ){
+                        goto done;
+                    }
+                }
+                else {
+                    eq = xml_tree_equal(x0c, x1c);
+                    if (eq)
+                        goto done;
+                }
+        }
+        x0c = xml_child_each(x0, x0c, CX_ELMNT);
+        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    }
  ok:
     retval = 0;
  done:

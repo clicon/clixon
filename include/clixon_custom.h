@@ -201,3 +201,9 @@
  * Introduced in 6.1, remove in 6.2
  */
 #define AUTOCLI_DEPRECATED_HIDE
+
+/*! Temporar fix for xpath_traverse_canonical for yang schema mount
+ * Must rewrite function to handle mountpoints, now just ignore errors
+ * See also 
+ */
+#define XPATH_CANONICAL_SKIP_CHECK

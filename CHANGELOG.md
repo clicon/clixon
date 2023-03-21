@@ -55,12 +55,17 @@ Users may have to change how they access the system
 Developers may need to change their code
 
 * C-API
+  * `xml_diff`: removed 1st `yspec` parameter
+  * `xml2xpath()`: Added `int apostrophe` as 4th parameter, default 0
+    * This is for being able to choose single or double quote as xpath literal quotes
   * `clicon_msg_rcv`: Added `intr` parameter for interrupting on `^C` (default 0)
   * Renamed include file: `clixon_backend_handle.h`to `clixon_backend_client.h`
   * `candidate_commit()`: validate_level (added in 6.1) marked obsolete
 	
 ### Minor features
 
+* RFC 8528 YANG schema mount
+  * Made cli/autocli mount-point-aware
 * Internal NETCONF (client <-> backend)
   * Ensure message-id increments
   * Separated rpc from notification socket in same session

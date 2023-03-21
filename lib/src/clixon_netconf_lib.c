@@ -1045,7 +1045,7 @@ netconf_missing_choice_xml(cxobj **xret,
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
     /* error-path:     Path to the element with the missing choice. */
-    if (xml2xpath(x, NULL, 0, &path) < 0)
+    if (xml2xpath(x, NULL, 0, 0, &path) < 0)
         goto done;
     if (xml_chardata_encode(&encpath, "%s", path) < 0)
         goto done;
@@ -1407,7 +1407,7 @@ netconf_data_not_unique_xml(cxobj **xret,
     if (cvec_len(cvk)){
         if ((xinfo = xml_new("error-info", xerr, CX_ELMNT)) == NULL)
             goto done;
-        if (xml2xpath(x, NULL, 0, &path) < 0)
+        if (xml2xpath(x, NULL, 0, 0, &path) < 0)
             goto done;
         if (xml_chardata_encode(&encpath, "%s", path) < 0)
             goto done;
@@ -1465,7 +1465,7 @@ netconf_minmax_elements_xml(cxobj **xret,
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
     if (xml_parent(xp)){ /* Dont include root, eg <config> */
-        if (xml2xpath(xp, NULL, 0, &path) < 0)
+        if (xml2xpath(xp, NULL, 0, 0, &path) < 0)
            goto done;
         if (xml_chardata_encode(&encpath, "%s", path) < 0)
             goto done;

@@ -59,7 +59,6 @@
 #include <netinet/in.h>
 #include <sys/un.h>
 #include <arpa/inet.h>
-#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>

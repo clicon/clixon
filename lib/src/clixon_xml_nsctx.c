@@ -95,6 +95,7 @@ xml_nsctx_namespace_netconf_default(clicon_handle h)
 }
 
 /*! Create and initialize XML namespace context
+ *
  * @param[in] prefix    Namespace prefix, or NULL for default
  * @param[in] ns        Set this namespace. If NULL create empty nsctx
  * @retval    nsc       Return namespace context in form of a cvec
@@ -126,6 +127,7 @@ xml_nsctx_init(char  *prefix,
 }
 
 /*! Free XML namespace context
+ *
  * @param[in] prefix    Namespace prefix, or NULL for default
  * @param[in] namespace Cached namespace to set (assume non-null?)
  * @retval    nsc       Return namespace context in form of a cvec
@@ -142,6 +144,7 @@ xml_nsctx_free(cvec *nsc)
 }
 
 /*! Get namespace given prefix (or NULL for default) from namespace context
+ *
  * @param[in] cvv    Namespace context
  * @param[in] prefix Namespace prefix, or NULL for default
  * @retval    ns     Cached namespace
@@ -159,11 +162,12 @@ xml_nsctx_get(cvec *cvv,
 }
 
 /*! Reverse get prefix given namespace
+ *
  * @param[in]  cvv    Namespace context
  * @param[in]  ns     Namespace 
  * @param[out] prefix Prefix (direct pointer)
- * @retval     0      No prefix found
  * @retval     1      Prefix found
+ * @retval     0      No prefix found
  * @note NULL is a valid prefix (default)
  */
 int
@@ -188,6 +192,7 @@ xml_nsctx_get_prefix(cvec  *cvv,
 }
 
 /*! Set or replace namespace in namespace context
+ *
  * @param[in] cvv       Namespace context
  * @param[in] prefix    Namespace prefix, or NULL for default
  * @param[in] ns        Cached namespace to set (assume non-null?)
@@ -261,11 +266,12 @@ xml_nsctx_node1(cxobj *xn,
 }
 
 /*! Create and initialize XML namespace from XML node context
+ *
  * Fully explore all prefix:namespace pairs from context of one node
  * @param[in]  xn     XML node
  * @param[out] ncp    XML namespace context
  * @retval     0      OK
- * @retval     -1     Error
+ * @retval    -1      Error
  * @code
  * cxobj *x; // must initialize
  * cvec *nsc = NULL;
@@ -297,12 +303,13 @@ xml_nsctx_node(cxobj *xn,
 }
 
 /*! Create and initialize XML namespace context from Yang node (non-spec)
+ *
  * Primary use is Yang path statements, eg leafrefs and others
  * Fully explore all prefix:namespace pairs from context of one node
  * @param[in]  yn     Yang statement in module tree (or module itself)
  * @param[out] ncp    XML namespace context
  * @retval     0      OK
- * @retval     -1     Error
+ * @retval    -1      Error
  * @code
  * yang_stmt *y; // must initialize
  * cvec *nsc = NULL;
@@ -394,7 +401,7 @@ xml_nsctx_yang(yang_stmt *yn,
  * Also add netconf base namespace: nc , urn:ietf:params:xml:ns:netconf:base:1.0
  * Fully explore all prefix:namespace pairs of all yang modules
  * @param[in]  yspec  Yang spec
- * @param[out] ncp    XML namespace context
+ * @param[out] ncp    XML namespace context (create if does not exist)
  * @retval     0      OK
  * @retval    -1      Error
  * @code
@@ -416,7 +423,9 @@ xml_nsctx_yangspec(yang_stmt *yspec,
     yang_stmt *yprefix;
     yang_stmt *ynamespace;
 
-    if ((nc = cvec_new(0)) == NULL){
+    if (ncp && *ncp)
+        nc = *ncp;
+    else if ((nc = cvec_new(0)) == NULL){
         clicon_err(OE_XML, errno, "cvec_new");
         goto done;
     }
@@ -443,6 +452,7 @@ xml_nsctx_yangspec(yang_stmt *yspec,
 }
 
 /*! Print a namespace context to a cbuf using xmlns notation
+ *
  * @param[in]  *cb   CLIgen buf written to
  * @param[in]  *nsc  Namespace context
  * @retval      0    OK
@@ -531,6 +541,7 @@ xml2ns(cxobj *x,
 }
 
 /*! Recursively check prefix / namespaces (and populate ns cache)
+ *
  * @retval     1          OK
  * @retval     0          (Some) prefix not found
  * @retval    -1          Error
@@ -563,6 +574,7 @@ xml2ns_recurse(cxobj *xt)
 }
 
 /*! Add a namespace attribute to an XML node, either default or specific prefix
+ *
  * @param[in]  x          XML tree
  * @param[in]  prefix     prefix/ns localname. If NULL then set default xmlns
  * @param[in]  ns         URI namespace (or NULL). Will be copied
@@ -636,12 +648,13 @@ xmlns_set_all(cxobj *x,
 }
 
 /*! Get prefix of given namespace recursively 
+ *
  * @param[in]  xn        XML node
  * @param[in]  namespace Namespace
  * @param[out] prefixp   Pointer to prefix if found
- * @retval    -1         Error
- * @retval     0         No namespace found
  * @retval     1         Namespace found, prefix returned in prefixp
+ * @retval     0         No namespace found
+ * @retval    -1         Error
  * @note a namespace can have two or more prefixes, this just returns the first
  * @see xml2prefixexists to check a specific pair
  */
@@ -700,8 +713,8 @@ xml2prefix(cxobj *xn,
     goto done;
 }
 
-
 /*! Add prefix:namespace pair to xml node, set cache, etc
+ *
  * @param[in]  x         XML node whose namespace should change
  * @param[in]  xp        XML node where namespace attribute should be declared (can be same)
  * @param[in]  prefix1   Use this prefix

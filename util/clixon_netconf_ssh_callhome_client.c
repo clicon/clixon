@@ -72,7 +72,6 @@ Example sshd-config (-c option):n
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
-#include <assert.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>

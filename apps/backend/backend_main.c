@@ -61,7 +61,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <libgen.h>
-#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>

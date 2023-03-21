@@ -48,7 +48,6 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>

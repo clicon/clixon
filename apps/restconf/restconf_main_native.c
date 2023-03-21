@@ -123,7 +123,6 @@
 #include <syslog.h>
 #include <pwd.h>
 #include <ctype.h>
-#include <assert.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/socket.h>

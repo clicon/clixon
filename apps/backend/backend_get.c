@@ -57,7 +57,6 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <assert.h>
 #include <netinet/in.h>
 
 /* cligen */
@@ -559,6 +558,8 @@ list_pagination_hdr(clicon_handle h,
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[in]  content Get config/state/both
  * @param[in]  db      Database name
+ * @param[in]  depth   Depth attribute
+ * @param[in]  yspec   (Top-level) yang spec
  * @param[in]  xpath   XPath point to object to get
  * @param[in]  nsc     Namespace context of xpath
  * @param[in]  username

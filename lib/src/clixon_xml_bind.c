@@ -49,7 +49,6 @@
 #include <string.h>
 #include <syslog.h>
 #include <fcntl.h>
-#include <assert.h>
 #include <arpa/inet.h>
 #include <sys/param.h>
 #include <netinet/in.h>

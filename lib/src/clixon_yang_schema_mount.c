@@ -45,6 +45,10 @@
  * 4. yang_schema_mount_statedata(): from get_common/get_statedata to retrieve system state
  * 5. yang_schema_yanglib_parse_mount(): from xml_bind_yang to parse and mount
  * 6. yang_schema_get_child(): from xmldb_put/text_modify when adding new XML nodes
+ *
+ * Note: the xpath used as key in yang unknown cvec is "canonical" in the sense:
+ * - it uses prefixes of the yang spec of relevance
+ * - it uses '' not "" in prefixes (eg a[x='foo']. The reason is '' is easier printed in clispecs
  */
 
 #ifdef HAVE_CONFIG_H
@@ -133,8 +137,8 @@ yang_schema_mount_point(yang_stmt *y)
 
 /*! Get yangspec mount-point
  *
- * @param[in]  yu     Yang unknown node to save the yspecs
- * @param[in]  xpath  Key for yspec on yu
+ * @param[in]  yu    Yang unknown node to save the yspecs
+ * @param[in]  xpath Key for yspec on yu
  * @param[out] yspec YANG stmt spec
  * @retval     0     OK
  * @retval    -1     Error
@@ -157,9 +161,9 @@ yang_mount_get(yang_stmt  *yu,
 
 /*! Set yangspec mount-point on yang unknwon node
  *
- * Stored in a separate structure (not in XML config tree)
+ * Mount-points are stored in unknown yang cvec
  * @param[in]  yu     Yang unknown node to save the yspecs
- * @param[in]  xpath  Key for yspec on yu
+ * @param[in]  xpath  Key for yspec on yu, in canonical form
  * @param[in]  yspec  Yangspec for this mount-point (consumed)
  * @retval     0      OK
  * @retval     -1     Error
@@ -173,6 +177,7 @@ yang_mount_set(yang_stmt *yu,
     yang_stmt *yspec0;
     cvec      *cvv;
     cg_var    *cv;
+    cg_var    *cv2;
     
     if ((cvv = yang_cvec_get(yu)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
@@ -184,6 +189,16 @@ yang_mount_set(yang_stmt *yu,
     }
     else if ((cv = yang_cvec_add(yu, CGV_VOID, xpath)) == NULL)
         goto done;
+    if ((cv2 = cv_new(CGV_STRING)) == NULL){
+        clicon_err(OE_YANG, errno, "cv_new"); 
+        goto done;
+    }
+    if (cv_string_set(cv2, xpath) == NULL){
+        clicon_err(OE_UNIX, errno, "cv_string_set"); 
+        goto done;
+    }
+    /* tag yspec with key/xpath */
+    yang_cv_set(yspec, cv2);
     cv_void_set(cv, yspec);
     retval = 0;
  done:
@@ -224,7 +239,7 @@ xml_yang_mount_get(clicon_handle   h,
     // XXX hardcoded prefix: yangmnt
     if ((yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL)
         goto ok;
-    if (xml2xpath(xt, NULL, 1, &xpath) < 0)
+    if (xml2xpath(xt, NULL, 1, 0, &xpath) < 0)
         goto done;
     if (yang_mount_get(yu, xpath, yspec) < 0)
         goto done;
@@ -261,7 +276,7 @@ xml_yang_mount_set(cxobj     *x,
         (yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL){
         goto done;
     }
-    if (xml2xpath(x, NULL, 1, &xpath) < 0)
+    if (xml2xpath(x, NULL, 1, 0, &xpath) < 0)
         goto done;
     if (yang_mount_set(yu, xpath, yspec) < 0)
         goto done;

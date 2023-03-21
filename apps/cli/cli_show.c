@@ -175,7 +175,7 @@ xpath_append(cbuf      *cb0,
  * @param[in]   h        clicon handle 
  * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
- * @param[in]   argv     Arguments given at the callback ("<db>" "<xmlkeyfmt>")
+ * @param[in]   argv     Arguments given at the callback: <db> <apipathfmt> [<mointpt>]
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
  * @see cli_expand_var_generate  This is where arg is generated
@@ -191,6 +191,7 @@ expand_dbvar(void   *h,
     int              retval = -1;
     char            *api_path_fmt;
     char            *api_path = NULL;
+    char            *api_path_fmt01 = NULL;
     char            *dbstr;    
     cxobj           *xt = NULL;
     char            *xpath = NULL;
@@ -203,7 +204,6 @@ expand_dbvar(void   *h,
     int              i;
     char            *bodystr0 = NULL; /* previous */
     cg_var          *cv;
-    yang_stmt       *yspec;
     cxobj           *xtop = NULL; /* xpath root */
     cxobj           *xbot = NULL; /* xpath, NULL if datastore */
     yang_stmt       *y = NULL; /* yang spec of xpath */
@@ -214,12 +214,14 @@ expand_dbvar(void   *h,
     cbuf            *cbxpath = NULL;
     yang_stmt       *ypath;
     yang_stmt       *ytype;
+    char            *mtpoint = NULL;
+    yang_stmt       *yspec0 = NULL;
     
-    if (argv == NULL || cvec_len(argv) != 2){
-        clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <xmlkeyfmt>");
+    if (argv == NULL || (cvec_len(argv) != 2 && cvec_len(argv) != 3)){
+        clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
         goto done;
     }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
@@ -227,7 +229,7 @@ expand_dbvar(void   *h,
         clicon_err(OE_PLUGIN, 0, "Error when accessing argument <db>");
         goto done;
     }
-    dbstr  = cv_string_get(cv);
+    dbstr = cv_string_get(cv);
     if (strcmp(dbstr, "running") != 0 &&
         strcmp(dbstr, "candidate") != 0 &&
         strcmp(dbstr, "startup") != 0){
@@ -239,12 +241,28 @@ expand_dbvar(void   *h,
         goto done;
     }
     api_path_fmt = cv_string_get(cv);
-    /* api_path_fmt = /interface/%s/address/%s
-     * api_path: -->  /interface/eth0/address/.*
-     * xpath:    -->  /interface/[name="eth0"]/address
-     */
-    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
-        goto done;
+    if (cvec_len(argv) > 2){ 
+        cv = cvec_i(argv, 2);
+        mtpoint = cv_string_get(cv);
+    }
+    if (mtpoint){
+        /* Get combined api-path01 */
+        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+            goto done;
+        /* Transform template format string + cvv to actual api-path 
+         * cvv_i indicates if all cvv entries were used
+         */
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, &api_path, &cvvi) < 0)
+            goto done;
+    }
+    else {
+        /* api_path_fmt = /interface/%s/address/%s
+         * api_path: -->  /interface/eth0/address/.*
+         * xpath:    -->  /interface/[name="eth0"]/address
+         */
+        if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+            goto done;
+    }
     /* Create config top-of-tree */
     if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -254,18 +272,20 @@ expand_dbvar(void   *h,
      * XXX: but y is just the first in this list, there could be other y:s?
      */
     if (api_path){
-        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
+        if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){
+            // XXX cf cli_dbxml
             clixon_netconf_error(xerr, "Expand datastore symbol", NULL);
             goto done;
         }
     }
     if (y==NULL)
         goto ok;
-    /* Transform api-path to xpath for netconf */
-    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
+    /* Transform api-path to xpath for netconf  */
+    if (api_path2xpath(api_path, yspec0, &xpath, &nsc, NULL) < 0)
         goto done;
+
     if ((cbxpath = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -356,6 +376,8 @@ expand_dbvar(void   *h,
  ok:
     retval = 0;
   done:
+    if (api_path_fmt01)
+        free(api_path_fmt01);
     if (cbxpath)
         cbuf_free(cbxpath);
     if (xerr)

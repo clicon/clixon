@@ -245,8 +245,8 @@ identityref_add_ns(cxobj *x,
                 if (ns == NULL &&
                     (yns = yang_find_module_by_prefix_yspec(yspec, pf)) != NULL){
                     if ((ns = yang_find_mynamespace(yns)) != NULL)
-                            if (xmlns_set(x, pf, ns) < 0)
-                                goto done;
+                        if (xmlns_set(x, pf, ns) < 0)
+                            goto done;
                 }
             }
         }        
@@ -260,10 +260,90 @@ identityref_add_ns(cxobj *x,
     return retval;
 }
 
+/*! Given a top-level yspec and montpoint xpath compute a set of  
+ *
+ * Manipulate top-level and a mointpoint:
+ * YSPEC:    yspec0        yspec1
+ * XML:      top0-->bot0-->top1-->bot1
+ * API-PATH: api-path0     api-path1
+ *           api-path01---------
+ * The result computed from the top-level yspec and montpoint xpath are:
+ * - api_pathfmt10 Combined api-path for both trees
+ */
+int
+mtpoint_paths(yang_stmt  *yspec0,
+              char       *mtpoint,
+              char       *api_path_fmt1,
+              char      **api_path_fmt01)
+{
+    int        retval = -1;
+    yang_stmt *yu = NULL;
+    yang_stmt *ybot0 = NULL;
+    cvec      *nsc0 = NULL;
+    int        ret;
+    char      *api_path_fmt0;
+    cbuf      *cb = NULL;
+    cxobj     *xbot0 = NULL;
+    cxobj     *xtop0 = NULL;
+    yang_stmt *yspec1;
+    
+    if (api_path_fmt01 == NULL){
+        clicon_err(OE_FATAL, EINVAL, "arg is NULL");
+        goto done;
+    }
+    if ((xtop0 = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (yang_path_arg(yspec0, mtpoint, &yu) < 0)
+        goto done;
+    if (yu == NULL){
+        clicon_err(OE_FATAL, 0, "yu not found");
+        goto done;
+    }
+    if (yang_mount_get(yu, mtpoint, &yspec1) < 0)
+        goto done;
+    if (yspec1 == NULL){
+        clicon_err(OE_FATAL, 0, "yspec1 not found");
+        goto done;
+    }
+    xbot0 = xtop0;
+    if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
+        goto done;
+    if ((ret = xpath2xml(mtpoint, nsc0, xtop0, yspec0, &xbot0, &ybot0, NULL)) < 0)
+        goto done;        
+    if (xbot0 == NULL){
+        clicon_err(OE_YANG, 0, "No xbot");
+        goto done;
+    }
+    if (yang2api_path_fmt(ybot0, 0, &api_path_fmt0) < 0)
+        goto done;
+    if (api_path_fmt0 == NULL){
+        clicon_err(OE_YANG, 0, "No api_path_fmt0");
+        goto done;
+    }
+    cprintf(cb, "%s%s", api_path_fmt0, api_path_fmt1);
+    if ((*api_path_fmt01 = strdup(cbuf_get(cb))) == NULL){
+        clicon_err(OE_YANG, errno, "strdup");
+        goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (api_path_fmt0)
+        free(api_path_fmt0);
+    if (nsc0)
+        cvec_free(nsc0);
+    return retval;
+}
+
 /*! Modify xml datastore from a callback using xml key format strings
  * @param[in]  h     Clicon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
- * @param[in]  argv  Vector. First element xml key format string, eg "/aaa/%s"
+ * @param[in]  argv  Vector: <apipathfmt> [<mointpt>], eg "/aaa/%s"
  * @param[in]  op    Operation to perform on database
  * @param[in]  nsctx Namespace context for last value added
  * cvv first contains the complete cli string, and then a set of optional
@@ -289,43 +369,62 @@ cli_dbxml(clicon_handle       h,
 {
     int        retval = -1;
     char      *api_path_fmt;    /* xml key format */
-    char      *api_path = NULL; /* xml key */
+    char      *api_path_fmt01 = NULL;
+    char      *api_path = NULL; 
     cg_var    *arg;
     cbuf      *cb = NULL;
-    yang_stmt *yspec;
     cxobj     *xbot = NULL;     /* xpath, NULL if datastore */
     yang_stmt *y = NULL;        /* yang spec of xpath */
     cxobj     *xtop = NULL;     /* xpath root */
     cxobj     *xerr = NULL;
     int        ret;
     cg_var    *cv;
-    int        cvv_i = 0;
+    int        cvvi = 0;
+    char      *mtpoint = NULL;
+    yang_stmt *yspec0 = NULL;
 
-    if (cvec_len(argv) != 1){
+    if (cvec_len(argv) != 1 && cvec_len(argv) != 2){
         clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be xml key format string");
         goto done;
     }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+    /* Top-level yspec */
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     arg = cvec_i(argv, 0);
     api_path_fmt = cv_string_get(arg);
-
+    if (cvec_len(argv) > 1){ 
+        arg = cvec_i(argv, 1);
+        mtpoint = cv_string_get(arg);
+    }
     /* Remove all keywords */
     if (cvec_exclude_keys(cvv) < 0)
         goto done;
-    /* Transform template format string + cvv to actual api-path 
-     * cvv_i indicates if all cvv entries were used
-     */
-    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvv_i) < 0)
-        goto done;
+    if (mtpoint){ 
+        /* Get and combined api-path01 */
+        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+            goto done;
+        /* Transform template format string + cvv to actual api-path 
+         * cvvi indicates if all cvv entries were used
+         */
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, &api_path, &cvvi) < 0)
+            goto done;
+    }
+    else {
+        /* Only top-level tree */
+        /* Transform template format string + cvv to actual api-path 
+         * cvvi indicates if all cvv entries were used
+         */
+        if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+            goto done;
+    }
     /* Create config top-of-tree */
     if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
         goto done;
     xbot = xtop;
     if (api_path){
-        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
+        if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if ((cb = cbuf_new()) == NULL){
@@ -352,7 +451,7 @@ cli_dbxml(clicon_handle       h,
          * Discussion: one can claim (1) is "bad" usage but one could see cases where
          * you would want to delete a value if it has a specific value but not otherwise
          */
-        if (cvv_i != cvec_len(cvv))
+        if (cvvi != cvec_len(cvv))
             if (dbxml_body(xbot, cvv) < 0)
                 goto done;
         /* Loop over namespace context and add them to this leaf node */
@@ -367,7 +466,7 @@ cli_dbxml(clicon_handle       h,
     /* Special handling of identityref:s whose body may be: <namespace prefix>:<id>
      * Ensure the namespace is declared if it exists in YANG
      */
-    if ((ret = xml_apply0(xbot, CX_ELMNT, identityref_add_ns, yspec)) < 0)
+    if ((ret = xml_apply0(xbot, CX_ELMNT, identityref_add_ns, yspec0)) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
@@ -379,6 +478,8 @@ cli_dbxml(clicon_handle       h,
         goto done;
     retval = 0;
  done:
+    if (api_path_fmt01)
+        free(api_path_fmt01);
     if (xerr)
         xml_free(xerr);
     if (cb)
@@ -695,23 +796,22 @@ cli_commit(clicon_handle h,
             cvec         *vars, 
             cvec         *argv)
 {
-    int            retval = -1;
-    uint32_t       timeout = 0; /* any non-zero value means "confirmed-commit" */
-    cg_var        *timeout_var;
-    char          *persist = NULL;
-    char          *persist_id = NULL;
+    int      retval = -1;
+    uint32_t timeout = 0; /* any non-zero value means "confirmed-commit" */
+    cg_var  *timeout_var;
+    char    *persist = NULL;
+    char    *persist_id = NULL;
+    int      confirmed;
+    int      cancel;
 
-    int confirmed = (cvec_find_str(vars, "confirmed") != NULL);
-    int cancel = (cvec_find_str(vars, "cancel") != NULL);
-
+    confirmed = (cvec_find_str(vars, "confirmed") != NULL);
+    cancel = (cvec_find_str(vars, "cancel") != NULL);
     if ((timeout_var = cvec_find(vars, "timeout")) != NULL) {
         timeout = cv_uint32_get(timeout_var);
         clicon_debug(1, "commit confirmed with timeout %ul", timeout);
     }
-
     persist = cvec_find_str(vars, "persist-val");
     persist_id = cvec_find_str(vars, "persist-id-val");
-    
     if (clicon_rpc_commit(h, confirmed, cancel, timeout, persist, persist_id) < 1)
         goto done;
     retval = 0;

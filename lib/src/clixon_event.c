@@ -227,6 +227,7 @@ clixon_event_unreg_fd(int   s,
 }
 
 /*! Call a callback function at an absolute time
+ *
  * @param[in]  t   Absolute (not relative!) timestamp when callback is called
  * @param[in]  fn  Function to call at time t
  * @param[in]  arg Argument to function fn
@@ -241,11 +242,9 @@ clixon_event_unreg_fd(int   s,
  * } 
  * @endcode 
  * 
- * Note that the timestamp is an absolute timestamp, not relative.
- * Note also that the callback is not periodic, you need to make a new 
- * registration for each period, see example above.
- * Note also that the first argument to fn is a dummy, just to get the same
- * signature as for file-descriptor callbacks.
+ * @note  The timestamp is an absolute timestamp, not relative.
+ * @note  The callback is not periodic, you need to make a new registration for each period, see example.
+ * @note  The first argument to fn is a dummy, just to get the same signature as for file-descriptor callbacks.
  * @see clixon_event_reg_fd
  * @see clixon_event_unreg_timeout
  */

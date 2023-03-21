@@ -1160,7 +1160,7 @@ text_modify_top(clicon_handle       h,
  * @param[out] cbret  Initialized cligen buffer. On exit contains XML if retval == 0
  * @retval     1      OK
  * @retval     0      Failed, cbret contains error xml message
- * @retval     -1     Error
+ * @retval    -1      Error
  * The xml may contain the "operation" attribute which defines the operation.
  * @code
  *   cxobj     *xt;

@@ -131,10 +131,14 @@ cli_expand_var_generate(clicon_handle h,
                         int           pre,
                         cbuf         *cb)
 {
-    int   retval = -1;
-    char *api_path_fmt = NULL;
-    int  extvalue = 0;
-
+    int        retval = -1;
+    char      *api_path_fmt = NULL;
+    int        extvalue = 0;
+    yang_stmt *yspec;
+    cg_var    *cv = NULL;
+    
+    if ((yspec = ys_spec(ys)) != NULL)
+        cv = yang_cv_get(yspec);
     if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
         goto done;
     if (extvalue
@@ -152,9 +156,12 @@ cli_expand_var_generate(clicon_handle h,
     cprintf(cb, "<%s:%s",  yang_argument_get(ys), cvtypestr);
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
         cprintf(cb, " fraction-digits:%u", fraction_digits);
-    cprintf(cb, " %s(\"candidate\",\"%s\")>",
+    cprintf(cb, " %s(\"candidate\",\"%s\"",
             GENERATE_EXPAND_XMLDB,
             api_path_fmt);
+    if (cv)     /* Add optional mountpoint */
+        cprintf(cb, ",\"%s\"", cv_string_get(cv));
+    cprintf(cb, ")>");
     retval = 0;
  done:
     if (api_path_fmt)
@@ -176,11 +183,17 @@ cli_callback_generate(clicon_handle h,
 {
     int        retval = -1;
     char      *api_path_fmt = NULL;
+    yang_stmt *yspec;
+    cg_var    *cv = NULL;
 
+    if ((yspec = ys_spec(ys)) != NULL)
+        cv = yang_cv_get(yspec);
     if (yang2api_path_fmt(ys, 0, &api_path_fmt) < 0)
         goto done;
-    cprintf(cb, ",%s(\"%s\")", GENERATE_CALLBACK, 
-            api_path_fmt);
+    cprintf(cb, ",%s(\"%s\"", GENERATE_CALLBACK, api_path_fmt);
+    if (cv)     /* Add optional mountpoint */
+        cprintf(cb, ",\"%s\"", cv_string_get(cv));
+    cprintf(cb, ")");
     retval = 0;
  done:
     if (api_path_fmt)
@@ -886,6 +899,7 @@ yang2cli_container(clicon_handle h,
     int           compress = 0;
     yang_stmt    *ymod = NULL;
     int           extvalue = 0;
+    int           ret;
     
     if (ys_real_module(ys, &ymod) < 0)
         goto done;
@@ -930,6 +944,15 @@ yang2cli_container(clicon_handle h,
         }
 #endif  
         cprintf(cb, ", act-container;{\n");
+
+    }
+    /* Is schema mount-point? */
+    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
+        if ((ret = yang_schema_mount_point(ys)) < 0)
+            goto done;
+        if (ret){
+            cprintf(cb, "%*s%s", (level+1)*3, "", "@mountpoint;\n");
+        }
     }
     yc = NULL;
     while ((yc = yn_each(ys, yc)) != NULL) 
@@ -1335,6 +1358,8 @@ yang2cli_post(clicon_handle h,
  * @param[in]  treename  Name of tree
  * @param[in]  xautocli  Autocli config tree (instance of clixon-autocli.yang)
  * @param[in]  printgen  Log the generated CLIgen syntax
+ * @retval     0         OK
+ * @retval    -1         Error
  * @note Tie-break of same top-level symbol: prefix is NYI
  */
 int

@@ -510,8 +510,7 @@ validate_common(clicon_handle       h,
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
     /* 3. Compute differences */
-    if (xml_diff(yspec, 
-                 td->td_src,
+    if (xml_diff(td->td_src,
                  td->td_target,
                  &td->td_dvec,      /* removed: only in running */
                  &td->td_dlen,
@@ -982,8 +981,7 @@ from_client_restart_one(clicon_handle h,
         goto done;
 
     /* 3. Compute differences */
-    if (xml_diff(yspec, 
-                 td->td_src,
+    if (xml_diff(td->td_src,
                  td->td_target,
                  &td->td_dvec,      /* removed: only in running */
                  &td->td_dlen,
