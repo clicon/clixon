@@ -96,7 +96,7 @@ depend:
 	do (cd $$i && $(MAKE) $(MFLAGS) depend); done
 
 # Needs root permissions on most systems by default
-install: checkroot
+install: 
 	for i in $(SUBDIRS) doc; \
 	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 	$(MAKE) $(MFLAGS) install-include
@@ -106,7 +106,7 @@ install-include:
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 	@echo "\e[32mTo install example app and test utils: make install-example\e[0m"
 
-uninstall: checkroot
+uninstall: 
 	for i in $(SUBDIRS) doc example util docker; \
 	do (cd $$i && $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 
@@ -129,11 +129,11 @@ clean-example:
 	for i in example util; \
 	  do (cd $$i && $(MAKE) $(MFLAGS) clean) || exit 1; done;
 
-install-example: checkroot
+install-example: 
 	for i in example util; \
 	  do (cd $$i && $(MAKE) $(MFLAGS) install) || exit 1; done;
 
-uninstall-example: checkroot
+uninstall-example: 
 	for i in example util; \
 	  do (cd $$i && $(MAKE) $(MFLAGS) uninstall) || exit 1; done;
 
