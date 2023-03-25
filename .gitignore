@@ -8,6 +8,7 @@ lex.*_parse.c
 *.depend
 
 release
+
 Makefile
 apps/Makefile
 apps/*/Makefile
