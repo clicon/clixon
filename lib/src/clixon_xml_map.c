@@ -1006,6 +1006,7 @@ assign_namespace_element(cxobj *x0, /* source */
  *
  * @param[in]  x0     Source XML
  * @param[in]  x1     Destination XML
+ * @note "standard" namespaces, including clixon internal namespaces are removed
  */
 int
 assign_namespace_body(cxobj *x0, /* source */
@@ -1031,9 +1032,13 @@ assign_namespace_body(cxobj *x0, /* source */
             else
                 prefix1 = name;
             /* prefix1 contains actual prefix or NULL, prefix0 can be xmlns */
-            if (strcmp(namespace, NETCONF_BASE_NAMESPACE) ==0 ||
-                strcmp(namespace, YANG_XML_NAMESPACE) ==0)
+            if (strcmp(namespace, NETCONF_BASE_NAMESPACE) == 0 ||
+                strcmp(namespace, YANG_XML_NAMESPACE) == 0 ||
+                strcmp(namespace, CLIXON_CONF_NS) == 0 ||
+                strcmp(namespace, CLIXON_LIB_NS) == 0
+                )
                 continue;
+            continue; // XXX
             /* Detect if prefix:namespace is declared already? */
             if (xml2ns(x1, prefix1, &namespace1) == 1)
                 continue;

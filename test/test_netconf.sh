@@ -56,7 +56,7 @@ module clixon-example{
         base if:interface-type;
    }
     /* Generic config data */
-    container table{
+   container table{
         list parameter{
             key name;
             leaf name{
@@ -252,6 +252,16 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "netconf validate using xx prefix"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:validate><xx:source><xx:candidate/></xx:source></xx:validate></xx:rpc>" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><rpc-error>" ""
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# These are clixon-lib attributes used by RESTCONF
+new "netonf edit-config with extra attributes on leaf"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><default-operation>none</default-operation><config><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value nc:operation=\"replace\" xmlns:cl=\"http://clicon.org/lib\">99</value></parameter></table></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>"
+
+new "netconf get-config"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>99</value></parameter></table></data></rpc-reply>"
 
 new "netconf discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"

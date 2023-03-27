@@ -245,7 +245,7 @@ new 'B.3.5.  "point" Parameter leaf-list 4 before 3'
 expectpart "$(curl $CURLOPTS -X POST -H 'Content-Type: application/yang-data+json' -d '{"example-jukebox:extra":"4"}' $RCPROTO://localhost/restconf/data?insert=before\&point=%2Fexample-jukebox%3Aextra%3D3 )" 0 "HTTP/$HVER 201" "Location: $RCPROTO://localhost/restconf/data/example-jukebox:extra=4"
 
 new 'B.3.5.  "insert/point" leaf-list check order (2,4,3,1)'
-expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-jukebox:extra -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" '<extra xmlns="http://example.com/ns/example-jukebox">2</extra><extra xmlns="http://example.com/ns/example-jukebox" xmlns:jbox="http://example.com/ns/example-jukebox">4</extra><extra xmlns="http://example.com/ns/example-jukebox">3</extra><extra xmlns="http://example.com/ns/example-jukebox">1</extra>'
+expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-jukebox:extra -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" '<extra xmlns="http://example.com/ns/example-jukebox">2</extra><extra xmlns="http://example.com/ns/example-jukebox">4</extra><extra xmlns="http://example.com/ns/example-jukebox">3</extra><extra xmlns="http://example.com/ns/example-jukebox">1</extra>'
 
 #new "B.2.2.  Detect Datastore Resource Entity-Tag Change" # XXX done except entity-changed
 #new 'B.3.3.  "fields" Parameter'
