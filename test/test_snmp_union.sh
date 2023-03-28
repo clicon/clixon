@@ -75,7 +75,7 @@ module clixon-example{
         list parameter{
             smiv2:oid "1.3.6.1.2.1.47.1.1.1.1";
             key name;
-            cx-snmp:table-key "value";
+            
             leaf name{
                 type union{
                           type ex:first;
