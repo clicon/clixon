@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # SNMP test for yang union type with are same types of subtypes
 
-
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
@@ -33,7 +32,6 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
-  <CLICON_SNMP_MIB>ENTITY-MIB</CLICON_SNMP_MIB>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
 </clixon-config>
 EOF
@@ -75,12 +73,12 @@ module clixon-example{
         list parameter{
             smiv2:oid "1.3.6.1.2.1.47.1.1.1.1";
             key name;
-            
+
             leaf name{
                 type union{
-                          type ex:first;
-                          type ex:second;
-                          type ex:third;
+                    type ex:first;
+                    type ex:second;
+                    type ex:third;
                 }
                 description "name";
                 smiv2:oid "1.3.6.1.2.1.47.1.1.1.1.1";
