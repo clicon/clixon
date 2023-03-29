@@ -152,6 +152,8 @@ function testexit(){
 
 ENTITY_OID=".1.3.6.1.2.1.47.1.1.1"
 
+expectpart "$($snmpwalk $ENTITY_OID)" 0 
+
 # first string, value=first
 OID_FIRST="${ENTITY_OID}.1.1.1"
 # second string, value=second
