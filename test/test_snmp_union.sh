@@ -152,7 +152,8 @@ function testexit(){
 
 ENTITY_OID=".1.3.6.1.2.1.47.1.1.1"
 
-expectpart "$($snmpwalk -i .1.3.6)" 0 "0.0"
+echo $(snmpwalk -c public -v2c localhost -t 10)
+exit 1
 
 # first string, value=first
 OID_FIRST="${ENTITY_OID}.1.1.1"
