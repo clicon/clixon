@@ -152,11 +152,10 @@ function testexit(){
 
 ENTITY_OID=".1.3.6.1.2.1.47.1.1.1"
 
-echo $(snmpwalk -c public -v2c localhost -t 10)
-exit 1
+expectpart "$($snmpwalk $ENTITY_OID)" 0 
 
 # first string, value=first
-OID_FIRST="${ENTITY_OID}.1.1.1"
+OID_FIRST="${ENTITY_OID}.1.1"
 # second string, value=second
 OID_SECOND="${ENTITY_OID}.1.1.2"
 # third string, value=third
@@ -165,8 +164,8 @@ OID_THIRD="${ENTITY_OID}.1.1.3"
 new "SNMP system tests"
 testinit
 
-# new "Get index, $OID_FIRST"
-# validate_oid $OID_FIRST $OID_FIRST "STRING" "first"
+new "Get index, $OID_FIRST"
+validate_oid $OID_FIRST $OID_FIRST "STRING" "1first"
 # new "Get next $OID_FIRST"
 # validate_oid $OID_FIRST $OID_SECOND "STRING" "second"
 # new "Get index, $OID_SECOND"
