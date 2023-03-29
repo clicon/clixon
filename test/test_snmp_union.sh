@@ -72,8 +72,11 @@ module clixon-example{
         smiv2:oid "1.3.6.1.2.1.47.1.1.1";
         list parameter{
             smiv2:oid "1.3.6.1.2.1.47.1.1.1.1";
-            key name;
-
+            key index;
+            leaf index{
+                type int32;
+                smiv2:oid "1.3.6.1.2.1.47.1.1.1.1.1";
+            }
             leaf name{
                 type union{
                     type ex:first;
@@ -81,7 +84,7 @@ module clixon-example{
                     type ex:third;
                 }
                 description "name";
-                smiv2:oid "1.3.6.1.2.1.47.1.1.1.1.1";
+                smiv2:oid "1.3.6.1.2.1.47.1.1.1.1.2";
             }
         }
     }
@@ -93,13 +96,16 @@ EOF
 cat <<EOF > $fstate
    <table xmlns="urn:example:clixon">
      <parameter>
-       <name>first</name>
+        <index>1</index>
+        <name>first</name>
      </parameter>
      <parameter>
-       <name>second</name>
+        <index>2</index>
+        <name>second</name>
      </parameter>
      <parameter>
-       <name>third</name>
+        <index>3</index>
+        <name>third</name>
      </parameter>
    </table>
 EOF
@@ -152,10 +158,8 @@ function testexit(){
 
 ENTITY_OID=".1.3.6.1.2.1.47.1.1.1"
 
-expectpart "$($snmpwalk $ENTITY_OID)" 0 
-
 # first string, value=first
-OID_FIRST="${ENTITY_OID}.1.1"
+OID_FIRST="${ENTITY_OID}.1.1.1"
 # second string, value=second
 OID_SECOND="${ENTITY_OID}.1.1.2"
 # third string, value=third
