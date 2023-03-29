@@ -158,7 +158,7 @@ function testexit(){
 
 ENTITY_OID=".1.3.6.1.2.1.47.1.1.1"
 
-echo $($snmpwalk)
+echo $($snmpwalk) 
 
 # first string, value=first
 OID_FIRST="${ENTITY_OID}.1.1.1"
