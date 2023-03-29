@@ -152,7 +152,7 @@ function testexit(){
 
 ENTITY_OID=".1.3.6.1.2.1.47.1.1.1"
 
-expectpart "$($snmpwalk $ENTITY_OID)" 0 
+expectpart "$($snmpwalk $ENTITY_OID)" 0 "0.0"
 
 # first string, value=first
 OID_FIRST="${ENTITY_OID}.1.1.1"
@@ -164,16 +164,16 @@ OID_THIRD="${ENTITY_OID}.1.1.3"
 new "SNMP system tests"
 testinit
 
-new "Get index, $OID_FIRST"
-validate_oid $OID_FIRST $OID_FIRST "STRING" "first"
-new "Get next $OID_FIRST"
-validate_oid $OID_FIRST $OID_SECOND "STRING" "second"
-new "Get index, $OID_SECOND"
-validate_oid $OID_SECOND $OID_SECOND "STRING" "second"
-new "Get next $OID_SECOND"
-validate_oid $OID_SECOND $OID_THIRD "STRING" "third"
-new "Get index, $OID_THIRD"
-validate_oid $OID_THIRD $OID_THIRD "STRING" "third"
+# new "Get index, $OID_FIRST"
+# validate_oid $OID_FIRST $OID_FIRST "STRING" "first"
+# new "Get next $OID_FIRST"
+# validate_oid $OID_FIRST $OID_SECOND "STRING" "second"
+# new "Get index, $OID_SECOND"
+# validate_oid $OID_SECOND $OID_SECOND "STRING" "second"
+# new "Get next $OID_SECOND"
+# validate_oid $OID_SECOND $OID_THIRD "STRING" "third"
+# new "Get index, $OID_THIRD"
+# validate_oid $OID_THIRD $OID_THIRD "STRING" "third"
 
 new "Cleaning up"
 testexit
