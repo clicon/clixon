@@ -1420,10 +1420,15 @@ yang2cli_yspec(clicon_handle      h,
             fprintf(stderr, "%s\n", cbuf_get(cb));
             goto done;
         }
+        clicon_debug(CLIXON_DBG_DEFAULT, "%s Generated auto-cli for module:%s",
+                     __FUNCTION__, yang_argument_get(ymod));
         /* Add prefix: assume new are appended */
         for (i=0; i<pt_len_get(pt); i++){
-            if ((co = pt_vec_i_get(pt, i)) != NULL)
+            if ((co = pt_vec_i_get(pt, i)) != NULL){
+                clicon_debug(CLIXON_DBG_DEFAULT, "%s command: %s",
+                             __FUNCTION__, co->co_command);
                 co_prefix_set(co, prefix);
+            }
         }
         /* Post-processing, iterate over the generated cligen parse-tree with corresponding yang
          * Note cannot do it inline in yang2cli above since:
@@ -1435,7 +1440,7 @@ yang2cli_yspec(clicon_handle      h,
             goto done;
         }
         //      pt_print(stderr,pt);
-        clicon_debug(1, "%s Generated auto-cli for %s", __FUNCTION__, yang_argument_get(ymod));
+
         if (printgen)
             clicon_log(LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
                        __FUNCTION__, treename, cbuf_get(cb));

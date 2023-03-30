@@ -65,6 +65,7 @@
 #include "clixon_backend_commit.h"
 
 /*! Request plugins to reset system state
+ *
  * The system 'state' should be the same as the contents of running_db
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clicon handle
@@ -102,6 +103,7 @@ clixon_plugin_reset_one(clixon_plugin_t *cp,
 }
     
 /*! Call all plugins reset callbacks
+ *
  * The system 'state' should be the same as the contents of running_db
  * @param[in]  h       Clixon handle
  * @param[in]  db      Name of datastore
@@ -127,6 +129,7 @@ clixon_plugin_reset_all(clicon_handle h,
 }
 
 /*! Call single plugin "pre-" daemonize callback
+ *
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
  * @retval     0       OK
@@ -188,6 +191,7 @@ clixon_plugin_pre_daemon_all(clicon_handle h)
 }
 
 /*! Call single plugin "post-" daemonize callback
+ *
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
  * @retval     0       OK
@@ -270,9 +274,9 @@ clixon_plugin_daemon_all(clicon_handle h)
  * @param[in]  limit   Limit, for list pagination
  * @param[out] remaining  Remaining elements (if limit is non-zero)
  * @param[out] xp      If retval=1, state tree created and returned: <config>...
- * @retval    -1       Fatal error
- * @retval     0       Statedata callback failed. no XML tree returned
  * @retval     1       OK if callback found (and called) xret is set
+ * @retval     0       Statedata callback failed. no XML tree returned
+ * @retval    -1       Fatal error
  */
 static int
 clixon_plugin_statedata_one(clixon_plugin_t *cp,
@@ -314,6 +318,7 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
 }
 
 /*! Go through all backend statedata callbacks and collect state data
+ *
  * This is internal system call, plugin is invoked (does not call) this function
  * Backend plugins can register 
  * @param[in]     h       clicon handle
@@ -322,9 +327,9 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
  * @param[in]     xpath   String with XPATH syntax. or NULL for all
  * @param[in]     wdef    With-defaults parameter, see RFC 6243
  * @param[in,out] xret    State XML tree is merged with existing tree.
- * @retval       -1       Error
- * @retval        0       Statedata callback failed (xret set with netconf-error)
  * @retval        1       OK
+ * @retval        0       Statedata callback failed (xret set with netconf-error)
+ * @retval       -1       Error
  * @note xret can be replaced in this function
  */
 int
@@ -412,13 +417,14 @@ clixon_plugin_statedata_all(clicon_handle   h,
 }
 
 /*! Lock database status has changed status
+ *
  * @param[in]  cp      Plugin handle
  * @param[in]  h    Clixon handle
  * @param[in]  db   Database name (eg "running")
  * @param[in]  lock Lock status: 0: unlocked, 1: locked
  * @param[in]  id   Session id (of locker/unlocker)
- * @retval    -1    Fatal error
  * @retval     0    OK
+ * @retval    -1    Fatal error
  */
 static int
 clixon_plugin_lockdb_one(clixon_plugin_t *cp,
@@ -446,12 +452,13 @@ clixon_plugin_lockdb_one(clixon_plugin_t *cp,
 }
 
 /*! Lock database status has changed status
+ *
  * @param[in]  h    Clixon handle
  * @param[in]  db   Database name (eg "running")
  * @param[in]  lock Lock status: 0: unlocked, 1: locked
  * @param[in]  id   Session id (of locker/unlocker)
- * @retval    -1    Fatal error
  * @retval     0    OK
+ * @retval    -1    Fatal error
 */
 int
 clixon_plugin_lockdb_all(clicon_handle h,
@@ -548,6 +555,7 @@ clixon_pagination_free(clicon_handle h)
 }
 
 /*! Create and initialize a validate/commit transaction 
+ *
  * @retval  td     New alloced transaction, 
  * @retval  NULL   Error
  * @see transaction_free  which deallocates the returned handle
@@ -591,6 +599,7 @@ transaction_free(transaction_data_t *td)
 }
 
 /*! Call single plugin transaction_begin() before a validate/commit.
+ *
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
  * @param[in]  td      Transaction data
@@ -629,6 +638,7 @@ plugin_transaction_begin_one(clixon_plugin_t    *cp,
 /* The plugin_transaction routines need access to struct plugin which is local to this file */
 
 /*! Call transaction_begin() in all plugins before a validate/commit.
+ *
  * @param[in]  h       Clicon handle
  * @param[in]  td      Transaction data
  * @retval     0       OK
@@ -652,6 +662,7 @@ plugin_transaction_begin_all(clicon_handle       h,
 }
 
 /*! Call single plugin transaction_validate() in a validate/commit transaction
+ *
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
  * @param[in]  td      Transaction data
@@ -689,6 +700,7 @@ plugin_transaction_validate_one(clixon_plugin_t      *cp,
 }
 
 /*! Call transaction_validate callbacks in all backend plugins
+ *
  * @param[in]  h       Clicon handle
  * @param[in]  td      Transaction data
  * @retval     0       OK. Validation succeeded in all plugins
@@ -711,6 +723,7 @@ plugin_transaction_validate_all(clicon_handle       h,
 }
 
 /*! Call single plugin transaction_complete() in a validate/commit transaction
+ *
  * complete is called after validate (before commit)
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
@@ -748,6 +761,7 @@ plugin_transaction_complete_one(clixon_plugin_t      *cp,
 }
 
 /*! Call transaction_complete() in all plugins after validation (before commit)
+ *
  * @param[in]  h       Clicon handle
  * @param[in]  td      Transaction data
  * @retval     0       OK
@@ -772,6 +786,7 @@ plugin_transaction_complete_all(clicon_handle       h,
 }
 
 /*! Revert a commit
+ *
  * @param[in]  h   CLICON handle
  * @param[in]  td  Transaction data
  * @param[in]  nr  The plugin where an error occured. 
@@ -803,6 +818,7 @@ plugin_transaction_revert_all(clicon_handle       h,
 
 
 /*! Call single plugin transaction_commit() in a commit transaction
+ *
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
  * @param[in]  td      Transaction data
@@ -839,6 +855,7 @@ plugin_transaction_commit_one(clixon_plugin_t      *cp,
 }
 
 /*! Call transaction_commit callbacks in all backend plugins
+ *
  * @param[in]  h       Clicon handle
  * @param[in]  td      Transaction data
  * @retval     0       OK
@@ -869,6 +886,7 @@ plugin_transaction_commit_all(clicon_handle       h,
 }
 
 /*! Call single plugin transaction_commit_done() in a commit transaction
+ *
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
  * @param[in]  td      Transaction data
@@ -905,6 +923,7 @@ plugin_transaction_commit_done_one(clixon_plugin_t      *cp,
 }
 
 /*! Call transaction_commit_done callbacks in all backend plugins
+ *
  * @param[in]  h       Clicon handle
  * @param[in]  td      Transaction data
  * @retval     0       OK
@@ -928,6 +947,7 @@ plugin_transaction_commit_done_all(clicon_handle       h,
 }
 
 /*! Call single plugin transaction_end() in a commit/validate transaction
+ *
  * @param[in]  cp      Plugin handle
  * @param[in]  h       Clixon handle
  * @param[in]  td      Transaction data
@@ -964,6 +984,7 @@ plugin_transaction_end_one(clixon_plugin_t      *cp,
 }
 
 /*! Call transaction_end() in all plugins after a successful commit.
+ *
  * @param[in]  h       Clicon handle
  * @param[in]  td      Transaction data
  * @retval     0       OK
@@ -1016,6 +1037,7 @@ plugin_transaction_abort_one(clixon_plugin_t      *cp,
 }
 
 /*! Call transaction_abort() in all plugins after a failed validation/commit.
+ *
  * @param[in]  h       Clicon handle
  * @param[in]  td      Transaction data
  * @retval     0       OK

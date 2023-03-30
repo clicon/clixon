@@ -73,6 +73,7 @@
 #include "backend_client.h"
 
 /*! Find client by session-id 
+ *
  * @param[in] ce_list   List of clients
  * @param[in] id        Session id
  */
@@ -89,6 +90,7 @@ ce_find_byid(struct client_entry *ce_list,
 }
 
 /*! Stream callback for netconf stream notification (RFC 5277)
+ *
  * @param[in]  h     Clicon handle
  * @param[in]  op    0:event, 1:rm
  * @param[in]  event Event as XML
@@ -125,6 +127,7 @@ ce_event_cb(clicon_handle h,
 }
 
 /*! Unlock all db:s of a client and call user unlock calback 
+ *
  * @see xmldb_unlock_all  unlocks, but does not call user callbacks which is a backend thing
  */
 static int
@@ -167,9 +170,9 @@ release_all_dbs(clicon_handle h,
  * @param[in]     nsc     XML Namespace context for xpath
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @param[out]    xerr    XML error tree, if retval = 0
- * @retval       -1       Error (fatal)
- * @retval        0       Statedata callback failed, error in xerr
  * @retval        1       OK
+ * @retval        0       Statedata callback failed, error in xerr
+ * @retval       -1       Error (fatal)
  * @see RFC 6022
  */
 int
@@ -242,6 +245,7 @@ backend_monitoring_state_get(clicon_handle h,
 }
 
 /*! Remove client entry state
+ *
  * Close down everything wrt clients (eg sockets, subscriptions)
  * Finally actually remove client struct in handle
  * @param[in]  h   Clicon handle
@@ -308,6 +312,7 @@ backend_client_rm(clicon_handle        h,
 }
 
 /*! Get clixon per datastore stats
+ *
  * @param[in]     h       Clicon handle
  * @param[in]     dbname  Datastore name
  * @param[in,out] cb      Cligen buf
@@ -351,6 +356,7 @@ clixon_stats_datastore_get(clicon_handle h,
 }
 
 /*! Get clixon per datastore stats
+ *
  * @param[in]     h       Clicon handle
  * @param[in]     dbname  Datastore name
  * @param[in,out] cb      Cligen buf
@@ -616,6 +622,7 @@ from_client_edit_config(clicon_handle h,
 } /* from_client_edit_config */
 
 /*! Create or replace an entire config with another complete config db
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
@@ -701,6 +708,7 @@ from_client_copy_config(clicon_handle h,
 }
 
 /*! Delete a configuration datastore.
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
@@ -951,6 +959,7 @@ from_client_unlock(clicon_handle h,
 }
 
 /*! Request graceful termination of a NETCONF session.
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
@@ -1034,6 +1043,7 @@ from_client_kill_session(clicon_handle h,
 }
 
 /*! Create a notification subscription
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
@@ -1256,6 +1266,7 @@ from_client_get_schema(clicon_handle h,
 }
 
 /*! Set debug level. 
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
@@ -1293,6 +1304,7 @@ from_client_debug(clicon_handle h,
 }
 
 /*! Check liveness of backend daemon,  just send a reply
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
@@ -1313,6 +1325,7 @@ from_client_ping(clicon_handle h,
 }
 
 /*! Check liveness of backend daemon,  just send a reply
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
@@ -1370,6 +1383,7 @@ from_client_stats(clicon_handle h,
 }
 
 /*! Request restart of specific plugins
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
@@ -1417,6 +1431,7 @@ from_client_restart_plugin(clicon_handle h,
 }
 
 /*! Control a specific process or daemon: start/stop, etc
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
@@ -1766,6 +1781,7 @@ from_client_msg(clicon_handle        h,
 }
 
 /*! An internal clicon message has arrived from a client. Receive and dispatch.
+ *
  * @param[in]   s    Socket where message arrived. read from this.
  * @param[in]   arg  Client entry (from).
  * @retval      0    OK
@@ -1805,6 +1821,7 @@ from_client(int   s,
 }
 
 /*! Init backend rpc: Set up standard netconf rpc callbacks
+ *
  * @param[in]  h     Clicon handle
  * @retval     0     OK
  * @retval    -1     Error (fatal)

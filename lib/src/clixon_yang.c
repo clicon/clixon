@@ -237,7 +237,7 @@ yang_argument_get(yang_stmt *ys)
  */
 /*! Set yang argument, not not copied
  * @param[in] ys   Yang statement node
- * @param[in] arg  Argument
+ * @param[in] arg  Argument, note must be malloced
  * Typically only done at parsing / initiation
  */
 int

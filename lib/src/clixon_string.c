@@ -118,6 +118,7 @@ clicon_strsep(char *string,
 }
 
 /*! Concatenate elements of a string array into a string. 
+ *
  * An optional delimiter string can be specified which will be inserted betwen 
  * each element. 
  * @retval  str   Joined string. Free after use.
@@ -150,6 +151,7 @@ clicon_strjoin(int         argc,
 }
 
 /*! Join two string with delimiter.
+ *
  * @param[in] str1   string 1 (will be freed) (optional)
  * @param[in] del    delimiter string (not freed) cannot be NULL (but "")
  * @param[in] str2   string 2 (not freed) mandatory
@@ -186,6 +188,7 @@ clixon_string_del_join(char *str1,
 }
 
 /*! Split a string once into two parts: prefix and suffix
+ *
  * @param[in]  string
  * @param[in]  delim
  * @param[out] prefix  If non-NULL, return malloced string, or NULL.
@@ -263,6 +266,7 @@ uri_unreserved(unsigned char in)
 }
 
 /*! Percent encoding according to RFC 3986 URI Syntax
+ *
  * @param[out]  encp   Encoded malloced output string
  * @param[in]   fmt    Not-encoded input string (stdarg format string)
  * @param[in]   ...    stdarg variable parameters
@@ -334,6 +338,7 @@ uri_percent_encode(char **encp,
 }
 
 /*! Percent decoding according to RFC 3986 URI Syntax
+ *
  * @param[in]   enc    Encoded input string     
  * @param[out]  strp   Decoded malloced output string. Deallocate with free()
  * @retval      0      OK
@@ -388,6 +393,7 @@ uri_percent_decode(char  *enc,
 }
 
 /*! Encode escape characters according to XML definition
+ *
  * @param[out]  encp   Encoded malloced output string
  * @param[in]   fmt    Not-encoded input string (stdarg format string)
  * @param[in]   ...    stdarg variable parameters
@@ -534,6 +540,7 @@ xml_chardata_encode(char      **escp,
 }
 
 /*! Escape characters according to XML definition and append to cbuf
+ *
  * @param[in]   cb     CLIgen buf
  * @param[in]   str    Not-encoded input string
  * @retdata     0      OK
@@ -661,6 +668,7 @@ xml_chardata_decode_ampersand(char *str,
 }
 
 /*! Decode escape characters according to XML definition
+ *
  * @param[out]  decp   Decoded malloced output string
  * @param[in]   fmt    Encoded input string (stdarg format string)
  * @see xml_chardata_encode for encoding
@@ -834,6 +842,7 @@ uri_str2cvec(char  *string,
 }
 
 /*! Map from int to string using str2int map
+ *
  * @param[in] ms   String, integer map
  * @param[in] i    Input integer
  * @retval    str  String value
@@ -853,6 +862,7 @@ clicon_int2str(const map_str2int *mstab,
 }
 
 /*! Map from string to int using str2int map
+ *
  * @param[in] ms   String, integer map
  * @param[in] str  Input string
  * @retval    int  Value
@@ -872,14 +882,15 @@ clicon_str2int(const map_str2int *mstab,
 }
 
 /*! Map from string to int using binary (alphatical) search
+ *
  * @param[in]  ms    String, integer map
  * @param[in]  str   Input string
  * @param[in]  low   Lower bound index
  * @param[in]  upper Upper bound index
  * @param[in]  len   Length of array (max)
  * @param[out] found Integer found (can also be negative)
- * @retval    0      Not found
- * @retval    1      Found with "found" value set.
+ * @retval     1     Found with "found" value set.
+ * @retval     0     Not found
  * @note Assumes sorted strings, tree search
  */
 static int
@@ -911,6 +922,7 @@ str2int_search1(const map_str2int *mstab,
 }
 
 /*! Map from string to int using str2int map
+ *
  * @param[in] ms   String, integer map
  * @param[in] str  Input string
  * @retval    int  Value
@@ -931,6 +943,7 @@ clicon_str2int_search(const map_str2int *mstab,
 }
 
 /*! Map from string to string using str2str map
+ *
  * @param[in] mstab String, string map
  * @param[in] str   Input string
  * @retval    str   Output string
@@ -949,6 +962,7 @@ clicon_str2str(const map_str2str *mstab,
 }
 
 /*! Split colon-separated node identifier into prefix and name
+ *
  * @param[in]  node-id
  * @param[out] prefix  If non-NULL, return malloced string, or NULL.
  * @param[out] id      If non-NULL, return malloced identifier.

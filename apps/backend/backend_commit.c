@@ -706,7 +706,6 @@ candidate_commit(clicon_handle h,
             goto done;
         goto fail;
     }
-
     /* 7. Call plugin transaction commit callbacks */
     if (plugin_transaction_commit_all(h, td) < 0)
         goto done;
