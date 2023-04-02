@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SNMP test for yang union type with are same types of subtypes
+# SNMP test for yang union type with are same types of subtypes.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -20,6 +20,8 @@ fstate=$dir/state.xml
 # AgentX unix socket
 SOCK=/var/run/snmp.sock
 
+# Relies on example_backend.so for $fstate file handling
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -32,58 +34,38 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
+  <CLICON_SNMP_MIB>clixon-example</CLICON_SNMP_MIB>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
 </clixon-config>
 EOF
 
 cat <<EOF > $fyang
 module clixon-example{
-    yang-version 1.1;
-    namespace "urn:example:clixon";
-    prefix ex;
-    
-    import ietf-yang-smiv2 {
-        prefix smiv2;
-    }
-    typedef first {
-        type string{
-        pattern
-            "first"; 
-        }
-        description "first string";
-    }
-    typedef second {
-        type string{
-        pattern
-            "second"; 
-        }
-        description "second string";
-    }
-    typedef third {
-        type string{
-        pattern
-            "third"; 
-        }
-        description "third string";
-    }
-
-    /* Generic config data */
+  yang-version 1.1;
+  namespace "urn:example:clixon";
+  prefix ex;
+  import ietf-yang-smiv2 {
+    prefix smiv2;
+  }
+  /* Generic config data */
     container table{
         smiv2:oid "1.3.6.1.2.1.47.1.1.1";
         list parameter{
             smiv2:oid "1.3.6.1.2.1.47.1.1.1.1";
-            key index;
-            leaf index{
+            key Index;
+
+            leaf Index{
                 type int32;
                 smiv2:oid "1.3.6.1.2.1.47.1.1.1.1.1";
             }
-            leaf name{
-                type union{
-                    type ex:first;
-                    type ex:second;
-                    type ex:third;
-                }
-                description "name";
+            leaf Union_exm{
+                description "Union with same subtypes";
+                config false;
+                type union
+                {
+                    type int32;
+                    type int32; 
+                }                
                 smiv2:oid "1.3.6.1.2.1.47.1.1.1.1.2";
             }
         }
@@ -92,23 +74,21 @@ module clixon-example{
 EOF
 
 # This is state data written to file that backend reads from (on request)
+# integer and string have values, sleeper does not and uses default (=1)
 
 cat <<EOF > $fstate
    <table xmlns="urn:example:clixon">
      <parameter>
-        <index>1</index>
-        <name>first</name>
+       <Index>2</Index>
+       <Union_exm>4</Union_exm>
      </parameter>
      <parameter>
-        <index>2</index>
-        <name>second</name>
-     </parameter>
-     <parameter>
-        <index>3</index>
-        <name>third</name>
+       <Index>12</Index>
+       <Union_exm>14</Union_exm>
      </parameter>
    </table>
 EOF
+
 function testinit(){
     new "test params: -s init -f $cfg -- -sS $fstate"
     if [ $BE -ne 0 ]; then
@@ -158,28 +138,42 @@ function testexit(){
 
 ENTITY_OID=".1.3.6.1.2.1.47.1.1.1"
 
-echo $($snmpwalk) 
+# name, value=2
+OID1="${ENTITY_OID}.1.1.2"
+# name, value=12
+OID2="${ENTITY_OID}.1.1.12"
+# value, value=2
+OID3="${ENTITY_OID}.1.2.2"
+# value, value=12
+OID4="${ENTITY_OID}.1.2.12"
+# stat, value=2
+OIDX="${ENTITY_OID}.1.3.2"
+# stat, value=12
+OIDY="${ENTITY_OID}.1.3.12"
 
-# first string, value=first
-OID_FIRST="${ENTITY_OID}.1.1.1"
-# second string, value=second
-OID_SECOND="${ENTITY_OID}.1.1.2"
-# third string, value=third
-OID_THIRD="${ENTITY_OID}.1.1.3"
 
 new "SNMP system tests"
 testinit
+ 
+new "Get index, $OID1"
+validate_oid $OID1 $OID1 "INTEGER" "2"
 
-new "Get index, $OID_FIRST"
-validate_oid $OID_FIRST $OID_FIRST "STRING" "1first"
-# new "Get next $OID_FIRST"
-# validate_oid $OID_FIRST $OID_SECOND "STRING" "second"
-# new "Get index, $OID_SECOND"
-# validate_oid $OID_SECOND $OID_SECOND "STRING" "second"
-# new "Get next $OID_SECOND"
-# validate_oid $OID_SECOND $OID_THIRD "STRING" "third"
-# new "Get index, $OID_THIRD"
-# validate_oid $OID_THIRD $OID_THIRD "STRING" "third"
+new "Get next $OID1"
+validate_oid $OID1 $OID2 "INTEGER" "12"
+
+new "Get index, $OID2"
+validate_oid $OID2 $OID2 "INTEGER" "12"
+new "Get next $OID2"
+validate_oid $OID2 $OID3 "INTEGER" "4"
+
+new "Get index, $OID3"
+validate_oid $OID3 $OID3 "INTEGER" "4"
+
+new "Get next $OID4"
+validate_oid $OID3 $OID4 "INTEGER" "14"
+
+new "Get index, $OID4"
+validate_oid $OID4 $OID4 "INTEGER" "14"
 
 new "Cleaning up"
 testexit

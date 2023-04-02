@@ -349,7 +349,7 @@ snmp_yang_type_get(yang_stmt  *ys,
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
         goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
-    restype = yang_type_to_snmp(restype, restype);
+    restype = yang_type_to_snmp(yrestype, restype);
     if (strcmp(restype, "leafref")==0){
         if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
             clicon_err(OE_YANG, 0, "No path in leafref");
