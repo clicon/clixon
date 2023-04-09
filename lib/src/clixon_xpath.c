@@ -1264,8 +1264,10 @@ xml2xpath1(cxobj *x,
             cvi = NULL;
             while ((cvi = cvec_each(cvk, cvi)) != NULL) {
                 keyname = cv_string_get(cvi);
-                if ((xkey = xml_find(x, keyname)) == NULL)
-                    goto done; /* No key in xml */
+                if ((xkey = xml_find(x, keyname)) == NULL){
+                    clicon_err(OE_XML, 0, "No key %s in list %s", keyname, xml_name(x));
+                    goto done;
+                }
                 if ((xb = xml_find(x, keyname)) == NULL)
                     goto done;
                 b = xml_body(xb);

@@ -112,6 +112,8 @@ int cli_commit(clicon_handle h, cvec *vars, cvec *argv);
 
 int cli_validate(clicon_handle h, cvec *vars, cvec *argv);
 
+int compare_db_names(clicon_handle h, enum format_enum format, char *db1, char *db2);
+
 int compare_dbs(clicon_handle h, cvec *vars, cvec *argv);
 
 int load_config_file(clicon_handle h, cvec *vars, cvec *argv);

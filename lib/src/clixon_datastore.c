@@ -121,23 +121,6 @@ xmldb_db2file(clicon_handle  h,
     return retval;
 }
 
-/*! Ensure database name is correct
- * @param[in]   db    Name of database 
- * @retval  0   OK
- * @retval  -1  Failed validate, xret set to error
- * XXX why is this function here? should be handled by netconf yang validation
- */
-int
-xmldb_validate_db(const char *db)
-{
-    if (strcmp(db, "running") != 0 && 
-        strcmp(db, "candidate") != 0 && 
-        strcmp(db, "startup") != 0 && 
-        strcmp(db, "tmp") != 0)
-        return -1;
-    return 0;
-}
-
 /*! Connect to a datastore plugin, allocate resources to be used in API calls
  * @param[in]  h    Clicon handle
  * @retval     0    OK

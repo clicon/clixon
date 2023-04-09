@@ -446,12 +446,6 @@ from_client_edit_config(clicon_handle h,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }   
-    if (xmldb_validate_db(target) < 0){
-        cprintf(cbx, "No such database: %s", target);
-        if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
-            goto done;
-        goto ok;
-    }
     /* Check if target locked by other client */
     iddb = xmldb_islocked(h, target);
     if (iddb && myid != iddb){
@@ -660,20 +654,8 @@ from_client_copy_config(clicon_handle h,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }   
-    if (xmldb_validate_db(source) < 0){
-        cprintf(cbx, "No such database: %s", source);
-        if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
-            goto done;
-        goto ok;
-    }
     if ((target = netconf_db_find(xe, "target")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
-            goto done;
-        goto ok;
-    }
-    if (xmldb_validate_db(target) < 0){
-        cprintf(cbx, "No such database: %s", target);
-        if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
             goto done;
         goto ok;
     }
@@ -743,12 +725,6 @@ from_client_delete_config(clicon_handle h,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }   
-    if (xmldb_validate_db(target) < 0){
-        cprintf(cbx, "No such database: %s", target);
-        if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
-            goto done;
-        goto ok;
-    }
     /* Check if target locked by other client */
     iddb = xmldb_islocked(h, target);
     if (iddb && myid != iddb){
@@ -828,12 +804,6 @@ from_client_lock(clicon_handle h,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }   
-    if (xmldb_validate_db(db) < 0){
-        cprintf(cbx, "No such database: %s", db);
-        if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
-            goto done;
-        goto ok;
-    }
     /*
      * A lock MUST not be granted if either of the following conditions is true:
      * 1) A lock is already held by any NETCONF session or another entity.
@@ -915,12 +885,6 @@ from_client_unlock(clicon_handle h,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }   
-    if (xmldb_validate_db(db) < 0){
-        cprintf(cbx, "No such database: %s", db);
-        if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbx))< 0)
-            goto done;
-        goto ok;
-    }
     iddb = xmldb_islocked(h, db);
     /* 
      * An unlock operation will not succeed if any of the following

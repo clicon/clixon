@@ -55,6 +55,7 @@ Users may have to change how they access the system
 Developers may need to change their code
 
 * C-API
+  * `xmldb_validate` is removed. Yang checks should be enough, remnant of time before YANG checks. 
   * `xml_diff`: removed 1st `yspec` parameter
   * `xml2xpath()`: Added `int apostrophe` as 4th parameter, default 0
     * This is for being able to choose single or double quote as xpath literal quotes

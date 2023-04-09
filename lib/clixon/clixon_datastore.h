@@ -46,7 +46,6 @@
 int xmldb_db2file(clicon_handle h, const char *db, char **filename);
 
 /* API */
-int xmldb_validate_db(const char *db);
 int xmldb_connect(clicon_handle h);
 int xmldb_disconnect(clicon_handle h);
  /* in clixon_datastore_read.[ch] */

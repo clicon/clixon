@@ -379,6 +379,8 @@ clicon_msg_send(int                s,
  * @param[in]   intr   If set, make a ^C cause an error   
  * @param[out]  msg    CLICON msg data reply structure. Free with free()
  * @param[out]  eof    Set if eof encountered
+ * @retval      0      OK
+ * @retval     -1      Error
  * Note: caller must ensure that s is closed if eof is set after call.
  * @see clicon_msg_rcv1 using plain NETCONF
  */
@@ -451,7 +453,7 @@ clicon_msg_rcv(int                s,
     clicon_debug(CLIXON_DBG_MSG, "Recv: %s", (*msg)->op_body);
  ok:
     retval = 0;
-  done:
+ done:
     clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (intr){
         set_signal(SIGINT, oldhandler, NULL);

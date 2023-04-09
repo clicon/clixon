@@ -835,37 +835,31 @@ cli_validate(clicon_handle h,
     return retval;
 }
 
-/*! Compare two dbs using XML. Write to file and run diff
- * @param[in]   h     Clicon handle
- * @param[in]   cvv  
- * @param[in]   argv  arg: 0 as xml, 1: as text
+/*! Compare two datastore by name and formats
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  format Output format
+ * @param[in]  db1    Name of first datastrore
+ * @param[in]  db2    Name of second datastrore
  */
 int
-compare_dbs(clicon_handle h, 
-            cvec         *cvv, 
-            cvec         *argv)
+compare_db_names(clicon_handle    h, 
+                 enum format_enum format,
+                 char            *db1,
+                 char            *db2)
 {
-    cxobj *xc1 = NULL; /* running xml */
-    cxobj *xc2 = NULL; /* candidate xml */
-    cxobj *xerr = NULL;
-    int    retval = -1;
-    enum format_enum format;
+    int              retval = -1;
+    cxobj           *xc1 = NULL;
+    cxobj           *xc2 = NULL;
+    cxobj           *xerr = NULL;
 
-    if (cvec_len(argv) > 1){
-        clicon_err(OE_PLUGIN, EINVAL, "Requires 0 or 1 element. If given: astext flag 0|1");
-        goto done;
-    }
-    if (cvec_len(argv) && cv_int32_get(cvec_i(argv, 0)) == 1)
-        format = FORMAT_TEXT;
-    else
-        format = FORMAT_XML;
-    if (clicon_rpc_get_config(h, NULL, "running", "/", NULL, NULL, &xc1) < 0)
+    if (clicon_rpc_get_config(h, NULL, db1, "/", NULL, NULL, &xc1) < 0)
         goto done;
     if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
         clixon_netconf_error(xerr, "Get configuration", NULL);
         goto done;
     }
-    if (clicon_rpc_get_config(h, NULL, "candidate", "/", NULL, NULL, &xc2) < 0)
+    if (clicon_rpc_get_config(h, NULL, db2, "/", NULL, NULL, &xc2) < 0)
         goto done;
     if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
         clixon_netconf_error(xerr, "Get configuration", NULL);
@@ -879,6 +873,34 @@ compare_dbs(clicon_handle h,
         xml_free(xc1);    
     if (xc2)
         xml_free(xc2);
+    return retval;
+}
+
+/*! Compare two dbs using XML. Write to file and run diff
+ * @param[in]   h     Clicon handle
+ * @param[in]   cvv  
+ * @param[in]   argv  arg: 0 as xml, 1: as text
+ */
+int
+compare_dbs(clicon_handle h, 
+            cvec         *cvv, 
+            cvec         *argv)
+{
+    int    retval = -1;
+    enum format_enum format;
+
+    if (cvec_len(argv) > 1){
+        clicon_err(OE_PLUGIN, EINVAL, "Requires 0 or 1 element. If given: astext flag 0|1");
+        goto done;
+    }
+    if (cvec_len(argv) && cv_int32_get(cvec_i(argv, 0)) == 1)
+        format = FORMAT_TEXT;
+    else
+        format = FORMAT_XML;
+    if (compare_db_names(h, format, "running", "candidate") < 0)
+        goto done;
+    retval = 0;
+ done:
     return retval;
 }
 

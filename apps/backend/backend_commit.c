@@ -802,14 +802,12 @@ from_client_commit(clicon_handle h,
         clicon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
         if ((ret = from_client_confirmed_commit(h, xe, myid, cbret)) < 0)
             goto done;
         if (ret == 0)
             goto ok;
     }
-
     /* Check if target locked by other client */
     iddb = xmldb_islocked(h, "running");
     if (iddb && myid != iddb){
