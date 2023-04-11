@@ -6,6 +6,12 @@ module clixon-lib {
     import ietf-yang-types {
         prefix yang;
     }    
+    import ietf-netconf-monitoring {
+        prefix ncm;
+    }    
+    import ietf-yang-metadata {
+        prefix "md";
+    }
     organization
         "Clicon / Clixon";
 
@@ -13,22 +19,7 @@ module clixon-lib {
         "Olof Hagsand <olof@hagsand.se>";
 
     description
-      "Clixon Netconf extensions for communication between clients and backend.
-
-       Clixon extends NETCONF for internal use with some internal attributes. These
-       are not visible for external usage bit belongs to the namespace of this YANG.
-       The internal attributes are:
-       - content (also RESTCONF)
-       - depth   (also RESTCONF)
-       - username
-       - autocommit
-       - copystartup
-       - transport (see RFC6022)
-       - source-host (see RFC6022)
-       - objectcreate
-       - objectexisted
-      
-       ***** BEGIN LICENSE BLOCK *****
+        "***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2009-2019 Olof Hagsand
        Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
        
@@ -55,8 +46,37 @@ module clixon-lib {
        the provisions above, a recipient may use your version of this file under
        the terms of any one of the Apache License version 2 or the GPL.
 
-       ***** END LICENSE BLOCK *****";
+       ***** END LICENSE BLOCK *****
 
+       Clixon Netconf extensions for communication between clients and backend.
+       This scheme adds:
+       - Added values of RFC6022 transport identityref 
+       - RPCs for debug, stats and process-control
+       - Informal description of attributes
+
+       Clixon also extends NETCONF for internal use with some internal attributes. These
+       are not visible for external usage bit belongs to the namespace of this YANG.
+       The internal attributes are:
+       - content (also RESTCONF)
+       - depth   (also RESTCONF)
+       - username
+       - autocommit
+       - copystartup
+       - transport (see RFC6022)
+       - source-host (see RFC6022)
+       - objectcreate
+       - objectexisted
+      ";
+
+    revision 2023-03-01 {
+        description
+            "Added creator meta-object";
+    }
+    revision 2022-12-01 {
+        description
+            "Added values of RFC6022 transport identityref 
+             Added description of internal netconf attributes";
+    }
     revision 2021-12-05 {
         description
             "Obsoleted: extension autocli-op";
@@ -100,15 +120,15 @@ module clixon-lib {
         type enumeration {
             enum start {
                 description
-                    "Start if not already running";
+                "Start if not already running";
             }
             enum stop {
                 description
-                    "Stop if running";
+                "Stop if running";
             }
             enum restart {
                 description
-                    "Stop if running, then start";
+                "Stop if running, then start";
             }
             enum status {
                 description
@@ -118,9 +138,31 @@ module clixon-lib {
         description
             "Common operations that can be performed on a service";
     }
+    identity snmp {
+        description
+            "SNMP";
+        base ncm:transport;
+    }
+    identity netconf {
+        description
+            "Just NETCONF without specific underlying transport, 
+             Clixon uses stdio for its netconf client and therefore does not know whether it is
+             invoked in a script, by a NETCONF/SSH subsystem, etc";
+        base ncm:transport;
+    }
+    identity restconf {
+        description
+            "RESTCONF either as HTTP/1 or /2, TLS or not, reverese proxy (eg fcgi/nginx) or native";
+        base ncm:transport;
+    }
+    identity cli {
+        description
+            "A CLI session";
+        base ncm:transport;
+    }
     extension autocli-op {
-      description 
-        "Takes an argument an operation defing how to modify the clispec at 
+        description 
+            "Takes an argument an operation defing how to modify the clispec at 
          this point in the YANG tree for the automated generated CLI.
          Note that this extension is only used in clixon_cli.
          Operations is expected to be extended, but the following operations are defined:
@@ -128,10 +170,21 @@ module clixon-lib {
                  - hide-database                                  This command hides the database
          - hide-database-auto-completion  This command hides the database and the auto completion (meaning, this command acts as both commands above)
          Obsolete: use clixon-autocli:hide and clixon-autocli:hide-show  instead";
-      argument cliop;
-      status obsolete;
-   }
-   rpc debug {
+        argument cliop;
+        status obsolete;
+    }
+
+    md:annotation creator {
+        type string;
+        description
+            "This annotation contains the name of a creator of an object.
+             One application is the clixon controller where multiple services can
+             create the same object. When such a service is deleted (or changed) one needs to keep
+             track of which service created what.
+             Limitations: only objects that are actually added or deleted. 
+             A sub-object wil not be noted";
+    }
+    rpc debug {
         description "Set debug level of backend.";
         input {
             leaf level {

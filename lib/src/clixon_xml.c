@@ -180,11 +180,11 @@ struct xml{
     int               x_childvec_len;/* Number of children */
     int               x_childvec_max;/* Length of allocated vector */
 
-
     cvec             *x_ns_cache;   /* Cached vector of namespaces (set by bind-yang) */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, 
                                        by reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
+    cvec             *x_creators;   /* Support clixon-lib creator annotation */
 #ifdef XML_EXPLICIT_INDEX
     struct search_index *x_search_index; /* explicit search index vectors */
 #endif
@@ -615,6 +615,72 @@ xml_flag_reset(cxobj   *xn,
 {
     xn->x_flags &= ~flag;
     return 0;
+}
+
+/*! Add a creator string
+ */
+int
+xml_creator_add(cxobj *xn,
+                char  *str)
+{
+    int     retval = -1;
+    cg_var *cv;
+    
+    if (!is_element(xn))
+        return 0;
+    if (xn->x_creators == NULL){
+        if ((xn->x_creators = cvec_new(0)) == NULL){
+            clicon_err(OE_XML, errno, "cvec_new");
+            goto done;
+        }
+    }
+    if ((cv = cvec_find(xn->x_creators, str)) == NULL) 
+        cvec_add_string(xn->x_creators, str, NULL);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Remove a creator string
+ */
+int
+xml_creator_rm(cxobj *xn,
+               char  *str)
+{
+    cg_var *cv;
+    
+    if (!is_element(xn))
+        return 0;
+    if ((cv = cvec_find(xn->x_creators, str)) == NULL)
+        return 0;
+    return cvec_del(xn->x_creators, cv);
+}
+
+/*! Find a creator string
+ */
+int
+xml_creator_find(cxobj *xn,
+                 char  *str)
+{
+    if (!is_element(xn))
+        return 0;
+    if (xn->x_creators != NULL &&
+        cvec_find(xn->x_creators, str) != NULL)
+        return 1;
+    return 0;
+}
+
+/*! Get number of creator strings
+ */
+size_t
+xml_creator_len(cxobj *xn)
+{
+    if (!is_element(xn))
+        return 0;
+    if (xn->x_creators)
+        return cvec_len(xn->x_creators);
+    else
+        return 0;
 }
 
 /*! Get value of xnode
@@ -1874,6 +1940,8 @@ xml_free(cxobj *x)
 #ifdef XML_EXPLICIT_INDEX
         xml_search_index_free(x);
 #endif
+        if (x->x_creators)
+            cvec_free(x->x_creators);
         break;
     case CX_BODY:
     case CX_ATTR:
@@ -1915,6 +1983,11 @@ xml_copy_one(cxobj *x0,
     switch (xml_type(x0)){
     case CX_ELMNT:
         xml_spec_set(x1, xml_spec(x0));
+        if (x0->x_creators)
+            if ((x1->x_creators = cvec_dup(x0->x_creators)) == NULL){
+                clicon_err(OE_UNIX, errno, "cvec_dup");
+                goto done;
+            }
         break;
     case CX_BODY:
     case CX_ATTR:
@@ -2069,6 +2142,7 @@ cxvec_prepend(cxobj   *x,
 
 
 /*! Apply a function call recursively on all xml node children recursively
+ *
  * Recursively traverse all xml nodes in a parse-tree and apply fn(arg) for 
  * each object found. The function is called with the xml node and an 
  * argument as args.

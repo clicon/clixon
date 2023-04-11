@@ -43,7 +43,7 @@ YANG_INSTALLDIR   = @YANG_INSTALLDIR@
 
 # Note: mirror these to test/config.sh.in
 YANGSPECS	 = clixon-config@2023-03-01.yang   # 6.2
-YANGSPECS	+= clixon-lib@2022-12-01.yang      # 6.1
+YANGSPECS	+= clixon-lib@2023-03-01.yang      # 6.2
 YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
 YANGSPECS	+= clixon-xml-changelog@2019-03-21.yang
 YANGSPECS	+= clixon-restconf@2022-08-01.yang # 5.9

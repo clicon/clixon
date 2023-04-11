@@ -48,8 +48,10 @@ Expected: April 2023
 
 Users may have to change how they access the system
 
-* New `clixon-config@2022-12-01.yang` revision
+* New `clixon-config@2023-03-01.yang` revision
   * Added options: `CLICON_RESTCONF_NOALPN_DEFAULT`
+* New `clixon-lib@2023-03-01.yang` revision
+  * Added creator meta-object
 
 ### C/CLI-API changes on existing features
 Developers may need to change their code

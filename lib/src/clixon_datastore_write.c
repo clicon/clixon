@@ -92,7 +92,7 @@
  * If such an attribute its found, its string value is returned.
  * @param[in]  x         XML node (where to look for attribute)
  * @param[in]  name      Attribute name
- * @param[in]  ns            (Expected)Namespace of attribute
+ * @param[in]  ns        (Expected) Namespace of attribute
  * @param[out] cbret     Error message (if retval=0)
  * @param[out] valp      Malloced value (if retval=1)
  * @retval    -1         Error
@@ -489,6 +489,7 @@ text_modify(clicon_handle       h,
     char      *restype;
     int        ismount = 0;
     yang_stmt *mount_yspec = NULL;
+    char      *creator = NULL;
 
     if (x1 == NULL){
         clicon_err(OE_XML, EINVAL, "x1 is missing");
@@ -511,6 +512,7 @@ text_modify(clicon_handle       h,
         goto done;
     if (ret == 0)
         goto fail;
+
     if (createstr != NULL &&
         (op == OP_REPLACE || op == OP_MERGE || op == OP_CREATE)){
         if (x0 == NULL || xml_defaults_nopresence(x0, 0)){ /* does not exist or is default */
@@ -529,6 +531,11 @@ text_modify(clicon_handle       h,
             clicon_data_set(h, "objectexisted", "true");
         }
     }
+    /* Special clixon-lib attribute for keeping track of creator of objects */
+    if ((ret = attr_ns_value(x1, "creator", CLIXON_LIB_NS, cbret, &creator)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
     x1name = xml_name(x1);
 
     if (yang_keyword_get(y0) == Y_LEAF_LIST ||
@@ -932,12 +939,17 @@ text_modify(clicon_handle       h,
                 if (ret == 0)
                     goto fail;
             }
+            if (creator){
+                if (xml_creator_add(x0, creator) < 0)
+                    goto done;
+            }
             if (changed){
 #ifdef XML_PARENT_CANDIDATE
                 xml_parent_candidate_set(x0, NULL);
 #endif
                 if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
                     goto done;
+
             }
             break;
         case OP_DELETE:
@@ -972,6 +984,8 @@ text_modify(clicon_handle       h,
         free(instr);
     if (opstr)
         free(opstr);
+    if (creator)
+        free(creator);
     if (createstr)
         free(createstr);
     if (nscx1)

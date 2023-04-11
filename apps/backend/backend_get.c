@@ -328,8 +328,7 @@ get_statedata(clicon_handle     h,
         /* Mark and remove nodes having schema default values */
         if (xml_apply((*xret), CX_ELMNT, (xml_applyfn_t*) xml_flag_state_default_value, (void*) XML_FLAG_MARK) < 0)
             goto done;
-        if (xml_tree_prune_flags((*xret), XML_FLAG_MARK, XML_FLAG_MARK)
-            < 0)
+        if (xml_tree_prune_flags((*xret), XML_FLAG_MARK, XML_FLAG_MARK)< 0)
             goto done;        
         if (xml_defaults_nopresence((*xret), 1) < 0)
             goto done;
