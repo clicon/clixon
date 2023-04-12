@@ -163,7 +163,7 @@ restconf_pseudo_set_inline(clicon_handle h,
                     clicon_err(OE_XML, errno, "cbuf_new");
                     goto done;
                 }
-                if (clixon_xml2cbuf(cb, xrestconf, 0, 0, -1, 0) < 0)
+                if (clixon_xml2cbuf(cb, xrestconf, 0, 0, NULL, -1, 0) < 0)
                     goto done;
                 if ((str = strdup(cbuf_get(cb))) == NULL){
                     clicon_err(OE_XML, errno, "stdup");

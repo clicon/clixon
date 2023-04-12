@@ -797,7 +797,7 @@ xmldb_get_nocache(clicon_handle    h,
         clicon_log(LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
 #endif
     if (clicon_debug_get()>1)
-        if (clixon_xml2file(stderr, xt, 0, 1, fprintf, 0, 0) < 0)
+        if (clixon_xml2file(stderr, xt, 0, 1, NULL, fprintf, 0, 0) < 0)
             goto done;
     *xtop = xt;
     xt = NULL;
@@ -1143,7 +1143,7 @@ xmldb_get_zerocopy(clicon_handle    h,
             goto done;
     }
     if (clicon_debug_get() > 1)
-        if (clixon_xml2file(stderr, x0t, 0, 1, fprintf, 0, 0) < 0)
+        if (clixon_xml2file(stderr, x0t, 0, 1, NULL, fprintf, 0, 0) < 0)
             goto done;
     *xtop = x0t;
     retval = 1;

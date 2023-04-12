@@ -450,7 +450,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
         goto done;
     }
     rpcname = xml_name(xname); /* Store rpc name and use in yang binding after reply */
-    if (clixon_xml2cbuf(cb, xml, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xml, 0, 0, NULL, -1, 0) < 0)
         goto done;
     if (clicon_rpc_netconf(h, cbuf_get(cb), xret, sp) < 0)
         goto done;
@@ -502,10 +502,6 @@ clicon_rpc_netconf_xml(clicon_handle  h,
  *       err;
  *   if (clicon_rpc_get_config(h, NULL, "running", "/hello/world", nsc, "explicit", &xt) < 0)
  *       err;
- *   if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
- *      clixon_netconf_error(xerr, "msg", "/hello/world");
- *      err;
- *   }
  *   if (xt)
  *      xml_free(xt);
  *  if (nsc)

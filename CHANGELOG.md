@@ -50,6 +50,7 @@ Users may have to change how they access the system
 
 * New `clixon-config@2023-03-01.yang` revision
   * Added options: `CLICON_RESTCONF_NOALPN_DEFAULT`
+  * Extended datastore-format with CLI and text
 * New `clixon-lib@2023-03-01.yang` revision
   * Added creator meta-object
 
@@ -57,6 +58,11 @@ Users may have to change how they access the system
 Developers may need to change their code
 
 * C-API
+  * `clixon_xml2file` and `clixon_xml2cbuf` added `prefix` argument
+    * Example application is to add "+"/"-" for diffs
+    * Example change:
+      * `clixon_xml2file(f,x,p,f,s,a)` -> `clixon_xml2file(f,x,p,NULL,f,s,a)`
+      * `clixon_xml2cbuf(c,x,l,p,d,s)` -> `clixon_xml2cbuf(c,x,l,p,NULL,d,s)`
   * `xmldb_validate` is removed. Yang checks should be enough, remnant of time before YANG checks. 
   * `xml_diff`: removed 1st `yspec` parameter
   * `xml2xpath()`: Added `int apostrophe` as 4th parameter, default 0

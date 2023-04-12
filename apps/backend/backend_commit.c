@@ -193,7 +193,7 @@ startup_common(clicon_handle       h,
                            * See similar clause below
                            */
             }
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
                 goto done;
             goto fail;
         }
@@ -262,7 +262,7 @@ startup_common(clicon_handle       h,
     if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail; 
     }
@@ -270,7 +270,7 @@ startup_common(clicon_handle       h,
     if ((ret = xml_non_config_data(xt, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail; 
     }
@@ -305,7 +305,7 @@ startup_common(clicon_handle       h,
     if ((ret = generic_validate(h, yspec, td, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail; /* STARTUP_INVALID */
     }
@@ -612,7 +612,7 @@ candidate_validate(clicon_handle h,
             clicon_err(OE_CFG, EINVAL, "xret is NULL");
             goto done;
         }
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         if (!cbuf_len(cbret) &&
             netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
@@ -702,7 +702,7 @@ candidate_commit(clicon_handle h,
             goto done;
     }
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail;
     }
@@ -969,7 +969,7 @@ from_client_restart_one(clicon_handle h,
     if ((ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail;
     }
@@ -1018,7 +1018,7 @@ from_client_restart_one(clicon_handle h,
     if ((ret = generic_validate(h, yspec, td, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail;
     }

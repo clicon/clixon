@@ -76,6 +76,7 @@ int yang_xml_mandatory(cxobj *xt, yang_stmt *ys);
 int xml_rpc_isaction(cxobj *xn);
 int xml_find_action(cxobj *xn, int top, cxobj **xap);
 int purge_tagged_nodes(cxobj *xn, char *ns, char *name, char *value, int keepnode);
-int clixon_compare_xmls(cxobj *xc1, cxobj *xc2, enum format_enum format, clicon_output_cb *fn);
+int clixon_compare_xmls(cxobj *xc1, cxobj *xc2, enum format_enum format);
+int xml_tree_diff_print(cbuf *cb, int level, cxobj *x0, cxobj *x1, enum format_enum format);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

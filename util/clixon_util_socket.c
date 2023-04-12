@@ -167,7 +167,7 @@ main(int    argc,
         fprintf(stderr, "No xml\n");
         goto done;
     }
-    if (clixon_xml2cbuf(cb, xc, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xc, 0, 0, NULL, -1, 0) < 0)
         goto done;
     if ((msg = clicon_msg_encode(getpid(), "%s", cbuf_get(cb))) < 0)
         goto done;

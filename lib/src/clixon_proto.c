@@ -805,7 +805,7 @@ send_msg_notify_xml(clicon_handle h,
         clicon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
-    if (clixon_xml2cbuf(cb, xev, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xev, 0, 0, NULL, -1, 0) < 0)
         goto done;
     if (send_msg_notify(s, cbuf_get(cb)) < 0)
         goto done;

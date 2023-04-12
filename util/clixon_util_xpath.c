@@ -99,7 +99,7 @@ ctx_print2(cbuf   *cb,
     case XT_NODESET:
         for (i=0; i<xc->xc_size; i++){
             cprintf(cb, "%d:", i);
-            if (clixon_xml2cbuf(cb, xc->xc_nodeset[i], 0, 0, -1, 0) < 0)
+            if (clixon_xml2cbuf(cb, xc->xc_nodeset[i], 0, 0, NULL, -1, 0) < 0)
                 goto done;
         }
         break;

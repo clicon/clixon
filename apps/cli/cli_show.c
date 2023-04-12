@@ -511,7 +511,7 @@ cli_show_common(clicon_handle    h,
                 /* Print configuration according to format */
                 switch (format){
                 case FORMAT_XML:
-                    if (clixon_xml2file(stdout, xp, 0, pretty, cligen_output, skiptop, 1) < 0)
+                    if (clixon_xml2file(stdout, xp, 0, pretty, NULL, cligen_output, skiptop, 1) < 0)
                         goto done;
                     if (!pretty && i == veclen-1)
                         cligen_output(stdout, "\n");
@@ -531,7 +531,7 @@ cli_show_common(clicon_handle    h,
                         if (pretty)
                             cligen_output(stdout, "\n");
                     }
-                    if (clixon_xml2file(stdout, xp, 2, pretty, cligen_output, skiptop, 1) < 0)
+                    if (clixon_xml2file(stdout, xp, 2, pretty, NULL, cligen_output, skiptop, 1) < 0)
                         goto done;
                     if (i == veclen-1)
                         cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
@@ -1219,7 +1219,7 @@ cli_pagination(clicon_handle h,
             xc = xvec[j];
             switch (format){
             case FORMAT_XML:
-                if (clixon_xml2file(stdout, xc, 0, 1, cligen_output, 0, 1) < 0)
+                if (clixon_xml2file(stdout, xc, 0, 1, NULL, cligen_output, 0, 1) < 0)
                     goto done;
                 break;
             case FORMAT_JSON:

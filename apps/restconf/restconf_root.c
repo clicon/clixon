@@ -204,7 +204,7 @@ api_root_restconf_exact(clicon_handle  h,
     switch (media_out){
     case YANG_DATA_XML:
     case YANG_PATCH_XML:
-        if (clixon_xml2cbuf(cb, xt, 0, pretty, -1, 0) < 0)
+        if (clixon_xml2cbuf(cb, xt, 0, pretty, NULL, -1, 0) < 0)
             goto done;
         break;
     case YANG_DATA_JSON:
@@ -288,7 +288,7 @@ api_yang_library_version(clicon_handle h,
     switch (media_out){
     case YANG_DATA_XML:
     case YANG_PATCH_XML:
-        if (clixon_xml2cbuf(cb, xt, 0, pretty, -1, 0) < 0)
+        if (clixon_xml2cbuf(cb, xt, 0, pretty, NULL, -1, 0) < 0)
             goto done;
         break;
     case YANG_DATA_JSON:

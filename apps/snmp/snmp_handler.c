@@ -430,7 +430,7 @@ snmp_scalar_set(clicon_handle               h,
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    if (clixon_xml2cbuf(cb, xtop, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xtop, 0, 0, NULL, -1, 0) < 0)
         goto done;
     if (clicon_rpc_edit_config(h, "candidate", op, cbuf_get(cb)) < 0)
         goto done;
@@ -500,7 +500,7 @@ snmp_cache_row_op(clicon_handle h,
                 clicon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }   
-            if (clixon_xml2cbuf(cb, xtop, 0, 0, -1, 0) < 0)
+            if (clixon_xml2cbuf(cb, xtop, 0, 0, NULL, -1, 0) < 0)
                 goto done;
             if (clicon_rpc_edit_config(h, "candidate", OP_NONE, cbuf_get(cb)) < 0)
                 goto done;

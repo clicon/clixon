@@ -50,6 +50,7 @@ module clixon-config {
         description
             "Added options:
                     CLICON_RESTCONF_NOALPN_DEFAULT
+             Extended datastore-format with CLI and text
              Released in Clixon 6.2";
     }
     revision 2022-12-01 {
@@ -275,7 +276,7 @@ module clixon-config {
     }
     typedef datastore_format{
         description
-            "Datastore format.";
+            "Datastore format (only xml and json implemented in actual data.";
         type enumeration{
             enum xml{
                 description
@@ -285,6 +286,12 @@ module clixon-config {
             }
             enum json{
                 description "Save and load xmldb as JSON";
+            }
+            enum text{
+                description "'Curly' C-like text format";
+            }
+            enum cli{
+                description "CLI format";
             }
         }
     }

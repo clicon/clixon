@@ -1439,7 +1439,7 @@ rpc_reply_check(clicon_handle h,
     if (ret == 0){
         clicon_debug(1, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
         cbuf_reset(cbret);
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail;
     }
@@ -1448,7 +1448,7 @@ rpc_reply_check(clicon_handle h,
     if (ret == 0){
         clicon_debug(1, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
         cbuf_reset(cbret);
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail;
     }

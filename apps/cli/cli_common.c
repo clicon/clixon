@@ -472,7 +472,7 @@ cli_dbxml(clicon_handle       h,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    if (clixon_xml2cbuf(cb, xtop, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xtop, 0, 0, NULL, -1, 0) < 0)
         goto done;
     if (clicon_rpc_edit_config(h, "candidate", OP_NONE, cbuf_get(cb)) < 0)
         goto done;
@@ -865,7 +865,7 @@ compare_db_names(clicon_handle    h,
         clixon_netconf_error(xerr, "Get configuration", NULL);
         goto done;
     }
-    if (clixon_compare_xmls(xc1, xc2, format, cligen_output) < 0) /* astext? */
+    if (clixon_compare_xmls(xc1, xc2, format) < 0) /* astext? */
         goto done;
     retval = 0;
   done:
@@ -1055,7 +1055,7 @@ load_config_file(clicon_handle h,
         /* Read as datastore-top but transformed into an edit-config "config" */
         xml_name_set(x, NETCONF_INPUT_CONFIG);
     }
-    if (clixon_xml2cbuf(cbxml, xt, 0, 0, -1, 1) < 0)
+    if (clixon_xml2cbuf(cbxml, xt, 0, 0, NULL, -1, 1) < 0)
         goto done;
     if (clicon_rpc_edit_config(h, "candidate",
                                replace?OP_REPLACE:OP_MERGE, 
@@ -1158,7 +1158,7 @@ save_config_file(clicon_handle h,
     } 
     switch (format){
     case FORMAT_XML:
-        if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 1) < 0)
+        if (clixon_xml2file(f, xt, 0, pretty, NULL, fprintf, 0, 1) < 0)
             goto done;
         break;
     case FORMAT_JSON:
@@ -1177,7 +1177,7 @@ save_config_file(clicon_handle h,
         fprintf(f, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target>",
                 NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
         fprintf(f, "\n");
-        if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 1) < 0)
+        if (clixon_xml2file(f, xt, 0, pretty, NULL, fprintf, 0, 1) < 0)
             goto done;
         fprintf(f, "</edit-config></rpc>]]>]]>\n");
         break;
@@ -1288,7 +1288,7 @@ cli_notification_cb(int   s,
             goto done;
         break;
     case FORMAT_XML:
-        if (clixon_xml2file(stdout, xt, 0, 1, cligen_output, 1, 1) < 0)
+        if (clixon_xml2file(stdout, xt, 0, 1, NULL, cligen_output, 1, 1) < 0)
             goto done;
         break;
     default:
@@ -1535,7 +1535,7 @@ cli_copy_config(clicon_handle h,
     /* resuse cb */
     cbuf_reset(cb);
     /* create xml copy tree and merge it with database configuration */
-    if (clixon_xml2cbuf(cb, x2, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, x2, 0, 0, NULL, -1, 0) < 0)
         goto done;
     if (clicon_rpc_edit_config(h, db, OP_MERGE, cbuf_get(cb)) < 0)
         goto done;
