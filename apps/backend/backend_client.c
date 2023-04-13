@@ -1555,7 +1555,7 @@ from_client_msg(clicon_handle        h,
      * op_id from internal message can be out-of-sync from client's sessions-id for the following reasons:
      * 1. Its a hello when the client starts with op_id=0 to get its proper id on hello reply
      * 2. The backend has restarted and the client uses an old op_id
-     * 3. Its a create-subsciption message that uses a separate socket(=client) 
+     * 3. Its a create-subscription message that uses a separate socket(=client) 
      */
     if (op_id != 0 && ce->ce_id != op_id && strcmp(rpcname, "create-subscription")){
         clicon_debug(1, "%s Warning: incoming session-id:%u does not match ce_id:%u on socket: %d", __FUNCTION__, op_id, ce->ce_id, ce->ce_s);
@@ -1636,7 +1636,8 @@ from_client_msg(clicon_handle        h,
             goto done;
         }
         module = yang_argument_get(ymod);
-        clicon_debug(1, "%s module:%s rpc:%s", __FUNCTION__, module, rpc);
+        clicon_debug(CLIXON_DBG_DEFAULT, "%s module:%s rpc:%s ce_id:%u s:%d", __FUNCTION__, module,
+                     rpc, ce->ce_id, ce->ce_s);
         /* Pre-NACM access step */
         xnacm = NULL;
 

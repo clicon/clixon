@@ -83,7 +83,7 @@
 #include "clixon_yang_parse_lib.h"
 
 /*! Force add ietf-yang-library@2019-01-04 on all mount-points
- * This is a limitation of othe current implementation
+ * This is a limitation of of the current implementation
  */
 #define YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
 
@@ -883,9 +883,12 @@ yang_lib2yspec(clicon_handle h,
     }
     else if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, NULL) < 0)
         goto fail;
-#endif
-    if (yang_parse_post(h, yspec, 0) < 0)
+    if (yang_parse_post(h, yspec, yang_len_get(yspec) - (1+veclen - modmin)) < 0)
         goto done;
+#else
+    if (yang_parse_post(h, yspec, yang_len_get(yspec) - (veclen - modmin)) < 0)
+        goto done;
+#endif
     retval = 1;
  done:
     if (vec)

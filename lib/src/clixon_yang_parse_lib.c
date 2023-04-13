@@ -1433,11 +1433,6 @@ yang_sort_modules(yang_stmt          *yspec,
     if (*ylen != modmax-modmin){
         clicon_err(OE_YANG, EFAULT, "Internal error: mismatch sort vector lengths");
     }
-    /* Unmark all nodes */
-    for (i=modmin; i<modmax; i++){
-        yn = yang_child_i(yspec, i);
-        yang_flag_set(yn, YANG_FLAG_MARK|YANG_FLAG_TMP);
-    }
     retval = 0;
  done:
     return retval;

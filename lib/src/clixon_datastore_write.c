@@ -695,6 +695,10 @@ text_modify(clicon_handle       h,
                         xml_flag_reset(x0, XML_FLAG_DEFAULT);
                 }
             } /* x1bstr */
+            if (creator){
+                if (xml_creator_add(x0, creator) < 0)
+                    goto done;
+            }
             if (changed){ 
                 if (xml_insert(x0p, x0, insert, valstr, NULL) < 0) 
                     goto done;
