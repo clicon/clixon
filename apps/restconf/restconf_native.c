@@ -1408,11 +1408,13 @@ restconf_ssl_accept_client(clicon_handle    h,
     case HTTP_2:{
         if (http2_session_init(rc) < 0){
             restconf_close_ssl_socket(rc, __FUNCTION__, 0);
-            goto done;
+            clicon_err_reset();
+            goto closed;
         }
         if (http2_send_server_connection(rc) < 0){
             restconf_close_ssl_socket(rc, __FUNCTION__, 0);
-            goto done;
+            clicon_err_reset();
+            goto closed;
         }
         break;
     }

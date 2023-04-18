@@ -85,6 +85,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+*  Fixed: RESTCONF: some client cert failure leads to restconf exit. Instead close and continue
+
 ## 6.1.0
 19 Feb 2023
 
