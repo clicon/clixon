@@ -1005,7 +1005,6 @@ xpath_traverse_canonical(xpath_tree *xs,
             goto fail;
         }
         if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
-#ifndef XPATH_CANONICAL_SKIP_CHECK
             if ((cb = cbuf_new()) == NULL){
                 clicon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
@@ -1014,20 +1013,22 @@ xpath_traverse_canonical(xpath_tree *xs,
             if (reason)
                 *reason = cb;
             goto fail;
-#endif
         }
-        if (ymod == NULL)
+#if 0 /* safe-catch if previous check is not considered as an error */
+        if (ymod == NULL) 
             prefix1 = prefix0;
-        else if ((prefix1 = yang_find_myprefix(ymod)) == NULL){
-            if ((cb = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
-                goto done;
+        else
+#endif
+            if ((prefix1 = yang_find_myprefix(ymod)) == NULL){
+                if ((cb = cbuf_new()) == NULL){
+                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cb, "No prefix found in module: %s", yang_argument_get(ymod));          
+                if (reason)
+                    *reason = cb;
+                goto fail;
             }
-            cprintf(cb, "No prefix found in module: %s", yang_argument_get(ymod));          
-            if (reason)
-                *reason = cb;
-            goto fail;
-        }
         if (xml_nsctx_get(nsc1, prefix1) == NULL)
             if (xml_nsctx_add(nsc1, prefix1, namespace) < 0)
                 goto done;
