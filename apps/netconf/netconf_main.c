@@ -603,7 +603,7 @@ netconf_input_cb(int   s,
             break;
         }
         clicon_debug(CLIXON_DBG_MSG, "Recv ext: %s", cbuf_get(cbmsg));
-        if ((ret = netconf_input_frame2(cbmsg, Y_RPC, yspec, &xtop, &xerr)) < 0)
+        if ((ret = netconf_input_frame2(cbmsg, YB_RPC, yspec, &xtop, &xerr)) < 0)
             goto done;
         cbuf_reset(cbmsg);
         if (ret == 0){ /* Invalid frame, parse error, etc */

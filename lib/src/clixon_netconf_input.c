@@ -31,7 +31,7 @@
           goto done;
        if (!eom)
           break;
-       if ((ret = netconf_input_frame2(cbmsg, Y_RPC, yspec, &cbret, &xtop)) < 0)
+       if ((ret = netconf_input_frame2(cbmsg, YB_RPC, yspec, &cbret, &xtop)) < 0)
           goto done;
        // process incoming packet xtop
     }
