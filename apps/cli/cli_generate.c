@@ -109,7 +109,12 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 /* variable expand function */
 #define GENERATE_EXPAND_XMLDB "expand_dbvar"
 
-/*! Create cligen variable expand entry with xmlkey format string as argument
+/*! Create cligen variable expand entry with api-pathfmt format string as argument
+ *
+ * Add api-fmt as first argument to callback, eg:
+ *   /ex:table
+ * Then if mountpoint add special entry:
+ *   /ctrl:dev/ctrl:config
  * @param[in]  h      Clixon handle
  * @param[in]  ys     yang_stmt of the node at hand
  * @param[in]  cvtype Type of the cligen variable
@@ -1353,6 +1358,8 @@ yang2cli_post(clicon_handle h,
 
 /*! Generate clispec for all modules in yspec (except excluded)
  * 
+ * Called in cli main function for top-level yangs. But may also be called dynamically for
+ * mountpoints.
  * @param[in]  h         Clixon handle
  * @param[in]  yspec     Top-level Yang statement of type Y_SPEC
  * @param[in]  treename  Name of tree

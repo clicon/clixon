@@ -839,6 +839,7 @@ int cli_show_version(clicon_handle h,
  * @param[in]  cvv   Vector of variables from CLIgen command-line
  * @param[in]  argv  String vector of show options, format:
  *   <api_path_fmt>  Generated API PATH (this is added implicitly, not actually given in the cvv)
+ *  [<api-path-fmt>] Extra api-path from mount-point
  *   <dbname>        Name of datastore, such as "running"
  * -- from here optional:
  *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
@@ -879,17 +880,26 @@ cli_show_auto(clicon_handle h,
     char            *extdefault = NULL; /* with extended tagged modes */
     int              argc = 0;
     char            *xpath = NULL;
-    yang_stmt       *yspec;
+    yang_stmt       *yspec0;
     char            *api_path = NULL;
     int              cvvi = 0;
     char            *api_path_fmt;  /* xml key format */
-
+    char            *api_path_fmt01 = NULL;
+    char            *str;
+    char            *mtpoint = NULL;
+    
     if (cvec_len(argv) < 2 || cvec_len(argv) > 7){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <api-path-fmt>* <database> [<format> <pretty> <state> <default> <prepend>]", cvec_len(argv));
         goto done;
     }
     api_path_fmt = cv_string_get(cvec_i(argv, argc++));
-    dbname = cv_string_get(cvec_i(argv, argc++));
+    str = cv_string_get(cvec_i(argv, argc++));
+    if (str && str[0] == '/'){ /* ad-hoc to see if 2nd arg is mountpoint */
+        mtpoint = str;
+        dbname = cv_string_get(cvec_i(argv, argc++));
+    }
+    else
+        dbname = str;
     if (cvec_len(argv) > argc)
         if (cli_show_option_format(argv, argc++, &format) < 0)
             goto done;
@@ -910,13 +920,22 @@ cli_show_auto(clicon_handle h,
     if (cvec_len(argv) > argc){
         prepend = cv_string_get(cvec_i(argv, argc++));
     }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
-    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
-        goto done;
-    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
+    if (mtpoint){ 
+        /* Get and combined api-path01 */
+        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+            goto done;
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, &api_path, &cvvi) < 0)
+            goto done;
+    }
+    else{
+        if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+            goto done;
+    }
+    if (api_path2xpath(api_path, yspec0, &xpath, &nsc, NULL) < 0)
         goto done;
     if (xpath == NULL){
         clicon_err(OE_FATAL, 0, "Invalid api-path-fmt: %s", api_path_fmt);
@@ -928,6 +947,8 @@ cli_show_auto(clicon_handle h,
         goto done;
     retval = 0;
  done:
+    if (api_path_fmt01)
+        free(api_path_fmt01);
     if (nsc)
         xml_nsctx_free(nsc);
     if (xpath)

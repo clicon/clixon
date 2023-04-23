@@ -969,7 +969,6 @@ xpath_vec_bool(cxobj      *xcur,
  * @retval     1       OK with nsc1 containing the transformed nsc
  * @retval     0       XPath failure with reason set to why
  * @retval    -1       Fatal Error
- * XXX Detects mountpoint but is not mountpoint aware, just copies prefixes
  */
 static int
 xpath_traverse_canonical(xpath_tree *xs,
@@ -1005,6 +1004,7 @@ xpath_traverse_canonical(xpath_tree *xs,
             goto fail;
         }
         if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
+#if 0 /* Just accept it, see note in xpath2canonical */
             if ((cb = cbuf_new()) == NULL){
                 clicon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
@@ -1013,12 +1013,11 @@ xpath_traverse_canonical(xpath_tree *xs,
             if (reason)
                 *reason = cb;
             goto fail;
+#endif
         }
-#if 0 /* safe-catch if previous check is not considered as an error */
         if (ymod == NULL) 
             prefix1 = prefix0;
         else
-#endif
             if ((prefix1 = yang_find_myprefix(ymod)) == NULL){
                 if ((cb = cbuf_new()) == NULL){
                     clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -1093,6 +1092,10 @@ xpath_traverse_canonical(xpath_tree *xs,
  *   if (xpath1) free(xpath1);
  *   if (nsc1) xml_nsctx_free(nsc1);
  * @endcode
+ * @note Unsolvable issue of mountpoints, eg an xpath of //x:foo where foo is under one or several
+ *       mointpoints: a well-defined namespace cannot be determined. Therefore just allow 
+ *       inconsistencies and hope that it will be covered by other code
+ * @see xpath2xml
  */
 int
 xpath2canonical(const char *xpath0,
