@@ -89,6 +89,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed RESTCONF race conditions on SSL_shutdown sslerr ZERO_RETURN appears occasionally and exist.
 *  Fixed: RESTCONF: some client cert failure leads to restconf exit. Instead close and continue
 
 ## 6.1.0

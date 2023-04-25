@@ -570,7 +570,7 @@ read_ssl(restconf_conn *rc,
             usleep(1000);
             *again = 1;
             break;
-        case SSL_ERROR_ZERO_RETURN:
+        case SSL_ERROR_ZERO_RETURN: /* 6 */
             *np = 0; /* should already be zero */
             break;
         default:
@@ -1078,10 +1078,9 @@ restconf_close_ssl_socket(restconf_conn *rc,
             (ret = SSL_shutdown(rc->rc_ssl)) < 0){
             er = errno;
             sslerr = SSL_get_error(rc->rc_ssl, ret);
-            clicon_debug(1, "%s errno:%d sslerr:%d", __FUNCTION__, er, sslerr);
-            //  case SSL_ERROR_ZERO_RETURN:          /* 6 */ 
-            //      Note that in this case SSL_ERROR_ZERO_RETURN does not necessarily indicate that the underlying transport has been closed.
-            if (sslerr == SSL_ERROR_SSL){ /* 1 */
+            clicon_debug(1, "%s errno:%s(%d) sslerr:%d", __FUNCTION__, strerror(er), er, sslerr);
+            if (sslerr == SSL_ERROR_SSL || /* 1 */
+                sslerr == SSL_ERROR_ZERO_RETURN){  /* 6 */
                 
             }
             else if (sslerr == SSL_ERROR_SYSCALL){ /* 5 */
@@ -1093,6 +1092,8 @@ restconf_close_ssl_socket(restconf_conn *rc,
                 /* Ignore eg EBADF/ECONNRESET/EPIPE */
             }
             else{
+                /* To avoid close again in restconf_native_terminate */
+                rc->rc_s = -1;
                 clicon_err(OE_SSL, sslerr, "SSL_shutdown, %s err:%d %d", callfn, sslerr, er);
                 goto done;
             }
