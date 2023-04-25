@@ -189,16 +189,12 @@
  * This may lead to changes in behavior for clients retrieving configs without an explicit
  * <with-defaults> parameter.
  * To keep the previous behavior (as in 6.0) set this option with #define
+ * Introduced in 6.1, remove in 6.3
  */
 #undef NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL
 
-/*! Temporary backward-compatible option for not generating CLI for obsolete YANG
- * Introduced in 6.1, remove in 6.2
- */
-#define AUTOCLI_OBSOLETE_SKIP
-
 /*! Temporary backward-compatible option for hiding CLI for deprecated YANG
- * Introduced in 6.1, remove in 6.2
+ * Introduced in 6.1, remove in 6.3
  */
 #define AUTOCLI_DEPRECATED_HIDE
 
@@ -214,9 +210,11 @@
  * - controller device control
  */
 /*! Use unified netconf input function for external use
+ * Introduced in 6.2
  */
 #define NETCONF_INPUT_UNIFIED_EXTERN
 
 /*! Use unified netconf input function for internal use
+ * Introduced in 6.2
  */
 #undef NETCONF_INPUT_UNIFIED_INTERNAL

@@ -546,7 +546,7 @@ netconf_input_cb(int   s,
     int            i32;
     int            eom = 0;
     int            eof = 0;
-    int            framing_type;
+    netconf_framing_type framing_type;
     cxobj         *xtop = NULL;
     cxobj         *xreq;
     cxobj         *xerr = NULL;

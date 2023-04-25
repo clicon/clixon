@@ -73,6 +73,9 @@ Developers may need to change their code
 	
 ### Minor features
 
+* Removed previous backward compatible compile-time options introduced in 6.0:
+  * NETCONF_DEFAULT_RETRIEVAL_REPORT_AL
+  * AUTOCLI_OBSOLETE_SKIP
 * Unified netconf input function
   * Three different implementations were used in external, internal and controller code
   * The new clixon_netconf_input API unifies all three uses
@@ -90,7 +93,7 @@ Developers may need to change their code
 ### Corrected Bugs
 
 * Fixed RESTCONF race conditions on SSL_shutdown sslerr ZERO_RETURN appears occasionally and exist.
-*  Fixed: RESTCONF: some client cert failure leads to restconf exit. Instead close and continue
+* Fixed: RESTCONF: some client cert failure leads to restconf exit. Instead close and continue
 
 ## 6.1.0
 19 Feb 2023
