@@ -77,6 +77,7 @@
 #include "clixon_sig.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
+#include "clixon_netconf_input.h"
 #include "clixon_options.h"
 #include "clixon_proto.h"
 
@@ -255,11 +256,13 @@ clicon_connect_unix(clixon_handle h,
     return retval;
 }
 
+#ifndef NETCONF_INPUT_UNIFIED_INTERNAL
 static void
 atomicio_sig_handler(int arg)
 {
     _atomicio_sig++;
 }
+#endif
 
 /*! Ensure all of data on socket comes through. fn is either read or write
  *
@@ -372,7 +375,7 @@ clicon_msg_send(int                s,
     else{
         clixon_debug(CLIXON_DBG_MSG, "Send: %s", msg->op_body);
     }
-    msg_hex(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL2, (char*)msg,  ntohl(msg->op_len), __FUNCTION__);
+    msg_hex(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, (char*)msg,  ntohl(msg->op_len), __FUNCTION__);
     if (atomicio((ssize_t (*)(int, void *, size_t))write,
                  s, msg, ntohl(msg->op_len)) < 0){
         e = errno;
@@ -398,7 +401,7 @@ clicon_msg_send(int                s,
  *
  * @param[in]   s     Socket (unix or inet) to communicate with backend
  * @param[in]   descr Description of peer for logging
- * @param[in]   intr  If set, make a ^C cause an error   
+ * @param[in]   intr  If set, make a ^C cause an error   (OBSOLETE?)
  * @param[out]  msg   Clixon msg data reply structure. Free with free()
  * @param[out]  eof   Set if eof encountered
  * @retval      0     OK
@@ -415,6 +418,29 @@ clicon_msg_rcv(int                 s,
                int                *eof)
 {
     int               retval = -1;
+#ifdef NETCONF_INPUT_UNIFIED_INTERNAL
+    struct clicon_msg hdr;
+    size_t            mlen;
+    cbuf             *cb = NULL;
+
+    /* Step 1: emulate a clicon_msg API */
+    if (clixon_msg_rcv2(s, descr, &cb, eof) < 0)
+        goto done;
+    mlen = cbuf_len(cb) + sizeof(hdr);
+    if ((*msg = (struct clicon_msg *)malloc(mlen+1)) == NULL){
+        clicon_err(OE_PROTO, errno, "malloc");
+        goto done;
+    }
+    memset(*msg, 0, mlen+1);
+    (*msg)->op_len = htonl(mlen);
+    (*msg)->op_id = 0; // XXX attribute?
+    memcpy(&(*msg)->op_body, cbuf_get(cb), cbuf_len(cb));
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+#else
     struct clicon_msg hdr;
     int               hlen;
     ssize_t           len2;
@@ -438,7 +464,7 @@ clicon_msg_rcv(int                 s,
             clixon_err(OE_CFG, errno, "atomicio");
         goto done;
     }
-    msg_hex(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL2, (char*)&hdr, hlen, __FUNCTION__);
+    msg_hex(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, (char*)&hdr, hlen, __FUNCTION__);
     if (hlen == 0){
         *eof = 1;
         goto ok;
@@ -448,7 +474,7 @@ clicon_msg_rcv(int                 s,
         goto done;
     }
     mlen = ntohl(hdr.op_len);
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL2, "op-len:%u op-id:%u",
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "op-len:%u op-id:%u",
                  mlen, ntohl(hdr.op_id));
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "rcv msg len=%d",
                  mlen);
@@ -467,7 +493,7 @@ clicon_msg_rcv(int                 s,
         goto done;
     }
     if (len2)
-        msg_hex(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL2, (*msg)->op_body, len2, __FUNCTION__);
+        msg_hex(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, (*msg)->op_body, len2, __FUNCTION__);
     if (len2 != mlen - sizeof(hdr)){
         clixon_err(OE_PROTO, 0, "body too short");
         *eof = 1;
@@ -491,6 +517,7 @@ clicon_msg_rcv(int                 s,
             goto done;
     }
     return retval;
+#endif /* NETCONF_INPUT_UNIFIED_INTERNAL */
 }
 
 /*! Receive a message using plain NETCONF
@@ -568,11 +595,12 @@ clicon_msg_rcv1(int         s,
 /*! Send a Clixon netconf message plain NETCONF
  *
  * @param[in]  s     socket (unix or inet) to communicate with backend
- * @param[in]  cb    data buffer including NETCONF
  * @param[in]  descr Description of peer for logging
+ * @param[in]  cb    data buffer including NETCONF (and EOM)
  * @retval     0     OK
  * @retval    -1     Error
  * @see clicon_msg_send  using internal IPC header
+ * @see clicon_msg_send2 version 2 - chunked
  */
 int
 clicon_msg_send1(int         s,
@@ -596,6 +624,112 @@ clicon_msg_send1(int         s,
   done:
     return retval;
 }
+
+#ifdef NETCONF_INPUT_UNIFIED_INTERNAL
+/*! Send a message using unified NETCONF w chunked framing
+ *
+ * @param[in]   s      socket (unix or inet) to communicate with backend
+ * @param[in]   descr  Description of peer for logging
+ * @param[out]  msg    CLICON msg data reply structure. Free with free()
+ * @see clicon_msg_send  using internal IPC header
+ */
+int
+clixon_msg_send2(int         s,
+                 const char *descr,
+                 cbuf       *cb)
+{
+    int retval = -1;
+
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "send msg len=%lu", cbuf_len(cb));
+    if (descr)
+        clixon_debug(CLIXON_DBG_MSG, "Send [%s]: %s", descr, cbuf_get(cb));
+    else
+        clixon_debug(CLIXON_DBG_MSG, "Send: %s", cbuf_get(cb));
+    if (netconf_output_encap(NETCONF_SSH_CHUNKED, cb) < 0)
+        goto done;
+    if (atomicio((ssize_t (*)(int, void *, size_t))write,
+                 s, cbuf_get(cb), cbuf_len(cb)) < 0){
+        clicon_err(OE_CFG, errno, "atomicio");
+        clicon_log(LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
+        goto done;
+    }
+    retval = 0;
+  done:
+    return retval;
+}
+
+/*! Receive a message using unified NETCONF w chunked framing
+ *
+ * @param[in]   s      socket (unix or inet) to communicate with backend
+ * @param[out]  cb     cligen buf struct containing the incoming message
+ * @param[out]  eof    Set if eof encountered
+ * @retval      0      OK (check eof)
+ * @retval     -1      Error
+ * @see netconf_input_cb()
+ * @see clicon_msg_rcv using IPC message struct
+ * @note only NETCONF version 1.0 EOM framing
+ */
+int
+clixon_msg_rcv2(int         s,
+                const char *descr,
+                cbuf      **cb,
+                int        *eof)
+{
+    int           retval = -1;
+    unsigned char buf[BUFSIZ];
+    ssize_t       buflen = sizeof(buf);
+    int           frame_state = 0;
+    size_t        frame_size = 0;
+    unsigned char *p = buf;
+    size_t         plen;
+    cbuf          *cbmsg=NULL;
+    ssize_t        len;
+    int            eom = 0;
+    cxobj         *xtop = NULL;
+    cxobj         *xerr = NULL;
+
+    if ((cbmsg = cbuf_new()) == NULL){
+        clicon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    eom = 0;
+    while (*eof == 0 && eom == 0) {
+        /* Read input data from socket and append to cbbuf */
+        if ((len = netconf_input_read2(s, buf, buflen, eof)) < 0)
+            goto done;
+        p = buf;
+        plen = len;
+        while (!(*eof)  && plen > 0){
+            if (netconf_input_msg2(&p, &plen,
+                                   cbmsg,
+                                   NETCONF_SSH_CHUNKED,
+                                   &frame_state,
+                                   &frame_size,
+                                   &eom) < 0)
+                goto done;
+            if (eom == 0){
+                continue;
+            }
+            clixon_debug(CLIXON_DBG_MSG, "Recv ext: %s", cbuf_get(cbmsg));
+        }
+    }
+    clixon_debug(CLIXON_DBG_MSG, "Recv: %s", cbuf_get(cbmsg));
+    if (cb){
+        *cb = cbmsg;
+        cbmsg = NULL;
+    }
+    retval = 0;
+ done:
+    clixon_debug(CLIXON_DBG_MSG|CLIXON_DBG_DETAIL, "%s done", __FUNCTION__);
+    if (cbmsg)
+        cbuf_free(cbmsg);
+    if (xtop)
+        xml_free(xtop);
+    if (xerr)
+        xml_free(xerr);
+    return retval;
+}
+#endif /* NETCONF_INPUT_UNIFIED_INTERNAL */
 
 /*! Connect to server, send a clicon_msg message and wait for result using unix socket
  *
@@ -711,6 +845,28 @@ clicon_rpc(int                sock,
 {
     int                retval = -1;
     struct clicon_msg *reply = NULL;
+#ifdef NETCONF_INPUT_UNIFIED_INTERNAL
+    cbuf              *cbsend = cbuf_new();
+    cbuf              *cbrcv = NULL;
+
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
+    cprintf(cbsend, "%s", msg->op_body);
+    if (clixon_msg_send2(sock, descr, cbsend) < 0)
+        goto done;
+    if (cbsend)
+        cbuf_free(cbsend);
+    if (clixon_msg_rcv2(sock, descr, &cbrcv, eof) < 0)
+        goto done;
+    if (*eof)
+        goto ok;
+    if (cbrcv){
+        if ((*ret = strdup(cbuf_get(cbrcv))) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+        cbuf_free(cbrcv);
+    }
+#else /* NETCONF_INPUT_UNIFIED_INTERNAL */
     char              *data = NULL;
 
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
@@ -720,12 +876,14 @@ clicon_rpc(int                sock,
         goto done;
     if (*eof)
         goto ok;
+
     data = reply->op_body; /* assume string */
     if (ret && data)
         if ((*ret = strdup(data)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
+#endif /* NETCONF_INPUT_UNIFIED_INTERNAL */
  ok:
     retval = 0;
   done:
@@ -787,6 +945,24 @@ send_msg_reply(int         s,
                uint32_t    datalen)
 {
     int                retval = -1;
+#ifdef NETCONF_INPUT_UNIFIED_INTERNAL
+    cbuf          *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (cbuf_append_buf(cb, data, datalen) < 0){
+        clicon_err(OE_UNIX, errno, "cbuf_append_buf");
+        goto done;
+    }
+    if (clixon_msg_send2(s, descr, cb) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+#else /* NETCONF_INPUT_UNIFIED_INTERNAL */
     struct clicon_msg *reply = NULL;
     uint32_t           len;
 
@@ -803,6 +979,7 @@ send_msg_reply(int         s,
   done:
     if (reply)
         free(reply);
+#endif /* NETCONF_INPUT_UNIFIED_INTERNAL */
     return retval;
 }
 
@@ -810,8 +987,7 @@ send_msg_reply(int         s,
  *
  * @param[in]  s       Socket to communicate with client
  * @param[in]  descr   Description of peer for logging
- * @param[in]  level
- * @param[in]  event
+ * @param[in]  msg    Data string to send
  * @retval     0       OK
  * @retval    -1       Error
  * @see send_msg_notify_xml
@@ -819,19 +995,35 @@ send_msg_reply(int         s,
 static int
 send_msg_notify(int         s,
                 const char *descr,
-                char       *event)
+                char       *msg)
 {
-    int                retval = -1;
-    struct clicon_msg *msg = NULL;
+    int            retval = -1;
+#ifdef NETCONF_INPUT_UNIFIED_INTERNAL
+    cbuf          *cb = NULL;
 
-    if ((msg=clicon_msg_encode(0, "%s", event)) == NULL)
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
-    if (clicon_msg_send(s, descr, msg) < 0)
+    }
+    cprintf(cb, "%s", msg);
+    if (clixon_msg_send2(s, descr, cb) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+#else /* NETCONF_INPUT_UNIFIED_INTERNAL */
+    struct clicon_msg *imsg = NULL;
+
+    if ((imsg = clicon_msg_encode(0, "%s", msg)) == NULL)
+        goto done;
+    if (clicon_msg_send(s, descr, imsg) < 0)
         goto done;
     retval = 0;
   done:
-    if (msg)
-        free(msg);
+    if (imsg)
+        free(imsg);
+#endif /* NETCONF_INPUT_UNIFIED_INTERNAL */
     return retval;
 }
 

@@ -80,6 +80,11 @@ int clicon_msg_send(int s, const char *descr, struct clicon_msg *msg);
 
 int clicon_msg_send1(int s, const char *descr, cbuf *cb);
 
+#ifdef NETCONF_INPUT_UNIFIED_INTERNAL
+int clixon_msg_send2(int s, const char *descr, cbuf *cb);
+int clixon_msg_rcv2(int s, const char *descr, cbuf **cb, int *eof);
+#endif
+
 int clicon_msg_rcv(int s, const char *descr, int intr, struct clicon_msg **msg, int *eof);
 
 int clicon_msg_rcv1(int s, const char *descr, cbuf *cb, int *eof);

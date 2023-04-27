@@ -13,6 +13,7 @@ Expected: March 2024
 
 ### Minor features
 
+* Changed framing between backend and frontend to RFC6242 "chunked-encoding"
 * Added micro-second resolution to logs via stderr/stdout
 * New command-line debug mechanism
   * Separation between subject-area and details
@@ -38,6 +39,9 @@ Expected: March 2024
 ### API changes on existing protocol/config features
 Users may have to change how they access the system
 
+* Changed framing between backend and frontend to RFC6242 "chunked-encoding"
+  * Should only affect advanced usage between clixon frontend and backend
+  * This should allow standard netconf utilities to be used as frontend (may be some caveats)
 * Revert the creators attribute feature introduced in 6.2. It is now obsoleted.
   It is replaced with a configured `creators` and user/application semantics
 * New `clixon-lib@2024-01-01.yang` revision

@@ -557,7 +557,7 @@ stream_notify1(clixon_handle   h,
  *  if (stream_notify(h, "NETCONF", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
  *    err;
  * @endcode
- * @see stream_notify1 Internal
+ * @see  stream_notify_xml  Similar but with XML data
  */
 int
 stream_notify(clixon_handle h,

@@ -205,3 +205,13 @@
  * This constant will be removed after the 6.6 release
  */
 #define COMPAT_6_5
+
+/*! Use 1.1 RFC 6242 chunked encoding framing for internal use
+ *
+ * Replaces internal IPC
+ * clixon_msg_send2() an clixon_msg_rcv2() and some adjustment code in clixon_proto.c
+ * Following things NYI:
+ * - Emulates old clicon_msg API
+ */
+#undef NETCONF_INPUT_UNIFIED_INTERNAL
+
