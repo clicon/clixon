@@ -3,9 +3,9 @@
 # Test of CLICON_RESTCONF_NOALPN_DEFAULT AND client certs
 # Also client certs (reason is usecase was POSTMAN w client certs)
 
-dir=/tmp/test_restconf_noalpn.sh
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+dir=/tmp/test_restconf_noalpn.sh
 
 # Only works with native and https
 if [ "${WITH_RESTCONF}" != "native" ]; then
