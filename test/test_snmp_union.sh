@@ -57,6 +57,7 @@ module clixon-example{
             leaf Index{
                 type int32;
                 smiv2:oid "1.3.6.1.2.1.47.1.1.1.1.1";
+                smiv2:max-access "read-only";
             }
             leaf Union_exm{
                 description "Union with same subtypes";
@@ -67,6 +68,7 @@ module clixon-example{
                     type int32; 
                 }                
                 smiv2:oid "1.3.6.1.2.1.47.1.1.1.1.2";
+                smiv2:max-access "read-only";
             }
         }
     }

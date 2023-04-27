@@ -159,7 +159,8 @@ static const map_str2str yang_snmp_types[] = {
  /* A function that checks that all subtypes of the union are the same
  * @param[in]  ytype Yang resolved type (a union in this case)
  * @param[out] cb    Buffer where type of subtypes is written
- * @retval     1 - true(All subtypes are the same), 0 - false
+ * @retval     1 - true(All subtypes are the same)
+ * @retval     0 - false
  */
 int is_same_subtypes_union(yang_stmt *ytype, cbuf *cb)
 {
@@ -178,8 +179,7 @@ int is_same_subtypes_union(yang_stmt *ytype, cbuf *cb)
      * not resolved types (unless they are built-in, but the resolve call is
      * made in the union_one call.
      */
-    while ((y_sub_type = yn_each(ytype, y_sub_type)) != NULL)
-    {
+    while ((y_sub_type = yn_each(ytype, y_sub_type)) != NULL){
         if (yang_keyword_get(y_sub_type) != Y_TYPE)
             continue;
 
@@ -194,8 +194,7 @@ int is_same_subtypes_union(yang_stmt *ytype, cbuf *cb)
         else
             break;
     }
-    if( NULL == y_sub_type && NULL != type_str )
-    {
+    if (NULL == y_sub_type && NULL != type_str){
         cbuf_append_str(cb, resolved_type_str);
         retval = 1;
     }
@@ -204,10 +203,9 @@ int is_same_subtypes_union(yang_stmt *ytype, cbuf *cb)
 char* yang_type_to_snmp(yang_stmt *ytype, char* yang_type_str)
 {
     char* type_str = yang_type_str;
-    if (yang_type_str && strcmp(yang_type_str, "union") == 0)
-    {
+    if (yang_type_str && strcmp(yang_type_str, "union") == 0){
         cbuf *cb = cbuf_new();
-        if( is_same_subtypes_union(ytype, cb) > 0)
+        if (is_same_subtypes_union(ytype, cb) > 0)
             type_str =  cbuf_get(cb);
     }
     char* ret = clicon_str2str(yang_snmp_types, type_str);
