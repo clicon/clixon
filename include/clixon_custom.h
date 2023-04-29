@@ -197,24 +197,3 @@
  * Introduced in 6.1, remove in 6.3
  */
 #define AUTOCLI_DEPRECATED_HIDE
-
-/*! Unified netconf input function
- * Replace external, internal and controller netconf eventually
- * New file: clixon_netconf_input.c with functions:
- * - netconf_input_read2
- * - netconf_input_msg2
- * - netconf_input_frame2
- * The following code should use this:
- * X - netconf_main.c external netconf
- * - netconf_proto.c internal netconf
- * - controller device control
- */
-/*! Use unified netconf input function for external use
- * Introduced in 6.2
- */
-#define NETCONF_INPUT_UNIFIED_EXTERN
-
-/*! Use unified netconf input function for internal use
- * Introduced in 6.2
- */
-#undef NETCONF_INPUT_UNIFIED_INTERNAL

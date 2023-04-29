@@ -254,8 +254,13 @@ ssl_x509_name_oneline(SSL   *ssl,
         clicon_err(OE_RESTCONF, EINVAL, "ssl or cn is NULL");
         goto done;
     }
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
     if ((cert = SSL_get_peer_certificate(ssl)) == NULL)
         goto ok;
+#else
+    if ((cert = SSL_get1_peer_certificate(ssl)) == NULL)
+        goto ok;
+#endif
     if ((name = X509_get_subject_name(cert)) == NULL) 
         goto ok;
     if ((p = X509_NAME_oneline(name, NULL, 0)) == NULL)
@@ -1355,10 +1360,16 @@ restconf_ssl_accept_client(clicon_handle    h,
         */
         if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE){
             X509 *peercert;
-
+            // XXX SSL_get1_peer_certificate(ssl)
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
             if ((peercert = SSL_get_peer_certificate(rc->rc_ssl)) != NULL){
                 X509_free(peercert);
             }
+#else
+            if ((peercert = SSL_get1_peer_certificate(rc->rc_ssl)) != NULL){
+                X509_free(peercert);
+            }
+#endif
             else { /* Get certificates (if available) */
                 if (proto != HTTP_2 &&
                     native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",

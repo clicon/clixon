@@ -38,7 +38,8 @@
 # in the directory containing this script.
 #
 
-AC_INIT(lib/clixon/clixon.h.in)
+AC_INIT
+AC_CONFIG_SRCDIR([lib/clixon/clixon.h.in])
 
 # Default CFLAGS and INSTALLFLAGS unless set by environment
 : ${INSTALLFLAGS="-s"}
@@ -148,7 +149,7 @@ AC_MSG_RESULT(LDFLAGS is $LDFLAGS)
 AC_MSG_RESULT(INSTALLFLAGS is $INSTALLFLAGS)	
 
 AC_PROG_YACC
-AC_PROG_LEX
+AC_PROG_LEX(noyywrap)
 if test "$LEX" = ":"; then
    AC_MSG_ERROR(CLIXON does not find lex or flex.)
 fi
@@ -368,8 +369,8 @@ fi
 
 # Checks for getsockopt options for getting unix socket peer credentials on
 # Linux
-AC_TRY_COMPILE([#include <sys/socket.h>], [getsockopt(1, SOL_SOCKET, SO_PEERCRED, 0, 0);], [AC_DEFINE(HAVE_SO_PEERCRED, 1, [Have getsockopt SO_PEERCRED])
-AC_MSG_RESULT(Have getsockopt SO_PEERCRED)])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[getsockopt(1, SOL_SOCKET, SO_PEERCRED, 0, 0);]])],[AC_DEFINE(HAVE_SO_PEERCRED, 1, [Have getsockopt SO_PEERCRED])
+AC_MSG_RESULT(Have getsockopt SO_PEERCRED)],[])
 
 # YANG_INSTALLDIR is where clixon installs the Clixon yang files and mandatory
 # standard yang files: the files in in yang/clixon and yang/mandatory
@@ -410,7 +411,7 @@ LIBDIR=`eval echo $libdir`
 LIBDIR=`eval echo $LIBDIR`
 LOCALSTATEDIR=`eval echo $localstatedir`
 
-AC_OUTPUT(Makefile
+AC_CONFIG_FILES([Makefile
 	  lib/Makefile
 	  lib/src/Makefile 
 	  lib/clixon/Makefile 
@@ -440,4 +441,5 @@ AC_OUTPUT(Makefile
   	  test/config.sh
 	  test/cicd/Makefile
   	  test/vagrant/Makefile	
-)
+])
+AC_OUTPUT

@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.2.0](#620) Expected: April 2023
+* [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
 * [5.9.0](#590) 24 September 2022
@@ -40,9 +40,11 @@
 * [3.3.1](#331) June 7 2017
 
 ## 6.2.0
-Expected: April 2023
+30 April 2023
 
-### New features
+Clixon 6.2.0 brings no new major feature changes, but completes YANG
+schema mount and other features required by the clixon controller
+project, along with minor improvements and bugfixes.
 
 ### API changes on existing protocol/config features
 
@@ -73,13 +75,12 @@ Developers may need to change their code
 	
 ### Minor features
 
-* Removed previous backward compatible compile-time options introduced in 6.0:
-  * NETCONF_DEFAULT_RETRIEVAL_REPORT_AL
-  * AUTOCLI_OBSOLETE_SKIP
+* Adjusted to Openssl 3.0 
 * Unified netconf input function
   * Three different implementations were used in external, internal and controller code
+    * Internal netconf still not moved to unified
   * The new clixon_netconf_input API unifies all three uses
-  * Code still experimental controlled by `NEW_NETCONF_INPUT`
+  * Code still experimental controlled by `NETCONF_INPUT_UNIFIED_INTERNAL`
 * RFC 8528 YANG schema mount
   * Made cli/autocli mount-point-aware
 * Internal NETCONF (client <-> backend)
@@ -92,7 +93,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
-* Fixed RESTCONF race conditions on SSL_shutdown sslerr ZERO_RETURN appears occasionally and exist.
+* Fixed RESTCONF race conditions on SSL_shutdown sslerr ZERO_RETURN appears occasionally and exits.
 * Fixed: RESTCONF: some client cert failure leads to restconf exit. Instead close and continue
 
 ## 6.1.0
