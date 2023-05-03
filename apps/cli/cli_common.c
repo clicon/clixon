@@ -1593,3 +1593,31 @@ cli_restart_plugin(clicon_handle h,
     return retval;
 }
 
+/* Append cvv1 to cvv0 and return a new cvec
+ *
+ * @note if cvv0 is non-null, the first element of cvv1 is skipped
+ */
+cvec*
+cvec_append(cvec *cvv0,
+            cvec *cvv1)
+{
+    cvec   *cvv2 = NULL;
+    cg_var *cv;
+    
+    if (cvv0 == NULL){
+        if ((cvv2 = cvec_dup(cvv1)) == NULL){
+            clicon_err(OE_UNIX, errno, "cvec_dup");
+            return NULL;
+        }
+    }
+    else{
+        if ((cvv2 = cvec_dup(cvv0)) == NULL){
+            clicon_err(OE_UNIX, errno, "cvec_dup");
+            return NULL;
+        }
+        cv = NULL;      /* Append cvv1 to cvv2 */
+        while ((cv = cvec_each1(cvv1, cv)) != NULL)
+            cvec_append_var(cvv2, cv);
+    }
+    return cvv2;
+}

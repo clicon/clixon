@@ -52,6 +52,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <syslog.h>
+#include <pwd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/types.h>
@@ -60,7 +61,6 @@
 #include <sys/wait.h>
 #include <sys/param.h>
 #include <sys/mount.h>
-#include <pwd.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -216,6 +216,9 @@ expand_dbvar(void   *h,
     yang_stmt       *ytype;
     char            *mtpoint = NULL;
     yang_stmt       *yspec0 = NULL;
+    yang_stmt       *yspec;
+    yang_stmt       *yu = NULL;
+    cvec            *nsc0 = NULL;
     
     if (argv == NULL || (cvec_len(argv) != 2 && cvec_len(argv) != 3)){
         clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
@@ -245,24 +248,12 @@ expand_dbvar(void   *h,
         cv = cvec_i(argv, 2);
         mtpoint = cv_string_get(cv);
     }
-    if (mtpoint){
-        /* Get combined api-path01 */
-        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
-            goto done;
-        /* Transform template format string + cvv to actual api-path 
-         * cvv_i indicates if all cvv entries were used
-         */
-        if (api_path_fmt2api_path(api_path_fmt01, cvv, &api_path, &cvvi) < 0)
-            goto done;
-    }
-    else {
-        /* api_path_fmt = /interface/%s/address/%s
-         * api_path: -->  /interface/eth0/address/.*
-         * xpath:    -->  /interface/[name="eth0"]/address
-         */
-        if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
-            goto done;
-    }
+    /* api_path_fmt = /interface/%s/address/%s
+     * api_path: -->  /interface/eth0/address/.*
+     * xpath:    -->  /interface/[name="eth0"]/address
+     */
+    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+        goto done;
     /* Create config top-of-tree */
     if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -271,8 +262,15 @@ expand_dbvar(void   *h,
      * xpath2xml would have worked!!
      * XXX: but y is just the first in this list, there could be other y:s?
      */
+    yspec = yspec0; /* may be reset to mount yspec below */
     if (api_path){
-        if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
+        if (mtpoint){
+            if (yang_path_arg(yspec0, mtpoint, &yu) < 0)
+                goto done;
+            if (yang_mount_get(yu, mtpoint, &yspec) < 0)
+                goto done;
+        }
+        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){
             // XXX cf cli_dbxml
@@ -283,12 +281,19 @@ expand_dbvar(void   *h,
     if (y==NULL)
         goto ok;
     /* Transform api-path to xpath for netconf  */
-    if (api_path2xpath(api_path, yspec0, &xpath, &nsc, NULL) < 0)
+    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
         goto done;
-
     if ((cbxpath = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
+    }
+    if (mtpoint){
+        cprintf(cbxpath, "%s", mtpoint);
+        if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
+            goto done;
+        cv = NULL;      /* Append cvv1 to cvv2 */
+        while ((cv = cvec_each(nsc0, cv)) != NULL)
+            cvec_append_var(nsc, cv);
     }
     cprintf(cbxpath, "%s", xpath);
     if (clicon_option_bool(h, "CLICON_CLI_EXPAND_LEAFREF") &&
@@ -376,6 +381,8 @@ expand_dbvar(void   *h,
  ok:
     retval = 0;
   done:
+    if (nsc0)
+        cvec_free(nsc0);
     if (api_path_fmt01)
         free(api_path_fmt01);
     if (cbxpath)
@@ -558,7 +565,7 @@ done:
  * @param[in]  argc   Index into argv
  * @param[out] format Output format
  * @retval     0      OK
- * @retval     -1     Error
+ * @retval    -1      Error
  */
 static int 
 cli_show_option_format(cvec             *argv,
@@ -584,7 +591,7 @@ cli_show_option_format(cvec             *argv,
  * @param[in]  argc  Index into argv
  * @param[out] bool  result boolean: 0 or 1
  * @retval     0     OK
- * @retval     -1    Error
+ * @retval    -1     Error
  */
 static int 
 cli_show_option_bool(cvec *argv,
@@ -624,7 +631,7 @@ cli_show_option_bool(cvec *argv,
  * @param[in]  withdefault  RFC 6243 with-default modes
  * @param[in]  extdefault   with-defaults with propriatary extensions
  * @retval     0     OK
- * @retval     -1    Error
+ * @retval    -1     Error
  */
 static int 
 cli_show_option_withdefault(cvec  *argv,
@@ -988,8 +995,6 @@ cli_show_auto(clicon_handle h,
  * @endcode
  * @see cli_show_auto    autocli with expansion 
  * @see cli_show_config  with no autocli coupling
- *
- * XXX merge cli_show_auto and cli_show_auto_mode
  */
 int
 cli_show_auto_mode(clicon_handle h,
@@ -1008,11 +1013,21 @@ cli_show_auto_mode(clicon_handle h,
     int              argc = 0;
     int              skiptop = 0;
     char            *xpath = NULL;
+    yang_stmt       *yspec0;
     yang_stmt       *yspec;
     char            *api_path = NULL;
+    char            *mtpoint = NULL;
+    yang_stmt       *yu;
+    cbuf            *cbxpath = NULL;
+    cvec            *nsc0 = NULL;
+    cg_var          *cv;
     
     if (cvec_len(argv) < 2 || cvec_len(argv) > 7){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <database> [ <format> <pretty> <state> <default> <cli-prefix>]", cvec_len(argv));
+        goto done;
+    }
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     dbname = cv_string_get(cvec_i(argv, argc++));
@@ -1041,23 +1056,44 @@ cli_show_auto_mode(clicon_handle h,
         ;
     else
         api_path = "/";
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
-        goto done;
+    if (clicon_data_get(h, "cli-edit-mtpoint", &mtpoint) == 0 && strlen(mtpoint)){
+        if (yang_path_arg(yspec0, mtpoint, &yu) < 0)
+            goto done;
+        if (yang_mount_get(yu, mtpoint, &yspec) < 0)
+            goto done;
     }
+    else
+        yspec = yspec0;
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
         goto done;
     if (xpath == NULL){
         clicon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
         goto done;
     }
+    if ((cbxpath = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (mtpoint){
+        cprintf(cbxpath, "%s", mtpoint);   
+        if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
+            goto done;
+        cv = NULL;      /* Append cvv1 to cvv2 */
+        while ((cv = cvec_each(nsc0, cv)) != NULL)
+            cvec_append_var(nsc, cv);
+    }
+    cprintf(cbxpath, "%s", xpath);
     skiptop = (strcmp(xpath,"/") != 0);
     if (cli_show_common(h, dbname, format, pretty, state,
                         withdefault, extdefault,
-                        prepend, xpath, nsc, skiptop) < 0)
+                        prepend, cbuf_get(cbxpath), nsc, skiptop) < 0)
         goto done;
     retval = 0;
  done:
+    if (nsc0)
+        cvec_free(nsc0);
+    if (cbxpath)
+        cbuf_free(cbxpath);
     if (nsc)
         xml_nsctx_free(nsc);
     if (xpath)

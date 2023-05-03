@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [6.3.0](#630) Expected: July 2023
 * [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
@@ -38,6 +39,13 @@
 * [3.3.3](#333) 25 November 2017
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
+
+## 6.3.0
+Expected: July 2023
+
+### Corrected Bugs
+
+* Fixed autocli edit modes for schema mounts
 
 ## 6.2.0
 30 April 2023

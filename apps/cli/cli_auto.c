@@ -97,40 +97,16 @@ co2apipath(cg_obj *co)
     return cv_string_get(cv);
 }
 
-/* Append to cvv1 to cvv0
- * @note if cvv0 is non-null, the first element of cvv1 is skipped
- */
-static cvec*
-cvec_append(cvec *cvv0,
-            cvec *cvv1)
-{
-    cvec   *cvv2 = NULL;
-    cg_var *cv;
-    
-    if (cvv0 == NULL){
-        if ((cvv2 = cvec_dup(cvv1)) == NULL){
-            clicon_err(OE_UNIX, errno, "cvec_dup");
-            return NULL;
-        }
-    }
-    else{
-        if ((cvv2 = cvec_dup(cvv0)) == NULL){
-            clicon_err(OE_UNIX, errno, "cvec_dup");
-            return NULL;
-        }
-        cv = NULL;      /* Append cvv1 to cvv2 */
-        while ((cv = cvec_each1(cvv1, cv)) != NULL)
-            cvec_append_var(cvv2, cv);
-    }
-    return cvv2;
-}
-
 /*! Enter a CLI edit mode
+ *
  * @param[in]  h    CLICON handle
  * @param[in]  cvv  Vector of variables from CLIgen command-line
  * @param[in]  argv Vector of user-supplied keywords
+ * @retval     0    OK
+ * @retval    -1    Error
  * Format of argv:
  *   <api_path_fmt> Generated API PATH (This is where we are in the tree)
+ *  [<api-path-fmt>] Extra api-path from mount-point
  *   <treename>     Name of generated cligen parse-tree, eg "datamodel"
  * Note api_path_fmt is not used in code but must be there in order to pick coorig from matching
  * code
@@ -143,19 +119,28 @@ cli_auto_edit(clicon_handle h,
     int           retval = -1;
     char         *api_path_fmt;  /* xml key format */
     char         *api_path = NULL;
-    cg_var       *cv;
     char         *treename;
     pt_head      *ph;  
     cg_obj       *co;
     cg_obj       *coorig;
     cvec         *cvv2 = NULL; /* cvv2 = cvv0 + cvv1 */
+    int           argc = 0;
+    char         *str;
+    char         *mtpoint = NULL;
 
-    if (cvec_len(argv) != 2){
-        clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>, <treename>)", __FUNCTION__);
+    if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
+        clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>*, <treename>)", __FUNCTION__);
         goto done;
     }
-    cv = cvec_i(argv, 1);
-    treename = cv_string_get(cv);
+    api_path_fmt = cv_string_get(cvec_i(argv, argc++));
+    str = cv_string_get(cvec_i(argv, argc++));
+    if (str && str[0] == '/'){ /* ad-hoc to see if 2nd arg is mountpoint */
+        mtpoint = str;
+        clicon_debug(1, "%s mtpoint:%s", __FUNCTION__, mtpoint);
+        treename = cv_string_get(cvec_i(argv, argc++));
+    }
+    else
+        treename = str;
     /* Find current cligen tree */
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
         clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
@@ -191,6 +176,15 @@ cli_auto_edit(clicon_handle h,
     /* Store this as edit-mode */
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
         goto done;
+    if (mtpoint){
+        char *mtpoint2;
+        if ((mtpoint2 = strdup(mtpoint)) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;            
+        }
+        if (clicon_data_set(h, "cli-edit-mtpoint", mtpoint2) < 0)
+            goto done;
+    }
     if (clicon_data_cvec_set(h, "cli-edit-cvv", cvv2) < 0)
         goto done;
     if (co->co_filter){
@@ -437,12 +431,13 @@ struct findpt_arg{
 };
 
 /*! Iterate through parse-tree to find first argument set by cli_generate code
+ *
  * @see cg_applyfn_t
  * @param[in]  co   CLIgen parse-tree object
  * @param[in]  arg  Argument, cast to application-specific info
- * @retval     -1   Error: break and return
- * @retval     0    OK and continue
  * @retval     1    OK and return (abort iteration)
+ * @retval     0    OK and continue
+ * @retval    -1    Error: break and return
  */
 static int
 cli_auto_findpt(cg_obj *co,
