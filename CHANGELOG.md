@@ -43,6 +43,12 @@
 ## 6.3.0
 Expected: July 2023
 
+### Minor features
+
+* Removed obsolete compile options introduced in 6.1:
+  * `NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL`
+  * `AUTOCLI_DEPRECATED_HIDE`
+
 ### Corrected Bugs
 
 * Fixed autocli edit modes for schema mounts

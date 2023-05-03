@@ -37,6 +37,7 @@
  *   cli-edit-mode - This is the api-path of the current cli mode in the loaded yang context
  *   cli-edit-cvv  - These are the assigned cligen list of variables with values at the edit-mode
  *   cli-edit-filter - Label filters for this mode
+ *   cli-edit-mtpoint - If edit modes are used, which mountpoint to use if any
  */
 
 #ifdef HAVE_CONFIG_H

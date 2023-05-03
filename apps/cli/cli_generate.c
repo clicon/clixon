@@ -146,11 +146,7 @@ cli_expand_var_generate(clicon_handle h,
         cv = yang_cv_get(yspec);
     if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
         goto done;
-    if (extvalue
-#ifdef AUTOCLI_DEPRECATED_HIDE        
-        || yang_find(ys, Y_STATUS, "deprecated") != NULL
-#endif
-        ) {
+    if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL) {
         retval = 1;
         goto done;
     }
@@ -832,11 +828,7 @@ yang2cli_leaf(clicon_handle h,
         cprintf(cb, " ");
         if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &hideext, NULL) < 0)
             goto done;
-        if (hideext
-#ifdef AUTOCLI_DEPRECATED_HIDE
-            || yang_find(ys, Y_STATUS, "deprecated") != NULL
-#endif
-            ){
+        if (hideext || yang_find(ys, Y_STATUS, "deprecated") != NULL){
             cprintf(cb, ", hide"); /* XXX ensure always { */
         }
         if (extralevel){
@@ -929,11 +921,7 @@ yang2cli_container(clicon_handle h,
             goto done;
         if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
             goto done;
-        if (extvalue
-#ifdef AUTOCLI_DEPRECATED_HIDE
-            || yang_find(ys, Y_STATUS, "deprecated") != NULL
-#endif
-            ){
+        if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL){
             cprintf(cb, ", hide");
         }
 #ifdef NYI /* This is for the mode extension, not yet supported */
@@ -1009,11 +997,7 @@ yang2cli_list(clicon_handle h,
     }
     if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
         goto done;
-    if (exist
-#ifdef AUTOCLI_DEPRECATED_HIDE
-        || yang_find(ys, Y_STATUS, "deprecated") != NULL
-#endif
-        ){
+    if (exist || yang_find(ys, Y_STATUS, "deprecated") != NULL){
         cprintf(cb, ",hide");
     }
     /* Loop over all key variables */

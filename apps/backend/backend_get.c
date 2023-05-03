@@ -866,13 +866,7 @@ get_common(clicon_handle        h,
     withdefaults_type wdef;
     char             *wdefstr;
 
-#ifdef NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL
-    /* Clixon 6.0 backward compatibly for NETCONF get/get-config behavior */
-    wdef = WITHDEFAULTS_REPORT_ALL;
-#else
     wdef = WITHDEFAULTS_EXPLICIT;
-#endif
-
     clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){

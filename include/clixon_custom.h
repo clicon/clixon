@@ -164,36 +164,3 @@
  * Consider moving to configure.ac(compile-time) or to clixon-config.yang(run-time)
  */
 #define PRETTYPRINT_INDENT 3
-
-/*! Set backward compatibility for NETCONF get/get-config <with-defaults> parameter behavior
- *
- * This option sets backward-compability that has to do with an inconsistency
- * between the two following concepts defined in RFC 6243:
- *   - Default-Handling Basic Modes (Section 2 in RFC 6243)
- *   - Retrieval of Default Data (Section 3 in RFC 6243)
- *
- * Before Clixon 6.0 RFC 6243 Clixon had a non-RFC with-defaults behavior:
- *   - Default-Handling Basic Mode is "explicit" (it does not store default values)
- *   - Retrieval of Default data is "report-all" (all default values are filled in)
- *
- * After the RFC6243 implementation introduced in 6.0, Clixon implemented the <with-defaults>
- * parameter for all get/config but retained the pre-6.0 default get/get-config behaviour.
- *   - Default-Handling Basic Mode is "explicit" (announced as a capability)
- *   - Retrieval of Default data is "report-all"
- *
- * The 6.0 behaviour is inconsistent and therefore in Clixon 6.1 the default retrieval data
- * is changed to "explicit" to be consistent with the basic mode:
- *   - Default-Handling Basic Mode is "explicit"
- *   - Retrieval of Default data is "explicit" <---
- *
- * This may lead to changes in behavior for clients retrieving configs without an explicit
- * <with-defaults> parameter.
- * To keep the previous behavior (as in 6.0) set this option with #define
- * Introduced in 6.1, remove in 6.3
- */
-#undef NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL
-
-/*! Temporary backward-compatible option for hiding CLI for deprecated YANG
- * Introduced in 6.1, remove in 6.3
- */
-#define AUTOCLI_DEPRECATED_HIDE
