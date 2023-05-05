@@ -162,18 +162,19 @@ static const map_str2str yang_snmp_types[] = {
  * @retval     1 - true(All subtypes are the same)
  * @retval     0 - false
  */
-int is_same_subtypes_union(yang_stmt *ytype, cbuf *cb)
+int
+is_same_subtypes_union(yang_stmt *ytype,
+                       cbuf      *cb)
 {
     int        retval = 0;
     yang_stmt *y_sub_type = NULL;
     yang_stmt *y_resolved_type = NULL;        /* resolved type */
     char      *resolved_type_str;             /* resolved type */
     char      *type_str = NULL;
-
-    int          options = 0;
-    cvec        *cvv = NULL;
-    cvec        *patterns = NULL;
-    uint8_t      fraction_digits = 0;
+    int        options = 0;
+    cvec      *cvv = NULL;
+    cvec      *patterns = NULL;
+    uint8_t    fraction_digits = 0;
 
     /* Loop over all sub-types in the resolved union type, note these are
      * not resolved types (unless they are built-in, but the resolve call is
@@ -200,7 +201,10 @@ int is_same_subtypes_union(yang_stmt *ytype, cbuf *cb)
     }
     return retval;
 }
-char* yang_type_to_snmp(yang_stmt *ytype, char* yang_type_str)
+
+char*
+yang_type_to_snmp(yang_stmt *ytype,
+                  char*      yang_type_str)
 {
     char* type_str = yang_type_str;
     if (yang_type_str && strcmp(yang_type_str, "union") == 0){

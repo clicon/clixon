@@ -45,12 +45,14 @@ Expected: July 2023
 
 ### Minor features
 
+* [Support yang type union with are same subtypes with SNMP](https://github.com/clicon/clixon/pull/427)
 * Removed obsolete compile options introduced in 6.1:
   * `NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL`
   * `AUTOCLI_DEPRECATED_HIDE`
 
 ### Corrected Bugs
 
+* Fixed: [if-feature always negative if imported from another module](https://github.com/clicon/clixon/issues/429)
 * Fixed autocli edit modes for schema mounts
 
 ## 6.2.0

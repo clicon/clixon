@@ -83,6 +83,7 @@
 
 /* Name of xml top object created by xml parse functions 
  * This is a "neutral" symbol without any meaning as opposed to the previous symbols ^
+ * @see DATASTORE_TOP_SYMBOL which should be used for clixon top-level config trees
  */
 #define XML_TOP_SYMBOL "top" 
 
