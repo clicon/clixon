@@ -53,6 +53,7 @@
 #include <dirent.h>
 #include <syslog.h>
 #include <pwd.h>
+#include <inttypes.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/types.h>
@@ -1485,5 +1486,75 @@ clixon_cli2file(clicon_handle     h,
     }
     retval = 0;
  done:
+    return retval;
+}
+
+/*! CLI callback show statistics
+ */
+int
+cli_show_statistics(clicon_handle h, 
+                    cvec         *cvv, 
+                    cvec         *argv)
+{
+    int         retval = -1;
+    cbuf       *cb = NULL;
+    cxobj      *xret = NULL;
+    cxobj      *xerr;
+    cg_var     *cv;
+    int         modules = 0;
+    pt_head    *ph;
+    parse_tree *pt;
+    uint64_t    nr = 0;
+    size_t      sz = 0;
+    
+    if (argv != NULL && cvec_len(argv) != 1){
+        clicon_err(OE_PLUGIN, EINVAL, "Expected arguments: [modules]");
+        goto done;
+    }
+    if (argv){
+        cv = cvec_i(argv, 0);
+        modules = (strcmp(cv_string_get(cv), "modules") == 0);
+    }
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        goto done;
+    }
+    /* CLI */
+    cligen_output(stdout, "CLI:\n");
+    ph = NULL;
+    while ((ph = cligen_ph_each(cli_cligen(h), ph)) != NULL) {
+        if ((pt = cligen_ph_parsetree_get(ph)) == NULL)
+            continue;
+        nr = 0; sz = 0;
+        pt_stats(pt, &nr, &sz);
+        cligen_output(stdout, "%s: nr=%" PRIu64 " size:%zu\n",
+                      cligen_ph_name_get(ph), nr, sz);        
+    }
+    /* Backend */
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+    cprintf(cb, ">");
+    cprintf(cb, "<stats xmlns=\"%s\">", CLIXON_LIB_NS);
+    if (modules)
+        cprintf(cb, "<modules>true</modules>");
+    cprintf(cb, "</stats>");
+    cprintf(cb, "</rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
+        goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_netconf_error(xerr, "Get configuration", NULL);
+        goto done;
+    }
+    fprintf(stdout, "Backend:\n");
+    if (clixon_xml2file(stdout, xml_child_i(xret, 0), 0, 1, NULL, cligen_output, 0, 1) < 0)
+        goto done;
+    fprintf(stdout, "CLI:\n");
+    
+    retval = 0;
+ done:
+    if (xret)
+        xml_free(xret);
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }

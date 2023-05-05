@@ -58,6 +58,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <string.h>
 #include <sys/param.h>
@@ -209,7 +210,7 @@ yang_mount_set(yang_stmt *yu,
  *
  * @param[in]  h     Clixon handle
  * @param[in]  x     XML moint-point node
- * @param[out] vallevel Do or dont do full RFC 7950 validation
+ * @param[out] vallevel Do or dont do full RFC 7950 validation if given
  * @param[out] yspec YANG stmt spec
  * @retval     1     x is a mount-point: yspec may be set
  * @retval     0     x is not a mount point
@@ -503,6 +504,75 @@ yang_schema_mount_statedata(clicon_handle h,
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Statistics about mountpoints
+ * @see yang_schema_mount_statedata
+ */
+int
+yang_schema_mount_statistics(clicon_handle h,
+                             cxobj        *xt,
+                             int           modules,
+                             cbuf         *cb)
+{
+    int        retval = -1;
+    cvec      *cvv = NULL;
+    cg_var    *cv;
+    cxobj     *xmp;          /* xml mount-point */
+    yang_stmt *yspec;
+    yang_stmt *ym;
+    int        ret;
+    char      *xpath;
+    uint64_t   nr;
+    size_t     sz;
+
+    if ((cvv = cvec_new(0)) == NULL){
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
+    }
+    if (xml_apply(xt, CX_ELMNT, find_schema_mounts, cvv) < 0)
+        goto done;
+    cv = NULL;
+    while ((cv = cvec_each(cvv, cv)) != NULL) {
+        if ((xmp = cv_void_get(cv)) == NULL)
+            continue;
+        if ((ret = xml_yang_mount_get(h, xmp, NULL, &yspec)) < 0)
+            goto done;
+        if (ret == 0)
+            continue;
+        if (xml2xpath(xmp, NULL, 1, 0, &xpath) < 0)
+            goto done;
+        cprintf(cb, "<module-set><name>mountpoint: ");
+        xml_chardata_cbuf_append(cb, xpath);
+        cprintf(cb, "</name>");
+        nr = 0; sz = 0;
+        if (yang_stats(yspec, &nr, &sz) < 0)
+            goto done;
+        cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
+        if (modules){
+            ym = NULL;
+            while ((ym = yn_each(yspec, ym)) != NULL) {
+                cprintf(cb, "<module><name>%s</name>", yang_argument_get(ym));
+                nr = 0; sz = 0;
+                if (yang_stats(ym, &nr, &sz) < 0)
+                    goto done;
+                cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
+                cprintf(cb, "</module>");
+            }
+        }
+        cprintf(cb, "</module-set>");
+        if (xpath){
+            free(xpath);
+            xpath = NULL;
+        }
+    }
+    retval = 0;
+ done:
+    if (xpath)
+        free(xpath);
+    if (cvv)
+        cvec_free(cvv);
+    return retval;
 }
 
 /*! Get yanglib from user plugin callback, parse it and mount it

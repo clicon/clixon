@@ -60,6 +60,7 @@ int xml_yang_mount_get(clicon_handle h, cxobj *x, validate_level *vl, yang_stmt 
 int xml_yang_mount_set(cxobj *x,  yang_stmt *yspec);
 int xml_yang_mount_freeall(cvec *cvv);
 int yang_schema_mount_statedata(clicon_handle h, yang_stmt *yspec, char *xpath, cvec *nsc, cxobj **xret, cxobj **xerr);
+int yang_schema_mount_statistics(clicon_handle h, cxobj *xt, int modules, cbuf *cb);
 int yang_schema_yanglib_parse_mount(clicon_handle h, cxobj *xt);
 int yang_schema_get_child(clicon_handle h, cxobj *x1, cxobj *x1c, yang_stmt **yc);
 

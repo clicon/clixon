@@ -83,6 +83,10 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "get yang-lib at mountpoint"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><top xmlns=\"urn:example:clixon\"><mylist/></top>></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>mount</name><module><name>clixon-example</name><revision>2022-11-01</revision><namespace>urn:example:urn</namespace></module></module-set></yang-library></root></mylist><mylist><name>y</name><root><yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>mount</name><module><name>clixon-example</name><revision>2022-11-01</revision><namespace>urn:example:urn</namespace></module></module-set></yang-library></root></mylist></top></data></rpc-reply>"
 
+new "check there is statistics from mountpoint"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><stats xmlns=\"http://clicon.org/lib\"></stats></rpc>" '<module-set><name>mountpoint: /top/mylist\[name="x"\]/root</name><nr>'
+#"<rpc-reply $DEFAULTNS></rpc-reply>"
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill

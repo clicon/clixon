@@ -43,8 +43,15 @@
 ## 6.3.0
 Expected: July 2023
 
+### API changes on existing protocol/config features
+
+* New `clixon-lib@2023-05-01.yang` revision
+  * Restructured and extended stats rpc to schema mountpoints
+  * rpc `<stats>` is not backward compatible
+  
 ### Minor features
 
+* CLI: Added `show statistics` example code for backend and CLI memory stats
 * [Support yang type union with are same subtypes with SNMP](https://github.com/clicon/clixon/pull/427)
 * Removed obsolete compile options introduced in 6.1:
   * `NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL`

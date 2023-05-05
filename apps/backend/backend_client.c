@@ -334,20 +334,18 @@ clixon_stats_datastore_get(clicon_handle h,
     if ((xt = xmldb_cache_get(h, dbname)) == NULL){
         /* Trigger cache if no exist */
         if (xmldb_get(h, dbname, NULL, "/", &xn) < 0)
-            goto done;
+            //goto done;
+            goto ok;
         xt = xmldb_cache_get(h, dbname);
     }
-    if (xt == NULL){
-        cprintf(cb, "<datastore xmlns=\"%s\"><name>%s</name><nr>0</nr><size>0</size></datastore>",
-                CLIXON_LIB_NS, dbname);
-    }
-    else{
+    if (xt != NULL){
         if (xml_stats(xt, &nr, &sz) < 0)
             goto done;
-        cprintf(cb, "<datastore xmlns=\"%s\"><name>%s</name><nr>%" PRIu64 "</nr>"
+        cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
                 "<size>%zu</size></datastore>",
-                CLIXON_LIB_NS, dbname, nr, sz);
+                dbname, nr, sz);
     }
+ ok:
     retval = 0;
  done:
     if (xn)
@@ -377,9 +375,7 @@ clixon_stats_module_get(clicon_handle h,
         return 0;
     if (yang_stats(ys, &nr, &sz) < 0)
         goto done;
-    cprintf(cb, "<module xmlns=\"%s\"><name>%s</name><nr>%" PRIu64 "</nr>"
-            "<size>%zu</size></module>",
-            CLIXON_LIB_NS, yang_argument_get(ys), nr, sz);
+    cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
     retval = 0;
  done:
     if (xn)
@@ -1308,9 +1304,15 @@ from_client_stats(clicon_handle h,
     int        retval = -1;
     uint64_t   nr;
     yang_stmt *ym;
+    char      *str;
+    int        modules = 0;
+    yang_stmt *yspec;
+    yang_stmt *ymodext;
+    cxobj     *xt;
     
+    if ((str = xml_find_body(xe, "modules")) != NULL)
+        modules = strcmp(str, "true") == 0;
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
-    xml_stats_global(&nr);
     cprintf(cbret, "<global xmlns=\"%s\">", CLIXON_LIB_NS);
     nr=0;
     xml_stats_global(&nr);
@@ -1319,27 +1321,52 @@ from_client_stats(clicon_handle h,
     yang_stats_global(&nr);
     cprintf(cbret, "<yangnr>%" PRIu64 "</yangnr>", nr);
     cprintf(cbret, "</global>");
+    cprintf(cbret, "<datastores xmlns=\"%s\">", CLIXON_LIB_NS);
     if (clixon_stats_datastore_get(h, "running", cbret) < 0)
         goto done;
     if (clixon_stats_datastore_get(h, "candidate", cbret) < 0)
         goto done;
     if (clixon_stats_datastore_get(h, "startup", cbret) < 0)
         goto done;
-    ym = NULL;
-    while ((ym = yn_each(clicon_config_yang(h), ym)) != NULL) {    
-        if (clixon_stats_module_get(h, ym, cbret) < 0)
+    cprintf(cbret, "</datastores>");
+    /* per module-set, first configuration, then main dbspec, then mountpoints */
+    cprintf(cbret, "<module-sets xmlns=\"%s\">", CLIXON_LIB_NS);
+    cprintf(cbret, "<module-set><name>clixon-config</name>");
+    yspec = clicon_config_yang(h);
+    if (clixon_stats_module_get(h, yspec, cbret) < 0)
+        goto done;
+    if (modules){
+        ym = NULL;
+        while ((ym = yn_each(yspec, ym)) != NULL) {    
+            cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ym));
+            if (clixon_stats_module_get(h, ym, cbret) < 0)
+                goto done;
+            cprintf(cbret, "</module>");
+        }
+    }
+    cprintf(cbret, "</module-set>");
+    cprintf(cbret, "<module-set><name>main</name>");
+    yspec = clicon_dbspec_yang(h);
+    if (clixon_stats_module_get(h, yspec, cbret) < 0)
+        goto done;
+    if (modules){
+        ym = NULL;
+        while ((ym = yn_each(yspec, ym)) != NULL) {
+            cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ym));
+            if (clixon_stats_module_get(h, ym, cbret) < 0)
+                goto done;
+            cprintf(cbret, "</module>");
+        }
+    }
+    cprintf(cbret, "</module-set>");
+    /* Mountpoints */
+    if ((ymodext = yang_find(yspec, Y_MODULE, "ietf-yang-schema-mount")) != NULL){
+        if (xmldb_get(h, "running", NULL, "/", &xt) < 0)
+            goto done;
+        if (xt && yang_schema_mount_statistics(h, xt, modules, cbret) < 0)
             goto done;
     }
-    ym = NULL;
-    while ((ym = yn_each(clicon_dbspec_yang(h), ym)) != NULL) {    
-        if (clixon_stats_module_get(h, ym, cbret) < 0)
-            goto done;
-    }
-    ym = NULL;
-    while ((ym = yn_each(clicon_nacm_ext_yang(h), ym)) != NULL) {    
-        if (clixon_stats_module_get(h, ym, cbret) < 0)
-            goto done;
-    }
+    cprintf(cbret, "</module-sets>");
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
  done:
