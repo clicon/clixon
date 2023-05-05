@@ -73,6 +73,10 @@ module example{
      if-feature B;
      type "string";
    }
+   leaf u {
+    if-feature rt:router-id;
+    type "string";
+   } 
    leaf z{
      type "string";
    }
@@ -89,7 +93,7 @@ module example{
      type "string";
    }
    leaf m3{
-     if-feature "A and B";
+     if-feature "A and B";
      description "Not enabled";
      type "string";
    }
@@ -204,6 +208,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 testrun x true
 
 testrun y false
+testrun u true
 
 # Multiple if-feature
 testrun m1 true

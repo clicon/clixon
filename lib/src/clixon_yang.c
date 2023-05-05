@@ -2610,7 +2610,7 @@ if_feature(yang_stmt    *yspec,
  * @param[in] ys   Feature yang statement to populate.
  * Bootstrapping: A feature is enabled if found in clixon-config
  */
-static int
+int
 ys_populate_feature(clicon_handle h,
                     yang_stmt    *ys)
 {
@@ -2947,7 +2947,7 @@ yang_features(clicon_handle h,
             if ((ymod = ys_module(ys)) != NULL)
                 mainfile = yang_filename_get(ymod);
             ret = 0;
-            if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, mainfile, 1, &ret) < 0)
+            if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, mainfile, 1, &ret, h) < 0)
                 goto done;
             clicon_debug(CLIXON_DBG_DETAIL, "%s %s %d", __FUNCTION__, yang_argument_get(ys), ret);
             if (ret == 0)

@@ -297,5 +297,6 @@ int        yang_init(clicon_handle h);
 int        yang_single_child_type(yang_stmt *ys, enum rfc_6020 subkeyw);
 void      *yang_action_cb_get(yang_stmt *ys);
 int        yang_action_cb_add(yang_stmt *ys, void *rc);
+int        ys_populate_feature(clicon_handle h, yang_stmt *ys);
 
 #endif  /* _CLIXON_YANG_H_ */

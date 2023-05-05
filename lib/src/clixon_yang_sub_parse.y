@@ -163,6 +163,11 @@ if_feature_check(clixon_yang_sub_parse_yacc *ife,
      * Continue loop to catch unbound features and make verdict at end
      */
     cv = yang_cv_get(yfeat);
+    if (cv == NULL && ife->h) {
+        ys_populate_feature(ife->h, yfeat);
+    }
+
+    cv = yang_cv_get(yfeat);
     if (cv == NULL || !cv_bool_get(cv))    /* disabled */
         retval = 0;
     else                                  /* enabled */
