@@ -76,7 +76,7 @@ typedef struct map_str2str map_str2str;
 static inline char * strdup4(char *str) 
 {
     char *dup;
-    int len;
+    size_t len;
     len = align4(strlen(str)+1);
     if ((dup = (char*) malloc(len)) == NULL)
         return NULL;
