@@ -529,6 +529,7 @@ cli_show_common(clicon_handle    h,
                         goto done;
                     break;
                 case FORMAT_CLI:
+                    /* If xp is not bound, cli prints are skipped */
                     if (clixon_cli2file(h, stdout, xp, prepend, cligen_output, skiptop) < 0) /* cli syntax */
                         goto done;
                     break;
@@ -896,7 +897,7 @@ cli_show_auto(clicon_handle h,
     char            *str;
     char            *mtpoint = NULL;
     
-    if (cvec_len(argv) < 2 || cvec_len(argv) > 7){
+    if (cvec_len(argv) < 2 || cvec_len(argv) > 8){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <api-path-fmt>* <database> [<format> <pretty> <state> <default> <prepend>]", cvec_len(argv));
         goto done;
     }
