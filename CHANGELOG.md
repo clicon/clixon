@@ -49,6 +49,13 @@ Expected: July 2023
   * Restructured and extended stats rpc to schema mountpoints
   * rpc `<stats>` is not backward compatible
   
+### C/CLI-API changes on existing features
+Developers may need to change their code
+
+* `yang2cli_yspec` removed last argument `printgen`.
+* Removed obsolete: `cli_auto_show()`
+
+
 ### Minor features
 
 * CLI: Added `show statistics` example code for backend and CLI memory stats

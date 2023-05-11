@@ -292,7 +292,7 @@ expand_dbvar(void   *h,
         cprintf(cbxpath, "%s", mtpoint);
         if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
             goto done;
-        cv = NULL;      /* Append cvv1 to cvv2 */
+        cv = NULL;      /* Append nsc0 to nsc */
         while ((cv = cvec_each(nsc0, cv)) != NULL)
             cvec_append_var(nsc, cv);
     }
@@ -449,7 +449,7 @@ show_yang(clicon_handle h,
  * @param[in] nsc          Namespace mapping for xpath
  * @param[in] skiptop      If set, do not show object itself, only its children
   */
-static int
+int
 cli_show_common(clicon_handle    h,
                 char            *db,
                 enum format_enum format,
@@ -569,7 +569,7 @@ done:
  * @retval     0      OK
  * @retval    -1      Error
  */
-static int 
+int 
 cli_show_option_format(cvec             *argv,
                        int               argc,
                        enum format_enum *format)
@@ -595,7 +595,7 @@ cli_show_option_format(cvec             *argv,
  * @retval     0     OK
  * @retval    -1     Error
  */
-static int 
+int 
 cli_show_option_bool(cvec *argv,
                      int   argc,
                      int  *bool
@@ -635,7 +635,7 @@ cli_show_option_bool(cvec *argv,
  * @retval     0     OK
  * @retval    -1     Error
  */
-static int 
+int 
 cli_show_option_withdefault(cvec  *argv,
                             int    argc,
                             char **withdefault,
@@ -947,7 +947,7 @@ cli_show_auto(clicon_handle h,
     if (api_path2xpath(api_path, yspec0, &xpath, &nsc, NULL) < 0)
         goto done;
     if (xpath == NULL){
-        clicon_err(OE_FATAL, 0, "Invalid api-path-fmt: %s", api_path_fmt);
+        clicon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
         goto done;
     }
     if (cli_show_common(h, dbname, format, pretty, state,
@@ -983,7 +983,8 @@ cli_show_auto(clicon_handle h,
  *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
  *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
  *   <prepend>       CLI prefix: prepend before cli syntax output
- * @code
+ * @cli_show_auto_ctrl
+code
  *   clispec:
  *      show config, cli_show_auto_mode("candidate");
  *   cli run:
@@ -1102,42 +1103,6 @@ cli_show_auto_mode(clicon_handle h,
         free(xpath);
     return retval;
 }
-
-#if 1 // OBSOLETE
-/*! Obsolete Show configuration callback for autocli edit modes using tree working point
- *
- * @note Please use cli_show_auto_mode instead,
- * but since that function does not use treename(argv[0]) that must be stripped
- */
-int 
-cli_auto_show(clicon_handle h,
-              cvec         *cvv,
-              cvec         *argv0)
-{
-    int    retval = -1;
-    cvec  *argv1 = NULL;
-    cg_var *cv;
-
-    if ((argv1 = cvec_new(0)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
-        goto done;
-    }
-    cv = NULL;
-    while ((cv = cvec_each1(argv0, cv)) != NULL) {
-        if (cvec_append_var(argv1, cv) == NULL){
-            clicon_err(OE_UNIX, errno, "cvec_append_var");
-            goto done;
-        }
-    }
-    if (cli_show_auto_mode(h, cvv, argv1) < 0)
-        goto done;
-    retval = 0;
- done:
-    if (argv1)
-        cvec_free(argv1);
-    return retval;
-}
-#endif
 
 /*! Show clixon configuration options as loaded
  */

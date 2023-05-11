@@ -1347,8 +1347,6 @@ yang2cli_post(clicon_handle h,
  * @param[in]  h         Clixon handle
  * @param[in]  yspec     Top-level Yang statement of type Y_SPEC
  * @param[in]  treename  Name of tree
- * @param[in]  xautocli  Autocli config tree (instance of clixon-autocli.yang)
- * @param[in]  printgen  Log the generated CLIgen syntax
  * @retval     0         OK
  * @retval    -1         Error
  * @note Tie-break of same top-level symbol: prefix is NYI
@@ -1356,8 +1354,7 @@ yang2cli_post(clicon_handle h,
 int
 yang2cli_yspec(clicon_handle      h, 
                yang_stmt         *yspec,
-               char              *treename,
-               int                printgen)
+               char              *treename)
 {
     int             retval = -1;
     parse_tree     *pt0 = NULL;
@@ -1431,8 +1428,7 @@ yang2cli_yspec(clicon_handle      h,
             goto done;
         }
         //      pt_print(stderr,pt);
-
-        if (printgen)
+        if (clicon_data_int_get(h, "autocli-print-debug") == 1)
             clicon_log(LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
                        __FUNCTION__, treename, cbuf_get(cb));
         else
@@ -1453,13 +1449,17 @@ yang2cli_yspec(clicon_handle      h,
     if (cligen_expandv_str2fn(pt0, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)     
         goto done;
     /* Append cligen tree and name it */
-    if ((ph = cligen_ph_add(cli_cligen(h), treename)) == NULL)
+    if ((ph = cligen_ph_add(cli_cligen(h), treename)) == NULL){
+        clicon_err(OE_UNIX, 0, "cligen_ph_add");
         goto done;
-    if (cligen_ph_parsetree_set(ph, pt0) < 0)
+    }
+    if (cligen_ph_parsetree_set(ph, pt0) < 0){
+        clicon_err(OE_UNIX, 0, "cligen_ph_parsetree_set");
         goto done;
+    }
     pt0 = NULL;
 #if 0
-    if (printgen){
+    if (clicon_data_int_get(h, "autocli-print-debug") == 1){
         clicon_log(LOG_NOTICE, "%s: Top-level cli-spec %s", __FUNCTION__, treename);
         pt_print1(stderr, pt0, 0);
     }

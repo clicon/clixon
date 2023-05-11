@@ -370,13 +370,11 @@ autocli_trees_default(clicon_handle h)
  * "tree reference" syntax.
  *
  * @param[in]  h        Clixon handle
- * @param[in]  printgen Print CLI syntax generated from dbspec
  * @retval     0        OK
  * @retval    -1        Error
  */
 static int
-autocli_start(clicon_handle h,
-              int           printgen)
+autocli_start(clicon_handle h)
 {
     int           retval = -1;
     yang_stmt    *yspec;
@@ -401,7 +399,7 @@ autocli_start(clicon_handle h,
         goto done;
     yspec = clicon_dbspec_yang(h);
     /* The actual generating call from yang to clispec for the complete yang spec */
-    if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME, printgen) < 0)
+    if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME) < 0)
         goto done;
     /* XXX Create pre-5.5 tree-refs for backward compatibility */    
     if (autocli_trees_default(h) < 0)
@@ -458,7 +456,6 @@ main(int    argc,
     char          *tmp;
     char          *argv0 = argv[0];
     clicon_handle  h;
-    int            printgen  = 0;
     int            logclisyntax  = 0;
     int            help = 0;
     int            logdst = CLICON_LOG_STDERR;
@@ -596,7 +593,7 @@ main(int    argc,
                 goto done;
             break;
         case 'G' : /* Print generated CLI syntax */
-            printgen++;
+            clicon_data_int_set(h, "autocli-print-debug", 1);
             break;
         case 'L' : /* Debug print dynamic CLI syntax */
             logclisyntax++;
@@ -750,7 +747,7 @@ main(int    argc,
         goto done;
 
     /* Create autocli from YANG */
-    if (autocli_start(h, printgen) < 0)
+    if (autocli_start(h) < 0)
         goto done;
 
     /* Initialize cli syntax. 

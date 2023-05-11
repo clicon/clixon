@@ -269,6 +269,10 @@ identityref_add_ns(cxobj *x,
  *           api-path01---------
  * The result computed from the top-level yspec and montpoint xpath are:
  * - api_pathfmt10 Combined api-path for both trees
+ * @param[in]  yspec0         Top-level yang-spec
+ * @param[in]  mtpoint        Mount-point, generic: if there are several with same yang, any will do
+ * @param[in]  api_path_fmt1  Second part of api-path-fmt
+ * @param[out] api_path_fmt01 Combined api-path-fmt
  */
 int
 mtpoint_paths(yang_stmt  *yspec0,

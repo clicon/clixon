@@ -560,7 +560,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     yang_stmt *yt;
 
     mark = 0;
-    yt = xml_spec(xt); /* xan be null */
+    yt = xml_spec(xt); /* can be null */
     x = NULL;
     xprev = x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
