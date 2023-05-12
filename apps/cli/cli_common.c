@@ -186,7 +186,7 @@ cli_signal_flush(clicon_handle h)
  * Create and add an XML body as child of XML node xbot. Set its value to the last 
  * CLI variable vector element. 
  */
-static int
+int
 dbxml_body(cxobj     *xbot,
            cvec      *cvv)
 {
@@ -216,7 +216,7 @@ dbxml_body(cxobj     *xbot,
 /*! Special handling of identityref:s whose body may be: <namespace prefix>:<id>
  * Ensure the namespace is declared if it exists in YANG
 */
-static int
+int
 identityref_add_ns(cxobj *x,
                    void  *arg)
 {
@@ -345,6 +345,7 @@ mtpoint_paths(yang_stmt  *yspec0,
 }
 
 /*! Modify xml datastore from a callback using xml key format strings
+ *
  * @param[in]  h     Clicon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
  * @param[in]  argv  Vector: <apipathfmt> [<mointpt>], eg "/aaa/%s"
