@@ -52,6 +52,8 @@ Expected: July 2023
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Added output function to JSON output:
+  * `xml2json_vec(...,skiptop)` --> `xml2json_vec(..., cligen_output, skiptop)`
 * `yang2cli_yspec` removed last argument `printgen`.
 * Removed obsolete: `cli_auto_show()`
 

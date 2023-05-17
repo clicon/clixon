@@ -506,7 +506,7 @@ cli_show_common(clicon_handle    h,
         if (format == FORMAT_JSON){
             switch (format){        
             case FORMAT_JSON:
-                if (xml2json_vec(stdout, vec, veclen, pretty, skiptop) < 0) // XXX cligen_output
+                if (xml2json_vec(stdout, vec, veclen, pretty, cligen_output, skiptop) < 0)
                     goto done;
                 break;
             default:
