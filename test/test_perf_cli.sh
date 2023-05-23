@@ -87,24 +87,29 @@ new "wait backend"
 wait_backend
 
 new "generate config with $perfnr list entries"
-echo -n "<rpc><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\">" > $fconfig
+rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\">" > $fconfig
 for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<y><a>$i</a><b>$i</b></y>" >> $fconfig
+    rpc+="<y><a>$i</a><b>$i</b></y>"
 done
-echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig
+rpc+="</x></config></edit-config></rpc>"
+
+echo -n "$DEFAULTHELLO" > $fconfig
+echo "$(chunked_framing "$rpc")" >> $fconfig
 
 # Now take large config file and write it via netconf to candidate
 new "test time exists"
-expectpart "$(time -p ls)" 0 
+expectpart "$(time -p ls)" 0  2>&1 | awk '/real/ {print $2}'
 
 new "netconf write large config"
-expecteof_file "time -p $clixon_netconf -qef $cfg" 0 "$fconfig" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+# One extra without time for potential error
+expecteof_file "time -p $clixon_netconf -qef $cfg" 0 "$fconfig" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>$" 2>&1 | awk '/real/ {print $2}'
 
 # Here, there are $perfnr entries in candidate
 
 # Now commit it from candidate to running 
 new "netconf commit large config"
-expecteof "time -p $clixon_netconf -qef $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+rpc=$(chunked_framing "<rpc $DEFAULTNS><commit/></rpc>")
+expecteof_netconf "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "$rpc" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" 2>&1 | awk '/real/ {print $2}'
 
 # CLI get. This takes a lot of time because expand_dbvar gets perfnr (eg 100000) entries
 # and loops over it.
@@ -134,18 +139,21 @@ done } 2>&1 | awk '/real/ {print $2}'
 
 # Now do leaf-lists instead of leafs
 
-#new "generate leaf-list config"
-echo -n "<rpc><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">" > $fconfig2
+new "generate leaf-list config"
+rpc="<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><x xmlns=\"urn:example:clixon\">"
 for (( i=0; i<$perfnr; i++ )); do  
-    echo -n "<c>$i</c>" >> $fconfig2
+    rpc+="<c>$i</c>"
 done
-echo "</x></config></edit-config></rpc>]]>]]>" >> $fconfig2
+rpc+="</x></config></edit-config></rpc>"
+echo -n "$DEFAULTHELLO" > $fconfig2
+echo "$(chunked_framing "$rpc")" >> $fconfig2
 
 new "netconf replace large list-leaf config"
-expecteof_file "time -p $clixon_netconf -qef $cfg" 0 "$fconfig2" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+expecteof_file "time -p $clixon_netconf -qef $cfg" 0 "$fconfig2" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>$" 2>&1 | awk '/real/ {print $2}'
 
 new "netconf commit large leaf-list config"
-expecteof "time -p $clixon_netconf -qef $cfg" 0 "<rpc><commit/></rpc>]]>]]>" "^<rpc-reply><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
+rpc=$(chunked_framing "<rpc $DEFAULTNS><commit/></rpc>")
+expecteof "time -p $clixon_netconf -qef $cfg" 0 "$rpc" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>$" 2>&1 | awk '/real/ {print $2}'
 
 # XXX No leafref cli tests
 

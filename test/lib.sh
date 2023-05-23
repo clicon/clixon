@@ -1040,6 +1040,7 @@ EOF
 # clixon tester read from file for large tests
 # Arguments:
 # - Command
+# - expected retval
 # - Filename to pipe to stdin 
 # - expected stdout outcome
 function expecteof_file(){
