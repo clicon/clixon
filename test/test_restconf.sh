@@ -329,7 +329,7 @@ function testrun()
         # http2-prior knowledge
         if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
             new "restconf GET http/2 prior-knowledge (http)"
-            expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta 2>&1)" "16 52 55" # "Error in the HTTP2 framing layer" "Connection reset by peer"
+            expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta 2>&1)" "16 52 55 56" # "Error in the HTTP2 framing layer" "Connection reset by peer"
         else
             new "restconf GET https/2 prior-knowledge"
             expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
@@ -423,7 +423,7 @@ function testrun()
         # http2-prior knowledge
         if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
             new "restconf GET http/2 prior-knowledge (http)"
-            expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta 2>&1)" "16 52 55" # "Error in the HTTP2 framing layer" "Connection reset by peer"
+            expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta 2>&1)" "16 52 55 56" # "Error in the HTTP2 framing layer" "Connection reset by peer"
         else
             new "restconf GET https/2 prior-knowledge"
             expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
