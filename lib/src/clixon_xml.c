@@ -972,6 +972,7 @@ xml_child_order(cxobj *xp,
  *      xprev = x;
  *   }
  * @endcode
+ * @note Assumes attributes are first in list
  * @see xml_child_index_each
  */
 cxobj *
@@ -990,8 +991,11 @@ xml_child_each(cxobj           *xparent,
         xn = xparent->x_childvec[i];
         if (xn == NULL)
             continue;
-        if (type != CX_ERROR && xml_type(xn) != type)
+        if (type != CX_ERROR && xml_type(xn) != type){
+            if (type == CX_ATTR) /* Assume sorted attributes are first */
+                return NULL;
             continue;
+        }
         break; /* this is next object after previous */
     }
     if (i < xparent->x_childvec_len) /* found */

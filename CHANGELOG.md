@@ -57,9 +57,9 @@ Developers may need to change their code
 * `yang2cli_yspec` removed last argument `printgen`.
 * Removed obsolete: `cli_auto_show()`
 
-
 ### Minor features
 
+* Performance: A change in the `merge` code made "co-located" config and non-config get retrieval go considerable faster.
 * CLI: Added `show statistics` example code for backend and CLI memory stats
 * [Support yang type union with are same subtypes with SNMP](https://github.com/clicon/clixon/pull/427)
 * Removed obsolete compile options introduced in 6.1:
