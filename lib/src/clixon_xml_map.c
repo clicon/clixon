@@ -1021,7 +1021,7 @@ assign_namespace_body(cxobj *x0, /* source */
     cxobj *xa;
     
     xa = NULL;
-    while ((xa = xml_child_each(x0, xa, CX_ATTR)) != NULL) {
+    while ((xa = xml_child_each_attr(x0, xa)) != NULL) {
         prefix0 = xml_prefix(xa);
         name = xml_name(xa);
         namespace = xml_value(xa);
@@ -1478,7 +1478,7 @@ xml_copy_marked(cxobj *x0,
     
     /* Copy all attributes */
     x = NULL;
-    while ((x = xml_child_each(x0, x, CX_ATTR)) != NULL) {
+    while ((x = xml_child_each_attr(x0, x)) != NULL) {
         name = xml_name(x);
         if ((xcopy = xml_new(name, x1, CX_ATTR)) == NULL)
             goto done;

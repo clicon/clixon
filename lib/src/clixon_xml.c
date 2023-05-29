@@ -972,8 +972,8 @@ xml_child_order(cxobj *xp,
  *      xprev = x;
  *   }
  * @endcode
- * @note Assumes attributes are first in list
  * @see xml_child_index_each
+ * @see xml_child_each_attr  hardcoded for sorted list and attributes
  */
 cxobj *
 xml_child_each(cxobj           *xparent, 
@@ -991,10 +991,45 @@ xml_child_each(cxobj           *xparent,
         xn = xparent->x_childvec[i];
         if (xn == NULL)
             continue;
-        if (type != CX_ERROR && xml_type(xn) != type){
-            if (type == CX_ATTR) /* Assume sorted attributes are first */
-                return NULL;
+        if (type != CX_ERROR && xml_type(xn) != type)
             continue;
+        break; /* this is next object after previous */
+    }
+    if (i < xparent->x_childvec_len) /* found */
+        xn->_x_vector_i = i;
+    else
+        xn = NULL;
+    return xn;
+}
+
+/*! Same as xml_child_each but hard-coded for attributes
+ *
+ * Assumes attributes are first in list, which they are if they are sorted, but there are
+ * situations where the children have not (yet) been sorted, in which case you need to use the 
+ * original function.
+ * @param[in] xparent xml tree node whose children should be iterated
+ * @param[in] xprev   previous child, or NULL on init
+ * @retval    xn      Next XML node
+ * @retval    NULL    End of list
+ * @see xml_child_each
+ */
+cxobj *
+xml_child_each_attr(cxobj           *xparent, 
+                    cxobj           *xprev)
+{
+    int             i;
+    cxobj          *xn = NULL; 
+
+    if (xparent == NULL)
+        return NULL;
+    if (!is_element(xparent))
+        return NULL;
+    for (i=xprev?xprev->_x_vector_i+1:0; i<xparent->x_childvec_len; i++){
+        xn = xparent->x_childvec[i];
+        if (xn == NULL)
+            continue;
+        if (xml_type(xn) != CX_ATTR){
+            return NULL;
         }
         break; /* this is next object after previous */
     }

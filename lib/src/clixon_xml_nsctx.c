@@ -230,7 +230,7 @@ xml_nsctx_node1(cxobj *xn,
     /* xmlns:t="<ns1>" prefix:xmlns, name:t
      * xmlns="<ns2>"   prefix:NULL   name:xmlns
      */
-    while ((xa = xml_child_each(xn, xa, CX_ATTR)) != NULL){
+    while ((xa = xml_child_each_attr(xn, xa)) != NULL){
         pf = xml_prefix(xa);
         nm = xml_name(xa);
         if (pf == NULL){
@@ -674,7 +674,7 @@ xml2prefix(cxobj *xn,
     if (nscache_get_prefix(xn, namespace, &prefix) == 1) /* found */
         goto found;
     xa = NULL;
-    while ((xa = xml_child_each(xn, xa, CX_ATTR)) != NULL) {
+    while ((xa = xml_child_each_attr(xn, xa)) != NULL) {
         /* xmlns=namespace */
         if (strcmp("xmlns", xml_name(xa)) == 0){ 
             if (strcmp(xml_value(xa), namespace) == 0){
