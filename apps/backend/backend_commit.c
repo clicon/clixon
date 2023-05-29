@@ -520,7 +520,7 @@ validate_common(clicon_handle       h,
                  &td->td_tcvec,     /* changed: wanted values */
                  &td->td_clen) < 0)
         goto done;
-    if (dbglevel & CLIXON_DBG_DETAIL)
+    if (clicon_debug_get() & CLIXON_DBG_DETAIL)
         transaction_dbg(h, CLIXON_DBG_DETAIL, td, __FUNCTION__);
     /* Mark as changed in tree */
     for (i=0; i<td->td_dlen; i++){ /* Also down */
