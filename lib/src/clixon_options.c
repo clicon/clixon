@@ -490,6 +490,7 @@ clicon_options_main(clicon_handle h)
     cxobj         *xconfig = NULL;
     yang_stmt     *yspec = NULL;
     char          *extraconfdir = NULL;
+    char          *yangspec = "clixon-config";
 
     /* Create configure yang-spec */
     if ((yspec = yspec_new()) == NULL)
@@ -547,11 +548,10 @@ clicon_options_main(clicon_handle h)
         goto done;
 #endif
     /* Parse clixon yang spec */
-    if (yang_spec_parse_module(h, "clixon-config", NULL, yspec) < 0)
+    if (clicon_option_str(h, "CLICON_CONFIG_EXTEND") != NULL)
+        yangspec = clicon_option_str(h, "CLICON_CONFIG_EXTEND");
+    if (yang_spec_parse_module(h, yangspec, NULL, yspec) < 0)
         goto done;    
-    /* Load restconf yang. Note this is also a part of clixon-config */
-    if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
-        goto done;
     clicon_conf_xml_set(h, NULL);
     if (xconfig){
         xml_free(xconfig);

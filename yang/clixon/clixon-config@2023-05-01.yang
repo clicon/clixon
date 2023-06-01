@@ -46,6 +46,20 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2023-05-01 {
+        description
+            "Added options:
+                    CLICON_CONFIG_EXTEND
+             Override this yang with an application-specific extended config file
+             Released in Clixon 6.3";
+    }
+    revision 2023-03-01 {
+        description
+            "Added options:
+                    CLICON_RESTCONF_NOALPN_DEFAULT
+             Extended datastore-format with CLI and text
+             Released in Clixon 6.2";
+    }
     revision 2022-12-01 {
         description
             "Added options:
@@ -269,7 +283,7 @@ module clixon-config {
     }
     typedef datastore_format{
         description
-            "Datastore format.";
+            "Datastore format (only xml and json implemented in actual data.";
         type enumeration{
             enum xml{
                 description
@@ -279,6 +293,12 @@ module clixon-config {
             }
             enum json{
                 description "Save and load xmldb as JSON";
+            }
+            enum text{
+                description "'Curly' C-like text format";
+            }
+            enum cli{
+                description "CLI format";
             }
         }
     }
@@ -447,6 +467,15 @@ module clixon-config {
                 If the dir is given but does not exist will result in an error.
                 You can override file setting with -E <dir> command-line option.
                 Note that due to bootstraping this value is only meaningful in the main config file";
+        }
+        leaf CLICON_CONFIG_EXTEND {
+            type string;
+            description
+                "If specified load an application-specific configuration YANG that overrides
+                 this config. 
+                 Normally, that YANG imports clixon-config.
+                 This field is a 'bootstrap' field.
+                ";
         }
         leaf CLICON_YANG_MAIN_FILE {
             type string;
@@ -632,6 +661,21 @@ module clixon-config {
                  upgrade/switch from http/1 to http/2. 
                  Note this also disables plain http/2 in prior-knowledge, that is, in http/2-only mode.
                  HTTP/2 in https(TLS) is unaffected";
+        }
+        leaf CLICON_NOALPN_DEFAULT {
+            type string;
+            description
+                "By default Clixon Restconf over TLS/HTTPS uses ALPN for protocol selection.
+                 This option controls the behavior if a client does NOT use ALPN for TLS.
+                 AND both http/1 and http/2 is configured in Clixon.
+                 If the value is not set (or other value), Clixon closes the socket(reset)
+                 If the value is 'http/1.1' then HTTP/1.1 is selected
+                 If the value is 'http/2' then HTTP/2 is selected
+                 Note that if Clixon is configured for only HTTP/1 (--disable-nghttp2), 
+                 then HTTP/1 is selected if the client does not use ALPN.
+                 Likewise, if Clixon is configured for only HTTP/2 (--disable-http1), 
+                 then HTTP/2 is selected if the client does not use ALPN.
+                 This option does not apply for plain (non-TLS) HTTP";
         }
         leaf CLICON_HTTP_DATA_PATH {
             if-feature "clrc:http-data";

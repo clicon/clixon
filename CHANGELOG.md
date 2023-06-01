@@ -45,6 +45,8 @@ Expected: July 2023
 
 ### API changes on existing protocol/config features
 
+* New `clixon-config@2023-05-01.yang` revision
+  * Added options: `CLICON_CONFIG_EXTEND`
 * New `clixon-lib@2023-05-01.yang` revision
   * Restructured and extended stats rpc to schema mountpoints
   * rpc `<stats>` is not backward compatible
