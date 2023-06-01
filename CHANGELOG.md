@@ -54,6 +54,7 @@ Expected: July 2023
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Added `uid` parameter to `clixon_process_register()`
 * Added output function to JSON output:
   * `xml2json_vec(...,skiptop)` --> `xml2json_vec(..., cligen_output, skiptop)`
 * `yang2cli_yspec` removed last argument `printgen`.

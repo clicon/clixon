@@ -436,7 +436,7 @@ filter_xpath_again(clicon_handle h,
     return retval;
 }
 
-/*! Help function for NACM access and returnmessage
+/*! Help function for NACM access and return message
  *
  * @param[in]  h        Clicon handle 
  * @param[in]  xret     Result XML tree

@@ -1688,6 +1688,7 @@ netconf_db_find(cxobj *xn,
  *     cbuf_free(cb);
  * @endcode
  * @see clixon_netconf_error_fn
+ * XXX does not support prefixes properly
  */
 int
 netconf_err2cb(cxobj *xerr,

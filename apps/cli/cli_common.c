@@ -1626,3 +1626,64 @@ cvec_append(cvec *cvv0,
     }
     return cvv2;
 }
+
+/*! Process control as defined by clixon-lib API
+ *
+ * @param[in] h      Clicon handle
+ * @param[in] cvv    Not used
+ * @param[in] arg    Two strings: <process name> <process operation>
+ * @code
+ *   actions-daemon("Actions daemon operations") start, 
+ *           cli_process_control("Action process", "start");
+ * @endcode
+ */
+int 
+cli_process_control(clicon_handle h,
+                    cvec         *cvv,
+                    cvec         *argv)
+{
+    int            retval = -1;
+    char          *name;
+    char          *opstr;
+    cbuf          *cb = NULL;
+    cxobj         *xret = NULL;
+    cxobj         *xerr;
+    
+    if (cvec_len(argv) != 2){
+        clicon_err(OE_PLUGIN, EINVAL, "Requires two element: process name and operation");
+        goto done;
+    }
+    name = cv_string_get(cvec_i(argv, 0));
+    opstr = cv_string_get(cvec_i(argv, 1));
+    if (clixon_process_op_str2int(opstr) == -1){
+        clicon_err(OE_UNIX, 0, "No such process op: %s", opstr);
+        goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
+    cprintf(cb, ">");
+    cprintf(cb, "<process-control xmlns=\"%s\">", CLIXON_LIB_NS);
+    cprintf(cb, "<name>%s</name>", name);
+    cprintf(cb, "<operation>%s</operation>", opstr);
+    cprintf(cb, "</process-control>");
+    cprintf(cb, "</rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
+        goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_netconf_error(xerr, "Get configuration", NULL);
+        goto done;
+    }
+    if (clixon_xml2file(stdout, xml_child_i(xret, 0), 0, 1, NULL, cligen_output, 0, 1) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (xret)
+        xml_free(xret);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}

@@ -52,19 +52,25 @@ typedef enum proc_operation {
     PROC_OP_STATUS
 } proc_operation;
 
-/* Process RPC callback function */
-typedef int (proc_cb_t)(clicon_handle h, process_entry_t *pe, proc_operation *operation);
+/*! Process RPC callback function 
+ *
+ * @param[in]     h   Clixon handle
+ * @param[in]     pe  Process entry
+ * @param[in,out] op  Process operation
+ */
+typedef int (proc_cb_t)(clicon_handle    h,
+                        process_entry_t *pe,
+                        proc_operation  *operation);
 
 /*
  * Prototypes
  */ 
 int clixon_proc_socket(char **argv, int sock_flags, pid_t *pid, int *sock);
 int clixon_proc_socket_close(pid_t pid, int sock);
-int clixon_proc_background(char **argv, const char *netns, pid_t *pid);
 int clixon_process_pid(clicon_handle h, const char *name, pid_t *pid);
 proc_operation clixon_process_op_str2int(char *opstr);
 int clixon_process_argv_get(clicon_handle h, const char *name, char ***argv, int *argc);
-int clixon_process_register(clicon_handle h, const char *name, const char *descr, const char *netns, proc_cb_t *callback, char **argv, int argc);
+int clixon_process_register(clicon_handle h, const char *name, const char *descr, const char *netns, uid_t uid, proc_cb_t *callback, char **argv, int argc);
 int clixon_process_delete_all(clicon_handle h);
 int clixon_process_operation(clicon_handle h, const char *name, proc_operation op, const int wrapit);
 int clixon_process_status(clicon_handle h, const char *name, cbuf *cbret);

@@ -80,8 +80,6 @@ int cli_notification_register(clicon_handle h, char *stream, enum format_enum fo
                               char *filter, int status, 
                               int (*fn)(int, void*), void *arg);
 
-/* cli_common.c: CLIgen new vector callbacks */
-
 int mtpoint_paths(yang_stmt *yspec0, char *mtpoint, char *api_path_fmt1, char **api_path_fmt01);
 int dbxml_body(cxobj *xbot, cvec *cvv);
 int identityref_add_ns(cxobj *x, void *arg);
@@ -113,6 +111,7 @@ int cli_unlock(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_copy_config(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_help(clicon_handle h, cvec *vars, cvec *argv);
 cvec *cvec_append(cvec *cvv0, cvec *cvv1);
+int cli_process_control(clicon_handle h, cvec *vars, cvec *argv);
 
 /* In cli_show.c */
 int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv, 

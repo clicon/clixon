@@ -81,7 +81,7 @@
  * @param[in]   buf     Packet buffer
  * @param[in]   buflen  Length of packet buffer
  * @param[out]  eof     Socket closed / eof?
- * @retval      0       OK
+ * @retval      n       length
  * @retval     -1       Error
  */
 ssize_t

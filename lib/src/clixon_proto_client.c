@@ -489,7 +489,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
  * @param[in]  db       Name of database
  * @param[in]  xpath    XPath (or "")
  * @param[in]  nsc      Namespace context for filter
- * @param[in]  defaults  Value of the with-defaults mode, rfc6243, or NULL
+ * @param[in]  defaults Value of the with-defaults mode, rfc6243, or NULL
  * @param[out] xt       XML tree. Free with xml_free. 
  *                      Either <config> or <rpc-error>. 
  * @retval    0         OK

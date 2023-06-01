@@ -314,13 +314,14 @@ restconf_pseudo_process_control(clicon_handle h)
     if (clixon_process_register(h, RESTCONF_PROCESS,
                                 "Clixon RESTCONF process",
                                 NULL /* XXX network namespace */,
+                                -1,
                                 restconf_rpc_wrapper,
                                 argv, nr) < 0)
         goto done;
-    if (argv != NULL)
-        free(argv);
     retval = 0;
  done:
+    if (argv != NULL)
+        free(argv);
     if (cb)
         cbuf_free(cb);
     return retval;

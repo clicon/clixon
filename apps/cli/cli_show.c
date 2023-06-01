@@ -1515,7 +1515,6 @@ cli_show_statistics(clicon_handle h,
     if (clixon_xml2file(stdout, xml_child_i(xret, 0), 0, 1, NULL, cligen_output, 0, 1) < 0)
         goto done;
     fprintf(stdout, "CLI:\n");
-    
     retval = 0;
  done:
     if (xret)
