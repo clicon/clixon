@@ -70,7 +70,7 @@ int clixon_proc_socket_close(pid_t pid, int sock);
 int clixon_process_pid(clicon_handle h, const char *name, pid_t *pid);
 proc_operation clixon_process_op_str2int(char *opstr);
 int clixon_process_argv_get(clicon_handle h, const char *name, char ***argv, int *argc);
-int clixon_process_register(clicon_handle h, const char *name, const char *descr, const char *netns, uid_t uid, proc_cb_t *callback, char **argv, int argc);
+int clixon_process_register(clicon_handle h, const char *name, const char *descr, const char *netns, uid_t uid, gid_t gid, proc_cb_t *callback, char **argv, int argc);
 int clixon_process_delete_all(clicon_handle h);
 int clixon_process_operation(clicon_handle h, const char *name, proc_operation op, const int wrapit);
 int clixon_process_status(clicon_handle h, const char *name, cbuf *cbret);

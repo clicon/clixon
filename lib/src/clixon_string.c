@@ -125,9 +125,9 @@ clicon_strsep(char *string,
  * @retval  NULL  Failure
  */
 char *
-clicon_strjoin(int         argc, 
-               char      **argv, 
-               char       *delim)
+clicon_strjoin(int    argc, 
+               char **argv, 
+               char  *delim)
 {
     int i;
     int len;

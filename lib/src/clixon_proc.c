@@ -146,6 +146,7 @@ struct process_entry_t {
     char          *pe_description; /* Description of service */
     char          *pe_netns;    /* Network namespace */
     uid_t          pe_uid;      /* UID of process or -1 to keep same as backend */
+    gid_t          pe_gid;      /* GID of process or -1 to keep same as backend */
     char         **pe_argv;     /* argv with command as element 0 and NULL-terminated */
     int            pe_argc;     /* Length of argc */
     pid_t          pe_pid;      /* Running process id (state) or 0 if dead (pid is set if exiting=1) */
@@ -273,6 +274,7 @@ static int
 clixon_proc_background(char       **argv,
                        const char  *netns,
                        uid_t        uid,
+                       gid_t        gid,
                        pid_t       *pid0)
 {
     int           retval = -1;
@@ -313,10 +315,7 @@ clixon_proc_background(char       **argv,
         char nsfile[PATH_MAX];
         int  nsfd;
 #endif
-        if (uid != -1){
-            if (drop_priv_perm(uid) < 0)
-                goto done;
-        }
+
         clicon_debug(1, "%s child", __FUNCTION__);
         clicon_signal_unblock(0);
         signal(SIGTSTP, SIG_IGN);
@@ -352,6 +351,16 @@ clixon_proc_background(char       **argv,
             }
         }
 #endif /* HAVE_SETNS */
+        if (gid != -1){
+            if (setgid(gid) == -1) {
+                clicon_err(OE_DAEMON, errno, "setgid %d", gid);
+                goto done;
+            }
+        }
+        if (uid != -1){
+            if (drop_priv_perm(uid) < 0)
+                goto done;
+        }
         if (execvp(argv[0], argv) < 0) {
             clicon_err(OE_UNIX, errno, "execv(%s)", argv[0]);
             exit(1);
@@ -435,6 +444,7 @@ clixon_process_argv_get(clicon_handle h,
  * @param[in]  description  Description of process
  * @param[in]  netns    Namespace netspace (or NULL)
  * @param[in]  uid      UID of process (or -1 to keep same)
+ * @param[in]  gid      GID of process (or -1 to keep same)
  * @param[in]  callback Wrapper function
  * @param[in]  argv     NULL-terminated vector of vectors 
  * @param[in]  argc     Length of argv
@@ -448,6 +458,7 @@ clixon_process_register(clicon_handle h,
                         const char   *description,
                         const char   *netns,
                         const uid_t   uid,
+                        const gid_t   gid,
                         proc_cb_t    *callback,
                         char        **argv,
                         int           argc)
@@ -482,6 +493,7 @@ clixon_process_register(clicon_handle h,
         goto done;
     }
     pe->pe_uid = uid;
+    pe->pe_gid = gid;
     pe->pe_argc = argc;
     if ((pe->pe_argv = calloc(argc, sizeof(char *))) == NULL){
         clicon_err(OE_UNIX, errno, "calloc");
@@ -852,7 +864,8 @@ clixon_process_sched(int           fd,
                         goto done;
                     if (!isrunning)
                         if (clixon_proc_background(pe->pe_argv, pe->pe_netns,
-                                                   pe->pe_uid, &pe->pe_pid) < 0)
+                                                   pe->pe_uid, pe->pe_gid,
+                                                   &pe->pe_pid) < 0)
                             goto done;
                     clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
                                  pe->pe_name, pe->pe_pid,
@@ -878,7 +891,8 @@ clixon_process_sched(int           fd,
                     if (isrunning) /* Already runs */
                         break;
                     if (clixon_proc_background(pe->pe_argv, pe->pe_netns,
-                                               pe->pe_uid, &pe->pe_pid) < 0)
+                                               pe->pe_uid, pe->pe_gid,
+                                               &pe->pe_pid) < 0)
                         goto done;
                     clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
                                  pe->pe_name, pe->pe_pid,
@@ -982,7 +996,8 @@ clixon_process_waitpid(clicon_handle h)
                     /* This is the case where there is an existing process running.
                      * it was killed above but still runs and needs to be reaped */
                     if (clixon_proc_background(pe->pe_argv, pe->pe_netns,
-                                               pe->pe_uid, &pe->pe_pid) < 0)
+                                               pe->pe_uid, pe->pe_gid,
+                                               &pe->pe_pid) < 0)
                         goto done;
                     gettimeofday(&pe->pe_starttime, NULL);
                     clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,

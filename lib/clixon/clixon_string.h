@@ -107,7 +107,6 @@ char  *clixon_trim(char *str);
 char  *clixon_trim2(char *str, char *trims);
 int    clicon_strcmp(char *s1, char *s2);
 
-
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);
 #endif /* ! HAVE_STRNDUP */
