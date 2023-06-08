@@ -583,6 +583,7 @@ xml_parent_candidate_set(cxobj *xn,
 #endif /* XML_PARENT_CANDIDATE */
 
 /*! Get xml node flags, used for internal algorithms
+ *
  * @param[in]  xn    xml node
  * @retval     flag  Flag value(s), see XML_FLAG_MARK et al
  */
@@ -594,6 +595,7 @@ xml_flag(cxobj   *xn,
 }
 
 /*! Set xml node flags, used for internal algorithms
+ *
  * @param[in]  xn      xml node
  * @param[in]  flag    Flag values to set, see XML_FLAG_MARK et al
  */
@@ -606,6 +608,7 @@ xml_flag_set(cxobj   *xn,
 }
 
 /*! Reset xml node flags, used for internal algorithms
+ *
  * @param[in]  xn      xml node
  * @param[in]  flag    Flag value(s) to reset, see XML_FLAG_*
  */
@@ -617,11 +620,16 @@ xml_flag_reset(cxobj   *xn,
     return 0;
 }
 
-/*! Add a creator string
+/*! Add a creator tag
+ *
+ * @param[in]  xn    XML tree
+ * @param[in]  name  Name of creator tag
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 int
 xml_creator_add(cxobj *xn,
-                char  *str)
+                char  *name)
 {
     int     retval = -1;
     cg_var *cv;
@@ -634,43 +642,57 @@ xml_creator_add(cxobj *xn,
             goto done;
         }
     }
-    if ((cv = cvec_find(xn->x_creators, str)) == NULL) 
-        cvec_add_string(xn->x_creators, str, NULL);
+    if ((cv = cvec_find(xn->x_creators, name)) == NULL) 
+        cvec_add_string(xn->x_creators, name, NULL);
     retval = 0;
  done:
     return retval;
 }
 
-/*! Remove a creator string
+/*! Remove a creator tag
+ *
+ * @param[in]  xn    XML tree
+ * @param[in]  name  Name of creator tag
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 int
 xml_creator_rm(cxobj *xn,
-               char  *str)
+               char  *name)
 {
     cg_var *cv;
     
     if (!is_element(xn))
         return 0;
-    if ((cv = cvec_find(xn->x_creators, str)) == NULL)
+    if ((cv = cvec_find(xn->x_creators, name)) == NULL)
         return 0;
     return cvec_del(xn->x_creators, cv);
 }
 
 /*! Find a creator string
+ *
+ * @param[in]  xn    XML tree
+ * @param[in]  name  Name of creator tag
+ * @retval     1     Yes, xn is tagged with creator tag "name"
+ * @retval     0     No, xn is not tagged with creator tag "name"
  */
 int
 xml_creator_find(cxobj *xn,
-                 char  *str)
+                 char  *name)
 {
     if (!is_element(xn))
         return 0;
     if (xn->x_creators != NULL &&
-        cvec_find(xn->x_creators, str) != NULL)
+        cvec_find(xn->x_creators, name) != NULL)
         return 1;
     return 0;
 }
 
 /*! Get number of creator strings
+ *
+ * @param[in]  xn    XML tree
+ * @retval     len   Number of creator tags assigned to xn
+ * @retval     0     No creator tags or non-applicable
  */
 size_t
 xml_creator_len(cxobj *xn)
@@ -681,6 +703,41 @@ xml_creator_len(cxobj *xn)
         return cvec_len(xn->x_creators);
     else
         return 0;
+}
+
+/*! Print XML and creator tags where they exists, apply help function
+ *
+ * @param[in]  x    XML tree
+ * @param[in]  arg  FIle
+ */
+static int
+creator_print_fn(cxobj *x,
+                 void  *arg)
+{
+    FILE   *f = (FILE *)arg;
+    cg_var *cv;
+ 
+    if (x->x_creators == NULL)
+        return 0;
+    cv = NULL;
+    while ((cv = cvec_each(x->x_creators, cv)) != NULL){
+        fprintf(f, "%s ", cv_name_get(cv));
+    }
+    fprintf(f, ":\n");
+    clixon_xml2file(f, x, 3, 1, NULL, cligen_output, 0, 0);
+    return 2; /* Locally abort this subtree, continue with others */
+}
+
+/*! Print XML and creator tags where they exists, for debugging
+ *
+ * @param[in]  xn    XML tree
+ * @retval     see xml_apply
+ */
+int
+xml_creator_print(FILE  *f,
+                  cxobj *xn)
+{
+    return xml_apply(xn, CX_ELMNT, creator_print_fn, f);
 }
 
 /*! Get value of xnode
@@ -2645,7 +2702,6 @@ xml_search_index_p(cxobj *x)
         return 0;
     return 1;
 }
-        
 
 /*! Free all search vector pairs of this XML node
  * @param[in]  x    XML object
