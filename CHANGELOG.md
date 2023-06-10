@@ -50,6 +50,8 @@ Expected: July 2023
 * New `clixon-lib@2023-05-01.yang` revision
   * Restructured and extended stats rpc to schema mountpoints
   * rpc `<stats>` is not backward compatible
+* New `clixon-autocli@2023-05-01.yang` revision
+  * New `alias` and `skip` extensions
   
 ### C/CLI-API changes on existing features
 Developers may need to change their code
