@@ -188,8 +188,7 @@ check_body_namespace(cxobj     *x0,
     if (ns0 != NULL && ns1 != NULL){  /* namespace exists in both x1 and x0 */
         if (strcmp(ns0, ns1)){
             /* prefixes in x1 and x0 refers to different namespaces 
-             * XXX return netconf error instead 
-bad-attribue?
+             * XXX return netconf error instead bad-attribue?
              */
             if ((cberr = cbuf_new()) == NULL){
                 clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -848,6 +847,8 @@ text_modify(clicon_handle       h,
 #ifdef XML_PARENT_CANDIDATE
                 xml_parent_candidate_set(x0, x0p);
 #endif
+                if (xml_creator_copy(x1, x0) < 0)
+                    goto done;
                 changed++;
                 /* Get namespace from x1
                  * Check if namespace exists in x0 parent

@@ -158,6 +158,8 @@ backend_sig_term(int arg)
     if (i++ == 0)
         clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
                    __PROGRAM__, __FUNCTION__, getpid(), arg);
+    else
+        exit(1);
     clixon_exit_set(1); /* checked in clixon_event_loop() */
 }
 

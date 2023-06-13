@@ -705,6 +705,29 @@ xml_creator_len(cxobj *xn)
         return 0;
 }
 
+/*! Copy creator info from x0 to x1
+ *
+ * @param[in]  x0  Source XML node
+ * @param[in]  x1  Destination XML node
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+xml_creator_copy(cxobj *x0, 
+                 cxobj *x1)
+{
+    int retval = -1;
+    
+    if (x0->x_creators)
+        if ((x1->x_creators = cvec_dup(x0->x_creators)) == NULL){
+            clicon_err(OE_UNIX, errno, "cvec_dup");
+            goto done;
+        }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Print XML and creator tags where they exists, apply help function
  *
  * @param[in]  x    XML tree
@@ -737,7 +760,7 @@ int
 xml_creator_print(FILE  *f,
                   cxobj *xn)
 {
-    return xml_apply(xn, CX_ELMNT, creator_print_fn, f);
+    return xml_apply0(xn, CX_ELMNT, creator_print_fn, f);
 }
 
 /*! Get value of xnode
@@ -2079,11 +2102,8 @@ xml_copy_one(cxobj *x0,
     switch (xml_type(x0)){
     case CX_ELMNT:
         xml_spec_set(x1, xml_spec(x0));
-        if (x0->x_creators)
-            if ((x1->x_creators = cvec_dup(x0->x_creators)) == NULL){
-                clicon_err(OE_UNIX, errno, "cvec_dup");
-                goto done;
-            }
+        if (xml_creator_copy(x0, x1) < 0)
+            goto done;
         break;
     case CX_BODY:
     case CX_ATTR:

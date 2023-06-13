@@ -64,6 +64,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* Modified backend exit strategy so that 2nd ^C actually exits
 * Performance: A change in the `merge` code made "co-located" config and non-config get retrieval go considerable faster. This is done by a specialized `xml_child_each_attr()` function.
 * CLI: Added `show statistics` example code for backend and CLI memory stats
 * [Support yang type union with are same subtypes with SNMP](https://github.com/clicon/clixon/pull/427)
