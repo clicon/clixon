@@ -1883,6 +1883,7 @@ clixon_compare_xmls(cxobj            *xc1,
  * @retval    -1       Error
  * @see xml_diff which returns diff sets
  * @see clixon_compare_xmls which uses files and is independent of YANG
+ * XXX only XML
  */
 int
 xml_tree_diff_print(cbuf             *cb,

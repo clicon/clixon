@@ -70,7 +70,9 @@ module clixon-lib {
 
     revision 2023-05-01 {
         description
-            "Restructured and extended stats rpc to schema mountpoints";
+            "Restructured and extended stats rpc to schema mountpoints
+             Moved datastore-format typedef from clixon-config
+            ";
     }
     revision 2023-03-01 {
         description
@@ -141,6 +143,27 @@ module clixon-lib {
         }
         description
             "Common operations that can be performed on a service";
+    }
+    typedef datastore_format{
+        description
+            "Datastore format (only xml and json implemented in actual data.";
+        type enumeration{
+            enum xml{
+                description
+                "Save and load xmldb as XML
+                 More specifically, such a file looks like: <config>...</config> provided
+                 DATASTORE_TOP_SYMBOL is 'config'";
+            }
+            enum json{
+                description "Save and load xmldb as JSON";
+            }
+            enum text{
+                description "'Curly' C-like text format";
+            }
+            enum cli{
+                description "CLI format";
+            }
+        }
     }
     identity snmp {
         description

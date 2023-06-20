@@ -9,6 +9,9 @@ module clixon-config {
     import clixon-autocli {
         prefix autocli;
     }    
+    import clixon-lib {
+        prefix cl;
+    }
     organization
         "Clicon / Clixon";
 
@@ -50,7 +53,7 @@ module clixon-config {
         description
             "Added options:
                     CLICON_CONFIG_EXTEND
-             Override this yang with an application-specific extended config file
+             Moved datastore-format datastype to clixon-lib
              Released in Clixon 6.3";
     }
     revision 2023-03-01 {
@@ -278,27 +281,6 @@ module clixon-config {
             enum running-startup{
                 description
                     "First try running db, if it is empty try startup db.";
-            }
-        }
-    }
-    typedef datastore_format{
-        description
-            "Datastore format (only xml and json implemented in actual data.";
-        type enumeration{
-            enum xml{
-                description
-                "Save and load xmldb as XML
-                 More specifically, such a file looks like: <config>...</config> provided
-                 DATASTORE_TOP_SYMBOL is 'config'";
-            }
-            enum json{
-                description "Save and load xmldb as JSON";
-            }
-            enum text{
-                description "'Curly' C-like text format";
-            }
-            enum cli{
-                description "CLI format";
             }
         }
     }
@@ -947,7 +929,7 @@ module clixon-config {
                  Others are experimental (in Clixon 5.5)";
         }
         leaf CLICON_XMLDB_FORMAT {
-            type datastore_format;
+            type cl:datastore_format;
             default xml;
             description "XMLDB datastore format.";
         }
