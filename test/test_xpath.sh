@@ -176,8 +176,19 @@ new "xpath /aaa/bbb union "
 expectpart "$($clixon_util_xpath -D $DBG -f $xml -p "aaa/bbb[ccc=42]|aaa/ddd[ccc=22]")" 0 '^nodeset:0:<bbb x="hello"><ccc>42</ccc></bbb>1:<ddd><ccc>22</ccc></ddd>$'
 
 new "xpath //bbb"
-expectpart "$($clixon_util_xpath -D $DBG -f $xml -p //bbb)" 0 "0:<bbb x=\"hello\"><ccc>42</ccc></bbb>
-1:<bbb x=\"bye\"><ccc>99</ccc></bbb>"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml -p //bbb)" 0 "0:<bbb x=\"hello\"><ccc>42</ccc></bbb>" "1:<bbb x=\"bye\"><ccc>99</ccc></bbb>"
+
+new "xpath //ccc"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml -p //ccc)" 0 "0:<ccc>42</ccc>" "1:<ccc>99</ccc>" "2:<ccc>22</ccc>"
+
+new "xpath /descendant-or-self::node()/ccc"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml -p /descendant-or-self::node\(\)/ccc)" 0 "0:<ccc>42</ccc>" "1:<ccc>99</ccc>" "2:<ccc>22</ccc>"
+
+new "xpath /aaa//ccc"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml -p /aaa//ccc)" 0 "0:<ccc>42</ccc>" "1:<ccc>99</ccc>" "2:<ccc>22</ccc>"
+
+new "xpath /aaa/descendant-or-self::node()/ccc"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml -p /aaa/descendant-or-self::node\(\)/ccc)" 0 "0:<ccc>42</ccc>" "1:<ccc>99</ccc>" "2:<ccc>22</ccc>"
 
 new "xpath //b?b"
 #expecteof "$clixon_util_xpath -D $DBG -f $xml" 0 "//b?b" ""

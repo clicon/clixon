@@ -75,6 +75,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [xpath // abbreviation does not work other than on the top-level](https://github.com/clicon/clixon/issues/435)
 * Fixed: [if-feature always negative if imported from another module](https://github.com/clicon/clixon/issues/429)
 * Fixed autocli edit modes for schema mounts
 
