@@ -33,7 +33,6 @@
 
   ***** END LICENSE BLOCK *****
 
- * 
  */
 
 #ifdef HAVE_CONFIG_H
@@ -80,115 +79,32 @@
  *
  */
 
-/*! Find syntax mode named 'mode'. Create if specified
- */
-static cli_syntaxmode_t *
-syntax_mode_find(cli_syntax_t *stx,
-                 const char   *mode,
-                 int           create)
-{
-    cli_syntaxmode_t *csm;
-
-    csm = stx->stx_modes;
-    if (csm) {
-        do {
-            if (strcmp(csm->csm_name, mode) == 0)
-                return csm;
-            csm = NEXTQ(cli_syntaxmode_t *, csm);
-        } while (csm && csm != stx->stx_modes);
-    }
-    
-    if (create == 0)
-        return  NULL;
-
-   if ((csm = malloc(sizeof(cli_syntaxmode_t))) == NULL) {
-       clicon_err(OE_UNIX, errno, "malloc");
-       return NULL;
-    }
-    memset(csm, 0, sizeof(*csm));
-    if ((csm->csm_name = strdup(mode)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
-        return NULL;
-    }
-    if ((csm->csm_prompt = strdup(CLI_DEFAULT_PROMPT)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
-        return NULL;
-    }
-    if ((csm->csm_pt = pt_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "pt_new");
-        return NULL;
-    }
-    INSQ(csm, stx->stx_modes);
-    stx->stx_nmodes++;
-
-    return csm;
-}
-
-/*! Generate parse tree for syntax mode 
+/*! Generate CLIgen parse tree for syntax mode 
+ *
  * @param[in]   h     Clicon handle
  * @param[in]   m     Syntax mode struct
  */
 static int
-gen_parse_tree(clicon_handle     h,
-               cli_syntaxmode_t *m)
+gen_parse_tree(clicon_handle  h,
+               char          *name,
+               parse_tree    *pt,
+               pt_head      **php)
 {
     int       retval = -1;
     pt_head  *ph;
     
-    if ((ph = cligen_ph_add(cli_cligen(h), m->csm_name)) == NULL)
+    if ((ph = cligen_ph_add(cli_cligen(h), name)) == NULL)
         goto done;
-    if (cligen_ph_parsetree_set(ph, m->csm_pt) < 0)
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
         goto done;
+    if (cligen_ph_prompt_set(ph, CLI_DEFAULT_PROMPT) < 0){
+        clicon_err(OE_UNIX, errno, "cligen_ph_prompt_set");
+        goto done;
+    }
+    *php = ph;
     retval = 0;
  done:
     return retval;
-}
-
-/*! Append syntax
- * @param[in]     h       Clicon handle
- */
-static int
-syntax_append(clicon_handle h,
-              cli_syntax_t *stx,
-              const char   *name, 
-              parse_tree   *pt)
-{
-    cli_syntaxmode_t *csm;
-
-    if ((csm = syntax_mode_find(stx, name, 1)) == NULL) 
-        return -1;
-    if (cligen_parsetree_merge(csm->csm_pt, NULL, pt) < 0){
-        clicon_err(OE_PLUGIN, errno, "cligen_parsetree_merge");
-        return -1;
-    }
-    return 0;
-}
-
-/*! Remove all cligen syntax modes
- * @param[in]     h       Clicon handle
- */
-static int
-cli_syntax_unload(clicon_handle h)
-{
-    cli_syntax_t            *stx = cli_syntax(h);
-    cli_syntaxmode_t        *csm;
-
-    if (stx == NULL)
-        return 0;
-
-    while (stx->stx_nmodes > 0) {
-        csm = stx->stx_modes;
-        DELQ(csm, stx->stx_modes, cli_syntaxmode_t *);
-        if (csm){
-            if (csm->csm_name)
-                free(csm->csm_name);
-            if (csm->csm_prompt)
-                free(csm->csm_prompt);
-            free(csm);
-        }
-        stx->stx_nmodes--;
-    }
-    return 0;
 }
 
 /*! Dynamic linking loader string to function mapper
@@ -247,7 +163,7 @@ clixon_str2fn(char  *name,
    return NULL; 
 }
 
-/*! Load a file containing syntax and append to specified modes, also load C plugin
+/*! Load a file containing clispec syntax and append to specified modes, also load C plugin
  *
  * First load CLIgen file, 
  * Then find which .so to load by looking in the "CLICON_PLUGIN" variable in that file.
@@ -257,13 +173,15 @@ clixon_str2fn(char  *name,
  * @param[in]  filename Name of file where syntax is specified (in syntax-group dir)
  * @param[in]  dir      Name of dir, or NULL
  * @param[out] ptall    Universal CLIgen parse tree: apply to all modes
+ * @param[out] modes    Keep track of all modes
  * @see clixon_plugins_load  Where .so plugin code has been loaded prior to this
  */
 static int
-cli_load_syntax_file(clicon_handle h,
-                     const char   *filename,
-                     const char   *dir,
-                     parse_tree   *ptall)
+clispec_load_file(clicon_handle h,
+                  const char   *filename,
+                  const char   *dir,
+                  parse_tree   *ptall,
+                  cvec         *modes)
 {
     void          *handle = NULL;  /* Handle to plugin .so module */
     char          *mode = NULL;    /* Name of syntax mode to append new syntax */
@@ -274,8 +192,10 @@ cli_load_syntax_file(clicon_handle h,
     cvec          *cvv = NULL;
     char          *prompt = NULL;
     char         **vec = NULL;
-    int            i, nvec;
+    int            i;
+    int            nvec;
     char          *plgnam;
+    pt_head           *ph;
 #ifndef CLIXON_STATIC_PLUGINS
     clixon_plugin_t *cp;
 #endif
@@ -299,7 +219,7 @@ cli_load_syntax_file(clicon_handle h,
     }
 
     /* Assuming this plugin is first in queue */
-    if (cli_parse_file(h, f, filepath, pt, cvv) < 0){
+    if (clispec_parse_file(h, f, filepath, NULL, pt, cvv) < 0){
         clicon_err(OE_PLUGIN, 0, "failed to parse cli file %s", filepath);
         fclose(f);
         goto done;
@@ -309,6 +229,7 @@ cli_load_syntax_file(clicon_handle h,
      *  CLICON_MODE: which mode(s) this syntax applies to
      *  CLICON_PROMPT: Cli prompt in this mode (see cli_prompt_get)
      *  CLICON_PLUGIN: Name of C API plugin
+     *  CLICON_PIPETREE: terminals are automatically expanded with this tree
      * Note: the base case is that it is:
      *   (1) a single mode or 
      *   (2) "*" all modes or "m1:m2" - a list of modes
@@ -330,6 +251,7 @@ cli_load_syntax_file(clicon_handle h,
         }
     }
 #endif
+
     /* Resolve callback names to function pointers. */
     if (cligen_callbackv_str2fn(pt, (cgv_str2fn_t*)clixon_str2fn, handle) < 0){     
         clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)", 
@@ -366,17 +288,42 @@ cli_load_syntax_file(clicon_handle h,
     }
     else {
         for (i = 0; i < nvec; i++) {
-            if (syntax_append(h,
-                              cli_syntax(h),
-                              vec[i],
-                              pt) < 0) { 
+            char             *name = vec[i];
+            parse_tree       *ptnew = NULL;
+            cg_var           *cv;
+            if ((ph = cligen_ph_find(cli_cligen(h), name)) == NULL){
+                if ((ptnew = pt_new()) == NULL){
+                    clicon_err(OE_UNIX, errno, "pt_new");
+                    goto done;
+                }
+                if (gen_parse_tree(h, name, ptnew, &ph) < 0)
+                    goto done;
+                if (ph == NULL)
+                    goto done;
+                if ((cv = cv_new(CGV_STRING)) == NULL){
+                    clicon_err(OE_UNIX, errno, "cv_new");
+                    goto done;
+                }
+                cv_string_set(cv, name);
+                if (cvec_append_var(modes, cv) < 0){
+                    clicon_err(OE_UNIX, errno, "cvec_append_var");
+                    goto done;
+                }
+                if (cv)
+                    cv_free(cv);
+            }
+            if (cligen_parsetree_merge(cligen_ph_parsetree_get(ph), NULL, pt) < 0){
+                clicon_err(OE_PLUGIN, errno, "cligen_parsetree_merge");
                 goto done;
             }
-            if (prompt)
-                cli_set_prompt(h, vec[i], prompt);
+            if (prompt){
+                if (cligen_ph_prompt_set(ph, prompt) < 0){
+                    clicon_err(OE_UNIX, errno, "cligen_ph_prompt_set");
+                    return -1;
+                }
+            }
         }
     }
-
     cligen_parsetree_free(pt, 1);
     retval = 0;
 done:
@@ -395,7 +342,7 @@ done:
  * XXX The parsetree loading needs a rewrite for multiple parse-trees
  */
 int
-cli_syntax_load(clicon_handle h)
+clispec_load(clicon_handle h)
 {
     int                retval = -1;
     char              *clispec_dir = NULL;
@@ -403,37 +350,29 @@ cli_syntax_load(clicon_handle h)
     int                ndp;
     int                i;
     struct dirent     *dp = NULL;
-    cli_syntax_t      *stx;
-    cli_syntaxmode_t  *m;
     cligen_susp_cb_t  *fns = NULL;
     cligen_interrupt_cb_t *fni = NULL;
     clixon_plugin_t     *cp;
     parse_tree        *ptall = NULL; /* Universal CLIgen parse tree all modes */
+    cvec              *modes = NULL; /* Keep track of created modes */
+    pt_head           *ph;
+    cg_var            *cv = NULL;
 
-    /* Syntax already loaded.  XXX should we re-load?? */
-    if ((stx = cli_syntax(h)) != NULL)
-        return 0;
     if ((ptall = pt_new()) == NULL){
         clicon_err(OE_UNIX, errno, "pt_new");
         goto done;
     }
-
+    if ((modes = cvec_new(0)) == NULL){
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
+    }
     /* Format plugin directory path */
     clispec_dir = clicon_clispec_dir(h);
     clispec_file = clicon_option_str(h, "CLICON_CLISPEC_FILE");
 
-    /* Allocate plugin group object */
-    if ((stx = malloc(sizeof(*stx))) == NULL) {
-        clicon_err(OE_UNIX, errno, "malloc");
-        goto done;
-    }
-    memset(stx, 0, sizeof(*stx));       /* Zero out all */
-
-    cli_syntax_set(h, stx);
-
     /* Load single specific clispec file */
     if (clispec_file){
-        if (cli_load_syntax_file(h, clispec_file, NULL, ptall) < 0)
+        if (clispec_load_file(h, clispec_file, NULL, ptall, modes) < 0)
             goto done;
     }
     /* Load all clispec .cli files in directory */
@@ -443,33 +382,31 @@ cli_syntax_load(clicon_handle h)
             goto done;
         /* Load the syntax parse trees into cli_syntax stx structure */
         for (i = 0; i < ndp; i++) {
-            clicon_debug(1, "DEBUG: Loading syntax '%.*s'", 
-                         (int)strlen(dp[i].d_name)-4, dp[i].d_name);
-            if (cli_load_syntax_file(h, dp[i].d_name, clispec_dir, ptall) < 0)
+            clicon_debug(CLIXON_DBG_DEFAULT, "Loading clispec syntax: '%s/%s'", 
+                         clispec_dir, dp[i].d_name);
+            if (clispec_load_file(h, dp[i].d_name, clispec_dir, ptall, modes) < 0)
                 goto done;
         }
     }
     /* Were any syntax modes successfully loaded? If not, leave */
-    if (stx->stx_nmodes <= 0) {
-        retval = 0;
-        goto done;
-    }   
-    
+    if (cvec_len(modes) == 0)
+        goto ok;
     /* Go thorugh all modes and :
      * 1) Add the universal syntax 
      * 2) add syntax tree (of those modes - "activate" syntax from stx to CLIgen)
      */
-    m = stx->stx_modes;
-    do {
-        if (cligen_parsetree_merge(m->csm_pt, NULL, ptall) < 0){
+    cv = NULL;
+    while ((cv = cvec_each(modes, cv)) != NULL){
+        if ((ph = cligen_ph_find(cli_cligen(h), cv_string_get(cv))) == NULL)
+            continue;
+
+        if (cligen_parsetree_merge(cligen_ph_parsetree_get(ph),
+                                   NULL,
+                                   ptall) < 0){
             clicon_err(OE_PLUGIN, errno, "cligen_parsetree_merge");
             goto done;
         }
-        if (gen_parse_tree(h, m) != 0)
-            goto done;
-        m = NEXTQ(cli_syntaxmode_t *, m);
-    } while (m && m != stx->stx_modes);
-
+    }
     /* Set susp and interrupt callbacks into  CLIgen */
     cp = NULL;
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
@@ -480,29 +417,24 @@ cli_syntax_load(clicon_handle h)
             if (cli_interrupt_hook(h, fni) < 0)
                 goto done;
     }
-
+ ok:
     /* All good. We can now proudly return a new group */
     retval = 0;
 done:
-    if (retval != 0) {
-        cli_syntax_unload(h);
-        cli_syntax_set(h, NULL);
-    }
     cligen_parsetree_free(ptall, 1);
+    if (modes)
+        cvec_free(modes);
     if (dp)
         free(dp);
     return retval;
 }
 
-/*! Remove syntax modes and remove syntax
+/*! Free resources in plugin
  * @param[in]     h       Clicon handle
  */
 int
 cli_plugin_finish(clicon_handle h)
 {
-    /* Remove all cligen syntax modes */
-    cli_syntax_unload(h);
-    cli_syntax_set(h, NULL);
     return 0;
 }
 
@@ -556,8 +488,6 @@ clicon_parse(clicon_handle  h,
     int               retval = -1;
     char             *modename;
     int               ret;
-    cli_syntax_t     *stx = NULL;
-    cli_syntaxmode_t *csm;
     parse_tree       *pt;     /* Orig */
     cg_obj           *match_obj = NULL;
     cvec             *cvv = NULL;
@@ -565,24 +495,16 @@ clicon_parse(clicon_handle  h,
     FILE             *f;
     char             *reason = NULL;
     cligen_handle     ch;
+    pt_head          *ph;
     
     ch = cli_cligen(h);
     if (clicon_get_logflags()&CLICON_LOG_STDOUT)
         f = stdout;
     else
         f = stderr;
-    stx = cli_syntax(h);
-    if ((modename = *modenamep) == NULL) {
-        csm = stx->stx_active_mode;
-        modename = csm->csm_name;
-    }
-    else {
-        if ((csm = syntax_mode_find(stx, modename, 0)) == NULL) {
-            fprintf(f, "Can't find syntax mode '%s'\n", modename);
-            goto done;
-        }
-    }
-    if (csm != NULL){
+    modename = *modenamep;
+    ph = cligen_ph_find(cli_cligen(h), modename);
+    if (ph != NULL){
         if (cligen_ph_active_set_byname(ch, modename) < 0){
             fprintf(f, "No such parse-tree registered: %s\n", modename);
             goto done;
@@ -743,7 +665,9 @@ cli_prompt_get(clicon_handle h,
 }
 
 /*! Read command from CLIgen's cliread() using current syntax mode.
+ *
  * @param[in]  h       Clicon handle
+ * @param[in]  ph      Parse-tree head
  * @param[out] stringp Pointer to command buffer or NULL on EOF
  * @retval     1       OK
  * @retval     0       Fail but continue
@@ -751,36 +675,35 @@ cli_prompt_get(clicon_handle h,
  */
 int
 clicon_cliread(clicon_handle h,
+               pt_head      *ph,
                char        **stringp)
 {
     int               retval = -1;
+    char             *name;
     char             *pfmt = NULL;
-    cli_syntaxmode_t *mode;
-    cli_syntax_t     *stx;
     cli_prompthook_t *fn;
     clixon_plugin_t  *cp;
     char             *promptstr;
 
-    stx = cli_syntax(h);
-    mode = stx->stx_active_mode;
+    name = cligen_ph_name_get(ph);
     /* Get prompt from plugin callback? */
     cp = NULL;
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if ((fn = clixon_plugin_api_get(cp)->ca_prompt) == NULL)
             continue;
-        pfmt = fn(h, mode->csm_name);
+        pfmt = fn(h, name);
         break;
     }
     if (clicon_quiet_mode(h))
         cli_prompt_set(h, "");
     else{
-        if ((promptstr = cli_prompt_get(h, pfmt ? pfmt : mode->csm_prompt)) == NULL)
+        if ((promptstr = cli_prompt_get(h,
+                                        pfmt?pfmt:cligen_ph_prompt_get(ph)
+                                        )) == NULL)
             goto done;
         cli_prompt_set(h, promptstr);
         free(promptstr);
     }
-    cligen_ph_active_set_byname(cli_cligen(h), mode->csm_name);
-
     clicon_err_reset();
     if (cliread(cli_cligen(h), stringp) < 0){
         cli_handler_err(stdout);
@@ -807,17 +730,19 @@ clicon_cliread(clicon_handle h,
 
 /*! Set syntax mode mode for existing current plugin group.
  * @param[in]     h       Clicon handle
+ * @retval        1       OK
+ * @retval        0       Not found / error
  */
 int
 cli_set_syntax_mode(clicon_handle h,
-                    const char   *name)
+                    char         *name)
 {
-    cli_syntaxmode_t *mode;
-    
-    if ((mode = syntax_mode_find(cli_syntax(h), name, 1)) == NULL)
+
+    pt_head          *ph;
+
+    if ((ph = cligen_ph_find(cli_cligen(h), name)) == NULL)
         return 0;
-    
-    cli_syntax(h)->stx_active_mode = mode;
+    cligen_pt_head_active_set(cli_cligen(h), ph);
     return 1;
 }
 
@@ -827,38 +752,10 @@ cli_set_syntax_mode(clicon_handle h,
 char *
 cli_syntax_mode(clicon_handle h)
 {
-    cli_syntaxmode_t *csm;
-
-    if ((csm = cli_syntax(h)->stx_active_mode) == NULL)
-        return NULL;
-    return csm->csm_name;
-}
-
-/*! Callback from cli_set_prompt(). Set prompt format for syntax mode
- * @param[in]  h       Clicon handle
- * @param[in]  name    Name of syntax mode 
- * @param[in]  prompt  Prompt format
- * @retval     0       OK
- * @retval    -1       Error
- */
-int
-cli_set_prompt(clicon_handle h,
-               const char   *name,
-               const char   *prompt)
-{
-    cli_syntaxmode_t *csm;
-
-    if ((csm = syntax_mode_find(cli_syntax(h), name, 1)) == NULL)
-        return -1;
+    pt_head          *ph;
     
-    if (csm->csm_prompt != NULL){
-        free(csm->csm_prompt);
-        csm->csm_prompt = NULL;
-    }
-    if ((csm->csm_prompt = strdup(prompt)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
-        return -1;
-    }
-    return 0;
+    if ((ph =  cligen_pt_head_active_get(cli_cligen(h))) == NULL)
+        return NULL;
+    return cligen_ph_name_get(ph);
 }
 

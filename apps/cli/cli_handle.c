@@ -87,7 +87,6 @@ struct cli_handle {
     /* ------ end of common handle ------ */
 
     cligen_handle   cl_cligen;   /* cligen handle */
-    cli_syntax_t   *cl_stx;      /* CLI syntax structure */
 };
 
 /*! Return a clicon handle for other CLICON API calls
@@ -121,42 +120,15 @@ int
 cli_handle_exit(clicon_handle h)
 {
     cligen_handle      ch = cligen(h);
-    struct cli_handle *cl = handle(h);
 
-    if (cl->cl_stx)
-        free(cl->cl_stx);
     clicon_handle_exit(h); /* frees h and options */
-    
     cligen_exit(ch);
-
     return 0;
 }
 
 /*----------------------------------------------------------
  * cli-specific handle access functions
  *----------------------------------------------------------*/
-
-/*! Get current syntax-group */
-cli_syntax_t *
-cli_syntax(clicon_handle h)
-{
-    struct cli_handle *cl = handle(h);
-    return cl->cl_stx;
-}
-
-/*! Set current syntax-group */
-int
-cli_syntax_set(clicon_handle h, 
-               cli_syntax_t *stx)
-{
-    struct cli_handle *cl = handle(h);
-
-    if (cl->cl_stx)
-        free(cl->cl_stx);
-    cl->cl_stx = stx;
-    return 0;
-}
-
 
 /*! Return clicon handle */
 cligen_handle

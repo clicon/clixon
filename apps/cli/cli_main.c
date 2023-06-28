@@ -239,13 +239,18 @@ cli_interactive(clicon_handle h)
     char         *new_mode;
     cligen_result result;
     int           ret;
+    pt_head      *ph;
 
     /* Loop through all commands */
     while(!cligen_exiting(cli_cligen(h))) {
-        new_mode = cli_syntax_mode(h);
+        if ((ph =  cligen_pt_head_active_get(cli_cligen(h))) == NULL){
+            clicon_err(OE_UNIX, 0, "active tree not found");
+            goto done;
+        }
+        new_mode = cligen_ph_name_get(ph);
         cmd = NULL;
         /* Read a CLI string, including expand handling */
-        if ((ret = clicon_cliread(h, &cmd)) < 0)
+        if ((ret = clicon_cliread(h, ph, &cmd)) < 0)
             goto done;
         if (ret == 0)
             continue;
@@ -686,7 +691,7 @@ main(int    argc,
     {
         char *dir;
         /* Load cli .so plugins before yangs are loaded (eg extension callbacks) and 
-         * before CLI is loaded by cli_syntax_load below */
+         * before CLI is loaded by clispec_load below */
         if ((dir = clicon_cli_dir(h)) != NULL &&
             clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
             goto done;
@@ -752,7 +757,7 @@ main(int    argc,
 
     /* Initialize cli syntax. 
      * Plugins have already been loaded by clixon_plugins_load above */
-    if (cli_syntax_load(h) < 0)
+    if (clispec_load(h) < 0)
         goto done;
 
     /* Set syntax mode if specified from command-line or config-file. */

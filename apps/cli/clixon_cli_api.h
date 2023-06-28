@@ -62,11 +62,11 @@ typedef enum autocli_listkw autocli_listkw_t;
  * Function Declarations 
  */
 /* cli_plugin.c */
-int cli_set_syntax_mode(clicon_handle h, const char *mode);
+int cli_set_syntax_mode(clicon_handle h, char *mode);
 char *cli_syntax_mode(clicon_handle h);
-int cli_syntax_load(clicon_handle h);
+int clispec_load(clicon_handle h);
 int cli_handler_err(FILE *fd);
-int cli_set_prompt(clicon_handle h, const char *mode, const char *prompt);
+int cli_set_prompt(clicon_handle h, char *mode, char *prompt);
 int cli_ptpush(clicon_handle h, char *mode, char *string, char *op);
 int cli_ptpop(clicon_handle h, char *mode, char *op);
 
