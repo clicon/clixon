@@ -282,9 +282,9 @@ autocli_trees_default(clicon_handle h)
         clicon_err(OE_UNIX, errno, "pt_new");
         goto done;
     }
-    if (cligen_parse_str(cli_cligen(h),
+    if (clispec_parse_str(cli_cligen(h),
                          "@basemodel, @remove:act-prekey, @remove:act-list, @remove:act-leafconst, @remove:ac-state;",
-                         "datamodel", pt, NULL) < 0)
+                         "datamodel", NULL, pt, NULL) < 0)
         goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
         goto done;
@@ -297,9 +297,9 @@ autocli_trees_default(clicon_handle h)
         clicon_err(OE_UNIX, errno, "pt_new");
         goto done;
     }
-    if (cligen_parse_str(cli_cligen(h),
+    if (clispec_parse_str(cli_cligen(h),
                          "@basemodel, @remove:act-leafvar, @remove:ac-state;",
-                         "datamodelshow", pt, NULL) < 0)
+                         "datamodelshow", NULL, pt, NULL) < 0)
         goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
         goto done;
@@ -311,9 +311,9 @@ autocli_trees_default(clicon_handle h)
         clicon_err(OE_UNIX, errno, "pt_new");
         goto done;
     }
-    if (cligen_parse_str(cli_cligen(h),
+    if (clispec_parse_str(cli_cligen(h),
                          "@basemodel, @remove:act-leafvar;",
-                         "datamodelstate", pt, NULL) < 0)
+                         "datamodelstate", NULL, pt, NULL) < 0)
         goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
         goto done;
@@ -352,7 +352,7 @@ autocli_trees_default(clicon_handle h)
     if (mode == 0)
         cprintf(cb, ", @remove:ac-leaf");
     cprintf(cb, ";");
-    if (cligen_parse_str(cli_cligen(h), cbuf_get(cb), "datamodelmode", pt, NULL) < 0)
+    if (clispec_parse_str(cli_cligen(h), cbuf_get(cb), "datamodelmode", NULL, pt, NULL) < 0)
         goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
         goto done;

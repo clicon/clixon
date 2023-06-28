@@ -174,7 +174,7 @@ cli_parse_file(clicon_handle h,
 {
     cligen_handle ch = cligen(h);
 
-    return cligen_parse_file(ch, f, name, pt, globals);
+    return clispec_parse_file(ch, f, name, NULL, pt, globals);
 }
 
 int

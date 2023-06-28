@@ -1404,7 +1404,7 @@ yang2cli_yspec(clicon_handle      h,
         }
 
         /* Parse the buffer using cligen parser. load cli syntax */
-        if (cligen_parse_str(cli_cligen(h), cbuf_get(cb), "yang2cli", pt, NULL) < 0){
+        if (clispec_parse_str(cli_cligen(h), cbuf_get(cb), "yang2cli", NULL, pt, NULL) < 0){
             fprintf(stderr, "%s\n", cbuf_get(cb));
             goto done;
         }
