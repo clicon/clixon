@@ -415,7 +415,7 @@ clixon_plugins_load(clicon_handle h,
     int            ret;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    clicon_debug(1, "%s", __FUNCTION__); 
+    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__); 
     if (ms == NULL){
         clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
@@ -426,8 +426,7 @@ clixon_plugins_load(clicon_handle h,
     /* Load all plugins */
     for (i = 0; i < ndp; i++) {
         snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
-        clicon_debug(1, "DEBUG: Loading plugin '%.*s' ...", 
-                     (int)strlen(filename), filename);
+        clicon_debug(CLIXON_DBG_DEFAULT, "Loading plugin '%s'", filename);
         if ((ret = plugin_load_one(h, filename, function, RTLD_NOW, &cp)) < 0)
             goto done;
         if (ret == 0)

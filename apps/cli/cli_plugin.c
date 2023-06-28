@@ -32,7 +32,7 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
+ *
  */
 
 #ifdef HAVE_CONFIG_H
@@ -88,6 +88,7 @@ static int
 gen_parse_tree(clicon_handle  h,
                char          *name,
                parse_tree    *pt,
+               char          *pipetree,
                pt_head      **php)
 {
     int       retval = -1;
@@ -101,6 +102,9 @@ gen_parse_tree(clicon_handle  h,
         clicon_err(OE_UNIX, errno, "cligen_ph_prompt_set");
         goto done;
     }
+    if (pipetree &&
+        cligen_ph_pipe_set(ph, pipetree) < 0)
+        goto done;
     *php = ph;
     retval = 0;
  done:
@@ -163,6 +167,25 @@ clixon_str2fn(char  *name,
    return NULL; 
 }
 
+/*! Set output pipe flag in all callbacks
+ *
+ * @param[in]  co   CLIgen parse-tree object
+ * @param[in]  arg  Argument, cast to application-specific info
+ * @retval     1    OK and return (abort iteration)
+ * @retval     0    OK and continue
+ * @retval    -1    Error: break and return
+ */
+static int
+cli_mark_output_pipes(cg_obj *co,
+                      void   *arg)
+{
+    cg_callback *cc;
+
+    for (cc = co->co_callbacks; cc; cc = co_callback_next(cc))
+        cc->cc_flags |= CC_FLAGS_PIPE_FUNCTION;
+    return 0;
+}
+
 /*! Load a file containing clispec syntax and append to specified modes, also load C plugin
  *
  * First load CLIgen file, 
@@ -195,6 +218,7 @@ clispec_load_file(clicon_handle h,
     int            i;
     int            nvec;
     char          *plgnam;
+    char          *pipetree;
     pt_head           *ph;
 #ifndef CLIXON_STATIC_PLUGINS
     clixon_plugin_t *cp;
@@ -238,6 +262,7 @@ clispec_load_file(clicon_handle h,
     mode = cvec_find_str(cvv, "CLICON_MODE");
     prompt = cvec_find_str(cvv, "CLICON_PROMPT");
     plgnam = cvec_find_str(cvv, "CLICON_PLUGIN");
+    pipetree = cvec_find_str(cvv, "CLICON_PIPETREE");
 
 #ifndef CLIXON_STATIC_PLUGINS
     if (plgnam != NULL) { /* Find plugin for callback resolving */
@@ -251,6 +276,13 @@ clispec_load_file(clicon_handle h,
         }
     }
 #endif
+
+    /* Algorithm to find output pipe trees: first mode is on the form |<treename>
+     */
+    if (mode && strlen(mode) && IS_PIPE_TREE(mode)){
+        if (pt_apply(pt, cli_mark_output_pipes, -1, NULL) < 0)
+            goto done;
+    }
 
     /* Resolve callback names to function pointers. */
     if (cligen_callbackv_str2fn(pt, (cgv_str2fn_t*)clixon_str2fn, handle) < 0){     
@@ -296,7 +328,7 @@ clispec_load_file(clicon_handle h,
                     clicon_err(OE_UNIX, errno, "pt_new");
                     goto done;
                 }
-                if (gen_parse_tree(h, name, ptnew, &ph) < 0)
+                if (gen_parse_tree(h, name, ptnew, pipetree, &ph) < 0)
                     goto done;
                 if (ph == NULL)
                     goto done;

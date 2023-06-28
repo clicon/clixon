@@ -107,6 +107,7 @@ LIBSRC	       += cli_plugin.c
 LIBSRC	       += cli_auto.c
 LIBSRC	       += cli_generate.c
 LIBSRC	       += cli_autocli.c
+LIBSRC	       += cli_pipe.c
 LIBOBJ		= $(LIBSRC:.c=.o)
 
 # Name of lib

@@ -308,7 +308,6 @@ autocli_trees_default(clicon_handle h)
         goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
         goto done;
-
     /* Create backward compatible tree: @datamodelstate */
     if ((ph = cligen_ph_add(cli_cligen(h), "datamodelstate")) == NULL)
         goto done;
@@ -403,7 +402,7 @@ autocli_start(clicon_handle h)
     if (yang2cli_init(h) < 0)
         goto done;
     yspec = clicon_dbspec_yang(h);
-    /* The actual generating call from yang to clispec for the complete yang spec */
+    /* The actual generating call from yang to clispec for the complete yang spec, @basemodel */
     if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME) < 0)
         goto done;
     /* XXX Create pre-5.5 tree-refs for backward compatibility */    

@@ -3,7 +3,7 @@
 * [CLIgen](#cligen)
 * [Command history](#history)
 * [Large spec designs](#large-specs)
-
+* [Output pipes](#output-pipes)
 
 ## CLIgen
 
@@ -92,4 +92,160 @@ You can also add the C preprocessor as a first step. You can then define macros,
    %.cli : %.cpp
         $(CPP) -P -x assembler-with-cpp $(INCLUDES) -o $@ $<
   ```
+
+## Output pipes
+
+This section describes implementation aspects of Clixon output pipes.
+
+Output pipes resemble UNIX shell pipes and are useful to filter or modify CLI output. Example:
+  ```
+  cli> show config | grep parameter
+    <parameter>5</parameter>
+    <parameter>x</parameter>
+  cli>
+  ```
+
+Clixon and CLIgen implements a limited variant of output pipes using a set of mechanisms, as follows:
+
+* Pipe trees, name starts with vertical bar
+* Pipe functions, marked with flag
+* Explicit pipe reference, use tree reference mechanism with appended function
+* Default pipe reference, dynamic expansion of parse-tree
+* Callback evaluation
+
+Note that `cligen_output` must be used for all output to use output pipes. This is already true for scrolling.
+
+Further, multiple pipe functions are not (yet) supported, such as: `fn | tail | count`. There are no fundamental obstacles to implement them.
+
+### Pipe trees
+
+Clixon uses the CLIgen `tree` mechanism to specify a set of output
+pipes. A pipe tree is similar to other trees, but is distinguished
+using a vertical bar as the first character in its name.
+
+For example, the name of a pipe tree could be `|mypipe` and a reference to such a pipe would be: `@|mypipe`.
+
+A pipetree is declared in Clixon assigning the `CLICON_MODE` variable. The tree itself usually starts with the escaped vertical bar character (but could be something else), followed by a set of pipe functions. Example:
+```
+  CLICON_MODE="|mypipe";
+  \| { 
+     grep <arg:rest>, grep_fn("grep -e", "arg");
+     tail, tail_fn();
+  }
+```
+
+The CLIgen method uses the treename assignment instead, but is otherwise similar:
+```
+  treename="|mypipe";
+```
+
+Callbacks referenced in a pipe tree, such as `grep_fn`, are marked
+with a `CC_FLAGS_PIPE_FUNCTION` flag, to distingusih them from regular
+callbacks. All callbacks in a pipe tree are marked as pipe
+functions. This is done when parsing (or just after). Clixon and
+CLIgen does it slightly different:
+* CLIgen: If the "active" tree is a pipe-tree (starts with '|') then a parsed callback is a pipe function
+* Clixon: After parsing, if the 'mode' is a pipe-tree, the  traverse all callbacks and mark them
+
+### Pipe functions
+
+The pipe callback functions example, are called with the same arguments as regular CLIgen callbacks
+```
+  int tail_fn(cligen_handle h, cvec *cvv, cvec *argv)
+```
+where `cvv` is the command line and `argv` are the arguments in the call.
+
+However, the difference is that a pipe function is expected to receive
+input on stdin and produce output to stdout.
+
+This can be done by making an `exec` call to a UNIX command, as follows:
+```
+   execl("/usr/bin/tail", (char *) NULL);
+```
+
+Another way to write a pipe function is just by using stdin and stdout directly, without an exec.
+
+The clixon system itself arranges the input and output to be
+redirected properly, if the pipe function is a part of a pipe tree as described below.
+
+### Explicit pipe references
+
+A straightforward way to reference a pipe tree is by using an explicit pipe-tree reference as follows:
+```
+  set {     
+      @|mypipe, regular_cb();
+  }
+```
+Note that the `regular_cb()` is stated as an argument to the mypipe reference. This means it will be preended to each callback in 'mypipe'.
+
+For example, in the following CLI call:
+```
+  cli> set | tail
+```
+Two callbacks will be evaluated as follows:
+```
+  regular_cb() | tail_fn()
+```
+where the stdout of `regular_cb()` is redirected to the stdin of `tail_fn()`.
+
+If a call without pipe is wanted, the CLI explicit reference can be extended as follows:
+```
+  set, regular_cb(); {
+      @|mypipe, regular_cb();
+  }
+```
+
+### Default pipe references
+
+Instead of explicitly stating a pipe tree after each command, it is
+possible to make a default pipe-tree rule, which uses dynamic expansion to add pipe-trees automatically.
+
+In Clixon:
+```
+  CLICON_PIPETREE="|mypipe"; # in Clixon
+  pipetree="|mypipe";        # in CLIgen
+```
+
+This autoamtically expands each terminal command into a pipe-tree reference in a dynamic way. For example, assume the command `set, regular_cb();` is specified and a user types `set `.
+
+This expands the syntax by adding the `@|mypipe, regular_cb()` which is in turn expanded to:
+```
+  set, regular_cb(); {
+     \| { 
+        grep <arg:rest>, grep_fn("grep -e", "arg");
+        tail, tail_fn();
+     }
+  }
+```
+
+### Callback evaluation
+
+When a callback is evaluated, a pipe function, if present, is run in a forked sub-process and a
+'pipe-socket' is registered as input to that process.
+
+Then, the regular callback is called. When the callback calls `cligen_output()`, the output is redirected to the pipe-socket (sock) to the pipe-function, then back to `cligen_output_basic()`,  as shown in the following sketch:
+```
+   regular_cb() --> cligen_output() --> (sock) --> tail_fn() --> (sock) --> cligen_output_basic()
+```
+
+The `cligen_output_basic()` makes no redirection to avoid recursion.
+
+### Discussion
+
+The explicit syntax may seem counterintuitive, since the pipe-tree reference is made *before* the original call: `@|mypipe, regular_cb()`.
+
+It would be nicer to place the pipe-tree reference *after* the original call, something like:
+```
+regular_cb() |mypipe;
+```
+
+Further, the default pipe references rely on a statement (`pipetree=`
+or `CLICON_PIPETREE=`) in the *top-level* tree. This means that any
+different setting in a referenced tree is not significant.
+
+It can be discussed whether this is good or bad. The advantage is that
+it is easy to make a default statement in a single place. It could be
+a lot of work to find out which sub-trees are referenced and change
+them all.
+
 

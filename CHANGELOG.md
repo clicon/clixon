@@ -43,7 +43,13 @@
 ## 6.3.0
 Expected: July 2023
 
+### New features
+* Output pipes
+  * Building on a new CLIgen feature
+  * See https://clixon-docs.readthedocs.io/en/latest/cli.html#output-pipes
+  
 ### API changes on existing protocol/config features
+Users may have to change how they access the system
 
 * New `clixon-config@2023-05-01.yang` revision
   * Added options: `CLICON_CONFIG_EXTEND`
@@ -89,7 +95,6 @@ schema mount and other features required by the clixon controller
 project, along with minor improvements and bugfixes.
 
 ### API changes on existing protocol/config features
-
 Users may have to change how they access the system
 
 * New `clixon-config@2023-03-01.yang` revision

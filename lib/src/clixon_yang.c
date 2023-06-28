@@ -2212,7 +2212,7 @@ ys_populate_leaf(clicon_handle h,
         cv_dec64_n_set(cv, fraction_digits);
 
     if (cv_name_set(cv, ys->ys_argument) == NULL){
-        clicon_err(OE_YANG, errno, "cv_new_set"); 
+        clicon_err(OE_YANG, errno, "cv_name_set"); 
         goto done;
     }
     /* get parent of where type is defined, can be original object */
