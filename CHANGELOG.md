@@ -65,6 +65,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* Removed  extras/ and build-root/ build code since they are not properly maintained
 * Refactored cli-syntax code to use cligen pt_head instead (long overdue)
 * Modified backend exit strategy so that 2nd ^C actually exits
 * Performance: A change in the `merge` code made "co-located" config and non-config get retrieval go considerable faster. This is done by a specialized `xml_child_each_attr()` function.

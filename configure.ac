@@ -427,7 +427,6 @@ AC_CONFIG_FILES([Makefile
 	  example/Makefile
   	  example/main/Makefile
     	  example/main/example.xml
-	  extras/rpm/Makefile
 	  docker/Makefile
     	  docker/clixon-dev/Makefile
     	  docker/example/Makefile	  
