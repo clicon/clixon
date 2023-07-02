@@ -491,7 +491,6 @@ clicon_parse(clicon_handle  h,
     parse_tree       *pt;     /* Orig */
     cg_obj           *match_obj = NULL;
     cvec             *cvv = NULL;
-    cg_callback      *callbacks = NULL;
     FILE             *f;
     char             *reason = NULL;
     cligen_handle     ch;
@@ -513,7 +512,7 @@ clicon_parse(clicon_handle  h,
             fprintf(f, "No such parse-tree registered: %s\n", modename);
             goto done;
         }
-        if (cliread_parse(ch, cmd, pt, &match_obj, &cvv, &callbacks, result, &reason) < 0)
+        if (cliread_parse(ch, cmd, pt, &match_obj, &cvv, result, &reason) < 0)
             goto done;
         /* Debug command and result code */
         clicon_debug(1, "%s result:%d command: \"%s\"", __FUNCTION__, *result, cmd);
@@ -533,7 +532,7 @@ clicon_parse(clicon_handle  h,
             cli_output_reset();
             if (!cligen_exiting(ch)) {  
                 clicon_err_reset();
-                if ((ret = cligen_eval(ch, match_obj, cvv, callbacks)) < 0) {
+                if ((ret = cligen_eval(ch, match_obj, cvv)) < 0) {
                     cli_handler_err(stdout);
                     if (clicon_suberrno == ESHUTDOWN)
                         goto done;
@@ -556,9 +555,6 @@ clicon_parse(clicon_handle  h,
     retval = 0;
 done:
     fflush(f);
-
-    if (callbacks)
-        co_callbacks_free(&callbacks);
     if (reason)
         free(reason);
     if (cvv)
