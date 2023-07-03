@@ -179,15 +179,14 @@ SH_SUFFIX=".so"
 LIBSTATIC_SUFFIX=".a"
 
 # This is for cligen
-AC_ARG_WITH([cligen], AS_HELP_STRING([--with-cligen=dir],[Use CLIGEN installation in this dir]))
+AC_ARG_WITH([cligen], [AS_HELP_STRING([--with-cligen=dir], [Use CLIGEN installation in this dir])], [
+  CLIGEN_DIR="$withval"
+])
+AC_SUBST(CLIGEN_DIR)
 if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
-        with_cligen=${CLIGEN_DIR}
-fi
-if test -d "${with_cligen}"; then
-  echo "Using CLIGEN here: ${with_cligen}"
-  CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
-  LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
-  test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
+    echo "Using CLIGEN here: ${CLIGEN_DIR}"
+    CPPFLAGS="-I${CLIGEN_DIR}$(eval echo ${includedir}) ${CPPFLAGS}"
+    LDFLAGS="-L${CLIGEN_DIR}$(eval echo ${libdir}) ${LDFLAGS}"
 fi
 
 # Disable/enable yang patch
