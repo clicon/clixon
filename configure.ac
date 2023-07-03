@@ -71,13 +71,6 @@ else
    : ${CFLAGS="-O2 -Wall"}
 fi
 
-# Check CLIgen
-if test "$prefix" = "NONE"; then
-	CLIGEN_PREFIX="$ac_default_prefix"
-else
-	CLIGEN_PREFIX="$prefix"
-fi
-
 AC_CONFIG_HEADERS([include/clixon_config.h lib/clixon/clixon.h])
 
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_STRING, $CLIXON_VERSION, [Clixon version string])
@@ -96,7 +89,6 @@ AC_SUBST(CLIXON_VERSION)
 AC_SUBST(CLIXON_VERSION_STRING)
 AC_SUBST(CLIXON_VERSION_MAJOR)
 AC_SUBST(CLIXON_VERSION_MINOR)
-AC_SUBST(CLIGEN_PREFIX)
 
 AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION})
 
