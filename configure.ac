@@ -169,6 +169,10 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
+if test "$exec_prefix" = "NONE"; then
+     exec_prefix=${prefix}
+fi
+
 # Postfix for shared libs 
 SH_SUFFIX=".so"
 # Postfix for static libs 
@@ -405,7 +409,6 @@ AH_BOTTOM([#include <clixon_custom.h>])
 # Expand for easy replacement in example/main/example.xml.in
 # Special case is $libdir, which is composed from $exec_prefix
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
-test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 SYSCONFDIR=`eval echo $sysconfdir`
 LIBDIR=`eval echo $libdir`
 LIBDIR=`eval echo $LIBDIR`
