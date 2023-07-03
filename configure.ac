@@ -411,7 +411,6 @@ AH_BOTTOM([#include <clixon_custom.h>])
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 SYSCONFDIR=`eval echo $sysconfdir`
 LIBDIR=`eval echo $libdir`
-LIBDIR=`eval echo $LIBDIR`
 LOCALSTATEDIR=`eval echo $localstatedir`
 
 AC_CONFIG_FILES([Makefile
