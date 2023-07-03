@@ -94,7 +94,7 @@ grep_fn(cligen_handle h,
             if ((cv = cvec_find_var(cvv, name)) != NULL)
                 cprintf(cb, "%s", cv_string_get(cv));
         }
-        retval = execl("/usr/bin/grep", "grep", "-e", cbuf_get(cb), (char *) NULL);
+        retval = execl("/bin/grep", "grep", "-e", cbuf_get(cb), (char *) NULL);
     }
  done:
     if (cb)

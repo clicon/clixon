@@ -158,10 +158,10 @@ expectpart "$($clixon_cli -1 -m $mode -f $cfg show implicit config)" 0 "<paramet
 new "$mode show explicit"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config)" 0 "<parameter>" "</parameter>" "table" "value"
 
-new "$mode show implicit | grep par"
+new "$mode show implicit | grep par, expect fail"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show implicit config \| grep par 2>&1)" 255 "Unknown command"
 
-new "$mode show explicit | grep par , expect fail"
+new "$mode show explicit | grep par"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| grep par)" 0 "<parameter>" "</parameter>" --not-- "table" "value"
 
 new "$mode show treeref explicit | grep par"
