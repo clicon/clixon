@@ -122,7 +122,13 @@ cat <<EOF > $clidir/clipipe.cli
 CLICON_MODE="|mypipe"; # Must start with |
 #CLICON_PIPETREE="|mypipe";
 \| { 
-   grep <arg:rest>, grep_fn("grep -e", "arg");
+   grep <arg:string>, pipe_grep_fn("-e", "arg");
+   except <arg:string>, pipe_grep_fn("-v", "arg");
+   tail, pipe_tail_fn();
+   showas {
+     json, pipe_json_fn();
+     text, pipe_text_fn();
+   }
 }
 EOF
 
@@ -163,6 +169,15 @@ expectpart "$($clixon_cli -1 -m $mode -f $cfg show implicit config \| grep par 2
 
 new "$mode show explicit | grep par"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| grep par)" 0 "<parameter>" "</parameter>" --not-- "table" "value"
+
+new "$mode show explicit | tail"
+expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| tail)" 0 "<name>y</name>" --not-- "<name>x</name>"
+
+new "$mode show explicit | showas json"
+expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| showas json)" 0 '"name": "x",' --not-- "<name>"
+
+new "$mode show explicit | showas text"
+expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| showas text)" 0 "name x;" --not-- "<name>"
 
 new "$mode show treeref explicit | grep par"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show treeref explicit \| grep par)" 0 "<parameter>" "</parameter>" --not-- "table" "value"

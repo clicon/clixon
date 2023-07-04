@@ -163,7 +163,10 @@ This can be done by making an `exec` call to a UNIX command, as follows:
    execl("/usr/bin/tail", (char *) NULL);
 ```
 
+See the `pipe_grep_fn()` in the source code for an example.
+
 Another way to write a pipe function is just by using stdin and stdout directly, without an exec.
+See the `pipe_json_fn()` in the source code for an example.
 
 The clixon system itself arranges the input and output to be
 redirected properly, if the pipe function is a part of a pipe tree as described below.

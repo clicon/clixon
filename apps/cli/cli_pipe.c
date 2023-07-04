@@ -31,6 +31,7 @@
 
   ***** END LICENSE BLOCK *****
  * 
+ * Note, here assume all binaries are in /bin
  */
 
 #ifdef HAVE_CONFIG_H
@@ -68,43 +69,142 @@
 #include "clixon_cli_api.h"
 
 /* Grep pipe output function
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  cmd    Command to exec
+ * @param[in]  option Option to command (or NULL)
+ * @param[in]  value  Command argument value (or NULL)
+ * @code
+ *   grep <arg:rest>, grep_fn("-e", "arg");
+ * @endcode
  */
 int
-grep_fn(cligen_handle h,
-        cvec         *cvv,
-        cvec         *argv)
+pipe_arg_fn(clicon_handle h,
+            const char   *cmd,
+            const char   *option,
+            const char   *value)
 {
     int     retval = -1;
-    cbuf   *cb = NULL;
-    cg_var *av;
-    cg_var *cv;
-    char   *name;
 
-    if ((cb = cbuf_new()) == NULL){
-        perror("cbuf_new");
+    /* XXX rewrite using execv */
+    if (option){
+        if (value){
+            fprintf(stderr, "%s (1): %s %s %s %s NULL\n", __FUNCTION__, cmd, cmd, option, value);
+            retval = execl(cmd, cmd, option, value, NULL);
+        }
+        else{
+            fprintf(stderr, "%s (2): %s %s %s NULL\n", __FUNCTION__, cmd, cmd, option);
+            retval = execl(cmd, cmd, option, NULL);
+        }
+    }
+    else{
+        if (value){
+            fprintf(stderr, "%s (3): %s %s %s NULL\n", __FUNCTION__, cmd, cmd, value);
+            retval = execl(cmd, cmd, value, NULL);
+        }
+        else{
+            fprintf(stderr, "%s (4): %s %s NULL\n", __FUNCTION__, cmd, cmd);
+            retval = execl(cmd, cmd, NULL);
+        }
+    }
+    return retval;
+}
+
+/* Grep pipe output function
+ *
+ * @param[in]  h     Clicon handle
+ * @param[in]  cvv   Vector of cli string and instantiated variables 
+ * @param[in]  argv  String vector of options. Format: <option> <value>
+ */
+int
+pipe_grep_fn(clicon_handle h,
+             cvec         *cvv,
+             cvec         *argv)
+{
+    int     retval = -1;
+    char   *value = NULL;
+    cg_var *cv;
+    char   *str;
+    char   *option;
+    char   *argname;
+
+    if (cvec_len(argv) != 2){
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option> <argname>", cvec_len(argv));
         goto done;
     }
-    if (argv && (av = cvec_i(argv, 0)) != NULL){
-        /* First arg is command */
-        //        cprintf(cb, "%s", cv_string_get(av));
-        /* Rest are names of parameters from cvv */
-        av = NULL;
-        while ((av = cvec_each1(argv, av)) != NULL){
-            name = cv_string_get(av);
-            if ((cv = cvec_find_var(cvv, name)) != NULL)
-                cprintf(cb, "%s", cv_string_get(cv));
-        }
-        retval = execl("/bin/grep", "grep", "-e", cbuf_get(cb), (char *) NULL);
+    if ((cv = cvec_i(argv, 0)) != NULL &&
+        (str = cv_string_get(cv)) != NULL &&
+        strlen(str))
+        option = str;
+    if ((cv = cvec_i(argv, 1)) != NULL &&
+        (str = cv_string_get(cv)) != NULL &&
+        strlen(str))
+        argname = str;
+    if (argname && strlen(argname)){
+        if ((cv = cvec_find_var(cvv, argname)) != NULL &&
+            (str = cv_string_get(cv)) != NULL &&
+            strlen(str))
+            value = str;
     }
+    retval = pipe_arg_fn(h, "/bin/grep", option, value);
  done:
-    if (cb)
-        cbuf_free(cb);
+    return retval;
+}
+
+/* Grep pipe output function
+ *
+ * @param[in]  h     Clicon handle
+ * @param[in]  cvv   Vector of cli string and instantiated variables 
+ * @param[in]  argv  String vector of options. Format: <option> <value>
+ */
+int
+pipe_tail_fn(clicon_handle h,
+             cvec         *cvv,
+             cvec         *argv)
+{
+    return pipe_arg_fn(h, "/bin/tail", "-5", NULL);
+}
+
+int
+pipe_json_fn(clicon_handle h,
+             cvec         *cvv,
+             cvec         *argv)
+{
+    int    retval = -1;
+    cxobj *xt = NULL;
+ 
+    if (clixon_xml_parse_file(stdin, YB_NONE, NULL, &xt, NULL) < 0)
+        goto done;
+    if (clixon_json2file(stdout, xt, 1, cligen_output, 1, 0) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (xt)
+        xml_free(xt);
+    return retval;
+}
+int
+pipe_text_fn(clicon_handle h,
+             cvec         *cvv,
+             cvec         *argv)
+{
+    int    retval = -1;
+    cxobj *xt = NULL;
+ 
+    if (clixon_xml_parse_file(stdin, YB_NONE, NULL, &xt, NULL) < 0)
+        goto done;
+    if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 0) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (xt)
+        xml_free(xt);
     return retval;
 }
 
 /*! Test cli callback calls cligen_output with output lines as given by function arguments
  *
- * This is to generate output to eg cligen_output scrolling
+ * Only for test or debugging to generate output to eg cligen_output scrolling
  * Example:
  * a, printlines_fn("line1 abc", "line2 def");
  */
