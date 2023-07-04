@@ -325,14 +325,15 @@ clixon_stats_datastore_get(clicon_handle h,
                            cbuf         *cb)
 {
     int       retval = -1;
-    cxobj    *xt = NULL;
+    cxobj    *xt = NULL; /* should not be freed */
     uint64_t  nr = 0;
     size_t    sz = 0;
     cxobj    *xn = NULL;
     
+    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, dbname);
     /* This is the db cache */
     if ((xt = xmldb_cache_get(h, dbname)) == NULL){
-        /* Trigger cache if no exist */
+        /* Trigger cache if no exist (trick to ensure cache is present) */
         if (xmldb_get(h, dbname, NULL, "/", &xn) < 0)
             //goto done;
             goto ok;
@@ -1308,10 +1309,11 @@ from_client_stats(clicon_handle h,
     int        modules = 0;
     yang_stmt *yspec;
     yang_stmt *ymodext;
-    cxobj     *xt;
+    cxobj     *xt = NULL;
     
     if ((str = xml_find_body(xe, "modules")) != NULL)
         modules = strcmp(str, "true") == 0;
+    yspec = clicon_dbspec_yang(h);
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cbret, "<global xmlns=\"%s\">", CLIXON_LIB_NS);
     nr=0;
@@ -1326,13 +1328,14 @@ from_client_stats(clicon_handle h,
         goto done;
     if (clixon_stats_datastore_get(h, "candidate", cbret) < 0)
         goto done;
-    if (clixon_stats_datastore_get(h, "startup", cbret) < 0)
-        goto done;
+    if (if_feature(yspec, "ietf-netconf", "startup"))
+	if (clixon_stats_datastore_get(h, "startup", cbret) < 0)
+	    goto done;
     cprintf(cbret, "</datastores>");
     /* per module-set, first configuration, then main dbspec, then mountpoints */
     cprintf(cbret, "<module-sets xmlns=\"%s\">", CLIXON_LIB_NS);
     cprintf(cbret, "<module-set><name>clixon-config</name>");
-    yspec = clicon_config_yang(h);
+    yspec = clicon_config_yang(h); /* Note switch yspec to config (not data) */
     if (clixon_stats_module_get(h, yspec, cbret) < 0)
         goto done;
     if (modules){
@@ -1370,6 +1373,8 @@ from_client_stats(clicon_handle h,
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
  done:
+    if (xt)
+	xml_free(xt);
     return retval;
 }
 
