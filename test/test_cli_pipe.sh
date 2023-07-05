@@ -125,6 +125,7 @@ CLICON_MODE="|mypipe"; # Must start with |
    grep <arg:string>, pipe_grep_fn("-e", "arg");
    except <arg:string>, pipe_grep_fn("-v", "arg");
    tail, pipe_tail_fn();
+   count, pipe_wc_fn("-l");
    showas {
      json, pipe_json_fn();
      text, pipe_text_fn();
@@ -172,6 +173,9 @@ expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| grep par)"
 
 new "$mode show explicit | tail"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| tail)" 0 "<name>y</name>" --not-- "<name>x</name>"
+
+new "$mode show explicit | count"
+expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| count)" 0 10
 
 new "$mode show explicit | showas json"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| showas json)" 0 '"name": "x",' --not-- "<name>"

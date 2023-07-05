@@ -31,7 +31,7 @@
 
   ***** END LICENSE BLOCK *****
  * 
- * Note, here assume all binaries are in /bin
+ * @note Paths to bins, such as GREP_BIN, are detected in configure.ac
  */
 
 #ifdef HAVE_CONFIG_H
@@ -80,33 +80,40 @@
  */
 int
 pipe_arg_fn(clicon_handle h,
-            const char   *cmd,
-            const char   *option,
-            const char   *value)
+            char         *cmd,
+            char         *option,
+            char         *value)
 {
-    int     retval = -1;
-
-    /* XXX rewrite using execv */
-    if (option){
-        if (value){
-            fprintf(stderr, "%s (1): %s %s %s %s NULL\n", __FUNCTION__, cmd, cmd, option, value);
-            retval = execl(cmd, cmd, option, value, NULL);
-        }
-        else{
-            fprintf(stderr, "%s (2): %s %s %s NULL\n", __FUNCTION__, cmd, cmd, option);
-            retval = execl(cmd, cmd, option, NULL);
-        }
+    int          retval = -1;
+    struct stat  fstat;
+    char       **argv = NULL;
+    int          i;
+    
+    if (cmd == NULL || strlen(cmd) == 0){
+        clicon_err(OE_PLUGIN, EINVAL, "cmd '%s' NULL or empty", cmd);
+        goto done;
     }
-    else{
-        if (value){
-            fprintf(stderr, "%s (3): %s %s %s NULL\n", __FUNCTION__, cmd, cmd, value);
-            retval = execl(cmd, cmd, value, NULL);
-        }
-        else{
-            fprintf(stderr, "%s (4): %s %s NULL\n", __FUNCTION__, cmd, cmd);
-            retval = execl(cmd, cmd, NULL);
-        }
+    if (stat(cmd, &fstat) < 0) {
+        clicon_err(OE_UNIX, errno, "stat(%s)", cmd);
+        goto done;
     }
+    if (!S_ISREG(fstat.st_mode)){
+        clicon_err(OE_UNIX, errno, "%s is not a regular file", cmd);
+        goto done;
+    }
+    if ((argv = calloc(4, sizeof(char *))) == NULL){
+        clicon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    i = 0;
+    argv[i++] = cmd;
+    argv[i++] = option;
+    argv[i++] = value;
+    argv[i++] = NULL;
+    retval = execv(cmd, argv);
+ done:
+    if (argv)
+        free(argv);
     return retval;
 }
 
@@ -146,12 +153,41 @@ pipe_grep_fn(clicon_handle h,
             strlen(str))
             value = str;
     }
-    retval = pipe_arg_fn(h, "/bin/grep", option, value);
+    retval = pipe_arg_fn(h, GREP_BIN, option, value);
  done:
     return retval;
 }
 
-/* Grep pipe output function
+/*! wc pipe output function
+ *
+ * @param[in]  h     Clicon handle
+ * @param[in]  cvv   Vector of cli string and instantiated variables 
+ * @param[in]  argv  String vector of options. Format: <option> <value>
+ */
+int
+pipe_wc_fn(clicon_handle h,
+             cvec         *cvv,
+             cvec         *argv)
+{
+    int     retval = -1;
+    cg_var *cv;
+    char   *str;
+    char   *option;
+    
+    if (cvec_len(argv) != 1){
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option>", cvec_len(argv));
+        goto done;
+    }
+    if ((cv = cvec_i(argv, 0)) != NULL &&
+        (str = cv_string_get(cv)) != NULL &&
+        strlen(str))
+        option = str;
+    retval = pipe_arg_fn(h, WC_BIN, option, NULL);
+ done:
+    return retval;
+}
+
+/*! wc pipe output function
  *
  * @param[in]  h     Clicon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
@@ -159,12 +195,19 @@ pipe_grep_fn(clicon_handle h,
  */
 int
 pipe_tail_fn(clicon_handle h,
-             cvec         *cvv,
-             cvec         *argv)
+           cvec         *cvv,
+           cvec         *argv)
 {
-    return pipe_arg_fn(h, "/bin/tail", "-5", NULL);
+    return pipe_arg_fn(h, TAIL_BIN, "-5", NULL);
 }
 
+
+/*! Show as JSON
+ *
+ * @param[in]  h     Clicon handle
+ * @param[in]  cvv   Vector of cli string and instantiated variables 
+ * @param[in]  argv  String vector of options. Format: <option> <value>
+ */
 int
 pipe_json_fn(clicon_handle h,
              cvec         *cvv,

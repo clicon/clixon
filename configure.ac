@@ -158,6 +158,14 @@ fi
 AC_PATH_PROG(SSH_BIN, ssh)
 AC_DEFINE_UNQUOTED(SSH_BIN, "$SSH_BIN", [SSH binary])
 
+# For cli pipe output functions
+AC_PROG_GREP
+AC_DEFINE_UNQUOTED(GREP_BIN, "$GREP", [Grep binary])
+AC_PATH_PROG(TAIL_BIN, tail)
+AC_DEFINE_UNQUOTED(TAIL_BIN, "$TAIL_BIN", [tail binary])
+AC_PATH_PROG(WC_BIN, wc)
+AC_DEFINE_UNQUOTED(WC_BIN, "$WC_BIN", [wc binary])
+
 # Get "bison" from bison -y or other string
 if test "$YACC" = "${YACC##bison}" ; then
    AC_MSG_ERROR(CLIXON does not find bison.  There are several problems with yacc and byacc. Please install bison. YACC="$YACC")
