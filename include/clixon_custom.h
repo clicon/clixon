@@ -93,14 +93,6 @@
  */
 #define DATASTORE_TOP_SYMBOL "config"
 
-/*! Name of default netns for clixon-restconf.yang socket/namespace field
- * Restconf allows opening sockets in different network namespaces. This is teh name of 
- * "host"/"default" namespace. Unsure what to really label this but seems like there is differing
- * consensus on how to label it.
- * Either find that proper label, or move it to a option
- */
-#define RESTCONF_NETNS_DEFAULT "default"
-
 /*! If set make an internal redirect if URI path indetifies a directory
  * For example, path is /local, and redirect is 'index.html, the request 
  * will be redirected to /local/index.html
