@@ -231,6 +231,17 @@ AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR([CLIgen missing. Try: git clone 
 
 AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen missing. Try: git clone https://github.com/clicon/cligen.git]))
 
+AC_ARG_WITH([restconf-netns],
+	AS_HELP_STRING([--with-restconf-netns=NAMESPACE],[Define default restconf network namespace to NAMESPACE]),
+	[restconf_netns="$withval"],
+	[restconf_netns="default"])
+
+if test -z "$restconf_netns"; then
+   AC_MSG_ERROR([restconf-netns cannot be empty])
+fi
+
+AC_DEFINE_UNQUOTED([RESTCONF_NETNS_DEFAULT], "$restconf_netns", [Default restconf network namespace])
+
 # This is for restconf.  There are three options:
 # --without-restconf     No restconf support
 # --with-restconf=fcgi   FCGI interface for separate web reverse proxy like nginx
