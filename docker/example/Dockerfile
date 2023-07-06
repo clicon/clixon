@@ -42,9 +42,8 @@ RUN apk add --update git make build-base gcc flex bison curl-dev
 RUN apk add --update nghttp2
 
 # Create a directory to hold source-code, dependencies etc
-RUN mkdir /clixon
+RUN mkdir -p /clixon/build
 
-RUN mkdir /clixon/build
 WORKDIR /clixon
 
 # Clone cligen
@@ -52,34 +51,34 @@ RUN git clone https://github.com/clicon/cligen.git
 
 # Build cligen
 WORKDIR /clixon/cligen
-RUN ./configure --prefix=/clixon/build
+RUN ./configure --prefix=/usr/local
 RUN make
-RUN make install
+RUN make DESTDIR=/clixon/build install
 
 # Need to add www user manually
 RUN adduser -D -H -G www-data www-data
 
 # Copy Clixon from local dir
-RUN mkdir /clixon/clixon
+RUN mkdir -p /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-restconf=native --enable-nghttp2 --enable-http1
+RUN ./configure --prefix=/usr/local --with-cligen=/clixon/build --with-restconf=native --enable-nghttp2 --enable-http1
 
 RUN make
-RUN make install
-RUN make install-include
+RUN make DESTDIR=/clixon/build install
+RUN make DESTDIR=/clixon/build install-include
 
 # Install main example
 WORKDIR /clixon/clixon/example/main
 RUN make
-RUN make install
+RUN make DESTDIR=/clixon/build install
 
 # Copy startscript
 WORKDIR /clixon
 COPY startsystem.sh startsystem.sh 
-RUN install startsystem.sh /clixon/build/bin/
+RUN install startsystem.sh /clixon/build/usr/local/bin/
 
 #
 # Stage 2
@@ -109,7 +108,7 @@ RUN echo "Subsystem netconf /usr/local/bin/clixon_netconf" >> /etc/ssh/sshd_conf
 # Create clicon user and group
 RUN adduser -D -H clicon
 
-COPY --from=0 /clixon/build/ /usr/local/
+COPY --from=0 /clixon/build/ /
 
 # Overwrite config file since install dirs are wrong
 COPY example.xml /usr/local/etc/example.xml
