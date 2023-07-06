@@ -648,6 +648,7 @@ ac_includes_default="\
 ac_header_c_list=
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+CLIGEN_DIR
 WC_BIN
 TAIL_BIN
 GREP
@@ -685,7 +686,6 @@ INSTALL_DATA
 INSTALL_SCRIPT
 INSTALL_PROGRAM
 INCLUDES
-CLIGEN_PREFIX
 CLIXON_VERSION_MINOR
 CLIXON_VERSION_MAJOR
 CLIXON_VERSION_STRING
@@ -2825,13 +2825,6 @@ else
    : ${CFLAGS="-O2 -Wall"}
 fi
 
-# Check CLIgen
-if test "$prefix" = "NONE"; then
-	CLIGEN_PREFIX="$ac_default_prefix"
-else
-	CLIGEN_PREFIX="$prefix"
-fi
-
 ac_config_headers="$ac_config_headers include/clixon_config.h lib/clixon/clixon.h"
 
 
@@ -4005,7 +3998,6 @@ test -n "$target_alias" &&
 
 # AC_SUBST(var) makes @var@ appear in makefiles.
 # clixon versions spread to Makefile's (.so files) and variable in build.c
-
 
 
 
@@ -5903,6 +5895,10 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
+if test "$exec_prefix" = "NONE"; then
+     exec_prefix=${prefix}
+fi
+
 # Postfix for shared libs
 SH_SUFFIX=".so"
 # Postfix for static libs
@@ -5914,16 +5910,15 @@ LIBSTATIC_SUFFIX=".a"
 if test ${with_cligen+y}
 then :
   withval=$with_cligen;
+  CLIGEN_DIR="$withval"
+
 fi
 
+
 if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
-        with_cligen=${CLIGEN_DIR}
-fi
-if test -d "${with_cligen}"; then
-  echo "Using CLIGEN here: ${with_cligen}"
-  CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
-  LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
-  test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
+    echo "Using CLIGEN here: ${CLIGEN_DIR}"
+    CPPFLAGS="-I${CLIGEN_DIR}$(eval echo ${includedir}) ${CPPFLAGS}"
+    LDFLAGS="-L${CLIGEN_DIR}$(eval echo ${libdir}) ${LDFLAGS}"
 fi
 
 # Disable/enable yang patch
@@ -6873,10 +6868,8 @@ fi
 # Expand for easy replacement in example/main/example.xml.in
 # Special case is $libdir, which is composed from $exec_prefix
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
-test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 SYSCONFDIR=`eval echo $sysconfdir`
 LIBDIR=`eval echo $libdir`
-LIBDIR=`eval echo $LIBDIR`
 LOCALSTATEDIR=`eval echo $localstatedir`
 
 ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml docker/Makefile docker/clixon-dev/Makefile docker/example/Makefile docker/test/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"

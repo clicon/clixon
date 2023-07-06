@@ -71,13 +71,6 @@ else
    : ${CFLAGS="-O2 -Wall"}
 fi
 
-# Check CLIgen
-if test "$prefix" = "NONE"; then
-	CLIGEN_PREFIX="$ac_default_prefix"
-else
-	CLIGEN_PREFIX="$prefix"
-fi
-
 AC_CONFIG_HEADERS([include/clixon_config.h lib/clixon/clixon.h])
 
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_STRING, $CLIXON_VERSION, [Clixon version string])
@@ -96,7 +89,6 @@ AC_SUBST(CLIXON_VERSION)
 AC_SUBST(CLIXON_VERSION_STRING)
 AC_SUBST(CLIXON_VERSION_MAJOR)
 AC_SUBST(CLIXON_VERSION_MINOR)
-AC_SUBST(CLIGEN_PREFIX)
 
 AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION})
 
@@ -177,21 +169,24 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
+if test "$exec_prefix" = "NONE"; then
+     exec_prefix=${prefix}
+fi
+
 # Postfix for shared libs 
 SH_SUFFIX=".so"
 # Postfix for static libs 
 LIBSTATIC_SUFFIX=".a"
 
 # This is for cligen
-AC_ARG_WITH([cligen], AS_HELP_STRING([--with-cligen=dir],[Use CLIGEN installation in this dir]))
+AC_ARG_WITH([cligen], [AS_HELP_STRING([--with-cligen=dir], [Use CLIGEN installation in this dir])], [
+  CLIGEN_DIR="$withval"
+])
+AC_SUBST(CLIGEN_DIR)
 if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
-        with_cligen=${CLIGEN_DIR}
-fi
-if test -d "${with_cligen}"; then
-  echo "Using CLIGEN here: ${with_cligen}"
-  CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
-  LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
-  test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
+    echo "Using CLIGEN here: ${CLIGEN_DIR}"
+    CPPFLAGS="-I${CLIGEN_DIR}$(eval echo ${includedir}) ${CPPFLAGS}"
+    LDFLAGS="-L${CLIGEN_DIR}$(eval echo ${libdir}) ${LDFLAGS}"
 fi
 
 # Disable/enable yang patch
@@ -413,10 +408,8 @@ AH_BOTTOM([#include <clixon_custom.h>])
 # Expand for easy replacement in example/main/example.xml.in
 # Special case is $libdir, which is composed from $exec_prefix
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
-test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 SYSCONFDIR=`eval echo $sysconfdir`
 LIBDIR=`eval echo $libdir`
-LIBDIR=`eval echo $LIBDIR`
 LOCALSTATEDIR=`eval echo $localstatedir`
 
 AC_CONFIG_FILES([Makefile
