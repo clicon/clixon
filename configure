@@ -755,6 +755,7 @@ enable_debug
 with_cligen
 enable_yang_patch
 enable_publish
+with_restconf_netns
 with_restconf
 enable_http1
 enable_nghttp2
@@ -1417,6 +1418,9 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cligen=dir       Use CLIGEN installation in this dir
+  --with-restconf-netns=NAMESPACE
+                          Define default restconf network namespace to
+                          NAMESPACE
   --with-restconf=native  Integration with embedded web server (DEFAULT)
   --with-restconf=fcgi    FCGI interface for stand-alone web rev-proxy eg
                           nginx
@@ -6110,6 +6114,24 @@ then :
 else $as_nop
   as_fn_error $? "CLIgen missing. Try: git clone https://github.com/clicon/cligen.git" "$LINENO" 5
 fi
+
+
+
+# Check whether --with-restconf-netns was given.
+if test ${with_restconf_netns+y}
+then :
+  withval=$with_restconf_netns; restconf_netns="$withval"
+else $as_nop
+  restconf_netns="default"
+fi
+
+
+if test -z "$restconf_netns"; then
+   as_fn_error $? "restconf-netns cannot be empty" "$LINENO" 5
+fi
+
+
+printf "%s\n" "#define RESTCONF_NETNS_DEFAULT \"$restconf_netns\"" >>confdefs.h
 
 
 # This is for restconf.  There are three options:
