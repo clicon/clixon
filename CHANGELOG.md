@@ -53,6 +53,7 @@ Users may have to change how they access the system
 
 * New `clixon-config@2023-05-01.yang` revision
   * Added options: `CLICON_CONFIG_EXTEND`
+
   * Moved datastore-format datastype to clixon-lib
 * New `clixon-lib@2023-05-01.yang` revision
   * Restructured and extended stats rpc to schema mountpoints
@@ -97,8 +98,13 @@ project, along with minor improvements and bugfixes.
 ### API changes on existing protocol/config features
 Users may have to change how they access the system
 
+* Changed `configure --with-cligen=dir`
+  * <dir> is considered as `DESTDIR` and consider cligen installed under `DESTDIR/PREFIX`
+  * Changed from: consider cligen installed under `<dir>`
 * New `clixon-config@2023-03-01.yang` revision
-  * Added options: `CLICON_RESTCONF_NOALPN_DEFAULT`
+  * Added options:
+    * `CLICON_RESTCONF_NOALPN_DEFAULT`
+    * `CLICON_PLUGIN_DLOPEN_GLOBAL`
   * Extended datastore-format with CLI and text
 * New `clixon-lib@2023-03-01.yang` revision
   * Added creator meta-object

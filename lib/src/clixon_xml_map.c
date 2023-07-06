@@ -999,7 +999,7 @@ assign_namespace_element(cxobj *x0, /* source */
  *
  * If origin body has namespace definitions, copy them. The reason is that
  * some bodies rely on namespace prefixes, such as NACM path, but there is 
- * no way we can now this here.
+ * no way we can know this here.
  * However, this may lead to namespace collisions if these prefixes are not
  * canonical, and may collide with the assign_namespace_element() above (but that 
  * is for element symbols)

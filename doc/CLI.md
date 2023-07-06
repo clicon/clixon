@@ -179,7 +179,7 @@ A straightforward way to reference a pipe tree is by using an explicit pipe-tree
       @|mypipe, regular_cb();
   }
 ```
-Note that the `regular_cb()` is stated as an argument to the mypipe reference. This means it will be preended to each callback in 'mypipe'.
+Note that the `regular_cb()` is stated as an argument to the mypipe reference. This means it will be prepended to each callback in 'mypipe'.
 
 For example, in the following CLI call:
 ```
@@ -209,7 +209,7 @@ In Clixon:
   pipetree="|mypipe";        # in CLIgen
 ```
 
-This autoamtically expands each terminal command into a pipe-tree reference in a dynamic way. For example, assume the command `set, regular_cb();` is specified and a user types `set `.
+This automatically expands each terminal command into a pipe-tree reference in a dynamic way. For example, assume the command `set, regular_cb();` is specified and a user types `set `.
 
 This expands the syntax by adding the `@|mypipe, regular_cb()` which is in turn expanded to:
 ```

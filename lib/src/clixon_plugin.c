@@ -299,6 +299,7 @@ clixon_plugin_find(clicon_handle h,
 }
 
 /*! Load a dynamic plugin object and call its init-function
+ *
  * @param[in]  h        Clicon handle
  * @param[in]  file     Which plugin to load
  * @param[in]  function Which function symbol to load and call
@@ -310,10 +311,10 @@ clixon_plugin_find(clicon_handle h,
  * @see clixon_plugins_load  Load all plugins
  */
 static int
-plugin_load_one(clicon_handle   h, 
-                char           *file, /* note modified */
-                const char     *function,
-                int             dlflags,
+plugin_load_one(clicon_handle     h, 
+                char             *file, /* note modified */
+                const char       *function,
+                int               dlflags,
                 clixon_plugin_t **cpp)
 {
     int                retval = -1;
@@ -406,15 +407,16 @@ clixon_plugins_load(clicon_handle h,
                     const char   *dir,
                     const char   *regexp)
 {
-    int            retval = -1;
-    int            ndp;
-    struct dirent *dp = NULL;
-    int            i;
-    char           filename[MAXPATHLEN];
-    clixon_plugin_t *cp = NULL;
-    int            ret;
+    int                   retval = -1;
+    int                   ndp;
+    struct dirent        *dp = NULL;
+    int                   i;
+    char                  filename[MAXPATHLEN];
+    clixon_plugin_t      *cp = NULL;
+    int                   ret;
     plugin_module_struct *ms = plugin_module_struct_get(h);
-
+    int                   dlflags;
+        
     clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__); 
     if (ms == NULL){
         clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
@@ -427,7 +429,12 @@ clixon_plugins_load(clicon_handle h,
     for (i = 0; i < ndp; i++) {
         snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
         clicon_debug(CLIXON_DBG_DEFAULT, "Loading plugin '%s'", filename);
-        if ((ret = plugin_load_one(h, filename, function, RTLD_NOW, &cp)) < 0)
+        dlflags = RTLD_NOW;
+        if (clicon_option_bool(h, "CLICON_PLUGIN_DLOPEN_GLOBAL"))
+            dlflags |= RTLD_GLOBAL;
+        else
+            dlflags |= RTLD_LOCAL;
+        if ((ret = plugin_load_one(h, filename, function, dlflags, &cp)) < 0)
             goto done;
         if (ret == 0)
             continue;

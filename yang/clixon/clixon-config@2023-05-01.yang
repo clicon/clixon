@@ -53,7 +53,8 @@ module clixon-config {
         description
             "Added options:
                     CLICON_CONFIG_EXTEND
-             Moved datastore-format datastype to clixon-lib
+                    CLICON_PLUGIN_DLOPEN_GLOBAL
+             Moved datastore-format datatype to clixon-lib
              Released in Clixon 6.3";
     }
     revision 2023-03-01 {
@@ -1002,6 +1003,18 @@ module clixon-config {
                  The checks will be made for all callbacks as defined in struct clixon_plugin_api
                  as well as the CLIgen callbacks.
                  See https://clixon-docs.readthedocs.io/en/latest/backend.html#plugin-callback-guidelines";
+        }
+        leaf CLICON_PLUGIN_DLOPEN_GLOBAL {
+            type boolean;
+            default false;
+            description
+                "Local/global flag for dlopen as described in the man page.
+                 This applies to the opening of all clixon plugins (backend/cli/netconf/restconf)
+                 when loading the shared .so file with dlopen.  
+                 If false:  Symbols defined in this shared object are not made available  to  resolve
+                 references in subsequently loaded shared objects (default).
+                 If true: The symbols defined by this shared object will be made available for symbol res‐
+                 olution of subsequently loaded shared objects.";
         }
         leaf CLICON_YANG_AUGMENT_ACCEPT_BROKEN {
             type boolean;
