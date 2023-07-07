@@ -124,7 +124,7 @@ int cli_show_common(clicon_handle h, char *db, enum format_enum format, int pret
 int show_yang(clicon_handle h, cvec *vars, cvec *argv);
 int show_conf_xpath(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_show_option_format(cvec *argv, int argc, enum format_enum *format);
-int cli_show_option_bool(cvec *argv, int argc, int *bool);
+int cli_show_option_bool(cvec *argv, int argc, int *result);
 int cli_show_option_withdefault(cvec *argv, int argc, char **withdefault, char **extdefault);
 int cli_show_config(clicon_handle h, cvec *cvv, cvec *argv);
 

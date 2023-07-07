@@ -589,16 +589,16 @@ cli_show_option_format(cvec             *argv,
 
 /*! Common internal parse cli show boolean option
  *
- * @param[in]  argv  String vector: <dbname> <format> <xpath> [<varname>]
- * @param[in]  argc  Index into argv
- * @param[out] bool  result boolean: 0 or 1
- * @retval     0     OK
- * @retval    -1     Error
+ * @param[in]  argv   String vector: <dbname> <format> <xpath> [<varname>]
+ * @param[in]  argc   Index into argv
+ * @param[out] result result boolean: 0 or 1
+ * @retval     0      OK
+ * @retval    -1      Error
  */
 int 
 cli_show_option_bool(cvec *argv,
                      int   argc,
-                     int  *bool
+                     int  *result
                      )
 {
     int     retval = -1;
@@ -614,7 +614,7 @@ cli_show_option_bool(cvec *argv,
         clicon_err(OE_UNIX, errno, "Parse boolean %s", boolstr);
         goto done;
     }
-    *bool = cv_bool_get(boolcv);
+    *result = cv_bool_get(boolcv);
     retval = 0;
  done:
     if (boolcv)
