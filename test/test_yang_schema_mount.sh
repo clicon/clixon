@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Test for RFC8528 YANG Schema Mount
-# Only if compiled with YANG_SCHEMA_MOUNT
+# XXX No cli tests
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -85,7 +85,6 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "check there is statistics from mountpoint"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><stats xmlns=\"http://clicon.org/lib\"></stats></rpc>" '<module-set><name>mountpoint: /top/mylist\[name="x"\]/root</name><nr>'
-#"<rpc-reply $DEFAULTNS></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

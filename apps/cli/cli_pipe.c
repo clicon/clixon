@@ -32,6 +32,7 @@
   ***** END LICENSE BLOCK *****
  * 
  * @note Paths to bins, such as GREP_BIN, are detected in configure.ac
+ * @note These functions are normally run in a forked sub-process as spawned in cligen_eval()
  */
 
 #ifdef HAVE_CONFIG_H
@@ -132,8 +133,8 @@ pipe_grep_fn(clicon_handle h,
     char   *value = NULL;
     cg_var *cv;
     char   *str;
-    char   *option;
-    char   *argname;
+    char   *option = NULL;
+    char   *argname = NULL;
 
     if (cvec_len(argv) != 2){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option> <argname>", cvec_len(argv));
@@ -172,7 +173,7 @@ pipe_wc_fn(clicon_handle h,
     int     retval = -1;
     cg_var *cv;
     char   *str;
-    char   *option;
+    char   *option = NULL;
     
     if (cvec_len(argv) != 1){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option>", cvec_len(argv));
@@ -201,43 +202,74 @@ pipe_tail_fn(clicon_handle h,
     return pipe_arg_fn(h, TAIL_BIN, "-5", NULL);
 }
 
-
-/*! Show as JSON
+/*! Output pipe translate from xml to other format: json,text,
  *
  * @param[in]  h     Clicon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
- * @param[in]  argv  String vector of options. Format: <option> <value>
+ * @param[in]  argv  String vector of show options, format:
+ *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
+ *   <pretty>        true|false: pretty-print or not
+ *   <prepend>       CLI prefix: prepend before cli syntax output
+ * @see cli_show_auto_devs
  */
 int
-pipe_json_fn(clicon_handle h,
+pipe_showas_fn(clicon_handle h,
              cvec         *cvv,
              cvec         *argv)
 {
-    int    retval = -1;
-    cxobj *xt = NULL;
- 
-    if (clixon_xml_parse_file(stdin, YB_NONE, NULL, &xt, NULL) < 0)
+    int              retval = -1;
+    cxobj           *xt = NULL;
+    int              argc = 0;
+    enum format_enum format = FORMAT_XML;
+    int              ybind = 1;
+    yang_stmt       *yspec;
+    int              pretty = 1;
+    char            *prepend = NULL;
+
+    if (cvec_len(argv) < 1 || cvec_len(argv) > 3){
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <format> [<pretty> [<prepend>]]", cvec_len(argv));
         goto done;
-    if (clixon_json2file(stdout, xt, 1, cligen_output, 1, 0) < 0)
+    }
+    if (cvec_len(argv) > argc){
+        fprintf(stderr, "%s formatstr:%s\n", __FUNCTION__, cv_string_get(cvec_i(argv, argc)));
+        if (cli_show_option_format(argv, argc++, &format) < 0)
+            goto done;
+    }
+    if (cvec_len(argv) > argc){
+        if (cli_show_option_bool(argv, argc++, &pretty) < 0)
+            goto done;
+    }
+    if (cvec_len(argv) > argc){
+        prepend = cv_string_get(cvec_i(argv, argc++));
+    }
+    if (ybind){
+        yspec = clicon_dbspec_yang(h);
+        if (clixon_xml_parse_file(stdin, YB_MODULE, yspec, &xt, NULL) < 0)
+            goto done;
+    }
+    else if (clixon_xml_parse_file(stdin, YB_NONE, NULL, &xt, NULL) < 0)
         goto done;
-    retval = 0;
- done:
-    if (xt)
-        xml_free(xt);
-    return retval;
-}
-int
-pipe_text_fn(clicon_handle h,
-             cvec         *cvv,
-             cvec         *argv)
-{
-    int    retval = -1;
-    cxobj *xt = NULL;
- 
-    if (clixon_xml_parse_file(stdin, YB_NONE, NULL, &xt, NULL) < 0)
-        goto done;
-    if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 0) < 0)
-        goto done;
+    fprintf(stderr, "%s format:%d\n", __FUNCTION__, format);
+    switch (format){
+    case FORMAT_XML:
+        if (clixon_xml2file(stdout, xt, 0, pretty, NULL, cligen_output, 1, 0) < 0)
+            goto done;
+        break;
+    case FORMAT_JSON:
+        if (clixon_json2file(stdout, xt, pretty, cligen_output, 1, 0) < 0)
+            goto done;
+        break;
+    case FORMAT_TEXT:
+        if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
+            goto done;
+        break;
+    case FORMAT_CLI:
+        if (clixon_cli2file(h, stdout, xt, prepend, cligen_output, 1) < 0) /* cli syntax */
+            goto done;
+        break;
+    default:
+        break;
+    }
     retval = 0;
  done:
     if (xt)
