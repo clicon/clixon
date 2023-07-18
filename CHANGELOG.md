@@ -72,6 +72,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* Changed YANG uses/grouping to keep uses statement and flag it with YANG_FLAG_USES_EXP
 * Removed  extras/ and build-root/ build code since they are not properly maintained
 * Refactored cli-syntax code to use cligen pt_head instead (long overdue)
 * Modified backend exit strategy so that 2nd ^C actually exits
