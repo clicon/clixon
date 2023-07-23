@@ -290,8 +290,8 @@ xml_yang_root(cxobj  *x,
  * @param[in]  ys      Yang statement
  * @param[in]  inclkey If set include key leaf (eg last leaf d in ex)
  * @param[out] cb      api_path_fmt,
- * @retval     0    OK
- * @retval    -1    Error
+ * @retval     0       OK
+ * @retval    -1       Error
  * @see RFC8040 3.5.3 where "api-path" is defined as "URI-encoded path expression"
  */ 
 static int
@@ -305,18 +305,26 @@ yang2api_path_fmt_1(yang_stmt *ys,
     int        i;
     cvec      *cvk = NULL; /* vector of index keys */
     int        retval = -1;
+    enum rfc_6020 ypkeyw = -1;
     
     if ((yp = yang_parent_get(ys)) == NULL){
         clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
         goto done;
     }
-    if (yp != NULL && /* XXX rm */
-        yang_keyword_get(yp) != Y_MODULE && 
-        yang_keyword_get(yp) != Y_SUBMODULE){
-
+    if (yp)
+        ypkeyw = yang_keyword_get(yp);
+    switch (ypkeyw){
+    case Y_MODULE:
+    case Y_SUBMODULE:
+        cprintf(cb, "/%s:", yang_argument_get(yp));
+        break;
+    case Y_GROUPING: /* mainly for expand-grouping in clixon-autocli.yang */
+        cprintf(cb, "/");
+        break;
+    default:
         if (yang2api_path_fmt_1((yang_stmt *)yp, 1, cb) < 0) /* recursive call */
             goto done;
-        if (yang_keyword_get(yp) != Y_CHOICE && yang_keyword_get(yp) != Y_CASE){
+        if (ypkeyw != Y_CHOICE && ypkeyw != Y_CASE){
 #if 0
             /* In some cases, such as cli_show_auto, a trailing '/' should
              * NOT be present if ys is a key in a list.
@@ -324,7 +332,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
              * so a patch is added in cli_show_auto instead.
              */
                 if (yang_keyword_get(ys) == Y_LEAF && yp && 
-                    yang_keyword_get(yp) == Y_LIST &&
+                    ypkeyw == Y_LIST &&
                     yang_key_match(yp, ys->ys_argument, NULL) == 1)
                 ;
             else
@@ -338,17 +346,15 @@ yang2api_path_fmt_1(yang_stmt *ys,
             goto done;
         if (ypmod != ymod)
             cprintf(cb, "%s:", yang_argument_get(ymod));
+        break;
     }
-    else /* top symbol - mark with name prefix */
-        cprintf(cb, "/%s:", yang_argument_get(yp));
-
     if (inclkey){
         if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
             cprintf(cb, "%s", yang_argument_get(ys));
     }
     else{
         if (yang_keyword_get(ys) == Y_LEAF && yp && 
-            yang_keyword_get(yp) == Y_LIST){
+            ypkeyw == Y_LIST){
             if (yang_key_match(yp, yang_argument_get(ys), NULL) == 0)
                 cprintf(cb, "%s", yang_argument_get(ys)); /* Not if leaf and key */
         }
@@ -381,6 +387,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
 }
 
 /*! Construct an api_path_format from yang statement using wildcards for keys
+ *
  * Recursively construct it to the top.
  * Example: 
  *   yang:  container a -> list b -> key c -> leaf d
@@ -389,7 +396,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
  * @param[in]  inclkey      If set include key leaf (eg last leaf d in ex)
  * @param[out] api_path_fmt XML api path. Needs to be freed after use.
  * @retval     0            OK
- * @retval     -1           Error
+ * @retval    -1            Error
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  */ 
 int

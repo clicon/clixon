@@ -135,8 +135,8 @@ cli_auto_edit(clicon_handle h,
     }
     api_path_fmt = cv_string_get(cvec_i(argv, argc++));
     str = cv_string_get(cvec_i(argv, argc++));
-    if (str && str[0] == '/'){ /* ad-hoc to see if 2nd arg is mountpoint */
-        mtpoint = str;
+    if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
+        mtpoint = str + strlen("mtpoint:");
         clicon_debug(1, "%s mtpoint:%s", __FUNCTION__, mtpoint);
         treename = cv_string_get(cvec_i(argv, argc++));
     }

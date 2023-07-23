@@ -44,6 +44,7 @@ module clixon-autocli{
     revision 2023-05-01 {
         description
             "Added extensions skip and alias
+             Added grouping-treeref
              Released in Clixon 6.3";
     }
     revision 2022-02-11 {
@@ -198,6 +199,21 @@ module clixon-autocli{
                  This is normally always enabled.";
             type boolean;
             default true;
+        }
+        leaf grouping-treeref {
+            description
+                "Controls the behaviour when generating CLISPEC of YANG 'uses' statements into the
+                 corresponding 'grouping' definition: macro expansion.
+                 For optimization of memory footprint.
+                 If 'false', replace the uses definition with the grouping definition.
+                 If 'true' use indirect tree reference '@treeref' to reference the grouping definition. This
+                 saves memory for large YANGs.
+
+                 See also AUTOCLI_GROUPING_TOPLEVEL_SKIP and AUTOCLI_GROUPING_AUGMENT_SKIP for 
+                 temporary disabled cornercases.
+                 This option was introduced in Clixon 6.3";
+            type boolean;
+            default false;
         }
         /* rules */
         list rule {

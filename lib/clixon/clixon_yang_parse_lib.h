@@ -51,6 +51,7 @@
 /*
  * Prototypes
  */
+int        ys_grouping_resolve(yang_stmt *yuses, char *prefix, char *name, yang_stmt **ygrouping0);
 yang_stmt *yang_parse_file(FILE *fp, const char *name, yang_stmt *ysp);
 int        yang_file_find_match(clicon_handle h, const char *module, const char *revision, cbuf *fbuf);
 yang_stmt *yang_parse_filename(clicon_handle h, const char *filename, yang_stmt  *ysp);

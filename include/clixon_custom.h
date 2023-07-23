@@ -156,3 +156,17 @@
  * Consider moving to configure.ac(compile-time) or to clixon-config.yang(run-time)
  */
 #define PRETTYPRINT_INDENT 3
+
+/*! Autocli uses/grouping references for top-level
+ * Exception of expand-grouping in clixon-autocli.yang
+ * If enabled do not expand-grouping if a yang uses is directly under module or submodule
+ * Disabled does not work today and is temporary and for documentation
+ */
+#define AUTOCLI_GROUPING_TOPLEVEL_SKIP
+
+/*! Autocli uses/grouping references for augment/uses
+ * Exception of expand-grouping in clixon-autocli.yang
+ * If enabled do not expand-grouping if a yang uses is directly under augment
+ * Disabled does not work today and is temporary and for documentation
+ */
+#define AUTOCLI_GROUPING_AUGMENT_SKIP

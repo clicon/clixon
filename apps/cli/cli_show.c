@@ -173,13 +173,17 @@ xpath_append(cbuf      *cb0,
  * functionality.
  *
  * Assume callback given in a cligen spec: a <x:int expand_dbvar("db" "<xmlkeyfmt>")
- * @param[in]   h        clicon handle 
+ * @param[in]   h        clicon handle
  * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
- * @param[in]   argv     Arguments given at the callback: <db> <apipathfmt> [<mointpt>]
+ * @param[in]   argv     Arguments given at the callback:
+ *   <db>            Name of datastore, such as "running"
+ *   <api_path_fmt>  Generated API PATH (this is added implicitly, not actually given in the cvv)
+ *   [<mt-point>]    Optional YANG path-arg/xpath from mount-point
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
  * @see cli_expand_var_generate  This is where arg is generated
+ * @see cli_expand_var_generate where api_path_fmt + mt-point are generated
  */
 int
 expand_dbvar(void   *h, 
@@ -190,10 +194,10 @@ expand_dbvar(void   *h,
              cvec   *helptexts)
 {
     int              retval = -1;
-    char            *api_path_fmt;
+    char            *api_path_fmt = NULL;
     char            *api_path = NULL;
     char            *api_path_fmt01 = NULL;
-    char            *dbstr;    
+    char            *dbstr;
     cxobj           *xt = NULL;
     char            *xpath = NULL;
     cxobj          **xvec = NULL;
@@ -220,7 +224,10 @@ expand_dbvar(void   *h,
     yang_stmt       *yspec;
     yang_stmt       *yu = NULL;
     cvec            *nsc0 = NULL;
-    
+    char            *str;
+    int              grouping_treeref;
+    cbuf            *cbprepend;
+
     if (argv == NULL || (cvec_len(argv) != 2 && cvec_len(argv) != 3)){
         clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
         goto done;
@@ -244,10 +251,33 @@ expand_dbvar(void   *h,
         clicon_err(OE_PLUGIN, 0, "Error when accessing argument <api_path>");
         goto done;
     }
-    api_path_fmt = cv_string_get(cv);
+    if (autocli_grouping_treeref(h, &grouping_treeref) < 0)
+        goto done;
+    if (grouping_treeref &&
+        (cbprepend = cligen_expand_prepend_get(cli_cligen(h))) != NULL){
+        cbuf *cb;
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "%s%s", cbuf_get(cbprepend), cv_string_get(cv));
+        if ((api_path_fmt = strdup(cbuf_get(cb))) == NULL){
+            clicon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+    }
+    else if ((api_path_fmt = strdup(cv_string_get(cv))) == NULL){
+        clicon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
     if (cvec_len(argv) > 2){ 
         cv = cvec_i(argv, 2);
-        mtpoint = cv_string_get(cv);
+        str = cv_string_get(cv);
+        if (strncmp(str, "mtpoint:", strlen("mtpoint:")) != 0){
+            clicon_err(OE_PLUGIN, 0, "mtpoint does not begin with 'mtpoint:'");
+            goto done;
+        }
+        mtpoint = str + strlen("mtpoint:");
     }
     /* api_path_fmt = /interface/%s/address/%s
      * api_path: -->  /interface/eth0/address/.*
@@ -384,6 +414,8 @@ expand_dbvar(void   *h,
   done:
     if (nsc0)
         cvec_free(nsc0);
+    if (api_path_fmt)
+        free(api_path_fmt);
     if (api_path_fmt01)
         free(api_path_fmt01);
     if (cbxpath)
@@ -847,8 +879,8 @@ int cli_show_version(clicon_handle h,
  * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of variables from CLIgen command-line
  * @param[in]  argv  String vector of show options, format:
- *   <api_path_fmt>  Generated API PATH (this is added implicitly, not actually given in the cvv)
- *  [<api-path-fmt>] Extra api-path from mount-point
+ *   <api_path_fmt>  Generated API PATH (this is added implicitly, not actually given in argv)
+ *  [<mt-point>]     Optional YANG path-arg/xpath from mount-point
  *   <dbname>        Name of datastore, such as "running"
  * -- from here optional:
  *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
@@ -872,6 +904,7 @@ int cli_show_version(clicon_handle h,
  * @see cli_show_auto_mode  autocli with edit menu support
  *
  * XXX merge cli_show_auto and cli_show_auto_mode
+ * @see cli_callback_generate where api_path_fmt + mt-point are generated
  */
 int 
 cli_show_auto(clicon_handle h,
@@ -903,8 +936,8 @@ cli_show_auto(clicon_handle h,
     }
     api_path_fmt = cv_string_get(cvec_i(argv, argc++));
     str = cv_string_get(cvec_i(argv, argc++));
-    if (str && str[0] == '/'){ /* ad-hoc to see if 2nd arg is mountpoint */
-        mtpoint = str;
+    if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
+        mtpoint = str + strlen("mtpoint:");
         dbname = cv_string_get(cvec_i(argv, argc++));
     }
     else

@@ -60,6 +60,7 @@ Users may have to change how they access the system
   * rpc `<stats>` is not backward compatible
 * New `clixon-autocli@2023-05-01.yang` revision
   * New `alias` and `skip` extensions
+  * New `grouping-treeref` option
   
 ### C/CLI-API changes on existing features
 Developers may need to change their code
@@ -72,6 +73,9 @@ Developers may need to change their code
 
 ### Minor features
 
+* Autocli optimization feature for generating smaller CLISPECs for large YANGs using treerefs
+   * New `grouping-treeref` option added to clixon-autocli.yang
+   * Default is disabled, set to true to generate smaller memory footprint of clixon_cli
 * Changed YANG uses/grouping to keep uses statement and flag it with YANG_FLAG_USES_EXP
 * Removed  extras/ and build-root/ build code since they are not properly maintained
 * Refactored cli-syntax code to use cligen pt_head instead (long overdue)

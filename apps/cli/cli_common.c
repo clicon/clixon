@@ -348,7 +348,10 @@ mtpoint_paths(yang_stmt  *yspec0,
  *
  * @param[in]  h     Clicon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
- * @param[in]  argv  Vector: <apipathfmt> [<mointpt>], eg "/aaa/%s"
+ * @param[in]  argv  Arguments given at the callback: 
+ *   <api_path_fmt>  Generated API PATH (this is added implicitly, not actually given in the cvv)
+ *   <api_path_fmt>* Added by merge in treeref_merge_co
+ *   [<mt-point>]    Optional YANG path-arg/xpath from mount-point
  * @param[in]  op    Operation to perform on database
  * @param[in]  nsctx Namespace context for last value added
  * cvv first contains the complete cli string, and then a set of optional
@@ -373,10 +376,10 @@ cli_dbxml(clicon_handle       h,
           cvec               *nsctx)
 {
     int        retval = -1;
+    cbuf      *api_path_fmt_cb = NULL;    /* xml key format */
     char      *api_path_fmt;    /* xml key format */
     char      *api_path_fmt01 = NULL;
     char      *api_path = NULL; 
-    cg_var    *arg;
     cbuf      *cb = NULL;
     cxobj     *xbot = NULL;     /* xpath, NULL if datastore */
     yang_stmt *y = NULL;        /* yang spec of xpath */
@@ -384,24 +387,46 @@ cli_dbxml(clicon_handle       h,
     cxobj     *xerr = NULL;
     int        ret;
     cg_var    *cv;
+    char      *str;
     int        cvvi = 0;
     char      *mtpoint = NULL;
     yang_stmt *yspec0 = NULL;
+    int        argc = 0;
+    int        i;
 
-    if (cvec_len(argv) != 1 && cvec_len(argv) != 2){
-        clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be xml key format string");
-        goto done;
-    }
     /* Top-level yspec */
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
-    arg = cvec_i(argv, 0);
-    api_path_fmt = cv_string_get(arg);
-    if (cvec_len(argv) > 1){ 
-        arg = cvec_i(argv, 1);
-        mtpoint = cv_string_get(arg);
+    if ((api_path_fmt_cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    /* Iterate through all api_path_fmt:s, assume they start with / */
+    for (argc=0; argc<cvec_len(argv); argc++){
+        cv = cvec_i(argv, argc);
+        str = cv_string_get(cv);
+        if (str[0] != '/')
+            break;
+    }
+    if (argc == 0){
+        clicon_err(OE_PLUGIN, EINVAL, "No <api_path_fmt> in argv");
+        goto done;
+    }
+    /* Append a api_path_fmt from sub-parts */
+    for (i=argc-1; i>=0; i--){
+        cprintf(api_path_fmt_cb, "%s", cv_string_get(cvec_i(argv, i)));
+    }
+    api_path_fmt = cbuf_get(api_path_fmt_cb);
+    if (cvec_len(argv) > argc){ 
+        cv = cvec_i(argv, argc++);
+        str = cv_string_get(cv);
+        if (strncmp(str, "mtpoint:", strlen("mtpoint:")) != 0){
+            clicon_err(OE_PLUGIN, 0, "mtpoint does not begin with 'mtpoint:'");
+            goto done;
+        }
+        mtpoint = str + strlen("mtpoint:");
     }
     /* Remove all keywords */
     if (cvec_exclude_keys(cvv) < 0)
@@ -483,6 +508,8 @@ cli_dbxml(clicon_handle       h,
         goto done;
     retval = 0;
  done:
+    if (api_path_fmt_cb)
+        cbuf_free(api_path_fmt_cb);
     if (api_path_fmt01)
         free(api_path_fmt01);
     if (xerr)

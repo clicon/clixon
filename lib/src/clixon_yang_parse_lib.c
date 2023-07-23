@@ -156,7 +156,7 @@ ys_grouping_module_resolve(yang_stmt *ymod,
  * @retval     0          OK, ygrouping may be NULL
  * @retval    -1          Error, with clicon_err called
  */
-static int
+int
 ys_grouping_resolve(yang_stmt  *yuses, 
                     char       *prefix, 
                     char       *name,
@@ -235,7 +235,6 @@ yang_augment_node(clicon_handle h,
         clicon_err(OE_YANG, 0, "My yang module not found");
         goto done;
     }
-    /* */
     schema_nodeid = yang_argument_get(ys);
     clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, schema_nodeid);
     /* Find the target */
@@ -279,7 +278,11 @@ yang_augment_node(clicon_handle h,
     while ((yc0 = yn_each(ys, yc0)) != NULL) {
         childkey = yang_keyword_get(yc0);
         /* Only shemanodes and extensions */
-        if (!yang_schemanode(yc0) && childkey != Y_UNKNOWN) 
+        if (!yang_schemanode(yc0) && childkey != Y_UNKNOWN
+#ifndef AUTOCLI_GROUPING_AUGMENT_SKIP
+            && childkey != Y_USES
+#endif
+            )
             continue;
         switch (targetkey){
         case Y_CONTAINER:
@@ -344,9 +347,12 @@ yang_augment_node(clicon_handle h,
         default:
             break;
         }
-
         if ((yc = ys_dup(yc0)) == NULL)
             goto done;
+#ifdef AUTOCLI_GROUPING_AUGMENT_SKIP
+        /* cornercase: always expand uses under augment */
+        yang_flag_reset(yc, YANG_FLAG_GROUPING);
+#endif
         yc->ys_mymodule = ymod;
 
         if (yn_insert(ytarget, yc) < 0)
@@ -679,6 +685,7 @@ yang_expand_uses_node(yang_stmt *yn,
             yang_flag_set(yg, YANG_FLAG_NOKEY);
         yn->ys_stmt[i+k+1] = yg;
         yg->ys_parent = yn;
+        yang_flag_set(yg, YANG_FLAG_GROUPING);
         k++;
     }
     /* Remove the grouping copy */
