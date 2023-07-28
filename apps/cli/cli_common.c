@@ -285,7 +285,7 @@ mtpoint_paths(yang_stmt  *yspec0,
     yang_stmt *ybot0 = NULL;
     cvec      *nsc0 = NULL;
     int        ret;
-    char      *api_path_fmt0;
+    char      *api_path_fmt0 = NULL;
     cbuf      *cb = NULL;
     cxobj     *xbot0 = NULL;
     cxobj     *xtop0 = NULL;
@@ -1291,7 +1291,7 @@ cli_notification_cb(int   s,
     struct clicon_msg *reply = NULL;
     int                eof;
     cxobj             *xt = NULL;
-    enum format_enum   format = (enum format_enum)arg;
+    enum format_enum   format = (enum format_enum)(uintptr_t)arg;
     int                ret;
     
     /* get msg (this is the reason this function is called) */

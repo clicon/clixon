@@ -168,5 +168,6 @@
  * Exception of expand-grouping in clixon-autocli.yang
  * If enabled do not expand-grouping if a yang uses is directly under augment
  * Disabled does not work today and is temporary and for documentation
+ * it is also a "layering vilation" since the grouping/augment code is in cli-independent libs
  */
 #define AUTOCLI_GROUPING_AUGMENT_SKIP

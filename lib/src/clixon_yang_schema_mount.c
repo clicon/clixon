@@ -522,7 +522,7 @@ yang_schema_mount_statistics(clicon_handle h,
     yang_stmt *yspec;
     yang_stmt *ym;
     int        ret;
-    char      *xpath;
+    char      *xpath = NULL;
     uint64_t   nr;
     size_t     sz;
 
