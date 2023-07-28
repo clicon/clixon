@@ -194,7 +194,8 @@ expand_dbvar(void   *h,
              cvec   *helptexts)
 {
     int              retval = -1;
-    char            *api_path_fmt = NULL;
+    cbuf            *api_path_fmt_cb = NULL;
+    char            *api_path_fmt;
     char            *api_path = NULL;
     char            *api_path_fmt01 = NULL;
     char            *dbstr;
@@ -226,8 +227,8 @@ expand_dbvar(void   *h,
     cvec            *nsc0 = NULL;
     char            *str;
     int              grouping_treeref;
-    cbuf            *cbprepend;
-
+    cvec            *callback_cvv;
+    
     if (argv == NULL || (cvec_len(argv) != 2 && cvec_len(argv) != 3)){
         clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
         goto done;
@@ -253,23 +254,18 @@ expand_dbvar(void   *h,
     }
     if (autocli_grouping_treeref(h, &grouping_treeref) < 0)
         goto done;
-    if (grouping_treeref &&
-        (cbprepend = cligen_expand_prepend_get(cli_cligen(h))) != NULL){
-        cbuf *cb;
-        if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
-            goto done;
-        }
-        cprintf(cb, "%s%s", cbuf_get(cbprepend), cv_string_get(cv));
-        if ((api_path_fmt = strdup(cbuf_get(cb))) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
-            goto done;
-        }
-    }
-    else if ((api_path_fmt = strdup(cv_string_get(cv))) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+    if ((api_path_fmt_cb = cbuf_new()) == NULL){
+        clicon_err(OE_PLUGIN, errno, "cbuf_new");       
         goto done;
     }
+    if (grouping_treeref &&
+        (callback_cvv = cligen_callback_arguments_get(cli_cligen(h))) != NULL){
+        /* Concatenate callback arguments to a singel prepend string */
+        if (cvec_concat_cb(callback_cvv, api_path_fmt_cb) < 0)
+            goto done;        
+    }
+    cprintf(api_path_fmt_cb, "%s", cv_string_get(cv));
+    api_path_fmt = cbuf_get(api_path_fmt_cb);
     if (cvec_len(argv) > 2){ 
         cv = cvec_i(argv, 2);
         str = cv_string_get(cv);
@@ -414,8 +410,8 @@ expand_dbvar(void   *h,
   done:
     if (nsc0)
         cvec_free(nsc0);
-    if (api_path_fmt)
-        free(api_path_fmt);
+    if (api_path_fmt_cb)
+        cbuf_free(api_path_fmt_cb);
     if (api_path_fmt01)
         free(api_path_fmt01);
     if (cbxpath)

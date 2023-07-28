@@ -377,7 +377,7 @@ cli_dbxml(clicon_handle       h,
 {
     int        retval = -1;
     cbuf      *api_path_fmt_cb = NULL;    /* xml key format */
-    char      *api_path_fmt;    /* xml key format */
+    char      *api_path_fmt;
     char      *api_path_fmt01 = NULL;
     char      *api_path = NULL; 
     cbuf      *cb = NULL;
@@ -392,7 +392,6 @@ cli_dbxml(clicon_handle       h,
     char      *mtpoint = NULL;
     yang_stmt *yspec0 = NULL;
     int        argc = 0;
-    int        i;
 
     /* Top-level yspec */
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
@@ -403,22 +402,11 @@ cli_dbxml(clicon_handle       h,
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    /* Iterate through all api_path_fmt:s, assume they start with / */
-    for (argc=0; argc<cvec_len(argv); argc++){
-        cv = cvec_i(argv, argc);
-        str = cv_string_get(cv);
-        if (str[0] != '/')
-            break;
-    }
-    if (argc == 0){
-        clicon_err(OE_PLUGIN, EINVAL, "No <api_path_fmt> in argv");
+    /* Concatenate all argv strings to a sinle string */
+    if (cvec_concat_cb(argv, api_path_fmt_cb) < 0)
         goto done;
-    }
-    /* Append a api_path_fmt from sub-parts */
-    for (i=argc-1; i>=0; i--){
-        cprintf(api_path_fmt_cb, "%s", cv_string_get(cvec_i(argv, i)));
-    }
     api_path_fmt = cbuf_get(api_path_fmt_cb);
+    argc = cvec_len(argv);
     if (cvec_len(argv) > argc){ 
         cv = cvec_i(argv, argc++);
         str = cv_string_get(cv);
@@ -1652,6 +1640,45 @@ cvec_append(cvec *cvv0,
             cvec_append_var(cvv2, cv);
     }
     return cvv2;
+}
+
+/*! Concatenate all strings in a cvec into a single string
+ *
+ * @param[in]  cvv    Input vector
+ * @param[out] appstr Concatenated string as existing cbuf
+ */
+int
+cvec_concat_cb(cvec  *cvv,
+               cbuf  *cb)
+{
+    int     retval = -1;
+    int     argc;
+    cg_var *cv;
+    char   *str;
+    int     i;
+    
+    if (cb == NULL){
+        clicon_err(OE_PLUGIN, EINVAL, "cb is NULL");
+        goto done;
+    }
+    /* Iterate through all api_path_fmt:s, assume they start with / */
+    for (argc=0; argc<cvec_len(cvv); argc++){
+        cv = cvec_i(cvv, argc);
+        str = cv_string_get(cv);
+        if (str[0] != '/')
+            break;
+    }
+    if (argc == 0){
+        clicon_err(OE_PLUGIN, EINVAL, "No <api_path_fmt> in cvv");
+        goto done;
+    }
+    /* Append a api_path_fmt from sub-parts */
+    for (i=argc-1; i>=0; i--){
+        cprintf(cb, "%s", cv_string_get(cvec_i(cvv, i)));
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Process control as defined by clixon-lib API
