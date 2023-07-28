@@ -158,16 +158,25 @@
 #define PRETTYPRINT_INDENT 3
 
 /*! Autocli uses/grouping references for top-level
- * Exception of expand-grouping in clixon-autocli.yang
+ *
+ * Exception of expand-grouping=true in clixon-autocli.yang
  * If enabled do not expand-grouping if a yang uses is directly under module or submodule
  * Disabled does not work today and is temporary and for documentation
  */
 #define AUTOCLI_GROUPING_TOPLEVEL_SKIP
 
-/*! Autocli uses/grouping references for augment/uses
- * Exception of expand-grouping in clixon-autocli.yang
- * If enabled do not expand-grouping if a yang uses is directly under augment
- * Disabled does not work today and is temporary and for documentation
- * it is also a "layering vilation" since the grouping/augment code is in cli-independent libs
+/*! Skip uses/grouping references for augment
+ *
+ * Consider YANG constructs such as:
+ *   augment x{
+ *     uses y;
+ *     <nodes>
+ * }
+ * If enabled, do not include "uses y" in the augmentation at "x" AND mark all nodes with 
+ * YANG_FLAG_GROUPING
+ * If disabled, include "uses y" in the augmentation AND do NOT mark expaneded nodes with 
+ * YANG_FLAG_GROUPING.
+ * This affects the AUTOCLI expand-grouping=true behavior.
+ * Disabled does not work
  */
-#define AUTOCLI_GROUPING_AUGMENT_SKIP
+#define YANG_GROUPING_AUGMENT_SKIP

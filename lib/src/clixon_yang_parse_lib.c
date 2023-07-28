@@ -279,7 +279,7 @@ yang_augment_node(clicon_handle h,
         childkey = yang_keyword_get(yc0);
         /* Only shemanodes and extensions */
         if (!yang_schemanode(yc0) && childkey != Y_UNKNOWN
-#ifndef AUTOCLI_GROUPING_AUGMENT_SKIP
+#ifndef YANG_GROUPING_AUGMENT_SKIP
             && childkey != Y_USES
 #endif
             )
@@ -349,7 +349,7 @@ yang_augment_node(clicon_handle h,
         }
         if ((yc = ys_dup(yc0)) == NULL)
             goto done;
-#ifdef AUTOCLI_GROUPING_AUGMENT_SKIP
+#ifdef YANG_GROUPING_AUGMENT_SKIP
         /* cornercase: always expand uses under augment */
         yang_flag_reset(yc, YANG_FLAG_GROUPING);
 #endif
