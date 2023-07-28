@@ -231,7 +231,6 @@ pipe_showas_fn(clicon_handle h,
         goto done;
     }
     if (cvec_len(argv) > argc){
-        fprintf(stderr, "%s formatstr:%s\n", __FUNCTION__, cv_string_get(cvec_i(argv, argc)));
         if (cli_show_option_format(argv, argc++, &format) < 0)
             goto done;
     }
@@ -249,7 +248,6 @@ pipe_showas_fn(clicon_handle h,
     }
     else if (clixon_xml_parse_file(stdin, YB_NONE, NULL, &xt, NULL) < 0)
         goto done;
-    fprintf(stderr, "%s format:%d\n", __FUNCTION__, format);
     switch (format){
     case FORMAT_XML:
         if (clixon_xml2file(stdout, xt, 0, pretty, NULL, cligen_output, 1, 0) < 0)
