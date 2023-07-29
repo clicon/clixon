@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.3.0](#630) Expected: July 2023
+* [6.3.0](#630) 29 July 2023
 * [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
@@ -41,10 +41,13 @@
 * [3.3.1](#331) June 7 2017
 
 ## 6.3.0
-Expected: July 2023
+29 July 2023
+
+Clixon 6.3 introduces CLI output pipes and multiple updates and optimizations, primarily to the CLI.
 
 ### New features
-* Output pipes
+
+* CLI output pipes
   * Building on a new CLIgen feature
   * See https://clixon-docs.readthedocs.io/en/latest/cli.html#output-pipes
   
@@ -53,7 +56,6 @@ Users may have to change how they access the system
 
 * New `clixon-config@2023-05-01.yang` revision
   * Added options: `CLICON_CONFIG_EXTEND`
-
   * Moved datastore-format datastype to clixon-lib
 * New `clixon-lib@2023-05-01.yang` revision
   * Restructured and extended stats rpc to schema mountpoints
