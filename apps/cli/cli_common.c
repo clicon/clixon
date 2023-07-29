@@ -1668,10 +1668,6 @@ cvec_concat_cb(cvec  *cvv,
         if (str[0] != '/')
             break;
     }
-    if (argc == 0){
-        clicon_err(OE_PLUGIN, EINVAL, "No <api_path_fmt> in cvv");
-        goto done;
-    }
     /* Append a api_path_fmt from sub-parts */
     for (i=argc-1; i>=0; i--){
         cprintf(cb, "%s", cv_string_get(cvec_i(cvv, i)));
