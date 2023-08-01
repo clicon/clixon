@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [6.4.0](#640) Expected: October 2023
 * [6.3.0](#630) 29 July 2023
 * [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
@@ -40,6 +41,9 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
+## 6.4.0
+Expected: October 2023
+
 ## 6.3.0
 29 July 2023
 
@@ -61,7 +65,7 @@ Users may have to change how they access the system
   * Restructured and extended stats rpc to schema mountpoints
   * rpc `<stats>` is not backward compatible
 * New `clixon-autocli@2023-05-01.yang` revision
-  * New `alias` and `skip` extensions
+  * New `alias` and `skip` extensions (NOTE: just added in YANG, not implemented)
   * New `grouping-treeref` option
   
 ### C/CLI-API changes on existing features
