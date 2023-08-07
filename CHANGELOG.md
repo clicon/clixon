@@ -44,6 +44,10 @@
 ## 6.4.0
 Expected: October 2023
 
+### Minor features
+
+* Clarified clixon_cli command-line: `clixon_cli [options] [commands] [-- extra-options]`
+
 ## 6.3.0
 29 July 2023
 

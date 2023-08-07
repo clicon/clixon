@@ -858,11 +858,15 @@ done:
     return retval;
 }
 
-int cli_show_version(clicon_handle h,
-                     cvec         *vars,
-                     cvec         *argv)
+/*! Show clixon and CLIgen versions
+ */
+int
+cli_show_version(clicon_handle h,
+                 cvec         *vars,
+                 cvec         *argv)
 {
-    fprintf(stdout, "%s\n", CLIXON_VERSION_STRING);
+    fprintf(stdout, "Clixon: %s\n", CLIXON_VERSION_STRING);
+    fprintf(stdout, "CLIgen: %s\n", CLIGEN_VERSION);
     return 0;
 }
 

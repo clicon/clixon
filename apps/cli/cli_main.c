@@ -414,14 +414,63 @@ autocli_start(clicon_handle h)
     return retval;
 }
 
+/*! Split remaining argv/argc into [commands] and [-- <extra-options>]
+ *
+ * CLI command-line is: [options] [commands] [-- extra-options]"
+ * The special argument "--" forces an end of option-scanning regardless of the scanning mode.
+ * For example: clixon_cli -f /etc/clixon.xml show config -- -m clixon-mount
+ * @þaram[in]  h         Clixon handle
+ * @þaram[in]  argc      Input commands after <options>
+ * @þaram[in]  argv      Input commands after <options>
+ * @þaram[in]  argv0     First command
+ * @þaram[out] restcmd   Commands   
+ * @retval     0         OK
+ * @retval    -1         Error
+ */
+static int
+options_split(clicon_handle h,
+              char         *argv0,
+              int           argc,
+              char        **argv,
+              char        **restcmd)
+{
+    int retval = -1;
+    int i;
+    int j;
+
+    /* Join rest of argv to a single command (but only up to -- ) */
+    for (i = 0; i < argc; i++){
+        if (strcmp(argv[i], "--") == 0)
+            break;
+    }
+    if (i < argc){ /* '--' delimiter found */
+        *restcmd = clicon_strjoin(i, argv, " ");
+        for (j=0; j<i+1; j++){
+            argc--;
+            argv++;
+        }
+        if (clicon_argv_set(h, argv0, argc, argv) < 0)
+            goto done;
+    }
+    else{
+        *restcmd = clicon_strjoin(argc, argv, " ");
+        if (clicon_argv_set(h, argv0, argc, argv) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 static void
 usage(clicon_handle h,
       char         *argv0)
 {
     char *plgdir = clicon_cli_dir(h);
 
-    fprintf(stderr, "usage:%s [options] [commands]\n"
-            "where commands is a CLI command or options passed to the main plugin\n" 
+    fprintf(stderr, "usage:%s [options] [commands] [-- extra-options]\n"
+            "where commands is a CLI command\n"
+            "and extra-options are app-dependent and passed to the plugin init function\n" 
             "where options are\n"
             "\t-h \t\tHelp\n"
             "\t-D <level> \tDebug level\n"
@@ -632,15 +681,16 @@ main(int    argc,
     argv += optind;
 
 #ifdef __AFL_HAVE_MANUAL_CONTROL
-        __AFL_INIT();
+    __AFL_INIT();
 #endif
-
-    /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
-    clicon_argv_set(h, argv0, argc, argv);
 
     /* Defer: Wait to the last minute to print help message */
     if (help)
         usage(h, argv[0]);
+    
+    /* Split remaining argv/argc into <cmd> and <extra-options> */
+    if (options_split(h, argv0, argc, argv, &restarg) < 0)
+        goto done;
 
     /* Init cligen buffers */
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
@@ -785,8 +835,7 @@ main(int    argc,
 
     clicon_option_dump(h, 1);
     
-    /* Join rest of argv to a single command */
-    restarg = clicon_strjoin(argc, argv, " ");
+
 
     /* Clixon hardcodes variable tie-breaks to non-terminals (2)
      * There are cases in the autocli such as: 
@@ -814,8 +863,9 @@ main(int    argc,
      */
     clicon_data_set(h, "session-transport", "cl:cli");
 
-    /* Launch interfactive event loop, unless -1 */
-    if (restarg != NULL && strlen(restarg)){
+    /* Launch interfactive event loop, 
+     * unless options, in which case they are catched by clicon_argv_get/set */
+    if (restarg != NULL && strlen(restarg) && restarg[0] != '-'){
         char         *mode = cli_syntax_mode(h);
         cligen_result result;            /* match result */
         int           evalresult = 0;    /* if result == 1, calback result */
