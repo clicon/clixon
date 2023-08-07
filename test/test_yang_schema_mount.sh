@@ -200,10 +200,10 @@ new "netconf commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "get mounted augment data"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x1</name1><options xmlns=\"urn:example:mount2\"><option1>foo</option1><option2>bar</option2></options></mylist1></mount1></root></mylist><mylist><name>y</name><root/></mylist></top></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x1</name1><options xmlns=\"urn:example:mount2\"><option2>bar</option2></options></mylist1></mount1></root></mylist><mylist><name>y</name><root/></mylist></top></data></rpc-reply>"
 
 new "cli show config"
-expectpart "$($clixon_cli -1 -f $cfg show config xml -- -m clixon-mount0 -M urn:example:mount0)" 0 "<top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x1</name1><options xmlns=\"urn:example:mount2\"><option1>foo</option1><option2>bar</option2></options></mylist1></mount1></root></mylist><mylist><name>y</name><root/></mylist></top>"
+expectpart "$($clixon_cli -1 -f $cfg show config xml -- -m clixon-mount0 -M urn:example:mount0)" 0 "<top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x1</name1><options xmlns=\"urn:example:mount2\"><option2>bar</option2></options></mylist1></mount1></root></mylist><mylist><name>y</name><root/></mylist></top>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
