@@ -290,6 +290,8 @@ typedef int (datastore_upgrade_t)(clicon_handle h, const char *db, cxobj *xt, mo
  * @param[out] yanglib XML yang-lib module-set tree. Freed by caller.
  * @retval     0       OK
  * @retval    -1       Error
+ * @note For optional fields, such as revision, the callback may omit it, but will be resolved 
+ * at proper parse-time, but this is not visible in the yanglib return
  * @see RFC 8528 (schema-mount) and RFC 8525 (yang-lib)
  */
 typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, int *config,

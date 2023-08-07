@@ -519,7 +519,13 @@ module clixon-config {
         leaf CLICON_YANG_SCHEMA_MOUNT{
             type boolean;
             description
-                "YANG schema mount, RFC 8528";
+                "YANG schema mount, RFC 8528.
+                 When enabled, mount-points as defined by the 'yangmnt:mount-point' extension can
+                 be populated by other YANGs than the root.
+                 This is controlled by the ca_yang_mount plugin callback by returning a assigning a 
+                 yanglib module-set section that corresponds to the mounted YANGs.
+                 Also, schema mount statistics is added to state data
+                 Further, autocli syntax is added by definining a tree resolve wrapper";
             default false;
         }
         leaf CLICON_BACKEND_REGEXP {

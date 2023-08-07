@@ -36,6 +36,8 @@
   * The example have the following optional arguments that you can pass as 
   * argc/argv after -- in clixon_backend:
   *  -a <..> Register callback for this yang action
+  *  -m <yang> Mount this yang on mountpoint
+  *  -M <namespace> Namespace of mountpoint, note both -m and -M must exist
   *  -n  Notification streams example
   *  -r  enable the reset function 
   *  -s  enable the state function
@@ -68,7 +70,7 @@
 #include <clixon/clixon_backend.h> 
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "a:nrsS:x:iuUtV:"
+#define BACKEND_EXAMPLE_OPTS "a:m:M:nrsS:x:iuUtV:"
 
 /* Enabling this improves performance in tests, but there may trigger the "double XPath"
  * problem.
@@ -83,6 +85,14 @@
  * Hard-coded to action "reset" from RFC7950 7.15
  */
 static char *_action_instanceid = NULL;
+
+/*! Yang schema mount
+ *
+ * Start backend with -- -m <yang> -M <namespace>
+ * Mount this yang on mountpoint
+ */
+static char *_mount_yang = NULL;
+static char *_mount_namespace = NULL;
 
 /*! Notification stream
  *
@@ -936,18 +946,19 @@ main_yang_mount(clicon_handle   h,
         *config = 1;
     if (vl)
         *vl = VL_FULL;
-    if (yanglib){
+    if (yanglib && _mount_yang){
         if ((cb = cbuf_new()) == NULL){
             clicon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
         cprintf(cb, "<module-set>");
-        cprintf(cb, "<name>mount</name>");
+        cprintf(cb, "<name>mylabel</name>"); // XXX label in test_yang_schema_mount
         cprintf(cb, "<module>");
-        cprintf(cb, "<name>clixon-example</name>");
-        cprintf(cb, "<revision>2022-11-01</revision>");
-        cprintf(cb, "<namespace>urn:example:urn</namespace>");
+        /* In yang name+namespace is mandatory, but not revision */
+        cprintf(cb, "<name>%s</name>", _mount_yang); // mandatory
+        cprintf(cb, "<namespace>%s</namespace>", _mount_namespace); // mandatory
+        //        cprintf(cb, "<revision>2022-11-01</revision>");
         cprintf(cb, "</module>");
         cprintf(cb, "</module-set>");
         cprintf(cb, "</yang-library>");
@@ -1426,6 +1437,12 @@ clixon_plugin_init(clicon_handle h)
         case 'a':
             _action_instanceid = optarg;
             break;
+        case 'm':
+            _mount_yang = optarg;
+            break;
+        case 'M':
+            _mount_namespace = optarg;
+            break;
         case 'n':
             _notification_stream = 1;
             break;
@@ -1457,7 +1474,10 @@ clixon_plugin_init(clicon_handle h)
             _validate_fail_xpath = optarg;
             break;
         }
-
+    if ((_mount_yang && !_mount_namespace) || (!_mount_yang && _mount_namespace)){
+        clicon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
+        goto done;
+    }
     if (_state_file){
         api.ca_statedata = example_statefile; /* Switch state data callback */
         if (_state_xpath){

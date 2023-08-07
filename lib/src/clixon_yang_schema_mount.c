@@ -255,7 +255,6 @@ xml_yang_mount_get(clicon_handle   h,
     goto done;
 }
 
-
 /*! Set yangspec mount-point via XML mount-point node
  *
  * Stored in a separate structure (not in XML config tree)
@@ -389,6 +388,7 @@ yang_schema_mount_statedata_yanglib(clicon_handle h,
     }
     if (xml_apply(*xret, CX_ELMNT, find_schema_mounts, cvv) < 0)
         goto done;
+    yspec = clicon_dbspec_yang(h);
     cv = NULL;
     while ((cv = cvec_each(cvv, cv)) != NULL) {
         xmp = cv_void_get(cv);
@@ -398,7 +398,6 @@ yang_schema_mount_statedata_yanglib(clicon_handle h,
             goto done;
         if (yanglib == NULL)
             continue;
-        yspec = clicon_dbspec_yang(h);
         if ((ret = xml_bind_yang0(h, yanglib, YB_MODULE, yspec, xerr)) < 0)
             goto done;
         if (ret == 0)
