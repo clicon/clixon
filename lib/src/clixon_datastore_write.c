@@ -95,9 +95,9 @@
  * @param[in]  ns        (Expected) Namespace of attribute
  * @param[out] cbret     Error message (if retval=0)
  * @param[out] valp      Malloced value (if retval=1)
- * @retval    -1         Error
- * @retval     0         Failed (cbret set)
  * @retval     1         OK
+ * @retval     0         Failed (cbret set)
+ * @retval    -1         Error
  */
 static int
 attr_ns_value(cxobj *x,
@@ -153,9 +153,9 @@ attr_ns_value(cxobj *x,
  * @param[in]  x1bstr   Body string of x1
  * @param[in]  y        Yang of x0 (and x1)
  * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
- * @retval    -1        Error
- * @retval     0        Failed (cbret set)
  * @retval     1        OK
+ * @retval     0        Failed (cbret set)
+ * @retval    -1        Error
  */
 static int
 check_body_namespace(cxobj     *x0,
@@ -273,9 +273,9 @@ check_body_namespace(cxobj     *x0,
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
- * @retval    -1        Error
- * @retval     0        Failed (cbret set)
  * @retval     1        OK
+ * @retval     0        Failed (cbret set)
+ * @retval    -1        Error
  * @note There may be some combination cases (x0+x1) that are not covered in this function.
  */
 static int
@@ -331,8 +331,9 @@ check_when_condition(cxobj              *x0p,
 }
 
 /*! Check if x0/y0 is part of other choice/case than y1 recursively , if so purge 
- * @retval 0 No, y0 it is not in other case than y1
+ *
  * @retval 1 yes, y0 is in other case than y1
+ * @retval 0 No, y0 it is not in other case than y1
  */
 static int
 choice_is_other(yang_stmt *y0c,
@@ -428,6 +429,7 @@ choice_delete_other(cxobj     *x0,
 }
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
+ *
  * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
  * @param[in]  x0p      Parent of x0
@@ -440,9 +442,9 @@ choice_delete_other(cxobj     *x0,
  * @param[in]  xnacm    NACM XML tree (only if !permit)
  * @param[in]  permit   If set, no NACM tests using xnacm required
  * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
- * @retval    -1        Error
- * @retval     0        Failed (cbret set)
  * @retval     1        OK
+ * @retval     0        Failed (cbret set)
+ * @retval    -1        Error
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see text_modify_top
  * RFC 7950 Sec 7.7.9(leaf-list), 7.8.6(lists)
@@ -1007,6 +1009,7 @@ text_modify(clicon_handle       h,
 } /* text_modify */
 
 /*! Modify a top-level base tree x0 with modification tree x1
+ *
  * @param[in]  h        Clicon handle
  * @param[in]  x0t      Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1t       XML tree which modifies base
@@ -1016,9 +1019,9 @@ text_modify(clicon_handle       h,
  * @param[in]  xnacm    NACM XML tree (only if !permit)
  * @param[in]  permit   If set, no NACM tests using xnacm required
  * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
- * @retval    -1        Error
- * @retval     0        Failed (cbret set)
  * @retval     1        OK
+ * @retval     0        Failed (cbret set)
+ * @retval    -1        Error
  * @see text_modify
  */
 static int

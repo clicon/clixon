@@ -82,6 +82,7 @@
 
 
 /*! Translate from symbolic database name to actual filename in file-system
+ *
  * @param[in]   th       text handle handle
  * @param[in]   db       Symbolic database name, eg "candidate", "running"
  * @param[out]  filename Filename. Unallocate after use with free()
@@ -122,6 +123,7 @@ xmldb_db2file(clicon_handle  h,
 }
 
 /*! Connect to a datastore plugin, allocate resources to be used in API calls
+ *
  * @param[in]  h    Clicon handle
  * @retval     0    OK
  * @retval    -1    Error
@@ -133,6 +135,7 @@ xmldb_connect(clicon_handle h)
 }
 
 /*! Disconnect from a datastore plugin and deallocate resources
+ *
  * @param[in]  handle  Disconect and deallocate from this handle
  * @retval     0       OK
  * @retval    -1    Error
@@ -163,11 +166,12 @@ xmldb_disconnect(clicon_handle h)
 }
 
 /*! Copy database from db1 to db2
+ *
  * @param[in]  h     Clicon handle
  * @param[in]  from  Source database
  * @param[in]  to    Destination database
- * @retval -1  Error
- * @retval  0  OK
+ * @retval     0     OK
+ * @retval    -1     Error
   */
 int 
 xmldb_copy(clicon_handle h, 
@@ -240,11 +244,12 @@ xmldb_copy(clicon_handle h,
 }
 
 /*! Lock database
+ *
  * @param[in]  h    Clicon handle
  * @param[in]  db   Database
  * @param[in]  id   Session id
- * @retval -1  Error
- * @retval  0  OK
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 int 
 xmldb_lock(clicon_handle h, 
@@ -264,10 +269,11 @@ xmldb_lock(clicon_handle h,
 }
 
 /*! Unlock database
+ *
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
- * @retval -1  Error
- * @retval  0  OK
+ * @retval     0   OK
+ * @retval    -1   Error
  * Assume all sanity checks have been made
  */
 int 
@@ -285,10 +291,11 @@ xmldb_unlock(clicon_handle h,
 }
 
 /*! Unlock all databases locked by session-id (eg process dies) 
- * @param[in]    h   Clicon handle
- * @param[in]    id  Session id
- * @retval -1    Error
- * @retval  0    OK
+ *
+ * @param[in]  h   Clicon handle
+ * @param[in]  id  Session id
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 int
 xmldb_unlock_all(clicon_handle h, 
@@ -320,12 +327,13 @@ xmldb_unlock_all(clicon_handle h,
 }
 
 /*! Check if database is locked
+ *
  * @param[in] h   Clicon handle
  * @param[in] db  Database
- * @retval    -1  Error
- * @retval    0   Not locked
  * @retval    >0  Session id of locker
-  */
+ * @retval    0   Not locked
+ * @retval    -1  Error
+ */
 uint32_t
 xmldb_islocked(clicon_handle h, 
                const char   *db)
@@ -338,11 +346,12 @@ xmldb_islocked(clicon_handle h,
 }
 
 /*! Get timestamp of when database was locked
+ *
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
  * @param[out] tv  Timestamp
- * @retval    -1   No timestamp / not locked
  * @retval     0   OK
+ * @retval    -1   No timestamp / not locked
  */
 int
 xmldb_lock_timestamp(clicon_handle   h, 
@@ -358,11 +367,12 @@ xmldb_lock_timestamp(clicon_handle   h,
 }
 
 /*! Check if db exists or is empty
+ *
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
- * @retval -1  Error
- * @retval  0  No it does not exist
- * @retval  1  Yes it exists
+ * @retval     1   Yes it exists
+ * @retval     0   No it does not exist
+ * @retval    -1   Error
  * @note  An empty datastore is treated as not existent so that a backend after dropping priviliges can re-create it
  */
 int 
@@ -392,10 +402,11 @@ xmldb_exists(clicon_handle h,
 }
 
 /*! Clear database cache if any for mem/size optimization only, not file itself
+ *
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
- * @retval -1  Error
- * @retval  0  OK
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 int 
 xmldb_clear(clicon_handle h, 
@@ -414,10 +425,12 @@ xmldb_clear(clicon_handle h,
 }
 
 /*! Delete database, clear cache if any. Remove file 
+ *
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
- * @retval -1  Error
- * @retval  0  OK
+ * @retval     0   OK
+ * @retval    -1   Error
+
  * @note  Datastore is not actually deleted so that a backend after dropping priviliges can re-create it
  */
 int 
@@ -446,10 +459,11 @@ xmldb_delete(clicon_handle h,
 }
 
 /*! Create a database. Open database for writing.
+ *
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database
- * @retval  0  OK
- * @retval -1  Error
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 int 
 xmldb_create(clicon_handle h, 
@@ -484,6 +498,7 @@ xmldb_create(clicon_handle h,
 }
 
 /*! Create an XML database. If it exists already, delete it before creating
+ *
  * Utility function.
  * @param[in]  h   Clixon handle
  * @param[in]  db  Symbolic database name, eg "candidate", "running"
@@ -504,6 +519,7 @@ xmldb_db_reset(clicon_handle h,
 }
 
 /*! Get datastore XML cache
+ *
  * @param[in]  h    Clicon handle
  * @param[in]  db   Database name
  * @retval     xml  XML cached tree or NULL
@@ -520,11 +536,12 @@ xmldb_cache_get(clicon_handle h,
 }
 
 /*! Get modified flag from datastore
+ *
  * @param[in]  h     Clicon handle
  * @param[in]  db    Database name
- * @retval    -1     Error (datastore does not exist)
- * @retval     0     Db is not modified
  * @retval     1     Db is modified
+ * @retval     0     Db is not modified
+ * @retval    -1     Error (datastore does not exist)
  * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
  * @note This only works if db cache is used,...
  */
@@ -542,11 +559,12 @@ xmldb_modified_get(clicon_handle h,
 }
 
 /*! Get empty flag from datastore (the datastore was empty ON LOAD)
+ *
  * @param[in]  h     Clicon handle
  * @param[in]  db    Database name
- * @retval    -1     Error (datastore does not exist)
- * @retval     0     Db was not empty on load
  * @retval     1     Db was empty on load
+ * @retval     0     Db was not empty on load
+ * @retval    -1     Error (datastore does not exist)
  */
 int
 xmldb_empty_get(clicon_handle h,
@@ -562,11 +580,12 @@ xmldb_empty_get(clicon_handle h,
 }
 
 /*! Set modified flag from datastore
+ *
  * @param[in]  h     Clicon handle
  * @param[in]  db    Database name
  * @param[in]  value 0 or 1
- * @retval    -1     Error (datastore does not exist)
  * @retval     0     OK
+ * @retval    -1     Error (datastore does not exist)
  * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
  * @note This only works if db cache is used,...
  */
@@ -615,12 +634,13 @@ xmldb_print(clicon_handle h,
 }
 
 /*! Rename an XML database
+ *
  * @param[in]  h        Clicon handle
  * @param[in]  db       Database name
  * @param[in]  newdb    New Database name; if NULL, then same as old
  * @param[in]  suffix   Suffix to append to new database name
- * @retval    -1        Error
  * @retval     0        OK
+ * @retval    -1        Error
  * @note if newdb and suffix are null, OK is returned as it is a no-op
  */
 int
