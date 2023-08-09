@@ -88,6 +88,12 @@ show("Show a particular state of the system"){
 }
 EOF
 
+# First file of mode does not have CLICON_PIPETREE, next have
+cat <<EOF > $clidir/before.cli
+CLICON_MODE="default";
+dummy;
+EOF
+
 cat <<EOF > $clidir/default.cli
 CLICON_MODE="default";
 CLICON_PROMPT="%U@%H %W> ";
@@ -110,7 +116,6 @@ EOF
 cat <<EOF > $clidir/treeref.cli
 CLICON_MODE="treeref";
 CLICON_PIPETREE="|mypipe";
-
 implicit("Show configuration"), cli_show_auto_mode("candidate", "xml", true, false);
 explicit("Show configuration"), cli_show_auto_mode("candidate", "xml", true, false);{
     @|mypipe, cli_show_auto_mode("candidate", "xml", true, false);

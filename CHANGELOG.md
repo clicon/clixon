@@ -48,6 +48,10 @@ Expected: October 2023
 
 * Clarified clixon_cli command-line: `clixon_cli [options] [commands] [-- extra-options]`
 
+### Corrected Bugs
+
+* Fixed: CLI output pipes: Add CLICON_PIPETREE to any cli files, not just the first
+
 ## 6.3.0
 29 July 2023
 

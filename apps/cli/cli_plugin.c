@@ -88,7 +88,6 @@ static int
 gen_parse_tree(clicon_handle  h,
                char          *name,
                parse_tree    *pt,
-               char          *pipetree,
                pt_head      **php)
 {
     int       retval = -1;
@@ -102,9 +101,6 @@ gen_parse_tree(clicon_handle  h,
         clicon_err(OE_UNIX, errno, "cligen_ph_prompt_set");
         goto done;
     }
-    if (pipetree &&
-        cligen_ph_pipe_set(ph, pipetree) < 0)
-        goto done;
     *php = ph;
     retval = 0;
  done:
@@ -328,7 +324,7 @@ clispec_load_file(clicon_handle h,
                     clicon_err(OE_UNIX, errno, "pt_new");
                     goto done;
                 }
-                if (gen_parse_tree(h, name, ptnew, pipetree, &ph) < 0)
+                if (gen_parse_tree(h, name, ptnew, &ph) < 0)
                     goto done;
                 if (ph == NULL)
                     goto done;
@@ -344,6 +340,9 @@ clispec_load_file(clicon_handle h,
                 if (cv)
                     cv_free(cv);
             }
+            if (pipetree) /* Set if any file has it (never reset) */
+                if (cligen_ph_pipe_set(ph, pipetree) < 0)
+                    goto done;
             if (cligen_parsetree_merge(cligen_ph_parsetree_get(ph), NULL, pt) < 0){
                 clicon_err(OE_PLUGIN, errno, "cligen_parsetree_merge");
                 goto done;
