@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [6.3.1](#631) 14 August 2023
 * [6.3.0](#630) 29 July 2023
 * [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
@@ -39,6 +40,14 @@
 * [3.3.3](#333) 25 November 2017
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
+
+## 6.3.1
+14 August 2023
+
+### Corrected Bugs
+
+* Fixed: [Openconfig configuration on Juniper MX does not work](https://github.com/clicon/clixon-controller/issues/20)
+* Fixed: [Configuring Juniper PTX produces CLI errors](https://github.com/clicon/clixon-controller/issues/19)
 
 ## 6.3.0
 29 July 2023

@@ -179,8 +179,12 @@ ys_grouping_resolve(yang_stmt  *yuses,
     else { 
         ys = yuses;         /* Check upwards in hierarchy for matching groupings */
         while (1){
-            if ((yp = yang_parent_get(ys)) == NULL)
-                break;
+            if (ys->ys_mymodule){
+                yp = ys->ys_mymodule;
+            }
+            else
+                if ((yp = yang_parent_get(ys)) == NULL)
+                    break;
             if ((keyw = yang_keyword_get(yp)) == Y_SPEC)
                 break;
             else if (keyw == Y_MODULE || keyw == Y_SUBMODULE){ /* Try submodules */
