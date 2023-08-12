@@ -214,17 +214,18 @@ pipe_tail_fn(clicon_handle h,
  */
 int
 pipe_showas_fn(clicon_handle h,
-             cvec         *cvv,
-             cvec         *argv)
+               cvec         *cvv,
+               cvec         *argv)
 {
     int              retval = -1;
     cxobj           *xt = NULL;
     int              argc = 0;
     enum format_enum format = FORMAT_XML;
-    int              ybind = 1;
     yang_stmt       *yspec;
     int              pretty = 1;
     char            *prepend = NULL;
+    int              ret;
+    cxobj           *xerr = NULL;
 
     if (cvec_len(argv) < 1 || cvec_len(argv) > 3){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <format> [<pretty> [<prepend>]]", cvec_len(argv));
@@ -241,13 +242,16 @@ pipe_showas_fn(clicon_handle h,
     if (cvec_len(argv) > argc){
         prepend = cv_string_get(cvec_i(argv, argc++));
     }
-    if (ybind){
-        yspec = clicon_dbspec_yang(h);
-        if (clixon_xml_parse_file(stdin, YB_MODULE, yspec, &xt, NULL) < 0)
-            goto done;
-    }
-    else if (clixon_xml_parse_file(stdin, YB_NONE, NULL, &xt, NULL) < 0)
+    yspec = clicon_dbspec_yang(h);
+    /* Bind module with mtpoints requires h, but parse functions font have h */
+    if (clixon_xml_parse_file(stdin, YB_NONE, yspec, &xt, NULL) < 0)
         goto done;
+    if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        clixon_netconf_error(xerr, "Parse top file", NULL);
+        goto done;
+    }
     switch (format){
     case FORMAT_XML:
         if (clixon_xml2file(stdout, xt, 0, pretty, NULL, cligen_output, 1, 0) < 0)
@@ -270,6 +274,8 @@ pipe_showas_fn(clicon_handle h,
     }
     retval = 0;
  done:
+    if (xerr)
+        xml_free(xerr);
     if (xt)
         xml_free(xt);
     return retval;
