@@ -46,7 +46,7 @@
 
 ### Corrected Bugs
 
-* Fixed: [Openconfig configuration on Juniper MX does not work](https://github.com/clicon/clixon-controller/issues/20)
+* Fixed: ["show configuration devices" and "show configuration devices | display cli" differs](https://github.com/clicon/clixon-controller/issues/24)
 * Fixed: [Configuring Juniper PTX produces CLI errors](https://github.com/clicon/clixon-controller/issues/19)
 
 ## 6.3.0
