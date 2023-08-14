@@ -4,7 +4,7 @@
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
-  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+  Copyright (C) 2020-2023 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -245,6 +245,7 @@ parse_configfile_one(const char *filename,
     xt = NULL;
     retval = 0;
  done:
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: Done w/ config file %s returning %d", __FUNCTION__, filename, retval);
     if (xt)
         xml_free(xt);
     if (fp)
@@ -307,6 +308,8 @@ parse_configfile(clicon_handle  h,
         clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
         goto done;
     }
+
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: Reading config file %s", __FUNCTION__, filename);
     /* Parse main config file */
     if (parse_configfile_one(filename, yspec, &xt) < 0)
         goto done;
@@ -335,11 +338,15 @@ parse_configfile(clicon_handle  h,
                 name = xml_name(xec);
                 body = xml_body(xec);
                 /* Ignore non-leafs */
-                if (name == NULL || body == NULL)
+                if (name == NULL || body == NULL) {
+                    xml_purge(xec);
                     continue;
+                }
                 /* Ignored from file due to bootstrapping */
-                if (strcmp(name,"CLICON_CONFIGFILE")==0)
+                if (strcmp(name,"CLICON_CONFIGFILE")==0) {
+                    xml_purge(xec);
                     continue;
+                }
                 /* List options for configure options that are lists or leaf-lists: append to main */
                 if (strcmp(name,"CLICON_FEATURE")==0 ||
                     strcmp(name,"CLICON_YANG_DIR")==0 ||
@@ -414,6 +421,7 @@ parse_configfile(clicon_handle  h,
     *xconfig = xt;
     xt = NULL;
  done:
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: Done w/ config file %s returning %d", __FUNCTION__, filename, retval);
     if (dp)
         free(dp);
     if (nsc)
