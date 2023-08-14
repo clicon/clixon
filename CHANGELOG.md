@@ -44,6 +44,8 @@
 ## 6.3.1
 14 August 2023
 
+Bugfix release related to mount-point issues for controller.
+
 ### Corrected Bugs
 
 * Fixed: ["show configuration devices" and "show configuration devices | display cli" differs](https://github.com/clicon/clixon-controller/issues/24)
