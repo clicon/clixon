@@ -215,7 +215,7 @@ backend_monitoring_state_get(clicon_handle h,
         if (ce->ce_source_host)
             cprintf(cb, "<source-host>%s</source-host>", ce->ce_source_host);
         if (ce->ce_time.tv_sec != 0){
-            if (time2str(ce->ce_time, timestr, sizeof(timestr)) < 0){
+            if (time2str(&ce->ce_time, timestr, sizeof(timestr)) < 0){
                 clicon_err(OE_UNIX, errno, "time2str");
                 goto done;
             }

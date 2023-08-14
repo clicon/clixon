@@ -74,7 +74,7 @@ per_datastore(clicon_handle h,
 {
     int            retval = -1;
     uint32_t       sid;
-    struct timeval tv = {0,};
+    struct timeval tv;
     char           timestr[28];
 
     cprintf(cb, "<datastore><name>%s</name>", db);
@@ -83,7 +83,7 @@ per_datastore(clicon_handle h,
         cprintf(cb, "<global-lock>");
         cprintf(cb, "<locked-by-session>%u</locked-by-session>", sid);
         xmldb_lock_timestamp(h, db, &tv);
-        if (time2str(tv, timestr, sizeof(timestr)) < 0){
+        if (time2str(&tv, timestr, sizeof(timestr)) < 0){
             clicon_err(OE_UNIX, errno, "time2str");
             goto done;
         }
@@ -321,7 +321,7 @@ netconf_monitoring_statistics_init(clicon_handle h)
     cvec          *cvv = NULL;
 
     gettimeofday(&tv, NULL);
-    if (time2str(tv, timestr, sizeof(timestr)) < 0)
+    if (time2str(&tv, timestr, sizeof(timestr)) < 0)
         goto done;
     clicon_data_set(h, "netconf-start-time", timestr); /* RFC 6022 */
     if ((cvv = cvec_new(0)) == NULL){

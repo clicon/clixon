@@ -580,7 +580,7 @@ stream_notify(clicon_handle h,
         goto done;
     }
     gettimeofday(&tv, NULL);
-    if (time2str(tv, timestr, sizeof(timestr)) < 0){
+    if (time2str(&tv, timestr, sizeof(timestr)) < 0){
         clicon_err(OE_UNIX, errno, "time2str");
         goto done;
     }
@@ -645,7 +645,7 @@ stream_notify_xml(clicon_handle h,
         goto done;
     }
     gettimeofday(&tv, NULL);
-    if (time2str(tv, timestr, sizeof(timestr)) < 0){
+    if (time2str(&tv, timestr, sizeof(timestr)) < 0){
         clicon_err(OE_UNIX, errno, "time2str");
         goto done;
     }

@@ -753,7 +753,7 @@ clixon_process_status(clicon_handle  h,
                 cprintf(cbret, "<status xmlns=\"%s\">%s</status>", CLIXON_LIB_NS,
                         clicon_int2str(proc_state_map, pe->pe_state));
                 if (timerisset(&pe->pe_starttime)){
-                    if (time2str(pe->pe_starttime, timestr, sizeof(timestr)) < 0){
+                    if (time2str(&pe->pe_starttime, timestr, sizeof(timestr)) < 0){
                         clicon_err(OE_UNIX, errno, "time2str");
                         goto done;
                     }
