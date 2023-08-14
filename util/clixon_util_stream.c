@@ -241,10 +241,9 @@ main(int argc, char **argv)
             break;
         case 's': /* start-time */
             if (*optarg == '+' || *optarg == '-'){
-                struct timeval t;
-                t = now;
+                struct timeval t = now;
                 t.tv_sec += atoi(optarg);
-                if (time2str(t, start, sizeof(start)) < 0)
+                if (time2str(&t, start, sizeof(start)) < 0)
                     goto done;
             }
             else
@@ -252,10 +251,9 @@ main(int argc, char **argv)
             break;
         case 'e': /* stop-time */
             if (*optarg == '+' || *optarg == '-'){
-                struct timeval t;
-                t = now;
+                struct timeval t = now;
                 t.tv_sec += atoi(optarg);
-                if (time2str(t, stop, sizeof(stop)) < 0)
+                if (time2str(&t, stop, sizeof(stop)) < 0)
                     goto done;
             }
             else
