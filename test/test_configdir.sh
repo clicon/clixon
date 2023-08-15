@@ -106,6 +106,9 @@ cat <<EOF > $cfile1
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_MODULE_SET_ID>2</CLICON_MODULE_SET_ID>
   <CLICON_FEATURE>test2</CLICON_FEATURE>
+  <autocli>
+     <module-default>false</module-default>
+  </autocli>
 </clixon-config>
 EOF
 

@@ -50,6 +50,7 @@ Expected: October 2023
 
 ### Corrected Bugs
 
+* [CLICON_CONFIGDIR with external subsystems causes endless looping](https://github.com/clicon/clixon/issues/439)
 * Fixed: ["show configuration devices" and "show configuration devices | display cli" differs](https://github.com/clicon/clixon-controller/issues/24)
 * Fixed: [Configuring Juniper PTX produces CLI errors](https://github.com/clicon/clixon-controller/issues/19)
 * Fixed: CLI output pipes: Add CLICON_PIPETREE to any cli files, not just the first
