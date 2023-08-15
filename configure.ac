@@ -3,7 +3,7 @@
 # 
 # Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
 # Copyright (C) 2017-2019 Olof Hagsand
-# Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC
+# Copyright (C) 2020-2023 Olof Hagsand and Rubicon Communications, LLC
 #
 # This file is part of CLIXON
 #
@@ -123,7 +123,9 @@ AC_SUBST(YANG_STANDARD_DIR)
 AC_SUBST(MIB_GENERATED_YANG_DIR)
 # Used in expansion in, e.g., example/main/example.xml.in
 AC_SUBST(SYSCONFDIR)
+AC_SUBST(DATADIR)
 AC_SUBST(LIBDIR)
+AC_SUBST(LIBEXECDIR)
 AC_SUBST(LOCALSTATEDIR)
 
 #
@@ -408,6 +410,25 @@ AC_ARG_WITH(yang-standard-dir,
 	    )
 AC_MSG_RESULT(Standard YANG files expected to be in ${YANG_STANDARD_DIR})	
 
+# who we run as
+CLICON_USER="clicon"
+AC_ARG_WITH([clicon-user], [AS_HELP_STRING([--with-clicon-user=user], [Run as this user in configuration files])], [
+  CLICON_USER="$withval"
+])
+AC_SUBST(CLICON_USER)
+if test -n "${CLICON_USER}"; then
+    echo "Using CLICON_USER here: ${CLICON_USER}"
+fi
+
+CLICON_GROUP="clicon"
+AC_ARG_WITH([clicon-group], [AS_HELP_STRING([--with-clicon-group=group], [Run as this group in configuration files])], [
+  CLICON_GROUP="$withval"
+])
+AC_SUBST(CLICON_GROUP)
+if test -n "${CLICON_GROUP}"; then
+    echo "Using CLICON_GROUP here: ${CLICON_GROUP}"
+fi
+
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
 
@@ -420,7 +441,9 @@ AH_BOTTOM([#include <clixon_custom.h>])
 # Special case is $libdir, which is composed from $exec_prefix
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 SYSCONFDIR=`eval echo $sysconfdir`
+DATADIR=`eval echo $datadir`
 LIBDIR=`eval echo $libdir`
+LIBEXECDIR=`eval echo $libexecdir`
 LOCALSTATEDIR=`eval echo $localstatedir`
 
 AC_CONFIG_FILES([Makefile

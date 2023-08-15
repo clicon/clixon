@@ -648,6 +648,8 @@ ac_includes_default="\
 ac_header_c_list=
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+CLICON_GROUP
+CLICON_USER
 CLIGEN_DIR
 WC_BIN
 TAIL_BIN
@@ -663,7 +665,9 @@ CXXFLAGS
 CXX
 CPP
 LOCALSTATEDIR
+LIBEXECDIR
 LIBDIR
+DATADIR
 SYSCONFDIR
 MIB_GENERATED_YANG_DIR
 YANG_STANDARD_DIR
@@ -766,6 +770,8 @@ with_libxml2
 with_sigaction
 with_yang_installdir
 with_yang_standard_dir
+with_clicon_user
+with_clicon_group
 enable_nls
 '
       ac_precious_vars='build_alias
@@ -1438,6 +1444,9 @@ Optional Packages:
   --with-yang-standard-dir=DIR
                           Directory of standard IETF/IEEE YANG specs (default:
                           $prefix/share/yang/standard)
+  --with-clicon-user=user Run as this user in configuration files
+  --with-clicon-group=group
+                          Run as this group in configuration files
 
 Some influential environment variables:
   CC          C compiler command
@@ -4140,6 +4149,8 @@ HAVE_HTTP1=false
 # SNMP tests require generated YANGs from MIBs
 
 # Used in expansion in, e.g., example/main/example.xml.in
+
+
 
 
 
@@ -6872,6 +6883,37 @@ fi
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: Standard YANG files expected to be in ${YANG_STANDARD_DIR}" >&5
 printf "%s\n" "Standard YANG files expected to be in ${YANG_STANDARD_DIR}" >&6; }
 
+# who we run as
+CLICON_USER="clicon"
+
+# Check whether --with-clicon-user was given.
+if test ${with_clicon_user+y}
+then :
+  withval=$with_clicon_user;
+  CLICON_USER="$withval"
+
+fi
+
+
+if test -n "${CLICON_USER}"; then
+    echo "Using CLICON_USER here: ${CLICON_USER}"
+fi
+
+CLICON_GROUP="clicon"
+
+# Check whether --with-clicon-group was given.
+if test ${with_clicon_group+y}
+then :
+  withval=$with_clicon_group;
+  CLICON_GROUP="$withval"
+
+fi
+
+
+if test -n "${CLICON_GROUP}"; then
+    echo "Using CLICON_GROUP here: ${CLICON_GROUP}"
+fi
+
 # Default location for config file
 
 printf "%s\n" "#define CLIXON_DEFAULT_CONFIG \"${CLIXON_DEFAULT_CONFIG}\"" >>confdefs.h
@@ -6891,7 +6933,9 @@ fi
 # Special case is $libdir, which is composed from $exec_prefix
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 SYSCONFDIR=`eval echo $sysconfdir`
+DATADIR=`eval echo $datadir`
 LIBDIR=`eval echo $libdir`
+LIBEXECDIR=`eval echo $libexecdir`
 LOCALSTATEDIR=`eval echo $localstatedir`
 
 ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml docker/Makefile docker/clixon-dev/Makefile docker/example/Makefile docker/test/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
