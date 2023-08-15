@@ -1369,6 +1369,8 @@ example_daemon(clicon_handle h)
     }
     retval = 0;
  done:
+    if (xerr)
+        xml_free(xerr);
     if (fp)
         fclose(fp);
     return retval;

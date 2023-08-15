@@ -163,7 +163,7 @@ What to think about when doing a new release.
 * Ensure all extended tests run OK: valgrind, vagrant, afl
 * Review CHANGELOG, write one-liner
   * Draft a new release and review generated release notes and use info to update CHANGELOG
-* Review README.md wording about latest release
+* Review README.md 
 * New yang/clicon/clixon-config@XXX.yang revision?
 * In configure.ac, for minor releases change CLIXON_VERSION in configure.ac to eg: (minor should have been bumped):
 ```

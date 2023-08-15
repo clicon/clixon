@@ -43,7 +43,6 @@ void  cli_signal_block(clicon_handle h);
 void  cli_signal_unblock(clicon_handle h);
 int   mtpoint_paths(yang_stmt *yspec0, char *mtpoint, char *api_path_fmt1, char **api_path_fmt01);
 cvec *cvec_append(cvec *cvv0, cvec *cvv1);
-int   cvec_concat_cb(cvec *cvv, cbuf *cb);
 
 /* If you do not find a function here it may be in clixon_cli_api.h which is 
    the external API */

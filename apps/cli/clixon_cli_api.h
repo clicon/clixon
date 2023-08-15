@@ -111,6 +111,7 @@ int cli_unlock(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_copy_config(clicon_handle h, cvec *cvv, cvec *argv);
 int cli_help(clicon_handle h, cvec *vars, cvec *argv);
 cvec *cvec_append(cvec *cvv0, cvec *cvv1);
+int   cvec_concat_cb(cvec *cvv, cbuf *cb);
 int cli_process_control(clicon_handle h, cvec *vars, cvec *argv);
 
 /* In cli_show.c */

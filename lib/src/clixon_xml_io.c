@@ -554,6 +554,7 @@ xmltree2cbuf(cbuf  *cb,
  * Therefore checking for empty XML must be done by a calling function which knows wether the 
  * the XML represents a full document or not.
  * @note may be called recursively, some yang-bind (eg rpc) semantic checks may trigger error message
+ * @note yang-binding over schema mount-points do not work, you need to make a separate bind call
  */
 static int 
 _xml_parse(const char *str, 

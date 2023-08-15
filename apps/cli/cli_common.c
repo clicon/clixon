@@ -402,7 +402,7 @@ cli_dbxml(clicon_handle       h,
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    /* Concatenate all argv strings to a sinle string */
+    /* Concatenate all argv strings to a single string */
     if (cvec_concat_cb(argv, api_path_fmt_cb) < 0)
         goto done;
     api_path_fmt = cbuf_get(api_path_fmt_cb);
@@ -1670,7 +1670,9 @@ cvec_concat_cb(cvec  *cvv,
     }
     /* Append a api_path_fmt from sub-parts */
     for (i=argc-1; i>=0; i--){
-        cprintf(cb, "%s", cv_string_get(cvec_i(cvv, i)));
+        cv = cvec_i(cvv, i);
+        str = cv_string_get(cv);
+        cprintf(cb, "%s", str);
     }
     retval = 0;
  done:
