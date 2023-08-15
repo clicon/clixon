@@ -46,6 +46,8 @@ Expected: October 2023
 
 ### Minor features
 
+* Removed sending restconf config inline using -R when CLICON_BACKEND_RESTCONF_PROCESS=true
+  * Define RESTCONF_INLINE to revert
 * Clarified clixon_cli command-line: `clixon_cli [options] [commands] [-- extra-options]`
 
 ### Corrected Bugs
