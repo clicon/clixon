@@ -648,6 +648,8 @@ ac_includes_default="\
 ac_header_c_list=
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+CLICON_GROUP
+CLICON_USER
 CLIGEN_DIR
 WC_BIN
 TAIL_BIN
@@ -768,6 +770,8 @@ with_libxml2
 with_sigaction
 with_yang_installdir
 with_yang_standard_dir
+with_clicon_user
+with_clicon_group
 enable_nls
 '
       ac_precious_vars='build_alias
@@ -1440,6 +1444,9 @@ Optional Packages:
   --with-yang-standard-dir=DIR
                           Directory of standard IETF/IEEE YANG specs (default:
                           $prefix/share/yang/standard)
+  --with-clicon-user=user Run as this user in configuration files
+  --with-clicon-group=group
+                          Run as this group in configuration files
 
 Some influential environment variables:
   CC          C compiler command
@@ -6875,6 +6882,37 @@ fi
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: Standard YANG files expected to be in ${YANG_STANDARD_DIR}" >&5
 printf "%s\n" "Standard YANG files expected to be in ${YANG_STANDARD_DIR}" >&6; }
+
+# who we run as in our examples and tests
+CLICON_USER="clicon"
+
+# Check whether --with-clicon-user was given.
+if test ${with_clicon_user+y}
+then :
+  withval=$with_clicon_user;
+  CLICON_USER="$withval"
+
+fi
+
+
+if test -n "${CLICON_USER}"; then
+    echo "Using CLICON_USER here: ${CLICON_USER}"
+fi
+
+CLICON_GROUP="clicon"
+
+# Check whether --with-clicon-group was given.
+if test ${with_clicon_group+y}
+then :
+  withval=$with_clicon_group;
+  CLICON_GROUP="$withval"
+
+fi
+
+
+if test -n "${CLICON_GROUP}"; then
+    echo "Using CLICON_GROUP here: ${CLICON_GROUP}"
+fi
 
 # Default location for config file
 
