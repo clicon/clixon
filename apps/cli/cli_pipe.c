@@ -176,7 +176,7 @@ pipe_wc_fn(clicon_handle h,
     char   *option = NULL;
     
     if (cvec_len(argv) != 1){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option>", cvec_len(argv));
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <NUM>", cvec_len(argv));
         goto done;
     }
     if ((cv = cvec_i(argv, 0)) != NULL &&
@@ -196,10 +196,37 @@ pipe_wc_fn(clicon_handle h,
  */
 int
 pipe_tail_fn(clicon_handle h,
-           cvec         *cvv,
-           cvec         *argv)
+             cvec         *cvv,
+             cvec         *argv)
 {
-    return pipe_arg_fn(h, TAIL_BIN, "-5", NULL);
+    int     retval = -1;
+    char   *value = NULL;
+    cg_var *cv;
+    char   *str;
+    char   *option = NULL;
+    char   *argname = NULL;
+
+    if (cvec_len(argv) != 2){
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option> <argname>", cvec_len(argv));
+        goto done;
+    }
+    if ((cv = cvec_i(argv, 0)) != NULL &&
+        (str = cv_string_get(cv)) != NULL &&
+        strlen(str))
+        option = str;
+    if ((cv = cvec_i(argv, 1)) != NULL &&
+        (str = cv_string_get(cv)) != NULL &&
+        strlen(str))
+        argname = str;
+    if (argname && strlen(argname)){
+        if ((cv = cvec_find_var(cvv, argname)) != NULL &&
+            (str = cv_string_get(cv)) != NULL &&
+            strlen(str))
+            value = str;
+    }
+    return pipe_arg_fn(h, TAIL_BIN, option, value);
+ done:
+    return retval;
 }
 
 /*! Output pipe translate from xml to other format: json,text,

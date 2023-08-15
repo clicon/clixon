@@ -128,7 +128,7 @@ CLICON_MODE="|mypipe"; # Must start with |
 \| { 
    grep <arg:string>, pipe_grep_fn("-e", "arg");
    except <arg:string>, pipe_grep_fn("-v", "arg");
-   tail, pipe_tail_fn();
+   tail <arg:string>, pipe_tail_fn("-n", "arg");
    count, pipe_wc_fn("-l");
    show {
      json, pipe_showas_fn("json");
@@ -175,8 +175,11 @@ expectpart "$($clixon_cli -1 -m $mode -f $cfg show implicit config \| grep par 2
 new "$mode show explicit | grep par"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| grep par)" 0 "<parameter>" "</parameter>" --not-- "table" "value"
 
-new "$mode show explicit | tail"
-expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| tail)" 0 "<name>y</name>" --not-- "<name>x</name>"
+new "$mode show explicit | grep table|name"
+expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| grep 'table\\\|name')" 0 "<table xmlns=\"urn:example:clixon\">" "<name>x</name>" "<name>y</name>" "</table>" --not-- "parameter" "value"
+
+new "$mode show explicit | tail 5"
+expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| tail 5)" 0 "<name>y</name>" --not-- "<name>x</name>"
 
 new "$mode show explicit | count"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| count)" 0 10

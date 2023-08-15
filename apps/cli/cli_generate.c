@@ -1145,8 +1145,8 @@ yang2cli_uses(clicon_handle h,
     if (ys_grouping_resolve(ys, prefix, id, &ygrouping) < 0)
         goto done;
     if (ygrouping == NULL){
-        fprintf(stderr, "%s grouping %s not found\n", __FUNCTION__, id);
-        goto ok;
+        clicon_err(OE_YANG, 0, "grouping %s not found in \n", yang_argument_get(ys));
+        goto done;
     }
     if ((cbtree = cbuf_new()) == NULL){
         clicon_err(OE_XML, errno, "cbuf_new");

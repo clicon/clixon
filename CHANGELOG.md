@@ -44,6 +44,11 @@
 ## 6.4.0
 Expected: October 2023
 
+### C/CLI-API changes on existing features
+Developers may need to change their code
+
+* CLI pipe function: added arg to `pipe_tail_fn()`
+
 ### Minor features
 
 * Removed sending restconf config inline using -R when CLICON_BACKEND_RESTCONF_PROCESS=true
