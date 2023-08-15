@@ -410,6 +410,25 @@ AC_ARG_WITH(yang-standard-dir,
 	    )
 AC_MSG_RESULT(Standard YANG files expected to be in ${YANG_STANDARD_DIR})	
 
+# who we run as in our examples and tests
+CLICON_USER="clicon"
+AC_ARG_WITH([clicon-user], [AS_HELP_STRING([--with-clicon-user=user], [Run as this user in configuration files])], [
+  CLICON_USER="$withval"
+])
+AC_SUBST(CLICON_USER)
+if test -n "${CLICON_USER}"; then
+    echo "Using CLICON_USER here: ${CLICON_USER}"
+fi
+
+CLICON_GROUP="clicon"
+AC_ARG_WITH([clicon-group], [AS_HELP_STRING([--with-clicon-group=group], [Run as this group in configuration files])], [
+  CLICON_GROUP="$withval"
+])
+AC_SUBST(CLICON_GROUP)
+if test -n "${CLICON_GROUP}"; then
+    echo "Using CLICON_GROUP here: ${CLICON_GROUP}"
+fi
+
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
 
