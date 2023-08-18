@@ -90,6 +90,7 @@ static const map_str2int startup_mode_map[] = {
     {"running",         SM_RUNNING}, 
     {"startup",         SM_STARTUP},
     {"running-startup", SM_RUNNING_STARTUP}, 
+    {"dump-xml",        SM_DUMP_XML},
     {NULL,              -1}
 };
 
