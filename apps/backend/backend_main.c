@@ -906,8 +906,8 @@ main(int    argc,
         /* [Delete and] create running db */
         if (xmldb_db_reset(h, "running") < 0)
             goto done;
-    case SM_NONE: /* Fall through *
-                   * Load plugins and call plugin_init() */
+	/* FALLTHRU */
+    case SM_NONE: /* Load plugins and call plugin_init() */
         if ((ret = startup_extraxml(h, NULL, cbret)) < 0)
             goto done;
         status = STARTUP_OK;
@@ -940,8 +940,13 @@ main(int    argc,
         if (ret2status(ret, &status) < 0)
             goto done;
         /* if status = STARTUP_INVALID, cbret contains info */
-        break;  
-    default:;
+        break;
+    case SM_DUMP_XML:
+        /* dump the tree */
+        cxobj *xc = clicon_conf_xml(h);
+        ret = clixon_xml2file(stdout, xc, 0, 1, "", &fprintf, 0, 1);
+        goto ok;
+    default:
         break;  
     }
     /* Quit after upgrade catch-all, running/startup quits in upgrade code */

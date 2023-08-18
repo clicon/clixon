@@ -67,7 +67,8 @@ enum startup_mode_t{
     SM_INIT,           /* Initialize running state */
     SM_RUNNING,        /* Commit running db configuration into running state */
     SM_STARTUP,        /* Commit startup configuration into running state */
-    SM_RUNNING_STARTUP /* First try running db, if it is empty try startup db */
+    SM_RUNNING_STARTUP, /* First try running db, if it is empty try startup db */
+    SM_DUMP_XML        /* Dump XML configuration to stdout and exit */
 };
 
 /*! See clixon-config.yang type priv_mode (privileges mode) */
