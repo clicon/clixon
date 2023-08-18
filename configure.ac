@@ -3,7 +3,7 @@
 # 
 # Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
 # Copyright (C) 2017-2019 Olof Hagsand
-# Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC
+# Copyright (C) 2020-2023 Olof Hagsand and Rubicon Communications, LLC
 #
 # This file is part of CLIXON
 #
@@ -123,7 +123,9 @@ AC_SUBST(YANG_STANDARD_DIR)
 AC_SUBST(MIB_GENERATED_YANG_DIR)
 # Used in expansion in, e.g., example/main/example.xml.in
 AC_SUBST(SYSCONFDIR)
+AC_SUBST(DATADIR)
 AC_SUBST(LIBDIR)
+AC_SUBST(LIBEXECDIR)
 AC_SUBST(LOCALSTATEDIR)
 
 #
@@ -420,7 +422,9 @@ AH_BOTTOM([#include <clixon_custom.h>])
 # Special case is $libdir, which is composed from $exec_prefix
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 SYSCONFDIR=`eval echo $sysconfdir`
+DATADIR=`eval echo \`eval echo $datadir\``
 LIBDIR=`eval echo $libdir`
+LIBEXECDIR=`eval echo $libexecdir`
 LOCALSTATEDIR=`eval echo $localstatedir`
 
 AC_CONFIG_FILES([Makefile
