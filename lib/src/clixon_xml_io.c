@@ -290,7 +290,7 @@ xml_dump1(FILE  *f,
     if (xml_type(x) != CX_ELMNT)
         return 0;
     fprintf(stderr, "%*s %s(%s)",
-            indent*3, "",
+            indent*PRETTYPRINT_INDENT, "",
             //      x,
             xml_name(x),
             xml_type2str(xml_type(x)));
