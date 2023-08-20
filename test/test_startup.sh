@@ -80,7 +80,7 @@ module ietf-interfaces {
 }
 EOF
 
-# Create running-db containin the interface "run" OK
+# Create running-db containing the interface "run" OK
 runvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>run</name><type xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces">if:fddi</type><enabled>true</enabled></interface></interfaces>'
 
 # Create startup-db containing the interface "startup" OK
@@ -106,7 +106,7 @@ function testrun(){
     mode=$1
     rdb=$2    # running db at start
     sdb=$3    # startup db at start
-    edb=$4    # extradb at start
+    edb=$4    # extra db at start
     exprun=$5 # expected running_db after startup
 
     sudo rm -f  $dir/*_db

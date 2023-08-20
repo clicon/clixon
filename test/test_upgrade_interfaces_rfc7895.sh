@@ -18,7 +18,7 @@
 # Rename /interfaces/interface/description to /interfaces/interface/descr (2016)
 # Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr (2018)
 # Change type /interfaces/interface/statistics/in-octets to decimal64 and divide all values with 1000 (2018)
-# This is backwrd compatible RFC7895, see also test_upgrade_interfaces.sh for RFC8525
+# This is backward compatible RFC7895, see also test_upgrade_interfaces.sh for RFC8525
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
