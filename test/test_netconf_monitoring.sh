@@ -147,6 +147,7 @@ fi
 # for some reason valgrind tests fail below?
 if [ ${valgrindtest} -eq 0 ]; then # Error dont cleanup mem OK
 
+# XXX there may be inconsistent YANGs in this dir
 YANGDIR=$YANG_INSTALLDIR
 
 if [ $BE -ne 0 ]; then
@@ -157,7 +158,6 @@ new "wait backend"
 wait_backend
 
 new "Loop over all yangs in $YANGDIR"
-
 for f in ${YANGDIR}/*.yang; do
     b=$(basename $f)
     id=$(echo "$b" | sed 's/.yang//' | sed 's/@.*//')

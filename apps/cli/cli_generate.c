@@ -724,7 +724,7 @@ yang2cli_var(clicon_handle h,
         }
         cprintf(cb, ")");
     }
-    else if (strcmp(restype,"leafref")==0){
+    else if (strcmp(restype, "leafref")==0){
         yang_stmt *ypath;
         char      *path_arg;
         yang_stmt *yref = NULL;
@@ -1202,7 +1202,7 @@ yang2cli_stmt(clicon_handle h,
     int        retval = -1;
     yang_stmt *yc;
     int        treeref_state = 0;
-    int        grouping_treeref;
+    int        grouping_treeref = 0;
 
     if (ys == NULL){
         clicon_err(OE_YANG, EINVAL, "No yang spec");

@@ -57,6 +57,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* [YANG error when poking on EOS configuration](https://github.com/clicon/clixon-controller/issues/26)
 * [CLICON_CONFIGDIR with external subsystems causes endless looping](https://github.com/clicon/clixon/issues/439)
 * Fixed: ["show configuration devices" and "show configuration devices | display cli" differs](https://github.com/clicon/clixon-controller/issues/24)
 * Fixed: [Configuring Juniper PTX produces CLI errors](https://github.com/clicon/clixon-controller/issues/19)
