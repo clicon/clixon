@@ -88,7 +88,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:p:d:y:a:u:rW:R:o:"
+#define RESTCONF_OPTS "hD:f:E:l:C:p:d:y:a:u:rW:R:o:"
 
 /*! Convert FCGI parameters to clixon runtime data
  * @param[in]  h     Clixon handle
@@ -269,6 +269,7 @@ usage(clicon_handle h,
             "\t-f <file>\t  Configuration file (mandatory)\n"
             "\t-E <dir> \t  Extra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
+            "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"
             "\t-p <dir>\t  Yang directory path (see CLICON_YANG_DIR)\n"
             "\t-y <file>\t  Load yang spec file (override yang main module)\n"
             "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
@@ -283,8 +284,7 @@ usage(clicon_handle h,
     exit(0);
 }
 
-/*! Main routine for fastcgi restconf
- */
+/*! Main routine for fastcgi restconf */
 int 
 main(int    argc, 
      char **argv) 
@@ -314,6 +314,8 @@ main(int    argc,
     char          *wwwuser;
     char          *inline_config = NULL;
     size_t         sz;
+    int           config_dump;
+    enum format_enum config_dump_format = FORMAT_XML;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
@@ -389,6 +391,15 @@ main(int    argc,
         case 'E':  /* extra config dir */
         case 'l':  /* log  */
             break; /* taken care of in earlier getopt above */
+        case 'C': /* Explicitly dump configuration */
+            if (!strlen(optarg))
+                usage(h, argv[0]);
+            if ((config_dump_format = format_str2int(optarg)) < 0){
+                fprintf(stderr, "Unrecognized dump format: %s(expected: xml|json|text)\n", argv[0]);
+                usage(h, argv[0]);
+            }
+            config_dump++;
+            break;
         case 'p' : /* yang dir path */
             if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
                 goto done;
@@ -528,6 +539,12 @@ main(int    argc,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
         goto done;
 
+    /* Explicit dump of config (also debug dump below). */
+    if (config_dump){
+        if (clicon_option_dump1(h, stdout, config_dump_format) < 0)
+            goto done;
+        goto ok;
+    }
     /* Dump configuration options on debug */
     clicon_option_dump(h, 1);
 
@@ -664,6 +681,7 @@ main(int    argc,
             }
         }
     } /* while */
+ ok:
     retval = 0;
  done:
     stream_child_freeall(h);

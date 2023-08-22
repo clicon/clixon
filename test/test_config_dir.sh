@@ -37,6 +37,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
+new "Start without configdir as baseline"
 cat <<EOF > $cfile1
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_MODULE_SET_ID>2</CLICON_MODULE_SET_ID>
@@ -44,9 +45,9 @@ cat <<EOF > $cfile1
 </clixon-config>
 EOF
 
-new "Start without configdir as baseline"
 expectpart "$($clixon_cli -1 -f $cfg show options)" 0 'CLICON_MODULE_SET_ID: "1"' 'CLICON_FEATURE: "test1"' --not-- 'CLICON_FEATURE: "test2"'
 
+new "Start with wrong configdir"
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGDIR>$dir/dontexist</CLICON_CONFIGDIR>
@@ -62,9 +63,9 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-new "Start with wrong configdir"
 expectpart "$($clixon_cli -1 -f $cfg -l o show options)" 255 "UNIX error: CLICON_CONFIGDIR:" "opendir: No such file or directory"
 
+new "Start with wrong configdir -E override"
 rm -f $cfile1
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -81,9 +82,9 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-new "Start with wrong configdir -E override"
 expectpart "$($clixon_cli -1 -f $cfg -E $cdir show options)" 0 'CLICON_MODULE_SET_ID: "1"' 'CLICON_FEATURE: "test1"' --not-- 'CLICON_FEATURE: "test2"'
 
+new "Start with empty configdir"
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGDIR>$cdir</CLICON_CONFIGDIR>
@@ -99,9 +100,9 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-new "Start with empty configdir"
 expectpart "$($clixon_cli -1 -f $cfg -l o show options)" 0 'CLICON_MODULE_SET_ID: "1"' 'CLICON_FEATURE: "test1"' --not-- 'CLICON_FEATURE: "test2"'
 
+new "Start with 1 extra configfile"
 cat <<EOF > $cfile1
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_MODULE_SET_ID>2</CLICON_MODULE_SET_ID>
@@ -112,9 +113,9 @@ cat <<EOF > $cfile1
 </clixon-config>
 EOF
 
-new "Start with 1 extra configfile"
 expectpart "$($clixon_cli -1 -f $cfg -l o show options)" 0 'CLICON_MODULE_SET_ID: "2"' 'CLICON_FEATURE: "test1"' 'CLICON_FEATURE: "test2"'
 
+new "Start with 2 extra configfiles"
 cat <<EOF > $cfile2
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_MODULE_SET_ID>3</CLICON_MODULE_SET_ID>
@@ -122,7 +123,6 @@ cat <<EOF > $cfile2
 </clixon-config>
 EOF
 
-new "Start with 2 extra configfiles"
 expectpart "$($clixon_cli -1 -f $cfg -l o show options)" 0 'CLICON_MODULE_SET_ID: "3"' 'CLICON_FEATURE: "test1"' 'CLICON_FEATURE: "test2"' 'CLICON_FEATURE: "test3"'
 
 new "Start with 2 extra configfiles + command-line"

@@ -79,7 +79,7 @@
 #include "backend_plugin_restconf.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:E:l:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
+#define BACKEND_OPTS "hD:f:E:l:C:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -463,6 +463,7 @@ usage(clicon_handle h,
             "\t-f <file>\tClixon config file\n"
             "\t-E <dir> \tExtra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
+            "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"
             "\t-d <dir>\tSpecify backend plugin directory (default: %s)\n"
             "\t-p <dir>\tAdd Yang directory path (see CLICON_YANG_DIR)\n"
             "\t-b <dir>\tSpecify datastore directory\n"
@@ -489,6 +490,8 @@ usage(clicon_handle h,
     exit(-1);
 }
 
+/* Clixon backend application main entry point
+ */
 int
 main(int    argc,
      char **argv)
@@ -524,6 +527,8 @@ main(int    argc,
     size_t        cligen_bufthreshold;
     int           dbg;
     size_t        sz;
+    int           config_dump;
+    enum format_enum config_dump_format = FORMAT_XML;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -535,7 +540,8 @@ main(int    argc,
     zap = 0;
     extraxml_file = NULL;
     dbg = 0;
-
+    config_dump = 0;
+    
     /*
      * Command-line options for help, debug, and config-file
      */
@@ -607,6 +613,15 @@ main(int    argc,
         case 'E': /* extra config dir */
         case 'l' :
             break; /* see above */
+        case 'C': /* Explicitly dump configuration */
+            if (!strlen(optarg))
+                usage(h, argv[0]);
+            if ((config_dump_format = format_str2int(optarg)) < 0){
+                fprintf(stderr, "Unrecognized dump format: %s(expected: xml|json|text)\n", argv[0]);
+                usage(h, argv[0]);
+            }
+            config_dump++;
+            break;
         case 'd':  /* Plugin directory */
             if (!strlen(optarg))
                 usage(h, argv[0]);
@@ -941,11 +956,6 @@ main(int    argc,
             goto done;
         /* if status = STARTUP_INVALID, cbret contains info */
         break;
-    case SM_DUMP_XML:
-        /* dump the tree */
-        cxobj *xc = clicon_conf_xml(h);
-        ret = clixon_xml2file(stdout, xc, 0, 1, "", &fprintf, 0, 1);
-        goto ok;
     default:
         break;  
     }
@@ -978,7 +988,6 @@ main(int    argc,
             /* if status = STARTUP_INVALID, cbret contains info */
         }
     }
-
     if (status != STARTUP_OK){
         if (cbuf_len(cbret))
             clicon_log(LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
@@ -1005,10 +1014,19 @@ main(int    argc,
     /* Call backend plugin_start with user -- options */
     if (clixon_plugin_start_all(h) < 0)
         goto done;
+    /* Explicit dump of config (also debug dump below). */
+    if (config_dump){
+        if (clicon_option_dump1(h, stdout, config_dump_format) < 0)
+            goto done;
+    }
+
     /* -1 option to run only once */
     if (once)
         goto ok;
 
+    /* Debug dump of config options */
+    clicon_option_dump(h, 1);
+    
     /* Daemonize and initiate logging. Note error is initiated here to make
        daemonized errors OK. Before this stage, errors are logged on stderr 
        also */
@@ -1056,7 +1074,6 @@ main(int    argc,
         goto done;
     if (clicon_socket_set(h, ss) < 0)
         goto done;
-    clicon_option_dump(h, 1);
 
     /* Depending on configure setting, privileges may be dropped here after
      * initializations */

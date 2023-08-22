@@ -87,6 +87,9 @@ struct formatvec{
     int   fv_int;
 };
 
+/*! Translate between int and string of tree formats 
+ * @see eum format_enum
+ */
 static struct formatvec _FORMATS[] = {
     {"xml",     FORMAT_XML},
     {"text",    FORMAT_TEXT},

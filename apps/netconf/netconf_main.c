@@ -70,7 +70,7 @@
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */
-#define NETCONF_OPTS "hD:f:E:l:q01ca:u:d:p:y:U:t:eo:"
+#define NETCONF_OPTS "hD:f:E:l:C:q01ca:u:d:p:y:U:t:eo:"
 
 #define NETCONF_LOGFILE "/tmp/clixon_netconf.log"
 
@@ -624,6 +624,7 @@ usage(clicon_handle h,
             "\t-f <file>\tConfiguration file (mandatory)\n"
             "\t-E <dir> \tExtra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
+            "\t-C <format>\tDump configuration options on stdout after loading and exit. Format is xml|json|text\n"
             "\t-q\t\tServer does not send hello message on startup\n"
             "\t-0 \t\tSet netconf base capability to 0, server does not expect hello, force EOM framing\n"
             "\t-1 \t\tSet netconf base capability to 1, server does not expect hello, force chunked framing\n"
@@ -663,6 +664,8 @@ main(int    argc,
     size_t           cligen_bufthreshold;
     int              dbg = 0;
     size_t           sz;
+    int              config_dump = 0;
+    enum format_enum config_dump_format = FORMAT_XML;
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -728,6 +731,15 @@ main(int    argc,
         case 'E': /* extra config dir */
         case 'l':  /* log  */
             break; /* see above */
+        case 'C': /* Explicitly dump configuration */
+            if (!strlen(optarg))
+                usage(h, argv[0]);
+            if ((config_dump_format = format_str2int(optarg)) < 0){
+                fprintf(stderr, "Unrecognized dump format: %s(expected: xml|json|text)\n", argv[0]);
+                usage(h, argv[0]);
+            }
+            config_dump++;
+            break;
         case 'q':  /* quiet: dont write hello */
             quiet++;
             break;
@@ -867,6 +879,15 @@ main(int    argc,
     if (clixon_plugin_start_all(h) < 0)
         goto done;
 
+    /* Explicit dump of config (also debug dump below). */
+    if (config_dump){
+        if (clicon_option_dump1(h, stdout, config_dump_format) < 0)
+            goto done;
+        goto ok;
+    }
+    /* Debug dump of config options */
+    clicon_option_dump(h, 1);
+
     /* Send hello request to backend to get session-id back
      * This is done once at the beginning of the session and then this is
      * used by the client, even though new TCP sessions are created for
@@ -890,7 +911,6 @@ main(int    argc,
 #endif
     if (clixon_event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
         goto done;
-    clicon_option_dump(h, 1);
     if (tv.tv_sec || tv.tv_usec){
         struct timeval t;
         gettimeofday(&t, NULL);
@@ -900,6 +920,7 @@ main(int    argc,
     }
     if (clixon_event_loop(h) < 0)
         goto done;
+ ok:
     retval = 0;
   done:
     if (ignore_packet_errors)

@@ -71,6 +71,9 @@
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_json.h"
+#include "clixon_text_syntax.h"
+#include "clixon_proto.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
@@ -90,7 +93,6 @@ static const map_str2int startup_mode_map[] = {
     {"running",         SM_RUNNING}, 
     {"startup",         SM_STARTUP},
     {"running-startup", SM_RUNNING_STARTUP}, 
-    {"dump-xml",        SM_DUMP_XML},
     {NULL,              -1}
 };
 
@@ -129,13 +131,16 @@ static const map_str2int yang_regexp_map[] = {
     {NULL,                 -1}
 };
 
-/*! Print registry on file. For debugging.
+    
+/*! Debug dump config options
  *
  * @param[in] h        Clicon handle
  * @param[in] dbglevel Debug level
  * @retval    0        OK
  * @retval   -1        Error
  * @note CLICON_FEATURE, CLICON_YANG_DIR and CLICON_SNMP_MIB are treated specially since they are lists
+ * @note sub-config structs not shown: eg autocli/restconf
+ * @see clicon_option_dump1  different formats
  */
 int
 clicon_option_dump(clicon_handle h, 
@@ -188,6 +193,47 @@ clicon_option_dump(clicon_handle h,
  done:
     if (keys)
         free(keys);
+    return retval;
+}
+
+/*! Dump config options on stdio using output format
+ *
+ * @param[in] h        Clicon handle
+ * @param[in] f        Output file
+ * @param[in] format   Dump output format
+ * @retval    0        OK
+ * @retval   -1        Error
+ * @see clicon_option_dump  for debug log
+ */
+int
+clicon_option_dump1(clicon_handle h, 
+                    FILE         *f,
+                    int           format)
+{
+    int    retval = -1;
+    cxobj *xc;
+
+    xc = clicon_conf_xml(h);
+    switch (format){
+    case FORMAT_XML:
+        if (clixon_xml2file(f, xc, 0, 1, "", cligen_output, 0, 0) < 0)
+            goto done;
+        break;
+    case FORMAT_JSON:
+        if (clixon_json2file(f, xc, 1, cligen_output, 0, 0) < 0)
+            goto done;
+        break;
+    case FORMAT_TEXT:
+        if (clixon_txt2file(f, xc, 0, cligen_output, 0, 0) < 0)
+            goto done;
+        break;
+    default:
+        clicon_err(OE_XML, EINVAL, "%s not supported", format_int2str(format));
+        goto done;
+        break;
+    }
+    retval = 0;
+ done:
     return retval;
 }
 

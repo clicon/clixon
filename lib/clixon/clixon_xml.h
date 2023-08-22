@@ -178,7 +178,9 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 
 typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c */
 
-/* Alternative formats */
+/* Alternative tree formats,
+ * @see format_int2str, format_str2int
+ */
 enum format_enum{
     FORMAT_XML,  
     FORMAT_JSON,  

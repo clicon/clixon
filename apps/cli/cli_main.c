@@ -73,7 +73,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "+hD:f:E:l:F:1a:u:d:m:qp:GLy:c:U:o:"
+#define CLI_OPTS "+hD:f:E:l:C:F:1a:u:d:m:qp:GLy:c:U:o:"
 
 /*! Check if there is a CLI history file and if so dump the CLI histiry to it
  * Just log if file does not exist or is not readable
@@ -476,6 +476,8 @@ usage(clicon_handle h,
             "\t-D <level> \tDebug level\n"
             "\t-f <file> \tConfig-file (mandatory)\n"
             "\t-E <dir>  \tExtra configuration file directory\n"
+            "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (stderr is default)\n"
+            "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"
             "\t-F <file> \tRead commands from file (default stdin)\n"
             "\t-1\t\tDo not enter interactive mode\n"
             "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
@@ -486,7 +488,7 @@ usage(clicon_handle h,
             "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
             "\t-G \t\tPrint auto-cli CLI syntax generated from YANG\n"
             "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
-            "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (stderr is default)\n"
+
             "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
             "\t-c <file>\tSpecify cli spec file.\n"
             "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
@@ -522,9 +524,12 @@ main(int    argc,
     size_t         cligen_bufthreshold;
     int            dbg=0;
     int            nr;
+    int           config_dump;
+    enum format_enum config_dump_format = FORMAT_XML;
     
     /* Defaults */
     once = 0;
+    config_dump = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -607,6 +612,15 @@ main(int    argc,
         case 'E': /* extra config dir */
         case 'l': /* Log destination */
             break; /* see above */
+        case 'C': /* Explicitly dump configuration */
+            if (!strlen(optarg))
+                usage(h, argv[0]);
+            if ((config_dump_format = format_str2int(optarg)) < 0){
+                fprintf(stderr, "Unrecognized dump format: %s(expected: xml|json|text)\n", argv[0]);
+                usage(h, argv[0]);
+            }
+            config_dump++;
+            break;
         case 'F': /* read commands from file */
             if (freopen(optarg, "r", stdin) == NULL){
                 fprintf(stderr, "freopen: %s\n", strerror(errno));
@@ -833,10 +847,6 @@ main(int    argc,
     if (logclisyntax)
         cli_logsyntax_set(h, logclisyntax);
 
-    clicon_option_dump(h, 1);
-    
-
-
     /* Clixon hardcodes variable tie-breaks to non-terminals (2)
      * There are cases in the autocli such as: 
      *    (<string regexp:"r1" | <string regexp:"r2"){ ... }
@@ -850,6 +860,15 @@ main(int    argc,
      */
     if (clixon_plugin_start_all(h) < 0)
         goto done;
+    /* Explicit dump of config 
+     * (there is also debug dump below).
+     */
+    if (config_dump){
+        if (clicon_option_dump1(h, stdout, config_dump_format) < 0)
+            goto done;
+    }
+    /* Debug dump of config options */
+    clicon_option_dump(h, 1);
 
     cligen_line_scrolling_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_LINESCROLLING"));
     /*! Start CLI history and load from file */

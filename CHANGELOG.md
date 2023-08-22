@@ -51,6 +51,9 @@ Developers may need to change their code
 
 ### Minor features
 
+* New command-line option for dumping configuration options for all clixon applications after load
+  * Syntax is `-C <format>`
+  * Example: `clixon_backend -1C json`
 * Removed sending restconf config inline using -R when CLICON_BACKEND_RESTCONF_PROCESS=true
   * Define RESTCONF_INLINE to revert
 * Clarified clixon_cli command-line: `clixon_cli [options] [commands] [-- extra-options]`
