@@ -669,7 +669,7 @@ restconf_clixon_backend(clicon_handle h,
     while (1){
         if (clicon_hello_req(h, "cl:restconf", NULL, &id) < 0){
             if (errno == ENOENT){
-                fprintf(stderr, "waiting");
+                clicon_err(OE_UNIX, errno, "waiting");
                 sleep(1);
                 continue;
             }

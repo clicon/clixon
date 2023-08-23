@@ -214,18 +214,18 @@ clixon_proc_socket(char **argv,
         close(sp[0]);
         close(0);
         if (dup2(sp[1], STDIN_FILENO) < 0){
-            perror("dup2");
+            clicon_err(OE_UNIX, errno, "dup2(STDIN)");
             return -1;
         }
         close(1);
         if (dup2(sp[1], STDOUT_FILENO) < 0){
-            perror("dup2");
+            clicon_err(OE_UNIX, errno, "dup2(STDOUT)");
             return -1;
         }
         close(sp[1]); 
         
         if (execvp(argv[0], argv) < 0){
-            perror("execvp");
+            clicon_err(OE_UNIX, errno, "execvp(%s)", argv[0]);
             return -1;
         }
         exit(-1);        /* Shouldnt reach here */
@@ -366,7 +366,7 @@ clixon_proc_background(char       **argv,
                 goto done;
         }
         if (execvp(argv[0], argv) < 0) {
-            clicon_err(OE_UNIX, errno, "execv(%s)", argv[0]);
+            clicon_err(OE_UNIX, errno, "execvp(%s)", argv[0]);
             exit(1);
         }
         /* Not reached */
@@ -606,19 +606,19 @@ clixon_process_pid(clicon_handle h,
 
     pe = _proc_entry_list;
     do {
-    if (strcmp(pe->pe_name, name) == 0) {
-        isrunning = 0;
-        if (proc_op_run(pe->pe_pid, &isrunning) < 0)
-            goto done;
+        if (strcmp(pe->pe_name, name) == 0) {
+            isrunning = 0;
+            if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+                goto done;
 
-        if (!isrunning)
-            goto done;
+            if (!isrunning)
+                goto done;
 
-        *pid = pe->pe_pid;
-        retval = 0;
-        break;
-    }
-    pe = NEXTQ(process_entry_t *, pe);
+            *pid = pe->pe_pid;
+            retval = 0;
+            break;
+        }
+        pe = NEXTQ(process_entry_t *, pe);
     } while (pe != _proc_entry_list);
 
 done:
@@ -657,45 +657,45 @@ clixon_process_operation(clicon_handle  h,
         goto ok;
     if ((pe = _proc_entry_list) != NULL)
         do {
-        if (strcmp(pe->pe_name, name) == 0){
-            /* Call wrapper function that eg changes op1 based on config */
-            op = op0;
-            if (wrapit && pe->pe_callback != NULL)
-                if (pe->pe_callback(h, pe, &op) < 0)
-                    goto done;
-            if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
-                pe->pe_operation = op;
-                clicon_debug(1, "%s scheduling name: %s pid:%d op: %s", __FUNCTION__,
-                             name, pe->pe_pid,
-                             clicon_int2str(proc_operation_map, pe->pe_operation));
-                if (pe->pe_state==PROC_STATE_RUNNING &&
-                    (op == PROC_OP_STOP || op == PROC_OP_RESTART)){
-                    isrunning = 0;
-                    if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+            if (strcmp(pe->pe_name, name) == 0){
+                /* Call wrapper function that eg changes op1 based on config */
+                op = op0;
+                if (wrapit && pe->pe_callback != NULL)
+                    if (pe->pe_callback(h, pe, &op) < 0)
                         goto done;
-                    if (isrunning) {
-                        clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
-                                   pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
-                        kill(pe->pe_pid, SIGTERM);
-                        delay = 1;
+                if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
+                    pe->pe_operation = op;
+                    clicon_debug(1, "%s scheduling name: %s pid:%d op: %s", __FUNCTION__,
+                                 name, pe->pe_pid,
+                                 clicon_int2str(proc_operation_map, pe->pe_operation));
+                    if (pe->pe_state==PROC_STATE_RUNNING &&
+                        (op == PROC_OP_STOP || op == PROC_OP_RESTART)){
+                        isrunning = 0;
+                        if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+                            goto done;
+                        if (isrunning) {
+                            clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
+                                       pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
+                            kill(pe->pe_pid, SIGTERM);
+                            delay = 1;
+                        }
+                        clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
+                                     pe->pe_name, pe->pe_pid,
+                                     clicon_int2str(proc_state_map, pe->pe_state),
+                                     clicon_int2str(proc_operation_map, pe->pe_operation),
+                                     clicon_int2str(proc_state_map, PROC_STATE_EXITING)
+                                     );
+                        pe->pe_state = PROC_STATE_EXITING; /* Keep operation stop/restart */
                     }
-                    clicon_debug(1, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
-                                 pe->pe_name, pe->pe_pid,
-                                 clicon_int2str(proc_state_map, pe->pe_state),
-                                 clicon_int2str(proc_operation_map, pe->pe_operation),
-                                 clicon_int2str(proc_state_map, PROC_STATE_EXITING)
-                                 );
-                    pe->pe_state = PROC_STATE_EXITING; /* Keep operation stop/restart */
+                    sched++;/* start: immediate stop/restart: not immediate: wait timeout */
                 }
-                sched++;/* start: immediate stop/restart: not immediate: wait timeout */
+                else{
+                    clicon_debug(1, "%s name:%s op %s cancelled by wrap", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));
+                }
+                break;          /* hit break here */
             }
-            else{
-                clicon_debug(1, "%s name:%s op %s cancelled by wrap", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));             
-            }
-            break;          /* hit break here */
-        }
-        pe = NEXTQ(process_entry_t *, pe);
-    } while (pe != _proc_entry_list);
+            pe = NEXTQ(process_entry_t *, pe);
+        } while (pe != _proc_entry_list);
     if (sched && clixon_process_sched_register(h, delay) < 0)
         goto done;
  ok:
