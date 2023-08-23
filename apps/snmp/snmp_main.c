@@ -342,6 +342,8 @@ main(int    argc,
     char          *pidfile = NULL;
     struct stat    st;
     int            zap = 0;
+    int           config_dump = 0;
+    enum format_enum config_dump_format = FORMAT_XML;
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
