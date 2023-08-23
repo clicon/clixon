@@ -282,7 +282,7 @@ main(int    argc,
         xc = xvec[i];
         fprintf(stdout, "%d: ", i);
         clixon_xml2file(stdout, xc, 0, 0, NULL, fprintf, 0, 0);
-        fprintf(stdout, "\n");
+        fputc('\n', stdout);
         fflush(stdout);
     }
     retval = 0;
