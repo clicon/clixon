@@ -164,6 +164,12 @@ clixon_util_validate: clixon_util_validate.c $(BELIBDEPS) $(LIBDEPS)
 clixon_util_dispatcher: clixon_util_dispatcher.c $(BELIBDEPS) $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$@\" $(CFLAGS) $(LDFLAGS) $^ -l clixon_backend -o $@ $(LIBS) $(BELIBS)
 
+clixon_netconf_ssh_callhome: clixon_netconf_ssh_callhome.c $(LIBDEPS)
+	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$@\" $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
+
+clixon_netconf_ssh_callhome_client: clixon_netconf_ssh_callhome_client.c $(LIBDEPS)
+	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$@\" $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
+
 ifdef with_restconf
 clixon_util_stream: clixon_util_stream.c $(LIBDEPS)
 	$(CC) $(INCLUDES) $(CPPFLAGS) -D__PROGRAM__=\"$@\" $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -lcurl -o $@

@@ -76,6 +76,9 @@ Example sshd-config (-c option):n
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+#include <cligen/cligen_buf.h>
+#include <clixon/clixon_err.h>
+
 #define NETCONF_CH_SSH 4334
 #define UTIL_OPTS "hD:f:a:p:"
 
@@ -103,7 +106,8 @@ fdpass(int nfd)
 
     /* Avoid obvious stupidity */
     if (isatty(STDOUT_FILENO)){
-        perror("Cannot pass file descriptor to tty");
+        errno = EINVAL;
+        clicon_err(OE_UNIX, errno, "isatty");
         return -1;
     }
     memset(&mh, 0, sizeof(mh));
@@ -131,15 +135,15 @@ fdpass(int nfd)
         if (r == -1) {
             if (errno == EAGAIN || errno == EINTR) {
                 if (poll(&pfd, 1, -1) == -1){
-                    perror("poll");
+                    clicon_err(OE_UNIX, errno, "poll");
                     return -1;
                 }
                 continue;
             }
-            perror("sendmsg");
+            clicon_err(OE_UNIX, errno, "sendmsg");
             return -1;
         } else if (r != 1){
-            perror("sendmsg: unexpected return value");
+            clicon_err(OE_UNIX, errno, "sendmsg: unexpected value");
             return -1;
         }
         else
@@ -167,34 +171,34 @@ callhome_bind(struct sockaddr *sa,
     
     if (sock == NULL){
         errno = EINVAL;
-        perror("sock");
+        clicon_err(OE_UNIX, errno, "sock");
         goto done;
     }
     /* create inet socket */
     if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
-        perror("socket");
+        clicon_err(OE_UNIX, errno, "socket");
         goto done;
     }
     if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, sizeof(on)) == -1) {
-        perror("setsockopt SO_KEEPALIVE");
+        clicon_err(OE_UNIX, errno, "setsockopt SO_KEEPALIVE");
         goto done;
     }
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)) == -1) {
-        perror("setsockopt SO_REUSEADDR");
+        clicon_err(OE_UNIX, errno, "setsockopt SO_REUSEADDR");
         goto done;
     }
     /* only bind ipv6, otherwise it may bind to ipv4 as well which is strange but seems default */
     if (sa->sa_family == AF_INET6 &&
         setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
-        perror("setsockopt IPPROTO_IPV6");
+        clicon_err(OE_UNIX, errno, "setsockopt IPPROTO_IPV6");
         goto done;
     }
     if (bind(s, sa, sin_len) == -1) {
-        perror("bind");
+        clicon_err(OE_UNIX, errno, "bind");
         goto done;
     }
     if (listen(s, backlog) < 0){
-        perror("listen");
+        clicon_err(OE_UNIX, errno, "listen");
         goto done;
     }
     if (sock)
@@ -293,7 +297,7 @@ main(int    argc,
     /* Wait until connect */
     len = sizeof(from);
     if ((s = accept(ss, &from, &len)) < 0){
-        perror("accept");
+        clicon_err(OE_UNIX, errno, "accept");
         goto done;
     }
     /* s Pass the first connected socket using sendmsg(2) to stdout and exit. */
@@ -303,5 +307,4 @@ main(int    argc,
  done:
     return retval;
 }
-
 

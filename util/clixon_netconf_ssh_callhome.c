@@ -78,6 +78,9 @@ sudo clixon_netconf_ssh_callhome -a 127.0.0.1 -c /var/tmp/./test_netconf_ssh_cal
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+#include <cligen/cligen_buf.h>
+#include <clixon/clixon_err.h>
+
 #define NETCONF_CH_SSH 4334
 #define SSHDBIN_DEFAULT "/usr/sbin/sshd"
 #define UTIL_OPTS "hD:f:a:p:s:c:C:"
@@ -91,11 +94,11 @@ callhome_connect(struct sockaddr *sa,
     int s;
 
     if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
-        perror("socket");
+        clicon_err(OE_UNIX, errno, "socket");
         goto done;
     }
     if (connect(s, sa, sa_len) < 0){
-        perror("connect");
+        clicon_err(OE_UNIX, errno, "connect");
         close(s);
         goto done;
     }
@@ -155,28 +158,27 @@ ssh_server_exec(int   s,
 
     if (s < 0){
         errno = EINVAL;
-        perror("socket s");
+        clicon_err(OE_UNIX, errno, "socket s");
         goto done;
     }
     if (sshdbin == NULL){
         errno = EINVAL;
-        perror("sshdbin");
+        clicon_err(OE_UNIX, errno, "sshdbin");
         goto done;
     }
     if (sshdconfigfile == NULL){
         errno = EINVAL;
-        perror("sshdconfigfile");
         goto done;
     }
     if (clixonconfigfile == NULL){
         errno = EINVAL;
-        perror("clixonconfigfile");
+        clicon_err(OE_UNIX, errno, "clixonconfigfile");
         goto done;
     }
     /* Construct subsystem string */
     len = strlen(formatstr)+strlen(clixonconfigfile)+1;
     if ((optstr = malloc(len)) == NULL){
-        perror("malloc");
+        clicon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     snprintf(optstr, len, formatstr, clixonconfigfile);
@@ -185,7 +187,7 @@ ssh_server_exec(int   s,
     if (dbg)
         nr++;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
-        perror("calloc");
+        clicon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
 
@@ -204,21 +206,21 @@ ssh_server_exec(int   s,
     argv[i++] = NULL;
     assert(i==nr);
     if (setreuid(0, 0) < 0){
-        perror("setreuid");
+        clicon_err(OE_UNIX, errno, "setreuid");
         goto done;
     }
     close(0);
     close(1);
     if (dup2(s, STDIN_FILENO) < 0){
-        perror("dup2");
+        clicon_err(OE_UNIX, errno, "dup2(STDIN)");
         return -1;
     }
     if (dup2(s, STDOUT_FILENO) < 0){
-        perror("dup2");
+        clicon_err(OE_UNIX, errno, "dup2(STDOUT)");
         return -1;
     }
     if (execv(argv[0], argv) < 0) {
-        perror("execv");
+        clicon_err(OE_UNIX, errno, "execv %s", argv[0]);
         exit(1);
     }
     /* Should reach here */

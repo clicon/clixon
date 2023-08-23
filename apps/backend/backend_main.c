@@ -1029,13 +1029,13 @@ main(int    argc,
        daemonized errors OK. Before this stage, errors are logged on stderr 
        also */
     if (foreground==0){
+        clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO,
+                        logdst==CLICON_LOG_FILE?CLICON_LOG_FILE:CLICON_LOG_SYSLOG);
         /* Call plugin callbacks just before fork/daemonization */
         if (clixon_plugin_pre_daemon_all(h) < 0)
             goto done;
-        clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO,
-                        logdst==CLICON_LOG_FILE?CLICON_LOG_FILE:CLICON_LOG_SYSLOG);
         if (daemon(0, 0) < 0){
-            fprintf(stderr, "config: daemon");
+            clicon_err(OE_UNIX, errno, "daemon");
             exit(-1);
         }
     }

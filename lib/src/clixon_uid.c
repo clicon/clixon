@@ -173,6 +173,8 @@ drop_priv_temp(uid_t new_uid)
 #ifdef HAVE_GETRESUID
     int retval = -1;
     
+    clicon_debug(4, "%s uid:%u", __FUNCTION__, new_uid);
+
     /* XXX: implicit declaration of function 'setresuid' on travis */
     if (setresuid(-1, new_uid, geteuid()) < 0){
         clicon_err(OE_UNIX, errno, "setresuid");
@@ -202,6 +204,8 @@ drop_priv_perm(uid_t new_uid)
     uid_t ruid;
     uid_t euid;
     uid_t suid;
+
+    clicon_debug(4, "%s uid:%u", __FUNCTION__, new_uid);
 
     if (setresuid(new_uid, new_uid, new_uid) < 0){
         clicon_err(OE_UNIX, errno, "setresuid");
@@ -236,6 +240,8 @@ restore_priv(void)
     uid_t euid;
     uid_t suid;
     
+    clicon_debug(4, "%s", __FUNCTION__);
+
     if (getresuid(&ruid, &euid, &suid) < 0){
         clicon_err(OE_UNIX, errno, "setresuid");
         goto done;

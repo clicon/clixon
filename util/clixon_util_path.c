@@ -186,14 +186,14 @@ main(int    argc,
         /* First read api-path from file */
         len = 1024; /* any number is fine */
         if ((buf = malloc(len)) == NULL){
-            perror("pt_file malloc");
+            clicon_err(OE_UNIX, errno, "malloc");
             return -1;
         }
         memset(buf, 0, len);
         i = 0;
         while (1){ 
             if ((ret = read(0, &c, 1)) < 0){
-                perror("read");
+                clicon_err(OE_UNIX, errno, "read");
                 goto done;
             }
             if (ret == 0)
@@ -202,7 +202,7 @@ main(int    argc,
                 break;
             if (len==i){
                 if ((buf = realloc(buf, 2*len)) == NULL){
-                    fprintf(stderr, "%s: realloc: %s\n", __FUNCTION__, strerror(errno));
+                    clicon_err(OE_UNIX, errno, "realloc");
                     return -1;
                 }           
                 memset(buf+len, 0, len);
@@ -218,7 +218,7 @@ main(int    argc,
      * XXX Note 0 above, stdin here
      */
     if (clixon_xml_parse_file(fp, YB_NONE, NULL, &x, NULL) < 0){
-        fprintf(stderr, "Error: parsing: %s\n", clicon_err_reason);
+        clicon_err(OE_XML, 0, "Error parsing: %s", clicon_err_reason);
         return -1;
     }
 
@@ -228,13 +228,13 @@ main(int    argc,
         if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            if ((cb = cbuf_new()) ==NULL){
+            if ((cb = cbuf_new()) == NULL){
                 clicon_err(OE_XML, errno, "cbuf_new");
                 goto done;
             }
             if (netconf_err2cb(xerr, cb) < 0)
                 goto done;
-            fprintf(stderr, "xml validation error: %s\n", cbuf_get(cb));
+            clicon_err(OE_XML, 0, "xml validation error: %s", cbuf_get(cb));
             goto done;
         }
         /* sort */
@@ -256,7 +256,7 @@ main(int    argc,
             }
             if (netconf_err2cb(xerr, cb) < 0)
                 goto done;
-            fprintf(stderr, "xml validation error: %s\n", cbuf_get(cb));
+            clicon_err(OE_XML, 0, "xml validation error: %s", cbuf_get(cb));
             goto done;
         }
 
@@ -273,7 +273,7 @@ main(int    argc,
                 goto done;
         }
         if (ret == 0){
-            fprintf(stderr, "Fail %d %s\n", clicon_errno, clicon_err_reason);
+            clicon_err(OE_XML, clicon_errno, "Failed: %s", clicon_err_reason);
             goto done;
         }
     }
@@ -282,7 +282,7 @@ main(int    argc,
         xc = xvec[i];
         fprintf(stdout, "%d: ", i);
         clixon_xml2file(stdout, xc, 0, 0, NULL, fprintf, 0, 0);
-        fprintf(stdout, "\n");
+        fputc('\n', stdout);
         fflush(stdout);
     }
     retval = 0;

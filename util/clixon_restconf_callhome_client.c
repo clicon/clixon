@@ -153,34 +153,34 @@ callhome_bind(struct sockaddr *sa,
     
     if (sock == NULL){
         errno = EINVAL;
-        perror("sock");
+        clicon_err(OE_UNIX, errno, "sock");
         goto done;
     }
     /* create inet socket */
     if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
-        perror("socket");
+        clicon_err(OE_UNIX, errno, "socket");
         goto done;
     }
     if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, sizeof(on)) == -1) {
-        perror("setsockopt SO_KEEPALIVE");
+        clicon_err(OE_UNIX, errno, "setsockopt SO_KEEPALIVE");
         goto done;
     }
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)) == -1) {
-        perror("setsockopt SO_REUSEADDR");
+        clicon_err(OE_UNIX, errno, "setsockopt SO_REUSEADDR");
         goto done;
     }
     /* only bind ipv6, otherwise it may bind to ipv4 as well which is strange but seems default */
     if (sa->sa_family == AF_INET6 &&
         setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
-        perror("setsockopt IPPROTO_IPV6");
+        clicon_err(OE_UNIX, errno, "setsockopt IPPROTO_IPV6");
         goto done;
     }
     if (bind(s, sa, sin_len) == -1) {
-        perror("bind");
+        clicon_err(OE_UNIX, errno, "bind");
         goto done;
     }
     if (listen(s, backlog) < 0){
-        perror("listen");
+        clicon_err(OE_UNIX, errno, "listen");
         goto done;
     }
     if (sock)
@@ -363,7 +363,7 @@ tls_ssl_init_connect(SSL_CTX *ctx,
     
     /* create new SSL connection state */
     if ((ssl = SSL_new(ctx)) == NULL){
-        clicon_err(OE_SSL, 0, "SSL_new.");
+        clicon_err(OE_SSL, 0, "SSL_new");
         goto done;
     }
     SSL_set_fd(ssl, s);    /* attach the socket descriptor */
@@ -372,7 +372,7 @@ tls_ssl_init_connect(SSL_CTX *ctx,
     protos[0] = 8;
     strncpy((char*)&protos[1], "http/1.1",  9);
     if ((retval = SSL_set_alpn_protos(ssl, protos, 9)) != 0){
-        clicon_err(OE_SSL, retval, "SSL_set_alpn_protos.");
+        clicon_err(OE_SSL, retval, "SSL_set_alpn_protos");
         goto done;
     }
 #if 0
@@ -394,11 +394,9 @@ tls_ssl_init_connect(SSL_CTX *ctx,
         switch (sslerr){
         case SSL_ERROR_SSL:                  /* 1 */
             goto done;
-            break;
         default:
             clicon_err(OE_XML, errno, "SSL_connect");
             goto done;
-            break;
         }
     }
     /* check certificate verification result */
@@ -407,7 +405,7 @@ tls_ssl_init_connect(SSL_CTX *ctx,
     case X509_V_OK:
         break;
     default:
-        clicon_err(OE_SSL, errno, "verify problems: %d", verify);
+        clicon_err(OE_SSL, errno, "SSL_get_verify_result: %d", verify);
         goto done;
     }
     *sslp = ssl;
@@ -468,7 +466,7 @@ tls_server_accept_cb(int   ss,
     clicon_debug(1, "%s", __FUNCTION__);
     len = sizeof(from);
     if ((s = accept(ss, &from, &len)) < 0){
-        perror("accept");
+        clicon_err(OE_UNIX, errno, "accept");
         goto done;
     }
     clicon_debug(1, "accepted");
