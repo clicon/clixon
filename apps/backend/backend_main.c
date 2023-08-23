@@ -614,9 +614,7 @@ main(int    argc,
         case 'l' :
             break; /* see above */
         case 'C': /* Explicitly dump configuration */
-            if (!strlen(optarg))
-                usage(h, argv[0]);
-            if ((config_dump_format = format_str2int(optarg)) < 0){
+            if ((config_dump_format = format_str2int(optarg)) ==  (enum format_enum)-1){
                 fprintf(stderr, "Unrecognized dump format: %s(expected: xml|json|text)\n", argv[0]);
                 usage(h, argv[0]);
             }
