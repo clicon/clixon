@@ -10,6 +10,7 @@
 # Two options are used for testing:
 # CLICON_MODULE_SET_ID is a single var (replaced)
 # CLICON_FEATURE is a list var (append)
+# Check subconfigs, ie /restconf/server-cert-path used since it does not have default
 #
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -29,13 +30,14 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
-  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_CLISPEC_DIR>$dir</CLICON_CLISPEC_DIR>
   <CLICON_MODULE_SET_ID>1</CLICON_MODULE_SET_ID>
   <CLICON_FEATURE>test1</CLICON_FEATURE>
 </clixon-config>
 EOF
+
+# dummy
+touch  $dir/spec.cli
 
 new "Start without configdir as baseline"
 cat <<EOF > $cfile1
@@ -45,7 +47,7 @@ cat <<EOF > $cfile1
 </clixon-config>
 EOF
 
-expectpart "$($clixon_cli -1 -f $cfg show options)" 0 'CLICON_MODULE_SET_ID: "1"' 'CLICON_FEATURE: "test1"' --not-- 'CLICON_FEATURE: "test2"'
+expectpart "$($clixon_cli -1 -f $cfg -C xml)" 0 "<CLICON_MODULE_SET_ID>1</CLICON_MODULE_SET_ID>" "<CLICON_FEATURE>test1</CLICON_FEATURE>" --not-- "<CLICON_FEATURE>test2</CLICON_FEATURE>"
 
 new "Start with wrong configdir"
 cat <<EOF > $cfg
@@ -63,7 +65,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-expectpart "$($clixon_cli -1 -f $cfg -l o show options)" 255 "UNIX error: CLICON_CONFIGDIR:" "opendir: No such file or directory"
+expectpart "$($clixon_cli -1 -f $cfg -l o -C xml)" 255 "UNIX error: CLICON_CONFIGDIR:" "opendir: No such file or directory"
 
 new "Start with wrong configdir -E override"
 rm -f $cfile1
@@ -82,7 +84,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-expectpart "$($clixon_cli -1 -f $cfg -E $cdir show options)" 0 'CLICON_MODULE_SET_ID: "1"' 'CLICON_FEATURE: "test1"' --not-- 'CLICON_FEATURE: "test2"'
+expectpart "$($clixon_cli -1 -f $cfg -E $cdir -C xml)" 0 "<CLICON_MODULE_SET_ID>1</CLICON_MODULE_SET_ID>" "<CLICON_FEATURE>test1</CLICON_FEATURE>" --not-- "<CLICON_FEATURE>test2</CLICON_FEATURE>"
 
 new "Start with empty configdir"
 cat <<EOF > $cfg
@@ -97,23 +99,32 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_MODULE_SET_ID>1</CLICON_MODULE_SET_ID>
   <CLICON_FEATURE>test1</CLICON_FEATURE>
+  <restconf>
+     <server-cert-path>foo</server-cert-path>
+  </restconf>
 </clixon-config>
 EOF
 
-expectpart "$($clixon_cli -1 -f $cfg -l o show options)" 0 'CLICON_MODULE_SET_ID: "1"' 'CLICON_FEATURE: "test1"' --not-- 'CLICON_FEATURE: "test2"'
+expectpart "$($clixon_cli -1 -f $cfg -C xml)" 0 "<CLICON_MODULE_SET_ID>1</CLICON_MODULE_SET_ID>" "<CLICON_FEATURE>test1</CLICON_FEATURE>" --not-- "<CLICON_FEATURE>test2</CLICON_FEATURE>"
+
+new "Check subconfig"
+expectpart "$($clixon_cli -1 -f $cfg -C xml)" 0 "<restconf>" "<server-cert-path>foo</server-cert-path>"
 
 new "Start with 1 extra configfile"
 cat <<EOF > $cfile1
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_MODULE_SET_ID>2</CLICON_MODULE_SET_ID>
   <CLICON_FEATURE>test2</CLICON_FEATURE>
-  <autocli>
-     <module-default>false</module-default>
-  </autocli>
+  <restconf>
+     <server-cert-path>bar</server-cert-path>
+  </restconf>
 </clixon-config>
 EOF
 
-expectpart "$($clixon_cli -1 -f $cfg -l o show options)" 0 'CLICON_MODULE_SET_ID: "2"' 'CLICON_FEATURE: "test1"' 'CLICON_FEATURE: "test2"'
+expectpart "$($clixon_cli -1 -f $cfg -C xml)" 0 "<CLICON_MODULE_SET_ID>2</CLICON_MODULE_SET_ID>" "<CLICON_FEATURE>test1</CLICON_FEATURE>" "<CLICON_FEATURE>test2</CLICON_FEATURE>"
+
+new "Check subconfig override"
+expectpart "$($clixon_cli -1 -f $cfg -C xml)" 0 "<restconf>" "<server-cert-path>bar</server-cert-path>"
 
 new "Start with 2 extra configfiles"
 cat <<EOF > $cfile2
@@ -123,10 +134,10 @@ cat <<EOF > $cfile2
 </clixon-config>
 EOF
 
-expectpart "$($clixon_cli -1 -f $cfg -l o show options)" 0 'CLICON_MODULE_SET_ID: "3"' 'CLICON_FEATURE: "test1"' 'CLICON_FEATURE: "test2"' 'CLICON_FEATURE: "test3"'
+expectpart "$($clixon_cli -1 -f $cfg -C xml)" 0 "<CLICON_MODULE_SET_ID>3</CLICON_MODULE_SET_ID>" "<CLICON_FEATURE>test1</CLICON_FEATURE>" "<CLICON_FEATURE>test2</CLICON_FEATURE>" "<CLICON_FEATURE>test3</CLICON_FEATURE>"
 
-new "Start with 2 extra configfiles + command-line"
-expectpart "$($clixon_cli -1 -f $cfg -o CLICON_MODULE_SET_ID=4 -o CLICON_FEATURE=test4 -l o show options)" 0 'CLICON_MODULE_SET_ID: "4"' 'CLICON_FEATURE: "test1"' 'CLICON_FEATURE: "test2"' 'CLICON_FEATURE: "test3"' 'CLICON_FEATURE: "test4"'
+new "Start with 2 extra configfiles + command-line -C xml"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_MODULE_SET_ID=4 -o CLICON_FEATURE=test4 -C xml)" 0 "<CLICON_MODULE_SET_ID>4</CLICON_MODULE_SET_ID>" "<CLICON_FEATURE>test1</CLICON_FEATURE>" "<CLICON_FEATURE>test2</CLICON_FEATURE>" "<CLICON_FEATURE>test3</CLICON_FEATURE>" "<CLICON_FEATURE>test4</CLICON_FEATURE>" 
 
 rm -rf $dir
 

@@ -879,7 +879,7 @@ main(int    argc,
 
     /* Explicit dump of config (also debug dump below). */
     if (config_dump){
-        if (clicon_option_dump1(h, stdout, config_dump_format) < 0)
+        if (clicon_option_dump1(h, stdout, config_dump_format, 1) < 0)
             goto done;
         goto ok;
     }

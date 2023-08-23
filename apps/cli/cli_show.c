@@ -1138,6 +1138,8 @@ cli_show_auto_mode(clicon_handle h,
 }
 
 /*! Show clixon configuration options as loaded
+ *
+'* @see clicon_option_dump clicon_option_dump1
  */
 int 
 cli_show_options(clicon_handle h,
