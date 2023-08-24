@@ -374,8 +374,7 @@ plugin_load_one(clicon_handle     h,
     if ((p=strrchr(name, '.')) != NULL)
         *p = '\0';
     /* Copy name to struct */
-    snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s",
-             (int)strlen(name), name);
+    snprintf(cp->cp_name, sizeof(cp->cp_name), "%s", name);
     cp->cp_api = *api;
     if (cp){
         *cpp = cp;
@@ -481,7 +480,7 @@ clixon_pseudo_plugin(clicon_handle     h,
         goto done;
     }
     memset(cp, 0, sizeof(struct clixon_plugin));
-    snprintf(cp->cp_name, sizeof(cp->cp_name), "%*s", (int)strlen(name), name);
+    snprintf(cp->cp_name, sizeof(cp->cp_name), "%s", name);
     ADDQ(cp, ms->ms_plugin_list);
     *cpp = cp;
     cp = NULL;

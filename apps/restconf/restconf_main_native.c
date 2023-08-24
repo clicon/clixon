@@ -301,23 +301,10 @@ restconf_verify_certs(int             preverify_ok,
 static int
 alpn_proto_dump(const char *label,
                 const char *inp,
-                int         len)
+                unsigned    len)
 {
-
-    int   retval = -1;
-    char *str = NULL;
-    
-    if ((str = malloc(len+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
-        goto done;
-    }
-    strncpy(str, inp, len);
-    str[len] = '\0';
-    clicon_debug(1, "%s %s", label, str);
-    retval = 0;
- done:
-    free(str);
-    return retval;
+    clicon_debug(1, "%s %.*s", label, (int)len, inp);
+    return 0;
 }
 
 /*! Application-layer Protocol Negotiation (alpn) callback
@@ -533,7 +520,6 @@ restconf_checkcert_file(cxobj      *xrestconf,
 static int
 restconf_accept_client(int   fd,
                        void *arg)
-
 {
     int                     retval = -1;
     restconf_socket        *rsock;
@@ -1315,7 +1301,7 @@ main(int    argc,
     if ((ret = restconf_clixon_init(h, inline_config, &xrestconf)) < 0)
         goto done;
     if (ret == 0){ /* restconf disabled */
-        clicon_debug(1, "restconf configuration not found or disabled");
+        clicon_log(LOG_INFO, "restconf configuration not found or disabled");
         retval = 0;
         goto done;
     }
