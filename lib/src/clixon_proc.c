@@ -190,13 +190,26 @@ clixon_proc_socket(char **argv,
     sigfn_t  oldhandler = NULL;
     sigset_t oset;
     int      sig = 0;
+    unsigned argc;
+    char    *flattened;
 
     if (argv == NULL){
         clicon_err(OE_UNIX, EINVAL, "argv is NULL");
         goto done;
     }
+    if (argv[0] == NULL){
+        clicon_err(OE_UNIX, EINVAL, "argv[0] is NULL");
+	goto done;
+    }
 
-    clicon_debug(1, "%s %s", __FUNCTION__, argv[0]);
+    for (argc = 0; argv[argc] != NULL; ++argc)
+         ;
+    if ((flattened = clicon_strjoin(argc, argv, "', '")) == NULL){
+        clicon_err(OE_UNIX, ENOMEM, "clicon_strjoin");
+        goto done;
+    }
+    clicon_log(LOG_INFO, "%s '%s'", __FUNCTION__, flattened);
+    free(flattened);
 
     if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
         clicon_err(OE_UNIX, errno, "socketpair");
@@ -297,19 +310,28 @@ clixon_proc_background(char       **argv,
     sigset_t      oset;
     struct rlimit rlim = {0, };
     struct stat   fstat;
+    char         *flattened;
+    unsigned      argc;
 
     clicon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (argv == NULL){
         clicon_err(OE_UNIX, EINVAL, "argv is NULL");
         goto quit;
     }
-    if (clicon_debug_get()){
-        i = 0;
-        while (argv[i]){
-            clicon_debug(1, "%s argv[%d]:%s", __FUNCTION__, i, argv[i]);
-            i++;
-        }
+    if (argv[0] == NULL){
+        clicon_err(OE_UNIX, EINVAL, "argv[0] is NULL");
+	goto quit;
     }
+
+    for (argc = 0; argv[argc] != NULL; ++argc)
+         ;
+    if ((flattened = clicon_strjoin(argc, argv, "', '")) == NULL){
+        clicon_err(OE_UNIX, ENOMEM, "clicon_strjoin");
+        goto quit;
+    }
+    clicon_log(LOG_INFO, "%s '%s'", __FUNCTION__, flattened);
+    free(flattened);
+
     /* Sanity check: program exists */
     if (stat(argv[0], &fstat) < 0) {
         clicon_err(OE_FATAL, errno, "%s", argv[0]);
