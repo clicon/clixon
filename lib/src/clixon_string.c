@@ -178,12 +178,9 @@ clixon_string_del_join(char *str1,
         clicon_err(OE_UNIX, errno, "malloc");
         return NULL;
     }
-    if (str1){
-        snprintf(str, len, "%s%s%s", str1, del, str2);
+    snprintf(str, len, "%s%s%s", (str1 ? str1 : ""), del, str2);
+    if (str1)
         free(str1);
-    }
-    else
-        snprintf(str, len, "%s%s", del, str2);
     return str;
 }
 
