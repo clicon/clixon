@@ -160,7 +160,9 @@ wait_backend
 
 xpath="/es:members/es:member[es:member-id=\'bob\']/es:favorites/es:uint64-numbers"
 new "cli show pagination config using expect"
-expect ./test_pagination_expect.exp "$cfg" "$xpath" "uint64-numbers 18" "uint64-numbers 19"
+sudo="sudo -g ${CLICON_USER}"		## cheat
+clixon_cli_="${clixon_cli##$sudo }"
+clixon_cli="$clixon_cli_" $sudo --preserve-env=clixon_cli expect ./test_pagination_expect.exp "$cfg" "$xpath" "uint64-numbers 18" "uint64-numbers 19"
 if [ $? -ne 0 ]; then
     err1 "Failed: CLI show paginate config scroll using expect"
 fi
