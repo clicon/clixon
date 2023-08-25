@@ -14,6 +14,9 @@ set stty_init "rows 20 cols 128"
 
 send_user "\nTest State paginate cli scrolling\n"
 
+# grab $clixon_cli from environment
+set clixon_cli $::env(clixon_cli)
+
 set cfg [lindex $argv 0]
 set xpath [lindex $argv 1]
 set line1 [lindex $argv 2]
@@ -21,7 +24,7 @@ set line2 [lindex $argv 3]
 
 set timeout 15
 
-spawn clixon_cli -f $cfg
+spawn $clixon_cli -f $cfg
 
 send "show pagination xpath $xpath cli\n"
 

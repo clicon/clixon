@@ -186,7 +186,7 @@ BUSER=clicon
 
 : ${clixon_cli:=clixon_cli}
 
-: ${clixon_netconf:=$(which clixon_netconf)}
+: ${clixon_netconf:=clixon_netconf}
 
 : ${clixon_restconf:=clixon_restconf}
 
@@ -570,7 +570,7 @@ function wait_backend(){
     while [[ $reply != *"<rpc-reply"* ]]; do
 #       echo "sleep $DEMSLEEP"
         sleep $DEMSLEEP
-        reply=$(echo "<rpc $ÐEFAULTSNS $LIBNS><ping/></rpc>]]>]]>" | clixon_netconf -qef $cfg 2> /dev/null)
+        reply=$(echo "<rpc $ÐEFAULTSNS $LIBNS><ping/></rpc>]]>]]>" | $clixon_netconf -qef $cfg 2> /dev/null)
 #       echo "reply:$reply"
         let i++;
 #       echo "wait_backend  $i"
