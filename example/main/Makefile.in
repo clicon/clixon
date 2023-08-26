@@ -169,6 +169,8 @@ distclean: clean
 	rm -f Makefile *~ .depend
 
 install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml
+	groupadd $(CLICON_GROUP)
+	useradd -M -s /usr/sbin/nologin -g $(CLICON_GROUP) $(CLICON_USER)
 	install -d -m 0755 $(DESTDIR)$(sysconfdir)
 	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)
 #	install -m 0644 $(APPNAME).xml $(DESTDIR)$(CLIXON_DEFAULT_CONFIG)
@@ -195,6 +197,8 @@ uninstall:
 	rm -rf $(DESTDIR)$(datarootdir)/$(APPNAME)
 	rm -rf $(DESTDIR)$(localstatedir)/$(APPNAME)
 	rm -rf $(DESTDIR)$(libdir)/$(APPNAME)
+	-userdel $(CLICON_USER)
+	-groupdel $(CLICON_GROUP)
 
 install-include:	
 

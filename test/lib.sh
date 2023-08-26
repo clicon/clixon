@@ -192,9 +192,22 @@ BUSER=clicon
 
 : ${clixon_backend:=clixon_backend}
 
-: ${clixon_snmp:=$(type -p clixon_snmp)}
+: ${clixon_util_socket:=clixon_util_socket}
+
+: ${clixon_snmp:=clixon_snmp}
 
 : ${clixon_snmp_pidfile:="/var/tmp/clixon_snmp.pid"}
+
+: ${_ALREADY_HERE:=0}
+
+if [ -n "$CLICON_GROUP" ] && [ $_ALREADY_HERE -eq 0 ]; then
+    clixon_cli="sudo -g ${CLICON_GROUP} $clixon_cli"
+    clixon_netconf="sudo -g ${CLICON_GROUP} $clixon_netconf"
+    clixon_restconf="sudo -g ${CLICON_GROUP} $clixon_restconf"
+    clixon_snmp="sudo -g ${CLICON_GROUP} $clixon_snmp"
+    clixon_util_socket="sudo -g ${CLICON_GROUP} $clixon_util_socket"
+fi
+_ALREADY_HERE=1
 
 # Source the site-specific definitions for test script variables, if site.sh
 # exists. The variables defined in site.sh override any variables of the same
@@ -214,7 +227,7 @@ if [ -f ./site.sh ]; then
 fi
 
 # Standard IETF RFC yang files. 
-if [ ! -z ${YANG_STANDARD_DIR} ]; then
+if [ -n "${YANG_STANDARD_DIR}" ]; then
     : ${IETFRFC=$YANG_STANDARD_DIR/ietf/RFC}
 fi
 
@@ -415,8 +428,7 @@ EOF
 # to reset to me
 if [ ! -G $dir ]; then 
     u=$(whoami)
-    sudo chown $u $dir
-    sudo chgrp $u $dir
+    sudo chown $u:$u $dir
 fi
 
 # If you bring your own backend BE=0 (it is already started), the backend may
@@ -451,7 +463,7 @@ function err(){
   exit -1 #$testnr
 }
 
-# Dont print diffs
+# Don't print diffs
 function err1(){
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
@@ -563,7 +575,7 @@ function stop_backend(){
 # Wait for restconf to stop sending  502 Bad Gateway
 function wait_backend(){
     freq=$(chunked_framing "<rpc $DEFAULTNS><ping $LIBNS/></rpc>")
-    reply=$(echo "$freq" | $clixon_netconf -q1ef $cfg) 
+    reply=$(echo "$freq" | $clixon_netconf -q1ef $cfg)
 #    freply=$(chunked_framing "<rpc-reply $DEFAULTNS><ok/></rpc-reply>")
 #    chunked_equal "$reply" "$freply"
     let i=0;
@@ -583,9 +595,10 @@ function wait_backend(){
 # Start restconf daemon
 # @see wait_restconf
 function start_restconf(){
+    local clixon_restconf_="${clixon_restconf#sudo -g * }"
     # Start in background 
-#    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
-    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* </dev/null &>/dev/null &
+#    echo "sudo -u $wwwstartuser $clixon_restconf_ $RCLOG -D $DBG $*"
+    sudo -u $wwwstartuser $clixon_restconf_ $RCLOG -D $DBG $* </dev/null &>/dev/null &
     if [ $? -ne 0 ]; then
         err1 "expected 0" "$?"
     fi
@@ -712,7 +725,6 @@ function endtest()
     unset clixon_util_json
     unset clixon_util_xml
     unset clixon_util_path
-    unset clixon_util_socket
     unset clixon_util_stream
     unset clixon_util_xpath
     unset clixon_util_xml
@@ -1245,7 +1257,7 @@ challengePassword      = test
 EOF
 
     # Generate CA cert
-    openssl req -new -x509 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err "Generate CA cert"
+    openssl req -batch -new -x509 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err "Generate CA cert"
 
     rm -rf $tmpdir
 }
@@ -1291,7 +1303,7 @@ EOF
     openssl genpkey -algorithm RSA -out $srvkey  || err "Generate server key"
 
     # Generate CSR (signing request)
-    openssl req -new -config $tmpdir/srv.cnf -key $srvkey -out $tmpdir/srv_csr.pem || err "Generate signing request"
+    openssl req -batch -new -config $tmpdir/srv.cnf -key $srvkey -out $tmpdir/srv_csr.pem || err "Generate signing request"
 
     # Sign server cert by CA
     openssl x509 -req -extfile $tmpdir/srv.cnf -days 1 -passin "pass:password" -in $tmpdir/srv_csr.pem -CA $cacert -CAkey $cakey -CAcreateserial -out $srvcert || err "Sign server cert"
