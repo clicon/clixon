@@ -220,7 +220,7 @@ new "test params: -s init -f $cfg"
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
-    sudo clixon_backend -zf $cfg
+    sudo $clixon_backend -zf $cfg
     if [ $? -ne 0 ]; then
         err
     fi

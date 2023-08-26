@@ -41,6 +41,9 @@ RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
 # For netsnmp
 RUN apk add --update net-snmp net-snmp-dev
 
+# For groupadd/groupdel
+RUN apk add --update shadow
+
 # Checkout standard YANG models for tests (note >1G for full repo)
 RUN mkdir -p /usr/local/share/yang
 WORKDIR /usr/local/share/yang

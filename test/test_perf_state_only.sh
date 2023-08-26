@@ -4,7 +4,7 @@
 # Restconf/Netconf/CLI
 # Also added two layers a/b to get extra depth (som caching can break)
 # Alternative, run as:
-# sudo clixon_backend -Fs init -f /var/tmp/./test_perf_state_only.sh/config.xml -- -siS /home/olof/tmp/state_100K.xml
+# sudo $clixon_backend -Fs init -f /var/tmp/./test_perf_state_only.sh/config.xml -- -siS /home/olof/tmp/state_100K.xml
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

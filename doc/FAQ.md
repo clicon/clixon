@@ -111,13 +111,13 @@ Add yourself and www-data, if you intend to use restconf.
 Using useradd and usermod:
 ```
   sudo useradd clicon # 
-  sudo usermod -a -G clicon <user>
+  sudo usermod -a -G clicon $(whoami)
   sudo usermod -a -G clicon www-data
 ```
 Using adduser (eg on busybox):
 ```
   sudo adduser -D -H clicon
-  sudo adduser <user> clicon
+  sudo adduser $(whoami) clicon
 ```
 (you may have to restart shell)
 
@@ -289,7 +289,7 @@ Clixon by default finds its configuration file at `/usr/local/etc/clixon.xml`. H
 
 Yes, when you start a clixon program, you can supply the `-o` option to modify the configuration specified in the configuration file. Options that are leafs are overriden, whereas options that are leaf-lists are added to.
 
-Example, add the "usr/local/share/ietf" directory to the list of directories where yang files are searched for:
+Example, add the "/usr/local/share/ietf" directory to the list of directories where yang files are searched for:
 ```
   clixon_cli -o CLICON_YANG_DIR=/usr/local/share/ietf
 ```
