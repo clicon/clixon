@@ -5,9 +5,6 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# Raw unit tester of backend unix socket
-: ${clixon_util_socket:=clixon_util_socket}
-
 #
 # client <---> backend
 #          ^ is unix, ipv4, ipv6 socket

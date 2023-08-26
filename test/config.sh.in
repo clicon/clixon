@@ -67,6 +67,9 @@ TOP_SRCDIR=@top_srcdir@
 # Clixon version
 CLIXON_VERSION=@CLIXON_VERSION@
 
+CLICON_USER=@CLICON_USER@
+CLICON_GROUP=@CLICON_GROUP@
+
 # Which XML symbol to add to top datastore config level
 # see also DATASTORE_TOP_SYMBOL
 DATASTORE_TOP="config"

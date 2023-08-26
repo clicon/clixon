@@ -164,7 +164,7 @@ if [ -n "$(type expect 2> /dev/null)" ]; then
     testrun_start "/es:audit-logs/es:audit-log"
     
     new "CLI scroll test using expect"
-    sudo="sudo -g ${CLICON_USER}"		## cheat
+    sudo="sudo -g ${CLICON_GROUP}"		## cheat
     clixon_cli_="${clixon_cli##$sudo }"
     clixon_cli="$clixon_cli_" $sudo --preserve-env=clixon_cli expect ./test_pagination_expect.exp "$cfg" "$xpath" bob3 bob4
     if [ $? -ne 0 ]; then
