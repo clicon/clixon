@@ -31,8 +31,11 @@
 
   ***** END LICENSE BLOCK *****
  * 
+ * Example cli pipe output functions.
  * @note Paths to bins, such as GREP_BIN, are detected in configure.ac
  * @note These functions are normally run in a forked sub-process as spawned in cligen_eval()
+ * A developer should probably revise these functions, since they are primarily intended for testing
+ * of the pipe functionality
  */
 
 #ifdef HAVE_CONFIG_H
@@ -123,6 +126,7 @@ pipe_arg_fn(clicon_handle h,
  * @param[in]  h     Clicon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
  * @param[in]  argv  String vector of options. Format: <option> <value>
+ * @note  Any vertical bar (|] in the patterns field is quoted for OR function
  */
 int
 pipe_grep_fn(clicon_handle h,
@@ -130,11 +134,14 @@ pipe_grep_fn(clicon_handle h,
              cvec         *argv)
 {
     int     retval = -1;
-    char   *value = NULL;
+    char   *pattern = NULL;
     cg_var *cv;
     char   *str;
     char   *option = NULL;
     char   *argname = NULL;
+    cbuf   *cb = NULL;
+    int     i;
+    char    c;
 
     if (cvec_len(argv) != 2){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option> <argname>", cvec_len(argv));
@@ -148,14 +155,28 @@ pipe_grep_fn(clicon_handle h,
         (str = cv_string_get(cv)) != NULL &&
         strlen(str))
         argname = str;
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
     if (argname && strlen(argname)){
         if ((cv = cvec_find_var(cvv, argname)) != NULL &&
             (str = cv_string_get(cv)) != NULL &&
             strlen(str))
-            value = str;
+            pattern = str;
     }
-    retval = pipe_arg_fn(h, GREP_BIN, option, value);
+    /* quote | in pattern into cbuf */
+    for (i=0; i<strlen(pattern); i++){
+        c = pattern[i];
+        if (c == '|')
+            cprintf(cb, "\\|");
+        else
+            cprintf(cb, "%c", c);
+    }
+    retval = pipe_arg_fn(h, GREP_BIN, option, cbuf_get(cb));
  done:
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }
 

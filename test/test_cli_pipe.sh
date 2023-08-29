@@ -176,7 +176,7 @@ new "$mode show explicit | grep par"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| grep par)" 0 "<parameter>" "</parameter>" --not-- "table" "value"
 
 new "$mode show explicit | grep table|name"
-expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| grep 'table\\\|name')" 0 "<table xmlns=\"urn:example:clixon\">" "<name>x</name>" "<name>y</name>" "</table>" --not-- "parameter" "value"
+expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| grep 'table\|name')" 0 "<table xmlns=\"urn:example:clixon\">" "<name>x</name>" "<name>y</name>" "</table>" --not-- "parameter" "value"
 
 new "$mode show explicit | tail 5"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| tail 5)" 0 "<name>y</name>" --not-- "<name>x</name>"

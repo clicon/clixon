@@ -51,6 +51,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* Example cli pipe grep command quotes vertical bar for OR function
 * New command-line option for dumping configuration options for all clixon applications after load
   * Syntax is `-C <format>`
   * Example: `clixon_backend -1C json`
