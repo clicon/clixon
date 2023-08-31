@@ -115,8 +115,8 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
  * @param[in]  options 
  * @param[in]  fraction_digits
  * @param[out] cb     The string where the result format string is inserted.
- * @retval     1      Hide, dont show helptext etc
- * @retval     0      OK
+ * @retval     1      OK
+ * @retval     0      Hide, dont show helptext etc
  * @retval    -1      Error
  * @see expand_dbvar  This is where the expand string is used
  * @note XXX only fraction_digits handled,should also have mincv, maxcv, pattern
@@ -140,10 +140,8 @@ cli_expand_var_generate(clicon_handle h,
         cv = yang_cv_get(yspec);
     if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
         goto done;
-    if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL) {
-        retval = 1;
-        goto done;
-    }
+    if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL) 
+        goto hide;
     if (yang2api_path_fmt(ys, 1, &api_path_fmt) < 0)
         goto done;
     if (pre)
@@ -158,11 +156,14 @@ cli_expand_var_generate(clicon_handle h,
         cprintf(cb, ",\"%s%s\"", MTPOINT_PREFIX, cv_string_get(cv));
     }
     cprintf(cb, ")>");
-    retval = 0;
+    retval = 1;
  done:
     if (api_path_fmt)
         free(api_path_fmt);
     return retval;
+ hide:
+    retval = 0;
+    goto done;
 }
 
 /*! Create callback with api_path format string as argument
@@ -209,6 +210,36 @@ yang2cli_helptext(cbuf *cb,
     if (helptext)
         cprintf(cb, "(\"%s\")", helptext);
     return 0;
+}
+
+/*! Print yang argument to cbuf, or aliased via extension
+ *
+ * This is only implemented for leafs.
+ * the reason it does not work for non-terminals is somewhat complex:
+ * If alias, the CLIgen command is instead given as a "keyword" variable: <orig:string keyword:alias>
+ * This in turn is treated as a single-value choice in cligen_parse.y
+ * But then in cli_dbxml, choice is treated as a variable which is correct on other cases.
+ * So one needs to distinguish between "keyword" as given here, and a choice with one argument.
+ */
+static int
+yang2cli_print_alias(cbuf         *cb,
+                     yang_stmt    *ys)
+{
+    int   retval = -1;
+    int   extvalue = 0;
+    char *name;
+    char *alias = NULL;
+
+    if (yang_extension_value(ys, "alias", CLIXON_AUTOCLI_NS, &extvalue, &alias) < 0)
+        goto done;
+    name = yang_argument_get(ys);
+    if (extvalue)
+        cprintf(cb, "<%s:string keyword:%s>", name, alias);
+    else
+        cprintf(cb, "%s", name);
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Generate identityref statements for CLI variables
@@ -646,7 +677,7 @@ yang2cli_var_leafref(clicon_handle h,
                                            options, fraction_digits, regular_value,
                                            cb)) < 0)
             goto done;
-        if (ret == 0)
+        if (ret == 1)
             yang2cli_helptext(cb, helptext);
     }
     if (completionp && regular_value)
@@ -690,9 +721,9 @@ yang2cli_var(clicon_handle h,
     enum cv_type  cvtype;
     const char   *cvtypestr;
     int           options = 0;
-    int           result;
     int           completionp;
-
+    int           ret;
+    
     if ((patterns = cvec_new(0)) == NULL){
         clicon_err(OE_UNIX, errno, "cvec_new");
         goto done;
@@ -716,10 +747,10 @@ yang2cli_var(clicon_handle h,
         if (autocli_completion(h, &completionp) < 0)
             goto done;
         if (completionp){
-            if ((result = cli_expand_var_generate(h, ys, cvtypestr, 
-                                                  options, fraction_digits, 1, cb)) < 0)
+            if ((ret = cli_expand_var_generate(h, ys, cvtypestr, 
+                                               options, fraction_digits, 1, cb)) < 0)
                 goto done;
-            if (result == 0)
+            if (ret == 1)
                 yang2cli_helptext(cb, helptext);
         }
         cprintf(cb, ")");
@@ -819,7 +850,8 @@ yang2cli_leaf(clicon_handle h,
         goto done;
     if (listkw == AUTOCLI_LISTKW_ALL ||
         (key_leaf==0 && listkw == AUTOCLI_LISTKW_NOKEY)){
-        cprintf(cb, "%s", yang_argument_get(ys));
+        if (yang2cli_print_alias(cb, ys) < 0)
+            goto done;
         yang2cli_helptext(cb, helptext);
         cprintf(cb, " ");
         if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &hideext, NULL) < 0)
@@ -920,18 +952,6 @@ yang2cli_container(clicon_handle h,
         if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL){
             cprintf(cb, ", hide");
         }
-#ifdef NYI /* This is for the mode extension, not yet supported */
-        {
-            int           mode = 0;
-            /* First see if extension mode, if not, check if default mode */
-            if (yang_extension_value(ys, "mode", CLIXON_AUTOCLI_NS, &mode, NULL) < 0)
-                goto done;
-            if (mode == 0 && autocli_edit_mode(h, Y_CONTAINER, &mode) < 0)
-                goto done;
-            if (mode)
-                cprintf(cb, ", mode");
-        }
-#endif  
         cprintf(cb, ", act-container;{\n");
 
     }
@@ -1203,6 +1223,7 @@ yang2cli_stmt(clicon_handle h,
     yang_stmt *yc;
     int        treeref_state = 0;
     int        grouping_treeref = 0;
+    int        extvalue = 0;
 
     if (ys == NULL){
         clicon_err(OE_YANG, EINVAL, "No yang spec");
@@ -1215,6 +1236,11 @@ yang2cli_stmt(clicon_handle h,
     if (yang_find(ys, Y_STATUS, "deprecated") != NULL){
         clicon_debug(4, "%s deprecated: %s %s", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
     }
+    /* Check if autocli skip */
+    if (yang_extension_value(ys, "skip", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
+        goto done;
+    if (extvalue == 1)
+        goto ok;
     /* Only produce autocli for YANG non-config only if autocli-treeref-state is true */
     if (autocli_treeref_state(h, &treeref_state) < 0)
         goto done;

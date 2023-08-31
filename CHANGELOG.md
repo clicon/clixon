@@ -44,6 +44,12 @@
 ## 6.4.0
 Expected: October 2023
 
+### API changes on existing protocol/config features
+Users may have to change how they access the system
+
+* New `clixon-autocli@2023-09-01.yang` revision
+  * Added argument to alias extension
+
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
@@ -52,6 +58,8 @@ Developers may need to change their code
 ### Minor features
 
 * Example cli pipe grep command quotes vertical bar for OR function
+* Added: [Feature request: node's alias for CLI](https://github.com/clicon/clixon/issues/434)
+   * Note: "Skip" is for all nodes, but "Alias" is only for leafs
 * New command-line option for dumping configuration options for all clixon applications after load
   * Syntax is `-C <format>`
   * Example: `clixon_backend -1C json`

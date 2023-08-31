@@ -68,8 +68,8 @@ show("Show a particular state of the system"){
 EOF
 
 # Yang specs must be here first for backend. But then the specs are changed but just for CLI
-# Annotate original Yang spec example  directly
-# First annotate /table/parameter 
+# Augment original Yang spec example directly
+# First augment /table/parameter 
 # Had a problem with unknown in grouping -> test uses uses/grouping
 cat <<EOF > $fyang
 module example {
@@ -125,9 +125,9 @@ function testparam()
 set table parameter x
 show config xml
 EOF
+
     new "set table parameter hidden"
     expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "set table parameter x" "<table xmlns=\"urn:example:clixon\"></table>"
-
     XML="<table xmlns=\"urn:example:clixon\"><parameter><name>x</name></parameter></table>"
     
     new "check datastore using netconf"
@@ -186,7 +186,7 @@ sudo chmod a+r $dir/candidate_db
 new "Test hidden parameter in table/param inline"
 testparam
 
-# Second annotate /table/parameter/value
+# Second augment /table/parameter/value
 cat <<EOF > $fyang
 module example {
    namespace "urn:example:clixon";
@@ -253,7 +253,7 @@ module example {
 }
 EOF
 
-# First annotate /table/parameter 
+# First augment /table/parameter 
 cat <<EOF > $fyang2
 module example-augment {
    namespace "urn:example:augment";
@@ -275,7 +275,7 @@ new "Test hidden parameter in table/param augment"
 testparam
 
 # Try hidden specific parameter key (note only cli yang)
-# Second annotate /table/parameter/value
+# Second augment /table/parameter/value
 cat <<EOF > $fyang2
 module example-augment {
    namespace "urn:example:augment";
@@ -319,7 +319,7 @@ module example {
 }
 EOF
 
-# Use this as grouping (not annotate)
+# Use this as grouping (not augment)
 cat <<EOF > $fyang2
 module example-augment {
    namespace "urn:example:augment";

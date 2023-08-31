@@ -18,6 +18,6 @@ Clixon has a master branch continuously tested with CI, but releases with more t
 Clixon interaction is best done posting issues, pull requests, or joining the
 Matrix clixon forum https://matrix.to/#/#clixonforum:matrix.org.
 
-Other clixon projects include [CLIgen](https://github.com/clicon/cligen), [the Clixon controller](https://github.com/clicon/clixon-controller), [clixon applications](https://github.com/clicon/clixon-examples) and others.
+Other clixon projects include [CLIgen](https://github.com/clicon/cligen), [the Clixon controller](https://github.com/clicon/clixon-controller), [Clixon applications](https://github.com/clicon/clixon-examples) and others.
 
 Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/) and [Akamai Technologies, Inc.](https://www.akamai.com).

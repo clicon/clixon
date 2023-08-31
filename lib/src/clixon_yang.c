@@ -3780,7 +3780,7 @@ yang_anydata_add(yang_stmt *yp,
  *     if (yang_extension_value(ys, "mymode", "urn:example:lib", &exist, &value) < 0)
  *        err;
  *     if (value != NULL){
- *        // use extension value
+ *        // use extension argument
  *     }
  * @endcode
  * @see ys_populate_unknown  Called when parsing YANG

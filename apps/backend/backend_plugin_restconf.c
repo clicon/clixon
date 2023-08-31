@@ -214,7 +214,7 @@ restconf_rpc_wrapper(clicon_handle    h,
         }
         else{
             /* Get debug flag of restconf config, set the restconf start -D daemon flag according
-             * to it. The restconf daemon cannoit read its debug flag from config initially,
+             * to it. The restconf daemon cannot read its debug flag from config initially,
              * but in this way it is set directly in its input args.
              * Its a trick.
              */

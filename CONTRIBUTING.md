@@ -45,6 +45,9 @@ static int myfn(int par1, my_structure *par2);
 
 ### Errors
 
+Error handling follows the "fail early and loud" principle. That is, unless a specific error-handling
+is identified, exit as soon as possible and with an explicit error log.
+
 Errors are typically declared as follows:
 ```
     if (myfn(0) < 0){

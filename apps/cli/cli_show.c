@@ -1345,15 +1345,16 @@ xml2cli1(clicon_handle     h,
          char             *prepend,
          clicon_output_cb *fn)
 {
-    int        retval = -1;
-    cxobj     *xe = NULL;
-    cbuf      *cbpre = NULL;
-    yang_stmt *ys;
-    int        match;
-    char      *body;
-    int        compress = 0;
+    int              retval = -1;
+    cxobj           *xe = NULL;
+    cbuf            *cbpre = NULL;
+    yang_stmt       *ys;
+    int              match;
+    char            *body;
+    int              compress = 0;
     autocli_listkw_t listkw;
-    int           exist = 0;
+    int              exist = 0;
+    char            *name;
 
     if (autocli_list_keyword(h, &listkw) < 0)
         goto done;
@@ -1365,13 +1366,18 @@ xml2cli1(clicon_handle     h,
         goto done;
     if (exist)
         goto ok;
+    exist = 0;
+    if (yang_extension_value(ys, "alias", CLIXON_AUTOCLI_NS, &exist, &name) < 0)
+        goto done;
+    if (!exist)
+        name = xml_name(xn);
     /* If leaf/leaf-list or presence container, then print line */
     if (yang_keyword_get(ys) == Y_LEAF ||
         yang_keyword_get(ys) == Y_LEAF_LIST){
         if (prepend)
             (*fn)(f, "%s", prepend);
         if (listkw != AUTOCLI_LISTKW_NONE)
-            (*fn)(f, "%s ", xml_name(xn));
+            (*fn)(f, "%s ", name);
         if ((body = xml_body(xn)) != NULL){
             if (index(body, ' '))
                 (*fn)(f, "\"%s\"", body);

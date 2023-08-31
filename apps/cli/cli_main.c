@@ -294,7 +294,6 @@ autocli_trees_default(clicon_handle h)
     if (cligen_ph_parsetree_set(ph, pt) < 0)
         goto done;
 
-
     /* Create backward compatible tree: @datamodelshow */
     if ((ph = cligen_ph_add(cli_cligen(h), "datamodelshow")) == NULL)
         goto done;
