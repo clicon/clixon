@@ -2,24 +2,49 @@ name: Clixon CI
 
 on:
   push:
-    branches: [ master ]
+    branches:
+       - master
+       - test-actions
   pull_request:
     branches: [ master ]
 
 jobs:
-  build:
-
+  native-build:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
-# 1) checkout and compile natively
+    # 1) checkout and compile natively (no test)
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
     - name: install dependencies
       run: sudo apt install -y libssl-dev libnghttp2-dev
     - name: configure
       run: ./configure
-# 2) Use docker for tests
-    - name: make test # this is docker test
-      run: make test
+    - name: make
+      run: make -j10
+    - name: make install
+      run: sudo make install install-include
+    - name: make example
+      run: (cd example; make)   
+    - name: make utils
+      run: (cd util; make)
+    - name: install example
+      run: (cd example; sudo make install)
+    - name: install utils
+      run: (cd util; sudo make install)      
+  docker-run:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v3
+    # 2) Inline of make test, but without configure
+    - name: in-line clone
+      run: git clone file://$(realpath ../..)
+    - name: make docker
+      run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
+    - name: start container
+      run: ./start.sh
+    - name: run test
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true ./sum.sh'
