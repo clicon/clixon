@@ -43,7 +43,7 @@ module clixon-autocli{
 
     revision 2023-09-01 {
         description
-            "Added argument to alias
+            "Added argument to alias extension
              Released in Clixon 6.3";
     }
     revision 2023-05-01 {

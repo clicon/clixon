@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # CLIgen output pipe functions
 # Note, | must be escaped as \| otherwise shell's pipe is used (w possibly same result)
-# XXX Autocli does not work
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -115,12 +114,11 @@ EOF
 
 cat <<EOF > $clidir/treeref.cli
 CLICON_MODE="treeref";
-CLICON_PIPETREE="|mypipe";
+CLICON_PIPETREE="|mypipe"; # implicit
 implicit("Show configuration"), cli_show_auto_mode("candidate", "xml", true, false);
 explicit("Show configuration"), cli_show_auto_mode("candidate", "xml", true, false);{
     @|mypipe, cli_show_auto_mode("candidate", "xml", true, false);
 }
-
 EOF
 
 cat <<EOF > $clidir/clipipe.cli

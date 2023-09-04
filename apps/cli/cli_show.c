@@ -865,8 +865,8 @@ cli_show_version(clicon_handle h,
                  cvec         *vars,
                  cvec         *argv)
 {
-    fprintf(stdout, "Clixon: %s\n", CLIXON_VERSION_STRING);
-    fprintf(stdout, "CLIgen: %s\n", CLIGEN_VERSION);
+    cligen_output(stdout, "Clixon: %s\n", CLIXON_VERSION_STRING);
+    cligen_output(stdout, "CLIgen: %s\n", CLIGEN_VERSION);
     return 0;
 }
 
