@@ -91,6 +91,7 @@
 #define STREAM_TIMER_TIMEOUT_S 5
 
 /*! Find an event notification stream given name
+ *
  * @param[in]  h    Clicon handle
  * @param[in]  name Name of stream
  * @retval     es   Event notification stream structure
@@ -114,6 +115,7 @@ stream_find(clicon_handle h,
 }
 
 /*! Add notification event stream
+ *
  * @param[in]  h              Clicon handle
  * @param[in]  name           Name of stream
  * @param[in]  description    Description of stream
@@ -156,6 +158,7 @@ stream_add(clicon_handle   h,
 }
 
 /*! Delete complete notification event stream list (not just single stream)
+ *
  * @param[in] h     Clicon handle
  * @param[in] force Force deletion of 
  */
@@ -189,11 +192,12 @@ stream_delete_all(clicon_handle h,
 }
 
 /*! Return stream definition state in XML supporting RFC 8040 and RFC5277
+ *
  * @param[in]  h      Clicon handle
  * @param[in]  access If set, include access/location
  * @param[out] cb     Output buffer containing XML on exit
  * @retval     0      OK
- * @retval     -1     Error
+ * @retval    -1      Error
  */ 
 int
 stream_get_xml(clicon_handle h,
@@ -231,6 +235,7 @@ stream_get_xml(clicon_handle h,
 }
 
 /*! Check all stream subscription stop timers, set up new timer
+ *
  * @param[in] fd   No-op
  * @param[in] arg  Clicon handle
  * @note format is given by clixon_event_reg_timeout callback function (fd not needed)
@@ -320,6 +325,7 @@ stream_del()
 #endif
 
 /*! Add an event notification callback to a stream given a callback function
+ *
  * @param[in]  h        Clicon handle
  * @param[in]  stream   Name of stream
  * @param[in]  xpath    Filter selector - xpath
@@ -328,7 +334,7 @@ stream_del()
  * @param[in]  fn       Callback when event occurs
  * @param[in]  arg      Argument to use with callback. Also handle when deleting
  * @retval     0        OK
- * @retval     -1       Error, ie no such stream 
+ * @retval    -1        Error, ie no such stream 
  */
 struct stream_subscription *
 stream_ss_add(clicon_handle     h,
@@ -375,12 +381,13 @@ stream_ss_add(clicon_handle     h,
 }
 
 /*! Delete event stream subscription to a stream given a callback and arg
+ *
  * @param[in]  h      Clicon handle
  * @param[in]  stream Name of stream or NULL for all streams
  * @param[in]  fn     Callback when event occurs
  * @param[in]  arg    Argument to use with callback. Also handle when deleting
  * @retval     0      OK
- * @retval     -1     Error
+ * @retval    -1      Error
  */
 int
 stream_ss_rm(clicon_handle                h,
@@ -404,6 +411,7 @@ stream_ss_rm(clicon_handle                h,
 }
 
 /*! Find stream callback given callback function and its (unique) argument
+ *
  * @param[in]  es   Pointer to event stream
  * @param[in]  fn   Stream callback
  * @param[in]  arg  Argument - typically unique client handle
@@ -427,6 +435,7 @@ stream_ss_find(event_stream_t   *es,
 }
 
 /*! Remove stream subscription identified with fn and arg in all streams
+ *
  * @param[in] h       Clicon handle
  * @param[in] fn      Stream callback
  * @param[in] arg     Argument - typically unique client handle
@@ -456,6 +465,7 @@ stream_ss_delete_all(clicon_handle     h,
 }
 
 /*! Delete a single stream
+ *
  * @see stream_ss_delete_all (merge with this?)
  */
 int
@@ -484,12 +494,13 @@ stream_ss_delete(clicon_handle     h,
 }
 
 /*! Stream notify event and distribute to all registered callbacks
+ *
  * @param[in]  h       Clicon handle
  * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
  * @param[in]  tv      Timestamp. Dont notify if subscription has stoptime<tv
  * @param[in]  event   Notification as xml tree
- * @retval  0  OK
- * @retval -1  Error with clicon_err called
+ * @retval     0       OK
+ * @retval    -1       Error with clicon_err called
  * @see stream_notify
  * @see stream_ss_timeout where subscriptions are removed if stoptime<now
  */
@@ -530,11 +541,12 @@ stream_notify1(clicon_handle   h,
 }
 
 /*! Stream notify event and distribute to all registered callbacks
+ *
  * @param[in]  h       Clicon handle
  * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
  * @param[in]  event   Notification as format string according to printf(3)
- * @retval  0  OK
- * @retval -1  Error with clicon_err called
+ * @retval     0       OK
+ * @retval    -1       Error with clicon_err called
  * @code
  *  if (stream_notify(h, "NETCONF", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
  *    err;
@@ -611,11 +623,12 @@ stream_notify(clicon_handle h,
 }
 
 /*! Backward compatible function
+ *
  * @param[in]  h       Clicon handle
  * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
  * @param[in]  xml     Notification as XML stream. Is copied.
- * @retval  0  OK
- * @retval -1  Error with clicon_err called
+ * @retval     0       OK
+ * @retval    -1       Error with clicon_err called
  * @see  stream_notify  Should be merged with this
  */
 int
@@ -681,6 +694,7 @@ stream_notify_xml(clicon_handle h,
 
 
 /*! Replay a stream by sending notification messages
+ *
  * @see RFC5277 Sec 2.1.1:
  *  Start Time:
          A parameter, <startTime>, used to trigger the replay feature
@@ -745,6 +759,7 @@ stream_replay_notify(clicon_handle               h,
 }
 
 /*! Add replay sample to stream with timestamp
+ *
  * @param[in] es   Stream
  * @param[in] tv   Timestamp
  * @param[in] xv   XML
@@ -781,6 +796,7 @@ struct replay_arg{
 };
 
 /*! Timeout callback for replaying stream
+ *
  * @param[in] fd   Ignore
  * @param[in] arg  tmp struct including clicon handle, stream and subscription
  */
@@ -816,10 +832,10 @@ stream_replay_cb(int   fd,
 
 /*! Schedule stream replay to occur asap, eg "now"
  *
- * @param[in]  h       clicon handle
- * @param[in]  stream  Name of stream
- * @param[in] fn       Stream callback
- * @param[in] arg      Argument - typically unique client handle
+ * @param[in] h       clicon handle
+ * @param[in] stream  Name of stream
+ * @param[in] fn      Stream callback
+ * @param[in] arg     Argument - typically unique client handle
  */
 int
 stream_replay_trigger(clicon_handle h,
@@ -892,9 +908,10 @@ curl_get_cb(void *ptr,
 }
 
 /*! Send a curl POST request
- * @retval  -1   fatal error
- * @retval   0   expect set but did not expected return or other non-fatal error
+ *
  * @retval   1   ok
+ * @retval   0   expect set but did not expected return or other non-fatal error
+ * @retval  -1   fatal error
  * Note: curl_easy_perform blocks
  * Note: New handle is created every time, the handle can be re-used for better TCP performance
  * @see same function (url_post) in grideye_curl.c
@@ -953,6 +970,7 @@ url_post(char *url,
 }
 
 /*! Stream callback for example stream notification 
+ *
  * Push via curl_post to publish stream event
  * @param[in]  h     Clicon handle
  * @param[in]  op    Operation: 0 OK, 1 Close

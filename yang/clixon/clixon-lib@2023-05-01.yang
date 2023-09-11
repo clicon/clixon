@@ -5,10 +5,10 @@ module clixon-lib {
 
     import ietf-yang-types {
         prefix yang;
-    }    
+    }
     import ietf-netconf-monitoring {
         prefix ncm;
-    }    
+    }
     import ietf-yang-metadata {
         prefix "md";
     }

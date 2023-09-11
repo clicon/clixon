@@ -100,6 +100,7 @@ static struct formatvec _FORMATS[] = {
 };
 
 /*! Translate from numeric format to string representation
+ *
  * @param[in]  showas   Format value (see enum format_enum)
  * @retval     str      String value
  */
@@ -115,6 +116,7 @@ format_int2str(enum format_enum showas)
 }
 
 /*! Translate from string to numeric format representation
+ *
  * @param[in]  str       String value
  * @retval     enum      Format value (see enum format_enum)
  */
@@ -130,10 +132,11 @@ format_str2int(char *str)
 }
 
 /*! Encode a clicon netconf message using variable argument lists
+ *
  * @param[in] id      Session id of client
  * @param[in] format  Variable agrument list format an XML netconf string
- * @retval    NULL    Error
  * @retval    msg     Clicon message to send to eg clicon_msg_send()
+ * @retval    NULL    Error
  * @note if format includes %, they will be expanded according to printf rules.
  *       if this is a problem, use ("%s", xml) instaead of (xml)
  *       Notaly this may an issue of RFC 3896 encoded strings
@@ -171,7 +174,8 @@ clicon_msg_encode(uint32_t      id,
 }
 
 /*! Decode a clicon netconf message
- * @param[in]  msg    CLICON msg
+ *
+ * @param[in]  msg    Clixon msg
  * @param[in]  yspec  Yang specification, (can be NULL)
  * @param[out] id     Session id
  * @param[out] xml    XML parse tree
@@ -211,10 +215,11 @@ clicon_msg_decode(struct clicon_msg *msg,
 }
 
 /*! Open local connection using unix domain sockets
+ *
  * @param[in]  h        Clicon handle
  * @param[in]  sockpath Unix domain file path
- * @retval     s        socket
- * @retval     -1       error
+ * @retval     s        Socket
+ * @retval    -1        Error
  */
 int
 clicon_connect_unix(clicon_handle h,
@@ -255,6 +260,7 @@ atomicio_sig_handler(int arg)
 }
 
 /*! Ensure all of data on socket comes through. fn is either read or write
+ *
  * @param[in]  fn  I/O function, ie read/write
  * @param[in]  fd  File descriptor, eg socket
  * @param[in]  s0  Buffer to read to or write from
@@ -339,21 +345,29 @@ msg_hex(int         dbglevel,
     return retval;
 }
 
-/*! Send a CLICON netconf message using internal IPC message
+/*! Send a Clixon netconf message using internal IPC message
  *
- * @param[in]   s      socket (unix or inet) to communicate with backend
- * @param[out]  msg    CLICON msg data reply structure. Free with free()
+ * @param[in]  s     Socket (unix or inet) to communicate with backend
+ * @param[in]  descr Description of peer for logging
+ * @param[in]  msg   Clixon msg data reply structure
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see clicon_msg_send1  using plain NETCONF
  */
 int
 clicon_msg_send(int                s, 
+                const char        *descr,
                 struct clicon_msg *msg)
 { 
     int retval = -1;
     int e;
 
     clicon_debug(CLIXON_DBG_DETAIL, "%s: send msg len=%d", __FUNCTION__, ntohl(msg->op_len));
-    clicon_debug(CLIXON_DBG_MSG, "Send: %s", msg->op_body);
+    if (descr)
+        clicon_debug(CLIXON_DBG_MSG, "Send [%s]: %s", descr, msg->op_body);
+    else{
+        clicon_debug(CLIXON_DBG_MSG, "Send: %s", msg->op_body);
+    }
     msg_hex(CLIXON_DBG_EXTRA, (char*)msg,  ntohl(msg->op_len), __FUNCTION__);
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
                  s, msg, ntohl(msg->op_len)) < 0){
@@ -368,7 +382,7 @@ clicon_msg_send(int                s,
     return retval;
 }
 
-/*! Receive a CLICON message using IPC message struct
+/*! Receive a Clixon message using IPC message struct
  *
  * XXX: timeout? and signals?
  * There is rudimentary code for turning on signals and handling them 
@@ -378,27 +392,29 @@ clicon_msg_send(int                s,
  * behaviour.
  * Now, ^C will interrupt the whole process, and this may not be what you want.
  *
- * @param[in]   s      socket (unix or inet) to communicate with backend
- * @param[in]   intr   If set, make a ^C cause an error   
- * @param[out]  msg    CLICON msg data reply structure. Free with free()
- * @param[out]  eof    Set if eof encountered
- * @retval      0      OK
- * @retval     -1      Error
+ * @param[in]   s     Socket (unix or inet) to communicate with backend
+ * @param[in]   descr Description of peer for logging
+ * @param[in]   intr  If set, make a ^C cause an error   
+ * @param[out]  msg   Clixon msg data reply structure. Free with free()
+ * @param[out]  eof   Set if eof encountered
+ * @retval      0     OK
+ * @retval     -1     Error
  * Note: caller must ensure that s is closed if eof is set after call.
  * @see clicon_msg_rcv1 using plain NETCONF
  */
 int
-clicon_msg_rcv(int                s,
-               int                intr,
+clicon_msg_rcv(int                 s,
+               const char         *descr,
+               int                 intr,
                struct clicon_msg **msg,
                int                *eof)
 { 
-    int       retval = -1;
+    int               retval = -1;
     struct clicon_msg hdr;
-    int       hlen;
-    ssize_t   len2;
-    sigfn_t   oldhandler;
-    uint32_t  mlen;
+    int               hlen;
+    ssize_t           len2;
+    sigfn_t           oldhandler;
+    uint32_t          mlen;
 
     clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     *eof = 0;
@@ -453,7 +469,10 @@ clicon_msg_rcv(int                s,
         *eof = 1;
         goto ok;
     }
-    clicon_debug(CLIXON_DBG_MSG, "Recv: %s", (*msg)->op_body);
+    if (descr)
+        clicon_debug(CLIXON_DBG_MSG, "Recv [%s]: %s", descr, (*msg)->op_body);
+    else
+        clicon_debug(CLIXON_DBG_MSG, "Recv: %s", (*msg)->op_body);
  ok:
     retval = 0;
  done:
@@ -468,16 +487,20 @@ clicon_msg_rcv(int                s,
 /*! Receive a message using plain NETCONF
  *
  * @param[in]   s      socket (unix or inet) to communicate with backend
+ * @param[in]   descr  Description of peer for logging
  * @param[out]  cb     cligen buf struct containing the incoming message
  * @param[out]  eof    Set if eof encountered
+ * @retval      0      OK
+ * @retval     -1      Error
  * @see netconf_input_cb()
  * @see clicon_msg_rcv using IPC message struct
  * @note only NETCONF version 1.0 EOM framing
  */
 int
-clicon_msg_rcv1(int   s,
-                cbuf *cb,
-                int  *eof)
+clicon_msg_rcv1(int         s,
+                const char *descr,
+                cbuf       *cb,
+                int        *eof)
 {
     int           retval = -1;
     unsigned char buf[BUFSIZ];
@@ -523,27 +546,37 @@ clicon_msg_rcv1(int   s,
            break; /* No data to read */
     } /* while */
  ok:
-    clicon_debug(CLIXON_DBG_MSG, "Recv: %s", cbuf_get(cb));
+    if (descr)
+        clicon_debug(CLIXON_DBG_MSG, "Recv [%s]: %s", descr, cbuf_get(cb));
+    else
+        clicon_debug(CLIXON_DBG_MSG, "Recv: %s", cbuf_get(cb));
     retval = 0;
  done:
     clicon_debug(CLIXON_DBG_DETAIL, "%s done", __FUNCTION__);
     return retval;
 }
 
-/*! Send a CLICON netconf message plain NETCONF
+/*! Send a Clixon netconf message plain NETCONF
  *
- * @param[in]   s      socket (unix or inet) to communicate with backend
- * @param[out]  msg    CLICON msg data reply structure. Free with free()
+ * @param[in]  s     socket (unix or inet) to communicate with backend
+ * @param[in]  cb    data buffer including NETCONF
+ * @param[in]  descr Description of peer for logging
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see clicon_msg_send  using internal IPC header
  */
 int
-clicon_msg_send1(int   s, 
-                 cbuf *cb)
+clicon_msg_send1(int         s, 
+                 const char *descr,
+                 cbuf       *cb)
 { 
     int retval = -1;
 
     clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
-    clicon_debug(CLIXON_DBG_MSG, "Send: %s", cbuf_get(cb));
+    if (descr)
+        clicon_debug(CLIXON_DBG_MSG, "Send [%s]: %s", descr, cbuf_get(cb));
+    else
+        clicon_debug(CLIXON_DBG_MSG, "Send: %s", cbuf_get(cb));
     if (atomicio((ssize_t (*)(int, void *, size_t))write, 
                  s, cbuf_get(cb), cbuf_len(cb)) < 0){
         clicon_err(OE_CFG, errno, "atomicio");
@@ -557,19 +590,19 @@ clicon_msg_send1(int   s,
 
 /*! Connect to server, send a clicon_msg message and wait for result using unix socket
  *
- * @param[in]  h       Clicon handle
- * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
+ * @param[in]  h        Clicon handle
+ * @param[in]  msg      Internal msg data structure. It has fixed header and variable body.
  * @param[in]  sockpath Unix domain file path
  * @param[out] retdata  Returned data as string netconf xml tree.
- * @param[out] sock0   Return socket in case of asynchronous notify
- * @retval     0       OK
- * @retval     -1      Error
+ * @param[out] sock0    Return socket in case of asynchronous notify
+ * @retval     0        OK
+ * @retval    -1        Error
  * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
-clicon_rpc_connect_unix(clicon_handle      h,
-                        char              *sockpath,
-                        int               *sock0)
+clicon_rpc_connect_unix(clicon_handle  h,
+                        char          *sockpath,
+                        int           *sock0)
 {
     int         retval = -1;
     int         s = -1;
@@ -602,10 +635,10 @@ clicon_rpc_connect_unix(clicon_handle      h,
  * @param[in]  h       Clicon handle (not used)
  * @param[in]  dst     IPv4 address
  * @param[in]  port    TCP port
- * @param[out] retdata  Returned data as string netconf xml tree.
+ * @param[out] retdata Returned data as string netconf xml tree.
  * @param[out] sock0   Return socket in case of asynchronous notify
  * @retval     0       OK
- * @retval     -1      Error
+ * @retval    -1       Error
  * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
@@ -652,16 +685,18 @@ clicon_rpc_connect_inet(clicon_handle      h,
  * errno set to ENOTCONN/ESHUTDOWN which means that socket is now closed probably
  * due to remote peer disconnecting. The caller may have to do something,...
  *
- * @param[in]  sock    Socket / file descriptor
- * @param[in]  msg     CLICON msg data structure. It has fixed header and variable body.
- * @param[out] xret    Returned data as netconf xml tree.
- * @param[out] eof     Set if eof encountered
- * @retval     0       OK (check eof)
- * @retval     -1      Error
+ * @param[in]  sock   Socket / file descriptor
+ * @param[in]  descr  Description of peer for logging
+ * @param[in]  msg    Clixon msg data structure. It has fixed header and variable body.
+ * @param[out] xret   Returned data as netconf xml tree.
+ * @param[out] eof    Set if eof encountered
+ * @retval     0      OK (check eof)
+ * @retval    -1      Error
  * @see clicon_rpc1 using plain NETCONF XML
  */
 int
 clicon_rpc(int                sock,
+           const char        *descr,
            struct clicon_msg *msg, 
            char             **ret,
            int               *eof)
@@ -671,9 +706,9 @@ clicon_rpc(int                sock,
     char              *data = NULL;
 
     clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
-    if (clicon_msg_send(sock, msg) < 0)
+    if (clicon_msg_send(sock, descr, msg) < 0)
         goto done;
-    if (clicon_msg_rcv(sock, 0, &reply, eof) < 0)
+    if (clicon_msg_rcv(sock, descr, 0, &reply, eof) < 0)
         goto done;
     if (*eof)
         goto ok;
@@ -695,20 +730,21 @@ clicon_rpc(int                sock,
 /*! Send a netconf message and recieve result using plain NETCONF
  *
  * This is mainly used by the client API. 
- *
  * @param[in]  sock    Socket / file descriptor
- * @param[in]  msgin   CLICON msg data structure. It has fixed header and variable body.
+ * @param[in]  descr   Description of peer for logging
+ * @param[in]  msgin   Clixon msg data structure. It has fixed header and variable body.
  * @param[out] msgret  Returned data as netconf xml tree.
  * @param[out] eof     Set if eof encountered
  * @retval     0       OK
- * @retval     -1      Error
+ * @retval    -1       Error
  * @see clicon_rpc using clicon_msg protocol header
  */
 int
-clicon_rpc1(int   sock,
-            cbuf *msg,
-            cbuf *msgret,
-            int  *eof)
+clicon_rpc1(int         sock,
+            const char *descr,
+            cbuf       *msg,
+            cbuf       *msgret,
+            int        *eof)
 {
     int    retval = -1;
 
@@ -717,9 +753,9 @@ clicon_rpc1(int   sock,
         goto done;
     if (netconf_framing_postamble(NETCONF_SSH_CHUNKED, msg) < 0)
         goto done;
-    if (clicon_msg_send1(sock, msg) < 0)
+    if (clicon_msg_send1(sock, descr, msg) < 0)
         goto done;
-    if (clicon_msg_rcv1(sock, msgret, eof) < 0)
+    if (clicon_msg_rcv1(sock, descr, msgret, eof) < 0)
         goto done;
     retval = 0;
   done:
@@ -730,15 +766,17 @@ clicon_rpc1(int   sock,
 /*! Send a clicon_msg message as reply to a clicon rpc request
  *
  * @param[in]  s       Socket to communicate with client
+ * @param[in]  descr   Description of peer for logging
  * @param[in]  data    Returned data as byte-string.
  * @param[in]  datalen Length of returned data XXX  may be unecessary if always string?
  * @retval     0       OK
- * @retval     -1      Error
+ * @retval    -1       Error
  */
 int 
-send_msg_reply(int      s, 
-               char    *data, 
-               uint32_t datalen)
+send_msg_reply(int         s, 
+               const char *descr,
+               char       *data, 
+               uint32_t    datalen)
 {
     int                retval = -1;
     struct clicon_msg *reply = NULL;
@@ -751,7 +789,7 @@ send_msg_reply(int      s,
     reply->op_len = htonl(len);
     if (datalen > 0)
       memcpy(reply->op_body, data, datalen);
-    if (clicon_msg_send(s, reply) < 0)
+    if (clicon_msg_send(s, descr, reply) < 0)
         goto done;
     retval = 0;
   done:
@@ -763,22 +801,24 @@ send_msg_reply(int      s,
 /*! Send a clicon_msg NOTIFY message asynchronously to client
  *
  * @param[in]  s       Socket to communicate with client
+ * @param[in]  descr   Description of peer for logging
  * @param[in]  level
  * @param[in]  event
  * @retval     0       OK
- * @retval     -1      Error
+ * @retval    -1       Error
  * @see send_msg_notify_xml
  */
 static int
-send_msg_notify(int           s, 
-                char         *event)
+send_msg_notify(int         s, 
+                const char *descr, 
+                char        *event)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;
 
     if ((msg=clicon_msg_encode(0, "%s", event)) == NULL)
         goto done;
-    if (clicon_msg_send(s, msg) < 0)
+    if (clicon_msg_send(s, descr, msg) < 0)
         goto done;
     retval = 0;
   done:
@@ -789,16 +829,18 @@ send_msg_notify(int           s,
 
 /*! Send a clicon_msg NOTIFY message asynchronously to client
  *
- * @param[in]  h       Clicon handle
- * @param[in]  s       Socket to communicate with client
- * @param[in]  xev     Event as XML
- * @retval     0       OK
- * @retval     -1      Error
+ * @param[in]  h     Clicon handle
+ * @param[in]  s     Socket to communicate with client
+ * @param[in]  descr Description of peer for logging
+ * @param[in]  xev   Event as XML
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see send_msg_notify
  */
 int
 send_msg_notify_xml(clicon_handle h,
                     int           s, 
+                    const char   *descr,
                     cxobj        *xev)
 {
     int                retval = -1;
@@ -810,7 +852,7 @@ send_msg_notify_xml(clicon_handle h,
     }
     if (clixon_xml2cbuf(cb, xev, 0, 0, NULL, -1, 0) < 0)
         goto done;
-    if (send_msg_notify(s, cbuf_get(cb)) < 0)
+    if (send_msg_notify(s, descr, cbuf_get(cb)) < 0)
         goto done;
     retval = 0;
   done:
@@ -821,11 +863,12 @@ send_msg_notify_xml(clicon_handle h,
 }
 
 /*! Look for a text pattern in an input string, one char at a time
+ *
  * @param[in]     tag     What to look for
  * @param[in]     ch      New input character
  * @param[in,out] state   A state integer holding how far we have parsed.
- * @retval        0       No, we havent detected end tag
  * @retval        1       Yes, we have detected end tag!
+ * @retval        0       No, we havent detected end tag
  * @code
  *   int state = 0;
  *   char ch;

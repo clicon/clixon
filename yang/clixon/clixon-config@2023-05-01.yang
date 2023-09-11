@@ -8,7 +8,7 @@ module clixon-config {
     }
     import clixon-autocli {
         prefix autocli;
-    }    
+    }
     import clixon-lib {
         prefix cl;
     }
@@ -236,7 +236,7 @@ module clixon-config {
              Renamed CLICON_XMLDB_CACHE to CLICON_DATASTORE_CACHE (changed type)
              Deleted: CLICON_XMLDB_PLUGIN, CLICON_USE_STARTUP_CONFIG";
     }
-    revision 2019-03-05{ 
+    revision 2019-03-05{
         description
             "Changed URN. Changed top-level symbol to clixon-config.
              Released in Clixon 3.10";
@@ -680,7 +680,7 @@ module clixon-config {
                  Both feature clixon-restconf:http-data and restconf/enable-http-data 
                  must be enabled for this match to occur.";
         }
-        leaf CLICON_HTTP_DATA_ROOT{ 
+        leaf CLICON_HTTP_DATA_ROOT{
             if-feature "clrc:http-data";
             type string;
             default "/var/www";

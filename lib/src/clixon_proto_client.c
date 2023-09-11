@@ -168,7 +168,7 @@ clicon_rpc_msg_once(clicon_handle      h,
     }
     else if (clicon_rpc_connect(h, &s) < 0)
         goto done;
-    if (clicon_rpc(s, msg, retdata, eof) < 0){
+    if (clicon_rpc(s, clicon_sock_str(h), msg, retdata, eof) < 0){
         /* 2. check socket shutdown AFTER rpc */
         close(s);
         s = -1;
@@ -184,7 +184,7 @@ clicon_rpc_msg_once(clicon_handle      h,
 
 /*! Send internal netconf rpc from client to backend
  *
- * @param[in]    h      CLICON handle
+ * @param[in]    h      Clixon handle
  * @param[in]    msg    Encoded message. Deallocate with free
  * @param[out]   xret0  Return value from backend as xml tree. Free w xml_free
  * @retval       0      OK
@@ -263,13 +263,13 @@ clicon_rpc_msg(clicon_handle      h,
 
 /*! Send internal netconf rpc from client to backend and return a persistent socket
  *
- * @param[in]   h      CLICON handle
+ * @param[in]   h      Clixon handle
  * @param[in]   msg    Encoded message. Deallocate with free
  * @param[out]  xret0  Return value from backend as xml tree. Free w xml_free
  * @param[out]  sock0  If pointer exists, do not close socket to backend on success 
  *                     and return it here. For keeping a notify socket open
- * @retval     0     OK
- * @retval    -1     Error
+ * @retval      0      OK
+ * @retval     -1      Error
  * @note xret is populated with yangspec according to standard handle yangspec
  */
 int
@@ -364,6 +364,7 @@ session_id_check(clicon_handle h,
 }
 
 /*! Generic xml netconf clicon rpc for persistent
+ *
  * Want to go over to use netconf directly between client and server,...
  * @param[in]  h       clicon handle
  * @param[in]  xmlstr  XML netconf tree as string
@@ -484,7 +485,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
 /*! Get database configuration
  *
  * Same as clicon_proto_change just with a cvec instead of lvec
- * @param[in]  h        CLICON handle
+ * @param[in]  h        Clixon handle
  * @param[in]  username If NULL, use default
  * @param[in]  db       Name of database
  * @param[in]  xpath    XPath (or "")
@@ -492,8 +493,8 @@ clicon_rpc_netconf_xml(clicon_handle  h,
  * @param[in]  defaults Value of the with-defaults mode, rfc6243, or NULL
  * @param[out] xt       XML tree. Free with xml_free. 
  *                      Either <config> or <rpc-error>. 
- * @retval    0         OK
- * @retval   -1         Error, fatal or xml
+ * @retval     0        OK
+ * @retval    -1        Error, fatal or xml
  * @code
  *   cxobj *xt = NULL;
  *   cvec *nsc = NULL;
@@ -619,7 +620,7 @@ clicon_rpc_get_config(clicon_handle h,
 
 /*! Send database entries as XML to backend daemon
  *
- * @param[in] h          CLICON handle
+ * @param[in] h          Clixon handle
  * @param[in] db         Name of database
  * @param[in] op         Operation on database item: OP_MERGE, OP_REPLACE
  * @param[in] xml        XML string. Ex: <config><a>..</a><b>...</b></config>
@@ -688,11 +689,11 @@ clicon_rpc_edit_config(clicon_handle       h,
  *
  * Note this assumes the backend can access these files and (usually) assumes
  * clients and servers have the access to the same filesystem.
- * @param[in] h        CLICON handle
- * @param[in] db1      src database, eg "running"
- * @param[in] db2      dst database, eg "startup"
- * @retval    0        OK
- * @retval   -1        Error and logged to syslog
+ * @param[in] h     Clixon handle
+ * @param[in] db1   src database, eg "running"
+ * @param[in] db2   dst database, eg "startup"
+ * @retval    0     OK
+ * @retval   -1     Error and logged to syslog
  * @code
  * if (clicon_rpc_copy_config(h, "running", "startup") < 0)
  *    err;
@@ -748,10 +749,10 @@ clicon_rpc_copy_config(clicon_handle h,
 
 /*! Send a request to backend to delete a config database
  *
- * @param[in] h        CLICON handle
- * @param[in] db       database, eg "running"
- * @retval    0        OK
- * @retval   -1        Error and logged to syslog
+ * @param[in] h    Clixon handle
+ * @param[in] db   database, eg "running"
+ * @retval    0    OK
+ * @retval   -1    Error and logged to syslog
  * @code
  * if (clicon_rpc_delete_config(h, "startup") < 0)
  *    err;
@@ -805,10 +806,11 @@ clicon_rpc_delete_config(clicon_handle h,
 }
 
 /*! Lock a database
- * @param[in] h        CLICON handle
- * @param[in] db       database, eg "running"
- * @retval    0        OK
- * @retval   -1        Error and logged to syslog
+ *
+ * @param[in] h    Clixon handle
+ * @param[in] db   database, eg "running"
+ * @retval    0    OK
+ * @retval   -1    Error and logged to syslog
  */
 int
 clicon_rpc_lock(clicon_handle h, 
@@ -858,10 +860,11 @@ clicon_rpc_lock(clicon_handle h,
 }
 
 /*! Unlock a database
- * @param[in] h        CLICON handle
- * @param[in] db       database, eg "running"
- * @retval    0        OK
- * @retval   -1        Error and logged to syslog
+ *
+ * @param[in] h    Clixon handle
+ * @param[in] db   database, eg "running"
+ * @retval    0    OK
+ * @retval   -1    Error and logged to syslog
  */
 int
 clicon_rpc_unlock(clicon_handle h, 
@@ -911,6 +914,7 @@ clicon_rpc_unlock(clicon_handle h,
 }
 
 /*! Get database configuration and state data
+ *
  * @param[in]  h         Clicon handle
  * @param[in]  xpath     XPath in a filter stmt (or NULL/"" for no filter)
  * @param[in]  namespace Namespace associated w xpath
@@ -1073,15 +1077,15 @@ clicon_rpc_get(clicon_handle   h,
  * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
  * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
  * @param[in]  defaults  Value of the with-defaults mode, rfc6243, or NULL
- * @param[in]  offset     uint32, 0 means none
- * @param[in]  limit     uint32, 0 means unbounded
+ * @param[in]  offset    0 means none
+ * @param[in]  limit     0 means unbounded
  * @param[in]  direction Collection/clixon extension
  * @param[in]  sort      Collection/clixon extension
  * @param[in]  where     Collection/clixon extension
  * @param[out] xt        XML tree. Free with xml_free. 
  *                       Either <config> or <rpc-error>. 
- * @retval    0          OK
- * @retval   -1          Error, fatal or xml
+ * @retval     0         OK
+ * @retval    -1         Error, fatal or xml
  * @see clicon_rpc_get
  * @see draft-ietf-netconf-restconf-collection-00
  * @note the netconf return message is yang populated, as well as the return data
@@ -1232,7 +1236,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
 
 /*! Send a close a netconf user session. Socket is also closed if still open
  *
- * @param[in] h        CLICON handle
+ * @param[in] h        Clixon handle
  * @retval    0        OK
  * @retval   -1        Error and logged to syslog
  * Session is implicitly created in eg clicon_rpc_netconf
@@ -1291,7 +1295,7 @@ clicon_rpc_close_session(clicon_handle h)
 
 /*! Kill other user sessions
  *
- * @param[in] h           CLICON handle
+ * @param[in] h           Clixon handle
  * @param[in] session_id  Session id of other user session
  * @retval    0           OK
  * @retval   -1           Error and logged to syslog
@@ -1345,7 +1349,7 @@ clicon_rpc_kill_session(clicon_handle h,
 
 /*! Send validate request to backend daemon
  *
- * @param[in] h        CLICON handle
+ * @param[in] h        Clixon handle
  * @param[in] db       Name of database
  * @retval    1        OK
  * @retval    0        Invalid, netconf error return, and logged to syslog
@@ -1402,7 +1406,7 @@ clicon_rpc_validate(clicon_handle h,
 
 /*! Commit changes send a commit request to backend daemon
  *
- * @param[in] h          CLICON handle
+ * @param[in] h          Clixon handle
  * @param[in] confirmed  If set, send commit/confirmed
  * @param[in] cancel     If set, send cancel-commit
  * @param[in] timeout    For confirmed, a timeout in seconds (default 600s)
@@ -1515,7 +1519,7 @@ clicon_rpc_commit(clicon_handle h,
 
 /*! Discard all changes in candidate / revert to running
  *
- * @param[in] h        CLICON handle
+ * @param[in] h        Clixon handle
  * @retval    0        OK
  * @retval   -1        Error and logged to syslog
  */
@@ -1632,7 +1636,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
 
 /*! Send a debug request to backend server
  *
- * @param[in] h        CLICON handle
+ * @param[in] h        Clixon handle
  * @param[in] level    Debug level
  * @retval    0        OK
  * @retval   -1        Error and logged to syslog
@@ -1690,7 +1694,8 @@ clicon_rpc_debug(clicon_handle h,
 }
 
 /*! Send a debug request to backend server to set restconf debug
- * @param[in] h        CLICON handle
+ *
+ * @param[in] h        Clixon handle
  * @param[in] level    Debug level
  * @retval    0        OK
  * @retval   -1        Error and logged to syslog
@@ -1846,7 +1851,7 @@ clicon_hello_req(clicon_handle h,
 
 /*! Send a restart plugin request to backend server
  *
- * @param[in] h        CLICON handle
+ * @param[in] h        Clixon handle
  * @param[in] level    Debug level
  * @retval    0        OK
  * @retval   -1        Error and logged to syslog

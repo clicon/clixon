@@ -72,21 +72,21 @@ int clicon_rpc_connect_inet(clicon_handle         h,
                             uint16_t              port,
                             int                  *sock0);
 
-int clicon_rpc(int sock, struct clicon_msg *msg, char **xret, int *eof);
+int clicon_rpc(int sock, const char *descr, struct clicon_msg *msg, char **xret, int *eof);
 
-int clicon_rpc1(int sock, cbuf *msgin, cbuf *msgret, int *eof);
+int clicon_rpc1(int sock, const char *descr, cbuf *msgin, cbuf *msgret, int *eof);
 
-int clicon_msg_send(int s, struct clicon_msg *msg);
+int clicon_msg_send(int s, const char *descr, struct clicon_msg *msg);
 
-int clicon_msg_send1(int s, cbuf *cb);
+int clicon_msg_send1(int s, const char *descr, cbuf *cb);
 
-int clicon_msg_rcv(int s, int intr, struct clicon_msg **msg, int *eof);
+int clicon_msg_rcv(int s, const char *descr, int intr, struct clicon_msg **msg, int *eof);
 
-int clicon_msg_rcv1(int s, cbuf *cb, int *eof);
+int clicon_msg_rcv1(int s, const char *descr, cbuf *cb, int *eof);
 
-int send_msg_notify_xml(clicon_handle h, int s, cxobj *xev);
+int send_msg_notify_xml(clicon_handle h, int s, const char *descr, cxobj *xev);
 
-int send_msg_reply(int s, char *data, uint32_t datalen);
+int send_msg_reply(int s, const char *descr, char *data, uint32_t datalen);
 
 int detect_endtag(char *tag, char  ch, int  *state);
 

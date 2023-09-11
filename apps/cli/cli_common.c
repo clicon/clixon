@@ -1283,7 +1283,7 @@ cli_notification_cb(int   s,
     int                ret;
     
     /* get msg (this is the reason this function is called) */
-    if (clicon_msg_rcv(s, 0, &reply, &eof) < 0)
+    if (clicon_msg_rcv(s, NULL, 0, &reply, &eof) < 0)
         goto done;
     if (eof){
         clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");

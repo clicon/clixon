@@ -152,7 +152,7 @@ module clixon-autocli{
     }
     typedef yang-keywords {
        type bits {
-           bit list; 
+           bit list;
            bit listall{ /* NYI */
                description
                    "Variant of list encompassing all list entries, not just an instance";

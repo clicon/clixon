@@ -53,6 +53,20 @@ Users may have to change how they access the system
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Low-level message functions added `descr` argument for better logging
+  * In this way, message debugs in level 2 are more descriptive
+  * The descr argument can be set to NULL for backward-compability, see the following translations:
+    * clicon_rpc(s, ...) --> clicon_rpc(s, NULL, ...)
+    * clicon_rpc1(s, ...) --> clicon_rpc1(s, NULL, ...)
+    * clicon_msg_send(s, ...) --> clicon_msg_send(s, NULL, ...)
+    * clicon_msg_send1(s, ...) --> clicon_msg_send1(s, NULL, ...)
+    * clicon_msg_rcv(s, ...) --> clicon_msg_rcv(s, NULL, ...)
+    * clicon_msg_rcv1(s, ...) --> clicon_msg_rcv1(s, NULL, ...)
+    * clicon_msg_notify_xml(h, s, ...) --> clicon_msg_notify_xml(h, s, NULL, ...)
+    * send_msg_reply(s, ...) --> send_msg_reply(s, NULL, ...)
+    * clixon_client_lock(s, ...) --> clixon_client_lock(s, NULL, ...)
+    * clixon_client_hello(s, ...) --> clixon_client_hello(s, NULL, ...)
+
 * CLI pipe function: added arg to `pipe_tail_fn()`
 
 ### Minor features
