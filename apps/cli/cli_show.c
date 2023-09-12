@@ -474,6 +474,7 @@ show_yang(clicon_handle h,
  * @param[in] extdefault   with-defaults with propriatary extensions
  * @param[in] prepend      CLI prefix to prepend cli syntax, eg "set "
  * @param[in] xpath        XPath
+ * @param[in] fromroot     If 0, display config from node of XPATH, if 1 display from root
  * @param[in] nsc          Namespace mapping for xpath
  * @param[in] skiptop      If set, do not show object itself, only its children
   */
@@ -487,6 +488,7 @@ cli_show_common(clicon_handle    h,
                 char            *extdefault,
                 char            *prepend,
                 char            *xpath,
+                int              fromroot,
                 cvec            *nsc,
                 int              skiptop
                 )
@@ -527,6 +529,8 @@ cli_show_common(clicon_handle    h,
         if (xml_defaults_nopresence(xt, 2) < 0)
             goto done;
     }
+    if (fromroot)
+        xpath="/";
     if (xpath_vec(xt, nsc, "%s", &vec, &veclen, xpath) < 0) 
         goto done;
     if (veclen){
@@ -746,6 +750,7 @@ cli_show_config(clicon_handle h,
     int              argc = 0;
     char            *xpath = "/";
     char            *namespace = NULL;
+    int              fromroot = 0;
     
     if (cvec_len(argv) < 2 || cvec_len(argv) > 8){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname> [<format><xpath> <namespace> <pretty> <state> <default> <prepend>]", cvec_len(argv));
@@ -783,7 +788,7 @@ cli_show_config(clicon_handle h,
     }
     if (cli_show_common(h, dbname, format, pretty, state,
                         withdefault, extdefault,
-                        prepend, xpath, nsc, 0) < 0)
+                        prepend, xpath, fromroot, nsc, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -823,6 +828,7 @@ show_conf_xpath(clicon_handle h,
     cg_var          *cv;
     cvec            *nsc = NULL;
     yang_stmt       *yspec;
+    int              fromroot = 0;
     
     if (cvec_len(argv) != 1){
         clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be <dbname>");
@@ -849,7 +855,7 @@ show_conf_xpath(clicon_handle h,
     }
     if (cli_show_common(h, dbname, FORMAT_XML, 1, 0,
                         NULL, NULL,
-                        NULL, xpath, nsc, 0) < 0)
+                        NULL, xpath, fromroot, nsc, 0) < 0)
         goto done;
     retval = 0;
 done:
@@ -889,6 +895,7 @@ cli_show_version(clicon_handle h,
  *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
  *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
  *   <prepend>       CLI prefix: prepend before cli syntax output
+ *   <fromroot>      true|false: Show from root
  * @code
  *   clispec: 
  *      show config @datamodelshow, cli_show_auto("candidate", "xml");
@@ -929,9 +936,10 @@ cli_show_auto(clicon_handle h,
     char            *api_path_fmt01 = NULL;
     char            *str;
     char            *mtpoint = NULL;
+    int              fromroot = 0;
     
-    if (cvec_len(argv) < 2 || cvec_len(argv) > 8){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <api-path-fmt>* <database> [<format> <pretty> <state> <default> <prepend>]", cvec_len(argv));
+    if (cvec_len(argv) < 2 || cvec_len(argv) > 9){
+        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <api-path-fmt>* <database> [<format> <pretty> <state> <default> <prepend> <fromroot>]", cvec_len(argv));
         goto done;
     }
     api_path_fmt = cv_string_get(cvec_i(argv, argc++));
@@ -962,6 +970,10 @@ cli_show_auto(clicon_handle h,
     if (cvec_len(argv) > argc){
         prepend = cv_string_get(cvec_i(argv, argc++));
     }
+    if (cvec_len(argv) > argc){
+        if (cli_show_option_bool(argv, argc++, &fromroot) < 0)
+            goto done;
+    }
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -985,7 +997,7 @@ cli_show_auto(clicon_handle h,
     }
     if (cli_show_common(h, dbname, format, pretty, state,
                         withdefault, extdefault,
-                        prepend, xpath, nsc, 0) < 0)
+                        prepend, xpath, fromroot, nsc, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -1057,6 +1069,7 @@ cli_show_auto_mode(clicon_handle h,
     cbuf            *cbxpath = NULL;
     cvec            *nsc0 = NULL;
     cg_var          *cv;
+    int              fromroot = 0;
     
     if (cvec_len(argv) < 2 || cvec_len(argv) > 7){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <database> [ <format> <pretty> <state> <default> <cli-prefix>]", cvec_len(argv));
@@ -1122,7 +1135,7 @@ cli_show_auto_mode(clicon_handle h,
     skiptop = (strcmp(xpath,"/") != 0);
     if (cli_show_common(h, dbname, format, pretty, state,
                         withdefault, extdefault,
-                        prepend, cbuf_get(cbxpath), nsc, skiptop) < 0)
+                        prepend, cbuf_get(cbxpath), fromroot, nsc, skiptop) < 0)
         goto done;
     retval = 0;
  done:

@@ -73,8 +73,8 @@ commit("Commit the changes"), cli_commit();
 show("Show a particular state of the system"){
    version("Show version"), cli_show_version("candidate", "text", "/");
    configuration("Show configuration"), cli_show_auto_mode("candidate", "xml", true, false);{
-      @|show, cli_show_auto_mode("candidate", "xml", true, false);
-      @datamodelshow, cli_show_auto("candidate", "xml", true, false, "report-all");
+      @|show, cli_show_auto_mode("candidate", "xml", true, false, "report-all");
+      @datamodelshow, cli_show_auto("candidate", "xml", true, false, "report-all", "set ", true);
    }
    autocli("Generated tree") @datamodelshow, cli_show_auto("candidate", "xml", true, false, "report-all");
 }
@@ -126,8 +126,7 @@ expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
 
 # 1. Multiple pipe files: pipe_common + pipe_show where the latter is a superset
 new "multiple files: show menu contains common items"
-echo "$clixon_cli -1 -f $cfg show config \| count"
-expectpart "$($clixon_cli -1 -f $cfg show config \| count)" 0 10
+expectpart "$($clixon_cli -1 -f $cfg show configuration \| count)" 0 10
 
 # 2. Implicit pipe and explicit in same file where explicit overrides
 new "Implicit default command"
@@ -141,7 +140,7 @@ new "sub-tree default implicit"
 expectpart "$(echo "set table \| ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 count --not-- showas
 
 new "sub-tree explicit"
-expectpart "$(echo "show config table \| ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 count showas
+expectpart "$(echo "show configuration table \| ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 count showas
 
 # History error: second command affected by first
 # show configuration | count is OK
@@ -158,6 +157,9 @@ show configuration table | showas xml
 EOF
 new "Implicit followed by explicit"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<value>a</value>" --not-- "Unknown command"
+
+new "subtree two level show"
+expectpart "$(echo "show configuration table parameter \| showas xml" | $clixon_cli -f $cfg 2> /dev/null)" 0 "<table xmlns=\"urn:example:clixon\">" "<name>x</name>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

@@ -120,7 +120,7 @@ int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv,
 int clixon_cli2file(clicon_handle h, FILE *f, cxobj *xn, char *prepend, clicon_output_cb *fn, int skiptop);
 
 /* cli_show.c: CLIgen new vector arg callbacks */
-int cli_show_common(clicon_handle h, char *db, enum format_enum format, int pretty, int state, char *withdefault, char *extdefault, char *prepend, char *xpath, cvec *nsc, int skiptop);
+int cli_show_common(clicon_handle h, char *db, enum format_enum format, int pretty, int state, char *withdefault, char *extdefault, char *prepend, char *xpath, int fromroot, cvec *nsc, int skiptop);
 
 int show_yang(clicon_handle h, cvec *vars, cvec *argv);
 int show_conf_xpath(clicon_handle h, cvec *cvv, cvec *argv);
