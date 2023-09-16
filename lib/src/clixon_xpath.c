@@ -1225,8 +1225,17 @@ xml2xpath1(cxobj *x,
     
     if ((xp = xml_parent(x)) == NULL)
         goto ok;
-    if (spec && xml_spec(x) == NULL)
+    y = xml_spec(x);
+
+    if (spec && y == NULL)
         goto ok;
+    /* Strip top-level netconf anydata, eg from get-config protocol processing */
+    if (y != NULL){
+        if (yang_keyword_get(y) == Y_ANYXML)
+            goto ok;
+        if (yang_keyword_get(y) == Y_ANYDATA)
+            goto ok;
+    }
     if (xml2xpath1(xp, nsc, spec, apostrophe, cb) < 0)
         goto done;
     if (nsc){
@@ -1246,7 +1255,7 @@ xml2xpath1(cxobj *x,
     if (prefix)
         cprintf(cb, "%s:", prefix);
     cprintf(cb, "%s", xml_name(x));
-    if ((y = xml_spec(x)) != NULL){
+    if (y  != NULL){
         keyword = yang_keyword_get(y);
         switch (keyword){
         case Y_LEAF_LIST:

@@ -958,6 +958,55 @@ clicon_rpc_get(clicon_handle   h,
                char           *defaults,
                cxobj         **xt)
 {
+    return clicon_rpc_get2(h, xpath, nsc, content, depth, defaults, 1, xt);
+}
+
+/*! Get database configuration and state data (please use instead of clicon_rpc_get)
+ *
+ * @param[in]  h         Clicon handle
+ * @param[in]  xpath     XPath in a filter stmt (or NULL/"" for no filter)
+ * @param[in]  namespace Namespace associated w xpath
+ * @param[in]  nsc       Namespace context for filter
+ * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
+ * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
+ * @param[in]  defaults  Value of the with-defaults mode, rfc6243, or NULL
+ * @param[out] xt        XML tree. Free with xml_free. 
+ *                       Either <config> or <rpc-error>. 
+ * @retval     0         OK
+ * @retval    -1         Error, fatal or xml
+ * @note if xpath is set but namespace is NULL, the default, netconf base 
+ *       namespace will be used which is most probably wrong.
+ * @code
+ *  cxobj *xt = NULL;
+ *  cvec *nsc = NULL;
+ *
+ *  if ((nsc = xml_nsctx_init(NULL, "urn:example:hello")) == NULL)
+ *     err;
+ *  if (clicon_rpc_get(h, "/hello/world", nsc, CONTENT_ALL, -1, &xt) < 0)
+ *     err;
+ *  if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+ *     clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
+ *     err;
+ *  }
+ *  if (xt)
+ *     xml_free(xt);
+ *  if (nsc)
+ *     xml_nsctx_free(nsc);
+ * @endcode
+ * @see clicon_rpc_get_config which is almost the same as with content=config, but you can also select dbname
+ * @see clixon_netconf_error
+ * @note the netconf return message is yang populated, as well as the return data
+ */
+int
+clicon_rpc_get2(clicon_handle   h,
+                char           *xpath,
+                cvec           *nsc, /* namespace context for filter */
+                netconf_content content,
+                int32_t         depth,
+                char           *defaults,
+                int             bind,
+                cxobj         **xt)
+{
     int                retval = -1;
     struct clicon_msg *msg = NULL;
     cbuf              *cb = NULL;
@@ -1030,15 +1079,17 @@ clicon_rpc_get(clicon_handle   h,
     else{
         if (xml_bind_special(xd, yspec, "/nc:get/output/data") < 0)
             goto done;
-        if ((ret = xml_bind_yang(h, xd, YB_MODULE, yspec, &xerr)) < 0)
-            goto done;
-        if (ret == 0){
-            if (clixon_netconf_internal_error(xerr,
-                                              ". Internal error, backend returned invalid XML.",
-                                              NULL) < 0)
+        if (bind){
+            if ((ret = xml_bind_yang(h, xd, YB_MODULE, yspec, &xerr)) < 0)
                 goto done;
-            xd = xerr;
-            xerr = NULL;
+            if (ret == 0){
+                if (clixon_netconf_internal_error(xerr,
+                                                  ". Internal error, backend returned invalid XML.",
+                                                  NULL) < 0)
+                    goto done;
+                xd = xerr;
+                xerr = NULL;
+            }
         }
     }
     if (xt && xd){
@@ -1791,6 +1842,8 @@ clicon_hello_req(clicon_handle h,
     int                ret;
     cbuf              *cb = NULL;
     int                clixon_lib = 0;
+    char              *ns = NULL;
+    char              *prefix = NULL;
 
     if ((cb = cbuf_new()) == NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
@@ -1802,6 +1855,8 @@ clicon_hello_req(clicon_handle h,
         clixon_lib++;
     }
     /* RFC 6022 session parameters transport and source-host */
+    clicon_data_get(h, "session-namespace", &ns);
+    clicon_data_get(h, "session-namespace-prefix", &prefix);
     if (transport == NULL)
         clicon_data_get(h, "session-transport", &transport);
     if (transport){
