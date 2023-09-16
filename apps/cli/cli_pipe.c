@@ -294,11 +294,19 @@ pipe_showas_fn(clicon_handle h,
     /* Bind module with mtpoints requires h, but parse functions font have h */
     if (clixon_xml_parse_file(stdin, YB_NONE, yspec, &xt, NULL) < 0)
         goto done;
-    if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xerr)) < 0)
-        goto done;
-    if (ret == 0){
-        clixon_netconf_error(xerr, "Parse top file", NULL);
-        goto done;
+    switch (format){
+    case FORMAT_CLI:
+    case FORMAT_TEXT:
+        /* Requires binding. Note binding over mountpoints can cause rpc: extra latency */
+        if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_netconf_error(xerr, "Parse top file", NULL);
+            goto done;
+        }
+        break;
+    default:
+        break;
     }
     switch (format){
     case FORMAT_XML:

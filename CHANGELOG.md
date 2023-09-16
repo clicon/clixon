@@ -85,10 +85,12 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [CLI show config | display <format> exits over mountpoints with large YANGs](https://github.com/clicon/clixon-controller/issues/39)
+  * No need to bind for xml and json, only cli and text
 * Fixed several issues with extra-config files, including overwriting of structured sub-configs
   * including `<restconf>`and m̀ <autoconf>`
-* [YANG error when poking on EOS configuration](https://github.com/clicon/clixon-controller/issues/26)
-* [CLICON_CONFIGDIR with external subsystems causes endless looping](https://github.com/clicon/clixon/issues/439)
+* Fixed: [YANG error when poking on EOS configuration](https://github.com/clicon/clixon-controller/issues/26)
+* Fixed: [CLICON_CONFIGDIR with external subsystems causes endless looping](https://github.com/clicon/clixon/issues/439)
 * Fixed: ["show configuration devices" and "show configuration devices | display cli" differs](https://github.com/clicon/clixon-controller/issues/24)
 * Fixed: [Configuring Juniper PTX produces CLI errors](https://github.com/clicon/clixon-controller/issues/19)
 * Fixed: CLI output pipes: Add CLICON_PIPETREE to any cli files, not just the first
