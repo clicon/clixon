@@ -41,32 +41,28 @@ RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
 # For netsnmp
 RUN apk add --update net-snmp net-snmp-dev
 
-# Checkut models
-WORKDIR /usr/local/share/
-
 # Checkout standard YANG models for tests (note >1G for full repo)
-RUN mkdir yang
+RUN mkdir -p /usr/local/share/yang
 
 WORKDIR /usr/local/share/yang
 
 RUN git config --global init.defaultBranch master
-RUN git init;
-RUN git remote add -f origin https://github.com/YangModels/yang;
+RUN git init
+RUN git remote add -f origin https://github.com/YangModels/yang
 RUN git config core.sparseCheckout true
 RUN echo "standard/" >> .git/info/sparse-checkout
 RUN echo "experimental/" >> .git/info/sparse-checkout
 
 RUN git pull origin main
 
-RUN mkdir /usr/local/share/openconfig
+RUN mkdir -p /usr/local/share/openconfig
 WORKDIR /usr/local/share/openconfig
 
 # Checkut Openconfig models for tests
 RUN git clone https://github.com/openconfig/public
 
 # Create a directory to hold source-code, dependencies etc
-RUN mkdir /clixon
-RUN mkdir /clixon/build
+RUN mkdir -p /clixon/build
 WORKDIR /clixon
 
 # Clone cligen
@@ -74,12 +70,12 @@ RUN git clone https://github.com/clicon/cligen.git
 
 # Build cligen
 WORKDIR /clixon/cligen
-RUN ./configure --prefix=/clixon/build
+RUN ./configure --prefix=/usr/local --sysconfdir=/etc
 RUN make
-RUN make install
+RUN make DESTDIR=/clixon/build install
 
 # Copy Clixon from local dir
-RUN mkdir /clixon/clixon
+RUN mkdir -p /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
 
@@ -89,27 +85,28 @@ RUN adduser -D -H -G www-data www-data
 RUN apk add --update nginx
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/clixon/build --with-cligen=/clixon/build --with-restconf=fcgi --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/
+RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build --with-restconf=fcgi --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/
 RUN make
-RUN make install
+RUN make DESTDIR=/clixon/build install
 
 # Install utils (for tests)
 WORKDIR /clixon/clixon/util
 RUN make
-RUN make install
+RUN make DESTDIR=/clixon/build install
 
 # Build and install the clixon example
 WORKDIR /clixon/clixon/example/main
 RUN make
-RUN make install
+RUN make DESTDIR=/clixon/build install
+RUN mkdir -p /clixon/build/etc
 RUN install example.xml /clixon/build/etc/clixon.xml
 
 # Copy tests
 WORKDIR /clixon/clixon/test
-RUN install -d /clixon/build/bin/test
-RUN install *.sh /clixon/build/bin/test
-RUN install *.exp /clixon/build/bin/test
-RUN install clixon.png /clixon/build/bin/test
+RUN install -d /clixon/build/usr/local/bin/test
+RUN install *.sh /clixon/build/usr/local/bin/test
+RUN install *.exp /clixon/build/usr/local/bin/test
+RUN install clixon.png /clixon/build/usr/local/bin/test
 
 RUN install -d /clixon/build/mibs
 RUN install mibs/* /clixon/build/mibs
@@ -117,7 +114,7 @@ RUN install mibs/* /clixon/build/mibs
 # Copy startscript
 WORKDIR /clixon
 COPY startsystem_fcgi.sh startsystem.sh 
-RUN install startsystem.sh /clixon/build/bin/
+RUN install startsystem.sh /clixon/build/usr/local/bin/
 
 # Add our generated YANG files
 RUN git clone https://github.com/clicon/mib-yangs.git /usr/local/share/mib-yangs
@@ -157,7 +154,7 @@ RUN adduser -D -H clicon
 RUN adduser nginx clicon
 RUN adduser www-data clicon
 
-COPY --from=0 /clixon/build/ /usr/local/
+COPY --from=0 /clixon/build/ /
 COPY --from=0 /usr/local/share/yang/ /usr/local/share/yang/
 COPY --from=0 /usr/local/share/mib-yangs/* /usr/local/share/mib-yangs/
 COPY --from=0 /clixon/build/mibs/* /usr/share/snmp/mibs/

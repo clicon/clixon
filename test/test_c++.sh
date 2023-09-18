@@ -145,7 +145,7 @@ int example_rpc(clicon_handle h,
             if (xmlns_set(x, NULL, ns) < 0)
                 goto done;
         }
-        if (clixon_xml2cbuf(cbret, xe, 0, 0, -1, 1) < 0)
+        if (clixon_xml2cbuf(cbret, xe, 0, 0, NULL, -1, 1) < 0)
            goto done;
     }
     cprintf(cbret, "</rpc-reply>");

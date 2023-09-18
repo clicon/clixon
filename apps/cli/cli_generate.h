@@ -48,6 +48,11 @@
  * where the virtual callback (overwrite_me) is overwritten by cli_set.
  */
 #define GENERATE_CALLBACK "overwrite_me"
+#define GROUPING_CALLBACK "prepend_me"
+#define MTPOINT_PREFIX    "mtpoint:"
+
+/* variable expand function */
+#define GENERATE_EXPAND_XMLDB "expand_dbvar"
 
 /* Name of autocli CLIgen treename
  */
@@ -56,7 +61,7 @@
 /*
  * Prototypes
  */
-int yang2cli_yspec(clicon_handle h, yang_stmt *yspec, char *treename, int printgen);
+int yang2cli_yspec(clicon_handle h, yang_stmt *yspec, char *treename);
 int yang2cli_init(clicon_handle h);
 
 #endif  /* _CLI_GENERATE_H_ */

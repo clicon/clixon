@@ -90,11 +90,20 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
+#include "clixon_yang_schema_mount.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_parse.h"
 #include "clixon_xpath_eval.h"
+
+/* Use apostrophe(') in xpath literals, eg a/[x='foo'], not double-quotes(")
+ * If not set, use ": a/[x="foo"]
+ * Advantage with ' is it works well in clispecs, " must be escaped
+ * @see https://www.w3.org/TR/xpath-10/#NT-Literal
+ */
+#define XPATH_USE_APOSTROPHE
 
 /*
  * Variables
@@ -174,7 +183,10 @@ xpath_tree_int2str(int nodetype)
     return (char*)clicon_int2str(xpath_tree_map, nodetype);
 }
 
-/*! Print XPATH parse tree */
+/*! Print XPATH parse tree 
+ *
+ * @note uses "" instead of '' in printing literals, rule [29] in https://www.w3.org/TR/xpath-10
+ */
 static int
 xpath_tree_print0(cbuf       *cb,
                   xpath_tree *xs,
@@ -243,6 +255,8 @@ xpath_tree_print(FILE       *f,
 /*! Create an xpath string from an xpath tree, ie "unparsing"
  * @param[in]  xs    XPATH tree
  * @param[out] xpath XPath string as CLIgen buf
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see xpath_tree_print
  */
 int
@@ -279,7 +293,11 @@ xpath_tree2cbuf(xpath_tree *xs,
         cprintf(xcb, "%s", xs->xs_strnr?xs->xs_strnr:"0"); 
         break;
     case XP_PRIME_STR:
+#ifdef XPATH_USE_APOSTROPHE
         cprintf(xcb, "'%s'", xs->xs_s0?xs->xs_s0:"");
+#else
+        cprintf(xcb, "\"%s\"", xs->xs_s0?xs->xs_s0:"");
+#endif
         break;
     case XP_PRIME_FN:
         if (xs->xs_s0)
@@ -953,26 +971,28 @@ xpath_vec_bool(cxobj      *xcur,
  * @retval    -1       Fatal Error
  */
 static int
-traverse_canonical(xpath_tree *xs,
-                   yang_stmt  *yspec,
-                   cvec       *nsc0,
-                   cvec       *nsc1,
-                   cbuf      **reason)
+xpath_traverse_canonical(xpath_tree *xs,
+                         yang_stmt  *yspec,
+                         cvec       *nsc0,
+                         cvec       *nsc1,
+                         cbuf      **reason)
 {
     int        retval = -1;
     char      *prefix0;
-    char      *prefix1;
+    char      *prefix1 = NULL;
     char      *namespace;
     yang_stmt *ymod;
     cbuf      *cb = NULL;
     int        ret;
-
+    //    char      *name;
+    
     switch (xs->xs_type){
     case XP_NODE: /* s0 is namespace prefix, s1 is name */
         /* Nodetest = * needs no prefix */
         if (xs->xs_s1 && strcmp(xs->xs_s1, "*") == 0)
             break;
         prefix0 = xs->xs_s0;
+        //        name = xs->xs_s1;
         if ((namespace = xml_nsctx_get(nsc0, prefix0)) == NULL){
             if ((cb = cbuf_new()) == NULL){
                 clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -981,28 +1001,33 @@ traverse_canonical(xpath_tree *xs,
             cprintf(cb, "No namespace found for prefix: %s", prefix0);
             if (reason)
                 *reason = cb;
-            goto failed;
+            goto fail;
         }
         if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
+#if 0 /* Just accept it, see note in xpath2canonical */
             if ((cb = cbuf_new()) == NULL){
                 clicon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
-            cprintf(cb, "No modules found for namespace: %s", namespace);           
+            cprintf(cb, "No yang found for namespace: %s", namespace);           
             if (reason)
                 *reason = cb;
-            goto failed;
+            goto fail;
+#endif
         }
-        if ((prefix1 = yang_find_myprefix(ymod)) == NULL){
-            if ((cb = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
-                goto done;
+        if (ymod == NULL) 
+            prefix1 = prefix0;
+        else
+            if ((prefix1 = yang_find_myprefix(ymod)) == NULL){
+                if ((cb = cbuf_new()) == NULL){
+                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cb, "No prefix found in module: %s", yang_argument_get(ymod));          
+                if (reason)
+                    *reason = cb;
+                goto fail;
             }
-            cprintf(cb, "No prefix found in module: %s", yang_argument_get(ymod));          
-            if (reason)
-                *reason = cb;
-            goto failed;
-        }
         if (xml_nsctx_get(nsc1, prefix1) == NULL)
             if (xml_nsctx_add(nsc1, prefix1, namespace) < 0)
                 goto done;
@@ -1019,21 +1044,21 @@ traverse_canonical(xpath_tree *xs,
         break;
     }   
     if (xs->xs_c0){
-        if ((ret = traverse_canonical(xs->xs_c0, yspec, nsc0, nsc1, reason)) < 0)
+        if ((ret = xpath_traverse_canonical(xs->xs_c0, yspec, nsc0, nsc1, reason)) < 0)
             goto done;
         if (ret == 0)
-            goto failed;
+            goto fail;
     }
     if (xs->xs_c1){
-        if ((ret = traverse_canonical(xs->xs_c1, yspec, nsc0, nsc1, reason)) < 0)
+        if ((ret = xpath_traverse_canonical(xs->xs_c1, yspec, nsc0, nsc1, reason)) < 0)
             goto done;
         if (ret == 0)
-            goto failed;
+            goto fail;
     }   
     retval = 1;
  done:
     return retval;
- failed:
+ fail:
     retval = 0;
     goto done;
 }
@@ -1067,6 +1092,10 @@ traverse_canonical(xpath_tree *xs,
  *   if (xpath1) free(xpath1);
  *   if (nsc1) xml_nsctx_free(nsc1);
  * @endcode
+ * @note Unsolvable issue of mountpoints, eg an xpath of //x:foo where foo is under one or several
+ *       mointpoints: a well-defined namespace cannot be determined. Therefore just allow 
+ *       inconsistencies and hope that it will be covered by other code
+ * @see xpath2xml
  */
 int
 xpath2canonical(const char *xpath0,
@@ -1092,10 +1121,10 @@ xpath2canonical(const char *xpath0,
     /* Traverse tree to find prefixes, transform them to canonical form and
      * create a canonical network namespace
      */
-     if ((ret = traverse_canonical(xpt, yspec, nsc0, nsc1, cbreason)) < 0)
+     if ((ret = xpath_traverse_canonical(xpt, yspec, nsc0, nsc1, cbreason)) < 0)
         goto done;
      if (ret == 0)
-         goto failed;
+         goto fail;
      /* Print tree with new prefixes */
      if ((xcb = cbuf_new()) == NULL){
          clicon_err(OE_XML, errno, "cbuf_new");
@@ -1122,7 +1151,7 @@ xpath2canonical(const char *xpath0,
     if (xpt)
         xpath_tree_free(xpt);
     return retval;
- failed:
+ fail:
     retval = 0;
     goto done;
 }
@@ -1166,10 +1195,11 @@ xpath_count(cxobj      *xcur,
 }
 
 /*! Given an XML node, build an xpath recursively to root, internal function
+ *
  * @param[in]  x      XML object
  * @param[in]  nsc    Namespace context
  * @param[in]  spec   If set, recursively continue only to root without spec
- * @param[out] cb     XPath string as cbuf.
+ * @param[in]  apostrophe   If set, use apostrophe in xpath literals, eg a/[x='foo'], not double-quotes(") * @param[out] cb     XPath string as cbuf.
  * @retval     0      OK
  * @retval    -1      Error. eg XML malformed
  */
@@ -1177,6 +1207,7 @@ static int
 xml2xpath1(cxobj *x,
            cvec  *nsc,
            int    spec,
+           int    apostrophe,
            cbuf  *cb)
 {
     int           retval = -1;
@@ -1194,9 +1225,18 @@ xml2xpath1(cxobj *x,
     
     if ((xp = xml_parent(x)) == NULL)
         goto ok;
-    if (spec && xml_spec(x) == NULL)
+    y = xml_spec(x);
+
+    if (spec && y == NULL)
         goto ok;
-    if (xml2xpath1(xp, nsc, spec, cb) < 0)
+    /* Strip top-level netconf anydata, eg from get-config protocol processing */
+    if (y != NULL){
+        if (yang_keyword_get(y) == Y_ANYXML)
+            goto ok;
+        if (yang_keyword_get(y) == Y_ANYDATA)
+            goto ok;
+    }
+    if (xml2xpath1(xp, nsc, spec, apostrophe, cb) < 0)
         goto done;
     if (nsc){
         if (xml2ns(x, xml_prefix(x), &namespace) < 0)
@@ -1215,29 +1255,46 @@ xml2xpath1(cxobj *x,
     if (prefix)
         cprintf(cb, "%s:", prefix);
     cprintf(cb, "%s", xml_name(x));
-    if ((y = xml_spec(x)) != NULL){
+    if (y  != NULL){
         keyword = yang_keyword_get(y);
         switch (keyword){
         case Y_LEAF_LIST:
-            if ((b = xml_body(x)) != NULL)
-                cprintf(cb, "[.=\"%s\"]", b);
-            else
-                cprintf(cb, "[.=\"\"]");
+            if (apostrophe){
+                if ((b = xml_body(x)) != NULL)
+                    cprintf(cb, "[.='%s']", b);
+                else
+                    cprintf(cb, "[.='']");
+            }
+            else{
+                if ((b = xml_body(x)) != NULL)
+                    cprintf(cb, "[.=\"%s\"]", b);
+                else
+                    cprintf(cb, "[.=\"\"]");
+            }
             break;
         case Y_LIST:
             cvk = yang_cvec_get(y);
             cvi = NULL;
             while ((cvi = cvec_each(cvk, cvi)) != NULL) {
                 keyname = cv_string_get(cvi);
-                if ((xkey = xml_find(x, keyname)) == NULL)
-                    goto done; /* No key in xml */
+                if ((xkey = xml_find(x, keyname)) == NULL){
+                    clicon_err(OE_XML, 0, "No key %s in list %s", keyname, xml_name(x));
+                    goto done;
+                }
                 if ((xb = xml_find(x, keyname)) == NULL)
                     goto done;
                 b = xml_body(xb);
+#if 1
+                if (b==NULL || strlen(b)==0)
+                    continue;
+#endif
                 cprintf(cb, "[");
                 if (prefix)
                     cprintf(cb, "%s:", prefix);
-                cprintf(cb, "%s=\"%s\"]", keyname, b?b:"");
+                if (apostrophe)
+                    cprintf(cb, "%s='%s']", keyname, b?b:"");
+                else
+                    cprintf(cb, "%s=\"%s\"]", keyname, b?b:"");
             }
             break;
         default:
@@ -1260,6 +1317,7 @@ xml2xpath1(cxobj *x,
  * @param[in]  x      XML object
  * @param[in]  nsc    Namespace context
  * @param[in]  spec   If set, recursively continue only to root without spec (added in 6.1 for yang mount)
+ * @param[in]  apostrophe   If set, use apostrophe in xpath literals, eg a/[x='foo'], not double-quotes(")
  * @param[out] xpath  Malloced xpath string. Need to free() after use
  * @retval     0      OK
  * @retval    -1      Error. (eg XML malformed)
@@ -1267,16 +1325,18 @@ xml2xpath1(cxobj *x,
  *    char  *xpath = NULL;
  *    cxobj *x;
  *    ... x is inside an xml tree ...
- *    if (xml2xpath(x, nsc, 0, &xpath) < 0)
+ *    if (xml2xpath(x, nsc, 0, 0, &xpath) < 0)
  *       err;
  *    free(xpath);
  * @endcode
  * @note x needs to be bound to YANG, see eg xml_bind_yang()
+ * @note namespaces of xpath is not well-defined, follows xml, should be canonical?
  */
 int
 xml2xpath(cxobj *x,
           cvec  *nsc,
           int    spec,
+          int    apostrophe,
           char **xpathp)
 {
     int   retval = -1;
@@ -1287,7 +1347,7 @@ xml2xpath(cxobj *x,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    if (xml2xpath1(x, nsc, spec, cb) < 0)
+    if (xml2xpath1(x, nsc, spec, apostrophe, cb) < 0)
         goto done;
     /* XXX: see xpath in test statement,.. */
     xpath = cbuf_get(cb);
@@ -1303,4 +1363,168 @@ xml2xpath(cxobj *x,
     if (cb)
         cbuf_free(cb);
     return retval;
+}
+
+/*! Create xml tree from xpath as xpath-tree
+ *
+ * @param[in]  xs      Parsed xpath - xpath_tree
+ * @param[in]     nsc     Namespace context for xpath
+ * @param[in]     x0      XML tree so far
+ * @param[out]    xbotp   Resulting xml tree (end of xpath) (optional)
+ * @param[out]    xerr    Netconf error message (if retval=0)
+ * @retval        1       OK
+ * @retval        0       Invalid xpath
+ * @retval       -1       Fatal error, clicon_err called
+ * @see xpath_traverse_canonical
+ */
+static int
+xpath2xml_traverse(xpath_tree *xs,
+                   cvec       *nsc,
+                   cxobj      *x0,
+                   yang_stmt  *y0,
+                   cxobj     **xbotp,
+                   yang_stmt **ybotp,
+                   cxobj     **xerr)
+{
+    int        retval = -1;
+    int        ret;
+    char      *name;
+    char      *prefix;
+    char      *namespace;
+    char      *ns = NULL;
+    cbuf      *cberr = NULL;
+    cxobj     *xc;
+    yang_stmt *ymod;
+    yang_stmt *yc;
+
+    *xbotp = x0;
+    *ybotp = y0;
+    switch (xs->xs_type){
+    case XP_NODE: /* s0 is namespace prefix, s1 is name */
+        prefix = xs->xs_s0;
+        name = xs->xs_s1;
+        if ((namespace = xml_nsctx_get(nsc, prefix)) == NULL){
+            if ((cberr = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cberr, "No namespace found for prefix: %s", prefix);
+            if (xerr &&
+                netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+                goto done;
+            goto fail;
+        }
+        if (yang_keyword_get(y0) == Y_SPEC){ /* top-node */
+            if ((ymod = yang_find_module_by_namespace(y0, namespace)) == NULL){
+                cprintf(cberr, "No such yang module namespace");
+                if (xerr &&
+                    netconf_unknown_element_xml(xerr, "application", namespace, cbuf_get(cberr)) < 0)
+                    goto done;
+                goto fail;
+            }
+            y0 = ymod;
+        }
+        if ((yc = yang_find_datanode(y0, name)) == NULL){
+            if (xerr &&
+                netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
+                goto done;
+            goto fail;
+        }
+        if ((xc = xml_new(name, x0, CX_ELMNT)) == NULL)
+            goto done;
+        if (xml2ns(x0, prefix, &ns) < 0)
+            goto done;
+        if (ns == NULL)
+            if (xmlns_set(xc, NULL, namespace) < 0)
+                goto done;
+        *xbotp = xc;
+        *ybotp = yc;
+        break;
+    default:
+        break;
+    }
+    if (xs->xs_c0){
+        if ((ret = xpath2xml_traverse(xs->xs_c0, nsc, x0, y0, xbotp, ybotp, xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            goto fail;
+        }
+    }
+    if (xs->xs_c1){
+        x0 = *xbotp;
+        y0 = *ybotp;
+        if ((ret = xpath2xml_traverse(xs->xs_c1, nsc, x0, y0, xbotp, ybotp, xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            goto fail;
+        }
+        if (xs->xs_type == XP_STEP){
+            *xbotp = x0;
+            *ybotp = y0;
+        }
+    }   
+    retval = 1;
+ done:
+    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Create xml tree from restricted xpath 
+ *
+ * Create an XML tree from "scratch" using xpath.
+ * @param[in]     xpath   (Absolute) XPath
+ * @param[in]     nsc     Namespace context for xpath
+ * @param[in,out] xtop    Incoming XML tree
+ * @param[in]     yspec   Yang spec for xtop
+ * @param[out]    xbotp   Resulting xml tree (end of xpath) (optional)
+ * @param[out]    ybotp   Yang spec matching xpathp
+ * @param[out]    xerr    Netconf error message (if retval=0)
+ * @retval        1       OK
+ * @retval        0       Invalid xpath
+ * @retval       -1       Fatal error, clicon_err called
+ * @see api_path2xml
+ * @see xml2xpath
+ * @note xpath is restricted to absolute paths, and simple expressions, eg as "node-identifier"
+ */
+int
+xpath2xml(char       *xpath,
+          cvec       *nsc,
+          cxobj      *xtop,
+          yang_stmt  *ytop,
+          cxobj     **xbotp,
+          yang_stmt **ybotp,
+          cxobj     **xerr)
+{
+    int         retval = -1;
+    cbuf       *cberr = NULL;
+    xpath_tree *xpt = NULL;
+
+    clicon_debug(CLIXON_DBG_DETAIL, "%s xpath:%s", __FUNCTION__, xpath);
+    if ((cberr = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (*xpath != '/'){
+        cprintf(cberr, "Invalid absolute xpath: %s (must start with '/')", xpath);
+        if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+            goto done;
+        goto fail;
+    }
+    /* Parse input xpath into an xpath-tree */
+    if (xpath_parse(xpath, &xpt) < 0)
+        goto done;
+    if ((retval = xpath2xml_traverse(xpt, nsc, xtop, ytop, xbotp, ybotp, xerr)) < 1)
+        goto done;
+ done:
+    if (xpt)
+        xpath_tree_free(xpt);
+    if (cberr)
+        cbuf_free(cberr);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }

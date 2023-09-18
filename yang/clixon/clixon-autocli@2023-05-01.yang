@@ -41,10 +41,15 @@ module clixon-autocli{
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2023-05-01 {
+        description
+            "Added extensions skip and alias
+             Added grouping-treeref
+             Released in Clixon 6.3";
+    }
     revision 2022-02-11 {
         description
-            "Initial version
-             Released in Clixon 5.6";
+            "Released in Clixon 5.6";
     }
     revision 2021-12-05 {
         description
@@ -53,20 +58,31 @@ module clixon-autocli{
     }
     extension hide {
         description 
-            "Modify the autocli by hiding the command associated with a YANG node and its 
+            "Hide the command associated with a YANG node and its 
              sub-commands.
              The command is active but not shown by ? or TAB. In other words, it hides the
              auto-completion of commands";
     }
     extension hide-show {
         description 
-            "Modify the autocli by hiding the command associated with a YANG node and its 
+            "Hide the command associated with a YANG node and its 
              sub-commands in CLI show commands.";
     }
-    extension strict-expand  {
+    extension skip {
+        description 
+            "Skip the command associated with a YANG node and its sub-commands altogether.
+             The command is completely removed from the CLI, but still exists in NETCONF/
+             RESTCONF.";
+    }
+    extension strict-expand {
         description 
             "Modify the autocli by only showing exactly the expanded values of a variable.
              It should not be possible to add a new value that is not in the expanded list.";
+    }
+    extension alias {
+        description 
+            "Replace the command name with a new value.
+             Instead of using the YANG argument name, use this instead";
     }
     typedef autocli-op {
         description
@@ -183,6 +199,21 @@ module clixon-autocli{
                  This is normally always enabled.";
             type boolean;
             default true;
+        }
+        leaf grouping-treeref {
+            description
+                "Controls the behaviour when generating CLISPEC of YANG 'uses' statements into the
+                 corresponding 'grouping' definition: macro expansion.
+                 For optimization of memory footprint.
+                 If 'false', replace the uses definition with the grouping definition.
+                 If 'true' use indirect tree reference '@treeref' to reference the grouping definition. This
+                 saves memory for large YANGs.
+
+                 See also AUTOCLI_GROUPING_TOPLEVEL_SKIP and AUTOCLI_GROUPING_AUGMENT_SKIP for 
+                 temporary disabled cornercases.
+                 This option was introduced in Clixon 6.3";
+            type boolean;
+            default false;
         }
         /* rules */
         list rule {

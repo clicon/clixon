@@ -123,7 +123,6 @@
 #include <syslog.h>
 #include <pwd.h>
 #include <ctype.h>
-#include <assert.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -160,7 +159,7 @@
 #endif
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:p:y:a:u:rW:R:o:"
+#define RESTCONF_OPTS "hD:f:E:l:C:p:y:a:u:rW:R:o:"
 
 /* If set, open outwards socket non-blocking, as opposed to blocking
  * Should work both ways, but in the ninblocking case,
@@ -1117,6 +1116,7 @@ usage(clicon_handle h,
             "\t-f <file>\t  Configuration file (mandatory)\n"
             "\t-E <dir> \t  Extra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
+            "\t-C <format>\tDump configuration options on stdout after loading and exit. Format is xml|json|text\n"
             "\t-p <dir>\t  Yang directory path (see CLICON_YANG_DIR)\n"
             "\t-y <file>\t  Load yang spec file (override yang main module)\n"
             "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
@@ -1131,6 +1131,8 @@ usage(clicon_handle h,
     exit(0);
 }
 
+/* Clixon native restconf application main entry point
+ */
 int
 main(int    argc,
      char **argv)
@@ -1145,6 +1147,8 @@ main(int    argc,
     int             ret;
     cxobj          *xrestconf = NULL;
     char           *inline_config = NULL;
+    int           config_dump = 0;
+    enum format_enum config_dump_format = FORMAT_XML;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -1236,6 +1240,13 @@ main(int    argc,
         case 'E':  /* extra config dir */
         case 'l':  /* log  */
             break; /* see above */
+        case 'C': /* Explicitly dump configuration */
+            if ((config_dump_format = format_str2int(optarg)) ==  (enum format_enum)-1){
+                fprintf(stderr, "Unrecognized dump format: %s(expected: xml|json|text)\n", argv[0]);
+                usage(h, argv[0]);
+            }
+            config_dump++;
+            break;
         case 'p' : /* yang dir path */
             if (clicon_option_add(h, "CLICON_YANG_DIR", optarg) < 0)
                 goto done;
@@ -1284,6 +1295,12 @@ main(int    argc,
     /* Init restconf auth-type */
     restconf_auth_type_set(h, CLIXON_AUTH_NONE);
     
+    /* Explicit dump of config (also debug dump below). */
+    if (config_dump){
+        if (clicon_option_dump1(h, stdout, config_dump_format, 1) < 0)
+            goto done;
+        goto ok;
+    }
     /* Dump configuration options on debug */
     clicon_option_dump(h, 1);
 
@@ -1327,6 +1344,7 @@ main(int    argc,
     /* Main event loop */ 
     if (clixon_event_loop(h) < 0)
         goto done;
+ ok:
     retval = 0;
  done:
     clicon_debug(1, "restconf_main_openssl done");

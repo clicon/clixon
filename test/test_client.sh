@@ -99,7 +99,7 @@ main(int    argc,
     if ((ch = clixon_client_connect(h, CLIXON_CLIENT_NETCONF, NULL)) == NULL)
        return -1;
     s = clixon_client_socket_get(ch);
-    if (clixon_client_hello(s, 0) < 0)
+    if (clixon_client_hello(s, NULL, 0) < 0)
       return -1;
     /* Here are read functions depending on an example YANG 
      * (Need an example YANG and XML input to confd)

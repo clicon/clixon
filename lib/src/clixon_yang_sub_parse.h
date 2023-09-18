@@ -56,6 +56,7 @@ struct clixon_yang_sub_parse_yacc {
     yang_stmt *if_ys;           /* Yang statement, NULL if no check */
     enum yang_sub_parse_accept if_accept; /* Which sub-parse rule to accept */ 
     int         if_enabled;      /* Result: 0: feature disabled, 1: enabled */
+    clicon_handle h;
 };
 typedef struct clixon_yang_sub_parse_yacc clixon_yang_sub_parse_yacc;
 
@@ -73,7 +74,7 @@ int clixon_yang_sub_parsel_linenr(void);
 int clixon_yang_sub_parselex(void *);
 int clixon_yang_sub_parseparse(void *);
 
-int  yang_subparse(char *str, yang_stmt *ys, enum yang_sub_parse_accept accept, const char *mainfile, int linenum, int *enabled);
+int  yang_subparse(char *str, yang_stmt *ys, enum yang_sub_parse_accept accept, const char *mainfile, int linenum, int *enabled, clicon_handle h);
 int  yang_schema_nodeid_subparse(char *str, enum yang_sub_parse_accept accept, const char *mainfile, int linenum);
 
 #endif  /* _CLIXON_YANG_SUB_PARSER_H_ */

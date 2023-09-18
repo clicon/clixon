@@ -45,6 +45,9 @@ static int myfn(int par1, my_structure *par2);
 
 ### Errors
 
+Error handling follows the "fail early and loud" principle. That is, unless a specific error-handling
+is identified, exit as soon as possible and with an explicit error log.
+
 Errors are typically declared as follows:
 ```
     if (myfn(0) < 0){
@@ -64,7 +67,7 @@ In some cases, Clixon uses three-value returns as follows:
 - `0`  Invalid
 - `-1` Fatal error
 
-### Return values
+### Return values and goto:s
 
 Clixon uses goto:s only to get a single point of exit functions as follows:
 ```
@@ -80,7 +83,7 @@ Clixon uses goto:s only to get a single point of exit functions as follows:
 
 Notes:
 1. Use only a single return statement in a function
-2. Do not use of goto:s in other ways
+2. Do not use goto:s in other ways
 
 ### Comments
 

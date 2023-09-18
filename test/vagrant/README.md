@@ -23,9 +23,10 @@ You can also run a single vagrant test as follows:
 ```
 
 The current vagrant boxes are verified continuously:
-* ubuntu/bionic64
-# * generic/centos8
 * generic/freebsd13
+* generic/lunar64 # 23.04
+* generic/ubuntu2204
+* generic/bionic64 # 18.04
 
 For other vagrant boxes, see [search vagrant boxes](https://vagrantcloud.com/search)
 

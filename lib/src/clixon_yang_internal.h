@@ -88,6 +88,7 @@ struct yang_stmt{
                                         fraction-digits for fraction-digits
                                         revision (uint32)
                                         unknown-stmt (optional argument)
+                                        spec: mount-point xpath
                                      */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
                                         Y_RANGE: range_min, range_max 

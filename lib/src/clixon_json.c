@@ -1227,7 +1227,7 @@ xml2json_cbuf_vec(cbuf      *cb,
  * @param[in]  f       File to print to
  * @param[in]  xn      XML tree to translate from
  * @param[in]  pretty  Set if output is pretty-printed
- * @param[in]  fn       File print function (if NULL, use fprintf)
+ * @param[in]  fn       File print function
  * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
  * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @retval     0       OK
@@ -1286,6 +1286,7 @@ json_print(FILE  *f,
  * @param[in]  vec    Vector of xml objecst
  * @param[in]  veclen Length of vector
  * @param[in]  pretty Set if output is pretty-printed (2 for debug)
+ * @param[in]  fn       File print function 
  * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
  * @retval     0      OK
  * @retval    -1      Error
@@ -1294,11 +1295,12 @@ json_print(FILE  *f,
  * @see xml2json1_cbuf
  */
 int 
-xml2json_vec(FILE      *f, 
-             cxobj    **vec,
-             size_t     veclen,
-             int        pretty,
-             int        skiptop)
+xml2json_vec(FILE             *f, 
+             cxobj           **vec,
+             size_t            veclen,
+             int               pretty,
+             clicon_output_cb *fn,
+             int               skiptop)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -1309,7 +1311,7 @@ xml2json_vec(FILE      *f,
     }
     if (xml2json_cbuf_vec(cb, vec, veclen, pretty, skiptop) < 0)
         goto done;
-    fprintf(f, "%s\n", cbuf_get(cb));
+    (*fn)(f, "%s\n", cbuf_get(cb));
     retval = 0;
  done:
     if (cb)

@@ -147,7 +147,6 @@ restconf_pseudo_set_inline(clicon_handle h,
     char **argv;
     int    argc;
     int    i; 
-    char  *str = NULL;
     cxobj *xrestconf;
     cbuf  *cb = NULL;
 
@@ -158,12 +157,14 @@ restconf_pseudo_set_inline(clicon_handle h,
         for (i=0; i<argc; i++){
             if (argv[i] == NULL)
                 break;
+#ifdef RESTCONF_INLINE
+            char  *str;
             if (strcmp(argv[i], "-R") == 0 && argc > i+1 && argv[i+1]){
                 if ((cb = cbuf_new()) == NULL){
                     clicon_err(OE_XML, errno, "cbuf_new");
                     goto done;
                 }
-                if (clixon_xml2cbuf(cb, xrestconf, 0, 0, -1, 0) < 0)
+                if (clixon_xml2cbuf(cb, xrestconf, 0, 0, NULL, -1, 0) < 0)
                     goto done;
                 if ((str = strdup(cbuf_get(cb))) == NULL){
                     clicon_err(OE_XML, errno, "stdup");
@@ -175,6 +176,7 @@ restconf_pseudo_set_inline(clicon_handle h,
                 argv[i+1] = str;
                 break;
             }
+#endif
         }
     retval = 0;
  done:
@@ -212,7 +214,7 @@ restconf_rpc_wrapper(clicon_handle    h,
         }
         else{
             /* Get debug flag of restconf config, set the restconf start -D daemon flag according
-             * to it. The restconf daemon cannoit read its debug flag from config initially,
+             * to it. The restconf daemon cannot read its debug flag from config initially,
              * but in this way it is set directly in its input args.
              * Its a trick.
              */
@@ -253,7 +255,10 @@ restconf_pseudo_process_control(clicon_handle h)
     struct stat fstat;
     int         found = 0;
 
-    nr = 10;
+    nr = 8; /* pgm -f <file> -D <dbg> -l <log> NULL */
+#ifdef RESTCONF_INLINE
+    nr += 2;
+#endif
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
         clicon_err(OE_UNIX, errno, "calloc");
         goto done;
@@ -307,20 +312,23 @@ restconf_pseudo_process_control(clicon_handle h)
     argv[i++] = "0";
     argv[i++] = "-l";
     argv[i++] = "s"; /* There is also log-destination in clixon-restconf.yang */
+#ifdef RESTCONF_INLINE
     argv[i++] = "-R";
-    argv[i++] = ""; 
+    argv[i++] = "";  /* The content is set in restconf_pseudo_set_inline */
+#endif
     argv[i++] = NULL;
     assert(i==nr);
     if (clixon_process_register(h, RESTCONF_PROCESS,
                                 "Clixon RESTCONF process",
                                 NULL /* XXX network namespace */,
+                                -1, -1, -1,
                                 restconf_rpc_wrapper,
                                 argv, nr) < 0)
         goto done;
-    if (argv != NULL)
-        free(argv);
     retval = 0;
  done:
+    if (argv != NULL)
+        free(argv);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -373,7 +381,7 @@ restconf_pseudo_process_commit(clicon_handle    h,
     if (xpath_first(xtarget, NULL, "/restconf[enable='true']") != NULL)
         enabled++;
     /* Get debug flag of restconf config, set the restconf start -D daemon flag according
-     * to it. The restconf daemon cannoit read its debug flag from config initially,
+     * to it. The restconf daemon cannot read its debug flag from config initially,
      * but in this way it is set directly in its input args.
      * Its a trick.
      */

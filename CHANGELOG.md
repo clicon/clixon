@@ -1,6 +1,8 @@
 # Clixon Changelog
 
-* [6.2.0](#620) Expected: April 2023
+* [6.4.0](#640) Expected: October 2023
+* [6.3.0](#630) 29 July 2023
+* [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
 * [5.9.0](#590) 24 September 2022
@@ -39,28 +41,163 @@
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
 
-## 6.2.0
-Expected: April 2023
+## 6.4.0
+Expected: October 2023
+
+### API changes on existing protocol/config features
+Users may have to change how they access the system
+
+* New `clixon-autocli@2023-09-01.yang` revision
+  * Added argument to alias extension
+
+### C/CLI-API changes on existing features
+Developers may need to change their code
+
+* Add `fromroot` parameter to `cli_show_common()`
+  * `cli_show_common(...xpath...)` --> `cli_show_common(...xpath,0...)`
+* Low-level message functions added `descr` argument for better logging
+  * In this way, message debugs in level 2 are more descriptive
+  * The descr argument can be set to NULL for backward-compability, see the following translations:
+    * `clicon_rpc(s, ...)` --> `clicon_rpc(s, NULL, ...)`
+    * `clicon_rpc1(s, ...)` --> `clicon_rpc1(s, NULL, ...)`
+    * `clicon_msg_send(s, ...)` --> `clicon_msg_send(s, NULL, ...)`
+    * `clicon_msg_send1(s, ...)` --> `clicon_msg_send1(s, NULL, ...)`
+    * `clicon_msg_rcv(s, ...)` --> `clicon_msg_rcv(s, NULL, ...)`
+    * `clicon_msg_rcv1(s, ...)` --> `clicon_msg_rcv1(s, NULL, ...)
+    * `clicon_msg_notify_xml(h, s, ...)` --> `clicon_msg_notify_xml(h, s, NULL, ...)`
+    * `send_msg_reply(s, ...)` --> `send_msg_reply(s, NULL, ...)`
+    * `clixon_client_lock(s, ...)` --> `clixon_client_lock(s, NULL, ...)`
+    * `clixon_client_hello(s, ...)` --> `clixon_client_hello(s, NULL, ...)`
+
+* CLI pipe function: added arg to `pipe_tail_fn()`
+
+### Minor features
+
+* Example cli pipe grep command quotes vertical bar for OR function
+* Added: [Feature request: node's alias for CLI](https://github.com/clicon/clixon/issues/434)
+   * Note: "Skip" is for all nodes, but "Alias" is only for leafs
+* New command-line option for dumping configuration options for all clixon applications after load
+  * Syntax is `-C <format>`
+  * Example: `clixon_backend -1C json`
+* Removed sending restconf config inline using -R when CLICON_BACKEND_RESTCONF_PROCESS=true
+  * Define RESTCONF_INLINE to revert
+* Clarified clixon_cli command-line: `clixon_cli [options] [commands] [-- extra-options]`
+
+### Corrected Bugs
+
+* Fixed: [CLI show config | display <format> exits over mountpoints with large YANGs](https://github.com/clicon/clixon-controller/issues/39)
+  * No need to bind for xml and json, only cli and text
+* Fixed several issues with extra-config files, including overwriting of structured sub-configs
+  * including `<restconf>`and m̀ <autoconf>`
+* Fixed: [YANG error when poking on EOS configuration](https://github.com/clicon/clixon-controller/issues/26)
+* Fixed: [CLICON_CONFIGDIR with external subsystems causes endless looping](https://github.com/clicon/clixon/issues/439)
+* Fixed: ["show configuration devices" and "show configuration devices | display cli" differs](https://github.com/clicon/clixon-controller/issues/24)
+* Fixed: [Configuring Juniper PTX produces CLI errors](https://github.com/clicon/clixon-controller/issues/19)
+* Fixed: CLI output pipes: Add CLICON_PIPETREE to any cli files, not just the first
+
+## 6.3.0
+29 July 2023
+
+Clixon 6.3 introduces CLI output pipes and multiple updates and optimizations, primarily to the CLI.
 
 ### New features
 
+* CLI output pipes
+  * Building on a new CLIgen feature
+  * See https://clixon-docs.readthedocs.io/en/latest/cli.html#output-pipes
+  
 ### API changes on existing protocol/config features
-
 Users may have to change how they access the system
 
-* New `clixon-config@2022-12-01.yang` revision
-  * Added options: `CLICON_RESTCONF_NOALPN_DEFAULT`
+* New `clixon-config@2023-05-01.yang` revision
+  * Added options: `CLICON_CONFIG_EXTEND`
+  * Moved datastore-format datastype to clixon-lib
+* New `clixon-lib@2023-05-01.yang` revision
+  * Restructured and extended stats rpc to schema mountpoints
+  * rpc `<stats>` is not backward compatible
+* New `clixon-autocli@2023-05-01.yang` revision
+  * New `alias` and `skip` extensions (NOTE: just added in YANG, not implemented)
+  * New `grouping-treeref` option
+  
+### C/CLI-API changes on existing features
+Developers may need to change their code
+
+* Added `uid`, `gid` and `fdkeep` parameters to `clixon_process_register()` for drop privs
+* Added output function to JSON output:
+  * `xml2json_vec(...,skiptop)` --> `xml2json_vec(..., cligen_output, skiptop)`
+* `yang2cli_yspec` removed last argument `printgen`.
+* Removed obsolete: `cli_auto_show()`
+
+### Minor features
+
+* Autocli optimization feature for generating smaller CLISPECs for large YANGs using treerefs
+   * New `grouping-treeref` option added to clixon-autocli.yang
+   * Default is disabled, set to true to generate smaller memory footprint of clixon_cli
+* Changed YANG uses/grouping to keep uses statement and flag it with YANG_FLAG_USES_EXP
+* Removed  extras/ and build-root/ build code since they are not properly maintained
+* Refactored cli-syntax code to use cligen pt_head instead (long overdue)
+* Modified backend exit strategy so that 2nd ^C actually exits
+* Performance: A change in the `merge` code made "co-located" config and non-config get retrieval go considerable faster. This is done by a specialized `xml_child_each_attr()` function.
+* CLI: Added `show statistics` example code for backend and CLI memory stats
+* [Support yang type union with are same subtypes with SNMP](https://github.com/clicon/clixon/pull/427)
+* Removed obsolete compile options introduced in 6.1:
+  * `NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL`
+  * `AUTOCLI_DEPRECATED_HIDE`
+
+### Corrected Bugs
+
+* Fixed: [xpath // abbreviation does not work other than on the top-level](https://github.com/clicon/clixon/issues/435)
+* Fixed: [if-feature always negative if imported from another module](https://github.com/clicon/clixon/issues/429)
+* Fixed autocli edit modes for schema mounts
+
+## 6.2.0
+30 April 2023
+
+Clixon 6.2.0 brings no new major feature changes, but completes YANG
+schema mount and other features required by the clixon controller
+project, along with minor improvements and bugfixes.
+
+### API changes on existing protocol/config features
+Users may have to change how they access the system
+
+* Changed `configure --with-cligen=dir`
+  * <dir> is considered as `DESTDIR` and consider cligen installed under `DESTDIR/PREFIX`
+  * Changed from: consider cligen installed under `<dir>`
+* New `clixon-config@2023-03-01.yang` revision
+  * Added options:
+    * `CLICON_RESTCONF_NOALPN_DEFAULT`
+    * `CLICON_PLUGIN_DLOPEN_GLOBAL`
+  * Extended datastore-format with CLI and text
+* New `clixon-lib@2023-03-01.yang` revision
+  * Added creator meta-object
 
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
 * C-API
+  * `clixon_xml2file` and `clixon_xml2cbuf` added `prefix` argument
+    * Example application is to add "+"/"-" for diffs
+    * Example change:
+      * `clixon_xml2file(f,x,p,f,s,a)` -> `clixon_xml2file(f,x,p,NULL,f,s,a)`
+      * `clixon_xml2cbuf(c,x,l,p,d,s)` -> `clixon_xml2cbuf(c,x,l,p,NULL,d,s)`
+  * `xmldb_validate` is removed. Yang checks should be enough, remnant of time before YANG checks. 
+  * `xml_diff`: removed 1st `yspec` parameter
+  * `xml2xpath()`: Added `int apostrophe` as 4th parameter, default 0
+    * This is for being able to choose single or double quote as xpath literal quotes
   * `clicon_msg_rcv`: Added `intr` parameter for interrupting on `^C` (default 0)
   * Renamed include file: `clixon_backend_handle.h`to `clixon_backend_client.h`
   * `candidate_commit()`: validate_level (added in 6.1) marked obsolete
 	
 ### Minor features
 
+* Adjusted to Openssl 3.0 
+* Unified netconf input function
+  * Three different implementations were used in external, internal and controller code
+    * Internal netconf still not moved to unified
+  * The new clixon_netconf_input API unifies all three uses
+  * Code still experimental controlled by `NETCONF_INPUT_UNIFIED_INTERNAL`
+* RFC 8528 YANG schema mount
+  * Made cli/autocli mount-point-aware
 * Internal NETCONF (client <-> backend)
   * Ensure message-id increments
   * Separated rpc from notification socket in same session
@@ -70,6 +207,9 @@ Developers may need to change their code
 * Fixed: [Add support decimal64 for SNMP](https://github.com/clicon/clixon/pull/422)
 
 ### Corrected Bugs
+
+* Fixed RESTCONF race conditions on SSL_shutdown sslerr ZERO_RETURN appears occasionally and exits.
+* Fixed: RESTCONF: some client cert failure leads to restconf exit. Instead close and continue
 
 ## 6.1.0
 19 Feb 2023

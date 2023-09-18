@@ -52,6 +52,7 @@
  */
     
 /*! Registered RPC callback function 
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
@@ -69,6 +70,7 @@ typedef int (*clicon_rpc_cb)(
 );
 
 /*! Registered Upgrade callback function 
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module
@@ -178,9 +180,9 @@ typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
  * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
  *                       String: Credentials OK, the associated user, must be mallloc:ed
  *                       Parameter signtificant only if retval is 1/OK
- * @retval    -1         Fatal error
- * @retval     0         Ignore, undecided, not handled, same as no callback
  * @retval     1         OK, see authp parameter for result.
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval    -1         Fatal error
  * @note If authp returns string, it should be malloced
  *
  * @note user should be freed by caller
@@ -198,8 +200,8 @@ typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type
  * flags etc.
  * @param[in]  h   Clicon handle
  * @param[in]  db  Database name (eg "running")
- * @retval    -1   Fatal error
  * @retval     0   OK
+ * @retval    -1   Fatal error
 */
 typedef int (plgreset_t)(clicon_handle h, const char *db); 
 
@@ -215,8 +217,8 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  * @param[in]  xpath      Part of state requested
  * @param[in]  nsc        XPATH namespace context.
  * @param[out] xtop       XML tree where statedata is added
- * @retval    -1          Fatal error
  * @retval     0          OK
+ * @retval    -1          Fatal error
  *
  * @note The system will make an xpath check and filter out non-matching trees
  * @note The system does not validate the xml, unless CLICON_VALIDATE_STATE_XML is set
@@ -231,12 +233,13 @@ typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xto
 typedef void *pagination_data;
 
 /*! Lock database status has changed status
+ *
  * @param[in]  h    Clixon handle
  * @param[in]  db   Database name (eg "running")
  * @param[in]  lock Lock status: 0: unlocked, 1: locked
  * @param[in]  id   Session id (of locker/unlocker)
- * @retval    -1   Fatal error
- * @retval     0   OK
+ * @retval     0    OK
+ * @retval    -1    Fatal error
 */
 typedef int (plglockdb_t)(clicon_handle h, char *db, int lock, int id);
 
@@ -264,8 +267,8 @@ typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
  * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
  * @param[in] xt   XML tree. Upgrade this "in place"
  * @param[in] msd  Info on datastore module-state, if any
- * @retval   -1    Error
  * @retval    0    OK
+ * @retval   -1    Error
  */
 typedef int (datastore_upgrade_t)(clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 
@@ -287,6 +290,8 @@ typedef int (datastore_upgrade_t)(clicon_handle h, const char *db, cxobj *xt, mo
  * @param[out] yanglib XML yang-lib module-set tree. Freed by caller.
  * @retval     0       OK
  * @retval    -1       Error
+ * @note For optional fields, such as revision, the callback may omit it, but will be resolved 
+ * at proper parse-time, but this is not visible in the yanglib return
  * @see RFC 8528 (schema-mount) and RFC 8525 (yang-lib)
  */
 typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, int *config,
@@ -423,6 +428,7 @@ typedef struct {
  */
 
 /*! Plugin initialization function. Must appear in all plugins, not a clixon system function
+ *
  * @param[in]  h    Clixon handle
  * @retval     api  Pointer to API struct
  * @retval     NULL Failure (if clixon_err() called), module disabled otherwise.

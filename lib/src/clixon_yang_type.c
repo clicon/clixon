@@ -76,7 +76,6 @@
 #include <arpa/inet.h>
 #include <regex.h>
 #include <syslog.h>
-#include <assert.h>
 #include <regex.h>
 #include <netinet/in.h>
 #include <sys/param.h>

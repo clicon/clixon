@@ -45,6 +45,10 @@
  * 4. yang_schema_mount_statedata(): from get_common/get_statedata to retrieve system state
  * 5. yang_schema_yanglib_parse_mount(): from xml_bind_yang to parse and mount
  * 6. yang_schema_get_child(): from xmldb_put/text_modify when adding new XML nodes
+ *
+ * Note: the xpath used as key in yang unknown cvec is "canonical" in the sense:
+ * - it uses prefixes of the yang spec of relevance
+ * - it uses '' not "" in prefixes (eg a[x='foo']. The reason is '' is easier printed in clispecs
  */
 
 #ifdef HAVE_CONFIG_H
@@ -54,6 +58,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <string.h>
 #include <sys/param.h>
@@ -133,8 +138,8 @@ yang_schema_mount_point(yang_stmt *y)
 
 /*! Get yangspec mount-point
  *
- * @param[in]  yu     Yang unknown node to save the yspecs
- * @param[in]  xpath  Key for yspec on yu
+ * @param[in]  yu    Yang unknown node to save the yspecs
+ * @param[in]  xpath Key for yspec on yu
  * @param[out] yspec YANG stmt spec
  * @retval     0     OK
  * @retval    -1     Error
@@ -157,9 +162,9 @@ yang_mount_get(yang_stmt  *yu,
 
 /*! Set yangspec mount-point on yang unknwon node
  *
- * Stored in a separate structure (not in XML config tree)
+ * Mount-points are stored in unknown yang cvec
  * @param[in]  yu     Yang unknown node to save the yspecs
- * @param[in]  xpath  Key for yspec on yu
+ * @param[in]  xpath  Key for yspec on yu, in canonical form
  * @param[in]  yspec  Yangspec for this mount-point (consumed)
  * @retval     0      OK
  * @retval     -1     Error
@@ -173,6 +178,7 @@ yang_mount_set(yang_stmt *yu,
     yang_stmt *yspec0;
     cvec      *cvv;
     cg_var    *cv;
+    cg_var    *cv2;
     
     if ((cvv = yang_cvec_get(yu)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
@@ -184,6 +190,16 @@ yang_mount_set(yang_stmt *yu,
     }
     else if ((cv = yang_cvec_add(yu, CGV_VOID, xpath)) == NULL)
         goto done;
+    if ((cv2 = cv_new(CGV_STRING)) == NULL){
+        clicon_err(OE_YANG, errno, "cv_new"); 
+        goto done;
+    }
+    if (cv_string_set(cv2, xpath) == NULL){
+        clicon_err(OE_UNIX, errno, "cv_string_set"); 
+        goto done;
+    }
+    /* tag yspec with key/xpath */
+    yang_cv_set(yspec, cv2);
     cv_void_set(cv, yspec);
     retval = 0;
  done:
@@ -194,7 +210,7 @@ yang_mount_set(yang_stmt *yu,
  *
  * @param[in]  h     Clixon handle
  * @param[in]  x     XML moint-point node
- * @param[out] vallevel Do or dont do full RFC 7950 validation
+ * @param[out] vallevel Do or dont do full RFC 7950 validation if given
  * @param[out] yspec YANG stmt spec
  * @retval     1     x is a mount-point: yspec may be set
  * @retval     0     x is not a mount point
@@ -224,7 +240,7 @@ xml_yang_mount_get(clicon_handle   h,
     // XXX hardcoded prefix: yangmnt
     if ((yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL)
         goto ok;
-    if (xml2xpath(xt, NULL, 1, &xpath) < 0)
+    if (xml2xpath(xt, NULL, 1, 0, &xpath) < 0)
         goto done;
     if (yang_mount_get(yu, xpath, yspec) < 0)
         goto done;
@@ -238,7 +254,6 @@ xml_yang_mount_get(clicon_handle   h,
     retval = 0;
     goto done;
 }
-
 
 /*! Set yangspec mount-point via XML mount-point node
  *
@@ -261,7 +276,7 @@ xml_yang_mount_set(cxobj     *x,
         (yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL){
         goto done;
     }
-    if (xml2xpath(x, NULL, 1, &xpath) < 0)
+    if (xml2xpath(x, NULL, 1, 0, &xpath) < 0)
         goto done;
     if (yang_mount_set(yu, xpath, yspec) < 0)
         goto done;
@@ -373,6 +388,7 @@ yang_schema_mount_statedata_yanglib(clicon_handle h,
     }
     if (xml_apply(*xret, CX_ELMNT, find_schema_mounts, cvv) < 0)
         goto done;
+    yspec = clicon_dbspec_yang(h);
     cv = NULL;
     while ((cv = cvec_each(cvv, cv)) != NULL) {
         xmp = cv_void_get(cv);
@@ -382,7 +398,6 @@ yang_schema_mount_statedata_yanglib(clicon_handle h,
             goto done;
         if (yanglib == NULL)
             continue;
-        yspec = clicon_dbspec_yang(h);
         if ((ret = xml_bind_yang0(h, yanglib, YB_MODULE, yspec, xerr)) < 0)
             goto done;
         if (ret == 0)
@@ -488,6 +503,75 @@ yang_schema_mount_statedata(clicon_handle h,
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Statistics about mountpoints
+ * @see yang_schema_mount_statedata
+ */
+int
+yang_schema_mount_statistics(clicon_handle h,
+                             cxobj        *xt,
+                             int           modules,
+                             cbuf         *cb)
+{
+    int        retval = -1;
+    cvec      *cvv = NULL;
+    cg_var    *cv;
+    cxobj     *xmp;          /* xml mount-point */
+    yang_stmt *yspec;
+    yang_stmt *ym;
+    int        ret;
+    char      *xpath = NULL;
+    uint64_t   nr;
+    size_t     sz;
+
+    if ((cvv = cvec_new(0)) == NULL){
+        clicon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
+    }
+    if (xml_apply(xt, CX_ELMNT, find_schema_mounts, cvv) < 0)
+        goto done;
+    cv = NULL;
+    while ((cv = cvec_each(cvv, cv)) != NULL) {
+        if ((xmp = cv_void_get(cv)) == NULL)
+            continue;
+        if ((ret = xml_yang_mount_get(h, xmp, NULL, &yspec)) < 0)
+            goto done;
+        if (ret == 0)
+            continue;
+        if (xml2xpath(xmp, NULL, 1, 0, &xpath) < 0)
+            goto done;
+        cprintf(cb, "<module-set><name>mountpoint: ");
+        xml_chardata_cbuf_append(cb, xpath);
+        cprintf(cb, "</name>");
+        nr = 0; sz = 0;
+        if (yang_stats(yspec, &nr, &sz) < 0)
+            goto done;
+        cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
+        if (modules){
+            ym = NULL;
+            while ((ym = yn_each(yspec, ym)) != NULL) {
+                cprintf(cb, "<module><name>%s</name>", yang_argument_get(ym));
+                nr = 0; sz = 0;
+                if (yang_stats(ym, &nr, &sz) < 0)
+                    goto done;
+                cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
+                cprintf(cb, "</module>");
+            }
+        }
+        cprintf(cb, "</module-set>");
+        if (xpath){
+            free(xpath);
+            xpath = NULL;
+        }
+    }
+    retval = 0;
+ done:
+    if (xpath)
+        free(xpath);
+    if (cvv)
+        cvec_free(cvv);
+    return retval;
 }
 
 /*! Get yanglib from user plugin callback, parse it and mount it

@@ -494,7 +494,7 @@ function chunked_equal()
     fi
 }
 
-# Given a string, add RFC6242 chunked franing around it
+# Given a string, add RFC6242 chunked framing around it
 # Args:
 # 0: string
 function chunked_framing()
@@ -818,6 +818,7 @@ function expecteof(){
   retval=$2
   input=$3
   expect=$4
+
   if [ $# -gt 4 ]; then
       errfile=$(mktemp)
       expecterr=$5
@@ -1039,6 +1040,7 @@ EOF
 # clixon tester read from file for large tests
 # Arguments:
 # - Command
+# - expected retval
 # - Filename to pipe to stdin 
 # - expected stdout outcome
 function expecteof_file(){

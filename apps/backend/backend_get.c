@@ -57,7 +57,6 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <assert.h>
 #include <netinet/in.h>
 
 /* cligen */
@@ -329,8 +328,7 @@ get_statedata(clicon_handle     h,
         /* Mark and remove nodes having schema default values */
         if (xml_apply((*xret), CX_ELMNT, (xml_applyfn_t*) xml_flag_state_default_value, (void*) XML_FLAG_MARK) < 0)
             goto done;
-        if (xml_tree_prune_flags((*xret), XML_FLAG_MARK, XML_FLAG_MARK)
-            < 0)
+        if (xml_tree_prune_flags((*xret), XML_FLAG_MARK, XML_FLAG_MARK)< 0)
             goto done;        
         if (xml_defaults_nopresence((*xret), 1) < 0)
             goto done;
@@ -438,7 +436,7 @@ filter_xpath_again(clicon_handle h,
     return retval;
 }
 
-/*! Help function for NACM access and returnmessage
+/*! Help function for NACM access and return message
  *
  * @param[in]  h        Clicon handle 
  * @param[in]  xret     Result XML tree
@@ -480,7 +478,7 @@ get_nacm_and_reply(clicon_handle h,
         if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
             goto done;
         /* Top level is data, so add 1 to depth if significant */
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, depth>0?depth+1:depth, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, depth>0?depth+1:depth, 0) < 0)
             goto done;
     }
     cprintf(cbret, "</rpc-reply>");
@@ -559,6 +557,8 @@ list_pagination_hdr(clicon_handle h,
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[in]  content Get config/state/both
  * @param[in]  db      Database name
+ * @param[in]  depth   Depth attribute
+ * @param[in]  yspec   (Top-level) yang spec
  * @param[in]  xpath   XPath point to object to get
  * @param[in]  nsc     Namespace context of xpath
  * @param[in]  username
@@ -755,7 +755,7 @@ get_list_pagination(clicon_handle        h,
                     clicon_err_reason);
             if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
                 goto done;
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
                 goto done;
             goto ok;
         }
@@ -769,7 +769,7 @@ get_list_pagination(clicon_handle        h,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
                 goto done;
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
                 goto done;
             goto ok;
         }
@@ -866,13 +866,7 @@ get_common(clicon_handle        h,
     withdefaults_type wdef;
     char             *wdefstr;
 
-#ifdef NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL
-    /* Clixon 6.0 backward compatibly for NETCONF get/get-config behavior */
-    wdef = WITHDEFAULTS_REPORT_ALL;
-#else
     wdef = WITHDEFAULTS_EXPLICIT;
-#endif
-
     clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -1001,7 +995,7 @@ get_common(clicon_handle        h,
         if ((ret = get_statedata(h, xpath?xpath:"/", nsc, wdef, &xret)) < 0)
             goto done;
         if (ret == 0){ /* Error from callback (error in xret) */
-            if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+            if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
                 goto done;
             goto ok;
         }
@@ -1024,7 +1018,7 @@ get_common(clicon_handle        h,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
                 goto done;
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
                 goto done;
             goto ok;
         }

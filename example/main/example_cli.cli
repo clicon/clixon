@@ -130,6 +130,10 @@ show("Show a particular state of the system"){
     yang("Show yang specs"), show_yang(); {
         clixon-example("Show clixon-example yang spec"), show_yang("clixon-example");
     }		   
+    statistics("Show statistics"), cli_show_statistics();{
+      brief, cli_show_statistics();
+      modules, cli_show_statistics("modules");
+    }
 }
 
 save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename", "xml");{

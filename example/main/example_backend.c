@@ -36,6 +36,8 @@
   * The example have the following optional arguments that you can pass as 
   * argc/argv after -- in clixon_backend:
   *  -a <..> Register callback for this yang action
+  *  -m <yang> Mount this yang on mountpoint
+  *  -M <namespace> Namespace of mountpoint, note both -m and -M must exist
   *  -n  Notification streams example
   *  -r  enable the reset function 
   *  -s  enable the state function
@@ -68,7 +70,7 @@
 #include <clixon/clixon_backend.h> 
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "a:nrsS:x:iuUtV:"
+#define BACKEND_EXAMPLE_OPTS "a:m:M:nrsS:x:iuUtV:"
 
 /* Enabling this improves performance in tests, but there may trigger the "double XPath"
  * problem.
@@ -77,19 +79,30 @@
 #define _STATEFILTER
 
 /*! Yang action
+ *
  * Start backend with -- -a <instance-id>
  * where instance-id points to an action node in some YANG
  * Hard-coded to action "reset" from RFC7950 7.15
  */
 static char *_action_instanceid = NULL;
 
+/*! Yang schema mount
+ *
+ * Start backend with -- -m <yang> -M <namespace>
+ * Mount this yang on mountpoint
+ */
+static char *_mount_yang = NULL;
+static char *_mount_namespace = NULL;
+
 /*! Notification stream
+ *
  * Enable notification streams for netconf/restconf 
  * Start backend with -- -n
  */
 static int _notification_stream = 0;
 
 /*! Variable to control if reset code is run.
+ *
  * The reset code inserts "extra XML" which assumes ietf-interfaces is
  * loaded, and this is not always the case.
  * Start backend with -- -r
@@ -97,18 +110,21 @@ static int _notification_stream = 0;
 static int _reset = 0;
 
 /*! Variable to control if state code is run
+ *
  * The state code adds extra non-config data
  * Start backend with -- -s
  */
 static int _state = 0;
 
 /*! File where state XML is read from, if _state is true -- -sS <file>
+ *
  * Primarily for testing
  * Start backend with -- -sS <file>
  */
 static char *_state_file = NULL;
 
 /*! XPath to register for pagination state XML from file, 
+ *
  * if _state is true -- -sS <file> -x <xpath>
  * Primarily for testing
  * Start backend with -- -sS <file> -x <xpath>
@@ -116,18 +132,21 @@ static char *_state_file = NULL;
 static char *_state_xpath = NULL;
 
 /*! Read state file init on startup instead of on request
+ *
  * Primarily for testing: -i
  * Start backend with -- -siS <file>
  */
 static int _state_file_cached = 0;
 
 /*! Cache control of read state file pagination example,
+ *
  * keep xml tree cache as long as db is locked
  */
 static cxobj *_state_xml_cache = NULL; /* XML cache */
 static int _state_file_transaction = 0;
 
 /*! Variable to control module-specific upgrade callbacks.
+ *
  * If set, call test-case for upgrading ietf-interfaces, otherwise call 
  * auto-upgrade
  * Start backend with -- -u
@@ -135,17 +154,20 @@ static int _state_file_transaction = 0;
 static int _module_upgrade = 0;
 
 /*! Variable to control general-purpose upgrade callbacks.
+ *
  * Start backend with -- -U
  */
 static int _general_upgrade = 0;
 
 /*! Variable to control transaction logging (for debug)
+ *
  * If set, call syslog for every transaction callback 
  * Start backend with -- -t
  */
 static int _transaction_log = 0;
 
 /*! Variable to trigger validation/commit errors (synthetic errors) for tests
+ *
  * XPath to trigger validation error, ie if the XPath matches, then validate fails
  * This is to make tests where a transaction fails midway and aborts/reverts the transaction.
  * Start backend with -- -V <xpath>
@@ -154,6 +176,7 @@ static int _transaction_log = 0;
 static char *_validate_fail_xpath = NULL;
 
 /*! Sub state variable to fail on validate/commit (not configured)
+ *
  * Obscure, but a way to first trigger a validation error, next time to trigger a commit error
  */
 static int   _validate_fail_toggle = 0; /* fail at validate and commit */
@@ -169,6 +192,7 @@ main_begin(clicon_handle    h,
         transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     return 0;
 }
+
 /*! This is called on validate (and commit). Check validity of candidate
  */
 int
@@ -307,6 +331,7 @@ example_stream_timer_setup(clicon_handle h)
 }
 
 /*! Smallest possible RPC declaration for test 
+ *
  * Yang/XML:
  * If the RPC operation invocation succeeded and no output parameters
  * are returned, the <rpc-reply> contains a single <ok/> element defined
@@ -324,6 +349,7 @@ empty_rpc(clicon_handle h,            /* Clicon handle */
 }
 
 /*! More elaborate example RPC for testing
+ *
  * The RPC returns the incoming parameters
  */
 static int 
@@ -357,7 +383,7 @@ example_rpc(clicon_handle h,            /* Clicon handle */
             if (xmlns_set(x, NULL, namespace) < 0)
                 goto done;
         }
-        if (clixon_xml2cbuf(cbret, xe, 0, 0, -1, 1) < 0)
+        if (clixon_xml2cbuf(cbret, xe, 0, 0, NULL, -1, 1) < 0)
             goto done;
     }
     cprintf(cbret, "</rpc-reply>");
@@ -384,7 +410,8 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
 }
 
 /*! Action callback, example from RFC7950 7.15
- * Note callback is hardcoded C, while registration is controlled by -- -a option
+ *
+ * @note callback is hardcoded C, while registration is controlled by -- -a option
  */
 static int 
 example_action_reset(clicon_handle h,            /* Clicon handle */
@@ -709,12 +736,13 @@ example_pagination(void            *h0,
 }
 
 /*! Lock databse status has changed status
+ *
  * @param[in]  h    Clixon handle
  * @param[in]  db   Database name (eg "running")
  * @param[in]  lock Lock status: 0: unlocked, 1: locked
  * @param[in]  id   Session id (of locker/unlocker)
- * @retval    -1    Fatal error
  * @retval     0    OK
+ * @retval    -1    Fatal error
 */
 int
 example_lockdb(clicon_handle h,
@@ -725,7 +753,6 @@ example_lockdb(clicon_handle h,
     int retval = -1;
 
     clicon_debug(1, "%s Lock callback: db%s: locked:%d", __FUNCTION__, db, lock);
-
     /* Part of cached pagination example
      */
     if (strcmp(db, "running") == 0 && lock == 0 &&
@@ -736,7 +763,6 @@ example_lockdb(clicon_handle h,
         }
         _state_file_transaction = 0;
     }
-
     retval = 0;
     // done:
     return retval;
@@ -811,8 +837,8 @@ static const map_str2str namespace_map[] = {
  * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
  * @param[in] xt   XML tree. Upgrade this "in place"
  * @param[in] msd  Info on datastore module-state, if any
- * @retval   -1    Error
  * @retval    0    OK
+ * @retval   -1    Error
  */
 int
 example_upgrade(clicon_handle    h,
@@ -920,18 +946,19 @@ main_yang_mount(clicon_handle   h,
         *config = 1;
     if (vl)
         *vl = VL_FULL;
-    if (yanglib){
+    if (yanglib && _mount_yang){
         if ((cb = cbuf_new()) == NULL){
             clicon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
         cprintf(cb, "<module-set>");
-        cprintf(cb, "<name>mount</name>");
+        cprintf(cb, "<name>mylabel</name>"); // XXX label in test_yang_schema_mount
         cprintf(cb, "<module>");
-        cprintf(cb, "<name>clixon-example</name>");
-        cprintf(cb, "<revision>2022-11-01</revision>");
-        cprintf(cb, "<namespace>urn:example:urn</namespace>");
+        /* In yang name+namespace is mandatory, but not revision */
+        cprintf(cb, "<name>%s</name>", _mount_yang); // mandatory
+        cprintf(cb, "<namespace>%s</namespace>", _mount_namespace); // mandatory
+        //        cprintf(cb, "<revision>2022-11-01</revision>");
         cprintf(cb, "</module>");
         cprintf(cb, "</module-set>");
         cprintf(cb, "</yang-library>");
@@ -949,6 +976,7 @@ main_yang_mount(clicon_handle   h,
 }
 
 /*! Testcase module-specific upgrade function moving interfaces-state to interfaces
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
@@ -1053,6 +1081,7 @@ upgrade_2014_to_2016(clicon_handle h,
 }
 
 /*! Testcase upgrade function removing interfaces-state
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
@@ -1152,6 +1181,7 @@ upgrade_2016_to_2018(clicon_handle h,
 }
 
 /*! Testcase module-specific upgrade function moving interfaces-state to interfaces
+ *
  * @param[in]  h       Clicon handle 
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
@@ -1307,8 +1337,8 @@ example_start(clicon_handle h)
 }
 
 /*! Plugin daemon.
- * @param[in]  h     Clicon handle
  *
+ * @param[in]  h     Clicon handle
  * plugin_daemon is called once after daemonization has been made but before lowering of privileges
  * the main event loop is entered. 
  */
@@ -1339,6 +1369,8 @@ example_daemon(clicon_handle h)
     }
     retval = 0;
  done:
+    if (xerr)
+        xml_free(xerr);
     if (fp)
         fclose(fp);
     return retval;
@@ -1380,6 +1412,7 @@ static clixon_plugin_api api = {
 };
 
 /*! Backend plugin initialization
+ *
  * @param[in]  h    Clixon handle
  * @retval     NULL Error with clicon_err set
  * @retval     api  Pointer to API struct
@@ -1405,6 +1438,12 @@ clixon_plugin_init(clicon_handle h)
         switch (c) {
         case 'a':
             _action_instanceid = optarg;
+            break;
+        case 'm':
+            _mount_yang = optarg;
+            break;
+        case 'M':
+            _mount_namespace = optarg;
             break;
         case 'n':
             _notification_stream = 1;
@@ -1437,7 +1476,10 @@ clixon_plugin_init(clicon_handle h)
             _validate_fail_xpath = optarg;
             break;
         }
-
+    if ((_mount_yang && !_mount_namespace) || (!_mount_yang && _mount_namespace)){
+        clicon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
+        goto done;
+    }
     if (_state_file){
         api.ca_statedata = example_statefile; /* Switch state data callback */
         if (_state_xpath){

@@ -384,6 +384,49 @@ autocli_completion(clicon_handle h,
     return retval;
 }
 
+/*! Return autocli grouping treeref option
+ *
+ * When false replaces uses with grouping, when true use tree reference
+ * @param[in]  h          Clixon handle
+ * @param[out] treeref    grouping using treerefs enabled
+ * @retval    -1          Error
+ * @retval     0          OK
+ */
+int
+autocli_grouping_treeref(clicon_handle h,
+                         int          *treeref)
+{
+    int     retval = -1;
+    char   *str;
+    uint8_t val;
+    char   *reason = NULL;
+    int     ret;
+    cxobj  *xautocli;
+    
+    if (treeref == NULL){
+        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        goto done;
+    }
+    if ((xautocli = clicon_conf_autocli(h)) == NULL){
+        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        goto done;
+    }
+    if ((str = xml_find_body(xautocli, "grouping-treeref")) == NULL){
+        clicon_err(OE_XML, EINVAL, "No grouping-treeref rule");
+        goto done;
+    }
+    if ((ret = parse_bool(str, &val, &reason)) < 0){
+        clicon_err(OE_CFG, errno, "parse_bool");
+        goto done;
+    }
+    *treeref = val;
+    retval = 0; 
+ done:
+    if (reason)
+        free(reason);
+    return retval;
+}
+
 /*! Return default autocli list keyword setting
  *
  * Currently only returns list-keyword-default, could be extended to rules

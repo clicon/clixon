@@ -83,7 +83,7 @@
 #include "clixon_yang_parse_lib.h"
 
 /*! Force add ietf-yang-library@2019-01-04 on all mount-points
- * This is a limitation of othe current implementation
+ * This is a limitation of of the current implementation
  */
 #define YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
 
@@ -828,7 +828,7 @@ yang_metadata_init(clicon_handle h)
  * @param[in] yspec   Will be populated with YANGs, is consumed
  * @retval    1       OK
  * @retval    0       Parse error
- * @retval    -1      Error
+ * @retval   -1       Error
  * @see xml_schema_add_mount_points
  * XXX: Ensure yang-lib is always there otherwise get state dont work for mountpoint
  */
@@ -855,8 +855,7 @@ yang_lib2yspec(clicon_handle h,
         xi = vec[i];
         if ((name = xml_find_body(xi, "name")) == NULL)
             continue;
-        if ((revision = xml_find_body(xi, "revision")) == NULL)
-            continue;
+        revision = xml_find_body(xi, "revision");
         if ((ymod = yang_find(yspec, Y_MODULE, name)) != NULL ||
             (ymod = yang_find(yspec, Y_SUBMODULE, name)) != NULL){
             /* Skip if matching or no revision 
@@ -866,7 +865,7 @@ yang_lib2yspec(clicon_handle h,
                 modmin++;
                 continue;
             }
-            if (strcmp(yang_argument_get(yrev), revision) == 0){
+            if (revision && strcmp(yang_argument_get(yrev), revision) == 0){
                 modmin++;
                 continue;
             }
@@ -875,7 +874,8 @@ yang_lib2yspec(clicon_handle h,
             goto fail;
     }
 #ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
-    /* XXX: Ensure yang-lib is always there otherwise get state dont work for mountpoint */
+    /* Force add ietf-yang-library@2019-01-04 on all mount-points 
+       otherwise get state dont work for mountpoint */
     if ((ymod = yang_find(yspec, Y_MODULE, "ietf-yang-library")) != NULL &&
         (yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL &&
         strcmp(yang_argument_get(yrev), "2019-01-04") == 0){
@@ -883,9 +883,12 @@ yang_lib2yspec(clicon_handle h,
     }
     else if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, NULL) < 0)
         goto fail;
-#endif
-    if (yang_parse_post(h, yspec, 0) < 0)
+    if (yang_parse_post(h, yspec, yang_len_get(yspec) - (1+veclen - modmin)) < 0)
         goto done;
+#else
+    if (yang_parse_post(h, yspec, yang_len_get(yspec) - (veclen - modmin)) < 0)
+        goto done;
+#endif
     retval = 1;
  done:
     if (vec)

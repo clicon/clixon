@@ -7,6 +7,7 @@
 # Notes:
 # 1. May tests without "new" which makes it difficult to debug
 # 2. Sleeps are difficult when running valgrind tests when startup times (eg netconf) increase
+# Occasionally fails (non-determinisitic) when asserting running, see marked TIMEOUT? below
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -313,9 +314,7 @@ assert_config_equals "candidate" "$CONFIGB"
 # use HELLONO11 which uses older EOM framing
 sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><commit><confirmed/><confirm-timeout>60</confirm-timeout></commit></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
 PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
-if [ $valgrindtest -eq 1 ]; then
-    sleep 1
-fi
+sleep 1 # TIMEOUT?
 assert_config_equals "running" "$CONFIGB"                       # assert config twice to prove it survives disconnect
 assert_config_equals "running" "$CONFIGB"                       # of ephemeral sessions
 
@@ -434,6 +433,7 @@ assert_config_equals "candidate" "$CONFIGB"
 # use HELLONO11 which uses older EOM framing
 sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><commit><confirmed/><confirm-timeout>60</confirm-timeout></commit></rpc>]]>]]><rpc $DEFAULTNS><commit></commit></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
 PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
+sleep 1 # TIMEOUT?
 assert_config_equals "running" "$CONFIGB"                       # assert config twice to prove it surives disconnect
 
 new "restconf POST"

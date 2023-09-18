@@ -21,7 +21,8 @@ echo '"}' >> $fjson
 echo "$fjson"
 
 new "json parse long string"
-expecteof_file "time -p $clixon_util_json" 0 "$fjson" 2>&1 | awk '/real/ {print $2}'
+#expecteof_file "$clixon_util_json" 0 "$fjson"
+expecteof_file "time -p $clixon_util_json -j" 0 "$fjson" "$fjson" 2>&1 | awk '/real/ {print $2}'
 
 rm -rf $dir
 

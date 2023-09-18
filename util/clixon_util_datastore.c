@@ -216,7 +216,7 @@ main(int argc, char **argv)
             xpath = "/";
         if (xmldb_get(h, db, NULL, xpath, &xt) < 0)
             goto done;
-        if (clixon_xml2file(stdout, xt, 0, 0, fprintf, 0, 0) < 0)
+        if (clixon_xml2file(stdout, xt, 0, 0, NULL, fprintf, 0, 0) < 0)
             goto done;
         fprintf(stdout, "\n");
         if (xt){
@@ -240,7 +240,7 @@ main(int argc, char **argv)
                 clicon_err(OE_DB, 0, "xt is NULL");
                 goto done;
             }
-            if (clixon_xml2file(stdout, xt, 0, 0, fprintf, 0, 0) < 0)
+            if (clixon_xml2file(stdout, xt, 0, 0, NULL, fprintf, 0, 0) < 0)
                 goto done;
             if (xt){
                 xml_free(xt);

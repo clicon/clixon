@@ -12,7 +12,7 @@ with_restconf=$3
 
 # create user & group
 if [ ! $(id -u clicon) ]; then 
-   if [ $release = "freebsd" ]; then
+   if [ $release = "freebsd" -o $release = "dragonfly" ]; then
       sudo pw useradd clicon -d /nonexistent -s /usr/sbin/nologin;
       sudo pw group mod clicon -m vagrant;  # start clixon tests as this users
       sudo pw group mod clicon -m $wwwuser;
@@ -41,7 +41,7 @@ test -d src/cligen || (cd src;git clone https://github.com/clicon/cligen.git)
 cd src/cligen
 git pull origin master
 
-if [ $release = "freebsd" ]; then
+if [ $release = "freebsd" -o $release = "dragonfly" ]; then
     ./configure
     MAKE=$(which gmake)
 elif [ $release = "arch" ]; then
@@ -62,8 +62,8 @@ test -d src/clixon || (cd src;git clone https://github.com/clicon/clixon.git)
 cd src/clixon
 git pull origin master
 
-if [ $release = "freebsd" ]; then
-    LDFLAGS=-L/usr/local/lib ./configure --with-cligen=/usr/local --with-restconf=${with_restconf}
+if [ $release = "freebsd" -o $release = "dragonfly" ]; then
+    LDFLAGS=-L/usr/local/lib ./configure --with-cligen=/ --with-restconf=${with_restconf}
 else
    # Problems with su not having "sbin" in path on centos when when we run tests later
     ./configure --sbindir=/usr/sbin --libdir=/usr/lib --with-restconf=${with_restconf}
@@ -79,7 +79,7 @@ sudo ldconfig
 cd test
 echo "#!/usr/bin/env bash" > ./site.sh
 echo "IPv6=true" >> ./site.sh
-if [ $release = "freebsd" ]; then
+if [ $release = "freebsd" -o $release = "dragonfly" ]; then
   echo "make=gmake" >> ./site.sh
 fi
 echo "OPENCONFIG=/usr/local/share/openconfig/public" >> ./site.sh

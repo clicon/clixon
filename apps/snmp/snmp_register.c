@@ -63,7 +63,6 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <assert.h>
 
 /* net-snmp */
 #include <net-snmp/net-snmp-config.h>

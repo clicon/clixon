@@ -4,7 +4,7 @@
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
-  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+  Copyright (C) 2020-2023 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -71,6 +71,10 @@
 #include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_xml_sort.h"
+#include "clixon_json.h"
+#include "clixon_text_syntax.h"
+#include "clixon_proto.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
@@ -128,13 +132,17 @@ static const map_str2int yang_regexp_map[] = {
     {NULL,                 -1}
 };
 
-/*! Print registry on file. For debugging.
+    
+/*! Debug dump config options
  *
  * @param[in] h        Clicon handle
  * @param[in] dbglevel Debug level
  * @retval    0        OK
  * @retval   -1        Error
  * @note CLICON_FEATURE, CLICON_YANG_DIR and CLICON_SNMP_MIB are treated specially since they are lists
+ * @note sub-config structs not shown: eg autocli/restconf
+ * @see clicon_option_dump1  different formats
+ * @see cli_show_options
  */
 int
 clicon_option_dump(clicon_handle h, 
@@ -187,6 +195,49 @@ clicon_option_dump(clicon_handle h,
  done:
     if (keys)
         free(keys);
+    return retval;
+}
+
+/*! Dump config options on stdio using output format
+ *
+ * @param[in] h        Clicon handle
+ * @param[in] f        Output file
+ * @param[in] format   Dump output format
+ * @param[in] pretty   Set if pretty-print xml and json
+ * @retval    0        OK
+ * @retval   -1        Error
+ * @see clicon_option_dump  for debug log
+ */
+int
+clicon_option_dump1(clicon_handle h, 
+                    FILE         *f,
+                    int           format,
+                    int           pretty)
+{
+    int    retval = -1;
+    cxobj *xc;
+
+    xc = clicon_conf_xml(h);
+    switch (format){
+    case FORMAT_XML:
+        if (clixon_xml2file(f, xc, 0, pretty, "", cligen_output, 0, 0) < 0)
+            goto done;
+        break;
+    case FORMAT_JSON:
+        if (clixon_json2file(f, xc, pretty, cligen_output, 0, 0) < 0)
+            goto done;
+        break;
+    case FORMAT_TEXT:
+        if (clixon_txt2file(f, xc, 0, cligen_output, 0, 0) < 0)
+            goto done;
+        break;
+    default:
+        clicon_err(OE_XML, EINVAL, "%s not supported", format_int2str(format));
+        goto done;
+        break;
+    }
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -245,6 +296,7 @@ parse_configfile_one(const char *filename,
     xt = NULL;
     retval = 0;
  done:
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: Done w/ config file %s returning %d", __FUNCTION__, filename, retval);
     if (xt)
         xml_free(xt);
     if (fp)
@@ -253,6 +305,68 @@ parse_configfile_one(const char *filename,
         cbuf_free(cbret);
     if (xerr)
         xml_free(xerr);
+    return retval;
+}
+
+/*! Merge XML sub config file into main config-file
+ */
+static int
+merge_control_xml(clicon_handle h,
+                  cxobj        *xt,
+                  cxobj        *xe)
+{
+    int    retval = -1;
+    char  *name;
+    char  *body;
+    cxobj *xec;
+    cxobj *xtc;
+    cxobj *x;
+
+    /* One could have used xml_merge, but there are several special conditions */
+    xec = NULL;
+    while ((xec = xml_child_each(xe, xec, CX_ELMNT)) != NULL){
+        if ((name = xml_name(xec)) == NULL)
+            continue;
+        if ((body = xml_body(xec)) == NULL){
+            if ((xtc = xml_find_type(xt, NULL, name, CX_ELMNT)) != NULL){
+                if (merge_control_xml(h, xtc, xec) < 0)
+                    goto done;
+            }
+            else{
+                /* Copy and add to master */
+                if ((x = xml_dup(xec)) == NULL)
+                    goto done;
+                if (xml_addsub(xt, x) < 0)
+                    goto done;
+            }
+            continue;
+        }
+        /* Ignored from file due to bootstrapping */
+        if (strcmp(name,"CLICON_CONFIGFILE")==0) {
+            continue;
+        }
+        /* List options for configure options that are lists or leaf-lists: append to main */
+        if (strcmp(name,"CLICON_FEATURE")==0 ||
+            strcmp(name,"CLICON_YANG_DIR")==0 ||
+            strcmp(name,"CLICON_SNMP_MIB")==0){
+            if ((x = xml_dup(xec)) == NULL)
+                goto done;
+            if (xml_addsub(xt, x) < 0)
+                goto done;
+            continue;
+        }
+        /* Overwrite: remove existing in master if any */
+        if ((x = xml_find_type(xt, NULL, name, CX_ELMNT)) != NULL)
+            xml_purge(x);
+        /* Copy and add to master */
+        if ((x = xml_dup(xec)) == NULL)
+            goto done;
+        if (xml_addsub(xt, x) < 0)
+            goto done;
+    }
+
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -292,7 +406,6 @@ parse_configfile(clicon_handle  h,
     char           filename1[MAXPATHLEN];
     char          *extraconfdir = NULL;
     cxobj         *xe = NULL;
-    cxobj         *xec;
     DIR           *dirp;
 
     if (filename == NULL || !strlen(filename)){
@@ -307,6 +420,8 @@ parse_configfile(clicon_handle  h,
         clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
         goto done;
     }
+
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: Reading config file %s", __FUNCTION__, filename);
     /* Parse main config file */
     if (parse_configfile_one(filename, yspec, &xt) < 0)
         goto done;
@@ -330,31 +445,9 @@ parse_configfile(clicon_handle  h,
             snprintf(filename1, sizeof(filename1), "%s/%s", extraconfdir, dp[i].d_name);
             if (parse_configfile_one(filename1, yspec, &xe) < 0)
                 goto done;
-            /* Drain objects from extrafile and replace/append to main */
-            while ((xec = xml_child_i_type(xe, 0, CX_ELMNT)) != NULL) {
-                name = xml_name(xec);
-                body = xml_body(xec);
-                /* Ignore non-leafs */
-                if (name == NULL || body == NULL)
-                    continue;
-                /* Ignored from file due to bootstrapping */
-                if (strcmp(name,"CLICON_CONFIGFILE")==0)
-                    continue;
-                /* List options for configure options that are lists or leaf-lists: append to main */
-                if (strcmp(name,"CLICON_FEATURE")==0 ||
-                    strcmp(name,"CLICON_YANG_DIR")==0 ||
-                    strcmp(name,"CLICON_SNMP_MIB")==0){
-                    if (xml_addsub(xt, xec) < 0)
-                        goto done;
-                    continue;
-                }
-                /* Remove existing in master if any */
-                if ((x = xml_find_type(xt, NULL, name, CX_ELMNT)) != NULL)
-                    xml_purge(x);
-                /* Append to master (removed from xe) */
-                if (xml_addsub(xt, xec) < 0)
-                    goto done;
-            }
+            /* Merge objects from extrafile into main, xml_merge cannot be used due to special cases */
+            if (merge_control_xml(h, xt, xe) < 0)
+                goto done;
             if (xe)
                 xml_free(xe);
             xe = NULL;
@@ -385,6 +478,9 @@ parse_configfile(clicon_handle  h,
         clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));
         goto done;
     }
+    /* Add top-level hash options. 
+     * Hashed options are historical and could be replaced with xml, see eg clicon_option_str
+     */
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
         name = xml_name(x);
@@ -410,10 +506,12 @@ parse_configfile(clicon_handle  h,
                             strlen(body)+1) == NULL)
             goto done;
     }
+    xml_sort(xt);
     retval = 0;
     *xconfig = xt;
     xt = NULL;
  done:
+    clicon_debug(CLIXON_DBG_DETAIL, "%s: Done w/ config file %s returning %d", __FUNCTION__, filename, retval);
     if (dp)
         free(dp);
     if (nsc)
@@ -445,24 +543,35 @@ clicon_option_add(clicon_handle h,
 {
     int            retval = -1;
     clicon_hash_t *copt = clicon_options(h);
-    cxobj         *x;
+    cxobj         *xconfig;
+    cxobj         *xopt;
 
+    if ((xconfig = clicon_conf_xml(h)) == NULL){
+        clicon_err(OE_UNIX, ENOENT, "option %s not found (clicon_conf_xml_set has not been called?)", name);
+        goto done;
+    }
     if (strcmp(name, "CLICON_FEATURE")==0 ||
         strcmp(name, "CLICON_YANG_DIR")==0 ||
         strcmp(name, "CLICON_SNMP_MIB")==0){
-        if ((x = clicon_conf_xml(h)) == NULL){
-            clicon_err(OE_UNIX, ENOENT, "option %s not found (clicon_conf_xml_set has not been called?)", name);
-            goto done;
-        }
-        if (clixon_xml_parse_va(YB_NONE, NULL, &x, NULL, "<%s>%s</%s>",
+        if (clixon_xml_parse_va(YB_NONE, NULL, &xconfig, NULL, "<%s>%s</%s>",
                                 name, value, name) < 0)
             goto done;
     }
-    if (clicon_hash_add(copt, 
-                 name,
-                 value,
-                 strlen(value)+1) == NULL)
-        goto done;
+    else{
+        /* Add/change hash */
+        if (clicon_hash_add(copt, 
+                            name,
+                            value,
+                            strlen(value)+1) == NULL)
+            goto done;
+        /* Add/change in clicon_conf_xml */
+        if ((xopt = xpath_first(xconfig, 0, "%s", name)) != NULL)
+            xml_purge(xopt);
+        if (clixon_xml_parse_va(YB_NONE, NULL, &xconfig, NULL, "<%s>%s</%s>",
+                                name, value, name) < 0)
+            goto done;
+    }
+    xml_sort(xconfig);
     retval = 0;
  done:
     return retval;
@@ -490,6 +599,7 @@ clicon_options_main(clicon_handle h)
     cxobj         *xconfig = NULL;
     yang_stmt     *yspec = NULL;
     char          *extraconfdir = NULL;
+    char          *yangspec = "clixon-config";
 
     /* Create configure yang-spec */
     if ((yspec = yspec_new()) == NULL)
@@ -547,11 +657,10 @@ clicon_options_main(clicon_handle h)
         goto done;
 #endif
     /* Parse clixon yang spec */
-    if (yang_spec_parse_module(h, "clixon-config", NULL, yspec) < 0)
+    if (clicon_option_str(h, "CLICON_CONFIG_EXTEND") != NULL)
+        yangspec = clicon_option_str(h, "CLICON_CONFIG_EXTEND");
+    if (yang_spec_parse_module(h, yangspec, NULL, yspec) < 0)
         goto done;    
-    /* Load restconf yang. Note this is also a part of clixon-config */
-    if (yang_spec_parse_module(h, "clixon-restconf", NULL, yspec)< 0)
-        goto done;
     clicon_conf_xml_set(h, NULL);
     if (xconfig){
         xml_free(xconfig);
@@ -569,6 +678,7 @@ clicon_options_main(clicon_handle h)
        goto done;
     yspec = NULL;
     /* Set clixon_conf pointer to handle */
+    xml_sort(xconfig);
     if (clicon_conf_xml_set(h, xconfig) < 0)
         goto done;
 

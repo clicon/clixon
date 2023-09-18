@@ -57,9 +57,4 @@ int cli_prompt_set(clicon_handle h, char *prompt);
 
 int cli_logsyntax_set(clicon_handle h, int status);
 
-/* Internal functions for handling cli groups */
-cli_syntax_t *cli_syntax(clicon_handle h);
-
-int cli_syntax_set(clicon_handle h, cli_syntax_t *stx);
-
 #endif  /* _CLI_HANDLE_H_ */

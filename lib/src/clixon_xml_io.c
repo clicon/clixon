@@ -52,7 +52,6 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -91,6 +90,7 @@
  * @param[in]   xn         Clicon xml tree
  * @param[in]   level      How many spaces to insert before each line
  * @param[in]   pretty     Insert \n and spaces to make the xml more readable.
+ * @param[in]   prefix     Add string to beginning of each line (if pretty)
  * @param[in]   fn         Callback to make print function
  * @param[in]   autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @retval      0          OK
@@ -105,22 +105,27 @@ xml2file_recurse(FILE             *f,
                  cxobj            *x, 
                  int               level, 
                  int               pretty,
+                 char             *prefix,
                  clicon_output_cb *fn,
                  int               autocliext)
 {
-    int    retval = -1;
-    char  *name;
-    char  *namespace;
-    cxobj *xc;
-    int    hasbody;
-    int    haselement;
-    char  *val;
-    char  *encstr = NULL; /* xml encoded string */
-    int    exist = 0;
+    int        retval = -1;
+    char      *name;
+    char      *namespace;
+    cxobj     *xc;
+    int        hasbody;
+    int        haselement;
+    char      *val;
+    char      *encstr = NULL; /* xml encoded string */
+    int        exist = 0;
     yang_stmt *y;
+    int        level1;
         
     if (x == NULL)
         goto ok;
+    level1 = level*PRETTYPRINT_INDENT;
+    if (prefix)
+        level1 -= strlen(prefix);
     if (autocliext &&
         (y = xml_spec(x)) != NULL){
         if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
@@ -145,7 +150,9 @@ xml2file_recurse(FILE             *f,
         (*fn)(f, "%s=\"%s\"", name, xml_value(x));
         break;
     case CX_ELMNT:
-        (*fn)(f, "%*s<", pretty?(level*PRETTYPRINT_INDENT):0, "");
+        if (pretty && prefix)
+            (*fn)(f, "%s", prefix);
+        (*fn)(f, "%*s<", pretty?level1:0, "");
         if (namespace)
             (*fn)(f, "%s:", namespace);
         (*fn)(f, "%s", name);
@@ -156,7 +163,7 @@ xml2file_recurse(FILE             *f,
         while ((xc = xml_child_each(x, xc, -1)) != NULL) {
             switch (xml_type(xc)){
             case CX_ATTR:
-                if (xml2file_recurse(f, xc, level+1, pretty, fn, autocliext) <0)
+                if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext) <0)
                     goto done;
                 break;
             case CX_BODY:
@@ -176,23 +183,28 @@ xml2file_recurse(FILE             *f,
             (*fn)(f, "/>");
         else{
             (*fn)(f, ">");
-            if (pretty && hasbody == 0)
+            if (pretty && hasbody == 0){
                     (*fn)(f, "\n");
+            }
             xc = NULL;
             while ((xc = xml_child_each(x, xc, -1)) != NULL) {
                 if (xml_type(xc) != CX_ATTR)
-                    if (xml2file_recurse(f, xc, level+1, pretty, fn, autocliext) <0)
+                    if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext) <0)
                         goto done;
             }
-            if (pretty && hasbody==0)
-                (*fn)(f, "%*s", level*PRETTYPRINT_INDENT, "");
+            if (pretty && hasbody==0){
+                if (pretty && prefix)
+                    (*fn)(f, "%s", prefix);
+                (*fn)(f, "%*s", level1, "");
+            }
             (*fn)(f, "</");
             if (namespace)
                 (*fn)(f, "%s:", namespace);
             (*fn)(f, "%s>", name);
         }
-        if (pretty)
+        if (pretty){
             (*fn)(f, "\n");
+        }
         break;
     default:
         break;
@@ -211,7 +223,8 @@ xml2file_recurse(FILE             *f,
  * @param[in]  xn      XML tree
  * @param[in]  level   How many spaces to insert before each line
  * @param[in]  pretty  Insert \n and spaces to make the xml more readable.
- * @param[in]  fn       File print function (if NULL, use fprintf)
+ * @param[in]  prefix  Add string to beginning of each line (if pretty)
+ * @param[in]  fn      File print function (if NULL, use fprintf)
  * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
  * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @retval     0       OK
@@ -225,6 +238,7 @@ clixon_xml2file(FILE             *f,
                 cxobj            *xn, 
                 int               level, 
                 int               pretty,
+                char             *prefix,
                 clicon_output_cb *fn,
                 int               skiptop,
                 int               autocliext)
@@ -237,11 +251,11 @@ clixon_xml2file(FILE             *f,
     if (skiptop){
         xc = NULL;
         while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-            if (xml2file_recurse(f, xc, level, pretty, fn, autocliext) < 0)
+            if (xml2file_recurse(f, xc, level, pretty, prefix, fn, autocliext) < 0)
                 goto done;
     }
     else {
-        if (xml2file_recurse(f, xn, level, pretty, fn, autocliext) < 0)
+        if (xml2file_recurse(f, xn, level, pretty, prefix, fn, autocliext) < 0)
             goto done;
     }
     retval = 0;
@@ -261,7 +275,7 @@ int
 xml_print(FILE  *f, 
           cxobj *x)
 {
-    return xml2file_recurse(f, x, 0, 1, fprintf, 0);
+    return xml2file_recurse(f, x, 0, 1, NULL, fprintf, 0);
 }
 
 /*! Dump cxobj structure with pointers and flags for debugging, internal function
@@ -276,7 +290,7 @@ xml_dump1(FILE  *f,
     if (xml_type(x) != CX_ELMNT)
         return 0;
     fprintf(stderr, "%*s %s(%s)",
-            indent*3, "",
+            indent*PRETTYPRINT_INDENT, "",
             //      x,
             xml_name(x),
             xml_type2str(xml_type(x)));
@@ -315,6 +329,7 @@ xml_dump(FILE  *f,
  * @param[in]     xn       Clixon xml tree
  * @param[in]     level    Indentation level for prettyprint
  * @param[in]     pretty   Insert \n and spaces to make the xml more readable.
+ * @param[in]     prefix   Add string to beginning of each line (if pretty)
  * @param[in]     depth    Limit levels of child resources: -1 is all, 0 is none, 1 is node itself
  */
 static int
@@ -322,6 +337,7 @@ clixon_xml2cbuf1(cbuf   *cb,
                  cxobj  *x, 
                  int     level,
                  int     pretty,
+                 char   *prefix,
                  int32_t depth)
 {
     int    retval = -1;
@@ -331,9 +347,13 @@ clixon_xml2cbuf1(cbuf   *cb,
     int    haselement;
     char  *namespace;
     char  *val;
+    int    level1;
     
     if (depth == 0)
         goto ok;
+    level1 = level*PRETTYPRINT_INDENT;
+    if (prefix)
+        level1 -= strlen(prefix);
     name = xml_name(x);
     namespace = xml_prefix(x);
     switch(xml_type(x)){
@@ -352,8 +372,11 @@ clixon_xml2cbuf1(cbuf   *cb,
         cprintf(cb, "%s=\"%s\"", name, xml_value(x));
         break;
     case CX_ELMNT:
-        if (pretty)
-            cprintf(cb, "%*s<", level*PRETTYPRINT_INDENT, "");
+        if (pretty){
+            if (prefix)
+                cprintf(cb, "%s", prefix);
+            cprintf(cb, "%*s<", level1, "");
+        }
         else
             cbuf_append_str(cb, "<");
         if (namespace){
@@ -368,7 +391,7 @@ clixon_xml2cbuf1(cbuf   *cb,
         while ((xc = xml_child_each(x, xc, -1)) != NULL) 
             switch (xml_type(xc)){
             case CX_ATTR:
-                if (clixon_xml2cbuf1(cb, xc, level+1, pretty, -1) < 0)
+                if (clixon_xml2cbuf1(cb, xc, level+1, pretty, prefix, -1) < 0)
                     goto done;
                 break;
             case CX_BODY:
@@ -390,10 +413,13 @@ clixon_xml2cbuf1(cbuf   *cb,
             xc = NULL;
             while ((xc = xml_child_each(x, xc, -1)) != NULL) 
                 if (xml_type(xc) != CX_ATTR)
-                    if (clixon_xml2cbuf1(cb, xc, level+1, pretty, depth-1) < 0)
+                    if (clixon_xml2cbuf1(cb, xc, level+1, pretty, prefix, depth-1) < 0)
                         goto done;
-            if (pretty && hasbody == 0)
-                cprintf(cb, "%*s", level*PRETTYPRINT_INDENT, "");
+            if (pretty && hasbody == 0){
+                if (prefix)
+                    cprintf(cb, "%s", prefix);
+                cprintf(cb, "%*s", level1, "");
+            }
             cbuf_append_str(cb, "</");
             if (namespace){
                 cbuf_append_str(cb, namespace);
@@ -420,6 +446,7 @@ clixon_xml2cbuf1(cbuf   *cb,
  * @param[in]     xn      Top-level xml object
  * @param[in]     level   Indentation level for pretty
  * @param[in]     pretty  Insert \n and spaces to make the xml more readable.
+ * @param[in]     prefix  Add string to beginning of each line (if pretty)
  * @param[in]     depth   Limit levels of child resources: -1: all, 0: none, 1: node itself
  * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children, 
  * @retval        0       OK
@@ -427,7 +454,7 @@ clixon_xml2cbuf1(cbuf   *cb,
  * Depth is used in NACM
  * @code
  *   cbuf *cb = cbuf_new();
- *   if (clixon_xml2cbuf(cb, xn, 0, 1, -1, 0) < 0)
+ *   if (clixon_xml2cbuf(cb, xn, 0, 1, NULL, -1, 0) < 0)
  *     goto err;
  *   fprintf(stderr, "%s", cbuf_get(cb));
  *   cbuf_free(cb);
@@ -435,10 +462,11 @@ clixon_xml2cbuf1(cbuf   *cb,
  * @see  clixon_xml2file
  */
 int
-clixon_xml2cbuf(cbuf   *cb, 
+clixon_xml2cbuf(cbuf   *cb,
                 cxobj  *xn,
                 int     level,
                 int     pretty,
+                char   *prefix,
                 int32_t depth,
                 int     skiptop)
 {
@@ -448,11 +476,11 @@ clixon_xml2cbuf(cbuf   *cb,
     if (skiptop){
         xc = NULL;
         while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-            if (clixon_xml2cbuf1(cb, xc, level, pretty, depth) < 0)
+            if (clixon_xml2cbuf1(cb, xc, level, pretty, prefix, depth) < 0)
                 goto done;
     }
     else {
-        if (clixon_xml2cbuf1(cb, xn, level, pretty, depth) < 0)
+        if (clixon_xml2cbuf1(cb, xn, level, pretty, prefix, depth) < 0)
             goto done;
     }
     retval = 0;
@@ -526,6 +554,7 @@ xmltree2cbuf(cbuf  *cb,
  * Therefore checking for empty XML must be done by a calling function which knows wether the 
  * the XML represents a full document or not.
  * @note may be called recursively, some yang-bind (eg rpc) semantic checks may trigger error message
+ * @note yang-binding over schema mount-points do not work, you need to make a separate bind call
  */
 static int 
 _xml_parse(const char *str, 

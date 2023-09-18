@@ -243,7 +243,7 @@ clicon_log_str(int           level,
                char         *msg)
 {
     if (_logflags & CLICON_LOG_SYSLOG)
-        syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg);
+        syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg); // XXX this may block
    /* syslog makes own filtering, we do it here:
     * if normal (not debug) then filter loglevels >= debug
     */

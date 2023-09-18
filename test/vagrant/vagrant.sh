@@ -28,7 +28,7 @@ linuxrelease()
 {
     box=$1
     release="unknown"
-    for r in freebsd openbsd opensuse ubuntu centos coreos alpine debian arch gentoo fedora rhel; do
+    for r in freebsd dragonfly openbsd opensuse ubuntu centos coreos alpine debian arch gentoo fedora rhel; do
         # -i ignore case
         if [ -n "$(echo "$box" | grep -io "$r")" ]; then        
             release=$r
@@ -128,7 +128,7 @@ case $release in
                 ;;
         esac
     ;;
-    freebsd)
+    freebsd | dragonfly)
         # packages for building
         $sshcmd sudo pkg upgrade -y
         $sshcmd sudo pkg install -y git gmake bash
@@ -309,7 +309,7 @@ $sshcmd sudo ./yangmodels.sh
 
 # Run tests
 $sshcmd "(cd src/cligen/test; ./sum.sh)"
-$sshcmd "(cd src/clixon/test; detail=true ./sum.sh)"
+$sshcmd "(cd src/clixon/test; bash -c 'detail=true ./sum.sh')"
 
 # destroy vm
 #if $destroy; then

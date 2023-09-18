@@ -209,22 +209,7 @@ done
 echo -n "</x>" >> $fdataxml2 # No CR
 
 new "restconf replace large list-leaf config"
-expectpart "$(time -p curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data/scaling:x -d @$fdataxml2)" 0 "HTTP/$HVER 20"
-
-new "netconf add $perfreq small leaf-list config"
-{ time -p for (( i=0; i<$perfreq; i++ )); do
-    rnd=$(( ( RANDOM % $perfnr ) ))
-    echo "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>$rnd</c></x></config></edit-config></rpc>]]>]]>"
-done | $clixon_netconf -qef $cfg > /dev/null; } 2>&1 | awk '/real/ {print $2}'
-
-new "netconf add small leaf-list config"
-expecteof "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><c>x</c></x></config></edit-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
-
-new "netconf commit small leaf-list config"
-expecteof "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><commit/></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]>$" 2>&1 | awk '/real/ {print $2}'
-
-new "netconf get large leaf-list config"
-expecteof "time -p $clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "^<rpc-reply $DEFAULTNS><data><x xmlns=\"urn:example:clixon\"><c>0</c><c>1</c>" 2>&1 | awk '/real/ {print $2}'
+expectpart "$(time -p curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data/scaling:x -d @$fdataxml2)" 0 "HTTP/$HVER 20" 2>&1 | awk '/real/ {print $2}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

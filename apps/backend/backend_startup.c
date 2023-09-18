@@ -72,9 +72,10 @@
 #include "backend_startup.h"
 
 /*! Merge db1 into db2 without commit 
- * @retval   -1       Error
- * @retval    0       Validation failed (with cbret set)
+ *
  * @retval    1       Validation OK       
+ * @retval    0       Validation failed (with cbret set)
+ * @retval   -1       Error
  */
 static int
 db_merge(clicon_handle h,
@@ -97,12 +98,13 @@ db_merge(clicon_handle h,
 }
 
 /*! Clixon startup startup mode: Commit startup configuration into running state
+ *
  * @param[in]  h       Clixon handle
  * @param[in]  db      tmp or startup
  * @param[out] cbret   If status is invalid contains error message
- * @retval    -1       Error
- * @retval     0       Validation failed
  * @retval     1       OK
+ * @retval     0       Validation failed
+ * @retval    -1       Error
 
 OK:
                               reset     
@@ -203,9 +205,10 @@ startup_mode_startup(clicon_handle        h,
 }
 
 /*! Merge xml in filename into database
- * @retval   -1       Error
- * @retval    0       Validation failed (with cbret set)
+ *
  * @retval    1       Validation OK       
+ * @retval    0       Validation failed (with cbret set)
+ * @retval   -1       Error
  */
 static int
 load_extraxml(clicon_handle h,
@@ -257,18 +260,21 @@ load_extraxml(clicon_handle h,
 }
 
 /*! Load extra XML via file and/or reset callback, and merge with current
+ *
  * An application can add extra XML either via the -c <file> option or
  * via the .ca_reset callback. This XML is "merged" into running, that is,
  * it does not trigger validation calbacks.
  * The function uses an extra "tmp" database, loads the file to it, and calls
  * the reset function on it.
- * @param[in]  h    Clicon handle
- * @param[in]  file (Optional) extra xml file
+ * @param[in]  h       Clixon handle
+ * @param[in]  file    (Optional) extra xml file
  * @param[out] status  Startup status
  * @param[out] cbret   If status is invalid contains error message
- * @retval    -1       Error
- * @retval     0       Validation failed
  * @retval     1       OK
+ * @retval     0       Validation failed
+ * @retval    -1       Error
+
+
                 
 running -----------------+----+------>
            reset  loadfile   / merge
@@ -341,10 +347,11 @@ startup_extraxml(clicon_handle        h,
 }
 
 /*! Init modules state of the backend (server). To compare with startup XML
+ *
  * Set the modules state as setopt to the datastore module.
  * Only if CLICON_XMLDB_MODSTATE is enabled
- * @retval -1 Error
  * @retval  0 OK
+ * @retval -1 Error
  */
 int
 startup_module_state(clicon_handle h,

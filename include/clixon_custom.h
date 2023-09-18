@@ -93,14 +93,6 @@
  */
 #define DATASTORE_TOP_SYMBOL "config"
 
-/*! Name of default netns for clixon-restconf.yang socket/namespace field
- * Restconf allows opening sockets in different network namespaces. This is teh name of 
- * "host"/"default" namespace. Unsure what to really label this but seems like there is differing
- * consensus on how to label it.
- * Either find that proper label, or move it to a option
- */
-#define RESTCONF_NETNS_DEFAULT "default"
-
 /*! If set make an internal redirect if URI path indetifies a directory
  * For example, path is /local, and redirect is 'index.html, the request 
  * will be redirected to /local/index.html
@@ -165,39 +157,35 @@
  */
 #define PRETTYPRINT_INDENT 3
 
-/*! Set backward compatibility for NETCONF get/get-config <with-defaults> parameter behavior
+/*! Autocli uses/grouping references for top-level
  *
- * This option sets backward-compability that has to do with an inconsistency
- * between the two following concepts defined in RFC 6243:
- *   - Default-Handling Basic Modes (Section 2 in RFC 6243)
- *   - Retrieval of Default Data (Section 3 in RFC 6243)
- *
- * Before Clixon 6.0 RFC 6243 Clixon had a non-RFC with-defaults behavior:
- *   - Default-Handling Basic Mode is "explicit" (it does not store default values)
- *   - Retrieval of Default data is "report-all" (all default values are filled in)
- *
- * After the RFC6243 implementation introduced in 6.0, Clixon implemented the <with-defaults>
- * parameter for all get/config but retained the pre-6.0 default get/get-config behaviour.
- *   - Default-Handling Basic Mode is "explicit" (announced as a capability)
- *   - Retrieval of Default data is "report-all"
- *
- * The 6.0 behaviour is inconsistent and therefore in Clixon 6.1 the default retrieval data
- * is changed to "explicit" to be consistent with the basic mode:
- *   - Default-Handling Basic Mode is "explicit"
- *   - Retrieval of Default data is "explicit" <---
- *
- * This may lead to changes in behavior for clients retrieving configs without an explicit
- * <with-defaults> parameter.
- * To keep the previous behavior (as in 6.0) set this option with #define
+ * Exception of expand-grouping=true in clixon-autocli.yang
+ * If enabled do not expand-grouping if a yang uses is directly under module or submodule
+ * Disabled does not work today and is temporary and for documentation
  */
-#undef NETCONF_DEFAULT_RETRIEVAL_REPORT_ALL
+#define AUTOCLI_GROUPING_TOPLEVEL_SKIP
 
-/*! Temporary backward-compatible option for not generating CLI for obsolete YANG
- * Introduced in 6.1, remove in 6.2
+/*! Skip uses/grouping references for augment
+ *
+ * Consider YANG constructs such as:
+ *   augment x{
+ *     uses y;
+ *     <nodes>
+ * }
+ * If enabled, do not include "uses y" in the augmentation at "x" AND mark all nodes with 
+ * YANG_FLAG_GROUPING
+ * If disabled, include "uses y" in the augmentation AND do NOT mark expaneded nodes with 
+ * YANG_FLAG_GROUPING.
+ * This affects the AUTOCLI expand-grouping=true behavior.
+ * Disabled does not work
  */
-#define AUTOCLI_OBSOLETE_SKIP
+#define YANG_GROUPING_AUGMENT_SKIP
 
-/*! Temporary backward-compatible option for hiding CLI for deprecated YANG
- * Introduced in 6.1, remove in 6.2
+/*! Start of restconf from backend (when CLICON_BACKEND_RESTCONF_PROCESS=true) using -R <inline>
+ *
+ * If set, send initial restconf config via -R <config> parameter at fork/exec.
+ * Seems to be only an optimization since the config is queried from the backend anyway
+ * The reason this probably should be undef:ed is that the restconf config appears in ps and other in 
+ * cleartext
  */
-#define AUTOCLI_DEPRECATED_HIDE
+#undef RESTCONF_INLINE

@@ -278,13 +278,13 @@ api_return_err(clicon_handle  h,
         clicon_debug(1, "%s code:%d", __FUNCTION__, code);
         if (pretty){
             cprintf(cb, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n");
-            if (clixon_xml2cbuf(cb, xerr, 2, pretty, -1, 0) < 0)
+            if (clixon_xml2cbuf(cb, xerr, 2, pretty, NULL, -1, 0) < 0)
                 goto done;
             cprintf(cb, "    </errors>\r\n");
         }
         else {
             cprintf(cb, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">");
-            if (clixon_xml2cbuf(cb, xerr, 2, pretty, -1, 0) < 0)
+            if (clixon_xml2cbuf(cb, xerr, 2, pretty, NULL, -1, 0) < 0)
                 goto done;
             cprintf(cb, "</errors>\r\n");
         }

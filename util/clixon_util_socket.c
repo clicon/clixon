@@ -167,7 +167,7 @@ main(int    argc,
         fprintf(stderr, "No xml\n");
         goto done;
     }
-    if (clixon_xml2cbuf(cb, xc, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xc, 0, 0, NULL, -1, 0) < 0)
         goto done;
     if ((msg = clicon_msg_encode(getpid(), "%s", cbuf_get(cb))) < 0)
         goto done;
@@ -178,7 +178,7 @@ main(int    argc,
     else
         if (clicon_rpc_connect_inet(h, sockpath, 4535, &s) < 0)
             goto done;
-    if (clicon_rpc(s, msg, &retdata, &eof) < 0)
+    if (clicon_rpc(s, NULL, msg, &retdata, &eof) < 0)
         goto done;
     close(s);
     fprintf(stdout, "%s\n", retdata);

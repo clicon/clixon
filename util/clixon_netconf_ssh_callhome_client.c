@@ -72,7 +72,6 @@ Example sshd-config (-c option):n
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
-#include <assert.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -236,7 +235,6 @@ main(int    argc,
     struct sockaddr     from = {0,};
     socklen_t           len;
     size_t              sin_len;
-    int                 dbg = 0;
     uint16_t            port = NETCONF_CH_SSH;
     int                 ss = -1; /* server socket */
     int                 s = -1;  /* accepted session socket */
@@ -247,9 +245,6 @@ main(int    argc,
         switch (c) {
         case 'h':
             usage(argv[0]);
-            break;
-        case 'D':
-            dbg++; /* not used */
             break;
         case 'f':
             family = optarg;

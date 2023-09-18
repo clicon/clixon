@@ -109,9 +109,9 @@ xy_dup(xp_yang_ctx *xy0)
  * Always evaluates to true since there are no instances 
  */
 static int
-xp_yang_op_eq(xp_yang_ctx *xy1,
-             xp_yang_ctx  *xy2,
-             xp_yang_ctx **xyr)
+xp_yang_op_eq(xp_yang_ctx  *xy1,
+              xp_yang_ctx  *xy2,
+              xp_yang_ctx **xyr)
 {
     int          retval = -1;
     xp_yang_ctx *xy = NULL;
@@ -119,11 +119,11 @@ xp_yang_op_eq(xp_yang_ctx *xy1,
     if ((xy = xy_dup(xy1)) == NULL)
         goto done;
     if (xy1 == NULL || xy2 == NULL || xy1->xy_node == NULL || xy2->xy_node == NULL){
-        clicon_err(OE_YANG, EINVAL, "Invalid path-arg (Error in xy1 or xy2) ");
-        goto done;
+        xy->xy_bool = 0;
     }
+    else
+        xy->xy_bool = 1;
     xy->xy_type = XT_BOOL;
-    xy->xy_bool = 1;
     xy->xy_node = NULL;
     *xyr = xy;
     retval = 0;
@@ -251,7 +251,7 @@ xp_yang_eval_predicate(xp_yang_ctx  *xy,
         if (xp_yang_eval(xy0, xptree->xs_c1, &xy1) < 0)
             goto done;
         /* Check xrc: if "true" then xyr=xy0? */
-        if (xy1->xy_type == XT_BOOL && xy1->xy_bool)
+        if (xy1 && xy1->xy_type == XT_BOOL && xy1->xy_bool)
             ;
         else
             xy0->xy_node = NULL;

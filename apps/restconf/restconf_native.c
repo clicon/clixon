@@ -254,8 +254,13 @@ ssl_x509_name_oneline(SSL   *ssl,
         clicon_err(OE_RESTCONF, EINVAL, "ssl or cn is NULL");
         goto done;
     }
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
     if ((cert = SSL_get_peer_certificate(ssl)) == NULL)
         goto ok;
+#else
+    if ((cert = SSL_get1_peer_certificate(ssl)) == NULL)
+        goto ok;
+#endif
     if ((name = X509_get_subject_name(cert)) == NULL) 
         goto ok;
     if ((p = X509_NAME_oneline(name, NULL, 0)) == NULL)
@@ -570,7 +575,7 @@ read_ssl(restconf_conn *rc,
             usleep(1000);
             *again = 1;
             break;
-        case SSL_ERROR_ZERO_RETURN:
+        case SSL_ERROR_ZERO_RETURN: /* 6 */
             *np = 0; /* should already be zero */
             break;
         default:
@@ -1078,10 +1083,9 @@ restconf_close_ssl_socket(restconf_conn *rc,
             (ret = SSL_shutdown(rc->rc_ssl)) < 0){
             er = errno;
             sslerr = SSL_get_error(rc->rc_ssl, ret);
-            clicon_debug(1, "%s errno:%d sslerr:%d", __FUNCTION__, er, sslerr);
-            //  case SSL_ERROR_ZERO_RETURN:          /* 6 */ 
-            //      Note that in this case SSL_ERROR_ZERO_RETURN does not necessarily indicate that the underlying transport has been closed.
-            if (sslerr == SSL_ERROR_SSL){ /* 1 */
+            clicon_debug(1, "%s errno:%s(%d) sslerr:%d", __FUNCTION__, strerror(er), er, sslerr);
+            if (sslerr == SSL_ERROR_SSL || /* 1 */
+                sslerr == SSL_ERROR_ZERO_RETURN){  /* 6 */
                 
             }
             else if (sslerr == SSL_ERROR_SYSCALL){ /* 5 */
@@ -1093,6 +1097,8 @@ restconf_close_ssl_socket(restconf_conn *rc,
                 /* Ignore eg EBADF/ECONNRESET/EPIPE */
             }
             else{
+                /* To avoid close again in restconf_native_terminate */
+                rc->rc_s = -1;
                 clicon_err(OE_SSL, sslerr, "SSL_shutdown, %s err:%d %d", callfn, sslerr, er);
                 goto done;
             }
@@ -1354,10 +1360,16 @@ restconf_ssl_accept_client(clicon_handle    h,
         */
         if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE){
             X509 *peercert;
-
+            // XXX SSL_get1_peer_certificate(ssl)
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
             if ((peercert = SSL_get_peer_certificate(rc->rc_ssl)) != NULL){
                 X509_free(peercert);
             }
+#else
+            if ((peercert = SSL_get1_peer_certificate(rc->rc_ssl)) != NULL){
+                X509_free(peercert);
+            }
+#endif
             else { /* Get certificates (if available) */
                 if (proto != HTTP_2 &&
                     native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
@@ -1408,11 +1420,13 @@ restconf_ssl_accept_client(clicon_handle    h,
     case HTTP_2:{
         if (http2_session_init(rc) < 0){
             restconf_close_ssl_socket(rc, __FUNCTION__, 0);
-            goto done;
+            clicon_err_reset();
+            goto closed;
         }
         if (http2_send_server_connection(rc) < 0){
             restconf_close_ssl_socket(rc, __FUNCTION__, 0);
-            goto done;
+            clicon_err_reset();
+            goto closed;
         }
         break;
     }

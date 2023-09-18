@@ -180,11 +180,11 @@ struct xml{
     int               x_childvec_len;/* Number of children */
     int               x_childvec_max;/* Length of allocated vector */
 
-
     cvec             *x_ns_cache;   /* Cached vector of namespaces (set by bind-yang) */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, 
                                        by reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
+    cvec             *x_creators;   /* Support clixon-lib creator annotation */
 #ifdef XML_EXPLICIT_INDEX
     struct search_index *x_search_index; /* explicit search index vectors */
 #endif
@@ -583,6 +583,7 @@ xml_parent_candidate_set(cxobj *xn,
 #endif /* XML_PARENT_CANDIDATE */
 
 /*! Get xml node flags, used for internal algorithms
+ *
  * @param[in]  xn    xml node
  * @retval     flag  Flag value(s), see XML_FLAG_MARK et al
  */
@@ -594,6 +595,7 @@ xml_flag(cxobj   *xn,
 }
 
 /*! Set xml node flags, used for internal algorithms
+ *
  * @param[in]  xn      xml node
  * @param[in]  flag    Flag values to set, see XML_FLAG_MARK et al
  */
@@ -606,6 +608,7 @@ xml_flag_set(cxobj   *xn,
 }
 
 /*! Reset xml node flags, used for internal algorithms
+ *
  * @param[in]  xn      xml node
  * @param[in]  flag    Flag value(s) to reset, see XML_FLAG_*
  */
@@ -615,6 +618,149 @@ xml_flag_reset(cxobj   *xn,
 {
     xn->x_flags &= ~flag;
     return 0;
+}
+
+/*! Add a creator tag
+ *
+ * @param[in]  xn    XML tree
+ * @param[in]  name  Name of creator tag
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+xml_creator_add(cxobj *xn,
+                char  *name)
+{
+    int     retval = -1;
+    cg_var *cv;
+    
+    if (!is_element(xn))
+        return 0;
+    if (xn->x_creators == NULL){
+        if ((xn->x_creators = cvec_new(0)) == NULL){
+            clicon_err(OE_XML, errno, "cvec_new");
+            goto done;
+        }
+    }
+    if ((cv = cvec_find(xn->x_creators, name)) == NULL) 
+        cvec_add_string(xn->x_creators, name, NULL);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Remove a creator tag
+ *
+ * @param[in]  xn    XML tree
+ * @param[in]  name  Name of creator tag
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+xml_creator_rm(cxobj *xn,
+               char  *name)
+{
+    cg_var *cv;
+    
+    if (!is_element(xn))
+        return 0;
+    if ((cv = cvec_find(xn->x_creators, name)) == NULL)
+        return 0;
+    return cvec_del(xn->x_creators, cv);
+}
+
+/*! Find a creator string
+ *
+ * @param[in]  xn    XML tree
+ * @param[in]  name  Name of creator tag
+ * @retval     1     Yes, xn is tagged with creator tag "name"
+ * @retval     0     No, xn is not tagged with creator tag "name"
+ */
+int
+xml_creator_find(cxobj *xn,
+                 char  *name)
+{
+    if (!is_element(xn))
+        return 0;
+    if (xn->x_creators != NULL &&
+        cvec_find(xn->x_creators, name) != NULL)
+        return 1;
+    return 0;
+}
+
+/*! Get number of creator strings
+ *
+ * @param[in]  xn    XML tree
+ * @retval     len   Number of creator tags assigned to xn
+ * @retval     0     No creator tags or non-applicable
+ */
+size_t
+xml_creator_len(cxobj *xn)
+{
+    if (!is_element(xn))
+        return 0;
+    if (xn->x_creators)
+        return cvec_len(xn->x_creators);
+    else
+        return 0;
+}
+
+/*! Copy creator info from x0 to x1
+ *
+ * @param[in]  x0  Source XML node
+ * @param[in]  x1  Destination XML node
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+xml_creator_copy(cxobj *x0, 
+                 cxobj *x1)
+{
+    int retval = -1;
+    
+    if (x0->x_creators)
+        if ((x1->x_creators = cvec_dup(x0->x_creators)) == NULL){
+            clicon_err(OE_UNIX, errno, "cvec_dup");
+            goto done;
+        }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Print XML and creator tags where they exists, apply help function
+ *
+ * @param[in]  x    XML tree
+ * @param[in]  arg  FIle
+ */
+static int
+creator_print_fn(cxobj *x,
+                 void  *arg)
+{
+    FILE   *f = (FILE *)arg;
+    cg_var *cv;
+ 
+    if (x->x_creators == NULL)
+        return 0;
+    cv = NULL;
+    while ((cv = cvec_each(x->x_creators, cv)) != NULL){
+        fprintf(f, "%s ", cv_name_get(cv));
+    }
+    fprintf(f, ":\n");
+    clixon_xml2file(f, x, 3, 1, NULL, cligen_output, 0, 0);
+    return 2; /* Locally abort this subtree, continue with others */
+}
+
+/*! Print XML and creator tags where they exists, for debugging
+ *
+ * @param[in]  xn    XML tree
+ * @retval     see xml_apply
+ */
+int
+xml_creator_print(FILE  *f,
+                  cxobj *xn)
+{
+    return xml_apply0(xn, CX_ELMNT, creator_print_fn, f);
 }
 
 /*! Get value of xnode
@@ -907,6 +1053,7 @@ xml_child_order(cxobj *xp,
  *   }
  * @endcode
  * @see xml_child_index_each
+ * @see xml_child_each_attr  hardcoded for sorted list and attributes
  */
 cxobj *
 xml_child_each(cxobj           *xparent, 
@@ -926,6 +1073,44 @@ xml_child_each(cxobj           *xparent,
             continue;
         if (type != CX_ERROR && xml_type(xn) != type)
             continue;
+        break; /* this is next object after previous */
+    }
+    if (i < xparent->x_childvec_len) /* found */
+        xn->_x_vector_i = i;
+    else
+        xn = NULL;
+    return xn;
+}
+
+/*! Same as xml_child_each but hard-coded for attributes
+ *
+ * Assumes attributes are first in list, which they are if they are sorted, but there are
+ * situations where the children have not (yet) been sorted, in which case you need to use the 
+ * original function.
+ * @param[in] xparent xml tree node whose children should be iterated
+ * @param[in] xprev   previous child, or NULL on init
+ * @retval    xn      Next XML node
+ * @retval    NULL    End of list
+ * @see xml_child_each
+ */
+cxobj *
+xml_child_each_attr(cxobj           *xparent, 
+                    cxobj           *xprev)
+{
+    int             i;
+    cxobj          *xn = NULL; 
+
+    if (xparent == NULL)
+        return NULL;
+    if (!is_element(xparent))
+        return NULL;
+    for (i=xprev?xprev->_x_vector_i+1:0; i<xparent->x_childvec_len; i++){
+        xn = xparent->x_childvec[i];
+        if (xn == NULL)
+            continue;
+        if (xml_type(xn) != CX_ATTR){
+            return NULL;
+        }
         break; /* this is next object after previous */
     }
     if (i < xparent->x_childvec_len) /* found */
@@ -1874,6 +2059,8 @@ xml_free(cxobj *x)
 #ifdef XML_EXPLICIT_INDEX
         xml_search_index_free(x);
 #endif
+        if (x->x_creators)
+            cvec_free(x->x_creators);
         break;
     case CX_BODY:
     case CX_ATTR:
@@ -1915,6 +2102,8 @@ xml_copy_one(cxobj *x0,
     switch (xml_type(x0)){
     case CX_ELMNT:
         xml_spec_set(x1, xml_spec(x0));
+        if (xml_creator_copy(x0, x1) < 0)
+            goto done;
         break;
     case CX_BODY:
     case CX_ATTR:
@@ -2069,6 +2258,7 @@ cxvec_prepend(cxobj   *x,
 
 
 /*! Apply a function call recursively on all xml node children recursively
+ *
  * Recursively traverse all xml nodes in a parse-tree and apply fn(arg) for 
  * each object found. The function is called with the xml node and an 
  * argument as args.
@@ -2392,7 +2582,7 @@ clicon_log_xml(int         level,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    if (clixon_xml2cbuf(cb, x, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
         goto done;
     /* first round: compute length of debug message */
     va_start(args, format);
@@ -2458,7 +2648,7 @@ clicon_debug_xml(int         dbglevel,
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    if (clixon_xml2cbuf(cb, x, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
         goto done;
     /* first round: compute length of debug message */
     va_start(args, format);
@@ -2532,7 +2722,6 @@ xml_search_index_p(cxobj *x)
         return 0;
     return 1;
 }
-        
 
 /*! Free all search vector pairs of this XML node
  * @param[in]  x    XML object

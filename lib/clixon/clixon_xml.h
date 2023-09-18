@@ -83,6 +83,7 @@
 
 /* Name of xml top object created by xml parse functions 
  * This is a "neutral" symbol without any meaning as opposed to the previous symbols ^
+ * @see DATASTORE_TOP_SYMBOL which should be used for clixon top-level config trees
  */
 #define XML_TOP_SYMBOL "top" 
 
@@ -177,7 +178,9 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 
 typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c */
 
-/* Alternative formats */
+/* Alternative tree formats,
+ * @see format_int2str, format_str2int
+ */
 enum format_enum{
     FORMAT_XML,  
     FORMAT_JSON,  
@@ -227,6 +230,13 @@ uint16_t  xml_flag(cxobj *xn, uint16_t flag);
 int       xml_flag_set(cxobj *xn, uint16_t flag);
 int       xml_flag_reset(cxobj *xn, uint16_t flag);
 
+int       xml_creator_add(cxobj *xn, char *name);
+int       xml_creator_rm(cxobj *xn, char *name);
+int       xml_creator_find(cxobj *xn, char *name);
+size_t    xml_creator_len(cxobj *xn);
+int       xml_creator_copy(cxobj *x0, cxobj *x1);
+int       xml_creator_print(FILE *f, cxobj *xn);
+
 char     *xml_value(cxobj *xn);
 int       xml_value_set(cxobj *xn, char *val);
 int       xml_value_append(cxobj *xn, char *val);
@@ -240,6 +250,7 @@ cxobj    *xml_child_i_type(cxobj *xn, int i, enum cxobj_type type);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
 int       xml_child_order(cxobj *xn, cxobj *xc);
 cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
+cxobj    *xml_child_each_attr(cxobj *xparent, cxobj *xprev);
 int       xml_child_insert_pos(cxobj *x, cxobj *xc, int i);
 int       xml_childvec_set(cxobj *x, int len);
 cxobj   **xml_childvec_get(cxobj *x);

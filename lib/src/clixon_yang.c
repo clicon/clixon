@@ -180,6 +180,7 @@ static int yang_type_cache_cp(yang_stmt *ynew, yang_stmt *yold);
  */
 
 /*! Get Number of children yang statements
+ *
  * @param[in] ys  Yang statement node
  */
 int
@@ -189,6 +190,7 @@ yang_len_get(yang_stmt *ys)
 }
 
 /*! Get Specific Yang statement child
+ *
  * @param[in] ys  Yang statement node
  * @param[in] i   Return this child
  */
@@ -200,6 +202,7 @@ yang_child_i(yang_stmt *ys,
 }
 
 /*! Get yang statement parent
+ *
  * @param[in] ys  Yang statement node
  */
 yang_stmt *
@@ -209,6 +212,7 @@ yang_parent_get(yang_stmt *ys)
 }
 
 /*! Get yang statement keyword
+ *
  * @param[in] ys  Yang statement node
  */
 enum rfc_6020
@@ -218,6 +222,7 @@ yang_keyword_get(yang_stmt *ys)
 }
 
 /*! Get yang statement context-dependent argument
+ *
  * @param[in] ys  Yang statement node
  */
 char*
@@ -236,8 +241,9 @@ yang_argument_get(yang_stmt *ys)
  *  2d. type: leafref types: derived instances.
  */
 /*! Set yang argument, not not copied
+ *
  * @param[in] ys   Yang statement node
- * @param[in] arg  Argument
+ * @param[in] arg  Argument, note must be malloced
  * Typically only done at parsing / initiation
  */
 int
@@ -249,6 +255,7 @@ yang_argument_set(yang_stmt *ys,
 }
 
 /*! Get yang statement CLIgen variable
+ *
  * @param[in] ys  Yang statement node
  */
 cg_var*
@@ -258,6 +265,7 @@ yang_cv_get(yang_stmt *ys)
 }
 
 /*! Set yang statement CLIgen variable
+ *
  * @param[in] ys  Yang statement node
  * @param[in] cv  cligen variable
  * @note: Frees on replace, not if cv is NULL. This is for some ys_cp/ys_dup cases, which means 
@@ -274,6 +282,7 @@ yang_cv_set(yang_stmt *ys,
 }
 
 /*! Get yang statement CLIgen variable vector
+ *
  * @param[in] ys  Yang statement node
  * @note  To add entries, use yang_cvec_add(), since this function may return NULL
  */
@@ -284,6 +293,7 @@ yang_cvec_get(yang_stmt *ys)
 }
 
 /*! Set yang statement CLIgen variable vector
+ *
  * @param[in] ys   Yang statement node
  * @param[in] cvec CLIgen vector
  * @retval    0    OK
@@ -334,6 +344,7 @@ yang_cvec_add(yang_stmt    *ys,
 }
 
 /*! Get yang stmt flags, used for internal algorithms
+ *
  * @param[in]  ys     Yang statement
  * @param[in]  flag   Flags value(s) to get, see YANG_FLAG_*
  * @retval     value  Flags value masked by "flag" parameter, see YANG_FLAG_*
@@ -346,6 +357,7 @@ yang_flag_get(yang_stmt *ys,
 }
 
 /*! Set yang stmt flags, used for internal algorithms
+ *
  * @param[in]  ys     Yang statement
  * @param[in]  flag   Flag value(s) to set, see YANG_FLAG_*
  */
@@ -358,6 +370,7 @@ yang_flag_set(yang_stmt *ys,
 }
 
 /*! Reset yang stmt flags, used for internal algorithms
+ *
  * @param[in]  ys     Yang statement
  * @param[in]  flag   Flag value(s) to reset, see YANG_FLAG_*
  */
@@ -376,7 +389,7 @@ yang_flag_reset(yang_stmt *ys,
  * @param[in]  ys     Yang statement
  * @retval     xpath  xpath should evaluate to true at validation
  * @retval     NULL   Not set
- * Note xpath context is PARENT which is different from when actual when child which is 
+ * @note xpath context is PARENT which is different from when actual when child which is 
  * child itself
  */
 char*
@@ -392,7 +405,7 @@ yang_when_xpath_get(yang_stmt *ys)
  * @param[in]  ys     Yang statement
  * @param[in]  xpath  If set, this xpath should evaluate to true at validation, copied
  * @retval     0      OK
- * @retval     -1     Error
+ * @retval    -1      Error
  */
 int
 yang_when_xpath_set(yang_stmt *ys, 
@@ -435,7 +448,7 @@ yang_when_nsc_get(yang_stmt *ys)
  * @param[in]  ys     Yang statement
  * @param[in]  nsc    Namespace context for when xpath
  * @retval     0      OK
- * @retval     -1     Error
+ * @retval    -1      Error
  */
 int
 yang_when_nsc_set(yang_stmt *ys, 
@@ -525,6 +538,7 @@ yang_stats_global(uint64_t *nr)
 }
 
 /*! Return the alloced memory of a single YANG obj 
+ *
  * @param[in]   y    YANG object
  * @param[out]  szp  Size of this YANG obj
  * @retval      0    OK
@@ -566,6 +580,7 @@ yang_stats_one(yang_stmt *y,
 }
 
 /*! Return statistics of an YANG-stmt tree recursively
+ *
  * @param[in]   yt   YANG object
  * @param[out]  nrp  Number of YANG objects recursively
  * @param[out]  szp  Size of this YANG stmt recursively
@@ -604,6 +619,7 @@ yang_stats(yang_stmt *yt,
 /* stats end */
 
 /*! Create new yang specification
+ *
  * @retval  yspec    Free with ys_free() 
  * @retval  NULL     Error
  */
@@ -623,6 +639,7 @@ yspec_new(void)
 }
 
 /*! Create new yang node/statement
+ *
  * @retval  ys    Free with ys_free() 
  * @retval  NULL     Error
  */
@@ -703,10 +720,11 @@ ys_free1(yang_stmt *ys,
 }
 
 /*! Remove child i from parent yp (dont free) 
+ *
  * @param[in]  yp   Parent node
  * @param[in]  i    Order of child to remove
- * @retval     NULL No such node, nothing done
  * @retval     yc   returned orphaned yang node
+ * @retval     NULL No such node, nothing done
  * @see ys_free Deallocate yang node
  * @see ys_prune_self Prune child itself
  * @note Do not call this in a loop of yang children (unless you know what you are doing)
@@ -733,10 +751,11 @@ ys_prune(yang_stmt *yp,
     return yc;
 }
 
-/*! Remove yang node from parent (dont free
+/*! Remove yang node from parent (dont free)
+ *
  * @param[in]  ys   Yang node to remove
  * @retval     0    OK
- * @retval     -1   Error
+ * @retval    -1    Error
  * @see ys_prune  if parent and position is know
  * @see ys_free Deallocate yang node
  * @note Do not call this in a loop of yang children (unless you know what you are doing)
@@ -769,6 +788,7 @@ ys_prune_self(yang_stmt *ys)
 }
 
 /*! Free all yang children tree recursively 
+ *
  * @param[in]  ys   Yang node to its children recursively
  */
 static int
@@ -790,6 +810,7 @@ ys_freechildren(yang_stmt *ys)
 }
 
 /*! Free a yang statement tree recursively 
+ *
  * @param[in]  ys   Yang node to remove and all its children recursively
  * @note does not remove yang node from tree
  * @see ys_prune  Remove from parent
@@ -802,7 +823,8 @@ ys_free(yang_stmt *ys)
     return 0;
 }
 
-/*! Allocate larger yang statement vector adding empty field last */
+/*! Allocate larger yang statement vector adding empty field last 
+ */
 static int 
 yn_realloc(yang_stmt *yn)
 {
@@ -817,10 +839,11 @@ yn_realloc(yang_stmt *yn)
 }
 
 /*! Copy yang statement recursively from old to new 
+ *
  * @param[in] ynew  New empty (but created) yang statement (to)
  * @param[in] yold  Old existing yang statement (from)
  * @retval    0     OK
- * @retval    -1    Error
+ * @retval   -1     Error
  * @code
  * yang_stmt *new = ys_new(Y_LEAF);
  * if (ys_cp(new, old) < 0)
@@ -893,11 +916,12 @@ ys_cp(yang_stmt *ynew,
 }
 
 /*! Create a new yang node and copy the contents recursively from the original.  *
+ *
  * @param[in] old  Old existing yang statement (from)
  * @retval    NULL Error
  * @retval    nw   New created yang statement
  * @retval    0     OK
- * @retval    -1    Error
+ * @retval   -1     Error
  * This may involve duplicating strings, etc.
  * The new yang tree needs to be freed by ys_free().
  * The parent of new is NULL, it needs to be explicityl inserted somewhere
@@ -923,9 +947,9 @@ ys_dup(yang_stmt *old)
 /*! Replace yold with ynew (insert ynew at the exact place of yold). Keep yold pointer as-is.
  *
  * @param[in] yorig  Existing yang statement
- * @param[in] yfrom   New empty (but created) yang statement
- * @retval    0     OK
- * @retval    -1    Error
+ * @param[in] yfrom  New empty (but created) yang statement
+ * @retval    0      OK
+ * @retval   -1      Error
  * @code
  * if (ys_replace(new, old) < 0)
  *    err;
@@ -1190,6 +1214,7 @@ yang_find_datanode(yang_stmt *yn,
 }
 
 /*! Find child schema node with matching argument (container, leaf, etc)
+ *
  * @param[in]  yn         Yang node, current context node.
  * @param[in]  argument   if NULL, match any(first) argument.
  * @note XXX unify code with yang_find_datanode?
@@ -1270,8 +1295,8 @@ yang_find_schemanode(yang_stmt *yn,
 /*! Given a yang statement, or module itself, find the prefix associated to this module
  *
  * @param[in]  ys        Yang statement in module tree (or module itself)
- * @retval     NULL      No prefix found. This is an error
  * @retval     prefix    OK: Prefix as char* pointer into yang tree
+ * @retval     NULL      No prefix found. This is an error
  * @code
  *   char *myprefix;
  *   myprefix = yang_find_myprefix(ys);
@@ -1303,8 +1328,8 @@ yang_find_myprefix(yang_stmt *ys)
 /*! Given a yang statement, find the namespace URI associated to this module
  *
  * @param[in]  ys        Yang statement in module tree (or module itself)
- * @retval     NULL      Error: No namespace found. This is an error
  * @retval     ns        Namspace URI as char* pointer into yang tree
+ * @retval     NULL      Error: No namespace found. This is an error
  * @code
  * char *myns = yang_find_mynamespace(ys);
  * @endcode
@@ -1329,15 +1354,16 @@ yang_find_mynamespace(yang_stmt *ys)
 }
 
 /*! Given a yang statement and namespace, find local prefix valid in module
+ *
  * This is useful if you want to make a "reverse" lookup, you know the
  * (global) namespace of a module, but you do not know the local prefix
  * used to access it in XML.
  * @param[in]  ys        Yang statement in module tree (or module itself)
  * @param[in]  ns        Namespace URI as char* pointer into yang tree
  * @param[out] prefix    Local prefix to access module with (direct pointer)
- * @retval    -1         Error
- * @retval     0         Not found
  * @retval     1         Found
+ * @retval     0         Not found
+ * @retval    -1         Error
  * @note  prefix NULL is not returned, if own module, then return its prefix
  * @code
  *    char *prefix = NULL;
@@ -1404,9 +1430,9 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
  * @param[in]  ys        Yang statement in module tree (or module itself)
  * @param[in]  prefix    Local prefix to access module with (direct pointer)
  * @param[out] ns        Namespace URI as char* pointer into yang tree
- * @retval    -1         Error
- * @retval     0         Not found
  * @retval     1         Found
+ * @retval     0         Not found
+ * @retval    -1         Error
  * @note  prefix NULL is not returned, if own module, then return its prefix
  * @code
  *    char *ns = NULL;
@@ -1515,11 +1541,12 @@ yang_choice(yang_stmt *y)
 }
 
 /*! Find matching y in yp:s children, "yang order" of y when y is choice
+ *
  * @param[in]  yp     Choice node
  * @param[in]  y      Yang datanode to find
  * @param[out] index  Index of y in yp:s list of children
- * @retval     0      not found (must be datanode)
  * @retval     1      found
+ * @retval     0      not found (must be datanode)
  * @see order1 the main function
  * There are two distinct cases, either (1) the choice has case statements, or
  * (2) it uses shortcut mode without case statements.
@@ -1571,11 +1598,12 @@ yang_order1_choice(yang_stmt *yp,
 }
 
 /*! Find matching y in yp:s children, return "yang order" of y or -1 if not found
+ *
  * @param[in]  yp     Parent
  * @param[in]  y      Yang datanode to find
  * @param[out] index  Index of y in yp:s list of children
  * @retval     0      OK: found
- * @retval     -1     Error: not found (must be datanode)
+ * @retval    -1      Error: not found (must be datanode)
  */
 static int
 yang_order1(yang_stmt *yp,
@@ -1609,6 +1637,7 @@ yang_order1(yang_stmt *yp,
 }
 
 /*! Return order of yang statement y in parents child vector
+ *
  * @param[in]  y      Find position of this data-node
  * @param[out] index  Index of y in yp:s list of children
  * @retval   >=0      Order of child with specified argument
@@ -1664,6 +1693,7 @@ yang_order(yang_stmt *y)
 }
 
 /*! Map from YANG keywords ints to strings
+ *
  * @param[in] int  Integer representation of YANG keywords
  * @retval    str  String representation of YANG keywords 
  */
@@ -1674,6 +1704,7 @@ yang_key2str(int keyword)
 }
 
 /*! Map from yang keyword strings to ints
+ *
  * @param[in] str  String representation of YANG keywords
  * @retval    int  Integer representation of YANG keywords
  */
@@ -1684,6 +1715,7 @@ yang_str2key(char *str)
 }
 
 /*! Find top data node among all modules by namespace in xml tree
+ *
  * @param[in]  yspec    Yang specification
  * @param[in]  xt       XML node
  * @param[out] ymod     Yang module (NULL if not found)
@@ -1722,6 +1754,7 @@ ys_module_by_xml(yang_stmt  *yspec,
 }
 
 /*! Find the top module or sub-module given a statement from within a yang tree
+ *
  * Ultimate top is yang spec, dont return that
  * The routine recursively finds ancestors.
  * @param[in] ys    Any yang statement in a yang tree
@@ -1757,6 +1790,7 @@ ys_module(yang_stmt *ys)
 }
 
 /*! Find real top module given a statement in a yang tree
+ *
  * With "real" top module means that if sub-module is the top-node,
  * the module that the sub-module belongs-to is found recursively
  * @param[in]  ys    Any yang statement in a yang tree
@@ -1807,6 +1841,7 @@ ys_real_module(yang_stmt  *ys,
 }
 
 /*! Find top of tree, the yang specification from within the tree
+ *
  * @param[in] ys    Any yang statement in a yang tree
  * @retval    yspec The top yang specification
  * @see  ys_module
@@ -1826,7 +1861,8 @@ ys_spec(yang_stmt *ys)
     return (yang_stmt*)ys;
 }
 
-/*! string is quoted if it contains space or tab, needs double '' */
+/*! String is quoted if it contains space or tab, needs double '' 
+ */
 static int inline
 quotedstring(char *s)
 {
@@ -1840,6 +1876,7 @@ quotedstring(char *s)
 }
 
 /*! Print yang specification to file
+ *
  * @param[in]  f     File to print to.
  * @param[in]  yn    Yang node to print
  * @param[in]  fn    Callback to make print function
@@ -1870,6 +1907,7 @@ yang_print_cb(FILE             *f,
 }
 
 /*! Print yang specification to file
+ *
  * @param[in]  f         File to print to.
  * @param[in]  yn        Yang node to print
  * @see yang_print_cbuf
@@ -1882,6 +1920,7 @@ yang_print(FILE      *f,
 }
 
 /*! Print yang top-level modules only
+ *
  * @param[in]  f         File to print to.
  * @param[in]  yn        Yang node to print
  * @see yang_print_cbuf
@@ -1944,6 +1983,7 @@ yang_spec_dump(yang_stmt *yspec,
 }
 
 /*! Print yang specification to cligen buf
+ *
  * @param[in]  cb        Cligen buffer. This is where the pretty print is.
  * @param[in]  yn        Yang node to print
  * @param[in]  marginal  Tab indentation, mainly for recursion.
@@ -2175,7 +2215,7 @@ yang_deviation(yang_stmt *ys,
  * @param[in] h    Clicon handle
  * @param[in] ys   The yang statement to populate.
  * @retval    0    OK
- * @retval    -1   Error with clicon_err called
+ * @retval   -1    Error with clicon_err called
  */
 static int
 ys_populate_leaf(clicon_handle h,
@@ -2212,7 +2252,7 @@ ys_populate_leaf(clicon_handle h,
         cv_dec64_n_set(cv, fraction_digits);
 
     if (cv_name_set(cv, ys->ys_argument) == NULL){
-        clicon_err(OE_YANG, errno, "cv_new_set"); 
+        clicon_err(OE_YANG, errno, "cv_name_set"); 
         goto done;
     }
     /* get parent of where type is defined, can be original object */
@@ -2266,6 +2306,7 @@ ys_populate_leaf(clicon_handle h,
 }
 
 /*! Populate list yang statement
+ *
  * @param[in] h    Clicon handle
  * @param[in] ys   The yang statement (type) to populate.
  */
@@ -2286,6 +2327,7 @@ ys_populate_list(clicon_handle h,
 }
 
 /*! Set range or length boundary for built-in yang types
+ *
  * Help functions to range and length statements 
  */
 static int
@@ -2459,6 +2501,7 @@ ys_populate_length(clicon_handle h,
 }
 
 /*! Sanity check yang type statement
+ *
  * XXX: Replace with generic parent/child type-check
  * @param[in] h    Clicon handle
  * @param[in] ys   The yang statement (type) to populate.
@@ -2582,8 +2625,8 @@ ys_populate_identity(clicon_handle h,
  * @param[in] yspec   yang specification
  * @param[in] module  Name of module
  * @param[in] feature Name of feature
- * @retval    0       Not found or not set
  * @retval    1       Found and set
+ * @retval    0       Not found or not set
  * XXX: should the in-param be h, ymod, or yspec?
  */
 int
@@ -2610,7 +2653,7 @@ if_feature(yang_stmt    *yspec,
  * @param[in] ys   Feature yang statement to populate.
  * Bootstrapping: A feature is enabled if found in clixon-config
  */
-static int
+int
 ys_populate_feature(clicon_handle h,
                     yang_stmt    *ys)
 {
@@ -2671,6 +2714,7 @@ ys_populate_feature(clicon_handle h,
 }
 
 /*! Populate the unique statement with a cvec
+ *
  * @param[in] h    Clicon handle
  * @param[in] ys   The yang statement (unique) to populate.
  */
@@ -2774,11 +2818,11 @@ ys_populate_unknown(clicon_handle h,
 }
 
 /*! Populate modules / submodules
- * @param[in] h    Clicon handle
- * @param[in] ys   The yang statement (module/submodule) to populate.
  *
  * Check RFC 7950: 7.1.4: All prefixes, including the prefix for the module itself, 
  * MUST be unique within the module or submodule.
+ * @param[in] h    Clicon handle
+ * @param[in] ys   The yang statement (module/submodule) to populate.
  */
 static int
 ys_populate_module_submodule(clicon_handle h,
@@ -2888,6 +2932,7 @@ ys_populate(yang_stmt    *ys,
 }
 
 /*! Run after grouping expand and augment 
+ *
  * @see ys_populate   run before grouping expand and augment
  */
 int
@@ -2918,11 +2963,12 @@ ys_populate2(yang_stmt    *ys,
 }
 
 /*! Find feature and if-feature nodes, check features and remove disabled nodes
+ *
  * @param[in] h   Clixon handle
  * @param[in] yt  Yang statement
- * @retval   -1   Error
- * @retval    0   Feature not enabled: remove yt
  * @retval    1   OK
+ * @retval    0   Feature not enabled: remove yt
+ * @retval   -1   Error
  * @note On return 0 the over-lying function need to remove yt from its parent
  * @note cannot use yang_apply here since child-list is modified (destructive) 
  * @note if-features is parsed in full context here, previous restricted pass in ys_parse_sub
@@ -2947,7 +2993,7 @@ yang_features(clicon_handle h,
             if ((ymod = ys_module(ys)) != NULL)
                 mainfile = yang_filename_get(ymod);
             ret = 0;
-            if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, mainfile, 1, &ret) < 0)
+            if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, mainfile, 1, &ret, h) < 0)
                 goto done;
             clicon_debug(CLIXON_DBG_DETAIL, "%s %s %d", __FUNCTION__, yang_argument_get(ys), ret);
             if (ret == 0)
@@ -3004,9 +3050,9 @@ yang_features(clicon_handle h,
  * @param[in]  fn   Callback
  * @param[in]  depth Depth argument: where to start. If <=0 call the calling node yn, if 1 start with its children, etc
  * @param[in]  arg  Argument
- * @retval    -1    Error, aborted at first error encounter
- * @retval     0    OK, all nodes traversed
  * @retval     n    OK, aborted at first encounter of first match
+ * @retval     0    OK, all nodes traversed
+ * @retval    -1    Error, aborted at first error encounter
  * @code
  * int ys_fn(yang_stmt *ys, void *arg)
  * {
@@ -3053,6 +3099,7 @@ yang_apply(yang_stmt     *yn,
 }    
 
 /*! Check if a node is a yang "data node"
+ *
  * @param[in]  ys  Yang statement node
  * @retval     0   Yang node is NOT a data node
  * @retval   !=0   Yang node IS a data noed
@@ -3082,8 +3129,8 @@ yang_datanode(yang_stmt *ys)
  * @param[in]  cvv   Schema-node path encoded as a name/value pair list.
  * @param[in]  nsc   Namespace context from yang for the prefixes (names) of cvv
  * @param[out] yres  Result yang statement node, or NULL if not found
- * @retval    -1     Error, with clicon_err called
  * @retval     0     OK
+ * @retval    -1     Error, with clicon_err called
  *   A schema node identifier consists of a path of identifiers, separated by slashes ("/").
  *   References to identifiers defined in external modules MUST be
  *   qualified with appropriate prefixes, and references to identifiers
@@ -3162,11 +3209,12 @@ schema_nodeid_iterate(yang_stmt    *yn,
 }
 
 /*! Given an absolute schema-nodeid (eg /a/b/c) find matching yang spec  
+ *
  * @param[in]  yn            Original yang stmt (where call is made)
  * @param[in]  schema_nodeid Absolute schema-node-id, ie /a/b
  * @param[out] yres          Result yang statement node, or NULL if not found
- * @retval    -1             Error, with clicon_err called
  * @retval     0             OK , with result in yres
+ * @retval    -1             Error, with clicon_err called
  * Assume schema nodeid:s have prefixes, (actually the first).
  * @see RFC7950 6.5
  * o  schema node: A node in the schema tree.  One of action, container,
@@ -3255,6 +3303,7 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
 }
 
 /*! Given a descendant schema-nodeid (eg a/b/c) find matching yang spec  
+ *
  * @param[in]  yn            Yang node (must be part of yspec tree, cannot be "dangling")
  * @param[in]  schema_nodeid Descendant schema-node-id, ie a/b
  * @param[in]  keyword       A schemode of this type, or -1 if any
@@ -3329,9 +3378,10 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
 }
 
 /*! Return config state of this node
+ *
  * @param[in] ys  Yang statement
- * @retval    0   If node has a config sub-statement and it is false
  * @retval    1   If node has not config sub-statement or it is true
+ * @retval    0   If node has a config sub-statement and it is false
  * @see yang_config_ancestor  which also takes ancestors into account, which you should normally do.
  */
 int
@@ -3351,8 +3401,8 @@ yang_config(yang_stmt *ys)
  *
  * config statement is default true. 
  * @param[in] ys  Yang statement
- * @retval    0   Node or one of its ancestor has config false or is RPC or notification
  * @retval    1   Neither node nor any of its ancestors has config false
+ * @retval    0   Node or one of its ancestor has config false or is RPC or notification
  */
 int
 yang_config_ancestor(yang_stmt *ys)
@@ -3391,8 +3441,8 @@ yang_config_ancestor(yang_stmt *ys)
  *
  * @param[in]  ys         Yang statement 
  * @param[in]  delimiter  Delimiter character (eg ' ' or ',')
- * @retval     NULL  Error
  * @retval     cvec  Vector of strings. Free with cvec_free()
+ * @retval     NULL  Error
  * @code
  *    cvec   *cvv;
  *    cg_var *cv = NULL;
@@ -3442,10 +3492,9 @@ yang_arg2cvec(yang_stmt *ys,
  * @param[in]  yn   Yang list node with sub-statements (look for a key child)
  * @param[in]  name Check if this name (eg "b") is a key in the yang key statement
  * @param[out] lastkey If 1 this is the last key in a multi-key list
- *
- * @retval   -1     Error
- * @retval    0     No match
  * @retval    1     Yes match
+ * @retval    0     No match
+ * @retval   -1     Error
  */
 int
 yang_key_match(yang_stmt *yn, 
@@ -3487,6 +3536,7 @@ yang_key_match(yang_stmt *yn,
 }
 
 /*! Set type cache for yang type
+ *
  * @param[in] rxmode  Kludge to know which regexp engine is used
  * @see yang_type_cache_regexp_set where cache is extended w compiled regexps
  */
@@ -3530,6 +3580,7 @@ yang_type_cache_set(yang_stmt        *ys,
 }
 
 /*! Extend yang type cache with compiled regexps
+ *
  * Compiled Regexps are computed in validate code - after initial cache set
  * @param[in] regexps   
  */
@@ -3556,10 +3607,11 @@ yang_type_cache_regexp_set(yang_stmt *ytype,
 }
 
 /*! Get individual fields (direct/destructively) from yang type cache. 
+ *
  * @param[out] patterns Initialized cvec of regexp patterns strings
- * @retval    -1        Error
- * @retval     0        No cache
- * @retval     1        OK
+ * @retval   1   OK
+ * @retval   0   No cache
+ * @retval  -1   Error
  */
 int
 yang_type_cache_get(yang_stmt   *ytype,
@@ -3720,7 +3772,7 @@ yang_anydata_add(yang_stmt *yp,
  * @param[out] exist  The extension exists.
  * @param[out] value  clispec operator (hide/none) - direct pointer into yang, dont free
  * @retval     0      OK: Look in exist and value for return value
- * @retval     -1     Error
+ * @retval    -1      Error
  * This is for extensions with an argument
  * @code
  *     char *value = NULL;
@@ -3728,7 +3780,7 @@ yang_anydata_add(yang_stmt *yp,
  *     if (yang_extension_value(ys, "mymode", "urn:example:lib", &exist, &value) < 0)
  *        err;
  *     if (value != NULL){
- *        // use extension value
+ *        // use extension argument
  *     }
  * @endcode
  * @see ys_populate_unknown  Called when parsing YANG
@@ -3844,6 +3896,7 @@ yang_init(clicon_handle h)
 
 #ifdef XML_EXPLICIT_INDEX
 /*! Mark element as search_index in list
+ *
  * @retval     0   OK
  * @retval    -1   Error
  */
@@ -3870,8 +3923,8 @@ yang_list_index_add(yang_stmt *ys)
  * @param[in] h    Clixon handle
  * @param[in] yext Yang node of extension 
  * @param[in] ys   Yang node of (unknown) statement belonging to extension
- * @retval     0   OK (warnings may appear)
- * @retval    -1   Error
+ * @retval    0    OK (warnings may appear)
+ * @retval   -1    Error
  */
 int
 yang_search_index_extension(clicon_handle h,     
@@ -3910,8 +3963,8 @@ yang_search_index_extension(clicon_handle h,
  * 3) no other data node children
  * @param[in] ys      Yang node
  * @param[in] subkeyw Expected keyword of single child (typically Y_LIST)
- * @retval    0       No, node does not have single child of specified type
  * @retval    1       Yes, node has single child of specified type
+ * @retval    0       No, node does not have single child of specified type
  * @see https://github.com/openconfig/ygot/blob/master/docs/design.md#openconfig-path-compression 2nd clause
  */
 int
@@ -3951,6 +4004,7 @@ yang_single_child_type(yang_stmt    *ys,
 }
 
 /*! Get action callback list
+ *
  * XXX rc shouldnt really be void* but the type definitions in .h file got complicated
  */
 void *
@@ -3960,6 +4014,7 @@ yang_action_cb_get(yang_stmt *ys)
 }
 
 /*! Add an action callback to YANG node
+ *
  * XXX rc shouldnt really be void* but the type definitions in .h file got complicated
  */
 int

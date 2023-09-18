@@ -118,14 +118,14 @@ expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?
 
 # Actually non-standard to reply on wrong hello with rpc-error, but may be useful
 new "Netconf snd hello with extra element"
-expecteof "$clixon_netconf -qef $cfg" 0 "<hello $DEFAULTONLY><capabilities><extra-element/><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>protocol</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra-element</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized hello/capabilities element</error-message></rpc-error></rpc-reply>]]>]]>$' '^$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<hello $DEFAULTONLY><capabilities><extra-element/><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>protocol</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra-element</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized hello/capabilities element</error-message></rpc-error></rpc-reply>]]>]]>$' '^$'
 
 new "Netconf send rpc without hello error"
-expecteof "$clixon_netconf -qef $cfg" 255 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>rpc</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Client must send an hello element before any RPC</error-message></rpc-error></rpc-reply>]]>]]>" '^$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>rpc</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Client must send an hello element before any RPC</error-message></rpc-error></rpc-reply>]]>]]>" '^$'
 
 # same as -H
 new "Netconf send rpc without hello w CLICON_NETCONF_HELLO_OPTIONAL"
-expecteof_netconf "$clixon_netconf -qef $cfg -o CLICON_NETCONF_HELLO_OPTIONAL=true" 0 "" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg -o CLICON_NETCONF_HELLO_OPTIONAL=true" 0 "" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

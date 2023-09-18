@@ -33,6 +33,10 @@
 
   ***** END LICENSE BLOCK *****
  * 
+  * The example have the following optional arguments that you can pass as 
+  * argc/argv after -- in clixon_cli:
+  *  -m <yang> Mount this yang on mountpoint
+  *  -M <namespace> Namespace of mountpoint, note both -m and -M must exist
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,6 +55,14 @@
 #include <clixon/clixon.h>
 #include <clixon/clixon_cli.h>
 #include <clixon/cli_generate.h>
+
+/*! Yang schema mount
+ *
+ * Start backend with -- -m <yang> -M <namespace>
+ * Mount this yang on mountpoint
+ */
+static char *_mount_yang = NULL;
+static char *_mount_namespace = NULL;
 
 /*! Example cli function */
 int
@@ -74,7 +86,7 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
                               nsc, NULL, 
                               &xret) < 0)
         goto done;
-    if (clixon_xml2file(stdout, xret, 0, 1, cligen_output, 0, 1) < 0)
+    if (clixon_xml2file(stdout, xret, 0, 1, NULL, cligen_output, 0, 1) < 0)
         goto done;
     retval = 0;
  done:
@@ -119,7 +131,7 @@ example_client_rpc(clicon_handle h,
         goto done;
     }
     /* Print result */
-    if (clixon_xml2file(stdout, xml_child_i(xret, 0), 0, 0, cligen_output, 0, 1) < 0)
+    if (clixon_xml2file(stdout, xml_child_i(xret, 0), 0, 0, NULL, cligen_output, 0, 1) < 0)
         goto done;
     fprintf(stdout,"\n");
 
@@ -134,34 +146,6 @@ example_client_rpc(clicon_handle h,
         xml_free(xtop);
     return retval;
 }
-
-#ifndef CLIXON_STATIC_PLUGINS
-static clixon_plugin_api api = {
-    "example",          /* name */
-    clixon_plugin_init, /* init */
-    NULL,               /* start */
-    NULL,               /* exit */
-    .ca_prompt=NULL,    /* cli_prompthook_t */
-    .ca_suspend=NULL,   /* cligen_susp_cb_t */
-    .ca_interrupt=NULL, /* cligen_interrupt_cb_t */
-};
-
-/*! CLI plugin initialization
- * @param[in]  h    Clixon handle
- * @retval     NULL Error with clicon_err set
- * @retval     api  Pointer to API struct
- */
-clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
-{
-    struct timeval tv;
-
-    gettimeofday(&tv, NULL);
-    srandom(tv.tv_usec);
-
-    return &api;
-}
-#endif /* CLIXON_STATIC_PLUGINS */
 
 /*! Translate function from an original value to a new.
  * In this case, assume string and increment characters, eg HAL->IBM
@@ -185,3 +169,111 @@ cli_incstr(cligen_handle h,
         str[i]++;
     return 0;
 }
+
+/*! Example YANG schema mount
+ *
+ * Given an XML mount-point xt, return XML yang-lib modules-set
+ * @param[in]  h       Clixon handle
+ * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] config  If '0' all data nodes in the mounted schema are read-only
+ * @param[out] validate Do or dont do full RFC 7950 validation
+ * @param[out] yanglib XML yang-lib module-set tree
+ * @retval     0       OK
+ * @retval    -1       Error
+ * XXX hardcoded to clixon-example@2022-11-01.yang regardless of xt
+ * @see RFC 8528
+ */
+int
+example_cli_yang_mount(clicon_handle   h,
+                       cxobj          *xt,
+                       int            *config,
+                       validate_level *vl,
+                       cxobj         **yanglib)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    if (config)
+        *config = 1;
+    if (vl)
+        *vl = VL_FULL;
+    if (yanglib && _mount_yang){
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
+        cprintf(cb, "<module-set>");
+        cprintf(cb, "<name>mount</name>");
+        cprintf(cb, "<module>");
+        /* In yang name+namespace is mandatory, but not revision */
+        cprintf(cb, "<name>%s</name>", _mount_yang); // mandatory
+        cprintf(cb, "<namespace>%s</namespace>", _mount_namespace); // mandatory
+        //        cprintf(cb, "<revision>2022-11-01</revision>");
+        cprintf(cb, "</module>");
+        cprintf(cb, "</module-set>");
+        cprintf(cb, "</yang-library>");
+        if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, yanglib, NULL) < 0)
+            goto done;
+        if (xml_rootchild(*yanglib, 0, yanglib) < 0)
+            goto done;
+    }
+
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+#ifndef CLIXON_STATIC_PLUGINS
+static clixon_plugin_api api = {
+    "example",          /* name */
+    clixon_plugin_init, /* init */
+    NULL,               /* start */
+    NULL,               /* exit */
+    .ca_prompt=NULL,    /* cli_prompthook_t */
+    .ca_suspend=NULL,   /* cligen_susp_cb_t */
+    .ca_interrupt=NULL, /* cligen_interrupt_cb_t */
+    .ca_yang_mount=example_cli_yang_mount          /* RFC 8528 schema mount */
+};
+
+/*! CLI plugin initialization
+ * @param[in]  h    Clixon handle
+ * @retval     NULL Error with clicon_err set
+ * @retval     api  Pointer to API struct
+ */
+clixon_plugin_api *
+clixon_plugin_init(clicon_handle h)
+{
+    struct timeval tv;
+    int            c;
+    int            argc; /* command-line options (after --) */
+    char         **argv;
+
+    gettimeofday(&tv, NULL);
+    srandom(tv.tv_usec);
+    /* Get user command-line options (after --) */
+    if (clicon_argv_get(h, &argc, &argv) < 0)
+        goto done;
+    opterr = 0;
+    optind = 1;
+    while ((c = getopt(argc, argv, "m:M:")) != -1)
+        switch (c) {
+        case 'm':
+            _mount_yang = optarg;
+            break;
+        case 'M':
+            _mount_namespace = optarg;
+            break;
+        }
+    if ((_mount_yang && !_mount_namespace) || (!_mount_yang && _mount_namespace)){
+        clicon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
+        goto done;
+    }
+    return &api;
+ done:
+    return NULL;
+}
+#endif /* CLIXON_STATIC_PLUGINS */
+

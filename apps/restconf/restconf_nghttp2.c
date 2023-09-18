@@ -180,7 +180,10 @@ session_send_callback(nghttp2_session *session,
             if ((len = SSL_write(rc->rc_ssl, buf+totlen, buflen-totlen)) <= 0){
                 er = errno;
                 sslerr = SSL_get_error(rc->rc_ssl, len);
-                clicon_debug(1, "%s errno:%d sslerr:%d", __FUNCTION__, er, sslerr);
+                clicon_debug(1, "%s SSL_write: errno:%s(%d) sslerr:%d", __FUNCTION__,
+                             strerror(er),
+                             er,
+                             sslerr);
                 switch (sslerr){
                 case SSL_ERROR_WANT_WRITE:           /* 3 */
                     clicon_debug(1, "%s write SSL_ERROR_WANT_WRITE", __FUNCTION__);

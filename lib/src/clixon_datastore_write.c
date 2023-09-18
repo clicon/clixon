@@ -92,12 +92,12 @@
  * If such an attribute its found, its string value is returned.
  * @param[in]  x         XML node (where to look for attribute)
  * @param[in]  name      Attribute name
- * @param[in]  ns            (Expected)Namespace of attribute
+ * @param[in]  ns        (Expected) Namespace of attribute
  * @param[out] cbret     Error message (if retval=0)
  * @param[out] valp      Malloced value (if retval=1)
- * @retval    -1         Error
- * @retval     0         Failed (cbret set)
  * @retval     1         OK
+ * @retval     0         Failed (cbret set)
+ * @retval    -1         Error
  */
 static int
 attr_ns_value(cxobj *x,
@@ -153,9 +153,9 @@ attr_ns_value(cxobj *x,
  * @param[in]  x1bstr   Body string of x1
  * @param[in]  y        Yang of x0 (and x1)
  * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
- * @retval    -1        Error
- * @retval     0        Failed (cbret set)
  * @retval     1        OK
+ * @retval     0        Failed (cbret set)
+ * @retval    -1        Error
  */
 static int
 check_body_namespace(cxobj     *x0,
@@ -188,8 +188,7 @@ check_body_namespace(cxobj     *x0,
     if (ns0 != NULL && ns1 != NULL){  /* namespace exists in both x1 and x0 */
         if (strcmp(ns0, ns1)){
             /* prefixes in x1 and x0 refers to different namespaces 
-             * XXX return netconf error instead 
-bad-attribue?
+             * XXX return netconf error instead bad-attribue?
              */
             if ((cberr = cbuf_new()) == NULL){
                 clicon_err(OE_UNIX, errno, "cbuf_new");
@@ -274,9 +273,9 @@ bad-attribue?
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
- * @retval    -1        Error
- * @retval     0        Failed (cbret set)
  * @retval     1        OK
+ * @retval     0        Failed (cbret set)
+ * @retval    -1        Error
  * @note There may be some combination cases (x0+x1) that are not covered in this function.
  */
 static int
@@ -332,8 +331,9 @@ check_when_condition(cxobj              *x0p,
 }
 
 /*! Check if x0/y0 is part of other choice/case than y1 recursively , if so purge 
- * @retval 0 No, y0 it is not in other case than y1
+ *
  * @retval 1 yes, y0 is in other case than y1
+ * @retval 0 No, y0 it is not in other case than y1
  */
 static int
 choice_is_other(yang_stmt *y0c,
@@ -429,6 +429,7 @@ choice_delete_other(cxobj     *x0,
 }
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
+ *
  * @param[in]  h        Clicon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
  * @param[in]  x0p      Parent of x0
@@ -441,9 +442,9 @@ choice_delete_other(cxobj     *x0,
  * @param[in]  xnacm    NACM XML tree (only if !permit)
  * @param[in]  permit   If set, no NACM tests using xnacm required
  * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
- * @retval    -1        Error
- * @retval     0        Failed (cbret set)
  * @retval     1        OK
+ * @retval     0        Failed (cbret set)
+ * @retval    -1        Error
  * Assume x0 and x1 are same on entry and that y is the spec
  * @see text_modify_top
  * RFC 7950 Sec 7.7.9(leaf-list), 7.8.6(lists)
@@ -489,6 +490,7 @@ text_modify(clicon_handle       h,
     char      *restype;
     int        ismount = 0;
     yang_stmt *mount_yspec = NULL;
+    char      *creator = NULL;
 
     if (x1 == NULL){
         clicon_err(OE_XML, EINVAL, "x1 is missing");
@@ -511,6 +513,7 @@ text_modify(clicon_handle       h,
         goto done;
     if (ret == 0)
         goto fail;
+
     if (createstr != NULL &&
         (op == OP_REPLACE || op == OP_MERGE || op == OP_CREATE)){
         if (x0 == NULL || xml_defaults_nopresence(x0, 0)){ /* does not exist or is default */
@@ -529,6 +532,11 @@ text_modify(clicon_handle       h,
             clicon_data_set(h, "objectexisted", "true");
         }
     }
+    /* Special clixon-lib attribute for keeping track of creator of objects */
+    if ((ret = attr_ns_value(x1, "creator", CLIXON_LIB_NS, cbret, &creator)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
     x1name = xml_name(x1);
 
     if (yang_keyword_get(y0) == Y_LEAF_LIST ||
@@ -653,6 +661,7 @@ text_modify(clicon_handle       h,
                     if (strcmp(restype, "enumeration") == 0 ||
                         strcmp(restype, "bits") == 0)
                         x1bstr = clixon_trim2(x1bstr, " \t\n"); 
+#if 0 /* Passes regression test without, keep for some time until other test requires it */
                     /* If origin body has namespace definitions, copy them. The reason is that
                      * some bodies rely on namespace prefixes, such as NACM path, but there is 
                      * no way we can know this here.
@@ -663,6 +672,7 @@ text_modify(clicon_handle       h,
                      */
                     if (assign_namespace_body(x1, x0) < 0)
                         goto done;
+#endif
                 }
                 /* XXX here x1bstr is checked for null, while adding an empty string above */
                 if ((x0b = xml_body_get(x0)) == NULL && x1bstr && strlen(x1bstr)){
@@ -686,6 +696,10 @@ text_modify(clicon_handle       h,
                         xml_flag_reset(x0, XML_FLAG_DEFAULT);
                 }
             } /* x1bstr */
+            if (creator){
+                if (xml_creator_add(x0, creator) < 0)
+                    goto done;
+            }
             if (changed){ 
                 if (xml_insert(x0p, x0, insert, valstr, NULL) < 0) 
                     goto done;
@@ -835,6 +849,8 @@ text_modify(clicon_handle       h,
 #ifdef XML_PARENT_CANDIDATE
                 xml_parent_candidate_set(x0, x0p);
 #endif
+                if (xml_creator_copy(x1, x0) < 0)
+                    goto done;
                 changed++;
                 /* Get namespace from x1
                  * Check if namespace exists in x0 parent
@@ -930,12 +946,17 @@ text_modify(clicon_handle       h,
                 if (ret == 0)
                     goto fail;
             }
+            if (creator){
+                if (xml_creator_add(x0, creator) < 0)
+                    goto done;
+            }
             if (changed){
 #ifdef XML_PARENT_CANDIDATE
                 xml_parent_candidate_set(x0, NULL);
 #endif
                 if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
                     goto done;
+
             }
             break;
         case OP_DELETE:
@@ -970,6 +991,8 @@ text_modify(clicon_handle       h,
         free(instr);
     if (opstr)
         free(opstr);
+    if (creator)
+        free(creator);
     if (createstr)
         free(createstr);
     if (nscx1)
@@ -986,6 +1009,7 @@ text_modify(clicon_handle       h,
 } /* text_modify */
 
 /*! Modify a top-level base tree x0 with modification tree x1
+ *
  * @param[in]  h        Clicon handle
  * @param[in]  x0t      Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1t       XML tree which modifies base
@@ -995,9 +1019,9 @@ text_modify(clicon_handle       h,
  * @param[in]  xnacm    NACM XML tree (only if !permit)
  * @param[in]  permit   If set, no NACM tests using xnacm required
  * @param[out] cbret    Initialized cligen buffer. Contains return XML if retval is 0.
- * @retval    -1        Error
- * @retval     0        Failed (cbret set)
  * @retval     1        OK
+ * @retval     0        Failed (cbret set)
+ * @retval    -1        Error
  * @see text_modify
  */
 static int
@@ -1160,7 +1184,7 @@ text_modify_top(clicon_handle       h,
  * @param[out] cbret  Initialized cligen buffer. On exit contains XML if retval == 0
  * @retval     1      OK
  * @retval     0      Failed, cbret contains error xml message
- * @retval     -1     Error
+ * @retval    -1      Error
  * The xml may contain the "operation" attribute which defines the operation.
  * @code
  *   cxobj     *xt;
@@ -1312,7 +1336,7 @@ xmldb_put(clicon_handle       h,
         if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
             goto done;
     }
-    else if (clixon_xml2file(f, x0, 0, pretty, fprintf, 0, 0) < 0)
+    else if (clixon_xml2file(f, x0, 0, pretty, NULL, fprintf, 0, 0) < 0)
         goto done;
     /* Remove modules state after writing to file
      */
@@ -1370,7 +1394,7 @@ xmldb_dump(clicon_handle   h,
         if (clixon_json2file(f, xt, pretty, fprintf, 0, 0) < 0)
             goto done;
     }
-    else if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 0) < 0)
+    else if (clixon_xml2file(f, xt, 0, pretty, NULL, fprintf, 0, 0) < 0)
         goto done;
     retval = 0;
  done:

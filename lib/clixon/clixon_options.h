@@ -67,7 +67,7 @@ enum startup_mode_t{
     SM_INIT,           /* Initialize running state */
     SM_RUNNING,        /* Commit running db configuration into running state */
     SM_STARTUP,        /* Commit startup configuration into running state */
-    SM_RUNNING_STARTUP /* First try running db, if it is empty try startup db */
+    SM_RUNNING_STARTUP, /* First try running db, if it is empty try startup db */
 };
 
 /*! See clixon-config.yang type priv_mode (privileges mode) */
@@ -105,8 +105,11 @@ enum regexp_mode{
  * Prototypes
  */
 
-/* Print registry on file. For debugging. */
+/* Debug dump config options */
 int clicon_option_dump(clicon_handle h, int dblevel);
+
+/*! Dump config options on stdio using output format */
+int clicon_option_dump1(clicon_handle h, FILE *f, int format, int pretty);
 
 /* Add a clicon options overriding file setting */
 int clicon_option_add(clicon_handle h, const char *name, char *value);

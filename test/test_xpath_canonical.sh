@@ -59,9 +59,11 @@ expectpart "$($clixon_util_xpath -c -y $ydir -p "//x[.='42']" -n null:urn:exampl
 new "xpath canonical form (no default should fail)"
 expectpart "$($clixon_util_xpath -c -y $ydir -p /x/j:y -n i:urn:example:a -n j:urn:example:b 2>&1)" 0 "/x/j:y: No namespace found for prefix"
 
-new "xpath canonical form (wrong namespace should fail)"
-expectpart "$($clixon_util_xpath -c -y $ydir -p /i:x/j:y -n i:urn:example:c -n j:urn:example:b 2>&1)" 0 "/i:x/j:y: No modules found for namespace"
-
+if false; then
+# No, with mointpoints I cant fail unknown prefix, see comment in xpath2canonical
+    new "xpath canonical form (wrong namespace should fail)"
+    expectpart "$($clixon_util_xpath -c -y $ydir -p /i:x/j:y -n i:urn:example:c -n j:urn:example:b 2>&1)" 0 "/i:x/j:y: No yang found for namespace"
+fi
 rm -rf $dir
 
 new "endtest"

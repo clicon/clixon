@@ -453,7 +453,7 @@ netconf_notification_cb(int   s,
 
     clicon_debug(1, "%s", __FUNCTION__);
     /* get msg (this is the reason this function is called) */
-    if (clicon_msg_rcv(s, 0, &reply, &eof) < 0)
+    if (clicon_msg_rcv(s, NULL, 0, &reply, &eof) < 0)
         goto done;
     /* handle close from remote end: this will exit the client */
     if (eof){
@@ -479,10 +479,10 @@ netconf_notification_cb(int   s,
         clicon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
-    if (clixon_xml2cbuf(cb, xn, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xn, 0, 0, NULL, -1, 0) < 0)
         goto done;
     /* Send it to listening client on stdout */
-    if (netconf_output_encap(clicon_option_int(h, "netconf-framing"), cb) < 0){
+    if (netconf_output_encap(clicon_data_int_get(h, NETCONF_FRAMING_TYPE), cb) < 0){
         goto done;
     }
     if (netconf_output(1, cb, "notification") < 0){
@@ -657,7 +657,7 @@ netconf_application_rpc(clicon_handle h,
             if (ret > 0 && (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)
                 goto done;
             if (ret == 0){
-                if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+                if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
                     goto done;          
                 clicon_log(LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
                 goto ok;

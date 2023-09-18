@@ -45,32 +45,12 @@
 /* clicon generic callback pointer */
 typedef void (clicon_callback_t)(clicon_handle h);
 
-/* List of syntax modes 
- * XXX: syntax modes seem not needed, could be replaced by existing (new) cligen structures, such
- * as pt_head and others. But code is arcane and difficult to modify.
- */
-typedef struct {
-    qelem_t     csm_qelem;     /* List header */
-    char       *csm_name;      /* Syntax mode name */
-    char       *csm_prompt;    /* Prompt for mode */
-    int         csm_nsyntax;   /* Num syntax specs registered by plugin */
-    parse_tree *csm_pt;        /* CLIgen parse tree */
-} cli_syntaxmode_t;
-
-/* Plugin group object. Just a single object, not list. part of cli_handle 
- */
-typedef struct  {
-    int stx_nmodes;                              /* Number of syntax modes */
-    cli_syntaxmode_t *stx_active_mode;       /* Current active syntax mode */
-    cli_syntaxmode_t *stx_modes;                   /* List of syntax modes */
-} cli_syntax_t;
-
 
 void *clixon_str2fn(char *name, void *handle, char **error);
 
 int clicon_parse(clicon_handle h, char *cmd, char **mode, cligen_result *result, int *evalres);
 
-int clicon_cliread(clicon_handle h, char **stringp);
+int clicon_cliread(clicon_handle h, pt_head *ph, char **stringp);
 
 int cli_plugin_finish(clicon_handle h);
 

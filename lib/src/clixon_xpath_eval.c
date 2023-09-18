@@ -65,7 +65,6 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
-#include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
 #include <math.h> /* NaN */
@@ -1288,8 +1287,12 @@ xp_eval(xp_ctx     *xc,
         break;
     case XP_RELLOCPATH:
         use_xr0++;
-        if (xs->xs_int == A_DESCENDANT_OR_SELF)
-            xc->xc_descendant = 1; /* XXX need to set to 0 in sub */
+        if (xs->xs_int == A_DESCENDANT_OR_SELF){
+            if (use_xr0)
+                xr0->xc_descendant = 1; /* XXX need to set to 0 in sub */
+            else
+                xc->xc_descendant = 1; /* XXX need to set to 0 in sub */
+        }
         break;
     case XP_NODE:
         break;
@@ -1348,7 +1351,10 @@ xp_eval(xp_ctx     *xc,
             break;
         }
     }
-    xc->xc_descendant = 0;
+    if (use_xr0)
+        xr0->xc_descendant = 0;
+    else
+        xc->xc_descendant = 0;
     if (xr0 == NULL && xr1 == NULL && xr2 == NULL){
         clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
         goto done;

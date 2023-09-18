@@ -70,6 +70,19 @@
                                       * Transformed to ANYDATA but some code may need to check
                                       * why it is an ANYDATA
                                       */
+#define YANG_FLAG_GROUPING     0x80  /* Mark node as uses/grouping expansion:
+                                      * 1) for uses: this uses is expanded
+                                      * 2) for grouping: all uses below are expanded
+                                      * 3) other nodes: expanded from previous uses
+                                      *  container x {
+                                      *     ...
+                                      *     uses y;  YANG_FLAG_GROUPING (1)
+                                      *     leaf z;  YANG_FLAG_GROUPING (3)
+                                      *     ...
+                                      *  group y {   YANG_FLAG_GROUPING (2)
+                                      *     leaf z;
+                                      *  }
+                                      */
 
 /*
  * Types
@@ -297,5 +310,6 @@ int        yang_init(clicon_handle h);
 int        yang_single_child_type(yang_stmt *ys, enum rfc_6020 subkeyw);
 void      *yang_action_cb_get(yang_stmt *ys);
 int        yang_action_cb_add(yang_stmt *ys, void *rc);
+int        ys_populate_feature(clicon_handle h, yang_stmt *ys);
 
 #endif  /* _CLIXON_YANG_H_ */

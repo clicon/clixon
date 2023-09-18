@@ -75,7 +75,6 @@
 #include <string.h>
 #include <syslog.h>
 #include <fcntl.h>
-#include <assert.h>
 #include <arpa/inet.h>
 #include <sys/param.h>
 #include <netinet/in.h>
@@ -97,9 +96,12 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_map.h"
-#include "clixon_yang_module.h" 
+#include "clixon_yang_module.h"
+#include "clixon_yang_schema_mount.h"
 #include "clixon_path.h"
 #include "clixon_api_path_parse.h"
 #include "clixon_instance_id_parse.h"
@@ -288,8 +290,8 @@ xml_yang_root(cxobj  *x,
  * @param[in]  ys      Yang statement
  * @param[in]  inclkey If set include key leaf (eg last leaf d in ex)
  * @param[out] cb      api_path_fmt,
- * @retval     0    OK
- * @retval    -1    Error
+ * @retval     0       OK
+ * @retval    -1       Error
  * @see RFC8040 3.5.3 where "api-path" is defined as "URI-encoded path expression"
  */ 
 static int
@@ -303,18 +305,26 @@ yang2api_path_fmt_1(yang_stmt *ys,
     int        i;
     cvec      *cvk = NULL; /* vector of index keys */
     int        retval = -1;
+    enum rfc_6020 ypkeyw = -1;
     
     if ((yp = yang_parent_get(ys)) == NULL){
         clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
         goto done;
     }
-    if (yp != NULL && /* XXX rm */
-        yang_keyword_get(yp) != Y_MODULE && 
-        yang_keyword_get(yp) != Y_SUBMODULE){
-
+    if (yp)
+        ypkeyw = yang_keyword_get(yp);
+    switch (ypkeyw){
+    case Y_MODULE:
+    case Y_SUBMODULE:
+        cprintf(cb, "/%s:", yang_argument_get(yp));
+        break;
+    case Y_GROUPING: /* mainly for expand-grouping in clixon-autocli.yang */
+        cprintf(cb, "/");
+        break;
+    default:
         if (yang2api_path_fmt_1((yang_stmt *)yp, 1, cb) < 0) /* recursive call */
             goto done;
-        if (yang_keyword_get(yp) != Y_CHOICE && yang_keyword_get(yp) != Y_CASE){
+        if (ypkeyw != Y_CHOICE && ypkeyw != Y_CASE){
 #if 0
             /* In some cases, such as cli_show_auto, a trailing '/' should
              * NOT be present if ys is a key in a list.
@@ -322,7 +332,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
              * so a patch is added in cli_show_auto instead.
              */
                 if (yang_keyword_get(ys) == Y_LEAF && yp && 
-                    yang_keyword_get(yp) == Y_LIST &&
+                    ypkeyw == Y_LIST &&
                     yang_key_match(yp, ys->ys_argument, NULL) == 1)
                 ;
             else
@@ -336,17 +346,15 @@ yang2api_path_fmt_1(yang_stmt *ys,
             goto done;
         if (ypmod != ymod)
             cprintf(cb, "%s:", yang_argument_get(ymod));
+        break;
     }
-    else /* top symbol - mark with name prefix */
-        cprintf(cb, "/%s:", yang_argument_get(yp));
-
     if (inclkey){
         if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
             cprintf(cb, "%s", yang_argument_get(ys));
     }
     else{
         if (yang_keyword_get(ys) == Y_LEAF && yp && 
-            yang_keyword_get(yp) == Y_LIST){
+            ypkeyw == Y_LIST){
             if (yang_key_match(yp, yang_argument_get(ys), NULL) == 0)
                 cprintf(cb, "%s", yang_argument_get(ys)); /* Not if leaf and key */
         }
@@ -379,6 +387,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
 }
 
 /*! Construct an api_path_format from yang statement using wildcards for keys
+ *
  * Recursively construct it to the top.
  * Example: 
  *   yang:  container a -> list b -> key c -> leaf d
@@ -387,7 +396,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
  * @param[in]  inclkey      If set include key leaf (eg last leaf d in ex)
  * @param[out] api_path_fmt XML api path. Needs to be freed after use.
  * @retval     0            OK
- * @retval     -1           Error
+ * @retval    -1            Error
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  */ 
 int
@@ -664,6 +673,8 @@ api_path2xpath_cvv(cvec       *api_path,
     cvec      *nsc = NULL;
     char      *val1;
     char      *decval;
+    int        ret;
+    int        root;
                         
     cprintf(xpath, "/");
     /* Initialize namespace context */
@@ -673,6 +684,7 @@ api_path2xpath_cvv(cvec       *api_path,
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
+    root = 1; /* root or mountpoint */
     for (i=offset; i<cvec_len(api_path); i++){
         cv = cvec_i(api_path, i);
         nodeid = cv_name_get(cv);
@@ -698,16 +710,16 @@ api_path2xpath_cvv(cvec       *api_path,
             }
             namespace = yang_find_mynamespace(ymod); /* change namespace */
         }
-        if (i == offset && ymod) /* root */
+        if (root && ymod) /* root */
             y = yang_find_datanode(ymod, name);
         else
             y = yang_find_datanode(y, name);
+        root = 0;
         if (y == NULL){
             if (xerr && netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
                 goto done;
             goto fail;
         }
-
         /* Get XML/xpath prefix given namespace.
          * note different from api-path prefix
          */
@@ -790,6 +802,23 @@ api_path2xpath_cvv(cvec       *api_path,
                 cprintf(xpath, "%s:", xprefix);
             cprintf(xpath, "%s", name);
         }
+
+        /* If x/y is mountpoint, pass moint yspec to children */
+        if ((ret = yang_schema_mount_point(y)) < 0)
+            goto done;
+        if (ret == 1){
+            yang_stmt *y1 = NULL;
+            if (xml_nsctx_yangspec(yspec, &nsc) < 0)
+                goto done;                
+            if (yang_mount_get(y, cbuf_get(xpath), &y1) < 0)
+                goto done;
+            if (y1 == NULL || yang_keyword_get(y1) != Y_SPEC){
+                clicon_err(OE_YANG, 0, "No such mountpoint %s", cbuf_get(xpath));
+                goto done;
+            }
+            yspec = y1;
+            root = 1;
+        }
         if (prefix){
             free(prefix);
             prefix = NULL;
@@ -826,7 +855,7 @@ api_path2xpath_cvv(cvec       *api_path,
  * @param[in]  api_path  URI-encoded path expression" (RFC8040 3.5.3)
  * @param[in]  yspec     Yang spec
  * @param[out] xpath     xpath (use free() to deallocate)
- * @param[out] nsc       Namespace context of xpath (free w xml_nsctx_free)
+ * @param[out] nsc       Namespace context of xpath (free w cvec_free)
  * @param[out] xerr      Netconf error message
  * @retval     1         OK
  * @retval     0         Invalid api_path or associated XML, netconf called
@@ -897,9 +926,10 @@ api_path2xpath(char       *api_path,
 }
 
 /*! Create xml tree from api-path as vector
+ *
  * @param[in]   vec       APIpath as char* vector
  * @param[in]   nvec      Length of vec
- * @param[in]   x0        Xpath tree so far
+ * @param[in]   x0        XML tree so far
  * @param[in]   y0        Yang spec for x0
  * @param[in]   nodeclass Set to schema nodes, data nodes, etc
  * @param[in]   strict    Break if api-path is not "complete" otherwise ignore and continue
@@ -945,6 +975,9 @@ api_path2xml_vec(char      **vec,
     char      *namespace = NULL;
     cbuf      *cberr = NULL;
     char      *val = NULL;
+    int        ret;
+    char      *xpath = NULL;
+    cvec      *nsc = NULL;
 
     if ((nodeid = vec[0]) == NULL || strlen(nodeid)==0){
         if (xbotp)
@@ -1112,6 +1145,27 @@ api_path2xml_vec(char      **vec,
         if (xmlns_set(x, NULL, namespace) < 0)
             goto done;
     }
+    /* If x/y is mountpoint, pass moint yspec to children */
+    if ((ret = yang_schema_mount_point(y)) < 0)
+        goto done;
+    if (ret == 1){
+        yang_stmt *y1 = NULL;
+        if (xml_nsctx_yangspec(ys_spec(y), &nsc) < 0)
+            goto done;        
+        if (xml2xpath(x, nsc, 0, 1, &xpath) < 0) // XXX should be canonical
+            goto done;
+        if (xpath == NULL){
+            clicon_err(OE_YANG, 0, "No xpath from xml");
+            goto done;
+        }
+        if (yang_mount_get(y, xpath, &y1) < 0)
+            goto done;
+        if (y1 == NULL){
+            clicon_err(OE_YANG, 0, "No such mountpoint %s", xpath);
+            goto done;
+        }
+        y = y1;
+    }
     if ((retval = api_path2xml_vec(vec+1, nvec-1, 
                                    x, y, 
                                    nodeclass, strict, 
@@ -1121,6 +1175,10 @@ api_path2xml_vec(char      **vec,
     retval = 1; /* OK */
  done:
     clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    if (xpath)
+        free(xpath);
+    if (nsc)
+        cvec_free(nsc);
     if (cberr)
         cbuf_free(cberr);
     if (prefix)
@@ -1218,7 +1276,6 @@ api_path2xml(char       *api_path,
         if (xmlns_assign(xroot) < 0)
             goto done;
     }
-    // ok:
     retval = 1;
  done:
     if (cberr)
@@ -1241,7 +1298,6 @@ api_path2xml(char       *api_path,
  */
 int
 xml2api_path_1(cxobj *x,
-
                cbuf  *cb)
 {
     int           retval = -1;

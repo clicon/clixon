@@ -147,7 +147,7 @@ main(int    argc,
         if (clixon_json2cbuf(cb, xt, pretty, 1, 0) < 0)
             goto done;
     }
-    else if (clixon_xml2cbuf(cb, xt, 0, pretty, -1, 1) < 0)
+    else if (clixon_xml2cbuf(cb, xt, 0, pretty, NULL, -1, 1) < 0)
         goto done;
     fprintf(stdout, "%s", cbuf_get(cb));
     fflush(stdout);

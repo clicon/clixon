@@ -91,7 +91,7 @@ function testrun(){
     pid=$(cat $pidfile)
 
     new "netconf get stats"
-    rpc=$(chunked_framing "<rpc $DEFAULTNS><stats $LIBNS/></rpc>")
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><stats $LIBNS><modules>true</modules></stats></rpc>")
     res=$(echo "$DEFAULTHELLO$rpc" | $clixon_netconf -qef $cfg)
 #    echo "res:$res"
     err0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/rpc-error")
@@ -112,7 +112,7 @@ function testrun(){
     fi
     for db in running candidate startup; do
         echo "$db"
-        resdb0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/datastore[name=\"$db\"]")
+        resdb0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/datastores/datastore[name=\"$db\"]")
         resdb=${resdb0#"nodeset:0:"}
         if [ "$resdb0" = "$resdb" ]; then
             err1 "nodeset:0:" "$resdb0"
@@ -121,15 +121,6 @@ function testrun(){
         echo $resdb | $clixon_util_xpath -p "datastore/nr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
         echo -n "   mem: "
         echo $resdb | $clixon_util_xpath -p "datastore/size" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}' | awk '{print $1/1000000 "M"}'
-    done
-    for mod in clixon-config; do
-        echo "$mod"
-        resmod0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/module[name=\"$mod\"]")
-        resmod=${resmod0#"nodeset:0:"}
-        echo -n "   objects: "
-        echo $resmod | $clixon_util_xpath -p "module/nr" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}'
-        echo -n "   mem: "
-        echo $resmod | $clixon_util_xpath -p "module/size" | awk -F ">" '{print $2}' | awk -F "<" '{print $1}' | awk '{print $1/1000000 "M"}'
     done
     if [ $BE -ne 0 ]; then
         new "Kill backend"

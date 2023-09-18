@@ -186,7 +186,7 @@ cli_signal_flush(clicon_handle h)
  * Create and add an XML body as child of XML node xbot. Set its value to the last 
  * CLI variable vector element. 
  */
-static int
+int
 dbxml_body(cxobj     *xbot,
            cvec      *cvv)
 {
@@ -216,7 +216,7 @@ dbxml_body(cxobj     *xbot,
 /*! Special handling of identityref:s whose body may be: <namespace prefix>:<id>
  * Ensure the namespace is declared if it exists in YANG
 */
-static int
+int
 identityref_add_ns(cxobj *x,
                    void  *arg)
 {
@@ -245,8 +245,8 @@ identityref_add_ns(cxobj *x,
                 if (ns == NULL &&
                     (yns = yang_find_module_by_prefix_yspec(yspec, pf)) != NULL){
                     if ((ns = yang_find_mynamespace(yns)) != NULL)
-                            if (xmlns_set(x, pf, ns) < 0)
-                                goto done;
+                        if (xmlns_set(x, pf, ns) < 0)
+                            goto done;
                 }
             }
         }        
@@ -260,10 +260,98 @@ identityref_add_ns(cxobj *x,
     return retval;
 }
 
+/*! Given a top-level yspec and montpoint xpath compute a set of  
+ *
+ * Manipulate top-level and a mointpoint:
+ * YSPEC:    yspec0        yspec1
+ * XML:      top0-->bot0-->top1-->bot1
+ * API-PATH: api-path0     api-path1
+ *           api-path01---------
+ * The result computed from the top-level yspec and montpoint xpath are:
+ * - api_pathfmt10 Combined api-path for both trees
+ * @param[in]  yspec0         Top-level yang-spec
+ * @param[in]  mtpoint        Mount-point, generic: if there are several with same yang, any will do
+ * @param[in]  api_path_fmt1  Second part of api-path-fmt
+ * @param[out] api_path_fmt01 Combined api-path-fmt
+ */
+int
+mtpoint_paths(yang_stmt  *yspec0,
+              char       *mtpoint,
+              char       *api_path_fmt1,
+              char      **api_path_fmt01)
+{
+    int        retval = -1;
+    yang_stmt *yu = NULL;
+    yang_stmt *ybot0 = NULL;
+    cvec      *nsc0 = NULL;
+    int        ret;
+    char      *api_path_fmt0 = NULL;
+    cbuf      *cb = NULL;
+    cxobj     *xbot0 = NULL;
+    cxobj     *xtop0 = NULL;
+    yang_stmt *yspec1;
+    
+    if (api_path_fmt01 == NULL){
+        clicon_err(OE_FATAL, EINVAL, "arg is NULL");
+        goto done;
+    }
+    if ((xtop0 = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (yang_path_arg(yspec0, mtpoint, &yu) < 0)
+        goto done;
+    if (yu == NULL){
+        clicon_err(OE_FATAL, 0, "yu not found");
+        goto done;
+    }
+    if (yang_mount_get(yu, mtpoint, &yspec1) < 0)
+        goto done;
+    if (yspec1 == NULL){
+        clicon_err(OE_FATAL, 0, "yspec1 not found");
+        goto done;
+    }
+    xbot0 = xtop0;
+    if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
+        goto done;
+    if ((ret = xpath2xml(mtpoint, nsc0, xtop0, yspec0, &xbot0, &ybot0, NULL)) < 0)
+        goto done;        
+    if (xbot0 == NULL){
+        clicon_err(OE_YANG, 0, "No xbot");
+        goto done;
+    }
+    if (yang2api_path_fmt(ybot0, 0, &api_path_fmt0) < 0)
+        goto done;
+    if (api_path_fmt0 == NULL){
+        clicon_err(OE_YANG, 0, "No api_path_fmt0");
+        goto done;
+    }
+    cprintf(cb, "%s%s", api_path_fmt0, api_path_fmt1);
+    if ((*api_path_fmt01 = strdup(cbuf_get(cb))) == NULL){
+        clicon_err(OE_YANG, errno, "strdup");
+        goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (api_path_fmt0)
+        free(api_path_fmt0);
+    if (nsc0)
+        cvec_free(nsc0);
+    return retval;
+}
+
 /*! Modify xml datastore from a callback using xml key format strings
+ *
  * @param[in]  h     Clicon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
- * @param[in]  argv  Vector. First element xml key format string, eg "/aaa/%s"
+ * @param[in]  argv  Arguments given at the callback: 
+ *   <api_path_fmt>  Generated API PATH (this is added implicitly, not actually given in the cvv)
+ *   <api_path_fmt>* Added by merge in treeref_merge_co
+ *   [<mt-point>]    Optional YANG path-arg/xpath from mount-point
  * @param[in]  op    Operation to perform on database
  * @param[in]  nsctx Namespace context for last value added
  * cvv first contains the complete cli string, and then a set of optional
@@ -288,44 +376,73 @@ cli_dbxml(clicon_handle       h,
           cvec               *nsctx)
 {
     int        retval = -1;
-    char      *api_path_fmt;    /* xml key format */
-    char      *api_path = NULL; /* xml key */
-    cg_var    *arg;
+    cbuf      *api_path_fmt_cb = NULL;    /* xml key format */
+    char      *api_path_fmt;
+    char      *api_path_fmt01 = NULL;
+    char      *api_path = NULL; 
     cbuf      *cb = NULL;
-    yang_stmt *yspec;
     cxobj     *xbot = NULL;     /* xpath, NULL if datastore */
     yang_stmt *y = NULL;        /* yang spec of xpath */
     cxobj     *xtop = NULL;     /* xpath root */
     cxobj     *xerr = NULL;
     int        ret;
     cg_var    *cv;
-    int        cvv_i = 0;
+    char      *str;
+    int        cvvi = 0;
+    char      *mtpoint = NULL;
+    yang_stmt *yspec0 = NULL;
+    int        argc = 0;
 
-    if (cvec_len(argv) != 1){
-        clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be xml key format string");
-        goto done;
-    }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+    /* Top-level yspec */
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
-    arg = cvec_i(argv, 0);
-    api_path_fmt = cv_string_get(arg);
-
+    if ((api_path_fmt_cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    /* Concatenate all argv strings to a single string */
+    if (cvec_concat_cb(argv, api_path_fmt_cb) < 0)
+        goto done;
+    api_path_fmt = cbuf_get(api_path_fmt_cb);
+    argc = cvec_len(argv);
+    if (cvec_len(argv) > argc){ 
+        cv = cvec_i(argv, argc++);
+        str = cv_string_get(cv);
+        if (strncmp(str, "mtpoint:", strlen("mtpoint:")) != 0){
+            clicon_err(OE_PLUGIN, 0, "mtpoint does not begin with 'mtpoint:'");
+            goto done;
+        }
+        mtpoint = str + strlen("mtpoint:");
+    }
     /* Remove all keywords */
     if (cvec_exclude_keys(cvv) < 0)
         goto done;
-    /* Transform template format string + cvv to actual api-path 
-     * cvv_i indicates if all cvv entries were used
-     */
-    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvv_i) < 0)
-        goto done;
+    if (mtpoint){ 
+        /* Get and combined api-path01 */
+        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+            goto done;
+        /* Transform template format string + cvv to actual api-path 
+         * cvvi indicates if all cvv entries were used
+         */
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, &api_path, &cvvi) < 0)
+            goto done;
+    }
+    else {
+        /* Only top-level tree */
+        /* Transform template format string + cvv to actual api-path 
+         * cvvi indicates if all cvv entries were used
+         */
+        if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+            goto done;
+    }
     /* Create config top-of-tree */
     if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
         goto done;
     xbot = xtop;
     if (api_path){
-        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
+        if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if ((cb = cbuf_new()) == NULL){
@@ -352,7 +469,7 @@ cli_dbxml(clicon_handle       h,
          * Discussion: one can claim (1) is "bad" usage but one could see cases where
          * you would want to delete a value if it has a specific value but not otherwise
          */
-        if (cvv_i != cvec_len(cvv))
+        if (cvvi != cvec_len(cvv))
             if (dbxml_body(xbot, cvv) < 0)
                 goto done;
         /* Loop over namespace context and add them to this leaf node */
@@ -367,18 +484,22 @@ cli_dbxml(clicon_handle       h,
     /* Special handling of identityref:s whose body may be: <namespace prefix>:<id>
      * Ensure the namespace is declared if it exists in YANG
      */
-    if ((ret = xml_apply0(xbot, CX_ELMNT, identityref_add_ns, yspec)) < 0)
+    if ((ret = xml_apply0(xbot, CX_ELMNT, identityref_add_ns, yspec0)) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    if (clixon_xml2cbuf(cb, xtop, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xtop, 0, 0, NULL, -1, 0) < 0)
         goto done;
     if (clicon_rpc_edit_config(h, "candidate", OP_NONE, cbuf_get(cb)) < 0)
         goto done;
     retval = 0;
  done:
+    if (api_path_fmt_cb)
+        cbuf_free(api_path_fmt_cb);
+    if (api_path_fmt01)
+        free(api_path_fmt01);
     if (xerr)
         xml_free(xerr);
     if (cb)
@@ -695,23 +816,22 @@ cli_commit(clicon_handle h,
             cvec         *vars, 
             cvec         *argv)
 {
-    int            retval = -1;
-    uint32_t       timeout = 0; /* any non-zero value means "confirmed-commit" */
-    cg_var        *timeout_var;
-    char          *persist = NULL;
-    char          *persist_id = NULL;
+    int      retval = -1;
+    uint32_t timeout = 0; /* any non-zero value means "confirmed-commit" */
+    cg_var  *timeout_var;
+    char    *persist = NULL;
+    char    *persist_id = NULL;
+    int      confirmed;
+    int      cancel;
 
-    int confirmed = (cvec_find_str(vars, "confirmed") != NULL);
-    int cancel = (cvec_find_str(vars, "cancel") != NULL);
-
+    confirmed = (cvec_find_str(vars, "confirmed") != NULL);
+    cancel = (cvec_find_str(vars, "cancel") != NULL);
     if ((timeout_var = cvec_find(vars, "timeout")) != NULL) {
         timeout = cv_uint32_get(timeout_var);
         clicon_debug(1, "commit confirmed with timeout %ul", timeout);
     }
-
     persist = cvec_find_str(vars, "persist-val");
     persist_id = cvec_find_str(vars, "persist-id-val");
-    
     if (clicon_rpc_commit(h, confirmed, cancel, timeout, persist, persist_id) < 1)
         goto done;
     retval = 0;
@@ -735,6 +855,47 @@ cli_validate(clicon_handle h,
     return retval;
 }
 
+/*! Compare two datastore by name and formats
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  format Output format
+ * @param[in]  db1    Name of first datastrore
+ * @param[in]  db2    Name of second datastrore
+ */
+int
+compare_db_names(clicon_handle    h, 
+                 enum format_enum format,
+                 char            *db1,
+                 char            *db2)
+{
+    int              retval = -1;
+    cxobj           *xc1 = NULL;
+    cxobj           *xc2 = NULL;
+    cxobj           *xerr = NULL;
+
+    if (clicon_rpc_get_config(h, NULL, db1, "/", NULL, NULL, &xc1) < 0)
+        goto done;
+    if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
+        clixon_netconf_error(xerr, "Get configuration", NULL);
+        goto done;
+    }
+    if (clicon_rpc_get_config(h, NULL, db2, "/", NULL, NULL, &xc2) < 0)
+        goto done;
+    if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
+        clixon_netconf_error(xerr, "Get configuration", NULL);
+        goto done;
+    }
+    if (clixon_compare_xmls(xc1, xc2, format) < 0) /* astext? */
+        goto done;
+    retval = 0;
+  done:
+    if (xc1)
+        xml_free(xc1);    
+    if (xc2)
+        xml_free(xc2);
+    return retval;
+}
+
 /*! Compare two dbs using XML. Write to file and run diff
  * @param[in]   h     Clicon handle
  * @param[in]   cvv  
@@ -745,9 +906,6 @@ compare_dbs(clicon_handle h,
             cvec         *cvv, 
             cvec         *argv)
 {
-    cxobj *xc1 = NULL; /* running xml */
-    cxobj *xc2 = NULL; /* candidate xml */
-    cxobj *xerr = NULL;
     int    retval = -1;
     enum format_enum format;
 
@@ -759,26 +917,10 @@ compare_dbs(clicon_handle h,
         format = FORMAT_TEXT;
     else
         format = FORMAT_XML;
-    if (clicon_rpc_get_config(h, NULL, "running", "/", NULL, NULL, &xc1) < 0)
-        goto done;
-    if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Get configuration", NULL);
-        goto done;
-    }
-    if (clicon_rpc_get_config(h, NULL, "candidate", "/", NULL, NULL, &xc2) < 0)
-        goto done;
-    if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Get configuration", NULL);
-        goto done;
-    }
-    if (clixon_compare_xmls(xc1, xc2, format, cligen_output) < 0) /* astext? */
+    if (compare_db_names(h, format, "running", "candidate") < 0)
         goto done;
     retval = 0;
-  done:
-    if (xc1)
-        xml_free(xc1);    
-    if (xc2)
-        xml_free(xc2);
+ done:
     return retval;
 }
 
@@ -933,7 +1075,7 @@ load_config_file(clicon_handle h,
         /* Read as datastore-top but transformed into an edit-config "config" */
         xml_name_set(x, NETCONF_INPUT_CONFIG);
     }
-    if (clixon_xml2cbuf(cbxml, xt, 0, 0, -1, 1) < 0)
+    if (clixon_xml2cbuf(cbxml, xt, 0, 0, NULL, -1, 1) < 0)
         goto done;
     if (clicon_rpc_edit_config(h, "candidate",
                                replace?OP_REPLACE:OP_MERGE, 
@@ -1036,7 +1178,7 @@ save_config_file(clicon_handle h,
     } 
     switch (format){
     case FORMAT_XML:
-        if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 1) < 0)
+        if (clixon_xml2file(f, xt, 0, pretty, NULL, fprintf, 0, 1) < 0)
             goto done;
         break;
     case FORMAT_JSON:
@@ -1055,7 +1197,7 @@ save_config_file(clicon_handle h,
         fprintf(f, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target>",
                 NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
         fprintf(f, "\n");
-        if (clixon_xml2file(f, xt, 0, pretty, fprintf, 0, 1) < 0)
+        if (clixon_xml2file(f, xt, 0, pretty, NULL, fprintf, 0, 1) < 0)
             goto done;
         fprintf(f, "</edit-config></rpc>]]>]]>\n");
         break;
@@ -1137,11 +1279,11 @@ cli_notification_cb(int   s,
     struct clicon_msg *reply = NULL;
     int                eof;
     cxobj             *xt = NULL;
-    enum format_enum   format = (enum format_enum)arg;
+    enum format_enum   format = (enum format_enum)(uintptr_t)arg;
     int                ret;
     
     /* get msg (this is the reason this function is called) */
-    if (clicon_msg_rcv(s, 0, &reply, &eof) < 0)
+    if (clicon_msg_rcv(s, NULL, 0, &reply, &eof) < 0)
         goto done;
     if (eof){
         clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
@@ -1166,7 +1308,7 @@ cli_notification_cb(int   s,
             goto done;
         break;
     case FORMAT_XML:
-        if (clixon_xml2file(stdout, xt, 0, 1, cligen_output, 1, 1) < 0)
+        if (clixon_xml2file(stdout, xt, 0, 1, NULL, cligen_output, 1, 1) < 0)
             goto done;
         break;
     default:
@@ -1413,7 +1555,7 @@ cli_copy_config(clicon_handle h,
     /* resuse cb */
     cbuf_reset(cb);
     /* create xml copy tree and merge it with database configuration */
-    if (clixon_xml2cbuf(cb, x2, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, x2, 0, 0, NULL, -1, 0) < 0)
         goto done;
     if (clicon_rpc_edit_config(h, db, OP_MERGE, cbuf_get(cb)) < 0)
         goto done;
@@ -1471,3 +1613,129 @@ cli_restart_plugin(clicon_handle h,
     return retval;
 }
 
+/* Append cvv1 to cvv0 and return a new cvec
+ *
+ * @note if cvv0 is non-null, the first element of cvv1 is skipped
+ */
+cvec*
+cvec_append(cvec *cvv0,
+            cvec *cvv1)
+{
+    cvec   *cvv2 = NULL;
+    cg_var *cv;
+    
+    if (cvv0 == NULL){
+        if ((cvv2 = cvec_dup(cvv1)) == NULL){
+            clicon_err(OE_UNIX, errno, "cvec_dup");
+            return NULL;
+        }
+    }
+    else{
+        if ((cvv2 = cvec_dup(cvv0)) == NULL){
+            clicon_err(OE_UNIX, errno, "cvec_dup");
+            return NULL;
+        }
+        cv = NULL;      /* Append cvv1 to cvv2 */
+        while ((cv = cvec_each1(cvv1, cv)) != NULL)
+            cvec_append_var(cvv2, cv);
+    }
+    return cvv2;
+}
+
+/*! Concatenate all strings in a cvec into a single string
+ *
+ * @param[in]  cvv    Input vector
+ * @param[out] appstr Concatenated string as existing cbuf
+ */
+int
+cvec_concat_cb(cvec  *cvv,
+               cbuf  *cb)
+{
+    int     retval = -1;
+    int     argc;
+    cg_var *cv;
+    char   *str;
+    int     i;
+    
+    if (cb == NULL){
+        clicon_err(OE_PLUGIN, EINVAL, "cb is NULL");
+        goto done;
+    }
+    /* Iterate through all api_path_fmt:s, assume they start with / */
+    for (argc=0; argc<cvec_len(cvv); argc++){
+        cv = cvec_i(cvv, argc);
+        str = cv_string_get(cv);
+        if (str[0] != '/')
+            break;
+    }
+    /* Append a api_path_fmt from sub-parts */
+    for (i=argc-1; i>=0; i--){
+        cv = cvec_i(cvv, i);
+        str = cv_string_get(cv);
+        cprintf(cb, "%s", str);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Process control as defined by clixon-lib API
+ *
+ * @param[in] h      Clicon handle
+ * @param[in] cvv    Not used
+ * @param[in] arg    Two strings: <process name> <process operation>
+ * @code
+ *   actions-daemon("Actions daemon operations") start, 
+ *           cli_process_control("Action process", "start");
+ * @endcode
+ */
+int 
+cli_process_control(clicon_handle h,
+                    cvec         *cvv,
+                    cvec         *argv)
+{
+    int            retval = -1;
+    char          *name;
+    char          *opstr;
+    cbuf          *cb = NULL;
+    cxobj         *xret = NULL;
+    cxobj         *xerr;
+    
+    if (cvec_len(argv) != 2){
+        clicon_err(OE_PLUGIN, EINVAL, "Requires two element: process name and operation");
+        goto done;
+    }
+    name = cv_string_get(cvec_i(argv, 0));
+    opstr = cv_string_get(cvec_i(argv, 1));
+    if (clixon_process_op_str2int(opstr) == -1){
+        clicon_err(OE_UNIX, 0, "No such process op: %s", opstr);
+        goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        clicon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
+    cprintf(cb, ">");
+    cprintf(cb, "<process-control xmlns=\"%s\">", CLIXON_LIB_NS);
+    cprintf(cb, "<name>%s</name>", name);
+    cprintf(cb, "<operation>%s</operation>", opstr);
+    cprintf(cb, "</process-control>");
+    cprintf(cb, "</rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
+        goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_netconf_error(xerr, "Get configuration", NULL);
+        goto done;
+    }
+    if (clixon_xml2file(stdout, xml_child_i(xret, 0), 0, 1, NULL, cligen_output, 0, 1) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (xret)
+        xml_free(xret);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}

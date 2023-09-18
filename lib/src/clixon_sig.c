@@ -101,7 +101,6 @@ set_signal_flags(int     signo,
         *oldhandler = sold.sa_handler;
     return 0;
 #elif defined(HAVE_SIGVEC)
-    assert(0);
     return 0;
 #endif
 }

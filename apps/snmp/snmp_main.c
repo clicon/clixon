@@ -70,7 +70,7 @@
 #include "snmp_register.h"
 
 /* Command line options to be passed to getopt(3) */
-#define SNMP_OPTS "hD:f:l:o:z"
+#define SNMP_OPTS "hD:f:l:C:o:z"
 
 /* Forward */
 static int clixon_snmp_input_cb(int s, void *arg);
@@ -312,6 +312,7 @@ usage(clicon_handle h,
             "\t-D <level>\tDebug level (>1 for extensive libnetsnmp debug)\n"
             "\t-f <file>\tConfiguration file (mandatory)\n"
             "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
+            "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"
             "\t-z\t\tKill other %s daemon and exit\n"
             "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
             argv0, argv0
@@ -341,6 +342,8 @@ main(int    argc,
     char          *pidfile = NULL;
     struct stat    st;
     int            zap = 0;
+    int           config_dump = 0;
+    enum format_enum config_dump_format = FORMAT_XML;
     
     /* Create handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -412,6 +415,13 @@ main(int    argc,
         case 'f':  /* config file */
         case 'l':  /* log  */
             break; /* see above */
+        case 'C': /* Explicitly dump configuration */
+            if ((config_dump_format = format_str2int(optarg)) ==  (enum format_enum)-1){
+                fprintf(stderr, "Unrecognized dump format: %s(expected: xml|json|text)\n", argv[0]);
+                usage(h, argv[0]);
+            }
+            config_dump++;
+            break;
         case 'o':{ /* Configuration option */
             char          *val;
             if ((val = index(optarg, '=')) == NULL)
@@ -514,6 +524,11 @@ main(int    argc,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
         goto done;
 
+    if (config_dump){
+        if (clicon_option_dump1(h, stdout, config_dump_format, 1) < 0)
+            goto done;
+        goto ok;
+    }
     clicon_option_dump(h, 1);
     
     /* Send hello request to backend to get session-id back
@@ -540,6 +555,7 @@ main(int    argc,
     /* main event loop */
     if (clixon_event_loop(h) < 0)
         goto done;
+ ok:
     retval = 0;
   done:
     snmp_terminate(h);

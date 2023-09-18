@@ -3,7 +3,7 @@
 # 
 # Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
 # Copyright (C) 2017-2019 Olof Hagsand
-# Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC
+# Copyright (C) 2020-2023 Olof Hagsand and Rubicon Communications, LLC
 #
 # This file is part of CLIXON
 #
@@ -38,7 +38,8 @@
 # in the directory containing this script.
 #
 
-AC_INIT(lib/clixon/clixon.h.in)
+AC_INIT
+AC_CONFIG_SRCDIR([lib/clixon/clixon.h.in])
 
 # Default CFLAGS and INSTALLFLAGS unless set by environment
 : ${INSTALLFLAGS="-s"}
@@ -48,7 +49,7 @@ AC_INIT(lib/clixon/clixon.h.in)
 AC_CONFIG_AUX_DIR(config-aux)
 
 CLIXON_VERSION_MAJOR="6"
-CLIXON_VERSION_MINOR="2"
+CLIXON_VERSION_MINOR="4"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
@@ -70,13 +71,6 @@ else
    : ${CFLAGS="-O2 -Wall"}
 fi
 
-# Check CLIgen
-if test "$prefix" = "NONE"; then
-	CLIGEN_PREFIX="$ac_default_prefix"
-else
-	CLIGEN_PREFIX="$prefix"
-fi
-
 AC_CONFIG_HEADERS([include/clixon_config.h lib/clixon/clixon.h])
 
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_STRING, $CLIXON_VERSION, [Clixon version string])
@@ -95,7 +89,6 @@ AC_SUBST(CLIXON_VERSION)
 AC_SUBST(CLIXON_VERSION_STRING)
 AC_SUBST(CLIXON_VERSION_MAJOR)
 AC_SUBST(CLIXON_VERSION_MINOR)
-AC_SUBST(CLIGEN_PREFIX)
 
 AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION})
 
@@ -130,7 +123,9 @@ AC_SUBST(YANG_STANDARD_DIR)
 AC_SUBST(MIB_GENERATED_YANG_DIR)
 # Used in expansion in, e.g., example/main/example.xml.in
 AC_SUBST(SYSCONFDIR)
+AC_SUBST(DATADIR)
 AC_SUBST(LIBDIR)
+AC_SUBST(LIBEXECDIR)
 AC_SUBST(LOCALSTATEDIR)
 
 #
@@ -148,7 +143,7 @@ AC_MSG_RESULT(LDFLAGS is $LDFLAGS)
 AC_MSG_RESULT(INSTALLFLAGS is $INSTALLFLAGS)	
 
 AC_PROG_YACC
-AC_PROG_LEX
+AC_PROG_LEX(noyywrap)
 if test "$LEX" = ":"; then
    AC_MSG_ERROR(CLIXON does not find lex or flex.)
 fi
@@ -156,6 +151,14 @@ fi
 # SSH binary path
 AC_PATH_PROG(SSH_BIN, ssh)
 AC_DEFINE_UNQUOTED(SSH_BIN, "$SSH_BIN", [SSH binary])
+
+# For cli pipe output functions
+AC_PROG_GREP
+AC_DEFINE_UNQUOTED(GREP_BIN, "$GREP", [Grep binary])
+AC_PATH_PROG(TAIL_BIN, tail)
+AC_DEFINE_UNQUOTED(TAIL_BIN, "$TAIL_BIN", [tail binary])
+AC_PATH_PROG(WC_BIN, wc)
+AC_DEFINE_UNQUOTED(WC_BIN, "$WC_BIN", [wc binary])
 
 # Get "bison" from bison -y or other string
 if test "$YACC" = "${YACC##bison}" ; then
@@ -168,21 +171,24 @@ if test "$prefix" = "NONE"; then
      prefix=${ac_default_prefix}
 fi
 
+if test "$exec_prefix" = "NONE"; then
+     exec_prefix=${prefix}
+fi
+
 # Postfix for shared libs 
 SH_SUFFIX=".so"
 # Postfix for static libs 
 LIBSTATIC_SUFFIX=".a"
 
 # This is for cligen
-AC_ARG_WITH([cligen], AS_HELP_STRING([--with-cligen=dir],[Use CLIGEN installation in this dir]))
+AC_ARG_WITH([cligen], [AS_HELP_STRING([--with-cligen=dir], [Use CLIGEN installation in this dir])], [
+  CLIGEN_DIR="$withval"
+])
+AC_SUBST(CLIGEN_DIR)
 if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
-        with_cligen=${CLIGEN_DIR}
-fi
-if test -d "${with_cligen}"; then
-  echo "Using CLIGEN here: ${with_cligen}"
-  CPPFLAGS="-I${with_cligen}/include ${CPPFLAGS}"
-  LDFLAGS="-L${with_cligen}/lib ${LDFLAGS}"
-  test -d "$with_cligen" && CLIGEN_PREFIX="$with_cligen"
+    echo "Using CLIGEN here: ${CLIGEN_DIR}"
+    CPPFLAGS="-I${CLIGEN_DIR}$(eval echo ${includedir}) ${CPPFLAGS}"
+    LDFLAGS="-L${CLIGEN_DIR}$(eval echo ${libdir}) ${LDFLAGS}"
 fi
 
 # Disable/enable yang patch
@@ -226,6 +232,17 @@ AC_MSG_RESULT(publish is $ac_enable_publish)
 AC_CHECK_HEADERS(cligen/cligen.h,, AC_MSG_ERROR([CLIgen missing. Try: git clone https://github.com/clicon/cligen.git]))
 
 AC_CHECK_LIB(cligen, cligen_init,, AC_MSG_ERROR([CLIgen missing. Try: git clone https://github.com/clicon/cligen.git]))
+
+AC_ARG_WITH([restconf-netns],
+	AS_HELP_STRING([--with-restconf-netns=NAMESPACE],[Define default restconf network namespace to NAMESPACE]),
+	[restconf_netns="$withval"],
+	[restconf_netns="default"])
+
+if test -z "$restconf_netns"; then
+   AC_MSG_ERROR([restconf-netns cannot be empty])
+fi
+
+AC_DEFINE_UNQUOTED([RESTCONF_NETNS_DEFAULT], "$restconf_netns", [Default restconf network namespace])
 
 # This is for restconf.  There are three options:
 # --without-restconf     No restconf support
@@ -368,8 +385,8 @@ fi
 
 # Checks for getsockopt options for getting unix socket peer credentials on
 # Linux
-AC_TRY_COMPILE([#include <sys/socket.h>], [getsockopt(1, SOL_SOCKET, SO_PEERCRED, 0, 0);], [AC_DEFINE(HAVE_SO_PEERCRED, 1, [Have getsockopt SO_PEERCRED])
-AC_MSG_RESULT(Have getsockopt SO_PEERCRED)])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[getsockopt(1, SOL_SOCKET, SO_PEERCRED, 0, 0);]])],[AC_DEFINE(HAVE_SO_PEERCRED, 1, [Have getsockopt SO_PEERCRED])
+AC_MSG_RESULT(Have getsockopt SO_PEERCRED)],[])
 
 # YANG_INSTALLDIR is where clixon installs the Clixon yang files and mandatory
 # standard yang files: the files in in yang/clixon and yang/mandatory
@@ -404,13 +421,13 @@ AH_BOTTOM([#include <clixon_custom.h>])
 # Expand for easy replacement in example/main/example.xml.in
 # Special case is $libdir, which is composed from $exec_prefix
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
-test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 SYSCONFDIR=`eval echo $sysconfdir`
+DATADIR=`eval echo \`eval echo $datadir\``
 LIBDIR=`eval echo $libdir`
-LIBDIR=`eval echo $LIBDIR`
+LIBEXECDIR=`eval echo $libexecdir`
 LOCALSTATEDIR=`eval echo $localstatedir`
 
-AC_OUTPUT(Makefile
+AC_CONFIG_FILES([Makefile
 	  lib/Makefile
 	  lib/src/Makefile 
 	  lib/clixon/Makefile 
@@ -426,7 +443,6 @@ AC_OUTPUT(Makefile
 	  example/Makefile
   	  example/main/Makefile
     	  example/main/example.xml
-	  extras/rpm/Makefile
 	  docker/Makefile
     	  docker/clixon-dev/Makefile
     	  docker/example/Makefile	  
@@ -440,4 +456,5 @@ AC_OUTPUT(Makefile
   	  test/config.sh
 	  test/cicd/Makefile
   	  test/vagrant/Makefile	
-)
+])
+AC_OUTPUT

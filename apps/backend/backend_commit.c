@@ -193,7 +193,7 @@ startup_common(clicon_handle       h,
                            * See similar clause below
                            */
             }
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
                 goto done;
             goto fail;
         }
@@ -262,7 +262,7 @@ startup_common(clicon_handle       h,
     if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail; 
     }
@@ -270,7 +270,7 @@ startup_common(clicon_handle       h,
     if ((ret = xml_non_config_data(xt, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail; 
     }
@@ -305,7 +305,7 @@ startup_common(clicon_handle       h,
     if ((ret = generic_validate(h, yspec, td, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail; /* STARTUP_INVALID */
     }
@@ -510,8 +510,7 @@ validate_common(clicon_handle       h,
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
     /* 3. Compute differences */
-    if (xml_diff(yspec, 
-                 td->td_src,
+    if (xml_diff(td->td_src,
                  td->td_target,
                  &td->td_dvec,      /* removed: only in running */
                  &td->td_dlen,
@@ -521,7 +520,8 @@ validate_common(clicon_handle       h,
                  &td->td_tcvec,     /* changed: wanted values */
                  &td->td_clen) < 0)
         goto done;
-    transaction_dbg(h, CLIXON_DBG_DETAIL, td, __FUNCTION__);
+    if (clicon_debug_get() & CLIXON_DBG_DETAIL)
+        transaction_dbg(h, CLIXON_DBG_DETAIL, td, __FUNCTION__);
     /* Mark as changed in tree */
     for (i=0; i<td->td_dlen; i++){ /* Also down */
         xn = td->td_dvec[i];
@@ -613,7 +613,7 @@ candidate_validate(clicon_handle h,
             clicon_err(OE_CFG, EINVAL, "xret is NULL");
             goto done;
         }
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         if (!cbuf_len(cbret) &&
             netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
@@ -703,11 +703,10 @@ candidate_commit(clicon_handle h,
             goto done;
     }
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail;
     }
-
     /* 7. Call plugin transaction commit callbacks */
     if (plugin_transaction_commit_all(h, td) < 0)
         goto done;
@@ -804,14 +803,12 @@ from_client_commit(clicon_handle h,
         clicon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
         if ((ret = from_client_confirmed_commit(h, xe, myid, cbret)) < 0)
             goto done;
         if (ret == 0)
             goto ok;
     }
-
     /* Check if target locked by other client */
     iddb = xmldb_islocked(h, "running");
     if (iddb && myid != iddb){
@@ -973,7 +970,7 @@ from_client_restart_one(clicon_handle h,
     if ((ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail;
     }
@@ -982,8 +979,7 @@ from_client_restart_one(clicon_handle h,
         goto done;
 
     /* 3. Compute differences */
-    if (xml_diff(yspec, 
-                 td->td_src,
+    if (xml_diff(td->td_src,
                  td->td_target,
                  &td->td_dvec,      /* removed: only in running */
                  &td->td_dlen,
@@ -1023,7 +1019,7 @@ from_client_restart_one(clicon_handle h,
     if ((ret = generic_validate(h, yspec, td, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xerr, 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
             goto done;
         goto fail;
     }

@@ -56,7 +56,7 @@ module clixon-example{
         base if:interface-type;
    }
     /* Generic config data */
-    container table{
+   container table{
         list parameter{
             key name;
             leaf name{
@@ -174,7 +174,7 @@ expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "" "<rpc $DEFAULTONLY><ge
 
 #<capability>urn:ietf:params:netconf:base:1.1</capability>
 new "netconf rcv hello, disable RFC7895/ietf-yang-library"
-expecteof_netconf "$clixon_netconf -f $cfg -o CLICON_YANG_LIBRARY=0" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qD 7 -lf/tmp/netconf0.log -f $cfg -o CLICON_YANG_LIBRARY=0" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
 
 new "netconf get-config nc prefix"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<nc:rpc xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><nc:get-config><nc:source><nc:candidate/></nc:source></nc:get-config></nc:rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:message-id=\"42\"><data/></rpc-reply>"
@@ -252,6 +252,16 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "netconf validate using xx prefix"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<xx:rpc xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><xx:validate><xx:source><xx:candidate/></xx:source></xx:validate></xx:rpc>" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:xx=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xx:message-id=\"42\"><rpc-error>" ""
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# These are clixon-lib attributes used by RESTCONF
+new "netonf edit-config with extra attributes on leaf"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><default-operation>none</default-operation><config><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value nc:operation=\"replace\" xmlns:cl=\"http://clicon.org/lib\">99</value></parameter></table></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>"
+
+new "netconf get-config"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>99</value></parameter></table></data></rpc-reply>"
 
 new "netconf discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"

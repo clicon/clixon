@@ -74,8 +74,8 @@
 #include "clixon_yang_module.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_plugin.h"
-
 #include "clixon_netconf_lib.h"
+#include "clixon_netconf_input.h"
 
 /* Mapping between RFC6243 withdefaults strings <--> ints
  */
@@ -212,7 +212,7 @@ netconf_invalid_value(cbuf *cb,
 
     if (netconf_invalid_value_xml(&xret, type, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -332,7 +332,7 @@ netconf_missing_attribute(cbuf *cb,
 
     if (netconf_missing_attribute_xml(&xret, type, attr, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -361,7 +361,7 @@ netconf_bad_attribute(cbuf *cb,
 
     if (netconf_bad_attribute_xml(&xret, type, info, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -465,6 +465,7 @@ netconf_unknown_attribute(cbuf *cb,
 }
 
 /*! Common Netconf element XML tree according to RFC 6241 App A
+ *
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  tag     Error tag
@@ -495,7 +496,6 @@ netconf_common_xml(cxobj **xret,
     }
     else if (xml_name_set(*xret, "rpc-reply") < 0)
         goto done;
-
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
@@ -538,7 +538,7 @@ netconf_missing_element(cbuf      *cb,
     if (netconf_common_xml(&xret, type, "missing-element",
                            "bad-element", element, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -584,7 +584,7 @@ netconf_bad_element(cbuf *cb,
     if (netconf_common_xml(&xret, type, "bad-element",
                            "bad-element",element, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -622,7 +622,7 @@ netconf_unknown_element(cbuf *cb,
     if (netconf_common_xml(&xret, type, "unknown-element",
                            "bad-element", element, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -669,7 +669,7 @@ netconf_unknown_namespace(cbuf *cb,
     if (netconf_common_xml(&xret, type, "unknown-namespace",
                            "bad-namespace", ns, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -707,7 +707,7 @@ netconf_access_denied(cbuf *cb,
 
     if (netconf_access_denied_xml(&xret, type, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -948,7 +948,7 @@ netconf_data_missing(cbuf *cb,
 
     if (netconf_data_missing_xml(&xret, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -1045,7 +1045,7 @@ netconf_missing_choice_xml(cxobj **xret,
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
     /* error-path:     Path to the element with the missing choice. */
-    if (xml2xpath(x, NULL, 0, &path) < 0)
+    if (xml2xpath(x, NULL, 0, 0, &path) < 0)
         goto done;
     if (xml_chardata_encode(&encpath, "%s", path) < 0)
         goto done;
@@ -1153,7 +1153,7 @@ netconf_operation_not_supported(cbuf *cb,
 
     if (netconf_operation_not_supported_xml(&xret, type, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -1181,7 +1181,7 @@ netconf_operation_failed(cbuf  *cb,
 
     if (netconf_operation_failed_xml(&xret, type, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -1266,7 +1266,7 @@ netconf_malformed_message(cbuf  *cb,
 
     if (netconf_malformed_message_xml(&xret, message) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -1351,7 +1351,7 @@ netconf_data_not_unique(cbuf  *cb,
 
     if (netconf_data_not_unique_xml(&xret, x, cvk) < 0)
         goto done;
-    if (clixon_xml2cbuf(cb, xret, 0, 0, -1, 0) < 0)
+    if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
@@ -1407,7 +1407,7 @@ netconf_data_not_unique_xml(cxobj **xret,
     if (cvec_len(cvk)){
         if ((xinfo = xml_new("error-info", xerr, CX_ELMNT)) == NULL)
             goto done;
-        if (xml2xpath(x, NULL, 0, &path) < 0)
+        if (xml2xpath(x, NULL, 0, 0, &path) < 0)
             goto done;
         if (xml_chardata_encode(&encpath, "%s", path) < 0)
             goto done;
@@ -1465,7 +1465,7 @@ netconf_minmax_elements_xml(cxobj **xret,
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
     if (xml_parent(xp)){ /* Dont include root, eg <config> */
-        if (xml2xpath(xp, NULL, 0, &path) < 0)
+        if (xml2xpath(xp, NULL, 0, 0, &path) < 0)
            goto done;
         if (xml_chardata_encode(&encpath, "%s", path) < 0)
             goto done;
@@ -1631,10 +1631,10 @@ netconf_module_load(clicon_handle h)
      * But start with default: RFC 4741 EOM ]]>]]>
      * For now this only applies to external protocol
      */
-    clicon_data_int_set(h, "netconf-framing", NETCONF_SSH_EOM);
+    clicon_data_int_set(h, NETCONF_FRAMING_TYPE, NETCONF_SSH_EOM);
     if (clicon_option_bool(h, "CLICON_NETCONF_HELLO_OPTIONAL")){
         if (clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0) /* RFC 6241 */
-            clicon_data_int_set(h, "netconf-framing", NETCONF_SSH_CHUNKED);
+            clicon_data_int_set(h, NETCONF_FRAMING_TYPE, NETCONF_SSH_CHUNKED);
     }
     retval = 0;
  done:
@@ -1688,6 +1688,7 @@ netconf_db_find(cxobj *xn,
  *     cbuf_free(cb);
  * @endcode
  * @see clixon_netconf_error_fn
+ * XXX does not support prefixes properly
  */
 int
 netconf_err2cb(cxobj *xerr,
@@ -1704,7 +1705,7 @@ netconf_err2cb(cxobj *xerr,
         cprintf(cberr, "%s ", xml_body(x));
     if ((x=xpath_first(xerr, NULL, "//error-info")) != NULL &&
         xml_child_nr(x) > 0){
-        if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, -1, 0) < 0)
+        if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
             goto done;
     }
     if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
@@ -1870,7 +1871,7 @@ netconf_hello_server(clicon_handle h,
     return retval;
 }
 
-/*! Generate textual error log from Netconf error message
+/*! Generate and print textual error log from Netconf error message
  *
  * Get a text error message from netconf error message and generate error on the form:
  *   <msg>: "<arg>": <netconf-error>   or   <msg>: <netconf-error>
@@ -2160,7 +2161,7 @@ netconf_output(int   s,
     {
         cxobj *xt = NULL;
         if (clixon_xml_parse_string(buf, YB_NONE, NULL, &xt, NULL) == 0){
-            if (clixon_xml2file(stderr, xml_child_i(xt, 0), 0, 0, fprintf, 0, 0) < 0)
+            if (clixon_xml2file(stderr, xml_child_i(xt, 0), 0, 0, NULL, fprintf, 0, 0) < 0)
                 goto done;
             fprintf(stderr, "\n");
             xml_free(xt);
