@@ -328,7 +328,7 @@ Some clixon tests rely on standard IETF YANG modules which you need to download.
 
 To download the yang models required for some tests:
 ```
-   cd /usr/local/share/yang
+   cd /usr/local/share/
    git clone https://github.com/YangModels/yang
 ```
 
