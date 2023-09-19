@@ -294,6 +294,7 @@ function testrun()
         new "start restconf daemon"
         # inline of start_restconf, cant make quotes to work
         echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R $RESTCONFIG1"
+        STTYSETTINGS=$(stty -g) # reset in wait_restconf
         sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R "$RESTCONFIG1" </dev/null &>/dev/null &
         if [ $? -ne 0 ]; then
             err1 "expected 0" "$?"
@@ -308,14 +309,13 @@ function testrun()
         else
             HVER=2
         fi
+
         new "wait restconf"
         wait_restconf
-    
+
         new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
-        echo "curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta"
         expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
-        echo "fcgi or native+http/1 or native+http/1+http/2"
         new "restconf GET http/1.1"
         expectpart "$(curl $CURLOPTS --http1.1 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.1 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
@@ -334,7 +334,7 @@ function testrun()
             new "restconf GET https/2 prior-knowledge"
             expectpart "$(curl $CURLOPTS --http2-prior-knowledge -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
         fi
-        
+
         # Wrong protocol http when https or vice versa
         if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
             new "Wrong proto=https on http port, expect err 35 wrong version number"
@@ -354,10 +354,8 @@ function testrun()
         wait_restconf
 
         new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
-        echo "curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta"
         expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
-        echo "native + http/2 only"
         # Important here is robustness of restconf daemon, not a meaningful reply
         if [ $proto = http ]; then # see (2) https to http port in restconf_main_native.c
             # http protocol mismatch can just close the socket if assumed its http/2
@@ -405,10 +403,8 @@ function testrun()
         wait_restconf
     
         new "restconf root discovery. RFC 8040 3.1 (xml+xrd)"
-        echo "curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta"
         expectpart "$(curl $CURLOPTS -X GET $proto://$addr/.well-known/host-meta)" 0 "HTTP/$HVER 200" "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
 
-        echo "fcgi or native+http/1 or native+http/1+http/2"
         if [ "${WITH_RESTCONF}" = "native" ]; then # XXX does not work with nginx
             new "restconf GET http/1.0  - returns 1.0"
             expectpart "$(curl $CURLOPTS --http1.0 -X GET $proto://$addr/.well-known/host-meta)" 0 'HTTP/1.0 200 OK' "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>" "<Link rel='restconf' href='/restconf'/>" "</XRD>"
@@ -439,7 +435,6 @@ function testrun()
             expectpart "$(curl $CURLOPTS -X GET http://$addr:443/.well-known/host-meta)" 0 "HTTP/" "400"
         fi
     fi # HTTP/2    
-
     # Exact match
     new "restconf get restconf resource. RFC 8040 3.3 (json)"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $proto://$addr/restconf)" 0 "HTTP/$HVER 200" '{"ietf-restconf:restconf":{"data":{},"operations":{},"yang-library-version":"2019-01-04"}}'
@@ -652,6 +647,24 @@ function testrun()
 
     new "restconf Add subtree with too many keys (expected error)"
     expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}' $proto://$addr/restconf/data/ietf-interfaces:interfaces/interface=a,b)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"List key interface length mismatch"}}}'
+
+cat <<EOF > $dir/input.json
+{"clixon-example:parameter":{"name":"x","value":"foo
+bar"}}
+EOF
+    new "restconf JSON escape encoding with explicit \n expect fail"
+    expectpart "$(curl $CURLOPTS -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" --data-binary @$dir/input.json  $proto://$addr/restconf/data/clixon-example:table)" 0 "HTTP/$HVER 400" "malformed-message"
+
+    JSON='{"clixon-example:parameter":[{"name":"x","value":"foo\nbar"}]}'
+
+    new "restconf JSON escape encoding"
+    expectpart "$(curl $CURLOPTS -X POST -H "Accept: application/yang-data+json" -H "Content-Type: application/yang-data+json" --data-binary "$JSON"  $proto://$addr/restconf/data/clixon-example:table)" 0 "HTTP/$HVER 201" "Location: $proto://$addr/restconf/data/clixon-example:table/parameter=x"
+
+    new "Check restconf JSON escape encoding"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $proto://$addr/restconf/data/clixon-example:table/parameter=x)" 0 "HTTP/$HVER 200" '{"clixon-example:parameter":\[{"name":"x","value":"foo\\nbar"}\]}' 
+
+    new "Check restconf JSON escape encoding in XML"
+    expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $proto://$addr/restconf/data/clixon-example:table/parameter=x)" 0 "HTTP/$HVER 200" "<parameter xmlns=\"urn:example:clixon\"><name>x</name><value>foo" "bar</value></parameter>"
 
     if [ $RC -ne 0 ]; then
         new "Kill restconf daemon"

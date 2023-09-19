@@ -33,7 +33,9 @@
   ***** END LICENSE BLOCK *****
 
  * JSON utility command
- * http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ * @see http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ *  and RFC 7951 JSON Encoding of Data Modeled with YANG
+ *  and RFC 8259 The JavaScript Object Notation (JSON) Data Interchange Format
  */
 
 #ifdef HAVE_CONFIG_H

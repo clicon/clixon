@@ -73,6 +73,7 @@ Developers may need to change their code
 
 ### Minor features
 
+* JSON: Added unicode BMP support for unicode strings as part of fixing (https://github.com/clicon/clixon/issues/453)
 * Example cli pipe grep command quotes vertical bar for OR function
 * Added: [Feature request: node's alias for CLI](https://github.com/clicon/clixon/issues/434)
    * Note: "Skip" is for all nodes, but "Alias" is only for leafs
@@ -85,7 +86,9 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [JSON backslash string decoding/encoding not correct](https://github.com/clicon/clixon/issues/453)
 * Fixed: [CLI show config | display <format> exits over mountpoints with large YANGs](https://github.com/clicon/clixon-controller/issues/39)
+  * JSON string fixed according to RFC 8259: encoding/decoding of escape as defined in Section 8
   * No need to bind for xml and json, only cli and text
 * Fixed several issues with extra-config files, including overwriting of structured sub-configs
   * including `<restconf>`and m̀ <autoconf>`

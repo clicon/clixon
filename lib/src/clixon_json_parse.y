@@ -33,8 +33,9 @@
   ***** END LICENSE BLOCK *****
 
  * JSON Parser
- * From http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
- * And RFC7951 JSON Encoding of Data Modeled with YANG
+ * @see http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ *  and RFC 7951 JSON Encoding of Data Modeled with YANG
+ *  and RFC 8259 The JavaScript Object Notation (JSON) Data Interchange Format
 
 Structural tokens: 
  [   left square bracket 
@@ -87,7 +88,7 @@ object.
 %token <string> J_NULL
 %token <string> J_EOF
 %token <string> J_DQ
-%token <string> J_CHAR
+%token <string> J_STRING
 %token <string> J_NUMBER
 
 %type <cbuf>      string
@@ -151,7 +152,7 @@ void
 clixon_json_parseerror(void *_jy,
                        char *s) 
 { 
-    clicon_err(OE_JSON, XMLPARSE_ERRNO, "json_parse: line %d: %s at or before: '%s'", 
+    clicon_err(OE_JSON, 0, "json_parse: line %d: %s at or before: '%s'", 
                _JY->jy_linenum ,
                s, 
                clixon_json_parsetext); 
@@ -312,12 +313,16 @@ string        : J_DQ ustring J_DQ { _PARSE_DEBUG("string->\" ustring \"");$$=$2;
               ;
 
 /* unquoted string: can be optimized by reading whole string in lex */
-ustring       : ustring J_CHAR 
+ustring       : ustring J_STRING
                      {
-                         cbuf_append_str($1,$2); $$=$1; free($2);
+                         cbuf_append_str($1,$2); $$=$1;
                      }
-              | J_CHAR 
-              { cbuf *cb = cbuf_new(); cbuf_append_str(cb,$1); $$=cb; free($1);} 
+              | J_STRING
+                     {
+                         cbuf *cb = cbuf_new();
+                         cbuf_append_str(cb,$1);
+                         $$=cb;
+                     } 
               ;
 
 number        : J_NUMBER { $$ = $1; }

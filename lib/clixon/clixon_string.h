@@ -106,6 +106,7 @@ int    nodeid_split(char *nodeid, char **prefix, char **id);
 char  *clixon_trim(char *str);
 char  *clixon_trim2(char *str, char *trims);
 int    clicon_strcmp(char *s1, char *s2);
+int    clixon_unicode2utf8(char *ucstr, char *utfstr, size_t utflen);
 
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);

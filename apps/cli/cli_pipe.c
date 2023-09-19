@@ -297,6 +297,7 @@ pipe_showas_fn(clicon_handle h,
     switch (format){
     case FORMAT_CLI:
     case FORMAT_TEXT:
+    case FORMAT_JSON:
         /* Requires binding. Note binding over mountpoints can cause rpc: extra latency */
         if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xerr)) < 0)
             goto done;

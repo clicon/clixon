@@ -32,6 +32,9 @@
 
   ***** END LICENSE BLOCK *****
 
+ * @see http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ *  and RFC 7951 JSON Encoding of Data Modeled with YANG
+ *  and RFC 8259 The JavaScript Object Notation (JSON) Data Interchange Format
  */
 
 %{
@@ -51,6 +54,7 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_log.h"
 #include "clixon_xml.h"
@@ -78,10 +82,12 @@ digit [0-9]
 integer {digit}+
 real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 exp ({integer}|{real})[eE][+-]{integer}
+hex [A-Fa-f0-9]
 
 %x START
 %s STRING
 %s ESCAPE
+%s HEXDIG
 
 %%
 
@@ -103,14 +109,31 @@ exp ({integer}|{real})[eE][+-]{integer}
 <START>.                { return -1; }
 <STRING>\"              { BEGIN(START); return J_DQ; }
 <STRING>\\              { BEGIN(ESCAPE); }
-<STRING>\n              { _JY->jy_linenum++; 
-                          clixon_json_parselval.string = strdup(yytext); 
-                          return J_CHAR;}
-<STRING>.               { clixon_json_parselval.string = strdup(yytext);
-                          return J_CHAR;}
-<ESCAPE>.               { BEGIN(STRING); 
-                          clixon_json_parselval.string = strdup(yytext); 
-                          return J_CHAR; }
+<STRING>[^\"\\\b\f\n\r\t]+ { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
+<STRING>\n              { return -1; }
+<STRING>.               { return -1; }
+<ESCAPE>\"              { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
+<ESCAPE>\\              { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
+<ESCAPE>\/              { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
+<ESCAPE>b               { BEGIN(STRING); clixon_json_parselval.string = "\b";   return J_STRING; }
+<ESCAPE>f               { BEGIN(STRING); clixon_json_parselval.string = "\f";   return J_STRING; }
+<ESCAPE>n               { BEGIN(STRING); clixon_json_parselval.string = "\n";   return J_STRING; }
+<ESCAPE>r               { BEGIN(STRING); clixon_json_parselval.string = "\r";   return J_STRING; }
+<ESCAPE>t               { BEGIN(STRING); clixon_json_parselval.string = "\t";   return J_STRING; }
+<ESCAPE>u               { BEGIN(HEXDIG); }
+<ESCAPE>\n              { return -1; }
+<ESCAPE>.               { return -1; }
+<HEXDIG>{hex}{hex}{hex}{hex} { 
+                               char buf[5] = {0, };
+                               BEGIN(STRING); 
+                               if (clixon_unicode2utf8(yytext, buf, 5) < 0)
+                                  return -1;
+                               strncpy(yytext, buf, 4);
+                               clixon_json_parselval.string = yytext; 
+                               return J_STRING;
+                              }
+<HEXDIG>\n              { return -1;}
+<HEXDIG>.               { return -1; }
 
 %%
 

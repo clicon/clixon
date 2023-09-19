@@ -212,6 +212,19 @@ EOF
 )
 expecteof "$clixon_util_xml -o" 0 "$XML" '^<bk:book xmlns:bk="urn:loc.gov:books" xmlns:isbn="urn:ISBN:0-395-36341-6"><bk:title>Cheaper by the Dozen</bk:title><isbn:number>1568491379</isbn:number></bk:book>$'
 
+XML=$(cat <<EOF
+<?xml version="1.0" encoding='utf-8'?>
+<text>
+Theodoric the bold
+chief of sea-warriors
+ruled over the shores of the Hreiðsea
+</text>
+EOF
+   )
+
+new "utf-8 string"
+expecteof "$clixon_util_xml -o" 0 "$XML" "^ruled over the shores of the Hreiðsea$"
+
 rm -rf $dir
 
 new "endtest"

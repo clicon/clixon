@@ -33,9 +33,9 @@
   ***** END LICENSE BLOCK *****
 
  * JSON support functions.
- * JSON syntax is according to:
- * http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
- * RFC 7951 JSON Encoding of Data Modeled with YANG
+ * @see http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ *  and RFC 7951 JSON Encoding of Data Modeled with YANG
+ *  and RFC 8259 The JavaScript Object Notation (JSON) Data Interchange Format
  * XXX: The complexity of xml2json1_cbuf() mapping from internal cxobj structure to JSON output
  * needs a rewrite due to complexity of lists/leaf-lists/null-values, etc.
  */
@@ -107,6 +107,7 @@ enum childtype{
 };
 
 /*! x is element and has exactly one child which in turn has none 
+ *
  * remove attributes from x
  * @see tleaf in clixon_xml_map.c
  */
@@ -241,6 +242,7 @@ array_eval(cxobj *xprev,
 }
 
 /*! Escape a json string as well as decode xml cdata
+ *
  * @param[out] cb   cbuf   (encoded)
  * @param[in]  str  string (unencoded)
  */
@@ -255,14 +257,26 @@ json_str_escape_cdata(cbuf *cb,
     len = strlen(str);
     for (i=0; i<len; i++)
         switch (str[i]){
-        case '\n':
-            cprintf(cb, "\\n");
-            break;
         case '\"':
             cprintf(cb, "\\\"");
             break;
         case '\\':
             cprintf(cb, "\\\\");
+            break;
+        case '\b':
+            cprintf(cb, "\\b");
+            break;
+        case '\f':
+            cprintf(cb, "\\f");
+            break;
+        case '\n':
+            cprintf(cb, "\\n");
+            break;
+        case '\r':
+            cprintf(cb, "\\r");
+            break;
+        case '\t':
+            cprintf(cb, "\\t");
             break;
         default: /* fall thru */
             cprintf(cb, "%c", str[i]);
@@ -274,6 +288,7 @@ json_str_escape_cdata(cbuf *cb,
 }
 
 /*! Decode types from JSON to XML identityrefs
+ *
  * Assume an xml tree where prefix:name have been split into "module":"name"
  * In other words, from JSON RFC7951 to XML namespace trees
  * @param[in]     x     XML tree. Must be yang populated.
@@ -433,6 +448,7 @@ json2xml_decode(cxobj     *x,
 }
 
 /*! Encode leaf/leaf_list identityref type from XML to JSON
+ *
  * @param[in]     x    XML body node
  * @param[in]     body body string
  * @param[in]     ys   Yang spec of parent
@@ -497,6 +513,7 @@ xml2json_encode_identityref(cxobj     *xb,
 }
 
 /*! Encode leaf/leaf_list types from XML to JSON
+ *
  * @param[in]     xb   XML body
  * @param[in]     xp   XML parent
  * @param[in]     yp   Yang spec of parent
@@ -663,6 +680,7 @@ nullchild(cbuf      *cb,
 }
 
 /*! Encode json metadata
+ *
  * This function could be more general, code based on two examples:
  * 1) ietf-list-pagination:remaining
  *  {
@@ -773,6 +791,7 @@ xml2json_encode_attr(cxobj     *xa,
 }
 
 /*! Do the actual work of translating XML to JSON 
+ *
  * @param[out]   cb        Cligen text buffer containing json on exit
  * @param[in]    x         XML tree structure containing XML to translate
  * @param[in]    arraytype Does x occur in a array (of its parent) and how?
@@ -1142,6 +1161,7 @@ clixon_json2cbuf(cbuf  *cb,
 }
 
 /*! Translate a vector of xml objects to JSON Cligen buffer.
+ *
  * This is done by adding a top pseudo-object, and add the vector as subs,
  * and then not printing the top pseudo-object using the 'flat' option.
  * @param[out] cb     Cligen buffer to write to
@@ -1224,6 +1244,7 @@ xml2json_cbuf_vec(cbuf      *cb,
 }
 
 /*! Translate from xml tree to JSON and print to file using a callback
+ *
  * @param[in]  f       File to print to
  * @param[in]  xn      XML tree to translate from
  * @param[in]  pretty  Set if output is pretty-printed
@@ -1280,6 +1301,7 @@ json_print(FILE  *f,
 }
 
 /*! Translate a vector of xml objects to JSON File.
+ *
  * This is done by adding a top pseudo-object, and add the vector as subs,
  * and then not pritning the top pseudo-.object using the 'flat' option.
  * @param[out] cb     Cligen buffer to write to
@@ -1320,6 +1342,7 @@ xml2json_vec(FILE             *f,
 }
 
 /*! Translate from JSON module:name to XML default ns: xmlns="uri" recursively
+ *
  * Assume an xml tree where prefix:name have been split into "module":"name"
  * In other words, from JSON to XML namespace trees
  * 

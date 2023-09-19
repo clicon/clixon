@@ -1051,6 +1051,105 @@ clicon_strcmp(char *s1,
     return strcmp(s1, s2);
 }
 
+/*! Translate from unicode in hex form to utf-8
+ *
+ * @param[in]  uc16     Unicode as 2-byte hex int
+ * @param[out] utf8str  UTF-8 string
+ * @param[out] utflen   Length utf string
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+static int 
+clixon_unicode2utf8_one(uint16_t uc16,
+                        char    *utfstr,
+                        size_t   utflen)
+{
+    int retval = -1;
+    
+    if (utflen < 5){
+        clicon_err(OE_UNIX, EINVAL, "Length of utfstr is not >=4");
+        goto done;
+    }
+    if (uc16<0x80)
+        *utfstr++=uc16;
+    else if (uc16<0x800){
+        *utfstr++=192+uc16/64;
+        *utfstr++=128+uc16%64;
+    }
+    else if (uc16-0xd800u<0x800){
+        clicon_err(OE_UNIX, EINVAL, "unicode2utf error");
+        goto done;
+    }
+    else if (uc16<0x10000) {
+        *utfstr++=224+uc16/4096;
+        *utfstr++=128+uc16/64%64;
+        *utfstr++=128+uc16%64;
+    }
+    else if (uc16<0x110000) {
+        *utfstr++=240+uc16/262144;
+        *utfstr++=128+uc16/4096%64;
+        *utfstr++=128+uc16/64%64;
+        *utfstr++=128+uc16%64;
+    }
+    else{
+        clicon_err(OE_UNIX, EINVAL, "unicode2utf error");
+        goto done;
+    }
+    *utfstr++=0;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Translate unicode hexstring on the form "ABCD" to UTF-8 in string form
+ *
+ * @param[in]  unicode  Unicode as string of 2-byte hex codes
+ * @param[out] utf8     UTF-8 character string must be length >=5
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+int 
+clixon_unicode2utf8(char  *ucstr,
+                    char  *utfstr,
+                    size_t utflen)
+{
+    int      retval = -1;
+    size_t   len;
+    int      i;
+    char     c;
+    int      j;
+    uint16_t uc16 = 0;
+
+    if (ucstr == NULL || utfstr == NULL){
+        clicon_err(OE_UNIX, EINVAL, "input param is NULL");
+        goto done;
+    }
+    if ((len = strlen(ucstr)) != 4){
+        clicon_err(OE_UNIX, EINVAL, "Length of ucstr is not 4");
+        goto done;
+    }
+    for (i=0; i<len; i++){
+         c = ucstr[i]&0xFF;
+         if ('0' <= c && c <= '9')
+            j = c-'0';
+         else if ('A' <= c && c <= 'F')
+            j = c+10-'A';
+         else if ('a' <= c && c <= 'f')
+            j = c+10-'a';
+         else{
+             clicon_err(OE_UNIX, 0, "no match");
+             goto done;
+         }
+         if (uc16 != 0)
+            uc16 <<= 4;
+         uc16 |= j;
+    }
+    if (clixon_unicode2utf8_one(uc16, utfstr, utflen) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
 
 /*! strndup() for systems without it, such as xBSD
  */
