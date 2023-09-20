@@ -37,6 +37,7 @@ apps/cli/test.c
 apps/netconf/clixon_netconf
 apps/restconf/clixon_restconf
 apps/restconf/clixon_restconf_libhttp
+apps/snmp/clixon_snmp
 
 etc/clixonrc
 
