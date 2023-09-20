@@ -204,7 +204,7 @@ if [ -n "$CLICON_GROUP" ] && [ $_ALREADY_HERE -eq 0 ]; then
     clixon_cli="sudo -g ${CLICON_GROUP} $clixon_cli"
     clixon_netconf="sudo -g ${CLICON_GROUP} $clixon_netconf"
     clixon_restconf="sudo -g ${CLICON_GROUP} $clixon_restconf"
-    clixon_snmp="sudo -g ${CLICON_GROUP} $clixon_snmp"
+    clixon_snmp="sudo -g ${CLICON_GROUP} --preserve-env=MIBDIRS $clixon_snmp"
     clixon_util_socket="sudo -g ${CLICON_GROUP} $clixon_util_socket"
 fi
 _ALREADY_HERE=1
@@ -252,7 +252,7 @@ if $SNMPCHECK; then
     snmptranslate="$(type -p snmptranslate) "
 
     if [ "${ENABLE_NETSNMP}" == "yes" ]; then
-            pgrep snmpd > /dev/null
+        pgrep snmpd > /dev/null
         if [ $? != 0 ]; then
                     echo -e "\e[31m\nenable-netsnmp set but snmpd not running, start with:"
                     echo "systemctl start snmpd"
@@ -262,7 +262,7 @@ if $SNMPCHECK; then
             echo "added to /etc/snmp/snmpd.conf:"
             echo ""
             echo "  rwcommunity     public  localhost"
-            echo "  agentXSocket    unix:/var/run/snmp.sock"
+            echo "  agentxsocket    unix:/var/run/snmp.sock"
             echo "  agentxperms     777 777"
             echo ""
             echo "If you don't rely on systemd you can configure the lines above"
@@ -525,7 +525,8 @@ function start_snmp(){
     cfg=$1
 
     rm -f ${clixon_snmp_pidfile}
-    
+
+    export MIBDIRS
     $clixon_snmp -f $cfg -D $DBG &
 
     if [ $? -ne 0 ]; then
