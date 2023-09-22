@@ -30,6 +30,9 @@
 
 >&2 echo "Running $testfile"
 
+# Save stty
+STTYSETTINGS=$(stty -g)
+
 # Generated config file from autotools / configure
 if [ -f ./config.sh ]; then
     . ./config.sh
@@ -580,9 +583,8 @@ function wait_backend(){
 # Start restconf daemon
 # @see wait_restconf
 function start_restconf(){
-    STTYSETTINGS=`stty -g`
     # Start in background 
-    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
+#    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
     sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* </dev/null &>/dev/null &
     if [ $? -ne 0 ]; then
         err1 "expected 0" "$?"
@@ -637,8 +639,6 @@ function wait_restconf(){
     if [ $valgrindtest -eq 3 ]; then 
         sleep 2 # some problems with valgrind
     fi
-
-  stty $STTYSETTINGS >/dev/null
 }
 
 # Wait for restconf to stop 
@@ -683,6 +683,10 @@ function wait_snmp()
 # eg all.sh or mem.sh
 function endtest()
 {
+    # Commented from now, it is unclear what destroys the tty, if something does the original
+    # problem should be fixed at the origin.
+    #    stty $STTYSETTINGS >/dev/null
+
     if [ $valgrindtest -eq 1 ]; then 
         checkvalgrind
     fi

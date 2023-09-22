@@ -4,7 +4,6 @@
 # Test skip for leaf, container and list
 # Test alias only for leaf, since it is not implemented for container+list
 # see also test_autocli_hide.sh
-set -u
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 

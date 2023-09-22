@@ -294,7 +294,6 @@ function testrun()
         new "start restconf daemon"
         # inline of start_restconf, cant make quotes to work
         echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R $RESTCONFIG1"
-        STTYSETTINGS=$(stty -g) # reset in wait_restconf
         sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG -f $cfg -R "$RESTCONFIG1" </dev/null &>/dev/null &
         if [ $? -ne 0 ]; then
             err1 "expected 0" "$?"

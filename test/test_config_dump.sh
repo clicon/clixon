@@ -9,7 +9,6 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
-
 cfg=$dir/conf_yang.xml
 cfdir=$dir/conf.d
 test -d $cfdir || mkdir $cfdir
@@ -72,7 +71,7 @@ new "restconf xml"
 expectpart "$(sudo $clixon_restconf -f $cfg -C xml -o CLICON_MODULE_SET=42 -o CLICON_FEATURE="cmdline")" 0 '^<clixon-config xmlns="http://clicon.org/config">' "<CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>" "<CLICON_MODULE_SET_ID>0</CLICON_MODULE_SET_ID>" "<autocli>" "<list-keyword-default>kw-nokey</list-keyword-default>" "<CLICON_FEATURE>orig</CLICON_FEATURE>" "<CLICON_FEATURE>cmdline</CLICON_FEATURE>" "<CLICON_FEATURE>extradir</CLICON_FEATURE>" --not-- "<CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>"
 
 new "cli json"
-expectpart "$($clixon_cli -1 -f $cfg -C json -o CLICON_MODULE_SET=42 -o CLICON_FEATURE="cmdline")" 0 '"clixon-config:clixon-config": {' '"CLICON_YANG_MAIN_DIR": "/var/tmp/./test_config_dump.sh",'
+expectpart "$($clixon_cli -1 -f $cfg -C json -o CLICON_MODULE_SET=42 -o CLICON_FEATURE="cmdline")" 0 '"clixon-config:clixon-config": {' "\"CLICON_YANG_MAIN_DIR\": \"$dir\","
 
 new "cli text"
 expectpart "$($clixon_cli -1 -f $cfg -C text -o CLICON_MODULE_SET=42 -o CLICON_FEATURE="cmdline")" 0 '^clixon-config:clixon-config {' 'list-keyword-default kw-nokey;' 'CLICON_FEATURE \[' 'extradir' 'orig' 'cmdline'
