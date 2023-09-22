@@ -187,5 +187,6 @@
  * Seems to be only an optimization since the config is queried from the backend anyway
  * The reason this probably should be undef:ed is that the restconf config appears in ps and other in 
  * cleartext
+ * Plan is to remove this (undef:d) in next release
  */
 #undef RESTCONF_INLINE

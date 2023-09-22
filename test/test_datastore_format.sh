@@ -99,9 +99,9 @@ quit("Quit"), cli_quit();
 discard("Discard edits (rollback 0)"), discard_changes();
 show("Show a particular state of the system"){
     xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
-    compare("Compare candidate and running databases"), compare_dbs((int32)0);{
-                     xml("Show comparison in xml"), compare_dbs((int32)0);
-                     text("Show comparison in text"), compare_dbs((int32)1);
+    compare("Compare candidate and running databases"), compare_dbs("running", "candidate", "xml");{
+    		     xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
+		     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
     }
     configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
             cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");

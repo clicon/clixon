@@ -53,5 +53,6 @@ int   clixon_xml_parse_string(const char *str, yang_bind yb, yang_stmt *yspec, c
 int   clixon_xml_parse_va(yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr, 
                         const char *format, ...)  __attribute__ ((format (printf, 5, 6)));
 int   clixon_xml_attr_copy(cxobj *xin, cxobj *xout, char *name);
+int   clixon_xml_diff2cbuf(cbuf *cb, cxobj *x0, cxobj *x1);
 
 #endif  /* _CLIXON_XML_IO_H_ */

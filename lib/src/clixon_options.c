@@ -228,7 +228,7 @@ clicon_option_dump1(clicon_handle h,
             goto done;
         break;
     case FORMAT_TEXT:
-        if (clixon_txt2file(f, xc, 0, cligen_output, 0, 0) < 0)
+        if (clixon_text2file(f, xc, 0, cligen_output, 0, 0) < 0)
             goto done;
         break;
     default:

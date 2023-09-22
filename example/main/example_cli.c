@@ -136,7 +136,7 @@ example_client_rpc(clicon_handle h,
     fprintf(stdout,"\n");
 
     /* pretty-print:
-       clixon_txt2file(stdout, xml_child_i(xret, 0), 0, cligen_output, 0);
+       clixon_text2file(stdout, xml_child_i(xret, 0), 0, cligen_output, 0);
     */
     retval = 0;
  done:

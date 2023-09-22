@@ -872,6 +872,7 @@ compare_db_names(clicon_handle    h,
     cxobj           *xc1 = NULL;
     cxobj           *xc2 = NULL;
     cxobj           *xerr = NULL;
+    cbuf            *cb = NULL;
 
     if (clicon_rpc_get_config(h, NULL, db1, "/", NULL, NULL, &xc1) < 0)
         goto done;
@@ -885,10 +886,39 @@ compare_db_names(clicon_handle    h,
         clixon_netconf_error(xerr, "Get configuration", NULL);
         goto done;
     }
-    if (clixon_compare_xmls(xc1, xc2, format) < 0) /* astext? */
-        goto done;
+    /* Note that XML and TEXT uses a (new) structured in-mem algorithm while 
+     * JSON and CLI uses (old) UNIX file diff.
+     */
+    switch (format){
+    case FORMAT_XML:
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if (clixon_xml_diff2cbuf(cb, xc1, xc2) < 0)
+            goto done;
+        cligen_output(stdout, "%s", cbuf_get(cb));
+        break;
+    case FORMAT_TEXT:
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if (clixon_text_diff2cbuf(cb, xc1, xc2) < 0)
+            goto done;
+        cligen_output(stdout, "%s", cbuf_get(cb));
+        break;
+    case FORMAT_JSON:
+    case FORMAT_CLI:
+        if (clixon_compare_xmls(xc1, xc2, format) < 0) /* astext? */
+            goto done;        
+    default:
+        break;
+    }
     retval = 0;
   done:
+    if (cb)
+        cbuf_free(cb);
     if (xc1)
         xml_free(xc1);    
     if (xc2)
@@ -899,25 +929,31 @@ compare_db_names(clicon_handle    h,
 /*! Compare two dbs using XML. Write to file and run diff
  * @param[in]   h     Clicon handle
  * @param[in]   cvv  
- * @param[in]   argv  arg: 0 as xml, 1: as text
+ * @param[in]   argv  <db1> <db2> <format>
  */
 int
 compare_dbs(clicon_handle h, 
             cvec         *cvv, 
             cvec         *argv)
 {
-    int    retval = -1;
+    int              retval = -1;
     enum format_enum format;
+    char            *db1;
+    char            *db2;
+    char            *formatstr;
 
-    if (cvec_len(argv) > 1){
-        clicon_err(OE_PLUGIN, EINVAL, "Requires 0 or 1 element. If given: astext flag 0|1");
+    if (cvec_len(argv) != 3){
+        clicon_err(OE_PLUGIN, EINVAL, "Expected arguments: <db1> <db2> <format>");
         goto done;
     }
-    if (cvec_len(argv) && cv_int32_get(cvec_i(argv, 0)) == 1)
-        format = FORMAT_TEXT;
-    else
-        format = FORMAT_XML;
-    if (compare_db_names(h, format, "running", "candidate") < 0)
+    db1 = cv_string_get(cvec_i(argv, 0));
+    db2 = cv_string_get(cvec_i(argv, 1));
+    formatstr = cv_string_get(cvec_i(argv, 2));
+    if ((format = format_str2int(formatstr)) < 0){
+        clicon_err(OE_XML, 0, "format not found %s", formatstr);
+        goto done;
+    }
+    if (compare_db_names(h, format, db1, db2) < 0)
         goto done;
     retval = 0;
  done:
@@ -1186,7 +1222,7 @@ save_config_file(clicon_handle h,
             goto done;
         break;
     case FORMAT_TEXT:
-        if (clixon_txt2file(f, xt, 0, fprintf, 0, 1) < 0)
+        if (clixon_text2file(f, xt, 0, fprintf, 0, 1) < 0)
             goto done;
         break;
     case FORMAT_CLI:
@@ -1304,7 +1340,7 @@ cli_notification_cb(int   s,
         if (clixon_json2file(stdout, xt, 1, cligen_output, 1, 1) < 0)
             goto done;
     case FORMAT_TEXT:
-        if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
+        if (clixon_text2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
             goto done;
         break;
     case FORMAT_XML:

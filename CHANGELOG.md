@@ -53,6 +53,9 @@ Users may have to change how they access the system
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Renamed `clixon_txt2file()` to `clixon_text2file()`
+* Changed parameters of example clispec function `compare_dbs()`
+  * New parameters are: `db1`, `db2`, `format`
 * Add `fromroot` parameter to `cli_show_common()`
   * `cli_show_common(...xpath...)` --> `cli_show_common(...xpath,0...)`
 * Low-level message functions added `descr` argument for better logging
@@ -73,6 +76,8 @@ Developers may need to change their code
 
 ### Minor features
 
+* CLI show compare example function:
+  * Improved diff algorithm for XML and TEXT/curly, replaced UNIX diff with structural in-mem algorithm
 * JSON: Added unicode BMP support for unicode strings as part of fixing (https://github.com/clicon/clixon/issues/453)
 * Example cli pipe grep command quotes vertical bar for OR function
 * Added: [Feature request: node's alias for CLI](https://github.com/clicon/clixon/issues/434)
@@ -86,6 +91,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: ["show compare" and "show compare | display cli" differs #23](https://github.com/clicon/clixon-controller/issues/23)
 * Fixed: [JSON backslash string decoding/encoding not correct](https://github.com/clicon/clixon/issues/453)
 * Fixed: [CLI show config | display <format> exits over mountpoints with large YANGs](https://github.com/clicon/clixon-controller/issues/39)
   * JSON string fixed according to RFC 8259: encoding/decoding of escape as defined in Section 8

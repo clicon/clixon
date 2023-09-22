@@ -78,6 +78,7 @@
 #define TEXT_TOP_SYMBOL "top"
 
 /*! x is element and has eactly one child which in turn has none 
+ *
  * @see child_type in clixon_json.c
  */
 static int
@@ -100,6 +101,7 @@ tleaf(cxobj *x)
 }
 
 /*! Translate XML to a "pseudo-code" textual format using a callback - internal function
+ *
  * @param[in]     xn       XML object to print
  * @param[in]     fn       Callback to make print function
  * @param[in]     f        File to print to
@@ -110,15 +112,16 @@ tleaf(cxobj *x)
  * leaflist state:
  * 0: No leaflist
  * 1: In leaflist
+ * @see text2cbuf to buffer (slower)
  */
 static int
-xml2txt1(cxobj            *xn,
-         clicon_output_cb *fn,
-         FILE             *f, 
-         int               level,
-         int               autocliext,
-         int              *leafl,
-         char            **leaflname)
+text2file(cxobj            *xn,
+          clicon_output_cb *fn,
+          FILE             *f, 
+          int               level,
+          int               autocliext,
+          int              *leafl,
+          char            **leaflname)
 
 {
     cxobj     *xc = NULL;
@@ -129,7 +132,7 @@ xml2txt1(cxobj            *xn,
     char      *value;
     cg_var    *cvi;
     cvec      *cvk = NULL; /* vector of index keys */
-    cbuf      *cb = NULL;
+    cbuf      *cbb = NULL;
 #ifndef TEXT_SYNTAX_NOPREFIX
     yang_stmt *yp = NULL;
     yang_stmt *ymod;
@@ -184,19 +187,19 @@ xml2txt1(cxobj            *xn,
     if (children == 0){ /* If no children print line */
         switch (xml_type(xn)){
         case CX_BODY:{
-            if ((cb = cbuf_new()) == NULL){
+            if ((cbb = cbuf_new()) == NULL){
                 clicon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             value = xml_value(xn);
             if (index(value, ' ') != NULL)
-                cprintf(cb, "\"%s\"", value);
+                cprintf(cbb, "\"%s\"", value);
             else
-                cprintf(cb, "%s", value);
+                cprintf(cbb, "%s", value);
             if (*leafl)                            /* Skip keyword if leaflist */
-                (*fn)(f, "%*s%s\n", PRETTYPRINT_INDENT*level, "", cbuf_get(cb));
+                (*fn)(f, "%*s%s\n", PRETTYPRINT_INDENT*level, "", cbuf_get(cbb));
             else
-                (*fn)(f, "%s;\n", cbuf_get(cb));
+                (*fn)(f, "%s;\n", cbuf_get(cbb));
             break;
         }
         case CX_ELMNT:
@@ -243,7 +246,7 @@ xml2txt1(cxobj            *xn,
         if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
             if (yn && yang_key_match(yn, xml_name(xc), NULL))
                 continue; /* Skip keys, already printed */
-            if (xml2txt1(xc, fn, f, level+1, autocliext, leafl, leaflname) < 0)
+            if (text2file(xc, fn, f, level+1, autocliext, leafl, leaflname) < 0)
                 break;
         }
     }
@@ -257,8 +260,200 @@ xml2txt1(cxobj            *xn,
  ok:
     retval = 0;
  done:
-    if (cb)
-        cbuf_free(cb);
+    if (cbb)
+        cbuf_free(cbb);
+    return retval;
+}
+
+#ifndef TEXT_SYNTAX_NOPREFIX
+static char *
+get_prefix(yang_stmt *yn)
+{
+    char      *prefix = NULL;
+    yang_stmt *yp = NULL;
+    yang_stmt *ymod;
+    yang_stmt *ypmod;
+
+    /* Find out prefix if needed: topmost or new module a la API-PATH */
+    if (ys_real_module(yn, &ymod) < 0)
+        return NULL;
+    if ((yp = yang_parent_get(yn)) != NULL &&
+        yp != ymod){
+        if (ys_real_module(yp, &ypmod) < 0)
+            return NULL;
+        if (ypmod != ymod)
+            prefix = yang_argument_get(ymod);
+    }
+    else
+        prefix = yang_argument_get(ymod);
+    return prefix;
+}
+#endif
+
+/*! Translate XML to a "pseudo-code" textual format using a callback - internal function
+ *
+ * @param[in]     xn       XML object to print
+ * @param[in]     fn       Callback to make print function
+ * @param[in]     f        File to print to
+ * @param[in]     level    Print PRETTYPRINT_INDENT spaces per level in front of each line
+ * @param[in]     prefix   Add string to beginning of each line (or NULL)
+ * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
+ * @param[in,out] leafl    Leaflist state for keeping track of when [] ends
+ * @param[in,out] leaflname Leaflist state for [] 
+ * leaflist state:
+ * 0: No leaflist
+ * 1: In leaflist
+ * @see text2file but to file (faster)
+ */
+static int
+text2cbuf(cbuf  *cb,
+          cxobj *xn,
+          int    level,
+          char   *prepend,
+          int    autocliext,
+          int   *leafl,
+          char **leaflname)
+
+{
+    cxobj     *xc = NULL;
+    int        children=0;
+    int        retval = -1;
+    int        exist = 0;
+    yang_stmt *yn;
+    char      *value;
+    cg_var    *cvi;
+    cvec      *cvk = NULL; /* vector of index keys */
+    cbuf      *cbb = NULL;
+    int        level1;
+    char      *prefix = NULL;
+
+    if (xn == NULL || cb == NULL){
+        clicon_err(OE_XML, EINVAL, "xn or cb is NULL");
+        goto done;
+    }
+    level1 = level*PRETTYPRINT_INDENT;
+    if (prepend)
+        level1 -= strlen(prepend);
+    if ((yn = xml_spec(xn)) != NULL){
+        if (autocliext){
+            if (yang_extension_value(yn, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+                goto done;
+            if (exist)
+                goto ok;
+        }
+#ifndef TEXT_SYNTAX_NOPREFIX
+        prefix = get_prefix(yn);
+#endif
+        if (yang_keyword_get(yn) == Y_LIST){
+            if ((cvk = yang_cvec_get(yn)) == NULL){
+                clicon_err(OE_YANG, 0, "No keys");
+                goto done;
+            }
+        }
+    }
+    if (*leafl && yn){  
+        if (yang_keyword_get(yn) == Y_LEAF_LIST && strcmp(*leaflname, yang_argument_get(yn)) == 0)
+            ;
+        else{
+            *leafl = 0;
+            *leaflname = NULL;
+            if (prepend)
+                cprintf(cb, "%s", prepend);
+            cprintf(cb, "%*s\n", level1, "]");
+        }
+    }
+    xc = NULL;     /* count children (elements and bodies, not attributes) */
+    while ((xc = xml_child_each(xn, xc, -1)) != NULL)
+        if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
+            children++;
+    if (children == 0){ /* If no children print line */
+        switch (xml_type(xn)){
+        case CX_BODY:{
+            if ((cbb = cbuf_new()) == NULL){
+                clicon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            value = xml_value(xn);
+            if (index(value, ' ') != NULL)
+                cprintf(cbb, "\"%s\"", value);
+            else
+                cprintf(cbb, "%s", value);
+            if (*leafl){                            /* Skip keyword if leaflist */
+                if (prepend)
+                    cprintf(cb, "%s", prepend);
+                cprintf(cb, "%*s%s\n", level1, "", cbuf_get(cbb));
+            }
+            else
+                cprintf(cb, "%s;\n", cbuf_get(cbb));
+            break;
+        }
+        case CX_ELMNT:
+            if (prepend)
+                cprintf(cb, "%s", prepend);
+            cprintf(cb, "%*s%s", level1, "", xml_name(xn));
+            cvi = NULL;             /* Lists only */
+            while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+                if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
+                    cprintf(cb, " %s", xml_body(xc));
+            }
+            cprintf(cb, ";\n");
+            break;
+        default:
+            break;
+        }
+        goto ok;
+    }
+    if (*leafl == 0){
+        if (prepend)
+            cprintf(cb, "%s", prepend);
+        cprintf(cb, "%*s", level1, "");
+        if (prefix)
+            cprintf(cb, "%s:", prefix);
+        cprintf(cb, "%s", xml_name(xn));
+    }
+    cvi = NULL;         /* Lists only */
+    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+        if ((xc = xml_find_type(xn, NULL, cv_string_get(cvi), CX_ELMNT)) != NULL)
+            cprintf(cb, " %s", xml_body(xc));
+    }
+    if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leafl){
+        ;
+    }
+    else if (yn && yang_keyword_get(yn) == Y_LEAF_LIST && *leafl == 0){
+        *leafl = 1;
+        *leaflname = yang_argument_get(yn);
+        cprintf(cb, " [\n");
+    }
+    else if (!tleaf(xn))
+        cprintf(cb, " {\n");
+    else
+        cprintf(cb, " ");
+    xc = NULL;
+    while ((xc = xml_child_each(xn, xc, -1)) != NULL){
+        if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
+            if (yn && yang_key_match(yn, xml_name(xc), NULL))
+                continue; /* Skip keys, already printed */
+            if (text2cbuf(cb, xc, level+1, prepend, autocliext, leafl, leaflname) < 0)
+                break;
+        }
+    }
+    /* Stop leaf-list printing (ie []) if no longer leaflist and same name */
+    if (yn && yang_keyword_get(yn) != Y_LEAF_LIST && *leafl != 0){
+        *leafl = 0;
+        if (prepend)
+            cprintf(cb, "%s", prepend);
+        cprintf(cb, "%*s\n", level1 + PRETTYPRINT_INDENT, "]");
+    }
+    if (!tleaf(xn)){
+        if (prepend)
+            cprintf(cb, "%s", prepend);
+        cprintf(cb, "%*s}\n", level1, "");
+    }
+ ok:
+    retval = 0;
+ done:
+    if (cbb)
+        cbuf_free(cbb);
     return retval;
 }
 
@@ -274,12 +469,12 @@ xml2txt1(cxobj            *xn,
  * @retval    -1        Error
  */
 int
-clixon_txt2file(FILE             *f,
-                cxobj            *xn, 
-                int               level,
-                clicon_output_cb *fn,
-                int               skiptop,
-                int               autocliext)
+clixon_text2file(FILE             *f,
+                 cxobj            *xn, 
+                 int               level,
+                 clicon_output_cb *fn,
+                 int               skiptop,
+                 int               autocliext)
 {
     int    retval = 1;
     cxobj *xc;
@@ -291,16 +486,275 @@ clixon_txt2file(FILE             *f,
     if (skiptop){
         xc = NULL;
         while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-            if (xml2txt1(xc, fn, f, level, autocliext, &leafl, &leaflname) < 0)
+            if (text2file(xc, fn, f, level, autocliext, &leafl, &leaflname) < 0)
                 goto done;
     }
     else {
-        if (xml2txt1(xn, fn, f, level, autocliext, &leafl, &leaflname) < 0)
+        if (text2file(xn, fn, f, level, autocliext, &leafl, &leaflname) < 0)
             goto done;
     }
     retval = 0;
  done:
     return retval;
+}
+
+/*! Translate internal cxobj tree to a "curly" textual format to cbufs
+ *
+ * @param[out] cb      Cligen buffer to write to
+ * @param[in]  xn       XML object to print
+ * @param[in]  level    Print PRETTYPRINT_INDENT spaces per level in front of each line
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
+ */
+int
+clixon_text2cbuf(cbuf             *cb,
+                 cxobj            *xn, 
+                 int               level,
+                 int               skiptop,
+                 int               autocliext)
+{
+    int    retval = 1;
+    cxobj *xc;
+    int    leafl = 0;
+    char  *leaflname = NULL;
+
+    if (skiptop){
+        xc = NULL;
+        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+            if (text2cbuf(cb, xc, level, NULL, autocliext, &leafl, &leaflname) < 0)
+                goto done;
+    }
+    else {
+        if (text2cbuf(cb, xn, level, NULL, autocliext, &leafl, &leaflname) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Print list keys
+ */
+static int
+text_diff_keys(cbuf      *cb,
+               cxobj     *x,
+               yang_stmt *y)
+{
+    cvec   *cvk;
+    cg_var *cvi;
+    char   *keyname;
+    char   *keyval;
+
+    if (y && yang_keyword_get(y) == Y_LIST){
+        cvk = yang_cvec_get(y);
+        cvi = NULL;
+        while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+            keyname = cv_string_get(cvi);                                
+            keyval = xml_find_body(x, keyname);
+            cprintf(cb, " %s", keyval);
+        }
+    }
+    return 0;
+}
+
+/*! Print TEXT diff of two cxobj trees into a cbuf
+ *
+ * YANG dependent
+ * @param[out] cb      CLIgen buffer
+ * @param[in]  x0      First XML tree
+ * @param[in]  x1      Second XML tree
+ * @param[in]  level   How many spaces to insert before each line
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @retval     0       Ok
+ * @retval    -1       Error
+ * @cod
+ *    cbuf *cb = cbuf_new();
+ *    if (clixon_text_diff2cbuf(cb, 0, x0, x1) < 0)
+ *       err();
+ * @endcode
+ * @see clixon_xml_diff2cbuf
+ * XXX Leaf-list +/- is not correct
+ * For example, it should be:
+ *    value [
+ * +     97
+ * -     99
+ *    ]
+ * But is:
+ * +  value [
+ * +     97
+ * -     99
+ */
+static int
+text_diff2cbuf(cbuf  *cb,
+               cxobj *x0,
+               cxobj *x1,
+               int    level,
+               int    skiptop)
+{
+    int        retval = -1;
+    cxobj     *x0c = NULL; /* x0 child */
+    cxobj     *x1c = NULL; /* x1 child */
+    yang_stmt *yc0;
+    yang_stmt *yc1;
+    char      *b0;
+    char      *b1;
+    int        eq;
+    int        nr=0;
+    int        level1;
+    yang_stmt *y0;
+    char      *prefix = NULL;
+    int        leafl = 0; // XXX
+    char      *leaflname = NULL; // XXX
+
+    level1 = level*PRETTYPRINT_INDENT;
+    if ((y0 = xml_spec(x0)) != NULL){
+#ifndef TEXT_SYNTAX_NOPREFIX
+        prefix = get_prefix(y0);
+#endif
+    }
+    /* Traverse x0 and x1 in lock-step */
+    x0c = x1c = NULL;    
+    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    for (;;){
+        /* Check if one or both subtrees are NULL */
+        if (x0c == NULL && x1c == NULL)
+            goto ok;
+        else if (x0c == NULL){
+            if (nr==0 && skiptop==0){
+                cprintf(cb, "%*s", level1, "");
+                if (prefix)
+                    cprintf(cb, "%s:", prefix);
+                cprintf(cb, "%s", xml_name(x1));
+                text_diff_keys(cb, x1, y0);
+                cprintf(cb, " {\n");
+                nr++;
+            }
+            if (text2cbuf(cb, x1c, level+1, "+", 0, &leafl, &leaflname) < 0)
+                goto done;
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        else if (x1c == NULL){
+            if (nr==0 && skiptop==0){
+                cprintf(cb, "%*s", level1, "");
+                if (prefix)
+                    cprintf(cb, "%s:", prefix);
+                cprintf(cb, "%s", xml_name(x0));
+                text_diff_keys(cb, x0, y0);
+                cprintf(cb, "{\n");
+                nr++;
+            }
+            if (text2cbuf(cb, x0c, level+1, "-", 0, &leafl, &leaflname) < 0)
+                goto done;
+            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            continue;
+        }
+        /* Both x0c and x1c exists, check if they are yang-equal. */
+        eq = xml_cmp(x0c, x1c, 0, 0, NULL);
+        yc0 = xml_spec(x0c);
+        yc1 = xml_spec(x1c);
+
+        if (eq < 0){
+            if (nr==0 && skiptop==0){
+                cprintf(cb, "%*s", level1, "");
+                if (prefix)
+                    cprintf(cb, "%s:", prefix);
+                cprintf(cb, "%s", xml_name(x0));
+                text_diff_keys(cb, x0, y0);
+                cprintf(cb, " {\n");
+                nr++;
+            }
+            if (text2cbuf(cb, x0c, level+1, "-", 0, &leafl, &leaflname) < 0)
+                goto done;
+            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            continue;
+        }
+        else if (eq > 0){
+            if (nr==0 && skiptop==0){
+                cprintf(cb, "%*s", level1, "");
+                if (prefix)
+                    cprintf(cb, "%s:", prefix);
+                cprintf(cb, "%s", xml_name(x1));
+                text_diff_keys(cb, x1, y0);
+                cprintf(cb, " {\n");
+                nr++;
+            }
+            if (text2cbuf(cb, x1c, level+1, "+", 0, &leafl, &leaflname) < 0)
+                goto done;
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        else{ /* equal */
+            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+                if (nr==0 && skiptop==0){
+                    cprintf(cb, "%*s", level1, "");
+                    if (prefix)
+                        cprintf(cb, "%s:", prefix);
+                    cprintf(cb, "%s {\n", xml_name(x0));
+                    nr++;
+                }
+                if (text2cbuf(cb, x0c, level+1, "-", 0, &leafl, &leaflname) < 0)
+                    goto done;
+                if (text2cbuf(cb, x1c, level+1, "+", 0, &leafl, &leaflname) < 0)
+                    goto done;
+            }
+            else if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+                b0 = xml_body(x0c);
+                b1 = xml_body(x1c);
+                if (b0 == NULL && b1 == NULL)
+                    ;
+                else if (b0 == NULL || b1 == NULL
+                         || strcmp(b0, b1) != 0){
+                    if (nr==0 && skiptop == 0){
+                        cprintf(cb, "%*s", level1, "");
+                        if (prefix)
+                            cprintf(cb, "%s:", prefix);
+                        cprintf(cb, "%s", xml_name(x0));
+                        text_diff_keys(cb, x0, y0);
+                        cprintf(cb, " {\n");
+                        nr++;
+                    }
+                    cprintf(cb, "-%*s%s %s;\n", level1+PRETTYPRINT_INDENT-1, "", xml_name(x0c), b0);
+                    cprintf(cb, "+%*s%s %s;\n", level1+PRETTYPRINT_INDENT-1, "", xml_name(x1c), b1);
+                }
+            }
+            else if (text_diff2cbuf(cb, x0c, x1c, level+1, 0) < 0)
+                goto done;
+        }
+        /* Get next */
+        x0c = xml_child_each(x0, x0c, CX_ELMNT);
+        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    } /* for */
+ ok:
+    if (nr)
+        cprintf(cb, "%*s}\n", level1, "");
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Print TEXT diff of two cxobj trees into a cbuf
+ *
+ * YANG dependent
+ * @param[out] cb      CLIgen buffer
+ * @param[in]  x0      First XML tree
+ * @param[in]  x1      Second XML tree
+ * @retval     0       Ok
+ * @retval    -1       Error
+ * @cod
+ *    cbuf *cb = cbuf_new();
+ *    if (clixon_text_diff2cbuf(cb, 0, x0, x1) < 0)
+ *       err();
+ * @endcode
+ * @see clixon_xml_diff2cbuf
+ */
+int
+clixon_text_diff2cbuf(cbuf  *cb,
+                     cxobj  *x0,
+                     cxobj  *x1)
+{
+    return text_diff2cbuf(cb, x0, x1, 0, 1);
 }
 
 /*! Look for YANG lists nodes and convert bodies to keys
@@ -367,16 +821,15 @@ text_populate_list(cxobj *xn)
 
 /*! Parse a string containing text syntax and return an XML tree
  *
-
  * @param[in]  str    Input string containing JSON
  * @param[in]  rfc7951 Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
  * @param[in]  yb     How to bind yang to XML top-level when parsing (if rfc7951)
  * @param[in]  yspec  Yang specification (if rfc 7951)
  * @param[out] xt     XML top of tree typically w/o children on entry (but created)
  * @param[out] xerr   Reason for invalid returned as netconf err msg 
- * @retval        1   OK and valid
- * @retval        0   Invalid (only if yang spec)
- * @retval       -1   Error with clicon_err called
+ * @retval     1      OK and valid
+ * @retval     0      Invalid (only if yang spec)
+ * @retval    -1      Error with clicon_err called
  * @see _xml_parse for XML variant
  * @note Parsing requires YANG, which means yb must be YB_MODULE/_NEXT
  */

@@ -446,11 +446,11 @@ clixon_xml2cbuf1(cbuf   *cb,
  * @param[in]     xn      Top-level xml object
  * @param[in]     level   Indentation level for pretty
  * @param[in]     pretty  Insert \n and spaces to make the xml more readable.
- * @param[in]     prefix  Add string to beginning of each line (if pretty)
+ * @param[in]     prefix  Add string to beginning of each line (or NULL) (if pretty)
  * @param[in]     depth   Limit levels of child resources: -1: all, 0: none, 1: node itself
  * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children, 
  * @retval        0       OK
- * @retval        -1      Error
+ * @retval       -1       Error
  * Depth is used in NACM
  * @code
  *   cbuf *cb = cbuf_new();
@@ -893,4 +893,201 @@ clixon_xml_attr_copy(cxobj *xin,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Print list keys
+ */
+static int
+xml_diff_keys(cbuf      *cb,
+              cxobj     *x,
+              yang_stmt *y,
+              int        level)
+{
+    cvec   *cvk;
+    cg_var *cvi;
+    char   *keyname;
+    char   *keyval;
+
+    if (y && yang_keyword_get(y) == Y_LIST){
+        cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
+        cvi = NULL;
+        while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+            keyname = cv_string_get(cvi);                                
+            keyval = xml_find_body(x, keyname);
+            cprintf(cb, "%*s<%s>%s</%s>\n", level, "", keyname, keyval, keyname);
+        }
+    }
+    return 0;
+}
+
+/*! Print XML diff of two cxobj trees into a cbuf
+ *
+ * YANG dependent
+ * Uses underlying XML diff algorithm with better result than clixon_compare_xmls
+ * @param[out] cb      CLIgen buffer
+ * @param[in]  x0      First XML tree
+ * @param[in]  x1      Second XML tree
+ * @param[in]  level   How many spaces to insert before each line
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @retval     0       Ok
+ * @retval    -1       Error
+ * @cod
+ *    cbuf *cb = cbuf_new();
+ *    if (clixon_xml_diff2cbuf(cb, 0, x0, x1) < 0)
+ *       err();
+ *    cligen_output(stdout, "%s", cbuf_get(cb));
+ * @endcode
+ * @see xml_diff which returns diff sets
+ * @see clixon_compare_xmls which uses files and is independent of YANG
+ */
+int
+xml_diff2cbuf(cbuf  *cb,
+              cxobj *x0, 
+              cxobj *x1,
+              int    level,
+              int    skiptop)
+{
+    int        retval = -1;
+    cxobj     *x0c = NULL; /* x0 child */
+    cxobj     *x1c = NULL; /* x1 child */
+    yang_stmt *y0;
+    yang_stmt *yc0;
+    yang_stmt *yc1;
+    char      *b0;
+    char      *b1;
+    int        eq;
+    int        nr=0;
+    int        level1;
+
+    level1 = level*PRETTYPRINT_INDENT;
+    y0 = xml_spec(x0);
+    /* Traverse x0 and x1 in lock-step */
+    x0c = x1c = NULL;    
+    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    for (;;){
+        if (x0c == NULL && x1c == NULL)
+            goto ok;
+        else if (x0c == NULL){
+            /* Check if one or both subtrees are NULL */
+            if (nr==0 && skiptop==0){
+                cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x1));
+                xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
+                nr++;
+            }
+            if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
+                goto done;
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        else if (x1c == NULL){
+            if (nr==0 && skiptop==0){
+                cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x0));
+                xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
+                nr++;
+            }
+            if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
+                goto done;
+            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            continue;
+        }
+        /* Both x0c and x1c exists, check if they are yang-equal. */
+        eq = xml_cmp(x0c, x1c, 0, 0, NULL);
+        if (eq < 0){
+            if (nr==0 && skiptop==0){
+                cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x0));
+                xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
+                nr++;
+            }
+            if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
+                goto done;
+            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            continue;
+        }
+        else if (eq > 0){
+            if (nr==0 && skiptop==0){
+                cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x1));
+                xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
+                nr++;
+            }
+            if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
+                goto done;
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        else{ /* equal */
+            /* xml-spec NULL could happen with anydata children for example,
+             * if so, continute compare children but without yang
+             */
+            yc0 = xml_spec(x0c);
+            yc1 = xml_spec(x1c);
+            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+                if (nr==0 && skiptop==0){
+                    cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x0));
+                    xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
+                    nr++;
+                }
+                if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
+                    goto done;
+                if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
+                    goto done;
+            }
+            else if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+                /* if x0c and x1c are leafs w bodies, then they may be changed */
+                b0 = xml_body(x0c);
+                b1 = xml_body(x1c);
+                if (b0 == NULL && b1 == NULL)
+                    ;
+                else if (b0 == NULL || b1 == NULL
+                         || strcmp(b0, b1) != 0){
+                    if (nr==0 && skiptop==0){
+                        cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x0));
+                        xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
+                        nr++;
+                    }
+                    cprintf(cb, "-%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
+                            xml_name(x0c), b0, xml_name(x0c));
+                    cprintf(cb, "+%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
+                            xml_name(x1c), b1, xml_name(x1c));
+                }
+            }
+            else if (xml_diff2cbuf(cb, x0c, x1c, level+1, 0) < 0)
+                goto done;
+        }
+        /* Get next */
+        x0c = xml_child_each(x0, x0c, CX_ELMNT);
+        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    } /* for */
+ ok:
+    if (nr)
+        cprintf(cb, "%*s</%s>\n", level*PRETTYPRINT_INDENT, "", xml_name(x0));
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Print XML diff of two cxobj trees into a cbuf
+ *
+ * YANG dependent
+ * Uses underlying XML diff algorithm with better result than clixon_compare_xmls
+ * @param[out] cb      CLIgen buffer
+ * @param[in]  x0      First XML tree
+ * @param[in]  x1      Second XML tree
+ * @retval     0       Ok
+ * @retval    -1       Error
+ * @cod
+ *    cbuf *cb = cbuf_new();
+ *    if (clixon_xml_diff2cbuf(cb, 0, x0, x1) < 0)
+ *       err();
+ *    cligen_output(stdout, "%s", cbuf_get(cb));
+ * @endcode
+ * @see xml_diff which returns diff sets
+ * @see clixon_compare_xmls which uses files and is independent of YANG
+ */
+int
+clixon_xml_diff2cbuf(cbuf    *cb,
+                     cxobj   *x0, 
+                     cxobj   *x1)
+{
+    return xml_diff2cbuf(cb, x0, x1, 0, 1);
 }

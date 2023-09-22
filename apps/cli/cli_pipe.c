@@ -319,7 +319,7 @@ pipe_showas_fn(clicon_handle h,
             goto done;
         break;
     case FORMAT_TEXT:
-        if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
+        if (clixon_text2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
             goto done;
         break;
     case FORMAT_CLI:

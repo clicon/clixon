@@ -334,7 +334,7 @@ main(int    argc,
     /* 4. Output data (xml/json/text) */
     if (output){
         if (textout){
-            if (clixon_txt2file(stdout, xt, 0, fprintf, 1, 0) < 0)
+            if (clixon_text2file(stdout, xt, 0, fprintf, 1, 0) < 0)
                 goto done;
         }
         else if (jsonout){
