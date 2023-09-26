@@ -9,7 +9,7 @@ on:
     branches: [ master ]
 
 jobs:
-  native-build:
+  ubuntu-build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -32,7 +32,7 @@ jobs:
       run: (cd example; sudo make install)
     - name: install utils
       run: (cd util; sudo make install)
-  native-build-fcgi:
+  ubuntu-build-restconf-fcgi:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -40,7 +40,7 @@ jobs:
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
     - name: install dependencies
-      run: sudo apt install -y libssl-dev libnghttp2-dev
+      run: sudo apt install -y nginx
     - name: configure
       run: ./configure --with-restconf=fcgi
     - name: make
@@ -55,7 +55,7 @@ jobs:
       run: (cd example; sudo make install)
     - name: install utils
       run: (cd util; sudo make install)      
-  docker-run:
+  docker-alpine-tests:
     runs-on: ubuntu-latest
     defaults:
       run:
