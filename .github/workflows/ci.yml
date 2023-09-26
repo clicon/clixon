@@ -31,6 +31,29 @@ jobs:
     - name: install example
       run: (cd example; sudo make install)
     - name: install utils
+      run: (cd util; sudo make install)
+  native-build-fcgi:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    # 1) checkout and compile natively (no test)
+    - name: install cligen
+      run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
+    - name: install dependencies
+      run: sudo apt install -y libssl-dev libnghttp2-dev
+    - name: configure
+      run: ./configure --with-restconf=fcgi
+    - name: make
+      run: make -j10
+    - name: make install
+      run: sudo make install install-include
+    - name: make example
+      run: (cd example; make)   
+    - name: make utils
+      run: (cd util; make)
+    - name: install example
+      run: (cd example; sudo make install)
+    - name: install utils
       run: (cd util; sudo make install)      
   docker-run:
     runs-on: ubuntu-latest

@@ -128,7 +128,7 @@ hex [A-Fa-f0-9]
                                BEGIN(STRING); 
                                if (clixon_unicode2utf8(yytext, buf, 5) < 0)
                                   return -1;
-                               strncpy(yytext, buf, 4);
+                               strncpy(yytext, buf, 5);
                                clixon_json_parselval.string = yytext; 
                                return J_STRING;
                               }

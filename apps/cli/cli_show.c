@@ -182,7 +182,6 @@ xpath_append(cbuf      *cb0,
  *   [<mt-point>]    Optional YANG path-arg/xpath from mount-point
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
- * @see cli_expand_var_generate  This is where arg is generated
  * @see cli_expand_var_generate where api_path_fmt + mt-point are generated
  */
 int
@@ -407,7 +406,7 @@ expand_dbvar(void   *h,
     }
  ok:
     retval = 0;
-  done:
+ done:
     if (nsc0)
         cvec_free(nsc0);
     if (api_path_fmt_cb)

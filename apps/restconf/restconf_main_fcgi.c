@@ -314,7 +314,7 @@ main(int    argc,
     char          *wwwuser;
     char          *inline_config = NULL;
     size_t         sz;
-    int           config_dump;
+    int           config_dump = 0;
     enum format_enum config_dump_format = FORMAT_XML;
 
     /* In the startup, logs to stderr & debug flag set later */
