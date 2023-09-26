@@ -41,6 +41,8 @@ jobs:
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
     - name: install dependencies
       run: sudo apt install -y nginx
+    - name: install fcgi
+      run: (git clone https://github.com/FastCGI-Archives/fcgi2 && cd fcgi2 && ./autogen.sh && rm -rf .git && ./configure --prefix=/usr; make; sudo make install)
     - name: configure
       run: ./configure --with-restconf=fcgi
     - name: make
