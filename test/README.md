@@ -98,6 +98,8 @@ The `mem.sh` runs memory checks using valgrind. Start it with no arguments to te
   mem.sh restconf backend           # Only backend and cli
 ```
 
+Valgrind uses a suppression file `valgrind-clixon.supp` to filter dlopen functions
+
 ## Run pattern of tests
 
 The above scripts work with the `pattern` variable to limit the scope of which tests run, eg:

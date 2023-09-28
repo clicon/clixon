@@ -156,6 +156,8 @@ clixon_json_parseerror(void *_jy,
                _JY->jy_linenum ,
                s, 
                clixon_json_parsetext); 
+    if (_JY->jy_cbuf_str)
+        cbuf_free(_JY->jy_cbuf_str);
   return;
 }
 
@@ -282,7 +284,7 @@ value         : J_TRUE  { json_current_body(_JY, "true");       _PARSE_DEBUG("va
               | object                                        { _PARSE_DEBUG("value->object"); }
               | array                                         { _PARSE_DEBUG("value->array"); }
               | number  { json_current_body(_JY, $1); free($1); _PARSE_DEBUG("value->number");}
-              | string  { json_current_body(_JY, cbuf_get($1)); cbuf_free($1); _PARSE_DEBUG("value->string");}
+              | string  { json_current_body(_JY, cbuf_get($1)); cbuf_free($1); _JY->jy_cbuf_str = NULL; _PARSE_DEBUG("value->string");}
 
               ;
 
@@ -294,7 +296,7 @@ objlist       : pair             { _PARSE_DEBUG("objlist->pair");}
               | objlist ',' pair { _PARSE_DEBUG("objlist->objlist , pair");}
               ;
 
-pair          : string { json_current_new(_JY, cbuf_get($1));cbuf_free($1);} ':' 
+pair          : string { json_current_new(_JY, cbuf_get($1));cbuf_free($1); _JY->jy_cbuf_str = NULL;} ':' 
                 value  { json_current_pop(_JY);}{ _PARSE_DEBUG("pair->string : value");}
               ;
 
@@ -320,6 +322,7 @@ ustring       : ustring J_STRING
               | J_STRING
                      {
                          cbuf *cb = cbuf_new();
+                         _JY->jy_cbuf_str = cb;
                          cbuf_append_str(cb,$1);
                          $$=cb;
                      } 

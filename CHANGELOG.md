@@ -44,11 +44,28 @@
 ## 6.4.0
 Expected: October 2023
 
+Clixon 6.4.0 features mainly bugfixes and improvements of existing functionality, such as CLI output pipes.
+
 ### API changes on existing protocol/config features
 Users may have to change how they access the system
 
 * New `clixon-autocli@2023-09-01.yang` revision
   * Added argument to alias extension
+
+### Minor features
+
+* CLI show compare example function:
+  * Improved diff algorithm for XML and TEXT/curly, replaced UNIX diff with structural in-mem algorithm
+* JSON: Added unicode BMP support for unicode strings as part of fixing (https://github.com/clicon/clixon/issues/453)
+* Example cli pipe grep command quotes vertical bar for OR function
+* Added: [Feature request: node's alias for CLI](https://github.com/clicon/clixon/issues/434)
+   * Note: "Skip" is for all nodes, but "Alias" is only for leafs
+* New command-line option for dumping configuration options for all clixon applications after load
+  * Syntax is `-C <format>`
+  * Example: `clixon_backend -1C json`
+* Removed sending restconf config inline using -R when CLICON_BACKEND_RESTCONF_PROCESS=true
+  * Define RESTCONF_INLINE to revert
+* Clarified clixon_cli command-line: `clixon_cli [options] [commands] [-- extra-options]`
 
 ### C/CLI-API changes on existing features
 Developers may need to change their code
@@ -73,21 +90,6 @@ Developers may need to change their code
     * `clixon_client_hello(s, ...)` --> `clixon_client_hello(s, NULL, ...)`
 
 * CLI pipe function: added arg to `pipe_tail_fn()`
-
-### Minor features
-
-* CLI show compare example function:
-  * Improved diff algorithm for XML and TEXT/curly, replaced UNIX diff with structural in-mem algorithm
-* JSON: Added unicode BMP support for unicode strings as part of fixing (https://github.com/clicon/clixon/issues/453)
-* Example cli pipe grep command quotes vertical bar for OR function
-* Added: [Feature request: node's alias for CLI](https://github.com/clicon/clixon/issues/434)
-   * Note: "Skip" is for all nodes, but "Alias" is only for leafs
-* New command-line option for dumping configuration options for all clixon applications after load
-  * Syntax is `-C <format>`
-  * Example: `clixon_backend -1C json`
-* Removed sending restconf config inline using -R when CLICON_BACKEND_RESTCONF_PROCESS=true
-  * Define RESTCONF_INLINE to revert
-* Clarified clixon_cli command-line: `clixon_cli [options] [commands] [-- extra-options]`
 
 ### Corrected Bugs
 

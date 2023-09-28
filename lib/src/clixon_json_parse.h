@@ -48,6 +48,7 @@ struct clixon_json_yacc {
     cxobj     *jy_current;      /* cxobj active element (changes with parse context) */
     cxobj    **jy_xvec;         /* Vector of created top-level nodes (to know which are created) */
     int        jy_xlen;         /* Length of jy_xvec */
+    cbuf      *jy_cbuf_str;     /* cbuf used for strings, if error needs to be deallocated */
 };
 typedef struct clixon_json_yacc clixon_json_yacc;
 
