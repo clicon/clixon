@@ -67,6 +67,10 @@ jobs:
     # 2) Inline of make test, but without configure
     - name: in-line clone
       run: git clone file://$(realpath ../..)
+    - name: openconfig
+      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
+    - name: yangmodels
+      run:  mkdir yang/standard; cd yang; git init; git remote add -f origin https://github.com/YangModels/yang git config core.sparseCheckout true;   echo "standard/" >> .git/info/sparse-checkout; echo "experimental/" >> .git/info/sparse-checkout; git pull origin main
     - name: make docker
       run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
     - name: start container
