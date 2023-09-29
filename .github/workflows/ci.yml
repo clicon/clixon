@@ -69,10 +69,6 @@ jobs:
       run: git clone file://$(realpath ../..)
     - name: openconfig
       run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
-    - name: openconfig
-      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
-    - name: ls openconfig
-      run: ls openconfig
     - name: yangmodels1
       run: mkdir -p yang/standard
     - name: yangmodels2
