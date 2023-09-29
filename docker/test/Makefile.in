@@ -66,12 +66,18 @@ clixon:
 	git clone file://$(realpath ${top_srcdir})
 
 clean:
-	rm -rf clixon # clone of top-srcdir
+	rm -rf clixon yang openconfig
 
 distclean: clean
 	rm -f Makefile *~ .depend
 
-docker: clixon $(DOCKERFILE)
+yang:
+	./getyang.sh
+
+openconfig:
+	./getopenconfig.sh
+
+docker: clixon yang openconfig $(DOCKERFILE)
 	sudo docker build -f $(DOCKERFILE) -t $(IMG)  $(DOCKERFLAGS) .
 
 push:

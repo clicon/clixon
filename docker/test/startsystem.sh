@@ -67,6 +67,7 @@ EOF
 # Patch to override YANG_INSTALLDIRS
 cat <<EOF >> /usr/local/bin/test/config.sh
 YANG_INSTALLDIR=/usr/local/share/clixon
+OPENCONFIG=/usr/local/share/openconfig/public
 EOF
 
 # Patch yang syntax errors

@@ -44,17 +44,13 @@ RUN apk add --update net-snmp net-snmp-dev
 
 # Checkout standard YANG models for tests (note >1G for full repo)
 RUN mkdir -p /usr/local/share/yang
-
 WORKDIR /usr/local/share/yang
+COPY yang .
 
-RUN git config --global init.defaultBranch master
-RUN git init;
-RUN git remote add -f origin https://github.com/YangModels/yang;
-RUN git config core.sparseCheckout true
-RUN echo "standard/" >> .git/info/sparse-checkout
-RUN echo "experimental/" >> .git/info/sparse-checkout
-
-RUN git pull origin main
+# Checkout OPENCONFIG YANG models for tests
+RUN mkdir -p /usr/local/share/openconfig
+WORKDIR /usr/local/share/openconfig
+COPY openconfig .
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir -p /clixon/build
@@ -126,7 +122,9 @@ RUN adduser -D -H clicon
 
 COPY --from=0 /clixon/build/ /
 COPY --from=0 /usr/local/share/yang/ /usr/local/share/yang/
+COPY --from=0 /usr/local/share/openconfig/* /usr/local/share/openconfig/
 COPY --from=0 /usr/local/share/mib-yangs/* /usr/local/share/mib-yangs/
+COPY --from=0 /clixon/build/mibs/* /usr/share/snmp/mibs/
 
 # Log to stderr.
 CMD /usr/local/bin/startsystem.sh
