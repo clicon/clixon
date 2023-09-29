@@ -69,8 +69,22 @@ jobs:
       run: git clone file://$(realpath ../..)
     - name: openconfig
       run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
-    - name: yangmodels
-      run:  mkdir yang/standard; cd yang; git init; git remote add -f origin https://github.com/YangModels/yang git config core.sparseCheckout true;   echo "standard/" >> .git/info/sparse-checkout; echo "experimental/" >> .git/info/sparse-checkout; git pull origin main
+    - name: openconfig
+      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
+    - name: ls openconfig
+      run: ls openconfig
+    - name: yangmodels1
+      run: mkdir -p yang/standard
+    - name: yangmodels2
+      run: (cd yang; git init;)
+    - name: yangmodels3
+      run: (cd yang; git remote add -f origin https://github.com/YangModels/yang)
+    - name: yangmodels4
+      run: (cd yang; git config core.sparseCheckout true)
+    - name: yangmodels5
+      run: (echo "standard/" >> yang/.git/info/sparse-checkout; echo "experimental/" >> yang/.git/info/sparse-checkout)
+    - name: yangmodels6
+      run: (cd yang; git pull origin main)
     - name: make docker
       run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
     - name: start container
