@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.4.0](#640) Expected: October 2023
+* [6.4.0](#640) 30 September 2023
 * [6.3.0](#630) 29 July 2023
 * [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
@@ -42,18 +42,14 @@
 * [3.3.1](#331) June 7 2017
 
 ## 6.4.0
-Expected: October 2023
+30 September 2023
 
-Clixon 6.4.0 features mainly bugfixes and improvements of existing functionality, such as CLI output pipes.
-
-### API changes on existing protocol/config features
-Users may have to change how they access the system
-
-* New `clixon-autocli@2023-09-01.yang` revision
-  * Added argument to alias extension
+This releases is mainly for bugfixes and improvements of existing functionality, such as CLI output pipes.
 
 ### Minor features
 
+* New `clixon-autocli@2023-09-01.yang` revision
+  * Added argument to alias extension
 * CLI show compare example function:
   * Improved diff algorithm for XML and TEXT/curly, replaced UNIX diff with structural in-mem algorithm
 * JSON: Added unicode BMP support for unicode strings as part of fixing (https://github.com/clicon/clixon/issues/453)
@@ -98,13 +94,12 @@ Developers may need to change their code
 * Fixed: [CLI show config | display <format> exits over mountpoints with large YANGs](https://github.com/clicon/clixon-controller/issues/39)
   * JSON string fixed according to RFC 8259: encoding/decoding of escape as defined in Section 8
   * No need to bind for xml and json, only cli and text
-* Fixed several issues with extra-config files, including overwriting of structured sub-configs
-  * including `<restconf>`and m̀ <autoconf>`
+* Fixed several issues with including multiple configure-files in a config-directory, including overwriting of structured sub-configs.
 * Fixed: [YANG error when poking on EOS configuration](https://github.com/clicon/clixon-controller/issues/26)
 * Fixed: [CLICON_CONFIGDIR with external subsystems causes endless looping](https://github.com/clicon/clixon/issues/439)
 * Fixed: ["show configuration devices" and "show configuration devices | display cli" differs](https://github.com/clicon/clixon-controller/issues/24)
 * Fixed: [Configuring Juniper PTX produces CLI errors](https://github.com/clicon/clixon-controller/issues/19)
-* Fixed: CLI output pipes: Add CLICON_PIPETREE to any cli files, not just the first
+* Fixed: CLI output pipes: Add `CLICON_PIPETREE` to any cli files, not just the first
 
 ## 6.3.0
 29 July 2023
