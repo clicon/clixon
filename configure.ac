@@ -180,6 +180,9 @@ SH_SUFFIX=".so"
 # Postfix for static libs 
 LIBSTATIC_SUFFIX=".a"
 
+CPPFLAGS="-I$(eval echo ${includedir}) ${CPPFLAGS}"
+LDFLAGS="-L$(eval echo ${libdir}) ${LDFLAGS}"
+
 # This is for cligen
 AC_ARG_WITH([cligen], [AS_HELP_STRING([--with-cligen=dir], [Use CLIGEN installation in this dir])], [
   CLIGEN_DIR="$withval"
@@ -187,8 +190,8 @@ AC_ARG_WITH([cligen], [AS_HELP_STRING([--with-cligen=dir], [Use CLIGEN installat
 AC_SUBST(CLIGEN_DIR)
 if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
     echo "Using CLIGEN here: ${CLIGEN_DIR}"
-    CPPFLAGS="-I${CLIGEN_DIR}$(eval echo ${includedir}) ${CPPFLAGS}"
-    LDFLAGS="-L${CLIGEN_DIR}$(eval echo ${libdir}) ${LDFLAGS}"
+    CPPFLAGS="-I${CLIGEN_DIR}/include ${CPPFLAGS}"
+    LDFLAGS="-L${CLIGEN_DIR}/lib ${LDFLAGS}"
 fi
 
 # Disable/enable yang patch
