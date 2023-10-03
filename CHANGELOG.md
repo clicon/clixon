@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [6.5.0](#650) Expected: December 2023
 * [6.4.0](#640) 30 September 2023
 * [6.3.0](#630) 29 July 2023
 * [6.2.0](#620) 30 April 2023
@@ -40,6 +41,9 @@
 * [3.3.3](#333) 25 November 2017
 * [3.3.2](#332) Aug 27 2017
 * [3.3.1](#331) June 7 2017
+
+## 6.5.0
+Expected: December 2023
 
 ## 6.4.0
 30 September 2023
