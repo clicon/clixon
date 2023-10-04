@@ -31,12 +31,16 @@
 #
 # ***** END LICENSE BLOCK *****
 #
+# Clixon dockerfile with fcgi restconf
 
 FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
 # For clixon and cligen
-RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
+RUN apk add --update git make build-base gcc flex bison curl-dev
+
+# For fcgi
+RUN apk add --update fcgi-dev
 
 # For netsnmp
 RUN apk add --update net-snmp net-snmp-dev
@@ -78,7 +82,7 @@ RUN adduser -D -H -G www-data www-data
 RUN apk add --update nginx
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build --with-restconf=fcgi --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/
+RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/ --with-restconf=fcgi 
 RUN make
 RUN make DESTDIR=/clixon/build install
 

@@ -21,14 +21,14 @@ cfg=$dir/conf_startup.xml
 fyang=$dir/clixon-example.yang
 
 # Here $dir is created by the user that runs the script
-
+# Cant be anything in root since it breaks some privileges
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
-  <CLICON_SOCK>/var/run/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>$dir/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
 </clixon-config>
 EOF
@@ -87,7 +87,7 @@ function testrun(){
         if [ $expecterr -eq 1 ]; then
             return 0
         fi
-        err
+        err 1 $expecterr
     fi
 
     new "Number of clixon_backend processes"

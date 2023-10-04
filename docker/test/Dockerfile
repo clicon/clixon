@@ -42,6 +42,9 @@ RUN apk add --update git make build-base gcc flex bison curl-dev
 # For netsnmp
 RUN apk add --update net-snmp net-snmp-dev
 
+# For groupadd/groupdel
+RUN apk add --update shadow
+
 # Checkout standard YANG models for tests (note >1G for full repo)
 RUN mkdir -p /usr/local/share/yang
 WORKDIR /usr/local/share/yang
@@ -61,17 +64,17 @@ RUN git clone https://github.com/clicon/cligen.git
 
 # Build cligen
 WORKDIR /clixon/cligen
-RUN ./configure --prefix=/usr/local
+RUN ./configure --prefix=/usr/local --sysconfdir=/etc
 RUN make
 RUN make DESTDIR=/clixon/build install
 
 # Copy Clixon from local dir
-RUN mkdir /clixon/clixon
+RUN mkdir -p /clixon/clixon
 WORKDIR /clixon/clixon
 COPY clixon .
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/usr/local --with-cligen=/clixon/build --without-restconf --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/
+RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/ -without-restconf
 RUN make
 RUN make DESTDIR=/clixon/build install
 
@@ -80,12 +83,22 @@ WORKDIR /clixon/clixon/util
 RUN make
 RUN make DESTDIR=/clixon/build install
 
+# Build and install the clixon example
+WORKDIR /clixon/clixon/example/main
+RUN make
+RUN make DESTDIR=/clixon/build install
+RUN mkdir -p /clixon/build/etc
+RUN install example.xml /clixon/build/etc/clixon.xml
+
 # Copy tests
 WORKDIR /clixon/clixon/test
 RUN install -d /clixon/build/usr/local/bin/test
 RUN install *.sh /clixon/build/usr/local/bin/test
 RUN install *.exp /clixon/build/usr/local/bin/test
 RUN install clixon.png /clixon/build/usr/local/bin/test
+
+RUN install -d /clixon/build/mibs
+RUN install mibs/* /clixon/build/mibs
 
 # Copy startscript
 WORKDIR /clixon
