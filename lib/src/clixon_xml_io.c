@@ -920,6 +920,37 @@ xml_diff_keys(cbuf      *cb,
     return 0;
 }
 
+/*! Print one line of context around diff 
+ */
+static int
+xml_diff_context(cbuf  *cb,
+                 cxobj *xn,
+                 int    level)
+{
+    int   retval = -1;
+    char *prefix;
+    char *namespace = NULL;
+    
+    prefix = xml_prefix(xn);
+    if (xml2ns(xn, prefix, &namespace) < 0)
+        goto done;
+    cprintf(cb, "%*s<", level, "");
+    if (namespace){
+        if (prefix)
+            cprintf(cb, "%s:", prefix);
+        cprintf(cb, "%s xmlns", xml_name(xn));
+        if (prefix)
+            cprintf(cb, ":%s", prefix);
+        cprintf(cb, "=\"%s\"", namespace);
+        cprintf(cb, ">\n");
+    }
+    else
+        cprintf(cb, "%s>\n", xml_name(xn));
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Print XML diff of two cxobj trees into a cbuf
  *
  * YANG dependent
@@ -971,7 +1002,7 @@ xml_diff2cbuf(cbuf  *cb,
         else if (x0c == NULL){
             /* Check if one or both subtrees are NULL */
             if (nr==0 && skiptop==0){
-                cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x1));
+                xml_diff_context(cb, x1, level1);
                 xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
@@ -982,7 +1013,7 @@ xml_diff2cbuf(cbuf  *cb,
         }
         else if (x1c == NULL){
             if (nr==0 && skiptop==0){
-                cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x0));
+                xml_diff_context(cb, x0, level1);
                 xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
@@ -995,7 +1026,7 @@ xml_diff2cbuf(cbuf  *cb,
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
         if (eq < 0){
             if (nr==0 && skiptop==0){
-                cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x0));
+                xml_diff_context(cb, x0, level1);
                 xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
@@ -1006,7 +1037,7 @@ xml_diff2cbuf(cbuf  *cb,
         }
         else if (eq > 0){
             if (nr==0 && skiptop==0){
-                cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x1));
+                xml_diff_context(cb, x1, level1);
                 xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
@@ -1023,7 +1054,7 @@ xml_diff2cbuf(cbuf  *cb,
             yc1 = xml_spec(x1c);
             if (yc0 && yc1 && yc0 != yc1){ /* choice */
                 if (nr==0 && skiptop==0){
-                    cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x0));
+                    xml_diff_context(cb, x0, level1);
                     xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                     nr++;
                 }
@@ -1041,7 +1072,7 @@ xml_diff2cbuf(cbuf  *cb,
                 else if (b0 == NULL || b1 == NULL
                          || strcmp(b0, b1) != 0){
                     if (nr==0 && skiptop==0){
-                        cprintf(cb, "%*s<%s>\n", level1, "", xml_name(x0));
+                        xml_diff_context(cb, x0, level1);
                         xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                         nr++;
                     }

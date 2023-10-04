@@ -45,6 +45,10 @@
 ## 6.5.0
 Expected: December 2023
 
+### Corrected Bugs
+
+* Fixed: [commit diff sometimes includes namespace in output](https://github.com/clicon/clixon-controller/issues/44)
+
 ## 6.4.0
 30 September 2023
 

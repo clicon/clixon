@@ -165,8 +165,9 @@ expectpart "$($clixon_cli -1 -f $cfg set top section x table parameter d value 9
 new "check candidate"
 expectpart "$($clixon_cli -1 -f $cfg show config candidate)" 0 "^<top xmlns=\"urn:example:clixon\"><section><name>x</name><table><parameter><name>b</name><value>42</value></parameter><parameter><name>c</name><value>72</value></parameter><parameter><name>d</name><value>99</value></parameter></table></section></top>$"
 
-new "check compare xml"
-expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "<table>" "^\-\ *<parameter>" "^+\ *<parameter>" "^\-\ *<name>a</name>" "^+\ *<name>c</name>" --not-- "^+\ *<name>a</name>" "^\-\ *<name>c</name>"
+new "check compare xml b"
+echo "$clixon_cli -1 -f $cfg show compare xml"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "<table xmlns=\"urn:example:clixon\">" "^\-\ *<parameter>" "^+\ *<parameter>" "^\-\ *<name>a</name>" "^+\ *<name>c</name>" --not-- "^+\ *<name>a</name>" "^\-\ *<name>c</name>"
 
 new "check compare text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^\ *table {" "^\-\ *parameter a {" "^+\ *parameter c {" "^\-\ *value 98;" "^+\ *value 99;"
