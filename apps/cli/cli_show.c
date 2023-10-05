@@ -74,10 +74,17 @@
 #include "cli_autocli.h"
 #include "cli_common.h" /* internal functions */
 
-/*! Given an xpath encoded in a cbuf, append a second xpath into the first
+/*! Given an xpath encoded in a cbuf, append a second xpath into the first (unless absolute path)
  *
  * The method reuses prefixes from xpath1 if they exist, otherwise the module prefix
  * from y is used. Unless the element is .., .
+ * @param[in,out] cb0     Result XPath as cbuf
+ * @param[in]     xpath1  Input XPath
+ * @param[in]     y       Yang of xpath1
+ * @param[in,out] nsc     Namespace
+ * @retval        0       OK
+ * @retval       -1       Error
+ *
  * XXX: Predicates not handled
  * The algorithm is not fool-proof, there are many cases it may not work
  * To make it more complete, maybe parse the xpath to a tree and put it
@@ -86,8 +93,6 @@
      goto done;
    if (xpath_tree2cbuf(xpt, xcb) < 0)
      goto done;
-and
-traverse_canonical
  */
 static int
 xpath_append(cbuf      *cb0,
@@ -105,6 +110,9 @@ xpath_append(cbuf      *cb0,
     char  *prefix = NULL;
     int    initialups = 1; /* If starts with ../../.. */
     char  *xpath0;
+    char  *ns;
+    int    ret;
+    int    j;
 
     if (cb0 == NULL){
         clicon_err(OE_XML, EINVAL, "cb0 is NULL");
@@ -130,7 +138,6 @@ xpath_append(cbuf      *cb0,
         else if (strcmp(id, "..") == 0){
             if (initialups){
                 /* Subtract from xpath0 */
-                int j;
                 for (j=cbuf_len(cb0); j >= 0; j--){
                     if (xpath0[j] != '/')
                         continue;
@@ -145,6 +152,18 @@ xpath_append(cbuf      *cb0,
         }
         else{
             initialups = 0;
+            /* If prefix is not in nsc, it needs to be added */
+            if (prefix && cvec_find(nsc, prefix) == NULL){
+                ns = NULL;
+                if ((ret = yang_find_namespace_by_prefix(y, prefix, &ns)) < 0)
+                    goto done;
+                if (ret == 0){
+                    clicon_err(OE_DB, 0, "Prefix %s does not have an associated namespace", prefix);
+                    goto done;
+                }
+                if (xml_nsctx_add(nsc, prefix, ns) < 0)
+                    goto done;
+            }
             cprintf(cb0, "/%s:%s", prefix?prefix:myprefix, id);
         }
         if (prefix){

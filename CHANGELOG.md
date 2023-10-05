@@ -47,6 +47,7 @@ Expected: December 2023
 
 ### Corrected Bugs
 
+* Fixed: [Does clixon cli support autocompletion for leafrefs pointed to another module?](https://github.com/clicon/clixon/issues/455)
 * Fixed: [commit diff sometimes includes namespace in output](https://github.com/clicon/clixon-controller/issues/44)
 
 ## 6.4.0
