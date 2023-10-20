@@ -883,10 +883,14 @@ yang_lib2yspec(clicon_handle h,
     }
     else if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, NULL) < 0)
         goto fail;
-    if (yang_parse_post(h, yspec, yang_len_get(yspec) - (1+veclen - modmin)) < 0)
+    if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)
+        goto fail;
+    if (yang_parse_post(h, yspec, modmin) < 0)
         goto done;
 #else
-    if (yang_parse_post(h, yspec, yang_len_get(yspec) - (veclen - modmin)) < 0)
+    if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)
+        goto fail;
+    if (yang_parse_post(h, yspec, modmin) < 0)
         goto done;
 #endif
     retval = 1;

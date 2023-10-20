@@ -1080,17 +1080,6 @@ clixon_unicode2utf8_one(uint16_t uc16,
         clicon_err(OE_UNIX, EINVAL, "unicode2utf error");
         goto done;
     }
-    else if (uc16<0x10000) {
-        *utfstr++=224+uc16/4096;
-        *utfstr++=128+uc16/64%64;
-        *utfstr++=128+uc16%64;
-    }
-    else if (uc16<0x110000) {
-        *utfstr++=240+uc16/262144;
-        *utfstr++=128+uc16/4096%64;
-        *utfstr++=128+uc16/64%64;
-        *utfstr++=128+uc16%64;
-    }
     else{
         clicon_err(OE_UNIX, EINVAL, "unicode2utf error");
         goto done;

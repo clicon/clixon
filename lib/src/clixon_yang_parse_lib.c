@@ -1436,6 +1436,10 @@ yang_parse_post(clicon_handle h,
     struct yang_stmt **ylist = NULL; /* Topology sorted modules */
     int                ylen = 0;     /* Length of ylist */
     
+    if (modmin < 0){
+        clicon_err(OE_YANG, EINVAL, "modmin negative");
+        goto done;
+    }
     /* 1: Parse from text to yang parse-tree. 
      * Iterate through modules and detect module/submodules to parse
      * NOTE: the list may grow on each iteration */

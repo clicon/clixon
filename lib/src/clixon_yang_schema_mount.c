@@ -261,7 +261,7 @@ xml_yang_mount_get(clicon_handle   h,
  * @param[in]  x      XML moint-point node
  * @param[in]  yspec  Yangspec for this mount-point (consumed)
  * @retval     0      OK
- * @retval     -1     Error
+ * @retval    -1      Error
  */
 int
 xml_yang_mount_set(cxobj     *x,
