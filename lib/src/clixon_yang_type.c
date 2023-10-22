@@ -103,7 +103,7 @@
 #include "clixon_options.h"
 #include "clixon_yang_type.h"
 
-/* 
+/*
  * Local types and variables
  */
 
@@ -134,6 +134,7 @@ static const map_str2int ytmap[] = {
 };
 
 /*! Mapping from yang string types --> cligen types
+ *
  * @note not 100% same as map_str2int since it has significant order AND
  *       string->CGV_REST entry removed
  */
@@ -170,6 +171,7 @@ yang_builtin(char *type)
 }
 
 /*! Compile yang patterns in string form to regex compiled void* form
+ *
  * and re-store into "patterns" cvec.
  * This is done here instead of deep in resolve code (resolve_restrictions)
  * since it id dependent on clicon_handle.
@@ -219,14 +221,17 @@ compile_pattern2regexp(clicon_handle h,
     return retval;
 }
 
-/*! Resolve types: populate type caches 
- * @param[in]  ys  This is a type statement
- * @param[in]  arg Not used
+/*! Resolve types: populate type caches
+ *
+ * @param[in]  ys   This is a type statement
+ * @param[in]  arg  Not used
+ * @retval     0    OK
+ * @retval    -1    Error
  * Typically only called once when loading the yang type system.
  * @note unions not cached
  */
 int
-ys_resolve_type(yang_stmt    *ys, 
+ys_resolve_type(yang_stmt    *ys,
                 void         *arg)
 {
     //    clicon_handle     h = (clicon_handle)arg;
@@ -278,7 +283,7 @@ ys_resolve_type(yang_stmt    *ys,
  * Return 0 if no match but set cv_type to CGV_ERR
  */
 int
-yang2cv_type(char         *ytype, 
+yang2cv_type(char         *ytype,
              enum cv_type *cv_type)
 {
     int                ret;
@@ -331,6 +336,7 @@ cv2yang_type(enum cv_type cv_type)
 }
 
 /*! Translate from yang type -> cligen type, after yang resolve has been made.
+ *
  * handle case where yang resolve did not succedd (rtype=NULL) and then try
  * to find special cligen types such as ipv4addr.
  * not true yang types
@@ -338,11 +344,13 @@ cv2yang_type(enum cv_type cv_type)
  * @param[in]  restype  Resolved type. May be null, in that case origtype is used
  * @param[in]  ys       Yang stmt of original resolving node
  * @param[out] cvtype   Translation from resolved type 
+ * @retval     0        OK
+ * @retval    -1        Error
  * @note Thereis a kludge for handling direct translations of native cligen types
  */
 int
-clicon_type2cv(char         *origtype, 
-               char         *restype, 
+clicon_type2cv(char         *origtype,
+               char         *restype,
                yang_stmt    *ys,
                enum cv_type *cvtype)
 {
@@ -351,8 +359,8 @@ clicon_type2cv(char         *origtype,
 
     *cvtype = CGV_ERR;
     ym = ys_module(ys);
-    if (restype == NULL){ 
-        /* 
+    if (restype == NULL){
+        /*
          * Not resolved, but we can use special cligen types, eg ipv4addr 
          * Note this is a kludge or at least if we intend of using rfc types
          */
@@ -378,12 +386,13 @@ clicon_type2cv(char         *origtype,
 }
 
 /*! Validate CLIgen variable with pattern statements
- * @param[in]  h       Clicon handle
+ *
+ * @param[in]  h       Clixon handle
  * @param[in]  regexps Vector of compiled regexps
  * @param[out] reason  If given, and return value is 0, contains malloced string
- * @retval -1  Error (fatal), with errno set to indicate error
- * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
- * @retval 1   Validation OK
+ * @retval     1       Validation OK
+ * @retval     0       Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval    -1       Error (fatal), with errno set to indicate error
  */
 static int
 cv_validate_pattern(clicon_handle h,
@@ -410,7 +419,7 @@ cv_validate_pattern(clicon_handle h,
                                         str);
             goto fail;
             break;
-        }       
+        }
     }
     retval = 1; /* match */
  done:
@@ -428,6 +437,7 @@ cv_validate_pattern(clicon_handle h,
 
 
 /*! Error messsage for int violating ranges 
+ *
  * @note contains kludge - duplicate loop
  */
 static int
@@ -446,7 +456,7 @@ outofrange(cg_var *cv0,
     cprintf(cb, "Number ");
     cv2cbuf(cv0, cb);
     cprintf(cb, " out of range: ");
-    /* Kludge: need to repeat the same loop as in the main function in 
+    /* Kludge: need to repeat the same loop as in the main function in
        cv_validate1 */
     i = 0;
     while (i<cvec_len(cvv)){
@@ -478,6 +488,7 @@ outofrange(cg_var *cv0,
 }
 
 /*! Error messsage for string violating string limits 
+ *
  * @note contains kludge - duplicate loop
  */
 static int
@@ -527,24 +538,24 @@ outoflength(uint64_t    u64,
 }
 
 /*! Validate CLIgen variable
- * @param[in]  h       Clicon handle
+ *
+ * @param[in]  h       Clixon handle
  * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
  * @param[in]  cvtype  Resolved type of cv
  *                     string describing reason why validation failed. 
  * @param[in]  regexps Vector of compiled regexps
  * @param[out] reason  If given, and return value is 0, contains malloced str 
-
- * @retval    -1       Error (fatal), with errno set to indicate error
- * @retval     0       Validation not OK, malloced reason is returned. Free reason with free()
  * @retval     1       Validation OK
+ * @retval     0       Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval    -1       Error (fatal), with errno set to indicate error
  * @note reason if given must be freed by caller
  * @see cv_validate Corresponding type check in cligen
  */
 static int
 cv_validate1(clicon_handle h,
              cg_var      *cv,
-             enum cv_type cvtype, 
-             int          options, 
+             enum cv_type cvtype,
+             int          options,
              cvec        *cvv,
              cvec        *regexps,
              yang_stmt   *yrestype,
@@ -590,7 +601,7 @@ cv_validate1(clicon_handle h,
             else
                 cv2 = cv1;
             reti = 0; retu = 0; rets = 0;
-            switch (cvtype){ 
+            switch (cvtype){
             case CGV_INT8:
                 ii =  cv_int8_get(cv);
                 reti = range_check(ii, cv1, cv2, int8);
@@ -648,9 +659,8 @@ cv_validate1(clicon_handle h,
                         if (outofrange(cv, cvv, reason) < 0)
                             goto done;
                     }
-                    else 
-                        if (outoflength(uu, cvv, reason) < 0)
-                            goto done;
+                    else if (outoflength(uu, cvv, reason) < 0)
+                        goto done;
                 }
                 goto fail;
             }
@@ -662,7 +672,7 @@ cv_validate1(clicon_handle h,
     case CGV_STRING:
     case CGV_REST:
         str = cv_string_get(cv);
-        /* Note, if there is no value, eg <s/>, str is NULL. 
+        /* Note, if there is no value, eg <s/>, str is NULL.
          */
         if (restype){
             if (strcmp(restype, "enumeration") == 0){
@@ -753,7 +763,7 @@ ys_cv_validate_leafref(clicon_handle h,
                        char         *body,
                        yang_stmt    *ys,
                        yang_stmt    *yrestype,
-                       yang_stmt   **ysub, 
+                       yang_stmt   **ysub,
                        char        **reason)
 {
     int        retval = -1;
@@ -773,7 +783,7 @@ ys_cv_validate_leafref(clicon_handle h,
     }
     if (yang_path_arg(ys, path_arg, &yref) < 0)
         goto done;
-    if (yref == NULL){ 
+    if (yref == NULL){
         clicon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", path_arg);
         goto done;
     }
@@ -799,16 +809,17 @@ ys_cv_validate_leafref(clicon_handle h,
     goto done;
 }
 
-/*!
+/*! Validate union
+ *
  * @param[in]  h      Clixon handle
  * @param[in]  ys     Yang statement (union)
  * @param[out] reason If given, and return value is 0, contains malloced string
  * param[in]   yt     One of the types in the union
  * param[in]   type   Original type
  * @param[in]  val    Value to match
- * @retval     -1     Error (fatal), with errno set to indicate error
- * @retval     0      Validation not OK, malloced reason is returned. Free reason with free()
  * @retval     1      Validation OK
+ * @retval     0      Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval    -1      Error (fatal), with errno set to indicate error
  */
 static int
 ys_cv_validate_union_one(clicon_handle h,
@@ -824,7 +835,7 @@ ys_cv_validate_union_one(clicon_handle h,
     cvec        *cvv = NULL;
     cvec        *regexps = NULL;
     cvec        *patterns = NULL;
-    uint8_t      fraction = 0; 
+    uint8_t      fraction = 0;
     char        *restype;
     enum cv_type cvtype;
     cg_var      *cvt=NULL;
@@ -886,7 +897,7 @@ ys_cv_validate_union_one(clicon_handle h,
                                            regexps) < 0)
                 goto done;
         }
-        if ((retval = cv_validate1(h, cvt, cvtype, options, cvv, 
+        if ((retval = cv_validate1(h, cvt, cvtype, options, cvv,
                                    regexps, yrestype, restype, reason)) < 0)
             goto done;
     }
@@ -901,6 +912,7 @@ ys_cv_validate_union_one(clicon_handle h,
 }
 
 /*! Validate union
+ *
  * @param[in]  h        Clixon handle
  * @param[in]  ys       Yang statement (union)
  * @param[out] reason   If given, and return value is 0, contains malloced string
@@ -908,16 +920,16 @@ ys_cv_validate_union_one(clicon_handle h,
  * param[in]   type     Original type
  * @param[in]  val      Value to match
  * @param[out] ysubp    Sub-type of ys that matches val
- * @retval     -1       Error (fatal), with errno set to indicate error
- * @retval     0        Validation not OK, malloced reason is returned. Free reason with free()
  * @retval     1        Validation OK
+ * @retval     0        Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval    -1        Error (fatal), with errno set to indicate error
  */
 static int
 ys_cv_validate_union(clicon_handle h,
                      yang_stmt    *ys,
                      char        **reason,
                      yang_stmt    *yrestype,
-                     char         *type,  
+                     char         *type,
                      char         *val,
                      yang_stmt   **ysubp)
 {
@@ -959,27 +971,27 @@ ys_cv_validate_union(clicon_handle h,
 
 /*! Validate cligen variable cv using yang statement as spec
  *
- * @param[in]  h       Clicon handle     
+ * @param[in]  h       Clixon handle     
  * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
  * @param[in]  ys      A yang statement, must be leaf or leaf-list.
  * @param[out] ysub    Sub-type that matches val (in case of union, otherwise ys)
  * @param[out] reason  If given, and if return value is 0, contains malloced 
  *                     string describing reason why validation failed. 
- * @retval -1  Error (fatal), with errno set to indicate error
- * @retval 0   Validation not OK, malloced reason is returned. Free reason with free()
- * @retval 1   Validation OK
+ * @retval     1       Validation OK
+ * @retval     0       Validation not OK, malloced reason is returned. Free reason with free()
+ * @retval    -1       Error (fatal), with errno set to indicate error
  * See also cv_validate - the code is similar.
  * @note reason if given must be freed by caller
  */
 int
 ys_cv_validate(clicon_handle h,
-               cg_var       *cv, 
-               yang_stmt    *ys, 
-               yang_stmt   **ysub, 
+               cg_var       *cv,
+               yang_stmt    *ys,
+               yang_stmt   **ysub,
                char        **reason)
 {
-    int             retval = -1; 
-    cg_var         *ycv;        /* cv of yang-statement */  
+    int             retval = -1;
+    cg_var         *ycv;        /* cv of yang-statement */
     int             options = 0;
     cvec           *cvv = NULL;
     cvec           *patterns = NULL;
@@ -988,7 +1000,7 @@ ys_cv_validate(clicon_handle h,
     char           *origtype = NULL;  /* orig type */
     yang_stmt      *yrestype; /* resolved type */
     char           *restype;
-    uint8_t         fraction = 0; 
+    uint8_t         fraction = 0;
     int             retval2;
     char           *val;
     cg_var         *cvt=NULL;
@@ -1008,7 +1020,7 @@ ys_cv_validate(clicon_handle h,
         clicon_err(OE_UNIX, errno, "cvec_new");
         goto done;
     }
-    if (yang_type_get(ys, &origtype, &yrestype, 
+    if (yang_type_get(ys, &origtype, &yrestype,
                       &options, &cvv,
                       patterns, regexps,
                       &fraction) < 0)
@@ -1022,13 +1034,13 @@ ys_cv_validate(clicon_handle h,
         if (cvtype == CGV_STRING && cv_type_get(ycv) == CGV_REST)
             ;
         else {
-            clicon_err(OE_DB, 0, "Type mismatch data:%s != yang:%s", 
+            clicon_err(OE_DB, 0, "Type mismatch data:%s != yang:%s",
                        cv_type2str(cvtype), cv_type2str(cv_type_get(ycv)));
             goto done;
         }
     }
     /* Note restype can be NULL here for example with unresolved hardcoded uuid */
-    if (restype && strcmp(restype, "union") == 0){ 
+    if (restype && strcmp(restype, "union") == 0){
         if (cvtype != CGV_REST){
             clicon_err(OE_YANG, 0, "union must be rest cv type but is %d", cvtype);
             goto done;
@@ -1136,7 +1148,7 @@ ys_typedef_up(yang_stmt *ys)
  * @see xml_find_identity
  */
 yang_stmt *
-yang_find_identity(yang_stmt *ys, 
+yang_find_identity(yang_stmt *ys,
                    char      *identity)
 {
     char        *id = NULL;
@@ -1189,7 +1201,7 @@ yang_find_identity(yang_stmt *ys,
  * @see xml_find_identity
  */
 yang_stmt *
-yang_find_identity_nsc(yang_stmt *yspec, 
+yang_find_identity_nsc(yang_stmt *yspec,
                        char      *identity,
                        cvec      *nsc)
 {
@@ -1198,7 +1210,7 @@ yang_find_identity_nsc(yang_stmt *yspec,
     yang_stmt   *ymodule;
     yang_stmt   *yid = NULL;
     char        *ns = NULL;
-    
+
     if (nodeid_split(identity, &prefix, &id) < 0)
         goto done;
     if ((ns = xml_nsctx_get(nsc, prefix)) == NULL)
@@ -1226,13 +1238,13 @@ yang_find_identity_nsc(yang_stmt *yspec,
  *                       If options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH
  * @param[out] regexps   Pointer to cvec of compiled patterns
  * @param[out] fraction  For decimal64, how many digits after period
+ * @retval     0         OK
  * @retval    -1         Error
- * @retval     0         OK. 
  */
 static int
 yang_type_resolve_restrictions(yang_stmt   *ytype,
-                               int         *options, 
-                               cvec       **cvv, 
+                               int         *options,
+                               cvec       **cvv,
                                cvec        *regexps,
                                uint8_t     *fraction)
 {
@@ -1268,7 +1280,7 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
             cv_string_set(cv, pattern);
         }
     }
-    if (options && fraction && 
+    if (options && fraction &&
         (ys = yang_find(ytype, Y_FRACTION_DIGITS, NULL)) != NULL){
         *fraction  = cv_uint8_get(yang_cv_get(ys));
         *options  |= YANG_OPTIONS_FRACTION_DIGITS;
@@ -1279,6 +1291,7 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
 }
 
 /*! Recursively resolve a yang type to built-in type with optional restrictions
+ *
  * @param[in]  yorig    (original) type yang-stmt where original search is based
  * @param[in]  ys       (transitive) yang-stmt where current search is based
  * @param[in]  ytype    yang-stmt object containing currently resolving type
@@ -1291,8 +1304,8 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
  * @param[out] regexps  Initialized cvec of compiled regexps (if any)
  * @param[out] fraction for decimal64, how many digits after period
  *                      Present if options&YANG_OPTIONS_FRACTION_DIGITS
- * @retval      0        OK. Note yrestype may still be NULL.
- * @retval     -1        Error, clicon_err handles errors
+ * @retval      0       OK. Note yrestype may still be NULL.
+ * @retval     -1       Error, clicon_err handles errors
  * The setting of the options argument has the following semantics:
  *   options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH --> cvv is set containing
  *                   array of range_min, range_max cv:s
@@ -1301,13 +1314,13 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
  * Note that the static output strings (type, pattern) should be copied if used asap.
  * Note also that for all pointer arguments, if NULL is given, no value is assigned.
  */
-int 
+int
 yang_type_resolve(yang_stmt   *yorig,
-                  yang_stmt   *ys, 
-                  yang_stmt   *ytype, 
-                  yang_stmt  **yrestype, 
-                  int         *options, 
-                  cvec       **cvv, 
+                  yang_stmt   *ys,
+                  yang_stmt   *ytype,
+                  yang_stmt  **yrestype,
+                  int         *options,
+                  cvec       **cvv,
                   cvec        *patterns,
                   cvec        *regexps,
                   uint8_t     *fraction)
@@ -1344,7 +1357,7 @@ yang_type_resolve(yang_stmt   *yorig,
 #endif
     /* Check if type is basic type. If so, return that */
     if ((prefix == NULL && yang_builtin(type))){
-        *yrestype = ytype; 
+        *yrestype = ytype;
         if (yang_type_resolve_restrictions(ytype, options, cvv, patterns, fraction) < 0)
             goto done;
         goto ok;
@@ -1384,7 +1397,7 @@ yang_type_resolve(yang_stmt   *yorig,
             goto done;
         }
         /* recursively resolve this new type */
-        if (yang_type_resolve(yorig, ys, rytype, yrestype, 
+        if (yang_type_resolve(yorig, ys, rytype, yrestype,
                               options, cvv,
                               patterns, regexps,
                               fraction) < 0)
@@ -1443,8 +1456,8 @@ yang_type_resolve(yang_stmt   *yorig,
  * @param[out] regexps  Initialized cvec of compiled regexps (if any)
  * @param[out] fraction for decimal64, how many digits after period
  *                      Present if options&YANG_OPTIONS_FRACTION_DIGITS
- * @retval      0       OK, but note that restype==NULL means not resolved.
- * @retval     -1       Error, clicon_err handles errors
+ * @retval     0        OK, but note that restype==NULL means not resolved.
+ * @retval    -1        Error, clicon_err handles errors
  * The setting of the options argument has the following semantics:
  *   options&YANG_OPTIONS_RANGE or YANG_OPTIONS_LENGTH --> cvv is set containing
  *                   array of range_min, range_max cv:s
@@ -1453,12 +1466,12 @@ yang_type_resolve(yang_stmt   *yorig,
  * Note also that for all pointer arguments, if NULL is given, no value is assigned.
  * @See yang_type_resolve(). This function is really just a frontend to that.
  */
-int 
-yang_type_get(yang_stmt    *ys, 
-              char        **origtype, 
-              yang_stmt   **yrestype, 
-              int          *options, 
-              cvec        **cvv, 
+int
+yang_type_get(yang_stmt    *ys,
+              char        **origtype,
+              yang_stmt   **yrestype,
+              int          *options,
+              cvec        **cvv,
               cvec         *patterns,
               cvec         *regexps,
               uint8_t      *fraction
@@ -1483,7 +1496,7 @@ yang_type_get(yang_stmt    *ys,
         clicon_err(OE_XML, errno, "stdup");
         goto done;
     }
-    if (yang_type_resolve(ys, ys, ytype, yrestype, 
+    if (yang_type_resolve(ys, ys, ytype, yrestype,
                           options, cvv, patterns, regexps, fraction) < 0)
         goto done;
     if (yrestype && *yrestype == NULL){
@@ -1498,6 +1511,7 @@ yang_type_get(yang_stmt    *ys,
 }
 
 /*! Utility function to translate a leaf/leaf-list to its base CV-type only
+ *
  * @see yang_type_get  Full leaf/list type api
  */
 enum cv_type
@@ -1507,7 +1521,7 @@ yang_type2cv(yang_stmt  *ys)
     char           *restype;  /* resolved type */
     char           *origtype=NULL;   /* original type */
     enum cv_type    cvtype = CGV_ERR;
-    
+
     /* Find type specification */
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL)
  < 0)

@@ -53,7 +53,7 @@ struct clicon_msg {
 
 /*
  * Prototypes
- */ 
+ */
 char *format_int2str(enum format_enum showas);
 enum format_enum format_str2int(char *str);
 
@@ -68,7 +68,7 @@ int clicon_rpc_connect_unix(clicon_handle         h,
                             int                  *sock0);
 
 int clicon_rpc_connect_inet(clicon_handle         h,
-                            char                 *dst, 
+                            char                 *dst,
                             uint16_t              port,
                             int                  *sock0);
 

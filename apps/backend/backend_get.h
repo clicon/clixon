@@ -39,7 +39,7 @@
 
 /*
  * Prototypes
- */ 
+ */
 int from_client_get_config(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_get(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_get_pageable_list(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg); /* XXX */

@@ -80,8 +80,8 @@
  * @see clicon_strsplit
  */
 char **
-clicon_strsep(char *string, 
-              char *delim, 
+clicon_strsep(char *string,
+              char *delim,
               int  *nvec0)
 {
     char **vec = NULL;
@@ -92,7 +92,7 @@ clicon_strsep(char *string,
     size_t siz;
     char *s;
     char *d;
-    
+
     if ((s = string)==NULL)
         goto done;
     while (*s){
@@ -103,9 +103,9 @@ clicon_strsep(char *string,
     /* alloc vector and append copy of string */
     siz = (nvec+1)* sizeof(char*) + strlen(string)+1;
     if ((vec = (char**)malloc(siz)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc"); 
+        clicon_err(OE_UNIX, errno, "malloc");
         goto done;
-    } 
+    }
     memset(vec, 0, siz);
     ptr = (char*)vec + (nvec+1)* sizeof(char*); /* this is where ptr starts */
     strcpy(ptr, string);
@@ -119,14 +119,14 @@ clicon_strsep(char *string,
 
 /*! Concatenate elements of a string array into a string. 
  *
- * An optional delimiter string can be specified which will be inserted betwen 
+ * An optional delimiter string can be specified which will be inserted between 
  * each element. 
  * @retval  str   Joined string. Free after use.
  * @retval  NULL  Failure
  */
 char *
-clicon_strjoin(int    argc, 
-               char **argv, 
+clicon_strjoin(int    argc,
+               char **argv,
                char  *delim)
 {
     int i;
@@ -165,7 +165,7 @@ clixon_string_del_join(char *str1,
 {
     char *str;
     int   len;
-    
+
     if (str2 == NULL){
         clicon_err(OE_UNIX, EINVAL, "str2 is NULL");
         return NULL;
@@ -212,7 +212,7 @@ clixon_strsplit(char     *string,
 {
     int   retval = -1;
     char *str;
-    
+
     if ((str = strchr(string, delim)) == NULL){
         if (suffix && (*suffix = strdup(string)) == NULL){
             clicon_err(OE_YANG, errno, "strdup");
@@ -281,7 +281,7 @@ uri_unreserved(unsigned char in)
  * @see xml_chardata_encode
  */
 int
-uri_percent_encode(char **encp, 
+uri_percent_encode(char **encp,
                    const char *fmt, ...)
 {
     int     retval = -1;
@@ -310,7 +310,7 @@ uri_percent_encode(char **encp,
     /* This is max */
     len = strlen(str)*3+1;
     if ((enc = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc"); 
+        clicon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(enc, 0, len);
@@ -344,7 +344,7 @@ uri_percent_encode(char **encp,
  * @see uri_percent_encode
  */
 int
-uri_percent_decode(char  *enc, 
+uri_percent_decode(char  *enc,
                    char **strp)
 {
     int   retval = -1;
@@ -353,7 +353,7 @@ uri_percent_decode(char  *enc,
     char  hstr[3];
     size_t len;
     char *ptr;
-    
+
     if (enc == NULL){
         clicon_err(OE_UNIX, EINVAL, "enc is NULL");
         goto done;
@@ -361,14 +361,14 @@ uri_percent_decode(char  *enc,
     /* This is max */
     len = strlen(enc)+1;
     if ((str = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc"); 
+        clicon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, len);
     len = strlen(enc);
     j = 0;
     for (i=0; i<len; i++){
-        if (enc[i] == '%' && strlen(enc)-i > 2 && 
+        if (enc[i] == '%' && strlen(enc)-i > 2 &&
             isxdigit(enc[i+1]) && isxdigit(enc[i+2])){
             hstr[0] = enc[i+1];
             hstr[1] = enc[i+2];
@@ -429,7 +429,7 @@ xml_chardata_encode(char      **escp,
     int     cdata; /* when set, skip encoding */
     va_list args;
     size_t  slen;
-    
+
     /* Two steps: (1) read in the complete format string */
     va_start(args, fmt); /* dryrun */
     fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
@@ -477,7 +477,7 @@ xml_chardata_encode(char      **escp,
     len++; /* trailing \0 */
     /* We know length, allocate encoding buffer  */
     if ((esc = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc"); 
+        clicon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(esc, 0, len);
@@ -613,7 +613,7 @@ xml_chardata_decode_ampersand(char *str,
     uint32_t code;
     cbuf    *cb = NULL;
     int      ret;
-    
+
     if ((semi = index(str, ';')) == NULL)
         goto fail;
     *semi = '\0';
@@ -666,8 +666,10 @@ xml_chardata_decode_ampersand(char *str,
 
 /*! Decode escape characters according to XML definition
  *
- * @param[out]  decp   Decoded malloced output string
- * @param[in]   fmt    Encoded input string (stdarg format string)
+ * @param[out] decp  Decoded malloced output string
+ * @param[in]  fmt   Encoded input string (stdarg format string)
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see xml_chardata_encode for encoding
  */
 int
@@ -703,7 +705,7 @@ xml_chardata_decode(char      **decp,
      * First allocate decoded string, encoded is always >= larger */
     slen = strlen(str);
     if ((dec = malloc(slen+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc"); 
+        clicon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     j = 0;
@@ -758,9 +760,9 @@ xml_chardata_decode(char      **decp,
  * XXX differentiate between error and null cvec.
  */
 int
-uri_str2cvec(char  *string, 
-             char   delim1, 
-             char   delim2, 
+uri_str2cvec(char  *string,
+             char   delim1,
+             char   delim2,
              int    decode,
              cvec **cvp)
 {
@@ -847,7 +849,7 @@ uri_str2cvec(char  *string,
  * @note linear search
  */
 const char *
-clicon_int2str(const map_str2int *mstab, 
+clicon_int2str(const map_str2int *mstab,
                int                i)
 {
     const struct map_str2int *ms;
@@ -867,7 +869,7 @@ clicon_int2str(const map_str2int *mstab,
  * @see clicon_str2int_search for optimized lookup, but strings must be sorted
  */
 int
-clicon_str2int(const map_str2int *mstab, 
+clicon_str2int(const map_str2int *mstab,
                char              *str)
 {
     const struct map_str2int *ms;
@@ -891,7 +893,7 @@ clicon_str2int(const map_str2int *mstab,
  * @note Assumes sorted strings, tree search
  */
 static int
-str2int_search1(const map_str2int *mstab, 
+str2int_search1(const map_str2int *mstab,
                 char              *str,
                 int                low,
                 int                upper,
@@ -928,13 +930,13 @@ str2int_search1(const map_str2int *mstab,
  * @note -1 can not be value
  */
 int
-clicon_str2int_search(const map_str2int *mstab, 
+clicon_str2int_search(const map_str2int *mstab,
                       char              *str,
                       int                len)
 {
     int found;
 
-    if (str2int_search1(mstab, str, 0, len, len, &found)) 
+    if (str2int_search1(mstab, str, 0, len, len, &found))
         return found;
     return -1; /* not found */
 }
@@ -947,7 +949,7 @@ clicon_str2int_search(const map_str2int *mstab,
  * @retval    NULL  Error, not found
  */
 char*
-clicon_str2str(const map_str2str *mstab, 
+clicon_str2str(const map_str2str *mstab,
                char              *str)
 {
     const struct map_str2str *ms;
@@ -984,7 +986,8 @@ nodeid_split(char  *nodeid,
     return clixon_strsplit(nodeid, ':', prefix, id);
 }
 
-/*! Trim blanks from front and end of a string, return new string 
+/*! Trim blanks from front and end of a string, return new string
+ *
  * @param[in]  str 
  * @retval     s   Pointer into existing str after trimming blanks
  */
@@ -1006,6 +1009,7 @@ clixon_trim(char *str)
 }
 
 /*! Trim blanks from front and end of a string, return new string 
+ *
  * @param[in]  str 
  * @param[in]  trims  Characters to trim: a vector of characters
  * @retval     s      Pointer into existing str after trimming blanks
@@ -1029,6 +1033,7 @@ clixon_trim2(char *str,
 }
 
 /*! check string equals (NULL is equal) 
+ *
  * @param[in]  s1  String 1
  * @param[in]  s2  String 2
  * @retval     0   Equal
@@ -1036,10 +1041,10 @@ clixon_trim2(char *str,
  * @retval    >0   s1 is greater than s2
  */
 int
-clicon_strcmp(char *s1, 
+clicon_strcmp(char *s1,
               char *s2)
 {
-    if (s1 == NULL && s2 == NULL) 
+    if (s1 == NULL && s2 == NULL)
         return 0;
     if (s1 == NULL) /* empty string first */
         return -1;
@@ -1056,13 +1061,13 @@ clicon_strcmp(char *s1,
  * @retval     0        OK
  * @retval    -1        Error
  */
-static int 
+static int
 clixon_unicode2utf8_one(uint16_t uc16,
                         char    *utfstr,
                         size_t   utflen)
 {
     int retval = -1;
-    
+
     if (utflen < 5){
         clicon_err(OE_UNIX, EINVAL, "Length of utfstr is not >=4");
         goto done;
@@ -1094,7 +1099,7 @@ clixon_unicode2utf8_one(uint16_t uc16,
  * @retval     0        OK
  * @retval    -1        Error
  */
-int 
+int
 clixon_unicode2utf8(char  *ucstr,
                     char  *utfstr,
                     size_t utflen)
@@ -1141,7 +1146,7 @@ clixon_unicode2utf8(char  *ucstr,
  */
 #ifndef HAVE_STRNDUP
 char *
-clicon_strndup(const char *str, 
+clicon_strndup(const char *str,
                size_t      len)
 {
   char *new;

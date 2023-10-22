@@ -60,10 +60,11 @@
 #include "clixon/clixon.h"
 
 /*! libxml2 regex implementation
+ *
  * @see http://www.w3.org/TR/2004/REC-xmlschema-2-20041028
- * @retval -1   Error
- * @retval  0   Not match
  * @retval  1   Match
+ * @retval  0   Not match
+ * @retval -1   Error
  */
 static int
 regex_libxml2(char *regexp0,
@@ -110,7 +111,7 @@ regex_posix(char *regexp,
     
     if (regexp_xsd2posix(regexp, &posix) < 0)
         goto done;
-    clicon_debug(1, "posix: %s", posix);
+    clixon_debug(CLIXON_DBG_DEFAULT, "posix: %s", posix);
     len0 = strlen(posix);
     if (len0 > sizeof(pattern)-5){
         fprintf(stderr, "pattern too long\n");
@@ -200,8 +201,8 @@ main(int    argc,
             usage(argv[0]);
             break;
         }
-    clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR); 
-    clicon_debug_init(dbg, NULL);
+    clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR);
+    clixon_debug_init(dbg, NULL);
 
     if (regexp == NULL){
         fprintf(stderr, "-r mandatory\n");
@@ -215,8 +216,8 @@ main(int    argc,
         fprintf(stderr, "Neither posix or libxml2 set\n");
         usage(argv0);
     }
-    clicon_debug(1, "regexp:%s", regexp);
-    clicon_debug(1, "content:%s", content);
+    clixon_debug(CLIXON_DBG_DEFAULT, "regexp:%s", regexp);
+    clixon_debug(CLIXON_DBG_DEFAULT, "content:%s", content);
     if (mode == 0){
         if ((ret = regex_posix(regexp, content, nr, dbg)) < 0)
             goto done;

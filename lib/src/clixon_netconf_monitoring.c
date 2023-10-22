@@ -99,7 +99,7 @@ per_datastore(clicon_handle h,
 
 /*! Get netconf monitoring datastore state
  *
- * @param[in]     h       Clicon handle
+ * @param[in]     h       Clixon handle
  * @param[in]     yspec   Yang spec
  * @param[in,out] cb      CLIgen buffer
  * @retval        0       OK
@@ -130,7 +130,7 @@ netconf_monitoring_datastores(clicon_handle h,
 
 /*! Get netconf monitoring schema state
  *
- * @param[in]     h       Clicon handle
+ * @param[in]     h       Clixon handle
  * @param[in]     yspec   Yang spec
  * @param[in,out] cb      CLIgen buffer
  * @retval        0       OK
@@ -181,7 +181,7 @@ netconf_monitoring_schemas(clicon_handle h,
 
 /*! Get netconf monitoring statistics state
  *
- * @param[in]     h       Clicon handle
+ * @param[in]     h       Clixon handle
  * @param[in]     yspec   Yang spec
  * @param[in,out] cb      CLIgen buffer
  * @retval        0       OK
@@ -197,7 +197,7 @@ netconf_monitoring_statistics(clicon_handle h,
     char *str;
     cvec *cvv = NULL;
     cg_var *cv;
-        
+
     cprintf(cb, "<statistics>");
     if (clicon_data_get(h, "netconf-start-time", &str) == 0 &&
         str != NULL){
@@ -230,7 +230,7 @@ netconf_monitoring_statistics(clicon_handle h,
  *
  * Netconf monitoring state is:
  *   capabilities, datastores, schemas, sessions, statistics
- * @param[in]     h       Clicon handle
+ * @param[in]     h       Clixon handle
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   XML Xpath
  * @param[in]     nsc     XML Namespace context for xpath
@@ -253,7 +253,7 @@ netconf_monitoring_state_get(clicon_handle h,
     int    retval = -1;
     cbuf  *cb = NULL;
     int    ret;
-    
+
     if ((cb = cbuf_new()) ==NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
@@ -276,7 +276,7 @@ netconf_monitoring_state_get(clicon_handle h,
     }
     retval = 1;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -289,6 +289,8 @@ netconf_monitoring_state_get(clicon_handle h,
  *
  * @param[in]  cvv   Cligen vector
  * @param[in]  name  Name of new counter
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 static int
 stat_counter_add(cvec *cvv,
@@ -310,7 +312,9 @@ stat_counter_add(cvec *cvv,
 
 /*! Init RFC6022 stats
  *
- * @param[in]  h   Clicon handle
+ * @param[in]  h   Clixon handle
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 int
 netconf_monitoring_statistics_init(clicon_handle h)
@@ -353,12 +357,12 @@ netconf_monitoring_statistics_init(clicon_handle h)
  *
  * @param[in]  h     Clixon handle
  * @param[in]  name  Name of counter
+ * @retval     0       OK
  */
 int
 netconf_monitoring_counter_inc(clicon_handle h,
                                char         *name)
 {
-    int      retval = -1;
     cvec    *cvv = NULL;
     cg_var  *cv;
     uint32_t u32;
@@ -370,6 +374,5 @@ netconf_monitoring_counter_inc(clicon_handle h,
             cv_uint32_set(cv, u32);
         }
     }
-    retval = 0;
-    return retval;
+    return 0;
 }

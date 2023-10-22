@@ -45,7 +45,7 @@
 
 /*
  * Constants
- */ 
+ */
 #define ERR_STRLEN 256
 
 /* Special error number for clicon_suberrno
@@ -57,9 +57,9 @@
  * Types
  * Add error category here, 
  * @see EV variable in clixon_err.c but must also add an entry there
- */ 
+ */
 enum clicon_err{
-    /* 0 means error not set) */  
+    /* 0 means error not set) */
     OE_DB = 1,   /* database registries */
     OE_DAEMON,   /* daemons: pidfiles, etc */
     OE_EVENTS,   /* events, filedescriptors, timeouts */
@@ -79,11 +79,12 @@ enum clicon_err{
     OE_UNDEF,
     /*-- From here error extensions using clixon_err_cat_reg, XXX register dynamically? --*/
     OE_SSL,      /* Openssl errors, see eg ssl_get_error and clixon_openssl_log_cb */
-    OE_SNMP ,    /* Netsnmp error */    
+    OE_SNMP ,    /* Netsnmp error */
     OE_NGHTTP2,  /* nghttp2 errors, see HAVE_LIBNGHTTP2 */
 };
 
-/* Clixon error category log callback 
+/*! Clixon error category log callback
+ *
  * @param[in]    handle  Application-specific handle
  * @param[in]    suberr  Application-specific handle
  * @param[out]   cb      Read log/error string into this buffer

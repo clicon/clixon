@@ -128,7 +128,7 @@
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clicon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(1,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
@@ -166,7 +166,7 @@ static clixon_path *
 path_append(clixon_path *list,
             clixon_path *new)
 {
-    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (new == NULL)
         return NULL;
     ADDQ(new, list);
@@ -174,6 +174,7 @@ path_append(clixon_path *list,
 }
 
 /*! Add keyvalue to existing clixon path 
+ *
  * If cvk has one integer argument, interpret as position, eg x/y[42] 
  * else as keyvalue strings, eg x/y[k1="foo"][k2="bar"]
  */
@@ -181,7 +182,7 @@ static clixon_path *
 path_add_keyvalue(clixon_path *cp,
                   cvec        *cvk)
 {
-    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cp == NULL)
         goto done;
     cp->cp_cvk = cvk;
@@ -195,7 +196,7 @@ path_new(char *prefix,
 {
     clixon_path *cp = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, prefix, id);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, prefix, id);
     if ((cp = malloc(sizeof(*cp))) == NULL){
         clicon_err(OE_UNIX, errno, "malloc");
         goto done;
@@ -225,7 +226,7 @@ keyval_pos(char *uint)
     char   *reason=NULL;
     int     ret;
     
-    clicon_debug(CLIXON_DBG_DETAIL, "%s(%s)", __FUNCTION__, uint);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s)", __FUNCTION__, uint);
     if ((cvv = cvec_new(1)) == NULL) {
         clicon_err(OE_UNIX, errno, "cvec_new");
         goto done;
@@ -249,16 +250,17 @@ keyval_pos(char *uint)
 }
 
 /*! Append a key-value cv to a cvec, create the cvec if not exist
+ *
  * @param[in] cvv  Either created cvv or NULL, in whihc case it is created
  * @param[in] cv   Is consumed by thius function (if appended)
- * @retval    NULL Error
  * @retval    cvv  Cvec
+ * @retval    NULL Error
  */
 static cvec *
 keyval_add(cvec   *cvv,
            cg_var *cv)
 {
-    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cv == NULL)
         goto done;
     if (cvv == NULL &&
@@ -284,7 +286,7 @@ keyval_set(char *name,
 {
     cg_var *cv = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name, val);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name, val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
         clicon_err(OE_UNIX, errno, "cv_new");
         goto done;

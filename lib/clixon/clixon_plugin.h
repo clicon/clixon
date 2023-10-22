@@ -50,7 +50,7 @@
 /*
  * Types
  */
-    
+
 /*! Registered RPC callback function 
  *
  * @param[in]  h       Clicon handle 
@@ -62,11 +62,11 @@
  * @retval    -1       Error
  */
 typedef int (*clicon_rpc_cb)(
-    clicon_handle h,       
-    cxobj        *xn,      
-    cbuf         *cbret,   
-    void         *arg,     
-    void         *regarg   
+    clicon_handle h,
+    cxobj        *xn,
+    cbuf         *cbret,
+    void         *arg,
+    void         *regarg
 );
 
 /*! Registered Upgrade callback function 
@@ -84,22 +84,22 @@ typedef int (*clicon_rpc_cb)(
  * @retval    -1       Error
  */
 typedef int (*clicon_upgrade_cb)(
-    clicon_handle h,       
-    cxobj        *xn,      
+    clicon_handle h,
+    cxobj        *xn,
     char         *ns,
     uint16_t      op,
     uint32_t      from,
     uint32_t      to,
-    void         *arg,     
+    void         *arg,
     cbuf         *cbret
-);  
+);
 
 /* Clixon authentication type
  * @see http-auth-type in clixon-restconf.yang
  * For now only used by restconf frontend
  */
 enum clixon_auth_type {
-    CLIXON_AUTH_NONE = 0,           /* Message is authenticated automatically to 
+    CLIXON_AUTH_NONE = 0,           /* Message is authenticated automatically to
                                        anonymous user, maye be changed by ca-auth callback 
                                        FEATURE clixon-restconf:allow-auth-none must be enabled */
     CLIXON_AUTH_CLIENT_CERTIFICATE, /* TLS Client certification authentication */
@@ -108,13 +108,15 @@ enum clixon_auth_type {
 };
 typedef enum clixon_auth_type clixon_auth_type_t;
 
-/* Common plugin function names, function types and signatures. 
+/*! Common plugin function names, function types and signatures.
+ *
  * This plugin code is exytended by backend, cli, netconf, restconf plugins
  *   Cli     see cli_plugin.c
  *   Backend see config_plugin.c
  */
 
-/* Called when application is "started", (almost) all initialization is complete 
+/*! Called when application is "started", (almost) all initialization is complete 
+ *
  * Backend: daemon is in the background. If daemon privileges are dropped 
  *          this callback is called *before* privileges are dropped.
  * @param[in] h    Clixon handle
@@ -203,7 +205,7 @@ typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type
  * @retval     0   OK
  * @retval    -1   Fatal error
 */
-typedef int (plgreset_t)(clicon_handle h, const char *db); 
+typedef int (plgreset_t)(clicon_handle h, const char *db);
 
 /* Provide state data from plugin
  *
@@ -215,7 +217,7 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  *
  * @param[in]  h          Clicon handle
  * @param[in]  xpath      Part of state requested
- * @param[in]  nsc        XPATH namespace context.
+ * @param[in]  nsc        XPath namespace context.
  * @param[out] xtop       XML tree where statedata is added
  * @retval     0          OK
  * @retval    -1          Fatal error
@@ -226,7 +228,8 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  */
 typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
 
-/* Pagination-data type
+/*! Pagination-data type
+ *
  * @see pagination_data_t in for full pagination data structure
  * @see pagination_offset() and other accessor functions
  */
@@ -243,7 +246,8 @@ typedef void *pagination_data;
 */
 typedef int (plglockdb_t)(clicon_handle h, char *db, int lock, int id);
 
-/* Transaction-data type
+/*! Transaction-data type
+ *
  * @see transaction_data_t and clixon_backend_transaction.h for full transaction API 
  */
 typedef void *transaction_data;
@@ -252,6 +256,7 @@ typedef void *transaction_data;
 typedef int (trans_cb_t)(clicon_handle h, transaction_data td);
 
 /*! Hook to override default prompt with explicit function
+ *
  * Format prompt before each getline 
  * @param[in] h      Clicon handle
  * @param[in] mode   Cligen syntax mode
@@ -311,6 +316,7 @@ typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, int *config,
 typedef int (yang_patch_t)(clicon_handle h, yang_stmt *ymod);
 
 /*! Startup status for use in startup-callback
+ *
  * Note that for STARTUP_ERR and STARTUP_INVALID, running runs in failsafe mode
  * and startup contains the erroneous or invalid database.
  * The user should repair the startup and 
@@ -400,6 +406,7 @@ typedef struct clixon_plugin_api clixon_plugin_api;
 typedef struct clixon_plugin clixon_plugin_t;
 
 /*! Structure for checking status before and after a plugin call
+ *
  * The internal struct is defined in clixon_plugin.c */
 typedef struct plugin_context plugin_context_t;
 

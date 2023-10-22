@@ -64,8 +64,8 @@ static const char Pad64 = '=';
  @note what is copyright of this?
  */
 int
-b64_decode(const char *src, 
-           char       *target, 
+b64_decode(const char *src,
+           char       *target,
            size_t      targsize)
 {
     int tarindex, state, ch;
@@ -185,14 +185,15 @@ b64_decode(const char *src,
 }
 
 /*! HTTP basic authentication example (note hardwired)
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
  *                       String: Credentials OK, the associated user, must be mallloc:ed
  *                       Parameter signtificant only if retval is 1/OK
- * @retval    -1         Fatal error
- * @retval     0         Ignore, undecided, not handled, same as no callback
  * @retval     1         OK, see authp parameter for result.
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval    -1         Fatal error
  * @note authp should be malloced
  * @note: Three hardwired users: andy, wilma, guest w password "bar".
  */
@@ -211,14 +212,14 @@ example_basic_auth(clicon_handle      h,
     size_t  authlen;
     int     ret;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (authp == NULL){
         clicon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
         goto done;
-    }    
+    }
     /* At this point in the code we must use HTTP basic authentication */
     if ((auth = restconf_param_get(h, "HTTP_AUTHORIZATION")) == NULL)
-        goto fail; 
+        goto fail;
     if (strlen(auth) < strlen("Basic "))
         goto fail;
     if (strncmp("Basic ", auth, strlen("Basic ")))
@@ -237,7 +238,7 @@ example_basic_auth(clicon_handle      h,
         goto fail;
     *passwd = '\0';
     passwd++;
-    clicon_debug(1, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
     /* Here get auth sub-tree where all the users are */
     if ((cb = cbuf_new()) == NULL)
         goto done;
@@ -252,7 +253,7 @@ example_basic_auth(clicon_handle      h,
     user=NULL; /* to avoid free below */
     retval = 1;
  done: /* error */
-    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, authp?"":*authp);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d authp:%s", __FUNCTION__, retval, authp?"":*authp);
     if (user)
        free(user);
     if (cb)
@@ -267,15 +268,16 @@ example_basic_auth(clicon_handle      h,
 }
 
 /*! Authentication callback
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
  * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
  *                       String: Credentials OK, the associated user, must be mallloc:ed
  *                       Parameter signtificant only if retval is 1/OK
- * @retval    -1         Fatal error
- * @retval     0         Ignore, undecided, not handled, same as no callback
  * @retval     1         OK, see authp parameter for result.
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval    -1         Fatal error
  * @note authp should be malloced
  */
 int
@@ -285,8 +287,8 @@ example_restconf_credentials(clicon_handle      h,
                              char             **authp)
 {
     int retval = -1;
-    
-    clicon_debug(1, "%s auth:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s auth:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
     switch (auth_type){
     case CLIXON_AUTH_NONE: /* FEATURE clixon-restconf:allow-auth-none must be enabled */
         retval = 0;
@@ -300,16 +302,16 @@ example_restconf_credentials(clicon_handle      h,
         break;
     }
  done:
-    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
     return retval;
 }
 
 /*! Local example restconf rpc callback 
  */
 int
-restconf_client_rpc(clicon_handle h, 
-                    cxobj        *xe,      
-                    cbuf         *cbret,    
+restconf_client_rpc(clicon_handle h,
+                    cxobj        *xe,
+                    cbuf         *cbret,
                     void         *arg,
                     void         *regarg)
 {
@@ -344,7 +346,7 @@ restconf_client_rpc(clicon_handle h,
 int
 example_restconf_start(clicon_handle h)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     return 0;
 }
 
@@ -359,6 +361,7 @@ static clixon_plugin_api api = {
 };
 
 /*! Restconf plugin initialization
+ *
  * @param[in]  h    Clixon handle
  * @retval     NULL Error with clicon_err set
  * @retval     api  Pointer to API struct
@@ -370,8 +373,8 @@ clixon_plugin_init(clicon_handle h)
     int       argc; /* command-line options (after --) */
     char    **argv = NULL;
     int       c;
-    
-    clicon_debug(1, "%s restconf", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s restconf", __FUNCTION__);
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
         return NULL;

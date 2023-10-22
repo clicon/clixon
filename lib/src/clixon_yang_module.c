@@ -83,6 +83,7 @@
 #include "clixon_yang_parse_lib.h"
 
 /*! Force add ietf-yang-library@2019-01-04 on all mount-points
+ *
  * This is a limitation of of the current implementation
  */
 #define YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
@@ -128,7 +129,7 @@ modstate_diff_free(modstate_diff_t *md)
 /*! Init the Yang module library
  *
  * Load RFC7895 yang spec, module-set-id, etc.
- * @param[in]  h       Clicon handle
+ * @param[in]  h       Clixon handle
  * @retval     0     OK
  * @retval    -1     Error
  * @see netconf_module_load
@@ -139,7 +140,7 @@ yang_modules_init(clicon_handle h)
     int        retval = -1;
     yang_stmt *yspec;
 
-    yspec = clicon_dbspec_yang(h);      
+    yspec = clicon_dbspec_yang(h);
     if (!clicon_option_bool(h, "CLICON_YANG_LIBRARY"))
         goto ok;
     /* Ensure module-set-id is set */
@@ -162,7 +163,8 @@ yang_modules_init(clicon_handle h)
 }
 
 /*! Return RFC7895 revision (if parsed)
- * @param[in]    h        Clicon handle
+ *
+ * @param[in]    h        Clixon handle
  * @retval       revision String (dont free)
  * @retval       NULL     Error: RFC7895 not loaded or revision not found
  */
@@ -287,7 +289,8 @@ yang_modules_state_build(clicon_handle    h,
 }
 
 /*! Get modules state according to RFC 7895
- * @param[in]     h       Clicon handle
+ *
+ * @param[in]     h       Clixon handle
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   XML Xpath
  * @param[in]     nsc     XML Namespace context for xpath
@@ -391,7 +394,7 @@ yang_modules_state_get(clicon_handle    h,
     }
     retval = 1;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     if (cb)
@@ -405,7 +408,8 @@ yang_modules_state_get(clicon_handle    h,
 }
 
 /*! For single module state with namespace, get revisions and send upgrade callbacks
- * @param[in]  h        Clicon handle
+ *
+ * @param[in]  h        Clixon handle
  * @param[in]  xt       Top-level XML tree to be updated (includes other ns as well)
  * @param[in]  xmod     XML module state diff (for one yang module)
  * @param[in]  ns       Namespace of module state we are looking for
@@ -465,7 +469,8 @@ mod_ns_upgrade(clicon_handle h,
 }
 
 /*! Upgrade XML
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  xt   XML tree (to upgrade)
  * @param[in]  msd  Modules-state differences of xt
  * @param[out] cbret Netconf error message if invalid
@@ -514,6 +519,7 @@ clixon_module_upgrade(clicon_handle    h,
 }
 
 /*! Given a yang statement and a prefix, return yang module to that relative prefix
+ *
  * Note, not the other module but the proxy import statement only
  * @param[in]  ys      A yang statement
  * @param[in]  prefix  prefix
@@ -525,7 +531,7 @@ clixon_module_upgrade(clicon_handle    h,
  * @see yang_find_namespace_by_prefix
  */
 yang_stmt *
-yang_find_module_by_prefix(yang_stmt *ys, 
+yang_find_module_by_prefix(yang_stmt *ys,
                            char      *prefix)
 {
     yang_stmt *yimport;
@@ -561,8 +567,8 @@ yang_find_module_by_prefix(yang_stmt *ys,
     }
     if (yimport){
         if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL){
-            clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s", 
-                       prefix); 
+            clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s",
+                       prefix);
             yimport = NULL;
             goto done; /* unresolved */
         }
@@ -571,19 +577,20 @@ yang_find_module_by_prefix(yang_stmt *ys,
     return ymod;
 }
 
-/* Get module from its own prefix 
+/*! Get module from its own prefix 
+ *
  * This is really not a valid usecase, a kludge for the identityref derived
  * list workaround (IDENTITYREF_KLUDGE)
  * Actually, for canonical prefixes it is!
- */ 
+ */
 yang_stmt *
-yang_find_module_by_prefix_yspec(yang_stmt *yspec, 
+yang_find_module_by_prefix_yspec(yang_stmt *yspec,
                                  char      *prefix)
 {
     yang_stmt *ymod = NULL;
     yang_stmt *yprefix;
-    
-    while ((ymod = yn_each(yspec, ymod)) != NULL) 
+
+    while ((ymod = yn_each(yspec, ymod)) != NULL)
         if (yang_keyword_get(ymod) == Y_MODULE &&
             (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
             strcmp(yang_argument_get(yprefix), prefix) == 0)
@@ -602,7 +609,7 @@ yang_find_module_by_prefix_yspec(yang_stmt *yspec,
  * @see yang_find_prefix_by_namespace
  */
 yang_stmt *
-yang_find_module_by_namespace(yang_stmt *yspec, 
+yang_find_module_by_namespace(yang_stmt *yspec,
                               char      *ns)
 {
     yang_stmt *ymod = NULL;
@@ -628,7 +635,7 @@ yang_find_module_by_namespace(yang_stmt *yspec,
  * @note a module may have many revisions, but only the first is significant
  */
 yang_stmt *
-yang_find_module_by_namespace_revision(yang_stmt  *yspec, 
+yang_find_module_by_namespace_revision(yang_stmt  *yspec,
                                        const char *ns,
                                        const char *rev)
 {
@@ -704,12 +711,12 @@ yang_find_module_by_name_revision(yang_stmt  *yspec,
  * @see yang_find_module_by_prefix    module-specific prefix
  */
 yang_stmt *
-yang_find_module_by_name(yang_stmt *yspec, 
+yang_find_module_by_name(yang_stmt *yspec,
                          char      *name)
 {
     yang_stmt *ymod = NULL;
-    
-    while ((ymod = yn_each(yspec, ymod)) != NULL) 
+
+    while ((ymod = yn_each(yspec, ymod)) != NULL)
         if ((yang_keyword_get(ymod) == Y_MODULE || yang_keyword_get(ymod) == Y_SUBMODULE) &&
             strcmp(yang_argument_get(ymod), name)==0)
             return ymod;
@@ -724,7 +731,10 @@ yang_find_module_by_name(yang_stmt *yspec,
  * YANG module that is implemented by the server.
  * Possibly add them to yang parsing, cardinality, etc?
  * as described in Section 3.
- * Note this is called by the module using the extension md:annotate, not by 
+ * @param[in]  h      Clixon handle
+ * @retval     0      OK
+ * @retval    -1      Error
+ * @note this is called by the module using the extension md:annotate, not by 
  * ietf-yang-metadata.yang
  * @see yang_metadata_annotation_check
  */
@@ -738,14 +748,14 @@ ietf_yang_metadata_extension_cb(clicon_handle h,
     char      *modname;
     yang_stmt *ymod;
     char      *name;
-    
+
     ymod = ys_module(yext);
     modname = yang_argument_get(ymod);
     extname = yang_argument_get(yext);
     if (strcmp(modname, "ietf-yang-metadata") != 0 || strcmp(extname, "annotation") != 0)
         goto ok;
     name = cv_string_get(yang_cv_get(ys));
-    clicon_debug(1, "%s Enabled extension:%s:%s:%s", __FUNCTION__, modname, extname, name);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Enabled extension:%s:%s:%s", __FUNCTION__, modname, extname, name);
     /* XXX Nothing yet - this should signal that xml attribute annotations are allowed 
      * Possibly, add an "annotation" YANG node.
      */
@@ -761,7 +771,7 @@ ietf_yang_metadata_extension_cb(clicon_handle h,
  * @param[in]   ys     YANG something
  * @param[out]  ismeta Set to 1 if this is an annotation
  * @retval      0      OK
- * @retval      -1     Error
+ * @retval     -1      Error
  * @see ietf_yang_metadata_extension_cb
  * XXX maybe a cache would be appropriate?
  * XXX: return type?
@@ -775,9 +785,9 @@ yang_metadata_annotation_check(cxobj     *xa,
     yang_stmt *yma = NULL;
     char      *name;
     cg_var    *cv;
-            
+
     /* Loop through annotations */
-    while ((yma = yn_each(ymod, yma)) != NULL){ 
+    while ((yma = yn_each(ymod, yma)) != NULL){
         /* Assume here md:annotation is written using canonical prefix */
         if (yang_keyword_get(yma) != Y_UNKNOWN)
             continue;
@@ -798,8 +808,12 @@ yang_metadata_annotation_check(cxobj     *xa,
 }
 
 /*! In case ietf-yang-metadata is loaded by application, handle annotation extension 
+ *
  * Consider moving fn
  * Must be called after clixon_plugin_module_init
+ * @param[in] h      Clixon handle
+ * @retval    0      OK
+ * @retval   -1      Error
  */
 int
 yang_metadata_init(clicon_handle h)
@@ -823,7 +837,7 @@ yang_metadata_init(clicon_handle h)
  * Skip module if already loaded
  * This function is used where a yang-lib module-set is available to populate
  * an XML mount-point.
- * @param[in] h       Clicon handle
+ * @param[in] h       Clixon handle
  * @param[in] yanglib XML tree on the form <yang-lib>...
  * @param[in] yspec   Will be populated with YANGs, is consumed
  * @retval    1       OK
@@ -849,7 +863,7 @@ yang_lib2yspec(clicon_handle h,
     yang_stmt *yrev;
     int        modmin = 0;
 
-    if (xpath_vec(yanglib, nsc, "module-set/module", &vec, &veclen) < 0) 
+    if (xpath_vec(yanglib, nsc, "module-set/module", &vec, &veclen) < 0)
         goto done;
     for (i=0; i<veclen; i++){
         xi = vec[i];
@@ -858,7 +872,7 @@ yang_lib2yspec(clicon_handle h,
         revision = xml_find_body(xi, "revision");
         if ((ymod = yang_find(yspec, Y_MODULE, name)) != NULL ||
             (ymod = yang_find(yspec, Y_SUBMODULE, name)) != NULL){
-            /* Skip if matching or no revision 
+            /* Skip if matching or no revision
              * Note this algorithm does not work for multiple revisions
              */
             if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL){

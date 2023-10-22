@@ -459,7 +459,8 @@ static const struct ycard _yclist[] = {
 /* Search matrix for lookups */
 static const struct ycard *_yc_search[Y_SPEC][Y_SPEC] = {{0,},{0,}};
 
-/* Set to 1 if exists in search 
+/*! Set to 1 if exists in search 
+ *
  * Some yang statements are not explicitly given cardinalities in RFC7950, although they are
  * present in Section 14 BNF.
  * But since the table above is from the explicit cardinalities in the RFC the others are skipped
@@ -469,9 +470,12 @@ static const struct ycard *_yc_search[Y_SPEC][Y_SPEC] = {{0,},{0,}};
 static int _yc_exist[Y_SPEC] = {0,};
 
 /*! Check cardinality, ie if each yang node has the expected nr of children 
- * @param[in] h        Clicon handle
+ *
+ * @param[in] h        Clixon handle
  * @param[in] yt       Yang statement
  * @param[in] modname  Name of module (for debug message)
+ * @retval    0        OK
+ * @retval   -1        Error
  * 1) For all children, if neither in 0..n, 0..1, 1 or 1..n   ->ERROR 
  * 2) For all in 1 and 1..n list, if 0 such children          ->ERROR
  * 3) For all in 0..1 and 1 list, if >1 such children         ->ERROR
@@ -492,7 +496,7 @@ yang_cardinality(clicon_handle h,
     int                 order;
     yang_stmt          *yprev = NULL;
     int                 nr;
-    
+
     pk = yang_keyword_get(yt);
     if (_yc_exist[pk] == 0)
         goto ok;
@@ -524,7 +528,7 @@ yang_cardinality(clicon_handle h,
                        yang_argument_get(yt),
                        yang_key2str(yang_keyword_get(yprev)),
                        yang_argument_get(yprev));
-            goto done;      
+            goto done;
         }
         if (order < yc->yc_order)
             order = yc->yc_order;
@@ -567,11 +571,13 @@ yang_cardinality(clicon_handle h,
 
 /*! Return cardinality interval [min,max] given yang parent and child keyword.
  *
- * @param[in]  h        Clicon handle
+ * @param[in]  h        Clixon handle
  * @param[in]  parent_key
  * @param[in]  child_key
  * @param[out] minp    0 or 1
  * @param[out] maxp    1 or NMAX (large number)
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 yang_cardinality_interval(clicon_handle h,
@@ -582,7 +588,7 @@ yang_cardinality_interval(clicon_handle h,
 {
     int                 retval = -1;
     const struct ycard *ycplist; /* ycard parent table*/
-    
+
     if ((ycplist = _yc_search[parent_key][child_key]) == NULL){
         clicon_err(OE_YANG, EINVAL, "keys %d %d do not have cardinality",
                    parent_key, child_key);
@@ -595,16 +601,18 @@ yang_cardinality_interval(clicon_handle h,
     return retval;
 }
 
-/*! Init */
+/*! Init 
+ *
+ * @param[in] h      Clixon handle
+ */
 int
 yang_cardinality_init(clicon_handle h)
 {
      const struct ycard *yc;
-    
+
      for (yc = &_yclist[0]; (int)yc->yc_parent; yc++){
          _yc_exist[yc->yc_parent] = 1;
          _yc_search[yc->yc_parent][yc->yc_child] = yc;
      }
      return 0;
 }
-    

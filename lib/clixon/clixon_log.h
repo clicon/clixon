@@ -67,10 +67,15 @@ size_t clicon_log_string_limit_get(void);
 int clicon_get_logflags(void);
 int clicon_log_str(int level, char *msg);
 int clicon_log(int level, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
-int clicon_debug(int dbglevel, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
-int clicon_debug_init(int dbglevel, FILE *f);
-int clicon_debug_get(void);
-
+int clixon_debug(int dbglevel, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
+int clixon_debug_init(int dbglevel, FILE *f);
+int clixon_debug_get(void);
 char *mon2name(int md);
 
+/* 6.4 backward compatability */
+#if 1
+#define clicon_debug clixon_debug
+#define clicon_debug_init clixon_debug_init
+#define clicon_debug_get clixon_debug_get
+#endif
 #endif  /* _CLIXON_LOG_H_ */

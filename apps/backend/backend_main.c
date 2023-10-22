@@ -84,6 +84,7 @@
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
 /*! Clean and close all state of backend (but dont exit). 
+ *
  * Cannot use h after this 
  * @param[in]  h  Clixon handle
  */
@@ -99,7 +100,7 @@ backend_terminate(clicon_handle h)
     int        ss;
     cvec      *nsctx;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((ss = clicon_socket_get(h)) != -1)
         close(ss);
     /* Disconnect datastore */
@@ -142,7 +143,7 @@ backend_terminate(clicon_handle h)
         unlink(sockpath);
     backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     clixon_event_exit();
-    clicon_debug(1, "%s done", __FUNCTION__); 
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s done", __FUNCTION__); 
     clixon_err_exit();
     clicon_log_exit();
     return 0;
@@ -163,19 +164,21 @@ backend_sig_term(int arg)
     clixon_exit_set(1); /* checked in clixon_event_loop() */
 }
 
-/*! wait for killed child
+/*! Wait for killed child
+ *
  * primary use in case restconf daemon forked using process-control API
  * This may cause EINTR in eg select() in clixon_event_loop() which will be ignored
  */
 static void
 backend_sig_child(int arg)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     clicon_sig_child_set(1);
 }
 
 /*! Create backend server socket and register callback
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @retval     s    Server socket file descriptor (see socket(2))
  * @retval    -1    Error
  */
@@ -278,7 +281,7 @@ xmldb_drop_priv(clicon_handle h,
  * - uid is currently 0 (started as root)
  * - CLICON_BACKEND_USER is set
  * - CLICON_BACKEND_PRIVILEGES is not "none"
- * @param[in] h   Clicon handle
+ * @param[in] h   Clixon handle
  * @param[in] gid Group id (assume already known)
  * @retval    0   OK
  * @retval   -1   Error
@@ -425,7 +428,7 @@ backend_timer_setup(int   fd,
     struct timeval t;
     struct timeval t1 = {10, 0};
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     gettimeofday(&now, NULL);
 
     backend_client_print(h, stderr);
@@ -588,7 +591,7 @@ main(int    argc,
      * double syslogs until fork below. 
      */
     clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
     yang_init(h);
 
     /* Find and read configfile */
@@ -1082,7 +1085,7 @@ main(int    argc,
     clicon_session_id_set(h, 1);
 #if 0 /* debug */
     /* Enable this to get prints of datastore and session status */
-    if (0 && clicon_debug_get() && 
+    if (clixon_debug_get() &&
         backend_timer_setup(0, h) < 0)
         goto done;
 #endif

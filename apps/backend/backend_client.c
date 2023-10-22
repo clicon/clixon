@@ -104,8 +104,8 @@ ce_event_cb(clicon_handle h,
             void         *arg)
 {
     struct client_entry *ce = (struct client_entry *)arg;
-    
-    clicon_debug(1, "%s op:%d", __FUNCTION__, op);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s op:%d", __FUNCTION__, op);
     switch (op){
     case 1:
         /* Risk of recursion here */
@@ -140,7 +140,7 @@ ce_client_string(struct client_entry *ce,
     int   retval = -1;
     cbuf *cb = NULL;
     char *id = NULL;
- 
+
     if (ce == NULL || cbp == NULL){
         clicon_err(OE_UNIX, EINVAL, "ce or cbp is NULL");
         goto done;
@@ -273,7 +273,7 @@ backend_monitoring_state_get(clicon_handle h,
         goto fail;
     retval = 1;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -293,7 +293,7 @@ backend_monitoring_state_get(clicon_handle h,
  * @see backend_client_delete for actual deallocation of client entry struct
  */
 int
-backend_client_rm(clicon_handle        h, 
+backend_client_rm(clicon_handle        h,
                   struct client_entry *ce)
 {
     struct client_entry  *c;
@@ -311,10 +311,10 @@ backend_client_rm(clicon_handle        h,
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
         if (confirmed_commit_state_get(h) == EPHEMERAL) {
             /* See if this client is the origin */
-            clicon_debug(1, "session_id: %u, confirmed_commit.session_id: %u", ce->ce_id, confirmed_commit_session_id_get(h));
+            clixon_debug(CLIXON_DBG_DEFAULT, "session_id: %u, confirmed_commit.session_id: %u", ce->ce_id, confirmed_commit_session_id_get(h));
 
             if (myid == confirmed_commit_session_id_get(h)) {
-                clicon_debug(1, "ok, rolling back");
+                clixon_debug(CLIXON_DBG_DEFAULT, "ok, rolling back");
                 clicon_log(LOG_NOTICE, "a client with an active ephemeral confirmed-commit has disconnected; rolling back");
 
                 /* do_rollback errors are logged internally and there is no client to report errors to, so errors are
@@ -326,7 +326,7 @@ backend_client_rm(clicon_handle        h,
         }
     }
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     /* for all streams: XXX better to do it top-level? */
     stream_ss_delete_all(h, ce_event_cb, (void*)ce);
     c0 = backend_client_list(h);
@@ -367,8 +367,8 @@ clixon_stats_datastore_get(clicon_handle h,
     uint64_t  nr = 0;
     size_t    sz = 0;
     cxobj    *xn = NULL;
-    
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, dbname);
+
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, dbname);
     /* This is the db cache */
     if ((xt = xmldb_cache_get(h, dbname)) == NULL){
         /* Trigger cache if no exist (trick to ensure cache is present) */
@@ -409,7 +409,7 @@ clixon_stats_module_get(clicon_handle h,
     uint64_t  nr = 0;
     size_t    sz = 0;
     cxobj    *xn = NULL;
-    
+
     if (ys == NULL)
         return 0;
     if (yang_stats(ys, &nr, &sz) < 0)
@@ -439,7 +439,7 @@ clixon_stats_module_get(clicon_handle h,
  * However, what really should be done is to apply the change to the datastore and then
  * validate, if error, discard to previous state. 
  * But this could discard other previous changes to candidate.
-  */
+ */
 static int
 from_client_edit_config(clicon_handle h,
                         cxobj        *xn,
@@ -480,7 +480,7 @@ from_client_edit_config(clicon_handle h,
     if ((cbx = cbuf_new()) == NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
-    }   
+    }
     /* Check if target locked by other client */
     iddb = xmldb_islocked(h, target);
     if (iddb && myid != iddb){
@@ -645,22 +645,21 @@ from_client_edit_config(clicon_handle h,
         xml_free(xret);
     if (cbx)
         cbuf_free(cbx);
-    clicon_debug(1, "%s done cbret:%s", __FUNCTION__, cbuf_get(cbret)); 
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s done cbret:%s", __FUNCTION__, cbuf_get(cbret));
     return retval;
-    
 } /* from_client_edit_config */
 
 /*! Create or replace an entire config with another complete config db
  *
- * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  * NACM: If source running and target startup --> only exec permission
- * else: 
+ * else:
  * - omit data nodes to which the client does not have read access
  * - access denied if user lacks create/delete/update
  */
@@ -679,7 +678,7 @@ from_client_copy_config(clicon_handle h,
     uint32_t             myid = ce->ce_id;
     cbuf                *cbx = NULL; /* Assist cbuf */
     cbuf                *cbmsg = NULL;
-    
+
     if ((source = netconf_db_find(xe, "source")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
             goto done;
@@ -688,7 +687,7 @@ from_client_copy_config(clicon_handle h,
     if ((cbx = cbuf_new()) == NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
-    }   
+    }
     if ((target = netconf_db_find(xe, "target")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
             goto done;
@@ -727,10 +726,10 @@ from_client_copy_config(clicon_handle h,
 /*! Delete a configuration datastore.
  *
  * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -738,7 +737,7 @@ static int
 from_client_delete_config(clicon_handle h,
                           cxobj        *xe,
                           cbuf         *cbret,
-                          void         *arg, 
+                          void         *arg,
                           void         *regarg)
 {
     int                  retval = -1;
@@ -759,7 +758,7 @@ from_client_delete_config(clicon_handle h,
     if ((cbx = cbuf_new()) == NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
-    }   
+    }
     /* Check if target locked by other client */
     iddb = xmldb_islocked(h, target);
     if (iddb && myid != iddb){
@@ -801,12 +800,12 @@ from_client_delete_config(clicon_handle h,
 }
 
 /*! Lock the configuration system of a device
- * 
+ *
  * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -814,7 +813,7 @@ static int
 from_client_lock(clicon_handle h,
                  cxobj        *xe,
                  cbuf         *cbret,
-                 void         *arg, 
+                 void         *arg,
                  void         *regarg)
 {
     int                  retval = -1;
@@ -838,7 +837,7 @@ from_client_lock(clicon_handle h,
     if ((cbx = cbuf_new()) == NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
-    }   
+    }
     /*
      * A lock MUST not be granted if either of the following conditions is true:
      * 1) A lock is already held by any NETCONF session or another entity.
@@ -889,11 +888,11 @@ from_client_lock(clicon_handle h,
 
 /*! Release a configuration lock previously obtained with the 'lock' operation
  * 
- * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -919,9 +918,9 @@ from_client_unlock(clicon_handle h,
     if ((cbx = cbuf_new()) == NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
-    }   
+    }
     iddb = xmldb_islocked(h, db);
-    /* 
+    /*
      * An unlock operation will not succeed if any of the following
      * conditions are true:
      * 1) the specified lock is not currently active
@@ -944,7 +943,7 @@ from_client_unlock(clicon_handle h,
     else{
         xmldb_unlock(h, db);
         /* user callback */
-        if (clixon_plugin_lockdb_all(h, db, 0, id) < 0)     
+        if (clixon_plugin_lockdb_all(h, db, 0, id) < 0)
             goto done;
         if (cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE) < 0)
             goto done;
@@ -959,7 +958,7 @@ from_client_unlock(clicon_handle h,
 
 /*! Request graceful termination of a NETCONF session.
  *
- * @param[in]  h       Clixon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @param[in]  arg     client-entry
@@ -971,7 +970,7 @@ static int
 from_client_close_session(clicon_handle h,
                           cxobj        *xe,
                           cbuf         *cbret,
-                          void         *arg, 
+                          void         *arg,
                           void         *regarg)
 {
     struct client_entry *ce = (struct client_entry *)arg;
@@ -986,11 +985,11 @@ from_client_close_session(clicon_handle h,
 
 /*! Internal message:  Force the termination of a NETCONF session.
  *
- * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -1009,7 +1008,7 @@ from_client_kill_session(clicon_handle h,
     cxobj               *x;
     int                  ret;
     char                *reason = NULL;
-    
+
     if ((x = xml_find(xe, "session-id")) == NULL ||
         (str = xml_find_value(x, "body")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "session-id", NULL) < 0)
@@ -1029,7 +1028,7 @@ from_client_kill_session(clicon_handle h,
     if (xmldb_islocked(h, db) == id){
         xmldb_unlock(h, db);
         /* user callback */
-        if (clixon_plugin_lockdb_all(h, db, 0, id) < 0)     
+        if (clixon_plugin_lockdb_all(h, db, 0, id) < 0)
             goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
@@ -1043,11 +1042,11 @@ from_client_kill_session(clicon_handle h,
 
 /*! Create a notification subscription
  *
- * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  * @see RFC5277 2.1
@@ -1063,7 +1062,7 @@ static int
 from_client_create_subscription(clicon_handle h,
                                 cxobj        *xe,
                                 cbuf         *cbret,
-                                void         *arg, 
+                                void         *arg,
                                 void         *regarg)
 {
     int                  retval = -1;
@@ -1078,7 +1077,7 @@ from_client_create_subscription(clicon_handle h,
     struct timeval       start;
     struct timeval       stop;
     cvec                *nsc = NULL;
-    
+
     /* XXX should use prefix cf edit_config */
     if ((nsc = xml_nsctx_init(NULL, EVENT_RFC5277_NAMESPACE)) == NULL)
         goto done;
@@ -1089,7 +1088,7 @@ from_client_create_subscription(clicon_handle h,
             str2time(stoptime, &stop) < 0){
             if (netconf_bad_element(cbret, "application", "stopTime", "Expected timestamp") < 0)
                 goto done;
-            goto ok;    
+            goto ok;
         }
     }
     if ((x = xpath_first(xe, nsc, "//startTime")) != NULL){
@@ -1097,8 +1096,8 @@ from_client_create_subscription(clicon_handle h,
             str2time(starttime, &start) < 0){
             if (netconf_bad_element(cbret, "application", "startTime", "Expected timestamp") < 0)
                 goto done;
-            goto ok;    
-        }       
+            goto ok;
+        }
     }
     if ((xfilter = xpath_first(xe, nsc, "//filter")) != NULL){
         if ((ftype = xml_find_value(xfilter, "type")) != NULL){
@@ -1122,13 +1121,13 @@ from_client_create_subscription(clicon_handle h,
                       starttime?&start:NULL, stoptime?&stop:NULL,
                       ce_event_cb, (void*)ce) < 0)
         goto done;
-    /* Replay of this stream to specific subscription according to start and 
+    /* Replay of this stream to specific subscription according to start and
      * stop (if present). 
      * RFC 5277: If <startTime> is not present, this is not a replay
      * subscription.
      * Schedule the replay to occur right after this RPC completes, eg "now"
      */
-    if (starttime){ 
+    if (starttime){
         if (stream_replay_trigger(h, stream, ce_event_cb, (void*)ce) < 0)
             goto done;
     }
@@ -1143,7 +1142,7 @@ from_client_create_subscription(clicon_handle h,
 
 /*! Retrieve a schema from the NETCONF server.
  *
- * @param[in]  h       Clixon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @param[in]  arg     client-entry
@@ -1156,7 +1155,7 @@ static int
 from_client_get_schema(clicon_handle h,
                        cxobj        *xe,
                        cbuf         *cbret,
-                       void         *arg, 
+                       void         *arg,
                        void         *regarg)
 {
     int         retval = -1;
@@ -1171,7 +1170,7 @@ from_client_get_schema(clicon_handle h,
     yang_stmt  *yrev;
     cbuf       *cbyang = NULL;
     cbuf       *cbmsg = NULL;
-    const char *filename;    
+    const char *filename;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_YANG, ENOENT, "No yang spec");
@@ -1221,7 +1220,7 @@ from_client_get_schema(clicon_handle h,
         if ((cbmsg = cbuf_new()) == NULL){
             clicon_err(OE_XML, errno, "cbuf_new");
             goto done;
-        }   
+        }
         if (version)
             cprintf(cbmsg, "No schema matching: %s@%s", identifier, version);
         else
@@ -1234,7 +1233,7 @@ from_client_get_schema(clicon_handle h,
         if ((cbmsg = cbuf_new()) == NULL){
             clicon_err(OE_XML, errno, "cbuf_new");
             goto done;
-        }   
+        }
         cprintf(cbmsg, "Format not supported: %s", format);
         if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbmsg)) < 0)
             goto done;
@@ -1264,11 +1263,11 @@ from_client_get_schema(clicon_handle h,
     return retval;
 }
 
-/*! Set debug level. 
+/*! Set debug level.
  *
- * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
  * @param[in]  regarg  User argument given at rpc_callback_register() 
  * @retval     0       OK
@@ -1284,7 +1283,7 @@ from_client_debug(clicon_handle h,
     int      retval = -1;
     uint32_t level;
     char    *valstr;
-    
+
     if ((valstr = xml_find_body(xe, "level")) == NULL){
         if (netconf_missing_element(cbret, "application", "level", NULL) < 0)
             goto done;
@@ -1292,9 +1291,9 @@ from_client_debug(clicon_handle h,
     }
     level = atoi(valstr);
 
-    clicon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
+    clixon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
     setlogmask(LOG_UPTO(level?LOG_DEBUG:LOG_INFO)); /* for syslog */
-    clicon_log(LOG_NOTICE, "%s debug:%d", __FUNCTION__, clicon_debug_get());
+    clicon_log(LOG_NOTICE, "%s debug:%d", __FUNCTION__, clixon_debug_get());
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
@@ -1304,11 +1303,11 @@ from_client_debug(clicon_handle h,
 
 /*! Check liveness of backend daemon,  just send a reply
  *
- * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -1325,11 +1324,11 @@ from_client_ping(clicon_handle h,
 
 /*! Check liveness of backend daemon,  just send a reply
  *
- * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -1348,7 +1347,7 @@ from_client_stats(clicon_handle h,
     yang_stmt *yspec;
     yang_stmt *ymodext;
     cxobj     *xt = NULL;
-    
+
     if ((str = xml_find_body(xe, "modules")) != NULL)
         modules = strcmp(str, "true") == 0;
     yspec = clicon_dbspec_yang(h);
@@ -1378,7 +1377,7 @@ from_client_stats(clicon_handle h,
         goto done;
     if (modules){
         ym = NULL;
-        while ((ym = yn_each(yspec, ym)) != NULL) {    
+        while ((ym = yn_each(yspec, ym)) != NULL) {
             cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ym));
             if (clixon_stats_module_get(h, ym, cbret) < 0)
                 goto done;
@@ -1418,11 +1417,11 @@ from_client_stats(clicon_handle h,
 
 /*! Request restart of specific plugins
  *
- * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -1440,8 +1439,8 @@ from_client_restart_plugin(clicon_handle h,
     int            i;
     clixon_plugin_t *cp;
     int            ret;
-    
-    if (xpath_vec(xe, NULL, "plugin", &vec, &veclen) < 0) 
+
+    if (xpath_vec(xe, NULL, "plugin", &vec, &veclen) < 0)
         goto done;
     for (i=0; i<veclen; i++){
         name = xml_body(vec[i]);
@@ -1466,11 +1465,11 @@ from_client_restart_plugin(clicon_handle h,
 
 /*! Control a specific process or daemon: start/stop, etc
  *
- * @param[in]  h       Clixon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -1486,7 +1485,7 @@ from_client_process_control(clicon_handle  h,
     char    *name = NULL;
     char    *opstr = NULL;
     proc_operation op = PROC_OP_NONE;
-    
+
     if ((x = xml_find_type(xe, NULL, "name", CX_ELMNT)) != NULL)
         name = xml_body(x);
     if ((x = xml_find_type(xe, NULL, "operation", CX_ELMNT)) != NULL){
@@ -1557,7 +1556,7 @@ from_client_hello(clicon_handle       h,
  */
 static int
 from_client_msg(clicon_handle        h,
-                struct client_entry *ce, 
+                struct client_entry *ce,
                 struct clicon_msg   *msg)
 {
     int                  retval = -1;
@@ -1581,9 +1580,9 @@ from_client_msg(clicon_handle        h,
     char                *namespace = NULL;
     int                  nr = 0;
     cbuf                *cbce = NULL;
-    
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
-    yspec = clicon_dbspec_yang(h); 
+
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    yspec = clicon_dbspec_yang(h);
     /* Return netconf message. Should be filled in by the dispatch(sub) functions 
      * as wither rpc-error or by positive response.
      */
@@ -1629,7 +1628,7 @@ from_client_msg(clicon_handle        h,
      * 3. Its a create-subscription message that uses a separate socket(=client) 
      */
     if (op_id != 0 && ce->ce_id != op_id && strcmp(rpcname, "create-subscription")){
-        clicon_debug(1, "%s Warning: incoming session-id:%u does not match ce_id:%u on socket: %d", __FUNCTION__, op_id, ce->ce_id, ce->ce_s);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s Warning: incoming session-id:%u does not match ce_id:%u on socket: %d", __FUNCTION__, op_id, ce->ce_id, ce->ce_s);
     }
     /* Note that this validation is also made in xml_yang_validate_rpc, but not for hello
      */
@@ -1707,7 +1706,7 @@ from_client_msg(clicon_handle        h,
             goto done;
         }
         module = yang_argument_get(ymod);
-        clicon_debug(CLIXON_DBG_DEFAULT, "%s module:%s rpc:%s ce_id:%u s:%d", __FUNCTION__, module,
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s module:%s rpc:%s ce_id:%u s:%d", __FUNCTION__, module,
                      rpc, ce->ce_id, ce->ce_s);
         /* Pre-NACM access step */
         xnacm = NULL;
@@ -1773,7 +1772,7 @@ from_client_msg(clicon_handle        h,
     if (cbuf_len(cbret) == 0)
         if (netconf_operation_failed(cbret, "application", clicon_errno?clicon_err_reason:"unknown")< 0)
             goto done;
-    // XXX    clicon_debug(CLIXON_DBG_MSG, "Reply:%s", cbuf_get(cbret));
+    // XXX    clixon_debug(CLIXON_DBG_MSG, "Reply:%s", cbuf_get(cbret));
     /* XXX problem here is that cbret has not been parsed so may contain 
        parse errors */
     if (ce_client_string(ce, &cbce) < 0)
@@ -1797,8 +1796,8 @@ from_client_msg(clicon_handle        h,
     }
     // ok:
     retval = 0;
-  done:  
-    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+  done:
+    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xnacm){
         xml_free(xnacm);
         if (clicon_nacm_cache_set(h, NULL) < 0)
@@ -1813,10 +1812,10 @@ from_client_msg(clicon_handle        h,
     if (cbret)
         cbuf_free(cbret);
     /* Sanity: log if clicon_err() is not called ! */
-    if (retval < 0 && clicon_errno < 0) 
+    if (retval < 0 && clicon_errno < 0)
         clicon_log(LOG_NOTICE, "%s: Internal error: No clicon_err call on RPC error (message: %s)",
                    __FUNCTION__, rpc?rpc:"");
-    //    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    //    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     return retval;// -1 here terminates backend
 }
 
@@ -1829,7 +1828,7 @@ from_client_msg(clicon_handle        h,
  *                   propagated back to client.
  */
 int
-from_client(int   s, 
+from_client(int   s,
             void* arg)
 {
     int                  retval = -1;
@@ -1839,7 +1838,7 @@ from_client(int   s,
     int                  eof = 0;
     cbuf                *cbce = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (s != ce->ce_s){
         clicon_err(OE_NETCONF, EINVAL, "Internal error: s != ce->ce_s");
         goto done;
@@ -1849,7 +1848,7 @@ from_client(int   s,
     if (clicon_msg_rcv(ce->ce_s, cbuf_get(cbce), 0, &msg, &eof) < 0)
         goto done;
     if (eof){
-        backend_client_rm(h, ce); 
+        backend_client_rm(h, ce);
         netconf_monitoring_counter_inc(h, "dropped-sessions");
     }
     else
@@ -1857,7 +1856,7 @@ from_client(int   s,
             goto done;
     retval = 0;
   done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s retval=%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s retval=%d", __FUNCTION__, retval);
     if (cbce)
         cbuf_free(cbce);
     if (msg)

@@ -47,7 +47,8 @@
  * Types
  */
 
-/* Struct containing module state differences between two modules or two 
+/*! Struct containing module state differences between two modules or two 
+ *
  * revisions of same module. 
  * The most significant usecase is one module-state is a loaded datastore and the other
  * is the one loaded by the server by its YANG files.

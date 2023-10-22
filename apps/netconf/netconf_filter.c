@@ -97,16 +97,17 @@ leafstring(cxobj *x)
 }
 
 /*! Internal recursive part where configuration xml tree is pruned from filter
+ *
  * assume parent has been selected and filter match (same name) as parent
  * parent is pruned according to selection.
  * @param[in]  xfilter  Filter xml
  * @param[out] xconf    Configuration xml
- * @retval  0  OK
- * @retval -1  Error
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 static int
-xml_filter_recursive(cxobj *xfilter, 
-                     cxobj *xparent, 
+xml_filter_recursive(cxobj *xfilter,
+                     cxobj *xparent,
                      int   *remove_me)
 {
     cxobj *s;
@@ -122,7 +123,7 @@ xml_filter_recursive(cxobj *xfilter,
 
     *remove_me = 0;
     /* 1. Check selection */
-    if (xml_child_nr(xfilter) == 0) 
+    if (xml_child_nr(xfilter) == 0)
         goto match;
 
     /* Count containment/selection nodes in filter */
@@ -190,6 +191,7 @@ xml_filter_recursive(cxobj *xfilter,
 }
 
 /*! Remove parts of configuration xml tree that does not match filter xml tree
+ *
  * @param[in]  xfilter  Filter xml
  * @param[out] xconf    Configuration xml
  * @retval  0  OK
@@ -197,15 +199,15 @@ xml_filter_recursive(cxobj *xfilter,
  * This is the top-level function, calls a recursive variant.
  */
 int
-xml_filter(cxobj *xfilter, 
+xml_filter(cxobj *xfilter,
            cxobj *xconfig)
 {
     int retval;
     int remove_s;
 
     /* Call recursive variant */
-    retval = xml_filter_recursive(xfilter, 
-                                  xconfig, 
+    retval = xml_filter_recursive(xfilter,
+                                  xconfig,
                                   &remove_s);
     return retval;
 }

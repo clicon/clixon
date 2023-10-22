@@ -43,6 +43,7 @@
  */
 
 /*! Transaction data describing a system transition from a src to target state
+ *
  * Clixon internal, presented as void* to app's callback in the 'transaction_data'
  * type in clicon_backend_api.h
  * The struct contains source and target XML tree (e.g. candidate/running)
@@ -68,6 +69,7 @@ typedef struct {
 } transaction_data_t;
 
 /*! Pagination userdata 
+ *
  * Pagination can use a lock/transaction mechanism 
  * If locking is not used, the plugin cannot expect more pagination calls, and no state or 
  * caching should be used
@@ -104,7 +106,7 @@ int clixon_plugin_lockdb_all(clicon_handle h, char *db, int lock, int id);
 
 int clixon_pagination_cb_register(clicon_handle h, handler_function fn, char *path, void *arg);
 int clixon_pagination_cb_call(clicon_handle h, char *xpath, int locked,
-                              uint32_t offset, uint32_t limit, 
+                              uint32_t offset, uint32_t limit,
                               cxobj *xstate);
 int clixon_pagination_free(clicon_handle h);
 

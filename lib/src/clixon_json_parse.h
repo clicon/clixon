@@ -40,7 +40,7 @@
  * Types
  */
 
-struct clixon_json_yacc { 
+struct clixon_json_yacc {
     int        jy_linenum;      /* Number of \n in parsed buffer */
     char      *jy_parse_string; /* original (copy of) parse string */
     void      *jy_lexbuf;       /* internal parse buffer from lex */

@@ -109,16 +109,19 @@ get_sock(int  usock,
 #endif /* HAVE_SETNS */
 
 /*! Create and bind stream socket
+ *
  * @param[in]  sa       Socketaddress
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
  * @param[in]  backlog  Listen backlog, queie of pending connections
  * @param[in]  flags    Socket flags Or:ed in with the socket(2) type parameter
  * @param[in]  addrstr  Address string for debug
  * @param[out] sock     Server socket (bound for accept)
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 static int
 create_socket(struct sockaddr *sa,
-              size_t           sin_len,             
+              size_t           sin_len,
               int              backlog,
               int              flags,
               const char      *addrstr,
@@ -127,8 +130,8 @@ create_socket(struct sockaddr *sa,
     int    retval = -1;
     int    s = -1;
     int    on = 1;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (sock == NULL){
         clicon_err(OE_PROTO, EINVAL, "Requires socket output parameter");
         goto done;
@@ -182,7 +185,7 @@ create_socket(struct sockaddr *sa,
         *sock = s;
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     if (retval != 0 && s != -1)
         close(s);
     return retval;
@@ -198,11 +201,13 @@ create_socket(struct sockaddr *sa,
  * @param[in]  flags    Socket flags OR:ed in with the socket(2) type parameter
  * @param[in]  addrstr  Address string for debug
  * @param[out] sock     Server socket (bound for accept)
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 static int
 fork_netns_socket(const char      *netns,
                   struct sockaddr *sa,
-                  size_t           sin_len,                 
+                  size_t           sin_len,
                   int              backlog,
                   int              flags,
                   const char      *addrstr,
@@ -221,7 +226,7 @@ fork_netns_socket(const char      *netns,
     int         sock_flags = SOCK_DGRAM | SOCK_CLOEXEC;
 #endif
 
-    clicon_debug(1, "%s %s", __FUNCTION__, netns);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, netns);
     if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
         clicon_err(OE_UNIX, errno, "socketpair");
         goto done;
@@ -240,7 +245,7 @@ fork_netns_socket(const char      *netns,
 #endif
 
     /* Check namespace exists */
-    sprintf(nspath,"/var/run/netns/%s", netns); 
+    sprintf(nspath,"/var/run/netns/%s", netns);
     if (stat(nspath, &st) < 0){
         clicon_err(OE_UNIX, errno, ": stat(%s)", nspath);
         goto done;
@@ -288,19 +293,20 @@ fork_netns_socket(const char      *netns,
     if(waitpid(child, &wstatus, 0) == child)
         ; // retval = WEXITSTATUS(status); /* Dont know what to do with status */
     if (WEXITSTATUS(wstatus)){
-        clicon_debug(1, "%s wstatus:%d", __FUNCTION__, WEXITSTATUS(wstatus));
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s wstatus:%d", __FUNCTION__, WEXITSTATUS(wstatus));
         *sock = -1;
         clicon_err(OE_UNIX, EADDRNOTAVAIL, "bind(%s)", addrstr);
         goto done;
     }
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 #endif /* HAVE_SETNS */
 
 /*! Create and bind stream socket in network namespace
+ *
  * @param[in]  netns    Network namespace
  * @param[in]  sa       Socketaddress
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
@@ -308,19 +314,21 @@ fork_netns_socket(const char      *netns,
  * @param[in]  flags    Socket flags OR:ed in with the socket(2) type parameter
  * @param[in]  addrstr  Address string for debug
  * @param[out] sock     Server socket (bound for accept)
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
 clixon_netns_socket(const char      *netns,
                     struct sockaddr *sa,
-                    size_t           sin_len,               
+                    size_t           sin_len,
                     int              backlog,
                     int              flags,
                     const char      *addrstr,
                     int             *sock)
 {
     int    retval = -1;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (netns == NULL){
         if (create_socket(sa, sin_len, backlog, flags, addrstr, sock) < 0)
             goto done;
@@ -332,12 +340,12 @@ clixon_netns_socket(const char      *netns,
             goto done;
 #else
         clicon_err(OE_UNIX, errno, "No namespace support on platform: %s", netns);
-        return -1;      
+        return -1;
 #endif
     }
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     return retval;
 }

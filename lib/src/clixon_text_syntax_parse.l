@@ -62,7 +62,7 @@
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _TS ((clixon_text_syntax_yacc *)_ts) 
+#define _TS ((clixon_text_syntax_yacc *)_ts)
 
 #undef clixon_xml_parsewrap
 int clixon_text_syntax_parsewrap(void)

@@ -78,10 +78,12 @@
 #include "restconf_methods.h"
 
 /*! REST OPTIONS method
+ *
  * According to restconf
  * @param[in]  h      Clixon handle
  * @param[in]  req    Generic Www handle
- *
+ * @retval     0    OK
+ * @retval    -1    Error
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
  * @endcode                     
@@ -96,7 +98,7 @@ api_data_options(clicon_handle h,
 {
     int retval = -1;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (restconf_reply_header(req, "Allow", "OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE") < 0)
         goto done;
     if (restconf_reply_header(req, "Accept-Patch", "application/yang-data+xml,application/yang-data+json") < 0)
@@ -117,7 +119,7 @@ api_data_options(clicon_handle h,
  * @param[in] x1       First XML tree (eg data)
  * @param[in] x2       Second XML tree (eg api-path)
  * @retval    0        Yes, keys match
- * @retval    -1       No, keys do not match
+ * @retval   -1        No, keys do not match
  * If the target resource represents a YANG leaf-list, then the PUT
  * method MUST NOT change the value of the leaf-list instance.
  *
@@ -140,14 +142,14 @@ match_list_keys(yang_stmt *y,
     char      *key1;
     char      *key2;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     switch (yang_keyword_get(y)){
     case Y_LIST:
         if ((cvk = yang_cvec_get(y)) == NULL) /* Use Y_LIST cache, see ys_populate_list() */
             break;
         cvi = NULL;
         while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-            keyname = cv_string_get(cvi);           
+            keyname = cv_string_get(cvi);
             if ((xkey2 = xml_find(x2, keyname)) == NULL)
                 goto done; /* No key in api-path */
             if ((key2 = xml_body(xkey2)) == NULL)
@@ -174,11 +176,12 @@ match_list_keys(yang_stmt *y,
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
 /*! Common PUT plain PATCH method 
+ *
  * Code checks if object exists.
  * PUT:   If it does not, set op to create, otherwise replace
  * PATCH: If it does not, fail, otherwise replace/merge
@@ -187,13 +190,15 @@ match_list_keys(yang_stmt *y,
  * @param[in]  pretty    Pretty-print
  * @param[in]  media_in  Restconf input media
  * @param[in]  media_out Restconf output media
- */ 
+ * @retval     0         OK
+ * @retval    -1         Error
+ */
 int
 api_data_write(clicon_handle h,
-               void         *req, 
-               char         *api_path0, 
+               void         *req,
+               char         *api_path0,
                int           pi,
-               cvec         *qvec, 
+               cvec         *qvec,
                char         *data,
                int           pretty,
                restconf_media media_in,
@@ -230,9 +235,9 @@ api_data_write(clicon_handle h,
     yang_bind      yb;
     char          *xpath = NULL;
     char          *attr;
-        
-    clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
-    clicon_debug(1, "%s data:\"%s\"", __FUNCTION__, data);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s data:\"%s\"", __FUNCTION__, data);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -290,7 +295,7 @@ api_data_write(clicon_handle h,
     if (api_path){ /* XXX mv to copy? */
         cxobj *xfrom;
         cxobj *xac;
-        
+
         if (api_path && (strcmp(api_path, "/") != 0))
             xfrom = xml_parent(xbot);
         else
@@ -393,7 +398,7 @@ api_data_write(clicon_handle h,
         goto done;
     /* Top-of tree, no api-path
      * Replace xparent with x, ie bottom of api-path with data 
-     */     
+     */
     dname = xml_name(xdata);
     if (api_path==NULL) {
         if (strcmp(dname, NETCONF_OUTPUT_DATA)!=0){
@@ -422,9 +427,9 @@ api_data_write(clicon_handle h,
         /* There is an api-path that defines an element in the datastore tree.
          * Not top-of-tree.
          */
-        clicon_debug(1, "%s Comparing bottom-of api-path (%s) with top-of-data (%s)",__FUNCTION__, xml_name(xbot), dname);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s Comparing bottom-of api-path (%s) with top-of-data (%s)",__FUNCTION__, xml_name(xbot), dname);
 
-        /* Check same symbol in api-path as data */         
+        /* Check same symbol in api-path as data */
         if (strcmp(dname, xml_name(xbot))){
             if (netconf_bad_element_xml(&xerr, "application", dname,
                                         "Data element does not match api-path") < 0)
@@ -439,7 +444,7 @@ api_data_write(clicon_handle h,
          * or the object is the key element:
          *   eg xpath:obj=a/key  data:<key>b</key>
          * That is why the conditional is somewhat hairy
-         */         
+         */
         xparent = xml_parent(xbot);
         if (ybot){
             /* Ensure list keys match between uri and data. That is:
@@ -479,7 +484,7 @@ api_data_write(clicon_handle h,
         }
         if (xtop != xbot) /* Should always be true */
             xml_purge(xbot);
-        if (xml_addsub(xparent, xdata) < 0) 
+        if (xml_addsub(xparent, xdata) < 0)
             goto done;
         /* If restconf insert/point attributes are present, translate to netconf */
         if (restconf_insert_attributes(xdata, qvec) < 0)
@@ -487,11 +492,11 @@ api_data_write(clicon_handle h,
         /* If we already have that default namespace, remove it in child */
         if ((xa = xml_find_type(xdata, NULL, "xmlns", CX_ATTR)) != NULL){
             if (xml2ns(xparent, NULL, &namespace) < 0){
-                clicon_debug(1, "%s G done",  __FUNCTION__);
+                clixon_debug(CLIXON_DBG_DEFAULT, "%s G done",  __FUNCTION__);
                 goto done;
             }
             if (namespace == NULL){
-                clicon_debug_xml(1, xparent, "%s xparent:", __FUNCTION__);
+                clixon_debug_xml(1, xparent, "%s xparent:", __FUNCTION__);
                 /* XXX */
             }
             /* Set xmlns="" default namespace attribute (if diff from default) */
@@ -535,12 +540,12 @@ api_data_write(clicon_handle h,
     if (clixon_xml2cbuf(cbx, xtop, 0, 0, NULL, -1, 0) < 0)
         goto done;
     cprintf(cbx, "</edit-config></rpc>");
-    clicon_debug(1, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
         goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
         if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-            goto done;      
+            goto done;
         goto ok;
     }
     if ((xe = xpath_first(xret, NULL, "//ok")) != NULL &&
@@ -551,11 +556,11 @@ api_data_write(clicon_handle h,
     }
     else
         if (restconf_reply_send(req, 204, NULL, 0) < 0) /* No content */
-            goto done;  
+            goto done;
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (xpath)
         free(xpath);
     if (nsc)
@@ -578,6 +583,7 @@ api_data_write(clicon_handle h,
 } /* api_data_write */
 
 /*! Generic REST PUT  method 
+ *
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
@@ -587,6 +593,8 @@ api_data_write(clicon_handle h,
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @retval     0        OK
+ * @retval    -1        Error
  * @note restconf PUT is mapped to edit-config replace. 
  * @see RFC8040 Sec 4.5  PUT
  * @see api_data_post
@@ -613,10 +621,10 @@ api_data_write(clicon_handle h,
  */
 int
 api_data_put(clicon_handle h,
-             void         *req, 
-             char         *api_path0, 
+             void         *req,
+             char         *api_path0,
              int           pi,
-             cvec         *qvec, 
+             cvec         *qvec,
              char         *data,
              int           pretty,
              restconf_media media_out,
@@ -627,9 +635,10 @@ api_data_put(clicon_handle h,
     media_in = restconf_content_type(h);
     return api_data_write(h, req, api_path0, pi, qvec, data, pretty,
                           media_in, media_out, 0, ds);
-} 
+}
 
 /*! Generic REST PATCH method for plain patch 
+ *
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
@@ -639,6 +648,8 @@ api_data_put(clicon_handle h,
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @retval     0        OK
+ * @retval    -1        Error
  * Netconf:  <edit-config> (nc:operation="merge")      
  * See RFC8040 Sec 4.6.1
  * Plain patch can be used to create or update, but not delete, a child
@@ -648,10 +659,10 @@ api_data_put(clicon_handle h,
  */
 int
 api_data_patch(clicon_handle h,
-               void         *req, 
-               char         *api_path0, 
+               void         *req,
+               char         *api_path0,
                int           pi,
-               cvec         *qvec, 
+               cvec         *qvec,
                char         *data,
                int           pretty,
                restconf_media media_out,
@@ -682,9 +693,10 @@ api_data_patch(clicon_handle h,
         break;
     }
     return ret;
-} 
+}
 
 /*! Generic REST DELETE method translated to edit-config
+ *
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
@@ -692,6 +704,8 @@ api_data_patch(clicon_handle h,
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @retval     0        OK
+ * @retval    -1        Error
  * See RFC 8040 Sec 4.7
  * Example:
  *  curl -X DELETE http://127.0.0.1/restconf/data/interfaces/interface=eth0
@@ -699,7 +713,7 @@ api_data_patch(clicon_handle h,
  */
 int
 api_data_delete(clicon_handle h,
-                void         *req, 
+                void         *req,
                 char         *api_path,
                 int           pi,
                 int           pretty,
@@ -723,7 +737,7 @@ api_data_delete(clicon_handle h,
     int        ret;
     cxobj     *xe; /* xml error, no free */
 
-    clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s api_path:%s", __FUNCTION__, api_path);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -793,12 +807,12 @@ api_data_delete(clicon_handle h,
         goto ok;
     }
     if (restconf_reply_send(req, 204, NULL, 0) < 0)
-        goto done;      
+        goto done;
  ok:
     retval = 0;
  done:
     if (cbx)
-        cbuf_free(cbx); 
+        cbuf_free(cbx);
     if (xret)
         xml_free(xret);
     if (xretcom)
@@ -807,7 +821,7 @@ api_data_delete(clicon_handle h,
         xml_free(xretdis);
     if (xtop)
         xml_free(xtop);
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
    return retval;
 }
 

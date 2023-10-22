@@ -105,6 +105,7 @@ confirmed_commit_init(clicon_handle h)
 }
 
 /*! If confirm commit persist-id exists, free it
+ *
  * @param[in] h  Clixon handle
  * @retval    0  OK
  */
@@ -112,7 +113,7 @@ int
 confirmed_commit_free(clicon_handle h)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     if (cc != NULL){
         if (cc->cc_persist_id != NULL)
@@ -130,7 +131,7 @@ enum confirmed_commit_state
 confirmed_commit_state_get(clicon_handle h)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     return cc->cc_state;
 }
@@ -140,7 +141,7 @@ confirmed_commit_state_set(clicon_handle h,
                            enum confirmed_commit_state state)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     cc->cc_state = state;
     return 0;
@@ -150,7 +151,7 @@ char *
 confirmed_commit_persist_id_get(clicon_handle h)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     return cc->cc_persist_id;
 }
@@ -160,7 +161,7 @@ confirmed_commit_persist_id_set(clicon_handle h,
                                 char         *persist_id)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     if (cc->cc_persist_id)
         free(cc->cc_persist_id);
@@ -179,7 +180,7 @@ uint32_t
 confirmed_commit_session_id_get(clicon_handle h)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     return cc->cc_session_id;
 }
@@ -189,7 +190,7 @@ confirmed_commit_session_id_set(clicon_handle h,
                                 uint32_t      session_id)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     cc->cc_session_id = session_id;
     return 0;
@@ -201,7 +202,7 @@ confirmed_commit_fn_arg_get(clicon_handle h,
                             void        **arg)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     *fn = cc->cc_fn;
     *arg = cc->cc_arg;
@@ -214,7 +215,7 @@ confirmed_commit_fn_arg_set(clicon_handle h,
                             void        *arg)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     cc->cc_fn = fn;
     cc->cc_arg = arg;
@@ -222,6 +223,7 @@ confirmed_commit_fn_arg_set(clicon_handle h,
 }
 
 /*! Return if confirmed tag found
+ *
  * @param[in]  xe  Commit rpc xml
  * @retval     1   Confirmed tag exists
  * @retval     0   Confirmed tag does not exist
@@ -233,6 +235,7 @@ xe_confirmed(cxobj *xe)
 }
 
 /*! Return if persist exists and its string value field
+ *
  * @param[in]  xe  Commit rpc xml
  * @param[out] str Pointer to persist
  * @retval     1   Persist field exists
@@ -274,6 +277,7 @@ xe_persist_id(cxobj *xe,
 }
 
 /*! Return timeout
+ *
  * @param[in]  xe  Commit rpc xml
  * @retval     sec Timeout in seconds, can be 0 if no timeout exists or is zero
  */
@@ -282,7 +286,7 @@ xe_timeout(cxobj *xe)
 {
     cxobj *xml;
     char  *str;
-    
+
     if ((xml = xml_find_type(xe, NULL, "confirm-timeout", CX_ELMNT)) != NULL &&
         (str = xml_body(xml)) != NULL)
         return strtoul(str, NULL, 10);
@@ -293,7 +297,7 @@ xe_timeout(cxobj *xe)
  *
  * @param[in]   h       Clixon handle
  * @retval      0       Rollback event successfully cancelled
- * @retval      -1      No Rollback event was found
+ * @retval     -1       No Rollback event was found
  */
 int
 cancel_rollback_event(clicon_handle h)
@@ -317,7 +321,7 @@ cancel_rollback_event(clicon_handle h)
  * @param[in]   fd      a dummy argument per the event callback semantics
  * @param[in]   arg     a void pointer to a clicon_handle
  * @retval      0       the rollback was successful
- * @retval      -1      the rollback failed
+ * @retval     -1       the rollback failed
  * @see                 do_rollback()
  */
 static int
@@ -337,7 +341,7 @@ rollback_fn(int  fd,
  * @param[in]   timeout a uint32 representing the number of seconds before the rollback event should fire
  *
  * @retval      0       Rollback event successfully scheduled
- * @retval      -1      Rollback event was not scheduled
+ * @retval     -1       Rollback event was not scheduled
  */
 static int
 schedule_rollback_event(clicon_handle h,
@@ -373,6 +377,7 @@ schedule_rollback_event(clicon_handle h,
 }
 
 /*! Cancel a confirming commit by removing rollback, and free state
+ *
  * @param[in]  h
  * @param[out] cbret
  * @retval     0      OK
@@ -401,12 +406,12 @@ cancel_confirmed_commit(clicon_handle h)
  *      without a <persist> value, OR
  *   2) be presented with a <persist-id> value that matches the <persist> value accompanying the prior confirmed-commit
  *
- * @param[in]   h       Clicon handle
+ * @param[in]   h       Clixon handle
  * @param[in]   xe      Request: <rpc><xn></rpc> 
  * @param[in]   myid    current client session-id
  * @retval      1       The confirming-commit is valid
  * @retval      0       The confirming-commit is not valid
- * @retval      -1      Error
+ * @retval     -1       Error
  */
 static int
 check_valid_confirming_commit(clicon_handle h,
@@ -452,7 +457,7 @@ check_valid_confirming_commit(clicon_handle h,
                                   "not issued on the same session as the confirmed-commit");
             goto invalid;
         default:
-            clicon_debug(1, "commit-confirmed state !? %d", confirmed_commit_state_get(h));
+            clixon_debug(CLIXON_DBG_DEFAULT, "commit-confirmed state !? %d", confirmed_commit_state_get(h));
             goto invalid;
     }
     retval = 1; // valid
@@ -471,11 +476,11 @@ check_valid_confirming_commit(clicon_handle h,
  * In the second phase, the action taken is to handle both confirming- and confirmed-commit by creating the
  * rollback database as required, then deleting it once the sequence is complete.
  *
- * @param[in]   h          Clicon handle
+ * @param[in]   h          Clixon handle
  * @param[in]   xe         Commit rpc xml or NULL
  * @param[in]   myid       Current session-id, only valid > 0 if call is made as a result of an incoming message
  * @retval      0          OK
- * @retval      -1         Error
+ * @retval     -1          Error
  * @note There are some calls to this function where myid is 0 (which is invalid). It is unclear if such calls
  *       actually occur, and if so, if they are correctly handled. The calls are from do_rollback() and load_failsafe()
  */
@@ -622,9 +627,9 @@ handle_confirmed_commit(clicon_handle h,
  *  2. from_client_cancel_commit()  (invoked either by netconf client, or CLI)
  *  3. rollback_fn()                (invoked by expiration of the rollback event timer)
  *
- * @param[in]   h       Clicon handle
- * @retval      -1      Error
+ * @param[in]   h       Clixon handle
  * @retval      0       Success
+ * @retval     -1       Error
  * @see                 backend_client_rm()
  * @see                 from_client_cancel_commit()
  * @see                 rollback_fn()
@@ -696,12 +701,13 @@ do_rollback(clicon_handle h,
 }
 
 /*! Cancel an ongoing confirmed commit.
+ *
  * If the confirmed commit is persistent, the parameter 'persist-id' must be
  * given, and it must match the value of the 'persist' parameter.
  * If the confirmed-commit is ephemeral, the 'persist-id' must not be given and both the confirmed-commit and the
  * cancel-commit must originate from the same session.
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @param[in]  arg     client-entry
@@ -777,7 +783,8 @@ from_client_cancel_commit(clicon_handle h,
 }
 
 /*! Incoming commit handler for confirmed commit
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @param[in]  xe    Request: <rpc><xn></rpc> 
  * @param[in]  myid  Client-id
  * @param[out] cbret Return xml tree

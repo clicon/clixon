@@ -45,6 +45,7 @@ extern "C" {
  * Types
  */
 /*! RESTCONF media types 
+ *
  * @see http_media_map
  * @note DUPLICATED in clixon_restconf.h
  */
@@ -76,7 +77,7 @@ enum restconf_http_proto{
     HTTP_2
 };
 typedef enum restconf_http_proto restconf_http_proto;
-    
+
 /*
  * Prototypes
  */

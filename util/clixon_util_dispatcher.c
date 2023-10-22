@@ -141,10 +141,8 @@ main(int    argc,
      * Logs, error and debug to stderr or syslog, set debug level
      */
     clicon_log_init("xpath", dbg?LOG_DEBUG:LOG_INFO, logdst);
-    
-    clicon_debug_init(dbg, NULL);
-            
-    /* Now rest of options */   
+    clixon_debug_init(dbg, NULL);
+    /* Now rest of options */
     opterr = 0;
     optind = 1;
     while ((c = getopt(argc, argv, DISPATCHER_OPTS)) != -1){
@@ -167,7 +165,7 @@ main(int    argc,
         case 'r' :{ /* register callback based on -a/-i/-p*/
             dispatcher_definition     x = {regpath, fn, arg};
             if (dispatcher_register_handler(&htable, &x) < 0)
-                goto done;          
+                goto done;
             break;
         }
         case 'c':{ /* Execute a call using path */

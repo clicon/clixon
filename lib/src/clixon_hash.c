@@ -98,7 +98,7 @@
 #include "clixon_err.h"
 #include "clixon_hash.h"
 
-#define HASH_SIZE       1031    /* Number of hash buckets. Should be a prime */ 
+#define HASH_SIZE       1031    /* Number of hash buckets. Should be a prime */
 #define align4(s) (((s)/4)*4 + 4)
 
 /*! A very simplistic algorithm to calculate a hash bucket index
@@ -164,7 +164,7 @@ clicon_hash_free(clicon_hash_t *hash)
  * @retval    NULL     Not found
  */
 clicon_hash_t
-clicon_hash_lookup(clicon_hash_t *hash, 
+clicon_hash_lookup(clicon_hash_t *hash,
                    const char    *key)
 {
     uint32_t      bkt;
@@ -190,7 +190,7 @@ clicon_hash_lookup(clicon_hash_t *hash,
  * @retval     NULL   Key not found or value NULL
  */
 void *
-clicon_hash_value(clicon_hash_t *hash, 
+clicon_hash_value(clicon_hash_t *hash,
                   const char    *key, 
                   size_t        *vlen)
 {
@@ -220,15 +220,15 @@ clicon_hash_value(clicon_hash_t *hash,
  * @note special case val is NULL and vlen==0
  */
 clicon_hash_t
-clicon_hash_add(clicon_hash_t *hash, 
-                const char    *key, 
-                void          *val, 
+clicon_hash_add(clicon_hash_t *hash,
+                const char    *key,
+                void          *val,
                 size_t         vlen)
 {
     void         *newval = NULL;
     clicon_hash_t h;
     clicon_hash_t new = NULL;
-    
+
     if (hash == NULL){
         clicon_err(OE_UNIX, EINVAL, "hash is NULL");
         return NULL;
@@ -247,26 +247,22 @@ clicon_hash_add(clicon_hash_t *hash,
             goto catch;
         }
         memset(new, 0, sizeof(*new));
-        
         new->h_key = strdup(key);
         if (new->h_key == NULL){
             clicon_err(OE_UNIX, errno, "strdup");
             goto catch;
         }
-        
         h = new;
     }
-    
     if (vlen){
         /* Make copy of value. aligned */
-        newval = malloc(align4(vlen+3)); 
+        newval = malloc(align4(vlen+3));
         if (newval == NULL){
             clicon_err(OE_UNIX, errno, "malloc");
             goto catch;
         }
         memcpy(newval, val, vlen);
     }
-    
     /* Free old value if existing variable */
     if (h->h_val)
         free(h->h_val);
@@ -293,12 +289,11 @@ catch:
  *
  * @param[in] hash    Hash table
  * @param[in] key     Variable name
- *
  * @retval    0       OK
  * @retval   -1       Key not found
  */
 int
-clicon_hash_del(clicon_hash_t *hash, 
+clicon_hash_del(clicon_hash_t *hash,
                 const char    *key)
 {
     clicon_hash_t h;
@@ -310,9 +305,7 @@ clicon_hash_del(clicon_hash_t *hash,
     h = clicon_hash_lookup(hash, key);
     if (h == NULL)
         return -1;
-    
     DELQ(h, hash[hash_bucket(key)], clicon_hash_t);
-  
     free(h->h_key);
     free(h->h_val);
     free(h);
@@ -330,7 +323,7 @@ clicon_hash_del(clicon_hash_t *hash,
  * @note: vector needs to be deallocated with free
  */
 int
-clicon_hash_keys(clicon_hash_t *hash, 
+clicon_hash_keys(clicon_hash_t *hash,
                  char        ***vector,
                  size_t        *nkeys)
 {
@@ -380,7 +373,7 @@ catch:
  * @retval     -1       Error
  */
 int
-clicon_hash_dump(clicon_hash_t *hash, 
+clicon_hash_dump(clicon_hash_t *hash,
                  FILE          *f)
 {
     int    retval = -1;
@@ -389,7 +382,7 @@ clicon_hash_dump(clicon_hash_t *hash,
     void  *val;
     size_t klen;
     size_t vlen;
-    
+
     if (hash == NULL)
         goto ok;
     if (clicon_hash_keys(hash, &keys, &klen) < 0)

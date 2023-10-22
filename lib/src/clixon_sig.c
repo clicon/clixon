@@ -57,13 +57,14 @@
 #include "clixon_sig.h"
 
 /*! Set a signal handler.
+ *
  * @param[in]  signo      Signal number 
  * @param[in]  handler    Function to call when signal occurs
  * @param[out] oldhandler Pointer to old handler
  */
 int
-set_signal(int     signo, 
-           void  (*handler)(int), 
+set_signal(int     signo,
+           void  (*handler)(int),
            void (**oldhandler)(int))
 {
     return set_signal_flags(signo,
@@ -76,15 +77,16 @@ set_signal(int     signo,
 }
 
 /*! Set a signal handler, but without SA_RESTART
+ *
  * @param[in]  signo      Signal number 
  * @param[in]  flags      Flags (to sigaction)
  * @param[in]  handler    Function to call when signal occurs
  * @param[out] oldhandler Pointer to old handler
  */
 int
-set_signal_flags(int     signo, 
+set_signal_flags(int     signo,
                  int     flags,
-                 void  (*handler)(int), 
+                 void  (*handler)(int),
                  void (**oldhandler)(int))
 {
 #if defined(HAVE_SIGACTION)
@@ -106,39 +108,37 @@ set_signal_flags(int     signo,
 }
 
 /*! Block signal. 
+ *
  * @param[in] sig   Signal number to block, If 0, block all signals
  */
 void
 clicon_signal_block(int sig)
 {
-        sigset_t
-                set;
+    sigset_t        set;
 
-        sigemptyset(&set);
-        if (sig)
-                sigaddset(&set, sig);
-        else 
-                sigfillset(&set);
-
-        sigprocmask(SIG_BLOCK, &set, NULL);
+    sigemptyset(&set);
+    if (sig)
+        sigaddset(&set, sig);
+    else
+        sigfillset(&set);
+    sigprocmask(SIG_BLOCK, &set, NULL);
 }
 
 /*! Unblock signal. 
+ *
  * @param[in] sig   Signal number to unblock. If 0, unblock all signals
  */
 void
 clicon_signal_unblock(int sig)
 {
-        sigset_t
-                set;
+    sigset_t        set;
 
-        sigemptyset(&set);
-        if (sig)
-                sigaddset(&set, sig);
-        else 
-                sigfillset(&set);
-
-        sigprocmask(SIG_UNBLOCK, &set, NULL);
+    sigemptyset(&set);
+    if (sig)
+        sigaddset(&set, sig);
+    else
+        sigfillset(&set);
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
 }
 
 /*! Save complete signal context
@@ -149,7 +149,7 @@ clixon_signal_save(sigset_t        *sigset,
 {
     int retval = -1;
     int i;
-    
+
     if (sigprocmask(0, NULL, sigset) < 0){
         clicon_err(OE_UNIX, errno, "sigprocmask");
         goto done;
@@ -167,7 +167,9 @@ clixon_signal_save(sigset_t        *sigset,
 
 /*! Restore complete signal context
  *
- * Note: sigaction may not restore SIGKILL or SIGSTOP, which cannot be caught or ignored.
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @note: sigaction may not restore SIGKILL or SIGSTOP, which cannot be caught or ignored.
  */
 int
 clixon_signal_restore(sigset_t        *sigset,
@@ -175,7 +177,7 @@ clixon_signal_restore(sigset_t        *sigset,
 {
     int retval = -1;
     int i;
-    
+
     if (sigprocmask(SIG_SETMASK, sigset, NULL) < 0){
         clicon_err(OE_UNIX, errno, "sigprocmask");
         goto done;
@@ -197,8 +199,7 @@ clixon_signal_restore(sigset_t        *sigset,
  *
  * @param[in]  pidfile  Name of pidfile
  * @param[out] pid      Process id of (eventual) existing daemon process
- * @retval    0         OK. if pid > 0 old process exists w that pid
- * @retval    -1        Error, and clicon_err() called
+ * @retval     0        OK. if pid > 0 old process exists w that pid
  */
 int
 pidfile_get_fd(FILE  *f,
@@ -207,7 +208,7 @@ pidfile_get_fd(FILE  *f,
     char   *ptr;
     char    buf[32];
     pid_t   pid;
-    
+
     *pid0 = 0;
     ptr = fgets(buf, sizeof(buf), f);
     if (ptr != NULL && (pid = atoi(ptr)) > 1) {
@@ -224,10 +225,9 @@ pidfile_get_fd(FILE  *f,
  * @param[in]  pidfile  Name of pidfile
  * @param[out] pid      Process id of (eventual) existing daemon process
  * @retval    0         OK. if pid > 0 old process exists w that pid
- * @retval    -1        Error, and clicon_err() called
  */
 int
-pidfile_get(char  *pidfile, 
+pidfile_get(char  *pidfile,
             pid_t *pid)
 {
     FILE   *f;
@@ -245,7 +245,7 @@ pidfile_get(char  *pidfile,
  *
  * @param[in] pid   Process id
  * @retval    0     Killed OK
- * @retval    -1    Could not kill.
+ * @retval   -1     Could not kill.
  * Maybe should not belong to pidfile code,..
  */
 int
@@ -274,13 +274,15 @@ pidfile_zapold(pid_t pid)
 
 /*! Write a pid-file
  *
- * @param[in] pidfile   Name of pidfile
+ * @param[in] pidfile  Name of pidfile
+ * @retval    0        OK
+ * @retval   -1        Error
  */
 int
 pidfile_write(char *pidfile)
 {
-    FILE *f = NULL;
     int   retval = -1;
+    FILE *f = NULL;
 
     /* Here, there should be no old agent and no pidfile */
     if ((f = fopen(pidfile, "w")) == NULL){
@@ -289,12 +291,12 @@ pidfile_write(char *pidfile)
         else
             clicon_err(OE_DAEMON, errno, "Creating pid-file %s", pidfile);
         goto done;
-    } 
+    }
     if ((retval = fprintf(f, "%ld\n", (long) getpid())) < 1){
         clicon_err(OE_DAEMON, errno, "Could not write pid to %s", pidfile);
         goto done;
     }
-    clicon_debug(1, "Opened pidfile %s with pid %d", pidfile, getpid());
+    clixon_debug(CLIXON_DBG_DEFAULT, "Opened pidfile %s with pid %d", pidfile, getpid());
     retval = 0;
  done:
     if (f != NULL)

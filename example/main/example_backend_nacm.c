@@ -56,18 +56,20 @@
 #include <clixon/clixon.h>
 
 /* These include signatures for plugin and transaction callbacks. */
-#include <clixon/clixon_backend.h> 
+#include <clixon/clixon_backend.h>
 
 /* Command line options to be passed to getopt(3) */
 #define BACKEND_NACM_OPTS "tv:"
 
 /*! Variable to control transaction logging (for debug)
+ *
  * If set, call syslog for every transaction callback
  * Start backend with -- -t
  */
 static int _transaction_log = 0;
 
 /*! Variable to trigger validation/commit errors (synthetic errors) for tests
+ *
  * XPath to trigger validation error, ie if the XPath matches, then validate fails
  * This is to make tests where a transaction fails midway and aborts/reverts the transaction.
  * Start backend with -- -v <xpath>
@@ -76,12 +78,13 @@ static int _transaction_log = 0;
 static char *_validate_fail_xpath = NULL;
 
 /*! Sub state variable to fail on validate/commit (not configured)
+ *
  * Obscure, but a way to first trigger a validation error, next time to trigger a commit error
  */
 static int   _validate_fail_toggle = 0; /* fail at validate and commit */
 
 int
-nacm_begin(clicon_handle    h, 
+nacm_begin(clicon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
@@ -91,7 +94,7 @@ nacm_begin(clicon_handle    h,
 /*! This is called on validate (and commit). Check validity of candidate
  */
 int
-nacm_validate(clicon_handle    h, 
+nacm_validate(clicon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
@@ -108,7 +111,7 @@ nacm_validate(clicon_handle    h,
 }
 
 int
-nacm_complete(clicon_handle    h, 
+nacm_complete(clicon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
@@ -119,7 +122,7 @@ nacm_complete(clicon_handle    h,
 /*! This is called on commit. Identify modifications and adjust machine state
  */
 int
-nacm_commit(clicon_handle    h, 
+nacm_commit(clicon_handle    h,
             transaction_data td)
 {
     if (_transaction_log)
@@ -136,7 +139,7 @@ nacm_commit(clicon_handle    h,
 }
 
 int
-nacm_commit_done(clicon_handle    h, 
+nacm_commit_done(clicon_handle    h,
                  transaction_data td)
 {
     if (_transaction_log)
@@ -145,7 +148,7 @@ nacm_commit_done(clicon_handle    h,
 }
 
 int
-nacm_revert(clicon_handle    h, 
+nacm_revert(clicon_handle    h,
             transaction_data td)
 {
     if (_transaction_log)
@@ -154,7 +157,7 @@ nacm_revert(clicon_handle    h,
 }
 
 int
-nacm_end(clicon_handle    h, 
+nacm_end(clicon_handle    h,
          transaction_data td)
 {
     if (_transaction_log)
@@ -163,7 +166,7 @@ nacm_end(clicon_handle    h,
 }
 
 int
-nacm_abort(clicon_handle    h, 
+nacm_abort(clicon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
@@ -172,9 +175,10 @@ nacm_abort(clicon_handle    h,
 }
 
 /*! Called to get NACM state data
- * @param[in]    h      Clicon handle
+ *
+ * @param[in]    h      Clixon handle
  * @param[in]    nsc    External XML namespace context, or NULL
- * @param[in]    xpath  String with XPATH syntax. or NULL for all
+ * @param[in]    xpath  String with XPath syntax. or NULL for all
  * @param[in]    xtop   XML tree, <config/> on entry. 
  * @retval       0      OK
  * @retval      -1      Error
@@ -182,8 +186,8 @@ nacm_abort(clicon_handle    h,
  * @note this example code returns a static statedata used in testing. 
  * Real code would poll state
  */
-int 
-nacm_statedata(clicon_handle h, 
+int
+nacm_statedata(clicon_handle h,
                cvec         *nsc,
                char         *xpath,
                cxobj        *xstate)
@@ -224,6 +228,7 @@ static clixon_plugin_api api = {
 };
 
 /*! Backend plugin initialization
+ *
  * @param[in]  h    Clixon handle
  * @retval     NULL Error with clicon_err set
  * @retval     api  Pointer to API struct
@@ -235,8 +240,8 @@ clixon_plugin_init(clicon_handle h)
     int    argc; /* command-line options (after --) */
     char **argv;
     int    c;
-    
-    clicon_debug(1, "%s backend nacm", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s backend nacm", __FUNCTION__);
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
         goto done;
@@ -256,7 +261,7 @@ clixon_plugin_init(clicon_handle h)
     if (nacm_mode==NULL || strcmp(nacm_mode, "disabled") == 0){
         clicon_log(LOG_DEBUG, "%s CLICON_NACM_MODE not enabled: example nacm module disabled", __FUNCTION__);
         /* Skip nacm module if not enabled _unless_ we use transaction tests */
-        if (_transaction_log == 0) 
+        if (_transaction_log == 0)
             return NULL;
     }
     /* Return plugin API */

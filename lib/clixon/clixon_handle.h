@@ -60,7 +60,7 @@ typedef void *plghndl_t;
  */
 typedef int (clicon_output_cb)(
    FILE *f,
-   const char *templ, ... 
+   const char *templ, ...
 ) __attribute__ ((format (printf, 2, 3)));
 
 /*

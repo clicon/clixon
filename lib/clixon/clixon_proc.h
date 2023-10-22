@@ -40,7 +40,7 @@
 
 /*
  * Types
- */ 
+ */
 typedef struct process_entry_t process_entry_t;
 
 /* Process operations */
@@ -52,7 +52,7 @@ typedef enum proc_operation {
     PROC_OP_STATUS
 } proc_operation;
 
-/*! Process RPC callback function 
+/*! Process RPC callback function
  *
  * @param[in]     h   Clixon handle
  * @param[in]     pe  Process entry
@@ -64,7 +64,7 @@ typedef int (proc_cb_t)(clicon_handle    h,
 
 /*
  * Prototypes
- */ 
+ */
 int clixon_proc_socket(char **argv, int sock_flags, pid_t *pid, int *sock);
 int clixon_proc_socket_close(pid_t pid, int sock);
 int clixon_process_pid(clicon_handle h, const char *name, pid_t *pid);

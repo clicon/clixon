@@ -124,7 +124,7 @@ xmldb_db2file(clicon_handle  h,
 
 /*! Connect to a datastore plugin, allocate resources to be used in API calls
  *
- * @param[in]  h    Clicon handle
+ * @param[in]  h    Clixon handle
  * @retval     0    OK
  * @retval    -1    Error
  */
@@ -167,7 +167,7 @@ xmldb_disconnect(clicon_handle h)
 
 /*! Copy database from db1 to db2
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  from  Source database
  * @param[in]  to    Destination database
  * @retval     0     OK
@@ -187,7 +187,7 @@ xmldb_copy(clicon_handle h,
     cxobj              *x1 = NULL;  /* from */
     cxobj              *x2 = NULL;  /* to */
 
-    clicon_debug(1, "%s %s %s", __FUNCTION__, from, to);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %s", __FUNCTION__, from, to);
     /* XXX lock */
     if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
         /* Copy in-memory cache */
@@ -245,7 +245,7 @@ xmldb_copy(clicon_handle h,
 
 /*! Lock database
  *
- * @param[in]  h    Clicon handle
+ * @param[in]  h    Clixon handle
  * @param[in]  db   Database
  * @param[in]  id   Session id
  * @retval     0    OK
@@ -264,20 +264,20 @@ xmldb_lock(clicon_handle h,
     de0.de_id = id;
     gettimeofday(&de0.de_tv, NULL);
     clicon_db_elmnt_set(h, db, &de0);
-    clicon_debug(1, "%s: locked by %u",  db, id);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s: locked by %u",  db, id);
     return 0;
 }
 
 /*! Unlock database
  *
- * @param[in]  h   Clicon handle
+ * @param[in]  h   Clixon handle
  * @param[in]  db  Database
  * @retval     0   OK
  * @retval    -1   Error
  * Assume all sanity checks have been made
  */
-int 
-xmldb_unlock(clicon_handle h, 
+int
+xmldb_unlock(clicon_handle h,
              const char   *db)
 {
     db_elmnt  *de = NULL;
@@ -292,13 +292,13 @@ xmldb_unlock(clicon_handle h,
 
 /*! Unlock all databases locked by session-id (eg process dies) 
  *
- * @param[in]  h   Clicon handle
+ * @param[in]  h   Clixon handle
  * @param[in]  id  Session id
  * @retval     0   OK
  * @retval    -1   Error
  */
 int
-xmldb_unlock_all(clicon_handle h, 
+xmldb_unlock_all(clicon_handle h,
                  uint32_t      id)
 {
     int       retval = -1;
@@ -328,14 +328,14 @@ xmldb_unlock_all(clicon_handle h,
 
 /*! Check if database is locked
  *
- * @param[in] h   Clicon handle
+ * @param[in] h   Clixon handle
  * @param[in] db  Database
  * @retval    >0  Session id of locker
  * @retval    0   Not locked
- * @retval    -1  Error
+ * @retval   -1   Error
  */
 uint32_t
-xmldb_islocked(clicon_handle h, 
+xmldb_islocked(clicon_handle h,
                const char   *db)
 {
     db_elmnt  *de;
@@ -347,14 +347,14 @@ xmldb_islocked(clicon_handle h,
 
 /*! Get timestamp of when database was locked
  *
- * @param[in]  h   Clicon handle
+ * @param[in]  h   Clixon handle
  * @param[in]  db  Database
  * @param[out] tv  Timestamp
  * @retval     0   OK
  * @retval    -1   No timestamp / not locked
  */
 int
-xmldb_lock_timestamp(clicon_handle   h, 
+xmldb_lock_timestamp(clicon_handle   h,
                      const char     *db,
                      struct timeval *tv)
 {
@@ -368,22 +368,22 @@ xmldb_lock_timestamp(clicon_handle   h,
 
 /*! Check if db exists or is empty
  *
- * @param[in]  h   Clicon handle
+ * @param[in]  h   Clixon handle
  * @param[in]  db  Database
  * @retval     1   Yes it exists
  * @retval     0   No it does not exist
  * @retval    -1   Error
  * @note  An empty datastore is treated as not existent so that a backend after dropping priviliges can re-create it
  */
-int 
-xmldb_exists(clicon_handle h, 
+int
+xmldb_exists(clicon_handle h,
              const char   *db)
 {
     int                 retval = -1;
     char               *filename = NULL;
     struct stat         sb;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
     if (lstat(filename, &sb) < 0)
@@ -403,18 +403,18 @@ xmldb_exists(clicon_handle h,
 
 /*! Clear database cache if any for mem/size optimization only, not file itself
  *
- * @param[in]  h   Clicon handle
+ * @param[in]  h   Clixon handle
  * @param[in]  db  Database
  * @retval     0   OK
  * @retval    -1   Error
  */
-int 
-xmldb_clear(clicon_handle h, 
+int
+xmldb_clear(clicon_handle h,
             const char   *db)
 {
     cxobj    *xt = NULL;
     db_elmnt *de = NULL;
-    
+
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
         if ((xt = de->de_xml) != NULL){
             xml_free(xt);
@@ -426,22 +426,22 @@ xmldb_clear(clicon_handle h,
 
 /*! Delete database, clear cache if any. Remove file 
  *
- * @param[in]  h   Clicon handle
+ * @param[in]  h   Clixon handle
  * @param[in]  db  Database
  * @retval     0   OK
  * @retval    -1   Error
 
  * @note  Datastore is not actually deleted so that a backend after dropping priviliges can re-create it
  */
-int 
-xmldb_delete(clicon_handle h, 
+int
+xmldb_delete(clicon_handle h,
              const char   *db)
 {
     int                 retval = -1;
     char               *filename = NULL;
     struct stat         sb;
-    
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
+
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
     if (xmldb_clear(h, db) < 0)
         goto done;
     if (xmldb_db2file(h, db, &filename) < 0)
@@ -460,13 +460,13 @@ xmldb_delete(clicon_handle h,
 
 /*! Create a database. Open database for writing.
  *
- * @param[in]  h   Clicon handle
+ * @param[in]  h   Clixon handle
  * @param[in]  db  Database
  * @retval     0   OK
  * @retval    -1   Error
  */
-int 
-xmldb_create(clicon_handle h, 
+int
+xmldb_create(clicon_handle h,
              const char   *db)
 {
     int                 retval = -1;
@@ -475,7 +475,7 @@ xmldb_create(clicon_handle h,
     db_elmnt           *de = NULL;
     cxobj              *xt = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
         if ((xt = de->de_xml) != NULL){
             xml_free(xt);
@@ -506,11 +506,11 @@ xmldb_create(clicon_handle h,
  * @retval    -1   Error
  */
 int
-xmldb_db_reset(clicon_handle h, 
+xmldb_db_reset(clicon_handle h,
                const char   *db)
 {
     if (xmldb_exists(h, db) == 1){
-        if (xmldb_delete(h, db) != 0 && errno != ENOENT) 
+        if (xmldb_delete(h, db) != 0 && errno != ENOENT)
             return -1;
     }
     if (xmldb_create(h, db) < 0)
@@ -520,7 +520,7 @@ xmldb_db_reset(clicon_handle h,
 
 /*! Get datastore XML cache
  *
- * @param[in]  h    Clicon handle
+ * @param[in]  h    Clixon handle
  * @param[in]  db   Database name
  * @retval     xml  XML cached tree or NULL
  */
@@ -529,7 +529,7 @@ xmldb_cache_get(clicon_handle h,
                 const char   *db)
 {
     db_elmnt *de;
-    
+
     if ((de = clicon_db_elmnt_get(h, db)) == NULL)
         return NULL;
     return de->de_xml;
@@ -537,7 +537,7 @@ xmldb_cache_get(clicon_handle h,
 
 /*! Get modified flag from datastore
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  db    Database name
  * @retval     1     Db is modified
  * @retval     0     Db is not modified
@@ -550,7 +550,7 @@ xmldb_modified_get(clicon_handle h,
                    const char   *db)
 {
     db_elmnt *de;
-    
+
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
         clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
         return -1;
@@ -560,7 +560,7 @@ xmldb_modified_get(clicon_handle h,
 
 /*! Get empty flag from datastore (the datastore was empty ON LOAD)
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  db    Database name
  * @retval     1     Db was empty on load
  * @retval     0     Db was not empty on load
@@ -571,7 +571,7 @@ xmldb_empty_get(clicon_handle h,
                 const char   *db)
 {
     db_elmnt *de;
-    
+
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
         clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
         return -1;
@@ -581,7 +581,7 @@ xmldb_empty_get(clicon_handle h,
 
 /*! Set modified flag from datastore
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  db    Database name
  * @param[in]  value 0 or 1
  * @retval     0     OK
@@ -595,7 +595,7 @@ xmldb_modified_set(clicon_handle h,
                    int           value)
 {
     db_elmnt *de;
-    
+
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
         clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
         return -1;
@@ -611,7 +611,7 @@ xmldb_print(clicon_handle h,
             FILE         *f)
 {
     int       retval = -1;
-    db_elmnt *de = NULL;    
+    db_elmnt *de = NULL;
     char    **keys = NULL;
     size_t    klen;
     int       i;
@@ -635,7 +635,7 @@ xmldb_print(clicon_handle h,
 
 /*! Rename an XML database
  *
- * @param[in]  h        Clicon handle
+ * @param[in]  h        Clixon handle
  * @param[in]  db       Database name
  * @param[in]  newdb    New Database name; if NULL, then same as old
  * @param[in]  suffix   Suffix to append to new database name

@@ -62,11 +62,11 @@
 
 %{
 /* Here starts user C-code */
-    
+
 /* typecast macro */
 #define _IF ((clixon_yang_schemanode_yacc *)_if)
 #define _YYERROR(msg) {clicon_err(OE_YANG, 0, "%s", (msg)); YYERROR;}
-    
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -95,28 +95,28 @@
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clicon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(1,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
- 
-void 
+
+void
 clixon_yang_schemanode_parseerror(void *arg,
-                                  char *s) 
+                                  char *s)
 {
     clixon_yang_schemanode_yacc *ife = (clixon_yang_schemanode_yacc *)arg;
 
-    clicon_err_fn(NULL, 0, OE_YANG, 0, "yang_schemanode_parse: file:%s:%d \"%s\" %s: at or before: %s", 
-               ife->if_mainfile,
-               ife->if_linenum,
-               ife->if_parse_string,
-               s,
-               clixon_yang_schemanode_parsetext); 
+    clicon_err_fn(NULL, 0, OE_YANG, 0, "yang_schemanode_parse: file:%s:%d \"%s\" %s: at or before: %s",
+                  ife->if_mainfile,
+                  ife->if_linenum,
+                  ife->if_parse_string,
+                  s,
+                  clixon_yang_schemanode_parsetext);
     return;
 }
 
-%} 
- 
+%}
+
 %%
 
 /* See RFC 7950 Sec 14 refine-arg-str / usage-augment-arg-str */
@@ -127,7 +127,7 @@ top        : descendant_schema_nodeid MY_EOF
                             YYACCEPT;
                         }
                         else{
-                            _YYERROR("descendant-schema-nodeid unexpected"); 
+                            _YYERROR("descendant-schema-nodeid unexpected");
                         }
                     }
            | absolute_schema_nodeid MY_EOF
@@ -137,7 +137,7 @@ top        : descendant_schema_nodeid MY_EOF
                             YYACCEPT;
                         }
                         else{
-                            _YYERROR("absolute-schema-nodeid unexpected"); 
+                            _YYERROR("absolute-schema-nodeid unexpected");
                         }
                     }
            ;
@@ -154,11 +154,11 @@ descendant_schema_nodeid
            ;
 
 absolute_schema_nodeid
-           : absolute_schema_nodeid '/'  node_identifier 
+           : absolute_schema_nodeid '/'  node_identifier
                     {
                         _PARSE_DEBUG("absolute-schema-nodeid->absolute-schema-nodeid '/' node-identifier");
                     }
-           | '/'  node_identifier 
+           | '/'  node_identifier
                     {
                         _PARSE_DEBUG("absolute-schema-nodeid->'/' node-identifier");
                     }

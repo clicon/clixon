@@ -68,14 +68,14 @@
 #define _YY ((clixon_yang_yacc *)_yy)
 
 #undef clixon_yang_parsewrap
-int 
+int
 clixon_yang_parsewrap(void)
 {
   return 1;
 }
 
 /*
-   statement = keyword [argument] (";" / "{" *statement "}") 
+   statement = keyword [argument] (";" / "{" *statement "}")
    The argument is a string
 
    Example: keyword argument ; keyword ; keyword { keyword argument; } keyword
@@ -106,7 +106,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD,DEVIATE,DEVIATESTR,BOOLEAN,INTEGER,STRARG,STRING>[ \t]+
 <KEYWORD,DEVIATE,DEVIATESTR,STRING,UNKNOWN,UNKNOWN2,COMMENT2><<EOF>> { return MY_EOF; }
 <KEYWORD,DEVIATE,DEVIATESTR,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\n   { _YY->yy_linenum++; }
-<KEYWORD,DEVIATE,DEVIATESTR,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\r   
+<KEYWORD,DEVIATE,DEVIATESTR,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\r
 <KEYWORD,DEVIATE,DEVIATESTR,STRARG,STRING,UNKNOWN,UNKNOWN2>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
 <KEYWORD,DEVIATE,DEVIATESTR,STRARG,STRING,UNKNOWN,UNKNOWN2>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
 
@@ -264,18 +264,17 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <STRINGSQ>[^'\n]+         { clixon_yang_parselval.string = strdup(yytext);
                             return CHARS;}
 
-<DQESC>[nt"\\]            { BEGIN(_YY->yy_lex_state); 
-                             clixon_yang_parselval.string = strdup(yytext); 
+<DQESC>[nt"\\]            { BEGIN(_YY->yy_lex_state);
+                             clixon_yang_parselval.string = strdup(yytext);
                              return CHARS; }
 <DQESC>[^nt"\\]           { char *str = malloc(3);
                             /* This is for Yang 1.0 double-quoted strings */
-                            BEGIN(_YY->yy_lex_state); 
+                            BEGIN(_YY->yy_lex_state);
                             str[0] = '\\';
                             str[1] = yytext[0];
                             str[2] = '\0';
-                            clixon_yang_parselval.string = str; 
+                            clixon_yang_parselval.string = str;
                             return CHARS; }
-                             
 <COMMENT1>[^*\n]*        /* eat anything that's not a '*' */
 <COMMENT1>"*"+[^*/\n]*   /* eat up '*'s not followed by '/'s */
 <COMMENT1>"*"+"/"        BEGIN(_YY->yy_lex_state);
@@ -295,7 +294,7 @@ yang_scan_init(clixon_yang_yacc *yy)
   yy->yy_lexbuf = yy_scan_string (yy->yy_parse_string);
 #if 1 /* XXX: just to use unput to avoid warning  */
   if (0)
-    yyunput(0, ""); 
+    yyunput(0, "");
 #endif
 
   return 0;

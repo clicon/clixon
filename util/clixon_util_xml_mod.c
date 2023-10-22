@@ -133,8 +133,8 @@ main(int argc, char **argv)
     char         *reason = NULL;
     int           dbg = 0;
     cxobj        *xcfg = NULL;
-    
-    clicon_log_init("clixon_insert", LOG_DEBUG, CLICON_LOG_STDERR); 
+
+    clicon_log_init("clixon_insert", LOG_DEBUG, CLICON_LOG_STDERR);
     if ((h = clicon_handle_init()) == NULL)
         goto done;
     if ((xcfg = xml_new("clixon-config", NULL, CX_ELMNT)) == NULL)
@@ -168,7 +168,7 @@ main(int argc, char **argv)
         case 'x': /* XML to insert */
             x1str = optarg;
             break;
-        case 'p': /* XPATH base */
+        case 'p': /* XPath base */
             xpath = optarg;
             break;
         case 's': /* sort output after insert */
@@ -181,9 +181,9 @@ main(int argc, char **argv)
     /* Sanity check: check mandatory arguments */
     if (x1str == NULL || x0str == NULL || yangfile == NULL)
         usage(argv0);
-    if (opx == OPX_ERROR) 
+    if (opx == OPX_ERROR)
         usage(argv0);
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
     if ((yspec = yspec_new()) == NULL)
         goto done;
     if (yang_spec_parse_file(h, yangfile, yspec) < 0)
@@ -204,8 +204,8 @@ main(int argc, char **argv)
         clicon_err(OE_XML, 0, "xpath: %s not found in x0", xpath);
         goto done;
     }
-    if (clicon_debug_get()){
-        clicon_debug(1, "xb:");
+    if (clixon_debug_get()){
+        clixon_debug(CLIXON_DBG_DEFAULT, "xb:");
         xml_print(stderr, xb);
     }
     switch (opx){
@@ -236,7 +236,7 @@ main(int argc, char **argv)
             clicon_err(OE_XML, 0, "xpath: %s not found in xi", xpath);
             goto done;
         }
-        if ((ret = xml_merge(xb, xi, yspec, &reason)) < 0) 
+        if ((ret = xml_merge(xb, xi, yspec, &reason)) < 0)
             goto done;
         if (ret == 0){
             clicon_err(OE_XML, 0, "%s", reason);
@@ -269,14 +269,14 @@ main(int argc, char **argv)
         /* Remove it from parent */
         if (xml_rm(xi1) < 0)
             goto done;
-        if (xml_insert(xb, xi1, INS_LAST, NULL, NULL) < 0) 
+        if (xml_insert(xb, xi1, INS_LAST, NULL, NULL) < 0)
             goto done;
         break;
     default:
         usage(argv0);
     }
-    if (clicon_debug_get()){
-        clicon_debug(1, "x0:");
+    if (clixon_debug_get()){
+        clixon_debug(CLIXON_DBG_DEFAULT, "x0:");
         xml_print(stderr, x0);
     }
     if (sort)

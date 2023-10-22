@@ -45,6 +45,7 @@ extern "C" {
  * Types 
  */
 /*! RESTCONF media types 
+ *
  * @see http_media_map
  * @note DUPLICATED in restconf_lib.h
  */

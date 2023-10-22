@@ -80,7 +80,7 @@ static int _clixon_log_trunc = 0;
  *
  * Make syslog(3) calls with specified ident and gates calls of level upto specified level (upto).
  * May also print to stderr, if err is set.
- * Applies to clicon_err() and clicon_debug too
+ * Applies to clicon_err() and clixon_debug too
  *
  * @param[in]  ident   prefix that appears on syslog (eg 'cli')
  * @param[in]  upto    log priority, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG (see syslog(3)).
@@ -92,15 +92,15 @@ static int _clixon_log_trunc = 0;
  * @endcode
  */
 int
-clicon_log_init(char         *ident, 
-                int           upto, 
-                int           flags)
+clicon_log_init(char   *ident,
+                int     upto, 
+                int     flags)
 {
     _logflags = flags;
     if (flags & CLICON_LOG_SYSLOG){
         if (setlogmask(LOG_UPTO(upto)) < 0)
             /* Cant syslog here */
-            fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno)); 
+            fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno));
         openlog(ident, LOG_PID, LOG_USER); /* LOG_PUSER is achieved by direct stderr logs in clicon_log */
     }
     return 0;
@@ -116,9 +116,10 @@ clicon_log_exit(void)
 }
 
 /*! Utility function to set log destination/flag using command-line option
+ *
  * @param[in]  c  Log option,one of s,f,e,o
- * @retval    -1  No match
  * @retval     0  One of CLICON_LOG_SYSLOG|STDERR|STDOUT|FILE
+ * @retval    -1  No match
  */
 int
 clicon_log_opt(char c)
@@ -143,15 +144,16 @@ clicon_log_opt(char c)
         break;
     default:
         break;
-    } 
+    }
     return logdst;
 }
 
 /*! If log flags include CLICON_LOG_FILE, set the file 
+ *
  * @param[in]   filename   File to log to
  * @retval      0          OK
  * @retval     -1          Error
- * @see clicon_debug_init where a strean
+ * @see clixon_debug_init where a strean
  */
 int
 clicon_log_file(char *filename)
@@ -198,7 +200,7 @@ flogtime(FILE *f)
 
     gettimeofday(&tv, NULL);
     localtime_r((time_t*)&tv.tv_sec, &tm);
-    fprintf(f, "%s %2d %02d:%02d:%02d: ", 
+    fprintf(f, "%s %2d %02d:%02d:%02d: ",
             mon2name(tm.tm_mon), tm.tm_mday,
             tm.tm_hour, tm.tm_min, tm.tm_sec);
     return 0;
@@ -223,7 +225,7 @@ slogtime(void)
     }
     gettimeofday(&tv, NULL);
     tm = localtime((time_t*)&tv.tv_sec);
-    snprintf(str, 18, "%s %2d %02d:%02d:%02d: ", 
+    snprintf(str, 18, "%s %2d %02d:%02d:%02d: ",
              mon2name(tm->tm_mon), tm->tm_mday,
              tm->tm_hour, tm->tm_min, tm->tm_sec);
     return str;
@@ -236,11 +238,11 @@ slogtime(void)
  * @param[in]   msg   Message to print as argv.
  * This is the _only_ place the actual syslog (or stderr) logging is made in clicon,..
  * @note syslog makes its own filtering, but if log to stderr we do it here
- * @see  clicon_debug
+ * @see  clixon_debug
  */
 int
-clicon_log_str(int           level, 
-               char         *msg)
+clicon_log_str(int     level,
+               char   *msg)
 {
     if (_logflags & CLICON_LOG_SYSLOG)
         syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg); // XXX this may block
@@ -262,7 +264,7 @@ clicon_log_str(int           level,
         fprintf(_logfile, "%s\n", msg);
         fflush(_logfile);
     }
-    /* Enable this if you want syslog in a stream. But there are problems with 
+    /* Enable this if you want syslog in a stream. But there are problems with
      * recursion
      */
  done:
@@ -271,9 +273,11 @@ clicon_log_str(int           level,
 
 /*! Make a logging call to syslog using variable arg syntax.
  *
- * @param[in]   level    log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. This 
- *                       is OR:d with facility == LOG_USER
- * @param[in]   format   Message to print as argv.
+ * @param[in]  level    log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. This 
+ *                      is OR:d with facility == LOG_USER
+ * @param[in]  format   Message to print as argv.
+ * @retval     0        OK
+ * @retval    -1        Error
  * @code
         clicon_log(LOG_NOTICE, "%s: dump to dtd not supported", __PROGRAM__);
  * @endcode
@@ -281,13 +285,13 @@ clicon_log_str(int           level,
  * @see clicon_log_xml
  */
 int
-clicon_log(int         level, 
+clicon_log(int         level,
            const char *format, ...)
 {
+    int     retval = -1;
     va_list args;
     size_t  len;
     char   *msg    = NULL;
-    int     retval = -1;
     size_t  trunc;
 
     /* first round: compute length of debug message */
@@ -325,9 +329,9 @@ clicon_log(int         level,
 
 /*! Initialize debug messages. Set debug level.
  *
- * Initialize debug module. The level is used together with clicon_debug(dbglevel) calls as follows: 
+ * Initialize debug module. The level is used together with clixon_debug(dbglevel) calls as follows: 
  * print message if level >= dbglevel.
- * Example: clicon_debug_init(1) -> debug(1) is printed, but not debug(2).
+ * Example: clixon_debug_init(1) -> debug(1) is printed, but not debug(2).
  * Normally, debug messages are sent to clicon_log() which in turn can be sent to syslog and/or stderr.
  * But you can also override this with a specific debug file so that debug messages are written on the file
  * independently of log or errors. This is to ensure that a syslog of normal logs is unpolluted by extensive
@@ -341,11 +345,11 @@ clicon_log(int         level,
  * @see clicon_log_file where a filename can be given
  */
 int
-clicon_debug_init(int   dbglevel,
+clixon_debug_init(int   dbglevel,
                   FILE *f)
 {
     _clixon_debug = dbglevel; /* Global variable */
-    
+
     if (f != NULL){
         if (_logfile)
             fclose(_logfile);
@@ -355,7 +359,7 @@ clicon_debug_init(int   dbglevel,
 }
 
 int
-clicon_debug_get(void)
+clixon_debug_get(void)
 {
     return _clixon_debug;
 }
@@ -363,27 +367,29 @@ clicon_debug_get(void)
 /*! Print a debug message with debug-level. Settings determine where msg appears.
  *
  * If the dbglevel passed in the function is equal to or lower than the one set by 
- * clicon_debug_init(level).  That is, only print debug messages <= than what you want:
+ * clixon_debug_init(level).  That is, only print debug messages <= than what you want:
  *      print message if level >= dbglevel.
  * The message is sent to clicon_log. EIther to syslog, stderr or both, depending on 
  * clicon_log_init() setting
- * @param[in] dbglevel   Mask of CLIXON_DBG_DEFAULT and other masks
- * @param[in] format     Message to print as argv.
- * @see clicon_debug_xml Specialization for XML tree
+ * @param[in] dbglevel  Mask of CLIXON_DBG_DEFAULT and other masks
+ * @param[in] format    Message to print as argv.
+ * @retval    0         OK
+ * @retval   -1         Error
+ * @see clixon_debug_xml Specialization for XML tree
  * @see CLIXON_DBG_DEFAULT and other flags
  */
 int
-clicon_debug(int         dbglevel, 
+clixon_debug(int         dbglevel,
              const char *format, ...)
 {
+    int     retval = -1;
     va_list args;
     size_t  len;
     char   *msg    = NULL;
-    int     retval = -1;
     size_t  trunc;
-    
+
     /* Mask debug level with global dbg variable */
-    if ((dbglevel & clicon_debug_get()) == 0)
+    if ((dbglevel & clixon_debug_get()) == 0)
         return 0;
     /* first round: compute length of debug message */
     va_start(args, format);
@@ -393,7 +399,6 @@ clicon_debug(int         dbglevel,
     /* Truncate long debug strings */
     if ((trunc = clicon_log_string_limit_get()) && trunc < len)
         len = trunc;
-        
     /* allocate a message string exactly fitting the message length */
     if ((msg = malloc(len+1)) == NULL){
         clicon_err(OE_UNIX, errno, "malloc");
@@ -416,6 +421,7 @@ clicon_debug(int         dbglevel,
 }
 
 /*! Translate month number (0..11) to a three letter month name
+ *
  * @param[in] md  month number, where 0 is january
  */
 char *

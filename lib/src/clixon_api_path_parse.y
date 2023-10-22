@@ -86,7 +86,7 @@
 #define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_api_path_parsetext, _AY->ay_linenum); YYERROR;}
 
 /* add _yy to error parameters */
-#define YY_(msgid) msgid 
+#define YY_(msgid) msgid
 
 #include "clixon_config.h"
 
@@ -116,29 +116,29 @@
 
 /* Best debugging is to enable PARSE_DEBUG below and add -d to the LEX compile statement in the Makefile
  * And then run the testcase with -D 1
- * Disable it to stop any calls to clicon_debug. Having it on by default would mean very large debug outputs.
+ * Disable it to stop any calls to clixon_debug. Having it on by default would mean very large debug outputs.
  */
 #if 0
-#define _PARSE_DEBUG(s) clicon_debug(1,(s))
-#define _PARSE_DEBUG1(s, s1) clicon_debug(1,(s), (s1))
+#define _PARSE_DEBUG(s) clixon_debug(1,(s))
+#define _PARSE_DEBUG1(s, s1) clixon_debug(1,(s), (s1))
 #else
 #define _PARSE_DEBUG(s)
 #define _PARSE_DEBUG1(s, s1)
 #endif
 
-/* 
+/*
  * Also called from yacc generated code *
  */
-void 
+void
 clixon_api_path_parseerror(void *_ay,
-                           char *s) 
-{ 
-    clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'", 
+                           char *s)
+{
+    clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'",
                _AY->ay_name,
-               _AY->ay_linenum ,
-               s, 
-               clixon_api_path_parsetext); 
-  return;
+               _AY->ay_linenum,
+               s,
+               clixon_api_path_parsetext);
+    return;
 }
 
 int
@@ -159,20 +159,20 @@ static clixon_path *
 path_append(clixon_path *list,
             clixon_path *new)
 {
-    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (new == NULL)
         return NULL;
     ADDQ(new, list);
     return list;
 }
 
-/*! Add keyvalue to existing clixon path 
+/*! Add keyvalue to existing clixon path
  */
 static clixon_path *
 path_add_keyvalue(clixon_path *cp,
                   cvec        *cvk)
 {
-    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cp)
         cp->cp_cvk = cvk;
     return cp;
@@ -184,7 +184,7 @@ path_new(char *module_name,
 {
     clixon_path *cp = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, module_name, id);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, module_name, id);
     if ((cp = malloc(sizeof(*cp))) == NULL){
         clicon_err(OE_UNIX, errno, "malloc");
         goto done;
@@ -205,6 +205,7 @@ path_new(char *module_name,
 }
 
 /*! Append a key-value cv to a cvec, create the cvec if not exist
+ *
  * @param[in] cvv  Either created cvv or NULL, in whihc case it is created
  * @param[in] cv   Is consumed by thius function (if appended)
  * @retval    NULL Error
@@ -214,7 +215,7 @@ static cvec *
 keyval_add(cvec   *cvv,
            cg_var *cv)
 {
-    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cv == NULL)
         goto done;
     if (cvv == NULL &&
@@ -240,7 +241,7 @@ keyval_set(char *name,
 {
     cg_var *cv = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
         clicon_err(OE_UNIX, errno, "cv_new");
         goto done;
@@ -259,24 +260,23 @@ keyval_set(char *name,
     return cv;
 }
 
-%} 
- 
+%}
 
 %%
 
 /*
 */
 
-start          : list X_EOF        {_PARSE_DEBUG("top");_AY->ay_top=$1; YYACCEPT; } 
+start          : list X_EOF        {_PARSE_DEBUG("top");_AY->ay_top=$1; YYACCEPT; }
                ;
 
-list           : list SLASH element { if (($$ = path_append($1, $3)) == NULL) YYABORT; 
+list           : list SLASH element { if (($$ = path_append($1, $3)) == NULL) YYABORT;
                                     _PARSE_DEBUG("list = list / element");}
                |                  { $$ = NULL;
                                     _PARSE_DEBUG("list = ");}
                ;
 
-element        : api_identifier { $$=$1; 
+element        : api_identifier { $$=$1;
                                  _PARSE_DEBUG("element = api_identifier");}
                | list_instance  { $$=$1;
                                  _PARSE_DEBUG("element = list_instance");}

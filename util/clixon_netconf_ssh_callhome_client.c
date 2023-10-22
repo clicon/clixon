@@ -150,21 +150,24 @@ fdpass(int nfd)
 }
 
 /*! Create and bind stream socket
+ *
  * @param[in]  sa       Socketaddress
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
  * @param[in]  backlog  Listen backlog, queie of pending connections
  * @param[out] sock     Server socket (bound for accept)
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
 callhome_bind(struct sockaddr *sa,
-              size_t           sin_len,             
+              size_t           sin_len,
               int              backlog,
               int             *sock)
 {
     int    retval = -1;
     int    s = -1;
     int    on = 1;
-    
+
     if (sock == NULL){
         errno = EINVAL;
         perror("sock");
@@ -274,7 +277,7 @@ main(int    argc,
         sin6.sin6_port   = htons(port);
         sin6.sin6_family = AF_INET6;
         inet_pton(AF_INET6, addr, &sin6.sin6_addr);
-        sa = (struct sockaddr *)&sin6;  
+        sa = (struct sockaddr *)&sin6;
     }
     else if (strcmp(family, "ipv4") == 0){
         sin_len             = sizeof(struct sockaddr_in);
@@ -288,7 +291,7 @@ main(int    argc,
         goto done;
     }
     /* Bind port */
-    if (callhome_bind(sa, sin_len, 1, &ss) < 0) 
+    if (callhome_bind(sa, sin_len, 1, &ss) < 0)
         goto done;
     /* Wait until connect */
     len = sizeof(from);

@@ -92,7 +92,7 @@ pipe_arg_fn(clicon_handle h,
     struct stat  fstat;
     char       **argv = NULL;
     int          i;
-    
+
     if (cmd == NULL || strlen(cmd) == 0){
         clicon_err(OE_PLUGIN, EINVAL, "cmd '%s' NULL or empty", cmd);
         goto done;
@@ -123,7 +123,7 @@ pipe_arg_fn(clicon_handle h,
 
 /* Grep pipe output function
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
  * @param[in]  argv  String vector of options. Format: <option> <value>
  * @note  Any vertical bar (|] in the patterns field is quoted for OR function
@@ -182,9 +182,11 @@ pipe_grep_fn(clicon_handle h,
 
 /*! wc pipe output function
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
  * @param[in]  argv  String vector of options. Format: <option> <value>
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 int
 pipe_wc_fn(clicon_handle h,
@@ -195,7 +197,7 @@ pipe_wc_fn(clicon_handle h,
     cg_var *cv;
     char   *str;
     char   *option = NULL;
-    
+
     if (cvec_len(argv) != 1){
         clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <NUM>", cvec_len(argv));
         goto done;
@@ -211,9 +213,11 @@ pipe_wc_fn(clicon_handle h,
 
 /*! wc pipe output function
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
  * @param[in]  argv  String vector of options. Format: <option> <value>
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 int
 pipe_tail_fn(clicon_handle h,
@@ -252,12 +256,14 @@ pipe_tail_fn(clicon_handle h,
 
 /*! Output pipe translate from xml to other format: json,text,
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
  * @param[in]  argv  String vector of show options, format:
  *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
  *   <pretty>        true|false: pretty-print or not
  *   <prepend>       CLI prefix: prepend before cli syntax output
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see cli_show_auto_devs
  */
 int
@@ -350,7 +356,7 @@ output_fn(cligen_handle handle,
           cvec         *argv)
 {
     cg_var *cv;
-    
+
     cv = NULL;
     while ((cv = cvec_each(argv, cv)) != NULL){
         cligen_output(stdout, "%s\n", cv_string_get(cv));

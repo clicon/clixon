@@ -72,12 +72,15 @@
 #include "backend_handle.h"
 #include "backend_get.h"
 
-/*!
+/*! restrconf get capabilities
+ *
  * Maybe should be in the restconf client instead of backend?
- * @param[in]     h       Clicon handle
+ * @param[in]     h       Clixon handle
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   Xpath selection, not used but may be to filter early
  * @param[out]    xrs     XML restconf-state node
+ * @retval        0       OK
+ * @retval       -1       Error
  * @see netconf_hello_server
  * @see rfc8040 Sections 9.1
  */
@@ -114,7 +117,8 @@ restconf_client_get_capabilities(clicon_handle h,
 }
 
 /*! Get streams state according to RFC 8040 or RFC5277 common function
- * @param[in]     h       Clicon handle
+ *
+ * @param[in]     h       Clixon handle
  * @param[in]     yspec   Yang spec
  * @param[in]     xpath   Xpath selection, not used but may be to filter early
  * @param[in]     module  Name of yang module
@@ -176,7 +180,8 @@ client_get_streams(clicon_handle   h,
 }
 
 /*! Get system state-data, including streams and plugins
- * @param[in]     h       Clicon handle
+ *
+ * @param[in]     h       Clixon handle
  * @param[in]     xpath   XPath selection, may be used to filter early
  * @param[in]     nsc     XML Namespace context for xpath
  * @param[in]     wdef    With-defaults parameter, see RFC 6243
@@ -213,7 +218,7 @@ get_statedata(clicon_handle     h,
     cbuf      *cb = NULL;
     cxobj     *xerr = NULL;
     
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
@@ -368,7 +373,7 @@ get_statedata(clicon_handle     h,
     } /* switch wdef */
     retval = 1; /* OK */
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     if (xerr)
         xml_free(xerr);
     if (x1)
@@ -390,7 +395,7 @@ get_statedata(clicon_handle     h,
  * and we need to re-add it.
  * Note original xpath
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  yspec   Yang spec
  * @param[in]  xret    Result XML tree
  * @param[in]  xvec    xpath lookup result on xret
@@ -438,7 +443,7 @@ filter_xpath_again(clicon_handle h,
 
 /*! Help function for NACM access and return message
  *
- * @param[in]  h        Clicon handle 
+ * @param[in]  h        Clixon handle 
  * @param[in]  xret     Result XML tree
  * @param[in]  xvec    xpath lookup result on xret
  * @param[in]  xlen    length of xvec
@@ -520,7 +525,7 @@ element2value(clicon_handle  h,
 
 /*! Extract offset and limit from get/list-pagination
  *
- * @param[in]  h      Clicon handle 
+ * @param[in]  h      Clixon handle 
  * @param[in]  xe     Request: <rpc><xn></rpc> 
  * @param[out] offset Number of entries in the working result-set that should be skipped
  * @param[out] limit  Limits the number of entries returned from the working result-set
@@ -552,7 +557,7 @@ list_pagination_hdr(clicon_handle h,
  *
  * It is specialized enough to have its own function. Specifically, extra attributes as well
  * as the list-paginaiton API
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  ce      Client entry, for locking
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[in]  content Get config/state/both
@@ -764,7 +769,7 @@ get_list_pagination(clicon_handle        h,
         if ((ret = xml_bind_yang(h, xret, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clicon_debug_xml(1, xret, "Yang bind pagination state");
+            clixon_debug_xml(1, xret, "Yang bind pagination state");
             if (clixon_netconf_internal_error(xerr,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
@@ -821,7 +826,7 @@ get_list_pagination(clicon_handle        h,
 
 /*! Common get/get-config code for retrieving  configuration and state information.
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  ce      Client entry, for locking
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[in]  content Get config/state/both
@@ -867,7 +872,7 @@ get_common(clicon_handle        h,
     char             *wdefstr;
 
     wdef = WITHDEFAULTS_EXPLICIT;
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_YANG, ENOENT, "No yang spec9");
@@ -1013,7 +1018,7 @@ get_common(clicon_handle        h,
             (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clicon_debug_xml(1, xret, "VALIDATE_STATE");
+            clixon_debug_xml(1, xret, "VALIDATE_STATE");
             if (clixon_netconf_internal_error(xerr,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
@@ -1044,7 +1049,7 @@ get_common(clicon_handle        h,
  ok:
     retval = 0;
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     if (xret)
@@ -1067,12 +1072,12 @@ get_common(clicon_handle        h,
 }
 
 /*! Retrieve all or part of a specified configuration.
- * 
- * @param[in]  h       Clicon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  * @see from_client_get
@@ -1099,11 +1104,11 @@ from_client_get_config(clicon_handle h,
 
 /*! Retrieve running configuration and device state information.
  * 
- * @param[in]  h       Clicon handle 
- * @param[in]  xe      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  *
@@ -1113,13 +1118,13 @@ int
 from_client_get(clicon_handle h,
                 cxobj        *xe,
                 cbuf         *cbret,
-                void         *arg, 
+                void         *arg,
                 void         *regarg)
 {
     netconf_content      content = CONTENT_ALL;
     char                *attr;
     struct client_entry *ce = (struct client_entry *)arg;
-    
+
     /* Clixon extensions: content */
     if ((attr = xml_find_value(xe, "content")) != NULL)
         content = netconf_content_str2int(attr);

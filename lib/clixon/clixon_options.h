@@ -46,6 +46,7 @@
  * Constants
  */
 /*! Clixon configuration namespace
+ *
  * Probably should be defined somewhere else or extracted from yang
  * @see clixon-config.yang
  * @see clixon-lib.yang
@@ -85,6 +86,7 @@ enum nacm_credentials_t{
 };
 
 /*! Datastore cache behaviour, see clixon_datastore.[ch] 
+ *
  * See config option type datastore_cache in clixon-config.yang
  */
 enum datastore_cache{
@@ -94,6 +96,7 @@ enum datastore_cache{
 };
 
 /*! yang clixon regexp engine
+ *
  * @see regexp_mode in clixon-config.yang
  */
 enum regexp_mode{

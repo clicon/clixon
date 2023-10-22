@@ -65,7 +65,7 @@
 /*! qsort "compar" for directory alphabetically sorting, see qsort(3)
  */
 static int
-clicon_file_dirent_sort(const void* arg1, 
+clicon_file_dirent_sort(const void* arg1,
                         const void* arg2)
 {
     struct dirent *d1 = (struct dirent *)arg1;
@@ -74,7 +74,8 @@ clicon_file_dirent_sort(const void* arg1,
     return strcoll(d1->d_name, d2->d_name);
 }
 
-/*!
+/*! List files recursive
+ *
  * @param[in,out] cvv  On the format: (name, path)*
  */
 static int
@@ -88,7 +89,7 @@ clicon_files_recursive1(const char *dir,
     DIR     *dirp = NULL;
     int     res = 0;
     struct stat    st;
-    
+
     if (dir == NULL){
         clicon_err(OE_UNIX, EINVAL, "Requires dir != NULL");
         goto done;
@@ -98,7 +99,7 @@ clicon_files_recursive1(const char *dir,
             if (dent->d_type == DT_DIR) {
                 /* If we find a directory we might want to enter it, unless it
                    is the current directory (.) or parent (..) */
-                if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) 
+                if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0)
                     continue;
 
                 /* Build the new directory and enter it. */
@@ -143,8 +144,8 @@ clicon_files_recursive(const char *dir,
     regex_t re = {0,};
     int     res = 0;
     char    errbuf[128];
- 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s dir:%s", __FUNCTION__, dir);
+
+    clixon_debug(CLIXON_DBG_DETAIL, "%s dir:%s", __FUNCTION__, dir);
     if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
         regerror(res, &re, errbuf, sizeof(errbuf));
         clicon_err(OE_DB, 0, "regcomp: %s", errbuf);
@@ -165,7 +166,6 @@ clicon_files_recursive(const char *dir,
  * @param[out] ent     Entries pointer, will be filled in with dir entries. Free after use
  * @param[in]  regexp  Regexp filename matching 
  * @param[in]  type    File type matching, see stat(2) 
- *
  * @retval  n  Number of matching files in directory
  * @retval -1  Error
  *
@@ -238,7 +238,7 @@ clicon_file_dirent(const char     *dir,
            clicon_err(OE_UNIX, errno, "realloc");
            goto quit;
        } /* realloc */
-       clicon_debug(CLIXON_DBG_DETAIL, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
+       clixon_debug(CLIXON_DBG_DETAIL, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
        /* man (3) readdir: 
         * By implication, the  use sizeof(struct dirent) to capture the size of the record including 
         * the size of d_name is also incorrect. */
@@ -266,10 +266,10 @@ quit:
  * @param[in]  src     Source filename
  * @param[out] target  Destination filename
  * @retval     0       OK
- * @retval     -1      Error
+ * @retval    -1       Error
  */
 int
-clicon_file_copy(char *src, 
+clicon_file_copy(char *src,
                  char *target)
 {
     int         retval = -1;
@@ -312,11 +312,11 @@ clicon_file_copy(char *src,
  *
  * @param[in]   filename
  * @param[out]  cb
- * @retval 0    OK
- * @retval -1   Error
+ * @retval      0        OK
+ * @retval     -1        Error
  */
 int
-clicon_file_cbuf(const char *filename, 
+clicon_file_cbuf(const char *filename,
                  cbuf       *cb)
 {
     int         retval = -1;

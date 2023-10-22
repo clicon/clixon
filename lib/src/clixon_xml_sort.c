@@ -74,6 +74,7 @@
 #include "clixon_xml_sort.h"
 
 /*! Get xml body value as cligen variable
+ *
  * @param[in]  x   XML node (body and leaf/leaf-list)
  * @param[out] cvp Pointer to cligen variable containing value of x body
  * @retval     0   OK, cvp contains cv or NULL
@@ -97,7 +98,7 @@ xml_cv_cache(cxobj   *x,
     int          options = 0;
     uint8_t      fraction = 0;
     char        *body;
-                 
+
     if ((body = xml_body(x)) == NULL)
         body="";
     if ((cv = xml_cv(x)) != NULL)
@@ -120,7 +121,6 @@ xml_cv_cache(cxobj   *x,
     }
     if (cvtype == CGV_DEC64)
         cv_dec64_n_set(cv, fraction);
-        
     if ((ret = cv_parse1(body, cv, &reason)) < 0){
         clicon_err(OE_YANG, errno, "cv_parse1");
         goto done;
@@ -158,6 +158,7 @@ xml_cv_cache_clear(cxobj *xt)
 }
 
 /*! Help function to qsort for sorting entries in xml child vector same parent
+ *
  * @param[in]  x1    object 1
  * @param[in]  x2    object 2
  * @param[in]  same  If set, x1 and x2 are member of same parent & enumeration 
@@ -212,7 +213,7 @@ xml_cmp(cxobj  *x1,
     char       *b1;
     char       *b2;
     char       *keyname;
-    cg_var     *cv1 = NULL; 
+    cg_var     *cv1 = NULL;
     cg_var     *cv2 = NULL;
     int         nr1 = 0;
     int         nr2 = 0;
@@ -254,7 +255,7 @@ xml_cmp(cxobj  *x1,
         equal = 1;
         goto done;
     }
-    if (y1 != y2){ 
+    if (y1 != y2){
         /* XXX handle errors */
         yi1 = yang_order(y1);
         yi2 = yang_order(y2);
@@ -384,26 +385,28 @@ xml_cmp(cxobj  *x1,
         break;
     } /* switch */
  done:
-    clicon_debug(CLIXON_DBG_EXTRA, "%s %s %s eq:%d nr: %d %d yi: %d %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal, nr1, nr2, yi1, yi2);
+    clixon_debug(CLIXON_DBG_EXTRA, "%s %s %s eq:%d nr: %d %d yi: %d %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal, nr1, nr2, yi1, yi2);
     return equal;
 }
 
-/*!
+/*! Sort xml
+ *
  * @note args are pointer to pointers, to fit into qsort cmp function
  */
 static int
-xml_cmp_qsort(const void* arg1, 
+xml_cmp_qsort(const void* arg1,
               const void* arg2)
 {
     return xml_cmp(*(struct xml**)arg1, *(struct xml**)arg2, 1, 0, NULL);
 }
 
 /*! Sort children of an XML node 
+ *
  * Assume populated by yang spec.
  * @param[in] x0   XML node
- * @retval    -1    Error, aborted at first error encounter
- * @retval     0    OK, all nodes traversed (subparts may have been skipped)
  * @retval     1    OK, aborted on first fn returned 1
+ * @retval     0    OK, all nodes traversed (subparts may have been skipped)
+ * @retval    -1    Error, aborted at first error encounter
  * @see xml_apply  - typically called by recursive apply function
  * @see xml_sort_verify
  */
@@ -412,7 +415,7 @@ xml_sort(cxobj *x)
 {
 #ifndef STATE_ORDERED_BY_SYSTEM
     yang_stmt *ys;
-    
+
     /* Abort sort if non-config (=state) data */
     if ((ys = xml_spec(x)) != 0 && yang_config(ys)==0)
         return 1;
@@ -423,7 +426,11 @@ xml_sort(cxobj *x)
 }
 
 /*! Recursively sort a tree 
+ *
  * Alt to use xml_apply
+ * @param[in]  xn      XML node
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 xml_sort_recurse(cxobj *xn)
@@ -431,7 +438,7 @@ xml_sort_recurse(cxobj *xn)
     int    retval = -1;
     cxobj *x;
     int    ret;
-    
+
     ret = xml_sort_verify(xn, NULL);
     if (ret == 1) /* This node is not sortable */
         goto ok;
@@ -478,7 +485,7 @@ xml_find_keys_notsorted(cxobj   *xp,
     cxobj     *xc;
     yang_stmt *yc;
     int        yi;
-    
+
     for (i=mid+1; i<xml_child_nr(xp); i++){ /* First increment */
         xc = xml_child_i(xp, i);
         yc = xml_spec(xc);
@@ -512,6 +519,7 @@ xml_find_keys_notsorted(cxobj   *xp,
 }
 
 /*! Find more equal objects in a vector up and down in the array of the present
+ *
  * @param[in]  childvec  Vector of children of parent
  * @param[in]  childlen  Length of child vector
  * @param[in]  x1        XML node to match
@@ -535,7 +543,7 @@ search_multi_equals(cxobj  **childvec,
     cxobj     *xc;
     yang_stmt *yc;
     int        yi;
-    
+
     for (i=mid-1; i>=0; i--){ /* First decrement */
         xc = childvec[i];
         yc = xml_spec(xc);
@@ -581,7 +589,7 @@ search_multi_equals_xvec(clixon_xvec  *childvec,
     cxobj     *xc;
     yang_stmt *yc;
     int        yi;
-    
+
     for (i=mid-1; i>=0; i--){ /* First decrement */
         xc = clixon_xvec_i(childvec, i);
         yc = xml_spec(xc);
@@ -612,6 +620,7 @@ search_multi_equals_xvec(clixon_xvec  *childvec,
 }
 
 /*! Insert xi in vector sorted according to index variable xi
+ *
  * @param[in]  x1    XML parent object (the list element)
  * @param[in]  ivec  Sorted index vector
  * @param[in]  low   Lower range limit
@@ -627,7 +636,7 @@ int
 xml_search_indexvar_binary_pos(cxobj       *x1,
                                char        *indexvar,
                                clixon_xvec *ivec,
-                               int          low, 
+                               int          low,
                                int          upper,
                                int          max,
                                int         *eq)
@@ -636,9 +645,9 @@ xml_search_indexvar_binary_pos(cxobj       *x1,
     int        mid;
     int        cmp;
     cxobj     *xc;
-    
+
     if (upper < low){  /* beyond range */
-        clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);   
+        clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);
         goto done;
     }
     if (low == upper){
@@ -647,7 +656,7 @@ xml_search_indexvar_binary_pos(cxobj       *x1,
     }
     mid = (low + upper) / 2;
     if (mid >= max){  /* beyond range */
-        clicon_err(OE_XML, 0, "Beyond range %d %d %d", low, mid, upper);        
+        clicon_err(OE_XML, 0, "Beyond range %d %d %d", low, mid, upper);
         goto done;
     }
     xc = clixon_xvec_i(ivec, mid);
@@ -666,14 +675,14 @@ xml_search_indexvar_binary_pos(cxobj       *x1,
             if (eq)           /* No exact match */
                 *eq = 0;
             if (cmp < 0)      /* return either 0 if cmp<0 or +1 if cmp>0 */
-                retval = mid; 
+                retval = mid;
             else
-                retval = mid+1; 
+                retval = mid+1;
             goto done;
         }
         if (cmp < 0)
             return xml_search_indexvar_binary_pos(x1, indexvar, ivec, low, mid, max, eq);
-        else 
+        else
             return xml_search_indexvar_binary_pos(x1, indexvar, ivec, mid+1, upper, max, eq);
     }
  done:
@@ -684,7 +693,7 @@ static int
 xml_search_indexvar(cxobj   *xp,
                     cxobj   *x1,
                     int      yangi,
-                    int      low, 
+                    int      low,
                     int      upper,
                     char    *indexvar,
                     clixon_xvec *xvec)
@@ -722,6 +731,7 @@ xml_search_indexvar(cxobj   *xp,
 #endif /* XML_EXPLICIT_INDEX */
 
 /*! Find XML child under xp matching x1 using binary search
+ *
  * @param[in]  xp        Parent xml node. 
  * @param[in]  x1        Find this object among xp:s children
  * @param[in]  sorted    If x1 is ordered by user or statedata, the list is not sorted
@@ -739,7 +749,7 @@ xml_search_binary(cxobj   *xp,
                   cxobj   *x1,
                   int      sorted,
                   int      yangi,
-                  int      low, 
+                  int      low,
                   int      upper,
                   int      skip1,
                   char    *indexvar,
@@ -789,7 +799,7 @@ xml_search_binary(cxobj   *xp,
     }
     else if (cmp < 0)
         xml_search_binary(xp, x1, sorted, yangi, low, mid-1, skip1, indexvar, xvec);
-    else 
+    else
         xml_search_binary(xp, x1, sorted, yangi, mid+1, upper, skip1, indexvar, xvec);
  ok:
     retval = 0;
@@ -827,7 +837,7 @@ xml_search_yang(cxobj       *xp,
     int    upper = xml_child_nr(xp);
     int    sorted = 1;
     int    yangi;
-    
+
     if (xp == NULL){
         clicon_err(OE_XML, EINVAL, "xp is NULL");
         goto done;
@@ -856,6 +866,7 @@ xml_search_yang(cxobj       *xp,
 }
 
 /*! Insert xn in xp:s sorted child list (special case of ordered-by user)
+ *
  * @param[in] xp      Parent xml node. If NULL just remove from old parent.
  * @param[in] xn      Child xml node to insert under xp
  * @param[in] yn      Yang stmt of xml child node
@@ -920,22 +931,22 @@ xml_insert_userorder(cxobj           *xp,
             switch (yang_keyword_get(yn)){
             case Y_LEAF_LIST:
                 if ((xc = xpath_first(xp, nsc_key, "%s[.='%s']", xml_name(xn), key_val)) == NULL)
-                    clicon_err(OE_YANG, 0, "bad-attribute: value, missing-instance: %s", key_val);                                  
+                    clicon_err(OE_YANG, 0, "bad-attribute: value, missing-instance: %s", key_val);
                 else {
                     if ((i = xml_child_order(xp, xc)) < 0)
                         clicon_err(OE_YANG, 0, "internal error xpath found but not in child list");
                     else
-                        retval = (ins==INS_BEFORE)?i:i+1; 
+                        retval = (ins==INS_BEFORE)?i:i+1;
                 }
                 break;
             case Y_LIST:
                 if ((xc = xpath_first(xp, nsc_key, "%s%s", xml_name(xn), key_val)) == NULL)
-                    clicon_err(OE_YANG, 0, "bad-attribute: key, missing-instance: %s", key_val);                                    
+                    clicon_err(OE_YANG, 0, "bad-attribute: key, missing-instance: %s", key_val);
                 else {
                     if ((i = xml_child_order(xp, xc)) < 0)
                         clicon_err(OE_YANG, 0, "internal error xpath found but not in child list");
                     else
-                        retval = (ins==INS_BEFORE)?i:i+1; 
+                        retval = (ins==INS_BEFORE)?i:i+1;
                 }
                 break;
             default:
@@ -949,6 +960,7 @@ xml_insert_userorder(cxobj           *xp,
 }
 
 /*! Insert xn in xp:s sorted child list
+ *
  * Find a point in xp childvec with two adjacent nodes xi,xi+1 such that
  * xi<=xn<=xi+1 or xn<=x0 or xmax<=xn
  * @param[in] xp      Parent xml node. If NULL just remove from old parent.
@@ -973,7 +985,7 @@ xml_insert2(cxobj           *xp,
             enum insert_type ins,
             char            *key_val,
             cvec            *nsc_key,
-            int              low, 
+            int              low,
             int              upper)
 {
     int        retval = -1;
@@ -982,9 +994,9 @@ xml_insert2(cxobj           *xp,
     cxobj     *xc;
     yang_stmt *yc;
     int        yi;
-    
+
     if (low > upper){  /* beyond range */
-        clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);   
+        clicon_err(OE_XML, 0, "low>upper %d %d", low, upper);
         goto done;
     }
     if (low == upper){
@@ -993,7 +1005,7 @@ xml_insert2(cxobj           *xp,
     }
     mid = (low + upper) / 2;
     if (mid >= xml_child_nr(xp)){  /* beyond range */
-        clicon_err(OE_XML, 0, "Beyond range %d %d %d", low, mid, upper);        
+        clicon_err(OE_XML, 0, "Beyond range %d %d %d", low, mid, upper);
         goto done;
     }
     xc = xml_child_i(xp, mid);
@@ -1002,7 +1014,7 @@ xml_insert2(cxobj           *xp,
             clicon_err(OE_XML, 0, "No spec found %s (wrong xml type:%s)",
                        xml_name(xc), xml_type2str(xml_type(xc)));
         else
-            clicon_err(OE_XML, 0, "No spec found %s", xml_name(xc));    
+            clicon_err(OE_XML, 0, "No spec found %s", xml_name(xc));
         goto done;
     }
     if (yc == yn){ /* Same yang */
@@ -1017,7 +1029,7 @@ xml_insert2(cxobj           *xp,
         if ((yi = yang_order(yc)) < -1)
             goto done;
         cmp = yni - yi;
-        /* One case is a choice where 
+        /* One case is a choice where
          * xc = <tcp/>, xn = <udp/>
          * same order but different yang spec
          */
@@ -1036,13 +1048,14 @@ xml_insert2(cxobj           *xp,
     }
     else if (cmp < 0)
         return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, nsc_key, low, mid);
-    else 
+    else
         return xml_insert2(xp, xn, yn, yni, userorder, ins, key_val, nsc_key, mid+1, upper);
  done:
     return retval;
 }
 
 /*! Insert xc as child to xp in sorted place. Remove xc from previous parent.
+ *
  * @param[in] xp      Parent xml node. If NULL just remove from old parent.
  * @param[in] x       Child xml node to insert under xp
  * @param[in] ins     Insert operation (if ordered-by user)
@@ -1112,6 +1125,7 @@ xml_insert(cxobj           *xp,
 }
 
 /*! Verify all children of XML node are sorted according to xml_sort()
+ *
  * @param[in]   x    XML node. Check its children
  * @param[in]   arg  Dummy. Ensures xml_apply can be used with this fn
  * @retval      1    Not sortable
@@ -1128,7 +1142,7 @@ xml_sort_verify(cxobj *x0,
     cxobj *xprev = NULL;
 #ifndef STATE_ORDERED_BY_SYSTEM
     yang_stmt *ys;
-    
+
     /* Abort sort if non-config (=state) data */
     if ((ys = xml_spec(x0)) != 0 && yang_config_ancestor(ys)==0){
         retval = 1;
@@ -1151,6 +1165,7 @@ xml_sort_verify(cxobj *x0,
 }
 
 /*! Given child tree x1c, find (first) matching child in base tree x0 and return as x0cp
+ *
  * @param[in]  x0      Base tree node
  * @param[in]  x1c     Modification tree child
  * @param[in]  yc      Yang spec of tree child. If null revert to linear search.
@@ -1161,7 +1176,7 @@ xml_sort_verify(cxobj *x0,
  * @see xml_cmp regarding what "match" means in this context (model-match not value-match)
  */
 int
-match_base_child(cxobj      *x0, 
+match_base_child(cxobj      *x0,
                  cxobj      *x1c,
                  yang_stmt  *yc,
                  cxobj     **x0cp)
@@ -1172,10 +1187,10 @@ match_base_child(cxobj      *x0,
     cxobj       *xb;
     char        *keyname;
     clixon_xvec *xvec = NULL;
-    
+
     *x0cp = NULL; /* init return value */
     /* Revert to simple xml lookup if no yang */
-    if (yc == NULL){ 
+    if (yc == NULL){
         *x0cp = xml_find(x0, xml_name(x1c));
         goto ok;
     }
@@ -1189,7 +1204,7 @@ match_base_child(cxobj      *x0,
         break;
     case Y_LIST: /* Match with key values */
         cvk = yang_cvec_get(yc); /* Use Y_LIST cache, see ys_populate_list() */
-        cvi = NULL; 
+        cvi = NULL;
         while ((cvi = cvec_each(cvk, cvi)) != NULL) {
             keyname = cv_string_get(cvi);
             if ((xb = xml_find(x1c, keyname)) == NULL)
@@ -1271,6 +1286,7 @@ xml_find_noyang_cvk(char        *ns0,
 }
 
 /*! API for search in XML child list with no yang available
+ *
  * Fallback if no yang available. Only linear search for matching name, and eventual index match
  */
 static int
@@ -1323,7 +1339,7 @@ xml_find_noyang_name(cxobj       *xp,
  *   linear seacrh
  * - if yes, then construct a dummy search object and find it in the list of xp:s children
  *   using binary search
- * @param[in]  xp    Parent xml node. 
+ * @param[in]  xp    Parent xml node.
  * @param[in]  yc    Yang spec of list child (preferred) See rule (2) above
  * @param[in]  cvk   List of keys and values as CLIgen vector on the form k1=foo, k2=bar
  * @param[out] xvec  Array of found nodes
@@ -1440,9 +1456,9 @@ xml_find_index_yang(cxobj       *xp,
     while ((xk = xml_child_each(xc, xk, CX_ELMNT)) != NULL) {
         if ((yk = yang_find(yc, Y_LEAF, xml_name(xk))) == NULL){
             clicon_err(OE_YANG, ENOENT, "yang spec of key %s not found", xml_name(xk));
-            goto done; 
+            goto done;
         }
-        if (xml_spec_set(xk, yk) < 0) 
+        if (xml_spec_set(xk, yk) < 0)
             goto done;
     }
     if (xml_search_yang(xp, xc, yc, 1, indexvar, xvec) < 0)
@@ -1522,7 +1538,7 @@ clixon_xml_find_index(cxobj        *xp,
     int        retval = -1;
     int        ret;
     yang_stmt *yc = NULL;
-    
+
     if (xvec == NULL){
         clicon_err(OE_YANG, EINVAL, "xvec");
         goto done;
@@ -1542,7 +1558,7 @@ clixon_xml_find_index(cxobj        *xp,
     if (yc){
         if ((ret = xml_find_index_yang(xp, yc, cvk, xvec)) < 0)
             goto done;
-        if (ret == 0){ /* This means yang method did not work for some reason 
+        if (ret == 0){ /* This means yang method did not work for some reason
                         * such as not being list key indexes in cvk, for example
                         */
             if (xml_find_noyang_name(xp, ns, name, cvk, xvec) < 0)
@@ -1560,7 +1576,7 @@ clixon_xml_find_index(cxobj        *xp,
 /*! Find positional parameter in xml child list, eg x/y[42]. Note, not optimized
  *
  * Create a temporary search object: a list (xc) with a key (xk) and call the binary search.
- * @param[in]  xp     Parent xml node. 
+ * @param[in]  xp     Parent xml node.
  * @param[in]  yc     Yang spec of list child
  * @param[in]  pos    Position
  * @param[out] xvec   Array of found nodes

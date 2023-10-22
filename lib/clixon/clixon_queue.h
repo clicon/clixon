@@ -40,6 +40,7 @@
 #define _CLIXON_QUEUE_H_
 
 /*! Circular queue structure for use as first entry in a parent structure.
+ *
  * Add qelem_t as first element in struct
  * @code
  * struct a{
@@ -55,6 +56,7 @@ typedef struct _qelem_t {
 } qelem_t;
 
 /*! Append element 'elem' to queue.
+ *
  * @param[in]     elem   Element to be added
  * @param[in,out] pred   Add element after this
  * @code
@@ -78,6 +80,7 @@ typedef struct _qelem_t {
     }
 
 /*! Insert element 'elem' in queue after 'pred'
+ *
  * @param[in]     elem   Element to be added
  * @param[in,out] pred   Add element after this
  * @code
@@ -100,7 +103,8 @@ typedef struct _qelem_t {
                 pred = elem;                               \
     }
 
-/*! Remove element 'elem' from queue. 'head' is the pointer to the queue and 
+/*! Remove element 'elem' from queue. 'head' is the pointer to the queue and
+ *
  * is of 'type'.
  * @param[in]  elem
  * @param[in]  head
@@ -121,6 +125,7 @@ typedef struct _qelem_t {
         }
         
 /*! Get next entry in list
+ *
  * @param[in]  type  Type of element
  * @param[in]  el    Return next element after elem.
  * @code

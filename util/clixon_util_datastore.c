@@ -180,8 +180,8 @@ main(int argc, char **argv)
     /* 
      * Logs, error and debug to stderr, set debug level
      */
-    clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR); 
-    clicon_debug_init(dbg, NULL); 
+    clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, CLICON_LOG_STDERR);
+    clixon_debug_init(dbg, NULL);
 
     argc -= optind;
     argv += optind;

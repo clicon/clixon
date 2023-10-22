@@ -68,7 +68,7 @@
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _XY ((clixon_xml_yacc *)_xy) 
+#define _XY ((clixon_xml_yacc *)_xy)
 
 #undef clixon_xml_parsewrap
 int clixon_xml_parsewrap(void)
@@ -120,7 +120,7 @@ ncname     {namestart}{namechar}*
 <START>"/>"           { BEGIN(STATEA); return ESLASH; }
 <START>"<!--"         { BEGIN(CMNT); return BCOMMENT; }
 <START>"</"             return BSLASH;
-<START>[/=]             return *clixon_xml_parsetext; 
+<START>[/=]             return *clixon_xml_parsetext;
 <START>\<               return *clixon_xml_parsetext;
 <START>\>             { BEGIN(STATEA); return *clixon_xml_parsetext; }
 <START>\"             { _XY->xy_lex_state=START;BEGIN(STRDQ); return *clixon_xml_parsetext; }
@@ -155,10 +155,10 @@ ncname     {namestart}{namechar}*
 <CDATA>[^]\n]+         { clixon_xml_parselval.string = yytext; return CHARDATA;}
 
 <CMNT>"-->"           { BEGIN(START); return ECOMMENT; }
-<CMNT>.               
+<CMNT>.
 <TEXTDECL>encoding      return ENC;
-<TEXTDECL>version       return VER; 
-<TEXTDECL>standalone    return SD; 
+<TEXTDECL>version       return VER;
+<TEXTDECL>standalone    return SD;
 <TEXTDECL>"="         { return *clixon_xml_parsetext; }
 <TEXTDECL>"?>"        { BEGIN(START);return EQMARK;}
 <TEXTDECL>\"          { _XY->xy_lex_state =TEXTDECL;BEGIN(STRDQ); return *clixon_xml_parsetext; }

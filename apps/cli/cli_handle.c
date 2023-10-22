@@ -72,7 +72,8 @@
 #define handle(h) (assert(clicon_handle_check(h)==0),(struct cli_handle *)(h))
 #define cligen(h) (handle(h)->cl_cligen)
 
-/*! CLI specific handle added to header CLICON handle
+/*! CLI specific handle added to header Clixon handle
+ *
  * This file should only contain access functions for the _specific_
  * entries in the struct below.
  * @note The top part must be equivalent to struct clicon_handle in clixon_handle.c
@@ -115,6 +116,8 @@ cli_handle_init(void)
 }
 
 /*! Free clicon handle
+ *
+ * @param[in] h      Clixon handle
  */
 int
 cli_handle_exit(clicon_handle h)
@@ -130,7 +133,10 @@ cli_handle_exit(clicon_handle h)
  * cli-specific handle access functions
  *----------------------------------------------------------*/
 
-/*! Return clicon handle */
+/*! Return clicon handle 
+ *
+ * @param[in] h      Clixon handle
+ */
 cligen_handle
 cli_cligen(clicon_handle h)
 {
@@ -156,8 +162,9 @@ cli_susp_hook(clicon_handle     h,
     cligen_handle ch = cligen(h);
 
     /* This assume first arg of fn can be treated as void* */
-    return cligen_susp_hook(ch, fn); 
+    return cligen_susp_hook(ch, fn);
 }
+
 int
 cli_interrupt_hook(clicon_handle          h,
                    cligen_interrupt_cb_t *fn)
@@ -165,7 +172,7 @@ cli_interrupt_hook(clicon_handle          h,
     cligen_handle ch = cligen(h);
 
     /* This assume first arg of fn can be treated as void* */
-    return cligen_interrupt_hook(ch, fn); 
+    return cligen_interrupt_hook(ch, fn);
 }
 
 int

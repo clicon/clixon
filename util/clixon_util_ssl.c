@@ -96,7 +96,7 @@ print_header(const uint8_t *name,
              const uint8_t *value,
              size_t         valuelen)
 {
-    clicon_debug(1, "%s %s", name, value);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", name, value);
 }
 
 /* Print HTTP headers to |f|. Please note that this function does not
@@ -108,7 +108,7 @@ print_headers(nghttp2_nv *nva,
 {
   size_t i;
 
-  for (i = 0; i < nvlen; ++i) 
+  for (i = 0; i < nvlen; ++i)
     print_header(nva[i].name, nva[i].namelen, nva[i].value, nva[i].valuelen);
 }
 #endif /* DEBUG */
@@ -126,8 +126,8 @@ send_callback(nghttp2_session *session,
 {
     session_data *sd = (session_data*)user_data;
     int           ret;
-    
-    clicon_debug(1, "%s %zu:", __FUNCTION__, length);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %zu:", __FUNCTION__, length);
 #if 0
     {
         int           i;
@@ -150,11 +150,10 @@ on_frame_recv_callback(nghttp2_session     *session,
                        void                *user_data)
 {
     //session_data *sd = (session_data*)user_data;
-    
-    clicon_debug(1, "%s %d", __FUNCTION__, frame->hd.stream_id);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, frame->hd.stream_id);
     if (frame->hd.type == NGHTTP2_HEADERS &&
         frame->headers.cat == NGHTTP2_HCAT_RESPONSE)
-        clicon_debug(1, "All headers received %d", frame->hd.stream_id);
+        clixon_debug(CLIXON_DBG_DEFAULT, "All headers received %d", frame->hd.stream_id);
 
     return 0;
 }
@@ -170,8 +169,8 @@ on_data_chunk_recv_callback(nghttp2_session *session,
                             void            *user_data)
 {
     session_data *sd = (session_data*)user_data;
-    
-    clicon_debug(1, "%s %d", __FUNCTION__, stream_id);  
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, stream_id);
     if (sd->sd_session == session &&
         sd->sd_stream_id == stream_id)
         fwrite(data, 1, len, stdout); /* This is where data is printed */
@@ -187,8 +186,8 @@ on_stream_close_callback(nghttp2_session   *session,
                          void              *user_data)
 {
     //session_data *sd = (session_data*)user_data;
-        
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     return 0;
 }
 
@@ -205,10 +204,10 @@ on_header_callback(nghttp2_session     *session,
                    void               *user_data)
 {
     //    session_data *sd = (session_data*)user_data;
-    
+
     if (frame->hd.type == NGHTTP2_HEADERS &&
         frame->headers.cat == NGHTTP2_HCAT_RESPONSE){
-        clicon_debug(1, "%s %d:", __FUNCTION__, frame->hd.stream_id);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s %d:", __FUNCTION__, frame->hd.stream_id);
         print_header(name, namelen, value, valuelen);
     }
     return 0;
@@ -225,7 +224,7 @@ on_begin_headers_callback(nghttp2_session     *session,
 
     if (frame->hd.type == NGHTTP2_HEADERS &&
         frame->headers.cat == NGHTTP2_HCAT_RESPONSE)
-        clicon_debug(1, "%s Response headers %d",
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s Response headers %d",
                      __FUNCTION__, frame->hd.stream_id);
     return 0;
 }
@@ -264,7 +263,7 @@ send_client_connection_header(nghttp2_session *session)
         {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
     int                    rv;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     /* client 24 bytes magic string will be sent by nghttp2 library */
     rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, ARRLEN(iv));
     if (rv != 0) {
@@ -277,8 +276,7 @@ send_client_connection_header(nghttp2_session *session)
 }
 
 
-/*!
- * Sets sd->sd_stream_id
+/*! Sets sd->sd_stream_id
  */
 static int
 submit_request(session_data *sd,
@@ -294,7 +292,7 @@ submit_request(session_data *sd,
         MAKE_NV(":path", path, strlen(path))
     };
 
-    clicon_debug(1, "%s Request headers:", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Request headers:", __FUNCTION__);
     print_headers(hdrs, ARRLEN(hdrs));
     if ((sd->sd_stream_id = nghttp2_submit_request(sd->sd_session,
                                             NULL,
@@ -324,7 +322,7 @@ socket_connect_inet(char              *hostname,
     struct hostent    *host;
     int                one = 1;
 
-    clicon_debug(1, "%s to %s:%hu", __FUNCTION__, hostname, port);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s to %s:%hu", __FUNCTION__, hostname, port);
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
@@ -371,10 +369,10 @@ select_next_proto_cb(SSL *ssl,
                      unsigned int         inlen,
                      void                *arg)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) 
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    if (nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0)
         return -1;
-    clicon_debug(1, "%s out: %s in:%s", __FUNCTION__, *out, in);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s out: %s in:%s", __FUNCTION__, *out, in);
     return SSL_TLSEXT_ERR_OK;
 }
 
@@ -384,7 +382,7 @@ InitCTX(void)
 {
     const SSL_METHOD *method;
     SSL_CTX          *ctx;
- 
+
 #if 1
     method = SSLv23_client_method();
 #else
@@ -414,7 +412,7 @@ InitCTX(void)
 }
 
 static int
-ssl_input_cb(int   s, 
+ssl_input_cb(int   s,
              void *arg)
 {
     int           retval = -1;
@@ -424,7 +422,7 @@ ssl_input_cb(int   s,
     int           n;
     nghttp2_session *session;
     int              readlen;
-    
+
     ssl = sd->sd_ssl;
     session = sd->sd_session;
     /* get reply & decrypt */
@@ -481,8 +479,7 @@ main(int    argc,
     int              dbg = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
-
+    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR);
     if ((h = clicon_handle_init()) == NULL)
         goto done;
     while ((c = getopt(argc, argv, UTIL_SSL_OPTS)) != -1)
@@ -505,7 +502,7 @@ main(int    argc,
         fprintf(stderr, "-H <hostname> is mandatory\n");
         usage(argv[0]);
     }
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
     SSL_library_init();
     if ((ctx = InitCTX()) == NULL)
         goto done;

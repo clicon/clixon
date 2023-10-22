@@ -81,8 +81,10 @@
 
 /*! Generate CLIgen parse tree for syntax mode 
  *
- * @param[in]   h     Clicon handle
- * @param[in]   m     Syntax mode struct
+ * @param[in]  h     Clixon handle
+ * @param[in]  m     Syntax mode struct
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 static int
 gen_parse_tree(clicon_handle  h,
@@ -92,7 +94,7 @@ gen_parse_tree(clicon_handle  h,
 {
     int       retval = -1;
     pt_head  *ph;
-    
+
     if ((ph = cligen_ph_add(cli_cligen(h), name)) == NULL)
         goto done;
     if (cligen_ph_parsetree_set(ph, pt) < 0)
@@ -123,12 +125,12 @@ gen_parse_tree(clicon_handle  h,
  * @note the returned function is not type-checked which may result in segv at runtime
  */
 void *
-clixon_str2fn(char  *name, 
-              void  *handle, 
+clixon_str2fn(char  *name,
+              void  *handle,
               char **error)
 {
     void *fn = NULL;
-        
+
     /* Reset error */
     *error = NULL;
     /* Special check for auto-cli. If the virtual callback is used, it should be overwritten later 
@@ -160,16 +162,14 @@ clixon_str2fn(char  *name,
      * signal an error. However, just checking the function pointer for NULL
      * should work in most cases, although it's not 100% correct. 
      */
-   return NULL; 
+   return NULL;
 }
 
 /*! Set output pipe flag in all callbacks
  *
  * @param[in]  co   CLIgen parse-tree object
  * @param[in]  arg  Argument, cast to application-specific info
- * @retval     1    OK and return (abort iteration)
- * @retval     0    OK and continue
- * @retval    -1    Error: break and return
+ * @retval     0    OK
  */
 static int
 cli_mark_output_pipes(cg_obj *co,
@@ -193,6 +193,8 @@ cli_mark_output_pipes(cg_obj *co,
  * @param[in]  dir      Name of dir, or NULL
  * @param[out] ptall    Universal CLIgen parse tree: apply to all modes
  * @param[out] modes    Keep track of all modes
+ * @retval     0        OK
+ * @retval    -1        Error
  * @see clixon_plugins_load  Where .so plugin code has been loaded prior to this
  */
 static int
@@ -202,10 +204,10 @@ clispec_load_file(clicon_handle h,
                   parse_tree   *ptall,
                   cvec         *modes)
 {
+    int            retval = -1;
     void          *handle = NULL;  /* Handle to plugin .so module */
     char          *mode = NULL;    /* Name of syntax mode to append new syntax */
     parse_tree    *pt = NULL;
-    int            retval = -1;
     FILE          *f;
     char           filepath[MAXPATHLEN];
     cvec          *cvv = NULL;
@@ -265,8 +267,8 @@ clispec_load_file(clicon_handle h,
         if ((cp = clixon_plugin_find(h, plgnam)) != NULL)
             handle = clixon_plugin_handle_get(cp);
         if (handle == NULL){
-            clicon_err(OE_PLUGIN, 0, "CLICON_PLUGIN set to '%s' in %s but plugin %s.so not found in %s", 
-                       plgnam, filename, plgnam, 
+            clicon_err(OE_PLUGIN, 0, "CLICON_PLUGIN set to '%s' in %s but plugin %s.so not found in %s",
+                       plgnam, filename, plgnam,
                        clicon_cli_dir(h));
             goto done;
         }
@@ -281,27 +283,27 @@ clispec_load_file(clicon_handle h,
     }
 
     /* Resolve callback names to function pointers. */
-    if (cligen_callbackv_str2fn(pt, (cgv_str2fn_t*)clixon_str2fn, handle) < 0){     
-        clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)", 
+    if (cligen_callbackv_str2fn(pt, (cgv_str2fn_t*)clixon_str2fn, handle) < 0){
+        clicon_err(OE_PLUGIN, 0, "Mismatch between CLIgen file '%s' and CLI plugin file '%s'. Some possible errors:\n\t1. A function given in the CLIgen file does not exist in the plugin (ie link error)\n\t2. The CLIgen spec does not point to the correct plugin .so file (CLICON_PLUGIN=\"%s\" is wrong)",
                    filename, plgnam, plgnam);
         goto done;
     }
-     if (cligen_expandv_str2fn(pt, (expandv_str2fn_t*)clixon_str2fn, handle) < 0)     
+     if (cligen_expandv_str2fn(pt, (expandv_str2fn_t*)clixon_str2fn, handle) < 0)
          goto done;
      /* Variable translation functions */
-     if (cligen_translate_str2fn(pt, (translate_str2fn_t*)clixon_str2fn, handle) < 0)     
+     if (cligen_translate_str2fn(pt, (translate_str2fn_t*)clixon_str2fn, handle) < 0)
          goto done;
 
     /* Make sure we have a syntax mode specified */
     if (mode == NULL || strlen(mode) < 1) { /* may be null if not given in file */
         mode = clicon_cli_mode(h);
-        if (mode == NULL || strlen(mode) < 1) { /* may be null if not given in file */  
+        if (mode == NULL || strlen(mode) < 1) { /* may be null if not given in file */
             clicon_err(OE_PLUGIN, 0, "No syntax mode specified in %s", filepath);
             goto done;
         }
     }
     /* Find all modes in CLICON_MODE string: where to append the pt syntax tree */
-    if ((vec = clicon_strsep(mode, ":", &nvec)) == NULL) 
+    if ((vec = clicon_strsep(mode, ":", &nvec)) == NULL)
         goto done;
 
     if (nvec == 1 && strcmp(vec[0], "*") == 0){
@@ -369,7 +371,9 @@ done:
  *
  * CLI .so plugins have been loaded: syntax table in place.
  * Now load cligen syntax files and create cligen pt trees.
- * @param[in]     h       Clicon handle
+ * @param[in]  h    Clixon handle
+ * @retval     0    OK
+ * @retval    -1    Error
  * XXX The parsetree loading needs a rewrite for multiple parse-trees
  */
 int
@@ -413,7 +417,7 @@ clispec_load(clicon_handle h)
             goto done;
         /* Load the syntax parse trees into cli_syntax stx structure */
         for (i = 0; i < ndp; i++) {
-            clicon_debug(CLIXON_DBG_DEFAULT, "Loading clispec syntax: '%s/%s'", 
+            clixon_debug(CLIXON_DBG_DEFAULT, "Loading clispec syntax: '%s/%s'",
                          clispec_dir, dp[i].d_name);
             if (clispec_load_file(h, dp[i].d_name, clispec_dir, ptall, modes) < 0)
                 goto done;
@@ -461,7 +465,8 @@ done:
 }
 
 /*! Free resources in plugin
- * @param[in]     h       Clicon handle
+ *
+ * @param[in]     h       Clixon handle
  */
 int
 cli_plugin_finish(clicon_handle h)
@@ -470,13 +475,14 @@ cli_plugin_finish(clicon_handle h)
 }
 
 /*! Help function to print a meaningful error string. 
+ *
  * Sometimes the libraries specify an error string, if so print that.
  * Otherwise just print 'command error'.
  * But do not print it if error is already logged in eg clicon_err() using STDERR logging
  * See eg https://github.com/clicon/clixon/issues/325
  * @param[in]  f   File handler to write error to.
  */
-int 
+int
 cli_handler_err(FILE *f)
 {
     if (clicon_errno){
@@ -494,6 +500,7 @@ cli_handler_err(FILE *f)
 }
 
 /*! Given a command string, parse and if match single command, eval it.
+ *
  * Parse and evaluate the string according to
  * the syntax parse tree of the syntax mode specified by *mode.
  * If there is no match in the tree for the command, the parse hook 
@@ -501,19 +508,19 @@ cli_handler_err(FILE *f)
  * match is found in another mode, the mode variable is updated to point at 
  * the new mode string.
  *
- * @param[in]     h           Clicon handle
+ * @param[in]     h           Clixon handle
  * @param[in]     cmd         Command string
  * @param[in,out] modenamep   Pointer to the mode string pointer
  * @param[out]    result      CLIgen match result, < 0: errors, >=0 number of matches
  * @param[out]    evalres     Evaluation result if result=1
- * @retval  0     OK
- * @retval  -1    Error
+ * @retval        0           OK
+ * @retval       -1           Error
  */
 int
-clicon_parse(clicon_handle  h, 
-             char          *cmd, 
-             char         **modenamep, 
-             cligen_result *result,          
+clicon_parse(clicon_handle  h,
+             char          *cmd,
+             char         **modenamep,
+             cligen_result *result,
              int           *evalres)
 {
     int               retval = -1;
@@ -526,7 +533,7 @@ clicon_parse(clicon_handle  h,
     char             *reason = NULL;
     cligen_handle     ch;
     pt_head          *ph;
-    
+
     ch = cli_cligen(h);
     if (clicon_get_logflags()&CLICON_LOG_STDOUT)
         f = stdout;
@@ -546,10 +553,10 @@ clicon_parse(clicon_handle  h,
         if (cliread_parse(ch, cmd, pt, &match_obj, &cvv, result, &reason) < 0)
             goto done;
         /* Debug command and result code */
-        clicon_debug(1, "%s result:%d command: \"%s\"", __FUNCTION__, *result, cmd);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s result:%d command: \"%s\"", __FUNCTION__, *result, cmd);
         switch (*result) {
         case CG_EOF: /* eof */
-        case CG_ERROR: 
+        case CG_ERROR:
             fprintf(f, "CLI parse error: %s\n", cmd); // In practice never happens
             break;
         case CG_NOMATCH: /* no match */
@@ -561,7 +568,7 @@ clicon_parse(clicon_handle  h,
                 cli_set_syntax_mode(h, modename);
             }
             cli_output_reset();
-            if (!cligen_exiting(ch)) {  
+            if (!cligen_exiting(ch)) {
                 clicon_err_reset();
                 if ((ret = cligen_eval(ch, match_obj, cvv)) < 0) {
                     cli_handler_err(stdout);
@@ -596,6 +603,7 @@ done:
 }
 
 /*! Return a malloced expanded prompt string from printf-like format
+ *
  * @param[in]   h        Clixon handle
  * @param[in]   fmt      Format string, using %H, %
  * @retval      prompt   Malloced string, free after use
@@ -654,7 +662,7 @@ cli_prompt_get(clicon_handle h,
                 else
                     cprintf(cb, "/");
                 break;
-            case 'w': /* Full Working edit path */ 
+            case 'w': /* Full Working edit path */
                 if (clicon_data_get(h, "cli-edit-mode", &path) == 0 &&
                     strlen(path))
                     cprintf(cb, "%s", path);
@@ -676,7 +684,7 @@ cli_prompt_get(clicon_handle h,
                 cprintf(cb, "%c", *s);
             }
         }
-        else 
+        else
             cprintf(cb, "%c", *s);
         s++;
     }
@@ -693,7 +701,7 @@ cli_prompt_get(clicon_handle h,
 
 /*! Read command from CLIgen's cliread() using current syntax mode.
  *
- * @param[in]  h       Clicon handle
+ * @param[in]  h       Clixon handle
  * @param[in]  ph      Parse-tree head
  * @param[out] stringp Pointer to command buffer or NULL on EOF
  * @retval     1       OK
@@ -756,7 +764,8 @@ clicon_cliread(clicon_handle h,
  */
 
 /*! Set syntax mode mode for existing current plugin group.
- * @param[in]     h       Clicon handle
+ *
+ * @param[in]     h       Clixon handle
  * @retval        1       OK
  * @retval        0       Not found / error
  */
@@ -774,13 +783,14 @@ cli_set_syntax_mode(clicon_handle h,
 }
 
 /*! Get syntax mode name
- * @param[in]     h       Clicon handle
+ *
+ * @param[in]     h       Clixon handle
  */
 char *
 cli_syntax_mode(clicon_handle h)
 {
     pt_head          *ph;
-    
+
     if ((ph =  cligen_pt_head_active_get(cli_cligen(h))) == NULL)
         return NULL;
     return cligen_ph_name_get(ph);

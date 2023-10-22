@@ -97,7 +97,8 @@
 /*
  * Types
  */
-/*! Content query parameter RFC 8040 Sec 4.8.1 
+/*! Content query parameter RFC 8040 Sec 4.8.1
+ *
  * Clixon extention: content so that RFC8040 content attribute can be conveyed
  * internally used in <get>
  */
@@ -111,7 +112,7 @@ typedef enum netconf_content netconf_content;
 enum target_type{ /* netconf */
     RUNNING,
     CANDIDATE
-}; 
+};
 
 enum test_option{ /* edit-config */
     SET,
@@ -126,7 +127,7 @@ enum error_option{ /* edit-config */
 
 /* NETCONF framing
  */
-enum framing_type{ 
+enum framing_type{
     NETCONF_SSH_EOM=0,   /* RFC 4742, RFC 6242 hello msg (end-of-msg: ]]>]]>)*/
     NETCONF_SSH_CHUNKED, /* RFC 6242 Chunked framing */
 };
@@ -135,7 +136,7 @@ typedef enum framing_type netconf_framing_type;
 /* NETCONF with-defaults
  * @see RFC 6243
  */
-enum withdefaults_type{ 
+enum withdefaults_type{
     WITHDEFAULTS_REPORT_ALL = 0,   /* default behavior: <= Clixon 6.0 */
     WITHDEFAULTS_TRIM,
     WITHDEFAULTS_EXPLICIT,         /* default behavior: > Clixon 6.0 */
@@ -147,6 +148,7 @@ typedef enum withdefaults_type withdefaults_type;
  * Macros
  */
 /*! Generate textual error log from Netconf error message
+ *
  * @param[in]  xerr     Netconf error xml tree on the form: <rpc-error> 
  * @param[in]  format   Format string 
  * @param[in]  arg      String argument to format (optional)

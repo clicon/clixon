@@ -39,7 +39,7 @@
   or apps
   */
 
-#ifndef HAVE_STRNDUP 
+#ifndef HAVE_STRNDUP
 #define strndup(s, n) clicon_strndup(s, n)
 #endif
 
@@ -48,6 +48,7 @@
 #undef RPC_USERNAME_ASSERT
 
 /*! Tag for wrong handling of identityref prefixes (XML encoding)
+ *
  * See https://github.com/clicon/clixon/issues/90
  * Instead of using generic xmlns prefix bindings, the module's own prefix
  * is used.
@@ -60,7 +61,8 @@
  */
 #undef IDENTITYREF_KLUDGE
 
-/*! Optimize special list key searches in XPATH finds
+/*! Optimize special list key searches in XPath finds
+ *
  * Identify xpaths that search for exactly a list key, eg: "y[k='3']" and then call
  * binary search. This only works if "y" has proper yang binding and is sorted by system
  * Dont optimize on "hierarchical" lists such as: a/y[k='3'], where a is another list.
@@ -68,6 +70,7 @@
 #define XPATH_LIST_OPTIMIZE
 
 /*! Add explicit search indexes, so that binary search can be made for non-key list indexes
+ *
  * This also applies if there are multiple keys and you want to search on only the second for 
  * example.
  * There may be some cases where the index vector is not updated, need to verify before 
@@ -76,6 +79,7 @@
 #define XML_EXPLICIT_INDEX
 
 /*! Let state data be ordered-by system
+ *
  * RFC 7950 is cryptic about this
  * It says in 7.7.7:
  *    This statement (red:The "ordered-by" Statement) is ignored if the list represents
@@ -87,6 +91,7 @@
 #define STATE_ORDERED_BY_SYSTEM
 
 /*! Top-symbol in clixon datastores
+ *
  * This is traditionally same as NETCONF_INPUT_CONFIG ("config") but can be different
  * If you change this, you need to change test shell variable in lib.sh: DATASTORE_TOP
  * Consider making this an option (but this has bootstrap problems) or configure option 
@@ -94,12 +99,14 @@
 #define DATASTORE_TOP_SYMBOL "config"
 
 /*! If set make an internal redirect if URI path indetifies a directory
+ *
  * For example, path is /local, and redirect is 'index.html, the request 
  * will be redirected to /local/index.html
  */
 #define HTTP_DATA_INTERNAL_REDIRECT "index.html"
 
 /*! Set a temporary parent for use in special case "when" xpath calls
+ *
  * Problem is when changing an existing (candidate) in-memory datastore that yang "when" conditionals
  * should be changed in clixon_datastore_write.c:text_modify().
  * Problem is that the tree is in an intermediate state so that a when condition may not see the
@@ -115,16 +122,19 @@
 #define XML_PARENT_CANDIDATE
 
 /*! Enable "remaining" attribute (sub-feature of list pagination)
+ *
  * As defined in draft-wwlh-netconf-list-pagination-00 using Yang metadata value [RFC7952] 
  */
 #undef LIST_PAGINATION_REMAINING
 
 /*! Use Ancestor config cache 
+ *
  * The cache uses two yang stmt flag bits. One to say it is active, the second its value
  */
 #define USE_CONFIG_FLAG_CACHE
 
 /*! If backend is restarted, cli and netconf client will retry (once) and reconnect
+ *
  * Note, if client has locked or had edits in progress, these will be lost
  * A warning will be printed
  * If not set, client will exit
@@ -132,12 +142,14 @@
 #define PROTO_RESTART_RECONNECT
 
 /*! Disable top-level prefix for text syntax printing and parsing introduced in 5.8
+ *
  * Note this is for showing/saving/printing, it is NOT for parsing/loading.
  * This means that text output can not be parsed and loaded.
  */
 #undef TEXT_SYNTAX_NOPREFIX
 
 /*! Reply with HTTP error when HTTP request on HTTPS socket
+ *
  * If not set, just close socket and return with TCP reset.
  * If set: Incoming request on an SSL socket is known to be non-TLS.
  * Problematic part is it is not known it is proper non-TLS HTTP, for that it
@@ -153,6 +165,7 @@
 #define HTTP_ON_HTTPS_REPLY
 
 /*! Indentation number of spaces for XML, JSON and TEXT pretty-printed output.
+ *
  * Consider moving to configure.ac(compile-time) or to clixon-config.yang(run-time)
  */
 #define PRETTYPRINT_INDENT 3

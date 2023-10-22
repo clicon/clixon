@@ -39,12 +39,13 @@
 #define _CLIXON_STRING_H_
 
 /*! Struct used to map between int and strings. Typically used to map between
+ *
  * values and their names. Note NULL terminated
  * Example:
  * @code
 static const map_str2int atmap[] = {
-    {"One",               1}, 
-    {"Two",               2}, 
+    {"One",               1},
+    {"Two",               2},
     {NULL,               -1}
 };
  * @endcode
@@ -73,7 +74,7 @@ typedef struct map_str2str map_str2str;
 #include <string.h>
 
 /*! A strdup version that aligns on 4 bytes. To avoid warning from valgrind */
-static inline char * strdup4(char *str) 
+static inline char * strdup4(char *str)
 {
     char *dup;
     size_t len;
@@ -86,7 +87,7 @@ static inline char * strdup4(char *str)
 
 /*
  * Prototypes
- */ 
+ */
 char **clicon_strsep(char *string, char *delim, int  *nvec0);
 char  *clicon_strjoin (int argc, char **argv, char *delim);
 char  *clixon_string_del_join(char *str1, char *del, char *str2);

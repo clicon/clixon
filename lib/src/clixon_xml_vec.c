@@ -71,15 +71,16 @@
 #define XVEC_MAX_THRESHOLD 1024 /* exponential growth to here, then linear */
 
 /*! Clixon xml vector concrete implementaion of the abstract clixon_xvec type
+ *
  * Contiguous vector (not linked list) so that binary search can be done by direct index access
  */
 struct clixon_xml_vec {
     cxobj **xv_vec;   /* Sorted vector of xml object pointers */
     int     xv_len;   /* Length of vector */
-    int     xv_max;   /* Vector allocation */    
+    int     xv_max;   /* Vector allocation */
 };
 
-/*! Increment cxobj vector in an XML object vector 
+/*! Increment cxobj vector in an XML object vector
  *
  * Exponential growth to a threshold, then linear
  * @param[in]  xv    XML tree vector
@@ -90,7 +91,7 @@ static int
 clixon_xvec_inc(clixon_xvec *xv)
 {
     int retval = -1;
-    
+
     xv->xv_len++;
     if (xv->xv_len > xv->xv_max){
         if (xv->xv_max < XVEC_MAX_DEFAULT)
@@ -173,6 +174,7 @@ clixon_xvec_free(clixon_xvec *xv)
 }
 
 /*! Return length of XML object list
+ *
  * @param[in]  xv    XML tree vector
  * @retval     len   Length of XML object vector
  */
@@ -183,6 +185,7 @@ clixon_xvec_len(clixon_xvec *xv)
 }
 
 /*! Return i:th XML object in XML object vector
+ *
  * @param[in]  xv    XML tree vector
  * @retval     x     OK
  * @retval     NULL  Not found
@@ -214,7 +217,7 @@ clixon_xvec_extract(clixon_xvec *xv,
                     int         *xmax)
 {
     int retval = -1;
-    
+
     if (xv == NULL){
         clicon_err(OE_XML, EINVAL, "xv is NULL");
         goto done;
@@ -248,7 +251,6 @@ clixon_xvec_extract(clixon_xvec *xv,
 int
 clixon_xvec_append(clixon_xvec *xv,
                    cxobj       *x)
-                   
 {
     int retval = -1;
 
@@ -332,7 +334,7 @@ clixon_xvec_insert_pos(clixon_xvec *xv,
 {
     int    retval = -1;
     size_t size;
-    
+
     if (clixon_xvec_inc(xv) < 0)
         goto done;
     size = (xv->xv_len - i -1)*sizeof(cxobj *);
@@ -355,7 +357,7 @@ clixon_xvec_rm_pos(clixon_xvec *xv,
                    int          i)
 {
     size_t size;
-    
+
     size = (xv->xv_len - i + 1)*sizeof(cxobj *);
     memmove(&xv->xv_vec[i], &xv->xv_vec[i+1], size);
     xv->xv_len--;
@@ -367,14 +369,14 @@ clixon_xvec_rm_pos(clixon_xvec *xv,
  * @param[in]  f     UNIX output stream
  * @param[in]  xv    XML tree vector
  * @retval     0     OK
- * @retval     -1    Error
+ * @retval    -1     Error
  */
 int
 clixon_xvec_print(FILE        *f,
                   clixon_xvec *xv)
 {
     int i;
-    
+
     for (i=0; i<xv->xv_len; i++)
         if (clixon_xml2file(f, xv->xv_vec[i], 0, 1, NULL, fprintf, 0, 0) < 0)
             return -1;

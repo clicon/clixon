@@ -41,7 +41,7 @@
 
 /*
  * Prototypes
- */ 
+ */
 int startup_mode_startup(clicon_handle h, char *db, cbuf *cbret);
 int startup_extraxml(clicon_handle h, char *file, cbuf *cbret);
 int startup_module_state(clicon_handle h, yang_stmt *yspec);

@@ -54,7 +54,7 @@ struct clixon_yang_sub_parse_yacc {
     int         if_linenum;      /* Number of \n in parsed buffer (in mainfile) */
     void      *if_lexbuf;       /* Internal parse buffer from lex */
     yang_stmt *if_ys;           /* Yang statement, NULL if no check */
-    enum yang_sub_parse_accept if_accept; /* Which sub-parse rule to accept */ 
+    enum yang_sub_parse_accept if_accept; /* Which sub-parse rule to accept */
     int         if_enabled;      /* Result: 0: feature disabled, 1: enabled */
     clicon_handle h;
 };

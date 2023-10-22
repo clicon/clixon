@@ -112,7 +112,7 @@ attr_ns_value(cxobj *x,
     char  *val = NULL;
 
     /* prefix=NULL since we do not know the prefix */
-    if ((xa = xml_find_type(x, NULL, name, CX_ATTR)) != NULL){ 
+    if ((xa = xml_find_type(x, NULL, name, CX_ATTR)) != NULL){
         if (xml2ns(xa, xml_prefix(xa), &ans) < 0)
             goto done;
         if (ans == NULL){ /* the attribute exists, but no namespace */
@@ -159,11 +159,11 @@ attr_ns_value(cxobj *x,
  */
 static int
 check_body_namespace(cxobj     *x0,
-                     cxobj     *x0p,              
+                     cxobj     *x0p,
                      cxobj     *x1,
                      char      *x1bstr,
                      yang_stmt *y,
-                     cbuf      *cbret)               
+                     cbuf      *cbret)
 {
     int        retval = -1;
     char      *prefix = NULL;
@@ -187,7 +187,7 @@ check_body_namespace(cxobj     *x0,
         goto done;
     if (ns0 != NULL && ns1 != NULL){  /* namespace exists in both x1 and x0 */
         if (strcmp(ns0, ns1)){
-            /* prefixes in x1 and x0 refers to different namespaces 
+            /* prefixes in x1 and x0 refers to different namespaces
              * XXX return netconf error instead bad-attribue?
              */
             if ((cberr = cbuf_new()) == NULL){
@@ -294,7 +294,7 @@ check_when_condition(cxobj              *x0p,
 
     if ((y = y0) != NULL ||
         (y = (yang_stmt*)xml_spec(x1)) != NULL){
-        if ((xpath = yang_when_xpath_get(y)) != NULL){ 
+        if ((xpath = yang_when_xpath_get(y)) != NULL){
             nsc = yang_when_nsc_get(y);
             x1p = xml_parent(x1);
             if ((nr = xpath_vec_bool(x1p, nsc, "%s", xpath)) < 0) /* Try request */
@@ -398,7 +398,7 @@ choice_delete_other(cxobj     *x0,
     yang_stmt *y0choice;
     yang_stmt *y1case = NULL;
     yang_stmt *y1choice = NULL;
-    
+
     if (choice_case_get(y1c, &y1case, &y1choice) == 0)
         goto ok;
     x0prev = NULL;
@@ -430,7 +430,7 @@ choice_delete_other(cxobj     *x0,
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
  *
- * @param[in]  h        Clicon handle
+ * @param[in]  h        Clixon handle
  * @param[in]  x0       Base xml tree (can be NULL in add scenarios)
  * @param[in]  x0p      Parent of x0
  * @param[in]  x0t      Top level of existing tree, eg needed for NACM rules
@@ -485,7 +485,7 @@ text_modify(clicon_handle       h,
     enum insert_type insert = INS_LAST;
     int        changed = 0; /* Only if x0p's children have changed-> sort necessary */
     cvec      *nscx1 = NULL;
-    char      *createstr = NULL;        
+    char      *createstr = NULL;
     yang_stmt *yrestype = NULL;
     char      *restype;
     int        ismount = 0;
@@ -521,7 +521,7 @@ text_modify(clicon_handle       h,
                 /* RFC 8040 4.6 PATCH:
                  * If the target resource instance does not exist, the server MUST NOT create it. 
                  */
-                if (netconf_data_missing(cbret, 
+                if (netconf_data_missing(cbret,
           "RFC 8040 4.6. PATCH: If the target resource instance does not exist, the server MUST NOT create it") < 0)
                     goto done;
                 goto fail;
@@ -541,9 +541,9 @@ text_modify(clicon_handle       h,
 
     if (yang_keyword_get(y0) == Y_LEAF_LIST ||
         yang_keyword_get(y0) == Y_LEAF){
-        /* This is a check that a leaf does not have sub-elements 
+        /* This is a check that a leaf does not have sub-elements
          * such as: <leaf>a <leaf>b</leaf> </leaf> 
-         */         
+         */
         if (xml_child_nr_type(x1, CX_ELMNT)){
             if (netconf_unknown_element(cbret, "application", x1name, "Leaf contains sub-element") < 0)
                 goto done;
@@ -576,7 +576,7 @@ text_modify(clicon_handle       h,
             }
         }
         x1bstr = xml_body(x1);
-        switch(op){ 
+        switch(op){
         case OP_CREATE:
             if (x0){
                 if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
@@ -590,7 +590,7 @@ text_modify(clicon_handle       h,
                  * of ordered-by user and (changed) insert attribute.
                  */
                 if (!permit && xnacm){
-                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
@@ -607,7 +607,7 @@ text_modify(clicon_handle       h,
         case OP_NONE: /* fall thru */
             if (x0==NULL){
                 if ((op != OP_NONE) && !permit && xnacm){
-                    if ((ret = nacm_datanode_write(h, x1, x1t, NACM_CREATE, username, xnacm, cbret)) < 0) 
+                    if ((ret = nacm_datanode_write(h, x1, x1t, NACM_CREATE, username, xnacm, cbret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
@@ -632,7 +632,7 @@ text_modify(clicon_handle       h,
                     xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
                 if (x1bstr){ /* empty type does not have body */ /* XXX Here x0 = <b></b> */
                     if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
-                        goto done; 
+                        goto done;
                 }
             }
             /* Some bodies (eg identityref) requires proper namespace setup, so a type lookup is
@@ -650,7 +650,7 @@ text_modify(clicon_handle       h,
                 x1bstr="";
             if (x1bstr){
                 if (strcmp(restype, "identityref") == 0){
-                    x1bstr = clixon_trim2(x1bstr, " \t\n"); 
+                    x1bstr = clixon_trim2(x1bstr, " \t\n");
                     if ((ret = check_body_namespace(x0, x0p, x1, x1bstr, y0, cbret)) < 0)
                         goto done;
                     if (ret == 0)
@@ -660,7 +660,7 @@ text_modify(clicon_handle       h,
                     /* Some bodies strip pretty-printed here, unsure where to do this,.. */
                     if (strcmp(restype, "enumeration") == 0 ||
                         strcmp(restype, "bits") == 0)
-                        x1bstr = clixon_trim2(x1bstr, " \t\n"); 
+                        x1bstr = clixon_trim2(x1bstr, " \t\n");
 #if 0 /* Passes regression test without, keep for some time until other test requires it */
                     /* If origin body has namespace definitions, copy them. The reason is that
                      * some bodies rely on namespace prefixes, such as NACM path, but there is 
@@ -700,8 +700,8 @@ text_modify(clicon_handle       h,
                 if (xml_creator_add(x0, creator) < 0)
                     goto done;
             }
-            if (changed){ 
-                if (xml_insert(x0p, x0, insert, valstr, NULL) < 0) 
+            if (changed){
+                if (xml_insert(x0p, x0, insert, valstr, NULL) < 0)
                     goto done;
             }
             break;
@@ -719,7 +719,7 @@ text_modify(clicon_handle       h,
                     if (ret == 0)
                         goto fail;
                 }
-                x0bstr = xml_body(x0); 
+                x0bstr = xml_body(x0);
                 /* Purge if x1 value is NULL(match-all) or both values are equal */
                 if ((x1bstr == NULL) ||
                     ((x0bstr=xml_body(x0)) != NULL && strcmp(x0bstr, x1bstr)==0)){
@@ -774,7 +774,7 @@ text_modify(clicon_handle       h,
             if (keystr && xml_nsctx_node(x1, &nscx1) < 0)
                 goto done;
         }
-        switch(op){ 
+        switch(op){
         case OP_CREATE:
             if (x0){
                 if (xml_defaults_nopresence(x0, 0) == 0){
@@ -784,13 +784,13 @@ text_modify(clicon_handle       h,
                 }
             }
         case OP_REPLACE: /* fall thru */
-        case OP_MERGE:  
+        case OP_MERGE:
             if (!(op == OP_MERGE && instr==NULL)){
                 /* Remove existing, also applies to merge in the special case
                  * of ordered-by user and (changed) insert attribute.
                  */
                 if (!permit && xnacm){
-                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
@@ -816,7 +816,7 @@ text_modify(clicon_handle       h,
                 if (op == OP_NONE)
                     break;
                 if (op==OP_MERGE && !permit && xnacm){
-                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0) 
+                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
@@ -833,7 +833,7 @@ text_modify(clicon_handle       h,
             } /* anyxml, anydata */
             if (x0==NULL){
                 if (op==OP_MERGE && !permit && xnacm){
-                    if ((ret = nacm_datanode_write(h, x1, x1t, NACM_CREATE, username, xnacm, cbret)) < 0) 
+                    if ((ret = nacm_datanode_write(h, x1, x1t, NACM_CREATE, username, xnacm, cbret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
@@ -868,9 +868,9 @@ text_modify(clicon_handle       h,
                 clicon_err(OE_UNIX, errno, "calloc");
                 goto done;
             }
-            x1c = NULL; 
+            x1c = NULL;
             i = 0;
-            while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) { 
+            while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
                 x1cname = xml_name(x1c);
                 /* Get yang spec of the child by child matching */
                 if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
@@ -968,7 +968,7 @@ text_modify(clicon_handle       h,
         case OP_REMOVE: /* fall thru */
             if (x0){
                 if (!permit && xnacm){
-                    if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0) 
+                    if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
@@ -1010,7 +1010,7 @@ text_modify(clicon_handle       h,
 
 /*! Modify a top-level base tree x0 with modification tree x1
  *
- * @param[in]  h        Clicon handle
+ * @param[in]  h        Clixon handle
  * @param[in]  x0t      Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1t       XML tree which modifies base
  * @param[in]  yspec    Top-level yang spec (if y is NULL)
@@ -1044,7 +1044,7 @@ text_modify_top(clicon_handle       h,
     char      *opstr = NULL;
     int        ret;
     char      *createstr = NULL;
-    
+
     /* Check for operations embedded in tree according to netconf */
     if ((ret = attr_ns_value(x1t,
                              "operation", NETCONF_BASE_NAMESPACE,
@@ -1060,9 +1060,9 @@ text_modify_top(clicon_handle       h,
     if (ret == 0)
         goto fail;
     /* Special case if incoming x1t is empty, top-level only <config/> */
-    if (xml_child_nr_type(x1t, CX_ELMNT) == 0){ 
+    if (xml_child_nr_type(x1t, CX_ELMNT) == 0){
         if (xml_child_nr_type(x0t, CX_ELMNT)){ /* base tree not empty */
-            switch(op){ 
+            switch(op){
             case OP_DELETE:
             case OP_REMOVE:
             case OP_REPLACE:
@@ -1082,7 +1082,7 @@ text_modify_top(clicon_handle       h,
             }
         }
         else /* base tree empty */
-            switch(op){ 
+            switch(op){
 #if 0 /* According to RFC6020 7.5.8 you cant delete a non-existing object.
          On the other hand, the top-level cannot be removed anyway.
          Additionally, I think this is irritating so I disable it.
@@ -1107,7 +1107,7 @@ text_modify_top(clicon_handle       h,
                 clicon_data_set(h, "objectexisted", "false");
         }
         if (!permit && xnacm){
-            if ((ret = nacm_datanode_write(h, x1t, x1t, NACM_UPDATE, username, xnacm, cbret)) < 0) 
+            if ((ret = nacm_datanode_write(h, x1t, x1t, NACM_UPDATE, username, xnacm, cbret)) < 0)
                 goto done;
             if (ret == 0)
                 goto fail;
@@ -1200,7 +1200,7 @@ text_modify_top(clicon_handle       h,
  */
 int
 xmldb_put(clicon_handle       h,
-          const char         *db, 
+          const char         *db,
           enum operation_type op,
           cxobj              *x1,
           char               *username,
@@ -1268,7 +1268,7 @@ xmldb_put(clicon_handle       h,
 
     /* Here assume if xnacm is set and !permit do NACM */
     clicon_data_del(h, "objectexisted");
-    /* 
+    /*
      * Modify base tree x with modification x1. This is where the
      * new tree is made.
      */
@@ -1287,7 +1287,7 @@ xmldb_put(clicon_handle       h,
     /* Remove NONE nodes if all subs recursively are also NONE */
     if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
         goto done;
-    if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, 
+    if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                   (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
         goto done;
     /* Remove global defaults and empty non-presence containers */
@@ -1330,7 +1330,7 @@ xmldb_put(clicon_handle       h,
     if ((f = fopen(dbfile, "w")) == NULL){
         clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
         goto done;
-    } 
+    }
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
     if (strcmp(format,"json")==0){
         if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
@@ -1374,7 +1374,7 @@ xmldb_dump(clicon_handle   h,
     cxobj *xmodst = NULL;
     char  *format;
     int    pretty;
-    
+
     /* clear XML tree of defaults */
     if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
         goto done;

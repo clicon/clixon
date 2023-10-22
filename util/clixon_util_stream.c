@@ -73,9 +73,9 @@ struct curlbuf{
  * realloc. Therefore, we append new data to the userdata buffer.
  */
 static size_t
-curl_get_cb(void  *ptr, 
-            size_t size, 
-            size_t nmemb, 
+curl_get_cb(void  *ptr,
+            size_t size,
+            size_t nmemb,
             void  *userdata)
 {
     struct curlbuf *buf = (struct curlbuf *)userdata;
@@ -96,17 +96,17 @@ curl_get_cb(void  *ptr,
  * If getdata is set, return the (malloced) data (which should be freed).
  *
  * @param[in] start 'start-time' parameter that will be URL-encoded
- * @retval    -1    fatal error
  * @retval     1    ok
+ * @retval    -1    fatal error
  *
  * @note curl_easy_perform blocks
  * @note New handle is created every time, the handle can be re-used for 
  * better TCP performance
  */
 int
-stream_url_get(char  *url, 
+stream_url_get(char  *url,
                char  *start,
-               char  *stop, 
+               char  *stop,
                int    timeout,
                char **getdata)
 {
@@ -119,7 +119,7 @@ stream_url_get(char  *url,
     struct curl_slist *list = NULL;
     int       ret;
 
-    clicon_debug(1, "%s:  curl -G %s start-time=%s stop-time=%s",
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s:  curl -G %s start-time=%s stop-time=%s",
                  __FUNCTION__, url, start?start:"", stop?stop:"");
     /* Set up curl for doing the communication with the controller */
     if ((curl = curl_easy_init()) == NULL) {
@@ -130,7 +130,7 @@ stream_url_get(char  *url,
         goto done;
 
     if ((err = malloc(CURL_ERROR_SIZE)) == NULL) {
-        clicon_debug(1, "%s: malloc", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s: malloc", __FUNCTION__);
         goto done;
     }
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
@@ -139,7 +139,7 @@ stream_url_get(char  *url,
     //    list = curl_slist_append(list, "Cache-Control: no-cache");
     //    list = curl_slist_append(list, "Connection: keep-alive");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-    /* specify URL to get */ 
+    /* specify URL to get */
     cprintf(cbf, "%s", url);
     if (strlen(start)||strlen(stop))
         cprintf(cbf, "?");
@@ -159,17 +159,16 @@ stream_url_get(char  *url,
         curl_free(encoded);
         encoded = NULL;
     }
-    clicon_debug(1, "url: %s\n", cbuf_get(cbf));
+    clixon_debug(CLIXON_DBG_DEFAULT, "url: %s\n", cbuf_get(cbf));
     curl_easy_setopt(curl, CURLOPT_URL, cbuf_get(cbf));
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_get_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &cb);
-    
-    /* some servers don't like requests that are made without a user-agent
-       field, so we provide one */ 
 
+    /* some servers don't like requests that are made without a user-agent
+       field, so we provide one */
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, err);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);  
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
     ret = curl_easy_perform(curl);
     if (ret != CURLE_OPERATION_TIMEDOUT && ret != CURLE_OK){
         fprintf(stderr, "curl: %s %d", err, ret);
@@ -190,7 +189,7 @@ stream_url_get(char  *url,
     if (cb.b_buf)
         free(cb.b_buf);
     if (curl)
-        curl_easy_cleanup(curl);   /* cleanup */ 
+        curl_easy_cleanup(curl);   /* cleanup */
     return retval;
 }
 
@@ -224,7 +223,7 @@ main(int argc, char **argv)
     struct timeval now;
     int            dbg = 0;
 
-    clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR); 
+    clicon_log_init("xpath", LOG_DEBUG, CLICON_LOG_STDERR);
     gettimeofday(&now, NULL);
     optind = 1;
     opterr = 0;
@@ -266,7 +265,7 @@ main(int argc, char **argv)
             usage(argv[0]);
             break;
         }
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
     if (url == NULL)
         usage(argv[0]);
     curl_global_init(0);

@@ -32,7 +32,7 @@
 
   ***** END LICENSE BLOCK *****
  *
- * "instance-id" is a subset of XPath and defined in RF7950 Sections 9.13 and 14. 
+ * "instance-id" is a subset of XPath and defined in RF7950 Sections 9.13 and 14.
  * BNF:
  *  instance-identifier = ("/" (node-identifier [key-predicate+ | leaf-list-predicate | pos]))+
  *  key-predicate       = "[" key-predicate-expr "]"
@@ -80,7 +80,7 @@
 #define _IY ((clixon_instance_id_yacc *)_iy)
 
 #undef clixon_instance_id_parsewrap
-int 
+int
 clixon_instance_id_parsewrap(void)
 {
     return 1;
@@ -99,7 +99,7 @@ uint       [1-9][0-9]*
 
 %%
 
-<INIT,STRDQ,STRSQ>[ \t]            
+<INIT,STRDQ,STRSQ>[ \t]
 <INIT,STRDQ,STRSQ>\n       { _IY->iy_linenum++; }
 <INIT,STRDQ,STRSQ>\r
 <INIT,STRDQ,STRSQ><<EOF>>  { return X_EOF; }
@@ -112,10 +112,10 @@ uint       [1-9][0-9]*
 <INIT>\.           { return DOT; }
 <INIT>\"           { _IY->iy_lex_state=INIT;BEGIN(STRDQ); return DQUOTE; }
 <INIT>\'           { _IY->iy_lex_state=INIT;BEGIN(STRSQ); return SQUOTE; }
-<INIT>{identifier} { clixon_instance_id_parselval.string = strdup(yytext); 
-                     return IDENTIFIER; } 
-<INIT>{uint}       { clixon_instance_id_parselval.string = strdup(yytext); 
-                     return UINT; } 
+<INIT>{identifier} { clixon_instance_id_parselval.string = strdup(yytext);
+                     return IDENTIFIER; }
+<INIT>{uint}       { clixon_instance_id_parselval.string = strdup(yytext);
+                     return UINT; }
 <INIT>.            { clixon_instance_id_parseerror(_IY, "LEXICAL ERROR\n"); return -1; }
 
 <STRDQ>[^\"]+         { clixon_instance_id_parselval.string = strdup(yytext); return STRING; }
@@ -124,7 +124,6 @@ uint       [1-9][0-9]*
 <STRSQ>[^\']+         { clixon_instance_id_parselval.string = strdup(yytext); return STRING; }
 <STRSQ>\'             { BEGIN(_IY->iy_lex_state); return SQUOTE; }
 
-                     
 %%
 
 /*! Initialize scanner.
@@ -136,7 +135,7 @@ instance_id_scan_init(clixon_instance_id_yacc *iy)
   iy->iy_lexbuf = yy_scan_string(iy->iy_parse_string);
 #if 1 /* XXX: just to use unput to avoid warning  */
   if (0)
-    yyunput(0, ""); 
+    yyunput(0, "");
 #endif
 
   return 0;

@@ -70,7 +70,7 @@
 #define _JY ((clixon_json_yacc *)_yy)
 
 #undef clixon_json_parsewrap
-int 
+int
 clixon_json_parsewrap(void)
 {
     return 1;
@@ -91,9 +91,9 @@ hex [A-Fa-f0-9]
 
 %%
 
-<START>[ \t]            
+<START>[ \t]
 <START>\n               { _JY->jy_linenum++; }
-<START>\r               
+<START>\r
 <START><<EOF>>          { return J_EOF; }
 <START>\{               { return *yytext; }
 <START>\}               { return *yytext; }
@@ -123,13 +123,13 @@ hex [A-Fa-f0-9]
 <ESCAPE>u               { BEGIN(HEXDIG); }
 <ESCAPE>\n              { return -1; }
 <ESCAPE>.               { return -1; }
-<HEXDIG>{hex}{hex}{hex}{hex} { 
+<HEXDIG>{hex}{hex}{hex}{hex} {
                                char buf[5] = {0, };
-                               BEGIN(STRING); 
+                               BEGIN(STRING);
                                if (clixon_unicode2utf8(yytext, buf, 5) < 0)
                                   return -1;
                                strncpy(yytext, buf, 5);
-                               clixon_json_parselval.string = yytext; 
+                               clixon_json_parselval.string = yytext;
                                return J_STRING;
                               }
 <HEXDIG>\n              { return -1;}
@@ -147,7 +147,7 @@ json_scan_init(clixon_json_yacc *jy)
   jy->jy_lexbuf = yy_scan_string (jy->jy_parse_string);
 #if 1 /* XXX: just to use unput to avoid warning  */
   if (0)
-    yyunput(0, ""); 
+    yyunput(0, "");
 #endif
 
   return 0;

@@ -111,9 +111,9 @@ main(int    argc,
     cxobj        *xerr = NULL; /* malloced must be freed */
     int           nr = 1;
     int           dbg = 0;
-        
+
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init("api-path", LOG_DEBUG, CLICON_LOG_STDERR); 
+    clicon_log_init("api-path", LOG_DEBUG, CLICON_LOG_STDERR);
     /* Initialize clixon handle */
     if ((h = clicon_handle_init()) == NULL)
         goto done;
@@ -122,7 +122,6 @@ main(int    argc,
         goto done;
     if (clicon_conf_xml_set(h, xcfg) < 0)
         goto done;
-    
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, UTIL_PATH_OPTS)) != -1)
@@ -161,7 +160,7 @@ main(int    argc,
             usage(argv[0]);
             break;
         }
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
     yang_init(h);
 
     /* Parse yang */
@@ -191,7 +190,7 @@ main(int    argc,
         }
         memset(buf, 0, len);
         i = 0;
-        while (1){ 
+        while (1){
             if ((ret = read(0, &c, 1)) < 0){
                 perror("read");
                 goto done;
@@ -204,7 +203,7 @@ main(int    argc,
                 if ((buf = realloc(buf, 2*len)) == NULL){
                     fprintf(stderr, "%s: realloc: %s\n", __FUNCTION__, strerror(errno));
                     return -1;
-                }           
+                }
                 memset(buf+len, 0, len);
                 len *= 2;
             }
@@ -213,7 +212,7 @@ main(int    argc,
         path = buf;
     }
 
-    /* 
+    /*
      * If fp=stdin, then continue reading from stdin (after CR)
      * XXX Note 0 above, stdin here
      */
@@ -245,7 +244,7 @@ main(int    argc,
         /* Add default values */
         if (xml_default_recurse(x, 0) < 0)
             goto done;
-        if ((ret = xml_yang_validate_all_top(h, x, &xerr)) < 0) 
+        if ((ret = xml_yang_validate_all_top(h, x, &xerr)) < 0)
             goto done;
         if (ret > 0 && (ret = xml_yang_validate_add(h, x, &xerr)) < 0)
             goto done;

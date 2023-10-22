@@ -91,8 +91,11 @@
 #define RESTCONF_OPTS "hD:f:E:l:C:p:d:y:a:u:rW:R:o:"
 
 /*! Convert FCGI parameters to clixon runtime data
+ *
  * @param[in]  h     Clixon handle
  * @param[in]  envp  Fastcgi request handle parameter array on the format "<param>=<value>"
+ * @retval     0    OK
+ * @retval    -1    Error
  * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
  */
 static int
@@ -104,7 +107,7 @@ fcgi_params_set(clicon_handle h,
     char *param = NULL;
     char *val = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
         if (clixon_strsplit(envp[i], '=', &param, &val) < 0)
             goto done;
@@ -121,7 +124,7 @@ fcgi_params_set(clicon_handle h,
     }
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -134,7 +137,7 @@ restconf_main_config(clicon_handle h,
 {
     int            retval = -1;
     struct passwd *pw;
-    cxobj         *xconfig = NULL;   
+    cxobj         *xconfig = NULL;
     cxobj         *xrestconf = NULL;
     uint32_t       id = 0;
     cxobj         *xerr = NULL;
@@ -144,7 +147,7 @@ restconf_main_config(clicon_handle h,
 
     /* 1. try inline configure option */
     if (inline_config != NULL && strlen(inline_config)){
-        clicon_debug(1, "restconf_main_fcgi using restconf inline config");
+        clixon_debug(CLIXON_DBG_DEFAULT, "restconf_main_fcgi using restconf inline config");
         if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf, &xerr)) < 0)
             goto done;
         if (ret == 0){
@@ -217,19 +220,19 @@ static clicon_handle _CLICON_HANDLE = NULL;
  */
 static int _MYSOCK;
 
-/*! Signall terminates process
+/*! Signal terminates process
  */
 static void
 restconf_sig_term(int arg)
 {
     static int i=0;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (i++ == 0)
-        clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
+        clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d",
                    __PROGRAM__, __FUNCTION__, getpid(), arg);
     else{
-        clicon_debug(1, "%s done", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s done", __FUNCTION__);
         exit(-1);
     }
 
@@ -237,11 +240,12 @@ restconf_sig_term(int arg)
      * is entered, it will terminate.
      * However there may be a case of sockets closing rather abruptly for clients
      */
-    clixon_exit_set(1); 
+    clixon_exit_set(1);
     close(_MYSOCK);
 }
 
 /*! Reap stream child
+ *
  * XXX The -1 should be changed to proper pid, see eg clixon_process_waitpid
  */
 static void
@@ -255,8 +259,9 @@ restconf_sig_child(int arg)
 }
 
 /*! Usage help routine
+ *
+ * @param[in]  h      Clixon handle
  * @param[in]  argv0  command line
- * @param[in]  h      Clicon handle
  */
 static void
 usage(clicon_handle h,
@@ -285,9 +290,9 @@ usage(clicon_handle h,
 }
 
 /*! Main routine for fastcgi restconf */
-int 
-main(int    argc, 
-     char **argv) 
+int
+main(int    argc,
+     char **argv)
 {
     int            retval = -1;
     int            sock;
@@ -318,7 +323,7 @@ main(int    argc,
     enum format_enum config_dump_format = FORMAT_XML;
 
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, logdst); 
+    clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
 
     /* Create handle */
     if ((h = restconf_handle_init()) == NULL)
@@ -355,12 +360,12 @@ main(int    argc,
             break;
         } /* switch getopt */
 
-    /* 
+    /*
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
+    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
 
-    clicon_debug_init(dbg, NULL); 
+    clixon_debug_init(dbg, NULL);
     clicon_log(LOG_NOTICE, "%s fcgi: %u Started", __PROGRAM__, getpid());
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
         clicon_err(OE_DAEMON, errno, "Setting signal");
@@ -450,10 +455,10 @@ main(int    argc,
 
     if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
         clicon_log_string_limit_set(sz);
-    
+
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
-    
+
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below
      */
@@ -470,7 +475,7 @@ main(int    argc,
         goto done;
     /* In case ietf-yang-metadata is loaded by application, handle annotation extension */
     if (yang_metadata_init(h) < 0)
-        goto done;    
+        goto done;
     /* Load restconf plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_restconf_dir(h)) != NULL)
         if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
@@ -510,7 +515,7 @@ main(int    argc,
     /* Load yang restconf module */
     if (yang_spec_parse_module(h, "ietf-restconf", NULL, yspec)< 0)
         goto done;
-    
+
 #ifdef CLIXON_YANG_PATCH
     /* Load yang restconf patch module */
     if (yang_spec_parse_module(h, "ietf-yang-patch", NULL, yspec)< 0)
@@ -520,7 +525,7 @@ main(int    argc,
     /* Add netconf yang spec, used as internal protocol */
     if (netconf_module_load(h) < 0)
         goto done;
-    
+
     /* Add system modules */
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040") &&
         yang_spec_parse_module(h, "ietf-restconf-monitoring", NULL, yspec)< 0)
@@ -561,7 +566,7 @@ main(int    argc,
         clicon_err(OE_CFG, errno, "FCGX_Init");
         goto done;
     }
-    clicon_debug(1, "restconf_main: Opening FCGX socket: %s", sockpath);
+    clixon_debug(CLIXON_DBG_DEFAULT, "restconf_main: Opening FCGX socket: %s", sockpath);
     if ((sock = FCGX_OpenSocket(sockpath, 10)) < 0){
         clicon_err(OE_CFG, errno, "FCGX_OpenSocket");
         goto done;
@@ -596,7 +601,7 @@ main(int    argc,
      * @see clicon_hello_req
      */
     clicon_data_set(h, "session-transport", "cl:restconf");
-    
+
     if (FCGX_InitRequest(req, sock, 0) != 0){
         clicon_err(OE_CFG, errno, "FCGX_InitRequest");
         goto done;
@@ -608,7 +613,7 @@ main(int    argc,
             clicon_err(OE_CFG, errno, "FCGX_Accept_r");
             goto done;
         }
-        clicon_debug(1, "------------");
+        clixon_debug(CLIXON_DBG_DEFAULT, "------------");
 
         /* Translate from FCGI parameter form to Clixon runtime data 
          * XXX: potential name collision?
@@ -616,7 +621,7 @@ main(int    argc,
         if (fcgi_params_set(h, req->envp) < 0)
             goto done;
         if ((path = restconf_param_get(h, "REQUEST_URI")) == NULL){
-            clicon_debug(1, "NULL URI");
+            clixon_debug(CLIXON_DBG_DEFAULT, "NULL URI");
         }
         else {
             /* Matching algorithm:
@@ -637,7 +642,7 @@ main(int    argc,
                     if (uri_str2cvec(query, '&', '=', 1, &qvec) < 0)
                         goto done;
                 if (api_root_restconf(h, req, qvec) < 0)
-                    goto done;      
+                    goto done;
             }
             else if (api_path_is_stream(h)){
                 query = restconf_param_get(h, "QUERY_STRING");
@@ -648,9 +653,9 @@ main(int    argc,
                 (void)api_stream(h, req, qvec, &finish);
             }
             else{
-                clicon_debug(1, "top-level %s not found", path);
+                clixon_debug(CLIXON_DBG_DEFAULT, "top-level %s not found", path);
                 if (netconf_invalid_value_xml(&xerr, "protocol", "Top-level path not found") < 0)
-                    goto done; 
+                    goto done;
                 if (api_return_err0(h, req, xerr, 1, YANG_DATA_JSON, 0) < 0)
                     goto done;
                 if (xerr){

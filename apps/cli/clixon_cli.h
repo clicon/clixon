@@ -50,6 +50,7 @@ extern "C" {
  */
 
 /*! Called when plugin loaded. Only mandadory callback. All others optional 
+ *
  * @see plginit_t
  */
 int plugin_init(clicon_handle h);

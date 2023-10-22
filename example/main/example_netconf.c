@@ -49,8 +49,10 @@
 #include <clixon/clixon_netconf.h>
 
 /*! Plugin start
+ *
  * Called once everything has been initialized, right before
  * the main event loop is entered.
+ * @param[in] h      Clixon handle
  */
 int
 plugin_start(clicon_handle h)
@@ -67,9 +69,9 @@ plugin_exit(clicon_handle h)
 /*! Local example netconf rpc callback 
  */
 int
-netconf_client_rpc(clicon_handle h, 
-                   cxobj        *xe,      
-                   cbuf         *cbret,    
+netconf_client_rpc(clicon_handle h,
+                   cxobj        *xe,
+                   cbuf         *cbret,
                    void         *arg,
                    void         *regarg)
 {
@@ -111,6 +113,7 @@ static struct clixon_plugin_api api = {
 };
 
 /*! Netconf plugin initialization
+ *
  * @param[in]  h    Clixon handle
  * @retval     NULL Error with clicon_err set
  * @retval     api  Pointer to API struct
@@ -118,7 +121,7 @@ static struct clixon_plugin_api api = {
 clixon_plugin_api *
 clixon_plugin_init(clicon_handle h)
 {
-    clicon_debug(1, "%s restconf", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s restconf", __FUNCTION__);
     /* Register local netconf rpc client (note not backend rpc client) */
     if (rpc_callback_register(h, netconf_client_rpc, NULL,
                               "urn:example:clixon", "client-rpc") < 0)

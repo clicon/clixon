@@ -67,7 +67,7 @@
 #include <clixon/clixon.h>
 
 /* These include signatures for plugin and transaction callbacks. */
-#include <clixon/clixon_backend.h> 
+#include <clixon/clixon_backend.h>
 
 /* Command line options to be passed to getopt(3) */
 #define BACKEND_EXAMPLE_OPTS "a:m:M:nrsS:x:iuUtV:"
@@ -123,7 +123,7 @@ static int _state = 0;
  */
 static char *_state_file = NULL;
 
-/*! XPath to register for pagination state XML from file, 
+/*! XPath to register for pagination state XML from file,
  *
  * if _state is true -- -sS <file> -x <xpath>
  * Primarily for testing
@@ -185,7 +185,7 @@ static int   _validate_fail_toggle = 0; /* fail at validate and commit */
 static int example_stream_timer_setup(clicon_handle h);
 
 int
-main_begin(clicon_handle    h, 
+main_begin(clicon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
@@ -196,7 +196,7 @@ main_begin(clicon_handle    h,
 /*! This is called on validate (and commit). Check validity of candidate
  */
 int
-main_validate(clicon_handle    h, 
+main_validate(clicon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
@@ -213,7 +213,7 @@ main_validate(clicon_handle    h,
 }
 
 int
-main_complete(clicon_handle    h, 
+main_complete(clicon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
@@ -224,7 +224,7 @@ main_complete(clicon_handle    h,
 /*! This is called on commit. Identify modifications and adjust machine state
  */
 int
-main_commit(clicon_handle    h, 
+main_commit(clicon_handle    h,
             transaction_data td)
 {
     cxobj  *target = transaction_target(td); /* wanted XML tree */
@@ -251,7 +251,7 @@ main_commit(clicon_handle    h,
     /* Get all added i/fs */
     if (xpath_vec_flag(target, nsc, "//interface", XML_FLAG_ADD, &vec, &len) < 0)
         return -1;
-    if (clicon_debug_get())
+    if (clixon_debug_get())
         for (i=0; i<len; i++)             /* Loop over added i/fs */
             xml_print(stdout, vec[i]); /* Print the added interface */
   done:
@@ -263,7 +263,7 @@ main_commit(clicon_handle    h,
 }
 
 int
-main_commit_done(clicon_handle    h, 
+main_commit_done(clicon_handle    h,
                  transaction_data td)
 {
     if (_transaction_log)
@@ -272,7 +272,7 @@ main_commit_done(clicon_handle    h,
 }
 
 int
-main_revert(clicon_handle    h, 
+main_revert(clicon_handle    h,
             transaction_data td)
 {
     if (_transaction_log)
@@ -281,7 +281,7 @@ main_revert(clicon_handle    h,
 }
 
 int
-main_end(clicon_handle    h, 
+main_end(clicon_handle    h,
          transaction_data td)
 {
     if (_transaction_log)
@@ -290,7 +290,7 @@ main_end(clicon_handle    h,
 }
 
 int
-main_abort(clicon_handle    h, 
+main_abort(clicon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
@@ -301,7 +301,7 @@ main_abort(clicon_handle    h,
 /*! Routing example notification timer handler. Here is where the periodic action is 
  */
 static int
-example_stream_timer(int   fd, 
+example_stream_timer(int   fd,
                      void *arg)
 {
     int                    retval = -1;
@@ -337,8 +337,8 @@ example_stream_timer_setup(clicon_handle h)
  * are returned, the <rpc-reply> contains a single <ok/> element defined
  * in [RFC6241].
  */
-static int 
-empty_rpc(clicon_handle h,            /* Clicon handle */
+static int
+empty_rpc(clicon_handle h,            /* Clixon handle */
           cxobj        *xe,           /* Request: <rpc><xn></rpc> */
           cbuf         *cbret,        /* Reply eg <rpc-reply>... */
           void         *arg,          /* client_entry */
@@ -352,8 +352,8 @@ empty_rpc(clicon_handle h,            /* Clicon handle */
  *
  * The RPC returns the incoming parameters
  */
-static int 
-example_rpc(clicon_handle h,            /* Clicon handle */
+static int
+example_rpc(clicon_handle h,            /* Clixon handle */
             cxobj        *xe,           /* Request: <rpc><xn></rpc> */
             cbuf         *cbret,        /* Reply eg <rpc-reply>... */
             void         *arg,          /* client_entry */
@@ -394,8 +394,8 @@ example_rpc(clicon_handle h,            /* Clicon handle */
 
 /*! This will be called as a hook right after the original system copy-config
  */
-static int 
-example_copy_extra(clicon_handle h,            /* Clicon handle */
+static int
+example_copy_extra(clicon_handle h,            /* Clixon handle */
                    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
                    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
                    void         *arg,          /* client_entry */
@@ -413,8 +413,8 @@ example_copy_extra(clicon_handle h,            /* Clicon handle */
  *
  * @note callback is hardcoded C, while registration is controlled by -- -a option
  */
-static int 
-example_action_reset(clicon_handle h,            /* Clicon handle */
+static int
+example_action_reset(clicon_handle h,            /* Clixon handle */
                      cxobj        *xe,           /* Request: <rpc><xn></rpc> */
                      cbuf         *cbret,        /* Reply eg <rpc-reply>... */
                      void         *arg,          /* client_entry */
@@ -434,7 +434,7 @@ example_action_reset(clicon_handle h,            /* Clicon handle */
 
 /*! Called to get state data from plugin by programmatically adding state
  *
- * @param[in]    h        Clicon handle
+ * @param[in]    h        Clixon handle
  * @param[in]    nsc      External XML namespace context, or NULL
  * @param[in]    xpath    String with XPATH syntax. or NULL for all
  * @param[out]   xstate   XML tree, <config/> on entry. 
@@ -452,8 +452,8 @@ example_action_reset(clicon_handle h,            /* Clicon handle */
  * This yang snippet is present in clixon-example.yang for example.
  * @see example_statefile  where state is read from file and also pagination
  */
-int 
-example_statedata(clicon_handle   h, 
+int
+example_statedata(clicon_handle   h,
                   cvec           *nsc,
                   char           *xpath,
                   cxobj          *xstate)
@@ -539,7 +539,7 @@ example_statedata(clicon_handle   h,
  *
  * The example shows how to read and parse a state XML file, (which is cached in the -i case).
  * Return the requested xpath / pagination xstate by copying from the parsed state XML file
- * @param[in]    h        Clicon handle
+ * @param[in]    h        Clixon handle
  * @param[in]    nsc      External XML namespace context, or NULL
  * @param[in]    xpath    String with XPATH syntax. or NULL for all
  * @param[out]   xstate   XML tree, <config/> on entry. Copy to this
@@ -548,8 +548,8 @@ example_statedata(clicon_handle   h,
  * @see xmldb_get
  * @see example_statefile  where state is programmatically added
  */
-int 
-example_statefile(clicon_handle     h, 
+int
+example_statefile(clicon_handle     h,
                   cvec             *nsc,
                   char             *xpath,
                   cxobj            *xstate)
@@ -587,8 +587,8 @@ example_statefile(clicon_handle     h,
     if (_state_file_cached)
         xt = _state_xml_cache;
 #ifdef _STATEFILTER
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
-        goto done;      
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0)
+        goto done;
     /* Mark elements to copy:
      * For every node found in x0, mark the tree as changed 
      */
@@ -601,7 +601,7 @@ example_statefile(clicon_handle     h,
     /* Copy the marked elements: 
      * note is yang-aware for copying of keys which means XML must be bound 
      */
-    if (xml_copy_marked(xt, xstate) < 0) 
+    if (xml_copy_marked(xt, xstate) < 0)
         goto done;
     /* Unmark original tree */
     if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
@@ -610,7 +610,7 @@ example_statefile(clicon_handle     h,
     if (xml_apply(xstate, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
         goto done;
 #else
-    if (xml_copy(xt, xstate) < 0) 
+    if (xml_copy(xt, xstate) < 0)
         goto done;
 #endif
     if (_state_file_cached)
@@ -634,7 +634,7 @@ example_statefile(clicon_handle     h,
  * @param[in]  userargs Per-call user arguments
  * @param[in]  arg      Per-path user argument (at register time)
  */
-int 
+int
 example_pagination(void            *h0,
                    char            *xpath,
                    pagination_data  pd,
@@ -657,16 +657,16 @@ example_pagination(void            *h0,
     uint32_t          upper;
     int               ret;
     cvec             *nsc = NULL;
-    
+
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
         goto ok;
 
-    locked = pagination_locked(pd); 
-    offset = pagination_offset(pd); 
-    limit = pagination_limit(pd); 
-    xstate = pagination_xstate(pd); 
-    
+    locked = pagination_locked(pd);
+    offset = pagination_offset(pd);
+    limit = pagination_limit(pd);
+    xstate = pagination_xstate(pd);
+
     /* Get canonical namespace context */
     if (xml_nsctx_yangspec(yspec, &nsc) < 0)
         goto done;
@@ -687,8 +687,8 @@ example_pagination(void            *h0,
     }
     if (_state_file_cached)
         xt = _state_xml_cache;
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0) 
-        goto done;      
+    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0)
+        goto done;
     lower = offset;
     if (limit == 0)
         upper = xlen;
@@ -732,7 +732,7 @@ example_pagination(void            *h0,
         free(xvec);
     if (nsc)
         cvec_free(nsc);
-    return retval;    
+    return retval;
 }
 
 /*! Lock databse status has changed status
@@ -752,7 +752,7 @@ example_lockdb(clicon_handle h,
 {
     int retval = -1;
 
-    clicon_debug(1, "%s Lock callback: db%s: locked:%d", __FUNCTION__, db, lock);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Lock callback: db%s: locked:%d", __FUNCTION__, db, lock);
     /* Part of cached pagination example
      */
     if (strcmp(db, "running") == 0 && lock == 0 &&
@@ -769,15 +769,15 @@ example_lockdb(clicon_handle h,
 }
 
 /*! Callback for yang extensions example:e4
- * 
+ *
  * @param[in] h    Clixon handle
  * @param[in] yext Yang node of extension 
  * @param[in] ys   Yang node of (unknown) statement belonging to extension
- * @retval     0   OK, all callbacks executed OK
- * @retval    -1   Error in one callback
+ * @retval    0    OK, all callbacks executed OK
+ * @retval   -1    Error in one callback
  */
 int
-example_extension(clicon_handle h,     
+example_extension(clicon_handle h,
                   yang_stmt    *yext,
                   yang_stmt    *ys)
 {
@@ -787,13 +787,13 @@ example_extension(clicon_handle h,
     yang_stmt *ymod;
     yang_stmt *yc;
     yang_stmt *yn = NULL;
-    
+
     ymod = ys_module(yext);
     modname = yang_argument_get(ymod);
     extname = yang_argument_get(yext);
     if (strcmp(modname, "example") != 0 || strcmp(extname, "e4") != 0)
         goto ok;
-    clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
     if ((yc = yang_find(ys, 0, NULL)) == NULL)
         goto ok;
     if ((yn = ys_dup(yc)) == NULL)
@@ -833,7 +833,7 @@ static const map_str2str namespace_map[] = {
  *
  * Gets called on startup after initial XML parsing, but before module-specific upgrades
  * and before validation. 
- * @param[in] h    Clicon handle
+ * @param[in] h    Clixon handle
  * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
  * @param[in] xt   XML tree. Upgrade this "in place"
  * @param[in] msd  Info on datastore module-state, if any
@@ -848,10 +848,10 @@ example_upgrade(clicon_handle    h,
 {
     int                       retval = -1;
     cvec                     *nsc = NULL;    /* Canonical namespace */
-    yang_stmt                *yspec;    
+    yang_stmt                *yspec;
     const struct map_str2str *ms;            /* map iterator */
     cxobj                   **xvec = NULL;   /* vector of result nodes */
-    size_t                    xlen; 
+    size_t                    xlen;
     int                       i;
     const char              **pp;
 
@@ -868,7 +868,7 @@ example_upgrade(clicon_handle    h,
     /* 1. Remove paths */
     for (pp = remove_map; *pp; ++pp){
         /* Find all nodes matching n */
-        if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, *pp) < 0) 
+        if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, *pp) < 0)
             goto done;
         /* Remove them */
         /* Loop through all nodes matching mypath and change theoir namespace */
@@ -896,11 +896,11 @@ example_upgrade(clicon_handle    h,
             goto done;
         }
         /* Find all nodes matching mypath */
-        if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, mypath) < 0) 
+        if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, mypath) < 0)
             goto done;
         /* Loop through all nodes matching mypath and change theoir namespace */
         for (i=0; i<xlen; i++){
-            /* Change namespace of this node (using myprefix) */ 
+            /* Change namespace of this node (using myprefix) */
             if (xml_namespace_change(xvec[i], mynamespace, myprefix) < 0)
                 goto done;
         }
@@ -977,7 +977,7 @@ main_yang_mount(clicon_handle   h,
 
 /*! Testcase module-specific upgrade function moving interfaces-state to interfaces
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
@@ -999,13 +999,13 @@ main_yang_mount(clicon_handle   h,
  * - Rename /interfaces/interface/description to descr 
  */
 static int
-upgrade_2014_to_2016(clicon_handle h,       
-                     cxobj        *xt,      
+upgrade_2014_to_2016(clicon_handle h,
+                     cxobj        *xt,
                      char         *ns,
                      uint16_t      op,
                      uint32_t      from,
                      uint32_t      to,
-                     void         *arg,     
+                     void         *arg,
                      cbuf         *cbret)
 {
     int        retval = -1;
@@ -1020,11 +1020,11 @@ upgrade_2014_to_2016(clicon_handle h,
     int        i;
     char      *name;
 
-    clicon_debug(1, "%s from:%d to:%d", __FUNCTION__, from, to);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s from:%d to:%d", __FUNCTION__, from, to);
     if (op != XML_FLAG_CHANGE) /* Only treat fully present modules */
         goto ok;
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
-    yspec = clicon_dbspec_yang(h);      
+    yspec = clicon_dbspec_yang(h);
     if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
         goto ok; /* shouldnt happen */
     /* Get all XML nodes with that namespace */
@@ -1045,7 +1045,7 @@ upgrade_2014_to_2016(clicon_handle h,
                     continue; /* shouldnt happen */
                 /* Get corresponding /interfaces/interface entry */
                 xif = xpath_first(xt, NULL, "/interfaces/interface[name=\"%s\"]", name);
-                /* - Move /if:interfaces-state/if:interface/if:admin-status to 
+                /* - Move /if:interfaces-state/if:interface/if:admin-status to
                  *        /if:interfaces/if:interface/ */
                 if ((x = xml_find(xi, "admin-status")) != NULL && xif){
                     if (xml_addsub(xif, x) < 0)
@@ -1082,7 +1082,7 @@ upgrade_2014_to_2016(clicon_handle h,
 
 /*! Testcase upgrade function removing interfaces-state
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
@@ -1103,13 +1103,13 @@ upgrade_2014_to_2016(clicon_handle h,
  *   fraction-digits 3 and divide all values with 1000
  */
 static int
-upgrade_2016_to_2018(clicon_handle h,       
-                     cxobj        *xt,      
+upgrade_2016_to_2018(clicon_handle h,
+                     cxobj        *xt,
                      char         *ns,
                      uint16_t      op,
                      uint32_t      from,
                      uint32_t      to,
-                     void         *arg,     
+                     void         *arg,
                      cbuf         *cbret)
 {
     int        retval = -1;
@@ -1123,14 +1123,14 @@ upgrade_2016_to_2018(clicon_handle h,
     size_t     vlen;
     int        i;
 
-    clicon_debug(1, "%s from:%d to:%d", __FUNCTION__, from, to);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s from:%d to:%d", __FUNCTION__, from, to);
     if (op != XML_FLAG_CHANGE) /* Only treat fully present modules */
         goto ok;
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
-    yspec = clicon_dbspec_yang(h);      
+    yspec = clicon_dbspec_yang(h);
     if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
         goto ok; /* shouldnt happen */
-    clicon_debug(1, "%s module %s", __FUNCTION__, ym?yang_argument_get(ym):"none");
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s module %s", __FUNCTION__, ym?yang_argument_get(ym):"none");
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
         goto done;
@@ -1182,7 +1182,7 @@ upgrade_2016_to_2018(clicon_handle h,
 
 /*! Testcase module-specific upgrade function moving interfaces-state to interfaces
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
@@ -1204,13 +1204,13 @@ upgrade_2016_to_2018(clicon_handle h,
  * - Rename /interfaces/interface/description to descr 
  */
 static int
-upgrade_interfaces(clicon_handle h,       
-                   cxobj        *xt,      
+upgrade_interfaces(clicon_handle h,
+                   cxobj        *xt,
                    char         *ns,
                    uint16_t      op,
                    uint32_t      from,
                    uint32_t      to,
-                   void         *arg,     
+                   void         *arg,
                    cbuf         *cbret)
 {
     int retval = -1;
@@ -1247,8 +1247,10 @@ upgrade_interfaces(clicon_handle h,
  * is well defined. 
  * This involves creating default configuration files for various daemons, set interface
  * flags etc.
- * @param[in] h   Clicon handle
+ * @param[in] h   Clixon handle
  * @param[in] db  Name of database. Not3 may be other than "running"
+ * @retval    0   OK
+ * @retval   -1   Error
  * In this example, a loopback parameter is added
  */
 int
@@ -1264,15 +1266,14 @@ example_reset(clicon_handle h,
 
     if (!_reset)
         goto ok; /* Note not enabled by default */
-        
-    yspec = clicon_dbspec_yang(h);      
+    yspec = clicon_dbspec_yang(h);
     /* Parse extra XML */
     if ((ret = clixon_xml_parse_string("<table xmlns=\"urn:example:clixon\">"
                                        "<parameter><name>loopback</name><value>99</value></parameter>"
                                        "</table>", YB_MODULE, yspec, &xt, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        clicon_debug_xml(1, xerr, "Error when parsing XML");
+        clixon_debug_xml(CLIXON_DBG_DEFAULT, xerr, "Error when parsing XML");
         goto ok;
     }
     /* xmldb_put requires modification tree to be: <config>... */
@@ -1306,7 +1307,9 @@ example_reset(clicon_handle h,
  * Called when application is "started", (almost) all initialization is complete 
  * Backend: daemon is in the background. If daemon privileges are dropped 
  * this callback is called *before* privileges are dropped.
- * @param[in]  h     Clicon handle
+ * @param[in]  h    Clixon handle
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 int
 example_start(clicon_handle h)
@@ -1338,7 +1341,9 @@ example_start(clicon_handle h)
 
 /*! Plugin daemon.
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h    Clixon handle
+ * @retval     0    OK
+ * @retval    -1    Error
  * plugin_daemon is called once after daemonization has been made but before lowering of privileges
  * the main event loop is entered. 
  */
@@ -1376,7 +1381,7 @@ example_daemon(clicon_handle h)
     return retval;
 }
 
-int 
+int
 example_exit(clicon_handle h)
 {
     if (_state_xml_cache){
@@ -1390,7 +1395,7 @@ example_exit(clicon_handle h)
 clixon_plugin_api *clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
-    "example",                              /* name */    
+    "example",                              /* name */
     clixon_plugin_init,                     /* init - must be called clixon_plugin_init */
     example_start,                          /* start */
     example_exit,                           /* exit */
@@ -1427,7 +1432,7 @@ clixon_plugin_init(clicon_handle h)
     char         **argv;
     int            c;
 
-    clicon_debug(1, "%s backend", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s backend", __FUNCTION__);
 
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
@@ -1491,7 +1496,7 @@ clixon_plugin_init(clicon_handle h)
                 goto done;
         }
     }
-        
+
     if (_notification_stream){
         /* Example stream initialization:
          * 1) Register EXAMPLE stream 
@@ -1514,22 +1519,22 @@ clixon_plugin_init(clicon_handle h)
     /* Register callback for routing rpc calls 
      */
     /* From example.yang (clicon) */
-    if (rpc_callback_register(h, empty_rpc, 
-                              NULL, 
+    if (rpc_callback_register(h, empty_rpc,
+                              NULL,
                               "urn:example:clixon",
                               "empty"/* Xml tag when callback is made */
                               ) < 0)
         goto done;
     /* Same as example but with optional input/output */
-    if (rpc_callback_register(h, example_rpc, 
-                              NULL, 
+    if (rpc_callback_register(h, example_rpc,
+                              NULL,
                               "urn:example:clixon",
                               "optional"/* Xml tag when callback is made */
                               ) < 0)
         goto done;
         /* Same as example but with optional input/output */
-    if (rpc_callback_register(h, example_rpc, 
-                              NULL, 
+    if (rpc_callback_register(h, example_rpc,
+                              NULL,
                               "urn:example:clixon",
                               "example"/* Xml tag when callback is made */
                               ) < 0)
@@ -1538,8 +1543,8 @@ clixon_plugin_init(clicon_handle h)
      * If you want to have it called _after_ the system callback, place this call in 
      * the _start function.
      */
-    if (rpc_callback_register(h, example_copy_extra, 
-                              NULL, 
+    if (rpc_callback_register(h, example_copy_extra,
+                              NULL,
                               NETCONF_BASE_NAMESPACE,
                               "copy-config"
                               ) < 0)

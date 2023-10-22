@@ -85,7 +85,7 @@ db_merge(clicon_handle h,
 {
     int    retval = -1;
     cxobj *xt = NULL;
-    
+
     /* Get data as xml from db1 */
     if (xmldb_get0(h, (char*)db1, YB_MODULE, NULL, NULL, 1, WITHDEFAULTS_EXPLICIT, &xt, NULL, NULL) < 0)
         goto done;
@@ -138,7 +138,7 @@ startup_mode_startup(clicon_handle        h,
     int        ret = 0;
     int        rollback_exists;
     yang_stmt *yspec = clicon_dbspec_yang(h);
-    
+
     if (strcmp(db, "running")==0){
         clicon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
         goto done;
@@ -273,8 +273,6 @@ load_extraxml(clicon_handle h,
  * @retval     1       OK
  * @retval     0       Validation failed
  * @retval    -1       Error
-
-
                 
 running -----------------+----+------>
            reset  loadfile   / merge
@@ -289,14 +287,14 @@ startup_extraxml(clicon_handle        h,
     int         retval = -1;
     char       *tmp_db = "tmp";
     int         ret;
-    cxobj       *xt0 = NULL; 
-    cxobj       *xt = NULL; 
-    
+    cxobj       *xt0 = NULL;
+    cxobj       *xt = NULL;
+
     /* Clear tmp db */
     if (xmldb_db_reset(h, tmp_db) < 0)
         goto done;
     /* Application may define extra xml in its reset function */
-    if (clixon_plugin_reset_all(h, tmp_db) < 0)   
+    if (clixon_plugin_reset_all(h, tmp_db) < 0)
         goto done;
     /* Extra XML can also be added via file */
     if (file){
@@ -306,7 +304,7 @@ startup_extraxml(clicon_handle        h,
         if (ret == 0)
             goto fail;
     }
-    /* 
+    /*
      * Check if tmp db is empty. 
      * It should be empty if extra-xml is null and reset plugins did nothing
      * then skip validation.
@@ -325,7 +323,7 @@ startup_extraxml(clicon_handle        h,
         goto done;
     if (ret == 0)
         goto fail;
-    if (xt==NULL || xml_child_nr(xt)==0) 
+    if (xt==NULL || xml_child_nr(xt)==0)
         goto ok;
     /* Merge tmp into running (no commit) */
     if ((ret = db_merge(h, tmp_db, "running", cbret)) < 0)
@@ -338,7 +336,7 @@ startup_extraxml(clicon_handle        h,
     if (xt0)
         xml_free(xt0);
     xmldb_get0_free(h, &xt);
-    if (xmldb_delete(h, tmp_db) != 0 && errno != ENOENT) 
+    if (xmldb_delete(h, tmp_db) != 0 && errno != ENOENT)
         return -1;
     return retval;
  fail:
@@ -360,10 +358,10 @@ startup_module_state(clicon_handle h,
     int    retval = -1;
     cxobj *x = NULL;
     int    ret;
-        
+
     if (!clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
         goto ok;
-    /* Set up cache 
+    /* Set up cache
      * Now, access brief module cache with clicon_modst_cache_get(h, 1) */
     if ((ret = yang_modules_state_get(h, yspec, NULL, NULL, 1, &x)) < 0)
         goto done;

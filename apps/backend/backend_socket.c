@@ -78,7 +78,7 @@
 
 /*! Open an INET stream socket and bind it to a file descriptor
  *
- * @param[in]  h    Clicon handle
+ * @param[in]  h    Clixon handle
  * @param[in]  dst  IPv4 address (see inet_pton(3))
  * @retval     s    Socket file descriptor (see socket(2))
  * @retval    -1    Error
@@ -111,7 +111,7 @@ config_socket_init_ipv4(clicon_handle h,
         clicon_err(OE_UNIX, errno, "bind");
         goto err;
     }
-    clicon_debug(1, "Listen on server socket at %s:%hu", dst, port);
+    clixon_debug(CLIXON_DBG_DEFAULT, "Listen on server socket at %s:%hu", dst, port);
     if (listen(s, 5) < 0){
         clicon_err(OE_UNIX, errno, "listen");
         goto err;
@@ -126,7 +126,7 @@ config_socket_init_ipv4(clicon_handle h,
  *
  * The socket is accessed via CLICON_SOCK option, has 770 permissions
  * and group according to CLICON_SOCK_GROUP option.
- * @param[in]  h    Clicon handle
+ * @param[in]  h    Clixon handle
  * @param[in]  sock Unix file-system path
  * @retval     s    Socket file descriptor (see socket(2))
  * @retval    -1    Error
@@ -154,7 +154,7 @@ config_socket_init_unix(clicon_handle h,
     if (group_name2gid(config_group, &gid) < 0)
         return -1;
 #if 0
-    if (gid == 0) 
+    if (gid == 0)
         clicon_log(LOG_WARNING, "%s: No such group: %s", __FUNCTION__, config_group);
 #endif
     /* create unix socket */
@@ -169,16 +169,16 @@ config_socket_init_unix(clicon_handle h,
     old_mask = umask(S_IRWXO | S_IXGRP | S_IXUSR);
     if (bind(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
         clicon_err(OE_UNIX, errno, "bind");
-        umask(old_mask); 
+        umask(old_mask);
         goto err;
     }
-    umask(old_mask); 
+    umask(old_mask);
     /* change socket path file group */
     if (lchown(sock, -1, gid) < 0){
         clicon_err(OE_UNIX, errno, "lchown(%s, %s)", sock, config_group);
         goto err;
     }
-    clicon_debug(1, "Listen on server socket at %s", addr.sun_path);
+    clixon_debug(CLIXON_DBG_DEFAULT, "Listen on server socket at %s", addr.sun_path);
     if (listen(s, 5) < 0){
         clicon_err(OE_UNIX, errno, "listen");
         goto err;
@@ -190,8 +190,8 @@ config_socket_init_unix(clicon_handle h,
 }
 
 /*! Open backend socket, the one clients send requests to, either ip or unix
- * 
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @retval     s    Socket file descriptor (see socket(2))
  * @retval    -1    Error
  */
@@ -220,12 +220,15 @@ backend_socket_init(clicon_handle h)
 }
 
 /*! Accept new socket client
+ *
  * @param[in]  fd   Socket (unix or ip)
  * @param[in]  arg  typecast clicon_handle
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 int
 backend_accept_client(int   fd,
-                      void *arg) 
+                      void *arg)
 {
     int                  retval = -1;
     clicon_handle        h = (clicon_handle)arg;
@@ -242,7 +245,7 @@ backend_accept_client(int   fd,
     uid_t                guid;
 #endif
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     len = sizeof(from);
     if ((s = accept(fd, &from, &len)) < 0){
         clicon_err(OE_UNIX, errno, "accept");
@@ -251,7 +254,7 @@ backend_accept_client(int   fd,
     if ((ce = backend_client_add(h, &from)) == NULL)
         goto done;
 
-    /* 
+    /*
      * Get credentials of connected peer - only for unix socket 
      */
     switch (from.sa_family){
@@ -281,7 +284,7 @@ backend_accept_client(int   fd,
             name = NULL;
         }
         break;
-    case AF_INET:       
+    case AF_INET:
         break;
     case AF_INET6:
     default:

@@ -217,6 +217,7 @@ yang_type_to_snmp(yang_stmt *ytype,
 }
 
 /*! Translate from snmp string to int representation
+ *
  * @note Internal snmpd, maybe find something in netsnmpd?
  */
 int
@@ -237,8 +238,8 @@ snmp_msg_int2str(int msg)
  * @param[in] objid0len  Length of first OID vector 
  * @param[in] objid1     Second OID vector 
  * @param[in] objid1len  Length of second OID vector 
- * @retval   0  Equal
- * @retval !=0  Not equal, see man memcmp
+ * @retval    0          Equal
+ * @retval  !=0          Not equal, see man memcmp
  * Should really be netsnmp lib function, but cant find any?
  */
 int
@@ -268,6 +269,7 @@ oid_eq(const oid *objid0,
 }
 
 /*! Append a second OID to a first
+ *
  * @param[in,out] objid0     First OID vector 
  * @param[in,out] objid0len  Length of first OID vector 
  * @param[in]     objid1     Second OID vector 
@@ -295,6 +297,7 @@ oid_append(const oid *objid0,
 }
 
 /*! Print objid to file
+ *
  * @see fprint_objid but prints symbolic
  */
 int
@@ -359,7 +362,7 @@ snmp_yang_type_get(yang_stmt  *ys,
         }
         if (yang_path_arg(ys, yang_argument_get(ypath), &yref) < 0)
             goto done;
-        if (yref == NULL){ 
+        if (yref == NULL){
             clicon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", yang_argument_get(ypath));
             goto done;
         }
@@ -401,7 +404,7 @@ snmp_yang_type_get(yang_stmt  *ys,
  * @param[out] exist  The extension exists.
  * @param[out] value  clispec operator (hide/none) - direct pointer into yang, dont free
  * @retval     0      OK: Look in exist and value for return value
- * @retval     -1     Error
+ * @retval    -1      Error
  *
  * @note This optimizatoin may not work if the unknown statements are augmented in ys.
  * @see yang_extension_value for the generic function
@@ -443,6 +446,7 @@ yang_extension_value_opt(yang_stmt *ys,
 }
 
 /*! Given a YANG node, return SMIv2 oid extension as OID 
+ *
  * @param[in]  yn        Yang node
  * @param[out] objid     OID vector, assume allocated with MAX_OID_LEN > oidlen
  * @param[out] objidlen  Length of OID vector on return
@@ -461,7 +465,7 @@ yangext_oid_get(yang_stmt *yn,
     int        exist = 0;
     char      *oidstr = NULL;
     yang_stmt *yref = NULL;
-    
+
     if (yang_keyword_get(yn) == Y_LEAF){
         if (snmp_yang_type_get(yn, &yref, NULL, NULL, NULL) < 0)
             goto done;
@@ -472,7 +476,7 @@ yangext_oid_get(yang_stmt *yn,
     if (yang_extension_value_opt(yref, "smiv2:oid", &exist, &oidstr) < 0)
         goto done;
     if (exist == 0 || oidstr == NULL){
-        clicon_debug(1, "OID not found as SMIv2 yang extension of %s", yang_argument_get(yref));
+        clixon_debug(CLIXON_DBG_DEFAULT, "OID not found as SMIv2 yang extension of %s", yang_argument_get(yref));
         goto fail;
     }
     if (snmp_parse_oid(oidstr, objid, objidlen) == NULL){
@@ -490,22 +494,23 @@ yangext_oid_get(yang_stmt *yn,
 }
 
 /*! Given a YANG node, return 1 if leaf has oid directive in it, otherwise 0
+ *
  * @param[in]  yn        Yang node
  * @retval     1         found
  * @retval     0         not found
  */
 int
-yangext_is_oid_exist(yang_stmt *yn) {
- 
+yangext_is_oid_exist(yang_stmt *yn)
+{
     int        exist = 0;
     char      *oidstr = NULL;
- 
+
     if ((yang_keyword_get(yn) != Y_LEAF) ||
-       (yang_extension_value_opt(yn, "smiv2:oid", &exist, &oidstr) < 0) ||
-       (exist == 0) ||
-       (oidstr == NULL)) {
+        (yang_extension_value_opt(yn, "smiv2:oid", &exist, &oidstr) < 0) ||
+        (exist == 0) ||
+        (oidstr == NULL)) {
         return 0;
-       } 
+    }
     else {
         return 1;
     }
@@ -513,6 +518,7 @@ yangext_is_oid_exist(yang_stmt *yn) {
 
 
 /*! Duplicate clixon snmp handler struct
+ *
  * Use signature of libnetsnmp data_clone field of netsnmp_mib_handler in agent_handler.h
  * @param[in]  arg
  */
@@ -538,6 +544,7 @@ snmp_handle_clone(void *arg)
 }
 
 /*! Free clixon snmp handler struct
+ *
  * Use signature of libnetsnmp data_free field of netsnmp_mib_handler in agent_handler.h
  * @param[in]  arg
  */
@@ -564,8 +571,8 @@ snmp_handle_free(void *arg)
  * @param[in]    ys         YANG leaf node
  * @param[out]   asn1_type  ASN.1 type id
  * @param[in]    extended   Special case clixon extended types used in xml<->asn1 data conversions
- * @retval   0   OK
- * @retval   -1  Error
+ * @retval       0          OK
+ * @retval      -1          Error
  * @see type_yang2snmp, yang only
  * @note there are some special cases where extended clixon asn1-types are used to convey info
  * to type_snmpstr2val, these types are prefixed with CLIXON_ASN_
@@ -602,7 +609,7 @@ type_yang2asn1(yang_stmt    *ys,
         char *display_hint = NULL;
         yrp = yang_parent_get(yrestype);
         if (yang_extension_value_opt(yrp, "smiv2:display-hint", NULL, &display_hint) < 0)
-            goto done;  
+            goto done;
 
         /* RFC2578/2579 but maybe all strings with display-hint should use this, eg exist>0? */
         if (display_hint &&
@@ -628,7 +635,7 @@ type_yang2asn1(yang_stmt    *ys,
  * @param[out]  valstr   Clixon/yang/xml string value, free after use)
  * @retval      1        OK, and valstr set
  * @retval      0        Invalid value or type
- * @retval      -1       Error
+ * @retval     -1        Error
  * @see type_xml2snmp  for snmpget
  */
 int
@@ -648,7 +655,7 @@ type_snmp2xml(yang_stmt                  *ys,
     yang_stmt   *yrestype = NULL;
     int          ret;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (valstr == NULL){
         clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
         goto done;
@@ -668,7 +675,7 @@ type_snmp2xml(yang_stmt                  *ys,
     cvtype = cv_str2type(cvstr);
     if ((cv = cv_new(cvtype)) == NULL){
         clicon_err(OE_UNIX, errno, "cv_new");
-        goto done; 
+        goto done;
     }
     switch (*asn1type){
     case CLIXON_ASN_ROWSTATUS:
@@ -706,7 +713,7 @@ type_snmp2xml(yang_stmt                  *ys,
         break;
     case ASN_IPADDRESS:{
         struct in_addr addr;
-        memcpy(&addr.s_addr, requestvb->val.string, 4); 
+        memcpy(&addr.s_addr, requestvb->val.string, 4);
         cv_string_set(cv, inet_ntoa(addr));
         break;
     }
@@ -716,7 +723,7 @@ type_snmp2xml(yang_stmt                  *ys,
         break;
     case CLIXON_ASN_PHYS_ADDR:
         cv_string_set(cv, ether_ntoa((const struct ether_addr *)requestvb->val.string));
-        *asn1type = ASN_OCTET_STR;      
+        *asn1type = ASN_OCTET_STR;
         break;
     case ASN_OCTET_STR: // 4
         cv_string_set(cv, (char*)requestvb->val.string);
@@ -732,7 +739,7 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     default:
         assert(0); // XXX
-        clicon_debug(1, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
         if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
             clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
             goto done;
@@ -746,7 +753,7 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     retval = 1;
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     if (origtype)
         free(origtype);
     if (cv)
@@ -766,7 +773,7 @@ type_snmp2xml(yang_stmt                  *ys,
  * @param[out]  xmlstr1  XML string ready for translation
  * @retval      1        OK
  * @retval      0        Invalid type
- * @retval      -1       Error
+ * @retval     -1        Error
  * @see type_snmp2xml  for snmpset
  */
 int
@@ -793,7 +800,7 @@ type_xml2snmp_pre(char      *xmlstr0,
         if ((ret = yang_enum2valstr(yrestype, xmlstr0, &str)) < 0)
             goto done;
         if (ret == 0){
-            clicon_debug(1, "Invalid enum valstr %s", xmlstr0);
+            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid enum valstr %s", xmlstr0);
             goto fail;
         }
     }
@@ -802,7 +809,7 @@ type_xml2snmp_pre(char      *xmlstr0,
      * 1) there is no code for ASN_BOOLEAN and
      * 2) Truthvalue actually translates to enum true(1)/false(2)
      */
-    else if (strcmp(restype, "boolean") == 0){  
+    else if (strcmp(restype, "boolean") == 0){
         if (strcmp(xmlstr0, "false")==0)
             str = "2";
         else
@@ -819,7 +826,7 @@ type_xml2snmp_pre(char      *xmlstr0,
         if ((ret = parse_dec64(xmlstr0, cv_dec64_n_get(cv), &num, NULL)) < 0)
             goto done;
         if (ret == 0){
-            clicon_debug(1, "Invalid decimal64 valstr %s", xmlstr0);
+            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid decimal64 valstr %s", xmlstr0);
             goto fail;
         }
         cv_dec64_i_set(cv, num);
@@ -835,7 +842,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     }
     retval = 1;
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -904,7 +911,7 @@ type_xml2snmp(char       *snmpstr,
         oid    oid1[MAX_OID_LEN] = {0,};
         size_t sz1 = MAX_OID_LEN;
         if (snmp_parse_oid(snmpstr, oid1, &sz1) == NULL){
-            clicon_debug(1, "Failed to parse OID %s", snmpstr);
+            clixon_debug(CLIXON_DBG_DEFAULT, "Failed to parse OID %s", snmpstr);
             goto fail;
         }
         *snmplen = sizeof(oid)*sz1;
@@ -960,7 +967,7 @@ type_xml2snmp(char       *snmpstr,
         }
         memset(*snmpval, 0, *snmplen + 1);
         if ((eaddr = ether_aton(snmpstr)) == NULL){
-            clicon_debug(1, "ether_aton(%s)", snmpstr);
+            clixon_debug(CLIXON_DBG_DEFAULT, "ether_aton(%s)", snmpstr);
             goto fail;
         }
         memcpy(*snmpval, eaddr, sizeof(*eaddr));
@@ -980,7 +987,7 @@ type_xml2snmp(char       *snmpstr,
     }
     retval = 1;
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     return retval;
  fail:
     retval = 0;
@@ -988,6 +995,7 @@ type_xml2snmp(char       *snmpstr,
 }
 
 /*! Construct an xpath from yang statement, internal fn using cb
+ *
  * Recursively construct it to the top.
  * @param[in]  ys     Yang statement
  * @param[in]  keyvec Cvec of key values
@@ -995,9 +1003,9 @@ type_xml2snmp(char       *snmpstr,
  * @retval     0      OK
  * @retval    -1      Error
  * @see yang2xpath
- */ 
+ */
 static int
-snmp_yang2xpath_cb(yang_stmt *ys, 
+snmp_yang2xpath_cb(yang_stmt *ys,
                    cvec      *keyvec,
                    cbuf      *cb)
 {
@@ -1006,13 +1014,13 @@ snmp_yang2xpath_cb(yang_stmt *ys,
     cvec      *cvk = NULL; /* vector of index keys */
     int        retval = -1;
     char      *prefix = NULL;
-    
+
     if ((yp = yang_parent_get(ys)) == NULL){
         clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
         goto done;
     }
     if (yp != NULL && /* XXX rm */
-        yang_keyword_get(yp) != Y_MODULE && 
+        yang_keyword_get(yp) != Y_MODULE &&
         yang_keyword_get(yp) != Y_SUBMODULE){
         if (snmp_yang2xpath_cb(yp, keyvec, cb) < 0) /* recursive call */
             goto done;
@@ -1053,16 +1061,17 @@ snmp_yang2xpath_cb(yang_stmt *ys,
 }
 
 /*! Construct an xpath from yang statement, limited to SNMP table translations
+ *
  * Recursively construct it to the top.
  * @param[in]  ys     Yang statement
  * @param[in]  keyvec Cvec of key values
  * @param[out] xpath  Malloced xpath string, use free() after use
  * @retval     0      OK
- * @retval     -1     Error
+ * @retval    -1      Error
  * @note
  * 1. This should really be in a core .c file, like clixon_yang, BUT
  * 2. It is far from complete so maybe keep it here as a special case
- */ 
+ */
 int
 snmp_yang2xpath(yang_stmt *ys,
                 cvec      *keyvec,
@@ -1089,18 +1098,21 @@ snmp_yang2xpath(yang_stmt *ys,
 }
 
 /*! Translate from xml body string to SMI OID representation
+ *
  * For ints this is one to one, eg 42 -> 42
  * But for eg strings this is more complex, eg foo -> 3.6.22.22 (or something,...)
  * @param[in]  str      XML body string
  * @param[in]  yi       Yang statement
  * @param[out] objid    OID vector 
  * @param[out] objidlen Length of OID vector 
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
 snmp_str2oid(char      *str,
              yang_stmt *yi,
              oid       *objid,
-             size_t    *objidlen)            
+             size_t    *objidlen)
 {
     int        retval = -1;
     int        asn1_type;
@@ -1135,12 +1147,15 @@ snmp_str2oid(char      *str,
 }
 
 /*! Translate from SMI OID representation to name
+ *
  * For ints this is one to one, eg 42 -> 42
  * But for eg strings this is more complex, eg foo -> 3.6.22.22 (or something,...)
  * @param[in,out] oidi     ObjID vector
  * @param[in,out] oidilen  Length of ObjID vector
  * @param[in]     yk       Yang statement of key
  * @param[out]    cv       CLIgen variable string notation as "x.y.z"
+ * @retval        0        OK
+ * @retval       -1        Error
  * @see rfc2578 Section 7.7
  */
 int
@@ -1223,7 +1238,7 @@ clixon_snmp_err_cb(void *handle,
 {
     const char *errstr;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (suberr < 0){
         if (suberr < -CLIXON_ERR_SNMP_MIB){
             switch (suberr+CLIXON_ERR_SNMP_MIB){
@@ -1262,9 +1277,9 @@ clixon_snmp_err_cb(void *handle,
  * @param[in]  cvk_name Vector of list keys
  * @param[out] cvk_val  Vector of XML key values
  * @param[out] objidk   OID key part, to be appended to node OID
- * @retval     -1       Error
- * @retval     0        Invalid (not all indexes present)
  * @retval     1        OK
+ * @retval     0        Invalid (not all indexes present)
+ * @retval    -1        Error
  * Both cvk_val and cvk_oid can be re-used in successive calls but need to be freed w cvec_free after use
  */
 int
@@ -1281,7 +1296,7 @@ snmp_xmlkey2val_oid(cxobj     *xentry,
     cg_var *cv0;
     oid     objid[MAX_OID_LEN] = {0,};
     size_t  objidlen = MAX_OID_LEN;
-    
+
     *objidklen = 0;
     if (cvk_val){
         if (*cvk_val){
@@ -1297,11 +1312,11 @@ snmp_xmlkey2val_oid(cxobj     *xentry,
         }
     }
     for (i=0; i<cvec_len(cvk_name); i++){
-        cv0 = cvec_i(cvk_name, i); 
+        cv0 = cvec_i(cvk_name, i);
         if ((xi = xml_find_type(xentry, NULL, cv_string_get(cv0), CX_ELMNT)) == NULL)
             break;
         if (cvk_val){
-            cv = cvec_i(*cvk_val, i); 
+            cv = cvec_i(*cvk_val, i);
             if (cv_string_set(cv, xml_body(xi)) < 0){
                 clicon_err(OE_UNIX, errno, "cv_string_set");
                 goto done;
@@ -1326,6 +1341,7 @@ snmp_xmlkey2val_oid(cxobj     *xentry,
  * Peeks into internal lib global variables, may be sensitive to library change
  */
 /*! Check if netsnmp is connected 
+ *
  * @retval 1 yes, running
  * @retval 0 No, not running
  * XXX: this peeks into the "main_session" global variable in agent/snmp_agent.c
@@ -1335,11 +1351,12 @@ int
 clixon_snmp_api_agent_check(void)
 {
     extern netsnmp_session *main_session;
-    
+
     return (main_session != NULL) ? 1 : 0;
 }
 
 /*! Cleanup remaining libnetsnmb memory
+ *
  * XXX: this peeks into the "tclist" global variable in snmplib/parse.c
  *      Tried to find API function but failed
  */
@@ -1347,19 +1364,20 @@ int
 clixon_snmp_api_agent_cleanup(void)
 {
     extern void *tclist;
-    
+
     if (tclist)
         free(tclist);
     return 0;
 }
 
 /*! See if oid is registered
+ *
  * This is good enough for add,
  * But for delete a more advanced function is needed
  * @see netsnmp_subtree_load
- * @retval -1 Error
- * @retval  0 Not found
  * @retval  1 Found
+ * @retval  0 Not found
+ * @retval -1 Error
  */
 int
 clixon_snmp_api_oid_find(oid   *oid0,
@@ -1367,7 +1385,7 @@ clixon_snmp_api_oid_find(oid   *oid0,
 {
     int              retval = -1;
     netsnmp_subtree *tree1 = NULL;
-    
+
     if ((tree1 = netsnmp_subtree_find(oid0, oid0len, NULL, "")) != NULL &&
         oid_eq(oid0, oid0len, tree1->name_a, tree1->namelen)==0){
         retval = 1;

@@ -489,7 +489,7 @@ information on added, deleted and changed entries. You access this
 information using access functions as defined in clixon_backend_transaction.h
 
 ## How do I check what has changed on commit?
-You use XPATHs on the XML trees in the transaction commit callback.
+You use XPaths on the XML trees in the transaction commit callback.
 Suppose you want to print all added interfaces:
 ```
         cxobj *target = transaction_target(td); # wanted XML tree
@@ -500,7 +500,7 @@ Suppose you want to print all added interfaces:
 You can look for added, deleted and changed entries in this way.
 
 ## How do I access the XML tree?
-Using XPATH, find and iteration functions defined in the XML library. Example library functions:
+Using XPath, find and iteration functions defined in the XML library. Example library functions:
 ```
       xml_child_each(), 
       xml_find(), 

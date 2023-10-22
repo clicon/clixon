@@ -78,7 +78,8 @@
 #include "clixon_data.h"
 
 /*! Get generic clixon data on the form <name>=<val> where <val> is string
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  name Data name
  * @param[out] val  Data value as string
  * @retval     0    OK
@@ -100,7 +101,8 @@ clicon_data_get(clicon_handle h,
 }
 
 /*! Set generic clixon data on the form <name>=<val> where <val> is string
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  name Data name
  * @param[in]  val  Data value as null-terminated string (copied)
  * @retval     0    OK
@@ -108,7 +110,7 @@ clicon_data_get(clicon_handle h,
  * @see clicon_option_str_set
  */
 int
-clicon_data_set(clicon_handle h, 
+clicon_data_set(clicon_handle h,
                 const char   *name,
                 char         *val)
 {
@@ -118,14 +120,15 @@ clicon_data_set(clicon_handle h,
 }
 
 /*! Delete generic clixon data
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  name Data name
  * @retval     0    OK
  * @retval    -1    Error
  * @see clicon_option_del
  */
 int
-clicon_data_del(clicon_handle h, 
+clicon_data_del(clicon_handle h,
                 const char   *name)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -134,7 +137,8 @@ clicon_data_del(clicon_handle h,
 }
 
 /*! Get generic clixon data on the form <name>=<ptr> where <ptr> is void*
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  name Data name
  * @param[out] ptr  Pointer
  * @retval     0    OK
@@ -160,7 +164,8 @@ clicon_ptr_get(clicon_handle h,
 }
 
 /*! Set generic clixon data on the form <name>=<ptr> where <ptr> is void*
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  name Data name
  * @param[in]  ptr  Pointer
  * @retval     0    OK
@@ -168,7 +173,7 @@ clicon_ptr_get(clicon_handle h,
  * @see clicon_option_str_set
  */
 int
-clicon_ptr_set(clicon_handle h, 
+clicon_ptr_set(clicon_handle h,
                const char   *name,
                void         *ptr)
 {
@@ -178,14 +183,15 @@ clicon_ptr_set(clicon_handle h,
 }
 
 /*! Delete generic clixon data
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  name Data name
  * @retval     0    OK
  * @retval    -1    Error
  * @see clicon_option_del
  */
 int
-clicon_ptr_del(clicon_handle h, 
+clicon_ptr_del(clicon_handle h,
                const char   *name)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -195,7 +201,7 @@ clicon_ptr_del(clicon_handle h,
 
 /*! Get generic cligen variable vector (cvv) on the form <name>=<val> where <val> is cvv
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  name  Data name
  * @retval     cvv   Data value as cvv
  * @retval     NULL  Not found (or error)
@@ -210,14 +216,15 @@ clicon_data_cvec_get(clicon_handle h,
                      const char   *name)
 {
     cvec *cvv = NULL;
-    
+
     if (clicon_ptr_get(h, name, (void**)&cvv) < 0)
         return NULL;
     return cvv;
 }
 
 /*! Set generic cligen variable vector (cvv) on the form <name>=<val> where <val> is cvv
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @param[in]  name  Name
  * @param[in]  cvv   CLIgen variable vector (cvv) (malloced)
  */
@@ -235,7 +242,8 @@ clicon_data_cvec_set(clicon_handle h,
 }
 
 /*! Delete generic cligen variable vector (cvv)
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @param[in]  name  Name
  */
 int
@@ -272,7 +280,7 @@ clicon_data_int_get(clicon_handle h,
     return atoi(s);
 }
 
-/*! Set a single string data via handle 
+/*! Set a single string data via handle
  *
  * @param[in] h       clicon_handle
  * @param[in] name    option name
@@ -310,7 +318,8 @@ clicon_data_int_del(clicon_handle h,
 }
 
 /*! Get data yangspec, yspec 
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @retval     yspec Yang spec
  * @see clicon_config_yang  for the configuration yang
  */
@@ -318,26 +327,28 @@ yang_stmt *
 clicon_dbspec_yang(clicon_handle h)
 {
     yang_stmt *ys = NULL;
-    
+
     if (clicon_ptr_get(h, "dbspec_yang", (void**)&ys) < 0)
         return NULL;
     return ys;
 }
 
 /*! Set yang specification for application specifications
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @param[in]  yspec Yang spec (malloced pointer)
  * @see clicon_config_yang_set  for the configuration yang
  */
 int
-clicon_dbspec_yang_set(clicon_handle h, 
+clicon_dbspec_yang_set(clicon_handle h,
                        yang_stmt    *ys)
 {
     return clicon_ptr_set(h, "dbspec_yang", ys);
 }
 
 /*! Get YANG specification for clixon config (separate from application yangs)
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @retval     yspec Yang spec
  * @see clicon_dbspec_yang  for the application specs
  */
@@ -345,26 +356,28 @@ yang_stmt *
 clicon_config_yang(clicon_handle h)
 {
     yang_stmt *ys = NULL;
-    
+
     if (clicon_ptr_get(h, "control_yang", (void**)&ys) < 0)
         return NULL;
     return ys;
 }
 
 /*! Set yang specification for configuration
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @param[in]  yspec Yang spec (malloced pointer)
  * @see clicon_dbspec_yang_set  for the application specs
  */
 int
-clicon_config_yang_set(clicon_handle   h, 
+clicon_config_yang_set(clicon_handle   h,
                        yang_stmt      *ys)
 {
     return clicon_ptr_set(h, "control_yang", ys);
 }
 
 /*! Get YANG specification for external NACM (separate from application yangs)
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @retval     yspec Yang spec
  * @see clicon_nacm_ext  for external NACM XML
  */
@@ -372,27 +385,29 @@ yang_stmt *
 clicon_nacm_ext_yang(clicon_handle h)
 {
     yang_stmt *ys = NULL;
-    
+
     if (clicon_ptr_get(h, "nacm_ext_yang", (void**)&ys) < 0)
         return NULL;
     return ys;
 }
 
 /*! Set yang specification for external NACM
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @param[in]  yspec Yang spec (malloced pointer)
  * @see clicon_nacm_ext_set  for external NACM XML
  */
 int
-clicon_nacm_ext_yang_set(clicon_handle   h, 
+clicon_nacm_ext_yang_set(clicon_handle   h,
                          yang_stmt      *ys)
 {
     return clicon_ptr_set(h, "nacm_ext_yang", ys);
 }
 
 /*! Get Global "canonical" namespace context
+ *
  * Canonical: use prefix and namespace specified in the yang modules.
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @retval     nsctx Namespace context (malloced)
  * @code
  *   cvec *nsctx;
@@ -403,15 +418,16 @@ cvec *
 clicon_nsctx_global_get(clicon_handle h)
 {
     cvec *cvv = NULL;
-    
+
     if (clicon_ptr_get(h, "nsctx_global", (void**)&cvv) < 0)
         return NULL;
     return cvv;
 }
 
 /*! Set global "canonical" namespace context
+ *
  * Canonical: use prefix and namespace specified in the yang modules.
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  nsctx Namespace context (malloced)
  */
 int
@@ -422,7 +438,8 @@ clicon_nsctx_global_set(clicon_handle h,
 }
 
 /*! Get NACM (rfc 8341) XML parse tree if external not in std xml config
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @retval     xn   XML NACM tree, or NULL
  * @note only used if config option CLICON_NACM_MODE is external
  * @see clicon_nacm_ext_set
@@ -431,14 +448,15 @@ cxobj *
 clicon_nacm_ext(clicon_handle h)
 {
     cxobj *x = NULL;
-    
+
     if (clicon_ptr_get(h, "nacm_xml", (void**)&x) < 0)
         return NULL;
     return x;
 }
 
 /*! Set NACM (rfc 8341) external XML parse tree, free old if any
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @param[in]  xn  XML Nacm tree
  * @note only used if config option CLICON_NACM_MODE is external
  * @see clicon_nacm_ext
@@ -455,7 +473,8 @@ clicon_nacm_ext_set(clicon_handle h,
 }
 
 /*! Get NACM (rfc 8341) XML parse tree cache
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @retval     xn   XML NACM tree, or NULL. Direct pointer, no copying
  * @note  Use with caution, only valid on a stack, direct pointer freed on function return
  * @see from_client_msg
@@ -464,14 +483,15 @@ cxobj *
 clicon_nacm_cache(clicon_handle h)
 {
     cxobj *x = NULL;
-    
+
     if (clicon_ptr_get(h, "nacm_cache", (void**)&x) < 0)
         return NULL;
     return x;
 }
 
 /*! Set NACM (rfc 8341) external XML parse tree cache
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @param[in]  xn  XML Nacm tree direct pointer, no copying
  * @note  Use with caution, only valid on a stack, direct pointer freed on function return
  * @see from_client_msg
@@ -484,6 +504,7 @@ clicon_nacm_cache_set(clicon_handle h,
 }
 
 /*! Get YANG specification for Clixon system options and features
+ *
  * Must use hash functions directly since they are not strings.
  * Example: features are typically accessed directly in the config tree.
  * @code
@@ -498,17 +519,18 @@ cxobj *
 clicon_conf_xml(clicon_handle h)
 {
     cxobj *x = NULL;
-    
+
     if (clicon_ptr_get(h, "clixon_conf", (void**)&x) < 0)
         return NULL;
     return x;
 }
 
 /*! Set YANG specification for Clixon system options and features
+ *
  * ys must be a malloced pointer
  */
 int
-clicon_conf_xml_set(clicon_handle h, 
+clicon_conf_xml_set(clicon_handle h,
                     cxobj        *x)
 {
     return clicon_ptr_set(h, "clixon_conf", x);
@@ -517,7 +539,7 @@ clicon_conf_xml_set(clicon_handle h,
 /*! Get local YANG specification for Clixon-restconf.yang tree
  *
  * That is, get the XML of clixon-config/restconf container of clixon-config.yang
- * @param[in]  h  Clicon handle
+ * @param[in]  h  Clixon handle
  * @retval     x  XML tree containing restconf xml node from clixon-restconf.yang
  * @code
  *    cxobj *xrestconf = clicon_conf_restconf(h);
@@ -538,7 +560,7 @@ clicon_conf_restconf(clicon_handle h)
 /*! Get clixon-autocli.yang part of the clixon config tree
  *
  * That is, get the XML of clixon-config/autocli container of clixon-config.yang
- * @param[in]  h  Clicon handle
+ * @param[in]  h  Clixon handle
  * @retval     x  XML tree containing clispec xml node from clixon-autoclu.yang
  * @code
  *    cxobj *xautocli = clicon_conf_autocli(h);
@@ -555,7 +577,8 @@ clicon_conf_autocli(clicon_handle h)
 }
 
 /*! Get authorized user name
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @retval     username
  */
 char *
@@ -567,12 +590,13 @@ clicon_username_get(clicon_handle h)
 }
 
 /*! Set authorized user name
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @param[in]  username
  * @note Just keep note of it, dont allocate it or so.
  */
 int
-clicon_username_set(clicon_handle h, 
+clicon_username_set(clicon_handle h,
                     void         *username)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -583,7 +607,8 @@ clicon_username_set(clicon_handle h,
 }
 
 /*! Get backend daemon startup status
- * @param[in]  h      Clicon handle
+ *
+ * @param[in]  h      Clixon handle
  * @retval     status Startup status
  */
 enum startup_status
@@ -598,7 +623,8 @@ clicon_startup_status_get(clicon_handle h)
 }
 
 /*! Set backend daemon startup status
- * @param[in]  h      Clicon handle
+ *
+ * @param[in]  h      Clixon handle
  * @param[in]  status Startup status
  * @retval     0      OK
  * @retval    -1      Error (when setting value)
@@ -614,9 +640,10 @@ clicon_startup_status_set(clicon_handle       h,
 }
 
 /*! Get server socket fd (ie backend server socket / restconf fcgi socket)
- * @param[in]  h   Clicon handle
- * @retval    -1   No open socket
+ *
+ * @param[in]  h   Clixon handle
  * @retval     s   Socket
+ * @retval    -1   No open socket
  */
 int
 clicon_socket_get(clicon_handle h)
@@ -630,13 +657,14 @@ clicon_socket_get(clicon_handle h)
 }
 
 /*! Set server socket fd (ie backend server socket / restconf fcgi socket)
- * @param[in]  h   Clicon handle
- * @param[in]  s   Open socket (or -1 to close)
- * @retval    0       OK
- * @retval   -1       Error
+ *
+ * @param[in] h   Clixon handle
+ * @param[in] s   Open socket (or -1 to close)
+ * @retval    0   OK
+ * @retval   -1   Error
  */
 int
-clicon_socket_set(clicon_handle h, 
+clicon_socket_set(clicon_handle h,
                   int           s)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -647,9 +675,10 @@ clicon_socket_set(clicon_handle h,
 }
 
 /*! Get client socket fd (ie client cli / netconf / restconf / client-api socket
- * @param[in]  h   Clicon handle
- * @retval    -1   No open socket
+ *
+ * @param[in]  h   Clixon handle
  * @retval     s   Socket
+ * @retval    -1   No open socket
  */
 int
 clicon_client_socket_get(clicon_handle h)
@@ -663,13 +692,14 @@ clicon_client_socket_get(clicon_handle h)
 }
 
 /*! Set client socket fd (ie client cli / netconf / restconf / client-api socket
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @param[in]  s   Open socket (or -1 to close)
- * @retval    0       OK
- * @retval   -1       Error
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 int
-clicon_client_socket_set(clicon_handle h, 
+clicon_client_socket_set(clicon_handle h,
                          int           s)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -680,7 +710,8 @@ clicon_client_socket_set(clicon_handle h,
 }
 
 /*! Get module state cache
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @param[in]  brief 0: Full module state tree, 1: Brief tree (datastore)
  * @retval     xms   Module state cache XML tree
  * xms is on the form: <modules-state>...
@@ -698,11 +729,12 @@ clicon_modst_cache_get(clicon_handle h,
 }
 
 /*! Set module state cache
- * @param[in]  h     Clicon handle
- * @param[in]  brief 0: Full module state tree, 1: Brief tree (datastore)
- * @param[in]  xms   Module state cache XML tree
- * @retval    0       OK
- * @retval   -1       Error
+ *
+ * @param[in] h     Clixon handle
+ * @param[in] brief 0: Full module state tree, 1: Brief tree (datastore)
+ * @param[in] xms   Module state cache XML tree
+ * @retval    0     OK
+ * @retval   -1     Error
  */
 int
 clicon_modst_cache_set(clicon_handle h,
@@ -725,7 +757,8 @@ clicon_modst_cache_set(clicon_handle h,
 }
 
 /*! Get yang module changelog
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @retval     xch  Module revision changelog XML tree
  * @see draft-wang-netmod-module-revision-management-01
  */
@@ -741,14 +774,15 @@ clicon_xml_changelog_get(clicon_handle h)
 }
 
 /*! Set xml module changelog
- * @param[in] h   Clicon handle
+ *
+ * @param[in] h   Clixon handle
  * @param[in] s   Module revision changelog XML tree
  * @retval    0   OK
  * @retval   -1   Error
  * @see draft-wang-netmod-module-revision-management-01
  */
 int
-clicon_xml_changelog_set(clicon_handle h, 
+clicon_xml_changelog_set(clicon_handle h,
                          cxobj        *xchlog)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -759,7 +793,8 @@ clicon_xml_changelog_set(clicon_handle h,
 }
 
 /*! Get user clicon command-line options argv, argc (after --)
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[out] argc
  * @param[out] argv
  * @retval     0    OK 
@@ -769,7 +804,6 @@ int
 clicon_argv_get(clicon_handle h,
                 int          *argc,
                 char       ***argv)
-                
 {
     clicon_hash_t *cdat = clicon_data(h);
     void          *p;
@@ -788,7 +822,8 @@ clicon_argv_get(clicon_handle h,
 }
 
 /*! Set clicon user command-line options argv, argc (after --)
- * @param[in] h     Clicon handle
+ *
+ * @param[in] h     Clixon handle
  * @param[in] prog  argv[0] - the program name
  * @param[in] argc  Length of argv
  * @param[in] argv  Array of command-line options or NULL
@@ -797,7 +832,7 @@ clicon_argv_get(clicon_handle h,
  * @note If argv=NULL deallocate allocated argv vector if exists.
  */
 int
-clicon_argv_set(clicon_handle h, 
+clicon_argv_set(clicon_handle h,
                 char         *prgm,
                 int           argc,
                 char        **argv)
@@ -806,7 +841,7 @@ clicon_argv_set(clicon_handle h,
     clicon_hash_t  *cdat = clicon_data(h);
     char          **argvv = NULL;
     size_t          len;
-    
+
     /* add space for null-termination and argv[0] program name */
     len = argc+2;
     if ((argvv = calloc(len, sizeof(char*))) == NULL){
@@ -816,7 +851,7 @@ clicon_argv_set(clicon_handle h,
     memcpy(argvv+1, argv, argc*sizeof(char*));
     argvv[0] = prgm;
     /* Note the value is the argv vector (which is copied) */
-    if (clicon_hash_add(cdat, "argv", argvv, len*sizeof(char*))==NULL) 
+    if (clicon_hash_add(cdat, "argv", argvv, len*sizeof(char*))==NULL)
         goto done;
     argc += 1;
     if (clicon_hash_add(cdat, "argc", &argc, sizeof(argc))==NULL)
@@ -829,7 +864,8 @@ clicon_argv_set(clicon_handle h,
 }
 
 /*! Get xml database element including id, xml cache, empty on startup and dirty bit
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  db   Name of database
  * @retval     de   Database element
  * @retval     NULL None found
@@ -847,7 +883,8 @@ clicon_db_elmnt_get(clicon_handle h,
 }
 
 /*! Set xml database element including id, xml cache, empty on startup and dirty bit
- * @param[in] h   Clicon handle
+ *
+ * @param[in] h   Clixon handle
  * @param[in] db  Name of database
  * @param[in] de  Database element
  * @retval    0   OK
@@ -855,7 +892,7 @@ clicon_db_elmnt_get(clicon_handle h,
  * @see xmldb_disconnect
 */
 int
-clicon_db_elmnt_set(clicon_handle h, 
+clicon_db_elmnt_set(clicon_handle h,
                     const char   *db,
                     db_elmnt     *de)
 {
@@ -868,7 +905,7 @@ clicon_db_elmnt_set(clicon_handle h,
 
 /*! Get session id
  *
- * @param[in]  h    Clicon handle
+ * @param[in]  h    Clixon handle
  * @param[out] sid  Session identifier
  * @retval     0    OK
  * @retval    -1    Session id not set
@@ -902,14 +939,15 @@ clicon_session_id_del(clicon_handle h)
 }
 
 /*! Set session id
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @param[in]  id  Session id (in range 1..max uint32)
  * @retval     0   OK
  * @retval    -1   Error
  * Session-ids survive TCP sessions that are created for each message sent to the backend.
  */
 int
-clicon_session_id_set(clicon_handle h, 
+clicon_session_id_set(clicon_handle h,
                       uint32_t      id)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -919,7 +957,8 @@ clicon_session_id_set(clicon_handle h,
 }
 
 /*! Get quit-after-upgrade flag
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @retval     1    Flag set: quit startup directly after upgrade
  * @retval     0    Flag not set
  * If set, quit startup directly after upgrade
@@ -936,14 +975,15 @@ clicon_quit_upgrade_get(clicon_handle h)
 }
 
 /*! Set quit-after-upgrade flag
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @param[in]  val  Set or reset flag
  * @retval     0   OK
  * @retval    -1   Error
  * If set, quit startup directly after upgrade
  */
 int
-clicon_quit_upgrade_set(clicon_handle h, 
+clicon_quit_upgrade_set(clicon_handle h,
                         int           val)
 {
     clicon_hash_t  *cdat = clicon_data(h);

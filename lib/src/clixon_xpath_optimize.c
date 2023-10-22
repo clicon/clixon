@@ -32,7 +32,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
+ * Clixon XML XPath 1.0 according to https://www.w3.org/TR/xpath-10
  * See XPATH_LIST_OPTIMIZE
  */
 
@@ -89,6 +89,7 @@ xpath_list_optimize_stats(int *hits)
 }
 
 /*! Enable xpath optimize
+ *
  * Cant replace this with option since there is no handle in xpath functions,...
  */
 int
@@ -111,6 +112,7 @@ xpath_optimize_exit(void)
 
 #ifdef XPATH_LIST_OPTIMIZE
 /*! Initialize xpath module
+ *
  * XXX move to clixon_xpath.c 
  * @see loop_preds
  */
@@ -120,10 +122,10 @@ xpath_optimize_init(xpath_tree **xm,
 {
     int         retval = -1;
     xpath_tree *xs;
-    
+
     if (_xm == NULL){
         /* Initialize xpath-tree */
-        if (xpath_parse("_x[_y='_z']", &_xmtop) < 0) 
+        if (xpath_parse("_x[_y='_z']", &_xmtop) < 0)
             goto done;
         /* Go down two steps */
         if ((_xm = xpath_tree_traverse(_xmtop, 0, 0, -1)) == NULL)
@@ -161,9 +163,9 @@ xpath_optimize_init(xpath_tree **xm,
  * @param[in]  xt    XPath tree of type PRED
  * @param[in]  xepat Pattern matching XPath tree of type EXPR
  * @param[out] cvk   Vector of <keyname>:<keyval> pairs
- * @retval    -1     Error
- * @retval     0     No match
  * @retval     1     Match
+ * @retval     0     No match
+ * @retval    -1     Error
  * @see xpath_optimize_init
  */
 static int
@@ -177,7 +179,7 @@ loop_preds(xpath_tree *xt,
     xpath_tree **vec = NULL;
     size_t       veclen = 0;
     cg_var      *cvi;
-        
+
     if (xt->xs_type == XP_PRED && xt->xs_c0){
         if ((ret = loop_preds(xt->xs_c0, xepat, cvk)) < 0)
             goto done;
@@ -192,7 +194,7 @@ loop_preds(xpath_tree *xt,
         if (veclen != 2)
             goto ok;
         if ((cvi = cvec_add(cvk, CGV_STRING)) == NULL){
-            clicon_err(OE_XML, errno, "cvec_add");      
+            clicon_err(OE_XML, errno, "cvec_add");
             goto done;
         }
         cv_name_set(cvi, vec[0]->xs_s1);
@@ -219,9 +221,9 @@ loop_preds(xpath_tree *xt,
  * @param[out] xlen   Len of xvec
  * @param[out] key
  * @param[out] keyval
- * @retval    -1      Error
- * @retval     0      No match - use non-optimized lookup
  * @retval     1      Match
+ * @retval     0      No match - use non-optimized lookup
+ * @retval    -1      Error
  *  XPath:
  *  y[k=3] # corresponds to: <name>[<keyname>=<keyval>]
  */
@@ -245,7 +247,7 @@ xpath_list_optimize_fn(xpath_tree  *xt,
     cg_var      *cvi;
     int          i;
     yang_stmt   *ypp;
-    
+
     /* revert to non-optimized if no yang */
     if ((yp = xml_spec(xv)) == NULL)
         goto ok;
@@ -277,13 +279,13 @@ xpath_list_optimize_fn(xpath_tree  *xt,
 #ifdef NOTYET /* leaf-list is not detected by xpath optimize detection */
         if ((yc = yang_find(yp, Y_LEAF_LIST, name)) == NULL) /* XXX */
 #endif
-            goto ok; 
+            goto ok;
     /* Validate keys */
     if ((cvv = yang_cvec_get(yc)) == NULL)
         goto ok;
     xtp = vec[1];
     if ((cvk = cvec_new(0)) == NULL){
-        clicon_err(OE_YANG, errno, "cvec_new"); 
+        clicon_err(OE_YANG, errno, "cvec_new");
         goto done;
     }
     if ((ret = loop_preds(xtp, xem, cvk)) < 0)
@@ -316,23 +318,23 @@ xpath_list_optimize_fn(xpath_tree  *xt,
 }
 #endif /* XPATH_LIST_OPTIMIZE */
 
-/*! Identify XPATH special cases and if match, use binary search.
+/*! Identify XPath special cases and if match, use binary search.
  *
- * @retval -1  Error
- * @retval  0  Dont optimize: not special case, do normal processing
  * @retval  1  Optimization made, special case, use x (found if != NULL)
+ * @retval  0  Dont optimize: not special case, do normal processing
+ * @retval -1  Error
  * XXX Contains glue code between cxobj ** and clixon_xvec code 
  */
 int
 xpath_optimize_check(xpath_tree *xs,
                      cxobj      *xv,
-                     cxobj    ***xvec0, 
+                     cxobj    ***xvec0,
                      int        *xlen0)
 {
 #ifdef XPATH_LIST_OPTIMIZE
     int          ret;
     clixon_xvec *xvec = NULL;
-    
+
     if (!_optimize_enable)
         return 0; /* use regular code */
     if ((xvec = clixon_xvec_new()) == NULL)

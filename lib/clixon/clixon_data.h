@@ -125,19 +125,19 @@ int clicon_socket_set(clicon_handle h, int s);
 int clicon_client_socket_get(clicon_handle h);
 int clicon_client_socket_set(clicon_handle h, int s);
 
-/*! Set and get module state full and brief cached tree */
+/* Set and get module state full and brief cached tree */
 cxobj *clicon_modst_cache_get(clicon_handle h, int brief);
 int clicon_modst_cache_set(clicon_handle h, int brief, cxobj *xms);
 
-/*! Set and get yang/xml module revision changelog */
+/* Set and get yang/xml module revision changelog */
 cxobj *clicon_xml_changelog_get(clicon_handle h);
 int clicon_xml_changelog_set(clicon_handle h, cxobj *xchlog);
 
-/*! Set and get user command-line options (after --) */
+/* Set and get user command-line options (after --) */
 int clicon_argv_get(clicon_handle h, int *argc, char ***argv);
 int clicon_argv_set(clicon_handle h, char *argv0, int argc, char **argv);
 
-/*! Set and get (client/backend) session id */
+/* Set and get (client/backend) session id */
 int clicon_session_id_set(clicon_handle h, uint32_t id);
 int clicon_session_id_get(clicon_handle h, uint32_t *id);
 int clicon_session_id_del(clicon_handle h);

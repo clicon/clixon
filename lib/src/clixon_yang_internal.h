@@ -42,6 +42,7 @@
 #define _CLIXON_YANG_INTERNAL_H_
 
 /*! Yang type cache. Yang type statements can cache all typedef info here
+ *
  * @note unions not cached
 */
 struct yang_type_cache{
@@ -60,6 +61,7 @@ struct yang_type_cache{
 typedef struct yang_type_cache yang_type_cache;
 
 /*! yang statement 
+ *
  * This is an internal type, not exposed in the API
  * The external type is "yang_stmt" defined in clixon_yang.h
  */
@@ -69,7 +71,7 @@ struct yang_stmt{
     struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
     enum rfc_6020      ys_keyword;   /*  */
 
-    char              *ys_argument;  /* String / argument depending on keyword */   
+    char              *ys_argument;  /* String / argument depending on keyword */
     uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
     yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Used by:
                                         1) Augmented nodes "belong" to the module where the 

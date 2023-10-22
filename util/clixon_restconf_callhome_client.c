@@ -136,21 +136,24 @@ static int _event_trace = 0;
 static FILE *_event_f = NULL; /* set to stdout in main */
 
 /*! Create and bind stream socket
+ *
  * @param[in]  sa       Socketaddress
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
  * @param[in]  backlog  Listen backlog, queie of pending connections
  * @param[out] sock     Server socket (bound for accept)
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
 callhome_bind(struct sockaddr *sa,
-              size_t           sin_len,             
+              size_t           sin_len,
               int              backlog,
               int             *sock)
 {
     int    retval = -1;
     int    s = -1;
     int    on = 1;
-    
+
     if (sock == NULL){
         errno = EINVAL;
         perror("sock");
@@ -193,6 +196,7 @@ callhome_bind(struct sockaddr *sa,
 }
 
 /*! read data from file return a malloced buffer
+ *
  * Note same file is reread multiple times: same request/reply is made each iteration
  * Also, the file read is limited to 1024 bytes
  */
@@ -243,13 +247,13 @@ tls_write_file(FILE *fp,
     size_t len = 0;
     int    ret;
     int    sslerr;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (read_data_file(fp, &buf, &len) < 0)
         goto done;
     if ((ret = SSL_write(ssl, buf, len)) < 1){
         sslerr = SSL_get_error(ssl, ret);
-        clicon_debug(1, "%s SSL_write() n:%d errno:%d sslerr:%d", __FUNCTION__, ret, errno, sslerr);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s SSL_write() n:%d errno:%d sslerr:%d", __FUNCTION__, ret, errno, sslerr);
     }
     retval = 0;
  done:
@@ -259,12 +263,13 @@ tls_write_file(FILE *fp,
 }
 
 /*! Client data socket, receive reply from server
+ *
  * Print info on stdout
  * If keep_open = 0, then close socket directly after 1st reply (client close)
  * If keep_open = 1, then keep socket open (server close)
  */
 static int
-tls_server_reply_cb(int   s, 
+tls_server_reply_cb(int   s,
                     void *arg)
 {
     int            retval = -1;
@@ -276,15 +281,15 @@ tls_server_reply_cb(int   s,
     struct timeval now;
     struct timeval td;
     static int     seq = 0; // from start
-        
-    //    clicon_debug(1, "%s", __FUNCTION__);
+
+    //    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     ssl = sd->sd_ssl;
     /* get reply & decrypt */
     if ((n = SSL_read(ssl, buf, sizeof(buf))) < 0){
         clicon_err(OE_XML, errno, "SSL_read");
         goto done;
     }
-    clicon_debug(1, "%s n:%d", __FUNCTION__, n);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s n:%d", __FUNCTION__, n);
     gettimeofday(&now, NULL);
     timersub(&now, &sd->sd_t0, &td); /* from start of connection */
     if (n == 0){ /* Server closed socket */
@@ -317,11 +322,10 @@ tls_server_reply_cb(int   s,
         usleep(100000); /* XXX This is a blocking timeout */
         /* Write HTTP request on socket */
         if (tls_write_file(_input_file, sd->sd_ssl) < 0)
-            goto done;  
-        
+            goto done;
     }
     else if (!_idle){
-        clicon_debug(1, "%s idle", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s idle", __FUNCTION__);
         SSL_shutdown(ssl);
         SSL_free(ssl);
         clixon_event_unreg_fd(s, tls_server_reply_cb);
@@ -331,7 +335,7 @@ tls_server_reply_cb(int   s,
         if (_accepts == 0)
             ;
         else if (_accepts == 1){
-            clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */ 
+            clixon_exit_set(1); /* XXX more elaborate logic: 1) continue request, 2) close and accept new */
             fprintf(_event_f, "Exit: %s idle\n", __FUNCTION__);
         }
         else
@@ -343,7 +347,7 @@ tls_server_reply_cb(int   s,
  done:
     if (expbuf)
         free(expbuf);
-    clicon_debug(1, "%s ret:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s ret:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -360,7 +364,7 @@ tls_ssl_init_connect(SSL_CTX *ctx,
     int           ret;
     int           verify;
     int           sslerr;
-    
+
     /* create new SSL connection state */
     if ((ssl = SSL_new(ctx)) == NULL){
         clicon_err(OE_SSL, 0, "SSL_new.");
@@ -380,7 +384,7 @@ tls_ssl_init_connect(SSL_CTX *ctx,
     SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
 #endif
 
-    /* perform the connection 
+    /* perform the connection
        TLSEXT_TYPE_application_layer_protocol_negotiation
        int SSL_set_alpn_protos(SSL *ssl, const unsigned char *protos,
                          unsigned int protos_len);
@@ -389,7 +393,7 @@ tls_ssl_init_connect(SSL_CTX *ctx,
     */
   if ((ret = SSL_connect(ssl)) < 1){
         sslerr = SSL_get_error(ssl, ret);
-        clicon_debug(1, "%s SSL_read() n:%d errno:%d sslerr:%d", __FUNCTION__, ret, errno, sslerr);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s SSL_read() n:%d errno:%d sslerr:%d", __FUNCTION__, ret, errno, sslerr);
 
         switch (sslerr){
         case SSL_ERROR_SSL:                  /* 1 */
@@ -453,7 +457,7 @@ tls_client_timeout(void *arg)
 /*! Callhome-server accept socket
  */
 static int
-tls_server_accept_cb(int   ss, 
+tls_server_accept_cb(int   ss,
                      void *arg)
 {
     int                retval = -1;
@@ -464,17 +468,17 @@ tls_server_accept_cb(int   ss,
     socklen_t          len;
     SSL               *ssl = NULL;
     struct timeval     td;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     len = sizeof(from);
     if ((s = accept(ss, &from, &len)) < 0){
         perror("accept");
         goto done;
     }
-    clicon_debug(1, "accepted");
+    clixon_debug(CLIXON_DBG_DEFAULT, "accepted");
     if (tls_ssl_init_connect(ta->ta_ctx, s, &ssl) < 0)
         goto done;
-    clicon_debug(1, "connected");
+    clixon_debug(CLIXON_DBG_DEFAULT, "connected");
     if ((sd = malloc(sizeof(*sd))) == NULL){
         clicon_err(OE_UNIX, errno, "malloc");
         goto done;
@@ -502,8 +506,7 @@ tls_server_accept_cb(int   ss,
     return retval;
 }
 
-/*!
- * out must be set to point to the selected protocol (which may be within in). 
+/*! Out must be set to point to the selected protocol (which may be within in). 
  */
 static int
 tls_proto_select_cb(SSL *s,
@@ -513,11 +516,12 @@ tls_proto_select_cb(SSL *s,
                     unsigned int inlen,
                     void *arg)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     return 0;
 }
 
 /*! Verify tls auth
+ *
  * @see  tlsauth_verify_callback
  * This code needs a "X509 store", see X509_STORE_new()
  * crl_file / crl_dir
@@ -535,7 +539,7 @@ tls_ctx_init(const char *cert_path,
              const char *ca_cert_path)
 {
     SSL_CTX *ctx = NULL;
-    
+
     if ((ctx = SSL_CTX_new(TLS_client_method())) == NULL) {
         clicon_err(OE_SSL, 0, "SSL_CTX_new");
         goto done;
@@ -611,7 +615,7 @@ main(int    argc,
     char               *family = "inet:ipv4-address";
 
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
+    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR);
     if ((h = clicon_handle_init()) == NULL)
         goto done;
     while ((c = getopt(argc, argv, UTIL_TLS_OPTS)) != -1)
@@ -685,11 +689,11 @@ main(int    argc,
         fprintf(stderr, "-c <cert path> and -k <key path> -C <ca-cert> are mandatory\n");
         usage(argv[0]);
     }
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
 
     if (input_filename){
         if ((_input_file = fopen(input_filename, "r")) == NULL){
-            clicon_err(OE_YANG, errno, "open(%s)", input_filename);     
+            clicon_err(OE_YANG, errno, "open(%s)", input_filename);
             goto done;
         }
     }
@@ -708,9 +712,9 @@ main(int    argc,
     if (clixon_inet2sin(family, addr, port, sa, &sa_len) < 0)
         goto done;
    /* Bind port */
-    if (callhome_bind(sa, sa_len, 1, &ss) < 0) 
+    if (callhome_bind(sa, sa_len, 1, &ss) < 0)
         goto done;
-    clicon_debug(1, "callhome_bind %s:%hu", addr, port);
+    clixon_debug(CLIXON_DBG_DEFAULT, "callhome_bind %s:%hu", addr, port);
     if ((ta = malloc(sizeof(*ta))) == NULL){
         clicon_err(OE_UNIX, errno, "malloc");
         goto done;
@@ -739,7 +743,7 @@ main(int    argc,
         SSL_CTX_free(ctx);        /* release context */
     clicon_handle_exit(h); /* frees h and options (and streams) */
     clixon_err_exit();
-    clicon_debug(1, "clixon_restconf_callhome_client pid:%u done", getpid());
-    clicon_log_exit(); /* Must be after last clicon_debug */
+    clixon_debug(CLIXON_DBG_DEFAULT, "clixon_restconf_callhome_client pid:%u done", getpid());
+    clicon_log_exit(); /* Must be after last clixon_debug */
     return retval;
 }

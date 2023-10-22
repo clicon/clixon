@@ -136,7 +136,7 @@ clicon_rpc_connect(clicon_handle h,
  done:
     return retval;
 }
-    
+
 /*! Connect to backend or use cached socket and send RPC
  *
  * @param[in]  h        Clixon handle
@@ -150,7 +150,7 @@ clicon_rpc_connect(clicon_handle h,
  */
 static int
 clicon_rpc_msg_once(clicon_handle      h,
-                    struct clicon_msg *msg, 
+                    struct clicon_msg *msg,
                     int                cache,
                     char             **retdata,
                     int               *eof,
@@ -158,7 +158,7 @@ clicon_rpc_msg_once(clicon_handle      h,
 {
     int retval = -1;
     int s;
-    
+
     if (cache){
         if ((s = clicon_client_socket_get(h)) < 0){
             if (clicon_rpc_connect(h, &s) < 0)
@@ -195,8 +195,8 @@ clicon_rpc_msg_once(clicon_handle      h,
  * @see clicon_rpc_close_session
  */
 int
-clicon_rpc_msg(clicon_handle      h, 
-               struct clicon_msg *msg, 
+clicon_rpc_msg(clicon_handle      h,
+               struct clicon_msg *msg,
                cxobj            **xret0)
 {
     int     retval = -1;
@@ -205,7 +205,7 @@ clicon_rpc_msg(clicon_handle      h,
     int     s = -1;
     int     eof = 0;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
 #endif
@@ -225,7 +225,6 @@ clicon_rpc_msg(clicon_handle      h,
                 close(s);
                 s = -1;
                 clicon_client_socket_set(h, -1);
-                    
                 clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
                 goto done;
             }
@@ -253,7 +252,7 @@ clicon_rpc_msg(clicon_handle      h,
     }
     retval = 0;
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     if (retdata)
         free(retdata);
     if (xret)
@@ -273,8 +272,8 @@ clicon_rpc_msg(clicon_handle      h,
  * @note xret is populated with yangspec according to standard handle yangspec
  */
 int
-clicon_rpc_msg_persistent(clicon_handle      h, 
-                          struct clicon_msg *msg, 
+clicon_rpc_msg_persistent(clicon_handle      h,
+                          struct clicon_msg *msg,
                           cxobj            **xret0,
                           int               *sock0)
 {
@@ -291,7 +290,7 @@ clicon_rpc_msg_persistent(clicon_handle      h,
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
 #endif
-    clicon_debug(1, "%s request:%s", __FUNCTION__, msg->op_body);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s request:%s", __FUNCTION__, msg->op_body);
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
     if (clicon_rpc_msg_once(h, msg, 0, &retdata, &eof, &s) < 0)
         goto done;
@@ -306,7 +305,7 @@ clicon_rpc_msg_persistent(clicon_handle      h,
         clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
         goto done;
     }
-    clicon_debug(1, "%s retdata:%s", __FUNCTION__, retdata);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retdata:%s", __FUNCTION__, retdata);
 
     if (retdata){
         /* Cannot populate xret here because need to know RPC name (eg "lock") in order to associate yang
@@ -351,11 +350,11 @@ session_id_check(clicon_handle h,
 {
     int      retval = -1;
     uint32_t id;
-    
+
     if (clicon_session_id_get(h, &id) < 0){ /* Not set yet */
         if (clicon_hello_req(h, NULL, NULL, &id) < 0)
             goto done;
-        clicon_session_id_set(h, id); 
+        clicon_session_id_set(h, id);
     }
     retval = 0;
     *session_id = id;
@@ -382,7 +381,7 @@ session_id_check(clicon_handle h,
  * @see clicon_rpc_netconf_xml xml as tree instead of string
  */
 int
-clicon_rpc_netconf(clicon_handle  h, 
+clicon_rpc_netconf(clicon_handle  h,
                    char          *xmlstr,
                    cxobj        **xret,
                    int           *sp)
@@ -428,7 +427,7 @@ clicon_rpc_netconf(clicon_handle  h,
  * @see clicon_rpc_netconf xml as string instead of tree
  */
 int
-clicon_rpc_netconf_xml(clicon_handle  h, 
+clicon_rpc_netconf_xml(clicon_handle  h,
                        cxobj         *xml,
                        cxobj        **xret,
                        int           *sp)
@@ -459,7 +458,7 @@ clicon_rpc_netconf_xml(clicon_handle  h,
         xml_find_type(xreply, NULL, "rpc-error", CX_ELMNT) == NULL){
         yspec = clicon_dbspec_yang(h);
         /* Here use rpc name to bind to yang */
-        if ((ret = xml_bind_yang_rpc_reply(h, xreply, rpcname, yspec, &xerr)) < 0) 
+        if ((ret = xml_bind_yang_rpc_reply(h, xreply, rpcname, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
             /* Replace reply with error */
@@ -513,9 +512,9 @@ clicon_rpc_netconf_xml(clicon_handle  h,
  * @note the netconf return message is yang populated, as well as the return data
  */
 int
-clicon_rpc_get_config(clicon_handle h, 
+clicon_rpc_get_config(clicon_handle h,
                       char         *username, // XXX: why is this only rpc call with username parameter?
-                      char         *db, 
+                      char         *db,
                       char         *xpath,
                       cvec         *nsc,
                       char         *defaults,
@@ -525,13 +524,13 @@ clicon_rpc_get_config(clicon_handle h,
     struct clicon_msg *msg = NULL;
     cbuf              *cb = NULL;
     cxobj             *xret = NULL;
-    cxobj             *xerr = NULL;    
+    cxobj             *xerr = NULL;
     cxobj             *xd = NULL;
     uint32_t           session_id;
     int                ret;
     yang_stmt         *yspec;
     cvec              *nscd = NULL;
-    
+
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -628,14 +627,14 @@ clicon_rpc_get_config(clicon_handle h,
  * @retval   -1          Error and logged to syslog
  * @note xml arg need to have <config> as top element
  * @code
- * if (clicon_rpc_edit_config(h, "running", OP_MERGE, 
+ * if (clicon_rpc_edit_config(h, "running", OP_MERGE,
  *                            "<config><a xmlns="urn:example:clixon">4</a></config>") < 0)
  *    err;
  * @endcode
  */
 int
-clicon_rpc_edit_config(clicon_handle       h, 
-                       char               *db, 
+clicon_rpc_edit_config(clicon_handle       h,
+                       char               *db,
                        enum operation_type op,
                        char               *xmlstr)
 {
@@ -646,7 +645,7 @@ clicon_rpc_edit_config(clicon_handle       h,
     cxobj             *xerr;
     char              *username;
     uint32_t           session_id;
-    
+
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -661,7 +660,7 @@ clicon_rpc_edit_config(clicon_handle       h,
     }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, "><edit-config><target><%s/></target>", db);
-    cprintf(cb, "<default-operation>%s</default-operation>", 
+    cprintf(cb, "<default-operation>%s</default-operation>",
             xml_operation2str(op));
     if (xmlstr)
         cprintf(cb, "%s", xmlstr);
@@ -700,8 +699,8 @@ clicon_rpc_edit_config(clicon_handle       h,
  * @endcode
  */
 int
-clicon_rpc_copy_config(clicon_handle h, 
-                       char         *db1, 
+clicon_rpc_copy_config(clicon_handle h,
+                       char         *db1,
                        char         *db2)
 {
     int                retval = -1;
@@ -710,7 +709,7 @@ clicon_rpc_copy_config(clicon_handle h,
     cxobj             *xerr;
     char              *username;
     uint32_t           session_id;
-    cbuf              *cb = NULL;    
+    cbuf              *cb = NULL;
 
     if (session_id_check(h, &session_id) < 0)
         goto done;
@@ -759,7 +758,7 @@ clicon_rpc_copy_config(clicon_handle h,
  * @endcode
  */
 int
-clicon_rpc_delete_config(clicon_handle h, 
+clicon_rpc_delete_config(clicon_handle h,
                          char         *db)
 {
     int                retval = -1;
@@ -769,7 +768,7 @@ clicon_rpc_delete_config(clicon_handle h,
     char              *username;
     uint32_t           session_id;
     cbuf              *cb = NULL;
-    
+
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -813,7 +812,7 @@ clicon_rpc_delete_config(clicon_handle h,
  * @retval   -1    Error and logged to syslog
  */
 int
-clicon_rpc_lock(clicon_handle h, 
+clicon_rpc_lock(clicon_handle h,
                 char         *db)
 {
     int                retval = -1;
@@ -823,7 +822,7 @@ clicon_rpc_lock(clicon_handle h,
     char              *username;
     uint32_t           session_id;
     cbuf              *cb = NULL;
-    
+
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -867,7 +866,7 @@ clicon_rpc_lock(clicon_handle h,
  * @retval   -1    Error and logged to syslog
  */
 int
-clicon_rpc_unlock(clicon_handle h, 
+clicon_rpc_unlock(clicon_handle h,
                   char         *db)
 {
     int                retval = -1;
@@ -877,7 +876,7 @@ clicon_rpc_unlock(clicon_handle h,
     char              *username;
     uint32_t           session_id;
     cbuf              *cb = NULL;
-    
+
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -915,7 +914,7 @@ clicon_rpc_unlock(clicon_handle h,
 
 /*! Get database configuration and state data
  *
- * @param[in]  h         Clicon handle
+ * @param[in]  h         Clixon handle
  * @param[in]  xpath     XPath in a filter stmt (or NULL/"" for no filter)
  * @param[in]  namespace Namespace associated w xpath
  * @param[in]  nsc       Namespace context for filter
@@ -963,7 +962,7 @@ clicon_rpc_get(clicon_handle   h,
 
 /*! Get database configuration and state data (please use instead of clicon_rpc_get)
  *
- * @param[in]  h         Clicon handle
+ * @param[in]  h         Clixon handle
  * @param[in]  xpath     XPath in a filter stmt (or NULL/"" for no filter)
  * @param[in]  namespace Namespace associated w xpath
  * @param[in]  nsc       Namespace context for filter
@@ -1018,8 +1017,8 @@ clicon_rpc_get2(clicon_handle   h,
     int                ret;
     yang_stmt         *yspec;
     cvec              *nscd = NULL;
-    
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -1032,12 +1031,12 @@ clicon_rpc_get2(clicon_handle   h,
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     }
-    cprintf(cb, " message-id=\"%d\"", netconf_message_id_next(h)); 
+    cprintf(cb, " message-id=\"%d\"", netconf_message_id_next(h));
     cprintf(cb, "><get");
     /* Clixon extension, content=all,config, or nonconfig */
     if ((int)content != -1)
         cprintf(cb, " %s:content=\"%s\" xmlns:%s=\"%s\"",
-                CLIXON_LIB_PREFIX, 
+                CLIXON_LIB_PREFIX,
                 netconf_content_int2str(content),
                 CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     /* Clixon extension, depth=<level> */
@@ -1105,7 +1104,7 @@ clicon_rpc_get2(clicon_handle   h,
     }
     retval = 0;
   done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     if (nscd)
         cvec_free(nscd);
     if (cb)
@@ -1121,7 +1120,7 @@ clicon_rpc_get2(clicon_handle   h,
 
 /*! Get database configuration and state data collection
  *
- * @param[in]  h         Clicon handle
+ * @param[in]  h         Clixon handle
  * @param[in]  xpath     To identify a list/leaf-list
  * @param[in]  namespace Namespace associated w xpath
  * @param[in]  nsc       Namespace context for filter
@@ -1142,7 +1141,7 @@ clicon_rpc_get2(clicon_handle   h,
  * @note the netconf return message is yang populated, as well as the return data
  */
 int
-clicon_rpc_get_pageable_list(clicon_handle   h, 
+clicon_rpc_get_pageable_list(clicon_handle   h,
                              char           *datastore,
                              char           *xpath,
                              cvec           *nsc, /* namespace context for xpath */
@@ -1167,7 +1166,7 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     int                ret;
     yang_stmt         *yspec;
     cvec              *nscd = NULL;
-    
+
     if (datastore == NULL){
         clicon_err(OE_XML, EINVAL, "datastore not given");
         goto done;
@@ -1190,13 +1189,13 @@ clicon_rpc_get_pageable_list(clicon_handle   h,
     /* Clixon extension, content=all,config, or nonconfig */
     if ((int)content != -1)
         cprintf(cb, " %s:content=\"%s\" xmlns:%s=\"%s\"",
-                CLIXON_LIB_PREFIX, 
+                CLIXON_LIB_PREFIX,
                 netconf_content_int2str(content),
                 CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     /* Clixon extension, depth=<level> */
     if (depth != -1)
         cprintf(cb, " %s:depth=\"%d\" xmlns:%s=\"%s\"",
-                CLIXON_LIB_PREFIX, 
+                CLIXON_LIB_PREFIX,
                 depth,
                 CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     /* declare lp prefix in get, so sub-elements dont need to */
@@ -1362,7 +1361,7 @@ clicon_rpc_kill_session(clicon_handle h,
     char              *username;
     uint32_t           my_session_id; /* Not the one to kill */
     cbuf              *cb = NULL;
-    
+
     if (session_id_check(h, &my_session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -1408,7 +1407,7 @@ clicon_rpc_kill_session(clicon_handle h,
  * @note error returns are logged but not returned
  */
 int
-clicon_rpc_validate(clicon_handle h, 
+clicon_rpc_validate(clicon_handle h,
                     char         *db)
 {
     int                retval = -1;
@@ -1418,7 +1417,7 @@ clicon_rpc_validate(clicon_handle h,
     char              *username;
     uint32_t           session_id;
     cbuf              *cb = NULL;
-    
+
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -1442,7 +1441,7 @@ clicon_rpc_validate(clicon_handle h,
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
         clixon_netconf_error(xerr, CLIXON_ERRSTR_VALIDATE_FAILED, NULL);
         retval = 0;
-        goto done;      
+        goto done;
     }
     retval = 1;
  done:
@@ -1584,7 +1583,7 @@ clicon_rpc_discard_changes(clicon_handle h)
     char              *username;
     uint32_t           session_id;
     cbuf              *cb = NULL;
-    
+
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -1622,7 +1621,7 @@ clicon_rpc_discard_changes(clicon_handle h)
 
 /*! Create a new notification subscription
  *
- * @param[in]   h        Clicon handle
+ * @param[in]   h        Clixon handle
  * @param{in]   stream   name of notificatio/log stream (CLICON is predefined)
  * @param{in]   filter   message filter, eg xpath for xml notifications
  * @param[out]  s0       socket returned where notification mesages will appear
@@ -1632,8 +1631,8 @@ clicon_rpc_discard_changes(clicon_handle h)
  */
 int
 clicon_rpc_create_subscription(clicon_handle    h,
-                               char            *stream, 
-                               char            *filter, 
+                               char            *stream,
+                               char            *filter,
                                int             *s0)
 {
     int                retval = -1;
@@ -1643,7 +1642,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
     char              *username;
     uint32_t           session_id;
     cbuf              *cb = NULL;
-    
+
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -1693,7 +1692,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
  * @retval   -1        Error and logged to syslog
  */
 int
-clicon_rpc_debug(clicon_handle h, 
+clicon_rpc_debug(clicon_handle h,
                 int           level)
 {
     int                retval = -1;
@@ -1756,7 +1755,7 @@ clicon_rpc_debug(clicon_handle h,
  *  3 CLICON_BACKEND_RESTCONF_PROCESS is true (so that backend restarts restconf)
  */
 int
-clicon_rpc_restconf_debug(clicon_handle h, 
+clicon_rpc_restconf_debug(clicon_handle h,
                           int           level)
 {
     int                retval = -1;
@@ -1766,7 +1765,7 @@ clicon_rpc_restconf_debug(clicon_handle h,
     char              *username;
     uint32_t           session_id;
     cbuf              *cb = NULL;
-    
+
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -1890,7 +1889,7 @@ clicon_hello_req(clicon_handle h,
     }
     b = xml_body(x);
     if ((ret = parse_uint32(b, id, NULL)) <= 0){
-        clicon_err(OE_XML, errno, "parse_uint32"); 
+        clicon_err(OE_XML, errno, "parse_uint32");
         goto done;
     }
     retval = 0;
@@ -1912,7 +1911,7 @@ clicon_hello_req(clicon_handle h,
  * @retval   -1        Error and logged to syslog
  */
 int
-clicon_rpc_restart_plugin(clicon_handle h, 
+clicon_rpc_restart_plugin(clicon_handle h,
                           char         *plugin)
 {
     int                retval = -1;
@@ -1922,7 +1921,7 @@ clicon_rpc_restart_plugin(clicon_handle h,
     char              *username;
     uint32_t           session_id;
     cbuf              *cb = NULL;
-    
+
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){

@@ -101,7 +101,7 @@ xml_default_create1(yang_stmt *y,
             if (xml_prefix_set(xc, prefix) < 0)
                 goto done;
         }
-        else{ /* Namespace does not exist in target, must add it w xmlns attr. 
+        else{ /* Namespace does not exist in target, must add it w xmlns attr.
                  use source prefix */
             if (xml_add_namespace(xc, xc, prefix, namespace) < 0)
                 goto done;
@@ -124,7 +124,7 @@ xml_default_create1(yang_stmt *y,
  * @param[in]   xt      XML tree
  * @param[in]   top     Use default namespace (if you create xmlns statement)
  * @retval      0       OK
- * @retval      -1      Error
+ * @retval     -1       Error
  */
 static int
 xml_default_create(yang_stmt *y,
@@ -136,7 +136,7 @@ xml_default_create(yang_stmt *y,
     cxobj     *xb;
     char      *str;
     cg_var    *cv;
-        
+
     if (xml_default_create1(y, xt, &xc) < 0)
         goto done;
     xml_flag_set(xc, XML_FLAG_DEFAULT);
@@ -159,6 +159,7 @@ xml_default_create(yang_stmt *y,
 }
 
 /*! Traverse a choice
+ *
  * From RFC7950 Sec 7.9.3
  * 1. Default case,  the default if no child nodes from any of the choice's cases exist
  * 2. Default for child nodes under a case are only used if one of the nodes under that case
@@ -177,7 +178,7 @@ xml_default_choice(yang_stmt *yc,
     yang_stmt *yca = NULL;
     yang_stmt *ydef;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* 1. Is there a default case and no child under this choice?
      */
     x = NULL;
@@ -212,7 +213,7 @@ xml_default_choice(yang_stmt *yc,
  * @param[in]   state   Set if global state, otherwise config
  * @param[out]  createp Need to create XML container
  * @retval      0       OK
- * @retval      -1      Error
+ * @retval     -1       Error
  */
 static int
 xml_nopresence_try(yang_stmt *yt,
@@ -222,7 +223,7 @@ xml_nopresence_try(yang_stmt *yt,
     int        retval = -1;
     yang_stmt *y;
     yang_stmt *ydef;
-    
+
     if (yt == NULL || yang_keyword_get(yt) != Y_CONTAINER){
         clicon_err(OE_XML, EINVAL, "yt argument is not container");
         goto done;
@@ -277,7 +278,7 @@ xml_nopresence_try(yang_stmt *yt,
  * @param[in]   xt      XML tree (with yt as spec of xt, informally)
  * @param[in]   state   Set if global state, otherwise config
  * @retval      0       OK
- * @retval      -1      Error
+ * @retval     -1       Error
  * XXX If state, should not add config defaults             
  *      if (state && yang_config(yc)) 
  */
@@ -312,12 +313,12 @@ xml_default(yang_stmt *yt,
         yc = NULL;
         while ((yc = yn_each(yt, yc)) != NULL) {
             /* If config parameter and local is config false */
-            if (!state && !yang_config(yc)) 
+            if (!state && !yang_config(yc))
                 continue;
             switch (yang_keyword_get(yc)){
             case Y_LEAF:
                 /* Want to add state defaults, but this is config */
-                if (state && yang_config_ancestor(yc)) 
+                if (state && yang_config_ancestor(yc))
                     break;
                 if ((cv = yang_cv_get(yc)) == NULL){
                     clicon_err(OE_YANG,0, "Internal error: yang leaf %s not populated with cv as it should",
@@ -354,7 +355,7 @@ xml_default(yang_stmt *yt,
                         if (xml_nopresence_try(yc, state, &create) < 0)
                             goto done;
                         if (create){
-                            /* Retval shows there is a default value need to create the 
+                            /* Retval shows there is a default value need to create the
                              * container */
                             if (xml_default_create1(yc, xt, &xc) < 0)
                                 goto done;
@@ -385,10 +386,11 @@ xml_default(yang_stmt *yt,
 }
 
 /*! Recursively fill in default values in an XML tree
+ *
  * @param[in]   xt      XML tree
  * @param[in]   state   If set expand defaults also for state data, otherwise only config
  * @retval      0       OK
- * @retval      -1      Error
+ * @retval     -1       Error
  * @see xml_global_defaults
  */
 int
@@ -399,7 +401,7 @@ xml_default_recurse(cxobj *xn,
     yang_stmt *yn;
     cxobj     *x;
     yang_stmt *y;
-    
+
     if ((yn = (yang_stmt*)xml_spec(xn)) != NULL)
         if (xml_default(yn, xn, state) < 0)
             goto done;
@@ -424,7 +426,7 @@ xml_default_recurse(cxobj *xn,
  * @param[in]   yspec   Top-level YANG specification tree, all modules
  * @param[in]   state  p Set if global state, otherwise config
  * @retval      0       OK
- * @retval      -1      Error
+ * @retval     -1       Error
  */
 static int
 xml_global_defaults_create(cxobj     *xt,
@@ -438,7 +440,7 @@ xml_global_defaults_create(cxobj     *xt,
         clicon_err(OE_XML, EINVAL, "yspec argument is not yang spec");
         goto done;
     }
-    while ((ymod = yn_each(yspec, ymod)) != NULL) 
+    while ((ymod = yn_each(yspec, ymod)) != NULL)
         if (xml_default(ymod, xt, state) < 0)
             goto done;
     retval = 0;
@@ -455,7 +457,7 @@ xml_global_defaults_create(cxobj     *xt,
  * @param[in]   yspec   Top-level YANG specification tree, all modules
  * @param[in]   state   Set if global state, otherwise config
  * @retval      0       OK
- * @retval      -1      Error
+ * @retval     -1       Error
  * Uses cache?
  * @see xml_default_recurse
  */
@@ -478,7 +480,7 @@ xml_global_defaults(clicon_handle h,
     cxobj     *x0;
     int        ret;
     char      *key;
-    
+
     /* Use different keys for config and state */
     key = state ? "global-defaults-state" : "global-defaults-config";
     /* First get or compute global xml tree cache */
@@ -553,7 +555,7 @@ xml_defaults_nopresence(cxobj *xn,
     int           ret;
     enum rfc_6020 keyw;
     int           config = 1;
-    
+
     if ((yn = xml_spec(xn)) != NULL){
         keyw = yang_keyword_get(yn);
         if (keyw == Y_CONTAINER &&
@@ -590,7 +592,7 @@ xml_defaults_nopresence(cxobj *xn,
         }
         else if (rmx)
             /* May switch an empty non-presence container (rmx=1) to non-empty non-presence container (rmx=0) */
-            rmx = 0; 
+            rmx = 0;
     }
     retval = rmx;
  done:

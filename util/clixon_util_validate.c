@@ -101,7 +101,7 @@ main(int    argc,
     cbuf         *cb = NULL;
 
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
+    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR);
 
     /* Initialize clixon handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -133,7 +133,7 @@ main(int    argc,
             usage(argv[0]);
             break;
         }
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
     yang_init(h);
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)
@@ -172,7 +172,7 @@ main(int    argc,
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
-    
+
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below
      */
@@ -182,7 +182,7 @@ main(int    argc,
     /* Create top-level yang spec and store as option */
     if ((yspec = yspec_new()) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);       
+    clicon_dbspec_yang_set(h, yspec);
     /* Load backend plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_backend_dir(h)) != NULL &&
         clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir,

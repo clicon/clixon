@@ -99,7 +99,7 @@ main(int    argc,
     int        ret;
     int        pretty = 0;
     int        dbg = 0;
-    
+
     optind = 1;
     opterr = 0;
     while ((c = getopt(argc, argv, "hD:jl:py:")) != -1)
@@ -129,7 +129,7 @@ main(int    argc,
             break;
         }
     clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, logdst);
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
 
     if (yang_filename){
         if ((yspec = yspec_new()) == NULL)

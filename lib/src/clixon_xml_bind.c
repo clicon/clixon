@@ -89,6 +89,7 @@ static int _yang_unknown_anydata = 0;
 static int _netconf_message_id_optional = 0;
 
 /*! Kludge to equate unknown XML with anydata
+ *
  * The problem with this is that its global and should be bound to a handle
  */
 int
@@ -99,6 +100,7 @@ xml_bind_yang_unknown_anydata(int val)
 }
 
 /*! Kludge to set message_id_optional
+ *
  * The problem with this is that its global and should be bound to a handle
  */
 int
@@ -109,6 +111,7 @@ xml_bind_netconf_message_id_optional(int val)
 }
 
 /*! After yang binding, bodies of containers and lists are stripped from XML bodies
+ *
  * May apply to other nodes?
  * Exception for bodies marked with XML_FLAG_BODYKEY, see text syntax parsing
  * @see text_mark_bodies
@@ -119,7 +122,7 @@ strip_body_objects(cxobj *xt)
     yang_stmt    *yt;
     enum rfc_6020 keyword;
     cxobj        *xb;
-    
+
     if ((yt = xml_spec(xt)) != NULL){
         keyword = yang_keyword_get(yt);
         if (keyword == Y_LIST || keyword == Y_CONTAINER){
@@ -257,7 +260,7 @@ populate_self_parent(cxobj     *xt,
  * @see populate_self_parent
  */
 static int
-populate_self_top(cxobj     *xt, 
+populate_self_top(cxobj     *xt,
                   yang_stmt *yspec,
                   cxobj    **xerr)
 {
@@ -374,7 +377,7 @@ populate_self_top(cxobj     *xt,
  */
 int
 xml_bind_yang(clicon_handle h,
-              cxobj        *xt, 
+              cxobj        *xt,
               yang_bind     yb,
               yang_stmt    *yspec,
               cxobj       **xerr)
@@ -399,7 +402,7 @@ xml_bind_yang(clicon_handle h,
     goto done;
 }
 
-/*!
+/*! Bind yang opt
  *
  * @param[in]   h      Clixon handle (sometimes NULL)
  * @param[in]   xt     XML tree node
@@ -413,7 +416,7 @@ xml_bind_yang(clicon_handle h,
  */
 static int
 xml_bind_yang0_opt(clicon_handle h,
-                   cxobj        *xt, 
+                   cxobj        *xt,
                    yang_bind     yb,
                    yang_stmt    *yspec,
                    cxobj        *xsibling,
@@ -530,7 +533,7 @@ xml_bind_yang0_opt(clicon_handle h,
  */
 int
 xml_bind_yang0(clicon_handle h,
-               cxobj        *xt, 
+               cxobj        *xt,
                yang_bind     yb,
                yang_stmt    *yspec,
                cxobj       **xerr)
@@ -541,7 +544,7 @@ xml_bind_yang0(clicon_handle h,
 
     switch (yb){
     case YB_MODULE:
-        if ((ret = populate_self_top(xt, yspec, xerr)) < 0) 
+        if ((ret = populate_self_top(xt, yspec, xerr)) < 0)
             goto done;
         break;
     case YB_PARENT:
@@ -622,7 +625,7 @@ xml_bind_yang_rpc_rpc(clicon_handle h,
         /* xml_bind_yang need to have parent with yang spec for
          * recursive population to work. Therefore, assign input yang
          * to rpc level although not 100% intuitive */
-        xml_spec_set(x, yi); 
+        xml_spec_set(x, yi);
         if ((ret = xml_bind_yang(h, x, YB_PARENT, NULL, xerr)) < 0)
             goto done;
         if (ret == 0)
@@ -681,7 +684,7 @@ xml_bind_yang_rpc_action(clicon_handle h,
 }
 
 /*! Find yang spec association of XML node for incoming RPC starting with <rpc>
- * 
+ *
  * Incoming RPC has an "input" structure that is not taken care of by xml_bind_yang
  * @param[in]   h      Clixon handle
  * @param[in]   xrpc   XML rpc node
@@ -713,9 +716,9 @@ xml_bind_yang_rpc(clicon_handle h,
     char      *rpcname; /* RPC name */
     char      *name;
     cxobj     *xc;
-    
+
     opname = xml_name(xrpc);
-    if ((strcmp(opname, "hello")) == 0){ 
+    if ((strcmp(opname, "hello")) == 0){
         /* Hello: dont bind, dont appear in any yang spec, just ensure there is nothing apart from
          * session-id or capabilities/capability tags
          * If erro, just log, drop and close, rpc-error should not be sent since it is not rpc
@@ -845,7 +848,7 @@ xml_bind_yang_rpc_reply(clicon_handle h,
     char      *opname;
     cbuf      *cberr = NULL;
     cxobj     *xc;
-    
+
     opname = xml_name(xrpc);
     if (strcmp(opname, "rpc-reply")){
         if ((cberr = cbuf_new()) == NULL){
@@ -874,7 +877,7 @@ xml_bind_yang_rpc_reply(clicon_handle h,
         break;
     }
     if (yo != NULL){
-        xml_spec_set(xrpc, yo); 
+        xml_spec_set(xrpc, yo);
         /* Special case for ok and rpc-error */
         if ((xc = xml_child_i_type(xrpc, 0, CX_ELMNT)) != NULL &&
             (strcmp(xml_name(xc),"rpc-error") == 0
@@ -920,7 +923,7 @@ xml_bind_special(cxobj     *xd,
 {
     int        retval = -1;
     yang_stmt *yd;
-    
+
     if (yang_abs_schema_nodeid(yspec, schema_nodeid, &yd) < 0)
         goto done;
     if (yd)

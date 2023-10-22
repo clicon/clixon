@@ -169,12 +169,13 @@ clixon_proc_sigint(int sig)
 }
 
 /*! Fork a child, exec a child and setup socket to child and return to caller
+ *
  * @param[in]  argv       NULL-terminated Argument vector
  * @param[in]  sock_flags Socket type/flags, typically SOCK_DGRAM or SOCK_STREAM, see
  * @param[out] pid        Process-id of child
  * @param[out] sock       Socket
  * @retval     O          OK
- * @retval     -1         Error.
+ * @retval    -1          Error.
  * @see clixon_proc_socket_close  close sockets, kill child and wait for child termination
  * @see for flags usage see man sockerpair(2)
  */
@@ -239,8 +240,7 @@ clixon_proc_socket(char **argv,
             clicon_err(OE_UNIX, errno, "dup2(STDOUT)");
             return -1;
         }
-        close(sp[1]); 
-        
+        close(sp[1]);
         if (execvp(argv[0], argv) < 0){
             clicon_err(OE_UNIX, errno, "execvp(%s)", argv[0]);
             return -1;
@@ -248,7 +248,7 @@ clixon_proc_socket(char **argv,
         exit(-1);        /* Shouldnt reach here */
     }
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s child %u sock %d", __FUNCTION__, child, sp[0]);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s child %u sock %d", __FUNCTION__, child, sp[0]);
     /* Parent */
     close(sp[1]);
     *pid = child;
@@ -262,7 +262,8 @@ clixon_proc_socket(char **argv,
     return retval;
 }
 
-/*! 
+/*! Close socket 
+ *
  * @see clixon_proc_socket which creates the child and sockets closed and killed here
  */
 int
@@ -272,7 +273,7 @@ clixon_proc_socket_close(pid_t pid,
     int retval = -1;
     int status;
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s pid %u sock %d", __FUNCTION__, pid, sock);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s pid %u sock %d", __FUNCTION__, pid, sock);
 
     if (sock != -1)
         close(sock); /* usually kills */
@@ -280,7 +281,7 @@ clixon_proc_socket_close(pid_t pid,
     //    usleep(100000);     /* Wait for child to finish */
     if(waitpid(pid, &status, 0) == pid){
         retval = WEXITSTATUS(status);
-        clicon_debug(CLIXON_DBG_DEFAULT, "%s waitpid status %#x", __FUNCTION__, retval);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s waitpid status %#x", __FUNCTION__, retval);
     }
     return retval;
 }
@@ -293,7 +294,7 @@ clixon_proc_socket_close(pid_t pid,
  * @param[in]  fdkeep If -1 keep this filedes open
  * @param[out] pid   Process id
  * @retval     0     OK
- * @retval     -1    Error.
+ * @retval    -1     Error.
  */
 static int
 clixon_proc_background(char       **argv,
@@ -313,7 +314,7 @@ clixon_proc_background(char       **argv,
     char         *flattened;
     unsigned      argc;
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (argv == NULL){
         clicon_err(OE_UNIX, EINVAL, "argv is NULL");
         goto quit;
@@ -350,7 +351,7 @@ clixon_proc_background(char       **argv,
         char nsfile[PATH_MAX];
         int  nsfd;
 #endif
-        clicon_debug(CLIXON_DBG_DEFAULT, "%s child", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s child", __FUNCTION__);
         clicon_signal_unblock(0);
         signal(SIGTSTP, SIG_IGN);
         if (chdir("/") < 0){
@@ -370,7 +371,7 @@ clixon_proc_background(char       **argv,
          */
         if (netns != NULL) {
             snprintf(nsfile, PATH_MAX, "/var/run/netns/%s", netns); /* see man setns / ip netns */
-            clicon_debug(CLIXON_DBG_DEFAULT, "%s nsfile:%s", __FUNCTION__, nsfile);
+            clixon_debug(CLIXON_DBG_DEFAULT, "%s nsfile:%s", __FUNCTION__, nsfile);
             /* Change network namespace */
             if ((nsfd = open(nsfile, O_RDONLY | O_CLOEXEC)) < 0){
                 clicon_err(OE_UNIX, errno, "open");
@@ -409,7 +410,7 @@ clixon_proc_background(char       **argv,
     *pid0 = child;
     retval = 0;
  quit:
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d child:%u", __FUNCTION__, retval, child);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d child:%u", __FUNCTION__, retval, child);
     return retval;
 }
 
@@ -504,7 +505,7 @@ clixon_process_register(clicon_handle h,
     int              retval = -1;
     process_entry_t *pe = NULL;
     int              i;
-        
+
     if (name == NULL){
         clicon_err(OE_DB, EINVAL, "name is NULL");
         goto done;
@@ -514,7 +515,7 @@ clixon_process_register(clicon_handle h,
         goto done;
     }
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s name:%s (%s)", __FUNCTION__, name, argv[0]);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s name:%s (%s)", __FUNCTION__, name, argv[0]);
 
     if ((pe = malloc(sizeof(process_entry_t))) == NULL) {
         clicon_err(OE_DB, errno, "malloc");
@@ -554,8 +555,8 @@ clixon_process_register(clicon_handle h,
         }
     }
     pe->pe_callback = callback;
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s %s ----> %s", __FUNCTION__,
-                 pe->pe_name, 
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s ----> %s", __FUNCTION__,
+                 pe->pe_name,
                  clicon_int2str(proc_state_map, PROC_STATE_STOPPED)
                  );
     pe->pe_state = PROC_STATE_STOPPED;
@@ -601,7 +602,7 @@ clixon_process_delete_all(clicon_handle h)
     return 0;
 }
 
-/*!
+/*! Run process
  */
 static int
 proc_op_run(pid_t pid0,
@@ -633,9 +634,9 @@ proc_op_run(pid_t pid0,
 }
 
 int
-clixon_process_pid(clicon_handle h, 
-            const char *name, 
-            pid_t   *pid)
+clixon_process_pid(clicon_handle h,
+                   const char   *name, 
+                   pid_t        *pid)
 {
     int             retval = -1;
     process_entry_t *pe;
@@ -671,8 +672,9 @@ done:
  * @param[in]  name    Name of process
  * @param[in]  op0     start, stop, restart, status
  * @param[in]  wrapit  If set, call potential callback, if false, dont call it
- * @retval -1  Error
- * @retval  0  OK
+ * @retval     0       OK
+ * @retval    -1       Error
+
  * @see upgrade_callback_reg_fn  which registers the callbacks
  * @note operations are not made directly but postponed by a scheduling the actions.
  *       This is not really necessary for all operations (like start) but made for all
@@ -691,8 +693,8 @@ clixon_process_operation(clicon_handle  h,
     int              sched = 0; /* If set, process action should be scheduled, register a timeout */
     int              isrunning = 0;
     int              delay = 0;
-    
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s name:%s op:%s", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s name:%s op:%s", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));
     if (_proc_entry_list == NULL)
         goto ok;
     if ((pe = _proc_entry_list) != NULL)
@@ -705,7 +707,7 @@ clixon_process_operation(clicon_handle  h,
                         goto done;
                 if (op == PROC_OP_START || op == PROC_OP_STOP || op == PROC_OP_RESTART){
                     pe->pe_operation = op;
-                    clicon_debug(CLIXON_DBG_DEFAULT, "%s scheduling name: %s pid:%d op: %s", __FUNCTION__,
+                    clixon_debug(CLIXON_DBG_DEFAULT, "%s scheduling name: %s pid:%d op: %s", __FUNCTION__,
                                  name, pe->pe_pid,
                                  clicon_int2str(proc_operation_map, pe->pe_operation));
                     if (pe->pe_state==PROC_STATE_RUNNING &&
@@ -719,7 +721,7 @@ clixon_process_operation(clicon_handle  h,
                             kill(pe->pe_pid, SIGTERM);
                             delay = 1;
                         }
-                        clicon_debug(CLIXON_DBG_DEFAULT, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
+                        clixon_debug(CLIXON_DBG_DEFAULT, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
                                      pe->pe_name, pe->pe_pid,
                                      clicon_int2str(proc_state_map, pe->pe_state),
                                      clicon_int2str(proc_operation_map, pe->pe_operation),
@@ -730,7 +732,7 @@ clixon_process_operation(clicon_handle  h,
                     sched++;/* start: immediate stop/restart: not immediate: wait timeout */
                 }
                 else{
-                    clicon_debug(CLIXON_DBG_DEFAULT, "%s name:%s op %s cancelled by wrap", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));
+                    clixon_debug(CLIXON_DBG_DEFAULT, "%s name:%s op %s cancelled by wrap", __FUNCTION__, name, clicon_int2str(proc_operation_map, op0));
                 }
                 break;          /* hit break here */
             }
@@ -741,7 +743,7 @@ clixon_process_operation(clicon_handle  h,
  ok:
     retval = 0;
  done:
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -750,8 +752,9 @@ clixon_process_operation(clicon_handle  h,
  * @param[in]  h       clicon handle
  * @param[in]  name    Name of process
  * @param[out] cbret   XML status string
- * @retval -1  Error
- * @retval  0  OK
+ * @retval     0       OK
+ * @retval    -1       Error
+
  */
 int
 clixon_process_status(clicon_handle  h,
@@ -765,13 +768,13 @@ clixon_process_status(clicon_handle  h,
     char             timestr[28];
     int              match = 0;
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s name:%s", __FUNCTION__, name);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s name:%s", __FUNCTION__, name);
 
     if (_proc_entry_list != NULL){
         pe = _proc_entry_list;
         do {
             if (strcmp(pe->pe_name, name) == 0){
-                clicon_debug(CLIXON_DBG_DEFAULT, "%s found %s pid:%d", __FUNCTION__, name, pe->pe_pid);
+                clixon_debug(CLIXON_DBG_DEFAULT, "%s found %s pid:%d", __FUNCTION__, name, pe->pe_pid);
                 /* Check if running */
                 run = 0;
                 if (pe->pe_pid && proc_op_run(pe->pe_pid, &run) < 0)
@@ -781,7 +784,7 @@ clixon_process_status(clicon_handle  h,
                 if (pe->pe_description)
                     cprintf(cbret, "<description xmlns=\"%s\">%s</description>", CLIXON_LIB_NS, pe->pe_description);
                 cprintf(cbret, "<command xmlns=\"%s\">", CLIXON_LIB_NS);
-                /* The command may include any data, including XML (such as restconf -R 
+                /* The command may include any data, including XML (such as restconf -R
                  * command) and therefore needs explicit encoding */
                 for (i=0; i<pe->pe_argc-1; i++){
                     if (i)
@@ -815,12 +818,15 @@ clixon_process_status(clicon_handle  h,
     }
     retval = 0;
  done:
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
 /*! Go through process list and start all processes that are enabled via config wrap function
+ *
  * @param[in]  h   Clixon handle
+ * @retval     0   OK
+ * @retval    -1   Error
  * Commit rules should have done this, but there are some cases such as backend -s none mode
  * where commits are not made.
  */
@@ -832,7 +838,7 @@ clixon_process_start_all(clicon_handle h)
     proc_operation   op;
     int              sched = 0; /* If set, process action should be scheduled, register a timeout */
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (_proc_entry_list == NULL)
         goto ok;
     pe = _proc_entry_list;
@@ -843,7 +849,7 @@ clixon_process_start_all(clicon_handle h)
             if (pe->pe_callback(h, pe, &op) < 0)
                 goto done;
         if (op == PROC_OP_START){
-            clicon_debug(CLIXON_DBG_DEFAULT, "%s name:%s start", __FUNCTION__, pe->pe_name);
+            clixon_debug(CLIXON_DBG_DEFAULT, "%s name:%s start", __FUNCTION__, pe->pe_name);
             pe->pe_operation = op;
             sched++; /* Immediate dont delay for start */
         }
@@ -854,12 +860,15 @@ clixon_process_start_all(clicon_handle h)
  ok:
     retval = 0;
  done:
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
 /*! Traverse all processes and check pending start/stop/restarts
+ *
  * @param[in]  h   Clixon handle
+ * @retval     0   OK
+ * @retval    -1   Error
  * Typical cases where postponing process start/stop is necessary:
  * (1) at startup, if started before deamoninization, process will get as child of 1
  * (2) edit changes or rpc restart especially of restconf where you may saw of your arm and terminate
@@ -876,19 +885,19 @@ clixon_process_sched(int           fd,
     int              isrunning; /* Process is actually running */
     int              sched = 0;
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s",__FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s",__FUNCTION__);
     if (_proc_entry_list == NULL)
         goto ok;
     pe = _proc_entry_list;
     do {
-        clicon_debug(CLIXON_DBG_DEFAULT, "%s name: %s pid:%d %s --op:%s-->", __FUNCTION__,
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s name: %s pid:%d %s --op:%s-->", __FUNCTION__,
                      pe->pe_name, pe->pe_pid, clicon_int2str(proc_state_map, pe->pe_state), clicon_int2str(proc_operation_map, pe->pe_operation));
         /* Execute pending operations and not already exiting */
         if (pe->pe_operation != PROC_OP_NONE){
             switch (pe->pe_state){
             case PROC_STATE_EXITING:
                 switch (pe->pe_operation){
-                case PROC_OP_STOP: 
+                case PROC_OP_STOP:
                 case PROC_OP_RESTART: /* Kill again */
                     isrunning = 0;
                     if (proc_op_run(pe->pe_pid, &isrunning) < 0)
@@ -916,7 +925,7 @@ clixon_process_sched(int           fd,
                                                    pe->pe_uid, pe->pe_gid, pe->pe_fdkeep,
                                                    &pe->pe_pid) < 0)
                             goto done;
-                    clicon_debug(CLIXON_DBG_DEFAULT,
+                    clixon_debug(CLIXON_DBG_DEFAULT,
                                  "%s %s(%d) %s --%s--> %s", __FUNCTION__,
                                  pe->pe_name, pe->pe_pid,
                                  clicon_int2str(proc_state_map, pe->pe_state),
@@ -944,7 +953,7 @@ clixon_process_sched(int           fd,
                                                pe->pe_uid, pe->pe_gid, pe->pe_fdkeep,
                                                &pe->pe_pid) < 0)
                         goto done;
-                    clicon_debug(CLIXON_DBG_DEFAULT,
+                    clixon_debug(CLIXON_DBG_DEFAULT,
                                  "%s %s(%d) %s --%s--> %s", __FUNCTION__,
                                  pe->pe_name, pe->pe_pid,
                                  clicon_int2str(proc_state_map, pe->pe_state),
@@ -968,7 +977,7 @@ clixon_process_sched(int           fd,
  ok:
     retval = 0;
  done:
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -979,6 +988,8 @@ clixon_process_sched(int           fd,
  * 2) A process is started, dont delay
  * @param[in]  h     Clixon handle
  * @param[in]  delay If 0 dont add a delay, if 1 add a delay
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 static int
 clixon_process_sched_register(clicon_handle h,
@@ -988,7 +999,7 @@ clixon_process_sched_register(clicon_handle h,
     struct timeval t;
     struct timeval t1 = {0, 100000}; /* 100ms */
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     gettimeofday(&t, NULL);
     if (delay)
         timeradd(&t, &t1, &t);
@@ -996,14 +1007,18 @@ clixon_process_sched_register(clicon_handle h,
         goto done;
     retval = 0;
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
 /*! Go through processes and wait for child processes
+ *
  * Typically we know a child has been killed by SIGCHLD, but we do not know which process it is
  * Traverse all known processes and reap them, eg call waitpid() to avoid zombies.
  * @param[in]  h  Clixon handle
+ * @retval     0  OK
+ * @retval    -1  Error
+
  */
 int
 clixon_process_waitpid(clicon_handle h)
@@ -1013,12 +1028,12 @@ clixon_process_waitpid(clicon_handle h)
     int              status = 0;
     pid_t            wpid;
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (_proc_entry_list == NULL)
         goto ok;
     if ((pe = _proc_entry_list) != NULL)
         do {
-            clicon_debug(CLIXON_DBG_DEFAULT, "%s %s(%d) %s op:%s", __FUNCTION__,
+            clixon_debug(CLIXON_DBG_DEFAULT, "%s %s(%d) %s op:%s", __FUNCTION__,
                          pe->pe_name, pe->pe_pid,
                          clicon_int2str(proc_state_map, pe->pe_state),
                          clicon_int2str(proc_operation_map, pe->pe_operation));
@@ -1026,15 +1041,15 @@ clixon_process_waitpid(clicon_handle h)
                 && (pe->pe_state == PROC_STATE_RUNNING || pe->pe_state == PROC_STATE_EXITING)
                 //      && (pe->pe_operation == PROC_OP_STOP || pe->pe_operation == PROC_OP_RESTART)
                 ){
-                clicon_debug(CLIXON_DBG_DEFAULT, "%s %s waitpid(%d)", __FUNCTION__,
+                clixon_debug(CLIXON_DBG_DEFAULT, "%s %s waitpid(%d)", __FUNCTION__,
                              pe->pe_name, pe->pe_pid);
                 if ((wpid = waitpid(pe->pe_pid, &status, WNOHANG)) == pe->pe_pid){
-                    clicon_debug(CLIXON_DBG_DEFAULT, "%s waitpid(%d) waited", __FUNCTION__, pe->pe_pid);
+                    clixon_debug(CLIXON_DBG_DEFAULT, "%s waitpid(%d) waited", __FUNCTION__, pe->pe_pid);
                     pe->pe_exit_status = status;
                     switch (pe->pe_operation){
                     case PROC_OP_NONE: /* Spontaneous / External termination */
                     case PROC_OP_STOP:
-                        clicon_debug(CLIXON_DBG_DEFAULT,
+                        clixon_debug(CLIXON_DBG_DEFAULT,
                                      "%s %s(%d) %s --%s--> %s", __FUNCTION__,
                                      pe->pe_name, pe->pe_pid,
                                      clicon_int2str(proc_state_map, pe->pe_state),
@@ -1053,7 +1068,7 @@ clixon_process_waitpid(clicon_handle h)
                                                    &pe->pe_pid) < 0)
                             goto done;
                         gettimeofday(&pe->pe_starttime, NULL);
-                        clicon_debug(CLIXON_DBG_DEFAULT, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
+                        clixon_debug(CLIXON_DBG_DEFAULT, "%s %s(%d) %s --%s--> %s", __FUNCTION__,
                                      pe->pe_name, pe->pe_pid,
                                      clicon_int2str(proc_state_map, pe->pe_state),
                                      clicon_int2str(proc_operation_map, pe->pe_operation),
@@ -1069,7 +1084,7 @@ clixon_process_waitpid(clicon_handle h)
                     break; /* pid is unique */
                 }
                 else
-                    clicon_debug(CLIXON_DBG_DEFAULT, "%s waitpid(%d) nomatch:%d", __FUNCTION__,
+                    clixon_debug(CLIXON_DBG_DEFAULT, "%s waitpid(%d) nomatch:%d", __FUNCTION__,
                                  pe->pe_pid, wpid);
             }
             pe = NEXTQ(process_entry_t *, pe);
@@ -1077,6 +1092,6 @@ clixon_process_waitpid(clicon_handle h)
  ok:
     retval = 0;
  done:
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }

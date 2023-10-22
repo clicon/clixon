@@ -46,6 +46,7 @@
 
 /* Limitations/deviations from RFC 8528 */
 /*! Only support YANG presende containers as mount-points
+ *
  * This is a limitation of othe current implementation
  */
 #define YANG_SCHEMA_MOUNT_ONLY_PRESENCE_CONTAINERS

@@ -91,7 +91,7 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_options.h"
-#include "clixon_yang.h" 
+#include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_vec.h"
@@ -131,7 +131,7 @@ api_path_parse(char         *api_path,
     int                  retval = -1;
     clixon_api_path_yacc ay = {0,};
 
-    clicon_debug(1, "%s api_path:%s", __FUNCTION__, api_path);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s api_path:%s", __FUNCTION__, api_path);
     ay.ay_parse_string = api_path;
     ay.ay_name = "api-path parser";
     ay.ay_linenum = 1;
@@ -176,7 +176,7 @@ instance_id_parse(char         *path,
     int                     retval = -1;
     clixon_instance_id_yacc iy = {0,};
 
-    clicon_debug(1, "%s path:%s", __FUNCTION__, path);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s path:%s", __FUNCTION__, path);
     iy.iy_parse_string = path;
     iy.iy_name = "instance-id parser";
     iy.iy_linenum = 1;
@@ -202,7 +202,7 @@ int
 clixon_path_free(clixon_path *cplist)
 {
     clixon_path *cp;
-    
+
     while ((cp = cplist) != NULL){
         DELQ(cp, cplist, clixon_path *);
         if (cp->cp_prefix)
@@ -224,7 +224,7 @@ clixon_path_print(FILE        *f,
 {
     clixon_path *cp;
     cg_var      *cv;
-    
+
     if ((cp = cplist) != NULL){
         do {
             fprintf(f, "/");
@@ -244,7 +244,7 @@ clixon_path_print(FILE        *f,
                     fprintf(f, "]");
                 }
             }
-            cp = NEXTQ(clixon_path *, cp); 
+            cp = NEXTQ(clixon_path *, cp);
         } while (cp && cp != cplist);
     }
     fprintf(f, "\n");
@@ -252,21 +252,22 @@ clixon_path_print(FILE        *f,
 }
 
 /*! Given an XML node, return root node
+ *
  * A root node is an ancestor xr of x with one or both of the following properties
  * - its XML parent is NULL parent, 
  * - its associated yang specification's parent is a yang module.
  * @param[in]   x    XML node
  * @param[out]  xr   XML root
+ * @retval      0    OK
  */
 int
 xml_yang_root(cxobj  *x,
               cxobj **xr)
 {
-    int        retval = -1;
     cxobj     *xp;
     yang_stmt *y;
     yang_stmt *yp;
-    
+
     while ((xp = xml_parent(x)) != NULL){
         if ((y = xml_spec(x)) != NULL &&
             (yp = yang_parent_get(y)) != NULL)
@@ -278,11 +279,11 @@ xml_yang_root(cxobj  *x,
         x = xp;
     }
     *xr = x;
-    retval = 0;
-    return retval;
+    return 0;
 }
 
 /*! Construct an api-path key format from yang statement using wildcards for keys
+ *
  * Recursively construct it to the top.
  * Example: 
  *   yang:  container a -> list b -> key c -> leaf d
@@ -293,9 +294,9 @@ xml_yang_root(cxobj  *x,
  * @retval     0       OK
  * @retval    -1       Error
  * @see RFC8040 3.5.3 where "api-path" is defined as "URI-encoded path expression"
- */ 
+ */
 static int
-yang2api_path_fmt_1(yang_stmt *ys, 
+yang2api_path_fmt_1(yang_stmt *ys,
                     int        inclkey,
                     cbuf      *cb)
 {
@@ -306,7 +307,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
     cvec      *cvk = NULL; /* vector of index keys */
     int        retval = -1;
     enum rfc_6020 ypkeyw = -1;
-    
+
     if ((yp = yang_parent_get(ys)) == NULL){
         clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
         goto done;
@@ -331,9 +332,9 @@ yang2api_path_fmt_1(yang_stmt *ys,
              * But in other cases (I think most), the / should be there,
              * so a patch is added in cli_show_auto instead.
              */
-                if (yang_keyword_get(ys) == Y_LEAF && yp && 
-                    ypkeyw == Y_LIST &&
-                    yang_key_match(yp, ys->ys_argument, NULL) == 1)
+            if (yang_keyword_get(ys) == Y_LEAF && yp &&
+                ypkeyw == Y_LIST &&
+                yang_key_match(yp, ys->ys_argument, NULL) == 1)
                 ;
             else
 #endif
@@ -353,12 +354,12 @@ yang2api_path_fmt_1(yang_stmt *ys,
             cprintf(cb, "%s", yang_argument_get(ys));
     }
     else{
-        if (yang_keyword_get(ys) == Y_LEAF && yp && 
+        if (yang_keyword_get(ys) == Y_LEAF && yp &&
             ypkeyw == Y_LIST){
             if (yang_key_match(yp, yang_argument_get(ys), NULL) == 0)
                 cprintf(cb, "%s", yang_argument_get(ys)); /* Not if leaf and key */
         }
-        else  
+        else
             if (yang_keyword_get(ys) != Y_CHOICE && yang_keyword_get(ys) != Y_CASE)
                 cprintf(cb, "%s", yang_argument_get(ys));
     }
@@ -398,9 +399,9 @@ yang2api_path_fmt_1(yang_stmt *ys,
  * @retval     0            OK
  * @retval    -1            Error
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
- */ 
+ */
 int
-yang2api_path_fmt(yang_stmt   *ys, 
+yang2api_path_fmt(yang_stmt   *ys,
                   int          inclkey,
                   char       **api_path_fmt)
 {
@@ -425,6 +426,7 @@ yang2api_path_fmt(yang_stmt   *ys,
 }
 
 /*! Transform an xml key format and a vector of values to an XML key
+ *
  * Used for actual key, eg in clicon_rpc_change(), xmldb_put_xkey()
  * Example: 
  *   xmlkeyfmt:  /interfaces/interface=%s/ipv4/address=%s
@@ -438,7 +440,7 @@ yang2api_path_fmt(yang_stmt   *ys,
  * @param[out] cvv_i          1..cvv-len. Index into cvv of last cvv entry used, For example, 
  *                           if same as len of cvv, all were used, if < some entries were not
  * @retval     0             OK
- * @retval     -1            Error
+ * @retval    -1             Error
  * @note first and last elements of cvv are not used,..
  * @see api_path_fmt2xpath
  * @example
@@ -457,8 +459,8 @@ yang2api_path_fmt(yang_stmt   *ys,
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  */
 int
-api_path_fmt2api_path(const char *api_path_fmt, 
-                      cvec       *cvv, 
+api_path_fmt2api_path(const char *api_path_fmt,
+                      cvec       *cvv,
                       char      **api_path,
                       int        *cvv_i)
 {
@@ -472,7 +474,7 @@ api_path_fmt2api_path(const char *api_path_fmt,
     char   *strenc=NULL;
     cg_var *cv;
     size_t  len;
-    
+
     if ((cb = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -498,7 +500,7 @@ api_path_fmt2api_path(const char *api_path_fmt,
                 }
                 if (uri_percent_encode(&strenc, "%s", str) < 0)
                     goto done;
-                cprintf(cb, "%s", strenc); 
+                cprintf(cb, "%s", strenc);
                 free(strenc); strenc = NULL;
                 free(str); str = NULL;
             }
@@ -518,7 +520,7 @@ api_path_fmt2api_path(const char *api_path_fmt,
         goto done;
     }
     if (cvv_i) /* Last entry in cvv used */
-        *cvv_i = j; 
+        *cvv_i = j;
     retval = 0;
  done:
     if (cb)
@@ -527,10 +529,13 @@ api_path_fmt2api_path(const char *api_path_fmt,
 }
 
 /*! Transform an xml key format and a vector of values to an XML path
+ *
  * Used to input xmldb_get()
  * @param[in]  api_path_fmt  XML key format
- * @param[in]  cvv    cligen variable vector, one for every wildchar in api_path_fmt
- * @param[out] xpath     XPATH
+ * @param[in]  cvv     cligen variable vector, one for every wildchar in api_path_fmt
+ * @param[out] xpath   XPath
+ * @retval     0       OK
+ * @retval    -1       Error
  * Add .* in last %s position.
  * @example
  *   api_path_fmt:  /interface/%s/address/%s 
@@ -548,10 +553,10 @@ api_path_fmt2api_path(const char *api_path_fmt,
  *   api_path_fmt: /a:b/c
  *   xpath       : /b/c prefix:a
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
- */ 
+ */
 int
-api_path_fmt2xpath(char  *api_path_fmt, 
-                   cvec  *cvv, 
+api_path_fmt2xpath(char  *api_path_fmt,
+                   cvec  *cvv,
                    char **xpath)
 {
     int     retval = -1;
@@ -675,7 +680,7 @@ api_path2xpath_cvv(cvec       *api_path,
     char      *decval;
     int        ret;
     int        root;
-                        
+
     cprintf(xpath, "/");
     /* Initialize namespace context */
     if ((nsc = xml_nsctx_init(NULL, NULL)) == NULL)
@@ -691,7 +696,7 @@ api_path2xpath_cvv(cvec       *api_path,
         /* api-path: prefix points to module */
         if (nodeid_split(nodeid, &prefix, &name) < 0)
             goto done;
-        clicon_debug(CLIXON_DBG_DETAIL, "%s [%d] cvname: %s:%s",
+        clixon_debug(CLIXON_DBG_DETAIL, "%s [%d] cvname: %s:%s",
                      __FUNCTION__, i, prefix?prefix:"", name);
         /* top-node must have prefix */
         if (i == offset && prefix == NULL){
@@ -725,8 +730,8 @@ api_path2xpath_cvv(cvec       *api_path,
          */
         if (xml_nsctx_get_prefix(nsc, namespace, &xprefix) == 0){
             xprefix = yang_find_myprefix(y);
-            clicon_debug(CLIXON_DBG_DETAIL, "%s prefix not found add it %s", __FUNCTION__, xprefix);
-            /* not found, add it to nsc 
+            clixon_debug(CLIXON_DBG_DETAIL, "%s prefix not found add it %s", __FUNCTION__, xprefix);
+            /* not found, add it to nsc
              * XXX: do we always have to add it? It could be default?
              */
             //      if (xml2prefix(x1, namespace, &pexisting));
@@ -809,7 +814,7 @@ api_path2xpath_cvv(cvec       *api_path,
         if (ret == 1){
             yang_stmt *y1 = NULL;
             if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-                goto done;                
+                goto done;
             if (yang_mount_get(y, cbuf_get(xpath), &y1) < 0)
                 goto done;
             if (y1 == NULL || yang_keyword_get(y1) != Y_SPEC){
@@ -834,7 +839,7 @@ api_path2xpath_cvv(cvec       *api_path,
         nsc = NULL;
     }
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
         cbuf_free(cberr);
     if (valvec)
@@ -852,6 +857,7 @@ api_path2xpath_cvv(cvec       *api_path,
 }
 
 /*! Translate from restconf api-path to xml xpath and namespace
+ *
  * @param[in]  api_path  URI-encoded path expression" (RFC8040 3.5.3)
  * @param[in]  yspec     Yang spec
  * @param[out] xpath     xpath (use free() to deallocate)
@@ -1049,7 +1055,7 @@ api_path2xml_vec(char      **vec,
             goto done;
         xml_spec_set(x, y);
         if ((xb = xml_new("body", x, CX_BODY)) == NULL)
-            goto done; 
+            goto done;
         if (restval){
             if (uri_percent_decode(restval, &val) < 0)
                 goto done;
@@ -1075,7 +1081,7 @@ api_path2xml_vec(char      **vec,
              */
             if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
                 goto done;
-            if ((nvalvec != cvec_len(cvk)) && strict){      
+            if ((nvalvec != cvec_len(cvk)) && strict){
                 cprintf(cberr, "List key %s length mismatch", name);
                 if (xerr &&
                     netconf_malformed_message_xml(xerr, cbuf_get(cberr)) < 0)
@@ -1104,7 +1110,7 @@ api_path2xml_vec(char      **vec,
             }
             if (x != NULL){
                 if ((xn = xml_new(keyname, x, CX_ELMNT)) == NULL)
-                    goto done; 
+                    goto done;
                 xml_spec_set(xn, ykey);
                 if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
                     goto done;
@@ -1151,7 +1157,7 @@ api_path2xml_vec(char      **vec,
     if (ret == 1){
         yang_stmt *y1 = NULL;
         if (xml_nsctx_yangspec(ys_spec(y), &nsc) < 0)
-            goto done;        
+            goto done;
         if (xml2xpath(x, nsc, 0, 1, &xpath) < 0) // XXX should be canonical
             goto done;
         if (xpath == NULL){
@@ -1166,15 +1172,15 @@ api_path2xml_vec(char      **vec,
         }
         y = y1;
     }
-    if ((retval = api_path2xml_vec(vec+1, nvec-1, 
-                                   x, y, 
-                                   nodeclass, strict, 
+    if ((retval = api_path2xml_vec(vec+1, nvec-1,
+                                   x, y,
+                                   nodeclass, strict,
                                    xbotp, ybotp, xerr)) < 1)
         goto done;
  ok:
     retval = 1; /* OK */
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xpath)
         free(xpath);
     if (nsc)
@@ -1243,7 +1249,7 @@ api_path2xml(char       *api_path,
     cxobj *xroot;
     cbuf  *cberr = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s api_path:%s", __FUNCTION__, api_path);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s api_path:%s", __FUNCTION__, api_path);
     if ((cberr = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -1267,7 +1273,7 @@ api_path2xml(char       *api_path,
     }
     nvec--; /* NULL-terminated */
     if ((retval = api_path2xml_vec(vec+1, nvec,
-                                   xtop, yspec, nodeclass, strict, 
+                                   xtop, yspec, nodeclass, strict,
                                    xbotp, ybotp, xerr)) < 1)
         goto done;
     /* Fix namespace */
@@ -1289,6 +1295,7 @@ api_path2xml(char       *api_path,
 }
 
 /*! Construct an api_path from an XML node (single level not recursive)
+ *
  * @param[in]  x     XML node (need to be yang populated)
  * @param[out] cb    api_path, must be initialized
  * @retval     0     OK
@@ -1313,7 +1320,7 @@ xml2api_path_1(cxobj *x,
     char         *enc;
     yang_stmt    *ymod;
     cxobj        *xp;
-    
+
     if ((y = xml_spec(x)) == NULL){
         cprintf(cb, "/%s", xml_name(x));
         goto ok;
@@ -1377,11 +1384,12 @@ xml2api_path_1(cxobj *x,
 }
 
 /*! Resolve api-path module:names to yang statements
+ *
  * @param[in]  cplist   Lisp of clixon-path
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
- * @retval    -1        Error
- * @retval     0        Fail
  * @retval     1        OK
+ * @retval     0        Fail
+ * @retval    -1        Error
  * Reasons for fail (retval = 0) are: XXX
  * - Modulename in api-path does not correspond to existing module
  * - Modulename not defined for top-level id. 
@@ -1401,7 +1409,7 @@ api_path_resolve(clixon_path *cplist,
     cg_var      *cva;
     cg_var      *cvy;
     cvec        *cvk;
-    
+
     if ((cp = cplist) != NULL){
         do {
             if (yang_keyword_get(yt) == Y_SPEC){
@@ -1464,11 +1472,12 @@ api_path_resolve(clixon_path *cplist,
 }
 
 /*! Resolve instance-id prefix:names to yang statements
+ *
  * @param[in]  cplist   Lisp of clixon-path
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
- * @retval    -1        Error
- * @retval     0        Fail error in xerr
  * @retval     1        OK
+ * @retval     0        Fail error in xerr
+ * @retval    -1        Error
  * @note: The spec says: prefixes depend on the XML context in which the value occurs. 
  *  However, canonical prefixes/namespaces are used based on loaded yang modules.
  *  This means that prefix=NULL is not allowed.
@@ -1492,7 +1501,7 @@ instance_id_resolve(clixon_path *cplist,
     cg_var      *cva;
     yang_stmt   *yspec;
     char        *kname;
-    
+
     yspec = ys_spec(yt);
     if ((cp = cplist) != NULL){
         do {
@@ -1517,7 +1526,7 @@ instance_id_resolve(clixon_path *cplist,
                 if (cp->cp_cvk == NULL){
 #if 0 /* see key-value presence in lists note above */
                     clicon_err(OE_YANG, ENOENT, "key-values mandatory for lists");
-                    goto fail;              
+                    goto fail;
 #endif
                     break;
                 }
@@ -1537,7 +1546,6 @@ instance_id_resolve(clixon_path *cplist,
                         }
                     }
                     else{ /* Assume index */
-                        
                     }
                 }
                 break;
@@ -1568,9 +1576,9 @@ instance_id_resolve(clixon_path *cplist,
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
  * @param[in]  cplist   Lisp of clixon-path
  * @param[out] xvec     Vector of xml-trees. Vector must be free():d after use
- * @retval    -1        Error
- * @retval     0        Fail  fail: eg no yang 
  * @retval     1        OK with found xml nodes in xvec (if any)
+ * @retval     0        Fail  fail: eg no yang 
+ * @retval    -1        Error
  */
 static int
 clixon_path_search(cxobj        *xt,
@@ -1584,12 +1592,12 @@ clixon_path_search(cxobj        *xt,
     clixon_xvec *xvecp = NULL;
     clixon_xvec *xvecc = NULL;
     yang_stmt   *yc;
-    cxobj       *xp;    
+    cxobj       *xp;
     int          i;
     cg_var      *cv;
 
     if ((xvecp = clixon_xvec_new()) == NULL)
-        goto done;    
+        goto done;
     modns = NULL;
     if ((cp = cplist) != NULL){
         if (clixon_xvec_append(xvecp, xt) < 0)
@@ -1645,9 +1653,9 @@ clixon_path_search(cxobj        *xt,
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
  * @param[out] xvec     Vector of xml-trees. Vector must be free():d after use
  * @param[in]  format   Format string for api-path syntax
- * @retval    -1        Error
- * @retval     0        Non-fatal failure, yang bind failures, etc, 
  * @retval     1        OK with found xml nodes in xvec (if any) (xvec contains matches)
+ * @retval     0        Non-fatal failure, yang bind failures, etc, 
+ * @retval    -1        Error
  * Reasons for nomatch (retval = 0) are:
  * - Modulename in api-path does not correspond to existing module
  * - Modulename not defined for top-level id. 
@@ -1666,7 +1674,7 @@ clixon_path_search(cxobj        *xt,
  * @see clixon_xml_find_instance_id
  */
 int
-clixon_xml_find_api_path(cxobj        *xt, 
+clixon_xml_find_api_path(cxobj        *xt,
                          yang_stmt    *yt,
                          cxobj      ***xvec,
                          int          *xlen,
@@ -1680,7 +1688,7 @@ clixon_xml_find_api_path(cxobj        *xt,
     clixon_path     *cplist = NULL;
     int              ret;
     clixon_xvec     *xv = NULL;
-    
+
     va_start(ap, format);
     len = vsnprintf(NULL, 0, format, ap);
     va_end(ap);
@@ -1700,7 +1708,7 @@ clixon_xml_find_api_path(cxobj        *xt,
     /* Parse api-path string to structured clixon-path data */
     if (api_path_parse(api_path, &cplist) < 0)
         goto done;
-    if (clicon_debug_get())
+    if (clixon_debug_get())
         clixon_path_print(stderr, cplist);
     /* Resolve module:name to yang-stmt, fail if not successful */
     if ((ret = api_path_resolve(cplist, yt)) < 0)
@@ -1737,9 +1745,9 @@ clixon_xml_find_api_path(cxobj        *xt,
  * @param[out] xvec     Vector of xml-trees. Vector must be free():d after use
  * @param[out] xlen     Returns length of vector in return value
  * @param[in]  format   Format string for api-path syntax
- * @retval    -1        Error
- * @retval     0        Non-fatal failure, yang bind failures, etc, 
  * @retval     1        OK with found xml nodes in xvec (if any)
+ * @retval     0        Non-fatal failure, yang bind failures, etc, 
+ * @retval    -1        Error
  * Reasons for nomatch (retval = 0) are:
  * - Modulename in api-path does not correspond to existing module
  * - Modulename not defined for top-level id. 
@@ -1760,7 +1768,7 @@ clixon_xml_find_api_path(cxobj        *xt,
  * @see RFC7950 Sec 9.13 
  */
 int
-clixon_xml_find_instance_id(cxobj     *xt, 
+clixon_xml_find_instance_id(cxobj     *xt,
                             yang_stmt *yt,
                             cxobj   ***xvec,
                             int       *xlen,
@@ -1774,7 +1782,7 @@ clixon_xml_find_instance_id(cxobj     *xt,
     clixon_path *cplist = NULL;
     int          ret;
     clixon_xvec *xv = NULL;
-    
+
     va_start(ap, format);
     len = vsnprintf(NULL, 0, format, ap);
     va_end(ap);
@@ -1793,7 +1801,7 @@ clixon_xml_find_instance_id(cxobj     *xt,
     va_end(ap);
     if (instance_id_parse(path, &cplist) < 0)
         goto done;
-    if (clicon_debug_get())
+    if (clixon_debug_get())
         clixon_path_print(stderr, cplist);
     /* Resolve module:name to pointer to yang-stmt, fail if not successful */
     if ((ret = instance_id_resolve(cplist, yt)) < 0)
@@ -1828,9 +1836,9 @@ clixon_xml_find_instance_id(cxobj     *xt,
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
  * @param[out] nsctx    Namespace context (should be created on entry)
  * @param[in]  format   Format string for xpath syntax
- * @retval    -1        Error
- * @retval     0        Non-fatal failure, yang bind failures, etc, 
  * @retval     1        OK with found xml nodes in xvec (if any)
+ * @retval     0        Non-fatal failure, yang bind failures, etc, 
+ * @retval    -1        Error
  * Reasons for nomatch (retval = 0) are:
  * - Modulename in api-path does not correspond to existing module
  * - Modulename not defined for top-level id. 
@@ -1862,7 +1870,7 @@ clixon_instance_id_bind(yang_stmt  *yt,
     clixon_path *cp;
     int          ret;
     char        *namespace;
-    
+
     va_start(ap, format);
     len = vsnprintf(NULL, 0, format, ap);
     va_end(ap);
@@ -1881,7 +1889,7 @@ clixon_instance_id_bind(yang_stmt  *yt,
     va_end(ap);
     if (instance_id_parse(path, &cplist) < 0)
         goto done;
-    if (clicon_debug_get())
+    if (clixon_debug_get())
         clixon_path_print(stderr, cplist);
     /* Resolve module:name to pointer to yang-stmt, fail if not successful */
     if ((ret = instance_id_resolve(cplist, yt)) < 0)
@@ -1921,9 +1929,9 @@ clixon_instance_id_bind(yang_stmt  *yt,
  * @param[out] cplistp  Path parse-tree
  * @param[out] xerr     Contains error if retval=0
  * @param[in]  format   Format string for xpath syntax
- * @retval    -1        Error
- * @retval     0        Non-fatal failure, yang bind failures, etc, 
  * @retval     1        OK with found xml nodes in xvec (if any)
+ * @retval     0        Non-fatal failure, yang bind failures, etc, 
+ * @retval    -1        Error
  */
 int
 clixon_instance_id_parse(yang_stmt    *yt,
@@ -1938,7 +1946,7 @@ clixon_instance_id_parse(yang_stmt    *yt,
     char        *path = NULL;
     clixon_path *cplist = NULL;
     int          ret;
-    
+
     va_start(ap, format);
     len = vsnprintf(NULL, 0, format, ap);
     va_end(ap);
@@ -1957,7 +1965,7 @@ clixon_instance_id_parse(yang_stmt    *yt,
     va_end(ap);
     if (instance_id_parse(path, &cplist) < 0)
         goto done;
-    if (clicon_debug_get())
+    if (clixon_debug_get())
         clixon_path_print(stderr, cplist);
     /* Resolve module:name to pointer to yang-stmt, fail if not successful */
     if ((ret = instance_id_resolve(cplist, yt)) < 0)

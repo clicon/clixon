@@ -109,6 +109,8 @@ tleaf(cxobj *x)
  * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @param[in,out] leafl    Leaflist state for keeping track of when [] ends
  * @param[in,out] leaflname Leaflist state for [] 
+ * @retval        0        OK
+ * @retval       -1        Error
  * leaflist state:
  * 0: No leaflist
  * 1: In leaflist
@@ -117,16 +119,16 @@ tleaf(cxobj *x)
 static int
 text2file(cxobj            *xn,
           clicon_output_cb *fn,
-          FILE             *f, 
+          FILE             *f,
           int               level,
           int               autocliext,
           int              *leafl,
           char            **leaflname)
 
 {
+    int        retval = -1;
     cxobj     *xc = NULL;
     int        children=0;
-    int        retval = -1;
     int        exist = 0;
     yang_stmt *yn;
     char      *value;
@@ -171,7 +173,7 @@ text2file(cxobj            *xn,
             }
         }
     }
-    if (*leafl && yn){  
+    if (*leafl && yn){
         if (yang_keyword_get(yn) == Y_LEAF_LIST && strcmp(*leaflname, yang_argument_get(yn)) == 0)
             ;
         else{
@@ -300,6 +302,8 @@ get_prefix(yang_stmt *yn)
  * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @param[in,out] leafl    Leaflist state for keeping track of when [] ends
  * @param[in,out] leaflname Leaflist state for [] 
+ * @retval        0        OK
+ * @retval       -1        Error
  * leaflist state:
  * 0: No leaflist
  * 1: In leaflist
@@ -313,11 +317,10 @@ text2cbuf(cbuf  *cb,
           int    autocliext,
           int   *leafl,
           char **leaflname)
-
 {
+    int        retval = -1;
     cxobj     *xc = NULL;
     int        children=0;
-    int        retval = -1;
     int        exist = 0;
     yang_stmt *yn;
     char      *value;
@@ -351,7 +354,7 @@ text2cbuf(cbuf  *cb,
             }
         }
     }
-    if (*leafl && yn){  
+    if (*leafl && yn){
         if (yang_keyword_get(yn) == Y_LEAF_LIST && strcmp(*leaflname, yang_argument_get(yn)) == 0)
             ;
         else{
@@ -470,7 +473,7 @@ text2cbuf(cbuf  *cb,
  */
 int
 clixon_text2file(FILE             *f,
-                 cxobj            *xn, 
+                 cxobj            *xn,
                  int               level,
                  clicon_output_cb *fn,
                  int               skiptop,
@@ -505,10 +508,12 @@ clixon_text2file(FILE             *f,
  * @param[in]  level    Print PRETTYPRINT_INDENT spaces per level in front of each line
  * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
  * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
 clixon_text2cbuf(cbuf             *cb,
-                 cxobj            *xn, 
+                 cxobj            *xn,
                  int               level,
                  int               skiptop,
                  int               autocliext)
@@ -549,7 +554,7 @@ text_diff_keys(cbuf      *cb,
         cvk = yang_cvec_get(y);
         cvi = NULL;
         while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-            keyname = cv_string_get(cvi);                                
+            keyname = cv_string_get(cvi);
             keyval = xml_find_body(x, keyname);
             cprintf(cb, " %s", keyval);
         }
@@ -565,7 +570,7 @@ text_diff_keys(cbuf      *cb,
  * @param[in]  x1      Second XML tree
  * @param[in]  level   How many spaces to insert before each line
  * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
- * @retval     0       Ok
+ * @retval     0       OK
  * @retval    -1       Error
  * @cod
  *    cbuf *cb = cbuf_new();
@@ -613,7 +618,7 @@ text_diff2cbuf(cbuf  *cb,
 #endif
     }
     /* Traverse x0 and x1 in lock-step */
-    x0c = x1c = NULL;    
+    x0c = x1c = NULL;
     x0c = xml_child_each(x0, x0c, CX_ELMNT);
     x1c = xml_child_each(x1, x1c, CX_ELMNT);
     for (;;){
@@ -765,7 +770,9 @@ clixon_text_diff2cbuf(cbuf  *cb,
  * (2) The reason against is of principal of making the parser design simpler in a bottom-up mode
  * The compromise between (1) and (2) is to first parse without YANG (2)  and then call a special
  * function after YANG binding to populate key tags properly.
- * @param[in]  x   XML node
+ * @param[in]  xn   XML node
+ * @retval     0    OK
+ * @retval    -1    Error
  * @see text_mark_bodies where marking of bodies made transformed here
  */
 static int
@@ -809,7 +816,7 @@ text_populate_list(cxobj *xn)
             goto done;
     }
     xc = NULL;
-    while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL) {    
+    while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL) {
         if (text_populate_list(xc) < 0)
             goto done;
     }
@@ -833,8 +840,8 @@ text_populate_list(cxobj *xn)
  * @see _xml_parse for XML variant
  * @note Parsing requires YANG, which means yb must be YB_MODULE/_NEXT
  */
-static int 
-_text_syntax_parse(char      *str, 
+static int
+_text_syntax_parse(char      *str,
                    yang_bind  yb,
                    yang_stmt *yspec,
                    cxobj     *xt,
@@ -847,8 +854,8 @@ _text_syntax_parse(char      *str,
     cbuf                   *cberr = NULL;
     int                     failed = 0; /* yang assignment */
     cxobj                  *xc;
-    
-    clicon_debug(1, "%s %d %s", __FUNCTION__, yb, str);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d %s", __FUNCTION__, yb, str);
     if (yb != YB_MODULE && yb != YB_MODULE_NEXT){
         clicon_err(OE_YANG, EINVAL, "yb must be YB_MODULE or YB_MODULE_NEXT");
         return -1;
@@ -868,7 +875,7 @@ _text_syntax_parse(char      *str,
 
     x = NULL;
     while ((x = xml_child_each(ts.ts_xtop, x, CX_ELMNT)) != NULL) {
-        /* Populate, ie associate xml nodes with yang specs 
+        /* Populate, ie associate xml nodes with yang specs
          */
         switch (yb){
         case YB_MODULE_NEXT:
@@ -887,11 +894,11 @@ _text_syntax_parse(char      *str,
                 failed++;
             break;
         default: /* shouldnt happen */
-            break; 
+            break;
         } /* switch */
-        /*! Look for YANG lists nodes and convert bodies to keys */
+        /* Look for YANG lists nodes and convert bodies to keys */
         xc = NULL;
-        while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) 
+        while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL)
             if (text_populate_list(xc) < 0)
                 goto done;
     }
@@ -905,11 +912,11 @@ _text_syntax_parse(char      *str,
             goto done;
     retval = 1;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
         cbuf_free(cberr);
     clixon_text_syntax_parsel_exit(&ts);
-    return retval; 
+    return retval;
  fail: /* invalid */
     retval = 0;
     goto done;
@@ -925,7 +932,6 @@ _text_syntax_parse(char      *str,
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
  * @retval       -1     Error with clicon_err called
- *
  * @code
  *  cxobj *x = NULL;
  *  if (clixon_text_syntax_parse_string(str, YB_MODULE, yspec, &x, &xerr) < 0)
@@ -935,14 +941,14 @@ _text_syntax_parse(char      *str,
  * @note  you need to free the xml parse tree after use, using xml_free()
  * @see clixon_text_syntax_parse_file   From a file
  */
-int 
-clixon_text_syntax_parse_string(char      *str, 
+int
+clixon_text_syntax_parse_string(char      *str,
                                 yang_bind  yb,
                                 yang_stmt *yspec,
                                 cxobj    **xt,
                                 cxobj    **xerr)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (xt==NULL){
         clicon_err(OE_XML, EINVAL, "xt is NULL");
         return -1;
@@ -966,6 +972,9 @@ clixon_text_syntax_parse_string(char      *str,
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to (XML) parse tree. If empty, create.
  * @param[out]    xerr  Reason for invalid returned as netconf err msg 
+ * @retval        1     OK and valid
+ * @retval        0     Invalid (only if yang spec) w xerr set
+ * @retval       -1     Error with clicon_err called
  *
  * @code
  *  cxobj *xt = NULL;
@@ -977,10 +986,6 @@ clixon_text_syntax_parse_string(char      *str,
  * @note, If xt empty, a top-level symbol will be added so that <tree../> will be:  <top><tree.../></tree></top>
  * @note May block on file I/O
  * @note Parsing requires YANG, which means yb must be YB_MODULE/_NEXT
- *
- * @retval        1     OK and valid
- * @retval        0     Invalid (only if yang spec) w xerr set
- * @retval       -1     Error with clicon_err called
  *
  * @see clixon_text_syntax_parse_string
  */
@@ -1048,7 +1053,7 @@ clixon_text_syntax_parse_file(FILE      *fp,
     }
     if (textbuf)
         free(textbuf);
-    return retval;    
+    return retval;
  fail:
     retval = 0;
     goto done;

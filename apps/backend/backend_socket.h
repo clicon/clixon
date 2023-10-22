@@ -41,7 +41,7 @@
 
 /*
  * Prototypes
- */ 
+ */
 int backend_socket_init(clicon_handle h);
 int backend_accept_client(int fd, void *arg);
 

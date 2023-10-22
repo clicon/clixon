@@ -39,7 +39,7 @@
 /*
  * Types
  */
-struct clixon_http1_yacc { 
+struct clixon_http1_yacc {
     const char   *hy_name;         /* Name of syntax (for error string) */
     clicon_handle hy_h;            /* Clixon handle */
     restconf_conn *hy_rc;          /* Connection handle */

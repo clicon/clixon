@@ -86,7 +86,7 @@ co2apipath(cg_obj *co)
     cg_callback *cb;
     cvec        *cvv;
     cg_var      *cv;
-    
+
     if (co == NULL)
         return NULL;
     if ((cb = co->co_callbacks) == NULL)
@@ -121,7 +121,7 @@ cli_auto_edit(clicon_handle h,
     char         *api_path_fmt;  /* xml key format */
     char         *api_path = NULL;
     char         *treename;
-    pt_head      *ph;  
+    pt_head      *ph;
     cg_obj       *co;
     cg_obj       *coorig;
     cvec         *cvv2 = NULL; /* cvv2 = cvv0 + cvv1 */
@@ -137,7 +137,7 @@ cli_auto_edit(clicon_handle h,
     str = cv_string_get(cvec_i(argv, argc++));
     if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
         mtpoint = str + strlen("mtpoint:");
-        clicon_debug(1, "%s mtpoint:%s", __FUNCTION__, mtpoint);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s mtpoint:%s", __FUNCTION__, mtpoint);
         treename = cv_string_get(cvec_i(argv, argc++));
     }
     else
@@ -181,7 +181,7 @@ cli_auto_edit(clicon_handle h,
         char *mtpoint2;
         if ((mtpoint2 = strdup(mtpoint)) == NULL){
             clicon_err(OE_UNIX, errno, "strdup");
-            goto done;            
+            goto done;
         }
         if (clicon_data_set(h, "cli-edit-mtpoint", mtpoint2) < 0)
             goto done;
@@ -205,9 +205,12 @@ cli_auto_edit(clicon_handle h,
 }
 
 /*! CLI callback: Working point tree up to parent
+ *
  * @param[in]  h    CLICON handle
  * @param[in]  cvv  Vector of variables from CLIgen command-line
  * @param[in]  argv Vector of user-supplied keywords
+ * @retval     0    OK
+ * @retval    -1    Error
  * Format of argv:
  *   <treename>     Name of generated cligen parse-tree, eg "datamodel"
  */
@@ -231,7 +234,7 @@ cli_auto_up(clicon_handle h,
     int      j;
     size_t   len;
     cvec    *cvv_filter = NULL;
-    
+
     if (cvec_len(argv) != 1){
         clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
         goto done;
@@ -283,7 +286,7 @@ cli_auto_up(clicon_handle h,
     cvv1 = cvec_new(0);
     for (i=0; i<cvec_len(cvv0)-j; i++){
         cv = cvec_i(cvv0, i);
-        cvec_append_var(cvv1, cv);      
+        cvec_append_var(cvv1, cv);
     }
     /* get api-path and xpath */
     if (api_path_fmt2api_path(api_path_fmt1, cvv1, &api_path, NULL) < 0)
@@ -300,9 +303,12 @@ cli_auto_up(clicon_handle h,
 }
 
 /*! CLI callback: Working point tree reset to top level
+ *
  * @param[in]  h    CLICON handle
  * @param[in]  cvv  Vector of variables from CLIgen command-line
  * @param[in]  argv Vector of user-supplied keywords
+ * @retval     0    OK
+ * @retval    -1    Error
  * Format of argv:
  *   <treename>     Name of generated cligen parse-tree, eg "datamodel"
  */
@@ -315,7 +321,7 @@ cli_auto_top(clicon_handle h,
     cg_var  *cv;
     char    *treename;
     pt_head *ph;
-    
+
     cv = cvec_i(argv, 0);
     treename = cv_string_get(cv);
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
@@ -333,20 +339,23 @@ cli_auto_top(clicon_handle h,
 }
 
 /*! CLI callback: set auto db item
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
  * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ * @retval     0    OK
+ * @retval    -1    Error
  * Format of argv:
  *   <api-path-fmt> Generated
  */
-int 
+int
 cli_auto_set(clicon_handle h,
              cvec         *cvv,
              cvec         *argv)
 {
     int   retval = -1;
     cvec *cvv2 = NULL;
-    
+
     cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv);
     if (cli_dbxml(h, cvv2, argv, OP_REPLACE, NULL) < 0)
         goto done;
@@ -358,18 +367,21 @@ cli_auto_set(clicon_handle h,
 }
 
 /*! Merge datastore xml entry
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
  * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ * @retval     0    OK
+ * @retval    -1    Error
  */
-int 
+int
 cli_auto_merge(clicon_handle h,
                cvec         *cvv,
                cvec         *argv)
 {
     int retval = -1;
     cvec *cvv2 = NULL;
-    
+
     cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv);
     if (cli_dbxml(h, cvv2, argv, OP_MERGE, NULL) < 0)
         goto done;
@@ -381,18 +393,21 @@ cli_auto_merge(clicon_handle h,
 }
 
 /*! Create datastore xml entry
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
  * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ * @retval     0    OK
+ * @retval    -1    Error
  */
-int 
+int
 cli_auto_create(clicon_handle h,
                 cvec         *cvv,
                 cvec         *argv)
 {
-    int retval = -1;
+    int   retval = -1;
     cvec *cvv2 = NULL;
-    
+
     cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv);
     if (cli_dbxml(h, cvv2, argv, OP_CREATE, NULL) < 0)
         goto done;
@@ -404,18 +419,21 @@ cli_auto_create(clicon_handle h,
 }
 
 /*! Delete datastore xml
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
  * @param[in]  argv Vector. First element xml key format string, eg "/aaa/%s"
+ * @retval     0    OK
+ * @retval    -1    Error
  */
-int 
+int
 cli_auto_del(clicon_handle h,
              cvec         *cvv,
              cvec         *argv)
 {
     int   retval = -1;
     cvec *cvv2 = NULL;
-    
+
     cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv);
     if (cli_dbxml(h, cvv2, argv, OP_REMOVE, NULL) < 0)
         goto done;
@@ -438,7 +456,6 @@ struct findpt_arg{
  * @param[in]  arg  Argument, cast to application-specific info
  * @retval     1    OK and return (abort iteration)
  * @retval     0    OK and continue
- * @retval    -1    Error: break and return
  */
 static int
 cli_auto_findpt(cg_obj *co,
@@ -456,9 +473,12 @@ cli_auto_findpt(cg_obj *co,
 }
 
 /*! Enter edit mode
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  cvv  Vector of cli string and instantiated variables 
  * @param[in]  argv Vector of args to function in command. 
+ * @retval     0    OK
+ * @retval    -1    Error
  * Format of argv:
  *   <api_path_fmt> Generated API PATH FORMAT (print-like for variables)
  *   <vars>*        List of static variables that can be used as values for api_path_fmt
@@ -471,7 +491,7 @@ cli_auto_findpt(cg_obj *co,
  *   api_path: /a/b=42,99/c
  * @see cli_auto_edit
  */
-int 
+int
 cli_auto_sub_enter(clicon_handle h,
                    cvec         *cvv,
                    cvec         *argv)
@@ -486,7 +506,7 @@ cli_auto_sub_enter(clicon_handle h,
     cg_var       *cv = NULL;
     pt_head      *ph;
     struct findpt_arg fa = {0,};
-    
+
     if (cvec_len(argv) < 2){
         clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<tree> <api_path_fmt> (,vars)*)", __FUNCTION__);
         goto done;
@@ -506,7 +526,7 @@ cli_auto_sub_enter(clicon_handle h,
      * argv, but this can be done differently
      */
     /* Create a cvv with variables to add to api-path */
-    if ((cvv1 = cvec_new(0)) == NULL){ 
+    if ((cvv1 = cvec_new(0)) == NULL){
         clicon_err(OE_UNIX, errno, "cvec_new");
         goto done;
     }

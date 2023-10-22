@@ -43,7 +43,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#define _GNU_SOURCE 
+#define _GNU_SOURCE
 #define __USE_GNU
 #include <unistd.h> /* For setresuid */
 #undef _GNU_SOURCE
@@ -64,22 +64,23 @@
 #include "clixon_uid.h"
 
 /*! Translate group name to gid. Return -1 if error or not found.
+ *
  * @param[in]   name  Name of group
  * @param[out]  gid   Group id
- * @retval  0   OK
- * @retval -1   Error. or not found
+ * @retval      0     OK
+ * @retval     -1     Error. or not found
  */
 int
-group_name2gid(const char *name, 
+group_name2gid(const char *name,
                gid_t      *gid)
 {
     int           retval = -1;
-    char          buf[1024]; 
+    char          buf[1024];
     struct group  g0;
     struct group *gr = &g0;
     struct group *gtmp;
-    
-    gr = &g0; 
+
+    gr = &g0;
     /* This leaks memory in ubuntu */
     if (getgrnam_r(name, gr, buf, sizeof(buf), &gtmp) < 0){
         clicon_err(OE_UNIX, errno, "getgrnam_r(%s)", name);
@@ -97,6 +98,7 @@ group_name2gid(const char *name,
 }
 
 /*! Translate user name to uid. Return -1 if error or not found.
+ *
  * @param[in]  name Name of user
  * @param[out] uid  User id
  * @retval     0    OK
@@ -107,7 +109,7 @@ name2uid(const char *name,
          uid_t      *uid)
 {
     int            retval = -1;
-    char           buf[1024]; 
+    char           buf[1024];
     struct passwd  pwbuf;
     struct passwd *pwbufp = NULL;
 
@@ -127,20 +129,21 @@ name2uid(const char *name,
 }
 
 /*! Translate uid to user name
+ *
  * @param[in]  uid  User id
  * @param[out] name User name (Malloced, need to be freed)
  * @retval     0    OK
- * @retval     -1   Error. or not found
+ * @retval    -1    Error. or not found
  */
 int
 uid2name(const uid_t uid,
          char      **name)
 {
     int            retval = -1;
-    char           buf[1024]; 
+    char           buf[1024];
     struct passwd  pwbuf = {0,};
     struct passwd *pwbufp = NULL;
-    
+
     if (getpwuid_r(uid, &pwbuf, buf, sizeof(buf), &pwbufp) != 0){
         clicon_err(OE_UNIX, errno, "getpwuid_r(%u)", uid);
         goto done;
@@ -164,17 +167,19 @@ uid2name(const uid_t uid,
 /* Privileges drop perm, temp and restore
  * @see https://www.usenix.org/legacy/events/sec02/full_papers/chen/chen.pdf
  */
- /*! Temporarily drop privileges 
+/*! Temporarily drop privileges 
+ *
  * @param[in]  new_uid
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 drop_priv_temp(uid_t new_uid)
 {
 #ifdef HAVE_GETRESUID
     int retval = -1;
-    
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s uid:%u", __FUNCTION__, new_uid);
 
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s uid:%u", __FUNCTION__, new_uid);
     /* XXX: implicit declaration of function 'setresuid' on travis */
     if (setresuid(-1, new_uid, geteuid()) < 0){
         clicon_err(OE_UNIX, errno, "setresuid");
@@ -188,24 +193,27 @@ drop_priv_temp(uid_t new_uid)
  done:
     return retval;
 #else
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
     return 0;
 #endif
 }
 
-/*! Permanently drop privileges 
+/*! Permanently drop privileges
+ *
  * @param[in]  new_uid
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 drop_priv_perm(uid_t new_uid)
 {
 #ifdef HAVE_GETRESUID
-    int retval = -1;
+    int   retval = -1;
     uid_t ruid;
     uid_t euid;
     uid_t suid;
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s uid:%u", __FUNCTION__, new_uid);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s uid:%u", __FUNCTION__, new_uid);
 
     if (setresuid(new_uid, new_uid, new_uid) < 0){
         clicon_err(OE_UNIX, errno, "setresuid");
@@ -225,7 +233,7 @@ drop_priv_perm(uid_t new_uid)
  done:
     return retval;
 #else
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
     return 0;
 #endif
 }
@@ -240,7 +248,7 @@ restore_priv(void)
     uid_t euid;
     uid_t suid;
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
 
     if (getresuid(&ruid, &euid, &suid) < 0){
         clicon_err(OE_UNIX, errno, "setresuid");
@@ -258,7 +266,7 @@ restore_priv(void)
  done:
     return retval;
 #else
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
     return 0;
 #endif
 }

@@ -41,7 +41,7 @@
 
 /*
  * Prototypes
- */ 
+ */
 int group_name2gid(const char *name, gid_t *gid);
 int name2uid(const char *name, uid_t *uid);
 int uid2name(const uid_t uid, char **name);

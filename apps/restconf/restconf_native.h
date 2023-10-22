@@ -67,7 +67,7 @@ extern "C" {
 /*
  * Types
  */
-    
+
 /* Forward */
 struct restconf_conn;
 
@@ -95,13 +95,13 @@ typedef struct  {
 } restconf_stream_data;
 
 typedef struct restconf_socket restconf_socket;
-    
+
 /* Restconf connection handle 
  * Per connection request
  */
 typedef struct restconf_conn {
     qelem_t               rc_qelem;     /* List header */
-    /* XXX rc_proto and rc_proto_d1/d2 may not both be necessary. 
+    /* XXX rc_proto and rc_proto_d1/d2 may not both be necessary.
      * remove rc_proto?
      */
     int                   rc_callhome;  /* 0: listen, 1: callhome */
@@ -188,7 +188,7 @@ int               restconf_callhome_timer_unreg(restconf_socket *rsock);
 int               restconf_callhome_timer(restconf_socket *rsock, int status);
 int               restconf_socket_extract(clicon_handle h, cxobj *xs, cvec *nsc, restconf_socket *rsock,
                                           char **namespace, char **address, char **addrtype, uint16_t *port);
-    
+
 #endif /* _RESTCONF_NATIVE_H_ */
 
 #ifdef __cplusplus

@@ -104,7 +104,7 @@ main(int argc, char **argv)
             break;
         }
     clicon_log_init("clixon_util_yang", dbg?LOG_DEBUG:LOG_INFO, logdst);
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
     if ((yspec = yspec_new()) == NULL)
         goto done;
     if (yang_parse_file(stdin, "yang test", yspec) == NULL){

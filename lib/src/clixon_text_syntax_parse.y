@@ -85,21 +85,21 @@
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clicon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(1,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
-    
+
 void 
 clixon_text_syntax_parseerror(void *arg,
-                              char *s) 
+                              char *s)
 {
     clixon_text_syntax_yacc *ts = (clixon_text_syntax_yacc *)arg;
 
-    clicon_err(OE_XML, XMLPARSE_ERRNO, "text_syntax_parse: line %d: %s: at or before: %s", 
+    clicon_err(OE_XML, XMLPARSE_ERRNO, "text_syntax_parse: line %d: %s: at or before: %s",
                ts->ts_linenum,
                s,
-               clixon_text_syntax_parsetext); 
+               clixon_text_syntax_parsetext);
     return;
 }
 
@@ -200,6 +200,7 @@ text_element_create(clixon_xvec *xvec0,
 }
 
 /*! Special mechanism to mark bodies so they will not be filtered as whitespace
+ *
  * @see strip_body_objects text_populate_list
  */
 static int
@@ -207,16 +208,16 @@ text_mark_bodies(clixon_xvec *xv)
 {
     int    i;
     cxobj *xb;
-    
+
     for (i=0; i<clixon_xvec_len(xv); i++){
         xb = clixon_xvec_i(xv, i);
         xml_flag_set(xb, XML_FLAG_BODYKEY);
     }
     return 0;
 }
- 
-%} 
- 
+
+%}
+
 %%
 
 top        : stmt MY_EOF       { _PARSE_DEBUG("top->stmt");
@@ -229,7 +230,7 @@ stmts      : stmts stmt        { _PARSE_DEBUG("stmts->stmts stmt");
                                  if (clixon_xvec_merge($1, $2) < 0) YYERROR;
                                  clixon_xvec_free($2);
                                  $$ = $1;
-                               } 
+                               }
            |                   { _PARSE_DEBUG("stmts->stmt");
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;
                                }
@@ -292,7 +293,7 @@ value      : TOKEN             { _PARSE_DEBUG("value->TOKEN");
 substr     : substr TOKEN      { _PARSE_DEBUG("substr->substr TOKEN");
                                  $$ = strjoin($1, $2); free($2);}
            |                   { _PARSE_DEBUG("substr->");
-                                 $$ = NULL; } 
+                                 $$ = NULL; }
            ;
 
 %%

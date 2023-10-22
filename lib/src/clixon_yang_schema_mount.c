@@ -151,7 +151,7 @@ yang_mount_get(yang_stmt  *yu,
 {
     cvec      *cvv = NULL;
     cg_var    *cv;
-    
+
     /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
     if ((cvv = yang_cvec_get(yu)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
@@ -167,7 +167,7 @@ yang_mount_get(yang_stmt  *yu,
  * @param[in]  xpath  Key for yspec on yu, in canonical form
  * @param[in]  yspec  Yangspec for this mount-point (consumed)
  * @retval     0      OK
- * @retval     -1     Error
+ * @retval    -1      Error
  */
 int
 yang_mount_set(yang_stmt *yu,
@@ -179,7 +179,7 @@ yang_mount_set(yang_stmt *yu,
     cvec      *cvv;
     cg_var    *cv;
     cg_var    *cv2;
-    
+
     if ((cvv = yang_cvec_get(yu)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
         (yspec0 = cv_void_get(cv)) != NULL){
@@ -191,11 +191,11 @@ yang_mount_set(yang_stmt *yu,
     else if ((cv = yang_cvec_add(yu, CGV_VOID, xpath)) == NULL)
         goto done;
     if ((cv2 = cv_new(CGV_STRING)) == NULL){
-        clicon_err(OE_YANG, errno, "cv_new"); 
+        clicon_err(OE_YANG, errno, "cv_new");
         goto done;
     }
     if (cv_string_set(cv2, xpath) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_string_set"); 
+        clicon_err(OE_UNIX, errno, "cv_string_set");
         goto done;
     }
     /* tag yspec with key/xpath */
@@ -225,9 +225,9 @@ xml_yang_mount_get(clicon_handle   h,
     int        retval = -1;
     yang_stmt *y;
     yang_stmt *yu;
-    char      *xpath = NULL; // XXX free it    
+    char      *xpath = NULL; // XXX free it
     int        ret;
-    
+
     if ((y = xml_spec(xt)) == NULL)
         goto fail;
     if ((ret = yang_schema_mount_point(y)) < 0)
@@ -271,7 +271,7 @@ xml_yang_mount_set(cxobj     *x,
     yang_stmt *y;
     yang_stmt *yu;
     char      *xpath = NULL;
-    
+
     if ((y = xml_spec(x)) == NULL ||
         (yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL){
         goto done;
@@ -297,8 +297,8 @@ xml_yang_mount_freeall(cvec *cvv)
 {
     cg_var    *cv = NULL;
     yang_stmt *ys;
-    
-    cv = NULL;    
+
+    cv = NULL;
     while ((cv = cvec_each(cvv, cv)) != NULL){
         if ((ys = cv_void_get(cv)) != NULL)
             ys_free(ys);
@@ -323,7 +323,7 @@ find_schema_mounts(cxobj *x,
     yang_stmt *y;
     cvec      *cvv = (cvec *)arg;
     cg_var    *cv;
-    
+
     if ((y = xml_spec(x)) == NULL)
         return 2;
     if (yang_config(y) == 0)
@@ -339,7 +339,7 @@ find_schema_mounts(cxobj *x,
     cv_void_set(cv, x);
     return 0;
 }
- 
+
 /*! Find mount-points and return yang-library state
  *
  * Brute force: traverse whole XML, match all x that have ymount as yspec
@@ -506,6 +506,10 @@ yang_schema_mount_statedata(clicon_handle h,
 }
 
 /*! Statistics about mountpoints
+ *
+ * @param[in]  h     Clixon handle
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see yang_schema_mount_statedata
  */
 int

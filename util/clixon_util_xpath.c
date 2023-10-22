@@ -70,8 +70,8 @@ usage(char *argv0)
             "\t-h \t\tHelp\n"
             "\t-D <level> \tDebug\n"
             "\t-f <file>  \tXML file\n"
-            "\t-p <xpath> \tPrimary XPATH string\n"
-            "\t-i <xpath0>\t(optional) Initial XPATH string\n"
+            "\t-p <xpath> \tPrimary XPath string\n"
+            "\t-i <xpath0>\t(optional) Initial XPath string\n"
             "\t-I \t\tCheck inverse, map back xml result to xpath and check if equal\n"
             "\t-n <pfx:id>\tNamespace binding (pfx=NULL for default)\n"
             "\t-c \t\tMap xpath to canonical form\n"
@@ -179,10 +179,10 @@ main(int    argc,
                 goto done;
             }
             break;
-        case 'p': /* Primary XPATH string */
+        case 'p': /* Primary XPath string */
             xpath = optarg;
             break;
-        case 'i': /* Optional initial XPATH string */
+        case 'i': /* Optional initial XPath string */
             xpath0 = optarg;
             break;
         case 'I': /* Check inverse */
@@ -234,10 +234,8 @@ main(int    argc,
      * Logs, error and debug to stderr or syslog, set debug level
      */
     clicon_log_init("xpath", dbg?LOG_DEBUG:LOG_INFO, logdst);
-    
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
     yang_init(h);
-    
     /* Parse yang */
     if (yang_file_dir){
         if ((yspec = yspec_new()) == NULL)
@@ -265,7 +263,7 @@ main(int    argc,
         }
         memset(buf, 0, len);
         i = 0;
-        while (1){ 
+        while (1){
             if ((ret = read(0, &c, 1)) < 0){
                 perror("read");
                 goto done;
@@ -278,7 +276,7 @@ main(int    argc,
                 if ((buf = realloc(buf, 2*len)) == NULL){
                     fprintf(stderr, "%s: realloc: %s\n", __FUNCTION__, strerror(errno));
                     return -1;
-                }           
+                }
                 memset(buf+len, 0, len);
                 len *= 2;
             }
@@ -292,7 +290,7 @@ main(int    argc,
         char *xpath1 = NULL;
         cvec *nsc1 = NULL;
         cbuf *cbreason = NULL;
-        
+
         if ((ret = xpath2canonical(xpath, nsc, yspec, &xpath1, &nsc1, &cbreason)) < 0)
             goto done;
         if (ret == 0){
@@ -309,7 +307,7 @@ main(int    argc,
             cvec_print(stdout, nsc);
         goto ok; /* need a switch to continue, now just print and quit */
     }
-    /* 
+    /*
      * If fp=stdin, then continue reading from stdin (after CR)
      * XXX Note 0 above, stdin here
      */
@@ -342,7 +340,7 @@ main(int    argc,
             goto done;
         if (xml_apply0(x0, -1, xml_sort_verify, h) < 0)
             clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
-        if ((ret = xml_yang_validate_all_top(h, x0, &xerr)) < 0) 
+        if ((ret = xml_yang_validate_all_top(h, x0, &xerr)) < 0)
             goto done;
         if (ret > 0 && (ret = xml_yang_validate_add(h, x0, &xerr)) < 0)
             goto done;
@@ -357,7 +355,6 @@ main(int    argc,
             goto done;
         }
     }
-    
     /* If xpath0 given, position current x (ie somewhere else than root) */
     if (xpath0){
         if ((x = xpath_first(x0, NULL, "%s", xpath0)) == NULL){

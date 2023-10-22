@@ -62,7 +62,7 @@
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _IF ((clixon_yang_sub_parse_yacc *)_if) 
+#define _IF ((clixon_yang_sub_parse_yacc *)_if)
 
 #undef clixon_xml_parsewrap
 int clixon_yang_sub_parsewrap(void)

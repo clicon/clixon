@@ -32,7 +32,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
+ * Clixon XML XPath 1.0 according to https://www.w3.org/TR/xpath-10
  * See XPATH_LIST_OPTIMIZE
  */
 #ifndef _CLIXON_XPATH_OPTIMIZE_H
@@ -40,7 +40,7 @@
 
 
 int  xpath_list_optimize_stats(int *hits);
-int  xpath_list_optimize_set(int enable); 
+int  xpath_list_optimize_set(int enable);
 void xpath_optimize_exit(void);
 int  xpath_optimize_check(xpath_tree *xs, cxobj *xv, cxobj ***xvec0, int *xlen0);
 

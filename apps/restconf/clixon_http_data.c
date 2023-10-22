@@ -87,8 +87,8 @@ static const map_str2str mime_map[] = {
 /*! Check if uri path denotes a data path
  *
  * @param[in]  h      Clixon handle
- * @retval     0    No, not a data path, or not enabled
  * @retval     1    Yes, a data path and "data" points to www-data if given
+ * @retval     0    No, not a data path, or not enabled
  */
 int
 api_path_is_data(clicon_handle h)
@@ -103,7 +103,7 @@ api_path_is_data(clicon_handle h)
         goto done;
     if ((http_data_path = clicon_option_str(h, "CLICON_HTTP_DATA_PATH")) == NULL)
         goto done;
-    if (strlen(path) < strlen(http_data_path)) 
+    if (strlen(path) < strlen(http_data_path))
         goto done;
     if (path[0] != '/')
         goto done;
@@ -117,6 +117,7 @@ api_path_is_data(clicon_handle h)
 }
 
 /*! Generic restconf error function on get/head request
+ *
  * @param[in]  h      Clixon handle
  * @param[in]  req    Generic http handle
  * @param[in]  code   Error code
@@ -130,7 +131,7 @@ api_http_data_err(clicon_handle  h,
     int        retval = -1;
     cbuf      *cb = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -152,23 +153,24 @@ api_http_data_err(clicon_handle  h,
     // ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     return retval;
 }
 
 /*! Check validity of path, may only be regular dir or file
+ *
  * No .., soft link, ~, etc
- * @param[in]      h       Clicon handle
+ * @param[in]      h       Clixon handle
  * @param[in]      req     Generic Www handle (can be part of clixon handle)
  * @param[in]      prefix  Prefix of path0, where to start file check
  * @param[in,out]  cbpath  Filepath as cbuf, internal redirection may change it
  * @param[out]     fp      Open file, if retval = 1
  * @param[out]     fsz     Size of file, if retval = 1
- * @retval        -1       Error
- * @retval         0       Invalid
  * @retval         1       OK, fp,fsz set
+ * @retval         0       Invalid
+ * @retval        -1       Error
  */
 static int
 http_data_check_file_path(clicon_handle h,
@@ -190,7 +192,7 @@ http_data_check_file_path(clicon_handle h,
         goto done;
     }
     p = cbuf_get(cbpath);
-    clicon_debug(1, "%s %s", __FUNCTION__, p);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, p);
     if (strncmp(prefix, p, strlen(prefix)) != 0){
         clicon_err(OE_UNIX, EINVAL, "prefix is not prefix of cbpath");
         goto done;
@@ -200,31 +202,31 @@ http_data_check_file_path(clicon_handle h,
             p[i] = '\0';
             /* Ensure not soft link */
             if (lstat(p, &fstat) < 0){
-                clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
+                clixon_debug(CLIXON_DBG_DEFAULT, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
                 code = 404;
                 goto invalid;
             }
             if (!S_ISDIR(fstat.st_mode)){
-                clicon_debug(1, "%s Error lstat(%s): Not dir", __FUNCTION__, p);
+                clixon_debug(CLIXON_DBG_DEFAULT, "%s Error lstat(%s): Not dir", __FUNCTION__, p);
                 code = 403;
                 goto invalid;
             }
             p[i] = '/';
         }
         else if (p[i] == '~'){
-            clicon_debug(1, "%s Error lstat(%s): ~ not allowed in file path", __FUNCTION__, p);
+            clixon_debug(CLIXON_DBG_DEFAULT, "%s Error lstat(%s): ~ not allowed in file path", __FUNCTION__, p);
             code = 403;
             goto invalid;
         }
         else if (p[i] == '.' && i>strlen(prefix) && p[i-1] == '.'){
-            clicon_debug(1, "%s Error lstat(%s): .. not allowed in file path", __FUNCTION__, p);
+            clixon_debug(CLIXON_DBG_DEFAULT, "%s Error lstat(%s): .. not allowed in file path", __FUNCTION__, p);
             code = 403;
             goto invalid;
         }
     }
     /* Resulting file (ensure not soft link) */
     if (lstat(p, &fstat) < 0){
-        clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
         code = 404;
         goto invalid;
     }
@@ -233,22 +235,22 @@ http_data_check_file_path(clicon_handle h,
     if (S_ISDIR(fstat.st_mode)){
         cprintf(cbpath, "/%s", HTTP_DATA_INTERNAL_REDIRECT);
         p = cbuf_get(cbpath);
-        clicon_debug(1, "%s internal redirect: %s", __FUNCTION__, p);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s internal redirect: %s", __FUNCTION__, p);
         if (lstat(p, &fstat) < 0){
-            clicon_debug(1, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
+            clixon_debug(CLIXON_DBG_DEFAULT, "%s Error lstat(%s):%s", __FUNCTION__, p, strerror(errno));
             code = 404;
             goto invalid;
-        }       
+        }
     }
 #endif
     if (!S_ISREG(fstat.st_mode)){
-        clicon_debug(1, "%s Error lstat(%s): Not regular file", __FUNCTION__, p);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s Error lstat(%s): Not regular file", __FUNCTION__, p);
         code = 403;
         goto invalid;
     }
     *fsz = fstat.st_size;
     if ((f = fopen(p, "rb")) == NULL){
-        clicon_debug(1, "%s Error fopen(%s) %s", __FUNCTION__, p, strerror(errno));
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s Error fopen(%s) %s", __FUNCTION__, p, strerror(errno));
         code = 403;
         goto invalid;
     }
@@ -257,17 +259,20 @@ http_data_check_file_path(clicon_handle h,
  done:
     return retval;
  invalid:
-    if (api_http_data_err(h, req, code) < 0) 
+    if (api_http_data_err(h, req, code) < 0)
         goto done;
     retval = 0;
     goto done;
 }
-                   
+
 /*! Read file data request
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle (can be part of clixon handle)
  * @param[in]  pathname  With stripped prefix (eg /data), ultimately a filename
  * @param[in]  head      HEAD not GET
+ * @retval     0         OK
+ * @retval    -1         Error
  * @note: primitive file handling, just check if file exists and read it all
  * XXX 1: Buffer copying once too many, see #if 0 below
  */
@@ -291,7 +296,7 @@ api_http_data_file(clicon_handle h,
     char       *buf = NULL;
     size_t      sz;
 
-    clicon_debug(1, "%s", __FUNCTION__);    
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((cbfile = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -304,9 +309,9 @@ api_http_data_file(clicon_handle h,
     cprintf(cbfile, "%s", www_data_root);
     if (pathname){
         if (strlen(pathname) && pathname[0] != '/'){
-            clicon_debug(1, "%s Error fopen(%s) pathname not prefixed with /",
+            clixon_debug(CLIXON_DBG_DEFAULT, "%s Error fopen(%s) pathname not prefixed with /",
                          __FUNCTION__, pathname);
-            if (api_http_data_err(h, req, 404) < 0) 
+            if (api_http_data_err(h, req, 404) < 0)
                 goto done;
             goto ok;
         }
@@ -333,7 +338,7 @@ api_http_data_file(clicon_handle h,
     fsize = ftell(f);
     /* Extra sanity check, had some problems with wrong file types */
     if (fsz != fsize){
-        clicon_debug(1, "%s Error file %s size mismatch sz:%zu vs %li",
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s Error file %s size mismatch sz:%zu vs %li",
                      __FUNCTION__, filename, (size_t)fsz, fsize);
         if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
             goto done;
@@ -357,7 +362,7 @@ api_http_data_file(clicon_handle h,
     }
     sz = (size_t)ret;
     if (sz != 1){
-        clicon_debug(1, "%s Error fread(%s) sz:%zu", __FUNCTION__, filename, sz);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s Error fread(%s) sz:%zu", __FUNCTION__, filename, sz);
         if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
             goto done;
         goto ok;
@@ -371,7 +376,7 @@ api_http_data_file(clicon_handle h,
     if (restconf_reply_send(req, 200, cbdata, head) < 0)
         goto done;
     cbdata = NULL; /* consumed by reply-send */
-    clicon_debug(1, "%s Read %s OK", __FUNCTION__, filename);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Read %s OK", __FUNCTION__, filename);
  ok:
     retval = 0;
  done:
@@ -396,10 +401,12 @@ api_http_data_file(clicon_handle h,
  * 5. indata should be NULL (no write operations)
  * 6. Limited media: text/html, JavaScript, image, and css
  * 7. Authentication as restconf
- * @param[in]  h         Clicon handle
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle (can be part of clixon handle)
  * @param[in]  qvec      Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
  * @param[in]  pathname  With stripped prefix (eg /data), ultimately a filename
+ * @retval     0    OK
+ * @retval    -1    Error
  * Need to enable clixon-restconf.yang www-data feature
  */
 int
@@ -416,7 +423,7 @@ api_http_data(clicon_handle  h,
     cbuf *indata = NULL;
     char *path = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (req == NULL){
         errno = EINVAL;
         goto done;
@@ -442,7 +449,7 @@ api_http_data(clicon_handle  h,
     else {
         if (api_http_data_err(h, req, 405) < 0) /* method not allowed */
             goto done;
-        goto ok;        
+        goto ok;
     }
     /* 3. query parameters not accepted */
     if (qvec != NULL){
@@ -460,7 +467,7 @@ api_http_data(clicon_handle  h,
             goto done;
         goto ok;
     }
-    /* 5. Accepted media_out: should check text/html, JavaScript, image, and css 
+    /* 5. Accepted media_out: should check text/html, JavaScript, image, and css
      */
     if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
     }
@@ -491,6 +498,6 @@ api_http_data(clicon_handle  h,
  done:
     if (path)
         free(path);
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     return retval;
 }

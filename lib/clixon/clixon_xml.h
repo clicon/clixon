@@ -85,7 +85,7 @@
  * This is a "neutral" symbol without any meaning as opposed to the previous symbols ^
  * @see DATASTORE_TOP_SYMBOL which should be used for clixon top-level config trees
  */
-#define XML_TOP_SYMBOL "top" 
+#define XML_TOP_SYMBOL "top"
 
 /*
  * Types
@@ -102,16 +102,16 @@ enum operation_type{ /* edit-config operation */
 
 /* Netconf insert type (see RFC7950 Sec 7.8.6) */
 enum insert_type{ /* edit-config insert */
-    INS_FIRST, 
-    INS_LAST,  
-    INS_BEFORE, 
-    INS_AFTER,  
+    INS_FIRST,
+    INS_LAST,
+    INS_BEFORE,
+    INS_AFTER,
 };
 
 /* XML object types */
-enum cxobj_type {CX_ERROR=-1, 
-                 CX_ELMNT, 
-                 CX_ATTR, 
+enum cxobj_type {CX_ERROR=-1,
+                 CX_ELMNT,
+                 CX_ATTR,
                  CX_BODY};
 
 /* How to bind yang to XML top-level when parsing 
@@ -145,7 +145,7 @@ enum cxobj_type {CX_ERROR=-1,
  *                      / \         / \
  *                     x1  x2 - -  y1  y2
  */
-enum yang_bind{ 
+enum yang_bind{
     YB_NONE=0,   /* Dont do Yang binding */
     YB_MODULE,   /* Search for matching yang binding among top-level symbols of Yang modules of direct
                   * children
@@ -165,7 +165,7 @@ typedef enum yang_bind yang_bind;
 
 typedef struct xml cxobj; /* struct defined in clicon_xml.c */
 
-/*! Callback function type for xml_apply 
+/*! Callback function type for xml_apply
  *
  * @param[in]  x    XML node  
  * @param[in]  arg  General-purpose argument
@@ -182,9 +182,9 @@ typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c
  * @see format_int2str, format_str2int
  */
 enum format_enum{
-    FORMAT_XML,  
-    FORMAT_JSON,  
-    FORMAT_TEXT,  
+    FORMAT_XML,
+    FORMAT_JSON,
+    FORMAT_TEXT,
     FORMAT_CLI,
     FORMAT_NETCONF
 };
@@ -304,7 +304,7 @@ char     *xml_operation2str(enum operation_type op);
 int       xml_attr_insert2val(char *instr, enum insert_type *ins);
 int       xml_add_attr(cxobj *xn, char *name, char *value, char *prefix, char *ns);
 int       clicon_log_xml(int level, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
-int       clicon_debug_xml(int dbglevel, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
+int       clixon_debug_xml(int dbglevel, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
 
 #ifdef XML_EXPLICIT_INDEX
 int       xml_search_index_p(cxobj *x);

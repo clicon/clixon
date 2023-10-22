@@ -70,10 +70,13 @@
 #include "restconf_err.h"
 
 /*! HTTP error 405 Not Allowed
+ *
  * @param[in]  req       Generic http handle
  * @param[in]  allow     Which methods are allowed
  * @param[in]  pretty    Pretty-print of reply 
  * @param[in]  media_out Restconf output media
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 int
 restconf_method_notallowed(clicon_handle  h,
@@ -100,7 +103,10 @@ restconf_method_notallowed(clicon_handle  h,
 }
 
 /*! HTTP error 415 Unsupported media
+ *
  * @param[in]  req      Generic http handle
+ * @retval     0    OK
+ * @retval    -1    Error
  * RFC8040, section 5.2:
  * If the server does not support the requested input encoding for a request, then it MUST
  * return an error response with a "415 Unsupported Media Type" status-line
@@ -117,7 +123,7 @@ restconf_unsupported_media(clicon_handle  h,
     if (netconf_operation_not_supported_xml(&xerr, "protocol", "Unsupported Media Type") < 0)
         goto done;
     /* override with 415 netconf->restoconf translation which gives a 405 */
-    if (api_return_err0(h, req, xerr, pretty, media, 415) < 0) 
+    if (api_return_err0(h, req, xerr, pretty, media, 415) < 0)
         goto done;
     retval = 0;
  done:
@@ -129,7 +135,9 @@ restconf_unsupported_media(clicon_handle  h,
 /*! HTTP error 406 Not acceptable
  *
  * @param[in]  req      Generic http handle
- * RFC8040, section 5.2:
+ * @retval     0    OK
+ * @retval    -1    Error
+ * @see RFC8040, section 5.2:
  * If the server does not support any of the requested output encodings for a request, then it MUST
  * return an error response with a "406 Not Acceptable" status-line.
  */
@@ -145,7 +153,7 @@ restconf_not_acceptable(clicon_handle  h,
     if (netconf_operation_not_supported_xml(&xerr, "protocol", "Unacceptable output encoding") < 0)
         goto done;
     /* Override with 415 netconf->restoconf translation which gives a 405 */
-    if (api_return_err0(h, req, xerr, pretty, media, 415) < 0) 
+    if (api_return_err0(h, req, xerr, pretty, media, 415) < 0)
         goto done;
     if (restconf_reply_send(req, 415, NULL, 0) < 0)
         goto done;
@@ -179,6 +187,7 @@ restconf_notimplemented(clicon_handle  h,
 }
 
 /*! Generic restconf error function on get/head request
+ *
  * @param[in]  h      Clixon handle
  * @param[in]  req    Generic http handle
  * @param[in]  xerr   XML error message (eg from backend, or from a clixon_netconf_lib function)
@@ -186,6 +195,8 @@ restconf_notimplemented(clicon_handle  h,
  * @param[in]  media  Output media
  * @param[in]  code   If 0 use rfc8040 sec 7 netconf2restconf error-tag mapping
  *                    otherwise use this code
+ * @retval     0    OK
+ * @retval    -1    Error
  * xerr should be on the form: <rpc-error>... otherwise an internal error is generated
  * @note there are special cases see code
  */
@@ -202,12 +213,12 @@ api_return_err(clicon_handle  h,
     cbuf      *cberr = NULL;
     cxobj     *xtag;
     char      *tagstr;
-    int        code;    
+    int        code;
     cxobj     *xerr2 = NULL;
     cxobj     *xmsg;
     char      *mb;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -238,7 +249,7 @@ api_return_err(clicon_handle  h,
         }
     }
 #if 1
-    clicon_debug_xml(1, xerr, "%s Send error:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_DEFAULT, xerr, "%s Send error:", __FUNCTION__);
 #endif
     if (xml_name_set(xerr, "error") < 0)
         goto done;
@@ -265,17 +276,17 @@ api_return_err(clicon_handle  h,
             if (strcmp(tagstr, "invalid-value") == 0 &&
                 (xmsg = xpath_first(xerr, NULL, "error-message")) != NULL &&
                 (mb = xml_body(xmsg)) != NULL &&
-                strcmp(mb, "Invalid HTTP data method") == 0) 
+                strcmp(mb, "Invalid HTTP data method") == 0)
                 code = 404; /* Not found */
         }
-    }  
+    }
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media)) < 0) // XXX
         goto done;
     switch (media){
     case YANG_DATA_XML:
     case YANG_PATCH_XML:
     case YANG_PAGINATION_XML:
-        clicon_debug(1, "%s code:%d", __FUNCTION__, code);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s code:%d", __FUNCTION__, code);
         if (pretty){
             cprintf(cb, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n");
             if (clixon_xml2cbuf(cb, xerr, 2, pretty, NULL, -1, 0) < 0)
@@ -291,7 +302,7 @@ api_return_err(clicon_handle  h,
         break;
     case YANG_DATA_JSON:
     case YANG_PATCH_JSON:
-        clicon_debug(1, "%s code:%d", __FUNCTION__, code);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s code:%d", __FUNCTION__, code);
         if (pretty){
             cprintf(cb, "{\n\"ietf-restconf:errors\" : ");
             if (clixon_json2cbuf(cb, xerr, pretty, 0, 0) < 0)
@@ -318,7 +329,7 @@ api_return_err(clicon_handle  h,
     // ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     if (cberr)
@@ -337,6 +348,8 @@ api_return_err(clicon_handle  h,
  * @param[in]  media  Output media
  * @param[in]  code   If 0 use rfc8040 sec 7 netconf2restconf error-tag mapping
  *                    otherwise use this code
+ * @retval     0      OK
+ * @retval    -1      Error
  * @see api_return_err where top level is expected to be <rpc-error>
  */
 int

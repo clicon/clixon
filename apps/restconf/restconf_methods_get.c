@@ -75,7 +75,9 @@ static int api_data_pagination(clicon_handle h, void *req, char *api_path, int p
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
- * @param[in]  head   If 1 is HEAD, otherwise GET
+ * @param[in]  head     If 1 is HEAD, otherwise GET
+ * @retval     0        OK
+ * @retval    -1        Error
  * @code
  *  curl -X GET http://localhost/restconf/data/interfaces/interface=eth0
  * @endcode                                     
@@ -97,7 +99,7 @@ static int api_data_pagination(clicon_handle h, void *req, char *api_path, int p
 static int
 api_data_get2(clicon_handle  h,
               void          *req,
-              char          *api_path, 
+              char          *api_path,
               int            pi,
               cvec          *qvec,
               int            pretty,
@@ -125,8 +127,8 @@ api_data_get2(clicon_handle  h,
     yang_stmt *y = NULL;
     char      *defaults = NULL;
     cvec      *nscd = NULL;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -137,7 +139,7 @@ api_data_get2(clicon_handle  h,
     if (api_path){
         if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
             goto done;
-        /* Translate api-path to xml, but to validate the api-path, note: strict=1 
+        /* Translate api-path to xml, but to validate the api-path, note: strict=1
          * xtop and xbot unnecessary for this function but needed by function
          */
         if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
@@ -166,7 +168,7 @@ api_data_get2(clicon_handle  h,
     }
     /* Check for content attribute */
     if ((attr = cvec_find_str(qvec, "content")) != NULL){
-        clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s content=%s", __FUNCTION__, attr);
         if ((int)(content = netconf_content_str2int(attr)) == -1){
             if (netconf_bad_attribute_xml(&xerr, "application",
                                           "content", "Unrecognized value of content attribute") < 0)
@@ -178,7 +180,7 @@ api_data_get2(clicon_handle  h,
     }
     /* Check for depth attribute */
     if ((attr = cvec_find_str(qvec, "depth")) != NULL){
-        clicon_debug(1, "%s depth=%s", __FUNCTION__, attr);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s depth=%s", __FUNCTION__, attr);
         if (strcmp(attr, "unbounded") != 0){
             char *reason = NULL;
             if ((ret = parse_int32(attr, &depth, &reason)) < 0){
@@ -196,11 +198,11 @@ api_data_get2(clicon_handle  h,
         }
     }
     if ((attr = cvec_find_str(qvec, "with-defaults")) != NULL){
-        clicon_debug(1, "%s with_defaults=%s", __FUNCTION__, attr);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s with_defaults=%s", __FUNCTION__, attr);
         defaults = attr;
     }
 
-    clicon_debug(1, "%s path:%s", __FUNCTION__, xpath);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s path:%s", __FUNCTION__, xpath);
     ret = clicon_rpc_get(h, xpath, nsc, content, depth, defaults, &xret);
 
     if (ret < 0){
@@ -214,8 +216,8 @@ api_data_get2(clicon_handle  h,
      * We need to cut that tree to only the object.
      */
 #if 0 /* DEBUG */
-    if (clicon_debug_get())
-        clicon_debug_xml(1, xret, "%s xret:", __FUNCTION__);
+    if (clixon_debug_get())
+        clixon_debug_xml(CLIXON_DBG_DEFAULT, xret, "%s xret:", __FUNCTION__);
 #endif
     /* Check if error return  */
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
@@ -290,7 +292,7 @@ api_data_get2(clicon_handle  h,
             break;
         }
     }
-    clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
         goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
@@ -301,7 +303,7 @@ api_data_get2(clicon_handle  h,
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (xpath)
         free(xpath);
     if (nscd)
@@ -322,6 +324,7 @@ api_data_get2(clicon_handle  h,
 }
 
 /*! GET Collection 
+ *
  * According to restconf collection draft. Lists, work in progress
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
@@ -330,7 +333,9 @@ api_data_get2(clicon_handle  h,
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
- * @param[in]  head   If 1 is HEAD, otherwise GET
+ * @param[in]  head     If 1 is HEAD, otherwise GET
+ * @retval     0        OK
+ * @retval    -1        Error
  * @code
  *  curl -X GET http://localhost/restconf/data/interfaces
  * @endcode                                     
@@ -342,7 +347,7 @@ api_data_get2(clicon_handle  h,
 static int
 api_data_pagination(clicon_handle  h,
                     void          *req,
-                    char          *api_path, 
+                    char          *api_path,
                     int            pi,
                     cvec          *qvec,
                     int            pretty,
@@ -375,8 +380,8 @@ api_data_pagination(clicon_handle  h,
     char      *sort;
     char      *where;
     char      *ns;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clicon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -425,7 +430,7 @@ api_data_pagination(clicon_handle  h,
 
     /* Check for content attribute */
     if ((attr = cvec_find_str(qvec, "content")) != NULL){
-        clicon_debug(1, "%s content=%s", __FUNCTION__, attr);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s content=%s", __FUNCTION__, attr);
         if ((int)(content = netconf_content_str2int(attr)) == -1){
             if (netconf_bad_attribute_xml(&xerr, "application",
                                           "content", "Unrecognized value of content attribute") < 0)
@@ -439,7 +444,7 @@ api_data_pagination(clicon_handle  h,
             goto ok;
         }
     }
-    clicon_debug(1, "%s path:%s", __FUNCTION__, xpath);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s path:%s", __FUNCTION__, xpath);
     if (content != CONTENT_CONFIG && content != CONTENT_NONCONFIG && content != CONTENT_ALL){
         clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
         goto done;
@@ -447,7 +452,7 @@ api_data_pagination(clicon_handle  h,
     /* Clixon extensions and collection attributes */
     /* Check for depth attribute */
     if ((attr = cvec_find_str(qvec, "depth")) != NULL){
-        clicon_debug(1, "%s depth=%s", __FUNCTION__, attr);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s depth=%s", __FUNCTION__, attr);
         if (strcmp(attr, "unbounded") != 0){
             char *reason = NULL;
             if ((ret = parse_int32(attr, &depth, &reason)) < 0){
@@ -486,7 +491,7 @@ api_data_pagination(clicon_handle  h,
     sort = cvec_find_str(qvec, "sort-by");
     where = cvec_find_str(qvec, "where");
     if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc, content,
-                                     depth, NULL, offset, limit, direction, sort, where, 
+                                     depth, NULL, offset, limit, direction, sort, where,
                                      &xret) < 0){
         if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
             goto done;
@@ -502,7 +507,7 @@ api_data_pagination(clicon_handle  h,
      * We need to cut that tree to only the object.
      */
 #if 0 /* DEBUG */
-    clicon_debug_xml(1, xret, "%s xret:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_DEFAULT, xret, "%s xret:", __FUNCTION__);
 #endif
     /* Check if error return  */
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
@@ -538,7 +543,7 @@ api_data_pagination(clicon_handle  h,
             }
             if (xml_rm(xp) < 0)
                 goto done;
-            if (xml_insert(xpr, xp, INS_LAST, NULL, NULL) < 0) 
+            if (xml_insert(xpr, xp, INS_LAST, NULL, NULL) < 0)
                 goto done;
         }
         if (clixon_xml2cbuf(cbx, xpr, 0, pretty, NULL, -1, 0) < 0) /* Dont print top object?  */
@@ -551,7 +556,7 @@ api_data_pagination(clicon_handle  h,
     default:
         break;
     }
-    clicon_debug(1, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
         goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
@@ -562,7 +567,7 @@ api_data_pagination(clicon_handle  h,
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (cbrpc)
         cbuf_free(cbrpc);
     if (xpath)
@@ -585,6 +590,11 @@ api_data_pagination(clicon_handle  h,
 }
 
 /*! REST HEAD method
+ *
+ * The HEAD method is sent by the client to retrieve just the header fields 
+ * that would be returned for the comparable GET method, without the 
+ * response message-body. 
+ * Relation to netconf: none                        
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
@@ -593,11 +603,8 @@ api_data_pagination(clicon_handle  h,
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
- *
- * The HEAD method is sent by the client to retrieve just the header fields 
- * that would be returned for the comparable GET method, without the 
- * response message-body. 
- * Relation to netconf: none                        
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
 api_data_head(clicon_handle h,
@@ -613,6 +620,7 @@ api_data_head(clicon_handle h,
 }
 
 /*! REST GET method
+ *
  * According to restconf 
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
@@ -623,6 +631,8 @@ api_data_head(clicon_handle h,
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * @param[in]  ds        RFC8527 datastore
+ * @retval     0         OK
+ * @retval    -1         Error
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
  * @endcode                                     
@@ -640,7 +650,7 @@ api_data_head(clicon_handle h,
 int
 api_data_get(clicon_handle h,
              void         *req,
-             char         *api_path, 
+             char         *api_path,
              int           pi,
              cvec         *qvec,
              int           pretty,
@@ -648,7 +658,7 @@ api_data_get(clicon_handle h,
              ietf_ds_t     ds)
 {
     int retval = -1;
-    
+
     switch (media_out){
     case YANG_DATA_XML:
     case YANG_DATA_JSON: /* ad-hoc algorithm in get to determine if a paginated request */
@@ -667,6 +677,7 @@ api_data_get(clicon_handle h,
 }
 
 /*! GET restconf/operations resource
+ *
  * @param[in]  h      Clixon handle
  * @param[in]  req    Generic Www handle
  * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
@@ -675,11 +686,12 @@ api_data_get(clicon_handle h,
  * @param[in]  data   Stream input data
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
- *
+ * @retval     0    OK
+ * @retval    -1    Error
  * @code
  *  curl -G http://localhost/restconf/operations
  * @endcode                                     
- * RFC8040 Sec 3.3.2:
+ * @see RFC8040 Sec 3.3.2:
  * This optional resource is a container that provides access to the
  * data-model-specific RPC operations supported by the server.  The
  * server MAY omit this resource if no data-model-specific RPC
@@ -693,9 +705,9 @@ api_data_get(clicon_handle h,
 int
 api_operations_get(clicon_handle h,
                    void         *req,
-                   char         *path, 
+                   char         *path,
                    int           pi,
-                   cvec         *qvec, 
+                   cvec         *qvec,
                    char         *data,
                    int           pretty,
                    restconf_media media_out)
@@ -708,8 +720,8 @@ api_operations_get(clicon_handle h,
     cbuf      *cbx = NULL;
     cxobj     *xt = NULL;
     int        i;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h);
     if ((cbx = cbuf_new()) == NULL)
         goto done;
@@ -730,7 +742,7 @@ api_operations_get(clicon_handle h,
     i = 0;
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
         namespace = yang_find_mynamespace(ymod);
-        yc = NULL; 
+        yc = NULL;
         while ((yc = yn_each(ymod, yc)) != NULL) {
             if (yang_keyword_get(yc) != Y_RPC)
                 continue;
@@ -777,7 +789,7 @@ api_operations_get(clicon_handle h,
     // ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (cbx)
         cbuf_free(cbx);
     if (xt)

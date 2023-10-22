@@ -205,6 +205,7 @@ fail:
 }
 
 /*! Transform from XSD regex to posix ERE
+ *
  * The usecase is that Yang (RFC7950) supports XSD regular expressions but
  * CLIgen supports POSIX ERE
  * POSIX ERE regexps according to man regex(3).
@@ -242,7 +243,7 @@ regexp_xsd2posix(char  *xsd,
     int   esc;
     int   minus = 0;
     size_t len;
-    
+
     if ((cb = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -320,10 +321,10 @@ regexp_xsd2posix(char  *xsd,
                 break;
             case 'w': /* word */
                 //cprintf(cb, "[0-9a-zA-Z_\\\\-]")
-                cprintf(cb, "[[:alnum:]|_]"); 
+                cprintf(cb, "[[:alnum:]|_]");
                 break;
             case 'W': /* inverse of \w */
-                cprintf(cb, "[^[[:alnum:]|_]]"); 
+                cprintf(cb, "[^[[:alnum:]|_]]");
                 break;
             case 'u': {
                 int   n;
@@ -369,7 +370,8 @@ regexp_xsd2posix(char  *xsd,
 /*-------------------------- Generic API functions ------------------------*/
 
 /*! Compilation of regular expression / pattern
- * @param[in]   h       Clicon handle
+ *
+ * @param[in]   h       Clixon handle
  * @param[in]   regexp  Regular expression string in XSD regex format
  * @param[out]  recomp  Compiled regular expression (malloc:d, should be freed)
  * @retval      1       OK
@@ -408,9 +410,12 @@ regex_compile(clicon_handle h,
 }
 
 /*! Execution of (pre-compiled) regular expression / pattern
- * @param[in]  h       Clicon handle
+ *
+ * @param[in]  h       Clixon handle
  * @param[in]  recomp  Compiled regular expression 
  * @param[in]  string  Content string to match
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 regex_exec(clicon_handle h,
@@ -437,8 +442,11 @@ regex_exec(clicon_handle h,
 }
 
 /*! Free of (pre-compiled) regular expression / pattern
- * @param[in]  h       Clicon handle
+ *
+ * @param[in]  h       Clixon handle
  * @param[in]  recomp  Compiled regular expression 
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 regex_free(clicon_handle h,

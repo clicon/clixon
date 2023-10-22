@@ -43,10 +43,11 @@
  * Types
  */
 /*! Autocli list keyword type, see clixon-autocli.yang list-keyword-type
+ *
  * Assume a YANG LIST: 
- *    list a { 
- *       key x; 
- *       leaf x; 
+ *    list a {
+ *       key x;
+ *       leaf x;
  *       leaf y;
  *    }
  * Maybe this type should be in cli_autocli.h
@@ -77,7 +78,7 @@ cligen_handle cli_cligen(clicon_handle h);
 
 /* cli_common.c */
 int cli_notification_register(clicon_handle h, char *stream, enum format_enum format,
-                              char *filter, int status, 
+                              char *filter, int status,
                               int (*fn)(int, void*), void *arg);
 
 int mtpoint_paths(yang_stmt *yspec0, char *mtpoint, char *api_path_fmt1, char **api_path_fmt01);
@@ -115,7 +116,7 @@ int   cvec_concat_cb(cvec *cvv, cbuf *cb);
 int cli_process_control(clicon_handle h, cvec *vars, cvec *argv);
 
 /* In cli_show.c */
-int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv, 
+int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv,
                   cvec *commands, cvec *helptexts);
 int clixon_cli2file(clicon_handle h, FILE *f, cxobj *xn, char *prepend, clicon_output_cb *fn, int skiptop);
 int clixon_cli2cbuf(clicon_handle h, cbuf *cb, cxobj *xn, char *prepend, int skiptop);

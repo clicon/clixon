@@ -45,6 +45,14 @@
 ## 6.5.0
 Expected: December 2023
 
+### C/CLI-API changes on existing features
+Developers may need to change their code
+
+* Changed function name for `clicon_debug` functions. You need to rename as follows:
+  * clicon_debug() -> clixon_debug()
+  * clicon_debug_init() -> clixon_debug_init()
+  * clicon_debug_get() -> clixon_debug_get()
+
 ### Corrected Bugs
 
 * Fixed: [Does clixon cli support autocompletion for leafrefs pointed to another module?](https://github.com/clicon/clixon/issues/455)

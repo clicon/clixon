@@ -45,7 +45,8 @@
 /*
  * Types
  */
-/* Subscription callback 
+/*! Subscription callback 
+ *
  * @param[in]  h     Clicon handle
  * @param[in]  op    Operation: 0 OK, 1 Close
  * @param[in]  event Event as XML

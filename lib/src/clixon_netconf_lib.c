@@ -87,6 +87,7 @@ static const map_str2int wdmap[] = {
 };
 
 /*! Map from with-defaults ints to strings
+ *
  * @param[in] int  Integer representation of withdefaults values
  * @retval    str  String representation of withdefaults values
  */
@@ -97,6 +98,7 @@ withdefaults_int2str(int keyword)
 }
 
 /*! Map from with-defaults strings to ints
+ *
  * @param[in] str  String representation of withdefaults values
  * @retval    int  Integer representation of withdefaults values
  */
@@ -112,6 +114,8 @@ withdefaults_str2int(char *str)
  * @param[out] cb       CLIgen buf. Error XML is written in this buffer
  * @param[in]  type     Error type: "application" or "protocol"
  * @param[in]  message  Error message (will be XML encoded)
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
 netconf_in_use(cbuf *cb,
@@ -152,6 +156,8 @@ netconf_in_use(cbuf *cb,
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_invalid_value_xml(cxobj **xret,
@@ -201,6 +207,8 @@ netconf_invalid_value_xml(cxobj **xret,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_invalid_value(cbuf *cb,
@@ -228,6 +236,8 @@ netconf_invalid_value(cbuf *cb,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "transport", "rpc", "application", "protocol"
  * @param[in]  message Error message (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_too_big(cbuf *cb,
@@ -269,6 +279,8 @@ netconf_too_big(cbuf *cb,
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  attr    bad-attribute and/or bad-element xml
  * @param[in]  message Error message (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_missing_attribute_xml(cxobj **xret,
@@ -320,6 +332,8 @@ netconf_missing_attribute_xml(cxobj **xret,
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  attr    bad-attribute 
  * @param[in]  message Error message (will be XML encoded) or NULL
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_missing_attribute(cbuf *cb,
@@ -349,6 +363,8 @@ netconf_missing_attribute(cbuf *cb,
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  info    Attribute name
  * @param[in]  message Error message (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_bad_attribute(cbuf *cb,
@@ -378,6 +394,9 @@ netconf_bad_attribute(cbuf *cb,
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  info    Attribute name
  * @param[in]  message Error message (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
+
  */
 int
 netconf_bad_attribute_xml(cxobj **xret,
@@ -429,6 +448,8 @@ netconf_bad_attribute_xml(cxobj **xret,
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  info    bad-attribute or bad-element xml
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_unknown_attribute(cbuf *cb,
@@ -471,6 +492,8 @@ netconf_unknown_attribute(cbuf *cb,
  * @param[in]  tag     Error tag
  * @param[in]  element bad-element xml
  * @param[in]  message Error message (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 static int
 netconf_common_xml(cxobj **xret,
@@ -525,6 +548,8 @@ netconf_common_xml(cxobj **xret,
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  info    bad-element xml
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_missing_element(cbuf      *cb, 
@@ -552,6 +577,8 @@ netconf_missing_element(cbuf      *cb,
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  element bad-element xml
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_missing_element_xml(cxobj **xret,
@@ -571,6 +598,8 @@ netconf_missing_element_xml(cxobj **xret,
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  elemnt  Bad element name
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_bad_element(cbuf *cb,
@@ -609,6 +638,8 @@ netconf_bad_element_xml(cxobj **xret,
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  element Bad element name
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_unknown_element(cbuf *cb,
@@ -638,6 +669,8 @@ netconf_unknown_element(cbuf *cb,
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  element Bad element name
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_unknown_element_xml(cxobj **xret,
@@ -656,6 +689,8 @@ netconf_unknown_element_xml(cxobj **xret,
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  info    bad-element or bad-namespace xml
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_unknown_namespace(cbuf *cb,
@@ -695,6 +730,8 @@ netconf_unknown_namespace_xml(cxobj **xret,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  * @see netconf_access_denied_xml  Same but returns XML tree
  */
 int
@@ -723,6 +760,8 @@ netconf_access_denied(cbuf *cb,
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message  (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
  * @code
  *  cxobj *xret = NULL;
  *  if (netconf_access_denied_xml(&xret, "protocol", "Unauthorized") < 0)
@@ -779,6 +818,8 @@ netconf_access_denied_xml(cxobj **xret,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  info    session-id xml
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_lock_denied(cbuf *cb,
@@ -819,6 +860,8 @@ netconf_lock_denied(cbuf *cb,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "transport, "rpc", "application", "protocol"
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_resource_denied(cbuf *cb,
@@ -859,6 +902,8 @@ netconf_resource_denied(cbuf *cb,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_rollback_failed(cbuf *cb,
@@ -899,6 +944,8 @@ netconf_rollback_failed(cbuf *cb,
  * a "create" operation was attempted on data that already exists.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_data_exists(cbuf      *cb, 
@@ -938,6 +985,8 @@ netconf_data_exists(cbuf      *cb,
  * data that does not exist.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_data_missing(cbuf *cb,
@@ -964,6 +1013,8 @@ netconf_data_missing(cbuf *cb,
  * data that does not exist.
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_data_missing_xml(cxobj **xret,
@@ -1017,6 +1068,8 @@ netconf_data_missing_xml(cxobj **xret,
  * @param[in]  x          Element with missing choice
  * @param[in]  name       Name of missing mandatory choice   
  * @param[in]  message    Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_missing_choice_xml(cxobj **xret,
@@ -1085,6 +1138,8 @@ netconf_missing_choice_xml(cxobj **xret,
  * @param[out] xret    Error XML tree 
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  * @code
  *  cxobj *xret = NULL;
  *  if (netconf_operation_not_supported_xml(&xret, "protocol", "Unauthorized") < 0)
@@ -1142,6 +1197,8 @@ netconf_operation_not_supported_xml(cxobj **xret,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  message Error message
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 netconf_operation_not_supported(cbuf *cb,
@@ -1169,6 +1226,8 @@ netconf_operation_not_supported(cbuf *cb,
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  message Error message (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
  * @see netconf_operation_failed_xml  Same but returns XML tree
  */
 int
@@ -1197,6 +1256,8 @@ netconf_operation_failed(cbuf  *cb,
  * @param[out] xret    Error XML tree 
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
  * @param[in]  message Error message (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
  * @code
  *  cxobj *xret = NULL;
  *  if (netconf_operation_failed_xml(&xret, "protocol", "Unauthorized") < 0)
@@ -1254,6 +1315,8 @@ netconf_operation_failed_xml(cxobj **xret,
  * invalid character set.
  * @param[out]  cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]   message Error message
+ * @retval      0       OK
+ * @retval     -1       Error
  * @note New in :base:1.1
  * @see netconf_malformed_message_xml  Same but returns XML tree
  */
@@ -1282,6 +1345,8 @@ netconf_malformed_message(cbuf  *cb,
  * invalid character set.
  * @param[out] xret    Error XML tree 
  * @param[in]  message Error message (will be XML encoded)
+ * @retval     0       OK
+ * @retval    -1       Error
  * @note New in :base:1.1
  * @code
  *  cxobj *xret = NULL;
@@ -1338,6 +1403,8 @@ netconf_malformed_message_xml(cxobj **xret,
  * @param[out]  xret   Error XML tree. Free with xml_free after use
  * @param[in]   x      List element containing duplicate
  * @param[in]   cvk    List of components in x that are non-unique
+ * @retval      0      OK
+ * @retval     -1      Error
  * @see RFC7950 Sec 15.1
  * @see netconf_data_not_unique_xml  Same but returns XML tree
  */
@@ -1367,6 +1434,8 @@ netconf_data_not_unique(cbuf  *cb,
  * @param[out]  xret   Error XML tree. Free with xml_free after use
  * @param[in]   x      List element containing duplicate
  * @param[in]   cvk    List of components in x that are non-unique
+ * @retval      0      OK
+ * @retval     -1      Error
  * @see RFC7950 Sec 15.1
  */
 int
@@ -1437,6 +1506,8 @@ netconf_data_not_unique_xml(cxobj **xret,
  * @param[in]   xp       XML parent node (for error)
  * @param[in]   name     Name of list (for error)
  * @param[in]   max      If set, return too-many, otherwise too-few
+ * @retval      0        OK
+ * @retval     -1        Error
  * @see RFC7950 Sec 15.1
  */
 int
@@ -1489,6 +1560,7 @@ netconf_minmax_elements_xml(cxobj **xret,
 }
 
 /*! Help function: merge - check yang - if error make netconf errmsg 
+ *
  * @param[in]     x       XML tree
  * @param[in]     yspec   Yang spec
  * @param[in,out] xret    Existing XML tree, merge x into this
@@ -1574,6 +1646,7 @@ netconf_module_features(clicon_handle h)
 }
 
 /*! Load generic yang specs, ie ietf netconf yang module and set enabled features
+ *
  * @param[in] h  Clixon handle
  * @retval    0  OK
  * @retval   -1  Error
@@ -1642,6 +1715,7 @@ netconf_module_load(clicon_handle h)
 }
 
 /*! Find some sub-child in netconf/xm request.
+ *
  * Actually, find a child with a certain name and return its body
  * @param[in]  xn
  * @param[in]  name
@@ -1674,6 +1748,7 @@ netconf_db_find(cxobj *xn,
 }
 
 /*! Generate netconf error msg to cbuf to use in string printout or logs
+ *
  * @param[in]     xerr    Netconf error message on the level: <rpc-error>
  * @param[in,out] cberr   Translation from netconf err to cbuf.
  * @retval     0       OK, with cberr set
@@ -1830,9 +1905,12 @@ netconf_capabilites(clicon_handle h,
 }
 
 /*! Create Netconf server hello. Single cap and defer individual to querying modules
- * @param[in]  h           Clicon handle
+ *
+ * @param[in]  h           Clixon handle
  * @param[in]  cb          Msg buffer
  * @param[in]  session_id  Id of client session
+ * @retval     0           OK
+ * @retval    -1           Error
  * Lots of dependencies here. regarding the hello protocol.
  * RFC6241 NETCONF Protocol says: (8.1)
  *    MUST send a <hello> element containing a list of that peer's capabilities
@@ -1880,6 +1958,8 @@ netconf_hello_server(clicon_handle h,
  * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
  * @param[in]  format  Format string 
  * @param[in]  arg     String argument to format (optional)
+ * @retval     0       OK
+ * @retval    -1       Error
  * @see netconf_err2cb
  */
 int
@@ -1928,7 +2008,7 @@ clixon_netconf_error_fn(const char *fn,
  * @param[in]  msg     Error message
  * @param[in]  arg     Extra error message (consider stdarg?)
  * @retval     0       OK
- * @retval     -1      Error
+ * @retval    -1       Error
  */
 int
 clixon_netconf_internal_error(cxobj *xerr,
@@ -2022,6 +2102,7 @@ netconf_parse_uint32(char     *name,
 }
 
 /*! Parse string into uint32 and return netconf bad-element msg on error xml variant
+ *
  * @see netconf_parse_uint32_xml
  */
 int
@@ -2089,7 +2170,9 @@ netconf_message_id_next(clicon_handle h)
 /*! Add netconf xml postamble of message. I.e, xml after the body of the message.
  *
  * @param[in]      framing Netconf framing
- * @param[in,out]  cb  Netconf packet (cligen buffer)
+ * @param[in,out]  cb      Netconf packet (cligen buffer)
+ * @retval         0       OK
+ * @retval        -1       Error
  * XXX: copies body
  */
 int
@@ -2140,6 +2223,7 @@ netconf_framing_postamble(netconf_framing_type framing,
 }
 
 /*! Send netconf message from cbuf on socket
+ *
  * @param[in]   s    
  * @param[in]   cb      Cligen buffer that contains the XML message
  * @param[in]   msg     Only for debug
@@ -2156,7 +2240,7 @@ netconf_output(int   s,
     char *buf = cbuf_get(cb);
     int   len = cbuf_len(cb);
 
-    clicon_debug(CLIXON_DBG_MSG, "Send ext: %s", cbuf_get(cb));
+    clixon_debug(CLIXON_DBG_MSG, "Send ext: %s", cbuf_get(cb));
 #if 0 // Extra sanity check for debugging
     {
         cxobj *xt = NULL;
@@ -2170,7 +2254,7 @@ netconf_output(int   s,
 #endif
     if (write(s, buf, len) < 0){
         if (errno == EPIPE)
-            clicon_debug(1, "%s write err SIGPIPE", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_DEFAULT, "%s write err SIGPIPE", __FUNCTION__);
         else
             clicon_log(LOG_ERR, "%s: write: %s", __FUNCTION__, strerror(errno));
         goto done;
@@ -2252,7 +2336,7 @@ netconf_input_chunked_framing(char    ch,
 {
     int retval = 0;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s ch:%c(%d) state:%d size:%zu", __FUNCTION__, ch, ch, *state, *size);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s ch:%c(%d) state:%d size:%zu", __FUNCTION__, ch, ch, *state, *size);
     switch (*state){
     case 0:
         if (ch == '\n'){
@@ -2290,7 +2374,7 @@ netconf_input_chunked_framing(char    ch,
             *size = (*size)*10 + ch-'0';
             break;
         }
-        else if (ch == '\n'){ 
+        else if (ch == '\n'){
             (*state)++;
             break;
         }

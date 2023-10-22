@@ -40,7 +40,7 @@
 
 /*
  * Prototypes
- */ 
+ */
 int regexp_xsd2posix(char *xsd, char **posix);
 int regex_compile(clicon_handle h, char *regexp, void **recomp);
 int regex_exec(clicon_handle h, void *recomp, char *string);

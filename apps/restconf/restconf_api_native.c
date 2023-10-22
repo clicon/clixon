@@ -65,9 +65,12 @@
 #include "restconf_native.h"
 
 /*! Add HTTP header field name and value to reply
+ *
  * @param[in]  req   request handle
  * @param[in]  name  HTTP header field name
  * @param[in]  vfmt  HTTP header field value format string w variable parameter
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see eg RFC 7230
  */
 int
@@ -83,7 +86,7 @@ restconf_reply_header(void       *req0,
     char                 *value = NULL;
     va_list               ap;
 
-    clicon_debug(1, "%s %s", __FUNCTION__, name);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, name);
     if (sd == NULL || name == NULL || vfmt == NULL){
         clicon_err(OE_CFG, EINVAL, "sd, name or value is NULL");
         goto done;
@@ -102,7 +105,7 @@ restconf_reply_header(void       *req0,
         goto done;
     }
     /* Second round: compute actual value */
-    va_start(ap, vfmt);    
+    va_start(ap, vfmt);
     if (vsnprintf(value, vlen+1, vfmt, ap) < 0){
         clicon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
@@ -121,11 +124,13 @@ restconf_reply_header(void       *req0,
 }
 
 /*! Send HTTP reply with potential message body
- * @param[in]     req   http request handle
- * @param[in]     code  Status code
- * @param[in]     cb    Body as a cbuf if non-NULL. Note: is consumed
- * @param[in]     head  Only send headers, dont send body. 
- * 
+ *
+ * @param[in]  req   http request handle
+ * @param[in]  code  Status code
+ * @param[in]  cb    Body as a cbuf if non-NULL. Note: is consumed
+ * @param[in]  head  Only send headers, dont send body. 
+ * @retval     0     OK
+ * @retval    -1     Error
  * Prerequisites: status code set, headers given, body if wanted set
  */
 int
@@ -137,7 +142,7 @@ restconf_reply_send(void  *req0,
     int                   retval = -1;
     restconf_stream_data *sd = (restconf_stream_data *)req0;
 
-    clicon_debug(1, "%s code:%d", __FUNCTION__, code);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s code:%d", __FUNCTION__, code);
     if (sd == NULL){
         clicon_err(OE_CFG, EINVAL, "sd is NULL");
         goto done;
@@ -145,7 +150,7 @@ restconf_reply_send(void  *req0,
     sd->sd_code = code;
     if (cb != NULL){
         if (cbuf_len(cb)){
-            sd->sd_body_len = cbuf_len(cb); 
+            sd->sd_body_len = cbuf_len(cb);
             if (head){
                 cbuf_free(cb);
             }
@@ -156,17 +161,18 @@ restconf_reply_send(void  *req0,
         }
         else{
             cbuf_free(cb);
-            sd->sd_body_len = 0; 
+            sd->sd_body_len = 0;
         }
     }
     else
-        sd->sd_body_len = 0; 
+        sd->sd_body_len = 0;
     retval = 0;
  done:
     return retval;
 }
 
 /*! Get input data from http request, eg such as curl -X PUT http://... <indata>
+ *
  * @param[in]  req        Request handle
  * @note: reuses cbuf from stream-data
  */
@@ -175,7 +181,7 @@ restconf_get_indata(void *req0)
 {
     restconf_stream_data *sd = (restconf_stream_data *)req0;
     cbuf                 *cb = NULL;
-    
+
     if (sd == NULL){
         clicon_err(OE_CFG, EINVAL, "sd is NULL");
         goto done;

@@ -199,6 +199,8 @@ find_category(int category)
  * @param[in]    category Clixon error category, See enum clicon_err
  * @param[in]    suberr   Error number, typically errno
  * @param[in]    format   Error string, format with argv
+ * @retval       0        OK
+ * @retval      -1        Error
  * @see clicon_err_reset  Reset the global error variables.
  */
 int
@@ -206,14 +208,14 @@ clicon_err_fn(const char *fn,
               const int  line,
               int        category,
               int        suberr,
-              const char *format, ...) 
+              const char *format, ...)
 {
+    int     retval = -1;
     va_list args;
     int     len;
     char   *msg    = NULL;
-    int     retval = -1;
     struct clixon_err_cats *cec;
-    
+
     /* Set the global variables */
     clicon_errno    = category;
     clicon_suberrno = suberr;
@@ -267,27 +269,27 @@ clicon_err_fn(const char *fn,
     else if (suberr){   /* Actually log it */
         /* Here we could take care of specific errno, like application-defined errors */
         if (fn)
-            clicon_log(LOG_ERR, "%s: %d: %s: %s: %s", 
+            clicon_log(LOG_ERR, "%s: %d: %s: %s: %s",
                        fn,
                        line,
                        clicon_strerror(category),
                        msg,
                        suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
         else
-            clicon_log(LOG_ERR, "%s: %s: %s", 
+            clicon_log(LOG_ERR, "%s: %s: %s",
                        clicon_strerror(category),
                        msg,
                        suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
     }
     else{
         if (fn)
-            clicon_log(LOG_ERR, "%s: %d: %s: %s", 
+            clicon_log(LOG_ERR, "%s: %d: %s: %s",
                        fn,
                        line,
                        clicon_strerror(category),
                        msg);
         else
-            clicon_log(LOG_ERR, "%s: %s", 
+            clicon_log(LOG_ERR, "%s: %s",
                        clicon_strerror(category),
                        msg);
     }
@@ -357,7 +359,7 @@ clixon_err_cat_reg(enum clicon_err       category,
     cec->cec_category = category;
     cec->cec_handle = handle;
     cec->cec_logfn = logfn;
-    INSQ(cec, _err_cat_list);    
+    INSQ(cec, _err_cat_list);
     return 0;
 }
 
@@ -369,6 +371,6 @@ clixon_err_exit(void)
     while ((cec = _err_cat_list) != NULL){
         DELQ(cec, _err_cat_list, clixon_err_cats *);
         free(cec);
-    } 
+    }
     return 0;
 }

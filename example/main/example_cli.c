@@ -64,7 +64,8 @@
 static char *_mount_yang = NULL;
 static char *_mount_namespace = NULL;
 
-/*! Example cli function */
+/*! Example cli function 
+ */
 int
 mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 {
@@ -80,10 +81,10 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 
     if ((nsc = xml_nsctx_init(NULL, "urn:example:clixon")) == NULL)
         goto done;
-    /* Show eth0 interfaces config using XPATH */
+    /* Show eth0 interfaces config using XPath */
     if (clicon_rpc_get_config(h, NULL, "running",
                               "/interfaces/interface[name='eth0']",
-                              nsc, NULL, 
+                              nsc, NULL,
                               &xret) < 0)
         goto done;
     if (clixon_xml2file(stdout, xret, 0, 1, NULL, cligen_output, 0, 1) < 0)
@@ -97,10 +98,11 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
     return retval;
 }
 
-/*! Example "downcall", ie initiate an RPC to the backend */
+/*! Example "downcall", ie initiate an RPC to the backend 
+ */
 int
-example_client_rpc(clicon_handle h, 
-                   cvec         *cvv, 
+example_client_rpc(clicon_handle h,
+                   cvec         *cvv,
                    cvec         *argv)
 {
     int        retval = -1;
@@ -148,7 +150,11 @@ example_client_rpc(clicon_handle h,
 }
 
 /*! Translate function from an original value to a new.
+ *
  * In this case, assume string and increment characters, eg HAL->IBM
+ * @param[in] h    Clixon handle
+ * @retval    0    OK
+ * @retval   -1    Error
  */
 int
 cli_incstr(cligen_handle h,
@@ -156,8 +162,8 @@ cli_incstr(cligen_handle h,
 {
     char *str;
     int i;
-    
-    /* Filter out other than strings 
+
+    /* Filter out other than strings
      * this is specific to this example, one can do translation */
     if (cv == NULL || cv_type_get(cv) != CGV_STRING)
         return 0;
@@ -239,6 +245,7 @@ static clixon_plugin_api api = {
 };
 
 /*! CLI plugin initialization
+ *
  * @param[in]  h    Clixon handle
  * @retval     NULL Error with clicon_err set
  * @retval     api  Pointer to API struct

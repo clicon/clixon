@@ -77,6 +77,7 @@
  * entries in the struct below.
  */
 /*! Backend specific handle added to header CLICON handle
+ *
  * This file should only contain access functions for the _specific_
  * entries in the struct below.
  * @note The top part must be equivalent to struct clicon_handle in clixon_handle.c
@@ -88,7 +89,7 @@ struct restconf_handle {
     clicon_hash_t           *rh_data;      /* internal clicon data (HDR) */
     clicon_hash_t           *rh_db_elmnt;  /* xml datastore element cache data */
     event_stream_t          *rh_stream;    /* notification streams, see clixon_stream.[ch] */
-    
+
     /* ------ end of common handle ------ */
     clicon_hash_t           *rh_params;      /* restconf parameters, including http headers */
     clixon_auth_type_t       rh_auth_type;   /* authentication type */
@@ -110,6 +111,7 @@ restconf_handle_init(void)
 }
 
 /*! Deallocates a backend handle, including all client structs
+ *
  * @note: handle 'h' cannot be used in calls after this
  * @see backend_client_rm
  */
@@ -117,7 +119,7 @@ int
 restconf_handle_exit(clicon_handle h)
 {
     struct restconf_handle *rh = handle(h);
-    
+
     if (rh->rh_fcgi_socket)
         free(rh->rh_fcgi_socket);
     clicon_handle_exit(h); /* frees h and options (and streams) */
@@ -125,7 +127,8 @@ restconf_handle_exit(clicon_handle h)
 }
 
 /*! Get restconf http parameter
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @param[in]  name  Data name
  * @retval     val   Data value as string
  * Currently using clixon runtime data but there is risk for colliding names
@@ -142,7 +145,8 @@ restconf_param_get(clicon_handle h,
 }
 
 /*! Set restconf http parameter
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  name Data name
  * @param[in]  val  Data value as null-terminated string
  * @retval     0    OK
@@ -156,7 +160,7 @@ restconf_param_set(clicon_handle h,
 {
     struct restconf_handle *rh = handle(h);
 
-    clicon_debug(1, "%s: %s=%s", __FUNCTION__, param, val);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s=%s", __FUNCTION__, param, val);
     if (rh->rh_params == NULL)
         if ((rh->rh_params = clicon_hash_init()) == NULL)
             return -1;
@@ -164,7 +168,8 @@ restconf_param_set(clicon_handle h,
 }
 
 /*! Delete all restconf http parameter
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  name Data name
  * @retval     0    OK
  * @retval    -1    Error
@@ -175,7 +180,7 @@ restconf_param_del_all(clicon_handle h)
 {
     int                     retval = -1;
     struct restconf_handle *rh = handle(h);
-    
+
     if (rh->rh_params != NULL){
         if (clicon_hash_free(rh->rh_params) < 0)
             goto done;
@@ -187,7 +192,8 @@ restconf_param_del_all(clicon_handle h)
 }
 
 /*! Get restconf http parameter
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @retval     auth_type
  */
 clixon_auth_type_t
@@ -199,7 +205,8 @@ restconf_auth_type_get(clicon_handle h)
 }
 
 /*! Set restconf http parameter
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  name Data name
  * @param[in]  val  Data value as null-terminated string
  * @retval     0    OK
@@ -217,7 +224,8 @@ restconf_auth_type_set(clicon_handle        h,
 }
 
 /*! Get restconf pretty-print (for replies)
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @retval     pretty
  */
 int
@@ -229,7 +237,8 @@ restconf_pretty_get(clicon_handle h)
 }
 
 /*! Set restconf pretty-print
- * @param[in]  h      Clicon handle
+ *
+ * @param[in]  h      Clixon handle
  * @param[in]  pretty 0 or 1
  * @retval     0      OK
  * @retval    -1      Error
@@ -245,6 +254,7 @@ restconf_pretty_set(clicon_handle h,
 }
 
 /*! Get restconf http-data
+ *
  * @param[in]  h      Clixon handle
  * @retval     0      Yes, http-data enabled
  * @retval     1      No, http-data disabled
@@ -258,6 +268,7 @@ restconf_http_data_get(clicon_handle h)
 }
 
 /*! Set restconf http-data
+ *
  * @param[in]  h    Clixon handle
  * @retval     0    OK
  * @retval    -1    Error
@@ -273,7 +284,8 @@ restconf_http_data_set(clicon_handle h,
 }
 
 /*! Get restconf fcgi socket path
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @retval     socketpath
  */
 char*
@@ -285,7 +297,8 @@ restconf_fcgi_socket_get(clicon_handle h)
 }
 
 /*! Set restconf fcgi socketpath
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @param[in]  name Data name
  * @param[in]  val  Data value as null-terminated string
  * @retval     0    OK

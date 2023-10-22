@@ -79,13 +79,13 @@
  * See rfc6241 3.1: urn:ietf:params:xml:ns:netconf:base:1.0.
  */
 static int _USE_NAMESPACE_NETCONF_DEFAULT = 0;
-            
+
 /*! Set if use internal default namespace mechanism or not
  *
  * This function shouldnt really be here, it sets a local variable from the value of the
  * option CLICON_NAMESPACE_NETCONF_DEFAULT, but the code where it is used is deep in the call
  * stack and cannot get the clicon handle currently.
- * @param[in] h  Clicon handle
+ * @param[in] h  Clixon handle
  */
 int
 xml_nsctx_namespace_netconf_default(clicon_handle h)
@@ -155,7 +155,7 @@ xml_nsctx_get(cvec *cvv,
               char *prefix)
 {
     cg_var *cv;
-    
+
     if ((cv = cvec_find(cvv, prefix)) != NULL)
         return cv_string_get(cv);
     return NULL;
@@ -206,7 +206,7 @@ xml_nsctx_add(cvec  *cvv,
 {
     int     retval = -1;
     cg_var *cv;
-    
+
     if ((cv = cvec_find(cvv, prefix)) != NULL) /* found, replace that */
         cv_string_set(cv, ns);
     else /* cvec exists, but not prefix */
@@ -289,7 +289,7 @@ xml_nsctx_node(cxobj *xn,
 {
     int   retval = -1;
     cvec *nc = NULL;
-    
+
     if ((nc = cvec_new(0)) == NULL){
         clicon_err(OE_XML, errno, "cvec_new");
         goto done;
@@ -339,7 +339,7 @@ xml_nsctx_yang(yang_stmt *yn,
     char      *prefix;
     char      *mynamespace;
     char      *myprefix;
-    
+
     if (yang_keyword_get(yn) == Y_SPEC){
         clicon_err(OE_YANG, EINVAL, "yang spec node is invalid argument");
         goto done;
@@ -376,7 +376,7 @@ xml_nsctx_yang(yang_stmt *yn,
             if ((name = yang_argument_get(y)) == NULL)
                 continue; /* Just skip - shouldnt happen) */
             if ((yp = yang_find(y, Y_PREFIX, NULL)) == NULL)
-                continue; 
+                continue;
             if ((prefix = yang_argument_get(yp)) == NULL)
                 continue;
             if ((ym = yang_find(yspec, Y_MODULE, name)) == NULL)
@@ -470,7 +470,7 @@ xml_nsctx_cbuf(cbuf *cb,
 {
     cg_var *cv = NULL;
     char   *prefix;
-    
+
     while ((cv = cvec_each(nsc, cv)) != NULL){
         cprintf(cb, " xmlns");
         if ((prefix = cv_name_get(cv)))
@@ -493,7 +493,7 @@ xml_nsctx_cbuf(cbuf *cb,
  *      err;
  * @endcode
  * @see xmlns_set cache is set
- * @note, this function uses a cache. 
+ * @note, this function uses a cache.
  */
 int
 xml2ns(cxobj *x,
@@ -503,7 +503,7 @@ xml2ns(cxobj *x,
     int    retval = -1;
     char  *ns = NULL;
     cxobj *xp;
-    
+
     if ((ns = nscache_get(x, prefix)) != NULL)
         goto ok;
     if (prefix != NULL) /* xmlns:<prefix>="<uri>" */
@@ -526,7 +526,7 @@ xml2ns(cxobj *x,
         }
     }
     /* Set default namespace cache (since code is at this point,
-     * no cache was found 
+     * no cache was found
      * If not, this is devastating when populating deep yang structures
      */
     if (ns &&
@@ -564,7 +564,7 @@ xml2ns_recurse(cxobj *xt)
             if (namespace == NULL){
                 clicon_err(OE_XML, ENOENT, "No namespace associated with %s:%s", prefix, xml_name(x));
                 goto done;
-            }       
+            }
         }
         if (xml2ns_recurse(x) < 0)
             goto done;
@@ -618,6 +618,8 @@ xmlns_set(cxobj *x,
  * Check if already there
  * @param[in]  x    XML tree
  * @param[in]  nsc  Namespace context
+ * @retval     0    OK
+ * @retval    -1    Error
  * @note you need to do an xml_sort(x) after the call
  */
 int
@@ -676,7 +678,7 @@ xml2prefix(cxobj *xn,
     xa = NULL;
     while ((xa = xml_child_each_attr(xn, xa)) != NULL) {
         /* xmlns=namespace */
-        if (strcmp("xmlns", xml_name(xa)) == 0){ 
+        if (strcmp("xmlns", xml_name(xa)) == 0){
             if (strcmp(xml_value(xa), namespace) == 0){
                 if (nscache_set(xn, NULL, namespace) < 0)
                     goto done;
@@ -686,7 +688,7 @@ xml2prefix(cxobj *xn,
         }
         /* xmlns:prefix=namespace */
         else if ((xaprefix=xml_prefix(xa)) != NULL &&
-                 strcmp("xmlns", xaprefix) == 0){ 
+                 strcmp("xmlns", xaprefix) == 0){
             if (strcmp(xml_value(xa), namespace) == 0){
                 prefix = xml_name(xa);
                 if (nscache_set(xn, prefix, namespace) < 0)
@@ -720,6 +722,8 @@ xml2prefix(cxobj *xn,
  * @param[in]  xp        XML node where namespace attribute should be declared (can be same)
  * @param[in]  prefix1   Use this prefix
  * @param[in]  namespace Use this namespace
+ * @retval     0         OK
+ * @retval    -1         Error
  * @note x and xp must be different if x is an attribute and may be different otherwise
  */
 int
@@ -730,7 +734,7 @@ xml_add_namespace(cxobj *x,
 {
     int    retval = -1;
     cxobj *xa = NULL;
-    
+
     /* Add binding to x1p. We add to parent due to heurestics, so we dont
      * end up in adding it to large number of siblings 
      */

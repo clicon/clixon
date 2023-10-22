@@ -81,7 +81,7 @@
 #define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_http1_parsetext, _HY->hy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
-#define YY_(msgid) msgid 
+#define YY_(msgid) msgid
 
 #include "clixon_config.h"
 
@@ -106,29 +106,29 @@
 
 /* Best debugging is to enable PARSE_DEBUG below and add -d to the LEX compile statement in the Makefile
  * And then run the testcase with -D 1
- * Disable it to stop any calls to clicon_debug. Having it on by default would mean very large debug outputs.
+ * Disable it to stop any calls to clixon_debug. Having it on by default would mean very large debug outputs.
  */
 #if 0
-#define _PARSE_DEBUG(s) clicon_debug(1,(s))
-#define _PARSE_DEBUG1(s, s1) clicon_debug(1,(s), (s1))
+#define _PARSE_DEBUG(s) clixon_debug(1,(s))
+#define _PARSE_DEBUG1(s, s1) clixon_debug(1,(s), (s1))
 #else
 #define _PARSE_DEBUG(s)
 #define _PARSE_DEBUG1(s, s1)
 #endif
 
-/* 
+/*
    also called from yacc generated code *
 */
 
-void 
+void
 clixon_http1_parseerror(void *_hy,
-                        char *s) 
-{ 
-    clicon_err(OE_RESTCONF, 0, "%s on line %d: %s at or before: '%s'", 
+                        char *s)
+{
+    clicon_err(OE_RESTCONF, 0, "%s on line %d: %s at or before: '%s'",
                _HY->hy_name,
-               _HY->hy_linenum ,
-               s, 
-               clixon_http1_parsetext); 
+               _HY->hy_linenum,
+               s,
+               clixon_http1_parsetext);
   return;
 }
 
@@ -151,7 +151,7 @@ http1_parse_query(clixon_http1_yacc *hy,
     int                   retval = -1;
     restconf_stream_data *sd = NULL;
 
-    clicon_debug(1, "%s: ?%s ", __FUNCTION__, query);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s: ?%s ", __FUNCTION__, query);
     if ((sd = restconf_stream_find(hy->hy_rc, 0)) == NULL){
         clicon_err(OE_RESTCONF, 0, "stream 0 not found");
         goto done;
@@ -170,7 +170,7 @@ http1_body(clixon_http1_yacc *hy,
     int                   retval = -1;
     restconf_stream_data *sd = NULL;
 
-    clicon_debug(1, "%s: %s ", __FUNCTION__, body);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s ", __FUNCTION__, body);
     if ((sd = restconf_stream_find(hy->hy_rc, 0)) == NULL){
         clicon_err(OE_RESTCONF, 0, "stream 0 not found");
         goto done;
@@ -200,11 +200,11 @@ http1_parse_header_field(clixon_http1_yacc *hy,
     return retval;
 }
 
-%} 
+%}
 
 %%
 
-/* start-line *( header-field CRLF ) CRLF [ message-body ] 
+/* start-line *( header-field CRLF ) CRLF [ message-body ]
  * start-line     = request-line / status-line  (only request-line here, ignore status-line)
  */
 http_message  :  request_line header_fields CRLF body X_EOF
@@ -215,7 +215,7 @@ http_message  :  request_line header_fields CRLF body X_EOF
                        }
                        _PARSE_DEBUG("http-message -> request-line header-fields body");
                        YYACCEPT;
-                   } 
+                   }
 ;
 
 body          : body BODY
@@ -224,22 +224,22 @@ body          : body BODY
                          free($2);
                          YYABORT;
                      }
-                     else 
+                     else
                          free($2);
                      _PARSE_DEBUG("body -> body BODY");
                  }
-              | ERROR   { _PARSE_DEBUG("body -> ERROR"); YYABORT; /* shouldnt happen */ } 
-              |         { _PARSE_DEBUG("body -> "); $$ = NULL; } 
+              | ERROR   { _PARSE_DEBUG("body -> ERROR"); YYABORT; /* shouldnt happen */ }
+              |         { _PARSE_DEBUG("body -> "); $$ = NULL; }
 ;
 
 /* request-line = method SP request-target SP HTTP-version CRLF */
 request_line  : method SP request_target SP HTTP_version CRLF
-               { 
+               {
                    _PARSE_DEBUG("request-line -> method request-target HTTP_version CRLF");
                }
 ;
 
-/*   
+/*
 The request methods defined by this specification can be found in
    Section 4 of [RFC7231], along with information regarding the HTTP
   http://www.iana.org/assignments/http-methods/http-methods.xhtml
@@ -331,7 +331,7 @@ HTTP_version    : HTTP SLASH DIGIT DOT DIGIT
                        /* make sanity check later */
                        _HY->hy_rc->rc_proto_d1 = $3;
                        _HY->hy_rc->rc_proto_d2 = $5;
-                       clicon_debug(1, "clixon_http1_parse: http/%d.%d", $3, $5);
+                       clixon_debug(CLIXON_DBG_DEFAULT, "clixon_http1_parse: http/%d.%d", $3, $5);
                        _PARSE_DEBUG("HTTP-version -> HTTP / DIGIT . DIGIT");
                    }
 ;
@@ -388,7 +388,7 @@ field_vchars   : field_vchars RWS VCHARS
      RWS            = 1*( SP / HTAB )
                     ; required whitespace
  */
-ows          : RWS 
+ows          : RWS
              |
 ;
 

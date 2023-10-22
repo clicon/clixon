@@ -78,6 +78,7 @@
  * entries in the struct below.
  */
 /*! Backend specific handle added to header CLICON handle
+ *
  * This file should only contain access functions for the _specific_
  * entries in the struct below.
  * @note The top part must be equivalent to struct clicon_handle in clixon_handle.c
@@ -89,7 +90,7 @@ struct backend_handle {
     clicon_hash_t           *bh_data;      /* internal clicon data (HDR) */
     clicon_hash_t           *ch_db_elmnt;  /* xml datastore element cache data */
     event_stream_t          *bh_stream;    /* notification streams, see clixon_stream.[ch] */
-    
+
     /* ------ end of common handle ------ */
     struct client_entry     *bh_ce_list;   /* The client list */
     int                      bh_ce_nr;     /* Number of clients, just increment */
@@ -104,7 +105,8 @@ backend_handle_init(void)
 }
 
 /*! Deallocates a backend handle, including all client structs
- * @Note: handle 'h' cannot be used in calls after this
+ *
+ * @note: handle 'h' cannot be used in calls after this
  * @see backend_client_rm
  */
 int
@@ -125,13 +127,14 @@ backend_handle_exit(clicon_handle h)
 }
 
 /*! Add new client, typically frontend such as cli, netconf, restconf
- * @param[in]  h        Clicon handle
+ *
+ * @param[in]  h        Clixon handle
  * @param[in]  addr     Address of client
  * @retval     ce       Client entry
  * @retval     NULL     Error
  */
 struct client_entry *
-backend_client_add(clicon_handle    h, 
+backend_client_add(clicon_handle    h,
                    struct sockaddr *addr)
 {
     struct backend_handle *bh = handle(h);
@@ -158,7 +161,8 @@ backend_client_add(clicon_handle    h,
 }
 
 /*! Return client list
- * @param[in]  h        Clicon handle
+ *
+ * @param[in]  h        Clixon handle
  * @retval     ce_list  Client entry list (all sessions)
  */
 struct client_entry *
@@ -170,7 +174,8 @@ backend_client_list(clicon_handle h)
 }
 
 /*! Actually remove client from client list
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @param[in]  ce  Client handle
  * @see backend_client_rm which is more high-level
  */
@@ -201,7 +206,8 @@ backend_client_delete(clicon_handle        h,
 }
 
 /*! Debug print backend clients
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @param[in]  f   UNIX output stream
  */
 int

@@ -69,9 +69,9 @@ int transaction_log(clicon_handle h, transaction_data th, int level, const char 
 /* Pagination callbacks
  * @see pagination_data_t  internal structure
  */
-uint32_t pagination_offset(pagination_data pd); 
-uint32_t pagination_limit(pagination_data pd); 
-int      pagination_locked(pagination_data pd); 
-cxobj   *pagination_xstate(pagination_data pd); 
+uint32_t pagination_offset(pagination_data pd);
+uint32_t pagination_limit(pagination_data pd);
+int      pagination_locked(pagination_data pd);
+cxobj   *pagination_xstate(pagination_data pd);
 
 #endif /* _CLIXON_BACKEND_TRANSACTION_H_ */

@@ -70,6 +70,8 @@
  * is started.
  * @param[in]  h    Clixon backend
  * @param[in]  xt   XML target
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 static int
 restconf_pseudo_set_log(clicon_handle h,
@@ -78,8 +80,8 @@ restconf_pseudo_set_log(clicon_handle h,
     int    retval = -1;
     char **argv;
     int    argc;
-    int    i; 
-    char  *log = NULL;   
+    int    i;
+    char  *log = NULL;
     char  *dbg = NULL;
     cxobj *xb;
 
@@ -138,6 +140,8 @@ restconf_pseudo_set_log(clicon_handle h,
  * and insert it as a optimization to reading it from the backend.
  * @param[in]  h    Clixon backend
  * @param[in]  xt   XML target
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 static int
 restconf_pseudo_set_inline(clicon_handle h,
@@ -146,11 +150,11 @@ restconf_pseudo_set_inline(clicon_handle h,
     int    retval = -1;
     char **argv;
     int    argc;
-    int    i; 
+    int    i;
     cxobj *xrestconf;
     cbuf  *cb = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (clixon_process_argv_get(h, RESTCONF_PROCESS, &argv, &argc) < 0)
         goto done;
     if ((xrestconf = xpath_first(xt, NULL, "restconf")) != NULL)
@@ -170,7 +174,7 @@ restconf_pseudo_set_inline(clicon_handle h,
                     clicon_err(OE_XML, errno, "stdup");
                     goto done;
                 }
-                clicon_debug(1, "%s str:%s", __FUNCTION__, str);
+                clixon_debug(CLIXON_DBG_DEFAULT, "%s str:%s", __FUNCTION__, str);
                 if (argv[i+1])
                     free(argv[i+1]);
                 argv[i+1] = str;
@@ -186,6 +190,7 @@ restconf_pseudo_set_inline(clicon_handle h,
 }
 
 /*! Process rpc callback function 
+ *
  * - if RPC op is start, if enable is true, start the service, if false, error or ignore it
  * - if RPC op is stop, stop the service 
  * These rules give that if RPC op is start and enable is false -> change op to none
@@ -197,14 +202,14 @@ restconf_rpc_wrapper(clicon_handle    h,
 {
     int    retval = -1;
     cxobj *xt = NULL;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     switch (*operation){
     case PROC_OP_STOP:
         /* if RPC op is stop, stop the service */
         break;
     case PROC_OP_START:
-        /* RPC op is start & enable is true, then start the service, 
+        /* RPC op is start & enable is true, then start the service,
                            & enable is false, error or ignore it */
         if (xmldb_get(h, "running", NULL,  "/restconf", &xt) < 0)
             goto done;
@@ -235,7 +240,8 @@ restconf_rpc_wrapper(clicon_handle    h,
 }
 
 /*! Enable process-control of restconf daemon, ie start/stop restconf by registering restconf process
- * @param[in]  h  Clicon handle
+ *
+ * @param[in]  h  Clixon handle
  * @note Could also look in clixon-restconf and start process if enable is true, but that needs to 
  *       be in start callback using a pseudo plugin.
  *      - Debug flag inheritance only works if backend is started with debug. If debug is set later
@@ -277,24 +283,24 @@ restconf_pseudo_process_control(clicon_handle h)
         cprintf(cb, "%s/clixon_restconf", dir0);
         pgm = cbuf_get(cb);
         if (stat(pgm, &fstat) == 0){    /* Sanity check: program exists */
-            clicon_debug(1, "Found %s", pgm);
+            clixon_debug(CLIXON_DBG_DEFAULT, "Found %s", pgm);
             found++;
         }
         else
-            clicon_debug(1, "Not found: %s", pgm);
+            clixon_debug(CLIXON_DBG_DEFAULT, "Not found: %s", pgm);
     }
     if (!found &&
         (dir1 = CLIXON_CONFIG_SBINDIR) != NULL){
         cbuf_reset(cb);
         cprintf(cb, "%s/clixon_restconf", dir1);
         pgm = cbuf_get(cb);
-        clicon_debug(1, "Looking for %s", pgm);
+        clixon_debug(CLIXON_DBG_DEFAULT, "Looking for %s", pgm);
         if (stat(pgm, &fstat) == 0){    /* Sanity check: program exists */
-            clicon_debug(1, "Found %s", pgm);
+            clixon_debug(CLIXON_DBG_DEFAULT, "Found %s", pgm);
             found++;
         }
         else
-            clicon_debug(1, "Not found: %s", pgm);
+            clixon_debug(CLIXON_DBG_DEFAULT, "Not found: %s", pgm);
     }
     if (!found){
         clicon_err(OE_RESTCONF, 0, "clixon_restconf not found in neither CLICON_RESTCONF_INSTALLDIR(%s) nor CLIXON_CONFIG_SBINDIR(%s). Try overriding with CLICON_RESTCONF_INSTALLDIR",
@@ -343,7 +349,7 @@ restconf_pseudo_process_validate(clicon_handle    h,
     int    retval = -1;
     cxobj *xtarget;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     xtarget = transaction_target(td);
     /* If ssl-enable is true and (at least a) socket has ssl,
      * then server-cert-path and server-key-path must exist */
@@ -374,8 +380,8 @@ restconf_pseudo_process_commit(clicon_handle    h,
     cxobj *xsource;
     cxobj *cx;
     int    enabled = 0;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     xtarget = transaction_target(td);
     xsource = transaction_src(td);
     if (xpath_first(xtarget, NULL, "/restconf[enable='true']") != NULL)
@@ -425,13 +431,16 @@ restconf_pseudo_process_commit(clicon_handle    h,
 }
 
 /*! Register start/stop restconf RPC and create pseudo-plugin to monitor enable flag
+ *
  * @param[in]  h  Clixon handle
+ * @retval     0  OK
+ * @retval    -1  Error
  */
 int
 backend_plugin_restconf_register(clicon_handle h,
                                  yang_stmt    *yspec)
 {
-    int            retval = -1;
+    int              retval = -1;
     clixon_plugin_t *cp = NULL;
 
     if (clixon_pseudo_plugin(h, "restconf pseudo plugin", &cp) < 0)

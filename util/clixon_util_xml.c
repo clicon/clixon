@@ -85,7 +85,7 @@ validate_tree(clicon_handle h,
         goto done;
     if (xml_apply(xt, -1, xml_sort_verify, h) < 0)
         clicon_log(LOG_NOTICE, "%s: sort verify failed", __FUNCTION__);
-    if ((ret = xml_yang_validate_all_top(h, xt, &xerr)) < 0) 
+    if ((ret = xml_yang_validate_all_top(h, xt, &xerr)) < 0)
         goto done;
     if (ret > 0 && (ret = xml_yang_validate_add(h, xt, &xerr)) < 0)
         goto done;
@@ -163,12 +163,12 @@ main(int    argc,
     cxobj        *xtop = NULL; /* Top tree if any */
     char         *top_path = NULL;
     cxobj        *xbot;        /* Place in xtop where base cxobj is parsed */
-    cvec         *nsc = NULL; 
+    cvec         *nsc = NULL;
     yang_bind     yb;
     int           dbg = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR); 
+    clicon_log_init(__FILE__, LOG_INFO, CLICON_LOG_STDERR);
 
     /* Initialize clixon handle */
     if ((h = clicon_handle_init()) == NULL)
@@ -245,9 +245,8 @@ main(int    argc,
         usage(argv[0]);
     }
     clicon_log_init(__FILE__, dbg?LOG_DEBUG:LOG_INFO, logdst);
-    clicon_debug_init(dbg, NULL);
+    clixon_debug_init(dbg, NULL);
     yang_init(h);
-    
     /* 1. Parse yang */
     if (yang_file_dir){
         if ((yspec = yspec_new()) == NULL)
@@ -271,7 +270,7 @@ main(int    argc,
      */
     if (top_input_filename){
         if ((tfp = fopen(top_input_filename, "r")) == NULL){
-            clicon_err(OE_YANG, errno, "fopen(%s)", top_input_filename);        
+            clicon_err(OE_YANG, errno, "fopen(%s)", top_input_filename);
             goto done;
         }
         if ((ret = clixon_xml_parse_file(tfp, YB_MODULE, yspec, &xtop, &xerr)) < 0){
@@ -296,7 +295,7 @@ main(int    argc,
     }
     if (input_filename){
         if ((fp = fopen(input_filename, "r")) == NULL){
-            clicon_err(OE_YANG, errno, "open(%s)", input_filename);     
+            clicon_err(OE_YANG, errno, "open(%s)", input_filename);
             goto done;
         }
     }
