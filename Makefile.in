@@ -84,6 +84,8 @@ checkinstall:
 	  echo "\e[31mclixon must be installed first to build this target. "\
 	  "Run 'make'. Then run 'make install' as root.\e[0m"; exit 1; fi;
 
+util: apps
+
 # May cause circular include->include,lib
 $(SUBDIRS2): $(SUBDIRS1) # Cannot build app before lib (for parallel make -j)
 	(cd $@ && $(MAKE) $(MFLAGS) all)
@@ -119,7 +121,7 @@ util:
 clean-util:
 	cd util; $(MAKE) $(MFLAGS) clean
 
-install-util:
+install-util: checkroot install-include
 	cd util; $(MAKE) $(MFLAGS) install
 
 uninstall-util:
@@ -171,7 +173,7 @@ test:
 
 docker:
 	for i in docker; \
-		do (cd $$i && $(MAKE) $(MFLAGS) $@); done
+		do (cd $$i && $(MAKE) $(MFLAGS)); done
 
 # Lines of code
 loc:
