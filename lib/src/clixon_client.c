@@ -74,7 +74,7 @@
 /* Netconf binary default, override with environment variable: CLIXON_NETCONF_BIN 
  * Could try to get path from install/makefile data
  */
-#define CLIXON_NETCONF_BIN "/usr/local/bin/clixon_netconf"
+#define CLIXON_NETCONF_BIN CLIXON_CONFIG_BINDIR "/clixon_netconf"
 
 #define CLIXON_CLIENT_MAGIC 0x54fe649a
 

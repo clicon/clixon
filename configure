@@ -6602,6 +6602,24 @@ then :
 fi
 
 
+# Default location for config file
+
+printf "%s\n" "#define CLIXON_DEFAULT_CONFIG \"${CLIXON_DEFAULT_CONFIG}\"" >>confdefs.h
+
+
+
+printf "%s\n" "#define CLIXON_CONFIG_BINDIR \"${BINDIR}\"" >>confdefs.h
+
+
+printf "%s\n" "#define CLIXON_CONFIG_LOCALSTATEDIR \"${LOCALSTATEDIR}\"" >>confdefs.h
+
+
+printf "%s\n" "#define CLIXON_CONFIG_SBINDIR \"${SBINDIR}\"" >>confdefs.h
+
+
+printf "%s\n" "#define CLIXON_CONFIG_SYSCONFDIR \"${SYSCONFDIR}\"" >>confdefs.h
+
+
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for socket in -lsocket" >&5
 printf %s "checking for socket in -lsocket... " >&6; }
 if test ${ac_cv_lib_socket_socket+y}
@@ -6930,11 +6948,6 @@ fi
 if test -n "${CLICON_GROUP}"; then
     echo "Using CLICON_GROUP here: ${CLICON_GROUP}"
 fi
-
-# Default location for config file
-
-printf "%s\n" "#define CLIXON_DEFAULT_CONFIG \"${CLIXON_DEFAULT_CONFIG}\"" >>confdefs.h
-
 
 # Dummy to disable native language support (nls) to remove warnings in buildroot
 # Check whether --enable-nls was given.
