@@ -361,6 +361,14 @@ AC_ARG_WITH([configfile],
 	    [AS_HELP_STRING([--with-configfile=FILE],[Set default path to config file])],
 	    [CLIXON_DEFAULT_CONFIG="$withval"],)
 
+# Default location for config file
+AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
+
+AC_DEFINE_UNQUOTED(CLIXON_CONFIG_BINDIR, "${BINDIR}", [Pass-through $bindir])
+AC_DEFINE_UNQUOTED(CLIXON_CONFIG_LOCALSTATEDIR, "${LOCALSTATEDIR}", [Pass-through $localstatedir])
+AC_DEFINE_UNQUOTED(CLIXON_CONFIG_SBINDIR, "${SBINDIR}", [Pass-through $sbindir])
+AC_DEFINE_UNQUOTED(CLIXON_CONFIG_SYSCONFDIR, "${SYSCONFDIR}", [Pass-through $sysconfdir])
+
 AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(dl, dlopen)
 
@@ -442,9 +450,6 @@ AC_SUBST(CLICON_GROUP)
 if test -n "${CLICON_GROUP}"; then
     echo "Using CLICON_GROUP here: ${CLICON_GROUP}"
 fi
-
-# Default location for config file
-AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
 
 # Dummy to disable native language support (nls) to remove warnings in buildroot
 AC_ARG_ENABLE(nls)
