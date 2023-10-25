@@ -120,14 +120,15 @@ EOF
                         expectxml="<upgraded xmlns=\"urn:example:a\"/>"
                     fi
                 elif $modstate; then
-                    expectxml="<error-message>Internal error: No yang files found matching \"A@2016-01-01\" in the list of CLICON_YANG_DIRs</error-message>"
+                    #                    expectxml="<error-message>Internal error: No yang files found matching \"A@2016-01-01\" in the list of CLICON_YANG_DIRs</error-message>"
+                    expectxml="<error-message>Internal error: Yang \"A@2016-01-01\" not found in the list of CLICON_YANG_DIRs</error-message>"
                 fi
             else # xml false
                 xmltag="wrong"
                 expectxml="<error-message>Failed to find YANG spec of XML node: $xmltag with parent: config in namespace: urn:example:a</error-message>"
                 if ! $oldyang; then
                     if $modstate; then
-                        expectxml="<error-message>Internal error: No yang files found matching \"A@2016-01-01\" in the list of CLICON_YANG_DIRs</error-message>"
+                        expectxml="<error-message>Internal error: Yang \"A@2016-01-01\" not found in the list of CLICON_YANG_DIRs</error-message>"
                     fi
                 fi
             fi

@@ -1129,9 +1129,9 @@ yang_parse_module(clicon_handle h,
         if (revision)
             cprintf(cb, "@%s", revision);
         if (origname)
-            clicon_err(OE_YANG, ENOENT, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs when loading %s.yang", cbuf_get(cb), origname);
+            clicon_err(OE_YANG, ENOENT, "Yang \"%s\" not found in the list of CLICON_YANG_DIRs when loading %s.yang", cbuf_get(cb), origname);
         else
-            clicon_err(OE_YANG, ENOENT, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs", cbuf_get(cb));
+            clicon_err(OE_YANG, ENOENT, "Yang \"%s\" not found in the list of CLICON_YANG_DIRs", cbuf_get(cb));
         goto done;
     }
     filename = cbuf_get(fbuf);

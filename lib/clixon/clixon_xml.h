@@ -316,4 +316,9 @@ cxobj    *xml_child_index_each(cxobj *xparent, char *name, cxobj *xprev, enum cx
 
 #endif
 
+/* 6.4 backward compatability */
+#if 1
+#define clicon_debug_xml clixon_debug_xml
+#endif
+
 #endif /* _CLIXON_XML_H */

@@ -3798,7 +3798,7 @@ yang_anydata_add(yang_stmt *yp,
  * @param[in]  name   Name of the extension 
  * @param[in]  ns     The namespace of the module where the extension is defined
  * @param[out] exist  The extension exists.
- * @param[out] value  clispec operator (hide/none) - direct pointer into yang, dont free
+ * @param[out] value  Extension value if any
  * @retval     0      OK: Look in exist and value for return value
  * @retval    -1      Error
  * This is for extensions with an argument

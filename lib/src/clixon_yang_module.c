@@ -838,7 +838,7 @@ yang_metadata_init(clicon_handle h)
  * This function is used where a yang-lib module-set is available to populate
  * an XML mount-point.
  * @param[in] h       Clixon handle
- * @param[in] yanglib XML tree on the form <yang-lib>...
+ * @param[in] xyanglib XML tree on the form <yang-lib>...
  * @param[in] yspec   Will be populated with YANGs, is consumed
  * @retval    1       OK
  * @retval    0       Parse error
@@ -848,7 +848,7 @@ yang_metadata_init(clicon_handle h)
  */
 int
 yang_lib2yspec(clicon_handle h,
-               cxobj        *yanglib,
+               cxobj        *xyanglib,
                yang_stmt    *yspec)
 {
     int        retval = -1;
@@ -863,7 +863,7 @@ yang_lib2yspec(clicon_handle h,
     yang_stmt *yrev;
     int        modmin = 0;
 
-    if (xpath_vec(yanglib, nsc, "module-set/module", &vec, &veclen) < 0)
+    if (xpath_vec(xyanglib, nsc, "module-set/module", &vec, &veclen) < 0)
         goto done;
     for (i=0; i<veclen; i++){
         xi = vec[i];

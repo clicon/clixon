@@ -476,6 +476,7 @@ xml_tree_equal(cxobj     *x0,
     char      *b1;
     cxobj     *x0c = NULL; /* x0 child */
     cxobj     *x1c = NULL; /* x1 child */
+    int        extflag = 0;
 
     /* Traverse x0 and x1 in lock-step */
     x0c = x1c = NULL;
@@ -485,10 +486,29 @@ xml_tree_equal(cxobj     *x0,
         if (x0c == NULL && x1c == NULL)
             goto ok;
         else if (x0c == NULL){
+            /* If cl:gnore-compare extension, return equal */
+            if ((yc1 = xml_spec(x1c)) != NULL){
+                if (yang_extension_value(yc1, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                    goto done;
+                if (extflag)
+                    goto ok;
+            }
             goto done;
         }
         else if (x1c == NULL){
+            if ((yc0 = xml_spec(x0c)) != NULL){
+                if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                    goto done;
+                if (extflag)
+                    goto ok;
+            }
             goto done;
+        }
+        if ((yc0 = xml_spec(x0c)) != NULL){
+            if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag)
+                goto ok;
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);

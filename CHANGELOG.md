@@ -52,7 +52,14 @@ Developers may need to change their code
   * clicon_debug() -> clixon_debug()
   * clicon_debug_init() -> clixon_debug_init()
   * clicon_debug_get() -> clixon_debug_get()
+  * clicon_debug_xml() -> clixon_debug_xml()
+  * There are backward compatible macros during a transition period
 
+### Minor features
+
+* New `clixon-lib@2023-11-01.yang` revision
+  * Added ignore-compare extension
+  
 ### Corrected Bugs
 
 * Fixed: [Does clixon cli support autocompletion for leafrefs pointed to another module?](https://github.com/clicon/clixon/issues/455)
