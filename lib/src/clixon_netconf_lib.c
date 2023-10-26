@@ -1772,10 +1772,12 @@ netconf_err2cb(clicon_handle h,
 {
     int    retval = -1;
     cxobj *x;
+    size_t len;
 
+    len = cbuf_len(cberr);
     if (clixon_plugin_netconf_errmsg_all(h, xerr, cberr) < 0)
         goto done;
-    if (cbuf_len(cberr) == 0){
+    if (cbuf_len(cberr) == len){ /* Same as on-entry, use default */
         if ((x=xpath_first(xerr, NULL, "//error-type"))!=NULL)
             cprintf(cberr, "%s ", xml_body(x));
         if ((x=xpath_first(xerr, NULL, "//error-tag"))!=NULL)

@@ -263,7 +263,7 @@ snmp_scalar_get(clicon_handle               h,
             goto done;
         /* Detect error XXX Error handling could improve */
         if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-            clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
+            clixon_netconf_error(h, xerr, "clicon_rpc_get", NULL);
             goto done;
         }
         x = xpath_first(xt, nsc, "%s", xpath);
