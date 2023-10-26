@@ -231,7 +231,7 @@ main(int    argc,
                 clicon_err(OE_XML, errno, "cbuf_new");
                 goto done;
             }
-            if (netconf_err2cb(xerr, cb) < 0)
+            if (netconf_err2cb(h, xerr, cb) < 0)
                 goto done;
             fprintf(stderr, "xml validation error: %s\n", cbuf_get(cb));
             goto done;
@@ -253,7 +253,7 @@ main(int    argc,
                 clicon_err(OE_XML, errno, "cbuf_new");
                 goto done;
             }
-            if (netconf_err2cb(xerr, cb) < 0)
+            if (netconf_err2cb(h, xerr, cb) < 0)
                 goto done;
             fprintf(stderr, "xml validation error: %s\n", cbuf_get(cb));
             goto done;

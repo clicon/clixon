@@ -194,7 +194,7 @@ main(int argc, char **argv)
         goto done;
     }
     if (ret == 0){
-        clixon_netconf_error(xerr, "Parsing base xml", NULL);
+        clixon_netconf_error(h, xerr, "Parsing base xml", NULL);
         goto done;
     }
     /* Get base subtree by xpath */
@@ -216,7 +216,7 @@ main(int argc, char **argv)
             goto done;
         }
         if (ret == 0){
-            clixon_netconf_error(xerr, "Parsing secondary xml", NULL);
+            clixon_netconf_error(h, xerr, "Parsing secondary xml", NULL);
             goto done;
         }
         break;
@@ -227,7 +227,7 @@ main(int argc, char **argv)
             goto done;
         }
         if (ret == 0){
-            clixon_netconf_error(xerr, "Parsing secondary xml", NULL);
+            clixon_netconf_error(h, xerr, "Parsing secondary xml", NULL);
             goto done;
         }
         if (xpath == NULL)
@@ -250,7 +250,7 @@ main(int argc, char **argv)
             goto done;
         }
         if (ret == 0){
-            clixon_netconf_error(xerr, "Parsing secondary xml", NULL);
+            clixon_netconf_error(h, xerr, "Parsing secondary xml", NULL);
             goto done;
         }
         /* Get secondary subtree by xpath */

@@ -1163,6 +1163,68 @@ clixon_plugin_yang_patch_all(clicon_handle h,
     return retval;
 }
 
+/*! Callback plugin to customize Netconf error message
+ *
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       Clixon handle
+ * @param[in]  xerr    Netconf error message on the level: <rpc-error>
+ * @param[out] cberr   Translation from netconf err to cbuf.
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_plugin_netconf_errmsg_one(clixon_plugin_t *cp,
+                                 clicon_handle    h,
+                                 cxobj           *xerr,
+                                 cbuf            *cberr)
+{
+    int           retval = -1;
+    netconf_errmsg_t *fn;
+    void         *wh = NULL;
+
+    if ((fn = cp->cp_api.ca_errmsg) != NULL){
+        wh = NULL;
+        if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+            goto done;
+        if (fn(h, xerr, cberr) < 0) {
+            if (clicon_errno < 0)
+                clicon_log(LOG_WARNING, "%s: Internal error: Yang patch callback in plugin: %s returned -1 but did not make a clicon_err call",
+                           __FUNCTION__, cp->cp_name);
+            goto done;
+        }
+        if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Call plugin customize Netconf error message
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  xerr    Netconf error message on the level: <rpc-error>
+ * @param[out] cberr   Translation from netconf err to cbuf.
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_plugin_netconf_errmsg_all(clicon_handle h,
+                                 cxobj        *xerr,
+                                 cbuf         *cberr)
+{
+    int            retval = -1;
+    clixon_plugin_t *cp = NULL;
+
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+        if (clixon_plugin_netconf_errmsg_one(cp, h, xerr, cberr) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*--------------------------------------------------------------------
  * RPC callbacks for both client/frontend and backend plugins.
  */

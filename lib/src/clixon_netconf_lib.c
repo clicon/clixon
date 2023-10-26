@@ -1747,46 +1747,51 @@ netconf_db_find(cxobj *xn,
     return db;
 }
 
-/*! Generate netconf error msg to cbuf to use in string printout or logs
+/*! Generate netconf error msg to cbuf using callback to use in string printout or logs
  *
+ * If no callback is registered, a default error message is genereated
  * @param[in]     xerr    Netconf error message on the level: <rpc-error>
- * @param[in,out] cberr   Translation from netconf err to cbuf.
- * @retval     0       OK, with cberr set
- * @retval    -1       Error
+ * @param[out]    cberr   Translation from netconf err to cbuf.
+ * @retval        0       OK, with cberr set
+ * @retval       -1       Error
  * @code
  *     cbuf *cb = NULL;
  *     if ((cb = cbuf_new()) ==NULL){
  *        err;
- *     if (netconf_err2cb(xerr, cb) < 0)
+ *     if (netconf_err2cb(h, xerr, cb) < 0)
  *        err;
  *     printf("%s", cbuf_get(cb));
  *     cbuf_free(cb);
  * @endcode
  * @see clixon_netconf_error_fn
- * XXX does not support prefixes properly
  */
 int
-netconf_err2cb(cxobj *xerr,
-               cbuf  *cberr)
+netconf_err2cb(clicon_handle h,
+               cxobj        *xerr,
+               cbuf         *cberr)
 {
     int    retval = -1;
     cxobj *x;
 
-    if ((x=xpath_first(xerr, NULL, "//error-type"))!=NULL)
-        cprintf(cberr, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, NULL, "//error-tag"))!=NULL)
-        cprintf(cberr, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, NULL, "//error-message"))!=NULL)
-        cprintf(cberr, "%s ", xml_body(x));
-    if ((x=xpath_first(xerr, NULL, "//error-info")) != NULL &&
-        xml_child_nr(x) > 0){
-        if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
-            goto done;
+    if (clixon_plugin_netconf_errmsg_all(h, xerr, cberr) < 0)
+        goto done;
+    if (cbuf_len(cberr) == 0){
+        if ((x=xpath_first(xerr, NULL, "//error-type"))!=NULL)
+            cprintf(cberr, "%s ", xml_body(x));
+        if ((x=xpath_first(xerr, NULL, "//error-tag"))!=NULL)
+            cprintf(cberr, "%s ", xml_body(x));
+        if ((x=xpath_first(xerr, NULL, "//error-message"))!=NULL)
+            cprintf(cberr, "%s ", xml_body(x));
+        if ((x=xpath_first(xerr, NULL, "//error-info")) != NULL &&
+            xml_child_nr(x) > 0){
+            if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
+                goto done;
+        }
+        if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
+            cprintf(cberr, ": %s ", xml_body(x));
+        if ((x=xpath_first(xerr, NULL, "//error-path"))!=NULL)
+            cprintf(cberr, ": %s ", xml_body(x));
     }
-    if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
-        cprintf(cberr, ": %s ", xml_body(x));
-    if ((x=xpath_first(xerr, NULL, "//error-path"))!=NULL)
-        cprintf(cberr, ": %s ", xml_body(x));
     retval = 0;
  done:
     return retval;
@@ -1953,6 +1958,7 @@ netconf_hello_server(clicon_handle h,
  *
  * Get a text error message from netconf error message and generate error on the form:
  *   <msg>: "<arg>": <netconf-error>   or   <msg>: <netconf-error>
+ * @param[in]  h       Clixon handle
  * @param[in]  fn      Inline function name (when called from clicon_err() macro)
  * @param[in]  line    Inline file line number (when called from clicon_err() macro)
  * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
@@ -1961,13 +1967,15 @@ netconf_hello_server(clicon_handle h,
  * @retval     0       OK
  * @retval    -1       Error
  * @see netconf_err2cb
+ * ßee clixon_netconf_error macro
  */
 int
-clixon_netconf_error_fn(const char *fn, 
-                        const int   line,
-                        cxobj       *xerr,
-                        const char  *msg,
-                        const char  *arg)
+clixon_netconf_error_fn(clicon_handle h,
+                        const char   *fn,
+                        const int     line,
+                        cxobj        *xerr,
+                        const char   *msg,
+                        const char   *arg)
 {
     int    retval = -1;
     cbuf  *cb = NULL;
@@ -1983,7 +1991,7 @@ clixon_netconf_error_fn(const char *fn,
         
         cprintf(cb, ": ");
     }
-    if (netconf_err2cb(xerr, cb) < 0)
+    if (netconf_err2cb(h, xerr, cb) < 0)
         goto done;
 #if 0 /* More verbose output for debugging */
     clicon_log(LOG_ERR, "%s: %d: %s", fn, line, cbuf_get(cb));

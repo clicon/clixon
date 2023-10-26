@@ -670,7 +670,7 @@ clicon_rpc_edit_config(clicon_handle       h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Editing configuration", NULL);
+        clixon_netconf_error(h, xerr, "Editing configuration", NULL);
         goto done;
     }
     retval = 0;
@@ -732,7 +732,7 @@ clicon_rpc_copy_config(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Copying configuration", NULL);
+        clixon_netconf_error(h, xerr, "Copying configuration", NULL);
         goto done;
     }
     retval = 0;
@@ -790,7 +790,7 @@ clicon_rpc_delete_config(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Deleting configuration", NULL);
+        clixon_netconf_error(h, xerr, "Deleting configuration", NULL);
         goto done;
     }
     retval = 0;
@@ -844,7 +844,7 @@ clicon_rpc_lock(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Locking configuration", NULL);
+        clixon_netconf_error(h, xerr, "Locking configuration", NULL);
         goto done;
     }
     retval = 0;
@@ -898,7 +898,7 @@ clicon_rpc_unlock(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Configuration unlock", NULL);
+        clixon_netconf_error(h, xerr, "Configuration unlock", NULL);
         goto done;
     }
     retval = 0;
@@ -936,7 +936,7 @@ clicon_rpc_unlock(clicon_handle h,
  *  if (clicon_rpc_get(h, "/hello/world", nsc, CONTENT_ALL, -1, &xt) < 0)
  *     err;
  *  if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
- *     clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
+ *     clixon_netconf_error(h, xerr, "clicon_rpc_get", NULL);
  *     err;
  *  }
  *  if (xt)
@@ -984,7 +984,7 @@ clicon_rpc_get(clicon_handle   h,
  *  if (clicon_rpc_get(h, "/hello/world", nsc, CONTENT_ALL, -1, &xt) < 0)
  *     err;
  *  if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
- *     clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
+ *     clixon_netconf_error(h, xerr, "clicon_rpc_get", NULL);
  *     err;
  *  }
  *  if (xt)
@@ -1329,7 +1329,7 @@ clicon_rpc_close_session(clicon_handle h)
         clicon_client_socket_set(h, -1);
     }
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Close session", NULL);
+        clixon_netconf_error(h, xerr, "Close session", NULL);
         goto done;
     }
     retval = 0;
@@ -1383,7 +1383,7 @@ clicon_rpc_kill_session(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Kill session", NULL);
+        clixon_netconf_error(h, xerr, "Kill session", NULL);
         goto done;
     }
     retval = 0;
@@ -1439,7 +1439,7 @@ clicon_rpc_validate(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, CLIXON_ERRSTR_VALIDATE_FAILED, NULL);
+        clixon_netconf_error(h, xerr, CLIXON_ERRSTR_VALIDATE_FAILED, NULL);
         retval = 0;
         goto done;
     }
@@ -1546,7 +1546,7 @@ clicon_rpc_commit(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, CLIXON_ERRSTR_COMMIT_FAILED, NULL);
+        clixon_netconf_error(h, xerr, CLIXON_ERRSTR_COMMIT_FAILED, NULL);
         retval = 0;
         goto done;
     }
@@ -1605,7 +1605,7 @@ clicon_rpc_discard_changes(clicon_handle h)
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Discard changes", NULL);
+        clixon_netconf_error(h, xerr, "Discard changes", NULL);
         goto done;
     }
     retval = 0;
@@ -1670,7 +1670,7 @@ clicon_rpc_create_subscription(clicon_handle    h,
     if (clicon_rpc_msg_persistent(h, msg, &xret, s0) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Create subscription", NULL);
+        clixon_netconf_error(h, xerr, "Create subscription", NULL);
         goto done;
     }
     retval = 0;
@@ -1725,7 +1725,7 @@ clicon_rpc_debug(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Debug", NULL);
+        clixon_netconf_error(h, xerr, "Debug", NULL);
         goto done;
     }
     if (xpath_first(xret, NULL, "//rpc-reply/ok") == NULL){
@@ -1791,7 +1791,7 @@ clicon_rpc_restconf_debug(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Debug", NULL);
+        clixon_netconf_error(h, xerr, "Debug", NULL);
         goto done;
     }
     if (xpath_first(xret, NULL, "//rpc-reply/ok") == NULL){
@@ -1880,7 +1880,7 @@ clicon_hello_req(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Hello", NULL);
+        clixon_netconf_error(h, xerr, "Hello", NULL);
         goto done;
     }
     if ((x = xpath_first(xret, NULL, "hello/session-id")) == NULL){
@@ -1944,7 +1944,7 @@ clicon_rpc_restart_plugin(clicon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Debug", NULL);
+        clixon_netconf_error(h, xerr, "Debug", NULL);
         goto done;
     }
     if (xpath_first(xret, NULL, "//rpc-reply/ok") == NULL){

@@ -129,7 +129,7 @@ example_client_rpc(clicon_handle h,
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Get configuration", NULL);
+        clixon_netconf_error(h, xerr, "Get configuration", NULL);
         goto done;
     }
     /* Print result */
@@ -232,16 +232,51 @@ example_cli_yang_mount(clicon_handle   h,
     return retval;
 }
 
+/*! Callback to customize Netconf error message
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  xerr    Netconf error message on the level: <rpc-error>
+ * @param[out] cberr   Translation from netconf err to cbuf.
+ * @retval     0       OK, with cberr set
+ * @retval    -1       Error
+ * @see netconf_err2cb  this errmsg is the same as the default
+ */
+int
+example_cli_errmsg(clicon_handle h,
+                   cxobj        *xerr,
+                   cbuf         *cberr)
+{
+    int    retval = -1;
+    cxobj *x;
+    
+    if ((x=xpath_first(xerr, NULL, "//error-type"))!=NULL)
+        cprintf(cberr, "%s ", xml_body(x));
+    if ((x=xpath_first(xerr, NULL, "//error-tag"))!=NULL)
+        cprintf(cberr, "%s ", xml_body(x));
+    if ((x=xpath_first(xerr, NULL, "//error-message"))!=NULL)
+        cprintf(cberr, "%s ", xml_body(x));
+    if ((x=xpath_first(xerr, NULL, "//error-info")) != NULL &&
+        xml_child_nr(x) > 0){
+        if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
+            goto done;
+    }
+    if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
+        cprintf(cberr, ": %s ", xml_body(x));
+    if ((x=xpath_first(xerr, NULL, "//error-path"))!=NULL)
+        cprintf(cberr, ": %s ", xml_body(x));
+    retval = 0;
+ done:
+    return retval;
+}
+
 #ifndef CLIXON_STATIC_PLUGINS
 static clixon_plugin_api api = {
     "example",          /* name */
     clixon_plugin_init, /* init */
     NULL,               /* start */
     NULL,               /* exit */
-    .ca_prompt=NULL,    /* cli_prompthook_t */
-    .ca_suspend=NULL,   /* cligen_susp_cb_t */
-    .ca_interrupt=NULL, /* cligen_interrupt_cb_t */
-    .ca_yang_mount=example_cli_yang_mount          /* RFC 8528 schema mount */
+    .ca_yang_mount=example_cli_yang_mount,          /* RFC 8528 schema mount */
+    .ca_errmsg=example_cli_errmsg, /* customize errmsg */
 };
 
 /*! CLI plugin initialization

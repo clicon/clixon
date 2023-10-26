@@ -308,7 +308,7 @@ pipe_showas_fn(clicon_handle h,
         if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clixon_netconf_error(xerr, "Parse top file", NULL);
+            clixon_netconf_error(h, xerr, "Parse top file", NULL);
             goto done;
         }
         break;

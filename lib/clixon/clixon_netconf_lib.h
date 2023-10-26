@@ -153,7 +153,7 @@ typedef enum withdefaults_type withdefaults_type;
  * @param[in]  format   Format string 
  * @param[in]  arg      String argument to format (optional)
  */
-#define clixon_netconf_error(x, f, a) clixon_netconf_error_fn(__FUNCTION__, __LINE__, (x), (f), (a))
+#define clixon_netconf_error(h, x, f, a) clixon_netconf_error_fn((h), __FUNCTION__, __LINE__, (x), (f), (a))
 
 /*
  * Prototypes
@@ -199,13 +199,13 @@ int netconf_trymerge(cxobj *x, yang_stmt *yspec, cxobj **xret);
 int netconf_module_features(clicon_handle h);
 int netconf_module_load(clicon_handle h);
 char *netconf_db_find(cxobj *xn, char *name);
-int netconf_err2cb(cxobj *xerr, cbuf *cberr);
+int netconf_err2cb(clicon_handle h, cxobj *xerr, cbuf *cberr);
 const netconf_content netconf_content_str2int(char *str);
 const char *netconf_content_int2str(netconf_content nr);
 int netconf_capabilites(clicon_handle h, cbuf *cb);
 int netconf_hello_server(clicon_handle h, cbuf *cb, uint32_t session_id);
 int netconf_hello_req(clicon_handle h, cbuf *cb);
-int clixon_netconf_error_fn(const char *fn, const int line, cxobj *xerr, const char *fmt, const char *arg);
+int clixon_netconf_error_fn(clicon_handle h, const char *fn, const int line, cxobj *xerr, const char *fmt, const char *arg);
 int clixon_netconf_internal_error(cxobj *xerr, char *msg, char *arg);
 int netconf_parse_uint32(char *name, char *valstr, char *defaultstr, uint32_t defaultval, cbuf *cbret, uint32_t *value);
 int netconf_parse_uint32_xml(char *name, char *valstr, char *defaultstr, uint32_t defaultval, cxobj **xerr, uint32_t *value);

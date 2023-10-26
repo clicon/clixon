@@ -187,7 +187,7 @@ restconf_main_config(clicon_handle h,
         if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, NULL, &xconfig) < 0)
             goto done;
         if ((xerr = xpath_first(xconfig, NULL, "/rpc-error")) != NULL){
-            clixon_netconf_error(xerr, "Get backend restconf config", NULL);
+            clixon_netconf_error(h, xerr, "Get backend restconf config", NULL);
             goto done;
         }
         /* Extract restconf configuration */

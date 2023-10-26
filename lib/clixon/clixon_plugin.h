@@ -53,7 +53,7 @@
 
 /*! Registered RPC callback function 
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  xn      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @param[in]  arg     Domain specific arg, ec client-entry or FCGX_Request 
@@ -71,7 +71,7 @@ typedef int (*clicon_rpc_cb)(
 
 /*! Registered Upgrade callback function 
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
@@ -176,7 +176,7 @@ typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
  * If there are multiple callbacks, the first result which is not "ignore" is returned. This is to allow for
  * different callbacks registering different classes, or grouping of authentication.
  *
- * @param[in]  h         Clicon handle
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
  * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
@@ -200,7 +200,7 @@ typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type
  * is well defined. 
  * This involves creating default configuration files for various daemons, set interface
  * flags etc.
- * @param[in]  h   Clicon handle
+ * @param[in]  h   Clixon handle
  * @param[in]  db  Database name (eg "running")
  * @retval     0   OK
  * @retval    -1   Fatal error
@@ -215,7 +215,7 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  * XXX: This callback may be replaced with a "dispatcher" type API in the future where the
  *      XPath binding is stricter, similar to the pagination API.
  *
- * @param[in]  h          Clicon handle
+ * @param[in]  h          Clixon handle
  * @param[in]  xpath      Part of state requested
  * @param[in]  nsc        XPath namespace context.
  * @param[out] xtop       XML tree where statedata is added
@@ -258,7 +258,7 @@ typedef int (trans_cb_t)(clicon_handle h, transaction_data td);
 /*! Hook to override default prompt with explicit function
  *
  * Format prompt before each getline 
- * @param[in] h      Clicon handle
+ * @param[in] h      Clixon handle
  * @param[in] mode   Cligen syntax mode
  * @retval    prompt Prompt to prepend all CLigen command lines
  */
@@ -268,7 +268,7 @@ typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
  *
  * Gets called on startup after initial XML parsing, but before module-specific upgrades
  * and before validation. 
- * @param[in] h    Clicon handle
+ * @param[in] h    Clixon handle
  * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
  * @param[in] xt   XML tree. Upgrade this "in place"
  * @param[in] msd  Info on datastore module-state, if any
@@ -315,6 +315,16 @@ typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, int *config,
  */
 typedef int (yang_patch_t)(clicon_handle h, yang_stmt *ymod);
 
+/*! Callback to customize Netconf error message
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  xerr    Netconf error message on the level: <rpc-error>
+ * @param[out] cberr   Translation from netconf err to cbuf.
+ * @retval     0       OK, with cberr set
+ * @retval    -1       Error
+ */
+typedef int (netconf_errmsg_t)(clicon_handle, cxobj *xerr, cbuf *cberr);
+
 /*! Startup status for use in startup-callback
  *
  * Note that for STARTUP_ERR and STARTUP_INVALID, running runs in failsafe mode
@@ -344,6 +354,7 @@ struct clixon_plugin_api{
     plgextension_t   *ca_extension;        /* Yang extension/unknown handler */
     yang_mount_t     *ca_yang_mount;       /* RFC 8528 schema mount */
     yang_patch_t     *ca_yang_patch;       /* Patch yang after parse */
+    netconf_errmsg_t *ca_errmsg;           /* Customize error message callback */
     union {
         struct { /* cli-specific */
             cli_prompthook_t *ci_prompt;         /* Prompt hook */
@@ -475,6 +486,9 @@ int clixon_plugin_yang_mount_all(clicon_handle h, cxobj *xt, int *config, valida
 
 int clixon_plugin_yang_patch_one(clixon_plugin_t *cp, clicon_handle h, yang_stmt *ymod);
 int clixon_plugin_yang_patch_all(clicon_handle h, yang_stmt *ymod);
+
+int clixon_plugin_netconf_errmsg_one(clixon_plugin_t *cp, clicon_handle h, cxobj *xerr, cbuf *cberr);
+int clixon_plugin_netconf_errmsg_all(clicon_handle h, cxobj *xerr, cbuf *cberr);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);

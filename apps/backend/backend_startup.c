@@ -243,7 +243,7 @@ load_extraxml(clicon_handle h,
     if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (netconf_err2cb(xerr, cbret) < 0)
+        if (netconf_err2cb(h, xerr, cbret) < 0)
             goto done;
         retval = 0;
         goto done;

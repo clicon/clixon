@@ -234,7 +234,7 @@ api_return_err(clicon_handle  h,
             goto done;
         }
         cprintf(cberr, "Internal error, system returned invalid error message: ");
-        if (netconf_err2cb(xerr, cberr) < 0)
+        if (netconf_err2cb(h, xerr, cberr) < 0)
             goto done;
         if (netconf_operation_failed_xml(&xerr2, "application",
                                          cbuf_get(cberr)) < 0)

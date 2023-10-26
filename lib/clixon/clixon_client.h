@@ -73,7 +73,7 @@ extern "C" {
 
 clixon_handle clixon_client_init(const char *config_file);
 int   clixon_client_terminate(clixon_handle h);
-int   clixon_client_lock(int sock, const char *descr, const int lock, const char *db);
+int   clixon_client_lock(clixon_handle h, int sock, const char *descr, const int lock, const char *db);
 int   clixon_client_hello(int sock, const char *descr, int version);
 clixon_client_handle clixon_client_connect(clixon_handle h, clixon_client_type socktype, const char *dest);
 int   clixon_client_disconnect(clixon_client_handle ch);

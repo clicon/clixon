@@ -94,7 +94,7 @@ validate_tree(clicon_handle h,
             clicon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
-        if (netconf_err2cb(xerr, cbret) < 0)
+        if (netconf_err2cb(h, xerr, cbret) < 0)
             goto done;
         fprintf(stderr, "xml validation error: %s\n", cbuf_get(cbret));
         goto done;
@@ -278,7 +278,7 @@ main(int    argc,
             goto done;
         }
         if (ret == 0){
-            clixon_netconf_error(xerr, "Parse top file", NULL);
+            clixon_netconf_error(h, xerr, "Parse top file", NULL);
             goto done;
         }
         if (validate_tree(h, xtop, yspec) < 0)
@@ -304,7 +304,7 @@ main(int    argc,
         if ((ret = clixon_json_parse_file(fp, 1, top_input_filename?YB_PARENT:YB_MODULE, yspec, &xt, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clixon_netconf_error(xerr, "util_xml", NULL);
+            clixon_netconf_error(h, xerr, "util_xml", NULL);
             goto done;
         }
     }
@@ -320,7 +320,7 @@ main(int    argc,
             goto done;
         }
         if (ret == 0){
-            clixon_netconf_error(xerr, "util_xml", NULL);
+            clixon_netconf_error(h, xerr, "util_xml", NULL);
             goto done;
         }
     }

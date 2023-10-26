@@ -468,7 +468,7 @@ clixon_xml_changelog_init(clicon_handle h)
                 clicon_err(OE_XML, errno, "cbuf_new");
                 goto done;
             }
-            if (netconf_err2cb(xret, cbret) < 0)
+            if (netconf_err2cb(h, xret, cbret) < 0)
                 goto done;
             clicon_err(OE_YANG, 0, "validation failed: %s", cbuf_get(cbret));
             goto done;

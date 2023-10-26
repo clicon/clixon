@@ -242,16 +242,18 @@ clicon_option_dump1(clicon_handle h,
 
 /*! Open and parse single config file
  *
- * @param[in]  filename
+ * @param[in]  h        Clixon handle
+ * @param[in]  filename 
  * @param[in]  yspec
  * @param[out] xconfig  Pointer to xml config tree. Should be freed by caller
  * @retval     0        OK
  * @retval    -1        Error
  */
 static int
-parse_configfile_one(const char *filename,
-                     yang_stmt  *yspec,
-                     cxobj     **xconfig)
+parse_configfile_one(clicon_handle h,
+                     const char   *filename,
+                     yang_stmt    *yspec,
+                     cxobj       **xconfig)
 {
     int    retval = -1;
     FILE  *fp = NULL;
@@ -273,10 +275,10 @@ parse_configfile_one(const char *filename,
             clicon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
-        if (netconf_err2cb(xerr, cbret) < 0)
+        if (netconf_err2cb(h, xerr, cbret) < 0)
             goto done;
         /* Here one could make it more relaxing to not quit on unrecognized option? */
-        clixon_netconf_error(xerr, NULL, NULL);
+        clixon_netconf_error(h, xerr, NULL, NULL);
         goto done;
     }
     /* Ensure a single root */
@@ -424,7 +426,7 @@ parse_configfile(clicon_handle  h,
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s: Reading config file %s", __FUNCTION__, filename);
     /* Parse main config file */
-    if (parse_configfile_one(filename, yspec, &xt) < 0)
+    if (parse_configfile_one(h, filename, yspec, &xt) < 0)
         goto done;
     /* xt is a single-rooted:  <clixon-config>...</clixon-config>
      * If no override (eg from command-line)
@@ -444,7 +446,7 @@ parse_configfile(clicon_handle  h,
         /* Loop through files */
         for (i = 0; i < ndp; i++){
             snprintf(filename1, sizeof(filename1), "%s/%s", extraconfdir, dp[i].d_name);
-            if (parse_configfile_one(filename1, yspec, &xe) < 0)
+            if (parse_configfile_one(h, filename1, yspec, &xe) < 0)
                 goto done;
             /* Merge objects from extrafile into main, xml_merge cannot be used due to special cases */
             if (merge_control_xml(h, xt, xe) < 0)
@@ -474,7 +476,7 @@ parse_configfile(clicon_handle  h,
             clicon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
-        if (netconf_err2cb(xerr, cbret) < 0)
+        if (netconf_err2cb(h, xerr, cbret) < 0)
             goto done;
         clicon_err(OE_CFG, 0, "Config file validation: %s", cbuf_get(cbret));
         goto done;

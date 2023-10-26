@@ -321,7 +321,7 @@ expand_dbvar(void   *h,
             goto done;
         if (ret == 0){
             // XXX cf cli_dbxml
-            clixon_netconf_error(xerr, "Expand datastore symbol", NULL);
+            clixon_netconf_error(h, xerr, "Expand datastore symbol", NULL);
             goto done;
         }
     }
@@ -384,7 +384,7 @@ expand_dbvar(void   *h,
     if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, &xt) < 0)
         goto done;
     if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_netconf_error(xe, "Get configuration", NULL);
+        clixon_netconf_error(h, xe, "Get configuration", NULL);
         goto ok;
     }
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, cbuf_get(cbxpath)) < 0)
@@ -543,7 +543,7 @@ cli_show_common(clicon_handle    h,
             goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Get configuration", NULL);
+        clixon_netconf_error(h, xerr, "Get configuration", NULL);
         goto done;
     }
     /* Special tagged modes: strip wd:default=true attribute and (optionally) nodes associated with it */
@@ -1314,7 +1314,7 @@ cli_pagination(clicon_handle h,
             goto done;
         }
         if ((xerr = xpath_first(xret, NULL, "/rpc-error")) != NULL){
-            clixon_netconf_error(xerr, "Get configuration", NULL);
+            clixon_netconf_error(h, xerr, "Get configuration", NULL);
             goto done;
         }
         if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0)
@@ -1764,7 +1764,7 @@ cli_show_statistics(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Get configuration", NULL);
+        clixon_netconf_error(h, xerr, "Get configuration", NULL);
         goto done;
     }
     fprintf(stdout, "Backend:\n");

@@ -491,7 +491,7 @@ mibyang_table_poll(clicon_handle h,
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, NULL, &xt) < 0)
         goto done;
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "clicon_rpc_get", NULL);
+        clixon_netconf_error(h, xerr, "clicon_rpc_get", NULL);
         goto done;
     }
     if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {

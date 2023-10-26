@@ -48,6 +48,10 @@ Expected: December 2023
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Changed signature of `clicon_netconf_error()` and `netconf_err2cb()`
+  * You need to add the clixon handle as first parameter:
+    * `clicon_netconf_error(...)` --> `clicon_netconf_error(h, ...)`
+    * `netconf_err2cb(...)` --> `netconf_err2cb(h, ...)`
 * Changed function name for `clicon_debug` functions. You need to rename as follows:
   * clicon_debug() -> clixon_debug()
   * clicon_debug_init() -> clixon_debug_init()
@@ -57,6 +61,9 @@ Developers may need to change their code
 
 ### Minor features
 
+* New feature: [Customized NETCONF error message](https://github.com/clicon/clixon/issues/454)
+  * Added new callback `.ca_errmsg`
+  * See https://clixon-docs.readthedocs.io/en/latest/errors.html#customized-errors for more info
 * New `clixon-lib@2023-11-01.yang` revision
   * Added ignore-compare extension
   

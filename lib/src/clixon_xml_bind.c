@@ -894,7 +894,7 @@ xml_bind_yang_rpc_reply(clicon_handle h,
                 goto done;
             }
             cprintf(cberr, "Internal error in backend reply: ");
-            if (netconf_err2cb(xerr1, cberr) < 0)
+            if (netconf_err2cb(h, xerr1, cberr) < 0)
                 goto done;
             if (xerr && netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr)) < 0)
                 goto done;
