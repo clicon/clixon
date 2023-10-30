@@ -153,67 +153,13 @@ static const map_str2str yang_snmp_types[] = {
     {"int16",   "int32"},
     {"uint8",   "uint32"},
     {"uint16",  "uint32"},
+    {"union",   "string"},
     { NULL,    NULL} /* if not found */
 };
-
- /* A function that checks that all subtypes of the union are the same
- * @param[in]  ytype Yang resolved type (a union in this case)
- * @param[out] cb    Buffer where type of subtypes is written
- * @retval     1 - true(All subtypes are the same)
- * @retval     0 - false
- */
-int
-is_same_subtypes_union(yang_stmt *ytype,
-                       cbuf      *cb)
+char* yang_type_to_snmp(char* yang_type)
 {
-    int        retval = 0;
-    yang_stmt *y_sub_type = NULL;
-    yang_stmt *y_resolved_type = NULL;        /* resolved type */
-    char      *resolved_type_str;             /* resolved type */
-    char      *type_str = NULL;
-    int        options = 0;
-    cvec      *cvv = NULL;
-    cvec      *patterns = NULL;
-    uint8_t    fraction_digits = 0;
-
-    /* Loop over all sub-types in the resolved union type, note these are
-     * not resolved types (unless they are built-in, but the resolve call is
-     * made in the union_one call.
-     */
-    while ((y_sub_type = yn_each(ytype, y_sub_type)) != NULL){
-        if (yang_keyword_get(y_sub_type) != Y_TYPE)
-            continue;
-
-        if (yang_type_resolve(ytype, ytype, y_sub_type,
-                          &y_resolved_type, &options,
-                          &cvv, patterns, NULL, &fraction_digits) < 0 || ( NULL == y_resolved_type) )
-            break;
-        if( (NULL == (resolved_type_str = yang_argument_get(y_resolved_type))) )
-            break;
-        if( NULL == type_str || strcmp(type_str, resolved_type_str) == 0)
-            type_str = resolved_type_str;
-        else
-            break;
-    }
-    if (NULL == y_sub_type && NULL != type_str){
-        cbuf_append_str(cb, resolved_type_str);
-        retval = 1;
-    }
-    return retval;
-}
-
-char*
-yang_type_to_snmp(yang_stmt *ytype,
-                  char*      yang_type_str)
-{
-    char* type_str = yang_type_str;
-    if (yang_type_str && strcmp(yang_type_str, "union") == 0){
-        cbuf *cb = cbuf_new();
-        if (is_same_subtypes_union(ytype, cb) > 0)
-            type_str =  cbuf_get(cb);
-    }
-    char* ret = clicon_str2str(yang_snmp_types, type_str);
-    return (NULL == ret) ? type_str : ret;
+    char* ret = clicon_str2str(yang_snmp_types, yang_type);
+    return (NULL == ret) ? yang_type : ret;
 }
 
 /*! Translate from snmp string to int representation
@@ -354,7 +300,7 @@ snmp_yang_type_get(yang_stmt  *ys,
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
         goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
-    restype = yang_type_to_snmp(yrestype, restype);
+    restype = yang_type_to_snmp(restype);
     if (strcmp(restype, "leafref")==0){
         if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
             clicon_err(OE_YANG, 0, "No path in leafref");
