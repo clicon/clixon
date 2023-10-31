@@ -82,7 +82,7 @@ cat <<EOF > $fstate
    <table xmlns="urn:example:clixon">
      <parameter>
        <Index>2</Index>
-       <Union_exm>4</Union_exm>
+       <Union_exm>2147483647</Union_exm>
      </parameter>
      <parameter>
        <Index>12</Index>
