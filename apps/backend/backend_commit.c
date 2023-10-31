@@ -977,7 +977,7 @@ from_client_restart_one(clicon_handle h,
         goto fail;
     }
     /* This is the state we are going from */
-    if (xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &td->td_src, NULL, NULL) < 0)
+    if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, 0, &td->td_src, NULL, NULL) < 0)
         goto done;
 
     /* 3. Compute differences */
