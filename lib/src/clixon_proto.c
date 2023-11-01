@@ -812,7 +812,7 @@ send_msg_reply(int         s,
 static int
 send_msg_notify(int         s,
                 const char *descr,
-                char        *event)
+                char       *event)
 {
     int                retval = -1;
     struct clicon_msg *msg = NULL;

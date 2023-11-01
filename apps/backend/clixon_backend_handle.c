@@ -101,7 +101,11 @@ struct backend_handle {
 clicon_handle
 backend_handle_init(void)
 {
-    return clicon_handle_init0(sizeof(struct backend_handle));
+    struct backend_handle *bh;
+
+    bh = (struct backend_handle *)clicon_handle_init0(sizeof(struct backend_handle));
+    bh->bh_ce_nr = 1; /* To align with session-id */
+    return (clicon_handle)bh;
 }
 
 /*! Deallocates a backend handle, including all client structs

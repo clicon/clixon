@@ -1377,7 +1377,6 @@ restconf_ssl_accept_client(clicon_handle    h,
         */
         if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE){
             X509 *peercert;
-            // XXX SSL_get1_peer_certificate(ssl)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
             if ((peercert = SSL_get_peer_certificate(rc->rc_ssl)) != NULL){
                 X509_free(peercert);

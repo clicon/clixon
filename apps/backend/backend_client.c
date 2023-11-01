@@ -89,44 +89,7 @@ ce_find_byid(struct client_entry *ce_list,
     return NULL;
 }
 
-/*! Stream callback for netconf stream notification (RFC 5277)
- *
- * @param[in]  h     Clixon handle
- * @param[in]  op    0:event, 1:rm
- * @param[in]  event Event as XML
- * @param[in]  arg   Extra argument provided in stream_ss_add
- * @see stream_ss_add
- */
-int
-ce_event_cb(clicon_handle h,
-            int           op,
-            cxobj        *event,
-            void         *arg)
-{
-    struct client_entry *ce = (struct client_entry *)arg;
-
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s op:%d", __FUNCTION__, op);
-    switch (op){
-    case 1:
-        /* Risk of recursion here */
-        if (ce->ce_s)
-            backend_client_rm(h, ce);
-        break;
-    default:
-        if (send_msg_notify_xml(h, ce->ce_s, ce->ce_source_host, event) < 0){
-            if (errno == ECONNRESET || errno == EPIPE){
-                clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
-            }
-            break;
-        }
-        /* note there may be other notifications than RFC5277 streams */
-        ce->ce_out_notifications++;
-        netconf_monitoring_counter_inc(h, "out-notifications");
-    }
-    return 0;
-}
-
-/*! Construct a client string from client_entry information for logging
+/*! Construct a client string description from client_entry information for logging
  *
  * @param[in]  ce   Client entry struct
  * @param[out] cbp  Cligen buffer, deallocate with cbuf_free
@@ -134,8 +97,8 @@ ce_event_cb(clicon_handle h,
  * @retval    -1    Error
  */
 static int
-ce_client_string(struct client_entry *ce,
-                 cbuf               **cbp)
+ce_client_descr(struct client_entry *ce,
+                cbuf               **cbp)
 {
     int   retval = -1;
     cbuf *cb = NULL;
@@ -148,12 +111,11 @@ ce_client_string(struct client_entry *ce,
     if ((cb = cbuf_new()) == NULL){
         clicon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
-
     }
     if (ce->ce_transport){
         if (nodeid_split(ce->ce_transport, NULL, &id) < 0)
             goto done;
-        cprintf(cb, "%s", id);
+        cprintf(cb, "%s:", id);
     }
     cprintf(cb, "%u", ce->ce_id);
     *cbp = cb;
@@ -163,6 +125,54 @@ ce_client_string(struct client_entry *ce,
         free(id);
     return retval;
 }
+
+/*! Stream callback for netconf stream notification (RFC 5277)
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  op    0:event, 1:rm
+ * @param[in]  event Event as XML
+ * @param[in]  arg   Extra argument provided in stream_ss_add
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @see stream_ss_add
+ */
+int
+ce_event_cb(clicon_handle h,
+            int           op,
+            cxobj        *event,
+            void         *arg)
+{
+    int                  retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
+    cbuf                *cbce = NULL;
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s op:%d", __FUNCTION__, op);
+    switch (op){
+    case 1:
+        /* Risk of recursion here */
+        if (ce->ce_s)
+            backend_client_rm(h, ce);
+        break;
+    default:
+        if (ce_client_descr(ce, &cbce) < 0)
+            goto done;
+        if (send_msg_notify_xml(h, ce->ce_s, cbuf_get(cbce), event) < 0){
+            if (errno == ECONNRESET || errno == EPIPE){
+                clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
+            }
+            break;
+        }
+        /* note there may be other notifications than RFC5277 streams */
+        ce->ce_out_notifications++;
+        netconf_monitoring_counter_inc(h, "out-notifications");
+    }
+    retval = 0;
+ done:
+    if (cbce)
+        cbuf_free(cbce);
+    return retval;
+}
+
 
 /*! Unlock all db:s of a client and call user unlock calback 
  *
@@ -290,6 +300,7 @@ backend_monitoring_state_get(clicon_handle h,
  * @param[in]  ce  Client handle
  * @retval     0   Ok
  * @retval    -1   Error (fatal)
+ * @see backend_client_add for adding
  * @see backend_client_delete for actual deallocation of client entry struct
  */
 int
@@ -1628,7 +1639,18 @@ from_client_msg(clicon_handle        h,
      * 3. Its a create-subscription message that uses a separate socket(=client) 
      */
     if (op_id != 0 && ce->ce_id != op_id && strcmp(rpcname, "create-subscription")){
+        client_entry *ce0;
+        
         clixon_debug(CLIXON_DBG_DEFAULT, "%s Warning: incoming session-id:%u does not match ce_id:%u on socket: %d", __FUNCTION__, op_id, ce->ce_id, ce->ce_s);
+        /* Copy transport from orig client-entry */
+        if (ce->ce_transport == NULL &&
+            (ce0 = ce_find_byid(backend_client_list(h), op_id)) != NULL &&
+            ce0->ce_transport){
+            if ((ce->ce_transport = strdup(ce0->ce_transport)) == NULL){
+                clicon_err(OE_UNIX, errno, "strdup");
+                goto done;
+            }
+        }
     }
     /* Note that this validation is also made in xml_yang_validate_rpc, but not for hello
      */
@@ -1775,7 +1797,7 @@ from_client_msg(clicon_handle        h,
     // XXX    clixon_debug(CLIXON_DBG_MSG, "Reply:%s", cbuf_get(cbret));
     /* XXX problem here is that cbret has not been parsed so may contain 
        parse errors */
-    if (ce_client_string(ce, &cbce) < 0)
+    if (ce_client_descr(ce, &cbce) < 0)
         goto done;
     if (send_msg_reply(ce->ce_s, cbuf_get(cbce), cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
         switch (errno){
@@ -1843,7 +1865,7 @@ from_client(int   s,
         clicon_err(OE_NETCONF, EINVAL, "Internal error: s != ce->ce_s");
         goto done;
     }
-    if (ce_client_string(ce, &cbce) < 0)
+    if (ce_client_descr(ce, &cbce) < 0)
         goto done;
     if (clicon_msg_rcv(ce->ce_s, cbuf_get(cbce), 0, &msg, &eof) < 0)
         goto done;

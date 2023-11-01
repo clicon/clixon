@@ -1,0 +1,7 @@
+<clixon-config xmlns="http://clicon.org/config">
+    <restconf>
+    <enable>true</enable>
+    <auth-type>none</auth-type>
+    <socket><namespace>default</namespace><address>0.0.0.0</address><port>80</port><ssl>false</ssl></socket>
+  </restconf>
+</clixon-config>

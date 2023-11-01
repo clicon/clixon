@@ -185,7 +185,7 @@ module clixon-lib {
     }
     identity restconf {
         description
-            "RESTCONF either as HTTP/1 or /2, TLS or not, reverese proxy (eg fcgi/nginx) or native";
+            "RESTCONF either as HTTP/1 or /2, TLS or not, reverse proxy (eg fcgi/nginx) or native";
         base ncm:transport;
     }
     identity cli {

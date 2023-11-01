@@ -53,6 +53,7 @@
  * client socket and a separate notification client socket.
  * But they are the same session. 
  * But the clixon client-entry do not differentiate
+ * @see backend_client_add
  */
 struct client_entry{
     struct client_entry  *ce_next;    /* The clients linked list */

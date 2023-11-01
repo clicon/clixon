@@ -828,7 +828,9 @@ from_client_commit(clicon_handle h,
                 goto done;
         goto ok;
     }
-    if (ret == 1)
+    if (ret == 0)
+        clixon_debug(CLIXON_DBG_DEFAULT, "Commit candidate failed");
+    else
         cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
@@ -929,13 +931,13 @@ from_client_validate(clicon_handle h,
 
 /*! Restart specific backend plugins without full backend restart
  *
- * Note, depending on plugin callbacks, there may be other dependencies which may make this
+ * @note, depending on plugin callbacks, there may be other dependencies which may make this
  * difficult in the general case.
  */
 int
-from_client_restart_one(clicon_handle h,
+from_client_restart_one(clicon_handle    h,
                         clixon_plugin_t *cp,
-                        cbuf         *cbret)
+                        cbuf            *cbret)
 {
     int                 retval = -1;
     char               *db = "tmp";
