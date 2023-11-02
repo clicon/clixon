@@ -104,6 +104,7 @@ RUN install -d /clixon/build/usr/local/bin/test
 RUN install *.sh /clixon/build/usr/local/bin/test
 RUN install *.exp /clixon/build/usr/local/bin/test
 RUN install clixon.png /clixon/build/usr/local/bin/test
+RUN install *.supp /clixon/build/usr/local/bin/test
 
 RUN install -d /clixon/build/mibs
 RUN install mibs/* /clixon/build/mibs

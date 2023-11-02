@@ -127,7 +127,7 @@ function testinit(){
         sudo killall -q clixon_snmp
 
         new "Starting clixon_snmp"
-        start_snmp $cfg &
+        start_snmp $cfg
     fi
 
     new "wait snmp"

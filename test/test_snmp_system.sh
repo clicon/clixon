@@ -106,7 +106,7 @@ function testinit(){
         new "Starting clixon_snmp"
         # XXX augmented objects seem to be registered twice: error: duplicate registration: MIB modules snmpSetSerialNo and AgentX subagent 52, session 0x562087a70e20, subsession 0x562087a820c0 (oid .1.3.6.1.6.3.1.1.6.1).
 
-        start_snmp $cfg &
+        start_snmp $cfg
     fi
 
     new "wait snmp"
