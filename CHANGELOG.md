@@ -45,6 +45,13 @@
 ## 6.5.0
 Expected: December 2023
 
+### API changes on existing protocol/config features
+Users may have to change how they access the system
+
+* Moved and split install of main example config file
+  * From `/usr/local/etc/example.xml` to `/usr/local/etc/clixon/example.xml`
+  * Added `/usr/local/etc/clixon/example/autocli.xml` and `/usr/local/etc/clixon/example/restconf.xml` 
+
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
