@@ -798,8 +798,12 @@ text_modify(clicon_handle       h,
                 }
                 /* XXX: Note, if there is an error in adding the object later, the
                  * original object is not reverted.
+                 * XXX: Here creator attributes in x0 are destroyed
                  */
                 if (x0){
+                    /* Recursively copy creator attributes from existing tree */
+                    if (xml_creator_copy_all(x0, x1) < 0)
+                        goto done;
                     xml_purge(x0);
                     x0 = NULL;
                 }
@@ -849,7 +853,7 @@ text_modify(clicon_handle       h,
 #ifdef XML_PARENT_CANDIDATE
                 xml_parent_candidate_set(x0, x0p);
 #endif
-                if (xml_creator_copy(x1, x0) < 0)
+                if (xml_creator_copy_one(x1, x0) < 0)
                     goto done;
                 changed++;
                 /* Get namespace from x1
@@ -1257,12 +1261,10 @@ xmldb_put(clicon_handle       h,
         goto done;
     }
     /* Here x0 looks like: <config>...</config> */
-
 #if 0 /* debug */
     if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
         clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
 #endif
-
     xnacm = clicon_nacm_cache(h);
     permit = (xnacm==NULL);
 

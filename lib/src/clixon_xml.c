@@ -723,7 +723,7 @@ xml_creator_len(cxobj *xn)
         return 0;
 }
 
-/*! Copy creator info from x0 to x1
+/*! Copy creator info from x0 to x1 single object
  *
  * @param[in]  x0  Source XML node
  * @param[in]  x1  Destination XML node
@@ -731,8 +731,8 @@ xml_creator_len(cxobj *xn)
  * @retval    -1   Error
  */
 int
-xml_creator_copy(cxobj *x0,
-                 cxobj *x1)
+xml_creator_copy_one(cxobj *x0,
+                     cxobj *x1)
 {
     int retval = -1;
 
@@ -741,6 +741,66 @@ xml_creator_copy(cxobj *x0,
             clicon_err(OE_UNIX, errno, "cvec_dup");
             goto done;
         }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Recursively copy creator attributes from existing tree based on equivalence algorithm
+ *
+ * @param[in]  x0  Source XML node
+ * @param[in]  x1  Destination XML node
+ * @retval     0   OK
+ * @retval    -1   Error
+ * @see xml_tree_equal  equivalence algorithm
+ */
+int
+xml_creator_copy_all(cxobj *x0,
+                     cxobj *x1)
+{
+    int        retval = -1;
+    int        eq;
+    cxobj     *x0c; /* x0 child */
+    cxobj     *x1c; /* x1 child */
+    yang_stmt *yc0;
+    yang_stmt *yc1;
+
+    /* Traverse x0 and x1 in lock-step */
+    x0c = x1c = NULL;
+    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    for (;;){
+        if (x0c == NULL || x1c == NULL)
+            goto ok;
+        eq = xml_cmp(x0c, x1c, 0, 0, NULL);
+        if (eq < 0){
+            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            continue;
+        }
+        else if (eq > 0){
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        else { /* equal */
+            /* Both x0c and x1c exists and are equal, check if they are yang-equal. */
+            yc0 = xml_spec(x0c);
+            yc1 = xml_spec(x1c);
+            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+                ;
+            }
+            else {
+                if (x0c->x_creators){
+                    if (xml_creator_copy_one(x0c, x1c) < 0)
+                        goto done;
+                }
+                else if (xml_creator_copy_all(x0c, x1c) < 0)
+                    goto done;
+            }
+        }
+        x0c = xml_child_each(x0, x0c, CX_ELMNT);
+        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    }
+ ok:
     retval = 0;
  done:
     return retval;
@@ -2154,7 +2214,7 @@ xml_copy_one(cxobj *x0,
     switch (xml_type(x0)){
     case CX_ELMNT:
         xml_spec_set(x1, xml_spec(x0));
-        if (xml_creator_copy(x0, x1) < 0)
+        if (xml_creator_copy_one(x0, x1) < 0)
             goto done;
         break;
     case CX_BODY:

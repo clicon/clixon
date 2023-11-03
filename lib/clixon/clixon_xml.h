@@ -234,7 +234,8 @@ int       xml_creator_add(cxobj *xn, char *name);
 int       xml_creator_rm(cxobj *xn, char *name);
 int       xml_creator_find(cxobj *xn, char *name);
 size_t    xml_creator_len(cxobj *xn);
-int       xml_creator_copy(cxobj *x0, cxobj *x1);
+int       xml_creator_copy_one(cxobj *x0, cxobj *x1);
+int       xml_creator_copy_all(cxobj *x0, cxobj *x1);
 int       xml_creator_print(FILE *f, cxobj *xn);
 
 char     *xml_value(cxobj *xn);
