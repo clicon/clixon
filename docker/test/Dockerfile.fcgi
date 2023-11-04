@@ -82,7 +82,7 @@ RUN adduser -D -H -G www-data www-data
 RUN apk add --update nginx
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/ --with-restconf=fcgi 
+RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build/usr/include --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/ --with-restconf=fcgi
 RUN make
 RUN make DESTDIR=/clixon/build install
 

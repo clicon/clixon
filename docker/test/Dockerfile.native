@@ -79,7 +79,7 @@ WORKDIR /clixon/clixon
 COPY clixon .
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build --with-restconf=native --enable-nghttp2 --enable-http1 --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/
+RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build/usr/local --with-restconf=native --enable-nghttp2 --enable-http1 --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/
 
 RUN make
 RUN make DESTDIR=/clixon/build install
