@@ -5936,9 +5936,6 @@ LIBDIR=`eval echo \`eval echo $libdir\``
 LIBEXECDIR=`eval echo $libexecdir`
 LOCALSTATEDIR=`eval echo $localstatedir`
 
-CPPFLAGS="-I${INCLUDEDIR} ${CPPFLAGS}"
-LDFLAGS="-L${LIBDIR} ${LDFLAGS}"
-
 # This is for cligen
 
 # Check whether --with-cligen was given.
@@ -5952,8 +5949,8 @@ fi
 
 if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
     echo "Using CLIGEN here: ${CLIGEN_DIR}"
-    CPPFLAGS="-I${CLIGEN_DIR}${INCLUDEDIR} ${CPPFLAGS}"
-    LDFLAGS="-L${CLIGEN_DIR}${LIBDIR} ${LDFLAGS}"
+    CPPFLAGS="-I${CLIGEN_DIR}/include ${CPPFLAGS}"
+    LDFLAGS="-L${CLIGEN_DIR}/lib ${LDFLAGS}"
 fi
 
 # Disable/enable yang patch

@@ -194,9 +194,6 @@ LIBDIR=`eval echo \`eval echo $libdir\``
 LIBEXECDIR=`eval echo $libexecdir`
 LOCALSTATEDIR=`eval echo $localstatedir`
 
-CPPFLAGS="-I${INCLUDEDIR} ${CPPFLAGS}"
-LDFLAGS="-L${LIBDIR} ${LDFLAGS}"
-
 # This is for cligen
 AC_ARG_WITH([cligen], [AS_HELP_STRING([--with-cligen=dir], [Use CLIGEN installation in this dir])], [
   CLIGEN_DIR="$withval"
@@ -204,8 +201,8 @@ AC_ARG_WITH([cligen], [AS_HELP_STRING([--with-cligen=dir], [Use CLIGEN installat
 AC_SUBST(CLIGEN_DIR)
 if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
     echo "Using CLIGEN here: ${CLIGEN_DIR}"
-    CPPFLAGS="-I${CLIGEN_DIR}${INCLUDEDIR} ${CPPFLAGS}"
-    LDFLAGS="-L${CLIGEN_DIR}${LIBDIR} ${LDFLAGS}"
+    CPPFLAGS="-I${CLIGEN_DIR}/include ${CPPFLAGS}"
+    LDFLAGS="-L${CLIGEN_DIR}/lib ${LDFLAGS}"
 fi
 
 # Disable/enable yang patch
