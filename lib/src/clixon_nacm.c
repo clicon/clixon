@@ -56,10 +56,11 @@
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
-#include "clixon_err.h"
-#include "clixon_log.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_options.h"
@@ -345,7 +346,7 @@ prepvec_add(prepvec  **pv_listp,
     prepvec *pv;
 
     if ((pv = malloc(sizeof(*pv))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         return NULL;
     }
     memset(pv, 0, sizeof(*pv));
@@ -368,7 +369,7 @@ prepvec_add(prepvec  **pv_listp,
  * @retval   -1      Error
  */
 static int
-nacm_datanode_prepare(clicon_handle     h,
+nacm_datanode_prepare(clixon_handle     h,
                       cxobj            *xt,
                       enum nacm_access  access,
                       cxobj           **gvec,
@@ -446,7 +447,7 @@ nacm_datanode_prepare(clicon_handle     h,
                     continue;
                 break;
             default:
-                clicon_err(OE_XML, EINVAL, "Access %d unupported (shouldnt happen)", access);
+                clixon_err(OE_XML, EINVAL, "Access %d unupported (shouldnt happen)", access);
                 goto done;
                 break;
             }
@@ -464,7 +465,7 @@ nacm_datanode_prepare(clicon_handle     h,
                 path0 = clixon_trim2(xml_body(pathobj), " \t\n");
                 /* Get canonical namespace context for nacm paths */
                 if ((path = strdup(path0)) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
 #if 0
@@ -608,7 +609,7 @@ nacm_data_write_xrule_xml(cxobj       *xn,
  * deny:    Send error message
  */
 static int
-nacm_datanode_write_recurse(clicon_handle h,
+nacm_datanode_write_recurse(clixon_handle h,
                             cxobj        *xn,
                             prepvec      *pv_list,
                             int           defpermit,
@@ -685,7 +686,7 @@ nacm_datanode_write_recurse(clicon_handle h,
  * @see nacm_rpc
  */
 int
-nacm_datanode_write(clicon_handle    h,
+nacm_datanode_write(clixon_handle    h,
                     cxobj           *xreq,
                     cxobj           *xt,
                     enum nacm_access access,
@@ -711,7 +712,7 @@ nacm_datanode_write(clicon_handle    h,
         goto permit;
     /* write-default (create, update, or delete) has default deny so should never be NULL */
     if ((write_default = xml_find_body(xnacm, "write-default")) == NULL){
-        clicon_err(OE_XML, EINVAL, "No nacm write-default rule");
+        clixon_err(OE_XML, EINVAL, "No nacm write-default rule");
         goto done;
     }
     /* 3.   Check all the "group" entries to see if any of them contain a
@@ -891,7 +892,7 @@ nacm_data_read_xrule_xml(cxobj        *xn,
  * @retval    -1        Error
  */
 static int
-nacm_datanode_read_recurse(clicon_handle h,
+nacm_datanode_read_recurse(clixon_handle h,
                            cxobj        *xn,
                            prepvec      *pv_list,
                            yang_stmt    *yspec)
@@ -995,7 +996,7 @@ nacm_datanode_read_recurse(clicon_handle h,
  * @see nacm_rpc
  */
 int
-nacm_datanode_read(clicon_handle h,
+nacm_datanode_read(clixon_handle h,
                    cxobj        *xt,
                    cxobj       **xrvec,
                    size_t        xrlen,
@@ -1035,7 +1036,7 @@ nacm_datanode_read(clicon_handle h,
         goto done;
     /* read-default has default permit so should never be NULL */
     if ((read_default = xml_find_body(xnacm, "read-default")) == NULL){
-        clicon_err(OE_XML, EINVAL, "No nacm read-default rule");
+        clixon_err(OE_XML, EINVAL, "No nacm read-default rule");
         goto done;
     }
     /* First run through rules and cache rules as well as lookup objects in xt. 
@@ -1113,7 +1114,7 @@ nacm_datanode_read(clicon_handle h,
  * @see RFC8341 3.4 Access Control Enforcement Procedures
  */
 static int
-nacm_access_check(clicon_handle h,
+nacm_access_check(clixon_handle h,
                   cxobj        *xnacm,
                   char         *peername,
                   char         *username)
@@ -1210,7 +1211,7 @@ nacm_access_check(clicon_handle h,
  * @see RFC8341 3.4 Access Control Enforcement Procedures
  */
 int
-nacm_access_pre(clicon_handle  h,
+nacm_access_pre(clixon_handle  h,
                 char          *peername,
                 char          *username,
                 cxobj        **xnacmp)
@@ -1238,7 +1239,7 @@ nacm_access_pre(clicon_handle  h,
             goto done;
     }
     else{
-        clicon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
+        clixon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
         goto done;
     }
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
@@ -1293,7 +1294,7 @@ nacm_access_pre(clicon_handle  h,
  * - peer user is www (can be any NACM user)
  */
 int
-verify_nacm_user(clicon_handle           h,
+verify_nacm_user(clixon_handle           h,
                  enum nacm_credentials_t cred,
                  char                   *peername,
                  char                   *nacmname,
@@ -1328,7 +1329,7 @@ verify_nacm_user(clicon_handle           h,
     }
     if (strcmp(peername, nacmname) != 0){
         if ((cbmsg = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cbmsg, "User %s credential not matching NACM user %s", peername, nacmname);

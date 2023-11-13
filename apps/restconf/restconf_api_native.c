@@ -57,7 +57,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "restconf_lib.h"
@@ -88,11 +88,11 @@ restconf_reply_header(void       *req0,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, name);
     if (sd == NULL || name == NULL || vfmt == NULL){
-        clicon_err(OE_CFG, EINVAL, "sd, name or value is NULL");
+        clixon_err(OE_CFG, EINVAL, "sd, name or value is NULL");
         goto done;
     }
     if ((rc = sd->sd_conn) == NULL){
-        clicon_err(OE_CFG, EINVAL, "rc is NULL");
+        clixon_err(OE_CFG, EINVAL, "rc is NULL");
         goto done;
     }
     /* First round: compute vlen and allocate value */
@@ -101,19 +101,19 @@ restconf_reply_header(void       *req0,
     va_end(ap);
     /* allocate value string exactly fitting */
     if ((value = malloc(vlen+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* Second round: compute actual value */
     va_start(ap, vfmt);
     if (vsnprintf(value, vlen+1, vfmt, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
     va_end(ap);
     if (cvec_add_string(sd->sd_outp_hdrs, (char*)name, value) < 0){
-        clicon_err(OE_RESTCONF, errno, "cvec_add_string");
+        clixon_err(OE_RESTCONF, errno, "cvec_add_string");
         goto done;
     }
     retval = 0;
@@ -144,7 +144,7 @@ restconf_reply_send(void  *req0,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s code:%d", __FUNCTION__, code);
     if (sd == NULL){
-        clicon_err(OE_CFG, EINVAL, "sd is NULL");
+        clixon_err(OE_CFG, EINVAL, "sd is NULL");
         goto done;
     }
     sd->sd_code = code;
@@ -183,7 +183,7 @@ restconf_get_indata(void *req0)
     cbuf                 *cb = NULL;
 
     if (sd == NULL){
-        clicon_err(OE_CFG, EINVAL, "sd is NULL");
+        clixon_err(OE_CFG, EINVAL, "sd is NULL");
         goto done;
     }
     cb = sd->sd_indata;

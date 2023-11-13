@@ -62,7 +62,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_backend_transaction.h"
@@ -90,7 +90,7 @@
  * @retval     -1       Error
  */
 static int
-generic_validate(clicon_handle       h,
+generic_validate(clixon_handle       h,
                  yang_stmt          *yspec,
                  transaction_data_t *td,
                  cxobj             **xret)
@@ -158,7 +158,7 @@ generic_validate(clicon_handle       h,
  * @see validate_common   for incoming validate/commit
  */
 static int
-startup_common(clicon_handle       h,
+startup_common(clixon_handle       h,
                char               *db,
                transaction_data_t *td,
                cbuf               *cbret)
@@ -189,7 +189,7 @@ startup_common(clicon_handle       h,
             /* Print upgraded db: -q backend switch for debugging/ showing upgraded config only */
             if (clicon_quit_upgrade_get(h) == 1){
                 xml_print(stderr, xerr);
-                clicon_err(OE_XML, 0, "invalid configuration before upgrade");
+                clixon_err(OE_XML, 0, "invalid configuration before upgrade");
                 exit(0);  /* This is fairly abrupt , but need to avoid side-effects of rewinding
                            * See similar clause below
                            */
@@ -205,12 +205,12 @@ startup_common(clicon_handle       h,
     }
     clixon_debug_xml(CLIXON_DBG_DETAIL, xt, "startup");
     if (msdiff && msdiff->md_status == 0){ // Possibly check for CLICON_XMLDB_MODSTATE
-        clicon_log(LOG_WARNING, "Modstate expected in startup datastore but not found\n"
+        clixon_log(h, LOG_WARNING, "Modstate expected in startup datastore but not found\n"
                    "This may indicate that the datastore is not initialized corrrectly, such as copy/pasted.\n"
                    "It may also be normal bootstrapping since module state will be written on next datastore save");
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, 0, "Yang spec not set");
+        clixon_err(OE_YANG, 0, "Yang spec not set");
         goto done;
     }
     clixon_debug(CLIXON_DBG_DEFAULT, "Reading startup config done");
@@ -237,16 +237,16 @@ startup_common(clicon_handle       h,
         if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xret)) < 1){
             if (ret == 0){
                 /* invalid */
-                clicon_err(OE_XML, EFAULT, "invalid configuration");
+                clixon_err(OE_XML, EFAULT, "invalid configuration");
             }
             else {
                 /* error */
                 xml_print(stderr, xret);
-                clicon_err(OE_XML, 0, "%s: YANG binding error", __func__);
+                clixon_err(OE_XML, 0, "%s: YANG binding error", __func__);
             }
         }       /* sort yang */
         else if (xml_sort_recurse(xt) < 0) {
-            clicon_err(OE_XML, EFAULT, "Yang sort error");
+            clixon_err(OE_XML, EFAULT, "Yang sort error");
         }
         if (xmldb_dump(h, stdout, xt) < 0)
             goto done;
@@ -345,7 +345,7 @@ startup_common(clicon_handle       h,
  * @retval    -1       Error - or validation failed (but cbret not set)
  */
 int
-startup_validate(clicon_handle  h,
+startup_validate(clixon_handle  h,
                  char          *db,
                  cxobj        **xtr,
                  cbuf          *cbret)
@@ -396,7 +396,7 @@ startup_validate(clicon_handle  h,
  * Only called from startup_mode_startup
  */
 int
-startup_commit(clicon_handle  h,
+startup_commit(clixon_handle  h,
                char          *db,
                cbuf          *cbret)
 {
@@ -405,7 +405,7 @@ startup_commit(clicon_handle  h,
     transaction_data_t *td = NULL;
 
     if (strcmp(db,"running")==0){
-        clicon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
+        clixon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
         goto done;
     }
     /* Handcraft a transition with only target and add trees */
@@ -479,7 +479,7 @@ startup_commit(clicon_handle  h,
  * @see startup_common  for startup scenario
  */
 static int
-validate_common(clicon_handle       h,
+validate_common(clixon_handle       h,
                 char               *db,
                 transaction_data_t *td,
                 cxobj             **xret)
@@ -491,7 +491,7 @@ validate_common(clicon_handle       h,
     int         ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     /* This is the state we are going to */
@@ -581,7 +581,7 @@ validate_common(clicon_handle       h,
  * @retval    -1      Error - or validation failed 
  */
 int
-candidate_validate(clicon_handle h,
+candidate_validate(clixon_handle h,
                    char         *db,
                    cbuf         *cbret)
 {
@@ -592,7 +592,7 @@ candidate_validate(clicon_handle h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (db == NULL || cbret == NULL){
-        clicon_err(OE_CFG, EINVAL, "db or cbret is NULL");
+        clixon_err(OE_CFG, EINVAL, "db or cbret is NULL");
         goto done;
     }
     /* 1. Start transaction */
@@ -602,23 +602,23 @@ candidate_validate(clicon_handle h,
     if ((ret = validate_common(h, db, td, &xret)) < 0){
         /* A little complex due to several sources of validation fails or errors.
          * (1) xerr is set -> translate to cbret; (2) cbret set use that; otherwise
-         * use clicon_err. 
+         * use clixon_err. 
          * TODO: -1 return should be fatal error, not failed validation
          */
         if (!cbuf_len(cbret) &&
-            netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+            netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
             goto done;
         goto fail;
     }
     if (ret == 0){
         if (xret == NULL){
-            clicon_err(OE_CFG, EINVAL, "xret is NULL");
+            clixon_err(OE_CFG, EINVAL, "xret is NULL");
             goto done;
         }
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
         if (!cbuf_len(cbret) &&
-            netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+            netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
             goto done;
         goto fail;
     }
@@ -660,7 +660,7 @@ candidate_validate(clicon_handle h,
  * @retval    -1          Error - or validation failed 
  */
 int
-candidate_commit(clicon_handle h,
+candidate_commit(clixon_handle h,
                  cxobj        *xe,
                  char         *db,
                  uint32_t      myid,
@@ -694,7 +694,7 @@ candidate_commit(clicon_handle h,
      * to activate it.
      */
     if ((yspec = clicon_dbspec_yang(h)) == NULL) {
-        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
 
@@ -786,7 +786,7 @@ candidate_commit(clicon_handle h,
  *   candidate_commit() method.
  */
 int
-from_client_commit(clicon_handle h,
+from_client_commit(clixon_handle h,
                    cxobj        *xe,
                    cbuf         *cbret,
                    void         *arg,
@@ -801,7 +801,7 @@ from_client_commit(clicon_handle h,
     yang_stmt           *yspec;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL) {
-        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
@@ -814,7 +814,7 @@ from_client_commit(clicon_handle h,
     iddb = xmldb_islocked(h, "running");
     if (iddb && myid != iddb){
         if ((cbx = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         if (netconf_in_use(cbret, "protocol", "Operation failed, lock is already held") < 0)
@@ -824,7 +824,7 @@ from_client_commit(clicon_handle h,
     if ((ret = candidate_commit(h, xe, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
         clixon_debug(CLIXON_DBG_DEFAULT, "Commit candidate failed");
         if (ret < 0)
-            if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                 goto done;
         goto ok;
     }
@@ -852,7 +852,7 @@ from_client_commit(clicon_handle h,
  * NACM: No datastore permissions are needed.
  */
 int
-from_client_discard_changes(clicon_handle h,
+from_client_discard_changes(clixon_handle h,
                             cxobj        *xe,
                             cbuf         *cbret,
                             void         *arg,
@@ -868,7 +868,7 @@ from_client_discard_changes(clicon_handle h,
     iddb = xmldb_islocked(h, "candidate");
     if (iddb && myid != iddb){
         if ((cbx = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         cprintf(cbx, "<session-id>%u</session-id>", iddb);
@@ -877,7 +877,7 @@ from_client_discard_changes(clicon_handle h,
         goto ok;
     }
     if (xmldb_copy(h, "running", "candidate") < 0){
-        if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+        if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
             goto done;
         goto ok;
     }
@@ -903,7 +903,7 @@ from_client_discard_changes(clicon_handle h,
  * @retval    -1       Error
  */
 int
-from_client_validate(clicon_handle h,
+from_client_validate(clixon_handle h,
                      cxobj        *xe,
                      cbuf         *cbret,
                      void         *arg,
@@ -935,7 +935,7 @@ from_client_validate(clicon_handle h,
  * difficult in the general case.
  */
 int
-from_client_restart_one(clicon_handle    h,
+from_client_restart_one(clixon_handle    h,
                         clixon_plugin_t *cp,
                         cbuf            *cbret)
 {
@@ -1065,7 +1065,7 @@ running                   ----|-------+---------------> RUNNING FAILSAFE
 tmp                         |---------------------->
  */
 int
-load_failsafe(clicon_handle h,
+load_failsafe(clixon_handle h,
               char         *phase)
 {
     int   retval = -1;
@@ -1076,13 +1076,13 @@ load_failsafe(clicon_handle h,
     phase = phase == NULL ? "(unknown)" : phase;
 
     if ((cbret = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if ((ret = xmldb_exists(h, db)) < 0)
         goto done;
     if (ret == 0){ /* No it does not exist, fail */
-        clicon_err(OE_DB, 0, "%s failed and no Failsafe database found, exiting", phase);
+        clixon_err(OE_DB, 0, "%s failed and no Failsafe database found, exiting", phase);
         goto done;
     }
     /* Copy original running to tmp as backup (restore if error) */
@@ -1097,10 +1097,10 @@ load_failsafe(clicon_handle h,
     if (ret < 0)
         goto done;
     if (ret == 0){
-        clicon_err(OE_DB, 0, "%s failed, Failsafe database validation failed %s", phase, cbuf_get(cbret));
+        clixon_err(OE_DB, 0, "%s failed, Failsafe database validation failed %s", phase, cbuf_get(cbret));
         goto done;
     }
-    clicon_log(LOG_NOTICE, "%s failed, Failsafe database loaded ", phase);
+    clixon_log(h, LOG_NOTICE, "%s failed, Failsafe database loaded ", phase);
     retval = 0;
     done:
     if (cbret)

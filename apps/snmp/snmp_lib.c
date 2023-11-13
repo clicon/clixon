@@ -71,7 +71,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "snmp_lib.h"
@@ -277,7 +277,7 @@ oid_append(const oid *objid0,
     dst =  (void*)objid0;
     dst += (*objid0len)*sizeof(*objid0);
     if (memcpy(dst, objid1, objid1len*sizeof(*objid0)) < 0){
-        clicon_err(OE_UNIX, errno, "memcpy");
+        clixon_err(OE_UNIX, errno, "memcpy");
         return -1;
     }
     *objid0len += objid1len;
@@ -309,7 +309,7 @@ oid_print(FILE      *f,
     cbuf *cb;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     oid_cbuf(cb, objid, objidlen);
@@ -351,13 +351,13 @@ snmp_yang_type_get(yang_stmt  *ys,
         restype2 = restype;
     if (strcmp(restype2, "leafref")==0){
         if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
-            clicon_err(OE_YANG, 0, "No path in leafref");
+            clixon_err(OE_YANG, 0, "No path in leafref");
             goto done;
         }
         if (yang_path_arg(ys, yang_argument_get(ypath), &yref) < 0)
             goto done;
         if (yref == NULL){
-            clicon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", yang_argument_get(ypath));
+            clixon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", yang_argument_get(ypath));
             goto done;
         }
         if (origtype){
@@ -414,7 +414,7 @@ yang_extension_value_opt(yang_stmt *ys,
     cg_var    *cv;
 
     if (ys == NULL){
-        clicon_err(OE_YANG, EINVAL, "ys is NULL");
+        clixon_err(OE_YANG, EINVAL, "ys is NULL");
         goto done;
     }
     if (exist)
@@ -474,7 +474,7 @@ yangext_oid_get(yang_stmt *yn,
         goto fail;
     }
     if (snmp_parse_oid(oidstr, objid, objidlen) == NULL){
-        clicon_err(OE_XML, errno, "snmp_parse_oid");
+        clixon_err(OE_XML, errno, "snmp_parse_oid");
         goto done;
     }
     if (objidstrp)
@@ -525,13 +525,13 @@ snmp_handle_clone(void *arg)
     if (sh0 == NULL)
         return NULL;
     if ((sh1 = malloc(sizeof(*sh1))) == NULL){
-       clicon_err(OE_UNIX, errno, "malloc");
+       clixon_err(OE_UNIX, errno, "malloc");
        return NULL;
     }
     memset(sh1, 0, sizeof(*sh1));
     if (sh0->sh_cvk_orig &&
         (sh1->sh_cvk_orig = cvec_dup(sh0->sh_cvk_orig)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_dup");
+        clixon_err(OE_UNIX, errno, "cvec_dup");
         return NULL;
     }
     return (void*)sh1;
@@ -594,7 +594,7 @@ type_yang2asn1(yang_stmt    *ys,
     }
     /* Then try fully resolved type */
     else if ((at = clicon_str2int(snmp_type_map, restype)) < 0){
-        clicon_err(OE_YANG, 0, "No snmp translation for YANG %s type:%s",
+        clixon_err(OE_YANG, 0, "No snmp translation for YANG %s type:%s",
                    yang_argument_get(ys), restype);
         goto done;
     }
@@ -651,11 +651,11 @@ type_snmp2xml(yang_stmt                  *ys,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (valstr == NULL){
-        clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
+        clixon_err(OE_UNIX, EINVAL, "valstr is NULL");
         goto done;
     }
     if ((cvstr = (char*)clicon_int2str(snmp_type_map, requestvb->type)) == NULL){
-        clicon_err(OE_XML, 0, "No mapping for snmp type %d", requestvb->type);
+        clixon_err(OE_XML, 0, "No mapping for snmp type %d", requestvb->type);
         goto done;
     }
     /* Get yang type of leaf and trasnslate to ASN.1 */
@@ -668,7 +668,7 @@ type_snmp2xml(yang_stmt                  *ys,
         cvstr = "string";
     cvtype = cv_str2type(cvstr);
     if ((cv = cv_new(cvtype)) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_new");
+        clixon_err(OE_UNIX, errno, "cv_new");
         goto done;
     }
     switch (*asn1type){
@@ -683,7 +683,7 @@ type_snmp2xml(yang_stmt                  *ys,
 
             if (strcmp(restype, "enumeration") == 0){
                 if ((cb = cbuf_new()) == NULL){
-                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
                 cprintf(cb, "%ld", *requestvb->val.integer);
@@ -735,14 +735,14 @@ type_snmp2xml(yang_stmt                  *ys,
         assert(0); // XXX
         clixon_debug(CLIXON_DBG_DEFAULT, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
         if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
-            clicon_err(OE_SNMP, ret, "netsnmp_request_set_error");
+            clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
             goto done;
         }
         goto fail;
         break;
     }
     if ((*valstr = cv2str_dup(cv)) == NULL){
-        clicon_err(OE_UNIX, errno, "cv2str_dup");
+        clixon_err(OE_UNIX, errno, "cv2str_dup");
         goto done;
     }
     retval = 1;
@@ -784,7 +784,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     cbuf      *cb = NULL;
 
     if (xmlstr0 == NULL || xmlstr1 == NULL){
-        clicon_err(OE_UNIX, EINVAL, "xmlstr0/1 is NULL");
+        clixon_err(OE_UNIX, EINVAL, "xmlstr0/1 is NULL");
         goto done;
     }
     /* Get yang type of leaf and trasnslate to ASN.1 */
@@ -814,7 +814,7 @@ type_xml2snmp_pre(char      *xmlstr0,
         int64_t num;
 
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         if ((ret = parse_dec64(xmlstr0, cv_dec64_n_get(cv), &num, NULL)) < 0)
@@ -831,7 +831,7 @@ type_xml2snmp_pre(char      *xmlstr0,
         str = xmlstr0;
     }
     if ((*xmlstr1 = strdup(str)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     retval = 1;
@@ -869,7 +869,7 @@ type_xml2snmp(char       *snmpstr,
     int   ret;
 
     if (snmpval == NULL || snmplen == NULL){
-        clicon_err(OE_UNIX, EINVAL, "snmpval or snmplen is NULL");
+        clixon_err(OE_UNIX, EINVAL, "snmpval or snmplen is NULL");
         goto done;
     }
     switch (*asn1type){
@@ -879,7 +879,7 @@ type_xml2snmp(char       *snmpstr,
     case ASN_INTEGER:   // 2
         *snmplen = 4;
         if ((*snmpval = malloc(*snmplen)) == NULL){
-            clicon_err(OE_UNIX, errno, "malloc");
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
         if ((ret = parse_int32(snmpstr, (int32_t*)*snmpval, reason)) < 0)
@@ -892,7 +892,7 @@ type_xml2snmp(char       *snmpstr,
     case ASN_GAUGE:   // 0x42
         *snmplen = 4;
         if ((*snmpval = malloc(*snmplen)) == NULL){
-            clicon_err(OE_UNIX, errno, "malloc");
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
         if ((ret = parse_uint32(snmpstr, (uint32_t*)*snmpval, reason)) < 0)
@@ -910,7 +910,7 @@ type_xml2snmp(char       *snmpstr,
         }
         *snmplen = sizeof(oid)*sz1;
         if ((*snmpval = malloc(*snmplen)) == NULL){
-            clicon_err(OE_UNIX, errno, "malloc");
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
         memcpy(*snmpval, oid1, *snmplen);
@@ -919,7 +919,7 @@ type_xml2snmp(char       *snmpstr,
     case ASN_OCTET_STR: // 4
         *snmplen = strlen(snmpstr)+1;
         if ((*snmpval = (u_char*)strdup((snmpstr))) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
         break;
@@ -928,7 +928,7 @@ type_xml2snmp(char       *snmpstr,
         struct counter64 *c64;
         *snmplen = sizeof(struct counter64); // 16!
         if ((*snmpval = malloc(*snmplen)) == NULL){
-            clicon_err(OE_UNIX, errno, "malloc");
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
         memset(*snmpval, 0, *snmplen);
@@ -945,7 +945,7 @@ type_xml2snmp(char       *snmpstr,
         in_addr_t saddr;
         *snmplen = 4;
         if ((*snmpval = malloc(*snmplen)) == NULL){
-            clicon_err(OE_UNIX, errno, "malloc");
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
         saddr = (int32_t)inet_addr(snmpstr);
@@ -956,7 +956,7 @@ type_xml2snmp(char       *snmpstr,
         struct ether_addr *eaddr;
         *snmplen = sizeof(*eaddr);
         if ((*snmpval = malloc(*snmplen + 1)) == NULL){
-            clicon_err(OE_UNIX, errno, "malloc");
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
         memset(*snmpval, 0, *snmplen + 1);
@@ -971,7 +971,7 @@ type_xml2snmp(char       *snmpstr,
     case CLIXON_ASN_FIXED_STRING: /* OCTET-STRING with decrement length */
         *snmplen = strlen(snmpstr);
         if ((*snmpval = (u_char*)strdup((snmpstr))) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
         *asn1type = ASN_OCTET_STR;
@@ -1010,7 +1010,7 @@ snmp_yang2xpath_cb(yang_stmt *ys,
     char      *prefix = NULL;
 
     if ((yp = yang_parent_get(ys)) == NULL){
-        clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
+        clixon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
         goto done;
     }
     if (yp != NULL && /* XXX rm */
@@ -1075,13 +1075,13 @@ snmp_yang2xpath(yang_stmt *ys,
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (snmp_yang2xpath_cb(ys, keyvec, cb) < 0)
         goto done;
     if (xpath && (*xpath = strdup(cbuf_get(cb))) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     retval = 0;
@@ -1167,7 +1167,7 @@ snmp_oid2str(oid      **oidi,
     if (type_yang2asn1(yk, &asn1_type, 1) < 0)
         goto done;
     if ((enc = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     switch (asn1_type){
@@ -1196,7 +1196,7 @@ snmp_oid2str(oid      **oidi,
     }
     if (cbuf_len(enc)){
         if (cv_string_set(cv, cbuf_get(enc)) < 0){
-            clicon_err(OE_UNIX, errno, "cv_string_set");
+            clixon_err(OE_UNIX, errno, "cv_string_set");
             goto done;
         }
     }
@@ -1296,12 +1296,12 @@ snmp_xmlkey2val_oid(cxobj     *xentry,
         if (*cvk_val){
             cvec_free(*cvk_val);
             if ((*cvk_val = cvec_dup(cvk_name)) == NULL){
-                clicon_err(OE_UNIX, errno, "cvec_dup");
+                clixon_err(OE_UNIX, errno, "cvec_dup");
                 goto done;
             }
         }
         else if ((*cvk_val = cvec_dup(cvk_name)) == NULL){
-            clicon_err(OE_UNIX, errno, "cvec_dup");
+            clixon_err(OE_UNIX, errno, "cvec_dup");
             goto done;
         }
     }
@@ -1312,7 +1312,7 @@ snmp_xmlkey2val_oid(cxobj     *xentry,
         if (cvk_val){
             cv = cvec_i(*cvk_val, i);
             if (cv_string_set(cv, xml_body(xi)) < 0){
-                clicon_err(OE_UNIX, errno, "cv_string_set");
+                clixon_err(OE_UNIX, errno, "cv_string_set");
                 goto done;
             }
         }

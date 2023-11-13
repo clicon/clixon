@@ -70,7 +70,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_cli_api.h"
@@ -113,7 +113,7 @@ co2apipath(cg_obj *co)
  * code
  */
 int
-cli_auto_edit(clicon_handle h,
+cli_auto_edit(clixon_handle h,
               cvec         *cvv1,
               cvec         *argv)
 {
@@ -130,7 +130,7 @@ cli_auto_edit(clicon_handle h,
     char         *mtpoint = NULL;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
-        clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>*, <treename>)", __FUNCTION__);
+        clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>*, <treename>)", __FUNCTION__);
         goto done;
     }
     api_path_fmt = cv_string_get(cvec_i(argv, argc++));
@@ -144,7 +144,7 @@ cli_auto_edit(clicon_handle h,
         treename = str;
     /* Find current cligen tree */
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
-        clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
+        clixon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
         goto done;
     }
     /* Find the matching cligen object 
@@ -156,19 +156,19 @@ cli_auto_edit(clicon_handle h,
             (coorig = co->co_ref) != NULL)
             cligen_ph_workpoint_set(ph, coorig);
         else {
-            clicon_err(OE_YANG, EINVAL, "No workpoint found");
+            clixon_err(OE_YANG, EINVAL, "No workpoint found");
             goto done;
         }
     }
     else{
-        clicon_err(OE_YANG, EINVAL, "No workpoint found");
+        clixon_err(OE_YANG, EINVAL, "No workpoint found");
         goto done;
     }
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv1)) == NULL)
         goto done;
     /*  API_path format */
     if ((api_path_fmt = co2apipath(coorig)) == NULL){
-        clicon_err(OE_YANG, EINVAL, "No apipath found");
+        clixon_err(OE_YANG, EINVAL, "No apipath found");
         goto done;
     }
     /* get api-path and xpath */
@@ -180,7 +180,7 @@ cli_auto_edit(clicon_handle h,
     if (mtpoint){
         char *mtpoint2;
         if ((mtpoint2 = strdup(mtpoint)) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
         if (clicon_data_set(h, "cli-edit-mtpoint", mtpoint2) < 0)
@@ -191,7 +191,7 @@ cli_auto_edit(clicon_handle h,
     if (co->co_filter){
         cvec *cvv3;
         if ((cvv3 = cvec_dup(co->co_filter)) == NULL){
-            clicon_err(OE_YANG, errno, "cvec_dup");
+            clixon_err(OE_YANG, errno, "cvec_dup");
             goto done;
         }
         if (clicon_data_cvec_set(h, "cli-edit-filter", cvv3) < 0)
@@ -215,7 +215,7 @@ cli_auto_edit(clicon_handle h,
  *   <treename>     Name of generated cligen parse-tree, eg "datamodel"
  */
 int
-cli_auto_up(clicon_handle h,
+cli_auto_up(clixon_handle h,
             cvec         *cvv,
             cvec         *argv)
 {
@@ -236,13 +236,13 @@ cli_auto_up(clicon_handle h,
     cvec    *cvv_filter = NULL;
 
     if (cvec_len(argv) != 1){
-        clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
+        clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
         goto done;
     }
     cv = cvec_i(argv, 0);
     treename = cv_string_get(cv);
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
-        clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
+        clixon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
         goto done;
     }
     if ((co0 = cligen_ph_workpoint_get(ph)) == NULL)
@@ -313,7 +313,7 @@ cli_auto_up(clicon_handle h,
  *   <treename>     Name of generated cligen parse-tree, eg "datamodel"
  */
 int
-cli_auto_top(clicon_handle h,
+cli_auto_top(clixon_handle h,
              cvec         *cvv,
              cvec         *argv)
 {
@@ -325,7 +325,7 @@ cli_auto_top(clicon_handle h,
     cv = cvec_i(argv, 0);
     treename = cv_string_get(cv);
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
-        clicon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
+        clixon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
         goto done;
     }
     cligen_ph_workpoint_set(ph, NULL);
@@ -349,7 +349,7 @@ cli_auto_top(clicon_handle h,
  *   <api-path-fmt> Generated
  */
 int
-cli_auto_set(clicon_handle h,
+cli_auto_set(clixon_handle h,
              cvec         *cvv,
              cvec         *argv)
 {
@@ -375,7 +375,7 @@ cli_auto_set(clicon_handle h,
  * @retval    -1    Error
  */
 int
-cli_auto_merge(clicon_handle h,
+cli_auto_merge(clixon_handle h,
                cvec         *cvv,
                cvec         *argv)
 {
@@ -401,7 +401,7 @@ cli_auto_merge(clicon_handle h,
  * @retval    -1    Error
  */
 int
-cli_auto_create(clicon_handle h,
+cli_auto_create(clixon_handle h,
                 cvec         *cvv,
                 cvec         *argv)
 {
@@ -427,7 +427,7 @@ cli_auto_create(clicon_handle h,
  * @retval    -1    Error
  */
 int
-cli_auto_del(clicon_handle h,
+cli_auto_del(clixon_handle h,
              cvec         *cvv,
              cvec         *argv)
 {
@@ -492,7 +492,7 @@ cli_auto_findpt(cg_obj *co,
  * @see cli_auto_edit
  */
 int
-cli_auto_sub_enter(clicon_handle h,
+cli_auto_sub_enter(clixon_handle h,
                    cvec         *cvv,
                    cvec         *argv)
 {
@@ -508,7 +508,7 @@ cli_auto_sub_enter(clicon_handle h,
     struct findpt_arg fa = {0,};
 
     if (cvec_len(argv) < 2){
-        clicon_err(OE_PLUGIN, EINVAL, "Usage: %s(<tree> <api_path_fmt> (,vars)*)", __FUNCTION__);
+        clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<tree> <api_path_fmt> (,vars)*)", __FUNCTION__);
         goto done;
     }
     /* First argv argument: treename */
@@ -527,7 +527,7 @@ cli_auto_sub_enter(clicon_handle h,
      */
     /* Create a cvv with variables to add to api-path */
     if ((cvv1 = cvec_new(0)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto done;
     }
     /* Append static variables (skip first treename) */
@@ -552,7 +552,7 @@ cli_auto_sub_enter(clicon_handle h,
         goto done;
     /* Find current cligen tree */
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
-        clicon_err(OE_PLUGIN, ENOENT, "No such parsetree header: %s", treename);
+        clixon_err(OE_PLUGIN, ENOENT, "No such parsetree header: %s", treename);
         goto done;
     }
     /* Find the point in the generated clispec tree where workpoint should be set */
@@ -560,7 +560,7 @@ cli_auto_sub_enter(clicon_handle h,
     if (pt_apply(cligen_ph_parsetree_get(ph), cli_auto_findpt, INT32_MAX, &fa) < 0)
         goto done;
     if (fa.fa_co == NULL){
-        clicon_err(OE_PLUGIN, ENOENT, "No such cligen object found %s", api_path);
+        clixon_err(OE_PLUGIN, ENOENT, "No such cligen object found %s", api_path);
         goto done;
     }
     cligen_ph_workpoint_set(ph, fa.fa_co);

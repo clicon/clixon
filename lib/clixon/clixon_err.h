@@ -35,9 +35,9 @@
 
  *
  * Errors may be syslogged using LOG_ERR, and printed to stderr, as controlled by 
- * clicon_log_init
- * global error variables are set:
- *  clicon_errno, clicon_suberrno, clicon_err_reason.
+ * clixon_log_init
+ * Details about the errors may be retreievd by access functions
+ *  clixon_err_reason(), clixon_err_subnr(), etc
  */
 
 #ifndef _CLIXON_ERR_H_
@@ -58,7 +58,7 @@
  * Add error category here, 
  * @see EV variable in clixon_err.c but must also add an entry there
  */
-enum clicon_err{
+enum clixon_err{
     /* 0 means error not set) */
     OE_DB = 1,   /* database registries */
     OE_DAEMON,   /* daemons: pidfiles, etc */
@@ -92,27 +92,34 @@ enum clicon_err{
 typedef int (clixon_cat_log_cb)(void *handle, int suberr, cbuf *cb);
 
 /*
- * Variables
- * XXX: should not be global
- */
-extern int  clicon_errno;    /* CLICON errors (see clicon_err) */
-extern int  clicon_suberrno; /* Eg orig errno */
-extern char clicon_err_reason[ERR_STRLEN];
-
-/*
  * Macros
  */
-#define clicon_err(e,s,_fmt, args...) clicon_err_fn(__FUNCTION__, __LINE__, (e), (s), _fmt , ##args)
+#define clixon_err(e,s,_fmt, args...) clixon_err_fn(__FUNCTION__, __LINE__, (e), (s), _fmt , ##args)
 
 /*
  * Prototypes
  */
-int   clicon_err_reset(void);
-int   clicon_err_fn(const char *fn, const int line, int category, int err, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
-char *clicon_strerror(int err);
-void *clicon_err_save(void);
-int   clicon_err_restore(void *handle);
-int   clixon_err_cat_reg(enum clicon_err category, void *handle, clixon_cat_log_cb logfn);
+int   clixon_err_init(clixon_handle h);
+int   clixon_err_category(void);
+int   clixon_err_subnr(void);
+char *clixon_err_reason(void);
+char *clixon_err_str(void);
+int   clixon_err_reset(void);
+int   clixon_err_args(clixon_handle h, const char *fn, const int line, int category, int suberr, char *msg);
+int   clixon_err_fn(const char *fn, const int line, int category, int err, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
+
+void *clixon_err_save(void);
+int   clixon_err_restore(void *handle);
+int   clixon_err_cat_reg(enum clixon_err category, void *handle, clixon_cat_log_cb logfn);
 int   clixon_err_exit(void);
+
+#if 1 /* COMPAT_6_5 */
+#define clicon_err(e,s,_fmt, args...) clixon_err_fn(__FUNCTION__, __LINE__, (e), (s), _fmt , ##args)
+#define clicon_err_reset() clixon_err_reset()
+
+#define clicon_errno      clixon_err_category()
+#define clicon_suberrno   clixon_err_subnr()
+#define clicon_err_reason clixon_err_reason()
+#endif
 
 #endif  /* _CLIXON_ERR_H_ */

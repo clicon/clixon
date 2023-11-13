@@ -56,12 +56,13 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_err.h"
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_file.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -126,7 +127,7 @@ attr_ns_value(cxobj *x,
         if (ns == NULL ||
             strcmp(ans, ns) == 0){
             if ((val = strdup(xml_value(xa))) == NULL){
-                clicon_err(OE_UNIX, errno, "malloc");
+                clixon_err(OE_UNIX, errno, "malloc");
                 goto done;
             }
             xml_purge(xa);
@@ -257,7 +258,7 @@ check_body_namespace(cxobj     *x0,
              * XXX return netconf error instead bad-attribue?
              */
             if ((cberr = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             cprintf(cberr, "identityref: \"%s\": namespace collision %s vs %s", x1bstr, ns0, ns1);
@@ -303,7 +304,7 @@ check_body_namespace(cxobj     *x0,
         }
 #else
         if ((cberr = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cberr, "identityref: \"%s\": prefix \"%s\" has no associated namespace", x1bstr, prefix);
@@ -371,7 +372,7 @@ check_when_condition(cxobj              *x0p,
                     goto done;
                 if (nr == 0){
                     if ((cberr = cbuf_new()) == NULL){
-                        clicon_err(OE_UNIX, errno, "cbuf_new");
+                        clixon_err(OE_UNIX, errno, "cbuf_new");
                         goto done;
                     }
                     cprintf(cberr, "Node '%s' tagged with 'when' condition '%s' in module '%s' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)",
@@ -519,7 +520,7 @@ choice_delete_other(cxobj     *x0,
  * in the list the entry is inserted.
  */
 static int
-text_modify(clicon_handle       h,
+text_modify(clixon_handle       h,
             cxobj              *x0,
             cxobj              *x0p,
             cxobj              *x0t,
@@ -559,7 +560,7 @@ text_modify(clicon_handle       h,
     char      *creator = NULL;
 
     if (x1 == NULL){
-        clicon_err(OE_XML, EINVAL, "x1 is missing");
+        clixon_err(OE_XML, EINVAL, "x1 is missing");
         goto done;
     }
     if ((ret = check_when_condition(x0p, x1, y0, cbret)) < 0)
@@ -708,7 +709,7 @@ text_modify(clicon_handle       h,
             if (yang_type_get(y0, NULL, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
                 goto done;
             if (yrestype == NULL){
-                clicon_err(OE_CFG, EFAULT, "No restype (internal error)");
+                clixon_err(OE_CFG, EFAULT, "No restype (internal error)");
                 goto done;
             }
             restype = yang_argument_get(yrestype);
@@ -940,7 +941,7 @@ text_modify(clicon_handle       h,
              * collect matching nodes from x0 in x0vec (no changes to x0 children)
              */
             if ((x0vec = calloc(xml_child_nr_type(x1, CX_ELMNT), sizeof(x1))) == NULL){
-                clicon_err(OE_UNIX, errno, "calloc");
+                clixon_err(OE_UNIX, errno, "calloc");
                 goto done;
             }
             x1c = NULL;
@@ -957,7 +958,7 @@ text_modify(clicon_handle       h,
                             if ((yc = yang_anydata_add(y0, x1cname)) < 0)
                                 goto done;
                             xml_spec_set(x1c, yc);
-                            clicon_log(LOG_WARNING,
+                            clixon_log(h, LOG_WARNING,
                                        "%s: %d: No YANG spec for %s, anydata used",
                                        __FUNCTION__, __LINE__, x1cname);
                         }
@@ -973,7 +974,7 @@ text_modify(clicon_handle       h,
                  * As an alternative, return in populate where this is detected first time.
                  */
                 if (yc != xml_spec(x1c)){
-                    clicon_err(OE_YANG, errno, "XML node \"%s\" not in namespace %s",
+                    clixon_err(OE_YANG, errno, "XML node \"%s\" not in namespace %s",
                                x1cname, yang_find_mynamespace(y0));
                     goto done;
                 }
@@ -1101,7 +1102,7 @@ text_modify(clicon_handle       h,
  * @see text_modify
  */
 static int
-text_modify_top(clicon_handle       h,
+text_modify_top(clixon_handle       h,
                 cxobj              *x0t,
                 cxobj              *x1t,
                 yang_stmt          *yspec,
@@ -1210,7 +1211,7 @@ text_modify_top(clicon_handle       h,
                 if ((yc = yang_anydata_add(ymod, x1cname)) < 0)
                     goto done;
                 xml_spec_set(x1c, yc);
-                clicon_log(LOG_WARNING,
+                clixon_log(h, LOG_WARNING,
                            "%s: %d: No YANG spec for %s, anydata used",
                            __FUNCTION__, __LINE__, x1cname);
             }
@@ -1275,7 +1276,7 @@ text_modify_top(clicon_handle       h,
  * @note if xret is non-null, it may contain error message
  */
 int
-xmldb_put(clicon_handle       h,
+xmldb_put(clixon_handle       h,
           const char         *db,
           enum operation_type op,
           cxobj              *x1,
@@ -1302,15 +1303,15 @@ xmldb_put(clicon_handle       h,
     cxobj      *xmeta = NULL;
 
     if (cbret == NULL){
-        clicon_err(OE_XML, EINVAL, "cbret is NULL");
+        clixon_err(OE_XML, EINVAL, "cbret is NULL");
         goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
     if (x1 && strcmp(xml_name(x1), NETCONF_INPUT_CONFIG) != 0){
-        clicon_err(OE_XML, 0, "Top-level symbol of modification tree is %s, expected \"%s\"",
+        clixon_err(OE_XML, 0, "Top-level symbol of modification tree is %s, expected \"%s\"",
                    xml_name(x1), NETCONF_INPUT_CONFIG);
         goto done;
     }
@@ -1329,7 +1330,7 @@ xmldb_put(clicon_handle       h,
     }
     if (strcmp(xml_name(x0), DATASTORE_TOP_SYMBOL) !=0 ||
         xml_flag(x0, XML_FLAG_TOP) == 0){
-        clicon_err(OE_XML, 0, "Top-level symbol is %s, expected \"%s\"",
+        clixon_err(OE_XML, 0, "Top-level symbol is %s, expected \"%s\"",
                    xml_name(x0), DATASTORE_TOP_SYMBOL);
         goto done;
     }
@@ -1346,7 +1347,7 @@ xmldb_put(clicon_handle       h,
     /* Here x0 looks like: <config>...</config> */
 #if 0 /* debug */
     if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
-        clicon_log(LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
+        clixon_log(h, LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
 #endif
     xnacm = clicon_nacm_cache(h);
     permit = (xnacm==NULL);
@@ -1380,7 +1381,7 @@ xmldb_put(clicon_handle       h,
         goto done;
 #if 0 /* debug */
     if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
-        clicon_log(LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
+        clixon_log(h, LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
 #endif
     /* Write back to datastore cache if first time */
     if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
@@ -1395,7 +1396,7 @@ xmldb_put(clicon_handle       h,
     if (xmldb_db2file(h, db, &dbfile) < 0)
         goto done;
     if (dbfile==NULL){
-        clicon_err(OE_XML, 0, "dbfile NULL");
+        clixon_err(OE_XML, 0, "dbfile NULL");
         goto done;
     }
     /* Add module revision info before writing to file)
@@ -1408,11 +1409,11 @@ xmldb_put(clicon_handle       h,
             goto done;
     }
     if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
-        clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
+        clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
         goto done;
     }
     if ((f = fopen(dbfile, "w")) == NULL){
-        clicon_err(OE_CFG, errno, "Creating file %s", dbfile);
+        clixon_err(OE_CFG, errno, "Creating file %s", dbfile);
         goto done;
     }
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
@@ -1466,7 +1467,7 @@ xmldb_put(clicon_handle       h,
 /* Dump a datastore to file including modstate
  */
 int
-xmldb_dump(clicon_handle   h,
+xmldb_dump(clixon_handle   h,
            FILE           *f,
            cxobj          *xt)
 {
@@ -1487,7 +1488,7 @@ xmldb_dump(clicon_handle   h,
             goto done;
     }
     if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
-        clicon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
+        clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
         goto done;
     }
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");

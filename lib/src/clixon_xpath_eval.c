@@ -72,13 +72,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_yang_type.h"
 #include "clixon_xml.h"
@@ -429,7 +430,7 @@ xp_eval_step(xp_ctx     *xc0,
     case A_SELF:
         break;
     default:
-        clicon_err(OE_XML, 0, "No such axisname: %d", xs->xs_int);
+        clixon_err(OE_XML, 0, "No such axisname: %d", xs->xs_int);
         goto done;
         break;
     }
@@ -442,7 +443,7 @@ xp_eval_step(xp_ctx     *xc0,
         xc = NULL;
     }
     if (*xrp == NULL){
-        clicon_err(OE_XML, 0, "Internal error xrp is NULL");
+        clixon_err(OE_XML, 0, "Internal error xrp is NULL");
         goto done;
     }
     retval = 0;
@@ -507,7 +508,7 @@ xp_eval_predicate(xp_ctx     *xc,
          * XXX: alt to check xr0 is nodeset: set new var nodeset to NULL
          */
         if ((xr1 = malloc(sizeof(*xr1))) == NULL){
-            clicon_err(OE_UNIX, errno, "malloc");
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
         memset(xr1, 0, sizeof(*xr1));
@@ -518,7 +519,7 @@ xp_eval_predicate(xp_ctx     *xc,
             x = xr0->xc_nodeset[i];
             /* Create new context */
             if ((xcc = malloc(sizeof(*xcc))) == NULL){
-                clicon_err(OE_XML, errno, "malloc");
+                clixon_err(OE_XML, errno, "malloc");
                 goto done;
             }
             memset(xcc, 0, sizeof(*xcc));
@@ -553,7 +554,7 @@ xp_eval_predicate(xp_ctx     *xc,
         }
     }
     if (xr0 == NULL && xr1 == NULL){
-        clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
+        clixon_err(OE_XML, EFAULT, "Internal error: no result produced");
         goto done;
     }
     if (xr1){
@@ -597,7 +598,7 @@ xp_logop(xp_ctx    *xc1,
     int     b2;
 
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -615,7 +616,7 @@ xp_logop(xp_ctx    *xc1,
         xr->xc_bool = b1 || b2;
         break;
     default:
-        clicon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
+        clixon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
                    __FUNCTION__, clicon_int2str(xpopmap,op));
         goto done;
     }
@@ -648,7 +649,7 @@ xp_numop(xp_ctx    *xc1,
     double  n2;
 
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -678,7 +679,7 @@ xp_numop(xp_ctx    *xc1,
             xr->xc_number = n1-n2;
             break;
         default:
-            clicon_err(OE_UNIX, errno, "Invalid operator %s in this context",
+            clixon_err(OE_UNIX, errno, "Invalid operator %s in this context",
                        clicon_int2str(xpopmap,op));
             goto done;
         }
@@ -719,29 +720,29 @@ xml_cv_cache(cxobj   *x,
     if ((cv = xml_cv(x)) != NULL)
         goto ok;
     if ((y = xml_spec(x)) == NULL){
-        clicon_err(OE_XML, EFAULT, "Yang binding missing for xml symbol %s, body:%s", xml_name(x), body);
+        clixon_err(OE_XML, EFAULT, "Yang binding missing for xml symbol %s, body:%s", xml_name(x), body);
         goto done;
     }
     if (yang_type_get(y, NULL, &yrestype, &options, NULL, NULL, NULL, &fraction) < 0)
         goto done;
     yang2cv_type(yang_argument_get(yrestype), &cvtype);
     if (cvtype==CGV_ERR){
-        clicon_err(OE_YANG, errno, "yang->cligen type %s mapping failed",
+        clixon_err(OE_YANG, errno, "yang->cligen type %s mapping failed",
                    yang_argument_get(yrestype));
         goto done;
     }
     if ((cv = cv_new(cvtype)) == NULL){
-        clicon_err(OE_YANG, errno, "cv_new");
+        clixon_err(OE_YANG, errno, "cv_new");
         goto done;
     }
     if (cvtype == CGV_DEC64)
         cv_dec64_n_set(cv, fraction);
     if ((ret = cv_parse1(body, cv, &reason)) < 0){
-        clicon_err(OE_YANG, errno, "cv_parse1");
+        clixon_err(OE_YANG, errno, "cv_parse1");
         goto done;
     }
     if (ret == 0){
-        clicon_err(OE_YANG, EINVAL, "cv parse error: %s\n", reason);
+        clixon_err(OE_YANG, EINVAL, "cv parse error: %s\n", reason);
         goto done;
     }
     if (xml_cv_set(x, cv) < 0)
@@ -803,11 +804,11 @@ xp_relop(xp_ctx    *xc1,
     int     ret;
 
     if (xc1 == NULL || xc2 == NULL){
-        clicon_err(OE_UNIX, EINVAL, "xc1 or xc2 NULL");
+        clixon_err(OE_UNIX, EINVAL, "xc1 or xc2 NULL");
         goto done;
     }
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -865,7 +866,7 @@ xp_relop(xp_ctx    *xc1,
                             xr->xc_bool = (ret > 0);
                             break;
                         default:
-                            clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
+                            clixon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
                             goto done;
                             break;
                         }
@@ -891,7 +892,7 @@ xp_relop(xp_ctx    *xc1,
                             xr->xc_bool = (strcmp(s1, s2)>0);
                             break;
                         default:
-                            clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
+                            clixon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
                             goto done;
                             break;
                         }
@@ -927,7 +928,7 @@ xp_relop(xp_ctx    *xc1,
                 xr->xc_bool = (xc1->xc_number > xc2->xc_number);
                 break;
             default:
-                clicon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
+                clixon_err(OE_XML, 0, "Operator %s not supported for nodeset/nodeset comparison", clicon_int2str(xpopmap,op));
                 goto done;
                 break;
             }
@@ -939,7 +940,7 @@ xp_relop(xp_ctx    *xc1,
     }
     else if (xc1->xc_type != XT_NODESET &&
              xc2->xc_type != XT_NODESET){
-        clicon_err(OE_XML, 0, "Mixed types not supported, %d %d", xc1->xc_type, xc2->xc_type);
+        clixon_err(OE_XML, 0, "Mixed types not supported, %d %d", xc1->xc_type, xc2->xc_type);
         goto done;
     }
     else{ /* one is nodeset, ie (1) above */
@@ -964,7 +965,7 @@ xp_relop(xp_ctx    *xc1,
                 xr->xc_bool = (b != xc2->xc_bool);
                 break;
             default:
-                clicon_err(OE_XML, 0, "Operator %s not supported for nodeset and bool", clicon_int2str(xpopmap,op));
+                clixon_err(OE_XML, 0, "Operator %s not supported for nodeset and bool", clicon_int2str(xpopmap,op));
                 goto done;
                 break;
             } /* switch op */
@@ -1008,7 +1009,7 @@ xp_relop(xp_ctx    *xc1,
                         xr->xc_bool = (strcmp(s1, s2));
                     break;
                 default:
-                    clicon_err(OE_XML, 0, "Operator %s not supported for nodeset and string", clicon_int2str(xpopmap,op));
+                    clixon_err(OE_XML, 0, "Operator %s not supported for nodeset and string", clicon_int2str(xpopmap,op));
                 goto done;
                     break;
                 }
@@ -1044,7 +1045,7 @@ xp_relop(xp_ctx    *xc1,
                     xr->xc_bool = reverse?(n2 > n1):(n1 > n2);
                     break;
                 default:
-                    clicon_err(OE_XML, 0, "Operator %s not supported for nodeset and number", clicon_int2str(xpopmap,op));
+                    clixon_err(OE_XML, 0, "Operator %s not supported for nodeset and number", clicon_int2str(xpopmap,op));
                 goto done;
                     break;
                 }
@@ -1053,7 +1054,7 @@ xp_relop(xp_ctx    *xc1,
             }
             break;
         default:
-            clicon_err(OE_XML, 0, "Type %d not supported", xc2->xc_type);
+            clixon_err(OE_XML, 0, "Type %d not supported", xc2->xc_type);
         } /* switch type */
     }
  ok:
@@ -1090,12 +1091,12 @@ xp_union(xp_ctx    *xc1,
     int     i;
 
     if (op != XO_UNION){
-        clicon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
+        clixon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
                    __FUNCTION__, clicon_int2str(xpopmap,op));
         goto done;
     }
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -1245,7 +1246,7 @@ xp_eval(xp_ctx     *xc,
                 goto ok;
                 break;
             default:
-                clicon_err(OE_XML, EFAULT, "XPath function not implemented: %s", xs->xs_s0);
+                clixon_err(OE_XML, EFAULT, "XPath function not implemented: %s", xs->xs_s0);
                 goto done;
                 break;
             }
@@ -1286,7 +1287,7 @@ xp_eval(xp_ctx     *xc,
         /* Special case, no c0 or c1, single "/" */
         if (xs->xs_c0 == NULL){
             if ((xr0 = malloc(sizeof(*xr0))) == NULL){
-                clicon_err(OE_UNIX, errno, "malloc");
+                clixon_err(OE_UNIX, errno, "malloc");
                 goto done;
             }
             memset(xr0, 0, sizeof(*xr0));
@@ -1316,7 +1317,7 @@ xp_eval(xp_ctx     *xc,
         break;
     case XP_PRIME_NR: /* primaryexpr -> [<number>] */
         if ((xr0 = malloc(sizeof(*xr0))) == NULL){
-            clicon_err(OE_UNIX, errno, "malloc");
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
         memset(xr0, 0, sizeof(*xr0));
@@ -1326,7 +1327,7 @@ xp_eval(xp_ctx     *xc,
         break;
     case XP_PRIME_STR:
         if ((xr0 = malloc(sizeof(*xr0))) == NULL){
-            clicon_err(OE_UNIX, errno, "malloc");
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
         memset(xr0, 0, sizeof(*xr0));
@@ -1370,7 +1371,7 @@ xp_eval(xp_ctx     *xc,
     else
         xc->xc_descendant = 0;
     if (xr0 == NULL && xr1 == NULL && xr2 == NULL){
-        clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
+        clixon_err(OE_XML, EFAULT, "Internal error: no result produced");
         goto done;
     }
     if (xr2){

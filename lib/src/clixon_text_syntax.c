@@ -52,12 +52,13 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_err.h"
-#include "clixon_log.h"
 #include "clixon_queue.h"
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -142,7 +143,7 @@ text2file(cxobj            *xn,
     char      *prefix = NULL;
 #endif
     if (xn == NULL || fn == NULL){
-        clicon_err(OE_XML, EINVAL, "xn or fn is NULL");
+        clixon_err(OE_XML, EINVAL, "xn or fn is NULL");
         goto done;
     }
     if ((yn = xml_spec(xn)) != NULL){
@@ -168,7 +169,7 @@ text2file(cxobj            *xn,
 #endif
         if (yang_keyword_get(yn) == Y_LIST){
             if ((cvk = yang_cvec_get(yn)) == NULL){
-                clicon_err(OE_YANG, 0, "No keys");
+                clixon_err(OE_YANG, 0, "No keys");
                 goto done;
             }
         }
@@ -190,7 +191,7 @@ text2file(cxobj            *xn,
         switch (xml_type(xn)){
         case CX_BODY:{
             if ((cbb = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             value = xml_value(xn);
@@ -331,7 +332,7 @@ text2cbuf(cbuf  *cb,
     char      *prefix = NULL;
 
     if (xn == NULL || cb == NULL){
-        clicon_err(OE_XML, EINVAL, "xn or cb is NULL");
+        clixon_err(OE_XML, EINVAL, "xn or cb is NULL");
         goto done;
     }
     level1 = level*PRETTYPRINT_INDENT;
@@ -349,7 +350,7 @@ text2cbuf(cbuf  *cb,
 #endif
         if (yang_keyword_get(yn) == Y_LIST){
             if ((cvk = yang_cvec_get(yn)) == NULL){
-                clicon_err(OE_YANG, 0, "No keys");
+                clixon_err(OE_YANG, 0, "No keys");
                 goto done;
             }
         }
@@ -373,7 +374,7 @@ text2cbuf(cbuf  *cb,
         switch (xml_type(xn)){
         case CX_BODY:{
             if ((cbb = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             value = xml_value(xn);
@@ -800,7 +801,7 @@ text_populate_list(cxobj *xn)
                 continue;
             xml_flag_reset(xb, XML_FLAG_BODYKEY);
             if ((cvi = cvec_next(cvk, cvi)) == NULL){
-                clicon_err(OE_XML, 0, "text parser, key and body mismatch");
+                clixon_err(OE_XML, 0, "text parser, key and body mismatch");
                 goto done;
             }
             namei = cv_string_get(cvi);
@@ -836,7 +837,7 @@ text_populate_list(cxobj *xn)
  * @param[out] xerr   Reason for invalid returned as netconf err msg 
  * @retval     1      OK and valid
  * @retval     0      Invalid (only if yang spec)
- * @retval    -1      Error with clicon_err called
+ * @retval    -1      Error
  * @see _xml_parse for XML variant
  * @note Parsing requires YANG, which means yb must be YB_MODULE/_NEXT
  */
@@ -857,7 +858,7 @@ _text_syntax_parse(char      *str,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s %d %s", __FUNCTION__, yb, str);
     if (yb != YB_MODULE && yb != YB_MODULE_NEXT){
-        clicon_err(OE_YANG, EINVAL, "yb must be YB_MODULE or YB_MODULE_NEXT");
+        clixon_err(OE_YANG, EINVAL, "yb must be YB_MODULE or YB_MODULE_NEXT");
         return -1;
     }
     ts.ts_parse_string = str;
@@ -867,9 +868,9 @@ _text_syntax_parse(char      *str,
     if (clixon_text_syntax_parsel_init(&ts) < 0)
         goto done;
     if (clixon_text_syntax_parseparse(&ts) != 0) { /* yacc returns 1 on error */
-        clicon_log(LOG_NOTICE, "TEXT SYNTAX error: line %d", ts.ts_linenum);
-        if (clicon_errno == 0)
-            clicon_err(OE_JSON, 0, "TEXT SYNTAX parser error with no error code (should not happen)");
+        clixon_log(NULL, LOG_NOTICE, "TEXT SYNTAX error: line %d", ts.ts_linenum);
+        if (clixon_err_category() == 0)
+            clixon_err(OE_JSON, 0, "TEXT SYNTAX parser error with no error code (should not happen)");
         goto done;
     }
 
@@ -931,7 +932,7 @@ _text_syntax_parse(char      *str,
  * @param[out]    xerr  Reason for invalid returned as netconf err msg 
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
- * @retval       -1     Error with clicon_err called
+ * @retval       -1     Error
  * @code
  *  cxobj *x = NULL;
  *  if (clixon_text_syntax_parse_string(str, YB_MODULE, yspec, &x, &xerr) < 0)
@@ -950,7 +951,7 @@ clixon_text_syntax_parse_string(char      *str,
 {
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (xt==NULL){
-        clicon_err(OE_XML, EINVAL, "xt is NULL");
+        clixon_err(OE_XML, EINVAL, "xt is NULL");
         return -1;
     }
     if (*xt == NULL){
@@ -974,7 +975,7 @@ clixon_text_syntax_parse_string(char      *str,
  * @param[out]    xerr  Reason for invalid returned as netconf err msg 
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
- * @retval       -1     Error with clicon_err called
+ * @retval       -1     Error
  *
  * @code
  *  cxobj *xt = NULL;
@@ -1006,18 +1007,18 @@ clixon_text_syntax_parse_file(FILE      *fp,
     int       len = 0;
 
     if (xt == NULL){
-        clicon_err(OE_XML, EINVAL, "xt is NULL");
+        clixon_err(OE_XML, EINVAL, "xt is NULL");
         return -1;
     }
     if ((textbuf = malloc(textbuflen)) == NULL){
-        clicon_err(OE_XML, errno, "malloc");
+        clixon_err(OE_XML, errno, "malloc");
         goto done;
     }
     memset(textbuf, 0, textbuflen);
     ptr = textbuf;
     while (1){
         if ((ret = fread(&ch, 1, 1, fp)) < 0){
-            clicon_err(OE_XML, errno, "read");
+            clixon_err(OE_XML, errno, "read");
             break;
         }
         if (ret != 0)
@@ -1038,7 +1039,7 @@ clixon_text_syntax_parse_file(FILE      *fp,
             oldtextbuflen = textbuflen;
             textbuflen *= 2;
             if ((textbuf = realloc(textbuf, textbuflen)) == NULL){
-                clicon_err(OE_XML, errno, "realloc");
+                clixon_err(OE_XML, errno, "realloc");
                 goto done;
             }
             memset(textbuf+oldtextbuflen, 0, textbuflen-oldtextbuflen);

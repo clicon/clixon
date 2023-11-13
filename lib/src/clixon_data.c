@@ -59,13 +59,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_sort.h"
@@ -87,7 +88,7 @@
  * @see clicon_option_str
  */
 int
-clicon_data_get(clicon_handle h,
+clicon_data_get(clixon_handle h,
                 const char   *name,
                 char        **val)
 {
@@ -110,7 +111,7 @@ clicon_data_get(clicon_handle h,
  * @see clicon_option_str_set
  */
 int
-clicon_data_set(clicon_handle h,
+clicon_data_set(clixon_handle h,
                 const char   *name,
                 char         *val)
 {
@@ -128,7 +129,7 @@ clicon_data_set(clicon_handle h,
  * @see clicon_option_del
  */
 int
-clicon_data_del(clicon_handle h,
+clicon_data_del(clixon_handle h,
                 const char   *name)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -146,7 +147,7 @@ clicon_data_del(clicon_handle h,
  * @see clicon_option_str
  */
 int
-clicon_ptr_get(clicon_handle h,
+clicon_ptr_get(clixon_handle h,
                 const char  *name,
                 void       **ptr)
 {
@@ -173,7 +174,7 @@ clicon_ptr_get(clicon_handle h,
  * @see clicon_option_str_set
  */
 int
-clicon_ptr_set(clicon_handle h,
+clicon_ptr_set(clixon_handle h,
                const char   *name,
                void         *ptr)
 {
@@ -191,7 +192,7 @@ clicon_ptr_set(clicon_handle h,
  * @see clicon_option_del
  */
 int
-clicon_ptr_del(clicon_handle h,
+clicon_ptr_del(clixon_handle h,
                const char   *name)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -212,7 +213,7 @@ clicon_ptr_del(clicon_handle h,
  * @endcode                                     
  */
 cvec *
-clicon_data_cvec_get(clicon_handle h,
+clicon_data_cvec_get(clixon_handle h,
                      const char   *name)
 {
     cvec *cvv = NULL;
@@ -229,7 +230,7 @@ clicon_data_cvec_get(clicon_handle h,
  * @param[in]  cvv   CLIgen variable vector (cvv) (malloced)
  */
 int
-clicon_data_cvec_set(clicon_handle h,
+clicon_data_cvec_set(clixon_handle h,
                      const char   *name,
                      cvec         *cvv)
 {
@@ -247,7 +248,7 @@ clicon_data_cvec_set(clicon_handle h,
  * @param[in]  name  Name
  */
 int
-clicon_data_cvec_del(clicon_handle h,
+clicon_data_cvec_del(clixon_handle h,
                      const char   *name)
 {
     cvec *cvv = NULL;
@@ -260,7 +261,7 @@ clicon_data_cvec_del(clicon_handle h,
 
 /*! Get data option as integer but store as string
  *
- * @param[in] h       clicon_handle
+ * @param[in] h       clixon_handle
  * @param[in] name    option name
  * @retval    int     An integer as a result of atoi
  * @retval   -1       If option does not exist
@@ -268,7 +269,7 @@ clicon_data_cvec_del(clicon_handle h,
  * @see clicon_option_int   for values in clixon config file
  */
 int
-clicon_data_int_get(clicon_handle h,
+clicon_data_int_get(clixon_handle h,
                     const char   *name)
 {
     clicon_hash_t *cdat = clicon_data(h);
@@ -282,14 +283,14 @@ clicon_data_int_get(clicon_handle h,
 
 /*! Set a single string data via handle
  *
- * @param[in] h       clicon_handle
+ * @param[in] h       clixon_handle
  * @param[in] name    option name
  * @param[in] val     option value, must be null-terminated string
  * @retval    0       OK
  * @retval   -1       Error
  */
 int
-clicon_data_int_set(clicon_handle h,
+clicon_data_int_set(clixon_handle h,
                     const char   *name,
                     int           val)
 {
@@ -303,13 +304,13 @@ clicon_data_int_set(clicon_handle h,
 
 /*! Delete single int data via handle 
  *
- * @param[in] h       clicon_handle
+ * @param[in] h       clixon_handle
  * @param[in] name    option name
  * @retval    0       OK
  * @retval   -1       Error
  */
 int
-clicon_data_int_del(clicon_handle h,
+clicon_data_int_del(clixon_handle h,
                     const char   *name)
 {
     clicon_hash_t *cdat = clicon_data(h);
@@ -324,7 +325,7 @@ clicon_data_int_del(clicon_handle h,
  * @see clicon_config_yang  for the configuration yang
  */
 yang_stmt *
-clicon_dbspec_yang(clicon_handle h)
+clicon_dbspec_yang(clixon_handle h)
 {
     yang_stmt *ys = NULL;
 
@@ -340,7 +341,7 @@ clicon_dbspec_yang(clicon_handle h)
  * @see clicon_config_yang_set  for the configuration yang
  */
 int
-clicon_dbspec_yang_set(clicon_handle h,
+clicon_dbspec_yang_set(clixon_handle h,
                        yang_stmt    *ys)
 {
     return clicon_ptr_set(h, "dbspec_yang", ys);
@@ -353,7 +354,7 @@ clicon_dbspec_yang_set(clicon_handle h,
  * @see clicon_dbspec_yang  for the application specs
  */
 yang_stmt *
-clicon_config_yang(clicon_handle h)
+clicon_config_yang(clixon_handle h)
 {
     yang_stmt *ys = NULL;
 
@@ -369,7 +370,7 @@ clicon_config_yang(clicon_handle h)
  * @see clicon_dbspec_yang_set  for the application specs
  */
 int
-clicon_config_yang_set(clicon_handle   h,
+clicon_config_yang_set(clixon_handle   h,
                        yang_stmt      *ys)
 {
     return clicon_ptr_set(h, "control_yang", ys);
@@ -382,7 +383,7 @@ clicon_config_yang_set(clicon_handle   h,
  * @see clicon_nacm_ext  for external NACM XML
  */
 yang_stmt *
-clicon_nacm_ext_yang(clicon_handle h)
+clicon_nacm_ext_yang(clixon_handle h)
 {
     yang_stmt *ys = NULL;
 
@@ -398,7 +399,7 @@ clicon_nacm_ext_yang(clicon_handle h)
  * @see clicon_nacm_ext_set  for external NACM XML
  */
 int
-clicon_nacm_ext_yang_set(clicon_handle   h,
+clicon_nacm_ext_yang_set(clixon_handle   h,
                          yang_stmt      *ys)
 {
     return clicon_ptr_set(h, "nacm_ext_yang", ys);
@@ -415,7 +416,7 @@ clicon_nacm_ext_yang_set(clicon_handle   h,
  * @endcode                                     
  */
 cvec *
-clicon_nsctx_global_get(clicon_handle h)
+clicon_nsctx_global_get(clixon_handle h)
 {
     cvec *cvv = NULL;
 
@@ -431,7 +432,7 @@ clicon_nsctx_global_get(clicon_handle h)
  * @param[in]  nsctx Namespace context (malloced)
  */
 int
-clicon_nsctx_global_set(clicon_handle h,
+clicon_nsctx_global_set(clixon_handle h,
                         cvec         *nsctx)
 {
     return clicon_ptr_set(h, "nsctx_global", nsctx);
@@ -445,7 +446,7 @@ clicon_nsctx_global_set(clicon_handle h,
  * @see clicon_nacm_ext_set
  */
 cxobj *
-clicon_nacm_ext(clicon_handle h)
+clicon_nacm_ext(clixon_handle h)
 {
     cxobj *x = NULL;
 
@@ -462,7 +463,7 @@ clicon_nacm_ext(clicon_handle h)
  * @see clicon_nacm_ext
  */
 int
-clicon_nacm_ext_set(clicon_handle h,
+clicon_nacm_ext_set(clixon_handle h,
                      cxobj        *x)
 {
     cxobj *x0 = NULL;
@@ -480,7 +481,7 @@ clicon_nacm_ext_set(clicon_handle h,
  * @see from_client_msg
  */
 cxobj *
-clicon_nacm_cache(clicon_handle h)
+clicon_nacm_cache(clixon_handle h)
 {
     cxobj *x = NULL;
 
@@ -497,7 +498,7 @@ clicon_nacm_cache(clicon_handle h)
  * @see from_client_msg
  */
 int
-clicon_nacm_cache_set(clicon_handle h,
+clicon_nacm_cache_set(clixon_handle h,
                       cxobj        *xn)
 {
     return clicon_ptr_set(h, "nacm_cache", xn);
@@ -516,7 +517,7 @@ clicon_nacm_cache_set(clicon_handle h,
  * @endcode
  */
 cxobj *
-clicon_conf_xml(clicon_handle h)
+clicon_conf_xml(clixon_handle h)
 {
     cxobj *x = NULL;
 
@@ -530,7 +531,7 @@ clicon_conf_xml(clicon_handle h)
  * ys must be a malloced pointer
  */
 int
-clicon_conf_xml_set(clicon_handle h,
+clicon_conf_xml_set(clixon_handle h,
                     cxobj        *x)
 {
     return clicon_ptr_set(h, "clixon_conf", x);
@@ -548,7 +549,7 @@ clicon_conf_xml_set(clicon_handle h,
  *       CLICON_BACKEND_RESTCONF_PROCESS is true
  */
 cxobj *
-clicon_conf_restconf(clicon_handle h)
+clicon_conf_restconf(clixon_handle h)
 {
     cxobj  *xconfig = NULL;
 
@@ -567,7 +568,7 @@ clicon_conf_restconf(clicon_handle h)
  * @endcode
  */
 cxobj *
-clicon_conf_autocli(clicon_handle h)
+clicon_conf_autocli(clixon_handle h)
 {
     cxobj  *xconfig = NULL;
 
@@ -582,7 +583,7 @@ clicon_conf_autocli(clicon_handle h)
  * @retval     username
  */
 char *
-clicon_username_get(clicon_handle h)
+clicon_username_get(clixon_handle h)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
@@ -596,7 +597,7 @@ clicon_username_get(clicon_handle h)
  * @note Just keep note of it, dont allocate it or so.
  */
 int
-clicon_username_set(clicon_handle h,
+clicon_username_set(clixon_handle h,
                     void         *username)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -612,7 +613,7 @@ clicon_username_set(clicon_handle h,
  * @retval     status Startup status
  */
 enum startup_status
-clicon_startup_status_get(clicon_handle h)
+clicon_startup_status_get(clixon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void           *p;
@@ -630,7 +631,7 @@ clicon_startup_status_get(clicon_handle h)
  * @retval    -1      Error (when setting value)
  */
 int
-clicon_startup_status_set(clicon_handle       h,
+clicon_startup_status_set(clixon_handle       h,
                           enum startup_status status)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -646,7 +647,7 @@ clicon_startup_status_set(clicon_handle       h,
  * @retval    -1   No open socket
  */
 int
-clicon_socket_get(clicon_handle h)
+clicon_socket_get(clixon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void           *p;
@@ -664,7 +665,7 @@ clicon_socket_get(clicon_handle h)
  * @retval   -1   Error
  */
 int
-clicon_socket_set(clicon_handle h,
+clicon_socket_set(clixon_handle h,
                   int           s)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -681,7 +682,7 @@ clicon_socket_set(clicon_handle h,
  * @retval    -1   No open socket
  */
 int
-clicon_client_socket_get(clicon_handle h)
+clicon_client_socket_get(clixon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void           *p;
@@ -699,7 +700,7 @@ clicon_client_socket_get(clicon_handle h)
  * @retval    -1   Error
  */
 int
-clicon_client_socket_set(clicon_handle h,
+clicon_client_socket_set(clixon_handle h,
                          int           s)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -717,7 +718,7 @@ clicon_client_socket_set(clicon_handle h,
  * xms is on the form: <modules-state>...
  */
 cxobj *
-clicon_modst_cache_get(clicon_handle h,
+clicon_modst_cache_get(clixon_handle h,
                        int           brief)
 {
     clicon_hash_t *cdat = clicon_data(h);
@@ -737,7 +738,7 @@ clicon_modst_cache_get(clicon_handle h,
  * @retval   -1     Error
  */
 int
-clicon_modst_cache_set(clicon_handle h,
+clicon_modst_cache_set(clixon_handle h,
                        int           brief,
                         cxobj        *xms)
 {
@@ -763,7 +764,7 @@ clicon_modst_cache_set(clicon_handle h,
  * @see draft-wang-netmod-module-revision-management-01
  */
 cxobj *
-clicon_xml_changelog_get(clicon_handle h)
+clicon_xml_changelog_get(clixon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void          *p;
@@ -782,7 +783,7 @@ clicon_xml_changelog_get(clicon_handle h)
  * @see draft-wang-netmod-module-revision-management-01
  */
 int
-clicon_xml_changelog_set(clicon_handle h,
+clicon_xml_changelog_set(clixon_handle h,
                          cxobj        *xchlog)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -801,7 +802,7 @@ clicon_xml_changelog_set(clicon_handle h,
  * @retval    -1    Error
  */
 int
-clicon_argv_get(clicon_handle h,
+clicon_argv_get(clixon_handle h,
                 int          *argc,
                 char       ***argv)
 {
@@ -832,7 +833,7 @@ clicon_argv_get(clicon_handle h,
  * @note If argv=NULL deallocate allocated argv vector if exists.
  */
 int
-clicon_argv_set(clicon_handle h,
+clicon_argv_set(clixon_handle h,
                 char         *prgm,
                 int           argc,
                 char        **argv)
@@ -845,7 +846,7 @@ clicon_argv_set(clicon_handle h,
     /* add space for null-termination and argv[0] program name */
     len = argc+2;
     if ((argvv = calloc(len, sizeof(char*))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     memcpy(argvv+1, argv, argc*sizeof(char*));
@@ -871,7 +872,7 @@ clicon_argv_set(clicon_handle h,
  * @retval     NULL None found
  */
 db_elmnt *
-clicon_db_elmnt_get(clicon_handle h,
+clicon_db_elmnt_get(clixon_handle h,
                     const char   *db)
 {
     clicon_hash_t *cdat = clicon_db_elmnt(h);
@@ -892,7 +893,7 @@ clicon_db_elmnt_get(clicon_handle h,
  * @see xmldb_disconnect
 */
 int
-clicon_db_elmnt_set(clicon_handle h,
+clicon_db_elmnt_set(clixon_handle h,
                     const char   *db,
                     db_elmnt     *de)
 {
@@ -916,7 +917,7 @@ clicon_db_elmnt_set(clicon_handle h,
  *       A backend getting a session-id of an ongoing session should use ce->ce_id
  */
 int
-clicon_session_id_get(clicon_handle h,
+clicon_session_id_get(clixon_handle h,
                       uint32_t     *id)
 {
     clicon_hash_t *cdat = clicon_data(h);
@@ -931,7 +932,7 @@ clicon_session_id_get(clicon_handle h,
 /*! Delete session id
  */
 int
-clicon_session_id_del(clicon_handle h)
+clicon_session_id_del(clixon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
 
@@ -947,7 +948,7 @@ clicon_session_id_del(clicon_handle h)
  * Session-ids survive TCP sessions that are created for each message sent to the backend.
  */
 int
-clicon_session_id_set(clicon_handle h,
+clicon_session_id_set(clixon_handle h,
                       uint32_t      id)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -964,7 +965,7 @@ clicon_session_id_set(clicon_handle h,
  * If set, quit startup directly after upgrade
  */
 int
-clicon_quit_upgrade_get(clicon_handle h)
+clicon_quit_upgrade_get(clixon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
     void           *p;
@@ -983,7 +984,7 @@ clicon_quit_upgrade_get(clicon_handle h)
  * If set, quit startup directly after upgrade
  */
 int
-clicon_quit_upgrade_set(clicon_handle h,
+clicon_quit_upgrade_set(clixon_handle h,
                         int           val)
 {
     clicon_hash_t  *cdat = clicon_data(h);

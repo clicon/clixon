@@ -55,8 +55,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
@@ -64,6 +63,7 @@
 #include "clixon_string.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_data.h"
@@ -147,7 +147,7 @@ validate_leafref(cxobj     *xt,
         goto ok;
     if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
         if ((cberr = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cberr, "Leafref requires path statement");
@@ -158,7 +158,7 @@ validate_leafref(cxobj     *xt,
         goto fail;
     }
     if ((path_arg = yang_argument_get(ypath)) == NULL){
-        clicon_err(OE_YANG, 0, "No argument for Y_PATH");
+        clixon_err(OE_YANG, 0, "No argument for Y_PATH");
         goto done;
     }
     if ((leafrefbody = xml_body(xt)) == NULL)
@@ -176,7 +176,7 @@ validate_leafref(cxobj     *xt,
     }
     if (i==xlen){
         if ((cberr = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         ymod = ys_module(ys);
@@ -246,11 +246,11 @@ validate_identityref(cxobj     *xt,
     yang_stmt  *ymod;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if ((cberr = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     /* Get idref value. Then see if this value is derived from ytype.
@@ -368,7 +368,7 @@ validate_identityref(cxobj     *xt,
  * @note Should need a variant accepting cxobj **xret
  */
 int
-xml_yang_validate_rpc(clicon_handle h,
+xml_yang_validate_rpc(clixon_handle h,
                       cxobj        *xrpc,
                       int           expanddefault,
                       cxobj       **xret)
@@ -380,7 +380,7 @@ xml_yang_validate_rpc(clicon_handle h,
     int        ret;
 
     if (strcmp(xml_name(xrpc), "rpc")){
-        clicon_err(OE_XML, EINVAL, "Expected RPC");
+        clixon_err(OE_XML, EINVAL, "Expected RPC");
         goto done;
     }
     rpcprefix = xml_prefix(xrpc);
@@ -423,7 +423,7 @@ xml_yang_validate_rpc(clicon_handle h,
 }
 
 int
-xml_yang_validate_rpc_reply(clicon_handle h,
+xml_yang_validate_rpc_reply(clixon_handle h,
                             cxobj        *xrpc,
                             cxobj       **xret)
 {
@@ -435,7 +435,7 @@ xml_yang_validate_rpc_reply(clicon_handle h,
     int        ret;
 
     if (strcmp(xml_name(xrpc), "rpc-reply")){
-        clicon_err(OE_XML, EINVAL, "Expected RPC");
+        clixon_err(OE_XML, EINVAL, "Expected RPC");
         goto done;
     }
     rpcprefix = xml_prefix(xrpc);
@@ -661,7 +661,7 @@ check_list_key(cxobj     *xt,
     char      *keyname;
 
     if (yt == NULL || !yang_config(yt) || yang_keyword_get(yt) != Y_LIST){
-        clicon_err(OE_YANG, EINVAL, "yt is not a config true list node");
+        clixon_err(OE_YANG, EINVAL, "yt is not a config true list node");
         goto done;
     }
     yc = NULL;
@@ -680,7 +680,7 @@ check_list_key(cxobj     *xt,
                     enum rfc_6020 keyw;
 
                     if ((cb = cbuf_new()) == NULL){
-                        clicon_err(OE_UNIX, errno, "cbuf_new");
+                        clixon_err(OE_UNIX, errno, "cbuf_new");
                         goto done;
                     }
                     ymod = ys_module(yt);
@@ -731,7 +731,7 @@ choice_mandatory_check(cxobj     *xt,
                 fail++;
                 if (xret){
                     if ((cb = cbuf_new()) == NULL){
-                        clicon_err(OE_UNIX, errno, "cbuf_new");
+                        clixon_err(OE_UNIX, errno, "cbuf_new");
                         goto done;
                     }
                     cprintf(cb, "Mandatory variable %s in module %s",
@@ -901,7 +901,7 @@ check_mandatory(cxobj     *xt,
     int        ret;
 
     if (yt == NULL || !yang_config(yt)){
-        clicon_err(OE_YANG, EINVAL, "yt is not config true");
+        clixon_err(OE_YANG, EINVAL, "yt is not config true");
         goto done;
     }
     if (yang_keyword_get(yt) == Y_LIST){
@@ -957,7 +957,7 @@ check_mandatory(cxobj     *xt,
             }
             if (x == NULL){
                 if ((cb = cbuf_new()) == NULL){
-                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
                 cprintf(cb, "Mandatory variable of %s in module %s", xml_name(xt), yang_argument_get(ys_module(yc)));
@@ -1002,7 +1002,7 @@ check_mandatory(cxobj     *xt,
  * @note Should need a variant accepting cxobj **xret
  */
 int
-xml_yang_validate_add(clicon_handle h,
+xml_yang_validate_add(clixon_handle h,
                       cxobj        *xt,
                       cxobj       **xret)
 {
@@ -1040,7 +1040,7 @@ xml_yang_validate_add(clicon_handle h,
             if ((cv0 = yang_cv_get(yt)) == NULL)
                 break;
             if ((cv = cv_dup(cv0)) == NULL){
-                clicon_err(OE_UNIX, errno, "cv_dup");
+                clixon_err(OE_UNIX, errno, "cv_dup");
                 goto done;
             }
             /* In the union and leafref case, value is parsed as generic REST type,
@@ -1138,7 +1138,7 @@ xml_yang_validate_list_key_only(cxobj        *xt,
 }
 
 static int
-xml_yang_validate_leaf_union(clicon_handle h,
+xml_yang_validate_leaf_union(clixon_handle h,
                              cxobj        *xt,
                              yang_stmt    *yt,
                              yang_stmt    *yrestype,
@@ -1219,7 +1219,7 @@ xml_yang_validate_leaf_union(clicon_handle h,
  * @see xml_yang_validate_rpc
  */
 int
-xml_yang_validate_all(clicon_handle h,
+xml_yang_validate_all(clixon_handle h,
                       cxobj        *xt,
                       cxobj       **xret)
 {
@@ -1249,13 +1249,13 @@ xml_yang_validate_all(clicon_handle h,
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) == NULL){
         if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1) {
-            clicon_log(LOG_WARNING,
+            clixon_log(h, LOG_WARNING,
                        "%s: %d: No YANG spec for %s, validation skipped",
                        __FUNCTION__, __LINE__, xml_name(xt));
             goto ok;
         }
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "Failed to find YANG spec of XML node: %s", xml_name(xt));
@@ -1274,7 +1274,7 @@ xml_yang_validate_all(clicon_handle h,
             goto done;
         if (hit && nr == 0){
             if ((cb = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             cprintf(cb, "Failed WHEN condition of %s in module %s (WHEN xpath is %s)",
@@ -1345,7 +1345,7 @@ xml_yang_validate_all(clicon_handle h,
             if (!nr){
                 ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
                 if ((cb = cbuf_new()) == NULL){
-                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
                 cprintf(cb, "Failed MUST xpath '%s' of '%s' in module %s",
@@ -1398,7 +1398,7 @@ xml_yang_validate_all(clicon_handle h,
  * @retval    -1      Error
  */
 int
-xml_yang_validate_all_top(clicon_handle h,
+xml_yang_validate_all_top(clixon_handle h,
                           cxobj        *xt,
                           cxobj       **xret)
 {
@@ -1424,7 +1424,7 @@ xml_yang_validate_all_top(clicon_handle h,
  * @note Parses cbret which seems one time too many
  */
 int
-rpc_reply_check(clicon_handle h,
+rpc_reply_check(clixon_handle h,
                 char         *rpcname,
                 cbuf         *cbret)
 {
@@ -1435,7 +1435,7 @@ rpc_reply_check(clicon_handle h,
     yang_stmt *yspec;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No yang spec9");
+        clixon_err(OE_YANG, ENOENT, "No yang spec9");
         goto done;
     }
     /* Validate outgoing RPC */

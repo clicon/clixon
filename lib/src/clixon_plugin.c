@@ -55,13 +55,15 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-#include "clixon_err.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_string.h"
 #include "clixon_hash.h"
-#include "clixon_log.h"
-#include "clixon_file.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_file.h"
 #include "clixon_yang.h"
 #include "clixon_options.h"
 #include "clixon_xml.h"
@@ -126,7 +128,7 @@ typedef struct plugin_module_struct plugin_module_struct;
  * @param[in]  h     Clixon handle
  */
 static plugin_module_struct *
-plugin_module_struct_get(clicon_handle h)
+plugin_module_struct_get(clixon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
     size_t         len;
@@ -145,7 +147,7 @@ plugin_module_struct_get(clicon_handle h)
  * @retval    -1     Error
  */
 static int
-plugin_module_struct_set(clicon_handle         h,
+plugin_module_struct_set(clixon_handle         h,
                          plugin_module_struct *ms)
 {
     clicon_hash_t  *cdat = clicon_data(h);
@@ -206,7 +208,7 @@ clixon_plugin_handle_get(clixon_plugin_t *cp)
  * @note Not optimized, always iterates from the start of the list
  */
 clixon_plugin_t *
-clixon_plugin_each(clicon_handle    h,
+clixon_plugin_each(clixon_handle    h,
                    clixon_plugin_t *cpprev)
 {
     clixon_plugin_t      *cpnext = NULL;
@@ -242,7 +244,7 @@ clixon_plugin_each(clicon_handle    h,
  * @note Not optimized, always iterates from the start of the list
  */
 clixon_plugin_t *
-clixon_plugin_each_revert(clicon_handle    h,
+clixon_plugin_each_revert(clixon_handle    h,
                           clixon_plugin_t *cpprev,
                           int              nr)
 {
@@ -251,7 +253,7 @@ clixon_plugin_each_revert(clicon_handle    h,
     int              i;
 
     if (ms == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         return NULL;
     }
     if (ms->ms_plugin_list == NULL)
@@ -287,14 +289,14 @@ clixon_plugin_each_revert(clicon_handle    h,
  * @endcode
  */
 clixon_plugin_t *
-clixon_plugin_find(clicon_handle h,
+clixon_plugin_find(clixon_handle h,
                    const char   *name)
 {
     clixon_plugin_t      *cp = NULL;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
     if (ms == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         return NULL;
     }
     if ((cp = ms->ms_plugin_list) != NULL){
@@ -320,7 +322,7 @@ clixon_plugin_find(clicon_handle h,
  * @see clixon_plugins_load  Load all plugins
  */
 static int
-plugin_load_one(clicon_handle     h,
+plugin_load_one(clixon_handle     h,
                 char             *file, /* note modified */
                 const char       *function,
                 int               dlflags,
@@ -340,30 +342,30 @@ plugin_load_one(clicon_handle     h,
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();
-        clicon_err(OE_PLUGIN, errno, "dlopen(%s): %s", file, error ? error : "Unknown error");
+        clixon_err(OE_PLUGIN, errno, "dlopen(%s): %s", file, error ? error : "Unknown error");
         goto done;
     }
     /* call plugin_init() if defined, eg CLIXON_PLUGIN_INIT or CLIXON_BACKEND_INIT */
     if ((initfn = dlsym(handle, function)) == NULL){
-        clicon_err(OE_PLUGIN, errno, "Failed to find %s when loading clixon plugin %s", CLIXON_PLUGIN_INIT, file);
+        clixon_err(OE_PLUGIN, errno, "Failed to find %s when loading clixon plugin %s", CLIXON_PLUGIN_INIT, file);
         goto done;
     }
     if ((error = (char*)dlerror()) != NULL) {
-        clicon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
+        clixon_err(OE_UNIX, 0, "dlsym: %s: %s", file, error);
         goto done;
     }
-    clicon_err_reset();
+    clixon_err_reset();
     wh = NULL;
     if (plugin_context_check(h, &wh, file, __FUNCTION__) < 0)
         goto done;
     if ((api = initfn(h)) == NULL) {
-        if (!clicon_errno){     /* if clicon_err() is not called then log and continue */
-            clicon_log(LOG_DEBUG, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+        if (!clixon_err_category()){     /* if clixon_err() is not called then log and continue */
+            clixon_log(h, LOG_DEBUG, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
             retval = 0;
             goto done;
         }
         else{
-            clicon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+            clixon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
             goto done;
         }
     }
@@ -372,7 +374,7 @@ plugin_load_one(clicon_handle     h,
 
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
     if ((cp = (clixon_plugin_t *)malloc(sizeof(struct clixon_plugin))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(cp, 0, sizeof(struct clixon_plugin));
@@ -411,7 +413,7 @@ plugin_load_one(clicon_handle     h,
  * @retval    -1        Error
  */
 int
-clixon_plugins_load(clicon_handle h,
+clixon_plugins_load(clixon_handle h,
                     const char   *function,
                     const char   *dir,
                     const char   *regexp)
@@ -428,7 +430,7 @@ clixon_plugins_load(clicon_handle h,
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (ms == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
     }
     /* Get plugin objects names from plugin directory */
@@ -471,7 +473,7 @@ done:
  * @endcode
  */
 int
-clixon_pseudo_plugin(clicon_handle     h,
+clixon_pseudo_plugin(clixon_handle     h,
                      const char       *name,
                      clixon_plugin_t **cpp)
 {
@@ -481,13 +483,13 @@ clixon_pseudo_plugin(clicon_handle     h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, name);
     if (ms == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
     }
     /* Create a pseudo plugins */
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
     if ((cp = (clixon_plugin_t *)malloc(sizeof(struct clixon_plugin))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(cp, 0, sizeof(struct clixon_plugin));
@@ -516,17 +518,17 @@ plugin_context_get(void)
     struct plugin_context *pc = NULL;
 
     if ((pc = malloc(sizeof(*pc))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(pc, 0, sizeof(*pc));
     if (sigprocmask(0, NULL, &pc->pc_sigset) < 0){
-        clicon_err(OE_UNIX, errno, "sigprocmask");
+        clixon_err(OE_UNIX, errno, "sigprocmask");
         goto done;
     }
     for (i=1; i<32; i++){
         if (sigaction(i, NULL, &pc->pc_sigaction_vec[i]) < 0){
-            clicon_err(OE_UNIX, errno, "sigaction");
+            clixon_err(OE_UNIX, errno, "sigaction");
             goto done;
         }
         /* Mask SA_RESTORER: Not intended for application use.
@@ -539,7 +541,7 @@ plugin_context_get(void)
 #endif
     }
     if (isatty(0) && tcgetattr(0, &pc->pc_termios) < 0){
-        clicon_err(OE_UNIX, errno, "tcgetattr %d", errno);
+        clixon_err(OE_UNIX, errno, "tcgetattr %d", errno);
         goto done;
     }
     return pc;
@@ -573,7 +575,7 @@ plugin_context_get(void)
  * @see CLICON_PLUGIN_CALLBACK_CHECK  Enable to activate these checks
  */
 int
-plugin_context_check(clicon_handle h,
+plugin_context_check(clixon_handle h,
                      void        **wh,
                      const char   *name,
                      const char   *fn)
@@ -605,28 +607,28 @@ plugin_context_check(clicon_handle h,
     if ((newpc = plugin_context_get()) == NULL)
         goto done;
     if (oldpc->pc_termios.c_iflag != newpc->pc_termios.c_iflag){
-        clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios input modes from 0x%x to 0x%x", __FUNCTION__,
+        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios input modes from 0x%x to 0x%x", __FUNCTION__,
                    name, fn,
                    oldpc->pc_termios.c_iflag,
                    newpc->pc_termios.c_iflag);
         failed++;
     }
     if (oldpc->pc_termios.c_oflag != newpc->pc_termios.c_oflag){
-        clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios output modes from 0x%x to 0x%x", __FUNCTION__,
+        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios output modes from 0x%x to 0x%x", __FUNCTION__,
                    name, fn,
                    oldpc->pc_termios.c_oflag,
                    newpc->pc_termios.c_oflag);
         failed++;
     }
     if (oldpc->pc_termios.c_cflag != newpc->pc_termios.c_cflag){
-        clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios control modes from 0x%x to 0x%x", __FUNCTION__,
+        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios control modes from 0x%x to 0x%x", __FUNCTION__,
                    name, fn,
                    oldpc->pc_termios.c_cflag,
                    newpc->pc_termios.c_cflag);
         failed++;
     }
     if (oldpc->pc_termios.c_lflag != newpc->pc_termios.c_lflag){
-        clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed termios local modes from 0x%x to 0x%x", __FUNCTION__,
+        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios local modes from 0x%x to 0x%x", __FUNCTION__,
                    name, fn,
                    oldpc->pc_termios.c_lflag,
                    newpc->pc_termios.c_lflag);
@@ -639,7 +641,7 @@ plugin_context_check(clicon_handle h,
         abort();
     for (i=1; i<32; i++){
         if (sigismember(&oldpc->pc_sigset, i) != sigismember(&newpc->pc_sigset, i)){
-            clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed blocking of signal %s(%d) from %d to %d", __FUNCTION__,
+            clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed blocking of signal %s(%d) from %d to %d", __FUNCTION__,
                        name, fn, strsignal(i), i,
                        sigismember(&oldpc->pc_sigset, i),
                        sigismember(&newpc->pc_sigset, i)
@@ -647,14 +649,14 @@ plugin_context_check(clicon_handle h,
             failed++;
         }
         if (oldpc->pc_sigaction_vec[i].sa_flags != newpc->pc_sigaction_vec[i].sa_flags){
-            clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed flags of signal %s(%d) from 0x%x to 0x%x", __FUNCTION__,
+            clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed flags of signal %s(%d) from 0x%x to 0x%x", __FUNCTION__,
                        name, fn, strsignal(i), i,
                        oldpc->pc_sigaction_vec[i].sa_flags,
                        newpc->pc_sigaction_vec[i].sa_flags);;
             failed++;
         }
         if (oldpc->pc_sigaction_vec[i].sa_sigaction != newpc->pc_sigaction_vec[i].sa_sigaction){
-            clicon_log(LOG_WARNING, "%s Plugin context %s %s: Changed action of signal %s(%d) from %p to %p", __FUNCTION__,
+            clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed action of signal %s(%d) from %p to %p", __FUNCTION__,
                        name, fn, strsignal(i), i,
                        oldpc->pc_sigaction_vec[i].sa_sigaction,
                        newpc->pc_sigaction_vec[i].sa_sigaction);
@@ -690,7 +692,7 @@ plugin_context_check(clicon_handle h,
  */
 int
 clixon_plugin_start_one(clixon_plugin_t *cp,
-                        clicon_handle    h)
+                        clixon_handle    h)
 {
     int         retval = -1;
     plgstart_t *fn;          /* Plugin start */
@@ -701,8 +703,8 @@ clixon_plugin_start_one(clixon_plugin_t *cp,
         if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
         if (fn(h) < 0) {
-            if (clicon_errno < 0)
-                clicon_log(LOG_WARNING, "%s: Internal error: Start callback in plugin: %s returned -1 but did not make a clicon_err call",
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Start callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __FUNCTION__, cp->cp_name);
             goto done;
         }
@@ -723,7 +725,7 @@ clixon_plugin_start_one(clixon_plugin_t *cp,
  * @note  Start functions can use clicon_argv_get() to get -- command line options
  */
 int
-clixon_plugin_start_all(clicon_handle h)
+clixon_plugin_start_all(clixon_handle h)
 {
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
@@ -747,7 +749,7 @@ clixon_plugin_start_all(clicon_handle h)
  */
 static int
 clixon_plugin_exit_one(clixon_plugin_t *cp,
-                       clicon_handle    h)
+                       clixon_handle    h)
 {
     int         retval = -1;
     char       *error;
@@ -759,8 +761,8 @@ clixon_plugin_exit_one(clixon_plugin_t *cp,
         if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
         if (fn(h) < 0) {
-            if (clicon_errno < 0)
-                clicon_log(LOG_WARNING, "%s: Internal error: Exit callback in plugin: %s returned -1 but did not make a clicon_err call",
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Exit callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __FUNCTION__, cp->cp_name);
             goto done;
         }
@@ -768,7 +770,7 @@ clixon_plugin_exit_one(clixon_plugin_t *cp,
             goto done;
         if (dlclose(cp->cp_handle) != 0) {
             error = (char*)dlerror();
-            clicon_err(OE_PLUGIN, errno, "dlclose: %s", error ? error : "Unknown error");
+            clixon_err(OE_PLUGIN, errno, "dlclose: %s", error ? error : "Unknown error");
         }
     }
     retval = 0;
@@ -783,7 +785,7 @@ clixon_plugin_exit_one(clixon_plugin_t *cp,
  * @retval    -1       Error
  */
 static int
-clixon_plugin_exit_all(clicon_handle h)
+clixon_plugin_exit_all(clixon_handle h)
 {
     int            retval = -1;
     clixon_plugin_t *cp = NULL;
@@ -819,7 +821,7 @@ clixon_plugin_exit_all(clicon_handle h)
  */
 static int
 clixon_plugin_auth_one(clixon_plugin_t   *cp,
-                       clicon_handle      h,
+                       clixon_handle      h,
                        void              *req,
                        clixon_auth_type_t auth_type,
                        char             **authp)
@@ -834,8 +836,8 @@ clixon_plugin_auth_one(clixon_plugin_t   *cp,
         if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
         if ((retval = fn(h, req, auth_type, authp)) < 0) {
-            if (clicon_errno < 0)
-                clicon_log(LOG_WARNING, "%s: Internal error: Auth callback in plugin: %s returned -1 but did not make a clicon_err call",
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Auth callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __FUNCTION__, cp->cp_name);
             goto done;
         }
@@ -865,7 +867,7 @@ clixon_plugin_auth_one(clixon_plugin_t   *cp,
  * @note If authp returns string, it should be malloced
  */
 int
-clixon_plugin_auth_all(clicon_handle      h,
+clixon_plugin_auth_all(clixon_handle      h,
                        void              *req,
                        clixon_auth_type_t auth_type,
                        char             **authp)
@@ -876,7 +878,7 @@ clixon_plugin_auth_all(clicon_handle      h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (authp == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
+        clixon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
         goto done;
     }
     *authp = NULL;
@@ -906,7 +908,7 @@ clixon_plugin_auth_all(clicon_handle      h,
  */
 int
 clixon_plugin_extension_one(clixon_plugin_t *cp,
-                            clicon_handle    h,
+                            clixon_handle    h,
                             yang_stmt       *yext,
                             yang_stmt       *ys)
 {
@@ -919,8 +921,8 @@ clixon_plugin_extension_one(clixon_plugin_t *cp,
         if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
         if (fn(h, yext, ys) < 0) {
-            if (clicon_errno < 0)
-                clicon_log(LOG_WARNING, "%s: Internal error: Extension callback in plugin: %s returned -1 but did not make a clicon_err call",
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Extension callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __FUNCTION__, cp->cp_name);
             goto done;
         }
@@ -946,7 +948,7 @@ clixon_plugin_extension_one(clixon_plugin_t *cp,
  * @retval   -1    Error in one callback
  */
 int
-clixon_plugin_extension_all(clicon_handle h,
+clixon_plugin_extension_all(clixon_handle h,
                             yang_stmt    *yext,
                             yang_stmt    *ys)
 {
@@ -975,7 +977,7 @@ clixon_plugin_extension_all(clicon_handle h,
  */
 int
 clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp,
-                                    clicon_handle    h,
+                                    clixon_handle    h,
                                     const char      *db,
                                     cxobj           *xt,
                                     modstate_diff_t *msd)
@@ -990,8 +992,8 @@ clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp,
         if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
         if (fn(h, db, xt, msd) < 0) {
-            if (clicon_errno < 0)
-                clicon_log(LOG_WARNING, "%s: Internal error: Datastore upgrade callback in plugin: %s returned -1 but did not make a clicon_err call",
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Datastore upgrade callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __FUNCTION__, cp->cp_name);
             goto done;
         }
@@ -1014,7 +1016,7 @@ clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp,
  * Upgrade datastore on load before or as an alternative to module-specific upgrading mechanism
  */
 int
-clixon_plugin_datastore_upgrade_all(clicon_handle    h,
+clixon_plugin_datastore_upgrade_all(clixon_handle    h,
                                     const char      *db,
                                     cxobj           *xt,
                                     modstate_diff_t *msd)
@@ -1046,7 +1048,7 @@ clixon_plugin_datastore_upgrade_all(clicon_handle    h,
  */
 int
 clixon_plugin_yang_mount_one(clixon_plugin_t *cp,
-                             clicon_handle    h,
+                             clixon_handle    h,
                              cxobj           *xt,
                              int             *config,
                              validate_level  *vl,
@@ -1061,8 +1063,8 @@ clixon_plugin_yang_mount_one(clixon_plugin_t *cp,
         if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
         if (fn(h, xt, config, vl, yanglib) < 0) {
-            if (clicon_errno < 0)
-                clicon_log(LOG_WARNING, "%s: Internal error: Yang mount callback in plugin: %s returned -1 but did not make a clicon_err call",
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Yang mount callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __FUNCTION__, cp->cp_name);
             goto done;
         }
@@ -1085,7 +1087,7 @@ clixon_plugin_yang_mount_one(clixon_plugin_t *cp,
  * @retval    -1       Error
  */
 int
-clixon_plugin_yang_mount_all(clicon_handle   h,
+clixon_plugin_yang_mount_all(clixon_handle   h,
                              cxobj          *xt,
                              int            *config,
                              validate_level *vl,
@@ -1116,7 +1118,7 @@ clixon_plugin_yang_mount_all(clicon_handle   h,
  */
 int
 clixon_plugin_yang_patch_one(clixon_plugin_t *cp,
-                             clicon_handle    h,
+                             clixon_handle    h,
                              yang_stmt       *ymod)
 {
     int           retval = -1;
@@ -1128,8 +1130,8 @@ clixon_plugin_yang_patch_one(clixon_plugin_t *cp,
         if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
         if (fn(h, ymod) < 0) {
-            if (clicon_errno < 0)
-                clicon_log(LOG_WARNING, "%s: Internal error: Yang patch callback in plugin: %s returned -1 but did not make a clicon_err call",
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Yang patch callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __FUNCTION__, cp->cp_name);
             goto done;
         }
@@ -1149,7 +1151,7 @@ clixon_plugin_yang_patch_one(clixon_plugin_t *cp,
  * @retval    -1       Error
  */
 int
-clixon_plugin_yang_patch_all(clicon_handle h,
+clixon_plugin_yang_patch_all(clixon_handle h,
                              yang_stmt    *ymod)
 {
     int            retval = -1;
@@ -1175,7 +1177,7 @@ clixon_plugin_yang_patch_all(clicon_handle h,
  */
 int
 clixon_plugin_netconf_errmsg_one(clixon_plugin_t *cp,
-                                 clicon_handle    h,
+                                 clixon_handle    h,
                                  cxobj           *xerr,
                                  cbuf            *cberr)
 {
@@ -1188,8 +1190,8 @@ clixon_plugin_netconf_errmsg_one(clixon_plugin_t *cp,
         if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
         if (fn(h, xerr, cberr) < 0) {
-            if (clicon_errno < 0)
-                clicon_log(LOG_WARNING, "%s: Internal error: Netconf err callback in plugin: %s returned -1 but did not make a clicon_err call",
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Netconf err callback in plugin: %s returned -1 but did not make a clixon_err call", 
                            __FUNCTION__, cp->cp_name);
             goto done;
         }
@@ -1210,7 +1212,7 @@ clixon_plugin_netconf_errmsg_one(clixon_plugin_t *cp,
  * @retval    -1       Error
  */
 int
-clixon_plugin_netconf_errmsg_all(clicon_handle h,
+clixon_plugin_netconf_errmsg_all(clixon_handle h,
                                  cxobj        *xerr,
                                  cbuf         *cberr)
 {
@@ -1236,7 +1238,7 @@ clixon_plugin_netconf_errmsg_all(clicon_handle h,
  */
 int
 clixon_plugin_version_one(clixon_plugin_t *cp,
-                          clicon_handle    h,
+                          clixon_handle    h,
                           FILE            *f)
 {
     int           retval = -1;
@@ -1248,8 +1250,8 @@ clixon_plugin_version_one(clixon_plugin_t *cp,
         if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
         if (fn(h, f) < 0) {
-            if (clicon_errno < 0)
-                clicon_log(LOG_WARNING, "%s: Internal error: version callback in plugin: %s returned -1 but did not make a clicon_err call",
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: version callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __FUNCTION__, cp->cp_name);
             goto done;
         }
@@ -1269,7 +1271,7 @@ clixon_plugin_version_one(clixon_plugin_t *cp,
  * @retval    -1   Error
  */
 int
-clixon_plugin_version_all(clicon_handle h,
+clixon_plugin_version_all(clixon_handle h,
                           FILE         *f)
 {
     int              retval = -1;
@@ -1290,7 +1292,7 @@ clixon_plugin_version_all(clicon_handle h,
 
 #if 0 /* Debugging */
 static int
-rpc_callback_dump(clicon_handle h)
+rpc_callback_dump(clixon_handle h)
 {
     rpc_callback_t *rc;
     plugin_module_struct *ms = plugin_module_struct_get(h);
@@ -1317,7 +1319,7 @@ rpc_callback_dump(clicon_handle h)
  * @see rpc_callback_call  which makes the actual callback
  */
 int
-rpc_callback_register(clicon_handle  h,
+rpc_callback_register(clixon_handle  h,
                       clicon_rpc_cb  cb,
                       void          *arg,
                       const char    *ns,
@@ -1328,15 +1330,15 @@ rpc_callback_register(clicon_handle  h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, name);
     if (ms == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
     }
     if (name == NULL || ns == NULL){
-        clicon_err(OE_DB, EINVAL, "name or namespace NULL");
+        clixon_err(OE_DB, EINVAL, "name or namespace NULL");
         goto done;
     }
     if ((rc = malloc(sizeof(rpc_callback_t))) == NULL) {
-        clicon_err(OE_DB, errno, "malloc");
+        clixon_err(OE_DB, errno, "malloc");
         goto done;
     }
     memset(rc, 0, sizeof(*rc));
@@ -1360,7 +1362,7 @@ rpc_callback_register(clicon_handle  h,
 /*! Delete all RPC callbacks
  */
 static int
-rpc_callback_delete_all(clicon_handle h)
+rpc_callback_delete_all(clixon_handle h)
 {
     rpc_callback_t *rc;
     plugin_module_struct *ms = plugin_module_struct_get(h);
@@ -1393,7 +1395,7 @@ rpc_callback_delete_all(clicon_handle h)
  * leaving it, replacing it or amending it.
  */
 int
-rpc_callback_call(clicon_handle h,
+rpc_callback_call(clixon_handle h,
                   cxobj        *xe,
                   void         *arg,
                   int          *nrp,
@@ -1410,7 +1412,7 @@ rpc_callback_call(clicon_handle h,
     int                   ret;
 
     if (ms == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
     }
     name = xml_name(xe);
@@ -1470,7 +1472,7 @@ rpc_callback_call(clicon_handle h,
  * @see rpc_callback_register  which registers global callbacks
  */
 int
-action_callback_register(clicon_handle  h,
+action_callback_register(clixon_handle  h,
                          yang_stmt     *ya,
                          clicon_rpc_cb  cb,
                          void          *arg)
@@ -1481,12 +1483,12 @@ action_callback_register(clicon_handle  h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (ya == NULL){
-        clicon_err(OE_DB, EINVAL, "yang node is NULL");
+        clixon_err(OE_DB, EINVAL, "yang node is NULL");
         goto done;
     }
     name = yang_argument_get(ya);
     if ((rc = malloc(sizeof(rpc_callback_t))) == NULL) {
-        clicon_err(OE_DB, errno, "malloc");
+        clixon_err(OE_DB, errno, "malloc");
         goto done;
     }
     memset(rc, 0, sizeof(*rc));
@@ -1517,7 +1519,7 @@ action_callback_register(clicon_handle  h,
  * leaving it, replacing it or amending it.
  */
 int
-action_callback_call(clicon_handle h,
+action_callback_call(clixon_handle h,
                      cxobj        *xe,
                      cbuf         *cbret,
                      void         *arg,
@@ -1594,7 +1596,7 @@ action_callback_call(clicon_handle h,
  * @see upgrade_callback_call  which makes the actual callback
  */
 int
-upgrade_callback_reg_fn(clicon_handle     h,
+upgrade_callback_reg_fn(clixon_handle     h,
                         clicon_upgrade_cb cb,
                         const char       *fnstr,
                         const char       *ns,
@@ -1604,11 +1606,11 @@ upgrade_callback_reg_fn(clicon_handle     h,
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
     if (ms == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
     }
     if ((uc = malloc(sizeof(upgrade_callback_t))) == NULL) {
-        clicon_err(OE_DB, errno, "malloc");
+        clixon_err(OE_DB, errno, "malloc");
         goto done;
     }
     memset(uc, 0, sizeof(*uc));
@@ -1631,7 +1633,7 @@ upgrade_callback_reg_fn(clicon_handle     h,
 /*! Delete all Upgrade callbacks
  */
 static int
-upgrade_callback_delete_all(clicon_handle h)
+upgrade_callback_delete_all(clixon_handle h)
 {
     upgrade_callback_t *uc;
     plugin_module_struct *ms = plugin_module_struct_get(h);
@@ -1661,7 +1663,7 @@ upgrade_callback_delete_all(clicon_handle h)
  * @see upgrade_callback_reg_fn  which registers the callbacks
  */
 int
-upgrade_callback_call(clicon_handle h,
+upgrade_callback_call(clixon_handle h,
                       cxobj        *xt,
                       char         *ns,
                       uint16_t      op,
@@ -1676,7 +1678,7 @@ upgrade_callback_call(clicon_handle h,
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
     if (ms == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
     }
     if ((uc = ms->ms_upgrade_callbacks) != NULL)
@@ -1696,7 +1698,7 @@ upgrade_callback_call(clicon_handle h,
                 }
                 if (ret == 0){
                     if (cbuf_len(cbret)==0){
-                        clicon_err(OE_CFG, 0, "Validation fail %s(%s): cbret not set",
+                        clixon_err(OE_CFG, 0, "Validation fail %s(%s): cbret not set",
                                    uc->uc_fnstr, ns);
                         goto done;
                     }
@@ -1751,17 +1753,17 @@ clixon_auth_type_int2str(clixon_auth_type_t auth_type)
  * @see clixon_plugin_module_exit
  */
 int
-clixon_plugin_module_init(clicon_handle h)
+clixon_plugin_module_init(clixon_handle h)
 {
     int                          retval = -1;
     struct plugin_module_struct *ph;
 
     if (plugin_module_struct_get(h) != NULL){
-        clicon_err(OE_PLUGIN, EFAULT, "Already initialized");
+        clixon_err(OE_PLUGIN, EFAULT, "Already initialized");
         goto done;
     }
     if ((ph = malloc(sizeof(*ph))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(ph, 0, sizeof(*ph));
@@ -1778,7 +1780,7 @@ clixon_plugin_module_init(clicon_handle h)
  * @param[in]  h   Clixon handle
  */
 int
-clixon_plugin_module_exit(clicon_handle h)
+clixon_plugin_module_exit(clixon_handle h)
 {
     struct plugin_module_struct *ph;
 

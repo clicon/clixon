@@ -53,13 +53,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
@@ -88,7 +89,7 @@ xy_dup(xp_yang_ctx *xy0)
     xp_yang_ctx *xy = NULL;
 
     if ((xy = malloc(sizeof(*xy))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xy, 0, sizeof(*xy));
@@ -159,7 +160,7 @@ xp_yang_eval_step(xp_yang_ctx  *xy0,
     switch (xptree->xs_int){
     case A_CHILD:
         if ((nodetest = xptree->xs_c0) == NULL){
-            clicon_err(OE_YANG, 0, "child step nodetest expected");
+            clixon_err(OE_YANG, 0, "child step nodetest expected");
             goto done;
         }
         switch (nodetest->xs_type){
@@ -187,7 +188,7 @@ xp_yang_eval_step(xp_yang_ctx  *xy0,
         case XP_NODE_FN:
             break;
         default:
-            clicon_err(OE_YANG, 0, "Invalid xpath-tree nodetest: %s",
+            clixon_err(OE_YANG, 0, "Invalid xpath-tree nodetest: %s",
                        xpath_tree_int2str(nodetest->xs_type));
             goto done;
             break;
@@ -197,7 +198,7 @@ xp_yang_eval_step(xp_yang_ctx  *xy0,
         xy->xy_node = yang_parent_get(ys);
         break;
     default:
-        clicon_err(OE_YANG, 0, "Invalid path-arg step: %s",
+        clixon_err(OE_YANG, 0, "Invalid path-arg step: %s",
                    axis_type_int2str(xptree->xs_int));
         goto done;
         break;
@@ -298,7 +299,7 @@ xp_yang_eval(xp_yang_ctx  *xy,
     case XP_ADD:
     case XP_UNION:
         if (xptree->xs_c1 != NULL){
-            clicon_err(OE_XML, 0, "Function %s having two args is invalid for path-arg", xptree->xs_s0);
+            clixon_err(OE_XML, 0, "Function %s having two args is invalid for path-arg", xptree->xs_s0);
             goto done;
         }
         break;
@@ -322,7 +323,7 @@ xp_yang_eval(xp_yang_ctx  *xy,
                 goto ok;
                 break;
             default:
-                clicon_err(OE_XML, 0, "Function %s invalid for path-arg", xptree->xs_s0);
+                clixon_err(OE_XML, 0, "Function %s invalid for path-arg", xptree->xs_s0);
                 goto done;
             }
         }
@@ -350,7 +351,7 @@ xp_yang_eval(xp_yang_ctx  *xy,
         goto ok; /* Skip generic child traverse */
         break;
     default: /* Here we explicitly fail on node types for those not appearing in path-arg */
-        clicon_err(OE_YANG, 0, "Invalid xpath-tree node name: %s",
+        clixon_err(OE_YANG, 0, "Invalid xpath-tree node name: %s",
                    xpath_tree_int2str(xptree->xs_type));
         goto done;
         break;
@@ -387,7 +388,7 @@ xp_yang_eval(xp_yang_ctx  *xy,
         case XP_RELEX: /* relexpr --> addexpr | relexpr relop addexpr */
             /* Check op: only EQ allowed in path-arg */
             if (xptree->xs_int != XO_EQ){
-                clicon_err(OE_YANG, 0, "Invalid xpath-tree relational operator: %d, only eq allowed",
+                clixon_err(OE_YANG, 0, "Invalid xpath-tree relational operator: %d, only eq allowed",
                            xptree->xs_int);
                 goto done;
             }
@@ -404,7 +405,7 @@ xp_yang_eval(xp_yang_ctx  *xy,
                 goto done;
         }
         else {
-            clicon_err(OE_XML, EFAULT, "Internal error: no result produced");
+            clixon_err(OE_XML, EFAULT, "Internal error: no result produced");
             goto done;
         }
     }
@@ -472,7 +473,7 @@ yang_path_arg(yang_stmt  *ys,
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (path_arg == NULL){
-        clicon_err(OE_XML, EINVAL, "path-arg is NULL");
+        clixon_err(OE_XML, EINVAL, "path-arg is NULL");
         goto done;
     }
     if (xpath_parse(path_arg, &xptree) < 0)

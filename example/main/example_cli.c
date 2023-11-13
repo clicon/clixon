@@ -50,7 +50,7 @@
 #include <netinet/in.h>
 #include <signal.h> /* matching strings */
 
-/* clicon */
+/* clixon */
 #include <cligen/cligen.h>
 #include <clixon/clixon.h>
 #include <clixon/clixon_cli.h>
@@ -67,7 +67,9 @@ static char *_mount_namespace = NULL;
 /*! Example cli function 
  */
 int
-mycallback(clicon_handle h, cvec *cvv, cvec *argv)
+mycallback(clixon_handle h,
+           cvec         *cvv,
+           cvec         *argv)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
@@ -101,7 +103,7 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 /*! Example "downcall", ie initiate an RPC to the backend 
  */
 int
-example_client_rpc(clicon_handle h,
+example_client_rpc(clixon_handle h,
                    cvec         *cvv,
                    cvec         *argv)
 {
@@ -129,7 +131,7 @@ example_client_rpc(clicon_handle h,
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(h, xerr, "Get configuration", NULL);
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
         goto done;
     }
     /* Print result */
@@ -168,7 +170,7 @@ cli_incstr(cligen_handle h,
     if (cv == NULL || cv_type_get(cv) != CGV_STRING)
         return 0;
     if ((str = cv_string_get(cv)) == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "cv string is NULL");
+        clixon_err(OE_PLUGIN, EINVAL, "cv string is NULL");
         return -1;
     }
     for (i=0; i<strlen(str); i++)
@@ -190,7 +192,7 @@ cli_incstr(cligen_handle h,
  * @see RFC 8528
  */
 int
-example_cli_yang_mount(clicon_handle   h,
+example_cli_yang_mount(clixon_handle   h,
                        cxobj          *xt,
                        int            *config,
                        validate_level *vl,
@@ -205,7 +207,7 @@ example_cli_yang_mount(clicon_handle   h,
         *vl = VL_FULL;
     if (yanglib && _mount_yang){
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
@@ -242,7 +244,7 @@ example_cli_yang_mount(clicon_handle   h,
  * @see netconf_err2cb  this errmsg is the same as the default
  */
 int
-example_cli_errmsg(clicon_handle h,
+example_cli_errmsg(clixon_handle h,
                    cxobj        *xerr,
                    cbuf         *cberr)
 {
@@ -281,7 +283,7 @@ example_cli_errmsg(clicon_handle h,
  * @retval    -1   Error
  */
 int
-example_version(clicon_handle h,
+example_version(clixon_handle h,
                 FILE         *f)
 {
     cligen_output(f, "Clixon main example version 0\n");
@@ -302,11 +304,11 @@ static clixon_plugin_api api = {
 /*! CLI plugin initialization
  *
  * @param[in]  h    Clixon handle
- * @retval     NULL Error with clicon_err set
+ * @retval     NULL Error
  * @retval     api  Pointer to API struct
  */
 clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
     struct timeval tv;
     int            c;
@@ -330,7 +332,7 @@ clixon_plugin_init(clicon_handle h)
             break;
         }
     if ((_mount_yang && !_mount_namespace) || (!_mount_yang && _mount_namespace)){
-        clicon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
+        clixon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
         goto done;
     }
     /* XXX Not implemented: CLI completion for mountpoints, see clixon-controller

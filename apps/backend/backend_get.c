@@ -62,7 +62,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_backend_client.h"
@@ -85,7 +85,7 @@
  * @see rfc8040 Sections 9.1
  */
 static int
-restconf_client_get_capabilities(clicon_handle h,
+restconf_client_get_capabilities(clixon_handle h,
                                  yang_stmt    *yspec,
                                  char         *xpath,
                                  cxobj       **xret)
@@ -95,11 +95,11 @@ restconf_client_get_capabilities(clicon_handle h,
     cbuf   *cb = NULL;
     
     if ((xrstate = xpath_first(*xret, NULL, "restconf-state")) == NULL){
-        clicon_err(OE_YANG, ENOENT, "restconf-state not found in config node");
+        clixon_err(OE_YANG, ENOENT, "restconf-state not found in config node");
         goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "<capabilities>");
@@ -129,7 +129,7 @@ restconf_client_get_capabilities(clicon_handle h,
  * @retval       -1       Error (fatal)
  */
 static int
-client_get_streams(clicon_handle   h,
+client_get_streams(clixon_handle   h,
                    yang_stmt      *yspec,
                    char           *xpath,
                    yang_stmt      *ymod,
@@ -143,11 +143,11 @@ client_get_streams(clicon_handle   h,
     int            ret;
 
     if ((yns = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL){
-        clicon_err(OE_YANG, 0, "%s yang namespace not found", yang_argument_get(ymod));
+        clixon_err(OE_YANG, 0, "%s yang namespace not found", yang_argument_get(ymod));
         goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "<%s xmlns=\"%s\">", top, yang_argument_get(yns));
@@ -159,7 +159,7 @@ client_get_streams(clicon_handle   h,
     cprintf(cb,"</%s>", top);
 
     if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &x, NULL) < 0){
-        if (xret && netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
+        if (xret && netconf_operation_failed_xml(xret, "protocol", clixon_err_reason())< 0)
             goto done;
         goto fail;
     }
@@ -203,7 +203,7 @@ client_get_streams(clicon_handle   h,
  *
  */
 static int
-get_statedata(clicon_handle     h,
+get_statedata(clixon_handle     h,
               char             *xpath,
               cvec             *nsc,
               withdefaults_type wdef,
@@ -220,20 +220,20 @@ get_statedata(clicon_handle     h,
     
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277")){
         if ((ymod = yang_find_module_by_name(yspec, "clixon-rfc5277")) == NULL){
-            clicon_err(OE_YANG, ENOENT, "yang module clixon-rfc5277 not found");
+            clixon_err(OE_YANG, ENOENT, "yang module clixon-rfc5277 not found");
             goto done;
         }
         if ((namespace = yang_find_mynamespace(ymod)) == NULL){
-            clicon_err(OE_YANG, ENOENT, "clixon-rfc5277 namespace not found");
+            clixon_err(OE_YANG, ENOENT, "clixon-rfc5277 namespace not found");
             goto done;
         }
         cprintf(cb, "<netconf xmlns=\"%s\"/>", namespace);
@@ -246,11 +246,11 @@ get_statedata(clicon_handle     h,
     }
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040")){
         if ((ymod = yang_find_module_by_name(yspec, "ietf-restconf-monitoring")) == NULL){
-            clicon_err(OE_YANG, ENOENT, "yang module ietf-restconf-monitoring not found");
+            clixon_err(OE_YANG, ENOENT, "yang module ietf-restconf-monitoring not found");
             goto done;
         }
         if ((namespace = yang_find_mynamespace(ymod)) == NULL){
-            clicon_err(OE_YANG, ENOENT, "ietf-restconf-monitoring namespace not found");
+            clixon_err(OE_YANG, ENOENT, "ietf-restconf-monitoring namespace not found");
             goto done;
         }
         cbuf_reset(cb);
@@ -406,7 +406,7 @@ get_statedata(clicon_handle     h,
  * @retval    -1       Error
  */
 static int
-filter_xpath_again(clicon_handle h,
+filter_xpath_again(clixon_handle h,
                    yang_stmt    *yspec,
                    cxobj        *xret,
                    cxobj       **xvec,
@@ -418,7 +418,7 @@ filter_xpath_again(clicon_handle h,
     int     i;
 
     if (xret == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "xret is NULL");
+        clixon_err(OE_PLUGIN, EINVAL, "xret is NULL");
         goto done;
     }
     /* If vectors are specified then mark the nodes found and
@@ -456,7 +456,7 @@ filter_xpath_again(clicon_handle h,
  * @retval    -1        Error
  */
 static int
-get_nacm_and_reply(clicon_handle h,
+get_nacm_and_reply(clixon_handle h,
                    cxobj        *xret,
                    cxobj       **xvec,
                    size_t        xlen,
@@ -505,7 +505,7 @@ get_nacm_and_reply(clicon_handle h,
  * @retval       -1          Error
  */
 static int
-element2value(clicon_handle  h,
+element2value(clixon_handle  h,
               cxobj         *xe,
               char          *name,
               char          *defaultstr,
@@ -535,7 +535,7 @@ element2value(clicon_handle  h,
  * @retval    -1      Error
  */
 static int
-list_pagination_hdr(clicon_handle h,
+list_pagination_hdr(clixon_handle h,
                     cxobj        *xe,
                     uint32_t     *offset,
                     uint32_t     *limit,
@@ -576,7 +576,7 @@ list_pagination_hdr(clicon_handle h,
  * XXX Lots of this code (in particular at the end) is copy of get_common
  */
 static int
-get_list_pagination(clicon_handle        h,
+get_list_pagination(clixon_handle        h,
                     struct client_entry *ce,
                     cxobj               *xe,
                     netconf_content      content,
@@ -614,7 +614,7 @@ get_list_pagination(clicon_handle        h,
 #endif
 
     if (cbret == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "cbret is NULL");
+        clixon_err(OE_PLUGIN, EINVAL, "cbret is NULL");
         goto done;
     }
     /* Check if list/leaf-list */
@@ -622,10 +622,10 @@ get_list_pagination(clicon_handle        h,
         goto done;
     if (ylist == NULL){
         if ((cbmsg = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
-        /* error reason should be in clicon_err_reason */
+        /* error reason should be in clixon_err_reason() */
         cprintf(cbmsg, "Netconf get list-pagination: \"%s\" not found", xpath);
         if (netconf_invalid_value(cbret, "application", cbuf_get(cbmsg)) < 0)
             goto done;
@@ -686,7 +686,7 @@ get_list_pagination(clicon_handle        h,
          * relational operators <>.
          */
         if ((cbpath = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         /* This uses xpath. Maybe limit should use parameters */
@@ -712,10 +712,10 @@ get_list_pagination(clicon_handle        h,
         /* specific xpath */
         if (xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, wdef, &xret, NULL, NULL) < 0) {
             if ((cbmsg = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
-            cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
+            cprintf(cbmsg, "Get %s datastore: %s", db, clixon_err_reason());
             if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
                 goto done;
             goto ok;
@@ -752,12 +752,12 @@ get_list_pagination(clicon_handle        h,
             goto done;
         if (ret == 0){
             if ((cberr = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
-            /* error reason should be in clicon_err_reason */
+            /* error reason should be in clixon_err_reason */
             cprintf(cberr, "Internal error, pagination state callback invalid return : %s",
-                    clicon_err_reason);
+                    clixon_err_reason());
             if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
                 goto done;
             if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
@@ -794,7 +794,7 @@ get_list_pagination(clicon_handle        h,
 
         /* Add remaining attribute */
         if ((cba = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cba, "%u", remaining);
@@ -838,7 +838,7 @@ get_list_pagination(clicon_handle        h,
  * @see from_client_get_config 
  */
 static int
-get_common(clicon_handle        h,
+get_common(clixon_handle        h,
            struct client_entry *ce,
            cxobj               *xe,
            netconf_content      content,
@@ -875,7 +875,7 @@ get_common(clicon_handle        h,
     clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No yang spec9");
+        clixon_err(OE_YANG, ENOENT, "No yang spec9");
         goto done;
     }
     if ((xfilter = xml_find(xe, "filter")) != NULL){
@@ -900,7 +900,7 @@ get_common(clicon_handle        h,
     /* Clixon extensions: depth */
     if ((attr = xml_find_value(xe, "depth")) != NULL){
         if ((ret = parse_int32(attr, &depth, &reason)) < 0){
-            clicon_err(OE_XML, errno, "parse_int32");
+            clixon_err(OE_XML, errno, "parse_int32");
             goto done;
         }
         if (ret == 0){
@@ -946,10 +946,10 @@ get_common(clicon_handle        h,
         /* specific xpath */
         if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, wdef, &xret, NULL, NULL) < 0) {
             if ((cbmsg = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
-            cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
+            cprintf(cbmsg, "Get %s datastore: %s", db, clixon_err_reason());
             if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
                 goto done;
             goto ok;
@@ -961,10 +961,10 @@ get_common(clicon_handle        h,
             /* Whole config tree, for validate debug */
             if (xmldb_get0(h, "running", YB_MODULE, nsc, NULL, 1, wdef, &xret, NULL, NULL) < 0) {
                 if ((cbmsg = cbuf_new()) == NULL){
-                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
-                cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
+                cprintf(cbmsg, "Get %s datastore: %s", db, clixon_err_reason());
                 if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
                     goto done;
                 goto ok;
@@ -974,10 +974,10 @@ get_common(clicon_handle        h,
             /* specific xpath */
             if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, wdef, &xret, NULL, NULL) < 0) {
                 if ((cbmsg = cbuf_new()) == NULL){
-                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
-                cprintf(cbmsg, "Get %s datastore: %s", db, clicon_err_reason);
+                cprintf(cbmsg, "Get %s datastore: %s", db, clixon_err_reason());
                 if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
                     goto done;
                 goto ok;
@@ -1083,7 +1083,7 @@ get_common(clicon_handle        h,
  * @see from_client_get
  */
 int
-from_client_get_config(clicon_handle h,
+from_client_get_config(clixon_handle h,
                        cxobj        *xe,
                        cbuf         *cbret,
                        void         *arg,
@@ -1094,7 +1094,7 @@ from_client_get_config(clicon_handle h,
     struct client_entry *ce = (struct client_entry *)arg;
 
     if ((db = netconf_db_find(xe, "source")) == NULL){
-        clicon_err(OE_XML, 0, "db not found");
+        clixon_err(OE_XML, 0, "db not found");
         goto done;
     }
     retval = get_common(h, ce, xe, CONTENT_CONFIG, db, cbret);
@@ -1115,7 +1115,7 @@ from_client_get_config(clicon_handle h,
  * @see from_client_get_config 
  */
 int
-from_client_get(clicon_handle h,
+from_client_get(clixon_handle h,
                 cxobj        *xe,
                 cbuf         *cbret,
                 void         *arg,

@@ -47,8 +47,10 @@
 
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
 #include "clixon_string.h"
 #include "clixon_err.h"
 
@@ -103,7 +105,7 @@ clicon_strsep(char *string,
     /* alloc vector and append copy of string */
     siz = (nvec+1)* sizeof(char*) + strlen(string)+1;
     if ((vec = (char**)malloc(siz)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(vec, 0, siz);
@@ -167,7 +169,7 @@ clixon_string_del_join(char *str1,
     int   len;
 
     if (str2 == NULL){
-        clicon_err(OE_UNIX, EINVAL, "str2 is NULL");
+        clixon_err(OE_UNIX, EINVAL, "str2 is NULL");
         return NULL;
     }
     len = strlen(str2) + 1;
@@ -175,7 +177,7 @@ clixon_string_del_join(char *str1,
         len += strlen(str1);
     len += strlen(del);
     if ((str = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         return NULL;
     }
     snprintf(str, len, "%s%s%s", (str1 ? str1 : ""), del, str2);
@@ -215,21 +217,21 @@ clixon_strsplit(char     *string,
 
     if ((str = strchr(string, delim)) == NULL){
         if (suffix && (*suffix = strdup(string)) == NULL){
-            clicon_err(OE_YANG, errno, "strdup");
+            clixon_err(OE_YANG, errno, "strdup");
             goto done;
         }
     }
     else {
         if (prefix){
             if ((*prefix = strdup(string)) == NULL){
-                clicon_err(OE_YANG, errno, "strdup");
+                clixon_err(OE_YANG, errno, "strdup");
                 goto done;
             }
             (*prefix)[str-string] = '\0';
         }
         str++;
         if (suffix && (*suffix = strdup(str)) == NULL){
-            clicon_err(OE_YANG, errno, "strdup");
+            clixon_err(OE_YANG, errno, "strdup");
             goto done;
         }
     }
@@ -297,7 +299,7 @@ uri_percent_encode(char **encp,
     fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
     va_end(args);
     if ((str = malloc(fmtlen)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, fmtlen);
@@ -310,7 +312,7 @@ uri_percent_encode(char **encp,
     /* This is max */
     len = strlen(str)*3+1;
     if ((enc = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(enc, 0, len);
@@ -355,13 +357,13 @@ uri_percent_decode(char  *enc,
     char *ptr;
 
     if (enc == NULL){
-        clicon_err(OE_UNIX, EINVAL, "enc is NULL");
+        clixon_err(OE_UNIX, EINVAL, "enc is NULL");
         goto done;
     }
     /* This is max */
     len = strlen(enc)+1;
     if ((str = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, len);
@@ -435,7 +437,7 @@ xml_chardata_encode(char      **escp,
     fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
     va_end(args);
     if ((str = malloc(fmtlen)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, fmtlen);
@@ -477,7 +479,7 @@ xml_chardata_encode(char      **escp,
     len++; /* trailing \0 */
     /* We know length, allocate encoding buffer  */
     if ((esc = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(esc, 0, len);
@@ -498,7 +500,7 @@ xml_chardata_encode(char      **escp,
         switch (str[i]){
         case '&':
             if ((l=snprintf(&esc[j], 6, "&amp;")) < 0){
-                clicon_err(OE_UNIX, errno, "snprintf");
+                clixon_err(OE_UNIX, errno, "snprintf");
                 goto done;
             }
             j += l;
@@ -510,14 +512,14 @@ xml_chardata_encode(char      **escp,
                 break;
             }
             if ((l=snprintf(&esc[j], 5, "&lt;")) < 0){
-                clicon_err(OE_UNIX, errno, "snprintf");
+                clixon_err(OE_UNIX, errno, "snprintf");
                 goto done;
             }
             j += l;
             break;
         case '>':
             if ((l=snprintf(&esc[j], 5, "&gt;")) < 0){
-                clicon_err(OE_UNIX, errno, "snprintf");
+                clixon_err(OE_UNIX, errno, "snprintf");
                 goto done;
             }
             j += l;
@@ -632,7 +634,7 @@ xml_chardata_decode_ampersand(char *str,
     else if (len > 0 && *p == '#'){
         p++;
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "parse_uint32");
+            clixon_err(OE_UNIX, errno, "parse_uint32");
             goto done;
         }
         if (len > 1 && *p == 'x'){
@@ -641,7 +643,7 @@ xml_chardata_decode_ampersand(char *str,
         }
         cprintf(cb, "%s", p);
         if ((ret = parse_uint32(cbuf_get(cb), &code, NULL)) < 0){
-            clicon_err(OE_UNIX, errno, "parse_uint32");
+            clixon_err(OE_UNIX, errno, "parse_uint32");
             goto done;
         }
         if (ret == 0){
@@ -692,7 +694,7 @@ xml_chardata_decode(char      **decp,
     fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
     va_end(args);
     if ((str = malloc(fmtlen)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, fmtlen);
@@ -705,7 +707,7 @@ xml_chardata_decode(char      **decp,
      * First allocate decoded string, encoded is always >= larger */
     slen = strlen(str);
     if ((dec = malloc(slen+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     j = 0;
@@ -776,12 +778,12 @@ uri_str2cvec(char  *string,
     cg_var *cv;
 
     if ((s0 = strdup(string)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto err;
     }
     s = s0;
     if ((cvv = cvec_new(0)) ==NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto err;
     }
     while (s != NULL) {
@@ -802,11 +804,11 @@ uri_str2cvec(char  *string,
             }
             else
                 if ((valu = strdup(val)) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto err;
                 }
             if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
-                clicon_err(OE_UNIX, errno, "cvec_add");
+                clixon_err(OE_UNIX, errno, "cvec_add");
                 goto err;
             }
             while ((strlen(s) > 0) && isblank(*s))
@@ -818,7 +820,7 @@ uri_str2cvec(char  *string,
         else{
             if (strlen(s)){
                 if ((cv = cvec_add(cvv, CGV_EMPTY)) == NULL){
-                    clicon_err(OE_UNIX, errno, "cvec_add");
+                    clixon_err(OE_UNIX, errno, "cvec_add");
                     goto err;
                 }
                 cv_name_set(cv, s);
@@ -1069,7 +1071,7 @@ clixon_unicode2utf8_one(uint16_t uc16,
     int retval = -1;
 
     if (utflen < 5){
-        clicon_err(OE_UNIX, EINVAL, "Length of utfstr is not >=4");
+        clixon_err(OE_UNIX, EINVAL, "Length of utfstr is not >=4");
         goto done;
     }
     if (uc16<0x80)
@@ -1079,11 +1081,11 @@ clixon_unicode2utf8_one(uint16_t uc16,
         *utfstr++=128+uc16%64;
     }
     else if (uc16-0xd800u<0x800){
-        clicon_err(OE_UNIX, EINVAL, "unicode2utf error");
+        clixon_err(OE_UNIX, EINVAL, "unicode2utf error");
         goto done;
     }
     else{
-        clicon_err(OE_UNIX, EINVAL, "unicode2utf error");
+        clixon_err(OE_UNIX, EINVAL, "unicode2utf error");
         goto done;
     }
     *utfstr++=0;
@@ -1112,11 +1114,11 @@ clixon_unicode2utf8(char  *ucstr,
     uint16_t uc16 = 0;
 
     if (ucstr == NULL || utfstr == NULL){
-        clicon_err(OE_UNIX, EINVAL, "input param is NULL");
+        clixon_err(OE_UNIX, EINVAL, "input param is NULL");
         goto done;
     }
     if ((len = strlen(ucstr)) != 4){
-        clicon_err(OE_UNIX, EINVAL, "Length of ucstr is not 4");
+        clixon_err(OE_UNIX, EINVAL, "Length of ucstr is not 4");
         goto done;
     }
     for (i=0; i<len; i++){
@@ -1128,7 +1130,7 @@ clixon_unicode2utf8(char  *ucstr,
          else if ('a' <= c && c <= 'f')
             j = c+10-'a';
          else{
-             clicon_err(OE_UNIX, 0, "no match");
+             clixon_err(OE_UNIX, 0, "no match");
              goto done;
          }
          if (uc16 != 0)

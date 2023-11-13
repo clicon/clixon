@@ -90,6 +90,7 @@
 #include "clixon_string.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -140,9 +141,9 @@ api_path_parse(char         *api_path,
     if (api_path_parse_init(&ay) < 0)
         goto done;
     if (clixon_api_path_parseparse(&ay) != 0) { /* yacc returns 1 on error */
-        clicon_log(LOG_NOTICE, "API-PATH error: on line %d", ay.ay_linenum);
-        if (clicon_errno == 0)
-            clicon_err(OE_XML, 0, "API-PATH parser error with no error code (should not happen)");
+        clixon_log(NULL, LOG_NOTICE, "API-PATH error: on line %d", ay.ay_linenum);
+        if (clixon_err_category() == 0)
+            clixon_err(OE_XML, 0, "API-PATH parser error with no error code (should not happen)");
         goto done;
     }
     api_path_parse_exit(&ay);
@@ -185,9 +186,9 @@ instance_id_parse(char         *path,
     if (instance_id_parse_init(&iy) < 0)
         goto done;
     if (clixon_instance_id_parseparse(&iy) != 0) { /* yacc returns 1 on error */
-        clicon_log(LOG_NOTICE, "Instance-id error: on line %d", iy.iy_linenum);
-        if (clicon_errno == 0)
-            clicon_err(OE_XML, 0, "Instance-id parser error with no error code (should not happen)");
+        clixon_log(NULL, LOG_NOTICE, "Instance-id error: on line %d", iy.iy_linenum);
+        if (clixon_err_category() == 0)
+            clixon_err(OE_XML, 0, "Instance-id parser error with no error code (should not happen)");
         goto done;
     }
     instance_id_parse_exit(&iy);
@@ -309,7 +310,7 @@ yang2api_path_fmt_1(yang_stmt *ys,
     enum rfc_6020 ypkeyw = -1;
 
     if ((yp = yang_parent_get(ys)) == NULL){
-        clicon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
+        clixon_err(OE_YANG, EINVAL, "yang expected parent %s", yang_argument_get(ys));
         goto done;
     }
     if (yp)
@@ -409,13 +410,13 @@ yang2api_path_fmt(yang_stmt   *ys,
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (yang2api_path_fmt_1(ys, inclkey, cb) < 0)
         goto done;
     if ((*api_path_fmt = strdup(cbuf_get(cb))) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     retval = 0;
@@ -476,7 +477,7 @@ api_path_fmt2api_path(const char *api_path_fmt,
     size_t  len;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     j = 1; /* j==0 is cli string */
@@ -491,11 +492,11 @@ api_path_fmt2api_path(const char *api_path_fmt,
                 ;
             else{
                 if ((cv = cvec_i(cvv, j++)) == NULL){
-                    clicon_err(OE_XML, 0, "Number of elements in cvv does not match api_path_fmt string");
+                    clixon_err(OE_XML, 0, "Number of elements in cvv does not match api_path_fmt string");
                     goto done;
                 }
                 if ((str = cv2str_dup(cv)) == NULL){
-                    clicon_err(OE_UNIX, errno, "cv2str_dup");
+                    clixon_err(OE_UNIX, errno, "cv2str_dup");
                     goto done;
                 }
                 if (uri_percent_encode(&strenc, "%s", str) < 0)
@@ -516,7 +517,7 @@ api_path_fmt2api_path(const char *api_path_fmt,
             }
     }
     if ((*api_path = strdup(cbuf_get(cb))) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     if (cvv_i) /* Last entry in cvv used */
@@ -570,7 +571,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
     size_t  len;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     j = 1; /* j==0 is cli string */
@@ -586,7 +587,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
             else{
                 cv = cvec_i(cvv, j++);
                 if ((str = cv2str_dup(cv)) == NULL){
-                    clicon_err(OE_UNIX, errno, "cv2str_dup");
+                    clixon_err(OE_UNIX, errno, "cv2str_dup");
                     goto done;
                 }
                 cprintf(cb, "[%s='%s']", cv_name_get(cv), str);
@@ -604,7 +605,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
             }
     }
     if ((*xpath = strdup4(cbuf_get(cb))) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     retval = 0;
@@ -624,7 +625,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
  * @param[out]    xerr     Netconf error message
  * @retval        1        OK
  * @retval        0        Invalid api_path or associated XML, netconf error xml set
- * @retval       -1        Fatal error, clicon_err called
+ * @retval       -1        Fatal error
  *
  * @code
  *   cbuf *xpath = cbuf_new();
@@ -645,7 +646,7 @@ api_path_fmt2xpath(char  *api_path_fmt,
  *   ["www.foo.com" "restconf" "a" "b=c"]
  * which means the api-path is ["a" "b=c"] corresponding to "a/b=c"
  * @note "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
- * @note retval -1 sets clicon_err, retval 0 sets netconf xml msg
+ * @note retval -1 sets clixon_err, retval 0 sets netconf xml msg
  * @note Not proper namespace translation from api-path 2 xpath!!!
  * @see api_path2xml  For api-path to xml tree
  * @see api_path2xpath  Using strings as parameters
@@ -687,7 +688,7 @@ api_path2xpath_cvv(cvec       *api_path,
     if ((nsc = xml_nsctx_init(NULL, NULL)) == NULL)
         goto done;
     if ((cberr = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     root = 1; /* root or mountpoint */
@@ -865,7 +866,7 @@ api_path2xpath_cvv(cvec       *api_path,
  * @param[out] xerr      Netconf error message
  * @retval     1         OK
  * @retval     0         Invalid api_path or associated XML, netconf called
- * @retval    -1         Fatal error, clicon_err called
+ * @retval    -1         Fatal error
  * @code
  *   char  *xpath = NULL;
  *   cvec  *nsc = NULL;
@@ -892,7 +893,7 @@ api_path2xpath(char       *api_path,
     int    ret;
 
     if (api_path == NULL){
-        clicon_err(OE_XML, EINVAL, "api_path is NULL");
+        clixon_err(OE_XML, EINVAL, "api_path is NULL");
         goto done;
     }
     /* Special case: "//" is not handled proerly by uri_str2cvec 
@@ -916,7 +917,7 @@ api_path2xpath(char       *api_path,
     /* prepare output xpath parameter */
     if (xpathp)
         if ((*xpathp = strdup(cbuf_get(xpath))) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
     retval = 1;
@@ -944,9 +945,9 @@ api_path2xpath(char       *api_path,
  * @param[out]  xerr      Netconf error message (if retval=0)
  * @retval      1         OK
  * @retval      0         Invalid api_path or associated XML, netconf error
- * @retval     -1         Fatal error, clicon_err called
+ * @retval     -1         Fatal error
  *
- * @note both retval -1 set clicon_err, retval 0 set xerr netconf xml
+ * @note both retval -1 set clixon_err, retval 0 set xerr netconf xml
  * @see api_path2xpath For api-path to xml xpath translation
  * @see api_path2xml
  */
@@ -994,7 +995,7 @@ api_path2xml_vec(char      **vec,
         goto ok;
     } /* E.g "x=1,2" -> nodeid:x restval=1,2 */
     if ((cberr = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     /* restval is RFC 3896 encoded */
@@ -1046,7 +1047,7 @@ api_path2xml_vec(char      **vec,
     case Y_LEAF_LIST:
 #if 0
         if (restval==NULL){
-            clicon_err(OE_XML, 0, "malformed key, expected '=restval'");
+            clixon_err(OE_XML, 0, "malformed key, expected '=restval'");
             goto done;
         }
 #endif
@@ -1162,7 +1163,7 @@ api_path2xml_vec(char      **vec,
         if (xml2xpath(x, nsc, 0, 1, &xpath) < 0) // XXX should be canonical
             goto done;
         if (xpath == NULL){
-            clicon_err(OE_YANG, 0, "No xpath from xml");
+            clixon_err(OE_YANG, 0, "No xpath from xml");
             goto done;
         }
         /* cf xml_bind_yang0_opt/xml_yang_mount_get */
@@ -1214,8 +1215,8 @@ api_path2xml_vec(char      **vec,
  * @param[out]    xerr       Netconf error message (if retval=0)
  * @retval        1          OK
  * @retval        0          Invalid api_path or associated XML, netconf error
- * @retval       -1          Fatal error, clicon_err called
- * @note both retval -1 set clicon_err, retval 0 set xerr netconf xml
+ * @retval       -1          Fatal error
+ * @note both retval -1 set clixon_err, retval 0 set xerr netconf xml
  * @example
  *   api_path: /subif-entry=foo/subid
  *   xtop[in]  <config/> 
@@ -1250,7 +1251,7 @@ api_path2xml(char       *api_path,
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s api_path:%s", __FUNCTION__, api_path);
     if ((cberr = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (*api_path != '/'){
@@ -1413,16 +1414,16 @@ api_path_resolve(clixon_path *cplist,
         do {
             if (yang_keyword_get(yt) == Y_SPEC){
                 if (cp->cp_prefix == NULL){
-                    clicon_err(OE_YANG, ENOENT, "Modulename not defined for top-level id.");
+                    clixon_err(OE_YANG, ENOENT, "Modulename not defined for top-level id.");
                     goto fail;
                 }
                 if ((yt = yang_find_module_by_name(yt, cp->cp_prefix)) == NULL){
-                    clicon_err(OE_YANG, ENOENT, "Modulename in api-path does not correspond to existing module");
+                    clixon_err(OE_YANG, ENOENT, "Modulename in api-path does not correspond to existing module");
                     goto fail;
                 }
             }
             if ((yc = yang_find_datanode(yt, cp->cp_id)) == NULL){
-                clicon_err(OE_YANG, ENOENT, "Corresponding yang node for id not found");
+                clixon_err(OE_YANG, ENOENT, "Corresponding yang node for id not found");
                 goto fail;
             }
             cp->cp_yang = yc;
@@ -1438,14 +1439,14 @@ api_path_resolve(clixon_path *cplist,
                 else if (yang_keyword_get(yc) == Y_LIST){
                     cvk = yang_cvec_get(yc);
                     if (cvec_len(cp->cp_cvk) > cvec_len(cvk)){
-                        clicon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list");
+                        clixon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list");
                         goto fail;
                     }
                     i = 0;
                     cva = NULL;
                     while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
                         if (cv_name_get(cva) != NULL){
-                            clicon_err(OE_YANG, ENOENT, "Unexpected named key %s (shouldnt happen)",
+                            clixon_err(OE_YANG, ENOENT, "Unexpected named key %s (shouldnt happen)",
                                        cv_name_get(cva));
                             goto fail;
                         }
@@ -1454,7 +1455,7 @@ api_path_resolve(clixon_path *cplist,
                     }
                 }
                 else{
-                    clicon_err(OE_YANG, ENOENT, "key-values only defined for list or leaf-list");
+                    clixon_err(OE_YANG, ENOENT, "key-values only defined for list or leaf-list");
                     goto fail;
                 }
             }
@@ -1507,12 +1508,12 @@ instance_id_resolve(clixon_path *cplist,
     if ((cp = cplist) != NULL){
         do {
             if (cp->cp_prefix == NULL){
-                clicon_err(OE_YANG, ENOENT, "No prefix of identifier (keynames may omit prefix)");
+                clixon_err(OE_YANG, ENOENT, "No prefix of identifier (keynames may omit prefix)");
                 goto fail;
             }
             if (yang_keyword_get(yt) == Y_SPEC){
                 if ((yt = yang_find_module_by_prefix_yspec(yspec, cp->cp_prefix)) == NULL){
-                    clicon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
+                    clixon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
                     goto fail;
                 }
             }
@@ -1521,13 +1522,13 @@ instance_id_resolve(clixon_path *cplist,
             if (ret == 1){
                 if (yang_mount_get_yspec_any(yt, &yspec) == 1){
                     if ((yt = yang_find_module_by_prefix_yspec(yspec, cp->cp_prefix)) == NULL){
-                        clicon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
+                        clixon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
                         goto fail;
                     }                    
                 }
             }
             if ((yc = yang_find_datanode(yt, cp->cp_id)) == NULL){
-                clicon_err(OE_YANG, ENOENT, "Node %s used in path has no corresponding yang node",
+                clixon_err(OE_YANG, ENOENT, "Node %s used in path has no corresponding yang node",
                            cp->cp_id);
                 goto fail;
             }
@@ -1536,14 +1537,14 @@ instance_id_resolve(clixon_path *cplist,
             case Y_LIST:
                 if (cp->cp_cvk == NULL){
 #if 0 /* see key-value presence in lists note above */
-                    clicon_err(OE_YANG, ENOENT, "key-values mandatory for lists");
+                    clixon_err(OE_YANG, ENOENT, "key-values mandatory for lists");
                     goto fail;
 #endif
                     break;
                 }
 #if 0 /* see key-value presence in lists note above */
                 if (cvec_len(cp->cp_cvk) > cvec_len(yang_cvec_get(yc))){
-                    clicon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list ");
+                    clixon_err(OE_YANG, ENOENT, "Number of keys in key-value list does not match Yang list ");
                     goto fail;
                 }
 #endif
@@ -1551,7 +1552,7 @@ instance_id_resolve(clixon_path *cplist,
                 while ((cva = cvec_each(cp->cp_cvk, cva)) != NULL) {
                     if ((kname = cv_name_get(cva)) != NULL){ /* Check var exists */
                         if (yang_find(yc, 0, kname) == NULL){
-                            clicon_err(OE_YANG, ENOENT, "Index variable %s used in path is not child of Yang node %s",
+                            clixon_err(OE_YANG, ENOENT, "Index variable %s used in path is not child of Yang node %s",
                                        kname, yang_argument_get(yc));
                             goto fail;
                         }
@@ -1564,7 +1565,7 @@ instance_id_resolve(clixon_path *cplist,
                 break;
             default:
                 if (cp->cp_cvk != NULL){
-                    clicon_err(OE_YANG, ENOENT, "key-values only defined for list or leaf-list");
+                    clixon_err(OE_YANG, ENOENT, "key-values only defined for list or leaf-list");
                     goto fail;
                 }
                 break;
@@ -1705,13 +1706,13 @@ clixon_xml_find_api_path(cxobj        *xt,
     va_end(ap);
     /* allocate an api-path string exactly fitting the length */
     if ((api_path = malloc(len+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: actually compute api-path string content */
     va_start(ap, format);
     if (vsnprintf(api_path, len+1, format, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
@@ -1799,13 +1800,13 @@ clixon_xml_find_instance_id(cxobj      *xt,
     va_end(ap);
     /* allocate a path string exactly fitting the length */
     if ((path = malloc(len+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: actually compute api-path string content */
     va_start(ap, format);
     if (vsnprintf(path, len+1, format, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
@@ -1887,13 +1888,13 @@ clixon_instance_id_bind(yang_stmt  *yt,
     va_end(ap);
     /* allocate a path string exactly fitting the length */
     if ((path = malloc(len+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: actually compute api-path string content */
     va_start(ap, format);
     if (vsnprintf(path, len+1, format, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
@@ -1963,13 +1964,13 @@ clixon_instance_id_parse(yang_stmt    *yt,
     va_end(ap);
     /* allocate a path string exactly fitting the length */
     if ((path = malloc(len+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: actually compute api-path string content */
     va_start(ap, format);
     if (vsnprintf(path, len+1, format, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
@@ -1982,7 +1983,7 @@ clixon_instance_id_parse(yang_stmt    *yt,
     if ((ret = instance_id_resolve(cplist, yt)) < 0)
         goto done;
     if (ret == 0){
-        if (xerr && netconf_invalid_value_xml(xerr, "application", clicon_err_reason) < 0)
+        if (xerr && netconf_invalid_value_xml(xerr, "application", clixon_err_reason()) < 0)
             goto done;
         goto fail;
     }

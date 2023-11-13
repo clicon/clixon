@@ -55,11 +55,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
+/* clixon */
 #include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
 #include "clixon_string.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_file.h"
 
 /*! qsort "compar" for directory alphabetically sorting, see qsort(3)
@@ -91,7 +94,7 @@ clicon_files_recursive1(const char *dir,
     struct stat    st;
 
     if (dir == NULL){
-        clicon_err(OE_UNIX, EINVAL, "Requires dir != NULL");
+        clixon_err(OE_UNIX, EINVAL, "Requires dir != NULL");
         goto done;
     }
     if ((dirp = opendir(dir)) != NULL)
@@ -115,13 +118,13 @@ clicon_files_recursive1(const char *dir,
                     continue;
                 snprintf(path, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
                 if ((res = lstat(path, &st)) != 0){
-                    clicon_err(OE_UNIX, errno, "lstat");
+                    clixon_err(OE_UNIX, errno, "lstat");
                     goto done;
                 }
                 if ((st.st_mode & S_IFREG) == 0)
                     continue;
                 if (cvec_add_string(cvv, dent->d_name, path) < 0){
-                    clicon_err(OE_UNIX, errno, "cvec_add_string");
+                    clixon_err(OE_UNIX, errno, "cvec_add_string");
                     goto done;
                 }
             }
@@ -148,7 +151,7 @@ clicon_files_recursive(const char *dir,
     clixon_debug(CLIXON_DBG_DETAIL, "%s dir:%s", __FUNCTION__, dir);
     if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
         regerror(res, &re, errbuf, sizeof(errbuf));
-        clicon_err(OE_DB, 0, "regcomp: %s", errbuf);
+        clixon_err(OE_DB, 0, "regcomp: %s", errbuf);
         goto done;
     }
     if (clicon_files_recursive1(dir, &re, cvv) < 0)
@@ -206,14 +209,14 @@ clicon_file_dirent(const char     *dir,
    nent = 0;
    if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
        regerror(res, &re, errbuf, sizeof(errbuf));
-       clicon_err(OE_DB, 0, "regcomp: %s", errbuf);
+       clixon_err(OE_DB, 0, "regcomp: %s", errbuf);
        return -1;
    }
    if ((dirp = opendir(dir)) == NULL) {
      if (errno == ENOENT) /* Dir does not exist -> return 0 matches */
        retval = 0;
      else
-       clicon_err(OE_UNIX, errno, "opendir(%s)", dir);
+       clixon_err(OE_UNIX, errno, "opendir(%s)", dir);
      goto quit;
    }
    while((dent = readdir(dirp)) != NULL) {
@@ -227,7 +230,7 @@ clicon_file_dirent(const char     *dir,
            snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
            res = lstat(filename, &st);
            if (res != 0) {
-               clicon_err(OE_UNIX, errno, "lstat");
+               clixon_err(OE_UNIX, errno, "lstat");
                goto quit;
            }
            if ((type & st.st_mode) == 0)
@@ -235,7 +238,7 @@ clicon_file_dirent(const char     *dir,
        }
        direntStructSize = offsetof(struct dirent, d_name) + strlen(dent->d_name) + 1;
        if ((new = realloc(new, (nent+1)*sizeof(struct dirent))) == NULL) {
-           clicon_err(OE_UNIX, errno, "realloc");
+           clixon_err(OE_UNIX, errno, "realloc");
            goto quit;
        } /* realloc */
        clixon_debug(CLIXON_DBG_DETAIL, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
@@ -280,21 +283,21 @@ clicon_file_copy(char *src,
     struct stat st;
 
     if (stat(src, &st) != 0){
-        clicon_err(OE_UNIX, errno, "stat");
+        clixon_err(OE_UNIX, errno, "stat");
         return -1;
     }
     if((inF = open(src, O_RDONLY)) == -1) {
-        clicon_err(OE_UNIX, errno, "open(%s) for read", src);
+        clixon_err(OE_UNIX, errno, "open(%s) for read", src);
         return -1;
     }
     if((ouF = open(target, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode)) == -1) {
-        clicon_err(OE_UNIX, errno, "open(%s) for write", target);
+        clixon_err(OE_UNIX, errno, "open(%s) for write", target);
         err = errno;
         goto error;
     }
     while((bytes = read(inF, line, sizeof(line))) > 0)
         if (write(ouF, line, bytes) < 0){
-            clicon_err(OE_UNIX, errno, "write(%s)", src);
+            clixon_err(OE_UNIX, errno, "write(%s)", src);
             err = errno;
             goto error;
         }
@@ -327,16 +330,16 @@ clicon_file_cbuf(const char *filename,
     struct stat st;
 
     if (stat(filename, &st) != 0){
-        clicon_err(OE_UNIX, errno, "stat");
+        clixon_err(OE_UNIX, errno, "stat");
         return -1;
     }
     if ((fd = open(filename, O_RDONLY)) == -1) {
-        clicon_err(OE_UNIX, errno, "open(%s) for read", filename);
+        clixon_err(OE_UNIX, errno, "open(%s) for read", filename);
         return -1;
     }
     while((bytes = read(fd, line, sizeof(line))) > 0)
         if (cbuf_append_buf(cb, line, bytes) < 0){
-            clicon_err(OE_UNIX, errno, "cbuf_append_buf(%s)", filename);
+            clixon_err(OE_UNIX, errno, "cbuf_append_buf(%s)", filename);
             err = errno;
             goto error;
         }

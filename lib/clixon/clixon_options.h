@@ -109,105 +109,105 @@ enum regexp_mode{
  */
 
 /* Debug dump config options */
-int clicon_option_dump(clicon_handle h, int dblevel);
+int clicon_option_dump(clixon_handle h, int dblevel);
 
 /*! Dump config options on stdio using output format */
-int clicon_option_dump1(clicon_handle h, FILE *f, int format, int pretty);
+int clicon_option_dump1(clixon_handle h, FILE *f, int format, int pretty);
 
 /* Add a clicon options overriding file setting */
-int clicon_option_add(clicon_handle h, const char *name, char *value);
+int clicon_option_add(clixon_handle h, const char *name, char *value);
 
 /* Initialize options: set defaults, read config-file, etc */
-int clicon_options_main(clicon_handle h);
+int clicon_options_main(clixon_handle h);
 
 /*! Check if a clicon option has a value */
-int clicon_option_exists(clicon_handle h, const char *name);
+int clicon_option_exists(clixon_handle h, const char *name);
 
 /* String options, default NULL */
-char *clicon_option_str(clicon_handle h, const char *name);
-int clicon_option_str_set(clicon_handle h, const char *name, char *val);
+char *clicon_option_str(clixon_handle h, const char *name);
+int clicon_option_str_set(clixon_handle h, const char *name, char *val);
 
 /* Option values gixen as int, default -1 */
-int clicon_option_int(clicon_handle h, const char *name);
-int clicon_option_int_set(clicon_handle h, const char *name, int val);
+int clicon_option_int(clixon_handle h, const char *name);
+int clicon_option_int_set(clixon_handle h, const char *name, int val);
 
 /* Option values gixen as bool, default false */
-int clicon_option_bool(clicon_handle h, const char *name);
-int clicon_option_bool_set(clicon_handle h, const char *name, int val);
+int clicon_option_bool(clixon_handle h, const char *name);
+int clicon_option_bool_set(clixon_handle h, const char *name, int val);
 
 /* Delete a single option via handle */
-int clicon_option_del(clicon_handle h, const char *name);
+int clicon_option_del(clixon_handle h, const char *name);
 
 /*-- Standard option access functions for YANG options --*/
-static inline char *clicon_configfile(clicon_handle h){
+static inline char *clicon_configfile(clixon_handle h){
     return clicon_option_str(h, "CLICON_CONFIGFILE");
 }
-static inline char *clicon_yang_main_file(clicon_handle h){
+static inline char *clicon_yang_main_file(clixon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MAIN_FILE");
 }
-static inline char *clicon_yang_main_dir(clicon_handle h){
+static inline char *clicon_yang_main_dir(clixon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MAIN_DIR");
 }
-static inline char *clicon_yang_module_main(clicon_handle h){
+static inline char *clicon_yang_module_main(clixon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MODULE_MAIN");
 }
-static inline char *clicon_yang_module_revision(clicon_handle h){
+static inline char *clicon_yang_module_revision(clixon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MODULE_REVISION");
 }
-static inline char *clicon_backend_dir(clicon_handle h){
+static inline char *clicon_backend_dir(clixon_handle h){
     return clicon_option_str(h, "CLICON_BACKEND_DIR");
 }
-static inline char *clicon_netconf_dir(clicon_handle h){
+static inline char *clicon_netconf_dir(clixon_handle h){
     return clicon_option_str(h, "CLICON_NETCONF_DIR");
 }
-static inline char *clicon_restconf_dir(clicon_handle h){
+static inline char *clicon_restconf_dir(clixon_handle h){
     return clicon_option_str(h, "CLICON_RESTCONF_DIR");
 }
-static inline char *clicon_cli_dir(clicon_handle h){
+static inline char *clicon_cli_dir(clixon_handle h){
     return clicon_option_str(h, "CLICON_CLI_DIR");
 }
-static inline char *clicon_clispec_dir(clicon_handle h){
+static inline char *clicon_clispec_dir(clixon_handle h){
     return clicon_option_str(h, "CLICON_CLISPEC_DIR");
 }
-static inline char *clicon_cli_mode(clicon_handle h){
+static inline char *clicon_cli_mode(clixon_handle h){
     return clicon_option_str(h, "CLICON_CLI_MODE");
 }
-static inline int clicon_cli_tab_mode(clicon_handle h){
+static inline int clicon_cli_tab_mode(clixon_handle h){
     return clicon_option_int(h, "CLICON_CLI_TAB_MODE");
 }
-static inline char *clicon_sock_str(clicon_handle h){
+static inline char *clicon_sock_str(clixon_handle h){
     return clicon_option_str(h, "CLICON_SOCK");
 }
-static inline char *clicon_sock_group(clicon_handle h){
+static inline char *clicon_sock_group(clixon_handle h){
     return clicon_option_str(h, "CLICON_SOCK_GROUP");
 }
-static inline char *clicon_backend_user(clicon_handle h){
+static inline char *clicon_backend_user(clixon_handle h){
     return clicon_option_str(h, "CLICON_BACKEND_USER");
 }
-static inline char *clicon_backend_pidfile(clicon_handle h){
+static inline char *clicon_backend_pidfile(clixon_handle h){
     return clicon_option_str(h, "CLICON_BACKEND_PIDFILE");
 }
-static inline char *clicon_xmldb_dir(clicon_handle h){
+static inline char *clicon_xmldb_dir(clixon_handle h){
     return clicon_option_str(h, "CLICON_XMLDB_DIR");
 }
-static inline char *clicon_nacm_recovery_user(clicon_handle h){
+static inline char *clicon_nacm_recovery_user(clixon_handle h){
     return clicon_option_str(h, "CLICON_NACM_RECOVERY_USER");
 }
 
 /*-- Specific option access functions for YANG options w type conversion--*/
-int   clicon_cli_varonly(clicon_handle h);
-int   clicon_sock_family(clicon_handle h);
-int   clicon_sock_port(clicon_handle h);
-int   clicon_autocommit(clicon_handle h);
-int   clicon_startup_mode(clicon_handle h);
-enum priv_mode_t clicon_backend_privileges_mode(clicon_handle h);
-enum priv_mode_t clicon_restconf_privileges_mode(clicon_handle h);
-enum nacm_credentials_t clicon_nacm_credentials(clicon_handle h);
+int   clicon_cli_varonly(clixon_handle h);
+int   clicon_sock_family(clixon_handle h);
+int   clicon_sock_port(clixon_handle h);
+int   clicon_autocommit(clixon_handle h);
+int   clicon_startup_mode(clixon_handle h);
+enum priv_mode_t clicon_backend_privileges_mode(clixon_handle h);
+enum priv_mode_t clicon_restconf_privileges_mode(clixon_handle h);
+enum nacm_credentials_t clicon_nacm_credentials(clixon_handle h);
 
-enum datastore_cache clicon_datastore_cache(clicon_handle h);
-enum regexp_mode clicon_yang_regexp(clicon_handle h);
+enum datastore_cache clicon_datastore_cache(clixon_handle h);
+enum regexp_mode clicon_yang_regexp(clixon_handle h);
 /*-- Specific option access functions for non-yang options --*/
-int clicon_quiet_mode(clicon_handle h);
-int clicon_quiet_mode_set(clicon_handle h, int val);
+int clicon_quiet_mode(clixon_handle h);
+int clicon_quiet_mode_set(clixon_handle h, int val);
 
 #endif  /* _CLIXON_OPTIONS_H_ */

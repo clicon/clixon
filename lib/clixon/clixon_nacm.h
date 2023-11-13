@@ -57,12 +57,12 @@ enum nacm_access{
  * Prototypes
  */
 int nacm_rpc(char *rpc, char *module, char *username, cxobj *xnacm, cbuf *cbret);
-int nacm_datanode_read(clicon_handle h, cxobj *xt, cxobj **xvec, size_t xlen, char *username,
+int nacm_datanode_read(clixon_handle h, cxobj *xt, cxobj **xvec, size_t xlen, char *username,
                        cxobj *nacm_xtree);
-int nacm_datanode_write(clicon_handle h, cxobj *xr, cxobj *xt,
+int nacm_datanode_write(clixon_handle h, cxobj *xr, cxobj *xt,
                         enum nacm_access access,
                         char *username, cxobj *xnacm, cbuf *cbret);
-int nacm_access_pre(clicon_handle h, char *peername, char *username, cxobj **xnacmp);
-int verify_nacm_user(clicon_handle h, enum nacm_credentials_t cred, char *peername, char *nacmname, cbuf *cbret);
+int nacm_access_pre(clixon_handle h, char *peername, char *username, cxobj **xnacmp);
+int verify_nacm_user(clixon_handle h, enum nacm_credentials_t cred, char *peername, char *nacmname, cbuf *cbret);
 
 #endif /* _CLIXON_NACM_H */

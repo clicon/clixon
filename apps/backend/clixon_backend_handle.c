@@ -58,21 +58,21 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_backend_client.h"
 #include "backend_client.h"
 #include "backend_handle.h"
 
-/* header part is copied from struct clicon_handle in lib/src/clicon_handle.c */
+/* header part is copied from struct clixon_handle in lib/src/clixon_handle.c */
 
 #define CLICON_MAGIC 0x99aafabe
 
-#define handle(h) (assert(clicon_handle_check(h)==0),(struct backend_handle *)(h))
+#define handle(h) (assert(clixon_handle_check(h)==0),(struct backend_handle *)(h))
 
-/* Clicon_handle for backends.
- * First part of this is header, same for clicon_handle and cli_handle.
+/* Clixon_handle for backends.
+ * First part of this is header, same for clixon_handle and cli_handle.
  * Access functions for common fields are found in clicon lib: clicon_options.[ch]
  * This file should only contain access functions for the _specific_
  * entries in the struct below.
@@ -81,8 +81,8 @@
  *
  * This file should only contain access functions for the _specific_
  * entries in the struct below.
- * @note The top part must be equivalent to struct clicon_handle in clixon_handle.c
- * @see struct clicon_handle, struct cli_handle
+ * @note The top part must be equivalent to struct clixon_handle in clixon_handle.c
+ * @see struct clixon_handle, struct cli_handle
  */
 struct backend_handle {
     int                      bh_magic;     /* magic (HDR)*/
@@ -98,14 +98,14 @@ struct backend_handle {
 
 /*! Creates and returns a clicon config handle for other CLICON API calls
  */
-clicon_handle
+clixon_handle
 backend_handle_init(void)
 {
     struct backend_handle *bh;
 
-    bh = (struct backend_handle *)clicon_handle_init0(sizeof(struct backend_handle));
+    bh = (struct backend_handle *)clixon_handle_init0(sizeof(struct backend_handle));
     bh->bh_ce_nr = 1; /* To align with session-id */
-    return (clicon_handle)bh;
+    return (clixon_handle)bh;
 }
 
 /*! Deallocates a backend handle, including all client structs
@@ -114,7 +114,7 @@ backend_handle_init(void)
  * @see backend_client_rm
  */
 int
-backend_handle_exit(clicon_handle h)
+backend_handle_exit(clixon_handle h)
 {
     struct client_entry   *ce;
 
@@ -126,7 +126,7 @@ backend_handle_exit(clicon_handle h)
         }
         backend_client_delete(h, ce);
     }
-    clicon_handle_exit(h); /* frees h and options (and streams) */
+    clixon_handle_exit(h); /* frees h and options (and streams) */
     return 0;
 }
 
@@ -138,14 +138,14 @@ backend_handle_exit(clicon_handle h)
  * @retval     NULL     Error
  */
 struct client_entry *
-backend_client_add(clicon_handle    h,
+backend_client_add(clixon_handle    h,
                    struct sockaddr *addr)
 {
     struct backend_handle *bh = handle(h);
     struct client_entry   *ce;
 
     if ((ce = (struct client_entry *)malloc(sizeof(*ce))) == NULL){
-        clicon_err(OE_PLUGIN, errno, "malloc");
+        clixon_err(OE_PLUGIN, errno, "malloc");
         return NULL;
     }
     memset(ce, 0, sizeof(*ce));
@@ -154,7 +154,7 @@ backend_client_add(clicon_handle    h,
     ce->ce_next = bh->bh_ce_list;
     ce->ce_handle = h;
     if (clicon_session_id_get(h, &ce->ce_id) < 0){
-        clicon_err(OE_NETCONF, ENOENT, "session_id not set");
+        clixon_err(OE_NETCONF, ENOENT, "session_id not set");
         return NULL;
     }
     clicon_session_id_set(h, ce->ce_id + 1);
@@ -170,7 +170,7 @@ backend_client_add(clicon_handle    h,
  * @retval     ce_list  Client entry list (all sessions)
  */
 struct client_entry *
-backend_client_list(clicon_handle h)
+backend_client_list(clixon_handle h)
 {
     struct backend_handle *bh = handle(h);
 
@@ -184,7 +184,7 @@ backend_client_list(clicon_handle h)
  * @see backend_client_rm which is more high-level
  */
 int
-backend_client_delete(clicon_handle        h,
+backend_client_delete(clixon_handle        h,
                       struct client_entry *ce)
 {
     struct client_entry   *c;
@@ -215,7 +215,7 @@ backend_client_delete(clicon_handle        h,
  * @param[in]  f   UNIX output stream
  */
 int
-backend_client_print(clicon_handle h,
+backend_client_print(clixon_handle h,
                      FILE         *f)
 {
     struct backend_handle *bh = handle(h);

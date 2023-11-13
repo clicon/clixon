@@ -41,7 +41,7 @@
  */
 struct clixon_http1_yacc {
     const char   *hy_name;         /* Name of syntax (for error string) */
-    clicon_handle hy_h;            /* Clixon handle */
+    clixon_handle hy_h;            /* Clixon handle */
     restconf_conn *hy_rc;          /* Connection handle */
     int           hy_linenum;      /* Number of \n in parsed buffer */
     char         *hy_parse_string; /* original (copy of) parse string */

@@ -1,4 +1,4 @@
-/*
+ /*
  *
   ***** BEGIN LICENSE BLOCK *****
  
@@ -60,13 +60,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_log.h"
-#include "clixon_err.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_err.h"
 #include "clixon_file.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -100,7 +101,7 @@ modstate_diff_new(void)
     modstate_diff_t *md;
 
     if ((md = malloc(sizeof(modstate_diff_t))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         return NULL;
     }
     memset(md, 0, sizeof(modstate_diff_t));
@@ -135,7 +136,7 @@ modstate_diff_free(modstate_diff_t *md)
  * @see netconf_module_load
  */
 int
-yang_modules_init(clicon_handle h)
+yang_modules_init(clixon_handle h)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -145,7 +146,7 @@ yang_modules_init(clicon_handle h)
         goto ok;
     /* Ensure module-set-id is set */
     if (!clicon_option_exists(h, "CLICON_MODULE_SET_ID")){
-        clicon_err(OE_CFG, ENOENT, "CLICON_MODULE_SET_ID must be defined when CLICON_YANG_LIBRARY is enabled");
+        clixon_err(OE_CFG, ENOENT, "CLICON_MODULE_SET_ID must be defined when CLICON_YANG_LIBRARY is enabled");
         goto done;
     }
     /* Ensure revision exists is set */
@@ -153,7 +154,7 @@ yang_modules_init(clicon_handle h)
         goto done;
     /* Find revision */
     if (yang_modules_revision(h) == NULL){
-        clicon_err(OE_CFG, ENOENT, "Yang client library yang spec has no revision");
+        clixon_err(OE_CFG, ENOENT, "Yang client library yang spec has no revision");
         goto done;
     }
  ok:
@@ -169,7 +170,7 @@ yang_modules_init(clicon_handle h)
  * @retval       NULL     Error: RFC7895 not loaded or revision not found
  */
 char *
-yang_modules_revision(clicon_handle h)
+yang_modules_revision(clixon_handle h)
 {
     yang_stmt *yspec;
     yang_stmt *ymod;
@@ -199,7 +200,7 @@ yang_modules_revision(clicon_handle h)
  * @see RFC8525 
  */
 int
-yang_modules_state_build(clicon_handle    h,
+yang_modules_state_build(clixon_handle    h,
                          yang_stmt       *yspec,
                          char            *msid,
                          int              brief,
@@ -220,11 +221,11 @@ yang_modules_state_build(clicon_handle    h,
     if ((ylib = yang_find(yspec, Y_MODULE, module)) == NULL
         /* &&        (ylib = yang_find(yspec0, Y_SUBMODULE, module)) == NULL */
         ){
-            clicon_err(OE_YANG, 0, "%s not found", module);
+            clixon_err(OE_YANG, 0, "%s not found", module);
             goto done;
         }
     if ((yns = yang_find(ylib, Y_NAMESPACE, NULL)) == NULL){
-        clicon_err(OE_YANG, 0, "%s yang namespace not found", module);
+        clixon_err(OE_YANG, 0, "%s yang namespace not found", module);
         goto done;
     }
     /* RFC 8525 */
@@ -319,7 +320,7 @@ x            +--ro namespace           inet:uri
  * @see netconf_hello_server
  */
 int
-yang_modules_state_get(clicon_handle    h,
+yang_modules_state_get(clixon_handle    h,
                        yang_stmt       *yspec,
                        char            *xpath,
                        cvec            *nsc,
@@ -353,7 +354,7 @@ yang_modules_state_get(clicon_handle    h,
     }
     else { /* No cache -> build the tree */
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, 0, "clicon buffer");
+            clixon_err(OE_UNIX, 0, "clicon buffer");
             goto done;
         }
         /* Build a cb string: <modules-state>... */
@@ -363,7 +364,7 @@ yang_modules_state_get(clicon_handle    h,
          * Note, list is not sorted since it is state (should not be)
          */
         if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &x, NULL) < 0){
-            if (xret && netconf_operation_failed_xml(xret, "protocol", clicon_err_reason)< 0)
+            if (xret && netconf_operation_failed_xml(xret, "protocol", clixon_err_reason())< 0)
                 goto done;
             goto fail;
         }
@@ -419,7 +420,7 @@ yang_modules_state_get(clicon_handle    h,
  * @retval    -1        Error
  */
 static int
-mod_ns_upgrade(clicon_handle h,
+mod_ns_upgrade(clixon_handle h,
                cxobj        *xt,
                cxobj        *xmod,
                char         *ns,
@@ -479,7 +480,7 @@ mod_ns_upgrade(clicon_handle h,
  * @retval    -1    Error
  */
 int
-clixon_module_upgrade(clicon_handle    h,
+clixon_module_upgrade(clixon_handle    h,
                       cxobj           *xt,
                       modstate_diff_t *msd,
                       cbuf            *cbret)
@@ -490,7 +491,7 @@ clixon_module_upgrade(clicon_handle    h,
     int     ret;
 
     if (msd == NULL){
-        clicon_err(OE_CFG, EINVAL, "No modstate");
+        clixon_err(OE_CFG, EINVAL, "No modstate");
         goto done;
     }
     if (msd->md_status == 0) /* No modstate in startup */
@@ -542,12 +543,12 @@ yang_find_module_by_prefix(yang_stmt *ys,
     char      *myprefix;
 
     if ((yspec = ys_spec(ys)) == NULL){
-        clicon_err(OE_YANG, 0, "My yang spec not found");
+        clixon_err(OE_YANG, 0, "My yang spec not found");
         goto done;
     }
     /* First try own module */
     if ((my_ymod = ys_module(ys)) == NULL){
-        clicon_err(OE_YANG, 0, "My yang module not found");
+        clixon_err(OE_YANG, 0, "My yang module not found");
         goto done;
     }
     myprefix = yang_find_myprefix(ys);
@@ -567,7 +568,7 @@ yang_find_module_by_prefix(yang_stmt *ys,
     }
     if (yimport){
         if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yimport))) == NULL){
-            clicon_err(OE_YANG, 0, "No module or sub-module found with prefix %s",
+            clixon_err(OE_YANG, 0, "No module or sub-module found with prefix %s",
                        prefix);
             yimport = NULL;
             goto done; /* unresolved */
@@ -644,7 +645,7 @@ yang_find_module_by_namespace_revision(yang_stmt  *yspec,
     char      *rev1;
 
     if (ns == NULL || rev == NULL){
-        clicon_err(OE_CFG, EINVAL, "No ns or rev");
+        clixon_err(OE_CFG, EINVAL, "No ns or rev");
         goto done;
     }
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
@@ -680,7 +681,7 @@ yang_find_module_by_name_revision(yang_stmt  *yspec,
     char      *rev1;
 
     if (name == NULL){
-        clicon_err(OE_CFG, EINVAL, "No ns or rev");
+        clixon_err(OE_CFG, EINVAL, "No ns or rev");
         goto done;
     }
     while ((ymod = yn_each(yspec, ymod)) != NULL) {
@@ -739,7 +740,7 @@ yang_find_module_by_name(yang_stmt *yspec,
  * @see yang_metadata_annotation_check
  */
 static int
-ietf_yang_metadata_extension_cb(clicon_handle h,
+ietf_yang_metadata_extension_cb(clixon_handle h,
                                 yang_stmt    *yext,
                                 yang_stmt    *ys)
 {
@@ -816,7 +817,7 @@ yang_metadata_annotation_check(cxobj     *xa,
  * @retval   -1      Error
  */
 int
-yang_metadata_init(clicon_handle h)
+yang_metadata_init(clixon_handle h)
 {
     int              retval = -1;
     clixon_plugin_t *cp = NULL;
@@ -847,7 +848,7 @@ yang_metadata_init(clicon_handle h)
  * XXX: Ensure yang-lib is always there otherwise get state dont work for mountpoint
  */
 int
-yang_lib2yspec(clicon_handle h,
+yang_lib2yspec(clixon_handle h,
                cxobj        *xyanglib,
                yang_stmt    *yspec)
 {

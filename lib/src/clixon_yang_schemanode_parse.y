@@ -65,7 +65,7 @@
 
 /* typecast macro */
 #define _IF ((clixon_yang_schemanode_yacc *)_if)
-#define _YYERROR(msg) {clicon_err(OE_YANG, 0, "%s", (msg)); YYERROR;}
+#define _YYERROR(msg) {clixon_err(OE_YANG, 0, "%s", (msg)); YYERROR;}
 
 #include <stdio.h>
 #include <stdint.h>
@@ -78,13 +78,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_yang_module.h"
@@ -106,7 +107,7 @@ clixon_yang_schemanode_parseerror(void *arg,
 {
     clixon_yang_schemanode_yacc *ife = (clixon_yang_schemanode_yacc *)arg;
 
-    clicon_err_fn(NULL, 0, OE_YANG, 0, "yang_schemanode_parse: file:%s:%d \"%s\" %s: at or before: %s",
+    clixon_err_fn(NULL, 0, OE_YANG, 0, "yang_schemanode_parse: file:%s:%d \"%s\" %s: at or before: %s",
                   ife->if_mainfile,
                   ife->if_linenum,
                   ife->if_parse_string,

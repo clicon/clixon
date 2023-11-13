@@ -63,7 +63,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 //#include "clixon_netconf.h"
@@ -145,7 +145,7 @@ netconf_add_request_attr(cxobj *xrpc,
  * @retval     -1    Error
  */
 static int
-netconf_hello_msg(clicon_handle h,
+netconf_hello_msg(clixon_handle h,
                   cxobj        *xn,
                   int          *eof)
 {
@@ -162,7 +162,7 @@ netconf_hello_msg(clicon_handle h,
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     _netconf_hello_nr++;
     if (xml_find_type(xn, NULL, "session-id", CX_ELMNT) != NULL) {
-        clicon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1");
+        clixon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1");
         goto done;
     }
     if (xpath_vec(xn, nsc, "capabilities/capability", &vec, &veclen) < 0)
@@ -190,7 +190,7 @@ netconf_hello_msg(clicon_handle h,
         }
     }
     if (foundbase_10 == 0 && foundbase_11 == 0){
-        clicon_err(OE_XML, errno, "Server received hello without matching netconf base capability, terminating (see RFC 6241 Sec 8.1");
+        clixon_err(OE_XML, errno, "Server received hello without matching netconf base capability, terminating (see RFC 6241 Sec 8.1");
         *eof = 1;
         goto done;
     }
@@ -211,7 +211,7 @@ netconf_hello_msg(clicon_handle h,
  * @retval     -1     Error
  */
 static int
-netconf_rpc_message(clicon_handle h,
+netconf_rpc_message(clixon_handle h,
                     cxobj        *xrpc,
                     yang_stmt    *yspec,
                     int          *eof)
@@ -232,7 +232,7 @@ netconf_rpc_message(clicon_handle h,
         if (netconf_add_request_attr(xrpc, xret) < 0)
             goto done;
         if ((cbret = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
@@ -253,7 +253,7 @@ netconf_rpc_message(clicon_handle h,
         if (netconf_add_request_attr(xrpc, xret) < 0)
             goto done;
         if ((cbret = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
@@ -274,7 +274,7 @@ netconf_rpc_message(clicon_handle h,
         if (netconf_add_request_attr(xrpc, xret) < 0)
             goto done;
         if ((cbret = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
@@ -290,7 +290,7 @@ netconf_rpc_message(clicon_handle h,
         if (netconf_add_request_attr(xrpc, xc) < 0)
             goto done;
         if ((cbret = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         if (clixon_xml2cbuf(cbret, xml_child_i(xret,0), 0, 0, NULL, -1, 0) < 0)
@@ -321,7 +321,7 @@ netconf_rpc_message(clicon_handle h,
  * @retval     -1     Error
  */
 static int
-netconf_input_packet(clicon_handle h,
+netconf_input_packet(clixon_handle h,
                      cxobj        *xreq,
                      yang_stmt    *yspec,
                      int          *eof)
@@ -349,7 +349,7 @@ netconf_input_packet(clicon_handle h,
             if (netconf_add_request_attr(xreq, xret) < 0)
                 goto done;
             if ((cbret = cbuf_new()) == NULL){
-                clicon_err(OE_XML, errno, "cbuf_new");
+                clixon_err(OE_XML, errno, "cbuf_new");
                 goto done;
             }
             if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
@@ -367,7 +367,7 @@ netconf_input_packet(clicon_handle h,
         /* Only accept resolved NETCONF base namespace -> terminate*/
         if (namespace == NULL || strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
             *eof = 1;
-            clicon_err(OE_XML, EFAULT, "No appropriate namespace associated with namespace:%s",
+            clixon_err(OE_XML, EFAULT, "No appropriate namespace associated with namespace:%s",
                        namespace);
             goto done;
         }
@@ -376,7 +376,7 @@ netconf_input_packet(clicon_handle h,
     }
     else{ /* Shouldnt happen should be caught by yang bind check in netconf_input_frame */
         *eof = 1;
-        clicon_err(OE_NETCONF, 0, "Unrecognized netconf operation %s", rpcname);
+        clixon_err(OE_NETCONF, 0, "Unrecognized netconf operation %s", rpcname);
         goto done;
     }
  ok:
@@ -408,7 +408,7 @@ netconf_input_cb(int   s,
                  void *arg)
 {
     int            retval = -1;
-    clicon_handle  h = arg;
+    clixon_handle  h = arg;
     cbuf          *cbmsg=NULL;
     cbuf          *cberr = NULL;
     void          *ptr;
@@ -435,7 +435,7 @@ netconf_input_cb(int   s,
     /* Get unfinished frame */
     if ((ptr = clicon_hash_value(cdat, NETCONF_FRAME_MSG, &cdatlen)) != NULL){
         if (cdatlen != sizeof(cbmsg)){
-            clicon_err(OE_XML, errno, "size mismatch %lu %lu",
+            clixon_err(OE_XML, errno, "size mismatch %lu %lu",
                        (unsigned long)cdatlen, (unsigned long)sizeof(cbmsg));
             goto done;
         }
@@ -444,7 +444,7 @@ netconf_input_cb(int   s,
     }
     else{
         if ((cbmsg = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
     }
@@ -482,7 +482,7 @@ netconf_input_cb(int   s,
         cbuf_reset(cbmsg);
         if (ret == 0){ /* Invalid frame, parse error, etc */
             if ((cberr = cbuf_new()) == NULL){
-                clicon_err(OE_XML, errno, "cbuf_new");
+                clixon_err(OE_XML, errno, "cbuf_new");
                 goto done;
             }
             if (clixon_xml2cbuf(cberr, xerr, 0, 0, NULL, -1, 0) < 0)
@@ -498,7 +498,7 @@ netconf_input_cb(int   s,
         }
         else {
             if ((xreq = xml_child_i_type(xtop, 0, CX_ELMNT)) == NULL){
-                clicon_err(OE_XML, EFAULT, "No xml req (shouldnt happen)");
+                clixon_err(OE_XML, EFAULT, "No xml req (shouldnt happen)");
                 goto done;
             }
             if (netconf_input_packet(h, xreq, yspec, &eof) < 0){
@@ -541,7 +541,7 @@ netconf_input_cb(int   s,
  * @retval    -1    Error
  */
 static int
-send_hello(clicon_handle h,
+send_hello(clixon_handle h,
            int           s,
            uint32_t      id)
 {
@@ -550,7 +550,7 @@ send_hello(clicon_handle h,
     netconf_framing_type framing;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_log(LOG_ERR, "%s: cbuf_new", __FUNCTION__);
+        clixon_log(h, LOG_ERR, "%s: cbuf_new", __FUNCTION__);
         goto done;
     }
     if (netconf_hello_server(h, cb, id) < 0)
@@ -573,7 +573,7 @@ send_hello(clicon_handle h,
  * @param[in]  h  Clixon handle
  */
 static int
-netconf_terminate(clicon_handle h)
+netconf_terminate(clixon_handle h)
 {
     yang_stmt  *yspec;
     cvec       *nsctx;
@@ -594,22 +594,21 @@ netconf_terminate(clicon_handle h)
         xml_free(x);
     xpath_optimize_exit();
     clixon_event_exit();
-    clicon_handle_exit(h);
+    clixon_handle_exit(h);
     clixon_err_exit();
-    clicon_log_exit();
+    clixon_log_exit();
     return 0;
 }
-
 
 /*! Setup signal handlers
  */
 static int
-netconf_signal_init (clicon_handle h)
+netconf_signal_init (clixon_handle h)
 {
     int retval = -1;
 
     if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
-        clicon_err(OE_UNIX, errno, "Setting DIGPIPE signal");
+        clixon_err(OE_UNIX, errno, "Setting DIGPIPE signal");
         goto done;
     }
     retval = 0;
@@ -621,7 +620,7 @@ static int
 timeout_fn(int s,
            void *arg)
 {
-    clicon_err(OE_EVENTS, ETIMEDOUT, "User request timeout");
+    clixon_err(OE_EVENTS, ETIMEDOUT, "User request timeout");
     return -1;
 }
 
@@ -631,7 +630,7 @@ timeout_fn(int s,
  * @param[in]  argv0  command line
  */
 static void
-usage(clicon_handle h,
+usage(clixon_handle h,
       char         *argv0)
 {
     fprintf(stderr, "usage:%s\n"
@@ -669,9 +668,9 @@ main(int    argc,
     int              c;
     char            *argv0 = argv[0];
     int              quiet = 0;
-    clicon_handle    h;
+    clixon_handle    h;
     char            *dir;
-    int              logdst = CLICON_LOG_SYSLOG;
+    int              logdst = CLIXON_LOG_SYSLOG;
     struct passwd   *pw;
     struct timeval   tv = {0,}; /* timeout */
     yang_stmt       *yspec = NULL;
@@ -687,14 +686,16 @@ main(int    argc,
     int              print_version = 0;
 
     /* Create handle */
-    if ((h = clicon_handle_init()) == NULL)
+    if ((h = clixon_handle_init()) == NULL)
         return -1;
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
-
+    if (clixon_log_init(h, __PROGRAM__, LOG_INFO, logdst) < 0)
+        return -1;
+    if (clixon_err_init(h) < 0)
+        return -1;
     /* Set username to clixon handle. Use in all communication to backend */
     if ((pw = getpwuid(getuid())) == NULL){
-        clicon_err(OE_UNIX, errno, "getpwuid");
+        clixon_err(OE_UNIX, errno, "getpwuid");
         goto done;
     }
     if (clicon_username_set(h, pw->pw_name) < 0)
@@ -723,11 +724,11 @@ main(int    argc,
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
          case 'l': /* Log destination: s|e|o */
-            if ((logdst = clicon_log_opt(optarg[0])) < 0)
+            if ((logdst = clixon_log_opt(optarg[0])) < 0)
                 usage(h, argv[0]);
-            if (logdst == CLICON_LOG_FILE &&
+            if (logdst == CLIXON_LOG_FILE &&
                 strlen(optarg)>1 &&
-                clicon_log_file(optarg+1) < 0)
+                clixon_log_file(optarg+1) < 0)
                 goto done;
              break;
         }
@@ -735,8 +736,8 @@ main(int    argc,
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
-    clixon_debug_init(dbg, NULL);
+    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
+    clixon_debug_init(h, dbg);
     yang_init(h);
 
     /* Find, read and parse configfile */
@@ -832,7 +833,7 @@ main(int    argc,
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
 
     if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
-        clicon_log_string_limit_set(sz);
+        clixon_log_string_limit_set(sz);
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
@@ -954,7 +955,7 @@ main(int    argc,
         retval = 0;
     clixon_exit_set(1); /* This is to disable resend mechanism in close-session */
     netconf_terminate(h);
-    clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
-    clicon_log(LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+    clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
+    clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
     return retval;
 }

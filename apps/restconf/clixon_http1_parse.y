@@ -78,7 +78,7 @@
 /* typecast macro */
 #define _HY ((clixon_http1_yacc *)_hy)
 
-#define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_http1_parsetext, _HY->hy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_http1_parsetext, _HY->hy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
@@ -124,7 +124,7 @@ void
 clixon_http1_parseerror(void *_hy,
                         char *s)
 {
-    clicon_err(OE_RESTCONF, 0, "%s on line %d: %s at or before: '%s'",
+    clixon_err(OE_RESTCONF, 0, "%s on line %d: %s at or before: '%s'",
                _HY->hy_name,
                _HY->hy_linenum,
                s,
@@ -153,7 +153,7 @@ http1_parse_query(clixon_http1_yacc *hy,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s: ?%s ", __FUNCTION__, query);
     if ((sd = restconf_stream_find(hy->hy_rc, 0)) == NULL){
-        clicon_err(OE_RESTCONF, 0, "stream 0 not found");
+        clixon_err(OE_RESTCONF, 0, "stream 0 not found");
         goto done;
     }
     if (uri_str2cvec(query, '&', '=', 1, &sd->sd_qvec) < 0)
@@ -172,11 +172,11 @@ http1_body(clixon_http1_yacc *hy,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s ", __FUNCTION__, body);
     if ((sd = restconf_stream_find(hy->hy_rc, 0)) == NULL){
-        clicon_err(OE_RESTCONF, 0, "stream 0 not found");
+        clixon_err(OE_RESTCONF, 0, "stream 0 not found");
         goto done;
     }
     if (cbuf_append_buf(sd->sd_indata, body, strlen(body)) < 0){
-        clicon_err(OE_RESTCONF, errno, "cbuf_append_buf");
+        clixon_err(OE_RESTCONF, errno, "cbuf_append_buf");
         goto done;
     }
     retval = 0;

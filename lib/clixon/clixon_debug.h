@@ -4,7 +4,7 @@
  
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
-  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC (Netgate)
 
   This file is part of CLIXON.
 
@@ -34,26 +34,27 @@
   ***** END LICENSE BLOCK *****
 
  *
- * XML default values
+ * Clixon debugging
  */
 
-#ifndef _CLIXON_XML_DEFAULT_H_
-#define _CLIXON_XML_DEFAULT_H_
+#ifndef _CLIXON_DEBUG_H_
+#define _CLIXON_DEBUG_H_
 
 /*
- * Types
+ * Constants
  */
-/* Declared in clixon_yang_internal */
-typedef enum yang_class yang_class;
+
+/* Debug-level masks */
+#define CLIXON_DBG_DEFAULT 1 /* Default logs */
+#define CLIXON_DBG_MSG     2 /* In/out messages and datastore reads */
+#define CLIXON_DBG_DETAIL  4 /* Details: traces, parse trees, etc */
+#define CLIXON_DBG_EXTRA   8 /* Extra Detailed logs */
 
 /*
  * Prototypes
  */
-int xml_default_recurse(cxobj *xn, int state);
-int xml_global_defaults(clixon_handle h, cxobj *xn, cvec *nsc, const char *xpath, yang_stmt *yspec, int state);
-int xml_defaults_nopresence(cxobj *xn, int purge);
-int xml_add_default_tag(cxobj *x, uint16_t flags);
-int xml_flag_state_default_value(cxobj *x, uint16_t flag);
-int xml_flag_default_value(cxobj *x, uint16_t flag);
+int clixon_debug(int dbglevel, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
+int clixon_debug_init(clixon_handle h, int dbglevel);
+int clixon_debug_get(void);
 
-#endif  /* _CLIXON_XML_DEFAULT_H_ */
+#endif  /* _CLIXON_DEBUG_H_ */

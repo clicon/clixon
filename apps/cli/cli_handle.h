@@ -43,18 +43,18 @@
  * Prototypes 
  * Internal prototypes. For exported functions see clixon_cli_api.h
  */
-int cli_parse_file(clicon_handle h,
+int cli_parse_file(clixon_handle h,
                    FILE *f,
                    char *name, /* just for errs */
                    parse_tree *pt,
                    cvec *globals);
 
-int cli_susp_hook(clicon_handle h, cligen_susp_cb_t *fn);
+int cli_susp_hook(clixon_handle h, cligen_susp_cb_t *fn);
 
-int cli_interrupt_hook(clicon_handle h, cligen_interrupt_cb_t *fn);
+int cli_interrupt_hook(clixon_handle h, cligen_interrupt_cb_t *fn);
 
-int cli_prompt_set(clicon_handle h, char *prompt);
+int cli_prompt_set(clixon_handle h, char *prompt);
 
-int cli_logsyntax_set(clicon_handle h, int status);
+int cli_logsyntax_set(clixon_handle h, int status);
 
 #endif  /* _CLI_HANDLE_H_ */

@@ -57,6 +57,7 @@
 #include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_xml.h"
 #include "clixon_json_parse.h"
 

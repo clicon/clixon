@@ -57,7 +57,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_backend_transaction.h"
@@ -258,7 +258,7 @@ transaction_print(FILE            *f,
  * @param[in] msg      Debug msg tag
  */
 int
-transaction_dbg(clicon_handle    h,
+transaction_dbg(clixon_handle    h,
                 int              dbglevel,
                 transaction_data th,
                 const char       *msg)
@@ -270,7 +270,7 @@ transaction_dbg(clicon_handle    h,
 
     td = (transaction_data_t *)th;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_CFG, errno, "cbuf_new");
+        clixon_err(OE_CFG, errno, "cbuf_new");
         goto done;
     }
     for (i=0; i<td->td_dlen; i++){
@@ -313,7 +313,7 @@ transaction_dbg(clicon_handle    h,
 /*! Log a transaction
  */
 int
-transaction_log(clicon_handle      h,
+transaction_log(clixon_handle      h,
                 transaction_data   th,
                 int                level,
                 const char        *op)
@@ -325,7 +325,7 @@ transaction_log(clicon_handle      h,
 
     td = (transaction_data_t *)th;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_CFG, errno, "cbuf_new");
+        clixon_err(OE_CFG, errno, "cbuf_new");
         goto done;
     }
     for (i=0; i<td->td_dlen; i++){
@@ -334,7 +334,7 @@ transaction_log(clicon_handle      h,
             goto done;
     }
     if (i)
-        clicon_log(level, "%s %" PRIu64 " %s del: %s",
+        clixon_log(h, level, "%s %" PRIu64 " %s del: %s",
                    __FUNCTION__,  td->td_id, op, cbuf_get(cb));
     cbuf_reset(cb);
     for (i=0; i<td->td_alen; i++){
@@ -343,7 +343,7 @@ transaction_log(clicon_handle      h,
             goto done;
     }
     if (i)
-        clicon_log(level, "%s %" PRIu64 " %s add: %s", __FUNCTION__, td->td_id, op, cbuf_get(cb));
+        clixon_log(h, level, "%s %" PRIu64 " %s add: %s", __FUNCTION__, td->td_id, op, cbuf_get(cb));
     cbuf_reset(cb);
     for (i=0; i<td->td_clen; i++){
         if (td->td_scvec){
@@ -356,7 +356,7 @@ transaction_log(clicon_handle      h,
             goto done;
     }
     if (i)
-        clicon_log(level, "%s %" PRIu64 " %s change: %s", __FUNCTION__, td->td_id, op, cbuf_get(cb));
+        clixon_log(h, level, "%s %" PRIu64 " %s change: %s", __FUNCTION__, td->td_id, op, cbuf_get(cb));
  done:
     if (cb)
         cbuf_free(cb);

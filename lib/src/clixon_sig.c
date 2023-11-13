@@ -52,8 +52,12 @@
 #include <cligen/cligen.h>
 
 /* clixon */
+#include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_sig.h"
 
 /*! Set a signal handler.
@@ -96,7 +100,7 @@ set_signal_flags(int     signo,
     sigemptyset(&snew.sa_mask);
     snew.sa_flags = flags;
     if (sigaction(signo, &snew, &sold) < 0){
-        clicon_err(OE_UNIX, errno, "sigaction");
+        clixon_err(OE_UNIX, errno, "sigaction");
         return -1;
     }
     if (oldhandler)
@@ -151,12 +155,12 @@ clixon_signal_save(sigset_t        *sigset,
     int i;
 
     if (sigprocmask(0, NULL, sigset) < 0){
-        clicon_err(OE_UNIX, errno, "sigprocmask");
+        clixon_err(OE_UNIX, errno, "sigprocmask");
         goto done;
     }
     for (i=1; i<32; i++){
         if (sigaction(i, NULL, &sigaction_vec[i]) < 0){
-            clicon_err(OE_UNIX, errno, "sigaction");
+            clixon_err(OE_UNIX, errno, "sigaction");
             goto done;
         }
     }
@@ -179,14 +183,14 @@ clixon_signal_restore(sigset_t        *sigset,
     int i;
 
     if (sigprocmask(SIG_SETMASK, sigset, NULL) < 0){
-        clicon_err(OE_UNIX, errno, "sigprocmask");
+        clixon_err(OE_UNIX, errno, "sigprocmask");
         goto done;
     }
     for (i=1; i<32; i++){
         if (i == SIGKILL || i == SIGSTOP)
             continue;
         if (sigaction(i, &sigaction_vec[i], NULL) < 0){
-            clicon_err(OE_UNIX, errno, "sigaction");
+            clixon_err(OE_UNIX, errno, "sigaction");
             goto done;
         }
     }
@@ -253,17 +257,17 @@ pidfile_zapold(pid_t pid)
 {
     int retval = -1;
 
-    clicon_log(LOG_NOTICE, "Killing old daemon with pid: %d", pid);
+    clixon_log(NULL, LOG_NOTICE, "Killing old daemon with pid: %d", pid);
     killpg(pid, SIGTERM);
     kill(pid, SIGTERM);
     /* Need to sleep process properly and then check again */
     if (usleep(100000) < 0){
-        clicon_err(OE_UNIX, errno, "usleep");
+        clixon_err(OE_UNIX, errno, "usleep");
         goto done;
     }
     if ((kill(pid, 0)) < 0){
         if (errno != ESRCH){
-            clicon_err(OE_DAEMON, errno, "Killing old daemon");
+            clixon_err(OE_DAEMON, errno, "Killing old daemon");
             goto done;
         }
     }
@@ -287,13 +291,13 @@ pidfile_write(char *pidfile)
     /* Here, there should be no old agent and no pidfile */
     if ((f = fopen(pidfile, "w")) == NULL){
         if (errno == EACCES)
-            clicon_err(OE_DAEMON, errno, "Creating pid-file %s (Try run as root?)", pidfile);
+            clixon_err(OE_DAEMON, errno, "Creating pid-file %s (Try run as root?)", pidfile);
         else
-            clicon_err(OE_DAEMON, errno, "Creating pid-file %s", pidfile);
+            clixon_err(OE_DAEMON, errno, "Creating pid-file %s", pidfile);
         goto done;
     }
     if ((retval = fprintf(f, "%ld\n", (long) getpid())) < 1){
-        clicon_err(OE_DAEMON, errno, "Could not write pid to %s", pidfile);
+        clixon_err(OE_DAEMON, errno, "Could not write pid to %s", pidfile);
         goto done;
     }
     clixon_debug(CLIXON_DBG_DEFAULT, "Opened pidfile %s with pid %d", pidfile, getpid());

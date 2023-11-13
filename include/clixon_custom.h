@@ -203,3 +203,10 @@
  * Plan is to remove this (undef:d) in next release
  */
 #undef RESTCONF_INLINE
+
+/*! Backward compatible with 6.5
+ *
+ * Note: many(most) not covered by this constant need to GREP
+ * This includes lots of clicon->clixon namechanges, see CHANGELOG for whole list
+ */
+#define COMPAT_6_5

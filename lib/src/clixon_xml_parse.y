@@ -72,11 +72,13 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
@@ -95,7 +97,7 @@ void
 clixon_xml_parseerror(void *_xy,
                       char *s)
 {
-    clicon_err(OE_XML, XMLPARSE_ERRNO, "xml_parse: line %d: %s: at or before: %s",
+    clixon_err(OE_XML, XMLPARSE_ERRNO, "xml_parse: line %d: %s: at or before: %s",
                _XY->xy_linenum,
                s,
                clixon_xml_parsetext);
@@ -183,7 +185,7 @@ xml_parse_version(clixon_xml_yacc *xy,
                   char            *ver)
 {
     if(strcmp(ver, "1.0")){
-        clicon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML version: %s expected 1.0", ver);
+        clixon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML version: %s expected 1.0", ver);
         free(ver);
         return -1;
     }
@@ -211,7 +213,7 @@ xml_parse_encoding(clixon_xml_yacc *xy,
                    char            *enc)
 {
     if(strcasecmp(enc, "UTF-8")){
-        clicon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML encoding: %s expected UTF-8", enc);
+        clixon_err(OE_XML, XMLPARSE_ERRNO, "Unsupported XML encoding: %s expected UTF-8", enc);
         free(enc);
         return -1;
     }
@@ -312,7 +314,7 @@ xml_parse_bslash(clixon_xml_yacc *xy,
     /* Check name or prerix unequal from begin-tag */
     if (clicon_strcmp(name0, name) ||
         clicon_strcmp(prefix0, prefix)){
-        clicon_err(OE_XML, XMLPARSE_ERRNO, "Sanity check failed: %s%s%s vs %s%s%s",
+        clixon_err(OE_XML, XMLPARSE_ERRNO, "Sanity check failed: %s%s%s vs %s%s%s",
                    prefix0?prefix0:"", prefix0?":":"", name0,
                    prefix?prefix:"", prefix?":":"", name);
         goto done;

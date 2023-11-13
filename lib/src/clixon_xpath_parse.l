@@ -73,6 +73,7 @@ There are some special lexical rules in https://www.w3.org/TR/xpath-10
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_string.h"
 #include "clixon_xml.h"
 #include "clixon_xpath_ctx.h"

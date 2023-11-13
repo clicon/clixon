@@ -311,7 +311,7 @@ int        yang_abs_schema_nodeid(yang_stmt *ys, char *schema_nodeid, yang_stmt 
 int        yang_desc_schema_nodeid(yang_stmt *yn, char *schema_nodeid, yang_stmt **yres);
 int        yang_config(yang_stmt *ys);
 int        yang_config_ancestor(yang_stmt *ys);
-int        yang_features(clicon_handle h, yang_stmt *yt);
+int        yang_features(clixon_handle h, yang_stmt *yt);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_stmt *yn, char *name, int *lastkey);
 int        yang_type_cache_regexp_set(yang_stmt *ytype, int rxmode, cvec *regexps);
@@ -322,10 +322,10 @@ int        yang_type_cache_set(yang_stmt *ys, yang_stmt *resolved, int options, 
 yang_stmt *yang_anydata_add(yang_stmt *yp, char *name);
 int        yang_extension_value(yang_stmt *ys, char *name, char *ns, int *exist, char **value);
 int        yang_sort_subelements(yang_stmt *ys);
-int        yang_init(clicon_handle h);
+int        yang_init(clixon_handle h);
 int        yang_single_child_type(yang_stmt *ys, enum rfc_6020 subkeyw);
 void      *yang_action_cb_get(yang_stmt *ys);
 int        yang_action_cb_add(yang_stmt *ys, void *rc);
-int        ys_populate_feature(clicon_handle h, yang_stmt *ys);
+int        ys_populate_feature(clixon_handle h, yang_stmt *ys);
 
 #endif  /* _CLIXON_YANG_H_ */

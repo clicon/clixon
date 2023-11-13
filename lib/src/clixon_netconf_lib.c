@@ -59,10 +59,11 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_string.h"
-#include "clixon_err.h"
 #include "clixon_handle.h"
-#include "clixon_yang.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
@@ -146,7 +147,7 @@ netconf_in_use(cbuf *cb,
         free(encstr);
     return retval;
  err:
-    clicon_err(OE_XML, errno, "cprintf");
+    clixon_err(OE_XML, errno, "cprintf");
     goto done;
 }
 
@@ -169,7 +170,7 @@ netconf_invalid_value_xml(cxobj **xret,
     char  *encstr = NULL;
     
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -268,7 +269,7 @@ netconf_too_big(cbuf *cb,
         free(encstr);
     return retval;
  err:
-    clicon_err(OE_XML, errno, "cprintf");
+    clixon_err(OE_XML, errno, "cprintf");
     goto done;
 }
 
@@ -293,7 +294,7 @@ netconf_missing_attribute_xml(cxobj **xret,
     char  *encstr = NULL;
 
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -409,7 +410,7 @@ netconf_bad_attribute_xml(cxobj **xret,
     char  *encstr = NULL;
 
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -481,7 +482,7 @@ netconf_unknown_attribute(cbuf *cb,
         free(encstr);
     return retval;
  err:
-    clicon_err(OE_XML, errno, "cprintf");
+    clixon_err(OE_XML, errno, "cprintf");
     goto done;
 }
 
@@ -508,7 +509,7 @@ netconf_common_xml(cxobj **xret,
     char  *encstr = NULL;
     
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -780,7 +781,7 @@ netconf_access_denied_xml(cxobj **xret,
     char  *encstr = NULL;
 
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -850,7 +851,7 @@ netconf_lock_denied(cbuf *cb,
         free(encstr);
     return retval;
  err:
-    clicon_err(OE_XML, errno, "cprintf");
+    clixon_err(OE_XML, errno, "cprintf");
     goto done;
 }
 
@@ -891,7 +892,7 @@ netconf_resource_denied(cbuf *cb,
         free(encstr);
     return retval;
  err:
-    clicon_err(OE_XML, errno, "cprintf");
+    clixon_err(OE_XML, errno, "cprintf");
     goto done;
 }
 
@@ -933,7 +934,7 @@ netconf_rollback_failed(cbuf *cb,
         free(encstr);
     return retval;
  err:
-    clicon_err(OE_XML, errno, "cprintf");
+    clixon_err(OE_XML, errno, "cprintf");
     goto done;
 }
 
@@ -974,7 +975,7 @@ netconf_data_exists(cbuf      *cb,
         free(encstr);
     return retval;
  err:
-    clicon_err(OE_XML, errno, "cprintf");
+    clixon_err(OE_XML, errno, "cprintf");
     goto done;
 }
 
@@ -1025,7 +1026,7 @@ netconf_data_missing_xml(cxobj **xret,
     cxobj *xerr;
 
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -1084,7 +1085,7 @@ netconf_missing_choice_xml(cxobj **xret,
     char  *encpath = NULL;
 
     if (xret == NULL || name == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret or name is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret or name is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -1158,7 +1159,7 @@ netconf_operation_not_supported_xml(cxobj **xret,
     char  *encstr = NULL;
     
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -1276,7 +1277,7 @@ netconf_operation_failed_xml(cxobj **xret,
     char  *encstr = NULL;
     
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -1365,7 +1366,7 @@ netconf_malformed_message_xml(cxobj **xret,
     char  *encstr = NULL;
 
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -1451,7 +1452,7 @@ netconf_data_not_unique_xml(cxobj **xret,
     char  *encpath = NULL;
 
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -1522,7 +1523,7 @@ netconf_minmax_elements_xml(cxobj **xret,
     char  *encpath = NULL;
     
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -1578,7 +1579,7 @@ netconf_trymerge(cxobj       *x,
     cxobj *xc;
     
     if (xret == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -1621,13 +1622,13 @@ netconf_trymerge(cxobj       *x,
  * @see netconf_module_load  that is called later
  */
 int
-netconf_module_features(clicon_handle h)
+netconf_module_features(clixon_handle h)
 {
     int        retval = -1;
     cxobj     *xc;
 
     if ((xc = clicon_conf_xml(h)) == NULL){
-        clicon_err(OE_CFG, ENOENT, "Clicon configuration not loaded");
+        clixon_err(OE_CFG, ENOENT, "Clicon configuration not loaded");
         goto done; 
     }
     /* Enable features (hardcoded here) */
@@ -1653,7 +1654,7 @@ netconf_module_features(clicon_handle h)
  * @see netconf_module_feature  should be called before any yang modules
  */
 int
-netconf_module_load(clicon_handle h)
+netconf_module_load(clixon_handle h)
 {
     int              retval = -1;
     yang_stmt       *yspec;
@@ -1747,61 +1748,6 @@ netconf_db_find(cxobj *xn,
     return db;
 }
 
-/*! Generate netconf error msg to cbuf using callback to use in string printout or logs
- *
- * If no callback is registered, a default error message is genereated
- * @param[in]     xerr    Netconf error message on the level: <rpc-error>
- * @param[out]    cberr   Translation from netconf err to cbuf.
- * @retval        0       OK, with cberr set
- * @retval       -1       Error
- * @code
- *     cbuf *cb = NULL;
- *     if ((cb = cbuf_new()) ==NULL){
- *        err;
- *     if (netconf_err2cb(h, xerr, cb) < 0)
- *        err;
- *     printf("%s", cbuf_get(cb));
- *     cbuf_free(cb);
- * @endcode
- * @see clixon_netconf_error_fn
- */
-int
-netconf_err2cb(clicon_handle h,
-               cxobj        *xerr,
-               cbuf         *cberr)
-{
-    int    retval = -1;
-    cxobj *x;
-    size_t len;
-
-    // XXX: some calls are <rpc-reply><rpc-error>, change calls instead
-    if (strcmp(xml_name(xerr), "rpc-error") != 0)
-        xerr = xml_child_i_type(xerr, 0, CX_ELMNT);
-    len = cbuf_len(cberr);
-    if (clixon_plugin_netconf_errmsg_all(h, xerr, cberr) < 0)
-        goto done;
-    if (cbuf_len(cberr) == len){ /* Same as on-entry, use default */
-        if ((x = xml_find_type(xerr, NULL, "error-type", CX_ELMNT)) != NULL)
-            cprintf(cberr, "%s ", xml_body(x));
-        if ((x = xml_find_type(xerr, NULL, "error-tag", CX_ELMNT)) != NULL)
-            cprintf(cberr, "%s ", xml_body(x));
-        if ((x = xml_find_type(xerr, NULL, "error-message", CX_ELMNT)) != NULL)
-            cprintf(cberr, "%s ", xml_body(x));
-        if ((x = xml_find_type(xerr, NULL, "error-info", CX_ELMNT)) != NULL &&
-            xml_child_nr(x) > 0){
-            if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
-                goto done;
-        }
-        if ((x = xml_find_type(xerr, NULL, "error-app-tag", CX_ELMNT)) != NULL)
-            cprintf(cberr, ": %s ", xml_body(x));
-        if ((x = xml_find_type(xerr, NULL, "error-path", CX_ELMNT)) != NULL)
-            cprintf(cberr, ": %s ", xml_body(x));
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
 /* See RFC 8040 4.8.1
  * @see netconf_content_str2int
  */
@@ -1848,7 +1794,7 @@ netconf_content_int2str(netconf_content nr)
  *   urn:ietf:params:netconf:capability:notification:1.0 (RFC5277)
  */
 int
-netconf_capabilites(clicon_handle h,
+netconf_capabilites(clixon_handle h,
                     cbuf         *cb)
 {
     int        retval = -1;
@@ -1942,7 +1888,7 @@ netconf_capabilites(clicon_handle h,
  * @see netconf_module_load
  */
 int
-netconf_hello_server(clicon_handle h,
+netconf_hello_server(clixon_handle h,
                      cbuf         *cb,
                      uint32_t      session_id)
 {
@@ -1959,56 +1905,6 @@ netconf_hello_server(clicon_handle h,
     return retval;
 }
 
-/*! Generate and print textual error log from Netconf error message
- *
- * Get a text error message from netconf error message and generate error on the form:
- *   <msg>: "<arg>": <netconf-error>   or   <msg>: <netconf-error>
- * @param[in]  h       Clixon handle
- * @param[in]  fn      Inline function name (when called from clicon_err() macro)
- * @param[in]  line    Inline file line number (when called from clicon_err() macro)
- * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
- * @param[in]  format  Format string 
- * @param[in]  arg     String argument to format (optional)
- * @retval     0       OK
- * @retval    -1       Error
- * @see netconf_err2cb
- * ßee clixon_netconf_error macro
- */
-int
-clixon_netconf_error_fn(clicon_handle h,
-                        const char   *fn,
-                        const int     line,
-                        cxobj        *xerr,
-                        const char   *msg,
-                        const char   *arg)
-{
-    int    retval = -1;
-    cbuf  *cb = NULL;
-
-    if ((cb = cbuf_new()) ==NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
-        goto done;
-    }
-    if (msg){
-        cprintf(cb, "%s", msg);
-        if (arg)
-            cprintf(cb, " \"%s\" ", arg);
-        
-        cprintf(cb, ": ");
-    }
-    if (netconf_err2cb(h, xerr, cb) < 0)
-        goto done;
-#if 0 /* More verbose output for debugging */
-    clicon_log(LOG_ERR, "%s: %d: %s", fn, line, cbuf_get(cb));
-#else
-    clicon_log(LOG_ERR, "%s", cbuf_get(cb));
-#endif
-    retval = 0;
- done:
-    if (cb)
-        cbuf_free(cb);
-    return retval;
-}
 
 /*! Add internal error info to existing netconf error message by rewriting
  *
@@ -2087,14 +1983,14 @@ netconf_parse_uint32(char     *name,
     char  *reason = NULL;
 
     if (valstr == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "valstr is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "valstr is NULL");
         goto done;
     }
     if (defaultstr && strcmp(valstr, defaultstr) == 0)
         *value = defaultvalue;
     else {
         if ((ret = parse_uint32(valstr, value, &reason)) < 0){
-            clicon_err(OE_XML, errno, "parse_uint32");
+            clixon_err(OE_XML, errno, "parse_uint32");
             goto done;
         }
         if (ret == 0){
@@ -2131,14 +2027,14 @@ netconf_parse_uint32_xml(char     *name,
     char  *reason = NULL;
 
     if (valstr == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "valstr is NULL");
+        clixon_err(OE_NETCONF, EINVAL, "valstr is NULL");
         goto done;
     }
     if (defaultstr && strcmp(valstr, defaultstr) == 0)
         *value = defaultvalue;
     else {
         if ((ret = parse_uint32(valstr, value, &reason)) < 0){
-            clicon_err(OE_XML, errno, "parse_uint32");
+            clixon_err(OE_XML, errno, "parse_uint32");
             goto done;
         }
         if (ret == 0){
@@ -2164,7 +2060,7 @@ netconf_parse_uint32_xml(char     *name,
  * @retval     msgid  Next message id
  */
 int
-netconf_message_id_next(clicon_handle h)
+netconf_message_id_next(clixon_handle h)
 {
     int msgid;
     
@@ -2200,7 +2096,7 @@ netconf_framing_preamble(netconf_framing_type framing,
         break;
     case NETCONF_SSH_CHUNKED:
         if ((body = strdup(cbuf_get(cb))) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
         cbuf_reset(cb);
@@ -2269,7 +2165,7 @@ netconf_output(int   s,
         if (errno == EPIPE)
             clixon_debug(CLIXON_DBG_DEFAULT, "%s write err SIGPIPE", __FUNCTION__);
         else
-            clicon_log(LOG_ERR, "%s: write: %s", __FUNCTION__, strerror(errno));
+            clixon_log(NULL, LOG_ERR, "%s: write: %s", __FUNCTION__, strerror(errno));
         goto done;
     }
     retval = 0;
@@ -2356,7 +2252,7 @@ netconf_input_chunked_framing(char    ch,
             (*state)++;
             break;
         }
-        clicon_err(OE_NETCONF, 0, "NETCONF framing error chunk-start: expected \\n but received %c (state:%d)", ch, *state);
+        clixon_err(OE_NETCONF, 0, "NETCONF framing error chunk-start: expected \\n but received %c (state:%d)", ch, *state);
         goto err;
         break;
     case 1:
@@ -2365,7 +2261,7 @@ netconf_input_chunked_framing(char    ch,
             (*state)++;
             break;
         }
-        clicon_err(OE_NETCONF, 0, "NETCONF framing error: expected # but received %c (state:%d)", ch, *state);
+        clixon_err(OE_NETCONF, 0, "NETCONF framing error: expected # but received %c (state:%d)", ch, *state);
         goto err;
         break;
     case 2:
@@ -2379,7 +2275,7 @@ netconf_input_chunked_framing(char    ch,
             *size = ch-'0';
             break;
         }
-        clicon_err(OE_NETCONF, 0, "NETCONF framing error chunk-start: expected 1-9 or # but received %c (state:%d)", ch, *state);
+        clixon_err(OE_NETCONF, 0, "NETCONF framing error chunk-start: expected 1-9 or # but received %c (state:%d)", ch, *state);
         goto err;
         break;
     case 3:
@@ -2391,7 +2287,7 @@ netconf_input_chunked_framing(char    ch,
             (*state)++;
             break;
         }
-        clicon_err(OE_NETCONF, 0, "NETCONF framing error chunk-size: expected 0-9 or \\n but received %c (state:%d)", ch, *state);
+        clixon_err(OE_NETCONF, 0, "NETCONF framing error chunk-size: expected 0-9 or \\n but received %c (state:%d)", ch, *state);
         goto err;
         break;
     case 4:
@@ -2404,7 +2300,7 @@ netconf_input_chunked_framing(char    ch,
             (*state)++;
             break;
         }
-        clicon_err(OE_NETCONF, 0, "NETCONF framing error chunk-end: expected \\n but received %c (state:%d)", ch, *state);
+        clixon_err(OE_NETCONF, 0, "NETCONF framing error chunk-end: expected \\n but received %c (state:%d)", ch, *state);
         goto err;
         break;
     case 6:
@@ -2417,7 +2313,7 @@ netconf_input_chunked_framing(char    ch,
             *size = ch-'0';
             break;
         }
-        clicon_err(OE_NETCONF, 0, "NETCONF framing error: expected # but received %c (state:%d)", ch, *state);
+        clixon_err(OE_NETCONF, 0, "NETCONF framing error: expected # but received %c (state:%d)", ch, *state);
         goto err;
         break;
     case 7:
@@ -2426,11 +2322,11 @@ netconf_input_chunked_framing(char    ch,
             retval = 2; /* end of frame */
             break;
         }
-        clicon_err(OE_NETCONF, 0, "NETCONF framing error chunk-end: expected \\n but received %c (state:%d)", ch, *state);
+        clixon_err(OE_NETCONF, 0, "NETCONF framing error chunk-end: expected \\n but received %c (state:%d)", ch, *state);
         goto err;
         break;
     default:
-        clicon_err(OE_NETCONF, 0, "NETCONF framing error %c , invalid state:%d", ch, *state);
+        clixon_err(OE_NETCONF, 0, "NETCONF framing error %c , invalid state:%d", ch, *state);
         goto err;
         break;
     }
@@ -2442,3 +2338,125 @@ netconf_input_chunked_framing(char    ch,
     goto done;
 }
 
+/*! Generate netconf error msg to cbuf using callback to use in string printout or logs
+ *
+ * If no callback is registered, a default error message is genereated
+ * @param[in]     xerr    Netconf error message on the level: <rpc-error>
+ * @param[out]    cberr   Translation from netconf err to cbuf.
+ * @retval        0       OK, with cberr set
+ * @retval       -1       Error
+ * @code
+ *     cbuf *cb = NULL;
+ *     if ((cb = cbuf_new()) ==NULL){
+ *        err;
+ *     if (netconf_err2cb(h, xerr, cb) < 0)
+ *        err;
+ *     printf("%s", cbuf_get(cb));
+ *     cbuf_free(cb);
+ * @endcode
+ * @see clixon_netconf_error_fn
+ */
+int
+netconf_err2cb(clixon_handle h,
+               cxobj        *xerr,
+               cbuf         *cberr)
+{
+    int    retval = -1;
+    cxobj *x;
+    size_t len;
+
+    // XXX: some calls are <rpc-reply><rpc-error>, change calls instead
+    if (strcmp(xml_name(xerr), "rpc-error") != 0)
+        xerr = xml_child_i_type(xerr, 0, CX_ELMNT);
+    len = cbuf_len(cberr);
+    if (clixon_plugin_netconf_errmsg_all(h, xerr, cberr) < 0)
+        goto done;
+    if (cbuf_len(cberr) == len){ /* Same as on-entry, use default */
+        if ((x=xpath_first(xerr, NULL, "//error-type"))!=NULL)
+            cprintf(cberr, "%s ", xml_body(x));
+        if ((x=xpath_first(xerr, NULL, "//error-tag"))!=NULL)
+            cprintf(cberr, "%s ", xml_body(x));
+        if ((x=xpath_first(xerr, NULL, "//error-message"))!=NULL)
+            cprintf(cberr, "%s ", xml_body(x));
+        if ((x=xpath_first(xerr, NULL, "//error-info")) != NULL &&
+            xml_child_nr(x) > 0){
+            if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
+                goto done;
+        }
+        if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
+            cprintf(cberr, ": %s ", xml_body(x));
+        if ((x=xpath_first(xerr, NULL, "//error-path"))!=NULL)
+            cprintf(cberr, ": %s ", xml_body(x));
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Generate and print textual error log from Netconf error message
+ *
+ * Get a text error message from netconf error message and generate error logmsg:
+ *   <msg>: "<arg>": <netconf-error>   or   <msg>: <netconf-error>
+ * 
+ * @param[in]  h       Clixon handle
+ * @param[in]  fn      Inline function name (when called from clixon_err() macro)
+ * @param[in]  line    Inline file line number (when called from clixon_err() macro)
+ * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
+ * @param[in]  format  Format string 
+ * @param[in]  arg     String argument to format (optional)
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see netconf_err2cb
+ * @see clixon_netconf_error macro
+ */
+int
+clixon_err_netconf_fn(clixon_handle h,
+                      const char   *fn,
+                      const int     line,
+                      int           category,
+                      int           suberr,
+                      cxobj        *xerr,
+                      const char   *format, ...)
+{
+    int     retval = -1;
+    va_list args;
+    int     len;
+    char   *msg    = NULL;
+    cbuf   *cb = NULL;
+    
+    /* first round: compute length of error message */
+    va_start(args, format);
+    len = vsnprintf(NULL, 0, format, args);
+    va_end(args);
+
+    /* allocate a message string exactly fitting the message length */
+    if ((msg = malloc(len+1)) == NULL){
+        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
+        goto done;
+    }
+    /* second round: compute write message from format and args */
+    va_start(args, format);
+    if (vsnprintf(msg, len+1, format, args) < 0){
+        va_end(args);
+        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
+        goto done;
+    }
+    va_end(args);
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "%s: ", msg);
+    /* Translate netconf error to string */
+    if (netconf_err2cb(h, xerr, cb) < 0)
+        goto done;
+    if (clixon_err_args(h, fn, line, category, suberr, cbuf_get(cb)) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (msg)
+        free(msg);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}

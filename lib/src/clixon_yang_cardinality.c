@@ -59,7 +59,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
@@ -483,7 +483,7 @@ static int _yc_exist[Y_SPEC] = {0,};
  * @note always accept UNKNOWN (due to extension)
  */
 int
-yang_cardinality(clicon_handle h,
+yang_cardinality(clixon_handle h,
                  yang_stmt    *yt,
                  char         *modname)
 {
@@ -511,7 +511,7 @@ yang_cardinality(clicon_handle h,
             continue;
         /* Find entry in yang cardinality table from parent/child keyword pair */
         if ((yc = _yc_search[pk][ck]) == NULL){
-            clicon_err(OE_YANG, 0, "%s: \"%s\"(%s) is child of \"%s\"(%s), but should not be",
+            clixon_err(OE_YANG, 0, "%s: \"%s\"(%s) is child of \"%s\"(%s), but should not be",
                        modname,
                        yang_key2str(ck),
                        yang_argument_get(ys),
@@ -520,7 +520,7 @@ yang_cardinality(clicon_handle h,
             goto done;
         }
         if (order > yc->yc_order){
-            clicon_err(OE_YANG, 0, "%s: yang node \"%s\"(%s) which is child of \"%s\"(%s) is not in correct order (should not be after \"%s\"(%s))",
+            clixon_err(OE_YANG, 0, "%s: yang node \"%s\"(%s) which is child of \"%s\"(%s) is not in correct order (should not be after \"%s\"(%s))",
                        modname,
                        yang_key2str(ck),
                        yang_argument_get(ys),
@@ -541,13 +541,13 @@ yang_cardinality(clicon_handle h,
             continue;
         if (yc->yc_min  &&
             yang_find(yt, yc->yc_child, NULL) == NULL){
-            clicon_err(OE_YANG, 0, "%s: \"%s\" is missing but is mandatory child of \"%s\"",
+            clixon_err(OE_YANG, 0, "%s: \"%s\" is missing but is mandatory child of \"%s\"",
                        modname, yang_key2str(yc->yc_child), yang_key2str(pk));
             goto done;
         }
         if (yc->yc_max<NMAX &&
             (nr = yang_match(yt, yc->yc_child, NULL)) > yc->yc_max){
-            clicon_err(OE_YANG, 0, "%s: \"%s\" has %d children of type \"%s\", but only %d allowed",
+            clixon_err(OE_YANG, 0, "%s: \"%s\" has %d children of type \"%s\", but only %d allowed",
                        modname,
                        yang_key2str(pk),
                        nr,
@@ -580,7 +580,7 @@ yang_cardinality(clicon_handle h,
  * @retval    -1       Error
  */
 int
-yang_cardinality_interval(clicon_handle h,
+yang_cardinality_interval(clixon_handle h,
                           enum rfc_6020 parent_key,
                           enum rfc_6020 child_key,
                           int          *min,
@@ -590,7 +590,7 @@ yang_cardinality_interval(clicon_handle h,
     const struct ycard *ycplist; /* ycard parent table*/
 
     if ((ycplist = _yc_search[parent_key][child_key]) == NULL){
-        clicon_err(OE_YANG, EINVAL, "keys %d %d do not have cardinality",
+        clixon_err(OE_YANG, EINVAL, "keys %d %d do not have cardinality",
                    parent_key, child_key);
         goto done;
     }
@@ -606,7 +606,7 @@ yang_cardinality_interval(clicon_handle h,
  * @param[in] h      Clixon handle
  */
 int
-yang_cardinality_init(clicon_handle h)
+yang_cardinality_init(clixon_handle h)
 {
      const struct ycard *yc;
 

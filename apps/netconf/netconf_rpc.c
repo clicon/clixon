@@ -67,7 +67,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "netconf_filter.h"
@@ -80,7 +80,7 @@
  */
 
 static int
-netconf_get_config_subtree(clicon_handle h,
+netconf_get_config_subtree(clixon_handle h,
                            cxobj        *xfilter,
                            cxobj       **xret)
 {
@@ -158,7 +158,7 @@ ok:
      <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>
  */
 static int
-netconf_get_config(clicon_handle h,
+netconf_get_config(clixon_handle h,
                    cxobj        *xn,
                    cxobj       **xret)
 {
@@ -321,7 +321,7 @@ CLIXON addition:
  * @note erropt, testopt only supports default
  */
 static int
-netconf_edit_config(clicon_handle h,
+netconf_edit_config(clixon_handle h,
                     cxobj        *xn,
                     cxobj       **xret)
 {
@@ -371,7 +371,7 @@ netconf_edit_config(clicon_handle h,
  *    </get></rpc>]]>]]>
  */
 static int
-netconf_get(clicon_handle h,
+netconf_get(clixon_handle h,
             cxobj        *xn,
             cxobj       **xret)
 {
@@ -453,7 +453,7 @@ netconf_notification_cb(int   s,
     cbuf              *cb = NULL;
     cxobj             *xn = NULL; /* event xml */
     cxobj             *xt = NULL; /* top xml */
-    clicon_handle      h = (clicon_handle)arg;
+    clixon_handle      h = (clixon_handle)arg;
     yang_stmt         *yspec = NULL;
     cvec              *nsc = NULL;
     int                ret;
@@ -465,7 +465,7 @@ netconf_notification_cb(int   s,
         goto done;
     /* handle close from remote end: this will exit the client */
     if (eof){
-        clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
+        clixon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
         close(s);
         errno = ESHUTDOWN;
         clixon_event_unreg_fd(s, netconf_notification_cb);
@@ -475,7 +475,7 @@ netconf_notification_cb(int   s,
     if ((ret = clicon_msg_decode(reply, yspec, NULL, &xt, &xerr)) < 0)
         goto done;
     if (ret == 0){ /* XXX use xerr */
-        clicon_err(OE_NETCONF, EFAULT, "Notification malformed");
+        clixon_err(OE_NETCONF, EFAULT, "Notification malformed");
         goto done;
     }
     if ((nsc = xml_nsctx_init(NULL, NETCONF_NOTIFICATION_NAMESPACE)) == NULL)
@@ -484,7 +484,7 @@ netconf_notification_cb(int   s,
         goto ok;
     /* create netconf message */
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     if (clixon_xml2cbuf(cb, xn, 0, 0, NULL, -1, 0) < 0)
@@ -494,7 +494,7 @@ netconf_notification_cb(int   s,
         goto done;
     }
     if (netconf_output(1, cb, "notification") < 0){
-        clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
+        clixon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
         close(s);
         errno = ESHUTDOWN;
         clixon_event_unreg_fd(s, netconf_notification_cb);
@@ -532,7 +532,7 @@ netconf_notification_cb(int   s,
  * @see netconf_notification_cb for asynchronous stream notifications
  */
 static int
-netconf_create_subscription(clicon_handle h,
+netconf_create_subscription(clixon_handle h,
                             cxobj        *xn,
                             cxobj       **xret)
 {
@@ -585,7 +585,7 @@ netconf_create_subscription(clicon_handle h,
  * @see netconf_input_packet  Assume bind and validation made there
  */
 static int
-netconf_application_rpc(clicon_handle h,
+netconf_application_rpc(clixon_handle h,
                         cxobj        *xn,
                         cxobj       **xret)
 {
@@ -603,17 +603,17 @@ netconf_application_rpc(clicon_handle h,
 
     /* First check system / netconf RPC:s */
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, 0, "cbuf_new");
+        clixon_err(OE_UNIX, 0, "cbuf_new");
         goto done;
     }
     if ((cbret = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, 0, "cbuf_new");
+        clixon_err(OE_UNIX, 0, "cbuf_new");
         goto done;
     }
     /* Find yang rpc statement, return yang rpc statement if found 
        Check application RPC */
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
     cbuf_reset(cb);
@@ -666,7 +666,7 @@ netconf_application_rpc(clicon_handle h,
             if (ret == 0){
                 if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
                     goto done;
-                clicon_log(LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
+                clixon_log(h, LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
                 goto ok;
             }
         }
@@ -697,7 +697,7 @@ netconf_application_rpc(clicon_handle h,
  * @retval    -1       Error, fatal
  */
 int
-netconf_rpc_dispatch(clicon_handle h,
+netconf_rpc_dispatch(clixon_handle h,
                      cxobj        *xn,
                      cxobj       **xret,
                      int          *eof)

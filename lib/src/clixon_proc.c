@@ -110,12 +110,13 @@
 
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_uid.h"
 #include "clixon_event.h"
@@ -159,7 +160,7 @@ struct process_entry_t {
 };
 
 /* Forward declaration */
-static int clixon_process_sched_register(clicon_handle h, int delay);
+static int clixon_process_sched_register(clixon_handle h, int delay);
 static int clixon_process_delete_only(process_entry_t *pe);
 
 static void
@@ -170,6 +171,7 @@ clixon_proc_sigint(int sig)
 
 /*! Fork a child, exec a child and setup socket to child and return to caller
  *
+ * @param[in]  h          Clixon handle
  * @param[in]  argv       NULL-terminated Argument vector
  * @param[in]  sock_flags Socket type/flags, typically SOCK_DGRAM or SOCK_STREAM, see
  * @param[out] pid        Process-id of child
@@ -180,10 +182,11 @@ clixon_proc_sigint(int sig)
  * @see for flags usage see man sockerpair(2)
  */
 int
-clixon_proc_socket(char **argv,
-                   int    sock_flags,
-                   pid_t *pid,
-                   int   *sock)
+clixon_proc_socket(clixon_handle h,
+                   char        **argv,
+                   int           sock_flags,
+                   pid_t        *pid,
+                   int          *sock)
 {
     int      retval = -1;
     int      sp[2] = {-1, -1};
@@ -195,25 +198,25 @@ clixon_proc_socket(char **argv,
     char    *flattened;
 
     if (argv == NULL){
-        clicon_err(OE_UNIX, EINVAL, "argv is NULL");
+        clixon_err(OE_UNIX, EINVAL, "argv is NULL");
         goto done;
     }
     if (argv[0] == NULL){
-        clicon_err(OE_UNIX, EINVAL, "argv[0] is NULL");
+        clixon_err(OE_UNIX, EINVAL, "argv[0] is NULL");
 	goto done;
     }
 
     for (argc = 0; argv[argc] != NULL; ++argc)
          ;
     if ((flattened = clicon_strjoin(argc, argv, "', '")) == NULL){
-        clicon_err(OE_UNIX, ENOMEM, "clicon_strjoin");
+        clixon_err(OE_UNIX, ENOMEM, "clicon_strjoin");
         goto done;
     }
-    clicon_log(LOG_INFO, "%s '%s'", __FUNCTION__, flattened);
+    clixon_log(h, LOG_INFO, "%s '%s'", __FUNCTION__, flattened);
     free(flattened);
 
     if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
-        clicon_err(OE_UNIX, errno, "socketpair");
+        clixon_err(OE_UNIX, errno, "socketpair");
         goto done;
     }
 
@@ -221,7 +224,7 @@ clixon_proc_socket(char **argv,
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);
     sig++;
     if ((child = fork()) < 0) {
-        clicon_err(OE_UNIX, errno, "fork");
+        clixon_err(OE_UNIX, errno, "fork");
         goto done;
     }
     if (child == 0) {   /* Child */
@@ -232,17 +235,17 @@ clixon_proc_socket(char **argv,
         close(sp[0]);
         close(0);
         if (dup2(sp[1], STDIN_FILENO) < 0){
-            clicon_err(OE_UNIX, errno, "dup2(STDIN)");
+            clixon_err(OE_UNIX, errno, "dup2(STDIN)");
             return -1;
         }
         close(1);
         if (dup2(sp[1], STDOUT_FILENO) < 0){
-            clicon_err(OE_UNIX, errno, "dup2(STDOUT)");
+            clixon_err(OE_UNIX, errno, "dup2(STDOUT)");
             return -1;
         }
         close(sp[1]);
         if (execvp(argv[0], argv) < 0){
-            clicon_err(OE_UNIX, errno, "execvp(%s)", argv[0]);
+            clixon_err(OE_UNIX, errno, "execvp(%s)", argv[0]);
             return -1;
         }
         exit(-1);        /* Shouldnt reach here */
@@ -288,6 +291,7 @@ clixon_proc_socket_close(pid_t pid,
 
 /*! Fork and exec a sub-process, let it run and return pid
  *
+ * @param[in]  h     Clixon handle
  * @param[in]  argv  NULL-terminated Argument vector
  * @param[in]  netns Network namespace (or NULL)
  * @param[in]  uid   User-id or -1 to keep existing
@@ -297,12 +301,13 @@ clixon_proc_socket_close(pid_t pid,
  * @retval    -1     Error.
  */
 static int
-clixon_proc_background(char       **argv,
-                       const char  *netns,
-                       uid_t        uid,
-                       gid_t        gid,
-                       int          fdkeep,
-                       pid_t       *pid0)
+clixon_proc_background(clixon_handle h,
+                       char        **argv,
+                       const char   *netns,
+                       uid_t         uid,
+                       gid_t         gid,
+                       int           fdkeep,
+                       pid_t        *pid0)
 {
     int           retval = -1;
     pid_t         child = 0;
@@ -316,26 +321,26 @@ clixon_proc_background(char       **argv,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (argv == NULL){
-        clicon_err(OE_UNIX, EINVAL, "argv is NULL");
+        clixon_err(OE_UNIX, EINVAL, "argv is NULL");
         goto quit;
     }
     if (argv[0] == NULL){
-        clicon_err(OE_UNIX, EINVAL, "argv[0] is NULL");
+        clixon_err(OE_UNIX, EINVAL, "argv[0] is NULL");
 	goto quit;
     }
 
     for (argc = 0; argv[argc] != NULL; ++argc)
          ;
     if ((flattened = clicon_strjoin(argc, argv, "', '")) == NULL){
-        clicon_err(OE_UNIX, ENOMEM, "clicon_strjoin");
+        clixon_err(OE_UNIX, ENOMEM, "clicon_strjoin");
         goto quit;
     }
-    clicon_log(LOG_INFO, "%s '%s'", __FUNCTION__, flattened);
+    clixon_log(h, LOG_INFO, "%s '%s'", __FUNCTION__, flattened);
     free(flattened);
 
     /* Sanity check: program exists */
     if (stat(argv[0], &fstat) < 0) {
-        clicon_err(OE_FATAL, errno, "%s", argv[0]);
+        clixon_err(OE_FATAL, errno, "%s", argv[0]);
         goto quit;
     }
     /* Before here call quit on error */
@@ -343,7 +348,7 @@ clixon_proc_background(char       **argv,
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);
     /* Now call done on error */
     if ((child = fork()) < 0) {
-        clicon_err(OE_UNIX, errno, "fork");
+        clixon_err(OE_UNIX, errno, "fork");
         goto done;
     }
     if (child == 0)  { /* Child */
@@ -355,7 +360,7 @@ clixon_proc_background(char       **argv,
         clicon_signal_unblock(0);
         signal(SIGTSTP, SIG_IGN);
         if (chdir("/") < 0){
-            clicon_err(OE_UNIX, errno, "chdir");
+            clixon_err(OE_UNIX, errno, "chdir");
             exit(1);
         }
         /* Close open descriptors */
@@ -374,23 +379,23 @@ clixon_proc_background(char       **argv,
             clixon_debug(CLIXON_DBG_DEFAULT, "%s nsfile:%s", __FUNCTION__, nsfile);
             /* Change network namespace */
             if ((nsfd = open(nsfile, O_RDONLY | O_CLOEXEC)) < 0){
-                clicon_err(OE_UNIX, errno, "open");
+                clixon_err(OE_UNIX, errno, "open");
                 exit(1);
             }
             if (setns(nsfd, 0) < 0){       /* Join that namespace */
-                clicon_err(OE_UNIX, errno, "setns");
+                clixon_err(OE_UNIX, errno, "setns");
                 exit(1);
             }
             close(nsfd);
             if (unshare(CLONE_NEWNS) < 0){
-                clicon_err(OE_UNIX, errno, "unshare");
+                clixon_err(OE_UNIX, errno, "unshare");
                 exit(1);
             }
         }
 #endif /* HAVE_SETNS */
         if (gid != -1){
             if (setgid(gid) == -1) {
-                clicon_err(OE_DAEMON, errno, "setgid %d", gid);
+                clixon_err(OE_DAEMON, errno, "setgid %d", gid);
                 goto done;
             }
         }
@@ -399,7 +404,7 @@ clixon_proc_background(char       **argv,
                 goto done;
         }
         if (execvp(argv[0], argv) < 0) {
-            clicon_err(OE_UNIX, errno, "execvp(%s)", argv[0]);
+            clixon_err(OE_UNIX, errno, "execvp(%s)", argv[0]);
             exit(1);
         }
         /* Not reached */
@@ -456,7 +461,7 @@ clixon_process_op_str2int(char *opstr)
  * itself, but its elements can be freed and re-alloced.
  */
 int
-clixon_process_argv_get(clicon_handle h,
+clixon_process_argv_get(clixon_handle h,
                         const char   *name,
                         char       ***argv,
                         int          *argc)
@@ -491,7 +496,7 @@ clixon_process_argv_get(clicon_handle h,
  * @note name, netns, argv and its elements are all copied / re-alloced.
  */
 int
-clixon_process_register(clicon_handle h,
+clixon_process_register(clixon_handle h,
                         const char   *name,
                         const char   *description,
                         const char   *netns,
@@ -507,33 +512,33 @@ clixon_process_register(clicon_handle h,
     int              i;
 
     if (name == NULL){
-        clicon_err(OE_DB, EINVAL, "name is NULL");
+        clixon_err(OE_DB, EINVAL, "name is NULL");
         goto done;
     }
     if (argv == NULL){
-        clicon_err(OE_DB, EINVAL, "argv is NULL");
+        clixon_err(OE_DB, EINVAL, "argv is NULL");
         goto done;
     }
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s name:%s (%s)", __FUNCTION__, name, argv[0]);
 
     if ((pe = malloc(sizeof(process_entry_t))) == NULL) {
-        clicon_err(OE_DB, errno, "malloc");
+        clixon_err(OE_DB, errno, "malloc");
         goto done;
     }
     memset(pe, 0, sizeof(*pe));
     if ((pe->pe_name = strdup(name)) == NULL){
-        clicon_err(OE_DB, errno, "strdup name");
+        clixon_err(OE_DB, errno, "strdup name");
         free(pe);
         goto done;
     }
     if (description && (pe->pe_description = strdup(description)) == NULL){
-        clicon_err(OE_DB, errno, "strdup description");
+        clixon_err(OE_DB, errno, "strdup description");
         clixon_process_delete_only(pe);
         goto done;
     }
     if (netns && (pe->pe_netns = strdup(netns)) == NULL){
-        clicon_err(OE_DB, errno, "strdup netns");
+        clixon_err(OE_DB, errno, "strdup netns");
         clixon_process_delete_only(pe);
         goto done;
     }
@@ -542,14 +547,14 @@ clixon_process_register(clicon_handle h,
     pe->pe_fdkeep = fdkeep;
     pe->pe_argc = argc;
     if ((pe->pe_argv = calloc(argc, sizeof(char *))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         clixon_process_delete_only(pe);
         goto done;
     }
     for (i=0; i<argc; i++){
         if (argv[i] != NULL &&
             (pe->pe_argv[i] = strdup(argv[i])) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             clixon_process_delete_only(pe);
             goto done;
         }
@@ -591,7 +596,7 @@ clixon_process_delete_only(process_entry_t *pe)
 /*! Delete all Upgrade callbacks
  */
 int
-clixon_process_delete_all(clicon_handle h)
+clixon_process_delete_all(clixon_handle h)
 {
     process_entry_t *pe;
 
@@ -621,7 +626,7 @@ proc_op_run(pid_t pid0,
                 run = 0;
             }
             else{
-                clicon_err(OE_UNIX, errno, "kill(%d)", pid);
+                clixon_err(OE_UNIX, errno, "kill(%d)", pid);
                 goto done;
             }
         }
@@ -634,7 +639,7 @@ proc_op_run(pid_t pid0,
 }
 
 int
-clixon_process_pid(clicon_handle h,
+clixon_process_pid(clixon_handle h,
                    const char   *name, 
                    pid_t        *pid)
 {
@@ -682,7 +687,7 @@ done:
  * @see clixon_process_sched where operations are actually executed
  */
 int
-clixon_process_operation(clicon_handle  h,
+clixon_process_operation(clixon_handle  h,
                          const char    *name,
                          proc_operation op0,
                          int            wrapit)
@@ -716,7 +721,7 @@ clixon_process_operation(clicon_handle  h,
                         if (proc_op_run(pe->pe_pid, &isrunning) < 0)
                             goto done;
                         if (isrunning) {
-                            clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
+                            clixon_log(h, LOG_NOTICE, "Killing old process %s with pid: %d",
                                        pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
                             kill(pe->pe_pid, SIGTERM);
                             delay = 1;
@@ -757,7 +762,7 @@ clixon_process_operation(clicon_handle  h,
 
  */
 int
-clixon_process_status(clicon_handle  h,
+clixon_process_status(clixon_handle  h,
                       const char    *name,
                       cbuf          *cbret)
 {
@@ -798,7 +803,7 @@ clixon_process_status(clicon_handle  h,
                         clicon_int2str(proc_state_map, pe->pe_state));
                 if (timerisset(&pe->pe_starttime)){
                     if (time2str(&pe->pe_starttime, timestr, sizeof(timestr)) < 0){
-                        clicon_err(OE_UNIX, errno, "time2str");
+                        clixon_err(OE_UNIX, errno, "time2str");
                         goto done;
                     }
                     cprintf(cbret, "<starttime xmlns=\"%s\">%s</starttime>", CLIXON_LIB_NS, timestr);
@@ -831,7 +836,7 @@ clixon_process_status(clicon_handle  h,
  * where commits are not made.
  */
 int
-clixon_process_start_all(clicon_handle h)
+clixon_process_start_all(clixon_handle h)
 {
     int              retval = -1;
     process_entry_t *pe;
@@ -878,7 +883,7 @@ clixon_process_start_all(clicon_handle h)
  */
 static int
 clixon_process_sched(int           fd,
-                     clicon_handle h)
+                     clixon_handle h)
 {
     int              retval = -1;
     process_entry_t *pe;
@@ -903,7 +908,7 @@ clixon_process_sched(int           fd,
                     if (proc_op_run(pe->pe_pid, &isrunning) < 0)
                         goto done;
                     if (isrunning) {
-                        clicon_log(LOG_NOTICE, "Killing old process %s with pid: %d",
+                        clixon_log(h, LOG_NOTICE, "Killing old process %s with pid: %d",
                                    pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
                         kill(pe->pe_pid, SIGTERM);
                         sched++; /* Not immediate: wait timeout */
@@ -921,7 +926,7 @@ clixon_process_sched(int           fd,
                     if (proc_op_run(pe->pe_pid, &isrunning) < 0)
                         goto done;
                     if (!isrunning)
-                        if (clixon_proc_background(pe->pe_argv, pe->pe_netns,
+                        if (clixon_proc_background(h, pe->pe_argv, pe->pe_netns,
                                                    pe->pe_uid, pe->pe_gid, pe->pe_fdkeep,
                                                    &pe->pe_pid) < 0)
                             goto done;
@@ -949,7 +954,7 @@ clixon_process_sched(int           fd,
                 case PROC_OP_START:
                     if (isrunning) /* Already runs */
                         break;
-                    if (clixon_proc_background(pe->pe_argv, pe->pe_netns,
+                    if (clixon_proc_background(h, pe->pe_argv, pe->pe_netns,
                                                pe->pe_uid, pe->pe_gid, pe->pe_fdkeep,
                                                &pe->pe_pid) < 0)
                         goto done;
@@ -992,7 +997,7 @@ clixon_process_sched(int           fd,
  * @retval    -1     Error
  */
 static int
-clixon_process_sched_register(clicon_handle h,
+clixon_process_sched_register(clixon_handle h,
                               int           delay)
 {
     int            retval = -1;
@@ -1021,7 +1026,7 @@ clixon_process_sched_register(clicon_handle h,
 
  */
 int
-clixon_process_waitpid(clicon_handle h)
+clixon_process_waitpid(clixon_handle h)
 {
     int              retval = -1;
     process_entry_t *pe;
@@ -1063,7 +1068,7 @@ clixon_process_waitpid(clicon_handle h)
                     case PROC_OP_RESTART:
                         /* This is the case where there is an existing process running.
                          * it was killed above but still runs and needs to be reaped */
-                        if (clixon_proc_background(pe->pe_argv, pe->pe_netns,
+                        if (clixon_proc_background(h, pe->pe_argv, pe->pe_netns,
                                                    pe->pe_uid, pe->pe_gid, pe->pe_fdkeep,
                                                    &pe->pe_pid) < 0)
                             goto done;

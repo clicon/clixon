@@ -38,6 +38,6 @@
 #ifndef _BACKEND_PLUGIN_RESTCONF_H_
 #define _BACKEND_PLUGIN_RESTCONF_H_
 
-int backend_plugin_restconf_register(clicon_handle h, yang_stmt *yspec);
+int backend_plugin_restconf_register(clixon_handle h, yang_stmt *yspec);
 
 #endif  /* _BACKEND_PLUGIN_RESTCONF_H_ */

@@ -65,7 +65,7 @@ extern "C" {
 /* Userdata to pass around in netsmp callbacks
  */
 struct clixon_snmp_handle {
-    clicon_handle sh_h;
+    clixon_handle sh_h;
     yang_stmt    *sh_ys;               /* Leaf for scalar, list for table */
     oid           sh_oid[MAX_OID_LEN]; /* OID of registered table (list) */
     size_t        sh_oidlen;

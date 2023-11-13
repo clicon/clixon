@@ -86,7 +86,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include <fcgiapp.h> /* Need to be after clixon_xml.h due to attribute format */
@@ -124,7 +124,7 @@ static struct stream_child *STREAM_CHILD = NULL;
  * @retval     0    No, not a stream path
  */
 int
-api_path_is_stream(clicon_handle h)
+api_path_is_stream(clixon_handle h)
 {
     int    retval = 0;
     char  *path = NULL;
@@ -156,7 +156,7 @@ api_path_is_stream(clicon_handle h)
  * @note could hang STREAM_CHILD list on clicon handle instead.
  */
 int
-stream_child_free(clicon_handle h,
+stream_child_free(clixon_handle h,
                   int           pid)
 {
     struct stream_child *sc;
@@ -181,7 +181,7 @@ stream_child_free(clicon_handle h,
  * Typically called on restconf exit
  */
 int
-stream_child_freeall(clicon_handle h)
+stream_child_freeall(clixon_handle h)
 {
     struct stream_child *sc;
 
@@ -225,7 +225,7 @@ restconf_stream_cb(int   s,
     /* handle close from remote end: this will exit the client */
     if (eof){
         clixon_debug(CLIXON_DBG_DEFAULT, "%s eof", __FUNCTION__);
-        clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
+        clixon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
         errno = ESHUTDOWN;
         FCGX_FPrintF(r->out, "SHUTDOWN\r\n");
         FCGX_FPrintF(r->out, "\r\n");
@@ -236,12 +236,12 @@ restconf_stream_cb(int   s,
     if ((ret = clicon_msg_decode(reply, NULL, NULL, &xtop, NULL)) < 0)  /* XXX pass yang_spec */
         goto done;
     if (ret == 0){
-        clicon_err(OE_XML, EFAULT, "Invalid notification");
+        clixon_err(OE_XML, EFAULT, "Invalid notification");
         goto done;
     }
     /* create event */
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     if ((xn = xpath_first(xtop, NULL, "notification")) == NULL)
@@ -289,7 +289,7 @@ restconf_stream_cb(int   s,
  * @retval    -1    Error
  */
 static int
-restconf_stream(clicon_handle h,
+restconf_stream(clixon_handle h,
                 void         *req,
                 char         *name,
                 cvec         *qvec,
@@ -309,7 +309,7 @@ restconf_stream(clicon_handle h,
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     *sp = -1;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "<rpc xmlns=\"%s\" %s><create-subscription xmlns=\"%s\"><stream>%s</stream>",
@@ -416,7 +416,7 @@ stream_timeout(int   s,
  * @retval    -1       Error
  */
 int
-api_stream(clicon_handle h,
+api_stream(clixon_handle h,
            void         *req,
            cvec         *qvec,
            int          *finish)
@@ -548,7 +548,7 @@ api_stream(clicon_handle h,
          * killed, call FCGX_Free
          */
         if ((sc = malloc(sizeof(struct stream_child))) == NULL){
-            clicon_err(OE_XML, errno, "malloc");
+            clixon_err(OE_XML, errno, "malloc");
             goto done;
         }
         memset(sc, 0, sizeof(struct stream_child));

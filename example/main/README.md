@@ -326,7 +326,7 @@ In the CLI a netconf rpc call is constructed and sent to the backend: See `examp
 The clixon backend  plugin [example_backend.c] reveives the netconf call and replies. This is made byregistering a callback handling handling the RPC:
 ```
 static int 
-example_rpc(clicon_handle h, 
+example_rpc(clixon_handle h, 
             cxobj        *xe,           /* Request: <rpc><xn></rpc> */
             cbuf         *cbret,        /* Reply eg <rpc-reply>... */
             void         *arg,          /* Client session */
@@ -336,7 +336,7 @@ example_rpc(clicon_handle h,
     return 0;
 }
 int
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
 ...
    rpc_callback_register(h, example_rpc, NULL, "example");
@@ -426,7 +426,7 @@ static clixon_plugin_api api = {
 };
 
 clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
     /* Optional callback registration for RPC calls */
     rpc_callback_register(h, example_rpc, NULL, "example");

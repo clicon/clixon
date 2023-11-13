@@ -55,13 +55,13 @@
  * @param[in] h      Clixon handle
  */
 int
-plugin_start(clicon_handle h)
+plugin_start(clixon_handle h)
 {
     return 0;
 }
 
 int
-plugin_exit(clicon_handle h)
+plugin_exit(clixon_handle h)
 {
     return 0;
 }
@@ -69,7 +69,7 @@ plugin_exit(clicon_handle h)
 /*! Local example netconf rpc callback 
  */
 int
-netconf_client_rpc(clicon_handle h,
+netconf_client_rpc(clixon_handle h,
                    cxobj        *xe,
                    cbuf         *cbret,
                    void         *arg,
@@ -81,7 +81,7 @@ netconf_client_rpc(clicon_handle h,
 
     /* get namespace from rpc name, return back in each output parameter */
     if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
-        clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+        clixon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
         goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
@@ -103,7 +103,7 @@ netconf_client_rpc(clicon_handle h,
     return 0;
 }
 
-clixon_plugin_api * clixon_plugin_init(clicon_handle h);
+clixon_plugin_api * clixon_plugin_init(clixon_handle h);
 
 static struct clixon_plugin_api api = {
     "example",          /* name */
@@ -115,11 +115,11 @@ static struct clixon_plugin_api api = {
 /*! Netconf plugin initialization
  *
  * @param[in]  h    Clixon handle
- * @retval     NULL Error with clicon_err set
+ * @retval     NULL Error
  * @retval     api  Pointer to API struct
  */
 clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
     clixon_debug(CLIXON_DBG_DEFAULT, "%s restconf", __FUNCTION__);
     /* Register local netconf rpc client (note not backend rpc client) */

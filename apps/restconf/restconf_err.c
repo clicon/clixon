@@ -62,7 +62,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "restconf_lib.h"
@@ -79,7 +79,7 @@
  * @retval    -1         Error
  */
 int
-restconf_method_notallowed(clicon_handle  h,
+restconf_method_notallowed(clixon_handle  h,
                            void          *req,
                            char          *allow,
                            int            pretty,
@@ -112,7 +112,7 @@ restconf_method_notallowed(clicon_handle  h,
  * return an error response with a "415 Unsupported Media Type" status-line
  */
 int
-restconf_unsupported_media(clicon_handle  h,
+restconf_unsupported_media(clixon_handle  h,
                            void          *req,
                            int            pretty,
                            restconf_media media)
@@ -142,7 +142,7 @@ restconf_unsupported_media(clicon_handle  h,
  * return an error response with a "406 Not Acceptable" status-line.
  */
 int
-restconf_not_acceptable(clicon_handle  h,
+restconf_not_acceptable(clixon_handle  h,
                         void          *req,
                         int            pretty,
                         restconf_media media)
@@ -166,7 +166,7 @@ restconf_not_acceptable(clicon_handle  h,
  * @param[in]  req    Generic http handle
  */
 int
-restconf_notimplemented(clicon_handle  h,
+restconf_notimplemented(clixon_handle  h,
                         void          *req,
                         int            pretty,
                         restconf_media media)
@@ -201,7 +201,7 @@ restconf_notimplemented(clicon_handle  h,
  * @note there are special cases see code
  */
 int
-api_return_err(clicon_handle  h,
+api_return_err(clixon_handle  h,
                void          *req,
                cxobj         *xerr,
                int            pretty,
@@ -220,7 +220,7 @@ api_return_err(clicon_handle  h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     /* A well-formed error message when entering here should look like:
@@ -230,7 +230,7 @@ api_return_err(clicon_handle  h,
     if (strcmp(xml_name(xerr), "rpc-error") != 0 ||
         (xtag = xpath_first(xerr, NULL, "error-tag")) == NULL){
         if ((cberr = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cberr, "Internal error, system returned invalid error message: ");
@@ -240,11 +240,11 @@ api_return_err(clicon_handle  h,
                                          cbuf_get(cberr)) < 0)
             goto done;
         if ((xerr = xpath_first(xerr2, NULL, "rpc-error")) == NULL){
-            clicon_err(OE_XML, 0, "Internal error, shouldnt happen");
+            clixon_err(OE_XML, 0, "Internal error, shouldnt happen");
             goto done;
         }
         if ((xtag = xpath_first(xerr, NULL, "error-tag")) == NULL){
-            clicon_err(OE_XML, 0, "Internal error, shouldnt happen");
+            clixon_err(OE_XML, 0, "Internal error, shouldnt happen");
             goto done;
         }
     }
@@ -318,7 +318,7 @@ api_return_err(clicon_handle  h,
         }
         break;
     default: /* Just ignore the body so that there is a reply */
-        clicon_err(OE_YANG, EINVAL, "Invalid media type %d", media);
+        clixon_err(OE_YANG, EINVAL, "Invalid media type %d", media);
         goto done;
         break;
     } /* switch media */
@@ -353,7 +353,7 @@ api_return_err(clicon_handle  h,
  * @see api_return_err where top level is expected to be <rpc-error>
  */
 int
-api_return_err0(clicon_handle h,
+api_return_err0(clixon_handle h,
                 void         *req,
                 cxobj        *xerr,
                 int           pretty,
@@ -364,7 +364,7 @@ api_return_err0(clicon_handle h,
     cxobj *xe;
 
     if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-        clicon_err(OE_XML, EINVAL, "Expected xml on the form <rpc-error>..");
+        clixon_err(OE_XML, EINVAL, "Expected xml on the form <rpc-error>..");
         goto done;
     }
     if (api_return_err(h, req, xe, pretty, media, code) < 0)

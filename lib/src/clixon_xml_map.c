@@ -56,12 +56,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_err.h"
 #include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -72,8 +74,6 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
-#include "clixon_log.h"
-#include "clixon_err.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_sort.h"
 #include "clixon_yang_type.h"
@@ -115,7 +115,7 @@ isxmlns(cxobj *x)
  * @param[in]  ys   Yang spec containing type specification of top-node of xt
  * @param[out] cvv  CLIgen variable vector. Should be freed by cvec_free()
  * @retval     0    Everything OK, cvv allocated and set
- * @retval    -1    Something wrong, clicon_err() called to set error. No cvv returned
+ * @retval    -1    Something wrong, clixon_err() called to set error. No cvv returned
  * @note  cvv Should be freed by cvec_free() after use.
  * 'Not recursive' means that only one level of XML bodies is translated to cvec:s.
  * If range is wriong (eg 1000 for uint8) a warning is logged, the value is 
@@ -151,7 +151,7 @@ xml2cvec(cxobj      *xt,
     xc = NULL;
     /* Tried to allocate whole cvv here, but some cg_vars may be invalid */
     if ((cvv = cvec_new(0)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto err;
     }
     xc = NULL;
@@ -163,17 +163,17 @@ xml2cvec(cxobj      *xt,
                          __FUNCTION__, name, yang_argument_get(yt));
             if ((body = xml_body(xc)) != NULL){
                 if ((cv = cv_new(CGV_STRING)) == NULL){
-                    clicon_err(OE_PLUGIN, errno, "cv_new");
+                    clixon_err(OE_PLUGIN, errno, "cv_new");
                     goto err;
                 }
                 cv_name_set(cv, name);
                 if ((ret = cv_parse1(body, cv, &reason)) < 0){
-                    clicon_err(OE_PLUGIN, errno, "cv_parse %s",name);
+                    clixon_err(OE_PLUGIN, errno, "cv_parse %s",name);
                     goto err;
                 }
                 /* If value is out-of-range, log and skip value, and continue */
                 if (ret == 0){
-                    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason);
+                    clixon_log(NULL, LOG_WARNING, "cv_parse %s: %s", name, reason);
                     if (reason)
                         free(reason);
                 }
@@ -185,19 +185,19 @@ xml2cvec(cxobj      *xt,
         else if ((ycv = yang_cv_get(ys)) != NULL){
             if ((body = xml_body(xc)) != NULL){
                 if ((cv = cv_new(CGV_STRING)) == NULL){
-                    clicon_err(OE_PLUGIN, errno, "cv_new");
+                    clixon_err(OE_PLUGIN, errno, "cv_new");
                     goto err;
                 }
                 if (cv_cp(cv, ycv) < 0){
-                    clicon_err(OE_PLUGIN, errno, "cv_cp");
+                    clixon_err(OE_PLUGIN, errno, "cv_cp");
                     goto err;
                 }
                 if ((ret = cv_parse1(body, cv, &reason)) < 0){
-                    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", name);
+                    clixon_err(OE_PLUGIN, errno, "cv_parse: %s", name);
                     goto err;
                 }
                 if (ret == 0){
-                    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason);
+                    clixon_log(NULL, LOG_WARNING, "cv_parse %s: %s", name, reason);
                     if (reason)
                         free(reason);
                 }
@@ -226,7 +226,7 @@ xml2cvec(cxobj      *xt,
  * @param[in]   xt   Parent, or NULL
  * @param[out]  xt   Pointer to XML tree containing one top node. Should be freed with xml_free
  * @retval      0    Everything OK, cvv allocated and set
- * @retval     -1    Something wrong, clicon_err() called to set error. No xt returned
+ * @retval     -1    Something wrong, clixon_err() called to set error. No xt returned
  * @see xml2cvec
  * @see cvec2xml   This does more but has an internal xml2cvec translation
 */
@@ -789,7 +789,7 @@ xml_sanity(cxobj *xt,
     }
     name = xml_name(xt);
     if (strstr(yang_argument_get(ys), name)==NULL){
-        clicon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'",
+        clixon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'",
                    name, yang_argument_get(ys));
         goto done;
     }
@@ -824,7 +824,7 @@ xml_non_config_data(cxobj  *xt,
         if (!yang_config(y)){ /* config == false means state data */
             if (xerr){        /* behaviour 1: return on error */
                 if ((cb = cbuf_new()) == NULL){
-                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
                 cprintf(cb, "module %s: state data node unexpected", yang_argument_get(ys_module(y)));
@@ -875,12 +875,12 @@ xmlns_assign(cxobj *x)
     char      *ns_xml;     /* may be null or incorrect */
 
     if ((y = xml_spec(x)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "XML %s does not have yang spec", xml_name(x));
+        clixon_err(OE_YANG, ENOENT, "XML %s does not have yang spec", xml_name(x));
         goto done;
     }
     /* 1. Check which namespace x should have (via yang). This is correct namespace. */
     if ((ns_correct = yang_find_mynamespace(y)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "yang node %s does not have namespace", yang_argument_get(y));
+        clixon_err(OE_YANG, ENOENT, "yang node %s does not have namespace", yang_argument_get(y));
         goto done;
     }
     /* 2. Check which namespace x has via its XML tree */
@@ -924,7 +924,7 @@ assign_namespace(cxobj     *x1, /* target */
         /* Yes, and it has prefix pexist */
         if (pexist){
             if ((prefix1 = strdup(pexist)) == NULL){
-                clicon_err(OE_UNIX, errno, "strdup");
+                clixon_err(OE_UNIX, errno, "strdup");
                 goto done;
             }
         }
@@ -936,7 +936,7 @@ assign_namespace(cxobj     *x1, /* target */
         /* And copy namespace context from parent to child */
         if ((nsc0 = nscache_get_all(x1p)) != NULL){
             if ((nsc = cvec_dup(nsc0)) == NULL){
-                clicon_err(OE_UNIX, errno, "cvec_dup");
+                clixon_err(OE_UNIX, errno, "cvec_dup");
                 goto done;
             }
             nscache_replace(x1, nsc);
@@ -962,7 +962,7 @@ assign_namespace(cxobj     *x1, /* target */
                 */
             if (isroot){
                 if (prefix0 && (prefix1 = strdup(prefix0)) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
@@ -1023,7 +1023,7 @@ assign_namespace_element(cxobj *x0, /* source */
     if (xml2ns(x0, prefix0, &namespace) < 0)
         goto done;
     if (namespace == NULL){
-        clicon_err(OE_XML, ENOENT, "No namespace found for prefix:%s",
+        clixon_err(OE_XML, ENOENT, "No namespace found for prefix:%s",
                    prefix0?prefix0:"NULL");
         goto done;
     }
@@ -1136,7 +1136,7 @@ xml_merge1(cxobj              *x0,  /* the target */
     char           *pxe;
 
     if (x1 == NULL || xml_type(x1) != CX_ELMNT || y0 == NULL){
-        clicon_err(OE_XML, EINVAL, "x1 is NULL or not XML element, or lacks yang spec");
+        clixon_err(OE_XML, EINVAL, "x1 is NULL or not XML element, or lacks yang spec");
         goto done;
     }
     if (x0 == NULL){
@@ -1189,7 +1189,7 @@ xml_merge1(cxobj              *x0,  /* the target */
             goto done;
         twophase_len = xml_child_nr(x1);
         if ((twophase = calloc(twophase_len, sizeof(*twophase))) == NULL){
-            clicon_err(OE_UNIX, errno, "calloc");
+            clixon_err(OE_UNIX, errno, "calloc");
             goto done;
         }
         i = 0;
@@ -1201,12 +1201,12 @@ xml_merge1(cxobj              *x0,  /* the target */
             if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
                 if (reason){
                     if ((cbr = cbuf_new()) == NULL){
-                        clicon_err(OE_XML, errno, "cbuf_new");
+                        clixon_err(OE_XML, errno, "cbuf_new");
                         goto done;
                     }
                     cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?", xml_name(x1), x1cname);
                     if ((*reason = strdup(cbuf_get(cbr))) == NULL){
-                        clicon_err(OE_UNIX, errno, "strdup");
+                        clixon_err(OE_UNIX, errno, "strdup");
                         goto done;
                     }
                 }
@@ -1290,12 +1290,12 @@ xml_merge(cxobj     *x0,
     int        ret;
 
     if (x0 == NULL || x1 == NULL){
-        clicon_err(OE_UNIX, EINVAL, "parameters x0 or x1 is NULL");
+        clixon_err(OE_UNIX, EINVAL, "parameters x0 or x1 is NULL");
         goto done;
     }
     twophase_len = xml_child_nr(x1);
     if ((twophase = calloc(twophase_len, sizeof(*twophase))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     /* Loop through children of the modification tree */
@@ -1308,7 +1308,7 @@ xml_merge(cxobj     *x0,
         if (ymod == NULL){
             if (reason &&
                 (*reason = strdup("Namespace not found or yang spec not loaded")) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
             }
             goto fail;
@@ -1317,12 +1317,12 @@ xml_merge(cxobj     *x0,
         if ((yc = yang_find_datanode(ymod, x1cname)) == NULL){
             if (reason){
                 if ((cbr = cbuf_new()) == NULL){
-                    clicon_err(OE_XML, errno, "cbuf_new");
+                    clixon_err(OE_XML, errno, "cbuf_new");
                     goto done;
                 }
                 cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?)", xml_name(x1), x1cname);
                 if ((*reason = strdup(cbuf_get(cbr))) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
@@ -1387,7 +1387,7 @@ yang_valstr2enum(yang_stmt *ytype,
     yang_stmt *yval; 
 
     if (enumstr == NULL){
-        clicon_err(OE_UNIX, EINVAL, "str is NULL");
+        clixon_err(OE_UNIX, EINVAL, "str is NULL");
         goto done;
     }
     while ((yenum = yn_each(ytype, yenum)) != NULL) {
@@ -1422,7 +1422,7 @@ yang_enum2valstr(yang_stmt *ytype,
     yang_stmt *yval;
 
     if (valstr == NULL){
-        clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
+        clixon_err(OE_UNIX, EINVAL, "valstr is NULL");
         goto done;
     }
     if ((yenum = yang_find(ytype, Y_ENUM, enumstr)) == NULL)
@@ -1477,7 +1477,7 @@ yang_enum_int_value(cxobj   *node,
                           NULL, NULL, NULL, NULL, NULL) < 0)
         goto done;
     if (yrestype == NULL){
-        clicon_err(OE_YANG, 0, "result-type should not be NULL");
+        clixon_err(OE_YANG, 0, "result-type should not be NULL");
         goto done;
     }
     if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
@@ -1870,7 +1870,7 @@ clixon_compare_xmls(cxobj            *xc1,
     snprintf(filename1, sizeof(filename1), "/tmp/cliconXXXXXX");
     snprintf(filename2, sizeof(filename2), "/tmp/cliconXXXXXX");
     if ((fd = mkstemp(filename1)) < 0){
-        clicon_err(OE_UNDEF, errno, "tmpfile");
+        clixon_err(OE_UNDEF, errno, "tmpfile");
         goto done;
     }
     if ((f = fdopen(fd, "w")) == NULL)
@@ -1890,7 +1890,7 @@ clixon_compare_xmls(cxobj            *xc1,
     close(fd);
 
     if ((fd = mkstemp(filename2)) < 0){
-        clicon_err(OE_UNDEF, errno, "mkstemp: %s", strerror(errno));
+        clixon_err(OE_UNDEF, errno, "mkstemp: %s", strerror(errno));
         goto done;
     }
     if ((f = fdopen(fd, "w")) == NULL)
@@ -1911,7 +1911,7 @@ clixon_compare_xmls(cxobj            *xc1,
     close(fd);
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_CFG, errno, "cbuf_new");
+        clixon_err(OE_CFG, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "diff -dU 1 %s %s |  grep -v @@ | sed 1,2d",

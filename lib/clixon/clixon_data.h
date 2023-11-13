@@ -63,87 +63,87 @@ typedef struct {
  * Prototypes
  */
 /* Generic clixon data API the form <name>=<val> where <val> is string */
-int clicon_data_get(clicon_handle h, const char *name, char **val);
-int clicon_data_set(clicon_handle h, const char *name, char *val);
-int clicon_data_del(clicon_handle h, const char *name);
+int clicon_data_get(clixon_handle h, const char *name, char **val);
+int clicon_data_set(clixon_handle h, const char *name, char *val);
+int clicon_data_del(clixon_handle h, const char *name);
 
 /* Get generic clixon data on the form <name>=<ptr> where <ptr> is void* */
-int clicon_ptr_get(clicon_handle h, const char *name, void **ptr);
-int clicon_ptr_set(clicon_handle h, const char *name, void *ptr);
-int clicon_ptr_del(clicon_handle h, const char *name);
+int clicon_ptr_get(clixon_handle h, const char *name, void **ptr);
+int clicon_ptr_set(clixon_handle h, const char *name, void *ptr);
+int clicon_ptr_del(clixon_handle h, const char *name);
 
-cvec *clicon_data_cvec_get(clicon_handle h, const char *name);
-int   clicon_data_cvec_set(clicon_handle h, const char *name, cvec *cvv);
-int   clicon_data_cvec_del(clicon_handle h, const char *name);
+cvec *clicon_data_cvec_get(clixon_handle h, const char *name);
+int   clicon_data_cvec_set(clixon_handle h, const char *name, cvec *cvv);
+int   clicon_data_cvec_del(clixon_handle h, const char *name);
 
 /* String options, default NULL */
-int   clicon_data_int_get(clicon_handle h, const char *name);
-int   clicon_data_int_set(clicon_handle h, const char *name, int val);
-int   clicon_data_int_del(clicon_handle h, const char *name);
+int   clicon_data_int_get(clixon_handle h, const char *name);
+int   clicon_data_int_set(clixon_handle h, const char *name, int val);
+int   clicon_data_int_del(clixon_handle h, const char *name);
 
-yang_stmt * clicon_dbspec_yang(clicon_handle h);
-int clicon_dbspec_yang_set(clicon_handle h, yang_stmt *ys);
+yang_stmt * clicon_dbspec_yang(clixon_handle h);
+int clicon_dbspec_yang_set(clixon_handle h, yang_stmt *ys);
 
-yang_stmt * clicon_config_yang(clicon_handle h);
-int clicon_config_yang_set(clicon_handle h, yang_stmt *ys);
+yang_stmt * clicon_config_yang(clixon_handle h);
+int clicon_config_yang_set(clixon_handle h, yang_stmt *ys);
 
-yang_stmt * clicon_nacm_ext_yang(clicon_handle h);
-int clicon_nacm_ext_yang_set(clicon_handle h, yang_stmt *ys);
+yang_stmt * clicon_nacm_ext_yang(clixon_handle h);
+int clicon_nacm_ext_yang_set(clixon_handle h, yang_stmt *ys);
 
-cvec *clicon_nsctx_global_get(clicon_handle h);
-int clicon_nsctx_global_set(clicon_handle h, cvec *nsctx);
+cvec *clicon_nsctx_global_get(clixon_handle h);
+int clicon_nsctx_global_set(clixon_handle h, cvec *nsctx);
 
-cxobj * clicon_nacm_ext(clicon_handle h);
-int clicon_nacm_ext_set(clicon_handle h, cxobj *xn);
+cxobj * clicon_nacm_ext(clixon_handle h);
+int clicon_nacm_ext_set(clixon_handle h, cxobj *xn);
 
-cxobj *clicon_nacm_cache(clicon_handle h);
-int clicon_nacm_cache_set(clicon_handle h, cxobj *xn);
+cxobj *clicon_nacm_cache(clixon_handle h);
+int clicon_nacm_cache_set(clixon_handle h, cxobj *xn);
 
-cxobj *clicon_conf_xml(clicon_handle h);
-int clicon_conf_xml_set(clicon_handle h, cxobj *x);
+cxobj *clicon_conf_xml(clixon_handle h);
+int clicon_conf_xml_set(clixon_handle h, cxobj *x);
 
-cxobj *clicon_conf_restconf(clicon_handle h);
-cxobj *clicon_conf_autocli(clicon_handle h);
+cxobj *clicon_conf_restconf(clixon_handle h);
+cxobj *clicon_conf_autocli(clixon_handle h);
 
-db_elmnt *clicon_db_elmnt_get(clicon_handle h, const char *db);
-int clicon_db_elmnt_set(clicon_handle h, const char *db, db_elmnt *xc);
+db_elmnt *clicon_db_elmnt_get(clixon_handle h, const char *db);
+int clicon_db_elmnt_set(clixon_handle h, const char *db, db_elmnt *xc);
 
 /**/
 /* Set and get authorized user name */
-char *clicon_username_get(clicon_handle h);
-int clicon_username_set(clicon_handle h, void *username);
+char *clicon_username_get(clixon_handle h);
+int clicon_username_set(clixon_handle h, void *username);
 
 /* Set and get startup status */
-enum startup_status clicon_startup_status_get(clicon_handle h);
-int clicon_startup_status_set(clicon_handle h, enum startup_status status);
+enum startup_status clicon_startup_status_get(clixon_handle h);
+int clicon_startup_status_set(clixon_handle h, enum startup_status status);
 
 /* Set and get server socket fd (ie backend server socket / restconf fcgi socket */
-int clicon_socket_get(clicon_handle h);
-int clicon_socket_set(clicon_handle h, int s);
+int clicon_socket_get(clixon_handle h);
+int clicon_socket_set(clixon_handle h, int s);
 
 /* Set and get client socket fd (ie client cli / netconf / restconf / client-api socket */
-int clicon_client_socket_get(clicon_handle h);
-int clicon_client_socket_set(clicon_handle h, int s);
+int clicon_client_socket_get(clixon_handle h);
+int clicon_client_socket_set(clixon_handle h, int s);
 
 /* Set and get module state full and brief cached tree */
-cxobj *clicon_modst_cache_get(clicon_handle h, int brief);
-int clicon_modst_cache_set(clicon_handle h, int brief, cxobj *xms);
+cxobj *clicon_modst_cache_get(clixon_handle h, int brief);
+int clicon_modst_cache_set(clixon_handle h, int brief, cxobj *xms);
 
 /* Set and get yang/xml module revision changelog */
-cxobj *clicon_xml_changelog_get(clicon_handle h);
-int clicon_xml_changelog_set(clicon_handle h, cxobj *xchlog);
+cxobj *clicon_xml_changelog_get(clixon_handle h);
+int clicon_xml_changelog_set(clixon_handle h, cxobj *xchlog);
 
 /* Set and get user command-line options (after --) */
-int clicon_argv_get(clicon_handle h, int *argc, char ***argv);
-int clicon_argv_set(clicon_handle h, char *argv0, int argc, char **argv);
+int clicon_argv_get(clixon_handle h, int *argc, char ***argv);
+int clicon_argv_set(clixon_handle h, char *argv0, int argc, char **argv);
 
 /* Set and get (client/backend) session id */
-int clicon_session_id_set(clicon_handle h, uint32_t id);
-int clicon_session_id_get(clicon_handle h, uint32_t *id);
-int clicon_session_id_del(clicon_handle h);
+int clicon_session_id_set(clixon_handle h, uint32_t id);
+int clicon_session_id_get(clixon_handle h, uint32_t *id);
+int clicon_session_id_del(clixon_handle h);
 
 /* If set, quit startup directly after upgrade */
-int clicon_quit_upgrade_get(clicon_handle h);
-int clicon_quit_upgrade_set(clicon_handle h, int val);
+int clicon_quit_upgrade_get(clixon_handle h);
+int clicon_quit_upgrade_set(clixon_handle h, int val);
 
 #endif  /* _CLIXON_DATA_H_ */

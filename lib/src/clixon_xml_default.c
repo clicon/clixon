@@ -55,13 +55,13 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_err.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -143,11 +143,11 @@ xml_default_create(yang_stmt *y,
     if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
         goto done;
     if ((cv = yang_cv_get(y)) == NULL){
-        clicon_err(OE_UNIX, ENOENT, "No yang cv of %s", yang_argument_get(y));
+        clixon_err(OE_UNIX, ENOENT, "No yang cv of %s", yang_argument_get(y));
         goto done;
     }
     if ((str = cv2str_dup(cv)) == NULL){
-        clicon_err(OE_UNIX, errno, "cv2str_dup");
+        clixon_err(OE_UNIX, errno, "cv2str_dup");
         goto done;
     }
     if (xml_value_set(xb, str) < 0)
@@ -225,7 +225,7 @@ xml_nopresence_try(yang_stmt *yt,
     yang_stmt *ydef;
 
     if (yt == NULL || yang_keyword_get(yt) != Y_CONTAINER){
-        clicon_err(OE_XML, EINVAL, "yt argument is not container");
+        clixon_err(OE_XML, EINVAL, "yt argument is not container");
         goto done;
     }
     *createp = 0;
@@ -298,7 +298,7 @@ xml_default(yang_stmt *yt,
     cg_var    *cv;
 
     if (xt == NULL){ /* No xml */
-        clicon_err(OE_XML, EINVAL, "No XML argument");
+        clixon_err(OE_XML, EINVAL, "No XML argument");
         goto done;
     }
     switch (yang_keyword_get(yt)){
@@ -321,7 +321,7 @@ xml_default(yang_stmt *yt,
                 if (state && yang_config_ancestor(yc))
                     break;
                 if ((cv = yang_cv_get(yc)) == NULL){
-                    clicon_err(OE_YANG,0, "Internal error: yang leaf %s not populated with cv as it should",
+                    clixon_err(OE_YANG,0, "Internal error: yang leaf %s not populated with cv as it should",
                                yang_argument_get(yc));
                     goto done;
                 }
@@ -437,7 +437,7 @@ xml_global_defaults_create(cxobj     *xt,
     yang_stmt *ymod = NULL;
 
     if (yspec == NULL || yang_keyword_get(yspec) != Y_SPEC){
-        clicon_err(OE_XML, EINVAL, "yspec argument is not yang spec");
+        clixon_err(OE_XML, EINVAL, "yspec argument is not yang spec");
         goto done;
     }
     while ((ymod = yn_each(yspec, ymod)) != NULL)
@@ -462,7 +462,7 @@ xml_global_defaults_create(cxobj     *xt,
  * @see xml_default_recurse
  */
 int
-xml_global_defaults(clicon_handle h,
+xml_global_defaults(clixon_handle h,
                     cxobj        *xt,
                     cvec         *nsc,
                     const char   *xpath,

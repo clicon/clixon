@@ -63,13 +63,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_log.h"
-#include "clixon_err.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_err.h"
 #include "clixon_file.h"
 #include "clixon_yang.h"
 #include "clixon_hash.h"
@@ -88,7 +89,7 @@
 #include "clixon_yang_internal.h" /* internal included by this file only, not API*/
 
 #ifdef XML_EXPLICIT_INDEX
-static int yang_search_index_extension(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+static int yang_search_index_extension(clixon_handle h, yang_stmt *yext, yang_stmt *ys);
 #endif
 
 /*
@@ -329,17 +330,17 @@ yang_cvec_add(yang_stmt    *ys,
 
     if ((cvv = yang_cvec_get(ys)) == NULL){
         if ((cvv = cvec_new(0)) == NULL){
-            clicon_err(OE_YANG, errno, "cvec_new");
+            clixon_err(OE_YANG, errno, "cvec_new");
             return NULL;
         }
         yang_cvec_set(ys, cvv);
     }
     if ((cv = cvec_add(cvv, type)) == NULL){
-        clicon_err(OE_YANG, errno, "cvec_add");
+        clixon_err(OE_YANG, errno, "cvec_add");
         return NULL;
     }
     if (cv_name_set(cv, name) == NULL){
-        clicon_err(OE_YANG, errno, "cv_name_set(%s)", name);
+        clixon_err(OE_YANG, errno, "cv_name_set(%s)", name);
         return NULL;
     }
     return cv;
@@ -380,7 +381,7 @@ yang_ref_dec(yang_stmt *ys)
     int retval = -1;
     
     if (ys->ys_ref <= 0){
-        clicon_err(OE_YANG, 0, "reference count is %d cannot decrement", ys->ys_ref);
+        clixon_err(OE_YANG, 0, "reference count is %d cannot decrement", ys->ys_ref);
         goto done;
     }
     ys->ys_ref--;
@@ -460,11 +461,11 @@ yang_when_xpath_set(yang_stmt *ys,
     int retval = -1;
 
     if (xpath == NULL){
-        clicon_err(OE_YANG, EINVAL, "xpath is NULL");
+        clixon_err(OE_YANG, EINVAL, "xpath is NULL");
         goto done;
     }
     if ((ys->ys_when_xpath = strdup(xpath)) == NULL){
-        clicon_err(OE_YANG, errno, "strdup");
+        clixon_err(OE_YANG, errno, "strdup");
         goto done;
     }
     retval = 0;
@@ -502,7 +503,7 @@ yang_when_nsc_set(yang_stmt *ys,
     int retval = -1;
 
     if (nsc && (ys->ys_when_nsc = cvec_dup(nsc)) == NULL){
-        clicon_err(OE_YANG, errno, "cvec_dup");
+        clixon_err(OE_YANG, errno, "cvec_dup");
         goto done;
     }
     retval = 0;
@@ -535,7 +536,7 @@ yang_filename_set(yang_stmt  *ys,
                   const char *filename)
 {
     if ((ys->ys_filename = strdup(filename)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         return -1;
     }
     return 0;
@@ -642,7 +643,7 @@ yang_stats(yang_stmt *yt,
     yang_stmt *ys;
 
     if (yt == NULL){
-        clicon_err(OE_XML, EINVAL, "yang spec is NULL");
+        clixon_err(OE_XML, EINVAL, "yang spec is NULL");
         goto done;
     }
     *nrp += 1;
@@ -674,7 +675,7 @@ yspec_new(void)
     yang_stmt *yspec;
 
     if ((yspec = malloc(sizeof(*yspec))) == NULL){
-        clicon_err(OE_YANG, errno, "malloc");
+        clixon_err(OE_YANG, errno, "malloc");
         return NULL;
     }
     memset(yspec, 0, sizeof(*yspec));
@@ -694,7 +695,7 @@ ys_new(enum rfc_6020 keyw)
     yang_stmt *ys;
 
     if ((ys = malloc(sizeof(*ys))) == NULL){
-        clicon_err(OE_YANG, errno, "malloc");
+        clixon_err(OE_YANG, errno, "malloc");
         return NULL;
     }
     memset(ys, 0, sizeof(*ys));
@@ -881,7 +882,7 @@ yn_realloc(yang_stmt *yn)
     yn->ys_len++;
 
     if ((yn->ys_stmt = realloc(yn->ys_stmt, (yn->ys_len)*sizeof(yang_stmt *))) == 0){
-        clicon_err(OE_YANG, errno, "realloc");
+        clixon_err(OE_YANG, errno, "realloc");
         return -1;
     }
     yn->ys_stmt[yn->ys_len - 1] = NULL; /* init field */
@@ -916,25 +917,25 @@ ys_cp(yang_stmt *ynew,
     ynew->ys_parent = NULL;
     if (yold->ys_stmt)
         if ((ynew->ys_stmt = calloc(yold->ys_len, sizeof(yang_stmt *))) == NULL){
-            clicon_err(OE_YANG, errno, "calloc");
+            clixon_err(OE_YANG, errno, "calloc");
             goto done;
         }
     if (yold->ys_argument)
         if ((ynew->ys_argument = strdup(yold->ys_argument)) == NULL){
-            clicon_err(OE_YANG, errno, "strdup");
+            clixon_err(OE_YANG, errno, "strdup");
             goto done;
         }
     yang_cv_set(ynew, NULL);
     if ((cvo = yang_cv_get(yold)) != NULL){
         if ((cvn = cv_dup(cvo)) == NULL){
-            clicon_err(OE_YANG, errno, "cv_dup");
+            clixon_err(OE_YANG, errno, "cv_dup");
             goto done;
         }
         yang_cv_set(ynew, cvn);
     }
     if (yold->ys_cvec)
         if ((ynew->ys_cvec = cvec_dup(yold->ys_cvec)) == NULL){
-            clicon_err(OE_YANG, errno, "cvec_dup");
+            clixon_err(OE_YANG, errno, "cvec_dup");
             goto done;
         }
     if (yold->ys_typecache){
@@ -944,12 +945,12 @@ ys_cp(yang_stmt *ynew,
     }
     if (yold->ys_when_xpath)
         if ((ynew->ys_when_xpath = strdup(yold->ys_when_xpath)) == NULL){
-            clicon_err(OE_YANG, errno, "strdup");
+            clixon_err(OE_YANG, errno, "strdup");
             goto done;
         }
     if (yold->ys_when_nsc){
         if ((ynew->ys_when_nsc = cvec_dup(yold->ys_when_nsc)) == NULL){
-            clicon_err(OE_YANG, errno, "cvec_dup");
+            clixon_err(OE_YANG, errno, "cvec_dup");
             goto done;
         }
     }
@@ -1364,11 +1365,11 @@ yang_find_myprefix(yang_stmt *ys)
     if (ys_real_module(ys, &ymod) < 0)
         goto done;
     if (ymod == NULL){
-        clicon_err(OE_YANG, ENOENT, "Internal error: no module");
+        clixon_err(OE_YANG, ENOENT, "Internal error: no module");
         goto done;
     }
     if ((yprefix = yang_find(ymod, Y_PREFIX, NULL)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No prefix found for module %s", yang_argument_get(ymod));
+        clixon_err(OE_YANG, ENOENT, "No prefix found for module %s", yang_argument_get(ymod));
         goto done;
     }
     prefix = yang_argument_get(yprefix);
@@ -1396,7 +1397,7 @@ yang_find_mynamespace(yang_stmt *ys)
     if (ys_real_module(ys, &ymod) < 0)
         goto done;
     if ((ynamespace = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No namespace found for module %s", yang_argument_get(ymod));
+        clixon_err(OE_YANG, ENOENT, "No namespace found for module %s", yang_argument_get(ymod));
         goto done;
     }
     ns = yang_argument_get(ynamespace);
@@ -1441,7 +1442,7 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (prefix == NULL){
-        clicon_err(OE_YANG, EINVAL, "prefix is NULL");
+        clixon_err(OE_YANG, EINVAL, "prefix is NULL");
         goto done;
     }
     /* First check if namespace is my own module */
@@ -1503,7 +1504,7 @@ yang_find_namespace_by_prefix(yang_stmt *ys,
     yang_stmt *ym;
 
     if (ns == NULL){
-        clicon_err(OE_YANG, EINVAL, "ns is NULL");
+        clixon_err(OE_YANG, EINVAL, "ns is NULL");
         goto done;
     }
     if ((ym = yang_find_module_by_prefix(ys, prefix)) == NULL)
@@ -1735,7 +1736,7 @@ yang_order(yang_stmt *y)
         }
     }
     if (yang_order1(yp, y, &j) < 0){
-        clicon_err(OE_YANG, 0, "YANG node %s not ordered: not found", yang_argument_get(y));
+        clixon_err(OE_YANG, 0, "YANG node %s not ordered: not found", yang_argument_get(y));
         goto done;
     }
     retval = tot + j;
@@ -1863,22 +1864,22 @@ ys_real_module(yang_stmt  *ys,
     yang_stmt *yspec;
 
     if (ymod == NULL){
-        clicon_err(OE_YANG, EINVAL, "ymod is NULL");
+        clixon_err(OE_YANG, EINVAL, "ymod is NULL");
         goto done;
     }
     if ((ym = ys_module(ys)) != NULL){
         yspec = ys_spec(ym);
         while (ym && yang_keyword_get(ym) == Y_SUBMODULE){
             if ((yb = yang_find(ym, Y_BELONGS_TO, NULL)) == NULL){
-                clicon_err(OE_YANG, ENOENT, "No belongs-to statement of submodule %s", yang_argument_get(ym)); /* shouldnt happen */
+                clixon_err(OE_YANG, ENOENT, "No belongs-to statement of submodule %s", yang_argument_get(ym)); /* shouldnt happen */
                 goto done;
             }
             if ((name = yang_argument_get(yb)) == NULL){
-                clicon_err(OE_YANG, ENOENT, "Belongs-to statement of submodule %s has no argument", yang_argument_get(ym)); /* shouldnt happen */
+                clixon_err(OE_YANG, ENOENT, "Belongs-to statement of submodule %s has no argument", yang_argument_get(ym)); /* shouldnt happen */
                 goto done;
             }
             if ((ysubm = yang_find_module_by_name(yspec, name)) == NULL){
-                clicon_err(OE_YANG, ENOENT, "submodule %s references non-existent module %s in its belongs-to statement",
+                clixon_err(OE_YANG, ENOENT, "submodule %s references non-existent module %s in its belongs-to statement",
                            yang_argument_get(ym), name);
                 goto done;
             }
@@ -1944,7 +1945,7 @@ yang_print_cb(FILE             *f,
     cbuf      *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_YANG, errno, "cbuf_new");
+        clixon_err(OE_YANG, errno, "cbuf_new");
         goto done;
     }
     if (yang_print_cbuf(cb, yn, 0, 1) < 0)
@@ -1984,7 +1985,7 @@ yang_spec_print(FILE      *f,
     yang_stmt *yrev;
 
     if (yspec == NULL || yang_keyword_get(yspec) != Y_SPEC){
-        clicon_err(OE_YANG, EINVAL, "yspec is not of type YSPEC");
+        clixon_err(OE_YANG, EINVAL, "yspec is not of type YSPEC");
         return -1;
     }
     while ((ym = yn_each(yspec, ym)) != NULL) {
@@ -2013,7 +2014,7 @@ yang_spec_dump(yang_stmt *yspec,
     cbuf      *cb = NULL;
 
     if ((cb = cbuf_new()) ==NULL){
-        clicon_err(OE_YANG, errno, "cbuf_new");
+        clixon_err(OE_YANG, errno, "cbuf_new");
         goto done;
     }
     while ((ym = yn_each(yspec, ym)) != NULL) {
@@ -2060,7 +2061,7 @@ yang_print_cbuf(cbuf      *cb,
     char         *arg;
 
     if (yn == NULL || cb == NULL){
-        clicon_err(OE_YANG, EINVAL, "cb or yn is NULL");
+        clixon_err(OE_YANG, EINVAL, "cb or yn is NULL");
         goto done;
     }
     keyw = yang_keyword_get(yn);
@@ -2128,7 +2129,7 @@ yang_deviation(yang_stmt *ys,
     yang_stmt    *yc1;
     yang_stmt    *ytc;
     char         *devop;
-    clicon_handle h = (clicon_handle)arg;
+    clixon_handle h = (clixon_handle)arg;
     enum rfc_6020 kw;
     int           min;
     int           max;
@@ -2137,17 +2138,17 @@ yang_deviation(yang_stmt *ys,
         goto ok;
     /* Absolute schema node identifier identifying target node */
     if ((nodeid = yang_argument_get(ys)) == NULL){
-        clicon_err(OE_YANG, EINVAL, "No argument to deviation");
+        clixon_err(OE_YANG, EINVAL, "No argument to deviation");
         goto done;
     }
     /* Get target node */
     if (yang_abs_schema_nodeid(ys, nodeid, &ytarget) < 0)
         goto done;
     if (ytarget == NULL){
-        clicon_log(LOG_WARNING, "deviation %s: target not found", nodeid);
+        clixon_log(h, LOG_WARNING, "deviation %s: target not found", nodeid);
         goto ok;
         /* The RFC does not explicitly say the target node MUST exist 
-           clicon_err(OE_YANG, 0, "schemanode sanity check of %s", nodeid);
+           clixon_err(OE_YANG, 0, "schemanode sanity check of %s", nodeid);
            goto done;
         */
     }
@@ -2178,7 +2179,7 @@ yang_deviation(yang_stmt *ys,
                                                   &max) < 0)
                         goto done;
                     if (max == 1){
-                        clicon_err(OE_YANG, 0, "deviation %s: \"%s %s\" added but node already exist in target %s",
+                        clixon_err(OE_YANG, 0, "deviation %s: \"%s %s\" added but node already exist in target %s",
                                    nodeid,
                                    yang_key2str(kw), yang_argument_get(yc),
                                    yang_argument_get(ytarget));
@@ -2203,7 +2204,7 @@ yang_deviation(yang_stmt *ys,
                     break;
                 default:
                     if (ytc == NULL){
-                        clicon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
+                        clixon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
                                    nodeid,
                                    yang_key2str(kw), yang_argument_get(yc),
                                    yang_argument_get(ytarget));
@@ -2233,7 +2234,7 @@ yang_deviation(yang_stmt *ys,
                  * target node. */
                 kw = yang_keyword_get(yc);
                 if ((ytc = yang_find(ytarget, kw, NULL)) == NULL){
-                    clicon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
+                    clixon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
                                nodeid,
                                yang_key2str(kw), yang_argument_get(yc),
                                yang_argument_get(ytarget));
@@ -2246,7 +2247,7 @@ yang_deviation(yang_stmt *ys,
             }
         }
         else{ /* Shouldnt happen, lex/yacc takes it */
-            clicon_err(OE_YANG, EINVAL, "%s: invalid deviate operator", devop);
+            clixon_err(OE_YANG, EINVAL, "%s: invalid deviate operator", devop);
             goto done;
         }
     }
@@ -2268,10 +2269,10 @@ yang_deviation(yang_stmt *ys,
  * @param[in] h    Clixon handle
  * @param[in] ys   The yang statement to populate.
  * @retval    0    OK
- * @retval   -1    Error with clicon_err called
+ * @retval   -1    Error with clixon_err called
  */
 static int
-ys_populate_leaf(clicon_handle h,
+ys_populate_leaf(clixon_handle h,
                  yang_stmt    *ys)
 {
     int             retval = -1;
@@ -2298,14 +2299,14 @@ ys_populate_leaf(clicon_handle h,
         goto done;
     /* 2. Create the CV using cvtype and name it */
     if ((cv = cv_new(cvtype)) == NULL){
-        clicon_err(OE_YANG, errno, "cv_new");
+        clixon_err(OE_YANG, errno, "cv_new");
         goto done;
     }
     if (options & YANG_OPTIONS_FRACTION_DIGITS && cvtype == CGV_DEC64) /* XXX: Seems misplaced? / too specific */
         cv_dec64_n_set(cv, fraction_digits);
 
     if (cv_name_set(cv, ys->ys_argument) == NULL){
-        clicon_err(OE_YANG, errno, "cv_name_set");
+        clixon_err(OE_YANG, errno, "cv_name_set");
         goto done;
     }
     /* get parent of where type is defined, can be original object */
@@ -2317,11 +2318,11 @@ ys_populate_leaf(clicon_handle h,
      */
     if ((ydef = yang_find(ys, Y_DEFAULT, NULL)) != NULL){
         if ((cvret = cv_parse1(ydef->ys_argument, cv, &reason)) < 0){ /* error */
-            clicon_err(OE_YANG, errno, "parsing cv");
+            clixon_err(OE_YANG, errno, "parsing cv");
             goto done;
         }
         if (cvret == 0){ /* parsing failed */
-            clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+            clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
             free(reason);
             goto done;
         }
@@ -2330,11 +2331,11 @@ ys_populate_leaf(clicon_handle h,
     else if (ytypedef != ys &&
              (ydef = yang_find(ytypedef, Y_DEFAULT, NULL)) != NULL) {
         if ((cvret = cv_parse1(ydef->ys_argument, cv, &reason)) < 0){ /* error */
-            clicon_err(OE_YANG, errno, "parsing cv");
+            clixon_err(OE_YANG, errno, "parsing cv");
             goto done;
         }
         if (cvret == 0){ /* parsing failed */
-            clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+            clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
             free(reason);
             goto done;
         }
@@ -2366,7 +2367,7 @@ ys_populate_leaf(clicon_handle h,
  * @retval   -1    Error
  */
 static int
-ys_populate_list(clicon_handle h,
+ys_populate_list(clixon_handle h,
                  yang_stmt    *ys)
 {
     yang_stmt *ykey;
@@ -2400,7 +2401,7 @@ bound_add(yang_stmt   *ys,
     int     ret = 1;
 
     if (ys == NULL){
-        clicon_err(OE_YANG, EINVAL, "ys is NULL");
+        clixon_err(OE_YANG, EINVAL, "ys is NULL");
         goto done;
     }
     if ((cv = yang_cvec_add(ys, cvtype, name)) == NULL)
@@ -2412,11 +2413,11 @@ bound_add(yang_stmt   *ys,
     else if (strcmp(val, "max") == 0)
         cv_max_set(cv);
     else if ((ret = cv_parse1(val, cv, &reason)) < 0){
-        clicon_err(OE_YANG, errno, "cv_parse1");
+        clixon_err(OE_YANG, errno, "cv_parse1");
         goto done;
     }
     if (ret == 0){ /* parsing failed */
-        clicon_err(OE_YANG, errno, "range statement %s: %s", val, reason);
+        clixon_err(OE_YANG, errno, "range statement %s: %s", val, reason);
         free(reason);
         goto done;
     }
@@ -2482,7 +2483,7 @@ range_parse(yang_stmt   *ys,
  *  ascending order
  */
 static int
-ys_populate_range(clicon_handle h,
+ys_populate_range(clixon_handle h,
                   yang_stmt    *ys)
 {
     int             retval = -1;
@@ -2496,14 +2497,14 @@ ys_populate_range(clicon_handle h,
 
     yparent = ys->ys_parent;     /* Find parent: type */
     if (yparent->ys_keyword != Y_TYPE){
-        clicon_err(OE_YANG, 0, "parent should be type");
+        clixon_err(OE_YANG, 0, "parent should be type");
         goto done;
     }
     if (yang_type_resolve(ys, ys, (yang_stmt*)yparent, &yrestype,
                           &options, NULL, NULL, NULL, &fraction_digits) < 0)
         goto done;
     if (yrestype == NULL){
-        clicon_err(OE_YANG, 0, "result-type should not be NULL");
+        clixon_err(OE_YANG, 0, "result-type should not be NULL");
         goto done;
     }
     restype = yrestype?yrestype->ys_argument:NULL;
@@ -2513,7 +2514,7 @@ ys_populate_range(clicon_handle h,
     if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
         goto done;
     if (!cv_isint(cvtype) && cvtype != CGV_DEC64){
-        clicon_err(OE_YANG, 0, "The range substatement only applies to int types, not to type: %s", origtype);
+        clixon_err(OE_YANG, 0, "The range substatement only applies to int types, not to type: %s", origtype);
         goto done;
     }
     if (range_parse(ys, cvtype, fraction_digits) < 0)
@@ -2544,7 +2545,7 @@ ys_populate_range(clicon_handle h,
  *  be disjoint and MUST be in ascending order.
  */
 static int
-ys_populate_length(clicon_handle h,
+ys_populate_length(clixon_handle h,
                    yang_stmt    *ys)
 {
     int             retval = -1;
@@ -2553,7 +2554,7 @@ ys_populate_length(clicon_handle h,
 
     yparent = ys->ys_parent;     /* Find parent: type */
     if (yparent->ys_keyword != Y_TYPE){
-        clicon_err(OE_YANG, 0, "parent should be type");
+        clixon_err(OE_YANG, 0, "parent should be type");
         goto done;
     }
     cvtype = CGV_UINT64;
@@ -2573,7 +2574,7 @@ ys_populate_length(clicon_handle h,
  * @retval   -1    Error
  */
 static int
-ys_populate_type(clicon_handle h,
+ys_populate_type(clixon_handle h,
                  yang_stmt    *ys)
 
 {
@@ -2582,18 +2583,18 @@ ys_populate_type(clicon_handle h,
 
     if (strcmp(ys->ys_argument, "decimal64") == 0){
         if (yang_find(ys, Y_FRACTION_DIGITS, NULL) == NULL){
-            clicon_err(OE_YANG, 0, "decimal64 type requires fraction-digits sub-statement");
+            clixon_err(OE_YANG, 0, "decimal64 type requires fraction-digits sub-statement");
             goto done;
         }
     }
     else
     if (strcmp(ys->ys_argument, "identityref") == 0){
         if ((ybase = yang_find(ys, Y_BASE, NULL)) == NULL){
-            clicon_err(OE_YANG, 0, "identityref type requires base sub-statement");
+            clixon_err(OE_YANG, 0, "identityref type requires base sub-statement");
             goto done;
         }
         if ((yang_find_identity(ys, ybase->ys_argument)) == NULL){
-            clicon_err(OE_YANG, 0, "Identity %s not found (base type of %s)",
+            clixon_err(OE_YANG, 0, "Identity %s not found (base type of %s)",
                        ybase->ys_argument, ys->ys_argument);
             goto done;
         }
@@ -2617,7 +2618,7 @@ ys_populate_type(clicon_handle h,
  * @see validate_identityref  which in runtime validates actual values
  */
 static int
-ys_populate_identity(clicon_handle h,
+ys_populate_identity(clixon_handle h,
                      yang_stmt    *ys,
                      char         *idref)
 {
@@ -2637,13 +2638,13 @@ ys_populate_identity(clicon_handle h,
     if (idref == NULL){
         /* Create derived identity through prefix:id if not recursively called*/
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
             goto done;
         if ((ymod = ys_module(ys)) == NULL){
-            clicon_err(OE_YANG, ENOENT, "No module found");
+            clixon_err(OE_YANG, ENOENT, "No module found");
             goto done;
         }
         cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
@@ -2658,7 +2659,7 @@ ys_populate_identity(clicon_handle h,
             continue;
         baseid = yang_argument_get(yc); /* on the form: prefix:id */
         if (((ybaseid = yang_find_identity(ys, baseid))) == NULL){
-            clicon_err(OE_YANG, ENOENT, "No such identity: %s", baseid);
+            clixon_err(OE_YANG, ENOENT, "No such identity: %s", baseid);
             goto done;
         }
         //          continue; /* root identity */
@@ -2670,7 +2671,7 @@ ys_populate_identity(clicon_handle h,
             continue;
         /* Add derived id to ybaseid */
         if (yang_cvec_add(ybaseid, CGV_STRING, idref) == NULL){
-            clicon_err(OE_UNIX, errno, "cv_new");
+            clixon_err(OE_UNIX, errno, "cv_new");
             goto done;
         }
         /* Transitive to the root */
@@ -2724,7 +2725,7 @@ if_feature(yang_stmt    *yspec,
  * Bootstrapping: A feature is enabled if found in clixon-config
  */
 int
-ys_populate_feature(clicon_handle h,
+ys_populate_feature(clixon_handle h,
                     yang_stmt    *ys)
 {
     int        retval = -1;
@@ -2744,7 +2745,7 @@ ys_populate_feature(clicon_handle h,
     if ((x = clicon_conf_xml(h)) == NULL)
         goto ok;
     if ((ymod = ys_module(ys)) == NULL){
-        clicon_err(OE_YANG, 0, "module not found");
+        clixon_err(OE_YANG, 0, "module not found");
         goto done;
     }
     module = ymod->ys_argument;
@@ -2769,7 +2770,7 @@ ys_populate_feature(clicon_handle h,
         if (f) free(f);
     }
     if ((cv = cv_new(CGV_BOOL)) == NULL){
-        clicon_err(OE_YANG, errno, "cv_new");
+        clixon_err(OE_YANG, errno, "cv_new");
         goto done;
     }
     cv_name_set(cv, feature);
@@ -2791,7 +2792,7 @@ ys_populate_feature(clicon_handle h,
  * @retval   -1    Error
  */
 static int
-ys_populate_unique(clicon_handle h,
+ys_populate_unique(clixon_handle h,
                    yang_stmt    *ys)
 {
     cvec *cvv;
@@ -2827,7 +2828,7 @@ ys_populate_unique(clicon_handle h,
  * @see yang_extension_value  Called on expanded YANG, eg in context of (y2)
  */
 static int
-ys_populate_unknown(clicon_handle h,
+ys_populate_unknown(clixon_handle h,
                     yang_stmt    *ys)
 {
     int        retval = -1;
@@ -2843,13 +2844,13 @@ ys_populate_unknown(clicon_handle h,
     if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
         goto done;
     if ((ymod = yang_find_module_by_prefix(ys, prefix)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "Extension \"%s:%s\", module not found", prefix, id);
+        clixon_err(OE_YANG, ENOENT, "Extension \"%s:%s\", module not found", prefix, id);
         goto done;
     }
     /* To find right binding eg after grouping/uses */
     ys->ys_mymodule = ys_module(ys);
     if ((yext = yang_find(ymod, Y_EXTENSION, id)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "Extension \"%s:%s\" not found", prefix, id);
+        clixon_err(OE_YANG, ENOENT, "Extension \"%s:%s\" not found", prefix, id);
         goto done;
     }
     /* Optional argument (only if "argument") - save it in ys_cv */
@@ -2857,7 +2858,7 @@ ys_populate_unknown(clicon_handle h,
         (argument = cv_string_get(cv)) != NULL){
         if (yang_find(yext, Y_ARGUMENT, NULL) == NULL &&
             argument != NULL){
-            clicon_err(OE_YANG, 0, "No argument specified in extension %s, but argument %s present when used", yang_argument_get(ys), argument);
+            clixon_err(OE_YANG, 0, "No argument specified in extension %s, but argument %s present when used", yang_argument_get(ys), argument);
             goto done;
         }
     }
@@ -2899,7 +2900,7 @@ ys_populate_unknown(clicon_handle h,
  * @retval   -1    Error
  */
 static int
-ys_populate_module_submodule(clicon_handle h,
+ys_populate_module_submodule(clixon_handle h,
                              yang_stmt    *ym)
 {
     int        retval = -1;
@@ -2920,7 +2921,7 @@ ys_populate_module_submodule(clicon_handle h,
         yp = yang_find(yi, Y_PREFIX, NULL);
         pi = yang_argument_get(yp);
         if (p0 && strcmp(p0, pi) == 0){         /* Check top-level */
-            clicon_err(OE_YANG, EFAULT, "Prefix %s in module %s is not unique but should be (see RFC 7950 7.1.4)",
+            clixon_err(OE_YANG, EFAULT, "Prefix %s in module %s is not unique but should be (see RFC 7950 7.1.4)",
                        pi, yang_argument_get(ym));
             goto done;
         }
@@ -2932,7 +2933,7 @@ ys_populate_module_submodule(clicon_handle h,
             yp = yang_find(yi2, Y_PREFIX, NULL);
             pi2 = yang_argument_get(yp);
             if (strcmp(pi2, pi) == 0){
-                clicon_err(OE_YANG, EFAULT, "Prefix %s in module %s is not unique but should be (see RFC 7950 7.1.4)",
+                clixon_err(OE_YANG, EFAULT, "Prefix %s in module %s is not unique but should be (see RFC 7950 7.1.4)",
                            pi, yang_argument_get(ym));
                 goto done;
             }
@@ -2963,7 +2964,7 @@ ys_populate(yang_stmt    *ys,
             void         *arg)
 {
     int           retval = -1;
-    clicon_handle h = (clicon_handle)arg;
+    clixon_handle h = (clixon_handle)arg;
 
     switch(ys->ys_keyword){
     case Y_IDENTITY:
@@ -3016,7 +3017,7 @@ ys_populate2(yang_stmt    *ys,
              void         *arg)
 {
     int           retval = -1;
-    clicon_handle h = (clicon_handle)arg;
+    clixon_handle h = (clixon_handle)arg;
     int           ret;
 
     switch(ys->ys_keyword){
@@ -3056,7 +3057,7 @@ ys_populate2(yang_stmt    *ys,
  * @note if-features is parsed in full context here, previous restricted pass in ys_parse_sub
  */
 int
-yang_features(clicon_handle h,
+yang_features(clixon_handle h,
               yang_stmt    *yt)
 {
     int        retval = -1;
@@ -3212,7 +3213,7 @@ yang_datanode(yang_stmt *ys)
  * @param[in]  nsc   Namespace context from yang for the prefixes (names) of cvv
  * @param[out] yres  Result yang statement node, or NULL if not found
  * @retval     0     OK
- * @retval    -1     Error, with clicon_err called
+ * @retval    -1     Error, with clixon_err called
  *   A schema node identifier consists of a path of identifiers, separated by slashes ("/").
  *   References to identifiers defined in external modules MUST be
  *   qualified with appropriate prefixes, and references to identifiers
@@ -3248,14 +3249,14 @@ schema_nodeid_iterate(yang_stmt    *yn,
          * matching module below
          * Get namespace */
         if ((ns = xml_nsctx_get(nsc, prefix)) == NULL){
-            clicon_err(OE_YANG, EFAULT, "No namespace for prefix: %s in schema node identifier in module %s",
+            clixon_err(OE_YANG, EFAULT, "No namespace for prefix: %s in schema node identifier in module %s",
                        prefix,
                        yang_argument_get(ys_module(yn)));
             goto done;
         }
         /* Get yang module */
         if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL){
-            clicon_err(OE_YANG, EFAULT, "No module for namespace: %s", ns);
+            clixon_err(OE_YANG, EFAULT, "No module for namespace: %s", ns);
             goto done;
         }
         ys = yang_find_schemanode(yp, id);
@@ -3296,7 +3297,7 @@ schema_nodeid_iterate(yang_stmt    *yn,
  * @param[in]  schema_nodeid Absolute schema-node-id, ie /a/b
  * @param[out] yres          Result yang statement node, or NULL if not found
  * @retval     0             OK , with result in yres
- * @retval    -1             Error, with clicon_err called
+ * @retval    -1             Error, with clixon_err called
  * Assume schema nodeid:s have prefixes, (actually the first).
  * @see RFC7950 6.5
  * o  schema node: A node in the schema tree.  One of action, container,
@@ -3321,13 +3322,13 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
     char         *str;
 
     if ((yspec = ys_spec(yn)) == NULL){
-        clicon_err(OE_YANG, EINVAL, "No yang spec");
+        clixon_err(OE_YANG, EINVAL, "No yang spec");
         goto done;
     }
     *yres = NULL;
     /* check absolute schema_nodeid */
     if (schema_nodeid[0] != '/'){
-        clicon_err(OE_YANG, EINVAL, "absolute schema nodeid should start with /");
+        clixon_err(OE_YANG, EINVAL, "absolute schema nodeid should start with /");
         goto done;
     }
     /* Split nodeid on the form /p0:i0/p1:i1 to a cvec with [name:p0 value:i0][...]
@@ -3343,7 +3344,7 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
         cv_type_set(cv, CGV_STRING);
         if ((str = cv_string_get(cv)) == NULL || !strlen(str)){
             if (cv_string_set(cv, cv_name_get(cv)) < 0){
-                clicon_err(OE_UNIX, errno, "cv_string_set");
+                clixon_err(OE_UNIX, errno, "cv_string_set");
                 goto done;
             }
             cv_name_set(cv, NULL);
@@ -3361,13 +3362,13 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
     cv = cvec_i(nodeid_cvv, 0);
     prefix = cv_name_get(cv);
     if ((ns = xml_nsctx_get(nsc, prefix)) == NULL){
-        clicon_err(OE_YANG, EFAULT, "No namespace for prefix: %s in schema node identifier: %s",
+        clixon_err(OE_YANG, EFAULT, "No namespace for prefix: %s in schema node identifier: %s",
                    prefix, schema_nodeid);
         goto done;
     }
     /* Get yang module */
     if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL){
-        clicon_err(OE_YANG, EFAULT, "No module for namespace: %s in schema node identifier: %s",
+        clixon_err(OE_YANG, EFAULT, "No module for namespace: %s in schema node identifier: %s",
                    ns, schema_nodeid);
         goto done;
     }
@@ -3392,7 +3393,7 @@ yang_abs_schema_nodeid(yang_stmt    *yn,
  * @param[in]  ns            Namespace context
  * @param[out] yres          First yang node matching schema nodeid
  * @retval     0             OK
- * @retval    -1             Error, with clicon_err called
+ * @retval    -1             Error, with clixon_err called
  * Used in yang: unique, refine, uses augment
  * @see yang_abs_schema_nodeid
  */
@@ -3409,17 +3410,17 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
     cvec         *nsc = NULL;
 
     if (schema_nodeid == NULL || strlen(schema_nodeid) == 0){
-        clicon_err(OE_YANG, EINVAL, "nodeid is empty");
+        clixon_err(OE_YANG, EINVAL, "nodeid is empty");
         goto done;
     }
     if ((yspec = ys_spec(yn)) == NULL){
-        clicon_err(OE_YANG, EINVAL, "No yang spec");
+        clixon_err(OE_YANG, EINVAL, "No yang spec");
         goto done;
     }
     *yres = NULL;
     /* check absolute schema_nodeid */
     if (schema_nodeid[0] == '/'){
-        clicon_err(OE_YANG, EINVAL, "descendant schema nodeid should not start with /");
+        clixon_err(OE_YANG, EINVAL, "descendant schema nodeid should not start with /");
         goto done;
     }
     /* Split nodeid on the form /p0:i0/p1:i1 to a cvec with [name:p0 value:i0][...]
@@ -3435,7 +3436,7 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
             cv_type_set(cv, CGV_STRING);
         if ((str = cv_string_get(cv)) == NULL || !strlen(str)){
             if (cv_string_set(cv, cv_name_get(cv)) < 0){
-                clicon_err(OE_UNIX, errno, "cv_string_set");
+                clixon_err(OE_UNIX, errno, "cv_string_set");
                 goto done;
             }
             cv_name_set(cv, NULL);
@@ -3549,14 +3550,14 @@ yang_arg2cvec(yang_stmt *ys,
     if ((vec = clicon_strsep(ys->ys_argument, " ", &nvec)) == NULL)
         goto done;
     if ((cvv = cvec_new(nvec)) == NULL){
-        clicon_err(OE_YANG, errno, "cvec_new");
+        clixon_err(OE_YANG, errno, "cvec_new");
         goto done;
     }
     for (i = 0; i < nvec; i++) {
         cv = cvec_i(cvv, i);
         cv_type_set(cv, CGV_STRING);
         if ((cv_string_set(cv, vec[i])) == NULL){
-            clicon_err(OE_YANG, errno, "cv_string_set");
+            clixon_err(OE_YANG, errno, "cv_string_set");
             cvv = NULL;
             goto done;
         }
@@ -3636,11 +3637,11 @@ yang_type_cache_set(yang_stmt        *ys,
     yang_type_cache *ycache;
 
     if (ys->ys_typecache != NULL){
-        clicon_err(OE_YANG, EEXIST, "yang type cache");
+        clixon_err(OE_YANG, EEXIST, "yang type cache");
         goto done;
     }
     if ((ys->ys_typecache = (yang_type_cache *)malloc(sizeof(*ycache))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     ycache = ys->ys_typecache;
@@ -3649,12 +3650,12 @@ yang_type_cache_set(yang_stmt        *ys,
     ycache->yc_options  = options;
     if (cvv){
         if ((ycache->yc_cvv = cvec_dup(cvv)) == NULL){
-            clicon_err(OE_UNIX, errno, "cvec_dup");
+            clixon_err(OE_UNIX, errno, "cvec_dup");
             goto done;
         }
     }
     if (patterns && (ycache->yc_patterns  = cvec_dup(patterns)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_dup");
+        clixon_err(OE_UNIX, errno, "cvec_dup");
         goto done;
     }
     ycache->yc_fraction  = fraction;
@@ -3684,7 +3685,7 @@ yang_type_cache_regexp_set(yang_stmt *ytype,
     assert(ycache->yc_regexps == NULL);
     ycache->yc_rxmode = rxmode;
     if ((ycache->yc_regexps  = cvec_dup(regexps)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_dup");
+        clixon_err(OE_UNIX, errno, "cvec_dup");
         goto done;
     }
     retval = 0;
@@ -3758,7 +3759,7 @@ yang_type_cache_cp(yang_stmt *ynew,
     int        ret;
 
     if ((patterns = cvec_new(0)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto done;
     }
     /* Note, regexps are not copied since they are voids, if they were, they
@@ -3792,7 +3793,7 @@ yang_type_cache_free(yang_type_cache *ycache)
     if (ycache->yc_regexps){
         cv = NULL;
         while ((cv = cvec_each(ycache->yc_regexps, cv)) != NULL){
-            /* need to store mode since clicon_handle is not available */
+            /* need to store mode since clixon_handle is not available */
             switch (ycache->yc_rxmode){
             case REGEXP_POSIX:
                 cligen_regex_posix_free(cv_void_get(cv));
@@ -3838,7 +3839,7 @@ yang_anydata_add(yang_stmt *yp,
     if ((ys = ys_new(Y_ANYDATA)) == NULL)
         goto done;
     if ((name = strdup(name0)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     yang_argument_set(ys, name);
@@ -3887,13 +3888,13 @@ yang_extension_value(yang_stmt *ys,
     int        ret;
 
     if (ys == NULL){
-        clicon_err(OE_YANG, EINVAL, "ys is NULL");
+        clixon_err(OE_YANG, EINVAL, "ys is NULL");
         goto done;
     }
     if (exist)
         *exist = 0;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     yext = NULL; /* This loop gets complicated in the case the extension is augmented */
@@ -3973,7 +3974,7 @@ yang_sort_subelements(yang_stmt *ys)
 }
 
 int
-yang_init(clicon_handle h)
+yang_init(clixon_handle h)
 {
     return yang_cardinality_init(h);
 }
@@ -3992,7 +3993,7 @@ yang_list_index_add(yang_stmt *ys)
 
     if ((yp = yang_parent_get(ys)) == NULL ||
         yang_keyword_get(yp) != Y_LIST){
-        clicon_log(LOG_WARNING, "search_index should in a list");
+        clixon_log(NULL, LOG_WARNING, "search_index should in a list");
         goto ok;
     }
     yang_flag_set(ys, YANG_FLAG_INDEX);
@@ -4011,7 +4012,7 @@ yang_list_index_add(yang_stmt *ys)
  * @retval   -1    Error
  */
 int
-yang_search_index_extension(clicon_handle h,
+yang_search_index_extension(clixon_handle h,
                             yang_stmt    *yext,
                             yang_stmt    *ys)
 {
@@ -4108,7 +4109,7 @@ yang_action_cb_add(yang_stmt *ys,
     rpc_callback_t *rc = (rpc_callback_t *)arg;
 
     if (rc == NULL){
-        clicon_err(OE_YANG, EINVAL, "arg is NULL");
+        clixon_err(OE_YANG, EINVAL, "arg is NULL");
         return -1;
     }
     ADDQ(rc, ys->ys_action_cb);

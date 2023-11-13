@@ -104,7 +104,7 @@ object.
 /* typecast macro */
 #define _JY ((clixon_json_yacc *)_jy)
 
-#define _YYERROR(msg) {clicon_err(OE_JSON, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_err(OE_JSON, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
@@ -124,12 +124,14 @@ object.
 
 #include <cligen/cligen.h>
 
+/* clixon */
+#include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"    
 #include "clixon_err.h"
 #include "clixon_log.h"
-#include "clixon_queue.h"
+#include "clixon_debug.h"
 #include "clixon_string.h"
-#include "clixon_hash.h"
-#include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 
@@ -152,7 +154,7 @@ void
 clixon_json_parseerror(void *_jy,
                        char *s)
 { 
-    clicon_err(OE_JSON, 0, "json_parse: line %d: %s at or before: '%s'",
+    clixon_err(OE_JSON, 0, "json_parse: line %d: %s at or before: '%s'",
                _JY->jy_linenum,
                s,
                clixon_json_parsetext);
@@ -164,7 +166,6 @@ clixon_json_parseerror(void *_jy,
 int
 json_parse_init(clixon_json_yacc *jy)
 {
-    //        clixon_debug_init(2, NULL);
     return 0;
 }
 

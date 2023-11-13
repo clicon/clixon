@@ -92,26 +92,26 @@ restconf_stream_data_new(restconf_conn *rc,
     restconf_stream_data *sd;
 
     if ((sd = malloc(sizeof(restconf_stream_data))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         return NULL;
     }
     memset(sd, 0, sizeof(restconf_stream_data));
     sd->sd_stream_id = stream_id;
     sd->sd_fd = -1;
     if ((sd->sd_inbuf = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         return NULL;
     }
     if ((sd->sd_indata = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         return NULL;
     }
     if ((sd->sd_outp_hdrs = cvec_new(0)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         return NULL;
     }
     if ((sd->sd_outp_buf = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         return NULL;
     }
     sd->sd_conn = rc;
@@ -176,14 +176,14 @@ restconf_stream_free(restconf_stream_data *sd)
  * @see restconf_conn_free
  */
 restconf_conn *
-restconf_conn_new(clicon_handle    h,
+restconf_conn_new(clixon_handle    h,
                   int              s,
                   restconf_socket *rsock)
 {
     restconf_conn *rc;
 
     if ((rc = (restconf_conn*)malloc(sizeof(restconf_conn))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         return NULL;
     }
     memset(rc, 0, sizeof(restconf_conn));
@@ -210,7 +210,7 @@ restconf_conn_free(restconf_conn *rc)
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (rc == NULL){
-        clicon_err(OE_RESTCONF, EINVAL, "rc is NULL");
+        clixon_err(OE_RESTCONF, EINVAL, "rc is NULL");
         goto done;
     }
 #ifdef HAVE_LIBNGHTTP2
@@ -257,7 +257,7 @@ ssl_x509_name_oneline(SSL   *ssl,
     X509_NAME *name;
 
     if (ssl == NULL || oneline == NULL) {
-        clicon_err(OE_RESTCONF, EINVAL, "ssl or cn is NULL");
+        clixon_err(OE_RESTCONF, EINVAL, "ssl or cn is NULL");
         goto done;
     }
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -272,7 +272,7 @@ ssl_x509_name_oneline(SSL   *ssl,
     if ((p = X509_NAME_oneline(name, NULL, 0)) == NULL)
         goto ok;
     if ((*oneline = strdup(p)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
  ok:
@@ -303,7 +303,7 @@ ssl_x509_name_oneline(SSL   *ssl,
  * @see restconf_accept_client where connection can be exited at an earlier stage
  */
 int
-restconf_connection_sanity(clicon_handle         h,
+restconf_connection_sanity(clixon_handle         h,
                            restconf_conn        *rc,
                            restconf_stream_data *sd)
 {
@@ -339,12 +339,12 @@ restconf_connection_sanity(clicon_handle         h,
         if (ssl_x509_name_oneline(rc->rc_ssl, &oneline) < 0)
             goto done;
         if (oneline)
-            clicon_log(LOG_NOTICE, "Cert error: %s: %s", oneline, X509_verify_cert_error_string(code));
+            clixon_log(h, LOG_NOTICE, "Cert error: %s: %s", oneline, X509_verify_cert_error_string(code));
         else
-            clicon_log(LOG_NOTICE, "Cert error: %s", X509_verify_cert_error_string(code));
+            clixon_log(h, LOG_NOTICE, "Cert error: %s", X509_verify_cert_error_string(code));
         /* Send return error message */
         if ((cberr = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cberr, "HTTP cert verification failed: %s[%ld]",
@@ -385,7 +385,7 @@ restconf_connection_sanity(clicon_handle         h,
  * @retval -1  Error
  */
 static int
-native_buf_write(clicon_handle    h,
+native_buf_write(clixon_handle    h,
                  char            *buf,
                  size_t           buflen,
                  restconf_conn   *rc,
@@ -398,7 +398,7 @@ native_buf_write(clicon_handle    h,
     SSL    *ssl;
 
     if (rc == NULL){
-        clicon_err(OE_RESTCONF, EINVAL, "rc is NULL");
+        clixon_err(OE_RESTCONF, EINVAL, "rc is NULL");
         goto done;
     }
     ssl = rc->rc_ssl;
@@ -411,7 +411,7 @@ native_buf_write(clicon_handle    h,
         size_t sz;
         sz = buflen>256?256:buflen; /* Truncate to 256 */
         if ((dbgstr = malloc(sz+1)) == NULL){
-            clicon_err(OE_UNIX, errno, "malloc");
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
         memcpy(dbgstr, buf, sz);
@@ -435,12 +435,12 @@ native_buf_write(clicon_handle    h,
                         continue;
                     }
                     else{
-                        clicon_err(OE_RESTCONF, er, "SSL_write %d", er);
+                        clixon_err(OE_RESTCONF, er, "SSL_write %d", er);
                         goto done;
                     }
                     break;
                 default:
-                    clicon_err(OE_SSL, 0, "SSL_write");
+                    clixon_err(OE_SSL, 0, "SSL_write");
                     goto done;
                     break;
                 }
@@ -461,7 +461,7 @@ native_buf_write(clicon_handle    h,
                     goto closed; /* Close socket and ssl */
                     break;
                 default:
-                    clicon_err(OE_UNIX, errno, "write %d", errno);
+                    clixon_err(OE_UNIX, errno, "write %d", errno);
                     goto done;
                     break;
                 }
@@ -490,7 +490,7 @@ native_buf_write(clicon_handle    h,
  * @see restconf_badrequest which can only be called in a request context
  */
 static int
-native_send_badrequest(clicon_handle    h,
+native_send_badrequest(clixon_handle    h,
                        char            *media,
                        char            *body,
                        restconf_conn   *rc)
@@ -500,7 +500,7 @@ native_send_badrequest(clicon_handle    h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n");
@@ -530,7 +530,7 @@ native_send_badrequest(clicon_handle    h,
  * @retval    -1    Error
  */
 static int
-http1_native_clear_input(clicon_handle         h,
+http1_native_clear_input(clixon_handle         h,
                          restconf_stream_data *sd)
 {
     int retval = -1;
@@ -586,7 +586,7 @@ read_ssl(restconf_conn *rc,
             *np = 0; /* should already be zero */
             break;
         default:
-            clicon_log(LOG_WARNING, "%s SSL_read(): %s sslerr:%d", __FUNCTION__, strerror(errno), sslerr);
+            clixon_log(rc->rc_h, LOG_WARNING, "%s SSL_read(): %s sslerr:%d", __FUNCTION__, strerror(errno), sslerr);
             *np = 0;
             break;
         } /* switch */
@@ -635,7 +635,7 @@ read_regular(restconf_conn *rc,
             *again = 1;
             break;
         default:;
-            clicon_err(OE_XML, errno, "read");
+            clixon_err(OE_XML, errno, "read");
             goto done;
             break;
         }
@@ -665,14 +665,14 @@ restconf_http1_process(restconf_conn *rc,
 {
     int                   retval = -1;
     restconf_stream_data *sd;
-    clicon_handle         h;
+    clixon_handle         h;
     int                   ret;
     int                   status;
     cbuf                 *cberr = NULL;
 
     h = rc->rc_h;
     if ((sd = restconf_stream_find(rc, 0)) == NULL){
-        clicon_err(OE_RESTCONF, EINVAL, "restconf stream not found");
+        clixon_err(OE_RESTCONF, EINVAL, "restconf stream not found");
         goto done;
     }
     /* Two states for reading:
@@ -691,7 +691,7 @@ restconf_http1_process(restconf_conn *rc,
         goto done;
     if (status == 1){   /* Next read: keep header state and only append inbody */
         if (cbuf_append_buf(sd->sd_indata, buf, n) < 0){
-            clicon_err(OE_UNIX, errno, "cbuf_append");
+            clixon_err(OE_UNIX, errno, "cbuf_append");
             goto done;
         }
     }
@@ -700,7 +700,7 @@ restconf_http1_process(restconf_conn *rc,
          * This is different from sd_indata that it is before and includes headers
          */
         if (cbuf_append_buf(sd->sd_inbuf, buf, n) < 0){
-            clicon_err(OE_UNIX, errno, "cbuf_append");
+            clixon_err(OE_UNIX, errno, "cbuf_append");
             goto done;
         }
         if (clixon_http1_parse_string(h, rc, cbuf_get(sd->sd_inbuf)) < 0){
@@ -720,10 +720,10 @@ restconf_http1_process(restconf_conn *rc,
              * timeout here.
              */
             if ((cberr = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
-            cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>%s</error-message></error></errors>", clicon_err_reason);
+            cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>%s</error-message></error></errors>", clixon_err_reason());
             if ((ret = native_send_badrequest(h, "application/yang-data+xml", cbuf_get(cberr), rc)) < 0)
                 goto done;
             if (http1_native_clear_input(h, sd) < 0)
@@ -812,7 +812,7 @@ restconf_http2_upgrade(restconf_conn *rc)
     restconf_stream_data *sd;
 
     if ((sd = restconf_stream_find(rc, 0)) == NULL){
-        clicon_err(OE_RESTCONF, EINVAL, "restconf stream not found");
+        clixon_err(OE_RESTCONF, EINVAL, "restconf stream not found");
         goto done;
     }
     if (sd->sd_upgrade2){
@@ -836,7 +836,7 @@ restconf_http2_upgrade(restconf_conn *rc)
                                               sd->sd_settings2?strlen((const char*)sd->sd_settings2):0,
                                               0, /* XXX: 1 if HEAD */
                                               NULL)) < 0){
-            clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_upgrade2");
+            clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_upgrade2");
             goto done;
         }
         if (http2_send_server_connection(rc) < 0){
@@ -889,7 +889,7 @@ restconf_http2_process(restconf_conn *rc,
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (rc->rc_exit){ /* Server-initiated exit for http/2 */
         if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, 0)) < 0){
-            clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
+            clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
             goto done; // XXX not here in original?
         }
     }
@@ -924,7 +924,7 @@ restconf_http2_process(restconf_conn *rc,
  * @retval     rn    Restconf native handle
  */
 restconf_native_handle *
-restconf_native_handle_get(clicon_handle h)
+restconf_native_handle_get(clixon_handle h)
 {
     clicon_hash_t  *cdat = clicon_data(h);
     size_t          len;
@@ -963,11 +963,11 @@ restconf_connection(int   s,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, s);
     if ((rc = (restconf_conn*)arg) == NULL){
-        clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
+        clixon_err(OE_RESTCONF, EINVAL, "arg is NULL");
         goto done;
     }
     if (s != rc->rc_s){
-        clicon_err(OE_RESTCONF, EINVAL, "s != rc->rc_s");
+        clixon_err(OE_RESTCONF, EINVAL, "s != rc->rc_s");
         goto done;
     }
     gettimeofday(&rc->rc_t, NULL); /* activity timer */
@@ -1049,13 +1049,13 @@ restconf_connection_close1(restconf_conn *rc)
     restconf_socket *rsock;
 
     if (rc == NULL){
-        clicon_err(OE_RESTCONF, EINVAL, "rc is NULL");
+        clixon_err(OE_RESTCONF, EINVAL, "rc is NULL");
         goto done;
     }
     rsock = rc->rc_socket;
     clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\"", __FUNCTION__, rsock->rs_description);
     if (close(rc->rc_s) < 0){
-        clicon_err(OE_UNIX, errno, "close");
+        clixon_err(OE_UNIX, errno, "close");
         goto done;
     }
     clixon_event_unreg_fd(rc->rc_s, restconf_connection);
@@ -1113,7 +1113,7 @@ restconf_close_ssl_socket(restconf_conn *rc,
             else{
                 /* To avoid close again in restconf_native_terminate */
                 rc->rc_s = -1;
-                clicon_err(OE_SSL, sslerr, "SSL_shutdown, %s err:%d %d", callfn, sslerr, er);
+                clixon_err(OE_SSL, sslerr, "SSL_shutdown, %s err:%d %d", callfn, sslerr, er);
                 goto done;
             }
         }
@@ -1141,7 +1141,7 @@ restconf_close_ssl_socket(restconf_conn *rc,
  * @retval    -1      Error
 */
 static int
-ssl_alpn_check(clicon_handle        h,
+ssl_alpn_check(clixon_handle        h,
                const unsigned char *alpn,
                unsigned int         alpnlen,
                restconf_conn       *rc,
@@ -1162,12 +1162,12 @@ ssl_alpn_check(clicon_handle        h,
 #endif
     else {
         if ((cberr = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         if (alpn != NULL){
             cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>ALPN: protocol not recognized: %s</error-message></error></errors>", alpn);
-            clicon_log(LOG_INFO, "%s Warning: %s", __FUNCTION__, cbuf_get(cberr));
+            clixon_log(h, LOG_INFO, "%s Warning: %s", __FUNCTION__, cbuf_get(cberr));
             if (native_send_badrequest(h,
                                        "application/yang-data+xml",
                                        cbuf_get(cberr), rc) < 0)
@@ -1186,7 +1186,7 @@ ssl_alpn_check(clicon_handle        h,
             if (pstr)
                 p = restconf_str2proto(pstr);
             if (pstr == NULL || p == -1){
-                clicon_log(LOG_INFO, "%s Warning: ALPN: No protocol selected, or no ALPN?", __FUNCTION__);
+                clixon_log(h, LOG_INFO, "%s Warning: ALPN: No protocol selected, or no ALPN?", __FUNCTION__);
                 if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
                     goto done;
                 goto fail;
@@ -1223,7 +1223,7 @@ ssl_alpn_check(clicon_handle        h,
  * @see openssl_init_socket where this callback is registered
  */
 int
-restconf_ssl_accept_client(clicon_handle    h,
+restconf_ssl_accept_client(clixon_handle    h,
                            int              s,
                            restconf_socket *rsock,
                            restconf_conn  **rcp)
@@ -1247,7 +1247,7 @@ restconf_ssl_accept_client(clicon_handle    h,
 #endif
 #endif
     if ((rn = restconf_native_handle_get(h)) == NULL){
-        clicon_err(OE_XML, EFAULT, "No openssl handle");
+        clixon_err(OE_XML, EFAULT, "No openssl handle");
         goto done;
     }
     /*
@@ -1258,7 +1258,7 @@ restconf_ssl_accept_client(clicon_handle    h,
     clixon_debug(CLIXON_DBG_DEFAULT, "%s s:%d", __FUNCTION__, rc->rc_s);
     if (rsock->rs_ssl){
         if ((rc->rc_ssl = SSL_new(rn->rn_ctx)) == NULL){
-            clicon_err(OE_SSL, 0, "SSL_new");
+            clixon_err(OE_SSL, 0, "SSL_new");
             goto done;
         }
         clixon_debug(CLIXON_DBG_DEFAULT, "%s SSL_new(%p)", __FUNCTION__, rc->rc_ssl);
@@ -1279,16 +1279,16 @@ restconf_ssl_accept_client(clicon_handle    h,
            emailAddress           = olof@hagsand.se
         */
         if (SSL_set1_host(rc->rc_ssl, "andy") != 1) { /* for peer cert */
-            clicon_err(OE_SSL, 0, "SSL_set1_host");
+            clixon_err(OE_SSL, 0, "SSL_set1_host");
             goto done;
         }
         if (SSL_add1_host(rc->rc_ssl, "olof") != 1) { /* for peer cert */
-            clicon_err(OE_SSL, 0, "SSL_set1_host");
+            clixon_err(OE_SSL, 0, "SSL_set1_host");
             goto done;
         }
 #endif
         if (SSL_set_fd(rc->rc_ssl, rc->rc_s) != 1){
-            clicon_err(OE_SSL, 0, "SSL_set_fd");
+            clixon_err(OE_SSL, 0, "SSL_set_fd");
             goto done;
         }
         readmore = 1;
@@ -1348,7 +1348,7 @@ restconf_ssl_accept_client(clicon_handle    h,
                 case SSL_ERROR_WANT_CLIENT_HELLO_CB: /* 11 */
 #endif
                 default:
-                    clicon_err(OE_SSL, 0, "SSL_accept:%d", e);
+                    clixon_err(OE_SSL, 0, "SSL_accept:%d", e);
                     goto done;
                     break;
                 }
@@ -1409,7 +1409,7 @@ restconf_ssl_accept_client(clicon_handle    h,
         }
 #if 0
         else{
-            clicon_log(LOG_NOTICE, "Cert error: %s", X509_verify_cert_error_string(ret));
+            clixon_log(h, LOG_NOTICE, "Cert error: %s", X509_verify_cert_error_string(ret));
             /* Maybe should return already  here, but to get proper return message need to
              * continue to http/1 or http/2 handling
              * @see restconf_connection_sanity
@@ -1436,12 +1436,12 @@ restconf_ssl_accept_client(clicon_handle    h,
     case HTTP_2:{
         if (http2_session_init(rc) < 0){
             restconf_close_ssl_socket(rc, __FUNCTION__, 0);
-            clicon_err_reset();
+            clixon_err_reset();
             goto closed;
         }
         if (http2_send_server_connection(rc) < 0){
             restconf_close_ssl_socket(rc, __FUNCTION__, 0);
-            clicon_err_reset();
+            clixon_err_reset();
             goto closed;
         }
         break;
@@ -1475,7 +1475,7 @@ restconf_idle_timer_set(struct timeval t,
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "restconf idle timer %s", descr);
@@ -1521,11 +1521,11 @@ restconf_idle_cb(int   fd,
     struct timeval   to = {0,};
 
     if ((rc = (restconf_conn *)arg) == NULL){
-        clicon_err(OE_YANG, EINVAL, "rc is NULL");
+        clixon_err(OE_YANG, EINVAL, "rc is NULL");
         goto done;
     }
     if ((rsock = rc->rc_socket) == NULL){
-        clicon_err(OE_YANG, EINVAL, "rsock is NULL");
+        clixon_err(OE_YANG, EINVAL, "rsock is NULL");
         goto done;
     }
     clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\"", __FUNCTION__, rsock->rs_description);
@@ -1577,12 +1577,12 @@ restconf_idle_timer(restconf_conn *rc)
     restconf_socket *rsock;
 
     if (rc == NULL || !rc->rc_callhome){
-        clicon_err(OE_RESTCONF, EINVAL, "rc is NULL or not callhome");
+        clixon_err(OE_RESTCONF, EINVAL, "rc is NULL or not callhome");
         goto done;
     }
     rsock = rc->rc_socket;
     if (rsock == NULL || !rsock->rs_periodic || rsock->rs_idle_timeout==0){
-        clicon_err(OE_YANG, EINVAL, "rsock is NULL or not periodic");
+        clixon_err(OE_YANG, EINVAL, "rsock is NULL or not periodic");
         goto done;
     }
     clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\" register", __FUNCTION__, rsock->rs_description);
@@ -1609,7 +1609,7 @@ restconf_callhome_cb(int   fd,
                      void *arg)
 {
     int              retval = -1;
-    clicon_handle    h;
+    clixon_handle    h;
     restconf_socket *rsock = NULL;
     struct sockaddr_in6 sin6 = {0,}; // because its larger than sin and sa
     struct sockaddr *sa = (struct sockaddr *)&sin6;
@@ -1620,7 +1620,7 @@ restconf_callhome_cb(int   fd,
 
     rsock = (restconf_socket *)arg;
     if (rsock == NULL || !rsock->rs_callhome){
-        clicon_err(OE_YANG, EINVAL, "rsock is NULL");
+        clixon_err(OE_YANG, EINVAL, "rsock is NULL");
         goto done;
     }
     clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\"", __FUNCTION__, rsock->rs_description);
@@ -1629,7 +1629,7 @@ restconf_callhome_cb(int   fd,
     if (clixon_inet2sin(rsock->rs_addrtype, rsock->rs_addrstr, rsock->rs_port, sa, &sa_len) < 0)
         goto done;
     if ((s = socket(sa->sa_family, SOCK_STREAM, 0)) < 0) {
-        clicon_err(OE_UNIX, errno, "socket");
+        clixon_err(OE_UNIX, errno, "socket");
         goto done;
     }
     if (connect(s, sa, sa_len) < 0){
@@ -1683,7 +1683,7 @@ restconf_callhome_timer(restconf_socket *rsock,
     cbuf          *cb = NULL;
 
     if (rsock == NULL || !rsock->rs_callhome){
-        clicon_err(OE_YANG, EINVAL, "rsock is NULL or not callhome");
+        clixon_err(OE_YANG, EINVAL, "rsock is NULL or not callhome");
         goto done;
     }
     clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\"", __FUNCTION__, rsock->rs_description);
@@ -1709,7 +1709,7 @@ restconf_callhome_timer(restconf_socket *rsock,
         timeradd(&now, &t1, &t);
     }
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "restconf callhome timer %s", rsock->rs_description);
@@ -1745,7 +1745,7 @@ restconf_callhome_timer(restconf_socket *rsock,
  * @retval    -1         Error
  */
 int
-restconf_socket_extract(clicon_handle    h,
+restconf_socket_extract(clixon_handle    h,
                         cxobj           *xs,
                         cvec            *nsc,
                         restconf_socket *rsock,
@@ -1765,18 +1765,18 @@ restconf_socket_extract(clicon_handle    h,
     yang_stmt *ysub = NULL;
 
     if ((x = xpath_first(xs, nsc, "namespace")) == NULL){
-        clicon_err(OE_XML, EINVAL, "Mandatory namespace not given");
+        clixon_err(OE_XML, EINVAL, "Mandatory namespace not given");
         goto done;
     }
     *namespace = xml_body(x);
     if ((x = xpath_first(xs, nsc, "description")) != NULL){
         if ((rsock->rs_description = strdup(xml_body(x))) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
     }
     if ((x = xpath_first(xs, nsc, "address")) == NULL){
-        clicon_err(OE_XML, EINVAL, "Mandatory address not given");
+        clixon_err(OE_XML, EINVAL, "Mandatory address not given");
         goto done;
     }
     /* address is a union type and needs a special investigation to see which type (ipv4 or ipv6)
@@ -1785,25 +1785,25 @@ restconf_socket_extract(clicon_handle    h,
     body = xml_body(x);
     y = xml_spec(x);
     if ((cv = cv_dup(yang_cv_get(y))) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_dup");
+        clixon_err(OE_UNIX, errno, "cv_dup");
         goto done;
     }
     if ((ret = cv_parse1(body, cv, &reason)) < 0){
-        clicon_err(OE_XML, errno, "cv_parse1");
+        clixon_err(OE_XML, errno, "cv_parse1");
         goto done;
     }
     if (ret == 0){
-        clicon_err(OE_XML, EFAULT, "%s", reason);
+        clixon_err(OE_XML, EFAULT, "%s", reason);
         goto done;
     }
     if ((ret = ys_cv_validate(h, cv, y, &ysub, &reason)) < 0)
         goto done;
     if (ret == 0){
-        clicon_err(OE_XML, EFAULT, "Validation os address: %s", reason);
+        clixon_err(OE_XML, EFAULT, "Validation os address: %s", reason);
         goto done;
     }
     if (ysub == NULL){
-        clicon_err(OE_XML, EFAULT, "No address union type");
+        clixon_err(OE_XML, EFAULT, "No address union type");
         goto done;
     }
     *address = body;
@@ -1818,11 +1818,11 @@ restconf_socket_extract(clicon_handle    h,
     if ((x = xpath_first(xs, nsc, "port")) != NULL &&
         (str = xml_body(x)) != NULL){
         if ((ret = parse_uint16(str, port, &reason)) < 0){
-            clicon_err(OE_XML, errno, "parse_uint16");
+            clixon_err(OE_XML, errno, "parse_uint16");
             goto done;
         }
         if (ret == 0){
-            clicon_err(OE_XML, EINVAL, "Unrecognized value of port: %s", str);
+            clixon_err(OE_XML, EINVAL, "Unrecognized value of port: %s", str);
             goto done;
         }
     }
@@ -1834,7 +1834,7 @@ restconf_socket_extract(clicon_handle    h,
         else if (strcmp(str, "true") == 0)
             rsock->rs_ssl = 1;
         else {
-            clicon_err(OE_XML, EINVAL, "Unrecognized value of ssl: %s", str);
+            clixon_err(OE_XML, EINVAL, "Unrecognized value of ssl: %s", str);
             goto done;
         }
     }
@@ -1848,22 +1848,22 @@ restconf_socket_extract(clicon_handle    h,
             if ((x = xpath_first(xs, nsc, "call-home/connection-type/periodic/period")) != NULL &&
                 (str = xml_body(x)) != NULL){
                 if ((ret = parse_uint32(str, &rsock->rs_period, &reason)) < 0){
-                    clicon_err(OE_XML, errno, "parse_uint16");
+                    clixon_err(OE_XML, errno, "parse_uint16");
                     goto done;
                 }
                 if (ret == 0){
-                    clicon_err(OE_XML, EINVAL, "Unrecognized value of period: %s", str);
+                    clixon_err(OE_XML, EINVAL, "Unrecognized value of period: %s", str);
                     goto done;
                 }
             }
             if ((x = xpath_first(xs, nsc, "call-home/connection-type/periodic/idle-timeout")) != NULL &&
                 (str = xml_body(x)) != NULL){
                 if ((ret = parse_uint16(str, &rsock->rs_idle_timeout, &reason)) < 0){
-                    clicon_err(OE_XML, errno, "parse_uint16");
+                    clixon_err(OE_XML, errno, "parse_uint16");
                     goto done;
                 }
                 if (ret == 0){
-                    clicon_err(OE_XML, EINVAL, "Unrecognized value of idle-timeout: %s", str);
+                    clixon_err(OE_XML, EINVAL, "Unrecognized value of idle-timeout: %s", str);
                     goto done;
                 }
             }
@@ -1871,11 +1871,11 @@ restconf_socket_extract(clicon_handle    h,
         if ((x = xpath_first(xs, nsc, "call-home/reconnect-strategy/max-attempts")) != NULL &&
             (str = xml_body(x)) != NULL){
             if ((ret = parse_uint8(str, &rsock->rs_max_attempts, &reason)) < 0){
-                clicon_err(OE_XML, errno, "parse_uint8");
+                clixon_err(OE_XML, errno, "parse_uint8");
                 goto done;
             }
             if (ret == 0){
-                clicon_err(OE_XML, EINVAL, "Unrecognized value of max-attempts: %s", str);
+                clixon_err(OE_XML, EINVAL, "Unrecognized value of max-attempts: %s", str);
                 goto done;
             }
         }

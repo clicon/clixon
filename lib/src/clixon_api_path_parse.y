@@ -83,7 +83,7 @@
 /* typecast macro */
 #define _AY ((clixon_api_path_yacc *)_ay)
 
-#define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_api_path_parsetext, _AY->ay_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_api_path_parsetext, _AY->ay_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
@@ -103,12 +103,14 @@
 
 #include <cligen/cligen.h>
 
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_path.h"
@@ -133,7 +135,7 @@ void
 clixon_api_path_parseerror(void *_ay,
                            char *s)
 {
-    clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'",
+    clixon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'",
                _AY->ay_name,
                _AY->ay_linenum,
                s,
@@ -186,17 +188,17 @@ path_new(char *module_name,
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, module_name, id);
     if ((cp = malloc(sizeof(*cp))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(cp, 0, sizeof(*cp));
     if (module_name)
         if ((cp->cp_prefix = strdup(module_name)) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
     if ((cp->cp_id = strdup(id)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     return cp;
@@ -220,11 +222,11 @@ keyval_add(cvec   *cvv,
         goto done;
     if (cvv == NULL &&
         (cvv = cvec_new(0)) == NULL) {
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto done;
     }
     if (cvec_append_var(cvv, cv) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_append_var");
+        clixon_err(OE_UNIX, errno, "cvec_append_var");
         cvv = NULL;
         goto done;
     }
@@ -243,16 +245,16 @@ keyval_set(char *name,
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_new");
+        clixon_err(OE_UNIX, errno, "cv_new");
         goto done;
     }
     if (name && cv_name_set(cv, name) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_string_set");
+        clixon_err(OE_UNIX, errno, "cv_string_set");
         cv = NULL;
         goto done;
     }
     if (cv_string_set(cv, val) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_string_set");
+        clixon_err(OE_UNIX, errno, "cv_string_set");
         cv = NULL;
         goto done;
     }

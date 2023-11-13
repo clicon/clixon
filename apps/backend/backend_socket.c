@@ -68,7 +68,7 @@
 
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "backend_socket.h"
@@ -84,7 +84,7 @@
  * @retval    -1    Error
  */
 static int
-config_socket_init_ipv4(clicon_handle h,
+config_socket_init_ipv4(clixon_handle h,
                         char         *dst)
 {
     int                s;
@@ -96,7 +96,7 @@ config_socket_init_ipv4(clicon_handle h,
 
     /* create inet socket */
     if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        clicon_err(OE_UNIX, errno, "socket");
+        clixon_err(OE_UNIX, errno, "socket");
         return -1;
     }
     setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one));
@@ -104,16 +104,16 @@ config_socket_init_ipv4(clicon_handle h,
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     if (inet_pton(addr.sin_family, dst, &addr.sin_addr) != 1){
-        clicon_err(OE_UNIX, errno, "inet_pton: %s (Expected IPv4 address. Check settings of CLICON_SOCK_FAMILY and CLICON_SOCK)", dst);
+        clixon_err(OE_UNIX, errno, "inet_pton: %s (Expected IPv4 address. Check settings of CLICON_SOCK_FAMILY and CLICON_SOCK)", dst);
         goto err; /* Could check getaddrinfo */
     }
     if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0){
-        clicon_err(OE_UNIX, errno, "bind");
+        clixon_err(OE_UNIX, errno, "bind");
         goto err;
     }
     clixon_debug(CLIXON_DBG_DEFAULT, "Listen on server socket at %s:%hu", dst, port);
     if (listen(s, 5) < 0){
-        clicon_err(OE_UNIX, errno, "listen");
+        clixon_err(OE_UNIX, errno, "listen");
         goto err;
     }
     return s;
@@ -132,7 +132,7 @@ config_socket_init_ipv4(clicon_handle h,
  * @retval    -1    Error
  */
 static int
-config_socket_init_unix(clicon_handle h,
+config_socket_init_unix(clixon_handle h,
                         char         *sock)
 {
     int                s;
@@ -143,23 +143,23 @@ config_socket_init_unix(clicon_handle h,
     struct stat        st;
 
     if (lstat(sock, &st) == 0 && unlink(sock) < 0){
-        clicon_err(OE_UNIX, errno, "unlink(%s)", sock);
+        clixon_err(OE_UNIX, errno, "unlink(%s)", sock);
         return -1;
     }
     /* then find configuration group (for clients) and find its groupid */
     if ((config_group = clicon_sock_group(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
+        clixon_err(OE_FATAL, 0, "clicon_sock_group option not set");
         return -1;
     }
     if (group_name2gid(config_group, &gid) < 0)
         return -1;
 #if 0
     if (gid == 0)
-        clicon_log(LOG_WARNING, "%s: No such group: %s", __FUNCTION__, config_group);
+        clixon_log(h, LOG_WARNING, "%s: No such group: %s", __FUNCTION__, config_group);
 #endif
     /* create unix socket */
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-        clicon_err(OE_UNIX, errno, "socket");
+        clixon_err(OE_UNIX, errno, "socket");
         return -1;
     }
 //    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one));
@@ -168,19 +168,19 @@ config_socket_init_unix(clicon_handle h,
     strncpy(addr.sun_path, sock, sizeof(addr.sun_path)-1);
     old_mask = umask(S_IRWXO | S_IXGRP | S_IXUSR);
     if (bind(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
-        clicon_err(OE_UNIX, errno, "bind");
+        clixon_err(OE_UNIX, errno, "bind");
         umask(old_mask);
         goto err;
     }
     umask(old_mask);
     /* change socket path file group */
     if (lchown(sock, -1, gid) < 0){
-        clicon_err(OE_UNIX, errno, "lchown(%s, %s)", sock, config_group);
+        clixon_err(OE_UNIX, errno, "lchown(%s, %s)", sock, config_group);
         goto err;
     }
     clixon_debug(CLIXON_DBG_DEFAULT, "Listen on server socket at %s", addr.sun_path);
     if (listen(s, 5) < 0){
-        clicon_err(OE_UNIX, errno, "listen");
+        clixon_err(OE_UNIX, errno, "listen");
         goto err;
     }
     return s;
@@ -196,12 +196,12 @@ config_socket_init_unix(clicon_handle h,
  * @retval    -1    Error
  */
 int
-backend_socket_init(clicon_handle h)
+backend_socket_init(clixon_handle h)
 {
     char *sock; /* unix path or ip address string */
 
     if ((sock = clicon_sock_str(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
+        clixon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
         return -1;
     }
     switch (clicon_sock_family(h)){
@@ -212,7 +212,7 @@ backend_socket_init(clicon_handle h)
         return config_socket_init_ipv4(h, sock);
         break;
     default:
-        clicon_err(OE_UNIX, EINVAL, "No such address family: %d",
+        clixon_err(OE_UNIX, EINVAL, "No such address family: %d",
                    clicon_sock_family(h));
         break;
     }
@@ -222,7 +222,7 @@ backend_socket_init(clicon_handle h)
 /*! Accept new socket client
  *
  * @param[in]  fd   Socket (unix or ip)
- * @param[in]  arg  typecast clicon_handle
+ * @param[in]  arg  typecast clixon_handle
  * @retval     0    OK
  * @retval    -1    Error
  */
@@ -231,7 +231,7 @@ backend_accept_client(int   fd,
                       void *arg)
 {
     int                  retval = -1;
-    clicon_handle        h = (clicon_handle)arg;
+    clixon_handle        h = (clixon_handle)arg;
     int                  s;
     struct sockaddr      from = {0,};
     socklen_t            len;
@@ -248,7 +248,7 @@ backend_accept_client(int   fd,
     clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     len = sizeof(from);
     if ((s = accept(fd, &from, &len)) < 0){
-        clicon_err(OE_UNIX, errno, "accept");
+        clixon_err(OE_UNIX, errno, "accept");
         goto done;
     }
     if ((ce = backend_client_add(h, &from)) == NULL)
@@ -262,7 +262,7 @@ backend_accept_client(int   fd,
 #if defined(HAVE_SO_PEERCRED)
         clen =  sizeof(cr);
         if(getsockopt(s, SOL_SOCKET, SO_PEERCRED, &cr, &clen) < 0){
-            clicon_err(OE_UNIX, errno, "getsockopt");
+            clixon_err(OE_UNIX, errno, "getsockopt");
             goto done;
         }
         if (uid2name(cr.uid, &name) < 0)
@@ -277,7 +277,7 @@ backend_accept_client(int   fd,
 #endif
         if (name != NULL){
             if ((ce->ce_username = name) == NULL){
-                clicon_err(OE_UNIX, errno, "strdup");
+                clixon_err(OE_UNIX, errno, "strdup");
                 name = NULL;
                 goto done;
             }

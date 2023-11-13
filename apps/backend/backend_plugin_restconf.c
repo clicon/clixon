@@ -51,7 +51,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_backend_transaction.h"
@@ -74,7 +74,7 @@
  * @retval    -1    Error
  */
 static int
-restconf_pseudo_set_log(clicon_handle h,
+restconf_pseudo_set_log(clixon_handle h,
                         cxobj        *xt)
 {
     int    retval = -1;
@@ -102,7 +102,7 @@ restconf_pseudo_set_log(clicon_handle h,
                     if (argv[i+1])
                         free(argv[i+1]);
                     if ((argv[i+1] = strdup("s")) == NULL){
-                        clicon_err(OE_UNIX, errno, "strdup");
+                        clixon_err(OE_UNIX, errno, "strdup");
                         goto done;
                     }
                 }
@@ -110,7 +110,7 @@ restconf_pseudo_set_log(clicon_handle h,
                     if (argv[i+1])
                         free(argv[i+1]);
                     if ((argv[i+1] = strdup("f/var/log/clixon_restconf.log")) == NULL){
-                        clicon_err(OE_UNIX, errno, "strdup");
+                        clixon_err(OE_UNIX, errno, "strdup");
                         goto done;
                     }
                 }
@@ -121,7 +121,7 @@ restconf_pseudo_set_log(clicon_handle h,
             if (dbg){
                 free(argv[i+1]);
                 if ((argv[i+1] = strdup(dbg)) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
@@ -144,7 +144,7 @@ restconf_pseudo_set_log(clicon_handle h,
  * @retval    -1    Error
  */
 static int
-restconf_pseudo_set_inline(clicon_handle h,
+restconf_pseudo_set_inline(clixon_handle h,
                            cxobj        *xt)
 {
     int    retval = -1;
@@ -165,13 +165,13 @@ restconf_pseudo_set_inline(clicon_handle h,
             char  *str;
             if (strcmp(argv[i], "-R") == 0 && argc > i+1 && argv[i+1]){
                 if ((cb = cbuf_new()) == NULL){
-                    clicon_err(OE_XML, errno, "cbuf_new");
+                    clixon_err(OE_XML, errno, "cbuf_new");
                     goto done;
                 }
                 if (clixon_xml2cbuf(cb, xrestconf, 0, 0, NULL, -1, 0) < 0)
                     goto done;
                 if ((str = strdup(cbuf_get(cb))) == NULL){
-                    clicon_err(OE_XML, errno, "stdup");
+                    clixon_err(OE_XML, errno, "stdup");
                     goto done;
                 }
                 clixon_debug(CLIXON_DBG_DEFAULT, "%s str:%s", __FUNCTION__, str);
@@ -196,7 +196,7 @@ restconf_pseudo_set_inline(clicon_handle h,
  * These rules give that if RPC op is start and enable is false -> change op to none
  */
 int
-restconf_rpc_wrapper(clicon_handle    h,
+restconf_rpc_wrapper(clixon_handle    h,
                      process_entry_t *pe,
                      proc_operation  *operation)
 {
@@ -248,7 +248,7 @@ restconf_rpc_wrapper(clicon_handle    h,
  *        this is ignored.
  */
 static int
-restconf_pseudo_process_control(clicon_handle h)
+restconf_pseudo_process_control(clixon_handle h)
 {
     int         retval = -1;
     char      **argv = NULL;
@@ -266,12 +266,12 @@ restconf_pseudo_process_control(clicon_handle h)
     nr += 2;
 #endif
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     i = 0;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     /* Try to figure out where clixon_restconf is installed
@@ -303,7 +303,7 @@ restconf_pseudo_process_control(clicon_handle h)
             clixon_debug(CLIXON_DBG_DEFAULT, "Not found: %s", pgm);
     }
     if (!found){
-        clicon_err(OE_RESTCONF, 0, "clixon_restconf not found in neither CLICON_RESTCONF_INSTALLDIR(%s) nor CLIXON_CONFIG_SBINDIR(%s). Try overriding with CLICON_RESTCONF_INSTALLDIR",
+        clixon_err(OE_RESTCONF, 0, "clixon_restconf not found in neither CLICON_RESTCONF_INSTALLDIR(%s) nor CLIXON_CONFIG_SBINDIR(%s). Try overriding with CLICON_RESTCONF_INSTALLDIR",
                    dir0, dir1);
         goto done;
     }
@@ -343,7 +343,7 @@ restconf_pseudo_process_control(clicon_handle h)
 /*! Restconf pseudo-plugin process validate
  */
 static int
-restconf_pseudo_process_validate(clicon_handle    h,
+restconf_pseudo_process_validate(clixon_handle    h,
                                  transaction_data td)
 {
     int    retval = -1;
@@ -357,11 +357,11 @@ restconf_pseudo_process_validate(clicon_handle    h,
         xpath_first(xtarget, NULL, "restconf/socket[ssl='true']")){
         /* Should filepath be checked? One could claim this is a runtime system,... */
         if (xpath_first(xtarget, 0, "restconf/server-cert-path") == NULL){
-            clicon_err(OE_CFG, 0, "SSL enabled but server-cert-path not set");
+            clixon_err(OE_CFG, 0, "SSL enabled but server-cert-path not set");
             return -1; /* induce fail */
         }
         if (xpath_first(xtarget, 0, "restconf/server-key-path") == NULL){
-            clicon_err(OE_CFG, 0, "SSL enabled but server-key-path not set");
+            clixon_err(OE_CFG, 0, "SSL enabled but server-key-path not set");
             return -1; /* induce fail */
         }
     }
@@ -372,7 +372,7 @@ restconf_pseudo_process_validate(clicon_handle    h,
 /*! Restconf pseduo-plugin process commit
  */
 static int
-restconf_pseudo_process_commit(clicon_handle    h,
+restconf_pseudo_process_commit(clixon_handle    h,
                                transaction_data td)
 {
     int    retval = -1;
@@ -437,7 +437,7 @@ restconf_pseudo_process_commit(clicon_handle    h,
  * @retval    -1  Error
  */
 int
-backend_plugin_restconf_register(clicon_handle h,
+backend_plugin_restconf_register(clixon_handle h,
                                  yang_stmt    *yspec)
 {
     int              retval = -1;

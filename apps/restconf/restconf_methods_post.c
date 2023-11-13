@@ -56,7 +56,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "restconf_lib.h"
@@ -75,7 +75,7 @@
  * @note ports are ignored
  */
 static int
-http_location_header(clicon_handle h,
+http_location_header(clixon_handle h,
                      void         *req,
                      cxobj        *xobj)
 {
@@ -91,7 +91,7 @@ http_location_header(clicon_handle h,
         goto done;
     if (xobj != NULL){
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, 0, "cbuf_new");
+            clixon_err(OE_UNIX, 0, "cbuf_new");
             goto done;
         }
         if (xml2api_path_1(xobj, cb) < 0)
@@ -155,7 +155,7 @@ http_location_header(clicon_handle h,
  * @see api_data_put
  */
 int
-api_data_post(clicon_handle h,
+api_data_post(clixon_handle h,
               void         *req,
               char         *api_path,
               int           pi,
@@ -192,7 +192,7 @@ api_data_post(clicon_handle h,
     clixon_debug(CLIXON_DBG_DEFAULT, "%s api_path:\"%s\"", __FUNCTION__, api_path);
     clixon_debug(CLIXON_DBG_DEFAULT, "%s data:\"%s\"", __FUNCTION__, data);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     for (i=0; i<pi; i++)
@@ -241,7 +241,7 @@ api_data_post(clicon_handle h,
     switch (media_in){
     case YANG_DATA_XML:
         if ((ret = clixon_xml_parse_string(data, yb, yspec, &xbot, &xerr)) < 0){
-            if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+            if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
@@ -255,7 +255,7 @@ api_data_post(clicon_handle h,
         break;
     case YANG_DATA_JSON:
         if ((ret = clixon_json_parse_string(data, 1, yb, yspec, &xbot, &xerr)) < 0){
-            if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+            if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
@@ -335,7 +335,7 @@ api_data_post(clicon_handle h,
 
     /* Create text buffer for transfer to backend */
     if ((cbx = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, 0, "cbuf_new");
+        clixon_err(OE_UNIX, 0, "cbuf_new");
         goto done;
     }
     /* For internal XML protocol: add username attribute for access control
@@ -412,7 +412,7 @@ api_data_post(clicon_handle h,
  * @param[in]  media_out Output media
  * @retval     1      OK
  * @retval     0      Fail, Error message sent
- * @retval    -1      Fatal error, clicon_err called
+ * @retval    -1      Fatal error
  *
  * RFC8040 3.6.1
  *  If the "rpc" or "action" statement has an "input" section, then
@@ -423,7 +423,7 @@ api_data_post(clicon_handle h,
  * (Any other input is assumed as error.)
  */
 static int
-api_operations_post_input(clicon_handle h,
+api_operations_post_input(clixon_handle h,
                           void         *req,
                           char         *data,
                           yang_stmt    *yspec,
@@ -443,7 +443,7 @@ api_operations_post_input(clicon_handle h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, data);
     if ((cbret = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, 0, "cbuf_new");
+        clixon_err(OE_UNIX, 0, "cbuf_new");
         goto done;
     }
     /* Parse input data as json or xml into xml */
@@ -453,7 +453,7 @@ api_operations_post_input(clicon_handle h,
         /* XXX: Here data is on the form: <input xmlns="urn:example:clixon"/> and has no proper yang binding 
          * support */
         if ((ret = clixon_xml_parse_string(data, YB_NONE, yspec, &xdata, &xerr)) < 0){
-            if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+            if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
@@ -469,7 +469,7 @@ api_operations_post_input(clicon_handle h,
         /* XXX: Here data is on the form: {"clixon-example:input":null} and has no proper yang binding 
          * support */
         if ((ret = clixon_json_parse_string(data, 1, YB_NONE, yspec, &xdata, &xerr)) < 0){
-            if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+            if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
@@ -545,11 +545,11 @@ api_operations_post_input(clicon_handle h,
  * @param[out] xoutputp Restconf JSON/XML output
  * @retval     1        OK
  * @retval     0        Fail, Error message sent
- * @retval    -1        Fatal error, clicon_err called
+ * @retval    -1        Fatal error
  * xret should like: <top><rpc-reply><x xmlns="uri">0</x></rpc-reply></top>
  */
 static int
-api_operations_post_output(clicon_handle h,
+api_operations_post_output(clixon_handle h,
                            void         *req,
                            cxobj        *xret,
                            yang_stmt    *yspec,
@@ -691,7 +691,7 @@ api_operations_post_output(clicon_handle h,
  * 10. Validate and send reply to originator
  */
 int
-api_operations_post(clicon_handle h,
+api_operations_post(clixon_handle h,
                     void         *req,
                     char         *api_path,
                     int           pi,
@@ -725,11 +725,11 @@ api_operations_post(clicon_handle h,
     clixon_debug(CLIXON_DBG_DEFAULT, "%s json:\"%s\" path:\"%s\"", __FUNCTION__, data, api_path);
     /* 1. Initialize */
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     if ((cbret = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, 0, "cbuf_new");
+        clixon_err(OE_UNIX, 0, "cbuf_new");
         goto done;
     }
     for (i=0; i<pi; i++)

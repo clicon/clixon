@@ -62,8 +62,8 @@ cxobj **transaction_tcvec(transaction_data td);
 size_t  transaction_clen(transaction_data td);
 
 int transaction_print(FILE *f, transaction_data th);
-int transaction_dbg(clicon_handle h, int dbglevel, transaction_data th, const char *msg);
-int transaction_log(clicon_handle h, transaction_data th, int level, const char *op);
+int transaction_dbg(clixon_handle h, int dbglevel, transaction_data th, const char *msg);
+int transaction_log(clixon_handle h, transaction_data th, int level, const char *op);
 
 
 /* Pagination callbacks

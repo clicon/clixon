@@ -73,6 +73,7 @@
 #include "clixon_handle.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_io.h"
@@ -110,7 +111,7 @@ yang_schema_mount_point0(yang_stmt *y)
     char         *value = NULL;
 
     if (y == NULL){
-        clicon_err(OE_YANG, EINVAL, "y is NULL");
+        clixon_err(OE_YANG, EINVAL, "y is NULL");
         goto done;
     }
     keyw = yang_keyword_get(y);
@@ -160,7 +161,7 @@ yang_mount_get(yang_stmt  *y,
     cvec   *cvv;
     cg_var *cv;
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s %s %p", __FUNCTION__, xpath, y);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %p", __FUNCTION__, xpath, y);
     /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
     if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
@@ -192,7 +193,7 @@ yang_mount_set(yang_stmt *y,
     cg_var    *cv;
     cg_var    *cv2;
 
-    clicon_debug(CLIXON_DBG_DEFAULT, "%s %s %p", __FUNCTION__, xpath, y);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %p", __FUNCTION__, xpath, y);
     if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
         (yspec0 = cv_void_get(cv)) != NULL){
@@ -204,11 +205,11 @@ yang_mount_set(yang_stmt *y,
     else if ((cv = yang_cvec_add(y, CGV_VOID, xpath)) == NULL)
         goto done;
     if ((cv2 = cv_new(CGV_STRING)) == NULL){
-        clicon_err(OE_YANG, errno, "cv_new");
+        clixon_err(OE_YANG, errno, "cv_new");
         goto done;
     }
     if (cv_string_set(cv2, xpath) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_string_set");
+        clixon_err(OE_UNIX, errno, "cv_string_set");
         goto done;
     }
     /* tag yspec with key/xpath */
@@ -231,7 +232,7 @@ yang_mount_set(yang_stmt *y,
  * @retval    -1     Error
  */
 int
-xml_yang_mount_get(clicon_handle   h,
+xml_yang_mount_get(clixon_handle   h,
                    cxobj          *xt,
                    validate_level *vl,
                    yang_stmt     **yspec)
@@ -293,7 +294,7 @@ xml_yang_mount_get(clicon_handle   h,
  * @retval    -1      Error
  */
 int
-xml_yang_mount_set(clicon_handle h,
+xml_yang_mount_set(clixon_handle h,
                    cxobj        *x,
                    yang_stmt    *yspec)
 {
@@ -308,7 +309,7 @@ xml_yang_mount_set(clicon_handle h,
     int        ret;
 
     if ((y = xml_spec(x)) == NULL){
-        clicon_err(OE_YANG, 0, "No yang-spec");
+        clixon_err(OE_YANG, 0, "No yang-spec");
         goto done;
     }
     if (xml2xpath(x, NULL, 1, 0, &xpath0) < 0)
@@ -319,7 +320,7 @@ xml_yang_mount_set(clicon_handle h,
     if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc1, &reason)) < 0)
         goto done;
     if (ret == 0){
-        clicon_err(OE_YANG, 0, "%s", cbuf_get(reason));
+        clixon_err(OE_YANG, 0, "%s", cbuf_get(reason));
         goto done;
     }
     if (yang_mount_set(y, xpath1, yspec) < 0)
@@ -413,7 +414,7 @@ find_schema_mounts(cxobj *x,
     if (ret == 0)
         return 0;
     if ((cv = cvec_add(cvv, CGV_VOID)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_add");
+        clixon_err(OE_UNIX, errno, "cvec_add");
         return -1;
     }
     cv_void_set(cv, x);
@@ -442,7 +443,7 @@ find_schema_mounts(cxobj *x,
  * @note: Mountpoints must exist in xret on entry
  */
 static int
-yang_schema_mount_statedata_yanglib(clicon_handle h,
+yang_schema_mount_statedata_yanglib(clixon_handle h,
                                     char         *xpath,
                                     cvec         *nsc,
                                     cxobj       **xret,
@@ -460,11 +461,11 @@ yang_schema_mount_statedata_yanglib(clicon_handle h,
     validate_level vl = VL_FULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, 0, "clicon buffer");
+        clixon_err(OE_UNIX, 0, "clicon buffer");
         goto done;
     }
     if ((cvv = cvec_new(0)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto done;
     }
     if (xml_apply(*xret, CX_ELMNT, find_schema_mounts, cvv) < 0)
@@ -513,7 +514,7 @@ yang_schema_mount_statedata_yanglib(clicon_handle h,
  * @note  Only "inline" specification of mounted schema supported, not "shared schema"
  */
 int
-yang_schema_mount_statedata(clicon_handle h,
+yang_schema_mount_statedata(clixon_handle h,
                             yang_stmt    *yspec,
                             char         *xpath,
                             cvec         *nsc,
@@ -536,12 +537,12 @@ yang_schema_mount_statedata(clicon_handle h,
     if ((ymodext = yang_find(yspec, Y_MODULE, "ietf-yang-schema-mount")) == NULL ||
         (yext = yang_find(ymodext, Y_EXTENSION, "mount-point")) == NULL){
         goto ok;
-        //        clicon_err(OE_YANG, 0, "yang schema mount-point extension not found");
+        //        clixon_err(OE_YANG, 0, "yang schema mount-point extension not found");
         //        goto done;
     }
     if ((cvv = yang_cvec_get(yext)) != NULL){
         if ((cb = cbuf_new()) ==NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "<schema-mounts xmlns=\"%s\">", YANG_SCHEMA_MOUNT_NAMESPACE); // XXX only if hit
@@ -550,7 +551,7 @@ yang_schema_mount_statedata(clicon_handle h,
             ymount = (yang_stmt*)cv_void_get(cv);
             ymod = ys_module(ymount);
             if ((cv1 = yang_cv_get(ymount)) == NULL){
-                clicon_err(OE_YANG, 0, "mount-point extension must have label");
+                clixon_err(OE_YANG, 0, "mount-point extension must have label");
                 goto done;
             }
             label = cv_string_get(cv1);
@@ -596,7 +597,7 @@ yang_schema_mount_statedata(clicon_handle h,
  * @see yang_schema_mount_statedata
  */
 int
-yang_schema_mount_statistics(clicon_handle h,
+yang_schema_mount_statistics(clixon_handle h,
                              cxobj        *xt,
                              int           modules,
                              cbuf         *cb)
@@ -613,7 +614,7 @@ yang_schema_mount_statistics(clicon_handle h,
     size_t     sz;
 
     if ((cvv = cvec_new(0)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto done;
     }
     if (xml_apply(xt, CX_ELMNT, find_schema_mounts, cvv) < 0)
@@ -670,7 +671,7 @@ yang_schema_mount_statistics(clicon_handle h,
  * @retval       -1     Error
  */
 int
-yang_schema_yanglib_parse_mount(clicon_handle h,
+yang_schema_yanglib_parse_mount(clixon_handle h,
                                 cxobj        *xt)
 {
     int            retval = -1;
@@ -718,7 +719,7 @@ yang_schema_yanglib_parse_mount(clicon_handle h,
  * XXX maybe not needed
  */
 int
-yang_schema_get_child(clicon_handle h,
+yang_schema_get_child(clixon_handle h,
                       cxobj        *x1,
                       cxobj        *x1c,
                       yang_stmt   **yc)

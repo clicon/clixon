@@ -49,7 +49,7 @@
 #include <sys/time.h>
 #include <sys/syslog.h>
 
-/* clicon */
+/* cligen */
 #include <cligen/cligen.h>
 
 /* Clicon library functions. */
@@ -84,7 +84,7 @@ static char *_validate_fail_xpath = NULL;
 static int   _validate_fail_toggle = 0; /* fail at validate and commit */
 
 int
-nacm_begin(clicon_handle    h,
+nacm_begin(clixon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
@@ -94,7 +94,7 @@ nacm_begin(clicon_handle    h,
 /*! This is called on validate (and commit). Check validity of candidate
  */
 int
-nacm_validate(clicon_handle    h,
+nacm_validate(clixon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
@@ -103,7 +103,7 @@ nacm_validate(clicon_handle    h,
         if (_validate_fail_toggle==0 &&
             xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
             _validate_fail_toggle = 1; /* toggle if triggered */
-            clicon_err(OE_XML, 0, "User error");
+            clixon_err(OE_XML, 0, "User error");
             return -1; /* induce fail */
         }
     }
@@ -111,7 +111,7 @@ nacm_validate(clicon_handle    h,
 }
 
 int
-nacm_complete(clicon_handle    h,
+nacm_complete(clixon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
@@ -122,7 +122,7 @@ nacm_complete(clicon_handle    h,
 /*! This is called on commit. Identify modifications and adjust machine state
  */
 int
-nacm_commit(clicon_handle    h,
+nacm_commit(clixon_handle    h,
             transaction_data td)
 {
     if (_transaction_log)
@@ -131,7 +131,7 @@ nacm_commit(clicon_handle    h,
         if (_validate_fail_toggle==1 &&
             xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
             _validate_fail_toggle = 0; /* toggle if triggered */
-            clicon_err(OE_XML, 0, "User error");
+            clixon_err(OE_XML, 0, "User error");
             return -1; /* induce fail */
         }
     }
@@ -139,7 +139,7 @@ nacm_commit(clicon_handle    h,
 }
 
 int
-nacm_commit_done(clicon_handle    h,
+nacm_commit_done(clixon_handle    h,
                  transaction_data td)
 {
     if (_transaction_log)
@@ -148,7 +148,7 @@ nacm_commit_done(clicon_handle    h,
 }
 
 int
-nacm_revert(clicon_handle    h,
+nacm_revert(clixon_handle    h,
             transaction_data td)
 {
     if (_transaction_log)
@@ -157,7 +157,7 @@ nacm_revert(clicon_handle    h,
 }
 
 int
-nacm_end(clicon_handle    h,
+nacm_end(clixon_handle    h,
          transaction_data td)
 {
     if (_transaction_log)
@@ -166,7 +166,7 @@ nacm_end(clicon_handle    h,
 }
 
 int
-nacm_abort(clicon_handle    h,
+nacm_abort(clixon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
@@ -187,7 +187,7 @@ nacm_abort(clicon_handle    h,
  * Real code would poll state
  */
 int
-nacm_statedata(clicon_handle h,
+nacm_statedata(clixon_handle h,
                cvec         *nsc,
                char         *xpath,
                cxobj        *xstate)
@@ -209,7 +209,7 @@ nacm_statedata(clicon_handle h,
     return retval;
 }
 
-clixon_plugin_api *clixon_plugin_init(clicon_handle h);
+clixon_plugin_api *clixon_plugin_init(clixon_handle h);
 
 static clixon_plugin_api api = {
     "nacm",             /* name */           /*--- Common fields.  ---*/
@@ -230,11 +230,11 @@ static clixon_plugin_api api = {
 /*! Backend plugin initialization
  *
  * @param[in]  h    Clixon handle
- * @retval     NULL Error with clicon_err set
+ * @retval     NULL Error
  * @retval     api  Pointer to API struct
  */
 clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
     char  *nacm_mode;
     int    argc; /* command-line options (after --) */
@@ -259,7 +259,7 @@ clixon_plugin_init(clicon_handle h)
 
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (nacm_mode==NULL || strcmp(nacm_mode, "disabled") == 0){
-        clicon_log(LOG_DEBUG, "%s CLICON_NACM_MODE not enabled: example nacm module disabled", __FUNCTION__);
+        clixon_log(h, LOG_DEBUG, "%s CLICON_NACM_MODE not enabled: example nacm module disabled", __FUNCTION__);
         /* Skip nacm module if not enabled _unless_ we use transaction tests */
         if (_transaction_log == 0)
             return NULL;

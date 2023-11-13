@@ -57,7 +57,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 /* restconf */
@@ -76,7 +76,7 @@
  * @retval     1    Yes, a restconf path
  */
 int
-api_path_is_restconf(clicon_handle h)
+api_path_is_restconf(clixon_handle h)
 {
     int    retval = 0;
     char  *path = NULL;
@@ -108,7 +108,7 @@ api_path_is_restconf(clicon_handle h)
  * enables deployments to specify where the RESTCONF API is located.
  */
 int
-api_well_known(clicon_handle h,
+api_well_known(clixon_handle h,
                void         *req)
 {
     int       retval = -1;
@@ -134,7 +134,7 @@ api_well_known(clicon_handle h,
         goto done;
     /* Create body */
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>\n");
@@ -166,7 +166,7 @@ api_well_known(clicon_handle h,
  * @see api_root_restconf for accessing /restconf/ *
  */
 static int
-api_root_restconf_exact(clicon_handle  h,
+api_root_restconf_exact(clixon_handle  h,
                         void          *req,
                         char          *request_method,
                         int            pretty,
@@ -187,7 +187,7 @@ api_root_restconf_exact(clicon_handle  h,
         goto ok;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
@@ -201,7 +201,7 @@ api_root_restconf_exact(clicon_handle  h,
         goto done;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if (xml_rootchild(xt, 0, &xt) < 0)
@@ -241,7 +241,7 @@ api_root_restconf_exact(clicon_handle  h,
  * @param[in]  media_out Restconf output media
  */
 static int
-api_operational_state(clicon_handle  h,
+api_operational_state(clixon_handle  h,
                         void          *req,
                         char          *request_method,
                         int            pretty,
@@ -264,7 +264,7 @@ api_operational_state(clicon_handle  h,
  * @retval    -1         Error
  */
 static int
-api_yang_library_version(clicon_handle h,
+api_yang_library_version(clixon_handle h,
                          void         *req,
                          int           pretty,
                          restconf_media media_out)
@@ -289,7 +289,7 @@ api_yang_library_version(clicon_handle h,
     if (xml_bind_special(xt, yspec, "/rc:restconf/yang-library-version") < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     switch (media_out){
@@ -333,7 +333,7 @@ api_yang_library_version(clicon_handle h,
  * @retval    -1         Error
  */
 static int
-api_data(clicon_handle h,
+api_data(clixon_handle h,
          void         *req,
          char         *api_path,
          cvec         *pcvec,
@@ -421,7 +421,7 @@ api_data(clicon_handle h,
  * @retval    -1         Error
  */
 static int
-api_operations(clicon_handle h,
+api_operations(clixon_handle h,
                void         *req,
                char         *request_method,
                char         *path,
@@ -462,7 +462,7 @@ api_operations(clicon_handle h,
  * @see api_root_restconf_exact for accessing /restconf/ exact
  */
 int
-api_root_restconf(clicon_handle        h,
+api_root_restconf(clixon_handle        h,
                   void                *req,
                   cvec                *qvec)
 {

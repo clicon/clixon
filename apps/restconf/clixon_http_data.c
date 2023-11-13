@@ -58,7 +58,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 /* restconf */
@@ -91,7 +91,7 @@ static const map_str2str mime_map[] = {
  * @retval     0    No, not a data path, or not enabled
  */
 int
-api_path_is_data(clicon_handle h)
+api_path_is_data(clixon_handle h)
 {
     int    retval = 0;
     char  *path = NULL;
@@ -124,7 +124,7 @@ api_path_is_data(clicon_handle h)
  * @see api_return_err
  */
 static int
-api_http_data_err(clicon_handle  h,
+api_http_data_err(clixon_handle  h,
                  void          *req,
                  int            code)
 {
@@ -133,7 +133,7 @@ api_http_data_err(clicon_handle  h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (restconf_reply_header(req, "Content-Type", "text/html") < 0)
@@ -173,7 +173,7 @@ api_http_data_err(clicon_handle  h,
  * @retval        -1       Error
  */
 static int
-http_data_check_file_path(clicon_handle h,
+http_data_check_file_path(clixon_handle h,
                           void         *req,
                           char         *prefix,
                           cbuf         *cbpath,
@@ -188,13 +188,13 @@ http_data_check_file_path(clicon_handle h,
     FILE       *f;
 
     if (prefix == NULL || cbpath == NULL || fp == NULL){
-        clicon_err(OE_UNIX, EINVAL, "prefix, cbpath0 or fp is NULL");
+        clixon_err(OE_UNIX, EINVAL, "prefix, cbpath0 or fp is NULL");
         goto done;
     }
     p = cbuf_get(cbpath);
     clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, p);
     if (strncmp(prefix, p, strlen(prefix)) != 0){
-        clicon_err(OE_UNIX, EINVAL, "prefix is not prefix of cbpath");
+        clixon_err(OE_UNIX, EINVAL, "prefix is not prefix of cbpath");
         goto done;
     }
     for (i=strlen(prefix); i<strlen(p); i++){
@@ -277,7 +277,7 @@ http_data_check_file_path(clicon_handle h,
  * XXX 1: Buffer copying once too many, see #if 0 below
  */
 static int
-api_http_data_file(clicon_handle h,
+api_http_data_file(clixon_handle h,
                    void         *req,
                    char         *pathname,
                    int           head)
@@ -298,11 +298,11 @@ api_http_data_file(clicon_handle h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((cbfile = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if ((www_data_root = clicon_option_str(h, "CLICON_HTTP_DATA_ROOT")) == NULL){
-        clicon_err(OE_RESTCONF, ENOENT, "CLICON_HTTP_DATA_ROOT missing");
+        clixon_err(OE_RESTCONF, ENOENT, "CLICON_HTTP_DATA_ROOT missing");
         goto done;
     }
 
@@ -346,18 +346,18 @@ api_http_data_file(clicon_handle h,
     }
     fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
     if ((cbdata = cbuf_new_alloc(fsize+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new_alloc");
+        clixon_err(OE_UNIX, errno, "cbuf_new_alloc");
         goto done;
     }
     /* Unoptimized, no direct read but requires an extra copy,
      * the cligen buf API should have some mechanism for this case without the extra copy.
      */
     if ((buf = malloc(fsize)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     if ((ret = fread(buf, fsize, 1, f)) < 0){
-        clicon_err(OE_UNIX, errno, "fread");
+        clixon_err(OE_UNIX, errno, "fread");
         goto done;
     }
     sz = (size_t)ret;
@@ -368,7 +368,7 @@ api_http_data_file(clicon_handle h,
         goto ok;
     }
     if (cbuf_append_buf(cbdata, buf, fsize) < 0){
-        clicon_err(OE_UNIX, errno, "cbuf_append_str");
+        clixon_err(OE_UNIX, errno, "cbuf_append_str");
         goto done;
     }
     if (restconf_reply_header(req, "Content-Type", "%s", media) < 0)
@@ -410,7 +410,7 @@ api_http_data_file(clicon_handle h,
  * Need to enable clixon-restconf.yang www-data feature
  */
 int
-api_http_data(clicon_handle  h,
+api_http_data(clixon_handle  h,
               void          *req,
               cvec          *qvec)
 {
@@ -459,7 +459,7 @@ api_http_data(clicon_handle  h,
     }
     /* 4. indata should be NULL (no write operations) */
     if ((indata = restconf_get_indata(req)) == NULL) {
-        clicon_err(OE_RESTCONF, ENOENT, "Unexpected no input cbuf");
+        clixon_err(OE_RESTCONF, ENOENT, "Unexpected no input cbuf");
         goto done;
     }
     if (cbuf_len(indata)){
@@ -474,7 +474,7 @@ api_http_data(clicon_handle  h,
     else if (strcmp(media_str, "*/*") != 0 &&
              strcmp(media_str, "text/html") != 0){
 #ifdef NOTYET
-        clicon_log(LOG_NOTICE, "%s: media error %s", __FUNCTION__, media_str);
+        clixon_log(h, LOG_NOTICE, "%s: media error %s", __FUNCTION__, media_str);
         goto done;
 #endif
     }

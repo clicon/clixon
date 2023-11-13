@@ -69,13 +69,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
-#include "clixon_string.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
@@ -96,7 +97,7 @@ clixon_text_syntax_parseerror(void *arg,
 {
     clixon_text_syntax_yacc *ts = (clixon_text_syntax_yacc *)arg;
 
-    clicon_err(OE_XML, XMLPARSE_ERRNO, "text_syntax_parse: line %d: %s: at or before: %s",
+    clixon_err(OE_XML, XMLPARSE_ERRNO, "text_syntax_parse: line %d: %s: at or before: %s",
                ts->ts_linenum,
                s,
                clixon_text_syntax_parsetext);
@@ -140,7 +141,7 @@ text_create_node(clixon_text_syntax_yacc *ts,
         /* Silently ignore if module name not found */
         if ((ymod = yang_find(ts->ts_yspec, Y_MODULE, prefix)) != NULL){
             if ((ns = yang_find_mynamespace(ymod)) == NULL){
-                clicon_err(OE_YANG, 0, "No namespace");
+                clixon_err(OE_YANG, 0, "No namespace");
                 goto done;
             }
             /* Set default namespace */
@@ -166,7 +167,7 @@ strjoin(char *str0,
     len0 = str0?strlen(str0):0;
     len = len0 + strlen(str1) + 1;
     if ((str0 = realloc(str0, len)) == NULL){
-        clicon_err(OE_YANG, errno, "realloc");
+        clixon_err(OE_YANG, errno, "realloc");
         return NULL;
     }
     strcpy(str0+len0, str1);

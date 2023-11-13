@@ -50,13 +50,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xpath_ctx.h"
@@ -93,21 +94,21 @@ ctx_dup(xp_ctx *xc0)
     xp_ctx *xc = NULL;
 
     if ((xc = malloc(sizeof(*xc))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xc, 0, sizeof(*xc));
     *xc = *xc0;
     if (xc0->xc_size){
         if ((xc->xc_nodeset = calloc(xc0->xc_size, sizeof(cxobj*))) == NULL){
-            clicon_err(OE_UNIX, errno, "calloc");
+            clixon_err(OE_UNIX, errno, "calloc");
             goto done;
         }
         memcpy(xc->xc_nodeset, xc0->xc_nodeset, xc->xc_size*sizeof(cxobj*));
     }
     if (xc0->xc_string)
         if ((xc->xc_string = strdup(xc0->xc_string)) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
  done:
@@ -173,7 +174,7 @@ ctx_print(FILE   *f,
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     ctx_print_cb(cb, xc, 0, str);
@@ -238,19 +239,19 @@ ctx2string(xp_ctx *xc,
     case XT_NODESET:
         if (xc->xc_size && (b = xml_body(xc->xc_nodeset[0]))){
             if ((str = strdup(b)) == NULL){
-                clicon_err(OE_XML, errno, "strdup");
+                clixon_err(OE_XML, errno, "strdup");
                 goto done;
             }
         }
         else
            if ((str = strdup("")) == NULL){
-                clicon_err(OE_XML, errno, "strdup");
+                clixon_err(OE_XML, errno, "strdup");
                 goto done;
             }
         break;
     case XT_BOOL:
         if ((str = strdup(xc->xc_bool == 0?"false":"true")) == NULL){
-            clicon_err(OE_XML, errno, "strdup");
+            clixon_err(OE_XML, errno, "strdup");
             goto done;
         }
         break;
@@ -258,14 +259,14 @@ ctx2string(xp_ctx *xc,
         len = snprintf(NULL, 0, "%0lf", xc->xc_number);
         len++;
         if ((str = malloc(len)) == NULL){
-            clicon_err(OE_XML, errno, "malloc");
+            clixon_err(OE_XML, errno, "malloc");
             goto done;
         }
         snprintf(str, len, "%0lf", xc->xc_number);
         break;
     case XT_STRING:
         if ((str = strdup(xc->xc_string)) == NULL){
-            clicon_err(OE_XML, errno, "strdup");
+            clixon_err(OE_XML, errno, "strdup");
             goto done;
         }
         break;

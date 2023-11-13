@@ -58,12 +58,13 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_err.h"
-#include "clixon_log.h"
 #include "clixon_queue.h"
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -355,7 +356,7 @@ json2xml_decode_identityref(cxobj     *x,
             /* Here prefix2 is valid and can be NULL
                Change body prefix to prefix2:id */
             if ((cbv = cbuf_new()) == NULL){
-                clicon_err(OE_JSON, errno, "cbuf_new");
+                clixon_err(OE_JSON, errno, "cbuf_new");
                 goto done;
             }
             if (prefix2)
@@ -540,7 +541,7 @@ xml2json_encode_leafs(cxobj     *xb,
     cbuf         *cb = NULL; /* the variable itself */
 
     if ((cb = cbuf_new()) ==NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     body = xb?xml_value(xb):NULL;
@@ -953,7 +954,7 @@ xml2json1_cbuf(cbuf                   *cb,
         break;
     }
     if ((metacbc = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     /* Check for typed sub-body if:
@@ -1282,7 +1283,7 @@ clixon_json2file(FILE             *f,
     if (fn == NULL)
         fn = fprintf;
     if ((cb = cbuf_new()) ==NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if (clixon_json2cbuf(cb, xn, pretty, skiptop, autocliext) < 0)
@@ -1335,7 +1336,7 @@ xml2json_vec(FILE             *f,
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if (xml2json_cbuf_vec(cb, vec, veclen, pretty, skiptop) < 0)
@@ -1428,7 +1429,7 @@ json_xmlns_translate(yang_stmt *yspec,
  * @param[out] xerr   Reason for invalid returned as netconf err msg 
  * @retval     1      OK and valid
  * @retval     0      Invalid (only if yang spec)
- * @retval    -1      Error with clicon_err called
+ * @retval    -1      Error
  * 
  * @see _xml_parse for XML variant
  * @see http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
@@ -1460,9 +1461,9 @@ _json_parse(char      *str,
     if (json_parse_init(&jy) < 0)
         goto done;
     if (clixon_json_parseparse(&jy) != 0) { /* yacc returns 1 on error */
-        clicon_log(LOG_NOTICE, "JSON error: line %d", jy.jy_linenum);
-        if (clicon_errno == 0)
-            clicon_err(OE_JSON, 0, "JSON parser error with no error code (should not happen)");
+        clixon_log(NULL, LOG_NOTICE, "JSON error: line %d", jy.jy_linenum);
+        if (clixon_err_category() == 0)
+            clixon_err(OE_JSON, 0, "JSON parser error with no error code (should not happen)");
         goto done;
     }
     /* Traverse new objects */
@@ -1475,7 +1476,7 @@ _json_parse(char      *str,
             /* XXX: For top-level config file: */
             if (yb != YB_NONE || strcmp(xml_name(x),DATASTORE_TOP_SYMBOL)!=0){
                 if ((cberr = cbuf_new()) == NULL){
-                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
                 cprintf(cberr, "Top-level JSON object %s is not qualified with namespace which is a MUST according to RFC 7951", xml_name(x));
@@ -1559,7 +1560,7 @@ _json_parse(char      *str,
  * @param[out]    xerr  Reason for invalid returned as netconf err msg 
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
- * @retval       -1     Error with clicon_err called
+ * @retval       -1     Error
  *
  * @code
  *  cxobj *x = NULL;
@@ -1581,7 +1582,7 @@ clixon_json_parse_string(char      *str,
 {
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (xt==NULL){
-        clicon_err(OE_JSON, EINVAL, "xt is NULL");
+        clixon_err(OE_JSON, EINVAL, "xt is NULL");
         return -1;
     }
     if (*xt == NULL){
@@ -1611,7 +1612,7 @@ clixon_json_parse_string(char      *str,
  * @param[out]    xerr  Reason for invalid returned as netconf err msg 
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
- * @retval       -1     Error with clicon_err called
+ * @retval       -1     Error
  *
  * @code
  *  cxobj *xt = NULL;
@@ -1643,18 +1644,18 @@ clixon_json_parse_file(FILE      *fp,
     int       len = 0;
 
     if (xt==NULL){
-        clicon_err(OE_JSON, EINVAL, "xt is NULL");
+        clixon_err(OE_JSON, EINVAL, "xt is NULL");
         return -1;
     }
     if ((jsonbuf = malloc(jsonbuflen)) == NULL){
-        clicon_err(OE_JSON, errno, "malloc");
+        clixon_err(OE_JSON, errno, "malloc");
         goto done;
     }
     memset(jsonbuf, 0, jsonbuflen);
     ptr = jsonbuf;
     while (1){
         if ((ret = fread(&ch, 1, 1, fp)) < 0){
-            clicon_err(OE_JSON, errno, "read");
+            clixon_err(OE_JSON, errno, "read");
             break;
         }
         if (ret != 0)
@@ -1675,7 +1676,7 @@ clixon_json_parse_file(FILE      *fp,
             oldjsonbuflen = jsonbuflen;
             jsonbuflen *= 2;
             if ((jsonbuf = realloc(jsonbuf, jsonbuflen)) == NULL){
-                clicon_err(OE_JSON, errno, "realloc");
+                clixon_err(OE_JSON, errno, "realloc");
                 goto done;
             }
             memset(jsonbuf+oldjsonbuflen, 0, jsonbuflen-oldjsonbuflen);

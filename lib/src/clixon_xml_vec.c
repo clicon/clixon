@@ -53,12 +53,13 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_err.h"
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_io.h"
@@ -101,7 +102,7 @@ clixon_xvec_inc(clixon_xvec *xv)
         else
             xv->xv_max += XVEC_MAX_THRESHOLD; /* Add - linear growth */
         if ((xv->xv_vec = realloc(xv->xv_vec, sizeof(cxobj *) * xv->xv_max)) == NULL){
-            clicon_err(OE_XML, errno, "realloc");
+            clixon_err(OE_XML, errno, "realloc");
             goto done;
         }
     }
@@ -123,7 +124,7 @@ clixon_xvec_new(void)
     clixon_xvec *xv = NULL;
 
     if ((xv = malloc(sizeof(*xv))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xv, 0, sizeof(*xv));
@@ -151,7 +152,7 @@ clixon_xvec_dup(clixon_xvec *xv0)
     xv1->xv_vec = NULL;
     if (xv1->xv_max &&
         (xv1->xv_vec = calloc(xv1->xv_max, sizeof(cxobj*))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         free(xv1);
         xv1 = NULL;
         goto done;
@@ -219,7 +220,7 @@ clixon_xvec_extract(clixon_xvec *xv,
     int retval = -1;
 
     if (xv == NULL){
-        clicon_err(OE_XML, EINVAL, "xv is NULL");
+        clixon_err(OE_XML, EINVAL, "xv is NULL");
         goto done;
     }
     *xvec = xv->xv_vec;

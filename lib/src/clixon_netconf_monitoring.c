@@ -51,24 +51,25 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_io.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_options.h"
-#include "clixon_err.h"
 #include "clixon_data.h"
 #include "clixon_datastore.h"
 #include "clixon_netconf_monitoring.h"
 
 static int
-per_datastore(clicon_handle h,
+per_datastore(clixon_handle h,
               cbuf         *cb,
               const char   *db)
 {
@@ -84,7 +85,7 @@ per_datastore(clicon_handle h,
         cprintf(cb, "<locked-by-session>%u</locked-by-session>", sid);
         xmldb_lock_timestamp(h, db, &tv);
         if (time2str(&tv, timestr, sizeof(timestr)) < 0){
-            clicon_err(OE_UNIX, errno, "time2str");
+            clixon_err(OE_UNIX, errno, "time2str");
             goto done;
         }
         cprintf(cb, "<locked-time>%s</locked-time>", timestr);
@@ -107,7 +108,7 @@ per_datastore(clicon_handle h,
  * @see RFC 6022 Section 2.1.2
  */
 static int
-netconf_monitoring_datastores(clicon_handle h,
+netconf_monitoring_datastores(clixon_handle h,
                               yang_stmt  *yspec,
                               cbuf       *cb)
 {
@@ -138,7 +139,7 @@ netconf_monitoring_datastores(clicon_handle h,
  * @see RFC 6022 Section 2.1.3
  */
 static int
-netconf_monitoring_schemas(clicon_handle h,
+netconf_monitoring_schemas(clixon_handle h,
                            yang_stmt    *yspec,
                            cbuf         *cb)
 {
@@ -189,7 +190,7 @@ netconf_monitoring_schemas(clicon_handle h,
  * @see RFC 6022 Section 2.1.5
  */
 static int
-netconf_monitoring_statistics(clicon_handle h,
+netconf_monitoring_statistics(clixon_handle h,
                               yang_stmt    *yspec,
                               cbuf         *cb)
 {
@@ -243,7 +244,7 @@ netconf_monitoring_statistics(clicon_handle h,
  * @see RFC 6022
  */
 int
-netconf_monitoring_state_get(clicon_handle h,
+netconf_monitoring_state_get(clixon_handle h,
                              yang_stmt    *yspec,
                              char         *xpath,
                              cvec         *nsc,
@@ -255,7 +256,7 @@ netconf_monitoring_state_get(clicon_handle h,
     int    ret;
 
     if ((cb = cbuf_new()) ==NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "<netconf-state xmlns=\"%s\">", NETCONF_MONITORING_NAMESPACE);
@@ -300,7 +301,7 @@ stat_counter_add(cvec *cvv,
     cg_var *cv;
 
     if ((cv = cvec_add(cvv, CGV_UINT32)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_add");
+        clixon_err(OE_UNIX, errno, "cvec_add");
         goto done;
     }
     cv_name_set(cv, name);
@@ -317,7 +318,7 @@ stat_counter_add(cvec *cvv,
  * @retval    -1   Error
  */
 int
-netconf_monitoring_statistics_init(clicon_handle h)
+netconf_monitoring_statistics_init(clixon_handle h)
 {
     int            retval = -1;
     struct timeval tv;
@@ -329,7 +330,7 @@ netconf_monitoring_statistics_init(clicon_handle h)
         goto done;
     clicon_data_set(h, "netconf-start-time", timestr); /* RFC 6022 */
     if ((cvv = cvec_new(0)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto done;
     }
     if (clicon_data_cvec_set(h, "netconf-statistics", cvv) < 0)
@@ -360,7 +361,7 @@ netconf_monitoring_statistics_init(clicon_handle h)
  * @retval     0       OK
  */
 int
-netconf_monitoring_counter_inc(clicon_handle h,
+netconf_monitoring_counter_inc(clixon_handle h,
                                char         *name)
 {
     cvec    *cvv = NULL;

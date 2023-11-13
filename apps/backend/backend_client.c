@@ -62,7 +62,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_backend_client.h"
@@ -105,11 +105,11 @@ ce_client_descr(struct client_entry *ce,
     char *id = NULL;
 
     if (ce == NULL || cbp == NULL){
-        clicon_err(OE_UNIX, EINVAL, "ce or cbp is NULL");
+        clixon_err(OE_UNIX, EINVAL, "ce or cbp is NULL");
         goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (ce->ce_transport){
@@ -137,7 +137,7 @@ ce_client_descr(struct client_entry *ce,
  * @see stream_ss_add
  */
 int
-ce_event_cb(clicon_handle h,
+ce_event_cb(clixon_handle h,
             int           op,
             cxobj        *event,
             void         *arg)
@@ -158,7 +158,7 @@ ce_event_cb(clicon_handle h,
             goto done;
         if (send_msg_notify_xml(h, ce->ce_s, cbuf_get(cbce), event) < 0){
             if (errno == ECONNRESET || errno == EPIPE){
-                clicon_log(LOG_WARNING, "client %d reset", ce->ce_nr);
+                clixon_log(h, LOG_WARNING, "client %d reset", ce->ce_nr);
             }
             break;
         }
@@ -179,7 +179,7 @@ ce_event_cb(clicon_handle h,
  * @see xmldb_unlock_all  unlocks, but does not call user callbacks which is a backend thing
  */
 static int
-release_all_dbs(clicon_handle h,
+release_all_dbs(clixon_handle h,
                 uint32_t      id)
 {
     int       retval = -1;
@@ -224,7 +224,7 @@ release_all_dbs(clicon_handle h,
  * @see RFC 6022
  */
 int
-backend_monitoring_state_get(clicon_handle h,
+backend_monitoring_state_get(clixon_handle h,
                              yang_stmt    *yspec,
                              char         *xpath,
                              cvec         *nsc,
@@ -238,7 +238,7 @@ backend_monitoring_state_get(clicon_handle h,
     int                  ret;
 
     if ((cb = cbuf_new()) ==NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "<netconf-state xmlns=\"%s\">", NETCONF_MONITORING_NAMESPACE);
@@ -248,7 +248,7 @@ backend_monitoring_state_get(clicon_handle h,
         cprintf(cb, "<session-id>%u</session-id>", ce->ce_id);
         if (ce->ce_transport == NULL){
 #ifdef NOTYET // XXX: too strict, race conditions in clixon_snmp
-            clicon_err(OE_XML, 0, "Mandatory element transport missing");
+            clixon_err(OE_XML, 0, "Mandatory element transport missing");
             goto done;
 #else
             cprintf(cb, "<transport xmlns:%s=\"%s\">cl:netconf</transport>",
@@ -264,7 +264,7 @@ backend_monitoring_state_get(clicon_handle h,
             cprintf(cb, "<source-host>%s</source-host>", ce->ce_source_host);
         if (ce->ce_time.tv_sec != 0){
             if (time2str(&ce->ce_time, timestr, sizeof(timestr)) < 0){
-                clicon_err(OE_UNIX, errno, "time2str");
+                clixon_err(OE_UNIX, errno, "time2str");
                 goto done;
             }
             cprintf(cb, "<login-time>%s</login-time>", timestr);
@@ -304,7 +304,7 @@ backend_monitoring_state_get(clicon_handle h,
  * @see backend_client_delete for actual deallocation of client entry struct
  */
 int
-backend_client_rm(clicon_handle        h,
+backend_client_rm(clixon_handle        h,
                   struct client_entry *ce)
 {
     struct client_entry  *c;
@@ -316,7 +316,7 @@ backend_client_rm(clicon_handle        h,
 
     /* If the confirmed-commit feature is enabled, rollback any ephemeral commit originated by this client */
     if ((yspec = clicon_dbspec_yang(h)) == NULL) {
-        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
@@ -326,7 +326,7 @@ backend_client_rm(clicon_handle        h,
 
             if (myid == confirmed_commit_session_id_get(h)) {
                 clixon_debug(CLIXON_DBG_DEFAULT, "ok, rolling back");
-                clicon_log(LOG_NOTICE, "a client with an active ephemeral confirmed-commit has disconnected; rolling back");
+                clixon_log(h, LOG_NOTICE, "a client with an active ephemeral confirmed-commit has disconnected; rolling back");
 
                 /* do_rollback errors are logged internally and there is no client to report errors to, so errors are
                  * ignored here.
@@ -369,7 +369,7 @@ backend_client_rm(clicon_handle        h,
  * @retval       -1       Error
  */
 static int
-clixon_stats_datastore_get(clicon_handle h,
+clixon_stats_datastore_get(clixon_handle h,
                            char         *dbname,
                            cbuf         *cb)
 {
@@ -412,7 +412,7 @@ clixon_stats_datastore_get(clicon_handle h,
  * @retval       -1       Error
  */
 static int
-clixon_stats_module_get(clicon_handle h,
+clixon_stats_module_get(clixon_handle h,
                         yang_stmt    *ys,
                         cbuf         *cb)
 {
@@ -452,7 +452,7 @@ clixon_stats_module_get(clicon_handle h,
  * But this could discard other previous changes to candidate.
  */
 static int
-from_client_edit_config(clicon_handle h,
+from_client_edit_config(clixon_handle h,
                         cxobj        *xn,
                         cbuf         *cbret,
                         void         *arg,
@@ -480,7 +480,7 @@ from_client_edit_config(clicon_handle h,
 
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No yang spec9");
+        clixon_err(OE_YANG, ENOENT, "No yang spec9");
         goto done;
     }
     if ((target = netconf_db_find(xn, "target")) == NULL){
@@ -489,7 +489,7 @@ from_client_edit_config(clicon_handle h,
         goto ok;
     }
     if ((cbx = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     /* Check if target locked by other client */
@@ -572,7 +572,7 @@ from_client_edit_config(clicon_handle h,
     if (xml_sort_recurse(xc) < 0)
         goto done;
     if ((ret = xmldb_put(h, target, operation, xc, username, cbret)) < 0){
-        if (netconf_operation_failed(cbret, "protocol", clicon_err_reason)< 0)
+        if (netconf_operation_failed(cbret, "protocol", clixon_err_reason())< 0)
             goto done;
         goto ok;
     }
@@ -614,14 +614,14 @@ from_client_edit_config(clicon_handle h,
             }
         }
         if ((ret = candidate_commit(h, NULL, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
-            if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                 goto done;
             xmldb_copy(h, "running", "candidate");
             goto ok;
         }
         if (ret == 0){ /* discard */
             if (xmldb_copy(h, "running", "candidate") < 0){
-                if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+                if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                     goto done;
                 goto ok;
             }
@@ -632,13 +632,13 @@ from_client_edit_config(clicon_handle h,
     if ((attr = xml_find_value(xn, "copystartup")) != NULL &&
         strcmp(attr,"true") == 0){
         if (xmldb_copy(h, "running", "startup") < 0){
-            if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                 goto done;
             goto ok;
         }
     }
     if (cbuf_len(cbret) != 0){
-        clicon_err(OE_NETCONF, EINVAL, "Internal error: cbret is not empty");
+        clixon_err(OE_NETCONF, EINVAL, "Internal error: cbret is not empty");
         goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok", NETCONF_BASE_NAMESPACE);
@@ -675,7 +675,7 @@ from_client_edit_config(clicon_handle h,
  * - access denied if user lacks create/delete/update
  */
 static int
-from_client_copy_config(clicon_handle h,
+from_client_copy_config(clixon_handle h,
                         cxobj        *xe,
                         cbuf         *cbret,
                         void         *arg,
@@ -696,7 +696,7 @@ from_client_copy_config(clicon_handle h,
         goto ok;
     }
     if ((cbx = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if ((target = netconf_db_find(xe, "target")) == NULL){
@@ -714,10 +714,10 @@ from_client_copy_config(clicon_handle h,
     }
     if (xmldb_copy(h, source, target) < 0){
         if ((cbmsg = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
-        cprintf(cbmsg, "Copy %s datastore to %s: %s", source, target, clicon_err_reason);
+        cprintf(cbmsg, "Copy %s datastore to %s: %s", source, target, clixon_err_reason());
         if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg))< 0)
             goto done;
         goto ok;
@@ -745,7 +745,7 @@ from_client_copy_config(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_delete_config(clicon_handle h,
+from_client_delete_config(clixon_handle h,
                           cxobj        *xe,
                           cbuf         *cbret,
                           void         *arg,
@@ -767,7 +767,7 @@ from_client_delete_config(clicon_handle h,
         goto ok;
     }
     if ((cbx = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     /* Check if target locked by other client */
@@ -780,20 +780,20 @@ from_client_delete_config(clicon_handle h,
     }
     if (xmldb_delete(h, target) < 0){
         if ((cbmsg = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
-        cprintf(cbmsg, "Delete %s datastore: %s", target, clicon_err_reason);
+        cprintf(cbmsg, "Delete %s datastore: %s", target, clixon_err_reason());
         if (netconf_operation_failed(cbret, "protocol", cbuf_get(cbmsg))< 0)
             goto done;
         goto ok;
     }
     if (xmldb_create(h, target) < 0){
         if ((cbmsg = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
-        cprintf(cbmsg, "Create %s datastore: %s", target, clicon_err_reason);
+        cprintf(cbmsg, "Create %s datastore: %s", target, clixon_err_reason());
         if (netconf_operation_failed(cbret, "protocol", cbuf_get(cbmsg))< 0)
             goto done;
         goto ok;
@@ -821,7 +821,7 @@ from_client_delete_config(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_lock(clicon_handle h,
+from_client_lock(clixon_handle h,
                  cxobj        *xe,
                  cbuf         *cbret,
                  void         *arg,
@@ -837,7 +837,7 @@ from_client_lock(clicon_handle h,
     yang_stmt           *yspec;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
     if ((db = netconf_db_find(xe, "target")) == NULL){
@@ -846,7 +846,7 @@ from_client_lock(clicon_handle h,
         goto ok;
     }
     if ((cbx = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     /*
@@ -908,7 +908,7 @@ from_client_lock(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_unlock(clicon_handle h,
+from_client_unlock(clixon_handle h,
                    cxobj        *xe,
                    cbuf         *cbret,
                    void         *arg,
@@ -927,7 +927,7 @@ from_client_unlock(clicon_handle h,
         goto ok;
     }
     if ((cbx = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     iddb = xmldb_islocked(h, db);
@@ -978,7 +978,7 @@ from_client_unlock(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_close_session(clicon_handle h,
+from_client_close_session(clixon_handle h,
                           cxobj        *xe,
                           cbuf         *cbret,
                           void         *arg,
@@ -1005,7 +1005,7 @@ from_client_close_session(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_kill_session(clicon_handle h,
+from_client_kill_session(clixon_handle h,
                          cxobj        *xe,
                          cbuf         *cbret,
                          void         *arg,
@@ -1070,7 +1070,7 @@ from_client_kill_session(clicon_handle h,
  *    </create-subscription> 
  */
 static int
-from_client_create_subscription(clicon_handle h,
+from_client_create_subscription(clixon_handle h,
                                 cxobj        *xe,
                                 cbuf         *cbret,
                                 void         *arg,
@@ -1163,7 +1163,7 @@ from_client_create_subscription(clicon_handle h,
  * @see RFC6022, ietf-netconf-monitoring.yang
  */
 static int
-from_client_get_schema(clicon_handle h,
+from_client_get_schema(clixon_handle h,
                        cxobj        *xe,
                        cbuf         *cbret,
                        void         *arg,
@@ -1184,7 +1184,7 @@ from_client_get_schema(clicon_handle h,
     const char *filename;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
     if ((nsc = xml_nsctx_init(NULL, NETCONF_MONITORING_NAMESPACE)) == NULL)
@@ -1229,7 +1229,7 @@ from_client_get_schema(clicon_handle h,
     }
     if (ymatch == NULL){
         if ((cbmsg = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         if (version)
@@ -1242,7 +1242,7 @@ from_client_get_schema(clicon_handle h,
     }
     if (format && strcmp(format, "yang") != 0){
         if ((cbmsg = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         cprintf(cbmsg, "Format not supported: %s", format);
@@ -1253,7 +1253,7 @@ from_client_get_schema(clicon_handle h,
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><data xmlns=\"%s\">",
             NETCONF_BASE_NAMESPACE, NETCONF_MONITORING_NAMESPACE);
     if ((cbyang = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if ((filename = yang_filename_get(ymatch)) != NULL){
@@ -1285,7 +1285,7 @@ from_client_get_schema(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_debug(clicon_handle h,
+from_client_debug(clixon_handle h,
                   cxobj        *xe,
                   cbuf         *cbret,
                   void         *arg,
@@ -1302,9 +1302,9 @@ from_client_debug(clicon_handle h,
     }
     level = atoi(valstr);
 
-    clixon_debug_init(level, NULL); /* 0: dont debug, 1:debug */
+    clixon_debug_init(h, level); /* 0: dont debug, 1:debug */
     setlogmask(LOG_UPTO(level?LOG_DEBUG:LOG_INFO)); /* for syslog */
-    clicon_log(LOG_NOTICE, "%s debug:%d", __FUNCTION__, clixon_debug_get());
+    clixon_log(h, LOG_NOTICE, "%s debug:%d", __FUNCTION__, clixon_debug_get());
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
@@ -1323,7 +1323,7 @@ from_client_debug(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_ping(clicon_handle h,
+from_client_ping(clixon_handle h,
                  cxobj        *xe,
                  cbuf         *cbret,
                  void         *arg,
@@ -1344,7 +1344,7 @@ from_client_ping(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_stats(clicon_handle h,
+from_client_stats(clixon_handle h,
                   cxobj        *xe,
                   cbuf         *cbret,
                   void         *arg,
@@ -1437,7 +1437,7 @@ from_client_stats(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_restart_plugin(clicon_handle h,
+from_client_restart_plugin(clixon_handle h,
                            cxobj        *xe,
                            cbuf         *cbret,
                            void         *arg,
@@ -1485,7 +1485,7 @@ from_client_restart_plugin(clicon_handle h,
  * @retval    -1       Error
  */
 static int
-from_client_process_control(clicon_handle  h,
+from_client_process_control(clixon_handle  h,
                             cxobj         *xe,
                             cbuf          *cbret,
                             void          *arg,
@@ -1529,7 +1529,7 @@ from_client_process_control(clicon_handle  h,
  * @retval    -1       Error
  */
 static int
-from_client_hello(clicon_handle       h,
+from_client_hello(clixon_handle       h,
                   cxobj               *x,
                   struct client_entry *ce,
                   cbuf                *cbret)
@@ -1539,13 +1539,13 @@ from_client_hello(clicon_handle       h,
 
     if ((val = xml_find_type_value(x, "cl", "transport", CX_ATTR)) != NULL){
         if ((ce->ce_transport = strdup(val)) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
     }
     if ((val = xml_find_type_value(x, "cl", "source-host", CX_ATTR)) != NULL){
         if ((ce->ce_source_host = strdup(val)) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
     }
@@ -1566,7 +1566,7 @@ from_client_hello(clicon_handle       h,
  *                   propagated back to client.
  */
 static int
-from_client_msg(clicon_handle        h,
+from_client_msg(clixon_handle        h,
                 struct client_entry *ce,
                 struct clicon_msg   *msg)
 {
@@ -1598,7 +1598,7 @@ from_client_msg(clicon_handle        h,
      * as wither rpc-error or by positive response.
      */
     if ((cbret = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     /* Decode msg from client -> xml top (ct) and session id 
@@ -1627,7 +1627,7 @@ from_client_msg(clicon_handle        h,
         goto reply;
     }
     if ((x = xml_child_i_type(xt, 0, CX_ELMNT)) == NULL){ /* Shouldnt happen */
-        clicon_err(OE_XML, EFAULT, "No xml req (shouldnt happen)");
+        clixon_err(OE_XML, EFAULT, "No xml req (shouldnt happen)");
         goto done;
     }
     rpcname = xml_name(x);
@@ -1647,7 +1647,7 @@ from_client_msg(clicon_handle        h,
             (ce0 = ce_find_byid(backend_client_list(h), op_id)) != NULL &&
             ce0->ce_transport){
             if ((ce->ce_transport = strdup(ce0->ce_transport)) == NULL){
-                clicon_err(OE_UNIX, errno, "strdup");
+                clixon_err(OE_UNIX, errno, "strdup");
                 goto done;
             }
         }
@@ -1665,7 +1665,7 @@ from_client_msg(clicon_handle        h,
     else if (strcmp(namespace, NETCONF_BASE_NAMESPACE) != 0){
         cbuf *cbmsg = NULL;
         if ((cbmsg = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cbmsg, "No appropriate namespace found for: %s %s", rpcprefix, rpcname);
@@ -1724,7 +1724,7 @@ from_client_msg(clicon_handle        h,
             goto reply;
         }
         if ((ymod = ys_module(ye)) == NULL){
-            clicon_err(OE_XML, ENOENT, "rpc yang does not have module");
+            clixon_err(OE_XML, ENOENT, "rpc yang does not have module");
             goto done;
         }
         module = yang_argument_get(ymod);
@@ -1762,11 +1762,11 @@ from_client_msg(clicon_handle        h,
                 goto reply;
             }
         }
-        clicon_err_reset();
+        clixon_err_reset();
         if ((ret = rpc_callback_call(h, xe, ce, &nr, cbret)) < 0){
-            if (netconf_operation_failed(cbret, "application", clicon_err_reason)< 0)
+            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                 goto done;
-            clicon_log(LOG_NOTICE, "%s Error in rpc_callback_call:%s", __FUNCTION__, xml_name(xe));
+            clixon_log(h, LOG_NOTICE, "%s Error in rpc_callback_call:%s", __FUNCTION__, xml_name(xe));
             ce->ce_out_rpc_errors++;
             netconf_monitoring_counter_inc(h, "out-rpc-errors");
             goto reply; /* Dont quit here on user callbacks */
@@ -1792,7 +1792,8 @@ from_client_msg(clicon_handle        h,
     } /* while */
  reply:
     if (cbuf_len(cbret) == 0)
-        if (netconf_operation_failed(cbret, "application", clicon_errno?clicon_err_reason:"unknown")< 0)
+        if (netconf_operation_failed(cbret, "application",
+                                     clixon_err_category()?clixon_err_reason():"unknown")< 0)
             goto done;
     // XXX    clixon_debug(CLIXON_DBG_MSG, "Reply:%s", cbuf_get(cbret));
     /* XXX problem here is that cbret has not been parsed so may contain 
@@ -1810,7 +1811,7 @@ from_client_msg(clicon_handle        h,
              * the (UNIX domain) socket.
              */
         case ECONNRESET:
-            clicon_log(LOG_WARNING, "client rpc reset");
+            clixon_log(h, LOG_WARNING, "client rpc reset");
             break;
         default:
             goto done;
@@ -1833,9 +1834,9 @@ from_client_msg(clicon_handle        h,
         cbuf_free(cbce);
     if (cbret)
         cbuf_free(cbret);
-    /* Sanity: log if clicon_err() is not called ! */
-    if (retval < 0 && clicon_errno < 0)
-        clicon_log(LOG_NOTICE, "%s: Internal error: No clicon_err call on RPC error (message: %s)",
+    /* Sanity: log if clixon_err() is not called ! */
+    if (retval < 0 && clixon_err_category() < 0)
+        clixon_log(h, LOG_NOTICE, "%s: Internal error: No clixon_err call on RPC error (message: %s)",
                    __FUNCTION__, rpc?rpc:"");
     //    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     return retval;// -1 here terminates backend
@@ -1856,13 +1857,13 @@ from_client(int   s,
     int                  retval = -1;
     struct clicon_msg   *msg = NULL;
     struct client_entry *ce = (struct client_entry *)arg;
-    clicon_handle        h = ce->ce_handle;
+    clixon_handle        h = ce->ce_handle;
     int                  eof = 0;
     cbuf                *cbce = NULL;
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (s != ce->ce_s){
-        clicon_err(OE_NETCONF, EINVAL, "Internal error: s != ce->ce_s");
+        clixon_err(OE_NETCONF, EINVAL, "Internal error: s != ce->ce_s");
         goto done;
     }
     if (ce_client_descr(ce, &cbce) < 0)
@@ -1894,7 +1895,7 @@ from_client(int   s,
  * @see ietf-netconf@2011-06-01.yang 
  */
 int
-backend_rpc_init(clicon_handle h)
+backend_rpc_init(clixon_handle h)
 {
     int retval = -1;
 

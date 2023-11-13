@@ -110,7 +110,7 @@ autocli_listkw_int2str(int listkw)
  * @retval    -1        Error
  */
 int
-autocli_module(clicon_handle    h,
+autocli_module(clixon_handle    h,
                char            *modname,
                int             *enablep)
 {
@@ -124,7 +124,7 @@ autocli_module(clicon_handle    h,
     char  *body;
 
     if (enablep == NULL){
-        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        clixon_err(OE_YANG, EINVAL, "Argument is NULL");
         goto done;
     }
     enable = 0;
@@ -132,7 +132,7 @@ autocli_module(clicon_handle    h,
         goto ok;
     /* Default rule */
     if ((str = xml_find_body(xautocli, "module-default")) == NULL){
-        clicon_err(OE_XML, EINVAL, "No module-default rule");
+        clixon_err(OE_XML, EINVAL, "No module-default rule");
         goto done;
     }
     enable = strcmp(str, "true") == 0;
@@ -243,7 +243,7 @@ The surrounding container entities are removed from list nodes.
     - Only one child + Child keyword is LIST
  */
 int
-autocli_compress(clicon_handle h,
+autocli_compress(clixon_handle h,
                  yang_stmt    *ys,
                  int          *compress)
 {
@@ -262,11 +262,11 @@ autocli_compress(clicon_handle h,
     char      *body;
 
     if (compress == NULL){
-        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        clixon_err(OE_YANG, EINVAL, "Argument is NULL");
         goto done;
     }
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        clixon_err(OE_YANG, 0, "No clixon-autocli");
         goto done;
     }
     ymod = ys_module(ys);
@@ -349,7 +349,7 @@ autocli_compress(clicon_handle h,
  * @retval    -1          Error
  */
 int
-autocli_completion(clicon_handle h,
+autocli_completion(clixon_handle h,
                    int          *completion)
 {
     int     retval = -1;
@@ -360,19 +360,19 @@ autocli_completion(clicon_handle h,
     cxobj  *xautocli;
 
     if (completion == NULL){
-        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        clixon_err(OE_YANG, EINVAL, "Argument is NULL");
         goto done;
     }
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        clixon_err(OE_YANG, 0, "No clixon-autocli");
         goto done;
     }
     if ((str = xml_find_body(xautocli, "completion-default")) == NULL){
-        clicon_err(OE_XML, EINVAL, "No completion-default rule");
+        clixon_err(OE_XML, EINVAL, "No completion-default rule");
         goto done;
     }
     if ((ret = parse_bool(str, &val, &reason)) < 0){
-        clicon_err(OE_CFG, errno, "parse_bool");
+        clixon_err(OE_CFG, errno, "parse_bool");
         goto done;
     }
     *completion = val;
@@ -392,7 +392,7 @@ autocli_completion(clicon_handle h,
  * @retval    -1          Error
  */
 int
-autocli_grouping_treeref(clicon_handle h,
+autocli_grouping_treeref(clixon_handle h,
                          int          *treeref)
 {
     int     retval = -1;
@@ -403,19 +403,19 @@ autocli_grouping_treeref(clicon_handle h,
     cxobj  *xautocli;
 
     if (treeref == NULL){
-        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        clixon_err(OE_YANG, EINVAL, "Argument is NULL");
         goto done;
     }
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        clixon_err(OE_YANG, 0, "No clixon-autocli");
         goto done;
     }
     if ((str = xml_find_body(xautocli, "grouping-treeref")) == NULL){
-        clicon_err(OE_XML, EINVAL, "No grouping-treeref rule");
+        clixon_err(OE_XML, EINVAL, "No grouping-treeref rule");
         goto done;
     }
     if ((ret = parse_bool(str, &val, &reason)) < 0){
-        clicon_err(OE_CFG, errno, "parse_bool");
+        clixon_err(OE_CFG, errno, "parse_bool");
         goto done;
     }
     *treeref = val;
@@ -435,7 +435,7 @@ autocli_grouping_treeref(clicon_handle h,
  * @retval    -1          Error
  */
 int
-autocli_list_keyword(clicon_handle     h,
+autocli_list_keyword(clixon_handle     h,
                      autocli_listkw_t *listkw)
 {
     int    retval = -1;
@@ -443,15 +443,15 @@ autocli_list_keyword(clicon_handle     h,
     cxobj *xautocli = NULL;
 
     if (listkw == NULL){
-        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        clixon_err(OE_YANG, EINVAL, "Argument is NULL");
         goto done;
     }
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        clixon_err(OE_YANG, 0, "No clixon-autocli");
         goto done;
     }
     if ((str = xml_find_body(xautocli, "list-keyword-default")) == NULL){
-        clicon_err(OE_XML, EINVAL, "No list-keyword-default rule");
+        clixon_err(OE_XML, EINVAL, "No list-keyword-default rule");
         goto done;
     }
     *listkw = autocli_listkw_str2int(str);
@@ -468,7 +468,7 @@ autocli_list_keyword(clicon_handle     h,
  * @retval    -1             Error
  */
 int
-autocli_treeref_state(clicon_handle h,
+autocli_treeref_state(clixon_handle h,
                       int          *treeref_state)
 {
     int     retval = -1;
@@ -479,19 +479,19 @@ autocli_treeref_state(clicon_handle h,
     cxobj  *xautocli;
 
     if (treeref_state == NULL){
-        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        clixon_err(OE_YANG, EINVAL, "Argument is NULL");
         goto done;
     }
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        clixon_err(OE_YANG, 0, "No clixon-autocli");
         goto done;
     }
     if ((str = xml_find_body(xautocli, "treeref-state-default")) == NULL){
-        clicon_err(OE_XML, EINVAL, "No treeref-state-default rule");
+        clixon_err(OE_XML, EINVAL, "No treeref-state-default rule");
         goto done;
     }
     if ((ret = parse_bool(str, &val, &reason)) < 0){
-        clicon_err(OE_CFG, errno, "parse_bool");
+        clixon_err(OE_CFG, errno, "parse_bool");
         goto done;
     }
     *treeref_state = val;
@@ -512,7 +512,7 @@ autocli_treeref_state(clicon_handle h,
  * @note keyw is a sub/superset of RFC 6020,  see clixon-autocli.yang on which are defined
  */
 int
-autocli_edit_mode(clicon_handle h,
+autocli_edit_mode(clixon_handle h,
                   char         *keyw,
                   int          *flag)
 {
@@ -525,16 +525,16 @@ autocli_edit_mode(clicon_handle h,
     int     i;
 
     if (flag == NULL){
-        clicon_err(OE_YANG, EINVAL, "Argument is NULL");
+        clixon_err(OE_YANG, EINVAL, "Argument is NULL");
         goto done;
     }
     *flag = 0;
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
-        clicon_err(OE_YANG, 0, "No clixon-autocli");
+        clixon_err(OE_YANG, 0, "No clixon-autocli");
         goto done;
     }
     if ((str = xml_find_body(xautocli, "edit-mode-default")) == NULL){
-        clicon_err(OE_XML, EINVAL, "No edit-mode-default rule");
+        clixon_err(OE_XML, EINVAL, "No edit-mode-default rule");
         goto done;
     }
     if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)

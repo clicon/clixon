@@ -56,9 +56,10 @@
 #include <cligen/cligen.h>
 
 #include "clixon_queue.h"
-#include "clixon_log.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_err.h"
 #include "clixon_sig.h"
 #include "clixon_proc.h"
@@ -184,7 +185,7 @@ clixon_event_reg_fd(int   fd,
     struct event_data *e;
 
     if ((e = (struct event_data *)malloc(sizeof(struct event_data))) == NULL){
-        clicon_err(OE_EVENTS, errno, "malloc");
+        clixon_err(OE_EVENTS, errno, "malloc");
         return -1;
     }
     memset(e, 0, sizeof(struct event_data));
@@ -267,11 +268,11 @@ clixon_event_reg_timeout(struct timeval t,
     struct event_data **e_prev;
 
     if (str == NULL || fn == NULL){
-        clicon_err(OE_CFG, EINVAL, "str or fn is NULL");
+        clixon_err(OE_CFG, EINVAL, "str or fn is NULL");
         goto done;
     }
     if ((e = (struct event_data *)malloc(sizeof(struct event_data))) == NULL){
-        clicon_err(OE_EVENTS, errno, "malloc");
+        clixon_err(OE_EVENTS, errno, "malloc");
         return -1;
     }
     memset(e, 0, sizeof(struct event_data));
@@ -344,7 +345,7 @@ clixon_event_poll(int fd)
     FD_ZERO(&fdset);
     FD_SET(fd, &fdset);
     if ((retval = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull)) < 0)
-        clicon_err(OE_EVENTS, errno, "select");
+        clixon_err(OE_EVENTS, errno, "select");
     return retval;
 }
 
@@ -358,7 +359,7 @@ clixon_event_poll(int fd)
  *       One could try to poll the file descriptors after a timeout?
  */
 int
-clixon_event_loop(clicon_handle h)
+clixon_event_loop(clixon_handle h)
 {
     struct event_data *e;
     struct event_data *e_next;
@@ -407,7 +408,7 @@ clixon_event_loop(clicon_handle h)
                  */
                 clixon_debug(CLIXON_DBG_DEFAULT, "%s select: %s", __FUNCTION__, strerror(errno));
                 if (clixon_exit_get() == 1){
-                    clicon_err(OE_EVENTS, errno, "select");
+                    clixon_err(OE_EVENTS, errno, "select");
                     retval = 0;
                 }
                 else if (clicon_sig_child_get()){
@@ -422,10 +423,10 @@ clixon_event_loop(clicon_handle h)
                     continue;
                 }
                 else
-                    clicon_err(OE_EVENTS, errno, "select");
+                    clixon_err(OE_EVENTS, errno, "select");
             }
             else
-                clicon_err(OE_EVENTS, errno, "select");
+                clixon_err(OE_EVENTS, errno, "select");
             goto err;
         }
         if (n==0){ /* Timeout */

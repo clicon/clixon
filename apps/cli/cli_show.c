@@ -66,7 +66,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 /* Exported functions in this file are in clixon_cli_api.h */
@@ -115,7 +115,7 @@ xpath_append(cbuf      *cb0,
     int    j;
 
     if (cb0 == NULL){
-        clicon_err(OE_XML, EINVAL, "cb0 is NULL");
+        clixon_err(OE_XML, EINVAL, "cb0 is NULL");
         goto done;
     }
     if (xpath1 == NULL || strlen(xpath1)==0)
@@ -158,7 +158,7 @@ xpath_append(cbuf      *cb0,
                 if ((ret = yang_find_namespace_by_prefix(y, prefix, &ns)) < 0)
                     goto done;
                 if (ret == 0){
-                    clicon_err(OE_DB, 0, "Prefix %s does not have an associated namespace", prefix);
+                    clixon_err(OE_DB, 0, "Prefix %s does not have an associated namespace", prefix);
                     goto done;
                 }
                 if (xml_nsctx_add(nsc, prefix, ns) < 0)
@@ -250,32 +250,32 @@ expand_dbvar(void   *h,
     cvec            *callback_cvv;
 
     if (argv == NULL || (cvec_len(argv) != 2 && cvec_len(argv) != 3)){
-        clicon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
+        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
         goto done;
     }
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     if ((cv = cvec_i(argv, 0)) == NULL){
-        clicon_err(OE_PLUGIN, 0, "Error when accessing argument <db>");
+        clixon_err(OE_PLUGIN, 0, "Error when accessing argument <db>");
         goto done;
     }
     dbstr = cv_string_get(cv);
     if (strcmp(dbstr, "running") != 0 &&
         strcmp(dbstr, "candidate") != 0 &&
         strcmp(dbstr, "startup") != 0){
-        clicon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);
+        clixon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);
         goto done;
     }
     if ((cv = cvec_i(argv, 1)) == NULL){
-        clicon_err(OE_PLUGIN, 0, "Error when accessing argument <api_path>");
+        clixon_err(OE_PLUGIN, 0, "Error when accessing argument <api_path>");
         goto done;
     }
     if (autocli_grouping_treeref(h, &grouping_treeref) < 0)
         goto done;
     if ((api_path_fmt_cb = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     if (grouping_treeref &&
@@ -290,7 +290,7 @@ expand_dbvar(void   *h,
         cv = cvec_i(argv, 2);
         str = cv_string_get(cv);
         if (strncmp(str, "mtpoint:", strlen("mtpoint:")) != 0){
-            clicon_err(OE_PLUGIN, 0, "mtpoint does not begin with 'mtpoint:'");
+            clixon_err(OE_PLUGIN, 0, "mtpoint does not begin with 'mtpoint:'");
             goto done;
         }
         mtpoint = str + strlen("mtpoint:");
@@ -320,8 +320,7 @@ expand_dbvar(void   *h,
         if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            // XXX cf cli_dbxml
-            clixon_netconf_error(h, xerr, "Expand datastore symbol", NULL);
+            clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Expand datastore symbol");
             goto done;
         }
     }
@@ -331,7 +330,7 @@ expand_dbvar(void   *h,
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
         goto done;
     if ((cbxpath = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (mtpoint){
@@ -372,7 +371,7 @@ expand_dbvar(void   *h,
          * the "path" statement is defined.
          */
         if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-            clicon_err(OE_DB, 0, "Leafref %s requires path statement", yang_argument_get(ytype));
+            clixon_err(OE_DB, 0, "Leafref %s requires path statement", yang_argument_get(ytype));
             goto done;
         }
         /* Extend xpath with leafref path: Append yang_argument_get(ypath) to xpath
@@ -384,7 +383,7 @@ expand_dbvar(void   *h,
     if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, &xt) < 0)
         goto done;
     if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_netconf_error(h, xe, "Get configuration", NULL);
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
         goto ok;
     }
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, cbuf_get(cbxpath)) < 0)
@@ -462,7 +461,7 @@ expand_dbvar(void   *h,
  * @retval    -1     Error
 */
 int
-show_yang(clicon_handle h,
+show_yang(clixon_handle h,
           cvec         *cvv,
           cvec         *argv)
 {
@@ -508,7 +507,7 @@ show_yang(clicon_handle h,
  * @retval   -1            Error
   */
 int
-cli_show_common(clicon_handle    h,
+cli_show_common(clixon_handle    h,
                 char            *db,
                 enum format_enum format,
                 int              pretty,
@@ -531,7 +530,7 @@ cli_show_common(clicon_handle    h,
     int           i;
 
     if (state && strcmp(db, "running") != 0){
-        clicon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
+        clixon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
         goto done;
     }
     if (state == 0){     /* Get configuration-only from a database */
@@ -543,7 +542,7 @@ cli_show_common(clicon_handle    h,
             goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_netconf_error(h, xerr, "Get configuration", NULL);
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
         goto done;
     }
     /* Special tagged modes: strip wd:default=true attribute and (optionally) nodes associated with it */
@@ -640,7 +639,7 @@ cli_show_option_format(cvec             *argv,
 
     formatstr = cv_string_get(cvec_i(argv, argc));
     if ((int)(*format = format_str2int(formatstr)) < 0){
-        clicon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+        clixon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
         goto done;
     }
     retval = 0;
@@ -668,11 +667,11 @@ cli_show_option_bool(cvec *argv,
 
     boolstr = cv_string_get(cvec_i(argv, argc));
     if ((boolcv = cv_new(CGV_BOOL)) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_new");
+        clixon_err(OE_UNIX, errno, "cv_new");
         goto done;
     }
     if (cv_parse(boolstr, boolcv) < 0){
-        clicon_err(OE_UNIX, errno, "Parse boolean %s", boolstr);
+        clixon_err(OE_UNIX, errno, "Parse boolean %s", boolstr);
         goto done;
     }
     *result = cv_bool_get(boolcv);
@@ -719,7 +718,7 @@ cli_show_option_withdefault(cvec  *argv,
              strcmp(e, "trim") != 0 &&
              strcmp(e, "explicit") != 0 &&
              strcmp(e, "report-all-tagged") != 0){
-        clicon_err(OE_YANG, EINVAL, "Unexpected with-default option: %s", e);
+        clixon_err(OE_YANG, EINVAL, "Unexpected with-default option: %s", e);
         goto done;
     }
     else
@@ -765,7 +764,7 @@ cli_show_option_withdefault(cvec  *argv,
  * @see cli_show_auto_mode  autocli with edit menu support
  */
 int
-cli_show_config(clicon_handle h,
+cli_show_config(clixon_handle h,
                 cvec         *cvv,
                 cvec         *argv)
 {
@@ -784,7 +783,7 @@ cli_show_config(clicon_handle h,
     int              fromroot = 0;
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 8){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname> [<format><xpath> <namespace> <pretty> <state> <default> <prepend>]", cvec_len(argv));
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname> [<format><xpath> <namespace> <pretty> <state> <default> <prepend>]", cvec_len(argv));
         goto done;
     }
     dbname = cv_string_get(cvec_i(argv, argc++));
@@ -838,7 +837,7 @@ cli_show_config(clicon_handle h,
  * @retval    -1     Error
  */
 int
-show_conf_xpath(clicon_handle h,
+show_conf_xpath(clixon_handle h,
                 cvec         *cvv,
                 cvec         *argv)
 {
@@ -851,17 +850,17 @@ show_conf_xpath(clicon_handle h,
     int              fromroot = 0;
 
     if (cvec_len(argv) != 1){
-        clicon_err(OE_PLUGIN, EINVAL, "Requires one element to be <dbname>");
+        clixon_err(OE_PLUGIN, EINVAL, "Requires one element to be <dbname>");
         goto done;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     dbname = cv_string_get(cvec_i(argv, 0));
     /* Look for xpath in command (kludge: cv must be called "xpath") */
     if ((cv = cvec_find(cvv, "xpath")) == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "Requires one variable to be <xpath>");
+        clixon_err(OE_PLUGIN, EINVAL, "Requires one variable to be <xpath>");
         goto done;
     }
     xpath = cv_string_get(cv);
@@ -887,7 +886,7 @@ done:
 /*! Show clixon and CLIgen versions
  */
 int
-cli_show_version(clicon_handle h,
+cli_show_version(clixon_handle h,
                  cvec         *cvv,
                  cvec         *argv)
 {
@@ -936,7 +935,7 @@ cli_show_version(clicon_handle h,
  * @see cli_callback_generate where api_path_fmt + mt-point are generated
  */
 int
-cli_show_auto(clicon_handle h,
+cli_show_auto(clixon_handle h,
               cvec         *cvv,
               cvec         *argv)
 {
@@ -961,7 +960,7 @@ cli_show_auto(clicon_handle h,
     int              fromroot = 0;
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 9){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <api-path-fmt>* <database> [<format> <pretty> <state> <default> <prepend> <fromroot>]", cvec_len(argv));
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <api-path-fmt>* <database> [<format> <pretty> <state> <default> <prepend> <fromroot>]", cvec_len(argv));
         goto done;
     }
     api_path_fmt = cv_string_get(cvec_i(argv, argc++));
@@ -997,7 +996,7 @@ cli_show_auto(clicon_handle h,
             goto done;
     }
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     if (mtpoint){
@@ -1014,7 +1013,7 @@ cli_show_auto(clicon_handle h,
     if (api_path2xpath(api_path, yspec0, &xpath, &nsc, NULL) < 0)
         goto done;
     if (xpath == NULL){
-        clicon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
+        clixon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
         goto done;
     }
     if (cli_show_common(h, dbname, format, pretty, state,
@@ -1069,7 +1068,7 @@ code
  * @see cli_show_config  with no autocli coupling
  */
 int
-cli_show_auto_mode(clicon_handle h,
+cli_show_auto_mode(clixon_handle h,
                    cvec         *cvv,
                    cvec         *argv)
 {
@@ -1096,11 +1095,11 @@ cli_show_auto_mode(clicon_handle h,
     int              fromroot = 0;
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 7){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <database> [ <format> <pretty> <state> <default> <cli-prefix>]", cvec_len(argv));
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <database> [ <format> <pretty> <state> <default> <cli-prefix>]", cvec_len(argv));
         goto done;
     }
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     dbname = cv_string_get(cvec_i(argv, argc++));
@@ -1140,11 +1139,11 @@ cli_show_auto_mode(clicon_handle h,
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
         goto done;
     if (xpath == NULL){
-        clicon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
+        clixon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
         goto done;
     }
     if ((cbxpath = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (mtpoint){
@@ -1184,7 +1183,7 @@ cli_show_auto_mode(clicon_handle h,
 '* @see clicon_option_dump clicon_option_dump1
  */
 int
-cli_show_options(clicon_handle h,
+cli_show_options(clixon_handle h,
                  cvec         *cvv,
                  cvec         *argv)
 {
@@ -1248,7 +1247,7 @@ cli_show_options(clicon_handle h,
  * Also, if there is a cligen variable called "xpath" it will override argv xpath arg
  */
 int
-cli_pagination(clicon_handle h,
+cli_pagination(clixon_handle h,
                cvec         *cvv,
                cvec         *argv)
 {
@@ -1272,7 +1271,7 @@ cli_pagination(clicon_handle h,
     int              locked = 0;
 
     if (cvec_len(argv) != 5){
-        clicon_err(OE_PLUGIN, 0, "Expected usage: <xpath> <prefix> <namespace> <format> <limit>");
+        clixon_err(OE_PLUGIN, 0, "Expected usage: <xpath> <prefix> <namespace> <format> <limit>");
         goto done;
     }
     /* prefix:variable overrides argv */
@@ -1284,17 +1283,17 @@ cli_pagination(clicon_handle h,
     namespace = cvec_i_str(argv, 2);
     str = cv_string_get(cvec_i(argv, 3));     /* Fourthformat: output format */
     if ((int)(format = format_str2int(str)) < 0){
-        clicon_err(OE_PLUGIN, 0, "Not valid format: %s", str);
+        clixon_err(OE_PLUGIN, 0, "Not valid format: %s", str);
         goto done;
     }
     if ((str = cv_string_get(cvec_i(argv, 4))) != NULL){
         if (parse_uint32(str, &limit, NULL) < 1){
-            clicon_err(OE_UNIX, errno, "error parsing limit:%s", str);
+            clixon_err(OE_UNIX, errno, "error parsing limit:%s", str);
             goto done;
         }
     }
     if (limit == 0){
-        clicon_err(OE_UNIX, EINVAL, "limit is 0");
+        clixon_err(OE_UNIX, EINVAL, "limit is 0");
         goto done;
     }
     if ((nsc = xml_nsctx_init(prefix, namespace)) == NULL)
@@ -1314,7 +1313,7 @@ cli_pagination(clicon_handle h,
             goto done;
         }
         if ((xerr = xpath_first(xret, NULL, "/rpc-error")) != NULL){
-            clixon_netconf_error(h, xerr, "Get configuration", NULL);
+            clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
             goto done;
         }
         if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0)
@@ -1386,7 +1385,7 @@ cli_pagination(clicon_handle h,
  * @see clixon_cli2file
  */
 static int
-cli2cbuf(clicon_handle     h,
+cli2cbuf(clixon_handle     h,
          cbuf             *cb,
          cxobj            *xn,
          char             *prepend)
@@ -1435,7 +1434,7 @@ cli2cbuf(clicon_handle     h,
     }
     /* Create prepend variable string */
     if ((cbpre = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     if (prepend)
@@ -1514,7 +1513,7 @@ cli2cbuf(clicon_handle     h,
  * @retval   -1        Error
  */
 static int
-cli2file(clicon_handle     h,
+cli2file(clixon_handle     h,
          FILE             *f,
          cxobj            *xn,
          char             *prepend,
@@ -1564,7 +1563,7 @@ cli2file(clicon_handle     h,
     }
     /* Create prepend variable string */
     if ((cbpre = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     if (prepend)
@@ -1645,7 +1644,7 @@ cli2file(clicon_handle     h,
  * @see clixon_cli2cbuf
  */
 int
-clixon_cli2file(clicon_handle     h,
+clixon_cli2file(clixon_handle     h,
                 FILE             *f,
                 cxobj            *xn,
                 char             *prepend,
@@ -1687,7 +1686,7 @@ clixon_cli2file(clicon_handle     h,
  * @see clixon_cli2file
  */
 int
-clixon_cli2cbuf(clicon_handle     h,
+clixon_cli2cbuf(clixon_handle     h,
                 cbuf             *cb,
                 cxobj            *xn,
                 char             *prepend,
@@ -1714,7 +1713,7 @@ clixon_cli2cbuf(clicon_handle     h,
 /*! CLI callback show statistics
  */
 int
-cli_show_statistics(clicon_handle h,
+cli_show_statistics(clixon_handle h,
                     cvec         *cvv,
                     cvec         *argv)
 {
@@ -1730,7 +1729,7 @@ cli_show_statistics(clicon_handle h,
     size_t      sz = 0;
 
     if (argv != NULL && cvec_len(argv) != 1){
-        clicon_err(OE_PLUGIN, EINVAL, "Expected arguments: [modules]");
+        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [modules]");
         goto done;
     }
     if (argv){
@@ -1738,7 +1737,7 @@ cli_show_statistics(clicon_handle h,
         modules = (strcmp(cv_string_get(cv), "modules") == 0);
     }
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     /* CLI */
@@ -1764,7 +1763,7 @@ cli_show_statistics(clicon_handle h,
     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(h, xerr, "Get configuration", NULL);
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
         goto done;
     }
     fprintf(stdout, "Backend:\n");

@@ -39,6 +39,7 @@
  * Canonical XML version (just for info)
  *      https://www.w3.org/TR/xml-c14n
  */
+
 #ifndef _CLIXON_XML_H
 #define _CLIXON_XML_H
 
@@ -306,22 +307,16 @@ int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
 int       xml_attr_insert2val(char *instr, enum insert_type *ins);
 cxobj    *xml_add_attr(cxobj *xn, char *name, char *value, char *prefix, char *ns);
-int       clicon_log_xml(int level, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
+int       clixon_log_xml(clixon_handle h, int level, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 4, 5)));
 int       clixon_debug_xml(int dbglevel, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
 
 #ifdef XML_EXPLICIT_INDEX
 int       xml_search_index_p(cxobj *x);
-
 int       xml_search_vector_get(cxobj *x, char *name, clixon_xvec **xvec);
 int       xml_search_child_insert(cxobj *xp, cxobj *x);
 int       xml_search_child_rm(cxobj *xp, cxobj *x);
 cxobj    *xml_child_index_each(cxobj *xparent, char *name, cxobj *xprev, enum cxobj_type type);
 
-#endif
-
-/* 6.4 backward compatability */
-#if 1
-#define clicon_debug_xml clixon_debug_xml
 #endif
 
 #endif /* _CLIXON_XML_H */

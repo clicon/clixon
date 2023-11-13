@@ -57,12 +57,13 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_err.h"
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_options.h"
@@ -543,7 +544,7 @@ xmltree2cbuf(cbuf  *cb,
  * @param[out]    xerr  Reason for failure (yang assignment not made)
  * @retval        1     Parse OK and all yang assignment made
  * @retval        0     Parse OK but yang assigment not made (or only partial) and xerr set
- * @retval       -1     Error with clicon_err called. Includes parse error
+ * @retval       -1     Error
  * @see clixon_xml_parse_file
  * @see clixon_xml_parse_string
  * @see _json_parse
@@ -578,11 +579,11 @@ _xml_parse(const char *str,
         return 1; /* OK */
     }
     if (xt == NULL){
-        clicon_err(OE_XML, errno, "Unexpected NULL XML");
+        clixon_err(OE_XML, errno, "Unexpected NULL XML");
         return -1;
     }
     if ((xy.xy_parse_string = strdup(str)) == NULL){
-        clicon_err(OE_XML, errno, "strdup");
+        clixon_err(OE_XML, errno, "strdup");
         return -1;
     }
     xy.xy_xtop = xt;
@@ -672,7 +673,7 @@ _xml_parse(const char *str,
  * @param[out]    xerr  Pointer to XML error tree, if retval is 0
  * @retval        1     Parse OK and all yang assignment made
  * @retval        0     Parse OK but yang assigment not made (or only partial) and xerr set
- * @retval       -1     Error with clicon_err called. Includes parse error
+ * @retval       -1     Error
  *
  * @code
  *  cxobj *xt = NULL;
@@ -707,22 +708,22 @@ clixon_xml_parse_file(FILE      *fp,
     int   failed = 0;
 
     if (xt==NULL || fp == NULL){
-        clicon_err(OE_XML, EINVAL, "arg is NULL");
+        clixon_err(OE_XML, EINVAL, "arg is NULL");
         return -1;
     }
     if (yb == YB_MODULE && yspec == NULL){
-        clicon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
+        clixon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
         return -1;
     }
     if ((xmlbuf = malloc(xmlbuflen)) == NULL){
-        clicon_err(OE_XML, errno, "malloc");
+        clixon_err(OE_XML, errno, "malloc");
         goto done;
     }
     memset(xmlbuf, 0, xmlbuflen);
     ptr = xmlbuf;
     while (1){
         if ((ret = fread(&ch, 1, 1, fp)) < 0){
-            clicon_err(OE_XML, errno, "read");
+            clixon_err(OE_XML, errno, "read");
             break;
         }
         if (ret != 0){
@@ -742,7 +743,7 @@ clixon_xml_parse_file(FILE      *fp,
             oldxmlbuflen = xmlbuflen;
             xmlbuflen *= 2;
             if ((xmlbuf = realloc(xmlbuf, xmlbuflen)) == NULL){
-                clicon_err(OE_XML, errno, "realloc");
+                clixon_err(OE_XML, errno, "realloc");
                 goto done;
             }
             memset(xmlbuf+oldxmlbuflen, 0, xmlbuflen-oldxmlbuflen);
@@ -769,7 +770,7 @@ clixon_xml_parse_file(FILE      *fp,
  * @param[out]    xerr  Reason for failure (yang assignment not made) if retval = 0
  * @retval        1     Parse OK and all yang assignment made
  * @retval        0     Parse OK but yang assigment not made (or only partial), xerr is set
- * @retval       -1     Error with clicon_err called. Includes parse error
+ * @retval       -1     Error
  *
  * @code
  *  cxobj *xt = NULL;
@@ -794,11 +795,11 @@ clixon_xml_parse_string(const char *str,
                         cxobj     **xerr)
 {
     if (xt==NULL){
-        clicon_err(OE_XML, EINVAL, "xt is NULL");
+        clixon_err(OE_XML, EINVAL, "xt is NULL");
         return -1;
     }
     if (yb == YB_MODULE && yspec == NULL){
-        clicon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
+        clixon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
         return -1;
     }
     if (*xt == NULL){
@@ -819,7 +820,7 @@ clixon_xml_parse_string(const char *str,
  * @param[in]     format Format string for stdarg according to printf(3)
  * @retval        1      Parse OK and all yang assignment made
  * @retval        0      Parse OK but yang assigment not made (or only partial)
- * @retval       -1      Error with clicon_err called. Includes parse error
+ * @retval       -1      Error
  *
  * @code
  *  cxobj *xt = NULL;
@@ -847,7 +848,7 @@ clixon_xml_parse_va(yang_bind   yb,
     len = vsnprintf(NULL, 0, format, args) + 1;
     va_end(args);
     if ((str = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, len);
@@ -884,7 +885,7 @@ clixon_xml_attr_copy(cxobj *xin,
     cxobj *xa;
 
     if (xin == NULL || xout == NULL){
-        clicon_err(OE_XML, EINVAL, "xin or xout NULL");
+        clixon_err(OE_XML, EINVAL, "xin or xout NULL");
         goto done;
     }
     if ((msgid = xml_find_value(xin, name)) != NULL){

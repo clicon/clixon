@@ -452,6 +452,7 @@ fi
 function err(){
   expect=$1
   ret=$2
+  stty $STTYSETTINGS >/dev/null
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
       echo "Expected"
@@ -470,6 +471,7 @@ function err(){
 
 # Don't print diffs
 function err1(){
+  stty $STTYSETTINGS >/dev/null
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
       echo "Expected: $1"
@@ -601,9 +603,10 @@ function wait_backend(){
 # Start restconf daemon
 # @see wait_restconf
 function start_restconf(){
+    # remove -g
     local clixon_restconf_="${clixon_restconf#sudo -g * }"
     # Start in background 
-#    echo "sudo -u $wwwstartuser $clixon_restconf_ $RCLOG -D $DBG $*"
+#    echo "sudo -u $wwwstartuser ${clixon_restconf_} $RCLOG -D $DBG $*"
     sudo -u $wwwstartuser $clixon_restconf_ $RCLOG -D $DBG $* </dev/null &>/dev/null &
     if [ $? -ne 0 ]; then
         err1 "expected 0" "$?"

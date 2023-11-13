@@ -40,8 +40,8 @@
 /*
  * Prototypes
  */
-int from_client_get_config(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
-int from_client_get(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
-int from_client_get_pageable_list(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg); /* XXX */
+int from_client_get_config(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
+int from_client_get(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
+int from_client_get_pageable_list(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg); /* XXX */
 
 #endif  /* _BACKEND_GET_H_ */

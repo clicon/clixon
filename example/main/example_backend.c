@@ -60,10 +60,10 @@
 #include <fcntl.h>
 #include <sys/time.h>
 
-/* clicon */
+/* cligen */
 #include <cligen/cligen.h>
 
-/* Clicon library functions. */
+/* Clixon library functions. */
 #include <clixon/clixon.h>
 
 /* These include signatures for plugin and transaction callbacks. */
@@ -182,10 +182,10 @@ static char *_validate_fail_xpath = NULL;
 static int   _validate_fail_toggle = 0; /* fail at validate and commit */
 
 /* forward */
-static int example_stream_timer_setup(clicon_handle h);
+static int example_stream_timer_setup(clixon_handle h);
 
 int
-main_begin(clicon_handle    h,
+main_begin(clixon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
@@ -196,7 +196,7 @@ main_begin(clicon_handle    h,
 /*! This is called on validate (and commit). Check validity of candidate
  */
 int
-main_validate(clicon_handle    h,
+main_validate(clixon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
@@ -205,7 +205,7 @@ main_validate(clicon_handle    h,
         if (_validate_fail_toggle==0 &&
             xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
             _validate_fail_toggle = 1; /* toggle if triggered */
-            clicon_err(OE_XML, 0, "User error");
+            clixon_err(OE_XML, 0, "User error");
             return -1; /* induce fail */
         }
     }
@@ -213,7 +213,7 @@ main_validate(clicon_handle    h,
 }
 
 int
-main_complete(clicon_handle    h,
+main_complete(clixon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
@@ -224,7 +224,7 @@ main_complete(clicon_handle    h,
 /*! This is called on commit. Identify modifications and adjust machine state
  */
 int
-main_commit(clicon_handle    h,
+main_commit(clixon_handle    h,
             transaction_data td)
 {
     cxobj  *target = transaction_target(td); /* wanted XML tree */
@@ -239,7 +239,7 @@ main_commit(clicon_handle    h,
         if (_validate_fail_toggle==1 &&
             xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
             _validate_fail_toggle = 0; /* toggle if triggered */
-            clicon_err(OE_XML, 0, "User error");
+            clixon_err(OE_XML, 0, "User error");
             return -1; /* induce fail */
         }
     }
@@ -263,7 +263,7 @@ main_commit(clicon_handle    h,
 }
 
 int
-main_commit_done(clicon_handle    h,
+main_commit_done(clixon_handle    h,
                  transaction_data td)
 {
     if (_transaction_log)
@@ -272,7 +272,7 @@ main_commit_done(clicon_handle    h,
 }
 
 int
-main_revert(clicon_handle    h,
+main_revert(clixon_handle    h,
             transaction_data td)
 {
     if (_transaction_log)
@@ -281,7 +281,7 @@ main_revert(clicon_handle    h,
 }
 
 int
-main_end(clicon_handle    h,
+main_end(clixon_handle    h,
          transaction_data td)
 {
     if (_transaction_log)
@@ -290,7 +290,7 @@ main_end(clicon_handle    h,
 }
 
 int
-main_abort(clicon_handle    h,
+main_abort(clixon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
@@ -305,7 +305,7 @@ example_stream_timer(int   fd,
                      void *arg)
 {
     int                    retval = -1;
-    clicon_handle          h = (clicon_handle)arg;
+    clixon_handle          h = (clixon_handle)arg;
 
     /* XXX Change to actual netconf notifications and namespace */
     if (stream_notify(h, "EXAMPLE", "<event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
@@ -320,7 +320,7 @@ example_stream_timer(int   fd,
 /*! Set up example stream notification timer 
  */
 static int
-example_stream_timer_setup(clicon_handle h)
+example_stream_timer_setup(clixon_handle h)
 {
     struct timeval t, t1;
 
@@ -338,7 +338,7 @@ example_stream_timer_setup(clicon_handle h)
  * in [RFC6241].
  */
 static int
-empty_rpc(clicon_handle h,            /* Clixon handle */
+empty_rpc(clixon_handle h,            /* Clixon handle */
           cxobj        *xe,           /* Request: <rpc><xn></rpc> */
           cbuf         *cbret,        /* Reply eg <rpc-reply>... */
           void         *arg,          /* client_entry */
@@ -353,7 +353,7 @@ empty_rpc(clicon_handle h,            /* Clixon handle */
  * The RPC returns the incoming parameters
  */
 static int
-example_rpc(clicon_handle h,            /* Clixon handle */
+example_rpc(clixon_handle h,            /* Clixon handle */
             cxobj        *xe,           /* Request: <rpc><xn></rpc> */
             cbuf         *cbret,        /* Reply eg <rpc-reply>... */
             void         *arg,          /* client_entry */
@@ -367,7 +367,7 @@ example_rpc(clicon_handle h,            /* Clixon handle */
 
     /* get namespace from rpc name, return back in each output parameter */
     if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
-        clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+        clixon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
         goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
@@ -395,7 +395,7 @@ example_rpc(clicon_handle h,            /* Clixon handle */
 /*! This will be called as a hook right after the original system copy-config
  */
 static int
-example_copy_extra(clicon_handle h,            /* Clixon handle */
+example_copy_extra(clixon_handle h,            /* Clixon handle */
                    cxobj        *xe,           /* Request: <rpc><xn></rpc> */
                    cbuf         *cbret,        /* Reply eg <rpc-reply>... */
                    void         *arg,          /* client_entry */
@@ -414,7 +414,7 @@ example_copy_extra(clicon_handle h,            /* Clixon handle */
  * @note callback is hardcoded C, while registration is controlled by -- -a option
  */
 static int
-example_action_reset(clicon_handle h,            /* Clixon handle */
+example_action_reset(clixon_handle h,            /* Clixon handle */
                      cxobj        *xe,           /* Request: <rpc><xn></rpc> */
                      cbuf         *cbret,        /* Reply eg <rpc-reply>... */
                      void         *arg,          /* client_entry */
@@ -453,7 +453,7 @@ example_action_reset(clicon_handle h,            /* Clixon handle */
  * @see example_statefile  where state is read from file and also pagination
  */
 int
-example_statedata(clicon_handle   h,
+example_statedata(clixon_handle   h,
                   cvec           *nsc,
                   char           *xpath,
                   cxobj          *xstate)
@@ -471,7 +471,7 @@ example_statedata(clicon_handle   h,
     if (!_state)
         goto ok;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     yspec = clicon_dbspec_yang(h);
@@ -549,7 +549,7 @@ example_statedata(clicon_handle   h,
  * @see example_statefile  where state is programmatically added
  */
 int
-example_statefile(clicon_handle     h,
+example_statefile(clixon_handle     h,
                   cvec             *nsc,
                   char             *xpath,
                   cxobj            *xstate)
@@ -574,7 +574,7 @@ example_statefile(clicon_handle     h,
     if (_state_file_cached == 0 ||
         _state_xml_cache == NULL){
         if ((fp = fopen(_state_file, "r")) == NULL){
-            clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
+            clixon_err(OE_UNIX, errno, "open(%s)", _state_file);
             goto done;
         }
         if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
@@ -641,7 +641,7 @@ example_pagination(void            *h0,
                    void            *arg)
 {
     int               retval = -1;
-    clicon_handle     h = (clicon_handle)h0;
+    clixon_handle     h = (clixon_handle)h0;
     int               locked;
     uint32_t          offset;
     uint32_t          limit;
@@ -675,7 +675,7 @@ example_pagination(void            *h0,
     if (_state_file_cached == 0 ||
         _state_xml_cache == NULL){
         if ((fp = fopen(_state_file, "r")) == NULL){
-            clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
+            clixon_err(OE_UNIX, errno, "open(%s)", _state_file);
             goto done;
         }
         if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
@@ -745,7 +745,7 @@ example_pagination(void            *h0,
  * @retval    -1    Fatal error
 */
 int
-example_lockdb(clicon_handle h,
+example_lockdb(clixon_handle h,
                char         *db,
                int           lock,
                int           id)
@@ -777,7 +777,7 @@ example_lockdb(clicon_handle h,
  * @retval   -1    Error in one callback
  */
 int
-example_extension(clicon_handle h,
+example_extension(clixon_handle h,
                   yang_stmt    *yext,
                   yang_stmt    *ys)
 {
@@ -841,7 +841,7 @@ static const map_str2str namespace_map[] = {
  * @retval   -1    Error
  */
 int
-example_upgrade(clicon_handle    h,
+example_upgrade(clixon_handle    h,
                 const char      *db,
                 cxobj           *xt,
                 modstate_diff_t *msd)
@@ -891,7 +891,7 @@ example_upgrade(clicon_handle    h,
         mypath = ms->ms_s0;
         mynamespace = ms->ms_s1;
         if (xml_nsctx_get_prefix(nsc, mynamespace, &myprefix) == 0){
-            clicon_err(OE_XML, ENOENT, "Namespace %s not found in canonical namespace map",
+            clixon_err(OE_XML, ENOENT, "Namespace %s not found in canonical namespace map",
                        mynamespace);
             goto done;
         }
@@ -933,7 +933,7 @@ example_upgrade(clicon_handle    h,
  * @see RFC 8528
  */
 int
-main_yang_mount(clicon_handle   h,
+main_yang_mount(clixon_handle   h,
                 cxobj          *xt,
                 int            *config,
                 validate_level *vl,
@@ -948,7 +948,7 @@ main_yang_mount(clicon_handle   h,
         *vl = VL_FULL;
     if (yanglib && _mount_yang){
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
@@ -999,7 +999,7 @@ main_yang_mount(clicon_handle   h,
  * - Rename /interfaces/interface/description to descr 
  */
 static int
-upgrade_2014_to_2016(clicon_handle h,
+upgrade_2014_to_2016(clixon_handle h,
                      cxobj        *xt,
                      char         *ns,
                      uint16_t      op,
@@ -1103,7 +1103,7 @@ upgrade_2014_to_2016(clicon_handle h,
  *   fraction-digits 3 and divide all values with 1000
  */
 static int
-upgrade_2016_to_2018(clicon_handle h,
+upgrade_2016_to_2018(clixon_handle h,
                      cxobj        *xt,
                      char         *ns,
                      uint16_t      op,
@@ -1159,7 +1159,7 @@ upgrade_2016_to_2018(clicon_handle h,
                         cbuf *cb;
 
                         if ((cb = cbuf_new()) == NULL){
-                            clicon_err(OE_UNIX, errno, "cbuf_new");
+                            clixon_err(OE_UNIX, errno, "cbuf_new");
                             goto done;
                         }
 
@@ -1204,7 +1204,7 @@ upgrade_2016_to_2018(clicon_handle h,
  * - Rename /interfaces/interface/description to descr 
  */
 static int
-upgrade_interfaces(clicon_handle h,
+upgrade_interfaces(clixon_handle h,
                    cxobj        *xt,
                    char         *ns,
                    uint16_t      op,
@@ -1216,7 +1216,7 @@ upgrade_interfaces(clicon_handle h,
     int retval = -1;
 
     if (_module_upgrade) /* For testing */
-        clicon_log(LOG_NOTICE, "%s %s op:%s from:%d to:%d",
+        clixon_log(h, LOG_NOTICE, "%s %s op:%s from:%d to:%d",
                    __FUNCTION__, ns,
                    (op&XML_FLAG_ADD)?"ADD":(op&XML_FLAG_DEL)?"DEL":"CHANGE",
                    from, to);
@@ -1254,7 +1254,7 @@ upgrade_interfaces(clicon_handle h,
  * In this example, a loopback parameter is added
  */
 int
-example_reset(clicon_handle h,
+example_reset(clixon_handle h,
               const char   *db)
 {
     int        retval = -1;
@@ -1279,14 +1279,14 @@ example_reset(clicon_handle h,
     /* xmldb_put requires modification tree to be: <config>... */
     xml_name_set(xt, "config");
     if ((cbret = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     /* Merge user reset state */
     if ((ret = xmldb_put(h, (char*)db, OP_MERGE, xt, clicon_username_get(h), cbret)) < 0)
         goto done;
     if (ret == 0){
-        clicon_err(OE_XML, 0, "Error when writing to XML database: %s",
+        clixon_err(OE_XML, 0, "Error when writing to XML database: %s",
                    cbuf_get(cbret));
         goto done;
     }
@@ -1312,7 +1312,7 @@ example_reset(clicon_handle h,
  * @retval    -1    Error
  */
 int
-example_start(clicon_handle h)
+example_start(clixon_handle h)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -1326,7 +1326,7 @@ example_start(clicon_handle h)
      */
     if (_action_instanceid){
         if ((yspec = clicon_dbspec_yang(h)) == NULL){
-            clicon_err(OE_FATAL, 0, "No DB_SPEC");
+            clixon_err(OE_FATAL, 0, "No DB_SPEC");
             goto done;
         }
         if (yang_abs_schema_nodeid(yspec, _action_instanceid, &ya) == 0){
@@ -1348,7 +1348,7 @@ example_start(clicon_handle h)
  * the main event loop is entered. 
  */
 int
-example_daemon(clicon_handle h)
+example_daemon(clixon_handle h)
 {
     int        retval = -1;
     int        ret;
@@ -1360,7 +1360,7 @@ example_daemon(clicon_handle h)
     if (_state && _state_file && _state_file_cached){
         yspec = clicon_dbspec_yang(h);
         if ((fp = fopen(_state_file, "r")) == NULL){
-            clicon_err(OE_UNIX, errno, "open(%s)", _state_file);
+            clixon_err(OE_UNIX, errno, "open(%s)", _state_file);
             goto done;
         }
         /* Need to be yang bound for eg xml_copy_marked() in example_pagination
@@ -1382,7 +1382,7 @@ example_daemon(clicon_handle h)
 }
 
 int
-example_exit(clicon_handle h)
+example_exit(clixon_handle h)
 {
     if (_state_xml_cache){
         xml_free(_state_xml_cache);
@@ -1392,7 +1392,7 @@ example_exit(clicon_handle h)
 }
 
 /* Forward declaration */
-clixon_plugin_api *clixon_plugin_init(clicon_handle h);
+clixon_plugin_api *clixon_plugin_init(clixon_handle h);
 
 static clixon_plugin_api api = {
     "example",                              /* name */
@@ -1419,13 +1419,13 @@ static clixon_plugin_api api = {
 /*! Backend plugin initialization
  *
  * @param[in]  h    Clixon handle
- * @retval     NULL Error with clicon_err set
+ * @retval     NULL Error
  * @retval     api  Pointer to API struct
  * In this example, you can pass -r, -s, -u to control the behaviour, mainly 
  * for use in the test suites.
  */
 clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
     struct timeval retention = {0,0};
     int            argc; /* command-line options (after --) */
@@ -1482,7 +1482,7 @@ clixon_plugin_init(clicon_handle h)
             break;
         }
     if ((_mount_yang && !_mount_namespace) || (!_mount_yang && _mount_namespace)){
-        clicon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
+        clixon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
         goto done;
     }
     if (_state_file){

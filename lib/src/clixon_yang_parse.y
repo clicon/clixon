@@ -193,6 +193,7 @@
 #include "clixon_handle.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_yang_parse.h"
@@ -219,7 +220,7 @@ void
 clixon_yang_parseerror(void *_yy,
                        char *s)
 {
-    clicon_err(OE_YANG, 0, "%s on line %d: %s at or before: '%s'",
+    clixon_err(OE_YANG, 0, "%s on line %d: %s at or before: '%s'",
                _YY->yy_name,
                _YY->yy_linenum,
                s,
@@ -252,7 +253,7 @@ ystack_pop(clixon_yang_yacc *yy)
     struct ys_stack *ystack;
 
     if ((ystack = yy->yy_stack) == NULL){
-        clicon_err(OE_YANG, 0, "ystack is NULL");
+        clixon_err(OE_YANG, 0, "ystack is NULL");
         return -1;
     }
     if (yang_sort_subelements(ystack->ys_node) < 0)
@@ -274,7 +275,7 @@ ystack_push(clixon_yang_yacc *yy,
     struct ys_stack *ystack;
 
     if ((ystack = malloc(sizeof(*ystack))) == NULL) {
-        clicon_err(OE_YANG, errno, "malloc");
+        clixon_err(OE_YANG, errno, "malloc");
         return NULL;
     }
     memset(ystack, 0, sizeof(*ystack));
@@ -305,11 +306,11 @@ ysp_add(clixon_yang_yacc *yy,
 
     ystack = yy->yy_stack;
     if (ystack == NULL){
-        clicon_err(OE_YANG, errno, "No stack");
+        clixon_err(OE_YANG, errno, "No stack");
         goto err;
     }
     if ((yn = ystack->ys_node) == NULL){
-        clicon_err(OE_YANG, errno, "No ys_node");
+        clixon_err(OE_YANG, errno, "No ys_node");
         goto err;
     }
     if ((ys = ys_new(keyword)) == NULL)

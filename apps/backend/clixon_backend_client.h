@@ -62,7 +62,7 @@ struct client_entry{
     int                   ce_nr;      /* Client number (for dbg/tracing) */
     uint32_t              ce_id;      /* Session id, accessor functions: clicon_session_id_get/set */
     char                 *ce_username;/* Translated from peer user cred */
-    clicon_handle         ce_handle;  /* clicon config handle (all clients have same?) */
+    clixon_handle         ce_handle;  /* clicon config handle (all clients have same?) */
     char                 *ce_transport; /* Identifies the transport for each session.
                                            Clixon-lib.yang extends these values by prefixing with
                                            "cl:", where cl is ensured to be declared ie by

@@ -58,12 +58,13 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_err.h"
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_options.h" /* xml_bind_yang */
@@ -317,7 +318,7 @@ xml_stats(cxobj    *xt,
     cxobj *xc;
 
     if (xt == NULL){
-        clicon_err(OE_XML, EINVAL, "xml node is NULL");
+        clixon_err(OE_XML, EINVAL, "xml node is NULL");
         goto done;
     }
     *nrp += 1;
@@ -370,7 +371,7 @@ xml_name_set(cxobj *xn,
     }
     if (name){
         if ((xn->x_name = strdup(name)) == NULL){
-            clicon_err(OE_XML, errno, "strdup");
+            clixon_err(OE_XML, errno, "strdup");
             return -1;
         }
     }
@@ -405,7 +406,7 @@ xml_prefix_set(cxobj *xn,
     }
     if (prefix){
         if ((xn->x_prefix = strdup(prefix)) == NULL){
-            clicon_err(OE_XML, errno, "strdup");
+            clixon_err(OE_XML, errno, "strdup");
             return -1;
         }
     }
@@ -657,7 +658,7 @@ xml_creator_add(cxobj *xn,
         goto ok;
     if (xn->x_creators == NULL){
         if ((xn->x_creators = cvec_new(0)) == NULL){
-            clicon_err(OE_XML, errno, "cvec_new");
+            clixon_err(OE_XML, errno, "cvec_new");
             goto done;
         }
     }
@@ -750,7 +751,7 @@ xml_creator_copy_one(cxobj *x0,
 
     if (x0->x_creators)
         if ((x1->x_creators = cvec_dup(x0->x_creators)) == NULL){
-            clicon_err(OE_UNIX, errno, "cvec_dup");
+            clixon_err(OE_UNIX, errno, "cvec_dup");
             goto done;
         }
     retval = 0;
@@ -884,13 +885,13 @@ xml_value_set(cxobj *xn,
     if (!is_bodyattr(xn))
         return 0;
     if (val == NULL){
-        clicon_err(OE_XML, EINVAL, "value is NULL");
+        clixon_err(OE_XML, EINVAL, "value is NULL");
         goto done;
     }
     sz = strlen(val)+1;
     if (xn->x_value_cb == NULL){
         if ((xn->x_value_cb = cbuf_new_alloc(sz)) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
     }
@@ -919,18 +920,18 @@ xml_value_append(cxobj *xn,
     if (!is_bodyattr(xn))
         return 0;
     if (val == NULL){
-        clicon_err(OE_XML, EINVAL, "value is NULL");
+        clixon_err(OE_XML, EINVAL, "value is NULL");
         goto done;
     }
     sz = strlen(val)+1;
     if (xn->x_value_cb == NULL){
         if ((xn->x_value_cb = cbuf_new_alloc(sz)) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
     }
     if (cbuf_append_str(xn->x_value_cb, val) < 0){
-        clicon_err(OE_XML, errno, "cprintf");
+        clixon_err(OE_XML, errno, "cprintf");
         goto done;
     }
     retval = 0;
@@ -1251,7 +1252,7 @@ xml_child_append(cxobj *xp,
             xp->x_childvec_max += XML_CHILDVEC_SIZE_THRESHOLD;
         xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_max*sizeof(cxobj*));
         if (xp->x_childvec == NULL){
-            clicon_err(OE_XML, errno, "realloc");
+            clixon_err(OE_XML, errno, "realloc");
             return -1;
         }
     }
@@ -1281,7 +1282,7 @@ xml_child_insert_pos(cxobj *xp,
             xp->x_childvec_max += XML_CHILDVEC_SIZE_THRESHOLD;
         xp->x_childvec = realloc(xp->x_childvec, xp->x_childvec_max*sizeof(cxobj*));
         if (xp->x_childvec == NULL){
-            clicon_err(OE_XML, errno, "realloc");
+            clixon_err(OE_XML, errno, "realloc");
             return -1;
         }
     }
@@ -1310,7 +1311,7 @@ xml_childvec_set(cxobj *x,
     if (x->x_childvec)
         free(x->x_childvec);
     if ((x->x_childvec = calloc(len, sizeof(cxobj*))) == NULL){
-        clicon_err(OE_XML, errno, "calloc");
+        clixon_err(OE_XML, errno, "calloc");
         return -1;
     }
     return 0;
@@ -1358,7 +1359,7 @@ clixon_child_xvec_append(cxobj       *xn,
  * @param[in]  xp        The parent where the new xml node will be appended
  * @param[in]  type      XML type
  * @retval     xml       Created xml object if successful. Free with xml_free()
- * @retval     NULL      Error and clicon_err() called
+ * @retval     NULL      Error and clixon_err() called
  * @code
  *   cxobj *x;
  *   if ((x = xml_new(name, xparent, CX_ELMNT)) == NULL)
@@ -1386,12 +1387,12 @@ xml_new(char           *name,
         sz = sizeof(struct xmlbody);
         break;
     default:
-        clicon_err(OE_XML, EINVAL, "Invalid type: %d", type);
+        clixon_err(OE_XML, EINVAL, "Invalid type: %d", type);
         return NULL;
         break;
     }
     if ((x = malloc(sz)) == NULL){
-        clicon_err(OE_XML, errno, "malloc");
+        clixon_err(OE_XML, errno, "malloc");
         return NULL;
     }
     memset(x, 0, sz);
@@ -1712,7 +1713,7 @@ xml_child_rm(cxobj *xp,
     if (!is_element(xp))
         return 0;
     if ((xc = xml_child_i(xp, i)) == NULL){
-        clicon_err(OE_XML, 0, "Child not found");
+        clixon_err(OE_XML, 0, "Child not found");
         goto done;
     }
     xml_parent_set(xc, NULL);
@@ -1833,11 +1834,11 @@ xml_rootchild(cxobj  *xp,
     if (!is_element(xp))
         return 0;
     if (xml_parent(xp) != NULL){
-        clicon_err(OE_XML, 0, "Parent is not root");
+        clixon_err(OE_XML, 0, "Parent is not root");
         goto done;
     }
     if ((xc = xml_child_i(xp, i)) == NULL){
-        clicon_err(OE_XML, ENOENT, "Child %d of parent %s not found", i, xml_name(xp));
+        clixon_err(OE_XML, ENOENT, "Child %d of parent %s not found", i, xml_name(xp));
         goto done;
     }
     if (xml_child_rm(xp, i) < 0)
@@ -1873,7 +1874,7 @@ xml_rootchild_node(cxobj  *xp,
     if (!is_element(xp))
         return 0;
     if (xml_parent(xp) != NULL){
-        clicon_err(OE_XML, 0, "Parent is not root");
+        clixon_err(OE_XML, 0, "Parent is not root");
         goto done;
     }
     x = NULL; i = 0;
@@ -2213,7 +2214,7 @@ xml_copy_one(cxobj *x0,
     char *s;
 
     if (x0 == NULL || x1 == NULL){
-        clicon_err(OE_XML, EINVAL, "x0 or x1 is NULL");
+        clixon_err(OE_XML, EINVAL, "x0 or x1 is NULL");
         goto done;
     }
     xml_type_set(x1, xml_type(x0));
@@ -2333,7 +2334,7 @@ cxvec_append(cxobj   *x,
     int retval = -1;
 
     if ((*vec = realloc(*vec, sizeof(cxobj *) * (*len+1))) == NULL){
-        clicon_err(OE_XML, errno, "realloc");
+        clixon_err(OE_XML, errno, "realloc");
         goto done;
     }
     (*vec)[(*len)++] = x;
@@ -2370,7 +2371,7 @@ cxvec_prepend(cxobj   *x,
     int retval = -1;
 
     if ((*vec = realloc(*vec, sizeof(cxobj *) * (*len+1))) == NULL){
-        clicon_err(OE_XML, errno, "realloc");
+        clixon_err(OE_XML, errno, "realloc");
         goto done;
     }
     memmove(&(*vec)[1], &(*vec)[0], sizeof(cxobj *) * (*len));
@@ -2587,7 +2588,7 @@ xml_operation(char                *opstr,
     else if (strcmp("none", opstr) == 0)
         *op = OP_NONE;
     else{
-        clicon_err(OE_XML, 0, "Bad-attribute operation: %s", opstr);
+        clixon_err(OE_XML, 0, "Bad-attribute operation: %s", opstr);
         return -1;
     }
     return 0;
@@ -2648,7 +2649,7 @@ xml_attr_insert2val(char             *instr,
     else if (strcmp("after", instr) == 0)
         *ins = INS_AFTER;
     else{
-        clicon_err(OE_XML, 0, "Bad-attribute operation: %s", instr);
+        clixon_err(OE_XML, 0, "Bad-attribute operation: %s", instr);
         return -1;
     }
     return 0;
@@ -2698,8 +2699,9 @@ xml_add_attr(cxobj *xn,
     goto ret;
 }
 
-/*! Specialization of clicon_log with xml tree 
+/*! Specialization of clixon_log with xml tree 
  *
+ * @param[in]  h        Clixon handle
  * @param[in]  dbglevel 
  * @param[in]  level    log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. 
  * @param[in]  x        XML tree that is logged without prettyprint
@@ -2709,9 +2711,10 @@ xml_add_attr(cxobj *xn,
  * @see clixon_debug_xml  which uses debug setting instead of direct syslog
  */
 int
-clicon_log_xml(int         level,
-               cxobj      *x,
-               const char *format, ...)
+clixon_log_xml(clixon_handle h,
+               int           level,
+               cxobj        *x,
+               const char   *format, ...)
 {
     int     retval = -1;
     va_list args;
@@ -2722,7 +2725,7 @@ clicon_log_xml(int         level,
 
     /* Print xml as cbuf */
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
@@ -2732,12 +2735,12 @@ clicon_log_xml(int         level,
     len = vsnprintf(NULL, 0, format, args);
     va_end(args);
     /* Truncate long debug strings */
-    if ((trunc = clicon_log_string_limit_get()) && trunc < len)
+    if ((trunc = clixon_log_string_limit_get()) && trunc < len)
         len = trunc;
 
     /* allocate a message string exactly fitting the message length */
     if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
         goto done;
     }
 
@@ -2745,13 +2748,13 @@ clicon_log_xml(int         level,
     va_start(args, format);
     if (vsnprintf(msg, len+1, format, args) < 0){
         va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
         goto done;
     }
     va_end(args);
 
     /* Actually log it */
-    clicon_log(level, "%s: %s", msg, cbuf_get(cb));
+    clixon_log(h, level, "%s: %s", msg, cbuf_get(cb));
 
     retval = 0;
   done:
@@ -2789,7 +2792,7 @@ clixon_debug_xml(int         dbglevel,
         return 0;
     /* Print xml as cbuf */
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
@@ -2799,12 +2802,12 @@ clixon_debug_xml(int         dbglevel,
     len = vsnprintf(NULL, 0, format, args);
     va_end(args);
     /* Truncate long debug strings */
-    if ((trunc = clicon_log_string_limit_get()) && trunc < len)
+    if ((trunc = clixon_log_string_limit_get()) && trunc < len)
         len = trunc;
 
     /* allocate a message string exactly fitting the message length */
     if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
         goto done;
     }
 
@@ -2812,7 +2815,7 @@ clixon_debug_xml(int         dbglevel,
     va_start(args, format);
     if (vsnprintf(msg, len+1, format, args) < 0){
         va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
         goto done;
     }
     va_end(args);
@@ -2899,12 +2902,12 @@ xml_search_index_add(cxobj *x,
     struct search_index *si = NULL;
 
     if ((si = malloc(sizeof(struct search_index))) == NULL){
-        clicon_err(OE_XML, errno, "malloc");
+        clixon_err(OE_XML, errno, "malloc");
         goto done;
     }
     memset(si, 0, sizeof(struct search_index));
     if ((si->si_name = strdup(name)) == NULL){
-        clicon_err(OE_XML, errno, "strdup");
+        clixon_err(OE_XML, errno, "strdup");
         free(si);
         si = NULL;
         goto done;

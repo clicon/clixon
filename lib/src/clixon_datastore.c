@@ -62,11 +62,12 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_err.h"
-#include "clixon_log.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_string.h"
 #include "clixon_file.h"
 #include "clixon_yang.h"
@@ -94,7 +95,7 @@
  * The filename reside in CLICON_XMLDB_DIR option
  */
 int
-xmldb_db2file(clicon_handle  h, 
+xmldb_db2file(clixon_handle  h, 
               const char    *db,
               char         **filename)
 {
@@ -103,16 +104,16 @@ xmldb_db2file(clicon_handle  h,
     char *dir;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if ((dir = clicon_xmldb_dir(h)) == NULL){
-        clicon_err(OE_XML, errno, "dbdir not set");
+        clixon_err(OE_XML, errno, "dbdir not set");
         goto done;
     }
     cprintf(cb, "%s/%s_db", dir, db);
     if ((*filename = strdup4(cbuf_get(cb))) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     retval = 0;
@@ -129,7 +130,7 @@ xmldb_db2file(clicon_handle  h,
  * @retval    -1    Error
  */
 int
-xmldb_connect(clicon_handle h)
+xmldb_connect(clixon_handle h)
 {
     return 0;
 }
@@ -141,7 +142,7 @@ xmldb_connect(clicon_handle h)
  * @retval    -1    Error
  */
 int
-xmldb_disconnect(clicon_handle h)
+xmldb_disconnect(clixon_handle h)
 {
     int       retval = -1;
     char    **keys = NULL;
@@ -174,7 +175,7 @@ xmldb_disconnect(clicon_handle h)
  * @retval    -1     Error
   */
 int 
-xmldb_copy(clicon_handle h, 
+xmldb_copy(clixon_handle h, 
            const char   *from, 
            const char   *to)
 {
@@ -252,7 +253,7 @@ xmldb_copy(clicon_handle h,
  * @retval    -1    Error
  */
 int 
-xmldb_lock(clicon_handle h, 
+xmldb_lock(clixon_handle h, 
            const char   *db, 
            uint32_t      id)
 {
@@ -277,7 +278,7 @@ xmldb_lock(clicon_handle h,
  * Assume all sanity checks have been made
  */
 int
-xmldb_unlock(clicon_handle h,
+xmldb_unlock(clixon_handle h,
              const char   *db)
 {
     db_elmnt  *de = NULL;
@@ -298,7 +299,7 @@ xmldb_unlock(clicon_handle h,
  * @retval    -1   Error
  */
 int
-xmldb_unlock_all(clicon_handle h,
+xmldb_unlock_all(clixon_handle h,
                  uint32_t      id)
 {
     int       retval = -1;
@@ -335,7 +336,7 @@ xmldb_unlock_all(clicon_handle h,
  * @retval   -1   Error
  */
 uint32_t
-xmldb_islocked(clicon_handle h,
+xmldb_islocked(clixon_handle h,
                const char   *db)
 {
     db_elmnt  *de;
@@ -354,7 +355,7 @@ xmldb_islocked(clicon_handle h,
  * @retval    -1   No timestamp / not locked
  */
 int
-xmldb_lock_timestamp(clicon_handle   h,
+xmldb_lock_timestamp(clixon_handle   h,
                      const char     *db,
                      struct timeval *tv)
 {
@@ -376,7 +377,7 @@ xmldb_lock_timestamp(clicon_handle   h,
  * @note  An empty datastore is treated as not existent so that a backend after dropping priviliges can re-create it
  */
 int
-xmldb_exists(clicon_handle h,
+xmldb_exists(clixon_handle h,
              const char   *db)
 {
     int                 retval = -1;
@@ -409,7 +410,7 @@ xmldb_exists(clicon_handle h,
  * @retval    -1   Error
  */
 int
-xmldb_clear(clicon_handle h,
+xmldb_clear(clixon_handle h,
             const char   *db)
 {
     cxobj    *xt = NULL;
@@ -434,7 +435,7 @@ xmldb_clear(clicon_handle h,
  * @note  Datastore is not actually deleted so that a backend after dropping priviliges can re-create it
  */
 int
-xmldb_delete(clicon_handle h,
+xmldb_delete(clixon_handle h,
              const char   *db)
 {
     int                 retval = -1;
@@ -448,7 +449,7 @@ xmldb_delete(clicon_handle h,
         goto done;
     if (lstat(filename, &sb) == 0)
         if (truncate(filename, 0) < 0){
-            clicon_err(OE_DB, errno, "truncate %s", filename);
+            clixon_err(OE_DB, errno, "truncate %s", filename);
             goto done;
         }
     retval = 0;
@@ -466,7 +467,7 @@ xmldb_delete(clicon_handle h,
  * @retval    -1   Error
  */
 int
-xmldb_create(clicon_handle h,
+xmldb_create(clixon_handle h,
              const char   *db)
 {
     int                 retval = -1;
@@ -485,7 +486,7 @@ xmldb_create(clicon_handle h,
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
     if ((fd = open(filename, O_CREAT|O_WRONLY, S_IRWXU)) == -1) {
-        clicon_err(OE_UNIX, errno, "open(%s)", filename);
+        clixon_err(OE_UNIX, errno, "open(%s)", filename);
         goto done;
     }
    retval = 0;
@@ -506,7 +507,7 @@ xmldb_create(clicon_handle h,
  * @retval    -1   Error
  */
 int
-xmldb_db_reset(clicon_handle h,
+xmldb_db_reset(clixon_handle h,
                const char   *db)
 {
     if (xmldb_exists(h, db) == 1){
@@ -525,7 +526,7 @@ xmldb_db_reset(clicon_handle h,
  * @retval     xml  XML cached tree or NULL
  */
 cxobj *
-xmldb_cache_get(clicon_handle h,
+xmldb_cache_get(clixon_handle h,
                 const char   *db)
 {
     db_elmnt *de;
@@ -546,13 +547,13 @@ xmldb_cache_get(clicon_handle h,
  * @note This only works if db cache is used,...
  */
 int
-xmldb_modified_get(clicon_handle h,
+xmldb_modified_get(clixon_handle h,
                    const char   *db)
 {
     db_elmnt *de;
 
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-        clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
         return -1;
     }
     return de->de_modified;
@@ -567,13 +568,13 @@ xmldb_modified_get(clicon_handle h,
  * @retval    -1     Error (datastore does not exist)
  */
 int
-xmldb_empty_get(clicon_handle h,
+xmldb_empty_get(clixon_handle h,
                 const char   *db)
 {
     db_elmnt *de;
 
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-        clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
         return -1;
     }
     return de->de_empty;
@@ -590,14 +591,14 @@ xmldb_empty_get(clicon_handle h,
  * @note This only works if db cache is used,...
  */
 int
-xmldb_modified_set(clicon_handle h,
+xmldb_modified_set(clixon_handle h,
                    const char   *db,
                    int           value)
 {
     db_elmnt *de;
 
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-        clicon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
         return -1;
     }
     de->de_modified = value;
@@ -607,7 +608,7 @@ xmldb_modified_set(clicon_handle h,
 /* Print the datastore meta-info to file
  */
 int
-xmldb_print(clicon_handle h,
+xmldb_print(clixon_handle h,
             FILE         *f)
 {
     int       retval = -1;
@@ -644,7 +645,7 @@ xmldb_print(clicon_handle h,
  * @note if newdb and suffix are null, OK is returned as it is a no-op
  */
 int
-xmldb_rename(clicon_handle h,
+xmldb_rename(clixon_handle h,
              const char    *db,
              const char    *newdb,
              const char    *suffix)
@@ -659,7 +660,7 @@ xmldb_rename(clicon_handle h,
     if (newdb == NULL && suffix == NULL)        // no-op
         goto done;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "%s", newdb == NULL ? old : newdb);
@@ -667,7 +668,7 @@ xmldb_rename(clicon_handle h,
         cprintf(cb, "%s", suffix);
     fname = cbuf_get(cb);
     if ((rename(old, fname)) < 0) {
-        clicon_err(OE_UNIX, errno, "rename: %s", strerror(errno));
+        clixon_err(OE_UNIX, errno, "rename: %s", strerror(errno));
         goto done;
     };
     retval = 0;

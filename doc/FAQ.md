@@ -473,7 +473,7 @@ Each plugin is initiated with an API struct followed by a plugin init function a
       ... /* more functions here */
    }
    clixon_plugin_api *
-   clixon_plugin_init(clicon_handle h)
+   clixon_plugin_init(clixon_handle h)
    {
       ...
       return &api; /* Return NULL on error */
@@ -515,7 +515,7 @@ More are found in the doxygen reference.
 1. You add an entry in example_cli.cli
 >   example("This is a comment") <var:int32>("This is a variable"), mycallback("myarg");
 2. Then define a function in example_cli.c
->   mycallback(clicon_handle h, cvec *cvv, cvec *arv)
+>   mycallback(clixon_handle h, cvec *cvv, cvec *arv)
 where 'cvv' contains the value of the variable 'var' and 'argv' contains the string "myarg".
 
 The 'cvv' datatype is a 'CLIgen variable vector'.
@@ -523,9 +523,9 @@ They are documented in [CLIgen tutorial](https://github.com/clicon/cligen/blob/m
 
 ## How do I write a validation function?
 Similar to a commit function, but instead write the transaction_validate() function.
-Check for inconsistencies in the XML trees and if they fail, make an clicon_err() call.
+Check for inconsistencies in the XML trees and if they fail, make an clixon_err() call.
 ```
-    clicon_err(OE_PLUGIN, 0, "Route %s lacks ipv4 addr", name);
+    clixon_err(OE_PLUGIN, 0, "Route %s lacks ipv4 addr", name);
     return -1;
 ```
 The validation or commit will then be aborted.
@@ -560,7 +560,7 @@ implement the RFC, you need to register an RPC callback in the backend plugin:
 Example:
 ```
 int
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
 ...
    rpc_callback_register(h, example_rpc, NULL, "urn:example:my", "example-rpc");
@@ -570,7 +570,7 @@ clixon_plugin_init(clicon_handle h)
 And then define the callback itself:
 ```
 static int 
-example_rpc(clicon_handle h,            /* Clicon handle */
+example_rpc(clixon_handle h,            /* Clicon handle */
             cxobj        *xe,           /* Request: <rpc><xn></rpc> */
             cbuf         *cbret,        /* Reply eg <rpc-reply>... */
             void         *arg,          /* Client session */
@@ -592,7 +592,7 @@ The following example shows how `my_copy` can be called right after the system (
 the original operation:
 ```
 static int 
-my_copy(clicon_handle h,            /* Clicon handle */
+my_copy(clixon_handle h,            /* Clicon handle */
         cxobj        *xe,           /* Request: <rpc><xn></rpc> */
         cbuf         *cbret,        /* Reply eg <rpc-reply>... */
         void         *arg,          /* Client session */
@@ -602,7 +602,7 @@ my_copy(clicon_handle h,            /* Clicon handle */
     return 0;
 }
 int
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
 ...
    rpc_callback_register(h, my_copy, NULL, "urn:ietf:params:xml:ns:netconf:base:1.0", "copy-config");
@@ -616,7 +616,7 @@ A restconf call may need to be authenticated.
 You can specify an authentication callback for restconf as follows:
 ```
 int
-plugin_credentials(clicon_handle h,     
+plugin_credentials(clixon_handle h,     
                    void         *arg)
 {
     FCGX_Request *r = (FCGX_Request *)arg;

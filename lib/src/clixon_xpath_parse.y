@@ -98,7 +98,7 @@
 /* typecast macro */
 #define _XPY ((clixon_xpath_yacc *)_xpy)
 
-#define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_xpath_parsetext, _XPY->xpy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_xpath_parsetext, _XPY->xpy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
@@ -118,12 +118,13 @@
 
 #include <cligen/cligen.h>
 
+#include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"    
 #include "clixon_err.h"
 #include "clixon_log.h"
-#include "clixon_queue.h"
+#include "clixon_debug.h"
 #include "clixon_string.h"
-#include "clixon_hash.h"
-#include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xpath_ctx.h"
@@ -157,7 +158,7 @@ clixon_xpath_parseerror(void *_xpy,
                         char *s)
 {
     errno = 0;
-    clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'",  /* Note lineno here is xpath, not yang */
+    clixon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'",  /* Note lineno here is xpath, not yang */
                _XPY->xpy_name,
                _XPY->xpy_linenum,
                s,
@@ -168,7 +169,6 @@ clixon_xpath_parseerror(void *_xpy,
 int
 xpath_parse_init(clixon_xpath_yacc *xpy)
 {
-    //        clixon_debug_init(3, NULL);
     return 0;
 }
 
@@ -200,7 +200,7 @@ xp_new(enum xp_type  type,
     xpath_tree *xs = NULL;
 
     if ((xs = malloc(sizeof(xpath_tree))) == NULL){
-        clicon_err(OE_XML, errno, "malloc");
+        clixon_err(OE_XML, errno, "malloc");
         goto done;
     }
     memset(xs, 0, sizeof(*xs));
@@ -209,7 +209,7 @@ xp_new(enum xp_type  type,
     if (numstr){
         xs->xs_strnr = numstr;
         if (sscanf(numstr, "%lf", &xs->xs_double) == EOF){
-            clicon_err(OE_XML, errno, "sscanf");
+            clixon_err(OE_XML, errno, "sscanf");
             goto done;
         }
     }
@@ -242,7 +242,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
 
     if ((ret = xp_fnname_str2int(name)) < 0){
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "Unknown xpath function \"%s\"", name);
@@ -273,7 +273,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_CEILING:
     case XPATHFN_ROUND:
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "XPath function \"%s\" is not implemented", name);
@@ -296,7 +296,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
         break;
     default:
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "Unknown xpath function \"%s\"", name);
@@ -334,7 +334,7 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
 
     if ((ret = xp_fnname_str2int(name)) < 0){
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "Unknown xpath function \"%s\"", name);
@@ -346,7 +346,7 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
     case XPATHFN_COMMENT:  /* Group of not implemented node functions */
     case XPATHFN_PROCESSING_INSTRUCTIONS:
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "XPath function \"%s\" is not implemented", name);
@@ -358,7 +358,7 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
         break;
     default:
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "Unknown xpath nodetest function \"%s\"", name);
@@ -391,7 +391,7 @@ xp_axisname_function(clixon_xpath_yacc *xpy,
 
     if ((fn = axis_type_str2int(name)) < 0){
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "Unknown xpath axisname \"%s\"", name);

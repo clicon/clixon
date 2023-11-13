@@ -23,6 +23,39 @@ Expected: February 2024
 * Added reference count for shared yang-specs (schema mounts)
   * Allowed for sharing yspec+modules between several mountpoints
 
+### C/CLI-API changes on existing features
+Developers may need to change their code
+
+* Refactoring basic clixon modules and some API changes
+  * Changes marked in code with `COMPAT_6_5`
+    * Most common functions have backward compatible macros through the 6.6 release
+  * Handle API
+    * Renamed `clicon_handle` -> `clixon_handle`
+    * `clicon_handle_init()` -> `clixon_handle_init()
+    * `clicon_handle_exit()` -> `clixon_handle_exit()
+  * Log/Debug API
+    * Changed function names. You need to rename as follows:
+      * `clicon_log_init()` -> `clixon_log_init(h,)` NOTE added "clixon_handle h"
+      * `clicon_log()` -> `clixon_log(h,)`   NOTE added "clixon_handle h"
+      * `clixon_debug_init(d, f)` -> `clixon_debug_init(h, )` NOTE h added, f removed
+      * `clicon_log_xml()` -> `clixon_debug_xml(h,)` NOTE added "clixon_handle h"
+      * `clixon_debug_xml()` -> `clixon_debug_xml(h,)` NOTE added "clixon_handle h"
+  * Error API:
+    * Added `clixon_err_init(h)` function
+    * Renaming, make the following changes:
+      * `clicon_err()` -> `clixon_err()`
+      * `clicon_err_reset()` -> `clixon_err_reset()`
+      * `clicon_strerror(int)` -> `clixon_err_str()`
+      * `clicon_netconf_error(h, x, fmt)` -> clixon_err_netconf(h, OE_XML, 0, x, fmt)`
+      * `netconf_err2cb(...)` --> `netconf_err2cb(h, ...)`
+      * Likewise for some other minor functions: `clicon_err_*` -> `clixon_err_*` 
+    * Replaced global variables with access functions. Replace variables with functions as follows:
+      * `clicon_errno`    -> `clixon_err_category()`
+      * `clicon_suberrno` -> `clixon_err_subnr()`
+      * `clicon_err_reason`   -> `clixon_err_reason()`
+  * Changed process API:
+      * `clixon_proc_socket(...)` --> `clixon_proc_socket(h, ...)`
+
 ### Corrected Bugs
 
 * Fixed: [Using the characters '<' and '>' might cause an invalid diff](https://github.com/clicon/clixon-controller/issues/73)

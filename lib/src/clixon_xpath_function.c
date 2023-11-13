@@ -54,13 +54,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_yang.h"
 #include "clixon_yang_type.h"
@@ -281,7 +282,7 @@ derived_from_one(char  *baseidentity,
     else {
         /* Allocate cbuf */
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
@@ -337,7 +338,7 @@ xp_function_derived_from(xp_ctx            *xc,
     int        ret = 0;
 
     if (xs == NULL || xs->xs_c0 == NULL || xs->xs_c1 == NULL){
-        clicon_err(OE_XML, EINVAL, "derived-from expects but did not get two arguments");
+        clixon_err(OE_XML, EINVAL, "derived-from expects but did not get two arguments");
         goto done;
     }
     /* contains two arguments in xs: boolean derived-from(node-set, string) */
@@ -353,7 +354,7 @@ xp_function_derived_from(xp_ctx            *xc,
         goto done;
     /* Allocate a return struct of type boolean */
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -415,7 +416,7 @@ xp_function_bit_is_set(xp_ctx            *xc,
     char   *body;
 
     if (xs == NULL || xs->xs_c0 == NULL || xs->xs_c1 == NULL){
-        clicon_err(OE_XML, EINVAL, "contains expects but did not get two arguments");
+        clixon_err(OE_XML, EINVAL, "contains expects but did not get two arguments");
         goto done;
     }
     /* First node-set argument */
@@ -427,7 +428,7 @@ xp_function_bit_is_set(xp_ctx            *xc,
     if (ctx2string(xr1, &s1) < 0)
         goto done;
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -475,7 +476,7 @@ xp_function_position(xp_ctx            *xc,
     xp_ctx     *xr = NULL;
 
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -504,13 +505,13 @@ xp_function_count(xp_ctx            *xc,
     xp_ctx     *xr0 = NULL;
 
     if (xs == NULL || xs->xs_c0 == NULL){
-        clicon_err(OE_XML, EINVAL, "count expects but did not get one argument");
+        clixon_err(OE_XML, EINVAL, "count expects but did not get one argument");
         goto done;
     }
     if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
         goto done;
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -546,13 +547,13 @@ xp_function_name(xp_ctx            *xc,
     cxobj      *x;
 
     if (xs == NULL || xs->xs_c0 == NULL){
-        clicon_err(OE_XML, EINVAL, "not expects but did not get one argument");
+        clixon_err(OE_XML, EINVAL, "not expects but did not get one argument");
         goto done;
     }
     if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
         goto done;
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -561,7 +562,7 @@ xp_function_name(xp_ctx            *xc,
         if ((x = xr0->xc_nodeset[i]) == NULL)
             continue;
         if ((xr->xc_string = strdup(xml_name(x))) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
         break;
@@ -602,7 +603,7 @@ xp_function_contains(xp_ctx            *xc,
     char              *s1 = NULL;
 
     if (xs == NULL || xs->xs_c0 == NULL || xs->xs_c1 == NULL){
-        clicon_err(OE_XML, EINVAL, "contains expects but did not get two arguments");
+        clixon_err(OE_XML, EINVAL, "contains expects but did not get two arguments");
         goto done;
     }
     /* contains two arguments in xs: boolean contains(string, string) */
@@ -615,7 +616,7 @@ xp_function_contains(xp_ctx            *xc,
     if (ctx2string(xr1, &s1) < 0)
         goto done;
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -659,14 +660,14 @@ xp_function_boolean(xp_ctx            *xc,
     int         bool;
 
     if (xs == NULL || xs->xs_c0 == NULL){
-        clicon_err(OE_XML, EINVAL, "not expects but did not get one argument");
+        clixon_err(OE_XML, EINVAL, "not expects but did not get one argument");
         goto done;
     }
     if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
         goto done;
     bool = ctx2boolean(xr0);
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -712,7 +713,7 @@ xp_function_true(xp_ctx            *xc,
     xp_ctx     *xr = NULL;
 
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
@@ -739,7 +740,7 @@ xp_function_false(xp_ctx            *xc,
     xp_ctx     *xr = NULL;
 
     if ((xr = malloc(sizeof(*xr))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));

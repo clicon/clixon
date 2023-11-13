@@ -54,7 +54,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "restconf_lib.h"
@@ -64,7 +64,7 @@
 #include "restconf_methods_get.h"
 
 /* Forward */
-static int api_data_pagination(clicon_handle h, void *req, char *api_path, int pi, cvec *qvec, int pretty, restconf_media media_out);
+static int api_data_pagination(clixon_handle h, void *req, char *api_path, int pi, cvec *qvec, int pretty, restconf_media media_out);
 
 /*! Generic GET (both HEAD and GET)
  * According to restconf 
@@ -97,7 +97,7 @@ static int api_data_pagination(clicon_handle h, void *req, char *api_path, int p
  * @note there is an ad-hoc method to determine json pagination request instead of regular GET
  */
 static int
-api_data_get2(clicon_handle  h,
+api_data_get2(clixon_handle  h,
               void          *req,
               char          *api_path,
               int            pi,
@@ -130,7 +130,7 @@ api_data_get2(clicon_handle  h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     /* strip /... from start */
@@ -184,7 +184,7 @@ api_data_get2(clicon_handle  h,
         if (strcmp(attr, "unbounded") != 0){
             char *reason = NULL;
             if ((ret = parse_int32(attr, &depth, &reason)) < 0){
-                clicon_err(OE_XML, errno, "parse_int32");
+                clixon_err(OE_XML, errno, "parse_int32");
                 goto done;
             }
             if (ret==0){
@@ -206,7 +206,7 @@ api_data_get2(clicon_handle  h,
     ret = clicon_rpc_get(h, xpath, nsc, content, depth, defaults, &xret);
 
     if (ret < 0){
-        if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+        if (netconf_operation_failed_xml(&xerr, "protocol", clixon_err_reason()) < 0)
             goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
             goto done;
@@ -227,7 +227,7 @@ api_data_get2(clicon_handle  h,
     }
     /* Normal return, no error */
     if ((cbx = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (xpath==NULL || strcmp(xpath,"/")==0){ /* Special case: data root */
@@ -246,7 +246,7 @@ api_data_get2(clicon_handle  h,
     }
     else{
         if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath) < 0){
-            if (netconf_operation_failed_xml(&xerr, "application", clicon_err_reason) < 0)
+            if (netconf_operation_failed_xml(&xerr, "application", clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
@@ -345,7 +345,7 @@ api_data_get2(clicon_handle  h,
  * @see draft-ietf-netconf-restconf-collection-00.txt
  */
 static int
-api_data_pagination(clicon_handle  h,
+api_data_pagination(clixon_handle  h,
                     void          *req,
                     char          *api_path,
                     int            pi,
@@ -383,7 +383,7 @@ api_data_pagination(clicon_handle  h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     /* strip /... from start */
@@ -406,7 +406,7 @@ api_data_pagination(clicon_handle  h,
             goto done;
         if (ret == 0){ /* validation failed */
             if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-                clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+                clixon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
                 goto done;
             }
             if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
@@ -419,7 +419,7 @@ api_data_pagination(clicon_handle  h,
                                         "Element is not list or leaf-list which is required for GET paginate") < 0)
                 goto done;
             if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-                clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+                clixon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
                 goto done;
             }
             if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
@@ -436,7 +436,7 @@ api_data_pagination(clicon_handle  h,
                                           "content", "Unrecognized value of content attribute") < 0)
                 goto done;
             if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-                clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+                clixon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
                 goto done;
             }
             if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
@@ -446,7 +446,7 @@ api_data_pagination(clicon_handle  h,
     }
     clixon_debug(CLIXON_DBG_DEFAULT, "%s path:%s", __FUNCTION__, xpath);
     if (content != CONTENT_CONFIG && content != CONTENT_NONCONFIG && content != CONTENT_ALL){
-        clicon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
+        clixon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
         goto done;
     }
     /* Clixon extensions and collection attributes */
@@ -456,7 +456,7 @@ api_data_pagination(clicon_handle  h,
         if (strcmp(attr, "unbounded") != 0){
             char *reason = NULL;
             if ((ret = parse_int32(attr, &depth, &reason)) < 0){
-                clicon_err(OE_XML, errno, "parse_int32");
+                clixon_err(OE_XML, errno, "parse_int32");
                 goto done;
             }
             if (ret==0){
@@ -493,10 +493,10 @@ api_data_pagination(clicon_handle  h,
     if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc, content,
                                      depth, NULL, offset, limit, direction, sort, where,
                                      &xret) < 0){
-        if (netconf_operation_failed_xml(&xerr, "protocol", clicon_err_reason) < 0)
+        if (netconf_operation_failed_xml(&xerr, "protocol", clixon_err_reason()) < 0)
             goto done;
         if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-            clicon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
+            clixon_err(OE_XML, EINVAL, "rpc-error not found (internal error)");
             goto done;
         }
         if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
@@ -607,7 +607,7 @@ api_data_pagination(clicon_handle  h,
  * @retval    -1        Error
  */
 int
-api_data_head(clicon_handle h,
+api_data_head(clixon_handle h,
               void         *req,
               char         *api_path,
               int           pi,
@@ -648,7 +648,7 @@ api_data_head(clicon_handle h,
  * Netconf: <get-config>, <get>                        
  */
 int
-api_data_get(clicon_handle h,
+api_data_get(clixon_handle h,
              void         *req,
              char         *api_path,
              int           pi,
@@ -703,7 +703,7 @@ api_data_get(clicon_handle h,
  *       { 'ietf-system:system-restart' : [null] }
  */
 int
-api_operations_get(clicon_handle h,
+api_operations_get(clixon_handle h,
                    void         *req,
                    char         *path,
                    int           pi,

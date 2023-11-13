@@ -45,7 +45,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 #include <clixon/clixon_restconf.h>  /* minor use */
 
@@ -206,7 +206,7 @@ b64_decode(const char *src,
  * @note: Three hardwired users: andy, wilma, guest w password "bar".
  */
 static int
-example_basic_auth(clicon_handle      h,
+example_basic_auth(clixon_handle      h,
                    void              *req,
                    char             **authp)
 {
@@ -222,7 +222,7 @@ example_basic_auth(clicon_handle      h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (authp == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
+        clixon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
         goto done;
     }
     /* At this point in the code we must use HTTP basic authentication */
@@ -235,7 +235,7 @@ example_basic_auth(clicon_handle      h,
     auth += strlen("Basic ");
     authlen = strlen(auth)*2;
     if ((user = malloc(authlen)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(user, 0, authlen);
@@ -289,7 +289,7 @@ example_basic_auth(clicon_handle      h,
  * @note authp should be malloced
  */
 int
-example_restconf_credentials(clicon_handle      h,
+example_restconf_credentials(clixon_handle      h,
                              void              *req,
                              clixon_auth_type_t auth_type,
                              char             **authp)
@@ -317,7 +317,7 @@ example_restconf_credentials(clicon_handle      h,
 /*! Local example restconf rpc callback 
  */
 int
-restconf_client_rpc(clicon_handle h,
+restconf_client_rpc(clixon_handle h,
                     cxobj        *xe,
                     cbuf         *cbret,
                     void         *arg,
@@ -329,7 +329,7 @@ restconf_client_rpc(clicon_handle h,
 
     /* get namespace from rpc name, return back in each output parameter */
     if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
-        clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+        clixon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
         goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
@@ -352,7 +352,7 @@ restconf_client_rpc(clicon_handle h,
 /*! Start example restonf plugin. Set authentication method
  */
 int
-example_restconf_start(clicon_handle h)
+example_restconf_start(clixon_handle h)
 {
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     return 0;
@@ -372,7 +372,7 @@ example_restconf_start(clicon_handle h)
  * @see RFC 8528
  */
 int
-restconf_yang_mount(clicon_handle   h,
+restconf_yang_mount(clixon_handle   h,
                     cxobj          *xt,
                     int            *config,
                     validate_level *vl,
@@ -387,7 +387,7 @@ restconf_yang_mount(clicon_handle   h,
         *vl = VL_FULL;
     if (yanglib && _mount_yang){
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
@@ -414,7 +414,7 @@ restconf_yang_mount(clicon_handle   h,
     return retval;
 }
 
-clixon_plugin_api * clixon_plugin_init(clicon_handle h);
+clixon_plugin_api * clixon_plugin_init(clixon_handle h);
 
 static clixon_plugin_api api = {
     "example",           /* name */
@@ -428,12 +428,12 @@ static clixon_plugin_api api = {
 /*! Restconf plugin initialization
  *
  * @param[in]  h    Clixon handle
- * @retval     NULL Error with clicon_err set
+ * @retval     NULL Error
  * @retval     api  Pointer to API struct
  * Arguments are argc/argv after --
  */
 clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
     int       argc; /* command-line options (after --) */
     char    **argv = NULL;
@@ -457,7 +457,7 @@ clixon_plugin_init(clicon_handle h)
             break;
         }
     if ((_mount_yang && !_mount_namespace) || (!_mount_yang && _mount_namespace)){
-        clicon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
+        clixon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
         goto done;
     }
     /* Register local netconf rpc client (note not backend rpc client) */

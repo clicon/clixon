@@ -54,13 +54,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_vec.h"
@@ -194,7 +195,7 @@ loop_preds(xpath_tree *xt,
         if (veclen != 2)
             goto ok;
         if ((cvi = cvec_add(cvk, CGV_STRING)) == NULL){
-            clicon_err(OE_XML, errno, "cvec_add");
+            clixon_err(OE_XML, errno, "cvec_add");
             goto done;
         }
         cv_name_set(cvi, vec[0]->xs_s1);
@@ -285,7 +286,7 @@ xpath_list_optimize_fn(xpath_tree  *xt,
         goto ok;
     xtp = vec[1];
     if ((cvk = cvec_new(0)) == NULL){
-        clicon_err(OE_YANG, errno, "cvec_new");
+        clixon_err(OE_YANG, errno, "cvec_new");
         goto done;
     }
     if ((ret = loop_preds(xtp, xem, cvk)) < 0)

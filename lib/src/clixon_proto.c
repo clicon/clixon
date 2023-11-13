@@ -63,13 +63,14 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_event.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_sig.h"
 #include "clixon_xml.h"
@@ -158,7 +159,7 @@ clicon_msg_encode(uint32_t      id,
 
     len = hdrlen + xmllen;
     if ((msg = (struct clicon_msg *)malloc(len)) == NULL){
-        clicon_err(OE_PROTO, errno, "malloc");
+        clixon_err(OE_PROTO, errno, "malloc");
         return NULL;
     }
     memset(msg, 0, len);
@@ -182,7 +183,7 @@ clicon_msg_encode(uint32_t      id,
  * @param[out] xerr   Reason for failure (yang assignment not made) if retval =0
  * @retval     1      Parse OK and all yang assignment made
  * @retval     0      Parse OK but yang assigment not made (or only partial)
- * @retval    -1      Error with clicon_err called. Includes parse error
+ * @retval    -1      Error with clixon_err called. Includes parse error
  */
 int
 clicon_msg_decode(struct clicon_msg *msg,
@@ -222,7 +223,7 @@ clicon_msg_decode(struct clicon_msg *msg,
  * @retval    -1        Error
  */
 int
-clicon_connect_unix(clicon_handle h,
+clicon_connect_unix(clixon_handle h,
                     char         *sockpath)
 {
     struct sockaddr_un addr;
@@ -230,7 +231,7 @@ clicon_connect_unix(clicon_handle h,
     int s;
 
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-        clicon_err(OE_CFG, errno, "socket");
+        clixon_err(OE_CFG, errno, "socket");
         return -1;
     }
     memset(&addr, 0, sizeof(addr));
@@ -240,11 +241,11 @@ clicon_connect_unix(clicon_handle h,
     clixon_debug(CLIXON_DBG_DETAIL, "%s: connecting to %s", __FUNCTION__, addr.sun_path);
     if (connect(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
         if (errno == EACCES)
-            clicon_err(OE_CFG, errno, "connecting unix socket: %s. "
+            clixon_err(OE_CFG, errno, "connecting unix socket: %s. "
                        "Is user not member of group: \"%s\"?",
                        sockpath, clicon_sock_group(h));
         else
-            clicon_err(OE_CFG, errno, "connecting unix socket: %s", sockpath);
+            clixon_err(OE_CFG, errno, "connecting unix socket: %s", sockpath);
         close(s);
         goto done;
     }
@@ -323,7 +324,7 @@ msg_hex(int         dbglevel,
     if ((dbglevel & clixon_debug_get()) == 0) /* compare debug level with global variable */
         goto ok;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_CFG, errno, "cbuf_new");
+        clixon_err(OE_CFG, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "%s:", file);
@@ -374,8 +375,8 @@ clicon_msg_send(int                s,
     if (atomicio((ssize_t (*)(int, void *, size_t))write,
                  s, msg, ntohl(msg->op_len)) < 0){
         e = errno;
-        clicon_err(OE_CFG, e, "atomicio");
-        clicon_log(LOG_WARNING, "%s: write: %s len:%u msg:%s", __FUNCTION__,
+        clixon_err(OE_CFG, e, "atomicio");
+        clixon_log(NULL, LOG_WARNING, "%s: write: %s len:%u msg:%s", __FUNCTION__,
                    strerror(e), ntohs(msg->op_len), msg->op_body);
         goto done;
     }
@@ -428,7 +429,7 @@ clicon_msg_rcv(int                 s,
         if (intr && _atomicio_sig)
             ;
         else
-            clicon_err(OE_CFG, errno, "atomicio");
+            clixon_err(OE_CFG, errno, "atomicio");
         goto done;
     }
     msg_hex(CLIXON_DBG_EXTRA, (char*)&hdr, hlen, __FUNCTION__);
@@ -437,7 +438,7 @@ clicon_msg_rcv(int                 s,
         goto ok;
     }
     if (hlen != sizeof(hdr)){
-        clicon_err(OE_PROTO, errno, "header too short (%d)", hlen);
+        clixon_err(OE_PROTO, errno, "header too short (%d)", hlen);
         goto done;
     }
     mlen = ntohl(hdr.op_len);
@@ -446,28 +447,28 @@ clicon_msg_rcv(int                 s,
     clixon_debug(CLIXON_DBG_DETAIL, "%s: rcv msg len=%d",
                  __FUNCTION__, mlen);
     if (mlen <= sizeof(hdr)){
-        clicon_err(OE_PROTO, 0, "op_len:%u too short", mlen);
+        clixon_err(OE_PROTO, 0, "op_len:%u too short", mlen);
         *eof = 1;
         goto ok;
     }
     if ((*msg = (struct clicon_msg *)malloc(mlen+1)) == NULL){
-        clicon_err(OE_PROTO, errno, "malloc");
+        clixon_err(OE_PROTO, errno, "malloc");
         goto done;
     }
     memcpy(*msg, &hdr, hlen);
     if ((len2 = atomicio(read, s, (*msg)->op_body, mlen - sizeof(hdr))) < 0){
-        clicon_err(OE_PROTO, errno, "read");
+        clixon_err(OE_PROTO, errno, "read");
         goto done;
     }
     if (len2)
         msg_hex(CLIXON_DBG_EXTRA, (*msg)->op_body, len2, __FUNCTION__);
     if (len2 != mlen - sizeof(hdr)){
-        clicon_err(OE_PROTO, 0, "body too short");
+        clixon_err(OE_PROTO, 0, "body too short");
         *eof = 1;
         goto ok;
     }
     if (((char*)*msg)[mlen-1] != '\0'){
-        clicon_err(OE_PROTO, 0, "body not NULL terminated");
+        clixon_err(OE_PROTO, 0, "body not NULL terminated");
         *eof = 1;
         goto ok;
     }
@@ -519,7 +520,7 @@ clicon_msg_rcv1(int         s,
            if (errno == ECONNRESET)
                len = 0; /* emulate EOF */
            else{
-               clicon_log(LOG_ERR, "%s: read: %s errno:%d", __FUNCTION__, strerror(errno), errno);
+               clixon_log(NULL, LOG_ERR, "%s: read: %s errno:%d", __FUNCTION__, strerror(errno), errno);
                goto done;
            }
        } /* read */
@@ -581,8 +582,8 @@ clicon_msg_send1(int         s,
         clixon_debug(CLIXON_DBG_MSG, "Send: %s", cbuf_get(cb));
     if (atomicio((ssize_t (*)(int, void *, size_t))write,
                  s, cbuf_get(cb), cbuf_len(cb)) < 0){
-        clicon_err(OE_CFG, errno, "atomicio");
-        clicon_log(LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
+        clixon_err(OE_CFG, errno, "atomicio");
+        clixon_log(NULL, LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
         goto done;
     }
     retval = 0;
@@ -602,7 +603,7 @@ clicon_msg_send1(int         s,
  * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
-clicon_rpc_connect_unix(clicon_handle  h,
+clicon_rpc_connect_unix(clixon_handle  h,
                         char          *sockpath,
                         int           *sock0)
 {
@@ -612,16 +613,16 @@ clicon_rpc_connect_unix(clicon_handle  h,
 
     clixon_debug(CLIXON_DBG_DETAIL, "Send msg on %s", sockpath);
     if (sock0 == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "sock0 expected");
+        clixon_err(OE_NETCONF, EINVAL, "sock0 expected");
         goto done;
     }
     /* special error handling to get understandable messages (otherwise ENOENT) */
     if (stat(sockpath, &sb) < 0){
-        clicon_err(OE_PROTO, errno, "%s: config daemon not running?", sockpath);
+        clixon_err(OE_PROTO, errno, "%s: config daemon not running?", sockpath);
         goto done;
     }
     if (!S_ISSOCK(sb.st_mode)){
-        clicon_err(OE_PROTO, EIO, "%s: Not unix socket", sockpath);
+        clixon_err(OE_PROTO, EIO, "%s: Not unix socket", sockpath);
         goto done;
     }
     if ((s = clicon_connect_unix(h, sockpath)) < 0)
@@ -644,7 +645,7 @@ clicon_rpc_connect_unix(clicon_handle  h,
  * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
-clicon_rpc_connect_inet(clicon_handle      h,
+clicon_rpc_connect_inet(clixon_handle      h,
                         char              *dst,
                         uint16_t           port,
                         int               *sock0)
@@ -655,7 +656,7 @@ clicon_rpc_connect_inet(clicon_handle      h,
 
     clixon_debug(CLIXON_DBG_DETAIL, "Send msg to %s:%hu", dst, port);
     if (sock0 == NULL){
-        clicon_err(OE_NETCONF, EINVAL, "sock0 expected");
+        clixon_err(OE_NETCONF, EINVAL, "sock0 expected");
         goto done;
     }
     memset(&addr, 0, sizeof(addr));
@@ -665,11 +666,11 @@ clicon_rpc_connect_inet(clicon_handle      h,
         goto done; /* Could check getaddrinfo */
     /* special error handling to get understandable messages (otherwise ENOENT) */
     if ((s = socket(addr.sin_family, SOCK_STREAM, 0)) < 0) {
-        clicon_err(OE_CFG, errno, "socket");
+        clixon_err(OE_CFG, errno, "socket");
         return -1;
     }
     if (connect(s, (struct sockaddr*)&addr, sizeof(addr)) < 0){
-        clicon_err(OE_CFG, errno, "connecting socket inet4");
+        clixon_err(OE_CFG, errno, "connecting socket inet4");
         close(s);
         goto done;
     }
@@ -716,7 +717,7 @@ clicon_rpc(int                sock,
     data = reply->op_body; /* assume string */
     if (ret && data)
         if ((*ret = strdup(data)) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
  ok:
@@ -839,7 +840,7 @@ send_msg_notify(int         s,
  * @see send_msg_notify
  */
 int
-send_msg_notify_xml(clicon_handle h,
+send_msg_notify_xml(clixon_handle h,
                     int           s,
                     const char   *descr,
                     cxobj        *xev)
@@ -848,7 +849,7 @@ send_msg_notify_xml(clicon_handle h,
     cbuf              *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     if (clixon_xml2cbuf(cb, xev, 0, 0, NULL, -1, 0) < 0)
@@ -941,7 +942,7 @@ clixon_inet2sin(const char       *addrtype,
         sin->sin_addr.s_addr = inet_addr(addrstr);
     }
     else{
-        clicon_err(OE_XML, EINVAL, "Unexpected addrtype: %s", addrtype);
+        clixon_err(OE_XML, EINVAL, "Unexpected addrtype: %s", addrtype);
         return -1;
     }
     return 0;

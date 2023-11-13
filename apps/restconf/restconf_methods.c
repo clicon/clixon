@@ -66,7 +66,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "restconf_lib.h"
@@ -93,7 +93,7 @@
  * @see RFC5789 PATCH Method for HTTP Section 3.2
  */
 int
-api_data_options(clicon_handle h,
+api_data_options(clixon_handle h,
                  void         *req)
 {
     int retval = -1;
@@ -194,7 +194,7 @@ match_list_keys(yang_stmt *y,
  * @retval    -1         Error
  */
 int
-api_data_write(clicon_handle h,
+api_data_write(clixon_handle h,
                void         *req,
                char         *api_path0,
                int           pi,
@@ -239,7 +239,7 @@ api_data_write(clicon_handle h,
     clixon_debug(CLIXON_DBG_DEFAULT, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
     clixon_debug(CLIXON_DBG_DEFAULT, "%s data:\"%s\"", __FUNCTION__, data);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     api_path=api_path0;
@@ -328,7 +328,7 @@ api_data_write(clicon_handle h,
     switch (media_in){
     case YANG_DATA_XML:
         if ((ret = clixon_xml_parse_string(data, yb, yspec, &xdata0, &xerr)) < 0){
-            if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+            if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
@@ -342,7 +342,7 @@ api_data_write(clicon_handle h,
         break;
     case YANG_DATA_JSON:
         if ((ret = clixon_json_parse_string(data, 1, yb, yspec, &xdata0, &xerr)) < 0){
-            if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+            if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
@@ -620,7 +620,7 @@ api_data_write(clicon_handle h,
  *    --> Best solution and applied here
  */
 int
-api_data_put(clicon_handle h,
+api_data_put(clixon_handle h,
              void         *req,
              char         *api_path0,
              int           pi,
@@ -658,7 +658,7 @@ api_data_put(clicon_handle h,
  *   create it. (CANT BE DONE WITH NETCONF)
  */
 int
-api_data_patch(clicon_handle h,
+api_data_patch(clixon_handle h,
                void         *req,
                char         *api_path0,
                int           pi,
@@ -712,7 +712,7 @@ api_data_patch(clicon_handle h,
  * Netconf:  <edit-config> (nc:operation="delete")      
  */
 int
-api_data_delete(clicon_handle h,
+api_data_delete(clixon_handle h,
                 void         *req,
                 char         *api_path,
                 int           pi,
@@ -739,7 +739,7 @@ api_data_delete(clicon_handle h,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s api_path:%s", __FUNCTION__, api_path);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     for (i=0; i<pi; i++)

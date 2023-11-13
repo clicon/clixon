@@ -58,17 +58,18 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
-/* clicon */
+/* cligen */
 #include <cligen/cligen.h>
 
-/* Local includes */
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_string.h"
-#include "clixon_err.h"
 #include "clixon_handle.h"
-#include "clixon_yang.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_io.h"
 #include "clixon_proto.h"
@@ -98,7 +99,7 @@ netconf_input_read2(int            s,
         if (errno == ECONNRESET)
             len = 0; /* emulate EOF */
         else{
-            clicon_log(LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
+            clixon_log(NULL, LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
             goto done;
         }
     } /* read */
@@ -219,7 +220,7 @@ netconf_input_frame2(cbuf      *cb,
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (xrecv == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "xrecv is NULL");
+        clixon_err(OE_PLUGIN, EINVAL, "xrecv is NULL");
         goto done;
     }
     str = cbuf_get(cb);
@@ -232,7 +233,7 @@ netconf_input_frame2(cbuf      *cb,
     /* Fix to distinguish RPC and REPLIES */
     if ((ret = clixon_xml_parse_string(str, yb, yspec, &xtop, xerr)) < 0){
         /* XXX possibly should quit on -1? */
-        if (netconf_operation_failed_xml(xerr, "rpc", clicon_err_reason)< 0)
+        if (netconf_operation_failed_xml(xerr, "rpc", clixon_err_reason())< 0)
             goto done;
         goto failed;
     }

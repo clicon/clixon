@@ -60,14 +60,14 @@ enum format_enum format_str2int(char *str);
 struct clicon_msg *clicon_msg_encode(uint32_t id, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
 int clicon_msg_decode(struct clicon_msg *msg, yang_stmt *yspec, uint32_t *id, cxobj **xml, cxobj **xerr);
 
-int clicon_connect_unix(clicon_handle h, char *sockpath);
+int clicon_connect_unix(clixon_handle h, char *sockpath);
 
 
-int clicon_rpc_connect_unix(clicon_handle         h,
+int clicon_rpc_connect_unix(clixon_handle         h,
                             char                 *sockpath,
                             int                  *sock0);
 
-int clicon_rpc_connect_inet(clicon_handle         h,
+int clicon_rpc_connect_inet(clixon_handle         h,
                             char                 *dst,
                             uint16_t              port,
                             int                  *sock0);
@@ -84,7 +84,7 @@ int clicon_msg_rcv(int s, const char *descr, int intr, struct clicon_msg **msg, 
 
 int clicon_msg_rcv1(int s, const char *descr, cbuf *cb, int *eof);
 
-int send_msg_notify_xml(clicon_handle h, int s, const char *descr, cxobj *xev);
+int send_msg_notify_xml(clixon_handle h, int s, const char *descr, cxobj *xev);
 
 int send_msg_reply(int s, const char *descr, char *data, uint32_t datalen);
 

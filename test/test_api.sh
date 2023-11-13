@@ -96,21 +96,21 @@ cat<<EOF > $cfile
 #include <sys/time.h>
 #include <sys/syslog.h>
 
-/* clicon */
+/* cligen */
 #include <cligen/cligen.h>
 
-/* Clicon library functions. */
+/* Clixon */
 #include <clixon/clixon.h>
 
 /* These include signatures for plugin and transaction callbacks. */
 #include <clixon/clixon_backend.h> 
 
 static int 
-trigger_rpc(clicon_handle h,          /* Clicon handle */
-          cxobj        *xe,           /* Request: <rpc><xn></rpc> */
-          cbuf         *cbret,        /* Reply eg <rpc-reply>... */
-          void         *arg,          /* client_entry */
-          void         *regarg)       /* Argument given at register */
+trigger_rpc(clixon_handle h,          /* Clicon handle */
+            cxobj        *xe,           /* Request: <rpc><xn></rpc> */
+            cbuf         *cbret,        /* Reply eg <rpc-reply>... */
+            void         *arg,          /* client_entry */
+            void         *regarg)       /* Argument given at register */
 {
     int          retval = -1;
     cxobj       *xret = NULL;
@@ -124,9 +124,9 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
 
     if (xmldb_get(h, "running", NULL, "/c", &xret) < 0)
       goto done;
-    clicon_debug(1, "%s xret:%s", __FUNCTION__, xml_name(xret));
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s xret:%s", __FUNCTION__, xml_name(xret));
     xc = xpath_first(xret, NULL, "/c");
-    clicon_debug(1, "%s xc:%s", __FUNCTION__, xml_name(xc));
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s xc:%s", __FUNCTION__, xml_name(xc));
 
     /* Method 1 loop */
     x = NULL;
@@ -140,19 +140,19 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
           break;
        }
     }
-    clicon_debug(1, "%s Method 1: val:%s", __FUNCTION__, val?val:"null");
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Method 1: val:%s", __FUNCTION__, val?val:"null");
 
     /* Method 2 xpath */
     val = NULL;
     if ((x = xpath_first(xc, NULL, "y3[k=5]")) != NULL)
        val = xml_find_body(x, "val");
-    clicon_debug(1, "%s Method 2: val:%s", __FUNCTION__, val?val:"null");
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Method 2: val:%s", __FUNCTION__, val?val:"null");
 
     /* Method 3 binsearch */
     val = NULL;
     /* Add key/value vector */
     if ((cvk = cvec_new(0)) == NULL){
-        clicon_err(OE_YANG, errno, "cvec_new"); 
+        clixon_err(OE_YANG, errno, "cvec_new"); 
         goto done;
     }
     if ((cv = cvec_add(cvk, CGV_STRING)) == NULL)
@@ -168,12 +168,12 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
        val = xml_find_body(clixon_xvec_i(xv,0), "val");
     else
        val = NULL;
-    clicon_debug(1, "%s Method 3: val:%s", __FUNCTION__, val?val:"null");
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Method 3: val:%s", __FUNCTION__, val?val:"null");
 
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     retval = 0;
   done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (cvk)
         cvec_free(cvk);
     if (xret)
@@ -183,7 +183,7 @@ trigger_rpc(clicon_handle h,          /* Clicon handle */
     return retval;
 }
 
-clixon_plugin_api *clixon_plugin_init(clicon_handle h);
+clixon_plugin_api *clixon_plugin_init(clixon_handle h);
 
 static clixon_plugin_api api = {
     "order",            /* name */           /*--- Common fields.  ---*/
@@ -192,13 +192,13 @@ static clixon_plugin_api api = {
 
 /*! Backend plugin initialization
  * @param[in]  h    Clixon handle
- * @retval     NULL Error with clicon_err set
+ * @retval     NULL
  * @retval     api  Pointer to API struct
  */
 clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
-    clicon_debug(1, "%s test-order", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s test-order", __FUNCTION__);
 
     /* From example.yang (clicon) */
     if (rpc_callback_register(h, trigger_rpc, 

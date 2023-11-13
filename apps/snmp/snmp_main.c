@@ -63,7 +63,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "snmp_lib.h"
@@ -78,7 +78,7 @@ static int clixon_snmp_input_cb(int s, void *arg);
 /*! Return (hardcoded) pid file
  */
 static char*
-clicon_snmp_pidfile(clicon_handle h)
+clicon_snmp_pidfile(clixon_handle h)
 {
     return "/var/tmp/clixon_snmp.pid";
 }
@@ -90,7 +90,7 @@ clicon_snmp_pidfile(clicon_handle h)
 static void
 clixon_snmp_sig_term(int arg)
 {
-    clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d",
+    clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
                __PROGRAM__, __FUNCTION__, getpid(), arg);
     /* This should ensure no more accepts or incoming packets are processed because next time eventloop
      * is entered, it will terminate.
@@ -105,7 +105,7 @@ clixon_snmp_sig_term(int arg)
  * @param[in]  h  Clixon handle
  */
 static int
-snmp_terminate(clicon_handle h)
+snmp_terminate(clixon_handle h)
 {
     yang_stmt *yspec;
     cvec      *nsctx;
@@ -130,9 +130,9 @@ snmp_terminate(clicon_handle h)
         xml_free(x);
     xpath_optimize_exit();
     clixon_event_exit();
-    clicon_handle_exit(h);
+    clixon_handle_exit(h);
     clixon_err_exit();
-    clicon_log_exit();
+    clixon_log_exit();
     if (pidfile)
         unlink(pidfile);
     return 0;
@@ -151,7 +151,7 @@ snmp_terminate(clicon_handle h)
  * @see clixon_snmp_input_cb
  */
 static int
-clixon_snmp_fdset_register(clicon_handle h,
+clixon_snmp_fdset_register(clixon_handle h,
                            int           regfd)
 {
     int             retval = -1;
@@ -164,7 +164,7 @@ clixon_snmp_fdset_register(clicon_handle h,
 
     FD_ZERO(&readfds);
     if ((nr = snmp_sess_select_info(NULL, &numfds, &readfds, &timeout, &block)) < 0){
-        clicon_err(OE_XML, errno, "snmp_select_error");
+        clixon_err(OE_XML, errno, "snmp_select_error");
         goto done;
     }
     /* eg 4, 6, 8 */
@@ -202,7 +202,7 @@ clixon_snmp_input_cb(int   s,
 {
     int            retval = -1;
     fd_set         readfds;
-    clicon_handle  h = (clicon_handle)arg;
+    clixon_handle  h = (clixon_handle)arg;
     int            ret;
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, s);
@@ -211,7 +211,7 @@ clixon_snmp_input_cb(int   s,
     (void)snmp_read(&readfds);
     if (clixon_event_poll(s) < 0){
         if (errno == EBADF){
-            clicon_err_reset();
+            clixon_err_reset();
             /* Close the active socket */
             if (clixon_event_unreg_fd(s, clixon_snmp_input_cb) < 0)
                 goto done;
@@ -220,7 +220,7 @@ clixon_snmp_input_cb(int   s,
             if (clixon_snmp_fdset_register(h, 0) < 0)
                 goto done;
             if ((ret = snmp_close_sessions()) != 1){
-                clicon_err(OE_SNMP, ret, "snmp_close_sessions");
+                clixon_err(OE_SNMP, ret, "snmp_close_sessions");
                 goto done;
             }
             /* Signal normal exit to upper layers (=event handling)
@@ -229,7 +229,7 @@ clixon_snmp_input_cb(int   s,
             clixon_exit_set(1);
         }
         else {
-            clicon_err(OE_UNIX, errno, "poll");
+            clixon_err(OE_UNIX, errno, "poll");
             goto done;
         }
     }
@@ -247,14 +247,14 @@ clixon_snmp_input_cb(int   s,
  * @see snmp_terminate
  */
 static int
-clixon_snmp_init_subagent(clicon_handle h,
+clixon_snmp_init_subagent(clixon_handle h,
                           int           logdst)
 {
     int   retval = -1;
     char *sockpath = NULL;
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    if (logdst == CLICON_LOG_SYSLOG)
+    if (logdst == CLIXON_LOG_SYSLOG)
         snmp_enable_calllog();
     else
         snmp_enable_stderrlog();
@@ -271,7 +271,7 @@ clixon_snmp_init_subagent(clicon_handle h,
         netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_VERBOSE, 1);
 
     if ((sockpath = clicon_option_str(h, "CLICON_SNMP_AGENT_SOCK")) == NULL){
-        clicon_err(OE_XML, 0, "CLICON_SNMP_AGENT_SOCK not set");
+        clixon_err(OE_XML, 0, "CLICON_SNMP_AGENT_SOCK not set");
         goto done;
     }
     /* XXX: This should be configurable. */
@@ -284,19 +284,19 @@ clixon_snmp_init_subagent(clicon_handle h,
     init_snmp(__PROGRAM__);
 
     if (!clixon_snmp_api_agent_check()){
-        clicon_err(OE_DAEMON, 0, "Connection to SNMP agent failed");
+        clixon_err(OE_DAEMON, 0, "Connection to SNMP agent failed");
         goto done;
     }
     if (set_signal(SIGTERM, clixon_snmp_sig_term, NULL) < 0){
-        clicon_err(OE_DAEMON, errno, "Setting signal");
+        clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;
     }
     if (set_signal(SIGINT, clixon_snmp_sig_term, NULL) < 0){
-        clicon_err(OE_DAEMON, errno, "Setting signal");
+        clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;
     }
     if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
-        clicon_err(OE_UNIX, errno, "Setting SIGPIPE signal");
+        clixon_err(OE_UNIX, errno, "Setting SIGPIPE signal");
         goto done;
     }
    /* Workaround for netsnmps API use of fdset:s instead of sockets */
@@ -313,7 +313,7 @@ clixon_snmp_init_subagent(clicon_handle h,
  * @param[in]  argv0  command line
  */
 static void
-usage(clicon_handle h,
+usage(clixon_handle h,
       char         *argv0)
 {
     fprintf(stderr, "usage:%s\n"
@@ -338,8 +338,8 @@ main(int    argc,
     int            retval = -1;
     int            c;
     char          *argv0 = argv[0];
-    clicon_handle  h;
-    int            logdst = CLICON_LOG_STDERR;
+    clixon_handle  h;
+    int            logdst = CLIXON_LOG_STDERR;
     struct passwd *pw;
     yang_stmt     *yspec = NULL;
     char          *str;
@@ -357,14 +357,17 @@ main(int    argc,
     enum format_enum config_dump_format = FORMAT_XML;
 
     /* Create handle */
-    if ((h = clicon_handle_init()) == NULL)
+    if ((h = clixon_handle_init()) == NULL)
         return -1;
     /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
+    if (clixon_log_init(h, __PROGRAM__, LOG_INFO, logdst) < 0)
+        goto done;
+    if (clixon_err_init(h) < 0)
+        goto done;
 
     /* Set username to clixon handle. Use in all communication to backend */
     if ((pw = getpwuid(getuid())) == NULL){
-        clicon_err(OE_UNIX, errno, "getpwuid");
+        clixon_err(OE_UNIX, errno, "getpwuid");
         goto done;
     }
     if (clicon_username_set(h, pw->pw_name) < 0)
@@ -387,12 +390,12 @@ main(int    argc,
                 usage(h, argv[0]);
             clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
             break;
-        case 'l': /* Log destination: s|e|o */
-            if ((logdst = clicon_log_opt(optarg[0])) < 0)
+         case 'l': /* Log destination: s|e|o */
+            if ((logdst = clixon_log_opt(optarg[0])) < 0)
                 usage(h, argv[0]);
-            if (logdst == CLICON_LOG_FILE &&
+            if (logdst == CLIXON_LOG_FILE &&
                 strlen(optarg)>1 &&
-                clicon_log_file(optarg+1) < 0)
+                clixon_log_file(optarg+1) < 0)
                 goto done;
             break;
         }
@@ -400,8 +403,8 @@ main(int    argc,
     /*
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
-    clixon_debug_init(dbg, NULL);
+    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
+    clixon_debug_init(h, dbg);
     /* This is netsnmplib debugging which is quite extensive + only if compiled w debug */
     if (dbg > 1)
         snmp_set_do_debugging(1);
@@ -458,7 +461,7 @@ main(int    argc,
 
     /* Check pid-file, if zap kill the old daemon, else return here */
     if ((pidfile = clicon_snmp_pidfile(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "pidfile not set");
+        clixon_err(OE_FATAL, 0, "pidfile not set");
         goto done;
     }
     if (pidfile_get(pidfile, &pid) < 0)
@@ -472,7 +475,7 @@ main(int    argc,
         exit(0); /* OK */
     }
     else if (pid){
-        clicon_err(OE_DAEMON, 0, "Clixon_snmp daemon already running with pid %d\n(Try killing it with %s -z)",
+        clixon_err(OE_DAEMON, 0, "Clixon_snmp daemon already running with pid %d\n(Try killing it with %s -z)",
                    pid, argv0);
         return -1; /* goto done deletes pidfile */
     }
@@ -485,8 +488,8 @@ main(int    argc,
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
 
-    if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
-        clicon_log_string_limit_set(sz);
+    if ((sz = clicon_option_int(h, "CLIXON_LOG_STRING_LIMIT")) != 0)
+        clixon_log_string_limit_set(sz);
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
@@ -570,7 +573,7 @@ main(int    argc,
     retval = 0;
   done:
     snmp_terminate(h);
-    clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
-    clicon_log(LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+    clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
+    clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
     return retval;
 }

@@ -66,7 +66,7 @@ int clixon_event_unreg_timeout(int (*fn)(int, void*), void *arg);
 
 int clixon_event_poll(int fd);
 
-int clixon_event_loop(clicon_handle h);
+int clixon_event_loop(clixon_handle h);
 
 int clixon_event_exit(void);
 

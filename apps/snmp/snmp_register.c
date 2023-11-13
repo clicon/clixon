@@ -72,7 +72,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "snmp_lib.h"
@@ -95,7 +95,7 @@
  *  netsnmp_subtree_find(oid1,sz1,  0, 0)
  */
 static int
-mibyang_leaf_register(clicon_handle h,
+mibyang_leaf_register(clixon_handle h,
                       yang_stmt    *ys,
                       cvec         *cvk_val,
                       oid          *oidk,
@@ -115,7 +115,7 @@ mibyang_leaf_register(clicon_handle h,
     cbuf                         *cboid = NULL;
 
     if ((cboid = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if ((ret = yangext_oid_get(ys, oid1, &oid1len, NULL)) < 0)
@@ -146,7 +146,7 @@ mibyang_leaf_register(clicon_handle h,
     name = yang_argument_get(ys);
     /* Stateless function, just returns ptr */
     if ((handler = netsnmp_create_handler(name, clixon_snmp_scalar_handler)) == NULL){
-        clicon_err(OE_XML, errno, "netsnmp_create_handler");
+        clixon_err(OE_XML, errno, "netsnmp_create_handler");
         goto done;
     }
 
@@ -154,7 +154,7 @@ mibyang_leaf_register(clicon_handle h,
      * XXX: not deallocated
      */
     if ((sh = malloc(sizeof(*sh))) == NULL){
-       clicon_err(OE_UNIX, errno, "malloc");
+       clixon_err(OE_UNIX, errno, "malloc");
        goto done;
     }
     memset(sh, 0, sizeof(*sh));
@@ -165,14 +165,14 @@ mibyang_leaf_register(clicon_handle h,
     sh->sh_default = default_str;
     if (cvk_val &&
         (sh->sh_cvk_orig = cvec_dup(cvk_val)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_dup");
+        clixon_err(OE_UNIX, errno, "cvec_dup");
         goto done;
     }
     /* Stateless function, just returns ptr */
     if ((nhreg = netsnmp_handler_registration_create(name, handler,
                                                      oid1, oid1len,
                                                      modes)) == NULL){
-        clicon_err(OE_XML, errno, "netsnmp_handler_registration_create");
+        clixon_err(OE_XML, errno, "netsnmp_handler_registration_create");
         netsnmp_handler_free(handler);
         goto done;
     }
@@ -186,7 +186,7 @@ mibyang_leaf_register(clicon_handle h,
      */
     if ((ret = netsnmp_register_instance(nhreg)) != SNMPERR_SUCCESS){
         /* Note MIB_ errors, not regular SNMPERR_ */
-        clicon_err(OE_SNMP, ret-CLIXON_ERR_SNMP_MIB, "netsnmp_register_instance");
+        clixon_err(OE_SNMP, ret-CLIXON_ERR_SNMP_MIB, "netsnmp_register_instance");
         goto done;
     }
     oid_cbuf(cboid, oid1, oid1len);
@@ -216,7 +216,7 @@ mibyang_leaf_register(clicon_handle h,
  * @retval    -1     Error
  */
 static int
-mibyang_table_register(clicon_handle h,
+mibyang_table_register(clixon_handle h,
                        yang_stmt    *ylist,
                        oid          *oid1,
                        size_t        oid1len,
@@ -240,7 +240,7 @@ mibyang_table_register(clicon_handle h,
 
     if ((ys = yang_parent_get(ylist)) == NULL ||
         yang_keyword_get(ys) != Y_CONTAINER){
-        clicon_err(OE_YANG, EINVAL, "ylist parent is not list");
+        clixon_err(OE_YANG, EINVAL, "ylist parent is not list");
         goto done;
     }
     /* Note: This is wrong for augmented nodes where name is the original list, not the 
@@ -253,7 +253,7 @@ mibyang_table_register(clicon_handle h,
      * XXX: not deallocated
      */
     if ((sh = malloc(sizeof(*sh))) == NULL){
-       clicon_err(OE_UNIX, errno, "malloc");
+       clixon_err(OE_UNIX, errno, "malloc");
        goto done;
     }
     memset(sh, 0, sizeof(*sh));
@@ -265,13 +265,13 @@ mibyang_table_register(clicon_handle h,
     sh->sh_oid2len = oid2len;
 
     if ((handler = netsnmp_create_handler(name, clixon_snmp_table_handler)) == NULL){
-        clicon_err(OE_XML, errno, "netsnmp_create_handler");
+        clixon_err(OE_XML, errno, "netsnmp_create_handler");
         goto done;
     }
     if ((nhreg = netsnmp_handler_registration_create(name, handler,
                                                      oid1, oid1len,
                                                      HANDLER_CAN_RWRITE)) == NULL){
-        clicon_err(OE_XML, errno, "netsnmp_handler_registration_create");
+        clixon_err(OE_XML, errno, "netsnmp_handler_registration_create");
         netsnmp_handler_free(handler);
         goto done;
     }
@@ -282,12 +282,12 @@ mibyang_table_register(clicon_handle h,
 
     /* See netsnmp_register_table_data_set */
     if ((table_info = SNMP_MALLOC_TYPEDEF(netsnmp_table_registration_info)) == NULL){
-        clicon_err(OE_UNIX, errno, "SNMP_MALLOC_TYPEDEF");
+        clixon_err(OE_UNIX, errno, "SNMP_MALLOC_TYPEDEF");
         goto done;
     }
     /* Keys, go through keys */
     if ((cvk = yang_cvec_get(ylist)) == NULL){
-        clicon_err(OE_YANG, 0, "No keys");
+        clixon_err(OE_YANG, 0, "No keys");
         goto done;
     }
     cvi = NULL;
@@ -295,7 +295,7 @@ mibyang_table_register(clicon_handle h,
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
         keyname = cv_string_get(cvi);
         if ((yleaf = yang_find(ylist, Y_LEAF, keyname)) == NULL){
-            clicon_err(OE_XML, 0, "List statement \"%s\" has no key leaf \"%s\"",
+            clixon_err(OE_XML, 0, "List statement \"%s\" has no key leaf \"%s\"",
                        yang_argument_get(ylist), keyname);
             goto done;
         }
@@ -308,7 +308,7 @@ mibyang_table_register(clicon_handle h,
                                       asn1type,
                                       NULL, // value
                                       0) == NULL){
-            clicon_err(OE_XML, errno, "snmp_varlist_add_variable");
+            clixon_err(OE_XML, errno, "snmp_varlist_add_variable");
             goto done;
         }
     }
@@ -323,7 +323,7 @@ mibyang_table_register(clicon_handle h,
         table_info->max_column++;
     }
     if ((ret = netsnmp_register_table(nhreg, table_info)) != SNMPERR_SUCCESS){
-        clicon_err(OE_SNMP, ret, "netsnmp_register_table");
+        clixon_err(OE_SNMP, ret, "netsnmp_register_table");
         goto done;
     }
     sh->sh_table_info = table_info; /* Keep to free at exit */
@@ -350,7 +350,7 @@ mibyang_table_register(clicon_handle h,
  * @see mibyang_augment_register
  */
 static int
-mibyang_list_register(clicon_handle h,
+mibyang_list_register(clixon_handle h,
                       yang_stmt    *ylist)
 {
     int        retval = -1;
@@ -364,7 +364,7 @@ mibyang_list_register(clicon_handle h,
 
     if ((yc = yang_parent_get(ylist)) == NULL ||
         yang_keyword_get(yc) != Y_CONTAINER){
-        clicon_err(OE_YANG, EINVAL, "ylist parent is not container");
+        clixon_err(OE_YANG, EINVAL, "ylist parent is not container");
         goto done;
     }
     if ((ret = yangext_oid_get(ylist, oid2, &oid2len, NULL)) < 0)
@@ -405,7 +405,7 @@ mibyang_list_register(clicon_handle h,
  * @see mibyang_list_register
  */
 static int
-mibyang_augment_register(clicon_handle h,
+mibyang_augment_register(clixon_handle h,
                          yang_stmt    *yaug)
 {
     int        retval = -1;
@@ -459,7 +459,7 @@ mibyang_augment_register(clicon_handle h,
  * @retval    -1     Error
  */
 int
-mibyang_table_poll(clicon_handle h,
+mibyang_table_poll(clixon_handle h,
                    yang_stmt    *ylist)
 {
     int        retval = -1;
@@ -481,7 +481,7 @@ mibyang_table_poll(clicon_handle h,
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((ys = yang_parent_get(ylist)) == NULL ||
         yang_keyword_get(ys) != Y_CONTAINER){
-        clicon_err(OE_YANG, EINVAL, "ylist parent is not list");
+        clixon_err(OE_YANG, EINVAL, "ylist parent is not list");
         goto done;
     }
     if (xml_nsctx_yang(ys, &nsc) < 0)
@@ -491,13 +491,13 @@ mibyang_table_poll(clicon_handle h,
     if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, NULL, &xt) < 0)
         goto done;
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_netconf_error(h, xerr, "clicon_rpc_get", NULL);
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
         goto done;
     }
     if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
         /* Make a clone of key-list, but replace names with values */
         if ((cvk_name = yang_cvec_get(ylist)) == NULL){
-            clicon_err(OE_YANG, 0, "No keys");
+            clixon_err(OE_YANG, 0, "No keys");
             goto done;
         }
         xrow = NULL;
@@ -550,7 +550,7 @@ mibyang_table_poll(clicon_handle h,
  * @retval    -1     Error, aborted at first error encounter
  */
 static int
-mibyang_traverse(clicon_handle h,
+mibyang_traverse(clixon_handle h,
                  yang_stmt    *yn)
 {
     int        retval = -1;
@@ -611,7 +611,7 @@ mibyang_traverse(clicon_handle h,
  * @retval    -1  Error
  */
 int
-clixon_snmp_traverse_mibyangs(clicon_handle h)
+clixon_snmp_traverse_mibyangs(clixon_handle h)
 {
     int        retval = -1;
     char      *modname;
@@ -620,7 +620,7 @@ clixon_snmp_traverse_mibyangs(clicon_handle h)
     yang_stmt *ymod;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     /* Loop over clixon configuration file to find all CLICON_SNMP_MIB, and
@@ -640,7 +640,7 @@ clixon_snmp_traverse_mibyangs(clicon_handle h)
          * What happens if backend has not loaded it?
          */
         if ((ymod = yang_find(yspec, Y_MODULE, modname)) == NULL){
-            clicon_err(OE_YANG, 0, "Mib-translated-yang %s not loaded", modname);
+            clixon_err(OE_YANG, 0, "Mib-translated-yang %s not loaded", modname);
             goto done;
         }
         /* Recursively traverse the mib-yang to find extensions */

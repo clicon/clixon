@@ -71,7 +71,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #ifdef HAVE_LIBNGHTTP2
@@ -210,12 +210,12 @@ session_send_callback(nghttp2_session *session,
                         continue;
                     }
                     else{
-                        clicon_err(OE_RESTCONF, er, "SSL_write %d", sslerr);
+                        clixon_err(OE_RESTCONF, er, "SSL_write %d", sslerr);
                         goto done;
                     }
                     break;
                 default:
-                    clicon_err(OE_SSL, 0, "SSL_write");
+                    clixon_err(OE_SSL, 0, "SSL_write");
                     goto done;
                     break;
                 }
@@ -240,7 +240,7 @@ session_send_callback(nghttp2_session *session,
                 }
 #endif
                 else{
-                    clicon_err(OE_UNIX, errno, "write");
+                    clixon_err(OE_UNIX, errno, "write");
                     goto done;
                 }
             }
@@ -288,7 +288,7 @@ static int
 restconf_nghttp2_path(restconf_stream_data *sd)
 {
     int            retval = -1;
-    clicon_handle  h;
+    clixon_handle  h;
     restconf_conn *rc;
     char          *oneline = NULL;
     cvec          *cvv = NULL;
@@ -297,7 +297,7 @@ restconf_nghttp2_path(restconf_stream_data *sd)
     clixon_debug(CLIXON_DBG_DEFAULT, "------------");
     rc = sd->sd_conn;
     if ((h = rc->rc_h) == NULL){
-        clicon_err(OE_RESTCONF, EINVAL, "arg is NULL");
+        clixon_err(OE_RESTCONF, EINVAL, "arg is NULL");
         goto done;
     }
     if (rc->rc_ssl != NULL){
@@ -428,7 +428,7 @@ restconf_submit_response(nghttp2_session      *session,
     data_prd.source.ptr = sd;
     data_prd.read_callback = restconf_sd_read;
     if ((hdrs = (nghttp2_nv*)calloc(1+cvec_len(sd->sd_outp_hdrs), sizeof(nghttp2_nv))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     hdr = &hdrs[i++];
@@ -454,7 +454,7 @@ restconf_submit_response(nghttp2_session      *session,
                                          stream_id,
                                          hdrs, i,
                                          (data_prd.source.ptr != NULL)?&data_prd:NULL)) < 0){
-        clicon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_response");
+        clixon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_response");
         goto done;
     }
     retval = 0;
@@ -682,7 +682,7 @@ on_begin_headers_callback(nghttp2_session     *session,
  * Both |name| and |value| are guaranteed to be NULL-terminated. 
  */
 static int
-nghttp2_hdr2clixon(clicon_handle  h,
+nghttp2_hdr2clixon(clixon_handle  h,
                    char          *name,
                    char          *value)
 {
@@ -882,7 +882,7 @@ error_callback2(nghttp2_session *session,
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    clicon_err(OE_NGHTTP2, lib_error_code, "%s", msg);
+    clixon_err(OE_NGHTTP2, lib_error_code, "%s", msg);
     return 0;
 }
 #endif
@@ -907,7 +907,7 @@ http2_recv(restconf_conn       *rc,
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (rc->rc_ngsession == NULL){
         /* http2_session_init not called */
-        clicon_err(OE_RESTCONF, EINVAL, "No nghttp2 session");
+        clixon_err(OE_RESTCONF, EINVAL, "No nghttp2 session");
         goto done;
     }
     /* may make additional pending frames */
@@ -918,13 +918,13 @@ http2_recv(restconf_conn       *rc,
              *     when |session| was configured as server and
              *     `nghttp2_option_set_no_recv_client_magic()` is not used with
              *     nonzero value. */
-            clicon_log(LOG_INFO, "%s Received bad client magic byte strin", __FUNCTION__);
+            clixon_log(NULL, LOG_INFO, "%s Received bad client magic byte strin", __FUNCTION__);
             /* unsure if this does anything, byt does not seem to hurt */
             if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, ngerr)) < 0)
-                clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
+                clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
             goto fail;
         }
-        clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_mem_recv");
+        clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_mem_recv");
         goto done;
     }
     /* sends highest prio frame from outbound queue to remote peer.  It does this as
@@ -932,9 +932,9 @@ http2_recv(restconf_conn       *rc,
      * :enum:`NGHTTP2_ERR_WOULDBLOCK` or the outbound queue becomes empty.
      * @see session_send_callback()
      */
-    clicon_err_reset();
+    clixon_err_reset();
     if ((ngerr = nghttp2_session_send(rc->rc_ngsession)) != 0){
-        if (clicon_errno)
+        if (clixon_err_category())
             goto done;
         else
             goto fail; /* Not fatal error */
@@ -963,11 +963,11 @@ http2_send_server_connection(restconf_conn *rc)
                                          NGHTTP2_FLAG_NONE,
                                          iv,
                                          ARRLEN(iv))) != 0){
-        clicon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_settings");
+        clixon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_settings");
         goto done;
     }
     if ((ngerr = nghttp2_session_send(rc->rc_ngsession)) != 0){
-        clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_send");
+        clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_send");
         goto done;
     }
     retval = 0;
@@ -1017,7 +1017,7 @@ http2_session_init(restconf_conn *rc)
 
     /* Create session for server use, register callbacks */
     if ((ngerr = nghttp2_session_server_new3(&session, callbacks, rc, NULL, NULL)) < 0){
-        clicon_err(OE_NGHTTP2, ngerr, "nghttp2_session_server_new");
+        clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_server_new");
         goto done;
     }
     nghttp2_session_callbacks_del(callbacks);

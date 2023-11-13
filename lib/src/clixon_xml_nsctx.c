@@ -58,12 +58,13 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_err.h"
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -88,7 +89,7 @@ static int _USE_NAMESPACE_NETCONF_DEFAULT = 0;
  * @param[in] h  Clixon handle
  */
 int
-xml_nsctx_namespace_netconf_default(clicon_handle h)
+xml_nsctx_namespace_netconf_default(clixon_handle h)
 {
     _USE_NAMESPACE_NETCONF_DEFAULT = clicon_option_bool(h, "CLICON_NAMESPACE_NETCONF_DEFAULT");
     return 0;
@@ -117,7 +118,7 @@ xml_nsctx_init(char  *prefix,
     cvec *cvv = NULL;
 
     if ((cvv = cvec_new(0)) == NULL){
-        clicon_err(OE_XML, errno, "cvec_new");
+        clixon_err(OE_XML, errno, "cvec_new");
         goto done;
     }
     if (ns && xml_nsctx_add(cvv, prefix, ns) < 0)
@@ -291,7 +292,7 @@ xml_nsctx_node(cxobj *xn,
     cvec *nc = NULL;
 
     if ((nc = cvec_new(0)) == NULL){
-        clicon_err(OE_XML, errno, "cvec_new");
+        clixon_err(OE_XML, errno, "cvec_new");
         goto done;
     }
     if (xml_nsctx_node1(xn, nc) < 0)
@@ -341,19 +342,19 @@ xml_nsctx_yang(yang_stmt *yn,
     char      *myprefix;
 
     if (yang_keyword_get(yn) == Y_SPEC){
-        clicon_err(OE_YANG, EINVAL, "yang spec node is invalid argument");
+        clixon_err(OE_YANG, EINVAL, "yang spec node is invalid argument");
         goto done;
     }
     if ((nc = cvec_new(0)) == NULL){
-        clicon_err(OE_XML, errno, "cvec_new");
+        clixon_err(OE_XML, errno, "cvec_new");
         goto done;
     }
     if ((myprefix = yang_find_myprefix(yn)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "My yang prefix not found");
+        clixon_err(OE_YANG, ENOENT, "My yang prefix not found");
         goto done;
     }
     if ((mynamespace = yang_find_mynamespace(yn)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "My yang namespace not found");
+        clixon_err(OE_YANG, ENOENT, "My yang namespace not found");
         goto done;
     }
     /* Add my prefix and default namespace (from real module) */
@@ -363,7 +364,7 @@ xml_nsctx_yang(yang_stmt *yn,
         goto done;
     /* Find top-most module or sub-module and get prefixes from that */
     if ((ymod = ys_module(yn)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "My yang module not found");
+        clixon_err(OE_YANG, ENOENT, "My yang module not found");
         goto done;
     }
     yspec = yang_parent_get(ymod); /* Assume yspec exists */
@@ -427,7 +428,7 @@ xml_nsctx_yangspec(yang_stmt *yspec,
     if (ncp && *ncp)
         nc = *ncp;
     else if ((nc = cvec_new(0)) == NULL){
-        clicon_err(OE_XML, errno, "cvec_new");
+        clixon_err(OE_XML, errno, "cvec_new");
         goto done;
     }
     ymod = NULL;
@@ -562,7 +563,7 @@ xml2ns_recurse(cxobj *xt)
             if (xml2ns(x, prefix, &namespace) < 0)
                 goto done;
             if (namespace == NULL){
-                clicon_err(OE_XML, ENOENT, "No namespace associated with %s:%s", prefix, xml_name(x));
+                clixon_err(OE_XML, ENOENT, "No namespace associated with %s:%s", prefix, xml_name(x));
                 goto done;
             }
         }

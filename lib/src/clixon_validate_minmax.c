@@ -55,8 +55,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
@@ -64,6 +63,7 @@
 #include "clixon_string.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_data.h"
@@ -124,7 +124,7 @@ unique_search_xpath(cxobj  *x,
         }
         (*slen) ++;
         if (((*svec) = realloc((*svec), (*slen)*sizeof(char*))) == NULL){
-            clicon_err(OE_UNIX, errno, "realloc");
+            clixon_err(OE_UNIX, errno, "realloc");
             goto done;
         }
         (*svec)[(*slen)-1] = bi;
@@ -242,7 +242,7 @@ check_unique_list_direct(cxobj     *x,
         goto ok;
     }
     if ((vec = calloc(clen*xml_child_nr(xt), sizeof(char*))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     /* A vector is built with key-values, for each iteration check "backward" in the vector
@@ -258,7 +258,7 @@ check_unique_list_direct(cxobj     *x,
              * referenced leafs are not taken into account */
             str = cv_string_get(cvi);
             if (index(str, '/') != NULL){
-                clicon_err(OE_YANG, 0, "Multiple descendant nodes not allowed (w /)");
+                clixon_err(OE_YANG, 0, "Multiple descendant nodes not allowed (w /)");
                 goto done;
             }
             if ((xi = xml_find(x, str)) == NULL)
@@ -340,7 +340,7 @@ check_unique_list(cxobj     *x,
     }
     cvi = cvec_i(cvk, 0);
     if (cvi == NULL || (xpath0 = cv_string_get(cvi)) == NULL){
-        clicon_err(OE_YANG, 0, "No descendant schemanode");
+        clixon_err(OE_YANG, 0, "No descendant schemanode");
         goto done;
     }
     /* Check if direct schmeanode-id , ie not xpath */

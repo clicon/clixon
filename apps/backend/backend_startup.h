@@ -42,8 +42,8 @@
 /*
  * Prototypes
  */
-int startup_mode_startup(clicon_handle h, char *db, cbuf *cbret);
-int startup_extraxml(clicon_handle h, char *file, cbuf *cbret);
-int startup_module_state(clicon_handle h, yang_stmt *yspec);
+int startup_mode_startup(clixon_handle h, char *db, cbuf *cbret);
+int startup_extraxml(clixon_handle h, char *file, cbuf *cbret);
+int startup_module_state(clixon_handle h, yang_stmt *yspec);
 
 #endif  /* _BACKEND_STARTUP_H_ */

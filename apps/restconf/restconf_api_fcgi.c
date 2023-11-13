@@ -59,7 +59,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include <fcgiapp.h> /* Need to be after clixon_xml-h due to attribute format */
@@ -108,7 +108,7 @@ restconf_reply_header(void       *req0,
     va_list    ap;
 
     if (req == NULL || name == NULL || vfmt == NULL){
-        clicon_err(OE_CFG, EINVAL, "req, name or value is NULL");
+        clixon_err(OE_CFG, EINVAL, "req, name or value is NULL");
         return -1;
     }
     va_start(ap, vfmt);
@@ -116,13 +116,13 @@ restconf_reply_header(void       *req0,
     va_end(ap);
     /* allocate value string exactly fitting */
     if ((value = malloc(vlen+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: compute actual value */
     va_start(ap, vfmt);
     if (vsnprintf(value, vlen+1, vfmt, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
@@ -158,7 +158,7 @@ restconf_reply_body_add(void     *req0,
     va_list ap;
 
     if (req == NULL || bfmt == NULL){
-        clicon_err(OE_CFG, EINVAL, "req or body is NULL");
+        clixon_err(OE_CFG, EINVAL, "req or body is NULL");
         return -1;
     }
     va_start(ap, bfmt);
@@ -166,13 +166,13 @@ restconf_reply_body_add(void     *req0,
     va_end(ap);
     /* allocate body string exactly fitting */
     if ((body = malloc(blen+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: compute actual body */
     va_start(ap, bfmt);
     if (vsnprintf(body, blen+1, bfmt, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
