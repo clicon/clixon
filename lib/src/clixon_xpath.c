@@ -1102,6 +1102,7 @@ xpath_traverse_canonical(xpath_tree *xs,
  *   ...
  *   if (xpath1) free(xpath1);
  *   if (nsc1) xml_nsctx_free(nsc1);
+ *   if (reason) cbuf_free(reason);
  * @endcode
  * @note Unsolvable issue of mountpoints, eg an xpath of //x:foo where foo is under one or several
  *       mointpoints: a well-defined namespace cannot be determined. Therefore just allow 

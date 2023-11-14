@@ -84,6 +84,7 @@
 #include "clixon_yang_parse_lib.h"
 #include "clixon_plugin.h"
 #include "clixon_xml_bind.h"
+#include "clixon_xml_nsctx.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_schema_mount.h"
 
@@ -138,14 +139,14 @@ yang_schema_mount_point(yang_stmt *y)
 
 /*! Get yangspec mount-point
  *
- * @param[in]  yu    Yang unknown node to save the yspecs
- * @param[in]  xpath Key for yspec on yu
+ * @param[in]  y     Yang container/list containing unknown node
+ * @param[in]  xpath Key for yspec on y
  * @param[out] yspec YANG stmt spec
  * @retval     0     OK
  * @retval    -1     Error
  */
 int
-yang_mount_get(yang_stmt  *yu,
+yang_mount_get(yang_stmt  *y,
                char       *xpath,
                yang_stmt **yspec)
 {
@@ -153,24 +154,24 @@ yang_mount_get(yang_stmt  *yu,
     cg_var    *cv;
 
     /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
-    if ((cvv = yang_cvec_get(yu)) != NULL &&
+    if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
         yspec)
         *yspec = cv_void_get(cv);
     return 0;
 }
 
-/*! Set yangspec mount-point on yang unknwon node
+/*! Set yangspec mount-point on yang node containing extension
  *
  * Mount-points are stored in unknown yang cvec
- * @param[in]  yu     Yang unknown node to save the yspecs
- * @param[in]  xpath  Key for yspec on yu, in canonical form
+ * @param[in]  y      Yang container/list containing unknown node
+ * @param[in]  xpath  Key for yspec on y, in canonical form
  * @param[in]  yspec  Yangspec for this mount-point (consumed)
  * @retval     0      OK
  * @retval    -1      Error
  */
 int
-yang_mount_set(yang_stmt *yu,
+yang_mount_set(yang_stmt *y,
                char      *xpath,
                yang_stmt *yspec)
 {
@@ -180,7 +181,7 @@ yang_mount_set(yang_stmt *yu,
     cg_var    *cv;
     cg_var    *cv2;
 
-    if ((cvv = yang_cvec_get(yu)) != NULL &&
+    if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
         (yspec0 = cv_void_get(cv)) != NULL){
 #if 0 /* Problematic to free yang specs here, upper layers should handle it? */
@@ -188,7 +189,7 @@ yang_mount_set(yang_stmt *yu,
 #endif
         cv_void_set(cv, NULL);
     }
-    else if ((cv = yang_cvec_add(yu, CGV_VOID, xpath)) == NULL)
+    else if ((cv = yang_cvec_add(y, CGV_VOID, xpath)) == NULL)
         goto done;
     if ((cv2 = cv_new(CGV_STRING)) == NULL){
         clicon_err(OE_YANG, errno, "cv_new");
@@ -224,9 +225,13 @@ xml_yang_mount_get(clicon_handle   h,
 {
     int        retval = -1;
     yang_stmt *y;
-    yang_stmt *yu;
-    char      *xpath = NULL; // XXX free it
+    char      *xpath0 = NULL;
     int        ret;
+    cvec      *nsc0 = NULL;
+    yang_stmt *yspec0;
+    char      *xpath1 = NULL;
+    cvec      *nsc1 = NULL;
+    cbuf      *reason = NULL;
 
     if ((y = xml_spec(xt)) == NULL)
         goto fail;
@@ -237,18 +242,29 @@ xml_yang_mount_get(clicon_handle   h,
     /* Check validate level */
     if (vl && clixon_plugin_yang_mount_all(h, xt, NULL, vl, NULL) < 0)
         goto done;
-    // XXX hardcoded prefix: yangmnt
-    if ((yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL)
-        goto ok;
-    if (xml2xpath(xt, NULL, 1, 0, &xpath) < 0)
+    if (xml2xpath(xt, NULL, 1, 0, &xpath0) < 0)
         goto done;
-    if (yang_mount_get(yu, xpath, yspec) < 0)
+    if (xml_nsctx_node(xt, &nsc0) < 0)
         goto done;
- ok:
+    yspec0 = clicon_dbspec_yang(h);
+    if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc0, &reason)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    if (yang_mount_get(y, xpath1, yspec) < 0)
+        goto done;
     retval = 1;
  done:
-    if (xpath)
-        free(xpath);
+    if (xpath0)
+        free(xpath0);
+    if (xpath1)
+        free(xpath1);
+    if (nsc0)
+        cvec_free(nsc0);
+    if (nsc1)
+        cvec_free(nsc1);
+    if (reason)
+        cbuf_free(reason);
     return retval;
  fail:
     retval = 0;
@@ -264,26 +280,49 @@ xml_yang_mount_get(clicon_handle   h,
  * @retval    -1      Error
  */
 int
-xml_yang_mount_set(cxobj     *x,
-                   yang_stmt *yspec)
+xml_yang_mount_set(clicon_handle h,
+                   cxobj        *x,
+                   yang_stmt    *yspec)
 {
-   int        retval = -1;
+    int        retval = -1;
     yang_stmt *y;
-    yang_stmt *yu;
-    char      *xpath = NULL;
+    char      *xpath0 = NULL;
+    char      *xpath1 = NULL;
+    cvec      *nsc0 = NULL;
+    cvec      *nsc1 = NULL;
+    yang_stmt *yspec0;
+    cbuf      *reason = NULL;
+    int        ret;
 
-    if ((y = xml_spec(x)) == NULL ||
-        (yu = yang_find(y, Y_UNKNOWN, "yangmnt:mount-point")) == NULL){
+    if ((y = xml_spec(x)) == NULL){
+        clicon_err(OE_YANG, 0, "No yang-spec");
         goto done;
     }
-    if (xml2xpath(x, NULL, 1, 0, &xpath) < 0)
+    if (xml2xpath(x, NULL, 1, 0, &xpath0) < 0)
         goto done;
-    if (yang_mount_set(yu, xpath, yspec) < 0)
+    if (xml_nsctx_node(x, &nsc0) < 0)
+        goto done;
+    yspec0 = clicon_dbspec_yang(h);
+    if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc0, &reason)) < 0)
+        goto done;
+    if (ret == 0){
+        clicon_err(OE_YANG, 0, "%s", cbuf_get(reason));
+        goto done;
+    }
+    if (yang_mount_set(y, xpath1, yspec) < 0)
         goto done;
     retval = 0;
  done:
-    if (xpath)
-        free(xpath);
+    if (xpath0)
+        free(xpath0);
+    if (xpath1)
+        free(xpath1);
+    if (nsc0)
+        cvec_free(nsc0);
+    if (nsc1)
+        cvec_free(nsc1);
+    if (reason)
+        cbuf_free(reason);
     return retval;
 }
 
@@ -607,7 +646,7 @@ yang_schema_yanglib_parse_mount(clicon_handle h,
         goto done;
     if (ret == 0)
         goto anydata;
-    if (xml_yang_mount_set(xt, yspec) < 0)
+    if (xml_yang_mount_set(h, xt, yspec) < 0)
         goto done;
     yspec = NULL;
     retval = 1;

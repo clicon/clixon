@@ -273,14 +273,14 @@ identityref_add_ns(cxobj *x,
     return retval;
 }
 
-/*! Given a top-level yspec and montpoint xpath compute a set of  
+/*! Given a top-level yspec and mountpoint xpath compute a set of  
  *
  * Manipulate top-level and a mointpoint:
  * YSPEC:    yspec0        yspec1
  * XML:      top0-->bot0-->top1-->bot1
  * API-PATH: api-path0     api-path1
  *           api-path01---------
- * The result computed from the top-level yspec and montpoint xpath are:
+ * The result computed from the top-level yspec and mountpoint xpath are:
  * - api_pathfmt10 Combined api-path for both trees
  * @param[in]  yspec0         Top-level yang-spec
  * @param[in]  mtpoint        Mount-point, generic: if there are several with same yang, any will do
