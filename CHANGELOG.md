@@ -76,6 +76,7 @@ Developers may need to change their code
   
 ### Corrected Bugs
 
+* Fixed: [NACM paths don't work for mounted YANG models](https://github.com/clicon/clixon-controller/issues/62)
 * Fixed: [cl:creator attribute must be persistent](https://github.com/clicon/clixon-controller/issues/54)
 * Fixed: [Does clixon cli support autocompletion for leafrefs pointed to another module?](https://github.com/clicon/clixon/issues/455)
 * Fixed: [commit diff sometimes includes namespace in output](https://github.com/clicon/clixon-controller/issues/44)

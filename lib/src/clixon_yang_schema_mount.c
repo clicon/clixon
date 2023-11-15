@@ -150,8 +150,8 @@ yang_mount_get(yang_stmt  *y,
                char       *xpath,
                yang_stmt **yspec)
 {
-    cvec      *cvv = NULL;
-    cg_var    *cv;
+    cvec   *cvv;
+    cg_var *cv;
 
     clicon_debug(CLIXON_DBG_DEFAULT, "%s %s %p", __FUNCTION__, xpath, y);
     /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
@@ -326,6 +326,34 @@ xml_yang_mount_set(clicon_handle h,
     if (reason)
         cbuf_free(reason);
     return retval;
+}
+
+/*! Get any yspec of a mount-point, special function
+ *
+ * Get (the first) mounted yspec. 
+ * A more generic way would be to call plugin_mount to get the yanglib and from that get the
+ * yspec. But there is clixon code that cant call the plugin since h is not available
+ * @param[in]  y     Yang container/list containing unknown node
+ * @param[out] yspec YANG stmt spec
+ * @retval     1     yspec found and set
+ * @retval     0     Not found
+ */
+int
+yang_mount_get_yspec_any(yang_stmt  *y,
+                         yang_stmt **yspec)
+{
+    cvec   *cvv;
+    cg_var *cv;
+    void   *p;
+
+    /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
+    if ((cvv = yang_cvec_get(y)) != NULL &&
+        (cv = cvec_i(cvv, 0)) != NULL &&
+        (p = cv_void_get(cv)) != NULL){
+        *yspec = p;
+        return 1;
+    }
+    return 0;
 }
 
 /*! Free all yspec yang-mounts
@@ -663,7 +691,7 @@ yang_schema_yanglib_parse_mount(clicon_handle h,
     goto done;
 }
 
-/*! Check if XML nod is mount-point and return matching YANG child
+/*! Check if XML node is mount-point and return matching YANG child
  *
  * @param[in]     h       Clixon handle
  * @param[in]     x1      XML node

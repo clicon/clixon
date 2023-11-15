@@ -667,6 +667,7 @@ api_path2xpath_cvv(cvec       *api_path,
     char      *name = NULL;
     cvec      *cvk = NULL; /* vector of index keys */
     yang_stmt *y = NULL;
+    yang_stmt *y1;
     yang_stmt *ymod = NULL;
     char      *val;
     cg_var    *cvi;
@@ -807,12 +808,11 @@ api_path2xpath_cvv(cvec       *api_path,
                 cprintf(xpath, "%s:", xprefix);
             cprintf(xpath, "%s", name);
         }
-
         /* If x/y is mountpoint, pass mount yspec to children */
         if ((ret = yang_schema_mount_point(y)) < 0)
             goto done;
         if (ret == 1){
-            yang_stmt *y1 = NULL;
+            y1 = NULL;
             if (xml_nsctx_yangspec(yspec, &nsc) < 0)
                 goto done;
             /* cf xml_bind_yang0_opt/xml_yang_mount_get */
@@ -976,6 +976,7 @@ api_path2xml_vec(char      **vec,
     int        vi;
     cxobj     *x = NULL;
     yang_stmt *y = NULL;
+    yang_stmt *y1;
     yang_stmt *ymod;
     yang_stmt *ykey;
     char      *namespace = NULL;
@@ -1155,7 +1156,7 @@ api_path2xml_vec(char      **vec,
     if ((ret = yang_schema_mount_point(y)) < 0)
         goto done;
     if (ret == 1){
-        yang_stmt *y1 = NULL;
+        y1 = NULL;
         if (xml_nsctx_yangspec(ys_spec(y), &nsc) < 0)
             goto done;
         if (xml2xpath(x, nsc, 0, 1, &xpath) < 0) // XXX should be canonical
@@ -1472,6 +1473,7 @@ api_path_resolve(clixon_path *cplist,
 /*! Resolve instance-id prefix:names to yang statements
  *
  * @param[in]  cplist   Lisp of clixon-path
+ * @param[in]  path     Instance-id path original
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
  * @retval     1        OK
  * @retval     0        Fail error in xerr
@@ -1499,7 +1501,8 @@ instance_id_resolve(clixon_path *cplist,
     cg_var      *cva;
     yang_stmt   *yspec;
     char        *kname;
-
+    int          ret;
+    
     yspec = ys_spec(yt);
     if ((cp = cplist) != NULL){
         do {
@@ -1511,6 +1514,16 @@ instance_id_resolve(clixon_path *cplist,
                 if ((yt = yang_find_module_by_prefix_yspec(yspec, cp->cp_prefix)) == NULL){
                     clicon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
                     goto fail;
+                }
+            }
+            if ((ret = yang_schema_mount_point(yt)) < 0)
+                goto done;
+            if (ret == 1){
+                if (yang_mount_get_yspec_any(yt, &yspec) == 1){
+                    if ((yt = yang_find_module_by_prefix_yspec(yspec, cp->cp_prefix)) == NULL){
+                        clicon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
+                        goto fail;
+                    }                    
                 }
             }
             if ((yc = yang_find_datanode(yt, cp->cp_id)) == NULL){
