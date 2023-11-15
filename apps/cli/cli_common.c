@@ -275,7 +275,7 @@ identityref_add_ns(cxobj *x,
 
 /*! Given a top-level yspec and mountpoint xpath compute a set of  
  *
- * Manipulate top-level and a mointpoint:
+ * Manipulate top-level and a mountpoint:
  * YSPEC:    yspec0        yspec1
  * XML:      top0-->bot0-->top1-->bot1
  * API-PATH: api-path0     api-path1

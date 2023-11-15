@@ -153,6 +153,7 @@ yang_mount_get(yang_stmt  *y,
     cvec      *cvv = NULL;
     cg_var    *cv;
 
+    clicon_debug(CLIXON_DBG_DEFAULT, "%s %s %p", __FUNCTION__, xpath, y);
     /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
     if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
@@ -181,6 +182,7 @@ yang_mount_set(yang_stmt *y,
     cg_var    *cv;
     cg_var    *cv2;
 
+    clicon_debug(CLIXON_DBG_DEFAULT, "%s %s %p", __FUNCTION__, xpath, y);
     if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
         (yspec0 = cv_void_get(cv)) != NULL){
@@ -210,7 +212,7 @@ yang_mount_set(yang_stmt *y,
 /*! Get yangspec mount-point
  *
  * @param[in]  h     Clixon handle
- * @param[in]  x     XML moint-point node
+ * @param[in]  x     XML mount-point node
  * @param[out] vallevel Do or dont do full RFC 7950 validation if given
  * @param[out] yspec YANG stmt spec
  * @retval     1     x is a mount-point: yspec may be set
@@ -274,7 +276,7 @@ xml_yang_mount_get(clicon_handle   h,
 /*! Set yangspec mount-point via XML mount-point node
  *
  * Stored in a separate structure (not in XML config tree)
- * @param[in]  x      XML moint-point node
+ * @param[in]  x      XML mount-point node
  * @param[in]  yspec  Yangspec for this mount-point (consumed)
  * @retval     0      OK
  * @retval    -1      Error

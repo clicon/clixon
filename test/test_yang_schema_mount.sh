@@ -16,16 +16,23 @@ fyang0=$dir/clixon-mount0.yang
 fyang1=$dir/clixon-mount1.yang
 fyang2=$dir/clixon-mount2.yang
 
+CFD=$dir/conf.d
+test -d $CFD || mkdir -p $CFD
+
 AUTOCLI=$(autocli_config clixon-\* kw-nokey false)
+RESTCONFIG=$(restconf_config none false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_CONFIGDIR>$CFD</CLICON_CONFIGDIR>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${dir}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_YANG_LIBRARY>true</CLICON_YANG_LIBRARY>
   <CLICON_CLISPEC_DIR>$dir</CLICON_CLISPEC_DIR>
+  <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
@@ -36,6 +43,11 @@ cat <<EOF > $cfg
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   <CLICON_STREAM_DISCOVERY_RFC5277>true</CLICON_STREAM_DISCOVERY_RFC5277>
   <CLICON_YANG_SCHEMA_MOUNT>true</CLICON_YANG_SCHEMA_MOUNT>
+</clixon-config>
+EOF
+
+cat <<EOF > $CFD/autocli.xml
+<clixon-config xmlns="http://clicon.org/config">
   <autocli>
     <module-default>false</module-default>
      <list-keyword-default>kw-nokey</list-keyword-default>
@@ -48,7 +60,14 @@ cat <<EOF > $cfg
   </autocli>
 </clixon-config>
 EOF
-#  ${AUTOCLI}
+
+# Define default restconfig config: RESTCONFIG
+
+cat <<EOF > $CFD/restconf.xml
+<clixon-config xmlns="http://clicon.org/config">
+  $RESTCONFIG
+</clixon-config>
+EOF
 
 cat <<EOF > $fyang
 module clixon-example{
@@ -172,6 +191,17 @@ fi
 new "wait backend"
 wait_backend
 
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
+    
+    new "start restconf daemon"
+    start_restconf -f $cfg -- -m clixon-mount0 -M urn:example:mount0
+fi
+
+new "wait restconf"
+wait_restconf
+
 new "Add two mountpoints: x and y"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root/></mylist><mylist><name>y</name><root/></mylist></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
@@ -204,6 +234,14 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "cli show config"
 expectpart "$($clixon_cli -1 -f $cfg show config xml -- -m clixon-mount0 -M urn:example:mount0)" 0 "<top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x1</name1><options xmlns=\"urn:example:mount2\"><option2>bar</option2></options></mylist1></mount1></root></mylist><mylist><name>y</name><root/></mylist></top>"
+
+new "restconf get config mntpoint"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/clixon-example:top/mylist=x/root)" 0 "HTTP/$HVER 200" '<root xmlns="urn:example:clixon"><mount1 xmlns="urn:example:mount1"><mylist1><name1>x1</name1><options xmlns="urn:example:mount2"><option2>bar</option2></options></mylist1></mount1><yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module-set><name>mylabel</name><module><name>clixon-mount0</name><namespace>urn:example:mount0</namespace></module></module-set></yang-library></root>'
+
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf 
+fi
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

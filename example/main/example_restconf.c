@@ -51,11 +51,19 @@
 
 /* Command line options to be passed to getopt(3) 
  */
-#define RESTCONF_EXAMPLE_OPTS ""
+#define RESTCONF_EXAMPLE_OPTS "m:M:"
 
 static const char Base64[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char Pad64 = '=';
+
+/*! Yang schema mount
+ *
+ * Start restconf with -- -m <yang> -M <namespace>
+ * Mount this yang on mountpoint
+ */
+static char *_mount_yang = NULL;
+static char *_mount_namespace = NULL;
 
 /* skips all whitespace anywhere.
    converts characters, four at a time, starting at (or after)
@@ -350,6 +358,62 @@ example_restconf_start(clicon_handle h)
     return 0;
 }
 
+/*! Example YANG schema mount
+ *
+ * Given an XML mount-point xt, return XML yang-lib modules-set
+ * @param[in]  h       Clixon handle
+ * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] config  If '0' all data nodes in the mounted schema are read-only
+ * @param[out] validate Do or dont do full RFC 7950 validation
+ * @param[out] yanglib XML yang-lib module-set tree
+ * @retval     0       OK
+ * @retval    -1       Error
+ * XXX hardcoded to clixon-example@2022-11-01.yang regardless of xt
+ * @see RFC 8528
+ */
+int
+restconf_yang_mount(clicon_handle   h,
+                    cxobj          *xt,
+                    int            *config,
+                    validate_level *vl,
+                    cxobj         **yanglib)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    if (config)
+        *config = 1;
+    if (vl)
+        *vl = VL_FULL;
+    if (yanglib && _mount_yang){
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
+        cprintf(cb, "<module-set>");
+        cprintf(cb, "<name>mylabel</name>"); // XXX label in test_yang_schema_mount
+        cprintf(cb, "<module>");
+        /* In yang name+namespace is mandatory, but not revision */
+        cprintf(cb, "<name>%s</name>", _mount_yang); // mandatory
+        cprintf(cb, "<namespace>%s</namespace>", _mount_namespace); // mandatory
+        //        cprintf(cb, "<revision>2022-11-01</revision>");
+        cprintf(cb, "</module>");
+        cprintf(cb, "</module-set>");
+        cprintf(cb, "</yang-library>");
+        if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, yanglib, NULL) < 0)
+            goto done;
+        if (xml_rootchild(*yanglib, 0, yanglib) < 0)
+            goto done;
+    }
+
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
 clixon_plugin_api * clixon_plugin_init(clicon_handle h);
 
 static clixon_plugin_api api = {
@@ -357,7 +421,8 @@ static clixon_plugin_api api = {
     clixon_plugin_init,  /* init */
     example_restconf_start,/* start */
     NULL,                /* exit */
-    .ca_auth=example_restconf_credentials   /* auth */
+    .ca_auth=example_restconf_credentials,   /* auth */
+    .ca_yang_mount=restconf_yang_mount,  /* RFC 8528 schema mount */
 };
 
 /*! Restconf plugin initialization
@@ -382,11 +447,23 @@ clixon_plugin_init(clicon_handle h)
     optind = 1;
     while ((c = getopt(argc, argv, RESTCONF_EXAMPLE_OPTS)) != -1)
         switch (c) {
+        case 'm':
+            _mount_yang = optarg;
+            break;
+        case 'M':
+            _mount_namespace = optarg;
+            break;
         default:
             break;
         }
+    if ((_mount_yang && !_mount_namespace) || (!_mount_yang && _mount_namespace)){
+        clicon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
+        goto done;
+    }
     /* Register local netconf rpc client (note not backend rpc client) */
     if (rpc_callback_register(h, restconf_client_rpc, NULL, "urn:example:clixon", "client-rpc") < 0)
         return NULL;
     return &api;
+ done:
+    return NULL;
 }

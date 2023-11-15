@@ -1105,7 +1105,7 @@ xpath_traverse_canonical(xpath_tree *xs,
  *   if (reason) cbuf_free(reason);
  * @endcode
  * @note Unsolvable issue of mountpoints, eg an xpath of //x:foo where foo is under one or several
- *       mointpoints: a well-defined namespace cannot be determined. Therefore just allow 
+ *       mountpoints: a well-defined namespace cannot be determined. Therefore just allow 
  *       inconsistencies and hope that it will be covered by other code
  * @see xpath2xml
  */

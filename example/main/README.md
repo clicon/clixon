@@ -13,6 +13,7 @@
   * [Systemd](#systemd)
   * [Docker](#docker)
   * [Plugins](#plugins)
+  * [Mount-points](#mount-points)
 
 ## Background
 
@@ -446,3 +447,27 @@ static clixon_plugin_api api = {
     .ca_interrupt=NULL, /* cligen_interrupt_cb_t */
 };
 ```
+
+## Mount-points
+
+You can set-up the example for a simple RFC 8528 Yang schema mount. A single top-level yang can be defined to be mounted.:
+
+1. Enable CLICON_YANG_SCHEMA_MOUNT
+2. Define the mount-point using the ietf-yang-schema-mount mount-point extension
+3. Start the backend, cli and restconf with `-- -m <name> -M <urn>`, where `name` and `urn` is the name and namespace of the mounted YANG, respectively.
+
+A simple example on how to define a mount-point
+```
+   import ietf-yang-schema-mount {
+      prefix yangmnt;
+   }
+   container root{
+      presence "Otherwise root is not visible";
+      yangmnt:mount-point "mylabel"{
+         description "Root for other yang models";
+      }
+   }
+```
+
+CLI completion of the mounted part is not implemented in the example, see the
+clixon-controller `controller_cligen_treeref_wrap()` for an example.

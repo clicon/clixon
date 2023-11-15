@@ -808,21 +808,21 @@ api_path2xpath_cvv(cvec       *api_path,
             cprintf(xpath, "%s", name);
         }
 
-        /* If x/y is mountpoint, pass moint yspec to children */
+        /* If x/y is mountpoint, pass mount yspec to children */
         if ((ret = yang_schema_mount_point(y)) < 0)
             goto done;
         if (ret == 1){
             yang_stmt *y1 = NULL;
             if (xml_nsctx_yangspec(yspec, &nsc) < 0)
                 goto done;
+            /* cf xml_bind_yang0_opt/xml_yang_mount_get */
             if (yang_mount_get(y, cbuf_get(xpath), &y1) < 0)
                 goto done;
-            if (y1 == NULL || yang_keyword_get(y1) != Y_SPEC){
-                clicon_err(OE_YANG, 0, "No such mountpoint %s", cbuf_get(xpath));
-                goto done;
+            if (y1 != NULL){
+                y = y1;
+                yspec = y1;
+                root = 1;
             }
-            yspec = y1;
-            root = 1;
         }
         if (prefix){
             free(prefix);
@@ -1151,7 +1151,7 @@ api_path2xml_vec(char      **vec,
         if (xmlns_set(x, NULL, namespace) < 0)
             goto done;
     }
-    /* If x/y is mountpoint, pass moint yspec to children */
+    /* If x/y is mountpoint, pass mount yspec to children */
     if ((ret = yang_schema_mount_point(y)) < 0)
         goto done;
     if (ret == 1){
@@ -1164,13 +1164,11 @@ api_path2xml_vec(char      **vec,
             clicon_err(OE_YANG, 0, "No xpath from xml");
             goto done;
         }
-        if (yang_mount_get(y, xpath, &y1) < 0)
+        /* cf xml_bind_yang0_opt/xml_yang_mount_get */
+        if (yang_mount_get(y, xpath, &y1) < 0) 
             goto done;
-        if (y1 == NULL){
-            clicon_err(OE_YANG, 0, "No such mountpoint %s", xpath);
-            goto done;
-        }
-        y = y1;
+        if (y1 != NULL)
+            y = y1;
     }
     if ((retval = api_path2xml_vec(vec+1, nvec-1,
                                    x, y,

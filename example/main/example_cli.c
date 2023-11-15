@@ -58,7 +58,7 @@
 
 /*! Yang schema mount
  *
- * Start backend with -- -m <yang> -M <namespace>
+ * Start cli with -- -m <yang> -M <namespace>
  * Mount this yang on mountpoint
  */
 static char *_mount_yang = NULL;
@@ -313,6 +313,8 @@ clixon_plugin_init(clicon_handle h)
         clicon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
         goto done;
     }
+    /* XXX Not implemented: CLI completion for mountpoints, see clixon-controller
+     */
     return &api;
  done:
     return NULL;
