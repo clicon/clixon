@@ -259,6 +259,25 @@ expectpart "$(curl -u wilma:bar $CURLOPTS -X GET -H "Accept: application/yang-da
 new "restconf guest read mnt mylist0 expect access denied"
 expectpart "$(curl -u guest:bar $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/clixon-example:top/mylist=x/mnt/clixon-mount0:mymount0/mylist1=x1)" 0 "HTTP/$HVER 403" '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>default deny</error-message></error></errors>'
 
+# write
+new "restconf admin write mnt mylist0 expect ok"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data/clixon-example:top/mylist=x/mnt/clixon-mount0:mymount0 -d '<mylist0 xmlns="urn:example:mount0"><name0>andy</name0></mylist0>')" 0 "HTTP/$HVER 201"
+
+new "restconf admin write mnt mylist1 expect ok"
+expectpart "$(curl -u andy:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data/clixon-example:top/mylist=x/mnt/clixon-mount0:mymount0 -d '<mylist1 xmlns="urn:example:mount0"><name1>andy</name1></mylist1>')" 0 "HTTP/$HVER 201"
+
+new "restconf limited write mnt mylist0 expect ok"
+expectpart "$(curl -u wilma:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data/clixon-example:top/mylist=x/mnt/clixon-mount0:mymount0 -d '<mylist0 xmlns="urn:example:mount0"><name0>wilma</name0></mylist0>')" 0 "HTTP/$HVER 201"
+
+new "restconf limited write mnt mylist1 expect fail"
+expectpart "$(curl -u wilma:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data/clixon-example:top/mylist=x/mnt/clixon-mount0:mymount0 -d '<mylist1 xmlns="urn:example:mount0"><name1>wilma</name1></mylist1>')" 0 "HTTP/$HVER 403" "access-denied"
+
+new "restconf guest write mnt mylist0 expect fail"
+expectpart "$(curl -u guest:bar $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data/clixon-example:top/mylist=x/mnt/clixon-mount0:mymount0 -d '<mylist0 xmlns="urn:example:mount0"><name0>guest</name0></mylist0>')" 0 "HTTP/$HVER 403" "access-denied"
+
+new "restconf admin get check"
+expectpart "$(curl -u andy:bar $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/clixon-example:top/mylist=x/mnt/clixon-mount0:mymount0)" 0 "HTTP/$HVER 200" '<mylist0><name0>andy</name0></mylist0>' '<mylist0><name0>wilma</name0></mylist0>' '<mylist1><name1>andy</name1></mylist1>' --not-- '<mylist1><name1>wilma</name1></mylist1>' '<mylist0><name0>guest</name0></mylist0>' 
+
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf 
