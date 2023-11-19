@@ -73,6 +73,9 @@ EOF
 # Patch yang syntax errors
 sed -i s/=\ olt\'/=\ \'olt\'/g /usr/local/share/yang/standard/ieee/published/802.3/ieee802-ethernet-pon.yang
 
+# Generate ssh host keys
+ssh-keygen -A
+
 # Workaround for this error output:
 # sudo: setrlimit(RLIMIT_CORE): Operation not permitted
 echo "Set disable_coredump false" > /etc/sudo.conf

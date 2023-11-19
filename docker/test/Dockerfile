@@ -45,6 +45,9 @@ RUN apk add --update net-snmp net-snmp-dev
 # For groupadd/groupdel
 RUN apk add --update shadow
 
+# Test-specific (for test scripts)
+RUN apk add --update openssh
+
 # Checkout standard YANG models for tests (note >1G for full repo)
 RUN mkdir -p /usr/local/share/yang
 WORKDIR /usr/local/share/yang
@@ -129,7 +132,7 @@ RUN echo "agentXSocket  unix:/var/run/snmp.sock" >> /etc/snmp/snmpd.conf
 RUN echo "agentxperms   777 777" >> /etc/snmp/snmpd.conf
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash expect
+RUN apk add --update sudo curl procps grep make bash expect openssh
 
 # Create clicon user and group
 RUN adduser -D -H clicon

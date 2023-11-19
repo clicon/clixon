@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Netconf callhome RFC 8071
+# Requires an openssh + opensshd install + ssh-keygen -A
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -12,6 +13,13 @@ if ! [ -x "$ssh_bin" ]; then
     rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
+
+if ! [ -x "/usr/sbin/sshd" ]; then
+    echo "...sshd not installed"
+    rm -rf $dir
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+fi
+
 
 # Dont run this test with valgrind
 if [ $valgrindtest -ne 0 ]; then

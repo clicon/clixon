@@ -48,6 +48,9 @@ RUN apk add --update net-snmp net-snmp-dev
 # For groupadd/groupdel
 RUN apk add --update shadow
 
+# Test-specific (for test scripts)
+RUN apk add --update openssh
+
 # Checkout standard YANG models for tests (note >1G for full repo)
 RUN mkdir -p /usr/local/share/yang
 WORKDIR /usr/local/share/yang
@@ -142,7 +145,7 @@ RUN adduser -D -H -G www-data www-data
 RUN apk add --update nginx
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash expect
+RUN apk add --update sudo curl procps grep make bash expect openssh
 
 # Expose nginx port for restconf
 EXPOSE 80

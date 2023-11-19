@@ -36,6 +36,13 @@ To download the openconfig and yang models required for the tests:
    git pull origin main
 ```
 
+## SSH and SSHD
+
+Some tests require ssh and even sshd (eg test_netconf_ssh_callhome.sh), and requires generated host-keys:
+```
+  # ssh-keygen -a
+```
+
 ## Continuous Integration
 
 CI is done via github actions.

@@ -637,6 +637,7 @@ function wait_restconf(){
     fi
 #    echo "curl $CURLOPTS -X GET $myproto://localhost/restconf"
     hdr=$(curl $CURLOPTS -X GET $myproto://localhost/restconf 2> /dev/null)
+    stty $STTYSETTINGS >/dev/null
 #    echo "hdr:\"$hdr\""
     let i=0;
     while [[ "$hdr" != *"200"* ]]; do

@@ -24,7 +24,7 @@
 * [4.5.0](#450) 12 May 2020
 * [4.4.0](#440) 5 April 2020
 * [4.3.0](#430) 1 January 2020
-  * [4.3.3](#433) 
+  * [4.3.3](#433)
   * [4.3.2](#432)
   * [4.3.1](#431)
 * [4.2.0](#420) 27 October 2019
@@ -50,7 +50,7 @@ Users may have to change how they access the system
 
 * Moved and split install of main example config file
   * From `/usr/local/etc/example.xml` to `/usr/local/etc/clixon/example.xml`
-  * Added `/usr/local/etc/clixon/example/autocli.xml` and `/usr/local/etc/clixon/example/restconf.xml` 
+  * Added `/usr/local/etc/clixon/example/autocli.xml` and `/usr/local/etc/clixon/example/restconf.xml`
 
 ### C/CLI-API changes on existing features
 Developers may need to change their code
@@ -73,7 +73,7 @@ Developers may need to change their code
   * See https://clixon-docs.readthedocs.io/en/latest/errors.html#customized-errors for more info
 * New `clixon-lib@2023-11-01.yang` revision
   * Added ignore-compare extension
-  
+
 ### Corrected Bugs
 
 * Fixed: [NACM paths don't work for mounted YANG models](https://github.com/clicon/clixon-controller/issues/62)
