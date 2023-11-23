@@ -816,7 +816,8 @@ text_modify(clicon_handle       h,
                Any "operation" attributes present on subelements of an anyxml 
                node are ignored by the NETCONF server.*/
             if (yang_keyword_get(y0) == Y_ANYXML ||
-                yang_keyword_get(y0) == Y_ANYDATA){
+                yang_keyword_get(y0) == Y_ANYDATA ||
+                xml_flag(x1, XML_FLAG_ANYDATA)){
                 if (op == OP_NONE)
                     break;
                 if (op==OP_MERGE && !permit && xnacm){
@@ -932,7 +933,8 @@ text_modify(clicon_handle       h,
                     /* Check if xc is unresolved mountpoint, ie no yang mount binding yet */
                     if ((ismount = xml_yang_mount_get(h, x1c, NULL, &mount_yspec)) < 0)
                         goto done;
-                    if (ismount && mount_yspec == NULL){
+                    if (ismount && mount_yspec == NULL &&
+                        !xml_flag(x1c, XML_FLAG_ANYDATA)){
                         ret = 1;
                     }
                     else{

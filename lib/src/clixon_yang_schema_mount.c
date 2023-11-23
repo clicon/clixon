@@ -214,7 +214,7 @@ yang_mount_set(yang_stmt *y,
  * @param[in]  h     Clixon handle
  * @param[in]  x     XML mount-point node
  * @param[out] vallevel Do or dont do full RFC 7950 validation if given
- * @param[out] yspec YANG stmt spec
+ * @param[out] yspec YANG stmt spec of mount-point (if ret is 1)
  * @retval     1     x is a mount-point: yspec may be set
  * @retval     0     x is not a mount point
  * @retval    -1     Error
@@ -651,7 +651,8 @@ yang_schema_mount_statistics(clicon_handle h,
  * 
  * @param[in]     h     Clixon handle
  * @param[in]     xt       
- * @retval        0     OK
+ * @retval        1     OK
+ * @retval        0     No yanglib or problem when parsing yanglib
  * @retval       -1     Error
  */
 int

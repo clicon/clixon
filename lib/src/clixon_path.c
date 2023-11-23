@@ -1585,7 +1585,7 @@ instance_id_resolve(clixon_path *cplist,
  *
  * @param[in]  xt       Top xml-tree where to search
  * @param[in]  yt       Yang statement of top symbol (can be yang-spec if top-level)
- * @param[in]  cplist   Lisp of clixon-path
+ * @param[in]  cplist   List of clixon-path
  * @param[out] xvec     Vector of xml-trees. Vector must be free():d after use
  * @retval     1        OK with found xml nodes in xvec (if any)
  * @retval     0        Fail  fail: eg no yang 
@@ -1779,10 +1779,10 @@ clixon_xml_find_api_path(cxobj        *xt,
  * @see RFC7950 Sec 9.13 
  */
 int
-clixon_xml_find_instance_id(cxobj     *xt,
-                            yang_stmt *yt,
-                            cxobj   ***xvec,
-                            int       *xlen,
+clixon_xml_find_instance_id(cxobj      *xt,
+                            yang_stmt  *yt,
+                            cxobj    ***xvec,
+                            int        *xlen,
                             const char *format,
                             ...)
 {

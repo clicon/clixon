@@ -173,8 +173,7 @@ populate_self_parent(cxobj     *xt,
         y = xml_spec(xsibling);
         goto set;
     }
-    xp = xml_parent(xt);
-    if (xp == NULL){
+    if ((xp = xml_parent(xt)) == NULL){
         if (xerr &&
             netconf_bad_element_xml(xerr, "application", name, "Missing parent") < 0)
             goto done;
@@ -469,8 +468,10 @@ xml_bind_yang0_opt(clicon_handle h,
             else{
                 if ((ret = yang_schema_yanglib_parse_mount(h, xt)) < 0)
                     goto done;
-                if (ret == 0)
+                if (ret == 0){ /* Special flag if mount-point but no yanglib */
+                    xml_flag_set(xt, XML_FLAG_ANYDATA);
                     goto ok;
+                }
                 /* Try again */
                 if ((ret = xml_yang_mount_get(h, xt, NULL, &yspec1)) < 0)
                     goto done;
