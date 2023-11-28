@@ -151,9 +151,13 @@ if test "$LEX" = ":"; then
    AC_MSG_ERROR(CLIXON does not find lex or flex.)
 fi
 
-# SSH binary path
+# SSH binary path for client and test
 AC_PATH_PROG(SSH_BIN, ssh)
-AC_DEFINE_UNQUOTED(SSH_BIN, "$SSH_BIN", [SSH binary])
+AC_DEFINE_UNQUOTED(SSH_BIN, "${SSH_BIN}", [SSH binary])
+
+# SSHD binary path for test
+AC_PATH_PROG(SSHD_BIN, sshd)
+AC_DEFINE_UNQUOTED(SSHD_BIN, "${SSHD_BIN}", [SSHD binary])
 
 # For cli pipe output functions
 AC_PROG_GREP

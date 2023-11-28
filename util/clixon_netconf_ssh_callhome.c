@@ -83,7 +83,7 @@ sudo clixon_netconf_ssh_callhome -a 127.0.0.1 -c /var/tmp/./test_netconf_ssh_cal
 #include <sys/socket.h>
 
 #define NETCONF_CH_SSH 4334
-#define SSHDBIN_DEFAULT CLIXON_CONFIG_SBINDIR "/sshd"
+#define SSHDBIN_DEFAULT SSHD_BIN
 #define UTIL_OPTS "hD:f:a:p:s:c:C:"
 
 static int
