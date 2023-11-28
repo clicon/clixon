@@ -615,7 +615,7 @@ xml_add_default_tag(cxobj *x,
 
     if (xml_flag(x, flags)) {
         /* set default attribute */
-        if (xml_add_attr(x, "default", "true", IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, NULL) < 0)
+        if (xml_add_attr(x, "default", "true", IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, NULL) == NULL)
             goto done;
     }
     retval = 0;

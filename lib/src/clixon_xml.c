@@ -185,7 +185,8 @@ struct xml{
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, 
                                        by reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
-    cvec             *x_creators;   /* Support clixon-lib creator annotation */
+    cvec             *x_creators;   /* Support clixon-lib creator annotation.
+                                       Only if CLICON_NETCONF_CREATOR_ATTR = true */
 #ifdef XML_EXPLICIT_INDEX
     struct search_index *x_search_index; /* explicit search index vectors */
 #endif
@@ -653,7 +654,7 @@ xml_creator_add(cxobj *xn,
     cg_var *cv;
 
     if (!is_element(xn))
-        return 0;
+        goto ok;
     if (xn->x_creators == NULL){
         if ((xn->x_creators = cvec_new(0)) == NULL){
             clicon_err(OE_XML, errno, "cvec_new");
@@ -662,6 +663,7 @@ xml_creator_add(cxobj *xn,
     }
     if ((cv = cvec_find(xn->x_creators, name)) == NULL)
         cvec_add_string(xn->x_creators, name, NULL);
+ ok:
     retval = 0;
  done:
     return retval;
@@ -721,6 +723,16 @@ xml_creator_len(cxobj *xn)
         return cvec_len(xn->x_creators);
     else
         return 0;
+}
+
+/*! Get all creator attributes
+ */
+cvec*
+xml_creator_get(cxobj *xn)
+{
+    if (!is_element(xn))
+        return 0;
+    return xn->x_creators;
 }
 
 /*! Copy creator info from x0 to x1 single object
@@ -830,7 +842,7 @@ creator_print_fn(cxobj *x,
     return 2; /* Locally abort this subtree, continue with others */
 }
 
-/*! Print XML and creator tags where they exists, for debugging
+/*! Print XML and creator tags where they exists recursively, for debugging
  *
  * @param[in]  xn    XML tree
  * @retval     see xml_apply
@@ -1355,7 +1367,7 @@ clixon_child_xvec_append(cxobj       *xn,
  *   xml_free(x);
  * @endcode
  * @note Differentiates between body/attribute vs element to reduce mem allocation
- * @see xml_sort_insert
+ * @see xml_insert
  */
 cxobj *
 xml_new(char           *name,
@@ -2021,10 +2033,10 @@ xml_find_type_value(cxobj           *xt,
  * @see xml_find_value where a body can be found as well
  */
 cxobj *
-xml_find_type(cxobj           *xt,
-              const char      *prefix,
-              const char      *name,
-              enum cxobj_type  type)
+xml_find_type(cxobj          *xt,
+              const char     *prefix,
+              const char     *name,
+              enum cxobj_type type)
 {
     cxobj *x = NULL;
     int    pmatch;  /* prefix match */
@@ -2649,18 +2661,17 @@ xml_attr_insert2val(char             *instr,
  * @param[in]  value     Attribute value
  * @param[in]  prefix    Attribute prefix, or NULL
  * @param[in]  namespace Attribute prefix, if NULL do not add namespace mapping
- * @retval     0         OK
- * @retval    -1         Error
+ * @retval     xa        Created attribute object
+ * @retval     NULL      Error
  */
-int
+cxobj *
 xml_add_attr(cxobj *xn,
              char  *name,
              char  *value,
              char  *prefix,
              char  *namespace)
 {
-    int    retval = -1;
-    cxobj *xa;
+    cxobj *xa = NULL;
     char  *ns = NULL;
 
     if ((xa = xml_new(name, xn, CX_ATTR)) == NULL)
@@ -2675,9 +2686,16 @@ xml_add_attr(cxobj *xn,
         if (ns == NULL && xmlns_set(xn, prefix, namespace) < 0)
             goto done;
     }
-    retval = 0;
+    if (xml_sort(xn) < 0)
+        goto done;
+ ret:
+    return xa;
  done:
-    return retval;
+    if (xa){
+        xml_free(xa);
+        xa = NULL;
+    }
+    goto ret;
 }
 
 /*! Specialization of clicon_log with xml tree 

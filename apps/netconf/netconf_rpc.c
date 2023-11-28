@@ -712,7 +712,7 @@ netconf_rpc_dispatch(clicon_handle h,
      * It may even be wrong if something else is done with the incoming message?
      */
     if ((username = clicon_username_get(h)) != NULL){
-        if (xml_add_attr(xn, "username", username, CLIXON_LIB_PREFIX, CLIXON_LIB_NS) < 0)
+        if (xml_add_attr(xn, "username", username, CLIXON_LIB_PREFIX, CLIXON_LIB_NS) == NULL)
             goto done;
     }
     /* Many of these calls are now calling generic clicon_rpc_netconf_xml

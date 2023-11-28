@@ -55,9 +55,11 @@ Users may have to change how they access the system
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Changed return value of `xml_add_attr` from 0/-1 to xa/NULL
+  * You need to change eg `if (xml_add_attr < 0)` to if (xml_add_attr == NULL)`
 * Changed signature of `clicon_netconf_error()` and `netconf_err2cb()`
   * You need to add the clixon handle as first parameter:
-    * `clicon_netconf_error(...)` --> `clicon_netconf_error(h, ...)`
+    * `clicon_netconf_error(...)` --> `clixon_netconf_error(h, ...)`
     * `netconf_err2cb(...)` --> `netconf_err2cb(h, ...)`
 * Changed function name for `clicon_debug` functions. You need to rename as follows:
   * clicon_debug() -> clixon_debug()
@@ -71,8 +73,11 @@ Developers may need to change their code
 * New feature: [Customized NETCONF error message](https://github.com/clicon/clixon/issues/454)
   * Added new callback `.ca_errmsg`
   * See https://clixon-docs.readthedocs.io/en/latest/errors.html#customized-errors for more info
+* New `clixon-config@2023-11-01.yang` revision
+  * Added `CLICON_NETCONF_CREATOR_ATTR` option
 * New `clixon-lib@2023-11-01.yang` revision
   * Added ignore-compare extension
+  * Added creator meta configuration
 
 ### Corrected Bugs
 

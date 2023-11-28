@@ -227,8 +227,13 @@ populate_self_parent(cxobj     *xt,
     }
     /* Assign spec only if namespaces match */
     if (strcmp(ns, nsy) != 0){
+        if ((cb = cbuf_new()) == NULL){
+            clicon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "Namespace mismatch: %s in XML does not match %s in yang", ns, nsy);
         if (xerr &&
-            netconf_bad_element_xml(xerr, "application", name, "Namespace mismatch") < 0)
+            netconf_bad_element_xml(xerr, "application", name, cbuf_get(cb)) < 0)
             goto done;
         goto fail;
     }

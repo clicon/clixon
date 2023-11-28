@@ -798,7 +798,7 @@ get_list_pagination(clicon_handle        h,
             goto done;
         }
         cprintf(cba, "%u", remaining);
-        if (xml_add_attr(x1, "remaining", cbuf_get(cba), "cp", "http://clicon.org/clixon-netconf-list-pagination") < 0)
+        if (xml_add_attr(x1, "remaining", cbuf_get(cba), "cp", "http://clicon.org/clixon-netconf-list-pagination") == NULL)
         goto done;
         if (cba)
             cbuf_free(cba);

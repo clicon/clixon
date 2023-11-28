@@ -427,7 +427,7 @@ restconf_insert_attributes(cxobj *xdata,
         /* First add xmlns:yang attribute */
         if (xmlns_set(xdata, "yang", YANG_XML_NAMESPACE) < 0)
             goto done;
-        if (xml_add_attr(xdata, "insert", instr, "yang", NULL) < 0)
+        if (xml_add_attr(xdata, "insert", instr, "yang", NULL) == NULL)
             goto done;
     }
     if ((pstr = cvec_find_str(qvec, "point")) != NULL){
@@ -467,7 +467,7 @@ restconf_insert_attributes(cxobj *xdata,
             p++;
             cprintf(cb, "%s", p);
         }
-        if (xml_add_attr(xdata, attrname, cbuf_get(cb), "yang", NULL) < 0)
+        if (xml_add_attr(xdata, attrname, cbuf_get(cb), "yang", NULL) == NULL)
             goto done;
     }
     /* Add prefix/namespaces used in attributes */

@@ -442,6 +442,56 @@ disable_nacm_on_empty(cxobj     *xt,
     return retval;
 }
 
+/*! Read creator data from meta-data and add to xml internal annotation
+ *
+ * Iterate creator meta-data using xpaths and create internal creator annotations
+ * @param[in]   h   Clixon handle
+ * @param[in]   xt  XML top node
+ * @param[in]   xn  XML creators node
+ * On the form:
+ *     <creator>
+ *       <name>testA[name='foo']</name>
+ *       <xpath>...</xpath>
+ *       ...
+ *     </creator>
+ * @see xml_creator_metadata_write
+ */
+static int
+xml_creator_metadata_read(clicon_handle h,
+                          cxobj        *xn)
+{
+    int    retval = -1;
+    cxobj *xt;
+    cxobj *xc;
+    cxobj *xp;
+    cxobj *x;
+    char  *name;
+    char  *xpath;
+
+    xt = xml_root(xn);
+    xc = NULL;
+    while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL) {
+        if (strcmp(xml_name(xc), "creator"))
+            continue;
+        if ((name = xml_find_body(xc, "name")) == NULL)
+            continue;
+        xp = NULL;
+        while ((xp = xml_child_each(xc, xp, CX_ELMNT)) != NULL) {
+            if (strcmp(xml_name(xp), "path"))
+                continue;
+            if ((xpath = xml_body(xp)) == NULL)
+                continue;
+            if ((x = xpath_first(xt, NULL, "%s", xpath)) == NULL)
+                continue;
+            if (xml_creator_add(x, name) < 0)
+                goto done;
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Common read function that reads an XML tree from file
  *
  * @param[in]  th     Datastore text handle
@@ -543,7 +593,19 @@ xmldb_readfile(clicon_handle    h,
     xml_flag_set(x0, XML_FLAG_TOP);
     if (xml_child_nr(x0) == 0 && de)
         de->de_empty = 1;
-
+    /* Check if creator attributes are supported*/
+    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
+        if ((x = xpath_first(x0, NULL, "creators")) != NULL){
+            ns = NULL;
+            if (xml2ns(x, NULL, &ns) < 0)
+                goto done;
+            if (strcmp(ns, CLIXON_LIB_NS) == 0){
+                if (xml_creator_metadata_read(h, x) < 0)
+                    goto done;
+                xml_purge(x);
+            }
+        }
+    }
     /* Check if we support modstate */
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
         if ((msdiff = modstate_diff_new()) == NULL)

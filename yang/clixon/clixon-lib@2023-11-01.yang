@@ -71,6 +71,7 @@ module clixon-lib {
     revision 2023-11-01 {
         description
             "Added ignore-compare extension
+             Added creator meta configuration
              Removed obsolete extension autocli-op
              Released in 6.5.0";
     }
@@ -208,6 +209,21 @@ module clixon-lib {
              track of which service created what.
              Limitations: only objects that are actually added or deleted. 
              A sub-object will not be noted";
+    }
+    container creators{
+        config false;
+        description "Meta-data for creator attribute.";
+        list creator {
+            key name;
+            leaf name {
+                description "Name of creator / service (instance) name";
+                type string;
+            }
+            leaf-list path {
+                description "Path to object";
+                type string;
+            }
+        }
     }
     rpc debug {
         description "Set debug level of backend.";

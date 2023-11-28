@@ -390,11 +390,11 @@ api_data_write(clicon_handle h,
     /* Add operation create as attribute. If that fails with Conflict, then 
      * try "replace" (see comment in function header)
      */
-    if (xml_add_attr(xdata, "operation", xml_operation2str(op), NETCONF_BASE_PREFIX, NULL) < 0)
+    if (xml_add_attr(xdata, "operation", xml_operation2str(op), NETCONF_BASE_PREFIX, NULL) == NULL)
         goto done;
     if (xml_add_attr(xdata, "objectcreate",
                      plain_patch?"false":"true",
-                     CLIXON_LIB_PREFIX, CLIXON_LIB_NS) < 0)
+                     CLIXON_LIB_PREFIX, CLIXON_LIB_NS) == NULL)
         goto done;
     /* Top-of tree, no api-path
      * Replace xparent with x, ie bottom of api-path with data 

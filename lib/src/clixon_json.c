@@ -348,7 +348,7 @@ json2xml_decode_identityref(cxobj     *x,
                 if (prefix2 == NULL)
                     prefix2 = yang_find_myprefix(ymod);
                 /* Add "xmlns:prefix2=namespace" */
-                if (xml_add_attr(x, prefix2, ns, "xmlns", NULL) < 0)
+                if (xml_add_attr(x, prefix2, ns, "xmlns", NULL) == NULL)
                     goto done;
 
             }

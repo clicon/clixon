@@ -358,12 +358,14 @@ xml_parse_attr(clixon_xml_yacc *xy,
     int    retval = -1;
     cxobj *xa = NULL;
 
+    /* XXX: here duplicates of same attributes are removed 
+     * This is probably not according standard?
+     */
     if ((xa = xml_find_type(xy->xy_xelement, prefix, name, CX_ATTR)) == NULL){
         if ((xa = xml_new(name, xy->xy_xelement, CX_ATTR)) == NULL)
             goto done;
         if (xml_prefix_set(xa, prefix) < 0)
             goto done;
-
     }
     if (xml_value_set(xa, attval) < 0)
         goto done;
@@ -484,12 +486,14 @@ pi          : BQMARK NAME EQMARK {_PARSE_DEBUG("pi -> <? NAME ?>"); free($2); }
             ;
 
 
-attrs       : attrs attr
-            |
+attrs       : attrs attr { _PARSE_DEBUG("attrs -> attrs attr"); }
+            |            { _PARSE_DEBUG("attrs ->"); }
             ;
 
-attr        : NAME '=' attvalue          { if (xml_parse_attr(_XY, NULL, $1, $3) < 0) YYABORT; }
-            | NAME ':' NAME '=' attvalue { if (xml_parse_attr(_XY, $1, $3, $5) < 0) YYABORT; }
+attr        : NAME '=' attvalue          { if (xml_parse_attr(_XY, NULL, $1, $3) < 0) YYABORT;
+                                           _PARSE_DEBUG("attr -> NAME = attvalue"); }
+            | NAME ':' NAME '=' attvalue { if (xml_parse_attr(_XY, $1, $3, $5) < 0) YYABORT;
+                                           _PARSE_DEBUG("attr -> NAME : NAME = attvalue"); }
             ;
 
 attvalue    : '\"' STRING '\"'   { $$=$2; /* $2 must be consumed */}

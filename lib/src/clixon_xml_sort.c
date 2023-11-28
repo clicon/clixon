@@ -1057,7 +1057,7 @@ xml_insert2(cxobj           *xp,
 /*! Insert xc as child to xp in sorted place. Remove xc from previous parent.
  *
  * @param[in] xp      Parent xml node. If NULL just remove from old parent.
- * @param[in] x       Child xml node to insert under xp
+ * @param[in] xi      Child xml node to insert under xp
  * @param[in] ins     Insert operation (if ordered-by user)
  * @param[in] key_val Key if x is LIST and ins is before/after, val if LEAF_LIST
  * @param[in] nsc_key Network namespace for key

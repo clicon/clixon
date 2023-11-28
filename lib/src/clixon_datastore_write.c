@@ -89,7 +89,7 @@
  * An attribute may have a prefix(or NULL). The routine finds the associated
  * xmlns binding to find the namespace: <namespace>:<name>.
  * If such an attribute is not found, failure is returned with cbret set,
- * If such an attribute its found, its string value is returned.
+ * If such an attribute is found, its string value is returned and removed from XML
  * @param[in]  x         XML node (where to look for attribute)
  * @param[in]  name      Attribute name
  * @param[in]  ns        (Expected) Namespace of attribute
@@ -98,6 +98,7 @@
  * @retval     1         OK
  * @retval     0         Failed (cbret set)
  * @retval    -1         Error
+ * @note as a side.effect the attribute is removed
  */
 static int
 attr_ns_value(cxobj *x,
@@ -140,6 +141,70 @@ attr_ns_value(cxobj *x,
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Add creator data to metadata xml object on the form name:xpath* 
+ *
+ * Callback function type for xml_apply
+ * @param[in]  x    XML node  
+ * @param[in]  arg  General-purpose argument
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ * @retval     0    OK, continue
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     2    Locally abort this subtree, continue with others
+ * On the form:
+ *     <creator>
+ *       <name>testA[name='foo']</name>
+ *       <xpath>...</xpath>
+ *       ...
+ *     </creator>
+ * @see xml_creator_metadata_read
+ */
+static int
+xml_creator_metadata_write(cxobj *x,
+                           void  *arg)
+{
+    int     retval = -1;
+    cxobj  *xmeta = (cxobj*)arg;
+    cxobj  *xmc;
+    cvec   *cvv;
+    cg_var *cv;
+    char   *val;
+    cvec   *nsc = NULL;
+    char   *xpath = NULL;
+
+    if ((cvv = xml_creator_get(x)) == NULL){
+        retval = 0;
+        goto done;
+    }
+    /* Note this requires x to have YANG spec */
+    if (xml2xpath(x, nsc, 0, 0, &xpath) < 0)
+        goto done;
+    cv = NULL;
+    while ((cv = cvec_each(cvv, cv)) != NULL){
+        val = cv_name_get(cv);
+        /* Find existing entry where name is val */
+        xmc = NULL;
+        while ((xmc = xml_child_each(xmeta, xmc, CX_ELMNT)) != NULL){
+            if (strcmp(xml_find_body(xmc, "name"), val) == 0)
+                break;
+        }
+        if (xmc != NULL){
+            if (clixon_xml_parse_va(YB_NONE, NULL, &xmc, NULL, "<path>%s</path>", xpath) < 0)
+                goto done;
+        }
+        else {
+            if (clixon_xml_parse_va(YB_NONE, NULL, &xmeta, NULL,
+                                    "<creator><name>%s</name><path>%s</path></creator>",
+                                    val, xpath) < 0)
+                goto done;
+        }
+    }
+    retval = 2;
+ done:
+    if (xpath)
+        free(xpath);
+    return retval;
 }
 
 /*! When new body is added, some needs type lookup is made and namespace checked
@@ -209,11 +274,11 @@ check_body_namespace(cxobj     *x0,
             goto done;
         /* Create xmlns attribute to x0 XXX same code ^*/
         if (prefix){
-            if (xml_add_attr(x, prefix, ns0, "xmlns", NULL) < 0)
+            if (xml_add_attr(x, prefix, ns0, "xmlns", NULL) == NULL)
                 goto done;
         }
         else
-            if (xml_add_attr(x, "xmlns", ns0, NULL, NULL) < 0)
+            if (xml_add_attr(x, "xmlns", ns0, NULL, NULL) == NULL)
                 goto done;
         xml_sort(x); /* Ensure attr is first / XXX xml_insert? */
     }
@@ -231,7 +296,7 @@ check_body_namespace(cxobj     *x0,
                 ;
             }
             else{ /* Add it according to the kludge,... */
-                if (xml_add_attr(x0, prefix, ns0, "xmlns", NULL) < 0)
+                if (xml_add_attr(x0, prefix, ns0, "xmlns", NULL) == NULL)
                     goto done;
             }
         }
@@ -513,7 +578,6 @@ text_modify(clicon_handle       h,
         goto done;
     if (ret == 0)
         goto fail;
-
     if (createstr != NULL &&
         (op == OP_REPLACE || op == OP_MERGE || op == OP_CREATE)){
         if (x0 == NULL || xml_defaults_nopresence(x0, 0)){ /* does not exist or is default */
@@ -532,11 +596,13 @@ text_modify(clicon_handle       h,
             clicon_data_set(h, "objectexisted", "true");
         }
     }
-    /* Special clixon-lib attribute for keeping track of creator of objects */
-    if ((ret = attr_ns_value(x1, "creator", CLIXON_LIB_NS, cbret, &creator)) < 0)
-        goto done;
-    if (ret == 0)
-        goto fail;
+    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
+        /* Special clixon-lib attribute for keeping track of creator of objects */
+        if ((ret = attr_ns_value(x1, "creator", CLIXON_LIB_NS, cbret, &creator)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+    }
     x1name = xml_name(x1);
 
     if (yang_keyword_get(y0) == Y_LEAF_LIST ||
@@ -798,12 +864,13 @@ text_modify(clicon_handle       h,
                 }
                 /* XXX: Note, if there is an error in adding the object later, the
                  * original object is not reverted.
-                 * XXX: Here creator attributes in x0 are destroyed
                  */
                 if (x0){
-                    /* Recursively copy creator attributes from existing tree */
-                    if (xml_creator_copy_all(x0, x1) < 0)
-                        goto done;
+                    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
+                        /* Recursively copy creator attributes from existing tree */
+                        if (xml_creator_copy_all(x0, x1) < 0)
+                            goto done;
+                    }
                     xml_purge(x0);
                     x0 = NULL;
                 }
@@ -854,8 +921,10 @@ text_modify(clicon_handle       h,
 #ifdef XML_PARENT_CANDIDATE
                 xml_parent_candidate_set(x0, x0p);
 #endif
-                if (xml_creator_copy_one(x1, x0) < 0)
-                    goto done;
+                if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
+                    if (xml_creator_copy_one(x1, x0) < 0)
+                        goto done;
+                }
                 changed++;
                 /* Get namespace from x1
                  * Check if namespace exists in x0 parent
@@ -1229,6 +1298,7 @@ xmldb_put(clicon_handle       h,
     int         firsttime = 0;
     int         pretty;
     cxobj      *xerr = NULL;
+    cxobj      *xmeta = NULL;
 
     if (cbret == NULL){
         clicon_err(OE_XML, EINVAL, "cbret is NULL");
@@ -1261,6 +1331,16 @@ xmldb_put(clicon_handle       h,
         clicon_err(OE_XML, 0, "Top-level symbol is %s, expected \"%s\"",
                    xml_name(x0), DATASTORE_TOP_SYMBOL);
         goto done;
+    }
+
+    /* XXX Ad-hoc: 
+     * In yang mounts yang specs may not be available
+     * in initial parsing, but may be at a later stage.
+     * But it should be possible to find a more precise triggering
+     */
+    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
+        if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec, NULL)) < 0)
+            goto done;
     }
     /* Here x0 looks like: <config>...</config> */
 #if 0 /* debug */
@@ -1301,7 +1381,6 @@ xmldb_put(clicon_handle       h,
     if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
         clicon_log(LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
 #endif
-
     /* Write back to datastore cache if first time */
     if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
         db_elmnt de0 = {0,};
@@ -1336,6 +1415,19 @@ xmldb_put(clicon_handle       h,
         goto done;
     }
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
+    /* Add creator attribute */
+    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
+        if ((xmeta = xml_new("creators", x0, CX_ELMNT)) == NULL)
+            goto done;
+        if (xmlns_set(xmeta, NULL, CLIXON_LIB_NS) < 0)
+            goto done;
+        if (xml_apply(x0, CX_ELMNT, xml_creator_metadata_write, xmeta) < 0)
+            goto done;
+        if (xml_child_nr_type(xmeta, CX_ELMNT) == 0){
+            xml_purge(xmeta);
+            xmeta = NULL;
+        }
+    }
     if (strcmp(format,"json")==0){
         if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
             goto done;
@@ -1346,6 +1438,10 @@ xmldb_put(clicon_handle       h,
      */
     if (xmodst && xml_purge(xmodst) < 0)
         goto done;
+    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR") && xmeta){
+        if (xml_purge(xmeta) < 0)
+            goto done;
+    }
     retval = 1;
  done:
     if (f != NULL)
