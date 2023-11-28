@@ -185,7 +185,7 @@ EOF
 
 # delete x, add y
 XML=$(cat <<EOF
-   <sender-config xmlns="urn:example:example" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0" nc:operation="delete">
+   <sender-config xmlns="urn:example:example" xmlns:nc="${BASENS}" nc:operation="delete">
       <name>x</name>
    </sender-config>
    <sender-config xmlns="urn:example:example">

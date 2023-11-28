@@ -120,7 +120,7 @@ new "check running defaults"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><a xmlns=\"urn:example:default\"><b><c>0</c></b></a></data></rpc-reply>"
 
 new "delete existing list element"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><config><a xmlns=\"urn:example:default\"><b nc:operation=\"delete\"><c>0</c></b></a></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"${BASENS}\"><edit-config><target><candidate/></target><config><a xmlns=\"urn:example:default\"><b nc:operation=\"delete\"><c>0</c></b></a></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS xmlns:nc=\"${BASENS}\"><ok/></rpc-reply>"
 
 new "netconf commit"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS ><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"

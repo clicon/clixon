@@ -299,7 +299,7 @@ new "rfc6243 2.3.3.  'explicit' <edit-config> and <copy-config> Behavior (part 1
 # (test: try to create mtu=3000 on interface eth3)
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>\
-<interfaces $EXAMPLENS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\
+<interfaces $EXAMPLENS xmlns:nc=\"${BASENS}\">\
 <interface><name>eth3</name><mtu nc:operation=\"create\">3000</mtu></interface>\
 </interfaces></config><default-operation>none</default-operation> </edit-config></rpc>" "" \
 "<rpc-reply $DEFAULTNS><rpc-error>\
@@ -332,7 +332,7 @@ new "rfc6243 2.3.3.  'explicit' <edit-config> and <copy-config> Behavior (part 2
 # (test: set mtu=3000 on interface eth1)
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>\
-<interfaces $EXAMPLENS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\
+<interfaces $EXAMPLENS xmlns:nc=\"${BASENS}\">\
 <interface><name>eth1</name><mtu nc:operation=\"create\">3000</mtu></interface>\
 </interfaces></config><default-operation>none</default-operation> </edit-config></rpc>" \
 "" \
@@ -361,7 +361,7 @@ new "rfc6243 2.3.3.  'explicit' <edit-config> and <copy-config> Behavior (part 3
 # (test: try to delete mtu on interface eth1)
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>\
-<interfaces $EXAMPLENS  xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\
+<interfaces $EXAMPLENS  xmlns:nc=\"${BASENS}\">\
 <interface><name>eth1</name><mtu nc:operation=\"delete\"></mtu></interface>\
 </interfaces></config><default-operation>none</default-operation></edit-config></rpc>" \
 "" \
@@ -390,7 +390,7 @@ new "rfc6243 2.3.3.  'explicit' <edit-config> and <copy-config> Behavior (part 4
 #(test: try to delete default mtu on interface eth1)
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>\
-<interfaces $EXAMPLENS  xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\
+<interfaces $EXAMPLENS  xmlns:nc=\"${BASENS}\">\
 <interface ><name>eth1</name><mtu nc:operation=\"delete\">1500</mtu></interface>\
 </interfaces></config><default-operation>none</default-operation></edit-config></rpc>" \
 "" \

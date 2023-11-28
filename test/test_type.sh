@@ -627,7 +627,7 @@ EOF
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
     new "netconf delete mandatory variable"
-    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><manc xmlns=\"urn:example:clixon\"><man nc:operation=\"delete\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">foo</man></manc></config><default-operation>none</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><manc xmlns=\"urn:example:clixon\"><man nc:operation=\"delete\" xmlns:nc=\"${BASENS}\">foo</man></manc></config><default-operation>none</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
     new "get mandatory"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:manc\" xmlns:ex=\"urn:example:clixon\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><manc xmlns=\"urn:example:clixon\"/></data></rpc-reply>"

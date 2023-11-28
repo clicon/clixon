@@ -189,7 +189,7 @@ expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS
 new "netconf delete $perfreq small config"
 { time -p for (( i=0; i<$perfreq; i++ )); do
     rnd=$(( ( RANDOM % $perfnr ) ))
-    rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><y nc:operation=\"delete\"><a>$rnd</a></y></x></config></edit-config></rpc>")
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\" xmlns:nc=\"${BASENS}\"><y nc:operation=\"delete\"><a>$rnd</a></y></x></config></edit-config></rpc>")
     echo "$rpc"
 done | $clixon_netconf -qe1f $cfg  > /dev/null; }  2>&1 | awk '/real/ {print $2}'
 

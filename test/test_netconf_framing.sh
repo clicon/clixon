@@ -87,7 +87,7 @@ expecteof_netconf "$clixon_netconf -qef $cfg -o CLICON_NETCONF_BASE_CAPABILITY=1
 rpc=$(cat <<EOF
 <?xml version="1.0" encoding="UTF-8"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>
 #85
-<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="42"><get-config><sou
+<rpc xmlns="${BASENS}" message-id="42"><get-config><sou
 #44
 rce><candidate/></source></get-config></rpc>
 ##

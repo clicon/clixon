@@ -190,8 +190,8 @@ pipe_grep_fn(clicon_handle h,
  */
 int
 pipe_wc_fn(clicon_handle h,
-             cvec         *cvv,
-             cvec         *argv)
+           cvec         *cvv,
+           cvec         *argv)
 {
     int     retval = -1;
     cg_var *cv;
