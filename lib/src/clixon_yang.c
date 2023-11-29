@@ -256,6 +256,7 @@ yang_argument_set(yang_stmt *ys,
 
 /*! Get yang statement CLIgen variable
  *
+ * See comment under ys_cv for how this is used
  * @param[in] ys  Yang statement node
  */
 cg_var*
@@ -283,6 +284,7 @@ yang_cv_set(yang_stmt *ys,
 
 /*! Get yang statement CLIgen variable vector
  *
+ * See comment under ys_cvec for how this is used
  * @param[in] ys  Yang statement node
  * @note  To add entries, use yang_cvec_add(), since this function may return NULL
  */
@@ -656,14 +658,14 @@ ys_new(enum rfc_6020 keyw)
     _stats_yang_nr++;
     return ys;
 }
-
-/*! Free a single yang statement, dont remove children
+    
+/*! Free a single yang statement, dont remove children, called after children freed
  * 
  * @param[in]  ys   Yang node to remove 
  * @param[in]  self Free own node including child vector
  * @retval     0    OK
  * @retval    -1    Error
- * @see ys_free
+ * @see ys_free  Also free children
  */
 int
 ys_free1(yang_stmt *ys,
@@ -680,10 +682,8 @@ ys_free1(yang_stmt *ys,
         /* Schema mount uses cvec in unknown to keep track of all yspecs
          * Freed here once.
          */
-        if (yang_keyword_get(ys) == Y_UNKNOWN &&
-            strcmp(yang_argument_get(ys), "yangmnt:mount-point") == 0){
-            xml_yang_mount_freeall(ys->ys_cvec);
-        }
+        if (yang_flag_get(ys, YANG_FLAG_MOUNTPOINT))
+            yang_mount_freeall(ys->ys_cvec);
         cvec_free(ys->ys_cvec);
         ys->ys_cvec = NULL;
     }

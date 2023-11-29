@@ -83,6 +83,10 @@
                                       *     leaf z;
                                       *  }
                                       */
+#define YANG_FLAG_MOUNTPOINT   0x100 /* Mark node as populated mount-point
+                                      * Set by yang_mount_set.
+                                      * Used by ys_free
+                                      */
 
 /*
  * Types

@@ -41,7 +41,7 @@
  * The calls into this code are:
  * 1. yang_schema_mount_point() Check that a yang nod eis mount-point
  * 2. xml_yang_mount_get(): from xml_bind_yang and xmldb_put 
- * 3. xml_yang_mount_freeall(): from ys_free1 when deallocatin YANG trees
+ * 3. xml_yang_mount_freeall(): from ys_free1 when deallocating YANG trees
  * 4. yang_schema_mount_statedata(): from get_common/get_statedata to retrieve system state
  * 5. yang_schema_yanglib_parse_mount(): from xml_bind_yang to parse and mount
  * 6. yang_schema_get_child(): from xmldb_put/text_modify when adding new XML nodes
@@ -164,7 +164,8 @@ yang_mount_get(yang_stmt  *y,
 
 /*! Set yangspec mount-point on yang node containing extension
  *
- * Mount-points are stored in unknown yang cvec
+ * Mount-points are stored in yang cvec in container/list node taht is a mount-point
+ * as defined in yang_schema_mount_point()
  * @param[in]  y      Yang container/list containing unknown node
  * @param[in]  xpath  Key for yspec on y, in canonical form
  * @param[in]  yspec  Yangspec for this mount-point (consumed)
@@ -204,6 +205,7 @@ yang_mount_set(yang_stmt *y,
     /* tag yspec with key/xpath */
     yang_cv_set(yspec, cv2);
     cv_void_set(cv, yspec);
+    yang_flag_set(y, YANG_FLAG_MOUNTPOINT); /* Cache value */
     retval = 0;
  done:
     return retval;
@@ -249,7 +251,7 @@ xml_yang_mount_get(clicon_handle   h,
     if (xml_nsctx_node(xt, &nsc0) < 0)
         goto done;
     yspec0 = clicon_dbspec_yang(h);
-    if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc0, &reason)) < 0)
+    if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc1, &reason)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -305,7 +307,7 @@ xml_yang_mount_set(clicon_handle h,
     if (xml_nsctx_node(x, &nsc0) < 0)
         goto done;
     yspec0 = clicon_dbspec_yang(h);
-    if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc0, &reason)) < 0)
+    if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc1, &reason)) < 0)
         goto done;
     if (ret == 0){
         clicon_err(OE_YANG, 0, "%s", cbuf_get(reason));
@@ -362,7 +364,7 @@ yang_mount_get_yspec_any(yang_stmt  *y,
  * @retval    0    OK
  */
 int
-xml_yang_mount_freeall(cvec *cvv)
+yang_mount_freeall(cvec *cvv)
 {
     cg_var    *cv = NULL;
     yang_stmt *ys;
