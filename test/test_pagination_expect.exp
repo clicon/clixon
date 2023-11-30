@@ -24,7 +24,7 @@ set line2 [lindex $argv 3]
 
 set timeout 15
 
-spawn $clixon_cli -f $cfg
+spawn {*}$clixon_cli -f $cfg
 
 send "show pagination xpath $xpath cli\n"
 
