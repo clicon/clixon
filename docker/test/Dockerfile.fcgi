@@ -89,8 +89,11 @@ RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/buil
 RUN make
 RUN make DESTDIR=/clixon/build install
 
-# Install utils (for tests)
-WORKDIR /clixon/clixon/util
+# Configure, build and install clixon utilities (for tests)
+WORKDIR /clixon
+RUN git clone https://github.com/clicon/clixon-util.git
+WORKDIR /clixon/clixon-util
+RUN ./configure --prefix=/usr/local --with-cligen=/clixon/build/usr/local --with-clixon=/clixon/build/usr/local
 RUN make
 RUN make DESTDIR=/clixon/build install
 

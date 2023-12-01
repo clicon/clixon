@@ -171,9 +171,6 @@
 /* Default restconf network namespace */
 #undef RESTCONF_NETNS_DEFAULT
 
-/* SSHD binary */
-#undef SSHD_BIN
-
 /* SSH binary */
 #undef SSH_BIN
 

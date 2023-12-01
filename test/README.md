@@ -55,9 +55,11 @@ There are also [manual cicd scripts here](cicd/README.md)
 
 ## Getting started
 
-You need to build and install the clixon utility programs before running the tests as some of the tests rely on them:
+You need to build and install the clixon utility programs from a separate repo
+before running the tests as some of the tests rely on them:
 ```
-  cd util
+  git clone https://github.com/clicon/clixon-util.git
+  ./configure
   make
   sudo make install
 ```

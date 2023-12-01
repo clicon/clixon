@@ -155,10 +155,6 @@ fi
 AC_PATH_PROG(SSH_BIN, ssh)
 AC_DEFINE_UNQUOTED(SSH_BIN, "${SSH_BIN}", [SSH binary])
 
-# SSHD binary path for test
-AC_PATH_PROG(SSHD_BIN, sshd)
-AC_DEFINE_UNQUOTED(SSHD_BIN, "${SSHD_BIN}", [SSHD binary])
-
 # For cli pipe output functions
 AC_PROG_GREP
 AC_DEFINE_UNQUOTED(GREP_BIN, "$GREP", [Grep binary])
@@ -482,7 +478,6 @@ AC_CONFIG_FILES([Makefile
     	  docker/clixon-dev/Makefile
     	  docker/example/Makefile	  
   	  docker/test/Makefile
-  	  util/Makefile 
 	  yang/Makefile
   	  yang/clixon/Makefile
     	  yang/mandatory/Makefile
