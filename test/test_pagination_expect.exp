@@ -22,6 +22,8 @@ set xpath [lindex $argv 1]
 set line1 [lindex $argv 2]
 set line2 [lindex $argv 3]
 
+set prompt "$::env(USER)@[info hostname] />"
+
 set timeout 15
 
 spawn {*}$clixon_cli -f $cfg
@@ -59,6 +61,11 @@ send "q"
 
 expect {
   -ex  "--More--" { send_user "\nMore not expected.\n"; exit 1}
+}
+
+expect {
+  timeout { send_user "\nFinal prompt not received.\n"; exit 1}
+  -ex  "$prompt " { send_user "\nFinal prompt OK.\n"}
 }
 
 send "\d"
