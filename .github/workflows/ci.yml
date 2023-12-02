@@ -26,12 +26,8 @@ jobs:
       run: sudo make install install-include
     - name: make example
       run: (cd example; make)   
-    - name: make utils
-      run: (cd util; make)
     - name: install example
       run: (cd example; sudo make install)
-    - name: install utils
-      run: (cd util; sudo make install)
   ubuntu-build-restconf-fcgi:
     runs-on: ubuntu-latest
     steps:
@@ -51,12 +47,8 @@ jobs:
       run: sudo make install install-include
     - name: make example
       run: (cd example; make)   
-    - name: make utils
-      run: (cd util; make)
     - name: install example
       run: (cd example; sudo make install)
-    - name: install utils
-      run: (cd util; sudo make install)      
   docker-alpine-tests:
     runs-on: ubuntu-latest
     defaults:

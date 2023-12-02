@@ -6573,7 +6573,6 @@ fi
 
 done
 
-
    # MIB_GENERATED_YANG_DIR is where clixon assumes generated YANGs from MIBs are stored
    # This is NOT installed by Clixon and is not needed for core system
    # However, it is required by SNMP tests.

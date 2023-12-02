@@ -342,7 +342,6 @@ if test "$enable_netsnmp" = "yes"; then
    AC_CHECK_LIB(netsnmpagent, init_agent)	
    AC_CHECK_HEADERS(net-snmp/net-snmp-config.h,[], AC_MSG_ERROR([snmp is missing]))
 
-
    # MIB_GENERATED_YANG_DIR is where clixon assumes generated YANGs from MIBs are stored
    # This is NOT installed by Clixon and is not needed for core system
    # However, it is required by SNMP tests.
