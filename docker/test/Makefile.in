@@ -91,6 +91,10 @@ test: docker
 	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
 	sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true ./sum.sh'
 
+mem: docker
+	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
+	sudo docker exec -t clixon-test bash -c 'sudo apk add --update valgrind; cd /usr/local/bin/test && ./mem.sh'
+
 # Special-purpose memory test for snmp
 memsnmp: docker
 	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it

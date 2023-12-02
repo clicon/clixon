@@ -273,7 +273,7 @@ identityref_add_ns(cxobj *x,
     return retval;
 }
 
-/*! Given a top-level yspec and mountpoint xpath compute a set of  
+/*! Given a top-level yspec and mountpoint xpath compute api-path
  *
  * Manipulate top-level and a mountpoint:
  * YSPEC:    yspec0        yspec1
@@ -290,10 +290,10 @@ identityref_add_ns(cxobj *x,
  * @retval    -1    Error
  */
 int
-mtpoint_paths(yang_stmt  *yspec0,
-              char       *mtpoint,
-              char       *api_path_fmt1,
-              char      **api_path_fmt01)
+mtpoint_paths(yang_stmt *yspec0,
+              char      *mtpoint,
+              char      *api_path_fmt1,
+              char     **api_path_fmt01)
 {
     int        retval = -1;
     yang_stmt *yu = NULL;

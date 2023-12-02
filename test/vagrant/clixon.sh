@@ -72,10 +72,19 @@ $MAKE clean
 $MAKE -j10
 sudo $MAKE install
 (cd example; $MAKE)
-(cd util; $MAKE)
 (cd example; sudo $MAKE install)
-(cd util; sudo $MAKE install)
 sudo ldconfig
+
+
+# Clixon-util
+test -d src/clixon-util || (cd src;git clone https://github.com/clicon/clixon-util.git)
+cd src/clixon
+git pull origin master
+./configure --with-cligen=/ --with-clixon=/ 
+$MAKE clean
+$MAKE -j10
+sudo $MAKE install
+
 cd test
 echo "#!/usr/bin/env bash" > ./site.sh
 echo "IPv6=true" >> ./site.sh

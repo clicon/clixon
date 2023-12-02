@@ -184,7 +184,7 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
         err
     fi
-    new "start backend -s init -f $cfg  -- -m clixon-mount0 -M urn:example:mount0"
+    new "start backend -s init -f $cfg -- -m clixon-mount0 -M urn:example:mount0"
     start_backend -s init -f $cfg -- -m clixon-mount0 -M urn:example:mount0
 fi
 
