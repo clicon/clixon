@@ -55,6 +55,16 @@ module example {
 }
 EOF
 
+if [ $BE -ne 0 ]; then
+    # kill old backend (if any)
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+fi
+
+
 # Extra cmdline opts, first is overwritten, second appended
 CMDOPTS='-o CLICON_MODULE_SET=42 -o CLICON_FEATURE="cmdline"'
 

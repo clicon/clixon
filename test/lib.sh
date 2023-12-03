@@ -201,11 +201,15 @@ BUSER=clicon
 : ${_ALREADY_HERE:=0}
 
 if [ -n "$CLICON_GROUP" ] && [ $_ALREADY_HERE -eq 0 ]; then
-    clixon_cli="sudo -g ${CLICON_GROUP} $clixon_cli"
-    clixon_netconf="sudo -g ${CLICON_GROUP} $clixon_netconf"
-    clixon_restconf="sudo -g ${CLICON_GROUP} $clixon_restconf"
-    clixon_snmp="sudo -g ${CLICON_GROUP} --preserve-env=MIBDIRS $clixon_snmp"
-    clixon_util_socket="sudo -g ${CLICON_GROUP} $clixon_util_socket"
+    # Extra test for some archs, ie ubuntu 18 that have problems with this
+    sudo -g ${CLICON_GROUP} $clixon_netconf 2> /dev/null
+    if [ $? -eq 0 ]; then
+        clixon_cli="sudo -g ${CLICON_GROUP} $clixon_cli"
+        clixon_netconf="sudo -g ${CLICON_GROUP} $clixon_netconf"
+        clixon_restconf="sudo -g ${CLICON_GROUP} $clixon_restconf"
+        clixon_snmp="sudo -g ${CLICON_GROUP} --preserve-env=MIBDIRS $clixon_snmp"
+        clixon_util_socket="sudo -g ${CLICON_GROUP} $clixon_util_socket"
+    fi
 fi
 _ALREADY_HERE=1
 

@@ -75,17 +75,18 @@ sudo $MAKE install
 (cd example; sudo $MAKE install)
 sudo ldconfig
 
-
 # Clixon-util
+cd
 test -d src/clixon-util || (cd src;git clone https://github.com/clicon/clixon-util.git)
-cd src/clixon
-git pull origin master
+cd src/clixon-util
+git pull origin main
 ./configure --with-cligen=/ --with-clixon=/ 
 $MAKE clean
 $MAKE -j10
 sudo $MAKE install
 
-cd test
+cd
+cd src/clixon/test
 echo "#!/usr/bin/env bash" > ./site.sh
 echo "IPv6=true" >> ./site.sh
 if [ $release = "freebsd" -o $release = "dragonfly" ]; then
