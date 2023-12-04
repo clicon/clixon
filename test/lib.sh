@@ -201,7 +201,8 @@ BUSER=clicon
 : ${_ALREADY_HERE:=0}
 
 if [ -n "$CLICON_GROUP" ] && [ $_ALREADY_HERE -eq 0 ]; then
-    # Extra test for some archs, ie ubuntu 18 that have problems with this
+    # Extra test for some archs, eg ubuntu 18 that have problems with:
+    # Sorry, user <user> is not allowed to execute as <user>:clicon on <arch>
     sudo -g ${CLICON_GROUP} $clixon_netconf 2> /dev/null
     if [ $? -eq 0 ]; then
         clixon_cli="sudo -g ${CLICON_GROUP} $clixon_cli"

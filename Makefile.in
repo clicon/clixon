@@ -59,7 +59,7 @@ SUBDIRS2 = apps etc yang # without include lib for circular dependency
 SUBDIRS= $(SUBDIRS1) $(SUBDIRS2)
 
 .PHONY:	doc example install-example clean-example all clean depend $(SUBDIRS) \
-	install loc TAGS .config.status docker test checkroot mrproper \
+	install loc TAGS config.status docker test checkroot mrproper \
 	checkinstall warnroot
 
 all:	$(SUBDIRS2) warnroot

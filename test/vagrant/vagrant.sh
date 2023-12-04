@@ -271,6 +271,7 @@ case ${with_restconf} in
         . ./nginx.sh $dir $idfile $port $wwwuser
         ;;
     native)
+        $sshcmd sudo pkill nginx | true
         ;;
 esac
 
