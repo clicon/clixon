@@ -1,15 +1,16 @@
 # Clixon Changelog
 
-* [6.5.0](#650) Expected: December 2023
+* [6.5.0](#650) 6 December 2023
 * [6.4.0](#640) 30 September 2023
 * [6.3.0](#630) 29 July 2023
 * [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
-* [5.9.0](#590) 24 September 2022
 
 ## 6.5.0
-Expected: December 2023
+6 December 2023
+
+Clixon 6.5 includes bugfixes, moved out utility functions and some API changes.
 
 ### API changes on existing protocol/config features
 Users may have to change how they access the system
