@@ -62,7 +62,7 @@ cd src/clixon
 git pull origin master
 
 if [ $release = "freebsd" -o $release = "dragonfly" ]; then
-    LDFLAGS="-L/usr/local/lib" CPPFLAGS="-I/usr/local/include" ./configure
+    LDFLAGS="-L/usr/local/lib" CPPFLAGS="-I/usr/local/include" ./configure --with-restconf=${with_restconf}
 else
    # Problems with su not having "sbin" in path on centos when when we run tests later
     LDFLAGS="-L/usr/local/lib" CPPFLAGS="-I/usr/local/include" ./configure --sbindir=/usr/sbin --libdir=/usr/lib --with-restconf=${with_restconf}
