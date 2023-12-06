@@ -150,8 +150,8 @@ RUN apk add --update nginx
 # Test-specific (for test scripts)
 RUN apk add --update sudo curl procps grep make bash expect openssh
 
-# Expose nginx port for restconf
-EXPOSE 80
+# Dont need to expose restconf ports for internal tests
+#EXPOSE 80/tcp
 
 # Create clicon user and group
 RUN adduser -D -H clicon
