@@ -345,6 +345,50 @@ yang_cvec_add(yang_stmt    *ys,
     return cv;
 }
 
+/*! Get yang object reference count
+ *
+ * @param[in]  ys    Yang statement
+ * @retval     ref   Reference coun t
+ */
+int 
+yang_ref_get(yang_stmt *ys)
+{
+    return ys->ys_ref;
+}
+
+/*! Increment yang object reference count with +1
+ *
+ * @param[in]  ys    Yang statement
+ * @retval     0
+ */
+int 
+yang_ref_inc(yang_stmt *ys)
+{
+    ys->ys_ref++;
+    return 0;
+}
+
+/*! Decrement yang object reference count with -1
+ *
+ * @param[in]  ys    Yang statement
+ * @retval     0     Ok
+ * @retval    -1     Error
+ */
+int 
+yang_ref_dec(yang_stmt *ys)
+{
+    int retval = -1;
+    
+    if (ys->ys_ref <= 0){
+        clicon_err(OE_YANG, 0, "reference count is %d cannot decrement", ys->ys_ref);
+        goto done;
+    }
+    ys->ys_ref--;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Get yang stmt flags, used for internal algorithms
  *
  * @param[in]  ys     Yang statement
@@ -813,12 +857,19 @@ ys_freechildren(yang_stmt *ys)
  * @param[in]  ys   Yang node to remove and all its children recursively
  * @note does not remove yang node from tree
  * @see ys_prune  Remove from parent
+ * @note special case of keeping track of reference counts if yang-spec
  */
 int
 ys_free(yang_stmt *ys)
 {
-    ys_freechildren(ys);
-    ys_free1(ys, 1);
+    if (yang_keyword_get(ys) == Y_SPEC &&
+        yang_ref_get(ys) > 0){
+        yang_ref_dec(ys);
+    }
+    else {
+        ys_freechildren(ys);
+        ys_free1(ys, 1);
+    }
     return 0;
 }
 

@@ -11,6 +11,10 @@
 ## 6.6.0
 Expected: February 2024
 
+### Minor features
+
+* Added reference count for shared yang-specs (schema mounts)
+
 ## 6.5.0
 6 December 2023
 
