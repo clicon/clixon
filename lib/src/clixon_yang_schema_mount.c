@@ -143,7 +143,6 @@ yang_schema_mount_point(yang_stmt *y)
  * @param[in]  xpath Key for yspec on y
  * @param[out] yspec YANG stmt spec
  * @retval     0     OK
- * @retval    -1     Error
  */
 int
 yang_mount_get(yang_stmt  *y,
@@ -159,6 +158,8 @@ yang_mount_get(yang_stmt  *y,
         (cv = cvec_find(cvv, xpath)) != NULL &&
         yspec)
         *yspec = cv_void_get(cv);
+    else
+        *yspec = NULL;
     return 0;
 }
 
@@ -255,7 +256,7 @@ xml_yang_mount_get(clicon_handle   h,
         goto done;
     if (ret == 0)
         goto fail;
-    if (yang_mount_get(y, xpath1, yspec) < 0)
+    if (yspec && yang_mount_get(y, xpath1, yspec) < 0)
         goto done;
     retval = 1;
  done:

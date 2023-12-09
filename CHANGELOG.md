@@ -15,6 +15,10 @@ Expected: February 2024
 
 * Added reference count for shared yang-specs (schema mounts)
 
+### Corrected Bugs
+
+* Fixed: [Using the characters '<' and '>' might cause an invalid diff](https://github.com/clicon/clixon-controller/issues/73)
+
 ## 6.5.0
 6 December 2023
 

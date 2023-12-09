@@ -989,6 +989,8 @@ xml_diff2cbuf(cbuf  *cb,
     yang_stmt *yc1;
     char      *b0;
     char      *b1;
+    char      *e0 = NULL;
+    char      *e1 = NULL;
     int        eq;
     int        nr=0;
     int        level1;
@@ -1079,10 +1081,31 @@ xml_diff2cbuf(cbuf  *cb,
                         xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                         nr++;
                     }
+                    /* Encode data to XML */
+                    if (b0){
+                        if (xml_chardata_encode(&e0, "%s", b0) < 0)
+                            goto done;
+                    }
+                    else
+                        e0 = NULL;
+                    if (b1){
+                        if (xml_chardata_encode(&e1, "%s", b1) < 0)
+                            goto done;
+                    }
+                    else
+                        e1 = NULL;
                     cprintf(cb, "-%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
-                            xml_name(x0c), b0, xml_name(x0c));
+                            xml_name(x0c), e0, xml_name(x0c));
                     cprintf(cb, "+%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
-                            xml_name(x1c), b1, xml_name(x1c));
+                            xml_name(x1c), e1, xml_name(x1c));
+                    if (e0){
+                        free(e0);
+                        e0 = NULL;
+                    }
+                    if (e1){
+                        free(e1);
+                        e1 = NULL;
+                    }
                 }
             }
             else if (xml_diff2cbuf(cb, x0c, x1c, level+1, 0) < 0)
@@ -1097,6 +1120,10 @@ xml_diff2cbuf(cbuf  *cb,
         cprintf(cb, "%*s</%s>\n", level*PRETTYPRINT_INDENT, "", xml_name(x0));
     retval = 0;
  done:
+    if (e0)
+        free(e0);
+    if (e1)
+        free(e1);
     return retval;
 }
 
