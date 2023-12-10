@@ -948,13 +948,11 @@ xmldb_get_cache(clicon_handle     h,
     } /* x0t == NULL */
     else
         x0t = de->de_xml;
-
-    if (yb == YB_MODULE && !xml_spec(x0t)){
+    if (yb == YB_MODULE && !xml_spec(x0t)){ 
+        /* Seems unneccesary to always do this, but breaks test_plugin_reset.sh if removed */
         if ((ret = xml_bind_yang(h, x0t, YB_MODULE, yspec, xerr)) < 0)
             goto done;
-        if (ret == 0)
-            ; /* XXX */
-        else {
+        if (ret == 1) {
             /* Add default global values (to make xpath below include defaults) */
             if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
                 goto done;

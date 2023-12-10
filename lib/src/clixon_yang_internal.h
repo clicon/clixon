@@ -113,4 +113,3 @@ struct yang_stmt{
 };
 
 #endif  /* _CLIXON_YANG_INTERNAL_H_ */
-

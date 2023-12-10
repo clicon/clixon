@@ -1108,12 +1108,14 @@ yn_each(yang_stmt *yparent,
 
 /*! Find first child yang_stmt with matching keyword and argument
  *
+ * Find child given keyword and argument.
+ * Special case: look in imported INPUTs as well (for (sub)modules.
+ * This could need an optimized lookup, especially the INPUT case.
+ * Most common use for the special case, ie in openconfig, is grouping and identity
  * @param[in]  yn         Yang node, current context node.
  * @param[in]  keyword    if 0 match any keyword. Actual type: enum rfc_6020
  * @param[in]  argument   String compare w argument. if NULL, match any.
  * @retval     ys         Yang statement, if any
- * This however means that if you actually want to match only a yang-stmt with 
- * argument==NULL you cannot, but I have not seen any such examples.
  * @see yang_find_datanode
  * @see yang_match  returns number of matches
  */
@@ -1125,10 +1127,11 @@ yang_find(yang_stmt  *yn,
     yang_stmt *ys = NULL;
     int        i;
     yang_stmt *yret = NULL;
+    yang_stmt *yretsub = NULL;
     char      *name;
     yang_stmt *yspec;
     yang_stmt *ym;
-
+    
     for (i=0; i<yn->ys_len; i++){
         ys = yn->ys_stmt[i];
         if (keyword == 0 || ys->ys_keyword == keyword){
@@ -1138,24 +1141,22 @@ yang_find(yang_stmt  *yn,
                 break;
             }
         }
-    }
-    /* Special case: if not match and yang node is module or submodule, extend
-     * search to include submodules */
-    if (yret == NULL &&
-        (yang_keyword_get(yn) == Y_MODULE ||
-         yang_keyword_get(yn) == Y_SUBMODULE)){
-        yspec = ys_spec(yn);
-        for (i=0; i<yn->ys_len; i++){
-            ys = yn->ys_stmt[i];
-            if (yang_keyword_get(ys) == Y_INCLUDE){
-                name = yang_argument_get(ys);
-                if ((ym = yang_find_module_by_name(yspec, name)) != NULL &&
-                    (yret = yang_find(ym, keyword, argument)) != NULL)
-                    break;
+        /* Special case: if not match and yang node is module or submodule, extend
+         * search to include submodules 
+         */
+        if (yretsub == NULL &&
+            yang_keyword_get(ys) == Y_INCLUDE &&
+            keyword != Y_NAMESPACE &&
+            (yang_keyword_get(yn) == Y_MODULE ||
+             yang_keyword_get(yn) == Y_SUBMODULE)){
+            yspec = ys_spec(yn);
+            name = yang_argument_get(ys);
+            if ((ym = yang_find_module_by_name(yspec, name)) != NULL) {
+                yretsub = yang_find(ym, keyword, argument);
             }
         }
     }
-    return yret;
+    return yret?yret:yretsub;
 }
 
 /*! Count number of children that matches keyword and argument
@@ -3863,7 +3864,6 @@ yang_anydata_add(yang_stmt *yp,
  *     }
  * @endcode
  * @see ys_populate_unknown  Called when parsing YANG
- * XXX consider optimizing, the call to yang_find_prefix_by_namespace may be slow
  */
 int
 yang_extension_value(yang_stmt *ys,
@@ -3896,7 +3896,6 @@ yang_extension_value(yang_stmt *ys,
             continue;
         if ((ymod = ys_module(yext)) == NULL)
             continue;
-        /* XXX this is slow */
         if ((ret = yang_find_prefix_by_namespace(ymod, ns, &prefix)) < 0)
             goto done;
         if (ret == 0) /* not found (this may happen in augment and maybe should be treated otherwise) */
