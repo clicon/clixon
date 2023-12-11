@@ -393,10 +393,12 @@ clixon_plugin_statedata_all(clicon_handle   h,
         /* XXX: only for state data and according to with-defaults setting */
         if (xml_defaults_nopresence(x, 2) < 0)
             goto done;
-        if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
+        if (xpath_first(x, nsc, "%s", xpath) != NULL){
+            if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
         if (x){
             xml_free(x);
             x = NULL;

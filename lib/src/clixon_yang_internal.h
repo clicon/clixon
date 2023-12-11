@@ -98,7 +98,7 @@ struct yang_stmt{
                                         Y_TYPE & identity: store all derived 
                                            types as <module>:<id> list
                                         Y_UNIQUE: vector of descendant schema node ids
-                                        Y_EXTENSION: vector of instantiated UNKNOWNSo
+                                        Y_EXTENSION: vector of instantiated UNKNOWNS
                                         Y_UNKNOWN: app-dep: yang-mount-points
                                      */
     int                ys_ref;       /* Reference count for free, only YS_SPEC */

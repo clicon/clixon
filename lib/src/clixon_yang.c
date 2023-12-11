@@ -3017,6 +3017,7 @@ ys_populate2(yang_stmt    *ys,
 {
     int           retval = -1;
     clicon_handle h = (clicon_handle)arg;
+    int           ret;
 
     switch(ys->ys_keyword){
     case Y_LEAF:
@@ -3033,6 +3034,11 @@ ys_populate2(yang_stmt    *ys,
     default:
         break;
     }
+    /* RFC 8525 Yang schema mount  flag for optimization */
+    if ((ret = yang_schema_mount_point0(ys)) < 0)
+        goto done;
+    if (ret == 1)
+        yang_flag_set(ys, YANG_FLAG_MTPOINT_POTENTIAL);
     retval = 0;
   done:
     return retval;

@@ -83,7 +83,14 @@
                                       *     leaf z;
                                       *  }
                                       */
-#define YANG_FLAG_MOUNTPOINT 0x100  /* Mark node as ACTUAL populated mount-point
+#define YANG_FLAG_MTPOINT_POTENTIAL 0x100 /* Mark node as POTENTIAL mount-point, ie it fulfils:
+                                      * - is CONTAINER or LIST, AND
+                                      * - has YANG schema mount "mount-point" as child element, AND
+                                      * - the extension label matches y (see note below)
+                                      * Set by ys_populate2
+                                      * Read by yang_schema_mount_point
+                                      */
+#define YANG_FLAG_MOUNTPOINT   0x200 /* Mark node as ACTUAL populated mount-point
                                       * Set by yang_mount_set 
                                       * Read by ys_free1
                                       */

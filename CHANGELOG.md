@@ -13,7 +13,12 @@ Expected: February 2024
 
 ### Minor features
 
+* Optimization:
+  * Added mountpoint cache as yang flag `YANG_FLAG_MTPOINT_POTENTIAL`
+  * Optimized `yang_find`, especially namespace lookup
+  * Filtered state data if not match xpath
 * Added reference count for shared yang-specs (schema mounts)
+  * Allowed for sharing yspec+modules between several mountpoints
 
 ### Corrected Bugs
 

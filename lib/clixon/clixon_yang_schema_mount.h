@@ -54,6 +54,7 @@
 /*
  * Prototypes
  */
+int yang_schema_mount_point0(yang_stmt *y);
 int yang_schema_mount_point(yang_stmt *y);
 int yang_mount_get(yang_stmt *yu, char *xpath, yang_stmt **yspec);
 int yang_mount_set(yang_stmt *yu, char *xpath, yang_stmt *yspec);

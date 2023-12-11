@@ -102,7 +102,7 @@
  * @note That this may be a restriction on the usage of "label". The RFC is somewhat unclear.
  */
 int
-yang_schema_mount_point(yang_stmt *y)
+yang_schema_mount_point0(yang_stmt *y)
 {
     int           retval = -1;
     enum rfc_6020 keyw;
@@ -135,6 +135,14 @@ yang_schema_mount_point(yang_stmt *y)
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Cached variant of yang_schema_mount_point
+ */
+int
+yang_schema_mount_point(yang_stmt *y)
+{
+    return yang_flag_get(y, YANG_FLAG_MTPOINT_POTENTIAL) ? 1 : 0;
 }
 
 /*! Get yangspec mount-point
@@ -431,6 +439,7 @@ find_schema_mounts(cxobj *x,
  *   "ietf-yang-schema-mount" modules in the mounted schema and specifying
  *   the schemas in exactly the same way as the top-level schema.
  * Alt: see snmp_yang2xml to get instances instead of brute force traverse of whole tree
+ * @note: Mountpoints must exist in xret on entry
  */
 static int
 yang_schema_mount_statedata_yanglib(clicon_handle h,
@@ -494,7 +503,7 @@ yang_schema_mount_statedata_yanglib(clicon_handle h,
  *
  * @param[in]     h       Clixon handle
  * @param[in]     yspec   Yang spec
- * @param[in]     xpath   XML Xpath
+ * @param[in]     xpath   XML XPath
  * @param[in]     nsc     XML Namespace context for xpath
  * @param[in,out] xret    Existing XML tree, merge x into this
  * @param[out]    xerr    XML error tree, if retval = 0
@@ -556,10 +565,12 @@ yang_schema_mount_statedata(clicon_handle h,
             goto done;
         if (ret == 0)
             goto fail;
-        if ((ret = netconf_trymerge(x1, yspec, xret)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
+        if (xpath_first(x1, nsc, "%s", xpath) != NULL){
+            if ((ret = netconf_trymerge(x1, yspec, xret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
     }
     /* Find mount-points and return yang-library state */
     if (yang_schema_mount_statedata_yanglib(h, xpath, nsc, xret, xerr) < 0)
