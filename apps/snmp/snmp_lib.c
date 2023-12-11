@@ -100,6 +100,7 @@ static const map_str2int snmp_access_map[] = {
  */
 static const map_str2int snmp_type_map[] = {
     {"int32",        ASN_INTEGER},   // 2
+    {"bits",         ASN_BIT_STR},   // 3
     {"string",       ASN_OCTET_STR}, // 4
     {"enumeration",  ASN_INTEGER},   // 2 special case
     {"uint32",       ASN_GAUGE},     // 0x42 / 66
@@ -117,6 +118,7 @@ static const map_str2int snmp_type_map[] = {
  */
 static const map_str2int snmp_orig_map[] = {
     {"counter32",             ASN_COUNTER},   // 0x41 / 65
+    {"bits",                  ASN_BIT_STR},   // 3
     {"object-identifier-128", ASN_OBJECT_ID}, // 6
     {"AutonomousType",        ASN_OBJECT_ID}, // 6
     {"DateAndTime",           ASN_OCTET_STR}, // 4
@@ -702,6 +704,9 @@ type_snmp2xml(yang_stmt                  *ys,
             cv_int32_set(cv, *requestvb->val.integer);
         break;
     case ASN_GAUGE:     // 0x42
+        cv_uint32_set(cv, *requestvb->val.integer);
+        break;
+    case ASN_BIT_STR:     // 3
         cv_uint32_set(cv, *requestvb->val.integer);
         break;
     case ASN_IPADDRESS:{
