@@ -1778,20 +1778,20 @@ netconf_err2cb(clicon_handle h,
     if (clixon_plugin_netconf_errmsg_all(h, xerr, cberr) < 0)
         goto done;
     if (cbuf_len(cberr) == len){ /* Same as on-entry, use default */
-        if ((x=xpath_first(xerr, NULL, "//error-type"))!=NULL)
+        if ((x = xml_find_type(xerr, NULL, "error-type", CX_ELMNT)) != NULL)
             cprintf(cberr, "%s ", xml_body(x));
-        if ((x=xpath_first(xerr, NULL, "//error-tag"))!=NULL)
+        if ((x = xml_find_type(xerr, NULL, "error-tag", CX_ELMNT)) != NULL)
             cprintf(cberr, "%s ", xml_body(x));
-        if ((x=xpath_first(xerr, NULL, "//error-message"))!=NULL)
+        if ((x = xml_find_type(xerr, NULL, "error-message", CX_ELMNT)) != NULL)
             cprintf(cberr, "%s ", xml_body(x));
-        if ((x=xpath_first(xerr, NULL, "//error-info")) != NULL &&
+        if ((x = xml_find_type(xerr, NULL, "error-info", CX_ELMNT)) != NULL &&
             xml_child_nr(x) > 0){
             if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
                 goto done;
         }
-        if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
+        if ((x = xml_find_type(xerr, NULL, "error-app-tag", CX_ELMNT)) != NULL)
             cprintf(cberr, ": %s ", xml_body(x));
-        if ((x=xpath_first(xerr, NULL, "//error-path"))!=NULL)
+        if ((x = xml_find_type(xerr, NULL, "error-path", CX_ELMNT)) != NULL)
             cprintf(cberr, ": %s ", xml_body(x));
     }
     retval = 0;

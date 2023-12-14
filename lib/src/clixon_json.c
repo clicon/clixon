@@ -368,8 +368,8 @@ json2xml_decode_identityref(cxobj     *x,
         }
         else{
             if (xerr && netconf_unknown_namespace_xml(xerr, "application",
-                                              prefix,
-                                              "No module corresponding to prefix") < 0)
+                                                      prefix,
+                                                      "No module corresponding to prefix") < 0)
                 goto done;
             goto fail;
         }
@@ -483,10 +483,10 @@ xml2json_encode_identityref(cxobj     *xb,
     //    clixon_debug(CLIXON_DBG_DEFAULT, "%s body:%s prefix:%s namespace:%s", __FUNCTION__, body, prefix, namespace);
 #ifdef IDENTITYREF_KLUDGE
     if (namespace == NULL){
-    /* If we dont find namespace here, we assume it is because of a missing
-     * xmlns that should be there, as a kludge we search for its (own)
-     * prefix in mymodule.
-    */
+        /* If we dont find namespace here, we assume it is because of a missing
+         * xmlns that should be there, as a kludge we search for its (own)
+         * prefix in mymodule.
+         */
         if ((ymod = yang_find_module_by_prefix_yspec(yspec, prefix)) != NULL)
             cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
         else
@@ -495,15 +495,15 @@ xml2json_encode_identityref(cxobj     *xb,
     else
 #endif
         {
-    if ((ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
-        if (ymod == my_ymod)
-            cprintf(cb, "%s", id);
-        else{
-            cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-        }
-    }
-    else
-        cprintf(cb, "%s", id);
+            if ((ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
+                if (ymod == my_ymod)
+                    cprintf(cb, "%s", id);
+                else{
+                    cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
+                }
+            }
+            else
+                cprintf(cb, "%s", id);
         }
     retval = 0;
  done:
@@ -576,16 +576,16 @@ xml2json_encode_leafs(cxobj     *xb,
         case CGV_INT64:
         case CGV_UINT64:
         case CGV_DEC64:
-                // [RFC7951] JSON Encoding of YANG Data
-                // 6.1 Numeric Types - A value of the "int64", "uint64", or "decimal64" type is represented as a JSON string
-                if (yang_keyword_get(yp) == Y_LEAF_LIST && xml_child_nr_type(xml_parent(xp), CX_ELMNT) == 1) {
-                        cprintf(cb, "[%s]", body);
-                }
-                else {
-                        cprintf(cb, "%s", body);
-                }
-                quote = 1;
-                break;
+            // [RFC7951] JSON Encoding of YANG Data
+            // 6.1 Numeric Types - A value of the "int64", "uint64", or "decimal64" type is represented as a JSON string
+            if (yang_keyword_get(yp) == Y_LEAF_LIST && xml_child_nr_type(xml_parent(xp), CX_ELMNT) == 1) {
+                cprintf(cb, "[%s]", body);
+            }
+            else {
+                cprintf(cb, "%s", body);
+            }
+            quote = 1;
+            break;
         case CGV_INT8:
         case CGV_INT16:
         case CGV_INT32:
@@ -970,8 +970,8 @@ xml2json1_cbuf(cbuf                   *cb,
             continue;
         }
         xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL,
-                                xc,
-                                xml_child_i(x, i+1));
+                                  xc,
+                                  xml_child_i(x, i+1));
         if (xml2json1_cbuf(cb,
                            xc,
                            xc_arraytype,
@@ -1216,11 +1216,11 @@ xml2json_cbuf_vec(cbuf      *cb,
             cvec_free(nsc);
         }
         else {
-                if ((xc = xml_dup(xc0)) == NULL)
-                    goto done;
-                xml_addsub(xp, xc);
-                nscache_replace(xc, nsc);
-            }
+            if ((xc = xml_dup(xc0)) == NULL)
+                goto done;
+            xml_addsub(xp, xc);
+            nscache_replace(xc, nsc);
+        }
         nsc = NULL; /* nsc consumed */
     }
     if (0){
@@ -1238,8 +1238,8 @@ xml2json_cbuf_vec(cbuf      *cb,
     if (0){
         level--;
         cprintf(cb, "%s]%s",
-            pretty?"\n":"",
-            pretty?"\n":""); /* top object */
+                pretty?"\n":"",
+                pretty?"\n":""); /* top object */
     }
     retval = 0;
  done:
@@ -1495,7 +1495,7 @@ _json_parse(char      *str,
         switch (yb){
         case YB_PARENT:
             if ((ret = xml_bind_yang0(NULL, x, yb, yspec, xerr)) < 0)
-                    goto done;
+                goto done;
             if (ret == 0)
                 failed++;
             break;
