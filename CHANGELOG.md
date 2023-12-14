@@ -13,6 +13,9 @@ Expected: February 2024
 
 ### Minor features
 
+* Feature: [Add support for -V option to give version](https://github.com/clicon/clixon/issues/472)
+  * All clixon applications added command-line option `-V` for printing version
+  * New ca_version callback for customized version output
 * Optimization:
   * Added mountpoint cache as yang flag `YANG_FLAG_MTPOINT_POTENTIAL`
   * Optimized `yang_find`, especially namespace lookup

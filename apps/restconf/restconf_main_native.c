@@ -159,7 +159,7 @@
 #endif
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:C:p:y:a:u:rW:R:o:"
+#define RESTCONF_OPTS "hVD:f:E:l:C:p:y:a:u:rW:R:o:"
 
 /* If set, open outwards socket non-blocking, as opposed to blocking
  * Should work both ways, but in the ninblocking case,
@@ -903,6 +903,7 @@ restconf_openssl_init(clicon_handle h,
  * That is, EITHER local config OR read config from backend once
  * @param[in]  h             Clixon handle
  * @param[in]  inline_config If set, restconf conf is given by -R command-line
+ * @param[in]  print_version If set, print version and exit
  * @param[out] xrestconf     XML restconf config, malloced (if retval = 1)
  * @retval     1             OK  (and xrestconf set)
  * @retval     0             Fail - no config
@@ -911,6 +912,7 @@ restconf_openssl_init(clicon_handle h,
 int
 restconf_clixon_init(clicon_handle h,
                      char         *inline_config,
+                     int           print_version,
                      cxobj       **xrestconfp)
 {
     int            retval = -1;
@@ -954,6 +956,12 @@ restconf_clixon_init(clicon_handle h,
     if ((dir = clicon_restconf_dir(h)) != NULL)
         if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
             return -1;
+    /* Print version, customized variant must wait for plugins to load */
+    if (print_version){
+        if (clixon_plugin_version_all(h, stdout) < 0)
+            goto done;
+        exit(0);
+    }
     /* Create a pseudo-plugin to create extension callback to set the ietf-routing
      * yang-data extension for api-root top-level restconf function.
      */
@@ -1101,6 +1109,7 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s [options]\n"
             "where options are\n"
             "\t-h \t\t  Help\n"
+            "\t-V \t\tPrint version and exit\n"
             "\t-D <level>\t  Debug level, overrides any config debug setting\n"
             "\t-f <file>\t  Configuration file (mandatory)\n"
             "\t-E <dir> \t  Extra configuration file directory\n"
@@ -1136,8 +1145,9 @@ main(int    argc,
     int             ret;
     cxobj          *xrestconf = NULL;
     char           *inline_config = NULL;
-    int           config_dump = 0;
+    int             config_dump = 0;
     enum format_enum config_dump_format = FORMAT_XML;
+    int              print_version = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -1150,6 +1160,10 @@ main(int    argc,
         switch (c) {
         case 'h':
             usage(h, argv0);
+            break;
+        case 'V': /* version */
+            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : /* debug. Note this overrides any setting in the config */
             if (sscanf(optarg, "%d", &dbg) != 1)
@@ -1300,7 +1314,7 @@ main(int    argc,
         goto done;
 
     /* Clixon inits / configs */
-    if ((ret = restconf_clixon_init(h, inline_config, &xrestconf)) < 0)
+    if ((ret = restconf_clixon_init(h, inline_config, print_version, &xrestconf)) < 0)
         goto done;
     if (ret == 0){ /* restconf disabled */
         clicon_log(LOG_INFO, "restconf configuration not found or disabled");

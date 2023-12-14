@@ -176,6 +176,9 @@ fi
 new "wait backend"
 wait_backend
     
+new "cli version"
+expectpart "$($clixon_cli -1 -f $cfg -V)" 0 "Clixon version $CLIXON_VERSION" "Clixon main example version"
+
 new "cli configure top"
 expectpart "$($clixon_cli -1 -f $cfg set interfaces)" 0 "^$"
 

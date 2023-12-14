@@ -79,7 +79,7 @@
 #include "backend_plugin_restconf.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:E:l:C:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
+#define BACKEND_OPTS "hVD:f:E:l:C:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -462,6 +462,7 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s <options>*\n"
             "where options are\n"
             "\t-h\t\tHelp\n"
+            "\t-V \t\tPrint version and exit\n"
             "\t-D <level>\tDebug level\n"
             "\t-f <file>\tClixon config file\n"
             "\t-E <dir> \tExtra configuration file directory\n"
@@ -532,6 +533,7 @@ main(int    argc,
     size_t        sz;
     int           config_dump;
     enum format_enum config_dump_format = FORMAT_XML;
+    int           print_version = 0;
     
     /* In the startup, logs to stderr & syslog and debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -559,6 +561,10 @@ main(int    argc,
                exiting, and then call usage() before exit.
             */
             help = 1; 
+            break;
+        case 'V':
+            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : /* debug */
             if (sscanf(optarg, "%d", &dbg) != 1)
@@ -611,12 +617,13 @@ main(int    argc,
     while ((c = getopt(argc, argv, BACKEND_OPTS)) != -1)
         switch (c) {
         case 'h' : /* help */
+        case 'V' : /* version */
         case 'D' : /* debug */
-        case 'f': /* config file */
-        case 'E': /* extra config dir */
+        case 'f' : /* config file */
+        case 'E' : /* extra config dir */
         case 'l' :
             break; /* see above */
-        case 'C': /* Explicitly dump configuration */
+        case 'C' : /* Explicitly dump configuration */
             if ((config_dump_format = format_str2int(optarg)) ==  (enum format_enum)-1){
                 fprintf(stderr, "Unrecognized dump format: %s(expected: xml|json|text)\n", argv[0]);
                 usage(h, argv[0]);
@@ -823,7 +830,12 @@ main(int    argc,
         clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir,
                             clicon_option_str(h, "CLICON_BACKEND_REGEXP")) < 0)
         goto done;
-
+    /* Print version, customized variant must wait for plugins to load */
+    if (print_version){
+        if (clixon_plugin_version_all(h, stdout) < 0)
+            goto done;
+        exit(0);
+    }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
     if ((str = clicon_yang_main_file(h)) != NULL)

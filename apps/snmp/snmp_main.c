@@ -70,7 +70,7 @@
 #include "snmp_register.h"
 
 /* Command line options to be passed to getopt(3) */
-#define SNMP_OPTS "hD:f:l:C:o:z"
+#define SNMP_OPTS "hVD:f:l:C:o:z"
 
 /* Forward */
 static int clixon_snmp_input_cb(int s, void *arg);
@@ -319,6 +319,7 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s\n"
             "where options are\n"
             "\t-h\t\tHelp\n"
+            "\t-V \t\tPrint version and exit\n"
             "\t-D <level>\tDebug level (>1 for extensive libnetsnmp debug)\n"
             "\t-f <file>\tConfiguration file (mandatory)\n"
             "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
@@ -373,23 +374,27 @@ main(int    argc,
         case 'h' : /* help */
             usage(h, argv[0]);
             break;
+        case 'V': /* version */
+            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            exit(0);
+            break;
         case 'D' : /* debug */
             if (sscanf(optarg, "%d", &dbg) != 1)
                 usage(h, argv[0]);
             break;
-         case 'f': /* override config file */
+        case 'f': /* override config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);
             clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
             break;
-         case 'l': /* Log destination: s|e|o */
+        case 'l': /* Log destination: s|e|o */
             if ((logdst = clicon_log_opt(optarg[0])) < 0)
                 usage(h, argv[0]);
             if (logdst == CLICON_LOG_FILE &&
                 strlen(optarg)>1 &&
                 clicon_log_file(optarg+1) < 0)
                 goto done;
-             break;
+            break;
         }
 
     /*

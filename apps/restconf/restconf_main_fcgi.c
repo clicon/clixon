@@ -88,7 +88,7 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hD:f:E:l:C:p:d:y:a:u:rW:R:o:"
+#define RESTCONF_OPTS "hVD:f:E:l:C:p:d:y:a:u:rW:R:o:"
 
 /*! Convert FCGI parameters to clixon runtime data
  *
@@ -270,6 +270,7 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s [options]\n"
             "where options are\n"
             "\t-h \t\t  Help\n"
+            "\t-V \t\tPrint version and exit\n"
             "\t-D <level>\t  Debug level\n"
             "\t-f <file>\t  Configuration file (mandatory)\n"
             "\t-E <dir> \t  Extra configuration file directory\n"
@@ -321,6 +322,7 @@ main(int    argc,
     size_t         sz;
     int           config_dump = 0;
     enum format_enum config_dump_format = FORMAT_XML;
+    int              print_version = 0;
 
     /* In the startup, logs to stderr & debug flag set later */
     clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
@@ -335,6 +337,10 @@ main(int    argc,
         switch (c) {
         case 'h':
             usage(h, argv[0]);
+            break;
+        case 'V':
+            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : /* debug */
             if (sscanf(optarg, "%d", &dbg) != 1)
@@ -391,6 +397,7 @@ main(int    argc,
     while ((c = getopt(argc, argv, RESTCONF_OPTS)) != -1)
         switch (c) {
         case 'h' : /* help */
+        case 'V' : /* version */
         case 'D' : /* debug */
         case 'f':  /* config file */
         case 'E':  /* extra config dir */
@@ -480,6 +487,12 @@ main(int    argc,
     if ((dir = clicon_restconf_dir(h)) != NULL)
         if (clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
             return -1;
+    /* Print version, customized variant must wait for plugins to load */
+    if (print_version){
+        if (clixon_plugin_version_all(h, stdout) < 0)
+            goto done;
+        exit(0);
+    }
     /* Create a pseudo-plugin to create extension callback to set the ietf-routing
      * yang-data extension for api-root top-level restconf function.
      */

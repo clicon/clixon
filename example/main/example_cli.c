@@ -269,14 +269,34 @@ example_cli_errmsg(clicon_handle h,
     return retval;
 }
 
+/*! Callback for printing version output and exit
+ *
+ * A plugin can customize a version (or banner) output on stdout. 
+ * Several version strings can be printed if there are multiple callbacks.
+ * If not regstered plugins exist, clixon prints CLIXON_VERSION_STRING
+ * Typically invoked by command-line option -V
+ * @param[in]  h   Clixon handle
+ * @param[in]  f   Output file
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+example_version(clicon_handle h,
+                FILE         *f)
+{
+    cligen_output(f, "Clixon main example version 0\n");
+    return 0;
+}
+
 #ifndef CLIXON_STATIC_PLUGINS
 static clixon_plugin_api api = {
-    "example",          /* name */
-    clixon_plugin_init, /* init */
-    NULL,               /* start */
-    NULL,               /* exit */
-    .ca_yang_mount=example_cli_yang_mount,          /* RFC 8528 schema mount */
-    .ca_errmsg=example_cli_errmsg, /* customize errmsg */
+    "example",                              /* name */
+    clixon_plugin_init,                     /* init */
+    NULL,                                   /* start */
+    NULL,                                   /* exit */
+    .ca_yang_mount= example_cli_yang_mount, /* RFC 8528 schema mount */
+    .ca_errmsg    = example_cli_errmsg,     /* customize errmsg */
+    .ca_version   = example_version         /* Customized version string */
 };
 
 /*! CLI plugin initialization

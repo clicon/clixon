@@ -329,7 +329,7 @@ plugin_load_one(clicon_handle     h,
     int                retval = -1;
     char              *error;
     void              *handle = NULL;
-    plginit2_t        *initfn;
+    plginit_t         *initfn;
     clixon_plugin_api *api = NULL;
     clixon_plugin_t   *cp = NULL;
     char              *name;
@@ -690,7 +690,7 @@ plugin_context_check(clicon_handle h,
  */
 int
 clixon_plugin_start_one(clixon_plugin_t *cp,
-                        clicon_handle  h)
+                        clicon_handle    h)
 {
     int         retval = -1;
     plgstart_t *fn;          /* Plugin start */
@@ -747,7 +747,7 @@ clixon_plugin_start_all(clicon_handle h)
  */
 static int
 clixon_plugin_exit_one(clixon_plugin_t *cp,
-                       clicon_handle  h)
+                       clicon_handle    h)
 {
     int         retval = -1;
     char       *error;
@@ -804,6 +804,7 @@ clixon_plugin_exit_all(clicon_handle h)
 
 /*! Run the restconf user-defined credentials callback
  *
+ * @param[in]  cp        Plugin handle
  * @param[in]  h         Clixon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
@@ -973,7 +974,7 @@ clixon_plugin_extension_all(clicon_handle h,
  * Upgrade datastore on load before or as an alternative to module-specific upgrading mechanism
  */
 int
-clixon_plugin_datastore_upgrade_one(clixon_plugin_t   *cp,
+clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp,
                                     clicon_handle    h,
                                     const char      *db,
                                     cxobj           *xt,
@@ -1188,7 +1189,7 @@ clixon_plugin_netconf_errmsg_one(clixon_plugin_t *cp,
             goto done;
         if (fn(h, xerr, cberr) < 0) {
             if (clicon_errno < 0)
-                clicon_log(LOG_WARNING, "%s: Internal error: Yang patch callback in plugin: %s returned -1 but did not make a clicon_err call",
+                clicon_log(LOG_WARNING, "%s: Internal error: Netconf err callback in plugin: %s returned -1 but did not make a clicon_err call",
                            __FUNCTION__, cp->cp_name);
             goto done;
         }
@@ -1218,6 +1219,64 @@ clixon_plugin_netconf_errmsg_all(clicon_handle h,
 
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         if (clixon_plugin_netconf_errmsg_one(cp, h, xerr, cberr) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Call one plugin to get version output
+ *
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       Clixon handle
+ * @param[in]  f       Output file
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_plugin_version_one(clixon_plugin_t *cp,
+                          clicon_handle    h,
+                          FILE            *f)
+{
+    int           retval = -1;
+    plgversion_t *fn;
+    void         *wh = NULL;
+
+    if ((fn = cp->cp_api.ca_version) != NULL){
+        wh = NULL;
+        if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+            goto done;
+        if (fn(h, f) < 0) {
+            if (clicon_errno < 0)
+                clicon_log(LOG_WARNING, "%s: Internal error: version callback in plugin: %s returned -1 but did not make a clicon_err call",
+                           __FUNCTION__, cp->cp_name);
+            goto done;
+        }
+        if (plugin_context_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Call all plugins to get version output
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  f   Output file
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+clixon_plugin_version_all(clicon_handle h,
+                          FILE         *f)
+{
+    int              retval = -1;
+    clixon_plugin_t *cp = NULL;
+    cp = NULL;
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+        if (clixon_plugin_version_one(cp, h, f) < 0)
             goto done;
     }
     retval = 0;

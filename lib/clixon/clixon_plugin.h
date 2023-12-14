@@ -130,7 +130,6 @@ typedef int (plgstart_t)(clicon_handle); /* Plugin start */
  */
 typedef int (plgdaemon_t)(clicon_handle);              /* Plugin pre/post daemonized */
 
-
 /* Called just before plugin unloaded. 
  * @param[in] h    Clixon handle
  */
@@ -325,6 +324,19 @@ typedef int (yang_patch_t)(clicon_handle h, yang_stmt *ymod);
  */
 typedef int (netconf_errmsg_t)(clicon_handle, cxobj *xerr, cbuf *cberr);
 
+/*! Callback for printing version output and exit
+ *
+ * A plugin can customize a version (or banner) output on stdout.
+ * Several version strings can be printed if there are multiple callbacks.
+ * If not regstered plugins exist, clixon prints CLIXON_VERSION_STRING
+ * Typically invoked by command-line option -V
+ * @param[in]  h   Clixon handle
+ * @param[in]  f   Output file
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+typedef int (plgversion_t)(clicon_handle, FILE*);
+
 /*! Startup status for use in startup-callback
  *
  * Note that for STARTUP_ERR and STARTUP_INVALID, running runs in failsafe mode
@@ -343,18 +355,19 @@ enum startup_status{
  * Note: Implicit init function
  */
 struct clixon_plugin_api;
-typedef struct clixon_plugin_api* (plginit2_t)(clicon_handle);    /* Clixon plugin Init */
+typedef struct clixon_plugin_api* (plginit_t)(clicon_handle);    /* Clixon plugin Init */
 
 struct clixon_plugin_api{
     /*--- Common fields.  ---*/
     char              ca_name[MAXPATHLEN]; /* Name of plugin (given by plugin) */
-    plginit2_t       *ca_init;             /* Clixon plugin Init (implicit) */
+    plginit_t        *ca_init;             /* Clixon plugin Init (implicit) */
     plgstart_t       *ca_start;            /* Plugin start */
     plgexit_t        *ca_exit;             /* Plugin exit */
     plgextension_t   *ca_extension;        /* Yang extension/unknown handler */
     yang_mount_t     *ca_yang_mount;       /* RFC 8528 schema mount */
     yang_patch_t     *ca_yang_patch;       /* Patch yang after parse */
     netconf_errmsg_t *ca_errmsg;           /* Customize error message callback */
+    plgversion_t     *ca_version;          /* Output a customized version message */
     union {
         struct { /* cli-specific */
             cli_prompthook_t *ci_prompt;         /* Prompt hook */
@@ -370,7 +383,6 @@ struct clixon_plugin_api{
             plgdaemon_t      *cb_pre_daemon;     /* Plugin just before daemonization (only daemon) */
             plgdaemon_t      *cb_daemon;         /* Plugin daemonized (always called) */
             plgreset_t       *cb_reset;          /* Reset system status */
-
             plgstatedata_t   *cb_statedata;      /* Provide state data XML from plugin */
             plglockdb_t      *cb_lockdb;         /* Database lock changed state */
             trans_cb_t       *cb_trans_begin;    /* Transaction start */
@@ -489,6 +501,9 @@ int clixon_plugin_yang_patch_all(clicon_handle h, yang_stmt *ymod);
 
 int clixon_plugin_netconf_errmsg_one(clixon_plugin_t *cp, clicon_handle h, cxobj *xerr, cbuf *cberr);
 int clixon_plugin_netconf_errmsg_all(clicon_handle h, cxobj *xerr, cbuf *cberr);
+
+int clixon_plugin_version_one(clixon_plugin_t *cp, clicon_handle h, FILE *f);
+int clixon_plugin_version_all(clicon_handle h, FILE *f);
 
 /* rpc callback API */
 int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);
