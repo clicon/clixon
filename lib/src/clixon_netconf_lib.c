@@ -1774,6 +1774,9 @@ netconf_err2cb(clicon_handle h,
     cxobj *x;
     size_t len;
 
+    // XXX: some calls are <rpc-reply><rpc-error>, change calls instead
+    if (strcmp(xml_name(xerr), "rpc-error") != 0)
+        xerr = xml_child_i_type(xerr, 0, CX_ELMNT);
     len = cbuf_len(cberr);
     if (clixon_plugin_netconf_errmsg_all(h, xerr, cberr) < 0)
         goto done;
