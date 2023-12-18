@@ -945,23 +945,15 @@ compare_db_names(clixon_handle    h,
     if (clicon_rpc_get_config(h, NULL, db1, "/", NULL, NULL, &xc1) < 0)
         goto done;
     if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
-#if 1
         if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
             goto done;
-#else
-        clixon_netconf_error(h, xerr, "Get configuration", NULL);
-#endif
         goto done;
     }
     if (clicon_rpc_get_config(h, NULL, db2, "/", NULL, NULL, &xc2) < 0)
         goto done;
     if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
-#if 1
         if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
             goto done;
-#else
-        clixon_netconf_error(h, xerr, "Get configuration", NULL);
-#endif
         goto done;
     }
     /* Note that XML and TEXT uses a (new) structured in-mem algorithm while 
@@ -1129,12 +1121,8 @@ load_config_file(clixon_handle h,
         if ((ret = clixon_xml_parse_file(fp, YB_NONE, yspec, &xt, &xerr)) < 0)
             goto done;
         if (ret == 0){
-#if 1
             if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Loading %s", filename) < 0)
                 goto done;
-#else
-            clixon_netconf_error(h, xerr, "Loading", filename);
-#endif
             goto done;
         }
         break;
@@ -1142,12 +1130,8 @@ load_config_file(clixon_handle h,
         if ((ret = clixon_json_parse_file(fp, 1, YB_NONE, yspec, &xt, &xerr)) < 0)
             goto done;
         if (ret == 0){
-#if 1
             if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Loading %s", filename) < 0)
                 goto done;
-#else
-            clixon_netconf_error(h, xerr, "Loading", filename);
-#endif
             goto done;
         }
         break;
@@ -1158,12 +1142,8 @@ load_config_file(clixon_handle h,
         if ((ret = clixon_text_syntax_parse_file(fp, YB_MODULE_NEXT, yspec, &xt, &xerr)) < 0)
             goto done;
         if (ret == 0){
-#if 1
             if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Loading %s", filename) < 0)
                 goto done;
-#else
-            clixon_netconf_error(h, xerr, "Loading", filename);
-#endif
             goto done;
         }
         break;
@@ -1303,12 +1283,8 @@ save_config_file(clixon_handle h,
         goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-#if 1
         if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
             goto done;
-#else
-        clixon_netconf_error(h, xerr, "Get configuration", NULL);
-#endif
         goto done;
     }
     /* get-config returns a <data> tree. Save as <config> tree so it can be used
@@ -1692,12 +1668,8 @@ cli_copy_config(clixon_handle h,
     if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cb), nsc, NULL, &x1) < 0)
         goto done;
     if ((xerr = xpath_first(x1, NULL, "/rpc-error")) != NULL){
-#if 1
         if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
             goto done;
-#else
-        clixon_netconf_error(h, xerr, "Get configuration", NULL);
-#endif
         goto done;
     }
 

@@ -263,12 +263,8 @@ snmp_scalar_get(clixon_handle               h,
             goto done;
         /* Detect error XXX Error handling could improve */
         if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-#if 1
             if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
                 goto done;
-#else
-            clixon_netconf_error(h, xerr, "clicon_rpc_get", NULL);
-#endif
             goto done;
         }
         x = xpath_first(xt, nsc, "%s", xpath);

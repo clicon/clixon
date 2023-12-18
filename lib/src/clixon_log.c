@@ -103,10 +103,6 @@ clixon_log_init(clixon_handle h,
                 int           upto, 
                 int           flags)
 {
-    if (h == NULL){
-        errno = EINVAL;
-        return -1;
-    }
     _log_clixon_h = h;
     _log_flags = flags;
     if (flags & CLIXON_LOG_SYSLOG){

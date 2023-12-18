@@ -151,12 +151,8 @@ restconf_main_config(clixon_handle h,
         if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf, &xerr)) < 0)
             goto done;
         if (ret == 0){
-#if 1
             if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Inline restconf config") < 0)
                 goto done;
-#else
-            clixon_netconf_error(h, xerr, "Inline restconf config", NULL);
-#endif
             goto done;
         }
         /* Replace parent w first child */

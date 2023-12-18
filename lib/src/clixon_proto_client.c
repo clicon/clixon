@@ -509,7 +509,6 @@ clicon_rpc_netconf_xml(clixon_handle  h,
  *     xml_nsctx_free(nsc);
  * @endcode
  * @see clicon_rpc_get
- * @see clixon_netconf_error
  * @note the netconf return message is yang populated, as well as the return data
  */
 int
@@ -671,11 +670,7 @@ clicon_rpc_edit_config(clixon_handle       h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Editing configuration");
-#else
-        clixon_netconf_error(h, xerr, "Editing configuration", NULL);
-#endif
         goto done;
     }
     retval = 0;
@@ -737,11 +732,7 @@ clicon_rpc_copy_config(clixon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Copying configuration");
-#else
-        clixon_netconf_error(h, xerr, "Copying configuration", NULL);
-#endif
         goto done;
     }
     retval = 0;
@@ -799,11 +790,7 @@ clicon_rpc_delete_config(clixon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Deleting configuration");
-#else
-        clixon_netconf_error(h, xerr, "Deleting configuration", NULL);
-#endif
         goto done;
     }
     retval = 0;
@@ -857,11 +844,7 @@ clicon_rpc_lock(clixon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Locking configuration");
-#else
-        clixon_netconf_error(h, xerr, "Locking configuration", NULL);
-#endif
         goto done;
     }
     retval = 0;
@@ -915,11 +898,7 @@ clicon_rpc_unlock(clixon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Unlocking configuration");
-#else
-        clixon_netconf_error(h, xerr, "Configuration unlock", NULL);
-#endif
         goto done;
     }
     retval = 0;
@@ -1350,11 +1329,7 @@ clicon_rpc_close_session(clixon_handle h)
         clicon_client_socket_set(h, -1);
     }
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Close session");
-#else
-        clixon_netconf_error(h, xerr, "Close session", NULL);
-#endif
         goto done;
     }
     retval = 0;
@@ -1408,11 +1383,7 @@ clicon_rpc_kill_session(clixon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Kill session");
-#else
-        clixon_netconf_error(h, xerr, "Kill session", NULL);
-#endif
         goto done;
     }
     retval = 0;
@@ -1468,11 +1439,7 @@ clicon_rpc_validate(clixon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, CLIXON_ERRSTR_VALIDATE_FAILED);
-#else
-        clixon_netconf_error(h, xerr, CLIXON_ERRSTR_VALIDATE_FAILED, NULL);
-#endif
         retval = 0;
         goto done;
     }
@@ -1579,11 +1546,7 @@ clicon_rpc_commit(clixon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, CLIXON_ERRSTR_COMMIT_FAILED);
-#else
-        clixon_netconf_error(h, xerr, CLIXON_ERRSTR_COMMIT_FAILED, NULL);
-#endif
         retval = 0;
         goto done;
     }
@@ -1642,11 +1605,7 @@ clicon_rpc_discard_changes(clixon_handle h)
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Discard changes");
-#else
-        clixon_netconf_error(h, xerr, "Discard changes", NULL);
-#endif
         goto done;
     }
     retval = 0;
@@ -1711,11 +1670,7 @@ clicon_rpc_create_subscription(clixon_handle    h,
     if (clicon_rpc_msg_persistent(h, msg, &xret, s0) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Create subscription");
-#else
-        clixon_netconf_error(h, xerr, "Create subscription", NULL);
-#endif
         goto done;
     }
     retval = 0;
@@ -1770,11 +1725,7 @@ clicon_rpc_debug(clixon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Debug");
-#else
-        clixon_netconf_error(h, xerr, "Debug", NULL);
-#endif
         goto done;
     }
     if (xpath_first(xret, NULL, "//rpc-reply/ok") == NULL){
@@ -1840,11 +1791,7 @@ clicon_rpc_restconf_debug(clixon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Debug");
-#else
-        clixon_netconf_error(h, xerr, "Debug", NULL);
-#endif
         goto done;
     }
     if (xpath_first(xret, NULL, "//rpc-reply/ok") == NULL){
@@ -1933,11 +1880,7 @@ clicon_hello_req(clixon_handle h,
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-#if 1
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Hello");
-#else
-        clixon_netconf_error(h, xerr, "Hello", NULL);
-#endif
         goto done;
     }
     if ((x = xpath_first(xret, NULL, "hello/session-id")) == NULL){

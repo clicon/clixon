@@ -2354,7 +2354,7 @@ netconf_input_chunked_framing(char    ch,
  *     printf("%s", cbuf_get(cb));
  *     cbuf_free(cb);
  * @endcode
- * @see clixon_netconf_error_fn
+ * @see clixon_err_netconf_fn
  */
 int
 netconf_err2cb(clixon_handle h,
@@ -2407,7 +2407,7 @@ netconf_err2cb(clixon_handle h,
  * @retval     0       OK
  * @retval    -1       Error
  * @see netconf_err2cb
- * @see clixon_netconf_error macro
+ * @see clixon_err_netconf macro
  */
 int
 clixon_err_netconf_fn(clixon_handle h,
