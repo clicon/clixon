@@ -956,13 +956,13 @@ from_client_restart_one(clixon_handle    h,
     /* Application may define extra xml in its reset function*/
     if ((resetfn = clixon_plugin_api_get(cp)->ca_reset) != NULL){
         wh = NULL;
-        if (plugin_context_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
             goto done;
         if ((retval = resetfn(h, db)) < 0) {
             clixon_debug(CLIXON_DBG_DEFAULT, "plugin_start() failed");
             goto done;
         }
-        if (plugin_context_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
             goto done;
     }
     /* 1. Start transaction */

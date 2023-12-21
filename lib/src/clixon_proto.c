@@ -56,6 +56,7 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/param.h>
 #include <netinet/in.h>
 #include <sys/un.h>
 #include <arpa/inet.h>
@@ -402,7 +403,8 @@ clicon_msg_send(int                s,
  * @param[out]  eof   Set if eof encountered
  * @retval      0     OK
  * @retval     -1     Error
- * Note: caller must ensure that s is closed if eof is set after call.
+ * @note: Caller must ensure that s is closed if eof is set after call.
+ * @note: intr parameter used in eg CLI where receive should be interruptable
  * @see clicon_msg_rcv1 using plain NETCONF
  */
 int
@@ -416,14 +418,18 @@ clicon_msg_rcv(int                 s,
     struct clicon_msg hdr;
     int               hlen;
     ssize_t           len2;
-    sigfn_t           oldhandler;
     uint32_t          mlen;
+    sigset_t          oldsigset;
+    struct sigaction  oldsigaction[32] = {{{0,},},};
 
     clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     *eof = 0;
     if (intr){
+        if (clixon_signal_save(&oldsigset, oldsigaction) < 0)
+            goto done;
+        set_signal(SIGINT, SIG_IGN, NULL);
         clicon_signal_unblock(SIGINT);
-        set_signal_flags(SIGINT, 0, atomicio_sig_handler, &oldhandler);
+        set_signal_flags(SIGINT, 0, atomicio_sig_handler, NULL);
     }
     if ((hlen = atomicio(read, s, &hdr, sizeof(hdr))) < 0){
         if (intr && _atomicio_sig)
@@ -481,8 +487,8 @@ clicon_msg_rcv(int                 s,
  done:
     clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (intr){
-        set_signal(SIGINT, oldhandler, NULL);
-        clicon_signal_block(SIGINT);
+        if (clixon_signal_restore(&oldsigset, oldsigaction) < 0)
+            goto done;
     }
     return retval;
 }

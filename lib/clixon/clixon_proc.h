@@ -76,5 +76,6 @@ int clixon_process_operation(clixon_handle h, const char *name, proc_operation o
 int clixon_process_status(clixon_handle h, const char *name, cbuf *cbret);
 int clixon_process_start_all(clixon_handle h);
 int clixon_process_waitpid(clixon_handle h);
+int clixon_resource_check(clixon_handle h, void **wh, const char *name, const char *fn);
 
 #endif  /* _CLIXON_PROC_H_ */

@@ -161,7 +161,7 @@ yang_mount_get(yang_stmt  *y,
     cvec   *cvv;
     cg_var *cv;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %p", __FUNCTION__, xpath, y);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %s %p", __FUNCTION__, xpath, y);
     /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
     if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&

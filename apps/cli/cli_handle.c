@@ -107,7 +107,7 @@ cli_handle_init(void)
         goto done;
     }
     cligen_userhandle_set(clih, cl);
-    cligen_eval_wrap_fn_set(clih, plugin_context_check, cl);
+    cligen_eval_wrap_fn_set(clih, clixon_resource_check, cl);
     cl->cl_cligen = clih;
 
     h = (clixon_handle)cl;
