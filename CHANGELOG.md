@@ -58,6 +58,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: kill-session cleanup when client none existant, and for all db:s
 * Fixed: [Using the characters '<' and '>' might cause an invalid diff](https://github.com/clicon/clixon-controller/issues/73)
 
 ## 6.5.0

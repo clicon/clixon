@@ -1545,7 +1545,7 @@ cli_lock(clixon_handle h,
  * @retval    0      OK
  * @retval   -1      Error
  * @code
- * lock("comment"), cli_lock("running"); 
+ * lock("comment"), cli_unlock("running"); 
  * @endcode
  * XXX: format is a memory leak
  */
@@ -1566,6 +1566,49 @@ cli_unlock(clixon_handle h,
         goto done;
     retval = 0;
   done:
+    return retval;
+}
+
+/*! Kill session
+ * 
+ * @param[in] h      Clixon handle
+ * @param[in] cvv    Not used
+ * @param[in] arg    <session-id> 
+ * @retval    0      OK
+ * @retval   -1      Error
+ * @code
+ * lock("comment"), cli_kill_session(54); 
+ * @endcode
+ */
+int
+cli_kill_session(clixon_handle h,
+                 cvec         *cvv,
+                 cvec         *argv)
+{
+    int      retval = -1;
+    char    *str;
+    uint32_t session_id;
+    int      ret;
+    char    *reason = NULL;
+
+    if (cvec_len(argv) != 1){
+        clixon_err(OE_PLUGIN, EINVAL, "Requires arguments: <session-id>");
+        goto done;
+    }
+    if ((str = cv_string_get(cvec_i(argv, 0))) != NULL){
+        if ((ret = parse_uint32(str, &session_id, NULL)) < 0)
+            goto done;
+        if (ret == 0){
+            cligen_output(stderr, "%s\n", reason);
+            goto done;
+        }
+        else if ((ret = clicon_rpc_kill_session(h, session_id)) < 0)
+            goto done;
+    }
+    retval = 0;
+  done:
+    if (reason)
+        free(reason);
     return retval;
 }
 

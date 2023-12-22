@@ -109,6 +109,7 @@ int cli_notify(clixon_handle h, cvec *cvv, cvec *argv);
 int db_copy(clixon_handle h, cvec *cvv, cvec *argv);
 int cli_lock(clixon_handle h, cvec *cvv, cvec *argv);
 int cli_unlock(clixon_handle h, cvec *cvv, cvec *argv);
+int cli_kill_session(clixon_handle h, cvec *cvv, cvec *argv);
 int cli_copy_config(clixon_handle h, cvec *cvv, cvec *argv);
 int cli_help(clixon_handle h, cvec *vars, cvec *argv);
 cvec *cvec_append(cvec *cvv0, cvec *cvv1);

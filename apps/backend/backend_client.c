@@ -173,7 +173,6 @@ ce_event_cb(clixon_handle h,
     return retval;
 }
 
-
 /*! Unlock all db:s of a client and call user unlock calback 
  *
  * @see xmldb_unlock_all  unlocks, but does not call user callbacks which is a backend thing
@@ -1015,7 +1014,6 @@ from_client_kill_session(clixon_handle h,
     uint32_t             id; /* session id */
     char                *str = NULL;
     struct client_entry *ce;
-    char                *db = "running"; /* XXX */
     cxobj               *x;
     int                  ret;
     char                *reason = NULL;
@@ -1032,16 +1030,10 @@ from_client_kill_session(clixon_handle h,
         goto ok;
     /* may or may not be in active client list, probably not */
     if ((ce = ce_find_byid(backend_client_list(h), id)) != NULL){
-        if (release_all_dbs(h, id) < 0)
-            goto done;
         backend_client_rm(h, ce); /* Removes client struct */
     }
-    if (xmldb_islocked(h, db) == id){
-        xmldb_unlock(h, db);
-        /* user callback */
-        if (clixon_plugin_lockdb_all(h, db, 0, id) < 0)
-            goto done;
-    }
+    if (release_all_dbs(h, id) < 0)
+        goto done;
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
