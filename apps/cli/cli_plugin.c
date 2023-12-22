@@ -488,7 +488,9 @@ cli_handler_err(FILE *f)
     if (clixon_err_category()){
         /* Check if error is already logged on stderr */
         if ((clixon_get_logflags() & CLIXON_LOG_STDERR) == 0){
-            fprintf(f,  "%s: %s", clixon_err_str(), clixon_err_reason());
+            if (clixon_err_category() != -1)
+                fprintf(f,  "%s: ", clixon_err_str());
+            fprintf(f,  "%s", clixon_err_reason());
             if (clixon_err_subnr())
                 fprintf(f, ": %s", strerror(clixon_err_subnr()));
             fprintf(f,  "\n");

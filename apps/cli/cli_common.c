@@ -462,13 +462,7 @@ cli_dbxml(clixon_handle       h,
         if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            if ((cb = cbuf_new()) == NULL){
-                clixon_err(OE_UNIX, errno, "cbuf_new");
-                goto done;
-            }
-            if (netconf_err2cb(h, xerr, cb) < 0)
-                goto done;
-            clixon_err(OE_CFG, EINVAL, "api-path syntax error \"%s\": %s", api_path_fmt, cbuf_get(cb));
+            clixon_err_netconf(h, OE_CFG, EINVAL, xerr, "api-path syntax error \"%s\"", api_path_fmt);
             goto done;
         }
     }

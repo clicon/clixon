@@ -61,11 +61,11 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
@@ -1441,7 +1441,7 @@ clicon_rpc_validate(clixon_handle h,
         goto done;
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
-    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+    if ((xerr = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, CLIXON_ERRSTR_VALIDATE_FAILED);
         retval = 0;
         goto done;

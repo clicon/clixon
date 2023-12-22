@@ -50,6 +50,7 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/types.h>
 
@@ -60,13 +61,21 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
+#include "clixon_xml_io.h"
+#include "clixon_yang_module.h"
+#include "clixon_plugin.h"
 
 /*
  * Local Variables
  */
+
+/* Cache handle since debug calls do not have handle parameter */
+static clixon_handle _debug_clixon_h    = NULL;
 
 /*! The global debug level. 0 means no debug 
  *
@@ -96,6 +105,7 @@ int
 clixon_debug_init(clixon_handle h,
                   int           dbglevel)
 {
+    _debug_clixon_h = h;
     _debug_level = dbglevel; /* Global variable */
     return 0;
 }
@@ -110,56 +120,65 @@ clixon_debug_get(void)
 
 /*! Print a debug message with debug-level. Settings determine where msg appears.
  *
+ * Do not use this fn directly, use the clixon_debug() macro
  * If the dbglevel passed in the function is equal to or lower than the one set by 
  * clixon_debug_init(level).  That is, only print debug messages <= than what you want:
  *      print message if level >= dbglevel.
  * The message is sent to clixon_log. EIther to syslog, stderr or both, depending on 
  * clixon_log_init() setting
+ * @param[in] h         Clixon handle
  * @param[in] dbglevel  Mask of CLIXON_DBG_DEFAULT and other masks
+ * @param[in] x         XML tree logged without prettyprint
  * @param[in] format    Message to print as argv.
  * @retval    0         OK
  * @retval   -1         Error
- * @see clixon_debug_xml Specialization for XML tree
  * @see CLIXON_DBG_DEFAULT and other flags
  */
 int
-clixon_debug(int         dbglevel,
-             const char *format, ...)
+clixon_debug_fn(clixon_handle h,
+                int           dbglevel,
+                cxobj        *x,
+                const char   *format, ...)
 {
     int     retval = -1;
-    va_list args;
-    size_t  len;
-    char   *msg    = NULL;
+    va_list ap;
     size_t  trunc;
+    cbuf   *cb = NULL;
 
     /* Mask debug level with global dbg variable */
     if ((dbglevel & clixon_debug_get()) == 0)
         return 0;
-    /* first round: compute length of debug message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-
+    if (h == NULL)     /* Accept NULL, use saved clixon handle */
+        h = _debug_clixon_h;
+    va_start(ap, format);
+    if (clixon_plugin_errmsg_all(h, NULL, 0, LOG_TYPE_DEBUG,
+                                 NULL, NULL, x, format, ap, &cb) < 0)
+        goto done;
+    va_end(ap);
+    if (cb != NULL){ /* Customized: expand clixon_err_args */
+        clixon_log_str(LOG_DEBUG, cbuf_get(cb));
+        goto ok;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
+        goto done;
+    }
+    va_start(ap, format);
+    vcprintf(cb, format, ap);
+    va_end(ap);    
+    if (x){
+        cprintf(cb, ": ");
+        if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+    }
     /* Truncate long debug strings */
-    if ((trunc = clixon_log_string_limit_get()) && trunc < len)
-        len = trunc;
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        clixon_err(OE_UNIX, errno, "malloc");
-        goto done;
-    }
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        clixon_err(OE_UNIX, errno, "vsnprintf");
-        goto done;
-    }
-    va_end(args);
-    clixon_log_str(LOG_DEBUG, msg);
+    if ((trunc = clixon_log_string_limit_get()) && trunc < cbuf_len(cb))
+        cbuf_trunc(cb, trunc);
+    clixon_log_str(LOG_DEBUG, cbuf_get(cb));
+ ok:
     retval = 0;
-  done:
-    if (msg)
-        free(msg);
+ done:
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }

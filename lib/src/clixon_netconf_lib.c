@@ -60,11 +60,11 @@
 #include "clixon_hash.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_xml_bind.h"
@@ -2336,127 +2336,4 @@ netconf_input_chunked_framing(char    ch,
     *state = 0;
     retval = -1; /* Error */
     goto done;
-}
-
-/*! Generate netconf error msg to cbuf using callback to use in string printout or logs
- *
- * If no callback is registered, a default error message is genereated
- * @param[in]     xerr    Netconf error message on the level: <rpc-error>
- * @param[out]    cberr   Translation from netconf err to cbuf.
- * @retval        0       OK, with cberr set
- * @retval       -1       Error
- * @code
- *     cbuf *cb = NULL;
- *     if ((cb = cbuf_new()) ==NULL){
- *        err;
- *     if (netconf_err2cb(h, xerr, cb) < 0)
- *        err;
- *     printf("%s", cbuf_get(cb));
- *     cbuf_free(cb);
- * @endcode
- * @see clixon_err_netconf_fn
- */
-int
-netconf_err2cb(clixon_handle h,
-               cxobj        *xerr,
-               cbuf         *cberr)
-{
-    int    retval = -1;
-    cxobj *x;
-    size_t len;
-
-    // XXX: some calls are <rpc-reply><rpc-error>, change calls instead
-    if (strcmp(xml_name(xerr), "rpc-error") != 0)
-        xerr = xml_child_i_type(xerr, 0, CX_ELMNT);
-    len = cbuf_len(cberr);
-    if (clixon_plugin_netconf_errmsg_all(h, xerr, cberr) < 0)
-        goto done;
-    if (cbuf_len(cberr) == len){ /* Same as on-entry, use default */
-        if ((x=xpath_first(xerr, NULL, "//error-type"))!=NULL)
-            cprintf(cberr, "%s ", xml_body(x));
-        if ((x=xpath_first(xerr, NULL, "//error-tag"))!=NULL)
-            cprintf(cberr, "%s ", xml_body(x));
-        if ((x=xpath_first(xerr, NULL, "//error-message"))!=NULL)
-            cprintf(cberr, "%s ", xml_body(x));
-        if ((x=xpath_first(xerr, NULL, "//error-info")) != NULL &&
-            xml_child_nr(x) > 0){
-            if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
-                goto done;
-        }
-        if ((x=xpath_first(xerr, NULL, "//error-app-tag"))!=NULL)
-            cprintf(cberr, ": %s ", xml_body(x));
-        if ((x=xpath_first(xerr, NULL, "//error-path"))!=NULL)
-            cprintf(cberr, ": %s ", xml_body(x));
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Generate and print textual error log from Netconf error message
- *
- * Get a text error message from netconf error message and generate error logmsg:
- *   <msg>: "<arg>": <netconf-error>   or   <msg>: <netconf-error>
- * 
- * @param[in]  h       Clixon handle
- * @param[in]  fn      Inline function name (when called from clixon_err() macro)
- * @param[in]  line    Inline file line number (when called from clixon_err() macro)
- * @param[in]  xerr    Netconf error xml tree on the form: <rpc-error> 
- * @param[in]  format  Format string 
- * @param[in]  arg     String argument to format (optional)
- * @retval     0       OK
- * @retval    -1       Error
- * @see netconf_err2cb
- * @see clixon_err_netconf macro
- */
-int
-clixon_err_netconf_fn(clixon_handle h,
-                      const char   *fn,
-                      const int     line,
-                      int           category,
-                      int           suberr,
-                      cxobj        *xerr,
-                      const char   *format, ...)
-{
-    int     retval = -1;
-    va_list args;
-    int     len;
-    char   *msg    = NULL;
-    cbuf   *cb = NULL;
-    
-    /* first round: compute length of error message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-    va_end(args);
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_XML, errno, "cbuf_new");
-        goto done;
-    }
-    cprintf(cb, "%s: ", msg);
-    /* Translate netconf error to string */
-    if (netconf_err2cb(h, xerr, cb) < 0)
-        goto done;
-    if (clixon_err_args(h, fn, line, category, suberr, cbuf_get(cb)) < 0)
-        goto done;
-    retval = 0;
- done:
-    if (msg)
-        free(msg);
-    if (cb)
-        cbuf_free(cb);
-    return retval;
 }

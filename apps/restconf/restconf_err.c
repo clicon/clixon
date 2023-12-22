@@ -353,17 +353,17 @@ api_return_err(clixon_handle  h,
  * @see api_return_err where top level is expected to be <rpc-error>
  */
 int
-api_return_err0(clixon_handle h,
-                void         *req,
-                cxobj        *xerr,
-                int           pretty,
+api_return_err0(clixon_handle  h,
+                void          *req,
+                cxobj         *xerr,
+                int            pretty,
                 restconf_media media,
-                int           code)
+                int            code)
 {
     int    retval = -1;
     cxobj *xe;
 
-    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+    if ((xe = xml_find_type(xerr, NULL, "rpc-error", CX_ELMNT)) == NULL){
         clixon_err(OE_XML, EINVAL, "Expected xml on the form <rpc-error>..");
         goto done;
     }

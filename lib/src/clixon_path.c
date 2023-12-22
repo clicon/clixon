@@ -88,12 +88,12 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_string.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_options.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
@@ -1215,7 +1215,7 @@ api_path2xml_vec(char      **vec,
  * @param[in]     strict     Break if api-path is not "complete" otherwise ignore and continue
  * @param[out]    xbotp      Resulting xml tree (end of xpath) (optional)
  * @param[out]    ybotp      Yang spec matching xbotp
- * @param[out]    xerr       Netconf error message (if retval=0)
+ * @param[out]    xerr       Netconf error message as rpc-reply/rpc-error (if retval=0)
  * @retval        1          OK
  * @retval        0          Invalid api_path or associated XML, netconf error
  * @retval       -1          Fatal error

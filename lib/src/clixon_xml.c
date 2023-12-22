@@ -62,11 +62,11 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_options.h" /* xml_bind_yang */
 #include "clixon_yang_module.h"
 #include "clixon_xml_map.h" /* xml_bind_yang */
@@ -2697,139 +2697,6 @@ xml_add_attr(cxobj *xn,
         xa = NULL;
     }
     goto ret;
-}
-
-/*! Specialization of clixon_log with xml tree 
- *
- * @param[in]  h        Clixon handle
- * @param[in]  dbglevel 
- * @param[in]  level    log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. 
- * @param[in]  x        XML tree that is logged without prettyprint
- * @param[in]  format   Message to print as argv.
- * @retval     0        OK
- * @retval    -1        Error
- * @see clixon_debug_xml  which uses debug setting instead of direct syslog
- */
-int
-clixon_log_xml(clixon_handle h,
-               int           level,
-               cxobj        *x,
-               const char   *format, ...)
-{
-    int     retval = -1;
-    va_list args;
-    size_t  len;
-    char   *msg = NULL;
-    cbuf   *cb = NULL;
-    size_t  trunc;
-
-    /* Print xml as cbuf */
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_XML, errno, "cbuf_new");
-        goto done;
-    }
-    if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
-        goto done;
-    /* first round: compute length of debug message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-    /* Truncate long debug strings */
-    if ((trunc = clixon_log_string_limit_get()) && trunc < len)
-        len = trunc;
-
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-    va_end(args);
-
-    /* Actually log it */
-    clixon_log(h, level, "%s: %s", msg, cbuf_get(cb));
-
-    retval = 0;
-  done:
-    if (cb)
-        cbuf_free(cb);
-    if (msg)
-        free(msg);
-    return retval;
-}
-
-/*! Specialization of clixon_debug with xml tree 
- *
- * @param[in]  dbglevel Mask of CLIXON_DBG_DEFAULT and other masks
- * @param[in]  x        XML tree that is logged without prettyprint
- * @param[in]  format   Message to print as argv.
- * @retval     0        OK
- * @retval    -1        Error
- * @see clicon_log_xml  For syslog
- * @see clixon_debug    base function and see CLIXON_DBG_* flags
-*/
-int
-clixon_debug_xml(int         dbglevel,
-                 cxobj      *x,
-                 const char *format, ...)
-{
-    int     retval = -1;
-    va_list args;
-    size_t  len;
-    char   *msg = NULL;
-    cbuf   *cb = NULL;
-    size_t  trunc;
-
-    /* Mask debug level with global dbg variable */
-    if ((dbglevel & clixon_debug_get()) == 0)
-        return 0;
-    /* Print xml as cbuf */
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_XML, errno, "cbuf_new");
-        goto done;
-    }
-    if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
-        goto done;
-    /* first round: compute length of debug message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-    /* Truncate long debug strings */
-    if ((trunc = clixon_log_string_limit_get()) && trunc < len)
-        len = trunc;
-
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-    va_end(args);
-
-    /* Actually log it */
-    clixon_debug(dbglevel, "%s: %s", msg, cbuf_get(cb));
-
-    retval = 0;
-  done:
-    if (cb)
-        cbuf_free(cb);
-    if (msg)
-        free(msg);
-    return retval;
 }
 
 #ifdef XML_EXPLICIT_INDEX

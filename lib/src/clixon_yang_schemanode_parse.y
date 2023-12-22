@@ -83,11 +83,11 @@
 #include "clixon_hash.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_vec.h"
 #include "clixon_data.h"
@@ -107,7 +107,7 @@ clixon_yang_schemanode_parseerror(void *arg,
 {
     clixon_yang_schemanode_yacc *ife = (clixon_yang_schemanode_yacc *)arg;
 
-    clixon_err_fn(NULL, 0, OE_YANG, 0, "yang_schemanode_parse: file:%s:%d \"%s\" %s: at or before: %s",
+    clixon_err(OE_YANG, 0, "yang_schemanode_parse: file:%s:%d \"%s\" %s: at or before: %s",
                   ife->if_mainfile,
                   ife->if_linenum,
                   ife->if_parse_string,

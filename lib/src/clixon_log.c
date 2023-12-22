@@ -50,6 +50,7 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/types.h>
 
@@ -60,9 +61,14 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_debug.h"
 #include "clixon_log.h"
+#include "clixon_xml_io.h"
+#include "clixon_yang_module.h"
+#include "clixon_plugin.h"
 
 /*
  * Local Variables
@@ -320,58 +326,68 @@ clixon_log_str(int     level,
 
 /*! Make a logging call to syslog using variable arg syntax.
  *
- * @param[in]  h       Clixon handle (may be NULL)
- * @param[in]  level   Log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. This 
- *                     is OR:d with facility == LOG_USER
- * @param[in]  format  Message to print as argv.
- * @retval     0       OK
- * @retval    -1       Error
+ * Do not use this fn directly, use the clixon_log() macro
+ * @param[in]  h      Clixon handle (may be NULL)
+ * @param[in]  user   If set, invoke user callback
+ * @param[in]  level  Log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. This 
+ *                    is OR:d with facility == LOG_USER
+ * @param[in]  x      XML tree that is logged without prettyprint
+ * @param[in]  format Message to print as argv.
+ * @retval     0      OK
+ * @retval    -1      Error
  * @code
         clixon_log(h, LOG_NOTICE, "%s: dump to dtd not supported", __PROGRAM__);
  * @endcode
  * @see clixon_log_init clixon_log_str 
- * @see clixon_log_xml
+ * The reason the "user" parameter is present is that internal calls (eg from clixon_err) may not
+ * want to invoke user callbacks a second time.
  */
 int
-clixon_log(clixon_handle h,
-           int           level,
-           const char   *format, ...)
+clixon_log_fn(clixon_handle h,
+              int           user,
+              int           level,
+              cxobj        *x,
+              const char   *format, ...)
 {
     int     retval = -1;
-    va_list args;
-    size_t  len;
-    char   *msg    = NULL;
+    va_list ap;
     size_t  trunc;
+    cbuf   *cb = NULL;
 
-    /* first round: compute length of debug message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-
+    if (h == NULL)     /* Accept NULL, use saved clixon handle */
+        h = _log_clixon_h;
+    if (user){
+        va_start(ap, format);
+        if (clixon_plugin_errmsg_all(h, NULL, 0, LOG_TYPE_LOG,
+                                     NULL, NULL, x, format, ap, &cb) < 0)
+            goto done;
+        va_end(ap);
+        if (cb != NULL){ /* Customized: expand clixon_err_args */
+            clixon_log(h, LOG_ERR, "%s", cbuf_get(cb));            
+            goto ok;
+        }
+    }
+    if ((cb = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
+        goto done;
+    }
+    va_start(ap, format);
+    vcprintf(cb, format, ap);
+    va_end(ap);
+    if (x){
+        cprintf(cb, ": ");
+        if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+    }
     /* Truncate long debug strings */
-    if ((trunc = clixon_log_string_limit_get()) && trunc < len)
-        len = trunc;
-
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-    va_end(args);
+    if ((trunc = clixon_log_string_limit_get()) && trunc < cbuf_len(cb))
+        cbuf_trunc(cb, trunc);
     /* Actually log it */
-    clixon_log_str(level, msg);
-
+    clixon_log_str(level, cbuf_get(cb));
+ ok:
     retval = 0;
-  done:
-    if (msg)
-        free(msg);
+ done:
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }

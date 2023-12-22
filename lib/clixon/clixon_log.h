@@ -49,6 +49,19 @@
 #define CLIXON_LOG_STDOUT 4 /* print logs on stdout */
 #define CLIXON_LOG_FILE   8 /* print logs on clicon_log_filename */
 
+/* What kind of log (only for customizable error/logs) */
+enum clixon_log_type{
+    LOG_TYPE_LOG,
+    LOG_TYPE_ERR,
+    LOG_TYPE_DEBUG
+};
+
+/*
+ * Macros
+ */
+#define clixon_log(h, l, _fmt, args...) clixon_log_fn((h), 1, (l), NULL, _fmt , ##args)
+#define clixon_log_xml(h, l, x, _fmt, args...) clixon_log_fn((h), 1, (l), x, _fmt , ##args)
+
 /*
  * Prototypes
  */
@@ -60,8 +73,7 @@ int clixon_log_string_limit_set(size_t sz);
 size_t clixon_log_string_limit_get(void);
 int clixon_get_logflags(void);
 int clixon_log_str(int level, char *msg);
-int clixon_log(clixon_handle h, int level, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
-char *clixon_log_mon2name(int md);
+int clixon_log_fn(clixon_handle h, int user, int level, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
 
 #if 1 /* COMPAT_6_5 */
 #define CLICON_LOG_SYSLOG CLIXON_LOG_SYSLOG

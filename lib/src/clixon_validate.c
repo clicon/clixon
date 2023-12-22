@@ -61,11 +61,11 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_string.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_data.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_options.h"
@@ -985,7 +985,7 @@ check_mandatory(cxobj     *xt,
  * 1. Check if mandatory leafs present as subs.
  * 2. Check leaf values, eg int ranges and string regexps.
  * @param[in]  xt    XML node to be validated
- * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[out] xret  Error XML tree, as rpc-reply/rpc-error. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error

@@ -59,13 +59,13 @@
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_file.h"
-#include "clixon_yang.h"
 #include "clixon_options.h"
-#include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
 #include "clixon_yang_module.h"
@@ -797,7 +797,6 @@ clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp,
                                     const char      *db,
                                     cxobj           *xt,
                                     modstate_diff_t *msd)
-
 {
     int                  retval = -1;
     datastore_upgrade_t *fn;
@@ -985,32 +984,47 @@ clixon_plugin_yang_patch_all(clixon_handle h,
     return retval;
 }
 
-/*! Callback plugin to customize Netconf error message
+/*! Call plugin to customize log, error, or debug message
  *
- * @param[in]  cp      Plugin handle
- * @param[in]  h       Clixon handle
- * @param[in]  xerr    Netconf error message on the level: <rpc-error>
- * @param[out] cberr   Translation from netconf err to cbuf.
- * @retval     0       OK
- * @retval    -1       Error
+ * The plugin creates cbmsg as a positive result, it may also modify category and suberr
+ * @param[in]     cp       Plugin handle
+ * @param[in]     h        Clixon handle
+ * @param[in]     fn       Inline function name (when called from clixon_err() macro)
+ * @param[in]     line     Inline file line number (when called from clixon_err() macro)
+ * @param[in]     type     Log message type
+ * @param[in,out] category Clixon error category, See enum clixon_err
+ * @param[in,out] suberr   Error number, typically errno
+ * @param[in]     xerr     Netconf error xml tree on the form: <rpc-error>
+ * @param[in]     format   Format string
+ * @param[in]     ap       Variable argument list
+ * @param[out]    cbmsg    Log string as cbuf, if set bypass ordinary logging
+ * @retval        0        OK
+ * @retval       -1        Error
  */
 int
-clixon_plugin_netconf_errmsg_one(clixon_plugin_t *cp,
-                                 clixon_handle    h,
-                                 cxobj           *xerr,
-                                 cbuf            *cberr)
+clixon_plugin_errmsg_one(clixon_plugin_t     *cp,
+                         clixon_handle        h,
+                         const char          *fn0,
+                         const int            line,
+                         enum clixon_log_type type,
+                         int                 *category,
+                         int                 *suberr,
+                         cxobj               *xerr,
+                         const char          *format,
+                         va_list              ap,
+                         cbuf               **cbmsg)
 {
-    int           retval = -1;
-    netconf_errmsg_t *fn;
-    void         *wh = NULL;
+    int       retval = -1;
+    errmsg_t *fn;
+    void     *wh = NULL;
 
     if ((fn = cp->cp_api.ca_errmsg) != NULL){
         wh = NULL;
         if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
-        if (fn(h, xerr, cberr) < 0) {
+        if (fn(h, fn0, line, type, category, suberr, xerr, format, ap, cbmsg) < 0) {
             if (clixon_err_category() < 0)
-                clixon_log(h, LOG_WARNING, "%s: Internal error: Netconf err callback in plugin: %s returned -1 but did not make a clixon_err call", 
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Logmsg callback in plugin: %s returned -1 but did not make a clixon_err call", 
                            __FUNCTION__, cp->cp_name);
             clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
             goto done;
@@ -1023,25 +1037,44 @@ clixon_plugin_netconf_errmsg_one(clixon_plugin_t *cp,
     return retval;
 }
 
-/*! Call plugin customize Netconf error message
+/*! Call plugin to customize log, error, or debug message
  *
- * @param[in]  h       Clixon handle
- * @param[in]  xerr    Netconf error message on the level: <rpc-error>
- * @param[out] cberr   Translation from netconf err to cbuf.
- * @retval     0       OK
- * @retval    -1       Error
+ * @param[in]     h        Clixon handle
+ * @param[in]     fn       Inline function name (when called from clixon_err() macro)
+ * @param[in]     line     Inline file line number (when called from clixon_err() macro)
+ * @param[in]     type     Log message type
+ * @param[in,out] category Clixon error category, See enum clixon_err
+ * @param[in,out] suberr   Error number, typically errno
+ * @param[in]     xerr     Netconf error xml tree on the form: <rpc-error>
+ * @param[in]     format   Format string
+ * @param[in]     ap       Variable argument list
+ * @param[out]    cbmsg    Log string as cbuf, if set bypass ordinary logging
+ * @retval        0        OK
+ * @retval       -1        Error
  */
 int
-clixon_plugin_netconf_errmsg_all(clixon_handle h,
-                                 cxobj        *xerr,
-                                 cbuf         *cberr)
+clixon_plugin_errmsg_all(clixon_handle        h,
+                         const char          *fn,
+                         const int            line,
+                         enum clixon_log_type type,
+                         int                 *category,
+                         int                 *suberr,
+                         cxobj               *xerr,
+                         const char          *format,
+                         va_list              ap,
+                         cbuf               **cbmsg)
 {
-    int            retval = -1;
+    int              retval = -1;
     clixon_plugin_t *cp = NULL;
 
-    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
-        if (clixon_plugin_netconf_errmsg_one(cp, h, xerr, cberr) < 0)
-            goto done;
+    if (h != NULL){ /* Silently ignore if not properly init:d */
+        *cbmsg = NULL;
+        while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+            if (clixon_plugin_errmsg_one(cp, h, fn, line, type, category, suberr, xerr, format, ap, cbmsg) < 0)
+                goto done;
+            if (*cbmsg != NULL)
+                break;
+        }
     }
     retval = 0;
  done:

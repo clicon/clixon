@@ -75,19 +75,17 @@ cat<<EOF > $cfile
 #include <unistd.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <syslog.h> // debug
 
 #include <clixon/clixon_queue.h>
 #include <clixon/clixon_hash.h>
 #include <clixon/clixon_handle.h>
-#include <clixon/clixon_log.h> // debug
 #include <clixon/clixon_client.h>
 
 int
 main(int    argc,
      char **argv)
 {
-    int retval = -1;
+    int                  retval = -1;
     clixon_handle        h = NULL; /* clixon handle */
     clixon_client_handle ch = NULL; /* clixon client handle */
     int                  s;
@@ -95,10 +93,6 @@ main(int    argc,
     /* Provide a clixon config-file, get a clixon handle */
     if ((h = clixon_client_init("$cfg")) == NULL)
        return -1;
-    clixon_log_init(h, "client", LOG_DEBUG, CLIXON_LOG_STDERR);
-    clixon_err_init(h);
-    clixon_debug_init(h, $debug, NULL);
-
     /* Make a connection over netconf or ssh/netconf */
     if ((ch = clixon_client_connect(h, CLIXON_CLIENT_NETCONF, NULL)) == NULL)
        return -1;

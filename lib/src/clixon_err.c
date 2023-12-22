@@ -52,6 +52,7 @@
 #include <syslog.h>
 #include <string.h>
 #include <time.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/types.h>
 
@@ -62,9 +63,14 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_err.h"
+#include "clixon_xml_io.h"
+#include "clixon_yang_module.h"
+#include "clixon_plugin.h"
 
 /*
  * Types
@@ -258,7 +264,7 @@ find_category(int category)
  * @retval      -1        Error
  * @see clixon_err_fn for a variable-argument variant
  */
-int
+static int
 clixon_err_args(clixon_handle h,
                 const char   *fn,
                 const int     line,
@@ -272,7 +278,7 @@ clixon_err_args(clixon_handle h,
     
     /* Set the global variables */
     strncpy(_err_reason, msg, ERR_STRLEN-1);
-    _err_category    = category;
+    _err_category = category;
     _err_subnr = suberr;
     /* Check category callbacks as defined in clixon_err_cat_reg */
     if ((cec = find_category(category)) != NULL &&
@@ -285,14 +291,14 @@ clixon_err_args(clixon_handle h,
             goto done;
         /* Here we could take care of specific errno, like application-defined errors */
         if (fn)
-            clixon_log(h, LOG_ERR, "%s: %d: %s: %s: %s",
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %d: %s: %s: %s",
                        fn,
                        line,
                        clixon_strerror1(category, EV),
                        cbuf_get(cb),
                        msg);
         else
-            clixon_log(h, LOG_ERR, "%s: %s: %s",
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %s: %s",
                        clixon_strerror1(category, EV),
                        cbuf_get(cb),
                        msg);
@@ -300,27 +306,27 @@ clixon_err_args(clixon_handle h,
     else if (suberr){   /* Actually log it */
         /* Here we could take care of specific errno, like application-defined errors */
         if (fn)
-            clixon_log(h, LOG_ERR, "%s: %d: %s: %s: %s",
-                       fn,
-                       line,
-                       clixon_strerror1(category, EV),
-                       msg,
-                       suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %d: %s: %s: %s",
+                          fn,
+                          line,
+                          clixon_strerror1(category, EV),
+                          msg,
+                          suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
         else
-            clixon_log(h, LOG_ERR, "%s: %s: %s",
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %s: %s",
                        clixon_strerror1(category, EV),
                        msg,
                        suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
     }
     else{
         if (fn)
-            clixon_log(h, LOG_ERR, "%s: %d: %s: %s",
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %d: %s: %s",
                        fn,
                        line,
                        clixon_strerror1(category, EV),
                        msg);
         else
-            clixon_log(h, LOG_ERR, "%s: %s",
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %s",
                        clixon_strerror1(category, EV),
                        msg);
     }
@@ -331,8 +337,55 @@ clixon_err_args(clixon_handle h,
     return retval;
 }
 
+/*! Generate netconf error msg to cbuf using callback to use in string printout or logs
+ *
+ * If no callback is registered, a default error message is genereated
+ * @param[in]     xerr    Netconf error message on the level: <rpc-error>
+ * @param[out]    cberr   Translation from netconf err to cbuf.
+ * @retval        0       OK, with cberr set
+ * @retval       -1       Error
+ * @code
+ *     cbuf *cb = NULL;
+ *     if ((cb = cbuf_new()) ==NULL){
+ *        err;
+ *     if (netconf_err2cb(h, xerr, cb) < 0)
+ *        err;
+ *     printf("%s", cbuf_get(cb));
+ *     cbuf_free(cb);
+ * @endcode
+ * @see clixon_err_netconf_fn
+ */
+int
+netconf_err2cb(clixon_handle h,
+               cxobj        *xerr,
+               cbuf         *cberr)
+{
+    int    retval = -1;
+    cxobj *x;
+
+    if ((x = xml_find_type(xerr, NULL, "error-type", CX_ELMNT)) != NULL)
+        cprintf(cberr, "%s ", xml_body(x));
+    if ((x = xml_find_type(xerr, NULL, "error-tag", CX_ELMNT)) != NULL)
+        cprintf(cberr, "%s ", xml_body(x));
+    if ((x = xml_find_type(xerr, NULL, "error-message", CX_ELMNT)) != NULL)
+        cprintf(cberr, "%s ", xml_body(x));
+    if ((x = xml_find_type(xerr, NULL, "error-info", CX_ELMNT)) != NULL &&
+        xml_child_nr(x) > 0){
+        if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
+            goto done;
+    }
+    if ((x = xml_find_type(xerr, NULL, "error-app-tag", CX_ELMNT)) != NULL)
+        cprintf(cberr, ": %s ", xml_body(x));
+    if ((x = xml_find_type(xerr, NULL, "error-path", CX_ELMNT)) != NULL)
+        cprintf(cberr, ": %s ", xml_body(x));
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Report an error.
  *
+ * Do not use this fn directly, use the clixon_err() macro
  * Library routines should call this function when an error occurs.
  * The function does he following:
  * - Logs to syslog with LOG_ERR
@@ -351,46 +404,71 @@ clixon_err_args(clixon_handle h,
  * @param[in]    line     Inline file line number (when called from clixon_err() macro)
  * @param[in]    category Clixon error category, See enum clixon_err
  * @param[in]    suberr   Error number, typically errno
+ * @param[in]    xerr     Optional netconf error xml tree on the form: [rpc-reply/]rpc-error
  * @param[in]    format   Error string, format with argv
  * @retval       0        OK
  * @retval      -1        Error
- * @see clixon_err_netconf For variant with netconf error message
+ * @see clixon_err_netconf_fn For variant with netconf error message
  */
 int
-clixon_err_fn(const char *fn,
-              const int   line,
-              int         category,
-              int         suberr,
-              const char *format, ...)
+clixon_err_fn(clixon_handle h,
+              const char   *fn,
+              const int     line,
+              int           category,
+              int           suberr,
+              cxobj        *xerr,
+              const char   *format, ...)
 {
-    int           retval = -1;
-    va_list       args;
-    int           len;
-    char         *msg    = NULL;
+    int     retval = -1;
+    va_list ap;
+    cbuf   *cb = NULL;
 
-    /* first round: compute length of error message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
+    if (h == NULL)     /* Accept NULL, use saved clixon handle */
+        h = _err_clixon_h;
+    if (xerr){
+        /* Accept xml errors on formats:
+         *   <rpc-reply><rpc-error>, 
+         *   <rpc-error>
+         */
+        if (strcmp(xml_name(xerr), "rpc-reply") == 0)
+            xerr = xml_find_type(xerr, NULL, "rpc-error", CX_ELMNT);
+        if (strcmp(xml_name(xerr), "rpc-error") != 0){
+            errno = EINVAL;
+            goto done;
+        }
+    }
+    va_start(ap, format);
+    if (clixon_plugin_errmsg_all(h, fn, line, LOG_TYPE_ERR,
+                                 &category, &suberr, xerr, format, ap, &cb) < 0)
+        goto done;
+    va_end(ap);
+    if (cb != NULL){ /* Customized: expand clixon_err_args */
+        strncpy(_err_reason, cbuf_get(cb), ERR_STRLEN-1);
+        _err_category = category;
+        _err_subnr = suberr;
+        clixon_log_fn(h, 0, LOG_ERR, xerr, "%s", cbuf_get(cb));
+        goto ok;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
         goto done;
     }
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
+    va_start(ap, format);
+    vcprintf(cb, format, ap);
+    va_end(ap);
+    if (xerr) {
+        cprintf(cb, ": ");
+        /* Translate netconf error to string */
+        if (netconf_err2cb(h, xerr, cb) < 0)
+            goto done;
     }
-    va_end(args);
-    if (clixon_err_args(_err_clixon_h, fn, line, category, suberr, msg) < 0)
+    if (clixon_err_args(h, fn, line, category, suberr, cbuf_get(cb)) < 0)
         goto done;
+ ok:
     retval = 0;
  done:
-    if (msg)
-        free(msg);
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }
 

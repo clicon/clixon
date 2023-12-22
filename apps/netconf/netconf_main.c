@@ -713,7 +713,7 @@ main(int    argc,
             if (sscanf(optarg, "%d", &dbg) != 1)
                 usage(h, argv[0]);
             break;
-         case 'f': /* override config file */
+        case 'f': /* override config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);
             clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
@@ -723,14 +723,14 @@ main(int    argc,
                 usage(h, argv[0]);
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
-         case 'l': /* Log destination: s|e|o */
+        case 'l': /* Log destination: s|e|o */
             if ((logdst = clixon_log_opt(optarg[0])) < 0)
                 usage(h, argv[0]);
             if (logdst == CLIXON_LOG_FILE &&
                 strlen(optarg)>1 &&
                 clixon_log_file(optarg+1) < 0)
                 goto done;
-             break;
+            break;
         }
 
     /* 
@@ -889,7 +889,7 @@ main(int    argc,
     /* Load clixon lib yang module */
     if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
         goto done;
-     /* Load yang module library, RFC7895 */
+    /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
         goto done;
     /* Add netconf yang spec, used by netconf client and as internal protocol */
@@ -935,7 +935,7 @@ main(int    argc,
     }
 #ifdef __AFL_HAVE_MANUAL_CONTROL
     /* American fuzzy loop deferred init, see CLICON_NETCONF_HELLO_OPTIONAL=true, see a speedup of x10 */
-        __AFL_INIT();
+    __AFL_INIT();
 #endif
     if (clixon_event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
         goto done;
@@ -950,12 +950,12 @@ main(int    argc,
         goto done;
  ok:
     retval = 0;
-  done:
+ done:
     if (ignore_packet_errors)
         retval = 0;
     clixon_exit_set(1); /* This is to disable resend mechanism in close-session */
-    netconf_terminate(h);
     clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+    netconf_terminate(h);
     return retval;
 }

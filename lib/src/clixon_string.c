@@ -52,6 +52,8 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_string.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 
 /*! Split string into a vector based on character delimiters. Using malloc

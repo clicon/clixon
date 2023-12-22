@@ -28,6 +28,10 @@ Expected: February 2024
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Changed ca_errmsg callback to a more generic variant
+  * Includes all error, log and debug messages
+  * See [Customized NETCONF error message](https://github.com/clicon/clixon/issues/454)
+  * See https://clixon-docs.readthedocs.io/en/latest/errors.html#customized-errors for more info
 * Refactoring basic clixon modules and some API changes
   * Changes marked in code with `COMPAT_6_5`
     * Most common functions have backward compatible macros through the 6.6 release

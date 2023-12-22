@@ -61,11 +61,11 @@
 #include "clixon_hash.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
-#include "clixon_err.h"
 #include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
@@ -469,10 +469,7 @@ clixon_xml_changelog_init(clixon_handle h)
                 clixon_err(OE_XML, errno, "cbuf_new");
                 goto done;
             }
-            if (netconf_err2cb(h, xret, cbret) < 0)
-                goto done;
-            clixon_err(OE_YANG, 0, "validation failed: %s", cbuf_get(cbret));
-            goto done;
+            clixon_err_netconf(h, OE_YANG, 0, xret, "validation failed");
         }
         if (clicon_xml_changelog_set(h, xt) < 0)
             goto done;

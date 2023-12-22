@@ -97,6 +97,8 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 
 #define HASH_SIZE       1031    /* Number of hash buckets. Should be a prime */

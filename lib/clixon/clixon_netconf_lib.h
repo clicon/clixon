@@ -206,16 +206,4 @@ int netconf_output(int s, cbuf *xf, char *msg);
 int netconf_output_encap(netconf_framing_type framing, cbuf *cb);
 int netconf_input_chunked_framing(char ch, int *state, size_t *size);
 
-/* Netconf error handling */
-#define clixon_err_netconf(h,c,s,x,_fmt, args...) clixon_err_netconf_fn((h), __FUNCTION__, __LINE__, (c), (s), (x), _fmt , ##args)
-
-int netconf_err2cb(clixon_handle h, cxobj *xerr, cbuf *cberr);
-int clixon_err_netconf_fn(clixon_handle h, const char *fn, const int line, int category,
-                          int suberr, cxobj *xerr, const char *format, ...)  __attribute__ ((format (printf, 7, 8)));;
-
-#if 1 /* COMPAT_6_5 */
-/* doesnt work if arg != NULL */
-#define clixon_netconf_error(h, x, f, a) clixon_err_netconf_fn((h), __FUNCTION__, __LINE__, OE_XML, 0,(x), (f) , NULL) 
-#endif
-
 #endif /* _CLIXON_NETCONF_LIB_H */

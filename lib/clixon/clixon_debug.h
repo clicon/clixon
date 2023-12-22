@@ -51,10 +51,16 @@
 #define CLIXON_DBG_EXTRA   8 /* Extra Detailed logs */
 
 /*
+ * Macros
+ */
+#define clixon_debug(l, _fmt, args...) clixon_debug_fn(NULL, (l), NULL, _fmt , ##args)
+#define clixon_debug_xml(l, x, _fmt, args...) clixon_debug_fn(NULL, (l), (x), _fmt , ##args)
+
+/*
  * Prototypes
  */
-int clixon_debug(int dbglevel, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
 int clixon_debug_init(clixon_handle h, int dbglevel);
 int clixon_debug_get(void);
+int clixon_debug_fn(clixon_handle h, int dbglevel, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 4, 5)));
 
 #endif  /* _CLIXON_DEBUG_H_ */
