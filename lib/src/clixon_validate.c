@@ -1271,8 +1271,11 @@ xml_yang_validate_all(clixon_handle h,
         goto fail;
     }
     if (yang_config(yt) != 0){
-        if (yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath) < 0)
+        ret = yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath);
+        clixon_debug(CLIXON_DBG_XPATH, "%s nr:%d xpath:%s return:%d", __FUNCTION__, nr, xpath, ret);
+        if (ret < 0)
             goto done;
+
         if (hit && nr == 0){
             if ((cb = cbuf_new()) == NULL){
                 clixon_err(OE_UNIX, errno, "cbuf_new");
