@@ -372,7 +372,6 @@ api_data_pagination(clixon_handle  h,
     cxobj     *xp;
     cxobj     *xpr = NULL;
     yang_stmt *y = NULL;
-    cbuf      *cbrpc = NULL;
     int32_t    depth = -1;  /* Nr of levels to print, -1 is all, 0 is none */
     uint32_t   limit = 0;
     uint32_t   offset = 0;
@@ -568,8 +567,6 @@ api_data_pagination(clixon_handle  h,
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
-    if (cbrpc)
-        cbuf_free(cbrpc);
     if (xpath)
         free(xpath);
     if (nsc)

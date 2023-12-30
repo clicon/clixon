@@ -193,7 +193,7 @@ static char *
 clixon_strerror1(int           err,
                  struct errvec vec[])
 {
-    struct errvec *ev;
+    struct errvec *ev = NULL;
 
     for (ev=vec; ev->ev_err != -1; ev++)
         if (ev->ev_err == err)

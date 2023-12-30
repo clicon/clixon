@@ -170,6 +170,7 @@ int
 stream_delete_all(clixon_handle h,
                   int           force)
 {
+    int                   retval = -1;
     struct stream_replay *r;
     struct stream_subscription *ss;
     event_stream_t       *es;
@@ -182,8 +183,10 @@ stream_delete_all(clixon_handle h,
             free(es->es_name);
         if (es->es_description)
             free(es->es_description);
-        while ((ss = es->es_subscription) != NULL)
-            stream_ss_rm(h, es, ss, force); /* XXX in some cases leaks memory due to DONT clause in stream_ss_rm() */
+        while ((ss = es->es_subscription) != NULL){
+            if (stream_ss_rm(h, es, ss, force) < 0)
+                goto done;
+        }
         while ((r = es->es_replay) != NULL){
             DELQ(r, es->es_replay, struct stream_replay *);
             if (r->r_xml)
@@ -192,7 +195,9 @@ stream_delete_all(clixon_handle h,
         }
         free(es);
     }
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Return stream definition state in XML supporting RFC 8040 and RFC5277

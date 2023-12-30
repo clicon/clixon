@@ -13,6 +13,8 @@ Expected: February 2024
 
 ### Minor features
 
+* Made coverity analysis and fixed most of them
+  * Some were ignored being for generated code (eg lex) or not applicable
 * Feature: [Add support for -V option to give version](https://github.com/clicon/clixon/issues/472)
   * All clixon applications added command-line option `-V` for printing version
   * New ca_version callback for customized version output

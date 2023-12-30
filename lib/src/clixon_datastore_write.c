@@ -1286,7 +1286,6 @@ xmldb_put(clixon_handle       h,
     int         retval = -1;
     char       *dbfile = NULL;
     FILE       *f = NULL;
-    cbuf       *cb = NULL;
     yang_stmt  *yspec;
     cxobj      *x0 = NULL;
     db_elmnt   *de = NULL;
@@ -1454,8 +1453,6 @@ xmldb_put(clixon_handle       h,
         xml_nsctx_free(nsc);
     if (dbfile)
         free(dbfile);
-    if (cb)
-        cbuf_free(cb);
     if (x0 && clicon_datastore_cache(h) == DATASTORE_NOCACHE)
         xml_free(x0);
     return retval;

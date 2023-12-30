@@ -327,7 +327,7 @@ clixon_proc_background(clixon_handle h,
     sigfn_t       oldhandler = NULL;
     sigset_t      oset;
     struct rlimit rlim = {0, };
-    struct stat   fstat;
+    struct stat   fstat = {0, };
     char         *flattened;
     unsigned      argc;
 
@@ -340,7 +340,6 @@ clixon_proc_background(clixon_handle h,
         clixon_err(OE_UNIX, EINVAL, "argv[0] is NULL");
 	goto quit;
     }
-
     for (argc = 0; argv[argc] != NULL; ++argc)
          ;
     if ((flattened = clicon_strjoin(argc, argv, "', '")) == NULL){
@@ -351,6 +350,7 @@ clixon_proc_background(clixon_handle h,
     free(flattened);
 
     /* Sanity check: program exists */
+    // coverity: CID 471757: (#1 of 1): Time of check time of use (TOCTOU)9. fs_check_call: Calling function stat to perform check on argv[0]. See later execvp on filename
     if (stat(argv[0], &fstat) < 0) {
         clixon_err(OE_FATAL, errno, "%s", argv[0]);
         goto quit;

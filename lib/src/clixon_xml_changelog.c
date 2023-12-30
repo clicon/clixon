@@ -540,8 +540,11 @@ xml_namespace_vec(clixon_handle h,
         xvec[i++] = xc;
     }
     *vecp = xvec;
+    xvec = NULL;
     *veclenp = i;
     retval = 0;
  done:
+    if (xvec)
+        free(xvec);
     return retval;
 }

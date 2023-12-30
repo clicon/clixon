@@ -289,7 +289,7 @@ netconf_missing_attribute_xml(cxobj **xret,
                               char   *attr,
                               char   *message)
 {
-    int   retval = -1;
+    int    retval = -1;
     cxobj *xerr = NULL;
     char  *encstr = NULL;
 
@@ -405,7 +405,7 @@ netconf_bad_attribute_xml(cxobj **xret,
                           char   *info,
                           char   *message)
 {
-    int   retval = -1;
+    int    retval = -1;
     cxobj *xerr = NULL;
     char  *encstr = NULL;
 
@@ -1447,9 +1447,9 @@ netconf_data_not_unique_xml(cxobj **xret,
     int     retval = -1;
     cg_var *cvi = NULL; 
     cxobj  *xerr;
-    cxobj  *xinfo;
+    cxobj  *xinfo = NULL;
     char   *path = NULL;
-    char  *encpath = NULL;
+    char   *encpath = NULL;
 
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");

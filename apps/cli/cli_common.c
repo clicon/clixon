@@ -1596,7 +1596,7 @@ cli_kill_session(clixon_handle h,
         goto done;
     }
     if ((str = cv_string_get(cvec_i(argv, 0))) != NULL){
-        if ((ret = parse_uint32(str, &session_id, NULL)) < 0)
+        if ((ret = parse_uint32(str, &session_id, &reason)) < 0)
             goto done;
         if (ret == 0){
             cligen_output(stderr, "%s\n", reason);

@@ -1101,6 +1101,7 @@ clicon_rpc_get2(clixon_handle   h,
             goto done;
         xml_sort(xd); /* Ensure attr is first */
         *xt = xd;
+        xd = NULL;
     }
     retval = 0;
   done:
@@ -1115,6 +1116,8 @@ clicon_rpc_get2(clixon_handle   h,
         xml_free(xret);
     if (msg)
         free(msg);
+    if (xd)
+        xml_free(xd);
     return retval;
 }
 

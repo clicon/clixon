@@ -1195,7 +1195,7 @@ snmp_oid2str(oid      **oidi,
         break;
     }
     if (cbuf_len(enc)){
-        if (cv_string_set(cv, cbuf_get(enc)) < 0){
+        if (cv_string_set(cv, cbuf_get(enc)) == NULL){
             clixon_err(OE_UNIX, errno, "cv_string_set");
             goto done;
         }
@@ -1311,7 +1311,7 @@ snmp_xmlkey2val_oid(cxobj     *xentry,
             break;
         if (cvk_val){
             cv = cvec_i(*cvk_val, i);
-            if (cv_string_set(cv, xml_body(xi)) < 0){
+            if (cv_string_set(cv, xml_body(xi)) == NULL){
                 clixon_err(OE_UNIX, errno, "cv_string_set");
                 goto done;
             }

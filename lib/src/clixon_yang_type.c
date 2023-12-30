@@ -1479,6 +1479,10 @@ yang_type_get(yang_stmt    *ys,
     yang_stmt    *ytype;        /* type */
     char         *type = NULL;
 
+    if (yrestype == NULL){
+        clixon_err(OE_YANG, EINVAL, "Expected yrestype != NULL");
+        goto done;
+    }
     if (options)
         *options = 0x0;
     /* Find mandatory type */
@@ -1497,7 +1501,7 @@ yang_type_get(yang_stmt    *ys,
     if (yang_type_resolve(ys, ys, ytype, yrestype,
                           options, cvv, patterns, regexps, fraction) < 0)
         goto done;
-    if (yrestype && *yrestype == NULL){
+    if (*yrestype == NULL){
         clixon_err(OE_YANG, 0, "result-type should not be NULL");
         goto done;
     }
