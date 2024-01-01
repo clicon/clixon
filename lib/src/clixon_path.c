@@ -618,7 +618,6 @@ api_path_fmt2xpath(char  *api_path_fmt,
 /*! Translate from restconf api-path(cvv) to xml xpath(cbuf) and namespace context
  * 
  * @param[in]     api_path URI-encoded path expression" (RFC8040 3.5.3) as cvec
- * @param[in]     offset   Offset of cvec, where api-path starts
  * @param[in]     yspec    Yang spec
  * @param[in,out] xpath    The xpath as cbuf (must be created and may have content)
  * @param[out]    nsc      Namespace context of xpath (free w xml_nsctx_free)
@@ -652,12 +651,11 @@ api_path_fmt2xpath(char  *api_path_fmt,
  * @see api_path2xpath  Using strings as parameters
  */
 static int
-api_path2xpath_cvv(cvec       *api_path,
-                   int         offset,
-                   yang_stmt  *yspec,
-                   cbuf       *xpath,
-                   cvec      **nscp,
-                   cxobj     **xerr)
+api_path2xpath_cvv(cvec      *api_path,
+                   yang_stmt *yspec,
+                   cbuf      *xpath,
+                   cvec     **nscp,
+                   cxobj    **xerr)
 {
     int        retval = -1;
     int        i;
@@ -682,6 +680,7 @@ api_path2xpath_cvv(cvec       *api_path,
     char      *decval;
     int        ret;
     int        root;
+    int        ymtpoint; /* y is potential mount-point */
 
     cprintf(xpath, "/");
     /* Initialize namespace context */
@@ -691,8 +690,9 @@ api_path2xpath_cvv(cvec       *api_path,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
+    ymtpoint = 0;
     root = 1; /* root or mountpoint */
-    for (i=offset; i<cvec_len(api_path); i++){
+    for (i=0; i<cvec_len(api_path); i++){
         cv = cvec_i(api_path, i);
         nodeid = cv_name_get(cv);
         /* api-path: prefix points to module */
@@ -701,7 +701,7 @@ api_path2xpath_cvv(cvec       *api_path,
         clixon_debug(CLIXON_DBG_DETAIL, "%s [%d] cvname: %s:%s",
                      __FUNCTION__, i, prefix?prefix:"", name);
         /* top-node must have prefix */
-        if (i == offset && prefix == NULL){
+        if (i == 0 && prefix == NULL){
             cprintf(cberr, "'%s': Expected prefix:name", nodeid);
             if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
                 goto done;
@@ -717,15 +717,45 @@ api_path2xpath_cvv(cvec       *api_path,
             }
             namespace = yang_find_mynamespace(ymod); /* change namespace */
         }
-        if (root && ymod) /* root */
+        if (i == 0 || root || ymtpoint){
+            if (ymod == NULL){
+                cprintf(cberr, "'%s': Expected mountpoint prefix:name", nodeid);
+                if (xerr && netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+                    goto done;
+                goto fail;
+            }
             y = yang_find_datanode(ymod, name);
-        else
+        }
+        else{
             y = yang_find_datanode(y, name);
-        root = 0;
+        }
         if (y == NULL){
             if (xerr && netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
                 goto done;
             goto fail;
+        }
+        root = 0;
+        /* If x/y is mountpoint, change y to new yspec */
+        if ((ret = yang_schema_mount_point(y)) < 0)
+            goto done;
+        if (ret == 1){
+            y1 = NULL;
+            if (xml_nsctx_yangspec(yspec, &nsc) < 0)
+                goto done;
+            /* cf xml_bind_yang0_opt/xml_yang_mount_get */
+            if (yang_mount_get(y, cbuf_get(xpath), &y1) < 0)
+                goto done;
+            if (y1 != NULL){
+                y = y1;
+                yspec = y1;
+                root = 1;
+            }
+        }
+        if ((ymtpoint = yang_schema_mount_point(y)) < 0)
+            goto done;
+        if (ymtpoint){
+            if (yang_mount_get_yspec_any(y, &yspec) < 0)
+                goto done;
         }
         /* Get XML/xpath prefix given namespace.
          * note different from api-path prefix
@@ -740,6 +770,11 @@ api_path2xpath_cvv(cvec       *api_path,
             if (xml_nsctx_add(nsc, xprefix, namespace) < 0)
                 goto done;
         }
+        if (i > 0)
+            cprintf(xpath, "/");
+        if (xprefix)
+            cprintf(xpath, "%s:", xprefix);
+        cprintf(xpath, "%s", name);
         /* Check if has value, means '=' */
         if (cv_type_get(cv) == CGV_STRING){
             /* val is uri percent encoded, eg x%2Cy,z */
@@ -759,11 +794,6 @@ api_path2xpath_cvv(cvec       *api_path,
                 cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
                 cvi = NULL;
                 /* Iterate over individual yang keys  */
-                if (i != offset)
-                    cprintf(xpath, "/");
-                if (xprefix)
-                    cprintf(xpath, "%s:", xprefix);
-                cprintf(xpath, "%s", name);
                 vi = 0;
                 while ((cvi = cvec_each(cvk, cvi)) != NULL && vi<nvalvec){
                     cprintf(xpath, "[");
@@ -781,49 +811,16 @@ api_path2xpath_cvv(cvec       *api_path,
                 }
                 break;
             case Y_LEAF_LIST: /* XXX: LOOP? */
-                if (i != offset)
-                    cprintf(xpath, "/");
-                if (xprefix)
-                    cprintf(xpath, "%s:", xprefix);
-                cprintf(xpath, "%s", name);
                 if (val)
                     cprintf(xpath, "[.='%s']", val);
                 else
                     cprintf(xpath, "[.='']");
                 break;
             default:
-                if (i != offset)
-                    cprintf(xpath, "/");
-                if (xprefix)
-                    cprintf(xpath, "%s:", xprefix);
-                cprintf(xpath, "%s", name);
                 break;
             }
             if (val)
                 free(val);
-        }
-        else{
-            if (i != offset)
-                cprintf(xpath, "/");
-            if (xprefix)
-                cprintf(xpath, "%s:", xprefix);
-            cprintf(xpath, "%s", name);
-        }
-        /* If x/y is mountpoint, pass mount yspec to children */
-        if ((ret = yang_schema_mount_point(y)) < 0)
-            goto done;
-        if (ret == 1){
-            y1 = NULL;
-            if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-                goto done;
-            /* cf xml_bind_yang0_opt/xml_yang_mount_get */
-            if (yang_mount_get(y, cbuf_get(xpath), &y1) < 0)
-                goto done;
-            if (y1 != NULL){
-                y = y1;
-                yspec = y1;
-                root = 1;
-            }
         }
         if (prefix){
             free(prefix);
@@ -910,7 +907,7 @@ api_path2xpath(char       *api_path,
         goto done;
     if ((xpath = cbuf_new()) == NULL)
         goto done;
-    if ((ret = api_path2xpath_cvv(cvv, 0, yspec, xpath, nsc, xerr)) < 0)
+    if ((ret = api_path2xpath_cvv(cvv, yspec, xpath, nsc, xerr)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -983,9 +980,9 @@ api_path2xml_vec(char      **vec,
     char      *namespace = NULL;
     cbuf      *cberr = NULL;
     char      *val = NULL;
-    int        ret;
     char      *xpath = NULL;
     cvec      *nsc = NULL;
+    int        ymtpoint; /* y is mountpoint */
 
     if ((nodeid = vec[0]) == NULL || strlen(nodeid)==0){
         if (xbotp)
@@ -1006,13 +1003,19 @@ api_path2xml_vec(char      **vec,
     /* Split into prefix and localname */
     if (nodeid_split(nodeid, &prefix, &name) < 0)
         goto done;
-    if (yang_keyword_get(y0) == Y_SPEC){ /* top-node */
+    if ((ymtpoint = yang_schema_mount_point(y0)) < 0)
+        goto done;
+    if (yang_keyword_get(y0) == Y_SPEC || ymtpoint){
         if (prefix == NULL){
             cprintf(cberr, "api-path element '%s', expected prefix:name", nodeid);
             if (xerr &&
                 netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
                 goto done;
             goto fail;
+        }
+        if (ymtpoint){
+            if (yang_mount_get_yspec_any(y0, &y0) < 0)
+                goto done;
         }
         if ((ymod = yang_find_module_by_name(y0, prefix)) == NULL){
             cprintf(cberr, "No such yang module prefix");
@@ -1026,7 +1029,7 @@ api_path2xml_vec(char      **vec,
     }
     y = (nodeclass==YC_SCHEMANODE)?
         yang_find_schemanode(y0, name):
-        yang_find_datanode(y0, name);
+        yang_find_datanode(y0, name); // <--
     if (y == NULL){
         if (xerr &&
             netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
@@ -1154,9 +1157,9 @@ api_path2xml_vec(char      **vec,
             goto done;
     }
     /* If x/y is mountpoint, pass mount yspec to children */
-    if ((ret = yang_schema_mount_point(y)) < 0)
+    if ((ymtpoint = yang_schema_mount_point(y)) < 0)
         goto done;
-    if (ret == 1){
+    if (ymtpoint){
         y1 = NULL;
         if (xml_nsctx_yangspec(ys_spec(y), &nsc) < 0)
             goto done;

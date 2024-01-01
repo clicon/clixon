@@ -48,7 +48,6 @@
 #include <stdarg.h>
 #include <time.h>
 #include <ctype.h>
-
 #include <unistd.h>
 #include <dirent.h>
 #include <syslog.h>
@@ -242,8 +241,6 @@ expand_dbvar(void   *h,
     yang_stmt       *ytype;
     char            *mtpoint = NULL;
     yang_stmt       *yspec0 = NULL;
-    yang_stmt       *yspec;
-    yang_stmt       *yu = NULL;
     cvec            *nsc0 = NULL;
     char            *str;
     int              grouping_treeref;
@@ -280,13 +277,14 @@ expand_dbvar(void   *h,
     }
     if (grouping_treeref &&
         (callback_cvv = cligen_callback_arguments_get(cli_cligen(h))) != NULL){
-        /* Concatenate callback arguments to a singel prepend string */
+        /* Concatenate callback arguments to a single prepend string */
         if (cvec_concat_cb(callback_cvv, api_path_fmt_cb) < 0)
             goto done;
     }
     cprintf(api_path_fmt_cb, "%s", cv_string_get(cv));
     api_path_fmt = cbuf_get(api_path_fmt_cb);
-    if (cvec_len(argv) > 2){
+    if (cvec_len(argv) > 2){ /* mountpoint */
+        /* api_path_fmt is without top-level */
         cv = cvec_i(argv, 2);
         str = cv_string_get(cv);
         if (strncmp(str, "mtpoint:", strlen("mtpoint:")) != 0){
@@ -294,13 +292,18 @@ expand_dbvar(void   *h,
             goto done;
         }
         mtpoint = str + strlen("mtpoint:");
+        /* Get and combined api-path01 */
+        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+            goto done;
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, &api_path, &cvvi) < 0)
+            goto done;
     }
-    /* api_path_fmt = /interface/%s/address/%s
-     * api_path: -->  /interface/eth0/address/.*
-     * xpath:    -->  /interface/[name="eth0"]/address
-     */
-    if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
-        goto done;
+    else{
+        if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+            goto done;
+    }
+    if (api_path == NULL)
+        goto ok;
     /* Create config top-of-tree */
     if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -309,32 +312,28 @@ expand_dbvar(void   *h,
      * xpath2xml would have worked!!
      * XXX: but y is just the first in this list, there could be other y:s?
      */
-    yspec = yspec0; /* may be reset to mount yspec below */
-    if (api_path){
-        if (mtpoint){
-            if (yang_path_arg(yspec0, mtpoint, &yu) < 0)
-                goto done;
-            if (yang_mount_get(yu, mtpoint, &yspec) < 0)
-                goto done;
-        }
-        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
-            goto done;
-        if (ret == 0){
-            clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Expand datastore symbol");
-            goto done;
-        }
-    }
-    if (y==NULL)
-        goto ok;
-    /* Transform api-path to xpath for netconf  */
-    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
+    if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
         goto done;
+    if (ret == 0){
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Expand datastore symbol");
+        goto done;
+    }
+    if (y == NULL){
+        clixon_err(OE_YANG, 0, "y is NULL");
+        goto done;
+    }
+    /* Transform api-path to xpath for netconf  */
+    if ((ret = api_path2xpath(api_path, yspec0, &xpath, &nsc, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Expand datastore symbol");
+        goto done;
+    }
     if ((cbxpath = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (mtpoint){
-        cprintf(cbxpath, "%s", mtpoint);
         if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
             goto done;
         cv = NULL;      /* Append nsc0 to nsc */
@@ -383,7 +382,7 @@ expand_dbvar(void   *h,
     if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, &xt) < 0)
         goto done;
     if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
+        clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
         goto ok;
     }
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, cbuf_get(cbxpath)) < 0)

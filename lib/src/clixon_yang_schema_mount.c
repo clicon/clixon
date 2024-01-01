@@ -152,6 +152,7 @@ yang_schema_mount_point(yang_stmt *y)
  * @param[in]  xpath Key for yspec on y
  * @param[out] yspec YANG stmt spec
  * @retval     0     OK
+ * @see yang_mount_get_yspec_any for ANY yspec not for a specific xpath
  */
 int
 yang_mount_get(yang_stmt  *y,

@@ -60,6 +60,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Tab completion mounted devices with lists](https://github.com/clicon/clixon-controller/issues/72)
 * Fixed: kill-session cleanup when client none existant, and for all db:s
 * Fixed: [Using the characters '<' and '>' might cause an invalid diff](https://github.com/clicon/clixon-controller/issues/73)
 
