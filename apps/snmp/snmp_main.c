@@ -205,7 +205,7 @@ clixon_snmp_input_cb(int   s,
     clixon_handle  h = (clixon_handle)arg;
     int            ret;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, s);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, s);
     FD_ZERO(&readfds);
     FD_SET(s, &readfds);
     (void)snmp_read(&readfds);

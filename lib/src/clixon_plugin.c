@@ -418,7 +418,7 @@ clixon_plugins_load(clixon_handle h,
     plugin_module_struct *ms = plugin_module_struct_get(h);
     int                   dlflags;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (ms == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
@@ -1302,7 +1302,7 @@ rpc_callback_call(clixon_handle h,
         *nrp = nr;
     retval = 1; /* 0: none found, >0 nr of handlers called */
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     return retval;
  fail:
     retval = 0;

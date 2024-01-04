@@ -859,13 +859,14 @@ xmldb_get_nocache(clixon_handle    h,
         if (disable_nacm_on_empty(xt, yspec) < 0)
             goto done;
     }
-    if (clixon_debug_get()>1)
+    if (clixon_debug_isset(CLIXON_DBG_DEFAULT))
         if (clixon_xml2file(stderr, xt, 0, 1, NULL, fprintf, 0, 0) < 0)
             goto done;
     *xtop = xt;
     xt = NULL;
     retval = 1;
  done:
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xt)
         xml_free(xt);
     if (xvec)
@@ -1053,11 +1054,11 @@ xmldb_get_cache(clixon_handle     h,
         if (disable_nacm_on_empty(x1t, yspec) < 0)
             goto done;
     }
-    clixon_debug_xml(CLIXON_DBG_DETAIL, x1t, "%s", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, x1t, "%s", __FUNCTION__);
     *xtop = x1t;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     return retval;
@@ -1202,13 +1203,13 @@ xmldb_get_zerocopy(clixon_handle    h,
         if (disable_nacm_on_empty(x0t, yspec) < 0)
             goto done;
     }
-    if (clixon_debug_get() > 1)
+    if (clixon_debug_isset(CLIXON_DBG_DEFAULT))
         if (clixon_xml2file(stderr, x0t, 0, 1, NULL, fprintf, 0, 0) < 0)
             goto done;
     *xtop = x0t;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     return retval;

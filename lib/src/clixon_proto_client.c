@@ -206,7 +206,7 @@ clicon_rpc_msg(clixon_handle      h,
     int     s = -1;
     int     eof = 0;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
 #endif
@@ -253,7 +253,7 @@ clicon_rpc_msg(clixon_handle      h,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     if (retdata)
         free(retdata);
     if (xret)
@@ -1018,7 +1018,7 @@ clicon_rpc_get2(clixon_handle   h,
     yang_stmt         *yspec;
     cvec              *nscd = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -1105,7 +1105,7 @@ clicon_rpc_get2(clixon_handle   h,
     }
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     if (nscd)
         cvec_free(nscd);
     if (cb)

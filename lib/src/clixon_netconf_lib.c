@@ -2245,7 +2245,7 @@ netconf_input_chunked_framing(char    ch,
 {
     int retval = 0;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s ch:%c(%d) state:%d size:%zu", __FUNCTION__, ch, ch, *state, *size);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s ch:%c(%d) state:%d size:%zu", __FUNCTION__, ch, ch, *state, *size);
     switch (*state){
     case 0:
         if (ch == '\n'){

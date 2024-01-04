@@ -872,7 +872,7 @@ get_common(clixon_handle        h,
     char             *wdefstr;
 
     wdef = WITHDEFAULTS_EXPLICIT;
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec9");
@@ -1049,7 +1049,7 @@ get_common(clixon_handle        h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     if (xret)

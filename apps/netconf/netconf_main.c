@@ -469,7 +469,7 @@ netconf_input_cb(int   s,
                                &eom) < 0)
             goto done;
         if (eom == 0){ /* frame not complete */
-            clixon_debug(CLIXON_DBG_DETAIL, "%s: frame: %lu", __FUNCTION__, cbuf_len(cbmsg));
+            clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: frame: %lu", __FUNCTION__, cbuf_len(cbmsg));
             /* Extra data to read, save data and continue on next round */
             if (clicon_hash_add(cdat, NETCONF_FRAME_MSG, &cbmsg, sizeof(cbmsg)) == NULL)
                 goto done;
