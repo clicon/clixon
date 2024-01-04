@@ -164,7 +164,7 @@ xml2cvec(cxobj      *xt,
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
         name = xml_name(xc);
         if ((ys = yang_find_datanode(yt, name)) == NULL){
-            clixon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
+            clixon_debug(CLIXON_DBG_ALWAYS, "%s: yang sanity problem: %s in xml but not present in yang under %s",
                          __FUNCTION__, name, yang_argument_get(yt));
             if ((body = xml_body(xc)) != NULL){
                 if ((cv = cv_new(CGV_STRING)) == NULL){

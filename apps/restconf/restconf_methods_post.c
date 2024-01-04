@@ -330,7 +330,7 @@ api_data_post(clixon_handle h,
     if (restconf_insert_attributes(xdata, qvec) < 0)
         goto done;
 #if 1
-    clixon_debug_xml(1, xdata, "%s xdata:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_DEFAULT, xdata, "%s xdata:", __FUNCTION__);
 #endif
 
     /* Create text buffer for transfer to backend */
@@ -491,7 +491,7 @@ api_operations_post_input(clixon_handle h,
      * <data><input xmlns="urn:example:clixon">...</input></data>
      */
 #if 1
-    clixon_debug_xml(1, xdata, "%s xdata:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_DEFAULT, xdata, "%s xdata:", __FUNCTION__);
 #endif
     /* Validate that exactly only <input> tag */
     if ((xinput = xml_child_i_type(xdata, 0, CX_ELMNT)) == NULL ||
@@ -588,7 +588,7 @@ api_operations_post_output(clixon_handle h,
     xml_name_set(xoutput, "output");
     /* xoutput should now look: <output><x xmlns="uri">0</x></output> */
 #if 1
-    clixon_debug_xml(1, xoutput, "%s xoutput:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_DEFAULT, xoutput, "%s xoutput:", __FUNCTION__);
 #endif
     /* Remove original netconf default namespace. Somewhat unsure what "output" belongs to? */
     if ((xa = xml_find_type(xoutput, NULL, "xmlns", CX_ATTR)) != NULL)
@@ -803,7 +803,7 @@ api_operations_post(clixon_handle h,
     /* Here xtop is: 
       <rpc username="foo"><myfn xmlns="uri"><x>42</x></myfn></rpc> */
 #if 1
-    clixon_debug_xml(1, xtop, "%s 5. Translate input args:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_DEFAULT, xtop, "%s 5. Translate input args:", __FUNCTION__);
 #endif
     /* 6. Validate outgoing RPC and fill in defaults */
     if ((ret = xml_bind_yang_rpc(h, xtop, yspec, &xerr)) < 0) /*  */
@@ -824,7 +824,7 @@ api_operations_post(clixon_handle h,
      * <rpc username="foo"><myfn xmlns="uri"><x>42</x><y>99</y></myfn></rpc>
     */
 #if 0
-    clixon_debug_xml(1, xtop, "%s 6. Validate and defaults:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_DEFAULT, xtop, "%s 6. Validate and defaults:", __FUNCTION__);
 #endif
     /* 7. Send to RPC handler, either local or backend
      * Note (1) xtop is <rpc><method> xbot is <method>
@@ -865,7 +865,7 @@ api_operations_post(clixon_handle h,
      *       <rpc-reply><x xmlns="uri">0</x></rpc-reply>
      */
 #if 1
-    clixon_debug_xml(1, xret, "%s Receive reply:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_DEFAULT, xret, "%s Receive reply:", __FUNCTION__);
 #endif
     youtput = yang_find(yrpc, Y_OUTPUT, NULL);
     if ((ret = api_operations_post_output(h, req, xret, yspec, youtput, namespace,
