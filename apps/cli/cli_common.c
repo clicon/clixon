@@ -459,6 +459,7 @@ cli_dbxml(clixon_handle       h,
         goto done;
     xbot = xtop;
     if (api_path){
+        clixon_debug(CLIXON_DBG_XPATH, "%s api_path:%s", __FUNCTION__, api_path);
         if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){

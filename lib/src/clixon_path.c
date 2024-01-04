@@ -698,7 +698,7 @@ api_path2xpath_cvv(cvec      *api_path,
         /* api-path: prefix points to module */
         if (nodeid_split(nodeid, &prefix, &name) < 0)
             goto done;
-        clixon_debug(CLIXON_DBG_DETAIL, "%s [%d] cvname: %s:%s",
+        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s [%d] cvname: %s:%s",
                      __FUNCTION__, i, prefix?prefix:"", name);
         /* top-node must have prefix */
         if (i == 0 && prefix == NULL){
@@ -762,7 +762,7 @@ api_path2xpath_cvv(cvec      *api_path,
          */
         if (xml_nsctx_get_prefix(nsc, namespace, &xprefix) == 0){
             xprefix = yang_find_myprefix(y);
-            clixon_debug(CLIXON_DBG_DETAIL, "%s prefix not found add it %s", __FUNCTION__, xprefix);
+            clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s prefix not found add it %s", __FUNCTION__, xprefix);
             /* not found, add it to nsc
              * XXX: do we always have to add it? It could be default?
              */
@@ -837,7 +837,7 @@ api_path2xpath_cvv(cvec      *api_path,
         nsc = NULL;
     }
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (cberr)
         cbuf_free(cberr);
     if (valvec)
