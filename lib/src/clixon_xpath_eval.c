@@ -283,11 +283,11 @@ nodetest_recursive(cxobj      *xn,
     xsub = NULL;
     while ((xsub = xml_child_each(xn, xsub, node_type)) != NULL) {
         if (nodetest_eval(xsub, nodetest, nsc, localonly) == 1){
-            clixon_debug(CLIXON_DBG_DETAIL, "%s %x %x", __FUNCTION__, flags, xml_flag(xsub, flags));
+            clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s %x %x", __FUNCTION__, flags, xml_flag(xsub, flags));
             if (flags==0x0 || xml_flag(xsub, flags))
                 if (cxvec_append(xsub, &vec, &veclen) < 0)
                     goto done;
-            //      continue; /* Dont go deeper */
+            //      continue; /* Don't go deeper */
         }
         if (nodetest_recursive(xsub, nodetest, node_type, flags, nsc, localonly, &vec, &veclen) < 0)
             goto done;
