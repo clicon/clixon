@@ -243,7 +243,7 @@ yang_augment_node(clixon_handle h,
         goto done;
     }
     schema_nodeid = yang_argument_get(ys);
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, schema_nodeid);
+    clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, schema_nodeid);
     /* Find the target */
     if (yang_abs_schema_nodeid(ys, schema_nodeid, &ytarget) < 0)
         goto done;
@@ -913,7 +913,7 @@ filename2revision(const char *filename,
         clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, base);
+    clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, base);
     if ((p = rindex(base, '.')) != NULL) /* strip postfix .yang */
         *p = '\0';
     if ((p = index(base, '@')) != NULL){ /* extract revision date */
@@ -1064,7 +1064,7 @@ yang_parse_filename(clixon_handle h,
     FILE         *fp = NULL;
     struct stat   st;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, filename);
+    clixon_debug(CLIXON_DBG_YANG, "%s %s", __FUNCTION__, filename);
     if (stat(filename, &st) < 0){
         clixon_err(OE_YANG, errno, "%s not found", filename);
         goto done;

@@ -106,7 +106,7 @@
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_YANG, (s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
