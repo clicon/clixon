@@ -314,7 +314,7 @@ changelog_op(clixon_handle h,
     return retval;
  fail:
     retval = 0;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s fail op:%s ", __FUNCTION__, op);
+    clixon_debug(CLIXON_DBG_XML, "%s fail op:%s", __FUNCTION__, op);
     goto done;
 }
     
@@ -349,7 +349,7 @@ changelog_iterate(clixon_handle h,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval: %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_XML, "%s retval: %d", __FUNCTION__, retval);
     if (vec)
         free(vec);
     return retval;

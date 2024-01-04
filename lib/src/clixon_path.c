@@ -1183,7 +1183,7 @@ api_path2xml_vec(char      **vec,
  ok:
     retval = 1; /* OK */
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xpath)
         free(xpath);
     if (nsc)
@@ -1252,7 +1252,7 @@ api_path2xml(char       *api_path,
     cxobj *xroot;
     cbuf  *cberr = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s api_path:%s", __FUNCTION__, api_path);
+    clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "%s api_path:%s", __FUNCTION__, api_path);
     if ((cberr = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;

@@ -212,8 +212,8 @@ xml2cvec(cxobj      *xt,
             }
         }
     }
-    if (clixon_debug_get() > 1){
-        clixon_debug(CLIXON_DBG_DETAIL, "%s cvv:\n", __FUNCTION__);
+    if (clixon_debug_isset(CLIXON_DBG_XML | CLIXON_DBG_DETAIL)){
+        clixon_debug(CLIXON_DBG_ALWAYS, "%s cvv:", __FUNCTION__);
         cvec_print(stderr, cvv);
     }
     *cvv0 = cvv;
