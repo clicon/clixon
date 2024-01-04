@@ -59,6 +59,7 @@
 #define CLIXON_DBG_XML		 0x10  /* XML processing */
 #define CLIXON_DBG_XPATH	 0x20  /* XPath processing */
 #define CLIXON_DBG_YANG		 0x40  /* YANG processing */
+#define CLIXON_DBG_CLIENT	 0x80  /* App-specific */
 #define CLIXON_DBG_SMASK	~0x03  /* Subject mask */
 
 /*

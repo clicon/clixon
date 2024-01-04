@@ -218,7 +218,7 @@ api_return_err(clixon_handle  h,
     cxobj     *xmsg;
     char      *mb;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -249,7 +249,7 @@ api_return_err(clixon_handle  h,
         }
     }
 #if 1
-    clixon_debug_xml(CLIXON_DBG_DEFAULT, xerr, "%s Send error:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_CLIENT, xerr, "%s Send error:", __FUNCTION__);
 #endif
     if (xml_name_set(xerr, "error") < 0)
         goto done;
@@ -286,7 +286,7 @@ api_return_err(clixon_handle  h,
     case YANG_DATA_XML:
     case YANG_PATCH_XML:
     case YANG_PAGINATION_XML:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s code:%d", __FUNCTION__, code);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s code:%d", __FUNCTION__, code);
         if (pretty){
             cprintf(cb, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n");
             if (clixon_xml2cbuf(cb, xerr, 2, pretty, NULL, -1, 0) < 0)
@@ -302,7 +302,7 @@ api_return_err(clixon_handle  h,
         break;
     case YANG_DATA_JSON:
     case YANG_PATCH_JSON:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s code:%d", __FUNCTION__, code);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s code:%d", __FUNCTION__, code);
         if (pretty){
             cprintf(cb, "{\n\"ietf-restconf:errors\" : ");
             if (clixon_json2cbuf(cb, xerr, pretty, 0, 0) < 0)
@@ -329,7 +329,7 @@ api_return_err(clixon_handle  h,
     // ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s retval:%d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     if (cberr)

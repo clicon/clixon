@@ -154,7 +154,7 @@ restconf_pseudo_set_inline(clixon_handle h,
     cxobj *xrestconf;
     cbuf  *cb = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if (clixon_process_argv_get(h, RESTCONF_PROCESS, &argv, &argc) < 0)
         goto done;
     if ((xrestconf = xpath_first(xt, NULL, "restconf")) != NULL)
@@ -174,7 +174,7 @@ restconf_pseudo_set_inline(clixon_handle h,
                     clixon_err(OE_XML, errno, "stdup");
                     goto done;
                 }
-                clixon_debug(CLIXON_DBG_DEFAULT, "%s str:%s", __FUNCTION__, str);
+                clixon_debug(CLIXON_DBG_CLIENT, "%s str:%s", __FUNCTION__, str);
                 if (argv[i+1])
                     free(argv[i+1]);
                 argv[i+1] = str;
@@ -203,7 +203,7 @@ restconf_rpc_wrapper(clixon_handle    h,
     int    retval = -1;
     cxobj *xt = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     switch (*operation){
     case PROC_OP_STOP:
         /* if RPC op is stop, stop the service */
@@ -283,24 +283,24 @@ restconf_pseudo_process_control(clixon_handle h)
         cprintf(cb, "%s/clixon_restconf", dir0);
         pgm = cbuf_get(cb);
         if (stat(pgm, &fstat) == 0){    /* Sanity check: program exists */
-            clixon_debug(CLIXON_DBG_DEFAULT, "Found %s", pgm);
+            clixon_debug(CLIXON_DBG_CLIENT, "Found %s", pgm);
             found++;
         }
         else
-            clixon_debug(CLIXON_DBG_DEFAULT, "Not found: %s", pgm);
+            clixon_debug(CLIXON_DBG_CLIENT, "Not found: %s", pgm);
     }
     if (!found &&
         (dir1 = CLIXON_CONFIG_SBINDIR) != NULL){
         cbuf_reset(cb);
         cprintf(cb, "%s/clixon_restconf", dir1);
         pgm = cbuf_get(cb);
-        clixon_debug(CLIXON_DBG_DEFAULT, "Looking for %s", pgm);
+        clixon_debug(CLIXON_DBG_CLIENT, "Looking for %s", pgm);
         if (stat(pgm, &fstat) == 0){    /* Sanity check: program exists */
-            clixon_debug(CLIXON_DBG_DEFAULT, "Found %s", pgm);
+            clixon_debug(CLIXON_DBG_CLIENT, "Found %s", pgm);
             found++;
         }
         else
-            clixon_debug(CLIXON_DBG_DEFAULT, "Not found: %s", pgm);
+            clixon_debug(CLIXON_DBG_CLIENT, "Not found: %s", pgm);
     }
     if (!found){
         clixon_err(OE_RESTCONF, 0, "clixon_restconf not found in neither CLICON_RESTCONF_INSTALLDIR(%s) nor CLIXON_CONFIG_SBINDIR(%s). Try overriding with CLICON_RESTCONF_INSTALLDIR",
@@ -349,7 +349,7 @@ restconf_pseudo_process_validate(clixon_handle    h,
     int    retval = -1;
     cxobj *xtarget;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     xtarget = transaction_target(td);
     /* If ssl-enable is true and (at least a) socket has ssl,
      * then server-cert-path and server-key-path must exist */
@@ -381,7 +381,7 @@ restconf_pseudo_process_commit(clixon_handle    h,
     cxobj *cx;
     int    enabled = 0;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     xtarget = transaction_target(td);
     xsource = transaction_src(td);
     if (xpath_first(xtarget, NULL, "/restconf[enable='true']") != NULL)

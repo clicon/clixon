@@ -459,7 +459,7 @@ netconf_notification_cb(int   s,
     int                ret;
     cxobj             *xerr = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     /* get msg (this is the reason this function is called) */
     if (clicon_msg_rcv(s, NULL, 0, &reply, &eof) < 0)
         goto done;
@@ -504,7 +504,7 @@ netconf_notification_cb(int   s,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s %d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     if (nsc)

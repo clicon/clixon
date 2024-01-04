@@ -457,7 +457,7 @@ check_valid_confirming_commit(clixon_handle h,
                                   "not issued on the same session as the confirmed-commit");
             goto invalid;
         default:
-            clixon_debug(CLIXON_DBG_DEFAULT, "commit-confirmed state !? %d", confirmed_commit_state_get(h));
+            clixon_debug(CLIXON_DBG_CLIENT, "commit-confirmed state !? %d", confirmed_commit_state_get(h));
             goto invalid;
     }
     retval = 1; // valid

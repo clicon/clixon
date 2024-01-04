@@ -107,7 +107,7 @@ fcgi_params_set(clixon_handle h,
     char *param = NULL;
     char *val = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
         if (clixon_strsplit(envp[i], '=', &param, &val) < 0)
             goto done;
@@ -124,7 +124,7 @@ fcgi_params_set(clixon_handle h,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -147,7 +147,7 @@ restconf_main_config(clixon_handle h,
 
     /* 1. try inline configure option */
     if (inline_config != NULL && strlen(inline_config)){
-        clixon_debug(CLIXON_DBG_DEFAULT, "restconf_main_fcgi using restconf inline config");
+        clixon_debug(CLIXON_DBG_CLIENT, "restconf_main_fcgi using restconf inline config");
         if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf, &xerr)) < 0)
             goto done;
         if (ret == 0){
@@ -228,12 +228,12 @@ restconf_sig_term(int arg)
 {
     static int i=0;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if (i++ == 0)
         clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
                    __PROGRAM__, __FUNCTION__, getpid(), arg);
     else{
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s done", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s done", __FUNCTION__);
         exit(-1);
     }
 
@@ -582,7 +582,7 @@ main(int    argc,
         clixon_err(OE_CFG, errno, "FCGX_Init");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "restconf_main: Opening FCGX socket: %s", sockpath);
+    clixon_debug(CLIXON_DBG_CLIENT, "restconf_main: Opening FCGX socket: %s", sockpath);
     if ((sock = FCGX_OpenSocket(sockpath, 10)) < 0){
         clixon_err(OE_CFG, errno, "FCGX_OpenSocket");
         goto done;
@@ -629,7 +629,7 @@ main(int    argc,
             clixon_err(OE_CFG, errno, "FCGX_Accept_r");
             goto done;
         }
-        clixon_debug(CLIXON_DBG_DEFAULT, "------------");
+        clixon_debug(CLIXON_DBG_CLIENT, "------------");
 
         /* Translate from FCGI parameter form to Clixon runtime data 
          * XXX: potential name collision?
@@ -637,7 +637,7 @@ main(int    argc,
         if (fcgi_params_set(h, req->envp) < 0)
             goto done;
         if ((path = restconf_param_get(h, "REQUEST_URI")) == NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "NULL URI");
+            clixon_debug(CLIXON_DBG_CLIENT, "NULL URI");
         }
         else {
             /* Matching algorithm:
@@ -669,7 +669,7 @@ main(int    argc,
                 (void)api_stream(h, req, qvec, &finish);
             }
             else{
-                clixon_debug(CLIXON_DBG_DEFAULT, "top-level %s not found", path);
+                clixon_debug(CLIXON_DBG_CLIENT, "top-level %s not found", path);
                 if (netconf_invalid_value_xml(&xerr, "protocol", "Top-level path not found") < 0)
                     goto done;
                 if (api_return_err0(h, req, xerr, 1, YANG_DATA_JSON, 0) < 0)

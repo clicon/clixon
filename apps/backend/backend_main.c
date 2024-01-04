@@ -100,7 +100,7 @@ backend_terminate(clixon_handle h)
     int        ss;
     cvec      *nsctx;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if ((ss = clicon_socket_get(h)) != -1)
         close(ss);
     /* Disconnect datastore */
@@ -143,7 +143,7 @@ backend_terminate(clixon_handle h)
         unlink(sockpath);
     backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     clixon_event_exit();
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s done", __FUNCTION__); 
+    clixon_debug(CLIXON_DBG_CLIENT, "%s done", __FUNCTION__);
     clixon_err_exit();
     clixon_log_exit();
     return 0;
@@ -172,7 +172,7 @@ backend_sig_term(int arg)
 static void
 backend_sig_child(int arg)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     clicon_sig_child_set(1);
 }
 
@@ -428,7 +428,7 @@ backend_timer_setup(int   fd,
     struct timeval t;
     struct timeval t1 = {10, 0};
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     gettimeofday(&now, NULL);
 
     backend_client_print(h, stderr);
