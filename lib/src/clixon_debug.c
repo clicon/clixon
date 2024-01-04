@@ -1,4 +1,4 @@
- /*
+/*
  *
   ***** BEGIN LICENSE BLOCK *****
  
@@ -146,7 +146,7 @@ clixon_debug_fn(clixon_handle h,
     cbuf   *cb = NULL;
 
     /* Mask debug level with global dbg variable */
-    if ((dbglevel & clixon_debug_get()) == 0)
+    if (!clixon_debug_isset(dbglevel))
         return 0;
     if (h == NULL)     /* Accept NULL, use saved clixon handle */
         h = _debug_clixon_h;
