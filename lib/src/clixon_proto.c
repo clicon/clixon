@@ -322,7 +322,7 @@ msg_hex(int         dbglevel,
     cbuf *cb = NULL;
     int   i;
 
-    if ((dbglevel & clixon_debug_get()) == 0) /* compare debug level with global variable */
+    if (!clixon_debug_isset(dbglevel)) /* compare debug level with global variable */
         goto ok;
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_CFG, errno, "cbuf_new");
@@ -372,7 +372,7 @@ clicon_msg_send(int                s,
     else{
         clixon_debug(CLIXON_DBG_MSG, "Send: %s", msg->op_body);
     }
-    msg_hex(CLIXON_DBG_EXTRA, (char*)msg,  ntohl(msg->op_len), __FUNCTION__);
+    msg_hex(CLIXON_DBG_DETAIL2, (char*)msg,  ntohl(msg->op_len), __FUNCTION__);
     if (atomicio((ssize_t (*)(int, void *, size_t))write,
                  s, msg, ntohl(msg->op_len)) < 0){
         e = errno;
@@ -438,7 +438,7 @@ clicon_msg_rcv(int                 s,
             clixon_err(OE_CFG, errno, "atomicio");
         goto done;
     }
-    msg_hex(CLIXON_DBG_EXTRA, (char*)&hdr, hlen, __FUNCTION__);
+    msg_hex(CLIXON_DBG_DETAIL2, (char*)&hdr, hlen, __FUNCTION__);
     if (hlen == 0){
         *eof = 1;
         goto ok;
@@ -448,7 +448,7 @@ clicon_msg_rcv(int                 s,
         goto done;
     }
     mlen = ntohl(hdr.op_len);
-    clixon_debug(CLIXON_DBG_EXTRA, "op-len:%u op-id:%u",
+    clixon_debug(CLIXON_DBG_DETAIL2, "op-len:%u op-id:%u",
                  mlen, ntohl(hdr.op_id));
     clixon_debug(CLIXON_DBG_DETAIL, "%s: rcv msg len=%d",
                  __FUNCTION__, mlen);
@@ -467,7 +467,7 @@ clicon_msg_rcv(int                 s,
         goto done;
     }
     if (len2)
-        msg_hex(CLIXON_DBG_EXTRA, (*msg)->op_body, len2, __FUNCTION__);
+        msg_hex(CLIXON_DBG_DETAIL2, (*msg)->op_body, len2, __FUNCTION__);
     if (len2 != mlen - sizeof(hdr)){
         clixon_err(OE_PROTO, 0, "body too short");
         *eof = 1;

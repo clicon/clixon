@@ -46,11 +46,20 @@
  * Constants
  */
 
-/* Debug-level masks */
-#define CLIXON_DBG_DEFAULT 1 /* Default logs */
-#define CLIXON_DBG_MSG     2 /* In/out messages and datastore reads */
-#define CLIXON_DBG_DETAIL  4 /* Details: traces, parse trees, etc */
-#define CLIXON_DBG_EXTRA   8 /* Extra Detailed logs */
+/* Detail level */
+#define CLIXON_DBG_ALWAYS	0x0    /* Unconditionally logged */
+#define CLIXON_DBG_DETAIL	0x1    /* Details: traces, parse trees, etc */
+#define CLIXON_DBG_DETAIL2	0x2    /* Extra details */
+#define CLIXON_DBG_DETAIL3	0x3    /* Probably more detail than you want */
+#define CLIXON_DBG_DMASK	0x3    /* Detail mask */
+
+/* Subject area */
+#define CLIXON_DBG_DEFAULT	 0x04  /* Default logs */
+#define CLIXON_DBG_MSG		 0x08  /* In/out messages and datastore reads */
+#define CLIXON_DBG_XML		 0x10  /* XML processing */
+#define CLIXON_DBG_XPATH	 0x20  /* XPath processing */
+#define CLIXON_DBG_YANG		 0x40  /* YANG processing */
+#define CLIXON_DBG_SMASK	~0x03  /* Subject mask */
 
 /*
  * Macros
@@ -64,5 +73,17 @@
 int clixon_debug_init(clixon_handle h, int dbglevel);
 int clixon_debug_get(void);
 int clixon_debug_fn(clixon_handle h, int dbglevel, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 4, 5)));
+
+static inline int clixon_debug_isset(unsigned n)
+{
+	unsigned level = clixon_debug_get();
+	unsigned detail = (n & CLIXON_DBG_DMASK);
+	unsigned subject = (n & CLIXON_DBG_SMASK);
+
+	/* not this subject */
+	if ((level & subject) == 0)
+		return 0;
+	return ((level & CLIXON_DBG_DMASK) >= detail);
+}
 
 #endif  /* _CLIXON_DEBUG_H_ */
