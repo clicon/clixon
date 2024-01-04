@@ -577,7 +577,7 @@ _xml_parse(const char *str,
     int             failed = 0; /* yang assignment */
     int             i;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (strlen(str) == 0){
         return 1; /* OK */
     }
