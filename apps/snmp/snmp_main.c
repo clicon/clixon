@@ -170,7 +170,7 @@ clixon_snmp_fdset_register(clixon_handle h,
     /* eg 4, 6, 8 */
     for (s=0; s<numfds; s++){
         if (FD_ISSET(s, &readfds)){
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, s);
+            clixon_debug(CLIXON_DBG_CLIENT, "%s %d", __FUNCTION__, s);
             if (regfd){
                 if (clixon_event_reg_fd(s, clixon_snmp_input_cb, h, "snmp socket") < 0)
                     goto done;
@@ -205,7 +205,7 @@ clixon_snmp_input_cb(int   s,
     clixon_handle  h = (clixon_handle)arg;
     int            ret;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, s);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, s);
     FD_ZERO(&readfds);
     FD_SET(s, &readfds);
     (void)snmp_read(&readfds);
@@ -253,7 +253,7 @@ clixon_snmp_init_subagent(clixon_handle h,
     int   retval = -1;
     char *sockpath = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if (logdst == CLIXON_LOG_SYSLOG)
         snmp_enable_calllog();
     else

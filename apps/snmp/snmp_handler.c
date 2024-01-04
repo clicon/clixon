@@ -100,7 +100,7 @@ snmp_common_handler(netsnmp_mib_handler          *handler,
     oid_cbuf(cb, (*shp)->sh_oid, (*shp)->sh_oidlen);
     if (oid_eq(requestvb->name, requestvb->name_length,
                (*shp)->sh_oid, (*shp)->sh_oidlen) == 0){ /* equal */
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\" %s inclusive:%d %s", __FUNCTION__,
+        clixon_debug(CLIXON_DBG_CLIENT, "%s \"%s\" %s inclusive:%d %s", __FUNCTION__,
                      cbuf_get(cb),
                      snmp_msg_int2str(reqinfo->mode),
                      request->inclusive, tablehandler?"table":"scalar");
@@ -110,7 +110,7 @@ snmp_common_handler(netsnmp_mib_handler          *handler,
         oid_cbuf(cb, requestvb->name, requestvb->name_length);
         cprintf(cb, ")");
         // nhreg->rootoid same as shp
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\" %s inclusive:%d %s", __FUNCTION__,
+        clixon_debug(CLIXON_DBG_CLIENT, "%s \"%s\" %s inclusive:%d %s", __FUNCTION__,
                      cbuf_get(cb),
                      snmp_msg_int2str(reqinfo->mode),
                      request->inclusive, tablehandler?"table":"scalar");
@@ -181,7 +181,7 @@ snmp_scalar_return(cxobj                      *xs,
     if ((ret = type_xml2snmp(xmlstr, &asn1type, &snmpval, &snmplen, &reason)) < 0)
         goto done;
     if (ret == 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, reason);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s %s", __FUNCTION__, reason);
         if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
             clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
             goto done;
@@ -246,7 +246,7 @@ snmp_scalar_get(clixon_handle               h,
     cxobj  *xcache = NULL;
     char   *body = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     /* Prepare backend call by constructing namespace context */
     if (xml_nsctx_yang(ys, &nsc) < 0)
         goto done;
@@ -301,7 +301,7 @@ snmp_scalar_get(clixon_handle               h,
     if ((ret = type_xml2snmp(xmlstr, &asn1type, &snmpval, &snmplen, &reason)) < 0)
         goto done;
     if (ret == 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, reason);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s %s", __FUNCTION__, reason);
         if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
             clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
             goto done;
@@ -408,7 +408,7 @@ snmp_scalar_set(clixon_handle               h,
     int        asn1_type;
     enum operation_type op = OP_MERGE;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
         goto done;
     if (snmp_yang2xml(xtop, ys, cvk, &xbot) < 0)
@@ -557,7 +557,7 @@ snmp_cache_set(clixon_handle               h,
     int        isrowstatus = 0;
     cxobj     *xcache = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -601,7 +601,7 @@ snmp_cache_set(clixon_handle               h,
                     goto done;
         }
         else if (strcmp(valstr, "destroy") == 0){
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, rowstatus);
+            clixon_debug(CLIXON_DBG_CLIENT, "%s %d", __FUNCTION__, rowstatus);
             /* Dont send delete to backend if notInService(2)  */
             if (snmp_cache_row_op(h, yang_parent_get(ys), cvk, "delete", rowstatus!=2) < 0)
                 goto done;
@@ -663,7 +663,7 @@ snmp_table_rowstatus_get(clixon_handle h,
     char   *intstr;
     char   *reason = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     /* Prepare backend call by constructing namespace context */
     if (xml_nsctx_yang(ys, &nsc) < 0)
         goto done;
@@ -676,14 +676,14 @@ snmp_table_rowstatus_get(clixon_handle h,
         if ((ret = yang_enum2valstr(yrestype, body, &intstr)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s %s invalid or not found", __FUNCTION__, body);
+            clixon_debug(CLIXON_DBG_CLIENT, "%s %s invalid or not found", __FUNCTION__, body);
             *rowstatus = 0;
         }
         else {
             if ((ret = parse_int32(intstr, rowstatus, &reason)) < 0)
                 goto done;
             if (ret == 0){
-                clixon_debug(CLIXON_DBG_DEFAULT, "%s parse_int32: %s", __FUNCTION__, reason);
+                clixon_debug(CLIXON_DBG_CLIENT, "%s parse_int32: %s", __FUNCTION__, reason);
                 *rowstatus = 0;
             }
         }
@@ -722,7 +722,7 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
     netsnmp_variable_list *requestvb = request->requestvb;
     int                    ret;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (snmp_common_handler(handler, nhreg, reqinfo, request, 0, &sh) < 0)
         goto done;
     /* see net-snmp/agent/snmp_agent.h / net-snmp/library/snmp.h */
@@ -744,7 +744,7 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
         if (type_yang2asn1(sh->sh_ys, &asn1_type, 0) < 0)
             goto done;
         if (requestvb->type != asn1_type){
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s Expected type:%d, got: %d", __FUNCTION__, requestvb->type, asn1_type);
+            clixon_debug(CLIXON_DBG_CLIENT, "%s Expected type:%d, got: %d", __FUNCTION__, requestvb->type, asn1_type);
             if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
                 clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
                 goto ok;
@@ -791,7 +791,7 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
  ok:
     retval = SNMP_ERR_NOERROR;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -815,7 +815,7 @@ clixon_snmp_scalar_handler(netsnmp_mib_handler          *handler,
     netsnmp_request_info *req;
     int                   ret;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     for (req = requests; req; req = req->next){
         ret = clixon_snmp_scalar_handler1(handler, nhreg, reqinfo, req);
         if (ret != SNMP_ERR_NOERROR){
@@ -1054,7 +1054,7 @@ snmp_table_set(clixon_handle               h,
         goto done;
     requestvb = request->requestvb;
     if (requestvb->type != asn1_type){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s Expected type:%d, got: %d", __FUNCTION__, requestvb->type, asn1_type);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s Expected type:%d, got: %d", __FUNCTION__, requestvb->type, asn1_type);
         if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
             clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
             goto ok;
@@ -1202,7 +1202,7 @@ snmp_table_getnext(clixon_handle               h,
     yang_stmt *ynext = NULL;
     cbuf      *cb = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if ((ys = yang_parent_get(ylist)) == NULL ||
         yang_keyword_get(ys) != Y_CONTAINER){
         clixon_err(OE_YANG, EINVAL, "ylist parent is not list");
@@ -1264,7 +1264,7 @@ snmp_table_getnext(clixon_handle               h,
             goto done;
         }
         oid_cbuf(cb, oidnext, oidnextlen);
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s next: %s", __FUNCTION__, cbuf_get(cb));
+        clixon_debug(CLIXON_DBG_CLIENT, "%s next: %s", __FUNCTION__, cbuf_get(cb));
     }
     retval = found;
  done:
@@ -1303,11 +1303,11 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
     netsnmp_variable_list  *requestvb;
     int                     err = 0;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if ((ret = snmp_common_handler(handler, nhreg, reqinfo, request, 1, &sh)) < 0)
         goto done;
     if (sh->sh_ys == NULL){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s Error table not registered", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s Error table not registered", __FUNCTION__);
         goto ok;
     }
     requestvb = request->requestvb;
@@ -1325,7 +1325,7 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
                 clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
                 goto done;
             }
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s Nosuchinstance", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_CLIENT, "%s Nosuchinstance", __FUNCTION__);
         }
         break;
     case MODE_GETNEXT: // 161
@@ -1340,7 +1340,7 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
                 clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
                 goto done;
             }
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s No such object", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_CLIENT, "%s No such object", __FUNCTION__);
         }
         break;
     case MODE_SET_RESERVE1: // 0
@@ -1362,7 +1362,7 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
                 clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
                 goto done;
             }
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s Nosuchinstance", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_CLIENT, "%s Nosuchinstance", __FUNCTION__);
         }
         /*
          * There does not seem to be a separate validation action and commit does not 
@@ -1425,7 +1425,7 @@ clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
     netsnmp_request_info *req;
     int                   ret;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     for (req = requests; req; req = req->next){
         ret = clixon_snmp_table_handler1(handler, nhreg, reqinfo, req);
         if (ret != SNMP_ERR_NOERROR){

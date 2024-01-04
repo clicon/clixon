@@ -217,7 +217,7 @@ clixon_openssl_log_cb(void *handle,
                       int   suberr,
                       cbuf *cb)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     ERR_print_errors_cb(print_cb, cb);
     return 0;
 }
@@ -266,17 +266,17 @@ restconf_verify_certs(int             preverify_ok,
     depth      = X509_STORE_CTX_get_error_depth(store);
     //    ssl        = X509_STORE_CTX_get_ex_data(store, SSL_get_ex_data_X509_STORE_CTX_idx());
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s preverify_ok:%d err:%d depth:%d", __FUNCTION__, preverify_ok, err, depth);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s preverify_ok:%d err:%d depth:%d", __FUNCTION__, preverify_ok, err, depth);
     X509_NAME_oneline(X509_get_subject_name(err_cert), buf, 256);
     switch (err){
     case X509_V_ERR_HOSTNAME_MISMATCH:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s X509_V_ERR_HOSTNAME_MISMATCH", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s X509_V_ERR_HOSTNAME_MISMATCH", __FUNCTION__);
         break;
     case X509_V_ERR_CERT_HAS_EXPIRED:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s X509_V_ERR_CERT_HAS_EXPIRED", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s X509_V_ERR_CERT_HAS_EXPIRED", __FUNCTION__);
         break;
     case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT", __FUNCTION__);
         break;
     }
     /* Catch a too long certificate chain. should be +1 in SSL_CTX_set_verify_depth() */
@@ -305,7 +305,7 @@ alpn_proto_dump(const char *label,
                 const char *inp,
                 unsigned    len)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %.*s", label, (int)len, inp);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s %.*s", label, (int)len, inp);
     return 0;
 }
 
@@ -327,7 +327,7 @@ alpn_select_proto_cb(SSL                  *ssl,
     unsigned char len;
     int           pref = 0;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     /* select http/1.1 */
     inp = (unsigned char*)in;
     while ((inp-in) < inlen) {
@@ -456,18 +456,18 @@ restconf_listcerts(SSL *ssl)
     X509 *cert;
     char *line;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s get peer certificates:", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s get peer certificates:", __FUNCTION__);
     if ((cert = SSL_get_peer_certificate(ssl)) != NULL) { /* Get certificates (if available) */
         if ((line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0)) != NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Subject: %s", line);
+            clixon_debug(CLIXON_DBG_CLIENT, "Subject: %s", line);
             free(line);
         }
         if ((line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0)) != NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Issuer: %s", line);
+            clixon_debug(CLIXON_DBG_CLIENT, "Issuer: %s", line);
             free(line);
         }
         if ((line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0)) != NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Subject: %s", line);
+            clixon_debug(CLIXON_DBG_CLIENT, "Subject: %s", line);
             free(line);
         }
         X509_free(cert);
@@ -534,7 +534,7 @@ restconf_accept_client(int   fd,
     char                   *name = NULL;
     void                   *addr;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, fd);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s %d", __FUNCTION__, fd);
     if ((rsock = (restconf_socket *)arg) == NULL){
         clixon_err(OE_YANG, EINVAL, "rsock is NULL");
         goto done;
@@ -570,7 +570,7 @@ restconf_accept_client(int   fd,
     }
     if (inet_ntop(from.sa_family, addr, rsock->rs_from_addr, INET6_ADDRSTRLEN) < 0)
         goto done;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s type:%s from:%s, dest:%s port:%hu", __FUNCTION__,
+    clixon_debug(CLIXON_DBG_CLIENT, "%s type:%s from:%s, dest:%s port:%hu", __FUNCTION__,
                  rsock->rs_addrtype,
                  rsock->rs_from_addr,
                  rsock->rs_addrstr,
@@ -581,7 +581,7 @@ restconf_accept_client(int   fd,
         goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s retval %d", __FUNCTION__, retval);
     if (name)
         free(name);
     return retval;
@@ -596,7 +596,7 @@ restconf_native_terminate(clixon_handle h)
     restconf_socket        *rsock;
     restconf_conn          *rc;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if ((rn = restconf_native_handle_get(h)) != NULL){
         while ((rsock = rn->rn_sockets) != NULL){
             while ((rc = rsock->rs_conns) != NULL){
@@ -728,7 +728,7 @@ openssl_init_socket(clixon_handle h,
     restconf_socket *rsock = NULL; /* openssl per socket struct */
     struct timeval   now;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     /*
      * Create per-socket openssl handle
      * See restconf_native_terminate for freeing
@@ -825,7 +825,7 @@ restconf_openssl_init(clixon_handle h,
     size_t             veclen;
     int                i;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     /* flag used for sanity of certs */
     ssl_enable = xpath_first(xrestconf, nsc, "socket[ssl='true']") != NULL;
     /* Auth type set in config */
@@ -1022,7 +1022,7 @@ restconf_clixon_init(clixon_handle h,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
         goto done;
     if (inline_config != NULL && strlen(inline_config)){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s reading from inline config", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s reading from inline config", __FUNCTION__);
         if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf, &xerr)) < 0)
             goto done;
         if (ret == 0){
@@ -1044,7 +1044,7 @@ restconf_clixon_init(clixon_handle h,
                 goto done;
     }
     else if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s reading from clixon config", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s reading from clixon config", __FUNCTION__);
         /* If not read from backend, try to get restconf config from local config-file */
         if ((xrestconf = clicon_conf_restconf(h)) != NULL){
             /* Basic config init, set auth-type, pretty, etc ret 0 means disabled */
@@ -1062,7 +1062,7 @@ restconf_clixon_init(clixon_handle h,
     /* If no local config, or it is disabled, try to query backend of config. 
      */
     else {
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s reading from backend datastore config", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "%s reading from backend datastore config", __FUNCTION__);
         if ((ret = restconf_clixon_backend(h, xrestconfp)) < 0)
             goto done;
         if (ret == 0)
@@ -1352,7 +1352,7 @@ main(int    argc,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "restconf_main_openssl done");
+    clixon_debug(CLIXON_DBG_CLIENT, "restconf_main_openssl done");
     if (xrestconf)
         xml_free(xrestconf);
     restconf_native_terminate(h);

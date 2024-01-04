@@ -884,7 +884,7 @@ cli_commit(clixon_handle h,
     cancel = (cvec_find_str(cvv, "cancel") != NULL);
     if ((timeout_var = cvec_find(cvv, "timeout")) != NULL) {
         timeout = cv_uint32_get(timeout_var);
-        clixon_debug(CLIXON_DBG_DEFAULT, "commit confirmed with timeout %ul", timeout);
+        clixon_debug(CLIXON_DBG_CLIENT, "commit confirmed with timeout %ul", timeout);
     }
     persist = cvec_find_str(cvv, "persist-val");
     persist_id = cvec_find_str(cvv, "persist-id-val");

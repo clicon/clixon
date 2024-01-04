@@ -470,7 +470,7 @@ yangext_oid_get(yang_stmt *yn,
     if (yang_extension_value_opt(yref, "smiv2:oid", &exist, &oidstr) < 0)
         goto done;
     if (exist == 0 || oidstr == NULL){
-        clixon_debug(CLIXON_DBG_DEFAULT, "OID not found as SMIv2 yang extension of %s", yang_argument_get(yref));
+        clixon_debug(CLIXON_DBG_CLIENT, "OID not found as SMIv2 yang extension of %s", yang_argument_get(yref));
         goto fail;
     }
     if (snmp_parse_oid(oidstr, objid, objidlen) == NULL){
@@ -649,7 +649,7 @@ type_snmp2xml(yang_stmt                  *ys,
     yang_stmt   *yrestype = NULL;
     int          ret;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if (valstr == NULL){
         clixon_err(OE_UNIX, EINVAL, "valstr is NULL");
         goto done;
@@ -733,7 +733,7 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     default:
         assert(0); // XXX
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
+        clixon_debug(CLIXON_DBG_CLIENT, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
         if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
             clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
             goto done;
@@ -747,7 +747,7 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     if (origtype)
         free(origtype);
     if (cv)
@@ -794,7 +794,7 @@ type_xml2snmp_pre(char      *xmlstr0,
         if ((ret = yang_enum2valstr(yrestype, xmlstr0, &str)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid enum valstr %s", xmlstr0);
+            clixon_debug(CLIXON_DBG_CLIENT, "Invalid enum valstr %s", xmlstr0);
             goto fail;
         }
     }
@@ -820,7 +820,7 @@ type_xml2snmp_pre(char      *xmlstr0,
         if ((ret = parse_dec64(xmlstr0, cv_dec64_n_get(cv), &num, NULL)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid decimal64 valstr %s", xmlstr0);
+            clixon_debug(CLIXON_DBG_CLIENT, "Invalid decimal64 valstr %s", xmlstr0);
             goto fail;
         }
         cv_dec64_i_set(cv, num);
@@ -836,7 +836,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -905,7 +905,7 @@ type_xml2snmp(char       *snmpstr,
         oid    oid1[MAX_OID_LEN] = {0,};
         size_t sz1 = MAX_OID_LEN;
         if (snmp_parse_oid(snmpstr, oid1, &sz1) == NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Failed to parse OID %s", snmpstr);
+            clixon_debug(CLIXON_DBG_CLIENT, "Failed to parse OID %s", snmpstr);
             goto fail;
         }
         *snmplen = sizeof(oid)*sz1;
@@ -961,7 +961,7 @@ type_xml2snmp(char       *snmpstr,
         }
         memset(*snmpval, 0, *snmplen + 1);
         if ((eaddr = ether_aton(snmpstr)) == NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "ether_aton(%s)", snmpstr);
+            clixon_debug(CLIXON_DBG_CLIENT, "ether_aton(%s)", snmpstr);
             goto fail;
         }
         memcpy(*snmpval, eaddr, sizeof(*eaddr));
@@ -981,7 +981,7 @@ type_xml2snmp(char       *snmpstr,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
     return retval;
  fail:
     retval = 0;
@@ -1232,7 +1232,7 @@ clixon_snmp_err_cb(void *handle,
 {
     const char *errstr;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if (suberr < 0){
         if (suberr < -CLIXON_ERR_SNMP_MIB){
             switch (suberr+CLIXON_ERR_SNMP_MIB){

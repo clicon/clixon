@@ -218,7 +218,7 @@ get_statedata(clixon_handle     h,
     cbuf      *cb = NULL;
     cxobj     *xerr = NULL;
     
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
@@ -373,7 +373,7 @@ get_statedata(clixon_handle     h,
     } /* switch wdef */
     retval = 1; /* OK */
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "%s %d", __FUNCTION__, retval);
     if (xerr)
         xml_free(xerr);
     if (x1)
@@ -769,7 +769,7 @@ get_list_pagination(clixon_handle        h,
         if ((ret = xml_bind_yang(h, xret, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug_xml(CLIXON_DBG_DEFAULT, xret, "Yang bind pagination state");
+            clixon_debug_xml(CLIXON_DBG_CLIENT, xret, "Yang bind pagination state");
             if (clixon_netconf_internal_error(xerr,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
@@ -872,7 +872,7 @@ get_common(clixon_handle        h,
     char             *wdefstr;
 
     wdef = WITHDEFAULTS_EXPLICIT;
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec9");
@@ -1018,7 +1018,7 @@ get_common(clixon_handle        h,
             (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug_xml(CLIXON_DBG_DEFAULT, xret, "VALIDATE_STATE");
+            clixon_debug_xml(CLIXON_DBG_CLIENT, xret, "VALIDATE_STATE");
             if (clixon_netconf_internal_error(xerr,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
@@ -1049,7 +1049,7 @@ get_common(clixon_handle        h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     if (xret)
