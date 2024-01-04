@@ -769,7 +769,7 @@ get_list_pagination(clixon_handle        h,
         if ((ret = xml_bind_yang(h, xret, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug_xml(1, xret, "Yang bind pagination state");
+            clixon_debug_xml(CLIXON_DBG_DEFAULT, xret, "Yang bind pagination state");
             if (clixon_netconf_internal_error(xerr,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
@@ -1018,7 +1018,7 @@ get_common(clixon_handle        h,
             (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug_xml(1, xret, "VALIDATE_STATE");
+            clixon_debug_xml(CLIXON_DBG_DEFAULT, xret, "VALIDATE_STATE");
             if (clixon_netconf_internal_error(xerr,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)

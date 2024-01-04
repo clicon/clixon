@@ -496,7 +496,7 @@ api_data_write(clixon_handle h,
                 goto done;
             }
             if (namespace == NULL){
-                clixon_debug_xml(1, xparent, "%s xparent:", __FUNCTION__);
+                clixon_debug_xml(CLIXON_DBG_DEFAULT, xparent, "%s xparent:", __FUNCTION__);
                 /* XXX */
             }
             /* Set xmlns="" default namespace attribute (if diff from default) */

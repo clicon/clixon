@@ -335,7 +335,7 @@ netconf_input_packet(clixon_handle h,
     netconf_framing_type framing;
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    clixon_debug_xml(1, xreq, "%s", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_DEFAULT, xreq, "%s", __FUNCTION__);
     rpcname = xml_name(xreq);
     rpcprefix = xml_prefix(xreq);
     framing = clicon_data_int_get(h, NETCONF_FRAMING_TYPE);
