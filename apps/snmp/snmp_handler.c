@@ -722,7 +722,7 @@ clixon_snmp_scalar_handler1(netsnmp_mib_handler          *handler,
     netsnmp_variable_list *requestvb = request->requestvb;
     int                    ret;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (snmp_common_handler(handler, nhreg, reqinfo, request, 0, &sh) < 0)
         goto done;
     /* see net-snmp/agent/snmp_agent.h / net-snmp/library/snmp.h */
@@ -1303,7 +1303,7 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
     netsnmp_variable_list  *requestvb;
     int                     err = 0;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if ((ret = snmp_common_handler(handler, nhreg, reqinfo, request, 1, &sh)) < 0)
         goto done;
     if (sh->sh_ys == NULL){

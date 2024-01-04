@@ -199,7 +199,7 @@ clixon_event_reg_fd(int   fd,
     e->e_type = EVENT_FD;
     e->e_next = ee;
     ee = e;
-    clixon_debug(CLIXON_DBG_DETAIL, "%s, registering %s", __FUNCTION__, e->e_string);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s, registering %s", __FUNCTION__, e->e_string);
     return 0;
 }
 
@@ -293,7 +293,7 @@ clixon_event_reg_timeout(struct timeval t,
     }
     e->e_next = e1;
     *e_prev = e;
-    clixon_debug(CLIXON_DBG_DETAIL, "%s: %s", __FUNCTION__, str);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: %s", __FUNCTION__, str);
     retval = 0;
  done:
     return retval;
@@ -435,7 +435,7 @@ clixon_event_loop(clixon_handle h)
         if (n==0){ /* Timeout */
             e = ee_timers;
             ee_timers = ee_timers->e_next;
-            clixon_debug(CLIXON_DBG_DETAIL, "%s timeout: %s", __FUNCTION__, e->e_string);
+            clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s timeout: %s", __FUNCTION__, e->e_string);
             if ((*e->e_fn)(0, e->e_arg) < 0){
                 free(e);
                 goto err;
@@ -449,7 +449,7 @@ clixon_event_loop(clixon_handle h)
             }
             e_next = e->e_next;
             if(e->e_type == EVENT_FD && FD_ISSET(e->e_fd, &fdset)){
-                clixon_debug(CLIXON_DBG_DETAIL, "%s: FD_ISSET: %s", __FUNCTION__, e->e_string);
+                clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: FD_ISSET: %s", __FUNCTION__, e->e_string);
                 if ((*e->e_fn)(e->e_fd, e->e_arg) < 0){
                     clixon_debug(CLIXON_DBG_DEFAULT, "%s Error in: %s", __FUNCTION__, e->e_string);
                     goto err;

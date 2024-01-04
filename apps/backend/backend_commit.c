@@ -203,7 +203,7 @@ startup_common(clixon_handle       h,
         if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, 0, &xt, msdiff, &xerr) < 0)
             goto done;
     }
-    clixon_debug_xml(CLIXON_DBG_DETAIL, xt, "startup");
+    clixon_debug_xml(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, xt, "startup");
     if (msdiff && msdiff->md_status == 0){ // Possibly check for CLICON_XMLDB_MODSTATE
         clixon_log(h, LOG_WARNING, "Modstate expected in startup datastore but not found\n"
                    "This may indicate that the datastore is not initialized corrrectly, such as copy/pasted.\n"

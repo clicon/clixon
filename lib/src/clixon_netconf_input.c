@@ -103,14 +103,14 @@ netconf_input_read2(int            s,
             goto done;
         }
     } /* read */
-    clixon_debug(CLIXON_DBG_DETAIL, "%s len:%ld", __FUNCTION__, len);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s len:%ld", __FUNCTION__, len);
     if (len == 0){  /* EOF */
-        clixon_debug(CLIXON_DBG_DETAIL, "%s len==0, closing", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s len==0, closing", __FUNCTION__);
         *eof = 1;
     }
     retval = len;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -147,7 +147,7 @@ netconf_input_msg2(unsigned char      **bufp,
     size_t    len;
     char      ch;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     len = *lenp;
     for (i=0; i<len; i++){
         if ((ch = (*bufp)[i]) == 0)
@@ -190,7 +190,7 @@ netconf_input_msg2(unsigned char      **bufp,
     *eom = found;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -218,7 +218,7 @@ netconf_input_frame2(cbuf      *cb,
     cxobj  *xtop = NULL; /* Request (in) */
     int     ret;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (xrecv == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "xrecv is NULL");
         goto done;

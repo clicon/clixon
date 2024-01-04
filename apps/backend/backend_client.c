@@ -378,7 +378,7 @@ clixon_stats_datastore_get(clixon_handle h,
     size_t    sz = 0;
     cxobj    *xn = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, dbname);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, dbname);
     /* This is the db cache */
     if ((xt = xmldb_cache_get(h, dbname)) == NULL){
         /* Trigger cache if no exist (trick to ensure cache is present) */
@@ -1584,7 +1584,7 @@ from_client_msg(clixon_handle        h,
     int                  nr = 0;
     cbuf                *cbce = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     yspec = clicon_dbspec_yang(h);
     /* Return netconf message. Should be filled in by the dispatch(sub) functions 
      * as wither rpc-error or by positive response.
@@ -1812,7 +1812,7 @@ from_client_msg(clixon_handle        h,
     // ok:
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     if (xnacm){
         xml_free(xnacm);
         if (clicon_nacm_cache_set(h, NULL) < 0)
@@ -1853,7 +1853,7 @@ from_client(int   s,
     int                  eof = 0;
     cbuf                *cbce = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (s != ce->ce_s){
         clixon_err(OE_NETCONF, EINVAL, "Internal error: s != ce->ce_s");
         goto done;
@@ -1871,7 +1871,7 @@ from_client(int   s,
             goto done;
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval=%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval=%d", __FUNCTION__, retval);
     if (cbce)
         cbuf_free(cbce);
     if (msg)

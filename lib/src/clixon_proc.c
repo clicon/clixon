@@ -1016,7 +1016,7 @@ clixon_process_sched_register(clixon_handle h,
     struct timeval t;
     struct timeval t1 = {0, 100000}; /* 100ms */
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     gettimeofday(&t, NULL);
     if (delay)
         timeradd(&t, &t1, &t);
@@ -1024,7 +1024,7 @@ clixon_process_sched_register(clixon_handle h,
         goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
