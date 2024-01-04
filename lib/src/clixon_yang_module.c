@@ -395,7 +395,7 @@ yang_modules_state_get(clixon_handle    h,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_YANG, "%s %d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     if (cb)
@@ -756,7 +756,7 @@ ietf_yang_metadata_extension_cb(clixon_handle h,
     if (strcmp(modname, "ietf-yang-metadata") != 0 || strcmp(extname, "annotation") != 0)
         goto ok;
     name = cv_string_get(yang_cv_get(ys));
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Enabled extension:%s:%s:%s", __FUNCTION__, modname, extname, name);
+    clixon_debug(CLIXON_DBG_YANG, "%s Enabled extension:%s:%s:%s", __FUNCTION__, modname, extname, name);
     /* XXX Nothing yet - this should signal that xml attribute annotations are allowed 
      * Possibly, add an "annotation" YANG node.
      */

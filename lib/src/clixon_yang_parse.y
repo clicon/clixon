@@ -167,7 +167,7 @@
 /* typecast macro */
 #define _YY ((clixon_yang_yacc *)_yy)
 
-#define _YYERROR(msg) {clixon_debug(CLIXON_DBG_DEFAULT, "YYERROR %s '%s' %d", (msg), clixon_yang_parsetext, _YY->yy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_debug(CLIXON_DBG_YANG, "YYERROR %s '%s' %d", (msg), clixon_yang_parsetext, _YY->yy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
@@ -204,8 +204,8 @@
  * Disable it to stop any calls to clixon_debug. Having it on by default would mean very large debug outputs.
  */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
-#define _PARSE_DEBUG1(s, s1) clixon_debug(1,(s), (s1))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_YANG, (s))
+#define _PARSE_DEBUG1(s, s1) clixon_debug(CLIXON_DBG_YANG, (s), (s1))
 #else
 #define _PARSE_DEBUG(s)
 #define _PARSE_DEBUG1(s, s1)
