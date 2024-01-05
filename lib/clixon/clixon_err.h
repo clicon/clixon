@@ -43,6 +43,8 @@
 #ifndef _CLIXON_ERR_H_
 #define _CLIXON_ERR_H_
 
+#include "clixon_xml.h"			/* for cxobj */
+
 /*
  * Constants
  */

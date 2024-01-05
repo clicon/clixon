@@ -40,6 +40,8 @@
 #ifndef _CLIXON_DEBUG_H_
 #define _CLIXON_DEBUG_H_
 
+#include "clixon_xml.h"			/* for cxobj */
+
 /*
  * Constants
  */
