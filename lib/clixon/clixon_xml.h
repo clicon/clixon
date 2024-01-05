@@ -43,6 +43,8 @@
 #ifndef _CLIXON_XML_H
 #define _CLIXON_XML_H
 
+#include "clixon_yang.h"			/* for yang_stmt */
+
 /*
  * Constants
  */
