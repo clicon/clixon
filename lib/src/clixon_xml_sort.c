@@ -1011,12 +1011,21 @@ xml_insert2(cxobj           *xp,
     }
     xc = xml_child_i(xp, mid);
     if ((yc = xml_spec(xc)) == NULL){
-        if (xml_type(xc) != CX_ELMNT)
-            clixon_err(OE_XML, 0, "No spec found %s (wrong xml type:%s)",
-                       xml_name(xc), xml_type2str(xml_type(xc)));
+#if 1
+        cmp = 1;
+#else
+        /* Strict checks for config, but one may want to merge XMLs with attributes as well,
+           such as NETCONF messages */
+        if (xml_type(xc) == CX_ATTR)
+            clixon_err(OE_XML, 0, "Internal sort error: Unexpected attribute: \"%s:%s\"",
+                       xml_prefix(xc), xml_name(xc));
+        else if (xml_type(xc) == CX_ELMNT)
+            clixon_err(OE_XML, 0, "Internal sort error, \"%s:%s\": unexpected node type: %s",
+                       xml_prefix(xc), xml_name(xc), xml_type2str(xml_type(xc)));
         else
-            clixon_err(OE_XML, 0, "No spec found %s", xml_name(xc));
+            clixon_err(OE_XML, 0, "Internal sort error, \"%s:%s\": No yang spec found", xml_prefix(xc), xml_name(xc));
         goto done;
+#endif
     }
     if (yc == yn){ /* Same yang */
         if (userorder){ /* append: increment linearly until no longer equal */
