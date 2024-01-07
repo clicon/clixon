@@ -78,6 +78,9 @@
 
 #define TEXT_TOP_SYMBOL "top"
 
+/* Forward */
+static int text_diff2cbuf(cbuf *cb, cxobj *x0, cxobj *x1, int level, int skiptop);
+
 /*! x is element and has eactly one child which in turn has none 
  *
  * @see child_type in clixon_json.c
@@ -563,6 +566,67 @@ text_diff_keys(cbuf      *cb,
     return 0;
 }
 
+/*! Handle order-by user(leaf)list for text_diff2cbuf
+ *
+ * @param[out] cb      CLIgen buffer
+ * @param[in]  x0      First XML tree
+ * @param[in]  x1      Second XML tree
+ * @param[in]  x0c     Start of sublist in first XML tree
+ * @param[in]  x1c     Start of sublist in second XML tree
+ * @param[in]  yc      Yang of x0c/x1c
+ * @param[in]  level   How many spaces to insert before each line
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @retval     0       Ok
+ * @retval    -1       Error
+ * @see xml_diff_ordered_by_user
+ * @see text_diff2cbuf_ordered_by_user
+ */
+static int
+text_diff2cbuf_ordered_by_user(cbuf      *cb,
+                               cxobj     *x0,
+                               cxobj     *x1,
+                               cxobj     *x0c,
+                               cxobj     *x1c,
+                               yang_stmt *yc,
+                               int        level,
+                               int        skiptop)
+{
+    int    retval = 1;
+    cxobj *xi;
+    cxobj *xj;
+
+    xj = x1c;
+    do {
+        xml_flag_set(xj, XML_FLAG_ADD);
+    } while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+             xml_spec(xj) == yc);
+    /* If in both sets, unmark add/del */
+    xi = x0c;
+    do {
+        xml_flag_set(xi, XML_FLAG_DEL);
+        xj = x1c;
+        do {
+            if (xml_flag(xj, XML_FLAG_ADD) &&
+                xml_cmp(xi, xj, 0, 0, NULL) == 0){
+                /* Unmark node in x0 and x1 */
+                xml_flag_reset(xi, XML_FLAG_DEL);
+                xml_flag_reset(xj, XML_FLAG_ADD);
+                if (text_diff2cbuf(cb, xi, xj, level+1, 0) < 0)
+                    goto done;
+                break;
+            }
+        }
+        while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+               xml_spec(xj) == yc);
+    }
+    while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+           xml_spec(xi) == yc);
+
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Print TEXT diff of two cxobj trees into a cbuf
  *
  * YANG dependent
@@ -589,6 +653,7 @@ text_diff_keys(cbuf      *cb,
  * +  value [
  * +     97
  * -     99
+ * @see xml_diff2cbuf
  */
 static int
 text_diff2cbuf(cbuf  *cb,
@@ -611,6 +676,8 @@ text_diff2cbuf(cbuf  *cb,
     char      *prefix = NULL;
     int        leafl = 0; // XXX
     char      *leaflname = NULL; // XXX
+    cxobj     *xi;
+    cxobj     *xj;
 
     level1 = level*PRETTYPRINT_INDENT;
     if ((y0 = xml_spec(x0)) != NULL){
@@ -660,8 +727,58 @@ text_diff2cbuf(cbuf  *cb,
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
         yc0 = xml_spec(x0c);
         yc1 = xml_spec(x1c);
+        if (eq && yc0 && yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
+            if (text_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, yc0,
+                                              level, skiptop) < 0)
+                goto done;
+            /* Add all in x0 marked as DELETE in x0vec 
+             * Flags can remain: XXX should apply to all
+             */
+            xi = x0c;
+            do {
+                if (xml_flag(xi, XML_FLAG_DEL)){
+                    xml_flag_reset(xi, XML_FLAG_DEL);
+                    if (nr==0 && skiptop==0){
+                        cprintf(cb, "%*s", level1, "");
+                        if (prefix)
+                            cprintf(cb, "%s:", prefix);
+                        cprintf(cb, "%s", xml_name(x0));
+                        text_diff_keys(cb, x0, y0);
+                        cprintf(cb, " {\n");
+                        nr++;
+                    }
+                    if (text2cbuf(cb, xi, level+1, "-", 0, &leafl, &leaflname) < 0)
+                        goto done;
+                }
+            }
+            while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+                   xml_spec(xi) == yc0);
+            x0c = xi;
 
-        if (eq < 0){
+            /* Add all in x1 marked as ADD in x1vec */
+            xj = x1c;
+            do {
+                if (xml_flag(xj, XML_FLAG_ADD)){
+                    xml_flag_reset(xj, XML_FLAG_ADD);
+                    if (nr==0 && skiptop==0){
+                        cprintf(cb, "%*s", level1, "");
+                        if (prefix)
+                            cprintf(cb, "%s:", prefix);
+                        cprintf(cb, "%s", xml_name(x1));
+                        text_diff_keys(cb, x1, y0);
+                        cprintf(cb, " {\n");
+                        nr++;
+                    }
+                    if (text2cbuf(cb, xj, level+1, "+", 0, &leafl, &leaflname) < 0)
+                        goto done;
+                }
+            }
+            while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+                   xml_spec(xj) == yc1);
+            x1c = xj;
+            continue;
+        }
+        else if (eq < 0){
             if (nr==0 && skiptop==0){
                 cprintf(cb, "%*s", level1, "");
                 if (prefix)

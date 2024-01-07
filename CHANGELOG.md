@@ -64,6 +64,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Problem deleting non-last list element if ordered-by user](https://github.com/clicon/clixon/issues/475)
 * Fixed: [Tab completion mounted devices with lists](https://github.com/clicon/clixon-controller/issues/72)
 * Fixed: kill-session cleanup when client none existant, and for all db:s
 * Fixed: [Using the characters '<' and '>' might cause an invalid diff](https://github.com/clicon/clixon-controller/issues/73)

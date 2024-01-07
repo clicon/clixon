@@ -93,6 +93,11 @@ typedef struct  {
     yang_stmt *mt_yc;
 } merge_twophase;
 
+/* Forward declaration */
+static int xml_diff1(cxobj *x0, cxobj *x1, cxobj ***x0vec, int *x0veclen,
+                     cxobj ***x1vec, int *x1veclen,
+                     cxobj ***changed_x0, cxobj ***changed_x1, int *changedlen);
+
 /*! Is attribute and is either of form xmlns="", or xmlns:x="" */
 int
 isxmlns(cxobj *x)
@@ -276,6 +281,73 @@ cvec2xml_1(cvec   *cvv,
     return retval;
 }
 
+/*! Handle order-by user(leaf)list for xml_diff
+ *
+ * Loop over sublists started by x0c and x1c respectively until end or yang is no longer yc
+ * First mark all in x0 as DELETE and all x1 as ADD
+ * Then find all equal nodes and unmark them
+ * After the function, there will be nodes in x0 marked with DEL and nodes in x1 marked as ADD
+ * @param[in]  x0    First XML tree
+ * @param[in]  x1    Second XML tree
+ * @param[in]  x0c   Start of sublist in first XML tree
+ * @param[in]  x1c   Start of sublist in second XML tree
+ * @param[in]  yc    Yang of ordered-by user (leaf)list
+ * @retval     0     Ok
+ * @retval    -1     rror
+ */
+static int
+xml_diff_ordered_by_user(cxobj     *x0,
+                         cxobj     *x1,
+                         cxobj     *x0c,
+                         cxobj     *x1c,
+                         yang_stmt *yc,
+                         cxobj   ***x0vec,
+                         int       *x0veclen,
+                         cxobj   ***x1vec,
+                         int       *x1veclen,
+                         cxobj   ***changed_x0,
+                         cxobj   ***changed_x1,
+                         int       *changedlen
+                         )
+{
+    int    retval = -1;
+    cxobj *xi;
+    cxobj *xj;
+
+    xj = x1c;
+    do {
+        xml_flag_set(xj, XML_FLAG_ADD);
+    } while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+             xml_spec(xj) == yc);
+    /* If in both sets, unmark add/del */
+    xi = x0c;
+    do {
+        xml_flag_set(xi, XML_FLAG_DEL);
+        xj = x1c;
+        do {
+            if (xml_flag(xj, XML_FLAG_ADD) &&
+                xml_cmp(xi, xj, 0, 0, NULL) == 0){
+                /* Unmark node in x0 and x1 */
+                xml_flag_reset(xi, XML_FLAG_DEL);
+                xml_flag_reset(xj, XML_FLAG_ADD);
+                if (xml_diff1(xi, xj,
+                              x0vec, x0veclen,
+                              x1vec, x1veclen,
+                              changed_x0, changed_x1, changedlen) < 0)
+                    goto done;
+                break;
+            }
+        }
+        while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+               xml_spec(xj) == yc);
+    }
+    while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+           xml_spec(xi) == yc);
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Recursive help function to compute differences between two xml trees
  *
  * @param[in]  x0         First XML tree
@@ -302,6 +374,7 @@ cvec2xml_1(cvec   *cvv,
  *     perspective, ie both have the same yang spec, if they are lists, they have the
  *     the same keys. NOT that the values are equal!
  * @see xml_diff  API function, this one is internal and recursive
+ * @note reordering in ordered-by user is NOT supported
  */
 static int
 xml_diff1(cxobj     *x0,
@@ -322,6 +395,8 @@ xml_diff1(cxobj     *x0,
     char      *b0;
     char      *b1;
     int        eq;
+    cxobj     *xi;
+    cxobj     *xj;
 
     /* Traverse x0 and x1 in lock-step */
     x0c = x1c = NULL;
@@ -344,7 +419,41 @@ xml_diff1(cxobj     *x0,
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        if (eq < 0){
+        yc0 = xml_spec(x0c);
+        yc1 = xml_spec(x1c);
+        /* override ordered-by user with special look-ahead checks */
+        if (eq && yc0 && yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
+            if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, yc0,
+                                         x0vec, x0veclen, x1vec, x1veclen,
+                                         changed_x0, changed_x1, changedlen) < 0)
+                goto done;
+            /* Add all in x0 marked as DELETE in x0vec 
+             * Flags can remain: XXX should apply to all
+             */
+            xi = x0c;
+            do {
+                if (xml_flag(xi, XML_FLAG_DEL)){
+                    if (cxvec_append(xi, x0vec, x0veclen) < 0)
+                        goto done;
+                }
+            }
+            while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+                   xml_spec(xi) == yc0);
+            x0c = xi;
+
+            /* Add all in x1 marked as ADD in x1vec */
+            xj = x1c;
+            do {
+                if (xml_flag(xj, XML_FLAG_ADD))
+                    if (cxvec_append(xj, x1vec, x1veclen) < 0)
+                        goto done;
+            }
+            while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+                   xml_spec(xj) == yc1);
+            x1c = xj;
+            continue;
+        }
+        else if (eq < 0){
             if (cxvec_append(x0c, x0vec, x0veclen) < 0)
                 goto done;
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
@@ -360,8 +469,6 @@ xml_diff1(cxobj     *x0,
             /* xml-spec NULL could happen with anydata children for example,
              * if so, continute compare children but without yang
              */
-            yc0 = xml_spec(x0c);
-            yc1 = xml_spec(x1c);
             if (yc0 && yc1 && yc0 != yc1){ /* choice */
                 if (cxvec_append(x0c, x0vec, x0veclen) < 0)
                     goto done;
@@ -1233,9 +1340,9 @@ xml_merge1(cxobj              *x0,  /* the target */
         for (i=0; i<twophase_len; i++){
             assert(twophase[i].mt_x1c);
             if ((ret = xml_merge1(twophase[i].mt_x0c,
-                           twophase[i].mt_yc,
-                           x0,
-                           twophase[i].mt_x1c,
+                                  twophase[i].mt_yc,
+                                  x0,
+                                  twophase[i].mt_x1c,
                                   reason)) < 0)
                 goto done;
             if (ret == 0)
