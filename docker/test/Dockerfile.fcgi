@@ -31,35 +31,35 @@
 #
 # ***** END LICENSE BLOCK *****
 #
+# Clixon dockerfile with fcgi restconf
 
 FROM alpine
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
 # For clixon and cligen
-RUN apk add --update git make build-base gcc flex bison fcgi-dev curl-dev
+RUN apk add --update git make build-base gcc flex bison curl-dev
+
+# For fcgi
+RUN apk add --update fcgi-dev
 
 # For netsnmp
 RUN apk add --update net-snmp net-snmp-dev
 
+# For groupadd/groupdel
+RUN apk add --update shadow
+
+# Test-specific (for test scripts)
+RUN apk add --update openssh
+
 # Checkout standard YANG models for tests (note >1G for full repo)
 RUN mkdir -p /usr/local/share/yang
-
 WORKDIR /usr/local/share/yang
+COPY yang .
 
-RUN git config --global init.defaultBranch master
-RUN git init
-RUN git remote add -f origin https://github.com/YangModels/yang
-RUN git config core.sparseCheckout true
-RUN echo "standard/" >> .git/info/sparse-checkout
-RUN echo "experimental/" >> .git/info/sparse-checkout
-
-RUN git pull origin main
-
+# Checkout OPENCONFIG YANG models for tests
 RUN mkdir -p /usr/local/share/openconfig
 WORKDIR /usr/local/share/openconfig
-
-# Checkut Openconfig models for tests
-RUN git clone https://github.com/openconfig/public
+COPY openconfig .
 
 # Create a directory to hold source-code, dependencies etc
 RUN mkdir -p /clixon/build
@@ -85,12 +85,15 @@ RUN adduser -D -H -G www-data www-data
 RUN apk add --update nginx
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build --with-restconf=fcgi --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/
+RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build/usr/local --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/ --with-restconf=fcgi
 RUN make
 RUN make DESTDIR=/clixon/build install
 
-# Install utils (for tests)
-WORKDIR /clixon/clixon/util
+# Configure, build and install clixon utilities (for tests)
+WORKDIR /clixon
+RUN git clone https://github.com/clicon/clixon-util.git
+WORKDIR /clixon/clixon-util
+RUN ./configure --prefix=/usr/local --with-cligen=/clixon/build/usr/local --with-clixon=/clixon/build/usr/local
 RUN make
 RUN make DESTDIR=/clixon/build install
 
@@ -107,6 +110,7 @@ RUN install -d /clixon/build/usr/local/bin/test
 RUN install *.sh /clixon/build/usr/local/bin/test
 RUN install *.exp /clixon/build/usr/local/bin/test
 RUN install clixon.png /clixon/build/usr/local/bin/test
+RUN install *.supp /clixon/build/usr/local/bin/test
 
 RUN install -d /clixon/build/mibs
 RUN install mibs/* /clixon/build/mibs
@@ -144,10 +148,10 @@ RUN adduser -D -H -G www-data www-data
 RUN apk add --update nginx
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash expect
+RUN apk add --update sudo curl procps grep make bash expect openssh
 
-# Expose nginx port for restconf
-EXPOSE 80
+# Dont need to expose restconf ports for internal tests
+#EXPOSE 80/tcp
 
 # Create clicon user and group
 RUN adduser -D -H clicon
@@ -156,6 +160,7 @@ RUN adduser www-data clicon
 
 COPY --from=0 /clixon/build/ /
 COPY --from=0 /usr/local/share/yang/ /usr/local/share/yang/
+COPY --from=0 /usr/local/share/openconfig/* /usr/local/share/openconfig/
 COPY --from=0 /usr/local/share/mib-yangs/* /usr/local/share/mib-yangs/
 COPY --from=0 /clixon/build/mibs/* /usr/share/snmp/mibs/
 

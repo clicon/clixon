@@ -31,7 +31,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>SNMPv2-MIB</CLICON_SNMP_MIB>
@@ -106,7 +106,7 @@ function testinit(){
         new "Starting clixon_snmp"
         # XXX augmented objects seem to be registered twice: error: duplicate registration: MIB modules snmpSetSerialNo and AgentX subagent 52, session 0x562087a70e20, subsession 0x562087a820c0 (oid .1.3.6.1.6.3.1.1.6.1).
 
-        start_snmp $cfg &
+        start_snmp $cfg
     fi
 
     new "wait snmp"

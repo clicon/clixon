@@ -57,7 +57,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 /* restconf */
@@ -76,7 +76,7 @@
  * @retval     1    Yes, a restconf path
  */
 int
-api_path_is_restconf(clicon_handle h)
+api_path_is_restconf(clixon_handle h)
 {
     int    retval = 0;
     char  *path = NULL;
@@ -98,14 +98,17 @@ api_path_is_restconf(clicon_handle h)
 }
 
 /*! Determine the root of the RESTCONF API by accessing /.well-known
- * @param[in]  h        Clicon handle
- * @param[in]  req      Generic Www handle (can be part of clixon handle)
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  req  Generic Www handle (can be part of clixon handle)
+ * @retval     0    OK
+ * @retval    -1    Error
  * @see RFC8040 3.1 and RFC7320
  * In line with the best practices defined by [RFC7320], RESTCONF
  * enables deployments to specify where the RESTCONF API is located.
  */
 int
-api_well_known(clicon_handle h,
+api_well_known(clixon_handle h,
                void         *req)
 {
     int       retval = -1;
@@ -113,7 +116,7 @@ api_well_known(clicon_handle h,
     cbuf     *cb = NULL;
     int       head;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (req == NULL){
         errno = EINVAL;
         goto done;
@@ -131,7 +134,7 @@ api_well_known(clicon_handle h,
         goto done;
     /* Create body */
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>\n");
@@ -150,18 +153,20 @@ api_well_known(clicon_handle h,
 }
 
 /*! Retrieve the Top-Level API Resource /restconf/ (exact)
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Generic request handle
  * @param[in]  method    Http method
  * @param[in]  pretty    Pretty print
  * @param[in]  media_out Restconf output media
-
+ * @retval     0         OK
+ * @retval    -1         Error
  * @note Only returns null for operations and data,...
  * See RFC8040 3.3
  * @see api_root_restconf for accessing /restconf/ *
  */
 static int
-api_root_restconf_exact(clicon_handle  h,
+api_root_restconf_exact(clixon_handle  h,
                         void          *req,
                         char          *request_method,
                         int            pretty,
@@ -174,7 +179,7 @@ api_root_restconf_exact(clicon_handle  h,
     cbuf      *cb = NULL;
     int        head;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     head = strcmp(request_method, "HEAD") == 0;
     if (!head && strcmp(request_method, "GET") != 0){
         if (restconf_method_notallowed(h, req, "GET", pretty, media_out) < 0)
@@ -182,7 +187,7 @@ api_root_restconf_exact(clicon_handle  h,
         goto ok;
     }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
@@ -196,7 +201,7 @@ api_root_restconf_exact(clicon_handle  h,
         goto done;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if (xml_rootchild(xt, 0, &xt) < 0)
@@ -208,7 +213,7 @@ api_root_restconf_exact(clicon_handle  h,
             goto done;
         break;
     case YANG_DATA_JSON:
-    case YANG_PATCH_JSON:       
+    case YANG_PATCH_JSON:
         if (clixon_json2cbuf(cb, xt, pretty, 0, 0) < 0)
             goto done;
         break;
@@ -230,44 +235,46 @@ api_root_restconf_exact(clicon_handle  h,
 
 /** A stub implementation of the operational state datastore. The full
  * implementation is required by https://tools.ietf.org/html/rfc8527#section-3.1
- * @param[in]  h         Clicon handle
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Generic http handle
  * @param[in]  pretty    Pretty-print
  * @param[in]  media_out Restconf output media
  */
 static int
-api_operational_state(clicon_handle  h,
+api_operational_state(clixon_handle  h,
                         void          *req,
                         char          *request_method,
                         int            pretty,
                         restconf_media media_out)
 
 {
-    clicon_debug(1, "%s request method:%s", __FUNCTION__, request_method);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s request method:%s", __FUNCTION__, request_method);
 
     /* We are not implementing this method at this time, 20201105 despite it
      * being mandatory https://tools.ietf.org/html/rfc8527#section-3.1 */
     return restconf_notimplemented(h, req, pretty, media_out);
 }
 
-/*!
+/*! get yang lib version
+ *
  * See https://tools.ietf.org/html/rfc7895
  * @param[in]  pretty    Pretty-print
  * @param[in]  media_out Restconf output media
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 static int
-api_yang_library_version(clicon_handle h,
+api_yang_library_version(clixon_handle h,
                          void         *req,
                          int           pretty,
                          restconf_media media_out)
-    
 {
     int    retval = -1;
     cxobj *xt = NULL;
     cbuf  *cb = NULL;
     yang_stmt *yspec;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
         goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
@@ -282,7 +289,7 @@ api_yang_library_version(clicon_handle h,
     if (xml_bind_special(xt, yspec, "/rc:restconf/yang-library-version") < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     switch (media_out){
@@ -312,6 +319,7 @@ api_yang_library_version(clicon_handle h,
 }
 
 /*! Generic REST method, GET, PUT, DELETE, etc
+ *
  * @param[in]  h         CLIXON handle
  * @param[in]  r         Fastcgi request handle
  * @param[in]  api_path  According to restconf (Sec 3.5.1.1 in [draft])
@@ -320,15 +328,17 @@ api_yang_library_version(clicon_handle h,
  * @param[in]  qvec      Vector of query string (QUERY_STRING)
  * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Restconf output media
- * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  ds        0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 static int
-api_data(clicon_handle h,
-         void         *req, 
-         char         *api_path, 
-         cvec         *pcvec, 
+api_data(clixon_handle h,
+         void         *req,
+         char         *api_path,
+         cvec         *pcvec,
          int           pi,
-         cvec         *qvec, 
+         cvec         *qvec,
          char         *data,
          int           pretty,
          restconf_media media_out,
@@ -339,9 +349,9 @@ api_data(clicon_handle h,
     char   *request_method;
     cxobj  *xerr = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     request_method = restconf_param_get(h, "REQUEST_METHOD");
-    clicon_debug(1, "%s method:%s", __FUNCTION__, request_method);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s method:%s", __FUNCTION__, request_method);
 
     /* https://tools.ietf.org/html/rfc8527#section-3.2 */
     /* We assume that dynamic datastores are read only at this time 20201105 */
@@ -355,7 +365,7 @@ api_data(clicon_handle h,
     if (strcmp(request_method, "OPTIONS")==0)
         retval = api_data_options(h, req);
     else if (strcmp(request_method, "HEAD")==0) {
-        if (dynamic) 
+        if (dynamic)
             retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
         else
             retval = api_data_head(h, req, api_path, pi, qvec, pretty, media_out, ds);
@@ -367,7 +377,7 @@ api_data(clicon_handle h,
         retval = api_data_post(h, req, api_path, pi, qvec, data, pretty, restconf_content_type(h), media_out, ds);
     }
     else if (strcmp(request_method, "PUT")==0) {
-        if (read_only) 
+        if (read_only)
             retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
         else
             retval = api_data_put(h, req, api_path, pi, qvec, data, pretty, media_out, ds);
@@ -379,17 +389,17 @@ api_data(clicon_handle h,
         retval = api_data_patch(h, req, api_path, pi, qvec, data, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "DELETE")==0) {
-        if (read_only) 
+        if (read_only)
             retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
         else
             retval = api_data_delete(h, req, api_path, pi, pretty, media_out, ds);
     }
     else{
         if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid HTTP data method") < 0)
-            goto done;  
+            goto done;
         retval = api_return_err0(h, req, xerr, pretty, media_out, 0);
     }
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
  done:
     if (xerr)
         xml_free(xerr);
@@ -397,6 +407,7 @@ api_data(clicon_handle h,
 }
 
 /*! Operations REST method, POST
+ *
  * @param[in]  h      CLIXON handle
  * @param[in]  req   Generic Www handle (can be part of clixon handle)
  * @param[in]  request_method  eg GET,...
@@ -406,15 +417,17 @@ api_data(clicon_handle h,
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
  * @param[in]  media_out Output media
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 static int
-api_operations(clicon_handle h,
-               void         *req, 
+api_operations(clixon_handle h,
+               void         *req,
                char         *request_method,
                char         *path,
-               cvec         *pcvec, 
+               cvec         *pcvec,
                int           pi,
-               cvec         *qvec, 
+               cvec         *qvec,
                char         *data,
                int           pretty,
                restconf_media media_out)
@@ -422,7 +435,7 @@ api_operations(clicon_handle h,
     int    retval = -1;
     cxobj *xerr = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (strcmp(request_method, "GET")==0)
         retval = api_operations_get(h, req, path, pi, qvec, data, pretty, media_out);
     else if (strcmp(request_method, "POST")==0)
@@ -430,7 +443,7 @@ api_operations(clicon_handle h,
                                      pretty, media_out);
     else{
         if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid HTTP operations method") < 0)
-            goto done;  
+            goto done;
         retval = api_return_err0(h, req, xerr, pretty, media_out, 0);
     }
  done:
@@ -440,13 +453,16 @@ api_operations(clicon_handle h,
 }
 
 /*! Process a /restconf root input, this is the root of the restconf processing
- * @param[in]  h         Clicon handle
- * @param[in]  req       Generic Www handle (can be part of clixon handle)
- * @param[in]  qvec      Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  req   Generic Www handle (can be part of clixon handle)
+ * @param[in]  qvec  Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see api_root_restconf_exact for accessing /restconf/ exact
  */
 int
-api_root_restconf(clicon_handle        h,
+api_root_restconf(clixon_handle        h,
                   void                *req,
                   cvec                *qvec)
 {
@@ -466,7 +482,7 @@ api_root_restconf(clicon_handle        h,
     int            ret;
     cxobj         *xerr = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (req == NULL){
         errno = EINVAL;
         goto done;
@@ -476,7 +492,7 @@ api_root_restconf(clicon_handle        h,
         goto done;
     pretty = restconf_pretty_get(h);
     /* Get media for output (proactive negotiation) RFC7231 by using
-     * Accept:. This is for methods that have output, such as GET, 
+     * Accept:. This is for methods that have output, such as GET,
      * operation POST, etc
      * If accept is * default is yang-json
      */
@@ -496,7 +512,7 @@ api_root_restconf(clicon_handle        h,
             goto ok;
         }
     }
-    clicon_debug(1, "%s ACCEPT: %s %s", __FUNCTION__, media_str, restconf_media_int2str(media_out));
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s ACCEPT: %s %s", __FUNCTION__, media_str, restconf_media_int2str(media_out));
 
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
         goto done;
@@ -504,14 +520,14 @@ api_root_restconf(clicon_handle        h,
     /* Sanity check of path. Should be /restconf/ */
     if (pn < 2){
         if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /restconf/ expected") < 0)
-            goto done; 
+            goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
             goto done;
         goto ok;
     }
     if (strlen(pvec[0]) != 0){
         if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, restconf api root expected") < 0)
-            goto done; 
+            goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
             goto done;
         goto ok;
@@ -522,19 +538,19 @@ api_root_restconf(clicon_handle        h,
     }
     if ((api_resource = pvec[2]) == NULL){
         if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /restconf/ expected") < 0)
-            goto done; 
+            goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
             goto done;
         goto ok;
     }
-    clicon_debug(1, "%s: api_resource=%s", __FUNCTION__, api_resource);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s: api_resource=%s", __FUNCTION__, api_resource);
     if (uri_str2cvec(path, '/', '=', 1, &pcvec) < 0) /* rest url eg /album=ricky/foo */
       goto done;
     /* data */
     if ((cb = restconf_get_indata(req)) == NULL) /* XXX NYI ACTUALLY not always needed, do this later? */
         goto done;
     indata = cbuf_get(cb);
-    clicon_debug(1, "%s DATA=%s", __FUNCTION__, indata);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s DATA=%s", __FUNCTION__, indata);
 
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * retvals:
@@ -564,7 +580,7 @@ api_root_restconf(clicon_handle        h,
 
         if (4 > pn) { /* Malformed request, no "ietf-datastores:<datastore>" component */
             if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, No ietf-datastores:<datastore> component") < 0)
-                goto done; 
+                goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
             goto ok;
@@ -587,7 +603,7 @@ api_root_restconf(clicon_handle        h,
         }
         else { /* Malformed request, unsupported datastore type */
             if (netconf_invalid_value_xml(&xerr, "protocol", "Unsupported datastore type") < 0)
-                goto done; 
+                goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
            goto ok;
@@ -597,13 +613,13 @@ api_root_restconf(clicon_handle        h,
             goto done;
     }
     else if (strcmp(api_resource, "operations") == 0){ /* rpc */
-        if (api_operations(h, req, request_method, path, pcvec, 2, qvec, indata, 
+        if (api_operations(h, req, request_method, path, pcvec, 2, qvec, indata,
                            pretty, media_out) < 0)
             goto done;
     }
     else{
         if (netconf_invalid_value_xml(&xerr, "protocol", "API-resource type") < 0)
-            goto done; 
+            goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
             goto done;
         goto ok;
@@ -611,7 +627,7 @@ api_root_restconf(clicon_handle        h,
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
 #ifdef WITH_RESTCONF_FCGI
     if (cb)
         cbuf_free(cb);

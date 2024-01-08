@@ -32,7 +32,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
+ * Clixon XML XPath 1.0 according to https://www.w3.org/TR/xpath-10
  */
 #ifndef _CLIXON_XPATH_EVAL_H
 #define _CLIXON_XPATH_EVAL_H

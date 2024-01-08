@@ -4,7 +4,7 @@
 # Restconf/Netconf/CLI
 # Also added two layers a/b to get extra depth (som caching can break)
 # Alternative, run as:
-# sudo clixon_backend -Fs init -f /var/tmp/./test_perf_state_only.sh/config.xml -- -siS /home/olof/tmp/state_100K.xml
+# sudo $clixon_backend -Fs init -f /var/tmp/./test_perf_state_only.sh/config.xml -- -siS /home/olof/tmp/state_100K.xml
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -37,16 +37,16 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/example/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_PRETTY>false</CLICON_XMLDB_PRETTY>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
   <CLICON_CLI_MODE>example</CLICON_CLI_MODE>
-  <CLICON_CLI_DIR>/usr/local/lib/example/cli</CLICON_CLI_DIR>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/example/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   $RESTCONFIG

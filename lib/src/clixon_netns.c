@@ -41,8 +41,14 @@
 #include <cligen/cligen.h>
 
 /* clixon */
+#include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_netns.h"
 
 #ifdef HAVE_SETNS
@@ -70,7 +76,7 @@ send_sock(int usock,
     memcpy(fdptr,&fd,sizeof(fd));
     msg.msg_controllen=CMSG_SPACE(sizeof(fd));
     if (sendmsg(usock, &msg, 0) < 0){
-        clicon_err(OE_UNIX, errno, "sendmsg");
+        clixon_err(OE_UNIX, errno, "sendmsg");
         goto done;
     }
     retval = 0;
@@ -96,7 +102,7 @@ get_sock(int  usock,
     msg.msg_controllen=sizeof(buf);
     /* Block here */
     if (recvmsg(usock, &msg, 0) < 0){
-        clicon_err(OE_UNIX, errno, "recvmsg");
+        clixon_err(OE_UNIX, errno, "recvmsg");
         goto done;
     }
     cmsg=CMSG_FIRSTHDR(&msg);
@@ -109,16 +115,19 @@ get_sock(int  usock,
 #endif /* HAVE_SETNS */
 
 /*! Create and bind stream socket
+ *
  * @param[in]  sa       Socketaddress
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
  * @param[in]  backlog  Listen backlog, queie of pending connections
  * @param[in]  flags    Socket flags Or:ed in with the socket(2) type parameter
  * @param[in]  addrstr  Address string for debug
  * @param[out] sock     Server socket (bound for accept)
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 static int
 create_socket(struct sockaddr *sa,
-              size_t           sin_len,             
+              size_t           sin_len,
               int              backlog,
               int              flags,
               const char      *addrstr,
@@ -127,10 +136,10 @@ create_socket(struct sockaddr *sa,
     int    retval = -1;
     int    s = -1;
     int    on = 1;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (sock == NULL){
-        clicon_err(OE_PROTO, EINVAL, "Requires socket output parameter");
+        clixon_err(OE_PROTO, EINVAL, "Requires socket output parameter");
         goto done;
     }
     /* create inet socket */
@@ -143,46 +152,46 @@ create_socket(struct sockaddr *sa,
 
     if ((s = socket(sa->sa_family, flags,
                     0)) < 0) {
-        clicon_err(OE_UNIX, errno, "socket");
+        clixon_err(OE_UNIX, errno, "socket");
         goto done;
     }
 
 #ifdef __APPLE__
     if (fcntl(s, O_CLOEXEC)) {
-        clicon_err(OE_UNIX, errno, "fcntl");
+        clixon_err(OE_UNIX, errno, "fcntl");
         goto done;
     }
 #endif
 
     if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, sizeof(on)) == -1) {
-        clicon_err(OE_UNIX, errno, "setsockopt SO_KEEPALIVE");
+        clixon_err(OE_UNIX, errno, "setsockopt SO_KEEPALIVE");
         goto done;
     }
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)) == -1) {
-        clicon_err(OE_UNIX, errno, "setsockopt SO_REUSEADDR");
+        clixon_err(OE_UNIX, errno, "setsockopt SO_REUSEADDR");
         goto done;
     }
 
     /* only bind ipv6, otherwise it may bind to ipv4 as well which is strange but seems default */
     if (sa->sa_family == AF_INET6 &&
         setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) == -1) {
-        clicon_err(OE_UNIX, errno, "setsockopt IPPROTO_IPV6");
+        clixon_err(OE_UNIX, errno, "setsockopt IPPROTO_IPV6");
         goto done;
     }
     if (bind(s, sa, sin_len) == -1) {
         /* Note may be ignored in upper layer by checking for EADDRNOTAVAIL, see eg restconf_openssl_init */
-        clicon_err(OE_UNIX, errno, "bind(%s)", addrstr);
+        clixon_err(OE_UNIX, errno, "bind(%s)", addrstr);
         goto done;
     }
     if (listen(s, backlog ) < 0){
-        clicon_err(OE_UNIX, errno, "listen");
+        clixon_err(OE_UNIX, errno, "listen");
         goto done;
     }
     if (sock)
         *sock = s;
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     if (retval != 0 && s != -1)
         close(s);
     return retval;
@@ -198,11 +207,13 @@ create_socket(struct sockaddr *sa,
  * @param[in]  flags    Socket flags OR:ed in with the socket(2) type parameter
  * @param[in]  addrstr  Address string for debug
  * @param[out] sock     Server socket (bound for accept)
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 static int
 fork_netns_socket(const char      *netns,
                   struct sockaddr *sa,
-                  size_t           sin_len,                 
+                  size_t           sin_len,
                   int              backlog,
                   int              flags,
                   const char      *addrstr,
@@ -221,32 +232,32 @@ fork_netns_socket(const char      *netns,
     int         sock_flags = SOCK_DGRAM | SOCK_CLOEXEC;
 #endif
 
-    clicon_debug(1, "%s %s", __FUNCTION__, netns);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, netns);
     if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
-        clicon_err(OE_UNIX, errno, "socketpair");
+        clixon_err(OE_UNIX, errno, "socketpair");
         goto done;
     }
 
 #ifdef __APPLE__
     if (fcntl(sp[0], O_CLOEXEC)) {
-        clicon_err(OE_UNIX, errno, "fcntl, sp[0]");
+        clixon_err(OE_UNIX, errno, "fcntl, sp[0]");
         goto done;
     }
 
     if (fcntl(sp[1], O_CLOEXEC)) {
-        clicon_err(OE_UNIX, errno, "fcntl, sp[1]");
+        clixon_err(OE_UNIX, errno, "fcntl, sp[1]");
         goto done;
     }
 #endif
 
     /* Check namespace exists */
-    sprintf(nspath,"/var/run/netns/%s", netns); 
+    sprintf(nspath,"/var/run/netns/%s", netns);
     if (stat(nspath, &st) < 0){
-        clicon_err(OE_UNIX, errno, ": stat(%s)", nspath);
+        clixon_err(OE_UNIX, errno, ": stat(%s)", nspath);
         goto done;
     }
     if ((child = fork()) < 0) {
-        clicon_err(OE_UNIX, errno, "fork");
+        clixon_err(OE_UNIX, errno, "fork");
         goto done;
     }
     if (child == 0) {   /* Child */
@@ -256,13 +267,13 @@ fork_netns_socket(const char      *netns,
         close(sp[0]);
         /* Switch to namespace */
         if ((fd=open(nspath, O_RDONLY)) < 0) {
-            clicon_err(OE_UNIX, errno, "open(%s)", nspath);
+            clixon_err(OE_UNIX, errno, "open(%s)", nspath);
             send_sock(sp[1], sp[1]); /* Dummy to wake parent */
             exit(1); /* Dont do return here, need to exit child */
         }
 #ifdef HAVE_SETNS
         if (setns(fd, CLONE_NEWNET) < 0){
-            clicon_err(OE_UNIX, errno, "setns(%s)", netns);
+            clixon_err(OE_UNIX, errno, "setns(%s)", netns);
             send_sock(sp[1], sp[1]); /* Dummy to wake parent */
             exit(1); /* Dont do return here, need to exit child */
         }
@@ -288,19 +299,20 @@ fork_netns_socket(const char      *netns,
     if(waitpid(child, &wstatus, 0) == child)
         ; // retval = WEXITSTATUS(status); /* Dont know what to do with status */
     if (WEXITSTATUS(wstatus)){
-        clicon_debug(1, "%s wstatus:%d", __FUNCTION__, WEXITSTATUS(wstatus));
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s wstatus:%d", __FUNCTION__, WEXITSTATUS(wstatus));
         *sock = -1;
-        clicon_err(OE_UNIX, EADDRNOTAVAIL, "bind(%s)", addrstr);
+        clixon_err(OE_UNIX, EADDRNOTAVAIL, "bind(%s)", addrstr);
         goto done;
     }
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 #endif /* HAVE_SETNS */
 
 /*! Create and bind stream socket in network namespace
+ *
  * @param[in]  netns    Network namespace
  * @param[in]  sa       Socketaddress
  * @param[in]  sa_len   Length of sa. Tecynicaliyu to be independent of sockaddr sa_len
@@ -308,19 +320,21 @@ fork_netns_socket(const char      *netns,
  * @param[in]  flags    Socket flags OR:ed in with the socket(2) type parameter
  * @param[in]  addrstr  Address string for debug
  * @param[out] sock     Server socket (bound for accept)
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
 clixon_netns_socket(const char      *netns,
                     struct sockaddr *sa,
-                    size_t           sin_len,               
+                    size_t           sin_len,
                     int              backlog,
                     int              flags,
                     const char      *addrstr,
                     int             *sock)
 {
     int    retval = -1;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (netns == NULL){
         if (create_socket(sa, sin_len, backlog, flags, addrstr, sock) < 0)
             goto done;
@@ -331,13 +345,13 @@ clixon_netns_socket(const char      *netns,
         if (fork_netns_socket(netns, sa, sin_len, backlog, flags, addrstr, sock) < 0)
             goto done;
 #else
-        clicon_err(OE_UNIX, errno, "No namespace support on platform: %s", netns);
-        return -1;      
+        clixon_err(OE_UNIX, errno, "No namespace support on platform: %s", netns);
+        return -1;
 #endif
     }
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     return retval;
 }

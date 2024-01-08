@@ -95,7 +95,7 @@
 /* typecast macro */
 #define _IY ((clixon_instance_id_yacc *)_iy)
 
-#define _YYERROR(msg) {clicon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_instance_id_parsetext, _IY->iy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_instance_id_parsetext, _IY->iy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid 
@@ -115,20 +115,21 @@
 
 #include <cligen/cligen.h>
 
-#include "clixon_err.h"
-#include "clixon_log.h"
 #include "clixon_queue.h"
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_path.h"
 #include "clixon_instance_id_parse.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clicon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(1,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
@@ -140,7 +141,7 @@ void
 clixon_instance_id_parseerror(void *_iy,
                               char *s) 
 { 
-    clicon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'", 
+    clixon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'", 
                _IY->iy_name,
                _IY->iy_linenum ,
                s, 
@@ -166,7 +167,7 @@ static clixon_path *
 path_append(clixon_path *list,
             clixon_path *new)
 {
-    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (new == NULL)
         return NULL;
     ADDQ(new, list);
@@ -174,6 +175,7 @@ path_append(clixon_path *list,
 }
 
 /*! Add keyvalue to existing clixon path 
+ *
  * If cvk has one integer argument, interpret as position, eg x/y[42] 
  * else as keyvalue strings, eg x/y[k1="foo"][k2="bar"]
  */
@@ -181,7 +183,7 @@ static clixon_path *
 path_add_keyvalue(clixon_path *cp,
                   cvec        *cvk)
 {
-    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cp == NULL)
         goto done;
     cp->cp_cvk = cvk;
@@ -195,19 +197,19 @@ path_new(char *prefix,
 {
     clixon_path *cp = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, prefix, id);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, prefix, id);
     if ((cp = malloc(sizeof(*cp))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(cp, 0, sizeof(*cp));
     if (prefix)
         if ((cp->cp_prefix = strdup(prefix)) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
     if ((cp->cp_id = strdup(id)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     return cp;
@@ -225,20 +227,20 @@ keyval_pos(char *uint)
     char   *reason=NULL;
     int     ret;
     
-    clicon_debug(CLIXON_DBG_DETAIL, "%s(%s)", __FUNCTION__, uint);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s)", __FUNCTION__, uint);
     if ((cvv = cvec_new(1)) == NULL) {
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto done;
     }
     cv = cvec_i(cvv, 0);
     cv_type_set(cv, CGV_UINT32);
     if ((ret = cv_parse1(uint, cv, &reason)) < 0){
-        clicon_err(OE_UNIX, errno, "cv_parse1");
+        clixon_err(OE_UNIX, errno, "cv_parse1");
         cvv = NULL;
         goto done;
     }
     if (ret == 0){
-        clicon_err(OE_UNIX, errno, "cv_parse1: %s", reason);
+        clixon_err(OE_UNIX, errno, "cv_parse1: %s", reason);
         cvv = NULL;
         goto done;
     }
@@ -249,25 +251,26 @@ keyval_pos(char *uint)
 }
 
 /*! Append a key-value cv to a cvec, create the cvec if not exist
+ *
  * @param[in] cvv  Either created cvv or NULL, in whihc case it is created
  * @param[in] cv   Is consumed by thius function (if appended)
- * @retval    NULL Error
  * @retval    cvv  Cvec
+ * @retval    NULL Error
  */
 static cvec *
 keyval_add(cvec   *cvv,
            cg_var *cv)
 {
-    clicon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cv == NULL)
         goto done;
     if (cvv == NULL &&
         (cvv = cvec_new(0)) == NULL) {
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto done;
     }
     if (cvec_append_var(cvv, cv) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_append_var");
+        clixon_err(OE_UNIX, errno, "cvec_append_var");
         cvv = NULL;
         goto done;
     }
@@ -284,18 +287,18 @@ keyval_set(char *name,
 {
     cg_var *cv = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name, val);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name, val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_new");
+        clixon_err(OE_UNIX, errno, "cv_new");
         goto done;
     }
     if (name && cv_name_set(cv, name) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_string_set");
+        clixon_err(OE_UNIX, errno, "cv_string_set");
         cv = NULL;
         goto done;
     }
     if (cv_string_set(cv, val) == NULL){
-        clicon_err(OE_UNIX, errno, "cv_string_set");
+        clixon_err(OE_UNIX, errno, "cv_string_set");
         cv = NULL;
         goto done;
     }

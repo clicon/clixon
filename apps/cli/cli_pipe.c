@@ -67,7 +67,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_cli_api.h"
@@ -83,7 +83,7 @@
  * @endcode
  */
 int
-pipe_arg_fn(clicon_handle h,
+pipe_arg_fn(clixon_handle h,
             char         *cmd,
             char         *option,
             char         *value)
@@ -92,21 +92,21 @@ pipe_arg_fn(clicon_handle h,
     struct stat  fstat;
     char       **argv = NULL;
     int          i;
-    
+
     if (cmd == NULL || strlen(cmd) == 0){
-        clicon_err(OE_PLUGIN, EINVAL, "cmd '%s' NULL or empty", cmd);
+        clixon_err(OE_PLUGIN, EINVAL, "cmd '%s' NULL or empty", cmd);
         goto done;
     }
     if (stat(cmd, &fstat) < 0) {
-        clicon_err(OE_UNIX, errno, "stat(%s)", cmd);
+        clixon_err(OE_UNIX, errno, "stat(%s)", cmd);
         goto done;
     }
     if (!S_ISREG(fstat.st_mode)){
-        clicon_err(OE_UNIX, errno, "%s is not a regular file", cmd);
+        clixon_err(OE_UNIX, errno, "%s is not a regular file", cmd);
         goto done;
     }
     if ((argv = calloc(4, sizeof(char *))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     i = 0;
@@ -123,13 +123,13 @@ pipe_arg_fn(clicon_handle h,
 
 /* Grep pipe output function
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
  * @param[in]  argv  String vector of options. Format: <option> <value>
  * @note  Any vertical bar (|] in the patterns field is quoted for OR function
  */
 int
-pipe_grep_fn(clicon_handle h,
+pipe_grep_fn(clixon_handle h,
              cvec         *cvv,
              cvec         *argv)
 {
@@ -144,7 +144,7 @@ pipe_grep_fn(clicon_handle h,
     char    c;
 
     if (cvec_len(argv) != 2){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option> <argname>", cvec_len(argv));
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option> <argname>", cvec_len(argv));
         goto done;
     }
     if ((cv = cvec_i(argv, 0)) != NULL &&
@@ -156,7 +156,7 @@ pipe_grep_fn(clicon_handle h,
         strlen(str))
         argname = str;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (argname && strlen(argname)){
@@ -182,22 +182,24 @@ pipe_grep_fn(clicon_handle h,
 
 /*! wc pipe output function
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
  * @param[in]  argv  String vector of options. Format: <option> <value>
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 int
-pipe_wc_fn(clicon_handle h,
-             cvec         *cvv,
-             cvec         *argv)
+pipe_wc_fn(clixon_handle h,
+           cvec         *cvv,
+           cvec         *argv)
 {
     int     retval = -1;
     cg_var *cv;
     char   *str;
     char   *option = NULL;
-    
+
     if (cvec_len(argv) != 1){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <NUM>", cvec_len(argv));
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <NUM>", cvec_len(argv));
         goto done;
     }
     if ((cv = cvec_i(argv, 0)) != NULL &&
@@ -211,12 +213,14 @@ pipe_wc_fn(clicon_handle h,
 
 /*! wc pipe output function
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
  * @param[in]  argv  String vector of options. Format: <option> <value>
+ * @retval     0     OK
+ * @retval    -1     Error
  */
 int
-pipe_tail_fn(clicon_handle h,
+pipe_tail_fn(clixon_handle h,
              cvec         *cvv,
              cvec         *argv)
 {
@@ -228,7 +232,7 @@ pipe_tail_fn(clicon_handle h,
     char   *argname = NULL;
 
     if (cvec_len(argv) != 2){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option> <argname>", cvec_len(argv));
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <option> <argname>", cvec_len(argv));
         goto done;
     }
     if ((cv = cvec_i(argv, 0)) != NULL &&
@@ -252,16 +256,18 @@ pipe_tail_fn(clicon_handle h,
 
 /*! Output pipe translate from xml to other format: json,text,
  *
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables 
  * @param[in]  argv  String vector of show options, format:
  *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
  *   <pretty>        true|false: pretty-print or not
  *   <prepend>       CLI prefix: prepend before cli syntax output
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see cli_show_auto_devs
  */
 int
-pipe_showas_fn(clicon_handle h,
+pipe_showas_fn(clixon_handle h,
                cvec         *cvv,
                cvec         *argv)
 {
@@ -276,7 +282,7 @@ pipe_showas_fn(clicon_handle h,
     cxobj           *xerr = NULL;
 
     if (cvec_len(argv) < 1 || cvec_len(argv) > 3){
-        clicon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <format> [<pretty> [<prepend>]]", cvec_len(argv));
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <format> [<pretty> [<prepend>]]", cvec_len(argv));
         goto done;
     }
     if (cvec_len(argv) > argc){
@@ -297,11 +303,12 @@ pipe_showas_fn(clicon_handle h,
     switch (format){
     case FORMAT_CLI:
     case FORMAT_TEXT:
+    case FORMAT_JSON:
         /* Requires binding. Note binding over mountpoints can cause rpc: extra latency */
         if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clixon_netconf_error(xerr, "Parse top file", NULL);
+            clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Parse top file");
             goto done;
         }
         break;
@@ -318,7 +325,7 @@ pipe_showas_fn(clicon_handle h,
             goto done;
         break;
     case FORMAT_TEXT:
-        if (clixon_txt2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
+        if (clixon_text2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
             goto done;
         break;
     case FORMAT_CLI:
@@ -349,7 +356,7 @@ output_fn(cligen_handle handle,
           cvec         *argv)
 {
     cg_var *cv;
-    
+
     cv = NULL;
     while ((cv = cvec_each(argv, cv)) != NULL){
         cligen_output(stdout, "%s\n", cv_string_get(cv));

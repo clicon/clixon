@@ -50,7 +50,7 @@ typedef enum yang_class yang_class;
  * Prototypes
  */
 int xml_default_recurse(cxobj *xn, int state);
-int xml_global_defaults(clicon_handle h, cxobj *xn, cvec *nsc, const char *xpath, yang_stmt *yspec, int state);
+int xml_global_defaults(clixon_handle h, cxobj *xn, cvec *nsc, const char *xpath, yang_stmt *yspec, int state);
 int xml_defaults_nopresence(cxobj *xn, int purge);
 int xml_add_default_tag(cxobj *x, uint16_t flags);
 int xml_flag_state_default_value(cxobj *x, uint16_t flag);

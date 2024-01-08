@@ -37,9 +37,9 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>$pdir</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
   $RESTCONFIG
@@ -75,22 +75,20 @@ cat<<EOF > $cfile
 #include <unistd.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <syslog.h> // debug
 
-#include <clixon/clixon_log.h> // debug
+#include <clixon/clixon_queue.h>
+#include <clixon/clixon_hash.h>
+#include <clixon/clixon_handle.h>
 #include <clixon/clixon_client.h>
 
 int
 main(int    argc,
      char **argv)
 {
-    int retval = -1;
+    int                  retval = -1;
     clixon_handle        h = NULL; /* clixon handle */
     clixon_client_handle ch = NULL; /* clixon client handle */
     int                  s;
-
-    clicon_log_init("client", LOG_DEBUG, CLICON_LOG_STDERR);  // debug
-    clicon_debug_init($debug, NULL);                          // debug
 
     /* Provide a clixon config-file, get a clixon handle */
     if ((h = clixon_client_init("$cfg")) == NULL)
@@ -165,7 +163,14 @@ new "Check entries"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-client:table -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" "$XML"
 
 new "Run $app"
-expectpart "$($app)" 0 '^42$'
+# Extra test for some archs, eg ubuntu 18 that have problems with:
+# Sorry, user <user> is not allowed to execute as <user>:clicon on <arch>
+sudo -g ${CLICON_GROUP} $clixon_netconf 2> /dev/null
+if [ $? -eq 0 ]; then
+    expectpart "$(sudo -g ${CLICON_GROUP} $app)" 0 '^42$'
+else
+    expectpart "$($app)" 0 '^42$'
+fi
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

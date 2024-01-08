@@ -56,8 +56,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
@@ -65,17 +64,17 @@
 #include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_err.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
-#include "clixon_yang_module.h"
 #include "clixon_yang_schema_mount.h"
-#include "clixon_plugin.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
-#include "clixon_log.h"
-#include "clixon_err.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_xml_sort.h"
 #include "clixon_yang_type.h"
@@ -89,6 +88,7 @@ static int _yang_unknown_anydata = 0;
 static int _netconf_message_id_optional = 0;
 
 /*! Kludge to equate unknown XML with anydata
+ *
  * The problem with this is that its global and should be bound to a handle
  */
 int
@@ -99,6 +99,7 @@ xml_bind_yang_unknown_anydata(int val)
 }
 
 /*! Kludge to set message_id_optional
+ *
  * The problem with this is that its global and should be bound to a handle
  */
 int
@@ -109,6 +110,7 @@ xml_bind_netconf_message_id_optional(int val)
 }
 
 /*! After yang binding, bodies of containers and lists are stripped from XML bodies
+ *
  * May apply to other nodes?
  * Exception for bodies marked with XML_FLAG_BODYKEY, see text syntax parsing
  * @see text_mark_bodies
@@ -119,7 +121,7 @@ strip_body_objects(cxobj *xt)
     yang_stmt    *yt;
     enum rfc_6020 keyword;
     cxobj        *xb;
-    
+
     if ((yt = xml_spec(xt)) != NULL){
         keyword = yang_keyword_get(yt);
         if (keyword == Y_LIST || keyword == Y_CONTAINER){
@@ -137,6 +139,7 @@ strip_body_objects(cxobj *xt)
 
 /*! Associate XML node x with x:s parents yang:s matching child
  *
+ * @param[in]   h      Clixon handle
  * @param[in]   xt     XML tree node
  * @param[in]   xsibling
  * @param[in]   yspec  Top-level YANG spec / mount-point
@@ -149,10 +152,11 @@ strip_body_objects(cxobj *xt)
  * @see populate_self_top
  */
 static int
-populate_self_parent(cxobj     *xt,
-                     cxobj     *xsibling,
-                     yang_stmt *yspec,
-                     cxobj    **xerr)
+populate_self_parent(clixon_handle h,
+                     cxobj        *xt,
+                     cxobj        *xsibling,
+                     yang_stmt    *yspec,
+                     cxobj       **xerr)
 {
     int        retval = -1;
     yang_stmt *y = NULL;     /* yang node */
@@ -170,8 +174,7 @@ populate_self_parent(cxobj     *xt,
         y = xml_spec(xsibling);
         goto set;
     }
-    xp = xml_parent(xt);
-    if (xp == NULL){
+    if ((xp = xml_parent(xt)) == NULL){
         if (xerr &&
             netconf_bad_element_xml(xerr, "application", name, "Missing parent") < 0)
             goto done;
@@ -198,13 +201,13 @@ populate_self_parent(cxobj     *xt,
                     goto done;
                 xml_spec_set(xt, y);
                 retval = 2; /* treat as anydata */
-                clicon_log(LOG_WARNING,
+                clixon_log(h, LOG_WARNING,
                            "%s: %d: No YANG spec for %s, anydata used",
                            __FUNCTION__, __LINE__, name);
                 goto done;
             }
             if ((cb = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             cprintf(cb, "Failed to find YANG spec of XML node: %s", name);
@@ -225,8 +228,13 @@ populate_self_parent(cxobj     *xt,
     }
     /* Assign spec only if namespaces match */
     if (strcmp(ns, nsy) != 0){
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "Namespace mismatch: %s in XML does not match %s in yang", ns, nsy);
         if (xerr &&
-            netconf_bad_element_xml(xerr, "application", name, "Namespace mismatch") < 0)
+            netconf_bad_element_xml(xerr, "application", name, cbuf_get(cb)) < 0)
             goto done;
         goto fail;
     }
@@ -248,6 +256,7 @@ populate_self_parent(cxobj     *xt,
 
 /*! Associate XML node x with yang spec y by going through all top-level modules and finding match
  *
+ * @param[in]   h      Clixon handle
  * @param[in]   xt     XML tree node
  * @param[in]   yspec  Yang spec
  * @param[out]  xerr   Reason for failure, or NULL
@@ -257,9 +266,10 @@ populate_self_parent(cxobj     *xt,
  * @see populate_self_parent
  */
 static int
-populate_self_top(cxobj     *xt, 
-                  yang_stmt *yspec,
-                  cxobj    **xerr)
+populate_self_top(clixon_handle h,
+                  cxobj        *xt,
+                  yang_stmt    *yspec,
+                  cxobj       **xerr)
 {
     int        retval = -1;
     yang_stmt *y = NULL;     /* yang node */
@@ -285,7 +295,7 @@ populate_self_top(cxobj     *xt,
     if (ymod == NULL){
         if (xerr){
             if ((cb = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             cprintf(cb, "Failed to find YANG spec of XML node: %s", name);
@@ -306,13 +316,13 @@ populate_self_top(cxobj     *xt,
                 goto done;
             xml_spec_set(xt, y);
             retval = 2; /* treat as anydata */
-            clicon_log(LOG_WARNING,
+            clixon_log(h, LOG_WARNING,
                        "%s: %d: No YANG spec for %s, anydata used",
                        __FUNCTION__, __LINE__, name);
             goto done;
         }
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "Failed to find YANG spec of XML node: %s", name);
@@ -373,8 +383,8 @@ populate_self_top(cxobj     *xt,
  * @note For subs to anyxml nodes will not have spec set
  */
 int
-xml_bind_yang(clicon_handle h,
-              cxobj        *xt, 
+xml_bind_yang(clixon_handle h,
+              cxobj        *xt,
               yang_bind     yb,
               yang_stmt    *yspec,
               cxobj       **xerr)
@@ -399,7 +409,7 @@ xml_bind_yang(clicon_handle h,
     goto done;
 }
 
-/*!
+/*! Bind yang opt
  *
  * @param[in]   h      Clixon handle (sometimes NULL)
  * @param[in]   xt     XML tree node
@@ -412,8 +422,8 @@ xml_bind_yang(clicon_handle h,
  * @retval     -1      Error
  */
 static int
-xml_bind_yang0_opt(clicon_handle h,
-                   cxobj        *xt, 
+xml_bind_yang0_opt(clixon_handle h,
+                   cxobj        *xt,
                    yang_bind     yb,
                    yang_stmt    *yspec,
                    cxobj        *xsibling,
@@ -434,15 +444,15 @@ xml_bind_yang0_opt(clicon_handle h,
 
     switch (yb){
     case YB_MODULE:
-        if ((ret = populate_self_top(xt, yspec, xerr)) < 0)
+        if ((ret = populate_self_top(h, xt, yspec, xerr)) < 0)
             goto done;
         break;
     case YB_PARENT:
-        if ((ret = populate_self_parent(xt, xsibling, yspec, xerr)) < 0)
+        if ((ret = populate_self_parent(h, xt, xsibling, yspec, xerr)) < 0)
             goto done;
         break;
     default:
-        clicon_err(OE_XML, EINVAL, "Invalid yang binding: %d", yb);
+        clixon_err(OE_XML, EINVAL, "Invalid yang binding: %d", yb);
         goto done;
         break;
     }
@@ -466,8 +476,10 @@ xml_bind_yang0_opt(clicon_handle h,
             else{
                 if ((ret = yang_schema_yanglib_parse_mount(h, xt)) < 0)
                     goto done;
-                if (ret == 0)
+                if (ret == 0){ /* Special flag if mount-point but no yanglib */
+                    xml_flag_set(xt, XML_FLAG_ANYDATA);
                     goto ok;
+                }
                 /* Try again */
                 if ((ret = xml_yang_mount_get(h, xt, NULL, &yspec1)) < 0)
                     goto done;
@@ -529,8 +541,8 @@ xml_bind_yang0_opt(clicon_handle h,
  * @see xml_bind_yang  If only children of xt should be populated, not xt itself
  */
 int
-xml_bind_yang0(clicon_handle h,
-               cxobj        *xt, 
+xml_bind_yang0(clixon_handle h,
+               cxobj        *xt,
                yang_bind     yb,
                yang_stmt    *yspec,
                cxobj       **xerr)
@@ -541,18 +553,18 @@ xml_bind_yang0(clicon_handle h,
 
     switch (yb){
     case YB_MODULE:
-        if ((ret = populate_self_top(xt, yspec, xerr)) < 0) 
+        if ((ret = populate_self_top(h, xt, yspec, xerr)) < 0)
             goto done;
         break;
     case YB_PARENT:
-        if ((ret = populate_self_parent(xt, NULL, yspec, xerr)) < 0)
+        if ((ret = populate_self_parent(h, xt, NULL, yspec, xerr)) < 0)
             goto done;
         break;
     case YB_NONE:
         ret = 1;
         break;
     default:
-        clicon_err(OE_XML, EINVAL, "Invalid yang binding: %d", yb);
+        clixon_err(OE_XML, EINVAL, "Invalid yang binding: %d", yb);
         goto done;
         break;
     }
@@ -588,7 +600,7 @@ xml_bind_yang0(clicon_handle h,
  * @retval     -1      Error
  */
 static int
-xml_bind_yang_rpc_rpc(clicon_handle h,
+xml_bind_yang_rpc_rpc(clixon_handle h,
                       cxobj        *x,
                       yang_stmt    *yrpc,
                       char         *rpcname,
@@ -608,7 +620,7 @@ xml_bind_yang_rpc_rpc(clicon_handle h,
             xc = xml_child_i_type(x, 0, CX_ELMNT); /* Pick first */
             name = xml_name(xc);
             if ((cb = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             cprintf(cb, "Unrecognized parameter: %s in rpc: %s", name, rpcname);
@@ -622,7 +634,7 @@ xml_bind_yang_rpc_rpc(clicon_handle h,
         /* xml_bind_yang need to have parent with yang spec for
          * recursive population to work. Therefore, assign input yang
          * to rpc level although not 100% intuitive */
-        xml_spec_set(x, yi); 
+        xml_spec_set(x, yi);
         if ((ret = xml_bind_yang(h, x, YB_PARENT, NULL, xerr)) < 0)
             goto done;
         if (ret == 0)
@@ -653,7 +665,7 @@ xml_bind_yang_rpc_rpc(clicon_handle h,
  * XXX if not more action, consider folding into calling function
  */
 static int
-xml_bind_yang_rpc_action(clicon_handle h,
+xml_bind_yang_rpc_action(clixon_handle h,
                          cxobj        *xn,
                          yang_stmt    *yspec,
                          cxobj       **xerr)
@@ -681,7 +693,7 @@ xml_bind_yang_rpc_action(clicon_handle h,
 }
 
 /*! Find yang spec association of XML node for incoming RPC starting with <rpc>
- * 
+ *
  * Incoming RPC has an "input" structure that is not taken care of by xml_bind_yang
  * @param[in]   h      Clixon handle
  * @param[in]   xrpc   XML rpc node
@@ -699,7 +711,7 @@ xml_bind_yang_rpc_action(clicon_handle h,
  * @see xml_bind_yang_rpc_reply 
  */
 int
-xml_bind_yang_rpc(clicon_handle h,
+xml_bind_yang_rpc(clixon_handle h,
                   cxobj        *xrpc,
                   yang_stmt    *yspec,
                   cxobj       **xerr)
@@ -713,9 +725,9 @@ xml_bind_yang_rpc(clicon_handle h,
     char      *rpcname; /* RPC name */
     char      *name;
     cxobj     *xc;
-    
+
     opname = xml_name(xrpc);
-    if ((strcmp(opname, "hello")) == 0){ 
+    if ((strcmp(opname, "hello")) == 0){
         /* Hello: dont bind, dont appear in any yang spec, just ensure there is nothing apart from
          * session-id or capabilities/capability tags
          * If erro, just log, drop and close, rpc-error should not be sent since it is not rpc
@@ -743,7 +755,7 @@ xml_bind_yang_rpc(clicon_handle h,
                 if (xerr &&
                     netconf_unknown_element_xml(xerr, "protocol", name, "Unrecognized hello element") < 0)
                     goto done;
-                clicon_err(OE_XML, EFAULT, "Unrecognized hello element: %s", name);
+                clixon_err(OE_XML, EFAULT, "Unrecognized hello element: %s", name);
                 goto fail;
             }
         }
@@ -829,7 +841,7 @@ xml_bind_yang_rpc(clicon_handle h,
  * @see xml_bind_yang  For other generic cases
  */
 int
-xml_bind_yang_rpc_reply(clicon_handle h,
+xml_bind_yang_rpc_reply(clixon_handle h,
                         cxobj        *xrpc,
                         char         *name,
                         yang_stmt    *yspec,
@@ -845,11 +857,11 @@ xml_bind_yang_rpc_reply(clicon_handle h,
     char      *opname;
     cbuf      *cberr = NULL;
     cxobj     *xc;
-    
+
     opname = xml_name(xrpc);
     if (strcmp(opname, "rpc-reply")){
         if ((cberr = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cberr, "Internal error, unrecognized netconf operation in backend reply, expected rpc-reply but received: %s", opname);
@@ -874,7 +886,7 @@ xml_bind_yang_rpc_reply(clicon_handle h,
         break;
     }
     if (yo != NULL){
-        xml_spec_set(xrpc, yo); 
+        xml_spec_set(xrpc, yo);
         /* Special case for ok and rpc-error */
         if ((xc = xml_child_i_type(xrpc, 0, CX_ELMNT)) != NULL &&
             (strcmp(xml_name(xc),"rpc-error") == 0
@@ -887,11 +899,11 @@ xml_bind_yang_rpc_reply(clicon_handle h,
             goto done;
         if (ret == 0){
             if ((cberr = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             cprintf(cberr, "Internal error in backend reply: ");
-            if (netconf_err2cb(xerr1, cberr) < 0)
+            if (netconf_err2cb(h, xerr1, cberr) < 0)
                 goto done;
             if (xerr && netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr)) < 0)
                 goto done;
@@ -920,7 +932,7 @@ xml_bind_special(cxobj     *xd,
 {
     int        retval = -1;
     yang_stmt *yd;
-    
+
     if (yang_abs_schema_nodeid(yspec, schema_nodeid, &yd) < 0)
         goto done;
     if (yd)

@@ -41,7 +41,7 @@
 /*
  * Prototypes
  */
-int api_path_is_data(clicon_handle h);
-int api_http_data(clicon_handle h, void *req, cvec *qvec);
+int api_path_is_data(clixon_handle h);
+int api_http_data(clixon_handle h, void *req, cvec *qvec);
 
 #endif /* _CLIXON_HTTP_DATA_H_ */

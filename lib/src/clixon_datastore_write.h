@@ -45,6 +45,6 @@
 /*
  * Prototypes
  */
-int xmldb_put(clicon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
+int xmldb_put(clixon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
 
 #endif /* _CLIXON_DATASTORE_WRITE_H */

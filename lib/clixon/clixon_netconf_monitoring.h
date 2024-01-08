@@ -41,8 +41,8 @@
 /*
  * Prototypes
  */
-int netconf_monitoring_state_get(clicon_handle h, yang_stmt *yspec, char *xpath, cvec *nsc, cxobj **xret, cxobj **xerr);
-int netconf_monitoring_statistics_init(clicon_handle h);
-int netconf_monitoring_counter_inc(clicon_handle h, char *name);
+int netconf_monitoring_state_get(clixon_handle h, yang_stmt *yspec, char *xpath, cvec *nsc, cxobj **xret, cxobj **xerr);
+int netconf_monitoring_statistics_init(clixon_handle h);
+int netconf_monitoring_counter_inc(clixon_handle h, char *name);
 
 #endif  /* _CLIXON_NETCONF_MONITORING_H_ */

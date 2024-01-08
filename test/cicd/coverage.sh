@@ -24,9 +24,7 @@ make CLIGEN_LIB=/usr/local/lib/libcligen.a
 sudo make install
 sudo make install-include
 (cd example; make)
-(cd util; make)
 (cd example; sudo make install)
-(cd util; sudo make install)
 
 # Kludge for netconf to touch all gcda files as root
 (cd test; sudo ./test_netconf_hello.sh) || true

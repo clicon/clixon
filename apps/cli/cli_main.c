@@ -61,7 +61,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_cli_api.h"
@@ -73,14 +73,16 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "+hD:f:E:l:C:F:1a:u:d:m:qp:GLy:c:U:o:"
-
+#define CLI_OPTS "+hVD:f:E:l:C:F:1a:u:d:m:qp:GLy:c:U:o:"
 /*! Check if there is a CLI history file and if so dump the CLI histiry to it
+ *
  * Just log if file does not exist or is not readable
- * @param[in]  h    CLICON handle
+ * @param[in]  h    Clixon handle
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 static int
-cli_history_load(clicon_handle h)
+cli_history_load(clixon_handle h)
 {
     int       retval = -1;
     int       lines;
@@ -99,16 +101,16 @@ cli_history_load(clicon_handle h)
     if ((filename = clicon_option_str(h,"CLICON_CLI_HIST_FILE")) == NULL)
         goto ok; /* ignore */
     if (wordexp(filename, &result, 0) < 0){
-        clicon_err(OE_UNIX, errno, "wordexp");
+        clixon_err(OE_UNIX, errno, "wordexp");
         goto done;
     }
     if ((f = fopen(result.we_wordv[0], "r")) == NULL){
-        clicon_log(LOG_DEBUG, "Warning: Could not open CLI history file for reading: %s: %s",
+        clixon_log(h, LOG_DEBUG, "Warning: Could not open CLI history file for reading: %s: %s",
                    result.we_wordv[0], strerror(errno));
         goto ok;
     }
     if (cligen_hist_file_load(cli_cligen(h), f) < 0){
-        clicon_err(OE_UNIX, errno, "cligen_hist_file_load");
+        clixon_err(OE_UNIX, errno, "cligen_hist_file_load");
         goto done;
     }
  ok:
@@ -121,11 +123,14 @@ cli_history_load(clicon_handle h)
 }
 
 /*! Start CLI history and load from file 
+ *
  * Just log if file does not exist or is not readable
- * @param[in]  h    CLICON handle
+ * @param[in]  h    Clixon handle
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 static int
-cli_history_save(clicon_handle h)
+cli_history_save(clixon_handle h)
 {
     int       retval = -1;
     char     *filename;
@@ -135,16 +140,16 @@ cli_history_save(clicon_handle h)
     if ((filename = clicon_option_str(h, "CLICON_CLI_HIST_FILE")) == NULL)
         goto ok; /* ignore */
     if (wordexp(filename, &result, 0) < 0){
-        clicon_err(OE_UNIX, errno, "wordexp");
+        clixon_err(OE_UNIX, errno, "wordexp");
         goto done;
     }
     if ((f = fopen(result.we_wordv[0], "w+")) == NULL){
-        clicon_log(LOG_DEBUG, "Warning: Could not open CLI history file for writing: %s: %s",
+        clixon_log(h, LOG_DEBUG, "Warning: Could not open CLI history file for writing: %s: %s",
                    result.we_wordv[0], strerror(errno));
         goto ok;
     }
     if (cligen_hist_file_save(cli_cligen(h), f) < 0){
-        clicon_err(OE_UNIX, errno, "cligen_hist_file_save");
+        clixon_err(OE_UNIX, errno, "cligen_hist_file_save");
         goto done;
     }
  ok:
@@ -157,11 +162,12 @@ cli_history_save(clicon_handle h)
 }
 
 /*! Clean and close all state of cli process (but dont exit). 
+ *
  * Cannot use h after this 
  * @param[in]  h  Clixon handle
  */
 static int
-cli_terminate(clicon_handle h)
+cli_terminate(clixon_handle h)
 {
     yang_stmt  *yspec;
     cvec       *nsctx;
@@ -170,7 +176,7 @@ cli_terminate(clicon_handle h)
     if (clixon_exit_get() == 0)
         clixon_exit_set(1);
     if (clicon_data_get(h, "session-transport", NULL) == 0)
-        clicon_rpc_close_session(h); 
+        clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
         ys_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
@@ -190,16 +196,16 @@ cli_terminate(clicon_handle h)
     cli_history_save(h);
     cli_handle_exit(h);
     clixon_err_exit();
-    clicon_log_exit();
+    clixon_log_exit();
     return 0;
 }
 
 /*! Unlink pidfile and quit
-*/
+ */
 static void
 cli_sig_term(int arg)
 {
-    clicon_log(LOG_NOTICE, "%s: %u Terminated (killed by sig %d)", 
+    clixon_log(NULL, LOG_NOTICE, "%s: %u Terminated (killed by sig %d)",
             __PROGRAM__, getpid(), arg);
     exit(1);
 }
@@ -207,17 +213,17 @@ cli_sig_term(int arg)
 /*! Setup signal handlers
  */
 static int
-cli_signal_init (clicon_handle h)
+cli_signal_init (clixon_handle h)
 {
     int retval = -1;
 
     cli_signal_block(h);
     if (set_signal(SIGTERM, cli_sig_term, NULL) < 0){
-        clicon_err(OE_UNIX, errno, "Setting SIGTERM signal");
+        clixon_err(OE_UNIX, errno, "Setting SIGTERM signal");
         goto done;
     }
     if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
-        clicon_err(OE_UNIX, errno, "Setting DIGPIPE signal");
+        clixon_err(OE_UNIX, errno, "Setting DIGPIPE signal");
         goto done;
     }
     retval = 0;
@@ -226,13 +232,14 @@ cli_signal_init (clicon_handle h)
 }
 
 /*! Interactive CLI command loop
- * @param[in]  h    CLICON handle
+ *
+ * @param[in]  h    Clixon handle
  * @retval     0
  * @retval    -1
  * @see cligen_loop
  */
 static int
-cli_interactive(clicon_handle h)
+cli_interactive(clixon_handle h)
 {
     int           retval = -1;
     char         *cmd;
@@ -244,7 +251,7 @@ cli_interactive(clicon_handle h)
     /* Loop through all commands */
     while(!cligen_exiting(cli_cligen(h))) {
         if ((ph =  cligen_pt_head_active_get(cli_cligen(h))) == NULL){
-            clicon_err(OE_UNIX, 0, "active tree not found");
+            clixon_err(OE_UNIX, 0, "active tree not found");
             goto done;
         }
         new_mode = cligen_ph_name_get(ph);
@@ -269,10 +276,11 @@ cli_interactive(clicon_handle h)
 }
 
 /*! Create pre-5.5 tree-refs for backward compatibility
+ *
  * should probably be moved to clispec default 
  */
 static int
-autocli_trees_default(clicon_handle h)
+autocli_trees_default(clixon_handle h)
 {
     int         retval = -1;
     cbuf       *cb = NULL;
@@ -284,7 +292,7 @@ autocli_trees_default(clicon_handle h)
     if ((ph = cligen_ph_add(cli_cligen(h), "datamodel")) == NULL)
         goto done;
     if ((pt = pt_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "pt_new");
+        clixon_err(OE_UNIX, errno, "pt_new");
         goto done;
     }
     if (clispec_parse_str(cli_cligen(h),
@@ -298,7 +306,7 @@ autocli_trees_default(clicon_handle h)
     if ((ph = cligen_ph_add(cli_cligen(h), "datamodelshow")) == NULL)
         goto done;
     if ((pt = pt_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "pt_new");
+        clixon_err(OE_UNIX, errno, "pt_new");
         goto done;
     }
     if (clispec_parse_str(cli_cligen(h),
@@ -311,7 +319,7 @@ autocli_trees_default(clicon_handle h)
     if ((ph = cligen_ph_add(cli_cligen(h), "datamodelstate")) == NULL)
         goto done;
     if ((pt = pt_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "pt_new");
+        clixon_err(OE_UNIX, errno, "pt_new");
         goto done;
     }
     if (clispec_parse_str(cli_cligen(h),
@@ -325,11 +333,11 @@ autocli_trees_default(clicon_handle h)
     if ((ph = cligen_ph_add(cli_cligen(h), "datamodelmode")) == NULL)
         goto done;
     if ((pt = pt_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "pt_new");
+        clixon_err(OE_UNIX, errno, "pt_new");
         goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "@basemodel, @remove:act-prekey, @remove:act-leafconst, @remove:ac-state");
@@ -377,13 +385,13 @@ autocli_trees_default(clicon_handle h)
  * @retval    -1        Error
  */
 static int
-autocli_start(clicon_handle h)
+autocli_start(clixon_handle h)
 {
     int           retval = -1;
     yang_stmt    *yspec;
     int           enable = 0;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     /* There is no single "enable-autocli" flag,
      * but set 
      *   <module-default>false</module-default> 
@@ -394,7 +402,7 @@ autocli_start(clicon_handle h)
     if (autocli_module(h, NULL, &enable) < 0)
         goto done;
     if (!enable){
-        clicon_debug(1, "%s Autocli not enabled (clixon-autocli)", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s Autocli not enabled (clixon-autocli)", __FUNCTION__);
         goto ok;
     }
     /* Init yang2cli */
@@ -404,7 +412,7 @@ autocli_start(clicon_handle h)
     /* The actual generating call from yang to clispec for the complete yang spec, @basemodel */
     if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME) < 0)
         goto done;
-    /* XXX Create pre-5.5 tree-refs for backward compatibility */    
+    /* XXX Create pre-5.5 tree-refs for backward compatibility */
     if (autocli_trees_default(h) < 0)
         goto done;
  ok:
@@ -427,7 +435,7 @@ autocli_start(clicon_handle h)
  * @retval    -1         Error
  */
 static int
-options_split(clicon_handle h,
+options_split(clixon_handle h,
               char         *argv0,
               int           argc,
               char        **argv,
@@ -462,16 +470,17 @@ options_split(clicon_handle h,
 }
 
 static void
-usage(clicon_handle h,
+usage(clixon_handle h,
       char         *argv0)
 {
     char *plgdir = clicon_cli_dir(h);
 
     fprintf(stderr, "usage:%s [options] [commands] [-- extra-options]\n"
             "where commands is a CLI command\n"
-            "and extra-options are app-dependent and passed to the plugin init function\n" 
+            "and extra-options are app-dependent and passed to the plugin init function\n"
             "where options are\n"
             "\t-h \t\tHelp\n"
+            "\t-V \t\tPrint version and exit\n"
             "\t-D <level> \tDebug level\n"
             "\t-f <file> \tConfig-file (mandatory)\n"
             "\t-E <dir>  \tExtra configuration file directory\n"
@@ -509,10 +518,10 @@ main(int    argc,
     int            once;
     char          *tmp;
     char          *argv0 = argv[0];
-    clicon_handle  h;
+    clixon_handle  h;
     int            logclisyntax  = 0;
     int            help = 0;
-    int            logdst = CLICON_LOG_STDERR;
+    int            logdst = CLIXON_LOG_STDERR;
     char          *restarg = NULL; /* what remains after options */
     yang_stmt     *yspec;
     struct passwd *pw;
@@ -523,25 +532,28 @@ main(int    argc,
     size_t         cligen_bufthreshold;
     int            dbg=0;
     int            nr;
-    int           config_dump;
+    int            config_dump;
     enum format_enum config_dump_format = FORMAT_XML;
-    
+    int            print_version = 0;
+
     /* Defaults */
     once = 0;
     config_dump = 0;
 
-    /* In the startup, logs to stderr & debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
-
-    /* Initiate CLICON handle. CLIgen is also initialized */
+    /* Initiate Clixon handle. CLIgen is also initialized */
     if ((h = cli_handle_init()) == NULL)
+        goto done;
+    /* In the startup, logs to stderr & debug flag set later */
+    if (clixon_log_init(h, __PROGRAM__, LOG_INFO, logdst) < 0)
+        goto done;
+    if (clixon_err_init(h) < 0)
         goto done;
 
     /* Set username to clicon handle. Use in all communication to backend 
      * Note, can be overridden by -U
      */
     if ((pw = getpwuid(getuid())) == NULL){
-        clicon_err(OE_UNIX, errno, "getpwuid");
+        clixon_err(OE_UNIX, errno, "getpwuid");
         goto done;
     }
     if (clicon_username_set(h, pw->pw_name) < 0)
@@ -549,7 +561,7 @@ main(int    argc,
 
     cligen_comment_set(cli_cligen(h), '#'); /* Default to handle #! clicon_cli scripts */
     cligen_lexicalorder_set(cli_cligen(h), 1);
-    
+
     /*
      * First-step command-line options for help, debug, config-file and log, 
      */
@@ -564,6 +576,10 @@ main(int    argc,
                exiting, and then call usage() before exit.
             */
             help = 1;
+            break;
+        case 'V': /* version */
+            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : /* debug */
             if (sscanf(optarg, "%d", &dbg) != 1)
@@ -580,19 +596,19 @@ main(int    argc,
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
         case 'l': /* Log destination: s|e|o|f */
-            if ((logdst = clicon_log_opt(optarg[0])) < 0)
+            if ((logdst = clixon_log_opt(optarg[0])) < 0)
                 usage(h, argv[0]);
-            if (logdst == CLICON_LOG_FILE &&
+            if (logdst == CLIXON_LOG_FILE &&
                 strlen(optarg)>1 &&
-                clicon_log_file(optarg+1) < 0)
+                clixon_log_file(optarg+1) < 0)
                 goto done;
             break;
         }
-    /* 
+    /*
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
-    clicon_debug_init(dbg, NULL);
+    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
+    clixon_debug_init(h, dbg);
     yang_init(h);
 
     /* Find, read and parse configfile */
@@ -601,17 +617,18 @@ main(int    argc,
             usage(h, argv[0]);
         goto done;
     }
-    /* Now rest of options */   
+    /* Now rest of options */
     opterr = 0;
     optind = 1;
     while ((c = getopt(argc, argv, CLI_OPTS)) != -1){
         switch (c) {
         case 'D' : /* debug */
-        case 'f': /* config file */
-        case 'E': /* extra config dir */
-        case 'l': /* Log destination */
+        case 'V' : /* version */
+        case 'f' : /* config file */
+        case 'E' : /* extra config dir */
+        case 'l' : /* Log destination */
             break; /* see above */
-        case 'C': /* Explicitly dump configuration */
+        case 'C' : /* Explicitly dump configuration */
             if ((config_dump_format = format_str2int(optarg)) ==  (enum format_enum)-1){
                 fprintf(stderr, "Unrecognized dump format: %s(expected: xml|json|text)\n", argv[0]);
                 usage(h, argv[0]);
@@ -698,7 +715,7 @@ main(int    argc,
     /* Defer: Wait to the last minute to print help message */
     if (help)
         usage(h, argv[0]);
-    
+
     /* Split remaining argv/argc into <cmd> and <extra-options> */
     if (options_split(h, argv0, argc, argv, &restarg) < 0)
         goto done;
@@ -713,13 +730,13 @@ main(int    argc,
         nr = clicon_option_int(h, "CLICON_CLI_LINES_DEFAULT");
         cligen_terminal_rows_set(cli_cligen(h), nr);
     }
-    
+
     if (clicon_yang_regexp(h) == REGEXP_LIBXML2){
 #ifdef HAVE_LIBXML2
         /* Enable XSD libxml2 regex engine */
         cligen_regex_xsd_set(cli_cligen(h), 1);
 #else
-        clicon_err(OE_FATAL, 0, "CLICON_YANG_REGEXP set to libxml2, but HAVE_LIBXML2 not set (Either change CLICON_YANG_REGEXP to posix, or run: configure --with-libxml2))");
+        clixon_err(OE_FATAL, 0, "CLICON_YANG_REGEXP set to libxml2, but HAVE_LIBXML2 not set (Either change CLICON_YANG_REGEXP to posix, or run: configure --with-libxml2))");
         goto done;
 #endif
     }
@@ -731,8 +748,8 @@ main(int    argc,
     cligen_helpstring_lines_set(cli_cligen(h), nr);
 
     if ((nr = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
-        clicon_log_string_limit_set(nr);
-    
+        clixon_log_string_limit_set(nr);
+
     /* Setup signal handlers */
     if (cli_signal_init(h) < 0)
         goto done;
@@ -757,7 +774,12 @@ main(int    argc,
             goto done;
     }
 #endif
-    
+    /* Print version, customized variant must wait for plugins to load */
+    if (print_version){
+        if (clixon_plugin_version_all(h, stdout) < 0)
+            goto done;
+        exit(0);
+    }
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below
      */
@@ -772,7 +794,7 @@ main(int    argc,
     if ((yspec = yspec_new()) == NULL)
         goto done;
     clicon_dbspec_yang_set(h, yspec);
-    
+
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
     if ((str = clicon_yang_main_file(h)) != NULL){
@@ -802,7 +824,6 @@ main(int    argc,
     /* Add netconf yang spec, used as internal protocol */
     if (netconf_module_load(h) < 0)
         goto done;
-    
     /* Here all modules are loaded 
      * Compute and set canonical namespace context
      */
@@ -833,7 +854,7 @@ main(int    argc,
         goto done;
     }
     if (cligen_ph_find(cli_cligen(h), cli_syntax_mode(h)) == NULL)
-        clicon_log(LOG_WARNING, "No such cli mode: %s (Specify cli mode with CLICON_CLI_MODE in config file or -m <mode> on command line", cli_syntax_mode(h));
+        clixon_log(h, LOG_WARNING, "No such cli mode: %s (Specify cli mode with CLICON_CLI_MODE in config file or -m <mode> on command line", cli_syntax_mode(h));
     /* CLIgen tab mode, ie how <tab>s behave */
     if ((tabmode = clicon_cli_tab_mode(h)) < 0){
         fprintf(stderr, "FATAL: CLICON_CLI_TAB_MODE not set\n");
@@ -868,7 +889,7 @@ main(int    argc,
     clicon_option_dump(h, 1);
 
     cligen_line_scrolling_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_LINESCROLLING"));
-    /*! Start CLI history and load from file */
+    /* Start CLI history and load from file */
     if (cli_history_load(h) < 0)
         goto done;
     /* Experimental utf8 mode */
@@ -893,7 +914,7 @@ main(int    argc,
         if (evalresult < 0)
             goto done;
     }
-    
+
     /* Go into event-loop unless -1 command-line */
     if (!once){
         retval = cli_interactive(h);
@@ -903,9 +924,9 @@ main(int    argc,
   done:
     if (restarg)
         free(restarg);
-    // Gets in your face if we log on stderr
-    clicon_log_init(__PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
-    clicon_log(LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+// Gets in your face if we log on stderr
+    clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
+    clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
     if (h)
         cli_terminate(h);
     return retval;

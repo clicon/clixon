@@ -50,15 +50,19 @@
 #include <string.h>
 #include <signal.h>
 #include <syslog.h>
+#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/time.h>
 
 #include <cligen/cligen.h>
 
 #include "clixon_queue.h"
-#include "clixon_log.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_err.h"
 #include "clixon_sig.h"
 #include "clixon_proc.h"
@@ -102,6 +106,7 @@ static int _clicon_sig_child = 0;
 static int _clicon_sig_ignore = 0;
 
 /*! For signal handlers: instead of doing exit, set a global variable to exit
+ *
  * - zero means dont exit, 
  * - one means exit, 
  * - more than one means decrement and make another event loop
@@ -175,15 +180,15 @@ clicon_sig_ignore_get(void)
  * @see clixon_event_unreg_fd
  */
 int
-clixon_event_reg_fd(int   fd, 
-                    int (*fn)(int, void*), 
-                    void *arg, 
+clixon_event_reg_fd(int   fd,
+                    int (*fn)(int, void*),
+                    void *arg,
                     char *str)
 {
     struct event_data *e;
 
     if ((e = (struct event_data *)malloc(sizeof(struct event_data))) == NULL){
-        clicon_err(OE_EVENTS, errno, "malloc");
+        clixon_err(OE_EVENTS, errno, "malloc");
         return -1;
     }
     memset(e, 0, sizeof(struct event_data));
@@ -194,23 +199,27 @@ clixon_event_reg_fd(int   fd,
     e->e_type = EVENT_FD;
     e->e_next = ee;
     ee = e;
-    clicon_debug(CLIXON_DBG_DETAIL, "%s, registering %s", __FUNCTION__, e->e_string);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s, registering %s", __FUNCTION__, e->e_string);
     return 0;
 }
 
 /*! Deregister a file descriptor callback
+ *
  * @param[in]  s   File descriptor
  * @param[in]  fn  Function to call when input available on fd
+ * @retval     0   OK
+ * @retval    -1   Error
  * Note: deregister when exactly function and socket match, not argument
  * @see clixon_event_reg_fd
  * @see clixon_event_unreg_timeout
  */
 int
-clixon_event_unreg_fd(int   s, 
+clixon_event_unreg_fd(int   s,
                       int (*fn)(int, void*))
 {
-    struct event_data *e, **e_prev;
-    int found = 0;
+    struct event_data      *e;
+        struct event_data **e_prev;
+    int                found = 0;
 
     e_prev = &ee;
     for (e = ee; e; e = e->e_next){
@@ -232,6 +241,8 @@ clixon_event_unreg_fd(int   s,
  * @param[in]  fn  Function to call at time t
  * @param[in]  arg Argument to function fn
  * @param[in]  str Describing string for logging
+ * @retval     0   OK
+ * @retval    -1   Error
  * @code
  * int fn(int d, void *arg){
  *   struct timeval t, t1;
@@ -249,9 +260,9 @@ clixon_event_unreg_fd(int   s,
  * @see clixon_event_unreg_timeout
  */
 int
-clixon_event_reg_timeout(struct timeval t,  
-                         int          (*fn)(int, void*), 
-                         void          *arg, 
+clixon_event_reg_timeout(struct timeval t, 
+                         int          (*fn)(int, void*),
+                         void          *arg,
                          char          *str)
 {
     int                 retval = -1;
@@ -260,11 +271,11 @@ clixon_event_reg_timeout(struct timeval t,
     struct event_data **e_prev;
 
     if (str == NULL || fn == NULL){
-        clicon_err(OE_CFG, EINVAL, "str or fn is NULL");
+        clixon_err(OE_CFG, EINVAL, "str or fn is NULL");
         goto done;
     }
     if ((e = (struct event_data *)malloc(sizeof(struct event_data))) == NULL){
-        clicon_err(OE_EVENTS, errno, "malloc");
+        clixon_err(OE_EVENTS, errno, "malloc");
         return -1;
     }
     memset(e, 0, sizeof(struct event_data));
@@ -282,13 +293,14 @@ clixon_event_reg_timeout(struct timeval t,
     }
     e->e_next = e1;
     *e_prev = e;
-    clicon_debug(CLIXON_DBG_DETAIL, "%s: %s", __FUNCTION__, str); 
+    clixon_debug(CLIXON_DBG_DETAIL, "%s: %s", __FUNCTION__, str);
     retval = 0;
  done:
     return retval;
 }
 
 /*! Deregister a timeout callback as previosly registered by clixon_event_reg_timeout()
+ *
  * Note: deregister when exactly function and function arguments match, not time. So you
  * cannot have same function and argument callback on different timeouts. This is a little
  * different from clixon_event_unreg_fd.
@@ -300,7 +312,7 @@ clixon_event_reg_timeout(struct timeval t,
  * @see clixon_event_unreg_fd
  */
 int
-clixon_event_unreg_timeout(int (*fn)(int, void*), 
+clixon_event_unreg_timeout(int (*fn)(int, void*),
                            void *arg)
 {
     struct event_data *e, **e_prev;
@@ -320,12 +332,13 @@ clixon_event_unreg_timeout(int (*fn)(int, void*),
 }
 
 /*! Poll to see if there is any data available on this file descriptor.
+ *
  * @param[in]  fd   File descriptor
- * @retval    -1    Error
- * @retval     0    Nothing to read/empty fd
  * @retval     1    Something to read on fd
+ * @retval     0    Nothing to read/empty fd
+ * @retval    -1    Error
  */
-int 
+int
 clixon_event_poll(int fd)
 {
     int            retval = -1;
@@ -335,7 +348,7 @@ clixon_event_poll(int fd)
     FD_ZERO(&fdset);
     FD_SET(fd, &fdset);
     if ((retval = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull)) < 0)
-        clicon_err(OE_EVENTS, errno, "select");
+        clixon_err(OE_EVENTS, errno, "select");
     return retval;
 }
 
@@ -349,7 +362,7 @@ clixon_event_poll(int fd)
  *       One could try to poll the file descriptors after a timeout?
  */
 int
-clixon_event_loop(clicon_handle h)
+clixon_event_loop(clixon_handle h)
 {
     struct event_data *e;
     struct event_data *e_next;
@@ -373,11 +386,11 @@ clixon_event_loop(clicon_handle h)
                 FD_SET(e->e_fd, &fdset);
         if (ee_timers != NULL){
             gettimeofday(&t0, NULL);
-            timersub(&ee_timers->e_time, &t0, &t); 
+            timersub(&ee_timers->e_time, &t0, &t);
             if (t.tv_sec < 0)
-                n = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull); 
+                n = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull);
             else
-                n = select(FD_SETSIZE, &fdset, NULL, NULL, &t); 
+                n = select(FD_SETSIZE, &fdset, NULL, NULL, &t);
         }
         else
             n = select(FD_SETSIZE, &fdset, NULL, NULL, NULL);
@@ -396,9 +409,9 @@ clixon_event_loop(clicon_handle h)
                  *     New select loop is called
                  * (3) Other signals result in an error and return -1.
                  */
-                clicon_debug(1, "%s select: %s", __FUNCTION__, strerror(errno));
+                clixon_debug(CLIXON_DBG_DEFAULT, "%s select: %s", __FUNCTION__, strerror(errno));
                 if (clixon_exit_get() == 1){
-                    clicon_err(OE_EVENTS, errno, "select");
+                    clixon_err(OE_EVENTS, errno, "select");
                     retval = 0;
                 }
                 else if (clicon_sig_child_get()){
@@ -413,16 +426,16 @@ clixon_event_loop(clicon_handle h)
                     continue;
                 }
                 else
-                    clicon_err(OE_EVENTS, errno, "select");
+                    clixon_err(OE_EVENTS, errno, "select");
             }
             else
-                clicon_err(OE_EVENTS, errno, "select");
+                clixon_err(OE_EVENTS, errno, "select");
             goto err;
         }
         if (n==0){ /* Timeout */
             e = ee_timers;
             ee_timers = ee_timers->e_next;
-            clicon_debug(CLIXON_DBG_DETAIL, "%s timeout: %s", __FUNCTION__, e->e_string);
+            clixon_debug(CLIXON_DBG_DETAIL, "%s timeout: %s", __FUNCTION__, e->e_string);
             if ((*e->e_fn)(0, e->e_arg) < 0){
                 free(e);
                 goto err;
@@ -436,9 +449,9 @@ clixon_event_loop(clicon_handle h)
             }
             e_next = e->e_next;
             if(e->e_type == EVENT_FD && FD_ISSET(e->e_fd, &fdset)){
-                clicon_debug(CLIXON_DBG_DETAIL, "%s: FD_ISSET: %s", __FUNCTION__, e->e_string);
+                clixon_debug(CLIXON_DBG_DETAIL, "%s: FD_ISSET: %s", __FUNCTION__, e->e_string);
                 if ((*e->e_fn)(e->e_fd, e->e_arg) < 0){
-                    clicon_debug(1, "%s Error in: %s", __FUNCTION__, e->e_string);
+                    clixon_debug(CLIXON_DBG_DEFAULT, "%s Error in: %s", __FUNCTION__, e->e_string);
                     goto err;
                 }
                 if (_ee_unreg){
@@ -450,12 +463,12 @@ clixon_event_loop(clicon_handle h)
         clixon_exit_decr(); /* If exit is set and > 1, decrement it (and exit when 1) */
         continue;
       err:
-        clicon_debug(1, "%s err", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s err", __FUNCTION__);
         break;
     }
     if (clixon_exit_get() == 1)
         retval = 0;
-    clicon_debug(1, "%s done:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s done:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -463,7 +476,7 @@ int
 clixon_event_exit(void)
 {
     struct event_data *e, *e_next;
-    
+
     e_next = ee;
     while ((e = e_next) != NULL){
         e_next = e->e_next;

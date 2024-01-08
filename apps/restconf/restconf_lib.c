@@ -61,7 +61,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "restconf_api.h"
@@ -125,7 +125,7 @@ Mapping netconf error-tag -> status code
 static const map_str2int netconf_restconf_map[] = {
     {"in-use",                 409},
     {"invalid-value",          400}, /* or 404 special case if msg is: "Invalid HTTP data method" handled in api_return_err */
-    {"invalid-value",          404}, 
+    {"invalid-value",          404},
     {"invalid-value",          406},
     {"too-big",                413}, /* request */
     {"too-big",                400}, /* response */
@@ -137,7 +137,7 @@ static const map_str2int netconf_restconf_map[] = {
     {"unknown-element",        400},
     {"unknown-namespace",      400},
     {"access-denied",          403}, /* or 401 special case if msg is: "The requested URL was unauthorized" handled in api_return_err */
-    {"access-denied",          401}, 
+    {"access-denied",          401},
     {"lock-denied",            409},
     {"resource-denied",        409},
     {"rollback-failed",        500},
@@ -157,7 +157,7 @@ static const map_str2int netconf_restconf_map[] = {
 static const map_str2int http_reason_phrase_map[] = {
     {"Continue",                      100},
     {"Switching Protocols",           101},
-    {"OK",                            200}, 
+    {"OK",                            200},
     {"Created",                       201},
     {"Accepted",                      202},
     {"Non-Authoritative Information", 203},
@@ -215,7 +215,7 @@ static const map_str2int http_media_map[] = {
 static const map_str2int http_proto_map[] = {
     {"http/1.0",  HTTP_10},
     {"http/1.1",  HTTP_11},
-    {"http/2",    HTTP_2}, 
+    {"http/2",    HTTP_2},
     {NULL,        -1}
 };
 
@@ -262,10 +262,10 @@ restconf_proto2str(int proto)
  *    media-type = type "/" subtype *( OWS ";" OWS parameter )
  *     type       = token
  *    subtype    = token
- * 
+ *
  */
 restconf_media
-restconf_content_type(clicon_handle h)
+restconf_content_type(clixon_handle h)
 {
     char          *str = NULL;
     restconf_media m;
@@ -282,7 +282,7 @@ restconf_content_type(clicon_handle h)
  * Example: Host -> HTTP_HOST 
  */
 int
-restconf_convert_hdr(clicon_handle h,
+restconf_convert_hdr(clixon_handle h,
                      char         *name,
                      char         *val)
 {
@@ -291,9 +291,9 @@ restconf_convert_hdr(clicon_handle h,
     int           i;
     char          c;
     size_t       len;
-    
+
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     /* convert key name */
@@ -322,10 +322,12 @@ restconf_convert_hdr(clicon_handle h,
  * @param[in]  cookiestr  cookie string according to rfc6265 (modified)
  * @param[in]  attribute  cookie attribute
  * @param[out] val        malloced cookie value, free with free()
+ * @retval     0          OK
+ * @retval    -1          Error
  */
 int
-get_user_cookie(char  *cookiestr, 
-                char  *attribute, 
+get_user_cookie(char  *cookiestr,
+                char  *attribute,
                 char **val)
 {
     int    retval = -1;
@@ -345,20 +347,20 @@ get_user_cookie(char  *cookiestr,
     return retval;
 }
 
-/*! Clean and close all state of restconf process (but dont exit). 
+/*! Clean and close all state of restconf process (but dont exit).
  *
  * Cannot use h after this 
  * @param[in]  h  Clixon handle
  */
 int
-restconf_terminate(clicon_handle h)
+restconf_terminate(clixon_handle h)
 {
     yang_stmt *yspec;
     cvec      *nsctx;
     cxobj     *x;
     int        fs; /* fgcx socket */
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((fs = clicon_socket_get(h)) != -1)
         close(fs);
     /* Delete all plugins, and RPC callbacks */
@@ -376,8 +378,8 @@ restconf_terminate(clicon_handle h)
     xpath_optimize_exit();
     restconf_handle_exit(h);
     clixon_err_exit();
-    clicon_debug(1, "%s pid:%u done", __FUNCTION__, getpid());
-    clicon_log_exit(); /* Must be after last clicon_debug */
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s pid:%u done", __FUNCTION__, getpid());
+    clixon_log_exit(); /* Must be after last clixon_debug */
     return 0;
 }
 
@@ -425,12 +427,12 @@ restconf_insert_attributes(cxobj *xdata,
         /* First add xmlns:yang attribute */
         if (xmlns_set(xdata, "yang", YANG_XML_NAMESPACE) < 0)
             goto done;
-        if (xml_add_attr(xdata, "insert", instr, "yang", NULL) < 0)
+        if (xml_add_attr(xdata, "insert", instr, "yang", NULL) == NULL)
             goto done;
     }
     if ((pstr = cvec_find_str(qvec, "point")) != NULL){
         if (y == NULL){
-            clicon_err(OE_YANG, 0, "Cannot yang resolve %s", xml_name(xdata));
+            clixon_err(OE_YANG, 0, "Cannot yang resolve %s", xml_name(xdata));
             goto done;
         }
         if (yang_keyword_get(y) == Y_LIST)
@@ -441,7 +443,7 @@ restconf_insert_attributes(cxobj *xdata,
         if ((ret = api_path2xpath(pstr, ys_spec(y), &xpath, &nsc, NULL)) < 0)
             goto done;
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         if (yang_keyword_get(y) == Y_LIST){
@@ -454,18 +456,18 @@ restconf_insert_attributes(cxobj *xdata,
         else{ /* LEAF_LIST */
             /* translate /../x[.='x'] --> x */
             if ((p = rindex(xpath,'\'')) == NULL){
-                clicon_err(OE_YANG, 0, "Translated api->xpath %s->%s not on leaf-list canonical form: ../[.='x']", pstr, xpath);
+                clixon_err(OE_YANG, 0, "Translated api->xpath %s->%s not on leaf-list canonical form: ../[.='x']", pstr, xpath);
                 goto done;
             }
             *p = '\0';
             if ((p = rindex(xpath,'\'')) == NULL){
-                clicon_err(OE_YANG, 0, "Translated api->xpath %s->%s not on leaf-list canonical form: ../[.='x']", pstr, xpath);
+                clixon_err(OE_YANG, 0, "Translated api->xpath %s->%s not on leaf-list canonical form: ../[.='x']", pstr, xpath);
                 goto done;
             }
             p++;
             cprintf(cb, "%s", p);
         }
-        if (xml_add_attr(xdata, attrname, cbuf_get(cb), "yang", NULL) < 0)
+        if (xml_add_attr(xdata, attrname, cbuf_get(cb), "yang", NULL) == NULL)
             goto done;
     }
     /* Add prefix/namespaces used in attributes */
@@ -492,10 +494,10 @@ restconf_insert_attributes(cxobj *xdata,
 /*! Callback for yang extensions ietf-restconf:yang-data
  *
  * @param[in] h    Clixon handle
- * @param[in] yext Yang node of extension 
+ * @param[in] yext Yang node of extension
  * @param[in] ys   Yang node of (unknown) statement belonging to extension
- * @retval     0   OK, all callbacks executed OK
- * @retval    -1   Error in one callback
+ * @retval    0    OK, all callbacks executed OK
+ * @retval   -1    Error in one callback
  * @note This extension adds semantics to YANG according to RFC8040 as follows:
  *   - The list-stmt is not required to have a key-stmt defined.(NB!!)
  *   - The if-feature-stmt is ignored if present.
@@ -506,7 +508,7 @@ restconf_insert_attributes(cxobj *xdata,
  * @see ietf-restconf.yang
  */
 int
-restconf_main_extension_cb(clicon_handle h,
+restconf_main_extension_cb(clixon_handle h,
                            yang_stmt    *yext,
                            yang_stmt    *ys)
 {
@@ -516,13 +518,13 @@ restconf_main_extension_cb(clicon_handle h,
     yang_stmt *ymod;
     yang_stmt *yc;
     yang_stmt *yn = NULL;
-    
+
     ymod = ys_module(yext);
     modname = yang_argument_get(ymod);
     extname = yang_argument_get(yext);
     if (strcmp(modname, "ietf-restconf") != 0 || strcmp(extname, "yang-data") != 0)
         goto ok;
-    clicon_debug(1, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
     if ((yc = yang_find(ys, 0, NULL)) == NULL)
         goto ok;
     if ((yn = ys_dup(yc)) == NULL)
@@ -545,18 +547,18 @@ restconf_main_extension_cb(clicon_handle h,
  * @retval path malloced, need free
  */
 char *
-restconf_uripath(clicon_handle h)
+restconf_uripath(clixon_handle h)
 {
     char *path = NULL;
     char *path2 = NULL;
     char *q;
 
     if ((path = restconf_param_get(h, "REQUEST_URI")) == NULL){
-        clicon_err(OE_RESTCONF, 0, "No REQUEST_URI");
+        clixon_err(OE_RESTCONF, 0, "No REQUEST_URI");
         return NULL;
     }
     if ((path2 = strdup(path)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         return NULL;
     }
     if ((q = index(path2, '?')) != NULL)
@@ -566,11 +568,13 @@ restconf_uripath(clicon_handle h)
 
 /*! Drop privileges from root to user (or already at user)
  *
- * @param[in]  h    Clicon handle
+ * @param[in]  h    Clixon handle
+ * @retval     0    OK
+ * @retval    -1    Error
  * Group set to CLICON_SOCK_GROUP to communicate with backend
  */
 int
-restconf_drop_privileges(clicon_handle h)
+restconf_drop_privileges(clixon_handle h)
 {
     int   retval = -1;
     uid_t newuid = -1;
@@ -579,15 +583,15 @@ restconf_drop_privileges(clicon_handle h)
     gid_t gid = -1;
     char *user;
     enum priv_mode_t priv_mode = PM_NONE;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     /* Sanity check: backend group exists */
     if ((group = clicon_sock_group(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
+        clixon_err(OE_FATAL, 0, "clicon_sock_group option not set");
         return -1;
     }
     if (group_name2gid(group, &gid) < 0){
-        clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group." /* \n required here due to multi-line log */
+        clixon_log(h, LOG_ERR, "'%s' does not seem to be a valid user group." /* \n required here due to multi-line log */
                    "The config daemon requires a valid group to create a server UNIX socket\n"
                    "Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
                    "or create the group and add the user to it. Check documentation for how to do this on your platform",
@@ -604,18 +608,18 @@ restconf_drop_privileges(clicon_handle h)
 
     /* Get (wanted) new www user id */
     if (name2uid(user, &newuid) < 0){
-        clicon_err(OE_DAEMON, errno, "'%s' is not a valid user .\n", user);
+        clixon_err(OE_DAEMON, errno, "'%s' is not a valid user .\n", user);
         goto done;
     }
     /* get current userid, if already at this level OK */
     if ((uid = getuid()) == newuid)
         goto ok;
     if (uid != 0){
-        clicon_err(OE_DAEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
+        clixon_err(OE_DAEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
         goto done;
     }
     if (setgid(gid) == -1) {
-        clicon_err(OE_DAEMON, errno, "setgid %d", gid);
+        clixon_err(OE_DAEMON, errno, "setgid %d", gid);
         goto done;
     }
     switch (priv_mode){
@@ -624,7 +628,7 @@ restconf_drop_privileges(clicon_handle h)
             goto done;
         /* Verify you cannot regain root privileges */
         if (setuid(0) != -1){
-            clicon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
+            clixon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
             goto done;
         }
         break;
@@ -635,7 +639,7 @@ restconf_drop_privileges(clicon_handle h)
     case PM_NONE:
         break; /* catched above */
     }
-    clicon_debug(1, "%s dropped privileges from root to %s(%d)",
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s dropped privileges from root to %s(%d)",
                  __FUNCTION__, user, newuid);
  ok:
     retval = 0;
@@ -643,8 +647,9 @@ restconf_drop_privileges(clicon_handle h)
     return retval;
 }
 
-/*!
- * @param[in]  h         Clicon handle
+/*! restconf auth cb
+ *
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle (can be part of clixon handle)
  * @param[in]  pretty    Pretty-print
  * @param[in]  media_out Restconf output media
@@ -653,7 +658,7 @@ restconf_drop_privileges(clicon_handle h)
  * @retval    -1         Error
  */
 int
-restconf_authentication_cb(clicon_handle  h,
+restconf_authentication_cb(clixon_handle  h,
                            void          *req,
                            int            pretty,
                            restconf_media media_out)
@@ -666,9 +671,9 @@ restconf_authentication_cb(clicon_handle  h,
     cxobj             *xret = NULL;
     cxobj             *xerr;
     char              *anonymous = NULL;
-    
+
     auth_type = restconf_auth_type_get(h);
-    clicon_debug(1, "%s auth-type:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s auth-type:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
     ret = 0;
     authenticated = 0;
     /* ret: -1 Error, 0: Ignore/not handled, 1: OK see authenticated parameter */
@@ -689,7 +694,7 @@ restconf_authentication_cb(clicon_handle  h,
             if ((anonymous = clicon_option_str(h, "CLICON_ANONYMOUS_USER")) == NULL){
                 break; /* not authenticated */
             }
-            clicon_username_set(h, anonymous);  
+            clicon_username_set(h, anonymous);
             authenticated = 1;
             break;
         case CLIXON_AUTH_CLIENT_CERTIFICATE: {
@@ -701,7 +706,7 @@ restconf_authentication_cb(clicon_handle  h,
             }
             break;
         }
-        case CLIXON_AUTH_USER:           
+        case CLIXON_AUTH_USER:
             authenticated = 0;
             break;
         }
@@ -720,7 +725,7 @@ restconf_authentication_cb(clicon_handle  h,
     /* If set but no user, set a dummy user */
     retval = 1;
  done:
-    clicon_debug(1, "%s retval:%d authenticated:%d user:%s",
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d authenticated:%d user:%s",
                  __FUNCTION__, retval, authenticated, clicon_username_get(h));
     if (username)
         free(username);
@@ -741,7 +746,7 @@ restconf_authentication_cb(clicon_handle  h,
  * @retval    -1         Error
  */
 int
-restconf_config_init(clicon_handle h,
+restconf_config_init(clixon_handle h,
                      cxobj        *xrestconf)
 {
     int    retval = -1;
@@ -752,9 +757,9 @@ restconf_config_init(clicon_handle h,
     int    auth_type;
     yang_stmt *yspec;
     yang_stmt *y;
-    
+
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     /* Apply default values (removed in clear function) */
@@ -763,7 +768,7 @@ restconf_config_init(clicon_handle h,
     if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
         (enable = xml_body(x)) != NULL){
         if (strcmp(enable, "false") == 0){
-            clicon_debug(1, "%s restconf disabled", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_DEFAULT, "%s restconf disabled", __FUNCTION__);
             goto disable;
         }
     }
@@ -771,7 +776,7 @@ restconf_config_init(clicon_handle h,
     if ((x = xpath_first(xrestconf, nsc, "auth-type")) != NULL &&
         (bstr = xml_body(x)) != NULL){
         if ((auth_type = clixon_auth_type_str2int(bstr)) < 0){
-            clicon_err(OE_CFG, EFAULT, "Invalid restconf auth-type: %s", bstr);
+            clixon_err(OE_CFG, EFAULT, "Invalid restconf auth-type: %s", bstr);
             goto done;
         }
         restconf_auth_type_set(h, auth_type);
@@ -794,7 +799,7 @@ restconf_config_init(clicon_handle h,
         strcmp(bstr, "true") == 0) {
         restconf_http_data_set(h, 1);
     }
-    else 
+    else
         restconf_http_data_set(h, 0);
 
     /* Check if fcgi-socket is true and that feature is enabled
@@ -817,14 +822,16 @@ restconf_config_init(clicon_handle h,
 }
 
 /*! Create and bind restconf socket
- * 
+ *
  * @param[in]  netns0    Network namespace, special value "default" is same as NULL
  * @param[in]  addrstr   Address as string, eg "0.0.0.0", "::"
  * @param[in]  addrtype  One of inet:ipv4-address or inet:ipv6-address
  * @param[in]  port      TCP port
- * @param[in]  backlog  Listen backlog, queie of pending connections
- * @param[in]  flags    Socket flags OR:ed in with the socket(2) type parameter
+ * @param[in]  backlog   Listen backlog, queie of pending connections
+ * @param[in]  flags     Socket flags OR:ed in with the socket(2) type parameter
  * @param[out] ss        Server socket (bound for accept)
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 int
 restconf_socket_init(const char   *netns0,
@@ -841,7 +848,7 @@ restconf_socket_init(const char   *netns0,
     size_t              sa_len;
     const char         *netns;
 
-    clicon_debug(1, "%s %s %s %s %hu", __FUNCTION__, netns0, addrtype, addrstr, port);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %s %s %hu", __FUNCTION__, netns0, addrtype, addrstr, port);
     /* netns default -> NULL */
     if (netns0 != NULL && strcmp(netns0, RESTCONF_NETNS_DEFAULT)==0)
         netns = NULL;
@@ -851,10 +858,10 @@ restconf_socket_init(const char   *netns0,
         goto done;
     if (clixon_netns_socket(netns, sa, sa_len, backlog, flags, addrstr, ss) < 0)
         goto done;
-    clicon_debug(1, "%s ss=%d", __FUNCTION__, *ss);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s ss=%d", __FUNCTION__, *ss);
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 

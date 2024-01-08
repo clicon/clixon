@@ -617,7 +617,7 @@ module clixon-config {
                     edit operation.
                  Setting this option disables this behaviour, ie the startup configuration is NOT
                  automatically updated.
-                 If this option is false, the startup is autoamtically updated following the RFC";
+                 If this option is false, the startup is automatically updated following the RFC";
         }
         leaf CLICON_RESTCONF_USER {
             type string;
@@ -1111,7 +1111,7 @@ module clixon-config {
                  restconf GET.
                  The module state data is on the form:
                        <yang-library><module-set>...
-                 instead where the modile state is on the form:
+                 instead where the module state is on the form:
                        <modules-state>...
                  See also CLICON_XMLDB_MODSTATE where the module state info is used to tag datastores
                  with module information.";
@@ -1148,7 +1148,7 @@ module clixon-config {
             default false;
             description
                 "Enable event stream discovery as described in RFC 5277
-                 sections 3.2. If enabled, available streams will appear
+                 section 3.2. If enabled, available streams will appear
                  when doing netconf get or restconf GET";
         }
         leaf CLICON_STREAM_DISCOVERY_RFC8040 {

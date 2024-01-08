@@ -648,6 +648,8 @@ ac_includes_default="\
 ac_header_c_list=
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+CLICON_GROUP
+CLICON_USER
 CLIGEN_DIR
 WC_BIN
 TAIL_BIN
@@ -662,11 +664,14 @@ ac_ct_CXX
 CXXFLAGS
 CXX
 CPP
+SYSCONFDIR
+SBINDIR
 LOCALSTATEDIR
 LIBEXECDIR
 LIBDIR
+INCLUDEDIR
 DATADIR
-SYSCONFDIR
+BINDIR
 MIB_GENERATED_YANG_DIR
 YANG_STANDARD_DIR
 YANG_INSTALLDIR
@@ -768,6 +773,8 @@ with_libxml2
 with_sigaction
 with_yang_installdir
 with_yang_standard_dir
+with_clicon_user
+with_clicon_group
 enable_nls
 '
       ac_precious_vars='build_alias
@@ -1440,6 +1447,9 @@ Optional Packages:
   --with-yang-standard-dir=DIR
                           Directory of standard IETF/IEEE YANG specs (default:
                           $prefix/share/yang/standard)
+  --with-clicon-user=user Run as this user in configuration files
+  --with-clicon-group=group
+                          Run as this group in configuration files
 
 Some influential environment variables:
   CC          C compiler command
@@ -2802,7 +2812,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 CLIXON_VERSION_MAJOR="6"
-CLIXON_VERSION_MINOR="4"
+CLIXON_VERSION_MINOR="6"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
@@ -4142,6 +4152,9 @@ HAVE_HTTP1=false
 # SNMP tests require generated YANGs from MIBs
 
 # Used in expansion in, e.g., example/main/example.xml.in
+
+
+
 
 
 
@@ -5672,7 +5685,7 @@ if test "$LEX" = ":"; then
    as_fn_error $? "CLIXON does not find lex or flex." "$LINENO" 5
 fi
 
-# SSH binary path
+# SSH binary path for client and test
 # Extract the first word of "ssh", so it can be a program name with args.
 set dummy ssh; ac_word=$2
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
@@ -5719,7 +5732,7 @@ fi
 
 
 
-printf "%s\n" "#define SSH_BIN \"$SSH_BIN\"" >>confdefs.h
+printf "%s\n" "#define SSH_BIN \"${SSH_BIN}\"" >>confdefs.h
 
 
 # For cli pipe output functions
@@ -5912,6 +5925,17 @@ SH_SUFFIX=".so"
 # Postfix for static libs
 LIBSTATIC_SUFFIX=".a"
 
+# Expand for easy replacement in example/main/example.xml.in
+# Special case is $libdir, which is composed from $exec_prefix
+BINDIR=`eval echo $bindir`
+SBINDIR=`eval echo $sbindir`
+SYSCONFDIR=`eval echo $sysconfdir`
+DATADIR=`eval echo \`eval echo $datadir\``
+INCLUDEDIR=`eval echo $includedir`
+LIBDIR=`eval echo \`eval echo $libdir\``
+LIBEXECDIR=`eval echo $libexecdir`
+LOCALSTATEDIR=`eval echo $localstatedir`
+
 # This is for cligen
 
 # Check whether --with-cligen was given.
@@ -5925,8 +5949,8 @@ fi
 
 if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
     echo "Using CLIGEN here: ${CLIGEN_DIR}"
-    CPPFLAGS="-I${CLIGEN_DIR}$(eval echo ${includedir}) ${CPPFLAGS}"
-    LDFLAGS="-L${CLIGEN_DIR}$(eval echo ${libdir}) ${LDFLAGS}"
+    CPPFLAGS="-I${CLIGEN_DIR}/include ${CPPFLAGS}"
+    LDFLAGS="-L${CLIGEN_DIR}/lib ${LDFLAGS}"
 fi
 
 # Disable/enable yang patch
@@ -6549,7 +6573,6 @@ fi
 
 done
 
-
    # MIB_GENERATED_YANG_DIR is where clixon assumes generated YANGs from MIBs are stored
    # This is NOT installed by Clixon and is not needed for core system
    # However, it is required by SNMP tests.
@@ -6576,6 +6599,24 @@ if test ${with_configfile+y}
 then :
   withval=$with_configfile; CLIXON_DEFAULT_CONFIG="$withval"
 fi
+
+
+# Default location for config file
+
+printf "%s\n" "#define CLIXON_DEFAULT_CONFIG \"${CLIXON_DEFAULT_CONFIG}\"" >>confdefs.h
+
+
+
+printf "%s\n" "#define CLIXON_CONFIG_BINDIR \"${BINDIR}\"" >>confdefs.h
+
+
+printf "%s\n" "#define CLIXON_CONFIG_LOCALSTATEDIR \"${LOCALSTATEDIR}\"" >>confdefs.h
+
+
+printf "%s\n" "#define CLIXON_CONFIG_SBINDIR \"${SBINDIR}\"" >>confdefs.h
+
+
+printf "%s\n" "#define CLIXON_CONFIG_SYSCONFDIR \"${SYSCONFDIR}\"" >>confdefs.h
 
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for socket in -lsocket" >&5
@@ -6876,10 +6917,36 @@ fi
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: Standard YANG files expected to be in ${YANG_STANDARD_DIR}" >&5
 printf "%s\n" "Standard YANG files expected to be in ${YANG_STANDARD_DIR}" >&6; }
 
-# Default location for config file
+# who we run as in our examples and tests
+CLICON_USER="clicon"
 
-printf "%s\n" "#define CLIXON_DEFAULT_CONFIG \"${CLIXON_DEFAULT_CONFIG}\"" >>confdefs.h
+# Check whether --with-clicon-user was given.
+if test ${with_clicon_user+y}
+then :
+  withval=$with_clicon_user;
+  CLICON_USER="$withval"
 
+fi
+
+
+if test -n "${CLICON_USER}"; then
+    echo "Using CLICON_USER here: ${CLICON_USER}"
+fi
+
+CLICON_GROUP="clicon"
+
+# Check whether --with-clicon-group was given.
+if test ${with_clicon_group+y}
+then :
+  withval=$with_clicon_group;
+  CLICON_GROUP="$withval"
+
+fi
+
+
+if test -n "${CLICON_GROUP}"; then
+    echo "Using CLICON_GROUP here: ${CLICON_GROUP}"
+fi
 
 # Dummy to disable native language support (nls) to remove warnings in buildroot
 # Check whether --enable-nls was given.
@@ -6891,16 +6958,9 @@ fi
 
 
 
-# Expand for easy replacement in example/main/example.xml.in
-# Special case is $libdir, which is composed from $exec_prefix
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
-SYSCONFDIR=`eval echo $sysconfdir`
-DATADIR=`eval echo \`eval echo $datadir\``
-LIBDIR=`eval echo $libdir`
-LIBEXECDIR=`eval echo $libexecdir`
-LOCALSTATEDIR=`eval echo $localstatedir`
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml docker/Makefile docker/clixon-dev/Makefile docker/example/Makefile docker/test/Makefile util/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml docker/Makefile docker/clixon-dev/Makefile docker/example/Makefile docker/test/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -7609,7 +7669,6 @@ do
     "docker/clixon-dev/Makefile") CONFIG_FILES="$CONFIG_FILES docker/clixon-dev/Makefile" ;;
     "docker/example/Makefile") CONFIG_FILES="$CONFIG_FILES docker/example/Makefile" ;;
     "docker/test/Makefile") CONFIG_FILES="$CONFIG_FILES docker/test/Makefile" ;;
-    "util/Makefile") CONFIG_FILES="$CONFIG_FILES util/Makefile" ;;
     "yang/Makefile") CONFIG_FILES="$CONFIG_FILES yang/Makefile" ;;
     "yang/clixon/Makefile") CONFIG_FILES="$CONFIG_FILES yang/clixon/Makefile" ;;
     "yang/mandatory/Makefile") CONFIG_FILES="$CONFIG_FILES yang/mandatory/Makefile" ;;

@@ -35,7 +35,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_BACKEND_USER>$USER</CLICON_BACKEND_USER>
   <CLICON_BACKEND_PRIVILEGES>drop_perm</CLICON_BACKEND_PRIVILEGES>
@@ -329,7 +329,7 @@ reset
 tmppipe=$(mktemp -u)
 mkfifo -m 600 "$tmppipe"
 
-cat << EOF | clixon_cli -f $cfg >> /dev/null &
+cat << EOF | $clixon_cli -f $cfg >> /dev/null &
 set table parameter eth0
 commit confirmed 60
 shell echo >> $tmppipe
@@ -349,7 +349,7 @@ rm $tmppipe
 new "14. cli persistent confirmed-commit"
 reset
 
-cat << EOF | clixon_cli -f $cfg >> /dev/null
+cat << EOF | $clixon_cli -f $cfg >> /dev/null
 set table parameter eth0
 commit confirmed persist a
 quit
@@ -357,7 +357,7 @@ EOF
 
 assert_config_equals "running" "$CONFIGB"
 
-cat << EOF | clixon_cli -f $cfg >> /dev/null
+cat << EOF | $clixon_cli -f $cfg >> /dev/null
 set table parameter eth1
 commit persist-id a confirmed persist ab
 quit
@@ -384,7 +384,7 @@ expectpart "$($clixon_cli -lo -1 -f $cfg commit persist-id ab cancel)" 255 "no c
 
 new "18. cli persistent confirmed-commit with timeout"
 reset
-cat << EOF | clixon_cli -f $cfg >> /dev/null
+cat << EOF | $clixon_cli -f $cfg >> /dev/null
 set table parameter eth0
 commit confirmed persist abcd 3
 EOF
@@ -396,13 +396,13 @@ assert_config_equals "running" ""
 
 new "19. cli persistent confirmed-commit with reset timeout"
 reset
-cat << EOF | clixon_cli -f $cfg >> /dev/null
+cat << EOF | $clixon_cli -f $cfg >> /dev/null
 set table parameter eth0
 commit confirmed persist abcd 5
 EOF
 
 assert_config_equals "running" "$CONFIGB"
-cat << EOF | clixon_cli -f $cfg >> /dev/null
+cat << EOF | $clixon_cli -f $cfg >> /dev/null
 set table parameter eth1
 commit persist-id abcd confirmed persist abcdef 10
 EOF

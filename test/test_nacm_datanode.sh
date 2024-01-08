@@ -42,6 +42,9 @@ APPNAME=example
 . ./nacm.sh
 
 cfg=$dir/conf_yang.xml
+CFD=$dir/conf.d
+test -d $CFD || mkdir -p $CFD
+
 fyang=$dir/nacm-example.yang
 fyang2=$dir/itf.yang
 
@@ -51,6 +54,7 @@ RESTCONFIG=$(restconf_config user false)
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_CONFIGDIR>$CFD</CLICON_CONFIGDIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
@@ -58,12 +62,17 @@ cat <<EOF > $cfg
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_NACM_DISABLED_ON_EMPTY>true</CLICON_NACM_DISABLED_ON_EMPTY>
+</clixon-config>
+EOF
+
+cat <<EOF > $CFD/restconf.xml
+<clixon-config xmlns="http://clicon.org/config">
   $RESTCONFIG
 </clixon-config>
 EOF

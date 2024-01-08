@@ -62,7 +62,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_backend_transaction.h"
@@ -83,17 +83,17 @@ struct confirmed_commit {
     char       *cc_persist_id;       /* a value given by a client in the confirmed-commit */
     uint32_t    cc_session_id;       /* the session_id of the client that gave no <persist> value */
     int        (*cc_fn)(int, void*); /* function pointer for rollback event (rollback_fn()) */
-    void        *cc_arg;             /* clicon_handle that will be passed to rollback_fn() */
+    void        *cc_arg;             /* clixon_handle that will be passed to rollback_fn() */
 };
 
 int
-confirmed_commit_init(clicon_handle h)
+confirmed_commit_init(clixon_handle h)
 {
     int                      retval = -1;
     struct confirmed_commit *cc = NULL;
 
     if ((cc = calloc(1, sizeof(*cc))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     cc->cc_state = INACTIVE;
@@ -105,14 +105,15 @@ confirmed_commit_init(clicon_handle h)
 }
 
 /*! If confirm commit persist-id exists, free it
+ *
  * @param[in] h  Clixon handle
  * @retval    0  OK
  */
 int
-confirmed_commit_free(clicon_handle h)
+confirmed_commit_free(clixon_handle h)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     if (cc != NULL){
         if (cc->cc_persist_id != NULL)
@@ -127,46 +128,46 @@ confirmed_commit_free(clicon_handle h)
  * Accessor functions
  */
 enum confirmed_commit_state
-confirmed_commit_state_get(clicon_handle h)
+confirmed_commit_state_get(clixon_handle h)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     return cc->cc_state;
 }
 
 static int
-confirmed_commit_state_set(clicon_handle h,
+confirmed_commit_state_set(clixon_handle h,
                            enum confirmed_commit_state state)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     cc->cc_state = state;
     return 0;
 }
 
 char *
-confirmed_commit_persist_id_get(clicon_handle h)
+confirmed_commit_persist_id_get(clixon_handle h)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     return cc->cc_persist_id;
 }
 
 static int
-confirmed_commit_persist_id_set(clicon_handle h,
+confirmed_commit_persist_id_set(clixon_handle h,
                                 char         *persist_id)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     if (cc->cc_persist_id)
         free(cc->cc_persist_id);
     if (persist_id){
         if ((cc->cc_persist_id = strdup4(persist_id)) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup4");
+            clixon_err(OE_UNIX, errno, "strdup4");
             return -1;
         }
     }
@@ -176,32 +177,32 @@ confirmed_commit_persist_id_set(clicon_handle h,
 }
 
 uint32_t
-confirmed_commit_session_id_get(clicon_handle h)
+confirmed_commit_session_id_get(clixon_handle h)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     return cc->cc_session_id;
 }
 
 static int
-confirmed_commit_session_id_set(clicon_handle h,
+confirmed_commit_session_id_set(clixon_handle h,
                                 uint32_t      session_id)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     cc->cc_session_id = session_id;
     return 0;
 }
 
 static int
-confirmed_commit_fn_arg_get(clicon_handle h,
+confirmed_commit_fn_arg_get(clixon_handle h,
                             int        (**fn)(int, void*),
                             void        **arg)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     *fn = cc->cc_fn;
     *arg = cc->cc_arg;
@@ -209,12 +210,12 @@ confirmed_commit_fn_arg_get(clicon_handle h,
 }
 
 static int
-confirmed_commit_fn_arg_set(clicon_handle h,
+confirmed_commit_fn_arg_set(clixon_handle h,
                             int        (*fn)(int, void*),
                             void        *arg)
 {
     struct confirmed_commit *cc = NULL;
-    
+
     clicon_ptr_get(h, "confirmed-commit-struct", (void**)&cc);
     cc->cc_fn = fn;
     cc->cc_arg = arg;
@@ -222,6 +223,7 @@ confirmed_commit_fn_arg_set(clicon_handle h,
 }
 
 /*! Return if confirmed tag found
+ *
  * @param[in]  xe  Commit rpc xml
  * @retval     1   Confirmed tag exists
  * @retval     0   Confirmed tag does not exist
@@ -233,6 +235,7 @@ xe_confirmed(cxobj *xe)
 }
 
 /*! Return if persist exists and its string value field
+ *
  * @param[in]  xe  Commit rpc xml
  * @param[out] str Pointer to persist
  * @retval     1   Persist field exists
@@ -274,6 +277,7 @@ xe_persist_id(cxobj *xe,
 }
 
 /*! Return timeout
+ *
  * @param[in]  xe  Commit rpc xml
  * @retval     sec Timeout in seconds, can be 0 if no timeout exists or is zero
  */
@@ -282,7 +286,7 @@ xe_timeout(cxobj *xe)
 {
     cxobj *xml;
     char  *str;
-    
+
     if ((xml = xml_find_type(xe, NULL, "confirm-timeout", CX_ELMNT)) != NULL &&
         (str = xml_body(xml)) != NULL)
         return strtoul(str, NULL, 10);
@@ -293,10 +297,10 @@ xe_timeout(cxobj *xe)
  *
  * @param[in]   h       Clixon handle
  * @retval      0       Rollback event successfully cancelled
- * @retval      -1      No Rollback event was found
+ * @retval     -1       No Rollback event was found
  */
 int
-cancel_rollback_event(clicon_handle h)
+cancel_rollback_event(clixon_handle h)
 {
     int   retval;
     int (*fn)(int, void*) = NULL;
@@ -304,9 +308,9 @@ cancel_rollback_event(clicon_handle h)
 
     confirmed_commit_fn_arg_get(h, &fn, &arg);
     if ((retval = clixon_event_unreg_timeout(fn, arg)) == 0) {
-        clicon_log(LOG_INFO, "a scheduled rollback event has been cancelled");
+        clixon_log(h, LOG_INFO, "a scheduled rollback event has been cancelled");
     } else {
-        clicon_log(LOG_WARNING, "the specified scheduled rollback event was not found");
+        clixon_log(h, LOG_WARNING, "the specified scheduled rollback event was not found");
     }
 
     return retval;
@@ -315,18 +319,18 @@ cancel_rollback_event(clicon_handle h)
 /*! Apply the rollback configuration upon expiration of the confirm-timeout
  *
  * @param[in]   fd      a dummy argument per the event callback semantics
- * @param[in]   arg     a void pointer to a clicon_handle
+ * @param[in]   arg     a void pointer to a clixon_handle
  * @retval      0       the rollback was successful
- * @retval      -1      the rollback failed
+ * @retval     -1       the rollback failed
  * @see                 do_rollback()
  */
 static int
 rollback_fn(int  fd,
             void *arg)
 {
-    clicon_handle h = arg;
+    clixon_handle h = arg;
 
-    clicon_log(LOG_CRIT, "a confirming-commit was not received before the confirm-timeout expired; rolling back");
+    clixon_log(NULL, LOG_CRIT, "a confirming-commit was not received before the confirm-timeout expired; rolling back");
 
     return do_rollback(h, NULL);
 }
@@ -337,10 +341,10 @@ rollback_fn(int  fd,
  * @param[in]   timeout a uint32 representing the number of seconds before the rollback event should fire
  *
  * @retval      0       Rollback event successfully scheduled
- * @retval      -1      Rollback event was not scheduled
+ * @retval     -1       Rollback event was not scheduled
  */
 static int
-schedule_rollback_event(clicon_handle h,
+schedule_rollback_event(clixon_handle h,
                         uint32_t      timeout)
 {
     int retval = -1;
@@ -348,7 +352,7 @@ schedule_rollback_event(clicon_handle h,
     // register a new scheduled event
     struct timeval t, t1;
     if (gettimeofday(&t, NULL) < 0) {
-        clicon_err(OE_UNIX, 0, "failed to get time of day: %s", strerror(errno));
+        clixon_err(OE_UNIX, 0, "failed to get time of day: %s", strerror(errno));
         goto done;
     };
     t1.tv_sec = timeout; t1.tv_usec = 0;
@@ -373,12 +377,13 @@ schedule_rollback_event(clicon_handle h,
 }
 
 /*! Cancel a confirming commit by removing rollback, and free state
+ *
  * @param[in]  h
  * @param[out] cbret
  * @retval     0      OK
  */
 int
-cancel_confirmed_commit(clicon_handle h)
+cancel_confirmed_commit(clixon_handle h)
 {
     cancel_rollback_event(h);
 
@@ -390,7 +395,7 @@ cancel_confirmed_commit(clicon_handle h)
     confirmed_commit_state_set(h, INACTIVE);
 
     if (xmldb_delete(h, "rollback") < 0)
-        clicon_err(OE_DB, 0, "Error deleting the rollback configuration");
+        clixon_err(OE_DB, 0, "Error deleting the rollback configuration");
     return 0;
 }
 
@@ -401,15 +406,15 @@ cancel_confirmed_commit(clicon_handle h)
  *      without a <persist> value, OR
  *   2) be presented with a <persist-id> value that matches the <persist> value accompanying the prior confirmed-commit
  *
- * @param[in]   h       Clicon handle
+ * @param[in]   h       Clixon handle
  * @param[in]   xe      Request: <rpc><xn></rpc> 
  * @param[in]   myid    current client session-id
  * @retval      1       The confirming-commit is valid
  * @retval      0       The confirming-commit is not valid
- * @retval      -1      Error
+ * @retval     -1       Error
  */
 static int
-check_valid_confirming_commit(clicon_handle h,
+check_valid_confirming_commit(clixon_handle h,
                               cxobj        *xe,
                               uint32_t      myid)
 {
@@ -417,7 +422,7 @@ check_valid_confirming_commit(clicon_handle h,
     char *persist_id = NULL;
 
     if (xe == NULL){
-        clicon_err(OE_CFG, EINVAL, "xe is NULL");
+        clixon_err(OE_CFG, EINVAL, "xe is NULL");
         goto done;
     }
     if (myid == 0)
@@ -430,13 +435,13 @@ check_valid_confirming_commit(clicon_handle h,
                     break; // valid
                 }
                 else {
-                    clicon_log(LOG_INFO,
+                    clixon_log(h, LOG_INFO,
                                "a persistent confirmed-commit is in progress but the client issued a "
                                "confirming-commit with an incorrect persist-id");
                     goto invalid;
                 }
             } else {
-                clicon_log(LOG_INFO,
+                clixon_log(h, LOG_INFO,
                            "a persistent confirmed-commit is in progress but the client issued a confirming-commit"
                            "without a persist-id");
                 goto invalid;
@@ -448,11 +453,11 @@ check_valid_confirming_commit(clicon_handle h,
                  */
                 break; // valid
             }
-            clicon_log(LOG_DEBUG, "an ephemeral confirmed-commit is in progress, but there confirming-commit was"
+            clixon_log(h, LOG_DEBUG, "an ephemeral confirmed-commit is in progress, but there confirming-commit was"
                                   "not issued on the same session as the confirmed-commit");
             goto invalid;
         default:
-            clicon_debug(1, "commit-confirmed state !? %d", confirmed_commit_state_get(h));
+            clixon_debug(CLIXON_DBG_DEFAULT, "commit-confirmed state !? %d", confirmed_commit_state_get(h));
             goto invalid;
     }
     retval = 1; // valid
@@ -471,16 +476,16 @@ check_valid_confirming_commit(clicon_handle h,
  * In the second phase, the action taken is to handle both confirming- and confirmed-commit by creating the
  * rollback database as required, then deleting it once the sequence is complete.
  *
- * @param[in]   h          Clicon handle
+ * @param[in]   h          Clixon handle
  * @param[in]   xe         Commit rpc xml or NULL
  * @param[in]   myid       Current session-id, only valid > 0 if call is made as a result of an incoming message
  * @retval      0          OK
- * @retval      -1         Error
+ * @retval     -1          Error
  * @note There are some calls to this function where myid is 0 (which is invalid). It is unclear if such calls
  *       actually occur, and if so, if they are correctly handled. The calls are from do_rollback() and load_failsafe()
  */
 int
-handle_confirmed_commit(clicon_handle h,
+handle_confirmed_commit(clixon_handle h,
                         cxobj        *xe,
                         uint32_t      myid)
 {
@@ -491,7 +496,7 @@ handle_confirmed_commit(clicon_handle h,
     int           db_exists;
 
     if (xe == NULL){
-        clicon_err(OE_CFG, EINVAL, "xe is NULL");
+        clixon_err(OE_CFG, EINVAL, "xe is NULL");
         goto done;
     }
     if (myid == 0)
@@ -504,7 +509,7 @@ handle_confirmed_commit(clicon_handle h,
     cc_valid = check_valid_confirming_commit(h, xe, myid);
     if (cc_valid) {
         if (cancel_rollback_event(h) < 0) {
-            clicon_err(OE_DAEMON, 0, "A valid confirming-commit was received, but the corresponding rollback event was not found");
+            clixon_err(OE_DAEMON, 0, "A valid confirming-commit was received, but the corresponding rollback event was not found");
         }
 
         if (confirmed_commit_state_get(h) == PERSISTENT &&
@@ -532,7 +537,7 @@ handle_confirmed_commit(clicon_handle h,
              * <persist-id>
              */
             confirmed_commit_state_set(h, PERSISTENT);
-            clicon_log(LOG_INFO,
+            clixon_log(h, LOG_INFO,
                        "a persistent confirmed-commit has been requested with persist id of '%s' and a timeout of %lu seconds",
                        confirmed_commit_persist_id_get(h), confirm_timeout);
         }
@@ -544,7 +549,7 @@ handle_confirmed_commit(clicon_handle h,
             confirmed_commit_session_id_set(h, myid);
             confirmed_commit_state_set(h, EPHEMERAL);
 
-            clicon_log(LOG_INFO,
+            clixon_log(h, LOG_INFO,
                        "an ephemeral confirmed-commit has been requested by session-id %u and a timeout of %lu seconds",
                        confirmed_commit_session_id_get(h),
                        confirm_timeout);
@@ -581,18 +586,18 @@ handle_confirmed_commit(clicon_handle h,
 
         db_exists = xmldb_exists(h, "rollback");
         if (db_exists == -1) {
-            clicon_err(OE_DAEMON, 0, "there was an error while checking existence of the rollback database");
+            clixon_err(OE_DAEMON, 0, "there was an error while checking existence of the rollback database");
             goto done;
         } else if (db_exists == 0) {
             // db does not yet exists
             if (xmldb_copy(h, "running", "rollback") < 0) {
-                clicon_err(OE_DAEMON, 0, "there was an error while copying the running configuration to rollback database.");
+                clixon_err(OE_DAEMON, 0, "there was an error while copying the running configuration to rollback database.");
                 goto done;
             };
         }
 
         if (schedule_rollback_event(h, confirm_timeout) < 0) {
-            clicon_err(OE_DAEMON, 0, "the rollback event could not be scheduled");
+            clixon_err(OE_DAEMON, 0, "the rollback event could not be scheduled");
             goto done;
         };
 
@@ -602,7 +607,7 @@ handle_confirmed_commit(clicon_handle h,
          * The new configuration is already committed to running and the rollback database can now be deleted
          */
         if (xmldb_delete(h, "rollback") < 0) {
-            clicon_err(OE_DB, 0, "Error deleting the rollback configuration");
+            clixon_err(OE_DB, 0, "Error deleting the rollback configuration");
             goto done;
         }
     }
@@ -622,15 +627,15 @@ handle_confirmed_commit(clicon_handle h,
  *  2. from_client_cancel_commit()  (invoked either by netconf client, or CLI)
  *  3. rollback_fn()                (invoked by expiration of the rollback event timer)
  *
- * @param[in]   h       Clicon handle
- * @retval      -1      Error
+ * @param[in]   h       Clixon handle
  * @retval      0       Success
+ * @retval     -1       Error
  * @see                 backend_client_rm()
  * @see                 from_client_cancel_commit()
  * @see                 rollback_fn()
  */
 int
-do_rollback(clicon_handle h,
+do_rollback(clixon_handle h,
             uint8_t      *errs)
 {
     int     retval = -1;
@@ -638,13 +643,13 @@ do_rollback(clicon_handle h,
     cbuf   *cbret;
 
     if ((cbret = cbuf_new()) == NULL) {
-        clicon_err(OE_DAEMON, 0, "rollback was not performed. (cbuf_new: %s)", strerror(errno));
+        clixon_err(OE_DAEMON, 0, "rollback was not performed. (cbuf_new: %s)", strerror(errno));
         /* the rollback_db won't be deleted, so one can try recovery by:
          *   load rollback running
          *   restart the backend, which will try to load the rollback_db, and delete it if successful
          *     (otherwise it will load the failsafe)
          */
-        clicon_log(LOG_CRIT, "An error occurred during rollback and the rollback_db wasn't deleted.");
+        clixon_log(h, LOG_CRIT, "An error occurred during rollback and the rollback_db wasn't deleted.");
         errstate |= ROLLBACK_NOT_APPLIED | ROLLBACK_DB_NOT_DELETED;
         goto done;
     }
@@ -658,19 +663,19 @@ do_rollback(clicon_handle h,
         /* theoretically, this should never error, since the rollback database was previously active and therefore
          * had itself been previously and successfully committed.
          */
-        clicon_log(LOG_CRIT, "An error occurred committing the rollback database.");
+        clixon_log(h, LOG_CRIT, "An error occurred committing the rollback database.");
         errstate |= ROLLBACK_NOT_APPLIED;
 
         /* Rename the errored rollback database */
         if (xmldb_rename(h, "rollback", NULL, ".error") < 0) {
-            clicon_log(LOG_CRIT, "An error occurred renaming the rollback database.");
+            clixon_log(h, LOG_CRIT, "An error occurred renaming the rollback database.");
             errstate |= ROLLBACK_DB_NOT_DELETED;
         }
 
         /* Attempt to load the failsafe config */
 
         if (load_failsafe(h, "Rollback") < 0) {
-            clicon_log(LOG_CRIT, "An error occurred committing the failsafe database.  Exiting.");
+            clixon_log(h, LOG_CRIT, "An error occurred committing the failsafe database.  Exiting.");
             /* Invoke our own signal handler to exit */
             raise(SIGINT);
 
@@ -683,7 +688,7 @@ do_rollback(clicon_handle h,
     cbuf_free(cbret);
 
     if (xmldb_delete(h, "rollback") < 0) {
-        clicon_log(LOG_WARNING, "A rollback occurred but the rollback_db wasn't deleted.");
+        clixon_log(h, LOG_WARNING, "A rollback occurred but the rollback_db wasn't deleted.");
         errstate |= ROLLBACK_DB_NOT_DELETED;
         goto done;
     };
@@ -696,12 +701,13 @@ do_rollback(clicon_handle h,
 }
 
 /*! Cancel an ongoing confirmed commit.
+ *
  * If the confirmed commit is persistent, the parameter 'persist-id' must be
  * given, and it must match the value of the 'persist' parameter.
  * If the confirmed-commit is ephemeral, the 'persist-id' must not be given and both the confirmed-commit and the
  * cancel-commit must originate from the same session.
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  xe      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @param[in]  arg     client-entry
@@ -711,7 +717,7 @@ do_rollback(clicon_handle h,
  * @see RFC 6241 Sec 8.4
  */
 int
-from_client_cancel_commit(clicon_handle h,
+from_client_cancel_commit(clixon_handle h,
                           cxobj        *xe,
                           cbuf         *cbret,
                           void         *arg,
@@ -769,7 +775,7 @@ from_client_cancel_commit(clicon_handle h,
         if (do_rollback(h, NULL) < 0)
             goto done;
         cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
-        clicon_log(LOG_INFO, "a confirmed-commit has been cancelled by client request");
+        clixon_log(h, LOG_INFO, "a confirmed-commit has been cancelled by client request");
     }
     retval = 0;
  done:
@@ -777,7 +783,8 @@ from_client_cancel_commit(clicon_handle h,
 }
 
 /*! Incoming commit handler for confirmed commit
- * @param[in]  h     Clicon handle
+ *
+ * @param[in]  h     Clixon handle
  * @param[in]  xe    Request: <rpc><xn></rpc> 
  * @param[in]  myid  Client-id
  * @param[out] cbret Return xml tree
@@ -786,7 +793,7 @@ from_client_cancel_commit(clicon_handle h,
  * @retval    -1     Error
  */
 int
-from_client_confirmed_commit(clicon_handle h,
+from_client_confirmed_commit(clixon_handle h,
                              cxobj        *xe,
                              uint32_t      myid,
                              cbuf         *cbret)

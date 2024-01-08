@@ -88,9 +88,9 @@ show("Show a particular state of the system"){
        [<ns:string>("Namespace")], show_conf_xpath("candidate");
     version("Show version"), cli_show_version("candidate", "text", "/");
     options("Show clixon options"), cli_show_options();
-    compare("Compare candidate and running databases"), compare_dbs((int32)0);{
-    		     xml("Show comparison in xml"), compare_dbs((int32)0);
-		     text("Show comparison in text"), compare_dbs((int32)1);
+    compare("Compare candidate and running databases"), compare_dbs("running", "candidate", "xml");{
+    		     xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
+		     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
     }
     pagination("Show list pagination") xpath("Show configuration") <xpath:string>("XPATH expression"){
     	xml, cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "xml", "10");
@@ -157,7 +157,13 @@ load("Load configuration from XML file") <filename:string>("Filename (local file
 	text("Merge candidate with file containing TEXT"), load_config_file("filename", "merge", "text");
     }
 }
-example("This is a comment") <var:int32>("Just a random number"), mycallback("myarg");
+example("Example callback") {
+    <var:int32>("Just a random number"), mycallback("myarg");
+    error {
+      customized, myerror();     # Customized error message
+      orig, cli_remove(); # Original
+    }
+}
 rpc("example rpc") <a:string>("routing instance"), example_client_rpc("");
 notify("Get notifications from backend"), cli_notify("EXAMPLE", "1", "text");
 no("Negate") notify("Get notifications from backend"), cli_notify("EXAMPLE", "0", "xml");

@@ -43,15 +43,15 @@
 #include <netinet/in.h>
 
 /* clicon generic callback pointer */
-typedef void (clicon_callback_t)(clicon_handle h);
+typedef void (clicon_callback_t)(clixon_handle h);
 
 
 void *clixon_str2fn(char *name, void *handle, char **error);
 
-int clicon_parse(clicon_handle h, char *cmd, char **mode, cligen_result *result, int *evalres);
+int clicon_parse(clixon_handle h, char *cmd, char **mode, cligen_result *result, int *evalres);
 
-int clicon_cliread(clicon_handle h, pt_head *ph, char **stringp);
+int clicon_cliread(clixon_handle h, pt_head *ph, char **stringp);
 
-int cli_plugin_finish(clicon_handle h);
+int cli_plugin_finish(clixon_handle h);
 
 #endif  /* _CLI_PLUGIN_H_ */

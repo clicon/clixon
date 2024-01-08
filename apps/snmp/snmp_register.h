@@ -44,8 +44,8 @@ extern "C" {
 /*
  * Prototypes
  */
-int mibyang_table_poll(clicon_handle h, yang_stmt *ylist);
-int clixon_snmp_traverse_mibyangs(clicon_handle h);
+int mibyang_table_poll(clixon_handle h, yang_stmt *ylist);
+int clixon_snmp_traverse_mibyangs(clixon_handle h);
 
 #endif /* _SNMP_REGISTER_H_ */
 

@@ -50,7 +50,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
 </clixon-config>
 EOF
@@ -128,7 +128,7 @@ for op in begin validate complete commit commit_done end; do
 done
 
 # Negative test: restart a plugin that does not exist
-new "Send restart to nonexistatn plugin expect fail"
+new "Send restart to nonexisting plugin expect fail"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><restart-plugin $LIBNS><plugin>xxx</plugin></restart-plugin></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>plugin</bad-element></error-info><error-severity>error</error-severity><error-message>No such plugin</error-message></rpc-error></rpc-reply>"
 
 if [ $BE -ne 0 ]; then

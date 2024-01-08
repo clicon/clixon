@@ -45,7 +45,7 @@ typedef void (*sigfn_t)(int);
 
 /*
  * Prototypes
- */ 
+ */
 int  set_signal(int signo, void (*handler)(int), void (**oldhandler)(int));
 int  set_signal_flags(int signo, int flags, void (*handler)(int), void (**oldhandler)(int));
 int  clixon_signal_save(sigset_t *sigset, struct sigaction sigaction_vec[32]);

@@ -38,9 +38,9 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_DIR>/usr/local/lib/example/backend</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dbdir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
 </clixon-config>
@@ -372,7 +372,7 @@ new "check ordered-by-user: a,b,c,d,e"
 expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><y0 xmlns=\"urn:example:order\">a</y0><y0 xmlns=\"urn:example:order\">b</y0><y0 xmlns=\"urn:example:order\">c</y0><y0 xmlns=\"urn:example:order\">d</y0><y0 xmlns=\"urn:example:order\">e</y0></data></rpc-reply>"
 
 new "move one entry (e) to leaf-list first"
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y0 nc:operation=\"replace\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"first\">e</y0></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y0 nc:operation=\"replace\" xmlns:nc=\"${BASENS}\" xmlns=\"urn:example:order\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"first\">e</y0></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "check ordered-by-user: e,a,b,c,d"
 expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><y0 xmlns=\"urn:example:order\">e</y0><y0 xmlns=\"urn:example:order\">a</y0><y0 xmlns=\"urn:example:order\">b</y0><y0 xmlns=\"urn:example:order\">c</y0><y0 xmlns=\"urn:example:order\">d</y0></data></rpc-reply>"
@@ -443,6 +443,50 @@ expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS
 
 new "check ordered-by-user: e,a,71,b,42,c,d"
 expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><y2 xmlns=\"urn:example:order\"><k>e</k><a>bar</a></y2><y2 xmlns=\"urn:example:order\"><k>a</k><a>foo</a></y2><y2 xmlns=\"urn:example:order\"><k>71</k><a>fie</a></y2><y2 xmlns=\"urn:example:order\"><k>b</k><a>bar</a></y2><y2 xmlns=\"urn:example:order\"><k>42</k><a>fum</a></y2><y2 xmlns=\"urn:example:order\"><k>c</k><a>foo</a></y2><y2 xmlns=\"urn:example:order\"><k>d</k><a>fie</a></y2></data></rpc-reply>"
+
+new "netconf discard"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "add y0: a e b c d"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><y0 xmlns=\"urn:example:order\">a</y0><y0 xmlns=\"urn:example:order\">e</y0><y0 xmlns=\"urn:example:order\">b</y0><y0 xmlns=\"urn:example:order\">c</y0><y0 xmlns=\"urn:example:order\">d</y0></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf commit"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# remove ordered-by user https://github.com/clicon/clixon/issues/475
+KEY=e
+new "rm $KEY"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>none</default-operation><config><y0 xmlns=\"urn:example:order\" nc:operation=\"delete\" xmlns:nc=\"${BASENS}\">$KEY</y0></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "check ordered-by-user: a b c d"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><y0 xmlns=\"urn:example:order\">a</y0><y0 xmlns=\"urn:example:order\">b</y0><y0 xmlns=\"urn:example:order\">c</y0><y0 xmlns=\"urn:example:order\">d</y0></data></rpc-reply>"
+
+new "show compare xml"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "\-  <y0 xmlns=\"urn:example:order\">e</y0>" --not-- "<y0 xmlns=\"urn:example:order\">a</y0>" "<y0 xmlns=\"urn:example:order\">b</y0>" "<y0 xmlns=\"urn:example:order\">c</y0>" "<y0 xmlns=\"urn:example:order\">d</y0>" "+  <y0 xmlns=\"urn:example:order\">e</y0>"
+
+new "show compare curly"
+expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "\-  order-example:y0" "\-     e" --not-- "+  order-example:y0" "\-     a" "+     e"
+
+new "validate"
+expectpart "$($clixon_cli -1 -f $cfg validate)" 0 "^$"
+
+new "netconf discard"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# remove ordered-by user https://github.com/clicon/clixon/issues/475
+KEY=b
+new "rm $KEY"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>none</default-operation><config><y0 xmlns=\"urn:example:order\" nc:operation=\"delete\" xmlns:nc=\"${BASENS}\">$KEY</y0></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "check ordered-by-user: a e c d"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><y0 xmlns=\"urn:example:order\">a</y0><y0 xmlns=\"urn:example:order\">e</y0><y0 xmlns=\"urn:example:order\">c</y0><y0 xmlns=\"urn:example:order\">d</y0></data></rpc-reply>"
+
+new "show compare 2"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "\-  <y0 xmlns=\"urn:example:order\">b</y0>" --not-- "<y0 xmlns=\"urn:example:order\">a</y0>" "<y0 xmlns=\"urn:example:order\">c</y0>" "<y0 xmlns=\"urn:example:order\">d</y0>" "+  <y0 xmlns=\"urn:example:order\">b</y0>"
+
+new "netconf discard"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

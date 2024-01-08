@@ -50,7 +50,7 @@
 /*
  * Prototypes
  */
-int     xml_nsctx_namespace_netconf_default(clicon_handle h);
+int     xml_nsctx_namespace_netconf_default(clixon_handle h);
 cvec   *xml_nsctx_init(char *prefix, char *ns);
 int     xml_nsctx_free(cvec *nsc);
 char   *xml_nsctx_get(cvec *nsc, char *prefix);

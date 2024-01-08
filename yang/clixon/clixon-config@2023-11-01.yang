@@ -8,7 +8,10 @@ module clixon-config {
     }
     import clixon-autocli {
         prefix autocli;
-    }    
+    }
+    import clixon-lib {
+        prefix cl;
+    }
     organization
         "Clicon / Clixon";
 
@@ -46,6 +49,20 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2023-11-01 {
+        description
+            "Added options:
+                    CLICON_CREATOR_ATTR
+             Released in Clixon 6.5";
+    }
+    revision 2023-05-01 {
+        description
+            "Added options:
+                    CLICON_CONFIG_EXTEND
+                    CLICON_PLUGIN_DLOPEN_GLOBAL
+             Moved datastore-format datatype to clixon-lib
+             Released in Clixon 6.3";
+    }
     revision 2023-03-01 {
         description
             "Added options:
@@ -225,7 +242,7 @@ module clixon-config {
              Renamed CLICON_XMLDB_CACHE to CLICON_DATASTORE_CACHE (changed type)
              Deleted: CLICON_XMLDB_PLUGIN, CLICON_USE_STARTUP_CONFIG";
     }
-    revision 2019-03-05{ 
+    revision 2019-03-05{
         description
             "Changed URN. Changed top-level symbol to clixon-config.
              Released in Clixon 3.10";
@@ -271,27 +288,6 @@ module clixon-config {
             enum running-startup{
                 description
                     "First try running db, if it is empty try startup db.";
-            }
-        }
-    }
-    typedef datastore_format{
-        description
-            "Datastore format (only xml and json implemented in actual data.";
-        type enumeration{
-            enum xml{
-                description
-                "Save and load xmldb as XML
-                 More specifically, such a file looks like: <config>...</config> provided
-                 DATASTORE_TOP_SYMBOL is 'config'";
-            }
-            enum json{
-                description "Save and load xmldb as JSON";
-            }
-            enum text{
-                description "'Curly' C-like text format";
-            }
-            enum cli{
-                description "CLI format";
             }
         }
     }
@@ -461,6 +457,15 @@ module clixon-config {
                 You can override file setting with -E <dir> command-line option.
                 Note that due to bootstraping this value is only meaningful in the main config file";
         }
+        leaf CLICON_CONFIG_EXTEND {
+            type string;
+            description
+                "If specified load an application-specific configuration YANG that overrides
+                 this config. 
+                 Normally, that YANG imports clixon-config.
+                 This field is a 'bootstrap' field.
+                ";
+        }
         leaf CLICON_YANG_MAIN_FILE {
             type string;
             description
@@ -520,7 +525,13 @@ module clixon-config {
         leaf CLICON_YANG_SCHEMA_MOUNT{
             type boolean;
             description
-                "YANG schema mount, RFC 8528";
+                "YANG schema mount, RFC 8528.
+                 When enabled, mount-points as defined by the 'yangmnt:mount-point' extension can
+                 be populated by other YANGs than the root.
+                 This is controlled by the ca_yang_mount plugin callback by returning a assigning a 
+                 yanglib module-set section that corresponds to the mounted YANGs.
+                 Also, schema mount statistics is added to state data
+                 Further, autocli syntax is added by definining a tree resolve wrapper";
             default false;
         }
         leaf CLICON_BACKEND_REGEXP {
@@ -571,6 +582,18 @@ module clixon-config {
                  RFC6242 for example.
                  This only applies to the external NETCONF";
         }
+        leaf CLICON_NETCONF_CREATOR_ATTR {
+            type boolean;
+            default false;
+            description
+                "If set, clixon will accept the 'creator' attribute as defined by the
+                 creator annotation in clixon-lib.
+                 It can be used when several clients (such as a 'service') can create the same object. 
+                 If one such client/service is deleted, the object is deleted only if all services
+                 that created the object are deleted.
+                 The clixon controller uses this feature, but could in principle be used by other 
+                 applications.";
+        }
         leaf CLICON_RESTCONF_API_ROOT {
             type string;
             default "/restconf";
@@ -612,7 +635,7 @@ module clixon-config {
                     edit operation.
                  Setting this option disables this behaviour, ie the startup configuration is NOT
                  automatically updated.
-                 If this option is false, the startup is autoamtically updated following the RFC";
+                 If this option is false, the startup is automatically updated following the RFC";
         }
         leaf CLICON_RESTCONF_USER {
             type string;
@@ -675,7 +698,7 @@ module clixon-config {
                  Both feature clixon-restconf:http-data and restconf/enable-http-data 
                  must be enabled for this match to occur.";
         }
-        leaf CLICON_HTTP_DATA_ROOT{ 
+        leaf CLICON_HTTP_DATA_ROOT{
             if-feature "clrc:http-data";
             type string;
             default "/var/www";
@@ -931,7 +954,7 @@ module clixon-config {
                  Others are experimental (in Clixon 5.5)";
         }
         leaf CLICON_XMLDB_FORMAT {
-            type datastore_format;
+            type cl:datastore_format;
             default xml;
             description "XMLDB datastore format.";
         }
@@ -1004,6 +1027,18 @@ module clixon-config {
                  The checks will be made for all callbacks as defined in struct clixon_plugin_api
                  as well as the CLIgen callbacks.
                  See https://clixon-docs.readthedocs.io/en/latest/backend.html#plugin-callback-guidelines";
+        }
+        leaf CLICON_PLUGIN_DLOPEN_GLOBAL {
+            type boolean;
+            default false;
+            description
+                "Local/global flag for dlopen as described in the man page.
+                 This applies to the opening of all clixon plugins (backend/cli/netconf/restconf)
+                 when loading the shared .so file with dlopen.  
+                 If false:  Symbols defined in this shared object are not made available  to  resolve
+                 references in subsequently loaded shared objects (default).
+                 If true: The symbols defined by this shared object will be made available for symbol res‐
+                 olution of subsequently loaded shared objects.";
         }
         leaf CLICON_YANG_AUGMENT_ACCEPT_BROKEN {
             type boolean;
@@ -1094,7 +1129,7 @@ module clixon-config {
                  restconf GET.
                  The module state data is on the form:
                        <yang-library><module-set>...
-                 instead where the modile state is on the form:
+                 instead where the module state is on the form:
                        <modules-state>...
                  See also CLICON_XMLDB_MODSTATE where the module state info is used to tag datastores
                  with module information.";
@@ -1131,7 +1166,7 @@ module clixon-config {
             default false;
             description
                 "Enable event stream discovery as described in RFC 5277
-                 sections 3.2. If enabled, available streams will appear
+                 section 3.2. If enabled, available streams will appear
                  when doing netconf get or restconf GET";
         }
         leaf CLICON_STREAM_DISCOVERY_RFC8040 {

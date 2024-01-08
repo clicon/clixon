@@ -50,10 +50,10 @@
 /*
  * Types
  */
-    
+
 /*! Registered RPC callback function 
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  xn      Request: <rpc><xn></rpc> 
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @param[in]  arg     Domain specific arg, ec client-entry or FCGX_Request 
@@ -62,16 +62,16 @@
  * @retval    -1       Error
  */
 typedef int (*clicon_rpc_cb)(
-    clicon_handle h,       
-    cxobj        *xn,      
-    cbuf         *cbret,   
-    void         *arg,     
-    void         *regarg   
+    clixon_handle h,
+    cxobj        *xn,
+    cbuf         *cbret,
+    void         *arg,
+    void         *regarg
 );
 
 /*! Registered Upgrade callback function 
  *
- * @param[in]  h       Clicon handle 
+ * @param[in]  h       Clixon handle 
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
@@ -84,22 +84,22 @@ typedef int (*clicon_rpc_cb)(
  * @retval    -1       Error
  */
 typedef int (*clicon_upgrade_cb)(
-    clicon_handle h,       
-    cxobj        *xn,      
+    clixon_handle h,
+    cxobj        *xn,
     char         *ns,
     uint16_t      op,
     uint32_t      from,
     uint32_t      to,
-    void         *arg,     
+    void         *arg,
     cbuf         *cbret
-);  
+);
 
 /* Clixon authentication type
  * @see http-auth-type in clixon-restconf.yang
  * For now only used by restconf frontend
  */
 enum clixon_auth_type {
-    CLIXON_AUTH_NONE = 0,           /* Message is authenticated automatically to 
+    CLIXON_AUTH_NONE = 0,           /* Message is authenticated automatically to
                                        anonymous user, maye be changed by ca-auth callback 
                                        FEATURE clixon-restconf:allow-auth-none must be enabled */
     CLIXON_AUTH_CLIENT_CERTIFICATE, /* TLS Client certification authentication */
@@ -108,31 +108,32 @@ enum clixon_auth_type {
 };
 typedef enum clixon_auth_type clixon_auth_type_t;
 
-/* Common plugin function names, function types and signatures. 
+/*! Common plugin function names, function types and signatures.
+ *
  * This plugin code is exytended by backend, cli, netconf, restconf plugins
  *   Cli     see cli_plugin.c
  *   Backend see config_plugin.c
  */
 
-/* Called when application is "started", (almost) all initialization is complete 
+/*! Called when application is "started", (almost) all initialization is complete 
+ *
  * Backend: daemon is in the background. If daemon privileges are dropped 
  *          this callback is called *before* privileges are dropped.
  * @param[in] h    Clixon handle
  */
-typedef int (plgstart_t)(clicon_handle); /* Plugin start */
+typedef int (plgstart_t)(clixon_handle); /* Plugin start */
 
 /* Called just before or after a server has "daemonized", ie put in background.             
  * Backend: If daemon privileges are dropped this callback is called *before* privileges are dropped.
  * If daemon is started in foreground (-F): pre-daemon is not called, but daemon called
  * @param[in] h    Clixon handle
  */
-typedef int (plgdaemon_t)(clicon_handle);              /* Plugin pre/post daemonized */
-
+typedef int (plgdaemon_t)(clixon_handle);              /* Plugin pre/post daemonized */
 
 /* Called just before plugin unloaded. 
  * @param[in] h    Clixon handle
  */
-typedef int (plgexit_t)(clicon_handle);                /* Plugin exit */
+typedef int (plgexit_t)(clixon_handle);                /* Plugin exit */
 
 /* For yang extension/unknown handling. 
  * Called at parsing of yang module containing an unknown statement of an extension.
@@ -146,7 +147,7 @@ typedef int (plgexit_t)(clicon_handle);                /* Plugin exit */
  * @retval    0    OK, all callbacks executed OK
  * @retval   -1    Error in one callback
  */
-typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+typedef int (plgextension_t)(clixon_handle h, yang_stmt *yext, yang_stmt *ys);
 
 /*! Called by restconf on each incoming request to check credentials and return username
  */
@@ -174,7 +175,7 @@ typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
  * If there are multiple callbacks, the first result which is not "ignore" is returned. This is to allow for
  * different callbacks registering different classes, or grouping of authentication.
  *
- * @param[in]  h         Clicon handle
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
  * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
@@ -187,7 +188,7 @@ typedef int (plgextension_t)(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
  *
  * @note user should be freed by caller
  */
-typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type, char **authp);
+typedef int (plgauth_t)(clixon_handle h, void *req, clixon_auth_type_t auth_type, char **authp);
 
 /*! Reset system status 
  *
@@ -198,12 +199,12 @@ typedef int (plgauth_t)(clicon_handle h, void *req, clixon_auth_type_t auth_type
  * is well defined. 
  * This involves creating default configuration files for various daemons, set interface
  * flags etc.
- * @param[in]  h   Clicon handle
+ * @param[in]  h   Clixon handle
  * @param[in]  db  Database name (eg "running")
  * @retval     0   OK
  * @retval    -1   Fatal error
 */
-typedef int (plgreset_t)(clicon_handle h, const char *db); 
+typedef int (plgreset_t)(clixon_handle h, const char *db);
 
 /* Provide state data from plugin
  *
@@ -213,9 +214,9 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  * XXX: This callback may be replaced with a "dispatcher" type API in the future where the
  *      XPath binding is stricter, similar to the pagination API.
  *
- * @param[in]  h          Clicon handle
+ * @param[in]  h          Clixon handle
  * @param[in]  xpath      Part of state requested
- * @param[in]  nsc        XPATH namespace context.
+ * @param[in]  nsc        XPath namespace context.
  * @param[out] xtop       XML tree where statedata is added
  * @retval     0          OK
  * @retval    -1          Fatal error
@@ -224,9 +225,10 @@ typedef int (plgreset_t)(clicon_handle h, const char *db);
  * @note The system does not validate the xml, unless CLICON_VALIDATE_STATE_XML is set
  * @see clixon_pagination_cb_register for special paginated state data callback
  */
-typedef int (plgstatedata_t)(clicon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
+typedef int (plgstatedata_t)(clixon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
 
-/* Pagination-data type
+/*! Pagination-data type
+ *
  * @see pagination_data_t in for full pagination data structure
  * @see pagination_offset() and other accessor functions
  */
@@ -241,36 +243,38 @@ typedef void *pagination_data;
  * @retval     0    OK
  * @retval    -1    Fatal error
 */
-typedef int (plglockdb_t)(clicon_handle h, char *db, int lock, int id);
+typedef int (plglockdb_t)(clixon_handle h, char *db, int lock, int id);
 
-/* Transaction-data type
+/*! Transaction-data type
+ *
  * @see transaction_data_t and clixon_backend_transaction.h for full transaction API 
  */
 typedef void *transaction_data;
 
 /* Transaction callback */
-typedef int (trans_cb_t)(clicon_handle h, transaction_data td);
+typedef int (trans_cb_t)(clixon_handle h, transaction_data td);
 
 /*! Hook to override default prompt with explicit function
+ *
  * Format prompt before each getline 
- * @param[in] h      Clicon handle
+ * @param[in] h      Clixon handle
  * @param[in] mode   Cligen syntax mode
  * @retval    prompt Prompt to prepend all CLigen command lines
  */
-typedef char *(cli_prompthook_t)(clicon_handle, char *mode);
+typedef char *(cli_prompthook_t)(clixon_handle, char *mode);
 
 /*! General-purpose datastore upgrade callback called once on startupo
  *
  * Gets called on startup after initial XML parsing, but before module-specific upgrades
  * and before validation. 
- * @param[in] h    Clicon handle
+ * @param[in] h    Clixon handle
  * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
  * @param[in] xt   XML tree. Upgrade this "in place"
  * @param[in] msd  Info on datastore module-state, if any
  * @retval    0    OK
  * @retval   -1    Error
  */
-typedef int (datastore_upgrade_t)(clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
+typedef int (datastore_upgrade_t)(clixon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 
 /*! YANG schema mount
  *
@@ -294,7 +298,7 @@ typedef int (datastore_upgrade_t)(clicon_handle h, const char *db, cxobj *xt, mo
  * at proper parse-time, but this is not visible in the yanglib return
  * @see RFC 8528 (schema-mount) and RFC 8525 (yang-lib)
  */
-typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, int *config,
+typedef int (yang_mount_t)(clixon_handle h, cxobj *xt, int *config,
                            validate_level *vl, cxobj **yanglib);
 
 /*! YANG module patch
@@ -308,9 +312,45 @@ typedef int (yang_mount_t)(clicon_handle h, cxobj *xt, int *config,
  * @retval     0       OK
  * @retval    -1       Error
  */
-typedef int (yang_patch_t)(clicon_handle h, yang_stmt *ymod);
+typedef int (yang_patch_t)(clixon_handle h, yang_stmt *ymod);
+
+/*! Callback to customize log, error, or debug message
+ *
+ * @param[in]     h        Clixon handle
+ * @param[in]     fn       Inline function name (when called from clixon_err() macro)
+ * @param[in]     line     Inline file line number (when called from clixon_err() macro)
+ * @param[in]     type     Log message type
+ * @param[in,out] category Clixon error category, See enum clixon_err
+ * @param[in,out] suberr   Error number, typically errno
+ * @param[in]     xerr     Netconf error xml tree on the form: <rpc-error>
+ * @param[in]     format   Format string
+ * @param[in]     ap       Variable argument list
+ * @param[out]    cbmsg    Log string as cbuf, if set bypass ordinary logging
+ * @retval        0        OK
+ * @retval       -1        Error
+ * When cbmsg is set by a plugin, no other plugins are called. category and suberr
+ * can be rewritten by any plugin.
+ */
+typedef int (errmsg_t)(clixon_handle h, const char *fn, const int line,
+                       enum clixon_log_type type,
+                       int *category, int *suberr, cxobj *xerr,
+                       const char *format, va_list ap, cbuf **cbmsg);
+
+/*! Callback for printing version output and exit
+ *
+ * A plugin can customize a version (or banner) output on stdout.
+ * Several version strings can be printed if there are multiple callbacks.
+ * If not regstered plugins exist, clixon prints CLIXON_VERSION_STRING
+ * Typically invoked by command-line option -V
+ * @param[in]  h   Clixon handle
+ * @param[in]  f   Output file
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+typedef int (plgversion_t)(clixon_handle, FILE*);
 
 /*! Startup status for use in startup-callback
+ *
  * Note that for STARTUP_ERR and STARTUP_INVALID, running runs in failsafe mode
  * and startup contains the erroneous or invalid database.
  * The user should repair the startup and 
@@ -327,17 +367,19 @@ enum startup_status{
  * Note: Implicit init function
  */
 struct clixon_plugin_api;
-typedef struct clixon_plugin_api* (plginit2_t)(clicon_handle);    /* Clixon plugin Init */
+typedef struct clixon_plugin_api* (plginit_t)(clixon_handle);    /* Clixon plugin Init */
 
 struct clixon_plugin_api{
     /*--- Common fields.  ---*/
     char              ca_name[MAXPATHLEN]; /* Name of plugin (given by plugin) */
-    plginit2_t       *ca_init;             /* Clixon plugin Init (implicit) */
+    plginit_t        *ca_init;             /* Clixon plugin Init (implicit) */
     plgstart_t       *ca_start;            /* Plugin start */
     plgexit_t        *ca_exit;             /* Plugin exit */
     plgextension_t   *ca_extension;        /* Yang extension/unknown handler */
     yang_mount_t     *ca_yang_mount;       /* RFC 8528 schema mount */
     yang_patch_t     *ca_yang_patch;       /* Patch yang after parse */
+    errmsg_t         *ca_errmsg;           /* Customize log/error/debug callback */
+    plgversion_t     *ca_version;          /* Output a customized version message */
     union {
         struct { /* cli-specific */
             cli_prompthook_t *ci_prompt;         /* Prompt hook */
@@ -353,7 +395,6 @@ struct clixon_plugin_api{
             plgdaemon_t      *cb_pre_daemon;     /* Plugin just before daemonization (only daemon) */
             plgdaemon_t      *cb_daemon;         /* Plugin daemonized (always called) */
             plgreset_t       *cb_reset;          /* Reset system status */
-
             plgstatedata_t   *cb_statedata;      /* Provide state data XML from plugin */
             plglockdb_t      *cb_lockdb;         /* Database lock changed state */
             trans_cb_t       *cb_trans_begin;    /* Transaction start */
@@ -400,6 +441,7 @@ typedef struct clixon_plugin_api clixon_plugin_api;
 typedef struct clixon_plugin clixon_plugin_t;
 
 /*! Structure for checking status before and after a plugin call
+ *
  * The internal struct is defined in clixon_plugin.c */
 typedef struct plugin_context plugin_context_t;
 
@@ -434,56 +476,68 @@ typedef struct {
  * @retval     NULL Failure (if clixon_err() called), module disabled otherwise.
  * @see CLIXON_PLUGIN_INIT  default symbol 
  */
-clixon_plugin_api *clixon_plugin_init(clicon_handle h);
+clixon_plugin_api *clixon_plugin_init(clixon_handle h);
 
 clixon_plugin_api *clixon_plugin_api_get(clixon_plugin_t *cp);
 char            *clixon_plugin_name_get(clixon_plugin_t *cp);
 plghndl_t        clixon_plugin_handle_get(clixon_plugin_t *cp);
 
-clixon_plugin_t *clixon_plugin_each(clicon_handle h, clixon_plugin_t *cpprev);
+clixon_plugin_t *clixon_plugin_each(clixon_handle h, clixon_plugin_t *cpprev);
 
-clixon_plugin_t *clixon_plugin_each_revert(clicon_handle h, clixon_plugin_t *cpprev, int nr);
+clixon_plugin_t *clixon_plugin_each_revert(clixon_handle h, clixon_plugin_t *cpprev, int nr);
 
-clixon_plugin_t *clixon_plugin_find(clicon_handle h, const char *name);
+clixon_plugin_t *clixon_plugin_find(clixon_handle h, const char *name);
 
-int clixon_plugins_load(clicon_handle h, const char *function, const char *dir, const char *regexp);
+int clixon_plugins_load(clixon_handle h, const char *function, const char *dir, const char *regexp);
 
-int clixon_pseudo_plugin(clicon_handle h, const char *name, clixon_plugin_t **cpp);
+int clixon_pseudo_plugin(clixon_handle h, const char *name, clixon_plugin_t **cpp);
 
-int plugin_context_check(clicon_handle h, void **wh, const char *name, const char *fn);
+int clixon_plugin_start_one(clixon_plugin_t *cp, clixon_handle h);
+int clixon_plugin_start_all(clixon_handle h);
 
-int clixon_plugin_start_one(clixon_plugin_t *cp, clicon_handle h);
-int clixon_plugin_start_all(clicon_handle h);
+int clixon_plugin_auth_all(clixon_handle h, void *req, clixon_auth_type_t auth_type, char **authp);
 
-int clixon_plugin_auth_all(clicon_handle h, void *req, clixon_auth_type_t auth_type, char **authp);
+int clixon_plugin_extension_one(clixon_plugin_t *cp, clixon_handle h, yang_stmt *yext, yang_stmt *ys);
+int clixon_plugin_extension_all(clixon_handle h, yang_stmt *yext, yang_stmt *ys);
 
-int clixon_plugin_extension_one(clixon_plugin_t *cp, clicon_handle h, yang_stmt *yext, yang_stmt *ys);
-int clixon_plugin_extension_all(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+int clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp, clixon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
+int clixon_plugin_datastore_upgrade_all(clixon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
 
-int clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp, clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
-int clixon_plugin_datastore_upgrade_all(clicon_handle h, const char *db, cxobj *xt, modstate_diff_t *msd);
+int clixon_plugin_yang_mount_one(clixon_plugin_t *cp, clixon_handle h, cxobj *xt, int *config, validate_level *vl, cxobj **yanglib);
+int clixon_plugin_yang_mount_all(clixon_handle h, cxobj *xt, int *config, validate_level *vl, cxobj **yanglib);
 
-int clixon_plugin_yang_mount_one(clixon_plugin_t *cp, clicon_handle h, cxobj *xt, int *config, validate_level *vl, cxobj **yanglib);
-int clixon_plugin_yang_mount_all(clicon_handle h, cxobj *xt, int *config, validate_level *vl, cxobj **yanglib);
+int clixon_plugin_yang_patch_one(clixon_plugin_t *cp, clixon_handle h, yang_stmt *ymod);
+int clixon_plugin_yang_patch_all(clixon_handle h, yang_stmt *ymod);
 
-int clixon_plugin_yang_patch_one(clixon_plugin_t *cp, clicon_handle h, yang_stmt *ymod);
-int clixon_plugin_yang_patch_all(clicon_handle h, yang_stmt *ymod);
+int clixon_plugin_errmsg_one(clixon_plugin_t *cp, clixon_handle h,
+                             const char *fn, const int line,
+                             enum clixon_log_type type,
+                             int *category, int *suberr, cxobj *xerr,
+                             const char *format, va_list ap, cbuf **cbmsg);
+int clixon_plugin_errmsg_all(clixon_handle h,
+                             const char *fn, const int line,
+                             enum clixon_log_type type,
+                             int *category, int *suberr, cxobj *xerr,
+                             const char *format, va_list ap, cbuf **cbmsg);
+
+int clixon_plugin_version_one(clixon_plugin_t *cp, clixon_handle h, FILE *f);
+int clixon_plugin_version_all(clixon_handle h, FILE *f);
 
 /* rpc callback API */
-int rpc_callback_register(clicon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);
-int rpc_callback_call(clicon_handle h, cxobj *xe, void *arg, int *nrp, cbuf *cbret);
+int rpc_callback_register(clixon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);
+int rpc_callback_call(clixon_handle h, cxobj *xe, void *arg, int *nrp, cbuf *cbret);
 
 /* action callback API */
-int action_callback_register(clicon_handle h, yang_stmt *ya, clicon_rpc_cb cb, void *arg);
-int action_callback_call(clicon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
+int action_callback_register(clixon_handle h, yang_stmt *ya, clicon_rpc_cb cb, void *arg);
+int action_callback_call(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 
 /* upgrade callback API */
-int upgrade_callback_reg_fn(clicon_handle h, clicon_upgrade_cb cb, const char *strfn, const char *ns, void *arg);
-int upgrade_callback_call(clicon_handle h, cxobj *xt, char *ns, uint16_t op, uint32_t from, uint32_t to, cbuf *cbret);
+int upgrade_callback_reg_fn(clixon_handle h, clicon_upgrade_cb cb, const char *strfn, const char *ns, void *arg);
+int upgrade_callback_call(clixon_handle h, cxobj *xt, char *ns, uint16_t op, uint32_t from, uint32_t to, cbuf *cbret);
 
 const int clixon_auth_type_str2int(char *auth_type);
 const char *clixon_auth_type_int2str(clixon_auth_type_t auth_type);
-int              clixon_plugin_module_init(clicon_handle h);
-int              clixon_plugin_module_exit(clicon_handle h);
+int              clixon_plugin_module_init(clixon_handle h);
+int              clixon_plugin_module_exit(clixon_handle h);
 
 #endif  /* _CLIXON_PLUGIN_H_ */

@@ -62,16 +62,16 @@ cxobj **transaction_tcvec(transaction_data td);
 size_t  transaction_clen(transaction_data td);
 
 int transaction_print(FILE *f, transaction_data th);
-int transaction_dbg(clicon_handle h, int dbglevel, transaction_data th, const char *msg);
-int transaction_log(clicon_handle h, transaction_data th, int level, const char *op);
+int transaction_dbg(clixon_handle h, int dbglevel, transaction_data th, const char *msg);
+int transaction_log(clixon_handle h, transaction_data th, int level, const char *op);
 
 
 /* Pagination callbacks
  * @see pagination_data_t  internal structure
  */
-uint32_t pagination_offset(pagination_data pd); 
-uint32_t pagination_limit(pagination_data pd); 
-int      pagination_locked(pagination_data pd); 
-cxobj   *pagination_xstate(pagination_data pd); 
+uint32_t pagination_offset(pagination_data pd);
+uint32_t pagination_limit(pagination_data pd);
+int      pagination_locked(pagination_data pd);
+cxobj   *pagination_xstate(pagination_data pd);
 
 #endif /* _CLIXON_BACKEND_TRANSACTION_H_ */

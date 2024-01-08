@@ -36,6 +36,13 @@ To download the openconfig and yang models required for the tests:
    git pull origin main
 ```
 
+## SSH and SSHD
+
+Some tests require ssh and even sshd (eg test_netconf_ssh_callhome.sh), and requires generated host-keys:
+```
+  # ssh-keygen -a
+```
+
 ## Continuous Integration
 
 CI is done via github actions.
@@ -48,9 +55,11 @@ There are also [manual cicd scripts here](cicd/README.md)
 
 ## Getting started
 
-You need to build and install the clixon utility programs before running the tests as some of the tests rely on them:
+You need to build and install the clixon utility programs from a separate repo
+before running the tests as some of the tests rely on them:
 ```
-  cd util
+  git clone https://github.com/clicon/clixon-util.git
+  ./configure
   make
   sudo make install
 ```
@@ -97,6 +106,8 @@ The `mem.sh` runs memory checks using valgrind. Start it with no arguments to te
   mem.sh    2>&1 | tee mylog        # All components
   mem.sh restconf backend           # Only backend and cli
 ```
+
+Valgrind uses a suppression file `valgrind-clixon.supp` to filter dlopen functions
 
 ## Run pattern of tests
 

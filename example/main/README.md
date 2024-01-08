@@ -13,6 +13,7 @@
   * [Systemd](#systemd)
   * [Docker](#docker)
   * [Plugins](#plugins)
+  * [Mount-points](#mount-points)
 
 ## Background
 
@@ -325,7 +326,7 @@ In the CLI a netconf rpc call is constructed and sent to the backend: See `examp
 The clixon backend  plugin [example_backend.c] reveives the netconf call and replies. This is made byregistering a callback handling handling the RPC:
 ```
 static int 
-example_rpc(clicon_handle h, 
+example_rpc(clixon_handle h, 
             cxobj        *xe,           /* Request: <rpc><xn></rpc> */
             cbuf         *cbret,        /* Reply eg <rpc-reply>... */
             void         *arg,          /* Client session */
@@ -335,7 +336,7 @@ example_rpc(clicon_handle h,
     return 0;
 }
 int
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
 ...
    rpc_callback_register(h, example_rpc, NULL, "example");
@@ -425,7 +426,7 @@ static clixon_plugin_api api = {
 };
 
 clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
     /* Optional callback registration for RPC calls */
     rpc_callback_register(h, example_rpc, NULL, "example");
@@ -446,3 +447,27 @@ static clixon_plugin_api api = {
     .ca_interrupt=NULL, /* cligen_interrupt_cb_t */
 };
 ```
+
+## Mount-points
+
+You can set-up the example for a simple RFC 8528 Yang schema mount. A single top-level yang can be defined to be mounted.:
+
+1. Enable CLICON_YANG_SCHEMA_MOUNT
+2. Define the mount-point using the ietf-yang-schema-mount mount-point extension
+3. Start the backend, cli and restconf with `-- -m <name> -M <urn>`, where `name` and `urn` is the name and namespace of the mounted YANG, respectively.
+
+A simple example on how to define a mount-point
+```
+   import ietf-yang-schema-mount {
+      prefix yangmnt;
+   }
+   container root{
+      presence "Otherwise root is not visible";
+      yangmnt:mount-point "mylabel"{
+         description "Root for other yang models";
+      }
+   }
+```
+
+CLI completion of the mounted part is not implemented in the example, see the
+clixon-controller `controller_cligen_treeref_wrap()` for an example.

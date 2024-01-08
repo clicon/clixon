@@ -51,7 +51,7 @@ is identified, exit as soon as possible and with an explicit error log.
 Errors are typically declared as follows:
 ```
     if (myfn(0) < 0){
-       clicon_err(OE_UNIX, EINVAL, "myfn");
+       clixon_err(OE_UNIX, EINVAL, "myfn");
        goto done;
     }
 ```

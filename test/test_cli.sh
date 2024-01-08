@@ -33,8 +33,8 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
 </clixon-config>
 EOF
@@ -129,9 +129,9 @@ debug("Debugging parts of the system"){
 }
 show("Show a particular state of the system"){
     xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
-    compare("Compare candidate and running databases"), compare_dbs((int32)0);{
-                     xml("Show comparison in xml"), compare_dbs((int32)0);
-                     text("Show comparison in text"), compare_dbs((int32)1);
+    compare("Compare candidate and running databases"), compare_dbs("running", "candidate", "xml");{
+    		     xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
+		     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
     }
     configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
             cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
@@ -176,6 +176,9 @@ fi
 new "wait backend"
 wait_backend
     
+new "cli version"
+expectpart "$($clixon_cli -1 -f $cfg -V)" 0 "Clixon version $CLIXON_VERSION" "Clixon main example version"
+
 new "cli configure top"
 expectpart "$($clixon_cli -1 -f $cfg set interfaces)" 0 "^$"
 
@@ -229,7 +232,7 @@ new "cli success validate"
 expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 0 "^$"
 
 new "cli compare diff"
-expectpart "$($clixon_cli -1 -f $cfg -l o show compare text)" 0 "+         address 1.2.3.4"
+expectpart "$($clixon_cli -1 -f $cfg -l o show compare text)" 0 "+\ *address 1.2.3.4"
 
 new "cli start shell"
 expectpart "$($clixon_cli -1 -f $cfg -l o shell echo foo)" 0 "foo" 

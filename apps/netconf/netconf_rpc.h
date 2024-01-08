@@ -41,10 +41,10 @@
 
 /*
  * Prototypes
- */ 
+ */
 int 
-netconf_rpc_dispatch(clicon_handle h,
-                     cxobj        *xn, 
+netconf_rpc_dispatch(clixon_handle h,
+                     cxobj        *xn,
                      cxobj       **xret,
                      int          *eof);
 

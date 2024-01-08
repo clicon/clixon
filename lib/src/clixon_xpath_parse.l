@@ -72,9 +72,10 @@ There are some special lexical rules in https://www.w3.org/TR/xpath-10
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
-#include "clixon_log.h"
 #include "clixon_string.h"
 #include "clixon_xml.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_parse.h"
@@ -91,7 +92,7 @@ There are some special lexical rules in https://www.w3.org/TR/xpath-10
 #define _XPY ((clixon_xpath_yacc *)_yy)
 
 #undef clixon_xpath_parsewrap
-int 
+int
 clixon_xpath_parsewrap(void)
 {
     return 1;
@@ -120,7 +121,7 @@ ncname     {namestart}{namechar}*
 %s ALITERAL
 
 %%
-<TOKEN0>[ \t]            
+<TOKEN0>[ \t]
 <TOKEN0>\n               { _XPY->xpy_linenum++; }
 <TOKEN0>\r               { }
 <TOKEN0><<EOF>>          { return X_EOF; }
@@ -147,11 +148,11 @@ ncname     {namestart}{namechar}*
 
 <TOKEN0>{ncname}         { /* See lexical rules 2 and 3 in the file header */
                            clixon_xpath_parselval.string = strdup(yytext);
-                           return NCNAME; 
-                         } 
+                           return NCNAME;
+                         }
 <TOKEN0>.                { fprintf(stderr,"LEXICAL ERROR\n"); return -1; }
 
-<TOKEN2>[ \t]            
+<TOKEN2>[ \t]
 <TOKEN2>\n               { _XPY->xpy_linenum++; }
 <TOKEN2>\r               { }
 <TOKEN2><<EOF>>          { return X_EOF; }
@@ -175,15 +176,15 @@ ncname     {namestart}{namechar}*
 <TOKEN2>\'               { BEGIN(TOKEN0); _XPY->xpy_lex_string_state=TOKEN2; BEGIN(ALITERAL); return APOST; }
 <TOKEN2>\-?({integer}|{real}) { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext); return NUMBER; }
 
-<TOKEN2>comment\(        { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext);  striplast(clixon_xpath_parselval.string); return NODETYPE; } 
-<TOKEN2>text\(           { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext);  striplast(clixon_xpath_parselval.string); return NODETYPE; } 
-<TOKEN2>processing-instructions\( { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext); striplast(clixon_xpath_parselval.string); return NODETYPE; } 
-<TOKEN2>node\(          { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext);  striplast(clixon_xpath_parselval.string); return NODETYPE; } 
+<TOKEN2>comment\(        { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext);  striplast(clixon_xpath_parselval.string); return NODETYPE; }
+<TOKEN2>text\(           { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext);  striplast(clixon_xpath_parselval.string); return NODETYPE; }
+<TOKEN2>processing-instructions\( { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext); striplast(clixon_xpath_parselval.string); return NODETYPE; }
+<TOKEN2>node\(          { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext);  striplast(clixon_xpath_parselval.string); return NODETYPE; }
 <TOKEN2>{ncname}         { /* See lexical rules 2 and 3 in the file header */
-                           BEGIN(TOKEN0); 
+                           BEGIN(TOKEN0);
                            clixon_xpath_parselval.string = strdup(yytext);
-                           return NCNAME; 
-                        } 
+                           return NCNAME;
+                        }
 <TOKEN2>.                { fprintf(stderr,"LEXICAL ERROR\n"); return -1; }
 
 <QLITERAL>\"            { BEGIN(_XPY->xpy_lex_string_state); return QUOTE; }
@@ -205,7 +206,7 @@ xpath_scan_init(clixon_xpath_yacc *xpy)
   xpy->xpy_lexbuf = yy_scan_string (xpy->xpy_parse_string);
 #if 1 /* XXX: just to use unput to avoid warning  */
   if (0)
-    yyunput(0, ""); 
+    yyunput(0, "");
 #endif
 
   return 0;

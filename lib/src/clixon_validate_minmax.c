@@ -55,17 +55,17 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_string.h"
-#include "clixon_err.h"
-#include "clixon_log.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_data.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_options.h"
@@ -80,6 +80,7 @@
 #include "clixon_validate_minmax.h"
 
 /*! New element last in list, check if already exists if sp return -1
+ *
  * @param[in]  vec   Vector of existing entries (new is last)
  * @param[in]  i1    The new entry is placed at vec[i1]
  * @param[in]  vlen  Length of entry
@@ -107,8 +108,8 @@ unique_search_xpath(cxobj  *x,
     char   *bi;
 
     /* Collect tuples */
-    if (xpath_vec(x, nsc, "%s", &xvec, &xveclen, xpath) < 0) 
-        goto done;      
+    if (xpath_vec(x, nsc, "%s", &xvec, &xveclen, xpath) < 0)
+        goto done;
     for (i=0; i<xveclen; i++){
         xi = xvec[i];
         if ((bi = xml_body(xi)) == NULL)
@@ -123,7 +124,7 @@ unique_search_xpath(cxobj  *x,
         }
         (*slen) ++;
         if (((*svec) = realloc((*svec), (*slen)*sizeof(char*))) == NULL){
-            clicon_err(OE_UNIX, errno, "realloc");
+            clixon_err(OE_UNIX, errno, "realloc");
             goto done;
         }
         (*svec)[(*slen)-1] = bi;
@@ -131,7 +132,7 @@ unique_search_xpath(cxobj  *x,
     retval = 1;
  done:
     if (xvec)
-        free(xvec);    
+        free(xvec);
     return retval;
  fail:
     retval = 0;
@@ -186,6 +187,7 @@ check_insert_duplicate(char **vec,
 }
 
 /*! Given a list with unique constraint, detect duplicates
+ *
  * @param[in]  x     The first element in the list (on return the last)
  * @param[in]  xt    The parent of x (a list)
  * @param[in]  y     Its yang spec (Y_LIST)
@@ -209,8 +211,8 @@ check_insert_duplicate(char **vec,
  * when a list entry is created.
  */
 static int
-check_unique_list_direct(cxobj     *x, 
-                         cxobj     *xt, 
+check_unique_list_direct(cxobj     *x,
+                         cxobj     *xt,
                          yang_stmt *y,
                          yang_stmt *yu,
                          cxobj    **xret)
@@ -235,12 +237,12 @@ check_unique_list_direct(cxobj     *x,
               yang_find(y, Y_ORDERED_BY, "user") == NULL);
     cvk = yang_cvec_get(yu);
     /* nr of unique elements to check */
-    if ((clen = cvec_len(cvk)) == 0){ 
+    if ((clen = cvec_len(cvk)) == 0){
         /* No keys: no checks necessary */
         goto ok;
     }
     if ((vec = calloc(clen*xml_child_nr(xt), sizeof(char*))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     /* A vector is built with key-values, for each iteration check "backward" in the vector
@@ -256,7 +258,7 @@ check_unique_list_direct(cxobj     *x,
              * referenced leafs are not taken into account */
             str = cv_string_get(cvi);
             if (index(str, '/') != NULL){
-                clicon_err(OE_YANG, 0, "Multiple descendant nodes not allowed (w /)");
+                clixon_err(OE_YANG, 0, "Multiple descendant nodes not allowed (w /)");
                 goto done;
             }
             if ((xi = xml_find(x, str)) == NULL)
@@ -289,6 +291,7 @@ check_unique_list_direct(cxobj     *x,
 }
 
 /*! Given a list with unique constraint, detect duplicates
+ *
  * @param[in]  x     The first element in the list (on return the last)
  * @param[in]  xt    The parent of x (a list)
  * @param[in]  y     Its yang spec (Y_LIST)
@@ -312,8 +315,8 @@ check_unique_list_direct(cxobj     *x,
  * when a list entry is created.
  */
 static int
-check_unique_list(cxobj     *x, 
-                  cxobj     *xt, 
+check_unique_list(cxobj     *x,
+                  cxobj     *xt,
                   yang_stmt *y,
                   yang_stmt *yu,
                   cxobj    **xret)
@@ -321,7 +324,7 @@ check_unique_list(cxobj     *x,
     int       retval = -1;
     cg_var    *cvi; /* unique node name */
     char     **svec = NULL; /* vector of search results */
-    size_t     slen = 0; 
+    size_t     slen = 0;
     char      *xpath0 = NULL;
     char      *xpath1 = NULL;
     int        ret;
@@ -337,11 +340,11 @@ check_unique_list(cxobj     *x,
     }
     cvi = cvec_i(cvk, 0);
     if (cvi == NULL || (xpath0 = cv_string_get(cvi)) == NULL){
-        clicon_err(OE_YANG, 0, "No descendant schemanode");
+        clixon_err(OE_YANG, 0, "No descendant schemanode");
         goto done;
     }
     /* Check if direct schmeanode-id , ie not xpath */
-    if (index(xpath0, '/') == NULL){ 
+    if (index(xpath0, '/') == NULL){
         retval = check_unique_list_direct(x, xt, y, yu, xret);
         goto done;
     }
@@ -404,7 +407,7 @@ check_minmax(cxobj     *xp,
     yang_stmt  *ymin; /* yang min */
     yang_stmt  *ymax; /* yang max */
     cg_var     *cv;
-    
+
     if ((ymin = yang_find(y, Y_MIN_ELEMENTS, NULL)) != NULL){
         cv = yang_cv_get(ymin);
         if (nr < cv_uint32_get(cv)){
@@ -431,13 +434,14 @@ check_minmax(cxobj     *xp,
 }
 
 /*! Check if there is any empty list (no x elements) and check min-elements
- * Note recurse for non-presence container 
+ *
  * @param[in]  xt    XML node
  * @param[in]  yt    YANG node
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (xret set)
  * @retval    -1     Error
+ * @note recurse for non-presence container 
  */
 static int
 check_empty_list_minmax(cxobj     *xt,
@@ -485,7 +489,7 @@ xml_yang_minmax_newlist(cxobj     *x,
     int        retval = -1;
     yang_stmt *yu;
     int        ret;
-    
+
     /* Here new (first element) of lists only
      * First check unique keys direct children
      */
@@ -518,7 +522,7 @@ xml_yang_minmax_newlist(cxobj     *x,
     retval = 0;
     goto done;
 }
-    
+
 /*! Perform gap analysis in a child-vector interval [ye,y]
  *
  * Gap analysis here meaning if there is a list x with min-element constraint but there are no
@@ -566,7 +570,7 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
                     goto fail;
                 ye = yn_each(yt, ye);
             } while(ye != NULL && /* to avoid livelock (shouldnt happen) */
-                    ye != ych); 
+                    ye != ych);
     }
     *yep = ye;
     retval = 1;
@@ -657,7 +661,7 @@ xml_yang_minmax_recurse(cxobj  *xt,
     int           nr = 0;
     int           ret;
     yang_stmt    *yt;
-    
+
     yt = xml_spec(xt); /* If yt == NULL, then no gap-analysis is done */
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
         if ((y = xml_spec(x)) == NULL)
@@ -692,7 +696,7 @@ xml_yang_minmax_recurse(cxobj  *xt,
         }
         else{
             /* equal: error */
-            if (y == yprev){ 
+            if (y == yprev){
                 /* Only lists and leaf-lists are allowed to be more than one */
                 if (xret && netconf_minmax_elements_xml(xret, xml_parent(x), xml_name(x), 1) < 0)
                     goto done;
@@ -720,10 +724,10 @@ xml_yang_minmax_recurse(cxobj  *xt,
                         goto done;
                     if (ret == 0)
                         goto fail;
-                }               
+                }
             }
-            yprev = y;    
-        }           
+            yprev = y;
+        }
     }
     /* After traversal checks;
        gap analysis */
@@ -736,7 +740,7 @@ xml_yang_minmax_recurse(cxobj  *xt,
             if ((ret = check_empty_list_minmax(xt, ye, xret)) < 0)
                 goto done;
             if (ret == 0)
-                goto fail;          
+                goto fail;
         } while((ye = yn_each(yt, ye)) != NULL);
     }
     ret = 1;

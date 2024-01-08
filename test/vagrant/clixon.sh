@@ -41,14 +41,13 @@ test -d src/cligen || (cd src;git clone https://github.com/clicon/cligen.git)
 cd src/cligen
 git pull origin master
 
+./configure
+
 if [ $release = "freebsd" -o $release = "dragonfly" ]; then
-    ./configure
     MAKE=$(which gmake)
 elif [ $release = "arch" ]; then
-    ./configure --prefix=/usr
     MAKE=/usr/bin/make
 else
-    ./configure --prefix=/usr
     MAKE=$(which make)
 fi
 echo "MAKE:$MAKE"
@@ -63,20 +62,30 @@ cd src/clixon
 git pull origin master
 
 if [ $release = "freebsd" -o $release = "dragonfly" ]; then
-    LDFLAGS=-L/usr/local/lib ./configure --with-cligen=/ --with-restconf=${with_restconf}
+    LDFLAGS="-L/usr/local/lib" CPPFLAGS="-I/usr/local/include" ./configure --with-restconf=${with_restconf}
 else
    # Problems with su not having "sbin" in path on centos when when we run tests later
-    ./configure --sbindir=/usr/sbin --libdir=/usr/lib --with-restconf=${with_restconf}
+    LDFLAGS="-L/usr/local/lib" CPPFLAGS="-I/usr/local/include" ./configure --sbindir=/usr/sbin --libdir=/usr/lib --with-restconf=${with_restconf}
 fi
 $MAKE clean
 $MAKE -j10
 sudo $MAKE install
 (cd example; $MAKE)
-(cd util; $MAKE)
 (cd example; sudo $MAKE install)
-(cd util; sudo $MAKE install)
 sudo ldconfig
-cd test
+
+# Clixon-util
+cd
+test -d src/clixon-util || (cd src;git clone https://github.com/clicon/clixon-util.git)
+cd src/clixon-util
+git pull origin main
+LDFLAGS="-L/usr/local/lib" CPPFLAGS="-I/usr/local/include" ./configure
+$MAKE clean
+$MAKE -j10
+sudo $MAKE install
+
+cd
+cd src/clixon/test
 echo "#!/usr/bin/env bash" > ./site.sh
 echo "IPv6=true" >> ./site.sh
 if [ $release = "freebsd" -o $release = "dragonfly" ]; then

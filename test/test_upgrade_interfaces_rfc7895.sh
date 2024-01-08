@@ -18,7 +18,7 @@
 # Rename /interfaces/interface/description to /interfaces/interface/descr (2016)
 # Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr (2018)
 # Change type /interfaces/interface/statistics/in-octets to decimal64 and divide all values with 1000 (2018)
-# This is backwrd compatible RFC7895, see also test_upgrade_interfaces.sh for RFC8525
+# This is backward compatible RFC7895, see also test_upgrade_interfaces.sh for RFC8525
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -38,9 +38,9 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>interfaces:if-mib</CLICON_FEATURE>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_DIR>/usr/local/lib/example/backend</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_MODSTATE>true</CLICON_XMLDB_MODSTATE>
   <CLICON_XML_CHANGELOG>false</CLICON_XML_CHANGELOG>

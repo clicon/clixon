@@ -38,6 +38,7 @@
 #define _CLIXON_DISPATCH_DISPATCHER_H
 
 /*! Prototype for a function to handle a path
+ *
  * minimally needs the path it's working on, but probably
  * we want to hand down cached data somehow
  * @param[in]  h        Generic handler

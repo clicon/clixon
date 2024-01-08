@@ -50,12 +50,12 @@ enum autocli_op{
 /*
  * Prototypes
  */
-int autocli_module(clicon_handle h, char *modname, int *enable);
-int autocli_completion(clicon_handle h, int *completion);
-int autocli_grouping_treeref(clicon_handle h, int *grouping_treeref);
-int autocli_list_keyword(clicon_handle h, autocli_listkw_t *listkw);
-int autocli_compress(clicon_handle h, yang_stmt *ys, int *compress);
-int autocli_treeref_state(clicon_handle h, int *treeref_state);
-int autocli_edit_mode(clicon_handle h, char *keyw, int *flag);
+int autocli_module(clixon_handle h, char *modname, int *enable);
+int autocli_completion(clixon_handle h, int *completion);
+int autocli_grouping_treeref(clixon_handle h, int *grouping_treeref);
+int autocli_list_keyword(clixon_handle h, autocli_listkw_t *listkw);
+int autocli_compress(clixon_handle h, yang_stmt *ys, int *compress);
+int autocli_treeref_state(clixon_handle h, int *treeref_state);
+int autocli_edit_mode(clixon_handle h, char *keyw, int *flag);
 
 #endif  /* _CLI_AUTOCLI_H_ */

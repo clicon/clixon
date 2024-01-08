@@ -53,15 +53,15 @@
  */
 int        ys_grouping_resolve(yang_stmt *yuses, char *prefix, char *name, yang_stmt **ygrouping0);
 yang_stmt *yang_parse_file(FILE *fp, const char *name, yang_stmt *ysp);
-int        yang_file_find_match(clicon_handle h, const char *module, const char *revision, cbuf *fbuf);
-yang_stmt *yang_parse_filename(clicon_handle h, const char *filename, yang_stmt  *ysp);
-yang_stmt *yang_parse_module(clicon_handle h, const char *module, const char *revision, yang_stmt *yspec, char *origname);
-int        yang_parse_post(clicon_handle h, yang_stmt *yspec, int modmin);
-int        yang_spec_parse_module(clicon_handle h, const char *module,
+int        yang_file_find_match(clixon_handle h, const char *module, const char *revision, cbuf *fbuf);
+yang_stmt *yang_parse_filename(clixon_handle h, const char *filename, yang_stmt  *ysp);
+yang_stmt *yang_parse_module(clixon_handle h, const char *module, const char *revision, yang_stmt *yspec, char *origname);
+int        yang_parse_post(clixon_handle h, yang_stmt *yspec, int modmin);
+int        yang_spec_parse_module(clixon_handle h, const char *module,
                                   const char *revision, yang_stmt *yspec);
 yang_stmt *yang_parse_str(char *str, const char *name, yang_stmt *yspec);
-int        yang_spec_parse_file(clicon_handle h, char *filename, yang_stmt *yspec);
-int        yang_spec_load_dir(clicon_handle h, char *dir, yang_stmt *yspec);
+int        yang_spec_parse_file(clixon_handle h, char *filename, yang_stmt *yspec);
+int        yang_spec_load_dir(clixon_handle h, char *dir, yang_stmt *yspec);
 int        ys_parse_date_arg(char *datearg, uint32_t *dateint);
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys, const char *filename, char *extra);

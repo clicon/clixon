@@ -10,9 +10,6 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-# Raw unit tester of backend unix socket.
-: ${clixon_util_socket:=$(which clixon_util_socket)}
-
 APPNAME=example
 
 # Common NACM scripts
@@ -116,7 +113,7 @@ cat <<EOF > $cfg
   <CLICON_SOCK_FAMILY>$family</CLICON_SOCK_FAMILY>
   <CLICON_SOCK>$sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_NACM_DISABLED_ON_EMPTY>true</CLICON_NACM_DISABLED_ON_EMPTY>

@@ -5,10 +5,10 @@ module clixon-lib {
 
     import ietf-yang-types {
         prefix yang;
-    }    
+    }
     import ietf-netconf-monitoring {
         prefix ncm;
-    }    
+    }
     import ietf-yang-metadata {
         prefix "md";
     }
@@ -21,7 +21,7 @@ module clixon-lib {
     description
         "***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2009-2019 Olof Hagsand
-       Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+       Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
        
        This file is part of CLIXON
 
@@ -68,6 +68,19 @@ module clixon-lib {
        - objectexisted
       ";
 
+    revision 2023-11-01 {
+        description
+            "Added ignore-compare extension
+             Added creator meta configuration
+             Removed obsolete extension autocli-op
+             Released in 6.5.0";
+    }
+    revision 2023-05-01 {
+        description
+            "Restructured and extended stats rpc to schema mountpoints
+             Moved datastore-format typedef from clixon-config
+            ";
+    }
     revision 2023-03-01 {
         description
             "Added creator meta-object";
@@ -138,6 +151,27 @@ module clixon-lib {
         description
             "Common operations that can be performed on a service";
     }
+    typedef datastore_format{
+        description
+            "Datastore format (only xml and json implemented in actual data.";
+        type enumeration{
+            enum xml{
+                description
+                "Save and load xmldb as XML
+                 More specifically, such a file looks like: <config>...</config> provided
+                 DATASTORE_TOP_SYMBOL is 'config'";
+            }
+            enum json{
+                description "Save and load xmldb as JSON";
+            }
+            enum text{
+                description "'Curly' C-like text format";
+            }
+            enum cli{
+                description "CLI format";
+            }
+        }
+    }
     identity snmp {
         description
             "SNMP";
@@ -152,7 +186,7 @@ module clixon-lib {
     }
     identity restconf {
         description
-            "RESTCONF either as HTTP/1 or /2, TLS or not, reverese proxy (eg fcgi/nginx) or native";
+            "RESTCONF either as HTTP/1 or /2, TLS or not, reverse proxy (eg fcgi/nginx) or native";
         base ncm:transport;
     }
     identity cli {
@@ -160,20 +194,12 @@ module clixon-lib {
             "A CLI session";
         base ncm:transport;
     }
-    extension autocli-op {
-        description 
-            "Takes an argument an operation defing how to modify the clispec at 
-         this point in the YANG tree for the automated generated CLI.
-         Note that this extension is only used in clixon_cli.
-         Operations is expected to be extended, but the following operations are defined:
-         - hide                                                   This command is active but not shown by ? or TAB (meaning, it hides the auto-completion of commands)
-                 - hide-database                                  This command hides the database
-         - hide-database-auto-completion  This command hides the database and the auto completion (meaning, this command acts as both commands above)
-         Obsolete: use clixon-autocli:hide and clixon-autocli:hide-show  instead";
-        argument cliop;
-        status obsolete;
+    extension ignore-compare {
+        description
+            "The object should be ignored when comparing device configs for equality.
+             One example is auto-created objects by the server, such as uid.
+             Another example is a plain-text password is changed to an encrypted by the server.";
     }
-
     md:annotation creator {
         type string;
         description
@@ -182,7 +208,22 @@ module clixon-lib {
              create the same object. When such a service is deleted (or changed) one needs to keep
              track of which service created what.
              Limitations: only objects that are actually added or deleted. 
-             A sub-object wil not be noted";
+             A sub-object will not be noted";
+    }
+    container creators{
+        config false;
+        description "Meta-data for creator attribute.";
+        list creator {
+            key name;
+            leaf name {
+                description "Name of creator / service (instance) name";
+                type string;
+            }
+            leaf-list path {
+                description "Path to object";
+                type string;
+            }
+        }
     }
     rpc debug {
         description "Set debug level of backend.";
@@ -195,8 +236,15 @@ module clixon-lib {
     rpc ping {
         description "Check aliveness of backend daemon.";
     }
-    rpc stats {
-        description "Clixon XML statistics.";
+    rpc stats { /* Could be moved to state */
+        description "Clixon yang and datastore statistics.";
+        input {
+            leaf modules {
+                description "If enabled include per-module statistics";
+                type boolean;
+                mandatory false;
+            }
+        }
         output {
             container global{
                 description
@@ -216,7 +264,8 @@ module clixon-lib {
                     type uint64;
                 }
             }
-            list datastore{
+            container datastores{
+              list datastore{
                 description "Per datastore statistics for cxobj";
                 key "name";
                 leaf name{
@@ -232,9 +281,11 @@ module clixon-lib {
                     description "Size in bytes of internal datastore cache of datastore tree.";
                     type uint64;
                 }
+              }
             }
-            list module{
-                description "Per YANG module statistics";
+            container module-sets{
+              list module-set{
+                description "Statistics per group of module, eg top-level and mount-points";
                 key "name";
                 leaf name{
                     description "Name of YANG module.";
@@ -242,14 +293,33 @@ module clixon-lib {
                 }
                 leaf nr{
                     description
-                        "Number of YANG objects. That is number of residing YANG objects";
+                        "Total number of YANG objects in set";
                     type uint64;
                 }
                 leaf size{
                     description
-                        "Size in bytes of internal YANG object representation.";
+                        "Total size in bytes of internal YANG object representation for module set";
                     type uint64;
                 }
+                list module{
+                    description "Statistics per module (if modules set in input)";
+                    key "name";
+                    leaf name{
+                        description "Name of YANG module.";
+                        type string;
+                    }
+                    leaf nr{
+                        description
+                            "Number of YANG objects. That is number of residing YANG objects";
+                        type uint64;
+                    }
+                    leaf size{
+                        description
+                            "Size in bytes of internal YANG object representation.";
+                        type uint64;
+                    }
+                }
+              }
             }
         }
     }
@@ -262,7 +332,6 @@ module clixon-lib {
             }
         }
     }
-
     rpc process-control {
         description
             "Control a specific process or daemon: start/stop, etc.

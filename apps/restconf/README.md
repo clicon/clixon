@@ -73,11 +73,7 @@ Start clixon backend daemon (if not already started)
 
 Start clixon restconf daemon
 ```
-  sudo clixon_restconf -f /usr/local/etc/example.xml
-```
-On FreeBSD:
-```
-  sudo clixon_restconf -f /usr/local/etc/example.xml
+  sudo clixon_restconf -f /usr/local/etc/clixon/example.xml
 ```
 
 Make restconf calls with curl (or other http client). Example of writing a new interface specification:

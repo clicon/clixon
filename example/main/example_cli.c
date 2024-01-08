@@ -44,29 +44,41 @@
 #include <errno.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>
 #include <netinet/in.h>
-#include <signal.h> /* matching strings */
 
-/* clicon */
+/* clixon */
 #include <cligen/cligen.h>
 #include <clixon/clixon.h>
 #include <clixon/clixon_cli.h>
 #include <clixon/cli_generate.h>
 
+/*! Error/log message callback
+ *
+ * Start cli with -- -e
+ * make errmsg/logmsg callback
+ */
+static errmsg_t *_errmsg_callback_fn = NULL;
+
 /*! Yang schema mount
  *
- * Start backend with -- -m <yang> -M <namespace>
+ * Start cli with -- -m <yang> -M <namespace>
  * Mount this yang on mountpoint
  */
 static char *_mount_yang = NULL;
 static char *_mount_namespace = NULL;
 
-/*! Example cli function */
+static clixon_plugin_api api;
+
+/*! Example cli function 
+ */
 int
-mycallback(clicon_handle h, cvec *cvv, cvec *argv)
+mycallback(clixon_handle h,
+           cvec         *cvv,
+           cvec         *argv)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
@@ -80,10 +92,10 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
 
     if ((nsc = xml_nsctx_init(NULL, "urn:example:clixon")) == NULL)
         goto done;
-    /* Show eth0 interfaces config using XPATH */
+    /* Show eth0 interfaces config using XPath */
     if (clicon_rpc_get_config(h, NULL, "running",
                               "/interfaces/interface[name='eth0']",
-                              nsc, NULL, 
+                              nsc, NULL,
                               &xret) < 0)
         goto done;
     if (clixon_xml2file(stdout, xret, 0, 1, NULL, cligen_output, 0, 1) < 0)
@@ -97,10 +109,11 @@ mycallback(clicon_handle h, cvec *cvv, cvec *argv)
     return retval;
 }
 
-/*! Example "downcall", ie initiate an RPC to the backend */
+/*! Example "downcall", ie initiate an RPC to the backend 
+ */
 int
-example_client_rpc(clicon_handle h, 
-                   cvec         *cvv, 
+example_client_rpc(clixon_handle h,
+                   cvec         *cvv,
                    cvec         *argv)
 {
     int        retval = -1;
@@ -127,7 +140,7 @@ example_client_rpc(clicon_handle h,
     if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_netconf_error(xerr, "Get configuration", NULL);
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
         goto done;
     }
     /* Print result */
@@ -136,7 +149,7 @@ example_client_rpc(clicon_handle h,
     fprintf(stdout,"\n");
 
     /* pretty-print:
-       clixon_txt2file(stdout, xml_child_i(xret, 0), 0, cligen_output, 0);
+       clixon_text2file(stdout, xml_child_i(xret, 0), 0, cligen_output, 0);
     */
     retval = 0;
  done:
@@ -148,7 +161,11 @@ example_client_rpc(clicon_handle h,
 }
 
 /*! Translate function from an original value to a new.
+ *
  * In this case, assume string and increment characters, eg HAL->IBM
+ * @param[in] h    Clixon handle
+ * @retval    0    OK
+ * @retval   -1    Error
  */
 int
 cli_incstr(cligen_handle h,
@@ -156,13 +173,13 @@ cli_incstr(cligen_handle h,
 {
     char *str;
     int i;
-    
-    /* Filter out other than strings 
+
+    /* Filter out other than strings
      * this is specific to this example, one can do translation */
     if (cv == NULL || cv_type_get(cv) != CGV_STRING)
         return 0;
     if ((str = cv_string_get(cv)) == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "cv string is NULL");
+        clixon_err(OE_PLUGIN, EINVAL, "cv string is NULL");
         return -1;
     }
     for (i=0; i<strlen(str); i++)
@@ -184,7 +201,7 @@ cli_incstr(cligen_handle h,
  * @see RFC 8528
  */
 int
-example_cli_yang_mount(clicon_handle   h,
+example_cli_yang_mount(clixon_handle   h,
                        cxobj          *xt,
                        int            *config,
                        validate_level *vl,
@@ -199,7 +216,7 @@ example_cli_yang_mount(clicon_handle   h,
         *vl = VL_FULL;
     if (yanglib && _mount_yang){
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
@@ -226,25 +243,150 @@ example_cli_yang_mount(clicon_handle   h,
     return retval;
 }
 
+/*! Callback to customize log, error, or debug message
+ *
+ * @param[in]     h        Clixon handle
+ * @param[in]     fn       Inline function name (when called from clixon_err() macro)
+ * @param[in]     line     Inline file line number (when called from clixon_err() macro)
+ * @param[in]     type     Log message type
+ * @param[in,out] category Clixon error category, See enum clixon_err
+ * @param[in,out] suberr   Error number, typically errno
+ * @param[in]     xerr     Netconf error xml tree on the form: <rpc-error>
+ * @param[in]     format   Format string
+ * @param[in]     ap       Variable argument list
+ * @param[out]    cbmsg    Log string as cbuf, if set bypass ordinary logging
+ * @retval        0        OK
+ * @retval       -1        Error
+ * When cbmsg is set by a plugin, no other plugins are called. category and suberr
+ * can be rewritten by any plugin.
+ */
+int
+myerrmsg(clixon_handle        h,
+         const char          *fn,
+         const int            line,
+         enum clixon_log_type type,
+         int                 *category,
+         int                 *suberr,
+         cxobj               *xerr,
+         const char          *format,
+         va_list              ap,
+         cbuf               **cbmsg)
+{
+    int    retval = -1;
+    cbuf  *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
+        goto done;
+    }
+    // XXX Number of args in ap (eg %:s) must be known
+    // vcprintf(cb, "My new err-string %s : %s", ap);
+    cprintf(cb, "My new err-string");
+    if (category)
+        *category = -1;
+    if (suberr)
+        *suberr = 0;
+    *cbmsg = cb;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Example cli function which redirects customized error to myerrmsg above
+ */
+int
+myerror(clixon_handle h,
+        cvec         *cvv,
+        cvec         *argv)
+{
+    int       retval = -1;
+    cxobj    *xret = NULL;
+    errmsg_t *oldfn = NULL;
+
+    _errmsg_callback_fn = myerrmsg;
+    if (cli_remove(h, cvv, argv) < 0)
+        goto done;
+    retval = 0;
+ done:
+    _errmsg_callback_fn = oldfn;
+    if (xret)
+        xml_free(xret);
+    return retval;
+}
+
+/*! Callback to customize log, error, or debug message
+ *
+ * @param[in]     h        Clixon handle
+ * @param[in]     fn       Inline function name (when called from clixon_err() macro)
+ * @param[in]     line     Inline file line number (when called from clixon_err() macro)
+ * @param[in]     type     Log message type
+ * @param[in,out] category Clixon error category, See enum clixon_err
+ * @param[in,out] suberr   Error number, typically errno
+ * @param[in]     xerr     Netconf error xml tree on the form: <rpc-error>
+ * @param[in]     format   Format string
+ * @param[in]     ap       Variable argument list
+ * @param[out]    cbmsg    Log string as cbuf, if set bypass ordinary logging
+ * @retval        0        OK
+ * @retval       -1        Error
+ * When cbmsg is set by a plugin, no other plugins are called. category and suberr
+ * can be rewritten by any plugin.
+ */
+int
+example_cli_errmsg(clixon_handle        h,
+                   const char          *fn,
+                   const int            line,
+                   enum clixon_log_type type,
+                   int                 *category,
+                   int                 *suberr,
+                   cxobj               *xerr,
+                   const char          *format,
+                   va_list              ap,
+                   cbuf               **cbmsg)
+{
+    if (_errmsg_callback_fn != NULL){
+        return (_errmsg_callback_fn)(h, fn, line, type, category, suberr, xerr, format, ap, cbmsg);
+    }
+    return 0;
+}
+
+/*! Callback for printing version output and exit
+ *
+ * A plugin can customize a version (or banner) output on stdout. 
+ * Several version strings can be printed if there are multiple callbacks.
+ * If not regstered plugins exist, clixon prints CLIXON_VERSION_STRING
+ * Typically invoked by command-line option -V
+ * @param[in]  h   Clixon handle
+ * @param[in]  f   Output file
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+example_version(clixon_handle h,
+                FILE         *f)
+{
+    cligen_output(f, "Clixon main example version 0\n");
+    return 0;
+}
+
 #ifndef CLIXON_STATIC_PLUGINS
 static clixon_plugin_api api = {
-    "example",          /* name */
-    clixon_plugin_init, /* init */
-    NULL,               /* start */
-    NULL,               /* exit */
-    .ca_prompt=NULL,    /* cli_prompthook_t */
-    .ca_suspend=NULL,   /* cligen_susp_cb_t */
-    .ca_interrupt=NULL, /* cligen_interrupt_cb_t */
-    .ca_yang_mount=example_cli_yang_mount          /* RFC 8528 schema mount */
+    "example",                              /* name */
+    clixon_plugin_init,                     /* init */
+    NULL,                                   /* start */
+    NULL,                                   /* exit */
+    .ca_yang_mount= example_cli_yang_mount, /* RFC 8528 schema mount */
+    .ca_errmsg = example_cli_errmsg,        /* customize log, error, debug message */
+    .ca_version   = example_version         /* Customized version string */
 };
 
 /*! CLI plugin initialization
+ *
  * @param[in]  h    Clixon handle
- * @retval     NULL Error with clicon_err set
+ * @retval     NULL Error
  * @retval     api  Pointer to API struct
  */
 clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
     struct timeval tv;
     int            c;
@@ -268,9 +410,11 @@ clixon_plugin_init(clicon_handle h)
             break;
         }
     if ((_mount_yang && !_mount_namespace) || (!_mount_yang && _mount_namespace)){
-        clicon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
+        clixon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
         goto done;
     }
+    /* XXX Not implemented: CLI completion for mountpoints, see clixon-controller
+     */
     return &api;
  done:
     return NULL;

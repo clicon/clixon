@@ -47,7 +47,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
@@ -62,7 +62,7 @@
 #define YY_NO_INPUT
 
 /* typecast macro */
-#define _TS ((clixon_text_syntax_yacc *)_ts) 
+#define _TS ((clixon_text_syntax_yacc *)_ts)
 
 #undef clixon_xml_parsewrap
 int clixon_text_syntax_parsewrap(void)

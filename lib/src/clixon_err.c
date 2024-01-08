@@ -35,9 +35,7 @@
 
  *
  * Errors may be syslogged using LOG_ERR, and printed to stderr, as controlled
- * by clicon_log_init
- * global error variables are set:
- *  clicon_errno, clicon_suberrno, clicon_err_reason.
+ * by clixon_log_init
  */
 
 #ifdef HAVE_CONFIG_H
@@ -54,6 +52,7 @@
 #include <syslog.h>
 #include <string.h>
 #include <time.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/types.h>
 
@@ -61,9 +60,17 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_log.h"
 #include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_err.h"
+#include "clixon_xml_io.h"
+#include "clixon_yang_module.h"
+#include "clixon_plugin.h"
 
 /*
  * Types
@@ -74,8 +81,8 @@ struct errvec{
 };
 
 struct err_state{
-    int  es_errno;
-    int  es_suberrno;
+    int  es_category;
+    int  es_subnr;
     char es_reason[ERR_STRLEN];
 };
 
@@ -85,21 +92,29 @@ struct err_state{
  */
 struct clixon_err_cats {
     qelem_t             cec_qelem; /* List header */
-    enum clicon_err     cec_category;
+    enum clixon_err     cec_category;
     void               *cec_handle;
     clixon_cat_log_cb  *cec_logfn;
 };
 typedef struct clixon_err_cats clixon_err_cats;
 
+/*
+ * Local Variables
+ */
+
+/* Cache handle since some error calls does not have handle access */
+static clixon_handle _err_clixon_h = NULL;
 /* Internal global list of category callbacks */
 static clixon_err_cats *_err_cat_list = NULL;
 
-/*
- * Variables
- */
-int  clicon_errno         = 0; /* See enum clicon_err XXX: hide this and change to err_category */
-int  clicon_suberrno      = 0; /* Corresponds to errno.h XXX: change to errno */
-char clicon_err_reason[ERR_STRLEN] = {0, };
+/* See enum clixon_err XXX: hide this and change to err_category */
+static int  _err_category         = 0; 
+
+/* Corresponds to errno.h XXX: change to errno */
+static int  _err_subnr      = 0;
+
+/* Clixon error reason */
+static char _err_reason[ERR_STRLEN] = {0, };
 
 /*
  * Error descriptions. Must stop with NULL element.
@@ -129,16 +144,75 @@ static struct errvec EV[] = {
     {NULL,                     -1}
 };
 
+/*! Initialize clixon errors
+ *
+ * Mainly to cache handle since many clixon_err calls may not have access to a handle
+ * @param[in]  h       Clixon handle
+ * @see clixon_log_init  inits log
+ */
+int
+clixon_err_init(clixon_handle h)
+{
+    if (h == NULL){
+        errno = EINVAL;
+        return -1;
+    }
+    _err_clixon_h = h;
+    return 0;
+}
+
+/*! Access function: return clixon category of last error
+ * 
+ * @retval      category     Clixon error category
+ * @see clixon_err_save
+ */
+int
+clixon_err_category(void)
+{
+    return _err_category;
+}
+
+/*! Access function: return clixon errno of last error
+ * 
+ * @retval      errno     Clixon sub error number
+ * @see clixon_err_save
+ */
+int
+clixon_err_subnr(void)
+{
+    return _err_subnr;
+}
+
+/*! Access function: return clixon error reason string of last error (direct pointer)
+ * 
+ * @retval      reason     Pointer to static string
+ * Consider copy or malloc instead of pointer to static string?
+ * @see clixon_err_save
+ */
+char *
+clixon_err_reason(void)
+{
+    return _err_reason;
+}
+
 static char *
-clicon_strerror1(int           err,
+clixon_strerror1(int           err,
                  struct errvec vec[])
 {
-    struct errvec *ev;
+    struct errvec *ev = NULL;
 
     for (ev=vec; ev->ev_err != -1; ev++)
         if (ev->ev_err == err)
             break;
-    return ev?(ev->ev_str?ev->ev_str:"unknown"):"CLICON unknown error";
+    return ev?(ev->ev_str?ev->ev_str:"unknown"):"Clixon unknown error";
+}
+
+/*! Translate from numeric error to string representation
+ */
+char *
+clixon_err_str(void)
+{
+    return clixon_strerror1(_err_category, EV);
 }
 
 /*! Clear error state and continue.
@@ -146,11 +220,11 @@ clicon_strerror1(int           err,
  * Clear error state and get on with it, typically non-fatal error and you wish to continue.
  */
 int
-clicon_err_reset(void)
+clixon_err_reset(void)
 {
-    clicon_errno = 0;
-    clicon_suberrno = 0;
-    memset(clicon_err_reason, 0, ERR_STRLEN);
+    _err_category = 0;
+    _err_subnr = 0;
+    memset(_err_reason, 0, ERR_STRLEN);
     return 0;
 }
 
@@ -178,160 +252,254 @@ find_category(int category)
     return found?cec:NULL;
 }
 
-/*! Report an error.
+/*! Report an error, constant args variant, see clixon_err() for most common function
  *
- * Library routines should call this function when an error occurs.
- * The function does he following:
- * - Logs to syslog with LOG_ERR
- * - Set global error variable name clicon_errno
- * - Set global reason string clicon_err_reason
- * Typically a call to clicon_err() is followed by a return -1 (or NULL) that signals 
- * a fatal error that fails early and loud.
- * However there are some cases where such an error does not cause an exit. This includes
- * CLI operations of callbacks and expand functions. The reason is that user-defined errors
- * should just signal an error and not terminate. To override this one can set a suberr to 
- * ESHUTDOWN.
- *
- * @note: err direction (syslog and/or stderr) controlled by clicon_log_init()
- *
- * @param[in]    fn       Inline function name (when called from clicon_err() macro)
- * @param[in]    line     Inline file line number (when called from clicon_err() macro)
- * @param[in]    category Clixon error category, See enum clicon_err
+ * @param[in]    h        Clixon handle
+ * @param[in]    fn       Inline function name (when called from clixon_err() macro)
+ * @param[in]    line     Inline file line number (when called from clixon_err() macro)
+ * @param[in]    category Clixon error category, See enum clixon_err
  * @param[in]    suberr   Error number, typically errno
- * @param[in]    format   Error string, format with argv
- * @see clicon_err_reset  Reset the global error variables.
+ * @param[in]    msg      Error string
+ * @retval       0        OK
+ * @retval      -1        Error
+ * @see clixon_err_fn for a variable-argument variant
  */
-int
-clicon_err_fn(const char *fn,
-              const int  line,
-              int        category,
-              int        suberr,
-              const char *format, ...) 
+static int
+clixon_err_args(clixon_handle h,
+                const char   *fn,
+                const int     line,
+                int           category,
+                int           suberr,
+                char         *msg)
 {
-    va_list args;
-    int     len;
-    char   *msg    = NULL;
-    int     retval = -1;
+    int                     retval = -1;
     struct clixon_err_cats *cec;
+    cbuf                   *cb = NULL;
     
     /* Set the global variables */
-    clicon_errno    = category;
-    clicon_suberrno = suberr;
-
-    /* first round: compute length of error message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
-        goto done;
-    }
-
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
-        goto done;
-    }
-    va_end(args);
-    strncpy(clicon_err_reason, msg, ERR_STRLEN-1);
+    strncpy(_err_reason, msg, ERR_STRLEN-1);
+    _err_category = category;
+    _err_subnr = suberr;
     /* Check category callbacks as defined in clixon_err_cat_reg */
     if ((cec = find_category(category)) != NULL &&
         cec->cec_logfn){
-        cbuf *cb = NULL;
         if ((cb = cbuf_new()) == NULL){
-            fprintf(stderr, "cbuf_new: %s\n", strerror(errno)); /* dont use clicon_err here due to recursion */
+            fprintf(stderr, "cbuf_new: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
             goto done;
         }
         if (cec->cec_logfn(cec->cec_handle, suberr, cb) < 0)
             goto done;
         /* Here we could take care of specific errno, like application-defined errors */
         if (fn)
-            clicon_log(LOG_ERR, "%s: %d: %s: %s: %s",
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %d: %s: %s: %s",
                        fn,
                        line,
-                       clicon_strerror(category),
+                       clixon_strerror1(category, EV),
                        cbuf_get(cb),
                        msg);
         else
-            clicon_log(LOG_ERR, "%s: %s: %s",
-                       clicon_strerror(category),
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %s: %s",
+                       clixon_strerror1(category, EV),
                        cbuf_get(cb),
                        msg);
-        if (cb)
-            cbuf_free(cb);
     }
     else if (suberr){   /* Actually log it */
         /* Here we could take care of specific errno, like application-defined errors */
         if (fn)
-            clicon_log(LOG_ERR, "%s: %d: %s: %s: %s", 
-                       fn,
-                       line,
-                       clicon_strerror(category),
-                       msg,
-                       suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %d: %s: %s: %s",
+                          fn,
+                          line,
+                          clixon_strerror1(category, EV),
+                          msg,
+                          suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
         else
-            clicon_log(LOG_ERR, "%s: %s: %s", 
-                       clicon_strerror(category),
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %s: %s",
+                       clixon_strerror1(category, EV),
                        msg,
                        suberr==XMLPARSE_ERRNO?"XML parse error":strerror(suberr));
     }
     else{
         if (fn)
-            clicon_log(LOG_ERR, "%s: %d: %s: %s", 
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %d: %s: %s",
                        fn,
                        line,
-                       clicon_strerror(category),
+                       clixon_strerror1(category, EV),
                        msg);
         else
-            clicon_log(LOG_ERR, "%s: %s", 
-                       clicon_strerror(category),
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s: %s",
+                       clixon_strerror1(category, EV),
                        msg);
     }
     retval = 0;
  done:
-    if (msg)
-        free(msg);
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }
 
-/*! Translate from numeric error to string representation
+/*! Generate netconf error msg to cbuf using callback to use in string printout or logs
+ *
+ * If no callback is registered, a default error message is genereated
+ * @param[in]     xerr    Netconf error message on the level: <rpc-error>
+ * @param[out]    cberr   Translation from netconf err to cbuf.
+ * @retval        0       OK, with cberr set
+ * @retval       -1       Error
+ * @code
+ *     cbuf *cb = NULL;
+ *     if ((cb = cbuf_new()) ==NULL){
+ *        err;
+ *     if (netconf_err2cb(h, xerr, cb) < 0)
+ *        err;
+ *     printf("%s", cbuf_get(cb));
+ *     cbuf_free(cb);
+ * @endcode
+ * @see clixon_err_netconf_fn
  */
-char *
-clicon_strerror(int err)
+int
+netconf_err2cb(clixon_handle h,
+               cxobj        *xerr,
+               cbuf         *cberr)
 {
-    return clicon_strerror1(err, EV);
+    int    retval = -1;
+    cxobj *x;
+
+    if ((x = xml_find_type(xerr, NULL, "error-type", CX_ELMNT)) != NULL)
+        cprintf(cberr, "%s ", xml_body(x));
+    if ((x = xml_find_type(xerr, NULL, "error-tag", CX_ELMNT)) != NULL)
+        cprintf(cberr, "%s ", xml_body(x));
+    if ((x = xml_find_type(xerr, NULL, "error-message", CX_ELMNT)) != NULL)
+        cprintf(cberr, "%s ", xml_body(x));
+    if ((x = xml_find_type(xerr, NULL, "error-info", CX_ELMNT)) != NULL &&
+        xml_child_nr(x) > 0){
+        if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
+            goto done;
+    }
+    if ((x = xml_find_type(xerr, NULL, "error-app-tag", CX_ELMNT)) != NULL)
+        cprintf(cberr, ": %s ", xml_body(x));
+    if ((x = xml_find_type(xerr, NULL, "error-path", CX_ELMNT)) != NULL)
+        cprintf(cberr, ": %s ", xml_body(x));
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Report an error.
+ *
+ * Do not use this fn directly, use the clixon_err() macro
+ * Library routines should call this function when an error occurs.
+ * The function does he following:
+ * - Logs to syslog with LOG_ERR
+ * - Set global error variable name clixon_errno
+ * - Set global reason string clixon_err_reason
+ * Typically a call to clixon_err() is followed by a return -1 (or NULL) that signals 
+ * a fatal error that fails early and loud.
+ * However there are some cases where such an error does not cause an exit. This includes
+ * CLI operations of callbacks and expand functions. The reason is that user-defined errors
+ * should just signal an error and not terminate. To override this one can set a suberr to 
+ * ESHUTDOWN.
+ *
+ * @note: err direction (syslog and/or stderr) controlled by clixon_log_init()
+ *
+ * @param[in]    fn       Inline function name (when called from clixon_err() macro)
+ * @param[in]    line     Inline file line number (when called from clixon_err() macro)
+ * @param[in]    category Clixon error category, See enum clixon_err
+ * @param[in]    suberr   Error number, typically errno
+ * @param[in]    xerr     Optional netconf error xml tree on the form: [rpc-reply/]rpc-error
+ * @param[in]    format   Error string, format with argv
+ * @retval       0        OK
+ * @retval      -1        Error
+ * @see clixon_err_netconf_fn For variant with netconf error message
+ */
+int
+clixon_err_fn(clixon_handle h,
+              const char   *fn,
+              const int     line,
+              int           category,
+              int           suberr,
+              cxobj        *xerr,
+              const char   *format, ...)
+{
+    int     retval = -1;
+    va_list ap;
+    cbuf   *cb = NULL;
+
+    if (h == NULL)     /* Accept NULL, use saved clixon handle */
+        h = _err_clixon_h;
+    if (xerr){
+        /* Accept xml errors on formats:
+         *   <rpc-reply><rpc-error>, 
+         *   <rpc-error>
+         */
+        if (strcmp(xml_name(xerr), "rpc-reply") == 0)
+            xerr = xml_find_type(xerr, NULL, "rpc-error", CX_ELMNT);
+        if (strcmp(xml_name(xerr), "rpc-error") != 0){
+            errno = EINVAL;
+            goto done;
+        }
+    }
+    va_start(ap, format);
+    if (clixon_plugin_errmsg_all(h, fn, line, LOG_TYPE_ERR,
+                                 &category, &suberr, xerr, format, ap, &cb) < 0)
+        goto done;
+    va_end(ap);
+    if (cb != NULL){ /* Customized: expand clixon_err_args */
+        strncpy(_err_reason, cbuf_get(cb), ERR_STRLEN-1);
+        _err_category = category;
+        _err_subnr = suberr;
+        clixon_log_fn(h, 0, LOG_ERR, xerr, "%s", cbuf_get(cb));
+        goto ok;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
+        goto done;
+    }
+    va_start(ap, format);
+    vcprintf(cb, format, ap);
+    va_end(ap);
+    if (xerr) {
+        cprintf(cb, ": ");
+        /* Translate netconf error to string */
+        if (netconf_err2cb(h, xerr, cb) < 0)
+            goto done;
+    }
+    if (clixon_err_args(h, fn, line, category, suberr, cbuf_get(cb)) < 0)
+        goto done;
+ ok:
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
 }
 
 /*! Push an error state, if recursive error handling
+ *
+ * @see clixon_err_vars
  */
 void*
-clicon_err_save(void)
+clixon_err_save(void)
 {
     struct err_state *es;
 
     if ((es = malloc(sizeof(*es))) == NULL)
         return NULL;
-    es->es_errno = clicon_errno;
-    es->es_suberrno = clicon_suberrno;
-    strncpy(es->es_reason, clicon_err_reason, ERR_STRLEN);
+    es->es_category = _err_category;
+    es->es_subnr = _err_subnr;
+    strncpy(es->es_reason, _err_reason, ERR_STRLEN);
     return (void*)es;
 }
 
 /*! Pop an error state, if recursive error handling
  */
 int
-clicon_err_restore(void* handle)
+clixon_err_restore(void* handle)
 {
     struct err_state *es;
 
     if ((es = (struct err_state *)handle) != NULL){
-        clicon_errno = es->es_errno;
-        clicon_suberrno = es->es_suberrno;
-        strncpy(clicon_err_reason, es->es_reason, ERR_STRLEN);
+        _err_category = es->es_category;
+        _err_subnr = es->es_subnr;
+        strncpy(_err_reason, es->es_reason, ERR_STRLEN);
         free(es);
     }
     return 0;
@@ -339,25 +507,25 @@ clicon_err_restore(void* handle)
 
 /*! Register error categories for application-based error handling
  *
- * @param[in]  category  Applies for this category (first arg to clicon_err())
+ * @param[in]  category  Applies for this category (first arg to clixon_err())
  * @param[in]  logfn     Call att error for generating application-defined errstring
  */
 int
-clixon_err_cat_reg(enum clicon_err       category,
-                   void                 *handle,
-                   clixon_cat_log_cb     logfn)
+clixon_err_cat_reg(enum clixon_err   category,
+                   void             *handle,
+                   clixon_cat_log_cb logfn)
 {
     clixon_err_cats *cec;
 
     if ((cec = malloc(sizeof *cec)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         return -1;
     }
     memset(cec, 0, sizeof *cec);
     cec->cec_category = category;
     cec->cec_handle = handle;
     cec->cec_logfn = logfn;
-    INSQ(cec, _err_cat_list);    
+    INSQ(cec, _err_cat_list);
     return 0;
 }
 
@@ -369,6 +537,6 @@ clixon_err_exit(void)
     while ((cec = _err_cat_list) != NULL){
         DELQ(cec, _err_cat_list, clixon_err_cats *);
         free(cec);
-    } 
+    }
     return 0;
 }

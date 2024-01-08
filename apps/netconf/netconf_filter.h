@@ -41,7 +41,7 @@
 
 /*
  * Prototypes
- */ 
+ */
 int xml_filter(cxobj *xf, cxobj *xn);
 
 #endif  /* _NETCONF_FILTER_H_ */

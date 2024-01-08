@@ -47,13 +47,15 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_log.h"
-#include "clixon_err.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_err.h"
 #include "clixon_yang_sub_parse.h"
 #include "clixon_yang_schemanode_parse.h"
 
@@ -76,12 +78,12 @@ yang_subparse(char                      *str,
               const char                *mainfile,
               int                        linenum,
               int                       *enabled,
-              clicon_handle             h)
+              clixon_handle             h)
 {
     int                    retval = -1;
     clixon_yang_sub_parse_yacc ife = {0,};
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, str);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, str);
     ife.if_parse_string = str;
     ife.if_linenum = linenum;
     if (enabled)
@@ -92,8 +94,8 @@ yang_subparse(char                      *str,
     if (clixon_yang_sub_parsel_init(&ife) < 0)
         goto done;
     if (clixon_yang_sub_parseparse(&ife) != 0) { /* yacc returns 1 on error */
-        if (clicon_errno == 0)
-            clicon_err(OE_YANG, 0, "If-feature parser error with no error code (should not happen)");
+        if (clixon_err_category() == 0)
+            clixon_err(OE_YANG, 0, "If-feature parser error with no error code (should not happen)");
         goto done;
     }
     if (enabled)
@@ -123,7 +125,7 @@ yang_schema_nodeid_subparse(char                      *str,
     int                         retval = -1;
     clixon_yang_schemanode_yacc ife = {0,};
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, str);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, str);
     ife.if_parse_string = str;
     ife.if_linenum = linenum;
     ife.if_mainfile = mainfile;
@@ -131,8 +133,8 @@ yang_schema_nodeid_subparse(char                      *str,
     if (clixon_yang_schemanode_parsel_init(&ife) < 0)
         goto done;
     if (clixon_yang_schemanode_parseparse(&ife) != 0) { /* yacc returns 1 on error */
-        if (clicon_errno == 0)
-            clicon_err(OE_YANG, 0, "descendant-schema-nodeid parser error with no error code (should not happen)");
+        if (clixon_err_category() == 0)
+            clixon_err(OE_YANG, 0, "descendant-schema-nodeid parser error with no error code (should not happen)");
         goto done;
     }
     retval = 0;

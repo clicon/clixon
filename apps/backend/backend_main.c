@@ -65,7 +65,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_backend_transaction.h"
@@ -79,16 +79,17 @@
 #include "backend_plugin_restconf.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hD:f:E:l:C:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
+#define BACKEND_OPTS "hVD:f:E:l:C:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
 /*! Clean and close all state of backend (but dont exit). 
+ *
  * Cannot use h after this 
  * @param[in]  h  Clixon handle
  */
 static int
-backend_terminate(clicon_handle h)
+backend_terminate(clixon_handle h)
 {
     yang_stmt *yspec;
     char      *pidfile = clicon_backend_pidfile(h);
@@ -99,7 +100,7 @@ backend_terminate(clicon_handle h)
     int        ss;
     cvec      *nsctx;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((ss = clicon_socket_get(h)) != -1)
         close(ss);
     /* Disconnect datastore */
@@ -142,9 +143,9 @@ backend_terminate(clicon_handle h)
         unlink(sockpath);
     backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     clixon_event_exit();
-    clicon_debug(1, "%s done", __FUNCTION__); 
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s done", __FUNCTION__); 
     clixon_err_exit();
-    clicon_log_exit();
+    clixon_log_exit();
     return 0;
 }
 
@@ -156,31 +157,33 @@ backend_sig_term(int arg)
     static int i=0;
 
     if (i++ == 0)
-        clicon_log(LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
+        clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
                    __PROGRAM__, __FUNCTION__, getpid(), arg);
     else
         exit(1);
     clixon_exit_set(1); /* checked in clixon_event_loop() */
 }
 
-/*! wait for killed child
+/*! Wait for killed child
+ *
  * primary use in case restconf daemon forked using process-control API
  * This may cause EINTR in eg select() in clixon_event_loop() which will be ignored
  */
 static void
 backend_sig_child(int arg)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     clicon_sig_child_set(1);
 }
 
 /*! Create backend server socket and register callback
- * @param[in]  h    Clicon handle
+ *
+ * @param[in]  h    Clixon handle
  * @retval     s    Server socket file descriptor (see socket(2))
  * @retval    -1    Error
  */
 static int
-backend_server_socket(clicon_handle h)
+backend_server_socket(clixon_handle h)
 {
     int ss;
 
@@ -199,7 +202,7 @@ backend_server_socket(clicon_handle h)
 /*! Load external NACM file
  */
 static int
-nacm_load_external(clicon_handle h)
+nacm_load_external(clixon_handle h)
 {
     int         retval = -1;
     char       *filename; /* NACM config file */
@@ -210,19 +213,19 @@ nacm_load_external(clicon_handle h)
 
     filename = clicon_option_str(h, "CLICON_NACM_FILE");
     if (filename == NULL || strlen(filename)==0){
-        clicon_err(OE_UNIX, errno, "CLICON_NACM_FILE not set in NACM external mode");
+        clixon_err(OE_UNIX, errno, "CLICON_NACM_FILE not set in NACM external mode");
         goto done;
     }
     if (stat(filename, &st) < 0){
-        clicon_err(OE_UNIX, errno, "%s", filename);
+        clixon_err(OE_UNIX, errno, "%s", filename);
         goto done;
     }
     if (!S_ISREG(st.st_mode)){
-        clicon_err(OE_UNIX, 0, "%s is not a regular file", filename);
+        clixon_err(OE_UNIX, 0, "%s is not a regular file", filename);
         goto done;
     }
     if ((f = fopen(filename, "r")) == NULL) {
-        clicon_err(OE_UNIX, errno, "configure file: %s", filename);
+        clixon_err(OE_UNIX, errno, "configure file: %s", filename);
         return -1;
     }
     if ((yspec = yspec_new()) == NULL)
@@ -233,7 +236,7 @@ nacm_load_external(clicon_handle h)
     if (clixon_xml_parse_file(f, YB_MODULE, yspec, &xt, NULL) < 0)
         goto done;
     if (xt == NULL){
-        clicon_err(OE_XML, 0, "No xml tree in %s", filename);
+        clixon_err(OE_XML, 0, "No xml tree in %s", filename);
         goto done;
     }
     if (clicon_nacm_ext_yang_set(h, yspec) < 0)
@@ -249,7 +252,7 @@ nacm_load_external(clicon_handle h)
 }
 
 static int 
-xmldb_drop_priv(clicon_handle h, 
+xmldb_drop_priv(clixon_handle h, 
                 const char   *db, 
                 uid_t         uid,
                 gid_t         gid)
@@ -260,7 +263,7 @@ xmldb_drop_priv(clicon_handle h,
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
     if (chown(filename, uid, gid) < 0){
-        clicon_err(OE_UNIX, errno, "chown");
+        clixon_err(OE_UNIX, errno, "chown");
         goto done;
     }
     retval = 0;
@@ -278,13 +281,13 @@ xmldb_drop_priv(clicon_handle h,
  * - uid is currently 0 (started as root)
  * - CLICON_BACKEND_USER is set
  * - CLICON_BACKEND_PRIVILEGES is not "none"
- * @param[in] h   Clicon handle
+ * @param[in] h   Clixon handle
  * @param[in] gid Group id (assume already known)
  * @retval    0   OK
  * @retval   -1   Error
  */
 static int
-check_drop_priv(clicon_handle h,
+check_drop_priv(clixon_handle h,
                 gid_t         gid,
                 yang_stmt    *yspec)
 {
@@ -301,19 +304,19 @@ check_drop_priv(clicon_handle h,
     /* From here, drop privileges */
     /* Check backend user exists */
     if ((backend_user = clicon_backend_user(h)) == NULL){
-        clicon_err(OE_DAEMON, EPERM, "Privileges cannot be dropped without specifying CLICON_BACKEND_USER\n");
+        clixon_err(OE_DAEMON, EPERM, "Privileges cannot be dropped without specifying CLICON_BACKEND_USER\n");
         goto done;
     }
     /* Get (wanted) new backend user id */
     if (name2uid(backend_user, &newuid) < 0){
-        clicon_err(OE_DAEMON, errno, "'%s' is not a valid user .\n", backend_user);
+        clixon_err(OE_DAEMON, errno, "'%s' is not a valid user .\n", backend_user);
         goto done;
     }
     /* get current backend userid, if already at this level OK */
     if ((uid = getuid()) == newuid)
         goto ok;
     if (uid != 0){
-        clicon_err(OE_DAEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
+        clixon_err(OE_DAEMON, EPERM, "Privileges can only be dropped from root user (uid is %u)\n", uid);
         goto done;
     }
     /* When dropping privileges, datastores are created if they do not exist.
@@ -345,7 +348,7 @@ check_drop_priv(clicon_handle h,
             goto done;
     }
     if (setgid(gid) == -1) {
-        clicon_err(OE_DAEMON, errno, "setgid %d", gid);
+        clixon_err(OE_DAEMON, errno, "setgid %d", gid);
         goto done;
     }
     switch (priv_mode){
@@ -354,7 +357,7 @@ check_drop_priv(clicon_handle h,
             goto done;
         /* Verify you cannot regain root privileges */
         if (setuid(0) != -1){
-            clicon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
+            clixon_err(OE_DAEMON, EPERM, "Could regain root privilieges");
             goto done;
         }
         break;
@@ -378,8 +381,8 @@ check_drop_priv(clicon_handle h,
  * @retval    0       OK, status set
  * @retval   -1       Fatal error outside scope of startup_status
  * Transformation rules:
- * 1) retval -1 assume clicon_errno/suberrno set. Special case from xml parser
- * is clicon_suberrno = XMLPARSE_ERRNO which assumes an XML (non-fatal) parse 
+ * 1) retval -1 assume clixon_err_category/subnr set. Special case from xml parser
+ * is clixon_err_subnr = XMLPARSE_ERRNO which assumes an XML (non-fatal) parse 
  * error which translates to -> STARTUP_ERR
  * All other error cases translates to fatal error
  * 2) retval 0 is xml validation fails -> STARTUP_INVALID
@@ -394,9 +397,9 @@ ret2status(int                  ret,
 
     switch (ret){
     case -1:
-        if (clicon_suberrno != XMLPARSE_ERRNO)
+        if (clixon_err_subnr() != XMLPARSE_ERRNO)
             goto done;
-        clicon_err_reset();
+        clixon_err_reset();
         *status = STARTUP_ERR;
         break;
     case 0:
@@ -406,7 +409,7 @@ ret2status(int                  ret,
         *status = STARTUP_OK;
         break;
     default:
-        clicon_err(OE_CFG, EINVAL, "No such retval %d", retval);
+        clixon_err(OE_CFG, EINVAL, "No such retval %d", retval);
     } /* switch */
     retval = 0;
  done:
@@ -420,12 +423,12 @@ backend_timer_setup(int   fd,
                     void *arg)
 {
     int            retval = -1;
-    clicon_handle  h = (clicon_handle)arg;
+    clixon_handle  h = (clixon_handle)arg;
     struct timeval now;
     struct timeval t;
     struct timeval t1 = {10, 0};
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     gettimeofday(&now, NULL);
 
     backend_client_print(h, stderr);
@@ -448,7 +451,7 @@ backend_timer_setup(int   fd,
 /*! usage
  */
 static void
-usage(clicon_handle h,
+usage(clixon_handle h,
       char         *argv0)
 {
     char *plgdir   = clicon_backend_dir(h);
@@ -459,6 +462,7 @@ usage(clicon_handle h,
     fprintf(stderr, "usage:%s <options>*\n"
             "where options are\n"
             "\t-h\t\tHelp\n"
+            "\t-V \t\tPrint version and exit\n"
             "\t-D <level>\tDebug level\n"
             "\t-f <file>\tClixon config file\n"
             "\t-E <dir> \tExtra configuration file directory\n"
@@ -506,14 +510,14 @@ main(int    argc,
     char         *backend_group = NULL;
     char         *argv0 = argv[0];
     struct stat   st;
-    clicon_handle h;
+    clixon_handle h;
     int           help = 0;
     int           pid;
     char         *pidfile;
     char         *sock;
     int           sockfamily;
     char         *nacm_mode;
-    int           logdst = CLICON_LOG_SYSLOG|CLICON_LOG_STDERR;
+    int           logdst = CLIXON_LOG_SYSLOG|CLIXON_LOG_STDERR;
     yang_stmt    *yspec = NULL;
     char         *str;
     int           ss = -1; /* server socket */
@@ -529,12 +533,16 @@ main(int    argc,
     size_t        sz;
     int           config_dump;
     enum format_enum config_dump_format = FORMAT_XML;
+    int           print_version = 0;
     
-    /* In the startup, logs to stderr & syslog and debug flag set later */
-    clicon_log_init(__PROGRAM__, LOG_INFO, logdst);
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
         return -1;
+    /* In the startup, logs to stderr & syslog and debug flag set later */
+    if (clixon_log_init(h, __PROGRAM__, LOG_INFO, logdst) < 0)
+        goto done;
+    if (clixon_err_init(h) < 0)
+        goto done;
     foreground = 0;
     once = 0;
     zap = 0;
@@ -557,6 +565,10 @@ main(int    argc,
             */
             help = 1; 
             break;
+        case 'V':
+            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            print_version++; /* plugins may also print versions w ca-version callback */
+            break;
         case 'D' : /* debug */
             if (sscanf(optarg, "%d", &dbg) != 1)
                 usage(h, argv[0]);
@@ -572,11 +584,11 @@ main(int    argc,
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
         case 'l': /* Log destination: s|e|o */
-            if ((logdst = clicon_log_opt(optarg[0])) < 0)
+            if ((logdst = clixon_log_opt(optarg[0])) < 0)
                 usage(h, argv[0]);
-            if (logdst == CLICON_LOG_FILE &&
+            if (logdst == CLIXON_LOG_FILE &&
                 strlen(optarg)>1 &&
-                clicon_log_file(optarg+1) < 0)
+                clixon_log_file(optarg+1) < 0)
                 goto done;
             break;
         }
@@ -587,8 +599,8 @@ main(int    argc,
      * XXX: if started in a start-daemon script, there will be irritating
      * double syslogs until fork below. 
      */
-    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
-    clicon_debug_init(dbg, NULL);
+    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
+    clixon_debug_init(h, dbg);
     yang_init(h);
 
     /* Find and read configfile */
@@ -608,12 +620,13 @@ main(int    argc,
     while ((c = getopt(argc, argv, BACKEND_OPTS)) != -1)
         switch (c) {
         case 'h' : /* help */
+        case 'V' : /* version */
         case 'D' : /* debug */
-        case 'f': /* config file */
-        case 'E': /* extra config dir */
+        case 'f' : /* config file */
+        case 'E' : /* extra config dir */
         case 'l' :
             break; /* see above */
-        case 'C': /* Explicitly dump configuration */
+        case 'C' : /* Explicitly dump configuration */
             if ((config_dump_format = format_str2int(optarg)) ==  (enum format_enum)-1){
                 fprintf(stderr, "Unrecognized dump format: %s(expected: xml|json|text)\n", argv[0]);
                 usage(h, argv[0]);
@@ -708,8 +721,8 @@ main(int    argc,
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
     
-    clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
-    
+    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
+
     /* Defer: Wait to the last minute to print help message */
     if (help)
         usage(h, argv[0]);
@@ -720,22 +733,22 @@ main(int    argc,
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
 
     if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
-        clicon_log_string_limit_set(sz);
+        clixon_log_string_limit_set(sz);
     
 #ifndef HAVE_LIBXML2
     if (clicon_yang_regexp(h) ==  REGEXP_LIBXML2){
-        clicon_err(OE_FATAL, 0, "CLICON_YANG_REGEXP set to libxml2, but HAVE_LIBXML2 not set (Either change CLICON_YANG_REGEXP to posix, or run: configure --with-libxml2))");
+        clixon_err(OE_FATAL, 0, "CLICON_YANG_REGEXP set to libxml2, but HAVE_LIBXML2 not set (Either change CLICON_YANG_REGEXP to posix, or run: configure --with-libxml2))");
         goto done;
     }
 #endif
     /* Check pid-file, if zap kil the old daemon, else return here */
     if ((pidfile = clicon_backend_pidfile(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "pidfile not set");
+        clixon_err(OE_FATAL, 0, "pidfile not set");
         goto done;
     }
     sockfamily = clicon_sock_family(h);
     if ((sock = clicon_sock_str(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "sock not set");
+        clixon_err(OE_FATAL, 0, "sock not set");
         goto done;
     }
     if (pidfile_get(pidfile, &pid) < 0)
@@ -752,7 +765,7 @@ main(int    argc,
     }
     else
         if (pid){
-            clicon_err(OE_DAEMON, 0, "Daemon already running with pid %d\n(Try killing it with %s -z)", 
+            clixon_err(OE_DAEMON, 0, "Daemon already running with pid %d\n(Try killing it with %s -z)", 
                        pid, argv0);
             return -1; /* goto done deletes pidfile */
         }
@@ -767,11 +780,11 @@ main(int    argc,
 
     /* Sanity check: backend group exists */
     if ((backend_group = clicon_sock_group(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "clicon_sock_group option not set");
+        clixon_err(OE_FATAL, 0, "clicon_sock_group option not set");
         return -1;
     }
     if (group_name2gid(backend_group, &gid) < 0){
-        clicon_log(LOG_ERR, "'%s' does not seem to be a valid user group.\n" /* \n required here due to multi-line log */
+        clixon_log(h, LOG_ERR, "'%s' does not seem to be a valid user group.\n" /* \n required here due to multi-line log */
                    "The config daemon requires a valid group to create a server UNIX socket\n"
                    "Define a valid CLICON_SOCK_GROUP in %s or via the -g option\n"
                    "or create the group and add the user to it. Check documentation for how to do this on your platform",
@@ -820,7 +833,12 @@ main(int    argc,
         clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir,
                             clicon_option_str(h, "CLICON_BACKEND_REGEXP")) < 0)
         goto done;
-
+    /* Print version, customized variant must wait for plugins to load */
+    if (print_version){
+        if (clixon_plugin_version_all(h, stdout) < 0)
+            goto done;
+        exit(0);
+    }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
     if ((str = clicon_yang_main_file(h)) != NULL)
@@ -884,13 +902,13 @@ main(int    argc,
     /* Startup mode needs to be defined,  */
     startup_mode = clicon_startup_mode(h);
     if ((int)startup_mode == -1){       
-        clicon_log(LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend."); 
+        clixon_log(h, LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend."); 
         goto done;
     }
     /* Check that netconf :startup is enabled */
     if ((startup_mode == SM_STARTUP || startup_mode == SM_RUNNING_STARTUP) &&
         !if_feature(yspec, "ietf-netconf", "startup")){
-        clicon_log(LOG_ERR, "Startup mode selected but Netconf :startup feature is not enabled. Enable with option: <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>"); 
+        clixon_log(h, LOG_ERR, "Startup mode selected but Netconf :startup feature is not enabled. Enable with option: <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>"); 
         goto done;
     }
 
@@ -909,7 +927,7 @@ main(int    argc,
     xmldb_delete(h, "candidate");
     /* If startup fails, lib functions report invalidation info in a cbuf */
     if ((cbret = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     switch (startup_mode){
@@ -988,7 +1006,7 @@ main(int    argc,
     }
     if (status != STARTUP_OK){
         if (cbuf_len(cbret))
-            clicon_log(LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
+            clixon_log(h, LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
         if (load_failsafe(h, "Startup") < 0){
             goto done;
         }
@@ -1007,7 +1025,7 @@ main(int    argc,
         goto done;
 
     if (status == STARTUP_INVALID && cbuf_len(cbret))
-        clicon_log(LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
+        clixon_log(h, LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
         
     /* Call backend plugin_start with user -- options */
     if (clixon_plugin_start_all(h) < 0)
@@ -1029,13 +1047,13 @@ main(int    argc,
        daemonized errors OK. Before this stage, errors are logged on stderr 
        also */
     if (foreground==0){
+        clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO,
+                        logdst==CLIXON_LOG_FILE?CLIXON_LOG_FILE:CLIXON_LOG_SYSLOG);
         /* Call plugin callbacks just before fork/daemonization */
         if (clixon_plugin_pre_daemon_all(h) < 0)
             goto done;
-        clicon_log_init(__PROGRAM__, dbg?LOG_DEBUG:LOG_INFO,
-                        logdst==CLICON_LOG_FILE?CLICON_LOG_FILE:CLICON_LOG_SYSLOG);
         if (daemon(0, 0) < 0){
-            fprintf(stderr, "config: daemon");
+            clixon_err(OE_UNIX, errno, "daemon");
             exit(-1);
         }
     }
@@ -1050,21 +1068,21 @@ main(int    argc,
         goto done;
 
     if (set_signal(SIGTERM, backend_sig_term, NULL) < 0){
-        clicon_err(OE_DAEMON, errno, "Setting signal");
+        clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;
     }
     if (set_signal(SIGINT, backend_sig_term, NULL) < 0){
-        clicon_err(OE_DAEMON, errno, "Setting signal");
+        clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;
     }
     /* This is in case restconf daemon forked using process-control API */
     if (set_signal(SIGCHLD, backend_sig_child, NULL) < 0){
-        clicon_err(OE_DAEMON, errno, "Setting signal");
+        clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;
     }
     /* Client exit in the middle of a transaction, handled in clicon_msg_send */
     if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
-        clicon_err(OE_DAEMON, errno, "Setting signal");
+        clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;
     }
     /* Initialize server socket and save it to handle */
@@ -1082,7 +1100,7 @@ main(int    argc,
     clicon_session_id_set(h, 1);
 #if 0 /* debug */
     /* Enable this to get prints of datastore and session status */
-    if (0 && clicon_debug_get() && 
+    if (clixon_debug_get() &&
         backend_timer_setup(0, h) < 0)
         goto done;
 #endif
@@ -1091,7 +1109,7 @@ main(int    argc,
     /* Just before event-loop, after socket bind/listen */
     if (netconf_monitoring_statistics_init(h) < 0)
         goto done;
-    clicon_log(LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
+    clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (clixon_event_loop(h) < 0)
         goto done;
  ok:
@@ -1099,7 +1117,7 @@ main(int    argc,
  done:
     if (cbret)
         cbuf_free(cbret);
-    clicon_log(LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);
+    clixon_log(h, LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);
     backend_terminate(h); /* Cannot use h after this */
 
     return retval;

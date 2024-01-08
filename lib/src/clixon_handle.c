@@ -46,29 +46,31 @@
 #include <string.h>
 #include <assert.h>
 #include <sys/time.h>
- 
+
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
-#include "clixon_log.h"
-#include "clixon_err.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_stream.h"
 #include "clixon_data.h"
 #include "clixon_options.h"
 
-#define CLICON_MAGIC 0x99aafabe
+#define CLIXON_MAGIC 0x99aafabe
 
-#define handle(h) (assert(clicon_handle_check(h)==0),(struct clicon_handle *)(h))
+#define handle(h) (assert(clixon_handle_check(h)==0),(struct clixon_handle *)(h))
 
 /*! Internal structure of basic handle. Also header of all other handles.
+ *
  * @note If you change here, you must also change the structs below:
  * This is the internal definition of a "Clixon handle" which in its external
- * form is "clicon_handle" and is used in most Clixon API calls.
+ * form is "clixon_handle" and is used in most Clixon API calls.
  * Some details:
  * 1) the internal structure contains a header (defined here) whereas higher
  *    order libs (eg cli and backend) introduce more fields appended to this 
@@ -85,7 +87,7 @@
  * @see struct backend_handle
  * @see struct restconf_handle
  */
-struct clicon_handle {
+struct clixon_handle {
     int               ch_magic;    /* magic (HDR) */
     clicon_hash_t    *ch_copt;     /* clicon option list (HDR) */
     clicon_hash_t    *ch_data;     /* internal clicon data (HDR) */
@@ -96,64 +98,67 @@ struct clicon_handle {
 /*! Internal call to allocate a CLICON handle. 
  *
  * @param[in]  size  Size of handle (internal) struct.
- * @retval   h   Clicon handle
+ * @retval   h   Clixon handle
  *
  * There may be different variants of handles with some common options.
  * So far the only common options is a MAGIC cookie for sanity checks and 
  * CLICON options
  */
-clicon_handle 
-clicon_handle_init0(int size)
+clixon_handle
+clixon_handle_init0(int size)
 {
-    struct clicon_handle *ch;
-    clicon_handle         h = NULL;
+    struct clixon_handle *ch;
+    clixon_handle         h = NULL;
 
     if ((ch = malloc(size)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(ch, 0, size);
-    ch->ch_magic = CLICON_MAGIC;
+    ch->ch_magic = CLIXON_MAGIC;
     if ((ch->ch_copt = clicon_hash_init()) == NULL){
-        clicon_handle_exit((clicon_handle)ch);
+        clixon_handle_exit((clixon_handle)ch);
         goto done;
     }
     if ((ch->ch_data = clicon_hash_init()) == NULL){
-        clicon_handle_exit((clicon_handle)ch);
+        clixon_handle_exit((clixon_handle)ch);
         goto done;
     }
     if ((ch->ch_db_elmnt = clicon_hash_init()) == NULL){
-        clicon_handle_exit((clicon_handle)ch);
+        clixon_handle_exit((clixon_handle)ch);
         goto done;
     }
-    h = (clicon_handle)ch;
+    h = (clixon_handle)ch;
   done:
     return h;
 }
 
 /*! Basic CLICON init functions returning a handle for API access.
  *
- * @retval   h   Clicon handle
+ * @retval   h   Clixon handle
  * This is the first call to CLICON basic API which returns a handle to be 
  * used in the API functions. There are other clicon_init functions for more 
  * elaborate applications (cli/backend/netconf). This should be used by the most
  * basic applications that use CLICON lib directly.
  */
-clicon_handle 
-clicon_handle_init(void)
+clixon_handle
+clixon_handle_init(void)
 {
-    return clicon_handle_init0(sizeof(struct clicon_handle));
+    return clixon_handle_init0(sizeof(struct clixon_handle));
 }
 
 /*! Deallocate clicon handle, including freeing handle data.
- * @param[in]  h   Clicon handle
- * @Note: handle 'h' cannot be used in calls after this
+ *
+ * @param[in]  h   Clixon handle
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @note: handle 'h' cannot be used in calls after this
  */
 int
-clicon_handle_exit(clicon_handle h)
+clixon_handle_exit(clixon_handle h)
 {
     int                   retval = -1;
-    struct clicon_handle *ch = handle(h);
+    struct clixon_handle *ch = handle(h);
     clicon_hash_t        *ha;
 
     if ((ha = clicon_options(h)) != NULL)
@@ -169,79 +174,84 @@ clicon_handle_exit(clicon_handle h)
 }
 
 /*! Check struct magic number for sanity checks
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @retval     0   Sanity check OK
  * @retval    -1   Sanity check failed
  */
 int
-clicon_handle_check(clicon_handle h)
+clixon_handle_check(clixon_handle h)
 {
     /* Dont use handle macro to avoid recursion */
-    struct clicon_handle *ch = (struct clicon_handle *)(h);
+    struct clixon_handle *ch = (struct clixon_handle *)(h);
 
-    return ch->ch_magic == CLICON_MAGIC ? 0 : -1;
+    return ch->ch_magic == CLIXON_MAGIC ? 0 : -1;
 }
 
 /*! Return clicon options (hash-array) given a handle.
- * @param[in]  h        Clicon handle
+ *
+ * @param[in]  h        Clixon handle
  */
 clicon_hash_t *
-clicon_options(clicon_handle h)
+clicon_options(clixon_handle h)
 {
-    struct clicon_handle *ch = handle(h);
+    struct clixon_handle *ch = handle(h);
 
     return ch->ch_copt;
 }
 
 /*! Return clicon data (hash-array) given a handle.
- * @param[in]  h        Clicon handle
+ *
+ * @param[in]  h        Clixon handle
  */
 clicon_hash_t *
-clicon_data(clicon_handle h)
+clicon_data(clixon_handle h)
 {
-    struct clicon_handle *ch = handle(h);
+    struct clixon_handle *ch = handle(h);
 
     return ch->ch_data;
 }
 
 /*! Return clicon db_elmnt (hash-array) given a handle.
- * @param[in]  h        Clicon handle
+ *
+ * @param[in]  h        Clixon handle
  */
 clicon_hash_t *
-clicon_db_elmnt(clicon_handle h)
+clicon_db_elmnt(clixon_handle h)
 {
-    struct clicon_handle *ch = handle(h);
+    struct clixon_handle *ch = handle(h);
 
     return ch->ch_db_elmnt;
 }
 
 /*! Return stream hash-array given a clicon handle.
- * @param[in]  h        Clicon handle
+ *
+ * @param[in]  h        Clixon handle
  */
 event_stream_t *
-clicon_stream(clicon_handle h)
+clicon_stream(clixon_handle h)
 {
-    struct clicon_handle *ch = handle(h);
+    struct clixon_handle *ch = handle(h);
 
     return ch->ch_stream;
 }
 
 int
-clicon_stream_set(clicon_handle   h,
+clicon_stream_set(clixon_handle   h,
                   event_stream_t *es)
 {
-    struct clicon_handle *ch = handle(h);
+    struct clixon_handle *ch = handle(h);
 
     ch->ch_stream = es;
     return 0;
 }
 
 int
-clicon_stream_append(clicon_handle h,
+clicon_stream_append(clixon_handle h,
                      event_stream_t *es)
 {
-    struct clicon_handle *ch = handle(h);
-    
+    struct clixon_handle *ch = handle(h);
+
     ADDQ(es, ch->ch_stream);
     return 0;
 }

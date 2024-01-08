@@ -32,8 +32,8 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   $RESTCONFIG
 </clixon-config>
@@ -265,7 +265,7 @@ new "netconf commit protocol tcp"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf changing from TCP to UDP (RFC7950 7.9.6)"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\"><protocol><udp nc:operation=\"create\"/></protocol></system></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>$" ""
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"${BASENS}\"><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\"><protocol><udp nc:operation=\"create\"/></protocol></system></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS xmlns:nc=\"${BASENS}\"><ok/></rpc-reply>$" ""
 
 new "netconf get protocol udp"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:config\"><protocol><udp/></protocol></system>" ""
@@ -321,7 +321,7 @@ new "netconf set shorthand tcp"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\"><shorthand><tcp/></shorthand></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf changing from TCP to UDP (RFC7950 7.9.6)"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\"><shorthand><udp/></shorthand></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"${BASENS}\"><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:config\"><shorthand><udp/></shorthand></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS xmlns:nc=\"${BASENS}\"><ok/></rpc-reply>"
 
 new "netconf get shorthand udp"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:config\"><shorthand><udp/></shorthand></system></data></rpc-reply>"

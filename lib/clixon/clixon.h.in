@@ -68,19 +68,20 @@ extern "C" {
 
 #include <clixon/clixon_sig.h>
 #include <clixon/clixon_uid.h>
-#include <clixon/clixon_err.h>
 #include <clixon/clixon_queue.h>
 #include <clixon/clixon_hash.h>
 #include <clixon/clixon_handle.h>
-#include <clixon/clixon_log.h>
-#include <clixon/clixon_netns.h>
 #include <clixon/clixon_yang.h>
+#include <clixon/clixon_xml.h>
+#include <clixon/clixon_err.h>
+#include <clixon/clixon_log.h>
+#include <clixon/clixon_debug.h>
+#include <clixon/clixon_netns.h>
 #include <clixon/clixon_yang_type.h>
 #include <clixon/clixon_event.h>
 #include <clixon/clixon_string.h>
 #include <clixon/clixon_proc.h>
 #include <clixon/clixon_file.h>
-#include <clixon/clixon_xml.h>
 #include <clixon/clixon_xml_sort.h>
 #include <clixon/clixon_yang_parse_lib.h>
 #include <clixon/clixon_yang_module.h>

@@ -111,13 +111,13 @@ Add yourself and www-data, if you intend to use restconf.
 Using useradd and usermod:
 ```
   sudo useradd clicon # 
-  sudo usermod -a -G clicon <user>
+  sudo usermod -a -G clicon $(whoami)
   sudo usermod -a -G clicon www-data
 ```
 Using adduser (eg on busybox):
 ```
   sudo adduser -D -H clicon
-  sudo adduser <user> clicon
+  sudo adduser $(whoami) clicon
 ```
 (you may have to restart shell)
 
@@ -289,7 +289,7 @@ Clixon by default finds its configuration file at `/usr/local/etc/clixon.xml`. H
 
 Yes, when you start a clixon program, you can supply the `-o` option to modify the configuration specified in the configuration file. Options that are leafs are overriden, whereas options that are leaf-lists are added to.
 
-Example, add the "usr/local/share/ietf" directory to the list of directories where yang files are searched for:
+Example, add the "/usr/local/share/ietf" directory to the list of directories where yang files are searched for:
 ```
   clixon_cli -o CLICON_YANG_DIR=/usr/local/share/ietf
 ```
@@ -328,7 +328,7 @@ Some clixon tests rely on standard IETF YANG modules which you need to download.
 
 To download the yang models required for some tests:
 ```
-   cd /usr/local/share/yang
+   cd /usr/local/share/
    git clone https://github.com/YangModels/yang
 ```
 
@@ -473,7 +473,7 @@ Each plugin is initiated with an API struct followed by a plugin init function a
       ... /* more functions here */
    }
    clixon_plugin_api *
-   clixon_plugin_init(clicon_handle h)
+   clixon_plugin_init(clixon_handle h)
    {
       ...
       return &api; /* Return NULL on error */
@@ -489,7 +489,7 @@ information on added, deleted and changed entries. You access this
 information using access functions as defined in clixon_backend_transaction.h
 
 ## How do I check what has changed on commit?
-You use XPATHs on the XML trees in the transaction commit callback.
+You use XPaths on the XML trees in the transaction commit callback.
 Suppose you want to print all added interfaces:
 ```
         cxobj *target = transaction_target(td); # wanted XML tree
@@ -500,7 +500,7 @@ Suppose you want to print all added interfaces:
 You can look for added, deleted and changed entries in this way.
 
 ## How do I access the XML tree?
-Using XPATH, find and iteration functions defined in the XML library. Example library functions:
+Using XPath, find and iteration functions defined in the XML library. Example library functions:
 ```
       xml_child_each(), 
       xml_find(), 
@@ -515,7 +515,7 @@ More are found in the doxygen reference.
 1. You add an entry in example_cli.cli
 >   example("This is a comment") <var:int32>("This is a variable"), mycallback("myarg");
 2. Then define a function in example_cli.c
->   mycallback(clicon_handle h, cvec *cvv, cvec *arv)
+>   mycallback(clixon_handle h, cvec *cvv, cvec *arv)
 where 'cvv' contains the value of the variable 'var' and 'argv' contains the string "myarg".
 
 The 'cvv' datatype is a 'CLIgen variable vector'.
@@ -523,9 +523,9 @@ They are documented in [CLIgen tutorial](https://github.com/clicon/cligen/blob/m
 
 ## How do I write a validation function?
 Similar to a commit function, but instead write the transaction_validate() function.
-Check for inconsistencies in the XML trees and if they fail, make an clicon_err() call.
+Check for inconsistencies in the XML trees and if they fail, make an clixon_err() call.
 ```
-    clicon_err(OE_PLUGIN, 0, "Route %s lacks ipv4 addr", name);
+    clixon_err(OE_PLUGIN, 0, "Route %s lacks ipv4 addr", name);
     return -1;
 ```
 The validation or commit will then be aborted.
@@ -560,7 +560,7 @@ implement the RFC, you need to register an RPC callback in the backend plugin:
 Example:
 ```
 int
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
 ...
    rpc_callback_register(h, example_rpc, NULL, "urn:example:my", "example-rpc");
@@ -570,7 +570,7 @@ clixon_plugin_init(clicon_handle h)
 And then define the callback itself:
 ```
 static int 
-example_rpc(clicon_handle h,            /* Clicon handle */
+example_rpc(clixon_handle h,            /* Clicon handle */
             cxobj        *xe,           /* Request: <rpc><xn></rpc> */
             cbuf         *cbret,        /* Reply eg <rpc-reply>... */
             void         *arg,          /* Client session */
@@ -592,7 +592,7 @@ The following example shows how `my_copy` can be called right after the system (
 the original operation:
 ```
 static int 
-my_copy(clicon_handle h,            /* Clicon handle */
+my_copy(clixon_handle h,            /* Clicon handle */
         cxobj        *xe,           /* Request: <rpc><xn></rpc> */
         cbuf         *cbret,        /* Reply eg <rpc-reply>... */
         void         *arg,          /* Client session */
@@ -602,7 +602,7 @@ my_copy(clicon_handle h,            /* Clicon handle */
     return 0;
 }
 int
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
 ...
    rpc_callback_register(h, my_copy, NULL, "urn:ietf:params:xml:ns:netconf:base:1.0", "copy-config");
@@ -616,7 +616,7 @@ A restconf call may need to be authenticated.
 You can specify an authentication callback for restconf as follows:
 ```
 int
-plugin_credentials(clicon_handle h,     
+plugin_credentials(clixon_handle h,     
                    void         *arg)
 {
     FCGX_Request *r = (FCGX_Request *)arg;

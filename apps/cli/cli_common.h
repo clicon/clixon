@@ -39,8 +39,8 @@
 #ifndef _CLI_COMMON_H_
 #define _CLI_COMMON_H_
 
-void  cli_signal_block(clicon_handle h);
-void  cli_signal_unblock(clicon_handle h);
+void  cli_signal_block(clixon_handle h);
+void  cli_signal_unblock(clixon_handle h);
 int   mtpoint_paths(yang_stmt *yspec0, char *mtpoint, char *api_path_fmt1, char **api_path_fmt01);
 cvec *cvec_append(cvec *cvv0, cvec *cvv1);
 

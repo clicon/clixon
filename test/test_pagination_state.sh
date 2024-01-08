@@ -37,9 +37,9 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_FORMAT>json</CLICON_XMLDB_FORMAT>
   <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
@@ -164,7 +164,9 @@ if [ -n "$(type expect 2> /dev/null)" ]; then
     testrun_start "/es:audit-logs/es:audit-log"
     
     new "CLI scroll test using expect"
-    expect ./test_pagination_expect.exp "$cfg" "$xpath" bob3 bob4
+    sudo="sudo -g ${CLICON_GROUP}"		## cheat
+    clixon_cli_="${clixon_cli##$sudo }"
+    clixon_cli="$clixon_cli_" $sudo --preserve-env=clixon_cli expect ./test_pagination_expect.exp "$cfg" "$xpath" bob3 bob4
     if [ $? -ne 0 ]; then
         err1 "Failed: CLI show paginate state scroll using expect"
     fi

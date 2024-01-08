@@ -161,7 +161,6 @@ diff $mydir/kalle_db $mydir/candidate_db
 new "datastore lock"
 expectpart "$($clixon_util_datastore $conf lock 756)" 0 ""
 
-
 rm -rf $mydir
 
 rm -rf $dir

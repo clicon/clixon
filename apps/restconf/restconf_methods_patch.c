@@ -56,7 +56,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "restconf_lib.h"
@@ -100,11 +100,12 @@ yang_patch_op2int(char *op)
 }
 
 /*! Add square brackets after the surrounding curly brackets in JSON
+ *
   * Needed, in order to modify the result of clixon_json2cbuf() to be valid input
   * to api_data_post() and api_data_write()
   * @param[in]  x_simple_patch  a cxobj to pass to clixon_json2cbuf()
-  * @retva      cbuf            With the modified json
-  * @retva      NULL            Error
+  * @retval     cbuf            With the modified json
+  * @retval     NULL            Error
   */
 static cbuf*
 yang_patch_xml2json_modified_cbuf(cxobj *x_simple_patch)
@@ -150,7 +151,7 @@ yang_patch_xml2json_modified_cbuf(cxobj *x_simple_patch)
     return json_simple_patch;
 }
 
-/*!yang_patch_strip_after_last_slash 
+/*! yang_patch_strip_after_last_slash 
  *
  * Strip /... from end  of val
  * so that e.g. "/interface=eth2" becomes "/"
@@ -187,6 +188,7 @@ yang_patch_strip_after_last_slash(char* val)
 }
 
 /*! YANG PATCH replace method
+ *
  * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle
  * @param[in]  pi        Offset, where to start api-path
@@ -199,9 +201,11 @@ yang_patch_strip_after_last_slash(char* val)
  * @param[in]  value_vec_len    number of elements in the "value" array of an edit in YANG patch
  * @param[in]  value_vec        pointer to the "value" array of an edit in YANG patch
  * @param[in]  x_simple_patch   pointer to XML containing module name, e.g. <ietf-interfaces:interface/>
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 static int
-yang_patch_do_replace(clicon_handle  h,
+yang_patch_do_replace(clixon_handle  h,
                       void          *req,
                       int            pi,
                       cvec          *qvec,
@@ -222,23 +226,23 @@ yang_patch_do_replace(clicon_handle  h,
     cbuf  *json_simple_patch = NULL;
     
     if ((delete_req_uri = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if ((json_simple_patch = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     // Make delete_req_uri something like "/restconf/data/ietf-interfaces:interfaces"
     if (cbuf_append_str(delete_req_uri, cbuf_get(simple_patch_request_uri)) < 0){
-        clicon_err(OE_UNIX, errno, "cbuf_append_str");
+        clixon_err(OE_UNIX, errno, "cbuf_append_str");
         goto done;
     }
 
     // Add the target to delete_req_uri,
     // so it's something like "/restconf/data/ietf-interfaces:interfaces/interface=eth2"
     if (cbuf_append_str(delete_req_uri, target_val) <  0){
-        clicon_err(OE_UNIX, errno, "cbuf_append_str");
+        clixon_err(OE_UNIX, errno, "cbuf_append_str");
         goto done;
     }
 
@@ -255,7 +259,7 @@ yang_patch_do_replace(clicon_handle  h,
 
     // Make post_req_uri something like "/restconf/data/ietf-interfaces:interfaces"
     if (cbuf_append_str(simple_patch_request_uri, cbuf_get(post_req_uri)) < 0){
-        clicon_err(OE_UNIX, errno, "cbuf_append_str");
+        clixon_err(OE_UNIX, errno, "cbuf_append_str");
         goto done;
     }
     // Now insert the new values into the data
@@ -287,6 +291,7 @@ yang_patch_do_replace(clicon_handle  h,
 }
 
 /*! YANG PATCH create method
+ *
  * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle
  * @param[in]  pi        Offset, where to start api-path
@@ -298,9 +303,11 @@ yang_patch_do_replace(clicon_handle  h,
  * @param[in]  value_vec_len    number of elements in the "value" array of an edit in YANG patch
  * @param[in]  value_vec        pointer to the "value" array of an edit in YANG patch
  * @param[in]  x_simple_patch   pointer to XML containing module name, e.g. <ietf-interfaces:interface/>
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 static int
-yang_patch_do_create(clicon_handle  h,
+yang_patch_do_create(clixon_handle  h,
                      void          *req,
                      int            pi,
                      cvec          *qvec,
@@ -319,7 +326,7 @@ yang_patch_do_create(clicon_handle  h,
     
     // Send the POST request
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     for (int k = 0; k < value_vec_len; k++) {
@@ -343,12 +350,13 @@ yang_patch_do_create(clicon_handle  h,
 }
 
 /*! YANG PATCH insert method
- * @param[in]  h         Clixon handle
- * @param[in]  req       Generic Www handle
- * @param[in]  pi        Offset, where to start api-path
- * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
- * @param[in]  media_out Output media
- * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ *
+ * @param[in]  h                Clixon handle
+ * @param[in]  req              Generic Www handle
+ * @param[in]  pi               Offset, where to start api-path
+ * @param[in]  pretty           Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out        Output media
+ * @param[in]  ds       0       if "data" resource, 1 if rfc8527 "ds" resource
  * @param[in]  simple_patch_request_uri URI for patch request, e.g. "/restconf/data/ietf-interfaces:interfaces"
  * @param[in]  value_vec_len    number of elements in the "value" array of an edit in YANG patch
  * @param[in]  value_vec        pointer to the "value" array of an edit in YANG patch
@@ -356,9 +364,11 @@ yang_patch_do_create(clicon_handle  h,
  * @param[in]  where_val       value in "where" field of edit in YANG patch
  * @param[in]  api_path        full API path, e.g. "/restconf/data/example-jukebox:jukebox/playlist=Foo-One" 
  * @param[in]  point_val       value in "point" field of edit in YANG patch
+ * @retval     0               OK
+ * @retval    -1               Error
  */
 static int
-yang_patch_do_insert(clicon_handle  h,
+yang_patch_do_insert(clixon_handle  h,
                      void          *req,
                      int            pi,
                      int            pretty,
@@ -381,11 +391,11 @@ yang_patch_do_insert(clicon_handle  h,
     cvec   *qvec_tmp = NULL;
     
     if ((point_str = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if ((qvec_tmp = cvec_new(0)) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     // Loop through the XML, and get each value
@@ -400,7 +410,7 @@ yang_patch_do_insert(clicon_handle  h,
 
     // Set the insert attributes
     if ((cv = cvec_add(qvec_tmp, CGV_STRING)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_add");
+        clixon_err(OE_UNIX, errno, "cvec_add");
         goto done;
     }
     cv_name_set(cv, "insert");
@@ -410,7 +420,7 @@ yang_patch_do_insert(clicon_handle  h,
     if (point_val)
         cbuf_append_str(point_str, point_val);
     if ((cv = cvec_add(qvec_tmp, CGV_STRING)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_add");
+        clixon_err(OE_UNIX, errno, "cvec_add");
         goto done;
     }
     cv_name_set(cv, "point");
@@ -431,22 +441,25 @@ yang_patch_do_insert(clicon_handle  h,
 }
 
 /*! YANG PATCH merge method
- * @param[in]  h         Clixon handle
- * @param[in]  req       Generic Www handle
- * @param[in]  pi        Offset, where to start api-path
- * @param[in]  qvec      Vector of query string (QUERY_STRING)
- * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
- * @param[in]  media_out Output media
- * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ *
+ * @param[in]  h               Clixon handle
+ * @param[in]  req             Generic Www handle
+ * @param[in]  pi              Offset, where to start api-path
+ * @param[in]  qvec            Vector of query string (QUERY_STRING)
+ * @param[in]  pretty          Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out       Output media
+ * @param[in]  ds       0      if "data" resource, 1 if rfc8527 "ds" resource
  * @param[in]  simple_patch_request_uri URI for patch request, e.g. "/restconf/data/ietf-interfaces:interfaces"
- * @param[in]  value_vec_len    number of elements in the "value" array of an edit in YANG patch
- * @param[in]  value_vec        pointer to the "value" array of an edit in YANG patch
- * @param[in]  x_simple_patch   pointer to XML containing module name, e.g. "<ietf-interfaces:interface/>"
+ * @param[in]  value_vec_len   number of elements in the "value" array of an edit in YANG patch
+ * @param[in]  value_vec       pointer to the "value" array of an edit in YANG patch
+ * @param[in]  x_simple_patch  pointer to XML containing module name, e.g. "<ietf-interfaces:interface/>"
  * @param[in]  where_val       value in "where" field of edit in YANG patch
  * @param[in]  key_xn          XML with key tag and value, e.g. "<name>Foo-One</name>"
+ * @retval     0               OK
+ * @retval    -1               Error
  */
 static int
-yang_patch_do_merge(clicon_handle  h,
+yang_patch_do_merge(clixon_handle  h,
                     void          *req,
                     int            pi,
                     cvec          *qvec,
@@ -466,7 +479,7 @@ yang_patch_do_merge(clicon_handle  h,
     cbuf  *json_simple_patch = NULL;
         
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (key_xn != NULL)
@@ -508,7 +521,7 @@ yang_patch_do_merge(clicon_handle  h,
  * @retval    -1         Error
  */
 static int
-yang_patch_do_value(clicon_handle  h,
+yang_patch_do_value(clixon_handle  h,
                     void          *req,
                     int            pi,
                     cvec          *qvec,
@@ -538,7 +551,7 @@ yang_patch_do_value(clicon_handle  h,
     key_node_id = xml_name(*values_child_vec);
     /* Create cbufs:s */
     if ((patch_header = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(patch_header, "%s:%s", modname, key_node_id);
@@ -588,7 +601,7 @@ yang_patch_do_value(clicon_handle  h,
  * @retval    -1         Error
  */
 static int
-yang_patch_do_edit(clicon_handle  h,
+yang_patch_do_edit(clixon_handle  h,
                    void          *req,
                    int            pi,
                    cvec          *qvec,
@@ -622,29 +635,29 @@ yang_patch_do_edit(clicon_handle  h,
     yang_stmt *ybot = NULL;
     yang_stmt *ymod;
 
-    clicon_debug_xml(1, xn, "%s %d xn:", __FUNCTION__, __LINE__);
+    clixon_debug_xml(1, xn, "%s %d xn:", __FUNCTION__, __LINE__);
     /* Create cbufs:s */
     if ((simple_patch_request_uri = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if ((api_path_target = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if ((x = xpath_first(xn, NULL, "target")) == NULL){
-        clicon_err(OE_YANG, 0, "target mandatory element not found");
+        clixon_err(OE_YANG, 0, "target mandatory element not found");
         goto done;
     }
     target_val = xml_body(x);
     if ((x = xpath_first(xn, NULL, "operation")) == NULL){
-        clicon_err(OE_YANG, 0, "operation mandatory element not found");
+        clixon_err(OE_YANG, 0, "operation mandatory element not found");
         goto done;
     }
     operation = yang_patch_op2int(xml_body(x));
     /* target and operation are mandatory */
     if (target_val == NULL){
-        clicon_err(OE_YANG, 0, "operation/target: mandatory element not found");
+        clixon_err(OE_YANG, 0, "operation/target: mandatory element not found");
         goto done;
     }
     if (operation == YANG_PATCH_OP_INSERT){
@@ -653,9 +666,9 @@ yang_patch_do_edit(clicon_handle  h,
         if ((x = xpath_first(xn, NULL, "where")) != NULL)
             where_val = xml_body(x);
         if (point_val == NULL || where_val == NULL){
-            clicon_err(OE_YANG, 0, "point/where: expected element not found");
+            clixon_err(OE_YANG, 0, "point/where: expected element not found");
             goto done;
-        }       
+        }
     }
     // Construct request URI
     cprintf(simple_patch_request_uri, "%s", uripath0);
@@ -704,7 +717,7 @@ yang_patch_do_edit(clicon_handle  h,
         } else {
             // TODO - do not send error
         }
-        api_data_delete(h, req, cbuf_get(simple_patch_request_uri), pi, pretty, YANG_DATA_JSON, ds); 
+        api_data_delete(h, req, cbuf_get(simple_patch_request_uri), pi, pretty, YANG_DATA_JSON, ds);
     }
  ok:
     retval = 0;
@@ -723,6 +736,7 @@ yang_patch_do_edit(clicon_handle  h,
 }
 
 /*! YANG PATCH method
+ *
  * @param[in]  h         Clixon handle
  * @param[in]  req       Generic Www handle
  * @param[in]  api_path0 According to restconf (Sec 3.5.3.1 in rfc8040)
@@ -742,7 +756,7 @@ yang_patch_do_edit(clicon_handle  h,
  * Currently "move" not supported
  */
 int
-api_data_yang_patch(clicon_handle  h,
+api_data_yang_patch(clixon_handle  h,
                     void          *req,
                     char          *api_path0,
                     int            pi,
@@ -755,7 +769,7 @@ api_data_yang_patch(clicon_handle  h,
 {
     int            retval = -1;
     int            i;
-    cxobj         *xpatch = NULL; 
+    cxobj         *xpatch = NULL;
     yang_stmt     *yspec;
     char          *api_path;
     cxobj         *xerr = NULL;    /* malloced must be freed */
@@ -764,9 +778,9 @@ api_data_yang_patch(clicon_handle  h,
     size_t         veclen;
     cxobj        **vec = NULL;
 
-    clicon_debug(1, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_FATAL, 0, "No DB_SPEC");
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     api_path=api_path0;
@@ -794,7 +808,7 @@ api_data_yang_patch(clicon_handle  h,
     }
     /* Common error handling for json/xml parsing above */
     if (ret < 0){
-        if (netconf_malformed_message_xml(&xerr, clicon_err_reason) < 0)
+        if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
             goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
             goto done;
@@ -805,7 +819,7 @@ api_data_yang_patch(clicon_handle  h,
             goto done;
         goto ok;
     }
-    /* 
+    /*
      * RFC 8072 2.1: The message-body MUST identify exactly one resource instance
      */
     if (xml_child_nr_type(xpatch, CX_ELMNT) != 1){
@@ -819,7 +833,7 @@ api_data_yang_patch(clicon_handle  h,
     if ((uripath0 = restconf_uripath(h)) == NULL)
         goto done;
     /* Find all edit operations and loop over them
-     */    
+     */
     if (xpath_vec(xpatch, NULL, "yang-patch/edit", &vec, &veclen) < 0)
         goto done;
     for (i = 0; i < veclen; i++) {
@@ -846,7 +860,7 @@ api_data_yang_patch(clicon_handle  h,
 #else // CLIXON_YANG_PATCH
 
 int
-api_data_yang_patch(clicon_handle h,
+api_data_yang_patch(clixon_handle h,
                     void         *req,
                     char         *api_path0,
                     int           pi,
@@ -857,7 +871,7 @@ api_data_yang_patch(clicon_handle h,
                     restconf_media media_out,
                     ietf_ds_t     ds)
 {
-    clicon_err(OE_RESTCONF, 0, "Not implemented");
+    clixon_err(OE_RESTCONF, 0, "Not implemented");
     return -1;
 }
 #endif // CLIXON_YANG_PATCH

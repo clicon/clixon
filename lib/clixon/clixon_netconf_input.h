@@ -49,7 +49,7 @@ extern "C" {
 #endif
 
 ssize_t netconf_input_read2(int s, unsigned char *buf, ssize_t buflen, int *eof);
-int     netconf_input_msg2(unsigned char **bufp, size_t *lenp, cbuf *cbmsg, 
+int     netconf_input_msg2(unsigned char **bufp, size_t *lenp, cbuf *cbmsg,
                            netconf_framing_type framing, int *frame_state, size_t *frame_size,
                            int *eom);
 int     netconf_input_frame2(cbuf *cb, yang_bind yb, yang_stmt *yspec, cxobj **xrecv, cxobj **xerr);

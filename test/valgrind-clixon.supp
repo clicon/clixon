@@ -30,6 +30,13 @@
    fun:_dl_check_map_versions
 }
 {
+   supp4.1
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*
+   fun:_dl_check_map_versions
+}
+{
    supp5
    Memcheck:Leak
    match-leak-kinds: reachable

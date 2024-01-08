@@ -46,7 +46,7 @@
  *             +---------------+                +-->| subscription  |
  *                                            /     +---------------+
  * +---------------+        * +---------------+
- * | clicon_handle |--------->| event_stream  |
+ * | clixon_handle |--------->| event_stream  |
  * +---------------+          +---------------+
  *                                             \  * +---------------+
  *                                              +-->| replay        |
@@ -69,16 +69,17 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include "clixon_queue.h"
-#include "clixon_err.h"
-#include "clixon_log.h"
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
-#include "clixon_event.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_event.h"
 #include "clixon_xml_io.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_options.h"
@@ -92,13 +93,13 @@
 
 /*! Find an event notification stream given name
  *
- * @param[in]  h    Clicon handle
+ * @param[in]  h    Clixon handle
  * @param[in]  name Name of stream
  * @retval     es   Event notification stream structure
  * @retval     NULL Not found
  */
 event_stream_t *
-stream_find(clicon_handle h,
+stream_find(clixon_handle h,
             const char   *name)
 {
     event_stream_t *es0;
@@ -116,18 +117,20 @@ stream_find(clicon_handle h,
 
 /*! Add notification event stream
  *
- * @param[in]  h              Clicon handle
+ * @param[in]  h              Clixon handle
  * @param[in]  name           Name of stream
  * @param[in]  description    Description of stream
  * @param[in]  replay_enabled Set if replay possible in stream
  * @param[in]  retention      For replay buffer how much relative to save
+ * @retval     0              OK
+ * @retval    -1              Error
  */
 int
-stream_add(clicon_handle   h,
-           const char     *name, 
+stream_add(clixon_handle   h,
+           const char     *name,
            const char     *description,
            const int       replay_enabled,
-           struct timeval *retention) 
+           struct timeval *retention)
 {
     int             retval = -1;
     event_stream_t *es;
@@ -135,16 +138,16 @@ stream_add(clicon_handle   h,
     if ((es = stream_find(h, name)) != NULL)
         goto ok;
     if ((es = malloc(sizeof(event_stream_t))) == NULL){
-        clicon_err(OE_XML, errno, "malloc");
+        clixon_err(OE_XML, errno, "malloc");
         goto done;
     }
     memset(es, 0, sizeof(event_stream_t));
     if ((es->es_name = strdup(name)) == NULL){
-        clicon_err(OE_XML, errno, "strdup");
+        clixon_err(OE_XML, errno, "strdup");
         goto done;
     }
     if ((es->es_description = strdup(description)) == NULL){
-        clicon_err(OE_XML, errno, "strdup");
+        clixon_err(OE_XML, errno, "strdup");
         goto done;
     }
     es->es_replay_enabled = replay_enabled;
@@ -159,18 +162,20 @@ stream_add(clicon_handle   h,
 
 /*! Delete complete notification event stream list (not just single stream)
  *
- * @param[in] h     Clicon handle
+ * @param[in] h     Clixon handle
  * @param[in] force Force deletion of 
+ * @retval     0    OK
  */
 int
-stream_delete_all(clicon_handle h,
+stream_delete_all(clixon_handle h,
                   int           force)
 {
+    int                   retval = -1;
     struct stream_replay *r;
     struct stream_subscription *ss;
     event_stream_t       *es;
     event_stream_t       *head = clicon_stream(h);
-    
+
     while ((es = clicon_stream(h)) != NULL){
         DELQ(es, head, event_stream_t *);
         clicon_stream_set(h, head);
@@ -178,8 +183,10 @@ stream_delete_all(clicon_handle h,
             free(es->es_name);
         if (es->es_description)
             free(es->es_description);
-        while ((ss = es->es_subscription) != NULL)
-            stream_ss_rm(h, es, ss, force); /* XXX in some cases leaks memory due to DONT clause in stream_ss_rm() */
+        while ((ss = es->es_subscription) != NULL){
+            if (stream_ss_rm(h, es, ss, force) < 0)
+                goto done;
+        }
         while ((r = es->es_replay) != NULL){
             DELQ(r, es->es_replay, struct stream_replay *);
             if (r->r_xml)
@@ -188,19 +195,21 @@ stream_delete_all(clicon_handle h,
         }
         free(es);
     }
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Return stream definition state in XML supporting RFC 8040 and RFC5277
  *
- * @param[in]  h      Clicon handle
+ * @param[in]  h      Clixon handle
  * @param[in]  access If set, include access/location
  * @param[out] cb     Output buffer containing XML on exit
  * @retval     0      OK
  * @retval    -1      Error
- */ 
+ */
 int
-stream_get_xml(clicon_handle h,
+stream_get_xml(clixon_handle h,
                int           access,
                cbuf         *cb)
 {
@@ -222,7 +231,7 @@ stream_get_xml(clicon_handle h,
                 cprintf(cb, "<encoding>xml</encoding>");
                 url_prefix = clicon_option_str(h, "CLICON_STREAM_URL");
                 stream_path = clicon_option_str(h, "CLICON_STREAM_PATH");
-                cprintf(cb, "<location>%s/%s/%s</location>", 
+                cprintf(cb, "<location>%s/%s/%s</location>",
                         url_prefix, stream_path, es->es_name);
                 cprintf(cb, "</access>");
             }
@@ -237,7 +246,9 @@ stream_get_xml(clicon_handle h,
 /*! Check all stream subscription stop timers, set up new timer
  *
  * @param[in] fd   No-op
- * @param[in] arg  Clicon handle
+ * @param[in] arg  Clixon handle
+ * @retval    0    OK
+ * @retval   -1    Error
  * @note format is given by clixon_event_reg_timeout callback function (fd not needed)
  */
 int
@@ -245,7 +256,7 @@ stream_timer_setup(int   fd,
                    void *arg)
 {
     int                          retval = -1;
-    clicon_handle                h = (clicon_handle)arg;
+    clixon_handle                h = (clixon_handle)arg;
     struct timeval               now;
     struct timeval               t;
     struct timeval               t1 = {STREAM_TIMER_TIMEOUT_S, 0};
@@ -255,8 +266,8 @@ stream_timer_setup(int   fd,
     struct stream_subscription  *ss1;
     struct stream_replay        *r;
     struct stream_replay        *r1;
-    
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Go thru callbacks and see if any have timed out, if so remove them 
      * Could also be done by a separate timer.
      */
@@ -313,20 +324,9 @@ stream_timer_setup(int   fd,
     return retval;
 }
 
-#ifdef NYI
-/*! Delete single notification event stream 
- * XXX notused
- */
-int
-stream_del()
-{
-    return 0;
-}
-#endif
-
 /*! Add an event notification callback to a stream given a callback function
  *
- * @param[in]  h        Clicon handle
+ * @param[in]  h        Clixon handle
  * @param[in]  stream   Name of stream
  * @param[in]  xpath    Filter selector - xpath
  * @param[in]  startime If set, Make a replay
@@ -337,7 +337,7 @@ stream_del()
  * @retval    -1        Error, ie no such stream 
  */
 struct stream_subscription *
-stream_ss_add(clicon_handle     h,
+stream_ss_add(clixon_handle     h,
               char             *stream,
               char             *xpath,
               struct timeval   *starttime,
@@ -348,18 +348,18 @@ stream_ss_add(clicon_handle     h,
     event_stream_t             *es;
     struct stream_subscription *ss = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((es = stream_find(h, stream)) == NULL){
-        clicon_err(OE_CFG, ENOENT, "Stream %s not found", stream);
+        clixon_err(OE_CFG, ENOENT, "Stream %s not found", stream);
         goto done;
     }
     if ((ss = malloc(sizeof(*ss))) == NULL){
-        clicon_err(OE_CFG, errno, "malloc");
+        clixon_err(OE_CFG, errno, "malloc");
         goto done;
     }
     memset(ss, 0, sizeof(*ss));
     if ((ss->ss_stream = strdup(stream)) == NULL){
-        clicon_err(OE_CFG, errno, "strdup");
+        clixon_err(OE_CFG, errno, "strdup");
         goto done;
     }
     if (stoptime)
@@ -367,7 +367,7 @@ stream_ss_add(clicon_handle     h,
     if (starttime)
         ss->ss_starttime = *starttime;
     if (xpath && (ss->ss_xpath = strdup(xpath)) == NULL){
-        clicon_err(OE_CFG, errno, "strdup");
+        clixon_err(OE_CFG, errno, "strdup");
         goto done;
     }
     ss->ss_fn     = fn;
@@ -382,7 +382,7 @@ stream_ss_add(clicon_handle     h,
 
 /*! Delete event stream subscription to a stream given a callback and arg
  *
- * @param[in]  h      Clicon handle
+ * @param[in]  h      Clixon handle
  * @param[in]  stream Name of stream or NULL for all streams
  * @param[in]  fn     Callback when event occurs
  * @param[in]  arg    Argument to use with callback. Also handle when deleting
@@ -390,12 +390,12 @@ stream_ss_add(clicon_handle     h,
  * @retval    -1      Error
  */
 int
-stream_ss_rm(clicon_handle                h,
+stream_ss_rm(clixon_handle                h,
              event_stream_t              *es,
              struct stream_subscription  *ss,
              int                          force)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     DELQ(ss, es->es_subscription, struct stream_subscription *);
     /* Remove from upper layers - close socket etc. */
     (*ss->ss_fn)(h, 1, NULL, ss->ss_arg);
@@ -406,7 +406,7 @@ stream_ss_rm(clicon_handle                h,
             free(ss->ss_xpath);
         free(ss);
     }
-    clicon_debug(1, "%s retval: 0", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval: 0", __FUNCTION__);
     return 0;
 }
 
@@ -436,13 +436,15 @@ stream_ss_find(event_stream_t   *es,
 
 /*! Remove stream subscription identified with fn and arg in all streams
  *
- * @param[in] h       Clicon handle
+ * @param[in] h       Clixon handle
  * @param[in] fn      Stream callback
  * @param[in] arg     Argument - typically unique client handle
+ * @retval    0       OK
+ * @retval   -1       Error
  * @see stream_ss_delete  For single stream
  */
 int
-stream_ss_delete_all(clicon_handle     h,
+stream_ss_delete_all(clixon_handle     h,
                      stream_fn_t       fn,
                      void             *arg)
 {
@@ -458,7 +460,7 @@ stream_ss_delete_all(clicon_handle     h,
             }
             es = NEXTQ(struct event_stream *, es);
         } while (es && es != clicon_stream(h));
-    }       
+    }
     retval = 0;
  done:
     return retval;
@@ -466,10 +468,14 @@ stream_ss_delete_all(clicon_handle     h,
 
 /*! Delete a single stream
  *
+ * @param[in] h      Clixon handle
+ * @retval    0      OK
+ * @retval   -1      Error
+
  * @see stream_ss_delete_all (merge with this?)
  */
 int
-stream_ss_delete(clicon_handle     h,
+stream_ss_delete(clixon_handle     h,
                  char             *name,
                  stream_fn_t       fn,
                  void             *arg)
@@ -487,7 +493,7 @@ stream_ss_delete(clicon_handle     h,
                 }
             es = NEXTQ(struct event_stream *, es);
         } while (es && es != clicon_stream(h));
-    }       
+    }
     retval = 0;
  done:
     return retval;
@@ -495,25 +501,25 @@ stream_ss_delete(clicon_handle     h,
 
 /*! Stream notify event and distribute to all registered callbacks
  *
- * @param[in]  h       Clicon handle
+ * @param[in]  h       Clixon handle
  * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
  * @param[in]  tv      Timestamp. Dont notify if subscription has stoptime<tv
  * @param[in]  event   Notification as xml tree
  * @retval     0       OK
- * @retval    -1       Error with clicon_err called
+ * @retval    -1       Error
  * @see stream_notify
  * @see stream_ss_timeout where subscriptions are removed if stoptime<now
  */
 static int
-stream_notify1(clicon_handle   h, 
+stream_notify1(clixon_handle   h,
                event_stream_t *es,
                struct timeval *tv,
                cxobj          *xevent)
 {
     int                         retval = -1;
     struct stream_subscription *ss;
-    
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Go thru all subscriptions and find matches */
     if ((ss = es->es_subscription) != NULL)
         do {
@@ -542,11 +548,11 @@ stream_notify1(clicon_handle   h,
 
 /*! Stream notify event and distribute to all registered callbacks
  *
- * @param[in]  h       Clicon handle
+ * @param[in]  h       Clixon handle
  * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
  * @param[in]  event   Notification as format string according to printf(3)
  * @retval     0       OK
- * @retval    -1       Error with clicon_err called
+ * @retval    -1       Error
  * @code
  *  if (stream_notify(h, "NETCONF", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
  *    err;
@@ -554,8 +560,8 @@ stream_notify1(clicon_handle   h,
  * @see stream_notify1 Internal
  */
 int
-stream_notify(clicon_handle h, 
-              char         *stream, 
+stream_notify(clixon_handle h,
+              char         *stream,
               const char   *event, ...)
 {
     int             retval = -1;
@@ -569,14 +575,14 @@ stream_notify(clicon_handle h,
     struct timeval  tv;
     event_stream_t *es;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if ((es = stream_find(h, stream)) == NULL)
         goto ok;
     va_start(args, event);
     len = vsnprintf(NULL, 0, event, args) + 1;
     va_end(args);
     if ((str = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, len);
@@ -584,16 +590,16 @@ stream_notify(clicon_handle h,
     len = vsnprintf(str, len, event, args) + 1;
     va_end(args);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, 0, "No yang spec");
+        clixon_err(OE_YANG, 0, "No yang spec");
         goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     gettimeofday(&tv, NULL);
     if (time2str(&tv, timestr, sizeof(timestr)) < 0){
-        clicon_err(OE_UNIX, errno, "time2str");
+        clixon_err(OE_UNIX, errno, "time2str");
         goto done;
     }
     /* From RFC5277 */
@@ -624,16 +630,16 @@ stream_notify(clicon_handle h,
 
 /*! Backward compatible function
  *
- * @param[in]  h       Clicon handle
+ * @param[in]  h       Clixon handle
  * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
  * @param[in]  xml     Notification as XML stream. Is copied.
  * @retval     0       OK
- * @retval    -1       Error with clicon_err called
+ * @retval    -1       Error
  * @see  stream_notify  Should be merged with this
  */
 int
-stream_notify_xml(clicon_handle h, 
-                  char         *stream, 
+stream_notify_xml(clixon_handle h,
+                  char         *stream,
                   cxobj        *xml)
 {
     int        retval = -1;
@@ -646,20 +652,20 @@ stream_notify_xml(clicon_handle h,
     struct timeval tv;
     event_stream_t *es;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if ((es = stream_find(h, stream)) == NULL)
         goto ok;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, 0, "No yang spec");
+        clixon_err(OE_YANG, 0, "No yang spec");
         goto done;
     }
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     gettimeofday(&tv, NULL);
     if (time2str(&tv, timestr, sizeof(timestr)) < 0){
-        clicon_err(OE_UNIX, errno, "time2str");
+        clixon_err(OE_UNIX, errno, "time2str");
         goto done;
     }
     cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>NULL</notification>",
@@ -720,7 +726,7 @@ stream_notify_xml(clicon_handle h,
  * Assume no future sample timestamps.
  */
 static int
-stream_replay_notify(clicon_handle               h,
+stream_replay_notify(clixon_handle               h,
                      event_stream_t             *es,
                      struct stream_subscription *ss)
 {
@@ -763,6 +769,8 @@ stream_replay_notify(clicon_handle               h,
  * @param[in] es   Stream
  * @param[in] tv   Timestamp
  * @param[in] xv   XML
+ * @retval    0    OK
+ * @retval   -1    Error
  */
 int
 stream_replay_add(event_stream_t *es,
@@ -773,7 +781,7 @@ stream_replay_add(event_stream_t *es,
     struct stream_replay *new;
 
     if ((new = malloc(sizeof *new)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(new, 0, (sizeof *new));
@@ -789,7 +797,7 @@ stream_replay_add(event_stream_t *es,
  *  stream and subscription
  */
 struct replay_arg{
-    clicon_handle ra_h;
+    clixon_handle ra_h;
     char         *ra_stream; /* Name of stream - malloced: free by cb */
     stream_fn_t   ra_fn;  /* Stream callback */
     void         *ra_arg; /*  Argument - typically unique client handle */
@@ -799,6 +807,8 @@ struct replay_arg{
  *
  * @param[in] fd   Ignore
  * @param[in] arg  tmp struct including clicon handle, stream and subscription
+ * @retval    0    OK
+ * @retval   -1    Error
  */
 static int
 stream_replay_cb(int   fd,
@@ -808,7 +818,7 @@ stream_replay_cb(int   fd,
     struct replay_arg          *ra= (struct replay_arg*)arg;
     event_stream_t             *es;
     struct stream_subscription *ss;
-    
+
     if (ra == NULL)
         goto ok;
     if (ra->ra_stream == NULL)
@@ -836,25 +846,27 @@ stream_replay_cb(int   fd,
  * @param[in] stream  Name of stream
  * @param[in] fn      Stream callback
  * @param[in] arg     Argument - typically unique client handle
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
-stream_replay_trigger(clicon_handle h,
+stream_replay_trigger(clixon_handle h,
                       char         *stream,
                       stream_fn_t   fn,
                       void         *arg)
 {
-    int retval = -1;
-    struct timeval now;
+    int                retval = -1;
+    struct timeval     now;
     struct replay_arg *ra;
 
     if ((ra = malloc(sizeof(*ra))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(ra, 0, sizeof(*ra));
     ra->ra_h = h;
     if ((ra->ra_stream = strdup(stream)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     ra->ra_fn = fn;
@@ -890,10 +902,10 @@ struct curlbuf{
  * realloc. Therefore, we append new data to the userdata buffer.
  */
 static size_t
-curl_get_cb(void *ptr, 
+curl_get_cb(void  *ptr,
             size_t size, 
             size_t nmemb, 
-            void *userdata)
+            void  *userdata)
 {
     struct curlbuf *buf = (struct curlbuf *)userdata;
     int len;
@@ -917,8 +929,8 @@ curl_get_cb(void *ptr,
  * @see same function (url_post) in grideye_curl.c
  */
 static int
-url_post(char *url, 
-         char *postfields, 
+url_post(char *url,
+         char *postfields,
          char **getdata)
 {
     int            retval = -1;
@@ -928,15 +940,15 @@ url_post(char *url,
     CURLcode       errcode;
 
     /* Try it with  curl -X PUT -d '*/
-    clicon_debug(1, "%s:  curl -X POST -d '%s' %s",
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s:  curl -X POST -d '%s' %s",
         __FUNCTION__, postfields, url);
     /* Set up curl for doing the communication with the controller */
     if ((curl = curl_easy_init()) == NULL) {
-        clicon_debug(1, "curl_easy_init");
+        clixon_debug(CLIXON_DBG_DEFAULT, "curl_easy_init");
         goto done;
     }
     if ((err = malloc(CURL_ERROR_SIZE)) == NULL) {
-        clicon_debug(1, "%s: malloc", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s: malloc", __FUNCTION__);
         goto done;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -947,12 +959,12 @@ url_post(char *url,
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postfields);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postfields));
 
-    if (clicon_debug_get())
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);   
+    if (clixon_debug_get())
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
     if ((errcode = curl_easy_perform(curl)) != CURLE_OK){
-        clicon_debug(1, "%s: curl: %s(%d)", __FUNCTION__, err, errcode);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s: curl: %s(%d)", __FUNCTION__, err, errcode);
         retval = 0;
-        goto done; 
+        goto done;
     }
     if (getdata && cb.b_buf){
         *getdata = cb.b_buf;
@@ -965,21 +977,23 @@ url_post(char *url,
     if (cb.b_buf)
         free(cb.b_buf);
     if (curl)
-        curl_easy_cleanup(curl);   /* cleanup */ 
+        curl_easy_cleanup(curl);   /* cleanup */
     return retval;
 }
 
 /*! Stream callback for example stream notification 
  *
  * Push via curl_post to publish stream event
- * @param[in]  h     Clicon handle
+ * @param[in]  h     Clixon handle
  * @param[in]  op    Operation: 0 OK, 1 Close
  * @param[in]  event Event as XML
  * @param[in]  arg   Extra argument provided in stream_ss_add
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see stream_ss_add
  */
-static int 
-stream_publish_cb(clicon_handle h, 
+static int
+stream_publish_cb(clixon_handle h,
                   int           op,
                   cxobj        *event,
                   void         *arg)
@@ -991,22 +1005,22 @@ stream_publish_cb(clicon_handle h,
     char *result = NULL;
     char *stream = (char*)arg;
 
-    clicon_debug(1, "%s", __FUNCTION__); 
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (op != 0)
         goto ok;
     /* Create pub url */
     if ((u = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if ((pub_prefix = clicon_option_str(h, "CLICON_STREAM_PUB")) == NULL){
-        clicon_err(OE_CFG, ENOENT, "CLICON_STREAM_PUB not defined");
+        clixon_err(OE_CFG, ENOENT, "CLICON_STREAM_PUB not defined");
         goto done;
     }
     cprintf(u, "%s/%s", pub_prefix, stream);
     /* Create XML data as string */
     if ((d = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if (clixon_xml2cbuf(d, event, 0, 0, NULL, -1, 0) < 0)
@@ -1016,7 +1030,7 @@ stream_publish_cb(clicon_handle h,
                  &result) < 0)    /* result as xml */
         goto done;
     if (result)
-        clicon_debug(1, "%s: %s", __FUNCTION__, result);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s", __FUNCTION__, result);
  ok:
     retval = 0;
  done:
@@ -1033,7 +1047,7 @@ stream_publish_cb(clicon_handle h,
 /*! Publish all streams on a pubsub channel, eg using SSE
  */
 int
-stream_publish(clicon_handle h,
+stream_publish(clixon_handle h,
                char         *stream)
 {
 #ifdef CLIXON_PUBLISH_STREAMS
@@ -1045,22 +1059,22 @@ stream_publish(clicon_handle h,
  done:
     return retval;
 #else
-   clicon_log(LOG_WARNING, "%s called but CLIXON_PUBLISH_STREAMS not enabled (enable with configure --enable-publish)", __FUNCTION__);
-   clicon_log_init("xpath", LOG_WARNING, CLICON_LOG_STDERR); 
-   return 0;
+    clixon_log(h, LOG_WARNING, "%s called but CLIXON_PUBLISH_STREAMS not enabled (enable with configure --enable-publish)", __FUNCTION__);
+    clixon_log_init(h, "xpath", LOG_WARNING, CLIXON_LOG_STDERR);
+    return 0;
 #endif
 }
 
-int 
+int
 stream_publish_init()
 {
 #ifdef CLIXON_PUBLISH_STREAMS
     int retval = -1;
 
     if (curl_global_init(CURL_GLOBAL_ALL) != 0){
-        clicon_err(OE_PLUGIN, errno, "curl_global_init");
+        clixon_err(OE_PLUGIN, errno, "curl_global_init");
         goto done;
-    }    
+    }
     retval = 0;
  done:
     return retval;
@@ -1069,11 +1083,11 @@ stream_publish_init()
 #endif
 }
 
-int 
+int
 stream_publish_exit()
 {
 #ifdef CLIXON_PUBLISH_STREAMS
     curl_global_cleanup();
-#endif 
+#endif
     return 0;
 }

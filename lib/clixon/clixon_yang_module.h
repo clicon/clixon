@@ -47,7 +47,8 @@
  * Types
  */
 
-/* Struct containing module state differences between two modules or two 
+/*! Struct containing module state differences between two modules or two 
+ *
  * revisions of same module. 
  * The most significant usecase is one module-state is a loaded datastore and the other
  * is the one loaded by the server by its YANG files.
@@ -64,12 +65,12 @@ typedef struct {
 modstate_diff_t * modstate_diff_new(void);
 int modstate_diff_free(modstate_diff_t *);
 
-int yang_modules_init(clicon_handle h);
-char *yang_modules_revision(clicon_handle h);
-int yang_modules_state_build(clicon_handle h, yang_stmt *yspec, char *msid, int brief, cbuf *cb);
-int yang_modules_state_get(clicon_handle h, yang_stmt *yspec, char *xpath,
+int yang_modules_init(clixon_handle h);
+char *yang_modules_revision(clixon_handle h);
+int yang_modules_state_build(clixon_handle h, yang_stmt *yspec, char *msid, int brief, cbuf *cb);
+int yang_modules_state_get(clixon_handle h, yang_stmt *yspec, char *xpath,
                            cvec *nsc, int brief, cxobj **xret);
-int clixon_module_upgrade(clicon_handle h, cxobj *xt, modstate_diff_t *msd, cbuf *cb);
+int clixon_module_upgrade(clixon_handle h, cxobj *xt, modstate_diff_t *msd, cbuf *cb);
 yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
 yang_stmt *yang_find_module_by_prefix_yspec(yang_stmt *yspec, char *prefix);
 yang_stmt *yang_find_module_by_namespace(yang_stmt *yspec, char *ns);
@@ -77,7 +78,7 @@ yang_stmt *yang_find_module_by_namespace_revision(yang_stmt *yspec, const char *
 yang_stmt *yang_find_module_by_name_revision(yang_stmt *yspec, const char *name, const char *revision);
 yang_stmt *yang_find_module_by_name(yang_stmt *yspec, char *name);
 int        yang_metadata_annotation_check(cxobj *x, yang_stmt *ymod, int *ismeta);
-int        yang_metadata_init(clicon_handle h);
-int        yang_lib2yspec(clicon_handle h, cxobj *yanglib,yang_stmt *yspec);
+int        yang_metadata_init(clixon_handle h);
+int        yang_lib2yspec(clixon_handle h, cxobj *yanglib,yang_stmt *yspec);
 
 #endif  /* _CLIXON_YANG_MODULE_H_ */

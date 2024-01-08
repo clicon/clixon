@@ -33,9 +33,9 @@
   ***** END LICENSE BLOCK *****
 
  * JSON support functions.
- * JSON syntax is according to:
- * http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
- * RFC 7951 JSON Encoding of Data Modeled with YANG
+ * @see http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ *  and RFC 7951 JSON Encoding of Data Modeled with YANG
+ *  and RFC 8259 The JavaScript Object Notation (JSON) Data Interchange Format
  */
 #ifndef _CLIXON_JSON_H
 #define _CLIXON_JSON_H

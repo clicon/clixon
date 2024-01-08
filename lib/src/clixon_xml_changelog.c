@@ -60,11 +60,12 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_string.h"
-#include "clixon_err.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
-#include "clixon_log.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
@@ -79,7 +80,7 @@
 #include "clixon_xpath.h"
 
 static int
-changelog_rename(clicon_handle h,
+changelog_rename(clixon_handle h,
                  cxobj        *xt,
                  cxobj        *xw,
                  cvec         *nsc,
@@ -88,9 +89,9 @@ changelog_rename(clicon_handle h,
     int     retval = -1;
     xp_ctx *xctx = NULL;
     char   *str = NULL;
-    
+
     if (tag == NULL){
-        clicon_err(OE_XML, 0, "tag required");
+        clixon_err(OE_XML, 0, "tag required");
         goto done;
     }
     if (xpath_vec_ctx(xw, nsc, tag, 0, &xctx) < 0)
@@ -98,7 +99,7 @@ changelog_rename(clicon_handle h,
     if (ctx2string(xctx, &str) < 0)
         goto done;
     if (!strlen(str)){
-        clicon_err(OE_XML, 0, "invalid rename tag: \"%s\"", str);
+        clixon_err(OE_XML, 0, "invalid rename tag: \"%s\"", str);
         goto done;
     }
     if (xml_name_set(xw, str) < 0)
@@ -118,7 +119,7 @@ changelog_rename(clicon_handle h,
 
 /* replace target XML */
 static int
-changelog_replace(clicon_handle h,
+changelog_replace(clixon_handle h,
                   cxobj        *xt,
                   cxobj        *xw,
                   cxobj        *xnew)
@@ -129,7 +130,7 @@ changelog_replace(clicon_handle h,
     /* create a new node by parsing fttransform string and insert it at 
        target */
     if (xnew == NULL){
-        clicon_err(OE_XML, 0, "new required");
+        clixon_err(OE_XML, 0, "new required");
         goto done;
     }
     /* replace: remove all children of target */
@@ -138,7 +139,7 @@ changelog_replace(clicon_handle h,
             goto done;
     /* replace: first single node under <new> */
     if (xml_child_nr(xnew) != 1){
-        clicon_err(OE_XML, 0, "Single child to <new> required");
+        clixon_err(OE_XML, 0, "Single child to <new> required");
         goto done;
     }
     x = xml_child_i(xnew, 0);
@@ -153,16 +154,16 @@ changelog_replace(clicon_handle h,
 /* create a new node by parsing "new" and insert it at 
    target */
 static int
-changelog_insert(clicon_handle h,
+changelog_insert(clixon_handle h,
                  cxobj        *xt,
                  cxobj        *xw,
                  cxobj        *xnew)
 {
     int    retval = -1;
     cxobj *x;
-    
+
     if (xnew == NULL){
-        clicon_err(OE_XML, 0, "new required");
+        clixon_err(OE_XML, 0, "new required");
         goto done;
     }
     /* replace: add all new children to target */
@@ -180,7 +181,7 @@ changelog_insert(clicon_handle h,
 
 /* delete target */
 static int
-changelog_delete(clicon_handle h,
+changelog_delete(clixon_handle h,
                  cxobj        *xt,
                  cxobj        *xw)
 {
@@ -195,7 +196,7 @@ changelog_delete(clicon_handle h,
 
 /* Move target node to location */
 static int
-changelog_move(clicon_handle h,
+changelog_move(clixon_handle h,
                cxobj        *xt,
                cxobj        *xw,
                cvec         *nsc,
@@ -205,7 +206,7 @@ changelog_move(clicon_handle h,
     cxobj *xp;       /* destination parent node */
 
     if ((xp = xpath_first(xt, nsc, "%s", dst)) == NULL){
-        clicon_err(OE_XML, 0, "path required");
+        clixon_err(OE_XML, 0, "path required");
         goto done;
     }
     if (xml_addsub(xp, xw) < 0)
@@ -216,15 +217,17 @@ changelog_move(clicon_handle h,
 }
 
 /*! Perform a changelog operation
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @param[in]  xt  XML to upgrade
  * @param[in]  xi  Changelog item
-
+ * @retval     0   OK
+ * @retval    -1   Error
  * @note XXX error handling!
  * @note XXX xn --> xt  xpath may not match
 */
 static int
-changelog_op(clicon_handle h,
+changelog_op(clixon_handle h,
              cxobj        *xt,
              cxobj        *xi)
 
@@ -291,7 +294,7 @@ changelog_op(clicon_handle h,
            ret = changelog_move(h, xt, xw, nsc, dst);
        }
        else{
-           clicon_err(OE_XML, 0, "Unknown operation: %s", op);
+           clixon_err(OE_XML, 0, "Unknown operation: %s", op);
            goto done;
        }
        if (ret < 0)
@@ -311,17 +314,20 @@ changelog_op(clicon_handle h,
     return retval;
  fail:
     retval = 0;
-    clicon_debug(1, "%s fail op:%s ", __FUNCTION__, op);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s fail op:%s ", __FUNCTION__, op);
     goto done;
 }
     
 /*! Iterate through one changelog item
- * @param[in]  h   Clicon handle
+ *
+ * @param[in]  h   Clixon handle
  * @param[in]  xt  Changelog list
  * @param[in]  xn  XML to upgrade
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 static int
-changelog_iterate(clicon_handle h,
+changelog_iterate(clixon_handle h,
                   cxobj        *xt,
                   cxobj        *xch)
 
@@ -331,7 +337,7 @@ changelog_iterate(clicon_handle h,
     size_t     veclen;
     int        ret;
     int        i;
-    
+
     if (xpath_vec(xch, NULL, "step", &vec, &veclen) < 0)
         goto done;
     /* Iterate through changelog items */
@@ -343,7 +349,7 @@ changelog_iterate(clicon_handle h,
     }
     retval = 1;
  done:
-    clicon_debug(1, "%s retval: %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval: %d", __FUNCTION__, retval);
     if (vec)
         free(vec);
     return retval;
@@ -353,7 +359,8 @@ changelog_iterate(clicon_handle h,
 }
 
 /*! Automatic upgrade using changelog
- * @param[in]  h       Clicon handle 
+ *
+ * @param[in]  h       Clixon handle 
  * @param[in]  xt      Top-level XML tree to be updated (includes other ns as well)
  * @param[in]  ns      Namespace of module (for info)
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
@@ -367,13 +374,13 @@ changelog_iterate(clicon_handle h,
  * @see upgrade_callback_register  where this function should be registered
  */
 int
-xml_changelog_upgrade(clicon_handle h,       
-                      cxobj        *xt,      
+xml_changelog_upgrade(clixon_handle h,
+                      cxobj        *xt,
                       char         *ns,
                       uint16_t      op,
                       uint32_t      from,
                       uint32_t      to,
-                      void         *arg,     
+                      void         *arg,
                       cbuf         *cbret)
 {
     int        retval = -1;
@@ -398,7 +405,7 @@ xml_changelog_upgrade(clicon_handle h,
      * - find all changelogs in the interval: [from, to]
      * - note it t=0 then no changelog is applied
      */
-    if (xpath_vec(xchlog, NULL, "changelog[namespace=\"%s\"]", 
+    if (xpath_vec(xchlog, NULL, "changelog[namespace=\"%s\"]",
                   &vec, &veclen, ns) < 0)
         goto done;
     /* Get all changelogs in the interval [from,to]*/
@@ -432,7 +439,7 @@ xml_changelog_upgrade(clicon_handle h,
 /*! Initialize module revision. read changelog, etc
  */
 int
-clixon_xml_changelog_init(clicon_handle h)
+clixon_xml_changelog_init(clixon_handle h)
 {
     int        retval = -1;
     char      *filename;
@@ -446,9 +453,9 @@ clixon_xml_changelog_init(clicon_handle h)
     yspec = clicon_dbspec_yang(h);
     if ((filename = clicon_option_str(h, "CLICON_XML_CHANGELOG_FILE")) != NULL){
         if ((fp = fopen(filename, "r")) == NULL){
-            clicon_err(OE_UNIX, errno, "fopen(%s)", filename);
+            clixon_err(OE_UNIX, errno, "fopen(%s)", filename);
             goto done;
-        }    
+        }
         if (clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL) < 0)
             goto done;
         if (xml_rootchild(xt, 0, &xt) < 0)
@@ -459,14 +466,11 @@ clixon_xml_changelog_init(clicon_handle h)
             goto done;
         if (ret == 0){ /* validation failed */
             if ((cbret = cbuf_new()) ==NULL){
-                clicon_err(OE_XML, errno, "cbuf_new");
+                clixon_err(OE_XML, errno, "cbuf_new");
                 goto done;
             }
-            if (netconf_err2cb(xret, cbret) < 0)
-                goto done;
-            clicon_err(OE_YANG, 0, "validation failed: %s", cbuf_get(cbret));
-            goto done;
-        }   
+            clixon_err_netconf(h, OE_YANG, 0, xret, "validation failed");
+        }
         if (clicon_xml_changelog_set(h, xt) < 0)
             goto done;
         xt = NULL;
@@ -485,11 +489,14 @@ clixon_xml_changelog_init(clicon_handle h)
 }
 
 /*! Given a top-level XML tree and a namespace, return a vector of matching XML nodes
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @param[in]  xt        Top-level XML tree, with children marked with namespaces
  * @param[in]  ns        The namespace to select
  * @param[out] vecp      Vector containining XML nodes w namespace. Null-terminated.
  * @param[out] veclenp   Length of vector
+ * @retval     0         OK
+ * @retval    -1         Error
  * @note  Need to free vec after use with free()
  * Example 
  *   xt ::= <config><a xmlns="urn:example:a"/><aaa xmlns="urn:example:a"/><a xmlns="urn:example:b"/></config
@@ -498,7 +505,7 @@ clixon_xml_changelog_init(clicon_handle h)
  *   vec ::= [<a xmlns="urn:example:a"/>, <aaa xmlns="urn:example:a"/>, NULL]
  */
 int
-xml_namespace_vec(clicon_handle h,
+xml_namespace_vec(clixon_handle h,
                   cxobj        *xt,
                   char         *ns,
                   cxobj      ***vecp,
@@ -516,7 +523,7 @@ xml_namespace_vec(clicon_handle h,
      */
     xlen = xml_child_nr_type(xt, CX_ELMNT)+1;
     if ((xvec = calloc(xlen, sizeof(cxobj*))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     /* Iterate and find xml nodes with assoctaed namespace */
@@ -524,14 +531,17 @@ xml_namespace_vec(clicon_handle h,
     i = 0;
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
         if (xml2ns(xc, NULL, &ns0) < 0) /* Get namespace of XML */
-            goto done;       
+            goto done;
         if (strcmp(ns, ns0))
             continue; /* no match */
         xvec[i++] = xc;
     }
     *vecp = xvec;
+    xvec = NULL;
     *veclenp = i;
     retval = 0;
  done:
+    if (xvec)
+        free(xvec);
     return retval;
 }
