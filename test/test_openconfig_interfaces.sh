@@ -74,6 +74,11 @@ cat <<EOF > $dir/startup_db
          <loopback-mode>NONE</loopback-mode>
          <enabled>true</enabled>
       </config>
+      <penalty-based-aied>
+         <config>
+            <suppress-threshold>0</suppress-threshold>
+         </config>
+      </penalty-based-aied>
       <hold-time>
          <config>
             <up>0</up>
@@ -104,7 +109,7 @@ new "$clixon_cli -D $DBG -1f $cfg show version"
 expectpart "$($clixon_cli -D $DBG -1f $cfg show version)" 0 "${CLIXON_VERSION}"
 
 new "$clixon_netconf -qf $cfg"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"http://openconfig.net/yang/interfaces\"><interface><name>e</name><config><name>e</name><type xmlns:ex=\"urn:example:clixon\">ex:eth</type><loopback-mode>NONE</loopback-mode><enabled>true</enabled></config><hold-time><config><up>0</up><down>0</down></config></hold-time></interface></interfaces></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"http://openconfig.net/yang/interfaces\"><interface><name>e</name><config><name>e</name><type xmlns:ex=\"urn:example:clixon\">ex:eth</type><loopback-mode>NONE</loopback-mode><enabled>true</enabled></config><penalty-based-aied><config><suppress-threshold>0</suppress-threshold></config></penalty-based-aied><hold-time><config><up>0</up><down>0</down></config></hold-time></interface></interfaces></data></rpc-reply>"
 
 new "cli show configuration"
 expectpart "$($clixon_cli -1 -f $cfg show conf xml)" 0 "^<interfaces xmlns=\"http://openconfig.net/yang/interfaces\">" --not-- "<oc-eth:ethernet xmlns:oc-eth=\"http://openconfig.net/yang/interfaces/ethernet\">"
