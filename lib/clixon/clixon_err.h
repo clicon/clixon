@@ -35,9 +35,9 @@
 
  *
  * Errors may be syslogged using LOG_ERR, and printed to stderr, as controlled by 
- * clicon_log_init
- * global error variables are set:
- *  clicon_errno, clicon_suberrno, clicon_err_reason.
+ * clixon_log_init
+ * Details about the errors may be retreievd by access functions
+ *  clixon_err_reason(), clixon_err_subnr(), etc
  */
 
 #ifndef _CLIXON_ERR_H_
@@ -45,7 +45,7 @@
 
 /*
  * Constants
- */ 
+ */
 #define ERR_STRLEN 256
 
 /* Special error number for clicon_suberrno
@@ -57,9 +57,9 @@
  * Types
  * Add error category here, 
  * @see EV variable in clixon_err.c but must also add an entry there
- */ 
-enum clicon_err{
-    /* 0 means error not set) */  
+ */
+enum clixon_err{
+    /* 0 means error not set) */
     OE_DB = 1,   /* database registries */
     OE_DAEMON,   /* daemons: pidfiles, etc */
     OE_EVENTS,   /* events, filedescriptors, timeouts */
@@ -79,11 +79,12 @@ enum clicon_err{
     OE_UNDEF,
     /*-- From here error extensions using clixon_err_cat_reg, XXX register dynamically? --*/
     OE_SSL,      /* Openssl errors, see eg ssl_get_error and clixon_openssl_log_cb */
-    OE_SNMP ,    /* Netsnmp error */    
+    OE_SNMP ,    /* Netsnmp error */
     OE_NGHTTP2,  /* nghttp2 errors, see HAVE_LIBNGHTTP2 */
 };
 
-/* Clixon error category log callback 
+/*! Clixon error category log callback
+ *
  * @param[in]    handle  Application-specific handle
  * @param[in]    suberr  Application-specific handle
  * @param[out]   cb      Read log/error string into this buffer
@@ -91,27 +92,39 @@ enum clicon_err{
 typedef int (clixon_cat_log_cb)(void *handle, int suberr, cbuf *cb);
 
 /*
- * Variables
- * XXX: should not be global
- */
-extern int  clicon_errno;    /* CLICON errors (see clicon_err) */
-extern int  clicon_suberrno; /* Eg orig errno */
-extern char clicon_err_reason[ERR_STRLEN];
-
-/*
  * Macros
  */
-#define clicon_err(e,s,_fmt, args...) clicon_err_fn(__FUNCTION__, __LINE__, (e), (s), _fmt , ##args)
+#define clixon_err(c,s,_fmt, args...) clixon_err_fn(NULL, __FUNCTION__, __LINE__, (c), (s), NULL, _fmt , ##args)
+#define clixon_err_netconf(h,c,s,x,_fmt, args...) clixon_err_fn((h), __FUNCTION__, __LINE__, (c), (s), (x), _fmt , ##args)
 
 /*
  * Prototypes
  */
-int   clicon_err_reset(void);
-int   clicon_err_fn(const char *fn, const int line, int category, int err, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
-char *clicon_strerror(int err);
-void *clicon_err_save(void);
-int   clicon_err_restore(void *handle);
-int   clixon_err_cat_reg(enum clicon_err category, void *handle, clixon_cat_log_cb logfn);
+int   clixon_err_init(clixon_handle h);
+int   clixon_err_category(void);
+int   clixon_err_subnr(void);
+char *clixon_err_reason(void);
+char *clixon_err_str(void);
+int   clixon_err_reset(void);
+int   clixon_err_fn(clixon_handle h, const char *fn, const int line, int category, int suberr, cxobj *xerr, const char *format, ...) __attribute__ ((format (printf, 7, 8)));
+int   netconf_err2cb(clixon_handle h, cxobj *xerr, cbuf *cberr);
+
+void *clixon_err_save(void);
+int   clixon_err_restore(void *handle);
+int   clixon_err_cat_reg(enum clixon_err category, void *handle, clixon_cat_log_cb logfn);
 int   clixon_err_exit(void);
+
+#if 1 /* COMPAT_6_5 */
+#define clicon_err(c,s,_fmt, args...) clixon_err_fn(NULL, __FUNCTION__, __LINE__, (c), (s), NULL, _fmt , ##args)
+#define clicon_err_reset() clixon_err_reset()
+
+#define clicon_errno      clixon_err_category()
+#define clicon_suberrno   clixon_err_subnr()
+#define clicon_err_reason clixon_err_reason()
+
+/* doesnt work if arg != NULL */
+#define clixon_netconf_error(h, x, f, a) clixon_err_fn((h), __FUNCTION__, __LINE__, OE_XML, 0,(x), (f) , NULL) 
+
+#endif
 
 #endif  /* _CLIXON_ERR_H_ */

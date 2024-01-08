@@ -2,6 +2,7 @@
 # Test: JSON parser tests. See RFC7951
 # - Multi-line + pretty-print 
 # - Empty values
+# - JSON string encode/decode
 # Note that members should not be quoted. See test_restconf2.sh for typed
 #PROG="valgrind --leak-check=full --show-leak-kinds=all ../util/clixon_util_json"
 # Magic line must be first in script (see README.md)
@@ -137,6 +138,41 @@ expecteofx "$clixon_util_json" 0 "$JSON" "<data><a/><b><name>17</name></b><b><na
 JSON='{"json:c":{"s":"<![CDATA[  z > x  & x < y ]]>"}}'
 new "json parse cdata xml"
 expecteofx "$clixon_util_json -j -y $fyang" 0 "$JSON" "$JSON"
+
+JSON='{"text":"ruled over the shores of the Hreiðsea"}'
+new "json utf-8"
+expecteofx "$clixon_util_json -j" 0 "$JSON" "$JSON"
+
+new "json utf-8 xml out"
+expecteofx "$clixon_util_json" 0 "$JSON" "<text>ruled over the shores of the Hreiðsea</text>"
+
+# see https://github.com/clicon/clixon/issues/453
+JSON="{\"text\":\"one
+two\"}"
+new "json not escaped \n expect fail"
+expecteofx "$clixon_util_json -j" 255 "$JSON" 2> /dev/null
+
+new "json not escaped \" expect fail"
+expecteofx "$clixon_util_json -j" 255 "quote:\"" 2> /dev/null
+
+JSON='{"text":"cr:\nquote:\"tab:\tend"}'
+new "json escaping \n\"\t to json"
+expecteofx "$clixon_util_json -j" 0 "$JSON" "$JSON"
+
+new "json escaping \n\"\t to xml"
+expecteofx "$clixon_util_json" 0 "$JSON" "quote:\"tab:	end</text>"
+
+JSON='{"text":"bmp:\u005E"}'
+new "json escaping \u BMP circumflex"
+#expecteofx "$clixon_util_json -j -D $DBG" 0 "$JSON" '{"text":"bmp:^"}'
+
+JSON='{"text":"bmp:\u00F0"}'
+new "json escaping \u BMP latin eth"
+expecteofx "$clixon_util_json -j -D $DBG" 0 "$JSON" '{"text":"bmp:ð"}'
+
+JSON='{"text":"bmp:\uFAIL"}'
+new "json escaping unicode BMP fail"
+expecteofx "$clixon_util_json -j -D $DBG" 255 "$JSON" 2> /dev/null
 
 rm -rf $dir
 

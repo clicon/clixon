@@ -47,9 +47,13 @@
 
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
 #include "clixon_string.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 
 /*! Split string into a vector based on character delimiters. Using malloc
@@ -80,8 +84,8 @@
  * @see clicon_strsplit
  */
 char **
-clicon_strsep(char *string, 
-              char *delim, 
+clicon_strsep(char *string,
+              char *delim,
               int  *nvec0)
 {
     char **vec = NULL;
@@ -92,7 +96,7 @@ clicon_strsep(char *string,
     size_t siz;
     char *s;
     char *d;
-    
+
     if ((s = string)==NULL)
         goto done;
     while (*s){
@@ -103,9 +107,9 @@ clicon_strsep(char *string,
     /* alloc vector and append copy of string */
     siz = (nvec+1)* sizeof(char*) + strlen(string)+1;
     if ((vec = (char**)malloc(siz)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc"); 
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
-    } 
+    }
     memset(vec, 0, siz);
     ptr = (char*)vec + (nvec+1)* sizeof(char*); /* this is where ptr starts */
     strcpy(ptr, string);
@@ -119,14 +123,14 @@ clicon_strsep(char *string,
 
 /*! Concatenate elements of a string array into a string. 
  *
- * An optional delimiter string can be specified which will be inserted betwen 
+ * An optional delimiter string can be specified which will be inserted between 
  * each element. 
  * @retval  str   Joined string. Free after use.
  * @retval  NULL  Failure
  */
 char *
-clicon_strjoin(int    argc, 
-               char **argv, 
+clicon_strjoin(int    argc,
+               char **argv,
                char  *delim)
 {
     int i;
@@ -165,9 +169,9 @@ clixon_string_del_join(char *str1,
 {
     char *str;
     int   len;
-    
+
     if (str2 == NULL){
-        clicon_err(OE_UNIX, EINVAL, "str2 is NULL");
+        clixon_err(OE_UNIX, EINVAL, "str2 is NULL");
         return NULL;
     }
     len = strlen(str2) + 1;
@@ -175,15 +179,12 @@ clixon_string_del_join(char *str1,
         len += strlen(str1);
     len += strlen(del);
     if ((str = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         return NULL;
     }
-    if (str1){
-        snprintf(str, len, "%s%s%s", str1, del, str2);
+    snprintf(str, len, "%s%s%s", (str1 ? str1 : ""), del, str2);
+    if (str1)
         free(str1);
-    }
-    else
-        snprintf(str, len, "%s%s", del, str2);
     return str;
 }
 
@@ -215,24 +216,24 @@ clixon_strsplit(char     *string,
 {
     int   retval = -1;
     char *str;
-    
+
     if ((str = strchr(string, delim)) == NULL){
         if (suffix && (*suffix = strdup(string)) == NULL){
-            clicon_err(OE_YANG, errno, "strdup");
+            clixon_err(OE_YANG, errno, "strdup");
             goto done;
         }
     }
     else {
         if (prefix){
             if ((*prefix = strdup(string)) == NULL){
-                clicon_err(OE_YANG, errno, "strdup");
+                clixon_err(OE_YANG, errno, "strdup");
                 goto done;
             }
             (*prefix)[str-string] = '\0';
         }
         str++;
         if (suffix && (*suffix = strdup(str)) == NULL){
-            clicon_err(OE_YANG, errno, "strdup");
+            clixon_err(OE_YANG, errno, "strdup");
             goto done;
         }
     }
@@ -284,7 +285,7 @@ uri_unreserved(unsigned char in)
  * @see xml_chardata_encode
  */
 int
-uri_percent_encode(char **encp, 
+uri_percent_encode(char **encp,
                    const char *fmt, ...)
 {
     int     retval = -1;
@@ -300,7 +301,7 @@ uri_percent_encode(char **encp,
     fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
     va_end(args);
     if ((str = malloc(fmtlen)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, fmtlen);
@@ -313,7 +314,7 @@ uri_percent_encode(char **encp,
     /* This is max */
     len = strlen(str)*3+1;
     if ((enc = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc"); 
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(enc, 0, len);
@@ -347,7 +348,7 @@ uri_percent_encode(char **encp,
  * @see uri_percent_encode
  */
 int
-uri_percent_decode(char  *enc, 
+uri_percent_decode(char  *enc,
                    char **strp)
 {
     int   retval = -1;
@@ -356,22 +357,22 @@ uri_percent_decode(char  *enc,
     char  hstr[3];
     size_t len;
     char *ptr;
-    
+
     if (enc == NULL){
-        clicon_err(OE_UNIX, EINVAL, "enc is NULL");
+        clixon_err(OE_UNIX, EINVAL, "enc is NULL");
         goto done;
     }
     /* This is max */
     len = strlen(enc)+1;
     if ((str = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc"); 
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, len);
     len = strlen(enc);
     j = 0;
     for (i=0; i<len; i++){
-        if (enc[i] == '%' && strlen(enc)-i > 2 && 
+        if (enc[i] == '%' && strlen(enc)-i > 2 &&
             isxdigit(enc[i+1]) && isxdigit(enc[i+2])){
             hstr[0] = enc[i+1];
             hstr[1] = enc[i+2];
@@ -432,13 +433,13 @@ xml_chardata_encode(char      **escp,
     int     cdata; /* when set, skip encoding */
     va_list args;
     size_t  slen;
-    
+
     /* Two steps: (1) read in the complete format string */
     va_start(args, fmt); /* dryrun */
     fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
     va_end(args);
     if ((str = malloc(fmtlen)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, fmtlen);
@@ -480,7 +481,7 @@ xml_chardata_encode(char      **escp,
     len++; /* trailing \0 */
     /* We know length, allocate encoding buffer  */
     if ((esc = malloc(len)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc"); 
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(esc, 0, len);
@@ -501,7 +502,7 @@ xml_chardata_encode(char      **escp,
         switch (str[i]){
         case '&':
             if ((l=snprintf(&esc[j], 6, "&amp;")) < 0){
-                clicon_err(OE_UNIX, errno, "snprintf");
+                clixon_err(OE_UNIX, errno, "snprintf");
                 goto done;
             }
             j += l;
@@ -513,14 +514,14 @@ xml_chardata_encode(char      **escp,
                 break;
             }
             if ((l=snprintf(&esc[j], 5, "&lt;")) < 0){
-                clicon_err(OE_UNIX, errno, "snprintf");
+                clixon_err(OE_UNIX, errno, "snprintf");
                 goto done;
             }
             j += l;
             break;
         case '>':
             if ((l=snprintf(&esc[j], 5, "&gt;")) < 0){
-                clicon_err(OE_UNIX, errno, "snprintf");
+                clixon_err(OE_UNIX, errno, "snprintf");
                 goto done;
             }
             j += l;
@@ -616,7 +617,7 @@ xml_chardata_decode_ampersand(char *str,
     uint32_t code;
     cbuf    *cb = NULL;
     int      ret;
-    
+
     if ((semi = index(str, ';')) == NULL)
         goto fail;
     *semi = '\0';
@@ -635,7 +636,7 @@ xml_chardata_decode_ampersand(char *str,
     else if (len > 0 && *p == '#'){
         p++;
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "parse_uint32");
+            clixon_err(OE_UNIX, errno, "parse_uint32");
             goto done;
         }
         if (len > 1 && *p == 'x'){
@@ -644,7 +645,7 @@ xml_chardata_decode_ampersand(char *str,
         }
         cprintf(cb, "%s", p);
         if ((ret = parse_uint32(cbuf_get(cb), &code, NULL)) < 0){
-            clicon_err(OE_UNIX, errno, "parse_uint32");
+            clixon_err(OE_UNIX, errno, "parse_uint32");
             goto done;
         }
         if (ret == 0){
@@ -669,8 +670,10 @@ xml_chardata_decode_ampersand(char *str,
 
 /*! Decode escape characters according to XML definition
  *
- * @param[out]  decp   Decoded malloced output string
- * @param[in]   fmt    Encoded input string (stdarg format string)
+ * @param[out] decp  Decoded malloced output string
+ * @param[in]  fmt   Encoded input string (stdarg format string)
+ * @retval     0     OK
+ * @retval    -1     Error
  * @see xml_chardata_encode for encoding
  */
 int
@@ -693,7 +696,7 @@ xml_chardata_decode(char      **decp,
     fmtlen = vsnprintf(NULL, 0, fmt, args) + 1;
     va_end(args);
     if ((str = malloc(fmtlen)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(str, 0, fmtlen);
@@ -706,7 +709,7 @@ xml_chardata_decode(char      **decp,
      * First allocate decoded string, encoded is always >= larger */
     slen = strlen(str);
     if ((dec = malloc(slen+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc"); 
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     j = 0;
@@ -761,9 +764,9 @@ xml_chardata_decode(char      **decp,
  * XXX differentiate between error and null cvec.
  */
 int
-uri_str2cvec(char  *string, 
-             char   delim1, 
-             char   delim2, 
+uri_str2cvec(char  *string,
+             char   delim1,
+             char   delim2,
              int    decode,
              cvec **cvp)
 {
@@ -777,12 +780,12 @@ uri_str2cvec(char  *string,
     cg_var *cv;
 
     if ((s0 = strdup(string)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto err;
     }
     s = s0;
     if ((cvv = cvec_new(0)) ==NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto err;
     }
     while (s != NULL) {
@@ -803,11 +806,11 @@ uri_str2cvec(char  *string,
             }
             else
                 if ((valu = strdup(val)) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto err;
                 }
             if ((cv = cvec_add(cvv, CGV_STRING)) == NULL){
-                clicon_err(OE_UNIX, errno, "cvec_add");
+                clixon_err(OE_UNIX, errno, "cvec_add");
                 goto err;
             }
             while ((strlen(s) > 0) && isblank(*s))
@@ -819,7 +822,7 @@ uri_str2cvec(char  *string,
         else{
             if (strlen(s)){
                 if ((cv = cvec_add(cvv, CGV_EMPTY)) == NULL){
-                    clicon_err(OE_UNIX, errno, "cvec_add");
+                    clixon_err(OE_UNIX, errno, "cvec_add");
                     goto err;
                 }
                 cv_name_set(cv, s);
@@ -850,7 +853,7 @@ uri_str2cvec(char  *string,
  * @note linear search
  */
 const char *
-clicon_int2str(const map_str2int *mstab, 
+clicon_int2str(const map_str2int *mstab,
                int                i)
 {
     const struct map_str2int *ms;
@@ -870,7 +873,7 @@ clicon_int2str(const map_str2int *mstab,
  * @see clicon_str2int_search for optimized lookup, but strings must be sorted
  */
 int
-clicon_str2int(const map_str2int *mstab, 
+clicon_str2int(const map_str2int *mstab,
                char              *str)
 {
     const struct map_str2int *ms;
@@ -894,7 +897,7 @@ clicon_str2int(const map_str2int *mstab,
  * @note Assumes sorted strings, tree search
  */
 static int
-str2int_search1(const map_str2int *mstab, 
+str2int_search1(const map_str2int *mstab,
                 char              *str,
                 int                low,
                 int                upper,
@@ -931,13 +934,13 @@ str2int_search1(const map_str2int *mstab,
  * @note -1 can not be value
  */
 int
-clicon_str2int_search(const map_str2int *mstab, 
+clicon_str2int_search(const map_str2int *mstab,
                       char              *str,
                       int                len)
 {
     int found;
 
-    if (str2int_search1(mstab, str, 0, len, len, &found)) 
+    if (str2int_search1(mstab, str, 0, len, len, &found))
         return found;
     return -1; /* not found */
 }
@@ -950,7 +953,7 @@ clicon_str2int_search(const map_str2int *mstab,
  * @retval    NULL  Error, not found
  */
 char*
-clicon_str2str(const map_str2str *mstab, 
+clicon_str2str(const map_str2str *mstab,
                char              *str)
 {
     const struct map_str2str *ms;
@@ -987,7 +990,8 @@ nodeid_split(char  *nodeid,
     return clixon_strsplit(nodeid, ':', prefix, id);
 }
 
-/*! Trim blanks from front and end of a string, return new string 
+/*! Trim blanks from front and end of a string, return new string
+ *
  * @param[in]  str 
  * @retval     s   Pointer into existing str after trimming blanks
  */
@@ -1009,6 +1013,7 @@ clixon_trim(char *str)
 }
 
 /*! Trim blanks from front and end of a string, return new string 
+ *
  * @param[in]  str 
  * @param[in]  trims  Characters to trim: a vector of characters
  * @retval     s      Pointer into existing str after trimming blanks
@@ -1032,6 +1037,7 @@ clixon_trim2(char *str,
 }
 
 /*! check string equals (NULL is equal) 
+ *
  * @param[in]  s1  String 1
  * @param[in]  s2  String 2
  * @retval     0   Equal
@@ -1039,10 +1045,10 @@ clixon_trim2(char *str,
  * @retval    >0   s1 is greater than s2
  */
 int
-clicon_strcmp(char *s1, 
+clicon_strcmp(char *s1,
               char *s2)
 {
-    if (s1 == NULL && s2 == NULL) 
+    if (s1 == NULL && s2 == NULL)
         return 0;
     if (s1 == NULL) /* empty string first */
         return -1;
@@ -1051,12 +1057,100 @@ clicon_strcmp(char *s1,
     return strcmp(s1, s2);
 }
 
+/*! Translate from unicode in hex form to utf-8
+ *
+ * @param[in]  uc16     Unicode as 2-byte hex int
+ * @param[out] utf8str  UTF-8 string
+ * @param[out] utflen   Length utf string
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+static int
+clixon_unicode2utf8_one(uint16_t uc16,
+                        char    *utfstr,
+                        size_t   utflen)
+{
+    int retval = -1;
+
+    if (utflen < 5){
+        clixon_err(OE_UNIX, EINVAL, "Length of utfstr is not >=4");
+        goto done;
+    }
+    if (uc16<0x80)
+        *utfstr++=uc16;
+    else if (uc16<0x800){
+        *utfstr++=192+uc16/64;
+        *utfstr++=128+uc16%64;
+    }
+    else if (uc16-0xd800u<0x800){
+        clixon_err(OE_UNIX, EINVAL, "unicode2utf error");
+        goto done;
+    }
+    else{
+        clixon_err(OE_UNIX, EINVAL, "unicode2utf error");
+        goto done;
+    }
+    *utfstr++=0;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Translate unicode hexstring on the form "ABCD" to UTF-8 in string form
+ *
+ * @param[in]  unicode  Unicode as string of 2-byte hex codes
+ * @param[out] utf8     UTF-8 character string must be length >=5
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+int
+clixon_unicode2utf8(char  *ucstr,
+                    char  *utfstr,
+                    size_t utflen)
+{
+    int      retval = -1;
+    size_t   len;
+    int      i;
+    char     c;
+    int      j;
+    uint16_t uc16 = 0;
+
+    if (ucstr == NULL || utfstr == NULL){
+        clixon_err(OE_UNIX, EINVAL, "input param is NULL");
+        goto done;
+    }
+    if ((len = strlen(ucstr)) != 4){
+        clixon_err(OE_UNIX, EINVAL, "Length of ucstr is not 4");
+        goto done;
+    }
+    for (i=0; i<len; i++){
+         c = ucstr[i]&0xFF;
+         if ('0' <= c && c <= '9')
+            j = c-'0';
+         else if ('A' <= c && c <= 'F')
+            j = c+10-'A';
+         else if ('a' <= c && c <= 'f')
+            j = c+10-'a';
+         else{
+             clixon_err(OE_UNIX, 0, "no match");
+             goto done;
+         }
+         if (uc16 != 0)
+            uc16 <<= 4;
+         uc16 |= j;
+    }
+    if (clixon_unicode2utf8_one(uc16, utfstr, utflen) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
 
 /*! strndup() for systems without it, such as xBSD
  */
 #ifndef HAVE_STRNDUP
 char *
-clicon_strndup(const char *str, 
+clicon_strndup(const char *str,
                size_t      len)
 {
   char *new;

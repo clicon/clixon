@@ -32,7 +32,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
+ * Clixon XML XPath 1.0 according to https://www.w3.org/TR/xpath-10
  */
 #ifndef _CLIXON_XPATH_PARSE_H_
 #define _CLIXON_XPATH_PARSE_H_
@@ -40,7 +40,7 @@
 /*
  * Types
  */
-struct clixon_xpath_yacc{ 
+struct clixon_xpath_yacc{
     const char           *xpy_name;         /* Name of syntax (for error string) */
     int                   xpy_linenum;      /* Number of \n in parsed buffer */
     const char           *xpy_parse_string; /* original (copy of) parse string */

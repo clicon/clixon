@@ -69,7 +69,7 @@
 #include "clixon_http_data.h"
 
 /* Size of xml read buffer */
-#define BUFLEN 1024  
+#define BUFLEN 1024
 
 /*! HTTP/1 parsing function. Input is string and side-effect is populating connection structs
  *
@@ -78,10 +78,10 @@
  * @param[in]  str      Pointer to string containing HTTP/1 
  * @param[in]  filename Debug string identifying file or connection
  * @retval     0        Parse OK 
- * @retval    -1        Error with clicon_err called. 
+ * @retval    -1        Error
  */
-static int 
-_http1_parse(clicon_handle  h,
+static int
+_http1_parse(clixon_handle  h,
              restconf_conn *rc,
              char          *str,
              const char    *filename)
@@ -90,7 +90,7 @@ _http1_parse(clicon_handle  h,
     clixon_http1_yacc hy = {0,};
     int               ret;
 
-    clicon_debug(1, "%s:\n%s", __FUNCTION__, str);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s:\n%s", __FUNCTION__, str);
     if (strlen(str) == 0)
         goto ok;
     hy.hy_parse_string = str;
@@ -109,17 +109,17 @@ _http1_parse(clicon_handle  h,
     http1_scan_exit(&hy);
     if (ret != 0){
         if (filename)
-            clicon_log(LOG_NOTICE, "HTTP1 error: on line %d in %s", hy.hy_linenum, filename);
+            clixon_log(h, LOG_NOTICE, "HTTP1 error: on line %d in %s", hy.hy_linenum, filename);
         else
-            clicon_log(LOG_NOTICE, "HTTP1 error: on line %d", hy.hy_linenum);
-        if (clicon_errno == 0)
-            clicon_err(OE_RESTCONF, 0, "HTTP1 parser error with no error code (should not happen)");
+            clixon_log(h, LOG_NOTICE, "HTTP1 error: on line %d", hy.hy_linenum);
+        if (clixon_err_category() == 0)
+            clixon_err(OE_RESTCONF, 0, "HTTP1 parser error with no error code (should not happen)");
         goto done;
     }
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -130,10 +130,10 @@ _http1_parse(clicon_handle  h,
  * @param[in]  f        A file descriptor containing HTTP/1 (as ASCII characters)
  * @param[in]  filename Debug string identifying file or connection
  * @retval     0        Parse OK 
- * @retval    -1        Error with clicon_err called. 
+ * @retval    -1        Error
  */
 int
-clixon_http1_parse_file(clicon_handle  h,
+clixon_http1_parse_file(clixon_handle  h,
                         restconf_conn *rc,
                         FILE          *f,
                         const char    *filename)
@@ -147,20 +147,20 @@ clixon_http1_parse_file(clicon_handle  h,
     int   len = 0;
     int   oldbuflen;
 
-    clicon_debug(1, "%s %s", __FUNCTION__, filename);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, filename);
     if (f == NULL){
-        clicon_err(OE_RESTCONF, EINVAL, "f is NULL");
+        clixon_err(OE_RESTCONF, EINVAL, "f is NULL");
         goto done;
     }
     if ((buf = malloc(buflen)) == NULL){
-        clicon_err(OE_XML, errno, "malloc");
+        clixon_err(OE_XML, errno, "malloc");
         goto done;
     }
     memset(buf, 0, buflen);
     ptr = buf;
     while (1){
         if ((ret = fread(&ch, 1, 1, f)) < 0){
-            clicon_err(OE_XML, errno, "read");
+            clixon_err(OE_XML, errno, "read");
             break;
         }
         if (ret != 0){
@@ -175,7 +175,7 @@ clixon_http1_parse_file(clicon_handle  h,
             oldbuflen = buflen;
             buflen *= 2;
             if ((buf = realloc(buf, buflen)) == NULL){
-                clicon_err(OE_XML, errno, "realloc");
+                clixon_err(OE_XML, errno, "realloc");
                 goto done;
             }
             memset(buf+oldbuflen, 0, buflen-oldbuflen);
@@ -195,10 +195,10 @@ clixon_http1_parse_file(clicon_handle  h,
  * @param[in]  rc       Restconf connection
  * @param[in]  str      HTTP/1 string
  * @retval     0        Parse OK 
- * @retval    -1        Error with clicon_err called. 
+ * @retval    -1        Error
  */
-int 
-clixon_http1_parse_string(clicon_handle  h,
+int
+clixon_http1_parse_string(clixon_handle  h,
                           restconf_conn *rc,
                           char          *str)
 {
@@ -213,21 +213,21 @@ clixon_http1_parse_string(clicon_handle  h,
  * @param[in]  buf      HTTP/1 buffer
  * @param[in]  n        Length of buffer
  * @retval     0        Parse OK 
- * @retval    -1        Error with clicon_err called. 
+ * @retval    -1        Error
  * @note  Had preferred to do this without copying, OR 
  * input flex with a non-null terminated string
  */
-int 
-clixon_http1_parse_buf(clicon_handle  h,
+int
+clixon_http1_parse_buf(clixon_handle  h,
                        restconf_conn *rc,
                        char          *buf,
                        size_t         n)
 {
     char *str = NULL;
     int   ret;
-    
+
     if ((str = malloc(n+1)) == NULL){
-        clicon_err(OE_RESTCONF, errno, "malloc");
+        clixon_err(OE_RESTCONF, errno, "malloc");
         return -1;
     }
     memcpy(str, buf, n);
@@ -239,6 +239,7 @@ clixon_http1_parse_buf(clicon_handle  h,
 
 #ifdef HAVE_LIBNGHTTP2
 /*! Check http/1 UPGRADE to http/2
+ *
  * If upgrade headers are encountered AND http/2 is configured, then 
  * - add upgrade headers or signal error
  * - set http2 flag get settings to and signal to upper layer to do the actual transition.
@@ -249,20 +250,20 @@ clixon_http1_parse_buf(clicon_handle  h,
  *       runtime config option
  */
 static int
-http1_upgrade_http2(clicon_handle         h,
+http1_upgrade_http2(clixon_handle         h,
                     restconf_stream_data *sd)
 {
     int    retval = -1;
     char  *str;
     char  *settings;
     cxobj *xerr = NULL;
-        
+
     if ((str = restconf_param_get(h, "HTTP_UPGRADE")) != NULL &&
         clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 1){
         /* Only accept "h2c" */
         if (strcmp(str, "h2c") != 0){
             if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid upgrade token") < 0)
-                goto done; 
+                goto done;
             if (api_return_err0(h, sd, xerr, 1, YANG_DATA_JSON, 0) < 0)
                 goto done;
             if (xerr)
@@ -279,7 +280,7 @@ http1_upgrade_http2(clicon_handle         h,
             sd->sd_upgrade2 = 1;
             if ((settings = restconf_param_get(h, "HTTP_HTTP2_Settings")) != NULL &&
                 (sd->sd_settings2 = (uint8_t*)strdup(settings)) == NULL){
-                clicon_err(OE_UNIX, errno, "strdup");
+                clixon_err(OE_UNIX, errno, "strdup");
                 goto done;
             }
         }
@@ -301,7 +302,7 @@ restconf_http1_reply(restconf_conn        *rc,
     int     retval = -1;
     cg_var *cv;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     /* If body, add a content-length header 
      *    A server MUST NOT send a Content-Length header field in any response
      * with a status code of 1xx (Informational) or 204 (No Content).  A
@@ -311,7 +312,7 @@ restconf_http1_reply(restconf_conn        *rc,
      */
     if (sd->sd_code != 204 && sd->sd_code > 199)
         if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
-            goto done;  
+            goto done;
     /* Create reply and write headers */
 #if 0 /* XXX need some keep-alive logic here */
     /* protocol is HTTP/1.0 and clients wants to keep established */
@@ -331,7 +332,7 @@ restconf_http1_reply(restconf_conn        *rc,
     /* Write a body */
     if (sd->sd_body){
         if (cbuf_append_buf(sd->sd_outp_buf, cbuf_get(sd->sd_body), cbuf_len(sd->sd_body)) < 0){
-            clicon_err(OE_RESTCONF, errno, "cbuf_append_buf");
+            clixon_err(OE_RESTCONF, errno, "cbuf_append_buf");
             goto done;
         }
         cbuf_free(sd->sd_body);
@@ -342,12 +343,15 @@ restconf_http1_reply(restconf_conn        *rc,
     return retval;
 }
 
-/*!
+/*! restconf http1 path root
+ *
  * @param[in]  h    Clixon handle
  * @param[in]  rc   Clixon request connect pointer
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 int
-restconf_http1_path_root(clicon_handle  h,
+restconf_http1_path_root(clixon_handle  h,
                          restconf_conn *rc)
 {
     int                   retval = -1;
@@ -360,11 +364,11 @@ restconf_http1_path_root(clicon_handle  h,
 #ifdef HAVE_LIBNGHTTP2
     int                   ret;
 #endif
-    
-    clicon_debug(1, "------------");
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "------------");
     pretty = restconf_pretty_get(h);
     if ((sd = restconf_stream_find(rc, 0)) == NULL){
-        clicon_err(OE_RESTCONF, EINVAL, "No stream_data");
+        clixon_err(OE_RESTCONF, EINVAL, "No stream_data");
         goto done;
     }
     /* Sanity check */
@@ -392,7 +396,7 @@ restconf_http1_path_root(clicon_handle  h,
      */
     if (sd->sd_path != NULL){
         free(sd->sd_path);
-        sd->sd_path = NULL; 
+        sd->sd_path = NULL;
     }
 #endif
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
@@ -459,7 +463,7 @@ restconf_http1_path_root(clicon_handle  h,
             goto done;
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     if (subject)
         free(subject);
     if (xerr)
@@ -480,13 +484,13 @@ restconf_http1_path_root(clicon_handle  h,
  * @see rfc7231 Sec 5.1.1
  */
 int
-http1_check_expect(clicon_handle         h,
+http1_check_expect(clixon_handle         h,
                    restconf_conn        *rc,
                    restconf_stream_data *sd)
 {
     int    retval = -1;
     char  *val;
-    
+
     if ((val = restconf_param_get(h, "HTTP_EXPECT")) != NULL &&
         strcmp(val, "100-continue") == 0){ /* just drop if not well-formed */
         sd->sd_code = 100;
@@ -514,14 +518,14 @@ http1_check_expect(clicon_handle         h,
  * @retval    -1       Error
  */
 int
-http1_check_content_length(clicon_handle         h,
+http1_check_content_length(clixon_handle         h,
                            restconf_stream_data *sd,
                            int                  *status)
 {
     int   retval = -1;
     char *val;
     int   len;
-    
+
     if ((val = restconf_param_get(h, "HTTP_CONTENT_LENGTH")) == NULL ||
         (len = atoi(val)) == 0)
         *status = 0;

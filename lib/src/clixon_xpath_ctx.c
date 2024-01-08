@@ -33,8 +33,8 @@
 
   ***** END LICENSE BLOCK *****
 
- * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
- * This file defines XPATH contexts used in traversing the XPATH parse tree.
+ * Clixon XML XPath 1.0 according to https://www.w3.org/TR/xpath-10
+ * This file defines XPath contexts used in traversing the XPath parse tree.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,15 +50,16 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_parse.h"
@@ -70,7 +71,7 @@ const map_str2int ctxmap[] = {
     {"nodeset",   XT_NODESET},
     {"bool",      XT_BOOL},
     {"number",    XT_NUMBER},
-    {"string",    XT_STRING}, 
+    {"string",    XT_STRING},
     {NULL,        -1}
 };
 
@@ -91,32 +92,33 @@ xp_ctx *
 ctx_dup(xp_ctx *xc0)
 {
     xp_ctx *xc = NULL;
-    
+
     if ((xc = malloc(sizeof(*xc))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xc, 0, sizeof(*xc));
     *xc = *xc0;
     if (xc0->xc_size){
         if ((xc->xc_nodeset = calloc(xc0->xc_size, sizeof(cxobj*))) == NULL){
-            clicon_err(OE_UNIX, errno, "calloc");
+            clixon_err(OE_UNIX, errno, "calloc");
             goto done;
         }
         memcpy(xc->xc_nodeset, xc0->xc_nodeset, xc->xc_size*sizeof(cxobj*));
     }
     if (xc0->xc_string)
         if ((xc->xc_string = strdup(xc0->xc_string)) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
  done:
     return xc;
 }
 
-/*! Print XPATH context to CLIgen buf
+/*! Print XPath context to CLIgen buf
+ *
  * @param[in] cb  CLIgen buf to print to
- * @param[in] xc  XPATH evaluation context
+ * @param[in] xc  XPath evaluation context
  * @param[in] ind Indentation margin
  * @param[in] str Prefix string in printout
  */
@@ -155,10 +157,13 @@ ctx_print_cb(cbuf   *cb,
     return 0;
 }
 
-/*! Print XPATH context 
+/*! Print XPath context 
+ *
  * @param[in] f   File to print to
- * @param[in] xc  XPATH evaluation context
+ * @param[in] xc  XPath evaluation context
  * @param[in] str Prefix string in printout
+ * @retval    0   OK
+ * @retval   -1   Error
  */
 int
 ctx_print(FILE   *f,
@@ -169,7 +174,7 @@ ctx_print(FILE   *f,
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     ctx_print_cb(cb, xc, 0, str);
@@ -181,10 +186,11 @@ ctx_print(FILE   *f,
     return retval;
 }
 
-/*! Convert xpath context to boolean according to boolean() function in XPATH spec
- * @param[in]   xc  XPATH context
- * @retval      0   False
+/*! Convert xpath context to boolean according to boolean() function in XPath spec
+ *
+ * @param[in]   xc  XPath context
  * @retval      1   True
+ * @retval      0   False
  * a number is true if and only if it is neither positive or negative zero nor NaN
  * a node-set is true if and only if it is non-empty
  * a string is true if and only if its length is non-zero
@@ -212,8 +218,9 @@ ctx2boolean(xp_ctx *xc)
     return b;
 }
 
-/*! Convert xpath context to string according to string() function in XPATH spec
- * @param[in]   xc    XPATH context
+/*! Convert xpath context to string according to string() function in XPath spec
+ *
+ * @param[in]   xc    XPath context
  * @param[out]  str0  Malloced result string
  * @retval      0     OK
  * @retval     -1     Error
@@ -227,24 +234,24 @@ ctx2string(xp_ctx *xc,
     char   *str = NULL;
     int     len;
     char   *b;
-    
+
     switch (xc->xc_type){
     case XT_NODESET:
         if (xc->xc_size && (b = xml_body(xc->xc_nodeset[0]))){
             if ((str = strdup(b)) == NULL){
-                clicon_err(OE_XML, errno, "strdup");
+                clixon_err(OE_XML, errno, "strdup");
                 goto done;
             }
         }
         else
            if ((str = strdup("")) == NULL){
-                clicon_err(OE_XML, errno, "strdup");
+                clixon_err(OE_XML, errno, "strdup");
                 goto done;
-            } 
+            }
         break;
     case XT_BOOL:
         if ((str = strdup(xc->xc_bool == 0?"false":"true")) == NULL){
-            clicon_err(OE_XML, errno, "strdup");
+            clixon_err(OE_XML, errno, "strdup");
             goto done;
         }
         break;
@@ -252,14 +259,14 @@ ctx2string(xp_ctx *xc,
         len = snprintf(NULL, 0, "%0lf", xc->xc_number);
         len++;
         if ((str = malloc(len)) == NULL){
-            clicon_err(OE_XML, errno, "malloc");
+            clixon_err(OE_XML, errno, "malloc");
             goto done;
         }
         snprintf(str, len, "%0lf", xc->xc_number);
         break;
     case XT_STRING:
         if ((str = strdup(xc->xc_string)) == NULL){
-            clicon_err(OE_XML, errno, "strdup");
+            clixon_err(OE_XML, errno, "strdup");
             goto done;
         }
         break;
@@ -270,8 +277,9 @@ ctx2string(xp_ctx *xc,
     return retval;
 }
 
-/*! Convert xpath context to number according to number() function in XPATH spec
- * @param[in]   xc  XPATH context
+/*! Convert xpath context to number according to number() function in XPath spec
+ *
+ * @param[in]   xc  XPath context
  * @param[out]  n0  Floating point or NAN
  * @retval      0   OK
  * @retval     -1   Error
@@ -283,7 +291,7 @@ ctx2number(xp_ctx *xc,
     int     retval = -1;
     char   *str = NULL;
     double  n = NAN;
-    
+
     switch (xc->xc_type){
     case XT_NODESET:
         if (ctx2string(xc, &str) < 0)
@@ -310,7 +318,7 @@ ctx2number(xp_ctx *xc,
     return retval;
 }
 
-/*! Replace a nodeset of a XPATH context with a new nodeset 
+/*! Replace a nodeset of a XPath context with a new nodeset 
  */
 int
 ctx_nodeset_replace(xp_ctx   *xc,

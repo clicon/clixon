@@ -52,7 +52,7 @@ struct ys_stack{
 };
 
 struct clixon_yang_yacc {
-    char                 *yy_name;         /* Name of syntax, typically filename 
+    char                 *yy_name;         /* Name of syntax, typically filename
                                               (for error string) */
     int                   yy_linenum;      /* Number of \n in parsed buffer */
     char                 *yy_parse_string; /* original (copy of) parse string */

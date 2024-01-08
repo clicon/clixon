@@ -65,7 +65,7 @@ typedef struct {
     qelem_t     cp_qelem;    /* List header */
     char       *cp_prefix;   /* Prefix or module name, should be resolved + id to cp_yang */
     char       *cp_id;       /* Identifier */
-    cvec       *cp_cvk;      /* Key values: list of (name:value) pairs alt (NULL:value) 
+    cvec       *cp_cvk;      /* Key values: list of (name:value) pairs alt (NULL:value)
                               * Can also be single uint32, if so positional eg x/y[42]
                               * This seems kludgy but follows RFC 7950 Sec 9.13
                               */
@@ -81,7 +81,7 @@ int yang2api_path_fmt(yang_stmt *ys, int inclkey, char **api_path_fmt);
 int api_path_fmt2api_path(const char *api_path_fmt, cvec *cvv, char **api_path, int *cvvi);
 int api_path_fmt2xpath(char *api_path_fmt, cvec *cvv, char **xpath);
 int api_path2xpath(char *api_path, yang_stmt *yspec, char **xpath, cvec **nsc, cxobj **xerr);
-int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop, 
+int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop,
                  yang_class nodeclass, int strict,
                  cxobj **xpathp, yang_stmt **ypathp, cxobj **xerr);
 int xml2api_path_1(cxobj *x, cbuf *cb);

@@ -31,7 +31,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_YANG_LIBRARY>true</CLICON_YANG_LIBRARY>
 </clixon-config>
@@ -100,10 +100,10 @@ expecteof "$clixon_netconf -qef $cfg" 255 "<?xml version=\"1.0\" encoding=\"UTF-
 
 # This is hello - shouldnt really get rpc back?
 new "Netconf snd hello with wrong prefix"
-expecteof "$clixon_netconf -qef $cfg" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><xx:hello xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><nc:capabilities><nc:capability>urn:ietf:params:netconf:base:1.1</nc:capability></nc:capabilities></xx:hello>]]>]]>" '^$' 2> /dev/null
+expecteof "$clixon_netconf -qef $cfg" 255 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><xx:hello xmlns:nc=\"${BASENS}\"><nc:capabilities><nc:capability>urn:ietf:params:netconf:base:1.1</nc:capability></nc:capabilities></xx:hello>]]>]]>" '^$' 2> /dev/null
 
 new "Netconf snd hello with prefix"
-expecteof "$clixon_netconf -qef $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><nc:hello xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><nc:capabilities><nc:capability>urn:ietf:params:netconf:base:1.1</nc:capability></nc:capabilities></nc:hello>]]>]]>" '^$'
+expecteof "$clixon_netconf -qef $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><nc:hello xmlns:nc=\"${BASENS}\"><nc:capabilities><nc:capability>urn:ietf:params:netconf:base:1.1</nc:capability></nc:capabilities></nc:hello>]]>]]>" '^$'
 
 new "netconf snd + rcv hello"
 expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" "^<hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:base:1.0</capability>
@@ -118,7 +118,7 @@ expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?
 
 # Actually non-standard to reply on wrong hello with rpc-error, but may be useful
 new "Netconf snd hello with extra element"
-expecteof "$clixon_netconf -qf $cfg" 0 "<hello $DEFAULTONLY><capabilities><extra-element/><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" '^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>protocol</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra-element</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized hello/capabilities element</error-message></rpc-error></rpc-reply>]]>]]>$' '^$'
+expecteof "$clixon_netconf -qf $cfg" 0 "<hello $DEFAULTONLY><capabilities><extra-element/><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" "^<rpc-reply xmlns=\"${BASENS}\"><rpc-error><error-type>protocol</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra-element</bad-element></error-info><error-severity>error</error-severity><error-message>Unrecognized hello/capabilities element</error-message></rpc-error></rpc-reply>]]>]]>$" '^$'
 
 new "Netconf send rpc without hello error"
 expecteof "$clixon_netconf -qf $cfg" 0 "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>]]>]]>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>rpc</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Client must send an hello element before any RPC</error-message></rpc-error></rpc-reply>]]>]]>" '^$'

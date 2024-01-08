@@ -181,8 +181,8 @@ split_path_free(char **list,
 }
 
 /*! Find a peer of this node by name
- * search through the list pointed at by peer
  *
+ * search through the list pointed at by peer
  * @param[in] node       Pointer to a node in the peer list
  * @param[in] node_name  Name of node we're looking for
  * @retval    pointer    Pointer to found node or NULL
@@ -192,7 +192,7 @@ static dispatcher_entry_t *
 find_peer(dispatcher_entry_t *node, char *node_name)
 {
     dispatcher_entry_t *i;
-    
+
     if ((node == NULL) || (node_name == NULL)) {
         /*  protect against idiot users */
         return NULL;
@@ -226,7 +226,6 @@ add_peer_node(dispatcher_entry_t *node,
 
     if ((new_node = malloc(sizeof(dispatcher_entry_t))) == NULL)
         return NULL;
-        
     memset(new_node, 0, sizeof(dispatcher_entry_t));
     if (node == NULL) {
         /* this is a new node */
@@ -336,7 +335,6 @@ get_entry(dispatcher_entry_t *root,
 
     /* clean up */
     split_path_free(split_path_list, split_path_len);
-    
     return best;
 }
 

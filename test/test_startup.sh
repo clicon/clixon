@@ -34,8 +34,8 @@ cat <<EOF > $cfg
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
   <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>
@@ -80,7 +80,7 @@ module ietf-interfaces {
 }
 EOF
 
-# Create running-db containin the interface "run" OK
+# Create running-db containing the interface "run" OK
 runvar='<interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>run</name><type xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces">if:fddi</type><enabled>true</enabled></interface></interfaces>'
 
 # Create startup-db containing the interface "startup" OK
@@ -106,7 +106,7 @@ function testrun(){
     mode=$1
     rdb=$2    # running db at start
     sdb=$3    # startup db at start
-    edb=$4    # extradb at start
+    edb=$4    # extra db at start
     exprun=$5 # expected running_db after startup
 
     sudo rm -f  $dir/*_db

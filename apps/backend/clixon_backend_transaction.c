@@ -57,7 +57,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "clixon_backend_transaction.h"
@@ -69,6 +69,7 @@
  * would give running in source and 'a' and candidate in 'target'.
  */
 /*! Get transaction id
+ *
  * @param[in]  td   transaction_data
  * @retval     id   transaction id
  */
@@ -79,6 +80,7 @@ transaction_id(transaction_data td)
 }
 
 /*! Get plugin/application specific callback argument
+ *
  * @param[in]  td   transaction_data
  * @retval     arg  callback argument
  */
@@ -89,6 +91,7 @@ transaction_arg(transaction_data td)
 }
 
 /*! Set plugin/application specific callback argument
+ *
  * @param[in]  td   transaction_data
  * @param[in]  arg  callback argument
  */
@@ -101,6 +104,7 @@ transaction_arg_set(transaction_data td,
 }
 
 /*! Get source database xml tree
+ *
  * @param[in]  td   transaction_data
  * @retval     src  source xml tree containing original state
  */
@@ -111,6 +115,7 @@ transaction_src(transaction_data td)
 }
 
 /*! Get target database xml tree
+ *
  * @param[in]  td   transaction_data
  * @retval     xml  target xml tree containing wanted state
  */
@@ -121,6 +126,7 @@ transaction_target(transaction_data td)
 }
 
 /*! Get delete xml vector, ie vector of xml nodes that are deleted src->target
+ *
  * @param[in]  td   transaction_data
  * @retval     vec  Vector of xml nodes
  */
@@ -131,6 +137,7 @@ transaction_dvec(transaction_data td)
 }
 
 /*! Get length of delete xml vector
+ *
  * @param[in]  td   transaction_data
  * @retval     len  Length of vector of xml nodes
  * @see transaction_dvec
@@ -142,6 +149,7 @@ transaction_dlen(transaction_data td)
 }
 
 /*! Get add xml vector, ie vector of xml nodes that are added src->target
+ *
  * @param[in]  td   transaction_data
  * @retval     vec  Vector of xml nodes
  */
@@ -152,6 +160,7 @@ transaction_avec(transaction_data td)
 }
 
 /*! Get length of add xml vector
+ *
  * @param[in]  td   transaction_data
  * @retval     len  Length of vector of xml nodes
  * @see transaction_avec
@@ -163,6 +172,7 @@ transaction_alen(transaction_data td)
 }
 
 /*! Get source changed xml vector, ie vector of xml nodes that changed
+ *
  * @param[in]  td    transaction_data
  * @retval     vec   Vector of xml nodes
  * These are only nodes of type LEAF. 
@@ -177,6 +187,7 @@ transaction_scvec(transaction_data td)
 }
 
 /*! Get target changed xml vector, ie vector of xml nodes that changed
+ *
  * @param[in]  td    transaction_data
  * @retval     vec   Vector of xml nodes
  * These are only nodes of type LEAF. 
@@ -191,6 +202,7 @@ transaction_tcvec(transaction_data td)
 }
 
 /*! Get length of changed xml vector
+ *
  * @param[in]  td   transaction_data
  * @retval     len Length of vector of xml nodes
  * This is the length of both the src change vector and the target change vector
@@ -211,8 +223,8 @@ int
 transaction_print(FILE            *f,
                   transaction_data th)
 {
-    cxobj *xn;
-    int i;
+    cxobj              *xn;
+    int                 i;
     transaction_data_t *td;
 
     td = (transaction_data_t *)th;
@@ -246,7 +258,7 @@ transaction_print(FILE            *f,
  * @param[in] msg      Debug msg tag
  */
 int
-transaction_dbg(clicon_handle    h,
+transaction_dbg(clixon_handle    h,
                 int              dbglevel,
                 transaction_data th,
                 const char       *msg)
@@ -258,7 +270,7 @@ transaction_dbg(clicon_handle    h,
 
     td = (transaction_data_t *)th;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_CFG, errno, "cbuf_new");
+        clixon_err(OE_CFG, errno, "cbuf_new");
         goto done;
     }
     for (i=0; i<td->td_dlen; i++){
@@ -267,7 +279,7 @@ transaction_dbg(clicon_handle    h,
             goto done;
     }
     if (i)
-        clicon_debug(dbglevel, "%s %" PRIu64 " %s del: %s",
+        clixon_debug(dbglevel, "%s %" PRIu64 " %s del: %s",
                      __FUNCTION__,  td->td_id, msg, cbuf_get(cb));
     cbuf_reset(cb);
     for (i=0; i<td->td_alen; i++){
@@ -276,7 +288,7 @@ transaction_dbg(clicon_handle    h,
             goto done;
     }
     if (i)
-        clicon_debug(dbglevel, "%s %" PRIu64 " %s add: %s",
+        clixon_debug(dbglevel, "%s %" PRIu64 " %s add: %s",
                      __FUNCTION__, td->td_id, msg, cbuf_get(cb));
     cbuf_reset(cb);
     for (i=0; i<td->td_clen; i++){
@@ -290,7 +302,7 @@ transaction_dbg(clicon_handle    h,
             goto done;
     }
     if (i)
-        clicon_debug(dbglevel, "%s %" PRIu64 " %s change: %s",
+        clixon_debug(dbglevel, "%s %" PRIu64 " %s change: %s",
                      __FUNCTION__, td->td_id, msg, cbuf_get(cb));
  done:
     if (cb)
@@ -299,10 +311,9 @@ transaction_dbg(clicon_handle    h,
 }
 
 /*! Log a transaction
- * 
  */
 int
-transaction_log(clicon_handle      h,
+transaction_log(clixon_handle      h,
                 transaction_data   th,
                 int                level,
                 const char        *op)
@@ -314,7 +325,7 @@ transaction_log(clicon_handle      h,
 
     td = (transaction_data_t *)th;
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_CFG, errno, "cbuf_new");
+        clixon_err(OE_CFG, errno, "cbuf_new");
         goto done;
     }
     for (i=0; i<td->td_dlen; i++){
@@ -323,7 +334,7 @@ transaction_log(clicon_handle      h,
             goto done;
     }
     if (i)
-        clicon_log(level, "%s %" PRIu64 " %s del: %s",
+        clixon_log(h, level, "%s %" PRIu64 " %s del: %s",
                    __FUNCTION__,  td->td_id, op, cbuf_get(cb));
     cbuf_reset(cb);
     for (i=0; i<td->td_alen; i++){
@@ -332,7 +343,7 @@ transaction_log(clicon_handle      h,
             goto done;
     }
     if (i)
-        clicon_log(level, "%s %" PRIu64 " %s add: %s", __FUNCTION__, td->td_id, op, cbuf_get(cb));
+        clixon_log(h, level, "%s %" PRIu64 " %s add: %s", __FUNCTION__, td->td_id, op, cbuf_get(cb));
     cbuf_reset(cb);
     for (i=0; i<td->td_clen; i++){
         if (td->td_scvec){
@@ -345,7 +356,7 @@ transaction_log(clicon_handle      h,
             goto done;
     }
     if (i)
-        clicon_log(level, "%s %" PRIu64 " %s change: %s", __FUNCTION__, td->td_id, op, cbuf_get(cb));
+        clixon_log(h, level, "%s %" PRIu64 " %s change: %s", __FUNCTION__, td->td_id, op, cbuf_get(cb));
  done:
     if (cb)
         cbuf_free(cb);

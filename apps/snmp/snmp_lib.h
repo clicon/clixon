@@ -57,7 +57,7 @@ extern "C" {
 #define CLIXON_ASN_EXTRAS       253 /* Special case clixon address >= this */
 #define CLIXON_ASN_PHYS_ADDR    253 /* Special case phy-address */
 #define CLIXON_ASN_FIXED_STRING 254 /* RFC2578 Sec 7.7: String-valued, fixed-length */
-#define CLIXON_ASN_ROWSTATUS    255 
+#define CLIXON_ASN_ROWSTATUS    255
 
 /*
  * Types 
@@ -65,15 +65,15 @@ extern "C" {
 /* Userdata to pass around in netsmp callbacks
  */
 struct clixon_snmp_handle {
-    clicon_handle sh_h;
+    clixon_handle sh_h;
     yang_stmt    *sh_ys;               /* Leaf for scalar, list for table */
     oid           sh_oid[MAX_OID_LEN]; /* OID of registered table (list) */
     size_t        sh_oidlen;
     oid           sh_oid2[MAX_OID_LEN]; /* OID of registered container */
-    size_t        sh_oid2len;           
+    size_t        sh_oid2len;
     char         *sh_default;          /* MIB default value leaf only */
     cvec         *sh_cvk_orig;         /* Index/Key variable values (original) */
-    netsnmp_table_registration_info *sh_table_info; /* To mimic table-handler in libnetsnmp code 
+    netsnmp_table_registration_info *sh_table_info; /* To mimic table-handler in libnetsnmp code
                                                      * save only to free properly */
 };
 typedef struct clixon_snmp_handle clixon_snmp_handle;

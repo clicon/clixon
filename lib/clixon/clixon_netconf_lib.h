@@ -97,7 +97,8 @@
 /*
  * Types
  */
-/*! Content query parameter RFC 8040 Sec 4.8.1 
+/*! Content query parameter RFC 8040 Sec 4.8.1
+ *
  * Clixon extention: content so that RFC8040 content attribute can be conveyed
  * internally used in <get>
  */
@@ -111,7 +112,7 @@ typedef enum netconf_content netconf_content;
 enum target_type{ /* netconf */
     RUNNING,
     CANDIDATE
-}; 
+};
 
 enum test_option{ /* edit-config */
     SET,
@@ -126,7 +127,7 @@ enum error_option{ /* edit-config */
 
 /* NETCONF framing
  */
-enum framing_type{ 
+enum framing_type{
     NETCONF_SSH_EOM=0,   /* RFC 4742, RFC 6242 hello msg (end-of-msg: ]]>]]>)*/
     NETCONF_SSH_CHUNKED, /* RFC 6242 Chunked framing */
 };
@@ -135,7 +136,7 @@ typedef enum framing_type netconf_framing_type;
 /* NETCONF with-defaults
  * @see RFC 6243
  */
-enum withdefaults_type{ 
+enum withdefaults_type{
     WITHDEFAULTS_REPORT_ALL = 0,   /* default behavior: <= Clixon 6.0 */
     WITHDEFAULTS_TRIM,
     WITHDEFAULTS_EXPLICIT,         /* default behavior: > Clixon 6.0 */
@@ -146,13 +147,6 @@ typedef enum withdefaults_type withdefaults_type;
 /*
  * Macros
  */
-/*! Generate textual error log from Netconf error message
- * @param[in]  xerr     Netconf error xml tree on the form: <rpc-error> 
- * @param[in]  format   Format string 
- * @param[in]  arg      String argument to format (optional)
- */
-#define clixon_netconf_error(x, f, a) clixon_netconf_error_fn(__FUNCTION__, __LINE__, (x), (f), (a))
-
 /*
  * Prototypes
  */
@@ -194,20 +188,18 @@ int netconf_data_not_unique(cbuf *cb, cxobj *x, cvec *cvk);
 int netconf_data_not_unique_xml(cxobj **xret, cxobj *x, cvec *cvk);
 int netconf_minmax_elements_xml(cxobj **xret, cxobj *xp, char *name, int max);
 int netconf_trymerge(cxobj *x, yang_stmt *yspec, cxobj **xret);
-int netconf_module_features(clicon_handle h);
-int netconf_module_load(clicon_handle h);
+int netconf_module_features(clixon_handle h);
+int netconf_module_load(clixon_handle h);
 char *netconf_db_find(cxobj *xn, char *name);
-int netconf_err2cb(cxobj *xerr, cbuf *cberr);
 const netconf_content netconf_content_str2int(char *str);
 const char *netconf_content_int2str(netconf_content nr);
-int netconf_capabilites(clicon_handle h, cbuf *cb);
-int netconf_hello_server(clicon_handle h, cbuf *cb, uint32_t session_id);
-int netconf_hello_req(clicon_handle h, cbuf *cb);
-int clixon_netconf_error_fn(const char *fn, const int line, cxobj *xerr, const char *fmt, const char *arg);
+int netconf_capabilites(clixon_handle h, cbuf *cb);
+int netconf_hello_server(clixon_handle h, cbuf *cb, uint32_t session_id);
+int netconf_hello_req(clixon_handle h, cbuf *cb);
 int clixon_netconf_internal_error(cxobj *xerr, char *msg, char *arg);
 int netconf_parse_uint32(char *name, char *valstr, char *defaultstr, uint32_t defaultval, cbuf *cbret, uint32_t *value);
 int netconf_parse_uint32_xml(char *name, char *valstr, char *defaultstr, uint32_t defaultval, cxobj **xerr, uint32_t *value);
-int netconf_message_id_next(clicon_handle h);
+int netconf_message_id_next(clixon_handle h);
 int netconf_framing_preamble(netconf_framing_type framing, cbuf *cb);
 int netconf_framing_postamble(netconf_framing_type framing, cbuf *cb);
 int netconf_output(int s, cbuf *xf, char *msg);

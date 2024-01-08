@@ -37,8 +37,8 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
 </clixon-config>
 EOF
@@ -246,11 +246,11 @@ format=netconf
 
 # XXX netconf base capability 0, EOM framing
 new "cli check show config $format"
-X='<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="42"><edit-config><target><candidate/></target><config><table xmlns="urn:example:clixon"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table><table2 xmlns="urn:example:clixon"/></config></edit-config></rpc>]]>]]>'
+X="<rpc ${DEFAULTNS}><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table><table2 xmlns=\"urn:example:clixon\"/></config></edit-config></rpc>]]>]]>"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "^$X$"
 
 new "cli check show auto $format table"
-X='<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="42"><edit-config><target><candidate/></target><config><table xmlns="urn:example:clixon"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table></config></edit-config></rpc>]]>]]>'
+X="<rpc ${DEFAULTNS}><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table></config></edit-config></rpc>]]>]]>"
 expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 "^$X$"
 
 # XXX rest does not print whole NETCONF path to root, eg does not include "table"

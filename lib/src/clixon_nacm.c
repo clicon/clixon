@@ -56,12 +56,13 @@
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
-#include "clixon_err.h"
-#include "clixon_log.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_netconf_lib.h"
@@ -79,13 +80,14 @@
 #define NACM_NS "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
 
 /*! Match nacm access operations according to RFC8341 3.4.4.  
+ *
  * Incoming RPC Message Validation Step 7 (c)
  *  The rule's "access-operations" leaf has the "exec" bit set or
  *  has the special value "*".
  * @param[in] mode  Primary mode, eg read, create, update, delete, exec
  * @param[in] mode2 Secondary mode, eg "write"
- * @retval 0  No match
- * @retval 1  Match
+ * @retval    1     Match
+ * @retval    0     No match
  * @note access_operations is bit-fields
  */
 static int
@@ -105,14 +107,15 @@ match_access(char *access_operations,
 }
 
 /*! Match nacm single rule. Either match with access or deny. Or not match.
+ *
  * @param[in]  rpc    rpc name
  * @param[in]  module Yang module name
  * @param[in]  xrule  NACM rule XML tree
  * @param[out] cbret  Cligen buffer result. Set to an error msg if retval=0.
- * @retval -1  Error
- * @retval  0  Matching rule AND Not access and cbret set
- * @retval  1  Matching rule AND Access
- * @retval  2  No matching rule Goto step 10
+ * @retval     2      No matching rule Goto step 10
+ * @retval     1      Matching rule AND Access
+ * @retval     0      Matching rule AND Not access and cbret set
+ * @retval    -1      Error
  * @see RFC8341 3.4.4.  Incoming RPC Message Validation
  7.(cont) A rule matches if all of the following criteria are met: 
         *  The rule's "module-name" leaf is "*" or equals the name of
@@ -135,7 +138,7 @@ nacm_rule_rpc(char         *rpc,
     char  *module_rule; /* rule module name */
     char  *rpc_rule;
     char  *access_operations;
-    
+
     /*  7a) The rule's "module-name" leaf is "*" or equals the name of
         the YANG module where the protocol operation is defined. */
     if ((module_rule = xml_find_body(xrule, "module-name")) == NULL)
@@ -166,14 +169,15 @@ nacm_rule_rpc(char         *rpc,
 }
 
 /*! Process nacm incoming RPC message validation steps
+ *
  * @param[in]  module   Yang module name
  * @param[in]  rpc      rpc name
  * @param[in]  username User name of requestor
  * @param[in]  xnacm    NACM xml tree
- * @param[out] cbret Cligen buffer result. Set to an error msg if retval=0.
- * @retval -1  Error
- * @retval  0  Not access and cbret set
- * @retval  1  Access
+ * @param[out] cbret    Cligen buffer result. Set to an error msg if retval=0.
+ * @retval     1        Access
+ * @retval     0        Not access and cbret set
+ * @retval    -1        Error
  * @see RFC8341 3.4.4.  Incoming RPC Message Validation
  * @see nacm_datanode_write
  * @see nacm_datanode_read
@@ -200,7 +204,7 @@ nacm_rpc(char         *rpc,
     char   *action;
     int     match= 0;
     cvec   *nsc = NULL;
-    
+
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
@@ -241,7 +245,7 @@ nacm_rpc(char         *rpc,
             continue;
         /* 7. For each rule-list entry found, process all rules, in order,
            until a rule that matches the requested access operation is
-           found. 
+           found.
         */
         if (xpath_vec(rlist, nsc, "rule", &rvec, &rlen) < 0)
             goto done;
@@ -295,7 +299,7 @@ nacm_rpc(char         *rpc,
  permit:
     retval = 1;
  done:
-    clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
     if (nsc)
         xml_nsctx_free(nsc);
     if (gvec)
@@ -342,7 +346,7 @@ prepvec_add(prepvec  **pv_listp,
     prepvec *pv;
 
     if ((pv = malloc(sizeof(*pv))) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         return NULL;
     }
     memset(pv, 0, sizeof(*pv));
@@ -354,14 +358,18 @@ prepvec_add(prepvec  **pv_listp,
 }
 
 /*! Prepare datastructures before running through XML tree
+ *
  * Save rules in a "cache"
  * These rules match:
  *  - user/group
  *  - have read access-op, etc
  * Also make instance-id lookups on top object for each rule. Assume at most one result
+ * @param[in] h      Clixon handle
+ * @retval    0      OK
+ * @retval   -1      Error
  */
 static int
-nacm_datanode_prepare(clicon_handle     h,
+nacm_datanode_prepare(clixon_handle     h,
                       cxobj            *xt,
                       enum nacm_access  access,
                       cxobj           **gvec,
@@ -378,7 +386,7 @@ nacm_datanode_prepare(clicon_handle     h,
     int        k;
     char      *gname;
     cxobj    **rvec = NULL; /* rules */
-    size_t     rlen;    
+    size_t     rlen;
     cxobj     *xrule;
     cxobj     *pathobj;
     char      *access_operations;
@@ -414,14 +422,14 @@ nacm_datanode_prepare(clicon_handle     h,
                leaf has the "read" bit set or has the special value "*" */
             access_operations = xml_find_body(xrule, "access-operations");
             switch (access){
-            case NACM_READ: 
+            case NACM_READ:
                 /* 6c) For a "read" access operation, the rule's "access-operations"
                    leaf has the "read" bit set or has the special value "*" */
                 if (!match_access(access_operations, "read", NULL))
                     continue;
                 break;
             case NACM_CREATE:
-                /* 6d) For a "create" access operation, the rule's "access-operations" 
+                /* 6d) For a "create" access operation, the rule's "access-operations"
                    leaf has the "create" bit set or has the special value "*". */
                 if (!match_access(access_operations, "create", "write"))
                     continue;
@@ -439,7 +447,7 @@ nacm_datanode_prepare(clicon_handle     h,
                     continue;
                 break;
             default:
-                clicon_err(OE_XML, EINVAL, "Access %d unupported (shouldnt happen)", access);
+                clixon_err(OE_XML, EINVAL, "Access %d unupported (shouldnt happen)", access);
                 goto done;
                 break;
             }
@@ -457,7 +465,7 @@ nacm_datanode_prepare(clicon_handle     h,
                 path0 = clixon_trim2(xml_body(pathobj), " \t\n");
                 /* Get canonical namespace context for nacm paths */
                 if ((path = strdup(path0)) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
 #if 0
@@ -499,7 +507,7 @@ nacm_datanode_prepare(clicon_handle     h,
         if (rvec){
             free(rvec);
             rvec=NULL;
-        }       
+        }
     }
     retval = 0;
  done:
@@ -517,14 +525,15 @@ nacm_datanode_prepare(clicon_handle     h,
  */
 
 /*! Match specific rule to specific requested node
+ *
  * @param[in]  xn       XML node (requested node)
  * @param[in]  xrule    NACM rule
  * @param[in]  xp       Xpath match
  * @param[in]  yspec    YANG spec
- * @retval -1  Error
- * @retval  0  OK and rule does not match
- * @retval  1  OK and rule matches deny
  * @retval  2  OK and rule matches permit
+ * @retval  1  OK and rule matches deny
+ * @retval  0  OK and rule does not match
+ * @retval -1  Error
  */
 static int
 nacm_data_write_xrule_xml(cxobj       *xn,
@@ -583,7 +592,8 @@ nacm_data_write_xrule_xml(cxobj       *xn,
 }
 
 /*! Recursive check for NACM write rules among all XML nodes
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @param[in]  xn        XML node (requested node)
  * @param[in]  rulevec   Precomputed rules that apply to this user group
  * @param[in]  xpathvec  Precomputed xpath results that apply to this XML tree
@@ -592,14 +602,14 @@ nacm_data_write_xrule_xml(cxobj       *xn,
  * @param[out] cbret     Error message if retval = 0
  * @retval     1         OK and accept
  * @retval     0         Deny and cbret set
- * @retval     -1        Error
+ * @retval    -1         Error
  * XXX differentiate between nomatch: default. or match deny, match accept 
  * nomatch: check write-default rules, next v
  * accept:  Hunky dory
  * deny:    Send error message
  */
 static int
-nacm_datanode_write_recurse(clicon_handle h,
+nacm_datanode_write_recurse(clixon_handle h,
                             cxobj        *xn,
                             prepvec      *pv_list,
                             int           defpermit,
@@ -610,13 +620,13 @@ nacm_datanode_write_recurse(clicon_handle h,
     cxobj   *x;
     int      ret = 0;
     prepvec *pv;
-    
+
     pv = pv_list;
     if (pv){
         do {
             /* return values: -1:Error /0:no match /1: deny /2: permit
              */
-            if ((ret = nacm_data_write_xrule_xml(xn, pv->pv_xrule, pv->pv_xpathvec, yspec)) < 0) 
+            if ((ret = nacm_data_write_xrule_xml(xn, pv->pv_xrule, pv->pv_xpathvec, yspec)) < 0)
                 goto done;
             switch(ret){
             case 0: /* No match, continue with next rule */
@@ -658,6 +668,7 @@ nacm_datanode_write_recurse(clicon_handle h,
 }
 
 /*! Make nacm datanode and module rule write access validation
+ *
  * The operations of NACM are: create, read, update, delete, exec
  *  where write is short-hand for create+delete+update
  * @param[in]  h        Clixon handle
@@ -666,16 +677,16 @@ nacm_datanode_write_recurse(clicon_handle h,
  * @param[in]  op       NACM access of xreq
  * @param[in]  username User making access
  * @param[in]  xnacm    NACM xml tree
- * @param[out] cbret Cligen buffer result. Set to an error msg if retval=0.
- * @retval -1  Error
- * @retval  0  Not access and cbret set
- * @retval  1  Access
+ * @param[out] cbret    Cligen buffer result. Set to an error msg if retval=0.
+ * @retval     1        Access
+ * @retval     0        Not access and cbret set
+ * @retval    -1        Error
  * @see RFC8341 3.4.5.  Data Node Access Validation
  * @see nacm_datanode_read
  * @see nacm_rpc
  */
 int
-nacm_datanode_write(clicon_handle    h,
+nacm_datanode_write(clixon_handle    h,
                     cxobj           *xreq,
                     cxobj           *xt,
                     enum nacm_access access,
@@ -701,7 +712,7 @@ nacm_datanode_write(clicon_handle    h,
         goto permit;
     /* write-default (create, update, or delete) has default deny so should never be NULL */
     if ((write_default = xml_find_body(xnacm, "write-default")) == NULL){
-        clicon_err(OE_XML, EINVAL, "No nacm write-default rule");
+        clixon_err(OE_XML, EINVAL, "No nacm write-default rule");
         goto done;
     }
     /* 3.   Check all the "group" entries to see if any of them contain a
@@ -738,7 +749,7 @@ nacm_datanode_write(clicon_handle    h,
     goto permit;
     /*  8.   At this point, no matching rule was found in any rule-list
         entry. */
- step9:   
+ step9:
     /* 10.  For a "write" access operation, if the requested data node is
         defined in a YANG module advertised in the server capabilities
         and the data definition statement contains a
@@ -759,7 +770,7 @@ nacm_datanode_write(clicon_handle    h,
  permit:
     retval = 1;
  done:
-    clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -782,10 +793,12 @@ nacm_datanode_write(clicon_handle    h,
  */
 
 /*! Perform NACM action: mark if permit, del if deny
+ *
  * @param[in] xrule    NACM rule
  * @param[in] xn       XML node (requested node)
- * @retval    -1       Error
  * @retval    0        OK
+ * @retval   -1        Error
+
  */
 static int
 nacm_data_read_action(cxobj *xrule,
@@ -806,12 +819,13 @@ nacm_data_read_action(cxobj *xrule,
 }
 
 /*! Match specific rule to specific requested node
+ *
  * @param[in]  xn       XML node (requested node)
  * @param[in]  xrule    NACM rule
  * @param[in]  yspec    YANG spec
- * @retval -1  Error
- * @retval  0  OK and rule does not match
- * @retval  1  OK and rule matches
+ * @retval     1        OK and rule matches
+ * @retval     0        OK and rule does not match
+ * @retval    -1        Error
  * Two distinct cases:
  * (1) read_default is permit
  *     mark all deny rules and remove them
@@ -829,7 +843,7 @@ nacm_data_read_xrule_xml(cxobj        *xn,
     char      *module_pattern; /* rule module name */
     cxobj     *xp;
     int        i;
-    
+
     if ((module_pattern = xml_find_body(xrule, "module-name")) == NULL)
         goto nomatch;
     /* 6a) The rule's "module-name" leaf is "*" or equals the name of
@@ -868,16 +882,17 @@ nacm_data_read_xrule_xml(cxobj        *xn,
 }
 
 /*! Recursive check for NACM read rules among all XML nodes
- * @param[in]  h        Clicon handle
+ *
+ * @param[in]  h        Clixon handle
  * @param[in]  xn       XML node (requested node)
  * @param[in]  rulevec  Precomputed rules that apply to this user group
  * @param[in]  xpathvec Precomputed xpath results that apply to this XML tree
  * @param[in]  yspec    YANG spec
- * @retval  0  OK
- * @retval -1  Error
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 static int
-nacm_datanode_read_recurse(clicon_handle h,
+nacm_datanode_read_recurse(clixon_handle h,
                            cxobj        *xn,
                            prepvec      *pv_list,
                            yang_stmt    *yspec)
@@ -887,7 +902,7 @@ nacm_datanode_read_recurse(clicon_handle h,
     cxobj   *xprev;
     int      ret;
     prepvec *pv;
-    
+
     if (xml_spec(xn)){ /* Check this node */
         pv = pv_list;
         if (pv){
@@ -895,15 +910,15 @@ nacm_datanode_read_recurse(clicon_handle h,
                 if ((ret = nacm_data_read_xrule_xml(xn,
                                                     pv->pv_xrule,
                                                     pv->pv_xpathvec,
-                                                    yspec)) < 0) 
-                    goto done;      
+                                                    yspec)) < 0)
+                    goto done;
                 if (ret == 1)
-                    break; /* stop at first match */                
+                    break; /* stop at first match */
                 pv = NEXTQ(prepvec *, pv);
             } while (pv && pv != pv_list);
         }
 
-#if 0 /* 6(A) in algorithm 
+#if 0 /* 6(A) in algorithm
        * If N did not match any rule R, and default rule is deny, remove that subtree */
         if (strcmp(read_default, "deny") == 0)
             if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
@@ -932,16 +947,17 @@ nacm_datanode_read_recurse(clicon_handle h,
 }
 
 /*! Make nacm datanode and module rule read access validation
+ *
  * Just purge nodes that fail validation (dont send netconf error message)
- * @param[in]  h        Clicon handle
+ * @param[in]  h        Clixon handle
  * @param[in]  xt       XML root tree with "config" label 
  * @param[in]  xrvec    Vector of requested nodes (sub-part of xt)
  * @param[in]  xrlen    Length of requsted node vector
  * @param[in]  username 
  * @param[in]  xnacm    NACM xml tree
- * @retval -1  Error
- * @retval  0  Not access and cbret set
- * @retval  1  Access
+ * @retval     1        Access
+ * @retval     0        Not access and cbret set
+ * @retval    -1        Error
  * 3.2.4: <get> and <get-config> Operations
  * Data nodes to which the client does not have read access are silently
  * omitted, along with any descendants, from the <rpc-reply> message.
@@ -980,10 +996,10 @@ nacm_datanode_read_recurse(clicon_handle h,
  * @see nacm_rpc
  */
 int
-nacm_datanode_read(clicon_handle h,
+nacm_datanode_read(clixon_handle h,
                    cxobj        *xt,
                    cxobj       **xrvec,
-                   size_t        xrlen,    
+                   size_t        xrlen,
                    char         *username,
                    cxobj        *xnacm)
 {
@@ -996,7 +1012,7 @@ nacm_datanode_read(clicon_handle h,
     char           *read_default = NULL;
     cvec           *nsc = NULL;
     prepvec        *pv_list = NULL;
-    
+
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
@@ -1020,7 +1036,7 @@ nacm_datanode_read(clicon_handle h,
         goto done;
     /* read-default has default permit so should never be NULL */
     if ((read_default = xml_find_body(xnacm, "read-default")) == NULL){
-        clicon_err(OE_XML, EINVAL, "No nacm read-default rule");
+        clixon_err(OE_XML, EINVAL, "No nacm read-default rule");
         goto done;
     }
     /* First run through rules and cache rules as well as lookup objects in xt. 
@@ -1059,7 +1075,7 @@ nacm_datanode_read(clicon_handle h,
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -1077,15 +1093,16 @@ nacm_datanode_read(clicon_handle h,
  */
 
 /*! NACM intial pre- access control enforcements 
+ *
  * Initial NACM steps and common to all NACM access validation.
  * If retval=0 continue with next NACM step, eg rpc, module, 
  * etc. If retval = 1 access is OK and skip next NACM step.
- * @param[in]  h        Clicon handle
+ * @param[in]  h        Clixon handle
  * @param[in]  xnacm    NACM XML tree, root should be "nacm"
  * @param[in]  username User name of requestor
- * @retval -1  Error
- * @retval  0  OK but not validated. Need to do NACM step using xnacm
- * @retval  1  OK permitted. You do not need to do next NACM step
+ * @retval     1        OK permitted. You do not need to do next NACM step
+ * @retval     0        OK but not validated. Need to do NACM step using xnacm
+ * @retval    -1        Error
  * @code
  *   if ((ret = nacm_access_check(h, mode, xnacm, peername, username)) < 0)
  *     err;
@@ -1097,7 +1114,7 @@ nacm_datanode_read(clicon_handle h,
  * @see RFC8341 3.4 Access Control Enforcement Procedures
  */
 static int
-nacm_access_check(clicon_handle h,
+nacm_access_check(clixon_handle h,
                   cxobj        *xnacm,
                   char         *peername,
                   char         *username)
@@ -1109,9 +1126,9 @@ nacm_access_check(clicon_handle h,
     char  *recovery_user;
 #ifdef WITH_RESTCONF
     char  *wwwuser;
-#endif    
+#endif
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
     /* Do initial nacm processing common to all access validation in
@@ -1164,23 +1181,24 @@ nacm_access_check(clicon_handle h,
  done:
     if (nsc)
         xml_nsctx_free(nsc);
-    clicon_debug(1, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
     return retval;
  permit:
     retval = 1;
     goto done;
 }
 
-/*! NACM intial pre- access control enforcements 
+/*! NACM intial pre- access control enforcements
+ *
  * Initial NACM steps and common to all NACM access validation.
  * If retval=0 continue with next NACM step, eg rpc, module, 
  * etc. If retval = 1 access is OK and skip next NACM step.
- * @param[in]  h        Clicon handle
+ * @param[in]  h        Clixon handle
  * @param[in]  username User name of requestor
  * @param[out] xncam    NACM XML tree, set if retval=0. Free after use
- * @retval -1  Error
- * @retval  0  OK but not validated. Need to do NACM step using xnacm
- * @retval  1  OK permitted. You do not need to do next NACM step.
+ * @retval     1        OK permitted. You do not need to do next NACM step.
+ * @retval     0        OK but not validated. Need to do NACM step using xnacm
+ * @retval    -1        Error
  * @code
  *   cxobj *xnacm = NULL;
  *   if ((ret = nacm_access_pre(h, peername, username, &xnacm)) < 0)
@@ -1193,7 +1211,7 @@ nacm_access_check(clicon_handle h,
  * @see RFC8341 3.4 Access Control Enforcement Procedures
  */
 int
-nacm_access_pre(clicon_handle  h,
+nacm_access_pre(clixon_handle  h,
                 char          *peername,
                 char          *username,
                 cxobj        **xnacmp)
@@ -1204,7 +1222,7 @@ nacm_access_pre(clicon_handle  h,
     cxobj *xnacm0 = NULL;
     cxobj *xnacm = NULL;
     cvec  *nsc = NULL;
-    
+
     /* Check clixon option: disabled, external tree or internal */
     mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (mode == NULL)
@@ -1221,10 +1239,9 @@ nacm_access_pre(clicon_handle  h,
             goto done;
     }
     else{
-        clicon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
+        clixon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
         goto done;
     }
-    
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
     /* If config does not exist then the operation is permitted(?) */
@@ -1263,9 +1280,9 @@ nacm_access_pre(clicon_handle  h,
  * @param[in]  peername  Peer username if any
  * @param[in]  username  username received in XML (eg for NACM)
  * @param[out] cbret     Set with netconf error message if ret == 0
- * @retval    -1         Error
- * @retval     0         Not verified (cbret set)
  * @retval     1         Verified
+ * @retval     0         Not verified (cbret set)
+ * @retval    -1         Error
  * Credentials OK if 
  *  - cred mode is NONE,
  * Otherwise both NACM user AND peer user must exist, and
@@ -1277,7 +1294,7 @@ nacm_access_pre(clicon_handle  h,
  * - peer user is www (can be any NACM user)
  */
 int
-verify_nacm_user(clicon_handle           h,
+verify_nacm_user(clixon_handle           h,
                  enum nacm_credentials_t cred,
                  char                   *peername,
                  char                   *nacmname,
@@ -1287,7 +1304,7 @@ verify_nacm_user(clicon_handle           h,
     cbuf *cbmsg = NULL;
 #ifdef WITH_RESTCONF
     char  *wwwuser;
-#endif    
+#endif
 
     if (cred == NC_NONE)
         return 1;
@@ -1300,7 +1317,7 @@ verify_nacm_user(clicon_handle           h,
         if (netconf_access_denied(cbret, "application", "No NACM available") < 0)
             goto done;
         goto fail;
-    }   
+    }
     if (cred == NC_EXCEPT){
         if (strcmp(peername, "root") == 0)
             goto ok;
@@ -1312,7 +1329,7 @@ verify_nacm_user(clicon_handle           h,
     }
     if (strcmp(peername, nacmname) != 0){
         if ((cbmsg = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cbmsg, "User %s credential not matching NACM user %s", peername, nacmname);

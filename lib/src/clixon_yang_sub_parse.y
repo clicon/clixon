@@ -76,8 +76,8 @@
 
 /* typecast macro */
 #define _IF ((clixon_yang_sub_parse_yacc *)_if)
-#define _YYERROR(msg) {clicon_err(OE_YANG, 0, "%s", (msg)); YYERROR;}
-    
+#define _YYERROR(msg) {clixon_err(OE_YANG, 0, "%s", (msg)); YYERROR;}
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -89,15 +89,16 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_vec.h"
 #include "clixon_data.h"
@@ -105,29 +106,32 @@
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clicon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(1,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
-    
+
 void 
 clixon_yang_sub_parseerror(void *arg,
-                             char *s) 
+                           char *s)
 {
     clixon_yang_sub_parse_yacc *ife = (clixon_yang_sub_parse_yacc *)arg;
 
-    clicon_err_fn(NULL, 0, OE_YANG, 0, "yang_sub_parse: file:%s:%d \"%s\" %s: at or before: %s", 
-               ife->if_mainfile,
-               ife->if_linenum,
-               ife->if_parse_string,
-               s,
-               clixon_yang_sub_parsetext); 
+    clixon_err(OE_YANG, 0, "yang_sub_parse: file:%s:%d \"%s\" %s: at or before: %s",
+                  ife->if_mainfile,
+                  ife->if_linenum,
+                  ife->if_parse_string,
+                  s,
+                  clixon_yang_sub_parsetext);
     return;
 }
 
 /*! Check if feature "str" is enabled or not in context of yang node ys
+ *
  * @param[in]  str  feature str. 
  * @param[in]  ys   If-feature type yang node
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 static int
 if_feature_check(clixon_yang_sub_parse_yacc *ife,
@@ -140,7 +144,7 @@ if_feature_check(clixon_yang_sub_parse_yacc *ife,
     yang_stmt  *yfeat; /* feature yang node */
     cg_var     *cv;
     yang_stmt  *ys;
-    
+
     if ((ys = ife->if_ys) == NULL)
         return 0;
     if (nodeid_split(str, &prefix, &feature) < 0)
@@ -154,7 +158,7 @@ if_feature_check(clixon_yang_sub_parse_yacc *ife,
         goto done;
     /* Check if feature exists, and is set, otherwise remove */
     if ((yfeat = yang_find(ymod, Y_FEATURE, feature)) == NULL){
-        clicon_err(OE_YANG, EINVAL, "Yang module %s has IF_FEATURE %s, but no such FEATURE statement exists",
+        clixon_err(OE_YANG, EINVAL, "Yang module %s has IF_FEATURE %s, but no such FEATURE statement exists",
                    ymod?yang_argument_get(ymod):"none",
                    feature);
         goto done;
@@ -179,9 +183,9 @@ if_feature_check(clixon_yang_sub_parse_yacc *ife,
         free(feature);
     return retval;
 }
- 
-%} 
- 
+
+%}
+
 %%
 
 /* See RFC 7950 Sec 14 if-feature-expr-str */
@@ -193,7 +197,7 @@ top        : if_feature_expr MY_EOF
                             YYACCEPT;
                         }
                         else{
-                            _YYERROR("Expected if-feature-expr"); 
+                            _YYERROR("Expected if-feature-expr");
                         }
                     }
            ;

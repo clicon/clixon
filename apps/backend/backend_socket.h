@@ -41,8 +41,8 @@
 
 /*
  * Prototypes
- */ 
-int backend_socket_init(clicon_handle h);
+ */
+int backend_socket_init(clixon_handle h);
 int backend_accept_client(int fd, void *arg);
 
 #endif  /* _BACKEND_SOCKET_H_ */

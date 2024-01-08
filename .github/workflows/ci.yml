@@ -9,7 +9,7 @@ on:
     branches: [ master ]
 
 jobs:
-  native-build:
+  ubuntu-build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -26,13 +26,30 @@ jobs:
       run: sudo make install install-include
     - name: make example
       run: (cd example; make)   
-    - name: make utils
-      run: (cd util; make)
     - name: install example
       run: (cd example; sudo make install)
-    - name: install utils
-      run: (cd util; sudo make install)      
-  docker-run:
+  ubuntu-build-restconf-fcgi:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    # 1) checkout and compile natively (no test)
+    - name: install cligen
+      run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
+    - name: install dependencies
+      run: sudo apt install -y nginx
+    - name: install fcgi
+      run: (git clone https://github.com/FastCGI-Archives/fcgi2 && cd fcgi2 && ./autogen.sh && rm -rf .git && ./configure --prefix=/usr; make; sudo make install)
+    - name: configure
+      run: ./configure --with-restconf=fcgi
+    - name: make
+      run: make -j10
+    - name: make install
+      run: sudo make install install-include
+    - name: make example
+      run: (cd example; make)   
+    - name: install example
+      run: (cd example; sudo make install)
+  docker-alpine-tests:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -42,6 +59,20 @@ jobs:
     # 2) Inline of make test, but without configure
     - name: in-line clone
       run: git clone file://$(realpath ../..)
+    - name: openconfig
+      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
+    - name: yangmodels1
+      run: mkdir -p yang/standard
+    - name: yangmodels2
+      run: (cd yang; git init;)
+    - name: yangmodels3
+      run: (cd yang; git remote add -f origin https://github.com/YangModels/yang)
+    - name: yangmodels4
+      run: (cd yang; git config core.sparseCheckout true)
+    - name: yangmodels5
+      run: (echo "standard/" >> yang/.git/info/sparse-checkout; echo "experimental/" >> yang/.git/info/sparse-checkout)
+    - name: yangmodels6
+      run: (cd yang; git pull origin main)
     - name: make docker
       run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
     - name: start container

@@ -74,17 +74,18 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_log.h"
-#include "clixon_err.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_file.h"
-#include "clixon_yang.h"
 #include "clixon_hash.h"
+#include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_err.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
@@ -135,7 +136,7 @@ ys_grouping_module_resolve(yang_stmt *ymod,
     while ((yinc = yn_each(yrealmod, yinc)) != NULL){
         if (yang_keyword_get(yinc) != Y_INCLUDE)
             continue;
-        submname = yang_argument_get(yinc);                 
+        submname = yang_argument_get(yinc);
         if ((ysubm = yang_find_module_by_name(yspec, submname)) == NULL)
             continue;
         if (ysubm == ymod)
@@ -154,11 +155,11 @@ ys_grouping_module_resolve(yang_stmt *ymod,
  * @param[in]  name       Name of grouping to look for
  * @param[out] ygrouping0 A found grouping yang structure as result
  * @retval     0          OK, ygrouping may be NULL
- * @retval    -1          Error, with clicon_err called
+ * @retval    -1          Error, with clixon_err called
  */
 int
-ys_grouping_resolve(yang_stmt  *yuses, 
-                    char       *prefix, 
+ys_grouping_resolve(yang_stmt  *yuses,
+                    char       *prefix,
                     char       *name,
                     yang_stmt **ygrouping0)
 {
@@ -176,7 +177,7 @@ ys_grouping_resolve(yang_stmt  *yuses,
         if ((ymod = yang_find_module_by_prefix(yuses, prefix)) != NULL)
             ygrouping = ys_grouping_module_resolve(ymod, yspec, name);
     }
-    else { 
+    else {
         ys = yuses;         /* Check upwards in hierarchy for matching groupings */
         while (1){
             if (ys->ys_mymodule){
@@ -206,6 +207,8 @@ ys_grouping_resolve(yang_stmt  *yuses,
  *
  * @param[in]  h    Clicon handle
  * @param[in]  ys   The augment statement
+ * @retval     0    OK
+ * @retval    -1    Error
  * @see RFC7950 Sec 7.17
  * The target node MUST be either a container, list, choice, case, input,
  * output, or notification node.
@@ -215,12 +218,12 @@ ys_grouping_resolve(yang_stmt  *yuses,
  * elements in the XML namespace of the module where the "augment" is
  * specified.
  * 
- * @note If the augment has a when statement, which is commonplace, the when statement is not copied as 
- * datanodes are, since it should not apply to the target node. Instead it is added as a special "when"
- * struct to the yang statements being inserted.
+ * @note If the augment has a when statement, which is commonplace, the when statement is not 
+ * copied as datanodes are, since it should not apply to the target node. Instead it is added as 
+ * a special "when" struct to the yang statements being inserted.
  */
 static int
-yang_augment_node(clicon_handle h,
+yang_augment_node(clixon_handle h,
                   yang_stmt    *ys)
 {
     int           retval = -1;
@@ -236,21 +239,21 @@ yang_augment_node(clicon_handle h,
     enum rfc_6020 childkey;
 
     if ((ymod = ys_module(ys)) == NULL){
-        clicon_err(OE_YANG, 0, "My yang module not found");
+        clixon_err(OE_YANG, 0, "My yang module not found");
         goto done;
     }
     schema_nodeid = yang_argument_get(ys);
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, schema_nodeid);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, schema_nodeid);
     /* Find the target */
     if (yang_abs_schema_nodeid(ys, schema_nodeid, &ytarget) < 0)
         goto done;
 
     if (ytarget == NULL){
         if (clicon_option_bool(h, "CLICON_YANG_AUGMENT_ACCEPT_BROKEN")){
-            /* Log a warning and proceed if augment target not found 
+            /* Log a warning and proceed if augment target not found
              * This may be necessary with some broken models
              */
-            clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: target node %s not found",
+            clixon_log(h, LOG_WARNING, "Warning: Augment failed in module %s: target node %s not found",
                        yang_argument_get(ys_module(ys)),
                        schema_nodeid);
             goto ok;
@@ -259,10 +262,10 @@ yang_augment_node(clicon_handle h,
             /* Fail with fatal error if augment target not found 
              * This is "correct"
              */
-            clicon_err(OE_YANG, 0, "Augment failed in module %s: target node %s not found",
+            clixon_err(OE_YANG, 0, "Augment failed in module %s: target node %s not found",
                        yang_argument_get(ys_module(ys)),
                        schema_nodeid);
-            goto done; 
+            goto done;
         }
     }
     /* The target node MUST be either a container, list, choice, case, input, output, or notification node.
@@ -300,7 +303,7 @@ yang_augment_node(clicon_handle h,
                 /* Special case if yc0 is disabled by if-feature=false, then it is transformed to ANYDATA
                  */
                 if (yang_flag_get(yc0, YANG_FLAG_DISABLED) == 0)
-                    clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: node %s of type %s cannot be added to target node %s (see RFC 7950 Sec 17)",
+                    clixon_log(h, LOG_WARNING, "Warning: Augment failed in module %s: node %s of type %s cannot be added to target node %s (see RFC 7950 Sec 17)",
                            yang_argument_get(ys_module(ys)),
                            yang_argument_get(yc0),
                            yang_key2str(childkey),
@@ -316,10 +319,10 @@ yang_augment_node(clicon_handle h,
                notification node, the "container", "leaf", "list", "leaf-list",
                "uses", and "choice" statements can be used within the "augment"
                statement. */
-            if (childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST && 
+            if (childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST &&
                 childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE &&
                 childkey != Y_UNKNOWN){
-                clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: node %s %d cannot be added to target node %s",
+                clixon_log(h, LOG_WARNING, "Warning: Augment failed in module %s: node %s %d cannot be added to target node %s",
                            yang_argument_get(ys_module(ys)),
                            yang_key2str(childkey),
                            childkey,
@@ -340,7 +343,7 @@ yang_augment_node(clicon_handle h,
                 childkey != Y_CHOICE && childkey != Y_CONTAINER && childkey != Y_LEAF &&
                 childkey != Y_LIST && childkey != Y_LEAF_LIST){
 
-                clicon_log(LOG_WARNING, "Warning: Augment failed in module %s: node %s %d cannot be added to target node %s",
+                clixon_log(h, LOG_WARNING, "Warning: Augment failed in module %s: node %s %d cannot be added to target node %s",
                            yang_argument_get(ys_module(ys)),
                            yang_key2str(childkey),
                            childkey,
@@ -365,9 +368,9 @@ yang_augment_node(clicon_handle h,
          * see xml_yang_validate_all
          */
         if (ywhen){
-            if (yang_when_xpath_set(yc, wxpath) < 0) 
+            if (yang_when_xpath_set(yc, wxpath) < 0)
                 goto done;
-            if (yang_when_nsc_set(yc, wnsc) < 0) 
+            if (yang_when_nsc_set(yc, wnsc) < 0)
                 goto done;
         }
         /* Note: ys_populate2 called as a special case here since the inserted child is
@@ -396,7 +399,7 @@ yang_augment_node(clicon_handle h,
  * another module not yet augmented.
  */
 static int
-yang_augment_module(clicon_handle h,
+yang_augment_module(clixon_handle h,
                     yang_stmt    *ymod)
 
 {
@@ -425,6 +428,8 @@ yang_augment_module(clicon_handle h,
  * Most nodes will be replaced, but some are added
  * @param[in]  yr   Refine node
  * @param[in]  yt   Refine target node (will be modified)
+ * @retval     0    OK
+ * @retval    -1    Error
  * @see RFC7950 Sec 7.13.2
  * There may be some missed cornercases
  */
@@ -438,7 +443,7 @@ ys_do_refine(yang_stmt *yr,
     yang_stmt    *ytc; /* target child */
     enum rfc_6020 keyw;
     int           i;
-    
+
     /* Loop through refine node children. First if remove do that first 
      * In some cases remove a set of nodes.
      */
@@ -467,7 +472,7 @@ ys_do_refine(yang_stmt *yr,
             }
             /* fall through and add if not found */
         case Y_MUST:   /* keep old, add new */
-        case Y_IF_FEATURE:  
+        case Y_IF_FEATURE:
             break;
         default:
             break;
@@ -493,8 +498,8 @@ ys_do_refine(yang_stmt *yr,
  * Could be made to a generic function used elsewhere as well
  * @param[in]  y    Yang leaf
  * @param[in]  yp   Yang list parent 
- * @retval     0    No, y is not a key leaf in list yp
  * @retval     1    Yes, y is a key leaf in list yp
+ * @retval     0    No, y is not a key leaf in list yp
  */
 static int
 ys_iskey(yang_stmt *y,
@@ -502,7 +507,7 @@ ys_iskey(yang_stmt *y,
 {
     cvec      *cvv;
     cg_var    *cv;
-    char     *name;    
+    char     *name;
 
     if (yang_keyword_get(y) != Y_LEAF)
         return 0;
@@ -547,14 +552,14 @@ yang_expand_uses_node(yang_stmt *yn,
     yang_stmt *ywhen;
     char      *wxpath = NULL; /* xpath of when statement */
     cvec      *wnsc = NULL;   /* namespace context of when statement */
-    
+
     /* Split argument into prefix and name */
     if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
         goto done;
     if (ys_grouping_resolve(ys, prefix, id, &ygrouping) < 0)
         goto done;
     if (ygrouping == NULL){
-        clicon_log(LOG_NOTICE, "%s: Yang error : grouping \"%s\" not found in module \"%s\"", 
+        clixon_log(NULL, LOG_NOTICE, "%s: Yang error : grouping \"%s\" not found in module \"%s\"",
                    __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
         goto done;
     }
@@ -563,14 +568,14 @@ yang_expand_uses_node(yang_stmt *yn,
     yp = yn;
     do {
         if (yp == ygrouping){
-            clicon_err(OE_YANG, EFAULT, "Yang use of grouping %s in module %s is defined inside the grouping (recursion), see RFC 7950 Sec 7.12: A grouping MUST NOT reference itself",
+            clixon_err(OE_YANG, EFAULT, "Yang use of grouping %s in module %s is defined inside the grouping (recursion), see RFC 7950 Sec 7.12: A grouping MUST NOT reference itself",
                        yang_argument_get(ys),
                        yang_argument_get(ys_module(yn))
                        );
             goto done;
         }
     } while((yp = yang_parent_get(yp)) != NULL);
-    if (yang_flag_get(ygrouping, YANG_FLAG_GROUPING) == 0){ 
+    if (yang_flag_get(ygrouping, YANG_FLAG_GROUPING) == 0){
         /* Check mark flag to see if this grouping has been expanded before, 
          * here below in the traverse section 
          * A mark could be completely normal (several uses) or it could be a recursion.
@@ -605,7 +610,7 @@ yang_expand_uses_node(yang_stmt *yn,
         size = (yang_len_get(yn) - i - 1)*sizeof(struct yang_stmt *);
         yn->ys_len += glen;
         if ((yn->ys_stmt = realloc(yn->ys_stmt, (yang_len_get(yn))*sizeof(yang_stmt *))) == 0){
-            clicon_err(OE_YANG, errno, "realloc");
+            clixon_err(OE_YANG, errno, "realloc");
             goto done;
         }
         /* Here, glen last elements are not initialized. 
@@ -642,7 +647,7 @@ yang_expand_uses_node(yang_stmt *yn,
                                     &yrt) < 0)
             goto done;
         /* Not found, try next */
-        if (yrt == NULL)                
+        if (yrt == NULL)
             continue;
         /* Refine ANYDATA does not make sense */
         if (yang_keyword_get(yrt) == Y_ANYDATA || yang_keyword_get(yrt) == Y_ANYXML)
@@ -672,16 +677,15 @@ yang_expand_uses_node(yang_stmt *yn,
                  * If a key leaf is defined in a grouping that is used in a list, the
                  * "uses" statement MUST NOT have a "when" statement.
                  */
-                
-                clicon_err(OE_YANG, 0, "Key leaf '%s' defined in grouping '%s' is used in a 'uses' statement, This is not allowed according to RFC 7950 Sec 7.21.5",
+                clixon_err(OE_YANG, 0, "Key leaf '%s' defined in grouping '%s' is used in a 'uses' statement, This is not allowed according to RFC 7950 Sec 7.21.5",
                        yang_argument_get(yg),
                        yang_argument_get(ygrouping)
                        );
                 goto done;
             }
-            if (yang_when_xpath_set(yg, wxpath) < 0) 
+            if (yang_when_xpath_set(yg, wxpath) < 0)
                 goto done;
-            if (yang_when_nsc_set(yg, wnsc) < 0) 
+            if (yang_when_nsc_set(yg, wnsc) < 0)
                 goto done;
         }
         /* This is for extensions that allow list keys to be optional, see restconf_main_extension_cb */
@@ -700,9 +704,9 @@ yang_expand_uses_node(yang_stmt *yn,
     if (wnsc)
         cvec_free(wnsc);
     if (prefix)
-        free(prefix); 
+        free(prefix);
     if (id)
-        free(id); 
+        free(id);
     return retval;
 }
 
@@ -730,7 +734,7 @@ yang_expand_grouping(yang_stmt *yn)
     /* Cannot use yang_apply here since child-list is modified (is destructive) */
     i = 0;
     while (i < yang_len_get(yn)){
-        ys = yn->ys_stmt[i]; 
+        ys = yn->ys_stmt[i];
         switch (yang_keyword_get(ys)){
         case Y_USES:
             if (yang_flag_get(ys, YANG_FLAG_GROUPING) == 0){
@@ -738,7 +742,7 @@ yang_expand_grouping(yang_stmt *yn)
                     goto done;
                 yang_flag_set(ys, YANG_FLAG_GROUPING);
             }
-            break; 
+            break;
         default:
             break;
         }
@@ -792,7 +796,7 @@ yang_parse_str(char         *str,
     yang_stmt       *ymod = NULL;
 
     if (yspec == NULL){
-        clicon_err(OE_YANG, 0, "Yang parse need top level yang spec");
+        clixon_err(OE_YANG, 0, "Yang parse need top level yang spec");
         goto done;
     }
     yy.yy_name         = (char*)name;
@@ -808,20 +812,20 @@ yang_parse_str(char         *str,
         if (yang_parse_init(&yy) < 0)
             goto done;
         if (clixon_yang_parseparse(&yy) != 0) { /* yacc returns 1 on error */
-            clicon_log(LOG_NOTICE, "Yang error: %s on line %d", name, yy.yy_linenum);
-            if (clicon_errno == 0)
-                clicon_err(OE_YANG, 0, "yang parser error with no error code (should not happen)");
+            clixon_log(NULL, LOG_NOTICE, "Yang error: %s on line %d", name, yy.yy_linenum);
+            if (clixon_err_category() == 0)
+                clixon_err(OE_YANG, 0, "yang parser error with no error code (should not happen)");
             yang_parse_exit(&yy);
             yang_scan_exit(&yy);
             goto done;
         }
         if (yang_parse_exit(&yy) < 0)
-            goto done;          
+            goto done;
         if (yang_scan_exit(&yy) < 0)
-            goto done;          
+            goto done;
     }
     if ((ymod = yy.yy_module) == NULL){
-        clicon_err(OE_YANG, 0, "No module in YANG %s", name);
+        clixon_err(OE_YANG, 0, "No module in YANG %s", name);
         goto done;
     }
     /* Add filename for debugging and errors, see also ys_linenum on (each symbol?) */
@@ -857,23 +861,23 @@ yang_parse_file(FILE       *fp,
 
     len = BUFLEN; /* any number is fine */
     if ((buf = malloc(len)) == NULL){
-        clicon_err(OE_XML, errno, "malloc");
+        clixon_err(OE_XML, errno, "malloc");
         goto done;
     }
     memset(buf, 0, len);
     i = 0; /* position in buf */
     while (1){ /* read the whole file */
         if ((ret = fread(&c, 1, 1, fp)) < 0){
-            clicon_err(OE_XML, errno, "read");
+            clixon_err(OE_XML, errno, "read");
             break;
         }
         if (ret == 0)
             break; /* eof */
         if (i == len-1){
             if ((buf = realloc(buf, 2*len)) == NULL){
-                clicon_err(OE_XML, errno, "realloc");
+                clixon_err(OE_XML, errno, "realloc");
                 goto done;
-            }       
+            }
             memset(buf+len, 0, len);
             len *= 2;
         }
@@ -892,6 +896,8 @@ yang_parse_file(FILE       *fp,
  * @param[in]  filename  Filename on the form: name [+ @rev ] + .yang  
  * @param[out] basep     "Base" filename, stripped: [+ @rev ] + .yang (malloced)
  * @param[out] revp      Revision as YYYYMMDD (0 if not found)
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 static int
 filename2revision(const char *filename,
@@ -901,13 +907,13 @@ filename2revision(const char *filename,
     int      retval = -1;
     char    *base = NULL;
     char    *p;
-    
+
     /* base = module name [+ @rev ] + .yang */
     if ((base = strdup(filename)) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
-    clicon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, base);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, base);
     if ((p = rindex(base, '.')) != NULL) /* strip postfix .yang */
         *p = '\0';
     if ((p = index(base, '@')) != NULL){ /* extract revision date */
@@ -938,10 +944,10 @@ filename2revision(const char *filename,
  * @note for bootstrapping, dir may have to be set.
 */
 int
-yang_file_find_match(clicon_handle h, 
+yang_file_find_match(clixon_handle h,
                      const char   *module,
                      const char   *revision,
-                     cbuf         *fbuf)    
+                     cbuf         *fbuf)
 {
     int           retval = -1;
     cbuf         *regex = NULL;
@@ -956,7 +962,7 @@ yang_file_find_match(clicon_handle h,
     if ((x = clicon_conf_xml(h)) == NULL)
         goto ok;
     if ((regex = cbuf_new()) == NULL){
-        clicon_err(OE_YANG, errno, "cbuf_new");
+        clixon_err(OE_YANG, errno, "cbuf_new");
         goto done;
     }
     /* RFC 6020: The name of the file SHOULD be of the form:
@@ -977,8 +983,8 @@ yang_file_find_match(clicon_handle h,
 
             dir = xml_body(xc);
             /* get all matching files in this directory */
-            if ((ndp = clicon_file_dirent(dir, 
-                                          &dp, 
+            if ((ndp = clicon_file_dirent(dir,
+                                          &dp,
                                           cbuf_get(regex),
                                           S_IFREG)) < 0)
                 goto done;
@@ -999,7 +1005,7 @@ yang_file_find_match(clicon_handle h,
                  (dir = xml_body(xc)) != NULL){
             /* get all matching files in this directory recursively */
             if ((cvv = cvec_new(0)) == NULL){
-                clicon_err(OE_UNIX, errno, "cvec_new");
+                clixon_err(OE_UNIX, errno, "cvec_new");
                 goto done;
             }
             if (clicon_files_recursive(dir, cbuf_get(regex), cvv) < 0)
@@ -1050,21 +1056,21 @@ done:
  * See top of file for diagram of calling order
  */
 yang_stmt *
-yang_parse_filename(clicon_handle h,
-                    const char   *filename, 
+yang_parse_filename(clixon_handle h,
+                    const char   *filename,
                     yang_stmt    *yspec)
 {
     yang_stmt    *ymod = NULL;
     FILE         *fp = NULL;
     struct stat   st;
 
-    clicon_debug(1, "%s %s", __FUNCTION__, filename);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, filename);
     if (stat(filename, &st) < 0){
-        clicon_err(OE_YANG, errno, "%s not found", filename);
+        clixon_err(OE_YANG, errno, "%s not found", filename);
         goto done;
     }
     if ((fp = fopen(filename, "r")) == NULL){
-        clicon_err(OE_YANG, errno, "fopen(%s)", filename);      
+        clixon_err(OE_YANG, errno, "fopen(%s)", filename);
         goto done;
     }
     if ((ymod = yang_parse_file(fp, filename, yspec)) < 0)
@@ -1093,9 +1099,9 @@ yang_parse_filename(clicon_handle h,
  * @note does not check wether the module is already loaded
  */
 yang_stmt *
-yang_parse_module(clicon_handle h,
-                  const char   *module, 
-                  const char   *revision, 
+yang_parse_module(clixon_handle h,
+                  const char   *module,
+                  const char   *revision,
                   yang_stmt    *yspec,
                   char         *origname)
 {
@@ -1109,7 +1115,7 @@ yang_parse_module(clicon_handle h,
     cbuf      *cb = NULL;
 
     if ((fbuf = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     /* Match a yang file with or without revision in yang-dir list */
@@ -1117,16 +1123,16 @@ yang_parse_module(clicon_handle h,
         goto done;
     if (nr == 0){
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_UNIX, errno, "cbuf_new");
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         cprintf(cb, "%s", module);
         if (revision)
             cprintf(cb, "@%s", revision);
         if (origname)
-            clicon_err(OE_YANG, ENOENT, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs when loading %s.yang", cbuf_get(cb), origname);
+            clixon_err(OE_YANG, ENOENT, "Yang \"%s\" not found in the list of CLICON_YANG_DIRs when loading %s.yang", cbuf_get(cb), origname);
         else
-            clicon_err(OE_YANG, ENOENT, "No yang files found matching \"%s\" in the list of CLICON_YANG_DIRs", cbuf_get(cb));
+            clixon_err(OE_YANG, ENOENT, "Yang \"%s\" not found in the list of CLICON_YANG_DIRs", cbuf_get(cb));
         goto done;
     }
     filename = cbuf_get(fbuf);
@@ -1134,10 +1140,10 @@ yang_parse_module(clicon_handle h,
         goto done;
     /* Sanity check that requested module name matches loaded module
      * If this does not match, the filename and containing module do not match
-     * RFC 7950 Sec 5.2 
+     * RFC 7950 Sec 5.2
      */
     if (strcmp(yang_argument_get(ymod), module) != 0){
-        clicon_err(OE_YANG, EINVAL, "File %s contains yang module \"%s\" which does not match expected module %s",
+        clixon_err(OE_YANG, EINVAL, "File %s contains yang module \"%s\" which does not match expected module %s",
                    filename,
                    yang_argument_get(ymod),
                    module);
@@ -1153,8 +1159,8 @@ yang_parse_module(clicon_handle h,
     if (filename2revision(filename, NULL, &revf) < 0)
         goto done;
     /* Sanity check that file revision does not match internal rev stmt */
-    if (revf && revm && revm != revf){ 
-        clicon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s vs %u", filename, revm); 
+    if (revf && revm && revm != revf){
+        clixon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s vs %u", filename, revm);
         ymod = NULL;
         goto done;
     }
@@ -1178,7 +1184,7 @@ yang_parse_module(clicon_handle h,
  * See top of file for diagram of calling order
  */
 static int
-yang_parse_recurse(clicon_handle h,
+yang_parse_recurse(clixon_handle h,
                    yang_stmt    *ymod,
                    yang_stmt    *ysp)
 {
@@ -1217,11 +1223,11 @@ yang_parse_recurse(clicon_handle h,
             if (keyw == Y_INCLUDE){
                 ybelongto = yang_find(subymod, Y_BELONGS_TO, NULL);
                 if (ybelongto == NULL){
-                    clicon_err(OE_YANG, ENOENT, "Sub-module \"%s\" does not have a belongs-to statement", submodule); /* shouldnt happen */
+                    clixon_err(OE_YANG, ENOENT, "Sub-module \"%s\" does not have a belongs-to statement", submodule); /* shouldnt happen */
                     goto done;
                 }
                 if (strcmp(yang_argument_get(ybelongto), yang_argument_get(yrealmod)) != 0){
-                    clicon_err(OE_YANG, ENOENT, "Sub-module \"%s\" references module \"%s\" in its belongs-to statement but should reference \"%s\"",
+                    clixon_err(OE_YANG, ENOENT, "Sub-module \"%s\" references module \"%s\" in its belongs-to statement but should reference \"%s\"",
                                submodule,
                                yang_argument_get(ybelongto),
                                yang_argument_get(yrealmod));
@@ -1236,7 +1242,7 @@ yang_parse_recurse(clicon_handle h,
         }
     }
     retval = 0;
-  done:  
+ done:
     return retval; /* top-level (sub)module */
 }
 
@@ -1244,13 +1250,15 @@ yang_parse_recurse(clicon_handle h,
  *
  * @param[in] h   Clicon handle
  * @param[in] ys  Yang statement
+ * @retval    0   OK
+ * @retval   -1   Error
  * Verify the following rule:
  * RFC 7950 7.8.2: The "key" statement, which MUST be present if the list represents
  *                 configuration and MAY be present otherwise
  * Unless it is the "errors" rule of the ietf-restconf spec which seems to be a special case.
  */
-static int 
-ys_list_check(clicon_handle h,
+static int
+ys_list_check(clixon_handle h,
               yang_stmt    *ys)
 {
     int           retval = -1;
@@ -1258,7 +1266,7 @@ ys_list_check(clicon_handle h,
     yang_stmt    *yc = NULL;
     enum rfc_6020 keyw;
     yang_stmt    *yroot;
-    
+
     /* This node is state, not config */
     if (yang_config_ancestor(ys) == 0)
         goto ok;
@@ -1266,7 +1274,6 @@ ys_list_check(clicon_handle h,
     if ((yroot = yang_myroot(ys)) != NULL &&
         yang_keyword_get(yroot) == Y_RPC)
         goto ok;
-    
     keyw = yang_keyword_get(ys);
     /* Check if list and if keys do not exist */
     if (keyw == Y_LIST &&
@@ -1275,7 +1282,7 @@ ys_list_check(clicon_handle h,
         /* Except nokey exceptions such as rrc 8040 yang-data */
         if (!yang_flag_get(yroot, YANG_FLAG_NOKEY)){
             /* Note obsolete */
-            clicon_log(LOG_ERR, "Error: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)", 
+            clixon_log(h, LOG_ERR, "Error: LIST \"%s\" in module \"%s\" lacks key statement which MUST be present (See RFC 7950 Sec 7.8.2)",
                        yang_argument_get(ys),
                        yang_argument_get(ymod)
                        );
@@ -1316,10 +1323,10 @@ ys_visit(struct yang_stmt   *yn,
     struct yang_stmt *yi; /* import / include */
     struct yang_stmt *yspec;
     struct yang_stmt *ymod;
-    
+
     if (yn == NULL ||
         (yang_keyword_get(yn) != Y_MODULE && yang_keyword_get(yn) != Y_SUBMODULE)){
-        clicon_err(OE_YANG, EINVAL, "Expected module or submodule");
+        clixon_err(OE_YANG, EINVAL, "Expected module or submodule");
         goto done;
     }
     yspec = ys_spec(yn);
@@ -1328,7 +1335,7 @@ ys_visit(struct yang_stmt   *yn,
         return 0;
     /* if n has a temporary mark then stop (not a DAG) */
     if (yang_flag_get(yn, YANG_FLAG_TMP)){
-        clicon_err(OE_YANG, EFAULT, "Yang module %s import/include is circular", yang_argument_get(yn));
+        clixon_err(OE_YANG, EFAULT, "Yang module %s import/include is circular", yang_argument_get(yn));
         goto done;
     }
     /* mark n with a temporary mark */
@@ -1343,7 +1350,7 @@ ys_visit(struct yang_stmt   *yn,
             continue;
         if ((ymod = yang_find(yspec, Y_MODULE, yang_argument_get(yi))) == NULL &&
             (ymod = yang_find(yspec, Y_SUBMODULE, yang_argument_get(yi))) == NULL){
-            clicon_err(OE_YANG, EFAULT, "Yang module %s import/include not found",
+            clixon_err(OE_YANG, EFAULT, "Yang module %s import/include not found",
                        yang_argument_get(yi)); /* shouldnt happen */
             goto done;
         }
@@ -1357,7 +1364,7 @@ ys_visit(struct yang_stmt   *yn,
     /* add n to head of L. NB reversed */
     (*ylen)++;
     if ((*ylist = realloc(*ylist, (*ylen)*sizeof(yang_stmt *))) == 0){
-        clicon_err(OE_YANG, errno, "realloc");
+        clixon_err(OE_YANG, errno, "realloc");
         goto done;
     }
     (*ylist)[*ylen - 1] = yn;
@@ -1374,6 +1381,8 @@ ys_visit(struct yang_stmt   *yn,
  * @param[in]  modmax  End of interval
  * @param[out] ylist   Result list of sorted nodes with "least significant" first
  * @param[out] ylen    Length of ylist
+ * @retval     0       OK
+ * @retval    -1       Error
  * see eg https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
  */
 static int
@@ -1396,7 +1405,7 @@ yang_sort_modules(yang_stmt          *yspec,
         }
     }
     if (*ylen != modmax-modmin){
-        clicon_err(OE_YANG, EFAULT, "Internal error: mismatch sort vector lengths");
+        clixon_err(OE_YANG, EFAULT, "Internal error: mismatch sort vector lengths");
     }
     retval = 0;
  done:
@@ -1426,7 +1435,7 @@ yang_sort_modules(yang_stmt          *yspec,
  * @retval   -1      Error encountered
  */
 int
-yang_parse_post(clicon_handle h,
+yang_parse_post(clixon_handle h,
                 yang_stmt    *yspec,
                 int           modmin)
 {
@@ -1435,14 +1444,17 @@ yang_parse_post(clicon_handle h,
     int                modmax;
     struct yang_stmt **ylist = NULL; /* Topology sorted modules */
     int                ylen = 0;     /* Length of ylist */
-    
+
+    if (modmin < 0){
+        clixon_err(OE_YANG, EINVAL, "modmin negative");
+        goto done;
+    }
     /* 1: Parse from text to yang parse-tree. 
      * Iterate through modules and detect module/submodules to parse
      * NOTE: the list may grow on each iteration */
     for (i=modmin; i<yang_len_get(yspec); i++)
         if (yang_parse_recurse(h, yang_child_i(yspec, i), yspec) < 0)
             goto done;
-    
     modmax = yang_len_get(yspec);
     /* The set of modules [modmin..maxmax] is here complete wrt imports/includes and is a DAG
      * Example: A imports B, C and D, and C and D imports B
@@ -1453,12 +1465,11 @@ yang_parse_post(clicon_handle h,
         goto done;
 
     /* 2. Check cardinality a first time (done again last) */
-    for (i=modmin; i<modmax; i++) 
+    for (i=modmin; i<modmax; i++)
         if (yang_cardinality(h, yang_child_i(yspec, i), yang_argument_get(yspec->ys_stmt[i])) < 0)
             goto done;
-    
     /* 3: Check features/if-features: check if enabled and remove disabled features */
-    for (i=modmin; i<modmax; i++) 
+    for (i=modmin; i<modmax; i++)
         if (yang_features(h, yang_child_i(yspec, i)) < 0)
             goto done;
 
@@ -1507,7 +1518,7 @@ yang_parse_post(clicon_handle h,
     for (i=modmin; i<modmax; i++) /* Really only under (sub)modules no need to traverse whole tree */
         if (yang_apply(yang_child_i(yspec, i), -1, yang_deviation, 1, (void*)h) < 0)
             goto done;
-    
+
     /* 9: Go through parse tree and do 2nd step populate (eg default) 
      *    Note that augments in step 7 are not covered here since they apply to
      *    modules already loaded. Therefore the call to ys_populate2 is made inline in
@@ -1545,9 +1556,9 @@ yang_parse_post(clicon_handle h,
  * @see yang_spec_parse_file
  */
 int
-yang_spec_parse_module(clicon_handle h, 
+yang_spec_parse_module(clixon_handle h,
                        const char   *name,
-                       const char   *revision, 
+                       const char   *revision,
                        yang_stmt    *yspec)
 {
     int         retval = -1;
@@ -1555,11 +1566,11 @@ yang_spec_parse_module(clicon_handle h,
     char       *base = NULL;;
 
     if (yspec == NULL){
-        clicon_err(OE_YANG, EINVAL, "yang spec is NULL");
+        clixon_err(OE_YANG, EINVAL, "yang spec is NULL");
         goto done;
     }
     if (name == NULL){
-        clicon_err(OE_YANG, EINVAL, "yang module not set");
+        clixon_err(OE_YANG, EINVAL, "yang module not set");
         goto done;
     }
     /* Apply steps 2.. on new modules, ie ones after modmin. */
@@ -1592,8 +1603,8 @@ yang_spec_parse_module(clicon_handle h,
  * @see yang_spec_load_dir For loading all files in a directory
  */
 int
-yang_spec_parse_file(clicon_handle h, 
-                     char         *filename, 
+yang_spec_parse_file(clixon_handle h,
+                     char         *filename,
                      yang_stmt    *yspec)
 {
     int         retval = -1;
@@ -1604,11 +1615,11 @@ yang_spec_parse_file(clicon_handle h,
     modmin = yang_len_get(yspec);
     /* Find module, and do not load file if module already exists */
     if (basename(filename) == NULL){
-        clicon_err(OE_YANG, errno, "No basename");
+        clixon_err(OE_YANG, errno, "No basename");
         goto done;
     }
     if ((base = strdup(basename(filename))) == NULL){
-        clicon_err(OE_YANG, errno, "strdup");
+        clixon_err(OE_YANG, errno, "strdup");
         goto done;
     }
     if (index(base, '@') != NULL)
@@ -1644,7 +1655,7 @@ yang_spec_parse_file(clicon_handle h,
  * the oldest module if 1-3 for some reason fails.
  */
 int
-yang_spec_load_dir(clicon_handle h,
+yang_spec_load_dir(clixon_handle h,
                    char         *dir,
                    yang_stmt    *yspec)
 {
@@ -1664,7 +1675,7 @@ yang_spec_load_dir(clicon_handle h,
     uint32_t       rev0; /* revision in existing module */
     char          *oldbase = NULL;
     int            taken = 0;
-    
+
     /* Get yang files names from yang module directory. Note that these
      * are sorted alphatetically:
      * a.yang, 
@@ -1727,7 +1738,7 @@ yang_spec_load_dir(clicon_handle h,
             revm = cv_uint32_get(yang_cv_get(yrev));
         /* Sanity check that file revision does not match internal rev stmt */
         if (revf && revm && revm != revf){ /* XXX */
-            clicon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s(%u) vs %u", filename, revf, revm); 
+            clixon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s(%u) vs %u", filename, revf, revm);
             goto done;
         }
         /* If ym0 and ym exists, delete the yang with oldest revision 
@@ -1771,23 +1782,23 @@ ys_parse_date_arg(char     *datearg,
     int      retval = -1;
     int      i;
     uint32_t d = 0;
-    
+
     if (strlen(datearg) != 10 || datearg[4] != '-' || datearg[7] != '-'){
-        clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
+        clixon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
         goto done;
     }
     if ((i = cligen_tonum(4, datearg)) < 0){
-        clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
+        clixon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
         goto done;
     }
     d = i*10000; /* year */
     if ((i = cligen_tonum(2, &datearg[5])) < 0){
-        clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
+        clixon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
         goto done;
     }
     d += i*100; /* month */
     if ((i = cligen_tonum(2, &datearg[8])) < 0){
-        clicon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
+        clixon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
         goto done;
     }
     d += i; /* day */
@@ -1804,7 +1815,7 @@ ys_parse_date_arg(char     *datearg,
  * available in the first pass. Prefer to do stuff in ys_populate
  */
 cg_var *
-ys_parse(yang_stmt   *ys, 
+ys_parse(yang_stmt   *ys,
          enum cv_type cvtype)
 {
     int     cvret;
@@ -1817,15 +1828,15 @@ ys_parse(yang_stmt   *ys,
         yang_cv_set(ys, NULL);
     }
     if ((cv = cv_new(cvtype)) == NULL){
-        clicon_err(OE_YANG, errno, "cv_new"); 
+        clixon_err(OE_YANG, errno, "cv_new");
         goto done;
     }
     if ((cvret = cv_parse1(yang_argument_get(ys), cv, &reason)) < 0){ /* error */
-        clicon_err(OE_YANG, errno, "parsing cv");
+        clixon_err(OE_YANG, errno, "parsing cv");
         goto done;
     }
     if (cvret == 0){ /* parsing failed */
-        clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+        clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
         goto done;
     }
     yang_cv_set(ys, cv);
@@ -1869,28 +1880,28 @@ ys_parse_sub(yang_stmt  *ys,
     uint32_t   minmax;
     cg_var    *cv = NULL;
     yang_stmt *yp;
-    
+
     arg = yang_argument_get(ys);
     keyword = yang_keyword_get(ys);
     switch (keyword){
     case Y_BASE:
     case Y_TYPE:
     case Y_USES:
-        /* Invoke next level parser 
+        /* Invoke next level parser
          */
         if (yang_schema_nodeid_subparse(yang_argument_get(ys), YA_ID_REF, filename, yang_linenum_get(ys)) < 0)
             goto done;
         break;
     case Y_FRACTION_DIGITS:
-        if (ys_parse(ys, CGV_UINT8) == NULL) 
+        if (ys_parse(ys, CGV_UINT8) == NULL)
             goto done;
         if ((cv = yang_cv_get(ys)) == NULL){
-            clicon_err(OE_YANG, ENOENT, "Unexpected NULL cv");
+            clixon_err(OE_YANG, ENOENT, "Unexpected NULL cv");
             goto done;
         }
         fd = cv_uint8_get(cv);
         if (fd < 1 || fd > 18){
-            clicon_err(OE_YANG, errno, "%u: Out of range, should be [1:18]", fd);
+            clixon_err(OE_YANG, errno, "%u: Out of range, should be [1:18]", fd);
             goto done;
         }
         break;
@@ -1904,7 +1915,7 @@ ys_parse_sub(yang_stmt  *ys,
         if (ys_parse_date_arg(arg, &date) < 0)
             goto done;
         if ((cv = cv_new(CGV_UINT32)) == NULL){
-            clicon_err(OE_YANG, errno, "cv_new"); 
+            clixon_err(OE_YANG, errno, "cv_new");
             goto done;
         }
         yang_cv_set(ys, cv);
@@ -1914,7 +1925,7 @@ ys_parse_sub(yang_stmt  *ys,
         if (strcmp(arg, "current") &&
             strcmp(arg, "deprecated") &&
             strcmp(arg, "obsolete")){
-            clicon_err(OE_YANG, errno, "Invalid status: \"%s\", expected current, deprecated, or obsolete", arg); 
+            clixon_err(OE_YANG, errno, "Invalid status: \"%s\", expected current, deprecated, or obsolete", arg);
             goto done;
 
         }
@@ -1922,7 +1933,7 @@ ys_parse_sub(yang_stmt  *ys,
     case Y_MAX_ELEMENTS:
     case Y_MIN_ELEMENTS:
         if ((cv = cv_new(CGV_UINT32)) == NULL){
-            clicon_err(OE_YANG, errno, "cv_new"); 
+            clixon_err(OE_YANG, errno, "cv_new");
             goto done;
         }
         yang_cv_set(ys, cv);
@@ -1931,11 +1942,11 @@ ys_parse_sub(yang_stmt  *ys,
             cv_uint32_set(cv, 0); /* 0 means unbounded for max */
         else{
             if ((ret = parse_uint32(arg, &minmax, &reason)) < 0){
-                clicon_err(OE_YANG, errno, "parse_uint32"); 
+                clixon_err(OE_YANG, errno, "parse_uint32");
                 goto done;
             }
             if (ret == 0){
-                clicon_err(OE_YANG, EINVAL, "element-min/max parse error: %s", reason); 
+                clixon_err(OE_YANG, EINVAL, "element-min/max parse error: %s", reason);
                 if (reason)
                     free(reason);
                 goto done;
@@ -1945,7 +1956,7 @@ ys_parse_sub(yang_stmt  *ys,
         break;
     case Y_MODIFIER:
         if (strcmp(yang_argument_get(ys), "invert-match")){
-            clicon_err(OE_YANG, EINVAL, "modifier %s, expected invert-match", yang_argument_get(ys));
+            clixon_err(OE_YANG, EINVAL, "modifier %s, expected invert-match", yang_argument_get(ys));
             goto done;
         }
         break;
@@ -1958,7 +1969,7 @@ ys_parse_sub(yang_stmt  *ys,
             goto done;
         break;
     case Y_AUGMENT: /* If parent is module/submodule: absolute-schema-nodeid
-                     * If parent is uses: descendant-schema-nodeid 
+                     * If parent is uses: descendant-schema-nodeid
                      */
         if ((yp = yang_parent_get(ys)) &&
             yang_keyword_get(yp) != Y_USES){
@@ -1977,16 +1988,16 @@ ys_parse_sub(yang_stmt  *ys,
         if (extra == NULL)
             break;
         if ((cv = cv_new(CGV_STRING)) == NULL){
-            clicon_err(OE_YANG, errno, "cv_new"); 
+            clixon_err(OE_YANG, errno, "cv_new");
             goto done;
         }
         yang_cv_set(ys, cv);
         if ((ret = cv_parse1(extra, cv, &reason)) < 0){ /* error */
-            clicon_err(OE_YANG, errno, "parsing cv");
+            clixon_err(OE_YANG, errno, "parsing cv");
             goto done;
         }
         if (ret == 0){ /* parsing failed */
-            clicon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+            clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
             goto done;
         }
         break;

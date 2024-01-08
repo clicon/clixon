@@ -56,8 +56,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
@@ -65,6 +64,9 @@
 #include "clixon_string.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_err.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
@@ -72,8 +74,6 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
-#include "clixon_log.h"
-#include "clixon_err.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_sort.h"
 #include "clixon_yang_type.h"
@@ -93,6 +93,11 @@ typedef struct  {
     yang_stmt *mt_yc;
 } merge_twophase;
 
+/* Forward declaration */
+static int xml_diff1(cxobj *x0, cxobj *x1, cxobj ***x0vec, int *x0veclen,
+                     cxobj ***x1vec, int *x1veclen,
+                     cxobj ***changed_x0, cxobj ***changed_x1, int *changedlen);
+
 /*! Is attribute and is either of form xmlns="", or xmlns:x="" */
 int
 isxmlns(cxobj *x)
@@ -110,11 +115,12 @@ isxmlns(cxobj *x)
 }
 
 /*! Translate a single xml node to a cligen variable vector. Note not recursive 
+ *
  * @param[in]  xt   XML tree containing one top node
  * @param[in]  ys   Yang spec containing type specification of top-node of xt
  * @param[out] cvv  CLIgen variable vector. Should be freed by cvec_free()
  * @retval     0    Everything OK, cvv allocated and set
- * @retval    -1    Something wrong, clicon_err() called to set error. No cvv returned
+ * @retval    -1    Something wrong, clixon_err() called to set error. No cvv returned
  * @note  cvv Should be freed by cvec_free() after use.
  * 'Not recursive' means that only one level of XML bodies is translated to cvec:s.
  * If range is wriong (eg 1000 for uint8) a warning is logged, the value is 
@@ -132,8 +138,8 @@ isxmlns(cxobj *x)
  * @see cvec2xml
  */
 int
-xml2cvec(cxobj      *xt, 
-         yang_stmt  *yt, 
+xml2cvec(cxobj      *xt,
+         yang_stmt  *yt,
          cvec      **cvv0)
 {
     int               retval = -1;
@@ -150,7 +156,7 @@ xml2cvec(cxobj      *xt,
     xc = NULL;
     /* Tried to allocate whole cvv here, but some cg_vars may be invalid */
     if ((cvv = cvec_new(0)) == NULL){
-        clicon_err(OE_UNIX, errno, "cvec_new");
+        clixon_err(OE_UNIX, errno, "cvec_new");
         goto err;
     }
     xc = NULL;
@@ -158,21 +164,21 @@ xml2cvec(cxobj      *xt,
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
         name = xml_name(xc);
         if ((ys = yang_find_datanode(yt, name)) == NULL){
-            clicon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
+            clixon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
                          __FUNCTION__, name, yang_argument_get(yt));
             if ((body = xml_body(xc)) != NULL){
                 if ((cv = cv_new(CGV_STRING)) == NULL){
-                    clicon_err(OE_PLUGIN, errno, "cv_new");
+                    clixon_err(OE_PLUGIN, errno, "cv_new");
                     goto err;
                 }
                 cv_name_set(cv, name);
                 if ((ret = cv_parse1(body, cv, &reason)) < 0){
-                    clicon_err(OE_PLUGIN, errno, "cv_parse %s",name);
+                    clixon_err(OE_PLUGIN, errno, "cv_parse %s",name);
                     goto err;
                 }
                 /* If value is out-of-range, log and skip value, and continue */
                 if (ret == 0){
-                    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason); 
+                    clixon_log(NULL, LOG_WARNING, "cv_parse %s: %s", name, reason);
                     if (reason)
                         free(reason);
                 }
@@ -184,19 +190,19 @@ xml2cvec(cxobj      *xt,
         else if ((ycv = yang_cv_get(ys)) != NULL){
             if ((body = xml_body(xc)) != NULL){
                 if ((cv = cv_new(CGV_STRING)) == NULL){
-                    clicon_err(OE_PLUGIN, errno, "cv_new");
+                    clixon_err(OE_PLUGIN, errno, "cv_new");
                     goto err;
                 }
                 if (cv_cp(cv, ycv) < 0){
-                    clicon_err(OE_PLUGIN, errno, "cv_cp");
+                    clixon_err(OE_PLUGIN, errno, "cv_cp");
                     goto err;
                 }
                 if ((ret = cv_parse1(body, cv, &reason)) < 0){
-                    clicon_err(OE_PLUGIN, errno, "cv_parse: %s", name);
+                    clixon_err(OE_PLUGIN, errno, "cv_parse: %s", name);
                     goto err;
                 }
                 if (ret == 0){
-                    clicon_log(LOG_WARNING, "cv_parse %s: %s", name, reason);
+                    clixon_log(NULL, LOG_WARNING, "cv_parse %s: %s", name, reason);
                     if (reason)
                         free(reason);
                 }
@@ -206,8 +212,8 @@ xml2cvec(cxobj      *xt,
             }
         }
     }
-    if (clicon_debug_get() > 1){
-        clicon_debug(CLIXON_DBG_DETAIL, "%s cvv:\n", __FUNCTION__);
+    if (clixon_debug_get() > 1){
+        clixon_debug(CLIXON_DBG_DETAIL, "%s cvv:\n", __FUNCTION__);
         cvec_print(stderr, cvv);
     }
     *cvv0 = cvv;
@@ -219,18 +225,19 @@ xml2cvec(cxobj      *xt,
 }
 
 /*! Translate a cligen variable vector to an XML tree with depth one 
+ *
  * @param[in]   cvv  CLIgen variable vector. Should be freed by cvec_free()
  * @param[in]   toptag    The XML tree in xt will have this XML tag
  * @param[in]   xt   Parent, or NULL
  * @param[out]  xt   Pointer to XML tree containing one top node. Should be freed with xml_free
  * @retval      0    Everything OK, cvv allocated and set
- * @retval     -1    Something wrong, clicon_err() called to set error. No xt returned
+ * @retval     -1    Something wrong, clixon_err() called to set error. No xt returned
  * @see xml2cvec
  * @see cvec2xml   This does more but has an internal xml2cvec translation
 */
 int
-cvec2xml_1(cvec   *cvv, 
-           char   *toptag, 
+cvec2xml_1(cvec   *cvv,
+           char   *toptag,
            cxobj  *xp,
            cxobj **xt0)
 {
@@ -244,7 +251,7 @@ cvec2xml_1(cvec   *cvv,
     int               i;
 
     cv = NULL;
-    while ((cv = cvec_each(cvv, cv)) != NULL) 
+    while ((cv = cvec_each(cvv, cv)) != NULL)
         len++;
     if ((xt = xml_new(toptag, xp, CX_ELMNT)) == NULL)
         goto err;
@@ -274,7 +281,75 @@ cvec2xml_1(cvec   *cvv,
     return retval;
 }
 
+/*! Handle order-by user(leaf)list for xml_diff
+ *
+ * Loop over sublists started by x0c and x1c respectively until end or yang is no longer yc
+ * First mark all in x0 as DELETE and all x1 as ADD
+ * Then find all equal nodes and unmark them
+ * After the function, there will be nodes in x0 marked with DEL and nodes in x1 marked as ADD
+ * @param[in]  x0    First XML tree
+ * @param[in]  x1    Second XML tree
+ * @param[in]  x0c   Start of sublist in first XML tree
+ * @param[in]  x1c   Start of sublist in second XML tree
+ * @param[in]  yc    Yang of ordered-by user (leaf)list
+ * @retval     0     Ok
+ * @retval    -1     rror
+ */
+static int
+xml_diff_ordered_by_user(cxobj     *x0,
+                         cxobj     *x1,
+                         cxobj     *x0c,
+                         cxobj     *x1c,
+                         yang_stmt *yc,
+                         cxobj   ***x0vec,
+                         int       *x0veclen,
+                         cxobj   ***x1vec,
+                         int       *x1veclen,
+                         cxobj   ***changed_x0,
+                         cxobj   ***changed_x1,
+                         int       *changedlen
+                         )
+{
+    int    retval = -1;
+    cxobj *xi;
+    cxobj *xj;
+
+    xj = x1c;
+    do {
+        xml_flag_set(xj, XML_FLAG_ADD);
+    } while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+             xml_spec(xj) == yc);
+    /* If in both sets, unmark add/del */
+    xi = x0c;
+    do {
+        xml_flag_set(xi, XML_FLAG_DEL);
+        xj = x1c;
+        do {
+            if (xml_flag(xj, XML_FLAG_ADD) &&
+                xml_cmp(xi, xj, 0, 0, NULL) == 0){
+                /* Unmark node in x0 and x1 */
+                xml_flag_reset(xi, XML_FLAG_DEL);
+                xml_flag_reset(xj, XML_FLAG_ADD);
+                if (xml_diff1(xi, xj,
+                              x0vec, x0veclen,
+                              x1vec, x1veclen,
+                              changed_x0, changed_x1, changedlen) < 0)
+                    goto done;
+                break;
+            }
+        }
+        while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+               xml_spec(xj) == yc);
+    }
+    while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+           xml_spec(xi) == yc);
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Recursive help function to compute differences between two xml trees
+ *
  * @param[in]  x0         First XML tree
  * @param[in]  x1         Second XML tree
  * @param[out] x0vec      Pointervector to XML nodes existing in only first tree
@@ -284,6 +359,8 @@ cvec2xml_1(cvec   *cvv,
  * @param[out] changed_x0 Pointervector to XML nodes changed orig value
  * @param[out] changed_x1 Pointervector to XML nodes changed wanted value
  * @param[out] changedlen Length of changed vector
+ * @retval     0          Ok
+ * @retval    -1          Error
  * Algorithm to compare two sorted lists A, B:
  *   A 0 1 2 3 5 6
  *   B 0 2 4 5 6
@@ -297,9 +374,10 @@ cvec2xml_1(cvec   *cvv,
  *     perspective, ie both have the same yang spec, if they are lists, they have the
  *     the same keys. NOT that the values are equal!
  * @see xml_diff  API function, this one is internal and recursive
+ * @note reordering in ordered-by user is NOT supported
  */
 static int
-xml_diff1(cxobj     *x0, 
+xml_diff1(cxobj     *x0,
           cxobj     *x1,
           cxobj   ***x0vec,
           int       *x0veclen,
@@ -317,36 +395,72 @@ xml_diff1(cxobj     *x0,
     char      *b0;
     char      *b1;
     int        eq;
+    cxobj     *xi;
+    cxobj     *xj;
 
     /* Traverse x0 and x1 in lock-step */
-    x0c = x1c = NULL;    
+    x0c = x1c = NULL;
     x0c = xml_child_each(x0, x0c, CX_ELMNT);
     x1c = xml_child_each(x1, x1c, CX_ELMNT);
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
         else if (x0c == NULL){
-            if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
+            if (cxvec_append(x1c, x1vec, x1veclen) < 0)
                 goto done;
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
             continue;
         }
         else if (x1c == NULL){
-            if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
+            if (cxvec_append(x0c, x0vec, x0veclen) < 0)
                 goto done;
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
             continue;
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        if (eq < 0){
-            if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
+        yc0 = xml_spec(x0c);
+        yc1 = xml_spec(x1c);
+        /* override ordered-by user with special look-ahead checks */
+        if (eq && yc0 && yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
+            if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, yc0,
+                                         x0vec, x0veclen, x1vec, x1veclen,
+                                         changed_x0, changed_x1, changedlen) < 0)
+                goto done;
+            /* Add all in x0 marked as DELETE in x0vec 
+             * Flags can remain: XXX should apply to all
+             */
+            xi = x0c;
+            do {
+                if (xml_flag(xi, XML_FLAG_DEL)){
+                    if (cxvec_append(xi, x0vec, x0veclen) < 0)
+                        goto done;
+                }
+            }
+            while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+                   xml_spec(xi) == yc0);
+            x0c = xi;
+
+            /* Add all in x1 marked as ADD in x1vec */
+            xj = x1c;
+            do {
+                if (xml_flag(xj, XML_FLAG_ADD))
+                    if (cxvec_append(xj, x1vec, x1veclen) < 0)
+                        goto done;
+            }
+            while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+                   xml_spec(xj) == yc1);
+            x1c = xj;
+            continue;
+        }
+        else if (eq < 0){
+            if (cxvec_append(x0c, x0vec, x0veclen) < 0)
                 goto done;
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
             continue;
         }
         else if (eq > 0){
-            if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
+            if (cxvec_append(x1c, x1vec, x1veclen) < 0)
                 goto done;
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
             continue;
@@ -355,36 +469,33 @@ xml_diff1(cxobj     *x0,
             /* xml-spec NULL could happen with anydata children for example,
              * if so, continute compare children but without yang
              */
-            yc0 = xml_spec(x0c);
-            yc1 = xml_spec(x1c);
             if (yc0 && yc1 && yc0 != yc1){ /* choice */
-                if (cxvec_append(x0c, x0vec, x0veclen) < 0) 
+                if (cxvec_append(x0c, x0vec, x0veclen) < 0)
                     goto done;
-                if (cxvec_append(x1c, x1vec, x1veclen) < 0) 
+                if (cxvec_append(x1c, x1vec, x1veclen) < 0)
                     goto done;
             }
-            else
-                if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
-                    /* if x0c and x1c are leafs w bodies, then they may be changed */
-                    b0 = xml_body(x0c);
-                    b1 = xml_body(x1c);
-                    if (b0 == NULL && b1 == NULL)
-                        ;
-                    else if (b0 == NULL || b1 == NULL
-                             || strcmp(b0, b1) != 0 
-                             ){
-                        if (cxvec_append(x0c, changed_x0, changedlen) < 0) 
-                            goto done;
-                        (*changedlen)--; /* append two vectors */
-                        if (cxvec_append(x1c, changed_x1, changedlen) < 0) 
-                            goto done;
-                    }
+            else if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+                /* if x0c and x1c are leafs w bodies, then they may be changed */
+                b0 = xml_body(x0c);
+                b1 = xml_body(x1c);
+                if (b0 == NULL && b1 == NULL)
+                    ;
+                else if (b0 == NULL || b1 == NULL
+                         || strcmp(b0, b1) != 0
+                         ){
+                    if (cxvec_append(x0c, changed_x0, changedlen) < 0)
+                        goto done;
+                    (*changedlen)--; /* append two vectors */
+                    if (cxvec_append(x1c, changed_x1, changedlen) < 0)
+                        goto done;
                 }
-                else if (xml_diff1(x0c, x1c,   
-                                   x0vec, x0veclen, 
-                                   x1vec, x1veclen, 
-                                   changed_x0, changed_x1, changedlen)< 0)
-                    goto done;
+            }
+            else if (xml_diff1(x0c, x1c,
+                               x0vec, x0veclen,
+                               x1vec, x1veclen,
+                               changed_x0, changed_x1, changedlen)< 0)
+                goto done;
         }
         x0c = xml_child_each(x0, x0c, CX_ELMNT);
         x1c = xml_child_each(x1, x1c, CX_ELMNT);
@@ -410,9 +521,10 @@ xml_diff1(cxobj     *x0,
  * @retval    -1          Error
  * All xml vectors should be freed after use.
  * @see xml_tree_equal  same algorithm but do not bother with what has changed
+ * @see clixon_xml_diff_print  same algorithm but print in +/- diff format
  */
 int
-xml_diff(cxobj     *x0, 
+xml_diff(cxobj     *x0,
          cxobj     *x1,
          cxobj   ***first,
          int       *firstlen,
@@ -425,23 +537,23 @@ xml_diff(cxobj     *x0,
     int retval = -1;
 
     *firstlen = 0;
-    *secondlen = 0;    
+    *secondlen = 0;
     *changedlen = 0;
     if (x0 == NULL && x1 == NULL)
         return 0;
     if (x1 == NULL){
-        if (cxvec_append(x0, first, firstlen) < 0) 
+        if (cxvec_append(x0, first, firstlen) < 0)
             goto done;
         goto ok;
     }
     if (x0 == NULL){
-        if (cxvec_append(x0, second, secondlen) < 0) 
+        if (cxvec_append(x0, second, secondlen) < 0)
             goto done;
         goto ok;
     }
     if (xml_diff1(x0, x1,
-                  first, firstlen, 
-                  second, secondlen, 
+                  first, firstlen,
+                  second, secondlen,
                   changed_x0, changed_x1, changedlen) < 0)
         goto done;
  ok:
@@ -459,7 +571,7 @@ xml_diff(cxobj     *x0,
  * @see xml_diff which returns diff sets
  */
 int
-xml_tree_equal(cxobj     *x0, 
+xml_tree_equal(cxobj     *x0,
                cxobj     *x1)
 {
     int        retval = 1; /* Not equal */
@@ -468,33 +580,49 @@ xml_tree_equal(cxobj     *x0,
     yang_stmt *yc1;
     char      *b0;
     char      *b1;
-    cxobj     *x0c = NULL; /* x0 child */
-    cxobj     *x1c = NULL; /* x1 child */
-    
+    cxobj     *x0c; /* x0 child */
+    cxobj     *x1c; /* x1 child */
+    int        extflag = 0;
+
     /* Traverse x0 and x1 in lock-step */
-    x0c = x1c = NULL;    
+    x0c = x1c = NULL;
     x0c = xml_child_each(x0, x0c, CX_ELMNT);
     x1c = xml_child_each(x1, x1c, CX_ELMNT);
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
         else if (x0c == NULL){
+            /* If cl:ignore-compare extension, return equal */
+            if ((yc1 = xml_spec(x1c)) != NULL){
+                if (yang_extension_value(yc1, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                    goto done;
+                if (extflag)
+                    goto ok;
+            }
             goto done;
         }
         else if (x1c == NULL){
+            if ((yc0 = xml_spec(x0c)) != NULL){
+                if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                    goto done;
+                if (extflag)
+                    goto ok;
+            }
             goto done;
+        }
+        if ((yc0 = xml_spec(x0c)) != NULL){
+            if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag)
+                goto ok;
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
-        eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        if (eq < 0){
-            goto done;
-        }
-        else if (eq > 0){
+        if ((eq = xml_cmp(x0c, x1c, 0, 0, NULL)) != 0){
             goto done;
         }
         else{ /* equal */
             /* xml-spec NULL could happen with anydata children for example,
-             * if so, continute compare children but without yang
+             * if so, continue compare children but without yang
              */
             yc0 = xml_spec(x0c);
             yc1 = xml_spec(x1c);
@@ -509,7 +637,7 @@ xml_tree_equal(cxobj     *x0,
                     if (b0 == NULL && b1 == NULL)
                         ;
                     else if (b0 == NULL || b1 == NULL
-                             || strcmp(b0, b1) != 0 
+                             || strcmp(b0, b1) != 0
                              ){
                         goto done;
                     }
@@ -535,6 +663,8 @@ xml_tree_equal(cxobj     *x0,
  * @param[in]   flag    Which flag to test for
  * @param[in]   test    1: test that flag is set, 0: test that flag is not set
  * @param[out]  upmark  Set if a child (recursively) has marked set.
+ * @retval      0       OK
+ * @retval     -1       Error
  * The function removes all branches that does not pass the test
  * Purge all nodes that dont have MARK flag set recursively.
  * Save all nodes that is MARK:ed or have at least one (grand*)child that is MARKed
@@ -545,7 +675,7 @@ xml_tree_equal(cxobj     *x0,
  * @see xml_tree_prune_flagged for a simpler variant
  */
 int
-xml_tree_prune_flagged_sub(cxobj *xt, 
+xml_tree_prune_flagged_sub(cxobj *xt,
                            int    flag,
                            int    test,
                            int   *upmark)
@@ -606,7 +736,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
                     goto done;
                 x = xprev;
             }
-            xprev = x; 
+            xprev = x;
         }
     }
     retval = 0;
@@ -617,16 +747,19 @@ xml_tree_prune_flagged_sub(cxobj *xt,
 }
 
 /*! Prune everything that passes test
+ *
  * @param[in]   xt      XML tree with some node marked
  * @param[in]   flag    Which flag to test for
  * @param[in]   test    1: test that flag is set, 0: test that flag is not set
+ * @retval      0       OK
+ * @retval     -1       Error
  * The function removes all branches that does not pass test
  * @code
  *    xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1);
  * @endcode
  */
 int
-xml_tree_prune_flagged(cxobj *xt, 
+xml_tree_prune_flagged(cxobj *xt,
                        int    flag,
                        int    test)
 {
@@ -641,7 +774,7 @@ xml_tree_prune_flagged(cxobj *xt,
             if (xml_purge(x) < 0)
                 goto done;
             x = xprev;
-            continue; 
+            continue;
         }
         if (xml_tree_prune_flagged(x, flag, test) < 0)
             goto done;
@@ -653,9 +786,12 @@ xml_tree_prune_flagged(cxobj *xt,
 }
 
 /*! Prune everything that passes test
+ *
  * @param[in]   xt      XML tree with some node marked
  * @param[in]   flags   Flags set
  * @param[in]   mask    Which flags to test for
+ * @retval      0       OK
+ * @retval     -1       Error
  * The function removes all branches that does pass test
  * @code
  *    xml_tree_prune_flags(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT);
@@ -698,9 +834,9 @@ xml_tree_prune_flags(cxobj *xt,
  * @param     -1         Error
  */
 int
-xml_namespace_change(cxobj *x, 
-                    char   *ns,
-                    char   *prefix)
+xml_namespace_change(cxobj *x,
+                     char   *ns,
+                     char   *prefix)
 {
     int    retval = -1;
     char  *ns0 = NULL;     /* existing namespace */
@@ -711,7 +847,7 @@ xml_namespace_change(cxobj *x,
     if (xml2ns(x, xml_prefix(x), &ns0) < 0)
        goto done;
     if (ns0 && strcmp(ns0, ns) == 0)
-        goto ok; /* Already has right namespace */ 
+        goto ok; /* Already has right namespace */
     /* Is namespace already declared? */
     if (xml2prefix(x, ns, &prefix0) == 1){
        /* Yes it is declared and the prefix is prefix0 */
@@ -727,7 +863,7 @@ xml_namespace_change(cxobj *x,
        else
            xp = xml_parent(x);
        if (xml_add_namespace(x, xp, prefix, ns) < 0)
-           goto done;      
+           goto done;
        /* Add prefix to x, if any */
        if (prefix && xml_prefix_set(x, prefix) < 0)
            goto done;
@@ -739,10 +875,15 @@ xml_namespace_change(cxobj *x,
 }
 
 /*! Sanitize an xml tree: xml node has matching yang_stmt pointer 
- * @param[in]   xt      XML top of tree
+ *
+ * @param[in]   xt   XML top of tree
+ * @param[in]   arg  Not used
+ * @retval      0    OK
+ * @retval     -1    Error
+
  */
 int
-xml_sanity(cxobj *xt, 
+xml_sanity(cxobj *xt,
            void  *arg)
 {
     int        retval = -1;
@@ -755,7 +896,7 @@ xml_sanity(cxobj *xt,
     }
     name = xml_name(xt);
     if (strstr(yang_argument_get(ys), name)==NULL){
-        clicon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'", 
+        clixon_err(OE_XML, 0, "xml node name '%s' does not match yang spec arg '%s'",
                    name, yang_argument_get(ys));
         goto done;
     }
@@ -765,23 +906,24 @@ xml_sanity(cxobj *xt,
 }
 
 /*! Detect state data: Either mark or break on first occurence and return xerror
+ *
  * @param[in]   xt      XML tree 
  * @param[out]  xerr    If set return netconf error, abort and return if a state variable found
- * @retval      -1      Error
- * @retval      0       Status node found and return xerror
  * @retval      1       OK
+ * @retval      0       Status node found and return xerror
+ * @retval     -1       Error
  * Note that the behaviour is quite different if xerr is set or not,...
  */
 int
-xml_non_config_data(cxobj  *xt, 
-                    cxobj **xerr) 
+xml_non_config_data(cxobj  *xt,
+                    cxobj **xerr)
 {
     int        retval = -1;
     cxobj     *x;
     yang_stmt *y;
     int        ret;
     cbuf      *cb = NULL;
-    
+
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
         if ((y = (yang_stmt*)xml_spec(x)) == NULL)
@@ -789,7 +931,7 @@ xml_non_config_data(cxobj  *xt,
         if (!yang_config(y)){ /* config == false means state data */
             if (xerr){        /* behaviour 1: return on error */
                 if ((cb = cbuf_new()) == NULL){
-                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
                 cprintf(cb, "module %s: state data node unexpected", yang_argument_get(ys_module(y)));
@@ -816,7 +958,10 @@ xml_non_config_data(cxobj  *xt,
 }
 
 /*! Check if the module tree x is in is assigned right XML namespace, assign if not
+ *
  * @param[in]  x   XML node
+ * @retval     0   OK
+ * @retval    -1   Error
  *(0. You should probably find the XML root and apply this function to that.)
  * 1. Check which namespace x should have (via yang). This is correct namespace.
  * 2. Check which namespace x has via its XML tree
@@ -837,12 +982,12 @@ xmlns_assign(cxobj *x)
     char      *ns_xml;     /* may be null or incorrect */
 
     if ((y = xml_spec(x)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "XML %s does not have yang spec", xml_name(x));
+        clixon_err(OE_YANG, ENOENT, "XML %s does not have yang spec", xml_name(x));
         goto done;
     }
     /* 1. Check which namespace x should have (via yang). This is correct namespace. */
     if ((ns_correct = yang_find_mynamespace(y)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "yang node %s does not have namespace", yang_argument_get(y));
+        clixon_err(OE_YANG, ENOENT, "yang node %s does not have namespace", yang_argument_get(y));
         goto done;
     }
     /* 2. Check which namespace x has via its XML tree */
@@ -861,10 +1006,11 @@ xmlns_assign(cxobj *x)
 }
 
 /*! Given a src element node x0 and a target node x1, assign (optional) prefix and namespace
+ *
  * @param[in]  x1       XML tree
  * @param[in]  x1p      XML tree parent
  * @retval     0        OK
- * @retval     -1       OK
+ * @retval    -1        Error
  * @see assign_namespace_element  this is a subroutine
  */
 static int
@@ -879,13 +1025,13 @@ assign_namespace(cxobj     *x1, /* target */
     char  *pexist = NULL;
     cvec  *nsc0 = NULL;
     cvec  *nsc = NULL;
-    
+
     /* 2a. Detect if namespace is declared in x1 target parent */
     if (xml2prefix(x1p, ns, &pexist) == 1){
         /* Yes, and it has prefix pexist */
         if (pexist){
             if ((prefix1 = strdup(pexist)) == NULL){
-                clicon_err(OE_UNIX, errno, "strdup");
+                clixon_err(OE_UNIX, errno, "strdup");
                 goto done;
             }
         }
@@ -897,7 +1043,7 @@ assign_namespace(cxobj     *x1, /* target */
         /* And copy namespace context from parent to child */
         if ((nsc0 = nscache_get_all(x1p)) != NULL){
             if ((nsc = cvec_dup(nsc0)) == NULL){
-                clicon_err(OE_UNIX, errno, "cvec_dup");
+                clixon_err(OE_UNIX, errno, "cvec_dup");
                 goto done;
             }
             nscache_replace(x1, nsc);
@@ -919,16 +1065,16 @@ assign_namespace(cxobj     *x1, /* target */
             }
             goto ok; /* skip */
         }
-        else { /* namespace does not exist in target x1, 
+        else { /* namespace does not exist in target x1,
                 */
             if (isroot){
                 if (prefix0 && (prefix1 = strdup(prefix0)) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
             else{
-                if (prefix0 == NULL){ /* Use default namespace, may break use of previous default 
+                if (prefix0 == NULL){ /* Use default namespace, may break use of previous default
                                        * somewhere in x1
                                        */
                     prefix1 = NULL;
@@ -938,7 +1084,7 @@ assign_namespace(cxobj     *x1, /* target */
         if (xml_add_namespace(x1, x1, prefix1, ns) < 0)
             goto done;
         if (prefix1 && xml_prefix_set(x1, prefix1) < 0)
-            goto done;      
+            goto done;
     }
  ok:
     /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
@@ -950,11 +1096,12 @@ assign_namespace(cxobj     *x1, /* target */
 }
 
 /*! Given a src element node x0 and a target node x1, assign (optional) prefix and namespace
+ *
  * @param[in]  x0       Source XML tree
  * @param[in]  x1       Target XML tree
  * @param[in]  x1p      Target XML tree parent
  * @retval     0        OK
- * @retval     -1       OK
+ * @retval    -1        Error
  * 1. Find N=namespace(x0)
  * 2. Detect if N is declared in x1 parent
  * 3. If yes, assign prefix to x1
@@ -974,7 +1121,7 @@ assign_namespace_element(cxobj *x0, /* source */
     char      *namespace = NULL;
     char      *prefix0 = NULL;;
     int        isroot;
-    
+
     isroot = xml_parent(x1p)==NULL &&
         xml_flag(x1p, XML_FLAG_TOP) &&
         xml_prefix(x1p)==NULL;
@@ -983,7 +1130,7 @@ assign_namespace_element(cxobj *x0, /* source */
     if (xml2ns(x0, prefix0, &namespace) < 0)
         goto done;
     if (namespace == NULL){
-        clicon_err(OE_XML, ENOENT, "No namespace found for prefix:%s",
+        clixon_err(OE_XML, ENOENT, "No namespace found for prefix:%s",
                    prefix0?prefix0:"NULL");
         goto done;
     }
@@ -1006,6 +1153,8 @@ assign_namespace_element(cxobj *x0, /* source */
  *
  * @param[in]  x0     Source XML
  * @param[in]  x1     Destination XML
+ * @retval     0      OK
+ * @retval    -1      Error
  * @note "standard" namespaces, including clixon internal namespaces are removed
  */
 int
@@ -1016,10 +1165,10 @@ assign_namespace_body(cxobj *x0, /* source */
     char  *namespace = NULL;
     char  *namespace1;
     char  *name;
-    char  *prefix0;         
-    char  *prefix1 = NULL;  
+    char  *prefix0;
+    char  *prefix1 = NULL;
     cxobj *xa;
-    
+
     xa = NULL;
     while ((xa = xml_child_each_attr(x0, xa)) != NULL) {
         prefix0 = xml_prefix(xa);
@@ -1057,6 +1206,7 @@ assign_namespace_body(cxobj *x0, /* source */
 }
 
 /*! Merge a base tree x0 with x1 with yang spec y
+ *
  * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
  * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
  * @param[in]  x0p Parent of x0
@@ -1091,9 +1241,9 @@ xml_merge1(cxobj              *x0,  /* the target */
     char           *ns;
     char           *px;
     char           *pxe;
-    
+
     if (x1 == NULL || xml_type(x1) != CX_ELMNT || y0 == NULL){
-        clicon_err(OE_XML, EINVAL, "x1 is NULL or not XML element, or lacks yang spec");
+        clixon_err(OE_XML, EINVAL, "x1 is NULL or not XML element, or lacks yang spec");
         goto done;
     }
     if (x0 == NULL){
@@ -1130,13 +1280,13 @@ xml_merge1(cxobj              *x0,  /* the target */
         if (x1bstr){
             if ((x0b = xml_body_get(x0)) == NULL){
                 if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
-                    goto done; 
+                    goto done;
             }
             if (xml_value_set(x0b, x1bstr) < 0)
                 goto done;
         }
         if (xml_parent(x0) == NULL &&
-            xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
+            xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0)
             goto done;
         if (assign_namespace_element(x1, x0, x0p) < 0)
             goto done;
@@ -1146,7 +1296,7 @@ xml_merge1(cxobj              *x0,  /* the target */
             goto done;
         twophase_len = xml_child_nr(x1);
         if ((twophase = calloc(twophase_len, sizeof(*twophase))) == NULL){
-            clicon_err(OE_UNIX, errno, "calloc");
+            clixon_err(OE_UNIX, errno, "calloc");
             goto done;
         }
         i = 0;
@@ -1158,12 +1308,12 @@ xml_merge1(cxobj              *x0,  /* the target */
             if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
                 if (reason){
                     if ((cbr = cbuf_new()) == NULL){
-                        clicon_err(OE_XML, errno, "cbuf_new");
+                        clixon_err(OE_XML, errno, "cbuf_new");
                         goto done;
                     }
                     cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?", xml_name(x1), x1cname);
                     if ((*reason = strdup(cbuf_get(cbr))) == NULL){
-                        clicon_err(OE_UNIX, errno, "strdup");
+                        clixon_err(OE_UNIX, errno, "strdup");
                         goto done;
                     }
                 }
@@ -1190,16 +1340,16 @@ xml_merge1(cxobj              *x0,  /* the target */
         for (i=0; i<twophase_len; i++){
             assert(twophase[i].mt_x1c);
             if ((ret = xml_merge1(twophase[i].mt_x0c,
-                           twophase[i].mt_yc,
-                           x0,
-                           twophase[i].mt_x1c,
+                                  twophase[i].mt_yc,
+                                  x0,
+                                  twophase[i].mt_x1c,
                                   reason)) < 0)
                 goto done;
             if (ret == 0)
                 goto fail;
         }
         if (xml_parent(x0) == NULL &&
-            xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0) 
+            xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0)
             goto done;
     } /* else Y_CONTAINER  */
  ok:
@@ -1218,6 +1368,7 @@ xml_merge1(cxobj              *x0,  /* the target */
 }
 
 /*! Merge XML trees x1 into x0 according to yang spec yspec
+ *
  * @param[in]  x0     Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1     xml tree which modifies base
  * @param[in]  yspec  Yang spec
@@ -1246,12 +1397,12 @@ xml_merge(cxobj     *x0,
     int        ret;
 
     if (x0 == NULL || x1 == NULL){
-        clicon_err(OE_UNIX, EINVAL, "parameters x0 or x1 is NULL");
+        clixon_err(OE_UNIX, EINVAL, "parameters x0 or x1 is NULL");
         goto done;
     }
     twophase_len = xml_child_nr(x1);
     if ((twophase = calloc(twophase_len, sizeof(*twophase))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     /* Loop through children of the modification tree */
@@ -1264,21 +1415,21 @@ xml_merge(cxobj     *x0,
         if (ymod == NULL){
             if (reason &&
                 (*reason = strdup("Namespace not found or yang spec not loaded")) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
             }
-            goto fail;  
+            goto fail;
         }
         /* Get yang spec of the child */
         if ((yc = yang_find_datanode(ymod, x1cname)) == NULL){
             if (reason){
                 if ((cbr = cbuf_new()) == NULL){
-                    clicon_err(OE_XML, errno, "cbuf_new");
+                    clixon_err(OE_XML, errno, "cbuf_new");
                     goto done;
                 }
                 cprintf(cbr, "XML node %s/%s has no corresponding yang specification (Invalid XML or wrong Yang spec?)", xml_name(x1), x1cname);
                 if ((*reason = strdup(cbuf_get(cbr))) == NULL){
-                    clicon_err(OE_UNIX, errno, "strdup");
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
@@ -1330,6 +1481,8 @@ xml_merge(cxobj     *x0,
  * @param[in]  ytype   YANG type noden
  * @param[in]  valstr  Integer string value
  * @param[out] enumstr Value of enum, dont free
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 yang_valstr2enum(yang_stmt *ytype,
@@ -1341,7 +1494,7 @@ yang_valstr2enum(yang_stmt *ytype,
     yang_stmt *yval; 
 
     if (enumstr == NULL){
-        clicon_err(OE_UNIX, EINVAL, "str is NULL");
+        clixon_err(OE_UNIX, EINVAL, "str is NULL");
         goto done;
     }
     while ((yenum = yn_each(ytype, yenum)) != NULL) {
@@ -1364,7 +1517,7 @@ yang_valstr2enum(yang_stmt *ytype,
  * @param[out] valstr  Corresponding string containing an int (direct pointer, dont free)
  * @retval     1       OK, result in valstr
  * @retval     0       Invalid, not found
- * @retval     -1      Error
+ * @retval    -1       Error
  */
 int
 yang_enum2valstr(yang_stmt *ytype,
@@ -1372,11 +1525,11 @@ yang_enum2valstr(yang_stmt *ytype,
                  char     **valstr)
 {
     int        retval = -1;
-    yang_stmt *yenum; 
-    yang_stmt *yval; 
+    yang_stmt *yenum;
+    yang_stmt *yval;
 
     if (valstr == NULL){
-        clicon_err(OE_UNIX, EINVAL, "valstr is NULL");
+        clixon_err(OE_UNIX, EINVAL, "valstr is NULL");
         goto done;
     }
     if ((yenum = yang_find(ytype, Y_ENUM, enumstr)) == NULL)
@@ -1394,6 +1547,7 @@ yang_enum2valstr(yang_stmt *ytype,
 }
 
 /*! Get integer value from xml node from yang enumeration 
+ *
  * @param[in]  node XML node in a tree
  * @param[out] val  Integer value returned
  * @retval     0    OK, value parsed
@@ -1407,7 +1561,7 @@ yang_enum2valstr(yang_stmt *ytype,
    * Thanks: Matthew Smith
  */
 int
-yang_enum_int_value(cxobj   *node, 
+yang_enum_int_value(cxobj   *node,
                     int32_t *val)
 {
     int retval = -1;
@@ -1426,11 +1580,11 @@ yang_enum_int_value(cxobj   *node,
         goto done;
     if ((ytype = yang_find(ys, Y_TYPE, NULL)) == NULL)
         goto done;
-    if (yang_type_resolve(ys, ys, ytype, &yrestype, 
+    if (yang_type_resolve(ys, ys, ytype, &yrestype,
                           NULL, NULL, NULL, NULL, NULL) < 0)
         goto done;
     if (yrestype == NULL){
-        clicon_err(OE_YANG, 0, "result-type should not be NULL");
+        clixon_err(OE_YANG, 0, "result-type should not be NULL");
         goto done;
     }
     if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
@@ -1446,17 +1600,21 @@ done:
 }
 
 /*! Given XML tree x0 with marked nodes, copy marked nodes to new tree x1
- * Two marks are used: XML_FLAG_MARK and XML_FLAG_CHANGE
  *
+ * Two marks are used: XML_FLAG_MARK and XML_FLAG_CHANGE
  * The algorithm works as following:
  * (1) Copy individual nodes marked with XML_FLAG_CHANGE 
  * until nodes marked with XML_FLAG_MARK are reached, where 
  * (2) the complete subtree of that node is copied. 
  * (3) Special case: key nodes in lists are copied if any node in list is marked
+ * @param[in]   x0
+ * @param[in]   x1
+ * @retval      0       OK
+ * @retval     -1       Error
  *  @note you may want to check:!yang_config(ys)
  */
 int
-xml_copy_marked(cxobj *x0, 
+xml_copy_marked(cxobj *x0,
                 cxobj *x1)
 {
     int        retval = -1;
@@ -1475,14 +1633,13 @@ xml_copy_marked(cxobj *x0,
     if ((prefix = xml_prefix(x0)) != NULL)
         if (xml_prefix_set(x1, prefix) < 0)
             goto done;
-    
     /* Copy all attributes */
     x = NULL;
     while ((x = xml_child_each_attr(x0, x)) != NULL) {
         name = xml_name(x);
         if ((xcopy = xml_new(name, x1, CX_ATTR)) == NULL)
             goto done;
-        if (xml_copy(x, xcopy) < 0) 
+        if (xml_copy(x, xcopy) < 0)
             goto done;
     }
 
@@ -1505,9 +1662,9 @@ xml_copy_marked(cxobj *x0,
             /* (2) the complete subtree of that node is copied. */
             if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
                 goto done;
-            if (xml_copy(x, xcopy) < 0) 
+            if (xml_copy(x, xcopy) < 0)
                 goto done;
-            continue; 
+            continue;
         }
         if (xml_flag(x, XML_FLAG_CHANGE)){
             /*  Copy individual nodes marked with XML_FLAG_CHANGE */
@@ -1525,7 +1682,7 @@ xml_copy_marked(cxobj *x0,
             if (iskey){
                 if ((xcopy = xml_new(name, x1, CX_ELMNT)) == NULL)
                     goto done;
-                if (xml_copy(x, xcopy) < 0) 
+                if (xml_copy(x, xcopy) < 0)
                     goto done;
             }
         }
@@ -1544,7 +1701,7 @@ xml_copy_marked(cxobj *x0,
  * @param[out]  nrp    1: when stmt evaluates to true
  * @param[out]  xpathp when stmts xpath
  * @retval      0      OK
- * @retval      -1     Error
+ * @retval     -1      Error
  * First variants of WHEN: Augmented and uses when using special info in node
  * Second variant of when, actual "when" sub-node RFC 7950 Sec 7.21.5. Can only be one.
  */
@@ -1658,7 +1815,7 @@ yang_xml_mandatory(cxobj     *xt,
     }
     /* 3) A container node without a "presence" statement and that has at
      *    least one mandatory node as a child. */
-    else if (keyw == Y_CONTAINER && 
+    else if (keyw == Y_CONTAINER &&
              yang_find(ys, Y_PRESENCE, NULL) == NULL){
         yc = NULL;
         while ((yc = yn_each(ys, yc)) != NULL) {
@@ -1679,6 +1836,7 @@ yang_xml_mandatory(cxobj     *xt,
 }
 
 /*! Is XML node (ie under <rpc>) an action, ie name action and belong to YANG_XML_NAMESPACE?
+ *
  * @param[in]   xn   XML node
  * @retval      1    Yes, an action
  * @retval      0    No, not an action
@@ -1705,6 +1863,7 @@ xml_rpc_isaction(cxobj *xn)
 }
 
 /*! Find innermost node under <action> carrying the name of the defined action
+ *
  *  Find innermost container or list contains an XML element
  *  that carries the name of the defined action. 
  * @param[in]   xn   XML node
@@ -1743,12 +1902,15 @@ xml_find_action(cxobj  *xn,
 }
 
 /*! Utility function: recursive traverse an XML tree and remove nodes based on attribute value
+ *
  * Conditionally remove attribute and node
  * @param[in]  xn       XML node
  * @param[in]  ns       Namespace of attribute
  * @param[in]  name     Attribute name
  * @param[in]  value    Attribute value
  * @param[in]  keepnode 0: remove node associated with attribute; 1: keep node but remove attr
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
 purge_tagged_nodes(cxobj *xn,
@@ -1796,7 +1958,9 @@ purge_tagged_nodes(cxobj *xn,
  * @param[in]  xc1     XML tree 1
  * @param[in]  xc2     XML tree 2
  * @param[in]  format  "text"|"xml"|"json"|"cli"|"netconf" (see format_enum)
- * @see xml_tree_diff_print with better XML in-mem comparison but is YANG dependent
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see clixon_xml_diff2cbuf with better XML in-mem comparison but is YANG dependent
  */
 int
 clixon_compare_xmls(cxobj            *xc1,
@@ -1813,14 +1977,14 @@ clixon_compare_xmls(cxobj            *xc1,
     snprintf(filename1, sizeof(filename1), "/tmp/cliconXXXXXX");
     snprintf(filename2, sizeof(filename2), "/tmp/cliconXXXXXX");
     if ((fd = mkstemp(filename1)) < 0){
-        clicon_err(OE_UNDEF, errno, "tmpfile");
+        clixon_err(OE_UNDEF, errno, "tmpfile");
         goto done;
     }
     if ((f = fdopen(fd, "w")) == NULL)
         goto done;
     switch(format){
     case FORMAT_TEXT:
-        if (clixon_txt2file(f, xc1, 0, cligen_output, 1, 1) < 0)
+        if (clixon_text2file(f, xc1, 0, cligen_output, 1, 1) < 0)
             goto done;
         break;
     case FORMAT_XML:
@@ -1833,7 +1997,7 @@ clixon_compare_xmls(cxobj            *xc1,
     close(fd);
 
     if ((fd = mkstemp(filename2)) < 0){
-        clicon_err(OE_UNDEF, errno, "mkstemp: %s", strerror(errno));
+        clixon_err(OE_UNDEF, errno, "mkstemp: %s", strerror(errno));
         goto done;
     }
     if ((f = fdopen(fd, "w")) == NULL)
@@ -1841,7 +2005,7 @@ clixon_compare_xmls(cxobj            *xc1,
 
     switch(format){
     case FORMAT_TEXT:
-        if (clixon_txt2file(f, xc2, 0, cligen_output, 1, 1) < 0)
+        if (clixon_text2file(f, xc2, 0, cligen_output, 1, 1) < 0)
             goto done;
         break;
     case FORMAT_XML:
@@ -1854,7 +2018,7 @@ clixon_compare_xmls(cxobj            *xc1,
     close(fd);
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_CFG, errno, "cbuf_new");
+        clixon_err(OE_CFG, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "diff -dU 1 %s %s |  grep -v @@ | sed 1,2d",
@@ -1868,129 +2032,5 @@ clixon_compare_xmls(cxobj            *xc1,
         cbuf_free(cb);
     unlink(filename1);
     unlink(filename2);
-    return retval;
-}
-
-/*! Print diff of two XML trees in memory. YANG dependent
- *
- * Uses underlying XML diff algorithm with better result than clixon_compare_xmls
- * @param[in]  cb      CLIgen buffer
- * @param[in]  level   How many spaces to insert before each line
- * @param[in]  x0      First XML tree
- * @param[in]  x1      Second XML tree
- * @param[in]  format  "text"|"xml"|"json"|"cli"|"netconf" (NYI: only xml)
- * @retval     0       Ok
- * @retval    -1       Error
- * @see xml_diff which returns diff sets
- * @see clixon_compare_xmls which uses files and is independent of YANG
- * XXX only XML
- */
-int
-xml_tree_diff_print(cbuf             *cb,
-                    int               level,
-                    cxobj            *x0, 
-                    cxobj            *x1,
-                    enum format_enum  format)
-{
-    int        retval = -1;
-    cxobj     *x0c = NULL; /* x0 child */
-    cxobj     *x1c = NULL; /* x1 child */
-    yang_stmt *yc0;
-    yang_stmt *yc1;
-    char      *b0;
-    char      *b1;
-    int        eq;
-    int        nr=0;
-
-    /* Traverse x0 and x1 in lock-step */
-    x0c = x1c = NULL;    
-    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-    x1c = xml_child_each(x1, x1c, CX_ELMNT);
-    for (;;){
-        if (x0c == NULL && x1c == NULL)
-            goto ok;
-        else if (x0c == NULL){
-            if (nr==0)
-                cprintf(cb, "%*s%s>\n", level*PRETTYPRINT_INDENT, "<", xml_name(x1));
-            nr++;
-            if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
-                goto done;
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
-            continue;
-        }
-        else if (x1c == NULL){
-            if (nr==0)
-                cprintf(cb, "%*s%s>\n", level*PRETTYPRINT_INDENT, "<", xml_name(x0));
-            nr++;
-            if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
-                goto done;
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
-            continue;
-        }
-        /* Both x0c and x1c exists, check if they are yang-equal. */
-        eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        if (eq < 0){
-            if (nr==0)
-                cprintf(cb, "%*s%s>\n", level*PRETTYPRINT_INDENT, "<", xml_name(x0));
-            nr++;
-            if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
-                goto done;
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
-            continue;
-        }
-        else if (eq > 0){
-            if (nr==0)
-                cprintf(cb, "%*s%s>\n", level*PRETTYPRINT_INDENT, "<", xml_name(x1));
-            nr++;
-            if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
-                goto done;
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
-            continue;
-        }
-        else{ /* equal */
-            /* xml-spec NULL could happen with anydata children for example,
-             * if so, continute compare children but without yang
-             */
-            yc0 = xml_spec(x0c);
-            yc1 = xml_spec(x1c);
-            if (yc0 && yc1 && yc0 != yc1){ /* choice */
-                if (nr==0)
-                    cprintf(cb, "%*s%s>\n", level*PRETTYPRINT_INDENT, "<", xml_name(x0));
-                nr++;
-                if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
-                    goto done;
-                if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
-                    goto done;
-            }
-            else
-                if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
-                    /* if x0c and x1c are leafs w bodies, then they may be changed */
-                    b0 = xml_body(x0c);
-                    b1 = xml_body(x1c);
-                    if (b0 == NULL && b1 == NULL)
-                        ;
-                    else if (b0 == NULL || b1 == NULL
-                             || strcmp(b0, b1) != 0 
-                             ){
-                        if (nr==0)
-                            cprintf(cb, "%*s%s>\n", level*PRETTYPRINT_INDENT, "<", xml_name(x0));
-                        nr++;
-                        cprintf(cb, "-%*s%s>%s</%s>\n", (level*PRETTYPRINT_INDENT-1), "<",
-                           xml_name(x0c), b0, xml_name(x0c));
-                        cprintf(cb, "+%*s%s>%s</%s>\n", (level*PRETTYPRINT_INDENT-1), "<",
-                           xml_name(x1c), b1, xml_name(x1c));
-                    }
-                }
-                else if (xml_tree_diff_print(cb, level+1, x0c, x1c, format) < 0)
-                    goto done;
-        }
-        x0c = xml_child_each(x0, x0c, CX_ELMNT);
-        x1c = xml_child_each(x1, x1c, CX_ELMNT);
-    }
- ok:
-    if (nr)
-        cprintf(cb, "%*s/%s>\n", level*PRETTYPRINT_INDENT, "<", xml_name(x0));
-    retval = 0;
- done:
     return retval;
 }

@@ -26,9 +26,9 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_DIR>/usr/local/lib/example/backend</CLICON_BACKEND_DIR>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XML_CHANGELOG>true</CLICON_XML_CHANGELOG>
   <CLICON_XML_CHANGELOG_FILE>$changelog</CLICON_XML_CHANGELOG_FILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
@@ -120,14 +120,15 @@ EOF
                         expectxml="<upgraded xmlns=\"urn:example:a\"/>"
                     fi
                 elif $modstate; then
-                    expectxml="<error-message>Internal error: No yang files found matching \"A@2016-01-01\" in the list of CLICON_YANG_DIRs</error-message>"
+                    #                    expectxml="<error-message>Internal error: No yang files found matching \"A@2016-01-01\" in the list of CLICON_YANG_DIRs</error-message>"
+                    expectxml="<error-message>Internal error: Yang \"A@2016-01-01\" not found in the list of CLICON_YANG_DIRs</error-message>"
                 fi
             else # xml false
                 xmltag="wrong"
                 expectxml="<error-message>Failed to find YANG spec of XML node: $xmltag with parent: config in namespace: urn:example:a</error-message>"
                 if ! $oldyang; then
                     if $modstate; then
-                        expectxml="<error-message>Internal error: No yang files found matching \"A@2016-01-01\" in the list of CLICON_YANG_DIRs</error-message>"
+                        expectxml="<error-message>Internal error: Yang \"A@2016-01-01\" not found in the list of CLICON_YANG_DIRs</error-message>"
                     fi
                 fi
             fi

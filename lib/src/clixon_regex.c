@@ -55,13 +55,15 @@
 
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
-#include "clixon_yang.h"
+#include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_regex.h"
 
@@ -205,6 +207,7 @@ fail:
 }
 
 /*! Transform from XSD regex to posix ERE
+ *
  * The usecase is that Yang (RFC7950) supports XSD regular expressions but
  * CLIgen supports POSIX ERE
  * POSIX ERE regexps according to man regex(3).
@@ -242,9 +245,9 @@ regexp_xsd2posix(char  *xsd,
     int   esc;
     int   minus = 0;
     size_t len;
-    
+
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     esc=0;
@@ -320,10 +323,10 @@ regexp_xsd2posix(char  *xsd,
                 break;
             case 'w': /* word */
                 //cprintf(cb, "[0-9a-zA-Z_\\\\-]")
-                cprintf(cb, "[[:alnum:]|_]"); 
+                cprintf(cb, "[[:alnum:]|_]");
                 break;
             case 'W': /* inverse of \w */
-                cprintf(cb, "[^[[:alnum:]|_]]"); 
+                cprintf(cb, "[^[[:alnum:]|_]]");
                 break;
             case 'u': {
                 int   n;
@@ -356,7 +359,7 @@ regexp_xsd2posix(char  *xsd,
             cprintf(cb, "%c", x);
     }
     if ((*posix = strdup(cbuf_get(cb))) == NULL){
-        clicon_err(OE_UNIX, errno, "strdup");
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     retval = 0;
@@ -369,7 +372,8 @@ regexp_xsd2posix(char  *xsd,
 /*-------------------------- Generic API functions ------------------------*/
 
 /*! Compilation of regular expression / pattern
- * @param[in]   h       Clicon handle
+ *
+ * @param[in]   h       Clixon handle
  * @param[in]   regexp  Regular expression string in XSD regex format
  * @param[out]  recomp  Compiled regular expression (malloc:d, should be freed)
  * @retval      1       OK
@@ -380,7 +384,7 @@ regexp_xsd2posix(char  *xsd,
  *       translate from XSD to POSIX.
  */
 int
-regex_compile(clicon_handle h,
+regex_compile(clixon_handle h,
               char         *regexp,
               void        **recomp)
 {
@@ -397,7 +401,7 @@ regex_compile(clicon_handle h,
         retval = cligen_regex_libxml2_compile(regexp, recomp);
         break;
     default:
-        clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
+        clixon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
         break;
     }
     /* retval from fns above */
@@ -408,12 +412,15 @@ regex_compile(clicon_handle h,
 }
 
 /*! Execution of (pre-compiled) regular expression / pattern
- * @param[in]  h       Clicon handle
+ *
+ * @param[in]  h       Clixon handle
  * @param[in]  recomp  Compiled regular expression 
  * @param[in]  string  Content string to match
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
-regex_exec(clicon_handle h,
+regex_exec(clixon_handle h,
            void         *recomp,
            char         *string)
 {
@@ -427,7 +434,7 @@ regex_exec(clicon_handle h,
         retval = cligen_regex_libxml2_exec(recomp, string);
         break;
     default:
-        clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d",
+        clixon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d",
                    clicon_yang_regexp(h));
         goto done;
     }
@@ -437,11 +444,14 @@ regex_exec(clicon_handle h,
 }
 
 /*! Free of (pre-compiled) regular expression / pattern
- * @param[in]  h       Clicon handle
+ *
+ * @param[in]  h       Clixon handle
  * @param[in]  recomp  Compiled regular expression 
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 int
-regex_free(clicon_handle h,
+regex_free(clixon_handle h,
            void         *recomp)
 {
     int   retval = -1;
@@ -454,7 +464,7 @@ regex_free(clicon_handle h,
         retval = cligen_regex_libxml2_free(recomp);
         break;
     default:
-        clicon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
+        clixon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
         goto done;
     }
     /* retval from fns above */

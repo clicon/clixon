@@ -66,12 +66,18 @@ clixon:
 	git clone file://$(realpath ${top_srcdir})
 
 clean:
-	rm -rf clixon # clone of top-srcdir
+	rm -rf clixon yang openconfig
 
 distclean: clean
 	rm -f Makefile *~ .depend
 
-docker: clixon $(DOCKERFILE)
+yang:
+	./getyang.sh
+
+openconfig:
+	./getopenconfig.sh
+
+docker: clixon yang openconfig $(DOCKERFILE)
 	sudo docker build -f $(DOCKERFILE) -t $(IMG)  $(DOCKERFLAGS) .
 
 push:
@@ -84,6 +90,15 @@ push:
 test: docker
 	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
 	sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true ./sum.sh'
+
+mem: docker
+	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
+	sudo docker exec -t clixon-test bash -c 'sudo apk add --update valgrind; cd /usr/local/bin/test && ./mem.sh'
+
+# Special-purpose memory test for snmp
+memsnmp: docker
+	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
+	sudo docker exec -t clixon-test bash -c 'sudo apk add --update valgrind; cd /usr/local/bin/test && pattern=test_snmp*.sh ./mem.sh snmp'
 
 depend:
 

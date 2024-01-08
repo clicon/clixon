@@ -61,7 +61,7 @@
 /*
  * Prototypes
  */
-int yang2cli_yspec(clicon_handle h, yang_stmt *yspec, char *treename);
-int yang2cli_init(clicon_handle h);
+int yang2cli_yspec(clixon_handle h, yang_stmt *yspec, char *treename);
+int yang2cli_init(clixon_handle h);
 
 #endif  /* _CLI_GENERATE_H_ */

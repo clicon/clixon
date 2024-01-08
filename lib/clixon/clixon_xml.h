@@ -39,6 +39,7 @@
  * Canonical XML version (just for info)
  *      https://www.w3.org/TR/xml-c14n
  */
+
 #ifndef _CLIXON_XML_H
 #define _CLIXON_XML_H
 
@@ -85,7 +86,7 @@
  * This is a "neutral" symbol without any meaning as opposed to the previous symbols ^
  * @see DATASTORE_TOP_SYMBOL which should be used for clixon top-level config trees
  */
-#define XML_TOP_SYMBOL "top" 
+#define XML_TOP_SYMBOL "top"
 
 /*
  * Types
@@ -102,16 +103,16 @@ enum operation_type{ /* edit-config operation */
 
 /* Netconf insert type (see RFC7950 Sec 7.8.6) */
 enum insert_type{ /* edit-config insert */
-    INS_FIRST, 
-    INS_LAST,  
-    INS_BEFORE, 
-    INS_AFTER,  
+    INS_FIRST,
+    INS_LAST,
+    INS_BEFORE,
+    INS_AFTER,
 };
 
 /* XML object types */
-enum cxobj_type {CX_ERROR=-1, 
-                 CX_ELMNT, 
-                 CX_ATTR, 
+enum cxobj_type {CX_ERROR=-1,
+                 CX_ELMNT,
+                 CX_ATTR,
                  CX_BODY};
 
 /* How to bind yang to XML top-level when parsing 
@@ -145,7 +146,7 @@ enum cxobj_type {CX_ERROR=-1,
  *                      / \         / \
  *                     x1  x2 - -  y1  y2
  */
-enum yang_bind{ 
+enum yang_bind{
     YB_NONE=0,   /* Dont do Yang binding */
     YB_MODULE,   /* Search for matching yang binding among top-level symbols of Yang modules of direct
                   * children
@@ -165,7 +166,7 @@ typedef enum yang_bind yang_bind;
 
 typedef struct xml cxobj; /* struct defined in clicon_xml.c */
 
-/*! Callback function type for xml_apply 
+/*! Callback function type for xml_apply
  *
  * @param[in]  x    XML node  
  * @param[in]  arg  General-purpose argument
@@ -182,9 +183,9 @@ typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c
  * @see format_int2str, format_str2int
  */
 enum format_enum{
-    FORMAT_XML,  
-    FORMAT_JSON,  
-    FORMAT_TEXT,  
+    FORMAT_XML,
+    FORMAT_JSON,
+    FORMAT_TEXT,
     FORMAT_CLI,
     FORMAT_NETCONF
 };
@@ -202,6 +203,7 @@ enum format_enum{
 #define XML_FLAG_DEFAULT   0x40 /* Added when a value is set as default @see xml_default */
 #define XML_FLAG_TOP       0x80 /* Top datastore symbol */
 #define XML_FLAG_BODYKEY  0x100 /* Text parsing key to be translated from body to key */
+#define XML_FLAG_ANYDATA  0x200 /* Treat as anydata, eg mount-points before bound */
 
 /*
  * Prototypes
@@ -234,7 +236,9 @@ int       xml_creator_add(cxobj *xn, char *name);
 int       xml_creator_rm(cxobj *xn, char *name);
 int       xml_creator_find(cxobj *xn, char *name);
 size_t    xml_creator_len(cxobj *xn);
-int       xml_creator_copy(cxobj *x0, cxobj *x1);
+cvec     *xml_creator_get(cxobj *xn);
+int       xml_creator_copy_one(cxobj *x0, cxobj *x1);
+int       xml_creator_copy_all(cxobj *x0, cxobj *x1);
 int       xml_creator_print(FILE *f, cxobj *xn);
 
 char     *xml_value(cxobj *xn);
@@ -302,13 +306,9 @@ cxobj    *xml_root(cxobj *xn);
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
 int       xml_attr_insert2val(char *instr, enum insert_type *ins);
-int       xml_add_attr(cxobj *xn, char *name, char *value, char *prefix, char *ns);
-int       clicon_log_xml(int level, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
-int       clicon_debug_xml(int dbglevel, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
-
+cxobj    *xml_add_attr(cxobj *xn, char *name, char *value, char *prefix, char *ns);
 #ifdef XML_EXPLICIT_INDEX
 int       xml_search_index_p(cxobj *x);
-
 int       xml_search_vector_get(cxobj *x, char *name, clixon_xvec **xvec);
 int       xml_search_child_insert(cxobj *xp, cxobj *x);
 int       xml_search_child_rm(cxobj *xp, cxobj *x);

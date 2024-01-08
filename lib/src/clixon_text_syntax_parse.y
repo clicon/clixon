@@ -69,15 +69,16 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
-#include "clixon_string.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_string.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_vec.h"
 #include "clixon_data.h"
@@ -85,21 +86,21 @@
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clicon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(1,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
-    
+
 void 
 clixon_text_syntax_parseerror(void *arg,
-                              char *s) 
+                              char *s)
 {
     clixon_text_syntax_yacc *ts = (clixon_text_syntax_yacc *)arg;
 
-    clicon_err(OE_XML, XMLPARSE_ERRNO, "text_syntax_parse: line %d: %s: at or before: %s", 
+    clixon_err(OE_XML, XMLPARSE_ERRNO, "text_syntax_parse: line %d: %s: at or before: %s",
                ts->ts_linenum,
                s,
-               clixon_text_syntax_parsetext); 
+               clixon_text_syntax_parsetext);
     return;
 }
 
@@ -140,7 +141,7 @@ text_create_node(clixon_text_syntax_yacc *ts,
         /* Silently ignore if module name not found */
         if ((ymod = yang_find(ts->ts_yspec, Y_MODULE, prefix)) != NULL){
             if ((ns = yang_find_mynamespace(ymod)) == NULL){
-                clicon_err(OE_YANG, 0, "No namespace");
+                clixon_err(OE_YANG, 0, "No namespace");
                 goto done;
             }
             /* Set default namespace */
@@ -166,7 +167,7 @@ strjoin(char *str0,
     len0 = str0?strlen(str0):0;
     len = len0 + strlen(str1) + 1;
     if ((str0 = realloc(str0, len)) == NULL){
-        clicon_err(OE_YANG, errno, "realloc");
+        clixon_err(OE_YANG, errno, "realloc");
         return NULL;
     }
     strcpy(str0+len0, str1);
@@ -200,6 +201,7 @@ text_element_create(clixon_xvec *xvec0,
 }
 
 /*! Special mechanism to mark bodies so they will not be filtered as whitespace
+ *
  * @see strip_body_objects text_populate_list
  */
 static int
@@ -207,16 +209,16 @@ text_mark_bodies(clixon_xvec *xv)
 {
     int    i;
     cxobj *xb;
-    
+
     for (i=0; i<clixon_xvec_len(xv); i++){
         xb = clixon_xvec_i(xv, i);
         xml_flag_set(xb, XML_FLAG_BODYKEY);
     }
     return 0;
 }
- 
-%} 
- 
+
+%}
+
 %%
 
 top        : stmt MY_EOF       { _PARSE_DEBUG("top->stmt");
@@ -229,7 +231,7 @@ stmts      : stmts stmt        { _PARSE_DEBUG("stmts->stmts stmt");
                                  if (clixon_xvec_merge($1, $2) < 0) YYERROR;
                                  clixon_xvec_free($2);
                                  $$ = $1;
-                               } 
+                               }
            |                   { _PARSE_DEBUG("stmts->stmt");
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;
                                }
@@ -292,7 +294,7 @@ value      : TOKEN             { _PARSE_DEBUG("value->TOKEN");
 substr     : substr TOKEN      { _PARSE_DEBUG("substr->substr TOKEN");
                                  $$ = strjoin($1, $2); free($2);}
            |                   { _PARSE_DEBUG("substr->");
-                                 $$ = NULL; } 
+                                 $$ = NULL; }
            ;
 
 %%

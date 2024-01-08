@@ -46,8 +46,8 @@
  * (Duplicated. Also in netconf_*.h)
  */
 int netconf_xpath(cxobj *xsearch,
-                  cxobj *xfilter, 
-                   cbuf *xf, cbuf *xf_err, 
+                  cxobj *xfilter,
+                   cbuf *xf, cbuf *xf_err,
                   cxobj *xt);
 
 

@@ -75,8 +75,8 @@ cat <<EOF > $cfg
   <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_YANG_LIBRARY>true</CLICON_YANG_LIBRARY>
   <CLICON_RESTCONF_INSTALLDIR>/usr/local/sbin</CLICON_RESTCONF_INSTALLDIR>
@@ -111,34 +111,42 @@ function rpcstatus()
     active=$1
     status=$2
     
-    sleep $DEMSLEEP
-    new "send rpc status"
-    rpc=$(chunked_framing "<rpc $DEFAULTNS><process-control $LIBNS><name>restconf</name><operation>status</operation></process-control></rpc>")
-    retx=$($clixon_netconf -qef $cfg<<EOF
+    jmax=10
+    for j in $(seq 1 $jmax); do
+        new "send rpc status"
+        rpc=$(chunked_framing "<rpc $DEFAULTNS><process-control $LIBNS><name>restconf</name><operation>status</operation></process-control></rpc>")
+        retx=$($clixon_netconf -qef $cfg<<EOF
 $DEFAULTHELLO$rpc
 EOF
-)
-    # Check pid
-    expect="<pid $LIBNS>[0-9]*</pid>"
-    match=$(echo "$retx" | grep --null -Go "$expect")
-    if [ -z "$match" ]; then
-        pid=0
-    else
-        pid=$(echo "$match" | awk -F'[<>]' '{print $3}')
-    fi
-    if [ -z "$pid" ]; then
-        err "No pid return value" "$retx"
-    fi
+            )
+        # Check pid
+        expect="<pid $LIBNS>[0-9]*</pid>"
+        match=$(echo "$retx" | grep --null -Go "$expect")
+        if [ -z "$match" ]; then
+            pid=0
+        else
+            pid=$(echo "$match" | awk -F'[<>]' '{print $3}')
+        fi
+        if [ -z "$pid" ]; then
+            err "No pid return value" "$retx"
+        fi
 
-    if $active; then
-        # \- causes problems on some(alpine)
-        expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9].[0-9][0-9].[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>$"
-    else
-        # inactive, no startime or pid
-        expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status></rpc-reply>$"
-    fi
-    match=$(echo "$retx" | grep --null -Go "$expect")
-    if [ -z "$match" ]; then
+        if $active; then
+            # \- causes problems on some(alpine)
+            expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9].[0-9][0-9].[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>$"
+        else
+            # inactive, no startime or pid
+            expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status></rpc-reply>$"
+        fi
+        match=$(echo "$retx" | grep --null -Go "$expect")
+        if [ -z "$match" ]; then
+            echo "retry after sleep"
+            sleep $DEMSLEEP
+            continue
+        fi
+        break
+    done
+    if [ $j -eq $jmax ]; then
         err "$expect" "$retx"
     fi
 }

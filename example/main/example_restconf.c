@@ -45,17 +45,25 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 #include <clixon/clixon_restconf.h>  /* minor use */
 
 /* Command line options to be passed to getopt(3) 
  */
-#define RESTCONF_EXAMPLE_OPTS ""
+#define RESTCONF_EXAMPLE_OPTS "m:M:"
 
 static const char Base64[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char Pad64 = '=';
+
+/*! Yang schema mount
+ *
+ * Start restconf with -- -m <yang> -M <namespace>
+ * Mount this yang on mountpoint
+ */
+static char *_mount_yang = NULL;
+static char *_mount_namespace = NULL;
 
 /* skips all whitespace anywhere.
    converts characters, four at a time, starting at (or after)
@@ -64,8 +72,8 @@ static const char Pad64 = '=';
  @note what is copyright of this?
  */
 int
-b64_decode(const char *src, 
-           char       *target, 
+b64_decode(const char *src,
+           char       *target,
            size_t      targsize)
 {
     int tarindex, state, ch;
@@ -185,19 +193,20 @@ b64_decode(const char *src,
 }
 
 /*! HTTP basic authentication example (note hardwired)
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
  *                       String: Credentials OK, the associated user, must be mallloc:ed
  *                       Parameter signtificant only if retval is 1/OK
- * @retval    -1         Fatal error
- * @retval     0         Ignore, undecided, not handled, same as no callback
  * @retval     1         OK, see authp parameter for result.
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval    -1         Fatal error
  * @note authp should be malloced
  * @note: Three hardwired users: andy, wilma, guest w password "bar".
  */
 static int
-example_basic_auth(clicon_handle      h,
+example_basic_auth(clixon_handle      h,
                    void              *req,
                    char             **authp)
 {
@@ -211,14 +220,14 @@ example_basic_auth(clicon_handle      h,
     size_t  authlen;
     int     ret;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (authp == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
+        clixon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
         goto done;
-    }    
+    }
     /* At this point in the code we must use HTTP basic authentication */
     if ((auth = restconf_param_get(h, "HTTP_AUTHORIZATION")) == NULL)
-        goto fail; 
+        goto fail;
     if (strlen(auth) < strlen("Basic "))
         goto fail;
     if (strncmp("Basic ", auth, strlen("Basic ")))
@@ -226,7 +235,7 @@ example_basic_auth(clicon_handle      h,
     auth += strlen("Basic ");
     authlen = strlen(auth)*2;
     if ((user = malloc(authlen)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(user, 0, authlen);
@@ -237,7 +246,7 @@ example_basic_auth(clicon_handle      h,
         goto fail;
     *passwd = '\0';
     passwd++;
-    clicon_debug(1, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
     /* Here get auth sub-tree where all the users are */
     if ((cb = cbuf_new()) == NULL)
         goto done;
@@ -252,7 +261,7 @@ example_basic_auth(clicon_handle      h,
     user=NULL; /* to avoid free below */
     retval = 1;
  done: /* error */
-    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, authp?"":*authp);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d authp:%s", __FUNCTION__, retval, authp?"":*authp);
     if (user)
        free(user);
     if (cb)
@@ -267,26 +276,27 @@ example_basic_auth(clicon_handle      h,
 }
 
 /*! Authentication callback
- * @param[in]  h         Clicon handle
+ *
+ * @param[in]  h         Clixon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
  * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
  *                       String: Credentials OK, the associated user, must be mallloc:ed
  *                       Parameter signtificant only if retval is 1/OK
- * @retval    -1         Fatal error
- * @retval     0         Ignore, undecided, not handled, same as no callback
  * @retval     1         OK, see authp parameter for result.
+ * @retval     0         Ignore, undecided, not handled, same as no callback
+ * @retval    -1         Fatal error
  * @note authp should be malloced
  */
 int
-example_restconf_credentials(clicon_handle      h,
+example_restconf_credentials(clixon_handle      h,
                              void              *req,
                              clixon_auth_type_t auth_type,
                              char             **authp)
 {
     int retval = -1;
-    
-    clicon_debug(1, "%s auth:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s auth:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
     switch (auth_type){
     case CLIXON_AUTH_NONE: /* FEATURE clixon-restconf:allow-auth-none must be enabled */
         retval = 0;
@@ -300,16 +310,16 @@ example_restconf_credentials(clicon_handle      h,
         break;
     }
  done:
-    clicon_debug(1, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
     return retval;
 }
 
 /*! Local example restconf rpc callback 
  */
 int
-restconf_client_rpc(clicon_handle h, 
-                    cxobj        *xe,      
-                    cbuf         *cbret,    
+restconf_client_rpc(clixon_handle h,
+                    cxobj        *xe,
+                    cbuf         *cbret,
                     void         *arg,
                     void         *regarg)
 {
@@ -319,7 +329,7 @@ restconf_client_rpc(clicon_handle h,
 
     /* get namespace from rpc name, return back in each output parameter */
     if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
-        clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+        clixon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
         goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
@@ -342,36 +352,94 @@ restconf_client_rpc(clicon_handle h,
 /*! Start example restonf plugin. Set authentication method
  */
 int
-example_restconf_start(clicon_handle h)
+example_restconf_start(clixon_handle h)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     return 0;
 }
 
-clixon_plugin_api * clixon_plugin_init(clicon_handle h);
+/*! Example YANG schema mount
+ *
+ * Given an XML mount-point xt, return XML yang-lib modules-set
+ * @param[in]  h       Clixon handle
+ * @param[in]  xt      XML mount-point in XML tree
+ * @param[out] config  If '0' all data nodes in the mounted schema are read-only
+ * @param[out] validate Do or dont do full RFC 7950 validation
+ * @param[out] yanglib XML yang-lib module-set tree
+ * @retval     0       OK
+ * @retval    -1       Error
+ * XXX hardcoded to clixon-example@2022-11-01.yang regardless of xt
+ * @see RFC 8528
+ */
+int
+restconf_yang_mount(clixon_handle   h,
+                    cxobj          *xt,
+                    int            *config,
+                    validate_level *vl,
+                    cxobj         **yanglib)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    if (config)
+        *config = 1;
+    if (vl)
+        *vl = VL_FULL;
+    if (yanglib && _mount_yang){
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
+        cprintf(cb, "<module-set>");
+        cprintf(cb, "<name>mylabel</name>"); // XXX label in test_yang_schema_mount
+        cprintf(cb, "<module>");
+        /* In yang name+namespace is mandatory, but not revision */
+        cprintf(cb, "<name>%s</name>", _mount_yang); // mandatory
+        cprintf(cb, "<namespace>%s</namespace>", _mount_namespace); // mandatory
+        //        cprintf(cb, "<revision>2022-11-01</revision>");
+        cprintf(cb, "</module>");
+        cprintf(cb, "</module-set>");
+        cprintf(cb, "</yang-library>");
+        if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, yanglib, NULL) < 0)
+            goto done;
+        if (xml_rootchild(*yanglib, 0, yanglib) < 0)
+            goto done;
+    }
+
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+clixon_plugin_api * clixon_plugin_init(clixon_handle h);
 
 static clixon_plugin_api api = {
     "example",           /* name */
     clixon_plugin_init,  /* init */
     example_restconf_start,/* start */
     NULL,                /* exit */
-    .ca_auth=example_restconf_credentials   /* auth */
+    .ca_auth=example_restconf_credentials,   /* auth */
+    .ca_yang_mount=restconf_yang_mount,  /* RFC 8528 schema mount */
 };
 
 /*! Restconf plugin initialization
+ *
  * @param[in]  h    Clixon handle
- * @retval     NULL Error with clicon_err set
+ * @retval     NULL Error
  * @retval     api  Pointer to API struct
  * Arguments are argc/argv after --
  */
 clixon_plugin_api *
-clixon_plugin_init(clicon_handle h)
+clixon_plugin_init(clixon_handle h)
 {
     int       argc; /* command-line options (after --) */
     char    **argv = NULL;
     int       c;
-    
-    clicon_debug(1, "%s restconf", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s restconf", __FUNCTION__);
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
         return NULL;
@@ -379,11 +447,23 @@ clixon_plugin_init(clicon_handle h)
     optind = 1;
     while ((c = getopt(argc, argv, RESTCONF_EXAMPLE_OPTS)) != -1)
         switch (c) {
+        case 'm':
+            _mount_yang = optarg;
+            break;
+        case 'M':
+            _mount_namespace = optarg;
+            break;
         default:
             break;
         }
+    if ((_mount_yang && !_mount_namespace) || (!_mount_yang && _mount_namespace)){
+        clixon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
+        goto done;
+    }
     /* Register local netconf rpc client (note not backend rpc client) */
     if (rpc_callback_register(h, restconf_client_rpc, NULL, "urn:example:clixon", "client-rpc") < 0)
         return NULL;
     return &api;
+ done:
+    return NULL;
 }

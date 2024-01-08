@@ -52,6 +52,9 @@ localstatedir   = @localstatedir@
 libdir          = @exec_prefix@/lib
 
 APPNAME	        = example
+CLICON_USER	= @CLICON_USER@
+CLICON_GROUP	= @CLICON_GROUP@
+
 # Here is where example yang appears
 YANG_INSTALLDIR  = @YANG_INSTALLDIR@
 # Install here if you want default clixon location:
@@ -168,10 +171,13 @@ clean:
 distclean: clean
 	rm -f Makefile *~ .depend
 
-install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml
-	install -d -m 0755 $(DESTDIR)$(sysconfdir)
-	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)
-#	install -m 0644 $(APPNAME).xml $(DESTDIR)$(CLIXON_DEFAULT_CONFIG)
+install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml restconf.xml autocli.xml 
+	[ -n "$$(getent group "$(CLICON_GROUP)")" ] || groupadd "$(CLICON_GROUP)"
+	[ -n "$$(getent passwd "$(CLICON_USER)")" ] || useradd -M -s /usr/sbin/nologin -g "$(CLICON_GROUP)" "$(CLICON_USER)"
+	install -d -m 0755 $(DESTDIR)$(sysconfdir)/clixon
+	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)/clixon
+	install -m 0644 autocli.xml $(DESTDIR)$(sysconfdir)/clixon
+	install -m 0644 restconf.xml $(DESTDIR)$(sysconfdir)/clixon
 	install -d -m 0755 $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
 	install -d -m 0755 $(DESTDIR)$(YANG_INSTALLDIR)
 	install -m 0644 $(YANGSPECS) $(DESTDIR)$(YANG_INSTALLDIR)
@@ -187,14 +193,16 @@ ifdef with_restconf
 endif
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/clispec
 	install -m 0644 $(CLISPECS) $(DESTDIR)$(libdir)/$(APPNAME)/clispec
-	install -d -m 0755 $(DESTDIR)$(localstatedir)/$(APPNAME) # This is for XMLDB_DIR
-	install -d -m 0755 $(DESTDIR)$(localstatedir)/run # This is for PID and SOCK
+	install -d -m 0775 -g $(CLICON_GROUP) $(DESTDIR)$(localstatedir)/$(APPNAME) # This is for XMLDB_DIR
+	install -d -m 0775 -g $(CLICON_GROUP) $(DESTDIR)$(localstatedir)/run # This is for PID and SOCK
 
 uninstall: 
-	rm -rf $(DESTDIR)$(sysconfdir)/$(APPNAME).xml
+	rm -rf $(DESTDIR)$(sysconfdir)/clixon
 	rm -rf $(DESTDIR)$(datarootdir)/$(APPNAME)
 	rm -rf $(DESTDIR)$(localstatedir)/$(APPNAME)
 	rm -rf $(DESTDIR)$(libdir)/$(APPNAME)
+	-userdel $(CLICON_USER)
+	-groupdel $(CLICON_GROUP)
 
 install-include:	
 

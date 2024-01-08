@@ -42,34 +42,34 @@
 #ifndef _CLIXON_PROTO_CLIENT_H_
 #define _CLIXON_PROTO_CLIENT_H_
 
-int clicon_rpc_connect(clicon_handle h, int *sock0);
-int clicon_rpc_msg(clicon_handle h, struct clicon_msg *msg, cxobj **xret0);
-int clicon_rpc_msg_persistent(clicon_handle h, struct clicon_msg *msg, cxobj **xret0, int *sock0);
-int clicon_rpc_netconf(clicon_handle h, char *xmlst, cxobj **xret, int *sp);
-int clicon_rpc_netconf_xml(clicon_handle h, cxobj *xml, cxobj **xret, int *sp);
-int clicon_rpc_get_config(clicon_handle h, char *username, char *db, char *xpath, cvec *nsc, char *defaults, cxobj **xret);
-int clicon_rpc_edit_config(clicon_handle h, char *db, enum operation_type op, 
+int clicon_rpc_connect(clixon_handle h, int *sock0);
+int clicon_rpc_msg(clixon_handle h, struct clicon_msg *msg, cxobj **xret0);
+int clicon_rpc_msg_persistent(clixon_handle h, struct clicon_msg *msg, cxobj **xret0, int *sock0);
+int clicon_rpc_netconf(clixon_handle h, char *xmlst, cxobj **xret, int *sp);
+int clicon_rpc_netconf_xml(clixon_handle h, cxobj *xml, cxobj **xret, int *sp);
+int clicon_rpc_get_config(clixon_handle h, char *username, char *db, char *xpath, cvec *nsc, char *defaults, cxobj **xret);
+int clicon_rpc_edit_config(clixon_handle h, char *db, enum operation_type op,
                            char *xml);
-int clicon_rpc_copy_config(clicon_handle h, char *db1, char *db2);
-int clicon_rpc_delete_config(clicon_handle h, char *db);
-int clicon_rpc_lock(clicon_handle h, char *db);
-int clicon_rpc_unlock(clicon_handle h, char *db);
-int clicon_rpc_get2(clicon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, int bind, cxobj **xret);
-int clicon_rpc_get(clicon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, cxobj **xret);
-int clicon_rpc_get_pageable_list(clicon_handle h, char *datastore, char *xpath, 
+int clicon_rpc_copy_config(clixon_handle h, char *db1, char *db2);
+int clicon_rpc_delete_config(clixon_handle h, char *db);
+int clicon_rpc_lock(clixon_handle h, char *db);
+int clicon_rpc_unlock(clixon_handle h, char *db);
+int clicon_rpc_get2(clixon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, int bind, cxobj **xret);
+int clicon_rpc_get(clixon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, cxobj **xret);
+int clicon_rpc_get_pageable_list(clixon_handle h, char *datastore, char *xpath,
                                  cvec *nsc, netconf_content content, int32_t depth, char *defaults,
                                  uint32_t offset, uint32_t limit,
                                  char *direction, char *sort, char *where,
                                  cxobj **xt);
-int clicon_rpc_close_session(clicon_handle h);
-int clicon_rpc_kill_session(clicon_handle h, uint32_t session_id);
-int clicon_rpc_validate(clicon_handle h, char *db);
-int clicon_rpc_commit(clicon_handle h, int confirmed, int cancel, uint32_t timeout, char *persist, char *persist_id);
-int clicon_rpc_discard_changes(clicon_handle h);
-int clicon_rpc_create_subscription(clicon_handle h, char *stream, char *filter, int *s);
-int clicon_rpc_debug(clicon_handle h, int level);
-int clicon_rpc_restconf_debug(clicon_handle h, int level);
-int clicon_hello_req(clicon_handle h, char *transport, char *source_host, uint32_t *id);
-int clicon_rpc_restart_plugin(clicon_handle h, char *plugin);
+int clicon_rpc_close_session(clixon_handle h);
+int clicon_rpc_kill_session(clixon_handle h, uint32_t session_id);
+int clicon_rpc_validate(clixon_handle h, char *db);
+int clicon_rpc_commit(clixon_handle h, int confirmed, int cancel, uint32_t timeout, char *persist, char *persist_id);
+int clicon_rpc_discard_changes(clixon_handle h);
+int clicon_rpc_create_subscription(clixon_handle h, char *stream, char *filter, int *s);
+int clicon_rpc_debug(clixon_handle h, int level);
+int clicon_rpc_restconf_debug(clixon_handle h, int level);
+int clicon_hello_req(clixon_handle h, char *transport, char *source_host, uint32_t *id);
+int clicon_rpc_restart_plugin(clixon_handle h, char *plugin);
 
 #endif  /* _CLIXON_PROTO_CLIENT_H_ */

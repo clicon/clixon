@@ -32,7 +32,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10 (Base XML)
+ * Clixon XML XPath 1.0 according to https://www.w3.org/TR/xpath-10 (Base XML)
  * and rfc 7950 (YANG-specific)
  */
 #ifndef _CLIXON_XPATH_FUNCTION_H

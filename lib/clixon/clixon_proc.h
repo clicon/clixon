@@ -40,7 +40,7 @@
 
 /*
  * Types
- */ 
+ */
 typedef struct process_entry_t process_entry_t;
 
 /* Process operations */
@@ -52,29 +52,30 @@ typedef enum proc_operation {
     PROC_OP_STATUS
 } proc_operation;
 
-/*! Process RPC callback function 
+/*! Process RPC callback function
  *
  * @param[in]     h   Clixon handle
  * @param[in]     pe  Process entry
  * @param[in,out] op  Process operation
  */
-typedef int (proc_cb_t)(clicon_handle    h,
+typedef int (proc_cb_t)(clixon_handle    h,
                         process_entry_t *pe,
                         proc_operation  *operation);
 
 /*
  * Prototypes
- */ 
-int clixon_proc_socket(char **argv, int sock_flags, pid_t *pid, int *sock);
+ */
+int clixon_proc_socket(clixon_handle h, char **argv, int sock_flags, pid_t *pid, int *sock);
 int clixon_proc_socket_close(pid_t pid, int sock);
-int clixon_process_pid(clicon_handle h, const char *name, pid_t *pid);
+int clixon_process_pid(clixon_handle h, const char *name, pid_t *pid);
 proc_operation clixon_process_op_str2int(char *opstr);
-int clixon_process_argv_get(clicon_handle h, const char *name, char ***argv, int *argc);
-int clixon_process_register(clicon_handle h, const char *name, const char *descr, const char *netns, uid_t uid, gid_t gid, int fdkeep, proc_cb_t *callback, char **argv, int argc);
-int clixon_process_delete_all(clicon_handle h);
-int clixon_process_operation(clicon_handle h, const char *name, proc_operation op, const int wrapit);
-int clixon_process_status(clicon_handle h, const char *name, cbuf *cbret);
-int clixon_process_start_all(clicon_handle h);
-int clixon_process_waitpid(clicon_handle h);
+int clixon_process_argv_get(clixon_handle h, const char *name, char ***argv, int *argc);
+int clixon_process_register(clixon_handle h, const char *name, const char *descr, const char *netns, uid_t uid, gid_t gid, int fdkeep, proc_cb_t *callback, char **argv, int argc);
+int clixon_process_delete_all(clixon_handle h);
+int clixon_process_operation(clixon_handle h, const char *name, proc_operation op, const int wrapit);
+int clixon_process_status(clixon_handle h, const char *name, cbuf *cbret);
+int clixon_process_start_all(clixon_handle h);
+int clixon_process_waitpid(clixon_handle h);
+int clixon_resource_check(clixon_handle h, void **wh, const char *name, const char *fn);
 
 #endif  /* _CLIXON_PROC_H_ */

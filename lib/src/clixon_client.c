@@ -53,12 +53,13 @@
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
-#include "clixon_log.h"
-#include "clixon_err.h"
 #include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_proc.h"
-#include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_io.h"
 #include "clixon_xpath_ctx.h"
@@ -74,7 +75,7 @@
 /* Netconf binary default, override with environment variable: CLIXON_NETCONF_BIN 
  * Could try to get path from install/makefile data
  */
-#define CLIXON_NETCONF_BIN "/usr/local/bin/clixon_netconf"
+#define CLIXON_NETCONF_BIN CLIXON_CONFIG_BINDIR "/clixon_netconf"
 
 #define CLIXON_CLIENT_MAGIC 0x54fe649a
 
@@ -84,6 +85,7 @@
  */
 struct clixon_client_handle{
     uint32_t           cch_magic;  /* magic number */
+    clixon_handle      cch_h;      /* Clixon handle */
     clixon_client_type cch_type;   /* Clixon socket type */
     int                cch_socket; /* Input/output socket */
     char              *cch_descr;  /* Description of socket / peer for logging  XXX NYI */
@@ -93,7 +95,7 @@ struct clixon_client_handle{
 
 /*! Check struct magic number for sanity checks
  *
- * @param[in]  h   Clicon client handle
+ * @param[in]  h   Clixon client handle
  * @retval     0   Sanity check OK
  * @retval    -1   Sanity check failed
  */
@@ -116,11 +118,11 @@ clixon_client_handle_check(clixon_client_handle ch)
 clixon_handle
 clixon_client_init(const char *config_file)
 {
-    clicon_handle  h;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_handle  h;
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     /* Initiate CLICON handle. CLIgen is also initialized */
-    if ((h = clicon_handle_init()) == NULL)
+    if ((h = clixon_handle_init()) == NULL)
         return NULL;
     /* Set clixon config file - reuse the one in the main installation */
     clicon_option_str_set(h, "CLICON_CONFIGFILE",
@@ -137,15 +139,16 @@ clixon_client_init(const char *config_file)
  * @see clixon_client_init
  */
 int
-clixon_client_terminate(clicon_handle h)
+clixon_client_terminate(clixon_handle h)
 {
-    clicon_debug(1, "%s", __FUNCTION__);
-    clicon_handle_exit(h);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_handle_exit(h);
     return 0;
 }
 
 /*! Send a lock request (internal)
  *
+ * @param[in]  h      Clixon handle
  * @param[in]  sock   Open socket
  * @param[in]  descr  Description of peer for logging
  * @param[in]  lock   0: unlock, 1: lock  
@@ -154,10 +157,11 @@ clixon_client_terminate(clicon_handle h)
  * @retval    -1      Error
  */
 int
-clixon_client_lock(int         sock,
-                   const char *descr,
-                   const int   lock,
-                   const char *db)
+clixon_client_lock(clixon_handle h,
+                   int           sock,
+                   const char   *descr,
+                   const int     lock,
+                   const char   *db)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -165,18 +169,18 @@ clixon_client_lock(int         sock,
     cbuf  *msg = NULL;
     cbuf  *msgret = NULL;
     int    eof = 0;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (db == NULL){
-        clicon_err(OE_XML, EINVAL, "Expected db");
+        clixon_err(OE_XML, EINVAL, "Expected db");
         goto done;
     }
     if ((msg = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     if ((msgret = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     cprintf(msg, "<rpc xmlns=\"%s\" %s>"
@@ -188,19 +192,19 @@ clixon_client_lock(int         sock,
         goto done;
     if (eof){
         close(sock);
-        clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+        clixon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
         goto done;
     }
     if (clixon_xml_parse_string(cbuf_get(msgret), YB_NONE, NULL, &xret, NULL) < 0)
         goto done;
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL){
         xd = xml_parent(xd); /* point to rpc-reply */
-        clixon_netconf_error(xd, "Get config", NULL);
+        clixon_err_netconf(h, OE_NETCONF, 0, xd, "Get configuration");
         goto done; /* Not fatal */
     }
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (xret)
         xml_free(xret);
     if (msg)
@@ -225,10 +229,10 @@ clixon_client_hello(int         sock,
 {
     int   retval = -1;
     cbuf *msg = NULL;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((msg = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     //    cprintf(msg, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -242,7 +246,7 @@ clixon_client_hello(int         sock,
         goto done;
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (msg)
         cbuf_free(msg);
     return retval;
@@ -251,7 +255,7 @@ clixon_client_hello(int         sock,
 /*!
  */
 static int
-clixon_client_connect_netconf(clicon_handle                h,
+clixon_client_connect_netconf(clixon_handle                h,
                               struct clixon_client_handle *cch)
 {
     int         retval = -1;
@@ -263,17 +267,17 @@ clixon_client_connect_netconf(clicon_handle                h,
     char        dbgstr[8];
 
     nr = 7;
-    if (clicon_debug_get() != 0)
+    if (clixon_debug_get() != 0)
         nr += 2;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     i = 0;
     if ((netconf_bin = getenv("CLIXON_NETCONF_BIN")) == NULL)
         netconf_bin = CLIXON_NETCONF_BIN;
     if (stat(netconf_bin, &st) < 0){
-        clicon_err(OE_NETCONF, errno, "netconf binary %s. Set with CLIXON_NETCONF_BIN=", 
+        clixon_err(OE_NETCONF, errno, "netconf binary %s. Set with CLIXON_NETCONF_BIN=",
                    netconf_bin);
         goto done;
     }
@@ -283,14 +287,14 @@ clixon_client_connect_netconf(clicon_handle                h,
     argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
     argv[i++] = "-l"; /* log to syslog */
     argv[i++] = "s";
-    if (clicon_debug_get() != 0){
+    if (clixon_debug_get() != 0){
         argv[i++] = "-D";
-        snprintf(dbgstr, sizeof(dbgstr)-1, "%d", clicon_debug_get());
+        snprintf(dbgstr, sizeof(dbgstr)-1, "%d", clixon_debug_get());
         argv[i++] = dbgstr;
     }
     argv[i++] = NULL;
     assert(i==nr);
-    if (clixon_proc_socket(argv, SOCK_DGRAM, &cch->cch_pid, &cch->cch_socket) < 0){
+    if (clixon_proc_socket(h, argv, SOCK_DGRAM, &cch->cch_pid, &cch->cch_socket) < 0){
         goto done;
     }
     retval = 0;
@@ -301,7 +305,7 @@ clixon_client_connect_netconf(clicon_handle                h,
 /*!
  */
 static int
-clixon_client_connect_ssh(clicon_handle                h,
+clixon_client_connect_ssh(clixon_handle                h,
                           struct clixon_client_handle *cch,
                           const char                  *dest)
 {
@@ -312,15 +316,15 @@ clixon_client_connect_ssh(clicon_handle                h,
     char       *ssh_bin = SSH_BIN;
     struct stat st = {0,};
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     nr = 5;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
-        clicon_err(OE_UNIX, errno, "calloc");
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
     i = 0;
     if (stat(ssh_bin, &st) < 0){
-        clicon_err(OE_NETCONF, errno, "ssh binary %s", ssh_bin);
+        clixon_err(OE_NETCONF, errno, "ssh binary %s", ssh_bin);
         goto done;
     }
     argv[i++] = ssh_bin;
@@ -330,8 +334,8 @@ clixon_client_connect_ssh(clicon_handle                h,
     argv[i++] = NULL;
     assert(i==nr);
     for (i=0;i<nr;i++)
-        clicon_debug(1, "%s: argv[%d]:%s", __FUNCTION__, i, argv[i]);
-    if (clixon_proc_socket(argv, SOCK_STREAM, &cch->cch_pid, &cch->cch_socket) < 0){
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s: argv[%d]:%s", __FUNCTION__, i, argv[i]);
+    if (clixon_proc_socket(h, argv, SOCK_STREAM, &cch->cch_pid, &cch->cch_socket) < 0){
         goto done;
     }
     retval = 0;
@@ -349,21 +353,22 @@ clixon_client_connect_ssh(clicon_handle                h,
  * @see clixon_client_disconnect  Close the socket returned here
  */
 clixon_client_handle
-clixon_client_connect(clicon_handle      h,
+clixon_client_connect(clixon_handle      h,
                       clixon_client_type socktype,
                       const char        *dest)
 {
     struct clixon_client_handle *cch = NULL;
     size_t                       sz = sizeof(struct clixon_client_handle);
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((cch = malloc(sz)) == NULL){
-        clicon_err(OE_NETCONF, errno, "malloc");
+        clixon_err(OE_NETCONF, errno, "malloc");
         goto done;
     }
     memset(cch, 0, sz);
     cch->cch_magic   = CLIXON_CLIENT_MAGIC;
     cch->cch_type = socktype;
+    cch->cch_h = h;
     switch (socktype){
     case CLIXON_CLIENT_IPC:
         if (clicon_rpc_connect(h, &cch->cch_socket) < 0)
@@ -378,13 +383,13 @@ clixon_client_connect(clicon_handle      h,
         if (clixon_client_connect_ssh(h, cch, dest) < 0)
             goto err;
 #else
-        clicon_err(OE_UNIX, 0, "No ssh bin");
+        clixon_err(OE_UNIX, 0, "No ssh bin");
         goto done;
 #endif
         break;
     } /* switch */
  done:
-    clicon_debug(1, "%s retval:%p", __FUNCTION__, cch);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%p", __FUNCTION__, cch);
     return cch;
  err:
     if (cch)
@@ -406,10 +411,10 @@ clixon_client_disconnect(clixon_client_handle ch)
 {
     int                          retval = -1;
     struct clixon_client_handle *cch = chandle(ch);
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (cch == NULL){
-        clicon_err(OE_XML, EINVAL, "Expected cch handle");
+        clixon_err(OE_XML, EINVAL, "Expected cch handle");
         goto done;
     }
     /* unlock (if locked) */
@@ -447,7 +452,7 @@ clixon_xml_bottom(cxobj  *xtop,
     cxobj *x;
     cxobj *xp;
     cxobj *xc = NULL;
-    
+
     xp = xtop;
     while (xp != NULL){
         /* Find child, if many, one which is not a key, if any */
@@ -469,6 +474,7 @@ clixon_xml_bottom(cxobj  *xtop,
 
 /*! Internal function to construct a get-config and query a value from the backend
  *
+ * @param[in]  h         Clixon handle
  * @param[in]  sock      Socket
  * @param[in]  descr     Description of peer for logging
  * @param[in]  namespace Default namespace used for non-prefixed entries in xpath. (Alt use nsc)
@@ -479,7 +485,8 @@ clixon_xml_bottom(cxobj  *xtop,
  * @note configurable netconf framing type, now hardwired to 0
  */
 static int
-clixon_client_get_xdata(int         sock,
+clixon_client_get_xdata(clixon_handle h,
+                        int         sock,
                         const char *descr,
                         const char *namespace,
                         const char *xpath,
@@ -491,16 +498,16 @@ clixon_client_get_xdata(int         sock,
     cbuf        *msg = NULL;
     cbuf        *msgret = NULL;
     const char  *db = "running";
-    cvec        *nsc = NULL; 
+    cvec        *nsc = NULL;
     int          eof = 0;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if ((msg = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     if ((msgret = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     cprintf(msg, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
@@ -528,14 +535,14 @@ clixon_client_get_xdata(int         sock,
         goto done;
     if (eof){
         close(sock);
-        clicon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+        clixon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
         goto done;
     }
     if (clixon_xml_parse_string(cbuf_get(msgret), YB_NONE, NULL, &xret, NULL) < 0)
         goto done;
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL){
         xd = xml_parent(xd); /* point to rpc-reply */
-        clixon_netconf_error(xd, "Get config", NULL);
+        clixon_err_netconf(h, OE_NETCONF, 0, xd, "Get configuration");
         goto done; /* Not fatal */
     }
     else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
@@ -549,7 +556,7 @@ clixon_client_get_xdata(int         sock,
     *xdata = xd;
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (xret)
         xml_free(xret);
     if (msg)
@@ -561,6 +568,7 @@ clixon_client_get_xdata(int         sock,
 
 /*! Generic get value of body
  *
+ * @param[in]  h         Clixon handle
  * @param[in]  sock      Open socket
  * @param[in]  descr     Description of peer for logging
  * @param[in]  namespace Default namespace used for non-prefixed entries in xpath.
@@ -570,7 +578,8 @@ clixon_client_get_xdata(int         sock,
  * @retval    -1         Error
  */
 static int
-clixon_client_get_body_val(int         sock,
+clixon_client_get_body_val(clixon_handle h,
+                           int         sock,
                            const char *descr,
                            const char *namespace,
                            const char *xpath,
@@ -579,33 +588,33 @@ clixon_client_get_body_val(int         sock,
     int    retval = -1;
     cxobj *xdata = NULL;
     cxobj *xobj = NULL;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     if (val == NULL){
-        clicon_err(OE_XML, EINVAL, "Expected val");
+        clixon_err(OE_XML, EINVAL, "Expected val");
         goto done;
     }
-    if (clixon_client_get_xdata(sock, descr, namespace, xpath, &xdata) < 0)
+    if (clixon_client_get_xdata(h, sock, descr, namespace, xpath, &xdata) < 0)
         goto done;
     if (xdata == NULL){
-        clicon_err(OE_XML, EINVAL, "No xml obj found"); 
+        clixon_err(OE_XML, EINVAL, "No xml obj found");
         goto done;
     }
     /* Is this an error, maybe an "unset" retval ? */
     if (xml_child_nr_type(xdata, CX_ELMNT) == 0){
-        clicon_err(OE_XML, EINVAL, "Value not found"); 
+        clixon_err(OE_XML, EINVAL, "Value not found");
         goto done;
     }
     if (clixon_xml_bottom(xdata, &xobj) < 0)
         goto done;
     if (xobj == NULL){
-        clicon_err(OE_XML, EINVAL, "No xml value found"); 
+        clixon_err(OE_XML, EINVAL, "No xml value found");
         goto done;
     }
     *val = xml_body(xobj);
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -630,17 +639,17 @@ clixon_client_get_bool(clixon_client_handle ch,
     char                        *reason = NULL;
     int                          ret;
     uint8_t                      val0=0;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_body_val(cch->cch_socket, cch->cch_descr,
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    if (clixon_client_get_body_val(cch->cch_h, cch->cch_socket, cch->cch_descr,
                                    namespace, xpath, &val) < 0)
         goto done;
     if ((ret = parse_bool(val, &val0, &reason)) < 0){
-        clicon_err(OE_XML, errno, "parse_bool"); 
+        clixon_err(OE_XML, errno, "parse_bool");
         goto done;
     }
     if (ret == 0){
-        clicon_err(OE_XML, EINVAL, "%s", reason); 
+        clixon_err(OE_XML, EINVAL, "%s", reason);
         goto done;
     }
     *rval = (int)val0;
@@ -671,9 +680,9 @@ clixon_client_get_str(clixon_client_handle ch,
     int                          retval = -1;
     struct clixon_client_handle *cch = chandle(ch);
     char                        *val = NULL;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_body_val(cch->cch_socket, cch->cch_descr,
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    if (clixon_client_get_body_val(cch->cch_h, cch->cch_socket, cch->cch_descr,
                                    namespace, xpath, &val) < 0)
         goto done;
     strncpy(rval, val, n-1);
@@ -703,17 +712,17 @@ clixon_client_get_uint8(clixon_client_handle ch,
     char                        *val = NULL;
     char                        *reason = NULL;
     int                          ret;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_body_val(cch->cch_socket, cch->cch_descr,
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    if (clixon_client_get_body_val(cch->cch_h, cch->cch_socket, cch->cch_descr,
                                    namespace, xpath, &val) < 0)
         goto done;
     if ((ret = parse_uint8(val, rval, &reason)) < 0){
-        clicon_err(OE_XML, errno, "parse_bool"); 
+        clixon_err(OE_XML, errno, "parse_bool");
         goto done;
     }
     if (ret == 0){
-        clicon_err(OE_XML, EINVAL, "%s", reason); 
+        clixon_err(OE_XML, EINVAL, "%s", reason);
         goto done;
     }
     retval = 0;
@@ -743,17 +752,17 @@ clixon_client_get_uint16(clixon_client_handle ch,
     char                        *val = NULL;
     char                        *reason = NULL;
     int                          ret;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_body_val(cch->cch_socket, cch->cch_descr,
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    if (clixon_client_get_body_val(cch->cch_h, cch->cch_socket, cch->cch_descr,
                                    namespace, xpath, &val) < 0)
         goto done;
     if ((ret = parse_uint16(val, rval, &reason)) < 0){
-        clicon_err(OE_XML, errno, "parse_bool"); 
+        clixon_err(OE_XML, errno, "parse_bool");
         goto done;
     }
     if (ret == 0){
-        clicon_err(OE_XML, EINVAL, "%s", reason); 
+        clixon_err(OE_XML, EINVAL, "%s", reason);
         goto done;
     }
     retval = 0;
@@ -784,25 +793,25 @@ clixon_client_get_uint32(clixon_client_handle ch,
     char                        *reason = NULL;
     int                          ret;
 
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_body_val(cch->cch_socket, cch->cch_descr,
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    if (clixon_client_get_body_val(cch->cch_h, cch->cch_socket, cch->cch_descr,
                                    namespace, xpath, &val) < 0)
         goto done;
     if (val == NULL){
-        clicon_err(OE_XML, EFAULT, "val is NULL"); 
+        clixon_err(OE_XML, EFAULT, "val is NULL");
         goto done;
     }
     if ((ret = parse_uint32(val, rval, &reason)) < 0){
-        clicon_err(OE_XML, errno, "parse_bool"); 
+        clixon_err(OE_XML, errno, "parse_bool");
         goto done;
     }
     if (ret == 0){
-        clicon_err(OE_XML, EINVAL, "%s", reason); 
+        clixon_err(OE_XML, EINVAL, "%s", reason);
         goto done;
     }
     retval = 0;
  done:
-    clicon_debug(1, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
     if (reason)
         free(reason);
     return retval;
@@ -828,17 +837,17 @@ clixon_client_get_uint64(clixon_client_handle  ch,
     char                        *val = NULL;
     char                        *reason = NULL;
     int                          ret;
-    
-    clicon_debug(1, "%s", __FUNCTION__);
-    if (clixon_client_get_body_val(cch->cch_socket, cch->cch_descr,
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    if (clixon_client_get_body_val(cch->cch_h, cch->cch_socket, cch->cch_descr,
                                    namespace, xpath, &val) < 0)
         goto done;
     if ((ret = parse_uint64(val, rval, &reason)) < 0){
-        clicon_err(OE_XML, errno, "parse_bool"); 
+        clixon_err(OE_XML, errno, "parse_bool");
         goto done;
     }
     if (ret == 0){
-        clicon_err(OE_XML, EINVAL, "%s", reason); 
+        clixon_err(OE_XML, EINVAL, "%s", reason);
         goto done;
     }
     retval = 0;

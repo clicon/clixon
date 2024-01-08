@@ -31,7 +31,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>${MIB_GENERATED_YANG_DIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/var/tmp/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_SNMP_AGENT_SOCK>unix:$SOCK</CLICON_SNMP_AGENT_SOCK>
   <CLICON_SNMP_MIB>SNMP-NOTIFICATION-MIB</CLICON_SNMP_MIB>
@@ -90,7 +90,7 @@ function testinit(){
         sudo killall -q clixon_snmp
 
         new "Starting clixon_snmp"
-        start_snmp $cfg &
+        start_snmp $cfg
     fi
 
     new "wait snmp"

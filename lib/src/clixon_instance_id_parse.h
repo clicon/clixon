@@ -40,7 +40,7 @@
 /*
  * Types
  */
-struct clixon_instance_id_yacc { 
+struct clixon_instance_id_yacc {
     const char   *iy_name;         /* Name of syntax (for error string) */
     int           iy_linenum;      /* Number of \n in parsed buffer */
     char         *iy_parse_string; /* original (copy of) parse string */

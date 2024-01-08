@@ -52,8 +52,8 @@
 /*
  * Prototypes
  */
-int api_path_is_restconf(clicon_handle h);
-int api_well_known(clicon_handle h, void *req);
-int api_root_restconf(clicon_handle h, void *req, cvec *qvec);
+int api_path_is_restconf(clixon_handle h);
+int api_well_known(clixon_handle h, void *req);
+int api_root_restconf(clixon_handle h, void *req, cvec *qvec);
 
 #endif /* _RESTCONF_ROOT_H_ */

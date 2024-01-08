@@ -32,6 +32,9 @@
 
   ***** END LICENSE BLOCK *****
 
+ * @see http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ *  and RFC 7951 JSON Encoding of Data Modeled with YANG
+ *  and RFC 8259 The JavaScript Object Notation (JSON) Data Interchange Format
  */
 
 %{
@@ -42,6 +45,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#include <sys/param.h>
 #include <netinet/in.h>
 
 #include "clixon_json_parse.tab.h" /* generated */
@@ -51,9 +55,11 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_string.h"
 #include "clixon_yang.h"
-#include "clixon_log.h"
 #include "clixon_xml.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_json_parse.h"
 
 /* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
@@ -66,7 +72,7 @@
 #define _JY ((clixon_json_yacc *)_yy)
 
 #undef clixon_json_parsewrap
-int 
+int
 clixon_json_parsewrap(void)
 {
     return 1;
@@ -78,16 +84,18 @@ digit [0-9]
 integer {digit}+
 real ({digit}+[.]{digit}*)|({digit}*[.]{digit}+)
 exp ({integer}|{real})[eE][+-]{integer}
+hex [A-Fa-f0-9]
 
 %x START
 %s STRING
 %s ESCAPE
+%s HEXDIG
 
 %%
 
-<START>[ \t]            
+<START>[ \t]
 <START>\n               { _JY->jy_linenum++; }
-<START>\r               
+<START>\r
 <START><<EOF>>          { return J_EOF; }
 <START>\{               { return *yytext; }
 <START>\}               { return *yytext; }
@@ -103,14 +111,31 @@ exp ({integer}|{real})[eE][+-]{integer}
 <START>.                { return -1; }
 <STRING>\"              { BEGIN(START); return J_DQ; }
 <STRING>\\              { BEGIN(ESCAPE); }
-<STRING>\n              { _JY->jy_linenum++; 
-                          clixon_json_parselval.string = strdup(yytext); 
-                          return J_CHAR;}
-<STRING>.               { clixon_json_parselval.string = strdup(yytext);
-                          return J_CHAR;}
-<ESCAPE>.               { BEGIN(STRING); 
-                          clixon_json_parselval.string = strdup(yytext); 
-                          return J_CHAR; }
+<STRING>[^\"\\\b\f\n\r\t]+ { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
+<STRING>\n              { return -1; }
+<STRING>.               { return -1; }
+<ESCAPE>\"              { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
+<ESCAPE>\\              { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
+<ESCAPE>\/              { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
+<ESCAPE>b               { BEGIN(STRING); clixon_json_parselval.string = "\b";   return J_STRING; }
+<ESCAPE>f               { BEGIN(STRING); clixon_json_parselval.string = "\f";   return J_STRING; }
+<ESCAPE>n               { BEGIN(STRING); clixon_json_parselval.string = "\n";   return J_STRING; }
+<ESCAPE>r               { BEGIN(STRING); clixon_json_parselval.string = "\r";   return J_STRING; }
+<ESCAPE>t               { BEGIN(STRING); clixon_json_parselval.string = "\t";   return J_STRING; }
+<ESCAPE>u               { BEGIN(HEXDIG); }
+<ESCAPE>\n              { return -1; }
+<ESCAPE>.               { return -1; }
+<HEXDIG>{hex}{hex}{hex}{hex} {
+                               char buf[5] = {0, };
+                               BEGIN(STRING);
+                               if (clixon_unicode2utf8(yytext, buf, 5) < 0)
+                                  return -1;
+                               strncpy(yytext, buf, 5);
+                               clixon_json_parselval.string = yytext;
+                               return J_STRING;
+                              }
+<HEXDIG>\n              { return -1;}
+<HEXDIG>.               { return -1; }
 
 %%
 
@@ -124,7 +149,7 @@ json_scan_init(clixon_json_yacc *jy)
   jy->jy_lexbuf = yy_scan_string (jy->jy_parse_string);
 #if 1 /* XXX: just to use unput to avoid warning  */
   if (0)
-    yyunput(0, ""); 
+    yyunput(0, "");
 #endif
 
   return 0;

@@ -28,7 +28,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_YANG_LIBRARY>true</CLICON_YANG_LIBRARY>
 </clixon-config>
@@ -87,7 +87,7 @@ expecteof_netconf "$clixon_netconf -qef $cfg -o CLICON_NETCONF_BASE_CAPABILITY=1
 rpc=$(cat <<EOF
 <?xml version="1.0" encoding="UTF-8"?><hello $DEFAULTNS><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>
 #85
-<rpc xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="42"><get-config><sou
+<rpc xmlns="${BASENS}" message-id="42"><get-config><sou
 #44
 rce><candidate/></source></get-config></rpc>
 ##

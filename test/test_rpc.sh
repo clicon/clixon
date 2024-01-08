@@ -28,8 +28,8 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   $RESTCONFIG
 </clixon-config>
@@ -293,21 +293,21 @@ new "netconf kill-session missing session-id mandatory"
 expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><kill-session/></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>session-id</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of kill-session in module ietf-netconf</error-message></rpc-error></rpc-reply>"
 
 new "netconf edit-config ok"
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><target><candidate/></target><config/></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config xmlns=\"${BASENS}\"><target><candidate/></target><config/></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 if ! $YANG_UNKNOWN_ANYDATA ; then
 new "netconf edit-config extra arg: should fail"
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><target><candidate/></target><extra/><config/></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: extra with parent: edit-config in namespace: urn:ietf:params:xml:ns:netconf:base:1.0</error-message></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config xmlns=\"${BASENS}\"><target><candidate/></target><extra/><config/></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>extra</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: extra with parent: edit-config in namespace: ${BASENS}</error-message></rpc-error></rpc-reply>"
 fi
 
 new "netconf edit-config empty target: should fail"
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><target/><config/></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>missing-choice</error-app-tag><error-path>/rpc/edit-config/target</error-path><error-info><missing-choice xmlns=\"urn:ietf:params:xml:ns:yang:1\">config-target</missing-choice></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config xmlns=\"${BASENS}\"><target/><config/></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>missing-choice</error-app-tag><error-path>/rpc/edit-config/target</error-path><error-info><missing-choice xmlns=\"urn:ietf:params:xml:ns:yang:1\">config-target</missing-choice></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>"
 
 new "netconf edit-config missing target: should fail"
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><config/></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>target</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of edit-config in module ietf-netconf</error-message></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config xmlns=\"${BASENS}\"><config/></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>target</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of edit-config in module ietf-netconf</error-message></rpc-error></rpc-reply>"
 
 new "netconf edit-config missing config: should fail"
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><target><candidate/></target></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>missing-choice</error-app-tag><error-path>/rpc/edit-config</error-path><error-info><missing-choice xmlns=\"urn:ietf:params:xml:ns:yang:1\">edit-content</missing-choice></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config xmlns=\"${BASENS}\"><target><candidate/></target></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>missing-choice</error-app-tag><error-path>/rpc/edit-config</error-path><error-info><missing-choice xmlns=\"urn:ietf:params:xml:ns:yang:1\">edit-content</missing-choice></error-info><error-severity>error</error-severity></rpc-error></rpc-reply>"
 
 # Negative errors (namespace/module missing)
 new "netconf wrong rpc namespace: should fail"
@@ -331,7 +331,7 @@ if [ $r -ne 0 ]; then
     err "0" "$r"
 fi
 
-for expect in "<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">mandatory</x><y xmlns=\"urn:example:clixon\">42</y>" '<u0 xmlns=\"urn:example:clixon\">' '<uk>foo</uk></u0><u0 xmlns="urn:example:clixon"><uk>bar</uk></u0>' "</rpc-reply>"; do
+for expect in "<rpc-reply $DEFAULTNS><x xmlns=\"urn:example:clixon\">mandatory</x><y xmlns=\"urn:example:clixon\">42</y>" '<u0 xmlns=\"urn:example:clixon\"' '<uk>foo</uk></u0><u0 xmlns="urn:example:clixon"><uk>bar</uk></u0>' "</rpc-reply>"; do
     new "expect:$expect"
     match=`echo $ret | grep --null -Eo "$expect"`
     if [ -z "$match" ]; then

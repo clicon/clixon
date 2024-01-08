@@ -10,6 +10,5 @@ $MAKE clean
 $MAKE -j10
 sudo $MAKE install
 (cd example; $MAKE)
-(cd util; $MAKE)
 (cd example; sudo $MAKE install)
-(cd util; sudo $MAKE install)
+

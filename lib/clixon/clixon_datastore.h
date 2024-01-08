@@ -43,39 +43,39 @@
  * API
  */
 /* Internal functions */
-int xmldb_db2file(clicon_handle h, const char *db, char **filename);
+int xmldb_db2file(clixon_handle h, const char *db, char **filename);
 
 /* API */
-int xmldb_connect(clicon_handle h);
-int xmldb_disconnect(clicon_handle h);
+int xmldb_connect(clixon_handle h);
+int xmldb_disconnect(clixon_handle h);
  /* in clixon_datastore_read.[ch] */
-int xmldb_get(clicon_handle h, const char *db, cvec *nsc, char *xpath, cxobj **xtop);
-int xmldb_get0(clicon_handle h, const char *db, yang_bind yb,
+int xmldb_get(clixon_handle h, const char *db, cvec *nsc, char *xpath, cxobj **xtop);
+int xmldb_get0(clixon_handle h, const char *db, yang_bind yb,
                cvec *nsc, const char *xpath, int copy, withdefaults_type wdef,
-               cxobj **xtop, modstate_diff_t *msd, cxobj **xerr); 
-int xmldb_get0_clear(clicon_handle h, cxobj *x);
-int xmldb_get0_free(clicon_handle h, cxobj **xp);
-int xmldb_put(clicon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret); /* in clixon_datastore_write.[ch] */
-int xmldb_copy(clicon_handle h, const char *from, const char *to);
-int xmldb_lock(clicon_handle h, const char *db, uint32_t id);
-int xmldb_unlock(clicon_handle h, const char *db);
-int xmldb_unlock_all(clicon_handle h, uint32_t id);
-uint32_t xmldb_islocked(clicon_handle h, const char *db);
-int xmldb_lock_timestamp(clicon_handle h, const char *db, struct timeval *tv);
-int xmldb_exists(clicon_handle h, const char *db);
-int xmldb_clear(clicon_handle h, const char *db);
-int xmldb_delete(clicon_handle h, const char *db);
-int xmldb_create(clicon_handle h, const char *db);
+               cxobj **xtop, modstate_diff_t *msd, cxobj **xerr);
+int xmldb_get0_clear(clixon_handle h, cxobj *x);
+int xmldb_get0_free(clixon_handle h, cxobj **xp);
+int xmldb_put(clixon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret); /* in clixon_datastore_write.[ch] */
+int xmldb_copy(clixon_handle h, const char *from, const char *to);
+int xmldb_lock(clixon_handle h, const char *db, uint32_t id);
+int xmldb_unlock(clixon_handle h, const char *db);
+int xmldb_unlock_all(clixon_handle h, uint32_t id);
+uint32_t xmldb_islocked(clixon_handle h, const char *db);
+int xmldb_lock_timestamp(clixon_handle h, const char *db, struct timeval *tv);
+int xmldb_exists(clixon_handle h, const char *db);
+int xmldb_clear(clixon_handle h, const char *db);
+int xmldb_delete(clixon_handle h, const char *db);
+int xmldb_create(clixon_handle h, const char *db);
 /* utility functions */
-int xmldb_db_reset(clicon_handle h, const char *db);
+int xmldb_db_reset(clixon_handle h, const char *db);
 
-cxobj *xmldb_cache_get(clicon_handle h, const char *db);
+cxobj *xmldb_cache_get(clixon_handle h, const char *db);
 
-int xmldb_modified_get(clicon_handle h, const char *db);
-int xmldb_modified_set(clicon_handle h, const char *db, int value);
-int xmldb_empty_get(clicon_handle h, const char *db);
-int xmldb_dump(clicon_handle h, FILE *f, cxobj *xt);
-int xmldb_print(clicon_handle h, FILE *f);
-int xmldb_rename(clicon_handle h, const char *db, const char *newdb, const char *suffix);
+int xmldb_modified_get(clixon_handle h, const char *db);
+int xmldb_modified_set(clixon_handle h, const char *db, int value);
+int xmldb_empty_get(clixon_handle h, const char *db);
+int xmldb_dump(clixon_handle h, FILE *f, cxobj *xt);
+int xmldb_print(clixon_handle h, FILE *f);
+int xmldb_rename(clixon_handle h, const char *db, const char *newdb, const char *suffix);
 
 #endif /* _CLIXON_DATASTORE_H */

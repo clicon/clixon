@@ -45,6 +45,7 @@ extern "C" {
  * Types 
  */
 /*! RESTCONF media types 
+ *
  * @see http_media_map
  * @note DUPLICATED in restconf_lib.h
  */
@@ -68,12 +69,12 @@ const char *restconf_code2reason(int code);
 const restconf_media restconf_media_str2int(char *media);
 const char *restconf_media_int2str(restconf_media media);
 int   get_user_cookie(char *cookiestr, char  *attribute, char **val);
-int   restconf_terminate(clicon_handle h);
+int   restconf_terminate(clixon_handle h);
 int   restconf_insert_attributes(cxobj *xdata, cvec *qvec);
-int   restconf_main_extension_cb(clicon_handle h, yang_stmt *yext, yang_stmt *ys);
+int   restconf_main_extension_cb(clixon_handle h, yang_stmt *yext, yang_stmt *ys);
 /* also in restconf_handle.h */
-char *restconf_param_get(clicon_handle h, const char *param);
-int   restconf_param_set(clicon_handle h, const char *param, char *val);
+char *restconf_param_get(clixon_handle h, const char *param);
+int   restconf_param_set(clixon_handle h, const char *param, char *val);
 
 #endif /* _CLIXON_RESTCONF_H_ */
 

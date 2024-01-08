@@ -49,7 +49,7 @@ AC_CONFIG_SRCDIR([lib/clixon/clixon.h.in])
 AC_CONFIG_AUX_DIR(config-aux)
 
 CLIXON_VERSION_MAJOR="6"
-CLIXON_VERSION_MINOR="4"
+CLIXON_VERSION_MINOR="6"
 CLIXON_VERSION_PATCH="0"
 CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
 
@@ -122,11 +122,14 @@ AC_SUBST(YANG_STANDARD_DIR)
 # SNMP tests require generated YANGs from MIBs
 AC_SUBST(MIB_GENERATED_YANG_DIR)
 # Used in expansion in, e.g., example/main/example.xml.in
-AC_SUBST(SYSCONFDIR)
+AC_SUBST(BINDIR)
 AC_SUBST(DATADIR)
+AC_SUBST(INCLUDEDIR)
 AC_SUBST(LIBDIR)
 AC_SUBST(LIBEXECDIR)
 AC_SUBST(LOCALSTATEDIR)
+AC_SUBST(SBINDIR)
+AC_SUBST(SYSCONFDIR)
 
 #
 AC_PROG_CC()
@@ -148,9 +151,9 @@ if test "$LEX" = ":"; then
    AC_MSG_ERROR(CLIXON does not find lex or flex.)
 fi
 
-# SSH binary path
+# SSH binary path for client and test
 AC_PATH_PROG(SSH_BIN, ssh)
-AC_DEFINE_UNQUOTED(SSH_BIN, "$SSH_BIN", [SSH binary])
+AC_DEFINE_UNQUOTED(SSH_BIN, "${SSH_BIN}", [SSH binary])
 
 # For cli pipe output functions
 AC_PROG_GREP
@@ -180,6 +183,17 @@ SH_SUFFIX=".so"
 # Postfix for static libs 
 LIBSTATIC_SUFFIX=".a"
 
+# Expand for easy replacement in example/main/example.xml.in
+# Special case is $libdir, which is composed from $exec_prefix
+BINDIR=`eval echo $bindir`
+SBINDIR=`eval echo $sbindir`
+SYSCONFDIR=`eval echo $sysconfdir`
+DATADIR=`eval echo \`eval echo $datadir\``
+INCLUDEDIR=`eval echo $includedir`
+LIBDIR=`eval echo \`eval echo $libdir\``
+LIBEXECDIR=`eval echo $libexecdir`
+LOCALSTATEDIR=`eval echo $localstatedir`
+
 # This is for cligen
 AC_ARG_WITH([cligen], [AS_HELP_STRING([--with-cligen=dir], [Use CLIGEN installation in this dir])], [
   CLIGEN_DIR="$withval"
@@ -187,8 +201,8 @@ AC_ARG_WITH([cligen], [AS_HELP_STRING([--with-cligen=dir], [Use CLIGEN installat
 AC_SUBST(CLIGEN_DIR)
 if test -n "${CLIGEN_DIR}" -a -d "${CLIGEN_DIR}"; then
     echo "Using CLIGEN here: ${CLIGEN_DIR}"
-    CPPFLAGS="-I${CLIGEN_DIR}$(eval echo ${includedir}) ${CPPFLAGS}"
-    LDFLAGS="-L${CLIGEN_DIR}$(eval echo ${libdir}) ${LDFLAGS}"
+    CPPFLAGS="-I${CLIGEN_DIR}/include ${CPPFLAGS}"
+    LDFLAGS="-L${CLIGEN_DIR}/lib ${LDFLAGS}"
 fi
 
 # Disable/enable yang patch
@@ -328,7 +342,6 @@ if test "$enable_netsnmp" = "yes"; then
    AC_CHECK_LIB(netsnmpagent, init_agent)	
    AC_CHECK_HEADERS(net-snmp/net-snmp-config.h,[], AC_MSG_ERROR([snmp is missing]))
 
-
    # MIB_GENERATED_YANG_DIR is where clixon assumes generated YANGs from MIBs are stored
    # This is NOT installed by Clixon and is not needed for core system
    # However, it is required by SNMP tests.
@@ -346,6 +359,14 @@ CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
 AC_ARG_WITH([configfile],
 	    [AS_HELP_STRING([--with-configfile=FILE],[Set default path to config file])],
 	    [CLIXON_DEFAULT_CONFIG="$withval"],)
+
+# Default location for config file
+AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
+
+AC_DEFINE_UNQUOTED(CLIXON_CONFIG_BINDIR, "${BINDIR}", [Pass-through $bindir])
+AC_DEFINE_UNQUOTED(CLIXON_CONFIG_LOCALSTATEDIR, "${LOCALSTATEDIR}", [Pass-through $localstatedir])
+AC_DEFINE_UNQUOTED(CLIXON_CONFIG_SBINDIR, "${SBINDIR}", [Pass-through $sbindir])
+AC_DEFINE_UNQUOTED(CLIXON_CONFIG_SYSCONFDIR, "${SYSCONFDIR}", [Pass-through $sysconfdir])
 
 AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(dl, dlopen)
@@ -410,22 +431,31 @@ AC_ARG_WITH(yang-standard-dir,
 	    )
 AC_MSG_RESULT(Standard YANG files expected to be in ${YANG_STANDARD_DIR})	
 
-# Default location for config file
-AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
+# who we run as in our examples and tests
+CLICON_USER="clicon"
+AC_ARG_WITH([clicon-user], [AS_HELP_STRING([--with-clicon-user=user], [Run as this user in configuration files])], [
+  CLICON_USER="$withval"
+])
+AC_SUBST(CLICON_USER)
+if test -n "${CLICON_USER}"; then
+    echo "Using CLICON_USER here: ${CLICON_USER}"
+fi
+
+CLICON_GROUP="clicon"
+AC_ARG_WITH([clicon-group], [AS_HELP_STRING([--with-clicon-group=group], [Run as this group in configuration files])], [
+  CLICON_GROUP="$withval"
+])
+AC_SUBST(CLICON_GROUP)
+if test -n "${CLICON_GROUP}"; then
+    echo "Using CLICON_GROUP here: ${CLICON_GROUP}"
+fi
 
 # Dummy to disable native language support (nls) to remove warnings in buildroot
 AC_ARG_ENABLE(nls)
 
 AH_BOTTOM([#include <clixon_custom.h>])
 
-# Expand for easy replacement in example/main/example.xml.in
-# Special case is $libdir, which is composed from $exec_prefix
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
-SYSCONFDIR=`eval echo $sysconfdir`
-DATADIR=`eval echo \`eval echo $datadir\``
-LIBDIR=`eval echo $libdir`
-LIBEXECDIR=`eval echo $libexecdir`
-LOCALSTATEDIR=`eval echo $localstatedir`
 
 AC_CONFIG_FILES([Makefile
 	  lib/Makefile
@@ -447,7 +477,6 @@ AC_CONFIG_FILES([Makefile
     	  docker/clixon-dev/Makefile
     	  docker/example/Makefile	  
   	  docker/test/Makefile
-  	  util/Makefile 
 	  yang/Makefile
   	  yang/clixon/Makefile
     	  yang/mandatory/Makefile

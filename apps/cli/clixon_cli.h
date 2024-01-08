@@ -50,19 +50,20 @@ extern "C" {
  */
 
 /*! Called when plugin loaded. Only mandadory callback. All others optional 
+ *
  * @see plginit_t
  */
-int plugin_init(clicon_handle h);
+int plugin_init(clixon_handle h);
 
 /* Called when backend started with cmd-line arguments from daemon call. 
  * @see plgstart_t
  */
-int plugin_start(clicon_handle h, int argc, char **argv);
+int plugin_start(clixon_handle h, int argc, char **argv);
 
 /* Called just before plugin unloaded. 
  * @see plgexit_t
  */
-int plugin_exit(clicon_handle h);
+int plugin_exit(clixon_handle h);
 
 #endif  /* _CLIXON_CLI_H_ */
 

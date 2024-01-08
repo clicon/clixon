@@ -39,7 +39,8 @@
 /*
  * Types
  */
-/*! XML parser yacc handler struct */
+/*! XML parser yacc handler struct 
+ */
 struct clixon_text_syntax_parse_yacc {
     char      *ts_parse_string; /* original (copy of) parse string */
     int        ts_linenum;      /* Number of \n in parsed buffer */

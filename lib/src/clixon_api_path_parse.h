@@ -40,7 +40,7 @@
 /*
  * Types
  */
-struct clixon_api_path_yacc { 
+struct clixon_api_path_yacc {
     const char   *ay_name;         /* Name of syntax (for error string) */
     int           ay_linenum;      /* Number of \n in parsed buffer */
     char         *ay_parse_string; /* original (copy of) parse string */

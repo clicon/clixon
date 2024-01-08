@@ -11,6 +11,7 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/example-leafref.yang
+fyang2=$dir/example-other.yang
 clidir=$dir/clidir
 if [ ! -d $clidir ]; then
     mkdir $clidir
@@ -22,14 +23,13 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
-  <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
-  <CLICON_YANG_MODULE_MAIN>example-leafref</CLICON_YANG_MODULE_MAIN>
+  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
 </clixon-config>
 EOF
@@ -147,6 +147,30 @@ module example-leafref{
 }
 EOF
 
+cat <<EOF > $fyang2
+module example-other{
+   yang-version 1.1;
+   namespace "urn:example:other";
+   prefix oth;
+   import example-leafref {
+      prefix ex;
+   }
+    /* leafref to other module */
+    container leafrefother {
+        description "Leafref absolute path to other module";
+        list leafref{
+           key name;
+           leaf name {
+              type leafref{
+                 path "/ex:table/ex:parameter/ex:name";
+                 require-instance true;
+              }
+           }
+        }
+    }
+}
+EOF
+
 # clispec files 1..6 for submodes AAA and BBB as described in top comment
 
 cat <<EOF > $clidir/cli1.cli
@@ -212,8 +236,6 @@ expectpart "$(echo "set identityrefs identityref ?" | $clixon_cli -f $cfg 2> /de
 # Expected:
 # <name>
 # CLI syntax error: "set leafrefs leafref": Incomplete command
-echo "set leafrefs leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=false
-
 new "expand leafref 1st level"
 expectpart "$(echo "set leafrefs leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=false 2> /dev/null)" 0 "<name>" --not-- "91" "92" "93"
 
@@ -290,6 +312,12 @@ expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
 
 new "show config"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config cli)" 0 "set table parameter 91" "set table parameter 92" "set table parameter 93" "set leafrefs leafref 91" "set leafrefs leafref 93" "set identityrefs identityref ex:des" "set identityrefs identityref ex:des3" "set leafrefs2 leafref 91" "set identityrefs2 identityref ex:des" --not-- "set identityrefs identityref ex:des2" "set leafrefs leafref 92"
+
+new "set leafrefother aaa"
+expectpart "$(echo "set leafrefother leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 "91" "92" "93"
+
+new "cli commit"
+expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

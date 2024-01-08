@@ -32,9 +32,9 @@
 
   ***** END LICENSE BLOCK *****
 
- * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
+ * Clixon XML XPath 1.0 according to https://www.w3.org/TR/xpath-10
  * Note: for YANG which is constrained to path-arg as defined in rfc7950
- * See: clixon_xpath.[ch] for full XML XPATH implementation
+ * See: clixon_xpath.[ch] for full XML XPath implementation
  */
 #ifndef _CLIXON_XPATH_YANG_H
 #define _CLIXON_XPATH_YANG_H

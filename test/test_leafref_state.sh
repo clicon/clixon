@@ -35,9 +35,9 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
   <CLICON_YANG_LIBRARY>false</CLICON_YANG_LIBRARY>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   <CLICON_STREAM_DISCOVERY_RFC8040>false</CLICON_STREAM_DISCOVERY_RFC8040>
@@ -185,7 +185,7 @@ EOF
 
 # delete x, add y
 XML=$(cat <<EOF
-   <sender-config xmlns="urn:example:example" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0" nc:operation="delete">
+   <sender-config xmlns="urn:example:example" xmlns:nc="${BASENS}" nc:operation="delete">
       <name>x</name>
    </sender-config>
    <sender-config xmlns="urn:example:example">

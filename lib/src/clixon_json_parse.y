@@ -33,8 +33,9 @@
   ***** END LICENSE BLOCK *****
 
  * JSON Parser
- * From http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
- * And RFC7951 JSON Encoding of Data Modeled with YANG
+ * @see http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
+ *  and RFC 7951 JSON Encoding of Data Modeled with YANG
+ *  and RFC 8259 The JavaScript Object Notation (JSON) Data Interchange Format
 
 Structural tokens: 
  [   left square bracket 
@@ -87,7 +88,7 @@ object.
 %token <string> J_NULL
 %token <string> J_EOF
 %token <string> J_DQ
-%token <string> J_CHAR
+%token <string> J_STRING
 %token <string> J_NUMBER
 
 %type <cbuf>      string
@@ -103,10 +104,10 @@ object.
 /* typecast macro */
 #define _JY ((clixon_json_yacc *)_jy)
 
-#define _YYERROR(msg) {clicon_err(OE_JSON, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_err(OE_JSON, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
-#define YY_(msgid) msgid 
+#define YY_(msgid) msgid
 
 #include "clixon_config.h"
 
@@ -123,20 +124,22 @@ object.
 
 #include <cligen/cligen.h>
 
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_queue.h"
-#include "clixon_string.h"
 #include "clixon_hash.h"
-#include "clixon_handle.h"
+#include "clixon_handle.h"    
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_string.h"
 
 #include "clixon_json_parse.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clicon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(1,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
@@ -147,21 +150,22 @@ extern int clixon_json_parseget_lineno  (void);
    also called from yacc generated code *
 */
 
-void 
+void
 clixon_json_parseerror(void *_jy,
-                       char *s) 
+                       char *s)
 { 
-    clicon_err(OE_JSON, XMLPARSE_ERRNO, "json_parse: line %d: %s at or before: '%s'", 
-               _JY->jy_linenum ,
-               s, 
-               clixon_json_parsetext); 
+    clixon_err(OE_JSON, 0, "json_parse: line %d: %s at or before: '%s'",
+               _JY->jy_linenum,
+               s,
+               clixon_json_parsetext);
+    if (_JY->jy_cbuf_str)
+        cbuf_free(_JY->jy_cbuf_str);
   return;
 }
 
 int
 json_parse_init(clixon_json_yacc *jy)
 {
-    //        clicon_debug_init(2, NULL);
     return 0;
 }
 
@@ -170,8 +174,9 @@ json_parse_exit(clixon_json_yacc *jy)
 {
     return 0;
 }
- 
+
 /*! Create xml object from json object name (eg "string") 
+ *
  *  Split name into prefix:name (extended JSON RFC7951)
  */
 static int
@@ -183,7 +188,7 @@ json_current_new(clixon_json_yacc *jy,
     char      *prefix = NULL;
     char      *id = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Find colon separator and if found split into prefix:name */
     if (nodeid_split(name, &prefix, &id) < 0)
         goto done;
@@ -210,8 +215,8 @@ json_current_new(clixon_json_yacc *jy,
 static int
 json_current_pop(clixon_json_yacc *jy)
 {
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
-    if (jy->jy_current) 
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    if (jy->jy_current)
         jy->jy_current = xml_parent(jy->jy_current);
     return 0;
 }
@@ -221,7 +226,7 @@ json_current_clone(clixon_json_yacc *jy)
 {
     cxobj *xn;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (jy->jy_current == NULL){
         return -1;
     }
@@ -240,7 +245,6 @@ json_current_clone(clixon_json_yacc *jy)
             maybe_prefixed_name = strdup(name);
         }
         json_current_new(jy, maybe_prefixed_name);
-        
         if (maybe_prefixed_name)
             free(maybe_prefixed_name);
     }
@@ -248,31 +252,31 @@ json_current_clone(clixon_json_yacc *jy)
 }
 
 static int
-json_current_body(clixon_json_yacc *jy, 
+json_current_body(clixon_json_yacc *jy,
                   char             *value)
 {
     int retval = -1;
     cxobj *xn;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if ((xn = xml_new("body", jy->jy_current, CX_BODY)) == NULL)
-        goto done; 
+        goto done;
     if (value && xml_value_append(xn, value) < 0)
-        goto done; 
+        goto done;
     retval = 0;
  done:
     return retval;
  }
 
-%} 
- 
+%}
+
 %%
 
 /*
 */
 
  /* top: json -> value is also possible */
-json          : value J_EOF { _PARSE_DEBUG("json->value"); YYACCEPT; } 
+json          : value J_EOF { _PARSE_DEBUG("json->value"); YYACCEPT; }
               ;
 
 value         : J_TRUE  { json_current_body(_JY, "true");       _PARSE_DEBUG("value->TRUE");}
@@ -281,7 +285,7 @@ value         : J_TRUE  { json_current_body(_JY, "true");       _PARSE_DEBUG("va
               | object                                        { _PARSE_DEBUG("value->object"); }
               | array                                         { _PARSE_DEBUG("value->array"); }
               | number  { json_current_body(_JY, $1); free($1); _PARSE_DEBUG("value->number");}
-              | string  { json_current_body(_JY, cbuf_get($1)); cbuf_free($1); _PARSE_DEBUG("value->string");}
+              | string  { json_current_body(_JY, cbuf_get($1)); cbuf_free($1); _JY->jy_cbuf_str = NULL; _PARSE_DEBUG("value->string");}
 
               ;
 
@@ -293,7 +297,7 @@ objlist       : pair             { _PARSE_DEBUG("objlist->pair");}
               | objlist ',' pair { _PARSE_DEBUG("objlist->objlist , pair");}
               ;
 
-pair          : string { json_current_new(_JY, cbuf_get($1));cbuf_free($1);} ':' 
+pair          : string { json_current_new(_JY, cbuf_get($1));cbuf_free($1); _JY->jy_cbuf_str = NULL;} ':'
                 value  { json_current_pop(_JY);}{ _PARSE_DEBUG("pair->string : value");}
               ;
 
@@ -312,12 +316,17 @@ string        : J_DQ ustring J_DQ { _PARSE_DEBUG("string->\" ustring \"");$$=$2;
               ;
 
 /* unquoted string: can be optimized by reading whole string in lex */
-ustring       : ustring J_CHAR 
+ustring       : ustring J_STRING
                      {
-                         cbuf_append_str($1,$2); $$=$1; free($2);
+                         cbuf_append_str($1,$2); $$=$1;
                      }
-              | J_CHAR 
-              { cbuf *cb = cbuf_new(); cbuf_append_str(cb,$1); $$=cb; free($1);} 
+              | J_STRING
+                     {
+                         cbuf *cb = cbuf_new();
+                         _JY->jy_cbuf_str = cb;
+                         cbuf_append_str(cb,$1);
+                         $$=cb;
+                     }
               ;
 
 number        : J_NUMBER { $$ = $1; }

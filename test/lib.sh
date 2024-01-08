@@ -30,6 +30,9 @@
 
 >&2 echo "Running $testfile"
 
+# Save stty
+STTYSETTINGS=$(stty -g)
+
 # Generated config file from autotools / configure
 if [ -f ./config.sh ]; then
     . ./config.sh
@@ -183,15 +186,33 @@ BUSER=clicon
 
 : ${clixon_cli:=clixon_cli}
 
-: ${clixon_netconf:=$(which clixon_netconf)}
+: ${clixon_netconf:=clixon_netconf}
 
 : ${clixon_restconf:=clixon_restconf}
 
 : ${clixon_backend:=clixon_backend}
 
-: ${clixon_snmp:=$(type -p clixon_snmp)}
+: ${clixon_util_socket:=clixon_util_socket}
+
+: ${clixon_snmp:=clixon_snmp}
 
 : ${clixon_snmp_pidfile:="/var/tmp/clixon_snmp.pid"}
+
+: ${_ALREADY_HERE:=0}
+
+if [ -n "$CLICON_GROUP" ] && [ $_ALREADY_HERE -eq 0 ]; then
+    # Extra test for some archs, eg ubuntu 18 that have problems with:
+    # Sorry, user <user> is not allowed to execute as <user>:clicon on <arch>
+    sudo -g ${CLICON_GROUP} $clixon_netconf 2> /dev/null
+    if [ $? -eq 0 ]; then
+        clixon_cli="sudo -g ${CLICON_GROUP} $clixon_cli"
+        clixon_netconf="sudo -g ${CLICON_GROUP} $clixon_netconf"
+        clixon_restconf="sudo -g ${CLICON_GROUP} $clixon_restconf"
+        clixon_snmp="sudo -g ${CLICON_GROUP} --preserve-env=MIBDIRS $clixon_snmp"
+        clixon_util_socket="sudo -g ${CLICON_GROUP} $clixon_util_socket"
+    fi
+fi
+_ALREADY_HERE=1
 
 # Source the site-specific definitions for test script variables, if site.sh
 # exists. The variables defined in site.sh override any variables of the same
@@ -211,7 +232,7 @@ if [ -f ./site.sh ]; then
 fi
 
 # Standard IETF RFC yang files. 
-if [ ! -z ${YANG_STANDARD_DIR} ]; then
+if [ -n "${YANG_STANDARD_DIR}" ]; then
     : ${IETFRFC=$YANG_STANDARD_DIR/ietf/RFC}
 fi
 
@@ -236,7 +257,7 @@ if $SNMPCHECK; then
     snmptranslate="$(type -p snmptranslate) "
 
     if [ "${ENABLE_NETSNMP}" == "yes" ]; then
-            pgrep snmpd > /dev/null
+        pgrep snmpd > /dev/null
         if [ $? != 0 ]; then
                     echo -e "\e[31m\nenable-netsnmp set but snmpd not running, start with:"
                     echo "systemctl start snmpd"
@@ -246,7 +267,7 @@ if $SNMPCHECK; then
             echo "added to /etc/snmp/snmpd.conf:"
             echo ""
             echo "  rwcommunity     public  localhost"
-            echo "  agentXSocket    unix:/var/run/snmp.sock"
+            echo "  agentxsocket    unix:/var/run/snmp.sock"
             echo "  agentxperms     777 777"
             echo ""
             echo "If you don't rely on systemd you can configure the lines above"
@@ -412,8 +433,7 @@ EOF
 # to reset to me
 if [ ! -G $dir ]; then 
     u=$(whoami)
-    sudo chown $u $dir
-    sudo chgrp $u $dir
+    sudo chown $u:$u $dir
 fi
 
 # If you bring your own backend BE=0 (it is already started), the backend may
@@ -432,6 +452,7 @@ fi
 function err(){
   expect=$1
   ret=$2
+  stty $STTYSETTINGS >/dev/null
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
       echo "Expected"
@@ -448,8 +469,9 @@ function err(){
   exit -1 #$testnr
 }
 
-# Dont print diffs
+# Don't print diffs
 function err1(){
+  stty $STTYSETTINGS >/dev/null
   echo -e "\e[31m\nError in Test$testnr [$testname]:"
   if [ $# -gt 0 ]; then 
       echo "Expected: $1"
@@ -510,7 +532,8 @@ function start_snmp(){
     cfg=$1
 
     rm -f ${clixon_snmp_pidfile}
-    
+
+    export MIBDIRS
     $clixon_snmp -f $cfg -D $DBG &
 
     if [ $? -ne 0 ]; then
@@ -560,14 +583,14 @@ function stop_backend(){
 # Wait for restconf to stop sending  502 Bad Gateway
 function wait_backend(){
     freq=$(chunked_framing "<rpc $DEFAULTNS><ping $LIBNS/></rpc>")
-    reply=$(echo "$freq" | $clixon_netconf -q1ef $cfg) 
+    reply=$(echo "$freq" | $clixon_netconf -q1ef $cfg)
 #    freply=$(chunked_framing "<rpc-reply $DEFAULTNS><ok/></rpc-reply>")
 #    chunked_equal "$reply" "$freply"
     let i=0;
     while [[ $reply != *"<rpc-reply"* ]]; do
 #       echo "sleep $DEMSLEEP"
         sleep $DEMSLEEP
-        reply=$(echo "<rpc $ÐEFAULTSNS $LIBNS><ping/></rpc>]]>]]>" | clixon_netconf -qef $cfg 2> /dev/null)
+        reply=$(echo "<rpc $ÐEFAULTSNS $LIBNS><ping/></rpc>]]>]]>" | $clixon_netconf -qef $cfg 2> /dev/null)
 #       echo "reply:$reply"
         let i++;
 #       echo "wait_backend  $i"
@@ -580,10 +603,11 @@ function wait_backend(){
 # Start restconf daemon
 # @see wait_restconf
 function start_restconf(){
-    STTYSETTINGS=`stty -g`
+    # remove -g
+    local clixon_restconf_="${clixon_restconf#sudo -g * }"
     # Start in background 
-    echo "sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $*"
-    sudo -u $wwwstartuser -s $clixon_restconf $RCLOG -D $DBG $* </dev/null &>/dev/null &
+#    echo "sudo -u $wwwstartuser ${clixon_restconf_} $RCLOG -D $DBG $*"
+    sudo -u $wwwstartuser $clixon_restconf_ $RCLOG -D $DBG $* </dev/null &>/dev/null &
     if [ $? -ne 0 ]; then
         err1 "expected 0" "$?"
     fi
@@ -621,6 +645,7 @@ function wait_restconf(){
     fi
 #    echo "curl $CURLOPTS -X GET $myproto://localhost/restconf"
     hdr=$(curl $CURLOPTS -X GET $myproto://localhost/restconf 2> /dev/null)
+    stty $STTYSETTINGS >/dev/null
 #    echo "hdr:\"$hdr\""
     let i=0;
     while [[ "$hdr" != *"200"* ]]; do
@@ -637,8 +662,6 @@ function wait_restconf(){
     if [ $valgrindtest -eq 3 ]; then 
         sleep 2 # some problems with valgrind
     fi
-
-  stty $STTYSETTINGS >/dev/null
 }
 
 # Wait for restconf to stop 
@@ -683,6 +706,10 @@ function wait_snmp()
 # eg all.sh or mem.sh
 function endtest()
 {
+    # Commented from now, it is unclear what destroys the tty, if something does the original
+    # problem should be fixed at the origin.
+    #    stty $STTYSETTINGS >/dev/null
+
     if [ $valgrindtest -eq 1 ]; then 
         checkvalgrind
     fi
@@ -708,7 +735,6 @@ function endtest()
     unset clixon_util_json
     unset clixon_util_xml
     unset clixon_util_path
-    unset clixon_util_socket
     unset clixon_util_stream
     unset clixon_util_xpath
     unset clixon_util_xml
@@ -1241,7 +1267,7 @@ challengePassword      = test
 EOF
 
     # Generate CA cert
-    openssl req -new -x509 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err "Generate CA cert"
+    openssl req -batch -new -x509 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err "Generate CA cert"
 
     rm -rf $tmpdir
 }
@@ -1287,7 +1313,7 @@ EOF
     openssl genpkey -algorithm RSA -out $srvkey  || err "Generate server key"
 
     # Generate CSR (signing request)
-    openssl req -new -config $tmpdir/srv.cnf -key $srvkey -out $tmpdir/srv_csr.pem || err "Generate signing request"
+    openssl req -batch -new -config $tmpdir/srv.cnf -key $srvkey -out $tmpdir/srv_csr.pem || err "Generate signing request"
 
     # Sign server cert by CA
     openssl x509 -req -extfile $tmpdir/srv.cnf -days 1 -passin "pass:password" -in $tmpdir/srv_csr.pem -CA $cacert -CAkey $cakey -CAcreateserial -out $srvcert || err "Sign server cert"

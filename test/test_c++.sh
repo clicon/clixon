@@ -24,8 +24,8 @@ cat <<EOF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/$APPNAME/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/$APPNAME/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
 </clixon-config>
 EOF
@@ -85,14 +85,14 @@ cat<<EOF > $cfile
  * the main event loop is entered.
  */
 
-clixon_plugin_api * clixon_plugin_init(clicon_handle h);
+clixon_plugin_api * clixon_plugin_init(clixon_handle h);
 
-int plugin_start(clicon_handle h)
+int plugin_start(clixon_handle h)
 {
     return 0;
 }
 
-int plugin_exit(clicon_handle h)
+int plugin_exit(clixon_handle h)
 {
     return 0;
 }
@@ -103,7 +103,7 @@ private:
     struct clixon_plugin_api api;
 
 public:
-    netconf_test(plginit2_t* init, plgstart_t* start, plgexit_t* exit, const char* str = "c++ netconf test") : api()
+    netconf_test(plginit_t* init, plgstart_t* start, plgexit_t* exit, const char* str = "c++ netconf test") : api()
     {
         strcpy(api.ca_name, str);
         api.ca_init = clixon_plugin_init;
@@ -121,11 +121,11 @@ static netconf_test api(clixon_plugin_init, plugin_start, plugin_exit);
 
 /*! Local example netconf rpc callback
  */
-int example_rpc(clicon_handle h,
-                   cxobj        *xe,
-                   cbuf         *cbret,
-                   void         *arg,
-                   void         *regarg)
+int example_rpc(clixon_handle h,
+                cxobj        *xe,
+                cbuf         *cbret,
+                void         *arg,
+                void         *regarg)
 {
     int    retval = -1;
     cxobj *x = NULL;
@@ -134,7 +134,7 @@ int example_rpc(clicon_handle h,
     /* get namespace from rpc name, return back in each output parameter */
     if ((ns = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL)
     {
-              clicon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
+              clixon_err(OE_XML, ENOENT, "No namespace given in rpc %s", xml_name(xe));
               goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
@@ -157,12 +157,12 @@ int example_rpc(clicon_handle h,
 
 /*! Netconf plugin initialization
  * @param[in]  h    Clixon handle
- * @retval     NULL Error with clicon_err set
+ * @retval     NULL Error
  * @retval     api  Pointer to API struct
  */
-clixon_plugin_api* clixon_plugin_init(clicon_handle h)
+clixon_plugin_api* clixon_plugin_init(clixon_handle h)
 {
-    clicon_debug(1, "%s netconf", __FUNCTION__);
+    clixon_debug(1, "%s netconf", __FUNCTION__);
     /* Register local netconf rpc client (note not backend rpc client) */
     if (rpc_callback_register(h, example_rpc, NULL, "urn:example:clixon", "example") < 0)
               return NULL;

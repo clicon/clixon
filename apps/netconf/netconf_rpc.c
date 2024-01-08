@@ -67,7 +67,7 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
+/* clixon */
 #include <clixon/clixon.h>
 
 #include "netconf_filter.h"
@@ -80,13 +80,13 @@
  */
 
 static int
-netconf_get_config_subtree(clicon_handle h, 
-                           cxobj        *xfilter, 
+netconf_get_config_subtree(clixon_handle h,
+                           cxobj        *xfilter,
                            cxobj       **xret)
 {
     int    retval = -1;
     cxobj *xdata;
-    
+
     /* a subtree filter is comprised of zero or more element subtrees*/
     if ((xdata = xpath_first(*xret, NULL, "/rpc-reply/data")) == NULL)
         goto ok;
@@ -107,9 +107,12 @@ ok:
 }
 
 /*! Get configuration
- * @param[in]  h       Clicon handle
+ *
+ * @param[in]  h       Clixon handle
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
  * @param[out] xret    Return XML, error or OK
+ * @retval     0       OK
+ * @retval    -1       Error
  * @note filter type subtree and xpath is supported, but xpath is preferred, and
  *              better performance and tested. Please use xpath.
  *
@@ -155,8 +158,8 @@ ok:
      <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>
  */
 static int
-netconf_get_config(clicon_handle h, 
-                   cxobj        *xn, 
+netconf_get_config(clixon_handle h,
+                   cxobj        *xn,
                    cxobj       **xret)
 {
      int        retval = -1;
@@ -206,13 +209,14 @@ netconf_get_config(clicon_handle h,
 }
 
 /*! Get options from netconf edit-config
+ *
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
  * @param[out] op      Operation type, eg merge,replace,...
  * @param[out] testopt test option, eg set, test
  * @param[out] erropt  Error option, eg stop-on-error
- * @retval    -1       Fatal Error
- * @retval     0       parameter error, xret returns error
  * @retval     1       OK, op, testopt and erropt set
+ * @retval     0       parameter error, xret returns error
+ * @retval    -1       Fatal Error
  * @example
  *  <edit-config>
  *     <config>...</config>
@@ -230,7 +234,7 @@ get_edit_opts(cxobj               *xn,
     int    retval = -1;
     cxobj *x;
     char  *optstr;
-    
+
     if ((x = xpath_first(xn, NULL, "test-option")) != NULL){
         if ((optstr = xml_body(x)) != NULL){
             if (strcmp(optstr, "test-then-set") == 0)
@@ -267,6 +271,7 @@ get_edit_opts(cxobj               *xn,
 }
 
 /*! Netconf edit configuration
+ *
   Write the change on a tmp file, then load that into candidate configuration.
     <edit-config> 
         <target> 
@@ -316,8 +321,8 @@ CLIXON addition:
  * @note erropt, testopt only supports default
  */
 static int
-netconf_edit_config(clicon_handle h,
-                    cxobj        *xn, 
+netconf_edit_config(clixon_handle h,
+                    cxobj        *xn,
                     cxobj       **xret)
 {
     int                 retval = -1;
@@ -353,9 +358,11 @@ netconf_edit_config(clicon_handle h,
 
 /*! Get running configuration and device state information
  * 
- * @param[in]  h       Clicon handle
+ * @param[in]  h       Clixon handle
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
  * @param[out] xret    Return XML, error or OK
+ * @retval     0       OK
+ * @retval    -1       Error
  * @note filter type subtree and xpath is supported, but xpath is preferred, and
  *              better performance and tested. Please use xpath.
  *
@@ -364,8 +371,8 @@ netconf_edit_config(clicon_handle h,
  *    </get></rpc>]]>]]>
  */
 static int
-netconf_get(clicon_handle h, 
-            cxobj        *xn, 
+netconf_get(clixon_handle h,
+            cxobj        *xn,
             cxobj       **xret)
 {
      int        retval = -1;
@@ -409,11 +416,12 @@ netconf_get(clicon_handle h,
     retval = 0;
  done:
     if(nsc)
-        cvec_free(nsc); 
+        cvec_free(nsc);
     return retval;
 }
 
 /*! Called when a notification has happened on backend
+ *
  * and this session has registered for that event.
  * Filter it and forward it.
    <notification>
@@ -436,7 +444,7 @@ netconf_get(clicon_handle h,
  *  beyond the scope of this document.
  */
 static int
-netconf_notification_cb(int   s, 
+netconf_notification_cb(int   s,
                         void *arg)
 {
     struct clicon_msg *reply = NULL;
@@ -445,29 +453,29 @@ netconf_notification_cb(int   s,
     cbuf              *cb = NULL;
     cxobj             *xn = NULL; /* event xml */
     cxobj             *xt = NULL; /* top xml */
-    clicon_handle      h = (clicon_handle)arg;
+    clixon_handle      h = (clixon_handle)arg;
     yang_stmt         *yspec = NULL;
     cvec              *nsc = NULL;
     int                ret;
-    cxobj             *xerr = NULL; 
+    cxobj             *xerr = NULL;
 
-    clicon_debug(1, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
     /* get msg (this is the reason this function is called) */
     if (clicon_msg_rcv(s, NULL, 0, &reply, &eof) < 0)
         goto done;
     /* handle close from remote end: this will exit the client */
     if (eof){
-        clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
+        clixon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
         close(s);
         errno = ESHUTDOWN;
         clixon_event_unreg_fd(s, netconf_notification_cb);
         goto done;
     }
     yspec = clicon_dbspec_yang(h);
-    if ((ret = clicon_msg_decode(reply, yspec, NULL, &xt, &xerr)) < 0) 
+    if ((ret = clicon_msg_decode(reply, yspec, NULL, &xt, &xerr)) < 0)
         goto done;
     if (ret == 0){ /* XXX use xerr */
-        clicon_err(OE_NETCONF, EFAULT, "Notification malformed");
+        clixon_err(OE_NETCONF, EFAULT, "Notification malformed");
         goto done;
     }
     if ((nsc = xml_nsctx_init(NULL, NETCONF_NOTIFICATION_NAMESPACE)) == NULL)
@@ -476,7 +484,7 @@ netconf_notification_cb(int   s,
         goto ok;
     /* create netconf message */
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_PLUGIN, errno, "cbuf_new");
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
     if (clixon_xml2cbuf(cb, xn, 0, 0, NULL, -1, 0) < 0)
@@ -486,7 +494,7 @@ netconf_notification_cb(int   s,
         goto done;
     }
     if (netconf_output(1, cb, "notification") < 0){
-        clicon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
+        clixon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
         close(s);
         errno = ESHUTDOWN;
         clixon_event_unreg_fd(s, netconf_notification_cb);
@@ -496,7 +504,7 @@ netconf_notification_cb(int   s,
  ok:
     retval = 0;
  done:
-    clicon_debug(1, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     if (cb)
         cbuf_free(cb);
     if (nsc)
@@ -524,12 +532,12 @@ netconf_notification_cb(int   s,
  * @see netconf_notification_cb for asynchronous stream notifications
  */
 static int
-netconf_create_subscription(clicon_handle h, 
-                            cxobj        *xn, 
+netconf_create_subscription(clixon_handle h,
+                            cxobj        *xn,
                             cxobj       **xret)
 {
     int              retval = -1;
-    cxobj           *xfilter; 
+    cxobj           *xfilter;
     int              s;
     char            *ftype;
 
@@ -552,8 +560,8 @@ netconf_create_subscription(clicon_handle h,
         goto done;
     if (xpath_first(*xret, NULL, "rpc-reply/rpc-error") != NULL)
         goto ok;
-    if (clixon_event_reg_fd(s, 
-                     netconf_notification_cb, 
+    if (clixon_event_reg_fd(s,
+                     netconf_notification_cb,
                      h,
                      "notification socket") < 0)
         goto done;
@@ -571,15 +579,14 @@ netconf_create_subscription(clicon_handle h,
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
  * @param[out] xret    Return XML, error or OK
- *
- * @retval -1   Error
- * @retval  0   OK, not found handler.
  * @retval  1   OK, handler called
+ * @retval  0   OK, not found handler.
+ * @retval -1   Error
  * @see netconf_input_packet  Assume bind and validation made there
  */
 static int
-netconf_application_rpc(clicon_handle h,
-                        cxobj        *xn, 
+netconf_application_rpc(clixon_handle h,
+                        cxobj        *xn,
                         cxobj       **xret)
 {
     int            retval = -1;
@@ -593,20 +600,20 @@ netconf_application_rpc(clicon_handle h,
     cbuf          *cbret = NULL;
     int            ret;
     int            nr = 0;
-    
+
     /* First check system / netconf RPC:s */
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, 0, "cbuf_new");
+        clixon_err(OE_UNIX, 0, "cbuf_new");
         goto done;
     }
     if ((cbret = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, 0, "cbuf_new");
+        clixon_err(OE_UNIX, 0, "cbuf_new");
         goto done;
     }
     /* Find yang rpc statement, return yang rpc statement if found 
        Check application RPC */
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-        clicon_err(OE_YANG, ENOENT, "No yang spec");
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
     cbuf_reset(cb);
@@ -658,8 +665,8 @@ netconf_application_rpc(clicon_handle h,
                 goto done;
             if (ret == 0){
                 if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
-                    goto done;          
-                clicon_log(LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
+                    goto done;
+                clixon_log(h, LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
                 goto ok;
             }
         }
@@ -679,6 +686,7 @@ netconf_application_rpc(clicon_handle h,
 }
 
 /*! The central netconf rpc dispatcher. Look at first tag and dispach to sub-functions.
+ *
  * Call plugin handler if tag not found. If not handled by any handler, return
  * error.
  * @param[in]  h       clicon handle
@@ -689,8 +697,8 @@ netconf_application_rpc(clicon_handle h,
  * @retval    -1       Error, fatal
  */
 int
-netconf_rpc_dispatch(clicon_handle h,
-                     cxobj        *xn, 
+netconf_rpc_dispatch(clixon_handle h,
+                     cxobj        *xn,
                      cxobj       **xret,
                      int          *eof)
 {
@@ -698,13 +706,13 @@ netconf_rpc_dispatch(clicon_handle h,
     cxobj      *xe;
     char       *username;
     cxobj      *xa;
-    
+
     /* Tag username on all incoming requests in case they are forwarded as internal messages
      * This may be unecesary since not all are forwarded. 
      * It may even be wrong if something else is done with the incoming message?
      */
     if ((username = clicon_username_get(h)) != NULL){
-        if (xml_add_attr(xn, "username", username, CLIXON_LIB_PREFIX, CLIXON_LIB_NS) < 0)
+        if (xml_add_attr(xn, "username", username, CLIXON_LIB_PREFIX, CLIXON_LIB_NS) == NULL)
             goto done;
     }
     /* Many of these calls are now calling generic clicon_rpc_netconf_xml
@@ -721,12 +729,12 @@ netconf_rpc_dispatch(clicon_handle h,
             strcmp(xml_name(xe), "kill-session") == 0 ||
             strcmp(xml_name(xe), "validate") == 0 ||  /* :validate */
             strcmp(xml_name(xe), "commit") == 0 || /* :candidate */
-            strcmp(xml_name(xe), "cancel-commit") == 0 || 
+            strcmp(xml_name(xe), "cancel-commit") == 0 ||
             strcmp(xml_name(xe), "discard-changes") == 0 ||
             strcmp(xml_name(xe), "action") == 0
             ){
             if (clicon_rpc_netconf_xml(h, xml_parent(xe), xret, NULL) < 0)
-                goto done;      
+                goto done;
         }
         else if (strcmp(xml_name(xe), "get-config") == 0){
             if (netconf_get_config(h, xe, xret) < 0)
@@ -743,7 +751,7 @@ netconf_rpc_dispatch(clicon_handle h,
         else if (strcmp(xml_name(xe), "close-session") == 0){
             *eof = 1; /* Pending close */
             if (clicon_rpc_netconf_xml(h, xml_parent(xe), xret, NULL) < 0)
-                goto done;      
+                goto done;
         }
         /* RFC 5277 :notification */
         else if (strcmp(xml_name(xe), "create-subscription") == 0){

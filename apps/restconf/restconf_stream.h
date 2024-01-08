@@ -40,9 +40,9 @@
 /*
  * Prototypes
  */
-int api_path_is_stream(clicon_handle h);
-int stream_child_free(clicon_handle h, int pid);
-int stream_child_freeall(clicon_handle h);
-int api_stream(clicon_handle h, void *req, cvec *qvec, int *finish);
+int api_path_is_stream(clixon_handle h);
+int stream_child_free(clixon_handle h, int pid);
+int stream_child_freeall(clixon_handle h);
+int api_stream(clixon_handle h, void *req, cvec *qvec, int *finish);
 
 #endif /* _RESTCONF_STREAM_H_ */

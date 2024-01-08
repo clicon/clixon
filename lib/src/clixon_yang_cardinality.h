@@ -38,8 +38,8 @@
 /*
  * Prototypes
  */
-int yang_cardinality(clicon_handle h, yang_stmt *yt, char *modname);
-int yang_cardinality_interval(clicon_handle h, enum rfc_6020 parent_key, enum rfc_6020 child_key, int *min, int *max);
-int yang_cardinality_init(clicon_handle h);
+int yang_cardinality(clixon_handle h, yang_stmt *yt, char *modname);
+int yang_cardinality_interval(clixon_handle h, enum rfc_6020 parent_key, enum rfc_6020 child_key, int *min, int *max);
+int yang_cardinality_init(clixon_handle h);
 
 #endif  /* _CLIXON_YANG_CARDINALITY_H_ */

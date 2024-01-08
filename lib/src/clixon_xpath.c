@@ -32,7 +32,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * Clixon XML XPATH 1.0 according to https://www.w3.org/TR/xpath-10
+ * Clixon XML XPath 1.0 according to https://www.w3.org/TR/xpath-10
  *
  * Note on xcur parameter to most xpath functions:
  * The W3 standard defines the document root / element as the top-level.
@@ -80,15 +80,16 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* clicon */
-#include "clixon_err.h"
-#include "clixon_log.h"
+/* clixon */
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
@@ -158,7 +159,7 @@ static const map_str2int axis_type_map[] = {
 
 
 /*
- * XPATH parse tree type
+ * XPath parse tree type
  */
 
 /*! Map from axis-type int to string
@@ -183,7 +184,7 @@ xpath_tree_int2str(int nodetype)
     return (char*)clicon_int2str(xpath_tree_map, nodetype);
 }
 
-/*! Print XPATH parse tree 
+/*! Print XPath parse tree 
  *
  * @note uses "" instead of '' in printing literals, rule [29] in https://www.w3.org/TR/xpath-10
  */
@@ -217,8 +218,9 @@ xpath_tree_print0(cbuf       *cb,
 }
 
 /*! Print a xpath_tree to CLIgen buf
+ *
  * @param[out] cb  CLIgen buffer
- * @param[in]  xs  XPATH tree
+ * @param[in]  xs  XPath tree
  */
 int
 xpath_tree_print_cb(cbuf       *cb,
@@ -229,8 +231,11 @@ xpath_tree_print_cb(cbuf       *cb,
 }
 
 /*! Print a xpath_tree
+ *
  * @param[in]  f   UNIX output stream
- * @param[in]  xs  XPATH tree
+ * @param[in]  xs  XPath tree
+ * @retval     0   OK
+ * @retval    -1   Error
  * @see xpath_tree2str
  */
 int
@@ -241,7 +246,7 @@ xpath_tree_print(FILE       *f,
     cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (xpath_tree_print0(cb, xs, 0) < 0)
@@ -253,7 +258,8 @@ xpath_tree_print(FILE       *f,
 }
 
 /*! Create an xpath string from an xpath tree, ie "unparsing"
- * @param[in]  xs    XPATH tree
+ *
+ * @param[in]  xs    XPath tree
  * @param[out] xpath XPath string as CLIgen buf
  * @retval     0     OK
  * @retval    -1     Error
@@ -374,7 +380,7 @@ xpath_tree_append(xpath_tree   *xt,
     int retval = -1;
 
     if ((*vec = realloc(*vec, sizeof(xpath_tree *) * (*len+1))) == NULL){
-        clicon_err(OE_XML, errno, "realloc");
+        clixon_err(OE_XML, errno, "realloc");
         goto done;
     }
     (*vec)[(*len)++] = xt;
@@ -389,9 +395,9 @@ xpath_tree_append(xpath_tree   *xt,
  * @param[in]     xt2  XPath parse 2
  * @param[in,out] vec  XPath tree vector
  * @param[in,out] len  Length of XML XPath vector
- * @retval       -1    Error
- * @retval        0    Not equal
  * @retval        1    Equal
+ * @retval        0    Not equal
+ * @retval       -1    Error
  */
 int
 xpath_tree_eq(xpath_tree   *xt1, /* pattern */
@@ -411,7 +417,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
              (xt2->xs_type == XP_PRIME_NR || xt2->xs_type == XP_PRIME_STR))
 #endif
         ){
-        clicon_debug(CLIXON_DBG_DETAIL, "%s type %s vs %s\n", __FUNCTION__,
+        clixon_debug(CLIXON_DBG_DETAIL, "%s type %s vs %s\n", __FUNCTION__,
                 xpath_tree_int2str(xt1->xs_type),
                 xpath_tree_int2str(xt2->xs_type));
         goto neq;
@@ -423,19 +429,19 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
         goto eq;
     }
     if (xt1->xs_int != xt2->xs_int){
-        clicon_debug(CLIXON_DBG_DETAIL, "%s int\n", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DETAIL, "%s int\n", __FUNCTION__);
         goto neq;
     }
     if (xt1->xs_double != xt2->xs_double){
-        clicon_debug(CLIXON_DBG_DETAIL, "%s double\n", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DETAIL, "%s double\n", __FUNCTION__);
         goto neq;
     }
     if (clicon_strcmp(xt1->xs_s0, xt2->xs_s0)){
-        clicon_debug(CLIXON_DBG_DETAIL, "%s s0\n", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DETAIL, "%s s0\n", __FUNCTION__);
         goto neq;
     }
     if (clicon_strcmp(xt1->xs_s1, xt2->xs_s1)){
-        clicon_debug(CLIXON_DBG_DETAIL, "%s s1\n", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DETAIL, "%s s1\n", __FUNCTION__);
         goto neq;
     }
     xc1 = xt1->xs_c0;
@@ -444,7 +450,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
         ;
     else{
         if (xc1 == NULL || xc2 == NULL){
-            clicon_debug(CLIXON_DBG_DETAIL, "%s NULL\n", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_DETAIL, "%s NULL\n", __FUNCTION__);
             goto neq;
         }
         if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
@@ -458,7 +464,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
         ;
     else{
         if (xc1 == NULL || xc2 == NULL){
-            clicon_debug(CLIXON_DBG_DETAIL, "%s NULL\n", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_DETAIL, "%s NULL\n", __FUNCTION__);
             goto neq;
         }
         if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
@@ -476,6 +482,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
 }
 
 /*! Traverse through an xpath-tree using indexes
+ *
  * @param[in]  xt  Start-tree
  * @param[in]  i   List of indexes terminated by -1: 0 means c0, 1 means c1
  * @retval     xc  End-tree
@@ -506,7 +513,8 @@ xpath_tree_traverse(xpath_tree *xt,
 }
 
 /*! Free a xpath_tree
- * @param[in]  xs  XPATH tree
+ *
+ * @param[in]  xs  XPath tree
  * @see xpath_parse  creates a xpath_tree
  */
 int
@@ -527,8 +535,9 @@ xpath_tree_free(xpath_tree *xs)
 }
 
 /*! Given xpath, parse it, and return structured xpath tree 
- * @param[in]  xpath  String with XPATH 1.0 syntax
- * @param[out] xptree XPath-tree, parsed, structured XPATH, free:xpath_tree_free
+ *
+ * @param[in]  xpath  String with XPath 1.0 syntax
+ * @param[out] xptree XPath-tree, parsed, structured XPath, free:xpath_tree_free
  * @retval     0      OK
  * @retval    -1      Error
  * @code
@@ -549,9 +558,9 @@ xpath_parse(const char  *xpath,
     clixon_xpath_yacc xpy = {0,};
     cbuf             *cb = NULL;    
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (xpath == NULL){
-        clicon_err(OE_XML, EINVAL, "XPath is NULL");
+        clixon_err(OE_XML, EINVAL, "XPath is NULL");
         goto done;
     }
     xpy.xpy_parse_string = xpath;
@@ -562,19 +571,19 @@ xpath_parse(const char  *xpath,
     if (xpath_parse_init(&xpy) < 0)
         goto done;
     if (clixon_xpath_parseparse(&xpy) != 0) { /* yacc returns 1 on error */
-        clicon_log(LOG_NOTICE, "XPATH error: on line %d", xpy.xpy_linenum);
-        if (clicon_errno == 0)
-            clicon_err(OE_XML, 0, "XPATH parser error with no error code (should not happen)");
+        clixon_log(NULL, LOG_NOTICE, "XPath error: on line %d", xpy.xpy_linenum);
+        if (clixon_err_category() == 0)
+            clixon_err(OE_XML, 0, "XPath parser error with no error code (should not happen)");
         xpath_scan_exit(&xpy);
         goto done;
     }
-    if (clicon_debug_get() > 2){
+    if (clixon_debug_get() > 2){
         if ((cb = cbuf_new()) == NULL){
-            clicon_err(OE_XML, errno, "cbuf_new");
+            clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
         xpath_tree_print_cb(cb, xpy.xpy_top);
-        clicon_debug(CLIXON_DBG_DETAIL, "xpath parse tree:\n%s", cbuf_get(cb));
+        clixon_debug(CLIXON_DBG_DETAIL, "xpath parse tree:\n%s", cbuf_get(cb));
     }
     xpath_parse_exit(&xpy);
     xpath_scan_exit(&xpy);
@@ -592,13 +601,14 @@ xpath_parse(const char  *xpath,
 }
 
 /*! Given XML tree and xpath, parse xpath, eval it and return xpath context, 
+ *
  * This is a raw form of xpath where you can do type conversion of the return
  * value, etc, not just a nodeset.
  * @param[in]  xcur   XML-tree where to search
  * @param[in]  nsc    External XML namespace context, or NULL
- * @param[in]  xpath  String with XPATH 1.0 syntax
+ * @param[in]  xpath  String with XPath 1.0 syntax
  * @param[in]  localonly Skip prefix and namespace tests (non-standard)
- * @param[out] xrp    Return XPATH context
+ * @param[out] xrp    Return XPath context
  * @retval     0      OK
  * @retval    -1      Error
  * @code
@@ -620,7 +630,7 @@ xpath_vec_ctx(cxobj      *xcur,
     xpath_tree *xptree = NULL;
     xp_ctx      xc = {0,};
     
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (xpath_parse(xpath, &xptree) < 0)
         goto done;
     xc.xc_type = XT_NODESET;
@@ -645,7 +655,7 @@ xpath_vec_ctx(cxobj      *xcur,
  *
  * @param[in]  xcur      XML tree where to search
  * @param[in]  nsc       External XML namespace context, or NULL
- * @param[in]  xpformat  Format string for XPATH syntax
+ * @param[in]  xpformat  Format string for XPath syntax
  * @retval     xml-tree  XML tree of first match
  * @retval     NULL      Error or not found
  *
@@ -679,13 +689,13 @@ xpath_first(cxobj      *xcur,
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: compute write message from reason and args */
     va_start(ap, xpformat);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
@@ -706,7 +716,7 @@ xpath_first(cxobj      *xcur,
  *
  * Reason for skipping prefix/namespace check may be with incomplete tree, for example.
  * @param[in]  xcur      XML tree where to search
- * @param[in]  xpformat  Format string for XPATH syntax
+ * @param[in]  xpformat  Format string for XPath syntax
  * @retval     xml-tree  XML tree of first match
  * @retval     NULL      Error or not found
  *
@@ -738,13 +748,13 @@ xpath_first_localonly(cxobj      *xcur,
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: compute write message from reason and args */
     va_start(ap, xpformat);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
@@ -762,10 +772,11 @@ xpath_first_localonly(cxobj      *xcur,
 }
 
 /*! Given XML tree and xpath, returns nodeset as xml node vector
+ *
  * If result is not nodeset, return empty nodeset
  * @param[in]  xcur     xml-tree where to search
  * @param[in]  nsc      External XML namespace context, or NULL
- * @param[in]  xpformat Format string for XPATH syntax
+ * @param[in]  xpformat Format string for XPath syntax
  * @param[out] vec      vector of xml-trees. Vector must be free():d after use
  * @param[out] veclen   returns length of vector in return value
  * @retval     0        OK
@@ -802,13 +813,13 @@ xpath_vec(cxobj      *xcur,
     va_end(ap);
     /* allocate an xpath string exactly fitting the length */
     if ((xpath = malloc(len+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: actually compute xpath string content */
     va_start(ap, veclen);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
@@ -832,8 +843,9 @@ xpath_vec(cxobj      *xcur,
 }
 
 /* XPath that returns a vector of matches (only nodes marked with flags)
+ *
  * @param[in]  xcur     xml-tree where to search
- * @param[in]  xpformat Format string for XPATH syntax
+ * @param[in]  xpformat Format string for XPath syntax
  * @param[in]  nsc      External XML namespace context, or NULL
  * @param[in]  flags    Set of flags that return nodes must match (0 if all)
  * @param[out] vec      vector of xml-trees. Vector must be free():d after use
@@ -878,13 +890,13 @@ xpath_vec_flag(cxobj      *xcur,
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: compute write message from reason and args */
     va_start(ap, veclen);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
@@ -911,10 +923,11 @@ xpath_vec_flag(cxobj      *xcur,
 }
 
 /*! Given XML tree and xpath, returns boolean
+ *
  * Returns true if the nodeset is non-empty
  * @param[in]  xcur     xml-tree where to search
  * @param[in]  nsc      External XML namespace context, or NULL
- * @param[in]  xpformat Format string for XPATH syntax
+ * @param[in]  xpformat Format string for XPath syntax
  * @retval     1        True
  * @retval     0        False
  * @retval    -1        Error
@@ -936,13 +949,13 @@ xpath_vec_bool(cxobj      *xcur,
     va_end(ap);
     /* allocate a message string exactly fitting the message length */
     if ((xpath = malloc(len+1)) == NULL){
-        clicon_err(OE_UNIX, errno, "malloc");
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     /* second round: compute write message from reason and args */
     va_start(ap, xpformat);    
     if (vsnprintf(xpath, len+1, xpformat, ap) < 0){
-        clicon_err(OE_UNIX, errno, "vsnprintf");
+        clixon_err(OE_UNIX, errno, "vsnprintf");
         va_end(ap);
         goto done;
     }
@@ -995,7 +1008,7 @@ xpath_traverse_canonical(xpath_tree *xs,
         //        name = xs->xs_s1;
         if ((namespace = xml_nsctx_get(nsc0, prefix0)) == NULL){
             if ((cb = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             cprintf(cb, "No namespace found for prefix: %s", prefix0);
@@ -1006,7 +1019,7 @@ xpath_traverse_canonical(xpath_tree *xs,
         if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
 #if 0 /* Just accept it, see note in xpath2canonical */
             if ((cb = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             cprintf(cb, "No yang found for namespace: %s", namespace);           
@@ -1020,7 +1033,7 @@ xpath_traverse_canonical(xpath_tree *xs,
         else
             if ((prefix1 = yang_find_myprefix(ymod)) == NULL){
                 if ((cb = cbuf_new()) == NULL){
-                    clicon_err(OE_UNIX, errno, "cbuf_new");
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
                 cprintf(cb, "No prefix found in module: %s", yang_argument_get(ymod));          
@@ -1035,7 +1048,7 @@ xpath_traverse_canonical(xpath_tree *xs,
             if (xs->xs_s0)
                 free(xs->xs_s0);
             if ((xs->xs_s0 = strdup(prefix1)) == NULL){
-                clicon_err(OE_UNIX, errno, "strdup");
+                clixon_err(OE_UNIX, errno, "strdup");
                 goto done;
             }
         }
@@ -1091,9 +1104,10 @@ xpath_traverse_canonical(xpath_tree *xs,
  *   ...
  *   if (xpath1) free(xpath1);
  *   if (nsc1) xml_nsctx_free(nsc1);
+ *   if (reason) cbuf_free(reason);
  * @endcode
  * @note Unsolvable issue of mountpoints, eg an xpath of //x:foo where foo is under one or several
- *       mointpoints: a well-defined namespace cannot be determined. Therefore just allow 
+ *       mountpoints: a well-defined namespace cannot be determined. Therefore just allow 
  *       inconsistencies and hope that it will be covered by other code
  * @see xpath2xml
  */
@@ -1111,7 +1125,7 @@ xpath2canonical(const char *xpath0,
     cbuf       *xcb = NULL;
     int         ret;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Parse input xpath into an xpath-tree */
     if (xpath_parse(xpath0, &xpt) < 0)
         goto done;
@@ -1127,14 +1141,14 @@ xpath2canonical(const char *xpath0,
          goto fail;
      /* Print tree with new prefixes */
      if ((xcb = cbuf_new()) == NULL){
-         clicon_err(OE_XML, errno, "cbuf_new");
+         clixon_err(OE_XML, errno, "cbuf_new");
          goto done;
      }
      if (xpath_tree2cbuf(xpt, xcb) < 0)
          goto done;
      if (xpath1){
          if ((*xpath1 = strdup(cbuf_get(xcb))) == NULL){
-             clicon_err(OE_UNIX, errno, "strdup");
+             clixon_err(OE_UNIX, errno, "strdup");
              goto done;
          }
      }
@@ -1160,8 +1174,10 @@ xpath2canonical(const char *xpath0,
  *
  * @param[in]  xcur     xml-tree where to search
  * @param[in]  nsc      External XML namespace context, or NULL
- * @param[in]  xpath    XPATH syntax
+ * @param[in]  xpath    XPath syntax
  * @param[oit] count    Nr of elements of xpath
+ * @retval     0        OK
+ * @retval    -1        Error
  * @note This function is made for making optimizations in certain circumstances, such as a list
  */
 int
@@ -1175,7 +1191,7 @@ xpath_count(cxobj      *xcur,
     cbuf   *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "count(%s)", xpath);
@@ -1278,7 +1294,7 @@ xml2xpath1(cxobj *x,
             while ((cvi = cvec_each(cvk, cvi)) != NULL) {
                 keyname = cv_string_get(cvi);
                 if ((xkey = xml_find(x, keyname)) == NULL){
-                    clicon_err(OE_XML, 0, "No key %s in list %s", keyname, xml_name(x));
+                    clixon_err(OE_XML, 0, "No key %s in list %s", keyname, xml_name(x));
                     goto done;
                 }
                 if ((xb = xml_find(x, keyname)) == NULL)
@@ -1344,7 +1360,7 @@ xml2xpath(cxobj *x,
     char *xpath = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     if (xml2xpath1(x, nsc, spec, apostrophe, cb) < 0)
@@ -1353,7 +1369,7 @@ xml2xpath(cxobj *x,
     xpath = cbuf_get(cb);
     if (xpathp){
         if ((*xpathp = strdup(xpath)) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
         xpath = NULL;
@@ -1374,7 +1390,7 @@ xml2xpath(cxobj *x,
  * @param[out]    xerr    Netconf error message (if retval=0)
  * @retval        1       OK
  * @retval        0       Invalid xpath
- * @retval       -1       Fatal error, clicon_err called
+ * @retval       -1       Fatal error, clixon_err called
  * @see xpath_traverse_canonical
  */
 static int
@@ -1405,7 +1421,7 @@ xpath2xml_traverse(xpath_tree *xs,
         name = xs->xs_s1;
         if ((namespace = xml_nsctx_get(nsc, prefix)) == NULL){
             if ((cberr = cbuf_new()) == NULL){
-                clicon_err(OE_UNIX, errno, "cbuf_new");
+                clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             cprintf(cberr, "No namespace found for prefix: %s", prefix);
@@ -1465,7 +1481,7 @@ xpath2xml_traverse(xpath_tree *xs,
     }   
     retval = 1;
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     return retval;
  fail:
     retval = 0;
@@ -1484,7 +1500,7 @@ xpath2xml_traverse(xpath_tree *xs,
  * @param[out]    xerr    Netconf error message (if retval=0)
  * @retval        1       OK
  * @retval        0       Invalid xpath
- * @retval       -1       Fatal error, clicon_err called
+ * @retval       -1       Fatal error, clixon_err called
  * @see api_path2xml
  * @see xml2xpath
  * @note xpath is restricted to absolute paths, and simple expressions, eg as "node-identifier"
@@ -1502,9 +1518,9 @@ xpath2xml(char       *xpath,
     cbuf       *cberr = NULL;
     xpath_tree *xpt = NULL;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s xpath:%s", __FUNCTION__, xpath);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s xpath:%s", __FUNCTION__, xpath);
     if ((cberr = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (*xpath != '/'){

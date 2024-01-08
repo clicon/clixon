@@ -58,18 +58,19 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
-/* clicon */
+/* cligen */
 #include <cligen/cligen.h>
 
-/* Local includes */
+/* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_string.h"
-#include "clixon_err.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
-#include "clixon_log.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_xml_io.h"
 #include "clixon_proto.h"
 #include "clixon_netconf_lib.h"
@@ -92,24 +93,24 @@ netconf_input_read2(int            s,
 {
     int      retval = -1;
     ssize_t  len;
-    
+
     memset(buf, 0, buflen);
     if ((len = read(s, buf, buflen)) < 0){
         if (errno == ECONNRESET)
             len = 0; /* emulate EOF */
         else{
-            clicon_log(LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
+            clixon_log(NULL, LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
             goto done;
         }
     } /* read */
-    clicon_debug(CLIXON_DBG_DETAIL, "%s len:%ld", __FUNCTION__, len);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s len:%ld", __FUNCTION__, len);
     if (len == 0){  /* EOF */
-        clicon_debug(CLIXON_DBG_DETAIL, "%s len==0, closing", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DETAIL, "%s len==0, closing", __FUNCTION__);
         *eof = 1;
     }
     retval = len;
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -146,7 +147,7 @@ netconf_input_msg2(unsigned char      **bufp,
     size_t    len;
     char      ch;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     len = *lenp;
     for (i=0; i<len; i++){
         if ((ch = (*bufp)[i]) == 0)
@@ -189,7 +190,7 @@ netconf_input_msg2(unsigned char      **bufp,
     *eom = found;
     retval = 0;
  done:
-    clicon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
     return retval;
 }
 
@@ -217,14 +218,14 @@ netconf_input_frame2(cbuf      *cb,
     cxobj  *xtop = NULL; /* Request (in) */
     int     ret;
 
-    clicon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (xrecv == NULL){
-        clicon_err(OE_PLUGIN, EINVAL, "xrecv is NULL");
+        clixon_err(OE_PLUGIN, EINVAL, "xrecv is NULL");
         goto done;
     }
     str = cbuf_get(cb);
     /* Special case: empty XML */
-    if (strlen(str) == 0){     
+    if (strlen(str) == 0){
         if (netconf_operation_failed_xml(xerr, "rpc", "Empty XML")< 0)
             goto done;
         goto failed;
@@ -232,7 +233,7 @@ netconf_input_frame2(cbuf      *cb,
     /* Fix to distinguish RPC and REPLIES */
     if ((ret = clixon_xml_parse_string(str, yb, yspec, &xtop, xerr)) < 0){
         /* XXX possibly should quit on -1? */
-        if (netconf_operation_failed_xml(xerr, "rpc", clicon_err_reason)< 0)
+        if (netconf_operation_failed_xml(xerr, "rpc", clixon_err_reason())< 0)
             goto done;
         goto failed;
     }
