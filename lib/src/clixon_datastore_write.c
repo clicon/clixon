@@ -582,14 +582,17 @@ text_modify(clixon_handle       h,
         x1bstr = xml_body(x1);
         switch(op){
         case OP_CREATE:
-            if (x0){
+            if (x0 && xml_flag(x0, XML_FLAG_DEFAULT)==0){
                 if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
                     goto done;
                 goto fail;
             }
         case OP_REPLACE: /* fall thru */
         case OP_MERGE:
-            if (!(op == OP_MERGE && instr==NULL)){
+            /* If default flag, clear it */
+            if (x0 && xml_flag(x0, XML_FLAG_DEFAULT))
+                xml_flag_reset(x0, XML_FLAG_DEFAULT);
+            if (!(op == OP_MERGE && (instr==NULL))) {
                 /* Remove existing, also applies to merge in the special case
                  * of ordered-by user and (changed) insert attribute.
                  */
@@ -710,7 +713,7 @@ text_modify(clixon_handle       h,
             }
             break;
         case OP_DELETE:
-            if (x0==NULL){
+            if (x0==NULL || xml_flag(x0, XML_FLAG_DEFAULT) != 0){
                 if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
                     goto done;
                 goto fail;
@@ -780,7 +783,7 @@ text_modify(clixon_handle       h,
         }
         switch(op){
         case OP_CREATE:
-            if (x0){
+            if (x0 && xml_flag(x0, XML_FLAG_DEFAULT)==0){
                 if (xml_defaults_nopresence(x0, 0) == 0){
                     if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
                         goto done;
@@ -973,7 +976,7 @@ text_modify(clixon_handle       h,
             }
             break;
         case OP_DELETE:
-            if (x0==NULL){
+            if (x0==NULL || xml_flag(x0, XML_FLAG_DEFAULT) != 0){
                 if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
                     goto done;
                 goto fail;
@@ -1304,7 +1307,6 @@ xmldb_put(clixon_handle       h,
         }
         goto fail;
     }
-
     /* Remove NONE nodes if all subs recursively are also NONE */
     if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
         goto done;

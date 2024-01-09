@@ -1003,10 +1003,8 @@ xmldb_get_cache(clixon_handle     h,
             goto done;
     }
     /* Original tree: Remove global defaults and empty non-presence containers */
-#if 0
     if (xml_defaults_nopresence(x0t, 2) < 0)
         goto done;
-#endif
     switch (wdef){
     case WITHDEFAULTS_REPORT_ALL:
         break;
