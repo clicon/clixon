@@ -81,6 +81,9 @@
 /* Size of xml read buffer */
 #define BUFLEN 1024
 
+/* Forward */
+static int xml_diff2cbuf(cbuf *cb, cxobj *x0, cxobj *x1, int level, int skiptop);
+
 /*------------------------------------------------------------------------
  * XML printing functions. Output a parse tree to file, string cligen buf
  *------------------------------------------------------------------------*/
@@ -1037,7 +1040,7 @@ xml_diff2cbuf_ordered_by_user(cbuf      *cb,
  * @see clixon_compare_xmls which uses files and is independent of YANG
  * @see text_diff2cbuf
  */
-int
+static int
 xml_diff2cbuf(cbuf  *cb,
               cxobj *x0,
               cxobj *x1,

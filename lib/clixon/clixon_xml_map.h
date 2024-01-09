@@ -77,5 +77,6 @@ int xml_rpc_isaction(cxobj *xn);
 int xml_find_action(cxobj *xn, int top, cxobj **xap);
 int purge_tagged_nodes(cxobj *xn, char *ns, char *name, char *value, int keepnode);
 int clixon_compare_xmls(cxobj *xc1, cxobj *xc2, enum format_enum format);
+int xml_creator_tree(cxobj *xt, cxobj **xcreator);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

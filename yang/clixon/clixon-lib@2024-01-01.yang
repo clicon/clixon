@@ -68,6 +68,18 @@ module clixon-lib {
        - objectexisted
       ";
 
+    revision 2024-01-01 {
+        description
+            "Moved container creators to grouping/uses
+             Released in 6.6.0";
+    }
+    revision 2023-11-01 {
+        description
+            "Added ignore-compare extension
+             Added creator meta configuration
+             Removed obsolete extension autocli-op
+             Released in 6.5.0";
+    }
     revision 2023-05-01 {
         description
             "Restructured and extended stats rpc to schema mountpoints
@@ -179,7 +191,7 @@ module clixon-lib {
     }
     identity restconf {
         description
-            "RESTCONF either as HTTP/1 or /2, TLS or not, reverese proxy (eg fcgi/nginx) or native";
+            "RESTCONF either as HTTP/1 or /2, TLS or not, reverse proxy (eg fcgi/nginx) or native";
         base ncm:transport;
     }
     identity cli {
@@ -187,20 +199,12 @@ module clixon-lib {
             "A CLI session";
         base ncm:transport;
     }
-    extension autocli-op {
-        description 
-            "Takes an argument an operation defing how to modify the clispec at 
-         this point in the YANG tree for the automated generated CLI.
-         Note that this extension is only used in clixon_cli.
-         Operations is expected to be extended, but the following operations are defined:
-         - hide                                                   This command is active but not shown by ? or TAB (meaning, it hides the auto-completion of commands)
-                 - hide-database                                  This command hides the database
-         - hide-database-auto-completion  This command hides the database and the auto completion (meaning, this command acts as both commands above)
-         Obsolete: use clixon-autocli:hide and clixon-autocli:hide-show  instead";
-        argument cliop;
-        status obsolete;
+    extension ignore-compare {
+        description
+            "The object should be ignored when comparing device configs for equality.
+             One example is auto-created objects by the server, such as uid.
+             Another example is a plain-text password is changed to an encrypted by the server.";
     }
-
     md:annotation creator {
         type string;
         description
@@ -209,8 +213,26 @@ module clixon-lib {
              create the same object. When such a service is deleted (or changed) one needs to keep
              track of which service created what.
              Limitations: only objects that are actually added or deleted. 
-             A sub-object wil not be noted";
+             A sub-object will not be noted";
     }
+    grouping clixon-creators{
+        container creators{
+            config false;
+            description "Meta-data for creator attribute.";
+            list creator {
+                key name;
+                leaf name {
+                    description "Name of creator / service (instance) name";
+                    type string;
+                }
+                leaf-list path {
+                    description "Path to object";
+                    type string;
+                }
+            }
+        }
+    }
+    uses clixon-creators;
     rpc debug {
         description "Set debug level of backend.";
         input {

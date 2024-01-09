@@ -819,41 +819,6 @@ xml_creator_copy_all(cxobj *x0,
     return retval;
 }
 
-/*! Print XML and creator tags where they exists, apply help function
- *
- * @param[in]  x    XML tree
- * @param[in]  arg  FIle
- * @retval     see xml_apply
- */
-static int
-creator_print_fn(cxobj *x,
-                 void  *arg)
-{
-    FILE   *f = (FILE *)arg;
-    cg_var *cv;
-
-    if (x->x_creators == NULL)
-        return 0;
-    cv = NULL;
-    while ((cv = cvec_each(x->x_creators, cv)) != NULL){
-        fprintf(f, "%s ", cv_name_get(cv));
-    }
-    fprintf(f, ":\n");
-    clixon_xml2file(f, x, 3, 1, NULL, cligen_output, 0, 0);
-    return 2; /* Locally abort this subtree, continue with others */
-}
-
-/*! Print XML and creator tags where they exists recursively, for debugging
- *
- * @param[in]  xn    XML tree
- * @retval     see xml_apply
- */
-int
-xml_creator_print(FILE  *f,
-                  cxobj *xn)
-{
-    return xml_apply0(xn, CX_ELMNT, creator_print_fn, f);
-}
 
 /*! Get value of xnode
  *

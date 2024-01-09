@@ -28,6 +28,8 @@ Expected: February 2024
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* New `clixon-lib@2024-01-01.yang` revision
+  * Replaced container creators to grouping/uses
 * Changed ca_errmsg callback to a more generic variant
   * Includes all error, log and debug messages
   * See [Customized NETCONF error message](https://github.com/clicon/clixon/issues/454)

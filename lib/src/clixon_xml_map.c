@@ -2034,3 +2034,90 @@ clixon_compare_xmls(cxobj            *xc1,
     unlink(filename2);
     return retval;
 }
+
+/*! Add creator data to metadata xml object on the form name:xpath*
+ *
+ * Callback function type for xml_apply
+ * @param[in]  x    XML node
+ * @param[in]  arg  General-purpose argument
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ * On the form:
+ *     <creator>
+ *       <name>testA[name='foo']</name>
+ *       <xpath>...</xpath>
+ *       ...
+ *     </creator>
+ */
+static int
+xml_creator_one(cxobj *x,
+                void  *arg)
+{
+    int     retval = -1;
+    cxobj  *xmeta = (cxobj*)arg;
+    cxobj  *xmc;
+    cvec   *cvv;
+    cg_var *cv;
+    char   *val;
+    cvec   *nsc = NULL;
+    char   *xpath = NULL;
+
+    if ((cvv = xml_creator_get(x)) == NULL){
+        retval = 0;
+        goto done;
+    }
+    /* Note this requires x to have YANG spec */
+    if (xml2xpath(x, nsc, 0, 0, &xpath) < 0)
+        goto done;
+    cv = NULL;
+    while ((cv = cvec_each(cvv, cv)) != NULL){
+        val = cv_name_get(cv);
+        /* Find existing entry where name is val */
+        xmc = NULL;
+        while ((xmc = xml_child_each(xmeta, xmc, CX_ELMNT)) != NULL){
+            if (strcmp(xml_find_body(xmc, "name"), val) == 0)
+                break;
+        }
+        if (xmc != NULL){
+            if (clixon_xml_parse_va(YB_NONE, NULL, &xmc, NULL, "<path>%s</path>", xpath) < 0)
+                goto done;
+        }
+        else {
+            if (clixon_xml_parse_va(YB_NONE, NULL, &xmeta, NULL,
+                                    "<creator><name>%s</name><path>%s</path></creator>",
+                                    val, xpath) < 0)
+                goto done;
+        }
+    }
+    retval = 2;
+ done:
+    if (xpath)
+        free(xpath);
+    return retval;
+}
+
+/*! Create creator data tree on the form (name:xpath*)*
+ *
+ * @param[in]  xt        XML top-level node, where to look for creator attributes
+ * @param[out] xcreators Created XML tree on the form <creators><creator>...
+ * @retval     0         OK
+ * @retval    -1         Error
+ */
+int
+xml_creator_tree(cxobj  *xt,
+                 cxobj **xcreators)
+{
+    int    retval = -1;
+
+    if ((*xcreators = xml_new("creators", NULL, CX_ELMNT)) == NULL)
+        goto done;
+    if (xmlns_set(*xcreators, NULL, CLIXON_LIB_NS) < 0)
+        goto done;
+    if (xml_apply(xt, CX_ELMNT, xml_creator_one, *xcreators) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}

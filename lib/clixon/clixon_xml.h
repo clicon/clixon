@@ -170,10 +170,10 @@ typedef struct xml cxobj; /* struct defined in clicon_xml.c */
  *
  * @param[in]  x    XML node  
  * @param[in]  arg  General-purpose argument
- * @retval    -1    Error, aborted at first error encounter, return -1 to end user
- * @retval     0    OK, continue
- * @retval     1    Abort, dont continue with others, return 1 to end user
  * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
  */
 typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 
@@ -239,7 +239,6 @@ size_t    xml_creator_len(cxobj *xn);
 cvec     *xml_creator_get(cxobj *xn);
 int       xml_creator_copy_one(cxobj *x0, cxobj *x1);
 int       xml_creator_copy_all(cxobj *x0, cxobj *x1);
-int       xml_creator_print(FILE *f, cxobj *xn);
 
 char     *xml_value(cxobj *xn);
 int       xml_value_set(cxobj *xn, char *val);
