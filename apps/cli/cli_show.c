@@ -185,7 +185,7 @@ xpath_append(cbuf      *cb0,
     return retval;
 }
 
-/*! Completion callback intended for automatically generated data model
+/*! Completion callback of variable for configured data and automatically generated data model
  *
  * Returns an expand-type list of commands as used by cligen 'expand' 
  * functionality.
@@ -448,6 +448,66 @@ expand_dbvar(void   *h,
         xml_free(xt);
     if (xpath)
         free(xpath);
+    return retval;
+}
+
+/*! Completion callback of variable for yang schema
+ *
+ * @param[in]   h        clicon handle
+ * @param[in]   name     Name of this function (eg "expand_dbvar")
+ * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
+ * @param[in]   argv     Arguments given at the callback:
+ *   <schemanode>       Absolute YANG schema-node
+ *   <var>*             List of variable names in cvv for traversing yang
+ * @param[out]  commands vector of function pointers to callback functions
+ * @param[out]  helptxt  vector of pointers to helptexts
+ * @retval      0        OK
+ * @retval     -1        Error
+ */
+int
+expand_augment(void   *h,
+               char   *name,
+               cvec   *cvv,
+               cvec   *argv,
+               cvec   *commands,
+               cvec   *helptexts)
+{
+    int          retval = -1;
+    int          argc = 0;
+    cg_var      *cv;
+    char        *schema_nodeid;
+    yang_stmt   *yspec0 = NULL;
+    yang_stmt   *yres = NULL;
+    yang_stmt   *yn = NULL;
+    yang_stmt   *ydesc;
+
+    if (argv == NULL || cvec_len(argv) < 1){
+        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <schemanode> <variable>*");
+        goto done;
+    }
+    if ((cv = cvec_i(argv, argc++)) == NULL){
+        clixon_err(OE_PLUGIN, 0, "Error when accessing argument <schamenode>");
+        goto done;
+    }
+    schema_nodeid = cv_string_get(cv);
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
+    }
+    if (yang_abs_schema_nodeid(yspec0, schema_nodeid, &yres) < 0)
+        goto done;
+    yn = NULL;
+    while ((yn = yn_each(yres, yn)) != NULL) {
+        if (yang_keyword_get(yn) != Y_LIST)
+            continue;
+        cvec_add_string(commands, NULL, yang_argument_get(yn));
+        if ((ydesc = yang_find(yn, Y_DESCRIPTION, NULL)) != NULL)
+            cvec_add_string(helptexts, NULL, yang_argument_get(ydesc));
+        else
+            cvec_add_string(helptexts, NULL, "Service");
+    }
+    retval = 0;
+ done:    
     return retval;
 }
 
