@@ -174,7 +174,6 @@ cat <<EOF > $fstate
 </interfaces>
 EOF
 
-
 db=startup
 if [ $db = startup ]; then
     sudo echo "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" > $dir/startup_db
@@ -334,7 +333,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>\
 <interfaces $EXAMPLENS xmlns:nc=\"${BASENS}\">\
 <interface><name>eth1</name><mtu nc:operation=\"create\">3000</mtu></interface>\
-</interfaces></config><default-operation>none</default-operation> </edit-config></rpc>" \
+</interfaces></config><default-operation>none</default-operation></edit-config></rpc>" \
 "" \
 "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 

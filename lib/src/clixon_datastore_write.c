@@ -145,70 +145,6 @@ attr_ns_value(cxobj *x,
     goto done;
 }
 
-/*! Add creator data to metadata xml object on the form name:xpath* 
- *
- * Callback function type for xml_apply
- * @param[in]  x    XML node  
- * @param[in]  arg  General-purpose argument
- * @retval    -1    Error, aborted at first error encounter, return -1 to end user
- * @retval     0    OK, continue
- * @retval     1    Abort, dont continue with others, return 1 to end user
- * @retval     2    Locally abort this subtree, continue with others
- * On the form:
- *     <creator>
- *       <name>testA[name='foo']</name>
- *       <xpath>...</xpath>
- *       ...
- *     </creator>
- * @see xml_creator_metadata_read
- */
-static int
-xml_creator_metadata_write(cxobj *x,
-                           void  *arg)
-{
-    int     retval = -1;
-    cxobj  *xmeta = (cxobj*)arg;
-    cxobj  *xmc;
-    cvec   *cvv;
-    cg_var *cv;
-    char   *val;
-    cvec   *nsc = NULL;
-    char   *xpath = NULL;
-
-    if ((cvv = xml_creator_get(x)) == NULL){
-        retval = 0;
-        goto done;
-    }
-    /* Note this requires x to have YANG spec */
-    if (xml2xpath(x, nsc, 0, 0, &xpath) < 0)
-        goto done;
-    cv = NULL;
-    while ((cv = cvec_each(cvv, cv)) != NULL){
-        val = cv_name_get(cv);
-        /* Find existing entry where name is val */
-        xmc = NULL;
-        while ((xmc = xml_child_each(xmeta, xmc, CX_ELMNT)) != NULL){
-            if (strcmp(xml_find_body(xmc, "name"), val) == 0)
-                break;
-        }
-        if (xmc != NULL){
-            if (clixon_xml_parse_va(YB_NONE, NULL, &xmc, NULL, "<path>%s</path>", xpath) < 0)
-                goto done;
-        }
-        else {
-            if (clixon_xml_parse_va(YB_NONE, NULL, &xmeta, NULL,
-                                    "<creator><name>%s</name><path>%s</path></creator>",
-                                    val, xpath) < 0)
-                goto done;
-        }
-    }
-    retval = 2;
- done:
-    if (xpath)
-        free(xpath);
-    return retval;
-}
-
 /*! When new body is added, some needs type lookup is made and namespace checked
  *
  * This includes identityrefs, paths
@@ -1416,13 +1352,12 @@ xmldb_put(clixon_handle       h,
         goto done;
     }
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
-    /* Add creator attribute */
+    /* Add creator attributes to datastore */
     if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
-        if ((xmeta = xml_new("creators", x0, CX_ELMNT)) == NULL)
+        /* @see xml_creator_metadata_read */
+        if (xml_creator_tree(x0, &xmeta) < 0)
             goto done;
-        if (xmlns_set(xmeta, NULL, CLIXON_LIB_NS) < 0)
-            goto done;
-        if (xml_apply(x0, CX_ELMNT, xml_creator_metadata_write, xmeta) < 0)
+        if (xml_addsub(x0, xmeta) < 0)
             goto done;
         if (xml_child_nr_type(xmeta, CX_ELMNT) == 0){
             xml_purge(xmeta);

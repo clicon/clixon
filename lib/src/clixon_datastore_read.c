@@ -859,10 +859,6 @@ xmldb_get_nocache(clixon_handle    h,
         if (disable_nacm_on_empty(xt, yspec) < 0)
             goto done;
     }
-#if 0 /* debug */
-    if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
-        clixon_log(h, LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
-#endif
     if (clixon_debug_get()>1)
         if (clixon_xml2file(stderr, xt, 0, 1, NULL, fprintf, 0, 0) < 0)
             goto done;
@@ -1007,8 +1003,10 @@ xmldb_get_cache(clixon_handle     h,
             goto done;
     }
     /* Original tree: Remove global defaults and empty non-presence containers */
+#if 0
     if (xml_defaults_nopresence(x0t, 2) < 0)
         goto done;
+#endif
     switch (wdef){
     case WITHDEFAULTS_REPORT_ALL:
         break;
@@ -1016,8 +1014,7 @@ xmldb_get_cache(clixon_handle     h,
         /* Mark and remove nodes having schema default values */
         if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
             goto done;
-        if (xml_tree_prune_flags(x1t, XML_FLAG_MARK, XML_FLAG_MARK)
-            < 0)
+        if (xml_tree_prune_flags(x1t, XML_FLAG_MARK, XML_FLAG_MARK) < 0)
             goto done;
         if (xml_defaults_nopresence(x1t, 1) < 0)
             goto done;
