@@ -1213,6 +1213,7 @@ text_modify_top(clixon_handle       h,
  *     cbret contains netconf error message
  * @endcode
  * @note if xret is non-null, it may contain error message
+ * @note x1 may change as a side-effect (eg operation attributes are stripped)
  */
 int
 xmldb_put(clixon_handle       h,

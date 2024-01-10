@@ -141,11 +141,11 @@ backend_terminate(clixon_handle h)
         unlink(pidfile);   
     if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)
         unlink(sockpath);
-    backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     clixon_event_exit();
     clixon_debug(CLIXON_DBG_CLIENT, "%s done", __FUNCTION__);
     clixon_err_exit();
     clixon_log_exit();
+    backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     return 0;
 }
 
