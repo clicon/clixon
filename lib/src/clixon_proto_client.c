@@ -206,7 +206,7 @@ clicon_rpc_msg(clixon_handle      h,
     int     s = -1;
     int     eof = 0;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
 #endif
@@ -253,7 +253,7 @@ clicon_rpc_msg(clixon_handle      h,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%d", retval);
     if (retdata)
         free(retdata);
     if (xret)
@@ -291,7 +291,7 @@ clicon_rpc_msg_persistent(clixon_handle      h,
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
 #endif
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s request:%s", __FUNCTION__, msg->op_body);
+    clixon_debug(CLIXON_DBG_DEFAULT, "request:%s", msg->op_body);
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
     if (clicon_rpc_msg_once(h, msg, 0, &retdata, &eof, &s) < 0)
         goto done;
@@ -306,7 +306,7 @@ clicon_rpc_msg_persistent(clixon_handle      h,
         clixon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retdata:%s", __FUNCTION__, retdata);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retdata:%s", retdata);
 
     if (retdata){
         /* Cannot populate xret here because need to know RPC name (eg "lock") in order to associate yang
@@ -1018,7 +1018,7 @@ clicon_rpc_get2(clixon_handle   h,
     yang_stmt         *yspec;
     cvec              *nscd = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -1105,7 +1105,7 @@ clicon_rpc_get2(clixon_handle   h,
     }
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%d", retval);
     if (nscd)
         cvec_free(nscd);
     if (cb)

@@ -649,7 +649,7 @@ type_snmp2xml(yang_stmt                  *ys,
     yang_stmt   *yrestype = NULL;
     int          ret;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     if (valstr == NULL){
         clixon_err(OE_UNIX, EINVAL, "valstr is NULL");
         goto done;
@@ -733,7 +733,7 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     default:
         assert(0); // XXX
-        clixon_debug(CLIXON_DBG_CLIENT, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
+        clixon_debug(CLIXON_DBG_CLIENT, "%s not supported", cv_type2str(cvtype));
         if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
             clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
             goto done;
@@ -747,7 +747,7 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%d", retval);
     if (origtype)
         free(origtype);
     if (cv)
@@ -836,7 +836,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%d", retval);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -981,7 +981,7 @@ type_xml2snmp(char       *snmpstr,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%d", retval);
     return retval;
  fail:
     retval = 0;
@@ -1232,7 +1232,7 @@ clixon_snmp_err_cb(void *handle,
 {
     const char *errstr;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     if (suberr < 0){
         if (suberr < -CLIXON_ERR_SNMP_MIB){
             switch (suberr+CLIXON_ERR_SNMP_MIB){

@@ -199,7 +199,7 @@ clixon_event_reg_fd(int   fd,
     e->e_type = EVENT_FD;
     e->e_next = ee;
     ee = e;
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s, registering %s", __FUNCTION__, e->e_string);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "registering %s", e->e_string);
     return 0;
 }
 
@@ -293,7 +293,7 @@ clixon_event_reg_timeout(struct timeval t,
     }
     e->e_next = e1;
     *e_prev = e;
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: %s", __FUNCTION__, str);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", str);
     retval = 0;
  done:
     return retval;
@@ -409,7 +409,7 @@ clixon_event_loop(clixon_handle h)
                  *     New select loop is called
                  * (3) Other signals result in an error and return -1.
                  */
-                clixon_debug(CLIXON_DBG_DEFAULT, "%s select: %s", __FUNCTION__, strerror(errno));
+                clixon_debug(CLIXON_DBG_DEFAULT, "select: %s", strerror(errno));
                 if (clixon_exit_get() == 1){
                     clixon_err(OE_EVENTS, errno, "select");
                     retval = 0;
@@ -435,7 +435,7 @@ clixon_event_loop(clixon_handle h)
         if (n==0){ /* Timeout */
             e = ee_timers;
             ee_timers = ee_timers->e_next;
-            clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s timeout: %s", __FUNCTION__, e->e_string);
+            clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "timeout: %s", e->e_string);
             if ((*e->e_fn)(0, e->e_arg) < 0){
                 free(e);
                 goto err;
@@ -449,9 +449,9 @@ clixon_event_loop(clixon_handle h)
             }
             e_next = e->e_next;
             if(e->e_type == EVENT_FD && FD_ISSET(e->e_fd, &fdset)){
-                clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: FD_ISSET: %s", __FUNCTION__, e->e_string);
+                clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "FD_ISSET: %s", e->e_string);
                 if ((*e->e_fn)(e->e_fd, e->e_arg) < 0){
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s Error in: %s", __FUNCTION__, e->e_string);
+                    clixon_debug(CLIXON_DBG_DEFAULT, "Error in: %s", e->e_string);
                     goto err;
                 }
                 if (_ee_unreg){
@@ -463,12 +463,12 @@ clixon_event_loop(clixon_handle h)
         clixon_exit_decr(); /* If exit is set and > 1, decrement it (and exit when 1) */
         continue;
       err:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s err", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT, "err");
         break;
     }
     if (clixon_exit_get() == 1)
         retval = 0;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s done:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "done:%d", retval);
     return retval;
 }
 

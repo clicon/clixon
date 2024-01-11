@@ -245,7 +245,7 @@ backend_accept_client(int   fd,
     uid_t                guid;
 #endif
 
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "");
     len = sizeof(from);
     if ((s = accept(fd, &from, &len)) < 0){
         clixon_err(OE_UNIX, errno, "accept");

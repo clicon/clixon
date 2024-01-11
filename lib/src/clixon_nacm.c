@@ -299,7 +299,7 @@ nacm_rpc(char         *rpc,
  permit:
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d (0:deny 1:permit)", retval);
     if (nsc)
         xml_nsctx_free(nsc);
     if (gvec)
@@ -770,7 +770,7 @@ nacm_datanode_write(clixon_handle    h,
  permit:
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d (0:deny 1:permit)", retval);
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -1075,7 +1075,7 @@ nacm_datanode_read(clixon_handle h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -1128,7 +1128,7 @@ nacm_access_check(clixon_handle h,
     char  *wwwuser;
 #endif
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
     /* Do initial nacm processing common to all access validation in
@@ -1181,7 +1181,7 @@ nacm_access_check(clixon_handle h,
  done:
     if (nsc)
         xml_nsctx_free(nsc);
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d (0:deny 1:permit)", retval);
     return retval;
  permit:
     retval = 1;

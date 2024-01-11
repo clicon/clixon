@@ -159,7 +159,7 @@ netconf_hello_msg(clixon_handle h,
     int     foundbase_11 = 0;
     char   *body;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     _netconf_hello_nr++;
     if (xml_find_type(xn, NULL, "session-id", CX_ELMNT) != NULL) {
         clixon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1");
@@ -179,12 +179,12 @@ netconf_hello_msg(clixon_handle h,
              * event any parameters are encoded at the end of the URI string. */
             if (strncmp(body, NETCONF_BASE_CAPABILITY_1_0, strlen(NETCONF_BASE_CAPABILITY_1_0)) == 0){ /* RFC 4741 */
                 foundbase_10++;
-                clixon_debug(CLIXON_DBG_CLIENT, "%s foundbase10", __FUNCTION__);
+                clixon_debug(CLIXON_DBG_CLIENT, "foundbase10");
             }
             else if (strncmp(body, NETCONF_BASE_CAPABILITY_1_1, strlen(NETCONF_BASE_CAPABILITY_1_1)) == 0 &&
                      clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0){ /* RFC 6241 */
                 foundbase_11++;
-                clixon_debug(CLIXON_DBG_CLIENT, "%s foundbase11", __FUNCTION__);
+                clixon_debug(CLIXON_DBG_CLIENT, "foundbase11");
                 clicon_data_int_set(h, NETCONF_FRAMING_TYPE, NETCONF_SSH_CHUNKED); /* enable chunked enc */
             }
         }
@@ -334,8 +334,8 @@ netconf_input_packet(clixon_handle h,
     cxobj  *xret = NULL;
     netconf_framing_type framing;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
-    clixon_debug_xml(CLIXON_DBG_CLIENT, xreq, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug_xml(CLIXON_DBG_CLIENT, xreq, "");
     rpcname = xml_name(xreq);
     rpcprefix = xml_prefix(xreq);
     framing = clicon_data_int_get(h, NETCONF_FRAMING_TYPE);
@@ -469,7 +469,7 @@ netconf_input_cb(int   s,
                                &eom) < 0)
             goto done;
         if (eom == 0){ /* frame not complete */
-            clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s: frame: %lu", __FUNCTION__, cbuf_len(cbmsg));
+            clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "frame: %lu", cbuf_len(cbmsg));
             /* Extra data to read, save data and continue on next round */
             if (clicon_hash_add(cdat, NETCONF_FRAME_MSG, &cbmsg, sizeof(cbmsg)) == NULL)
                 goto done;
@@ -511,7 +511,7 @@ netconf_input_cb(int   s,
         }
     }
     if (eof){ /* socket closed / read returns 0 */
-        clixon_debug(CLIXON_DBG_CLIENT, "%s len==0, closing", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "len==0, closing");
         clixon_event_unreg_fd(s, netconf_input_cb);
         close(s);
         clixon_exit_set(1);

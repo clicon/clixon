@@ -121,7 +121,7 @@ static struct clixon_plugin_api api = {
 clixon_plugin_api *
 clixon_plugin_init(clixon_handle h)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s restconf", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "restconf");
     /* Register local netconf rpc client (note not backend rpc client) */
     if (rpc_callback_register(h, netconf_client_rpc, NULL,
                               "urn:example:clixon", "client-rpc") < 0)

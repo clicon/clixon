@@ -1266,11 +1266,11 @@ yang2cli_stmt(clixon_handle h,
         goto done;
     }
     if (yang_find(ys, Y_STATUS, "obsolete") != NULL){
-        clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s obsolete: %s %s, skipped", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "obsolete: %s %s, skipped", yang_argument_get(ys), yang_argument_get(ys_module(ys)));
         goto ok;
     }
     if (yang_find(ys, Y_STATUS, "deprecated") != NULL){
-        clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s deprecated: %s %s", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "deprecated: %s %s", yang_argument_get(ys), yang_argument_get(ys_module(ys)));
     }
     /* Check if autocli skip */
     if (yang_extension_value(ys, "skip", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
@@ -1543,11 +1543,11 @@ yang2cli_grouping(clixon_handle      h,
     }
     /* Traverse YANG, loop through all modules and generate CLI, inline of yang2cli_stmt */
     if (yang_find(ys, Y_STATUS, "obsolete") != NULL){
-        clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s obsolete: %s %s, skipped", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "obsolete: %s %s, skipped", yang_argument_get(ys), yang_argument_get(ys_module(ys)));
         goto empty;
     }
     if (yang_find(ys, Y_STATUS, "deprecated") != NULL){
-        clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s deprecated: %s %s", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "deprecated: %s %s", yang_argument_get(ys), yang_argument_get(ys_module(ys)));
     }
     /* Only produce autocli for YANG non-config only if autocli-treeref-state is true */
     if (autocli_treeref_state(h, &treeref_state) < 0)
@@ -1576,8 +1576,8 @@ yang2cli_grouping(clixon_handle      h,
         fprintf(stderr, "%s\n", cbuf_get(cb));
         goto done;
     }
-    clixon_debug(CLIXON_DBG_CLIENT, "%s Generated auto-cli for grouping:%s",
-                 __FUNCTION__, yang_argument_get(ys));
+    clixon_debug(CLIXON_DBG_CLIENT, "Generated auto-cli for grouping:%s",
+                 yang_argument_get(ys));
     /* Add prefix: assume new are appended */
     for (i=0; i<pt_len_get(pt); i++){
         if ((co = pt_vec_i_get(pt, i)) != NULL){
@@ -1599,8 +1599,8 @@ yang2cli_grouping(clixon_handle      h,
         clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
                    __FUNCTION__, treename, cbuf_get(cb));
     else
-        clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s: Top-level cli-spec %s:\n%s",
-                     __FUNCTION__, treename, cbuf_get(cb));
+        clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "Top-level cli-spec %s:\n%s",
+                     treename, cbuf_get(cb));
     if (cligen_parsetree_merge(pt0, NULL, pt) < 0){
         clixon_err(OE_YANG, errno, "cligen_parsetree_merge");
         goto done;
@@ -1706,13 +1706,13 @@ yang2cli_yspec(clixon_handle      h,
             fprintf(stderr, "%s\n", cbuf_get(cb));
             goto done;
         }
-        clixon_debug(CLIXON_DBG_CLIENT, "%s Generated auto-cli for module:%s",
-                     __FUNCTION__, yang_argument_get(ymod));
+        clixon_debug(CLIXON_DBG_CLIENT, "Generated auto-cli for module:%s",
+                     yang_argument_get(ymod));
         /* Add prefix: assume new are appended */
         for (i=0; i<pt_len_get(pt); i++){
             if ((co = pt_vec_i_get(pt, i)) != NULL){
-                clixon_debug(CLIXON_DBG_CLIENT, "%s command: %s",
-                             __FUNCTION__, co->co_command);
+                clixon_debug(CLIXON_DBG_CLIENT, "command: %s",
+                             co->co_command);
                 co_prefix_set(co, prefix);
             }
         }
@@ -1730,8 +1730,8 @@ yang2cli_yspec(clixon_handle      h,
             clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
                        __FUNCTION__, treename, cbuf_get(cb));
         else
-            clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s: Top-level cli-spec %s:\n%s",
-                         __FUNCTION__, treename, cbuf_get(cb));
+            clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "Top-level cli-spec %s:\n%s",
+                         treename, cbuf_get(cb));
         if (cligen_parsetree_merge(pt0, NULL, pt) < 0){
             clixon_err(OE_YANG, errno, "cligen_parsetree_merge");
             goto done;

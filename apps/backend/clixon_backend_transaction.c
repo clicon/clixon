@@ -279,8 +279,8 @@ transaction_dbg(clixon_handle    h,
             goto done;
     }
     if (i)
-        clixon_debug(dbglevel, "%s %" PRIu64 " %s del: %s",
-                     __FUNCTION__,  td->td_id, msg, cbuf_get(cb));
+        clixon_debug(dbglevel, "%" PRIu64 " %s del: %s",
+                     td->td_id, msg, cbuf_get(cb));
     cbuf_reset(cb);
     for (i=0; i<td->td_alen; i++){
         xn = td->td_avec[i];
@@ -288,8 +288,8 @@ transaction_dbg(clixon_handle    h,
             goto done;
     }
     if (i)
-        clixon_debug(dbglevel, "%s %" PRIu64 " %s add: %s",
-                     __FUNCTION__, td->td_id, msg, cbuf_get(cb));
+        clixon_debug(dbglevel, "%" PRIu64 " %s add: %s",
+                     td->td_id, msg, cbuf_get(cb));
     cbuf_reset(cb);
     for (i=0; i<td->td_clen; i++){
         if (td->td_scvec){
@@ -302,8 +302,8 @@ transaction_dbg(clixon_handle    h,
             goto done;
     }
     if (i)
-        clixon_debug(dbglevel, "%s %" PRIu64 " %s change: %s",
-                     __FUNCTION__, td->td_id, msg, cbuf_get(cb));
+        clixon_debug(dbglevel, "%" PRIu64 " %s change: %s",
+                     td->td_id, msg, cbuf_get(cb));
  done:
     if (cb)
         cbuf_free(cb);

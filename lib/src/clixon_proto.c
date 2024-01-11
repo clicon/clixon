@@ -197,7 +197,7 @@ clicon_msg_decode(struct clicon_msg *msg,
     char  *xmlstr;
     int    ret;
 
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
     /* hdr */
     if (id)
         *id = ntohl(msg->op_id);
@@ -239,7 +239,7 @@ clicon_connect_unix(clixon_handle h,
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, sockpath, sizeof(addr.sun_path)-1);
 
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s: connecting to %s", __FUNCTION__, addr.sun_path);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "connecting to %s", addr.sun_path);
     if (connect(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
         if (errno == EACCES)
             clixon_err(OE_CFG, errno, "connecting unix socket: %s. "
@@ -366,7 +366,7 @@ clicon_msg_send(int                s,
     int retval = -1;
     int e;
 
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s: send msg len=%d", __FUNCTION__, ntohl(msg->op_len));
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "send msg len=%d", ntohl(msg->op_len));
     if (descr)
         clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Send [%s]: %s", descr, msg->op_body);
     else{
@@ -422,7 +422,7 @@ clicon_msg_rcv(int                 s,
     sigset_t          oldsigset;
     struct sigaction  oldsigaction[32] = {{{0,},},};
 
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
     *eof = 0;
     if (intr){
         if (clixon_signal_save(&oldsigset, oldsigaction) < 0)
@@ -450,8 +450,8 @@ clicon_msg_rcv(int                 s,
     mlen = ntohl(hdr.op_len);
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL2, "op-len:%u op-id:%u",
                  mlen, ntohl(hdr.op_id));
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s: rcv msg len=%d",
-                 __FUNCTION__, mlen);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "rcv msg len=%d",
+                 mlen);
     if (mlen <= sizeof(hdr)){
         clixon_err(OE_PROTO, 0, "op_len:%u too short", mlen);
         *eof = 1;
@@ -485,7 +485,7 @@ clicon_msg_rcv(int                 s,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (intr){
         if (clixon_signal_restore(&oldsigset, oldsigaction) < 0)
             goto done;
@@ -518,7 +518,7 @@ clicon_msg_rcv1(int         s,
     int           xml_state = 0;
     int           poll;
 
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
     *eof = 0;
     memset(buf, 0, sizeof(buf));
     while (1){
@@ -561,7 +561,7 @@ clicon_msg_rcv1(int         s,
         clixon_debug(CLIXON_DBG_MSG, "Recv: %s", cbuf_get(cb));
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s done", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "done");
     return retval;
 }
 
@@ -581,7 +581,7 @@ clicon_msg_send1(int         s,
 {
     int retval = -1;
 
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
     if (descr)
         clixon_debug(CLIXON_DBG_MSG, "Send [%s]: %s", descr, cbuf_get(cb));
     else
@@ -713,7 +713,7 @@ clicon_rpc(int                sock,
     struct clicon_msg *reply = NULL;
     char              *data = NULL;
 
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
     if (clicon_msg_send(sock, descr, msg) < 0)
         goto done;
     if (clicon_msg_rcv(sock, descr, 0, &reply, eof) < 0)
@@ -729,7 +729,7 @@ clicon_rpc(int                sock,
  ok:
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (reply)
         free(reply);
     return retval;
@@ -756,7 +756,7 @@ clicon_rpc1(int         sock,
 {
     int    retval = -1;
 
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
     if (netconf_framing_preamble(NETCONF_SSH_CHUNKED, msg) < 0)
         goto done;
     if (netconf_framing_postamble(NETCONF_SSH_CHUNKED, msg) < 0)
@@ -767,7 +767,7 @@ clicon_rpc1(int         sock,
         goto done;
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
 }
 
@@ -864,7 +864,7 @@ send_msg_notify_xml(clixon_handle h,
         goto done;
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%d", retval);
     if (cb)
         cbuf_free(cb);
     return retval;

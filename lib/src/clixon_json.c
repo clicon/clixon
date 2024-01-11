@@ -318,7 +318,7 @@ json2xml_decode_identityref(cxobj     *x,
     char      *prefix2 = NULL;
     cbuf      *cbv = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     yspec = ys_spec(y);
     if ((xb = xml_body_get(x)) == NULL)
         goto ok;
@@ -336,8 +336,8 @@ json2xml_decode_identityref(cxobj     *x,
              */
             if (xml_nsctx_node(x, &nsc) < 0)
                 goto done;
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s prefix:%s body:%s namespace:%s",
-                         __FUNCTION__, prefix, body, ns);
+            clixon_debug(CLIXON_DBG_DEFAULT, "prefix:%s body:%s namespace:%s",
+                         prefix, body, ns);
             if (!xml_nsctx_get_prefix(nsc, ns, &prefix2)){
                 /* (no)  insert a xmlns:<prefix> statement
                  * Get yang prefix from import statement of my mod 
@@ -472,7 +472,7 @@ xml2json_encode_identityref(cxobj     *xb,
     yang_stmt *yspec;
     yang_stmt *my_ymod;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, body);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", body);
     my_ymod = ys_module(yp);
     yspec = ys_spec(yp);
     if (nodeid_split(body, &prefix, &id) < 0)
@@ -481,7 +481,7 @@ xml2json_encode_identityref(cxobj     *xb,
     if (xml2ns(xb, prefix, &namespace) < 0)
         goto done;
     /* We got the namespace, now get the module */
-    //    clixon_debug(CLIXON_DBG_DEFAULT, "%s body:%s prefix:%s namespace:%s", __FUNCTION__, body, prefix, namespace);
+    //    clixon_debug(CLIXON_DBG_DEFAULT, "body:%s prefix:%s namespace:%s", body, prefix, namespace);
 #ifdef IDENTITYREF_KLUDGE
     if (namespace == NULL){
         /* If we dont find namespace here, we assume it is because of a missing
@@ -1451,7 +1451,7 @@ _json_parse(char      *str,
     int              i;
     int              failed = 0; /* yang assignment */
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d %s", __FUNCTION__, yb, str);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%d %s", yb, str);
     jy.jy_parse_string = str;
     jy.jy_linenum = 1;
     jy.jy_current = xt;
@@ -1537,7 +1537,7 @@ _json_parse(char      *str,
             goto done;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     if (cberr)
         cbuf_free(cberr);
     json_parse_exit(&jy);
@@ -1580,7 +1580,7 @@ clixon_json_parse_string(char      *str,
                          cxobj    **xt,
                          cxobj    **xerr)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (xt==NULL){
         clixon_err(OE_JSON, EINVAL, "xt is NULL");
         return -1;

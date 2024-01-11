@@ -164,8 +164,8 @@ xml2cvec(cxobj      *xt,
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
         name = xml_name(xc);
         if ((ys = yang_find_datanode(yt, name)) == NULL){
-            clixon_debug(CLIXON_DBG_ALWAYS, "%s: yang sanity problem: %s in xml but not present in yang under %s",
-                         __FUNCTION__, name, yang_argument_get(yt));
+            clixon_debug(CLIXON_DBG_ALWAYS, "yang sanity problem: %s in xml but not present in yang under %s",
+                         name, yang_argument_get(yt));
             if ((body = xml_body(xc)) != NULL){
                 if ((cv = cv_new(CGV_STRING)) == NULL){
                     clixon_err(OE_PLUGIN, errno, "cv_new");
@@ -213,7 +213,7 @@ xml2cvec(cxobj      *xt,
         }
     }
     if (clixon_debug_isset(CLIXON_DBG_XML | CLIXON_DBG_DETAIL)){
-        clixon_debug(CLIXON_DBG_ALWAYS, "%s cvv:", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_ALWAYS, "cvv:");
         cvec_print(stderr, cvv);
     }
     *cvv0 = cvv;

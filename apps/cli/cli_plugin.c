@@ -555,7 +555,7 @@ clicon_parse(clixon_handle  h,
         if (cliread_parse(ch, cmd, pt, &match_obj, &cvv, result, &reason) < 0)
             goto done;
         /* Debug command and result code */
-        clixon_debug(CLIXON_DBG_CLIENT, "%s result:%d command: \"%s\"", __FUNCTION__, *result, cmd);
+        clixon_debug(CLIXON_DBG_CLIENT, "result:%d command: \"%s\"", *result, cmd);
         switch (*result) {
         case CG_EOF: /* eof */
         case CG_ERROR:

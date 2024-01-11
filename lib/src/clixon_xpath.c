@@ -417,7 +417,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
              (xt2->xs_type == XP_PRIME_NR || xt2->xs_type == XP_PRIME_STR))
 #endif
         ){
-        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s type %s vs %s", __FUNCTION__,
+        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "type %s vs %s",
                 xpath_tree_int2str(xt1->xs_type),
                 xpath_tree_int2str(xt2->xs_type));
         goto neq;
@@ -429,19 +429,19 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
         goto eq;
     }
     if (xt1->xs_int != xt2->xs_int){
-        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s int", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "int");
         goto neq;
     }
     if (xt1->xs_double != xt2->xs_double){
-        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s double", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "double");
         goto neq;
     }
     if (clicon_strcmp(xt1->xs_s0, xt2->xs_s0)){
-        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s s0", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "s0");
         goto neq;
     }
     if (clicon_strcmp(xt1->xs_s1, xt2->xs_s1)){
-        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s s1", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "s1");
         goto neq;
     }
     xc1 = xt1->xs_c0;
@@ -450,7 +450,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
         ;
     else{
         if (xc1 == NULL || xc2 == NULL){
-            clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s NULL", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "NULL");
             goto neq;
         }
         if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
@@ -464,7 +464,7 @@ xpath_tree_eq(xpath_tree   *xt1, /* pattern */
         ;
     else{
         if (xc1 == NULL || xc2 == NULL){
-            clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s NULL", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "NULL");
             goto neq;
         }
         if ((ret = xpath_tree_eq(xc1, xc2, vec, len)) < 0)
@@ -558,7 +558,7 @@ xpath_parse(const char  *xpath,
     clixon_xpath_yacc xpy = {0,};
     cbuf             *cb = NULL;    
 
-    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s xpath %s", __FUNCTION__, xpath);
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "xpath %s", xpath);
     if (xpath == NULL){
         clixon_err(OE_XML, EINVAL, "XPath is NULL");
         goto done;
@@ -630,7 +630,7 @@ xpath_vec_ctx(cxobj      *xcur,
     xpath_tree *xptree = NULL;
     xp_ctx      xc = {0,};
     
-    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, xpath);
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s", xpath);
     if (xpath_parse(xpath, &xptree) < 0)
         goto done;
     xc.xc_type = XT_NODESET;
@@ -1125,7 +1125,7 @@ xpath2canonical(const char *xpath0,
     cbuf       *xcb = NULL;
     int         ret;
 
-    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "");
     /* Parse input xpath into an xpath-tree */
     if (xpath_parse(xpath0, &xpt) < 0)
         goto done;
@@ -1481,7 +1481,7 @@ xpath2xml_traverse(xpath_tree *xs,
     }   
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
  fail:
     retval = 0;
@@ -1518,7 +1518,7 @@ xpath2xml(char       *xpath,
     cbuf       *cberr = NULL;
     xpath_tree *xpt = NULL;
 
-    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s xpath:%s", __FUNCTION__, xpath);
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "xpath:%s", xpath);
     if ((cberr = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;

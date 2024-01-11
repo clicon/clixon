@@ -137,7 +137,7 @@ create_socket(struct sockaddr *sa,
     int    s = -1;
     int    on = 1;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (sock == NULL){
         clixon_err(OE_PROTO, EINVAL, "Requires socket output parameter");
         goto done;
@@ -191,7 +191,7 @@ create_socket(struct sockaddr *sa,
         *sock = s;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%d", retval);
     if (retval != 0 && s != -1)
         close(s);
     return retval;
@@ -232,7 +232,7 @@ fork_netns_socket(const char      *netns,
     int         sock_flags = SOCK_DGRAM | SOCK_CLOEXEC;
 #endif
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, netns);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", netns);
     if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
         clixon_err(OE_UNIX, errno, "socketpair");
         goto done;
@@ -299,14 +299,14 @@ fork_netns_socket(const char      *netns,
     if(waitpid(child, &wstatus, 0) == child)
         ; // retval = WEXITSTATUS(status); /* Dont know what to do with status */
     if (WEXITSTATUS(wstatus)){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s wstatus:%d", __FUNCTION__, WEXITSTATUS(wstatus));
+        clixon_debug(CLIXON_DBG_DEFAULT, "wstatus:%d", WEXITSTATUS(wstatus));
         *sock = -1;
         clixon_err(OE_UNIX, EADDRNOTAVAIL, "bind(%s)", addrstr);
         goto done;
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%d", retval);
     return retval;
 }
 #endif /* HAVE_SETNS */
@@ -334,7 +334,7 @@ clixon_netns_socket(const char      *netns,
 {
     int    retval = -1;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (netns == NULL){
         if (create_socket(sa, sin_len, backlog, flags, addrstr, sock) < 0)
             goto done;
@@ -352,6 +352,6 @@ clixon_netns_socket(const char      *netns,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%d", retval);
     return retval;
 }

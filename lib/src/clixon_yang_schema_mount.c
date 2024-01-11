@@ -162,7 +162,7 @@ yang_mount_get(yang_stmt  *y,
     cvec   *cvv;
     cg_var *cv;
 
-    clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s %s %p", __FUNCTION__, xpath, y);
+    clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s %p", xpath, y);
     /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
     if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
@@ -194,7 +194,7 @@ yang_mount_set(yang_stmt *y,
     cg_var    *cv;
     cg_var    *cv2;
 
-    clixon_debug(CLIXON_DBG_YANG, "%s %s %p", __FUNCTION__, xpath, y);
+    clixon_debug(CLIXON_DBG_YANG, "%s %p", xpath, y);
     if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
         (yspec0 = cv_void_get(cv)) != NULL){

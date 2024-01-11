@@ -471,7 +471,7 @@ yang_path_arg(yang_stmt  *ys,
     xp_yang_ctx *xyr = NULL;
     xp_yang_ctx *xy = NULL;
 
-    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "");
     if (path_arg == NULL){
         clixon_err(OE_XML, EINVAL, "path-arg is NULL");
         goto done;

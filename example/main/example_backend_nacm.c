@@ -241,7 +241,7 @@ clixon_plugin_init(clixon_handle h)
     char **argv;
     int    c;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s backend nacm", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "backend nacm");
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
         goto done;
