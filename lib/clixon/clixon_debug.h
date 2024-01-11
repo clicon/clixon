@@ -47,20 +47,21 @@
  */
 
 /* Detail level */
-#define CLIXON_DBG_ALWAYS	0x0    /* Unconditionally logged */
-#define CLIXON_DBG_DETAIL	0x1    /* Details: traces, parse trees, etc */
-#define CLIXON_DBG_DETAIL2	0x2    /* Extra details */
-#define CLIXON_DBG_DETAIL3	0x3    /* Probably more detail than you want */
-#define CLIXON_DBG_DMASK	0x3    /* Detail mask */
+#define CLIXON_DBG_ALWAYS	0x000000	/* Unconditionally logged */
+#define CLIXON_DBG_DETAIL	0x010000	/* Details: traces, parse trees, etc */
+#define CLIXON_DBG_DETAIL2	0x020000	/* Extra details */
+#define CLIXON_DBG_DETAIL3	0x030000	/* Probably more detail than you want */
+#define CLIXON_DBG_DMASK	0x030000	/* Detail mask */
+#define CLIXON_DBG_DSHIFT	16
 
 /* Subject area */
-#define CLIXON_DBG_DEFAULT	 0x04  /* Default logs */
-#define CLIXON_DBG_MSG		 0x08  /* In/out messages and datastore reads */
-#define CLIXON_DBG_XML		 0x10  /* XML processing */
-#define CLIXON_DBG_XPATH	 0x20  /* XPath processing */
-#define CLIXON_DBG_YANG		 0x40  /* YANG processing */
-#define CLIXON_DBG_CLIENT	 0x80  /* App-specific */
-#define CLIXON_DBG_SMASK	~0x03  /* Subject mask */
+#define CLIXON_DBG_DEFAULT	0x000001	/* Default logs */
+#define CLIXON_DBG_MSG		0x000002	/* In/out messages and datastore reads */
+#define CLIXON_DBG_XML		0x000004	/* XML processing */
+#define CLIXON_DBG_XPATH	0x000008	/* XPath processing */
+#define CLIXON_DBG_YANG		0x000010	/* YANG processing */
+#define CLIXON_DBG_CLIENT	0x000020	/* App-specific */
+#define CLIXON_DBG_SMASK	0x00ffff	/* Subject mask */
 
 /*
  * Macros
@@ -116,7 +117,7 @@ int clixon_debug_fn(clixon_handle h, const char *fn, const int line, int dbgleve
 static inline int clixon_debug_isset(unsigned n)
 {
 	unsigned level = clixon_debug_get();
-	unsigned detail = (n & CLIXON_DBG_DMASK);
+	unsigned detail = (n & CLIXON_DBG_DMASK) >> CLIXON_DBG_DSHIFT;
 	unsigned subject = (n & CLIXON_DBG_SMASK);
 
 	/* not this subject */
