@@ -1272,7 +1272,7 @@ xml_yang_validate_all(clixon_handle h,
     }
     if (yang_config(yt) != 0){
         ret = yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath);
-        clixon_debug(CLIXON_DBG_XPATH, "%s nr:%d xpath:%s return:%d", __FUNCTION__, nr, xpath, ret);
+        clixon_debug(CLIXON_DBG_XPATH, "nr:%d xpath:%s return:%d", nr, xpath, ret);
         if (ret < 0)
             goto done;
 
@@ -1338,20 +1338,20 @@ xml_yang_validate_all(clixon_handle h,
             if (yang_keyword_get(yc) != Y_MUST)
                 continue;
             if (!saw_node)
-                clixon_debug_xml(CLIXON_DBG_XPATH, xt, "%s", __FUNCTION__);
+                clixon_debug_xml(CLIXON_DBG_XPATH, xt, "");
             saw_node = 1;
 
             xpath = yang_argument_get(yc); /* "must" has xpath argument */
-            clixon_debug(CLIXON_DBG_XPATH, "%s xpath '%s'", __FUNCTION__, xpath);
+            clixon_debug(CLIXON_DBG_XPATH, "xpath '%s'", xpath);
             /* the context node is the node in the accessible tree for
              * which the "must" statement is defined. 
              * The set of namespace declarations is the set of all "import" statements' 
              */
             if (xml_nsctx_yang(yc, &nsc) < 0)
                 goto done;
-            clixon_debug(CLIXON_DBG_XPATH, "%s namespace '%s'", __FUNCTION__, xml_nsctx_get(nsc, NULL));
+            clixon_debug(CLIXON_DBG_XPATH, "namespace '%s'", xml_nsctx_get(nsc, NULL));
             nr = xpath_vec_bool(xt, nsc, "%s", xpath);
-            clixon_debug(CLIXON_DBG_XPATH, "%s result %s", __FUNCTION__, (nr < 0 ? "error" : (nr != 0 ? "true" : "false")));
+            clixon_debug(CLIXON_DBG_XPATH, "result %s", (nr < 0 ? "error" : (nr != 0 ? "true" : "false")));
             if (nr < 0)
                 goto done;
             if (!nr){
