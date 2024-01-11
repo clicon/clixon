@@ -1440,7 +1440,7 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     yang_stmt *yimport;
     yang_stmt *yprefix;
 
-    clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s namespace %s", __FUNCTION__, ns);
+    clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "namespace %s", ns);
     if (prefix == NULL){
         clixon_err(OE_YANG, EINVAL, "prefix is NULL");
         goto done;
@@ -2776,7 +2776,7 @@ ys_populate_feature(clixon_handle h,
     cv_name_set(cv, feature);
     cv_bool_set(cv, found);
     if (found)
-        clixon_debug(CLIXON_DBG_YANG, "%s %s:%s", __FUNCTION__, module, feature);
+        clixon_debug(CLIXON_DBG_YANG, "%s:%s", module, feature);
     yang_cv_set(ys, cv);
  ok:
     retval = 0;
@@ -3078,7 +3078,7 @@ yang_features(clixon_handle h,
             ret = 0;
             if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, mainfile, 1, &ret, h) < 0)
                 goto done;
-            clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s %s %d", __FUNCTION__, yang_argument_get(ys), ret);
+            clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s %d", yang_argument_get(ys), ret);
             if (ret == 0)
                 goto disabled;
         }
@@ -3276,8 +3276,8 @@ schema_nodeid_iterate(yang_stmt    *yn,
                 goto done;
         }
         if (ys == NULL){
-            clixon_debug(CLIXON_DBG_YANG, "%s: %s not found, last id found:%s",
-                         __FUNCTION__, id, yang_argument_get(yp));
+            clixon_debug(CLIXON_DBG_YANG, "%s not found, last id found:%s",
+                         id, yang_argument_get(yp));
             goto ok;
         }
         yp = ys; /* ys is matched */
@@ -4027,7 +4027,7 @@ yang_search_index_extension(clixon_handle h,
     extname = yang_argument_get(yext);
     if (strcmp(modname, "clixon-config") != 0 || strcmp(extname, "search_index") != 0)
         goto ok;
-    clixon_debug(CLIXON_DBG_YANG, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    clixon_debug(CLIXON_DBG_YANG, "Enabled extension:%s:%s", modname, extname);
     yp = yang_parent_get(ys);
     if (yang_list_index_add(yp) < 0)
         goto done;

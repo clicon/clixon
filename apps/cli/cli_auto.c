@@ -137,7 +137,7 @@ cli_auto_edit(clixon_handle h,
     str = cv_string_get(cvec_i(argv, argc++));
     if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
         mtpoint = str + strlen("mtpoint:");
-        clixon_debug(CLIXON_DBG_CLIENT, "%s mtpoint:%s", __FUNCTION__, mtpoint);
+        clixon_debug(CLIXON_DBG_CLIENT, "mtpoint:%s", mtpoint);
         treename = cv_string_get(cvec_i(argv, argc++));
     }
     else

@@ -391,7 +391,7 @@ autocli_start(clixon_handle h)
     yang_stmt    *yspec;
     int           enable = 0;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     /* There is no single "enable-autocli" flag,
      * but set 
      *   <module-default>false</module-default> 
@@ -402,7 +402,7 @@ autocli_start(clixon_handle h)
     if (autocli_module(h, NULL, &enable) < 0)
         goto done;
     if (!enable){
-        clixon_debug(CLIXON_DBG_CLIENT, "%s Autocli not enabled (clixon-autocli)", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "Autocli not enabled (clixon-autocli)");
         goto ok;
     }
     /* Init yang2cli */

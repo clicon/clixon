@@ -98,7 +98,7 @@ api_data_options(clixon_handle h,
 {
     int retval = -1;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     if (restconf_reply_header(req, "Allow", "OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE") < 0)
         goto done;
     if (restconf_reply_header(req, "Accept-Patch", "application/yang-data+xml,application/yang-data+json") < 0)
@@ -142,7 +142,7 @@ match_list_keys(yang_stmt *y,
     char      *key1;
     char      *key2;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     switch (yang_keyword_get(y)){
     case Y_LIST:
         if ((cvk = yang_cvec_get(y)) == NULL) /* Use Y_LIST cache, see ys_populate_list() */
@@ -176,7 +176,7 @@ match_list_keys(yang_stmt *y,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     return retval;
 }
 
@@ -236,8 +236,8 @@ api_data_write(clixon_handle h,
     char          *xpath = NULL;
     char          *attr;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
-    clixon_debug(CLIXON_DBG_CLIENT, "%s data:\"%s\"", __FUNCTION__, data);
+    clixon_debug(CLIXON_DBG_CLIENT, "api_path:\"%s\"", api_path0);
+    clixon_debug(CLIXON_DBG_CLIENT, "data:\"%s\"", data);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -427,7 +427,7 @@ api_data_write(clixon_handle h,
         /* There is an api-path that defines an element in the datastore tree.
          * Not top-of-tree.
          */
-        clixon_debug(CLIXON_DBG_CLIENT, "%s Comparing bottom-of api-path (%s) with top-of-data (%s)",__FUNCTION__, xml_name(xbot), dname);
+        clixon_debug(CLIXON_DBG_CLIENT, "Comparing bottom-of api-path (%s) with top-of-data (%s)", xml_name(xbot), dname);
 
         /* Check same symbol in api-path as data */
         if (strcmp(dname, xml_name(xbot))){
@@ -492,11 +492,11 @@ api_data_write(clixon_handle h,
         /* If we already have that default namespace, remove it in child */
         if ((xa = xml_find_type(xdata, NULL, "xmlns", CX_ATTR)) != NULL){
             if (xml2ns(xparent, NULL, &namespace) < 0){
-                clixon_debug(CLIXON_DBG_CLIENT, "%s G done",  __FUNCTION__);
+                clixon_debug(CLIXON_DBG_CLIENT, "G done");
                 goto done;
             }
             if (namespace == NULL){
-                clixon_debug_xml(CLIXON_DBG_CLIENT, xparent, "%s xparent:", __FUNCTION__);
+                clixon_debug_xml(CLIXON_DBG_CLIENT, xparent, "xparent:");
                 /* XXX */
             }
             /* Set xmlns="" default namespace attribute (if diff from default) */
@@ -540,7 +540,7 @@ api_data_write(clixon_handle h,
     if (clixon_xml2cbuf(cbx, xtop, 0, 0, NULL, -1, 0) < 0)
         goto done;
     cprintf(cbx, "</edit-config></rpc>");
-    clixon_debug(CLIXON_DBG_CLIENT, "%s xml: %s api_path:%s",__FUNCTION__, cbuf_get(cbx), api_path);
+    clixon_debug(CLIXON_DBG_CLIENT, "xml: %s api_path:%s", cbuf_get(cbx), api_path);
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
         goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
@@ -560,7 +560,7 @@ api_data_write(clixon_handle h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     if (xpath)
         free(xpath);
     if (nsc)
@@ -737,7 +737,7 @@ api_data_delete(clixon_handle h,
     int        ret;
     cxobj     *xe; /* xml error, no free */
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s api_path:%s", __FUNCTION__, api_path);
+    clixon_debug(CLIXON_DBG_CLIENT, "api_path:%s", api_path);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -821,7 +821,7 @@ api_data_delete(clixon_handle h,
         xml_free(xretdis);
     if (xtop)
         xml_free(xtop);
-    clixon_debug(CLIXON_DBG_CLIENT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
    return retval;
 }
 

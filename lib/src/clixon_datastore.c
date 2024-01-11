@@ -188,7 +188,7 @@ xmldb_copy(clixon_handle h,
     cxobj              *x1 = NULL;  /* from */
     cxobj              *x2 = NULL;  /* to */
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %s", __FUNCTION__, from, to);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", from, to);
     /* XXX lock */
     if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
         /* Copy in-memory cache */
@@ -384,7 +384,7 @@ xmldb_exists(clixon_handle h,
     char               *filename = NULL;
     struct stat         sb;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", db);
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
     if (lstat(filename, &sb) < 0)
@@ -442,7 +442,7 @@ xmldb_delete(clixon_handle h,
     char               *filename = NULL;
     struct stat         sb;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", db);
     if (xmldb_clear(h, db) < 0)
         goto done;
     if (xmldb_db2file(h, db, &filename) < 0)
@@ -476,7 +476,7 @@ xmldb_create(clixon_handle h,
     db_elmnt           *de = NULL;
     cxobj              *xt = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", db);
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
         if ((xt = de->de_xml) != NULL){
             xml_free(xt);

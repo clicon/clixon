@@ -590,7 +590,7 @@ candidate_validate(clixon_handle h,
     cxobj              *xret = NULL;
     int                 ret;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     if (db == NULL || cbret == NULL){
         clixon_err(OE_CFG, EINVAL, "db or cbret is NULL");
         goto done;
@@ -913,7 +913,7 @@ from_client_validate(clixon_handle h,
     int   ret;
     char *db;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     if ((db = netconf_db_find(xe, "source")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
             goto done;

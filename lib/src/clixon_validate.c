@@ -139,7 +139,7 @@ validate_leafref(cxobj     *xt,
 
     /* require instance */
     if ((yreqi = yang_find(ytype, Y_REQUIRE_INSTANCE, NULL)) != NULL){
-        if ((cv = yang_cv_get(yreqi)) != NULL) /* shouldnt happen */
+        if ((cv = yang_cv_get(yreqi)) != NULL) /* shouldn't happen */
             require_instance = cv_bool_get(cv);
     }
     /* Find referred XML instances */
@@ -836,7 +836,7 @@ check_mandatory_case(cxobj     *xt,
                     goto done;
                 if (ret == 1){
                 if (yang_flag_get(ym, YANG_FLAG_MARK) != 0){
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s Already marked, shouldnt happen", __FUNCTION__);
+                    clixon_debug(CLIXON_DBG_DEFAULT, "Already marked, shouldn't happen");
                 }
                 yang_flag_set(ym, YANG_FLAG_MARK);
                 }
@@ -1465,7 +1465,7 @@ rpc_reply_check(clixon_handle h,
     if ((ret = xml_bind_yang_rpc_reply(h, x, rpcname, yspec, &xret)) < 0)
         goto done;
     if (ret == 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
+        clixon_debug(CLIXON_DBG_DEFAULT, "failure when validating:%s", cbuf_get(cbret));
         cbuf_reset(cbret);
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
@@ -1474,7 +1474,7 @@ rpc_reply_check(clixon_handle h,
     if ((ret = xml_yang_validate_rpc_reply(h, x, &xret)) < 0)
         goto done;
     if (ret == 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
+        clixon_debug(CLIXON_DBG_DEFAULT, "failure when validating:%s", cbuf_get(cbret));
         cbuf_reset(cbret);
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;

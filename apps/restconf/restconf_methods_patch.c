@@ -635,7 +635,7 @@ yang_patch_do_edit(clixon_handle  h,
     yang_stmt *ybot = NULL;
     yang_stmt *ymod;
 
-    clixon_debug_xml(CLIXON_DBG_CLIENT, xn, "%s %d xn:", __FUNCTION__, __LINE__);
+    clixon_debug_xml(CLIXON_DBG_CLIENT, xn, "%d xn:", __LINE__);
     /* Create cbufs:s */
     if ((simple_patch_request_uri = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -778,7 +778,7 @@ api_data_yang_patch(clixon_handle  h,
     size_t         veclen;
     cxobj        **vec = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s api_path:\"%s\"",  __FUNCTION__, api_path0);
+    clixon_debug(CLIXON_DBG_CLIENT, "api_path:\"%s\"", api_path0);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;

@@ -218,7 +218,7 @@ get_statedata(clixon_handle     h,
     cbuf      *cb = NULL;
     cxobj     *xerr = NULL;
     
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
@@ -373,7 +373,7 @@ get_statedata(clixon_handle     h,
     } /* switch wdef */
     retval = 1; /* OK */
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
     if (xerr)
         xml_free(xerr);
     if (x1)
@@ -872,7 +872,7 @@ get_common(clixon_handle        h,
     char             *wdefstr;
 
     wdef = WITHDEFAULTS_EXPLICIT;
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "");
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec9");
@@ -1049,7 +1049,7 @@ get_common(clixon_handle        h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xvec)
         free(xvec);
     if (xret)

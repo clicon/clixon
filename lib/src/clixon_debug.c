@@ -127,6 +127,8 @@ clixon_debug_get(void)
  * The message is sent to clixon_log. EIther to syslog, stderr or both, depending on 
  * clixon_log_init() setting
  * @param[in] h         Clixon handle
+ * @param[in] fn        Inline function name (when called from clixon_debug() macro)
+ * @param[in] line      Inline file line number (when called from clixon_debug() macro)
  * @param[in] dbglevel  Mask of CLIXON_DBG_DEFAULT and other masks
  * @param[in] x         XML tree logged without prettyprint
  * @param[in] format    Message to print as argv.
@@ -136,6 +138,8 @@ clixon_debug_get(void)
  */
 int
 clixon_debug_fn(clixon_handle h,
+                const char   *fn,
+                const int     line,
                 int           dbglevel,
                 cxobj        *x,
                 const char   *format, ...)
@@ -151,7 +155,7 @@ clixon_debug_fn(clixon_handle h,
     if (h == NULL)     /* Accept NULL, use saved clixon handle */
         h = _debug_clixon_h;
     va_start(ap, format);
-    if (clixon_plugin_errmsg_all(h, NULL, 0, LOG_TYPE_DEBUG,
+    if (clixon_plugin_errmsg_all(h, fn, line, LOG_TYPE_DEBUG,
                                  NULL, NULL, x, format, ap, &cb) < 0)
         goto done;
     va_end(ap);

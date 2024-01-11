@@ -752,7 +752,7 @@ example_lockdb(clixon_handle h,
 {
     int retval = -1;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Lock callback: db%s: locked:%d", __FUNCTION__, db, lock);
+    clixon_debug(CLIXON_DBG_DEFAULT, "Lock callback: db%s: locked:%d", db, lock);
     /* Part of cached pagination example
      */
     if (strcmp(db, "running") == 0 && lock == 0 &&
@@ -793,7 +793,7 @@ example_extension(clixon_handle h,
     extname = yang_argument_get(yext);
     if (strcmp(modname, "example") != 0 || strcmp(extname, "e4") != 0)
         goto ok;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    clixon_debug(CLIXON_DBG_DEFAULT, "Enabled extension:%s:%s", modname, extname);
     if ((yc = yang_find(ys, 0, NULL)) == NULL)
         goto ok;
     if ((yn = ys_dup(yc)) == NULL)
@@ -1020,7 +1020,7 @@ upgrade_2014_to_2016(clixon_handle h,
     int        i;
     char      *name;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s from:%d to:%d", __FUNCTION__, from, to);
+    clixon_debug(CLIXON_DBG_DEFAULT, "from:%d to:%d", from, to);
     if (op != XML_FLAG_CHANGE) /* Only treat fully present modules */
         goto ok;
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
@@ -1123,14 +1123,14 @@ upgrade_2016_to_2018(clixon_handle h,
     size_t     vlen;
     int        i;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s from:%d to:%d", __FUNCTION__, from, to);
+    clixon_debug(CLIXON_DBG_DEFAULT, "from:%d to:%d", from, to);
     if (op != XML_FLAG_CHANGE) /* Only treat fully present modules */
         goto ok;
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
     yspec = clicon_dbspec_yang(h);
     if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
         goto ok; /* shouldnt happen */
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s module %s", __FUNCTION__, ym?yang_argument_get(ym):"none");
+    clixon_debug(CLIXON_DBG_DEFAULT, "module %s", ym?yang_argument_get(ym):"none");
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
         goto done;
@@ -1432,7 +1432,7 @@ clixon_plugin_init(clixon_handle h)
     char         **argv;
     int            c;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s backend", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "backend");
 
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)

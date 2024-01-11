@@ -132,7 +132,7 @@ api_path_parse(char         *api_path,
     int                  retval = -1;
     clixon_api_path_yacc ay = {0,};
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s api_path:%s", __FUNCTION__, api_path);
+    clixon_debug(CLIXON_DBG_DEFAULT, "api_path:%s", api_path);
     ay.ay_parse_string = api_path;
     ay.ay_name = "api-path parser";
     ay.ay_linenum = 1;
@@ -177,7 +177,7 @@ instance_id_parse(char         *path,
     int                     retval = -1;
     clixon_instance_id_yacc iy = {0,};
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s path:%s", __FUNCTION__, path);
+    clixon_debug(CLIXON_DBG_DEFAULT, "path:%s", path);
     iy.iy_parse_string = path;
     iy.iy_name = "instance-id parser";
     iy.iy_linenum = 1;
@@ -698,8 +698,8 @@ api_path2xpath_cvv(cvec      *api_path,
         /* api-path: prefix points to module */
         if (nodeid_split(nodeid, &prefix, &name) < 0)
             goto done;
-        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s [%d] cvname: %s:%s",
-                     __FUNCTION__, i, prefix?prefix:"", name);
+        clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "[%d] cvname: %s:%s",
+                     i, prefix?prefix:"", name);
         /* top-node must have prefix */
         if (i == 0 && prefix == NULL){
             cprintf(cberr, "'%s': Expected prefix:name", nodeid);
@@ -762,7 +762,7 @@ api_path2xpath_cvv(cvec      *api_path,
          */
         if (xml_nsctx_get_prefix(nsc, namespace, &xprefix) == 0){
             xprefix = yang_find_myprefix(y);
-            clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s prefix not found add it %s", __FUNCTION__, xprefix);
+            clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "prefix not found add it %s", xprefix);
             /* not found, add it to nsc
              * XXX: do we always have to add it? It could be default?
              */
@@ -837,7 +837,7 @@ api_path2xpath_cvv(cvec      *api_path,
         nsc = NULL;
     }
  done:
-    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (cberr)
         cbuf_free(cberr);
     if (valvec)
@@ -1183,7 +1183,7 @@ api_path2xml_vec(char      **vec,
  ok:
     retval = 1; /* OK */
  done:
-    clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xpath)
         free(xpath);
     if (nsc)
@@ -1252,7 +1252,7 @@ api_path2xml(char       *api_path,
     cxobj *xroot;
     cbuf  *cberr = NULL;
 
-    clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "%s api_path:%s", __FUNCTION__, api_path);
+    clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "api_path:%s", api_path);
     if ((cberr = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;

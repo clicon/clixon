@@ -267,7 +267,7 @@ stream_timer_setup(int   fd,
     struct stream_replay        *r;
     struct stream_replay        *r1;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
     /* Go thru callbacks and see if any have timed out, if so remove them 
      * Could also be done by a separate timer.
      */
@@ -348,7 +348,7 @@ stream_ss_add(clixon_handle     h,
     event_stream_t             *es;
     struct stream_subscription *ss = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if ((es = stream_find(h, stream)) == NULL){
         clixon_err(OE_CFG, ENOENT, "Stream %s not found", stream);
         goto done;
@@ -395,7 +395,7 @@ stream_ss_rm(clixon_handle                h,
              struct stream_subscription  *ss,
              int                          force)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     DELQ(ss, es->es_subscription, struct stream_subscription *);
     /* Remove from upper layers - close socket etc. */
     (*ss->ss_fn)(h, 1, NULL, ss->ss_arg);
@@ -406,7 +406,7 @@ stream_ss_rm(clixon_handle                h,
             free(ss->ss_xpath);
         free(ss);
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval: 0", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval: 0");
     return 0;
 }
 
@@ -519,7 +519,7 @@ stream_notify1(clixon_handle   h,
     int                         retval = -1;
     struct stream_subscription *ss;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
     /* Go thru all subscriptions and find matches */
     if ((ss = es->es_subscription) != NULL)
         do {
@@ -575,7 +575,7 @@ stream_notify(clixon_handle h,
     struct timeval  tv;
     event_stream_t *es;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
     if ((es = stream_find(h, stream)) == NULL)
         goto ok;
     va_start(args, event);
@@ -652,7 +652,7 @@ stream_notify_xml(clixon_handle h,
     struct timeval tv;
     event_stream_t *es;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
     if ((es = stream_find(h, stream)) == NULL)
         goto ok;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -940,15 +940,15 @@ url_post(char *url,
     CURLcode       errcode;
 
     /* Try it with  curl -X PUT -d '*/
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s:  curl -X POST -d '%s' %s",
-        __FUNCTION__, postfields, url);
+    clixon_debug(CLIXON_DBG_DEFAULT, "curl -X POST -d '%s' %s",
+        postfields, url);
     /* Set up curl for doing the communication with the controller */
     if ((curl = curl_easy_init()) == NULL) {
         clixon_debug(CLIXON_DBG_DEFAULT, "curl_easy_init");
         goto done;
     }
     if ((err = malloc(CURL_ERROR_SIZE)) == NULL) {
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s: malloc", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT, "malloc");
         goto done;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -962,7 +962,7 @@ url_post(char *url,
     if (clixon_debug_get())
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
     if ((errcode = curl_easy_perform(curl)) != CURLE_OK){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s: curl: %s(%d)", __FUNCTION__, err, errcode);
+        clixon_debug(CLIXON_DBG_DEFAULT, "curl: %s(%d)", err, errcode);
         retval = 0;
         goto done;
     }
@@ -1005,7 +1005,7 @@ stream_publish_cb(clixon_handle h,
     char *result = NULL;
     char *stream = (char*)arg;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (op != 0)
         goto ok;
     /* Create pub url */
@@ -1030,7 +1030,7 @@ stream_publish_cb(clixon_handle h,
                  &result) < 0)    /* result as xml */
         goto done;
     if (result)
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s", __FUNCTION__, result);
+        clixon_debug(CLIXON_DBG_DEFAULT, "%s", result);
  ok:
     retval = 0;
  done:

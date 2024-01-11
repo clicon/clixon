@@ -146,7 +146,7 @@ ce_event_cb(clixon_handle h,
     struct client_entry *ce = (struct client_entry *)arg;
     cbuf                *cbce = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s op:%d", __FUNCTION__, op);
+    clixon_debug(CLIXON_DBG_CLIENT, "op:%d", op);
     switch (op){
     case 1:
         /* Risk of recursion here */
@@ -282,7 +282,7 @@ backend_monitoring_state_get(clixon_handle h,
         goto fail;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -336,7 +336,7 @@ backend_client_rm(clixon_handle        h,
         }
     }
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     /* for all streams: XXX better to do it top-level? */
     stream_ss_delete_all(h, ce_event_cb, (void*)ce);
     c0 = backend_client_list(h);
@@ -378,7 +378,7 @@ clixon_stats_datastore_get(clixon_handle h,
     size_t    sz = 0;
     cxobj    *xn = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, dbname);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s", dbname);
     /* This is the db cache */
     if ((xt = xmldb_cache_get(h, dbname)) == NULL){
         /* Trigger cache if no exist (trick to ensure cache is present) */
@@ -655,7 +655,7 @@ from_client_edit_config(clixon_handle h,
         xml_free(xret);
     if (cbx)
         cbuf_free(cbx);
-    clixon_debug(CLIXON_DBG_CLIENT, "%s done cbret:%s", __FUNCTION__, cbuf_get(cbret));
+    clixon_debug(CLIXON_DBG_CLIENT, "done cbret:%s", cbuf_get(cbret));
     return retval;
 } /* from_client_edit_config */
 
@@ -1584,7 +1584,7 @@ from_client_msg(clixon_handle        h,
     int                  nr = 0;
     cbuf                *cbce = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "");
     yspec = clicon_dbspec_yang(h);
     /* Return netconf message. Should be filled in by the dispatch(sub) functions 
      * as wither rpc-error or by positive response.
@@ -1633,7 +1633,7 @@ from_client_msg(clixon_handle        h,
     if (op_id != 0 && ce->ce_id != op_id && strcmp(rpcname, "create-subscription")){
         client_entry *ce0;
         
-        clixon_debug(CLIXON_DBG_CLIENT, "%s Warning: incoming session-id:%u does not match ce_id:%u on socket: %d", __FUNCTION__, op_id, ce->ce_id, ce->ce_s);
+        clixon_debug(CLIXON_DBG_CLIENT, "Warning: incoming session-id:%u does not match ce_id:%u on socket: %d", op_id, ce->ce_id, ce->ce_s);
         /* Copy transport from orig client-entry */
         if (ce->ce_transport == NULL &&
             (ce0 = ce_find_byid(backend_client_list(h), op_id)) != NULL &&
@@ -1720,7 +1720,7 @@ from_client_msg(clixon_handle        h,
             goto done;
         }
         module = yang_argument_get(ymod);
-        clixon_debug(CLIXON_DBG_CLIENT, "%s module:%s rpc:%s ce_id:%u s:%d", __FUNCTION__, module,
+        clixon_debug(CLIXON_DBG_CLIENT, "module:%s rpc:%s ce_id:%u s:%d", module,
                      rpc, ce->ce_id, ce->ce_s);
         /* Pre-NACM access step */
         xnacm = NULL;
@@ -1812,7 +1812,7 @@ from_client_msg(clixon_handle        h,
     // ok:
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xnacm){
         xml_free(xnacm);
         if (clicon_nacm_cache_set(h, NULL) < 0)
@@ -1830,7 +1830,7 @@ from_client_msg(clixon_handle        h,
     if (retval < 0 && clixon_err_category() < 0)
         clixon_log(h, LOG_NOTICE, "%s: Internal error: No clixon_err call on RPC error (message: %s)",
                    __FUNCTION__, rpc?rpc:"");
-    //    clixon_debug(CLIXON_DBG_CLIENT, "%s retval:%d", __FUNCTION__, retval);
+    //    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     return retval;// -1 here terminates backend
 }
 
@@ -1853,7 +1853,7 @@ from_client(int   s,
     int                  eof = 0;
     cbuf                *cbce = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "");
     if (s != ce->ce_s){
         clixon_err(OE_NETCONF, EINVAL, "Internal error: s != ce->ce_s");
         goto done;
@@ -1871,7 +1871,7 @@ from_client(int   s,
             goto done;
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%s retval=%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "retval=%d", retval);
     if (cbce)
         cbuf_free(cbce);
     if (msg)

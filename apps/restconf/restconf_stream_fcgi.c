@@ -215,16 +215,16 @@ restconf_stream_cb(int   s,
     int                pretty = 0; /* XXX should be via arg */
     int                ret;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     /* get msg (this is the reason this function is called) */
     if (clicon_msg_rcv(s, NULL, 0, &reply, &eof) < 0){
-        clixon_debug(CLIXON_DBG_CLIENT, "%s msg_rcv error", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "msg_rcv error");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_CLIENT, "%s msg: %s", __FUNCTION__, reply?reply->op_body:"null");
+    clixon_debug(CLIXON_DBG_CLIENT, "msg: %s", reply?reply->op_body:"null");
     /* handle close from remote end: this will exit the client */
     if (eof){
-        clixon_debug(CLIXON_DBG_CLIENT, "%s eof", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "eof");
         clixon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
         errno = ESHUTDOWN;
         FCGX_FPrintF(r->out, "SHUTDOWN\r\n");
@@ -266,7 +266,7 @@ restconf_stream_cb(int   s,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%s retval: %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval: %d", retval);
     if (xtop != NULL)
         xml_free(xtop);
     if (reply)
@@ -306,7 +306,7 @@ restconf_stream(clixon_handle h,
     cg_var *cv;
     char   *vname;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     *sp = -1;
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
@@ -353,7 +353,7 @@ restconf_stream(clixon_handle h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%s retval: %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval: %d", retval);
     if (xret)
         xml_free(xret);
     if (cb)
@@ -376,9 +376,9 @@ stream_checkuplink(int   s,
 {
     FCGX_Request      *r = (FCGX_Request *)arg;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     if (FCGX_GetError(r->out) != 0){ /* break loop */
-        clixon_debug(CLIXON_DBG_CLIENT, "%s FCGX_GetError upstream", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "FCGX_GetError upstream");
         clixon_exit_set(1);
     }
     return 0;
@@ -392,9 +392,9 @@ stream_timeout(int   s,
     struct timeval t1;
     FCGX_Request *r = (FCGX_Request *)arg;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     if (FCGX_GetError(r->out) != 0){ /* break loop */
-        clixon_debug(CLIXON_DBG_CLIENT, "%s FCGX_GetError upstream", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "FCGX_GetError upstream");
         clixon_exit_set(1);
     }
     else{
@@ -442,7 +442,7 @@ api_stream(clixon_handle h,
     struct stream_child *sc;
 #endif
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     streampath = clicon_option_str(h, "CLICON_STREAM_PATH");
     if ((path = restconf_uripath(h)) == NULL)
         goto done;
@@ -478,7 +478,7 @@ api_stream(clixon_handle h,
             goto done;
         goto ok;
     }
-    clixon_debug(CLIXON_DBG_CLIENT, "%s: method=%s", __FUNCTION__, method);
+    clixon_debug(CLIXON_DBG_CLIENT, "method=%s", method);
 
     if (uri_str2cvec(path, '/', '=', 1, &pcvec) < 0) /* rest url eg /album=ricky/foo */
         goto done;
@@ -486,7 +486,7 @@ api_stream(clixon_handle h,
     if ((cb = restconf_get_indata(req)) == NULL)
         goto done;
     indata = cbuf_get(cb);
-    clixon_debug(CLIXON_DBG_CLIENT, "%s DATA=%s", __FUNCTION__, indata);
+    clixon_debug(CLIXON_DBG_CLIENT, "DATA=%s", indata);
 
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * See RFC 8040 section 2.5
@@ -522,12 +522,12 @@ api_stream(clixon_handle h,
                                     req,
                                     "stream socket") < 0)
                 goto done;
-            clixon_debug(CLIXON_DBG_CLIENT, "%s before loop", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_CLIENT, "before loop");
             /* Poll upstream errors */
             stream_timeout(0, req);
             /* Start loop */
             clixon_event_loop(h);
-            clixon_debug(CLIXON_DBG_CLIENT, "%s after loop", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_CLIENT, "after loop");
             clicon_rpc_close_session(h);
             clixon_event_unreg_fd(s, restconf_stream_cb);
             close(s);
@@ -562,7 +562,7 @@ api_stream(clixon_handle h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     if (xerr)
         xml_free(xerr);
     if (pvec)

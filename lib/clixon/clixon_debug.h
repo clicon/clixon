@@ -65,15 +65,53 @@
 /*
  * Macros
  */
-#define clixon_debug(l, _fmt, args...) clixon_debug_fn(NULL, (l), NULL, _fmt , ##args)
-#define clixon_debug_xml(l, x, _fmt, args...) clixon_debug_fn(NULL, (l), (x), _fmt , ##args)
+#if defined(__GNUC__)
+#define clixon_debug(l, _fmt, args...) \
+	do { \
+		_Pragma("GCC diagnostic push") \
+		_Pragma("GCC diagnostic ignored \"-Wformat-zero-length\"") \
+		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), NULL, _fmt, ##args); \
+		_Pragma("GCC diagnostic pop") \
+	} while (0)
+
+#define clixon_debug_xml(l, x, _fmt, args...) \
+	do { \
+		_Pragma("GCC diagnostic push") \
+		_Pragma("GCC diagnostic ignored \"-Wformat-zero-length\"") \
+		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), (x), _fmt, ##args); \
+		_Pragma("GCC diagnostic pop") \
+	} while (0)
+
+#elif defined(__clang__)
+#define clixon_debug(l, _fmt, args...) \
+	do { \
+		_Pragma("clang diagnostic push") \
+		_Pragma("clangGCC diagnostic ignored \"-Wformat-zero-length\"") \
+		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), NULL, _fmt, ##args); \
+		_Pragma("clangGCC diagnostic pop") \
+	} while (0)
+
+#define clixon_debug_xml(l, x, _fmt, args...) \
+	do { \
+		_Pragma("clangGCC diagnostic push") \
+		_Pragma("clangGCC diagnostic ignored \"-Wformat-zero-length\"") \
+		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), (x), _fmt, ##args); \
+		_Pragma("clangGCC diagnostic pop") \
+	} while (0)
+
+#else
+#define clixon_debug(l, _fmt, args...) \
+		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), NULL, _fmt, ##args)
+#define clixon_debug_xml(l, x, _fmt, args...) \
+		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), (x), _fmt, ##args)
+#endif
 
 /*
  * Prototypes
  */
 int clixon_debug_init(clixon_handle h, int dbglevel);
 int clixon_debug_get(void);
-int clixon_debug_fn(clixon_handle h, int dbglevel, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 4, 5)));
+int clixon_debug_fn(clixon_handle h, const char *fn, const int line, int dbglevel, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 6, 7)));
 
 static inline int clixon_debug_isset(unsigned n)
 {

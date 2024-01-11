@@ -277,7 +277,7 @@ netconf_monitoring_state_get(clixon_handle h,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%d", retval);
     if (cb)
         cbuf_free(cb);
     return retval;

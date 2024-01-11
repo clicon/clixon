@@ -328,7 +328,7 @@ plugin_load_one(clixon_handle     h,
     char              *p;
     void              *wh = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s file:%s function:%s", __FUNCTION__, file, function);
+    clixon_debug(CLIXON_DBG_DEFAULT, "file:%s function:%s", file, function);
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();
@@ -383,7 +383,7 @@ plugin_load_one(clixon_handle     h,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     if (wh != NULL)
         free(wh);
     if (retval != 1 && handle)
@@ -418,7 +418,7 @@ clixon_plugins_load(clixon_handle h,
     plugin_module_struct *ms = plugin_module_struct_get(h);
     int                   dlflags;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
     if (ms == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
@@ -471,7 +471,7 @@ clixon_pseudo_plugin(clixon_handle     h,
     clixon_plugin_t *cp = NULL;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, name);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", name);
     if (ms == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
@@ -644,7 +644,7 @@ clixon_plugin_auth_one(clixon_plugin_t   *cp,
     plgauth_t *fn;          /* Plugin auth */
     void      *wh = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if ((fn = cp->cp_api.ca_auth) != NULL){
         wh = NULL;
         if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
@@ -662,7 +662,7 @@ clixon_plugin_auth_one(clixon_plugin_t   *cp,
     else
         retval = 0; /* Ignored / no callback */
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d auth:%s", __FUNCTION__, retval, *authp);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d auth:%s", retval, *authp);
     return retval;
 }
 
@@ -691,7 +691,7 @@ clixon_plugin_auth_all(clixon_handle      h,
     clixon_plugin_t *cp = NULL;
     int              ret = 0;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (authp == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
         goto done;
@@ -707,7 +707,7 @@ clixon_plugin_auth_all(clixon_handle      h,
     }
     retval = ret;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     return retval;
 }
 
@@ -1151,10 +1151,10 @@ rpc_callback_dump(clixon_handle h)
     rpc_callback_t *rc;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s--------------", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "--------------");
     if ((rc = ms->ms_rpc_callbacks) != NULL)
         do {
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, rc->rc_name);
+            clixon_debug(CLIXON_DBG_DEFAULT, "%s", rc->rc_name);
             rc = NEXTQ(rpc_callback_t *, rc);
         } while (rc != ms->ms_rpc_callbacks);
     return 0;
@@ -1182,7 +1182,7 @@ rpc_callback_register(clixon_handle  h,
     rpc_callback_t *rc = NULL;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, name);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", name);
     if (ms == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
@@ -1281,7 +1281,7 @@ rpc_callback_call(clixon_handle h,
                 if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
                     goto done;
                 if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s Error in: %s", __FUNCTION__, rc->rc_name);
+                    clixon_debug(CLIXON_DBG_DEFAULT, "Error in: %s", rc->rc_name);
                     clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__);
                     goto done;
                 }
@@ -1302,7 +1302,7 @@ rpc_callback_call(clixon_handle h,
         *nrp = nr;
     retval = 1; /* 0: none found, >0 nr of handlers called */
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
  fail:
     retval = 0;
@@ -1334,7 +1334,7 @@ action_callback_register(clixon_handle  h,
     rpc_callback_t *rc = NULL;
     char           *name;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (ya == NULL){
         clixon_err(OE_DB, EINVAL, "yang node is NULL");
         goto done;
@@ -1386,7 +1386,7 @@ action_callback_call(clixon_handle h,
     void           *wh = NULL;
     rpc_callback_t *rc;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (xml_find_action(xe, 1, &xa) < 0)
         goto done;
     if (xa == NULL){
@@ -1408,7 +1408,7 @@ action_callback_call(clixon_handle h,
                 if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
                     goto done;
                 if (rc->rc_callback(h, xa, cbret, arg, rc->rc_arg) < 0){
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s Error in: %s", __FUNCTION__, rc->rc_name);
+                    clixon_debug(CLIXON_DBG_DEFAULT, "Error in: %s", rc->rc_name);
                     clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__);
                     goto done;
                 }
@@ -1546,7 +1546,7 @@ upgrade_callback_call(clixon_handle h,
              */
             if (uc->uc_namespace == NULL || strcmp(uc->uc_namespace, ns)==0){
                 if ((ret = uc->uc_callback(h, xt, ns, op, from, to, uc->uc_arg, cbret)) < 0){
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s Error in: %s", __FUNCTION__, uc->uc_namespace);
+                    clixon_debug(CLIXON_DBG_DEFAULT, "Error in: %s", uc->uc_namespace);
                     goto done;
                 }
                 if (ret == 0){
@@ -1563,7 +1563,7 @@ upgrade_callback_call(clixon_handle h,
         } while (uc != ms->ms_upgrade_callbacks);
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     return retval;
  fail:
     retval =0;

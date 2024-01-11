@@ -268,7 +268,7 @@ parse_configfile_one(clixon_handle h,
         clixon_err(OE_UNIX, errno, "open configure file: %s", filename);
         return -1;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: Reading config file %s", __FUNCTION__, filename);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Reading config file %s", filename);
     if ((ret = clixon_xml_parse_file(fp, yspec?YB_MODULE:YB_NONE, yspec, &xt, &xerr)) < 0)
         goto done;
     if (ret == 0){
@@ -293,7 +293,7 @@ parse_configfile_one(clixon_handle h,
     xt = NULL;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: Done w/ config file %s returning %d", __FUNCTION__, filename, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Done w/ config file %s returning %d", filename, retval);
     if (xt)
         xml_free(xt);
     if (fp)
@@ -416,7 +416,7 @@ parse_configfile(clixon_handle  h,
         goto done;
     }
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: Reading config file %s", __FUNCTION__, filename);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Reading config file %s", filename);
     /* Parse main config file */
     if (parse_configfile_one(h, filename, yspec, &xt) < 0)
         goto done;
@@ -504,7 +504,7 @@ parse_configfile(clixon_handle  h,
     *xconfig = xt;
     xt = NULL;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: Done w/ config file %s returning %d", __FUNCTION__, filename, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Done w/ config file %s returning %d", filename, retval);
     if (dp)
         free(dp);
     if (nsc)

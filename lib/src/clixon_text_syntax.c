@@ -973,7 +973,7 @@ _text_syntax_parse(char      *str,
     int                     failed = 0; /* yang assignment */
     cxobj                  *xc;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d %s", __FUNCTION__, yb, str);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%d %s", yb, str);
     if (yb != YB_MODULE && yb != YB_MODULE_NEXT){
         clixon_err(OE_YANG, EINVAL, "yb must be YB_MODULE or YB_MODULE_NEXT");
         return -1;
@@ -1030,7 +1030,7 @@ _text_syntax_parse(char      *str,
             goto done;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     if (cberr)
         cbuf_free(cberr);
     clixon_text_syntax_parsel_exit(&ts);
@@ -1066,7 +1066,7 @@ clixon_text_syntax_parse_string(char      *str,
                                 cxobj    **xt,
                                 cxobj    **xerr)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (xt==NULL){
         clixon_err(OE_XML, EINVAL, "xt is NULL");
         return -1;

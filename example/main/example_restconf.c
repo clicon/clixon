@@ -220,7 +220,7 @@ example_basic_auth(clixon_handle      h,
     size_t  authlen;
     int     ret;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (authp == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "Authp output parameter is NULL");
         goto done;
@@ -246,7 +246,7 @@ example_basic_auth(clixon_handle      h,
         goto fail;
     *passwd = '\0';
     passwd++;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s http user:%s passwd:%s", __FUNCTION__, user, passwd);
+    clixon_debug(CLIXON_DBG_DEFAULT, "http user:%s passwd:%s", user, passwd);
     /* Here get auth sub-tree where all the users are */
     if ((cb = cbuf_new()) == NULL)
         goto done;
@@ -261,7 +261,7 @@ example_basic_auth(clixon_handle      h,
     user=NULL; /* to avoid free below */
     retval = 1;
  done: /* error */
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d authp:%s", __FUNCTION__, retval, authp?"":*authp);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d authp:%s", retval, authp?"":*authp);
     if (user)
        free(user);
     if (cb)
@@ -296,7 +296,7 @@ example_restconf_credentials(clixon_handle      h,
 {
     int retval = -1;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s auth:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
+    clixon_debug(CLIXON_DBG_DEFAULT, "auth:%s", clixon_auth_type_int2str(auth_type));
     switch (auth_type){
     case CLIXON_AUTH_NONE: /* FEATURE clixon-restconf:allow-auth-none must be enabled */
         retval = 0;
@@ -310,7 +310,7 @@ example_restconf_credentials(clixon_handle      h,
         break;
     }
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d authp:%s", __FUNCTION__, retval, *authp);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d authp:%s", retval, *authp);
     return retval;
 }
 
@@ -354,7 +354,7 @@ restconf_client_rpc(clixon_handle h,
 int
 example_restconf_start(clixon_handle h)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     return 0;
 }
 
@@ -439,7 +439,7 @@ clixon_plugin_init(clixon_handle h)
     char    **argv = NULL;
     int       c;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s restconf", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "restconf");
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
         return NULL;

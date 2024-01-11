@@ -107,7 +107,7 @@ fcgi_params_set(clixon_handle h,
     char *param = NULL;
     char *val = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
         if (clixon_strsplit(envp[i], '=', &param, &val) < 0)
             goto done;
@@ -124,7 +124,7 @@ fcgi_params_set(clixon_handle h,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
     return retval;
 }
 
@@ -228,12 +228,12 @@ restconf_sig_term(int arg)
 {
     static int i=0;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_CLIENT, "");
     if (i++ == 0)
         clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
                    __PROGRAM__, __FUNCTION__, getpid(), arg);
     else{
-        clixon_debug(CLIXON_DBG_CLIENT, "%s done", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_CLIENT, "done");
         exit(-1);
     }
 
