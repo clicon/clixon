@@ -1581,8 +1581,8 @@ yang2cli_grouping(clixon_handle      h,
     /* Add prefix: assume new are appended */
     for (i=0; i<pt_len_get(pt); i++){
         if ((co = pt_vec_i_get(pt, i)) != NULL){
-            clixon_debug(CLIXON_DBG_CLIENT, "%s command: %s",
-                         __FUNCTION__, co->co_command);
+            clixon_debug(CLIXON_DBG_CLIENT, "command: %s",
+                         co->co_command);
             co_prefix_set(co, prefix);
         }
     }
