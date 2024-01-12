@@ -61,10 +61,8 @@
 #define YANG_FLAG_INDEX 0x08  /* This yang node under list is (extra) index. --> you can access
                                * list elements using this index with binary search */
 #endif
-#ifdef USE_CONFIG_FLAG_CACHE
 #define YANG_FLAG_CONFIG_CACHE 0x10  /* Ancestor config cache is active */
 #define YANG_FLAG_CONFIG_VALUE 0x20  /* Ancestor config cache value */
-#endif
 
 #define YANG_FLAG_DISABLED     0x40  /* Disabled due to if-feature evaluate to false
                                       * Transformed to ANYDATA but some code may need to check

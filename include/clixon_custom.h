@@ -127,12 +127,6 @@
  */
 #undef LIST_PAGINATION_REMAINING
 
-/*! Use Ancestor config cache 
- *
- * The cache uses two yang stmt flag bits. One to say it is active, the second its value
- */
-#define USE_CONFIG_FLAG_CACHE
-
 /*! If backend is restarted, cli and netconf client will retry (once) and reconnect
  *
  * Note, if client has locked or had edits in progress, these will be lost

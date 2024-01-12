@@ -3494,29 +3494,21 @@ yang_config_ancestor(yang_stmt *ys)
 
     yp = ys;
     do {
-#ifdef USE_CONFIG_FLAG_CACHE
         if (yang_flag_get(yp, YANG_FLAG_CONFIG_CACHE))
             return yang_flag_get(yp, YANG_FLAG_CONFIG_VALUE)?1:0;
-#endif
         if (yang_config(yp) == 0){
-#ifdef USE_CONFIG_FLAG_CACHE
             yang_flag_set(yp, YANG_FLAG_CONFIG_CACHE);
             yang_flag_reset(yp, YANG_FLAG_CONFIG_VALUE);
-#endif
             return 0;
         }
         if (yang_keyword_get(yp) == Y_INPUT || yang_keyword_get(yp) == Y_OUTPUT || yang_keyword_get(yp) == Y_NOTIFICATION){
-#ifdef USE_CONFIG_FLAG_CACHE
             yang_flag_set(yp, YANG_FLAG_CONFIG_CACHE);
             yang_flag_reset(yp, YANG_FLAG_CONFIG_VALUE);
-#endif
             return 0;
         }
     } while((yp = yang_parent_get(yp)) != NULL);
-#ifdef USE_CONFIG_FLAG_CACHE
     yang_flag_set(ys, YANG_FLAG_CONFIG_CACHE);
     yang_flag_set(ys, YANG_FLAG_CONFIG_VALUE);
-#endif
     return 1;
 }
 
