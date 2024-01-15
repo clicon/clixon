@@ -493,7 +493,6 @@ text_modify(clixon_handle       h,
     char      *restype;
     int        ismount = 0;
     yang_stmt *mount_yspec = NULL;
-    char      *creator = NULL;
 
     if (x1 == NULL){
         clixon_err(OE_XML, EINVAL, "x1 is missing");
@@ -533,13 +532,6 @@ text_modify(clixon_handle       h,
         else{  /* exists */
             clicon_data_set(h, "objectexisted", "true");
         }
-    }
-    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
-        /* Special clixon-lib attribute for keeping track of creator of objects */
-        if ((ret = attr_ns_value(x1, "creator", CLIXON_LIB_NS, cbret, &creator)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
     }
     x1name = xml_name(x1);
 
@@ -703,10 +695,6 @@ text_modify(clixon_handle       h,
                         xml_flag_reset(x0, XML_FLAG_DEFAULT);
                 }
             } /* x1bstr */
-            if (creator){
-                if (xml_creator_add(x0, creator) < 0)
-                    goto done;
-            }
             if (changed){
                 if (xml_insert(x0p, x0, insert, valstr, NULL) < 0)
                     goto done;
@@ -807,11 +795,6 @@ text_modify(clixon_handle       h,
                  * original object is not reverted.
                  */
                 if (x0){
-                    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
-                        /* Recursively copy creator attributes from existing tree */
-                        if (xml_creator_copy_all(x0, x1) < 0)
-                            goto done;
-                    }
                     xml_purge(x0);
                     x0 = NULL;
                 }
@@ -862,10 +845,6 @@ text_modify(clixon_handle       h,
 #ifdef XML_PARENT_CANDIDATE
                 xml_parent_candidate_set(x0, x0p);
 #endif
-                if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
-                    if (xml_creator_copy_one(x1, x0) < 0)
-                        goto done;
-                }
                 changed++;
                 /* Get namespace from x1
                  * Check if namespace exists in x0 parent
@@ -962,10 +941,6 @@ text_modify(clixon_handle       h,
                 if (ret == 0)
                     goto fail;
             }
-            if (creator){
-                if (xml_creator_add(x0, creator) < 0)
-                    goto done;
-            }
             if (changed){
 #ifdef XML_PARENT_CANDIDATE
                 xml_parent_candidate_set(x0, NULL);
@@ -1007,8 +982,6 @@ text_modify(clixon_handle       h,
         free(instr);
     if (opstr)
         free(opstr);
-    if (creator)
-        free(creator);
     if (createstr)
         free(createstr);
     if (nscx1)
@@ -1239,7 +1212,6 @@ xmldb_put(clixon_handle       h,
     int         firsttime = 0;
     int         pretty;
     cxobj      *xerr = NULL;
-    cxobj      *xmeta = NULL;
 
     if (cbret == NULL){
         clixon_err(OE_XML, EINVAL, "cbret is NULL");
@@ -1355,18 +1327,6 @@ xmldb_put(clixon_handle       h,
         goto done;
     }
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
-    /* Add creator attributes to datastore */
-    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
-        /* @see xml_creator_metadata_read */
-        if (xml_creator_tree(x0, &xmeta) < 0)
-            goto done;
-        if (xml_addsub(x0, xmeta) < 0)
-            goto done;
-        if (xml_child_nr_type(xmeta, CX_ELMNT) == 0){
-            xml_purge(xmeta);
-            xmeta = NULL;
-        }
-    }
     if (strcmp(format,"json")==0){
         if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
             goto done;
@@ -1377,10 +1337,6 @@ xmldb_put(clixon_handle       h,
      */
     if (xmodst && xml_purge(xmodst) < 0)
         goto done;
-    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR") && xmeta){
-        if (xml_purge(xmeta) < 0)
-            goto done;
-    }
     retval = 1;
  done:
     if (f != NULL)

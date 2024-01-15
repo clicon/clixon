@@ -186,8 +186,6 @@ struct xml{
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, 
                                        by reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
-    cvec             *x_creators;   /* Support clixon-lib creator annotation.
-                                       Only if CLICON_NETCONF_CREATOR_ATTR = true */
 #ifdef XML_EXPLICIT_INDEX
     struct search_index *x_search_index; /* explicit search index vectors */
 #endif
@@ -639,186 +637,6 @@ xml_flag_reset(cxobj   *xn,
     xn->x_flags &= ~flag;
     return 0;
 }
-
-/*! Add a creator tag
- *
- * @param[in]  xn    XML tree
- * @param[in]  name  Name of creator tag
- * @retval     0     OK
- * @retval    -1     Error
- */
-int
-xml_creator_add(cxobj *xn,
-                char  *name)
-{
-    int     retval = -1;
-    cg_var *cv;
-
-    if (!is_element(xn))
-        goto ok;
-    if (xn->x_creators == NULL){
-        if ((xn->x_creators = cvec_new(0)) == NULL){
-            clixon_err(OE_XML, errno, "cvec_new");
-            goto done;
-        }
-    }
-    if ((cv = cvec_find(xn->x_creators, name)) == NULL)
-        cvec_add_string(xn->x_creators, name, NULL);
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Remove a creator tag
- *
- * @param[in]  xn    XML tree
- * @param[in]  name  Name of creator tag
- * @retval     0     OK
- * @retval    -1     Error
- */
-int
-xml_creator_rm(cxobj *xn,
-               char  *name)
-{
-    cg_var *cv;
-
-    if (!is_element(xn))
-        return 0;
-    if ((cv = cvec_find(xn->x_creators, name)) == NULL)
-        return 0;
-    return cvec_del(xn->x_creators, cv);
-}
-
-/*! Find a creator string
- *
- * @param[in]  xn    XML tree
- * @param[in]  name  Name of creator tag
- * @retval     1     Yes, xn is tagged with creator tag "name"
- * @retval     0     No, xn is not tagged with creator tag "name"
- */
-int
-xml_creator_find(cxobj *xn,
-                 char  *name)
-{
-    if (!is_element(xn))
-        return 0;
-    if (xn->x_creators != NULL &&
-        cvec_find(xn->x_creators, name) != NULL)
-        return 1;
-    return 0;
-}
-
-/*! Get number of creator strings
- *
- * @param[in]  xn    XML tree
- * @retval     len   Number of creator tags assigned to xn
- * @retval     0     No creator tags or non-applicable
- */
-size_t
-xml_creator_len(cxobj *xn)
-{
-    if (!is_element(xn))
-        return 0;
-    if (xn->x_creators)
-        return cvec_len(xn->x_creators);
-    else
-        return 0;
-}
-
-/*! Get all creator attributes
- */
-cvec*
-xml_creator_get(cxobj *xn)
-{
-    if (!is_element(xn))
-        return 0;
-    return xn->x_creators;
-}
-
-/*! Copy creator info from x0 to x1 single object
- *
- * @param[in]  x0  Source XML node
- * @param[in]  x1  Destination XML node
- * @retval     0   OK
- * @retval    -1   Error
- */
-int
-xml_creator_copy_one(cxobj *x0,
-                     cxobj *x1)
-{
-    int retval = -1;
-
-    if (x0->x_creators)
-        if ((x1->x_creators = cvec_dup(x0->x_creators)) == NULL){
-            clixon_err(OE_UNIX, errno, "cvec_dup");
-            goto done;
-        }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Recursively copy creator attributes from existing tree based on equivalence algorithm
- *
- * @param[in]  x0  Source XML node
- * @param[in]  x1  Destination XML node
- * @retval     0   OK
- * @retval    -1   Error
- * @see xml_tree_equal  equivalence algorithm
- */
-int
-xml_creator_copy_all(cxobj *x0,
-                     cxobj *x1)
-{
-    int        retval = -1;
-    int        eq;
-    cxobj     *x0c; /* x0 child */
-    cxobj     *x1c; /* x1 child */
-    yang_stmt *yc0;
-    yang_stmt *yc1;
-
-    /* Traverse x0 and x1 in lock-step */
-    x0c = x1c = NULL;
-    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-    x1c = xml_child_each(x1, x1c, CX_ELMNT);
-    for (;;){
-        if (x0c == NULL || x1c == NULL)
-            goto ok;
-        eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        if (eq < 0){
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
-            continue;
-        }
-        else if (eq > 0){
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
-            continue;
-        }
-        else { /* equal */
-            /* Both x0c and x1c exists and are equal, check if they are yang-equal. */
-            yc0 = xml_spec(x0c);
-            yc1 = xml_spec(x1c);
-            if (yc0 && yc1 && yc0 != yc1){ /* choice */
-                ;
-            }
-            else {
-                if (x0c->x_creators){
-                    if (xml_creator_copy_one(x0c, x1c) < 0)
-                        goto done;
-                }
-                else if (xml_creator_copy_all(x0c, x1c) < 0)
-                    goto done;
-            }
-        }
-        x0c = xml_child_each(x0, x0c, CX_ELMNT);
-        x1c = xml_child_each(x1, x1c, CX_ELMNT);
-    }
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-
 
 /*! Get value of xnode
  *
@@ -2148,8 +1966,6 @@ xml_free(cxobj *x)
 #ifdef XML_EXPLICIT_INDEX
         xml_search_index_free(x);
 #endif
-        if (x->x_creators)
-            cvec_free(x->x_creators);
         break;
     case CX_BODY:
     case CX_ATTR:
@@ -2192,8 +2008,6 @@ xml_copy_one(cxobj *x0,
     switch (xml_type(x0)){
     case CX_ELMNT:
         xml_spec_set(x1, xml_spec(x0));
-        if (xml_creator_copy_one(x0, x1) < 0)
-            goto done;
         break;
     case CX_BODY:
     case CX_ATTR:

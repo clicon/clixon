@@ -51,12 +51,14 @@ module clixon-config {
 
     revision 2024-01-01 {
         description
-            "Released in Clixon 6.6";
+            "Makred as obsolete:
+                    CLICON_NETCONF_CREATOR_ATTR
+             Released in Clixon 6.6";
     }
     revision 2023-11-01 {
         description
             "Added options:
-                    CLICON_CREATOR_ATTR
+                    CLICON_NETCONF_CREATOR_ATTR
              Released in Clixon 6.5";
     }
     revision 2023-05-01 {
@@ -596,7 +598,10 @@ module clixon-config {
                  If one such client/service is deleted, the object is deleted only if all services
                  that created the object are deleted.
                  The clixon controller uses this feature, but could in principle be used by other 
-                 applications.";
+                 applications.
+                 Marked as obsolete in 6.6 since creators attribute replaced by clixon-lib creators
+                 config";
+            status obsolete;
         }
         leaf CLICON_RESTCONF_API_ROOT {
             type string;

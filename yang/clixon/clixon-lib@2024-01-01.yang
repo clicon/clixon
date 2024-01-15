@@ -70,7 +70,7 @@ module clixon-lib {
 
     revision 2024-01-01 {
         description
-            "Moved container creators to grouping/uses
+            "Moved container creators to grouping/uses and removed config false
              Released in 6.6.0";
     }
     revision 2023-11-01 {
@@ -217,8 +217,7 @@ module clixon-lib {
     }
     grouping clixon-creators{
         container creators{
-            config false;
-            description "Meta-data for creator attribute.";
+            description "Meta-data for creation of data objects.";
             list creator {
                 key name;
                 leaf name {

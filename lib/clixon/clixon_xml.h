@@ -234,14 +234,6 @@ uint16_t  xml_flag(cxobj *xn, uint16_t flag);
 int       xml_flag_set(cxobj *xn, uint16_t flag);
 int       xml_flag_reset(cxobj *xn, uint16_t flag);
 
-int       xml_creator_add(cxobj *xn, char *name);
-int       xml_creator_rm(cxobj *xn, char *name);
-int       xml_creator_find(cxobj *xn, char *name);
-size_t    xml_creator_len(cxobj *xn);
-cvec     *xml_creator_get(cxobj *xn);
-int       xml_creator_copy_one(cxobj *x0, cxobj *x1);
-int       xml_creator_copy_all(cxobj *x0, cxobj *x1);
-
 char     *xml_value(cxobj *xn);
 int       xml_value_set(cxobj *xn, char *val);
 int       xml_value_append(cxobj *xn, char *val);

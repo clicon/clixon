@@ -25,6 +25,12 @@ Expected: February 2024
 * Added reference count for shared yang-specs (schema mounts)
   * Allowed for sharing yspec+modules between several mountpoints
 
+### API changes on existing protocol/config features
+Users may have to change how they access the system
+
+* Revert the creators attribute feature introduced in 6.2. It is now obsoleted.
+  It is replaced with a configured `creators` and user/application semantics
+
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
