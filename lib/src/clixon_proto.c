@@ -588,7 +588,7 @@ clicon_msg_send1(int         s,
         clixon_debug(CLIXON_DBG_MSG, "Send: %s", cbuf_get(cb));
     if (atomicio((ssize_t (*)(int, void *, size_t))write,
                  s, cbuf_get(cb), cbuf_len(cb)) < 0){
-        clixon_err(OE_CFG, errn o, "atomicio");
+        clixon_err(OE_CFG, errno, "atomicio");
         clixon_log(NULL, LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
         goto done;
     }
