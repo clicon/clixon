@@ -368,9 +368,9 @@ clicon_msg_send(int                s,
 
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "send msg len=%d", ntohl(msg->op_len));
     if (descr)
-        clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Send [%s]: %s", descr, msg->op_body);
+        clixon_debug(CLIXON_DBG_MSG, "Send [%s]: %s", descr, msg->op_body);
     else{
-        clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Send: %s", msg->op_body);
+        clixon_debug(CLIXON_DBG_MSG, "Send: %s", msg->op_body);
     }
     msg_hex(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL2, (char*)msg,  ntohl(msg->op_len), __FUNCTION__);
     if (atomicio((ssize_t (*)(int, void *, size_t))write,
@@ -588,7 +588,7 @@ clicon_msg_send1(int         s,
         clixon_debug(CLIXON_DBG_MSG, "Send: %s", cbuf_get(cb));
     if (atomicio((ssize_t (*)(int, void *, size_t))write,
                  s, cbuf_get(cb), cbuf_len(cb)) < 0){
-        clixon_err(OE_CFG, errno, "atomicio");
+        clixon_err(OE_CFG, errn o, "atomicio");
         clixon_log(NULL, LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
         goto done;
     }
