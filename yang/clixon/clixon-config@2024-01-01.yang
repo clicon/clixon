@@ -49,6 +49,16 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2024-01-01 {
+        description
+            "Released in Clixon 6.6";
+    }
+    revision 2023-11-01 {
+        description
+            "Added options:
+                    CLICON_CREATOR_ATTR
+             Released in Clixon 6.5";
+    }
     revision 2023-05-01 {
         description
             "Added options:
@@ -575,6 +585,18 @@ module clixon-config {
                  Base capability '1' includes switching over to chunked framing as defined in
                  RFC6242 for example.
                  This only applies to the external NETCONF";
+        }
+        leaf CLICON_NETCONF_CREATOR_ATTR {
+            type boolean;
+            default false;
+            description
+                "If set, clixon will accept the 'creator' attribute as defined by the
+                 creator annotation in clixon-lib.
+                 It can be used when several clients (such as a 'service') can create the same object. 
+                 If one such client/service is deleted, the object is deleted only if all services
+                 that created the object are deleted.
+                 The clixon controller uses this feature, but could in principle be used by other 
+                 applications.";
         }
         leaf CLICON_RESTCONF_API_ROOT {
             type string;
