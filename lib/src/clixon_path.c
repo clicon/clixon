@@ -255,8 +255,9 @@ clixon_path_print(FILE        *f,
 /*! Given an XML node, return root node
  *
  * A root node is an ancestor xr of x with one or both of the following properties
- * - its XML parent is NULL parent, 
- * - its associated yang specification's parent is a yang module.
+ * (1) its XML parent is NULL parent, 
+ * (2) its associated yang specification's parent is a yang module.
+ * Note that if there are no yang-specs, only (1) applies
  * @param[in]   x    XML node
  * @param[out]  xr   XML root
  * @retval      0    OK
@@ -270,13 +271,21 @@ xml_yang_root(cxobj  *x,
     yang_stmt *yp;
 
     while ((xp = xml_parent(x)) != NULL){
-        if ((y = xml_spec(x)) != NULL &&
-            (yp = yang_parent_get(y)) != NULL)
+        if ((y = xml_spec(x)) != NULL){
+            while ((yp = yang_parent_get(y)) != NULL){
+                if (yang_datanode(yp))
+                    break;
+                if  (yang_keyword_get(yp) == Y_MODULE ||
+                     yang_keyword_get(yp) == Y_SUBMODULE)
+                    break;
+                y = yp;
+            }
             /* Actually, maybe only the Y_MODULE clause is relevant */
             if (yp==NULL ||
                 yang_keyword_get(yp) == Y_MODULE ||
                 yang_keyword_get(yp) == Y_SUBMODULE)
                 break; /* x is the root */
+        }
         x = xp;
     }
     *xr = x;

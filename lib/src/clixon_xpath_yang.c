@@ -195,7 +195,23 @@ xp_yang_eval_step(xp_yang_ctx  *xy0,
         } /* nodetest xs_type */
         break;
     case A_PARENT:
-        xy->xy_node = yang_parent_get(ys);
+        {
+            yang_stmt *yp;
+            ys1 = ys;
+            while ((yp = yang_parent_get(ys1)) != NULL){
+                if (yang_datanode(yp)){
+                    ys1 = yp;
+                    break;
+                }
+                if (yang_keyword_get(yp) == Y_MODULE ||
+                    yang_keyword_get(yp) == Y_SUBMODULE){
+                    ys1 = yp;
+                    break;
+                }
+                ys1 = yp;
+            }
+            xy->xy_node = ys1;
+        }
         break;
     default:
         clixon_err(OE_YANG, 0, "Invalid path-arg step: %s",
