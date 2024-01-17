@@ -357,13 +357,13 @@ choice_is_other(yang_stmt *y0c,
     }
     else {
         /* First recurse y0 */
-        if (choice_case_get(y0choice, &ycase, &ychoice)){
+        if (yang_choice_case_get(y0choice, &ycase, &ychoice)){
             if (choice_is_other(y0choice, ycase, ychoice,
                                 y1c, y1case, y1choice) == 1)
                 return 1;
         }
-        /* Second  recurse y1 */
-        if (choice_case_get(y1choice, &ycase, &ychoice)){
+        /* Second recurse y1 */
+        if (yang_choice_case_get(y1choice, &ycase, &ychoice)){
             if (choice_is_other(y0choice, y0case, y0choice,
                                 y1choice, ycase, ychoice) == 1)
                 return 1;
@@ -402,7 +402,7 @@ choice_delete_other(cxobj     *x0,
     yang_stmt *y1case = NULL;
     yang_stmt *y1choice = NULL;
 
-    if (choice_case_get(y1c, &y1case, &y1choice) == 0)
+    if (yang_choice_case_get(y1c, &y1case, &y1choice) == 0)
         goto ok;
     x0prev = NULL;
     x0c = NULL;
@@ -412,7 +412,7 @@ choice_delete_other(cxobj     *x0,
             x0prev = x0c;
             continue;
         }
-        if (choice_case_get(y0c, &y0case, &y0choice) == 0){
+        if (yang_choice_case_get(y0c, &y0case, &y0choice) == 0){
             x0prev = x0c;
             continue;
         }

@@ -291,7 +291,7 @@ char      *yang_find_mynamespace(yang_stmt *ys);
 int        yang_find_prefix_by_namespace(yang_stmt *ys, char *ns, char **prefix);
 int        yang_find_namespace_by_prefix(yang_stmt *ys, char *prefix, char **ns);
 yang_stmt *yang_myroot(yang_stmt *ys);
-int        choice_case_get(yang_stmt *yc, yang_stmt **ycase, yang_stmt **ychoice);
+int        yang_choice_case_get(yang_stmt *yc, yang_stmt **ycase, yang_stmt **ychoice);
 yang_stmt *yang_choice(yang_stmt *y);
 int        yang_order(yang_stmt *y);
 int        yang_print_cb(FILE *f, yang_stmt *yn, clicon_output_cb *fn);

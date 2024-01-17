@@ -1544,12 +1544,18 @@ yang_myroot(yang_stmt *ys)
     return NULL;
 }
 
-/*! Get closest yang case and choice, if any
+/*! Given a YANG node, return closest yang case and choice, if any
+ *
+ * @param[in]  yc      Yang node
+ * @param[out] ycase   case parent of yc
+ * @param[out] ychoice choice parent of yc (or grandparent)
+ * @retval     1       yc has case or choice parent (or both) as returned in ycase/ychoice
+ * @retval     0       yc has no parent or parent is neither case or choice
  */
 int
-choice_case_get(yang_stmt  *yc,
-                yang_stmt **ycase,
-                yang_stmt **ychoice)
+yang_choice_case_get(yang_stmt  *yc,
+                     yang_stmt **ycase,
+                     yang_stmt **ychoice)
 {
     yang_stmt *yp;
 
@@ -1571,25 +1577,17 @@ choice_case_get(yang_stmt  *yc,
 }
 
 /*! If a given yang stmt has a choice/case as parent, return the choice statement
+ *
+ *
+ * @see yang_choice_case_get
  */
 yang_stmt *
 yang_choice(yang_stmt *y)
 {
-    yang_stmt *yp;
+    yang_stmt *yp = NULL;
 
-    if ((yp = y->ys_parent) != NULL){
-        switch (yang_keyword_get(yp)){
-        case Y_CHOICE:
-            return yp;
-            break;
-        case Y_CASE:
-            return yang_parent_get(yp);
-            break;
-        default:
-            break;
-        }
-    }
-    return NULL;
+    yang_choice_case_get(y, NULL, &yp);
+    return yp;
 }
 
 /*! Find matching y in yp:s children, "yang order" of y when y is choice

@@ -187,7 +187,7 @@ xml_default_choice(yang_stmt *yc,
             continue;
         /* Check if this child is a child of yc */
         yca = ych = NULL;
-        if (choice_case_get(y, &yca, &ych) == 1 &&
+        if (yang_choice_case_get(y, &yca, &ych) == 1 &&
             ych == yc){
             x0 = x;
             break;

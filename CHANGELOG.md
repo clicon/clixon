@@ -28,6 +28,7 @@ Expected: February 2024
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Changed function name: `choice_case_get()` -> `yang_choice_case_get()`
 * New `clixon-lib@2024-01-01.yang` revision
   * Replaced container creators to grouping/uses
 * Changed ca_errmsg callback to a more generic variant
