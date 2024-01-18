@@ -409,7 +409,7 @@ clixon_event_loop(clixon_handle h)
                  *     New select loop is called
                  * (3) Other signals result in an error and return -1.
                  */
-                clixon_debug(CLIXON_DBG_DEFAULT, "select: %s", strerror(errno));
+                clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "select: %s", strerror(errno));
                 if (clixon_exit_get() == 1){
                     clixon_err(OE_EVENTS, errno, "select");
                     retval = 0;
@@ -468,7 +468,7 @@ clixon_event_loop(clixon_handle h)
     }
     if (clixon_exit_get() == 1)
         retval = 0;
-    clixon_debug(CLIXON_DBG_DEFAULT, "done:%d", retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     return retval;
 }
 
