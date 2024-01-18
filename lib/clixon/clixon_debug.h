@@ -61,6 +61,7 @@
 #define CLIXON_DBG_XPATH	0x000008	/* XPath processing */
 #define CLIXON_DBG_YANG		0x000010	/* YANG processing */
 #define CLIXON_DBG_CLIENT	0x000020	/* App-specific */
+#define CLIXON_DBG_NACM		0x000040	/* NACM processing */
 #define CLIXON_DBG_SMASK	0x00ffff	/* Subject mask */
 
 /*
