@@ -56,13 +56,14 @@
 
 /* Subject area */
 #define CLIXON_DBG_DEFAULT	0x000001	/* Default logs */
-#define CLIXON_DBG_MSG		0x000002	/* In/out messages and datastore reads */
+#define CLIXON_DBG_MSG		0x000002	/* In/out messages */
 #define CLIXON_DBG_XML		0x000004	/* XML processing */
 #define CLIXON_DBG_XPATH	0x000008	/* XPath processing */
 #define CLIXON_DBG_YANG		0x000010	/* YANG processing */
 #define CLIXON_DBG_CLIENT	0x000020	/* App-specific */
 #define CLIXON_DBG_NACM		0x000040	/* NACM processing */
 #define CLIXON_DBG_PROC		0x000080	/* Process handling */
+#define CLIXON_DBG_DATASTORE	0x000100	/* Datastore management */
 #define CLIXON_DBG_SMASK	0x00ffff	/* Subject mask */
 
 /*

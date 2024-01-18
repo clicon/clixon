@@ -500,7 +500,7 @@ xmldb_readfile(clixon_handle    h,
         clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "Reading datastore %s using %s", dbfile, format);
+    clixon_debug(CLIXON_DBG_DATASTORE, "Reading datastore %s using %s", dbfile, format);
     /* Parse file into internal XML tree from different formats */
     if ((fp = fopen(dbfile, "r")) == NULL) {
         clixon_err(OE_UNIX, errno, "open(%s)", dbfile);
@@ -796,14 +796,12 @@ xmldb_get_nocache(clixon_handle    h,
         if (disable_nacm_on_empty(xt, yspec) < 0)
             goto done;
     }
-    if (clixon_debug_isset(CLIXON_DBG_DEFAULT))
-        if (clixon_xml2file(stderr, xt, 0, 1, NULL, fprintf, 0, 0) < 0)
-            goto done;
+    clixon_debug_xml(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, xt, "");
     *xtop = xt;
     xt = NULL;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xt)
         xml_free(xt);
     if (xvec)
@@ -859,6 +857,8 @@ xmldb_get_cache(clixon_handle     h,
     cxobj     *x1t = NULL;
     db_elmnt   de0 = {0,};
     int        ret;
+
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "db %s", db);
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
@@ -991,11 +991,11 @@ xmldb_get_cache(clixon_handle     h,
         if (disable_nacm_on_empty(x1t, yspec) < 0)
             goto done;
     }
-    clixon_debug_xml(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, x1t, "");
+    clixon_debug_xml(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, x1t, "");
     *xtop = x1t;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xvec)
         free(xvec);
     return retval;
@@ -1040,7 +1040,6 @@ xmldb_get_zerocopy(clixon_handle    h,
     cxobj         **xvec = NULL;
     size_t          xlen;
     int             i;
-    cxobj          *x0;
     db_elmnt       *de = NULL;
     db_elmnt        de0 = {0,};
     int             ret;
@@ -1075,7 +1074,7 @@ xmldb_get_zerocopy(clixon_handle    h,
      * For every node found in x0, mark the tree up to t1
      */
     for (i=0; i<xlen; i++){
-        x0 = xvec[i];
+        cxobj *x0 = xvec[i];
         xml_flag_set(x0, XML_FLAG_MARK);
         xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
@@ -1140,13 +1139,11 @@ xmldb_get_zerocopy(clixon_handle    h,
         if (disable_nacm_on_empty(x0t, yspec) < 0)
             goto done;
     }
-    if (clixon_debug_isset(CLIXON_DBG_DEFAULT))
-        if (clixon_xml2file(stderr, x0t, 0, 1, NULL, fprintf, 0, 0) < 0)
-            goto done;
+    clixon_debug_xml(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, x0t, "");
     *xtop = x0t;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xvec)
         free(xvec);
     return retval;
