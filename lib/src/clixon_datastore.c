@@ -188,7 +188,7 @@ xmldb_copy(clixon_handle h,
     cxobj              *x1 = NULL;  /* from */
     cxobj              *x2 = NULL;  /* to */
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", from, to);
+    clixon_debug(CLIXON_DBG_DATASTORE, "%s %s", from, to);
     /* XXX lock */
     if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
         /* Copy in-memory cache */
@@ -237,6 +237,7 @@ xmldb_copy(clixon_handle h,
         goto done;
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_DATASTORE, "retval:%d", retval);
     if (fromfile)
         free(fromfile);
     if (tofile)
@@ -265,7 +266,7 @@ xmldb_lock(clixon_handle h,
     de0.de_id = id;
     gettimeofday(&de0.de_tv, NULL);
     clicon_db_elmnt_set(h, db, &de0);
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s: locked by %u",  db, id);
+    clixon_debug(CLIXON_DBG_DATASTORE, "%s: locked by %u",  db, id);
     return 0;
 }
 
@@ -384,7 +385,7 @@ xmldb_exists(clixon_handle h,
     char               *filename = NULL;
     struct stat         sb;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", db);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
     if (lstat(filename, &sb) < 0)
@@ -397,6 +398,7 @@ xmldb_exists(clixon_handle h,
             retval = 1;
     }
  done:
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (filename)
         free(filename);
     return retval;
@@ -442,7 +444,7 @@ xmldb_delete(clixon_handle h,
     char               *filename = NULL;
     struct stat         sb;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", db);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if (xmldb_clear(h, db) < 0)
         goto done;
     if (xmldb_db2file(h, db, &filename) < 0)
@@ -454,6 +456,7 @@ xmldb_delete(clixon_handle h,
         }
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (filename)
         free(filename);
     return retval;
@@ -476,7 +479,7 @@ xmldb_create(clixon_handle h,
     db_elmnt           *de = NULL;
     cxobj              *xt = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", db);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
         if ((xt = de->de_xml) != NULL){
             xml_free(xt);
@@ -489,8 +492,9 @@ xmldb_create(clixon_handle h,
         clixon_err(OE_UNIX, errno, "open(%s)", filename);
         goto done;
     }
-   retval = 0;
+    retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (filename)
         free(filename);
     if (fd != -1)
