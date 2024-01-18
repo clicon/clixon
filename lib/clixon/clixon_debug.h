@@ -62,6 +62,7 @@
 #define CLIXON_DBG_YANG		0x000010	/* YANG processing */
 #define CLIXON_DBG_CLIENT	0x000020	/* App-specific */
 #define CLIXON_DBG_NACM		0x000040	/* NACM processing */
+#define CLIXON_DBG_PROC		0x000080	/* Process handling */
 #define CLIXON_DBG_SMASK	0x00ffff	/* Subject mask */
 
 /*
