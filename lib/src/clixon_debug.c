@@ -167,6 +167,7 @@ clixon_debug_fn(clixon_handle h,
         fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
         goto done;
     }
+    cprintf(cb, "%s:%d: ", fn, line);
     va_start(ap, format);
     vcprintf(cb, format, ap);
     va_end(ap);    
