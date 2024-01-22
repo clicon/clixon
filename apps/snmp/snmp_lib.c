@@ -763,6 +763,14 @@ type_snmp2xml(yang_stmt                  *ys,
     goto done;
 }
 
+unsigned char reverse_bits(unsigned char b) {
+   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+   return b;
+}
+
+
 /*! Given xml value and YANG,m return corresponding malloced snmp string
  *
  * For special cases to prepare for proper xml2snmp translation. This includes translating
@@ -787,7 +795,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     char      *str = NULL;
     int        ret;
     cbuf      *cb = NULL;
-    uint32_t  int_value = 0;
+    uint32_t   int_value = 0;
 
     if (xmlstr0 == NULL || xmlstr1 == NULL){
         clixon_err(OE_UNIX, EINVAL, "xmlstr0/1 is NULL");
@@ -816,11 +824,15 @@ type_xml2snmp_pre(char      *xmlstr0,
             goto fail;
         }
 
-        // net-snmp requires value to be in network order.
-        int_value = htonl(int_value);
-
-        cbuf_append_buf(cb, &int_value, sizeof(uint32_t));
+        cbuf_append_buf(cb, &int_value, sizeof(int_value));
         str = cbuf_get(cb);
+
+        // TODO: Check if there is a better way to swap the bits
+        int i = 0;
+        while (i < sizeof(int_value)) {
+            str[i] = reverse_bits(str[i]);
+            i++;
+        }
     }
     /* special case for bool: although smidump translates TruthValue to boolean
      * and there is an ASN_BOOLEAN constant:

@@ -1546,16 +1546,29 @@ yang_enum2valstr(yang_stmt *ytype,
     goto done;
 }
 
-/*! s
+/*! Given a YANG (bits) type node and a bit string, return the bit position.
+ * Example:
  *
- * @param[in]  ytype   YANG type noden
- * @param[in]  flagstr flag string
- * @param[out] flagpos position for the given flag
- * @retval     1       OK, result in flagpos
- * @retval     0       Invalid, not found
- * @retval    -1       Error
+ * type bits {
+ *     bit stateA {
+ *         position "0"; << This one
+ *     }
+ *     bit stateB {
+ *         position "1"; << And this one
+ *     }
+ * }
+ * 
+ * If the position is not specified, it will be automatically assigned as defined
+ * in RFC7950, section 9.7.4.2
+ * 
+ * @param[in]  ytype  YANG type noden
+ * @param[in]  bitstr bit (flag) string
+ * @param[out] bitpos position for the given bit (flag)
+ * @retval     1      OK, result in flagpos
+ * @retval     0      Invalid, not found
+ * @retval    -1      Error
  */
-int yang_bits_pos(yang_stmt *ytype, char *flagstr, uint32_t *flagpos) {
+int yang_bits_pos(yang_stmt *ytype, char *bitstr, uint32_t *bitpos) {
     int retval = 0;
     int ret = 0;
     int is_first = 1;
@@ -1570,7 +1583,7 @@ int yang_bits_pos(yang_stmt *ytype, char *flagstr, uint32_t *flagpos) {
             
             // Use position from Y_POSITION statement if defined
             if ((ypos = yang_find(yprev, Y_POSITION, NULL)) != NULL) {
-                if ((ret = parse_uint32(yang_argument_get(ypos), flagpos, &reason)) < 0) {
+                if ((ret = parse_uint32(yang_argument_get(ypos), bitpos, &reason)) < 0) {
                     clixon_err(OE_UNIX, EINVAL, "cannot parse bit position val: %s", reason);
                     goto done;
                 }
@@ -1578,10 +1591,10 @@ int yang_bits_pos(yang_stmt *ytype, char *flagstr, uint32_t *flagpos) {
                     goto fail;
             } else {
                 // Position not defined. Use last known position + 1 (skip first node to start with 0)
-                if (is_first == 0) *flagpos = *flagpos+1;
+                if (is_first == 0) (*bitpos)++;
             }
 
-            if (strcmp(flagstr,  yang_argument_get(yprev)) == 0) {
+            if (strcmp(bitstr,  yang_argument_get(yprev)) == 0) {
                 retval = 1;
                 goto done;
             }
@@ -1590,7 +1603,7 @@ int yang_bits_pos(yang_stmt *ytype, char *flagstr, uint32_t *flagpos) {
         }
     }
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "flag %s not found", flagstr);
+    clixon_debug(CLIXON_DBG_DEFAULT, "flag %s not found", bitstr);
     goto fail;
 
  done:
@@ -1600,12 +1613,7 @@ int yang_bits_pos(yang_stmt *ytype, char *flagstr, uint32_t *flagpos) {
     goto done;
 }
 
-int set_bit(uint32_t n, int pos) { 
-    int mask = 1 << pos; 
-    return ((n & ~mask) | (1 << pos)); 
-} 
-
-/*! Given a YANG (bits) type node and a value, return the integer value for all set bits
+/*! Given a YANG (bits) type node and a value, return the integer value for all bits (flags) that are set.
  *
  * @param[in]  ytype   YANG type noden
  * @param[in]  bitsstr Value of bits as space separated string
@@ -1637,8 +1645,7 @@ yang_bitsstr2val(yang_stmt *ytype,
         goto done;
     }
 
-    // Go over all set flags in given bitstring and set the bit
-    // at the correspondig position
+    // Go over all set flags in given bitstring and set bit at the correspondig position
     for (i=0; i<nvec; i++) {
         v = vec[i]; 
         if ((ret = yang_bits_pos(ytype, v, &bitpos)) < 0) 
@@ -1646,10 +1653,9 @@ yang_bitsstr2val(yang_stmt *ytype,
         if (ret == 0)
             goto fail;
         
-        *intval = set_bit(*intval, bitpos);
+        *intval = *intval | (1 << bitpos);
     }
     free(vec); 
-
     retval = 1;
 
  done:
