@@ -787,6 +787,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     char      *str = NULL;
     int        ret;
     cbuf      *cb = NULL;
+    uint32_t  int_value = 0;
 
     if (xmlstr0 == NULL || xmlstr1 == NULL){
         clixon_err(OE_UNIX, EINVAL, "xmlstr0/1 is NULL");
@@ -802,6 +803,24 @@ type_xml2snmp_pre(char      *xmlstr0,
             clixon_debug(CLIXON_DBG_DEFAULT, "Invalid enum valstr %s", xmlstr0);
             goto fail;
         }
+    }
+    else if (strcmp(restype, "bits") == 0){   /* special case for bits */
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if ((ret = yang_bitsstr2val(yrestype, xmlstr0, &int_value)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits valstr %s", xmlstr0);
+            goto fail;
+        }
+
+        // net-snmp requires value to be in network order.
+        int_value = htonl(int_value);
+
+        cbuf_append_buf(cb, &int_value, sizeof(uint32_t));
+        str = cbuf_get(cb);
     }
     /* special case for bool: although smidump translates TruthValue to boolean
      * and there is an ASN_BOOLEAN constant:
@@ -979,6 +998,15 @@ type_xml2snmp(char       *snmpstr,
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
+        *asn1type = ASN_OCTET_STR;
+        break;
+    case ASN_BIT_STR:
+        *snmplen = strlen(snmpstr)+1;
+        if ((*snmpval = (u_char*)strdup((snmpstr))) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+
         *asn1type = ASN_OCTET_STR;
         break;
     default:

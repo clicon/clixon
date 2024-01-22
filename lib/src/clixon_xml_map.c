@@ -1546,6 +1546,119 @@ yang_enum2valstr(yang_stmt *ytype,
     goto done;
 }
 
+/*! s
+ *
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  flagstr flag string
+ * @param[out] flagpos position for the given flag
+ * @retval     1       OK, result in flagpos
+ * @retval     0       Invalid, not found
+ * @retval    -1       Error
+ */
+int yang_bits_pos(yang_stmt *ytype, char *flagstr, uint32_t *flagpos) {
+    int retval = 0;
+    int ret = 0;
+    int is_first = 1;
+    char *reason;
+
+    yang_stmt *yprev = NULL;
+    yang_stmt *ypos = NULL;
+    while ((yprev = yn_each(ytype, yprev)) != NULL) {
+        
+        // Check for the given bit name (flag)
+        if (yang_keyword_get(yprev) == Y_BIT) {
+            
+            // Use position from Y_POSITION statement if defined
+            if ((ypos = yang_find(yprev, Y_POSITION, NULL)) != NULL) {
+                if ((ret = parse_uint32(yang_argument_get(ypos), flagpos, &reason)) < 0) {
+                    clixon_err(OE_UNIX, EINVAL, "cannot parse bit position val: %s", reason);
+                    goto done;
+                }
+                if (ret == 0) 
+                    goto fail;
+            } else {
+                // Position not defined. Use last known position + 1 (skip first node to start with 0)
+                if (is_first == 0) *flagpos = *flagpos+1;
+            }
+
+            if (strcmp(flagstr,  yang_argument_get(yprev)) == 0) {
+                retval = 1;
+                goto done;
+            }
+
+            is_first = 0;
+        }
+    }
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "flag %s not found", flagstr);
+    goto fail;
+
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+int set_bit(uint32_t n, int pos) { 
+    int mask = 1 << pos; 
+    return ((n & ~mask) | (1 << pos)); 
+} 
+
+/*! Given a YANG (bits) type node and a value, return the integer value for all set bits
+ *
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  bitsstr Value of bits as space separated string
+ * @param[out] intval  Corresponding integer value with all flags set as defined in bitsstr
+ * @retval     1       OK, result in intval
+ * @retval     0       Invalid, not found
+ * @retval    -1       Error
+ */
+int
+yang_bitsstr2val(yang_stmt *ytype,
+                 char      *bitsstr,
+                 uint32_t  *intval)
+{
+    int      retval = -1;
+    int      i = 0;
+    char   **vec = NULL;
+    char    *v;
+    int      nvec;
+    uint32_t bitpos;
+    int      ret = 0;
+
+    if (intval == NULL) {
+        clixon_err(OE_UNIX, EINVAL, "intval is NULL");
+        goto done;
+    }
+
+    if ((vec = clicon_strsep(bitsstr, " ", &nvec)) == NULL) {
+        clixon_err(OE_UNIX, EINVAL, "split string failed");
+        goto done;
+    }
+
+    // Go over all set flags in given bitstring and set the bit
+    // at the correspondig position
+    for (i=0; i<nvec; i++) {
+        v = vec[i]; 
+        if ((ret = yang_bits_pos(ytype, v, &bitpos)) < 0) 
+            goto done;
+        if (ret == 0)
+            goto fail;
+        
+        *intval = set_bit(*intval, bitpos);
+    }
+    free(vec); 
+
+    retval = 1;
+
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Get integer value from xml node from yang enumeration 
  *
  * @param[in]  node XML node in a tree
