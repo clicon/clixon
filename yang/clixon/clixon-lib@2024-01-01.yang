@@ -70,7 +70,7 @@ module clixon-lib {
 
     revision 2024-01-01 {
         description
-            "Moved container creators to grouping/uses and removed config false
+            "Removed container creators from 6.5
              Released in 6.6.0";
     }
     revision 2023-11-01 {
@@ -215,23 +215,6 @@ module clixon-lib {
              Limitations: only objects that are actually added or deleted. 
              A sub-object will not be noted";
     }
-    grouping clixon-creators{
-        container creators{
-            description "Meta-data for creation of data objects.";
-            list creator {
-                key name;
-                leaf name {
-                    description "Name of creator / service (instance) name";
-                    type string;
-                }
-                leaf-list path {
-                    description "Path to object";
-                    type string;
-                }
-            }
-        }
-    }
-    uses clixon-creators;
     rpc debug {
         description "Set debug level of backend.";
         input {

@@ -36,7 +36,7 @@ Developers may need to change their code
 
 * Changed function name: `choice_case_get()` -> `yang_choice_case_get()`
 * New `clixon-lib@2024-01-01.yang` revision
-  * Replaced container creators to grouping/uses
+  * Removed container creators, reverted from 6.5
 * Changed ca_errmsg callback to a more generic variant
   * Includes all error, log and debug messages
   * See [Customized NETCONF error message](https://github.com/clicon/clixon/issues/454)
