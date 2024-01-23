@@ -1099,7 +1099,7 @@ xml_diff2cbuf(cbuf  *cb,
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
         yc0 = xml_spec(x0c);
         yc1 = xml_spec(x1c);
-        if (eq && yc0 && yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
+        if (eq && yc0 && yc1 && yc0 == yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
             if (xml_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, yc0,
                                               level, skiptop) < 0)
                 goto done;
