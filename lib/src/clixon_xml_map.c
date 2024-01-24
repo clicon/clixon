@@ -1519,6 +1519,9 @@ yang_valstr2enum(yang_stmt *ytype,
  * @retval     1       OK, result in valstr
  * @retval     0       Invalid, not found
  * @retval    -1       Error
+ * @note does not handle implicit values
+ * @see yang_enum2int handles implicit values
+ * @note does not handle implicit values, see yang_enum_int_value which does
  */
 int
 yang_enum2valstr(yang_stmt *ytype,
@@ -1570,8 +1573,8 @@ yang_enum_int_value(cxobj   *node,
     yang_stmt *ys;
     yang_stmt *ytype;
     yang_stmt *yrestype;  /* resolved type */
-    char      *reason = NULL;
-    char      *intstr = NULL;
+    yang_stmt *yenum;
+    cg_var    *cv;
 
     if (node == NULL)
         goto done;
@@ -1588,13 +1591,17 @@ yang_enum_int_value(cxobj   *node,
         clixon_err(OE_YANG, 0, "result-type should not be NULL");
         goto done;
     }
-    if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
+    if (strcmp(yang_argument_get(yrestype), "enumeration"))
         goto done;
-    if (yang_enum2valstr(yrestype, xml_body(node), &intstr) < 0)
+    if ((yenum = yang_find(yrestype, Y_ENUM, xml_body(node))) == NULL){
+        clixon_err(OE_YANG, 0, "No such enum: %s", xml_body(node));
         goto done;
-    /* reason is string containing why int could not be parsed */
-    if (parse_int32(intstr, val, &reason) < 0)
+    }
+    if ((cv = yang_cv_get(yenum)) == NULL){
+        clixon_err(OE_YANG, 0, "Enum lacks cv");
         goto done;
+    }
+    *val = cv_int32_get(cv);
     retval = 0;
 done:
     return retval;

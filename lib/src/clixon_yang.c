@@ -2563,6 +2563,47 @@ ys_populate_length(clixon_handle h,
     return retval;
 }
 
+/*! Assign enum values
+ *
+ * @param[in] h    Clixon handle
+ * @param[in] ys   The yang statement (type) to populate.
+ * @retval    0    OK
+ * @retval   -1    Error
+ */
+static int
+ys_populate_type_enum(clixon_handle h,
+                      yang_stmt    *ys)
+{
+    int retval = -1;
+
+    yang_stmt *yenum = NULL;
+    yang_stmt *yval;
+    char      *valstr;
+    int        v;
+    int        i = 0;
+    cg_var    *cv = NULL;
+
+    yenum = NULL;
+    while ((yenum = yn_each(ys, yenum)) != NULL) {
+        if ((cv = cv_new(CGV_INT32)) == NULL){
+            clixon_err(OE_YANG, errno, "cv_new");
+            goto done;
+        }
+        if ((yval = yang_find(yenum, Y_VALUE, NULL)) != NULL){
+            valstr = yang_argument_get(yval);
+            if (parse_int32(valstr, &v, NULL) < 0)
+                goto done;
+            if (v > i)
+                i = v;
+        }
+        cv_int32_set(cv, i++);
+        yang_cv_set(yenum, cv);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Sanity check yang type statement
  *
  * XXX: Replace with generic parent/child type-check
@@ -2585,8 +2626,7 @@ ys_populate_type(clixon_handle h,
             goto done;
         }
     }
-    else
-    if (strcmp(ys->ys_argument, "identityref") == 0){
+    else if (strcmp(ys->ys_argument, "identityref") == 0){
         if ((ybase = yang_find(ys, Y_BASE, NULL)) == NULL){
             clixon_err(OE_YANG, 0, "identityref type requires base sub-statement");
             goto done;
@@ -2596,6 +2636,10 @@ ys_populate_type(clixon_handle h,
                        ybase->ys_argument, ys->ys_argument);
             goto done;
         }
+    }
+    else if (strcmp(ys->ys_argument, "enumeration") == 0){
+        if (ys_populate_type_enum(h, ys) < 0)
+            goto done;
     }
     retval = 0;
   done:

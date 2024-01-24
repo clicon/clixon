@@ -91,6 +91,7 @@ struct yang_stmt{
                                         revision (uint32)
                                         unknown-stmt (optional argument)
                                         spec: mount-point xpath
+                                        enum: value
                                      */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
                                         Y_RANGE: range_min, range_max 

@@ -73,6 +73,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [yang_enum_int_value() fails if no explicit values are assigned to enums](https://github.com/clicon/clixon/issues/483)
+  Remaining work: `yang_enum2valstr()`
 * Fixed: [show compare/diff problems with sorted-by user](https://github.com/clicon/clixon/issues/482)
 * Fixed: [Choice and Leafref](https://github.com/clicon/clixon/issues/469)
 * Fixed: [Problem deleting non-last list element if ordered-by user](https://github.com/clicon/clixon/issues/475)
