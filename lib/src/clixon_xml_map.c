@@ -374,6 +374,7 @@ xml_diff_ordered_by_user(cxobj     *x0,
  *     perspective, ie both have the same yang spec, if they are lists, they have the
  *     the same keys. NOT that the values are equal!
  * @see xml_diff  API function, this one is internal and recursive
+ * @see xml_diff2cbuf, clixon_text_diff2cbuf  for +/- diff for XML and TEXT formats
  * @note reordering in ordered-by user is NOT supported
  */
 static int
@@ -422,7 +423,7 @@ xml_diff1(cxobj     *x0,
         yc0 = xml_spec(x0c);
         yc1 = xml_spec(x1c);
         /* override ordered-by user with special look-ahead checks */
-        if (eq && yc0 && yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
+        if (eq && yc0 && yc1 && yc0 == yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
             if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, yc0,
                                          x0vec, x0veclen, x1vec, x1veclen,
                                          changed_x0, changed_x1, changedlen) < 0)
