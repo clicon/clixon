@@ -498,6 +498,6 @@ api_http_data(clixon_handle  h,
  done:
     if (path)
         free(path);
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     return retval;
 }

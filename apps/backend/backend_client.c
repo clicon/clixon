@@ -282,7 +282,7 @@ backend_monitoring_state_get(clixon_handle h,
         goto fail;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -1871,7 +1871,7 @@ from_client(int   s,
             goto done;
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "retval=%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (cbce)
         cbuf_free(cbce);
     if (msg)

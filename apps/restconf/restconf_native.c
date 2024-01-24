@@ -593,7 +593,7 @@ read_ssl(restconf_conn *rc,
     }
     retval = 0;
     // done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     return retval;
 }
 
@@ -913,7 +913,7 @@ restconf_http2_process(restconf_conn *rc,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     return retval;
 }
 #endif /* HAVE_LIBNGHTTP2 */
@@ -1029,7 +1029,7 @@ restconf_connection(int   s,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval %d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     return retval;
 } /* restconf_connection */
 
@@ -1068,7 +1068,7 @@ restconf_connection_close1(restconf_conn *rc)
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     return retval;
 }
 
@@ -1457,7 +1457,7 @@ restconf_ssl_accept_client(clixon_handle    h,
         *rcp = rc;
     retval = 1; /* OK, up */
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval %d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     if (name)
         free(name);
     return retval;

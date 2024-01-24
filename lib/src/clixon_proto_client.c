@@ -253,7 +253,7 @@ clicon_rpc_msg(clixon_handle      h,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%d", retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (retdata)
         free(retdata);
     if (xret)
@@ -1105,7 +1105,7 @@ clicon_rpc_get2(clixon_handle   h,
     }
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%d", retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (nscd)
         cvec_free(nscd);
     if (cb)

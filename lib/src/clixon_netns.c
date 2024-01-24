@@ -191,7 +191,7 @@ create_socket(struct sockaddr *sa,
         *sock = s;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%d", retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     if (retval != 0 && s != -1)
         close(s);
     return retval;
@@ -306,7 +306,7 @@ fork_netns_socket(const char      *netns,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%d", retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     return retval;
 }
 #endif /* HAVE_SETNS */
@@ -352,6 +352,6 @@ clixon_netns_socket(const char      *netns,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%d", retval);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     return retval;
 }

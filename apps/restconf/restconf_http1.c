@@ -119,7 +119,7 @@ _http1_parse(clixon_handle  h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     return retval;
 }
 
@@ -463,7 +463,7 @@ restconf_http1_path_root(clixon_handle  h,
             goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     if (subject)
         free(subject);
     if (xerr)

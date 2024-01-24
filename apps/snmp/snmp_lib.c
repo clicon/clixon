@@ -747,7 +747,7 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (origtype)
         free(origtype);
     if (cv)
@@ -836,7 +836,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -981,7 +981,7 @@ type_xml2snmp(char       *snmpstr,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
  fail:
     retval = 0;

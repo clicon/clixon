@@ -1102,7 +1102,7 @@ load_failsafe(clixon_handle h,
     }
     clixon_log(h, LOG_NOTICE, "%s failed, Failsafe database loaded ", phase);
     retval = 0;
-    done:
+ done:
     if (cbret)
         cbuf_free(cbret);
     return retval;

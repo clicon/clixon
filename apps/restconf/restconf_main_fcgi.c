@@ -124,7 +124,7 @@ fcgi_params_set(clixon_handle h,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     return retval;
 }
 

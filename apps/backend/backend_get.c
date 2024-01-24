@@ -373,7 +373,7 @@ get_statedata(clixon_handle     h,
     } /* switch wdef */
     retval = 1; /* OK */
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     if (xerr)
         xml_free(xerr);
     if (x1)

@@ -581,7 +581,7 @@ restconf_accept_client(int   fd,
         goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval %d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     if (name)
         free(name);
     return retval;

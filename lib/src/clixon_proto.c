@@ -864,7 +864,7 @@ send_msg_notify_xml(clixon_handle h,
         goto done;
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%d", retval);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (cb)
         cbuf_free(cb);
     return retval;

@@ -346,7 +346,7 @@ restconf_nghttp2_path(restconf_stream_data *sd)
         goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     if (cvv)
         cvec_free(cvv);
     if (oneline)
@@ -971,7 +971,7 @@ http2_send_server_connection(restconf_conn *rc)
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     return retval;
 }
 

@@ -293,7 +293,7 @@ parse_configfile_one(clixon_handle h,
     xt = NULL;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Done w/ config file %s returning %d", filename, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Done w/ config file %s retval:%d", filename, retval);
     if (xt)
         xml_free(xt);
     if (fp)
@@ -504,7 +504,7 @@ parse_configfile(clixon_handle  h,
     *xconfig = xt;
     xt = NULL;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Done w/ config file %s returning %d", filename, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Done w/ config file %s retval:%d", filename, retval);
     if (dp)
         free(dp);
     if (nsc)

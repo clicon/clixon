@@ -369,10 +369,8 @@ schedule_rollback_event(clixon_handle h,
         /* error is logged in called function */
         goto done;
     };
-
     retval = 0;
-
-    done:
+ done:
     return retval;
 }
 

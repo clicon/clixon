@@ -504,7 +504,7 @@ netconf_notification_cb(int   s,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", retval);
+    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
     if (cb)
         cbuf_free(cb);
     if (nsc)
