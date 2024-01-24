@@ -73,6 +73,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [show compare/diff problems with sorted-by user](https://github.com/clicon/clixon/issues/482)
 * Fixed: [Choice and Leafref](https://github.com/clicon/clixon/issues/469)
 * Fixed: [Problem deleting non-last list element if ordered-by user](https://github.com/clicon/clixon/issues/475)
 * Fixed: [Tab completion mounted devices with lists](https://github.com/clicon/clixon-controller/issues/72)
