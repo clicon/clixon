@@ -3060,6 +3060,7 @@ ys_populate2(yang_stmt    *ys,
 {
     int           retval = -1;
     clixon_handle h = (clixon_handle)arg;
+    cg_var       *cv;
     int           ret;
 
     switch(ys->ys_keyword){
@@ -3073,6 +3074,10 @@ ys_populate2(yang_stmt    *ys,
     case Y_REQUIRE_INSTANCE:
         if (ys_parse(ys, CGV_BOOL) == NULL)
             goto done;
+        if (ys->ys_keyword == Y_CONFIG){
+            if ((cv = yang_cv_get(ys)) != NULL && !cv_bool_get(cv))
+                yang_flag_set(yang_parent_get(ys), YANG_FLAG_STATE_LOCAL);
+        }
         break;
     default:
         break;
@@ -3536,21 +3541,12 @@ yang_config_ancestor(yang_stmt *ys)
 
     yp = ys;
     do {
-        if (yang_flag_get(yp, YANG_FLAG_CONFIG_CACHE))
-            return yang_flag_get(yp, YANG_FLAG_CONFIG_VALUE)?1:0;
-        if (yang_config(yp) == 0){
-            yang_flag_set(yp, YANG_FLAG_CONFIG_CACHE);
-            yang_flag_reset(yp, YANG_FLAG_CONFIG_VALUE);
+        if (yang_flag_get(yp, YANG_FLAG_STATE_LOCAL) != 0)
             return 0;
-        }
-        if (yang_keyword_get(yp) == Y_INPUT || yang_keyword_get(yp) == Y_OUTPUT || yang_keyword_get(yp) == Y_NOTIFICATION){
-            yang_flag_set(yp, YANG_FLAG_CONFIG_CACHE);
-            yang_flag_reset(yp, YANG_FLAG_CONFIG_VALUE);
+        else if (yang_keyword_get(yp) == Y_INPUT || yang_keyword_get(yp) == Y_OUTPUT || yang_keyword_get(yp) == Y_NOTIFICATION){
             return 0;
         }
     } while((yp = yang_parent_get(yp)) != NULL);
-    yang_flag_set(ys, YANG_FLAG_CONFIG_CACHE);
-    yang_flag_set(ys, YANG_FLAG_CONFIG_VALUE);
     return 1;
 }
 
