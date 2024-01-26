@@ -80,8 +80,8 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_bind.h"
 #include "clixon_xml_sort.h"
-#include "clixon_xml_io.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_io.h"
 #include "clixon_proto_client.h"
 
 #define PERSIST_ID_XML_FMT "<persist-id>%s</persist-id>"

@@ -69,13 +69,13 @@
 #include "clixon_data.h"
 #include "clixon_xml_bind.h"
 #include "clixon_xml_map.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_yang_module.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_plugin.h"
-#include "clixon_netconf_lib.h"
 #include "clixon_netconf_input.h"
 
 /* Mapping between RFC6243 withdefaults strings <--> ints
