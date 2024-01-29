@@ -1151,10 +1151,10 @@ rpc_callback_dump(clixon_handle h)
     rpc_callback_t *rc;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "--------------");
+    clixon_debug(CLIXON_DBG_RPC, "--------------");
     if ((rc = ms->ms_rpc_callbacks) != NULL)
         do {
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s", rc->rc_name);
+            clixon_debug(CLIXON_DBG_RPC, "%s", rc->rc_name);
             rc = NEXTQ(rpc_callback_t *, rc);
         } while (rc != ms->ms_rpc_callbacks);
     return 0;
@@ -1182,7 +1182,7 @@ rpc_callback_register(clixon_handle  h,
     rpc_callback_t *rc = NULL;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", name);
+    clixon_debug(CLIXON_DBG_RPC, "%s", name);
     if (ms == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
@@ -1281,7 +1281,7 @@ rpc_callback_call(clixon_handle h,
                 if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
                     goto done;
                 if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
-                    clixon_debug(CLIXON_DBG_DEFAULT, "Error in: %s", rc->rc_name);
+                    clixon_debug(CLIXON_DBG_RPC, "Error in: %s", rc->rc_name);
                     clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__);
                     goto done;
                 }
@@ -1302,7 +1302,7 @@ rpc_callback_call(clixon_handle h,
         *nrp = nr;
     retval = 1; /* 0: none found, >0 nr of handlers called */
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RPC | CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
  fail:
     retval = 0;
@@ -1334,7 +1334,7 @@ action_callback_register(clixon_handle  h,
     rpc_callback_t *rc = NULL;
     char           *name;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "");
+    clixon_debug(CLIXON_DBG_RPC, "");
     if (ya == NULL){
         clixon_err(OE_DB, EINVAL, "yang node is NULL");
         goto done;
@@ -1386,7 +1386,7 @@ action_callback_call(clixon_handle h,
     void           *wh = NULL;
     rpc_callback_t *rc;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "");
+    clixon_debug(CLIXON_DBG_RPC, "");
     if (xml_find_action(xe, 1, &xa) < 0)
         goto done;
     if (xa == NULL){
@@ -1408,7 +1408,7 @@ action_callback_call(clixon_handle h,
                 if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
                     goto done;
                 if (rc->rc_callback(h, xa, cbret, arg, rc->rc_arg) < 0){
-                    clixon_debug(CLIXON_DBG_DEFAULT, "Error in: %s", rc->rc_name);
+                    clixon_debug(CLIXON_DBG_RPC, "Error in: %s", rc->rc_name);
                     clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__);
                     goto done;
                 }

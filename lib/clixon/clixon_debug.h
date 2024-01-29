@@ -65,6 +65,7 @@
 #define CLIXON_DBG_PROC		0x000080	/* Process handling */
 #define CLIXON_DBG_DATASTORE	0x000100	/* Datastore management */
 #define CLIXON_DBG_EVENT	0x000200	/* Event processing */
+#define CLIXON_DBG_RPC		0x000400	/* RPC handling */
 #define CLIXON_DBG_SMASK	0x00ffff	/* Subject mask */
 
 /*
