@@ -96,7 +96,7 @@ depend:
 	do (cd $$i && $(MAKE) $(MFLAGS) depend); done
 
 # Needs root permissions on most systems by default
-install: checkroot 
+install: checkroot
 	for i in $(SUBDIRS) doc; \
 	do (cd $$i; $(MAKE) $(MFLAGS) $@)||exit 1; done; 
 	$(MAKE) $(MFLAGS) install-include
