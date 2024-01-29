@@ -658,10 +658,7 @@ snmp_table_rowstatus_get(clixon_handle h,
     cxobj  *xt = NULL;
     char   *xpath = NULL;
     cxobj  *xr;
-    int     ret;
     char   *body;
-    char   *intstr;
-    char   *reason = NULL;
 
     clixon_debug(CLIXON_DBG_CLIENT, "");
     /* Prepare backend call by constructing namespace context */
@@ -673,20 +670,8 @@ snmp_table_rowstatus_get(clixon_handle h,
     clicon_ptr_get(h, "snmp-rowstatus-tree", (void**)&xt);
     if (xt && (xr = xpath_first(xt, nsc, "%s", xpath)) != NULL &&
         (body = xml_body(xr)) != NULL) {
-        if ((ret = yang_enum2valstr(yrestype, body, &intstr)) < 0)
+        if (yang_enum2int(yrestype, body, rowstatus) < 0)
             goto done;
-        if (ret == 0){
-            clixon_debug(CLIXON_DBG_CLIENT, "%s invalid or not found", body);
-            *rowstatus = 0;
-        }
-        else {
-            if ((ret = parse_int32(intstr, rowstatus, &reason)) < 0)
-                goto done;
-            if (ret == 0){
-                clixon_debug(CLIXON_DBG_CLIENT, "parse_int32: %s", reason);
-                *rowstatus = 0;
-            }
-        }
     }
     else
         *rowstatus = 0;
@@ -696,8 +681,6 @@ snmp_table_rowstatus_get(clixon_handle h,
         free(xpath);
     if (nsc)
         xml_nsctx_free(nsc);
-    if (reason)
-        free(reason);
     return retval;
 }
 

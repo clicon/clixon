@@ -778,7 +778,7 @@ type_xml2snmp_pre(char      *xmlstr0,
 {
     int        retval = -1;
     yang_stmt *yrestype;        /* resolved type */
-    char      *restype = NULL;         /* resolved type */
+    char      *restype = NULL;  /* resolved type */
     char      *str = NULL;
     int        ret;
     cbuf      *cb = NULL;
@@ -809,7 +809,7 @@ type_xml2snmp_pre(char      *xmlstr0,
         else
             str = "1";
     }
-    else if( strcmp(restype, "decimal64") == 0 ) {
+    else if (strcmp(restype, "decimal64") == 0 ) {
         cg_var* cv = yang_cv_get(ys);
         int64_t num;
 

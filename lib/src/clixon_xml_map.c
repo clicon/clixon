@@ -1511,17 +1511,16 @@ yang_valstr2enum(yang_stmt *ytype,
     return retval;
 }
 
-/*! Given a YANG (enum) type node and a value, return the string containing corresponding int str
+/*! Given a YANG (enum) type node and an enum name, return the string containing corresponding int str
  *
+ * Only handles explicit values
  * @param[in]  ytype   YANG type noden
  * @param[in]  enumstr Value of enum
  * @param[out] valstr  Corresponding string containing an int (direct pointer, dont free)
  * @retval     1       OK, result in valstr
  * @retval     0       Invalid, not found
  * @retval    -1       Error
- * @note does not handle implicit values
  * @see yang_enum2int handles implicit values
- * @note does not handle implicit values, see yang_enum_int_value which does
  */
 int
 yang_enum2valstr(yang_stmt *ytype,
@@ -1550,6 +1549,42 @@ yang_enum2valstr(yang_stmt *ytype,
     goto done;
 }
 
+/*! Given a YANG (enum) type node and an enum name, return the corresponding int
+ *
+ * Handles implicit values
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  enumstr Value of enum
+ * @param[out] int32   Int value
+ * @retval     0       OK, result in val
+ * @retval    -1       Error
+ */
+int
+yang_enum2int(yang_stmt *ytype,
+              char      *enumstr,
+              int32_t   *val)
+{
+    int        retval = -1;
+    yang_stmt *yenum;
+    cg_var    *cv;
+
+    if (val == NULL){
+        clixon_err(OE_UNIX, EINVAL, "val is NULL");
+        goto done;
+    }
+    if ((yenum = yang_find(ytype, Y_ENUM, enumstr)) == NULL){
+        clixon_err(OE_YANG, 0, "No such enum %s", enumstr);
+        goto done;
+    }
+    if ((cv = yang_cv_get(yenum)) == NULL){
+        clixon_err(OE_YANG, 0, "Enum lacks cv");
+        goto done;
+    }
+    *val = cv_int32_get(cv);
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Get integer value from xml node from yang enumeration 
  *
  * @param[in]  node XML node in a tree
@@ -1568,13 +1603,11 @@ int
 yang_enum_int_value(cxobj   *node,
                     int32_t *val)
 {
-    int retval = -1;
+    int        retval = -1;
     yang_stmt *yspec;
     yang_stmt *ys;
     yang_stmt *ytype;
     yang_stmt *yrestype;  /* resolved type */
-    yang_stmt *yenum;
-    cg_var    *cv;
 
     if (node == NULL)
         goto done;
@@ -1593,15 +1626,8 @@ yang_enum_int_value(cxobj   *node,
     }
     if (strcmp(yang_argument_get(yrestype), "enumeration"))
         goto done;
-    if ((yenum = yang_find(yrestype, Y_ENUM, xml_body(node))) == NULL){
-        clixon_err(OE_YANG, 0, "No such enum: %s", xml_body(node));
+    if (yang_enum2int(yrestype, xml_body(node), val) < 0)
         goto done;
-    }
-    if ((cv = yang_cv_get(yenum)) == NULL){
-        clixon_err(OE_YANG, 0, "Enum lacks cv");
-        goto done;
-    }
-    *val = cv_int32_get(cv);
     retval = 0;
 done:
     return retval;
