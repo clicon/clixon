@@ -54,6 +54,7 @@ extern "C" {
  * Must be back to proper net-snmp ASN_ types in type_snmp2xml and type_xml2snmp
  * before calling netsnmp API
 */
+#define CLIXON_ASN_BIT_STRING   252 /* Special case used to identify a bit string data type */
 #define CLIXON_ASN_EXTRAS       253 /* Special case clixon address >= this */
 #define CLIXON_ASN_PHYS_ADDR    253 /* Special case phy-address */
 #define CLIXON_ASN_FIXED_STRING 254 /* RFC2578 Sec 7.7: String-valued, fixed-length */

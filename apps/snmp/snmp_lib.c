@@ -100,7 +100,6 @@ static const map_str2int snmp_access_map[] = {
  */
 static const map_str2int snmp_type_map[] = {
     {"int32",        ASN_INTEGER},   // 2
-    {"bits",         ASN_BIT_STR},   // 3
     {"string",       ASN_OCTET_STR}, // 4
     {"enumeration",  ASN_INTEGER},   // 2 special case
     {"uint32",       ASN_GAUGE},     // 0x42 / 66
@@ -118,7 +117,7 @@ static const map_str2int snmp_type_map[] = {
  */
 static const map_str2int snmp_orig_map[] = {
     {"counter32",             ASN_COUNTER},   // 0x41 / 65
-    {"bits",                  ASN_BIT_STR},   // 3
+    {"bits",                  ASN_OCTET_STR}, // 3
     {"object-identifier-128", ASN_OBJECT_ID}, // 6
     {"AutonomousType",        ASN_OBJECT_ID}, // 6
     {"DateAndTime",           ASN_OCTET_STR}, // 4
@@ -612,6 +611,12 @@ type_yang2asn1(yang_stmt    *ys,
             (strcmp(display_hint, "255a")==0 ||
              strcmp(display_hint, "255t")==0))
             at = CLIXON_ASN_FIXED_STRING;
+
+        /* Special case for bits type because netsnmp lib returns ASN_OCTET_STRING. In this case
+           we have to define an extended type to be able to handle bits type correctly later on. */
+        if (strcmp(restype, "bits") == 0) {
+            at = CLIXON_ASN_BIT_STRING;
+        }
     }
     if (asn1_type)
         *asn1_type = at;
@@ -649,6 +654,7 @@ type_snmp2xml(yang_stmt                  *ys,
     char        *restype = NULL;         /* resolved type */
     char        *origtype = NULL; /* original type */
     yang_stmt   *yrestype = NULL;
+    cbuf        *cb = NULL;
     int          ret;
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
@@ -707,9 +713,26 @@ type_snmp2xml(yang_stmt                  *ys,
     case ASN_GAUGE:     // 0x42
         cv_uint32_set(cv, *requestvb->val.integer);
         break;
-    case ASN_BIT_STR:     // 3
-        cv_uint32_set(cv, *requestvb->val.integer);
+    case CLIXON_ASN_BIT_STRING: { /* special case for bit string */
+        uint32_t bitval = 0;
+        int len = sizeof(bitval);
+        len = requestvb->val_len < len ? requestvb->val_len : len;
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        
+        memcpy(&bitval, requestvb->val.bitstring, len);
+        reverse_bits(&bitval);
+        if ((ret = yang_val2bitsstr(yrestype, bitval, cb)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits value");
+            goto fail;
+        }
+        cv_strncpy(cv, cbuf_get(cb), cbuf_len(cb));
         break;
+    }
     case ASN_IPADDRESS:{
         struct in_addr addr;
         memcpy(&addr.s_addr, requestvb->val.string, 4);
@@ -757,6 +780,8 @@ type_snmp2xml(yang_stmt                  *ys,
         free(origtype);
     if (cv)
         cv_free(cv);
+    if (cb)
+        cbuf_free(cb);
     return retval;
  fail:
     retval = 0;
@@ -806,6 +831,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     int        ret;
     cbuf      *cb = NULL;
     uint32_t   int_value = 0;
+    int        copy_str = 1;
 
     if (xmlstr0 == NULL || xmlstr1 == NULL){
         clixon_err(OE_UNIX, EINVAL, "xmlstr0/1 is NULL");
@@ -823,10 +849,6 @@ type_xml2snmp_pre(char      *xmlstr0,
         }
     }
     else if (strcmp(restype, "bits") == 0){   /* special case for bits */
-        if ((cb = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, errno, "cbuf_new");
-            goto done;
-        }
         if ((ret = yang_bitsstr2val(yrestype, xmlstr0, &int_value)) < 0)
             goto done;
         if (ret == 0){
@@ -835,8 +857,14 @@ type_xml2snmp_pre(char      *xmlstr0,
         }
 
         reverse_bits(&int_value);
-        cbuf_append_buf(cb, &int_value, sizeof(int_value));
-        str = cbuf_get(cb);        
+
+        if ((*xmlstr1 = malloc(sizeof(int_value) + 1)) == NULL){
+            clixon_err(OE_UNIX, errno, "malloc");
+            goto done;
+        }
+        memset(*xmlstr1, 0, sizeof(int_value) + 1);
+        memcpy(*xmlstr1, &int_value, sizeof(int_value));
+        copy_str = 0; // don't copy string at the end because it is not a string value
     }
     /* special case for bool: although smidump translates TruthValue to boolean
      * and there is an ASN_BOOLEAN constant:
@@ -870,9 +898,12 @@ type_xml2snmp_pre(char      *xmlstr0,
     else{
         str = xmlstr0;
     }
-    if ((*xmlstr1 = strdup(str)) == NULL){
-        clixon_err(OE_UNIX, errno, "strdup");
-        goto done;
+
+    if (copy_str == 1) {
+        if ((*xmlstr1 = strdup(str)) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
     }
     retval = 1;
  done:
@@ -1016,12 +1047,14 @@ type_xml2snmp(char       *snmpstr,
         }
         *asn1type = ASN_OCTET_STR;
         break;
-    case ASN_BIT_STR:
-        *snmplen = strlen(snmpstr)+1;
-        if ((*snmpval = (u_char*)strdup((snmpstr))) == NULL){
-            clixon_err(OE_UNIX, errno, "strdup");
+    case CLIXON_ASN_BIT_STRING:
+        *snmplen = 4;
+        if ((*snmpval = malloc(*snmplen + 1)) == NULL){
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
+        memset(*snmpval, 0, *snmplen + 1);
+        memcpy(*snmpval, snmpstr, *snmplen);
 
         *asn1type = ASN_OCTET_STR;
         break;

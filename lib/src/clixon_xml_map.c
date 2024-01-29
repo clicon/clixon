@@ -81,6 +81,8 @@
 #include "clixon_xml_io.h"
 #include "clixon_xml_map.h"
 
+#define CHECK_BIT(var,pos) ((var) & (1<<(pos)))
+
 /* Local types 
  */
 /* Merge code needs a two-phase pass where objects subject to merge are first checked for,
@@ -1613,7 +1615,7 @@ int yang_bits_pos(yang_stmt *ytype, char *bitstr, uint32_t *bitpos) {
     goto done;
 }
 
-/*! Given a YANG (bits) type node and a value, return the integer value for all bits (flags) that are set.
+/*! Given a YANG (bits) type node and string value, return the integer value for all bits (flags) that are set.
  *
  * @param[in]  ytype   YANG type noden
  * @param[in]  bitsstr Value of bits as space separated string
@@ -1621,6 +1623,7 @@ int yang_bits_pos(yang_stmt *ytype, char *bitstr, uint32_t *bitpos) {
  * @retval     1       OK, result in intval
  * @retval     0       Invalid, not found
  * @retval    -1       Error
+ * @see yang_val2bitsstr
  */
 int
 yang_bitsstr2val(yang_stmt *ytype,
@@ -1656,6 +1659,68 @@ yang_bitsstr2val(yang_stmt *ytype,
         *intval = *intval | (1 << bitpos);
     }
     free(vec); 
+    retval = 1;
+
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Given a YANG (bits) type node and integer value, return the string value for all bits (flags) that are set.
+ *
+ * @param[in]  ytype  YANG type noden
+ * @param[in]  intval bitset value
+ * @param[out] cb     space separated string with bit labes for all bits set in intval
+ * @retval     1      OK, result in cb
+ * @retval     0      Invalid, not found
+ * @retval    -1      Error
+ * @see yang_bitsstr2val
+ */
+int 
+yang_val2bitsstr(yang_stmt *ytype, uint32_t intval, cbuf *cb) {
+
+    int      retval = -1;
+    yang_stmt *yprev = NULL;
+    yang_stmt *ypos;
+    int ret = 0;
+    char *reason;
+    uint32_t bitpos = 0;
+    int is_first = 1;
+
+    if (cb == NULL) {
+        clixon_err(OE_UNIX, EINVAL, "cb is NULL");
+        goto done;
+    }
+
+    // Go over all defined bits and check if it is seet in intval
+    while ((yprev = yn_each(ytype, yprev)) != NULL) {
+        if (yang_keyword_get(yprev) == Y_BIT) {
+            // Use position from Y_POSITION statement if defined
+            if ((ypos = yang_find(yprev, Y_POSITION, NULL)) != NULL) {
+                if ((ret = parse_uint32(yang_argument_get(ypos), &bitpos, &reason)) < 0) {
+                    clixon_err(OE_UNIX, EINVAL, "cannot parse bit position val: %s", reason);
+                    goto done;
+                }
+                if (ret == 0) 
+                    goto fail;
+            } else {
+                // Position not defined. Use last known position + 1 (skip first node to start with 0)
+                if (is_first == 0) bitpos++;
+            }
+
+            if (CHECK_BIT(intval, bitpos)){
+                if (is_first == 0) cbuf_append_str(cb, " ");
+                cbuf_append_str(cb, yang_argument_get(yprev));
+            }
+
+            is_first = 0;
+        }
+    }
+    // append space if no flag is set to indicate that 
+    if (cbuf_len(cb) == 0)
+        cbuf_append_str(cb, " ");
     retval = 1;
 
  done:
