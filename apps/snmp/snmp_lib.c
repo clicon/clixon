@@ -763,13 +763,23 @@ type_snmp2xml(yang_stmt                  *ys,
     goto done;
 }
 
-unsigned char reverse_bits(unsigned char b) {
-   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-   return b;
+/*! Reverse bit order for all bytes in the given unsigned integer
+ *
+ * In the SNMP BITS data type the bits have to be contiguously ordered. This functions re-orders
+ * all bits for the given unsigned integer to get the contiguously ordering.
+ * @param[in,out] b number to reverse bits order 
+ */
+void 
+reverse_bits(uint32_t *b) {
+    unsigned char *c = (unsigned char*)b;
+    int i = 0;
+    while(i < sizeof(uint32_t)) {    
+        c[i] = (c[i] & 0xF0) >> 4 | (c[i] & 0x0F) << 4;
+        c[i] = (c[i] & 0xCC) >> 2 | (c[i] & 0x33) << 2;
+        c[i] = (c[i] & 0xAA) >> 1 | (c[i] & 0x55) << 1;
+        i++;
+    }
 }
-
 
 /*! Given xml value and YANG,m return corresponding malloced snmp string
  *
@@ -824,15 +834,9 @@ type_xml2snmp_pre(char      *xmlstr0,
             goto fail;
         }
 
+        reverse_bits(&int_value);
         cbuf_append_buf(cb, &int_value, sizeof(int_value));
-        str = cbuf_get(cb);
-
-        // TODO: Check if there is a better way to swap the bits
-        int i = 0;
-        while (i < sizeof(int_value)) {
-            str[i] = reverse_bits(str[i]);
-            i++;
-        }
+        str = cbuf_get(cb);        
     }
     /* special case for bool: although smidump translates TruthValue to boolean
      * and there is an ASN_BOOLEAN constant:
