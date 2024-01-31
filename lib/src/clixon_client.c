@@ -294,7 +294,7 @@ clixon_client_connect_netconf(clixon_handle                h,
     }
     argv[i++] = NULL;
     assert(i==nr);
-    if (clixon_proc_socket(h, argv, SOCK_DGRAM, &cch->cch_pid, &cch->cch_socket) < 0){
+    if (clixon_proc_socket(h, argv, SOCK_DGRAM, &cch->cch_pid, &cch->cch_socket, NULL) < 0){
         goto done;
     }
     retval = 0;
@@ -335,7 +335,7 @@ clixon_client_connect_ssh(clixon_handle                h,
     assert(i==nr);
     for (i=0;i<nr;i++)
         clixon_debug(CLIXON_DBG_DEFAULT, "argv[%d]:%s", i, argv[i]);
-    if (clixon_proc_socket(h, argv, SOCK_STREAM, &cch->cch_pid, &cch->cch_socket) < 0){
+    if (clixon_proc_socket(h, argv, SOCK_STREAM, &cch->cch_pid, &cch->cch_socket, NULL) < 0){
         goto done;
     }
     retval = 0;
