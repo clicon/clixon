@@ -441,7 +441,11 @@ find_schema_mounts(cxobj *x,
  *   "ietf-yang-schema-mount" modules in the mounted schema and specifying
  *   the schemas in exactly the same way as the top-level schema.
  * Alt: see snmp_yang2xml to get instances instead of brute force traverse of whole tree
- * @note: Mountpoints must exist in xret on entry
+ * XXX  Mountpoints must exist in xret on entry, which is problematic:
+ * XXX  A get state may have an xpath not including their config, ie:
+ * XXX  xpath=/top/mymount/yang-library does not include /top/mymount and therefore
+ * XXX  the mountpoint will not be present in xret
+ * XXX see: https://github.com/clicon/clixon/issues/485
  */
 static int
 yang_schema_mount_statedata_yanglib(clixon_handle h,

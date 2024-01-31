@@ -85,16 +85,6 @@ enum nacm_credentials_t{
     NC_EXCEPT    /* Exact match except for root and www user  */
 };
 
-/*! Datastore cache behaviour, see clixon_datastore.[ch] 
- *
- * See config option type datastore_cache in clixon-config.yang
- */
-enum datastore_cache{
-    DATASTORE_NOCACHE,
-    DATASTORE_CACHE,
-    DATASTORE_CACHE_ZEROCOPY
-};
-
 /*! yang clixon regexp engine
  *
  * @see regexp_mode in clixon-config.yang
@@ -204,7 +194,6 @@ enum priv_mode_t clicon_backend_privileges_mode(clixon_handle h);
 enum priv_mode_t clicon_restconf_privileges_mode(clixon_handle h);
 enum nacm_credentials_t clicon_nacm_credentials(clixon_handle h);
 
-enum datastore_cache clicon_datastore_cache(clixon_handle h);
 enum regexp_mode clicon_yang_regexp(clixon_handle h);
 /*-- Specific option access functions for non-yang options --*/
 int clicon_quiet_mode(clixon_handle h);

@@ -30,6 +30,12 @@ Users may have to change how they access the system
 
 * Revert the creators attribute feature introduced in 6.2. It is now obsoleted.
   It is replaced with a configured `creators` and user/application semantics
+* New `clixon-lib@2024-01-01.yang` revision
+  * Replaced container creators to grouping/uses
+* New `clixon-config@2024-01-01.yang` revision
+  * Marked as obsolete:
+    * `CLICON_DATASTORE_CACHE` Replaced with enhanced datastore read API
+    * `CLICON_NETCONF_CREATOR_ATTR` reverting 6.5 functionality
 
 ### C/CLI-API changes on existing features
 Developers may need to change their code

@@ -366,9 +366,6 @@ startup_validate(clixon_handle  h,
         goto fail;
     }
     plugin_transaction_end_all(h, td);
-     /* Clear cached trees from default values and marking */
-    if (xmldb_get0_clear(h, td->td_target) < 0)
-         goto done;
     if (xtr){
         *xtr = td->td_target;
         td->td_target = NULL;
@@ -376,7 +373,6 @@ startup_validate(clixon_handle  h,
     retval = 1;
  done:
      if (td){
-         xmldb_get0_free(h, &td->td_target);
          transaction_free(td);
      }
     return retval;
@@ -421,10 +417,9 @@ startup_commit(clixon_handle  h,
     /* After commit, make a post-commit call (sure that all plugins have committed) */
     if (plugin_transaction_commit_done_all(h, td) < 0)
         goto done;
-    /* Clear cached trees from default values and marking */
-    if (xmldb_get0_clear(h, td->td_target) < 0)
+    /* Remove global defaults and empty non-presence containers */
+    if (xml_defaults_nopresence(td->td_target, 2) < 0)
         goto done;
-
     /* [Delete and] create running db */
     if (xmldb_exists(h, "running") == 1){
         if (xmldb_delete(h, "running") != 0 && errno != ENOENT)
@@ -454,7 +449,6 @@ startup_commit(clixon_handle  h,
     if (td){
         if (retval < 1)
             plugin_transaction_abort_all(h, td);
-        xmldb_get0_free(h, &td->td_target);
         transaction_free(td);
     }
     return retval;
@@ -622,10 +616,6 @@ candidate_validate(clixon_handle h,
             goto done;
         goto fail;
     }
-    if (xmldb_get0_clear(h, td->td_src) < 0 ||
-        xmldb_get0_clear(h, td->td_target) < 0)
-        goto done;
-
     plugin_transaction_end_all(h, td);
     retval = 1;
  done:
@@ -634,8 +624,6 @@ candidate_validate(clixon_handle h,
      if (td){
          if (retval < 1)
              plugin_transaction_abort_all(h, td);
-         xmldb_get0_free(h, &td->td_target);
-         xmldb_get0_free(h, &td->td_src);
          transaction_free(td);
      }
     return retval;
@@ -715,13 +703,6 @@ candidate_commit(clixon_handle h,
     /* After commit, make a post-commit call (sure that all plugins have committed) */
     if (plugin_transaction_commit_done_all(h, td) < 0)
         goto done;
-
-    /* Clear cached trees from default values and marking */
-    if (xmldb_get0_clear(h, td->td_target) < 0)
-        goto done;
-    if (xmldb_get0_clear(h, td->td_src) < 0)
-        goto done;
-
     /* 8. Success: Copy candidate to running 
      */
     if (xmldb_copy(h, db, "running") < 0)
@@ -746,8 +727,6 @@ candidate_commit(clixon_handle h,
     if (td){
         if (retval < 1)
             plugin_transaction_abort_all(h, td);
-        xmldb_get0_free(h, &td->td_target);
-        xmldb_get0_free(h, &td->td_src);
         transaction_free(td);
     }
     if (xret)
@@ -1043,7 +1022,6 @@ from_client_restart_one(clixon_handle    h,
     retval = 1;
  done:
     if (td){
-         xmldb_get0_free(h, &td->td_target);
          transaction_free(td);
      }
     return retval;

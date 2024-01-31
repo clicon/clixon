@@ -190,42 +190,40 @@ xmldb_copy(clixon_handle h,
 
     clixon_debug(CLIXON_DBG_DATASTORE, "%s %s", from, to);
     /* XXX lock */
-    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
-        /* Copy in-memory cache */
-        /* 1. "to" xml tree in x1 */
-        if ((de1 = clicon_db_elmnt_get(h, from)) != NULL)
-            x1 = de1->de_xml;
-        if ((de2 = clicon_db_elmnt_get(h, to)) != NULL)
-            x2 = de2->de_xml;
-        if (x1 == NULL && x2 == NULL){
-            /* do nothing */
-        }
-        else if (x1 == NULL){  /* free x2 and set to NULL */
-            xml_free(x2);
-            x2 = NULL;
-        }
-        else  if (x2 == NULL){ /* create x2 and copy from x1 */
-            if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
-                goto done;
-            xml_flag_set(x2, XML_FLAG_TOP);
-            if (xml_copy(x1, x2) < 0) 
-                goto done;
-        }
-        else{ /* copy x1 to x2 */
-            xml_free(x2);
-            if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
-                goto done;
-            xml_flag_set(x2, XML_FLAG_TOP);
-            if (xml_copy(x1, x2) < 0) 
-                goto done;
-        }
-        /* always set cache although not strictly necessary in case 1
-         * above, but logic gets complicated due to differences with
-         * de and de->de_xml */
-        if (de2)
-            de0 = *de2;
-        de0.de_xml = x2; /* The new tree */
+    /* Copy in-memory cache */
+    /* 1. "to" xml tree in x1 */
+    if ((de1 = clicon_db_elmnt_get(h, from)) != NULL)
+        x1 = de1->de_xml;
+    if ((de2 = clicon_db_elmnt_get(h, to)) != NULL)
+        x2 = de2->de_xml;
+    if (x1 == NULL && x2 == NULL){
+        /* do nothing */
     }
+    else if (x1 == NULL){  /* free x2 and set to NULL */
+        xml_free(x2);
+        x2 = NULL;
+    }
+    else  if (x2 == NULL){ /* create x2 and copy from x1 */
+        if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
+            goto done;
+        xml_flag_set(x2, XML_FLAG_TOP);
+        if (xml_copy(x1, x2) < 0) 
+            goto done;
+    }
+    else{ /* copy x1 to x2 */
+        xml_free(x2);
+        if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
+            goto done;
+        xml_flag_set(x2, XML_FLAG_TOP);
+        if (xml_copy(x1, x2) < 0) 
+            goto done;
+    }
+    /* always set cache although not strictly necessary in case 1
+     * above, but logic gets complicated due to differences with
+     * de and de->de_xml */
+    if (de2)
+        de0 = *de2;
+    de0.de_xml = x2; /* The new tree */
     clicon_db_elmnt_set(h, to, &de0);
 
     /* Copy the files themselves (above only in-memory cache) */

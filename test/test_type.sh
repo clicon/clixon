@@ -225,10 +225,7 @@ EOF
 
 # Type tests.
 # Parameters:
-# 1: dbcache: cache, nocache, cache-zerocopy
 function testrun(){
-    dbcache=$1
-    new "test params: -f $cfg  # dbcache: $dbcache"
 
     cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -242,7 +239,6 @@ function testrun(){
   <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  <CLICON_DATASTORE_CACHE>$dbcache</CLICON_DATASTORE_CACHE>
   <CLICON_XMLDB_FORMAT>$format</CLICON_XMLDB_FORMAT>
   ${AUTOCLI}
 </clixon-config>
@@ -698,14 +694,8 @@ EOF
     fi
 }
 
-# Run without db cache
-testrun nocache
-
-# Run with db cache
-testrun cache
-
-# Run with zero-copy
-testrun cache-zerocopy
+# Run test
+testrun
 
 rm -rf $dir
 

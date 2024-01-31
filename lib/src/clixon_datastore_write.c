@@ -1213,6 +1213,7 @@ xmldb_put(clixon_handle       h,
     int         pretty;
     cxobj      *xerr = NULL;
 
+    clixon_debug(CLIXON_DBG_DATASTORE|CLIXON_DBG_DETAIL, "db %s", db);
     if (cbret == NULL){
         clixon_err(OE_XML, EINVAL, "cbret is NULL");
         goto done;
@@ -1227,8 +1228,7 @@ xmldb_put(clixon_handle       h,
         goto done;
     }
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-        if (clicon_datastore_cache(h) != DATASTORE_NOCACHE)
-            x0 = de->de_xml; /* XXX flag is not XML_FLAG_TOP */
+        x0 = de->de_xml; /* XXX flag is not XML_FLAG_TOP */
     }
     /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
@@ -1294,7 +1294,7 @@ xmldb_put(clixon_handle       h,
         clixon_log(h, LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
 #endif
     /* Write back to datastore cache if first time */
-    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
+    {
         db_elmnt de0 = {0,};
         if (de != NULL)
             de0 = *de;
@@ -1327,7 +1327,7 @@ xmldb_put(clixon_handle       h,
         goto done;
     }
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
-    if (strcmp(format,"json")==0){
+    if (strcmp(format, "json")==0){
         if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
             goto done;
     }
@@ -1339,6 +1339,7 @@ xmldb_put(clixon_handle       h,
         goto done;
     retval = 1;
  done:
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (f != NULL)
         fclose(f);
     if (xerr)
@@ -1347,8 +1348,6 @@ xmldb_put(clixon_handle       h,
         xml_nsctx_free(nsc);
     if (dbfile)
         free(dbfile);
-    if (x0 && clicon_datastore_cache(h) == DATASTORE_NOCACHE)
-        xml_free(x0);
     return retval;
  fail:
     retval = 0;

@@ -53,8 +53,6 @@ int xmldb_get(clixon_handle h, const char *db, cvec *nsc, char *xpath, cxobj **x
 int xmldb_get0(clixon_handle h, const char *db, yang_bind yb,
                cvec *nsc, const char *xpath, int copy, withdefaults_type wdef,
                cxobj **xtop, modstate_diff_t *msd, cxobj **xerr);
-int xmldb_get0_clear(clixon_handle h, cxobj *x);
-int xmldb_get0_free(clixon_handle h, cxobj **xp);
 int xmldb_put(clixon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret); /* in clixon_datastore_write.[ch] */
 int xmldb_copy(clixon_handle h, const char *from, const char *to);
 int xmldb_lock(clixon_handle h, const char *db, uint32_t id);

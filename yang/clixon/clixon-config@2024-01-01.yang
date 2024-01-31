@@ -52,6 +52,7 @@ module clixon-config {
     revision 2024-01-01 {
         description
             "Makred as obsolete:
+                    CLICON_DATASTORE_CACHE
                     CLICON_NETCONF_CREATOR_ATTR
              Released in Clixon 6.6";
     }
@@ -960,7 +961,9 @@ module clixon-config {
                 "Clixon datastore cache behaviour. There are three values: no cache, 
                  cache with copy, or cache without copy.
                  Note: 'cache' is default value and supported with regressions etc.
-                 Others are experimental (in Clixon 5.5)";
+                 Others are experimental (in Clixon 5.5)
+                 Note that from 6.6 this is OBSOLETED, only datastore_cache is supported";
+            status obsolete;
         }
         leaf CLICON_XMLDB_FORMAT {
             type cl:datastore_format;

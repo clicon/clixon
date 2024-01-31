@@ -117,15 +117,6 @@ static const map_str2int nacm_credentials_map[] = {
     {NULL,        -1}
 };
 
-/* Mapping between datastore cache string <--> constants, 
- * see clixon-config.yang type datastore_cache */
-static const map_str2int datastore_cache_map[] = {
-    {"nocache",               DATASTORE_NOCACHE},
-    {"cache",                 DATASTORE_CACHE},
-    {"cache-zerocopy",        DATASTORE_CACHE_ZEROCOPY},
-    {NULL,                    -1}
-};
-
 /* Mapping between regular expression type string <--> constants, 
  * see clixon-config.yang type regexp_mode */
 static const map_str2int yang_regexp_map[] = {
@@ -995,23 +986,6 @@ clicon_nacm_credentials(clixon_handle h)
     if ((mode = clicon_option_str(h, "CLICON_NACM_CREDENTIALS")) == NULL)
         return -1;
     return clicon_str2int(nacm_credentials_map, mode);
-}
-
-/*! Which datastore cache method to use
- *
- * @param[in] h      Clixon handle
- * @retval    method Datastore cache method
- * @see clixon-config@<date>.yang CLICON_DATASTORE_CACHE
- */
-enum datastore_cache
-clicon_datastore_cache(clixon_handle h)
-{
-    char *str;
-
-    if ((str = clicon_option_str(h, "CLICON_DATASTORE_CACHE")) == NULL)
-        return DATASTORE_CACHE;
-    else
-        return clicon_str2int(datastore_cache_map, str);
 }
 
 /*! Which Yang regexp/pattern engine to use

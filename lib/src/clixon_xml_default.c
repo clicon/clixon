@@ -315,11 +315,11 @@ xml_default(yang_stmt *yt,
             /* If config parameter and local is config false */
             if (!state && !yang_config(yc))
                 continue;
+            /* Want to add state defaults, but this is config */
+            if (state && yang_config_ancestor(yc))
+                continue;
             switch (yang_keyword_get(yc)){
             case Y_LEAF:
-                /* Want to add state defaults, but this is config */
-                if (state && yang_config_ancestor(yc))
-                    break;
                 if ((cv = yang_cv_get(yc)) == NULL){
                     clixon_err(OE_YANG,0, "Internal error: yang leaf %s not populated with cv as it should",
                                yang_argument_get(yc));
@@ -402,9 +402,10 @@ xml_default_recurse(cxobj *xn,
     cxobj     *x;
     yang_stmt *y;
 
-    if ((yn = (yang_stmt*)xml_spec(xn)) != NULL)
+    if ((yn = (yang_stmt*)xml_spec(xn)) != NULL){
         if (xml_default(yn, xn, state) < 0)
             goto done;
+    }
     x = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
         if ((y = (yang_stmt*)xml_spec(x)) != NULL){
@@ -536,6 +537,7 @@ xml_global_defaults(clixon_handle h,
  * @param[in] purge    0: Dont remove any nodes
  *                     1: Remove config sub-nodes that are empty non-presence container or default leaf
  *                     2: Remove all sub-nodes that are empty non-presence container or default leaf
+ *                     3: Remove all sub-nodes that are empty non-presence containers
  * @retval    1        Node is an (recursive) empty non-presence container or default leaf
  * @retval    0        Other node
  * @retval   -1        Error
@@ -562,7 +564,8 @@ xml_defaults_nopresence(cxobj *xn,
             yang_find(yn, Y_PRESENCE, NULL) == NULL)
             rmx = 1;
         else if (keyw == Y_LEAF &&
-                 xml_flag(xn, XML_FLAG_DEFAULT))
+                 xml_flag(xn, XML_FLAG_DEFAULT) &&
+                 purge != 3)
             rmx = 1;
         config = yang_config_ancestor(yn);
     }
@@ -570,6 +573,7 @@ xml_defaults_nopresence(cxobj *xn,
     x = NULL;
     xprev = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+        /* 1: node is empty non-presence or default leaf (eg rmx) */
         if ((ret = xml_defaults_nopresence(x, purge)) < 0)
             goto done;
         if (ret == 1){
@@ -582,6 +586,7 @@ xml_defaults_nopresence(cxobj *xn,
                     break;
                 /* fall thru */
             case 2: /* purge all nodes */
+            case 3:
                 if (xml_purge(x) < 0)
                     goto done;
                 x = xprev;
@@ -646,8 +651,6 @@ xml_flag_state_default_value(cxobj   *x,
     if ((y = xml_spec(x)) == NULL)
         goto done;
     if (yang_config_ancestor(y) == 1)
-        goto done;
-    if ((cv = yang_cv_get(y)) == NULL)
         goto done;
     if ((cv = yang_cv_get(y)) == NULL)
         goto done;
