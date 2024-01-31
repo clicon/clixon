@@ -69,7 +69,7 @@ Developers may need to change their code
       * `clicon_suberrno` -> `clixon_err_subnr()`
       * `clicon_err_reason`   -> `clixon_err_reason()`
   * Changed process API:
-      * `clixon_proc_socket(...)` --> `clixon_proc_socket(h, ...)`
+      * `clixon_proc_socket(...)` --> `clixon_proc_socket(h, ..., sockerr)`
 
 ### Corrected Bugs
 

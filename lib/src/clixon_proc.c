@@ -187,7 +187,8 @@ clixon_proc_sigint(int sig)
  * @param[in]  argv       NULL-terminated Argument vector
  * @param[in]  sock_flags Socket type/flags, typically SOCK_DGRAM or SOCK_STREAM, see
  * @param[out] pid        Process-id of child
- * @param[out] sock       Socket
+ * @param[out] sock       Socket for stdin+stdout
+ * @param[out] sockerr    Optional socket for stderr
  * @retval     O          OK
  * @retval    -1          Error.
  * @see clixon_proc_socket_close  close sockets, kill child and wait for child termination
@@ -198,10 +199,12 @@ clixon_proc_socket(clixon_handle h,
                    char        **argv,
                    int           sock_flags,
                    pid_t        *pid,
-                   int          *sock)
+                   int          *sock,
+                   int          *sockerr)
 {
     int      retval = -1;
     int      sp[2] = {-1, -1};
+    int      sperr[2] = {-1, -1};
     pid_t    child;
     sigfn_t  oldhandler = NULL;
     sigset_t oset;
@@ -233,7 +236,11 @@ clixon_proc_socket(clixon_handle h,
         clixon_err(OE_UNIX, errno, "socketpair");
         goto done;
     }
-
+    if (sockerr &&
+        socketpair(AF_UNIX, sock_flags, 0, sperr) < 0){
+        clixon_err(OE_UNIX, errno, "socketpair");
+        goto done;
+    }
     sigprocmask(0, NULL, &oset);
     set_signal(SIGINT, clixon_proc_sigint, &oldhandler);
     sig++;
@@ -258,18 +265,27 @@ clixon_proc_socket(clixon_handle h,
             return -1;
         }
         close(sp[1]);
+        if (sockerr){
+            close(2);
+            if (dup2(sperr[1], STDERR_FILENO) < 0){
+                clixon_err(OE_UNIX, errno, "dup2(STDERR)");
+                return -1;
+            }
+            close(sperr[1]);
+        }
         if (execvp(argv[0], argv) < 0){
             clixon_err(OE_UNIX, errno, "execvp(%s)", argv[0]);
             return -1;
         }
         exit(-1);        /* Shouldnt reach here */
     }
-
     clixon_debug(CLIXON_DBG_PROC | CLIXON_DBG_DETAIL, "child %u sock %d", child, sp[0]);
     /* Parent */
     close(sp[1]);
     *pid = child;
     *sock = sp[0];
+    if (sockerr)
+        *sockerr = sperr[0];
     retval = 0;
  done:
     if (sig){   /* Restore sigmask and fn */
