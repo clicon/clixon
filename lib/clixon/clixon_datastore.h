@@ -49,10 +49,10 @@ int xmldb_db2file(clixon_handle h, const char *db, char **filename);
 int xmldb_connect(clixon_handle h);
 int xmldb_disconnect(clixon_handle h);
  /* in clixon_datastore_read.[ch] */
-int xmldb_get(clixon_handle h, const char *db, cvec *nsc, char *xpath, cxobj **xtop);
+int xmldb_get(clixon_handle h, const char *db, cvec *nsc, char *xpath, cxobj **xret);
 int xmldb_get0(clixon_handle h, const char *db, yang_bind yb,
                cvec *nsc, const char *xpath, int copy, withdefaults_type wdef,
-               cxobj **xtop, modstate_diff_t *msd, cxobj **xerr);
+               cxobj **xret, modstate_diff_t *msd, cxobj **xerr);
 int xmldb_put(clixon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret); /* in clixon_datastore_write.[ch] */
 int xmldb_copy(clixon_handle h, const char *from, const char *to);
 int xmldb_lock(clixon_handle h, const char *db, uint32_t id);
@@ -75,5 +75,6 @@ int xmldb_empty_get(clixon_handle h, const char *db);
 int xmldb_dump(clixon_handle h, FILE *f, cxobj *xt);
 int xmldb_print(clixon_handle h, FILE *f);
 int xmldb_rename(clixon_handle h, const char *db, const char *newdb, const char *suffix);
+int xmldb_populate(clixon_handle h, const char *db);
 
 #endif /* _CLIXON_DATASTORE_H */

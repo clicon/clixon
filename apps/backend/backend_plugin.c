@@ -337,7 +337,6 @@ clixon_plugin_statedata_all(clixon_handle   h,
                             yang_stmt      *yspec,
                             cvec           *nsc,
                             char           *xpath,
-                            withdefaults_type wdef,
                             cxobj         **xret)
 {
     int              retval = -1;

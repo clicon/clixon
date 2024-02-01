@@ -19,6 +19,7 @@ Expected: February 2024
   * All clixon applications added command-line option `-V` for printing version
   * New ca_version callback for customized version output
 * Optimization:
+  * Optimized datastore access by ensuring REPORT_ALL in memory and EXPLICIT in file
   * Added mountpoint cache as yang flag `YANG_FLAG_MTPOINT_POTENTIAL`
   * Optimized `yang_find`, especially namespace lookup
   * Filtered state data if not match xpath

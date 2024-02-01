@@ -323,6 +323,9 @@ startup_extraxml(clixon_handle        h,
         goto fail;
     if (xt==NULL || xml_child_nr(xt)==0)
         goto ok;
+    /* Ensure yang bindings and defaults that were scratched in startup_validate */
+    if (xmldb_populate(h, tmp_db) < 0)
+        goto done;
     /* Merge tmp into running (no commit) */
     if ((ret = db_merge(h, tmp_db, "running", cbret)) < 0)
         goto fail;

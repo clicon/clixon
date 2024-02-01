@@ -885,8 +885,7 @@ nacm_data_read_xrule_xml(cxobj        *xn,
  *
  * @param[in]  h        Clixon handle
  * @param[in]  xn       XML node (requested node)
- * @param[in]  rulevec  Precomputed rules that apply to this user group
- * @param[in]  xpathvec Precomputed xpath results that apply to this XML tree
+ * @param[in]  pv_list  Precomputed rules + paths that apply to this user group
  * @param[in]  yspec    YANG spec
  * @retval     0        OK
  * @retval    -1        Error

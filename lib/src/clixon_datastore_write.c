@@ -1286,13 +1286,18 @@ xmldb_put(clixon_handle       h,
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                   (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
         goto done;
-    /* Remove global defaults and empty non-presence containers */
-    if (xml_defaults_nopresence(x0, 2) < 0)
+    /* Remove empty non-presence containers recursively.
+     * XXX should really be done for only new data in text_modify
+     */
+    if (xml_defaults_nopresence(x0, 3) < 0)
         goto done;
-#if 0 /* debug */
-    if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
-        clixon_log(h, LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
-#endif
+    /* Complete defaults in incoming x1
+     */
+    if (xml_global_defaults(h, x0, nsc, "/", yspec, 0) < 0)
+        goto done;
+    /* Add default recursive values */
+    if (xml_default_recurse(x0, 0) < 0)
+        goto done;
     /* Write back to datastore cache if first time */
     {
         db_elmnt de0 = {0,};
@@ -1331,7 +1336,7 @@ xmldb_put(clixon_handle       h,
         if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
             goto done;
     }
-    else if (clixon_xml2file(f, x0, 0, pretty, NULL, fprintf, 0, 0) < 0)
+    else if (clixon_xml2file1(f, x0, 0, pretty, NULL, fprintf, 0, 0, WITHDEFAULTS_EXPLICIT) < 0)
         goto done;
     /* Remove modules state after writing to file
      */

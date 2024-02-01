@@ -701,7 +701,7 @@ xmldb_get_cache(clixon_handle     h,
     db_elmnt   de0 = {0,};
     int        ret;
 
-    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "db %s", db);
+    clixon_debug(CLIXON_DBG_DATASTORE, "db %s", db);
     if (xret == NULL){
         clixon_err(OE_DB, EINVAL, "xret is NULL");
         return -1;
@@ -725,22 +725,16 @@ xmldb_get_cache(clixon_handle     h,
         if (de)
             de0.de_id = de->de_id;
         clicon_db_elmnt_set(h, db, &de0); /* Content is copied */
+        /* Add default global values (to make xpath below include defaults) */
+        // Alt:  xmldb_populate(h, db)
+        if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
+            goto done;
+        /* Add default recursive values */
+        if (xml_default_recurse(x0t, 0) < 0)
+            goto done;
     } /* x0t == NULL */
     else
         x0t = de->de_xml;
-    if (yb == YB_MODULE && !xml_spec(x0t)){ 
-        /* Seems unneccesary to always do this, but breaks test_plugin_reset.sh if removed */
-        if ((ret = xml_bind_yang(h, x0t, YB_MODULE, yspec, xerr)) < 0)
-            goto done;
-        if (ret == 1) {
-            /* Add default global values (to make xpath below include defaults) */
-            if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
-                goto done;
-            /* Add default recursive values */
-            if (xml_default_recurse(x0t, 0) < 0)
-                goto done;
-        }
-    }
     /* Here x0t looks like: <config>...</config> */
     /* Given the xpath, return a vector of matches in xvec 
      * Can we do everything in one go?
@@ -752,7 +746,7 @@ xmldb_get_cache(clixon_handle     h,
      */
     if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
         goto done;
-
+    // XXX: Remove copying and return x0 eventually
     /* Make new tree by copying top-of-tree from x0t to x1t */
     if ((x1t = xml_new(xml_name(x0t), NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -786,51 +780,6 @@ xmldb_get_cache(clixon_handle     h,
         if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
             goto done;
     }
-    /* Original tree: Remove global defaults and empty non-presence containers */
-    if (xml_defaults_nopresence(x0t, 2) < 0)
-        goto done;
-    switch (wdef){
-    case WITHDEFAULTS_REPORT_ALL:
-        break;
-    case WITHDEFAULTS_TRIM:
-        /* Mark and remove nodes having schema default values */
-        if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-            goto done;
-        if (xml_tree_prune_flags(x1t, XML_FLAG_MARK, XML_FLAG_MARK) < 0)
-            goto done;
-        if (xml_defaults_nopresence(x1t, 1) < 0)
-            goto done;
-        break;
-    case WITHDEFAULTS_EXPLICIT:
-        if (xml_defaults_nopresence(x1t, 2) < 0)
-            goto done;
-        break;
-    case WITHDEFAULTS_REPORT_ALL_TAGGED:{
-        cxobj *x;
-        char  *ns;
-        x = NULL;
-        while ((x = xml_child_each(x1t, x, CX_ELMNT)) != NULL){
-            ns = NULL;
-            if (xml2ns(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, &ns) < 0)
-                goto done;
-            if (ns == NULL){
-                if (xmlns_set(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
-                    goto done;
-            }
-            else if (strcmp(ns, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) != 0){
-                /* XXX: Assume if namespace is set that it is withdefaults otherwise just ignore?  */
-                    continue;
-            }
-        }
-        /* Mark nodes having default schema values */
-        if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-            goto done;
-        /* Add tag attributes to default nodes */
-        if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
-            goto done;
-        break;
-    }
-    } /* switch wdef */
     /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
@@ -935,5 +884,26 @@ xmldb_get0(clixon_handle    h,
            modstate_diff_t *msdiff,
            cxobj          **xerr)
 {
-    return xmldb_get_cache(h, db, yb, nsc, xpath, wdef, xret, msdiff, xerr);
+    int    retval = -1;
+    int    ret;
+    cxobj *x = NULL;
+
+    if (wdef != WITHDEFAULTS_EXPLICIT)
+        return xmldb_get_cache(h, db, yb, nsc, xpath, 0, xret, msdiff, xerr);
+    if ((ret = xmldb_get_cache(h, db, yb, nsc, xpath, 0, &x, msdiff, xerr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    if (xml_defaults_nopresence(x, 2) < 0)
+        goto done;
+    *xret = x;
+    x = NULL;
+    retval = 1;
+ done:
+    if (x)
+        xml_free(x);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }

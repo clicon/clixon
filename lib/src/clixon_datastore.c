@@ -77,10 +77,11 @@
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_bind.h"
+#include "clixon_xml_default.h"
 #include "clixon_datastore.h"
 #include "clixon_datastore_write.h"
 #include "clixon_datastore_read.h"
-
 
 /*! Translate from symbolic database name to actual filename in file-system
  *
@@ -679,5 +680,42 @@ xmldb_rename(clixon_handle h,
         cbuf_free(cb);
     if (old)
         free(old);
+    return retval;
+}
+
+/*! Given a datastore, populate its cache with yang binding and default values
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  db     Name of database to search in (filename including dir path
+ * @retval     1      OK
+ * @retval     0      YANG assigment and default assignment not made
+ * @retval    -1      General error, check specific clicon_errno, clicon_suberrno
+ */
+int
+xmldb_populate(clixon_handle h,
+               const char   *db)
+{
+    int        retval = -1;
+    cxobj     *x;
+    yang_stmt *yspec;
+    int        ret;
+
+    if ((x = xmldb_cache_get(h, db)) == NULL){
+        clixon_err(OE_XML, 0, "XML cache not found");
+        goto done;
+    }
+    yspec = clicon_dbspec_yang(h);
+    if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, NULL)) < 0)
+        goto done;
+    if (ret == 1){
+        /* Add default global values (to make xpath below include defaults) */
+        if (xml_global_defaults(h, x, NULL, "/", yspec, 0) < 0)
+            goto done;
+        /* Add default recursive values */
+        if (xml_default_recurse(x, 0) < 0)
+            goto done;
+    }
+    retval = ret;
+ done:
     return retval;
 }

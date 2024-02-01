@@ -60,6 +60,7 @@ module nacm-example{
     prefix ex2;
   } 
   container table{
+    presence "Tests rely on empty table";
     container parameters{
       list parameter{
         key name;

@@ -100,8 +100,7 @@ int clixon_plugin_reset_all(clixon_handle h, char *db);
 int clixon_plugin_pre_daemon_all(clixon_handle h);
 int clixon_plugin_daemon_all(clixon_handle h);
 
-int clixon_plugin_statedata_all(clixon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath,
-                                withdefaults_type wdef, cxobj **xtop);
+int clixon_plugin_statedata_all(clixon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath, cxobj **xtop);
 int clixon_plugin_lockdb_all(clixon_handle h, char *db, int lock, int id);
 
 int clixon_pagination_cb_register(clixon_handle h, handler_function fn, char *path, void *arg);

@@ -1660,7 +1660,10 @@ xml_copy_marked(cxobj *x0,
     char      *name;
     char      *prefix;
 
-    assert(x0 && x1);
+    if (x0 == NULL || x1 == NULL){
+        clixon_err(OE_UNIX, EINVAL, "x0 or x1 is NULL");
+        goto done;
+    }
     yt = xml_spec(x0); /* can be null */
     xml_spec_set(x1, yt);
    /* Copy prefix*/
