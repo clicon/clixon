@@ -13,6 +13,11 @@ Expected: February 2024
 
 ### Minor features
 
+* New command-line debug mechanism
+  * Separation between subject-area and details
+  * Multiple subject-areas
+  * Symbolic and combined debug names, example: `-D debug -D detail`
+  * See https://clixon-docs.readthedocs.io/en/latest/errors.html#customized-errors for more info
 * Made coverity analysis and fixed most of them
   * Some were ignored being for generated code (eg lex) or not applicable
 * Feature: [Add support for -V option to give version](https://github.com/clicon/clixon/issues/472)

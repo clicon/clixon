@@ -178,7 +178,7 @@ startup_common(clixon_handle       h,
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
         if ((msdiff = modstate_diff_new()) == NULL)
             goto done;
-    clixon_debug(CLIXON_DBG_CLIENT, "Reading initial config from %s", db);
+    clixon_debug(CLIXON_DBG_BACKEND, "Reading initial config from %s", db);
     /* Get the startup datastore WITHOUT binding to YANG, sorting and default setting. 
      * It is done below, later in this function
      */
@@ -203,7 +203,7 @@ startup_common(clixon_handle       h,
         if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, 0, &xt, msdiff, &xerr) < 0)
             goto done;
     }
-    clixon_debug_xml(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, xt, "startup");
+    clixon_debug_xml(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, xt, "startup");
     if (msdiff && msdiff->md_status == 0){ // Possibly check for CLICON_XMLDB_MODSTATE
         clixon_log(h, LOG_WARNING, "Modstate expected in startup datastore but not found\n"
                    "This may indicate that the datastore is not initialized corrrectly, such as copy/pasted.\n"
@@ -213,7 +213,7 @@ startup_common(clixon_handle       h,
         clixon_err(OE_YANG, 0, "Yang spec not set");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_CLIENT, "Reading startup config done");
+    clixon_debug(CLIXON_DBG_BACKEND, "Reading startup config done");
     /* Clear flags xpath for get */
     xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
@@ -302,7 +302,7 @@ startup_common(clixon_handle       h,
 
     /* 5. Make generic validation on all new or changed data.
        Note this is only call that uses 3-values */
-    clixon_debug(CLIXON_DBG_CLIENT, "Validating startup %s", db);
+    clixon_debug(CLIXON_DBG_BACKEND, "Validating startup %s", db);
     if ((ret = generic_validate(h, yspec, td, &xret)) < 0)
         goto done;
     if (ret == 0){
@@ -584,7 +584,7 @@ candidate_validate(clixon_handle h,
     cxobj              *xret = NULL;
     int                 ret;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_BACKEND, "");
     if (db == NULL || cbret == NULL){
         clixon_err(OE_CFG, EINVAL, "db or cbret is NULL");
         goto done;
@@ -801,14 +801,14 @@ from_client_commit(clixon_handle h,
         goto ok;
     }
     if ((ret = candidate_commit(h, xe, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
-        clixon_debug(CLIXON_DBG_CLIENT, "Commit candidate failed");
+        clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
         if (ret < 0)
             if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                 goto done;
         goto ok;
     }
     if (ret == 0)
-        clixon_debug(CLIXON_DBG_CLIENT, "Commit candidate failed");
+        clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
     else
         cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
@@ -892,7 +892,7 @@ from_client_validate(clixon_handle h,
     int   ret;
     char *db;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((db = netconf_db_find(xe, "source")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
             goto done;
@@ -938,7 +938,7 @@ from_client_restart_one(clixon_handle    h,
         if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
             goto done;
         if ((retval = resetfn(h, db)) < 0) {
-            clixon_debug(CLIXON_DBG_CLIENT, "plugin_start() failed");
+            clixon_debug(CLIXON_DBG_BACKEND, "plugin_start() failed");
             goto done;
         }
         if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)

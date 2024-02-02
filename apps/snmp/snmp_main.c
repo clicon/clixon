@@ -170,7 +170,7 @@ clixon_snmp_fdset_register(clixon_handle h,
     /* eg 4, 6, 8 */
     for (s=0; s<numfds; s++){
         if (FD_ISSET(s, &readfds)){
-            clixon_debug(CLIXON_DBG_CLIENT, "%d", s);
+            clixon_debug(CLIXON_DBG_SNMP, "%d", s);
             if (regfd){
                 if (clixon_event_reg_fd(s, clixon_snmp_input_cb, h, "snmp socket") < 0)
                     goto done;
@@ -205,7 +205,7 @@ clixon_snmp_input_cb(int   s,
     clixon_handle  h = (clixon_handle)arg;
     int            ret;
 
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "%d", s);
+    clixon_debug(CLIXON_DBG_SNMP | CLIXON_DBG_DETAIL, "%d", s);
     FD_ZERO(&readfds);
     FD_SET(s, &readfds);
     (void)snmp_read(&readfds);
@@ -253,7 +253,7 @@ clixon_snmp_init_subagent(clixon_handle h,
     int   retval = -1;
     char *sockpath = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_SNMP, "");
     if (logdst == CLIXON_LOG_SYSLOG)
         snmp_enable_calllog();
     else
@@ -320,7 +320,7 @@ usage(clixon_handle h,
             "where options are\n"
             "\t-h\t\tHelp\n"
             "\t-V \t\tPrint version and exit\n"
-            "\t-D <level>\tDebug level (>1 for extensive libnetsnmp debug)\n"
+            "\t-D <level> \tDebug level (see available levels below)\n"
             "\t-f <file>\tConfiguration file (mandatory)\n"
             "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
             "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"
@@ -328,6 +328,9 @@ usage(clixon_handle h,
             "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
             argv0, argv0
             );
+    fprintf(stderr, "Debug keys: ");
+    clixon_debug_key_dump(stderr);
+    fprintf(stderr, "\n");
     exit(0);
 }
 
@@ -381,10 +384,16 @@ main(int    argc,
             cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
             exit(0);
             break;
-        case 'D' : /* debug */
-            if (sscanf(optarg, "%d", &dbg) != 1)
+        case 'D' : { /* debug */
+            int d = 0;
+            /* Try first symbolic, then numeric match */
+            if ((d = clixon_debug_str2key(optarg)) < 0 &&
+                sscanf(optarg, "%d", &d) != 1){
                 usage(h, argv[0]);
+            }
+            dbg |= d;
             break;
+        }
         case 'f': /* override config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);
@@ -571,7 +580,7 @@ main(int    argc,
         goto done;
  ok:
     retval = 0;
-  done:
+ done:
     snmp_terminate(h);
     clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());

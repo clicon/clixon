@@ -120,7 +120,7 @@ clixon_nghttp2_log_cb(void *handle,
                       int   suberr,
                       cbuf *cb)
 {
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     cprintf(cb, "Fatal error: %s", nghttp2_strerror(suberr));
     return 0;
 }
@@ -132,7 +132,7 @@ nghttp2_print_header(const uint8_t *name,
                      const uint8_t *value,
                      size_t         valuelen)
 {
-    clixon_debug(CLIXON_DBG_CLIENT, "%s %s", name, value);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s %s", name, value);
 }
 
 /*! Print HTTP headers to |f|. 
@@ -178,20 +178,20 @@ session_send_callback(nghttp2_session *session,
     int            s;
     int            sslerr;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "buflen:%zu", buflen);
+    clixon_debug(CLIXON_DBG_RESTCONF, "buflen:%zu", buflen);
     s = rc->rc_s;
     while (totlen < buflen){
         if (rc->rc_ssl){
             if ((len = SSL_write(rc->rc_ssl, buf+totlen, buflen-totlen)) <= 0){
                 er = errno;
                 sslerr = SSL_get_error(rc->rc_ssl, len);
-                clixon_debug(CLIXON_DBG_CLIENT, "SSL_write: errno:%s(%d) sslerr:%d",
+                clixon_debug(CLIXON_DBG_RESTCONF, "SSL_write: errno:%s(%d) sslerr:%d",
                              strerror(er),
                              er,
                              sslerr);
                 switch (sslerr){
                 case SSL_ERROR_WANT_WRITE:           /* 3 */
-                    clixon_debug(CLIXON_DBG_CLIENT, "write SSL_ERROR_WANT_WRITE");
+                    clixon_debug(CLIXON_DBG_RESTCONF, "write SSL_ERROR_WANT_WRITE");
                     usleep(1000);
                     continue;
                     break;
@@ -205,7 +205,7 @@ session_send_callback(nghttp2_session *session,
                          * platforms, linux here, freebsd want_write, or possibly differnt
                          * ssl lib versions?
                          */
-                        clixon_debug(CLIXON_DBG_CLIENT, "write EAGAIN");
+                        clixon_debug(CLIXON_DBG_RESTCONF, "write EAGAIN");
                         usleep(1000);
                         continue;
                     }
@@ -225,7 +225,7 @@ session_send_callback(nghttp2_session *session,
         else{
             if ((len = write(s, buf+totlen, buflen-totlen)) < 0){
                 if (errno == EAGAIN){
-                    clixon_debug(CLIXON_DBG_CLIENT, "write EAGAIN");
+                    clixon_debug(CLIXON_DBG_RESTCONF, "write EAGAIN");
                     usleep(10000);
                     continue;
                 }
@@ -252,10 +252,10 @@ session_send_callback(nghttp2_session *session,
     retval = 0;
  done:
     if (retval < 0){
-        clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+        clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
         return retval;
     }
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%zd", totlen);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%zd", totlen);
     return retval == 0 ? totlen : retval;
 }
 
@@ -269,7 +269,7 @@ recv_callback(nghttp2_session *session,
               void            *user_data)
 {
     // restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -294,7 +294,7 @@ restconf_nghttp2_path(restconf_stream_data *sd)
     cvec          *cvv = NULL;
     char          *cn;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "------------");
+    clixon_debug(CLIXON_DBG_RESTCONF, "------------");
     rc = sd->sd_conn;
     if ((h = rc->rc_h) == NULL){
         clixon_err(OE_RESTCONF, EINVAL, "arg is NULL");
@@ -346,7 +346,7 @@ restconf_nghttp2_path(restconf_stream_data *sd)
         goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (cvv)
         cvec_free(cvv);
     if (oneline)
@@ -390,7 +390,7 @@ restconf_sd_read(nghttp2_session     *session,
 #endif
     assert(cbuf_len(cb) > sd->sd_body_offset);
     remain = cbuf_len(cb) - sd->sd_body_offset;
-    clixon_debug(CLIXON_DBG_CLIENT, "length:%zu totlen:%zu, offset:%zu remain:%zu",
+    clixon_debug(CLIXON_DBG_RESTCONF, "length:%zu totlen:%zu, offset:%zu remain:%zu",
                  length,
                  cbuf_len(cb),
                  sd->sd_body_offset,
@@ -405,7 +405,7 @@ restconf_sd_read(nghttp2_session     *session,
     }
     memcpy(buf, cbuf_get(cb) + sd->sd_body_offset, len);
     sd->sd_body_offset += len;
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%zu", len);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%zu", len);
     return len;
 }
 
@@ -433,7 +433,7 @@ restconf_submit_response(nghttp2_session      *session,
     hdr = &hdrs[i++];
     hdr->name = (uint8_t*)":status";
     snprintf(valstr, 15, "%u", sd->sd_code);
-    clixon_debug(CLIXON_DBG_CLIENT, "status %d", sd->sd_code);
+    clixon_debug(CLIXON_DBG_RESTCONF, "status %d", sd->sd_code);
     hdr->value = (uint8_t*)valstr;
     hdr->namelen = strlen(":status");
     hdr->valuelen = strlen(valstr);
@@ -443,7 +443,7 @@ restconf_submit_response(nghttp2_session      *session,
     while ((cv = cvec_each(sd->sd_outp_hdrs, cv)) != NULL){
         hdr = &hdrs[i++];
         hdr->name = (uint8_t*)cv_name_get(cv);
-        clixon_debug(CLIXON_DBG_CLIENT, "hdr: %s", hdr->name);
+        clixon_debug(CLIXON_DBG_RESTCONF, "hdr: %s", hdr->name);
         hdr->value = (uint8_t*)cv_string_get(cv);
         hdr->namelen = strlen(cv_name_get(cv));
         hdr->valuelen = strlen(cv_string_get(cv));
@@ -458,7 +458,7 @@ restconf_submit_response(nghttp2_session      *session,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (hdrs)
         free(hdrs);
     return retval;
@@ -474,7 +474,7 @@ http2_exec(restconf_conn        *rc,
 {
     int retval = -1;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (sd->sd_path){
         free(sd->sd_path);
         sd->sd_path = NULL;
@@ -513,7 +513,7 @@ http2_exec(restconf_conn        *rc,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 
@@ -529,7 +529,7 @@ on_frame_recv_callback(nghttp2_session     *session,
     restconf_stream_data *sd = NULL;
     char                 *query;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s %d",
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s %d",
                  clicon_int2str(nghttp2_frame_type_map, frame->hd.type),
                  frame->hd.stream_id);
     switch (frame->hd.type) {
@@ -571,7 +571,7 @@ on_invalid_frame_recv_callback(nghttp2_session *session,
                                void *user_data)
 {
     // restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -593,7 +593,7 @@ on_data_chunk_recv_callback(nghttp2_session *session,
     restconf_conn *rc = (restconf_conn *)user_data;
     restconf_stream_data *sd;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%d", stream_id);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%d", stream_id);
     if ((sd = restconf_stream_find(rc, stream_id)) != NULL){
         cbuf_append_buf(sd->sd_indata, (void*)data, len);
     }
@@ -608,7 +608,7 @@ before_frame_send_callback(nghttp2_session     *session,
                            void                *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -620,7 +620,7 @@ on_frame_send_callback(nghttp2_session     *session,
                        void                *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -633,7 +633,7 @@ on_frame_not_send_callback(nghttp2_session *session,
                            void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -647,7 +647,7 @@ on_stream_close_callback(nghttp2_session   *session,
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%d %s", error_code, nghttp2_strerror(error_code));
+    clixon_debug(CLIXON_DBG_RESTCONF, "%d %s", error_code, nghttp2_strerror(error_code));
 #if 0 // NOTNEEDED /* XXX think this is not necessary? */
     if (error_code){
         if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
@@ -667,7 +667,7 @@ on_begin_headers_callback(nghttp2_session     *session,
     restconf_conn      *rc = (restconf_conn *)user_data;
     restconf_stream_data *sd;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", clicon_int2str(nghttp2_frame_type_map, frame->hd.type));
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", clicon_int2str(nghttp2_frame_type_map, frame->hd.type));
     if (frame->hd.type == NGHTTP2_HEADERS &&
         frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
         sd = restconf_stream_data_new(rc, frame->hd.stream_id);
@@ -735,12 +735,12 @@ on_header_callback(nghttp2_session     *session,
     switch (frame->hd.type){
     case NGHTTP2_HEADERS:
         assert (frame->headers.cat == NGHTTP2_HCAT_REQUEST);
-        clixon_debug(CLIXON_DBG_CLIENT, "HEADERS %s %s", name, value);
+        clixon_debug(CLIXON_DBG_RESTCONF, "HEADERS %s %s", name, value);
         if (nghttp2_hdr2clixon(rc->rc_h, (char*)name, (char*)value) < 0)
             goto done;
         break;
     default:
-        clixon_debug(CLIXON_DBG_CLIENT, "%s %s", clicon_int2str(nghttp2_frame_type_map, frame->hd.type), name);
+        clixon_debug(CLIXON_DBG_RESTCONF, "%s %s", clicon_int2str(nghttp2_frame_type_map, frame->hd.type), name);
         break;
     }
     retval = 0;
@@ -758,7 +758,7 @@ select_padding_callback(nghttp2_session *session,
                         void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return frame->hd.length;
 }
 
@@ -774,7 +774,7 @@ data_source_read_length_callback(nghttp2_session *session,
                                  void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 #endif /* NOTUSED */
@@ -790,7 +790,7 @@ on_begin_frame_callback(nghttp2_session *session,
                         void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", clicon_int2str(nghttp2_frame_type_map, hd->type));
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", clicon_int2str(nghttp2_frame_type_map, hd->type));
     if (hd->type == NGHTTP2_CONTINUATION)
         assert(0);
     return 0;
@@ -810,7 +810,7 @@ send_data_callback(nghttp2_session *session,
                    void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -824,7 +824,7 @@ pack_extension_callback(nghttp2_session *session,
                         void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -837,7 +837,7 @@ unpack_extension_callback(nghttp2_session *session,
                           void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 #endif /* NOTUSED */
@@ -852,7 +852,7 @@ on_extension_chunk_recv_callback(nghttp2_session *session,
                                  void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -865,7 +865,7 @@ error_callback(nghttp2_session *session,
                void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -880,7 +880,7 @@ error_callback2(nghttp2_session *session,
                 void *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     clixon_err(OE_NGHTTP2, lib_error_code, "%s", msg);
     return 0;
 }
@@ -903,7 +903,7 @@ http2_recv(restconf_conn       *rc,
     int           retval = -1;
     nghttp2_error ngerr;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (rc->rc_ngsession == NULL){
         /* http2_session_init not called */
         clixon_err(OE_RESTCONF, EINVAL, "No nghttp2 session");
@@ -940,7 +940,7 @@ http2_recv(restconf_conn       *rc,
     }
     retval = 1; /* OK */
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
  fail:
     retval = 0;
@@ -957,7 +957,7 @@ http2_send_server_connection(restconf_conn *rc)
                                     ,{NGHTTP2_SETTINGS_ENABLE_PUSH, 0}};
     nghttp2_error          ngerr;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((ngerr = nghttp2_submit_settings(rc->rc_ngsession,
                                          NGHTTP2_FLAG_NONE,
                                          iv,
@@ -971,7 +971,7 @@ http2_send_server_connection(restconf_conn *rc)
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 

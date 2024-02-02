@@ -116,7 +116,7 @@ api_well_known(clixon_handle h,
     cbuf     *cb = NULL;
     int       head;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (req == NULL){
         errno = EINVAL;
         goto done;
@@ -179,7 +179,7 @@ api_root_restconf_exact(clixon_handle  h,
     cbuf      *cb = NULL;
     int        head;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     head = strcmp(request_method, "HEAD") == 0;
     if (!head && strcmp(request_method, "GET") != 0){
         if (restconf_method_notallowed(h, req, "GET", pretty, media_out) < 0)
@@ -248,7 +248,7 @@ api_operational_state(clixon_handle  h,
                         restconf_media media_out)
 
 {
-    clixon_debug(CLIXON_DBG_CLIENT, "request method:%s", request_method);
+    clixon_debug(CLIXON_DBG_RESTCONF, "request method:%s", request_method);
 
     /* We are not implementing this method at this time, 20201105 despite it
      * being mandatory https://tools.ietf.org/html/rfc8527#section-3.1 */
@@ -274,7 +274,7 @@ api_yang_library_version(clixon_handle h,
     cbuf  *cb = NULL;
     yang_stmt *yspec;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
         goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
@@ -349,9 +349,9 @@ api_data(clixon_handle h,
     char   *request_method;
     cxobj  *xerr = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     request_method = restconf_param_get(h, "REQUEST_METHOD");
-    clixon_debug(CLIXON_DBG_CLIENT, "method:%s", request_method);
+    clixon_debug(CLIXON_DBG_RESTCONF, "method:%s", request_method);
 
     /* https://tools.ietf.org/html/rfc8527#section-3.2 */
     /* We assume that dynamic datastores are read only at this time 20201105 */
@@ -399,7 +399,7 @@ api_data(clixon_handle h,
             goto done;
         retval = api_return_err0(h, req, xerr, pretty, media_out, 0);
     }
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
  done:
     if (xerr)
         xml_free(xerr);
@@ -435,7 +435,7 @@ api_operations(clixon_handle h,
     int    retval = -1;
     cxobj *xerr = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (strcmp(request_method, "GET")==0)
         retval = api_operations_get(h, req, path, pi, qvec, data, pretty, media_out);
     else if (strcmp(request_method, "POST")==0)
@@ -482,7 +482,7 @@ api_root_restconf(clixon_handle        h,
     int            ret;
     cxobj         *xerr = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (req == NULL){
         errno = EINVAL;
         goto done;
@@ -512,7 +512,7 @@ api_root_restconf(clixon_handle        h,
             goto ok;
         }
     }
-    clixon_debug(CLIXON_DBG_CLIENT, "ACCEPT: %s %s", media_str, restconf_media_int2str(media_out));
+    clixon_debug(CLIXON_DBG_RESTCONF, "ACCEPT: %s %s", media_str, restconf_media_int2str(media_out));
 
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
         goto done;
@@ -543,14 +543,14 @@ api_root_restconf(clixon_handle        h,
             goto done;
         goto ok;
     }
-    clixon_debug(CLIXON_DBG_CLIENT, "api_resource=%s", api_resource);
+    clixon_debug(CLIXON_DBG_RESTCONF, "api_resource=%s", api_resource);
     if (uri_str2cvec(path, '/', '=', 1, &pcvec) < 0) /* rest url eg /album=ricky/foo */
       goto done;
     /* data */
     if ((cb = restconf_get_indata(req)) == NULL) /* XXX NYI ACTUALLY not always needed, do this later? */
         goto done;
     indata = cbuf_get(cb);
-    clixon_debug(CLIXON_DBG_CLIENT, "DATA=%s", indata);
+    clixon_debug(CLIXON_DBG_RESTCONF, "DATA=%s", indata);
 
     /* If present, check credentials. See "plugin_credentials" in plugin  
      * retvals:
@@ -627,7 +627,7 @@ api_root_restconf(clixon_handle        h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
 #ifdef WITH_RESTCONF_FCGI
     if (cb)
         cbuf_free(cb);

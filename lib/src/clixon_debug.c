@@ -60,6 +60,7 @@
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_string.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -78,11 +79,84 @@
 /* Cache handle since debug calls do not have handle parameter */
 static clixon_handle _debug_clixon_h    = NULL;
 
+/*! Mapping between Clixon debug symbolic names <--> bitfields
+ *
+ * Mapping between specific bitfields and symbolic names, note only perfect matches
+ */
+static const map_str2int dbgmap[] = {
+    {"default",   CLIXON_DBG_DEFAULT},
+    {"msg",       CLIXON_DBG_MSG},
+    {"xml",       CLIXON_DBG_XML},
+    {"xpath",     CLIXON_DBG_XPATH},
+    {"yang",      CLIXON_DBG_YANG},
+    {"backend",   CLIXON_DBG_BACKEND},
+    {"cli",       CLIXON_DBG_CLI},
+    {"netconf",   CLIXON_DBG_NETCONF},
+    {"restconf",  CLIXON_DBG_RESTCONF},
+    {"snmp",      CLIXON_DBG_SNMP},
+    {"nacm",      CLIXON_DBG_NACM},
+    {"proc",      CLIXON_DBG_PROC},
+    {"datastore", CLIXON_DBG_DATASTORE},
+    {"event",     CLIXON_DBG_EVENT},
+    {"rpc",       CLIXON_DBG_RPC},
+    {"stream",    CLIXON_DBG_STREAM},
+    {"app",       CLIXON_DBG_APP},
+    {"app2",      CLIXON_DBG_APP2},
+    {"app3",      CLIXON_DBG_APP3},
+    {"all",       CLIXON_DBG_SMASK},
+    {"always",    CLIXON_DBG_ALWAYS},
+    {"detail",    CLIXON_DBG_DETAIL},
+    {"detail2",   CLIXON_DBG_DETAIL2},
+    {"detail3",   CLIXON_DBG_DETAIL3},
+    {NULL,        -1}
+};
+
+/*! Map from clixon debug (specific) bitmask to string
+ *
+ * @param[in] int  Bitfield, see CLIXON_DBG_DEFAULT and others
+ * @retval    str  String representation of bitfield
+ */
+char *
+clixon_debug_key2str(int keyword)
+{
+    return (char*)clicon_int2str(dbgmap, keyword);
+}
+
+/*! Map from clixon debug symbolic string to bitfield
+ *
+ * @param[in] str  String representation of Clixon debug bit
+ * @retval    int  Bit representation of bitfield
+ */
+int
+clixon_debug_str2key(char *str)
+{
+    return clicon_str2int(dbgmap, str);
+}
+
+/*! Dump the symbolic bitfield names
+ *
+ * @param[in] f   Output file
+ */
+int
+clixon_debug_key_dump(FILE *f)
+{
+    const struct map_str2int *ms;
+
+    for (ms = &dbgmap[0]; ms->ms_str; ms++){
+        if (ms != &dbgmap[0])
+            fprintf(f, ", ");
+        fprintf(f, "%s", ms->ms_str);
+    }
+    return -1;
+}
+
 /*! The global debug level. 0 means no debug 
  *
  * @note There are pros and cons in having the debug state as a global variable. The 
  * alternative to bind it to the clicon handle (h) was considered but it limits its
- * usefulness, since not all functions have h
+ * usefulness, since not all functions have access to a handle.
+ * A compromise solution is now in place where h can be provided in the function call, but
+ * tolerates NULL, in which case a cached handle is used.
  */
 static int _debug_level = 0;
 

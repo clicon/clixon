@@ -159,7 +159,7 @@ netconf_hello_msg(clixon_handle h,
     int     foundbase_11 = 0;
     char   *body;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_NETCONF, "");
     _netconf_hello_nr++;
     if (xml_find_type(xn, NULL, "session-id", CX_ELMNT) != NULL) {
         clixon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1");
@@ -179,12 +179,12 @@ netconf_hello_msg(clixon_handle h,
              * event any parameters are encoded at the end of the URI string. */
             if (strncmp(body, NETCONF_BASE_CAPABILITY_1_0, strlen(NETCONF_BASE_CAPABILITY_1_0)) == 0){ /* RFC 4741 */
                 foundbase_10++;
-                clixon_debug(CLIXON_DBG_CLIENT, "foundbase10");
+                clixon_debug(CLIXON_DBG_NETCONF, "foundbase10");
             }
             else if (strncmp(body, NETCONF_BASE_CAPABILITY_1_1, strlen(NETCONF_BASE_CAPABILITY_1_1)) == 0 &&
                      clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0){ /* RFC 6241 */
                 foundbase_11++;
-                clixon_debug(CLIXON_DBG_CLIENT, "foundbase11");
+                clixon_debug(CLIXON_DBG_NETCONF, "foundbase11");
                 clicon_data_int_set(h, NETCONF_FRAMING_TYPE, NETCONF_SSH_CHUNKED); /* enable chunked enc */
             }
         }
@@ -334,8 +334,8 @@ netconf_input_packet(clixon_handle h,
     cxobj  *xret = NULL;
     netconf_framing_type framing;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
-    clixon_debug_xml(CLIXON_DBG_CLIENT, xreq, "");
+    clixon_debug(CLIXON_DBG_NETCONF, "");
+    clixon_debug_xml(CLIXON_DBG_NETCONF, xreq, "");
     rpcname = xml_name(xreq);
     rpcprefix = xml_prefix(xreq);
     framing = clicon_data_int_get(h, NETCONF_FRAMING_TYPE);
@@ -469,7 +469,7 @@ netconf_input_cb(int   s,
                                &eom) < 0)
             goto done;
         if (eom == 0){ /* frame not complete */
-            clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "frame: %lu", cbuf_len(cbmsg));
+            clixon_debug(CLIXON_DBG_NETCONF | CLIXON_DBG_DETAIL, "frame: %lu", cbuf_len(cbmsg));
             /* Extra data to read, save data and continue on next round */
             if (clicon_hash_add(cdat, NETCONF_FRAME_MSG, &cbmsg, sizeof(cbmsg)) == NULL)
                 goto done;
@@ -511,7 +511,7 @@ netconf_input_cb(int   s,
         }
     }
     if (eof){ /* socket closed / read returns 0 */
-        clixon_debug(CLIXON_DBG_CLIENT, "len==0, closing");
+        clixon_debug(CLIXON_DBG_NETCONF, "len==0, closing");
         clixon_event_unreg_fd(s, netconf_input_cb);
         close(s);
         clixon_exit_set(1);
@@ -637,7 +637,7 @@ usage(clixon_handle h,
             "where options are\n"
             "\t-h\t\tHelp\n"
             "\t-V \t\tPrint version and exit\n"
-            "\t-D <level>\tDebug level\n"
+            "\t-D <level>\tDebug level (see available levels below)\n"
             "\t-f <file>\tConfiguration file (mandatory)\n"
             "\t-E <dir> \tExtra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
@@ -657,6 +657,9 @@ usage(clixon_handle h,
             argv0,
             clicon_netconf_dir(h)
             );
+    fprintf(stderr, "Debug keys: ");
+    clixon_debug_key_dump(stderr);
+    fprintf(stderr, "\n");
     exit(0);
 }
 
@@ -709,10 +712,16 @@ main(int    argc,
             cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
-        case 'D' : /* debug */
-            if (sscanf(optarg, "%d", &dbg) != 1)
+        case 'D' : { /* debug */
+            int d = 0;
+            /* Try first symbolic, then numeric match */
+            if ((d = clixon_debug_str2key(optarg)) < 0 &&
+                sscanf(optarg, "%d", &d) != 1){
                 usage(h, argv[0]);
+            }
+            dbg |= d;
             break;
+        }
         case 'f': /* override config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);

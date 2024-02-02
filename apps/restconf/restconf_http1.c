@@ -90,7 +90,7 @@ _http1_parse(clixon_handle  h,
     clixon_http1_yacc hy = {0,};
     int               ret;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "\n%s", str);
+    clixon_debug(CLIXON_DBG_RESTCONF, "\n%s", str);
     if (strlen(str) == 0)
         goto ok;
     hy.hy_parse_string = str;
@@ -119,7 +119,7 @@ _http1_parse(clixon_handle  h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 
@@ -147,7 +147,7 @@ clixon_http1_parse_file(clixon_handle  h,
     int   len = 0;
     int   oldbuflen;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", filename);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", filename);
     if (f == NULL){
         clixon_err(OE_RESTCONF, EINVAL, "f is NULL");
         goto done;
@@ -302,7 +302,7 @@ restconf_http1_reply(restconf_conn        *rc,
     int     retval = -1;
     cg_var *cv;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* If body, add a content-length header 
      *    A server MUST NOT send a Content-Length header field in any response
      * with a status code of 1xx (Informational) or 204 (No Content).  A
@@ -365,7 +365,7 @@ restconf_http1_path_root(clixon_handle  h,
     int                   ret;
 #endif
 
-    clixon_debug(CLIXON_DBG_CLIENT, "------------");
+    clixon_debug(CLIXON_DBG_RESTCONF, "------------");
     pretty = restconf_pretty_get(h);
     if ((sd = restconf_stream_find(rc, 0)) == NULL){
         clixon_err(OE_RESTCONF, EINVAL, "No stream_data");
@@ -463,7 +463,7 @@ restconf_http1_path_root(clixon_handle  h,
             goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (subject)
         free(subject);
     if (xerr)

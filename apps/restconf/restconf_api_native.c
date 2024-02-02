@@ -86,7 +86,7 @@ restconf_reply_header(void       *req0,
     char                 *value = NULL;
     va_list               ap;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", name);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", name);
     if (sd == NULL || name == NULL || vfmt == NULL){
         clixon_err(OE_CFG, EINVAL, "sd, name or value is NULL");
         goto done;
@@ -142,7 +142,7 @@ restconf_reply_send(void  *req0,
     int                   retval = -1;
     restconf_stream_data *sd = (restconf_stream_data *)req0;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "code:%d", code);
+    clixon_debug(CLIXON_DBG_RESTCONF, "code:%d", code);
     if (sd == NULL){
         clixon_err(OE_CFG, EINVAL, "sd is NULL");
         goto done;

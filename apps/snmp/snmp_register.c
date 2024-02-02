@@ -190,7 +190,7 @@ mibyang_leaf_register(clixon_handle h,
         goto done;
     }
     oid_cbuf(cboid, oid1, oid1len);
-    clixon_debug(CLIXON_DBG_CLIENT, "register: %s %s", name, cbuf_get(cboid));
+    clixon_debug(CLIXON_DBG_SNMP, "register: %s %s", name, cbuf_get(cboid));
   ok:
     retval = 0;
  done:
@@ -327,7 +327,7 @@ mibyang_table_register(clixon_handle h,
         goto done;
     }
     sh->sh_table_info = table_info; /* Keep to free at exit */
-    clixon_debug(CLIXON_DBG_CLIENT, "register: %s %s", name, oidstr);
+    clixon_debug(CLIXON_DBG_SNMP, "register: %s %s", name, oidstr);
  ok:
     retval = 0;
  done:
@@ -478,7 +478,7 @@ mibyang_table_poll(clixon_handle h,
     oid        oidk[MAX_OID_LEN] = {0,};
     size_t     oidklen = MAX_OID_LEN;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_SNMP, "");
     if ((ys = yang_parent_get(ylist)) == NULL ||
         yang_keyword_get(ys) != Y_CONTAINER){
         clixon_err(OE_YANG, EINVAL, "ylist parent is not list");
@@ -559,7 +559,7 @@ mibyang_traverse(clixon_handle h,
     int        ret;
     static oid zero_oid = 0;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", yang_argument_get(yn));
+    clixon_debug(CLIXON_DBG_SNMP, "%s", yang_argument_get(yn));
     switch(yang_keyword_get(yn)){
     case Y_AUGMENT:
         if (mibyang_augment_register(h, yn) < 0)
@@ -632,7 +632,7 @@ clixon_snmp_traverse_mibyangs(clixon_handle h)
             continue;
         if ((modname = xml_body(x)) == NULL)
             continue;
-        clixon_debug(CLIXON_DBG_CLIENT, "%s: \"%s\"", xml_name(x), modname);
+        clixon_debug(CLIXON_DBG_SNMP, "%s: \"%s\"", xml_name(x), modname);
         /* Note, here we assume the Yang is loaded by some other mechanism and
          * error if it not found.
          * Alternatively, that YANG could be loaded.

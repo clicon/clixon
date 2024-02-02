@@ -207,7 +207,7 @@ get_statedata(clixon_handle     h,
     cbuf      *cb = NULL;
     cxobj     *xerr = NULL;
     
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
@@ -312,7 +312,7 @@ get_statedata(clixon_handle     h,
         goto fail;
     retval = 1; /* OK */
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_BACKEND, "retval:%d", retval);
     if (xerr)
         xml_free(xerr);
     if (x1)
@@ -709,7 +709,7 @@ get_list_pagination(clixon_handle        h,
         if ((ret = xml_bind_yang(h, xret, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug_xml(CLIXON_DBG_CLIENT, xret, "Yang bind pagination state");
+            clixon_debug_xml(CLIXON_DBG_BACKEND, xret, "Yang bind pagination state");
             if (clixon_netconf_internal_error(xerr,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
@@ -812,7 +812,7 @@ get_common(clixon_handle        h,
     char             *wdefstr;
 
     wdef = WITHDEFAULTS_EXPLICIT;
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "");
+    clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec9");
@@ -965,7 +965,7 @@ get_common(clixon_handle        h,
             (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug_xml(CLIXON_DBG_CLIENT, xret, "VALIDATE_STATE");
+            clixon_debug_xml(CLIXON_DBG_BACKEND, xret, "VALIDATE_STATE");
             if (clixon_netconf_internal_error(xerr,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
@@ -996,7 +996,7 @@ get_common(clixon_handle        h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xvec)
         free(xvec);
     if (xret)

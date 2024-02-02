@@ -100,7 +100,7 @@ backend_terminate(clixon_handle h)
     int        ss;
     cvec      *nsctx;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((ss = clicon_socket_get(h)) != -1)
         close(ss);
     /* Disconnect datastore */
@@ -142,7 +142,7 @@ backend_terminate(clixon_handle h)
     if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)
         unlink(sockpath);
     clixon_event_exit();
-    clixon_debug(CLIXON_DBG_CLIENT, "done");
+    clixon_debug(CLIXON_DBG_BACKEND, "done");
     clixon_err_exit();
     clixon_log_exit();
     backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
@@ -172,7 +172,7 @@ backend_sig_term(int arg)
 static void
 backend_sig_child(int arg)
 {
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_BACKEND, "");
     clicon_sig_child_set(1);
 }
 
@@ -428,7 +428,7 @@ backend_timer_setup(int   fd,
     struct timeval t;
     struct timeval t1 = {10, 0};
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_BACKEND, "");
     gettimeofday(&now, NULL);
 
     backend_client_print(h, stderr);
@@ -463,7 +463,7 @@ usage(clixon_handle h,
             "where options are\n"
             "\t-h\t\tHelp\n"
             "\t-V \t\tPrint version and exit\n"
-            "\t-D <level>\tDebug level\n"
+            "\t-D <level>\tDebug level (see available levels below)\n"
             "\t-f <file>\tClixon config file\n"
             "\t-E <dir> \tExtra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
@@ -491,6 +491,9 @@ usage(clixon_handle h,
             confpid ? confpid : "none",
             group ? group : "none"
             );
+    fprintf(stderr, "Debug keys: ");
+    clixon_debug_key_dump(stderr);
+    fprintf(stderr, "\n");
     exit(-1);
 }
 
@@ -569,10 +572,16 @@ main(int    argc,
             cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
-        case 'D' : /* debug */
-            if (sscanf(optarg, "%d", &dbg) != 1)
+        case 'D' : { /* debug */
+            int d = 0;
+            /* Try first symbolic, then numeric match */
+            if ((d = clixon_debug_str2key(optarg)) < 0 &&
+                sscanf(optarg, "%d", &d) != 1){
                 usage(h, argv[0]);
+            }
+            dbg |= d;
             break;
+        }
         case 'f': /* config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);

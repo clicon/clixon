@@ -46,27 +46,38 @@
  * Constants
  */
 
+/* Debug flags are seperated into subject areas and detail
+ * @see dbgmap Symbolic mapping (if you change here you may need to change dbgmap)
+ */
 /* Detail level */
-#define CLIXON_DBG_ALWAYS	0x000000	/* Unconditionally logged */
-#define CLIXON_DBG_DETAIL	0x010000	/* Details: traces, parse trees, etc */
-#define CLIXON_DBG_DETAIL2	0x020000	/* Extra details */
-#define CLIXON_DBG_DETAIL3	0x030000	/* Probably more detail than you want */
-#define CLIXON_DBG_DMASK	0x030000	/* Detail mask */
-#define CLIXON_DBG_DSHIFT	16
+#define CLIXON_DBG_ALWAYS	0x00000000	/* Unconditionally logged */
+#define CLIXON_DBG_DETAIL	0x01000000	/* Details: traces, parse trees, etc */
+#define CLIXON_DBG_DETAIL2	0x02000000	/* Extra details */
+#define CLIXON_DBG_DETAIL3	0x03000000	/* Probably more detail than you want */
+#define CLIXON_DBG_DMASK	0x03000000	/* Detail mask */
+#define CLIXON_DBG_DSHIFT	24
 
 /* Subject area */
-#define CLIXON_DBG_DEFAULT	0x000001	/* Default logs */
-#define CLIXON_DBG_MSG		0x000002	/* In/out messages */
-#define CLIXON_DBG_XML		0x000004	/* XML processing */
-#define CLIXON_DBG_XPATH	0x000008	/* XPath processing */
-#define CLIXON_DBG_YANG		0x000010	/* YANG processing */
-#define CLIXON_DBG_CLIENT	0x000020	/* App-specific */
-#define CLIXON_DBG_NACM		0x000040	/* NACM processing */
-#define CLIXON_DBG_PROC		0x000080	/* Process handling */
-#define CLIXON_DBG_DATASTORE	0x000100	/* Datastore management */
-#define CLIXON_DBG_EVENT	0x000200	/* Event processing */
-#define CLIXON_DBG_RPC		0x000400	/* RPC handling */
-#define CLIXON_DBG_SMASK	0x00ffff	/* Subject mask */
+#define CLIXON_DBG_DEFAULT	0x00000001	/* Default logs */
+#define CLIXON_DBG_MSG		0x00000002	/* In/out messages */
+#define CLIXON_DBG_XML		0x00000004	/* XML processing */
+#define CLIXON_DBG_XPATH	0x00000008	/* XPath processing */
+#define CLIXON_DBG_YANG		0x00000010	/* YANG processing */
+#define CLIXON_DBG_BACKEND	0x00000020	/* Backend-specific */
+#define CLIXON_DBG_CLI	        0x00000040	/* CLI frontend */
+#define CLIXON_DBG_NETCONF      0x00000080	/* NETCONF frontend */
+#define CLIXON_DBG_RESTCONF     0x00000100	/* RESTCONF frontend */
+#define CLIXON_DBG_SNMP	        0x00000200	/* SNMP frontend */
+#define CLIXON_DBG_NACM		0x00000400	/* NACM processing */
+#define CLIXON_DBG_PROC		0x00000800	/* Process handling */
+#define CLIXON_DBG_DATASTORE	0x00001000	/* Datastore management */
+#define CLIXON_DBG_EVENT	0x00002000	/* Event processing */
+#define CLIXON_DBG_RPC		0x00004000	/* RPC handling */
+#define CLIXON_DBG_STREAM	0x00008000	/* Notification streams */
+#define CLIXON_DBG_APP		0x00010000	/* External application */
+#define CLIXON_DBG_APP2		0x00020000	/* External application 2 */
+#define CLIXON_DBG_APP3		0x00040000	/* External application 3 */
+#define CLIXON_DBG_SMASK	0x0003ffff	/* Subject mask */
 
 /*
  * Macros
@@ -115,6 +126,9 @@
 /*
  * Prototypes
  */
+char *clixon_debug_key2str(int keyword);
+int clixon_debug_str2key(char *str);
+int clixon_debug_key_dump(FILE *f);
 int clixon_debug_init(clixon_handle h, int dbglevel);
 int clixon_debug_get(void);
 int clixon_debug_fn(clixon_handle h, const char *fn, const int line, int dbglevel, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 6, 7)));

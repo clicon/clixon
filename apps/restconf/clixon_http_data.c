@@ -131,7 +131,7 @@ api_http_data_err(clixon_handle  h,
     int        retval = -1;
     cbuf      *cb = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -153,7 +153,7 @@ api_http_data_err(clixon_handle  h,
     // ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -192,7 +192,7 @@ http_data_check_file_path(clixon_handle h,
         goto done;
     }
     p = cbuf_get(cbpath);
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", p);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", p);
     if (strncmp(prefix, p, strlen(prefix)) != 0){
         clixon_err(OE_UNIX, EINVAL, "prefix is not prefix of cbpath");
         goto done;
@@ -202,31 +202,31 @@ http_data_check_file_path(clixon_handle h,
             p[i] = '\0';
             /* Ensure not soft link */
             if (lstat(p, &fstat) < 0){
-                clixon_debug(CLIXON_DBG_CLIENT, "Error lstat(%s):%s", p, strerror(errno));
+                clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s):%s", p, strerror(errno));
                 code = 404;
                 goto invalid;
             }
             if (!S_ISDIR(fstat.st_mode)){
-                clixon_debug(CLIXON_DBG_CLIENT, "Error lstat(%s): Not dir", p);
+                clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s): Not dir", p);
                 code = 403;
                 goto invalid;
             }
             p[i] = '/';
         }
         else if (p[i] == '~'){
-            clixon_debug(CLIXON_DBG_CLIENT, "Error lstat(%s): ~ not allowed in file path", p);
+            clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s): ~ not allowed in file path", p);
             code = 403;
             goto invalid;
         }
         else if (p[i] == '.' && i>strlen(prefix) && p[i-1] == '.'){
-            clixon_debug(CLIXON_DBG_CLIENT, "Error lstat(%s): .. not allowed in file path", p);
+            clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s): .. not allowed in file path", p);
             code = 403;
             goto invalid;
         }
     }
     /* Resulting file (ensure not soft link) */
     if (lstat(p, &fstat) < 0){
-        clixon_debug(CLIXON_DBG_CLIENT, "Error lstat(%s):%s", p, strerror(errno));
+        clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s):%s", p, strerror(errno));
         code = 404;
         goto invalid;
     }
@@ -235,22 +235,22 @@ http_data_check_file_path(clixon_handle h,
     if (S_ISDIR(fstat.st_mode)){
         cprintf(cbpath, "/%s", HTTP_DATA_INTERNAL_REDIRECT);
         p = cbuf_get(cbpath);
-        clixon_debug(CLIXON_DBG_CLIENT, "internal redirect: %s", p);
+        clixon_debug(CLIXON_DBG_RESTCONF, "internal redirect: %s", p);
         if (lstat(p, &fstat) < 0){
-            clixon_debug(CLIXON_DBG_CLIENT, "Error lstat(%s):%s", p, strerror(errno));
+            clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s):%s", p, strerror(errno));
             code = 404;
             goto invalid;
         }
     }
 #endif
     if (!S_ISREG(fstat.st_mode)){
-        clixon_debug(CLIXON_DBG_CLIENT, "Error lstat(%s): Not regular file", p);
+        clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s): Not regular file", p);
         code = 403;
         goto invalid;
     }
     *fsz = fstat.st_size;
     if ((f = fopen(p, "rb")) == NULL){
-        clixon_debug(CLIXON_DBG_CLIENT, "Error fopen(%s) %s", p, strerror(errno));
+        clixon_debug(CLIXON_DBG_RESTCONF, "Error fopen(%s) %s", p, strerror(errno));
         code = 403;
         goto invalid;
     }
@@ -296,7 +296,7 @@ api_http_data_file(clixon_handle h,
     char       *buf = NULL;
     size_t      sz;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((cbfile = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -309,7 +309,7 @@ api_http_data_file(clixon_handle h,
     cprintf(cbfile, "%s", www_data_root);
     if (pathname){
         if (strlen(pathname) && pathname[0] != '/'){
-            clixon_debug(CLIXON_DBG_CLIENT, "Error fopen(%s) pathname not prefixed with /",
+            clixon_debug(CLIXON_DBG_RESTCONF, "Error fopen(%s) pathname not prefixed with /",
                          pathname);
             if (api_http_data_err(h, req, 404) < 0)
                 goto done;
@@ -338,7 +338,7 @@ api_http_data_file(clixon_handle h,
     fsize = ftell(f);
     /* Extra sanity check, had some problems with wrong file types */
     if (fsz != fsize){
-        clixon_debug(CLIXON_DBG_CLIENT, "Error file %s size mismatch sz:%zu vs %li",
+        clixon_debug(CLIXON_DBG_RESTCONF, "Error file %s size mismatch sz:%zu vs %li",
                      filename, (size_t)fsz, fsize);
         if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
             goto done;
@@ -362,7 +362,7 @@ api_http_data_file(clixon_handle h,
     }
     sz = (size_t)ret;
     if (sz != 1){
-        clixon_debug(CLIXON_DBG_CLIENT, "Error fread(%s) sz:%zu", filename, sz);
+        clixon_debug(CLIXON_DBG_RESTCONF, "Error fread(%s) sz:%zu", filename, sz);
         if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
             goto done;
         goto ok;
@@ -376,7 +376,7 @@ api_http_data_file(clixon_handle h,
     if (restconf_reply_send(req, 200, cbdata, head) < 0)
         goto done;
     cbdata = NULL; /* consumed by reply-send */
-    clixon_debug(CLIXON_DBG_CLIENT, "Read %s OK", filename);
+    clixon_debug(CLIXON_DBG_RESTCONF, "Read %s OK", filename);
  ok:
     retval = 0;
  done:
@@ -423,7 +423,7 @@ api_http_data(clixon_handle  h,
     cbuf *indata = NULL;
     char *path = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (req == NULL){
         errno = EINVAL;
         goto done;
@@ -498,6 +498,6 @@ api_http_data(clixon_handle  h,
  done:
     if (path)
         free(path);
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }

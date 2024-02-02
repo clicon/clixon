@@ -391,7 +391,7 @@ autocli_start(clixon_handle h)
     yang_stmt    *yspec;
     int           enable = 0;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_CLI, "");
     /* There is no single "enable-autocli" flag,
      * but set 
      *   <module-default>false</module-default> 
@@ -402,7 +402,7 @@ autocli_start(clixon_handle h)
     if (autocli_module(h, NULL, &enable) < 0)
         goto done;
     if (!enable){
-        clixon_debug(CLIXON_DBG_CLIENT, "Autocli not enabled (clixon-autocli)");
+        clixon_debug(CLIXON_DBG_CLI, "Autocli not enabled (clixon-autocli)");
         goto ok;
     }
     /* Init yang2cli */
@@ -481,7 +481,7 @@ usage(clixon_handle h,
             "where options are\n"
             "\t-h \t\tHelp\n"
             "\t-V \t\tPrint version and exit\n"
-            "\t-D <level> \tDebug level\n"
+            "\t-D <level> \tDebug level (see available levels below)\n"
             "\t-f <file> \tConfig-file (mandatory)\n"
             "\t-E <dir>  \tExtra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (stderr is default)\n"
@@ -496,7 +496,6 @@ usage(clixon_handle h,
             "\t-p <dir>\tYang directory path (see CLICON_YANG_DIR)\n"
             "\t-G \t\tPrint auto-cli CLI syntax generated from YANG\n"
             "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
-
             "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
             "\t-c <file>\tSpecify cli spec file.\n"
             "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
@@ -504,6 +503,9 @@ usage(clixon_handle h,
             argv0,
             plgdir ? plgdir : "none"
         );
+    fprintf(stderr, "Debug keys: ");
+    clixon_debug_key_dump(stderr);
+    fprintf(stderr, "\n");
     exit(1);
 }
 
@@ -581,10 +583,16 @@ main(int    argc,
             cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
-        case 'D' : /* debug */
-            if (sscanf(optarg, "%d", &dbg) != 1)
+        case 'D' : { /* debug */
+            int d = 0;
+            /* Try first symbolic, then numeric match */
+            if ((d = clixon_debug_str2key(optarg)) < 0 &&
+                sscanf(optarg, "%d", &d) != 1){
                 usage(h, argv[0]);
+            }
+            dbg |= d;
             break;
+        }
         case 'f': /* config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);

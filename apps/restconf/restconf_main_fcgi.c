@@ -107,7 +107,7 @@ fcgi_params_set(clixon_handle h,
     char *param = NULL;
     char *val = NULL;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     for (i = 0; envp[i] != NULL; i++){ /* on the form <param>=<value> */
         if (clixon_strsplit(envp[i], '=', &param, &val) < 0)
             goto done;
@@ -124,7 +124,7 @@ fcgi_params_set(clixon_handle h,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 
@@ -147,7 +147,7 @@ restconf_main_config(clixon_handle h,
 
     /* 1. try inline configure option */
     if (inline_config != NULL && strlen(inline_config)){
-        clixon_debug(CLIXON_DBG_CLIENT, "restconf_main_fcgi using restconf inline config");
+        clixon_debug(CLIXON_DBG_RESTCONF, "restconf_main_fcgi using restconf inline config");
         if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf, &xerr)) < 0)
             goto done;
         if (ret == 0){
@@ -228,12 +228,12 @@ restconf_sig_term(int arg)
 {
     static int i=0;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (i++ == 0)
         clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
                    __PROGRAM__, __FUNCTION__, getpid(), arg);
     else{
-        clixon_debug(CLIXON_DBG_CLIENT, "done");
+        clixon_debug(CLIXON_DBG_RESTCONF, "done");
         exit(-1);
     }
 
@@ -272,7 +272,7 @@ usage(clixon_handle h,
             "where options are\n"
             "\t-h \t\t  Help\n"
             "\t-V \t\tPrint version and exit\n"
-            "\t-D <level>\t  Debug level\n"
+            "\t-D <level>\tDebug level (see available levels below)\n"
             "\t-f <file>\t  Configuration file (mandatory)\n"
             "\t-E <dir> \t  Extra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
@@ -288,6 +288,9 @@ usage(clixon_handle h,
             "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n",
             argv0
             );
+    fprintf(stderr, "Debug keys: ");
+    clixon_debug_key_dump(stderr);
+    fprintf(stderr, "\n");
     exit(0);
 }
 
@@ -345,10 +348,16 @@ main(int    argc,
             cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
-        case 'D' : /* debug */
-            if (sscanf(optarg, "%d", &dbg) != 1)
+        case 'D' : { /* debug */
+            int d = 0;
+            /* Try first symbolic, then numeric match */
+            if ((d = clixon_debug_str2key(optarg)) < 0 &&
+                sscanf(optarg, "%d", &d) != 1){
                 usage(h, argv[0]);
+            }
+            dbg |= d;
             break;
+        }
         case 'f': /* override config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);
@@ -582,7 +591,7 @@ main(int    argc,
         clixon_err(OE_CFG, errno, "FCGX_Init");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_CLIENT, "restconf_main: Opening FCGX socket: %s", sockpath);
+    clixon_debug(CLIXON_DBG_RESTCONF, "restconf_main: Opening FCGX socket: %s", sockpath);
     if ((sock = FCGX_OpenSocket(sockpath, 10)) < 0){
         clixon_err(OE_CFG, errno, "FCGX_OpenSocket");
         goto done;
@@ -629,7 +638,7 @@ main(int    argc,
             clixon_err(OE_CFG, errno, "FCGX_Accept_r");
             goto done;
         }
-        clixon_debug(CLIXON_DBG_CLIENT, "------------");
+        clixon_debug(CLIXON_DBG_RESTCONF, "------------");
 
         /* Translate from FCGI parameter form to Clixon runtime data 
          * XXX: potential name collision?
@@ -637,7 +646,7 @@ main(int    argc,
         if (fcgi_params_set(h, req->envp) < 0)
             goto done;
         if ((path = restconf_param_get(h, "REQUEST_URI")) == NULL){
-            clixon_debug(CLIXON_DBG_CLIENT, "NULL URI");
+            clixon_debug(CLIXON_DBG_RESTCONF, "NULL URI");
         }
         else {
             /* Matching algorithm:
@@ -669,7 +678,7 @@ main(int    argc,
                 (void)api_stream(h, req, qvec, &finish);
             }
             else{
-                clixon_debug(CLIXON_DBG_CLIENT, "top-level %s not found", path);
+                clixon_debug(CLIXON_DBG_RESTCONF, "top-level %s not found", path);
                 if (netconf_invalid_value_xml(&xerr, "protocol", "Top-level path not found") < 0)
                     goto done;
                 if (api_return_err0(h, req, xerr, 1, YANG_DATA_JSON, 0) < 0)

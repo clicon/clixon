@@ -360,7 +360,7 @@ restconf_terminate(clixon_handle h)
     cxobj     *x;
     int        fs; /* fgcx socket */
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((fs = clicon_socket_get(h)) != -1)
         close(fs);
     /* Delete all plugins, and RPC callbacks */
@@ -378,7 +378,7 @@ restconf_terminate(clixon_handle h)
     xpath_optimize_exit();
     restconf_handle_exit(h);
     clixon_err_exit();
-    clixon_debug(CLIXON_DBG_CLIENT, "pid:%u done", getpid());
+    clixon_debug(CLIXON_DBG_RESTCONF, "pid:%u done", getpid());
     clixon_log_exit(); /* Must be after last clixon_debug */
     return 0;
 }
@@ -524,7 +524,7 @@ restconf_main_extension_cb(clixon_handle h,
     extname = yang_argument_get(yext);
     if (strcmp(modname, "ietf-restconf") != 0 || strcmp(extname, "yang-data") != 0)
         goto ok;
-    clixon_debug(CLIXON_DBG_CLIENT, "Enabled extension:%s:%s", modname, extname);
+    clixon_debug(CLIXON_DBG_RESTCONF, "Enabled extension:%s:%s", modname, extname);
     if ((yc = yang_find(ys, 0, NULL)) == NULL)
         goto ok;
     if ((yn = ys_dup(yc)) == NULL)
@@ -584,7 +584,7 @@ restconf_drop_privileges(clixon_handle h)
     char *user;
     enum priv_mode_t priv_mode = PM_NONE;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* Sanity check: backend group exists */
     if ((group = clicon_sock_group(h)) == NULL){
         clixon_err(OE_FATAL, 0, "clicon_sock_group option not set");
@@ -639,7 +639,7 @@ restconf_drop_privileges(clixon_handle h)
     case PM_NONE:
         break; /* catched above */
     }
-    clixon_debug(CLIXON_DBG_CLIENT, "dropped privileges from root to %s(%d)",
+    clixon_debug(CLIXON_DBG_RESTCONF, "dropped privileges from root to %s(%d)",
                  user, newuid);
  ok:
     retval = 0;
@@ -673,7 +673,7 @@ restconf_authentication_cb(clixon_handle  h,
     char              *anonymous = NULL;
 
     auth_type = restconf_auth_type_get(h);
-    clixon_debug(CLIXON_DBG_CLIENT, "auth-type:%s", clixon_auth_type_int2str(auth_type));
+    clixon_debug(CLIXON_DBG_RESTCONF, "auth-type:%s", clixon_auth_type_int2str(auth_type));
     ret = 0;
     authenticated = 0;
     /* ret: -1 Error, 0: Ignore/not handled, 1: OK see authenticated parameter */
@@ -725,7 +725,7 @@ restconf_authentication_cb(clixon_handle  h,
     /* If set but no user, set a dummy user */
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d authenticated:%d user:%s",
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d authenticated:%d user:%s",
                  retval, authenticated, clicon_username_get(h));
     if (username)
         free(username);
@@ -768,7 +768,7 @@ restconf_config_init(clixon_handle h,
     if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
         (enable = xml_body(x)) != NULL){
         if (strcmp(enable, "false") == 0){
-            clixon_debug(CLIXON_DBG_CLIENT, "restconf disabled");
+            clixon_debug(CLIXON_DBG_RESTCONF, "restconf disabled");
             goto disable;
         }
     }
@@ -848,7 +848,7 @@ restconf_socket_init(const char   *netns0,
     size_t              sa_len;
     const char         *netns;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s %s %s %hu", netns0, addrtype, addrstr, port);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s %s %s %hu", netns0, addrtype, addrstr, port);
     /* netns default -> NULL */
     if (netns0 != NULL && strcmp(netns0, RESTCONF_NETNS_DEFAULT)==0)
         netns = NULL;
@@ -858,10 +858,10 @@ restconf_socket_init(const char   *netns0,
         goto done;
     if (clixon_netns_socket(netns, sa, sa_len, backlog, flags, addrstr, ss) < 0)
         goto done;
-    clixon_debug(CLIXON_DBG_CLIENT, "ss=%d", *ss);
+    clixon_debug(CLIXON_DBG_RESTCONF, "ss=%d", *ss);
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 

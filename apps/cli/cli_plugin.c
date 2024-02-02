@@ -417,7 +417,7 @@ clispec_load(clixon_handle h)
             goto done;
         /* Load the syntax parse trees into cli_syntax stx structure */
         for (i = 0; i < ndp; i++) {
-            clixon_debug(CLIXON_DBG_CLIENT, "Loading clispec syntax: '%s/%s'",
+            clixon_debug(CLIXON_DBG_CLI, "Loading clispec syntax: '%s/%s'",
                          clispec_dir, dp[i].d_name);
             if (clispec_load_file(h, dp[i].d_name, clispec_dir, ptall, modes) < 0)
                 goto done;
@@ -555,7 +555,7 @@ clicon_parse(clixon_handle  h,
         if (cliread_parse(ch, cmd, pt, &match_obj, &cvv, result, &reason) < 0)
             goto done;
         /* Debug command and result code */
-        clixon_debug(CLIXON_DBG_CLIENT, "result:%d command: \"%s\"", *result, cmd);
+        clixon_debug(CLIXON_DBG_CLI, "result:%d command: \"%s\"", *result, cmd);
         switch (*result) {
         case CG_EOF: /* eof */
         case CG_ERROR:

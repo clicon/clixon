@@ -189,8 +189,8 @@ api_data_post(clixon_handle h,
     int            nrchildren0 = 0;
     yang_bind      yb;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "api_path:\"%s\"", api_path);
-    clixon_debug(CLIXON_DBG_CLIENT, "data:\"%s\"", data);
+    clixon_debug(CLIXON_DBG_RESTCONF, "api_path:\"%s\"", api_path);
+    clixon_debug(CLIXON_DBG_RESTCONF, "data:\"%s\"", data);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -276,7 +276,7 @@ api_data_post(clixon_handle h,
     /* RFC 8040 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource. 
      */
-    clixon_debug(CLIXON_DBG_CLIENT, "nrchildren0: %d", nrchildren0);
+    clixon_debug(CLIXON_DBG_RESTCONF, "nrchildren0: %d", nrchildren0);
     if (xml_child_nr_type(xbot, CX_ELMNT) - nrchildren0 != 1){
         if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
             goto done;
@@ -330,7 +330,7 @@ api_data_post(clixon_handle h,
     if (restconf_insert_attributes(xdata, qvec) < 0)
         goto done;
 #if 1
-    clixon_debug_xml(CLIXON_DBG_CLIENT, xdata, "xdata:");
+    clixon_debug_xml(CLIXON_DBG_RESTCONF, xdata, "xdata:");
 #endif
 
     /* Create text buffer for transfer to backend */
@@ -369,7 +369,7 @@ api_data_post(clixon_handle h,
     if (clixon_xml2cbuf(cbx, xtop, 0, 0, NULL, -1, 0) < 0)
         goto done;
     cprintf(cbx, "</edit-config></rpc>");
-    clixon_debug(CLIXON_DBG_CLIENT, "xml: %s api_path:%s", cbuf_get(cbx), api_path);
+    clixon_debug(CLIXON_DBG_RESTCONF, "xml: %s api_path:%s", cbuf_get(cbx), api_path);
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)
         goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
@@ -384,7 +384,7 @@ api_data_post(clixon_handle h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (xret)
         xml_free(xret);
     if (xerr)
@@ -441,7 +441,7 @@ api_operations_post_input(clixon_handle h,
     int        ret;
     restconf_media media_in;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "%s", data);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", data);
     if ((cbret = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, 0, "cbuf_new");
         goto done;
@@ -491,7 +491,7 @@ api_operations_post_input(clixon_handle h,
      * <data><input xmlns="urn:example:clixon">...</input></data>
      */
 #if 1
-    clixon_debug_xml(CLIXON_DBG_CLIENT, xdata, "xdata:");
+    clixon_debug_xml(CLIXON_DBG_RESTCONF, xdata, "xdata:");
 #endif
     /* Validate that exactly only <input> tag */
     if ((xinput = xml_child_i_type(xdata, 0, CX_ELMNT)) == NULL ||
@@ -509,7 +509,7 @@ api_operations_post_input(clixon_handle h,
             goto done;
         goto fail;
     }
-    //    clixon_debug(CLIXON_DBG_CLIENT, "input validation passed");
+    //    clixon_debug(CLIXON_DBG_RESTCONF, "input validation passed");
     /* Add all input under <rpc>path */
     x = NULL;
     while ((x = xml_child_i_type(xinput, 0, CX_ELMNT)) != NULL)
@@ -520,7 +520,7 @@ api_operations_post_input(clixon_handle h,
     // ok:
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval: %d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval: %d", retval);
     if (cbret)
         cbuf_free(cbret);
     if (xerr)
@@ -567,7 +567,7 @@ api_operations_post_output(clixon_handle h,
     cxobj     *xok;
     int        isempty;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "");
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* Validate that exactly only <rpc-reply> tag with exactly one element child */
     if ((xoutput = xml_child_i_type(xret, 0, CX_ELMNT)) == NULL ||
         strcmp(xml_name(xoutput),"rpc-reply") != 0
@@ -588,7 +588,7 @@ api_operations_post_output(clixon_handle h,
     xml_name_set(xoutput, "output");
     /* xoutput should now look: <output><x xmlns="uri">0</x></output> */
 #if 1
-    clixon_debug_xml(CLIXON_DBG_CLIENT, xoutput, "xoutput:");
+    clixon_debug_xml(CLIXON_DBG_RESTCONF, xoutput, "xoutput:");
 #endif
     /* Remove original netconf default namespace. Somewhat unsure what "output" belongs to? */
     if ((xa = xml_find_type(xoutput, NULL, "xmlns", CX_ATTR)) != NULL)
@@ -649,7 +649,7 @@ api_operations_post_output(clixon_handle h,
     *xoutputp = xoutput;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval: %d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval: %d", retval);
     if (xerr)
         xml_free(xerr);
     return retval;
@@ -722,7 +722,7 @@ api_operations_post(clixon_handle h,
     char      *namespace = NULL;
     int        nr = 0;
 
-    clixon_debug(CLIXON_DBG_CLIENT, "json:\"%s\" path:\"%s\"", data, api_path);
+    clixon_debug(CLIXON_DBG_RESTCONF, "json:\"%s\" path:\"%s\"", data, api_path);
     /* 1. Initialize */
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -792,7 +792,7 @@ api_operations_post(clixon_handle h,
      *             XML:  <input xmlns="uri"><x>0</x></input>
      */
     namespace = xml_find_type_value(xbot, NULL, "xmlns", CX_ATTR);
-    clixon_debug(CLIXON_DBG_CLIENT, "4. Parse input data: %s", data);
+    clixon_debug(CLIXON_DBG_RESTCONF, "4. Parse input data: %s", data);
     if (data && strlen(data)){
         if ((ret = api_operations_post_input(h, req, data, yspec, yrpc, xbot,
                                              pretty, media_out)) < 0)
@@ -803,7 +803,7 @@ api_operations_post(clixon_handle h,
     /* Here xtop is: 
       <rpc username="foo"><myfn xmlns="uri"><x>42</x></myfn></rpc> */
 #if 1
-    clixon_debug_xml(CLIXON_DBG_CLIENT, xtop, ". Translate input args:");
+    clixon_debug_xml(CLIXON_DBG_RESTCONF, xtop, ". Translate input args:");
 #endif
     /* 6. Validate outgoing RPC and fill in defaults */
     if ((ret = xml_bind_yang_rpc(h, xtop, yspec, &xerr)) < 0) /*  */
@@ -824,7 +824,7 @@ api_operations_post(clixon_handle h,
      * <rpc username="foo"><myfn xmlns="uri"><x>42</x><y>99</y></myfn></rpc>
     */
 #if 0
-    clixon_debug_xml(CLIXON_DBG_CLIENT, xtop, "6. Validate and defaults:");
+    clixon_debug_xml(CLIXON_DBG_RESTCONF, xtop, "6. Validate and defaults:");
 #endif
     /* 7. Send to RPC handler, either local or backend
      * Note (1) xtop is <rpc><method> xbot is <method>
@@ -865,7 +865,7 @@ api_operations_post(clixon_handle h,
      *       <rpc-reply><x xmlns="uri">0</x></rpc-reply>
      */
 #if 1
-    clixon_debug_xml(CLIXON_DBG_CLIENT, xret, "Receive reply:");
+    clixon_debug_xml(CLIXON_DBG_RESTCONF, xret, "Receive reply:");
 #endif
     youtput = yang_find(yrpc, Y_OUTPUT, NULL);
     if ((ret = api_operations_post_output(h, req, xret, yspec, youtput, namespace,
@@ -897,7 +897,7 @@ api_operations_post(clixon_handle h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_CLIENT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (prefix)
         free(prefix);
     if (id)
