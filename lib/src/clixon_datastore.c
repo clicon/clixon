@@ -1,4 +1,4 @@
-/*
+ /*
  *
   ***** BEGIN LICENSE BLOCK *****
  
@@ -79,6 +79,8 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_bind.h"
 #include "clixon_xml_default.h"
+#include "clixon_xml_io.h"
+#include "clixon_json.h"
 #include "clixon_datastore.h"
 #include "clixon_datastore_write.h"
 #include "clixon_datastore_read.h"
@@ -389,7 +391,6 @@ xmldb_exists(clixon_handle h,
         goto done;
     if (lstat(filename, &sb) < 0)
         retval = 0;
-
     else{
         if (sb.st_size == 0)
             retval = 0;
@@ -439,9 +440,9 @@ int
 xmldb_delete(clixon_handle h,
              const char   *db)
 {
-    int                 retval = -1;
-    char               *filename = NULL;
-    struct stat         sb;
+    int         retval = -1;
+    char       *filename = NULL;
+    struct stat sb;
 
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if (xmldb_clear(h, db) < 0)
@@ -719,3 +720,98 @@ xmldb_populate(clixon_handle h,
  done:
     return retval;
 }
+
+/* Dump a datastore to file, add modstate
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  db  Name of database to search in (filename including dir path
+ * @param[in]  xt  Top of XML tree
+ * @param[in]  wdef     With-defaults parameter
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+xmldb_dump(clixon_handle     h,
+           FILE             *f,
+           cxobj            *xt,
+           withdefaults_type wdef)
+{
+    int    retval = -1;
+    cxobj *xm;
+    cxobj *xmodst = NULL;
+    char  *format;
+    int    pretty;
+
+    /* Add modstate first */
+    if ((xm = clicon_modst_cache_get(h, 1)) != NULL){
+        if ((xmodst = xml_dup(xm)) == NULL)
+            goto done;
+        if (xml_child_insert_pos(xt, xmodst, 0) < 0)
+            goto done;
+        xml_parent_set(xmodst, xt);
+    }
+    if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
+        clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
+        goto done;
+    }
+    pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
+    if (strcmp(format,"json")==0){
+        if (clixon_json2file(f, xt, pretty, fprintf, 0, 0) < 0)
+            goto done;
+    }
+    else if (clixon_xml2file1(f, xt, 0, pretty, NULL, fprintf, 0, 0, wdef) < 0)
+        goto done;
+    /* Remove modules state after writing to file */
+    if (xmodst && xml_purge(xmodst) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Given a datastore, write the cache to file
+ *
+ * Also add mod-state if applicable
+ * @param[in]  h   Clixon handle
+ * @param[in]  db  Name of database to search in (filename including dir path
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+xmldb_write_cache2file(clixon_handle h,
+                       const char   *db)
+{
+    int         retval = -1;
+    cxobj      *xt;
+    FILE       *f = NULL;
+    char       *dbfile = NULL;
+
+    if (xmldb_db2file(h, db, &dbfile) < 0)
+        goto done;
+    if (dbfile==NULL){
+        clixon_err(OE_XML, 0, "dbfile NULL");
+        goto done;
+    }
+    if ((xt = xmldb_cache_get(h, db)) == NULL){
+        clixon_err(OE_XML, 0, "XML cache not found");
+        goto done;
+    }
+    if ((f = fopen(dbfile, "w")) == NULL){
+        clixon_err(OE_CFG, errno, "Creating file %s", dbfile);
+        goto done;
+    }
+    if (xmldb_dump(h, f, xt, WITHDEFAULTS_EXPLICIT) < 0)
+        goto done;
+    if (f) {
+        fclose(f);
+        f = NULL;
+    }
+    retval = 0;
+ done:
+    if (dbfile)
+        free(dbfile);
+    if (f)
+        fclose(f);
+    return retval;
+}
+

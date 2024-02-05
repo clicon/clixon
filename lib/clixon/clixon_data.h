@@ -52,11 +52,14 @@
  *       modified, and these changes have not been committed or rolled back.
  */
 typedef struct {
-    uint32_t  de_id;       /* If set, locked by this client/session id */
-    struct timeval de_tv;       /* Timevalue */
-    cxobj    *de_xml;      /* cache */
-    int       de_modified; /* Dirty since loaded/copied/committed/etc XXX:nocache? */
-    int       de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
+    uint32_t       de_id;       /* If set, locked by this client/session id */
+    struct timeval de_tv;       /* Timevalue, set by lock/unlock */
+    cxobj         *de_xml;      /* cache */
+    int            de_modified; /* Dirty since loaded/copied/committed/etc Used by lock
+                                 * This set by NETCONF edit-config, copy, delete, 
+                                 * reset by commit, discard
+                                 */
+    int            de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
 } db_elmnt;
 
 /*

@@ -50,11 +50,8 @@ EOF
 # data model.
 cat <<EOF > $fyang
 module example {
-
      namespace "http://example.com/ns/interfaces";
-
      prefix exam;
-
      typedef status-type {
         description "Interface status";
         type enumeration {
@@ -66,7 +63,6 @@ module example {
         }
         default ok;
      }
-
      container interfaces {
          description "Example interfaces group";
 

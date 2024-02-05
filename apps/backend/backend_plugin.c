@@ -325,7 +325,6 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
  * @param[in]     yspec   Yang spec
  * @param[in]     nsc     Namespace context
  * @param[in]     xpath   String with XPATH syntax. or NULL for all
- * @param[in]     wdef    With-defaults parameter, see RFC 6243
  * @param[in,out] xret    State XML tree is merged with existing tree.
  * @retval        1       OK
  * @retval        0       Statedata callback failed (xret set with netconf-error)

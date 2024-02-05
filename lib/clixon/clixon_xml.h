@@ -201,7 +201,7 @@ enum format_enum{
 #define XML_FLAG_ADD       0x04 /* Node is added (commits) or parent added rec*/
 #define XML_FLAG_DEL       0x08 /* Node is deleted (commits) or parent deleted rec */
 #define XML_FLAG_CHANGE    0x10 /* Node is changed (commits) or child changed rec */
-#define XML_FLAG_NONE      0x20 /* Node is added as NONE */
+#define XML_FLAG_NONE      0x20 /* Node is added as NETCONF edit-config operation=NONE */
 #define XML_FLAG_DEFAULT   0x40 /* Added when a value is set as default @see xml_default */
 #define XML_FLAG_TOP       0x80 /* Top datastore symbol */
 #define XML_FLAG_BODYKEY  0x100 /* Text parsing key to be translated from body to key */
@@ -248,7 +248,7 @@ cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
 int       xml_child_order(cxobj *xn, cxobj *xc);
 cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 cxobj    *xml_child_each_attr(cxobj *xparent, cxobj *xprev);
-int       xml_child_insert_pos(cxobj *x, cxobj *xc, int i);
+int       xml_child_insert_pos(cxobj *x, cxobj *xc, int pos);
 int       xml_childvec_set(cxobj *x, int len);
 cxobj   **xml_childvec_get(cxobj *x);
 int       clixon_child_xvec_append(cxobj *x, clixon_xvec *xv);

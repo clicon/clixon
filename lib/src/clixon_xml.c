@@ -1044,15 +1044,21 @@ xml_child_append(cxobj *xp,
     return 0;
 }
 
-/*! Insert child xc at position i under parent xp
+/*! Insert child XML at specific position under XML parent
  * 
+ * @param[in]  xp  Parent XML node
+ * @param[in]  xc  Child XML node
+ * @param[in]  pos Position
+ * @retval     0   OK
+ * @retval    -1   Error
+
  * @see xml_child_append
  * @note does not do anything with child, you may need to set its parent, etc
  */
 int
 xml_child_insert_pos(cxobj *xp,
                      cxobj *xc,
-                     int    i)
+                     int    pos)
 {
     size_t size;
 
@@ -1070,9 +1076,9 @@ xml_child_insert_pos(cxobj *xp,
             return -1;
         }
     }
-    size = (xml_child_nr(xp) - i - 1)*sizeof(cxobj *);
-    memmove(&xp->x_childvec[i+1], &xp->x_childvec[i], size);
-    xp->x_childvec[i] = xc;
+    size = (xml_child_nr(xp) - pos - 1)*sizeof(cxobj *);
+    memmove(&xp->x_childvec[pos+1], &xp->x_childvec[pos], size);
+    xp->x_childvec[pos] = xc;
     return 0;
 }
 

@@ -248,7 +248,10 @@ startup_common(clixon_handle       h,
         else if (xml_sort_recurse(xt) < 0) {
             clixon_err(OE_XML, EFAULT, "Yang sort error");
         }
-        if (xmldb_dump(h, stdout, xt) < 0)
+        /* clear XML tree of defaults */
+        if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
+            goto done;
+        if (xmldb_dump(h, stdout, xt, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         exit(0);  /* This is fairly abrupt , but need to avoid side-effects of rewinding
                      stack. Alternative is to make a separate function stack for this. */
@@ -487,6 +490,12 @@ validate_common(clixon_handle       h,
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
+    }
+    if (xmldb_cache_get(h, db) != NULL){
+        if (xmldb_populate(h, db) < 0)
+            goto done;
+        if (xmldb_write_cache2file(h, db) < 0)
+            goto done;
     }
     /* This is the state we are going to */
     if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &td->td_target, NULL, xret)) < 0)

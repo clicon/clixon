@@ -72,9 +72,10 @@ cxobj *xmldb_cache_get(clixon_handle h, const char *db);
 int xmldb_modified_get(clixon_handle h, const char *db);
 int xmldb_modified_set(clixon_handle h, const char *db, int value);
 int xmldb_empty_get(clixon_handle h, const char *db);
-int xmldb_dump(clixon_handle h, FILE *f, cxobj *xt);
 int xmldb_print(clixon_handle h, FILE *f);
 int xmldb_rename(clixon_handle h, const char *db, const char *newdb, const char *suffix);
 int xmldb_populate(clixon_handle h, const char *db);
+int xmldb_write_cache2file(clixon_handle h, const char *db);
+int xmldb_dump(clixon_handle h, FILE *f, cxobj *xt, withdefaults_type wdef);
 
 #endif /* _CLIXON_DATASTORE_H */

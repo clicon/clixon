@@ -312,6 +312,7 @@ xml_default(yang_stmt *yt,
     case Y_CASE:
         yc = NULL;
         while ((yc = yn_each(yt, yc)) != NULL) {
+            // XXX consider only data nodes for optimization?
             /* If config parameter and local is config false */
             if (!state && !yang_config(yc))
                 continue;
@@ -349,6 +350,8 @@ xml_default(yang_stmt *yt,
                     /* If this is non-presence, (and it does not exist in xt) call 
                      * recursively and create nodes if any default value exist first. 
                      * Then continue and populate?
+                     * Also this code expands some "when" statements that have nothing to do with 
+                     * defaults.
                      */
                     if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
                         /* No such container exist, recursively try if needed */
@@ -397,11 +400,40 @@ int
 xml_default_recurse(cxobj *xn,
                     int    state)
 {
+    return xml_default_recurse_flag(xn, state, 0x0);
+}
+
+/*! Selectively recursively fill in default values in an XML tree using flags
+ *
+ * Skip nodes that are not either CHANGE or "flag" (typically ADD|DEL)
+ * When ADD is encountered process all children.
+ * This will process all nodes that lead to ADD nodes and skip others.
+ * @param[in]   xt      XML tree
+ * @param[in]   state   If set expand defaults also for state data, otherwise only config
+ * @param[in]   flag    If set only traverse nodes marked with flag (or CHANGE)
+ * @retval      0       OK
+ * @retval     -1       Error
+ * @see xml_default_recurse
+ */
+int
+xml_default_recurse_flag(cxobj *xn,
+                         int    state,
+                         int    flag)
+{
     int        retval = -1;
     yang_stmt *yn;
     cxobj     *x;
     yang_stmt *y;
 
+    if (flag){
+        if (xml_flag(xn, XML_FLAG_CHANGE) != 0)
+            ; /* continue */
+        else if (xml_flag(xn, flag) != 0){
+            flag = 0x0; /* Pass all */
+        }
+        else
+            goto skip;
+    }
     if ((yn = (yang_stmt*)xml_spec(xn)) != NULL){
         if (xml_default(yn, xn, state) < 0)
             goto done;
@@ -412,9 +444,10 @@ xml_default_recurse(cxobj *xn,
             if (!state && !yang_config(y))
                 continue;
         }
-        if (xml_default_recurse(x, state) < 0)
+        if (xml_default_recurse_flag(x, state, flag) < 0)
             goto done;
     }
+ skip:
     retval = 0;
  done:
     return retval;
@@ -457,6 +490,7 @@ xml_global_defaults_create(cxobj     *xt,
  * @param[in]   xpath   Filter global defaults with this and merge with xt
  * @param[in]   yspec   Top-level YANG specification tree, all modules
  * @param[in]   state   Set if global state, otherwise config
+ * @param[in]   flags   Only traverse nodes where flag is set
  * @retval      0       OK
  * @retval     -1       Error
  * Uses cache?

@@ -46,7 +46,6 @@
 #include <limits.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <syslog.h>
@@ -454,6 +453,7 @@ choice_delete_other(cxobj     *x0,
  * In an "ordered-by user" list, the attributes "insert" and "key" in
  * the YANG XML namespace can be used to control where
  * in the list the entry is inserted.
+ * Marks added objects with XML_FLAG_ADD
  */
 static int
 text_modify(clixon_handle       h,
@@ -617,7 +617,6 @@ text_modify(clixon_handle       h,
                 if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
                     goto done;
                 xml_spec_set(x0, y0);
-
                 /* Get namespace from x1
                  * Check if namespace exists in x0 parent
                  * if not add new binding and replace in x0.
@@ -698,6 +697,7 @@ text_modify(clixon_handle       h,
             if (changed){
                 if (xml_insert(x0p, x0, insert, valstr, NULL) < 0)
                     goto done;
+                xml_flag_set(x0, XML_FLAG_ADD);
             }
             break;
         case OP_DELETE:
@@ -718,8 +718,10 @@ text_modify(clixon_handle       h,
                 /* Purge if x1 value is NULL(match-all) or both values are equal */
                 if ((x1bstr == NULL) ||
                     ((x0bstr=xml_body(x0)) != NULL && strcmp(x0bstr, x1bstr)==0)){
+
                     if (xml_purge(x0) < 0)
                         goto done;
+                    xml_flag_set(x0p, XML_FLAG_DEL);
                 }
                 else {
                     if (op == OP_DELETE){
@@ -947,7 +949,7 @@ text_modify(clixon_handle       h,
 #endif
                 if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
                     goto done;
-
+                xml_flag_set(x0, XML_FLAG_ADD);
             }
             break;
         case OP_DELETE:
@@ -966,6 +968,7 @@ text_modify(clixon_handle       h,
                 }
                 if (xml_purge(x0) < 0)
                     goto done;
+                xml_flag_set(x0p, XML_FLAG_DEL);
             }
             break;
         default:
@@ -1163,6 +1166,30 @@ text_modify_top(clixon_handle       h,
     goto done;
 } /* text_modify_top */
 
+/*! Callback function type for xml_apply
+ *
+ * @param[in]  x    XML node  
+ * @param[in]  arg  General-purpose argument
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ * @note WHEN node are not checked, but should be updated when doing validate. The reason is
+ *       that clixon needs a global traversal to re-evaluate WHEN nodes depending on changed targets
+ */
+static int
+xml_mark_added_ancestors(cxobj *x,
+                         void  *arg)
+{
+    int        flags = (intptr_t)arg;
+
+    if (xml_flag(x, flags)){
+        xml_apply_ancestor(x, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+        return 2;
+    }
+    return 0;
+}
+
 /*! Modify database given an xml tree and an operation
  *
  * @param[in]  h      CLICON handle
@@ -1197,20 +1224,15 @@ xmldb_put(clixon_handle       h,
           cbuf               *cbret)
 {
     int         retval = -1;
-    char       *dbfile = NULL;
-    FILE       *f = NULL;
     yang_stmt  *yspec;
     cxobj      *x0 = NULL;
     db_elmnt   *de = NULL;
+    db_elmnt    de0 = {0,};
     int         ret;
     cxobj      *xnacm = NULL;
-    cxobj      *xmodst = NULL;
-    cxobj      *x;
     int         permit = 0; /* nacm permit all */
-    char       *format;
     cvec       *nsc = NULL; /* nacm namespace context */
     int         firsttime = 0;
-    int         pretty;
     cxobj      *xerr = NULL;
 
     clixon_debug(CLIXON_DBG_DATASTORE|CLIXON_DBG_DETAIL, "db %s", db);
@@ -1245,7 +1267,6 @@ xmldb_put(clixon_handle       h,
                    xml_name(x0), DATASTORE_TOP_SYMBOL);
         goto done;
     }
-
     /* XXX Ad-hoc: 
      * In yang mounts yang specs may not be available
      * in initial parsing, but may be at a later stage.
@@ -1256,13 +1277,8 @@ xmldb_put(clixon_handle       h,
             goto done;
     }
     /* Here x0 looks like: <config>...</config> */
-#if 0 /* debug */
-    if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
-        clixon_log(h, LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
-#endif
     xnacm = clicon_nacm_cache(h);
     permit = (xnacm==NULL);
-
     /* Here assume if xnacm is set and !permit do NACM */
     clicon_data_del(h, "objectexisted");
     /*
@@ -1283,11 +1299,10 @@ xmldb_put(clixon_handle       h,
     /* Remove NONE nodes if all subs recursively are also NONE */
     if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
         goto done;
-    if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-                  (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
+    if (xml_apply(x0, CX_ELMNT, xml_mark_added_ancestors, (void*)(XML_FLAG_ADD|XML_FLAG_DEL)) < 0)
         goto done;
     /* Remove empty non-presence containers recursively.
-     * XXX should really be done for only new data in text_modify
+     * XXX should use xml_Mark_added_ancestors algorithm that xml_default_recurse uses for only
      */
     if (xml_defaults_nopresence(x0, 3) < 0)
         goto done;
@@ -1296,105 +1311,31 @@ xmldb_put(clixon_handle       h,
     if (xml_global_defaults(h, x0, nsc, "/", yspec, 0) < 0)
         goto done;
     /* Add default recursive values */
-    if (xml_default_recurse(x0, 0) < 0)
+    if (xml_default_recurse_flag(x0, 0, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
+        goto done;
+    /* Clear flags from previous steps */
+    if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+                  (void*)(XML_FLAG_NONE|XML_FLAG_ADD|XML_FLAG_DEL|XML_FLAG_CHANGE)) < 0)
         goto done;
     /* Write back to datastore cache if first time */
-    {
-        db_elmnt de0 = {0,};
-        if (de != NULL)
-            de0 = *de;
-        if (de0.de_xml == NULL)
-            de0.de_xml = x0;
-        de0.de_empty = (xml_child_nr(de0.de_xml) == 0);
-        clicon_db_elmnt_set(h, db, &de0);
-    }
-    if (xmldb_db2file(h, db, &dbfile) < 0)
-        goto done;
-    if (dbfile==NULL){
-        clixon_err(OE_XML, 0, "dbfile NULL");
-        goto done;
-    }
-    /* Add module revision info before writing to file)
-     * Only if CLICON_XMLDB_MODSTATE is set
-     */
-    if ((x = clicon_modst_cache_get(h, 1)) != NULL){
-        if ((xmodst = xml_dup(x)) == NULL)
-            goto done;
-        if (xml_addsub(x0, xmodst) < 0)
-            goto done;
-    }
-    if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
-        clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
-        goto done;
-    }
-    if ((f = fopen(dbfile, "w")) == NULL){
-        clixon_err(OE_CFG, errno, "Creating file %s", dbfile);
-        goto done;
-    }
-    pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
-    if (strcmp(format, "json")==0){
-        if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
-            goto done;
-    }
-    else if (clixon_xml2file1(f, x0, 0, pretty, NULL, fprintf, 0, 0, WITHDEFAULTS_EXPLICIT) < 0)
-        goto done;
-    /* Remove modules state after writing to file
-     */
-    if (xmodst && xml_purge(xmodst) < 0)
+    if (de != NULL)
+        de0 = *de;
+    if (de0.de_xml == NULL)
+        de0.de_xml = x0;
+    de0.de_empty = (xml_child_nr(de0.de_xml) == 0);
+    clicon_db_elmnt_set(h, db, &de0);
+    /* Write cache to file */
+    if (xmldb_write_cache2file(h, db) < 0)
         goto done;
     retval = 1;
  done:
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
-    if (f != NULL)
-        fclose(f);
     if (xerr)
         xml_free(xerr);
     if (nsc)
         xml_nsctx_free(nsc);
-    if (dbfile)
-        free(dbfile);
     return retval;
  fail:
     retval = 0;
     goto done;
 }
-
-/* Dump a datastore to file including modstate
- */
-int
-xmldb_dump(clixon_handle   h,
-           FILE           *f,
-           cxobj          *xt)
-{
-    int    retval = -1;
-    cxobj *x;
-    cxobj *xmodst = NULL;
-    char  *format;
-    int    pretty;
-
-    /* clear XML tree of defaults */
-    if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
-        goto done;
-    /* Add modstate first */
-    if ((x = clicon_modst_cache_get(h, 1)) != NULL){
-        if ((xmodst = xml_dup(x)) == NULL)
-            goto done;
-        if (xml_child_insert_pos(xt, xmodst, 0) < 0)
-            goto done;
-    }
-    if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
-        clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
-        goto done;
-    }
-    pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
-    if (strcmp(format,"json")==0){
-        if (clixon_json2file(f, xt, pretty, fprintf, 0, 0) < 0)
-            goto done;
-    }
-    else if (clixon_xml2file(f, xt, 0, pretty, NULL, fprintf, 0, 0) < 0)
-        goto done;
-    retval = 0;
- done:
-    return retval;
-}
-

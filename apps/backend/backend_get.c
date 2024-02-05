@@ -390,6 +390,7 @@ filter_xpath_again(clixon_handle h,
  * @param[in]  nsc      Namespace context of xpath
  * @param[in]  username User name for NACM access
  * @param[in]  depth    Nr of levels to print, -1 is all, 0 is none
+ * @param[in]  wdef     With-defaults parameter
  * @param[out] cbret    Return xml tree, eg <rpc-reply>..., <rpc-error.. 
  * @retval     0        OK
  * @retval    -1        Error

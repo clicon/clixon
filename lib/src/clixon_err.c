@@ -439,6 +439,7 @@ clixon_err_fn(clixon_handle h,
         }
     }
     va_start(ap, format);
+    /* This checks for customizable errors */
     if (clixon_plugin_errmsg_all(h, fn, line, LOG_TYPE_ERR,
                                  &category, &suberr, xerr, format, ap, &cb) < 0)
         goto done;
