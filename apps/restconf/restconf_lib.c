@@ -763,7 +763,7 @@ restconf_config_init(clixon_handle h,
         goto done;
     }
     /* Apply default values (removed in clear function) */
-    if (xml_default_recurse(xrestconf, 0) < 0)
+    if (xml_default_recurse(xrestconf, 0, 0) < 0)
         goto done;
     if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
         (enable = xml_body(x)) != NULL){

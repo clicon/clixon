@@ -950,7 +950,7 @@ get_common(clixon_handle        h,
         if (xml_global_defaults(h, xret, nsc, xpath, yspec, 1) < 0)
             goto done;
         /* Apply default values */
-        if (xml_default_recurse(xret, 1) < 0)
+        if (xml_default_recurse(xret, 1, 0) < 0)
             goto done;
         break;
     }

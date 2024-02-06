@@ -285,7 +285,7 @@ startup_common(clixon_handle       h,
     if (xml_global_defaults(h, xt, NULL, NULL, yspec, 0) < 0)
         goto done;
     /* Apply default values (removed in clear function) */
-    if (xml_default_recurse(xt, 0) < 0)
+    if (xml_default_recurse(xt, 0, 0) < 0)
         goto done;
 
     /* Handcraft transition with with only add tree */
@@ -421,7 +421,7 @@ startup_commit(clixon_handle  h,
     if (plugin_transaction_commit_done_all(h, td) < 0)
         goto done;
     /* Remove global defaults and empty non-presence containers */
-    if (xml_defaults_nopresence(td->td_target, 2) < 0)
+    if (xml_default_nopresence(td->td_target, 2, 0) < 0)
         goto done;
     /* [Delete and] create running db */
     if (xmldb_exists(h, "running") == 1){

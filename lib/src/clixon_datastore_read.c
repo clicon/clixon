@@ -729,7 +729,7 @@ xmldb_get_cache(clixon_handle     h,
         if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
             goto done;
         /* Add default recursive values */
-        if (xml_default_recurse(x0t, 0) < 0)
+        if (xml_default_recurse(x0t, 0, 0) < 0)
             goto done;
     } /* x0t == NULL */
     else
@@ -893,7 +893,7 @@ xmldb_get0(clixon_handle    h,
         goto done;
     if (ret == 0)
         goto fail;
-    if (xml_defaults_nopresence(x, 2) < 0)
+    if (xml_default_nopresence(x, 2, 0) < 0)
         goto done;
     *xret = x;
     x = NULL;

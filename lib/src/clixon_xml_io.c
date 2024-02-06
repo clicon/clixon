@@ -119,7 +119,7 @@ xml2output_wdef(cxobj            *x,
     switch (wdef){
     case WITHDEFAULTS_EXPLICIT:
     case WITHDEFAULTS_TRIM:
-        /* inline of xml_defaults_nopresence()
+        /* inline of xml_default_nopresence()
            and xml_flag_state_default_value()
         */
         switch(yang_keyword_get(y)){

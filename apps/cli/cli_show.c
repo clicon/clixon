@@ -613,7 +613,7 @@ cli_show_common(clixon_handle    h,
                                ) < 0)
             goto done;
         /* Remove empty containers */
-        if (xml_defaults_nopresence(xt, 2) < 0)
+        if (xml_default_nopresence(xt, 2, 0) < 0)
             goto done;
     }
     if (fromroot)

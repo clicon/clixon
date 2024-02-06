@@ -450,7 +450,7 @@ parse_configfile(clixon_handle  h,
             }
         }
     }
-    if (xml_default_recurse(xt, 0) < 0)
+    if (xml_default_recurse(xt, 0, 0) < 0)
         goto done;
     if ((ret = xml_yang_validate_add(h, xt, &xerr)) < 0)
         goto done;

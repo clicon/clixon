@@ -408,7 +408,7 @@ xml_yang_validate_rpc(clixon_handle h,
             goto done; /* error or validation fail */
         if (ret == 0)
             goto fail;
-        if (expanddefault && xml_default_recurse(xn, 0) < 0)
+        if (expanddefault && xml_default_recurse(xn, 0, 0) < 0)
             goto done;
     }
     // ok: /* pass validation */
@@ -469,7 +469,7 @@ xml_yang_validate_rpc_reply(clixon_handle h,
             goto done; /* error or validation fail */
         if (ret == 0)
             goto fail;
-        if (xml_default_recurse(xn, 0) < 0)
+        if (xml_default_recurse(xn, 0, 0) < 0)
             goto done;
     }
     // ok: /* pass validation */

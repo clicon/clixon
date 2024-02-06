@@ -517,7 +517,7 @@ text_modify(clixon_handle       h,
         goto fail;
     if (createstr != NULL &&
         (op == OP_REPLACE || op == OP_MERGE || op == OP_CREATE)){
-        if (x0 == NULL || xml_defaults_nopresence(x0, 0)){ /* does not exist or is default */
+        if (x0 == NULL || xml_default_nopresence(x0, 0, 0)){ /* does not exist or is default */
             if (strcmp(createstr, "false")==0){
                 /* RFC 8040 4.6 PATCH:
                  * If the target resource instance does not exist, the server MUST NOT create it. 
@@ -774,7 +774,7 @@ text_modify(clixon_handle       h,
         switch(op){
         case OP_CREATE:
             if (x0 && xml_flag(x0, XML_FLAG_DEFAULT)==0){
-                if (xml_defaults_nopresence(x0, 0) == 0){
+                if (xml_default_nopresence(x0, 0, 0) == 0){
                     if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
                         goto done;
                     goto fail;
@@ -1267,15 +1267,6 @@ xmldb_put(clixon_handle       h,
                    xml_name(x0), DATASTORE_TOP_SYMBOL);
         goto done;
     }
-    /* XXX Ad-hoc: 
-     * In yang mounts yang specs may not be available
-     * in initial parsing, but may be at a later stage.
-     * But it should be possible to find a more precise triggering
-     */
-    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
-        if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec, NULL)) < 0)
-            goto done;
-    }
     /* Here x0 looks like: <config>...</config> */
     xnacm = clicon_nacm_cache(h);
     permit = (xnacm==NULL);
@@ -1302,16 +1293,15 @@ xmldb_put(clixon_handle       h,
     if (xml_apply(x0, CX_ELMNT, xml_mark_added_ancestors, (void*)(XML_FLAG_ADD|XML_FLAG_DEL)) < 0)
         goto done;
     /* Remove empty non-presence containers recursively.
-     * XXX should use xml_Mark_added_ancestors algorithm that xml_default_recurse uses for only
      */
-    if (xml_defaults_nopresence(x0, 3) < 0)
+    if (xml_default_nopresence(x0, 3, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
         goto done;
     /* Complete defaults in incoming x1
      */
     if (xml_global_defaults(h, x0, nsc, "/", yspec, 0) < 0)
         goto done;
     /* Add default recursive values */
-    if (xml_default_recurse_flag(x0, 0, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
+    if (xml_default_recurse(x0, 0, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
         goto done;
     /* Clear flags from previous steps */
     if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,

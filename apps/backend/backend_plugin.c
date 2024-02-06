@@ -389,7 +389,7 @@ clixon_plugin_statedata_all(clixon_handle   h,
             goto done;
         /* Remove global defaults and empty non-presence containers */
         /* XXX: only for state data and according to with-defaults setting */
-        if (xml_defaults_nopresence(x, 2) < 0)
+        if (xml_default_nopresence(x, 2, 0) < 0)
             goto done;
         if (xpath_first(x, nsc, "%s", xpath) != NULL){
             if ((ret = netconf_trymerge(x, yspec, xret)) < 0)

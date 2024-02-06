@@ -713,7 +713,7 @@ xmldb_populate(clixon_handle h,
         if (xml_global_defaults(h, x, NULL, "/", yspec, 0) < 0)
             goto done;
         /* Add default recursive values */
-        if (xml_default_recurse(x, 0) < 0)
+        if (xml_default_recurse(x, 0, 0) < 0)
             goto done;
     }
     retval = ret;

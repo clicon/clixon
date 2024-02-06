@@ -1051,7 +1051,6 @@ xml_child_append(cxobj *xp,
  * @param[in]  pos Position
  * @retval     0   OK
  * @retval    -1   Error
-
  * @see xml_child_append
  * @note does not do anything with child, you may need to set its parent, etc
  */

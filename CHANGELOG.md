@@ -24,6 +24,7 @@ Expected: February 2024
   * All clixon applications added command-line option `-V` for printing version
   * New ca_version callback for customized version output
 * Optimization:
+  * Improved performance of GET and PUT operations
   * Optimized datastore access by ensuring REPORT_ALL in memory and EXPLICIT in file
   * Added mountpoint cache as yang flag `YANG_FLAG_MTPOINT_POTENTIAL`
   * Optimized `yang_find`, especially namespace lookup
@@ -46,6 +47,10 @@ Users may have to change how they access the system
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Added flags parameter to default functions:
+  * `xml_default_recurse(...)` -> `xml_default_recurse(..., 0)`
+  * `xml_defaults_nopresence(...)` -> `xml_default_nopresence(..., 0)`
+    * Also renamed (_defaults_ -> _default_)
 * Changed function name: `choice_case_get()` -> `yang_choice_case_get()`
 * New `clixon-lib@2024-01-01.yang` revision
   * Removed container creators, reverted from 6.5

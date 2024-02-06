@@ -388,21 +388,6 @@ xml_default(yang_stmt *yt,
     return retval;
 }
 
-/*! Recursively fill in default values in an XML tree
- *
- * @param[in]   xt      XML tree
- * @param[in]   state   If set expand defaults also for state data, otherwise only config
- * @retval      0       OK
- * @retval     -1       Error
- * @see xml_global_defaults
- */
-int
-xml_default_recurse(cxobj *xn,
-                    int    state)
-{
-    return xml_default_recurse_flag(xn, state, 0x0);
-}
-
 /*! Selectively recursively fill in default values in an XML tree using flags
  *
  * Skip nodes that are not either CHANGE or "flag" (typically ADD|DEL)
@@ -416,9 +401,9 @@ xml_default_recurse(cxobj *xn,
  * @see xml_default_recurse
  */
 int
-xml_default_recurse_flag(cxobj *xn,
-                         int    state,
-                         int    flag)
+xml_default_recurse(cxobj *xn,
+                    int    state,
+                    int    flag)
 {
     int        retval = -1;
     yang_stmt *yn;
@@ -444,7 +429,7 @@ xml_default_recurse_flag(cxobj *xn,
             if (!state && !yang_config(y))
                 continue;
         }
-        if (xml_default_recurse_flag(x, state, flag) < 0)
+        if (xml_default_recurse(x, state, flag) < 0)
             goto done;
     }
  skip:
@@ -567,20 +552,23 @@ xml_global_defaults(clixon_handle h,
 
 /*! Recursively find empty nopresence containers and default leaves, optionally purge
  *
+ * Semantics of mode parameter somewhat complex
  * @param[in] xn       XML tree
- * @param[in] purge    0: Dont remove any nodes
+ * @param[in] mode     0: Dont remove any nodes
  *                     1: Remove config sub-nodes that are empty non-presence container or default leaf
  *                     2: Remove all sub-nodes that are empty non-presence container or default leaf
  *                     3: Remove all sub-nodes that are empty non-presence containers
+ * @param[in] flag     If set only traverse nodes marked with flag (or CHANGE)
  * @retval    1        Node is an (recursive) empty non-presence container or default leaf
  * @retval    0        Other node
  * @retval   -1        Error
- * @note xn is not itself removed if purge
- * @note for purge=1 are removed only if config or no yang spec(!)
+ * @note xn is not itself removed if mode
+ * @note for mode=1 are removed only if config or no yang spec(!)
  */
 int
-xml_defaults_nopresence(cxobj *xn,
-                        int    purge)
+xml_default_nopresence(cxobj *xn,
+                       int    mode,
+                       int    flag)
 {
     int           retval = -1;
     cxobj        *x;
@@ -592,6 +580,17 @@ xml_defaults_nopresence(cxobj *xn,
     enum rfc_6020 keyw;
     int           config = 1;
 
+    if (flag){
+        if (xml_flag(xn, XML_FLAG_CHANGE) != 0)
+            ; /* continue */
+        else if (xml_flag(xn, flag) != 0){
+            flag = 0x0; /* Pass all */
+        }
+        else{
+            retval = 0;
+            goto done;
+        }
+    }
     if ((yn = xml_spec(xn)) != NULL){
         keyw = yang_keyword_get(yn);
         if (keyw == Y_CONTAINER &&
@@ -599,7 +598,7 @@ xml_defaults_nopresence(cxobj *xn,
             rmx = 1;
         else if (keyw == Y_LEAF &&
                  xml_flag(xn, XML_FLAG_DEFAULT) &&
-                 purge != 3)
+                 mode != 3)
             rmx = 1;
         config = yang_config_ancestor(yn);
     }
@@ -608,10 +607,10 @@ xml_defaults_nopresence(cxobj *xn,
     xprev = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
         /* 1: node is empty non-presence or default leaf (eg rmx) */
-        if ((ret = xml_defaults_nopresence(x, purge)) < 0)
+        if ((ret = xml_default_nopresence(x, mode, flag)) < 0)
             goto done;
         if (ret == 1){
-            switch (purge){
+            switch (mode){
             case 1: /* config nodes only */
                 if (!config)
                     break;

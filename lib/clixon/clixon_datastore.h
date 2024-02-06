@@ -66,9 +66,7 @@ int xmldb_delete(clixon_handle h, const char *db);
 int xmldb_create(clixon_handle h, const char *db);
 /* utility functions */
 int xmldb_db_reset(clixon_handle h, const char *db);
-
 cxobj *xmldb_cache_get(clixon_handle h, const char *db);
-
 int xmldb_modified_get(clixon_handle h, const char *db);
 int xmldb_modified_set(clixon_handle h, const char *db, int value);
 int xmldb_empty_get(clixon_handle h, const char *db);
