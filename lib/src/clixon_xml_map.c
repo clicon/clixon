@@ -614,8 +614,18 @@ xml_tree_equal(cxobj     *x0,
         if ((yc0 = xml_spec(x0c)) != NULL){
             if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                 goto done;
-            if (extflag)
-                goto ok;
+            if (extflag){ /* skip */
+                x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                continue;
+            }
+        }
+        if ((yc1 = xml_spec(x1c)) != NULL){
+            if (yang_extension_value(yc1, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag){ /* skip */
+                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                continue;
+            }
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
         if ((eq = xml_cmp(x0c, x1c, 0, 0, NULL)) != 0){
@@ -625,8 +635,6 @@ xml_tree_equal(cxobj     *x0,
             /* xml-spec NULL could happen with anydata children for example,
              * if so, continue compare children but without yang
              */
-            yc0 = xml_spec(x0c);
-            yc1 = xml_spec(x1c);
             if (yc0 && yc1 && yc0 != yc1){ /* choice */
                 goto done;
             }
