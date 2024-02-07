@@ -654,7 +654,10 @@ text_diff2cbuf_ordered_by_user(cbuf      *cb,
  * +  value [
  * +     97
  * -     99
- * @see xml_diff2cbuf
+ * @see clixon_compare_xmls which uses files and is independent of YANG
+ * @see xml_diff2cbuf  for XML
+ * @see xml_tree_equal Equal or not
+ * @see xml_diff       Diff sets
  */
 static int
 text_diff2cbuf(cbuf  *cb,
@@ -679,6 +682,7 @@ text_diff2cbuf(cbuf  *cb,
     char      *leaflname = NULL; // XXX
     cxobj     *xi;
     cxobj     *xj;
+    int        extflag;
 
     level1 = level*PRETTYPRINT_INDENT;
     if ((y0 = xml_spec(x0)) != NULL){
@@ -694,40 +698,59 @@ text_diff2cbuf(cbuf  *cb,
         /* Check if one or both subtrees are NULL */
         if (x0c == NULL && x1c == NULL)
             goto ok;
-        else if (x0c == NULL){
-            if (nr==0 && skiptop==0){
-                cprintf(cb, "%*s", level1, "");
-                if (prefix)
-                    cprintf(cb, "%s:", prefix);
-                cprintf(cb, "%s", xml_name(x1));
-                text_diff_keys(cb, x1, y0);
-                cprintf(cb, " {\n");
-                nr++;
+        else {
+            yc0 = NULL;
+            yc1 = NULL;
+            /* If cl:ignore-compare extension, skip */
+            if (x0c && (yc0 = xml_spec(x0c)) != NULL){
+                if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                    goto done;
+                if (extflag){ /* skip */
+                    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                    continue;
+                }
             }
-            if (text2cbuf(cb, x1c, level+1, "+", 0, &leafl, &leaflname) < 0)
-                goto done;
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
-            continue;
-        }
-        else if (x1c == NULL){
-            if (nr==0 && skiptop==0){
-                cprintf(cb, "%*s", level1, "");
-                if (prefix)
-                    cprintf(cb, "%s:", prefix);
-                cprintf(cb, "%s", xml_name(x0));
-                text_diff_keys(cb, x0, y0);
-                cprintf(cb, "{\n");
-                nr++;
+            if (x1c && (yc1 = xml_spec(x1c)) != NULL){
+                if (yang_extension_value(yc1, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                    goto done;
+                if (extflag){ /* skip */
+                    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                    continue;
+                }
             }
-            if (text2cbuf(cb, x0c, level+1, "-", 0, &leafl, &leaflname) < 0)
-                goto done;
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
-            continue;
+            if (x0c == NULL){
+                if (nr==0 && skiptop==0){
+                    cprintf(cb, "%*s", level1, "");
+                    if (prefix)
+                        cprintf(cb, "%s:", prefix);
+                    cprintf(cb, "%s", xml_name(x1));
+                    text_diff_keys(cb, x1, y0);
+                    cprintf(cb, " {\n");
+                    nr++;
+                }
+                if (text2cbuf(cb, x1c, level+1, "+", 0, &leafl, &leaflname) < 0)
+                    goto done;
+                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                continue;
+            }
+            else if (x1c == NULL){
+                if (nr==0 && skiptop==0){
+                    cprintf(cb, "%*s", level1, "");
+                    if (prefix)
+                        cprintf(cb, "%s:", prefix);
+                    cprintf(cb, "%s", xml_name(x0));
+                    text_diff_keys(cb, x0, y0);
+                    cprintf(cb, "{\n");
+                    nr++;
+                }
+                if (text2cbuf(cb, x0c, level+1, "-", 0, &leafl, &leaflname) < 0)
+                    goto done;
+                x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                continue;
+            }
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        yc0 = xml_spec(x0c);
-        yc1 = xml_spec(x1c);
         if (eq && yc0 && yc1 && yc0 == yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
             if (text_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, yc0,
                                               level, skiptop) < 0)

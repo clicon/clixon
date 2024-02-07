@@ -1278,7 +1278,9 @@ xml_diff2cbuf_ordered_by_user(cbuf      *cb,
  * @endcode
  * @see xml_diff which returns diff sets
  * @see clixon_compare_xmls which uses files and is independent of YANG
- * @see text_diff2cbuf
+ * @see text_diff2cbuf for curly
+ * @see xml_tree_equal Equal or not
+ * @see xml_diff       Diff sets
  */
 static int
 xml_diff2cbuf(cbuf  *cb,
@@ -1302,6 +1304,7 @@ xml_diff2cbuf(cbuf  *cb,
     int        level1;
     cxobj     *xi;
     cxobj     *xj;
+    int        extflag;
 
     level1 = level*PRETTYPRINT_INDENT;
     y0 = xml_spec(x0);
@@ -1312,33 +1315,52 @@ xml_diff2cbuf(cbuf  *cb,
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
-        else if (x0c == NULL){
-            /* Check if one or both subtrees are NULL */
-            if (nr==0 && skiptop==0){
-                xml_diff_context(cb, x1, level1);
-                xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
-                nr++;
+        else {
+            yc0 = NULL;
+            yc1 = NULL;
+            /* If cl:ignore-compare extension, skip */
+            if (x0c && (yc0 = xml_spec(x0c)) != NULL){
+                if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                    goto done;
+                if (extflag){ /* skip */
+                    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                    continue;
+                }
             }
-            if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
-                goto done;
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
-            continue;
-        }
-        else if (x1c == NULL){
-            if (nr==0 && skiptop==0){
-                xml_diff_context(cb, x0, level1);
-                xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
-                nr++;
+            if (x1c && (yc1 = xml_spec(x1c)) != NULL){
+                if (yang_extension_value(yc1, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                    goto done;
+                if (extflag){ /* skip */
+                    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                    continue;
+                }
             }
-            if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
-                goto done;
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
-            continue;
+            if (x0c == NULL){
+                /* Check if one or both subtrees are NULL */
+                if (nr==0 && skiptop==0){
+                    xml_diff_context(cb, x1, level1);
+                    xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
+                    nr++;
+                }
+                if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
+                    goto done;
+                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                continue;
+            }
+            else if (x1c == NULL){
+                if (nr==0 && skiptop==0){
+                    xml_diff_context(cb, x0, level1);
+                    xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
+                    nr++;
+                }
+                if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
+                    goto done;
+                x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                continue;
+            }
         }
-        /* Both x0c and x1c exists, check if they are yang-equal. */
+        /* Both x0c and x1c exists, check if yang equal */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        yc0 = xml_spec(x0c);
-        yc1 = xml_spec(x1c);
         if (eq && yc0 && yc1 && yc0 == yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
             if (xml_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, yc0,
                                               level, skiptop) < 0)

@@ -570,6 +570,8 @@ xml_diff(cxobj     *x0,
  * @retval     1    Not equal
  * @retval     0    Equal
  * @see xml_diff which returns diff sets
+ * @see xml_diff2cbuf   Diff buffer in XML
+ * @see text_diff2cbuf  Diff buffer in curly
  */
 int
 xml_tree_equal(cxobj     *x0,
