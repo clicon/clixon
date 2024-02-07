@@ -85,6 +85,46 @@
 #include "clixon_datastore_write.h"
 #include "clixon_datastore_read.h"
 
+/*! Get xml database element including id, xml cache, empty on startup and dirty bit
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  db   Name of database
+ * @retval     de   Database element
+ * @retval     NULL None found
+ */
+db_elmnt *
+clicon_db_elmnt_get(clixon_handle h,
+                    const char   *db)
+{
+    clicon_hash_t *cdat = clicon_db_elmnt(h);
+    void          *p;
+
+    if ((p = clicon_hash_value(cdat, db, NULL)) != NULL)
+        return (db_elmnt *)p;
+    return NULL;
+}
+
+/*! Set xml database element including id, xml cache, empty on startup and dirty bit
+ *
+ * @param[in] h   Clixon handle
+ * @param[in] db  Name of database
+ * @param[in] de  Database element
+ * @retval    0   OK
+ * @retval   -1   Error
+ * @see xmldb_disconnect
+*/
+int
+clicon_db_elmnt_set(clixon_handle h,
+                    const char   *db,
+                    db_elmnt     *de)
+{
+    clicon_hash_t  *cdat = clicon_db_elmnt(h);
+
+    if (clicon_hash_add(cdat, db, de, sizeof(*de))==NULL)
+        return -1;
+    return 0;
+}
+
 /*! Translate from symbolic database name to actual filename in file-system
  *
  * @param[in]   th       text handle handle
@@ -182,14 +222,14 @@ xmldb_copy(clixon_handle h,
            const char   *from, 
            const char   *to)
 {
-    int                 retval = -1;
-    char               *fromfile = NULL;
-    char               *tofile = NULL;
-    db_elmnt           *de1 = NULL; /* from */
-    db_elmnt           *de2 = NULL; /* to */
-    db_elmnt            de0 = {0,};
-    cxobj              *x1 = NULL;  /* from */
-    cxobj              *x2 = NULL;  /* to */
+    int        retval = -1;
+    char      *fromfile = NULL;
+    char      *tofile = NULL;
+    db_elmnt  *de1 = NULL; /* from */
+    db_elmnt  *de2 = NULL; /* to */
+    db_elmnt   de0 = {0,};
+    cxobj     *x1 = NULL;  /* from */
+    cxobj     *x2 = NULL;  /* to */
 
     clixon_debug(CLIXON_DBG_DATASTORE, "%s %s", from, to);
     /* XXX lock */
@@ -563,6 +603,30 @@ xmldb_modified_get(clixon_handle h,
     return de->de_modified;
 }
 
+/*! Set modified flag from datastore
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  db    Database name
+ * @param[in]  value 0 or 1
+ * @retval     0     OK
+ * @retval    -1     Error (datastore does not exist)
+ * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
+ */
+int
+xmldb_modified_set(clixon_handle h,
+                   const char   *db,
+                   int           value)
+{
+    db_elmnt *de;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
+    }
+    de->de_modified = value;
+    return 0;
+}
+
 /*! Get empty flag from datastore (the datastore was empty ON LOAD)
  *
  * @param[in]  h     Clixon handle
@@ -584,18 +648,62 @@ xmldb_empty_get(clixon_handle h,
     return de->de_empty;
 }
 
-/*! Set modified flag from datastore
+/*! Set empty flag from datastore (the datastore was empty ON LOAD)
  *
  * @param[in]  h     Clixon handle
  * @param[in]  db    Database name
  * @param[in]  value 0 or 1
  * @retval     0     OK
  * @retval    -1     Error (datastore does not exist)
- * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
- * @note This only works if db cache is used,...
  */
 int
-xmldb_modified_set(clixon_handle h,
+xmldb_empty_set(clixon_handle h,
+                const char   *db,
+                int           value)
+{
+    db_elmnt *de;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
+    }
+    de->de_empty = value;
+    return 0;
+}
+
+/*! Get volatile flag of datastore
+ *
+ * Whether to sync to disk on every update (ie xmldb_put)
+ * @param[in]  h     Clixon handle
+ * @param[in]  db    Database name
+ * @retval     1     Db was empty on load
+ * @retval     0     Db was not empty on load
+ * @retval    -1     Error (datastore does not exist)
+ */
+int
+xmldb_volatile_get(clixon_handle h,
+                   const char   *db)
+{
+    db_elmnt *de;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
+    }
+    return de->de_volatile;
+}
+
+/*! Set datastore status of datastore
+ *
+ * Whether to sync to disk on every update (ie xmldb_put)
+ * @param[in]  h     Clixon handle
+ * @param[in]  db    Database name
+ * @param[in]  value 0 or 1
+ * @retval     0     OK
+ * @retval    -1     Error (datastore does not exist)
+ */
+int
+xmldb_volatile_set(clixon_handle h,
                    const char   *db,
                    int           value)
 {
@@ -605,7 +713,7 @@ xmldb_modified_set(clixon_handle h,
         clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
         return -1;
     }
-    de->de_modified = value;
+    de->de_volatile = value;
     return 0;
 }
 

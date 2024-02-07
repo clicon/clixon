@@ -72,6 +72,9 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_default.h"
+#include "clixon_netconf_lib.h"
+#include "clixon_yang_module.h"
+#include "clixon_datastore.h"
 
 /* Forward */
 static int xml_default(yang_stmt *yt, cxobj *xt, int state);

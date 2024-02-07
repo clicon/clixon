@@ -864,46 +864,6 @@ clicon_argv_set(clixon_handle h,
     return retval;
 }
 
-/*! Get xml database element including id, xml cache, empty on startup and dirty bit
- *
- * @param[in]  h    Clixon handle
- * @param[in]  db   Name of database
- * @retval     de   Database element
- * @retval     NULL None found
- */
-db_elmnt *
-clicon_db_elmnt_get(clixon_handle h,
-                    const char   *db)
-{
-    clicon_hash_t *cdat = clicon_db_elmnt(h);
-    void          *p;
-
-    if ((p = clicon_hash_value(cdat, db, NULL)) != NULL)
-        return (db_elmnt *)p;
-    return NULL;
-}
-
-/*! Set xml database element including id, xml cache, empty on startup and dirty bit
- *
- * @param[in] h   Clixon handle
- * @param[in] db  Name of database
- * @param[in] de  Database element
- * @retval    0   OK
- * @retval   -1   Error
- * @see xmldb_disconnect
-*/
-int
-clicon_db_elmnt_set(clixon_handle h,
-                    const char   *db,
-                    db_elmnt     *de)
-{
-    clicon_hash_t  *cdat = clicon_db_elmnt(h);
-
-    if (clicon_hash_add(cdat, db, de, sizeof(*de))==NULL)
-        return -1;
-    return 0;
-}
-
 /*! Get session id
  *
  * @param[in]  h    Clixon handle

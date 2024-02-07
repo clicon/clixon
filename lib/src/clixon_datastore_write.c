@@ -1314,9 +1314,10 @@ xmldb_put(clixon_handle       h,
         de0.de_xml = x0;
     de0.de_empty = (xml_child_nr(de0.de_xml) == 0);
     clicon_db_elmnt_set(h, db, &de0);
-    /* Write cache to file */
-    if (xmldb_write_cache2file(h, db) < 0)
-        goto done;
+    /* Write cache to file unless volatile */
+    if (xmldb_volatile_get(h, db) == 0)
+        if (xmldb_write_cache2file(h, db) < 0)
+            goto done;
     retval = 1;
  done:
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
