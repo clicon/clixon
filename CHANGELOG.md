@@ -90,6 +90,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [commit goes 2 times](https://github.com/clicon/clixon/issues/488)
+* Fixed: Problem with cl:ignore attribute for show compare
 * Fixed: [yang_enum_int_value() fails if no explicit values are assigned to enums](https://github.com/clicon/clixon/issues/483)
   Remaining work: `yang_enum2valstr()`
 * Fixed: [show compare/diff problems with sorted-by user](https://github.com/clicon/clixon/issues/482)

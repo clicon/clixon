@@ -48,7 +48,7 @@ delete("Delete a configuration item") {
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 validate("Validate changes"), cli_validate();
-commit("Commit the changes"), cli_commit(); {
+commit("Commit the changes") {
   [persist-id("Specify the 'persist' value of a previous confirmed-commit") <persist-id-val:string show:"string">("The 'persist' value of the persistent confirmed-commit")], cli_commit(); {
     <cancel:string keyword:cancel>("Cancel an ongoing confirmed-commit"), cli_commit();
     <confirmed:string keyword:confirmed>("Require a confirming commit") {
