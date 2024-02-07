@@ -39,10 +39,32 @@
 #define _CLIXON_DATASTORE_H
 
 /*
- * Prototypes
- * API
+ * Types
  */
-/* Internal functions */
+/* Struct per database in hash
+ * Semantics of de_modified is to implement this from RFC 6241 Sec 7.5:
+ *       The target configuration is <candidate>, it has already been
+ *       modified, and these changes have not been committed or rolled back.
+ */
+struct db_elmnt {
+    uint32_t       de_id;       /* If set, locked by this client/session id */
+    struct timeval de_tv;       /* Timevalue, set by lock/unlock */
+    cxobj         *de_xml;      /* cache */
+    int            de_modified; /* Dirty since loaded/copied/committed/etc
+                                 * For NETCONF lock. Set by edit-config, copy, delete,
+                                 * reset by commit, discard
+                                 */
+    int            de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
+    int            de_volatile; /* Do not sync to disk on every update (ie xmldb_put) */
+};
+typedef struct db_elmnt db_elmnt;
+
+/*
+ * Prototypes
+ */
+
+db_elmnt *clicon_db_elmnt_get(clixon_handle h, const char *db);
+int clicon_db_elmnt_set(clixon_handle h, const char *db, db_elmnt *xc);
 int xmldb_db2file(clixon_handle h, const char *db, char **filename);
 
 /* API */
@@ -70,6 +92,9 @@ cxobj *xmldb_cache_get(clixon_handle h, const char *db);
 int xmldb_modified_get(clixon_handle h, const char *db);
 int xmldb_modified_set(clixon_handle h, const char *db, int value);
 int xmldb_empty_get(clixon_handle h, const char *db);
+int xmldb_empty_set(clixon_handle h, const char *db, int value);
+int xmldb_volatile_get(clixon_handle h, const char   *db);
+int xmldb_volatile_set(clixon_handle h, const char *db, int value);
 int xmldb_print(clixon_handle h, FILE *f);
 int xmldb_rename(clixon_handle h, const char *db, const char *newdb, const char *suffix);
 int xmldb_populate(clixon_handle h, const char *db);

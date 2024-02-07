@@ -44,25 +44,6 @@
 #define _CLIXON_DATA_H_
 
 /*
- * Types
- */
-/* Struct per database in hash 
- * Semantics of de_modified is to implement this from RFC 6241 Sec 7.5:
- *       The target configuration is <candidate>, it has already been
- *       modified, and these changes have not been committed or rolled back.
- */
-typedef struct {
-    uint32_t       de_id;       /* If set, locked by this client/session id */
-    struct timeval de_tv;       /* Timevalue, set by lock/unlock */
-    cxobj         *de_xml;      /* cache */
-    int            de_modified; /* Dirty since loaded/copied/committed/etc Used by lock
-                                 * This set by NETCONF edit-config, copy, delete, 
-                                 * reset by commit, discard
-                                 */
-    int            de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
-} db_elmnt;
-
-/*
  * Prototypes
  */
 /* Generic clixon data API the form <name>=<val> where <val> is string */
@@ -107,9 +88,6 @@ int clicon_conf_xml_set(clixon_handle h, cxobj *x);
 
 cxobj *clicon_conf_restconf(clixon_handle h);
 cxobj *clicon_conf_autocli(clixon_handle h);
-
-db_elmnt *clicon_db_elmnt_get(clixon_handle h, const char *db);
-int clicon_db_elmnt_set(clixon_handle h, const char *db, db_elmnt *xc);
 
 /**/
 /* Set and get authorized user name */
