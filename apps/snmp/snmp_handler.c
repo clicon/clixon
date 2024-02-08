@@ -178,7 +178,7 @@ snmp_scalar_return(cxobj                      *xs,
     }
     if (type_yang2asn1(ys, &asn1type, 1) < 0)
         goto done;
-    if ((ret = type_xml2snmp(xmlstr, &asn1type, &snmpval, &snmplen, &reason)) < 0)
+    if ((ret = type_xml2snmp(xmlstr, ys, &asn1type, &snmpval, &snmplen, &reason)) < 0)
         goto done;
     if (ret == 0){
         clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, reason);
@@ -298,7 +298,7 @@ snmp_scalar_get(clixon_handle               h,
         }
         goto ok;
     }
-    if ((ret = type_xml2snmp(xmlstr, &asn1type, &snmpval, &snmplen, &reason)) < 0)
+    if ((ret = type_xml2snmp(xmlstr, ys, &asn1type, &snmpval, &snmplen, &reason)) < 0)
         goto done;
     if (ret == 0){
         clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, reason);

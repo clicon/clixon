@@ -102,8 +102,7 @@ int    type_snmp2xml(yang_stmt                  *ys,
                      netsnmp_request_info       *requests,
                      char                      **valstr);
 int    type_xml2snmp_pre(char *xmlstr, yang_stmt *ys, char **snmpstr);
-void   reverse_bits(uint32_t *b);
-int    type_xml2snmp(char *snmpstr, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
+int    type_xml2snmp(char *snmpstr, yang_stmt *ys, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
 int    snmp_yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);
 int    snmp_str2oid(char *str, yang_stmt *yi, oid *objid, size_t *objidlen);
 int    snmp_oid2str(oid **oidi, size_t *oidilen, yang_stmt *yi, cg_var *cv);

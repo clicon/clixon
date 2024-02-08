@@ -714,17 +714,12 @@ type_snmp2xml(yang_stmt                  *ys,
         cv_uint32_set(cv, *requestvb->val.integer);
         break;
     case CLIXON_ASN_BIT_STRING: { /* special case for bit string */
-        uint32_t bitval = 0;
-        int len = sizeof(bitval);
-        len = requestvb->val_len < len ? requestvb->val_len : len;
         if ((cb = cbuf_new()) == NULL){
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         
-        memcpy(&bitval, requestvb->val.bitstring, len);
-        reverse_bits(&bitval);
-        if ((ret = yang_val2bitsstr(yrestype, bitval, cb)) < 0)
+        if ((ret = yang_val2bitsstr(yrestype, requestvb->val.bitstring, requestvb->val_len, cb)) < 0)
             goto done;
         if (ret == 0){
             clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits value");
@@ -788,24 +783,6 @@ type_snmp2xml(yang_stmt                  *ys,
     goto done;
 }
 
-/*! Reverse bit order for all bytes in the given unsigned integer
- *
- * In the SNMP BITS data type the bits have to be contiguously ordered. This functions re-orders
- * all bits for the given unsigned integer to get the contiguously ordering.
- * @param[in,out] b number to reverse bits order 
- */
-void 
-reverse_bits(uint32_t *b) {
-    unsigned char *c = (unsigned char*)b;
-    int i = 0;
-    while(i < sizeof(uint32_t)) {    
-        c[i] = (c[i] & 0xF0) >> 4 | (c[i] & 0x0F) << 4;
-        c[i] = (c[i] & 0xCC) >> 2 | (c[i] & 0x33) << 2;
-        c[i] = (c[i] & 0xAA) >> 1 | (c[i] & 0x55) << 1;
-        i++;
-    }
-}
-
 /*! Given xml value and YANG,m return corresponding malloced snmp string
  *
  * For special cases to prepare for proper xml2snmp translation. This includes translating
@@ -830,8 +807,6 @@ type_xml2snmp_pre(char      *xmlstr0,
     char      *str = NULL;
     int        ret;
     cbuf      *cb = NULL;
-    uint32_t   int_value = 0;
-    int        copy_str = 1;
 
     if (xmlstr0 == NULL || xmlstr1 == NULL){
         clixon_err(OE_UNIX, EINVAL, "xmlstr0/1 is NULL");
@@ -847,24 +822,6 @@ type_xml2snmp_pre(char      *xmlstr0,
             clixon_debug(CLIXON_DBG_DEFAULT, "Invalid enum valstr %s", xmlstr0);
             goto fail;
         }
-    }
-    else if (strcmp(restype, "bits") == 0){   /* special case for bits */
-        if ((ret = yang_bitsstr2val(yrestype, xmlstr0, &int_value)) < 0)
-            goto done;
-        if (ret == 0){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits valstr %s", xmlstr0);
-            goto fail;
-        }
-
-        reverse_bits(&int_value);
-
-        if ((*xmlstr1 = malloc(sizeof(int_value) + 1)) == NULL){
-            clixon_err(OE_UNIX, errno, "malloc");
-            goto done;
-        }
-        memset(*xmlstr1, 0, sizeof(int_value) + 1);
-        memcpy(*xmlstr1, &int_value, sizeof(int_value));
-        copy_str = 0; // don't copy string at the end because it is not a string value
     }
     /* special case for bool: although smidump translates TruthValue to boolean
      * and there is an ASN_BOOLEAN constant:
@@ -899,11 +856,9 @@ type_xml2snmp_pre(char      *xmlstr0,
         str = xmlstr0;
     }
 
-    if (copy_str == 1) {
-        if ((*xmlstr1 = strdup(str)) == NULL){
-            clixon_err(OE_UNIX, errno, "strdup");
-            goto done;
-        }
+    if ((*xmlstr1 = strdup(str)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
     }
     retval = 1;
  done:
@@ -919,6 +874,7 @@ type_xml2snmp_pre(char      *xmlstr0,
 /*! Given snmp string value (as translated from XML) parse into snmp value
  *
  * @param[in]     snmpstr  SNMP type string
+ * @param[in]     ys       YANG node
  * @param[in,out] asn1type ASN.1 type id
  * @param[out]    snmpval  Malloc:ed snmp type
  * @param[out]    snmplen  Length of snmp type
@@ -931,18 +887,24 @@ type_xml2snmp_pre(char      *xmlstr0,
  */
 int
 type_xml2snmp(char       *snmpstr,
+              yang_stmt  *ys,
               int        *asn1type,
               u_char    **snmpval,
               size_t     *snmplen,
               char      **reason)
 {
-    int   retval = -1;
-    int   ret;
+    int        retval = -1;
+    int        ret;
+    yang_stmt *yrestype;        /* resolved type */
 
     if (snmpval == NULL || snmplen == NULL){
         clixon_err(OE_UNIX, EINVAL, "snmpval or snmplen is NULL");
         goto done;
     }
+
+    if (snmp_yang_type_get(ys, NULL, NULL, &yrestype, NULL)) // XXX yrestype
+        goto done;
+
     switch (*asn1type){
     case CLIXON_ASN_ROWSTATUS:
         *asn1type = ASN_INTEGER;
@@ -1048,13 +1010,12 @@ type_xml2snmp(char       *snmpstr,
         *asn1type = ASN_OCTET_STR;
         break;
     case CLIXON_ASN_BIT_STRING:
-        *snmplen = 4;
-        if ((*snmpval = malloc(*snmplen + 1)) == NULL){
-            clixon_err(OE_UNIX, errno, "malloc");
+        if ((ret = yang_bitsstr2val(yrestype, snmpstr, snmpval, snmplen)) < 0)
             goto done;
+        if (ret == 0){
+            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits valstr %s", snmpstr);
+            goto fail;
         }
-        memset(*snmpval, 0, *snmplen + 1);
-        memcpy(*snmpval, snmpstr, *snmplen);
 
         *asn1type = ASN_OCTET_STR;
         break;

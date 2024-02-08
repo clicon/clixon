@@ -81,8 +81,6 @@
 #include "clixon_xml_io.h"
 #include "clixon_xml_map.h"
 
-#define CHECK_BIT(var,pos) ((var) & (1<<(pos)))
-
 /* Local types 
  */
 /* Merge code needs a two-phase pass where objects subject to merge are first checked for,
@@ -1615,12 +1613,14 @@ int yang_bits_pos(yang_stmt *ytype, char *bitstr, uint32_t *bitpos) {
     goto done;
 }
 
-/*! Given a YANG (bits) type node and string value, return the integer value for all bits (flags) that are set.
+/*! Given a YANG (bits) type node and string value, return the 
+ *  SNMP value for all bits (flags) that are set.
  *
  * @param[in]  ytype   YANG type noden
  * @param[in]  bitsstr Value of bits as space separated string
- * @param[out] intval  Corresponding integer value with all flags set as defined in bitsstr
- * @retval     1       OK, result in intval
+ * @param[out] snmpval SNMP value with all bits set for given bitsstr
+ * @param[out] snmplen length of snmpval
+ * @retval     1       OK, result in snmpval
  * @retval     0       Invalid, not found
  * @retval    -1       Error
  * @see yang_val2bitsstr
@@ -1628,18 +1628,23 @@ int yang_bits_pos(yang_stmt *ytype, char *bitstr, uint32_t *bitpos) {
 int
 yang_bitsstr2val(yang_stmt *ytype,
                  char      *bitsstr,
-                 uint32_t  *intval)
+                 u_char   **snmpval,
+                 size_t    *snmplen)
 {
     int      retval = -1;
     int      i = 0;
+    int      byte = 0;
     char   **vec = NULL;
     char    *v;
+    char    *buffer = NULL;
     int      nvec;
-    uint32_t bitpos;
     int      ret = 0;
+    uint32_t bitpos;
 
-    if (intval == NULL) {
-        clixon_err(OE_UNIX, EINVAL, "intval is NULL");
+    *snmplen = 0;
+
+    if ((buffer = calloc(CLIXON_BITS_POS_MAX / 8, sizeof(u_char))) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
 
@@ -1648,46 +1653,67 @@ yang_bitsstr2val(yang_stmt *ytype,
         goto done;
     }
 
-    // Go over all set flags in given bitstring and set bit at the correspondig position
-    for (i=0; i<nvec; i++) {
+    // Go over all set flags in given bitstring
+    for (i=0; i<nvec; i++){
         v = vec[i]; 
         if ((ret = yang_bits_pos(ytype, v, &bitpos)) < 0) 
             goto done;
         if (ret == 0)
             goto fail;
-        
-        *intval = *intval | (1 << bitpos);
+
+        // Set bit at correct byte and bit position
+        byte = bitpos / 8;
+        buffer[byte] = buffer[byte] | (1 << (7 - (bitpos % 8)));
+        *snmplen = byte + 1;
+
+        if (*snmplen >= CLIXON_BITS_POS_MAX) {
+            clixon_err(OE_UNIX, EINVAL, "bit position %ld out of range. (max. allowed %d)", 
+                      *snmplen, CLIXON_BITS_POS_MAX);
+            goto done;
+        }
     }
-    free(vec); 
+
+    if ((*snmpval = malloc(*snmplen)) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+
+    memcpy(*snmpval, buffer, *snmplen);
     retval = 1;
 
  done:
+    if (buffer)
+        free(buffer);
+    if (vec)
+        free(vec);
     return retval;
+
  fail:
     retval = 0;
     goto done;
 }
 
-/*! Given a YANG (bits) type node and integer value, return the string value for all bits (flags) that are set.
+/*! Given a YANG (bits) type node and SNMP value, return the string value for all bits (flags) that are set.
  *
- * @param[in]  ytype  YANG type noden
- * @param[in]  intval bitset value
- * @param[out] cb     space separated string with bit labes for all bits set in intval
- * @retval     1      OK, result in cb
- * @retval     0      Invalid, not found
- * @retval    -1      Error
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  snmpval SNMP value
+ * @param[in]  snmplen length of snmpval
+ * @param[out] cb      space separated string with bit labes for all bits that are set in snmpval
+ * @retval     1       OK, result in cb
+ * @retval     0       Invalid, not found
+ * @retval    -1       Error
  * @see yang_bitsstr2val
  */
 int 
-yang_val2bitsstr(yang_stmt *ytype, uint32_t intval, cbuf *cb) {
-
-    int      retval = -1;
+yang_val2bitsstr(yang_stmt *ytype, unsigned char *snmpval, size_t snmplen, cbuf *cb) {
+    int        retval = -1;
+    int        is_first = 1;
+    int        ret = 0;
+    int        byte = 0;
+    char      *reason;
     yang_stmt *yprev = NULL;
     yang_stmt *ypos;
-    int ret = 0;
-    char *reason;
-    uint32_t bitpos = 0;
-    int is_first = 1;
+    uint32_t   bitpos = 0;
 
     if (cb == NULL) {
         clixon_err(OE_UNIX, EINVAL, "cb is NULL");
@@ -1695,7 +1721,7 @@ yang_val2bitsstr(yang_stmt *ytype, uint32_t intval, cbuf *cb) {
     }
 
     // Go over all defined bits and check if it is seet in intval
-    while ((yprev = yn_each(ytype, yprev)) != NULL) {
+    while ((yprev = yn_each(ytype, yprev)) != NULL && byte < snmplen) {
         if (yang_keyword_get(yprev) == Y_BIT) {
             // Use position from Y_POSITION statement if defined
             if ((ypos = yang_find(yprev, Y_POSITION, NULL)) != NULL) {
@@ -1710,7 +1736,8 @@ yang_val2bitsstr(yang_stmt *ytype, uint32_t intval, cbuf *cb) {
                 if (is_first == 0) bitpos++;
             }
 
-            if (CHECK_BIT(intval, bitpos)){
+            byte = bitpos / 8;
+            if (snmpval[byte] & (1 << (7 - (bitpos % 8)))) {
                 if (is_first == 0) cbuf_append_str(cb, " ");
                 cbuf_append_str(cb, yang_argument_get(yprev));
             }
