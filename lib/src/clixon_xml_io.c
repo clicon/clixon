@@ -1259,6 +1259,72 @@ xml_diff2cbuf_ordered_by_user(cbuf      *cb,
     return retval;
 }
 
+/*! xml_diff2cbuf helper function to compute leaf difference
+ *
+ * @param[out] cb      CLIgen buffer
+ * @param[in]  x0      First XML tree
+ * @param[in]  x1      Second XML tree
+ * @param[in]  level   How many spaces to insert before each line
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children,
+ * @retval     0       Ok
+ * @retval    -1       Error
+ */
+static int
+xml_diff2cbuf_leaf(cbuf      *cb,
+                   cxobj     *x0,
+                   cxobj     *x1,
+                   int        level,
+                   int        skiptop,
+                   yang_stmt *y0,
+                   cxobj     *x0c,
+                   cxobj     *x1c,
+                   char      *b0,
+                   char      *b1,
+                   int       *nr)
+{
+    int   retval = -1;
+    char *e0 = NULL;
+    char *e1 = NULL;
+
+    if (*nr==0 && skiptop==0){
+        xml_diff_context(cb, x0, level*PRETTYPRINT_INDENT);
+        xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
+        (*nr)++;
+    }
+    /* Encode data to XML */
+    if (b0){
+        if (xml_chardata_encode(&e0, "%s", b0) < 0)
+            goto done;
+    }
+    else
+        e0 = NULL;
+    if (b1){
+        if (xml_chardata_encode(&e1, "%s", b1) < 0)
+            goto done;
+    }
+    else
+        e1 = NULL;
+    cprintf(cb, "-%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
+            xml_name(x0c), e0, xml_name(x0c));
+    cprintf(cb, "+%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
+            xml_name(x1c), e1, xml_name(x1c));
+    if (e0){
+        free(e0);
+        e0 = NULL;
+    }
+    if (e1){
+        free(e1);
+        e1 = NULL;
+    }
+    retval = 0;
+ done:
+    if (e0)
+        free(e0);
+    if (e1)
+        free(e1);
+    return retval;
+}
+
 /*! Print XML diff of two cxobj trees into a cbuf
  *
  * YANG dependent
@@ -1270,7 +1336,7 @@ xml_diff2cbuf_ordered_by_user(cbuf      *cb,
  * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children,
  * @retval     0       Ok
  * @retval    -1       Error
- * @cod
+ * @code
  *    cbuf *cb = cbuf_new();
  *    if (clixon_xml_diff2cbuf(cb, 0, x0, x1) < 0)
  *       err();
@@ -1293,12 +1359,10 @@ xml_diff2cbuf(cbuf  *cb,
     cxobj     *x0c = NULL; /* x0 child */
     cxobj     *x1c = NULL; /* x1 child */
     yang_stmt *y0;
-    yang_stmt *yc0;
-    yang_stmt *yc1;
+    yang_stmt *y0c;
+    yang_stmt *y1c;
     char      *b0;
     char      *b1;
-    char      *e0 = NULL;
-    char      *e1 = NULL;
     int        eq;
     int        nr=0;
     int        level1;
@@ -1316,19 +1380,19 @@ xml_diff2cbuf(cbuf  *cb,
         if (x0c == NULL && x1c == NULL)
             goto ok;
         else {
-            yc0 = NULL;
-            yc1 = NULL;
+            y0c = NULL;
+            y1c = NULL;
             /* If cl:ignore-compare extension, skip */
-            if (x0c && (yc0 = xml_spec(x0c)) != NULL){
-                if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+            if (x0c && (y0c = xml_spec(x0c)) != NULL){
+                if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                     goto done;
                 if (extflag){ /* skip */
                     x0c = xml_child_each(x0, x0c, CX_ELMNT);
                     continue;
                 }
             }
-            if (x1c && (yc1 = xml_spec(x1c)) != NULL){
-                if (yang_extension_value(yc1, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+            if (x1c && (y1c = xml_spec(x1c)) != NULL){
+                if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                     goto done;
                 if (extflag){ /* skip */
                     x1c = xml_child_each(x1, x1c, CX_ELMNT);
@@ -1361,8 +1425,10 @@ xml_diff2cbuf(cbuf  *cb,
         }
         /* Both x0c and x1c exists, check if yang equal */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        if (eq && yc0 && yc1 && yc0 == yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
-            if (xml_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, yc0,
+        b0 = xml_body(x0c);
+        b1 = xml_body(x1c);
+        if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
+            if (xml_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, y0c,
                                               level, skiptop) < 0)
                 goto done;
             /* Add all in x0 marked as DELETE in x0vec
@@ -1382,7 +1448,7 @@ xml_diff2cbuf(cbuf  *cb,
                 }
             }
             while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
-                   xml_spec(xi) == yc0);
+                   xml_spec(xi) == y0c);
             x0c = xi;
 
             /* Add all in x1 marked as ADD in x1vec */
@@ -1400,7 +1466,7 @@ xml_diff2cbuf(cbuf  *cb,
                 }
             }
             while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
-                   xml_spec(xj) == yc1);
+                   xml_spec(xj) == y1c);
             x1c = xj;
             continue;
         }
@@ -1430,7 +1496,7 @@ xml_diff2cbuf(cbuf  *cb,
             /* xml-spec NULL could happen with anydata children for example,
              * if so, continute compare children but without yang
              */
-            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+            if (y0c && y1c && y0c != y1c){ /* choice */
                 if (nr==0 && skiptop==0){
                     xml_diff_context(cb, x0, level1);
                     xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
@@ -1441,48 +1507,27 @@ xml_diff2cbuf(cbuf  *cb,
                 if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
                     goto done;
             }
-            else if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+            else if (y0c && yang_keyword_get(y0c) == Y_LEAF){
                 /* if x0c and x1c are leafs w bodies, then they may be changed */
-                b0 = xml_body(x0c);
-                b1 = xml_body(x1c);
                 if (b0 == NULL && b1 == NULL)
                     ;
-                else if (b0 == NULL || b1 == NULL
-                         || strcmp(b0, b1) != 0){
-                    if (nr==0 && skiptop==0){
-                        xml_diff_context(cb, x0, level1);
-                        xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
-                        nr++;
-                    }
-                    /* Encode data to XML */
-                    if (b0){
-                        if (xml_chardata_encode(&e0, "%s", b0) < 0)
-                            goto done;
-                    }
-                    else
-                        e0 = NULL;
-                    if (b1){
-                        if (xml_chardata_encode(&e1, "%s", b1) < 0)
-                            goto done;
-                    }
-                    else
-                        e1 = NULL;
-                    cprintf(cb, "-%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
-                            xml_name(x0c), e0, xml_name(x0c));
-                    cprintf(cb, "+%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
-                            xml_name(x1c), e1, xml_name(x1c));
-                    if (e0){
-                        free(e0);
-                        e0 = NULL;
-                    }
-                    if (e1){
-                        free(e1);
-                        e1 = NULL;
-                    }
+                else if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0){
+                    if (xml_diff2cbuf_leaf(cb, x0, x1, level, skiptop,
+                                           y0, x0c, x1c, b0, b1, &nr) < 0)
+                        goto done;
+                }
+            }
+            else if (y0c == NULL && y1c == NULL && (b0 || b1)) {
+                /* Special case for anydata terminals */
+                if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0){
+                    if (xml_diff2cbuf_leaf(cb, x0, x1, level, skiptop,
+                                           y0, x0c, x1c, b0, b1, &nr) < 0)
+                        goto done;
                 }
             }
             else if (xml_diff2cbuf(cb, x0c, x1c, level+1, 0) < 0)
                 goto done;
+
         }
         /* Get next */
         x0c = xml_child_each(x0, x0c, CX_ELMNT);
@@ -1493,10 +1538,6 @@ xml_diff2cbuf(cbuf  *cb,
         cprintf(cb, "%*s</%s>\n", level*PRETTYPRINT_INDENT, "", xml_name(x0));
     retval = 0;
  done:
-    if (e0)
-        free(e0);
-    if (e1)
-        free(e1);
     return retval;
 }
 

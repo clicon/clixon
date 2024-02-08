@@ -669,8 +669,8 @@ text_diff2cbuf(cbuf  *cb,
     int        retval = -1;
     cxobj     *x0c = NULL; /* x0 child */
     cxobj     *x1c = NULL; /* x1 child */
-    yang_stmt *yc0;
-    yang_stmt *yc1;
+    yang_stmt *y0c;
+    yang_stmt *y1c;
     char      *b0;
     char      *b1;
     int        eq;
@@ -699,19 +699,19 @@ text_diff2cbuf(cbuf  *cb,
         if (x0c == NULL && x1c == NULL)
             goto ok;
         else {
-            yc0 = NULL;
-            yc1 = NULL;
+            y0c = NULL;
+            y1c = NULL;
             /* If cl:ignore-compare extension, skip */
-            if (x0c && (yc0 = xml_spec(x0c)) != NULL){
-                if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+            if (x0c && (y0c = xml_spec(x0c)) != NULL){
+                if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                     goto done;
                 if (extflag){ /* skip */
                     x0c = xml_child_each(x0, x0c, CX_ELMNT);
                     continue;
                 }
             }
-            if (x1c && (yc1 = xml_spec(x1c)) != NULL){
-                if (yang_extension_value(yc1, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+            if (x1c && (y1c = xml_spec(x1c)) != NULL){
+                if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                     goto done;
                 if (extflag){ /* skip */
                     x1c = xml_child_each(x1, x1c, CX_ELMNT);
@@ -751,8 +751,10 @@ text_diff2cbuf(cbuf  *cb,
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        if (eq && yc0 && yc1 && yc0 == yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
-            if (text_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, yc0,
+        b0 = xml_body(x0c);
+        b1 = xml_body(x1c);
+        if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
+            if (text_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, y0c,
                                               level, skiptop) < 0)
                 goto done;
             /* Add all in x0 marked as DELETE in x0vec 
@@ -776,7 +778,7 @@ text_diff2cbuf(cbuf  *cb,
                 }
             }
             while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
-                   xml_spec(xi) == yc0);
+                   xml_spec(xi) == y0c);
             x0c = xi;
 
             /* Add all in x1 marked as ADD in x1vec */
@@ -798,7 +800,7 @@ text_diff2cbuf(cbuf  *cb,
                 }
             }
             while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
-                   xml_spec(xj) == yc1);
+                   xml_spec(xj) == y1c);
             x1c = xj;
             continue;
         }
@@ -833,7 +835,7 @@ text_diff2cbuf(cbuf  *cb,
             continue;
         }
         else{ /* equal */
-            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+            if (y0c && y1c && y0c != y1c){ /* choice */
                 if (nr==0 && skiptop==0){
                     cprintf(cb, "%*s", level1, "");
                     if (prefix)
@@ -846,13 +848,10 @@ text_diff2cbuf(cbuf  *cb,
                 if (text2cbuf(cb, x1c, level+1, "+", 0, &leafl, &leaflname) < 0)
                     goto done;
             }
-            else if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
-                b0 = xml_body(x0c);
-                b1 = xml_body(x1c);
+            else if (y0c && yang_keyword_get(y0c) == Y_LEAF){
                 if (b0 == NULL && b1 == NULL)
                     ;
-                else if (b0 == NULL || b1 == NULL
-                         || strcmp(b0, b1) != 0){
+                else if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0) {
                     if (nr==0 && skiptop == 0){
                         cprintf(cb, "%*s", level1, "");
                         if (prefix)
@@ -862,8 +861,24 @@ text_diff2cbuf(cbuf  *cb,
                         cprintf(cb, " {\n");
                         nr++;
                     }
-                    cprintf(cb, "-%*s%s %s;\n", level1+PRETTYPRINT_INDENT-1, "", xml_name(x0c), b0);
-                    cprintf(cb, "+%*s%s %s;\n", level1+PRETTYPRINT_INDENT-1, "", xml_name(x1c), b1);
+                    cprintf(cb, "-%*s%s \"%s\";\n", level1+PRETTYPRINT_INDENT-1, "", xml_name(x0c), b0);
+                    cprintf(cb, "+%*s%s \"%s\";\n", level1+PRETTYPRINT_INDENT-1, "", xml_name(x1c), b1);
+                }
+            }
+            else if (y0c == NULL && y1c == NULL && (b0 || b1)) {
+                /* Special case for anydata terminals */
+                if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0) {
+                    if (nr==0 && skiptop == 0){
+                        cprintf(cb, "%*s", level1, "");
+                        if (prefix)
+                            cprintf(cb, "%s:", prefix);
+                        cprintf(cb, "%s", xml_name(x0));
+                        text_diff_keys(cb, x0, y0);
+                        cprintf(cb, " {\n");
+                        nr++;
+                    }
+                    cprintf(cb, "-%*s%s \"%s\";\n", level1+PRETTYPRINT_INDENT-1, "", xml_name(x0c), b0);
+                    cprintf(cb, "+%*s%s \"%s\";\n", level1+PRETTYPRINT_INDENT-1, "", xml_name(x1c), b1);
                 }
             }
             else if (text_diff2cbuf(cb, x0c, x1c, level+1, 0) < 0)
