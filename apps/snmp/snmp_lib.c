@@ -117,6 +117,7 @@ static const map_str2int snmp_type_map[] = {
  */
 static const map_str2int snmp_orig_map[] = {
     {"counter32",             ASN_COUNTER},   // 0x41 / 65
+    {"bits",                  ASN_OCTET_STR}, // 3
     {"object-identifier-128", ASN_OBJECT_ID}, // 6
     {"AutonomousType",        ASN_OBJECT_ID}, // 6
     {"DateAndTime",           ASN_OCTET_STR}, // 4
@@ -610,6 +611,12 @@ type_yang2asn1(yang_stmt    *ys,
             (strcmp(display_hint, "255a")==0 ||
              strcmp(display_hint, "255t")==0))
             at = CLIXON_ASN_FIXED_STRING;
+
+        /* Special case for bits type because netsnmp lib returns ASN_OCTET_STRING. In this case
+           we have to define an extended type to be able to handle bits type correctly later on. */
+        if (strcmp(restype, "bits") == 0) {
+            at = CLIXON_ASN_BIT_STRING;
+        }
     }
     if (asn1_type)
         *asn1_type = at;
@@ -647,6 +654,7 @@ type_snmp2xml(yang_stmt                  *ys,
     char        *restype = NULL;         /* resolved type */
     char        *origtype = NULL; /* original type */
     yang_stmt   *yrestype = NULL;
+    cbuf        *cb = NULL;
     int          ret;
 
     clixon_debug(CLIXON_DBG_SNMP, "");
@@ -705,6 +713,21 @@ type_snmp2xml(yang_stmt                  *ys,
     case ASN_GAUGE:     // 0x42
         cv_uint32_set(cv, *requestvb->val.integer);
         break;
+    case CLIXON_ASN_BIT_STRING: { /* special case for bit string */
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        
+        if ((ret = yang_val2bitsstr(yrestype, requestvb->val.bitstring, requestvb->val_len, cb)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits value");
+            goto fail;
+        }
+        cv_strncpy(cv, cbuf_get(cb), cbuf_len(cb));
+        break;
+    }
     case ASN_IPADDRESS:{
         struct in_addr addr;
         memcpy(&addr.s_addr, requestvb->val.string, 4);
@@ -752,6 +775,8 @@ type_snmp2xml(yang_stmt                  *ys,
         free(origtype);
     if (cv)
         cv_free(cv);
+    if (cb)
+        cbuf_free(cb);
     return retval;
  fail:
     retval = 0;
@@ -830,6 +855,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     else{
         str = xmlstr0;
     }
+
     if ((*xmlstr1 = strdup(str)) == NULL){
         clixon_err(OE_UNIX, errno, "strdup");
         goto done;
@@ -848,6 +874,7 @@ type_xml2snmp_pre(char      *xmlstr0,
 /*! Given snmp string value (as translated from XML) parse into snmp value
  *
  * @param[in]     snmpstr  SNMP type string
+ * @param[in]     ys       YANG node
  * @param[in,out] asn1type ASN.1 type id
  * @param[out]    snmpval  Malloc:ed snmp type
  * @param[out]    snmplen  Length of snmp type
@@ -860,18 +887,24 @@ type_xml2snmp_pre(char      *xmlstr0,
  */
 int
 type_xml2snmp(char       *snmpstr,
+              yang_stmt  *ys,
               int        *asn1type,
               u_char    **snmpval,
               size_t     *snmplen,
               char      **reason)
 {
-    int   retval = -1;
-    int   ret;
+    int        retval = -1;
+    int        ret;
+    yang_stmt *yrestype;        /* resolved type */
 
     if (snmpval == NULL || snmplen == NULL){
         clixon_err(OE_UNIX, EINVAL, "snmpval or snmplen is NULL");
         goto done;
     }
+
+    if (snmp_yang_type_get(ys, NULL, NULL, &yrestype, NULL)) // XXX yrestype
+        goto done;
+
     switch (*asn1type){
     case CLIXON_ASN_ROWSTATUS:
         *asn1type = ASN_INTEGER;
@@ -974,6 +1007,16 @@ type_xml2snmp(char       *snmpstr,
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
+        *asn1type = ASN_OCTET_STR;
+        break;
+    case CLIXON_ASN_BIT_STRING:
+        if ((ret = yang_bitsstr2val(yrestype, snmpstr, snmpval, snmplen)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits valstr %s", snmpstr);
+            goto fail;
+        }
+
         *asn1type = ASN_OCTET_STR;
         break;
     default:

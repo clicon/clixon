@@ -1589,6 +1589,217 @@ yang_enum2int(yang_stmt *ytype,
     return retval;
 }
 
+/*! Given a YANG (bits) type node and a bit string, return the bit position.
+ * Example:
+ *
+ * type bits {
+ *     bit stateA {
+ *         position "0"; << This one
+ *     }
+ *     bit stateB {
+ *         position "1"; << And this one
+ *     }
+ * }
+ * 
+ * If the position is not specified, it will be automatically assigned as defined
+ * in RFC7950, section 9.7.4.2
+ * 
+ * @param[in]  ytype  YANG type noden
+ * @param[in]  bitstr bit (flag) string
+ * @param[out] bitpos position for the given bit (flag)
+ * @retval     1      OK, result in flagpos
+ * @retval     0      Invalid, not found
+ * @retval    -1      Error
+ */
+int yang_bits_pos(yang_stmt *ytype, char *bitstr, uint32_t *bitpos) {
+    int retval = 0;
+    int ret = 0;
+    int is_first = 1;
+    char *reason;
+
+    yang_stmt *yprev = NULL;
+    yang_stmt *ypos = NULL;
+    while ((yprev = yn_each(ytype, yprev)) != NULL) {
+        
+        // Check for the given bit name (flag)
+        if (yang_keyword_get(yprev) == Y_BIT) {
+            
+            // Use position from Y_POSITION statement if defined
+            if ((ypos = yang_find(yprev, Y_POSITION, NULL)) != NULL) {
+                if ((ret = parse_uint32(yang_argument_get(ypos), bitpos, &reason)) < 0) {
+                    clixon_err(OE_UNIX, EINVAL, "cannot parse bit position val: %s", reason);
+                    goto done;
+                }
+                if (ret == 0) 
+                    goto fail;
+            } else {
+                // Position not defined. Use last known position + 1 (skip first node to start with 0)
+                if (is_first == 0) (*bitpos)++;
+            }
+
+            if (strcmp(bitstr,  yang_argument_get(yprev)) == 0) {
+                retval = 1;
+                goto done;
+            }
+
+            is_first = 0;
+        }
+    }
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "flag %s not found", bitstr);
+    goto fail;
+
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Given a YANG (bits) type node and string value, return the 
+ *  SNMP value for all bits (flags) that are set.
+ *
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  bitsstr Value of bits as space separated string
+ * @param[out] snmpval SNMP value with all bits set for given bitsstr
+ * @param[out] snmplen length of snmpval
+ * @retval     1       OK, result in snmpval
+ * @retval     0       Invalid, not found
+ * @retval    -1       Error
+ * @see yang_val2bitsstr
+ */
+int
+yang_bitsstr2val(yang_stmt *ytype,
+                 char      *bitsstr,
+                 u_char   **snmpval,
+                 size_t    *snmplen)
+{
+    int      retval = -1;
+    int      i = 0;
+    int      byte = 0;
+    char   **vec = NULL;
+    char    *v;
+    char    *buffer = NULL;
+    int      nvec;
+    int      ret = 0;
+    uint32_t bitpos;
+
+    *snmplen = 0;
+
+    if ((buffer = calloc(CLIXON_BITS_POS_MAX / 8, sizeof(u_char))) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+
+    if ((vec = clicon_strsep(bitsstr, " ", &nvec)) == NULL) {
+        clixon_err(OE_UNIX, EINVAL, "split string failed");
+        goto done;
+    }
+
+    // Go over all set flags in given bitstring
+    for (i=0; i<nvec; i++){
+        v = vec[i]; 
+        if ((ret = yang_bits_pos(ytype, v, &bitpos)) < 0) 
+            goto done;
+        if (ret == 0)
+            goto fail;
+
+        // Set bit at correct byte and bit position
+        byte = bitpos / 8;
+        buffer[byte] = buffer[byte] | (1 << (7 - (bitpos % 8)));
+        *snmplen = byte + 1;
+
+        if (*snmplen >= CLIXON_BITS_POS_MAX) {
+            clixon_err(OE_UNIX, EINVAL, "bit position %ld out of range. (max. allowed %d)", 
+                      *snmplen, CLIXON_BITS_POS_MAX);
+            goto done;
+        }
+    }
+
+    if ((*snmpval = malloc(*snmplen)) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+
+    memcpy(*snmpval, buffer, *snmplen);
+    retval = 1;
+
+ done:
+    if (buffer)
+        free(buffer);
+    if (vec)
+        free(vec);
+    return retval;
+
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Given a YANG (bits) type node and SNMP value, return the string value for all bits (flags) that are set.
+ *
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  snmpval SNMP value
+ * @param[in]  snmplen length of snmpval
+ * @param[out] cb      space separated string with bit labes for all bits that are set in snmpval
+ * @retval     1       OK, result in cb
+ * @retval     0       Invalid, not found
+ * @retval    -1       Error
+ * @see yang_bitsstr2val
+ */
+int 
+yang_val2bitsstr(yang_stmt *ytype, unsigned char *snmpval, size_t snmplen, cbuf *cb) {
+    int        retval = -1;
+    int        is_first = 1;
+    int        ret = 0;
+    int        byte = 0;
+    char      *reason;
+    yang_stmt *yprev = NULL;
+    yang_stmt *ypos;
+    uint32_t   bitpos = 0;
+
+    if (cb == NULL) {
+        clixon_err(OE_UNIX, EINVAL, "cb is NULL");
+        goto done;
+    }
+
+    // Go over all defined bits and check if it is seet in intval
+    while ((yprev = yn_each(ytype, yprev)) != NULL && byte < snmplen) {
+        if (yang_keyword_get(yprev) == Y_BIT) {
+            // Use position from Y_POSITION statement if defined
+            if ((ypos = yang_find(yprev, Y_POSITION, NULL)) != NULL) {
+                if ((ret = parse_uint32(yang_argument_get(ypos), &bitpos, &reason)) < 0) {
+                    clixon_err(OE_UNIX, EINVAL, "cannot parse bit position val: %s", reason);
+                    goto done;
+                }
+                if (ret == 0) 
+                    goto fail;
+            } else {
+                // Position not defined. Use last known position + 1 (skip first node to start with 0)
+                if (is_first == 0) bitpos++;
+            }
+
+            byte = bitpos / 8;
+            if (snmpval[byte] & (1 << (7 - (bitpos % 8)))) {
+                if (is_first == 0) cbuf_append_str(cb, " ");
+                cbuf_append_str(cb, yang_argument_get(yprev));
+            }
+
+            is_first = 0;
+        }
+    }
+    // append space if no flag is set to indicate that 
+    if (cbuf_len(cb) == 0)
+        cbuf_append_str(cb, " ");
+    retval = 1;
+
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Get integer value from xml node from yang enumeration 
  *
  * @param[in]  node XML node in a tree
