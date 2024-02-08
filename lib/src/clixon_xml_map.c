@@ -1669,10 +1669,10 @@ int yang_bits_pos(yang_stmt *ytype, char *bitstr, uint32_t *bitpos) {
  * @see yang_val2bitsstr
  */
 int
-yang_bitsstr2val(yang_stmt *ytype,
-                 char      *bitsstr,
-                 u_char   **snmpval,
-                 size_t    *snmplen)
+yang_bitsstr2val(yang_stmt     *ytype,
+                 char          *bitsstr,
+                 unsigned char **snmpval,
+                 size_t         *snmplen)
 {
     int      retval = -1;
     int      i = 0;
@@ -1686,7 +1686,7 @@ yang_bitsstr2val(yang_stmt *ytype,
 
     *snmplen = 0;
 
-    if ((buffer = calloc(CLIXON_BITS_POS_MAX / 8, sizeof(u_char))) == NULL){
+    if ((buffer = calloc(CLIXON_BITS_POS_MAX / 8, sizeof(unsigned char))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
