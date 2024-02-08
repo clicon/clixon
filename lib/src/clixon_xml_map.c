@@ -1710,7 +1710,7 @@ yang_bitsstr2val(yang_stmt *ytype,
         *snmplen = byte + 1;
 
         if (*snmplen >= CLIXON_BITS_POS_MAX) {
-            clixon_err(OE_UNIX, EINVAL, "bit position %ld out of range. (max. allowed %d)", 
+            clixon_err(OE_UNIX, EINVAL, "bit position %zu out of range. (max. allowed %d)", 
                       *snmplen, CLIXON_BITS_POS_MAX);
             goto done;
         }
