@@ -373,8 +373,9 @@ xml_diff_ordered_by_user(cxobj     *x0,
  * (*) "comparing" a&b here is made by xml_cmp() which judges equality from a structural
  *     perspective, ie both have the same yang spec, if they are lists, they have the
  *     the same keys. NOT that the values are equal!
- * @see xml_diff  API function, this one is internal and recursive
  * @see xml_diff2cbuf, clixon_text_diff2cbuf  for +/- diff for XML and TEXT formats
+ * @see text_diff2cbuf for curly
+ * @see xml_tree_equal Equal or not
  * @note reordering in ordered-by user is NOT supported
  */
 static int
@@ -391,13 +392,14 @@ xml_diff1(cxobj     *x0,
     int        retval = -1;
     cxobj     *x0c = NULL; /* x0 child */
     cxobj     *x1c = NULL; /* x1 child */
-    yang_stmt *yc0;
-    yang_stmt *yc1;
+    yang_stmt *y0c;
+    yang_stmt *y1c;
     char      *b0;
     char      *b1;
     int        eq;
     cxobj     *xi;
     cxobj     *xj;
+    int        extflag;
 
     /* Traverse x0 and x1 in lock-step */
     x0c = x1c = NULL;
@@ -406,7 +408,32 @@ xml_diff1(cxobj     *x0,
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
-        else if (x0c == NULL){
+        /* If cl:ignore-compare extension, return equal */
+        if (x0c && (y0c = xml_spec(x0c)) != NULL){
+            if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag){ /* skip */
+                if (x1c) {
+                    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                    continue;
+                }
+                else
+                    goto ok;
+            }
+        }
+        if (x1c && (y1c = xml_spec(x1c)) != NULL){
+            if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag){ /* skip */
+                if (x1c) {
+                    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                    continue;
+                }
+                else
+                    goto ok;
+            }
+        }
+        if (x0c == NULL){
             if (cxvec_append(x1c, x1vec, x1veclen) < 0)
                 goto done;
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
@@ -420,11 +447,9 @@ xml_diff1(cxobj     *x0,
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        yc0 = xml_spec(x0c);
-        yc1 = xml_spec(x1c);
         /* override ordered-by user with special look-ahead checks */
-        if (eq && yc0 && yc1 && yc0 == yc1 && yang_find(yc0, Y_ORDERED_BY, "user")){
-            if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, yc0,
+        if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
+            if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, y0c,
                                          x0vec, x0veclen, x1vec, x1veclen,
                                          changed_x0, changed_x1, changedlen) < 0)
                 goto done;
@@ -439,7 +464,7 @@ xml_diff1(cxobj     *x0,
                 }
             }
             while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
-                   xml_spec(xi) == yc0);
+                   xml_spec(xi) == y0c);
             x0c = xi;
 
             /* Add all in x1 marked as ADD in x1vec */
@@ -450,7 +475,7 @@ xml_diff1(cxobj     *x0,
                         goto done;
             }
             while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
-                   xml_spec(xj) == yc1);
+                   xml_spec(xj) == y1c);
             x1c = xj;
             continue;
         }
@@ -470,13 +495,13 @@ xml_diff1(cxobj     *x0,
             /* xml-spec NULL could happen with anydata children for example,
              * if so, continute compare children but without yang
              */
-            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+            if (y0c && y1c && y0c != y1c){ /* choice */
                 if (cxvec_append(x0c, x0vec, x0veclen) < 0)
                     goto done;
                 if (cxvec_append(x1c, x1vec, x1veclen) < 0)
                     goto done;
             }
-            else if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+            else if (y0c && yang_keyword_get(y0c) == Y_LEAF){
                 /* if x0c and x1c are leafs w bodies, then they may be changed */
                 b0 = xml_body(x0c);
                 b1 = xml_body(x1c);
@@ -594,6 +619,8 @@ xml_tree_equal(cxobj     *x0,
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
+        y0c = NULL;
+        y1c = NULL;
         /* If cl:ignore-compare extension, return equal */
         if (x0c && (y0c = xml_spec(x0c)) != NULL){
             if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)

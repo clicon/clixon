@@ -202,8 +202,9 @@ module clixon-lib {
     extension ignore-compare {
         description
             "The object should be ignored when comparing device configs for equality.
-             One example is auto-created objects by the server, such as uid.
-             Another example is a plain-text password is changed to an encrypted by the server.";
+             The object should never be added, modified, or deleted on target.
+             Essentially a read-only object
+             One example is auto-created objects by the , such as uid.";
     }
     md:annotation creator {
         type string;

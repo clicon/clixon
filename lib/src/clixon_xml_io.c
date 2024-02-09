@@ -1379,49 +1379,47 @@ xml_diff2cbuf(cbuf  *cb,
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
-        else {
-            y0c = NULL;
-            y1c = NULL;
-            /* If cl:ignore-compare extension, skip */
-            if (x0c && (y0c = xml_spec(x0c)) != NULL){
-                if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
-                    goto done;
-                if (extflag){ /* skip */
-                    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-                    continue;
-                }
-            }
-            if (x1c && (y1c = xml_spec(x1c)) != NULL){
-                if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
-                    goto done;
-                if (extflag){ /* skip */
-                    x1c = xml_child_each(x1, x1c, CX_ELMNT);
-                    continue;
-                }
-            }
-            if (x0c == NULL){
-                /* Check if one or both subtrees are NULL */
-                if (nr==0 && skiptop==0){
-                    xml_diff_context(cb, x1, level1);
-                    xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
-                    nr++;
-                }
-                if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
-                    goto done;
-                x1c = xml_child_each(x1, x1c, CX_ELMNT);
-                continue;
-            }
-            else if (x1c == NULL){
-                if (nr==0 && skiptop==0){
-                    xml_diff_context(cb, x0, level1);
-                    xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
-                    nr++;
-                }
-                if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
-                    goto done;
+        y0c = NULL;
+        y1c = NULL;
+        /* If cl:ignore-compare extension, skip */
+        if (x0c && (y0c = xml_spec(x0c)) != NULL){
+            if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag){ /* skip */
                 x0c = xml_child_each(x0, x0c, CX_ELMNT);
                 continue;
             }
+        }
+        if (x1c && (y1c = xml_spec(x1c)) != NULL){
+            if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag){ /* skip */
+                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                continue;
+            }
+        }
+        if (x0c == NULL){
+            /* Check if one or both subtrees are NULL */
+            if (nr==0 && skiptop==0){
+                xml_diff_context(cb, x1, level1);
+                xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
+                nr++;
+            }
+            if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
+                goto done;
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        else if (x1c == NULL){
+            if (nr==0 && skiptop==0){
+                xml_diff_context(cb, x0, level1);
+                xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
+                nr++;
+            }
+            if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
+                goto done;
+            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            continue;
         }
         /* Both x0c and x1c exists, check if yang equal */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
