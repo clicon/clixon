@@ -174,7 +174,7 @@ function testrun()
         "STRING")
             set_type="s"
             ;;
-        "HEX STRING")
+        "Hex-STRING")
             set_type="x"
             ;;
         "TIMETICKS")
@@ -195,23 +195,28 @@ function testrun()
     esac
 
     new "Set $name via SNMP"
-    if [ $type == "STRING" ]; then
+    if [ "$type" == "STRING" ]; then
         echo "$snmpset $oid_in $set_type $value"
         expectpart "$($snmpset $oid_in $set_type $value)" 0 "$type:" "$value"
+    elif [ "$type" == "Hex-STRING" ]; then
+        echo "$snmpset $oid_in $set_type \"$value\""
+        expectpart "$($snmpset $oid_in $set_type "$value")" 0 "$type:" ""$value""
     else
         echo "$snmpset $oid_in $set_type $value2"
-        expectpart "$($snmpset $oid_in $set_type $value)" 0 "$type: $value2"
+        expectpart "$($snmpset $oid_in $set_type $value)" 0 "$type: $value2" 
     fi
 
     new "Check $name via SNMP"
     if [ "$type" == "STRING" ]; then
         expectpart "$($snmpget $oid_out)" 0 "$type:" "$value"
+    elif [ "$type" == "Hex-STRING" ]; then
+        expectpart "$($snmpget $oid_out)" 0 "$type:" ""$value""
     else
         expectpart "$($snmpget $oid_out)" 0 "$type: $value2"
     fi
 
     new "Check $name via CLI"
-    expectpart "$($clixon_cli -1 -f $cfg show config xml)" 0 "<$name>$xvalue</$name>"    
+    expectpart "$($clixon_cli -1 -f $cfg show config xml)" 0 "<$name>$xvalue</$name>"
 }
 
 function testexit(){
@@ -241,6 +246,7 @@ testrun clixonExampleSleeper INTEGER -1 -1 -1 ${MIB}.1.2.0 ${MIB}.1.2.0
 testrun clixonExampleString STRING foobar foobar foobar ${MIB}.1.3.0 ${MIB}.1.3.0
 testrun ifPromiscuousMode INTEGER 1 1 true ${MIB}.1.10.0  ${MIB}.1.10.0 # boolean
 testrun ifIpAddr IPADDRESS 1.2.3.4 1.2.3.4 1.2.3.4 ${MIB}.1.13.0  ${MIB}.1.13.0 # InetAddress
+testrun bitTest "Hex-STRING" "00 20 00 00 00" "00 20 00 00 00" "bit10" ${MIB}.1.14.0  ${MIB}.1.14.0 # bitTest
 # XXX It was supposed to test writing hardware address type, but it is also read-only
 #testrun ifPhysAddress STRING ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ff:ee:dd:cc:bb:aa ${IFMIB}.2.2.1.6.1
 
