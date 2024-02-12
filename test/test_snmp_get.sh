@@ -279,13 +279,13 @@ new "Test SNMP get nsIETFWGName"
 validate_oid $OID15 $OID15 "INTEGER" 42
 
 new "Test SNMP getnext nsIETFWGName"
-expectpart "$($snmpgetnext $OID15)" 0 "Hex-STRING: 4E 61 6D 65 31 00"
+expectpart "$($snmpgetnext $OID15)" 0 "STRING: \"Name1\""
 
 new "Test SNMP getnext netSnmpHostsTable"
-expectpart "$($snmpgetnext $OID18)" 0 "$OID19 = Hex-STRING: 74 65 73 74 00"
+expectpart "$($snmpgetnext $OID18)" 0 "$OID19 = STRING: \"test\""
 
 new "Test SNMP get netSnmpHostName"
-expectpart "$($snmpget $OID19)" 0 "$OID19 = Hex-STRING: 74 65 73 74 00"
+expectpart "$($snmpget $OID19)" 0 "$OID19 = STRING: \"test\""
 
 new "Test SNMP getnext netSnmpHostName"
 expectpart "$($snmpgetnext $OID19)" 0 "$OID20 = INTEGER: 1"
