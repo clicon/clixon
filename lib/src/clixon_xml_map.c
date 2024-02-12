@@ -1698,21 +1698,23 @@ yang_bitsstr2val(yang_stmt     *ytype,
 
     // Go over all set flags in given bitstring
     for (i=0; i<nvec; i++){
-        v = vec[i]; 
-        if ((ret = yang_bits_pos(ytype, v, &bitpos)) < 0) 
-            goto done;
-        if (ret == 0)
-            goto fail;
+        v = clixon_trim(vec[i]);
+        if (strlen(v) > 0) {
+            if ((ret = yang_bits_pos(ytype, v, &bitpos)) < 0) 
+                goto done;
+            if (ret == 0)
+                goto fail;
 
-        // Set bit at correct byte and bit position
-        byte = bitpos / 8;
-        buffer[byte] = buffer[byte] | (1 << (7 - (bitpos % 8)));
-        *snmplen = byte + 1;
+            // Set bit at correct byte and bit position
+            byte = bitpos / 8;
+            buffer[byte] = buffer[byte] | (1 << (7 - (bitpos % 8)));
+            *snmplen = byte + 1;
 
-        if (*snmplen >= CLIXON_BITS_POS_MAX) {
-            clixon_err(OE_UNIX, EINVAL, "bit position %zu out of range. (max. allowed %d)", 
-                      *snmplen, CLIXON_BITS_POS_MAX);
-            goto done;
+            if (*snmplen >= CLIXON_BITS_POS_MAX) {
+                clixon_err(OE_UNIX, EINVAL, "bit position %zu out of range. (max. allowed %d)",
+                        *snmplen, CLIXON_BITS_POS_MAX);
+                goto done;
+            }
         }
     }
 
