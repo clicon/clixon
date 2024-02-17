@@ -408,6 +408,8 @@ xml_diff1(cxobj     *x0,
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
+        y0c = NULL;
+        y1c = NULL;
         /* If cl:ignore-compare extension, return equal */
         if (x0c && (y0c = xml_spec(x0c)) != NULL){
             if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)

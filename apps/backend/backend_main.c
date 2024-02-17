@@ -569,7 +569,7 @@ main(int    argc,
             help = 1; 
             break;
         case 'V':
-            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION_STRING);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : { /* debug */

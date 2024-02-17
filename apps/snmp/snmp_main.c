@@ -381,7 +381,7 @@ main(int    argc,
             usage(h, argv[0]);
             break;
         case 'V': /* version */
-            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION_STRING);
             exit(0);
             break;
         case 'D' : { /* debug */
