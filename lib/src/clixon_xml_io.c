@@ -1205,9 +1205,8 @@ xml_diff_context(cbuf  *cb,
  * @param[in]  x1      Second XML tree
  * @param[in]  x0c     Start of sublist in first XML tree
  * @param[in]  x1c     Start of sublist in second XML tree
- * @param[in]  yc      Yang of x0c/x1c
+ * @param[in]  yc      Yang of x0c/x1c. If NULL special case of anydata
  * @param[in]  level   How many spaces to insert before each line
- * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children,
  * @retval     0       Ok
  * @retval    -1       Error
  * @see xml_diff_ordered_by_user
@@ -1220,15 +1219,14 @@ xml_diff2cbuf_ordered_by_user(cbuf      *cb,
                               cxobj     *x0c,
                               cxobj     *x1c,
                               yang_stmt *yc,
-                              int        level,
-                              int        skiptop)
+                              int        level)
 {
     int    retval = 1;
     cxobj *xi;
     cxobj *xj;
 
     xj = x1c;
-    do {
+    do { /* Mark all  x1 as ADD */
         xml_flag_set(xj, XML_FLAG_ADD);
     } while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
              xml_spec(xj) == yc);
@@ -1426,11 +1424,9 @@ xml_diff2cbuf(cbuf  *cb,
         b0 = xml_body(x0c);
         b1 = xml_body(x1c);
         if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
-            if (xml_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, y0c,
-                                              level, skiptop) < 0)
+            if (xml_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, y0c, level) < 0)
                 goto done;
-            /* Add all in x0 marked as DELETE in x0vec
-             * Flags can remain: XXX should apply to all
+            /* Show all marked as DELETE as - entries
              */
             xi = x0c;
             do {
@@ -1447,9 +1443,9 @@ xml_diff2cbuf(cbuf  *cb,
             }
             while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
                    xml_spec(xi) == y0c);
-            x0c = xi;
-
-            /* Add all in x1 marked as ADD in x1vec */
+            x0c = xi; /* skip entries in this yang class */
+            /* Show all marked as ADD as + entries
+             */
             xj = x1c;
             do {
                 if (xml_flag(xj, XML_FLAG_ADD)){
@@ -1467,7 +1463,7 @@ xml_diff2cbuf(cbuf  *cb,
                    xml_spec(xj) == y1c);
             x1c = xj;
             continue;
-        }
+        } /* ordered-by user */
         else if (eq < 0){
             if (nr==0 && skiptop==0){
                 xml_diff_context(cb, x0, level1);
@@ -1515,8 +1511,7 @@ xml_diff2cbuf(cbuf  *cb,
                         goto done;
                 }
             }
-            else if (y0c == NULL && y1c == NULL && (b0 || b1)) {
-                /* Special case for anydata terminals */
+            else if (y0c == NULL && y1c == NULL && (b0 || b1)) { /* Anydata terminals */
                 if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0){
                     if (xml_diff2cbuf_leaf(cb, x0, x1, level, skiptop,
                                            y0, x0c, x1c, b0, b1, &nr) < 0)
