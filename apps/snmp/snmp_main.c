@@ -553,7 +553,7 @@ main(int    argc,
             goto done;
         goto ok;
     }
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
 
     /* Send hello request to backend to get session-id back
      * This is done once at the beginning of the session and then this is

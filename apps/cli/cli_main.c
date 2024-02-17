@@ -894,7 +894,7 @@ main(int    argc,
             goto done;
     }
     /* Debug dump of config options */
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
 
     cligen_line_scrolling_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_LINESCROLLING"));
     /* Start CLI history and load from file */

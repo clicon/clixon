@@ -574,7 +574,7 @@ main(int    argc,
         goto ok;
     }
     /* Dump configuration options on debug */
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
 
     /* Call start function in all plugins before we go interactive */
     if (clixon_plugin_start_all(h) < 0)

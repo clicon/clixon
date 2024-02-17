@@ -839,7 +839,7 @@ restconf_openssl_init(clixon_handle h,
         /* If debug was enabled here from config and not initially,
          * print clixn options and loaded yang files
          */
-        clicon_option_dump(h, 1);
+        clicon_option_dump(h, CLIXON_DBG_INIT);
     }
     if ((x = xpath_first(xrestconf, nsc, "enable-core-dump")) != NULL) {
         /* core dump is enabled on RESTCONF process */
@@ -1318,7 +1318,7 @@ main(int    argc,
         goto ok;
     }
     /* Dump configuration options on debug */
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
 
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)

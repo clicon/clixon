@@ -983,7 +983,6 @@ yang2cli_container(clixon_handle h,
             cprintf(cb, ", hide");
         }
         cprintf(cb, ", act-container;{\n");
-
     }
     /* Is schema mount-point? */
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
@@ -1315,8 +1314,9 @@ yang2cli_stmt(clixon_handle h,
                 goto done;
             break;
         case Y_USES:
-            if (grouping_treeref && !cornercase && yang2cli_uses(h, ys, level, cb) < 0)
-                goto done;
+            if (grouping_treeref && !cornercase)
+                if (yang2cli_uses(h, ys, level, cb) < 0)
+                    goto done;
             break;
         case Y_CASE:
         case Y_SUBMODULE:

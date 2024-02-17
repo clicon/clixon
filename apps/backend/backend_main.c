@@ -1050,7 +1050,7 @@ main(int    argc,
         goto ok;
 
     /* Debug dump of config options */
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
     
     /* Daemonize and initiate logging. Note error is initiated here to make
        daemonized errors OK. Before this stage, errors are logged on stderr 
