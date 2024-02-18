@@ -961,7 +961,7 @@ restconf_clixon_init(clixon_handle h,
     if (print_version){
         if (clixon_plugin_version_all(h, stdout) < 0)
             goto done;
-        exit(0);
+        goto ok;
     }
     /* Create a pseudo-plugin to create extension callback to set the ietf-routing
      * yang-data extension for api-root top-level restconf function.
@@ -1068,6 +1068,7 @@ restconf_clixon_init(clixon_handle h,
         if (ret == 0)
             goto fail;
     }
+ ok:
     retval = 1;
  done:
     if (xerr)

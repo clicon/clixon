@@ -876,7 +876,7 @@ main(int    argc,
     if (print_version){
         if (clixon_plugin_version_all(h, stdout) < 0)
             goto done;
-        exit(0);
+        goto ok;
     }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */

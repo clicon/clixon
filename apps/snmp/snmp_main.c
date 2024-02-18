@@ -358,6 +358,7 @@ main(int    argc,
     int            zap = 0;
     int           config_dump = 0;
     enum format_enum config_dump_format = FORMAT_XML;
+    int              print_version = 0;
 
     /* Create handle */
     if ((h = clixon_handle_init()) == NULL)
@@ -382,7 +383,7 @@ main(int    argc,
             break;
         case 'V': /* version */
             cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION_STRING);
-            exit(0);
+            print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : { /* debug */
             int d = 0;
@@ -408,7 +409,8 @@ main(int    argc,
                 goto done;
             break;
         }
-
+    if (print_version)
+        goto ok;
     /*
      * Logs, error and debug to stderr or syslog, set debug level
      */
