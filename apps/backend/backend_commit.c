@@ -253,6 +253,8 @@ startup_common(clixon_handle       h,
             goto done;
         if (xmldb_dump(h, stdout, xt, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
+        if (xt)
+            xml_free(xt);
         exit(0);  /* This is fairly abrupt , but need to avoid side-effects of rewinding
                      stack. Alternative is to make a separate function stack for this. */
     }

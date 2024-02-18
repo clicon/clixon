@@ -93,6 +93,8 @@ db_merge(clixon_handle h,
     /* Merge xml into db2. Without commit */
     retval = xmldb_put(h, (char*)db2, OP_MERGE, xt, clicon_username_get(h), cbret);
  done:
+    if (xt)
+        xml_free(xt);
     return retval;
 }
 
@@ -278,9 +280,9 @@ tmp     |-------+-----+-----+
              reset   extrafile
  */
 int
-startup_extraxml(clixon_handle        h,
-                 char                *file,
-                 cbuf                *cbret)
+startup_extraxml(clixon_handle h,
+                 char         *file,
+                 cbuf         *cbret)
 {
     int         retval = -1;
     char       *tmp_db = "tmp";
@@ -334,6 +336,8 @@ startup_extraxml(clixon_handle        h,
  ok:
     retval = 1;
  done:
+    if (xt)
+        xml_free(xt);
     if (xt0)
         xml_free(xt0);
     if (xmldb_delete(h, tmp_db) != 0 && errno != ENOENT)

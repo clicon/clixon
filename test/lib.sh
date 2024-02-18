@@ -598,6 +598,7 @@ function wait_backend(){
             err "backend timeout $DEMWAIT seconds"
         fi
     done
+    stty $STTYSETTINGS >/dev/null
 }
 
 # Start restconf daemon
