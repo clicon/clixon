@@ -451,26 +451,29 @@ expand_dbvar(void   *h,
     return retval;
 }
 
-/*! Completion callback of variable for yang schema
+/*! Completion callback of variable for yang schema list or container nodes
  *
+ * Typical yang: 
+ *   container foo { list bar; }
+ *   augment foo fie;
+ * This function expands to bar, fie...
  * @param[in]   h        clicon handle
- * @param[in]   name     Name of this function (eg "expand_dbvar")
+ * @param[in]   name     Name of this function
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
- *   <schemanode>       Absolute YANG schema-node
- *   <var>*             List of variable names in cvv for traversing yang
+ *   <schemanode>       Absolute YANG schema-node (eg: /ctrl:services)
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
  * @retval      0        OK
  * @retval     -1        Error
  */
 int
-expand_augment(void   *h,
-               char   *name,
-               cvec   *cvv,
-               cvec   *argv,
-               cvec   *commands,
-               cvec   *helptexts)
+expand_yang(void   *h,
+            char   *name,
+            cvec   *cvv,
+            cvec   *argv,
+            cvec   *commands,
+            cvec   *helptexts)
 {
     int          retval = -1;
     int          argc = 0;
@@ -481,12 +484,12 @@ expand_augment(void   *h,
     yang_stmt   *yn = NULL;
     yang_stmt   *ydesc;
 
-    if (argv == NULL || cvec_len(argv) < 1){
-        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <schemanode> <variable>*");
+    if (argv == NULL || cvec_len(argv) != 1){
+        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <schemanode>");
         goto done;
     }
     if ((cv = cvec_i(argv, argc++)) == NULL){
-        clixon_err(OE_PLUGIN, 0, "Error when accessing argument <schamenode>");
+        clixon_err(OE_PLUGIN, 0, "Error when accessing argument <schemanode>");
         goto done;
     }
     schema_nodeid = cv_string_get(cv);
@@ -498,7 +501,7 @@ expand_augment(void   *h,
         goto done;
     yn = NULL;
     while ((yn = yn_each(yres, yn)) != NULL) {
-        if (yang_keyword_get(yn) != Y_LIST)
+        if (yang_keyword_get(yn) != Y_LIST && yang_keyword_get(yn) != Y_CONTAINER)
             continue;
         cvec_add_string(commands, NULL, yang_argument_get(yn));
         if ((ydesc = yang_find(yn, Y_DESCRIPTION, NULL)) != NULL)
