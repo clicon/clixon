@@ -89,6 +89,7 @@ static inline char * strdup4(char *str)
  * Prototypes
  */
 char **clicon_strsep(char *string, char *delim, int  *nvec0);
+int    clixon_strsep2(char *str, char *delim1, char *delim2, char ***vcp, int *nvec);
 char  *clicon_strjoin (int argc, char **argv, char *delim);
 char  *clixon_string_del_join(char *str1, char *del, char *str2);
 int    clixon_strsplit(char *nodeid, const int delim, char **prefix, char **id);
