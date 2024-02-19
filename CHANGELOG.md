@@ -13,6 +13,7 @@ Expected: February 2024
 
 ### Minor features
 
+* Added us resolution to logs via stderr/stdout
 * New command-line debug mechanism
   * Separation between subject-area and details
   * Multiple subject-areas
