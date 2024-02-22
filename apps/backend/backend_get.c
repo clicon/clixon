@@ -884,8 +884,8 @@ get_common(clixon_handle        h,
     /* Read configuration */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
-        /* specific xpath */
-        if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, wdef, &xret, NULL, NULL) < 0) {
+        /* specific xpath. with-default gets masked in get_nacm_and_reply */
+        if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, WITHDEFAULTS_REPORT_ALL, &xret, NULL, NULL) < 0) {
             if ((cbmsg = cbuf_new()) == NULL){
                 clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
@@ -900,7 +900,7 @@ get_common(clixon_handle        h,
     case CONTENT_NONCONFIG: /* state data only */
         if (clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
             /* Whole config tree, for validate debug */
-            if (xmldb_get0(h, "running", YB_MODULE, nsc, NULL, 1, wdef, &xret, NULL, NULL) < 0) {
+            if (xmldb_get0(h, "running", YB_MODULE, nsc, NULL, 1, WITHDEFAULTS_REPORT_ALL, &xret, NULL, NULL) < 0) {
                 if ((cbmsg = cbuf_new()) == NULL){
                     clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
@@ -913,7 +913,7 @@ get_common(clixon_handle        h,
         }
         else if (content == CONTENT_ALL){
             /* specific xpath */
-            if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, wdef, &xret, NULL, NULL) < 0) {
+            if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, WITHDEFAULTS_REPORT_ALL, &xret, NULL, NULL) < 0) {
                 if ((cbmsg = cbuf_new()) == NULL){
                     clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;

@@ -51,9 +51,12 @@ module clixon-config {
 
     revision 2024-01-01 {
         description
-            "Makred as obsolete:
+            "Changed semantics:
+                    CLICON_VALIDATE_STATE_XML - disable return sanity checks if false
+             Marked as obsolete:
                     CLICON_DATASTORE_CACHE
                     CLICON_NETCONF_CREATOR_ATTR
+             Changed semantics of 
              Released in Clixon 6.6";
     }
     revision 2023-11-01 {
@@ -1013,6 +1016,7 @@ module clixon-config {
             default false;
             description
                 "Validate user state callback content.
+                 AND NETCONF reply sanity (misnomer)
                  Users may register state callbacks using ca_statedata callback
                  When set, the XML returned from the callback is validated after merging with 
                  the running db. If it fails, an internal error is returned to the originating 

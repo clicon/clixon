@@ -13,7 +13,7 @@ Expected: February 2024
 
 ### Minor features
 
-* Added us resolution to logs via stderr/stdout
+* Added micro-second resolution to logs via stderr/stdout
 * New command-line debug mechanism
   * Separation between subject-area and details
   * Multiple subject-areas
@@ -25,6 +25,7 @@ Expected: February 2024
   * All clixon applications added command-line option `-V` for printing version
   * New ca_version callback for customized version output
 * Optimization:
+  * Removed reply sanity if `CLICON_VALIDATE_STATE_XML` not set
   * Improved performance of GET and PUT operations
   * Optimized datastore access by ensuring REPORT_ALL in memory and EXPLICIT in file
   * Added mountpoint cache as yang flag `YANG_FLAG_MTPOINT_POTENTIAL`
@@ -41,6 +42,8 @@ Users may have to change how they access the system
 * New `clixon-lib@2024-01-01.yang` revision
   * Replaced container creators to grouping/uses
 * New `clixon-config@2024-01-01.yang` revision
+  * Changed semantics:
+    * `CLICON_VALIDATE_STATE_XML` - disable return sanity checks if false
   * Marked as obsolete:
     * `CLICON_DATASTORE_CACHE` Replaced with enhanced datastore read API
     * `CLICON_NETCONF_CREATOR_ATTR` reverting 6.5 functionality

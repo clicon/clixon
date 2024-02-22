@@ -1292,7 +1292,9 @@ rpc_callback_call(clixon_handle h,
             rc = NEXTQ(rpc_callback_t *, rc);
         } while (rc != ms->ms_rpc_callbacks);
     /* action reply checked in action_callback_call */
-    if (nr && !xml_rpc_isaction(xe)){
+    if (nr &&
+        clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML") &&
+        !xml_rpc_isaction(xe)){
         if ((ret = rpc_reply_check(h, name, cbret)) < 0)
             goto done;
         if (ret == 0)
