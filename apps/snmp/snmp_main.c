@@ -583,8 +583,8 @@ main(int    argc,
  ok:
     retval = 0;
  done:
-    snmp_terminate(h);
     clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+    snmp_terminate(h);
     return retval;
 }
