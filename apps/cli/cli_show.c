@@ -196,13 +196,15 @@ xpath_append(cbuf      *cb0,
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
  *   <db>            Name of datastore, such as "running"
- *   <api_path_fmt>  Generated API PATH (this is added implicitly, not actually given in the cvv)
+ *   <api_path_fmt>  Generated API PATH (this is sometimes added implicitly)
  *   [<mt-point>]    Optional YANG path-arg/xpath from mount-point
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
  * @retval      0        OK
  * @retval     -1        Error
  * @see cli_expand_var_generate where api_path_fmt + mt-point are generated
+ * The syntax of <api_path_fmt> is of RFC8040 api-path with the following extension:
+ *   "%s" represents the values of cvv in order starting from element 1
  */
 int
 expand_dbvar(void   *h,
@@ -451,41 +453,49 @@ expand_dbvar(void   *h,
     return retval;
 }
 
-/*! Completion callback of variable for yang schema list or container nodes
+/*! Completion callback of variable for yang schema list nodes
  *
  * Typical yang: 
- *   container foo { list bar; }
- *   augment foo fie;
- * This function expands to bar, fie...
+ *     container foo { list bar; }
+ *   modA:
+ *     augment foo bar;
+ *   modB:
+ *     augment foo fie;
+ * This function expands foo to: bar, fie...
+ * Or (if <module> is true): modA:bar, modB:fie...
  * @param[in]   h        clicon handle
  * @param[in]   name     Name of this function
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
- *   <schemanode>       Absolute YANG schema-node (eg: /ctrl:services)
+ *   <schemanode>        Absolute YANG schema-node (eg: /ctrl:services)
+ *   <modname>           true|false: Show with api-path module-name, eg moda:foo, modb:fie
  * @param[out]  commands vector of function pointers to callback functions
  * @param[out]  helptxt  vector of pointers to helptexts
  * @retval      0        OK
  * @retval     -1        Error
  */
 int
-expand_yang(void   *h,
-            char   *name,
-            cvec   *cvv,
-            cvec   *argv,
-            cvec   *commands,
-            cvec   *helptexts)
+expand_yang_list(void   *h,
+                 char   *name,
+                 cvec   *cvv,
+                 cvec   *argv,
+                 cvec   *commands,
+                 cvec   *helptexts)
 {
-    int          retval = -1;
-    int          argc = 0;
-    cg_var      *cv;
-    char        *schema_nodeid;
-    yang_stmt   *yspec0 = NULL;
-    yang_stmt   *yres = NULL;
-    yang_stmt   *yn = NULL;
-    yang_stmt   *ydesc;
+    int        retval = -1;
+    int        argc = 0;
+    cg_var    *cv;
+    char      *schema_nodeid;
+    yang_stmt *yspec0 = NULL;
+    yang_stmt *yres = NULL;
+    yang_stmt *yn = NULL;
+    yang_stmt *ydesc;
+    yang_stmt *ymod;
+    int        modname = 0;
+    cbuf      *cb = NULL;
 
-    if (argv == NULL || cvec_len(argv) != 1){
-        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <schemanode>");
+    if (argv == NULL || cvec_len(argv) < 1 || cvec_len(argv) > 2){
+        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <schemanode> [<modname>]");
         goto done;
     }
     if ((cv = cvec_i(argv, argc++)) == NULL){
@@ -493,17 +503,32 @@ expand_yang(void   *h,
         goto done;
     }
     schema_nodeid = cv_string_get(cv);
+    if (cvec_len(argv) > argc){
+        if (cli_show_option_bool(argv, argc++, &modname) < 0)
+            goto done;
+    }
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     if (yang_abs_schema_nodeid(yspec0, schema_nodeid, &yres) < 0)
         goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
     yn = NULL;
     while ((yn = yn_each(yres, yn)) != NULL) {
-        if (yang_keyword_get(yn) != Y_LIST && yang_keyword_get(yn) != Y_CONTAINER)
+        if (yang_keyword_get(yn) != Y_LIST)
             continue;
-        cvec_add_string(commands, NULL, yang_argument_get(yn));
+        cbuf_reset(cb);
+        if (modname){
+            if (ys_real_module(yn, &ymod) < 0)
+                goto done;
+            cprintf(cb, "%s:", yang_argument_get(ymod));
+        }
+        cprintf(cb, "%s", yang_argument_get(yn));
+        cvec_add_string(commands, NULL, cbuf_get(cb));
         if ((ydesc = yang_find(yn, Y_DESCRIPTION, NULL)) != NULL)
             cvec_add_string(helptexts, NULL, yang_argument_get(ydesc));
         else
@@ -511,6 +536,8 @@ expand_yang(void   *h,
     }
     retval = 0;
  done:    
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }
 

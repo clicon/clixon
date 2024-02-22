@@ -2107,12 +2107,16 @@ clixon_compare_xmls(cxobj            *xc1,
 
 /*! XML apply function: replace ${} variables with values from cligen variable vector
  *
+ * Example: x=<a>${name}</a>, cvv=["name","bert"] --> <a>bert</a>
  * @param[in]  x    XML node
  * @param[in]  arg  cvv: vector of name/value pairs
- * @retval    -1    Error, aborted at first error encounter, return -1 to end user
- * @retval     0    OK, continue
- * @retval     1    Abort, dont continue with others, return 1 to end user
  * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ * @code
+ *     xml_apply(xtmpl, CX_ELMNT, xml_template_apply, cvv);
+ * @endcode
  */
 int
 xml_template_apply(cxobj *x,
@@ -2122,50 +2126,20 @@ xml_template_apply(cxobj *x,
     cvec  *cvv = (cvec *)arg;
     cxobj *xb;
     char  *b;
-    char  *var;
-    char  *varname;
-    char  *varval;
     cbuf  *cb = NULL;
-    int    i;
-    char **vec = NULL;
-    int    nvec = 0;
-    cg_var *cv = NULL;
 
     if ((xb = xml_body_get(x)) != NULL &&
         (b = xml_value(xb)) != NULL){
-        if (clixon_strsep2(b, "${", "}", &vec, &nvec) < 0)
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
-        assert(nvec%2 == 1); /* Must be odd */
-        if (nvec > 1){
-            if ((cb = cbuf_new()) == NULL){
-                clixon_err(OE_UNIX, errno, "cbuf_new");
-                goto done;
-            }
-            i = 0;
-            while (i < nvec){
-                cprintf(cb, "%s", vec[i++]);
-                if (i == nvec)
-                    break;
-                var = vec[i++];
-                assert(i < nvec); /* Must be odd */
-                cv = NULL;
-                while ((cv = cvec_each(cvv, cv)) != NULL){
-                    if ((varname = cv_name_get(cv)) == NULL)
-                        continue;
-                    if (strcmp(varname, var) != 0)
-                        continue;
-                    varval = cv_string_get(cv);
-                    cprintf(cb, "%s", varval);
-                    break;
-                }
-            }
-            xml_value_set(xb, cbuf_get(cb));
         }
+        if (clixon_str_subst(b, cvv, cb) < 0)
+            goto done;
+        xml_value_set(xb, cbuf_get(cb));
     }
     retval = 0;
  done:
-    if (vec)
-        free(vec);
     if (cb)
         cbuf_free(cb);
     return retval;

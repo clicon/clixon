@@ -1212,6 +1212,59 @@ clixon_unicode2utf8(char  *ucstr,
     return retval;
 }
 
+/*! Substitute ${var} in string with variables in cvv
+ *
+ * @param[in]  str  Input string
+ * @param[in]  cvv  Variable name/value vector
+ * @param[out] cb   Result buffer
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+clixon_str_subst(char *str,
+                 cvec *cvv,
+                 cbuf *cb)
+{
+    int     retval = -1;
+    char  **vec = NULL;
+    int     nvec = 0;
+    int     i;
+    cg_var *cv;
+    char  *var;
+    char  *varname;
+    char  *varval;
+
+    if (clixon_strsep2(str, "${", "}", &vec, &nvec) < 0)
+        goto done;
+    if (nvec > 1){
+        i = 0;
+        while (i < nvec){
+            cprintf(cb, "%s", vec[i++]);
+            if (i == nvec)
+                break;
+            var = vec[i++];
+            cv = NULL;
+            while ((cv = cvec_each(cvv, cv)) != NULL){
+                if ((varname = cv_name_get(cv)) == NULL)
+                    continue;
+                if (strcmp(varname, var) != 0)
+                    continue;
+                varval = cv_string_get(cv);
+                cprintf(cb, "%s", varval);
+                break;
+            }
+        }
+    }
+    else {
+        cprintf(cb, "%s", str);
+    }
+    retval = 0;
+ done:
+    if (vec)
+        free(vec);
+    return retval;
+}
+
 /*! strndup() for systems without it, such as xBSD
  */
 #ifndef HAVE_STRNDUP

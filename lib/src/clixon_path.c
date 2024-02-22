@@ -466,7 +466,7 @@ yang2api_path_fmt(yang_stmt   *ys,
  *  cvv:          foo, bar
  *  api_path:     /subif-entry=foo,bar/subid
  *
- * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
+ * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3 (note only =%s)
  */
 int
 api_path_fmt2api_path(const char *api_path_fmt,
@@ -476,7 +476,9 @@ api_path_fmt2api_path(const char *api_path_fmt,
 {
     int     retval = -1;
     char    c;
-    int     esc=0;
+    char    cprev;
+    int     esc = 0;
+    int     uri_encode = 0;
     cbuf   *cb = NULL;
     int     i;
     int     j;
@@ -491,15 +493,13 @@ api_path_fmt2api_path(const char *api_path_fmt,
     }
     j = 1; /* j==0 is cli string */
     len = strlen(api_path_fmt);
+    cprev = 0;
     for (i=0; i<len; i++){
         c = api_path_fmt[i];
         if (esc){
             esc = 0;
-            if (c!='s')
-                continue;
-            if (j == cvec_len(cvv)) /* last element */
-                ;
-            else{
+            if (c == 's' &&  /* Only accept "%s" no other types */
+                j != cvec_len(cvv)) { /* last element */
                 if ((cv = cvec_i(cvv, j++)) == NULL){
                     clixon_err(OE_XML, 0, "Number of elements in cvv does not match api_path_fmt string");
                     goto done;
@@ -508,22 +508,35 @@ api_path_fmt2api_path(const char *api_path_fmt,
                     clixon_err(OE_UNIX, errno, "cv2str_dup");
                     goto done;
                 }
-                if (uri_percent_encode(&strenc, "%s", str) < 0)
-                    goto done;
-                cprintf(cb, "%s", strenc);
-                free(strenc); strenc = NULL;
-                free(str); str = NULL;
-            }
-        }
-        else
-            if (c == '%')
-                esc++;
-            else{
-                if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%' && j == cvec_len(cvv))
-                    ; /* skip */
+                if (uri_encode){
+                    /* Only if restval, ie =%s, not if eg /%s/ */
+                    if (uri_percent_encode(&strenc, "%s", str) < 0)
+                        goto done;
+                    cprintf(cb, "%s", strenc);
+                    if (strenc){
+                        free(strenc);
+                        strenc = NULL;
+                    }
+                }
                 else
-                    cprintf(cb, "%c", c);
+                    cprintf(cb, "%s", str);
+                if (str) {
+                    free(str);
+                    str = NULL;
+                }
             }
+            uri_encode = 0;
+        }
+        else if (c == '%'){
+            esc++;
+            if (cprev == '=')
+                uri_encode++;
+        }
+        else if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%' && j == cvec_len(cvv))
+            ; /* skip */
+        else
+            cprintf(cb, "%c", c);
+        cprev = c;
     }
     if ((*api_path = strdup(cbuf_get(cb))) == NULL){
         clixon_err(OE_UNIX, errno, "strdup");
