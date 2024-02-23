@@ -284,9 +284,7 @@ cvec2xml_1(cvec   *cvv,
 /*! Handle order-by user(leaf)list for xml_diff
  *
  * Loop over sublists started by x0c and x1c respectively until end or yang is no longer yc
- * First mark all in x0 as DELETE and all x1 as ADD
- * Then find all equal nodes and unmark them
- * After the function, there will be nodes in x0 marked with DEL and nodes in x1 marked as ADD
+ * Just mark all nodes from x0c to end as DEL and all nodes from x1c as ADD
  * @param[in]  x0    First XML tree
  * @param[in]  x1    Second XML tree
  * @param[in]  x0c   Start of sublist in first XML tree
@@ -300,49 +298,23 @@ xml_diff_ordered_by_user(cxobj     *x0,
                          cxobj     *x1,
                          cxobj     *x0c,
                          cxobj     *x1c,
-                         yang_stmt *yc,
-                         cxobj   ***x0vec,
-                         int       *x0veclen,
-                         cxobj   ***x1vec,
-                         int       *x1veclen,
-                         cxobj   ***changed_x0,
-                         cxobj   ***changed_x1,
-                         int       *changedlen
-                         )
+                         yang_stmt *yc)
 {
     int    retval = -1;
     cxobj *xi;
     cxobj *xj;
 
+    /* Simpler algoithm: Just delete whole old list and add new list if ANY changes */
+    xi = x0c;
+    do {
+        xml_flag_set(xi, XML_FLAG_DEL);
+    } while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+           xml_spec(xi) == yc);
     xj = x1c;
     do {
         xml_flag_set(xj, XML_FLAG_ADD);
     } while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
              xml_spec(xj) == yc);
-    /* If in both sets, unmark add/del */
-    xi = x0c;
-    do {
-        xml_flag_set(xi, XML_FLAG_DEL);
-        xj = x1c;
-        do {
-            if (xml_flag(xj, XML_FLAG_ADD) &&
-                xml_cmp(xi, xj, 0, 0, NULL) == 0){
-                /* Unmark node in x0 and x1 */
-                xml_flag_reset(xi, XML_FLAG_DEL);
-                xml_flag_reset(xj, XML_FLAG_ADD);
-                if (xml_diff1(xi, xj,
-                              x0vec, x0veclen,
-                              x1vec, x1veclen,
-                              changed_x0, changed_x1, changedlen) < 0)
-                    goto done;
-                break;
-            }
-        }
-        while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
-               xml_spec(xj) == yc);
-    }
-    while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
-           xml_spec(xi) == yc);
     retval = 0;
  done:
     return retval;
@@ -451,9 +423,7 @@ xml_diff1(cxobj     *x0,
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
         /* override ordered-by user with special look-ahead checks */
         if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
-            if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, y0c,
-                                         x0vec, x0veclen, x1vec, x1veclen,
-                                         changed_x0, changed_x1, changedlen) < 0)
+            if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, y0c) < 0)
                 goto done;
             /* Add all in x0 marked as DELETE in x0vec 
              * Flags can remain: XXX should apply to all

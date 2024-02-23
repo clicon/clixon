@@ -94,6 +94,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Problems with diff of YANG lists ordered-by user](https://github.com/clicon/clixon/issues/496)
 * Fixed: [show compare does not show correct diff while load merge xml](https://github.com/clicon/clixon-controller/issues/101)
 * Fixed: [commit goes 2 times](https://github.com/clicon/clixon/issues/488)
 * Fixed: Problem with cl:ignore attribute for show compare
