@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.6.0](#660) Expected: February 2024
+* [6.6.0](#660) Expected: March 2024
 * [6.5.0](#650) 6 December 2023
 * [6.4.0](#640) 30 September 2023
 * [6.3.0](#630) 29 July 2023
@@ -9,7 +9,7 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 6.6.0
-Expected: February 2024
+Expected: March 2024
 
 ### Minor features
 
@@ -33,6 +33,7 @@ Expected: February 2024
   * Filtered state data if not match xpath
 * Added reference count for shared yang-specs (schema mounts)
   * Allowed for sharing yspec+modules between several mountpoints
+* Added "%k" as extra flag character to api-path-fmt
 
 ### API changes on existing protocol/config features
 Users may have to change how they access the system
@@ -51,6 +52,8 @@ Users may have to change how they access the system
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Added `yspec` parameter to `api_path_fmt2api_path()`:
+  * `api_path_fmt2api_path(af, c, a, c)` --> `api_path_fmt2api_path(af, c, yspec, a, c)`
 * Added flags parameter to default functions:
   * `xml_default_recurse(...)` -> `xml_default_recurse(..., 0)`
   * `xml_defaults_nopresence(...)` -> `xml_default_nopresence(..., 0)`

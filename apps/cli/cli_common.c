@@ -443,7 +443,7 @@ cli_dbxml(clixon_handle       h,
         /* Transform template format string + cvv to actual api-path 
          * cvvi indicates if all cvv entries were used
          */
-        if (api_path_fmt2api_path(api_path_fmt01, cvv, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     else {
@@ -451,7 +451,7 @@ cli_dbxml(clixon_handle       h,
         /* Transform template format string + cvv to actual api-path 
          * cvvi indicates if all cvv entries were used
          */
-        if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt, cvv, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     /* Create config top-of-tree */

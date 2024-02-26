@@ -1216,7 +1216,7 @@ clixon_unicode2utf8(char  *ucstr,
  *
  * @param[in]  str  Input string
  * @param[in]  cvv  Variable name/value vector
- * @param[out] cb   Result buffer
+ * @param[out] cb   Result buffer (assumed created on entry)
  * @retval     0    OK
  * @retval    -1    Error
  */
@@ -1230,10 +1230,14 @@ clixon_str_subst(char *str,
     int     nvec = 0;
     int     i;
     cg_var *cv;
-    char  *var;
-    char  *varname;
-    char  *varval;
+    char   *var;
+    char   *varname;
+    char   *varval;
 
+    if (cb == NULL){
+        clixon_err(OE_UNIX, EINVAL, "cb is NULL");
+        goto done;
+    }
     if (clixon_strsep2(str, "${", "}", &vec, &nvec) < 0)
         goto done;
     if (nvec > 1){

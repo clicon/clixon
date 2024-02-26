@@ -204,7 +204,8 @@ xpath_append(cbuf      *cb0,
  * @retval     -1        Error
  * @see cli_expand_var_generate where api_path_fmt + mt-point are generated
  * The syntax of <api_path_fmt> is of RFC8040 api-path with the following extension:
- *   "%s" represents the values of cvv in order starting from element 1
+ *   %s  Represents the values of cvv in order starting from element 1
+ *   %k  Represents the (first) key of the (previous) list
  */
 int
 expand_dbvar(void   *h,
@@ -297,11 +298,11 @@ expand_dbvar(void   *h,
         /* Get and combined api-path01 */
         if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
             goto done;
-        if (api_path_fmt2api_path(api_path_fmt01, cvv, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     else{
-        if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt, cvv, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     if (api_path == NULL)
@@ -1092,11 +1093,11 @@ cli_show_auto(clixon_handle h,
         /* Get and combined api-path01 */
         if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
             goto done;
-        if (api_path_fmt2api_path(api_path_fmt01, cvv, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     else{
-        if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt, cvv, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     if (api_path2xpath(api_path, yspec0, &xpath, &nsc, NULL) < 0)

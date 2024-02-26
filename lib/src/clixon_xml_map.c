@@ -316,7 +316,7 @@ xml_diff_ordered_by_user(cxobj     *x0,
     } while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
              xml_spec(xj) == yc);
     retval = 0;
- done:
+    // done:
     return retval;
 }
 

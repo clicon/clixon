@@ -358,7 +358,7 @@ snmp_yang2xml(cxobj     *xtop,
     }
     for (i=0; i<cvec_len(cvk); i++)
         cvec_append_var(cvk1, cvec_i(cvk,i));
-    if (api_path_fmt2api_path(api_path_fmt, cvk1, &api_path, NULL) < 0)
+    if (api_path_fmt2api_path(api_path_fmt, cvk1, yspec, &api_path, NULL) < 0)
         goto done;
     if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, xbot, NULL, NULL)) < 0)
         goto done;

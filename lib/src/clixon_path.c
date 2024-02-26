@@ -435,6 +435,50 @@ yang2api_path_fmt(yang_stmt   *ys,
     return retval;
 }
 
+/*! Sub-function to expandvar to replace ${key} with YANG list keyname
+ *
+ * An exercise in looking in YANG and adapting to clixon_str_subst()
+ * @param[in,out]  cb    api-path buffer
+ * @param[in]      yspec Yang spec
+ */
+static int
+api_path_fmt_subst_list_key(cbuf      *cb,
+                            yang_stmt *yspec)
+{
+    int        retval = -1;
+    cxobj     *xtop = NULL; /* xpath root */
+    cxobj     *xbot = NULL; /* xpath, NULL if datastore */
+    yang_stmt *yres = NULL;
+    cvec      *cvk;
+    cg_var    *cvi;
+    int        ret;
+
+    if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+        goto done;
+    xbot = xtop;
+    if ((ret = api_path2xml(cbuf_get(cb), yspec, xtop, YC_DATANODE, 0, &xbot, &yres, NULL)) < 0)
+        goto done;
+    if (ret != 1){
+        clixon_err(OE_YANG, 0, "Invalid api_path %s or associated XML", cbuf_get(cb));
+        goto done;
+    }
+    if (yres == NULL){
+        clixon_err(OE_YANG, 0, "No YANG LIST");
+        goto done;
+    }
+    if (yang_keyword_get(yres) != Y_LIST){
+        clixon_err(OE_YANG, 0, "YANG of %s expected LIST", yang_argument_get(yres));
+        goto done;
+    }
+    if ((cvk = yang_cvec_get(yres)) != NULL &&
+        (cvi = cvec_i(cvk, 0)) != NULL){
+        cprintf(cb, "%s", cv_string_get(cvi));
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Transform an xml key format and a vector of values to an XML key
  *
  * Used for actual key, eg in clicon_rpc_change(), xmldb_put_xkey()
@@ -471,6 +515,7 @@ yang2api_path_fmt(yang_stmt   *ys,
 int
 api_path_fmt2api_path(const char *api_path_fmt,
                       cvec       *cvv,
+                      yang_stmt  *yspec,
                       char      **api_path,
                       int        *cvv_i)
 {
@@ -498,8 +543,10 @@ api_path_fmt2api_path(const char *api_path_fmt,
         c = api_path_fmt[i];
         if (esc){
             esc = 0;
-            if (c == 's' &&  /* Only accept "%s" no other types */
-                j != cvec_len(cvv)) { /* last element */
+            switch (c){
+            case 's':
+                if (j == cvec_len(cvv)) /* last element */
+                    break;
                 if ((cv = cvec_i(cvv, j++)) == NULL){
                     clixon_err(OE_XML, 0, "Number of elements in cvv does not match api_path_fmt string");
                     goto done;
@@ -524,6 +571,13 @@ api_path_fmt2api_path(const char *api_path_fmt,
                     free(str);
                     str = NULL;
                 }
+                break;
+            case 'k': /* list key */
+                if (api_path_fmt_subst_list_key(cb, yspec) < 0)
+                    goto done;
+                break;
+            default:
+                break;
             }
             uri_encode = 0;
         }
