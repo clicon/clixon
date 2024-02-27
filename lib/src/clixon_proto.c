@@ -675,11 +675,11 @@ clixon_msg_rcv2(int         s,
                 cbuf      **cb,
                 int        *eof)
 {
-    int           retval = -1;
-    unsigned char buf[BUFSIZ];
-    ssize_t       buflen = sizeof(buf);
-    int           frame_state = 0;
-    size_t        frame_size = 0;
+    int            retval = -1;
+    unsigned char  buf[BUFSIZ];
+    ssize_t        buflen = sizeof(buf);
+    int            frame_state = 0;
+    size_t         frame_size = 0;
     unsigned char *p = buf;
     size_t         plen;
     cbuf          *cbmsg=NULL;
@@ -705,8 +705,12 @@ clixon_msg_rcv2(int         s,
                                    NETCONF_SSH_CHUNKED,
                                    &frame_state,
                                    &frame_size,
-                                   &eom) < 0)
-                goto done;
+                                   &eom) < 0){
+                /* Errors from input are only framing errors, non-fatal, return eof */
+                *eof = 1;
+                cbuf_reset(cbmsg);
+                break;
+            }
             if (eom == 0){
                 continue;
             }
@@ -731,7 +735,7 @@ clixon_msg_rcv2(int         s,
 }
 #endif /* NETCONF_INPUT_UNIFIED_INTERNAL */
 
-/*! Connect to server, send a clicon_msg message and wait for result using unix socket
+/*! Connect to server using unix socket
  *
  * @param[in]  h        Clixon handle
  * @param[in]  msg      Internal msg data structure. It has fixed header and variable body.

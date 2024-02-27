@@ -74,6 +74,16 @@ EOF
     new "hello session-id 2"
     expecteof "$clixon_util_socket -a $family -s $sock -D $DBG" 0 "<hello $DEFAULTONLY/>" "<hello $DEFAULTONLY><session-id>4</session-id></hello>"
 
+    if [ $family = UNIX -a -n "$netcat" ]; then
+        new "Unix socket garbage test"
+        echo "garbage" | netcat -U $sock
+
+        new "Check backend alive"
+        pid=$(pgrep -u root -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend pid" "backend dead"
+        fi
+    fi
     if [ $BE -ne 0 ]; then
         new "Kill backend"
         # Check if premature kill

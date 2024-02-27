@@ -213,5 +213,5 @@
  * Following things NYI:
  * - Emulates old clicon_msg API
  */
-#undef NETCONF_INPUT_UNIFIED_INTERNAL
+#define NETCONF_INPUT_UNIFIED_INTERNAL
 

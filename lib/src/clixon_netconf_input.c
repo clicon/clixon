@@ -124,7 +124,7 @@ netconf_input_read2(int            s,
  * @param[in,out] frame_size   Chunked framing size parameter
  * @param[out]    eom          If frame found in cb?
  * @retval        0            OK
- * @retval       -1            Error
+ * @retval       -1            Error (from chunked framing)
  * The routine should be called continuously with more data from input socket in buf
  * State of previous reads is saved in:
  * - bufp/lenp
