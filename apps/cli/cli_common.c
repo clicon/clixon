@@ -1408,7 +1408,7 @@ cli_notification_cb(int   s,
     enum format_enum   format = (enum format_enum)(uintptr_t)arg;
     cbuf              *cb = NULL;
 
-    if (clixon_msg_rcv11(s, NULL, &cb, &eof) < 0)
+    if (clixon_msg_rcv11(s, NULL, 0, &cb, &eof) < 0)
         goto done;
     if (eof){
         clixon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");

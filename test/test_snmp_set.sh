@@ -133,7 +133,7 @@ function testinit(){
 
     new "wait backend"
     wait_backend
-        
+
     if [ $SN -ne 0 ]; then
         # Kill old clixon_snmp, if any
         new "Terminating any old clixon_snmp processes"
@@ -269,8 +269,10 @@ if [ $BE -ne 0 ]; then
     fi
     
     sudo pkill -f clixon_backend
-    
-    new "Starting backend"
+fi
+
+if [ $BE -ne 0 ]; then
+    new "Starting backend -s startup -f $cfg -- -V CLIXON-TYPES-MIB/clixonExampleScalars/clixonExampleInteger"
     start_backend -s startup -f $cfg -- -V CLIXON-TYPES-MIB/clixonExampleScalars/clixonExampleInteger
 fi
 

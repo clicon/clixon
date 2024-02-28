@@ -461,7 +461,7 @@ netconf_notification_cb(int   s,
 
     clixon_debug(CLIXON_DBG_NETCONF, "");
     yspec = clicon_dbspec_yang(h);
-    if (clixon_msg_rcv11(s, NULL, &cbmsg, &eof) < 0)
+    if (clixon_msg_rcv11(s, NULL, 0, &cbmsg, &eof) < 0)
         goto done;
     /* handle close from remote end: this will exit the client */
     if (eof){

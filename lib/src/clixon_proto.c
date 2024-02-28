@@ -572,9 +572,17 @@ clixon_msg_send11(int         s,
     return retval;
 }
 
+static void
+atomicio_sig_handler(int arg)
+{
+    _atomicio_sig++;
+}
+
 /*! Receive a message using unified NETCONF w chunked framing
  *
  * @param[in]   s      socket (unix or inet) to communicate with backend
+ * @param[in]   descr Description of peer for logging
+ * @param[in]   intr  If set, make a ^C cause an error   (OBSOLETE?)
  * @param[out]  cb     cligen buf struct containing the incoming message
  * @param[out]  eof    Set if eof encountered
  * @retval      0      OK (check eof)
@@ -585,6 +593,7 @@ clixon_msg_send11(int         s,
 int
 clixon_msg_rcv11(int         s,
                  const char *descr,
+                 int         intr,
                  cbuf      **cb,
                  int        *eof)
 {
@@ -600,12 +609,22 @@ clixon_msg_rcv11(int         s,
     int            eom = 0;
     cxobj         *xtop = NULL;
     cxobj         *xerr = NULL;
+    sigset_t          oldsigset;
+    struct sigaction  oldsigaction[32] = {{{0,},},};
 
     if ((cbmsg = cbuf_new()) == NULL){
         clicon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     eom = 0;
+    *eof = 0;
+    if (intr){
+        if (clixon_signal_save(&oldsigset, oldsigaction) < 0)
+            goto done;
+        set_signal(SIGINT, SIG_IGN, NULL);
+        clicon_signal_unblock(SIGINT);
+        set_signal_flags(SIGINT, 0, atomicio_sig_handler, NULL);
+    }
     while (*eof == 0 && eom == 0) {
         /* Read input data from socket and append to cbbuf */
         if ((len = netconf_input_read2(s, buf, buflen, eof)) < 0)
@@ -638,6 +657,10 @@ clixon_msg_rcv11(int         s,
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_MSG|CLIXON_DBG_DETAIL, "%s done", __FUNCTION__);
+    if (intr){
+        if (clixon_signal_restore(&oldsigset, oldsigaction) < 0)
+            goto done;
+    }
     if (cbmsg)
         cbuf_free(cbmsg);
     if (xtop)
@@ -680,7 +703,7 @@ clicon_rpc(int                sock,
         goto done;
     if (cbsend)
         cbuf_free(cbsend);
-    if (clixon_msg_rcv11(sock, descr, &cbrcv, eof) < 0)
+    if (clixon_msg_rcv11(sock, descr, 0, &cbrcv, eof) < 0)
         goto done;
     if (*eof)
         goto ok;
@@ -693,7 +716,7 @@ clicon_rpc(int                sock,
     }
  ok:
     retval = 0;
-  done:
+ done:
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (reply)
         free(reply);

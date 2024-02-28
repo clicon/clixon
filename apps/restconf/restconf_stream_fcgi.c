@@ -211,14 +211,13 @@ restconf_stream_cb(int   s,
     cxobj        *xtop = NULL; /* top xml */
     cxobj        *xn;        /* notification xml */
     cbuf         *cb = NULL;
-    int           pretty = 0; /* XXX should be via arg */
     cbuf         *cbmsg = NULL;
+    int           pretty = 0; /* XXX should be via arg */
     int           ret;
 
     clixon_debug(CLIXON_DBG_STREAM, "");
-    if (clixon_msg_rcv11(s, NULL, &cbmsg, &eof) < 0)
+    if (clixon_msg_rcv11(s, NULL, 0, &cbmsg, &eof) < 0)
         goto done;
-    clixon_debug(CLIXON_DBG_STREAM, "msg: %s", reply?reply->op_body:"null");
     /* handle close from remote end: this will exit the client */
     if (eof){
         clixon_debug(CLIXON_DBG_STREAM, "eof");
@@ -230,7 +229,7 @@ restconf_stream_cb(int   s,
         clixon_exit_set(1);
         goto done;
     }
-    if ((ret = clixon_xml_parse_string(cbuf_get(cbmsg), YB_NONE, NULL, &xt, NULL)) < 0)
+    if ((ret = clixon_xml_parse_string(cbuf_get(cbmsg), YB_NONE, NULL, &xtop, NULL)) < 0)
         goto done;
     if (ret == 0){
         clixon_err(OE_XML, EFAULT, "Invalid notification");
@@ -266,8 +265,6 @@ restconf_stream_cb(int   s,
     clixon_debug(CLIXON_DBG_STREAM, "retval: %d", retval);
     if (xtop != NULL)
         xml_free(xtop);
-    if (reply)
-        free(reply);
     if (cbmsg)
         cbuf_free(cbmsg);
     if (cb)

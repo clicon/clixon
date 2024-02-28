@@ -1860,7 +1860,7 @@ from_client(int   s,
     }
     if (ce_client_descr(ce, &cbce) < 0)
         goto done;
-    if (clixon_msg_rcv11(s, NULL, &cb, &eof) < 0)
+    if (clixon_msg_rcv11(s, NULL, 0, &cb, &eof) < 0)
         goto done;
     if (eof){
         backend_client_rm(h, ce);

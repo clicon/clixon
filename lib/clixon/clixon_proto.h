@@ -75,7 +75,7 @@ int clixon_msg_send10(int s, const char *descr, cbuf *cb);
 int clixon_rpc10(int sock, const char *descr, cbuf *msgin, cbuf *msgret, int *eof);
 
 /* NETCONF 1.1 */
-int clixon_msg_rcv11(int s, const char *descr, cbuf **cb, int *eof);
+int clixon_msg_rcv11(int s, const char *descr, int intr, cbuf **cb, int *eof);
 int clicon_rpc(int sock, const char *descr, struct clicon_msg *msg, char **xret, int *eof);
 int send_msg_reply(int s, const char *descr, char *data, uint32_t datalen);
 int send_msg_notify_xml(clixon_handle h, int s, const char *descr, cxobj *xev);
