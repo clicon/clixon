@@ -188,7 +188,7 @@ clixon_client_lock(clixon_handle h,
             NETCONF_BASE_NAMESPACE,
             NETCONF_MESSAGE_ID_ATTR,
             lock?"":"un", db, lock?"":"un");
-    if (clicon_rpc1(sock, descr, msg, msgret, &eof) < 0)
+    if (clixon_rpc10(sock, descr, msg, msgret, &eof) < 0)
         goto done;
     if (eof){
         close(sock);
@@ -242,7 +242,7 @@ clixon_client_hello(int         sock,
     cprintf(msg, "</capabilities>");
     cprintf(msg, "</hello>");
     cprintf(msg, "]]>]]>");
-    if (clicon_msg_send1(sock, descr, msg) < 0)
+    if (clixon_msg_send10(sock, descr, msg) < 0)
         goto done;
     retval = 0;
  done:
@@ -529,9 +529,9 @@ clixon_client_get_xdata(clixon_handle h,
     cprintf(msg, "</get-config></rpc>");
     if (netconf_output_encap(0, msg) < 0) // XXX configurable session
         goto done;
-    if (clicon_msg_send1(sock, descr, msg) < 0)
+    if (clixon_msg_send10(sock, descr, msg) < 0)
         goto done;
-    if (clicon_msg_rcv1(sock, descr, msgret, &eof) < 0)
+    if (clixon_msg_rcv10(sock, descr, msgret, &eof) < 0)
         goto done;
     if (eof){
         close(sock);
