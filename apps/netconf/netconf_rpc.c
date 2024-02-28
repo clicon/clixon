@@ -447,21 +447,21 @@ static int
 netconf_notification_cb(int   s,
                         void *arg)
 {
-    struct clicon_msg *reply = NULL;
-    int                eof;
-    int                retval = -1;
-    cbuf              *cb = NULL;
-    cxobj             *xn = NULL; /* event xml */
-    cxobj             *xt = NULL; /* top xml */
-    clixon_handle      h = (clixon_handle)arg;
-    yang_stmt         *yspec = NULL;
-    cvec              *nsc = NULL;
-    int                ret;
-    cxobj             *xerr = NULL;
+    int           eof;
+    int           retval = -1;
+    cbuf         *cb = NULL;
+    cxobj        *xn = NULL; /* event xml */
+    cxobj        *xt = NULL; /* top xml */
+    clixon_handle h = (clixon_handle)arg;
+    yang_stmt    *yspec = NULL;
+    cvec         *nsc = NULL;
+    int           ret;
+    cxobj        *xerr = NULL;
+    cbuf         *cbmsg = NULL;
 
     clixon_debug(CLIXON_DBG_NETCONF, "");
-    /* get msg (this is the reason this function is called) */
-    if (clicon_msg_rcv(s, NULL, 0, &reply, &eof) < 0)
+    yspec = clicon_dbspec_yang(h);
+    if (clixon_msg_rcv11(s, NULL, &cbmsg, &eof) < 0)
         goto done;
     /* handle close from remote end: this will exit the client */
     if (eof){
@@ -471,8 +471,7 @@ netconf_notification_cb(int   s,
         clixon_event_unreg_fd(s, netconf_notification_cb);
         goto done;
     }
-    yspec = clicon_dbspec_yang(h);
-    if ((ret = clicon_msg_decode(reply, yspec, NULL, &xt, &xerr)) < 0)
+    if ((ret = clixon_xml_parse_string(cbuf_get(cbmsg), YB_RPC, yspec, &xt, &xerr)) < 0)
         goto done;
     if (ret == 0){ /* XXX use xerr */
         clixon_err(OE_NETCONF, EFAULT, "Notification malformed");
@@ -513,8 +512,8 @@ netconf_notification_cb(int   s,
         xml_free(xt);
     if (xerr != NULL)
         xml_free(xerr);
-    if (reply)
-        free(reply);
+    if (cbmsg)
+        free(cbmsg);
     return retval;
 }
 

@@ -14,6 +14,7 @@ Expected: March 2024
 ### Minor features
 
 * Changed framing between backend and frontend to RFC6242 "chunked-encoding"
+  * Previous a propriatary framing method was used
 * Added micro-second resolution to logs via stderr/stdout
 * New command-line debug mechanism
   * Separation between subject-area and details
@@ -55,6 +56,13 @@ Users may have to change how they access the system
 
 ### C/CLI-API changes on existing features
 Developers may need to change their code
+
+* Modified msg functions for clearer NETCONF 1.0 vs 1.1 API:
+  * `clicon_rpc1` --> `clixon_rpc10`
+  * `clicon_msg_send1` --> `clixon_msg_send10`
+  * `clicon_msg_rcv` and `clicon_msg_decode` --> `clixon_msg_rcv11`
+    * Rewrite by calling `clixon_msg_rcv11` and explicit xml parsing
+  * `clicon_msg_rcv1` --> `clixon_msg_rcv10`
 
 * Added `yspec` parameter to `api_path_fmt2api_path()`:
   * `api_path_fmt2api_path(af, c, a, c)` --> `api_path_fmt2api_path(af, c, yspec, a, c)`

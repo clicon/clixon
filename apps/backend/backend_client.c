@@ -1560,7 +1560,7 @@ from_client_hello(clixon_handle       h,
 static int
 from_client_msg(clixon_handle        h,
                 struct client_entry *ce,
-                struct clicon_msg   *msg)
+                char                *msg)
 {
     int                  retval = -1;
     cxobj               *xt = NULL;
@@ -1576,7 +1576,7 @@ from_client_msg(clixon_handle        h,
     yang_stmt           *ymod;
     cxobj               *xnacm = NULL;
     cxobj               *xret = NULL;
-    uint32_t             op_id; /* session number from internal NETCONF protocol */
+    uint32_t             op_id = 0; /* XXX session number from internal NETCONF protocol */
     enum nacm_credentials_t creds;
     char                *rpcname;
     char                *rpcprefix;
@@ -1596,10 +1596,10 @@ from_client_msg(clixon_handle        h,
     /* Decode msg from client -> xml top (ct) and session id 
      * Bind is a part of the decode function
      */
-    if ((ret = clicon_msg_decode(msg, yspec, &op_id, &xt, &xret)) < 0){
+    if ((ret = clixon_xml_parse_string(msg, YB_RPC, yspec, &xt, &xret)) < 0){
         if (netconf_malformed_message(cbret, "XML parse error") < 0)
             goto done;
-        goto reply;
+        goto done;
     }
     if (ret == 0){
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
@@ -1847,11 +1847,11 @@ from_client(int   s,
             void* arg)
 {
     int                  retval = -1;
-    struct clicon_msg   *msg = NULL;
     struct client_entry *ce = (struct client_entry *)arg;
     clixon_handle        h = ce->ce_handle;
     int                  eof = 0;
     cbuf                *cbce = NULL;
+    cbuf                *cb = NULL;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     if (s != ce->ce_s){
@@ -1860,22 +1860,21 @@ from_client(int   s,
     }
     if (ce_client_descr(ce, &cbce) < 0)
         goto done;
-    if (clicon_msg_rcv(ce->ce_s, cbuf_get(cbce), 0, &msg, &eof) < 0)
+    if (clixon_msg_rcv11(s, NULL, &cb, &eof) < 0)
         goto done;
     if (eof){
         backend_client_rm(h, ce);
         netconf_monitoring_counter_inc(h, "dropped-sessions");
     }
-    else
-        if (from_client_msg(h, ce, msg) < 0)
-            goto done;
+    else if (from_client_msg(h, ce, cbuf_get(cb)) < 0)
+        goto done;
     retval = 0;
   done:
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    if (cb)
+        cbuf_free(cb);
     if (cbce)
         cbuf_free(cbce);
-    if (msg)
-        free(msg);
     return retval; /* -1 here terminates backend */
 }
 

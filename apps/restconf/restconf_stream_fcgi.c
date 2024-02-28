@@ -205,22 +205,19 @@ static int
 restconf_stream_cb(int   s,
                    void *arg)
 {
-    int                retval = -1;
-    FCGX_Request      *r = (FCGX_Request *)arg;
-    int                eof;
-    struct clicon_msg *reply = NULL;
-    cxobj             *xtop = NULL; /* top xml */
-    cxobj             *xn;        /* notification xml */
-    cbuf              *cb = NULL;
-    int                pretty = 0; /* XXX should be via arg */
-    int                ret;
+    int           retval = -1;
+    FCGX_Request *r = (FCGX_Request *)arg;
+    int           eof;
+    cxobj        *xtop = NULL; /* top xml */
+    cxobj        *xn;        /* notification xml */
+    cbuf         *cb = NULL;
+    int           pretty = 0; /* XXX should be via arg */
+    cbuf         *cbmsg = NULL;
+    int           ret;
 
     clixon_debug(CLIXON_DBG_STREAM, "");
-    /* get msg (this is the reason this function is called) */
-    if (clicon_msg_rcv(s, NULL, 0, &reply, &eof) < 0){
-        clixon_debug(CLIXON_DBG_STREAM, "msg_rcv error");
+    if (clixon_msg_rcv11(s, NULL, &cbmsg, &eof) < 0)
         goto done;
-    }
     clixon_debug(CLIXON_DBG_STREAM, "msg: %s", reply?reply->op_body:"null");
     /* handle close from remote end: this will exit the client */
     if (eof){
@@ -233,7 +230,7 @@ restconf_stream_cb(int   s,
         clixon_exit_set(1);
         goto done;
     }
-    if ((ret = clicon_msg_decode(reply, NULL, NULL, &xtop, NULL)) < 0)  /* XXX pass yang_spec */
+    if ((ret = clixon_xml_parse_string(cbuf_get(cbmsg), YB_NONE, NULL, &xt, NULL)) < 0)
         goto done;
     if (ret == 0){
         clixon_err(OE_XML, EFAULT, "Invalid notification");
@@ -271,6 +268,8 @@ restconf_stream_cb(int   s,
         xml_free(xtop);
     if (reply)
         free(reply);
+    if (cbmsg)
+        cbuf_free(cbmsg);
     if (cb)
         cbuf_free(cb);
     return retval;
