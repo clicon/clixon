@@ -117,6 +117,7 @@ static const map_str2int snmp_type_map[] = {
  */
 static const map_str2int snmp_orig_map[] = {
     {"counter32",             ASN_COUNTER},   // 0x41 / 65
+    {"bits",                  ASN_OCTET_STR}, // 3
     {"object-identifier-128", ASN_OBJECT_ID}, // 6
     {"AutonomousType",        ASN_OBJECT_ID}, // 6
     {"DateAndTime",           ASN_OCTET_STR}, // 4
