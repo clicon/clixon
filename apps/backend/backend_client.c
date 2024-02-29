@@ -1576,7 +1576,6 @@ from_client_msg(clixon_handle        h,
     yang_stmt           *ymod;
     cxobj               *xnacm = NULL;
     cxobj               *xret = NULL;
-    uint32_t             op_id = 0; /* XXX session number from internal NETCONF protocol */
     enum nacm_credentials_t creds;
     char                *rpcname;
     char                *rpcprefix;
@@ -1624,6 +1623,7 @@ from_client_msg(clixon_handle        h,
     }
     rpcname = xml_name(x);
     rpcprefix = xml_prefix(x);
+#ifdef NOTACTIVE /* May need to re-activate */
     /* Sanity check:
      * op_id from internal message can be out-of-sync from client's sessions-id for the following reasons:
      * 1. Its a hello when the client starts with op_id=0 to get its proper id on hello reply
@@ -1644,6 +1644,7 @@ from_client_msg(clixon_handle        h,
             }
         }
     }
+#endif
     /* Note that this validation is also made in xml_yang_validate_rpc, but not for hello
      */
     if (xml2ns(x, rpcprefix, &namespace) < 0)
