@@ -142,7 +142,7 @@ backend_client_add(clixon_handle    h,
                    struct sockaddr *addr)
 {
     struct backend_handle *bh = handle(h);
-    struct client_entry   *ce;
+    struct client_entry   *ce = NULL;
 
     if ((ce = (struct client_entry *)malloc(sizeof(*ce))) == NULL){
         clixon_err(OE_PLUGIN, errno, "malloc");
@@ -151,15 +151,16 @@ backend_client_add(clixon_handle    h,
     memset(ce, 0, sizeof(*ce));
     ce->ce_nr = bh->bh_ce_nr++; /* Session-id ? */
     memcpy(&ce->ce_addr, addr, sizeof(*addr));
-    ce->ce_next = bh->bh_ce_list;
     ce->ce_handle = h;
     if (clicon_session_id_get(h, &ce->ce_id) < 0){
         clixon_err(OE_NETCONF, ENOENT, "session_id not set");
+        free(ce);
         return NULL;
     }
     clicon_session_id_set(h, ce->ce_id + 1);
     gettimeofday(&ce->ce_time, NULL);
     netconf_monitoring_counter_inc(h, "in-sessions");
+    ce->ce_next = bh->bh_ce_list;
     bh->bh_ce_list = ce;
     return ce;
 }

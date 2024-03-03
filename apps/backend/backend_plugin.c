@@ -285,10 +285,10 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
                             char            *xpath,
                             cxobj          **xp)
 {
-    int              retval = -1;
-    plgstatedata_t  *fn;          /* Plugin statedata fn */
-    cxobj           *x = NULL;
-    void            *wh = NULL;
+    int             retval = -1;
+    plgstatedata_t *fn;          /* Plugin statedata fn */
+    cxobj          *x = NULL;
+    void           *wh = NULL;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_statedata) != NULL){
         if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
@@ -307,10 +307,14 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
         if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
             goto done;
     }
-    if (xp && x)
+    if (xp && x){
         *xp = x;
+        x = NULL;
+    }
     retval = 1;
  done:
+    if (x)
+        xml_free(x);
     return retval;
  fail:
     retval = 0;

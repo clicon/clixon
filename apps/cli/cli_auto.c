@@ -129,6 +129,7 @@ cli_auto_edit(clixon_handle h,
     char         *str;
     char         *mtpoint = NULL;
     yang_stmt    *yspec0;
+    char         *mtpoint2 = NULL;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
         clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>*, <treename>)", __FUNCTION__);
@@ -183,7 +184,6 @@ cli_auto_edit(clixon_handle h,
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
         goto done;
     if (mtpoint){
-        char *mtpoint2;
         if ((mtpoint2 = strdup(mtpoint)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
@@ -204,6 +204,8 @@ cli_auto_edit(clixon_handle h,
     }
     retval = 0;
  done:
+    if (mtpoint2)
+        free(mtpoint2);
     if (api_path)
         free(api_path);
     return retval;

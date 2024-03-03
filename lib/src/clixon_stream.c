@@ -115,6 +115,21 @@ stream_find(clixon_handle h,
     return NULL;
 }
 
+/*! Delete event stream core components 
+ *
+ * @param[in]     es   Event notification stream structure
+ */
+static int
+stream_delete(event_stream_t *es)
+{
+    if (es->es_name)
+        free(es->es_name);
+    if (es->es_description)
+        free(es->es_description);
+    free(es);
+    return 0;
+}
+
 /*! Add notification event stream
  *
  * @param[in]  h              Clixon handle
@@ -133,7 +148,7 @@ stream_add(clixon_handle   h,
            struct timeval *retention)
 {
     int             retval = -1;
-    event_stream_t *es;
+    event_stream_t *es = NULL;
 
     if ((es = stream_find(h, name)) != NULL)
         goto ok;
@@ -154,9 +169,12 @@ stream_add(clixon_handle   h,
     if (retention)
         es->es_retention = *retention;
     clicon_stream_append(h, es);
+    es = NULL;
  ok:
     retval = 0;
  done:
+    if (es)
+        stream_delete(es);
     return retval;
 }
 
@@ -179,10 +197,6 @@ stream_delete_all(clixon_handle h,
     while ((es = clicon_stream(h)) != NULL){
         DELQ(es, head, event_stream_t *);
         clicon_stream_set(h, head);
-        if (es->es_name)
-            free(es->es_name);
-        if (es->es_description)
-            free(es->es_description);
         while ((ss = es->es_subscription) != NULL){
             if (stream_ss_rm(h, es, ss, force) < 0)
                 goto done;
@@ -193,7 +207,8 @@ stream_delete_all(clixon_handle h,
                 xml_free(r->r_xml);
             free(r);
         }
-        free(es);
+        if (stream_delete(es) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -857,7 +872,7 @@ stream_replay_trigger(clixon_handle h,
 {
     int                retval = -1;
     struct timeval     now;
-    struct replay_arg *ra;
+    struct replay_arg *ra = NULL;
 
     if ((ra = malloc(sizeof(*ra))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
@@ -875,8 +890,11 @@ stream_replay_trigger(clixon_handle h,
     if (clixon_event_reg_timeout(now, stream_replay_cb, ra,
                           "create-subscribtion stream replay") < 0)
         goto done;
+    ra = NULL;
     retval = 0;
  done:
+    if (ra)
+        free(ra);
     return retval;
 }
 

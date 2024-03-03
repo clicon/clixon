@@ -356,6 +356,8 @@ mtpoint_paths(yang_stmt *yspec0,
         free(api_path_fmt0);
     if (nsc0)
         cvec_free(nsc0);
+    if (xtop0)
+        xml_free(xtop0);
     return retval;
 }
 

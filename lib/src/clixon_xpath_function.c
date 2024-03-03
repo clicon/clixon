@@ -375,6 +375,8 @@ xp_function_derived_from(xp_ctx            *xc,
         ctx_free(xr0);
     if (xr1)
         ctx_free(xr1);
+    if (xr)
+        ctx_free(xr);
     if (identity)
         free(identity);
     return retval;
@@ -568,12 +570,15 @@ xp_function_name(xp_ctx            *xc,
         break;
     }
     *xrp = xr;
+    xr = NULL;
     retval = 0;
  done:
     if (xr0)
         ctx_free(xr0);
     if (s0)
         free(s0);
+    if (xr)
+        ctx_free(xr);
     return retval;
 }
 

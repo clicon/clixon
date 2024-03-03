@@ -1736,9 +1736,9 @@ xml_enumerate_get(cxobj *x)
 
 /*! Get the first sub-node which is an XML body.
  *
- * @param[in]   xn          xml tree node
- * @retval  The returned body as a pointer to the name string
- * @retval  NULL if no such node or no body in found node
+ * @param[in]   xn     XML tree node
+ * @retval      body   The returned body as a pointer to the name string
+ * @retval      NULL   If no such node or no body in found node
  * Note, make a copy of the return value to use it properly
  * @see xml_find_body
  * Explaining picture:

@@ -1045,8 +1045,10 @@ xpath_traverse_canonical(xpath_tree *xs,
             if (xml_nsctx_add(nsc1, prefix1, namespace) < 0)
                 goto done;
         if (prefix0==NULL || strcmp(prefix0, prefix1) != 0){
-            if (xs->xs_s0)
+            if (xs->xs_s0){
                 free(xs->xs_s0);
+                xs->xs_s0 = NULL;
+            }
             if ((xs->xs_s0 = strdup(prefix1)) == NULL){
                 clixon_err(OE_UNIX, errno, "strdup");
                 goto done;

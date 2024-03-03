@@ -1014,18 +1014,10 @@ ys_replace(yang_stmt *yorig,
 {
     int        retval = -1;
     yang_stmt *yp; /* parent */
-    yang_stmt *yc; /* child */
 
     yp = yang_parent_get(yorig);
     /* Remove old yangs all children */
-    yc = NULL;
-    while ((yc = yn_each(yorig, yc)) != NULL)
-        ys_free(yc);
-    if (yorig->ys_stmt){
-        free(yorig->ys_stmt);
-        yorig->ys_stmt = NULL;
-        yorig->ys_len = 0;
-    }
+    ys_freechildren(yorig);
     ys_free1(yorig, 0); /* Remove all in yold except the actual object */
     if (ys_cp(yorig, yfrom) < 0)
         goto done;
