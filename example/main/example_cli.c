@@ -304,8 +304,11 @@ myerror(clixon_handle h,
     errmsg_t *oldfn = NULL;
 
     _errmsg_callback_fn = myerrmsg;
+#ifdef DYNAMICLINKAGE
+    /* This does not link statically */
     if (cli_remove(h, cvv, argv) < 0)
         goto done;
+#endif
     retval = 0;
  done:
     _errmsg_callback_fn = oldfn;

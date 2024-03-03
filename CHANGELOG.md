@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.6.0](#660) Expected: February 2024
+* [6.6.0](#660) Expected: March 2024
 * [6.5.0](#650) 6 December 2023
 * [6.4.0](#640) 30 September 2023
 * [6.3.0](#630) 29 July 2023
@@ -9,10 +9,13 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 6.6.0
-Expected: February 2024
+Expected: March 2024
 
 ### Minor features
 
+* Changed framing between backend and frontend to RFC6242 "chunked-encoding"
+  * Previous a propriatary framing method was used
+* Added micro-second resolution to logs via stderr/stdout
 * New command-line debug mechanism
   * Separation between subject-area and details
   * Multiple subject-areas
@@ -24,6 +27,7 @@ Expected: February 2024
   * All clixon applications added command-line option `-V` for printing version
   * New ca_version callback for customized version output
 * Optimization:
+  * Removed reply sanity if `CLICON_VALIDATE_STATE_XML` not set
   * Improved performance of GET and PUT operations
   * Optimized datastore access by ensuring REPORT_ALL in memory and EXPLICIT in file
   * Added mountpoint cache as yang flag `YANG_FLAG_MTPOINT_POTENTIAL`
@@ -31,15 +35,21 @@ Expected: February 2024
   * Filtered state data if not match xpath
 * Added reference count for shared yang-specs (schema mounts)
   * Allowed for sharing yspec+modules between several mountpoints
+* Added "%k" as extra flag character to api-path-fmt
 
 ### API changes on existing protocol/config features
 Users may have to change how they access the system
 
+* Changed framing between backend and frontend to RFC6242 "chunked-encoding"
+  * Should only affect advanced usage between clixon frontend and backend
+  * This should allow standard netconf utilities to be used as frontend (may be some caveats)
 * Revert the creators attribute feature introduced in 6.2. It is now obsoleted.
   It is replaced with a configured `creators` and user/application semantics
 * New `clixon-lib@2024-01-01.yang` revision
   * Replaced container creators to grouping/uses
 * New `clixon-config@2024-01-01.yang` revision
+  * Changed semantics:
+    * `CLICON_VALIDATE_STATE_XML` - disable return sanity checks if false
   * Marked as obsolete:
     * `CLICON_DATASTORE_CACHE` Replaced with enhanced datastore read API
     * `CLICON_NETCONF_CREATOR_ATTR` reverting 6.5 functionality
@@ -47,6 +57,15 @@ Users may have to change how they access the system
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Modified msg functions for clearer NETCONF 1.0 vs 1.1 API:
+  * `clicon_rpc1` --> `clixon_rpc10`
+  * `clicon_msg_send1` --> `clixon_msg_send10`
+  * `clicon_msg_rcv` and `clicon_msg_decode` --> `clixon_msg_rcv11`
+    * Rewrite by calling `clixon_msg_rcv11` and explicit xml parsing
+  * `clicon_msg_rcv1` --> `clixon_msg_rcv10`
+
+* Added `yspec` parameter to `api_path_fmt2api_path()`:
+  * `api_path_fmt2api_path(af, c, a, c)` --> `api_path_fmt2api_path(af, c, yspec, a, c)`
 * Added flags parameter to default functions:
   * `xml_default_recurse(...)` -> `xml_default_recurse(..., 0)`
   * `xml_defaults_nopresence(...)` -> `xml_default_nopresence(..., 0)`
@@ -90,6 +109,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Problems with diff of YANG lists ordered-by user](https://github.com/clicon/clixon/issues/496)
 * Fixed: [show compare does not show correct diff while load merge xml](https://github.com/clicon/clixon-controller/issues/101)
 * Fixed: [commit goes 2 times](https://github.com/clicon/clixon/issues/488)
 * Fixed: Problem with cl:ignore attribute for show compare

@@ -328,7 +328,7 @@ plugin_load_one(clixon_handle     h,
     char              *p;
     void              *wh = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "file:%s function:%s", file, function);
+    clixon_debug(CLIXON_DBG_INIT, "file:%s function:%s", file, function);
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();
@@ -383,7 +383,7 @@ plugin_load_one(clixon_handle     h,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (wh != NULL)
         free(wh);
     if (retval != 1 && handle)
@@ -418,7 +418,7 @@ clixon_plugins_load(clixon_handle h,
     plugin_module_struct *ms = plugin_module_struct_get(h);
     int                   dlflags;
 
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
+    clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "");
     if (ms == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
@@ -429,7 +429,7 @@ clixon_plugins_load(clixon_handle h,
     /* Load all plugins */
     for (i = 0; i < ndp; i++) {
         snprintf(filename, MAXPATHLEN-1, "%s/%s", dir, dp[i].d_name);
-        clixon_debug(CLIXON_DBG_DEFAULT, "Loading plugin '%s'", filename);
+        clixon_debug(CLIXON_DBG_INIT, "Loading plugin '%s'", filename);
         dlflags = RTLD_NOW;
         if (clicon_option_bool(h, "CLICON_PLUGIN_DLOPEN_GLOBAL"))
             dlflags |= RTLD_GLOBAL;
@@ -471,7 +471,7 @@ clixon_pseudo_plugin(clixon_handle     h,
     clixon_plugin_t *cp = NULL;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", name);
+    clixon_debug(CLIXON_DBG_INIT, "%s", name);
     if (ms == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
         goto done;
@@ -1292,7 +1292,9 @@ rpc_callback_call(clixon_handle h,
             rc = NEXTQ(rpc_callback_t *, rc);
         } while (rc != ms->ms_rpc_callbacks);
     /* action reply checked in action_callback_call */
-    if (nr && !xml_rpc_isaction(xe)){
+    if (nr &&
+        clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML") &&
+        !xml_rpc_isaction(xe)){
         if ((ret = rpc_reply_check(h, name, cbret)) < 0)
             goto done;
         if (ret == 0)

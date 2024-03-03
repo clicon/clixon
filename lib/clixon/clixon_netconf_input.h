@@ -48,6 +48,7 @@
 extern "C" {
 #endif
 
+int     detect_endtag(char *tag, char  ch, int  *state);
 ssize_t netconf_input_read2(int s, unsigned char *buf, ssize_t buflen, int *eof);
 int     netconf_input_msg2(unsigned char **bufp, size_t *lenp, cbuf *cbmsg,
                            netconf_framing_type framing, int *frame_state, size_t *frame_size,

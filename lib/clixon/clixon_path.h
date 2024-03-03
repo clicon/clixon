@@ -78,7 +78,7 @@ typedef struct {
 int clixon_path_free(clixon_path *cplist);
 int xml_yang_root(cxobj *x, cxobj **xr);
 int yang2api_path_fmt(yang_stmt *ys, int inclkey, char **api_path_fmt);
-int api_path_fmt2api_path(const char *api_path_fmt, cvec *cvv, char **api_path, int *cvvi);
+int api_path_fmt2api_path(const char *api_path_fmt, cvec *cvv, yang_stmt *yspec, char **api_path, int *cvvi);
 int api_path_fmt2xpath(char *api_path_fmt, cvec *cvv, char **xpath);
 int api_path2xpath(char *api_path, yang_stmt *yspec, char **xpath, cvec **nsc, cxobj **xerr);
 int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop,

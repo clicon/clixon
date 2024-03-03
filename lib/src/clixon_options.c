@@ -259,7 +259,7 @@ parse_configfile_one(clixon_handle h,
         clixon_err(OE_UNIX, errno, "open configure file: %s", filename);
         return -1;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Reading config file %s", filename);
+    clixon_debug(CLIXON_DBG_INIT, "Reading config file %s", filename);
     if ((ret = clixon_xml_parse_file(fp, yspec?YB_MODULE:YB_NONE, yspec, &xt, &xerr)) < 0)
         goto done;
     if (ret == 0){
@@ -284,7 +284,7 @@ parse_configfile_one(clixon_handle h,
     xt = NULL;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Done w/ config file %s retval:%d", filename, retval);
+    clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "Done w/ config file %s retval:%d", filename, retval);
     if (xt)
         xml_free(xt);
     if (fp)
@@ -406,8 +406,7 @@ parse_configfile(clixon_handle  h,
         clixon_err(OE_UNIX, 0, "%s is not a regular file", filename);
         goto done;
     }
-
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Reading config file %s", filename);
+    clixon_debug(CLIXON_DBG_INIT, "Reading config file %s", filename);
     /* Parse main config file */
     if (parse_configfile_one(h, filename, yspec, &xt) < 0)
         goto done;
@@ -495,7 +494,7 @@ parse_configfile(clixon_handle  h,
     *xconfig = xt;
     xt = NULL;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "Done w/ config file %s retval:%d", filename, retval);
+    clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "Done w/ config file %s retval:%d", filename, retval);
     if (dp)
         free(dp);
     if (nsc)
@@ -599,7 +598,7 @@ clicon_options_main(clixon_handle h)
     configfile = clicon_hash_value(copt, "CLICON_CONFIGFILE", NULL);
     if (strlen(configfile) == 0)
         configfile = clicon_hash_value(copt, "CLICON_CONFIGFILE", NULL);
-    clixon_debug(CLIXON_DBG_DEFAULT, "CLICON_CONFIGFILE=%s", configfile);
+    clixon_debug(CLIXON_DBG_INIT, "CLICON_CONFIGFILE=%s", configfile);
     /* File must end with .xml */
     if ((suffix = rindex(configfile, '.')) != NULL){
         suffix++;

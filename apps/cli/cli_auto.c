@@ -128,9 +128,14 @@ cli_auto_edit(clixon_handle h,
     int           argc = 0;
     char         *str;
     char         *mtpoint = NULL;
+    yang_stmt    *yspec0;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
         clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>*, <treename>)", __FUNCTION__);
+        goto done;
+    }
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     api_path_fmt = cv_string_get(cvec_i(argv, argc++));
@@ -172,7 +177,7 @@ cli_auto_edit(clixon_handle h,
         goto done;
     }
     /* get api-path and xpath */
-    if (api_path_fmt2api_path(api_path_fmt, cvv2, &api_path, NULL) < 0)
+    if (api_path_fmt2api_path(api_path_fmt, cvv2, yspec0, &api_path, NULL) < 0)
         goto done;
     /* Store this as edit-mode */
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
@@ -234,9 +239,14 @@ cli_auto_up(clixon_handle h,
     int      j;
     size_t   len;
     cvec    *cvv_filter = NULL;
+    yang_stmt *yspec0;
 
     if (cvec_len(argv) != 1){
         clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
+        goto done;
+    }
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     cv = cvec_i(argv, 0);
@@ -289,7 +299,7 @@ cli_auto_up(clixon_handle h,
         cvec_append_var(cvv1, cv);
     }
     /* get api-path and xpath */
-    if (api_path_fmt2api_path(api_path_fmt1, cvv1, &api_path, NULL) < 0)
+    if (api_path_fmt2api_path(api_path_fmt1, cvv1, yspec0, &api_path, NULL) < 0)
         goto done;
     /* Store this as edit-mode */
     clicon_data_set(h, "cli-edit-mode", api_path);
@@ -506,9 +516,14 @@ cli_auto_sub_enter(clixon_handle h,
     cg_var       *cv = NULL;
     pt_head      *ph;
     struct findpt_arg fa = {0,};
+    yang_stmt        *yspec0;
 
     if (cvec_len(argv) < 2){
         clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<tree> <api_path_fmt> (,vars)*)", __FUNCTION__);
+        goto done;
+    }
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     /* First argv argument: treename */
@@ -540,7 +555,7 @@ cli_auto_sub_enter(clixon_handle h,
         if (cvec_append_var(cvv1, cvec_i(cvv, i)) < 0)
             goto done;
     }
-    if (api_path_fmt2api_path(api_path_fmt, cvv1, &api_path, NULL) < 0)
+    if (api_path_fmt2api_path(api_path_fmt, cvv1, yspec0, &api_path, NULL) < 0)
         goto done;
     /* Assign the variables */
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv1)) == NULL)

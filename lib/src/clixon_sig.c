@@ -302,7 +302,7 @@ pidfile_write(char *pidfile)
         clixon_err(OE_DAEMON, errno, "Could not write pid to %s", pidfile);
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "Opened pidfile %s with pid %d", pidfile, getpid());
+    clixon_debug(CLIXON_DBG_INIT, "Opened pidfile %s with pid %d", pidfile, getpid());
     retval = 0;
  done:
     if (f != NULL)

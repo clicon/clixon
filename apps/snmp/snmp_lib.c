@@ -950,11 +950,12 @@ type_xml2snmp(char       *snmpstr,
         break;
     }
     case ASN_OCTET_STR: // 4
-        *snmplen = strlen(snmpstr)+1;
-        if ((*snmpval = (u_char*)strdup((snmpstr))) == NULL){
-            clixon_err(OE_UNIX, errno, "strdup");
+        *snmplen = strlen(snmpstr);
+        if ((*snmpval = malloc(*snmplen)) == NULL){
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
+        memcpy(*snmpval, snmpstr, *snmplen);
         break;
     case ASN_COUNTER64:{ // 0x46 / 70
         uint64_t u64;

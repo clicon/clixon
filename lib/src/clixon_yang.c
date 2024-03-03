@@ -3537,14 +3537,18 @@ yang_config(yang_stmt *ys)
 int
 yang_config_ancestor(yang_stmt *ys)
 {
-    yang_stmt *yp;
+    yang_stmt    *yp;
+    enum rfc_6020 keyw;
 
     yp = ys;
     do {
         if (yang_flag_get(yp, YANG_FLAG_STATE_LOCAL) != 0)
             return 0;
-        else if (yang_keyword_get(yp) == Y_INPUT || yang_keyword_get(yp) == Y_OUTPUT || yang_keyword_get(yp) == Y_NOTIFICATION){
-            return 0;
+        else {
+            keyw = yang_keyword_get(yp);
+            if (keyw == Y_INPUT || keyw == Y_OUTPUT || keyw == Y_NOTIFICATION){
+                return 0;
+            }
         }
     } while((yp = yang_parent_get(yp)) != NULL);
     return 1;

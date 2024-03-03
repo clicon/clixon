@@ -76,6 +76,43 @@
 #include "clixon_proto.h"
 #include "clixon_netconf_input.h"
 
+/*! Look for a text pattern in an input string, one char at a time
+ *
+ * @param[in]     tag     What to look for
+ * @param[in]     ch      New input character
+ * @param[in,out] state   A state integer holding how far we have parsed.
+ * @retval        1       Yes, we have detected end tag!
+ * @retval        0       No, we havent detected end tag
+ * @code
+ *   int state = 0;
+ *   char ch;
+ *   while (1) {
+ *     // read ch
+ *     if (detect_endtag("mypattern", ch, &state)) {
+ *       // mypattern is matched
+ *     }
+ *   }
+ * @endcode
+ */
+int
+detect_endtag(char *tag,
+              char  ch,
+              int  *state)
+{
+    int retval = 0;
+
+    if (tag[*state] == ch){
+        (*state)++;
+        if (*state == strlen(tag)){
+            *state = 0;
+            retval = 1;
+        }
+    }
+    else
+        *state = 0;
+    return retval;
+}
+
 /*! Read from socket and append to cbuf
  *
  * @param[in]   s       Socket where input arrives. Read from this.
@@ -124,7 +161,7 @@ netconf_input_read2(int            s,
  * @param[in,out] frame_size   Chunked framing size parameter
  * @param[out]    eom          If frame found in cb?
  * @retval        0            OK
- * @retval       -1            Error
+ * @retval       -1            Error (from chunked framing)
  * The routine should be called continuously with more data from input socket in buf
  * State of previous reads is saved in:
  * - bufp/lenp
@@ -194,9 +231,10 @@ netconf_input_msg2(unsigned char      **bufp,
     return retval;
 }
 
-/*! Process incoming frame, ie a char message framed by ]]>]]>
+/*! Parse incoming frame (independent of framing)
  *
  * Parse string to xml, check only one netconf message within a frame
+ * A relatively high-level function.
  * @param[in]   cb    Packet buffer
  * @param[in]   yb    Yang binding: Y_RPC for server-side, Y_NONE for client-side (for now)
  * @param[in]   yspec Yang spec
@@ -268,4 +306,3 @@ netconf_input_frame2(cbuf      *cb,
     retval = 0;
     goto done;
 }
-

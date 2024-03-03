@@ -580,7 +580,7 @@ main(int    argc,
             help = 1;
             break;
         case 'V': /* version */
-            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION_STRING);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : { /* debug */
@@ -786,7 +786,8 @@ main(int    argc,
     if (print_version){
         if (clixon_plugin_version_all(h, stdout) < 0)
             goto done;
-        exit(0);
+        retval = 0;
+        goto done;
     }
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below
@@ -894,7 +895,7 @@ main(int    argc,
             goto done;
     }
     /* Debug dump of config options */
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
 
     cligen_line_scrolling_set(cli_cligen(h), clicon_option_int(h,"CLICON_CLI_LINESCROLLING"));
     /* Start CLI history and load from file */

@@ -49,7 +49,8 @@ jobs:
       run: (cd example; make)   
     - name: install example
       run: (cd example; sudo make install)
-  docker-alpine-tests:
+
+  docker-alpine-tests-a-j:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -78,4 +79,66 @@ jobs:
     - name: start container
       run: ./start.sh
     - name: run test
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true ./sum.sh'
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern=test_a*.sh pattern=test_c*.sh pattern=test_d*.sh pattern=test_f*.sh pattern=test_h*.sh pattern=test_i*.sh pattern=test_j*.sh ./sum.sh'
+
+  docker-alpine-tests-l-r:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v4
+    # 2) Inline of make test, but without configure
+    - name: in-line clone
+      run: git clone file://$(realpath ../..)
+    - name: openconfig
+      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
+    - name: yangmodels1
+      run: mkdir -p yang/standard
+    - name: yangmodels2
+      run: (cd yang; git init;)
+    - name: yangmodels3
+      run: (cd yang; git remote add -f origin https://github.com/YangModels/yang)
+    - name: yangmodels4
+      run: (cd yang; git config core.sparseCheckout true)
+    - name: yangmodels5
+      run: (echo "standard/" >> yang/.git/info/sparse-checkout; echo "experimental/" >> yang/.git/info/sparse-checkout)
+    - name: yangmodels6
+      run: (cd yang; git pull origin main)
+    - name: make docker
+      run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
+    - name: start container
+      run: ./start.sh
+    - name: run test
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern=test_l*.sh pattern=test_m*.sh pattern=test_n*.sh pattern=test_o*.sh pattern=test_p*.sh ./sum.sh'
+
+  docker-alpine-tests-r-z:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v4
+    # 2) Inline of make test, but without configure
+    - name: in-line clone
+      run: git clone file://$(realpath ../..)
+    - name: openconfig
+      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
+    - name: yangmodels1
+      run: mkdir -p yang/standard
+    - name: yangmodels2
+      run: (cd yang; git init;)
+    - name: yangmodels3
+      run: (cd yang; git remote add -f origin https://github.com/YangModels/yang)
+    - name: yangmodels4
+      run: (cd yang; git config core.sparseCheckout true)
+    - name: yangmodels5
+      run: (echo "standard/" >> yang/.git/info/sparse-checkout; echo "experimental/" >> yang/.git/info/sparse-checkout)
+    - name: yangmodels6
+      run: (cd yang; git pull origin main)
+    - name: make docker
+      run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
+    - name: start container
+      run: ./start.sh
+    - name: run test
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern=test_r*.sh pattern=test_s*.sh pattern=test_t*.sh pattern=test_u*.sh pattern=test_w*.sh pattern=test_x*.sh pattern=test_y*.sh ./sum.sh'

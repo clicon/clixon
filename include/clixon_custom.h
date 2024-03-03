@@ -205,3 +205,4 @@
  * This constant will be removed after the 6.6 release
  */
 #define COMPAT_6_5
+

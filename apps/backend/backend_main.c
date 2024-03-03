@@ -569,7 +569,7 @@ main(int    argc,
             help = 1; 
             break;
         case 'V':
-            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION_STRING);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : { /* debug */
@@ -846,7 +846,7 @@ main(int    argc,
     if (print_version){
         if (clixon_plugin_version_all(h, stdout) < 0)
             goto done;
-        exit(0);
+        goto ok;
     }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
@@ -1050,7 +1050,7 @@ main(int    argc,
         goto ok;
 
     /* Debug dump of config options */
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
     
     /* Daemonize and initiate logging. Note error is initiated here to make
        daemonized errors OK. Before this stage, errors are logged on stderr 

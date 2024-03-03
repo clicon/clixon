@@ -86,6 +86,7 @@ static clixon_handle _debug_clixon_h    = NULL;
 static const map_str2int dbgmap[] = {
     {"default",   CLIXON_DBG_DEFAULT},
     {"msg",       CLIXON_DBG_MSG},
+    {"init",      CLIXON_DBG_INIT},
     {"xml",       CLIXON_DBG_XML},
     {"xpath",     CLIXON_DBG_XPATH},
     {"yang",      CLIXON_DBG_YANG},

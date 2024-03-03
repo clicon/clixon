@@ -345,7 +345,7 @@ main(int    argc,
             usage(h, argv[0]);
             break;
         case 'V':
-            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION_STRING);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : { /* debug */
@@ -503,7 +503,7 @@ main(int    argc,
     if (print_version){
         if (clixon_plugin_version_all(h, stdout) < 0)
             goto done;
-        exit(0);
+        goto ok;
     }
     /* Create a pseudo-plugin to create extension callback to set the ietf-routing
      * yang-data extension for api-root top-level restconf function.
@@ -574,7 +574,7 @@ main(int    argc,
         goto ok;
     }
     /* Dump configuration options on debug */
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
 
     /* Call start function in all plugins before we go interactive */
     if (clixon_plugin_start_all(h) < 0)

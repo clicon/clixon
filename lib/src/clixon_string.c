@@ -121,6 +121,72 @@ clicon_strsep(char *string,
     return vec;
 }
 
+/*! Split string using start and stop delimiter strings usable for variable substitution
+ *
+ * Example: "foo ${NAME} bar"
+ * where delim1="${" and delim2="}"
+ * returns vec: "foo ", "NAME", "bar"
+ * Both delim1 and delim2 must match
+ * @param[in]  str
+ * @param[in]  delim1  prefix delimiter string
+ * @param[in]  delim2  postfix delimiter string
+ * @param[out] cvp     Created cligen variable vector, deallocate w cvec_free
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_strsep2(char   *str,
+               char   *delim1,
+               char   *delim2,
+               char ***vcp,
+               int    *nvec)
+{
+    int   retval = -1;
+    size_t sz;
+    char **vec = NULL;
+    char  *s1;
+    char  *s2;
+    int    nr = 0;
+    char  *ptr;
+    int    i;
+
+    s1 = str;
+    while ((s1 = strstr(s1, delim1)) != NULL){
+        if ((s2 = strstr(s1+strlen(delim1), delim2)) != NULL)
+            nr += 2;
+        s1 = s2 + strlen(delim2);
+    }
+    /* alloc vector and append copy of string */
+    sz = (nr+1)* sizeof(char*) + strlen(str)+1;
+    if ((vec = (char**)malloc(sz)) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    memset(vec, 0, sz);
+    ptr = (char*)vec + (nr+1)* sizeof(char*); /* this is where ptr starts */
+    strcpy(ptr, str);
+    i = 0;
+    s1 = ptr;
+    vec[i++] = ptr;
+    while ((s1 = strstr(s1, delim1)) != NULL){
+        if ((s2 = strstr(s1+strlen(delim1), delim2)) != NULL){
+            *s1 = '\0';
+            *s2 = '\0';
+            vec[i++] = s1 + strlen(delim1);
+            vec[i++] = s2 + strlen(delim2);
+        }
+        s1 = s2 + strlen(delim2);
+    }
+    *vcp = vec;
+    ptr = NULL;
+    *nvec = i;
+    retval = 0;
+ done:
+    if (ptr)
+        free(ptr);
+    return retval;
+}
+
 /*! Concatenate elements of a string array into a string. 
  *
  * An optional delimiter string can be specified which will be inserted between 
@@ -1143,6 +1209,63 @@ clixon_unicode2utf8(char  *ucstr,
         goto done;
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Substitute ${var} in string with variables in cvv
+ *
+ * @param[in]  str  Input string
+ * @param[in]  cvv  Variable name/value vector
+ * @param[out] cb   Result buffer (assumed created on entry)
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+clixon_str_subst(char *str,
+                 cvec *cvv,
+                 cbuf *cb)
+{
+    int     retval = -1;
+    char  **vec = NULL;
+    int     nvec = 0;
+    int     i;
+    cg_var *cv;
+    char   *var;
+    char   *varname;
+    char   *varval;
+
+    if (cb == NULL){
+        clixon_err(OE_UNIX, EINVAL, "cb is NULL");
+        goto done;
+    }
+    if (clixon_strsep2(str, "${", "}", &vec, &nvec) < 0)
+        goto done;
+    if (nvec > 1){
+        i = 0;
+        while (i < nvec){
+            cprintf(cb, "%s", vec[i++]);
+            if (i == nvec)
+                break;
+            var = vec[i++];
+            cv = NULL;
+            while ((cv = cvec_each(cvv, cv)) != NULL){
+                if ((varname = cv_name_get(cv)) == NULL)
+                    continue;
+                if (strcmp(varname, var) != 0)
+                    continue;
+                varval = cv_string_get(cv);
+                cprintf(cb, "%s", varval);
+                break;
+            }
+        }
+    }
+    else {
+        cprintf(cb, "%s", str);
+    }
+    retval = 0;
+ done:
+    if (vec)
+        free(vec);
     return retval;
 }
 

@@ -119,8 +119,8 @@ int cli_process_control(clixon_handle h, cvec *vars, cvec *argv);
 /* In cli_show.c */
 int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv,
                   cvec *commands, cvec *helptexts);
-int expand_augment(void *h, char *name, cvec *cvv, cvec *argv,
-                   cvec *commands, cvec *helptexts);
+int expand_yang_list(void *h, char *name, cvec *cvv, cvec *argv,
+                     cvec *commands, cvec *helptexts);
 int clixon_cli2file(clixon_handle h, FILE *f, cxobj *xn, char *prepend, clicon_output_cb *fn, int skiptop);
 int clixon_cli2cbuf(clixon_handle h, cbuf *cb, cxobj *xn, char *prepend, int skiptop);
 /* cli_show.c: CLIgen new vector arg callbacks */

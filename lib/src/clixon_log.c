@@ -254,9 +254,10 @@ flogtime(FILE *f)
 
     gettimeofday(&tv, NULL);
     localtime_r((time_t*)&tv.tv_sec, &tm);
-    fprintf(f, "%s %2d %02d:%02d:%02d: ",
+    fprintf(f, "%s %2d %02d:%02d:%02d.%06ld: ",
             mon2name(tm.tm_mon), tm.tm_mday,
-            tm.tm_hour, tm.tm_min, tm.tm_sec);
+            tm.tm_hour, tm.tm_min, tm.tm_sec,
+            tv.tv_usec);
     return 0;
 }
 

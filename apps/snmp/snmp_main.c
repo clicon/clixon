@@ -358,6 +358,7 @@ main(int    argc,
     int            zap = 0;
     int           config_dump = 0;
     enum format_enum config_dump_format = FORMAT_XML;
+    int              print_version = 0;
 
     /* Create handle */
     if ((h = clixon_handle_init()) == NULL)
@@ -381,8 +382,8 @@ main(int    argc,
             usage(h, argv[0]);
             break;
         case 'V': /* version */
-            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
-            exit(0);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION_STRING);
+            print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : { /* debug */
             int d = 0;
@@ -408,7 +409,8 @@ main(int    argc,
                 goto done;
             break;
         }
-
+    if (print_version)
+        goto ok;
     /*
      * Logs, error and debug to stderr or syslog, set debug level
      */
@@ -553,7 +555,7 @@ main(int    argc,
             goto done;
         goto ok;
     }
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
 
     /* Send hello request to backend to get session-id back
      * This is done once at the beginning of the session and then this is
@@ -581,8 +583,8 @@ main(int    argc,
  ok:
     retval = 0;
  done:
-    snmp_terminate(h);
     clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+    snmp_terminate(h);
     return retval;
 }

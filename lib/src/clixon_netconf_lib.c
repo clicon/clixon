@@ -2226,7 +2226,7 @@ netconf_output_encap(netconf_framing_type framing,
  * @retval        2      End-of-frame
  * @retval        1      Chunk-data      
  * @retval        0      Framing char, not data
- * @retval       -1      Error
+ * @retval       -1      Framing error
  * Example:
    C:  \n#4\n
    C:  <rpc

@@ -1588,7 +1588,6 @@ xml_rm_children(cxobj          *xp,
     return retval;
 }
 
-
 /*! Remove top XML object and all children except a single child
  *
  * Given a root xml node, and the i:th child, remove the child from its parent

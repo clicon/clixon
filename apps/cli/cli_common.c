@@ -443,7 +443,7 @@ cli_dbxml(clixon_handle       h,
         /* Transform template format string + cvv to actual api-path 
          * cvvi indicates if all cvv entries were used
          */
-        if (api_path_fmt2api_path(api_path_fmt01, cvv, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     else {
@@ -451,7 +451,7 @@ cli_dbxml(clixon_handle       h,
         /* Transform template format string + cvv to actual api-path 
          * cvvi indicates if all cvv entries were used
          */
-        if (api_path_fmt2api_path(api_path_fmt, cvv, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt, cvv, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     /* Create config top-of-tree */
@@ -1403,14 +1403,12 @@ cli_notification_cb(int   s,
                     void *arg)
 {
     int                retval = -1;
-    struct clicon_msg *reply = NULL;
-    int                eof;
+    int                eof = 0;
     cxobj             *xt = NULL;
     enum format_enum   format = (enum format_enum)(uintptr_t)arg;
-    int                ret;
+    cbuf              *cb = NULL;
 
-    /* get msg (this is the reason this function is called) */
-    if (clicon_msg_rcv(s, NULL, 0, &reply, &eof) < 0)
+    if (clixon_msg_rcv11(s, NULL, 0, &cb, &eof) < 0)
         goto done;
     if (eof){
         clixon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
@@ -1419,13 +1417,8 @@ cli_notification_cb(int   s,
         clixon_event_unreg_fd(s, cli_notification_cb);
         goto done;
     }
-    /* XXX pass yang_spec and use xerr*/
-    if ((ret = clicon_msg_decode(reply, NULL, NULL, &xt, NULL)) < 0)
+    if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, NULL, &xt, NULL) < 0)
         goto done;
-    if (ret == 0){ /* will not happen since no yspec ^*/
-        clixon_err(OE_NETCONF, EFAULT, "Notification malformed");
-        goto done;
-    }
     switch (format){
     case FORMAT_JSON:
         if (clixon_json2file(stdout, xt, 1, cligen_output, 1, 1) < 0)
@@ -1443,10 +1436,10 @@ cli_notification_cb(int   s,
     }
     retval = 0;
   done:
+    if (cb)
+        cbuf_free(cb);
     if (xt)
         xml_free(xt);
-    if (reply)
-        free(reply);
     return retval;
 }
 
