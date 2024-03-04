@@ -41,7 +41,7 @@
 #define _CLIXON_XML_MAP_H_
 
 /*
- * Maximum number of supported bit pisitions in YANG "bits" data 
+ * Maximum number of supported bit positions in YANG "bits" data 
  * type. As defined in RFC7950 (section 9.7.4.2.) the position 
  * value must be in the range 0 to 4294967295. But who needs
  * that much bit positions? (To set bit 4'294'967'295 it would be
@@ -77,8 +77,8 @@ int assign_namespace_element(cxobj *x0, cxobj *x1, cxobj *x1p);
 int assign_namespace_body(cxobj *x0, cxobj *x1);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 int yang_valstr2enum(yang_stmt *ytype, char *valstr, char **enumstr);
-int yang_bitsstr2val(yang_stmt *ytype, char *bitsstr, unsigned char **snmpval, size_t *snmplen);
-int yang_val2bitsstr(yang_stmt *ytype, unsigned char *snmpval, size_t snmplen, cbuf *cb);
+int yang_bitsstr2val(clixon_handle h, yang_stmt *ytype, char *bitsstr, unsigned char **snmpval, size_t *snmplen);
+int yang_val2bitsstr(clixon_handle h, yang_stmt *ytype, unsigned char *snmpval, size_t snmplen, cbuf *cb);
 int yang_enum2valstr(yang_stmt *ytype, char *enumstr, char **valstr);
 int yang_enum2int(yang_stmt *ytype, char *enumstr, int32_t *val);
 int yang_enum_int_value(cxobj *node, int32_t *val);
