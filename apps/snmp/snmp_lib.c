@@ -611,7 +611,6 @@ type_yang2asn1(yang_stmt    *ys,
             (strcmp(display_hint, "255a")==0 ||
              strcmp(display_hint, "255t")==0))
             at = CLIXON_ASN_FIXED_STRING;
-
         /* Special case for bits type because netsnmp lib returns ASN_OCTET_STRING. In this case
            we have to define an extended type to be able to handle bits type correctly later on. */
         if (strcmp(restype, "bits") == 0){
@@ -893,16 +892,14 @@ type_xml2snmp(char       *snmpstr,
 {
     int        retval = -1;
     int        ret;
-    yang_stmt *yrestype;    /* resolved type */
+    yang_stmt *yrestype;  /* resolved type */
 
     if (snmpval == NULL || snmplen == NULL){
         clixon_err(OE_UNIX, EINVAL, "snmpval or snmplen is NULL");
         goto done;
     }
-
     if (snmp_yang_type_get(ys, NULL, NULL, &yrestype, NULL)) // XXX yrestype
         goto done;
-
     switch (*asn1type){
     case CLIXON_ASN_ROWSTATUS:
         *asn1type = ASN_INTEGER;
