@@ -1288,6 +1288,9 @@ rpc_callback_call(clixon_handle h,
                 nr++;
                 if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
                     goto done;
+                /* Ensure only one reply: first wins */
+                if (cbuf_len(cbret) > 0)
+                    break;
             }
             rc = NEXTQ(rpc_callback_t *, rc);
         } while (rc != ms->ms_rpc_callbacks);

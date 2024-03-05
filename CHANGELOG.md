@@ -57,13 +57,13 @@ Users may have to change how they access the system
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Rename function `xml_yang_minmax_recurse()` -> `xml_yang_validate_minmax()`
 * Modified msg functions for clearer NETCONF 1.0 vs 1.1 API:
   * `clicon_rpc1` --> `clixon_rpc10`
   * `clicon_msg_send1` --> `clixon_msg_send10`
   * `clicon_msg_rcv` and `clicon_msg_decode` --> `clixon_msg_rcv11`
     * Rewrite by calling `clixon_msg_rcv11` and explicit xml parsing
   * `clicon_msg_rcv1` --> `clixon_msg_rcv10`
-
 * Added `yspec` parameter to `api_path_fmt2api_path()`:
   * `api_path_fmt2api_path(af, c, a, c)` --> `api_path_fmt2api_path(af, c, yspec, a, c)`
 * Added flags parameter to default functions:
@@ -109,6 +109,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [If services add duplicate entries, controller does not detect this](https://github.com/clicon/clixon-controller/issues/107)
 * Fixed: [Problems with diff of YANG lists ordered-by user](https://github.com/clicon/clixon/issues/496)
 * Fixed: [show compare does not show correct diff while load merge xml](https://github.com/clicon/clixon-controller/issues/101)
 * Fixed: [commit goes 2 times](https://github.com/clicon/clixon/issues/488)

@@ -94,7 +94,7 @@ fi
 new "wait backend"
 wait_backend
 
-# RFC test two-field caes
+# RFC test two-field case
 new "Add not valid example"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\"><server>
        <name>smtp</name>

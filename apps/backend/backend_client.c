@@ -555,10 +555,12 @@ from_client_edit_config(clixon_handle h,
     }
     /* Limited validation of incoming payload
      */
-    if ((ret = xml_yang_minmax_recurse(xc, 1, &xret)) < 0)
+    if ((ret = xml_yang_validate_minmax(xc, 1, &xret)) < 0)
+        goto done;
+    if (ret == 1 && (ret = xml_yang_validate_unique_recurse(xc, &xret)) < 0)
         goto done;
     /* xmldb_put (difflist handling) requires list keys */
-    if (ret==1 && (ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
+    if (ret == 1 && (ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
         goto done;
     if (ret == 0){
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
