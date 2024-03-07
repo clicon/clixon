@@ -2811,10 +2811,10 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # where autotool scripts are: install-sh, config.sub, config.guess
 
 
-CLIXON_VERSION_MAJOR="6"
-CLIXON_VERSION_MINOR="6"
+CLIXON_VERSION_MAJOR="7"
+CLIXON_VERSION_MINOR="0"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 
 # Debug flag
 # Check whether --enable-debug was given.

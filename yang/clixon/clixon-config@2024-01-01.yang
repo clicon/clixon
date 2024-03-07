@@ -57,7 +57,7 @@ module clixon-config {
                     CLICON_DATASTORE_CACHE
                     CLICON_NETCONF_CREATOR_ATTR
              Changed semantics of 
-             Released in Clixon 6.6";
+             Released in Clixon 7.0";
     }
     revision 2023-11-01 {
         description
@@ -603,7 +603,7 @@ module clixon-config {
                  that created the object are deleted.
                  The clixon controller uses this feature, but could in principle be used by other 
                  applications.
-                 Marked as obsolete in 6.6 since creators attribute replaced by clixon-lib creators
+                 Marked as obsolete in 7.0 since creators attribute replaced by clixon-lib creators
                  config";
             status obsolete;
         }
@@ -965,7 +965,7 @@ module clixon-config {
                  cache with copy, or cache without copy.
                  Note: 'cache' is default value and supported with regressions etc.
                  Others are experimental (in Clixon 5.5)
-                 Note that from 6.6 this is OBSOLETED, only datastore_cache is supported";
+                 Note that from 7.0 this is OBSOLETED, only datastore_cache is supported";
             status obsolete;
         }
         leaf CLICON_XMLDB_FORMAT {

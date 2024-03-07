@@ -48,10 +48,10 @@ AC_CONFIG_SRCDIR([lib/clixon/clixon.h.in])
 # where autotool scripts are: install-sh, config.sub, config.guess
 AC_CONFIG_AUX_DIR(config-aux)
 
-CLIXON_VERSION_MAJOR="6"
-CLIXON_VERSION_MINOR="6"
+CLIXON_VERSION_MAJOR="7"
+CLIXON_VERSION_MINOR="0"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
 
 # Debug flag
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[

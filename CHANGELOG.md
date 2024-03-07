@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [6.6.0](#660) Expected: March 2024
+* [7.0.0](#660) 8 March 2024
 * [6.5.0](#650) 6 December 2023
 * [6.4.0](#640) 30 September 2023
 * [6.3.0](#630) 29 July 2023
@@ -8,10 +8,14 @@
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
 
-## 6.6.0
-Expected: March 2024
+## 7.0.0
+8 March 2024
 
-### Minor features
+Clixon 7.0.0 is a major release with changes to the debug/log/error API, other APIs,
+standardized internal framing protocol and many other changes.
+It also supports the 1.0 clixon controller release.
+
+### Features
 
 * Changed framing between backend and frontend to RFC6242 "chunked-encoding"
   * Previous a propriatary framing method was used
