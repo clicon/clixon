@@ -85,12 +85,10 @@
  * @param[in]  i1    The new entry is placed at vec[i1]
  * @param[in]  vlen  Length of entry
  * @param[in]  sorted Sorted by system, ie sorted by key, otherwise no assumption
- * @retval     0     OK, entry is unique
- * @retval    -1     Duplicate detected
- * @note This is currently quadratic complexity. It could be improved by inserting new element sorted and binary search.
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
+ * @note This is currently quadratic complexity. It could be improved by inserting new element sorted and binary search.
  */
 static int
 unique_search_xpath(cxobj  *x,
@@ -218,16 +216,16 @@ check_unique_list_direct(cxobj     *x,
                          cxobj    **xret)
 {
     int       retval = -1;
-    cg_var    *cvi; /* unique node name */
-    cxobj     *xi;
-    char     **vec = NULL; /* 2xmatrix */
-    int        clen;
-    int        i;
-    int        v;
-    char      *bi;
-    int        sorted;
-    char      *str;
-    cvec      *cvk;
+    cg_var   *cvi; /* unique node name */
+    cxobj    *xi;
+    char    **vec = NULL; /* 2xmatrix */
+    int       clen;
+    int       i;
+    int       v;
+    char     *bi;
+    int       sorted;
+    char     *str;
+    cvec     *cvk;
 
     /* If list and is sorted by system, then it is assumed elements are in key-order which is optimized
      * Other cases are "unique" constraint or list sorted by user which is quadratic in complexity
@@ -385,7 +383,7 @@ check_unique_list(cxobj     *x,
     goto done;
 }
 
-/*! Given a list, check if any min/max-elemants constraints apply
+/*! Given a list or leaf-list, check if any min/max-elemants constraints apply
  *
  * @param[in]  xp    Parent of the xml list there are too few/many (for error)
  * @param[in]  y     Yang spec of the failing list
@@ -395,7 +393,7 @@ check_unique_list(cxobj     *x,
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
  * @see RFC7950 7.7.5
- * @note No recurse for non-presence container is made, see eg xml_yang_minmax_recurse
+ * @note No recurse for non-presence container is made, see eg xml_yang_minmax
  */
 static int
 check_minmax(cxobj     *xp,
@@ -480,11 +478,21 @@ check_empty_list_minmax(cxobj     *xt,
     goto done;
 }
 
+/*! Check duplicates/unique in list
+ *
+ * @param[in]  x     XML LIST node
+ * @param[in]  xt    XML parent
+ * @param[in]  y     YANG of x
+ * @param[out] xret  Error as XML if ret = 0
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (xret set)
+ * @retval    -1     Error
+ */
 static int
-xml_yang_minmax_newlist(cxobj     *x,
-                        cxobj     *xt,
-                        yang_stmt *y,
-                        cxobj    **xret)
+xml_yang_minmax_new_list(cxobj     *x,
+                         cxobj     *xt,
+                         yang_stmt *y,
+                         cxobj    **xret)
 {
     int        retval = -1;
     yang_stmt *yu;
@@ -515,6 +523,55 @@ xml_yang_minmax_newlist(cxobj     *x,
         if (ret == 0)
             goto fail;
     }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Check duplicates in leaf-list
+ *
+ * @param[in]  x0    XML LIST node
+ * @param[in]  xt    XML parent
+ * @param[in]  y0    YANG of x0
+ * @param[out] xret  Error as XML if ret = 0
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (xret set)
+ * @retval    -1     Error
+ * @note works for both ordered-by user and system. But worst case quadratic
+ */
+static int
+xml_yang_minmax_new_leaf_list(cxobj     *x0,
+                              cxobj     *xt,
+                              yang_stmt *y0,
+                              cxobj    **xret)
+{
+    int        retval = -1;
+    cxobj     *xi;
+    cxobj     *xj;
+    char      *bi;
+    char      *bj;
+
+    xi = x0;
+    do {
+        if ((bi = xml_body(xi)) == NULL)
+            continue;
+        xj = xi;
+        while ((xj = xml_child_each(xt, xj, CX_ELMNT)) != NULL &&
+               xml_spec(xj) == y0) {
+            if ((bj = xml_body(xj)) == NULL)
+                continue;
+            if (bi && bj && strcmp(bi, bj) == 0){
+                if (xret && netconf_data_not_unique_xml(xret, xi, NULL) < 0)
+                    goto done;
+                goto fail;
+            }
+        }
+    }
+    while ((xi = xml_child_each(xt, xi, CX_ELMNT)) != NULL &&
+           xml_spec(xi) == y0);
     retval = 1;
  done:
     return retval;
@@ -581,7 +638,7 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
     goto done;
 }
 
-/*! Recursive minmax check 
+/*! YANG Minmax check, no recursion
  *
  * Assume xt:s children are sorted and yang populated.
  * The function does two different things of the children of an XML node:
@@ -637,7 +694,7 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
  * 7   null             nolist  neq   gap analysis; nopresence-check; 
  * 8   list             nolist  neq   gap analysis; yprev: check-minmax; nopresence-check; 
  * @param[in]  xt      XML parent (may have lists w unique constraints as child)
- * @param[in]  recurse Set if called in a recursive loop (will recurse anyway), 
+ * @param[in]  presence Set if called in a recursive loop (the caller will recurse anyway),
  *                     otherwise non-presence containers will be traversed
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @retval     1       Validation OK
@@ -646,11 +703,12 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
  * Note that many checks, ie all except gap analysis, may be unnecessary if this fn
  * is called in a recursive environment, since the recursion being made here will
  * be made in that environment anyway and thus leading to double checks.
+ * @see xml_yang_validate_unique  Sunset of unique tests
  */
 int
-xml_yang_minmax_recurse(cxobj  *xt,
-                        int     recurse,
-                        cxobj **xret)
+xml_yang_validate_minmax(cxobj  *xt,
+                         int     presence,
+                         cxobj **xret)
 {
     int           retval = -1;
     cxobj        *x = NULL;
@@ -686,10 +744,18 @@ xml_yang_minmax_recurse(cxobj  *xt,
             }
             nr=1;
             /* new list check */
-            if (ret &&
-                keyw == Y_LIST)
-                if ((ret = xml_yang_minmax_newlist(x, xt, y, xret)) < 0)
-                    goto done;
+            if (ret){
+                if (keyw == Y_LIST){
+                    if ((ret = xml_yang_minmax_new_list(x, xt, y, xret)) < 0)
+                        goto done;
+                }
+#ifdef NOTYET /* XXX This is enforced in xml_yang_validate_unique instead */
+                else if (keyw == Y_LEAF_LIST){
+                    if ((ret = xml_yang_minmax_new_leaf_list(x, xt, y, xret)) < 0)
+                        goto done;
+                }
+#endif
+            }
             if (ret == 0)
                 goto fail;
             yprev = y;
@@ -716,11 +782,11 @@ xml_yang_minmax_recurse(cxobj  *xt,
             }
             if (ret == 0)
                 goto fail;
-            if (recurse && keyw == Y_CONTAINER &&
+            if (presence && keyw == Y_CONTAINER &&
                 yang_find(y, Y_PRESENCE, NULL) == NULL){
                 yang_stmt *yc = NULL;
                 while ((yc = yn_each(y, yc)) != NULL) {
-                    if ((ret = xml_yang_minmax_recurse(x, recurse, xret)) < 0)
+                    if ((ret = xml_yang_validate_minmax(x, presence, xret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
@@ -757,6 +823,171 @@ xml_yang_minmax_recurse(cxobj  *xt,
             goto done;
     }
     if (ret == 0)
+        goto fail;
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Recursive minmax check
+ *
+ * Callback function type for xml_apply
+ * @param[in]  x    XML node
+ * @param[in]  arg  General-purpose argument
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ */
+static int
+xml_yang_minmax_apply(cxobj *x,
+                      void  *arg)
+{
+    int     ret;
+    cxobj **xret = (cxobj **)arg;
+
+    if ((ret = xml_yang_validate_minmax(x, 1, xret)) < 0)
+        return -1;
+     if (ret == 0){ /* Validation failed (xret set) */
+        return 1; /* Abort dont continue */
+    }
+    return 0;
+}
+
+/*! Recursive YANG Minmax check
+ *
+ * @param[in]  xt      XML parent (may have lists w unique constraints as child)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @retval     1       Validation OK
+ * @retval     0       Validation failed (xret set)
+ * @retval    -1       Error
+ */
+int
+xml_yang_validate_minmax_recurse(cxobj  *xt,
+                                 cxobj **xret)
+{
+    int retval = -1;
+    int ret;
+
+    if ((ret = xml_apply0(xt, CX_ELMNT, xml_yang_minmax_apply, xret)) < 0)
+        goto done;
+    if (ret == 1)
+        goto fail;
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! YANG unique check, no recursion
+ *
+ * Assume xt:s children are sorted and yang populated.
+ * @param[in]  xt      XML parent (may have lists w unique constraints as child)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @retval     1       Validation OK
+ * @retval     0       Validation failed (xret set)
+ * @retval    -1       Error
+ * @see xml_yang_validate_minmax  which include these unique tests
+ */
+int
+xml_yang_validate_unique(cxobj  *xt,
+                         cxobj **xret)
+{
+    int           retval = -1;
+    cxobj        *x = NULL;
+    yang_stmt    *y;
+    yang_stmt    *yprev = NULL;
+    enum rfc_6020 keyw;
+    int           nr = 0;
+    int           ret;
+
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
+        if ((y = xml_spec(x)) == NULL)
+            continue;
+        keyw = yang_keyword_get(y);
+        if (keyw == Y_LIST || keyw == Y_LEAF_LIST){
+            /* equal: just continue*/
+            if (y == yprev){
+                nr++;
+                continue;
+            }
+            nr=1;
+            /* new list check */
+            switch (keyw){
+            case Y_LIST:
+                if ((ret = xml_yang_minmax_new_list(x, xt, y, xret)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+                break;
+            case Y_LEAF_LIST:
+                if ((ret = xml_yang_minmax_new_leaf_list(x, xt, y, xret)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+                break;
+            default:
+                break;
+            }
+            yprev = y;
+        }
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Recursive unique check
+ *
+ * Callback function type for xml_apply
+ * @param[in]  x    XML node
+ * @param[in]  arg  General-purpose argument
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ */
+static int
+xml_yang_unique_apply(cxobj *x,
+                      void  *arg)
+{
+    int     ret;
+    cxobj **xret = (cxobj **)arg;
+
+    if ((ret = xml_yang_validate_unique(x, xret)) < 0)
+        return -1;
+     if (ret == 0){ /* Validation failed (xret set) */
+        return 1; /* Abort dont continue */
+    }
+    return 0;
+}
+
+/*! Recursive YANG unique check
+ *
+ * @param[in]  xt      XML parent (may have lists w unique constraints as child)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @retval     1       Validation OK
+ * @retval     0       Validation failed (xret set)
+ * @retval    -1       Error
+ */
+int
+xml_yang_validate_unique_recurse(cxobj  *xt,
+                                 cxobj **xret)
+{
+    int retval = -1;
+    int ret;
+
+    if ((ret = xml_apply0(xt, CX_ELMNT, xml_yang_unique_apply, xret)) < 0)
+        goto done;
+    if (ret == 1)
         goto fail;
     retval = 1;
  done:

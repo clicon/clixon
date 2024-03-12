@@ -118,8 +118,8 @@ split_path(char   *path,
 {
     int    retval = -1;
     size_t allocated = PATH_CHUNKS;
-    char  *work;     /* don't modify the original copy */
-    char **list;
+    char  *work = NULL;     /* don't modify the original copy */
+    char **list = NULL;
     size_t len = 0;
     char  *ptr;
     char  *new_element;
@@ -136,9 +136,7 @@ split_path(char   *path,
         list[len++] = new_element;
         ptr++;
     }
-
     ptr = strtok(ptr, "/");
-
     while (ptr != NULL) {
         if (len > allocated) {
             /* we've run out of space, allocate a bigger list */
@@ -146,20 +144,20 @@ split_path(char   *path,
             if ((list = realloc(list, allocated * sizeof(char *))) == NULL)
                 goto done;
         }
-
         if ((new_element = strdup(ptr)) == NULL)
             goto done;
         list[len++] = new_element;
-
         ptr = strtok(NULL, "/");
     }
-
     *plist = list;
+    list = NULL;
     *plist_len = len;
-
-    free(work);
     retval = 0;
  done:
+    if (list)
+        free(list);
+    if (work)
+        free(work);
     return retval;
 }
 
@@ -236,13 +234,15 @@ add_peer_node(dispatcher_entry_t *node,
         new_node->peer_head = new_node;
 
         return new_node;
-    } else {
+    }
+    else {
         /* possibly adding to the list */
 
         /* search for existing, or get tail end of list */
         eptr = node->peer_head;
         while (eptr->peer != NULL) {
             if (strcmp(eptr->node_name, name) == 0) {
+                free(new_node);
                 return eptr;
             }
             eptr = eptr->peer;
@@ -250,6 +250,7 @@ add_peer_node(dispatcher_entry_t *node,
 
         // if eptr->node_name == name, we done
         if (strcmp(eptr->node_name, name) == 0) {
+            free(new_node);
             return eptr;
         }
 
@@ -275,7 +276,6 @@ add_peer_node(dispatcher_entry_t *node,
  * @retval    pointer Pointer to head of children list
  * @retval    NULL    Error
  */
-
 static dispatcher_entry_t *
 add_child_node(dispatcher_entry_t *node,
                char               *name)
@@ -382,13 +382,14 @@ int
 dispatcher_register_handler(dispatcher_entry_t   **root,
                             dispatcher_definition *x)
 {
+    int                 retval = -1;
     char              **split_path_list = NULL;
     size_t              split_path_len = 0;
     dispatcher_entry_t *ptr;
 
     if (*x->dd_path != '/') {
         errno = EINVAL;
-        return -1;
+        goto done;
     }
 
     /*
@@ -396,7 +397,7 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
      * up to create the elements of the dispatcher table
      */
     if (split_path(x->dd_path, &split_path_list, &split_path_len) < 0)
-        return -1;
+        goto done;
 
     /*
      * the first element is always a peer to the top level
@@ -411,7 +412,7 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
 
     for (size_t i = 1; i < split_path_len; i++) {
         if ((ptr = add_child_node(ptr, split_path_list[i])) == NULL)
-            return -1;
+            goto done;
     }
 
     /* when we get here, ptr points at last entry added */
@@ -420,8 +421,9 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
 
     /* clean up */
     split_path_free(split_path_list, split_path_len);
-
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Call the handler and all its descendant handlers

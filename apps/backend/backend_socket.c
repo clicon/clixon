@@ -232,7 +232,7 @@ backend_accept_client(int   fd,
 {
     int                  retval = -1;
     clixon_handle        h = (clixon_handle)arg;
-    int                  s;
+    int                  s = -1;
     struct sockaddr      from = {0,};
     socklen_t            len;
     struct client_entry *ce;
@@ -297,8 +297,11 @@ backend_accept_client(int   fd,
      */
     if (clixon_event_reg_fd(s, from_client, (void*)ce, "local netconf client socket") < 0)
         goto done;
+    s = -1;
     retval = 0;
  done:
+    if (s != -1)
+        close(s);
     if (name)
         free(name);
     return retval;

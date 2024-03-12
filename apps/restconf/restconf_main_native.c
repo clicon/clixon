@@ -528,7 +528,7 @@ restconf_accept_client(int   fd,
     int                     retval = -1;
     restconf_socket        *rsock;
     clixon_handle           h;
-    int                     s;
+    int                     s = -1;
     struct sockaddr         from = {0,};
     socklen_t               len;
     char                   *name = NULL;
@@ -568,7 +568,7 @@ restconf_accept_client(int   fd,
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
-    if (inet_ntop(from.sa_family, addr, rsock->rs_from_addr, INET6_ADDRSTRLEN) < 0)
+    if (inet_ntop(from.sa_family, addr, rsock->rs_from_addr, INET6_ADDRSTRLEN) == NULL)
         goto done;
     clixon_debug(CLIXON_DBG_RESTCONF, "type:%s from:%s, dest:%s port:%hu",
                  rsock->rs_addrtype,
@@ -579,11 +579,14 @@ restconf_accept_client(int   fd,
     /* Accept SSL */
     if (restconf_ssl_accept_client(h, s, rsock, NULL) < 0)
         goto done;
+    s = -1;
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (name)
         free(name);
+    if (s != -1)
+        close(s);
     return retval;
 } /* restconf_accept_client */
 
@@ -782,6 +785,7 @@ openssl_init_socket(clixon_handle h,
         rsock->rs_ss = -1; /* Not applicable from callhome */
         if (restconf_callhome_timer(rsock, 0) < 0)
             goto done;
+        rsock = NULL;
     }
     else {
         /* ss is a server socket that the clients connect to. The callback
@@ -789,9 +793,12 @@ openssl_init_socket(clixon_handle h,
         rsock->rs_ss = ss;
         if (clixon_event_reg_fd(rsock->rs_ss, restconf_accept_client, rsock, "restconf socket") < 0)
             goto done;
+        rsock = NULL;
     }
     retval = 0;
  done:
+    if (rsock)
+        free(rsock);
     return retval;
 }
 

@@ -147,7 +147,7 @@ clixon_strsep2(char   *str,
     char  *s1;
     char  *s2;
     int    nr = 0;
-    char  *ptr;
+    char  *ptr = NULL;
     int    i;
 
     s1 = str;
@@ -840,7 +840,7 @@ uri_str2cvec(char  *string,
     char   *s;
     char   *s0 = NULL;;
     char   *val;     /* value */
-    char   *valu;    /* unescaped value */
+    char   *valu = NULL;    /* unescaped value */
     char   *snext; /* next element in string */
     cvec   *cvv = NULL;
     cg_var *cv;
@@ -883,7 +883,10 @@ uri_str2cvec(char  *string,
                 s++;
             cv_name_set(cv, s);
             cv_string_set(cv, valu);
-            free(valu); valu = NULL;
+            if (valu) {
+                free(valu);
+                valu = NULL;
+            }
         }
         else{
             if (strlen(s)){
@@ -901,6 +904,8 @@ uri_str2cvec(char  *string,
     *cvp = cvv;
     if (s0)
         free(s0);
+    if (valu)
+        free(valu);
     return retval;
  err:
     if (cvv){

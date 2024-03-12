@@ -89,7 +89,7 @@ restconf_stream_data *
 restconf_stream_data_new(restconf_conn *rc,
                          int32_t        stream_id)
 {
-    restconf_stream_data *sd;
+    restconf_stream_data *sd = NULL;
 
     if ((sd = malloc(sizeof(restconf_stream_data))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
@@ -100,23 +100,30 @@ restconf_stream_data_new(restconf_conn *rc,
     sd->sd_fd = -1;
     if ((sd->sd_inbuf = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
-        return NULL;
+        goto done;
     }
     if ((sd->sd_indata = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
-        return NULL;
+        goto done;
     }
     if ((sd->sd_outp_hdrs = cvec_new(0)) == NULL){
         clixon_err(OE_UNIX, errno, "cvec_new");
-        return NULL;
+        goto done;
     }
     if ((sd->sd_outp_buf = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
-        return NULL;
+        goto done;
     }
     sd->sd_conn = rc;
     INSQ(sd, rc->rc_streams);
+ ok:
     return sd;
+ done:
+    if (sd){
+        restconf_stream_free(sd);
+        sd = NULL;
+    }
+    goto ok;
 }
 
 /*! Find restconf stream data
@@ -870,7 +877,6 @@ restconf_http2_upgrade(restconf_conn *rc)
  * @param[in]  rc       Restconf connection
  * @param[in]  buf      Input buffer
  * @param[in]  n        Size of input buffer
- * @param[in]  n        Length of data in input buffer
  * @param[out] readmore If set, read data again, do not continue processing
  * @retval     1        OK
  * @retval     0        Socket closed, quit
@@ -1015,9 +1021,9 @@ restconf_connection(int   s,
 #endif /* HAVE_HTTP1 */
 #ifdef HAVE_LIBNGHTTP2
         case HTTP_2:
-            if ((ret = restconf_http2_process(rc, buf, n, &readmore)) < 0)
-                goto done;
             gettimeofday(&rc->rc_t, NULL); /* activity timer */
+            if ((ret = restconf_http2_process(rc, buf, n, &readmore)) < 0) // XXX frees rc
+                goto done;
             if (ret == 0)
                 goto ok;
             break;

@@ -86,11 +86,11 @@ xml_default_create1(yang_stmt *y,
                     cxobj     *xt,
                     cxobj    **xcp)
 {
-    int        retval = -1;
-    char      *namespace;
-    char      *prefix;
-    int        ret;
-    cxobj     *xc = NULL;
+    int    retval = -1;
+    char  *namespace;
+    char  *prefix;
+    int    ret;
+    cxobj *xc = NULL;
 
     if ((xc = xml_new(yang_argument_get(y), NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -116,8 +116,11 @@ xml_default_create1(yang_stmt *y,
     if (xml_addsub(xt, xc) < 0)
         goto done;
     *xcp = xc;
+    xc = NULL;
     retval = 0;
  done:
+    if (xc)
+        xml_free(xc);
     return retval;
 }
 

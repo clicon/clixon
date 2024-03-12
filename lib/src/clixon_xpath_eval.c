@@ -621,8 +621,11 @@ xp_logop(xp_ctx    *xc1,
         goto done;
     }
     *xrp = xr;
+    xr = NULL;
     retval = 0;
  done:
+    if (xr)
+        ctx_free(xr);
     return retval;
 }
 
@@ -684,8 +687,11 @@ xp_numop(xp_ctx    *xc1,
             goto done;
         }
     *xrp = xr;
+    xr = NULL;
     retval = 0;
  done:
+    if (xr)
+        ctx_free(xr);
     return retval;
 }
 
@@ -1111,8 +1117,11 @@ xp_union(xp_ctx    *xc1,
             goto done;
     }
     *xrp = xr;
+    xr = NULL;
     retval = 0;
  done:
+    if (xr)
+        ctx_free(xr);
     return retval;
 }
 

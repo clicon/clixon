@@ -142,6 +142,7 @@ xml_copy_bottom_recurse(cxobj  *x0t,
     cxobj     *x0p = NULL;
     cxobj     *x1p = NULL;
     cxobj     *x1 = NULL;
+    int        x1malloc = 0;
     cxobj     *x1a = NULL;
     cxobj     *x0a = NULL;
     cxobj     *x0k;
@@ -168,6 +169,7 @@ xml_copy_bottom_recurse(cxobj  *x0t,
     if (x1 == NULL){ /* If not, create it and copy it one level only */
         if ((x1 = xml_new(xml_name(x0), x1p, CX_ELMNT)) == NULL)
             goto done;
+        x1malloc++;
         if (xml_copy_one(x0, x1) < 0)
             goto done;
         /* Copy all attributes */
@@ -200,9 +202,12 @@ xml_copy_bottom_recurse(cxobj  *x0t,
         }
     }
     *x1pp = x1;
+    x1 = NULL;
  ok:
     retval = 0;
  done:
+    if (x1 && x1malloc)
+        xml_free(x1);
     return retval;
 }
 

@@ -513,7 +513,7 @@ netconf_notification_cb(int   s,
     if (xerr != NULL)
         xml_free(xerr);
     if (cbmsg)
-        free(cbmsg);
+        cbuf_free(cbmsg);
     return retval;
 }
 

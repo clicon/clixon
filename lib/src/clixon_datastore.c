@@ -743,6 +743,8 @@ xmldb_print(clixon_handle h,
     }
     retval = 0;
  done:
+    if (keys)
+        free(keys);
     return retval;
 }
 

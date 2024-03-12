@@ -299,6 +299,8 @@ clixon_client_connect_netconf(clixon_handle                h,
     }
     retval = 0;
  done:
+    if (argv)
+        free(argv);
     return retval;
 }
 
@@ -340,6 +342,8 @@ clixon_client_connect_ssh(clixon_handle                h,
     }
     retval = 0;
  done:
+    if (argv)
+        free(argv);
     return retval;
 }
 

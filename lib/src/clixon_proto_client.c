@@ -601,6 +601,7 @@ clicon_rpc_get_config(clixon_handle h,
             goto done;
         xml_sort(xd); /* Ensure attr is first */
         *xt = xd;
+        xd = NULL;
     }
     retval = 0;
   done:
@@ -614,6 +615,8 @@ clicon_rpc_get_config(clixon_handle h,
         xml_free(xret);
     if (msg)
         free(msg);
+    if (xd)
+        xml_free(xd);
     return retval;
 }
 
@@ -1271,6 +1274,7 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
             goto done;
         xml_sort(xd); /* Ensure attr is first */
         *xt = xd;
+        xd = NULL;
     }
     retval = 0;
   done:
@@ -1284,6 +1288,8 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
         xml_free(xret);
     if (msg)
         free(msg);
+    if (xd)
+        xml_free(xd);
     return retval;
 }
 

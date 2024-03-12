@@ -1,6 +1,7 @@
 # Clixon Changelog
 
-* [6.6.0](#660) Expected: March 2024
+* [7.1.0](#710) Expected: May 2024
+* [7.0.0](#700) 8 March 2024
 * [6.5.0](#650) 6 December 2023
 * [6.4.0](#640) 30 September 2023
 * [6.3.0](#630) 29 July 2023
@@ -8,10 +9,17 @@
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
 
-## 6.6.0
-Expected: March 2024
+## 7.1.0
+Expected: May 2024
 
-### Minor features
+## 7.0.0
+8 March 2024
+
+Clixon 7.0.0 is a major release with changes to the debug/log/error API, other APIs,
+standardized internal framing protocol and many other changes.
+It also supports the 1.0 clixon controller release.
+
+### Features
 
 * Changed framing between backend and frontend to RFC6242 "chunked-encoding"
   * Previous a propriatary framing method was used
@@ -57,13 +65,13 @@ Users may have to change how they access the system
 ### C/CLI-API changes on existing features
 Developers may need to change their code
 
+* Rename function `xml_yang_minmax_recurse()` -> `xml_yang_validate_minmax()`
 * Modified msg functions for clearer NETCONF 1.0 vs 1.1 API:
   * `clicon_rpc1` --> `clixon_rpc10`
   * `clicon_msg_send1` --> `clixon_msg_send10`
   * `clicon_msg_rcv` and `clicon_msg_decode` --> `clixon_msg_rcv11`
     * Rewrite by calling `clixon_msg_rcv11` and explicit xml parsing
   * `clicon_msg_rcv1` --> `clixon_msg_rcv10`
-
 * Added `yspec` parameter to `api_path_fmt2api_path()`:
   * `api_path_fmt2api_path(af, c, a, c)` --> `api_path_fmt2api_path(af, c, yspec, a, c)`
 * Added flags parameter to default functions:
@@ -109,6 +117,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [If services add duplicate entries, controller does not detect this](https://github.com/clicon/clixon-controller/issues/107)
 * Fixed: [Problems with diff of YANG lists ordered-by user](https://github.com/clicon/clixon/issues/496)
 * Fixed: [show compare does not show correct diff while load merge xml](https://github.com/clicon/clixon-controller/issues/101)
 * Fixed: [commit goes 2 times](https://github.com/clicon/clixon/issues/488)

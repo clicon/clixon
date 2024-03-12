@@ -1474,7 +1474,7 @@ netconf_data_not_unique_xml(cxobj **xret,
     /* error-info: <non-unique> Contains an instance identifier that  points to a leaf
      * that invalidates the "unique" constraint.  This element is present once for each
      * non-unique leaf. */
-    if (cvec_len(cvk)){
+    if (cvk && cvec_len(cvk)){
         if ((xinfo = xml_new("error-info", xerr, CX_ELMNT)) == NULL)
             goto done;
         if (xml2xpath(x, NULL, 0, 0, &path) < 0)
