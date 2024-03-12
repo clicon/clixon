@@ -476,6 +476,8 @@ api_path_fmt_subst_list_key(cbuf      *cb,
     }
     retval = 0;
  done:
+    if (xtop)
+        xml_free(xtop);
     return retval;
 }
 
