@@ -717,7 +717,7 @@ type_snmp2xml(yang_stmt                  *ys,
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
-        if ((ret = yang_val2bitsstr(yrestype, requestvb->val.bitstring, requestvb->val_len, cb)) < 0)
+        if ((ret = yang_val2bitsstr(NULL, yrestype, requestvb->val.bitstring, requestvb->val_len, cb)) < 0)
             goto done;
         if (ret == 0){
             clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits value");
@@ -1006,7 +1006,7 @@ type_xml2snmp(char       *snmpstr,
         *asn1type = ASN_OCTET_STR;
         break;
     case CLIXON_ASN_BIT_STRING:
-        if ((ret = yang_bitsstr2val(yrestype, snmpstr, snmpval, snmplen)) < 0)
+        if ((ret = yang_bitsstr2val(NULL, yrestype, snmpstr, snmpval, snmplen)) < 0)
             goto done;
         if (ret == 0){
             clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits valstr %s", snmpstr);
