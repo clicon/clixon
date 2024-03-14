@@ -333,27 +333,31 @@ xpath_optimize_check(xpath_tree *xs,
                      int        *xlen0)
 {
 #ifdef XPATH_LIST_OPTIMIZE
+    int          retval = -1;
     int          ret;
     clixon_xvec *xvec = NULL;
 
     if (!_optimize_enable)
-        return 0; /* use regular code */
-    if ((xvec = clixon_xvec_new()) == NULL)
-        return -1;
+        goto ok;
+    else if ((xvec = clixon_xvec_new()) == NULL)
+        goto done;
     /* Glue code since xpath code uses (old) cxobj ** and search code uses (new) clixon_xvec */
-    if ((ret = xpath_list_optimize_fn(xs, xv, xvec)) < 0)
-        return -1;
-    if (ret == 1){
-        if (clixon_xvec_extract(xvec, xvec0, xlen0, NULL) < 0)
-            return -1;
-        clixon_xvec_free(xvec);
+    else if ((ret = xpath_list_optimize_fn(xs, xv, xvec)) < 0)
+        goto done;
+    else if (ret == 1){
+        if (clixon_xvec_extract(xvec, xvec0, xlen0, NULL) < 0){
+            goto done;
+        }
         _optimize_hits++;
-        return 1; /* Optimized */
+        retval = 1; /* Optimized */
+        goto done;
     }
-    else{
+ ok:
+    retval = 0; /* use regular code */
+ done:
+    if (xvec)
         clixon_xvec_free(xvec);
-        return 0; /* use regular code */
-    }
+    return retval;
 #else
     return 0; /* use regular code */
 #endif

@@ -116,6 +116,9 @@ int   clixon_err_restore(void *handle);
 int   clixon_err_cat_reg(enum clixon_err category, void *handle, clixon_cat_log_cb logfn);
 int   clixon_err_exit(void);
 
+/* doesnt work if arg != NULL */
+#define clixon_netconf_error(h, x, f, a) clixon_err_fn((h), __FUNCTION__, __LINE__, OE_XML, 0,(x), (f)) 
+
 #if 1 /* COMPAT_6_5 */
 #define clicon_err(c,s,_fmt, args...) clixon_err_fn(NULL, __FUNCTION__, __LINE__, (c), (s), NULL, _fmt , ##args)
 #define clicon_err_reset() clixon_err_reset()
@@ -124,9 +127,7 @@ int   clixon_err_exit(void);
 #define clicon_suberrno   clixon_err_subnr()
 #define clicon_err_reason clixon_err_reason()
 
-/* doesnt work if arg != NULL */
-#define clixon_netconf_error(h, x, f, a) clixon_err_fn((h), __FUNCTION__, __LINE__, OE_XML, 0,(x), (f) , NULL) 
-
 #endif
+
 
 #endif  /* _CLIXON_ERR_H_ */

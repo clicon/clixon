@@ -354,7 +354,7 @@ clixon_err_args(clixon_handle h,
  *     printf("%s", cbuf_get(cb));
  *     cbuf_free(cb);
  * @endcode
- * @see clixon_err_netconf_fn
+ * @see clixon_error_netconf
  */
 int
 netconf_err2cb(clixon_handle h,
@@ -409,7 +409,7 @@ netconf_err2cb(clixon_handle h,
  * @param[in]    format   Error string, format with argv
  * @retval       0        OK
  * @retval      -1        Error
- * @see clixon_err_netconf_fn For variant with netconf error message
+ * @see clixon_netconf_error For variant with netconf error message
  */
 int
 clixon_err_fn(clixon_handle h,

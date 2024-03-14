@@ -492,6 +492,7 @@ api_path_fmt_subst_list_key(cbuf      *cb,
  *   api_path:  /interfaces/interface=e/ipv4/address=1.2.3.4
  * @param[in]  api_path_fmt  XML key format, eg /aaa/%s/name
  * @param[in]  cvv           cligen variable vector, one for every wildchar in api_path_fmt
+ * @param[in]  yspec
  * @param[out] api_path      api_path, eg /aaa/17. Free after use
  * @param[out] cvv_i          1..cvv-len. Index into cvv of last cvv entry used, For example, 
  *                           if same as len of cvv, all were used, if < some entries were not

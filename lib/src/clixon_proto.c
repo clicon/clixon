@@ -407,8 +407,8 @@ clixon_msg_send(int         s,
         clixon_debug(CLIXON_DBG_MSG, "Send: %s", cbuf_get(cb));
     if (atomicio((ssize_t (*)(int, void *, size_t))write,
                  s, cbuf_get(cb), cbuf_len(cb)) < 0){
-        clicon_err(OE_CFG, errno, "atomicio");
-        clicon_log(LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
+        clixon_err(OE_CFG, errno, "atomicio");
+        clixon_log(NULL, LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
         goto done;
     }
     retval = 0;
@@ -613,7 +613,7 @@ clixon_msg_rcv11(int         s,
     struct sigaction  oldsigaction[32] = {{{0,},},};
 
     if ((cbmsg = cbuf_new()) == NULL){
-        clicon_err(OE_XML, errno, "cbuf_new");
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
     eom = 0;
@@ -707,7 +707,7 @@ clicon_rpc(int                sock,
         goto ok;
     if (cbrcv){
         if ((*ret = strdup(cbuf_get(cbrcv))) == NULL){
-            clicon_err(OE_UNIX, errno, "strdup");
+            clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
         cbuf_free(cbrcv);
@@ -740,11 +740,11 @@ send_msg_reply(int         s,
     cbuf          *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (cbuf_append_buf(cb, data, datalen) < 0){
-        clicon_err(OE_UNIX, errno, "cbuf_append_buf");
+        clixon_err(OE_UNIX, errno, "cbuf_append_buf");
         goto done;
     }
     if (clixon_msg_send11(s, descr, cb) < 0)
@@ -774,7 +774,7 @@ send_msg_notify(int         s,
     cbuf          *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
-        clicon_err(OE_UNIX, errno, "cbuf_new");
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     cprintf(cb, "%s", msg);
