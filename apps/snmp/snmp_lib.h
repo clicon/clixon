@@ -48,6 +48,7 @@ extern "C" {
 #define CLIXON_ERR_SNMP_MIB 0x1000
 
 #define IETF_YANG_SMIV2_NS "urn:ietf:params:xml:ns:yang:ietf-yang-smiv2"
+#define CLIXON_SNMP_NS "http://clicon.org/snmp"
 
 /* Special case/extended Clixon ASN1 types
  * Set in type_yang2asn1() if extended is true
@@ -107,6 +108,7 @@ int    snmp_str2oid(char *str, yang_stmt *yi, oid *objid, size_t *objidlen);
 int    snmp_oid2str(oid **oidi, size_t *oidilen, yang_stmt *yi, cg_var *cv);
 int    clixon_snmp_err_cb(void *handle, int suberr, cbuf *cb);
 int    snmp_xmlkey2val_oid(cxobj *xrow, cvec *cvk_name, cvec **cvk_orig, oid *objidk, size_t *objidklen);
+int    clixon_snmp_ylist_keys(yang_stmt *ylist, cvec **ylist_keys);
 
 /*========== libnetsnmp-specific code =============== */
 int    clixon_snmp_api_agent_check(void);
