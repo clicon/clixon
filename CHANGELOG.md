@@ -12,6 +12,10 @@
 ## 7.1.0
 Expected: May 2024
 
+### Corrected Bugs
+
+* Fixed: [Startup and default of same object causes too-many-elements error](https://github.com/clicon/clixon/issues/503)
+
 ## 7.0.0
 8 March 2024
 
@@ -107,7 +111,7 @@ Developers may need to change their code
       * `clicon_strerror(int)` -> `clixon_err_str()`
       * `clicon_netconf_error(h, x, fmt)` -> clixon_err_netconf(h, OE_XML, 0, x, fmt)`
       * `netconf_err2cb(...)` --> `netconf_err2cb(h, ...)`
-      * Likewise for some other minor functions: `clicon_err_*` -> `clixon_err_*` 
+      * Likewise for some other minor functions: `clicon_err_*` -> `clixon_err_*`
     * Replaced global variables with access functions. Replace variables with functions as follows:
       * `clicon_errno`    -> `clixon_err_category()`
       * `clicon_suberrno` -> `clixon_err_subnr()`
