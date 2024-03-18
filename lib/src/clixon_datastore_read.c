@@ -731,11 +731,13 @@ xmldb_get_cache(clixon_handle     h,
         clicon_db_elmnt_set(h, db, &de0); /* Content is copied */
         /* Add default global values (to make xpath below include defaults) */
         // Alt:  xmldb_populate(h, db)
-        if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
-            goto done;
-        /* Add default recursive values */
-        if (xml_default_recurse(x0t, 0, 0) < 0)
-            goto done;
+        if (yb != YB_NONE) {
+            if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
+                goto done;
+            /* Add default recursive values */
+            if (xml_default_recurse(x0t, 0, 0) < 0)
+                goto done;
+        }
     } /* x0t == NULL */
     else
         x0t = de->de_xml;
