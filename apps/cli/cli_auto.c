@@ -119,6 +119,7 @@ cli_auto_edit(clixon_handle h,
 {
     int           retval = -1;
     char         *api_path_fmt;  /* xml key format */
+    char         *api_path_fmt01 = NULL;
     char         *api_path = NULL;
     char         *treename;
     pt_head      *ph;
@@ -177,9 +178,18 @@ cli_auto_edit(clixon_handle h,
         clixon_err(OE_YANG, EINVAL, "No apipath found");
         goto done;
     }
-    /* get api-path and xpath */
-    if (api_path_fmt2api_path(api_path_fmt, cvv2, yspec0, &api_path, NULL) < 0)
-        goto done;
+    if (mtpoint){
+        /* Get and combine api-path01 */
+        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+            goto done;
+        if (api_path_fmt2api_path(api_path_fmt01, cvv2, yspec0, &api_path, NULL) < 0)
+            goto done;
+    }
+    else{
+        /* get api-path and xpath */
+        if (api_path_fmt2api_path(api_path_fmt, cvv2, yspec0, &api_path, NULL) < 0)
+            goto done;
+    }
     /* Store this as edit-mode */
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
         goto done;
@@ -204,6 +214,8 @@ cli_auto_edit(clixon_handle h,
     }
     retval = 0;
  done:
+    if (api_path_fmt01)
+        free(api_path_fmt01);
     if (mtpoint2)
         free(mtpoint2);
     if (api_path)

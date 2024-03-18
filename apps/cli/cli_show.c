@@ -1236,8 +1236,7 @@ cli_show_auto_mode(clixon_handle h,
         if (yang_mount_get(yu, mtpoint, &yspec) < 0)
             goto done;
     }
-    else
-        yspec = yspec0;
+    yspec = yspec0;
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
         goto done;
     if (xpath == NULL){
@@ -1249,7 +1248,13 @@ cli_show_auto_mode(clixon_handle h,
         goto done;
     }
     if (mtpoint){
-        cprintf(cbxpath, "%s", mtpoint);
+        /*
+         * XXX disabled the line below, because otherwise the path up to the
+         * mount point would be added twice to cbxpath. This is because the
+         * api_path and thus also the xpath already include the path up to the
+         * mount point. (at least since cli_auto_edit() was changed)
+         */
+        //cprintf(cbxpath, "%s", mtpoint);
         if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
             goto done;
         cv = NULL;      /* Append cvv1 to cvv2 */
