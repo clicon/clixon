@@ -425,15 +425,12 @@ cli_dbxml(clixon_handle       h,
     if (cvec_concat_cb(argv, api_path_fmt_cb) < 0)
         goto done;
     api_path_fmt = cbuf_get(api_path_fmt_cb);
-    argc = cvec_len(argv);
-    if (cvec_len(argv) > argc){
+    if (cvec_len(argv) > 0){
+        argc = cvec_len(argv) - 1;
         cv = cvec_i(argv, argc++);
         str = cv_string_get(cv);
-        if (strncmp(str, "mtpoint:", strlen("mtpoint:")) != 0){
-            clixon_err(OE_PLUGIN, 0, "mtpoint does not begin with 'mtpoint:'");
-            goto done;
-        }
-        mtpoint = str + strlen("mtpoint:");
+        if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0)
+            mtpoint = str + strlen("mtpoint:");
     }
     /* Remove all keywords */
     if (cvec_exclude_keys(cvv) < 0)
