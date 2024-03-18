@@ -248,12 +248,14 @@ cli_auto_up(clixon_handle h,
     cvec    *cvv1 = NULL; /* copy */
     char    *api_path_fmt0;  /* from */
     char    *api_path_fmt1;  /* to */
+    char    *api_path_fmt2 = NULL;  /* 'to' with mountpoint prepended */
     char    *api_path = NULL;
     int      i;
     int      j;
     size_t   len;
     cvec    *cvv_filter = NULL;
     yang_stmt *yspec0;
+    char    *mtpoint = "";
 
     if (cvec_len(argv) != 1){
         clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
@@ -313,15 +315,26 @@ cli_auto_up(clixon_handle h,
         cv = cvec_i(cvv0, i);
         cvec_append_var(cvv1, cv);
     }
-    /* get api-path and xpath */
-    if (api_path_fmt2api_path(api_path_fmt1, cvv1, yspec0, &api_path, NULL) < 0)
-        goto done;
+    clicon_data_get(h, "cli-edit-mtpoint", &mtpoint);
+    if (strlen(mtpoint)) {
+        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt1, &api_path_fmt2) < 0)
+            goto done;
+        if (api_path_fmt2api_path(api_path_fmt2, cvv1, yspec0, &api_path, NULL) < 0)
+            goto done;
+    }
+    else{
+        /* get api-path and xpath */
+        if (api_path_fmt2api_path(api_path_fmt1, cvv1, yspec0, &api_path, NULL) < 0)
+            goto done;
+    }
     /* Store this as edit-mode */
     clicon_data_set(h, "cli-edit-mode", api_path);
     clicon_data_cvec_set(h, "cli-edit-cvv", cvv1);
  ok:
     retval = 0;
  done:
+    if (api_path_fmt2)
+        free(api_path_fmt2);
     if (api_path)
         free(api_path);
     return retval;
