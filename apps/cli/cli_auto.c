@@ -282,6 +282,7 @@ cli_auto_up(clixon_handle h,
         clicon_data_set(h, "cli-edit-mode", "");
         clicon_data_cvec_del(h, "cli-edit-cvv");
         clicon_data_cvec_del(h, "cli-edit-filter");
+        clicon_data_set(h, "cli-edit-mtpoint", "");
         goto ok;
     }
     /* get before and after api-path-fmt (as generated from yang) */
@@ -345,6 +346,7 @@ cli_auto_top(clixon_handle h,
     clicon_data_set(h, "cli-edit-mode", "");
     clicon_data_cvec_del(h, "cli-edit-cvv");
     clicon_data_cvec_del(h, "cli-edit-filter");
+    clicon_data_set(h, "cli-edit-mtpoint", "");
     retval = 0;
  done:
     return retval;
