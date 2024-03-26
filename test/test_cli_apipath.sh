@@ -68,6 +68,7 @@ set x,cli_merge("/example:x");{
       a <a:string> b <b:string>,cli_merge("/example:x/m1=%s,%s/");{
          c <c:string>,cli_merge("/example:x/m1=%s,%s/c");
       }
+      ax <a:string>("special case") c <c:string>,cli_merge("/example:x/m1=,%s/c");
 }
 # Negative
 err x,cli_set("/example2:x");{
@@ -104,6 +105,18 @@ expectpart "$($clixon_cli -1 -f $cfg set x a 22 b 33 c 55)" 0 ""
 
 new "show conf x"
 expectpart "$($clixon_cli -1 -f $cfg show conf x)" 0 "x m1 a 22 b 33"
+
+new "set conf x, special case comma"
+expectpart "$($clixon_cli -1 -f $cfg set x ax 11 c 33)" 0 "^$"
+
+new "show conf ax"
+expectpart "$($clixon_cli -1 -f $cfg show conf x)" 0 "x m1 a (null) b 11 c 33"
+
+new "set conf x, special case comma encoding"
+expectpart "$($clixon_cli -1 -f $cfg set x ax 22/22 c 44)" 0 "^$"
+
+new "show conf ax"
+expectpart "$($clixon_cli -1 -f $cfg show conf x)" 0 "x m1 a (null) b 22/22 c 44"
 
 # Negative tests
 new "err x"
