@@ -513,7 +513,7 @@ api_path_fmt_subst_list_key(cbuf      *cb,
  *  cvv:          foo, bar
  *  api_path:     /subif-entry=foo,bar/subid
  *
- * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3 (note only =%s)
+ * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3 (note only =%s/=,%s)
  */
 int
 api_path_fmt2api_path(const char *api_path_fmt,
@@ -524,7 +524,6 @@ api_path_fmt2api_path(const char *api_path_fmt,
 {
     int     retval = -1;
     char    c;
-    char    cprev;
     int     esc = 0;
     int     uri_encode = 0;
     cbuf   *cb = NULL;
@@ -541,7 +540,6 @@ api_path_fmt2api_path(const char *api_path_fmt,
     }
     j = 1; /* j==0 is cli string */
     len = strlen(api_path_fmt);
-    cprev = 0;
     for (i=0; i<len; i++){
         c = api_path_fmt[i];
         if (esc){
@@ -582,19 +580,22 @@ api_path_fmt2api_path(const char *api_path_fmt,
             default:
                 break;
             }
-            uri_encode = 0;
         }
         else if (c == '%'){
             esc++;
-            if (cprev == '=')
-                uri_encode++;
         }
-        else if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%' && j == cvec_len(cvv))
+        else if ((c == '=' || c == ',') && api_path_fmt[i+1]=='%' && j == cvec_len(cvv)){
             ; /* skip */
-        else
+        }
+        else {
+            if (c == '=')
+                uri_encode++;
+            else if (c == '/')
+                uri_encode = 0;
             cprintf(cb, "%c", c);
-        cprev = c;
+        }
     }
+
     if ((*api_path = strdup(cbuf_get(cb))) == NULL){
         clixon_err(OE_UNIX, errno, "strdup");
         goto done;
