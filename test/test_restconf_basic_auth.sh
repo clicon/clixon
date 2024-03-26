@@ -101,7 +101,7 @@ cat <<EOF > $dir/startup_db
        <group>
          <name>admin</name>
          <user-name>root</user-name>
-         <user-name>$USER</user-name>
+         $EXTRAUSER
        </group>
      </groups>
      <rule-list>
