@@ -66,7 +66,6 @@ fi
 new "wait backend"
 wait_backend
 
-if false; then
 new "Add list with duplicate"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\">
      <server>
@@ -78,14 +77,13 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
        <value>foo</value>
      </server>
 </c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique xmlns=\"urn:ietf:params:xml:ns:yang:1\">/rpc/edit-config/config/c/server[name=\"one\"]/name</non-unique></error-info></rpc-error></rpc-reply>"
-fi
 
 new "Add leaf-list with duplicate"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\">
        <b>one</b>
        <b>two</b>
        <b>one</b>
-</c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity></rpc-error></rpc-reply>"
+</c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique xmlns=\"urn:ietf:params:xml:ns:yang:1\">/rpc/edit-config/config/c/b[.=\"one\"]/one</non-unique></error-info></rpc-error></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

@@ -18,6 +18,8 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/nacm-example.yang
 
+NACMUSER=$(whoami)
+
 # cred:none, exact, except
 
 # Define default restconfig config: RESTCONFIG
@@ -147,20 +149,20 @@ EOF
 }
 
 #------- CRED: except USER: non-root
-if [ "$USER" != root ]; then # Skip if USER is root
+if [ "$NACMUSER" != root ]; then # Skip if USER is root
 # This is default, therefore first
 CRED=except 
-REALUSER=$USER
+REALUSER=$NACMUSER
 
 # Recovery as a seperate user does not work
-PSEUDO=$USER
+PSEUDO=$NACMUSER
 RECOVERY=_recovery
 new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
 testrun $CRED $REALUSER $PSEUDO $RECOVERY true false
 
 # Recovery as actual user works
-PSEUDO=$USER
-RECOVERY=$USER
+PSEUDO=$NACMUSER
+RECOVERY=$NACMUSER
 new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
 testrun $CRED $REALUSER $PSEUDO $RECOVERY true true
 
@@ -171,13 +173,13 @@ new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
 testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 
 PSEUDO=_recovery
-RECOVERY=$USER
+RECOVERY=$NACMUSER
 new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
 testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 
-fi # skip is USER is root
+fi # skip is NACMUSER is root
 
-#------- CRED: except USER: root
+#------- CRED: except NACMUSER: root
 CRED=except 
 REALUSER=root 
 
@@ -207,7 +209,7 @@ testrun $CRED $REALUSER $PSEUDO $RECOVERY true false
 #------- CRED: none
 # Check you can use any pseudo user if cred is none
 CRED=none
-REALUSER=$USER
+REALUSER=$NACMUSER
 PSEUDO=_recovery
 RECOVERY=_recovery
 new "cred: $CRED realuser:$REALUSER pseudo:$PSEUDO recovery:$RECOVERY"
@@ -224,5 +226,7 @@ testrun $CRED $REALUSER $PSEUDO $RECOVERY false false
 
 new "endtest"
 endtest
+
+unset NACMUSER
 
 rm -rf $dir

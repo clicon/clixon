@@ -553,6 +553,7 @@ xml_yang_minmax_new_leaf_list(cxobj     *x0,
     cxobj     *xj;
     char      *bi;
     char      *bj;
+    cvec      *cvv = NULL;
 
     xi = x0;
     do {
@@ -564,7 +565,12 @@ xml_yang_minmax_new_leaf_list(cxobj     *x0,
             if ((bj = xml_body(xj)) == NULL)
                 continue;
             if (bi && bj && strcmp(bi, bj) == 0){
-                if (xret && netconf_data_not_unique_xml(xret, xi, NULL) < 0)
+                if ((cvv = cvec_new(0)) == NULL){
+                    clixon_err(OE_UNIX, errno, "cvec_new");
+                    goto done;
+                }
+                cvec_add_string(cvv, "name", bi);
+                if (xret && netconf_data_not_unique_xml(xret, xi, cvv) < 0)
                     goto done;
                 goto fail;
             }
@@ -574,6 +580,8 @@ xml_yang_minmax_new_leaf_list(cxobj     *x0,
            xml_spec(xi) == y0);
     retval = 1;
  done:
+    if (cvv)
+        cvec_free(cvv);
     return retval;
  fail:
     retval = 0;
