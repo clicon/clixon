@@ -50,7 +50,7 @@ jobs:
     - name: install example
       run: (cd example; sudo make install)
 
-  docker-alpine-tests-a-l:
+  docker-alpine-tests-a-m:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -79,7 +79,7 @@ jobs:
     - name: start container
       run: ./start.sh
     - name: run test
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern=test_a*.sh pattern=test_c*.sh pattern=test_d*.sh pattern=test_f*.sh pattern=test_h*.sh pattern=test_i*.sh pattern=test_j*.sh pattern=test_l*.sh pattern=test_m*.sh ./sum.sh'
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_a*.sh pattern=test_c*.sh pattern=test_d*.sh pattern=test_f*.sh pattern=test_h*.sh pattern=test_i*.sh pattern=test_j*.sh pattern=test_l*.sh pattern=test_m*.sh" ./sum.sh'
 
   docker-alpine-tests-n-p:
     runs-on: ubuntu-latest
@@ -110,7 +110,7 @@ jobs:
     - name: start container
       run: ./start.sh
     - name: run test
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern=test_n*.sh pattern=test_o*.sh pattern=test_p*.sh ./sum.sh'
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_n*.sh pattern=test_o*.sh pattern=test_p*.sh" ./sum.sh'
 
   docker-alpine-tests-r-z:
     runs-on: ubuntu-latest
@@ -141,4 +141,4 @@ jobs:
     - name: start container
       run: ./start.sh
     - name: run test
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern=test_r*.sh pattern=test_s*.sh pattern=test_t*.sh pattern=test_u*.sh pattern=test_w*.sh pattern=test_x*.sh pattern=test_y*.sh ./sum.sh'
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh pattern=test_s*.sh pattern=test_t*.sh pattern=test_u*.sh pattern=test_w*.sh pattern=test_x*.sh pattern=test_y*.sh" ./sum.sh'
