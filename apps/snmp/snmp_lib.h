@@ -54,6 +54,7 @@ extern "C" {
  * Must be back to proper net-snmp ASN_ types in type_snmp2xml and type_xml2snmp
  * before calling netsnmp API
 */
+#define CLIXON_ASN_BIT_STRING   252 /* Special case used to identify a bit string data type */
 #define CLIXON_ASN_EXTRAS       253 /* Special case clixon address >= this */
 #define CLIXON_ASN_PHYS_ADDR    253 /* Special case phy-address */
 #define CLIXON_ASN_FIXED_STRING 254 /* RFC2578 Sec 7.7: String-valued, fixed-length */
@@ -101,7 +102,7 @@ int    type_snmp2xml(yang_stmt                  *ys,
                      netsnmp_request_info       *requests,
                      char                      **valstr);
 int    type_xml2snmp_pre(char *xmlstr, yang_stmt *ys, char **snmpstr);
-int    type_xml2snmp(char *snmpstr, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
+int    type_xml2snmp(char *snmpstr, yang_stmt *ys, int *asn1type, u_char **snmpval, size_t *snmplen, char **reason);
 int    snmp_yang2xpath(yang_stmt *ys, cvec *keyvec, char **xpath);
 int    snmp_str2oid(char *str, yang_stmt *yi, oid *objid, size_t *objidlen);
 int    snmp_oid2str(oid **oidi, size_t *oidilen, yang_stmt *yi, cg_var *cv);
