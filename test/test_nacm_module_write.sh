@@ -66,6 +66,12 @@ module nacm-example{
   import ietf-netconf-acm {
         prefix nacm;
   }
+  container global {
+     leaf enabled {
+        type boolean;
+        default false;
+     }
+  }
   leaf x{
     type int32;
     description "something to edit";
