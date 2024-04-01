@@ -66,6 +66,12 @@ module nacm-example{
   import ietf-netconf-acm {
         prefix nacm;
   }
+  container global {
+     leaf enabled {
+        type boolean;
+        default false;
+     }
+  }
   leaf x{
     type int32;
     description "something to edit";
@@ -282,6 +288,9 @@ expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/y
 
 new "default delete list deny"
 expectpart "$(curl -u wilma:bar $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/clixon-example:table/parameter=key42)" 0 "HTTP/$HVER 403" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"access-denied","error-severity":"error","error-message":"default deny"}}'
+
+new "create leaf w default value"
+expectpart "$(curl -u wilma:bar $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/nacm-example:global/enabled -d '{"nacm-example:enabled": true}')" 0 "HTTP/$HVER 201"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
