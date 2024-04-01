@@ -581,15 +581,14 @@ text_modify(clixon_handle       h,
             }
         case OP_REPLACE: /* fall thru */
         case OP_MERGE:
-            /* If default flag, clear it */
-            if (x0 && xml_flag(x0, XML_FLAG_DEFAULT))
-                xml_flag_reset(x0, XML_FLAG_DEFAULT);
             if (!(op == OP_MERGE && (instr==NULL))) {
                 /* Remove existing, also applies to merge in the special case
                  * of ordered-by user and (changed) insert attribute.
                  */
                 if (!permit && xnacm){
-                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0)
+                    if ((ret = nacm_datanode_write(h, x1, x1t,
+                                                   (x0 == NULL || xml_default_nopresence(x0, 0, 0))?NACM_CREATE:NACM_UPDATE,
+                                                   username, xnacm, cbret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
@@ -603,6 +602,9 @@ text_modify(clixon_handle       h,
                     x0 = NULL;
                 }
             } /* OP_MERGE & insert */
+            /* If default flag, clear it, since replaced */
+            if (x0 && xml_flag(x0, XML_FLAG_DEFAULT))
+                xml_flag_reset(x0, XML_FLAG_DEFAULT);
         case OP_NONE: /* fall thru */
             if (x0==NULL){
                 if ((op != OP_NONE) && !permit && xnacm){
@@ -718,7 +720,6 @@ text_modify(clixon_handle       h,
                 /* Purge if x1 value is NULL(match-all) or both values are equal */
                 if ((x1bstr == NULL) ||
                     ((x0bstr=xml_body(x0)) != NULL && strcmp(x0bstr, x1bstr)==0)){
-
                     if (xml_purge(x0) < 0)
                         goto done;
                     xml_flag_set(x0p, XML_FLAG_DEL);

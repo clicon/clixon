@@ -14,6 +14,7 @@ Expected: May 2024
 
 ### Corrected Bugs
 
+* Fixed: [NACM create rules do not work properly on objects with default values](https://github.com/clicon/clixon/issues/506)
 * Fixed: [CLI: Explicit api-path not encoded correctly](https://github.com/clicon/clixon/issues/504)
 * Fixed: [Startup and default of same object causes too-many-elements error](https://github.com/clicon/clixon/issues/503)
 
