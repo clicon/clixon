@@ -1,12 +1,24 @@
 # Clixon Changelog
 
-* [7.0.0](#660) 8 March 2024
+* [7.0.1](#701) 3 April 2024
+* [7.0.0](#700) 8 March 2024
 * [6.5.0](#650) 6 December 2023
 * [6.4.0](#640) 30 September 2023
 * [6.3.0](#630) 29 July 2023
 * [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
+
+## 7.0.1
+3 April 2024
+
+Three issues detected in post-testing of 7.0.0 are fixed in the 7.0.1 release
+
+### Corrected Bugs
+
+* Fixed: [NACM create rules do not work properly on objects with default values](https://github.com/clicon/clixon/issues/506)
+* Fixed: [CLI: Explicit api-path not encoded correctly](https://github.com/clicon/clixon/issues/504)
+* Fixed: [Startup and default of same object causes too-many-elements error](https://github.com/clicon/clixon/issues/503)
 
 ## 7.0.0
 8 March 2024
