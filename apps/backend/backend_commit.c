@@ -179,9 +179,6 @@ startup_common(clixon_handle       h,
         if ((msdiff = modstate_diff_new()) == NULL)
             goto done;
     clixon_debug(CLIXON_DBG_BACKEND, "Reading initial config from %s", db);
-    /* Get the startup datastore WITHOUT binding to YANG, sorting and default setting. 
-     * It is done below, later in this function
-     */
     if (clicon_option_bool(h, "CLICON_XMLDB_UPGRADE_CHECKOLD")){
         if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &xt, msdiff, &xerr)) < 0)
             goto done;
@@ -200,6 +197,9 @@ startup_common(clixon_handle       h,
         }
     }
     else {
+        /* Get the startup datastore WITHOUT binding to YANG, sorting and default setting.
+         * It is done below, later in this function
+         */
         if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, 0, &xt, msdiff, &xerr) < 0)
             goto done;
     }

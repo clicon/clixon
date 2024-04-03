@@ -694,16 +694,16 @@ nacm_datanode_write(clixon_handle    h,
                     cxobj           *xnacm,
                     cbuf            *cbret)
 {
-    int             retval = -1;
-    cxobj         **gvec = NULL; /* groups */
-    size_t          glen;
-    cxobj         **rlistvec = NULL; /* rule-list */
-    size_t          rlistlen;
-    cxobj         **rvec = NULL; /* rules */
-    char           *write_default = NULL;
-    cvec           *nsc = NULL;
-    int             ret;
-    prepvec        *pv_list = NULL;
+    int      retval = -1;
+    cxobj  **gvec = NULL; /* groups */
+    size_t   glen;
+    cxobj  **rlistvec = NULL; /* rule-list */
+    size_t   rlistlen;
+    cxobj  **rvec = NULL; /* rules */
+    char    *write_default = NULL;
+    cvec    *nsc = NULL;
+    int      ret;
+    prepvec *pv_list = NULL;
 
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)

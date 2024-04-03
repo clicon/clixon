@@ -1,6 +1,7 @@
 # Clixon Changelog
 
-* [7.1.0](#710) Expected: May 2024
+* [7.1.0](#710) Expected: June 2024
+* [7.0.1](#701) 3 April 2024
 * [7.0.0](#700) 8 March 2024
 * [6.5.0](#650) 6 December 2023
 * [6.4.0](#640) 30 September 2023
@@ -10,7 +11,13 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 7.1.0
-Expected: May 2024
+Expected: June 2024
+
+
+## 7.0.1
+3 April 2024
+
+Three issues detected in post-testing of 7.0.0 are fixed in the 7.0.1 release
 
 ### Corrected Bugs
 

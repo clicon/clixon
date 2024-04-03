@@ -192,6 +192,7 @@ Create release branch:
   git checkout -b release-4.2 4.2.0
   git push origin release-4.2
 ```
+* Add release branch to .github/workflows/ci.yml
 
 Merge a branch back:
 ```

@@ -1380,7 +1380,7 @@ xml_merge1(cxobj              *x0,  /* the target */
  * @retval     1      OK
  * @retval     0      Yang error, reason is set
  * @retval    -1      Error
- * @note both x0 and x1 need to be top-level trees
+ * @note both x0 and x1 need to be top-level trees AND bound to YANG
  */
 int
 xml_merge(cxobj     *x0,
