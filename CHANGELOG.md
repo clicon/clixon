@@ -13,6 +13,11 @@
 ## 7.1.0
 Expected: June 2024
 
+### Features
+
+* New `clixon-config@2024-04-01.yang` revision
+  * Added options: `CLICON_NETCONF_DUPLICATE_ALLOW` - Disable duplicate check in NETCONF messages
+* New `clixon-lib@2024-04-01.yang` revision
 
 ## 7.0.1
 3 April 2024

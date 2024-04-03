@@ -557,7 +557,10 @@ from_client_edit_config(clixon_handle h,
      */
     if ((ret = xml_yang_validate_minmax(xc, 1, &xret)) < 0)
         goto done;
-    if (ret == 1 && (ret = xml_yang_validate_unique_recurse(xc, &xret)) < 0)
+    /* Disable duplicate check in NETCONF messages.*/
+    if (clicon_option_bool(h, "CLICON_NETCONF_DUPLICATE_ALLOW"))
+        ;
+    else if (ret == 1 && (ret = xml_yang_validate_unique_recurse(xc, &xret)) < 0)
         goto done;
     /* xmldb_put (difflist handling) requires list keys */
     if (ret == 1 && (ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
