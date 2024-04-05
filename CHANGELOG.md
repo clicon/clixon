@@ -15,9 +15,14 @@ Expected: June 2024
 
 ### Features
 
+* CLI configurable format: [Default format should be configurable](https://github.com/clicon/clixon-controller/issues/87)
+
 * New `clixon-config@2024-04-01.yang` revision
-  * Added options: `CLICON_NETCONF_DUPLICATE_ALLOW` - Disable duplicate check in NETCONF messages
+  * Added options:
+    - `CLICON_NETCONF_DUPLICATE_ALLOW` - Disable duplicate check in NETCONF messages
+    - `CLICON_CLI_OUTPUT_FORMAT` - Default CLI output format
 * New `clixon-lib@2024-04-01.yang` revision
+    - Added: Default format
 
 ## 7.0.1
 3 April 2024

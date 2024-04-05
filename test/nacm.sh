@@ -4,6 +4,8 @@
 
 if [ $(whoami) != root ]; then
     EXTRAUSER="<user-name>$(whoami)</user-name>"
+else
+    EXTRAUSER=""
 fi
 
 # Three groups from RFC8341 A.1 (admin extended with $USER)

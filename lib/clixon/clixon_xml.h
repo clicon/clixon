@@ -182,14 +182,15 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c */
 
 /* Alternative tree formats,
- * @see format_int2str, format_str2int
+ * @see format_int2str, format_str2int, datastore_format in clixon-lib.yang
  */
 enum format_enum{
     FORMAT_XML,
     FORMAT_JSON,
     FORMAT_TEXT,
     FORMAT_CLI,
-    FORMAT_NETCONF
+    FORMAT_NETCONF,
+    FORMAT_DEFAULT
 };
 
 /*

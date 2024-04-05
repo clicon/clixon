@@ -611,13 +611,13 @@ cli_show_common(clixon_handle    h,
                 int              skiptop
                 )
 {
-    int           retval = -1;
-    cxobj        *xt = NULL;
-    cxobj        *xerr;
-    cxobj       **vec = NULL;
-    size_t        veclen;
-    cxobj        *xp;
-    int           i;
+    int              retval = -1;
+    cxobj           *xt = NULL;
+    cxobj           *xerr;
+    cxobj          **vec = NULL;
+    size_t           veclen;
+    cxobj           *xp;
+    int              i;
 
     if (state && strcmp(db, "running") != 0){
         clixon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
@@ -713,6 +713,7 @@ done:
 
 /*! Common internal parse cli show format option
  *
+ * @param[in]  h      Clixon handle
  * @param[in]  argv   String vector: <dbname> <format> <xpath> [<varname>]
  * @param[in]  argc   Index into argv
  * @param[out] format Output format
@@ -720,18 +721,29 @@ done:
  * @retval    -1      Error
  */
 int
-cli_show_option_format(cvec             *argv,
+cli_show_option_format(clixon_handle     h,
+                       cvec             *argv,
                        int               argc,
-                       enum format_enum *format)
+                       enum format_enum *formatp)
 {
-    int   retval = -1;
-    char *formatstr;
+    int              retval = -1;
+    enum format_enum format = FORMAT_XML;
+    char            *formatstr;
 
     formatstr = cv_string_get(cvec_i(argv, argc));
-    if ((int)(*format = format_str2int(formatstr)) < 0){
+    if ((int)(format = format_str2int(formatstr)) < 0){
         clixon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
         goto done;
     }
+    /* Special default format handling */
+    if (format == FORMAT_DEFAULT){
+        formatstr = clicon_option_str(h, "CLICON_CLI_OUTPUT_FORMAT");
+        if ((int)(format = format_str2int(formatstr)) < 0){
+            clixon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+            goto done;
+        }
+    }
+    *formatp = format;
     retval = 0;
  done:
     return retval;
@@ -774,7 +786,7 @@ cli_show_option_bool(cvec *argv,
 
 /*! Common internal parse cli show with-default option
  *
- * Ddefault modes accorsing to RFC6243 + three extra modes based on report-all-tagged:
+ * Default modes accorsing to RFC6243 + three extra modes based on report-all-tagged:
  * 1) NULL
  * 2) report-all-tagged-default  Strip "default" attribute (=report-all)
  * 3) report-all-tagged-strip Strip "default" attribute and all nodes tagged with it (=trim)
@@ -878,7 +890,7 @@ cli_show_config(clixon_handle h,
     }
     dbname = cv_string_get(cvec_i(argv, argc++));
     if (cvec_len(argv) > argc)
-        if (cli_show_option_format(argv, argc++, &format) < 0)
+        if (cli_show_option_format(h, argv, argc++, &format) < 0)
             goto done;
     if (cvec_len(argv) > argc)
         xpath = cv_string_get(cvec_i(argv, argc++));
@@ -1062,7 +1074,7 @@ cli_show_auto(clixon_handle h,
     else
         dbname = str;
     if (cvec_len(argv) > argc)
-        if (cli_show_option_format(argv, argc++, &format) < 0)
+        if (cli_show_option_format(h, argv, argc++, &format) < 0)
             goto done;
     if (cvec_len(argv) > argc){
         if (cli_show_option_bool(argv, argc++, &pretty) < 0)
@@ -1194,7 +1206,7 @@ cli_show_auto_mode(clixon_handle h,
     }
     dbname = cv_string_get(cvec_i(argv, argc++));
     if (cvec_len(argv) > argc)
-        if (cli_show_option_format(argv, argc++, &format) < 0)
+        if (cli_show_option_format(h, argv, argc++, &format) < 0)
             goto done;
     if (cvec_len(argv) > argc){
         if (cli_show_option_bool(argv, argc++, &pretty) < 0)
@@ -1867,4 +1879,61 @@ cli_show_statistics(clixon_handle h,
     if (cb)
         cbuf_free(cb);
     return retval;
+}
+
+/*! CLI set default output format
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables, expected: 1: format
+ * @param[in]  argv Vector, expected NULL
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Format of argv:
+ *   <api-path-fmt> Generated
+ */
+int
+cli_format_set(clixon_handle h,
+               cvec         *cvv,
+               cvec         *argv)
+{
+    int              retval = -1;
+    cg_var          *cv;
+    char            *str;
+    enum format_enum fmt = FORMAT_XML;
+
+    if ((cv = cvec_find(cvv, "fmt")) == NULL){
+        clixon_err(OE_PLUGIN, EINVAL, "Requires one variable to be <format>");
+        goto done;
+    }
+    str = cv_string_get(cv);
+    if ((fmt = format_str2int(str)) < 0){
+        clixon_err(OE_PLUGIN, EINVAL, "Invalid format: %s", str);
+        goto done;
+    }
+    /* Alt make a int option/data */
+    retval = clicon_option_str_set(h, "CLICON_CLI_OUTPUT_FORMAT", str);
+ done:
+    return retval;
+}
+
+/*! CLI set default output format
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  cvv  Vector of cli string and instantiated variables, expected: 1: format
+ * @param[in]  argv Vector, expected NULL
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Format of argv:
+ *   <api-path-fmt> Generated
+ */
+int
+cli_format_show(clixon_handle h,
+               cvec         *cvv,
+               cvec         *argv)
+{
+    char *str;
+
+    str = clicon_option_str(h, "CLICON_CLI_OUTPUT_FORMAT");
+    cligen_output(stderr, "%s\n", str);
+    return 0;
 }

@@ -926,6 +926,7 @@ cli_validate(clixon_handle h,
  * @param[in]  db2    Name of second datastrore
  * @retval     0      OK
  * @retval    -1      Error
+ * @note JSON and CLI are NYI
  */
 int
 compare_db_names(clixon_handle    h,
@@ -975,7 +976,7 @@ compare_db_names(clixon_handle    h,
             goto done;
         cligen_output(stdout, "%s", cbuf_get(cb));
         break;
-    case FORMAT_JSON:
+    case FORMAT_JSON:         /* XXX NYI */
     case FORMAT_CLI:
         if (clixon_compare_xmls(xc1, xc2, format) < 0) /* astext? */
             goto done;
@@ -1022,6 +1023,14 @@ compare_dbs(clixon_handle h,
     if ((format = format_str2int(formatstr)) < 0){
         clixon_err(OE_XML, 0, "format not found %s", formatstr);
         goto done;
+    }
+    /* Special default format handling */
+    if (format == FORMAT_DEFAULT){
+        formatstr = clicon_option_str(h, "CLICON_CLI_OUTPUT_FORMAT");
+        if ((int)(format = format_str2int(formatstr)) < 0){
+            clixon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+            goto done;
+        }
     }
     if (compare_db_names(h, format, db1, db2) < 0)
         goto done;
@@ -1317,6 +1326,8 @@ save_config_file(clixon_handle h,
         if (clixon_xml2file(f, xt, 0, pretty, NULL, fprintf, 0, 1) < 0)
             goto done;
         fprintf(f, "</edit-config></rpc>]]>]]>\n");
+        break;
+    default:
         break;
     } /* switch */
     retval = 0;

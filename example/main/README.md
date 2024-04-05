@@ -104,7 +104,7 @@ cli> set table parameter a ?
 cli> set table parameter a value 42
 cli> validate 
 cli> commit 
-cli> show configuration xml 
+cli> show configuration
 <table xmlns="urn:example:clixon">
    <parameter>
       <name>a</name>

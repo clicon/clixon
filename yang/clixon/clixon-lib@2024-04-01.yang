@@ -70,7 +70,8 @@ module clixon-lib {
 
     revision 2024-04-01 {
         description
-            "Released in Clixon 7.1";
+            "Added: Default format
+             Released in Clixon 7.1";
     }
     revision 2024-01-01 {
         description
@@ -178,6 +179,9 @@ module clixon-lib {
             }
             enum cli{
                 description "CLI format";
+            }
+            enum default{
+                description "Default format";
             }
         }
     }

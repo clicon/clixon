@@ -286,7 +286,7 @@ pipe_showas_fn(clixon_handle h,
         goto done;
     }
     if (cvec_len(argv) > argc){
-        if (cli_show_option_format(argv, argc++, &format) < 0)
+        if (cli_show_option_format(h, argv, argc++, &format) < 0)
             goto done;
     }
     if (cvec_len(argv) > argc){

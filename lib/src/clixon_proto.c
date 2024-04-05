@@ -68,6 +68,7 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_string.h"
 #include "clixon_event.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -83,24 +84,18 @@
 
 static int _atomicio_sig = 0;
 
-/*! Formats (showas) derived from XML
- */
-struct formatvec{
-    char *fv_str;
-    int   fv_int;
-};
-
 /*! Translate between int and string of tree formats 
  *
- * @see eum format_enum
+ * @see enum format_enum
  */
-static struct formatvec _FORMATS[] = {
+static const map_str2int _FORMATS[] = {
     {"xml",     FORMAT_XML},
     {"text",    FORMAT_TEXT},
     {"json",    FORMAT_JSON},
     {"cli",     FORMAT_CLI},
     {"netconf", FORMAT_NETCONF},
-    {NULL,   -1}
+    {"default", FORMAT_DEFAULT},
+    {NULL,      -1}
 };
 
 /*! Translate from numeric format to string representation
@@ -111,12 +106,7 @@ static struct formatvec _FORMATS[] = {
 char *
 format_int2str(enum format_enum showas)
 {
-    struct formatvec *fv;
-
-    for (fv=_FORMATS; fv->fv_int != -1; fv++)
-        if (fv->fv_int == showas)
-            break;
-    return fv?(fv->fv_str?fv->fv_str:"unknown"):"unknown";
+    return (char*)clicon_int2str(_FORMATS, showas);
 }
 
 /*! Translate from string to numeric format representation
@@ -127,12 +117,7 @@ format_int2str(enum format_enum showas)
 enum format_enum
 format_str2int(char *str)
 {
-    struct formatvec *fv;
-
-    for (fv=_FORMATS; fv->fv_int != -1; fv++)
-        if (strcmp(fv->fv_str, str) == 0)
-            break;
-    return fv?fv->fv_int:-1;
+    return clicon_str2int(_FORMATS, str);
 }
 
 /*! Given family, addr str, port, return sockaddr and length

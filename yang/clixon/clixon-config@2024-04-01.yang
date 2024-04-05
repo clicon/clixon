@@ -53,6 +53,7 @@ module clixon-config {
         description
             "Added options:
                     CLICON_NETCONF_DUPLICATE_ALLOW - Disable duplicate check in NETCONF messages.
+                    CLICON_CLI_OUTPUT_FORMAT - Default CLI output format
              Released in Clixon 7.1";
     }
     revision 2024-01-01 {
@@ -878,6 +879,12 @@ module clixon-config {
                  If false, expansion will suggest b (destination ifref values)
                  While setting this value makes sense for adding new values, it makes less sense for
                  deleting.";
+        }
+        leaf CLICON_CLI_OUTPUT_FORMAT {
+            type cl:datastore_format;
+            default xml;
+            description
+                "Default CLI output format.";
         }
         leaf CLICON_SOCK_FAMILY {
             type socket_address_family;
