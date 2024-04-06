@@ -216,7 +216,7 @@ function testrun()
     fi
 
     new "Check $name via CLI"
-    expectpart "$($clixon_cli -1 -f $cfg show config xml)" 0 "<$name>$xvalue</$name>"
+    expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "<$name>$xvalue</$name>"
 }
 
 function testexit(){
@@ -262,7 +262,7 @@ new "Check $name via SNMP"
 expectpart "$($snmpget $oid)" 0 "$type: active(1)"
 
 new "Check $name via CLI"
-expectpart "$($clixon_cli -1 -f $cfg show config xml)" 0 "<$name>active</$name>"    
+expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "<$name>active</$name>"
 
 # restart backend with synthetic validation failure
 # Incomplete commit failed test: the commit fails by logging but this is not actually checked
