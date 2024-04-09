@@ -162,6 +162,8 @@ AC_PATH_PROG(TAIL_BIN, tail)
 AC_DEFINE_UNQUOTED(TAIL_BIN, "$TAIL_BIN", [tail binary])
 AC_PATH_PROG(WC_BIN, wc)
 AC_DEFINE_UNQUOTED(WC_BIN, "$WC_BIN", [wc binary])
+AC_PATH_PROG(CAT_BIN, cat)
+AC_DEFINE_UNQUOTED(CAT_BIN, "$CAT_BIN", [cat binary])
 
 # Get "bison" from bison -y or other string
 if test "$YACC" = "${YACC##bison}" ; then

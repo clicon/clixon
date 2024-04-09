@@ -111,6 +111,17 @@ cli> show configuration
       <value>42</value>
    </parameter>
 </table>
+cli> show configuration | show json
+{
+   "clixon-example:table": {
+      "parameter": [
+         {
+            "name": "a",
+            "value": "42"
+         }
+      ]
+   }
+}
 cli> delete interfaces interface eth1table parameter a
 cli> commit
 ```

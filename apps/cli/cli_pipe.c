@@ -72,15 +72,12 @@
 
 #include "clixon_cli_api.h"
 
-/* Grep pipe output function
+/* General-purpose pipe output function
  *
  * @param[in]  h      Clixon handle
  * @param[in]  cmd    Command to exec
  * @param[in]  option Option to command (or NULL)
  * @param[in]  value  Command argument value (or NULL)
- * @code
- *   grep <arg:rest>, grep_fn("-e", "arg");
- * @endcode
  */
 int
 pipe_arg_fn(clixon_handle h,
@@ -341,6 +338,57 @@ pipe_showas_fn(clixon_handle h,
         xml_free(xerr);
     if (xt)
         xml_free(xt);
+    return retval;
+}
+
+/*! pipe function: save to file
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  cvv   Vector of cli string and instantiated variables 
+ * @param[in]  argv  String vector of options. Format: <argname>
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+pipe_save_file(clixon_handle h,
+               cvec         *cvv,
+               cvec         *argv)
+{
+    int     retval = -1;
+    cg_var *cv;
+    char   *str;
+    char   *argname = NULL;
+    char   *filename = NULL;
+    int     fd;
+
+    if (cvec_len(argv) != 1){
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <argname>", cvec_len(argv));
+        goto done;
+    }
+    if ((cv = cvec_i(argv, 0)) != NULL &&
+        (str = cv_string_get(cv)) != NULL &&
+        strlen(str)){
+        argname = str;
+    }
+    if (argname && strlen(argname)){
+        if ((cv = cvec_find_var(cvv, argname)) != NULL &&
+            (str = cv_string_get(cv)) != NULL &&
+            strlen(str))
+            filename = str;
+    }
+    if (filename){
+        if ((fd = creat(filename, S_IRUSR | S_IWUSR)) < 0){
+            clixon_err(OE_CFG, errno, "creat(%s)", filename);
+            goto done;
+        }
+        close(1);
+        if (dup2(fd, STDOUT_FILENO) < 0){
+            clixon_err(OE_UNIX, errno, "dup2(STDOUT)");
+            return -1;
+        }
+        return pipe_arg_fn(h, CAT_BIN, NULL, NULL);
+    }
+ done:
     return retval;
 }
 

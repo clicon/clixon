@@ -1,5 +1,8 @@
 /* include/clixon_config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* cat binary */
+#undef CAT_BIN
+
 /* Pass-through $bindir */
 #undef CLIXON_CONFIG_BINDIR
 
