@@ -103,7 +103,8 @@ all:	$(PLUGINS)
 .c.o:
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
 
-CLISPECS =  $(APPNAME)_cli.cli
+CLISPECS  =  $(APPNAME)_cli.cli
+CLISPECS +=  $(APPNAME)_pipe.cli
 
 YANGSPECS	= clixon-example@2022-11-01.yang
 

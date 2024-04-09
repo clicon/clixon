@@ -1371,6 +1371,7 @@ cli_pagination(clixon_handle h,
     cxobj          **xvec = NULL;
     size_t           xlen;
     int              locked = 0;
+    int              argc = 0;
 
     if (cvec_len(argv) != 5){
         clixon_err(OE_PLUGIN, 0, "Expected usage: <xpath> <prefix> <namespace> <format> <limit>");
@@ -1380,14 +1381,12 @@ cli_pagination(clixon_handle h,
     if ((cv = cvec_find(cvv, "xpath")) != NULL)
         xpath = cv_string_get(cv);
     else
-        xpath = cvec_i_str(argv, 0);
-    prefix = cvec_i_str(argv, 1);
-    namespace = cvec_i_str(argv, 2);
-    str = cv_string_get(cvec_i(argv, 3));     /* Fourthformat: output format */
-    if ((int)(format = format_str2int(str)) < 0){
-        clixon_err(OE_PLUGIN, 0, "Not valid format: %s", str);
+        xpath = cvec_i_str(argv, argc);
+    argc++;
+    prefix = cvec_i_str(argv, argc++);
+    namespace = cvec_i_str(argv, argc++);
+    if (cli_show_option_format(h, argv, argc++, &format) < 0)
         goto done;
-    }
     if ((str = cv_string_get(cvec_i(argv, 4))) != NULL){
         if (parse_uint32(str, &limit, NULL) < 1){
             clixon_err(OE_UNIX, errno, "error parsing limit:%s", str);

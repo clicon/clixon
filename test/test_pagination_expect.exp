@@ -28,7 +28,7 @@ set timeout 15
 
 spawn {*}$clixon_cli -f $cfg
 
-send "show pagination xpath $xpath cli\n"
+send "show pagination xpath $xpath\n"
 
 expect {
   timeout { send_user "\n$line1 not received.\n"; exit 1}

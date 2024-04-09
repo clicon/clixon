@@ -94,13 +94,9 @@ show("Show a particular state of the system"){
     		     xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
 		     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
     }
-    pagination("Show list pagination") xpath("Show configuration") <xpath:string>("XPATH expression"){
-    	xml, cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "xml", "10");
-	cli, cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "cli", "10");
-	text, cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "text", "10");
-	json, cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "json", "10");
-    }
+    pagination("Show list pagination") xpath("Show configuration") <xpath:string>("XPATH expression"), cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "default", "10");
     configuration("Show configuration"), cli_show_auto_mode("candidate", "default", true, false, "explicit", "set ");{
+       @|example_pipe, cli_show_auto_mode("candidate", "xml", true, false, "explicit");
        default("With-default mode"){
           report-all, cli_show_auto_mode("candidate", "default", true, false, "report-all");
 	  trim, cli_show_auto_mode("candidate", "default", true, false, "trim");
@@ -111,16 +107,15 @@ show("Show a particular state of the system"){
        }
     }
     state("Show configuration and state"), cli_show_auto_mode("running", "default", true, true); {
-      xml("Show configuration and state as XML"), cli_show_auto_mode("running", "default", true, true);{
-	    default("With-default mode"){
-                  report-all, cli_show_auto_mode("running", "default", true, true, "report-all");
-		  trim, cli_show_auto_mode("running", "default", true, true, "trim");
-		  explicit, cli_show_auto_mode("running", "default", true, true, "explicit");
-		  report-all-tagged, cli_show_auto_mode("running", "default", true, true, "report-all-tagged");
-		  report-all-tagged-default, cli_show_auto_mode("running", "default", true, true, "report-all-tagged-default");
-		  report-all-tagged-strip, cli_show_auto_mode("running", "default", true, true, "report-all-tagged-strip");
-	    }
-        }
+       @|example_pipe, cli_show_auto_mode("running", "xml", true, true);
+       default("With-default mode"){
+          report-all, cli_show_auto_mode("running", "default", true, true, "report-all");
+	  trim, cli_show_auto_mode("running", "default", true, true, "trim");
+	  explicit, cli_show_auto_mode("running", "default", true, true, "explicit");
+	  report-all-tagged, cli_show_auto_mode("running", "default", true, true, "report-all-tagged");
+	  report-all-tagged-default, cli_show_auto_mode("running", "default", true, true, "report-all-tagged-default");
+	  report-all-tagged-strip, cli_show_auto_mode("running", "default", true, true, "report-all-tagged-strip");
+       }
     }
     yang("Show yang specs"), show_yang(); {
         clixon-example("Show clixon-example yang spec"), show_yang("clixon-example");
