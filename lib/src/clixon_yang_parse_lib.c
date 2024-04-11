@@ -1682,7 +1682,7 @@ yang_spec_load_dir(clixon_handle h,
      * a@2000-01-01.yang, 
      * a@2111-11-11.yang
      */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.yang)$", S_IFREG)) < 0)
+    if((ndp = clicon_file_dirent(dir, &dp, "\\.yang$", S_IFREG)) < 0)
         goto done;
     if (ndp == 0)
         goto ok;

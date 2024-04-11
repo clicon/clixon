@@ -35,7 +35,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-cat <<EOF > $cfdir/extra
+cat <<EOF > $cfdir/extra.xml
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_FEATURE>extradir</CLICON_FEATURE>
 </clixon-config>
@@ -55,6 +55,7 @@ module example {
 }
 EOF
 
+new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     # kill old backend (if any)
     new "kill old backend"
@@ -63,7 +64,6 @@ if [ $BE -ne 0 ]; then
         err
     fi
 fi
-
 
 # Extra cmdline opts, first is overwritten, second appended
 CMDOPTS='-o CLICON_MODULE_SET=42 -o CLICON_FEATURE="cmdline"'

@@ -295,6 +295,12 @@ parse_configfile_one(clixon_handle h,
 }
 
 /*! Merge XML sub config file into main config-file
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  xt  Existing target XML 
+ * @param[in]  xe  Source XML (merge this to xt)
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 static int
 merge_control_xml(clixon_handle h,
@@ -307,6 +313,7 @@ merge_control_xml(clixon_handle h,
     cxobj *xec;
     cxobj *xtc;
     cxobj *x;
+    //    int    ret;
 
     /* One could have used xml_merge, but there are several special conditions */
     xec = NULL;
@@ -315,7 +322,9 @@ merge_control_xml(clixon_handle h,
             continue;
         if ((body = xml_body(xec)) == NULL){
             if ((xtc = xml_find_type(xt, NULL, name, CX_ELMNT)) != NULL){
-                if (merge_control_xml(h, xtc, xec) < 0)
+                if (xml_rm_children(xtc, -1) < 0)
+                    goto done;
+                if (xml_copy(xec, xtc) < 0)
                     goto done;
             }
             else{
@@ -332,25 +341,31 @@ merge_control_xml(clixon_handle h,
             continue;
         }
         /* List options for configure options that are lists or leaf-lists: append to main */
-        if (strcmp(name,"CLICON_FEATURE")==0 ||
-            strcmp(name,"CLICON_YANG_DIR")==0 ||
-            strcmp(name,"CLICON_SNMP_MIB")==0){
+        if (strcmp(name,"CLICON_FEATURE") == 0 ||
+            strcmp(name,"CLICON_YANG_DIR") == 0 ||
+            strcmp(name,"CLICON_SNMP_MIB") == 0){
             if ((x = xml_dup(xec)) == NULL)
                 goto done;
             if (xml_addsub(xt, x) < 0)
                 goto done;
             continue;
         }
-        /* Overwrite: remove existing in master if any */
-        if ((x = xml_find_type(xt, NULL, name, CX_ELMNT)) != NULL)
-            xml_purge(x);
-        /* Copy and add to master */
-        if ((x = xml_dup(xec)) == NULL)
-            goto done;
-        if (xml_addsub(xt, x) < 0)
-            goto done;
+        /* Replace existing  */
+        xtc = xml_find_type(xt, NULL, name, CX_ELMNT);
+        if (xtc != NULL){
+            if (xml_rm_children(xtc, -1) < 0)
+                goto done;
+            if (xml_copy(xec, xtc) < 0)
+                goto done;
+        }
+        else {
+            /* Copy and add to master */
+            if ((x = xml_dup(xec)) == NULL)
+                goto done;
+            if (xml_addsub(xt, x) < 0)
+                goto done;
+        }
     }
-
     retval = 0;
  done:
     return retval;
@@ -423,7 +438,7 @@ parse_configfile(clixon_handle  h,
             goto done;
         }
         closedir(dirp);
-        if((ndp = clicon_file_dirent(extraconfdir, &dp, NULL, S_IFREG)) < 0)  /* Read dir */
+        if((ndp = clicon_file_dirent(extraconfdir, &dp, "\\.xml$", S_IFREG)) < 0)  /* Read dir */
             goto done;
         /* Loop through files */
         for (i = 0; i < ndp; i++){
@@ -489,7 +504,7 @@ parse_configfile(clixon_handle  h,
                             strlen(body)+1) == NULL)
             goto done;
     }
-    xml_sort(xt);
+    xml_sort_recurse(xt);
     retval = 0;
     *xconfig = xt;
     xt = NULL;

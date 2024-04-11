@@ -43,5 +43,5 @@ CLICON_MODE="|example_pipe"; # Must start with |
      json("JSON"), pipe_showas_fn("json");
      text("Text curly braces"), pipe_showas_fn("text");
    }
-   save("Save configuration to file") <filename:string>("Filename (local filename)"), pipe_save_file("filename");
+   save("Save to file") <filename:string>("Local filename"), pipe_save_file("filename");
 }

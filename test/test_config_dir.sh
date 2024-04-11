@@ -19,10 +19,13 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 cdir=$dir/conf.d
-cfile1=$cdir/00a.xml
-cfile2=$cdir/01a.xml
+cfile1=$cdir/01a.xml
+cfile2=$cdir/02a.xml
+cfile3=$cdir/03a.xml
+cfile4=$cdir/04a.xxxml
 
-test -d $cdir || mkdir $cdir
+rm -rf $cdir
+mkdir $cdir
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -38,6 +41,8 @@ EOF
 
 # dummy
 touch  $dir/spec.cli
+
+new "test params: -f $cfg"
 
 new "Start without configdir as baseline"
 cat <<EOF > $cfile1
@@ -138,6 +143,29 @@ expectpart "$($clixon_cli -1 -f $cfg -C xml)" 0 "<CLICON_MODULE_SET_ID>3</CLICON
 
 new "Start with 2 extra configfiles + command-line -C xml"
 expectpart "$($clixon_cli -1 -f $cfg -o CLICON_MODULE_SET_ID=4 -o CLICON_FEATURE=test4 -C xml)" 0 "<CLICON_MODULE_SET_ID>4</CLICON_MODULE_SET_ID>" "<CLICON_FEATURE>test1</CLICON_FEATURE>" "<CLICON_FEATURE>test2</CLICON_FEATURE>" "<CLICON_FEATURE>test3</CLICON_FEATURE>" "<CLICON_FEATURE>test4</CLICON_FEATURE>" 
+
+# Ensure two sub-dirs (eg <restconf>) only last is present
+cat <<EOF > $cfile3
+<clixon-config xmlns="http://clicon.org/config">
+  <restconf>
+     <server-cert-path>nisse</server-cert-path>
+  </restconf>
+</clixon-config>
+EOF
+new "Last <restconf> replaces first"
+expectpart "$($clixon_cli -1 -f $cfg -C xml)" 0 "<restconf>" "<server-cert-path>nisse</server-cert-path>" --not-- "<server-cert-path>bar</server-cert-path>"
+
+# Ensure file without .xml suffix is not read
+cat <<EOF > $cfile4
+<clixon-config xmlns="http://clicon.org/config">
+  <restconf>
+     <server-cert-path>laban</server-cert-path>
+  </restconf>
+</clixon-config>
+EOF
+
+new "File without .xml is not read"
+expectpart "$($clixon_cli -1 -f $cfg -C xml)" 0 "<restconf>" "<server-cert-path>nisse</server-cert-path>" --not-- "<server-cert-path>laban</server-cert-path>"
 
 rm -rf $dir
 

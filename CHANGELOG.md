@@ -24,6 +24,10 @@ Expected: June 2024
 * New `clixon-lib@2024-04-01.yang` revision
     - Added: Default format
 
+### Corrected Bugs
+
+* Fixed: [Duplicate config files in configdir causes merge problems -> set ? = NULL](https://github.com/clicon/clixon/issues/510)
+
 ## 7.0.1
 3 April 2024
 

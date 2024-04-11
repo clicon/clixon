@@ -469,7 +469,9 @@ module clixon-config {
                 AFTER the main config file (CLICON_CONFIGFILE) in the following way:
                 - leaf values are overwritten
                 - leaf-list values are appended
-                The files in this directory will be loaded alphabetically.
+                The files in this directory are loaded alphabetically.
+                Only files ending with .xml are read
+                Sub-structures, eg <autocli> are replaced with the latest (alphabetically)
                 If the dir is given but does not exist will result in an error.
                 You can override file setting with -E <dir> command-line option.
                 Note that due to bootstraping this value is only meaningful in the main config file";

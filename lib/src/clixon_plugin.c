@@ -424,7 +424,7 @@ clixon_plugins_load(clixon_handle h,
         goto done;
     }
     /* Get plugin objects names from plugin directory */
-    if((ndp = clicon_file_dirent(dir, &dp, regexp?regexp:"(.so)$", S_IFREG)) < 0)
+    if((ndp = clicon_file_dirent(dir, &dp, regexp?regexp:"\\.so$", S_IFREG)) < 0)
         goto done;
     /* Load all plugins */
     for (i = 0; i < ndp; i++) {

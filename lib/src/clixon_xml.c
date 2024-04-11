@@ -1575,7 +1575,7 @@ xml_rm_children(cxobj          *xp,
         return 0;
     for (i=0; i<xml_child_nr(xp);){
         xc = xml_child_i(xp, i);
-        if (xml_type(xc) != type){
+        if (type != -1 && xml_type(xc) != type){
             i++;
             continue;
         }

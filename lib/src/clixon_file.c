@@ -177,7 +177,7 @@ clicon_files_recursive(const char *dir,
  * @code
  *   char          *dir = "/root/fs";
  *   struct dirent *dp;
- *   if ((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG)) < 0)
+ *   if ((ndp = clicon_file_dirent(dir, &dp, "\\.so$", S_IFREG)) < 0)
  *       return -1;
  *   for (i = 0; i < ndp; i++) 
  *       do something with dp[i].d_name;

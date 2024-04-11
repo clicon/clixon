@@ -413,7 +413,7 @@ clispec_load(clixon_handle h)
     /* Load all clispec .cli files in directory */
     if (clispec_dir){
         /* Get directory list of files */
-        if ((ndp = clicon_file_dirent(clispec_dir, &dp, "(.cli)$", S_IFREG)) < 0)
+        if ((ndp = clicon_file_dirent(clispec_dir, &dp, "\\.cli$", S_IFREG)) < 0)
             goto done;
         /* Load the syntax parse trees into cli_syntax stx structure */
         for (i = 0; i < ndp; i++) {
