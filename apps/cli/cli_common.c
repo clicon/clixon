@@ -638,7 +638,7 @@ cli_del(clixon_handle h,
 /*! Set debug level on CLI client (not backend daemon)
  *
  * @param[in] h     Clixon handle
- * @param[in] cvv  If variable "level" exists, its integer value is used
+ * @param[in] cvv   If variable "level" exists, its integer value is used
  * @param[in] arg   Else use the integer value of argument
  * @retval    0     OK
  * @retval   -1     Error
@@ -647,8 +647,8 @@ cli_del(clixon_handle h,
  */
 int
 cli_debug_cli(clixon_handle h,
-               cvec         *cvv,
-               cvec         *argv)
+               cvec        *cvv,
+               cvec        *argv)
 {
     int     retval = -1;
     cg_var *cv;
@@ -1574,11 +1574,11 @@ cli_unlock(clixon_handle h,
  * 
  * @param[in] h      Clixon handle
  * @param[in] cvv    Not used
- * @param[in] arg    <session-id> 
+ * @param[in] arg    variabel w session nr
  * @retval    0      OK
  * @retval   -1      Error
  * @code
- * lock("comment"), cli_kill_session(54); 
+ *   <sessid:uint32> lock("comment"), cli_kill_session("sessid");
  * @endcode
  */
 int
@@ -1587,29 +1587,22 @@ cli_kill_session(clixon_handle h,
                  cvec         *argv)
 {
     int      retval = -1;
-    char    *str;
+    char    *var;
     uint32_t session_id;
-    int      ret;
-    char    *reason = NULL;
+    cg_var  *cv;
 
     if (cvec_len(argv) != 1){
-        clixon_err(OE_PLUGIN, EINVAL, "Requires arguments: <session-id>");
+        clixon_err(OE_PLUGIN, EINVAL, "Requires arguments: varname");
         goto done;
     }
-    if ((str = cv_string_get(cvec_i(argv, 0))) != NULL){
-        if ((ret = parse_uint32(str, &session_id, &reason)) < 0)
-            goto done;
-        if (ret == 0){
-            cligen_output(stderr, "%s\n", reason);
-            goto done;
-        }
-        else if ((ret = clicon_rpc_kill_session(h, session_id)) < 0)
-            goto done;
+    if ((var = cv_string_get(cvec_i(argv, 0))) != NULL){
+        if ((cv = cvec_find_var(cvv, var)) != NULL)
+            if ((session_id = cv_uint32_get(cv)) != 0)
+                if (clicon_rpc_kill_session(h, session_id) < 0)
+                    goto done;
     }
     retval = 0;
   done:
-    if (reason)
-        free(reason);
     return retval;
 }
 
