@@ -801,6 +801,16 @@ from_client_commit(clixon_handle h,
             goto ok;
     }
     /* Check if target locked by other client */
+    iddb = xmldb_islocked(h, "candidate");
+    if (iddb && myid != iddb){
+        if ((cbx = cbuf_new()) == NULL){
+            clixon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        if (netconf_in_use(cbret, "protocol", "Operation failed, lock is already held") < 0)
+            goto done;
+        goto ok;
+    }
     iddb = xmldb_islocked(h, "running");
     if (iddb && myid != iddb){
         if ((cbx = cbuf_new()) == NULL){
@@ -818,6 +828,8 @@ from_client_commit(clixon_handle h,
                 goto done;
         goto ok;
     }
+    if (clicon_option_bool(h, "CLICON_AUTOLOCK"))
+        xmldb_unlock(h, "candidate");
     if (ret == 0)
         clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
     else
@@ -872,6 +884,9 @@ from_client_discard_changes(clixon_handle h,
         goto ok;
     }
     xmldb_modified_set(h, "candidate", 0); /* reset dirty bit */
+    if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
+        xmldb_unlock(h, "candidate");
+    }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;

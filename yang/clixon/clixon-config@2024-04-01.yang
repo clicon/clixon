@@ -54,6 +54,7 @@ module clixon-config {
             "Added options:
                     CLICON_NETCONF_DUPLICATE_ALLOW - Disable duplicate check in NETCONF messages.
                     CLICON_CLI_OUTPUT_FORMAT - Default CLI output format
+                    CLICON_AUTOLOCK - Implicit locks
              Released in Clixon 7.1";
     }
     revision 2024-01-01 {
@@ -779,8 +780,8 @@ module clixon-config {
             type int32;
             default 1;
             description
-                "Set to 0 if you want CLI to wrap to next line.
-                 Set to 1 if you  want CLI to scroll sideways when approaching 
+                "Set to 0 if you want CLI INPUT to wrap to next line.
+                 Set to 1 if you  want CLI INPUT to scroll sideways when approaching 
                       right margin";
         }
         leaf CLICON_CLI_LINES_DEFAULT {
@@ -975,6 +976,16 @@ module clixon-config {
                  If confirm-commit, follow RESTCONF semantics: commit ephemeral but fail on
                  persistent confirming commit.
                  (consider boolean)";
+        }
+        leaf CLICON_AUTOLOCK {
+            type boolean;
+            default false;
+            description
+                "Set if all edit-config implicitly locks without the need of an explicit lock-db
+                 In short, the lock is obtained by edit-config and copy-config and released by 
+                 discard and commit.
+                 Also, any edits in candidate are discarded if the client closes the connection.
+                 This effectively disables shared candidate";
         }
         leaf CLICON_XMLDB_DIR {
             type string;

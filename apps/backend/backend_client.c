@@ -175,6 +175,8 @@ ce_event_cb(clixon_handle h,
 
 /*! Unlock all db:s of a client and call user unlock calback 
  *
+ * @param[in]  h       Clixon handle
+ * @param[in]  id      Session id
  * @see xmldb_unlock_all  unlocks, but does not call user callbacks which is a backend thing
  */
 static int
@@ -185,8 +187,15 @@ release_all_dbs(clixon_handle h,
     char    **keys = NULL;
     size_t    klen;
     int       i;
+    uint32_t  iddb;
     db_elmnt *de;
 
+    if (clicon_option_bool(h, "CLICON_AUTOLOCK") &&
+        (iddb = xmldb_islocked(h, "candidate")) == id){
+        if (xmldb_copy(h, "running", "candidate") < 0)
+            goto done;
+        xmldb_modified_set(h, "candidate", 0); /* reset dirty bit */
+    }
     /* get all db:s */
     if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
         goto done;
@@ -195,6 +204,8 @@ release_all_dbs(clixon_handle h,
         if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
             de->de_id == id){
             de->de_id = 0; /* unlock */
+
+
             clicon_db_elmnt_set(h, keys[i], de);
             if (clixon_plugin_lockdb_all(h, keys[i], 0, id) < 0)
                 goto done;
@@ -432,6 +443,73 @@ clixon_stats_module_get(clixon_handle h,
     return retval;
 }
 
+/*! Do lock checks and lock
+
+ * @param[in]  h     Clixon handle
+ * @param[out] cbret Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  db    Datastore
+ * @retval     1     OK
+ * @retval     0     Failed
+ * @retval    -1     Error
+ */
+static int
+do_lock(clixon_handle h,
+        cbuf         *cbret,
+        uint32_t      id,
+         char        *db)
+{
+    int        retval = -1;
+    uint32_t   otherid;
+    cbuf      *cbx = NULL; /* Assist cbuf */
+    yang_stmt *yspec;
+
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
+    }
+    if ((cbx = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    /* 2) The target configuration is <candidate>, it has already been modified, and
+     *    these changes have not been committed or rolled back.
+     */
+    if (strcmp(db, "candidate") == 0 &&
+        xmldb_modified_get(h, db)){
+        if (netconf_lock_denied(cbret, "<session-id>0</session-id>",
+                                "Operation failed, candidate has already been modified and the changes have not been committed or rolled back (RFC 6241 7.5)") < 0)
+            goto done;
+        goto failed;
+    }
+    /* 3) The target configuration is <running>, and another NETCONF
+     *    session has an ongoing confirmed commit
+     */
+    if (strcmp(db, "running") == 0 &&
+        if_feature(yspec, "ietf-netconf", "confirmed-commit") &&
+        confirmed_commit_state_get(h) != INACTIVE){
+        if ((otherid = confirmed_commit_session_id_get(h)) != 0){
+            cprintf(cbx, "<session-id>%u</session-id>", otherid);
+            if (netconf_lock_denied(cbret, cbuf_get(cbx),
+                                    "Operation failed, another session has an ongoing confirmed commit") < 0)
+                goto done;
+            goto failed;
+        }
+    }
+    if (xmldb_lock(h, db, id) < 0)
+        goto done;
+    /* user callback */
+    if (clixon_plugin_lockdb_all(h, db, 1, id) < 0)
+        goto done;
+    retval = 1;
+ done:
+    if (cbx)
+        cbuf_free(cbx);
+    return retval;
+ failed:
+    retval = 0;
+    goto done;
+}
+
 /*! Loads all or part of a specified configuration to target configuration
  * 
  * @param[in]  h       Clixon handle 
@@ -498,6 +576,12 @@ from_client_edit_config(clixon_handle h,
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
             goto done;
         goto ok;
+    }
+    if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
+        if ((ret = do_lock(h, cbret, myid, target)) < 0)
+            goto done;
+        if (ret == 0)
+            goto ok;
     }
     if (xml_nsctx_node(xn, &nsc) < 0)
         goto done;
@@ -693,6 +777,7 @@ from_client_copy_config(clixon_handle h,
     uint32_t             myid = ce->ce_id;
     cbuf                *cbx = NULL; /* Assist cbuf */
     cbuf                *cbmsg = NULL;
+    int                  ret;
 
     if ((source = netconf_db_find(xe, "source")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
@@ -715,6 +800,12 @@ from_client_copy_config(clixon_handle h,
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Copy failed, lock is already held") < 0)
             goto done;
         goto ok;
+    }
+    if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
+        if ((ret = do_lock(h, cbret, myid, target)) < 0)
+            goto done;
+        if (ret == 0)
+            goto ok;
     }
     if (xmldb_copy(h, source, target) < 0){
         if ((cbmsg = cbuf_new()) == NULL){
@@ -834,16 +925,11 @@ from_client_lock(clixon_handle h,
     int                  retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
     uint32_t             id = ce->ce_id;
-    uint32_t             iddb;
-    uint32_t             otherid;
     char                *db;
+    int                  ret;
     cbuf                *cbx = NULL; /* Assist cbuf */
-    yang_stmt           *yspec;
+    uint32_t             iddb;
 
-    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "No yang spec");
-        goto done;
-    }
     if ((db = netconf_db_find(xe, "target")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
             goto done;
@@ -863,35 +949,10 @@ from_client_lock(clixon_handle h,
             goto done;
         goto ok;
     }
-    /* 2) The target configuration is <candidate>, it has already been modified, and 
-     *    these changes have not been committed or rolled back.
-     */
-    if (strcmp(db, "candidate") == 0 &&
-        xmldb_modified_get(h, db)){
-        if (netconf_lock_denied(cbret, "<session-id>0</session-id>",
-                                "Operation failed, candidate has already been modified and the changes have not been committed or rolled back (RFC 6241 7.5)") < 0)
-            goto done;
+    if ((ret = do_lock(h, cbret, id, db)) < 0)
+        goto done;
+    if (ret == 0)
         goto ok;
-    }
-    /* 3) The target configuration is <running>, and another NETCONF
-     *    session has an ongoing confirmed commi
-     */
-    if (strcmp(db, "running") == 0 &&
-        if_feature(yspec, "ietf-netconf", "confirmed-commit") &&
-        confirmed_commit_state_get(h) != INACTIVE){
-        if ((otherid = confirmed_commit_session_id_get(h)) != 0){
-            cprintf(cbx, "<session-id>%u</session-id>", otherid);
-            if (netconf_lock_denied(cbret, cbuf_get(cbx),
-                                    "Operation failed, another session has an ongoing confirmed commit") < 0)
-                goto done;
-            goto ok;
-        }
-    }
-    if (xmldb_lock(h, db, id) < 0)
-        goto done;
-     /* user callback */
-    if (clixon_plugin_lockdb_all(h, db, 1, id) < 0)
-        goto done;
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
