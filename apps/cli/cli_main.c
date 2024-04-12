@@ -469,6 +469,44 @@ options_split(clixon_handle h,
     return retval;
 }
 
+/*! Evaluate remaining commands on the command-line
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  restarg Remaining commands, separated by \;
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+rest_commands(clixon_handle h,
+              char         *restarg)
+{
+    int           retval = -1;
+    char         *mode = cli_syntax_mode(h);
+    cligen_result result;            /* match result */
+    int           evalresult = 0;    /* if result == 1, callback result */
+    char        **vec = NULL;
+    char         *v;
+    int           nvec;
+    int           i;
+
+    if ((vec = clicon_strsep(restarg, ";", &nvec)) == NULL)
+        goto done;
+    for (i=0; i<nvec; i++){
+        v = vec[i];
+        if (clicon_parse(h, v, &mode, &result, &evalresult) < 0)
+            goto done;
+        if (result != 1) /* Not unique match */
+            goto done;
+        if (evalresult < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    if (vec)
+        free(vec);
+    return retval;
+}
+
 static void
 usage(clixon_handle h,
       char         *argv0)
@@ -912,15 +950,7 @@ main(int    argc,
     /* Launch interfactive event loop, 
      * unless options, in which case they are catched by clicon_argv_get/set */
     if (restarg != NULL && strlen(restarg) && restarg[0] != '-'){
-        char         *mode = cli_syntax_mode(h);
-        cligen_result result;            /* match result */
-        int           evalresult = 0;    /* if result == 1, calback result */
-
-        if (clicon_parse(h, restarg, &mode, &result, &evalresult) < 0)
-            goto done;
-        if (result != 1) /* Not unique match */
-            goto done;
-        if (evalresult < 0)
+        if (rest_commands(h, restarg) < 0)
             goto done;
     }
 

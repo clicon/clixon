@@ -17,6 +17,7 @@ Expected: June 2024
 
 * CLI configurable format: [Default format should be configurable](https://github.com/clicon/clixon-controller/issues/87)
 
+* CLI support for multiple inline commands separated by semi-colon
 * New `clixon-config@2024-04-01.yang` revision
   * Added options:
     - `CLICON_NETCONF_DUPLICATE_ALLOW` - Disable duplicate check in NETCONF messages
