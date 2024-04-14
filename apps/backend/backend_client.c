@@ -1805,7 +1805,7 @@ from_client_msg(clixon_handle        h,
             goto done;
         if (ret == 0){ /* Do NACM RPC validation */
             creds = clicon_nacm_credentials(h);
-            if ((ret = verify_nacm_user(h, creds, ce->ce_username, username, cbret)) < 0)
+            if ((ret = verify_nacm_user(h, creds, ce->ce_username, username, rpc, cbret)) < 0)
                 goto done;
             if (ret == 0){ /* credentials fail */
                 ce->ce_out_rpc_errors++;

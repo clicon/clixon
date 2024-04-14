@@ -1099,6 +1099,7 @@ nacm_datanode_read(clixon_handle h,
  * @param[in]  h        Clixon handle
  * @param[in]  xnacm    NACM XML tree, root should be "nacm"
  * @param[in]  username User name of requestor
+ * @param[in]  peername Peer username if any
  * @retval     1        OK permitted. You do not need to do next NACM step
  * @retval     0        OK but not validated. Need to do NACM step using xnacm
  * @retval    -1        Error
@@ -1193,6 +1194,7 @@ nacm_access_check(clixon_handle h,
  * If retval=0 continue with next NACM step, eg rpc, module, 
  * etc. If retval = 1 access is OK and skip next NACM step.
  * @param[in]  h        Clixon handle
+ * @param[in]  peername Peer username if any
  * @param[in]  username User name of requestor
  * @param[out] xncam    NACM XML tree, set if retval=0. Free after use
  * @retval     1        OK permitted. You do not need to do next NACM step.
@@ -1272,12 +1274,13 @@ nacm_access_pre(clixon_handle  h,
     goto done;
 }
 
-/*! Verify nacm user with  peer uid credentials
+/*! Verify nacm user with peer uid credentials
  *
  * @param[in]  h         Clixon handle
  * @param[in]  mode      Peer credential mode: none, exact or except
  * @param[in]  peername  Peer username if any
- * @param[in]  username  username received in XML (eg for NACM)
+ * @param[in]  nacmname  username received in XML (eg for NACM)
+ * @param[in]  rpcname   Name of incoming rpc
  * @param[out] cbret     Set with netconf error message if ret == 0
  * @retval     1         Verified
  * @retval     0         Not verified (cbret set)
@@ -1297,6 +1300,7 @@ verify_nacm_user(clixon_handle           h,
                  enum nacm_credentials_t cred,
                  char                   *peername,
                  char                   *nacmname,
+                 char                   *rpcname,
                  cbuf                   *cbret)
 {
     int   retval = -1;
@@ -1313,7 +1317,12 @@ verify_nacm_user(clixon_handle           h,
         goto fail;
     }
     if (nacmname == NULL){
-        if (netconf_access_denied(cbret, "application", "No NACM available") < 0)
+        if ((cbmsg = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cbmsg, "No NACM username attribute present in incoming RPC: \"%s\"", rpcname);
+        if (netconf_access_denied(cbret, "application", cbuf_get(cbmsg)) < 0)
             goto done;
         goto fail;
     }
