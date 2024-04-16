@@ -52,6 +52,9 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -60,6 +63,7 @@
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_digest.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -68,6 +72,7 @@
 #include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_yang_module.h"
+#include "clixon_yang_schema_mount.h"
 #include "clixon_xml_bind.h"
 #include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
@@ -75,6 +80,9 @@
 #include "clixon_xml_parse.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_default.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
+#include "clixon_datastore.h"
 #include "clixon_xml_io.h"
 
 /*
@@ -193,6 +201,7 @@ xml2output_wdef(cxobj            *x,
  * @param[in]   fn         Callback to make print function
  * @param[in]   autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @param[in]   wdef       With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
+ * @param[in]   multi      Multi-file split datastore, see CLICON_XMLDB_MULTI
  * @retval      0          OK
  * @retval     -1          Error
  * One can use clixon_xml2cbuf to get common code, but using fprintf is
@@ -212,7 +221,8 @@ xml2file_recurse(FILE                *f,
                  char                *prefix,
                  clicon_output_cb    *fn,
                  int                  autocliext,
-                 withdefaults_type    wdef)
+                 withdefaults_type    wdef,
+                 int                  multi)
 {
     int           retval = -1;
     char         *name;
@@ -227,6 +237,9 @@ xml2file_recurse(FILE                *f,
     int           level1;
     int           tag = 0;
     int           ret;
+    int           subfile = 0;   /* File is split into subfile */
+    char         *xpath = NULL;
+    char         *hexstr = NULL;
 
     if (x == NULL)
         goto ok;
@@ -277,7 +290,7 @@ xml2file_recurse(FILE                *f,
         while ((xc = xml_child_each(x, xc, -1)) != NULL) {
             switch (xml_type(xc)){
             case CX_ATTR:
-                if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext, wdef) <0)
+                if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext, wdef, multi) < 0)
                     goto done;
                 break;
             case CX_BODY:
@@ -296,9 +309,26 @@ xml2file_recurse(FILE                *f,
         if (hasbody==0 && haselement==0)
             (*fn)(f, "/>");
         else{
-            (*fn)(f, ">");
-            if (pretty && hasbody == 0){
-                (*fn)(f, "\n");
+            /* Check if this is a multi-file split-point */
+            if (multi && (y = xml_spec(x)) != NULL){
+                if (yang_extension_value(y, "xmldb-split", CLIXON_LIB_NS, &exist, NULL) < 0)
+                    goto done;
+                if (exist){
+                    subfile++;
+                    if (xml2xpath(x, NULL, 1, 0, &xpath) < 0)
+                        goto done;
+                    if (clixon_digest_hex(xpath, &hexstr) < 0)
+                        goto done;
+                    (*fn)(f, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+                    (*fn)(f, " %s:link=\"%s.xml\"", CLIXON_LIB_PREFIX, hexstr);
+                    (*fn)(f, "/>");
+                }
+            }
+            if (!subfile) {
+                (*fn)(f, ">");
+                if (pretty && hasbody == 0){
+                    (*fn)(f, "\n");
+                }
             }
             xc = NULL;
             while ((xc = xml_child_each(x, xc, -1)) != NULL) {
@@ -316,23 +346,26 @@ xml2file_recurse(FILE                *f,
                         xa = xml_find_type(xc, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE, CX_ATTR);
                     }
                 }
-                if (xml_type(xc) != CX_ATTR)
-                    if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext, wdef) <0)
-                        goto done;
+                if (xml_type(xc) != CX_ATTR && !subfile)
+                        if (xml2file_recurse(f, xc, level+1, pretty, prefix,
+                                             fn, autocliext, wdef, multi) <0)
+                            goto done;
                 if (xa){
                     if (xml_purge(xa) < 0)
                         goto done;
                 }
             }
-            if (pretty && hasbody==0){
-                if (pretty && prefix)
-                    (*fn)(f, "%s", prefix);
-                (*fn)(f, "%*s", level1, "");
+            if (subfile == 0){
+                if (pretty && hasbody==0){
+                    if (pretty && prefix)
+                        (*fn)(f, "%s", prefix);
+                    (*fn)(f, "%*s", level1, "");
+                }
+                (*fn)(f, "</");
+                if (namespace)
+                    (*fn)(f, "%s:", namespace);
+                (*fn)(f, "%s>", name);
             }
-            (*fn)(f, "</");
-            if (namespace)
-                (*fn)(f, "%s:", namespace);
-            (*fn)(f, "%s>", name);
         }
         if (pretty){
             (*fn)(f, "\n");
@@ -346,6 +379,10 @@ xml2file_recurse(FILE                *f,
  done:
     if (encstr)
         free(encstr);
+    if (xpath)
+        free(xpath);
+    if (hexstr)
+        free(hexstr);
     return retval;
 }
 
@@ -362,6 +399,7 @@ xml2file_recurse(FILE                *f,
  * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children,
  * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @param[in]  wdef       With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
+ * @param[in]  multi      Multi-file split datastore, see CLICON_XMLDB_MULTI
  * @retval     0          OK
  * @retval    -1          Error
  * @see clixon_xml2cbuf print to a cbuf string
@@ -377,7 +415,8 @@ clixon_xml2file1(FILE                *f,
                  clicon_output_cb    *fn,
                  int                  skiptop,
                  int                  autocliext,
-                 withdefaults_type    wdef)
+                 withdefaults_type    wdef,
+                 int                  multi)
 {
     int   retval = 1;
     cxobj *xc;
@@ -387,11 +426,11 @@ clixon_xml2file1(FILE                *f,
     if (skiptop){
         xc = NULL;
         while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-            if (xml2file_recurse(f, xc, level, pretty, prefix, fn, autocliext, wdef) < 0)
+            if (xml2file_recurse(f, xc, level, pretty, prefix, fn, autocliext, wdef, multi) < 0)
                 goto done;
     }
     else {
-        if (xml2file_recurse(f, xn, level, pretty, prefix, fn, autocliext, wdef) < 0)
+        if (xml2file_recurse(f, xn, level, pretty, prefix, fn, autocliext, wdef, multi) < 0)
             goto done;
     }
     retval = 0;
@@ -427,7 +466,7 @@ clixon_xml2file(FILE             *f,
                 int               skiptop,
                 int               autocliext)
 {
-    return clixon_xml2file1(f, xn, level, pretty, prefix, fn, skiptop, autocliext, 0);
+    return clixon_xml2file1(f, xn, level, pretty, prefix, fn, skiptop, autocliext, 0, 0);
 }
 
 /*! Print an XML tree structure to an output stream
@@ -442,7 +481,7 @@ int
 xml_print(FILE  *f,
           cxobj *x)
 {
-    return xml2file_recurse(f, x, 0, 1, NULL, fprintf, 0, WITHDEFAULTS_REPORT_ALL);
+    return xml2file_recurse(f, x, 0, 1, NULL, fprintf, 0, WITHDEFAULTS_REPORT_ALL, 0);
 }
 
 /*! Dump cxobj structure with pointers and flags for debugging, internal function
@@ -456,20 +495,20 @@ xml_dump1(FILE  *f,
 
     if (xml_type(x) != CX_ELMNT)
         return 0;
-    fprintf(stderr, "%*s %s(%s)",
+    fprintf(f, "%*s %s(%s)",
             indent*PRETTYPRINT_INDENT, "",
             //      x,
             xml_name(x),
             xml_type2str(xml_type(x)));
     if (xml_flag(x, XML_FLAG_ADD))
-        fprintf(stderr, " add");
+        fprintf(f, " add");
     if (xml_flag(x, XML_FLAG_DEL))
-        fprintf(stderr, " delete");
+        fprintf(f, " delete");
     if (xml_flag(x, XML_FLAG_CHANGE))
-        fprintf(stderr, " change");
+        fprintf(f, " change");
     if (xml_flag(x, XML_FLAG_MARK))
-        fprintf(stderr, " mark");
-    fprintf(stderr, "\n");
+        fprintf(f, " mark");
+    fprintf(f, "\n");
     xc = NULL;
     while ((xc = xml_child_each(x, xc, -1)) != NULL) {
         xml_dump1(f, xc, indent+1);
@@ -949,11 +988,13 @@ clixon_xml_parse_file(FILE      *fp,
     int   xmlbuflen = BUFLEN; /* start size */
     int   oldxmlbuflen;
     int   failed = 0;
+    int   xtempty; /* empty on entry */
 
-    if (xt==NULL || fp == NULL){
+    if (xt == NULL || fp == NULL){
         clixon_err(OE_XML, EINVAL, "arg is NULL");
         return -1;
     }
+    xtempty = (*xt == NULL);
     if (yb == YB_MODULE && yspec == NULL){
         clixon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
         return -1;
@@ -995,7 +1036,7 @@ clixon_xml_parse_file(FILE      *fp,
     } /* while */
     retval = (failed==0) ? 1 : 0;
  done:
-    if (retval < 0 && *xt){
+    if (retval < 0 && *xt && xtempty){
         free(*xt);
         *xt = NULL;
     }

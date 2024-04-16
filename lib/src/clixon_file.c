@@ -176,6 +176,7 @@ clicon_files_recursive(const char *dir,
  * @code
  *   char          *dir = "/root/fs";
  *   struct dirent *dp;
+ *   int            ndp;
  *   if ((ndp = clicon_file_dirent(dir, &dp, "\\.so$", S_IFREG)) < 0)
  *       return -1;
  *   for (i = 0; i < ndp; i++) 
@@ -221,6 +222,8 @@ clicon_file_dirent(const char     *dir,
      goto quit;
    }
    while((dent = readdir(dirp)) != NULL) {
+       if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0)
+           continue;
        /* Filename matching */
        if (regexp) {
            if (regexec(&re, dent->d_name, (size_t) 0, NULL, 0) != 0)
@@ -250,7 +253,6 @@ clicon_file_dirent(const char     *dir,
        memcpy(&new[nent], dent, direntStructSize);
        nent++;
    } /* while */
-
    qsort((void *)new, nent, sizeof(*new), clicon_file_dirent_sort);
    *ent = new;
    new = NULL;
@@ -271,6 +273,7 @@ quit:
  * @param[out] target  Destination filename
  * @retval     0       OK
  * @retval    -1       Error
+ * XXX This is probably faster with stdio?
  */
 int
 clicon_file_copy(char *src,
@@ -309,6 +312,43 @@ clicon_file_copy(char *src,
         close(ouF);
     if (retval < 0)
         errno = err;
+    return retval;
+}
+
+/*! Make a copy of directory non-recursive
+ *
+ * @param[in]  srcdir  Source dirname
+ * @param[out] dstdir  Destination dirname
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clicon_dir_copy(char *srcdir,
+                char *dstdir)
+{
+    int            retval = -1;
+    struct dirent *dent = NULL;
+    DIR           *dirp = NULL;
+    char           srcfile[MAXPATHLEN];
+    char           dstfile[MAXPATHLEN];
+
+    if (srcdir == NULL || dstdir == NULL){
+        clixon_err(OE_UNIX, EINVAL, "Requires src and dst dir != NULL");
+        goto done;
+    }
+    if ((dirp = opendir(srcdir)) != NULL)
+        while ((dent = readdir(dirp)) != NULL) {
+            if (dent->d_type != DT_REG)
+                continue;
+            snprintf(srcfile, MAXPATHLEN-1, "%s/%s", srcdir, dent->d_name);
+            snprintf(dstfile, MAXPATHLEN-1, "%s/%s", dstdir, dent->d_name);
+            if (clicon_file_copy(srcfile, dstfile) < 0)
+                goto done;
+        }
+    retval = 0;
+ done:
+    if (dirp)
+        closedir(dirp);
     return retval;
 }
 

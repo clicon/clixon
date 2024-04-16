@@ -6278,96 +6278,6 @@ fi
 printf "%s\n" "#define WITH_RESTCONF_FCGI 1" >>confdefs.h
  # For c-code that cant use strings
 elif test "x${with_restconf}" = xnative; then
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
-printf %s "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
-if test ${ac_cv_lib_ssl_OPENSSL_init_ssl_+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lssl  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-char OPENSSL_init_ssl  ();
-int
-main (void)
-{
-return OPENSSL_init_ssl  ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_ssl_OPENSSL_init_ssl_=yes
-else $as_nop
-  ac_cv_lib_ssl_OPENSSL_init_ssl_=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_OPENSSL_init_ssl_" >&5
-printf "%s\n" "$ac_cv_lib_ssl_OPENSSL_init_ssl_" >&6; }
-if test "x$ac_cv_lib_ssl_OPENSSL_init_ssl_" = xyes
-then :
-  printf "%s\n" "#define HAVE_LIBSSL 1" >>confdefs.h
-
-  LIBS="-lssl $LIBS"
-
-else $as_nop
-  as_fn_error $? "libssl missing" "$LINENO" 5
-fi
-
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for CRYPTO_new_ex_data in -lcrypto" >&5
-printf %s "checking for CRYPTO_new_ex_data in -lcrypto... " >&6; }
-if test ${ac_cv_lib_crypto_CRYPTO_new_ex_data+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcrypto  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-char CRYPTO_new_ex_data ();
-int
-main (void)
-{
-return CRYPTO_new_ex_data ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_crypto_CRYPTO_new_ex_data=yes
-else $as_nop
-  ac_cv_lib_crypto_CRYPTO_new_ex_data=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_CRYPTO_new_ex_data" >&5
-printf "%s\n" "$ac_cv_lib_crypto_CRYPTO_new_ex_data" >&6; }
-if test "x$ac_cv_lib_crypto_CRYPTO_new_ex_data" = xyes
-then :
-  printf "%s\n" "#define HAVE_LIBCRYPTO 1" >>confdefs.h
-
-  LIBS="-lcrypto $LIBS"
-
-else $as_nop
-  as_fn_error $? "libcrypto missing" "$LINENO" 5
-fi
-
    # Check if http/1 enabled
    # Check whether --enable-http1 was given.
 if test ${enable_http1+y}
@@ -6752,6 +6662,98 @@ then :
 
   LIBS="-ldl $LIBS"
 
+fi
+
+
+# This is for digest / restconf
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
+printf %s "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
+if test ${ac_cv_lib_ssl_OPENSSL_init_ssl_+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lssl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char OPENSSL_init_ssl  ();
+int
+main (void)
+{
+return OPENSSL_init_ssl  ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_ssl_OPENSSL_init_ssl_=yes
+else $as_nop
+  ac_cv_lib_ssl_OPENSSL_init_ssl_=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_OPENSSL_init_ssl_" >&5
+printf "%s\n" "$ac_cv_lib_ssl_OPENSSL_init_ssl_" >&6; }
+if test "x$ac_cv_lib_ssl_OPENSSL_init_ssl_" = xyes
+then :
+  printf "%s\n" "#define HAVE_LIBSSL 1" >>confdefs.h
+
+  LIBS="-lssl $LIBS"
+
+else $as_nop
+  as_fn_error $? "libssl missing" "$LINENO" 5
+fi
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for CRYPTO_new_ex_data in -lcrypto" >&5
+printf %s "checking for CRYPTO_new_ex_data in -lcrypto... " >&6; }
+if test ${ac_cv_lib_crypto_CRYPTO_new_ex_data+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypto  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char CRYPTO_new_ex_data ();
+int
+main (void)
+{
+return CRYPTO_new_ex_data ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_crypto_CRYPTO_new_ex_data=yes
+else $as_nop
+  ac_cv_lib_crypto_CRYPTO_new_ex_data=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_CRYPTO_new_ex_data" >&5
+printf "%s\n" "$ac_cv_lib_crypto_CRYPTO_new_ex_data" >&6; }
+if test "x$ac_cv_lib_crypto_CRYPTO_new_ex_data" = xyes
+then :
+  printf "%s\n" "#define HAVE_LIBCRYPTO 1" >>confdefs.h
+
+  LIBS="-lcrypto $LIBS"
+
+else $as_nop
+  as_fn_error $? "libcrypto missing" "$LINENO" 5
 fi
 
 

@@ -33,20 +33,11 @@
 
   ***** END LICENSE BLOCK *****
 
-  * Datastore text-based XML write functions
- */
-#ifndef _CLIXON_DATASTORE_WRITE_H
-#define _CLIXON_DATASTORE_WRITE_H
-
-/*
- * Types
  */
 
-/*
- * Prototypes
- */
-int xmldb_put(clixon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
-int xmldb_write_cache2file(clixon_handle h, const char *db);
-int xmldb_dump(clixon_handle h, FILE *f, cxobj *xt, enum format_enum format, int pretty, withdefaults_type wdef, int multi, const char *multidb);
+#ifndef _CLIXON_DIGEST_H_
+#define _CLIXON_DIGEST_H_
 
-#endif /* _CLIXON_DATASTORE_WRITE_H */
+int clixon_digest_hex(const char *string, char **hexstrp);
+
+#endif /* _CLIXON_DIGEST_H_ */

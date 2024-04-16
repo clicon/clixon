@@ -52,9 +52,10 @@ module clixon-config {
     revision 2024-04-01 {
         description
             "Added options:
-                    CLICON_NETCONF_DUPLICATE_ALLOW - Disable duplicate check in NETCONF messages.
-                    CLICON_CLI_OUTPUT_FORMAT - Default CLI output format
-                    CLICON_AUTOLOCK - Implicit locks
+                    CLICON_XMLDB_MULTI: Split datastore into multiple sub files
+                    CLICON_NETCONF_DUPLICATE_ALLOW: Disable duplicate check in NETCONF messages.
+                    CLICON_CLI_OUTPUT_FORMAT: Default CLI output format
+                    CLICON_AUTOLOCK: Implicit locks
              Released in Clixon 7.1";
     }
     revision 2024-01-01 {
@@ -993,6 +994,7 @@ module clixon-config {
             description
                 "Directory where \"running\", \"candidate\" and \"startup\" are placed.";
         }
+
         leaf CLICON_DATASTORE_CACHE {
             type datastore_cache;
             default cache;
@@ -1034,6 +1036,17 @@ module clixon-config {
                  The old yang must be accessible via YANG_DIR.
                  Will fail startup if old yang not found or if old config does not match.
                  If not set, no yang check of old config is made until it is upgraded to new yang.";
+        }
+        leaf CLICON_XMLDB_MULTI {
+            type boolean;
+            default false;
+            description
+                "Split configure datastore into multiple sub files
+                 Keep track of which part of the XML tree are dirty, 
+                 Do not sync sub files if cache is not dirty.
+                 Uses .d/ directory structure with digest.xml/.json
+                 Splits are marked in YANG made on mountpoints only (may be generalized)
+                 See CLICON_YANG_SCHEMA_MOUNT";
         }
         leaf CLICON_XML_CHANGELOG {
             type boolean;

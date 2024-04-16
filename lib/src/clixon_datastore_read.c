@@ -86,6 +86,17 @@
 
 #define handle(xh) (assert(text_handle_check(xh)==0),(struct text_handle *)(xh))
 
+/* Local types */
+/* Argument to apply for recursive call to xmldb_multi calls 
+ * @see xmldb_multi_write_arg
+ */
+struct xmldb_multi_read_arg {
+    char            *mr_subdir;
+    yang_stmt       *mr_yspec;
+    enum format_enum mr_format;
+    cxobj          **mr_xerr;
+};
+
 /*! Ensure that xt only has a single sub-element and that is "config" 
  *
  * @retval     0     There exists a single "config" sub-element
@@ -446,6 +457,68 @@ disable_nacm_on_empty(cxobj     *xt,
     return retval;
 }
 
+/*! Callback function for xmldb-multi read
+ *
+ * Look for link attribute in XML, and if found open the linked file for parsing
+ * @param[in]  x    XML node
+ * @param[in]  arg
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ */
+static int
+xmldb_multi_read_applyfn(cxobj *x,
+                         void  *arg)
+{
+    struct xmldb_multi_read_arg *mr = (struct xmldb_multi_read_arg *) arg;
+    int                     retval = -1;
+    cxobj                  *xa;
+    char                   *filename;
+    cbuf                   *cb = NULL;
+    char                   *dbfile;
+    FILE                   *fp = NULL;
+
+    if ((xa = xml_find_type(x, CLIXON_LIB_PREFIX, "link", CX_ATTR)) != NULL &&
+        (filename = xml_value(xa)) != NULL){
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "%s/%s", mr->mr_subdir, filename);
+        xml_purge(xa);
+        if ((xa = xml_find_type(x, "xmlns", CLIXON_LIB_PREFIX, CX_ATTR)) != NULL)
+            xml_purge(xa);
+        dbfile = cbuf_get(cb);
+        clixon_debug(CLIXON_DBG_DATASTORE, "Parsing: %s", dbfile);
+        if ((fp = fopen(dbfile, "r")) == NULL){
+            clixon_err(OE_CFG, errno, "fdopen(%s)", dbfile);
+            goto done;
+        }
+        switch (mr->mr_format){
+        case FORMAT_JSON:
+            if (clixon_json_parse_file(fp, 1, YB_NONE, mr->mr_yspec, &x, mr->mr_xerr) < 0)
+                goto done;
+            break;
+        case FORMAT_XML:
+            if (clixon_xml_parse_file(fp, YB_NONE, mr->mr_yspec, &x, mr->mr_xerr) < 0)
+                goto done;
+            break;
+        default:
+            clixon_err(OE_DB, 0, "Format not supported");
+            goto done;
+            break;
+        }
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (fp)
+        fclose(fp);
+    return retval;
+}
+
 /*! Common read function that reads an XML tree from file
  *
  * @param[in]  th     Datastore text handle
@@ -477,7 +550,8 @@ xmldb_readfile(clixon_handle    h,
     cxobj           *x0 = NULL;
     char            *dbfile = NULL;
     FILE            *fp = NULL;
-    char            *format;
+    char            *formatstr;
+    enum format_enum format;
     int              ret;
     modstate_diff_t *msdiff = NULL;
     cxobj           *xmsd;           /* XML module state diff */
@@ -489,6 +563,7 @@ xmldb_readfile(clixon_handle    h,
     cxobj           *xmodfile = NULL;
     cxobj           *x;
     yang_stmt       *yspec1 = NULL;
+    struct xmldb_multi_read_arg mr = {0, };
 
     if (yb != YB_MODULE && yb != YB_NONE){
         clixon_err(OE_XML, EINVAL, "yb is %d but should be module or none", yb);
@@ -500,11 +575,15 @@ xmldb_readfile(clixon_handle    h,
         clixon_err(OE_XML, 0, "dbfile NULL");
         goto done;
     }
-    if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
+    if ((formatstr = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
         clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DATASTORE, "Reading datastore %s using %s", dbfile, format);
+    if ((format = format_str2int(formatstr)) < 0){
+        clixon_err(OE_XML, 0, "format not found %s", formatstr);
+        goto done;
+    }
+    clixon_debug(CLIXON_DBG_DATASTORE, "Reading datastore %s using %s", dbfile, formatstr);
     /* Parse file into internal XML tree from different formats */
     if ((fp = fopen(dbfile, "r")) == NULL) {
         clixon_err(OE_UNIX, errno, "open(%s)", dbfile);
@@ -516,14 +595,28 @@ xmldb_readfile(clixon_handle    h,
      *   config*
      * </config>
      * ret == 0 should not happen with YB_NONE. Binding is done later */
-    if (strcmp(format, "json")==0){
+    switch (format){
+    case FORMAT_JSON:
         if (clixon_json_parse_file(fp, 1, YB_NONE, yspec, &x0, xerr) < 0)
             goto done;
-    }
-    else {
-        if (clixon_xml_parse_file(fp, YB_NONE, yspec, &x0, xerr) < 0){
+        break;
+    case FORMAT_XML:
+        if (clixon_xml_parse_file(fp, YB_NONE, yspec, &x0, xerr) < 0)
             goto done;
-        }
+        break;
+    default:
+        clixon_err(OE_DB, 0, "Format %s not supported", formatstr);
+        goto done;
+        break;
+    }
+    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
+        if (xmldb_db2subdir(h, db, &mr.mr_subdir) < 0)
+            goto done;
+        mr.mr_format = format;
+        mr.mr_yspec = yspec;
+        mr.mr_xerr = xerr;
+        if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xmldb_multi_read_applyfn, &mr) < 0)
+            goto done;
     }
     /* Always assert a top-level called "config". 
      * To ensure that, deal with two cases:
@@ -646,6 +739,8 @@ xmldb_readfile(clixon_handle    h,
     }
     retval = 1;
  done:
+    if (mr.mr_subdir)
+        free(mr.mr_subdir);
     if (yspec1)
         ys_free1(yspec1, 1);
     if (xmodfile)

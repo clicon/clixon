@@ -138,7 +138,11 @@ yang_schema_mount_point0(yang_stmt *y)
     goto done;
 }
 
-/*! Cached variant of yang_schema_mount_point
+/*! Cached variant of yang_schema_mount_point0
+ *
+ * @param[in]  y   Yang node
+ * @retval     1   Yes, node is potential mountpoint
+ * @retval     0   No, node is not potential mountpoint
  */
 int
 yang_schema_mount_point(yang_stmt *y)
@@ -250,9 +254,7 @@ xml_yang_mount_get(clixon_handle   h,
 
     if ((y = xml_spec(xt)) == NULL)
         goto fail;
-    if ((ret = yang_schema_mount_point(y)) < 0)
-        goto done;
-    if (ret == 0)
+    if (yang_schema_mount_point(y) == 0)
         goto fail;
     /* Check validate level */
     if (vl && clixon_plugin_yang_mount_all(h, xt, NULL, vl, NULL) < 0)

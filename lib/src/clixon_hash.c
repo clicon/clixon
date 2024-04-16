@@ -186,6 +186,7 @@ clicon_hash_lookup(clicon_hash_t *hash,
 }
 
 /*! Get value of hash
+ *
  * @param[in]  hash   Hash table
  * @param[in]  key    Variable name
  * @param[out] vlen   Length of value (as returned by function if != NULL)

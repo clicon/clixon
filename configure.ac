@@ -275,8 +275,6 @@ if test "x${with_restconf}" = xfcgi; then
    AC_CHECK_LIB(fcgi, FCGX_Init,, AC_MSG_ERROR([libfcgi-dev missing])) 
    AC_DEFINE(WITH_RESTCONF_FCGI, 1, [Use fcgi restconf mode]) # For c-code that cant use strings
 elif test "x${with_restconf}" = xnative; then
-   AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
-   AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing])) 
    # Check if http/1 enabled
    AC_ARG_ENABLE(http1, AS_HELP_STRING([--disable-http1],[Disable http1 for native restconf http/1, ie http/2 only]),[
    	  if test "$enableval" = no; then
@@ -372,6 +370,10 @@ AC_DEFINE_UNQUOTED(CLIXON_CONFIG_SYSCONFDIR, "${SYSCONFDIR}", [Pass-through $sys
 
 AC_CHECK_LIB(socket, socket)
 AC_CHECK_LIB(dl, dlopen)
+
+# This is for digest / restconf
+AC_CHECK_LIB(ssl, OPENSSL_init_ssl ,, AC_MSG_ERROR([libssl missing]))
+AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, , AC_MSG_ERROR([libcrypto missing]))
 
 # This is for libxml2 XSD regex engine
 # Note this only enables the compiling of the code. In order to actually

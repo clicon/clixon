@@ -282,7 +282,7 @@ stream_timer_setup(int   fd,
     struct stream_replay        *r;
     struct stream_replay        *r1;
 
-    clixon_debug(CLIXON_DBG_STREAM, "");
+    clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "");
     /* Go thru callbacks and see if any have timed out, if so remove them 
      * Could also be done by a separate timer.
      */

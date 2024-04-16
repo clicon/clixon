@@ -70,6 +70,7 @@ extern "C" {
 #include <clixon/clixon_uid.h>
 #include <clixon/clixon_queue.h>
 #include <clixon/clixon_hash.h>
+#include <clixon/clixon_digest.h>
 #include <clixon/clixon_handle.h>
 #include <clixon/clixon_yang.h>
 #include <clixon/clixon_xml.h>

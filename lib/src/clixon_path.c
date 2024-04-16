@@ -1896,8 +1896,10 @@ clixon_xml_find_instance_id(cxobj      *xt,
     va_end(ap);
     if (instance_id_parse(path, &cplist) < 0)
         goto done;
+#if 0
     if (clixon_debug_get())
         clixon_path_print(stderr, cplist);
+#endif
     /* Resolve module:name to pointer to yang-stmt, fail if not successful */
     if ((ret = instance_id_resolve(cplist, yt)) < 0)
         goto done;

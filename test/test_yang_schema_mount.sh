@@ -254,7 +254,7 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
-rm -rf $dir
+sudo rm -rf $dir
 
 new "endtest"
 endtest

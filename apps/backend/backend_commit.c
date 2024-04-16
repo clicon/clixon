@@ -251,7 +251,10 @@ startup_common(clixon_handle       h,
         /* clear XML tree of defaults */
         if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
             goto done;
-        if (xmldb_dump(h, stdout, xt, WITHDEFAULTS_REPORT_ALL) < 0)
+
+        if (xmldb_dump(h, stdout, xt, FORMAT_XML,
+                       clicon_option_bool(h, "CLICON_XMLDB_PRETTY"),
+                       WITHDEFAULTS_REPORT_ALL, 0, NULL) < 0)
             goto done;
         if (xt)
             xml_free(xt);
@@ -295,8 +298,7 @@ startup_common(clixon_handle       h,
     xt = NULL;
     x = NULL;
     while ((x = xml_child_each(td->td_target, x, CX_ELMNT)) != NULL){
-        xml_flag_set(x, XML_FLAG_ADD); /* Also down */
-        xml_apply(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
+        xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
         if (cxvec_append(x, &td->td_avec, &td->td_alen) < 0)
             goto done;
     }

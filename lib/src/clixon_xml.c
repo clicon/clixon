@@ -81,7 +81,7 @@
  * Constants
  */
 /* How many XML children to start with if any. Then add quadratic until threshold when
- * add lineraly 
+ * add linearly
  * Heurestics: if child is body only single child is expected, but element children may
  * have siblings
  */
@@ -1234,7 +1234,6 @@ xml_new_body(char  *name,
     return new_node;
 }
 
-
 /*! Return yang spec of node. 
  *
  * Not necessarily set. Either has not been set yet (by xml_spec_set( or anyxml.
@@ -2025,7 +2024,7 @@ xml_copy_one(cxobj *x0,
     default:
         break;
     }
-    xml_flag_set(x1, xml_flag(x0, XML_FLAG_DEFAULT | XML_FLAG_TOP | XML_FLAG_ANYDATA)); /* Maybe more flags */
+    xml_flag_set(x1, xml_flag(x0, XML_FLAG_DEFAULT | XML_FLAG_TOP | XML_FLAG_ANYDATA | XML_FLAG_CACHE_DIRTY)); /* Maybe more flags */
     retval = 0;
  done:
     return retval;

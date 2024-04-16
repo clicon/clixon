@@ -206,3 +206,8 @@
  */
 #define COMPAT_6_5
 
+/*! Use SHA256 (32 bytes) instead of SHA1 (20 bytes)
+ *
+ * Digest use is not cryptographic use, so SHA1 is enough for now
+ */
+#undef USE_SHA256

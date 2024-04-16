@@ -44,8 +44,12 @@
  * Prototypes
  */
 int   clixon_xml2file1(FILE *f, cxobj *xn, int level, int pretty, char *prefix,
-                       clicon_output_cb *fn, int skiptop, int autocliext, withdefaults_type wdef);
+                       clicon_output_cb *fn, int skiptop, int autocliext, withdefaults_type wdef,
+                       int multi);
 int   clixon_xml2file(FILE *f, cxobj *xn, int level, int pretty, char *prefix, clicon_output_cb *fn, int skiptop, int autocliext);
+int   clixon_xml2file_multi(clixon_handle h, const char *db, cxobj *xn, int level, int pretty,
+                            char *prefix, clicon_output_cb *fn, int skiptop, int autocliext,
+                            withdefaults_type wdef);
 int   xml_print(FILE *f, cxobj *xn);
 int   xml_dump(FILE  *f, cxobj *x);
 int   clixon_xml2cbuf1(cbuf *cb, cxobj *x, int level, int prettyprint, char *prefix,

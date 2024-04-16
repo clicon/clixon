@@ -293,7 +293,7 @@ module clixon-restconf {
                                          for an interval longer than this number of
                                          seconds.  If set to zero, then the server
                                          will never drop a session because it is idle.";
-                }
+                                }
                             }
                         }
                     }

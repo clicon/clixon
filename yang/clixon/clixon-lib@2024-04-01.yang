@@ -66,11 +66,13 @@ module clixon-lib {
        - source-host (see RFC6022)
        - objectcreate
        - objectexisted
+       - link # For split multiple XML files
       ";
 
     revision 2024-04-01 {
         description
-            "Added: Default format
+            "Added: xmldb-split extension
+             Added: Default format
              Released in Clixon 7.1";
     }
     revision 2024-01-01 {
@@ -212,7 +214,17 @@ module clixon-lib {
             "The object should be ignored when comparing device configs for equality.
              The object should never be added, modified, or deleted on target.
              Essentially a read-only object
-             One example is auto-created objects by the , such as uid.";
+             One example is auto-created objects by the controller, such as uid.";
+    }
+    extension xmldb-split {
+        description
+            "When split configuration stores are used, ie CLICON_XMLDB_MULTI is set,
+             This extension marks where in the configuration tree, one file terminates
+             and a new sub-file is written. 
+             A designer adds the 'xmldb-split' extension to a YANG node which should be split.
+             For example, a split could be made at mountpoints.
+             See also the 'link 'attribute.
+             ";
     }
     md:annotation creator {
         type string;
