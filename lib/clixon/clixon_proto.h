@@ -56,8 +56,6 @@ struct clicon_msg {
 /*
  * Prototypes
  */
-char *format_int2str(enum format_enum showas);
-enum format_enum format_str2int(char *str);
 int clixon_inet2sin(const char *addrtype, const char *addrstr, uint16_t port, struct sockaddr *sa, size_t *sa_len);
 
 struct clicon_msg *clicon_msg_encode(uint32_t id, const char *format, ...) __attribute__ ((format (printf, 2, 3)));

@@ -88,12 +88,11 @@ clicon_files_recursive1(const char *dir,
                         regex_t    *re,
                         cvec       *cvv)
 {
-    int retval = -1;
-    struct  dirent *dent = NULL;
-    char    path[MAXPATHLEN];
-    DIR     *dirp = NULL;
-    int     res = 0;
-    struct stat    st;
+    int            retval = -1;
+    struct dirent *dent = NULL;
+    char           path[MAXPATHLEN];
+    DIR           *dirp = NULL;
+    struct stat    st = {0,};
 
     if (dir == NULL){
         clixon_err(OE_UNIX, EINVAL, "Requires dir != NULL");
@@ -119,7 +118,7 @@ clicon_files_recursive1(const char *dir,
                     regexec(re, dent->d_name, (size_t)0, NULL, 0) != 0)
                     continue;
                 snprintf(path, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
-                if ((res = lstat(path, &st)) != 0){
+                if (lstat(path, &st) < 0){
                     clixon_err(OE_UNIX, errno, "lstat");
                     goto done;
                 }

@@ -846,11 +846,12 @@ xmldb_dump(clixon_handle     h,
            cxobj            *xt,
            withdefaults_type wdef)
 {
-    int    retval = -1;
-    cxobj *xm;
-    cxobj *xmodst = NULL;
-    char  *format;
-    int    pretty;
+    int              retval = -1;
+    cxobj           *xm;
+    cxobj           *xmodst = NULL;
+    char            *formatstr;
+    enum format_enum format = FORMAT_XML;
+    int              pretty;
 
     /* Add modstate first */
     if ((xm = clicon_modst_cache_get(h, 1)) != NULL){
@@ -860,17 +861,27 @@ xmldb_dump(clixon_handle     h,
             goto done;
         xml_parent_set(xmodst, xt);
     }
-    if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
-        clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
-        goto done;
-    }
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
-    if (strcmp(format,"json")==0){
+    if ((formatstr = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) != NULL){
+        if ((format = format_str2int(formatstr)) < 0){
+            clixon_err(OE_XML, 0, "Format %s invalid", formatstr);
+            goto done;
+        }
+    }
+    switch (format){
+    case FORMAT_JSON:
         if (clixon_json2file(f, xt, pretty, fprintf, 0, 0) < 0)
             goto done;
-    }
-    else if (clixon_xml2file1(f, xt, 0, pretty, NULL, fprintf, 0, 0, wdef) < 0)
+        break;
+    case FORMAT_XML:
+        if (clixon_xml2file1(f, xt, 0, pretty, NULL, fprintf, 0, 0, wdef) < 0)
+            goto done;
+        break;
+    default:
+        clixon_err(OE_XML, 0, "Format %s not supported", format_int2str(format));
         goto done;
+        break;
+    }
     /* Remove modules state after writing to file */
     if (xmodst && xml_purge(xmodst) < 0)
         goto done;
@@ -912,10 +923,6 @@ xmldb_write_cache2file(clixon_handle h,
     }
     if (xmldb_dump(h, f, xt, WITHDEFAULTS_EXPLICIT) < 0)
         goto done;
-    if (f) {
-        fclose(f);
-        f = NULL;
-    }
     retval = 0;
  done:
     if (dbfile)
@@ -924,4 +931,3 @@ xmldb_write_cache2file(clixon_handle h,
         fclose(f);
     return retval;
 }
-

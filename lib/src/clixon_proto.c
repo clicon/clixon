@@ -84,42 +84,6 @@
 
 static int _atomicio_sig = 0;
 
-/*! Translate between int and string of tree formats 
- *
- * @see enum format_enum
- */
-static const map_str2int _FORMATS[] = {
-    {"xml",     FORMAT_XML},
-    {"text",    FORMAT_TEXT},
-    {"json",    FORMAT_JSON},
-    {"cli",     FORMAT_CLI},
-    {"netconf", FORMAT_NETCONF},
-    {"default", FORMAT_DEFAULT},
-    {NULL,      -1}
-};
-
-/*! Translate from numeric format to string representation
- *
- * @param[in]  showas   Format value (see enum format_enum)
- * @retval     str      String value
- */
-char *
-format_int2str(enum format_enum showas)
-{
-    return (char*)clicon_int2str(_FORMATS, showas);
-}
-
-/*! Translate from string to numeric format representation
- *
- * @param[in]  str       String value
- * @retval     enum      Format value (see enum format_enum)
- */
-enum format_enum
-format_str2int(char *str)
-{
-    return clicon_str2int(_FORMATS, str);
-}
-
 /*! Given family, addr str, port, return sockaddr and length
  *
  * @param[in]  addrtype  Address family: inet:ipv4-address or inet:ipv6-address

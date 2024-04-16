@@ -97,6 +97,8 @@ enum regexp_mode{
 /*
  * Prototypes
  */
+char *format_int2str(enum format_enum showas);
+enum format_enum format_str2int(char *str);
 
 /* Debug dump config options */
 int clicon_option_dump(clixon_handle h, int dblevel);
