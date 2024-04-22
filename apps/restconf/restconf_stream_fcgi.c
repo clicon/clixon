@@ -118,36 +118,6 @@ struct stream_child{
  */
 static struct stream_child *STREAM_CHILD = NULL;
 
-/*! Check if uri path denotes a stream/notification path
- *
- * @retval     1    Yes, a stream path
- * @retval     0    No, not a stream path
- */
-int
-api_path_is_stream(clixon_handle h)
-{
-    int    retval = 0;
-    char  *path = NULL;
-    char  *stream_path;
-
-   if ((path = restconf_uripath(h)) == NULL)
-       goto done;
-   if ((stream_path = clicon_option_str(h, "CLICON_STREAM_PATH")) == NULL)
-       goto done;
-   if (strlen(path) < 1 + strlen(stream_path)) /* "/" + stream */
-       goto done;
-   if (path[0] != '/')
-       goto done;
-   if (strncmp(path+1, stream_path, strlen(stream_path)) != 0)
-       goto done;
-    retval = 1;
- done:
-    if (path)
-        free(path);
-    return retval;
-
-}
-
 /*! Find restconf child using PID and cleanup FCGI Request data
  *
  * For forked, called on SIGCHILD
@@ -267,91 +237,6 @@ restconf_stream_cb(int   s,
         xml_free(xtop);
     if (cbmsg)
         cbuf_free(cbmsg);
-    if (cb)
-        cbuf_free(cb);
-    return retval;
-}
-
-/*! Send subscription to backend
- *
- * @param[in]  h     Clixon handle
- * @param[in]  req   Generic Www handle (can be part of clixon handle)
- * @param[in]  name  Stream name
- * @param[in]  qvec
- * @param[in]  pretty    Pretty-print json/xml reply
- * @param[in]  media_out Restconf output media
- * @param[out] sp    Socket -1 if not set
- * @retval     0    OK
- * @retval    -1    Error
- */
-static int
-restconf_stream(clixon_handle h,
-                void         *req,
-                char         *name,
-                cvec         *qvec,
-                int           pretty,
-                restconf_media media_out,
-                int          *sp)
-{
-    int     retval = -1;
-    cxobj  *xret = NULL;
-    cxobj  *xe;
-    cbuf   *cb = NULL;
-    int     s; /* socket */
-    int     i;
-    cg_var *cv;
-    char   *vname;
-
-    clixon_debug(CLIXON_DBG_STREAM, "");
-    *sp = -1;
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_XML, errno, "cbuf_new");
-        goto done;
-    }
-    cprintf(cb, "<rpc xmlns=\"%s\" %s><create-subscription xmlns=\"%s\"><stream>%s</stream>",
-            NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR, EVENT_RFC5277_NAMESPACE, name);
-    /* Print all fields */
-    for (i=0; i<cvec_len(qvec); i++){
-        cv = cvec_i(qvec, i);
-        vname = cv_name_get(cv);
-        if (strcmp(vname, "start-time") == 0){
-            cprintf(cb, "<startTime>");
-            cv2cbuf(cv, cb);
-            cprintf(cb, "</startTime>");
-        }
-        else if (strcmp(vname, "stop-time") == 0){
-            cprintf(cb, "<stopTime>");
-            cv2cbuf(cv, cb);
-            cprintf(cb, "</stopTime>");
-        }
-    }
-    cprintf(cb, "</create-subscription></rpc>]]>]]>");
-    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, &s) < 0)
-        goto done;
-    if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
-        if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-            goto done;
-        goto ok;
-    }
-
-    /* Setting up stream */
-    if (restconf_reply_header(req, "Content-Type", "text/event-stream") < 0)
-        goto done;
-    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
-        goto done;
-    if (restconf_reply_header(req, "Connection", "keep-alive") < 0)
-        goto done;
-    if (restconf_reply_header(req, "X-Accel-Buffering", "no") < 0)
-        goto done;
-    if (restconf_reply_send(req, 201, NULL, 0) < 0)
-        goto done;
-    *sp = s;
- ok:
-    retval = 0;
- done:
-    clixon_debug(CLIXON_DBG_STREAM, "retval: %d", retval);
-    if (xret)
-        xml_free(xret);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -491,7 +376,7 @@ api_stream(clixon_handle h,
         goto done;
     if (ret == 0)
         goto ok;
-    if (restconf_stream(h, req, method, qvec, pretty, media_out, &s) < 0)
+    if (restconf_subscription(h, req, method, qvec, pretty, media_out, &s) < 0)
         goto done;
     if (s != -1){
 #ifdef STREAM_FORK

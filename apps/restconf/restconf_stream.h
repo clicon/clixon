@@ -41,6 +41,7 @@
  * Prototypes
  */
 int api_path_is_stream(clixon_handle h);
+int restconf_subscription(clixon_handle h, void *req, char *name, cvec *qvec, int pretty,  restconf_media media_out, int *sp);
 int stream_child_free(clixon_handle h, int pid);
 int stream_child_freeall(clixon_handle h);
 int api_stream(clixon_handle h, void *req, cvec *qvec, int *finish);

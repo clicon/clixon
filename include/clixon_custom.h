@@ -211,3 +211,8 @@
  * Digest use is not cryptographic use, so SHA1 is enough for now
  */
 #undef USE_SHA256
+
+/*! Restconf native stream support
+ */
+#define RESTCONF_NATIVE_STREAM
+

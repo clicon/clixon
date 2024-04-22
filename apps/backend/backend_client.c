@@ -1153,9 +1153,14 @@ from_client_create_subscription(clixon_handle h,
     /* XXX should use prefix cf edit_config */
     if ((nsc = xml_nsctx_init(NULL, EVENT_RFC5277_NAMESPACE)) == NULL)
         goto done;
-    if ((x = xpath_first(xe, nsc, "//stream")) != NULL)
-        stream = xml_find_value(x, "body");
-    if ((x = xpath_first(xe, nsc, "//stopTime")) != NULL){
+    if ((x = xpath_first(xe, nsc, "stream")) != NULL){
+        if ((stream = xml_find_value(x, "body")) == NULL){
+            if (netconf_bad_element(cbret, "application", "stream", "Expected stream name") < 0)
+                goto done;
+            goto ok;
+        }
+    }
+    if ((x = xpath_first(xe, nsc, "stopTime")) != NULL){
         if ((stoptime = xml_find_value(x, "body")) != NULL &&
             str2time(stoptime, &stop) < 0){
             if (netconf_bad_element(cbret, "application", "stopTime", "Expected timestamp") < 0)
@@ -1163,7 +1168,7 @@ from_client_create_subscription(clixon_handle h,
             goto ok;
         }
     }
-    if ((x = xpath_first(xe, nsc, "//startTime")) != NULL){
+    if ((x = xpath_first(xe, nsc, "startTime")) != NULL){
         if ((starttime = xml_find_value(x, "body")) != NULL &&
             str2time(starttime, &start) < 0){
             if (netconf_bad_element(cbret, "application", "startTime", "Expected timestamp") < 0)
@@ -1171,7 +1176,7 @@ from_client_create_subscription(clixon_handle h,
             goto ok;
         }
     }
-    if ((xfilter = xpath_first(xe, nsc, "//filter")) != NULL){
+    if ((xfilter = xpath_first(xe, nsc, "filter")) != NULL){
         if ((ftype = xml_find_value(xfilter, "type")) != NULL){
             /* Only accept xpath as filter type */
             if (strcmp(ftype, "xpath") != 0){

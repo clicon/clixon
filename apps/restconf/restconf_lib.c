@@ -207,8 +207,8 @@ static const map_str2int http_media_map[] = {
     {"application/yang-data+json",       YANG_DATA_JSON},
     {"application/yang-patch+xml",       YANG_PATCH_XML},
     {"application/yang-patch+json",      YANG_PATCH_JSON},
-    {"application/yang-data+xml-list",  YANG_PAGINATION_XML},  /* draft-wwlh-netconf-list-pagination-rc-02 */
-    {NULL,                            -1}
+    {"application/yang-data+xml-list",   YANG_PAGINATION_XML},  /* draft-wwlh-netconf-list-pagination-rc-02 */
+    {NULL,                              -1}
 };
 
 /* Mapping to http proto types */
@@ -749,12 +749,12 @@ int
 restconf_config_init(clixon_handle h,
                      cxobj        *xrestconf)
 {
-    int    retval = -1;
-    char  *enable;
-    cxobj *x;
-    char  *bstr;
-    cvec  *nsc = NULL;
-    int    auth_type;
+    int        retval = -1;
+    char      *enable;
+    cxobj     *x;
+    char      *bstr;
+    cvec      *nsc = NULL;
+    int        auth_type;
     yang_stmt *yspec;
     yang_stmt *y;
 

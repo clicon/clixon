@@ -85,6 +85,9 @@
 #include "restconf_err.h"
 #include "restconf_root.h"
 #include "restconf_native.h"    /* Restconf-openssl mode specific headers*/
+#ifdef RESTCONF_NATIVE_STREAM
+#include "restconf_stream.h"
+#endif
 #ifdef HAVE_LIBNGHTTP2          /* Ends at end-of-file */
 #include "restconf_nghttp2.h"   /* Restconf-openssl mode specific headers*/
 #include "clixon_http_data.h"
@@ -145,10 +148,10 @@ static void
 nghttp2_print_headers(nghttp2_nv *nva,
                       size_t      nvlen)
 {
-  size_t i;
+    size_t i;
 
-  for (i = 0; i < nvlen; ++i)
-      nghttp2_print_header(nva[i].name, nva[i].namelen, nva[i].value, nva[i].valuelen);
+    for (i = 0; i < nvlen; ++i)
+        nghttp2_print_header(nva[i].name, nva[i].namelen, nva[i].value, nva[i].valuelen);
 }
 #endif /* NOTUSED */
 
@@ -338,6 +341,12 @@ restconf_nghttp2_path(restconf_stream_data *sd)
             if (api_http_data(h, sd, sd->sd_qvec) < 0)
                 goto done;
         }
+#ifdef RESTCONF_NATIVE_STREAM
+        else if (api_path_is_stream(h)){
+            if (api_stream(h, sd, sd->sd_qvec, NULL) < 0)
+                goto done;
+        }
+#endif
         else if (api_root_restconf(h, sd, sd->sd_qvec) < 0) /* error handling */
             goto done;
     }
@@ -482,13 +491,21 @@ http2_exec(restconf_conn        *rc,
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
         goto done;
     sd->sd_proto = HTTP_2; /* XXX is this necessary? */
+    clixon_debug(CLIXON_DBG_RESTCONF, "path:%s", sd->sd_path);
+    /* Early sanity check. Full dispatch in restconf_nghttp2_path */
     if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0
         || api_path_is_restconf(rc->rc_h)
-        || api_path_is_data(rc->rc_h)){
+        || api_path_is_data(rc->rc_h)
+#ifdef RESTCONF_NATIVE_STREAM
+        || api_path_is_stream(rc->rc_h)
+#endif
+        ) {
+        clixon_debug(CLIXON_DBG_RESTCONF, "path found");
         if (restconf_nghttp2_path(sd) < 0)
             goto done;
     }
     else{
+        clixon_debug(CLIXON_DBG_RESTCONF, "path not found");
         sd->sd_code = 404;    /* not found */
     }
     if (restconf_param_del_all(rc->rc_h) < 0) // XXX
@@ -766,12 +783,12 @@ select_padding_callback(nghttp2_session *session,
  */
 static ssize_t
 data_source_read_length_callback(nghttp2_session *session,
-                                 uint8_t frame_type,
-                                 int32_t stream_id,
-                                 int32_t session_remote_window_size,
-                                 int32_t stream_remote_window_size,
+                                 uint8_t  frame_type,
+                                 int32_t  stream_id,
+                                 int32_t  session_remote_window_size,
+                                 int32_t  stream_remote_window_size,
                                  uint32_t remote_max_frame_size,
-                                 void *user_data)
+                                 void    *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
     clixon_debug(CLIXON_DBG_RESTCONF, "");
@@ -1001,6 +1018,7 @@ http2_session_init(restconf_conn *rc)
     nghttp2_session_callbacks_set_select_padding_callback(callbacks, select_padding_callback);
     nghttp2_session_callbacks_set_data_source_read_length_callback(callbacks, data_source_read_length_callback);
 #endif
+
     nghttp2_session_callbacks_set_on_begin_frame_callback(callbacks, on_begin_frame_callback);
 
     nghttp2_session_callbacks_set_send_data_callback(callbacks, send_data_callback);

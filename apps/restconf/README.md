@@ -20,6 +20,14 @@ Ensure www-data is member of the CLICON_SOCK_GROUP (default clicon). If not, add
   sudo usermod -a -G clicon www-data
 ```
 
+### nghttp2
+
+For details on the C API see https://nghttp2.org
+
+### openssl
+
+For details on the C-API see https://www.openssl.org/ docs/manual pages
+
 ## Nginx
 
 Installation instruction for Nginx. Other reverse proxies should work but are not verified.

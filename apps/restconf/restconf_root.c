@@ -82,14 +82,14 @@ api_path_is_restconf(clixon_handle h)
     char  *path = NULL;
     char  *restconf_api_path;
 
-   if ((path = restconf_uripath(h)) == NULL)
-       goto done;
+    if ((path = restconf_uripath(h)) == NULL)
+        goto done;
     if ((restconf_api_path = clicon_option_str(h, "CLICON_RESTCONF_API_ROOT")) == NULL)
         goto done;
-   if (strlen(path) < strlen(restconf_api_path)) /* "/" + restconf */
-       goto done;
-   if (strncmp(path, restconf_api_path, strlen(restconf_api_path)) != 0)
-       goto done;
+    if (strlen(path) < strlen(restconf_api_path)) /* "/" + restconf */
+        goto done;
+    if (strncmp(path, restconf_api_path, strlen(restconf_api_path)) != 0)
+        goto done;
     retval = 1;
  done:
     if (path)
@@ -171,7 +171,6 @@ api_root_restconf_exact(clixon_handle  h,
                         char          *request_method,
                         int            pretty,
                         restconf_media media_out)
-
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -269,9 +268,9 @@ api_yang_library_version(clixon_handle h,
                          int           pretty,
                          restconf_media media_out)
 {
-    int    retval = -1;
-    cxobj *xt = NULL;
-    cbuf  *cb = NULL;
+    int        retval = -1;
+    cxobj     *xt = NULL;
+    cbuf      *cb = NULL;
     yang_stmt *yspec;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
@@ -356,9 +355,9 @@ api_data(clixon_handle h,
     /* https://tools.ietf.org/html/rfc8527#section-3.2 */
     /* We assume that dynamic datastores are read only at this time 20201105 */
     if (IETF_DS_DYNAMIC == ds)
-            dynamic = 1;
+        dynamic = 1;
     if ((IETF_DS_INTENDED == ds) || (IETF_DS_RUNNING == ds)
-            || (IETF_DS_DYNAMIC == ds) || (IETF_DS_OPERATIONAL == ds)) {
+        || (IETF_DS_DYNAMIC == ds) || (IETF_DS_OPERATIONAL == ds)) {
         read_only = 1;
     }
 
@@ -545,7 +544,7 @@ api_root_restconf(clixon_handle        h,
     }
     clixon_debug(CLIXON_DBG_RESTCONF, "api_resource=%s", api_resource);
     if (uri_str2cvec(path, '/', '=', 1, &pcvec) < 0) /* rest url eg /album=ricky/foo */
-      goto done;
+        goto done;
     /* data */
     if ((cb = restconf_get_indata(req)) == NULL) /* XXX NYI ACTUALLY not always needed, do this later? */
         goto done;
@@ -606,7 +605,7 @@ api_root_restconf(clixon_handle        h,
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
-           goto ok;
+            goto ok;
         }
         /* ds is assigned at this point */
         if (0 > api_data(h, req, path, pcvec, 3, qvec, indata, pretty, media_out, ds))

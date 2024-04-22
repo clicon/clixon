@@ -28,7 +28,8 @@
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 # Skip it other than fcgi and http
-if [ "${WITH_RESTCONF}" != "fcgi" -o "$RCPROTO" = https ]; then
+#if [ "${WITH_RESTCONF}" != "fcgi" -o "$RCPROTO" = https ]; then
+if false; then
     rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 fi
@@ -41,8 +42,8 @@ if [ $valgrindtest -ne 0 ]; then
 fi
 
 # Degraded does not work at all
-rm -rf $dir
-if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
+#rm -rf $dir
+#if [ "$s" = $0 ]; then exit 0; else return 0; fi # skip
 
 : ${SLEEP2:=1}
 SLEEP5=.5
@@ -77,7 +78,7 @@ cat <<EOF > $cfg
   <CLICON_STREAM_DISCOVERY_RFC5277>true</CLICON_STREAM_DISCOVERY_RFC5277>
   <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
   <CLICON_STREAM_PATH>streams</CLICON_STREAM_PATH>
-  <CLICON_STREAM_URL>https://localhost</CLICON_STREAM_URL>
+  <CLICON_STREAM_URL>$RCPROTO://localhost</CLICON_STREAM_URL>
   <CLICON_STREAM_RETENTION>60</CLICON_STREAM_RETENTION>
   $RESTCONFIG
 </clixon-config>
@@ -89,42 +90,42 @@ EOF
 # RFC5277 NETCONF Event Notifications 
 # using reportingEntity (rfc5277) not reporting-entity (rfc8040)
 cat <<EOF > $fyang
-     module example {
-       namespace "urn:example:clixon";
-       prefix ex;
-       organization "Example, Inc.";
-       contact "support at example.com";
-       description "Example Notification Data Model Module.";
-       revision "2016-07-07" {
-         description "Initial version.";
-         reference "example.com document 2-9976.";
-       }
-       notification event {
-         description "Example notification event.";
-         leaf event-class {
-           type string;
-           description "Event class identifier.";
-         }
-         container reportingEntity {
-           description "Event specific information.";
-           leaf card {
-             type string;
-             description "Line card identifier.";
-           }
-         }
-         leaf severity {
-           type string;
-           description "Event severity description.";
-         }
-       }
-       container state {
-         config false;
-         description "state data for the example application (must be here for example get operation)";
-         leaf-list op {
-            type string;
-         }
-       }
+module example {
+   namespace "urn:example:clixon";
+   prefix ex;
+   organization "Example, Inc.";
+   contact "support at example.com";
+   description "Example Notification Data Model Module.";
+   revision "2016-07-07" {
+      description "Initial version.";
+      reference "example.com document 2-9976.";
    }
+   notification event {
+      description "Example notification event.";
+      leaf event-class {
+         type string;
+         description "Event class identifier.";
+      }
+      container reportingEntity {
+         description "Event specific information.";
+         leaf card {
+            type string;
+            description "Line card identifier.";
+         }
+      }
+      leaf severity {
+         type string;
+         description "Event severity description.";
+      }
+   }
+   container state {
+      config false;
+      description "state data for the example application (must be here for example get operation)";
+      leaf-list op {
+         type string;
+      }
+   }
+}
 EOF
 
 # Temporary pause between tests to make state timeout
@@ -134,7 +135,6 @@ function test-pause()
     sleep 5
     # -m 1 means 1 sec timeout
     curl -Ssik --http1.1 -X GET -m 1 -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "http://localhost/streams/EXAMPLE" 2>&1 > /dev/null 
- 
 }
 
 new "test params: -f $cfg"
@@ -166,7 +166,6 @@ wait_restconf
 new "netconf event stream discovery RFC8040 Sec 6.2"
 expecteof_netconf "$clixon_netconf -D $DBG -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"r:restconf-state/r:streams\" xmlns:r=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"/></get></rpc>" "" "<rpc-reply $DEFAULTNS><data><restconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support><access><encoding>xml</encoding><location>https://localhost/streams/EXAMPLE</location></access></stream></streams></restconf-state></data></rpc-reply>"
 
-#
 # 1.2 Netconf stream subscription
 
 # 2. Restconf RFC8040 stream testing
@@ -185,10 +184,15 @@ sleep $SLEEP2
 new "restconf monitor event nonexist stream"
 # Note cant use -S or -i here, the former dont know, latter because expectwait cant take
 # partial returns like expectpart can
-expectwait "curl -sk -X GET -H \"Accept: text/event-stream\" -H \"Cache-Control: no-cache\" -H \"Connection: keep-alive\" $RCPROTO://localhost/streams/NOTEXIST" 0 "" "" 2 '<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>'
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" $RCPROTO://localhost/streams/NOTEXIST)" 0 "HTTP/$HVER 400" '<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>'
 
 # 2a) start subscription 8s - expect 1-2 notifications
+
 new "2a) start subscriptions 8s - expect 1-2 notifications"
+echo "curl $CURLOPTS --no-buffer -X GET -H \"Accept: text/event-stream\" -H \"Cache-Control: no-cache\" -H \"Connection: keep-alive\" $RCPROTO://localhost/streams/EXAMPLE"
+#curl $CURLOPTS --no-buffer -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" $RCPROTO://localhost/streams/EXAMPLE
+
+exit
 
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
@@ -201,7 +205,7 @@ nr=$(echo "$ret" | grep -c "data:")
 if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 2 "$nr"
 fi
-
+exit
 test-pause
 
 # 2b) start subscription 8s - stoptime after 5s - expect 1-2 notifications

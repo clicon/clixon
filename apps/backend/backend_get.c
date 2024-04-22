@@ -72,7 +72,7 @@
 #include "backend_handle.h"
 #include "backend_get.h"
 
-/*! restrconf get capabilities
+/*! Restconf get capabilities
  *
  * Maybe should be in the restconf client instead of backend?
  * @param[in]     h       Clixon handle
@@ -154,7 +154,7 @@ client_get_streams(clixon_handle   h,
     /* Second argument is a hack to have the same function for the
      * RFC5277 and 8040 stream cases
      */
-    if (stream_get_xml(h, strcmp(top,"restconf-state")==0, cb) < 0)
+    if (stream_get_xml(h, strcmp(top, "restconf-state")==0, cb) < 0)
         goto done;
     cprintf(cb,"</%s>", top);
 
