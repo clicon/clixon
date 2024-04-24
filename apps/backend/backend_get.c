@@ -541,12 +541,12 @@ get_list_pagination(clixon_handle        h,
     cbuf           *cbmsg = NULL; /* For error msg */
     cxobj          *xret = NULL;
     char           *xpath2; /* With optional pagination predicate */
-    int             ret;
     uint32_t        iddb; /* DBs lock, if any */
     int             locked;
     cbuf           *cberr = NULL; 
     cxobj         **xvec = NULL;
     size_t          xlen;
+    int             ret;
 #ifdef NOTYET
     cxobj          *x;
     char           *direction = NULL;
@@ -651,7 +651,7 @@ get_list_pagination(clixon_handle        h,
         /* Append predicate to original xpath and replace it */
         xpath2 = cbuf_get(cbpath);
         /* specific xpath */
-        if (xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, wdef, &xret, NULL, NULL) < 0) {
+        if ((ret = xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, wdef, &xret, NULL, &xerr)) < 0) {
             if ((cbmsg = cbuf_new()) == NULL){
                 clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
@@ -659,6 +659,12 @@ get_list_pagination(clixon_handle        h,
             cprintf(cbmsg, "Get %s datastore: %s", db, clixon_err_reason());
             if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
                 goto done;
+            goto ok;
+        }
+        if (ret == 0){
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+                goto done;
+
             goto ok;
         }
         break;
@@ -885,7 +891,7 @@ get_common(clixon_handle        h,
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
         /* specific xpath. with-default gets masked in get_nacm_and_reply */
-        if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, WITHDEFAULTS_REPORT_ALL, &xret, NULL, NULL) < 0) {
+        if ((ret = xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, WITHDEFAULTS_REPORT_ALL, &xret, NULL, &xerr)) < 0) {
             if ((cbmsg = cbuf_new()) == NULL){
                 clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
@@ -895,12 +901,17 @@ get_common(clixon_handle        h,
                 goto done;
             goto ok;
         }
+        if (ret == 0){
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+                goto done;
+            goto ok;
+        }
         break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
         if (clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
             /* Whole config tree, for validate debug */
-            if (xmldb_get0(h, "running", YB_MODULE, nsc, NULL, 1, WITHDEFAULTS_REPORT_ALL, &xret, NULL, NULL) < 0) {
+            if ((ret = xmldb_get0(h, "running", YB_MODULE, nsc, NULL, 1, WITHDEFAULTS_REPORT_ALL, &xret, NULL, &xerr)) < 0) {
                 if ((cbmsg = cbuf_new()) == NULL){
                     clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
@@ -910,16 +921,26 @@ get_common(clixon_handle        h,
                     goto done;
                 goto ok;
             }
+            if (ret == 0){
+                if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+                    goto done;
+                goto ok;
+            }
         }
         else if (content == CONTENT_ALL){
             /* specific xpath */
-            if (xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, WITHDEFAULTS_REPORT_ALL, &xret, NULL, NULL) < 0) {
+            if ((ret = xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, WITHDEFAULTS_REPORT_ALL, &xret, NULL, &xerr)) < 0) {
                 if ((cbmsg = cbuf_new()) == NULL){
                     clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
                 cprintf(cbmsg, "Get %s datastore: %s", db, clixon_err_reason());
                 if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+                    goto done;
+                goto ok;
+            }
+            if (ret == 0){
+                if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
                     goto done;
                 goto ok;
             }

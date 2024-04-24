@@ -817,11 +817,14 @@ xmldb_get_cache(clixon_handle     h,
  * @retval    -1      Error
  * @note Use of 1 for OK
  * @code
- *   if (xmldb_get(xh, "running", NULL, "/interfaces/interface[name="eth"]", &xt) < 0)
+ *   if ((ret = xmldb_get(xh, "running", NULL, "/interfaces/interface[name="eth"]", &xt)) < 0)
+ *      err;
+ *   if (ret == 0)
  *      err;
  *   xml_free(xt);
  * @endcode
  * @see xmldb_get0  Underlying more capable API for enabling zero-copy
+ * XXX: OBSOLETE: use xmldb_get0 directly
  */
 int
 xmldb_get(clixon_handle    h,

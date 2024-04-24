@@ -309,8 +309,12 @@ startup_extraxml(clixon_handle h,
      * It should be empty if extra-xml is null and reset plugins did nothing
      * then skip validation.
      */
-    if (xmldb_get(h, tmp_db, NULL, NULL, &xt0) < 0)
+    if ((ret = xmldb_get0(h, tmp_db, YB_MODULE, NULL, NULL, 1, 0, &xt0, NULL, NULL)) < 0)
         goto done;
+    if (ret == 0){
+        clixon_err(OE_DB, 0, "Error when reading from %s, unknown error", tmp_db);
+        goto done;
+    }
     if ((ret = xmldb_empty_get(h, tmp_db)) < 0)
         goto done;
     if (ret == 1)

@@ -974,9 +974,9 @@ from_client_restart_one(clixon_handle    h,
     if ((td = transaction_new()) == NULL)
         goto done;
     /* This is the state we are going to */
-    if (xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, 0, &td->td_target, NULL, NULL) < 0)
+    if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, 0, &td->td_target, NULL, &xerr)) < 0)
         goto done;
-    if ((ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
+    if (ret == 1 && (ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
         goto done;
     if (ret == 0){
         if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)

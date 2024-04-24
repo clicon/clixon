@@ -28,6 +28,8 @@ Expected: June 2024
 
 ### Corrected Bugs
 
+* Fixed: Fail on return errors when reading from datastore
+  * Can happen if running is not upgraded for example
 * Fixed: [Duplicate config files in configdir causes merge problems -> set ? = NULL](https://github.com/clicon/clixon/issues/510)
 
 ## 7.0.1

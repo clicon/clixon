@@ -202,6 +202,7 @@ restconf_rpc_wrapper(clixon_handle    h,
 {
     int    retval = -1;
     cxobj *xt = NULL;
+    int    ret;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
     switch (*operation){
@@ -211,8 +212,12 @@ restconf_rpc_wrapper(clixon_handle    h,
     case PROC_OP_START:
         /* RPC op is start & enable is true, then start the service,
                            & enable is false, error or ignore it */
-        if (xmldb_get(h, "running", NULL,  "/restconf", &xt) < 0)
+        if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/restconf", 1, 0, &xt, NULL, NULL)) < 0)
             goto done;
+        if (ret == 0){
+            clixon_err(OE_DB, 0, "Error when reading from running, unknown error");
+            goto done;
+        }
         if (xt != NULL &&
             xpath_first(xt, NULL, "/restconf[enable='false']") != NULL) {
             *operation = PROC_OP_NONE;

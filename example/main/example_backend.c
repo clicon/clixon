@@ -467,6 +467,7 @@ example_statedata(clixon_handle   h,
     char      *name;
     cvec      *nsc1 = NULL;
     yang_stmt *yspec = NULL;
+    int        ret;
 
     if (!_state)
         goto ok;
@@ -481,8 +482,12 @@ example_statedata(clixon_handle   h,
      * Get config according to xpath */
     if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
         goto done;
-    if (xmldb_get0(h, "running", YB_MODULE, nsc1, "/interfaces/interface/name", 1, 0, &xt, NULL, NULL) < 0)
+    if ((ret = xmldb_get0(h, "running", YB_MODULE, nsc1, "/interfaces/interface/name", 1, 0, &xt, NULL, NULL)) < 0)
         goto done;
+    if (ret == 0){
+        clixon_err(OE_DB, 0, "Error when reading from running, unknown error");
+        goto done;
+    }
     if (xpath_vec(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
         goto done;
     if (xlen){

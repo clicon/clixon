@@ -388,13 +388,16 @@ clixon_stats_datastore_get(clixon_handle h,
     uint64_t  nr = 0;
     size_t    sz = 0;
     cxobj    *xn = NULL;
+    int       ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "%s", dbname);
     /* This is the db cache */
     if ((xt = xmldb_cache_get(h, dbname)) == NULL){
         /* Trigger cache if no exist (trick to ensure cache is present) */
-        if (xmldb_get(h, dbname, NULL, "/", &xn) < 0)
+        if ((ret = xmldb_get0(h, dbname, YB_MODULE, NULL, "/", 1, 0, &xn, NULL, NULL)) < 0)
             //goto done;
+            goto ok;
+        if (ret == 0)
             goto ok;
         xt = xmldb_cache_get(h, dbname);
     }
@@ -1416,6 +1419,7 @@ from_client_stats(clixon_handle h,
     yang_stmt *yspec;
     yang_stmt *ymodext;
     cxobj     *xt = NULL;
+    int        ret;
 
     if ((str = xml_find_body(xe, "modules")) != NULL)
         modules = strcmp(str, "true") == 0;
@@ -1470,8 +1474,12 @@ from_client_stats(clixon_handle h,
     cprintf(cbret, "</module-set>");
     /* Mountpoints */
     if ((ymodext = yang_find(yspec, Y_MODULE, "ietf-yang-schema-mount")) != NULL){
-        if (xmldb_get(h, "running", NULL, "/", &xt) < 0)
+        if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 1, 0, &xt, NULL, NULL)) < 0)
             goto done;
+        if (ret == 0){
+            clixon_err(OE_DB, 0, "Error when reading from running, unknown error");
+            goto done;
+        }
         if (xt && yang_schema_mount_statistics(h, xt, modules, cbret) < 0)
             goto done;
     }
@@ -1793,12 +1801,15 @@ from_client_msg(clixon_handle        h,
         xnacm = NULL;
 
         /* NACM intial pre- access control enforcements. Retval:
-         * 0: Use NACM validation and xnacm is set.
-         * 1: Permit, skip NACM
+         * 0: nacm declaration error
+         * 1: Use NACM validation and xnacm is set.
+         * 2: Permit, skip NACM
          * Therefore, xnacm=NULL means no NACM checks needed.
          */
-        if ((ret = nacm_access_pre(h, ce->ce_username, username, &xnacm)) < 0)
+        if ((ret = nacm_access_pre(h, ce->ce_username, username, &xnacm, cbret)) < 0)
             goto done;
+        if (ret == 2)
+            goto reply;
         /* Cache XML NACM tree here. Use with caution, only valid on from_client_msg stack 
          */
         if (clicon_nacm_cache_set(h, xnacm) < 0)

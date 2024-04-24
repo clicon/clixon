@@ -72,6 +72,7 @@
 #include "clixon_datastore.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
+#include "clixon_xml_io.h"
 #include "clixon_path.h"
 #include "clixon_xml_vec.h"
 #include "clixon_nacm.h"
@@ -1196,7 +1197,9 @@ nacm_access_check(clixon_handle h,
  * @param[in]  h        Clixon handle
  * @param[in]  peername Peer username if any
  * @param[in]  username User name of requestor
- * @param[out] xncam    NACM XML tree, set if retval=0. Free after use
+ * @param[out] xnacm    NACM XML tree, set if retval=0. Free after use
+ * @param[out] cbret    Error if ret == 2
+ * @retval     2        Failed on reading NACM from running (internal), cbret has error
  * @retval     1        OK permitted. You do not need to do next NACM step.
  * @retval     0        OK but not validated. Need to do NACM step using xnacm
  * @retval    -1        Error
@@ -1215,7 +1218,8 @@ int
 nacm_access_pre(clixon_handle  h,
                 char          *peername,
                 char          *username,
-                cxobj        **xnacmp)
+                cxobj        **xnacmp,
+                cbuf          *cbret)
 {
     int    retval = -1;
     char  *mode;
@@ -1223,6 +1227,8 @@ nacm_access_pre(clixon_handle  h,
     cxobj *xnacm0 = NULL;
     cxobj *xnacm = NULL;
     cvec  *nsc = NULL;
+    cxobj *xerr = NULL;
+    int    ret;
 
     /* Check clixon option: disabled, external tree or internal */
     mode = clicon_option_str(h, "CLICON_NACM_MODE");
@@ -1236,8 +1242,13 @@ nacm_access_pre(clixon_handle  h,
                 goto done;
     }
     else if (strcmp(mode, "internal")==0){
-        if (xmldb_get0(h, "running", YB_MODULE, nsc, "nacm", 1, 0, &xnacm0, NULL, NULL) < 0)
+        if ((ret = xmldb_get0(h, "running", YB_MODULE, nsc, "nacm", 1, 0, &xnacm0, NULL, &xerr)) < 0)
             goto done;
+        if (ret == 0){
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+                goto done;
+            goto fail;
+        }
     }
     else{
         clixon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
@@ -1268,9 +1279,14 @@ nacm_access_pre(clixon_handle  h,
         xml_free(xnacm0);
     else if (xnacm)
         xml_free(xnacm);
+    else if (xerr)
+        xml_free(xerr);
     return retval;
  permit:
     retval = 1;
+    goto done;
+ fail:
+    retval = 2;
     goto done;
 }
 
