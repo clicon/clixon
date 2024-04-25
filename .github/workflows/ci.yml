@@ -4,7 +4,7 @@ on:
   push:
     branches:
        - master
-       - datastore-split
+       - test-actions
   pull_request:
     branches: [ master ]
 

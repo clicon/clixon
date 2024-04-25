@@ -253,7 +253,6 @@ backend_accept_client(int   fd,
     }
     if ((ce = backend_client_add(h, &from)) == NULL)
         goto done;
-
     /*
      * Get credentials of connected peer - only for unix socket 
      */
@@ -291,11 +290,11 @@ backend_accept_client(int   fd,
         break;
     }
     ce->ce_s = s;
-
     /*
-     * Here we register callbacks for actual data socket 
+     * Register callback for actual data socket
      */
-    if (clixon_event_reg_fd(s, from_client, (void*)ce, "local netconf client socket") < 0)
+    if (clixon_event_reg_fd_prio(s, from_client, (void*)ce, "local netconf client socket",
+                                 clicon_option_bool(h, "CLICON_SOCK_PRIO")) < 0)
         goto done;
     s = -1;
     retval = 0;

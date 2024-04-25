@@ -170,7 +170,7 @@ stream_child_free(clixon_handle h,
                 goto done;
             }
             sc = NEXTQ(struct stream_child *, sc);
-        } while (sc && sc !=  STREAM_CHILD);
+        } while (sc && sc != STREAM_CHILD);
     }
  done:
     return 0;

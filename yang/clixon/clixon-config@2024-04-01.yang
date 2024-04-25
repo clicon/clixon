@@ -52,6 +52,7 @@ module clixon-config {
     revision 2024-04-01 {
         description
             "Added options:
+                    CLICON_SOCK_PRIO: Enable socket event priority
                     CLICON_XMLDB_MULTI: Split datastore into multiple sub files
                     CLICON_NETCONF_DUPLICATE_ALLOW: Disable duplicate check in NETCONF messages.
                     CLICON_CLI_OUTPUT_FORMAT: Default CLI output format
@@ -926,6 +927,18 @@ module clixon-config {
             description
                 "Group membership to access clixon_backend unix socket and gid for 
                  deamon";
+        }
+        leaf CLICON_SOCK_PRIO {
+            type boolean;
+            default false;
+            description
+                "Enable socket event priority.
+                 If enabled, a file-descriptor can be registered as high prio.
+                 Presently, the backend socket has higher prio than others.
+                 (should be made more generic)
+                 Note that a side-effect of enabling this option is that fairness of
+                 non-prio events is disabled
+                 This is useful if the backend opens other sockets, such as the controller";
         }
         leaf CLICON_BACKEND_USER {
             type string;
