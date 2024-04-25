@@ -1310,6 +1310,22 @@ xml_merge1(cxobj              *x0,  /* the target */
             x1cname = xml_name(x1c);
             /* Get yang spec of the child */
             if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
+                /*
+                 * Actually the CLICON_YANG_SCHEMA_MOUNT option should be checked below
+                 * to be consistent with what is done e.g. in
+                 * clixon_datastore_write.c::text_modify() when yang_find_datanode()
+                 * returns NULL.
+                 * However the clixon_handle needed to check this option is not
+                 * available here.
+                 * So check for the YANG_FLAG_MOUNTPOINT flag on y0 as an alternative.
+                 * It will only have been set if CLICON_YANG_SCHEMA_MOUNT is enabled
+                 * and it will be set for exactly those cases where the xml_spec()
+                 * call is needed.
+                 */
+                if (yang_flag_get(y0, YANG_FLAG_MOUNTPOINT))
+                    yc = xml_spec(x1c);
+            }
+            if (yc == NULL) {
                 if (reason){
                     if ((cbr = cbuf_new()) == NULL){
                         clixon_err(OE_XML, errno, "cbuf_new");
