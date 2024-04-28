@@ -572,8 +572,9 @@ clicon_conf_autocli(clixon_handle h)
 {
     cxobj  *xconfig = NULL;
 
-    if ((xconfig = clicon_conf_xml(h)) != NULL)          /* Get local config */
-        return xpath_first(xconfig, NULL, "autocli");
+    if ((xconfig = clicon_conf_xml(h)) != NULL){          /* Get local config */
+        return xml_find_type(xconfig, NULL, "autocli", CX_ELMNT);
+    }
     return NULL;
 }
 
