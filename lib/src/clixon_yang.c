@@ -1110,7 +1110,6 @@ yn_each(yang_stmt *yparent,
  * @param[in]  argument   String compare w argument. if NULL, match any.
  * @retval     ys         Yang statement, if any
  * @see yang_find_datanode
- * @see yang_match  returns number of matches
  */
 yang_stmt *
 yang_find(yang_stmt  *yn,
@@ -1150,38 +1149,6 @@ yang_find(yang_stmt  *yn,
         }
     }
     return yret?yret:yretsub;
-}
-
-/*! Count number of children that matches keyword and argument
- *
- * @param[in]  yn         Yang node, current context node.
- * @param[in]  keyword    if 0 match any keyword
- * @param[in]  argument   String compare w argument. if NULL, match any.
- * @retval     n          Number of matches
- * This however means that if you actually want to match only a yang-stmt with 
- * argument==NULL you cannot, but I have not seen any such examples.
- * @see yang_find
- */
-int
-yang_match(yang_stmt *yn,
-           int        keyword,
-           char      *argument)
-{
-    yang_stmt *ys = NULL;
-    int        i;
-    int        match = 0;
-
-    for (i=0; i<yn->ys_len; i++){
-        ys = yn->ys_stmt[i];
-        if (keyword == 0 || ys->ys_keyword == keyword){
-            if (argument == NULL)
-                match++;
-            else
-                if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
-                    match++;
-        }
-    }
-    return match;
 }
 
 

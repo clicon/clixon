@@ -497,11 +497,12 @@ yang_cardinality(clixon_handle h,
     int                 order;
     yang_stmt          *yprev = NULL;
     int                 nr;
+    int                 yc_count[Y_SPEC] = {0,};
 
     pk = yang_keyword_get(yt);
     if (_yc_exist[pk] == 0)
         goto ok;
-    /* 1) For all children, if neither in 0..n, 0..1, 1 or 1..n   ->ERROR  
+    /* 1) For all children, if neither in 0..n, 0..1, 1 or 1..n   ->ERROR
      * Also: check monotonically increasing order
      */
     order = 0;
@@ -534,8 +535,13 @@ yang_cardinality(clixon_handle h,
         if (order < yc->yc_order)
             order = yc->yc_order;
         yprev = ys;
-   }
-    /* 2) For all in 1 and 1..n list, if 0 such children          ->ERROR */
+    }
+    /* 2) For all in 1 and 1..n list, if 0 such children -> ERROR
+     */
+    ys = NULL;
+    while ((ys = yn_each(yt, ys)) != NULL) {
+        yc_count[yang_keyword_get(ys)]++;
+    }
     for (i=0; i<Y_SPEC; i++){
         yc = _yc_search[pk][i];
         if (yc == NULL)
@@ -546,20 +552,22 @@ yang_cardinality(clixon_handle h,
                        modname, yang_key2str(yc->yc_child), yang_key2str(pk));
             goto done;
         }
-        if (yc->yc_max<NMAX &&
-            (nr = yang_match(yt, yc->yc_child, NULL)) > yc->yc_max){
-            clixon_err(OE_YANG, 0, "%s: \"%s\" has %d children of type \"%s\", but only %d allowed",
-                       modname,
-                       yang_key2str(pk),
-                       nr,
-                       yang_key2str(yc->yc_child),
-                       yc->yc_max);
-            goto done;
+        if (yc->yc_max<NMAX){
+            nr = yc_count[yc->yc_child];
+            if (nr > yc->yc_max){
+                clixon_err(OE_YANG, 0, "%s: \"%s\" has %d children of type \"%s\", but only %d allowed",
+                           modname,
+                           yang_key2str(pk),
+                           nr,
+                           yang_key2str(yc->yc_child),
+                           yc->yc_max);
+                goto done;
+            }
         }
     }
     /* 4) Recurse */
     i = 0;
-    while (i< yang_len_get(yt)){ /* Note, children may be removed cant use yn_each */
+    while (i < yang_len_get(yt)){ /* Note, children may be removed cant use yn_each */
         ys = yang_child_i(yt, i++);
         if (yang_cardinality(h, ys, modname) < 0)
             goto done;

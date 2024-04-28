@@ -281,7 +281,6 @@ yang_stmt *ys_module(yang_stmt *ys);
 int        ys_real_module(yang_stmt *ys, yang_stmt **ymod);
 yang_stmt *ys_spec(yang_stmt *ys);
 yang_stmt *yang_find(yang_stmt *yn, int keyword, const char *argument);
-int        yang_match(yang_stmt *yn, int keyword, char *argument);
 yang_stmt *yang_find_datanode(yang_stmt *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_stmt *yn, char *argument);
 char      *yang_find_myprefix(yang_stmt *ys);
