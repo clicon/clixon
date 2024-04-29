@@ -16,6 +16,8 @@ jobs:
     # 1) checkout and compile natively (no test)
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
+    - name: run apt update
+      run: sudo apt update
     - name: install dependencies
       run: sudo apt install -y libssl-dev libnghttp2-dev
     - name: configure
