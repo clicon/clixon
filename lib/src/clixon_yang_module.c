@@ -898,16 +898,11 @@ yang_lib2yspec(clixon_handle h,
     }
     else if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, NULL) < 0)
         goto fail;
-    if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)
-        goto fail;
-    if (yang_parse_post(h, yspec, modmin) < 0)
-        goto done;
-#else
-    if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)
-        goto fail;
-    if (yang_parse_post(h, yspec, modmin) < 0)
-        goto done;
 #endif
+    if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)
+        goto fail;
+    if (yang_parse_post(h, yspec, modmin) < 0)
+        goto done;
     retval = 1;
  done:
     if (vec)

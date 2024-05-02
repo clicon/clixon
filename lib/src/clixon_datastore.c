@@ -267,14 +267,18 @@ xmldb_copy(clixon_handle h,
            const char   *from, 
            const char   *to)
 {
-    int        retval = -1;
-    char      *fromfile = NULL;
-    char      *tofile = NULL;
-    db_elmnt  *de1 = NULL; /* from */
-    db_elmnt  *de2 = NULL; /* to */
-    db_elmnt   de0 = {0,};
-    cxobj     *x1 = NULL;  /* from */
-    cxobj     *x2 = NULL;  /* to */
+    int         retval = -1;
+    char       *fromfile = NULL;
+    char       *tofile = NULL;
+    db_elmnt   *de1 = NULL; /* from */
+    db_elmnt   *de2 = NULL; /* to */
+    db_elmnt    de0 = {0,};
+    cxobj      *x1 = NULL;  /* from */
+    cxobj      *x2 = NULL;  /* to */
+    char       *fromdir = NULL;
+    char       *todir = NULL;
+    char       *subdir = NULL;
+    struct stat st = {0,};
 
     clixon_debug(CLIXON_DBG_DATASTORE, "%s %s", from, to);
     /* XXX lock */
@@ -313,9 +317,6 @@ xmldb_copy(clixon_handle h,
         de0 = *de2;
     de0.de_xml = x2; /* The new tree */
     if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
-        char *subdir = NULL;
-        struct stat  st = {0,};
-
         if (xmldb_db2subdir(h, to, &subdir) < 0)
             goto done;
         if (stat(subdir, &st) < 0){
@@ -324,11 +325,11 @@ xmldb_copy(clixon_handle h,
                 goto done;
             }
         }
-        if (subdir)
-            free(subdir);
     }
     clicon_db_elmnt_set(h, to, &de0);
-    /* Copy the files themselves (above only in-memory cache) */
+    /* Copy the files themselves (above only in-memory cache)
+     * Alt, dump the cache to file
+     */
     if (xmldb_db2file(h, from, &fromfile) < 0)
         goto done;
     if (xmldb_db2file(h, to, &tofile) < 0)
@@ -336,8 +337,7 @@ xmldb_copy(clixon_handle h,
     if (clicon_file_copy(fromfile, tofile) < 0)
         goto done;
     if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")) {
-        char      *fromdir = NULL;
-        char      *todir = NULL;
+
 
         if (xmldb_db2subdir(h, from, &fromdir) < 0)
             goto done;
@@ -345,14 +345,16 @@ xmldb_copy(clixon_handle h,
             goto done;
         if (clicon_dir_copy(fromdir, todir) < 0)
             goto done;
-        if (fromdir)
-            free(fromdir);
-        if (todir)
-            free(todir);
     }
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_DATASTORE, "retval:%d", retval);
+    if (subdir)
+        free(subdir);
+    if (fromdir)
+        free(fromdir);
+    if (todir)
+        free(todir);
     if (fromfile)
         free(fromfile);
     if (tofile)

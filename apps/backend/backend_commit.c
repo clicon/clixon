@@ -661,12 +661,12 @@ candidate_validate(clixon_handle h,
  * @retval    -1          Error - or validation failed 
  */
 int
-candidate_commit(clixon_handle h,
-                 cxobj        *xe,
-                 char         *db,
-                 uint32_t      myid,
+candidate_commit(clixon_handle  h,
+                 cxobj         *xe,
+                 char          *db,
+                 uint32_t       myid,
                  validate_level vlev, // obsolete
-                 cbuf         *cbret)
+                 cbuf          *cbret)
 {
     int                 retval = -1;
     transaction_data_t *td = NULL;
@@ -674,6 +674,7 @@ candidate_commit(clixon_handle h,
     cxobj              *xret = NULL;
     yang_stmt          *yspec;
 
+    clixon_debug(CLIXON_DBG_DATASTORE, "db: %s", db);
     /* 1. Start transaction */
     if ((td = transaction_new()) == NULL)
         goto done;
@@ -698,7 +699,6 @@ candidate_commit(clixon_handle h,
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit")
         && confirmed_commit_state_get(h) != ROLLBACK
         && xe != NULL){

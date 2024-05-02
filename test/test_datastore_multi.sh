@@ -84,7 +84,9 @@ module clixon-example{
          yangmnt:mount-point "mylabel"{
             description "Root for other yang models";
          }
-         cl:xmldb-split; /* Multi-XMLDB: split datastore here */
+         cl:xmldb-split{
+           description "Multi-XMLDB: split datastore here";
+         }
       }
     }
   }

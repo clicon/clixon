@@ -501,7 +501,7 @@ clixon_err_restore(void* handle)
     if ((es = (struct err_state *)handle) != NULL){
         _err_category = es->es_category;
         _err_subnr = es->es_subnr;
-        strncpy(_err_reason, es->es_reason, ERR_STRLEN-1);
+        strcpy(_err_reason, es->es_reason);
         free(es);
     }
     return 0;
