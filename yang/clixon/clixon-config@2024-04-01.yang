@@ -1063,9 +1063,11 @@ module clixon-config {
             description
                 "Split configure datastore into multiple sub files
                  Uses .d/ directory structure with <digest>.xml and 0.xml as root
-                 Splits are marked in YANG using extension xl:xmldb-split, (typical usage is mount-points).
-                 May not be used together with CLICON_BACKEND_PRIVILEGES=drop and root, since new files
-                 need to be created in XMLDB_DIR";
+                 JSON not supported.
+                 Splits are marked in YANG using extension xl:xmldb-split, (typical usage is 
+                 mount-points).
+                 May not be used together with CLICON_BACKEND_PRIVILEGES=drop and root, since 
+                 new files need to be created in XMLDB_DIR";
         }
         leaf CLICON_XML_CHANGELOG {
             type boolean;
