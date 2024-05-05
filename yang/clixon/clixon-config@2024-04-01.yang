@@ -958,7 +958,8 @@ module clixon-config {
             description 
                 "Backend privileges mode. 
                  If CLICON_BACKEND_USER user is set, mode can be set to drop_perm or 
-                 drop_temp.";
+                 drop_temp.
+                 Drop privs may not be used together with CLICON_XMLDB_MULTI";
         }
         leaf CLICON_BACKEND_PIDFILE {
             type string;
@@ -1055,11 +1056,10 @@ module clixon-config {
             default false;
             description
                 "Split configure datastore into multiple sub files
-                 Keep track of which part of the XML tree are dirty, 
-                 Do not sync sub files if cache is not dirty.
-                 Uses .d/ directory structure with digest.xml/.json
-                 Splits are marked in YANG made on mountpoints only (may be generalized)
-                 See CLICON_YANG_SCHEMA_MOUNT";
+                 Uses .d/ directory structure with <digest>.xml and 0.xml as root
+                 Splits are marked in YANG using extension xl:xmldb-split, (typical usage is mount-points).
+                 May not be used together with CLICON_BACKEND_PRIVILEGES=drop and root, since new files
+                 need to be created in XMLDB_DIR";
         }
         leaf CLICON_XML_CHANGELOG {
             type boolean;

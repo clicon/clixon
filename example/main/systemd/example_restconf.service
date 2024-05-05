@@ -8,7 +8,7 @@ Type=simple
 User=www-data
 WorkingDirectory=/www-data
 Restart=on-failure
-ExecStart=/www-data/clixon_restconf -f /usr/local/etc/example.xml
+ExecStart=/www-data/clixon_restconf -f /usr/local/etc/clixon/example.xml
 
 [Install]
 WantedBy=multi-user.target

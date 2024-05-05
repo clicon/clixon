@@ -68,7 +68,7 @@ Or on FreeBSD:
 
 Start clixon backend daemon (if not already started)
 ```
-  sudo clixon_backend -s init -f /usr/local/etc/example.xml
+  sudo clixon_backend -s init -f /usr/local/etc/clixon/example.xml
 ```
 
 Start clixon restconf daemon
@@ -213,7 +213,7 @@ See (https://nchan.io/#eventsource) on more info on how to access an SSE sub end
 
 Start the restconf fastcgi program with debug flag:
 ```
-sudo clixon_restconf -D 1 -f /usr/local/etc/example.xml
+sudo clixon_restconf -D 1 -f /usr/local/etc/clixon/example.xml
 ```
 Look at syslog:
 ```
@@ -228,7 +228,7 @@ curl -G http://127.0.0.1/restconf/data/*
 You can also run restconf in a debugger.
 ```
 sudo gdb clixon_restconf
-(gdb) run -D 1 -f /usr/local/etc/example.xml
+(gdb) run -D 1 -f /usr/local/etc/clixon/example.xml
 ```
 but you need to ensure /www-data/fastcgi_restconf.sock has the following access (may need to be done after restconf has started)
 ```

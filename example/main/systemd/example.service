@@ -7,7 +7,7 @@ Type=forking
 User=root
 RestartSec=60
 Restart=on-failure
-ExecStart=/usr/local/sbin/clixon_backend -s running -f /usr/local/etc/example.xml
+ExecStart=/usr/local/sbin/clixon_backend -s running -f /usr/local/etc/clixon/example.xml
 
 [Install]
 WantedBy=multi-user.target

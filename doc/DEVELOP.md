@@ -205,7 +205,7 @@ Use MAXPATHLEN (not PATH_MAX) in sys/param.h
 
 ## Emulating a serial console
 
-socat PTY,link=/tmp/clixon-tty,rawer EXEC:"/usr/local/bin/clixon_cli -f /usr/local/etc/example.xml",pty,stderr &
+socat PTY,link=/tmp/clixon-tty,rawer EXEC:"/usr/local/bin/clixon_cli -f /usr/local/etc/clixon/example.xml",pty,stderr &
 screen /tmp/clixon-tty
 
 ## Coverage

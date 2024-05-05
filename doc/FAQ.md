@@ -93,10 +93,10 @@ The main example:
 
 ## How do I run Clixon example commands?
 
-- Start a backend server: `sudo clixon_backend -s init -f /usr/local/etc/example.xml`
-- Start a cli session: `clixon_cli -f /usr/local/etc/example.xml`
-- Start a netconf session: `clixon_netconf -f /usr/local/etc/example.xml`
-- Start a restconf daemon: `sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data`
+- Start a backend server: `sudo clixon_backend -s init -f /usr/local/etc/clixon/example.xml`
+- Start a cli session: `clixon_cli -f /usr/local/etc/clixon/example.xml`
+- Start a netconf session: `clixon_netconf -f /usr/local/etc/clixon/example.xml`
+- Start a restconf daemon: `sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/clixon/example.xml " -s /bin/sh www-data`
 - Send a restconf command: `curl -X GET http://127.0.0.1/restconf/data`
 
 More info in the [example](../example) directory.
@@ -131,7 +131,7 @@ clicon:x:1001:<user>,www-data
 
 The easiest way to use Clixon is via the CLI. In the main example, once the backend is started you can start the auto-cli. Example:
 ```
-clixon_cli -f /usr/local/etc/example.xml 
+clixon_cli -f /usr/local/etc/clixon/example.xml
 cli> set interfaces interface eth9 ?
  description               enabled                   ipv4                     
  ipv6                      link-up-down-trap-enable  type                     
@@ -154,7 +154,7 @@ cli> delete interfaces interface eth9
 As an alternative to cli configuration, you can use netconf. Easiest is to just pipe netconf commands to the clixon_netconf application.
 Example:
 ```
-clixon_netconf -qf /usr/local/etc/example.xml
+clixon_netconf -qf /usr/local/etc/clixon/example.xml
 <rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
 <rpc-reply><data><interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces"><interface><name>eth9</name><type>ex:eth</type><enabled>true</enabled></interface></interfaces></data></rpc-reply>]]>]]>
 ```
@@ -162,7 +162,7 @@ clixon_netconf -qf /usr/local/etc/example.xml
 However, more useful is to run clixon_netconf as an SSH
 subsystem. Register the subsystem in /etc/sshd_config:
 ```
-        Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/example.xml
+        Subsystem netconf /usr/local/bin/clixon_netconf -f /usr/local/etc/clixon/example.xml
 ```
 and then invoke it from a client using
 ```
@@ -193,7 +193,7 @@ sudo /etc/init.d/nginx start
 ```
 Start the clixon restconf daemon
 ```
-sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/example.xml " -s /bin/sh www-data
+sudo su -c "/www-data/clixon_restconf -f /usr/local/etc/clixon/example.xml " -s /bin/sh www-data
 ```
 
 Then access:
@@ -271,7 +271,7 @@ Backend   Plugin1    Plugin2
 
 Clixon options are stored in an XML configuration file. The default
 configuration file is /usr/local/etc/clixon.xml. The example
-configuration file is installed at /usr/local/etc/example.xml. The
+configuration file is installed at /usr/local/etc/clixon/example.xml. The
 YANG specification for the configuration file is clixon-config.yang.
 
 See the [example config file](../example/main/example.xml).
@@ -394,7 +394,7 @@ severity major;
 ```
 or via NETCONF:
 ```
-clixon_netconf -qf /usr/local/etc/example.xml 
+clixon_netconf -qf /usr/local/etc/clixon/example.xml
 <rpc><create-subscription xmlns="urn:ietf:params:xml:ns:netmod:notification"><stream>EXAMPLE</stream></create-subscription></rpc>]]>]]>
 <rpc-reply><ok/></rpc-reply>]]>]]>
 <notification xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"><eventTime>2018-09-30T12:44:59.657276</eventTime><event xmlns="http://example.com/event/1.0"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event></notification>]]>]]>
