@@ -96,6 +96,8 @@
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_stream.h"
+#include "restconf_lib.h"
+#include "restconf_stream.h"
 
 /*
  * Constants
@@ -185,9 +187,10 @@ restconf_stream_cb(int   s,
     int           pretty = 0; /* XXX should be via arg */
     int           ret;
 
-    clixon_debug(CLIXON_DBG_STREAM, "");
+    clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "");
     if (clixon_msg_rcv11(s, NULL, 0, &cbmsg, &eof) < 0)
         goto done;
+    clixon_debug(CLIXON_DBG_STREAM, "%s", cbuf_get(cbmsg)); // Also MSG
     /* handle close from remote end: this will exit the client */
     if (eof){
         clixon_debug(CLIXON_DBG_STREAM, "eof");
@@ -232,7 +235,7 @@ restconf_stream_cb(int   s,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_STREAM, "retval: %d", retval);
+    clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "retval: %d", retval);
     if (xtop != NULL)
         xml_free(xtop);
     if (cbmsg)
@@ -241,10 +244,6 @@ restconf_stream_cb(int   s,
         cbuf_free(cb);
     return retval;
 }
-
-/* restconf */
-#include "restconf_lib.h"
-#include "restconf_stream.h"
 
 /*! Listen sock callback (from proxy?)
  *
@@ -265,25 +264,36 @@ stream_checkuplink(int   s,
     return 0;
 }
 
-int
-stream_timeout(int   s,
-               void *arg)
+/*! Timeout of notification stream, check fcgi socket
+ */
+static int
+fcgi_stream_timeout(int   s,
+                    void *arg)
 {
     struct timeval t;
-    struct timeval t1;
-    FCGX_Request *r = (FCGX_Request *)arg;
+    FCGX_Request  *r = (FCGX_Request *)arg;
 
-    clixon_debug(CLIXON_DBG_STREAM, "");
+    clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "");
     if (FCGX_GetError(r->out) != 0){ /* break loop */
         clixon_debug(CLIXON_DBG_STREAM, "FCGX_GetError upstream");
         clixon_exit_set(1);
     }
     else{
         gettimeofday(&t, NULL);
-        t1.tv_sec = 1; t1.tv_usec = 0;
-        timeradd(&t, &t1, &t);
-        clixon_event_reg_timeout(t, stream_timeout, arg, "Stream timeout");
+        t.tv_sec++;
+        clixon_event_reg_timeout(t, fcgi_stream_timeout, arg, "Stream timeout");
     }
+    return 0;
+}
+
+/*! Timeout of notification stream, limit lifetime, for debug
+ */
+static int
+fcgi_stream_timeout2(int   s,
+                     void *arg)
+{
+    clixon_debug(CLIXON_DBG_STREAM, "Terminate stream");
+    clixon_exit_set(1); // XXX This is local eventloop see below, not global
     return 0;
 }
 
@@ -292,6 +302,7 @@ stream_timeout(int   s,
  * @param[in]  h       Clixon handle
  * @param[in]  req     Generic Www handle (can be part of clixon handle)
  * @param[in]  qvec    Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
+ * @param[in]  timeout Stream timeout
  * @param[out] finish  Set to zero, if request should not be finnished by upper layer
  * @retval     0       OK
  * @retval    -1       Error
@@ -300,6 +311,7 @@ int
 api_stream(clixon_handle h,
            void         *req,
            cvec         *qvec,
+           int           timeout,
            int          *finish)
 {
     int            retval = -1;
@@ -403,9 +415,15 @@ api_stream(clixon_handle h,
                                     req,
                                     "stream socket") < 0)
                 goto done;
-            clixon_debug(CLIXON_DBG_STREAM, "before loop");
+            /* Timeout of notification stream, close after limited lifetime, for debug */
+            if (timeout){
+                struct timeval   t;
+                gettimeofday(&t, NULL);
+                t.tv_sec += timeout;
+                clixon_event_reg_timeout(t, fcgi_stream_timeout2, req, "Stream timeout");
+            }
             /* Poll upstream errors */
-            stream_timeout(0, req);
+            fcgi_stream_timeout(0, req);
             /* Start loop */
             clixon_event_loop(h);
             clixon_debug(CLIXON_DBG_STREAM, "after loop");
@@ -414,7 +432,8 @@ api_stream(clixon_handle h,
             close(s);
             clixon_event_unreg_fd(rfcgi->listen_sock,
                                   restconf_stream_cb);
-            clixon_event_unreg_timeout(stream_timeout, (void*)req);
+            clixon_event_unreg_timeout(fcgi_stream_timeout, (void*)req);
+            clixon_event_unreg_timeout(fcgi_stream_timeout2, (void*)req);
             clixon_exit_set(0); /* reset */
 #ifdef STREAM_FORK
 #if 0 /* Seems to be a global resource, but there is till some timing error here */

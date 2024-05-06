@@ -76,6 +76,9 @@
 #ifdef HAVE_HTTP1
 #include "restconf_http1.h"
 #endif
+#ifdef RESTCONF_NATIVE_STREAM
+#include "restconf_stream.h"
+#endif
 
 /* Forward */
 static int restconf_idle_cb(int fd, void *arg);
@@ -1041,6 +1044,12 @@ restconf_connection(int   s,
 
 /*----------------------------- Close socket ------------------------------*/
 
+static int
+restconf_idle_timer_unreg(restconf_conn *rc)
+{
+    return clixon_event_unreg_timeout(restconf_idle_cb, rc);
+}
+
 /*! Close Restconf native connection socket and unregister callback
  *
  * For callhome also start reconnect timer
@@ -1072,6 +1081,11 @@ restconf_connection_close1(restconf_conn *rc)
         if (restconf_callhome_timer(rsock, 1) < 0)
             goto done;
     }
+#ifdef RESTCONF_NATIVE_STREAM
+    if (rc->rc_event_stream){
+        stream_close(rc->rc_h, rc);
+    }
+#endif
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
@@ -1556,12 +1570,6 @@ restconf_idle_cb(int   fd,
     return retval;
 }
 
-int
-restconf_idle_timer_unreg(restconf_conn *rc)
-{
-    return clixon_event_unreg_timeout(restconf_idle_cb, rc);
-}
-
 /*! Set callhome periodic idle-timeout
  *
  * 1) If callhome and periodic, set timer for t0+idle-timeout(ti)
@@ -1573,7 +1581,7 @@ restconf_idle_timer_unreg(restconf_conn *rc)
  * XXX: now just timeout dont keep track of data (td)
  * @see restconf_idle_timer_unreg
  */
-int
+static int
 restconf_idle_timer(restconf_conn *rc)
 {
     int              retval = -1;

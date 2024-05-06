@@ -1097,7 +1097,7 @@ function expecteof_file(){
   fi
 }
 
-# test script with timeout, used for notificatin streams
+# test script for NETCONF with timeout, used for notification streams
 # - (not-evaluated) expression
 # - expected command return value (0 if OK) (NOOP for now)
 # - stdin input1  This is NOT encoded, eg preamble/hello

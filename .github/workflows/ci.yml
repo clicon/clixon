@@ -5,6 +5,7 @@ on:
     branches:
        - master
        - test-actions
+       - restconf-native-stream
   pull_request:
     branches: [ master ]
 

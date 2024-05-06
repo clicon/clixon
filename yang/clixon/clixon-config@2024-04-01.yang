@@ -1302,7 +1302,6 @@ module clixon-config {
             units s;
             description "Retention for stream replay buffers in seconds, ie how much
                          data to store before dropping. 0 means no retention";
-
         }
         leaf CLICON_LOG_STRING_LIMIT {
             type uint32;

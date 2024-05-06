@@ -70,7 +70,7 @@
 #include <clixon/clixon_backend.h>
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "a:m:M:nrsS:x:iuUtV:"
+#define BACKEND_EXAMPLE_OPTS "a:m:M:n:rsS:x:iuUtV:"
 
 /* Enabling this improves performance in tests, but there may trigger the "double XPath"
  * problem.
@@ -97,9 +97,10 @@ static char *_mount_namespace = NULL;
 /*! Notification stream
  *
  * Enable notification streams for netconf/restconf 
- * Start backend with -- -n
+ * Start backend with -- -n <sec>
+ * where <sec> is period of stream
  */
-static int _notification_stream = 0;
+static int _notification_stream_s = 0;
 
 /*! Variable to control if reset code is run.
  *
@@ -182,7 +183,7 @@ static char *_validate_fail_xpath = NULL;
 static int   _validate_fail_toggle = 0; /* fail at validate and commit */
 
 /* forward */
-static int example_stream_timer_setup(clixon_handle h);
+static int example_stream_timer_setup(clixon_handle h, int sec);
 
 int
 main_begin(clixon_handle    h,
@@ -310,7 +311,7 @@ example_stream_timer(int   fd,
     /* XXX Change to actual netconf notifications and namespace */
     if (stream_notify(h, "EXAMPLE", "<event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
         goto done;
-    if (example_stream_timer_setup(h) < 0)
+    if (example_stream_timer_setup(h, _notification_stream_s) < 0)
         goto done;
     retval = 0;
  done:
@@ -318,15 +319,18 @@ example_stream_timer(int   fd,
 }
 
 /*! Set up example stream notification timer 
+ *
+ * @param[in]  h  Clixon handle
+ * @param[in]  s  Timeout period in seconds
  */
 static int
-example_stream_timer_setup(clixon_handle h)
+example_stream_timer_setup(clixon_handle h,
+                           int           sec)
 {
-    struct timeval t, t1;
+    struct timeval t;
 
     gettimeofday(&t, NULL);
-    t1.tv_sec = 5; t1.tv_usec = 0;
-    timeradd(&t, &t1, &t);
+    t.tv_sec += sec;
     return clixon_event_reg_timeout(t, example_stream_timer, h, "example stream timer");
 }
 
@@ -1456,7 +1460,7 @@ clixon_plugin_init(clixon_handle h)
             _mount_namespace = optarg;
             break;
         case 'n':
-            _notification_stream = 1;
+            _notification_stream_s = atoi(optarg);
             break;
         case 'r':
             _reset = 1;
@@ -1502,7 +1506,7 @@ clixon_plugin_init(clixon_handle h)
         }
     }
 
-    if (_notification_stream){
+    if (_notification_stream_s){
         /* Example stream initialization:
          * 1) Register EXAMPLE stream 
          * 2) setup timer for notifications, so something happens on stream
@@ -1518,7 +1522,7 @@ clixon_plugin_init(clixon_handle h)
         if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
             stream_publish(h, "EXAMPLE") < 0)
             goto done;
-        if (example_stream_timer_setup(h) < 0)
+        if (example_stream_timer_setup(h, _notification_stream_s) < 0)
             goto done;
     }
     /* Register callback for routing rpc calls 

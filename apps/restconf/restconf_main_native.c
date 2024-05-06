@@ -159,7 +159,7 @@
 #endif
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hVD:f:E:l:C:p:y:a:u:rW:R:o:"
+#define RESTCONF_OPTS "hVD:f:E:l:C:p:y:a:u:rW:R:t:o:"
 
 /* If set, open outwards socket non-blocking, as opposed to blocking
  * Should work both ways, but in the ninblocking case,
@@ -713,13 +713,15 @@ restconf_clixon_backend(clixon_handle h,
  * @param[in]  h        Clixon handle
  * @param[in]  xs       XML config of single restconf socket
  * @param[in]  nsc      Namespace context
+ * @param[in]  timeout  Terminate notification event stream after number of seconds
  * @retval     0        OK
  * @retval    -1        Error
  */
 static int
 openssl_init_socket(clixon_handle h,
                     cxobj        *xs,
-                    cvec         *nsc)
+                    cvec         *nsc,
+                    int           timeout)
 {
     int             retval = -1;
     char           *netns = NULL;
@@ -742,6 +744,7 @@ openssl_init_socket(clixon_handle h,
     }
     memset(rsock, 0, sizeof *rsock);
     rsock->rs_h = h;
+    rsock->rs_stream_timeout = timeout;
     gettimeofday(&now, NULL);
     rsock->rs_start = now.tv_sec;
     /* Extract socket parameters from single socket config: ns, addr, port, ssl */
@@ -808,13 +811,15 @@ openssl_init_socket(clixon_handle h,
  * @param[in]  h         Clixon handle
  * @param[in]  dbg0      Manually set debug flag, if set overrides configuration setting
  * @param[in]  xrestconf XML tree containing restconf config
- * @retval     0     OK
- * @retval    -1     Error
+ * @param[in]  timeout   Terminate notification stream after number of seconds
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 int
 restconf_openssl_init(clixon_handle h,
                       int           dbg0,
-                      cxobj        *xrestconf)
+                      cxobj        *xrestconf,
+                      int           timeout)
 {
     int                retval = -1;
     SSL_CTX           *ctx; /* SSL context */
@@ -851,6 +856,8 @@ restconf_openssl_init(clixon_handle h,
     if ((x = xpath_first(xrestconf, nsc, "enable-core-dump")) != NULL) {
         /* core dump is enabled on RESTCONF process */
         struct rlimit rlp;
+        int    status;
+
         if (strcmp(xml_body(x), "true") == 0) {
             rlp.rlim_cur = RLIM_INFINITY;
             rlp.rlim_max = RLIM_INFINITY;
@@ -858,12 +865,11 @@ restconf_openssl_init(clixon_handle h,
             rlp.rlim_cur = 0;
             rlp.rlim_max = 0;
         }
-        int status = setrlimit(RLIMIT_CORE, &rlp);
+        status = setrlimit(RLIMIT_CORE, &rlp);
         if (status != 0) {
             clixon_log(h, LOG_INFO, "%s: setrlimit() failed, %s", __FUNCTION__, strerror(errno));
         }
     }
-
     if (init_openssl() < 0)
         goto done;
     if ((ctx = restconf_ssl_context_create(h)) == NULL)
@@ -886,7 +892,7 @@ restconf_openssl_init(clixon_handle h,
     if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
         goto done;
     for (i=0; i<veclen; i++){
-        if (openssl_init_socket(h, vec[i], nsc) < 0){
+        if (openssl_init_socket(h, vec[i], nsc, timeout) < 0){
             /* Bind errors are ignored, proceed with next after log */
             if (clixon_err_category() == OE_UNIX && clixon_err_subnr() == EADDRNOTAVAIL)
                 clixon_err_reset();
@@ -1118,20 +1124,21 @@ usage(clixon_handle h,
     fprintf(stderr, "usage:%s [options]\n"
             "where options are\n"
             "\t-h \t\t  Help\n"
-            "\t-V \t\tPrint version and exit\n"
-            "\t-D <level>\tDebug level (see available levels below)\n"
+            "\t-V \t\t  Print version and exit\n"
+            "\t-D <level>\t  Debug level (see available levels below)\n"
             "\t-f <file>\t  Configuration file (mandatory)\n"
             "\t-E <dir> \t  Extra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
-            "\t-C <format>\tDump configuration options on stdout after loading and exit. Format is xml|json|text\n"
+            "\t-C <format>\t  Dump configuration options on stdout after loading and exit. Format is xml|json|text\n"
             "\t-p <dir>\t  Yang directory path (see CLICON_YANG_DIR)\n"
             "\t-y <file>\t  Load yang spec file (override yang main module)\n"
             "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
             "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
             "\t-r \t\t  Do not drop privileges if run as root\n"
             "\t-W <user>\t  Run restconf daemon as this user, drop according to CLICON_RESTCONF_PRIVILEGES\n"
-            "\t-R <xml> \t  Restconf configuration in-line overriding config file\n"
-            "\t-o <option>=<value> Set configuration option overriding config file (see clixon-config.yang)\n"
+            "\t-R <xml>\t  Restconf configuration in-line overriding config file\n"
+            "\t-t <sec>\t  Notification stream timeout in: quit after <sec>. For debug\n"
+            "\t-o <op>=<value>\t  Set configuration option overriding config file (see clixon-config.yang)\n"
             ,
             argv0
             );
@@ -1147,19 +1154,20 @@ int
 main(int    argc,
      char **argv)
 {
-    int             retval = -1;
-    char           *argv0 = argv[0];
-    int             c;
-    clixon_handle   h;
-    int             dbg = 0;
-    int             logdst = CLIXON_LOG_SYSLOG;
+    int                     retval = -1;
+    char                   *argv0 = argv[0];
+    int                     c;
+    clixon_handle           h;
+    int                     dbg = 0;
+    int                     logdst = CLIXON_LOG_SYSLOG;
     restconf_native_handle *rn = NULL;
-    int             ret;
-    cxobj          *xrestconf = NULL;
-    char           *inline_config = NULL;
-    int             config_dump = 0;
-    enum format_enum config_dump_format = FORMAT_XML;
-    int              print_version = 0;
+    int                     ret;
+    cxobj                  *xrestconf = NULL;
+    char                   *inline_config = NULL;
+    int                     config_dump = 0;
+    enum format_enum        config_dump_format = FORMAT_XML;
+    int                     print_version = 0;
+    int                     stream_timeout = 0;
 
     /* Create handle */
     if ((h = restconf_handle_init()) == NULL)
@@ -1297,6 +1305,9 @@ main(int    argc,
         case 'R':  /* Restconf on-line config */
             inline_config = optarg;
             break;
+        case 't': /* Stream timeout */
+            stream_timeout = atoi(optarg);
+            break;
         case 'o':{ /* Configuration option */
             char          *val;
             if ((val = index(optarg, '=')) == NULL)
@@ -1352,7 +1363,7 @@ main(int    argc,
     if (restconf_native_handle_set(h, rn) < 0)
         goto done;
     /* Openssl inits */
-    if (restconf_openssl_init(h, dbg, xrestconf) < 0)
+    if (restconf_openssl_init(h, dbg, xrestconf, stream_timeout) < 0)
         goto done;
     /* Drop privileges if started as root to CLICON_RESTCONF_USER
      * and use drop mode: CLICON_RESTCONF_PRIVILEGES

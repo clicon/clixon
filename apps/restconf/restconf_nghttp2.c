@@ -343,7 +343,8 @@ restconf_nghttp2_path(restconf_stream_data *sd)
         }
 #ifdef RESTCONF_NATIVE_STREAM
         else if (api_path_is_stream(h)){
-            if (api_stream(h, sd, sd->sd_qvec, NULL) < 0)
+            restconf_socket *rs = rc->rc_socket;
+            if (api_stream(h, sd, sd->sd_qvec, rs->rs_stream_timeout, NULL) < 0)
                 goto done;
         }
 #endif

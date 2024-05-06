@@ -88,12 +88,12 @@
 #include "restconf_stream.h"
 
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hVD:f:E:l:C:p:d:y:a:u:rW:R:o:"
+#define RESTCONF_OPTS "hVD:f:E:l:C:p:d:y:a:u:rW:R:t:o:"
 
 /*! Convert FCGI parameters to clixon runtime data
  *
- * @param[in]  h     Clixon handle
- * @param[in]  envp  Fastcgi request handle parameter array on the format "<param>=<value>"
+ * @param[in]  h    Clixon handle
+ * @param[in]  envp Fastcgi request handle parameter array on the format "<param>=<value>"
  * @retval     0    OK
  * @retval    -1    Error
  * @see https://nginx.org/en/docs/http/ngx_http_core_module.html#var_https
@@ -285,6 +285,7 @@ usage(clixon_handle h,
             "\t-r \t\t  Do not drop privileges if run as root\n"
             "\t-W <user>\t  Run restconf daemon as this user, drop according to CLICON_RESTCONF_PRIVILEGES\n"
             "\t-R <xml> \t  Restconf configuration in-line overriding config file\n"
+            "\t-t <sec>\t  Notification stream timeout in: quit after <sec>. For debug\n"
             "\t-o \"<option>=<value>\" Give configuration option overriding config file (see clixon-config.yang)\n",
             argv0
             );
@@ -299,35 +300,36 @@ int
 main(int    argc,
      char **argv)
 {
-    int            retval = -1;
-    int            sock;
-    char          *argv0 = argv[0];
-    FCGX_Request   request;
-    FCGX_Request  *req = &request;
-    int            c;
-    char          *sockpath = NULL;
-    char          *path;
-    clixon_handle  h;
-    char          *dir;
-    int            logdst = CLIXON_LOG_SYSLOG;
-    yang_stmt     *yspec = NULL;
-    char          *query;
-    cvec          *qvec;
-    int            finish = 0;
-    char          *str;
+    int              retval = -1;
+    int              sock;
+    char            *argv0 = argv[0];
+    FCGX_Request     request;
+    FCGX_Request    *req = &request;
+    int              c;
+    char            *sockpath = NULL;
+    char            *path;
+    clixon_handle    h;
+    char            *dir;
+    int              logdst = CLIXON_LOG_SYSLOG;
+    yang_stmt       *yspec = NULL;
+    char            *query;
+    cvec            *qvec;
+    int              finish = 0;
+    char            *str;
     clixon_plugin_t *cp = NULL;
-    cvec          *nsctx_global = NULL; /* Global namespace context */
-    size_t         cligen_buflen;
-    size_t         cligen_bufthreshold;
-    int            dbg = 0;
-    cxobj         *xerr = NULL;
-    char          *wwwuser;
-    char          *inline_config = NULL;
-    size_t         sz;
-    int           config_dump = 0;
+    cvec            *nsctx_global = NULL; /* Global namespace context */
+    size_t           cligen_buflen;
+    size_t           cligen_bufthreshold;
+    int              dbg = 0;
+    cxobj           *xerr = NULL;
+    char            *wwwuser;
+    char            *inline_config = NULL;
+    size_t           sz;
+    int              config_dump = 0;
     enum format_enum config_dump_format = FORMAT_XML;
     int              print_version = 0;
-
+    int              stream_timeout = 0;
+    
     /* Create handle */
     if ((h = restconf_handle_init()) == NULL)
         goto done;
@@ -444,6 +446,9 @@ main(int    argc,
         }
         case 'R':  /* Restconf on-line config */
             inline_config = optarg;
+            break;
+        case 't': /* Stream timeout */
+            stream_timeout = atoi(optarg);
             break;
         case 'o':{ /* Configuration option */
             char          *val;
@@ -675,7 +680,7 @@ main(int    argc,
                     if (uri_str2cvec(query, '&', '=', 1, &qvec) < 0)
                         goto done;
                 /* XXX doing goto done on error causes test errors */
-                (void)api_stream(h, req, qvec, &finish);
+                (void)api_stream(h, req, qvec, stream_timeout, &finish);
             }
             else{
                 clixon_debug(CLIXON_DBG_RESTCONF, "top-level %s not found", path);

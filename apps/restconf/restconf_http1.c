@@ -67,6 +67,9 @@
 #include "clixon_http1_parse.h"
 #include "restconf_http1.h"
 #include "clixon_http_data.h"
+#ifdef RESTCONF_NATIVE_STREAM
+#include "restconf_stream.h"
+#endif
 
 /* Size of xml read buffer */
 #define BUFLEN 1024
@@ -310,7 +313,7 @@ restconf_http1_reply(restconf_conn        *rc,
      * (Successful) response to a CONNECT request (Section 4.3.6 of
      * [RFC7231]).
      */
-    if (sd->sd_code != 204 && sd->sd_code > 199)
+    if (sd->sd_code != 204 && sd->sd_code > 199 && !rc->rc_event_stream)
         if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
             goto done;
     /* Create reply and write headers */
@@ -450,6 +453,13 @@ restconf_http1_path_root(clixon_handle  h,
         if (api_http_data(h, sd, sd->sd_qvec) < 0)
             goto done;
     }
+#ifdef RESTCONF_NATIVE_STREAM
+    else if (api_path_is_stream(h)){
+        restconf_socket *rs = rc->rc_socket;
+        if (api_stream(h, sd, sd->sd_qvec, rs->rs_stream_timeout, NULL) < 0)
+            goto done;
+    }
+#endif
     else
         sd->sd_code = 404; /* catch all without body/media */
  fail:

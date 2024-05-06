@@ -179,14 +179,18 @@ restconf_subscription(clixon_handle h,
         goto ok;
     }
     /* Setting up stream */
+    if (restconf_reply_header(req, "Server", "clixon") < 0)
+        goto done;
     if (restconf_reply_header(req, "Content-Type", "text/event-stream") < 0)
         goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
         goto done;
     if (restconf_reply_header(req, "Connection", "keep-alive") < 0)
         goto done;
+#ifndef RESTCONF_NATIVE_STREAM
     if (restconf_reply_header(req, "X-Accel-Buffering", "no") < 0)
         goto done;
+#endif
     if (restconf_reply_send(req, 201, NULL, 0) < 0)
         goto done;
     *sp = s;
