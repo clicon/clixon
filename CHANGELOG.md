@@ -35,6 +35,12 @@ Expected: June 2024
 ### API changes on existing protocol/config features
 Users may have to change how they access the system
 
+* If `CLICON_XMLDB_MULTI` is set, datastores are stored in a new directory
+   * Previously: `CLICON_XMLDB_DIR/<db>_db`
+   * New: `CLICON_XMLDB_DIR/<db>d/`
+   * In particular, the top-level is moved from `<db>_db` to `<db>.d/0.xml`
+   * Backward-compatible:
+     * If backend is started with `-s startup` or `-s running` then `<db>_db` is read if `<db>.d/0.xml` is not found
 * Openssl mandatory for all configs, not only restconf
 
 ### Corrected Bugs

@@ -921,6 +921,13 @@ main(int    argc,
         goto done;
     }
 
+    /* Multi-upgrade: If <db>.d/0.xml does not exist, but <db>_d does, copy <db>_db to <db>.d/0.xml */
+    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
+        if (xmldb_multi_upgrade(h, "running") < 0)
+            goto done;
+        if (xmldb_multi_upgrade(h, "startup") < 0)
+            goto done;
+    }
     /* Init running db if it is not there
      * change running_startup -> running or startup depending on if running exists or not
      */

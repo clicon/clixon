@@ -127,19 +127,18 @@ clicon_db_elmnt_set(clixon_handle h,
 
 /*! Translate from symbolic database name to actual filename in file-system
  *
+ * Internal function for explicit XMLDB_MULTI use or not
  * @param[in]   h        Clixon handle
  * @param[in]   db       Symbolic database name, eg "candidate", "running"
+ * @param[in]   multi    Use multi/split datastores, see CLICON_XMLDB_MULTI
  * @param[out]  filename Filename. Unallocate after use with free()
  * @retval      0        OK
  * @retval     -1        Error
- * @note Could need a way to extend which databases exists, eg to register new.
- * The currently allowed databases are: 
- *   candidate, tmp, running, result
- * The filename reside in CLICON_XMLDB_DIR option
  */
-int
-xmldb_db2file(clixon_handle  h,
+static int
+xmldb_db2file1(clixon_handle  h,
               const char    *db,
+               int           multi,
               char         **filename)
 {
     int   retval = -1;
@@ -154,7 +153,13 @@ xmldb_db2file(clixon_handle  h,
         clixon_err(OE_XML, errno, "CLICON_XMLDB_DIR not set");
         goto done;
     }
-    cprintf(cb, "%s/%s_db", dir, db);
+    /* Multi: write (root) to: <db>.d/0.xml
+     * Classic: write to: <db>_db
+     */
+    if (multi)
+        cprintf(cb, "%s/%s.d/0.xml", dir, db); /* Hardcoded to XML, XXX: JSON? */
+    else
+        cprintf(cb, "%s/%s_db", dir, db);
     if ((*filename = strdup4(cbuf_get(cb))) == NULL){
         clixon_err(OE_UNIX, errno, "strdup");
         goto done;
@@ -164,6 +169,26 @@ xmldb_db2file(clixon_handle  h,
     if (cb)
         cbuf_free(cb);
     return retval;
+}
+
+/*! Translate from symbolic database name to actual filename in file-system
+ *
+ * @param[in]   h        Clixon handle
+ * @param[in]   db       Symbolic database name, eg "candidate", "running"
+ * @param[out]  filename Filename. Unallocate after use with free()
+ * @retval      0        OK
+ * @retval     -1        Error
+ * @note Could need a way to extend which databases exists, eg to register new.
+ * The currently allowed databases are:
+ *   candidate, tmp, running, result
+ * The filename reside in CLICON_XMLDB_DIR option
+ */
+int
+xmldb_db2file(clixon_handle  h,
+              const char    *db,
+              char         **filename)
+{
+    return xmldb_db2file1(h, db, clicon_option_bool(h, "CLICON_XMLDB_MULTI"), filename);
 }
 
 /*! Translate from symbolic database name to sub-directory of configure sub-files, no checks
@@ -253,6 +278,7 @@ xmldb_disconnect(clixon_handle h)
     return retval;
 }
 
+
 /*! Copy datastore from db1 to db2
  *
  * May include copying datastore directory structure
@@ -263,8 +289,8 @@ xmldb_disconnect(clixon_handle h)
  * @retval    -1     Error
   */
 int 
-xmldb_copy(clixon_handle h, 
-           const char   *from, 
+xmldb_copy(clixon_handle h,
+           const char   *from,
            const char   *to)
 {
     int         retval = -1;
@@ -337,8 +363,6 @@ xmldb_copy(clixon_handle h,
     if (clicon_file_copy(fromfile, tofile) < 0)
         goto done;
     if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")) {
-
-
         if (xmldb_db2subdir(h, from, &fromdir) < 0)
             goto done;
         if (xmldb_db2subdir(h, to, &todir) < 0)
@@ -627,13 +651,13 @@ int
 xmldb_create(clixon_handle h,
              const char   *db)
 {
-    int                 retval = -1;
-    char               *filename = NULL;
-    int                 fd = -1;
-    db_elmnt           *de = NULL;
-    cxobj              *xt = NULL;
-    char        *subdir = NULL;
-    struct stat  st = {0,};
+    int         retval = -1;
+    char       *filename = NULL;
+    int         fd = -1;
+    db_elmnt   *de = NULL;
+    cxobj      *xt = NULL;
+    char       *subdir = NULL;
+    struct stat st = {0,};
 
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
@@ -641,12 +665,6 @@ xmldb_create(clixon_handle h,
             xml_free(xt);
             de->de_xml = NULL;
         }
-    }
-    if (xmldb_db2file(h, db, &filename) < 0)
-        goto done;
-    if ((fd = open(filename, O_CREAT|O_WRONLY, S_IRWXU)) == -1) {
-        clixon_err(OE_UNIX, errno, "open(%s)", filename);
-        goto done;
     }
     if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
         if (xmldb_db2subdir(h, db, &subdir) < 0)
@@ -657,6 +675,12 @@ xmldb_create(clixon_handle h,
                 goto done;
             }
         }
+    }
+    if (xmldb_db2file(h, db, &filename) < 0)
+        goto done;
+    if ((fd = open(filename, O_CREAT|O_WRONLY, S_IRWXU)) == -1) {
+        clixon_err(OE_UNIX, errno, "open(%s)", filename);
+        goto done;
     }
     retval = 0;
  done:
@@ -956,5 +980,45 @@ xmldb_populate(clixon_handle h,
     }
     retval = ret;
  done:
+    return retval;
+}
+
+/*! Upgrade datastore from original non-multi to multi/split mode
+ *
+ * This is for upgrading the datastores on startup using CLICON_XMLDB_MULTI
+ * (1) If <db>.d/0.xml does not exist AND
+ * (2) <db>_db does exist and is a regular file
+ * (3) THEN copy file from <db>_db to <db>.d/0.xml
+ * @param[in]  h   Clixon handle
+ * @param[in]  db  Datastore
+ */
+int
+xmldb_multi_upgrade(clixon_handle h,
+                    const char   *db)
+{
+    int         retval = -1;
+    char       *fromfile = NULL;
+    char       *tofile = NULL;
+    struct stat st = {0,};
+
+    if (xmldb_db2file1(h, db, 1, &tofile) < 0)
+        goto done;
+    if (stat(tofile, &st) < 0 && errno == ENOENT) {
+        /* db.d/0.xml does not exist */
+        if (xmldb_create(h, db) < 0)
+            goto done;
+        if (xmldb_db2file1(h, db, 0, &fromfile) < 0)
+            goto done;
+        if (stat(fromfile, &st) == 0 && S_ISREG(st.st_mode)){
+            if (clicon_file_copy(fromfile, tofile) < 0)
+                goto done;
+        }
+    }
+    retval = 0;
+ done:
+    if (fromfile)
+        free(fromfile);
+    if (tofile)
+        free(tofile);
     return retval;
 }

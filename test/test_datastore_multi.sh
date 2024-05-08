@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Datastore split test, eg x_db has x.d/ directory with subdirs# ALso test cache bevahour, that unmodified
+# Datastore split test, eg x_db has x.d/ directory with subdirs
+# Also test cache bevahour, that unmodified
 # subteres are not touched
 # For now subdirs only enabled for mointpoints, so this test is with mountpoints as well
 
@@ -152,7 +153,7 @@ function check_db()
     dbname=$1
     subfile=$2
 
-    sudo chmod o+r $dir/${dbname}_db
+    sudo chmod o+r $dir/${dbname}.d/0.xml
     sudo chmod o+r $dir/${dbname}.d/$subfile
 
     sudo rm -f $dir/x_db
@@ -167,9 +168,11 @@ function check_db()
 </config>
 EOF
     new "Check ${dbname}_db"
-    ret=$(diff $dir/x_db $dir/${dbname}_db)
+    #    ret=$(diff $dir/x_db $dir/${dbname}_db)
+    ret=$(diff $dir/x_db $dir/${dbname}.d/0.xml)
     if [ $? -ne 0 ]; then
-        err "$(cat $dir/x_db)" "$(cat $dir/${dbname}_db)"
+        #        err "$(cat $dir/x_db)" "$(cat $dir/${dbname}_db)"
+        err "$(cat $dir/x_db)" "$(cat $dir/${dbname}.d/0.xml)"
     fi
     cat <<EOF > $dir/x_subfile
 <mount1 xmlns="urn:example:mount1">
@@ -343,6 +346,9 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
         err
     fi
+fi
+
+if [ $BE -ne 0 ]; then
     new "start backend -s running -f $cfg -- -m clixon-mount1 -M urn:example:mount1"
     start_backend -s running -f $cfg -- -m clixon-mount1 -M urn:example:mount1
 fi
@@ -360,6 +366,30 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
+
+# move running.d/0.xml to running_db to trigger upgrade
+sudo mv $dir/running.d/0.xml $dir/running_db
+
+new "Check backward compatible: if running.0/0.xml is not found read running_db on startup"
+if [ $BE -ne 0 ]; then
+    new "start backend -s running -f $cfg -- -m clixon-mount1 -M urn:example:mount1"
+    start_backend -s running -f $cfg -- -m clixon-mount1 -M urn:example:mount1
+fi
+
+new "Check running after restart"
+check_db running ${subfilename}
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+        err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
+
 
 sudo rm -rf $dir
 

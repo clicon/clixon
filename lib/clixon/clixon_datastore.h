@@ -103,5 +103,6 @@ int xmldb_volatile_set(clixon_handle h, const char *db, int value);
 int xmldb_print(clixon_handle h, FILE *f);
 int xmldb_rename(clixon_handle h, const char *db, const char *newdb, const char *suffix);
 int xmldb_populate(clixon_handle h, const char *db);
+int xmldb_multi_upgrade(clixon_handle h, const char *db);
 
 #endif /* _CLIXON_DATASTORE_H */
