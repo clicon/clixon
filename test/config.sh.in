@@ -64,9 +64,6 @@ CC=@CC@
 # Top src dir
 TOP_SRCDIR=@top_srcdir@
 
-# Clixon version
-CLIXON_VERSION=@CLIXON_VERSION@
-
 CLICON_USER=@CLICON_USER@
 CLICON_GROUP=@CLICON_GROUP@
 

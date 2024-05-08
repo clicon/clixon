@@ -36,6 +36,7 @@ Expected: June 2024
 ### API changes on existing protocol/config features
 Users may have to change how they access the system
 
+* Changed intermediate version numbers to be git-style, eg `7.0.0-39` instead of `7.1.0-PRE`
 * If `CLICON_XMLDB_MULTI` is set, datastores are stored in a new directory
    * Previously: `CLICON_XMLDB_DIR/<db>_db`
    * New: `CLICON_XMLDB_DIR/<db>d/`

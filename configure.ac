@@ -73,7 +73,6 @@ fi
 
 AC_CONFIG_HEADERS([include/clixon_config.h lib/clixon/clixon.h])
 
-AC_DEFINE_UNQUOTED(CLIXON_VERSION_STRING, $CLIXON_VERSION, [Clixon version string])
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_MAJOR, $CLIXON_VERSION_MAJOR, [Clixon major release])
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_MINOR, $CLIXON_VERSION_MINOR, [Clixon minor release])
 AC_DEFINE_UNQUOTED(CLIXON_VERSION_PATCH, $CLIXON_VERSION_PATCH, [Clixon path version])
@@ -84,9 +83,8 @@ AC_CHECK_LIB(m, main)
 AC_CANONICAL_TARGET
 
 # AC_SUBST(var) makes @var@ appear in makefiles.
-# clixon versions spread to Makefile's (.so files) and variable in build.c
+# Clixon versions is used in Makefile's (.so files) and variable in build.c
 AC_SUBST(CLIXON_VERSION)
-AC_SUBST(CLIXON_VERSION_STRING)
 AC_SUBST(CLIXON_VERSION_MAJOR)
 AC_SUBST(CLIXON_VERSION_MINOR)
 

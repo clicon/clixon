@@ -356,7 +356,7 @@ example_cli_errmsg(clixon_handle        h,
  *
  * A plugin can customize a version (or banner) output on stdout. 
  * Several version strings can be printed if there are multiple callbacks.
- * If not regstered plugins exist, clixon prints CLIXON_VERSION_STRING
+ * If no registered plugins exist, clixon prints CLIXON_GITHASH
  * Typically invoked by command-line option -V
  * @param[in]  h   Clixon handle
  * @param[in]  f   Output file

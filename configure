@@ -696,7 +696,6 @@ INSTALL_PROGRAM
 INCLUDES
 CLIXON_VERSION_MINOR
 CLIXON_VERSION_MAJOR
-CLIXON_VERSION_STRING
 CLIXON_VERSION
 target_os
 target_vendor
@@ -2846,9 +2845,6 @@ ac_config_headers="$ac_config_headers include/clixon_config.h lib/clixon/clixon.
 
 
 
-printf "%s\n" "#define CLIXON_VERSION_STRING $CLIXON_VERSION" >>confdefs.h
-
-
 printf "%s\n" "#define CLIXON_VERSION_MAJOR $CLIXON_VERSION_MAJOR" >>confdefs.h
 
 
@@ -4014,8 +4010,7 @@ test -n "$target_alias" &&
   program_prefix=${target_alias}-
 
 # AC_SUBST(var) makes @var@ appear in makefiles.
-# clixon versions spread to Makefile's (.so files) and variable in build.c
-
+# Clixon versions is used in Makefile's (.so files) and variable in build.c
 
 
 

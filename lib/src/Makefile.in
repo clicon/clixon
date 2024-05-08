@@ -299,6 +299,7 @@ DATELEN = $(shell date +"%Y.%m.%d %H:%M by `whoami` on `hostname`XXXX"|wc -c)
 build.c:	
 	echo "/* This file is generated from the Clixon Makefile */" > $@;
 	date +"const char CLIXON_BUILDSTR[$(DATELEN)]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; >> $@;
+	echo "const char CLIXON_GITHASH[64]=\"$(shell git log --pretty="format:%(describe) %ci" -n1)\""\; >> $@;
 	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> $@;
 
 # Note: will always be remade since GENOBS is date dependent

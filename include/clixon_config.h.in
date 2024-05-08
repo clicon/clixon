@@ -30,9 +30,6 @@
 /* Clixon path version */
 #undef CLIXON_VERSION_PATCH
 
-/* Clixon version string */
-#undef CLIXON_VERSION_STRING
-
 /* Enable YANG patch, RFC 8072 */
 #undef CLIXON_YANG_PATCH
 

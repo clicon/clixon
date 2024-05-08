@@ -992,7 +992,7 @@ cli_show_version(clixon_handle h,
                  cvec         *cvv,
                  cvec         *argv)
 {
-    cligen_output(stdout, "Clixon: %s\n", CLIXON_VERSION_STRING);
+    cligen_output(stdout, "Clixon: %s\n", CLIXON_GITHASH);
     cligen_output(stdout, "CLIgen: %s\n", CLIGEN_VERSION);
     return 0;
 }
