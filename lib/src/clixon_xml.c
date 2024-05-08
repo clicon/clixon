@@ -926,7 +926,7 @@ xml_child_order(cxobj *xp,
  * Further, never manipulate the child-list during operation or using the
  * same object recursively, the function uses an internal field to remember the
  * index used. It works as long as the same object is not iterated concurrently. 
- * If you need to delete a node you can do somethhing like:
+ * If you need to delete a node you can do something like:
  * @code
  *   cxobj *xprev = NULL;
  *   cxobj *x = NULL;

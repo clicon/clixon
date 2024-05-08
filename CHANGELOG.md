@@ -15,6 +15,7 @@ Expected: June 2024
 
 ### Features
 
+* Changed datastore modstate to be last in file, as prior to 7.0
 * New: Event priority. Backend socket has higher prio
 * New: Split configure datastore multiple sub-files on mount-point boundaries
   * Avoid writing sub-files without new data (dirty cache)

@@ -1038,7 +1038,9 @@ module clixon-config {
             default false;
             description
                 "If set, tag datastores with RFC 8525 YANG Module Library 
-                 info. When loaded at startup, a check is made if the system
+                 info.
+                 By default, modstate is added last in datastore.
+                 When loaded at startup, a check is made if the system
                  yang modules match.";
         }
         leaf CLICON_XMLDB_UPGRADE_CHECKOLD {

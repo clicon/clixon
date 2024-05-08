@@ -1482,8 +1482,18 @@ xmldb_dump(clixon_handle     h,
     if ((xm = clicon_modst_cache_get(h, 1)) != NULL){
         if ((xmodst = xml_dup(xm)) == NULL)
             goto done;
+        /* There are two views on where to insert modstate in config: first or last
+         * Request from user for last
+         */
+#if 1
+        /* This is inserted last in config */
+        if (xml_addsub(xt, xmodst) < 0)
+            goto done;
+#else
+        /* This is inserted first in config */
         if (xml_child_insert_pos(xt, xmodst, 0) < 0)
             goto done;
+#endif
         xml_parent_set(xmodst, xt);
     }
     switch (format){
