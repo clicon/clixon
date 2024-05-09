@@ -1433,6 +1433,8 @@ xmldb_multi_write_applyfn(cxobj *x,
                 if (clixon_xml2file1(fsub, x, 0, mw->mw_pretty, NULL, fprintf, 1, 0, mw->mw_wdef, 0) < 0)
                     goto done;
             }
+            retval = 2; /* Locally abort */
+            goto done;
         }
     }
     retval = 0;
@@ -1482,11 +1484,8 @@ xmldb_dump(clixon_handle     h,
     if ((xm = clicon_modst_cache_get(h, 1)) != NULL){
         if ((xmodst = xml_dup(xm)) == NULL)
             goto done;
-        /* There are two views on where to insert modstate in config: first or last
-         * Request from user for last
-         */
 #if 1
-        /* This is inserted last in config */
+        /* This is inserted last in config, seems preferred */
         if (xml_addsub(xt, xmodst) < 0)
             goto done;
 #else
@@ -1530,7 +1529,6 @@ xmldb_dump(clixon_handle     h,
  done:
     return retval;
 }
-
 
 /*! Given datastore, get cache and format, set wdef, add modstate and print to multiple files
  *

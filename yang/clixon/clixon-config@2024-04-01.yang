@@ -1006,7 +1006,11 @@ module clixon-config {
             type string;
             mandatory true;
             description
-                "Directory where \"running\", \"candidate\" and \"startup\" are placed.";
+                "Directory where datastores such as \"running\", \"candidate\" and \"startup\"
+                 are placed.
+                 If CLICON_XMLDB_MULTI is enabled, this is the directory where a datastore
+                 subdir is stored, such as \"running.d/\"
+                ";
         }
 
         leaf CLICON_DATASTORE_CACHE {
