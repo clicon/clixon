@@ -395,48 +395,40 @@ clixon_msg_rcv10(int         s,
     *eof = 0;
     memset(buf, 0, sizeof(buf));
     while (1){
-#if 1
         if ((len = netconf_input_read2(s, buf, sizeof(buf), eof)) < 0)
             goto done;
-#else
-       if ((len = read(s, buf, sizeof(buf))) < 0){
-           if (errno == ECONNRESET)
-               len = 0; /* emulate EOF */
-           else{
-               clixon_log(NULL, LOG_ERR, "%s: read: %s errno:%d", __FUNCTION__, strerror(errno), errno);
-               goto done;
-           }
-       } /* read */
-       if (len == 0){  /* EOF */
-           *eof = 1;
-           close(s);
-           goto ok;
-       }
-#endif
-       for (i=0; i<len; i++){
-           if (buf[i] == 0)
-               continue; /* Skip NULL chars (eg from terminals) */
-           cprintf(cb, "%c", buf[i]);
-           if (detect_endtag("]]>]]>",
-                             buf[i],
-                             &xml_state)) {
-               /* OK, we have an xml string from a client */
-               /* Remove trailer */
-               *(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
-               goto ok;
-           }
-       }
-       /* poll==1 if more, poll==0 if none */
-       if ((poll = clixon_event_poll(s)) < 0)
-           goto done;
-       if (poll == 0)
-           break; /* No data to read */
+        for (i=0; i<len; i++){
+            if (buf[i] == 0)
+                continue; /* Skip NULL chars (eg from terminals) */
+            cprintf(cb, "%c", buf[i]);
+            if (detect_endtag("]]>]]>",
+                              buf[i],
+                              &xml_state)) {
+                /* OK, we have an xml string from a client */
+                /* Remove trailer */
+                *(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
+                goto ok;
+            }
+        }
+        /* poll==1 if more, poll==0 if none */
+        if ((poll = clixon_event_poll(s)) < 0)
+            goto done;
+        if (poll == 0)
+            break; /* No data to read */
     } /* while */
  ok:
-    if (descr)
-        clixon_debug(CLIXON_DBG_MSG, "Recv [%s]: %s", descr, cbuf_get(cb));
-    else
-        clixon_debug(CLIXON_DBG_MSG, "Recv: %s", cbuf_get(cb));
+    if (*eof){
+        if (descr)
+            clixon_debug(CLIXON_DBG_MSG, "Recv [%s]: EOF", descr);
+        else
+            clixon_debug(CLIXON_DBG_MSG, "Recv: EOF");
+    }
+    else {
+        if (descr)
+            clixon_debug(CLIXON_DBG_MSG, "Recv [%s]: %s", descr, cbuf_get(cb));
+        else
+            clixon_debug(CLIXON_DBG_MSG, "Recv: %s", cbuf_get(cb));
+    }
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "done");
@@ -537,7 +529,7 @@ atomicio_sig_handler(int arg)
  * @retval      0      OK (check eof)
  * @retval     -1      Error
  * @see netconf_input_cb()
- * @note only NETCONF version 1.0 EOM framing
+ * @see clixon_msg_rcv10  For EOM framing
  */
 int
 clixon_msg_rcv11(int         s,
@@ -546,20 +538,20 @@ clixon_msg_rcv11(int         s,
                  cbuf      **cb,
                  int        *eof)
 {
-    int            retval = -1;
-    unsigned char  buf[BUFSIZ];
-    ssize_t        buflen = sizeof(buf);
-    int            frame_state = 0;
-    size_t         frame_size = 0;
-    unsigned char *p = buf;
-    size_t         plen;
-    cbuf          *cbmsg=NULL;
-    ssize_t        len;
-    int            eom = 0;
-    cxobj         *xtop = NULL;
-    cxobj         *xerr = NULL;
-    sigset_t          oldsigset = {0,};
-    struct sigaction  oldsigaction[32] = {{{0,},},};
+    int              retval = -1;
+    unsigned char    buf[BUFSIZ];
+    ssize_t          buflen = sizeof(buf);
+    int              frame_state = 0;
+    size_t           frame_size = 0;
+    unsigned char   *p = buf;
+    size_t           plen;
+    cbuf            *cbmsg=NULL;
+    ssize_t          len;
+    int              eom = 0;
+    cxobj           *xtop = NULL;
+    cxobj           *xerr = NULL;
+    sigset_t         oldsigset = {0,};
+    struct sigaction oldsigaction[32] = {{{0,},},};
 
     if ((cbmsg = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
@@ -596,7 +588,18 @@ clixon_msg_rcv11(int         s,
                 continue;
         }
     }
-    clixon_debug(CLIXON_DBG_MSG, "Recv: %s", cbuf_get(cbmsg));
+    if (*eof ){
+        if (descr)
+            clixon_debug(CLIXON_DBG_MSG, "Recv [%s]: EOF", descr);
+        else
+            clixon_debug(CLIXON_DBG_MSG, "Recv: EOF");
+    }
+    else {
+        if (descr)
+            clixon_debug(CLIXON_DBG_MSG, "Recv [%s]: %s", descr, cbuf_get(cbmsg));
+        else
+            clixon_debug(CLIXON_DBG_MSG, "Recv: %s", cbuf_get(cbmsg));
+    }
     if (cb){
         *cb = cbmsg;
         cbmsg = NULL;

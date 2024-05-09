@@ -1912,8 +1912,9 @@ from_client_msg(clixon_handle        h,
     return retval;// -1 here terminates backend
 }
 
-/*! An internal clicon message has arrived from a client. Receive and dispatch.
+/*! Internal clixon message has arrived from a client. Receive and dispatch.
  *
+ * Internal clixon is NETCONF 1.1 chunked encoding
  * @param[in]   s    Socket where message arrived. read from this.
  * @param[in]   arg  Client entry (from).
  * @retval      0    OK
@@ -1938,7 +1939,7 @@ from_client(int   s,
     }
     if (ce_client_descr(ce, &cbce) < 0)
         goto done;
-    if (clixon_msg_rcv11(s, NULL, 0, &cb, &eof) < 0)
+    if (clixon_msg_rcv11(s, cbuf_get(cbce), 0, &cb, &eof) < 0) /* XXX why not descr here? */
         goto done;
     if (eof){
         backend_client_rm(h, ce);

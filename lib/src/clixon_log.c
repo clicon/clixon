@@ -1,4 +1,4 @@
- /*
+/*
  *
   ***** BEGIN LICENSE BLOCK *****
  
@@ -296,9 +296,12 @@ slogtime(void)
  * @see  clixon_debug
  */
 int
-clixon_log_str(int     level,
-               char   *msg)
+clixon_log_str(int   level,
+               char *msg)
 {
+    /* Remove trailing CR if any */
+    if (strlen(msg) && msg[strlen(msg)-1] == '\n')
+        msg[strlen(msg)-1] = '\0';
     if (_log_flags & CLIXON_LOG_SYSLOG)
         syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg); // XXX this may block
    /* syslog makes own filtering, we do it here:
