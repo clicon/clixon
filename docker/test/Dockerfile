@@ -135,7 +135,7 @@ RUN echo "agentXSocket  unix:/var/run/snmp.sock" >> /etc/snmp/snmpd.conf
 RUN echo "agentxperms   777 777" >> /etc/snmp/snmpd.conf
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash expect openssh
+RUN apk add --update sudo curl procps grep make bash expect openssh coreutils
 
 # Create clicon user and group
 RUN adduser -D -H clicon
