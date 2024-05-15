@@ -132,7 +132,7 @@ api_path_parse(char         *api_path,
     int                  retval = -1;
     clixon_api_path_yacc ay = {0,};
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "api_path:%s", api_path);
+    clixon_debug(CLIXON_DBG_PARSE, "%s", api_path);
     ay.ay_parse_string = api_path;
     ay.ay_name = "api-path parser";
     ay.ay_linenum = 1;
@@ -151,6 +151,7 @@ api_path_parse(char         *api_path,
     *cplist = ay.ay_top;
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_PARSE, "retval: %d", retval);
     return retval;
 }
 
@@ -177,7 +178,7 @@ instance_id_parse(char         *path,
     int                     retval = -1;
     clixon_instance_id_yacc iy = {0,};
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "path:%s", path);
+    clixon_debug(CLIXON_DBG_PARSE, "%s", path);
     iy.iy_parse_string = path;
     iy.iy_name = "instance-id parser";
     iy.iy_linenum = 1;
@@ -196,6 +197,7 @@ instance_id_parse(char         *path,
     *cplist = iy.iy_top;
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_PARSE, "retval: %d", retval);
     return retval;
 }
 

@@ -1272,7 +1272,7 @@ xml_yang_validate_all(clixon_handle h,
     }
     if (yang_config(yt) != 0){
         ret = yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath);
-        clixon_debug(CLIXON_DBG_XPATH, "nr:%d xpath:%s return:%d", nr, xpath, ret);
+        clixon_debug(CLIXON_DBG_XPATH|CLIXON_DBG_DETAIL, "nr:%d xpath:%s return:%d", nr, xpath, ret);
         if (ret < 0)
             goto done;
 

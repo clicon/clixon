@@ -558,7 +558,7 @@ xpath_parse(const char  *xpath,
     clixon_xpath_yacc xpy = {0,};
     cbuf             *cb = NULL;    
 
-    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "xpath %s", xpath);
+    clixon_debug(CLIXON_DBG_PARSE, "%s", xpath);
     if (xpath == NULL){
         clixon_err(OE_XML, EINVAL, "XPath is NULL");
         goto done;
@@ -583,7 +583,7 @@ xpath_parse(const char  *xpath,
             goto done;
         }
         xpath_tree_print_cb(cb, xpy.xpy_top);
-        clixon_debug(CLIXON_DBG_ALWAYS, "xpath parse tree:\n%s", cbuf_get(cb));
+        clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "xpath parse tree:\n%s", cbuf_get(cb));
     }
     xpath_parse_exit(&xpy);
     xpath_scan_exit(&xpy);
@@ -593,6 +593,7 @@ xpath_parse(const char  *xpath,
     }
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
     if (cb)
         cbuf_free(cb);
     if (xpy.xpy_top)

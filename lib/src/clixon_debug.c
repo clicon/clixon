@@ -101,6 +101,7 @@ static const map_str2int dbgmap[] = {
     {"event",     CLIXON_DBG_EVENT},
     {"rpc",       CLIXON_DBG_RPC},
     {"stream",    CLIXON_DBG_STREAM},
+    {"parse",     CLIXON_DBG_PARSE},
     {"app",       CLIXON_DBG_APP},
     {"app2",      CLIXON_DBG_APP2},
     {"app3",      CLIXON_DBG_APP3},

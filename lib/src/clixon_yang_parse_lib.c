@@ -795,6 +795,7 @@ yang_parse_str(char         *str,
     clixon_yang_yacc yy = {0,};
     yang_stmt       *ymod = NULL;
 
+    clixon_debug(CLIXON_DBG_PARSE, "%s", str);
     if (yspec == NULL){
         clixon_err(OE_YANG, 0, "Yang parse need top level yang spec");
         goto done;
@@ -831,7 +832,8 @@ yang_parse_str(char         *str,
     /* Add filename for debugging and errors, see also ys_linenum on (each symbol?) */
     if (yang_filename_set(ymod, name) < 0)
         goto done;
-  done:
+ done:
+    clixon_debug(CLIXON_DBG_PARSE, "retval:%p", ymod);
     ystack_pop(&yy);
     if (yy.yy_stack)
         free (yy.yy_stack);

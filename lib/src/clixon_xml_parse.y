@@ -88,7 +88,7 @@
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
@@ -450,7 +450,7 @@ element1    :  ESLASH         {_XY->xy_xelement = NULL;
             | '>'             { xml_parse_endslash_pre(_XY); }
               elist           { xml_parse_endslash_mid(_XY); }
               endtag          { xml_parse_endslash_post(_XY);
-                               _PARSE_DEBUG("element1 -> > elist endtag");}
+                               _PARSE_DEBUG("element1 -> elist endtag");}
             ;
 
 endtag      : BSLASH NAME '>'
@@ -505,4 +505,3 @@ attvalue    : '\"' STRING '\"'   { $$=$2; /* $2 must be consumed */}
             ;
 
 %%
-

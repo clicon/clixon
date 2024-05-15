@@ -93,7 +93,7 @@ _http1_parse(clixon_handle  h,
     clixon_http1_yacc hy = {0,};
     int               ret;
 
-    clixon_debug(CLIXON_DBG_RESTCONF, "\n%s", str);
+    clixon_debug(CLIXON_DBG_PARSE, "%s", str);
     if (strlen(str) == 0)
         goto ok;
     hy.hy_parse_string = str;
@@ -122,7 +122,7 @@ _http1_parse(clixon_handle  h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
     return retval;
 }
 

@@ -103,6 +103,12 @@ Get restconf daemon status:
 curl -Ssik -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}'
 ```
 
+### Debug parsing
+
+Yacc: Enable _PARSE_DEBUG macro in corresponding yacc file.
+Lex: Add -d in Makefile for corresponding lex file.
+Run program with -D parse -D detail
+
 ### Make your own simplified yang and configuration file.
 ```
 cat <<EOF > /tmp/my.yang

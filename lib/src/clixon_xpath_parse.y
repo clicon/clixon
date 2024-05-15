@@ -138,9 +138,9 @@
  * Disable it to stop any calls to clixon_debug. Having it on by default would mean very large debug outputs.
  */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
-#define _PARSE_DEBUG1(s, s1) clixon_debug(1,(s), (s1))
-#define _PARSE_DEBUG2(s, s1, s2) clixon_debug(1,(s), (s1), (s2))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s))
+#define _PARSE_DEBUG1(s, s1) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s), (s1))
+#define _PARSE_DEBUG2(s, s1, s2) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s), (s1), (s2))
 #else
 #define _PARSE_DEBUG(s)
 #define _PARSE_DEBUG1(s, s1)
