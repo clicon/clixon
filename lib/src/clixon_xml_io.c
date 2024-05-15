@@ -264,7 +264,7 @@ xml2file_recurse(FILE                *f,
     case CX_BODY:
         if ((val = xml_value(x)) == NULL) /* incomplete tree */
             break;
-        if (xml_chardata_encode(&encstr, "%s", val) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", val) < 0)
             goto done;
         (*fn)(f, "%s", encstr);
         break;
@@ -586,7 +586,7 @@ xml2cbuf_recurse(cbuf             *cb,
     case CX_BODY:
         if ((val = xml_value(x)) == NULL) /* incomplete tree */
             break;
-        if (xml_chardata_cbuf_append(cb, val) < 0)
+        if (xml_chardata_cbuf_append(cb, 0, val) < 0)
             goto done;
         break;
     case CX_ATTR:
@@ -856,7 +856,7 @@ _xml_parse(const char *str,
     int             failed = 0; /* yang assignment */
     int             i;
 
-    clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "");
+    clixon_debug(CLIXON_DBG_PARSE, "%s", str);
     if (strlen(str) == 0){
         return 1; /* OK */
     }
@@ -899,7 +899,6 @@ _xml_parse(const char *str,
             if (ret == 0)
                 failed++;
             break;
-
         case YB_MODULE_NEXT:
             if ((ret = xml_bind_yang(NULL, x, YB_MODULE, yspec, xerr)) < 0)
                 goto done;
@@ -935,6 +934,7 @@ _xml_parse(const char *str,
             goto done;
     retval = 1;
  done:
+    clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
     clixon_xml_parsel_exit(&xy);
     if (xy.xy_parse_string != NULL)
         free(xy.xy_parse_string);
@@ -1332,13 +1332,13 @@ xml_diff2cbuf_leaf(cbuf      *cb,
     }
     /* Encode data to XML */
     if (b0){
-        if (xml_chardata_encode(&e0, "%s", b0) < 0)
+        if (xml_chardata_encode(&e0, 0, "%s", b0) < 0)
             goto done;
     }
     else
         e0 = NULL;
     if (b1){
-        if (xml_chardata_encode(&e1, "%s", b1) < 0)
+        if (xml_chardata_encode(&e1, 0, "%s", b1) < 0)
             goto done;
     }
     else

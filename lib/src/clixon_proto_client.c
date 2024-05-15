@@ -549,9 +549,11 @@ clicon_rpc_get_config(clixon_handle h,
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, "><get-config><source><%s/></source>", db);
     if (xpath && strlen(xpath)){
-        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
-                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
-                xpath);
+        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"",
+                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX);
+        if (xml_chardata_cbuf_append(cb, 1, xpath) < 0)
+            goto done;
+        cprintf(cb, "\"");
         if (xml_nsctx_cbuf(cb, nsc) < 0)
             goto done;
         cprintf(cb, "/>");
@@ -1051,9 +1053,11 @@ clicon_rpc_get2(clixon_handle   h,
     cprintf(cb, ">"); /* get */
     /* If xpath, add a filter */
     if (xpath && strlen(xpath)) {
-        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
-                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
-                xpath);
+        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"",
+                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX);
+        if (xml_chardata_cbuf_append(cb, 1, xpath) < 0)
+            goto done;
+        cprintf(cb, "\"");
         if (xml_nsctx_cbuf(cb, nsc) < 0)
             goto done;
         cprintf(cb, "/>");
@@ -1208,9 +1212,11 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
     cprintf(cb, ">"); /* get */
     /* If xpath, add a filter */
     if (xpath && strlen(xpath)) {
-        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
-                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
-                xpath);
+        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"",
+                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX);
+        if (xml_chardata_cbuf_append(cb, 1, xpath) < 0)
+            goto done;
+        cprintf(cb, "\"");
         if (xml_nsctx_cbuf(cb, nsc) < 0)
             goto done;
         cprintf(cb, "/>");
@@ -1668,11 +1674,14 @@ clicon_rpc_create_subscription(clixon_handle    h,
     cprintf(cb, ">");
     cprintf(cb, "<create-subscription xmlns=\"%s\">"
             "<stream>%s</stream>"
-            "<filter type=\"xpath\" select=\"%s\" />"
-            "</create-subscription>",
+            "<filter type=\"xpath\" select=\"",
             EVENT_RFC5277_NAMESPACE,
-            stream?stream:"",
-            filter?filter:"");
+            stream?stream:"");
+    if (filter) {
+        if (xml_chardata_cbuf_append(cb, 1, filter) < 0)
+            goto done;
+    }
+    cprintf(cb, "\" />" "</create-subscription>");
     cprintf(cb, "</rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
         goto done;

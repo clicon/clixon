@@ -1326,7 +1326,7 @@ from_client_get_schema(clixon_handle h,
         if (clicon_file_cbuf(filename, cbyang) < 0)
             goto done;
     }
-    xml_chardata_cbuf_append(cbret, cbuf_get(cbyang));
+    xml_chardata_cbuf_append(cbret, 0, cbuf_get(cbyang));
     cprintf(cbret, "</data></rpc-reply>");
  ok:
     retval = 0;
@@ -1677,7 +1677,7 @@ from_client_msg(clixon_handle        h,
     if ((ret = clixon_xml_parse_string(msg, YB_RPC, yspec, &xt, &xret)) < 0){
         if (netconf_malformed_message(cbret, "XML parse error") < 0)
             goto done;
-        goto done;
+        goto reply;
     }
     if (ret == 0){
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)

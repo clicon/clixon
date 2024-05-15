@@ -374,10 +374,9 @@ uri_percent_encode(char **encp,
     va_start(args, fmt); /* real */
     fmtlen = vsnprintf(str, fmtlen, fmt, args) + 1;
     va_end(args);
-    /* Now str is the combined fmt + ... */
-
-    /* Step (2) encode and expand str --> enc */
-    /* This is max */
+    /* Now str is the combined fmt + ...
+     * Step (2) encode and expand str --> enc
+     * This is max */
     len = strlen(str)*3+1;
     if ((enc = malloc(len)) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
@@ -462,13 +461,14 @@ uri_percent_decode(char  *enc,
 /*! Encode escape characters according to XML definition
  *
  * @param[out]  encp   Encoded malloced output string
+ * @param[in]   quote  Also encode ' and " (eg for attributes)
  * @param[in]   fmt    Not-encoded input string (stdarg format string)
  * @param[in]   ...    stdarg variable parameters
  * @retval      0      OK
  * @retval     -1      Error
  * @code
  *   char *encstr = NULL;
- *   if (xml_chardata_encode(&encstr, "fmtstr<>& %s", "substr<>") < 0)
+ *   if (xml_chardata_encode(&encstr, 0, "fmtstr<>& %s", "substr<>") < 0)
  *      err;
  *   if (encstr)
  *      free(encstr);
@@ -487,6 +487,7 @@ uri_percent_decode(char  *enc,
  */
 int
 xml_chardata_encode(char      **escp,
+                    int         quote,
                     const char *fmt,...)
 {
     int     retval = -1;
@@ -512,10 +513,9 @@ xml_chardata_encode(char      **escp,
     va_start(args, fmt); /* real */
     fmtlen = vsnprintf(str, fmtlen, fmt, args) + 1;
     va_end(args);
-    /* Now str is the combined fmt + ... */
-
-    /* Step (2) encode and expand str --> enc */
-    /* First compute length (do nothing) */
+    /* Now str is the combined fmt + ... 
+     * Step (2) encode and expand str --> enc
+     * First compute length (do nothing) */
     len = 0; cdata = 0;
     slen = strlen(str);
     for (i=0; i<slen; i++){
@@ -540,6 +540,18 @@ xml_chardata_encode(char      **escp,
             case '>':
                 len += strlen("&gt;");
                 break;
+            case '\'':
+                if (quote)
+                    len += strlen("&apos;");
+                else
+                    len++;
+            break;
+            case '"':
+                if (quote)
+                    len += strlen("&quot;");
+                else
+                    len++;
+                break;
             default:
                 len++;
             }
@@ -551,7 +563,6 @@ xml_chardata_encode(char      **escp,
         goto done;
     }
     memset(esc, 0, len);
-
     /* Same code again, but now actually encode into output buffer */
     j = 0; cdata = 0;
     slen = strlen(str);
@@ -592,6 +603,28 @@ xml_chardata_encode(char      **escp,
             }
             j += l;
             break;
+        case '\'':
+            if (quote){
+                if ((l=snprintf(&esc[j], 7, "&apos;")) < 0){
+                    clixon_err(OE_UNIX, errno, "snprintf");
+                    goto done;
+                }
+                j += l;
+            }
+            else
+                esc[j++] = str[i];
+            break;
+        case '"':
+            if (quote){
+                if ((l=snprintf(&esc[j], 7, "&quot;")) < 0){
+                    clixon_err(OE_UNIX, errno, "snprintf");
+                    goto done;
+                }
+                j += l;
+            }
+            else
+                esc[j++] = str[i];
+            break;
         default:
             esc[j++] = str[i];
         }
@@ -609,24 +642,25 @@ xml_chardata_encode(char      **escp,
 /*! Escape characters according to XML definition and append to cbuf
  *
  * @param[in]   cb     CLIgen buf
+ * @param[in]   quote  Also encode ' and " (eg for attributes)
  * @param[in]   str    Not-encoded input string
  * @retdata     0      OK
  * @see xml_chardata_encode for the generic function
  */
 int
 xml_chardata_cbuf_append(cbuf *cb,
+                         int   quote,
                          char *str)
 {
-    int  retval = -1;
-    int  i;
-    int  cdata; /* when set, skip encoding */
+    int    retval = -1;
+    int    i;
+    int    cdata; /* when set, skip encoding */
     size_t len;
 
     /* The orignal of this code is in xml_chardata_encode */
     /* Step: encode and expand str --> enc */
     /* Same code again, but now actually encode into output buffer */
     cdata = 0;
-
     len = strlen(str);
     for (i=0; i<len; i++){
         if (cdata){
@@ -638,27 +672,38 @@ xml_chardata_cbuf_append(cbuf *cb,
             cbuf_append(cb, str[i]);
         }
         else
-        switch (str[i]){
-        case '&':
-            cbuf_append_str(cb, "&amp;");
-            break;
-        case '<':
-            if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
-                cbuf_append(cb, str[i]);
-                cdata++;
+            switch (str[i]){
+            case '&':
+                cbuf_append_str(cb, "&amp;");
                 break;
+            case '<':
+                if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+                    cbuf_append(cb, str[i]);
+                    cdata++;
+                    break;
+                }
+                cbuf_append_str(cb, "&lt;");
+                break;
+            case '>':
+                cbuf_append_str(cb, "&gt;");
+                break;
+            case '\'':
+                if (quote)
+                    cbuf_append_str(cb, "&apos;");
+                else
+                    cbuf_append(cb, str[i]);
+                break;
+            case '"':
+                if (quote)
+                    cbuf_append_str(cb, "&quot;");
+                else
+                    cbuf_append(cb, str[i]);
+                break;
+            default:
+                cbuf_append(cb, str[i]);
             }
-            cbuf_append_str(cb, "&lt;");
-            break;
-        case '>':
-            cbuf_append_str(cb, "&gt;");
-            break;
-        default:
-            cbuf_append(cb, str[i]);
-        }
     }
     retval = 0;
-    // done:
     return retval;
 }
 

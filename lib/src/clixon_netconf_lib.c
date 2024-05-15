@@ -134,7 +134,7 @@ netconf_in_use(cbuf *cb,
                 type) <0)
         goto err;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
             goto err;
@@ -189,7 +189,7 @@ netconf_invalid_value_xml(cxobj **xret,
                             "<error-severity>error</error-severity>", type) < 0)
         goto done;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
                                 "<error-message>%s</error-message>", encstr) < 0)
@@ -256,7 +256,7 @@ netconf_too_big(cbuf *cb,
                 type) <0)
         goto err;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
             goto err;
@@ -313,7 +313,7 @@ netconf_missing_attribute_xml(cxobj **xret,
                             "<error-severity>error</error-severity>", type, attr) < 0)
         goto done;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
                                 encstr) < 0)
@@ -429,7 +429,7 @@ netconf_bad_attribute_xml(cxobj **xret,
                             "<error-severity>error</error-severity>", type, info) < 0)
         goto done;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
                                 encstr) < 0)
@@ -469,7 +469,7 @@ netconf_unknown_attribute(cbuf *cb,
                 NETCONF_BASE_NAMESPACE, type, info) <0)
         goto err;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
             goto err;
@@ -529,7 +529,7 @@ netconf_common_xml(cxobj **xret,
                             type, tag, infotag, element, infotag) < 0)
         goto done;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
                                 encstr) < 0)
@@ -799,7 +799,7 @@ netconf_access_denied_xml(cxobj **xret,
                             "<error-severity>error</error-severity>", type) < 0)
         goto done;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
                                 encstr) < 0)
@@ -838,7 +838,7 @@ netconf_lock_denied(cbuf *cb,
                 NETCONF_BASE_NAMESPACE, info) <0)
         goto err;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
             goto err;
@@ -879,7 +879,7 @@ netconf_resource_denied(cbuf *cb,
                 NETCONF_BASE_NAMESPACE, type) <0)
         goto err;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
             goto err;
@@ -921,7 +921,7 @@ netconf_rollback_failed(cbuf *cb,
                 NETCONF_BASE_NAMESPACE, type) <0)
         goto err;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
             goto err;
@@ -962,7 +962,7 @@ netconf_data_exists(cbuf      *cb,
                 NETCONF_BASE_NAMESPACE) <0)
         goto err;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
             goto err;
@@ -1047,7 +1047,7 @@ netconf_data_missing_xml(cxobj **xret,
                             "<error-severity>error</error-severity>") < 0)
         goto done;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
                                 "<error-message>%s</error-message>", encstr) < 0)
@@ -1101,7 +1101,7 @@ netconf_missing_choice_xml(cxobj **xret,
     /* error-path:     Path to the element with the missing choice. */
     if (xml2xpath(x, NULL, 0, 0, &path) < 0)
         goto done;
-    if (xml_chardata_encode(&encpath, "%s", path) < 0)
+    if (xml_chardata_encode(&encpath, 0, "%s", path) < 0)
         goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
                             "<error-type>application</error-type>"
@@ -1115,7 +1115,7 @@ netconf_missing_choice_xml(cxobj **xret,
                             name) < 0)
         goto done;
     if (message){
-        if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
             goto done;
         if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
                                 "<error-message>%s</error-message>", encstr) < 0)
@@ -1178,7 +1178,7 @@ netconf_operation_not_supported_xml(cxobj **xret,
                             type) < 0)
         goto done;
     if (message){
-         if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
              goto done;
          if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
                                  encstr) < 0)
@@ -1296,7 +1296,7 @@ netconf_operation_failed_xml(cxobj **xret,
                             type) < 0)
         goto done;
     if (message){
-         if (xml_chardata_encode(&encstr, "%s", message) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
              goto done;
          if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
                                  encstr) < 0)
@@ -1384,7 +1384,7 @@ netconf_malformed_message_xml(cxobj **xret,
                             "<error-severity>error</error-severity>") < 0)
         goto done;
      if (message){
-         if (xml_chardata_encode(&encstr, "%s", message) < 0)
+         if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
              goto done;
          if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
                                  encstr) < 0)
@@ -1479,7 +1479,7 @@ netconf_data_not_unique_xml(cxobj **xret,
             goto done;
         if (xml2xpath(x, NULL, 0, 0, &path) < 0)
             goto done;
-        if (xml_chardata_encode(&encpath, "%s", path) < 0)
+        if (xml_chardata_encode(&encpath, 0, "%s", path) < 0)
             goto done;
         while ((cvi = cvec_each(cvk, cvi)) != NULL){
             if (clixon_xml_parse_va(YB_NONE, NULL, &xinfo, NULL,
@@ -1539,7 +1539,7 @@ netconf_minmax_elements_xml(cxobj **xret,
     if (xml_parent(xp)){ /* Dont include root, eg <config> */
         if (xml2xpath(xp, NULL, 0, 0, &path) < 0)
            goto done;
-        if (xml_chardata_encode(&encpath, "%s", path) < 0)
+        if (xml_chardata_encode(&encpath, 0, "%s", path) < 0)
             goto done;
     }
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>protocol</error-type>"
@@ -1817,7 +1817,7 @@ netconf_capabilites(clixon_handle h,
 
     /* Check if RFC7895 loaded and revision found */
     if ((ietf_yang_library_revision = yang_modules_revision(h)) != NULL){
-        if (xml_chardata_encode(&encstr, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=%s&module-set-id=%s",
+        if (xml_chardata_encode(&encstr, 0, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=%s&module-set-id=%s",
                                 ietf_yang_library_revision,
                                 module_set_id) < 0)
             goto done;
@@ -1838,7 +1838,7 @@ netconf_capabilites(clixon_handle h,
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>");
     /* rfc6243 with-defaults capability modes */
     cprintf(cb, "<capability>");
-    xml_chardata_cbuf_append(cb, "urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all,trim,report-all-tagged");
+    xml_chardata_cbuf_append(cb, 0, "urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all,trim,report-all-tagged");
     cprintf(cb, "</capability>");
     /* RFC5277 Notification Capability */
     cprintf(cb, "<capability>%s</capability>", NETCONF_NOTIFICATION_CAPABILITY);

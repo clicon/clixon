@@ -1397,7 +1397,7 @@ xml_find_index_yang(cxobj       *xp,
                 revert++;
                 break;
             }
-            if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
+            if (xml_chardata_encode(&encstr, 0, "%s", cv_string_get(cvi)) < 0)
                 goto done;
             cprintf(cb, "<%s>%s</%s>", kname, encstr, kname);
             free(encstr);
@@ -1413,7 +1413,7 @@ xml_find_index_yang(cxobj       *xp,
             goto done;
         }
         cvi = cvec_i(cvk, 0);
-        if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", cv_string_get(cvi)) < 0)
             goto done;
         cprintf(cb, "<%s>%s</%s>", name, encstr, name);
         free(encstr);
@@ -1433,7 +1433,7 @@ xml_find_index_yang(cxobj       *xp,
             yang_flag_get(yi, YANG_FLAG_INDEX) == 0)
             goto revert;
         cbuf_reset(cb);
-        if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", cv_string_get(cvi)) < 0)
             goto done;
         cprintf(cb, "<%s><%s>%s</%s></%s>", name, iname, encstr, iname, name);
         free(encstr);

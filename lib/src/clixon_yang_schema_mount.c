@@ -637,7 +637,7 @@ yang_schema_mount_statistics(clixon_handle h,
         if (xml2xpath(xmp, NULL, 1, 0, &xpath) < 0)
             goto done;
         cprintf(cb, "<module-set><name>mountpoint: ");
-        xml_chardata_cbuf_append(cb, xpath);
+        xml_chardata_cbuf_append(cb, 0, xpath);
         cprintf(cb, "</name>");
         nr = 0; sz = 0;
         if (yang_stats(yspec, &nr, &sz) < 0)

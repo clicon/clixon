@@ -808,6 +808,7 @@ get_common(clixon_handle        h,
     char           *reason = NULL;
     cbuf           *cbmsg = NULL; /* For error msg */
     char           *xpath0;
+    char           *xpath01 = NULL;
     cbuf           *cbreason = NULL;
     int             list_pagination = 0;
     cxobj         **xvec = NULL;
@@ -828,6 +829,8 @@ get_common(clixon_handle        h,
     if ((xfilter = xml_find(xe, "filter")) != NULL){
         if ((xpath0 = xml_find_value(xfilter, "select"))==NULL)
             xpath0 = "/";
+        if (xml_chardata_decode(&xpath01, "%s", xpath0) < 0)
+            goto done;
         /* Create namespace context for xpath from <filter>
          *  The set of namespace declarations are those in scope on the
          * <filter> element.
@@ -835,7 +838,7 @@ get_common(clixon_handle        h,
         else
             if (xml_nsctx_node(xfilter, &nsc0) < 0)
                 goto done;
-        if ((ret = xpath2canonical(xpath0, nsc0, yspec, &xpath, &nsc, &cbreason)) < 0)
+        if ((ret = xpath2canonical(xpath01, nsc0, yspec, &xpath, &nsc, &cbreason)) < 0)
             goto done;
         if (ret == 0){
             if (netconf_bad_attribute(cbret, "application",
@@ -1037,6 +1040,8 @@ get_common(clixon_handle        h,
         xml_free(xerr);
     if (xpath)
         free(xpath);
+    if (xpath01)
+        free(xpath01);
     return retval;
 }
 

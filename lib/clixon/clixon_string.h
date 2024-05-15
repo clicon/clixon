@@ -95,8 +95,8 @@ char  *clixon_string_del_join(char *str1, char *del, char *str2);
 int    clixon_strsplit(char *nodeid, const int delim, char **prefix, char **id);
 int    uri_str2cvec(char *string, char delim1, char delim2, int decode, cvec **cvp);
 int    uri_percent_encode(char **encp, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-int    xml_chardata_encode(char **escp, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
-int    xml_chardata_cbuf_append(cbuf *cb, char *str);
+int    xml_chardata_encode(char **escp, int quote, const char *fmt, ... ) __attribute__ ((format (printf, 3, 4)));
+int    xml_chardata_cbuf_append(cbuf *cb, int quote, char *str);
 int    xml_chardata_decode(char **escp, const char *fmt,...);
 int    uri_percent_decode(char *enc, char **str);
 

@@ -826,9 +826,9 @@ clixon_process_status(clixon_handle  h,
                  * command) and therefore needs explicit encoding */
                 for (i=0; i<pe->pe_argc-1; i++){
                     if (i)
-                        if (xml_chardata_cbuf_append(cbret, " ") < 0)
+                        if (xml_chardata_cbuf_append(cbret, 0, " ") < 0)
                             goto done;
-                    if (xml_chardata_cbuf_append(cbret, pe->pe_argv[i]) < 0)
+                    if (xml_chardata_cbuf_append(cbret, 0, pe->pe_argv[i]) < 0)
                         goto done;
                 }
                 cprintf(cbret, "</command>");

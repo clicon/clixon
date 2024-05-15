@@ -45,8 +45,18 @@ Users may have to change how they access the system
      * If backend is started with `-s startup` or `-s running` then `<db>_db` is read if `<db>.d/0.xml` is not found
 * Openssl mandatory for all configs, not only restconf
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* XML encoding added a `quotes` parameter for attribute encoding, update as follows:
+  * `xml_chardata_encode(e, fmt,...)` --> `xml_chardata_encode(e, 0, fmt,...)`
+  * `xml_chardata_cbuf_append(cb, str)` --> `xml_chardata_cbuf_append(cb, 0, str)`
+
 ### Corrected Bugs
 
+* Fixed: backend exit when receiving invalid NETCONF get select XPath
+  * Added XML encoding to XPaths in `select` attribute
 * Fixed: Fail on return errors when reading from datastore
   * Can happen if running is not upgraded for example
 * Fixed: [Duplicate config files in configdir causes merge problems -> set ? = NULL](https://github.com/clicon/clixon/issues/510)
