@@ -216,3 +216,6 @@
  */
 #define RESTCONF_NATIVE_STREAM
 
+/*! Temporary comparison of xyanglibs, should be removed asap
+ */
+#define YANG_SCHEMA_CMP_KLUDGE

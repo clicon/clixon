@@ -15,6 +15,7 @@ Expected: June 2024
 
 ### Features
 
+* Optimization of yang schema mount: share yang-specs if equal
 * Changed datastore modstate to be last in file, as prior to 7.0
 * New: Event priority. Backend socket has higher prio
 * New: Split configure datastore multiple sub-files on mount-point boundaries
@@ -25,6 +26,7 @@ Expected: June 2024
 * CLI support for multiple inline commands separated by semi-colon
 * New `clixon-config@2024-04-01.yang` revision
   * Added options:
+    - `CLICON_YANG_SCHEMA_MOUNT_SHARE`: Share same YANGs of several moint-points
     - `CLICON_SOCK_PRIO`: Enable socket event priority
     - `CLICON_XMLDB_MULTI`: Split datastore into multiple sub files
     - `CLICON_NETCONF_DUPLICATE_ALLOW`: Disable duplicate check in NETCONF messages
