@@ -354,7 +354,7 @@ yang_modules_state_get(clixon_handle    h,
     }
     else { /* No cache -> build the tree */
         if ((cb = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, 0, "clicon buffer");
+            clixon_err(OE_UNIX, 0, "cligen buffer");
             goto done;
         }
         /* Build a cb string: <modules-state>... */

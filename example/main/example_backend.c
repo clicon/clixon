@@ -976,7 +976,6 @@ main_yang_mount(clixon_handle   h,
         if (xml_rootchild(*yanglib, 0, yanglib) < 0)
             goto done;
     }
-
     retval = 0;
  done:
     if (cb)

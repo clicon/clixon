@@ -110,7 +110,7 @@ typedef enum clixon_auth_type clixon_auth_type_t;
 
 /*! Common plugin function names, function types and signatures.
  *
- * This plugin code is exytended by backend, cli, netconf, restconf plugins
+ * This plugin code is extended by backend, cli, netconf, restconf plugins
  *   Cli     see cli_plugin.c
  *   Backend see config_plugin.c
  */
