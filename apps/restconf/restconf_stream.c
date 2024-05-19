@@ -181,16 +181,17 @@ restconf_subscription(clixon_handle h,
     /* Setting up stream */
     if (restconf_reply_header(req, "Server", "clixon") < 0)
         goto done;
+    if (restconf_reply_header(req, "Server", "clixon") < 0)
+        goto done;
     if (restconf_reply_header(req, "Content-Type", "text/event-stream") < 0)
         goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
         goto done;
     if (restconf_reply_header(req, "Connection", "keep-alive") < 0)
         goto done;
-#ifndef RESTCONF_NATIVE_STREAM
+    /* Must be there for FCGI caching */
     if (restconf_reply_header(req, "X-Accel-Buffering", "no") < 0)
         goto done;
-#endif
     if (restconf_reply_send(req, 201, NULL, 0) < 0)
         goto done;
     *sp = s;
@@ -202,5 +203,122 @@ restconf_subscription(clixon_handle h,
         xml_free(xret);
     if (cb)
         cbuf_free(cb);
+    return retval;
+}
+
+/*! Process a stream request
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  req     Generic Www handle (can be part of clixon handle)
+ * @param[in]  qvec    Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
+ * @param[in]  timeout Stream timeout
+ * @param[out] finish  Set to zero, if request should not be finnished by upper layer
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+api_stream(clixon_handle h,
+           void         *req,
+           cvec         *qvec,
+           int           timeout,
+           int          *finish)
+{
+    int            retval = -1;
+    char          *path = NULL;
+    char         **pvec = NULL;
+    int            pn;
+    cvec          *pcvec = NULL; /* for rest api */
+    cxobj         *xerr = NULL;
+    char          *streampath;
+    int            pretty;
+    int            besock = -1;
+    restconf_media media_reply = YANG_DATA_XML;
+    char          *media_str = NULL;
+    char          *stream_name;
+    int            ret;
+
+    clixon_debug(CLIXON_DBG_STREAM, "");
+    if (req == NULL){
+        clixon_err(OE_RESTCONF, EINVAL, "req is NULL");
+        goto done;
+    }
+    streampath = clicon_option_str(h, "CLICON_STREAM_PATH");
+    if ((path = restconf_uripath(h)) == NULL)
+        goto done;
+    pretty = restconf_pretty_get(h);
+    if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
+        goto done;
+    /* Sanity check of path. Should be /stream/<name> */
+    if (pn != 3){
+        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
+            goto done;
+        if (api_return_err0(h, req, xerr, pretty, media_reply, 0) < 0)
+            goto done;
+        goto ok;
+    }
+    /* Get media for output (proactive negotiation) RFC7231 by using
+     */
+    media_str = restconf_param_get(h, "HTTP_ACCEPT");
+    if (media_str == NULL){
+        if (restconf_not_acceptable(h, req, pretty, media_reply) < 0)
+            goto done;
+        goto ok;
+    }
+    /* Accept only text_event-stream or */
+    if (strcmp(media_str, "*/*") != 0 &&
+        strcmp(media_str, "text/event-stream") != 0){
+        if (restconf_not_acceptable(h, req, pretty, media_reply) < 0)
+            goto done;
+        goto ok;
+    }
+    if (strlen(pvec[0]) != 0){
+        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
+            goto done;
+        if (api_return_err0(h, req, xerr, pretty, media_reply, 0) < 0)
+            goto done;
+        goto ok;
+    }
+    if (strcmp(pvec[1], streampath)){
+        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
+            goto done;
+        if (api_return_err0(h, req, xerr, pretty, media_reply, 0) < 0)
+            goto done;
+        goto ok;
+    }
+    if ((stream_name = pvec[2]) == NULL){
+        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
+            goto done;
+        if (api_return_err0(h, req, xerr, pretty, media_reply, 0) < 0)
+            goto done;
+        goto ok;
+    }
+    clixon_debug(CLIXON_DBG_STREAM, "stream-name: %s", stream_name);
+    if (uri_str2cvec(path, '/', '=', 1, &pcvec) < 0) /* rest url eg /album=ricky/foo */
+        goto done;
+    /* If present, check credentials. See "plugin_credentials" in plugin
+     * See RFC 8040 section 2.5
+     */
+    if ((ret = restconf_authentication_cb(h, req, pretty, media_reply)) < 0)
+        goto done;
+    if (ret == 0)
+        goto ok;
+    if (restconf_subscription(h, req, stream_name, qvec, pretty, media_reply, &besock) < 0)
+        goto done;
+    if (besock != -1){
+        if (stream_sockets_setup(h, req, timeout, besock, finish) < 0)
+            goto done;
+    }
+ ok:
+    retval = 0;
+ done:
+    clixon_debug(CLIXON_DBG_STREAM, "retval:%d", retval);
+    if (xerr)
+        xml_free(xerr);
+    if (pvec)
+        free(pvec);
+    if (pcvec)
+        cvec_free(pcvec);
+    if (path)
+        free(path);
     return retval;
 }

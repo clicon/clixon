@@ -4,15 +4,23 @@
   * [Nginx](#nginx)
   * [Streams](#streams)
   * [Nchan Streams](#nchan)
-  * [Debugging](#debugging)     
+  * [Debugging](#debugging)
 
 There are two installation instructions: for native and nginx.
 
 ## Native
 
+Native with http1 and http2 is the main variant, with most regression testing.
+
 Configure clixon with native restconf:
 ```
   ./configure --with-restconf=native
+```
+
+You can disable http1 and http2:
+```
+  --disable-http1         Disable native http/1.1 (ie http/2 only)
+  --disable-nghttp2       Disable native http/2 using libnghttp2 (ie http/1 only)
 ```
 
 Ensure www-data is member of the CLICON_SOCK_GROUP (default clicon). If not, add it:
@@ -164,6 +172,8 @@ See (stream tests)[../test/test_streams.sh] for more examples.
 
 ## Nchan
 
+This is not supported
+
 As an alternative streams implementation, Nginx/Nchan can be used. 
 Nginx uses pub/sub channels and can be configured in a variety of
 ways. The following uses a simple variant with one generic subscription
@@ -247,3 +257,16 @@ You can set debug level of the backend via restconf:
 ```
    curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-lib:input":{"level":1}}' http://localhost/restconf/operations/clixon-lib:debug
 ```
+
+## Code structure
+
+Due to the native and fcgi variants, and also native http1/http2, the
+source file structure is complex.
+
+There are the following blocks of files:
+
+* COMMON: Common code, such as HTTP methods processing, error and common lib functions
+* FCGI: Top-level main, stream and low-level lib (as defined by restconf_api.h)
+* NATIVE-COMMON: Top-level main, stream and low-level lib
+* NATIVE-HTTP1: Native for HTTP/1 only
+* NATIVE-HTTP2: Native for Libnghttp2 only

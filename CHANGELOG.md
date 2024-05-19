@@ -15,6 +15,9 @@ Expected: June 2024
 
 ### Features
 
+* RESTCONF notification for native mode
+  * Previously only for FCGI
+  * Limitations, ie only HTTP/1, regular subscription + stop-time
 * Optimization of yang schema mount: share yang-specs if equal
 * Changed datastore modstate to be last in file, as prior to 7.0
 * New: Event priority. Backend socket has higher prio

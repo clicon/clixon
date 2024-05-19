@@ -121,9 +121,7 @@ typedef struct restconf_conn {
     restconf_socket      *rc_socket;    /* Backpointer to restconf_socket needed for callhome */
     struct timeval        rc_t;         /* Timestamp of last read/write activity, used by callhome
                                            idle-timeout algorithm */
-#ifdef RESTCONF_NATIVE_STREAM
     int                   rc_event_stream;    /* Event notification stream socket (maybe in sd?) */
-#endif
 } restconf_conn;
 
 /* Restconf per socket handle
@@ -182,6 +180,7 @@ int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
 
 int               restconf_close_ssl_socket(restconf_conn *rc, const char *callfn, int sslerr0);
 int               restconf_connection_sanity(clixon_handle h, restconf_conn *rc, restconf_stream_data *sd);
+int               native_buf_write(clixon_handle h, char *buf, size_t buflen, restconf_conn *rc, const char *callfn);
 restconf_native_handle *restconf_native_handle_get(clixon_handle h);
 int               restconf_connection(int s, void *arg);
 int               restconf_ssl_accept_client(clixon_handle h, int s, restconf_socket *rsock, restconf_conn  **rcp);
@@ -189,6 +188,8 @@ int               restconf_callhome_timer_unreg(restconf_socket *rsock);
 int               restconf_callhome_timer(restconf_socket *rsock, int status);
 int               restconf_socket_extract(clixon_handle h, cxobj *xs, cvec *nsc, restconf_socket *rsock,
                                           char **namespace, char **address, char **addrtype, uint16_t *port);
+
+
 
 #endif /* _RESTCONF_NATIVE_H_ */
 

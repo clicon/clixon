@@ -76,9 +76,7 @@
 #ifdef HAVE_HTTP1
 #include "restconf_http1.h"
 #endif
-#ifdef RESTCONF_NATIVE_STREAM
 #include "restconf_stream.h"
-#endif
 
 /* Forward */
 static int restconf_idle_cb(int fd, void *arg);
@@ -384,7 +382,8 @@ restconf_connection_sanity(clixon_handle         h,
 }
 
 /* Write buf to socket
- * see also this function in restcont_api_openssl.c
+ *
+ * see also this function in restconf_api_openssl.c
  * @param[in]  h        Clixon handle
  * @param[in]  buf      Buffer to write
  * @param[in]  buflen   Length of buffer
@@ -394,7 +393,7 @@ restconf_connection_sanity(clixon_handle         h,
  * @retval  0  OK, but socket write returned error, caller should close rc
  * @retval -1  Error
  */
-static int
+int
 native_buf_write(clixon_handle    h,
                  char            *buf,
                  size_t           buflen,
@@ -1081,11 +1080,9 @@ restconf_connection_close1(restconf_conn *rc)
         if (restconf_callhome_timer(rsock, 1) < 0)
             goto done;
     }
-#ifdef RESTCONF_NATIVE_STREAM
     if (rc->rc_event_stream){
         stream_close(rc->rc_h, rc);
     }
-#endif
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);

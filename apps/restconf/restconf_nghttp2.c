@@ -85,9 +85,7 @@
 #include "restconf_err.h"
 #include "restconf_root.h"
 #include "restconf_native.h"    /* Restconf-openssl mode specific headers*/
-#ifdef RESTCONF_NATIVE_STREAM
 #include "restconf_stream.h"
-#endif
 #ifdef HAVE_LIBNGHTTP2          /* Ends at end-of-file */
 #include "restconf_nghttp2.h"   /* Restconf-openssl mode specific headers*/
 #include "clixon_http_data.h"
@@ -341,13 +339,11 @@ restconf_nghttp2_path(restconf_stream_data *sd)
             if (api_http_data(h, sd, sd->sd_qvec) < 0)
                 goto done;
         }
-#ifdef RESTCONF_NATIVE_STREAM
         else if (api_path_is_stream(h)){
             restconf_socket *rs = rc->rc_socket;
             if (api_stream(h, sd, sd->sd_qvec, rs->rs_stream_timeout, NULL) < 0)
                 goto done;
         }
-#endif
         else if (api_root_restconf(h, sd, sd->sd_qvec) < 0) /* error handling */
             goto done;
     }
@@ -497,9 +493,7 @@ http2_exec(restconf_conn        *rc,
     if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0
         || api_path_is_restconf(rc->rc_h)
         || api_path_is_data(rc->rc_h)
-#ifdef RESTCONF_NATIVE_STREAM
         || api_path_is_stream(rc->rc_h)
-#endif
         ) {
         clixon_debug(CLIXON_DBG_RESTCONF, "path found");
         if (restconf_nghttp2_path(sd) < 0)

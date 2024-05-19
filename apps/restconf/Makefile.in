@@ -88,7 +88,6 @@ LEX		= @LEX@
 
 CPPFLAGS  	= @CPPFLAGS@
 
-
 ifeq ($(LINKAGE),dynamic)
 CPPFLAGS  	+= -fPIC
 endif
@@ -100,7 +99,6 @@ APPL	  = clixon_restconf
 
 # Common source - not accessible from plugin - independent of restconf package (fcgi|native)
 APPSRC    =
-APPSRC   += restconf_api.c # maybe empty
 APPSRC   += restconf_err.c 
 APPSRC   += restconf_methods.c
 APPSRC   += restconf_methods_post.c

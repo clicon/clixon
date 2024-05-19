@@ -86,101 +86,6 @@
 #include "restconf_native.h"    /* Restconf-openssl mode specific headers*/
 #include "restconf_stream.h"
 
-// XXX: copy from restconf_native.c
-static int
-native_buf_write_xxx(clixon_handle    h,
-                     char            *buf,
-                     size_t           buflen,
-                     restconf_conn   *rc,
-                     const char      *callfn)
-{
-    int     retval = -1;
-    ssize_t len;
-    ssize_t totlen = 0;
-    int     er;
-    SSL    *ssl;
-
-    if (rc == NULL){
-        clixon_err(OE_RESTCONF, EINVAL, "rc is NULL");
-        goto done;
-    }
-    ssl = rc->rc_ssl;
-    /* Two problems with debugging buffers that this fixes:
-     * 1. they are not "strings" in the sense they are not NULL-terminated
-     * 2. they are often very long
-     */
-    if (clixon_debug_get()) {
-        char *dbgstr = NULL;
-        size_t sz;
-        sz = buflen>256?256:buflen; /* Truncate to 256 */
-        if ((dbgstr = malloc(sz+1)) == NULL){
-            clixon_err(OE_UNIX, errno, "malloc");
-            goto done;
-        }
-        memcpy(dbgstr, buf, sz);
-        dbgstr[sz] = '\0';
-        clixon_debug(CLIXON_DBG_RESTCONF, "%s buflen:%zu buf:\n%s", callfn, buflen, dbgstr);
-        free(dbgstr);
-    }
-    while (totlen < buflen){
-        if (ssl){
-            if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
-                er = errno;
-                switch (SSL_get_error(ssl, len)){
-                case SSL_ERROR_SYSCALL:              /* 5 */
-                    if (er == ECONNRESET || /* Connection reset by peer */
-                        er == EPIPE) {      /* Reading end of socket is closed */
-                        goto closed; /* Close socket and ssl */
-                    }
-                    else if (er == EAGAIN){
-                        clixon_debug(CLIXON_DBG_RESTCONF, "write EAGAIN");
-                        usleep(10000);
-                        continue;
-                    }
-                    else{
-                        clixon_err(OE_RESTCONF, er, "SSL_write %d", er);
-                        goto done;
-                    }
-                    break;
-                default:
-                    clixon_err(OE_SSL, 0, "SSL_write");
-                    goto done;
-                    break;
-                }
-                goto done;
-            }
-        }
-        else{
-            if ((len = write(rc->rc_s, buf+totlen, buflen-totlen)) < 0){
-                switch (errno){
-                case EAGAIN:     /* Operation would block */
-                    clixon_debug(CLIXON_DBG_RESTCONF, "write EAGAIN");
-                    usleep(10000);
-                    continue;
-                    break;
-                    //          case EBADF: // XXX if this happens there is some larger error
-                case ECONNRESET: /* Connection reset by peer */
-                case EPIPE:   /* Broken pipe */
-                    goto closed; /* Close socket and ssl */
-                    break;
-                default:
-                    clixon_err(OE_UNIX, errno, "write %d", errno);
-                    goto done;
-                    break;
-                }
-            }
-        }
-        totlen += len;
-    } /* while */
-    retval = 1;
- done:
-    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
-    return retval;
- closed:
-    retval = 0;
-    goto done;
-}
-
 /*! Callback when stream notifications arrive from backend
  *
  * @param[in]  s    Socket
@@ -190,8 +95,8 @@ native_buf_write_xxx(clixon_handle    h,
  * @see netconf_notification_cb
  */
 static int
-restconf_native_stream_cb(int   s,
-                          void *arg)
+stream_native_backend_cb(int   s,
+                         void *arg)
 {
     int            retval = -1;
     restconf_stream_data *sd = (restconf_stream_data *)arg;
@@ -258,7 +163,7 @@ restconf_native_stream_cb(int   s,
     cprintf(cb, "\r\n");
     cprintf(cb, "\r\n");
 #endif
-    if ((ret = native_buf_write_xxx(h, cbuf_get(cb), cbuf_len(cb), rc, "native stream")) < 0)
+    if ((ret = native_buf_write(h, cbuf_get(cb), cbuf_len(cb), rc, "native stream")) < 0)
         goto done;
  ok:
     retval = 0;
@@ -278,8 +183,8 @@ restconf_native_stream_cb(int   s,
 /*! Timeout of notification stream, limit lifetime, for debug
  */
 static int
-native_stream_timeout(int   s,
-                      void *arg)
+stream_timeout_end(int   s,
+                   void *arg)
 {
     restconf_conn *rc = (restconf_conn *)arg;
 
@@ -299,170 +204,52 @@ stream_close(clixon_handle h,
     restconf_conn *rc = (restconf_conn *)req;
 
     clicon_rpc_close_session(h);
-    clixon_event_unreg_fd(rc->rc_event_stream, restconf_native_stream_cb);
-    clixon_event_unreg_timeout(native_stream_timeout, req);
+    clixon_event_unreg_fd(rc->rc_event_stream, stream_native_backend_cb);
+    clixon_event_unreg_timeout(stream_timeout_end, req);
     close(rc->rc_event_stream);
     rc->rc_event_stream = 0;
     return 0;
 }
 
-/*! Process a stream request, native variant
+/*! Native specific code for setting up stream sockets
  *
  * @param[in]  h       Clixon handle
  * @param[in]  req     Generic Www handle (can be part of clixon handle)
- * @param[in]  qvec    Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
  * @param[in]  timeout Stream timeout
- * @param[out] finish  Not used in native?
+ * @param[in]  besock  Socket to backend
+ * @param[out] finish  Set to zero, if request should not be finnished by upper layer
  * @retval     0       OK
  * @retval    -1       Error
- * @see api_stream  fcgi implementation
- * @note According to RFC8040 Sec 6 accept-stream is text/event-stream, but stream data
- *       is XML according to RFC5277. But what is error return? assume XML here
+ * Consider moving timeout and backend sock to generic code
  */
-static int
-api_native_stream(clixon_handle h,
-                  void         *req,
-                  cvec         *qvec,
-                  int           timeout,
-                  int          *finish)
+int
+stream_sockets_setup(clixon_handle h,
+                     void         *req,
+                     int           timeout,
+                     int           besock,
+                     int          *finish)
 {
-    int            retval = -1;
+    int                   retval = -1;
     restconf_stream_data *sd = (restconf_stream_data *)req;
-    restconf_conn *rc;
-    char          *path = NULL;
-    char          *request_method = NULL; /* GET,.. */
-    char          *streampath;
-    int            pretty;
-    char         **pvec = NULL;
-    int            pn;
-    cvec          *pcvec = NULL; /* for rest api */
-    cxobj         *xerr = NULL;
-    char          *media_str = NULL;
-    char          *stream_name;
-    restconf_media media_reply = YANG_DATA_XML;
-    int            ret;
-    int            backend_socket = -1;
+    restconf_conn        *rc;
 
-    clixon_debug(CLIXON_DBG_STREAM, "");
-    if (req == NULL){
-        clixon_err(OE_RESTCONF, EINVAL, "req is NULL");
+    /* Listen to backend socket */
+    if (clixon_event_reg_fd(besock,
+                            stream_native_backend_cb,
+                            req,
+                            "stream socket") < 0)
         goto done;
-    }
     rc = sd->sd_conn;
-    streampath = clicon_option_str(h, "CLICON_STREAM_PATH");
-    if ((path = restconf_uripath(h)) == NULL)
-        goto done;
-    clixon_debug(CLIXON_DBG_STREAM, "path:%s", path);
-    request_method = restconf_param_get(h, "REQUEST_METHOD");
-    clixon_debug(CLIXON_DBG_STREAM, "method:%s", request_method);
-    pretty = restconf_pretty_get(h);
-    clixon_debug(CLIXON_DBG_STREAM, "pretty:%d", pretty);
-    /* Get media for output (proactive negotiation) RFC7231 by using
-     * Accept:. This is for methods that have output, such as GET,
-     * operation POST, etc
-     * If accept is * default is yang-json
-     */
-    media_str = restconf_param_get(h, "HTTP_ACCEPT");
-    clixon_debug(CLIXON_DBG_STREAM, "accept(media):%s", media_str);
-    if (media_str == NULL){
-        if (restconf_not_acceptable(h, sd, pretty, media_reply) < 0)
-            goto done;
-        goto ok;
+    rc->rc_event_stream = besock;
+    /* Timeout of notification stream, close after limited lifetime, for debug */
+    if (timeout){
+        struct timeval   t;
+        gettimeofday(&t, NULL);
+        t.tv_sec += timeout;
+        clixon_event_reg_timeout(t, stream_timeout_end, rc, "Stream timeout");
     }
-    /* Accept only text_event-stream or */
-    if (strcmp(media_str, "*/*") != 0 &&
-        strcmp(media_str, "text/event-stream") != 0){
-        if (restconf_not_acceptable(h, req, pretty, media_reply) < 0)
-            goto done;
-        goto ok;
-    }
-    if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
-        goto done;
-    if (strlen(pvec[0]) != 0){
-        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
-            goto done;
-        if (api_return_err0(h, req, xerr, pretty, media_reply, 0) < 0)
-            goto done;
-        goto ok;
-    }
-    else if (strcmp(pvec[1], streampath)){
-        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
-            goto done;
-        if (api_return_err0(h, req, xerr, pretty, media_reply, 0) < 0)
-            goto done;
-        goto ok;
-    }
-    else if ((stream_name = pvec[2]) == NULL ||
-             strlen(stream_name) == 0){
-        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
-            goto done;
-        if (api_return_err0(h, req, xerr, pretty, media_reply, 0) < 0)
-            goto done;
-        goto ok;
-    }
-    clixon_debug(CLIXON_DBG_STREAM, "stream-name: %s", stream_name);
-    if (uri_str2cvec(path, '/', '=', 1, &pcvec) < 0) /* rest url eg /album=ricky/foo */
-        goto done;
-    /* If present, check credentials. See "plugin_credentials" in plugin
-     * See RFC 8040 section 2.5
-     */
-    if ((ret = restconf_authentication_cb(h, req, pretty, media_reply)) < 0)
-        goto done;
-    if (ret == 0)
-        goto ok;
-    clixon_debug(CLIXON_DBG_STREAM, "passed auth");
-    if (restconf_subscription(h, req, stream_name, qvec, pretty, media_reply, &backend_socket) < 0)
-        goto done;
-    if (backend_socket != -1){
-        // XXX Could add forking here eventurally
-        /* Listen to backend socket */
-        if (clixon_event_reg_fd(backend_socket,
-                                restconf_native_stream_cb,
-                                sd,
-                                "stream socket") < 0)
-            goto done;
-        rc->rc_event_stream = backend_socket;
-        /* Timeout of notification stream, close after limited lifetime, for debug */
-        if (timeout){
-            struct timeval   t;
-            gettimeofday(&t, NULL);
-            t.tv_sec += timeout;
-            clixon_event_reg_timeout(t, native_stream_timeout, rc, "Stream timeout");
-        }
-    }
- ok:
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_STREAM, "retval:%d", retval);
-    if (xerr)
-        xml_free(xerr);
-    if (path)
-        free(path);
-    if (pvec)
-        free(pvec);
-    if (pcvec)
-        cvec_free(pcvec);
     return retval;
-}
-
-/*! Process a stream request, native variant
- *
- * @param[in]  h       Clixon handle
- * @param[in]  req     Generic Www handle (can be part of clixon handle)
- * @param[in]  qvec    Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
- * @param[out] finish  Not used in native?
- * @retval     0       OK
- * @retval    -1       Error
- * @see api_stream  fcgi implementation
- * @note According to RFC8040 Sec 6 accept-stream is text/event-stream, but stream data
- *       is XML according to RFC5277. But what is error return? assume XML here
- */
-int
-api_stream(clixon_handle h,
-           void         *req,
-           cvec         *qvec,
-           int           timeout,
-           int          *finish)
-{
-    return api_native_stream(h, req, qvec, timeout, finish);
 }

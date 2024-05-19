@@ -133,7 +133,6 @@ function runtest()
 
     new "2a) start $extra timeout:${TIMEOUT}s - expect ${LBOUND}-${UBOUND} notifications"
     ret=$(curl $CURLOPTS $extra -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" $RCPROTO://localhost/streams/EXAMPLE)
-
     match=$(echo "$ret" | grep -Eo "$expect")
     if [ -z "$match" ]; then
         err "$expect" "$ret"
@@ -149,7 +148,6 @@ function runtest()
 
     new "2b) start $extra timeout:${TIMEOUT} stop after 5s - expect ${LB}-${UB} notifications"
     ret=$(curl $CURLOPTS $extra -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" $RCPROTO://localhost/streams/EXAMPLE?stop-time=${time1})
-
     match=$(echo "$ret" | grep -Eo "$expect")
     if [ -z "$match" ]; then
         err "$expect" "$ret"
@@ -181,6 +179,9 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
         err
     fi
+    sudo pkill -f clixon_backend # to be sure
+fi
+if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg -- -n ${PERIOD}"
     # create example notification stream with periodic timeout ${PERIOD} seconds
     start_backend -s init -f $cfg -- -n ${PERIOD}
@@ -192,7 +193,8 @@ wait_backend
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre
-      
+
+    sleep 1
     new "start restconf daemon -f $cfg -t ${TIMEOUT}"
     start_restconf -f $cfg -t ${TIMEOUT}
 fi
@@ -233,23 +235,6 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
 fi
 
 if false; then # NYI
-test-pause
-
-# 2b) start subscription 8s - stoptime after 5s - expect 1-2 notifications
-new "2b) start subscriptions 8s - stoptime after 5s - expect 1-2 notifications"
-ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 8 -e +10)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
-match=$(echo "$ret" | grep -Eo "$expect")
-if [ -z "$match" ]; then
-    err "$expect" "$ret"
-fi
-nr=$(echo "$ret" | grep -c "data:")
-if [ $nr -lt 1 -o $nr -gt 2 ]; then
-    err 1 "$nr"
-fi
-
-test-pause
-
 # 2c
 new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -8)
