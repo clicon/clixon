@@ -41,9 +41,6 @@ if [ -f ./config.sh ]; then
     fi
 fi
 
-# Note that this relies on git being present in shell
-CLIXON_VERSION="$(git log --pretty="format:%(describe) %ci" -n1)"
-
 # Test number from start
 : ${testnr:=0}
 

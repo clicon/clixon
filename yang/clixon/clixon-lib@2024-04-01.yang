@@ -71,7 +71,8 @@ module clixon-lib {
 
     revision 2024-04-01 {
         description
-            "Added: xmldb-split extension
+            "Added: debug bits type
+             Added: xmldb-split extension
              Added: Default format
              Released in Clixon 7.1";
     }
@@ -187,6 +188,113 @@ module clixon-lib {
             }
         }
     }
+    typedef clixon_debug_t {
+        description
+            "Debug flags.
+             Flags are seperated into subject areas and detail
+             Can also be given directly as -D <flag> to clixon commands
+             Note there are also constants in the code thaht need to be in sync with these values";
+         type bits {
+            /* Subjects: */
+            bit default {
+                description "Default logs";
+                position 0;
+            }
+            bit msg {
+                description "In/out messages";
+                position 1;
+            }
+            bit init {
+                description "Initialization";
+                position 2;
+            }
+            bit xml {
+                description "XML processing";
+                position 3;
+            }
+            bit xpath {
+                description "XPath processing";
+                position 4;
+            }
+            bit yang {
+                description "YANG processing";
+                position 5;
+            }
+            bit backend {
+                description "Backend-specific";
+                position 6;
+            }
+            bit cli {
+                description "CLI frontend";
+                position 7;
+            }
+            bit netconf {
+                description "NETCONF frontend";
+                position 8;
+            }
+            bit restconf {
+                description "RESTCONF frontend";
+                position 9;
+            }
+            bit snmp {
+                description "SNMP frontend";
+                position 10;
+            }
+            bit nacm {
+                description "NACM processing";
+                position 11;
+            }
+            bit proc {
+                description "Process handling";
+                position 12;
+            }
+            bit datastore {
+                description "Datastore xmldb management";
+                position 13;
+            }
+            bit event {
+                description "Event processing";
+                position 14;
+            }
+            bit rpc {
+                description "RPC handling";
+                position 15;
+            }
+            bit stream {
+                description "Notification streams";
+                position 16;
+            }
+            bit parse {
+                description "Parser: XML,YANG, etc";
+                position 17;
+            }
+            bit app {
+                description "External applications";
+                position 20;
+            }
+            bit app2 {
+                description "External application";
+                position 21;
+            }
+            bit app3 {
+                description "External application 2";
+                position 22;
+            }
+            /* Detail level: */
+            bit detail {
+                description "Details: traces, parse trees, etc";
+                position 24;
+            }
+            bit detail2 {
+                description "Extra details";
+                position 25;
+            }
+            bit detail3 {
+                description "Probably more detail than you want";
+                position 26;
+            }
+        }
+    }
     identity snmp {
         description
             "SNMP";
@@ -276,44 +384,27 @@ module clixon-lib {
                 }
             }
             container datastores{
-              list datastore{
-                description "Per datastore statistics for cxobj";
-                key "name";
-                leaf name{
-                    description "Name of datastore (eg running).";
-                    type string;
-                }
-                leaf nr{
-                    description "Number of XML objects. That is number of residing xml/json objects
+                list datastore{
+                    description "Per datastore statistics for cxobj";
+                    key "name";
+                    leaf name{
+                        description "Name of datastore (eg running).";
+                        type string;
+                    }
+                    leaf nr{
+                        description "Number of XML objects. That is number of residing xml/json objects
                              in the internal 'cxobj' representation.";
-                    type uint64;
+                        type uint64;
+                    }
+                    leaf size{
+                        description "Size in bytes of internal datastore cache of datastore tree.";
+                        type uint64;
+                    }
                 }
-                leaf size{
-                    description "Size in bytes of internal datastore cache of datastore tree.";
-                    type uint64;
-                }
-              }
             }
             container module-sets{
-              list module-set{
-                description "Statistics per group of module, eg top-level and mount-points";
-                key "name";
-                leaf name{
-                    description "Name of YANG module.";
-                    type string;
-                }
-                leaf nr{
-                    description
-                        "Total number of YANG objects in set";
-                    type uint64;
-                }
-                leaf size{
-                    description
-                        "Total size in bytes of internal YANG object representation for module set";
-                    type uint64;
-                }
-                list module{
-                    description "Statistics per module (if modules set in input)";
+                list module-set{
+                    description "Statistics per group of module, eg top-level and mount-points";
                     key "name";
                     leaf name{
                         description "Name of YANG module.";
@@ -321,16 +412,33 @@ module clixon-lib {
                     }
                     leaf nr{
                         description
-                            "Number of YANG objects. That is number of residing YANG objects";
+                            "Total number of YANG objects in set";
                         type uint64;
                     }
                     leaf size{
                         description
-                            "Size in bytes of internal YANG object representation.";
+                            "Total size in bytes of internal YANG object representation for module set";
                         type uint64;
                     }
+                    list module{
+                        description "Statistics per module (if modules set in input)";
+                        key "name";
+                        leaf name{
+                            description "Name of YANG module.";
+                            type string;
+                        }
+                        leaf nr{
+                            description
+                                "Number of YANG objects. That is number of residing YANG objects";
+                            type uint64;
+                        }
+                        leaf size{
+                            description
+                                "Size in bytes of internal YANG object representation.";
+                            type uint64;
+                        }
+                    }
                 }
-              }
             }
         }
     }

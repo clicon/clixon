@@ -48,13 +48,14 @@
 
 /* Debug flags are seperated into subject areas and detail
  * @see dbgmap Symbolic mapping (if you change here you may need to change dbgmap)
+ * @see clixon_debug in clixon-lib.yang
  */
 /* Detail level */
 #define CLIXON_DBG_ALWAYS	0x00000000	/* Unconditionally logged */
 #define CLIXON_DBG_DETAIL	0x01000000	/* Details: traces, parse trees, etc */
 #define CLIXON_DBG_DETAIL2	0x02000000	/* Extra details */
-#define CLIXON_DBG_DETAIL3	0x03000000	/* Probably more detail than you want */
-#define CLIXON_DBG_DMASK	0x03000000	/* Detail mask */
+#define CLIXON_DBG_DETAIL3	0x04000000	/* Probably more detail than you want */
+#define CLIXON_DBG_DMASK	0x07000000	/* Detail mask */
 #define CLIXON_DBG_DSHIFT	24
 
 /* Subject area */
@@ -71,11 +72,11 @@
 #define CLIXON_DBG_SNMP	        0x00000400	/* SNMP frontend */
 #define CLIXON_DBG_NACM		0x00000800	/* NACM processing */
 #define CLIXON_DBG_PROC		0x00001000	/* Process handling */
-#define CLIXON_DBG_DATASTORE	0x00002000	/* Datastore management */
+#define CLIXON_DBG_DATASTORE	0x00002000	/* Datastore xmldb management */
 #define CLIXON_DBG_EVENT	0x00004000	/* Event processing */
 #define CLIXON_DBG_RPC		0x00008000	/* RPC handling */
 #define CLIXON_DBG_STREAM	0x00010000	/* Notification streams */
-#define CLIXON_DBG_PARSE	0x00020000	/* Parser */
+#define CLIXON_DBG_PARSE	0x00020000	/* Parser: XML,YANG, etc */
 
 /* External applications */
 #define CLIXON_DBG_APP		0x00100000	/* External application */

@@ -84,6 +84,13 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "Set cli debug using cli"
 expectpart "$($clixon_cli -1 -f $cfg -l o debug cli 1)" 0 "^$"
 
+# Run cli debug
+new "get cli debug, expect 0"
+expectpart "$($clixon_cli -1 -f $cfg show debug cli)" 0 "CLI debug:0x0"
+
+new "get cli debug expect 2"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_DEBUG=msg show debug cli)" 0 "CLI debug:0x2"
+
 new "Set backend debug using cli"
 expectpart "$($clixon_cli -1 -f $cfg -l o debug backend 1)" 0 "^$"
 

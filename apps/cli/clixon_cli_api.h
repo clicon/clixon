@@ -91,6 +91,7 @@ int cli_merge(clixon_handle h, cvec *vars, cvec *argv);
 int cli_create(clixon_handle h, cvec *vars, cvec *argv);
 int cli_remove(clixon_handle h, cvec *vars, cvec *argv);
 int cli_del(clixon_handle h, cvec *vars, cvec *argv);
+int cli_debug_show(clixon_handle h, cvec *cvv, cvec *argv);
 int cli_debug_cli(clixon_handle h, cvec *vars, cvec *argv);
 int cli_debug_backend(clixon_handle h, cvec *vars, cvec *argv);
 int cli_debug_restconf(clixon_handle h, cvec *vars, cvec *argv);

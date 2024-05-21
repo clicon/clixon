@@ -1589,8 +1589,8 @@ yang_enum2int(yang_stmt *ytype,
 }
 
 /*! Given a YANG (bits) type node and a bit string, return the bit position.
- * Example:
  *
+ * Example:
  * type bits {
  *     bit stateA {
  *         position "0"; << This one
@@ -1603,7 +1603,7 @@ yang_enum2int(yang_stmt *ytype,
  * If the position is not specified, it will be automatically assigned as defined
  * in RFC7950, section 9.7.4.2
  * 
- * @param[in]  ytype  YANG type noden
+ * @param[in]  ytype  YANG type node
  * @param[in]  bitstr bit (flag) string
  * @param[out] bitpos position for the given bit (flag)
  * @retval     1      OK, result in flagpos
@@ -1653,8 +1653,7 @@ yang_bits_pos(yang_stmt *ytype,
     goto done;
 }
 
-/*! Given a YANG (bits) type node and string value, return the
- *  SNMP value for all bits (flags) that are set.
+/*! Given a YANG (bits) type node and string value, return SNMP value for bits set.
  *
  * @param[in]  h       Clixon handle
  * @param[in]  ytype   YANG type noden
@@ -1665,6 +1664,7 @@ yang_bits_pos(yang_stmt *ytype,
  * @retval     0       Invalid, not found
  * @retval    -1       Error
  * @see yang_val2bitsstr
+ * XXX de-snmp:ize
  */
 int
 yang_bitsstr2val(clixon_handle   h,
@@ -1739,6 +1739,7 @@ yang_bitsstr2val(clixon_handle   h,
  * @retval     0       Invalid, not found
  * @retval    -1       Error
  * @see yang_bitsstr2val
+ * XXX de-snmp:ize
  */
 int 
 yang_val2bitsstr(clixon_handle  h,

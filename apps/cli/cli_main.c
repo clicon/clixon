@@ -751,6 +751,7 @@ main(int    argc,
             break;
         }
     }
+
     argc -= optind;
     argv += optind;
 
@@ -761,6 +762,24 @@ main(int    argc,
     /* Defer: Wait to the last minute to print help message */
     if (help)
         usage(h, argv[0]);
+    /* Unless -D, set debug level to CLICON_DEBUG set 
+     * Only works for one value.
+     */
+    {
+        char *dstr;
+        int   d = 0;
+
+        dstr = clicon_option_str(h, "CLICON_DEBUG");
+        if (dbg == 0 && dstr && strlen(dstr)){
+            if ((d = clixon_debug_str2key(dstr)) < 0 &&
+                sscanf(optarg, "%d", &d) != 1){
+                clixon_err(OE_CFG, 0, "Parsing CLICON_DEBUG: %s", dstr);
+                goto done;
+            }
+            clixon_debug_init(h, d);
+            clixon_log_init(h, __PROGRAM__, d?LOG_DEBUG:LOG_INFO, logdst);
+        }
+    }
 
     /* Split remaining argv/argc into <cmd> and <extra-options> */
     if (options_split(h, argv0, argc, argv, &restarg) < 0)

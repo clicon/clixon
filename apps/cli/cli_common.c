@@ -632,6 +632,17 @@ cli_del(clixon_handle h,
     return retval;
 }
 
+/*! Get debug level of CLI client
+ */
+int
+cli_debug_show(clixon_handle h,
+               cvec        *cvv,
+               cvec        *argv)
+{
+    cligen_output(stdout, "CLI debug:0x%x\n", clixon_debug_get());
+    return 0;
+}
+
 /*! Set debug level on CLI client (not backend daemon)
  *
  * @param[in] h     Clixon handle
@@ -644,8 +655,8 @@ cli_del(clixon_handle h,
  */
 int
 cli_debug_cli(clixon_handle h,
-               cvec        *cvv,
-               cvec        *argv)
+              cvec        *cvv,
+              cvec        *argv)
 {
     int     retval = -1;
     cg_var *cv;
@@ -735,7 +746,6 @@ cli_debug_restconf(clixon_handle h,
  done:
     return retval;
 }
-
 
 /*! Set syntax mode
  *

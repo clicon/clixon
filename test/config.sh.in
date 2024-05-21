@@ -78,6 +78,8 @@ CLIXON_CONFIG_REV="2024-04-01"
 CLIXON_RESTCONF_REV="2022-08-01"
 CLIXON_EXAMPLE_REV="2022-11-01"
 
+CLIXON_VERSION="@CLIXON_VERSION@"
+
 # Length of TSL RSA key
 # Problem with small key such as 1024 not allowed in centos8 for example (why is this)
 # Problem with long keys are they take time to generate, eg on ARM

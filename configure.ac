@@ -51,7 +51,8 @@ AC_CONFIG_AUX_DIR(config-aux)
 CLIXON_VERSION_MAJOR="7"
 CLIXON_VERSION_MINOR="1"
 CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+# Use GIT, if this does not work, need a fallback mechanism
+CLIXON_VERSION="$(git log --pretty="format:%(describe) %ci" -n1)"
 
 # Debug flag
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[

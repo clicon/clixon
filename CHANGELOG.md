@@ -29,13 +29,15 @@ Expected: June 2024
 * CLI support for multiple inline commands separated by semi-colon
 * New `clixon-config@2024-04-01.yang` revision
   * Added options:
+    - `CLICON_DEBUG`: Debug flags, partly implemented.
     - `CLICON_YANG_SCHEMA_MOUNT_SHARE`: Share same YANGs of several moint-points
     - `CLICON_SOCK_PRIO`: Enable socket event priority
     - `CLICON_XMLDB_MULTI`: Split datastore into multiple sub files
-    - `CLICON_NETCONF_DUPLICATE_ALLOW`: Disable duplicate check in NETCONF messages
     - `CLICON_CLI_OUTPUT_FORMAT`: Default CLI output format
     - `CLICON_AUTOLOCK`: Implicit locks
 * New `clixon-lib@2024-04-01.yang` revision
+    - Added: debug bits type
+    - Added: xmldb-split extension
     - Added: Default format
 
 ### API changes on existing protocol/config features

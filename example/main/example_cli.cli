@@ -86,6 +86,9 @@ show("Show a particular state of the system"){
     auto("Show expand x"){
        @datamodelshow, cli_show_auto("candidate", "default", true, false, "report-all");
     }
+    debug("Show debug"), cli_debug_show();{
+          cli("Show cli debug"), cli_debug_show();
+    }
     xpath("Show configuration") <xpath:string>("XPATH expression")
        [<ns:string>("Namespace")], show_conf_xpath("candidate");
     version("Show version"), cli_show_version("candidate", "text", "/");
