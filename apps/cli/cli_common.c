@@ -774,6 +774,63 @@ cli_set_mode(clixon_handle h,
     return retval;
 }
 
+/**
+ * @brief Runs a Python script in a new process
+ *
+ * @param h Clicon handle
+ * @param cvv CLIgen variable vector
+ * @param argv function arguments
+ *
+ * Function arguments include:<br>
+ * * h     :    not used<br>
+ * * cvv   :    unused parameters will be set as environment variables<br>
+ * * argv  :    contains the arguments passed to the function;
+ *              is expected to be the path to the Python script
+ *
+ * The function creates a new child process in which the Python script is launched.
+ * In the child process, before launching the script, environment variables are set
+ * taken from cvv.
+ *
+ * The function returns the exit code of the Python script, or a value of (-1) on error.
+ *
+ * @return Returns 0 on success, -1 in case of error
+ */
+int cli_start_python3(clixon_handle h, cvec *cvv, cvec *argv) {
+    cg_var *cv = NULL;
+    char buf[64];
+    int pid;
+    int ret;
+    int status;
+    char *python_program_path = NULL;
+    char *python_interpreter_path = "/usr/bin/python3";
+
+    if (cvec_len(argv) > 1){
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: [<path to script>]",
+                   cvec_len(argv));
+        return -1;
+    }
+
+    if ((pid = fork()) == 0) {
+        while ((cv = cvec_each1(cvv, cv)) != NULL) {
+            if (cv_const_get(cv))
+                continue;
+            cv2str(cv, buf, sizeof(buf) - 1);
+            setenv(cv_name_get(cv), buf, 1);
+        }
+        python_program_path = buf;
+        char *args[] = {python_interpreter_path, python_program_path, NULL};
+        execv(python_interpreter_path, args);
+        perror("Error run script");
+        exit(0);
+    }
+    /* Ждем завершения дочернего процесса */
+    if (waitpid(pid, &status, 0) == pid)
+        ret = WEXITSTATUS(status);
+    else
+        ret = -1;
+    return ret;
+}
+
 /*! Start bash from cli callback
  *
  * Typical usage: shell("System Bash") <source:rest>, cli_start_shell();

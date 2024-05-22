@@ -71,6 +71,10 @@ debug("Debugging parts of the system"){
 shell("System command"), cli_start_shell("bash");{
   <source:rest>("Single shell command"), cli_start_shell("bash");
 }
+python3("Path to script"), cli_start_python3("path");{
+    <source:rest>("Path to script"), cli_start_python3("path");
+}
+
 copy("Copy and create a new object") {
     running("Copy from running db")  startup("Copy to startup config"), db_copy("running", "startup");
     interface("Copy interface"){
