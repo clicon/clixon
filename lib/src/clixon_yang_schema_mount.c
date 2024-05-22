@@ -763,8 +763,7 @@ yang_schema_cmp_kludge(clixon_handle h,
  * 8. set as new
  * @param[in]     h     Clixon handle
  * @param[in]     xt    XML tree node
- * @retval        1     OK
- * @retval        0     No yanglib or problem when parsing yanglib
+ * @retval        0    OK
  * @retval       -1     Error
  */
 static int
@@ -775,11 +774,12 @@ yang_schema_find_share(clixon_handle h,
 {
     int        retval = -1;
     yang_stmt *yt;
-    cvec          *cvv;
-    cg_var        *cv;
-    yang_stmt     *yspec1 = NULL;
-    cbuf          *cb = NULL;
-    cxobj         *xmodst = NULL;
+    cvec      *cvv;
+    cg_var    *cv;
+    yang_stmt *yspec1 = NULL;
+    cbuf      *cb = NULL;
+    cxobj     *xmodst = NULL;
+    int        ret;
 
     yt = xml_spec(xt);
     if ((cvv = yang_cvec_get(yt)) != NULL){
@@ -807,17 +807,18 @@ yang_schema_find_share(clixon_handle h,
              */
             if (xml_rootchild(xmodst, 0, &xmodst) < 0)
                 goto done;
-            if (yang_schema_cmp_kludge(h, xyanglib, xmodst) < 0)
+            if ((ret = yang_schema_cmp_kludge(h, xyanglib, xmodst)) < 0)
                 goto done;
+            if (ret == 1){ /* equal */
+                yang_ref_inc(yspec1); /* share */
+                *yspecp = yspec1;
+                break;
+            }
             if (xmodst){
                 xml_free(xmodst);
                 xmodst = NULL;
             }
         } /* while */
-        if (cv != NULL){
-            yang_ref_inc(yspec1); /* share */
-            *yspecp = yspec1;
-        }
     }
     retval = 0;
  done:
