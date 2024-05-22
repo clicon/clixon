@@ -142,8 +142,8 @@ clixon_inet2sin(const char       *addrtype,
  *       Notaly this may an issue of RFC 3896 encoded strings
  */
 struct clicon_msg *
-clicon_msg_encode(uint32_t      id,
-                  const char   *format, ...)
+clicon_msg_encode(uint32_t    id,
+                  const char *format, ...)
 {
     va_list            args;
     uint32_t           xmllen;
@@ -302,10 +302,13 @@ clicon_rpc_connect_inet(clixon_handle      h,
 
 /*! Ensure all of data on socket comes through. fn is either read or write
  *
+ * Just called for read(2)
  * @param[in]  fn  I/O function, ie read/write
  * @param[in]  fd  File descriptor, eg socket
  * @param[in]  s0  Buffer to read to or write from
- * @param[in]  n   Number of bytes to read/write, loop until done
+ * @retval     n   Bytes written (see man 2 read)
+ * @retval     0   EOF
+ * @retval    -1   Error
  */
 static ssize_t
 atomicio(ssize_t (*fn) (int, void *, size_t),
@@ -313,8 +316,9 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
          void     *s0,
          size_t    n)
 {
-    char *s = s0;
-    ssize_t res, pos = 0;
+    char   *s = s0;
+    ssize_t res;
+    ssize_t pos = 0;
 
     while (n > pos) {
         _atomicio_sig = 0;
@@ -471,7 +475,7 @@ clixon_rpc10(int         sock,
              cbuf       *msgret,
              int        *eof)
 {
-    int    retval = -1;
+    int retval = -1;
 
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
     if (netconf_framing_preamble(NETCONF_SSH_EOM, msg) < 0)
@@ -562,9 +566,12 @@ clixon_msg_rcv11(int         s,
     if (intr){
         if (clixon_signal_save(&oldsigset, oldsigaction) < 0)
             goto done;
+
         set_signal(SIGINT, SIG_IGN, NULL);
         clicon_signal_unblock(SIGINT);
         set_signal_flags(SIGINT, 0, atomicio_sig_handler, NULL);
+        /* May be more signals to ignore */
+        set_signal(SIGWINCH, SIG_IGN, NULL);
     }
     while (*eof == 0 && eom == 0) {
         /* Read input data from socket and append to cbbuf */
@@ -722,8 +729,8 @@ send_msg_notify(int         s,
                 const char *descr,
                 char       *msg)
 {
-    int            retval = -1;
-    cbuf          *cb = NULL;
+    int   retval = -1;
+    cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -755,8 +762,8 @@ send_msg_notify_xml(clixon_handle h,
                     const char   *descr,
                     cxobj        *xev)
 {
-    int                retval = -1;
-    cbuf              *cb = NULL;
+    int   retval = -1;
+    cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_PLUGIN, errno, "cbuf_new");

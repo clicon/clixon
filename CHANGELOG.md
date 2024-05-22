@@ -62,6 +62,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Error message from CLI if terminal is modified](https://github.com/clicon/clixon-controller/issues/122)
 * Fixed: backend exit when receiving invalid NETCONF get select XPath
   * Added XML encoding to XPaths in `select` attribute
 * Fixed: Fail on return errors when reading from datastore
