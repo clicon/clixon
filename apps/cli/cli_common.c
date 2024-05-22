@@ -823,7 +823,7 @@ int cli_start_python3(clixon_handle h, cvec *cvv, cvec *argv) {
         perror("Error run script");
         exit(0);
     }
-    /* Ждем завершения дочернего процесса */
+
     if (waitpid(pid, &status, 0) == pid)
         ret = WEXITSTATUS(status);
     else
