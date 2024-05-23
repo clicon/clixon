@@ -774,6 +774,67 @@ cli_set_mode(clixon_handle h,
     return retval;
 }
 
+/**
+ * @brief Runs a Python script in a new process
+ *
+ * @param h Clicon handle
+ * @param cvv CLIgen variable vector
+ * @param argv function arguments
+ *
+ * The function creates a new child process in which the Python script is launched.
+ * In the child process, before launching the script, environment variables are set
+ * taken from cvv.
+ *
+ * The function returns the exit code of the Python script, or a value of (-1) on error.
+ *
+ * @return Returns 0 on success, -1 in case of error
+ */
+int cli_start_python3(clixon_handle h, cvec *cvv, cvec *argv) {
+    int pid = 0;
+    int status = 0;
+    char *script_path = NULL;
+    char *runner = "python3";
+    struct passwd *pw = NULL;
+
+    if (cvec_len(argv) > 1){
+        fprintf(stderr,"A lot of arguments");
+        return -1;
+    }
+
+    if (cvec_len(argv) == 1){
+        script_path = cv_string_get(cvec_i(argv, 0));
+    }
+
+    if (cvec_len(cvv) == 2){
+        script_path = cv_string_get(cvec_i(cvv, 1));
+    }
+
+    if ((cvec_len(cvv) == 2) && (cvec_len(argv) == 1)){
+        fprintf(stderr,"Both the arguments of the function and the vector of values are specified\n");
+        return -1;
+    }
+
+    if ((pw = getpwuid(getuid())) == NULL){
+        fprintf(stderr,"getpwuid -> %s", strerror(errno));
+        return -1;
+    }
+    if (chdir(pw->pw_dir) < 0){
+        fprintf(stderr,"chdir -> %s", strerror(errno));
+        return -1;
+    }
+
+    if ((pid = fork()) == 0) {
+        execlp(runner, runner, script_path, NULL);
+        perror("Error run script");
+        exit(0);
+    }
+
+    if (waitpid(pid, &status, 0) == pid)
+        return WEXITSTATUS(status);
+    else
+        return -1;
+}
+
 /*! Start bash from cli callback
  *
  * Typical usage: shell("System Bash") <source:rest>, cli_start_shell();
