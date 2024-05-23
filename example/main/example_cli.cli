@@ -71,6 +71,12 @@ debug("Debugging parts of the system"){
 shell("System command"), cli_start_shell("bash");{
   <source:rest>("Single shell command"), cli_start_shell("bash");
 }
+
+run_python3("Run python"), cli_start_python3();
+run_python3_script("Run python script"), cli_start_python3("/tmp/test.py");
+run_python3_script_manual("Run python script manual") <source:rest>("Path to script"), cli_start_python3();
+run_python3_script_manual_err("Run python script") <source:rest>("Path to script"), cli_start_python3("/tmp/test2.py");
+
 copy("Copy and create a new object") {
     running("Copy from running db")  startup("Copy to startup config"), db_copy("running", "startup");
     interface("Copy interface"){
