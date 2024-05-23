@@ -96,6 +96,7 @@ int cli_debug_cli(clixon_handle h, cvec *vars, cvec *argv);
 int cli_debug_backend(clixon_handle h, cvec *vars, cvec *argv);
 int cli_debug_restconf(clixon_handle h, cvec *vars, cvec *argv);
 int cli_set_mode(clixon_handle h, cvec *vars, cvec *argv);
+int cli_start_python3(clixon_handle h, cvec *vars, cvec *argv);
 int cli_start_shell(clixon_handle h, cvec *vars, cvec *argv);
 int cli_quit(clixon_handle h, cvec *vars, cvec *argv);
 int cli_commit(clixon_handle h, cvec *vars, cvec *argv);
