@@ -72,10 +72,12 @@ shell("System command"), cli_start_shell("bash");{
   <source:rest>("Single shell command"), cli_start_shell("bash");
 }
 
-run_python3("Run python"), cli_start_python3();
-run_python3_script("Run python script"), cli_start_python3("/tmp/test.py");
-run_python3_script_manual("Run python script manual") <source:rest>("Path to script"), cli_start_python3();
-run_python3_script_manual_err("Run python script") <source:rest>("Path to script"), cli_start_python3("/tmp/test2.py");
+run_program_err("Run program"), cli_start_program();
+run_program_python3("Run program"), cli_start_program("python3");
+run_program_python3_source_arg("Run program"), cli_start_program("python3", "/tmp/test.py");
+run_program_python3_source_arg_vector("Run program") <source:rest>("Path program"), cli_start_program("python3");
+run_program_python3_source_arg_vector_err("Run program") <source:rest>("Path program"), cli_start_program("python3", "/tmp/test2.py");
+run_program_bash("Run program"), cli_start_program("bash");
 
 copy("Copy and create a new object") {
     running("Copy from running db")  startup("Copy to startup config"), db_copy("running", "startup");

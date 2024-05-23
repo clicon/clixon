@@ -789,32 +789,40 @@ cli_set_mode(clixon_handle h,
  * The function returns the exit code of the Python script, or a value of (-1) on error.
  */
 int
-cli_start_python3(clixon_handle h,
+cli_start_program(clixon_handle h,
                       cvec         *cvv,
                       cvec         *argv)
 {
     int pid = 0;
     int retval = -1;
     char *script_path = NULL;
-    char *runner = "python3";
+    char *runner = NULL;
     struct passwd *pw = NULL;
 
-    if (cvec_len(argv) > 1){
+    /* Check parameters */
+    if (cvec_len(argv) == 0){
+        clixon_err(OE_PLUGIN, EINVAL, "Can not found argument in a function");
+        goto done;
+    }
+    if ((cvec_len(argv) >= 2) && (cvec_len(cvv) >= 2)){
         clixon_err(OE_PLUGIN, EINVAL, "A lot of arguments");
         goto done;
     }
-
-    if (cvec_len(argv) == 1){
-        script_path = cv_string_get(cvec_i(argv, 0));
+    if ((cvec_len(argv) == 2) && (cvec_len(cvv) == 2)){
+        clixon_err(OE_PLUGIN, EINVAL, "You cannot use 2 arguments in a function and 1 argument in a vector");
+        goto done;
     }
 
+    /* get data */
+    if (cvec_len(argv) == 1){
+        runner = cv_string_get(cvec_i(argv, 0));
+    }
+    if (cvec_len(argv) == 2){
+        runner = cv_string_get(cvec_i(argv, 0));
+        script_path = cv_string_get(cvec_i(argv, 1));
+    }
     if (cvec_len(cvv) == 2){
         script_path = cv_string_get(cvec_i(cvv, 1));
-    }
-
-    if ((cvec_len(cvv) == 2) && (cvec_len(argv) == 1)){
-        clixon_err(OE_PLUGIN, EINVAL, "Both the arguments of the function and the vector of values are specified\n");
-        goto done;
     }
 
     if ((pw = getpwuid(getuid())) == NULL){
@@ -826,6 +834,7 @@ cli_start_python3(clixon_handle h,
         goto done;
     }
 
+    /* main run */
     if ((pid = fork()) == 0) {
         execlp(runner, runner, script_path, NULL);
         clixon_err(OE_PLUGIN, errno, "Error run script");
