@@ -775,18 +775,30 @@ cli_set_mode(clixon_handle h,
 }
 
 /*!
- * @brief Runs a Python script in a new process
+ * @brief Spawns a new process and runs the specified program within it
  *
- * @param[in] h Clicon handle
- * @param[in] cvv CLIgen variable vector
- * @param[in] argv function arguments
- * @retval     0    OK
- * @retval    -1    Error
- * The function creates a new child process in which the Python script is launched.
- * In the child process, before launching the script, environment variables are set
- * taken from cvv.
+ * The function creates a new child process and runs the specified program within it.
+ * Before launching the program in the child process, environment variables taken from cvv are set.
  *
- * The function returns the exit code of the Python script, or a value of (-1) on error.
+ * The function checks the parameters passed to it. Situations where at least one function argument
+ * is missing, or when two arguments are present in both the function and the cvv vector are considered invalid.
+ *
+ * Example usage:
+ * @code
+ *      run_program_err("Run program"), cli_start_program();
+ *      run_program_python3("Run program"), cli_start_program("python3");
+ *      run_program_python3_source_arg("Run program"), cli_start_program("python3", "/tmp/test.py");
+ *      run_program_python3_source_arg_vector("Run program") <source:rest>("Path program"), cli_start_program("python3");
+ *      run_program_python3_source_arg_vector_err("Run program") <source:rest>("Path program"), cli_start_program("python3", "/tmp/test2.py");
+ *      run_program_bash("Run program"), cli_start_program("bash");
+ * @endcode
+ *
+ * @param[in] h Clixon handle
+ * @param[in] cvv Vector of command variables
+ * @param[in] argv Function arguments
+ * @retval   0 OK, returns the exit code of the program
+ * @retval  -1 Error
+ *
  */
 int
 cli_start_program(clixon_handle h,
