@@ -495,6 +495,7 @@ text_modify(clixon_handle       h,
     yang_stmt *yc;      /* yang child */
     cxobj    **x0vec = NULL;
     int        i;
+    int        j;
     int        ret;
     char      *instr = NULL;
     char      *keystr = NULL;
@@ -921,7 +922,15 @@ text_modify(clixon_handle       h,
                 x0c = NULL;
                 if (match_base_child(x0, x1c, yc, &x0c) < 0)
                     goto done;
-                x0vec[i++] = x0c; /* != NULL if x0c is matching x1c */
+                if (x0c) {
+                    /* Duplicate check can happen if multiple operations on same object, whihc should be filtered, just silently drop */
+                    for (j=0; j<i; j++)
+                        if (x0vec[j] == x0c)
+                            break;
+                    if (j==i)
+                        x0vec[i++] = x0c; /* != NULL if x0c is matching x1c */
+                }
+
             }
             /* Second pass: Loop through children of the x1 modification tree again
              * Now potentially modify x0:s children 

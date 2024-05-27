@@ -66,6 +66,26 @@ fi
 new "wait backend"
 wait_backend
 
+new "Add list entry"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>merge</default-operation><config><c xmlns=\"urn:example:clixon\" xmlns:nc=\"${BASENS}\">
+     <server>
+       <name>one</name>
+       <value>foo</value>
+     </server>
+</c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Add duplicate list entries"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>none</default-operation><config><c xmlns=\"urn:example:clixon\" xmlns:nc=\"${BASENS}\">
+     <server nc:operation=\"replace\">
+       <name>one</name>
+       <value>bar</value>
+     </server>
+     <server nc:operation=\"replace\">
+       <name>one</name>
+       <value>fie</value>
+     </server>
+</c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique xmlns=\"urn:ietf:params:xml:ns:yang:1\">/rpc/edit-config/config/c/server[name=\"one\"]/name</non-unique></error-info></rpc-error></rpc-reply>"
+
 new "Add list with duplicate"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\">
      <server>
