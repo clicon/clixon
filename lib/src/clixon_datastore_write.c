@@ -928,9 +928,9 @@ text_modify(clixon_handle       h,
                         if (x0vec[j] == x0c)
                             break;
                     if (j==i)
-                        x0vec[i++] = x0c; /* != NULL if x0c is matching x1c */
+                        x0vec[i] = x0c; /* != NULL if x0c is matching x1c */
                 }
-
+                i++;
             }
             /* Second pass: Loop through children of the x1 modification tree again
              * Now potentially modify x0:s children 
