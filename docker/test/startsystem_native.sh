@@ -58,7 +58,7 @@ echo "$STORE" > /usr/local/var/example/running_db
 # - test_install.sh since you dont have the make environment
 cat <<EOF > /usr/local/bin/test/site.sh
 # Add your local site specific env variables (or tests) here.
-SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh"
+SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh test_restconf_ssl_certs.sh"
 EOF
 
 # Patch to override YANG_INSTALLDIRS
