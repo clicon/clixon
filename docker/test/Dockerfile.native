@@ -32,7 +32,8 @@
 # ***** END LICENSE BLOCK *****
 #
 
-FROM alpine:3.19
+# 3.20
+FROM alpine:latest
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
 # For clixon and cligen
@@ -124,7 +125,8 @@ RUN git clone https://github.com/clicon/mib-yangs.git /usr/local/share/mib-yangs
 #
 # Stage 2
 # The second step skips the development environment and builds a runtime system
-FROM alpine:3.19
+# 3.20
+FROM alpine:latest
 MAINTAINER Olof Hagsand <olof@hagsand.se>
 
 # For clixon and cligen
