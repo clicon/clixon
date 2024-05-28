@@ -53,6 +53,9 @@ if [ "${WITH_RESTCONF}" = "native" ]; then
 else
     # Define default restconfig config: RESTCONFIG
     RESTCONFIG=$(restconf_config none false)
+    if [ $? -ne 0 ]; then
+        err1 "Error when generating certs"
+    fi
 fi
 
 # This is a fixed 'state' implemented in routing_backend. It is assumed to be always there

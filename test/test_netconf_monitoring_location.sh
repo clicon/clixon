@@ -22,6 +22,9 @@ datapath=/data
 wdir=$dir/www
         
 RESTCONFIG=$(restconf_config none false $RCPROTO $enable)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

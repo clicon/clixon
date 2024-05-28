@@ -128,6 +128,9 @@ function testrun()
     enable=$2 # true/false
     
     RESTCONFIG=$(restconf_config none false $proto $enable)
+    if [ $? -ne 0 ]; then
+        err1 "Error when generating certs"
+    fi
 
     if true; then
         # Proper test setup

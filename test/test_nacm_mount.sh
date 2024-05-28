@@ -21,6 +21,9 @@ CFD=$dir/conf.d
 test -d $CFD || mkdir -p $CFD
 
 RESTCONFIG=$(restconf_config user false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

@@ -24,6 +24,9 @@ NACMUSER=$(whoami)
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config user false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $fyang
 module nacm-example{

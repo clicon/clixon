@@ -1268,9 +1268,12 @@ challengePassword      = test
 EOF
 
     # Generate CA cert
-    # XXX v3 requires usage
-    openssl req -batch -new -x509v1 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err "Generate CA cert"
-
+    # XXX v3 requires x509 version 1
+    if [ $(openssl version|awk '{print $2}') = "3.3.0" ]; then
+        openssl req -batch -new -x509v1 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err1 "Generate CA cert"
+    else
+        openssl req -batch -new -x509 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err1 "Generate CA cert"
+    fi
     rm -rf $tmpdir
 }
 

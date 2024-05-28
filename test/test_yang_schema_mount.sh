@@ -21,6 +21,9 @@ test -d $CFD || mkdir -p $CFD
 
 AUTOCLI=$(autocli_config clixon-\* kw-nokey false)
 RESTCONFIG=$(restconf_config none false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

@@ -17,6 +17,9 @@ fstate=$dir/mystate.xml
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 # Validate internal state xml
 : ${validatexml:=false}

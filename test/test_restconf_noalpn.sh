@@ -25,9 +25,6 @@ APPNAME=example
 cfg=$dir/conf.xml
 fyang=$dir/restconf.yang
 
-# Define default restconfig config: RESTCONFIG
-# RESTCONFIG=$(restconf_config none false)
-
 # Local for test here
 certdir=$dir/certs
 test -d $certdir || mkdir $certdir

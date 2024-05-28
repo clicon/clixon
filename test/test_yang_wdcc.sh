@@ -15,6 +15,9 @@ fyang=$dir/example-default.yang
 fstate=$dir/state.xml
 clispec=$dir/spec.cli
 RESTCONFIG=$(restconf_config none false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
