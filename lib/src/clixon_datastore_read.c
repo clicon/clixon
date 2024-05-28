@@ -492,7 +492,7 @@ xmldb_multi_read_applyfn(cxobj *x,
         dbfile = cbuf_get(cb);
         clixon_debug(CLIXON_DBG_DATASTORE, "Parsing: %s", dbfile);
         if ((fp = fopen(dbfile, "r")) == NULL){
-            clixon_err(OE_CFG, errno, "fdopen(%s)", dbfile);
+            clixon_err(OE_CFG, errno, "fopen(%s)", dbfile);
             goto done;
         }
         switch (mr->mr_format){

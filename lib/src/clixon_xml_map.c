@@ -2245,8 +2245,10 @@ clixon_compare_xmls(cxobj            *xc1,
         clixon_err(OE_UNDEF, errno, "tmpfile");
         goto done;
     }
-    if ((f = fdopen(fd, "w")) == NULL)
+    if ((f = fdopen(fd, "w")) == NULL){
+        clixon_err(OE_XML, errno, "fdopen(%s)", filename1);
         goto done;
+    }
     switch(format){
     case FORMAT_TEXT:
         if (clixon_text2file(f, xc1, 0, cligen_output, 1, 1) < 0)
@@ -2260,14 +2262,14 @@ clixon_compare_xmls(cxobj            *xc1,
     }
     fclose(f);
     close(fd);
-
     if ((fd = mkstemp(filename2)) < 0){
         clixon_err(OE_UNDEF, errno, "mkstemp: %s", strerror(errno));
         goto done;
     }
-    if ((f = fdopen(fd, "w")) == NULL)
+    if ((f = fdopen(fd, "w")) == NULL){
+        clixon_err(OE_XML, errno, "fdopen(%s)", filename2);
         goto done;
-
+    }
     switch(format){
     case FORMAT_TEXT:
         if (clixon_text2file(f, xc2, 0, cligen_output, 1, 1) < 0)

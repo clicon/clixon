@@ -748,7 +748,6 @@ clicon_cliread(clixon_handle h,
             goto done;
         goto fail;
     }
-
     retval = 1;
  done:
     if (pfmt)

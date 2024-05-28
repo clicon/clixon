@@ -1178,7 +1178,7 @@ xpath2canonical(const char *xpath0,
  * @param[in]  xcur     xml-tree where to search
  * @param[in]  nsc      External XML namespace context, or NULL
  * @param[in]  xpath    XPath syntax
- * @param[oit] count    Nr of elements of xpath
+ * @param[out] count    Nr of elements of xpath
  * @retval     0        OK
  * @retval    -1        Error
  * @note This function is made for making optimizations in certain circumstances, such as a list

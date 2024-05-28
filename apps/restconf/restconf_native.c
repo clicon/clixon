@@ -323,10 +323,12 @@ restconf_connection_sanity(clixon_handle         h,
     char          *media_str = NULL;
     char          *oneline = NULL;
 
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* 1) Check if http/2 non-tls is disabled */
     if (rc->rc_ssl == NULL &&
         rc->rc_proto == HTTP_2 &&
         clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 0){
+        clixon_debug(CLIXON_DBG_RESTCONF, "Sanity check http/2 non-tls failed, disconnect");
         if (netconf_invalid_value_xml(&xerr, "protocol", "Only HTTP/2 with TLS is enabled, plain http/2 is disabled") < 0)
             goto done;
         if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
@@ -343,6 +345,7 @@ restconf_connection_sanity(clixon_handle         h,
     /* 2) Check if ssl client cert is valid */
     else if (rc->rc_ssl != NULL &&
              (code = SSL_get_verify_result(rc->rc_ssl)) != 0){
+        clixon_debug(CLIXON_DBG_RESTCONF, "Sanity check cert error SSL_get_verify_result: %ld, disconnect", code);
         /* Syslog cert failure */
         if (ssl_x509_name_oneline(rc->rc_ssl, &oneline) < 0)
             goto done;
@@ -372,6 +375,7 @@ restconf_connection_sanity(clixon_handle         h,
     }
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (oneline)
         free(oneline);
     if (cberr)

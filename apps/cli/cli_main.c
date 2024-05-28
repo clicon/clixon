@@ -74,6 +74,7 @@
 
 /* Command line options to be passed to getopt(3) */
 #define CLI_OPTS "+hVD:f:E:l:C:F:1a:u:d:m:qp:GLy:c:U:o:"
+
 /*! Check if there is a CLI history file and if so dump the CLI histiry to it
  *
  * Just log if file does not exist or is not readable
