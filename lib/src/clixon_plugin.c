@@ -377,10 +377,8 @@ plugin_load_one(clixon_handle     h,
     /* Copy name to struct */
     snprintf(cp->cp_name, sizeof(cp->cp_name), "%s", name);
     cp->cp_api = *api;
-    if (cp){
-        *cpp = cp;
-        cp = NULL;
-    }
+    *cpp = cp;
+    cp = NULL;
     retval = 1;
  done:
     clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "retval:%d", retval);
