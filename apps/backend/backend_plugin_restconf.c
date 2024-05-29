@@ -446,13 +446,13 @@ backend_plugin_restconf_register(clixon_handle h,
                                  yang_stmt    *yspec)
 {
     int              retval = -1;
-    clixon_plugin_t *cp = NULL;
+    clixon_plugin_api api = {
+        .ca_trans_validate = restconf_pseudo_process_validate,
+        .ca_trans_commit = restconf_pseudo_process_commit
+    };
 
-    if (clixon_pseudo_plugin(h, "restconf pseudo plugin", &cp) < 0)
+    if (clixon_add_plugin(h, "restconf pseudo plugin", &api, NULL) < 0)
         goto done;
-
-    clixon_plugin_api_get(cp)->ca_trans_validate = restconf_pseudo_process_validate;
-    clixon_plugin_api_get(cp)->ca_trans_commit = restconf_pseudo_process_commit;
 
     /* Register generic process-control of restconf daemon, ie start/stop restconf */
     if (restconf_pseudo_process_control(h) < 0)

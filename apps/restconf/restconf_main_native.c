@@ -934,13 +934,14 @@ restconf_clixon_init(clixon_handle h,
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
     yang_stmt     *yspec = NULL;
-    clixon_plugin_t *cp = NULL;
     char          *str;
     cvec          *nsctx_global = NULL; /* Global namespace context */
     cxobj         *xrestconf = NULL;
     cxobj         *xerr = NULL;
     int            ret;
     size_t         sz;
+
+    clixon_plugin_api api = { .ca_extension = restconf_main_extension_cb };
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
@@ -979,9 +980,8 @@ restconf_clixon_init(clixon_handle h,
     /* Create a pseudo-plugin to create extension callback to set the ietf-routing
      * yang-data extension for api-root top-level restconf function.
      */
-    if (clixon_pseudo_plugin(h, "pseudo restconf", &cp) < 0)
+    if (clixon_add_plugin(h, "pseudo restconf", &api, NULL) < 0)
         goto done;
-    clixon_plugin_api_get(cp)->ca_extension = restconf_main_extension_cb;
 
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */

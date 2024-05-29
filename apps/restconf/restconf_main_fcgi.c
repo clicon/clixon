@@ -329,6 +329,8 @@ main(int    argc,
     enum format_enum config_dump_format = FORMAT_XML;
     int              print_version = 0;
     int              stream_timeout = 0;
+
+    clixon_plugin_api api = { .ca_extension = restconf_main_extension_cb };
     
     /* Create handle */
     if ((h = restconf_handle_init()) == NULL)
@@ -513,9 +515,8 @@ main(int    argc,
     /* Create a pseudo-plugin to create extension callback to set the ietf-routing
      * yang-data extension for api-root top-level restconf function.
      */
-    if (clixon_pseudo_plugin(h, "pseudo restconf", &cp) < 0)
+    if (clixon_add_plugin(h, "pseudo restconf", &api, NULL) < 0)
         goto done;
-    clixon_plugin_api_get(cp)->ca_extension = restconf_main_extension_cb;
 
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */

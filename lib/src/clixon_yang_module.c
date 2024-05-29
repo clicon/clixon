@@ -819,18 +819,12 @@ yang_metadata_annotation_check(cxobj     *xa,
 int
 yang_metadata_init(clixon_handle h)
 {
-    int              retval = -1;
-    clixon_plugin_t *cp = NULL;
+    clixon_plugin_api api = { .ca_extension = ietf_yang_metadata_extension_cb };
 
     /* Create a pseudo-plugin to create extension callback to set the ietf-yang-meta
      * yang-data extension for api-root top-level restconf function.
      */
-    if (clixon_pseudo_plugin(h, "pseudo yang metadata", &cp) < 0)
-        goto done;
-    clixon_plugin_api_get(cp)->ca_extension = ietf_yang_metadata_extension_cb;
-    retval = 0;
- done:
-    return retval;
+    return clixon_add_plugin(h, "pseudo yang metadata", &api, NULL);
 }
 
 /*! Given yang-lib module-set XML tree, parse modules into an yspec
