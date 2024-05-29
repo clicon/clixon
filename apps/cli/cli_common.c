@@ -809,7 +809,10 @@ cli_start_program(clixon_handle h,
     int retval = -1;
     char *script_path = NULL;
     char *runner = NULL;
-    struct passwd *pw = NULL;
+    char *buf = NULL;
+    struct passwd pw, *pwresult = NULL;
+    size_t bufsize;
+    int s;
 
     /* Check parameters */
     if (cvec_len(argv) == 0){
@@ -837,28 +840,50 @@ cli_start_program(clixon_handle h,
         script_path = cv_string_get(cvec_i(cvv, 1));
     }
 
-    if ((pw = getpwuid(getuid())) == NULL){
-        clixon_err(OE_PLUGIN, errno, "getpwuid");
+    bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (bufsize == -1){
+        bufsize = 16384;
+    }
+    buf = malloc(bufsize);
+    if (buf == NULL) {
+        perror("malloc");
         goto done;
     }
-    if (chdir(pw->pw_dir) < 0){
-        clixon_err(OE_PLUGIN, errno, "chdir");
+
+    s = getpwuid_r(getuid(), &pw, buf, bufsize, &pwresult);
+    if (pwresult == NULL) {
+        if (s == 0)
+            clixon_err(OE_PLUGIN, errno, "getpwuid_r");
+        else
+            perror("getpwuid_r");
         goto done;
     }
 
     /* main run */
     if ((pid = fork()) == 0) {
+        /* child process */
+        if (chdir(pw.pw_dir) < 0){
+            clixon_err(OE_PLUGIN, errno, "chdir");
+        }
         execlp(runner, runner, script_path, NULL);
         clixon_err(OE_PLUGIN, errno, "Error run script");
-        exit(0);
+        return -1;
+    }else if(pid == -1){
+        clixon_err(OE_PLUGIN, errno, "fork");
+    }else{
+        /* parent process */
+        int status;
+        if (waitpid(pid, &status, 0) != pid ){
+            clixon_err(OE_PLUGIN, errno, "waitpid error");
+            goto done;
+        } else {
+            return WEXITSTATUS(status);
+        }
     }
-
-    if (waitpid(pid, &retval, 0) == pid)
-        goto done;
-    else
-        goto done;
-
+    retval = 0;
     done:
+        if(buf)
+            free(buf);
         return retval;
 }
 
@@ -1237,7 +1262,7 @@ load_config_file(clixon_handle h,
         }
         break;
     case FORMAT_TEXT:
-        /* text parser requires YANG and since load/save files have a "config" top-level 
+        /* text parser requires YANG and since load/save files have a "config" top-level
          * the yang-bind parameter must be YB_MODULE_NEXT
          */
         if ((ret = clixon_text_syntax_parse_file(fp, YB_MODULE_NEXT, yspec, &xt, &xerr)) < 0)
@@ -1817,7 +1842,7 @@ cli_copy_config(clixon_handle h,
     if (xml_copy(x1, x2) < 0)
         goto done;
     xml_name_set(x2, NETCONF_INPUT_CONFIG);
-    cprintf(cb, "/%s", keyname);        
+    cprintf(cb, "/%s", keyname);
     if ((x = xpath_first(x2, nsc, "%s", cbuf_get(cb))) == NULL){
         clixon_err(OE_PLUGIN, 0, "Field %s not found in copy tree", keyname);
         goto done;
