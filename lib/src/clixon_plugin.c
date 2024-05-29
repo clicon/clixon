@@ -582,10 +582,10 @@ clixon_plugin_exit_one(clixon_plugin_t *cp,
         }
         if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
             goto done;
-        if (dlclose(cp->cp_handle) != 0) {
-            error = (char*)dlerror();
-            clixon_err(OE_PLUGIN, errno, "dlclose: %s", error ? error : "Unknown error");
-        }
+    }
+    if (cp->cp_handle && dlclose(cp->cp_handle) != 0) {
+        error = (char*)dlerror();
+        clixon_err(OE_PLUGIN, errno, "dlclose: %s", error ? error : "Unknown error");
     }
     retval = 0;
  done:
