@@ -305,25 +305,27 @@ clixon_plugin_find(clixon_handle h,
  * @param[in]  handle   The dlopen handle of the plugin.  May be NULL
  * @param[in]  api      The clixon API to register.  May be NULL
  * @param[out] cpp      Clixon plugin structure (if retval is 0).  May be NULL
- * @retval     1        OK
  * @retval     0        Failed load, log, skip and continue with other plugins
  * @retval    -1        Error
  * @see clixon_plugins_load  Load all plugins
  */
 static int
-plugin_add_one(clixon_handle       h,
-               const char         *name,
-               void               *handle,
-               clixon_plugin_api  *api,
-               clixon_plugin_t   **cpp)
+plugin_add_one(clixon_handle         h,
+               plugin_module_struct *ms,
+               const char           *name,
+               void                 *handle,
+               clixon_plugin_api    *api,
+               clixon_plugin_t     **cpp)
 {
     int retval = -1;
     clixon_plugin_t *cp;
-    plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    if (ms == NULL){
-        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
-        goto done;
+    if (!ms) {
+        ms = plugin_module_struct_get(h);
+        if (ms == NULL){
+            clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+            goto done;
+        }
     }
 
     /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
@@ -343,6 +345,29 @@ plugin_add_one(clixon_handle       h,
     retval = 0;
  done:
     return retval;
+}
+
+static int clixon_plugin_exit_one(clixon_plugin_t *cp,
+                                  clixon_handle    h);
+
+/*! Unlink, call the exit function on, and free a plugin.
+ *
+ * @param[in]  h        Clixon handle
+ * @param[in]  ms       The module struct holding the plugin list
+ * @param[in]  file     Which plugin to free
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+static int
+clixon_plugin_do_exit(clixon_handle         h,
+                      plugin_module_struct *ms,
+                      clixon_plugin_t      *cp)
+{
+    DELQ(cp, ms->ms_plugin_list, clixon_plugin_t *);
+    if (clixon_plugin_exit_one(cp, h) < 0)
+        return -1;
+    free(cp);
+    return 0;
 }
 
 /*! Load a dynamic plugin object and call its init-function
@@ -370,8 +395,17 @@ plugin_load_one(clixon_handle h,
     char              *name;
     char              *p;
     void              *wh = NULL;
+    clixon_plugin_t   *tail = NULL;
+    clixon_plugin_t   *new_tail = NULL;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
 
-    clixon_debug(CLIXON_DBG_INIT, "file:%s function:%s", file, function);
+    clixon_debug(CLIXON_DBG_INIT, "file:%s", file);
+
+    if (ms == NULL){
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        goto done;
+    }
+
     dlerror();    /* Clear any existing error */
     if ((handle = dlopen(file, dlflags)) == NULL) {
         error = (char*)dlerror();
@@ -391,10 +425,28 @@ plugin_load_one(clixon_handle h,
     wh = NULL;
     if (clixon_resource_check(h, &wh, file, __FUNCTION__) < 0)
         goto done;
-    if ((api = initfn(h)) == NULL) {
-        if (!clixon_err_category()){     /* if clixon_err() is not called then log and continue */
-            clixon_log(h, LOG_DEBUG, "Warning: failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
-            retval = 0;
+
+    tail = PREVQ(clixon_plugin_t *, ms->ms_plugin_list);
+    api = initfn(h);
+    new_tail = PREVQ(clixon_plugin_t *, ms->ms_plugin_list);
+
+    if (api == NULL) {
+        if (!clixon_err_category()){ /* if clixon_err() is not called. */
+            if (tail == new_tail) {
+                /* No new plugins were registered, warn and return. */
+                clixon_log(h, LOG_DEBUG, "Warning: failed to initiate %s",
+                           strrchr(file,'/')?strchr(file, '/'):file);
+                retval = 0;
+                goto done;
+            }
+            if (clixon_resource_check(h, &wh, file, __FUNCTION__) < 0)
+                goto done;
+            /*
+             * Plugins were registered, but no API.  Just use the last
+             * plugin to hold the handle.
+             */
+            retval = 1;
+            new_tail->cp_handle = handle;
             goto done;
         }
         else{
@@ -411,7 +463,7 @@ plugin_load_one(clixon_handle h,
     if ((p=strrchr(name, '.')) != NULL)
         *p = '\0';
 
-    retval = plugin_add_one(h, name, handle, api, NULL);
+    retval = plugin_add_one(h, ms, name, handle, api, NULL);
     if (retval == 0)
         retval = 1;
 
@@ -419,8 +471,14 @@ plugin_load_one(clixon_handle h,
     clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (wh != NULL)
         free(wh);
-    if (retval != 1 && handle)
-        dlclose(handle);
+    if (retval != 1) {
+        while (tail != new_tail) {
+            clixon_plugin_do_exit(h, ms, new_tail);
+            new_tail = PREVQ(clixon_plugin_t *, ms->ms_plugin_list);
+        }
+        if (handle)
+            dlclose(handle);
+    }
     return retval;
 }
 
@@ -493,9 +551,63 @@ clixon_pseudo_plugin(clixon_handle     h,
     clixon_debug(CLIXON_DBG_INIT, "%s", name);
 
     /* Create a pseudo plugins */
-    return plugin_add_one(h, name, NULL, NULL, cpp);
+    return plugin_add_one(h, NULL, name, NULL, NULL, cpp);
 }
 
+/*! Add a plugin to the list of plugins
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  name  Plugin name
+ * @param[in]  api   The clixon API to register
+ * @param[out] cpp   Clixon plugin structure (direct pointer), optional
+ * @retval     0     OK
+ * @retval    -1     Error
+ *
+ * If this is called from clixon_plugin_init(), then if you return
+ * NULL from clixon_plugin_init() and have called clixon_err() in
+ * clixon_plugin_init(), then it will unregister the plugin
+ * automatically.
+ */
+int
+clixon_add_plugin(clixon_handle      h,
+                  const char        *name,
+                  clixon_plugin_api *api,
+                  clixon_plugin_t  **cpp)
+{
+    clixon_debug(CLIXON_DBG_INIT, "%s", name);
+
+    return plugin_add_one(h, NULL, name, NULL, api, cpp);
+}
+
+/*! Remove a plugin to the list of plugins
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  name  Plugin name
+ * @param[in]  api   The clixon API to register
+ * @param[out] cpp   Clixon plugin structure (direct pointer), optional
+ * @retval     0     OK
+ * @retval    -1     Error
+ *
+ * If this is called from clixon_plugin_init(), then if you return
+ * NULL from clixon_plugin_init() and have called clixon_err() in
+ * clixon_plugin_init(), then it will unregister the plugin
+ * automatically.
+ */
+int
+clixon_remove_plugin(clixon_handle    h,
+                     clixon_plugin_t *cp)
+{
+    plugin_module_struct *ms = plugin_module_struct_get(h);
+
+    clixon_debug(CLIXON_DBG_INIT, "%s", cp->cp_name);
+
+    if (ms == NULL){
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        return -1;
+    }
+
+    return clixon_plugin_do_exit(h, ms, cp);
+}
 
 /*! Call single plugin start callback
  *
@@ -608,11 +720,10 @@ clixon_plugin_exit_all(clixon_handle h)
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
     if (ms != NULL){
-        while ((cp = ms->ms_plugin_list) != NULL){
-            DELQ(cp, ms->ms_plugin_list, clixon_plugin_t *);
-            if (clixon_plugin_exit_one(cp, h) < 0)
+        while ((cp = ms->ms_plugin_list) != NULL) {
+            retval = clixon_plugin_do_exit(h, ms, cp);
+            if (retval < 0)
                 goto done;
-            free(cp);
         }
     }
     retval = 0;

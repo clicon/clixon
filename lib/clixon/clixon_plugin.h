@@ -492,6 +492,9 @@ int clixon_plugins_load(clixon_handle h, const char *function, const char *dir, 
 
 int clixon_pseudo_plugin(clixon_handle h, const char *name, clixon_plugin_t **cpp);
 
+int clixon_add_plugin(clixon_handle h, const char *name, clixon_plugin_api *api, clixon_plugin_t **cpp);
+int clixon_remove_plugin(clixon_handle h, clixon_plugin_t *cp);
+
 int clixon_plugin_start_one(clixon_plugin_t *cp, clixon_handle h);
 int clixon_plugin_start_all(clixon_handle h);
 
