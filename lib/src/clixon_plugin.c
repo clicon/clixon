@@ -299,31 +299,74 @@ clixon_plugin_find(clixon_handle h,
     return NULL;
 }
 
-/*! Load a dynamic plugin object and call its init-function
+/*! Allocate and add a plugin
  *
- * @param[in]  h        Clixon handle
- * @param[in]  file     Which plugin to load
- * @param[in]  function Which function symbol to load and call
- * @param[in]  dlflags  See man(3) dlopen
- * @param[out] cpp      Clixon plugin structure (if retval is 1)
+ * @param[in]  name     The plugin name
+ * @param[in]  handle   The dlopen handle of the plugin.  May be NULL
+ * @param[in]  api      The clixon API to register.  May be NULL
+ * @param[out] cpp      Clixon plugin structure (if retval is 0).  May be NULL
  * @retval     1        OK
  * @retval     0        Failed load, log, skip and continue with other plugins
  * @retval    -1        Error
  * @see clixon_plugins_load  Load all plugins
  */
 static int
-plugin_load_one(clixon_handle     h,
-                char             *file, /* note modified */
-                const char       *function,
-                int               dlflags,
-                clixon_plugin_t **cpp)
+plugin_add_one(clixon_handle       h,
+               const char         *name,
+               void               *handle,
+               clixon_plugin_api  *api,
+               clixon_plugin_t   **cpp)
+{
+    int retval = -1;
+    clixon_plugin_t *cp;
+    plugin_module_struct *ms = plugin_module_struct_get(h);
+
+    if (ms == NULL){
+        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
+        goto done;
+    }
+
+    /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
+    if ((cp = (clixon_plugin_t *)malloc(sizeof(*cp))) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    memset(cp, 0, sizeof(struct clixon_plugin));
+    cp->cp_handle = handle;
+    /* Copy name to struct */
+    snprintf(cp->cp_name, sizeof(cp->cp_name), "%s", name);
+    if (api)
+        cp->cp_api = *api;
+    ADDQ(cp, ms->ms_plugin_list);
+    if (cpp)
+        *cpp = cp;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Load a dynamic plugin object and call its init-function
+ *
+ * @param[in]  h        Clixon handle
+ * @param[in]  file     Which plugin to load
+ * @param[in]  function Which function symbol to load and call
+ * @param[in]  dlflags  See man(3) dlopen
+ * @retval     1        OK
+ * @retval     0        Failed load, log, skip and continue with other plugins
+ * @retval    -1        Error
+ * @see clixon_plugins_load  Load all plugins
+ */
+static int
+plugin_load_one(clixon_handle h,
+                char         *file, /* note modified */
+                const char   *function,
+                int           dlflags)
 {
     int                retval = -1;
     char              *error;
     void              *handle = NULL;
     plginit_t         *initfn;
     clixon_plugin_api *api = NULL;
-    clixon_plugin_t   *cp = NULL;
     char              *name;
     char              *p;
     void              *wh = NULL;
@@ -362,32 +405,22 @@ plugin_load_one(clixon_handle     h,
     if (clixon_resource_check(h, &wh, file, __FUNCTION__) < 0)
         goto done;
 
-    /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
-    if ((cp = (clixon_plugin_t *)malloc(sizeof(struct clixon_plugin))) == NULL){
-        clixon_err(OE_UNIX, errno, "malloc");
-        goto done;
-    }
-    memset(cp, 0, sizeof(struct clixon_plugin));
-    cp->cp_handle = handle;
     /* Extract string after last '/' in filename, if any */
     name = strrchr(file, '/') ? strrchr(file, '/')+1 : file;
     /* strip extension, eg .so from name */
     if ((p=strrchr(name, '.')) != NULL)
         *p = '\0';
-    /* Copy name to struct */
-    snprintf(cp->cp_name, sizeof(cp->cp_name), "%s", name);
-    cp->cp_api = *api;
-    *cpp = cp;
-    cp = NULL;
-    retval = 1;
+
+    retval = plugin_add_one(h, name, handle, api, NULL);
+    if (retval == 0)
+        retval = 1;
+
  done:
     clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (wh != NULL)
         free(wh);
     if (retval != 1 && handle)
         dlclose(handle);
-    if (cp)
-        free(cp);
     return retval;
 }
 
@@ -411,16 +444,11 @@ clixon_plugins_load(clixon_handle h,
     struct dirent        *dp = NULL;
     int                   i;
     char                  filename[MAXPATHLEN];
-    clixon_plugin_t      *cp = NULL;
     int                   ret;
-    plugin_module_struct *ms = plugin_module_struct_get(h);
     int                   dlflags;
 
     clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "");
-    if (ms == NULL){
-        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
-        goto done;
-    }
+
     /* Get plugin objects names from plugin directory */
     if((ndp = clicon_file_dirent(dir, &dp, regexp?regexp:"\\.so$", S_IFREG)) < 0)
         goto done;
@@ -433,11 +461,8 @@ clixon_plugins_load(clixon_handle h,
             dlflags |= RTLD_GLOBAL;
         else
             dlflags |= RTLD_LOCAL;
-        if ((ret = plugin_load_one(h, filename, function, dlflags, &cp)) < 0)
+        if ((ret = plugin_load_one(h, filename, function, dlflags)) < 0)
             goto done;
-        if (ret == 0)
-            continue;
-        ADDQ(cp, ms->ms_plugin_list);
     }
     retval = 0;
 done:
@@ -465,31 +490,10 @@ clixon_pseudo_plugin(clixon_handle     h,
                      const char       *name,
                      clixon_plugin_t **cpp)
 {
-    int              retval = -1;
-    clixon_plugin_t *cp = NULL;
-    plugin_module_struct *ms = plugin_module_struct_get(h);
-
     clixon_debug(CLIXON_DBG_INIT, "%s", name);
-    if (ms == NULL){
-        clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");
-        goto done;
-    }
+
     /* Create a pseudo plugins */
-    /* Note: sizeof clixon_plugin_api which is largest of clixon_plugin_api:s */
-    if ((cp = (clixon_plugin_t *)malloc(sizeof(struct clixon_plugin))) == NULL){
-        clixon_err(OE_UNIX, errno, "malloc");
-        goto done;
-    }
-    memset(cp, 0, sizeof(struct clixon_plugin));
-    snprintf(cp->cp_name, sizeof(cp->cp_name), "%s", name);
-    ADDQ(cp, ms->ms_plugin_list);
-    *cpp = cp;
-    cp = NULL;
-    retval = 0;
-done:
-    if (cp)
-        free(cp);
-    return retval;
+    return plugin_add_one(h, name, NULL, NULL, cpp);
 }
 
 
