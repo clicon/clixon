@@ -60,6 +60,7 @@
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <pwd.h>
+#include <libgen.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -810,6 +811,7 @@ cli_start_program(clixon_handle h,
     char *script_path = NULL;
     char *runner = NULL;
     char *buf = NULL;
+    char *work_dir = NULL, *reserve_path = NULL;
     struct passwd pw, *pwresult = NULL;
     size_t bufsize;
     int s;
@@ -839,7 +841,10 @@ cli_start_program(clixon_handle h,
     if (cvec_len(cvv) == 2){
         script_path = cv_string_get(cvec_i(cvv, 1));
     }
-
+    if (script_path){
+        reserve_path = strdup(script_path);
+        work_dir = dirname(reserve_path);
+    }
     bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
     if (bufsize == -1){
         bufsize = 16384;
@@ -862,7 +867,7 @@ cli_start_program(clixon_handle h,
     /* main run */
     if ((pid = fork()) == 0) {
         /* child process */
-        if (chdir(pw.pw_dir) < 0){
+        if ((work_dir ? chdir(work_dir) : chdir(pw.pw_dir)) < 0) {
             clixon_err(OE_PLUGIN, errno, "chdir");
         }
         execlp(runner, runner, script_path, NULL);
@@ -884,6 +889,8 @@ cli_start_program(clixon_handle h,
     done:
         if(buf)
             free(buf);
+        if(reserve_path)
+            free(reserve_path);
         return retval;
 }
 
