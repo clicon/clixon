@@ -451,7 +451,7 @@ backend_plugin_restconf_register(clixon_handle h,
         .ca_trans_commit = restconf_pseudo_process_commit
     };
 
-    if (clixon_add_plugin(h, "restconf pseudo plugin", &api, NULL) < 0)
+    if (clixon_add_plugin(h, "restconf pseudo plugin", NULL, &api, NULL) < 0)
         goto done;
 
     /* Register generic process-control of restconf daemon, ie start/stop restconf */

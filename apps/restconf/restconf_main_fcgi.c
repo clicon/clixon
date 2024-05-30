@@ -515,7 +515,7 @@ main(int    argc,
     /* Create a pseudo-plugin to create extension callback to set the ietf-routing
      * yang-data extension for api-root top-level restconf function.
      */
-    if (clixon_add_plugin(h, "pseudo restconf", &api, NULL) < 0)
+    if (clixon_add_plugin(h, "pseudo restconf", NULL, &api, NULL) < 0)
         goto done;
 
     /* Load Yang modules

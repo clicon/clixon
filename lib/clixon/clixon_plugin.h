@@ -479,6 +479,7 @@ typedef struct {
 clixon_plugin_api *clixon_plugin_init(clixon_handle h);
 
 clixon_plugin_api *clixon_plugin_api_get(clixon_plugin_t *cp);
+char            *clixon_plugin_ns_get(clixon_plugin_t *cp);
 char            *clixon_plugin_name_get(clixon_plugin_t *cp);
 plghndl_t        clixon_plugin_handle_get(clixon_plugin_t *cp);
 
@@ -492,7 +493,7 @@ int clixon_plugins_load(clixon_handle h, const char *function, const char *dir, 
 
 int clixon_pseudo_plugin(clixon_handle h, const char *name, clixon_plugin_t **cpp);
 
-int clixon_add_plugin(clixon_handle h, const char *name, clixon_plugin_api *api, clixon_plugin_t **cpp);
+int clixon_add_plugin(clixon_handle h, const char *name, const char *ns, clixon_plugin_api *api, clixon_plugin_t **cpp);
 int clixon_remove_plugin(clixon_handle h, clixon_plugin_t *cp);
 
 int clixon_plugin_start_one(clixon_plugin_t *cp, clixon_handle h);

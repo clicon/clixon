@@ -824,7 +824,7 @@ yang_metadata_init(clixon_handle h)
     /* Create a pseudo-plugin to create extension callback to set the ietf-yang-meta
      * yang-data extension for api-root top-level restconf function.
      */
-    return clixon_add_plugin(h, "pseudo yang metadata", &api, NULL);
+    return clixon_add_plugin(h, "pseudo yang metadata", NULL, &api, NULL);
 }
 
 /*! Given yang-lib module-set XML tree, parse modules into an yspec

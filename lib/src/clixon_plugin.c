@@ -87,6 +87,7 @@ struct clixon_plugin{
     char              cp_name[MAXPATHLEN]; /* Plugin filename. Note api ca_name is given by plugin itself */
     plghndl_t         cp_handle;  /* Handle to plugin using dlopen(3) */
     clixon_plugin_api cp_api;
+    char             *cp_ns; /* Namespace, may be NULL. */
 };
 
 /*
@@ -160,6 +161,16 @@ clixon_plugin_api *
 clixon_plugin_api_get(clixon_plugin_t *cp)
 {
     return &cp->cp_api;
+}
+
+/*! Get plugin api 
+ *
+ * @param[in]  cp   Clixon plugin handle
+ */
+char *
+clixon_plugin_ns_get(clixon_plugin_t *cp)
+{
+    return cp->cp_ns;
 }
 
 /*! Get plugin name 
@@ -313,6 +324,7 @@ static int
 plugin_add_one(clixon_handle         h,
                plugin_module_struct *ms,
                const char           *name,
+               const char           *ns,
                void                 *handle,
                clixon_plugin_api    *api,
                clixon_plugin_t     **cpp)
@@ -334,6 +346,13 @@ plugin_add_one(clixon_handle         h,
         goto done;
     }
     memset(cp, 0, sizeof(struct clixon_plugin));
+    if (ns) {
+        cp->cp_ns = strdup(ns);
+        if (!cp->cp_ns) {
+            free(cp);
+            goto done;
+        }
+    }
     cp->cp_handle = handle;
     /* Copy name to struct */
     snprintf(cp->cp_name, sizeof(cp->cp_name), "%s", name);
@@ -366,6 +385,7 @@ clixon_plugin_do_exit(clixon_handle         h,
     DELQ(cp, ms->ms_plugin_list, clixon_plugin_t *);
     if (clixon_plugin_exit_one(cp, h) < 0)
         return -1;
+    free(cp->cp_ns);
     free(cp);
     return 0;
 }
@@ -463,7 +483,7 @@ plugin_load_one(clixon_handle h,
     if ((p=strrchr(name, '.')) != NULL)
         *p = '\0';
 
-    retval = plugin_add_one(h, ms, name, handle, api, NULL);
+    retval = plugin_add_one(h, ms, name, NULL, handle, api, NULL);
     if (retval == 0)
         retval = 1;
 
@@ -551,7 +571,7 @@ clixon_pseudo_plugin(clixon_handle     h,
     clixon_debug(CLIXON_DBG_INIT, "%s", name);
 
     /* Create a pseudo plugins */
-    return plugin_add_one(h, NULL, name, NULL, NULL, cpp);
+    return plugin_add_one(h, NULL, name, NULL, NULL, NULL, cpp);
 }
 
 /*! Add a plugin to the list of plugins
@@ -571,12 +591,13 @@ clixon_pseudo_plugin(clixon_handle     h,
 int
 clixon_add_plugin(clixon_handle      h,
                   const char        *name,
+                  const char        *ns,
                   clixon_plugin_api *api,
                   clixon_plugin_t  **cpp)
 {
     clixon_debug(CLIXON_DBG_INIT, "%s", name);
 
-    return plugin_add_one(h, NULL, name, NULL, api, cpp);
+    return plugin_add_one(h, NULL, name, ns, NULL, api, cpp);
 }
 
 /*! Remove a plugin to the list of plugins
