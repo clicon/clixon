@@ -464,6 +464,177 @@ startup_commit(clixon_handle  h,
     goto done;
 }
 
+/*! Fetch the nsxml attribute from an element
+ *
+ * @param[in]  x       The xml element
+ * @retval     !NULL   Ok
+ * @retval     NULL    The attribute wasn't present
+ */
+static char *
+xml_nsxml_fetch(cxobj *x)
+{
+    cxobj *c = NULL;
+
+    while ((c = xml_child_each_attr(x, c)) != NULL) {
+        if (strcmp(xml_name(c), "xmlns") == 0)
+            return xml_value(c);
+    }
+    return NULL;
+}
+
+/*! Add a namespace entry to the transaction data's namespace info
+ *
+ * @param[in]  nss     The namespace info to add the transaction data to
+ * @param[in]  td      The transaction data to add to the namespace data
+ * @param[in]  ns      The namespace to add the info for
+ * @retval     !NULL   Ok
+ * @retval     NULL    The attribute wasn't present
+ */
+static int
+nss_add_ns(cvec *nss, transaction_data_t *td, const char *ns)
+{
+    cg_var *var;
+    cvec *xnvec;
+
+    var = cvec_find_var(nss, ns);
+    if (!var) {
+        xnvec = cvec_new(0);
+        if (!xnvec)
+            return -1;
+        var = cvec_add(nss, CGV_VOID);
+        if (!var) {
+            cvec_free(xnvec);
+            return -1;
+        }
+        if (!cv_name_set(var, ns)) {
+            cvec_free(xnvec);
+            return -1;
+        }
+        cv_void_set(var, xnvec);
+    } else {
+        xnvec = cv_void_get(var);
+    }
+    var = cvec_add(xnvec, CGV_VOID);
+    if (!var)
+        return -1;
+    cv_void_set(var, td);
+
+    return 0;
+}
+
+/*! Create sub-transaction for all changed transaction with an active namespace
+ *
+ * @param[in]  h       The clixon handle
+ * @param[in]  td      The transaction data to scan and add the sub-transactions to
+ * @retval     0       Ok
+ * @retval     -1      The attribute wasn't present
+ *
+ * Find all the changed top-level elements in the source and target
+ * XML trees.  If there is a plugin active for the namespace the
+ * top-level element is in, create a sub-transaction for that
+ * namespace and add it to the main transaction.  These will be used
+ * later for passing to the plugins registered for those namespaces.
+ */
+static cvec *
+td_find_changed_namespaces(clixon_handle       h,
+                           transaction_data_t *td)
+{
+    cvec  *nss;
+    cxobj *xnsrc;
+    cxobj *xntgt;
+    char  *ns;
+    char  *ns2;
+    transaction_data_t *td2 = NULL;
+
+    nss = cvec_new(0);
+    if (!nss)
+        return NULL;
+
+    xnsrc = xml_child_each(td->td_src, NULL, CX_ELMNT);
+    xntgt = xml_child_each(td->td_target, NULL, CX_ELMNT);
+    while (xntgt || xnsrc) {
+        if (xnsrc && xml_flag(xnsrc, XML_FLAG_DEL)) {
+            ns = xml_nsxml_fetch(xnsrc);
+            if (!ns)
+                continue;
+            if (clixon_plugin_ns_present(h, ns)) {
+                if ((td2 = transaction_new()) == NULL)
+                    goto fail;
+                td2->td_src = xnsrc;
+                if ((td2->td_dvec = malloc(sizeof(cxobj *))) == NULL)
+                    goto fail;
+                td2->td_dvec[0] = xnsrc;
+                td2->td_dlen = 1;
+            }
+            if (xnsrc)
+                xnsrc = xml_child_each(td->td_src, xnsrc, CX_ELMNT);
+        } else if (xntgt && xml_flag(xntgt, XML_FLAG_ADD)) {
+            ns = xml_nsxml_fetch(xntgt);
+            if (!ns)
+                continue;
+            if (clixon_plugin_ns_present(h, ns)) {
+                if ((td2 = transaction_new()) == NULL)
+                    goto fail;
+                td2->td_target = xntgt;
+                if ((td2->td_avec = malloc(sizeof(cxobj *))) == NULL)
+                    goto fail;
+                td2->td_avec[0] = xntgt;
+                td2->td_alen = 1;
+            }
+            if (xntgt)
+                xntgt = xml_child_each(td->td_target, xntgt, CX_ELMNT);
+        } else {
+            if ((xntgt && xml_flag(xntgt, XML_FLAG_CHANGE)) ||
+                (xnsrc && xml_flag(xnsrc, XML_FLAG_CHANGE))) {
+                if (!xnsrc || !xntgt) {
+                    clixon_err(OE_XML, EINVAL, "xntgt, xnsrc, without the partner");
+                    goto fail;
+                }
+                ns = xml_nsxml_fetch(xntgt);
+                ns2 = xml_nsxml_fetch(xnsrc);
+                if (!ns && !ns2)
+                    continue;
+                if (!ns || !ns2 || strcmp(ns, ns2) != 0) {
+                    clixon_err(OE_XML, EINVAL, "xntgt/xnsrc ns mismatch");
+                    goto fail;
+                }
+                if (clixon_plugin_ns_present(h, ns)) {
+                    if ((td2 = transaction_new()) == NULL)
+                        goto fail;
+                    td2->td_src = xnsrc;
+                    td2->td_target = xntgt;
+                    if (xml_diff(td2->td_src,
+                                 td2->td_target,
+                                 &td2->td_dvec,      /* removed: only in running */
+                                 &td2->td_dlen,
+                                 &td2->td_avec,      /* added: only in candidate */
+                                 &td2->td_alen,
+                                 &td2->td_scvec,     /* changed: original values */
+                                 &td2->td_tcvec,     /* changed: wanted values */
+                                 &td2->td_clen) < 0)
+                        goto fail;
+                }
+            }
+            if (xntgt)
+                xntgt = xml_child_each(td->td_target, xntgt, CX_ELMNT);
+            if (xnsrc)
+                xnsrc = xml_child_each(td->td_src, xnsrc, CX_ELMNT);
+        }
+        if (td2) {
+            if (nss_add_ns(nss, td2, ns) < 0)
+                goto fail;
+            td2 = NULL;
+        }
+    }
+
+    return nss;
+ fail:
+    if (td2)
+        transaction_free(td2);
+    cvec_free(nss);
+    return NULL;
+}
+
 /*! Validate a candidate db and comnpare to running
  *
  * Get both source and dest datastore, validate target, compute diffs
@@ -552,6 +723,11 @@ validate_common(clixon_handle       h,
         xml_flag_set(xn, XML_FLAG_CHANGE);
         xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
+
+    td->td_nss = td_find_changed_namespaces(h, td);
+    if (!td->td_nss)
+        goto done;
+
     /* 4. Call plugin transaction start callbacks */
     if (plugin_transaction_begin_all(h, td) < 0)
         goto done;
@@ -1022,6 +1198,11 @@ from_client_restart_one(clixon_handle    h,
         xml_flag_set(xn, XML_FLAG_CHANGE);
         xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
+
+    td->td_nss = td_find_changed_namespaces(h, td);
+    if (!td->td_nss)
+        goto done;
+
     /* Call plugin transaction start callbacks */
     if (plugin_transaction_begin_one(cp, h, td) < 0)
         goto fail;

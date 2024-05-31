@@ -66,6 +66,14 @@ typedef struct {
     cxobj    **td_scvec;    /* Source changed xml vector */
     cxobj    **td_tcvec;    /* Target changed xml vector */
     int        td_clen;     /* Changed xml vector length */
+
+    /*
+     * Changed namespaces.  This is a cvec of pointers to cvecs
+     * indexed by the namespace name.  The cvecs that are sub-members
+     * here are a list of transaction_data_t structures for each
+     * matching top-level xml tree with a matching namespace.
+     */
+    cvec      *td_nss;
 } transaction_data_t;
 
 /*! Pagination userdata 

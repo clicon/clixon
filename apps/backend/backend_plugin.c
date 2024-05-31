@@ -602,16 +602,48 @@ transaction_free(transaction_data_t *td)
         free(td->td_scvec);
     if (td->td_tcvec)
         free(td->td_tcvec);
+    if (td->td_nss) {
+        cg_var *var = NULL;
+
+        while ((var = cvec_each(td->td_nss, var)) != NULL) {
+            cvec *vec2 = cv_void_get(var);
+            cg_var *var2 = NULL;
+
+            while ((var2 = cvec_each(vec2, var2)) != NULL) {
+                transaction_data_t *td2 = cv_void_get(var2);
+                /*
+                 * Sub-transactions all have pointers into the main
+                 * transaction, so there is no need to free anything
+                 * unless we called xml_diff on it, and then just the
+                 * parts it allocated.
+                 */
+                td2->td_src = NULL;
+                td2->td_target = NULL;
+                transaction_free(td2);
+            }
+            cvec_free(vec2);
+        }
+        cvec_free(td->td_nss);
+    }
     free(td);
     return 0;
 }
 
 static int
-plugin_transaction_call_one(clixon_handle       h,
-			    clixon_plugin_t    *cp,
-			    trans_cb_t         *fn,
-			    const char         *fnname,
-			    transaction_data_t *td)
+transaction_ns_match(clixon_plugin_t    *cp,
+                     transaction_data_t *td)
+{
+    char *ns = clixon_plugin_ns_get(cp);
+
+    return !ns || cvec_find_var(td->td_nss, ns);
+}
+
+static int
+plugin_transaction_call_fn(clixon_handle       h,
+                           clixon_plugin_t    *cp,
+                           trans_cb_t         *fn,
+                           const char         *fnname,
+                           transaction_data_t *td)
 {
     int  retval = -1;
     int  rv;
@@ -631,6 +663,36 @@ plugin_transaction_call_one(clixon_handle       h,
     }
     retval = 0;
  done:
+    return retval;
+}
+
+static int
+plugin_transaction_call_one(clixon_handle       h,
+                            clixon_plugin_t    *cp,
+                            trans_cb_t         *fn,
+                            const char         *fnname,
+                            transaction_data_t *td)
+{
+    int  retval = 0;
+    char *ns = clixon_plugin_ns_get(cp);
+
+    if (ns) {
+        cg_var *cv = cvec_find_var(td->td_nss, ns);
+        cvec *vec;
+
+        if (cv) {
+            vec = cv_void_get(cv);
+            cv = NULL;
+            while ((cv = cvec_each(vec, cv)) != NULL) {
+                td = cv_void_get(cv);
+                retval = plugin_transaction_call_fn(h, cp, fn, fnname, td);
+                if (retval < 0)
+                    break;
+            }
+        }
+    } else {
+        retval = plugin_transaction_call_fn(h, cp, fn, fnname, td);
+    }
     return retval;
 }
 
@@ -790,6 +852,8 @@ plugin_transaction_revert_all(clixon_handle       h,
 
     while ((cp = clixon_plugin_each_revert(h, cp, nr)) != NULL) {
         if ((fn = clixon_plugin_api_get(cp)->ca_trans_revert) == NULL)
+            continue;
+        if (!transaction_ns_match(cp, td))
             continue;
 
         if ((retval = fn(h, (transaction_data)td)) < 0){
