@@ -803,8 +803,8 @@ cli_set_mode(clixon_handle h,
  */
 int
 cli_start_program(clixon_handle h,
-                      cvec         *cvv,
-                      cvec         *argv)
+                  cvec         *cvv,
+                  cvec         *argv)
 {
     int pid = 0;
     int retval = -1;
