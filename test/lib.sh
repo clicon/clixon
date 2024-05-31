@@ -1265,15 +1265,12 @@ emailAddress           = olof@hagsand.se
 [ req_attributes ]
 challengePassword      = test
 
+[ x509v3_extensions ]
+basicConstraints = critical,CA:true
 EOF
 
     # Generate CA cert
-    # XXX v3 requires x509 version 1
-    if [ $(openssl version|awk '{print $2}') = "3.3.0" ]; then
-        openssl req -batch -new -x509v1 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err1 "Generate CA cert"
-    else
-        openssl req -batch -new -x509 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err1 "Generate CA cert"
-    fi
+    openssl req -batch -new -x509 -extensions x509v3_extensions -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err1 "Generate CA cert"
     rm -rf $tmpdir
 }
 
