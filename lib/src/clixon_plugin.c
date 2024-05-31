@@ -111,6 +111,7 @@ struct plugin_module_struct {
     clixon_plugin_t    *ms_plugin_list;
     rpc_callback_t     *ms_rpc_callbacks;
     upgrade_callback_t *ms_upgrade_callbacks;
+    cvec               *plugin_ns_present; /* Vector of the namespace-specific plugins present. */
 };
 typedef struct plugin_module_struct plugin_module_struct;
 
@@ -191,6 +192,22 @@ plghndl_t
 clixon_plugin_handle_get(clixon_plugin_t *cp)
 {
     return cp->cp_handle;
+}
+
+/*! Returns if a namespace-specific plugin is registered for the namespace
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  ns      The namespace to look for
+ * @retval     0       not present
+ * @retval     1       present
+ */
+int
+clixon_plugin_ns_present(clixon_handle  h,
+                         const char    *ns)
+{
+    plugin_module_struct *ms = plugin_module_struct_get(h);
+
+    return !!cvec_find_var(ms->plugin_ns_present, ns);
 }
 
 /*! Iterator over clixon plugins
@@ -347,11 +364,27 @@ plugin_add_one(clixon_handle         h,
     }
     memset(cp, 0, sizeof(struct clixon_plugin));
     if (ns) {
+        cg_var *cv = cvec_find_var(ms->plugin_ns_present, ns);
+
         cp->cp_ns = strdup(ns);
         if (!cp->cp_ns) {
             free(cp);
             goto done;
         }
+        if (!cv) {
+            cv = cvec_add(ms->plugin_ns_present, CGV_UINT32);
+            if (!cv) {
+                free(cp->cp_ns);
+                free(cp);
+                goto done;
+            }
+            if (!cv_name_set(cv, ns)) {
+                free(cp->cp_ns);
+                free(cp);
+                goto done;
+            }
+        }
+        cv_uint32_set(cv, cv_uint32_get(cv) + 1);
     }
     cp->cp_handle = handle;
     /* Copy name to struct */
@@ -385,7 +418,21 @@ clixon_plugin_do_exit(clixon_handle         h,
     DELQ(cp, ms->ms_plugin_list, clixon_plugin_t *);
     if (clixon_plugin_exit_one(cp, h) < 0)
         return -1;
-    free(cp->cp_ns);
+    if (cp->cp_ns) {
+        cg_var *cv = cvec_find_var(ms->plugin_ns_present, cp->cp_ns);
+        /* Should always be present, but just in case... */
+        if (cv) {
+            unsigned int v = cv_uint32_get(cv);
+
+            if (v == 1) {
+                cv_reset(cv);
+                cvec_del(ms->plugin_ns_present, cv);
+            } else {
+                cv_uint32_set(cv, v - 1);
+            }
+        }
+        free(cp->cp_ns);
+    }
     free(cp);
     return 0;
 }
@@ -1759,6 +1806,10 @@ clixon_plugin_module_init(clixon_handle h)
         goto done;
     }
     memset(ph, 0, sizeof(*ph));
+    if ((ph->plugin_ns_present = cvec_new(0)) == NULL) {
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
     if (plugin_module_struct_set(h, ph) < 0)
         goto done;
     retval = 0;
@@ -1784,6 +1835,7 @@ clixon_plugin_module_exit(clixon_handle h)
     upgrade_callback_delete_all(h);
     /* Delete plugin_module itself */
     if ((ph = plugin_module_struct_get(h)) != NULL){
+        cvec_free(ph->plugin_ns_present);
         free(ph);
         plugin_module_struct_set(h, NULL);
     }

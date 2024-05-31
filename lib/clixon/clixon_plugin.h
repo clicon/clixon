@@ -483,6 +483,8 @@ char            *clixon_plugin_ns_get(clixon_plugin_t *cp);
 char            *clixon_plugin_name_get(clixon_plugin_t *cp);
 plghndl_t        clixon_plugin_handle_get(clixon_plugin_t *cp);
 
+int              clixon_plugin_ns_present(clixon_handle h, const char *ns);
+
 clixon_plugin_t *clixon_plugin_each(clixon_handle h, clixon_plugin_t *cpprev);
 
 clixon_plugin_t *clixon_plugin_each_revert(clixon_handle h, clixon_plugin_t *cpprev, int nr);
