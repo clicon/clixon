@@ -728,7 +728,7 @@ ys_free1(yang_stmt *ys,
          * Freed here once.
          */
         if (yang_flag_get(ys, YANG_FLAG_MOUNTPOINT))
-            yang_mount_freeall(ys->ys_cvec);
+            yang_mount_freeall(ys);
         cvec_free(ys->ys_cvec);
         ys->ys_cvec = NULL;
     }
