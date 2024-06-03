@@ -555,34 +555,32 @@ td_find_changed_namespaces(clixon_handle       h,
     while (xntgt || xnsrc) {
         if (xnsrc && xml_flag(xnsrc, XML_FLAG_DEL)) {
             ns = xml_nsxml_fetch(xnsrc);
-            if (!ns)
-                continue;
-            if (clixon_plugin_ns_present(h, ns)) {
-                if ((td2 = transaction_new()) == NULL)
-                    goto fail;
-                td2->td_src = xnsrc;
-                if ((td2->td_dvec = malloc(sizeof(cxobj *))) == NULL)
-                    goto fail;
-                td2->td_dvec[0] = xnsrc;
-                td2->td_dlen = 1;
-            }
-            if (xnsrc)
-                xnsrc = xml_child_each(td->td_src, xnsrc, CX_ELMNT);
+            if (ns) {
+		if (clixon_plugin_ns_present(h, ns)) {
+		    if ((td2 = transaction_new()) == NULL)
+			goto fail;
+		    td2->td_src = xnsrc;
+		    if ((td2->td_dvec = malloc(sizeof(cxobj *))) == NULL)
+			goto fail;
+		    td2->td_dvec[0] = xnsrc;
+		    td2->td_dlen = 1;
+		}
+	    }
+	    xnsrc = xml_child_each(td->td_src, xnsrc, CX_ELMNT);
         } else if (xntgt && xml_flag(xntgt, XML_FLAG_ADD)) {
             ns = xml_nsxml_fetch(xntgt);
-            if (!ns)
-                continue;
-            if (clixon_plugin_ns_present(h, ns)) {
-                if ((td2 = transaction_new()) == NULL)
-                    goto fail;
-                td2->td_target = xntgt;
-                if ((td2->td_avec = malloc(sizeof(cxobj *))) == NULL)
-                    goto fail;
-                td2->td_avec[0] = xntgt;
-                td2->td_alen = 1;
-            }
-            if (xntgt)
-                xntgt = xml_child_each(td->td_target, xntgt, CX_ELMNT);
+            if (ns) {
+		if (clixon_plugin_ns_present(h, ns)) {
+		    if ((td2 = transaction_new()) == NULL)
+			goto fail;
+		    td2->td_target = xntgt;
+		    if ((td2->td_avec = malloc(sizeof(cxobj *))) == NULL)
+			goto fail;
+		    td2->td_avec[0] = xntgt;
+		    td2->td_alen = 1;
+		}
+	    }
+	    xntgt = xml_child_each(td->td_target, xntgt, CX_ELMNT);
         } else {
             if ((xntgt && xml_flag(xntgt, XML_FLAG_CHANGE)) ||
                 (xnsrc && xml_flag(xnsrc, XML_FLAG_CHANGE))) {
@@ -592,29 +590,29 @@ td_find_changed_namespaces(clixon_handle       h,
                 }
                 ns = xml_nsxml_fetch(xntgt);
                 ns2 = xml_nsxml_fetch(xnsrc);
-                if (!ns && !ns2)
-                    continue;
-                if (!ns || !ns2 || strcmp(ns, ns2) != 0) {
-                    clixon_err(OE_XML, EINVAL, "xntgt/xnsrc ns mismatch");
-                    goto fail;
-                }
-                if (clixon_plugin_ns_present(h, ns)) {
-                    if ((td2 = transaction_new()) == NULL)
-                        goto fail;
-                    td2->td_src = xnsrc;
-                    td2->td_target = xntgt;
-                    if (xml_diff(td2->td_src,
-                                 td2->td_target,
-                                 &td2->td_dvec,      /* removed: only in running */
-                                 &td2->td_dlen,
-                                 &td2->td_avec,      /* added: only in candidate */
-                                 &td2->td_alen,
-                                 &td2->td_scvec,     /* changed: original values */
-                                 &td2->td_tcvec,     /* changed: wanted values */
-                                 &td2->td_clen) < 0)
-                        goto fail;
-                }
-            }
+                if (ns || ns2) {
+		    if (!ns || !ns2 || strcmp(ns, ns2) != 0) {
+			clixon_err(OE_XML, EINVAL, "xntgt/xnsrc ns mismatch");
+			goto fail;
+		    }
+		    if (clixon_plugin_ns_present(h, ns)) {
+			if ((td2 = transaction_new()) == NULL)
+			    goto fail;
+			td2->td_src = xnsrc;
+			td2->td_target = xntgt;
+			if (xml_diff(td2->td_src,
+				     td2->td_target,
+				     &td2->td_dvec,      /* removed: only in running */
+				     &td2->td_dlen,
+				     &td2->td_avec,      /* added: only in candidate */
+				     &td2->td_alen,
+				     &td2->td_scvec,     /* changed: original values */
+				     &td2->td_tcvec,     /* changed: wanted values */
+				     &td2->td_clen) < 0)
+			    goto fail;
+		    }
+		}
+	    }
             if (xntgt)
                 xntgt = xml_child_each(td->td_target, xntgt, CX_ELMNT);
             if (xnsrc)
