@@ -1816,7 +1816,20 @@ clixon_cli2cbuf(clixon_handle     h,
     return retval;
 }
 
-/*! CLI callback show statistics
+/*! CLI callback show memory statistics (and numbers)
+ *
+ * mempry in KiB
+ * @param[in]  h     Clixon handle
+ * @param[in]  cvv   Vector of cli string and instantiated variables
+ * @param[in]  argv  Arguments given at the callback: [(cli|backend) [detail]]
+ * @retval     0     OK
+ * @retval    -1     Error
+ * where level means:
+ * <null> :         Show mounts and summary clispec
+ * cli :            Show mounts and summary clispec
+ * cli detail :     Show mounts and per parse-tree clispec
+ * backend :        Show summary mem
+ * backend detail : Per-module
  */
 int
 cli_show_statistics(clixon_handle h,
@@ -1827,57 +1840,158 @@ cli_show_statistics(clixon_handle h,
     cbuf       *cb = NULL;
     cxobj      *xret = NULL;
     cxobj      *xerr;
-    cg_var     *cv;
-    int         modules = 0;
+    char       *what = NULL;
+    int         detail = 0;
     pt_head    *ph;
     parse_tree *pt;
-    uint64_t    nr = 0;
-    size_t      sz = 0;
+    uint64_t    nr;
+    uint64_t    tnr;
+    size_t      sz;
+    size_t      tsz;
+    yang_stmt  *yspec;
+    yang_stmt  *yspec1;
+    yang_stmt  *yspec2;
+    yang_stmt  *ymnt;
+    cvec       *cvv1 = NULL;
+    cvec       *cvv2;
+    cg_var     *cv;
+    cg_var     *cv2;
+    cg_var     *cv3;
 
-    if (argv != NULL && cvec_len(argv) != 1){
-        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [modules]");
+    if (argv != NULL && (cvec_len(argv) < 1 || cvec_len(argv) > 2)){
+        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [(cli|backend) [detail]]");
         goto done;
     }
+    yspec = clicon_dbspec_yang(h);
     if (argv){
         cv = cvec_i(argv, 0);
-        modules = (strcmp(cv_string_get(cv), "modules") == 0);
+        what = cv_string_get(cv);
+        if (strcmp(what, "cli") != 0 && strcmp(what, "backend") != 0){
+            clixon_err(OE_PLUGIN, EINVAL, "Unexpected argument: %s, expected: cli|backend", what);
+            goto done;
+        }
+        if (cvec_len(argv) > 1 &&
+            (cv = cvec_i(argv, 1)) != NULL){
+            if (strcmp(cv_string_get(cv), "detail") != 0){
+                clixon_err(OE_PLUGIN, EINVAL, "Unexpected argument: %s, expected: detail",
+                           cv_string_get(cv));
+                goto done;
+            }
+            detail = 1;
+        }
     }
+    else
+        what = "cli";
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
-    /* CLI */
-    cligen_output(stdout, "CLI:\n");
-    ph = NULL;
-    while ((ph = cligen_ph_each(cli_cligen(h), ph)) != NULL) {
-        if ((pt = cligen_ph_parsetree_get(ph)) == NULL)
-            continue;
+    if (strcmp(what, "cli") == 0) {
+        /* CLI */
+        if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT"))
+            cligen_output(stdout, "%-25s %-8s %-10s %-8s %-8s\n", "YANG", "Nodes#", "Mem(KiB)", "Refs", "Pointer");
+        else
+            cligen_output(stdout, "%-25s %-8s %-10s\n", "YANG", "Nodes#", "Mem(KiB)");
         nr = 0; sz = 0;
-        pt_stats(pt, &nr, &sz);
-        cligen_output(stdout, "%s: nr=%" PRIu64 " size:%zu\n",
-                      cligen_ph_name_get(ph), nr, sz);
+        if (yang_stats(yspec, &nr, &sz) < 0)
+            goto done;
+        tnr = nr;
+        tsz = sz;
+        cligen_output(stdout, "%-25s %-8" PRIu64 " %-8zu\n", "Top-level", nr, sz/1024);
+        if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")) {
+            if (yang_mount_yspec2ymnt(yspec, &cvv1) < 0)
+                goto done;
+            cv = NULL;
+            while ((cv = cvec_each(cvv1, cv)) != NULL) {
+                ymnt = cv_void_get(cv);
+                if ((cvv2 = yang_cvec_get(ymnt)) != NULL){
+                    cv2 = NULL;
+                    while ((cv2 = cvec_each(cvv2, cv2)) != NULL) {
+                        yspec1 = cv_void_get(cv2);
+                        nr = 0; sz = 0;
+                        if (yang_stats(yspec1, &nr, &sz) < 0)
+                            goto done;
+                        /* check if not duplicate */
+                        cv3 = NULL;
+                        while ((cv3 = cvec_each(cvv2, cv3)) != NULL) {
+                            if (cv2 == cv3)
+                                break;
+                            yspec2 = cv_void_get(cv3);
+                            if (yspec1 == yspec2)
+                                break;
+                        }
+                        if (cv2 != cv3){
+                            cligen_output(stdout, "%s \\\n", cv_name_get(cv2));
+                        }
+                        else {
+                            tnr += nr;
+                            tsz += sz;
+                            if (strlen(cv_name_get(cv2)) > 25){
+                                cligen_output(stdout, "%s \\\n", cv_name_get(cv2));
+                                cligen_output(stdout, "%-25s %-8" PRIu64 " %-10zu %-8d %-8p\n",
+                                              "",
+                                              nr, sz/1024,
+                                              yang_ref_get(yspec1), ymnt);
+                            }
+                            else
+                                cligen_output(stdout, "%-25s %-8" PRIu64 " %-10zu %-8d %-8p\n",
+                                              cv_name_get(cv2),
+                                              nr, sz/1024,
+                                              yang_ref_get(yspec1), ymnt);
+                        }
+                    }
+                }
+            }
+        }
+        cligen_output(stdout, "%-25s %-8" PRIu64 " %-8zu\n", "YANG Total", tnr, tsz/1024);
     }
-    /* Backend */
-    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
-    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
-    cprintf(cb, ">");
-    cprintf(cb, "<stats xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (modules)
-        cprintf(cb, "<modules>true</modules>");
-    cprintf(cb, "</stats>");
-    cprintf(cb, "</rpc>");
-    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
-        goto done;
-    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
-        goto done;
+    if (strcmp(what, "cli") == 0) {
+        cligen_output(stdout, "%-25s %-8s %-8s\n", "CLIspecs", "Nodes#", "Mem(KiB)");
+        tnr = 0;
+        tsz = 0;
+        ph = NULL;
+        while ((ph = cligen_ph_each(cli_cligen(h), ph)) != NULL) {
+            if ((pt = cligen_ph_parsetree_get(ph)) == NULL)
+                continue;
+            nr = 0; sz = 0;
+            pt_stats(pt, &nr, &sz);
+            tnr += nr;
+            tsz += sz;
+            if (detail){
+                if (strlen(cligen_ph_name_get(ph)) > 25){
+                    cligen_output(stdout, "%s \\\n", cligen_ph_name_get(ph));
+                    cligen_output(stdout, "%-25s %-8" PRIu64 " %-8zu\n", "", nr, sz/1024);
+                }
+                else
+                    cligen_output(stdout, "%-25s %-8" PRIu64 " %-8zu\n", cligen_ph_name_get(ph), nr, sz/1024);
+            }
+        }
+        cligen_output(stdout, "%-25s %-8" PRIu64 " %-8zu\n", "CLIspec Total", tnr, tsz/1024);
     }
-    fprintf(stdout, "Backend:\n");
-    if (clixon_xml2file(stdout, xml_child_i(xret, 0), 0, 1, NULL, cligen_output, 0, 1) < 0)
-        goto done;
-    fprintf(stdout, "CLI:\n");
+    if (strcmp(what, "backend") == 0) {
+        /* Backend */
+        cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+        cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+        cprintf(cb, ">");
+        cprintf(cb, "<stats xmlns=\"%s\">", CLIXON_LIB_NS);
+        if (detail)
+            cprintf(cb, "<modules>true</modules>");
+        cprintf(cb, "</stats>");
+        cprintf(cb, "</rpc>");
+        if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
+            goto done;
+        if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+            clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
+            goto done;
+        }
+        cligen_output(stdout, "Backend (nr nodes, size of mem\n");
+        if (clixon_xml2file(stdout, xml_child_i(xret, 0), 0, 1, NULL, cligen_output, 0, 1) < 0)
+            goto done;
+    }
     retval = 0;
  done:
+    if (cvv1)
+        cvec_free(cvv1);
     if (xret)
         xml_free(xret);
     if (cb)

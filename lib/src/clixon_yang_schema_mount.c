@@ -195,7 +195,7 @@ yang_mount_get(yang_stmt  *y,
     cg_var *cv;
 
     clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s %p", xpath, y);
-        if ((cvv = yang_cvec_get(y)) != NULL &&
+    if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
         yspec)
         *yspec = cv_void_get(cv);
@@ -260,6 +260,7 @@ yang_mount_set(yang_stmt *y,
 #if 0 /* Problematic to free yang specs here, upper layers should handle it? */
         ys_free(yspec0);
 #endif
+        yang_ref_dec(yspec0);
         cv_void_set(cv, NULL);
     }
     else if ((cv = yang_cvec_add(y, CGV_VOID, xpath)) == NULL)
@@ -275,6 +276,7 @@ yang_mount_set(yang_stmt *y,
     /* tag yspec with key/xpath */
     yang_cv_set(yspec, cv2);
     cv_void_set(cv, yspec);
+    yang_ref_inc(yspec); /* share */
     yang_flag_set(y, YANG_FLAG_MOUNTPOINT); /* Cache value */
     retval = 0;
  done:
@@ -424,14 +426,15 @@ int
 yang_mount_freeall(yang_stmt *ymnt)
 {
     cvec      *cvv;
-    cg_var    *cv = NULL;
+    cg_var    *cv;
     yang_stmt *ys;
 
-    cvv = yang_cvec_get(ymnt);
-    cv = NULL;
-    while ((cv = cvec_each(cvv, cv)) != NULL){
-        if ((ys = cv_void_get(cv)) != NULL)
-            ys_free(ys);
+    if ((cvv = yang_cvec_get(ymnt)) != NULL){
+        cv = NULL;
+        while ((cv = cvec_each(cvv, cv)) != NULL){
+            if ((ys = cv_void_get(cv)) != NULL)
+                ys_free(ys);
+        }
     }
     return 0;
 }
@@ -498,25 +501,24 @@ yang_mount_xtop2xmnt(cxobj *xtop,
     return retval;
 }
 
-/*! Find schema mounts - callback function for xml_apply
+/*! Find schema mounts - callback function for yang_apply
  *
- * @param[in]  y    YANG node
- * @param[in]  arg  cvec, if match add node
- * @retval     2    Locally abort this subtree, continue with others
- * @retval     1    Abort, dont continue with others, return 1 to end user
- * @retval     0    OK, continue
- * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ * @param[in]  yn   yang node
+ * @param[in]  arg  Argument
+ * @retval     n    OK, abort traversal and return to caller with "n"
+ * @retval     0    OK, continue with next
+ * @retval    -1    Error, abort
  */
 static int
 find_yang_schema_mounts(yang_stmt *y,
                         void      *arg)
 {
-    int        ret;
-    cvec      *cvv = (cvec *)arg;
-    cg_var    *cv;
+    int     ret;
+    cvec   *cvv = (cvec *)arg;
+    cg_var *cv;
 
     if (yang_config(y) == 0)
-        return 2;
+        return 0;
     if ((ret = yang_schema_mount_point(y)) < 0)
         return -1;
     if (ret == 0)
@@ -890,7 +892,7 @@ yang_schema_cmp_kludge(clixon_handle h,
  * 8. set as new
  * @param[in]     h     Clixon handle
  * @param[in]     xt    XML tree node
- * @retval        0    OK
+ * @retval        0     OK
  * @retval       -1     Error
  */
 static int
@@ -937,7 +939,6 @@ yang_schema_find_share(clixon_handle h,
             if ((ret = yang_schema_cmp_kludge(h, xyanglib, xmodst)) < 0)
                 goto done;
             if (ret == 1){ /* equal */
-                yang_ref_inc(yspec1); /* share */
                 *yspecp = yspec1;
                 break;
             }

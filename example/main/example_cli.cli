@@ -123,9 +123,13 @@ show("Show a particular state of the system"){
     yang("Show yang specs"), show_yang(); {
         clixon-example("Show clixon-example yang spec"), show_yang("clixon-example");
     }		   
-    statistics("Show statistics"), cli_show_statistics();{
-      brief, cli_show_statistics();
-      modules, cli_show_statistics("modules");
+    memory("Show memory usage") {
+       cli("Show CLI memory usage"), cli_show_statistics("cli");{
+          detail("Show detailed CLI memory usage"), cli_show_statistics("cli", "detail");
+       }
+       backend("Show backend memory usage"), cli_show_statistics("backend");{
+          detail("Show detailed backend memory usage"), cli_show_statistics("backend", "detail");
+       }
     }
 }
 
