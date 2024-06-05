@@ -606,6 +606,34 @@ transaction_free(transaction_data_t *td)
     return 0;
 }
 
+static int
+plugin_transaction_call_one(clixon_handle       h,
+			    clixon_plugin_t    *cp,
+			    trans_cb_t         *fn,
+			    const char         *fnname,
+			    transaction_data_t *td)
+{
+    int  retval = -1;
+    int  rv;
+    void *wh = NULL;
+
+    wh = NULL;
+    if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), fnname) < 0)
+        goto done;
+    rv = fn(h, (transaction_data)td);
+    if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), fnname) < 0)
+        goto done;
+    if (rv < 0) {
+        if (!clixon_err_category()) /* sanity: log if clixon_err() is not called ! */
+            clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err call on error",
+                       fnname, clixon_plugin_name_get(cp));
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Call single plugin transaction_begin() before a validate/commit.
  *
  * @param[in]  cp      Plugin handle
@@ -619,28 +647,11 @@ plugin_transaction_begin_one(clixon_plugin_t    *cp,
                              clixon_handle       h,
                              transaction_data_t *td)
 {
-    int         retval = -1;
     trans_cb_t *fn;
-    void       *wh = NULL;
 
-    if ((fn = clixon_plugin_api_get(cp)->ca_trans_begin) != NULL){
-        wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-        if (fn(h, (transaction_data)td) < 0){
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-                goto done;
-            if (!clixon_err_category()) /* sanity: log if clixon_err() is not called ! */
-                clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err call on error",
-                       __FUNCTION__, clixon_plugin_name_get(cp));
-            goto done;
-        }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_begin) != NULL)
+        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+    return 0;
 }
 
 /* The plugin_transaction routines need access to struct plugin which is local to this file */
@@ -682,29 +693,11 @@ plugin_transaction_validate_one(clixon_plugin_t    *cp,
                                 clixon_handle       h,
                                 transaction_data_t *td)
 {
-    int         retval = -1;
     trans_cb_t *fn;
-    void       *wh = NULL;
 
-    if ((fn = clixon_plugin_api_get(cp)->ca_trans_validate) != NULL){
-        wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-        if (fn(h, (transaction_data)td) < 0){
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-                goto done;
-            if (!clixon_err_category()) /* sanity: log if clixon_err() is not called ! */
-                clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err call on error",
-                       __FUNCTION__, clixon_plugin_name_get(cp));
-
-            goto done;
-        }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_validate) != NULL)
+        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+    return 0;
 }
 
 /*! Call transaction_validate callbacks in all backend plugins
@@ -744,28 +737,11 @@ plugin_transaction_complete_one(clixon_plugin_t    *cp,
                                 clixon_handle       h,
                                 transaction_data_t *td)
 {
-    int         retval = -1;
     trans_cb_t *fn;
-    void       *wh = NULL;
 
-    if ((fn = clixon_plugin_api_get(cp)->ca_trans_complete) != NULL){
-        wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-        if (fn(h, (transaction_data)td) < 0){
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-                goto done;
-            if (!clixon_err_category()) /* sanity: log if clixon_err() is not called ! */
-                clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err call on error",
-                       __FUNCTION__, clixon_plugin_name_get(cp));
-            goto done;
-        }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_complete) != NULL)
+        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+    return 0;
 }
 
 /*! Call transaction_complete() in all plugins after validation (before commit)
@@ -808,13 +784,14 @@ plugin_transaction_revert_all(clixon_handle       h,
                               transaction_data_t *td,
                               int                 nr)
 {
-    int                retval = 0;
-    clixon_plugin_t     *cp = NULL;
-    trans_cb_t        *fn;
+    int              retval = 0;
+    clixon_plugin_t *cp = NULL;
+    trans_cb_t      *fn;
 
     while ((cp = clixon_plugin_each_revert(h, cp, nr)) != NULL) {
         if ((fn = clixon_plugin_api_get(cp)->ca_trans_revert) == NULL)
             continue;
+
         if ((retval = fn(h, (transaction_data)td)) < 0){
             clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' trans_revert callback failed",
                            __FUNCTION__, clixon_plugin_name_get(cp));
@@ -838,28 +815,11 @@ plugin_transaction_commit_one(clixon_plugin_t      *cp,
                               clixon_handle       h,
                               transaction_data_t *td)
 {
-    int         retval = -1;
     trans_cb_t *fn;
-    void       *wh = NULL;
 
-    if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit) != NULL){
-        wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-        if (fn(h, (transaction_data)td) < 0){
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-                goto done;
-            if (!clixon_err_category()) /* sanity: log if clixon_err() is not called ! */
-                clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err call on error",
-                       __FUNCTION__, clixon_plugin_name_get(cp));
-            goto done;
-        }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit) != NULL)
+        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+    return 0;
 }
 
 /*! Call transaction_commit callbacks in all backend plugins
@@ -906,28 +866,11 @@ plugin_transaction_commit_done_one(clixon_plugin_t    *cp,
                                    clixon_handle       h,
                                    transaction_data_t *td)
 {
-    int         retval = -1;
     trans_cb_t *fn;
-    void       *wh = NULL;
 
-    if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit_done) != NULL){
-        wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-        if (fn(h, (transaction_data)td) < 0){
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-                goto done;
-            if (!clixon_err_category()) /* sanity: log if clixon_err() is not called ! */
-                clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err call on error",
-                       __FUNCTION__, clixon_plugin_name_get(cp));
-            goto done;
-        }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit_done) != NULL)
+        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+    return 0;
 }
 
 /*! Call transaction_commit_done callbacks in all backend plugins
@@ -967,28 +910,11 @@ plugin_transaction_end_one(clixon_plugin_t    *cp,
                            clixon_handle       h,
                            transaction_data_t *td)
 {
-    int         retval = -1;
     trans_cb_t *fn;
-    void       *wh = NULL;
 
-    if ((fn = clixon_plugin_api_get(cp)->ca_trans_end) != NULL){
-        wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-        if (fn(h, (transaction_data)td) < 0){
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-                goto done;
-            if (!clixon_err_category()) /* sanity: log if clixon_err() is not called ! */
-                clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err call on error",
-                       __FUNCTION__, clixon_plugin_name_get(cp));
-            goto done;
-        }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_end) != NULL)
+        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+    return 0;
 }
 
 /*! Call transaction_end() in all plugins after a successful commit.
@@ -1020,28 +946,11 @@ plugin_transaction_abort_one(clixon_plugin_t    *cp,
                              clixon_handle       h,
                              transaction_data_t *td)
 {
-    int         retval = -1;
     trans_cb_t *fn;
-    void       *wh = NULL;
 
-    if ((fn = clixon_plugin_api_get(cp)->ca_trans_abort) != NULL){
-        wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-        if (fn(h, (transaction_data)td) < 0){
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-                goto done;
-            if (!clixon_err_category()) /* sanity: log if clixon_err() is not called ! */
-                clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err call on error",
-                       __FUNCTION__, clixon_plugin_name_get(cp));
-            goto done;
-        }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_abort) != NULL)
+        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+    return 0;
 }
 
 /*! Call transaction_abort() in all plugins after a failed validation/commit.
