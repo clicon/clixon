@@ -387,7 +387,7 @@ restconf_connection_sanity(clixon_handle         h,
 
 /* Write buf to socket
  *
- * see also this function in restconf_api_openssl.c
+ * Only (at least mostly?) for HTTP/1
  * @param[in]  h        Clixon handle
  * @param[in]  buf      Buffer to write
  * @param[in]  buflen   Length of buffer
@@ -419,7 +419,7 @@ native_buf_write(clixon_handle    h,
      * 1. they are not "strings" in the sense they are not NULL-terminated
      * 2. they are often very long
      */
-    if (clixon_debug_get()) {
+    if ((clixon_debug_get() & CLIXON_DBG_RESTCONF) != 0) {
         char *dbgstr = NULL;
         size_t sz;
         sz = buflen>256?256:buflen; /* Truncate to 256 */
@@ -1071,7 +1071,7 @@ restconf_connection_close1(restconf_conn *rc)
         goto done;
     }
     rsock = rc->rc_socket;
-    clixon_debug(CLIXON_DBG_RESTCONF, "\"%s\"", rsock->rs_description);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", rsock->rs_description?rsock->rs_description:"");
     if (close(rc->rc_s) < 0){
         clixon_err(OE_UNIX, errno, "close");
         goto done;
@@ -1390,34 +1390,6 @@ restconf_ssl_accept_client(clixon_handle    h,
         }
         clixon_debug(CLIXON_DBG_RESTCONF, "proto:%s", restconf_proto2str(proto));
 
-#if 0 /* Seems too early to fail here, instead let authentication callback deal with this */
-        /* For client-cert authentication, check if any certs are present,
-        * if not, send bad request
-        * Alt: set SSL_CTX_set_verify(ctx, SSL_VERIFY_FAIL_IF_NO_PEER_CERT)
-        * but then SSL_accept fails.
-        */
-        if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE){
-            X509 *peercert;
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-            if ((peercert = SSL_get_peer_certificate(rc->rc_ssl)) != NULL){
-                X509_free(peercert);
-            }
-#else
-            if ((peercert = SSL_get1_peer_certificate(rc->rc_ssl)) != NULL){
-                X509_free(peercert);
-            }
-#endif
-            else { /* Get certificates (if available) */
-                if (proto != HTTP_2 &&
-                    native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
-                                                  "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Peer certificate required</error-message></error></errors>", rc->rc_socket, rc) < 0)
-                    goto done;
-                if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
-                    goto done;
-                goto closed;
-            }
-        }
-#endif
         /* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 
          * Note this _only_ works if SSL_set1_host() was set previously,...
          */

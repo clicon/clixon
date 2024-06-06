@@ -119,24 +119,24 @@ api_path_is_stream(clixon_handle h)
 
 /*! Send subscription to backend
  *
- * @param[in]  h     Clixon handle
- * @param[in]  req   Generic Www handle (can be part of clixon handle)
- * @param[in]  name  Stream name
+ * @param[in]  h         Clixon handle
+ * @param[in]  req       Generic Www handle (can be part of clixon handle)
+ * @param[in]  name      Stream name
  * @param[in]  qvec
  * @param[in]  pretty    Pretty-print json/xml reply
  * @param[in]  media_out Restconf output media
- * @param[out] sp    Socket -1 if not set
+ * @param[out] sp        Socket -1 if not set (only fcgi)
  * @retval     0    OK
  * @retval    -1    Error
  */
 int
-restconf_subscription(clixon_handle h,
-                      void         *req,
-                      char         *name,
-                      cvec         *qvec,
-                      int           pretty,
+restconf_subscription(clixon_handle  h,
+                      void          *req,
+                      char          *name,
+                      cvec          *qvec,
+                      int            pretty,
                       restconf_media media_out,
-                      int          *sp)
+                      int           *sp)
 {
     int     retval = -1;
     cxobj  *xret = NULL;
@@ -181,12 +181,13 @@ restconf_subscription(clixon_handle h,
     /* Setting up stream */
     if (restconf_reply_header(req, "Server", "clixon") < 0)
         goto done;
-    if (restconf_reply_header(req, "Server", "clixon") < 0)
-        goto done;
     if (restconf_reply_header(req, "Content-Type", "text/event-stream") < 0)
         goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
         goto done;
+    /* HTTP/2 does not use the Connection header field RFC 9113
+     * filtered in restconf_reply_header
+     */
     if (restconf_reply_header(req, "Connection", "keep-alive") < 0)
         goto done;
     /* Must be there for FCGI caching */

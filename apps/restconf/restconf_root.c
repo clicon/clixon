@@ -398,8 +398,8 @@ api_data(clixon_handle h,
             goto done;
         retval = api_return_err0(h, req, xerr, pretty, media_out, 0);
     }
-    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
  done:
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (xerr)
         xml_free(xerr);
     return retval;

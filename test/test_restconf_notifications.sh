@@ -35,7 +35,6 @@ fi
 : ${SLEEP2:=1}
 SLEEP5=.5
 APPNAME=example
-: ${clixon_util_stream:=clixon_util_stream}
 
 : ${TIMEOUT:=10}
 : ${PERIOD:=2}
@@ -231,13 +230,14 @@ if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     runtest ""
 fi
 if [ "${WITH_RESTCONF}" = "native" ]; then
-    if false; then # XXX native + http/2 dont work yet
-#    if ${HAVE_LIBNGHTTP2}; then
+    if ${HAVE_LIBNGHTTP2}; then
         runtest --http2
     fi
 fi
 
 if false; then # NYI
+: ${clixon_util_stream:=clixon_util_stream}
+
 # 2c
 new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -8)

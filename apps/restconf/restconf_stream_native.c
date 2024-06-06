@@ -55,7 +55,6 @@
 #include <syslog.h>
 #include <pwd.h>
 #include <ctype.h>
-#include <assert.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -86,6 +85,39 @@
 #include "restconf_native.h"    /* Restconf-openssl mode specific headers*/
 #include "restconf_stream.h"
 
+#ifdef HAVE_LIBNGHTTP2
+#include "restconf_nghttp2.h"
+
+static int
+restconf_http2_send_notification(clixon_handle         h,
+                                 restconf_stream_data *sd,
+                                 restconf_conn        *rc)
+
+{
+    int                   retval = -1;
+    nghttp2_session      *session;
+    nghttp2_error         ngerr;
+    nghttp2_data_provider data_prd;
+    int32_t               stream_id;
+
+    data_prd.source.ptr = sd;
+    data_prd.read_callback = restconf_sd_read;
+    session = rc->rc_ngsession;
+    stream_id = 1;
+    if ((ngerr = nghttp2_submit_data(session,
+                                     0, // flags
+                                     stream_id,
+                                     (data_prd.source.ptr != NULL)?&data_prd:NULL
+                                     )) < 0){
+        clixon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_response");
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+#endif // NGHTTP2
+
 /*! Callback when stream notifications arrive from backend
  *
  * @param[in]  s    Socket
@@ -98,18 +130,21 @@ static int
 stream_native_backend_cb(int   s,
                          void *arg)
 {
-    int            retval = -1;
+    int                   retval = -1;
     restconf_stream_data *sd = (restconf_stream_data *)arg;
-    int            eof;
-    cxobj         *xtop = NULL; /* top xml */
-    cxobj         *xn;        /* notification xml */
-    cbuf          *cbx = NULL;
-    cbuf          *cb = NULL;
-    cbuf          *cbmsg = NULL;
-    int            pretty = 0;
-    int            ret;
-    restconf_conn *rc = sd->sd_conn;
-    clixon_handle  h = rc->rc_h;
+    int                   eof;
+    cxobj                *xtop = NULL; /* top xml */
+    cxobj                *xn;        /* notification xml */
+    cbuf                 *cbx = NULL;
+    cbuf                 *cb = NULL;
+    cbuf                 *cbmsg = NULL;
+    int                   pretty = 0;
+    int                   ret;
+    restconf_conn        *rc = sd->sd_conn;
+    clixon_handle         h = rc->rc_h;
+#ifdef HAVE_LIBNGHTTP2
+    nghttp2_error         ngerr;
+#endif
 
     clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "");
     pretty = restconf_pretty_get(h);
@@ -139,31 +174,28 @@ stream_native_backend_cb(int   s,
     }
     if ((xn = xpath_first(xtop, NULL, "notification")) == NULL)
         goto ok;
-#if 0 // Cant get CHUNKED to work
-    {
-        size_t len;
-        cprintf(cbx, "data: ");
-        if (clixon_xml2cbuf(cbx, xn, 0, pretty, NULL, -1, 0) < 0)
-            goto done;
-        len = cbuf_len(cbx);
-        len +=2;
-        cprintf(cb, "%x", (int16_t)len&0xffff);
-        cprintf(cb, "\r\n");
-        cprintf(cb, "%s", cbuf_get(cbx));
-        cprintf(cb, "\r\n");
-        cprintf(cb, "\r\n");
-        cprintf(cb, "0\r\n");
-        cprintf(cb, "\r\n");
-    // XXX This terminates stream, but want it to continue / hang
-    }
-#else
     cprintf(cb, "data: ");
     if (clixon_xml2cbuf(cb, xn, 0, pretty, NULL, -1, 0) < 0)
         goto done;
     cprintf(cb, "\r\n");
     cprintf(cb, "\r\n");
-#endif
-    if ((ret = native_buf_write(h, cbuf_get(cb), cbuf_len(cb), rc, "native stream")) < 0)
+#ifdef HAVE_LIBNGHTTP2
+    if (rc->rc_proto == HTTP_2){
+        if (restconf_reply_send(sd, 200, cb, 0) < 0)
+            goto done;
+        cb = NULL;
+        if (restconf_http2_send_notification(h, sd, rc) < 0)
+            goto done;
+        if ((ngerr = nghttp2_session_send(rc->rc_ngsession)) != 0)
+            goto done;
+        if (sd->sd_body){
+            cbuf_free(sd->sd_body);
+            sd->sd_body = NULL;
+        }
+    }
+    else
+#endif // HAVE_LIBNGHTTP2
+        if ((ret = native_buf_write(h, cbuf_get(cb), cbuf_len(cb), rc, "native stream")) < 0)
         goto done;
  ok:
     retval = 0;
@@ -181,15 +213,39 @@ stream_native_backend_cb(int   s,
 }
 
 /*! Timeout of notification stream, limit lifetime, for debug
+ *
+ * XXX HTTP/2 not closed cleanly
  */
 static int
 stream_timeout_end(int   s,
                    void *arg)
 {
+    int            retval = -1;
     restconf_conn *rc = (restconf_conn *)arg;
 
     clixon_debug(CLIXON_DBG_STREAM, "");
-    return restconf_close_ssl_socket(rc, __FUNCTION__, 0);
+    rc->rc_exit = 1;
+#if 0 // Termination is not clean
+    {
+        int ngerr;
+        int ret;
+        if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, 0)) < 0){
+            clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
+            goto done; // XXX not here in original?
+        }
+        if ((ngerr = nghttp2_session_send(rc->rc_ngsession)) != 0){
+            clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_send %d", ngerr);
+            goto done; // XXX not here in original?
+        }
+        ret = SSL_pending(rc->rc_ssl);
+        clixon_debug(CLIXON_DBG_STREAM, "SSL pending: %d", ret);
+    }
+#endif
+    if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Close notification stream
@@ -203,6 +259,7 @@ stream_close(clixon_handle h,
 {
     restconf_conn *rc = (restconf_conn *)req;
 
+    clixon_debug(CLIXON_DBG_STREAM, "");
     clicon_rpc_close_session(h);
     clixon_event_unreg_fd(rc->rc_event_stream, stream_native_backend_cb);
     clixon_event_unreg_timeout(stream_timeout_end, req);

@@ -33,6 +33,7 @@
   ***** END LICENSE BLOCK *****
   *
   * Virtual clixon restconf API functions.
+  * @see RFC9113
  */
 
 #ifndef _RESTCONF_NGHTTP2_H_
@@ -42,6 +43,7 @@
  * Prototypes
  */
 int clixon_nghttp2_log_cb(void *handle, int suberr, cbuf *cb);
+ssize_t restconf_sd_read(nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t length, uint32_t *data_flags, nghttp2_data_source *source, void *user_data);
 int http2_exec(restconf_conn *rc, restconf_stream_data *sd, nghttp2_session *session, int32_t stream_id);
 int http2_recv(restconf_conn *rc, const unsigned char *buf, size_t n);
 int http2_send_server_connection(restconf_conn *rc);

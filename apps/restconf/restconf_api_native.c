@@ -66,12 +66,13 @@
 
 /*! Add HTTP header field name and value to reply
  *
+ * Generic code, add to restconf/native struct. Specific http/1 or /2 code actually sends
  * @param[in]  req   request handle
  * @param[in]  name  HTTP header field name
  * @param[in]  vfmt  HTTP header field value format string w variable parameter
  * @retval     0     OK
  * @retval    -1     Error
- * @see eg RFC 7230
+ * @see restconf_submit_response  http/2 actual send function
  */
 int
 restconf_reply_header(void       *req0,
@@ -86,7 +87,6 @@ restconf_reply_header(void       *req0,
     char                 *value = NULL;
     va_list               ap;
 
-    clixon_debug(CLIXON_DBG_RESTCONF, "%s", name);
     if (sd == NULL || name == NULL || vfmt == NULL){
         clixon_err(OE_CFG, EINVAL, "sd, name or value is NULL");
         goto done;
@@ -94,6 +94,17 @@ restconf_reply_header(void       *req0,
     if ((rc = sd->sd_conn) == NULL){
         clixon_err(OE_CFG, EINVAL, "rc is NULL");
         goto done;
+    }
+    /*
+     * If HTTP/2, filter some headers
+     * The following header fields must not appear: "Connection", "Keep-Alive", "Proxy-Connection",
+     * "Transfer-Encoding" and "Upgrade".
+    */
+    if (rc->rc_proto == HTTP_2){ // NO http/2
+        if (strcmp(name, "Connection") == 0){
+            clixon_debug(CLIXON_DBG_RESTCONF, "Skip: %s: %s", name, value);
+            goto ok;
+        }
     }
     /* First round: compute vlen and allocate value */
     va_start(ap, vfmt);
@@ -112,10 +123,12 @@ restconf_reply_header(void       *req0,
         goto done;
     }
     va_end(ap);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s: %s", name, value);
     if (cvec_add_string(sd->sd_outp_hdrs, (char*)name, value) < 0){
         clixon_err(OE_RESTCONF, errno, "cvec_add_string");
         goto done;
     }
+ ok:
     retval = 0;
  done:
     if (value)
@@ -123,8 +136,9 @@ restconf_reply_header(void       *req0,
     return retval;
 }
 
-/*! Send HTTP reply with potential message body
+/*! Assign values to HTTP reply with potential message body
  *
+ * Generic code, add to restconf/native struct. Specific http/1 or /2 code actually sends
  * @param[in]  req   http request handle
  * @param[in]  code  Status code
  * @param[in]  cb    Body as a cbuf if non-NULL. Note: is consumed
