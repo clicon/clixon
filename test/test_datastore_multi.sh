@@ -314,7 +314,7 @@ sleep 1
 
 new "Check running subfile not changed"
 s2=$(stat -c "%Y" $dir/running.d/${subfilename})
-if [ $s1 -ne $s2 ]; then
+if [ $s1 -ne $s2 ]; then  # XXX Sometimes fails
     err "Timestamp not changed" "$s1 != $s2"
 fi
 

@@ -1558,7 +1558,7 @@ xml_rm(cxobj *xc)
 /*! Remove all children of specific type
  *
  * @param[in] x    XML node
- * @param[in] type Remove all children of xn of this type
+ * @param[in] type Remove all children of xn of this type, or -1 for all
  * @retval    0    OK
  * @retval   -1    Error
  */
@@ -2069,11 +2069,14 @@ xml_copy(cxobj *x0,
 
 /*! Create and return a copy of xml tree.
  *
+ * @param[in] x0   Old object
+ * @retval    x1   New object, free with xml_free
+ * @retval    NULL Error
  * @code
  *   cxobj *x1;
- *   x1 = xml_dup(x0);
+ *   if ((x1 = xml_dup(x0)) == NULL)
+ *      err;
  * @endcode
- * Note, returned tree should be freed as: xml_free(x1)
  * @see xml_cp
  */
 cxobj *
