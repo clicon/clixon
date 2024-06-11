@@ -819,7 +819,6 @@ yang_schema_cmp_kludge(clixon_handle h,
     cxobj *xy2;
     cxobj *x1;
     cxobj *x2;
-    cxobj *x2m;
     char  *name;
     char  *revision1;
     char  *revision2;
@@ -857,13 +856,34 @@ yang_schema_cmp_kludge(clixon_handle h,
     while ((x2 = xml_child_each(xy2, x2, CX_ELMNT)) != NULL) {
         if (strcmp(xml_name(x2), "module"))
             continue;
-        nr2++;
-        x2m = NULL;
-        while ((x2m = xml_child_each(x2, x2m, CX_ELMNT)) != NULL) {
-            if (strcmp(xml_name(x2m), "submodule"))
-                continue;
-            nr2++;
+        if ((name = xml_find_body(x2, "name")) == NULL){
+            clixon_debug(CLIXON_DBG_YANG, "no name");
+            goto noteq;
         }
+        revision2 = xml_find_body(x2, "revision");
+        if ((x1 = xpath_first(xy1, NULL, "module[name='%s']", name)) == NULL){
+#ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
+            /* Skip ietf-yang-library and imports since they are force-loaded in
+             * yang_lib2yspec
+             */
+            if (strcmp(name, "ietf-yang-library") == 0 ||
+                strcmp(name, "ietf-yang-types") == 0 ||
+                strcmp(name, "ietf-inet-types") == 0 ||
+                strcmp(name, "ietf-datastores") == 0){
+                continue;
+            }
+#endif
+            if ((x1 = xpath_first(xy1, NULL, "module/submodule[name='%s']", name)) == NULL){
+                clixon_debug(CLIXON_DBG_YANG, "name mismatch %s\n", name);
+                goto noteq;
+            }
+        }
+        revision1 = xml_find_body(x1, "revision");
+        if (clicon_strcmp(revision1, revision2) != 0){
+            clixon_debug(CLIXON_DBG_YANG, "revision mismatch %s %s\n", revision1, revision2);
+            goto noteq;
+        }
+        nr2++;
     }
     if (nr1 != nr2){
         clixon_debug(CLIXON_DBG_YANG, "nr mismatch %d %d", nr1, nr2);
