@@ -873,15 +873,18 @@ cli_start_program(clixon_handle h,
         execlp(runner, runner, script_path, NULL);
         clixon_err(OE_PLUGIN, errno, "Error run script");
         return -1;
-    }else if(pid == -1){
+    }
+    else if(pid == -1){
         clixon_err(OE_PLUGIN, errno, "fork");
-    }else{
+    }
+    else{
         /* parent process */
         int status;
         if (waitpid(pid, &status, 0) != pid ){
             clixon_err(OE_PLUGIN, errno, "waitpid error");
             goto done;
-        } else {
+        }
+        else {
             return WEXITSTATUS(status);
         }
     }
