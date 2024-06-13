@@ -794,6 +794,11 @@ cli_set_mode(clixon_handle h,
  *      run_program_bash("Run program"), cli_start_program("bash");
  * @endcode
  *
+ * @warning Please note that the usage of this function consists of executing an arbitrary command given to
+ * the function as an argument. It may pose a serious security risk if the function is used improperly.
+ * Developers should take necessary precautions to ensure safety, such as using `chroot` to limit the
+ * space of accessible scripts for execution.
+ *
  * @param[in] h Clixon handle
  * @param[in] cvv Vector of command variables
  * @param[in] argv Function arguments
