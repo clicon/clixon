@@ -237,6 +237,7 @@ mibyang_table_register(clixon_handle h,
     int                              asn1type;
     yang_stmt                       *ys;
     char                            *name;
+    int                              inext;
 
     if ((ys = yang_parent_get(ylist)) == NULL ||
         yang_keyword_get(ys) != Y_CONTAINER){
@@ -315,9 +316,9 @@ mibyang_table_register(clixon_handle h,
     table_info->min_column = 1;
 
     /* Count columns */
-    yleaf = NULL;
     table_info->max_column = 0;
-    while ((yleaf = yn_each(ylist, yleaf)) != NULL) {
+    inext = 0;
+    while ((yleaf = yn_iter(ylist, &inext)) != NULL) {
            if ((yang_keyword_get(yleaf) != Y_LEAF) || (ret = yangext_is_oid_exist(yleaf)) != 1)
             continue;
         table_info->max_column++;
@@ -557,6 +558,7 @@ mibyang_traverse(clixon_handle h,
     yang_stmt *ys = NULL;
     yang_stmt *yp;
     int        ret;
+    int        inext;
     static oid zero_oid = 0;
 
     clixon_debug(CLIXON_DBG_SNMP, "%s", yang_argument_get(yn));
@@ -586,8 +588,8 @@ mibyang_traverse(clixon_handle h,
         break;
     }
     /* Traverse data nodes in tree (module is special case */
-    ys = NULL;
-    while ((ys = yn_each(yn, ys)) != NULL) {
+    inext = 0;
+    while ((ys = yn_iter(yn, &inext)) != NULL) {
         /* augment special case of table */
         if (!yang_schemanode(ys) && yang_keyword_get(ys) != Y_AUGMENT)
             continue;

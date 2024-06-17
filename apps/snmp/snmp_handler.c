@@ -852,11 +852,12 @@ snmp_table_get(clixon_handle               h,
     int        i;
     cg_var    *cv;
     char      *defaultval = NULL;
+    int        inext;
     int        ret;
 
     /* Get yang of leaf from first part of OID */
-    ys = NULL;
-    while ((ys = yn_each(yt, ys)) != NULL) {
+    inext = 0;
+    while ((ys = yn_iter(yt, &inext)) != NULL) {
         if (yang_keyword_get(ys) != Y_LEAF)
             continue;
         /* reset oid */
@@ -973,6 +974,7 @@ snmp_table_set(clixon_handle               h,
     netsnmp_variable_list  *requestvb;
     int        rowstatus = 0;
     char      *origtype;
+    int        inext;
 
     /* Get OID from table /list  */
     if ((ret = yangext_oid_get(yt, oidt, &oidtlen, NULL)) < 0)
@@ -984,8 +986,8 @@ snmp_table_set(clixon_handle               h,
      */
     ys = NULL;
     yrowst = NULL;
-    yi = NULL;
-    while ((yi = yn_each(yt, yi)) != NULL) {
+    inext = 0;
+    while ((yi = yn_iter(yt, &inext)) != NULL) {
         if (yang_keyword_get(yi) != Y_LEAF)
             continue;
         /* reset oid */

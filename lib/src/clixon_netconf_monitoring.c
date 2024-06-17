@@ -144,14 +144,16 @@ netconf_monitoring_schemas(clixon_handle h,
                            cbuf         *cb)
 {
     int        retval = -1;
-    yang_stmt *ym = NULL;
+    yang_stmt *ym;
     yang_stmt *y1;
     char      *identifier;
     char      *revision;
     char      *dir;
+    int        inext;
 
     cprintf(cb, "<schemas>");
-    while ((ym = yn_each(yspec, ym)) != NULL) {
+    inext = 0;
+    while ((ym = yn_iter(yspec, &inext)) != NULL) {
         cprintf(cb, "<schema>");
         identifier = yang_argument_get(ym);
         cprintf(cb, "<identifier>%s</identifier>", identifier);

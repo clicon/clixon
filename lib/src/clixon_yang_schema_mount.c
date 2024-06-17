@@ -751,6 +751,7 @@ yang_schema_mount_statistics(clixon_handle h,
     size_t     sz;
     cg_var    *cv1;
     yang_stmt *yspec1;
+    int        inext;
 
     if (yang_mount_xtop2xmnt(xtop, &cvv) < 0)
         goto done;
@@ -789,15 +790,15 @@ yang_schema_mount_statistics(clixon_handle h,
             }
             continue;
         }
-        if (yang_stats(yspec, &nr, &sz) < 0)
+        if (yang_stats(yspec, 0, &nr, &sz) < 0)
             goto done;
         cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
         if (modules){
-            ym = NULL;
-            while ((ym = yn_each(yspec, ym)) != NULL) {
+            inext = 0;
+            while ((ym = yn_iter(yspec, &inext)) != NULL) {
                 cprintf(cb, "<module><name>%s</name>", yang_argument_get(ym));
                 nr = 0; sz = 0;
-                if (yang_stats(ym, &nr, &sz) < 0)
+                if (yang_stats(ym, 0, &nr, &sz) < 0)
                     goto done;
                 cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
                 cprintf(cb, "</module>");

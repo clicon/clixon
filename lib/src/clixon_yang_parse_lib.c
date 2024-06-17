@@ -119,6 +119,7 @@ ys_grouping_module_resolve(yang_stmt *ymod,
     yang_stmt *yrealmod = NULL;
     yang_stmt *ygrouping = NULL;
     char      *submname;
+    int        inext;
 
     /* Find grouping from own sub/module */
     if ((ygrouping = yang_find(ymod, Y_GROUPING, name)) != NULL)
@@ -132,8 +133,8 @@ ys_grouping_module_resolve(yang_stmt *ymod,
     if ((ygrouping = yang_find(yrealmod, Y_GROUPING, name)) != NULL)
         goto done;
     /* Find grouping from sub-modules */
-    yinc = NULL;
-    while ((yinc = yn_each(yrealmod, yinc)) != NULL){
+    inext = 0;
+    while ((yinc = yn_iter(yrealmod, &inext)) != NULL){
         if (yang_keyword_get(yinc) != Y_INCLUDE)
             continue;
         submname = yang_argument_get(yinc);
@@ -237,6 +238,7 @@ yang_augment_node(clixon_handle h,
     cvec         *wnsc = NULL;   /* namespace context of when statement */
     enum rfc_6020 targetkey;
     enum rfc_6020 childkey;
+    int           inext;
 
     if ((ymod = ys_module(ys)) == NULL){
         clixon_err(OE_YANG, 0, "My yang module not found");
@@ -281,8 +283,8 @@ yang_augment_node(clixon_handle h,
             goto done;
     }
     /* Extend ytarget with ys' schemanode children */
-    yc0 = NULL;
-    while ((yc0 = yn_each(ys, yc0)) != NULL) {
+    inext = 0;
+    while ((yc0 = yn_iter(ys, &inext)) != NULL) {
         childkey = yang_keyword_get(yc0);
         /* Only shemanodes and extensions */
         if (!yang_schemanode(yc0) && childkey != Y_UNKNOWN
@@ -361,7 +363,6 @@ yang_augment_node(clixon_handle h,
         yang_flag_reset(yc, YANG_FLAG_GROUPING);
 #endif
         yc->ys_mymodule = ymod;
-
         if (yn_insert(ytarget, yc) < 0)
             goto done;
         /* If there is an associated when statement, add a special when struct to the yang 
@@ -405,9 +406,10 @@ yang_augment_module(clixon_handle h,
 {
     int        retval = -1;
     yang_stmt *ys;
+    int        inext;
 
-    ys = NULL;
-    while ((ys = yn_each(ymod, ys)) != NULL){
+    inext = 0;
+    while ((ys = yn_iter(ymod, &inext)) != NULL){
         switch (yang_keyword_get(ys)){
         case Y_AUGMENT: /* top-level */
             if (yang_augment_node(h, ys) < 0)
@@ -443,12 +445,13 @@ ys_do_refine(yang_stmt *yr,
     yang_stmt    *ytc; /* target child */
     enum rfc_6020 keyw;
     int           i;
+    int           inext;
 
     /* Loop through refine node children. First if remove do that first 
      * In some cases remove a set of nodes.
      */
-    yrc = NULL;
-    while ((yrc = yn_each(yr, yrc)) != NULL) {
+    inext = 0;
+    while ((yrc = yn_iter(yr, &inext)) != NULL) {
         keyw = yang_keyword_get(yrc);
         switch (keyw){
         case Y_DEFAULT: /* remove old, add new */
@@ -479,8 +482,8 @@ ys_do_refine(yang_stmt *yr,
         }
     }
     /* Second, add the node(s) */
-    yrc = NULL;
-    while ((yrc = yn_each(yr, yrc)) != NULL) {
+    inext = 0;
+    while ((yrc = yn_iter(yr, &inext)) != NULL) {
         keyw = yang_keyword_get(yrc);
         /* Make copy */
         if ((yrc1 = ys_dup(yrc)) == NULL)
@@ -524,6 +527,7 @@ ys_iskey(yang_stmt *y,
     return 0;
 }
 
+
 /*! Helper function to yang_expand_grouping
  *
  * @param[in] yn     Yang parent node of uses ststement
@@ -552,6 +556,7 @@ yang_expand_uses_node(yang_stmt *yn,
     yang_stmt *ywhen;
     char      *wxpath = NULL; /* xpath of when statement */
     cvec      *wnsc = NULL;   /* namespace context of when statement */
+    int        inext;
 
     /* Split argument into prefix and name */
     if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
@@ -595,8 +600,8 @@ yang_expand_uses_node(yang_stmt *yn,
      * Compute the number of such nodes, and extend the child vector with that below
      */
     glen = 0;
-    yg = NULL;
-    while ((yg = yn_each(ygrouping2, yg)) != NULL) {
+    inext = 0;
+    while ((yg = yn_iter(ygrouping2, &inext)) != NULL) {
         if (yang_schemanode(yg) || yang_keyword_get(yg) == Y_UNKNOWN)
             glen++;
     }
@@ -636,8 +641,8 @@ yang_expand_uses_node(yang_stmt *yn,
     /* Iterate through refinements and modify grouping copy 
      * See RFC 7950 7.13.2 yrt is the refine target node
      */
-    yr = NULL;
-    while ((yr = yn_each(ys, yr)) != NULL) {
+    inext = 0;
+    while ((yr = yn_iter(ys, &inext)) != NULL) {
         yang_stmt *yrt; /* refine target node */
         if (yang_keyword_get(yr) != Y_REFINE)
             continue;
@@ -1191,7 +1196,7 @@ yang_parse_recurse(clixon_handle h,
                    yang_stmt    *ysp)
 {
     int           retval = -1;
-    yang_stmt    *yi = NULL; /* import */
+    yang_stmt    *yi; /* import */
     yang_stmt    *yrev;
     yang_stmt    *ybelongto;
     yang_stmt    *yrealmod;
@@ -1199,11 +1204,13 @@ yang_parse_recurse(clixon_handle h,
     char         *subrevision;
     yang_stmt    *subymod;
     enum rfc_6020 keyw;
+    int           inext;
 
     if (ys_real_module(ymod, &yrealmod) < 0)
         goto done;
     /* go through all import (modules) and include(submodules) of ysp */
-    while ((yi = yn_each(ymod, yi)) != NULL){
+    inext = 0;
+    while ((yi = yn_iter(ymod, &inext)) != NULL){
         keyw = yang_keyword_get(yi);
         if (keyw != Y_IMPORT && keyw != Y_INCLUDE)
             continue;
@@ -1268,6 +1275,7 @@ ys_list_check(clixon_handle h,
     yang_stmt    *yc = NULL;
     enum rfc_6020 keyw;
     yang_stmt    *yroot;
+    int           inext;
 
     /* This node is state, not config */
     if (yang_config_ancestor(ys) == 0)
@@ -1293,8 +1301,8 @@ ys_list_check(clixon_handle h,
     }
     /* Traverse subs */
     if (yang_schemanode(ys) || keyw == Y_MODULE || keyw == Y_SUBMODULE){
-        yc = NULL;
-        while ((yc = yn_each(ys, yc)) != NULL){
+        inext = 0;
+        while ((yc = yn_iter(ys, &inext)) != NULL){
             if (ys_list_check(h, yc) < 0)
                 goto done;
         }
@@ -1488,7 +1496,6 @@ yang_parse_post(clixon_handle h,
     for (i=modmin; i<modmax; i++)
         if (yang_apply(yang_child_i(yspec, i), Y_TYPE, ys_resolve_type, 1, h) < 0)
             goto done;
-
     /* Up to here resolving is made in the context they are defined, rather 
      * than the context they are used (except for submodules being merged w 
      * modules). Like static scoping. 
@@ -1513,7 +1520,6 @@ yang_parse_post(clixon_handle h,
     for (i=0; i<ylen; i++)
         if (yang_augment_module(h, ylist[i]) < 0)
             goto done;
-
     /* 8: Check deviations: not-supported add/delete/replace statements 
      *    done late since eg groups must be expanded
      */

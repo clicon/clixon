@@ -483,7 +483,8 @@ yang2cli_var_sub(clixon_handle h,
     int           retval = -1;
     char         *type;
     yang_stmt    *yi = NULL;
-    int           i = 0;
+    int           i;
+    int           inext;
     int           j;
     const char   *cvtypestr;
     char         *arg;
@@ -503,8 +504,8 @@ yang2cli_var_sub(clixon_handle h,
         if (strcmp(type, "enumeration") == 0 || strcmp(type, "bits") == 0){
             cprintf(cb, " choice:");
             i = 0;
-            yi = NULL;
-            while ((yi = yn_each(ytype, yi)) != NULL){
+            inext = 0;
+            while ((yi = yn_iter(ytype, &inext)) != NULL){
                 if (yang_keyword_get(yi) != Y_ENUM && yang_keyword_get(yi) != Y_BIT)
                     continue;
                 if (i)
@@ -629,15 +630,17 @@ yang2cli_var_union(clixon_handle h,
                    cbuf         *cb)
 {
     int        retval = -1;
-    yang_stmt *ytsub = NULL;
+    yang_stmt *ytsub;
     int        i;
+    int        inext;
 
     i = 0;
+    inext = 0;
     /* Loop over all sub-types in the resolved union type, note these are
      * not resolved types (unless they are built-in, but the resolve call is
      * made in the union_one call.
      */
-    while ((ytsub = yn_each(ytype, ytsub)) != NULL){
+    while ((ytsub = yn_iter(ytype, &inext)) != NULL){
         if (yang_keyword_get(ytsub) != Y_TYPE)
             continue;
         if (i++)
@@ -952,6 +955,7 @@ yang2cli_container(clixon_handle h,
     int           compress = 0;
     yang_stmt    *ymod = NULL;
     int           extvalue = 0;
+    int           inext;
     int           ret;
 
     if (ys_real_module(ys, &ymod) < 0)
@@ -990,8 +994,8 @@ yang2cli_container(clixon_handle h,
             cprintf(cb, "%*s%s", (level+1)*3, "", "@mountpoint;\n");
         }
     }
-    yc = NULL;
-    while ((yc = yn_each(ys, yc)) != NULL)
+    inext = 0;
+    while ((yc = yn_iter(ys, &inext)) != NULL)
         if (yang2cli_stmt(h, yc, level+1, cb) < 0)
             goto done;
     if (!compress)
@@ -1030,6 +1034,7 @@ yang2cli_list(clixon_handle h,
     int           last_key = 0;
     int           exist = 0;
     int           keynr = 0;
+    int           inext;
 
     cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
@@ -1078,8 +1083,8 @@ yang2cli_list(clixon_handle h,
         keynr++;
     }
     cprintf(cb, "{\n");
-    yc = NULL;
-    while ((yc = yn_each(ys, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(ys, &inext)) != NULL) {
         /*  cvk is a cvec of strings containing variable names
             yc is a leaf that may match one of the values of cvk.
         */
@@ -1128,11 +1133,12 @@ yang2cli_choice(clixon_handle h,
                 int           level,
                 cbuf         *cb)
 {
-    int           retval = -1;
-    yang_stmt    *yc;
+    int        retval = -1;
+    yang_stmt *yc;
+    int        inext;
 
-    yc = NULL;
-    while ((yc = yn_each(ys, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(ys, &inext)) != NULL) {
         switch (yang_keyword_get(yc)){
         case Y_CASE:
             if (yang2cli_stmt(h, yc, level+2, cb) < 0)
@@ -1257,6 +1263,7 @@ yang2cli_stmt(clixon_handle h,
     int        treeref_state = 0;
     int        grouping_treeref = 0;
     int        extvalue = 0;
+    int        inext;
 
     if (ys == NULL){
         clixon_err(OE_YANG, EINVAL, "No yang spec");
@@ -1319,8 +1326,8 @@ yang2cli_stmt(clixon_handle h,
         case Y_CASE:
         case Y_SUBMODULE:
         case Y_MODULE:
-            yc = NULL;
-            while ((yc = yn_each(ys, yc)) != NULL)
+            inext = 0;
+            while ((yc = yn_iter(ys, &inext)) != NULL)
                 if (yang2cli_stmt(h, yc, level+1, cb) < 0)
                     goto done;
             break;
@@ -1443,8 +1450,10 @@ yang2cli_post(clixon_handle h,
         if ((yc = yang_find_datanode(yp, co->co_command)) == NULL){
 #if 1
             /* XXX In case of compress, look at next level */
-            yang_stmt *y = NULL;
-            while ((y = yn_each(yp, y)) != NULL){
+            yang_stmt *y;
+            int        inext = 0;
+
+            while ((y = yn_iter(yp, &inext)) != NULL){
                 if (yang_datanode(y)){
                     if ((yc = yang_find_datanode(y, co->co_command)) != NULL)
                         break;
@@ -1530,6 +1539,7 @@ yang2cli_grouping(clixon_handle      h,
     cg_obj         *co;
     int             config;
     int             i;
+    int             inext;
 
     if ((pt0 = pt_new()) == NULL){
         clixon_err(OE_UNIX, errno, "pt_new");
@@ -1551,8 +1561,8 @@ yang2cli_grouping(clixon_handle      h,
     if (autocli_treeref_state(h, &treeref_state) < 0)
         goto done;
     if (treeref_state || yang_config(ys)){
-        yc = NULL;
-        while ((yc = yn_each(ys, yc)) != NULL)
+        inext = 0;
+        while ((yc = yn_iter(ys, &inext)) != NULL)
             if (yang2cli_stmt(h, yc, 1, cb) < 0)
                 goto done;
     }
@@ -1664,6 +1674,7 @@ yang2cli_yspec(clixon_handle      h,
     cg_obj         *co;
     int             i;
     int             config;
+    int             inext;
 
     if ((pt0 = pt_new()) == NULL){
         clixon_err(OE_UNIX, errno, "pt_new");
@@ -1674,8 +1685,8 @@ yang2cli_yspec(clixon_handle      h,
         goto done;
     }
     /* Traverse YANG, loop through all modules and generate CLI */
-    ymod = NULL;
-    while ((ymod = yn_each(yspec, ymod)) != NULL){
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL){
         /* Filter module name according to cli_autocli.yang setting
          * Default is pass and ordering is significant
          */

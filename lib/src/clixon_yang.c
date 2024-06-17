@@ -625,32 +625,37 @@ yang_stats_one(yang_stmt *y,
 /*! Return statistics of an YANG-stmt tree recursively
  *
  * @param[in]   yt   YANG object
+ * @param[in]   keyw YANG keyword, or 0 for all
  * @param[out]  nrp  Number of YANG objects recursively
  * @param[out]  szp  Size of this YANG stmt recursively
  * @retval      0    OK
  * @retval     -1    Error
  */
 int
-yang_stats(yang_stmt *yt,
-           uint64_t  *nrp,
-           size_t    *szp)
+yang_stats(yang_stmt    *yt,
+           enum rfc_6020 keyw,
+           uint64_t     *nrp,
+           size_t       *szp)
 {
     int        retval = -1;
     size_t     sz = 0;
     yang_stmt *ys;
+    int        inext;
 
     if (yt == NULL){
         clixon_err(OE_XML, EINVAL, "yang spec is NULL");
         goto done;
     }
-    *nrp += 1;
-    yang_stats_one(yt, &sz);
-    if (szp)
-        *szp += sz;
-    ys = NULL;
-    while ((ys = yn_each(yt, ys)) != NULL) {
+    if (keyw == 0 || yang_keyword_get(yt) == keyw){
+        *nrp += 1;
+        yang_stats_one(yt, &sz);
+        if (szp)
+            *szp += sz;
+    }
+    inext = 0;
+    while ((ys = yn_iter(yt, &inext)) != NULL) {
         sz = 0;
-        yang_stats(ys, nrp, &sz);
+        yang_stats(ys, keyw, nrp, &sz);
         if (szp)
             *szp += sz;
     }
@@ -808,12 +813,13 @@ ys_prune_self(yang_stmt *ys)
     yang_stmt *yp;
     yang_stmt *yc;
     int        i;
+    int        inext;
 
     if ((yp = yang_parent_get(ys)) != NULL){
-        yc = NULL;
         i = 0;
+        inext = 0;
         /* Find order of ys in child-list */
-        while ((yc = yn_each(yp, yc)) != NULL) {
+        while ((yc = yn_iter(yp, &inext)) != NULL) {
             if (ys == yc)
                 break;
             i++;
@@ -1060,39 +1066,35 @@ yn_insert1(yang_stmt *ys_parent,
     return 0;
 }
 
-/*! Iterate through all yang statements from a yang node 
+/*! Iterate through all yang statements from a yang node using an integer iterator
  *
- * @param[in] yparent  yang statement whose children are iterated
- * @param[in] yprev    previous child, or NULL on init
+ * @param[in] yparent   yang statement whose children are iterated
+ * @param[in,out] inext Iterator, or 0 on init
  * @code
- *   yang_stmt *yprev = NULL;
- *   while ((yprev = yn_each(yparent, yprev)) != NULL) {
- *     ...yprev...
+ *   yang_stmt *yprev;
+ *   int inext = 0;
+ *   while ((ynext = yn_iter(yparent, &inext)) != NULL) {
+ *     ...ynext...
  *   }
  * @endcode
- * @note makes uses _ys_vector_i:can be changed if list changed between calls
- * @note also does not work in recursive calls (to same node)
+ * @see yn_each
  */
 yang_stmt *
-yn_each(yang_stmt *yparent,
-        yang_stmt *yprev)
+yn_iter(yang_stmt *yparent,
+        int       *inext)
 {
-    int        i;
     yang_stmt *yc = NULL;
 
-    if (yparent == NULL)
+    if (yparent == NULL || *inext < 0 || (*inext)>=yparent->ys_len)
         return NULL;
-    for (i=yprev?yprev->_ys_vector_i+1:0; i<yparent->ys_len; i++){
-        if ((yc = yparent->ys_stmt[i]) == NULL){
+    for (; (*inext)<yparent->ys_len;){
+        if ((yc = yparent->ys_stmt[*inext]) == NULL){
+            (*inext)++;
             continue;
         }
-        /* make room for other conditionals */
+        (*inext)++;
         break; /* this is next object after previous */
     }
-    if (i < yparent->ys_len) /* found */
-        yc->_ys_vector_i = i;
-    else
-        yc = NULL;
     return yc;
 }
 
@@ -1169,12 +1171,14 @@ yang_find_datanode(yang_stmt *yn,
     yang_stmt *yspec;
     yang_stmt *ysmatch = NULL;
     char      *name;
+    int        inext;
+    int        inext2;
 
-    ys = NULL;
-    while ((ys = yn_each(yn, ys)) != NULL){
+    inext = 0;
+    while ((ys = yn_iter(yn, &inext)) != NULL){
         if (yang_keyword_get(ys) == Y_CHOICE){ /* Look for its children */
-            yc = NULL;
-            while ((yc = yn_each(ys, yc)) != NULL){
+            inext2 = 0;
+            while ((yc = yn_iter(ys, &inext2)) != NULL){
                 if (yang_keyword_get(yc) == Y_CASE) /* Look for its children */
                     ysmatch = yang_find_datanode(yc, argument);
                 else
@@ -1207,8 +1211,8 @@ yang_find_datanode(yang_stmt *yn,
         (yang_keyword_get(yn) == Y_MODULE ||
          yang_keyword_get(yn) == Y_SUBMODULE)){
         yspec = ys_spec(yn);
-        ys = NULL;
-        while ((ys = yn_each(yn, ys)) != NULL){
+        inext = 0;
+        while ((ys = yn_iter(yn, &inext)) != NULL){
             if (yang_keyword_get(ys) == Y_INCLUDE){
                 name = yang_argument_get(ys);
                 yc = yang_find_module_by_name(yspec, name);
@@ -1395,6 +1399,7 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     char      *modname = NULL;
     yang_stmt *yimport;
     yang_stmt *yprefix;
+    int        inext;
 
     clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "namespace %s", ns);
     if (prefix == NULL){
@@ -1414,8 +1419,8 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     modname = yang_argument_get(ymod);
     my_ymod = ys_module(ys);
     /* Loop through import statements to find a match with ymod */
-    yimport = NULL;
-    while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
+    inext = 0;
+    while ((yimport = yn_iter(my_ymod, &inext)) != NULL) {
         if (yang_keyword_get(yimport) == Y_IMPORT &&
             strcmp(modname, yang_argument_get(yimport)) == 0){ /* match */
             yprefix = yang_find(yimport, Y_PREFIX, NULL);
@@ -1935,16 +1940,18 @@ int
 yang_spec_print(FILE      *f,
                 yang_stmt *yspec)
 {
-    yang_stmt *ym = NULL;
+    yang_stmt *ym;
     yang_stmt *yrev;
+    int        inext;
 
     if (yspec == NULL || yang_keyword_get(yspec) != Y_SPEC){
         clixon_err(OE_YANG, EINVAL, "yspec is not of type YSPEC");
         return -1;
     }
-    while ((ym = yn_each(yspec, ym)) != NULL) {
+    inext = 0;
+    while ((ym = yn_iter(yspec, &inext)) != NULL) {
         fprintf(f, "%s", yang_key2str(ym->ys_keyword));
-        fprintf(f, " %s", ym->ys_argument);
+        fprintf(f, " %s", yang_argument_get(ym));
         if ((yrev = yang_find(ym, Y_REVISION, NULL)) != NULL){
             fprintf(f, "@%s", yang_argument_get(yrev));
         }
@@ -1963,17 +1970,19 @@ yang_spec_dump(yang_stmt *yspec,
                int        dbglevel)
 {
     int        retval = -1;
-    yang_stmt *ym = NULL;
+    yang_stmt *ym;
     yang_stmt *yrev;
     cbuf      *cb = NULL;
+    int        inext;
 
     if ((cb = cbuf_new()) ==NULL){
         clixon_err(OE_YANG, errno, "cbuf_new");
         goto done;
     }
-    while ((ym = yn_each(yspec, ym)) != NULL) {
+    inext = 0;
+    while ((ym = yn_iter(yspec, &inext)) != NULL) {
         cprintf(cb, "%s", yang_key2str(ym->ys_keyword));
-        cprintf(cb, " %s", ym->ys_argument);
+        cprintf(cb, " %s", yang_argument_get(ym));
         if ((yrev = yang_find(ym, Y_REVISION, NULL)) != NULL){
             cprintf(cb, "@%u", cv_uint32_get(yang_cv_get(yrev)));
         }
@@ -2013,6 +2022,7 @@ yang_print_cbuf(cbuf      *cb,
     yang_stmt    *ys;
     enum rfc_6020 keyw;
     char         *arg;
+    int           inext;
 
     if (yn == NULL || cb == NULL){
         clixon_err(OE_YANG, EINVAL, "cb or yn is NULL");
@@ -2040,8 +2050,8 @@ yang_print_cbuf(cbuf      *cb,
         cprintf(cb, " {");
         if (pretty)
             cprintf(cb, "\n");
-        ys = NULL;
-        while ((ys = yn_each(yn, ys)) != NULL) {
+        inext = 0;
+        while ((ys = yn_iter(yn, &inext)) != NULL) {
             if (yang_print_cbuf(cb, ys, marginal + PRETTYPRINT_INDENT, pretty) < 0)
                 goto done;
         }
@@ -2087,6 +2097,7 @@ yang_deviation(yang_stmt *ys,
     enum rfc_6020 kw;
     int           min;
     int           max;
+    int           inext;
 
     if (yang_keyword_get(ys) != Y_DEVIATION)
         goto ok;
@@ -2107,8 +2118,8 @@ yang_deviation(yang_stmt *ys,
         */
     }
     /* Go through deviates of deviation */
-    yd = NULL;
-    while ((yd = yn_each(ys, yd)) != NULL) {
+    inext = 0;
+    while ((yd = yn_iter(ys, &inext)) != NULL) {
         /* description / if-feature / reference */
         if (yang_keyword_get(yd) != Y_DEVIATE)
             continue;
@@ -2121,8 +2132,8 @@ yang_deviation(yang_stmt *ys,
             goto ok; /* Target node removed, no other deviates possible */
         }
         else if (strcmp(devop, "add") == 0){
-            yc = NULL;
-            while ((yc = yn_each(yd, yc)) != NULL) {
+            inext = 0;
+            while ((yc = yn_iter(yd, &inext)) != NULL) {
                 /* If a property can only appear once, the property MUST NOT exist in the target node. */
                 kw = yang_keyword_get(yc);
                 if (yang_find(ytarget, kw, NULL) != NULL){
@@ -2148,8 +2159,8 @@ yang_deviation(yang_stmt *ys,
             }
         }
         else if (strcmp(devop, "replace") == 0){
-            yc = NULL;
-            while ((yc = yn_each(yd, yc)) != NULL) {
+            inext = 0;
+            while ((yc = yn_iter(yd, &inext)) != NULL) {
                 /* The properties to replace MUST exist in the target node.*/
                 kw = yang_keyword_get(yc);
                 ytc = yang_find(ytarget, kw, NULL);
@@ -2181,8 +2192,8 @@ yang_deviation(yang_stmt *ys,
             }
         }
         else if (strcmp(devop, "delete") == 0){
-            yc = NULL;
-            while ((yc = yn_each(yd, yc)) != NULL) {
+            inext = 0;
+            while ((yc = yn_iter(yd, &inext)) != NULL) {
                 /* The substatement's keyword MUST match a corresponding keyword in the target node, and the
                  * argument's string MUST be equal to the corresponding keyword's argument string in the 
                  * target node. */
@@ -2248,7 +2259,7 @@ ys_populate_leaf(clixon_handle h,
     /* 1. Find type specification and set cv type accordingly */
     if (yang_type_get(ys, &origtype, &yrestype, &options, NULL, NULL, NULL, &fraction_digits) < 0)
         goto done;
-    restype = yrestype?yrestype->ys_argument:NULL;
+    restype = yrestype?yang_argument_get(yrestype):NULL;
     if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0) /* This handles non-resolved also */
         goto done;
     /* 2. Create the CV using cvtype and name it */
@@ -2259,7 +2270,7 @@ ys_populate_leaf(clixon_handle h,
     if (options & YANG_OPTIONS_FRACTION_DIGITS && cvtype == CGV_DEC64) /* XXX: Seems misplaced? / too specific */
         cv_dec64_n_set(cv, fraction_digits);
 
-    if (cv_name_set(cv, ys->ys_argument) == NULL){
+    if (cv_name_set(cv, yang_argument_get(ys)) == NULL){
         clixon_err(OE_YANG, errno, "cv_name_set");
         goto done;
     }
@@ -2271,7 +2282,7 @@ ys_populate_leaf(clixon_handle h,
      * 3a) First check local default
      */
     if ((ydef = yang_find(ys, Y_DEFAULT, NULL)) != NULL){
-        if ((cvret = cv_parse1(ydef->ys_argument, cv, &reason)) < 0){ /* error */
+        if ((cvret = cv_parse1(yang_argument_get(ydef), cv, &reason)) < 0){ /* error */
             clixon_err(OE_YANG, errno, "parsing cv");
             goto done;
         }
@@ -2284,7 +2295,7 @@ ys_populate_leaf(clixon_handle h,
     /* 2. then check typedef default */
     else if (ytypedef != ys &&
              (ydef = yang_find(ytypedef, Y_DEFAULT, NULL)) != NULL) {
-        if ((cvret = cv_parse1(ydef->ys_argument, cv, &reason)) < 0){ /* error */
+        if ((cvret = cv_parse1(yang_argument_get(ydef), cv, &reason)) < 0){ /* error */
             clixon_err(OE_YANG, errno, "parsing cv");
             goto done;
         }
@@ -2300,7 +2311,7 @@ ys_populate_leaf(clixon_handle h,
     }
     /* 4. Check if leaf is part of list, if key exists mark leaf as key/unique */
     if (yparent && yparent->ys_keyword == Y_LIST){
-        if ((ret = yang_key_match(yparent, ys->ys_argument, NULL)) < 0)
+        if ((ret = yang_key_match(yparent, yang_argument_get(ys), NULL)) < 0)
             goto done;
     }
     yang_cv_set(ys, cv);
@@ -2397,7 +2408,7 @@ range_parse(yang_stmt   *ys,
     char  *v;
     char  *v2;
 
-    if ((vec = clicon_strsep(ys->ys_argument, "|", &nvec)) == NULL)
+    if ((vec = clicon_strsep(yang_argument_get(ys), "|", &nvec)) == NULL)
         goto done;
     for (i=0; i<nvec; i++){
         v = vec[i];
@@ -2461,7 +2472,7 @@ ys_populate_range(clixon_handle h,
         clixon_err(OE_YANG, 0, "result-type should not be NULL");
         goto done;
     }
-    restype = yrestype?yrestype->ys_argument:NULL;
+    restype = yrestype?yang_argument_get(yrestype):NULL;
     if (nodeid_split(yang_argument_get(yparent), NULL, &origtype) < 0)
          goto done;
     /* This handles non-resolved also */
@@ -2538,9 +2549,10 @@ ys_populate_type_enum(clixon_handle h,
     int        v;
     int        i = 0;
     cg_var    *cv = NULL;
+    int        inext;
 
-    yenum = NULL;
-    while ((yenum = yn_each(ys, yenum)) != NULL) {
+    inext = 0;
+    while ((yenum = yn_iter(ys, &inext)) != NULL) {
         if ((cv = cv_new(CGV_INT32)) == NULL){
             clixon_err(OE_YANG, errno, "cv_new");
             goto done;
@@ -2576,24 +2588,24 @@ ys_populate_type(clixon_handle h,
     int             retval = -1;
     yang_stmt      *ybase;
 
-    if (strcmp(ys->ys_argument, "decimal64") == 0){
+    if (strcmp(yang_argument_get(ys), "decimal64") == 0){
         if (yang_find(ys, Y_FRACTION_DIGITS, NULL) == NULL){
             clixon_err(OE_YANG, 0, "decimal64 type requires fraction-digits sub-statement");
             goto done;
         }
     }
-    else if (strcmp(ys->ys_argument, "identityref") == 0){
+    else if (strcmp(yang_argument_get(ys), "identityref") == 0){
         if ((ybase = yang_find(ys, Y_BASE, NULL)) == NULL){
             clixon_err(OE_YANG, 0, "identityref type requires base sub-statement");
             goto done;
         }
-        if ((yang_find_identity(ys, ybase->ys_argument)) == NULL){
+        if ((yang_find_identity(ys, yang_argument_get(ybase))) == NULL){
             clixon_err(OE_YANG, 0, "Identity %s not found (base type of %s)",
-                       ybase->ys_argument, ys->ys_argument);
+                       yang_argument_get(ybase), yang_argument_get(ys));
             goto done;
         }
     }
-    else if (strcmp(ys->ys_argument, "enumeration") == 0){
+    else if (strcmp(yang_argument_get(ys), "enumeration") == 0){
         if (ys_populate_type_enum(h, ys) < 0)
             goto done;
     }
@@ -2629,6 +2641,7 @@ ys_populate_identity(clixon_handle h,
     cbuf           *cb = NULL;
     yang_stmt      *ymod;
     cvec           *idrefvec; /* Derived identityref list: (module:id)**/
+    int             inext;
 
     /* Top-call (no recursion) create idref
      * The idref is (here) in "canonical form": <module>:<id>
@@ -2651,8 +2664,8 @@ ys_populate_identity(clixon_handle h,
     /* Iterate through all base statements and check the base identity exists 
      * AND populate the base identity recursively
      */
-    yc = NULL;
-    while ((yc = yn_each(ys, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(ys, &inext)) != NULL) {
         if (yc->ys_keyword != Y_BASE)
             continue;
         baseid = yang_argument_get(yc); /* on the form: prefix:id */
@@ -2746,8 +2759,8 @@ ys_populate_feature(clixon_handle h,
         clixon_err(OE_YANG, 0, "module not found");
         goto done;
     }
-    module = ymod->ys_argument;
-    feature = ys->ys_argument;
+    module = yang_argument_get(ymod);
+    feature = yang_argument_get(ys);
     xc = NULL;
     while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL && found == 0) {
         m = NULL;
@@ -2908,12 +2921,14 @@ ys_populate_module_submodule(clixon_handle h,
     char      *p0 = NULL;
     char      *pi;
     char      *pi2; /* remaining */
+    int        inext;
+    int        inext2;
 
     /* Modules but not submodules have prefixes */
     if ((yp = yang_find(ym, Y_PREFIX, NULL)) != NULL)
         p0 = yang_argument_get(yp);
-    yi = NULL;
-    while ((yi = yn_each(ym, yi)) != NULL) {
+    inext = 0;
+    while ((yi = yn_iter(ym, &inext)) != NULL) {
         if (yang_keyword_get(yi) != Y_IMPORT)
             continue;
         yp = yang_find(yi, Y_PREFIX, NULL);
@@ -2924,8 +2939,8 @@ ys_populate_module_submodule(clixon_handle h,
             goto done;
         }
         /* Check rest of imports */
-        yi2 = yi;
-        while ((yi2 = yn_each(ym, yi2)) != NULL) {
+        inext2 = inext;
+        while ((yi2 = yn_iter(ym, &inext2)) != NULL) {
             if (yang_keyword_get(yi2) != Y_IMPORT)
                 continue;
             yp = yang_find(yi2, Y_PREFIX, NULL);
@@ -3132,7 +3147,7 @@ yang_features(clixon_handle h,
  * The tree is traversed depth-first, which at least guarantees that a parent is
  * traversed before a child.
  * @param[in]  yn   yang node
- * @param[in]  key  yang keyword to use as filer or -1 for all
+ * @param[in]  key  yang keyword to use as filter or -1 for all
  * @param[in]  fn   Callback
  * @param[in]  depth Depth argument: where to start. If <=0 call the calling node yn, if 1 start with its children, etc
  * @param[in]  arg  Argument
@@ -3537,7 +3552,7 @@ yang_arg2cvec(yang_stmt *ys,
     cvec   *cvv = NULL;
     cg_var *cv;
 
-    if ((vec = clicon_strsep(ys->ys_argument, " ", &nvec)) == NULL)
+    if ((vec = clicon_strsep(yang_argument_get(ys), " ", &nvec)) == NULL)
         goto done;
     if ((cvv = cvec_new(nvec)) == NULL){
         clixon_err(OE_YANG, errno, "cvec_new");
@@ -3876,6 +3891,7 @@ yang_extension_value(yang_stmt *ys,
     char      *prefix = NULL;
     cbuf      *cb = NULL;
     int        ret;
+    int        inext;
 
     if (ys == NULL){
         clixon_err(OE_YANG, EINVAL, "ys is NULL");
@@ -3887,8 +3903,8 @@ yang_extension_value(yang_stmt *ys,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    yext = NULL; /* This loop gets complicated in the case the extension is augmented */
-    while ((yext = yn_each(ys, yext)) != NULL) {
+    inext = 0; /* This loop gets complicated in the case the extension is augmented */
+    while ((yext = yn_iter(ys, &inext)) != NULL) {
         if (yang_keyword_get(yext) != Y_UNKNOWN)
             continue;
         if ((ymod = ys_module(yext)) == NULL)
@@ -3917,6 +3933,7 @@ yang_extension_value(yang_stmt *ys,
     return retval;
 }
 
+#if 0 /* NOTE this may need to reinserted with new implementation */
 /* Sort substatements with when:s last */
 static int
 yang_sort_subelements_fn(const void* arg1,
@@ -3937,7 +3954,7 @@ yang_sort_subelements_fn(const void* arg1,
         return -1;
     else return ys1->_ys_vector_i - ys2->_ys_vector_i;
 }
-
+#endif
 /*! Experimental code for sorting YANG children
  *
  * RFC 7950 7.5.7 and 7.8.5 says that containers and list sub elements are encoded in any order.
@@ -3949,18 +3966,23 @@ yang_sort_subelements_fn(const void* arg1,
 int
 yang_sort_subelements(yang_stmt *ys)
 {
+#if 1
+    return 0;
+#else
     int        retval = -1;
-    yang_stmt *yc = NULL;
+    int        inext;
 
     if ((yang_keyword_get(ys) == Y_CONTAINER ||
          yang_keyword_get(ys) == Y_LIST)){
         /* This enumerates _ys_vector_i in ys->ys_stmt vector */
-        while ((yc = yn_each(ys, yc)) != NULL) ;
-        qsort(ys->ys_stmt, ys->ys_len, sizeof(ys), yang_sort_subelements_fn);
+        inext = 0;
+        while (yn_iter(ys, &inext) != NULL) ;
+        //        qsort(ys->ys_stmt, ys->ys_len, sizeof(ys), yang_sort_subelements_fn);
     }
     retval = 0;
     // done:
     return retval;
+#endif
 }
 
 int
@@ -4047,8 +4069,9 @@ yang_single_child_type(yang_stmt    *ys,
                        enum rfc_6020 subkeyw)
 
 {
-    yang_stmt    *yc = NULL;
+    yang_stmt    *yc;
     int           i;
+    int           inext;
     enum rfc_6020 keyw;
 
     /* Match parent */
@@ -4059,7 +4082,8 @@ yang_single_child_type(yang_stmt    *ys,
     }
     /* Ensure a single list child and no other data nodes */
     i = 0; /* Number of list nodes */
-    while ((yc = yn_each(ys, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(ys, &inext)) != NULL) {
         keyw = yang_keyword_get(yc);
         /* case/choice could hide anything so disqualify those */
         if (keyw == Y_CASE || keyw == Y_CHOICE)

@@ -449,12 +449,13 @@ check_empty_list_minmax(cxobj     *xt,
     int        retval = -1;
     int        ret;
     yang_stmt *yprev = NULL;
+    int        inext;
 
     if (yang_config(ye) == 1){
         if(yang_keyword_get(ye) == Y_CONTAINER &&
            yang_find(ye, Y_PRESENCE, NULL) == NULL){
-            yprev = NULL;
-            while ((yprev = yn_each(ye, yprev)) != NULL) {
+            inext = 0;
+            while ((yprev = yn_iter(ye, &inext)) != NULL) {
                 if ((ret = check_empty_list_minmax(xt, yprev, xret)) < 0)
                     goto done;
                 if (ret == 0)
@@ -496,6 +497,7 @@ xml_yang_minmax_new_list(cxobj     *x,
 {
     int        retval = -1;
     yang_stmt *yu;
+    int        inext;
     int        ret;
 
     /* Here new (first element) of lists only
@@ -507,8 +509,8 @@ xml_yang_minmax_new_list(cxobj     *x,
         goto fail;
     /* Check if there is a unique constraint on the list
      */
-    yu = NULL;
-    while ((yu = yn_each(y, yu)) != NULL) {
+    inext = 0;
+    while ((yu = yn_iter(y, &inext)) != NULL) {
         if (yang_keyword_get(yu) != Y_UNIQUE)
             continue;
         /* Here is a list w unique constraints identified by:
@@ -608,6 +610,7 @@ static int
 xml_yang_minmax_gap_analysis(cxobj      *xt,
                              yang_stmt  *y,
                              yang_stmt  *yt,
+                             int        *inext,
                              yang_stmt **yep,
                              cxobj     **xret)
 {
@@ -626,14 +629,14 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
         /* Skip analysis if Yang spec is unknown OR
          * if we are still iterating the same Y_CASE w multiple lists
          */
-        ye = yn_each(yt, ye);
+        ye = yn_iter(yt, inext);
         if (ye && ych != ye)
             do {
                 if ((ret = check_empty_list_minmax(xt, ye, xret)) < 0)
                     goto done;
                 if (ret == 0)
                     goto fail;
-                ye = yn_each(yt, ye);
+                ye = yn_iter(yt, inext);
             } while(ye != NULL && /* to avoid livelock (shouldnt happen) */
                     ye != ych);
     }
@@ -727,6 +730,7 @@ xml_yang_validate_minmax(cxobj  *xt,
     int           nr = 0;
     int           ret;
     yang_stmt    *yt;
+    int           inext = 0;
 
     yt = xml_spec(xt); /* If yt == NULL, then no gap-analysis is done */
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
@@ -740,7 +744,7 @@ xml_yang_validate_minmax(cxobj  *xt,
                 continue;
             }
             /* gap analysis */
-            if ((ret = xml_yang_minmax_gap_analysis(xt, y, yt, &ye, xret)) < 0)
+            if ((ret = xml_yang_minmax_gap_analysis(xt, y, yt, &inext, &ye, xret)) < 0)
                 goto done;
             /* check-minmax of previous list */
             if (ret &&
@@ -777,7 +781,7 @@ xml_yang_validate_minmax(cxobj  *xt,
                 goto fail;
             }
             /* gap analysis */
-            if ((ret = xml_yang_minmax_gap_analysis(xt, y, yt, &ye, xret)) < 0)
+            if ((ret = xml_yang_minmax_gap_analysis(xt, y, yt, &inext, &ye, xret)) < 0)
                 goto done;
             /* check-minmax of previous list */
             if (ret &&
@@ -792,8 +796,11 @@ xml_yang_validate_minmax(cxobj  *xt,
                 goto fail;
             if (presence && keyw == Y_CONTAINER &&
                 yang_find(y, Y_PRESENCE, NULL) == NULL){
-                yang_stmt *yc = NULL;
-                while ((yc = yn_each(y, yc)) != NULL) {
+                yang_stmt *yc;
+                int        inext;
+
+                inext = 0;
+                while ((yc = yn_iter(y, &inext)) != NULL) {
                     if ((ret = xml_yang_validate_minmax(x, presence, xret)) < 0)
                         goto done;
                     if (ret == 0)
@@ -809,17 +816,17 @@ xml_yang_validate_minmax(cxobj  *xt,
     /* Variant of gap analysis, does not use ych
      * XXX: try to unify with xml_yang_minmax_gap_analysis()
      */
-    if ((ye = yn_each(yt, ye)) != NULL){
+    if ((ye = yn_iter(yt, &inext)) != NULL){
         do {
             if ((ret = check_empty_list_minmax(xt, ye, xret)) < 0)
                 goto done;
             if (ret == 0)
                 goto fail;
-        } while((ye = yn_each(yt, ye)) != NULL);
+        } while ((ye = yn_iter(yt, &inext)) != NULL);
     }
     ret = 1;
 #else
-    if ((ret = xml_yang_minmax_gap_analysis(xt, NULL, yt, &ye, xret)) < 0)
+    if ((ret = xml_yang_minmax_gap_analysis(xt, NULL, yt, &inext, &ye, xret)) < 0)
         goto done;
 #endif
     /* check-minmax of previous list */

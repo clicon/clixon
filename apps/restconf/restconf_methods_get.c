@@ -716,6 +716,8 @@ api_operations_get(clixon_handle h,
     char      *namespace;
     cbuf      *cbx = NULL;
     cxobj     *xt = NULL;
+    int        inext;
+    int        inext2;
     int        i;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
@@ -735,12 +737,12 @@ api_operations_get(clixon_handle h,
     default:
         break;
     }
-    ymod = NULL;
     i = 0;
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         namespace = yang_find_mynamespace(ymod);
-        yc = NULL;
-        while ((yc = yn_each(ymod, yc)) != NULL) {
+        inext2 = 0;
+        while ((yc = yn_iter(ymod, &inext2)) != NULL) {
             if (yang_keyword_get(yc) != Y_RPC)
                 continue;
             switch (media_out){

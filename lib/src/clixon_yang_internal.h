@@ -48,14 +48,15 @@
 struct yang_type_cache{
     int        yc_options;  /* See YANG_OPTIONS_* that determines pattern/
                                fraction fields. */
+    int        yc_rxmode;   /* need to store mode for freeing since handle may not be available
+                             * see regexp_mode
+                             */
+    uint8_t    yc_fraction; /* Fraction digits for decimal64 (if YANG_OPTIONS_FRACTION_DIGITS */
     cvec      *yc_cvv;      /* Range and length restriction. (if YANG_OPTION_
                                LENGTH|RANGE. Can be a vector if multiple 
                                ranges*/
     cvec      *yc_patterns; /* list of regexp, if cvec_len() > 0 */
-    int        yc_rxmode; /* need to store mode for freeing since handle may not be available */
     cvec      *yc_regexps;  /* list of _compiled_ regexp, if cvec_len() > 0 */
-    uint8_t    yc_fraction; /* Fraction digits for decimal64 (if 
-                               YANG_OPTIONS_FRACTION_DIGITS */
     yang_stmt *yc_resolved; /* Resolved type object, can be NULL - note direct ptr */
 };
 typedef struct yang_type_cache yang_type_cache;
@@ -69,13 +70,13 @@ struct yang_stmt{
     int                ys_len;       /* Number of children */
     struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
     struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
-    enum rfc_6020      ys_keyword;   /*  */
-
+    struct yang_stmt  *ys_orig;      /* Backpointer to grouping/augment original */
+    enum rfc_6020      ys_keyword;   /* YANG keyword */
     char              *ys_argument;  /* String / argument depending on keyword */
     uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
     yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Used by:
                                         1) Augmented nodes "belong" to the module where the 
-                                           augment is declared, which may be differnt from
+                                           augment is declared, which may be different from
                                            the direct ancestor module 
                                         2) Unknown nodes "belong" to where the extension is
                                            declared
@@ -111,8 +112,6 @@ struct yang_stmt{
     char              *ys_filename;   /* For debug/errors: filename (only (sub)modules) */
     int                ys_linenum;    /* For debug/errors: line number (in ys_filename) */
     rpc_callback_t    *ys_action_cb;  /* Action callback list, only for Y_ACTION */
-    /* Internal use */
-    int               _ys_vector_i;   /* internal use: yn_each */
 };
 
 #endif  /* _CLIXON_YANG_INTERNAL_H_ */

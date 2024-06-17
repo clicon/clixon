@@ -229,14 +229,15 @@ xml_nopresence_try(yang_stmt *yt,
     int        retval = -1;
     yang_stmt *y;
     yang_stmt *ydef;
+    int        inext;
 
     if (yt == NULL || yang_keyword_get(yt) != Y_CONTAINER){
         clixon_err(OE_XML, EINVAL, "yt argument is not container");
         goto done;
     }
     *createp = 0;
-    y = NULL;
-    while ((y = yn_each(yt, y)) != NULL) {
+    inext = 0;
+    while ((y = yn_iter(yt, &inext)) != NULL) {
         switch (yang_keyword_get(y)){
         case Y_LEAF:
             /* Default value exists */
@@ -302,6 +303,7 @@ xml_default(yang_stmt *yt,
     int        nr = 0;
     int        hit = 0;
     cg_var    *cv;
+    int        inext;
 
     if (xt == NULL){ /* No xml */
         clixon_err(OE_XML, EINVAL, "No XML argument");
@@ -316,8 +318,8 @@ xml_default(yang_stmt *yt,
     case Y_INPUT:
     case Y_OUTPUT:
     case Y_CASE:
-        yc = NULL;
-        while ((yc = yn_each(yt, yc)) != NULL) {
+        inext = 0;
+        while ((yc = yn_iter(yt, &inext)) != NULL) {
             // XXX consider only data nodes for optimization?
             /* If config parameter and local is config false */
             if (!state && !yang_config(yc))
@@ -459,13 +461,15 @@ xml_global_defaults_create(cxobj     *xt,
                            int        state)
 {
     int        retval = -1;
-    yang_stmt *ymod = NULL;
+    yang_stmt *ymod;
+    int        inext;
 
     if (yspec == NULL || yang_keyword_get(yspec) != Y_SPEC){
         clixon_err(OE_XML, EINVAL, "yspec argument is not yang spec");
         goto done;
     }
-    while ((ymod = yn_each(yspec, ymod)) != NULL)
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL)
         if (xml_default(ymod, xt, state) < 0)
             goto done;
     retval = 0;

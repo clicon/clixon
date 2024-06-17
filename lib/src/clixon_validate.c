@@ -659,13 +659,14 @@ check_list_key(cxobj     *xt,
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
     char      *keyname;
+    int        inext;
 
     if (yt == NULL || !yang_config(yt) || yang_keyword_get(yt) != Y_LIST){
         clixon_err(OE_YANG, EINVAL, "yt is not a config true list node");
         goto done;
     }
-    yc = NULL;
-    while ((yc = yn_each(yt, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(yt, &inext)) != NULL) {
         if (yang_keyword_get(yc) != Y_KEY)
             continue;
         /* Check if a list does not have mandatory key leafs */
@@ -716,12 +717,14 @@ choice_mandatory_check(cxobj     *xt,
                        cxobj    **xret)
 {
     int        retval = -1;
-    yang_stmt *yc = NULL;
+    yang_stmt *yc;
     cbuf      *cb = NULL;
     int        fail = 0;
+    int        inext;
     int        ret;
 
-    while ((yc = yn_each(ycase, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(ycase, &inext)) != NULL) {
         if ((ret = yang_xml_mandatory(xt, yc)) < 0)
             goto done;
         if (ret == 1){
@@ -898,6 +901,7 @@ check_mandatory(cxobj     *xt,
     yang_stmt *yc;
     yang_stmt *yp;
     cbuf      *cb = NULL;
+    int        inext;
     int        ret;
 
     if (yt == NULL || !yang_config(yt)){
@@ -910,8 +914,8 @@ check_mandatory(cxobj     *xt,
         if (ret == 0)
             goto fail;
     }
-    yc = NULL;
-    while ((yc = yn_each(yt, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(yt, &inext)) != NULL) {
         /* Choice is more complex because of choice/case structure and possibly hierarchical */
         if (yang_keyword_get(yc) == Y_CHOICE){
             if (yang_xml_mandatory(xt, yc)){
@@ -1146,13 +1150,15 @@ xml_yang_validate_leaf_union(clixon_handle h,
 {
     int        retval = -1;
     int        ret;
-    yang_stmt *ytsub = NULL;
+    yang_stmt *ytsub;
     cxobj     *xret1 = NULL;
     yang_stmt *ytype; /* resolved type */
     char      *restype;
+    int        inext;
 
     /* Enough that one is valid, eg returns 1,otherwise fail */
-    while ((ytsub = yn_each(yrestype, ytsub)) != NULL){
+    inext = 0;
+    while ((ytsub = yn_iter(yrestype, &inext)) != NULL){
         if (yang_keyword_get(ytsub) != Y_TYPE)
             continue;
         /* Resolve the sub-union type to a resolved type */
@@ -1238,6 +1244,7 @@ xml_yang_validate_all(clixon_handle h,
     int        hit = 0;
     validate_level vl = VL_NONE;
     int        saw_node = 0;
+    int        inext;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
         if ((ret = xml_yang_mount_get(h, xt, &vl, NULL)) < 0)
@@ -1333,8 +1340,8 @@ xml_yang_validate_all(clixon_handle h,
         }
         /* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
          * XXX. use yang path instead? */
-        yc = NULL;
-        while ((yc = yn_each(yt, yc)) != NULL) {
+        inext = 0;
+        while ((yc = yn_iter(yt, &inext)) != NULL) {
             if (yang_keyword_get(yc) != Y_MUST)
                 continue;
             if (!saw_node)

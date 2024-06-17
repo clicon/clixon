@@ -577,6 +577,7 @@ cv_validate1(clixon_handle h,
     int             reti; /* must keep signed, unsigned and string retval */
     int             retu; /* separated due to different error handling */
     int             rets;
+    int             inext;
 
     if (reason && *reason){
         free(*reason);
@@ -676,10 +677,10 @@ cv_validate1(clixon_handle h,
         if (restype){
             if (strcmp(restype, "enumeration") == 0){
                 found = 0;
-                yi = NULL;
                 if (str != NULL) {
                     //              str = clixon_trim2(str, " \t\n"); /* May be misplaced, strip earlier? */
-                    while ((yi = yn_each(yrestype, yi)) != NULL){
+                    inext = 0;
+                    while ((yi = yn_iter(yrestype, &inext)) != NULL){
                         if (yang_keyword_get(yi) != Y_ENUM)
                             continue;
                         if (strcmp(yang_argument_get(yi), str) == 0){
@@ -707,8 +708,8 @@ cv_validate1(clixon_handle h,
                     if ((v = vec[i]) == NULL || !strlen(v))
                         continue;
                     found = 0;
-                    yi = NULL;
-                    while ((yi = yn_each(yrestype, yi)) != NULL){
+                    inext = 0;
+                    while ((yi = yn_iter(yrestype, &inext)) != NULL){
                         if (yang_keyword_get(yi) != Y_BIT)
                             continue;
                         if (strcmp(yang_argument_get(yi), v) == 0){
@@ -933,10 +934,12 @@ ys_cv_validate_union(clixon_handle h,
                      yang_stmt   **ysubp)
 {
     int        retval = 1; /* valid */
-    yang_stmt *yt = NULL;
+    yang_stmt *yt;
     char      *reason1 = NULL;  /* saved reason */
+    int        inext;
 
-    while ((yt = yn_each(yrestype, yt)) != NULL){
+    inext = 0;
+    while ((yt = yn_iter(yrestype, &inext)) != NULL){
         if (yang_keyword_get(yt) != Y_TYPE)
             continue;
         if ((retval = ys_cv_validate_union_one(h, ys, reason, yt, type, val)) < 0)
@@ -1251,6 +1254,7 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
     yang_stmt *ys;
     cg_var    *cv;
     char      *pattern;
+    int        inext;
 
     if (options && cvv &&
         (ys = yang_find(ytype, Y_RANGE, NULL)) != NULL){
@@ -1264,8 +1268,8 @@ yang_type_resolve_restrictions(yang_stmt   *ytype,
     }
     /* Find all patterns */
     if (options && regexps){
-        ys = NULL;
-        while ((ys = yn_each(ytype, ys)) != NULL) {
+        inext = 0;
+        while ((ys = yn_iter(ytype, &inext)) != NULL) {
             if (yang_keyword_get(ys) != Y_PATTERN)
                 continue;
             if ((cv = cvec_add(regexps, CGV_STRING)) == NULL){

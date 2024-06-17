@@ -436,7 +436,7 @@ clixon_stats_module_get(clixon_handle h,
 
     if (ys == NULL)
         return 0;
-    if (yang_stats(ys, &nr, &sz) < 0)
+    if (yang_stats(ys, 0, &nr, &sz) < 0)
         goto done;
     cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
     retval = 0;
@@ -1248,6 +1248,7 @@ from_client_get_schema(clixon_handle h,
     cbuf       *cbyang = NULL;
     cbuf       *cbmsg = NULL;
     const char *filename;
+    int        inext;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
@@ -1266,8 +1267,8 @@ from_client_get_schema(clixon_handle h,
     if ((x = xpath_first(xe, nsc, "format")) != NULL)
         format = xml_body(x);
     ymatch = NULL;
-    ymod = NULL;
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         if (yang_keyword_get(ymod) != Y_MODULE &&
             yang_keyword_get(ymod) != Y_SUBMODULE)
             continue;
@@ -1425,6 +1426,7 @@ from_client_stats(clixon_handle h,
     yang_stmt *ymodext;
     cxobj     *xt = NULL;
     int        ret;
+    int        inext;
 
     if ((str = xml_find_body(xe, "modules")) != NULL)
         modules = strcmp(str, "true") == 0;
@@ -1454,8 +1456,8 @@ from_client_stats(clixon_handle h,
     if (clixon_stats_module_get(h, yspec, cbret) < 0)
         goto done;
     if (modules){
-        ym = NULL;
-        while ((ym = yn_each(yspec, ym)) != NULL) {
+        inext = 0;
+        while ((ym = yn_iter(yspec, &inext)) != NULL) {
             cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ym));
             if (clixon_stats_module_get(h, ym, cbret) < 0)
                 goto done;
@@ -1468,8 +1470,8 @@ from_client_stats(clixon_handle h,
     if (clixon_stats_module_get(h, yspec, cbret) < 0)
         goto done;
     if (modules){
-        ym = NULL;
-        while ((ym = yn_each(yspec, ym)) != NULL) {
+        inext = 0;
+        while ((ym = yn_iter(yspec, &inext)) != NULL) {
             cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ym));
             if (clixon_stats_module_get(h, ym, cbret) < 0)
                 goto done;

@@ -237,7 +237,6 @@ yang_stmt *yang_parent_get(yang_stmt *ys);
 enum rfc_6020 yang_keyword_get(yang_stmt *ys);
 char      *yang_argument_get(yang_stmt *ys);
 int        yang_argument_set(yang_stmt *ys, char *arg);
-
 cg_var    *yang_cv_get(yang_stmt *ys);
 int        yang_cv_set(yang_stmt *ys, cg_var *cv);
 cvec      *yang_cvec_get(yang_stmt *ys);
@@ -260,7 +259,7 @@ int        yang_linenum_set(yang_stmt *ys, int linenum);
 
 /* Stats */
 int       yang_stats_global(uint64_t *nr);
-int       yang_stats(yang_stmt *y, uint64_t *nrp, size_t *szp);
+int       yang_stats(yang_stmt *y, enum rfc_6020 keyw, uint64_t *nrp, size_t *szp);
 
 /* Other functions */
 yang_stmt *yspec_new(void);
@@ -273,7 +272,7 @@ int        ys_cp(yang_stmt *nw, yang_stmt *old);
 yang_stmt *ys_dup(yang_stmt *old);
 int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);
 int        yn_insert1(yang_stmt *ys_parent, yang_stmt *ys_child);
-yang_stmt *yn_each(yang_stmt *yn, yang_stmt *ys);
+yang_stmt *yn_iter(yang_stmt *yparent, int *inext);
 char      *yang_key2str(int keyword);
 int        yang_str2key(char *str);
 int        ys_module_by_xml(yang_stmt *ysp, struct xml *xt, yang_stmt **ymodp);

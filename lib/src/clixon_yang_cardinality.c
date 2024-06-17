@@ -498,6 +498,7 @@ yang_cardinality(clixon_handle h,
     yang_stmt          *yprev = NULL;
     int                 nr;
     int                 yc_count[Y_SPEC] = {0,};
+    int                 inext;
 
     pk = yang_keyword_get(yt);
     if ((yc0 = _yc_exist[pk]) == NULL)
@@ -506,8 +507,8 @@ yang_cardinality(clixon_handle h,
      * Also: check monotonically increasing order
      */
     order = 0;
-    ys = NULL;
-    while ((ys = yn_each(yt, ys)) != NULL) {
+    inext = 0;
+    while ((ys = yn_iter(yt, &inext)) != NULL) {
         ck = yang_keyword_get(ys);
         if (pk == Y_UNKNOWN || ck == Y_UNKNOWN) /* special case */
             continue;

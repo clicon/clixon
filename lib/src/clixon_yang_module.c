@@ -216,6 +216,8 @@ yang_modules_state_build(clixon_handle    h,
     yang_stmt  *yinc;
     yang_stmt  *ysub;
     char       *name;
+    int        inext;
+    int        inext2;
 
     /* In case of several mountpoints, this is always the top-level */
     if ((ylib = yang_find(yspec, Y_MODULE, module)) == NULL
@@ -232,8 +234,8 @@ yang_modules_state_build(clixon_handle    h,
     cprintf(cb,"<yang-library xmlns=\"%s\">", yang_argument_get(yns));
     cprintf(cb,"<content-id>%s</content-id>", msid);
     cprintf(cb,"<module-set><name>default</name>");
-    ymod = NULL;
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         if (yang_keyword_get(ymod) != Y_MODULE)
             continue;
         cprintf(cb,"<module>");
@@ -256,8 +258,8 @@ yang_modules_state_build(clixon_handle    h,
         /* This follows order in rfc 7895: feature, conformance-type, 
            submodules */
         if (!brief){
-            yc = NULL;
-            while ((yc = yn_each(ymod, yc)) != NULL) {
+            inext2 = 0;
+            while ((yc = yn_iter(ymod, &inext2)) != NULL) {
                 switch(yang_keyword_get(yc)){
                 case Y_FEATURE:
                     if (yang_cv_get(yc) && cv_bool_get(yang_cv_get(yc)))
@@ -268,8 +270,8 @@ yang_modules_state_build(clixon_handle    h,
                 }
             }
         }
-        yinc = NULL;
-        while ((yinc = yn_each(ymod, yinc)) != NULL) {
+        inext2 = 0;
+        while ((yinc = yn_iter(ymod, &inext2)) != NULL) {
             if (yang_keyword_get(yinc) != Y_INCLUDE)
                 continue;
             cprintf(cb,"<submodule>");
@@ -540,6 +542,7 @@ yang_find_module_by_prefix(yang_stmt *ys,
     yang_stmt *ymod = NULL;
     yang_stmt *yspec;
     char      *myprefix;
+    int        inext;
 
     if ((yspec = ys_spec(ys)) == NULL){
         clixon_err(OE_YANG, 0, "My yang spec not found");
@@ -556,8 +559,8 @@ yang_find_module_by_prefix(yang_stmt *ys,
         goto done;
     }
     /* If no match, try imported modules */
-    yimport = NULL;
-    while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
+    inext = 0;
+    while ((yimport = yn_iter(my_ymod, &inext)) != NULL) {
         if (yang_keyword_get(yimport) != Y_IMPORT)
             continue;
         if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) != NULL &&
@@ -584,10 +587,12 @@ yang_stmt *
 yang_find_module_by_prefix_yspec(yang_stmt *yspec,
                                  char      *prefix)
 {
-    yang_stmt *ymod = NULL;
+    yang_stmt *ymod;
     yang_stmt *yprefix;
+    int        inext;
 
-    while ((ymod = yn_each(yspec, ymod)) != NULL)
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL)
         if (yang_keyword_get(ymod) == Y_MODULE &&
             (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
             strcmp(yang_argument_get(yprefix), prefix) == 0)
@@ -609,11 +614,13 @@ yang_stmt *
 yang_find_module_by_namespace(yang_stmt *yspec,
                               char      *ns)
 {
-    yang_stmt *ymod = NULL;
+    yang_stmt *ymod;
+    int        inext;
 
     if (ns == NULL)
         goto done;
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
             break;
     }
@@ -636,15 +643,17 @@ yang_find_module_by_namespace_revision(yang_stmt  *yspec,
                                        const char *ns,
                                        const char *rev)
 {
-    yang_stmt *ymod = NULL;
+    yang_stmt *ymod;
     yang_stmt *yrev;
     char      *rev1;
+    int        inext;
 
     if (ns == NULL || rev == NULL){
         clixon_err(OE_CFG, EINVAL, "No ns or rev");
         goto done;
     }
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
             /* Get FIRST revision */
             if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
@@ -672,15 +681,17 @@ yang_find_module_by_name_revision(yang_stmt  *yspec,
                                   const char *name,
                                   const char *rev)
 {
-    yang_stmt *ymod = NULL;
+    yang_stmt *ymod;
     yang_stmt *yrev;
     char      *rev1;
+    int        inext;
 
     if (name == NULL){
         clixon_err(OE_CFG, EINVAL, "No ns or rev");
         goto done;
     }
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         if (yang_keyword_get(ymod) != Y_MODULE)
             continue;
         if (strcmp(yang_argument_get(ymod), name) != 0)
@@ -711,9 +722,11 @@ yang_stmt *
 yang_find_module_by_name(yang_stmt *yspec,
                          char      *name)
 {
-    yang_stmt *ymod = NULL;
+    yang_stmt *ymod;
+    int        inext;
 
-    while ((ymod = yn_each(yspec, ymod)) != NULL)
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL)
         if ((yang_keyword_get(ymod) == Y_MODULE || yang_keyword_get(ymod) == Y_SUBMODULE) &&
             strcmp(yang_argument_get(ymod), name)==0)
             return ymod;
@@ -779,12 +792,14 @@ yang_metadata_annotation_check(cxobj     *xa,
                                int       *ismeta)
 {
     int        retval = -1;
-    yang_stmt *yma = NULL;
+    yang_stmt *yma;
     char      *name;
     cg_var    *cv;
+    int        inext;
 
     /* Loop through annotations */
-    while ((yma = yn_each(ymod, yma)) != NULL){
+    inext = 0;
+    while ((yma = yn_iter(ymod, &inext)) != NULL){
         /* Assume here md:annotation is written using canonical prefix */
         if (yang_keyword_get(yma) != Y_UNKNOWN)
             continue;

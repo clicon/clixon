@@ -170,7 +170,7 @@ is_same_subtypes_union(yang_stmt *ytype,
                        char     **restype)
 {
     int        retval = 0;
-    yang_stmt *y_sub_type = NULL;
+    yang_stmt *y_sub_type;
     yang_stmt *y_resolved_type = NULL;        /* resolved type */
     char      *resolved_type_str;             /* resolved type */
     char      *type_str = NULL;
@@ -178,12 +178,14 @@ is_same_subtypes_union(yang_stmt *ytype,
     cvec      *cvv = NULL;
     cvec      *patterns = NULL;
     uint8_t    fraction_digits = 0;
+    int        inext;
 
     /* Loop over all sub-types in the resolved union type, note these are
      * not resolved types (unless they are built-in, but the resolve call is
      * made in the union_one call.
      */
-    while ((y_sub_type = yn_each(ytype, y_sub_type)) != NULL){
+    inext = 0;
+    while ((y_sub_type = yn_iter(ytype, &inext)) != NULL){
         if (yang_keyword_get(y_sub_type) != Y_TYPE)
             continue;
 
@@ -413,6 +415,7 @@ yang_extension_value_opt(yang_stmt *ys,
     int        retval = -1;
     yang_stmt *yext;
     cg_var    *cv;
+    int        inext;
 
     if (ys == NULL){
         clixon_err(OE_YANG, EINVAL, "ys is NULL");
@@ -420,8 +423,9 @@ yang_extension_value_opt(yang_stmt *ys,
     }
     if (exist)
         *exist = 0;
-    yext = NULL; /* This loop gets complicated in the case the extension is augmented */
-    while ((yext = yn_each(ys, yext)) != NULL) {
+    /* This loop gets complicated in the case the extension is augmented */
+    inext = 0;
+    while ((yext = yn_iter(ys, &inext)) != NULL) {
         if (yang_keyword_get(yext) != Y_UNKNOWN)
             continue;
         if (strcmp(yang_argument_get(yext), id) != 0)

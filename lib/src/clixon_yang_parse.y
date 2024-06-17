@@ -235,7 +235,6 @@ yang_parse_init(clixon_yang_yacc *yy)
     return 0;
 }
 
-
 int
 yang_parse_exit(clixon_yang_yacc *yy)
 {

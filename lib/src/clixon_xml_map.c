@@ -1510,14 +1510,16 @@ yang_valstr2enum(yang_stmt *ytype,
                  char     **enumstr)
 {
     int        retval = -1;
-    yang_stmt *yenum = NULL;
+    yang_stmt *yenum;
     yang_stmt *yval; 
+    int        inext;
 
     if (enumstr == NULL){
         clixon_err(OE_UNIX, EINVAL, "str is NULL");
         goto done;
     }
-    while ((yenum = yn_each(ytype, yenum)) != NULL) {
+    inext = 0;
+    while ((yenum = yn_iter(ytype, &inext)) != NULL) {
         if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
             goto done;
         if (strcmp(yang_argument_get(yval), valstr) == 0)
@@ -1635,10 +1637,12 @@ yang_bits_pos(yang_stmt *ytype,
     int        ret = 0;
     int        is_first = 1;
     char      *reason;
-    yang_stmt *yprev = NULL;
+    yang_stmt *yprev;
     yang_stmt *ypos = NULL;
+    int        inext;
 
-    while ((yprev = yn_each(ytype, yprev)) != NULL){
+    inext = 0;
+    while ((yprev = yn_iter(ytype, &inext)) != NULL){
         /* Check for the given bit name (flag) */
         if (yang_keyword_get(yprev) == Y_BIT){
             /* Use position from Y_POSITION statement if defined */
@@ -1826,16 +1830,18 @@ yang_val2bitsstr(clixon_handle  h,
     int        ret = 0;
     int        byte = 0;
     char      *reason = NULL;
-    yang_stmt *yprev = NULL;
+    yang_stmt *yprev;
     yang_stmt *ypos;
     uint32_t   bitpos = 0;
+    int        inext;
 
     if (cb == NULL){
         clixon_err(OE_UNIX, EINVAL, "cb is NULL");
         goto done;
     }
     /* Go over all defined bits and check if it is seet in intval */
-    while ((yprev = yn_each(ytype, yprev)) != NULL && byte < inlen){
+    inext = 0;
+    while ((yprev = yn_iter(ytype, &inext)) != NULL && byte < inlen){
         if (yang_keyword_get(yprev) == Y_BIT) {
             /* Use position from Y_POSITION statement if defined */
             if ((ypos = yang_find(yprev, Y_POSITION, NULL)) != NULL){
@@ -2156,6 +2162,7 @@ yang_xml_mandatory(cxobj     *xt,
     yang_stmt    *yc;
     int           hit;
     int           nr;
+    int           inext;
 
     /* Create dummy xs if not exist */
     if ((xs = xml_new(yang_argument_get(ys), xt, CX_ELMNT)) == NULL)
@@ -2180,8 +2187,8 @@ yang_xml_mandatory(cxobj     *xt,
      *    least one mandatory node as a child. */
     else if (keyw == Y_CONTAINER &&
              yang_find(ys, Y_PRESENCE, NULL) == NULL){
-        yc = NULL;
-        while ((yc = yn_each(ys, yc)) != NULL) {
+        inext = 0;
+        while ((yc = yn_iter(ys, &inext)) != NULL) {
             if ((ret = yang_xml_mandatory(xs, yc)) < 0)
                 goto done;
             if (ret == 1)

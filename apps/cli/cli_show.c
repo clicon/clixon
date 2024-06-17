@@ -494,6 +494,7 @@ expand_yang_list(void   *h,
     yang_stmt *ymod;
     int        modname = 0;
     cbuf      *cb = NULL;
+    int        inext;
 
     if (argv == NULL || cvec_len(argv) < 1 || cvec_len(argv) > 2){
         clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <schemanode> [<modname>]");
@@ -518,8 +519,8 @@ expand_yang_list(void   *h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    yn = NULL;
-    while ((yn = yn_each(yres, yn)) != NULL) {
+    inext = 0;
+    while ((yn = yn_iter(yres, &inext)) != NULL) {
         if (yang_keyword_get(yn) != Y_LIST)
             continue;
         cbuf_reset(cb);
@@ -559,6 +560,7 @@ show_yang(clixon_handle h,
     yang_stmt *yn;
     char      *str = NULL;
     yang_stmt *yspec;
+    int        inext;
 
     yspec = clicon_dbspec_yang(h);
     if (cvec_len(argv) > 0){
@@ -568,8 +570,8 @@ show_yang(clixon_handle h,
                 goto done;
     }
     else{
-        yn = NULL;
-        while ((yn = yn_each(yspec, yn)) != NULL) {
+        inext = 0;
+        while ((yn = yn_iter(yspec, &inext)) != NULL) {
             if (yang_print_cb(stdout, yn, cligen_output) < 0)
                 goto done;
         }
@@ -1900,7 +1902,6 @@ cli_show_statistics(clixon_handle h,
     uint64_t    u64;
     char       *unit;
 
-
     if (argv == NULL || (cvec_len(argv) < 1 || cvec_len(argv) > 2)){
         clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [(cli|backend|all) [detail]]");
         goto done;
@@ -1938,7 +1939,7 @@ cli_show_statistics(clixon_handle h,
             cligen_output(stdout, "%-25s %-10s\n", "YANG", "Mem");
         }
         nr = 0; sz = 0;
-        if (yang_stats(yspec, &nr, &sz) < 0)
+        if (yang_stats(yspec, 0, &nr, &sz) < 0)
             goto done;
         tnr = nr;
         tsz = sz;
@@ -1961,7 +1962,7 @@ cli_show_statistics(clixon_handle h,
                     while ((cv2 = cvec_each(cvv2, cv2)) != NULL) {
                         yspec1 = cv_void_get(cv2);
                         nr = 0; sz = 0;
-                        if (yang_stats(yspec1, &nr, &sz) < 0)
+                        if (yang_stats(yspec1, 0, &nr, &sz) < 0)
                             goto done;
                         /* check if not duplicate */
                         cv3 = cv2;
