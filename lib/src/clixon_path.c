@@ -822,22 +822,13 @@ api_path2xpath_cvv(cvec      *api_path,
             goto done;
         if (ret == 1){
             y1 = NULL;
+            if (nsc){
+                cvec_free(nsc);
+                nsc = NULL;
+            }
             if (xml_nsctx_yangspec(yspec, &nsc) < 0)
                 goto done;
             /* cf xml_bind_yang0_opt/xml_yang_mount_get */
-            if (yang_mount_get(y, cbuf_get(xpath), &y1) < 0)
-                goto done;
-            if (y1 != NULL){
-                y = y1;
-                yspec = y1;
-                root = 1;
-            }
-        }
-        if ((ymtpoint = yang_schema_mount_point(y)) < 0)
-            goto done;
-        if (ymtpoint){
-            if (yang_mount_get_yspec_any(y, &yspec) < 0)
-                goto done;
         }
         /* Get XML/xpath prefix given namespace.
          * note different from api-path prefix
@@ -857,6 +848,25 @@ api_path2xpath_cvv(cvec      *api_path,
         if (xprefix)
             cprintf(xpath, "%s:", xprefix);
         cprintf(xpath, "%s", name);
+        if (ret == 1) {
+            if (yang_mount_get(y, cbuf_get(xpath), &y1) < 0)
+                goto done;
+            if (y1 != NULL){
+                y = y1;
+                yspec = y1;
+                root = 1;
+            }
+        }
+        /* y may have changed to new */
+        if ((ymtpoint = yang_schema_mount_point(y)) < 0)
+            goto done;
+        if (ymtpoint){
+            /* If we cant find a specific mountpoint, we just assign the first.
+             * XXX: note that maybe this may cause later errors?
+             */
+            if (yang_mount_get_yspec_any(y, &yspec) < 0)
+                goto done;
+        }
         /* Check if has value, means '=' */
         if (cv_type_get(cv) == CGV_STRING){
             /* val is uri percent encoded, eg x%2Cy,z */
@@ -960,11 +970,11 @@ api_path2xpath_cvv(cvec      *api_path,
  * @see api_path2xml  For api-path to xml translation (maybe could be combined?)
  */
 int
-api_path2xpath(char       *api_path,
-               yang_stmt  *yspec,
-               char      **xpathp,
-               cvec      **nsc,
-               cxobj     **xerr)
+api_path2xpath(char      *api_path,
+               yang_stmt *yspec,
+               char     **xpathp,
+               cvec     **nsc,
+               cxobj    **xerr)
 {
     int    retval = -1;
     cvec  *cvv = NULL; /* api-path vector */

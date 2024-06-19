@@ -64,6 +64,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Invalid api-path errors thrown when displayin qfx family device conf in CLI](https://github.com/clicon/clixon-controller/issues/126)
 * Fixed: [Error message from CLI if terminal is modified](https://github.com/clicon/clixon-controller/issues/122)
 * Fixed: backend exit when receiving invalid NETCONF get select XPath
   * Added XML encoding to XPaths in `select` attribute
