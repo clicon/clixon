@@ -3313,9 +3313,9 @@ schema_nodeid_iterate(yang_stmt    *yn,
  * @see yang_desc_schema_nodeid
  */
 int
-yang_abs_schema_nodeid(yang_stmt    *yn,
-                       char         *schema_nodeid,
-                       yang_stmt   **yres)
+yang_abs_schema_nodeid(yang_stmt  *yn,
+                       char       *schema_nodeid,
+                       yang_stmt **yres)
 {
     int           retval = -1;
     cvec         *nodeid_cvv = NULL;

@@ -79,9 +79,20 @@
 /* Cache handle since debug calls do not have handle parameter */
 static clixon_handle _debug_clixon_h    = NULL;
 
+/*! The global debug level. 0 means no debug
+ *
+ * @note There are pros and cons in having the debug state as a global variable. The
+ * alternative to bind it to the clicon handle (h) was considered but it limits its
+ * usefulness, since not all functions have access to a handle.
+ * A compromise solution is now in place where h can be provided in the function call, but
+ * tolerates NULL, in which case a cached handle is used.
+ */
+static int _debug_level = 0;
+
 /*! Mapping between Clixon debug symbolic names <--> bitfields
  *
  * Mapping between specific bitfields and symbolic names, note only perfect matches
+ * @note yang_bits_map can be used as alternative but this still neeeded in bootstrapping
  */
 static const map_str2int dbgmap[] = {
     {"default",   CLIXON_DBG_DEFAULT},
@@ -151,16 +162,6 @@ clixon_debug_key_dump(FILE *f)
     }
     return -1;
 }
-
-/*! The global debug level. 0 means no debug 
- *
- * @note There are pros and cons in having the debug state as a global variable. The 
- * alternative to bind it to the clicon handle (h) was considered but it limits its
- * usefulness, since not all functions have access to a handle.
- * A compromise solution is now in place where h can be provided in the function call, but
- * tolerates NULL, in which case a cached handle is used.
- */
-static int _debug_level = 0;
 
 /*! Initialize debug messages. Set debug level.
  *

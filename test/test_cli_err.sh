@@ -89,11 +89,11 @@ new "wait backend"
 wait_backend
 
 new "orig error"
-expectpart "$($clixon_cli -1 -f $cfg -l n example error orig)" 255 "Config error: api-path syntax error " ": application invalid-value Invalid api-path:  (must start with '/')"
+expectpart "$($clixon_cli -1 -f $cfg -l o example error orig)" 255 "Config error: api-path syntax error " ": application invalid-value Invalid api-path:  (must start with '/')"
 
 if [ ${LINKAGE} = dynamic ]; then
 new "customized error"
-expectpart "$($clixon_cli -1 -f $cfg -l n example error custom)" 255 "My new err-string"
+expectpart "$($clixon_cli -1 -f $cfg -l o example error custom)" 255 "My new err-string"
 fi
 
 if [ $BE -ne 0 ]; then

@@ -120,10 +120,10 @@ expectpart "$($clixon_cli -1 -f $cfg show conf x)" 0 "x m1 a (null) b 22/22 c 44
 
 # Negative tests
 new "err x"
-expectpart "$($clixon_cli -1 -f $cfg -l n err x)" 255 "Config error: api-path syntax error \"/example2:x\": application unknown-element No such yang module prefix <bad-element>example2</bad-element>: Invalid argument"
+expectpart "$($clixon_cli -1 -f $cfg -l o err x)" 255 "Config error: api-path syntax error \"/example2:x\": application unknown-element No such yang module prefix <bad-element>example2</bad-element>: Invalid argument"
 
 new "err x a"
-expectpart "$($clixon_cli -1 -f $cfg -l n err x a 99)" 255 "Config error: api-path syntax error \"/example:x/m1=%s\": rpc malformed-message List key m1 length mismatch : Invalid argument"
+expectpart "$($clixon_cli -1 -f $cfg -l o err x a 99)" 255 "Config error: api-path syntax error \"/example:x/m1=%s\": rpc malformed-message List key m1 length mismatch : Invalid argument"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

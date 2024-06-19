@@ -562,7 +562,7 @@ main(int    argc,
     clixon_handle  h;
     int            logclisyntax  = 0;
     int            help = 0;
-    int            logdst = CLIXON_LOG_STDERR;
+    uint32_t       logdst = 0;
     char          *restarg = NULL; /* what remains after options */
     yang_stmt     *yspec;
     struct passwd *pw;
@@ -571,11 +571,12 @@ main(int    argc,
     cvec          *nsctx_global = NULL; /* Global namespace context */
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
-    int            dbg=0;
+    uint32_t       dbg=0;
     int            nr;
     int            config_dump;
     enum format_enum config_dump_format = FORMAT_XML;
     int            print_version = 0;
+    int32_t        d;
 
     /* Defaults */
     once = 0;
@@ -608,7 +609,7 @@ main(int    argc,
      */
     optind = 1;
     opterr = 0;
-    while ((c = getopt(argc, argv, CLI_OPTS)) != -1)
+    while ((c = getopt(argc, argv, CLI_OPTS)) != -1) {
         switch (c) {
         case 'h':
             /* Defer the call to usage() to later. Reason is that for helpful
@@ -622,16 +623,15 @@ main(int    argc,
             cligen_output(stdout, "Clixon version: %s\n", CLIXON_GITHASH);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
-        case 'D' : { /* debug */
-            int d = 0;
-            /* Try first symbolic, then numeric match */
+        case 'D' :  /* debug, if set here overrides option CLICON_DEBUG */
+            /* Try first symbolic, then numeric match
+             * Cant use yang_bits_map, too early in bootstrap, there is no yang */
             if ((d = clixon_debug_str2key(optarg)) < 0 &&
                 sscanf(optarg, "%d", &d) != 1){
                 usage(h, argv[0]);
             }
             dbg |= d;
             break;
-        }
         case 'f': /* config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);
@@ -642,19 +642,25 @@ main(int    argc,
                 usage(h, argv[0]);
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
-        case 'l': /* Log destination: s|e|o|f */
-            if ((logdst = clixon_log_opt(optarg[0])) < 0)
-                usage(h, argv[0]);
-            if (logdst == CLIXON_LOG_FILE &&
-                strlen(optarg)>1 &&
-                clixon_log_file(optarg+1) < 0)
-                goto done;
+        case 'l': /* Log destination: s|e|o|f<file> */
+            if ((d = clixon_logdst_str2key(optarg)) < 0){
+                if (optarg[0] == 'f'){ /* Check for special -lf<file> syntax */
+                    d = CLIXON_LOG_FILE;
+                    if (strlen(optarg) > 1 &&
+                        clixon_log_file(optarg+1) < 0)
+                        goto done;
+                }
+                else
+                    usage(h, argv[0]);
+            }
+            logdst = d;
             break;
         }
+    }
     /*
      * Logs, error and debug to stderr or syslog, set debug level
      */
-    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
+    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst?logdst:CLIXON_LOG_STDERR);
     clixon_debug_init(h, dbg);
     yang_init(h);
 
@@ -763,25 +769,10 @@ main(int    argc,
     /* Defer: Wait to the last minute to print help message */
     if (help)
         usage(h, argv[0]);
-    /* Unless -D, set debug level to CLICON_DEBUG set 
-     * Only works for one value.
-     */
-    {
-        char *dstr;
-        int   d = 0;
 
-        dstr = clicon_option_str(h, "CLICON_DEBUG");
-        if (dbg == 0 && dstr && strlen(dstr)){
-            if ((d = clixon_debug_str2key(dstr)) < 0 &&
-                sscanf(optarg, "%d", &d) != 1){
-                clixon_err(OE_CFG, 0, "Parsing CLICON_DEBUG: %s", dstr);
-                goto done;
-            }
-            clixon_debug_init(h, d);
-            clixon_log_init(h, __PROGRAM__, d?LOG_DEBUG:LOG_INFO, logdst);
-        }
-    }
-
+    /* Read debug and log options from config file if not given by command-line */
+    if (clixon_options_main_helper(h, dbg, logdst, __PROGRAM__) < 0)
+        goto done;
     /* Split remaining argv/argc into <cmd> and <extra-options> */
     if (options_split(h, argv0, argc, argv, &restarg) < 0)
         goto done;
@@ -983,8 +974,9 @@ main(int    argc,
   done:
     if (restarg)
         free(restarg);
-// Gets in your face if we log on stderr
-    clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
+    /* Dont log terminate on stderr or stdout */
+    clixon_log_init(h, __PROGRAM__, LOG_INFO,
+                    clixon_get_logflags() & ~(CLIXON_LOG_STDERR|CLIXON_LOG_STDOUT));
     clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
     if (h)
         cli_terminate(h);

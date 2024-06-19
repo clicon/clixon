@@ -73,7 +73,6 @@
 #include "clixon_debug.h"
 #include "clixon_string.h"
 #include "clixon_file.h"
-#include "clixon_xml_sort.h"
 #include "clixon_json.h"
 #include "clixon_text_syntax.h"
 #include "clixon_proto.h"
@@ -83,8 +82,10 @@
 #include "clixon_xpath.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_io.h"
+#include "clixon_xml_map.h"
 #include "clixon_validate.h"
 #include "clixon_xml_default.h"
 
@@ -722,6 +723,59 @@ clicon_options_main(clixon_handle h)
         ys_free(yspec);
     if (extraconfdir)
         free(extraconfdir);
+    return retval;
+}
+
+/*! Options debug and log helper function
+ *
+ * If no debug or log option set in command-line, read debug or log options from
+ * configure file.
+ * Also set log file if CLICON_LOG_FILE is set
+ * @param[in]  h       Clixon handle
+ * @param[in]  dbg     Debug bitmask
+ * @param[in]  logdst  Log destination bitmask
+ * @param[in]  ident   prefix that appears on syslog
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_options_main_helper(clixon_handle h,
+                           uint32_t      dbg,
+                           uint32_t      logdst,
+                           char         *ident)
+{
+    int   retval = -1;
+    int   relog = 0;
+    char *dstr;
+
+    relog = 0;
+    dstr = clicon_option_str(h, "CLICON_DEBUG");
+    if (dbg == 0 && dstr && strlen(dstr)){
+        if (yang_bits_map(clicon_config_yang(h),
+                          dstr,
+                          "/cc:clixon-config/cc:CLICON_DEBUG",
+                          &dbg) < 0)
+            goto done;
+        relog++;
+    }
+    dstr = clicon_option_str(h, "CLICON_LOG_DESTINATION");
+    if (logdst == 0 && dstr && strlen(dstr)){
+        logdst = 0;
+        if (yang_bits_map(clicon_config_yang(h),
+                          dstr,
+                          "/cc:clixon-config/cc:CLICON_LOG_DESTINATION",
+                          &logdst) < 0)
+            goto done;
+        relog++;
+    }
+    if (relog){
+        clixon_debug_init(h, dbg);
+        clixon_log_init(h, ident, dbg?LOG_DEBUG:LOG_INFO, logdst?logdst:CLIXON_LOG_STDERR);
+    }
+    if ((dstr = clicon_option_str(h, "CLICON_LOG_FILE")) != NULL)
+        clixon_log_file(dstr);
+    retval = 0;
+ done:
     return retval;
 }
 

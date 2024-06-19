@@ -46,9 +46,10 @@
  * Constants
  */
 
-/* Debug flags are seperated into subject areas and detail
+/*! Debug flags are separated into subject areas and detail
+ *
  * @see dbgmap Symbolic mapping (if you change here you may need to change dbgmap)
- * @see clixon_debug in clixon-lib.yang
+ * @see also clixon_debug_t in clixon-lib.yang
  */
 /* Detail level */
 #define CLIXON_DBG_ALWAYS	0x00000000	/* Unconditionally logged */

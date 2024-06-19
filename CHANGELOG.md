@@ -29,7 +29,9 @@ Expected: June 2024
 * CLI support for multiple inline commands separated by semi-colon
 * New `clixon-config@2024-04-01.yang` revision
   * Added options:
-    - `CLICON_DEBUG`: Debug flags, partly implemented.
+    - `CLICON_LOG_DESTINATION`: Default log destination
+    - `CLICON_LOG_FILE`: Which file to log to if file logging
+    - `CLICON_DEBUG`: Debug flags
     - `CLICON_YANG_SCHEMA_MOUNT_SHARE`: Share same YANGs of several moint-points
     - `CLICON_SOCK_PRIO`: Enable socket event priority
     - `CLICON_XMLDB_MULTI`: Split datastore into multiple sub files

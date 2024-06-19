@@ -45,11 +45,15 @@
 /*
  * Constants
  */
-/* Where to log (masks) */
-#define CLIXON_LOG_SYSLOG 1 /* print logs on syslog */
-#define CLIXON_LOG_STDERR 2 /* print logs on stderr */
-#define CLIXON_LOG_STDOUT 4 /* print logs on stdout */
-#define CLIXON_LOG_FILE   8 /* print logs on clicon_log_filename */
+/*! Log destination as bitfields (masks)
+ *
+ * @see logdstmap Symbolic mapping (if you change here you may need to change logdstmap)
+ * @see also log_desination_t in clixon-config.yang
+ */
+#define CLIXON_LOG_SYSLOG 0x01 /* print logs on syslog */
+#define CLIXON_LOG_STDERR 0x02 /* print logs on stderr */
+#define CLIXON_LOG_STDOUT 0x04 /* print logs on stdout */
+#define CLIXON_LOG_FILE   0x08 /* print logs on clixon_log_filename */
 
 /* What kind of log (only for customizable error/logs) */
 enum clixon_log_type{
@@ -67,6 +71,8 @@ enum clixon_log_type{
 /*
  * Prototypes
  */
+char *clixon_logdst_key2str(int keyword);
+int clixon_logdst_str2key(char *str);
 int clixon_log_init(clixon_handle h, char *ident, int upto, int flags);
 int clixon_log_exit(void);
 int clixon_log_opt(char c);

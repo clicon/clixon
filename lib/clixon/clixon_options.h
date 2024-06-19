@@ -112,6 +112,9 @@ int clicon_option_add(clixon_handle h, const char *name, char *value);
 /* Initialize options: set defaults, read config-file, etc */
 int clicon_options_main(clixon_handle h);
 
+/* Options debug and log helper function */
+int clixon_options_main_helper(clixon_handle h, uint32_t dbg, uint32_t logdst, char *ident);
+
 /*! Check if a clicon option has a value */
 int clicon_option_exists(clixon_handle h, const char *name);
 

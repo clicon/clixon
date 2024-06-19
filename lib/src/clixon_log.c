@@ -60,6 +60,7 @@
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_string.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
@@ -87,6 +88,47 @@ static FILE *_log_file = NULL;
 /* Truncate debug strings to this length. 0 means unlimited */
 static int _log_trunc = 0;
 
+/*! Mapping between Clixon debug symbolic names <--> bitfields
+ *
+ * Also inclode shorthands: s|e|o|f|n
+ * Mapping between specific bitfields and symbolic names, note only perfect matches
+ * @see typedef log_destination_t in clixon-config.yang
+ */
+static const map_str2int logdstmap[] = {
+    {"syslog",   CLIXON_LOG_SYSLOG},
+    {"s",        CLIXON_LOG_SYSLOG},
+    {"stderr",   CLIXON_LOG_STDERR},
+    {"e",        CLIXON_LOG_STDERR},
+    {"stdout",   CLIXON_LOG_STDOUT},
+    {"o",        CLIXON_LOG_STDOUT},
+    {"file",     CLIXON_LOG_FILE},
+    {"f",        CLIXON_LOG_FILE},
+    {"n",        0x0},
+    {NULL,       -1}
+};
+
+/*! Map from clixon debug (specific) bitmask to string
+ *
+ * @param[in] int  Bitfield, see CLIXON_LOG_SYSLOG and others
+ * @retval    str  String representation of bitfield
+ */
+char *
+clixon_logdst_key2str(int keyword)
+{
+    return (char*)clicon_int2str(logdstmap, keyword);
+}
+
+/*! Map from clixon log destination symbolic string to bitfield
+ *
+ * @param[in] str  String representation of Clixon log destination bit
+ * @retval    int  Bit representation of bitfield
+ */
+int
+clixon_logdst_str2key(char *str)
+{
+    return clicon_str2int(logdstmap, str);
+}
+
 /*! Initialize system logger.
  *
  * Make syslog(3) calls with specified ident and gates calls of level upto specified level (upto).
@@ -96,9 +138,7 @@ static int _log_trunc = 0;
  * @param[in]  h       Clixon handle
  * @param[in]  ident   prefix that appears on syslog (eg 'cli')
  * @param[in]  upto    log priority, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG (see syslog(3)).
- * @param[in]  flags   bitmask: if CLIXON_LOG_STDERR, then print logs to stderr
- *                              if CLIXON_LOG_SYSLOG, then print logs to syslog
- *                              You can do a combination of both
+ * @param[in]  flags   Log destination bitmask
  * @retval     0       OK
  * @code
  *  clixon_log_init(__PROGRAM__, LOG_INFO, CLIXON_LOG_STDERR); 

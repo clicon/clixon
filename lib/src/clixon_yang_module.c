@@ -838,12 +838,12 @@ yang_metadata_init(clixon_handle h)
  * Skip module if already loaded
  * This function is used where a yang-lib module-set is available to populate
  * an XML mount-point.
- * @param[in] h       Clixon handle
+ * @param[in] h        Clixon handle
  * @param[in] xyanglib XML tree on the form <yang-lib>...
- * @param[in] yspec   Will be populated with YANGs, is consumed
- * @retval    1       OK
- * @retval    0       Parse error
- * @retval   -1       Error
+ * @param[in] yspec    Will be populated with YANGs, is consumed
+ * @retval    1        OK
+ * @retval    0        Parse error
+ * @retval   -1        Error
  * @see xml_schema_add_mount_points
  * XXX: Ensure yang-lib is always there otherwise get state dont work for mountpoint
  */

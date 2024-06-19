@@ -329,6 +329,7 @@ main(int    argc,
     enum format_enum config_dump_format = FORMAT_XML;
     int              print_version = 0;
     int              stream_timeout = 0;
+    int32_t          d;
     
     /* Create handle */
     if ((h = restconf_handle_init()) == NULL)
@@ -351,7 +352,6 @@ main(int    argc,
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : { /* debug */
-            int d = 0;
             /* Try first symbolic, then numeric match */
             if ((d = clixon_debug_str2key(optarg)) < 0 &&
                 sscanf(optarg, "%d", &d) != 1){
@@ -371,12 +371,17 @@ main(int    argc,
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
         case 'l': /* Log destination: s|e|o */
-            if ((logdst = clixon_log_opt(optarg[0])) < 0)
-                usage(h, argv[0]);
-            if (logdst == CLIXON_LOG_FILE &&
-                strlen(optarg)>1 &&
-                clixon_log_file(optarg+1) < 0)
-                goto done;
+            if ((d = clixon_logdst_str2key(optarg)) < 0){
+                if (optarg[0] == 'f'){ /* Check for special -lf<file> syntax */
+                    d = CLIXON_LOG_FILE;
+                    if (strlen(optarg) > 1 &&
+                        clixon_log_file(optarg+1) < 0)
+                        goto done;
+                }
+                else
+                    usage(h, argv[0]);
+            }
+            logdst = d;
             break;
         } /* switch getopt */
 
@@ -466,6 +471,9 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+    /* Read debug and log options from config file if not given by command-line */
+    if (clixon_options_main_helper(h, dbg, logdst, __PROGRAM__) < 0)
+        goto done;
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
 

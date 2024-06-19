@@ -193,7 +193,7 @@ module clixon-lib {
             "Debug flags.
              Flags are seperated into subject areas and detail
              Can also be given directly as -D <flag> to clixon commands
-             Note there are also constants in the code thaht need to be in sync with these values";
+             Note there are also constants in the code that need to be in sync with these values";
          type bits {
             /* Subjects: */
             bit default {
@@ -345,7 +345,9 @@ module clixon-lib {
              A sub-object will not be noted";
     }
     rpc debug {
-        description "Set debug level of backend.";
+        description
+            "Set debug flags of backend.
+             Note only numerical values";
         input {
             leaf level {
                 type uint32;

@@ -537,6 +537,7 @@ main(int    argc,
     int           config_dump;
     enum format_enum config_dump_format = FORMAT_XML;
     int           print_version = 0;
+    int32_t       d;
     
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
@@ -572,16 +573,15 @@ main(int    argc,
             cligen_output(stdout, "Clixon version: %s\n", CLIXON_GITHASH);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
-        case 'D' : { /* debug */
-            int d = 0;
-            /* Try first symbolic, then numeric match */
+        case 'D' : /* debug */
+            /* Try first symbolic, then numeric match
+             * Cant use yang_bits_map, too early in bootstrap, there is no yang */
             if ((d = clixon_debug_str2key(optarg)) < 0 &&
-                sscanf(optarg, "%d", &d) != 1){
+                sscanf(optarg, "%u", &d) != 1){
                 usage(h, argv[0]);
             }
             dbg |= d;
             break;
-        }
         case 'f': /* config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);
@@ -592,13 +592,18 @@ main(int    argc,
                 usage(h, argv[0]);
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
-        case 'l': /* Log destination: s|e|o */
-            if ((logdst = clixon_log_opt(optarg[0])) < 0)
-                usage(h, argv[0]);
-            if (logdst == CLIXON_LOG_FILE &&
-                strlen(optarg)>1 &&
-                clixon_log_file(optarg+1) < 0)
-                goto done;
+        case 'l': /* Log destination: s|e|o|f<file> */
+            if ((d = clixon_logdst_str2key(optarg)) < 0){
+                if (optarg[0] == 'f'){ /* Check for special -lf<file> syntax */
+                    d = CLIXON_LOG_FILE;
+                    if (strlen(optarg) > 1 &&
+                        clixon_log_file(optarg+1) < 0)
+                        goto done;
+                }
+                else
+                    usage(h, argv[0]);
+            }
+            logdst = d;
             break;
         }
     /* 
@@ -618,7 +623,9 @@ main(int    argc,
             usage(h, argv[0]);
         goto done;
     }
-    
+    /* Read debug and log options from config file if not given by command-line */
+    if (clixon_options_main_helper(h, dbg, logdst, __PROGRAM__) < 0)
+        goto done;
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
         goto done;
