@@ -1821,15 +1821,9 @@ clixon_cli2cbuf(clixon_handle     h,
  * mempry in KiB
  * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of cli string and instantiated variables
- * @param[in]  argv  Arguments given at the callback: [(cli|backend) [detail]]
+ * @param[in]  argv  Arguments given at the callback: [(cli|backend|all) [detail]]
  * @retval     0     OK
  * @retval    -1     Error
- * where level means:
- * <null> :         Show mounts and summary clispec
- * cli :            Show mounts and summary clispec
- * cli detail :     Show mounts and per parse-tree clispec
- * backend :        Show summary mem
- * backend detail : Per-module
  */
 int
 cli_show_statistics(clixon_handle h,
@@ -1841,6 +1835,8 @@ cli_show_statistics(clixon_handle h,
     cxobj      *xret = NULL;
     cxobj      *xerr;
     char       *what = NULL;
+    int         cli = 0;
+    int         backend = 0;
     int         detail = 0;
     pt_head    *ph;
     parse_tree *pt;
@@ -1863,49 +1859,53 @@ cli_show_statistics(clixon_handle h,
     char       *name;
     cxobj      *x;
 
-    if (argv != NULL && (cvec_len(argv) < 1 || cvec_len(argv) > 2)){
-        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [(cli|backend) [detail]]");
+    if (argv == NULL || (cvec_len(argv) < 1 || cvec_len(argv) > 2)){
+        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [(cli|backend|all) [detail]]");
         goto done;
     }
     yspec = clicon_dbspec_yang(h);
-    if (argv){
-        cv = cvec_i(argv, 0);
-        what = cv_string_get(cv);
-        if (strcmp(what, "cli") != 0 && strcmp(what, "backend") != 0){
-            clixon_err(OE_PLUGIN, EINVAL, "Unexpected argument: %s, expected: cli|backend", what);
+    cv = cvec_i(argv, 0);
+    what = cv_string_get(cv);
+    if (strcmp(what, "cli") == 0)
+        cli++;
+    else if (strcmp(what, "backend") == 0)
+        backend++;
+    else if (strcmp(what, "all") == 0){
+        cli++;
+        backend++;
+    }
+    else {
+        clixon_err(OE_PLUGIN, EINVAL, "Unexpected argument: %s, expected: cli|backend|all", what);
+        goto done;
+    }
+    if (cvec_len(argv) > 1 &&
+        (cv = cvec_i(argv, 1)) != NULL){
+        if (strcmp(cv_string_get(cv), "detail") != 0){
+            clixon_err(OE_PLUGIN, EINVAL, "Unexpected argument: %s, expected: detail",
+                       cv_string_get(cv));
             goto done;
         }
-        if (cvec_len(argv) > 1 &&
-            (cv = cvec_i(argv, 1)) != NULL){
-            if (strcmp(cv_string_get(cv), "detail") != 0){
-                clixon_err(OE_PLUGIN, EINVAL, "Unexpected argument: %s, expected: detail",
-                           cv_string_get(cv));
-                goto done;
-            }
-            detail = 1;
-        }
+        detail = 1;
     }
-    else
-        what = "cli";
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
-    if (strcmp(what, "cli") == 0) {
-        /* CLI */
-        cligen_output(stdout, "%-25s %-10s", "YANG", "Mem[KiB]");
-        if (detail)
-            cligen_output(stdout, " %-8s\n", "Nodes[#]");
-        cligen_output(stdout, "\n");
+    if (cli) {
+        if (!detail) {
+            cligen_output(stdout, "%-25s %-10s\n", "YANG", "Mem[KiB]");
+        }
         nr = 0; sz = 0;
         if (yang_stats(yspec, &nr, &sz) < 0)
             goto done;
         tnr = nr;
         tsz = sz;
-        cligen_output(stdout, "%-25s %-10" PRIu64 "", "Top-level", sz/1024);
-        if (detail)
-            cligen_output(stdout, " %-8zu", nr);
-        cligen_output(stdout, "\n");
+        if (detail) {
+            cligen_output(stdout, "YANG-top-level-size: %" PRIu64 "\n", sz);
+            cligen_output(stdout, "YANG-top-level-nr: %" PRIu64 "\n", nr);
+        }
+        else
+            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "Top-level", sz/1024);
         if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")) {
             if (yang_mount_yspec2ymnt(yspec, &cvv1) < 0)
                 goto done;
@@ -1929,30 +1929,39 @@ cli_show_statistics(clixon_handle h,
                                 break;
                         }
                         if (cv3 != NULL){
-                            cligen_output(stdout, "%s\n", cv_name_get(cv2));
+                            if (detail){
+                                cligen_output(stdout, "YANG-mount-point-%s: shared\n", cv_name_get(cv2));
+                            }
+                            else
+                                cligen_output(stdout, "%s\n", cv_name_get(cv2));
                         }
                         else {
                             tnr += nr;
                             tsz += sz;
-                            if (strlen(cv_name_get(cv2)) > 25)
-                                cligen_output(stdout, "%s \n %-25s", cv_name_get(cv2), "");
-                            else
-                                cligen_output(stdout, "%-25s", cv_name_get(cv2));
-                            cligen_output(stdout, "%-10" PRIu64 "", sz/1024);
-                            if (detail)
-                                cligen_output(stdout, " %-8zu", nr);
-                            cligen_output(stdout, "\n");
+
+                            if (detail) {
+                                cligen_output(stdout, "YANG-mount-point-%s-size: %"  PRIu64 "\n", cv_name_get(cv2), sz);
+                                cligen_output(stdout, "YANG-mount-point-%s-nr: %"  PRIu64 "\n", cv_name_get(cv2), nr);
+                            }
+                            else{
+                                if (strlen(cv_name_get(cv2)) > 25)
+                                    cligen_output(stdout, "%s \n %-25s", cv_name_get(cv2), "");
+                                else
+                                    cligen_output(stdout, "%-25s", cv_name_get(cv2));
+                                cligen_output(stdout, "%-10" PRIu64 "\n", sz/1024);
+                            }
                         }
                     }
                 }
             }
         }
-        cligen_output(stdout, "%-25s %-10" PRIu64 "", "YANG Total", tsz/1024);
-        if (detail)
-            cligen_output(stdout, " %-10zu", tnr);
-        cligen_output(stdout, "\n");
-        if (detail)
-            cligen_output(stdout, "%s\n", "CLIspec trees");
+        if (detail){
+            cligen_output(stdout, "YANG-total-size: %" PRIu64 "\n", sz);
+            cligen_output(stdout, "YANG-total-nr: %" PRIu64 "\n", sz);
+        }
+        else
+            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "YANG Total", tsz/1024);
+
         tnr0 = tnr;
         tsz0 = tsz;
         tnr = 0;
@@ -1966,24 +1975,22 @@ cli_show_statistics(clixon_handle h,
             tnr += nr;
             tsz += sz;
             if (detail){
-                if (strlen(cligen_ph_name_get(ph)) > 25){
-                    cligen_output(stdout, "%s \\\n", cligen_ph_name_get(ph));
-                    cligen_output(stdout, "%-25s %-10" PRIu64 " %-8zu\n", "", sz/1024, nr);
-                }
-                else
-                    cligen_output(stdout, "%-25s %-10" PRIu64 " %-8zu\n", cligen_ph_name_get(ph), sz/1024, nr);
+                cligen_output(stdout, "CLIspec-%s-size: %" PRIu64 "\n", cligen_ph_name_get(ph), sz);
+                cligen_output(stdout, "CLIspec-%s-nr: %" PRIu64 "\n", cligen_ph_name_get(ph), nr);
             }
         }
-        cligen_output(stdout, "%-25s %-10" PRIu64 "", "CLIspec Total", tsz/1024);
-        if (detail)
-            cligen_output(stdout, "%-8zu\n", tnr);
-        cligen_output(stdout, "\n");
-        cligen_output(stdout, "%-25s %-10" PRIu64 "", "Mem Total", (tsz0+tsz)/1024);
-        if (detail)
-            cligen_output(stdout, "%-8zu\n", (tnr0+tnr));
-        cligen_output(stdout, "\n");
+        if (detail){
+            cligen_output(stdout, "CLIspec-total-size: %" PRIu64 "\n", tsz);
+            cligen_output(stdout, "CLIspec-total-nr: %" PRIu64 "\n", tnr);
+            cligen_output(stdout, "Mem-Total-size: %" PRIu64 "\n", tsz0+tsz);
+            cligen_output(stdout, "Mem-Total-nr: %" PRIu64 "\n", tnr0+tnr);
+        }
+        else {
+            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "CLIspec Total", tsz/1024);
+            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "Mem Total", (tsz0+tsz)/1024);
+        }
     }
-    if (strcmp(what, "backend") == 0) {
+    if (backend) {
         cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
         cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
         cprintf(cb, ">");

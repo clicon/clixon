@@ -753,6 +753,8 @@ yang_schema_mount_statistics(clixon_handle h,
     char      *xpath = NULL;
     uint64_t   nr;
     size_t     sz;
+    cg_var    *cv1;
+    yang_stmt *yspec1;
 
     if (yang_mount_xtop2xmnt(xtop, &cvv) < 0)
         goto done;
@@ -770,6 +772,27 @@ yang_schema_mount_statistics(clixon_handle h,
         xml_chardata_cbuf_append(cb, 0, xpath);
         cprintf(cb, "</name>");
         nr = 0; sz = 0;
+        cv1 = NULL;         /* For detecting shared YANGs */
+        if (yspec) {
+            cv1 = cv;
+            while ((cv1 = cvec_each(cvv, cv1)) != NULL) {
+                if (cv == cv1)
+                    continue;
+                if ((ret = xml_yang_mount_get(h, cv_void_get(cv1), NULL, &yspec1)) < 0)
+                    goto done;
+                if (yspec1 && yspec == yspec1)
+                    break;
+            }
+        }
+        if (cv1 != NULL || yspec == NULL){
+            cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
+            cprintf(cb, "</module-set>");
+            if (xpath){
+                free(xpath);
+                xpath = NULL;
+            }
+            continue;
+        }
         if (yang_stats(yspec, &nr, &sz) < 0)
             goto done;
         cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
@@ -802,6 +825,7 @@ yang_schema_mount_statistics(clixon_handle h,
 #ifdef YANG_SCHEMA_CMP_KLUDGE
 /*! XXX: This comparison is kludgy since xyanglib is not proper RFC8525
  * XXX: it should be enough to compare xyanglib with xmodst
+ * XXX openconfig xy2 have submodules but in xy1 they are modules and the counting is wrong
  * @param[in] h        CLixon handle
  * @param[in] xyanglib Only modules
  * @param[in] xmodst   Has submodules
@@ -885,7 +909,10 @@ yang_schema_cmp_kludge(clixon_handle h,
         }
         nr2++;
     }
-    if (nr1 != nr2){
+    /* kludge in kludge, does not work with submodules, eg openconfig:
+     * xy2 have submodules but in xy1 they are modules and the counting is wrong
+     */
+    if (0 && nr1 != nr2){
         clixon_debug(CLIXON_DBG_YANG, "nr mismatch %d %d", nr1, nr2);
         goto noteq;
     }
