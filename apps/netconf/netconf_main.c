@@ -732,7 +732,6 @@ main(int    argc,
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
         case 'l': /* Log destination: s|e|o */
-            int32_t d;
             d = 0;
             if ((d = clixon_logdst_str2key(optarg)) < 0){
                 if (optarg[0] == 'f'){ /* Check for special -lf<file> syntax */
