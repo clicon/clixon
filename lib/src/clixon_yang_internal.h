@@ -102,7 +102,9 @@ struct yang_stmt{
                                         Y_EXTENSION: vector of instantiated UNKNOWNS
                                         Y_UNKNOWN: app-dep: yang-mount-points
                                      */
-    int                ys_ref;       /* Reference count for free, only YS_SPEC */
+    int                ys_ref;       /* Reference count for free, only YS_SPEC: 0 means
+                                      * no sharing, 1: two references
+                                      */
     yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
     char              *ys_when_xpath; /* Special conditional for a "when"-associated augment/uses xpath */
     cvec              *ys_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */

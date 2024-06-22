@@ -276,7 +276,6 @@ yang_mount_set(yang_stmt *y,
     /* tag yspec with key/xpath */
     yang_cv_set(yspec, cv2);
     cv_void_set(cv, yspec);
-    yang_ref_inc(yspec); /* share */
     yang_flag_set(y, YANG_FLAG_MOUNTPOINT); /* Cache value */
     retval = 0;
  done:
@@ -1017,10 +1016,11 @@ int
 yang_schema_yanglib_parse_mount(clixon_handle h,
                                 cxobj        *xt)
 {
-    int            retval = -1;
-    cxobj         *xyanglib = NULL;
-    yang_stmt     *yspec = NULL;
-    int            ret;
+    int        retval = -1;
+    cxobj     *xyanglib = NULL;
+    yang_stmt *yspec = NULL;
+    int        ret;
+    int        shared = 0;
 
     /* 1. Get modstate (xyanglib) of node: xyanglib, by querying backend state (via callback)
      *    XXX this xyanglib is not proper RFC8525, submodules appear as modules WHY?
@@ -1033,6 +1033,8 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT_SHARE")) {
         if (yang_schema_find_share(h, xt, xyanglib, &yspec) < 0)
             goto done;
+        if (yspec)
+            shared++;
     }
     if (yspec == NULL){
         /* Parse it and set mount-point */
@@ -1045,6 +1047,8 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
     }
     if (xml_yang_mount_set(h, xt, yspec) < 0)
         goto done;
+    if (shared)
+        yang_ref_inc(yspec);
     yspec = NULL;
     retval = 1;
  done:

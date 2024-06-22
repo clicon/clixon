@@ -377,11 +377,14 @@ fi
 # move running.d/0.xml to running_db to trigger upgrade
 sudo mv $dir/running.d/0.xml $dir/running_db
 
-new "Check backward compatible: if running.0/0.xml is not found read running_db on startup"
+new "Check backward compatible: if running.d/0.xml is not found read running_db on startup"
 if [ $BE -ne 0 ]; then
     new "start backend -s running -f $cfg -- -m clixon-mount1 -M urn:example:mount1"
     start_backend -s running -f $cfg -- -m clixon-mount1 -M urn:example:mount1
 fi
+
+new "wait backend 2"
+wait_backend
 
 new "Check running after restart"
 check_db running ${subfilename}
