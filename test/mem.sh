@@ -58,7 +58,6 @@ function memonce(){
             ;;
     esac
 
-
     memerr=0
     for test in $pattern; do
         # Can happen if no pattern, eg pattern=foo but "foo" does not exist

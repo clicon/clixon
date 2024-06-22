@@ -309,7 +309,9 @@ myerror(clixon_handle h,
         goto done;
 #endif
     retval = 0;
+#ifdef DYNAMICLINKAGE
  done:
+#endif
     _errmsg_callback_fn = oldfn;
     if (xret)
         xml_free(xret);

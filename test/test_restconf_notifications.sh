@@ -146,7 +146,13 @@ function runtest()
 
     LB=$((5/${PERIOD} - 1))
     UB=$((5/${PERIOD} + 1))
-    time1=$(date -u -d"5 second now" +'%Y-%m-%dT%H:%M:%SZ')
+
+    # date differs between -d and -v for declaring a later date
+    if [ $(date -u -v+5S +'%Y-%m-%dT%H:%M:%SZ' 2> /dev/null) ]; then
+        time1=$(date -u -v+5S +'%Y-%m-%dT%H:%M:%SZ')
+    else
+        time1=$(date -u -d"5 second now" +'%Y-%m-%dT%H:%M:%SZ')
+    fi
 
     new "2b) start $extra timeout:${TIMEOUT} stop after 5s - expect ${LB}-${UB} notifications"
     ret=$(curl $CURLOPTS $extra -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" $RCPROTO://localhost/streams/EXAMPLE?stop-time=${time1})
@@ -160,7 +166,11 @@ function runtest()
     fi
 
     if false; then # Does not work yet
-        time1=$(date -u -d"-5 second now" +'%Y-%m-%dT%H:%M:%SZ')
+        if [ $(date -u -v+5S +'%Y-%m-%dT%H:%M:%SZ' 2> /dev/null) ]; then
+            time1=$(date -u -v+5S +'%Y-%m-%dT%H:%M:%SZ')
+        else
+            time1=$(date -u -d"5 second now" +'%Y-%m-%dT%H:%M:%SZ')
+        fi
         LB=$(((5+${TIMEOUT})/${PERIOD} - 1))
         UB=$(((5+${TIMEOUT})/${PERIOD} + 1))
         new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"

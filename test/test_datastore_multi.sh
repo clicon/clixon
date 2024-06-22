@@ -9,6 +9,13 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
+# linux stat <- freebsd gnustat in coreutils
+if [ -n "$(type gnustat 2> /dev/null)" ]; then
+    stat=gnustat
+else
+    stat=stat
+fi
+
 # include err() and new() functions and creates $dir
 
 cfg=$dir/conf_yang.xml
@@ -153,8 +160,8 @@ function check_db()
     dbname=$1
     subfile=$2
 
-    sudo chmod o+r $dir/${dbname}.d/0.xml
-    sudo chmod o+r $dir/${dbname}.d/$subfile
+    sudo chmod 755 $dir/${dbname}.d/
+    sudo chmod 755 $dir/${dbname}.d/*.xml
 
     sudo rm -f $dir/x_db
     cat <<EOF > $dir/x_db
@@ -218,14 +225,14 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "Check candidate after edit"
 check_db candidate ${subfilename}
 
-s0=$(stat -c "%Y" $dir/candidate.d/${subfilename})
+s0=$($stat -c "%Y" $dir/candidate.d/${subfilename})
 sleep 1
 
 new "Add 2nd data to mount x"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x2</name1><value1>x2value</value1></mylist1></mount1></root></mylist></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Check candidate subfile changed"
-s1=$(stat -c "%Y" $dir/candidate.d/${subfilename})
+s1=$($stat -c "%Y" $dir/candidate.d/${subfilename})
 if [ $s0 -eq $s1 ]; then
     err "Timestamp changed" "$s0 = $s1"
 fi
@@ -236,7 +243,7 @@ new "Change existing value in mount x"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x2</name1><value1>x2new</value1></mylist1></mount1></root></mylist></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Check candidate subfile changed"
-s2=$(stat -c "%Y" $dir/candidate.d/${subfilename})
+s2=$($stat -c "%Y" $dir/candidate.d/${subfilename})
 if [ $s1 -eq $s2 ]; then
     err "Timestamp changed" "$s1 = $s2"
 fi
@@ -247,7 +254,7 @@ new "Add data to top-level (not mount)"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><mylist><name>y</name></mylist></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Check candidate subfile not changed"
-s3=$(stat -c "%Y" $dir/candidate.d/${subfilename})
+s3=$($stat -c "%Y" $dir/candidate.d/${subfilename})
 if [ $s2 -ne $s3 ]; then
     err "Timestamp not changed" "$s2 != $s3"
 fi
@@ -258,7 +265,7 @@ new "Delete leaf"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\" xmlns:nc=\"${BASENS}\"><mylist1><name1>x2</name1><value1 nc:operation=\"delete\">x2new</value1></mylist1></mount1></root></mylist></top></config><default-operation>none</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Check candidate subfile changed"
-s4=$(stat -c "%Y" $dir/candidate.d/${subfilename})
+s4=$($stat -c "%Y" $dir/candidate.d/${subfilename})
 if [ $s4 -eq $s3 ]; then
     err "Timestamp changed" "$s4 = $s3"
 fi
@@ -269,7 +276,7 @@ new "Delete node"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\" xmlns:nc=\"${BASENS}\"><mylist1 nc:operation=\"delete\"><name1>x2</name1></mylist1></mount1></root></mylist></top></config><default-operation>none</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Check candidate subfile changed"
-s4=$(stat -c "%Y" $dir/candidate.d/${subfilename})
+s4=$($stat -c "%Y" $dir/candidate.d/${subfilename})
 if [ $s4 -eq $s3 ]; then
     err "Timestamp changed" "$s4 = $s3"
 fi
@@ -289,7 +296,7 @@ check_db running ${subfilename}
 new "cli show config"
 expectpart "$($clixon_cli -1 -f $cfg show config xml -- -m clixon-mount1 -M urn:example:mount1)" 0 "<top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x1</name1></mylist1></mount1><extra xmlns=\"urn:example:mount1\"><extraval>foo</extraval></extra></root></mylist></top>"
 
-s0=$(stat -c "%Y" $dir/running.d/${subfilename})
+s0=$($stat -c "%Y" $dir/running.d/${subfilename})
 new "Change mount data"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x1</name1><value1>foo</value1></mylist1></mount1></root></mylist></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
@@ -299,7 +306,7 @@ new "netconf commit 3"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Check running subfile changed"
-s1=$(stat -c "%Y" $dir/running.d/${subfilename})
+s1=$($stat -c "%Y" $dir/running.d/${subfilename})
 if [ $s0 -eq $s1 ]; then
     err "Timestamp changed" "$s0 = $s1"
 fi
@@ -313,7 +320,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 sleep 1
 
 new "Check running subfile not changed"
-s2=$(stat -c "%Y" $dir/running.d/${subfilename})
+s2=$($stat -c "%Y" $dir/running.d/${subfilename})
 if [ $s1 -ne $s2 ]; then  # XXX Sometimes fails
     err "Timestamp not changed" "$s1 != $s2"
 fi
