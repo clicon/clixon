@@ -319,6 +319,9 @@ ctx2number(xp_ctx *xc,
 }
 
 /*! Replace a nodeset of a XPath context with a new nodeset 
+ *
+ * @param[in] vec    XML vector, is consumed
+ * @param[in] veclen
  */
 int
 ctx_nodeset_replace(xp_ctx   *xc,

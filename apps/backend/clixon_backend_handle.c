@@ -202,6 +202,7 @@ backend_client_delete(clixon_handle        h,
                 free(ce->ce_transport);
             if (ce->ce_source_host)
                 free(ce->ce_source_host);
+            ce->ce_next = NULL;
             free(ce);
             break;
         }

@@ -345,6 +345,10 @@ xpath_optimize_check(xpath_tree *xs,
     else if ((ret = xpath_list_optimize_fn(xs, xv, xvec)) < 0)
         goto done;
     else if (ret == 1){
+        if (xvec0 && *xvec0){
+            free(*xvec0);
+            *xvec0 = NULL;
+        }
         if (clixon_xvec_extract(xvec, xvec0, xlen0, NULL) < 0){
             goto done;
         }

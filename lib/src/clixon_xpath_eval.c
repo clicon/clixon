@@ -371,6 +371,8 @@ xp_eval_step(xp_ctx     *xc0,
             }
         }
         ctx_nodeset_replace(xc, vec, veclen);
+        if (vec)
+            vec = NULL;
         break;
     case A_DESCENDANT_OR_SELF:
         for (i=0; i<xc->xc_size; i++){
@@ -705,6 +707,7 @@ xp_numop(xp_ctx    *xc1,
  * Move to clixon_xml.c?
  * As a side-effect sets the cache.
  * Clear cache with xml_cv_set(x, NULL)
+ * @see xml_cv_cache.c duplicated function
  */
 static int
 xml_cv_cache(cxobj   *x,

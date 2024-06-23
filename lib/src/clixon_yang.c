@@ -380,11 +380,8 @@ yang_ref_dec(yang_stmt *ys)
 {
     int retval = -1;
     
-    if (ys->ys_ref <= 0){
-        clixon_err(OE_YANG, 0, "reference count is %d cannot decrement", ys->ys_ref);
-        goto done;
-    }
-    ys->ys_ref--;
+    if (ys->ys_ref > 0)
+        ys->ys_ref--;
     retval = 0;
  done:
     return retval;

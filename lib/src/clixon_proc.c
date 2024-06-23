@@ -220,9 +220,7 @@ clixon_proc_socket(clixon_handle h,
         clixon_err(OE_UNIX, EINVAL, "argv[0] is NULL");
 	goto done;
     }
-
     clixon_debug(CLIXON_DBG_PROC, "%s...", argv[0]);
-
     for (argc = 0; argv[argc] != NULL; ++argc)
          ;
     if ((flattened = clicon_strjoin(argc, argv, "', '")) == NULL){
@@ -254,6 +252,7 @@ clixon_proc_socket(clixon_handle h,
         signal(SIGTSTP, SIG_IGN);
 
         close(sp[0]);
+        close(sperr[0]);
         close(0);
         if (dup2(sp[1], STDIN_FILENO) < 0){
             clixon_err(OE_UNIX, errno, "dup2(STDIN)");
@@ -273,15 +272,17 @@ clixon_proc_socket(clixon_handle h,
             }
             close(sperr[1]);
         }
+        close(sperr[1]);
         if (execvp(argv[0], argv) < 0){
             clixon_err(OE_UNIX, errno, "execvp(%s)", argv[0]);
             return -1;
         }
         exit(-1);        /* Shouldnt reach here */
     }
-    clixon_debug(CLIXON_DBG_PROC | CLIXON_DBG_DETAIL, "child %u sock %d", child, sp[0]);
+    clixon_debug(CLIXON_DBG_PROC, "child %u sock %d", child, sp[0]);
     /* Parent */
     close(sp[1]);
+    close(sperr[1]);
     *pid = child;
     *sock = sp[0];
     if (sockerr)
@@ -308,7 +309,6 @@ clixon_proc_socket_close(pid_t pid,
     int status;
 
     clixon_debug(CLIXON_DBG_PROC, "pid %u sock %d", pid, sock);
-
     if (sock != -1)
         close(sock); /* usually kills */
     kill(pid, SIGTERM);

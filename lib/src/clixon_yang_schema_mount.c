@@ -257,10 +257,7 @@ yang_mount_set(yang_stmt *y,
     if ((cvv = yang_cvec_get(y)) != NULL &&
         (cv = cvec_find(cvv, xpath)) != NULL &&
         (yspec0 = cv_void_get(cv)) != NULL){
-#if 0 /* Problematic to free yang specs here, upper layers should handle it? */
         ys_free(yspec0);
-#endif
-        yang_ref_dec(yspec0);
         cv_void_set(cv, NULL);
     }
     else if ((cv = yang_cvec_add(y, CGV_VOID, xpath)) == NULL)
