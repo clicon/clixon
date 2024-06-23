@@ -102,7 +102,7 @@ restconf_reply_header(void       *req0,
     */
     if (rc->rc_proto == HTTP_2){ // NO http/2
         if (strcmp(name, "Connection") == 0){
-            clixon_debug(CLIXON_DBG_RESTCONF, "Skip: %s: %s", name, value);
+            clixon_debug(CLIXON_DBG_RESTCONF, "Skip: %s", name);
             goto ok;
         }
     }

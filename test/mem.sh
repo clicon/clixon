@@ -69,6 +69,8 @@ function memonce(){
         if [ $testnr != 0 ]; then echo; fi
         perfnr=1000 # Limit performance tests
         testfile=$test
+        # clear test dir
+        sudo rm -rf /var/tmp/mem.sh
         . ./$test 
         errcode=$?
         endsuite
