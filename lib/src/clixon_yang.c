@@ -383,7 +383,7 @@ yang_ref_dec(yang_stmt *ys)
     if (ys->ys_ref > 0)
         ys->ys_ref--;
     retval = 0;
- done:
+    // done:
     return retval;
 }
 

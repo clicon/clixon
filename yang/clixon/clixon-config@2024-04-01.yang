@@ -52,6 +52,7 @@ module clixon-config {
     revision 2024-04-01 {
         description
             "Added options:
+                CLICON_NETCONF_DUPLICATE_ALLOW: Disable duplicate check in NETCONF messages.
                 CLICON_LOG_DESTINATION: Default log destination
                 CLICON_LOG_FILE: Which file to log to if file logging
                 CLICON_DEBUG: Debug flags.
@@ -749,6 +750,16 @@ module clixon-config {
                 "Extra Netconf monitoring location directory where schemas can be retrieved
                  apart from NETCONF.
                  Only if CLICON_NETCONF_MONITORING";
+        }
+        leaf CLICON_NETCONF_DUPLICATE_ALLOW {
+            type boolean;
+            default false;
+            description
+                "Disable duplicate check in NETCONF messages.
+                 In Clixon 7.0, a stricter check of duplicate entries in incoming NETCONF messages was made.
+                 More specifically: lists and leaf-lists with non-unique entries.
+                 Enable to disable this check, and to allow duplicates in incoming NETCONF messages.
+                 Note that this is an error by such a client, but there is some legacy code that uses this";
         }
         /* HTTP and  Restconf */
         leaf CLICON_RESTCONF_API_ROOT {

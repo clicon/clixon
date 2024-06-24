@@ -29,6 +29,7 @@ Expected: June 2024
 * CLI support for multiple inline commands separated by semi-colon
 * New `clixon-config@2024-04-01.yang` revision
   * Added options:
+    - `CLICON_NETCONF_DUPLICATE_ALLOW`: Disable duplicate check in NETCONF messages
     - `CLICON_LOG_DESTINATION`: Default log destination
     - `CLICON_LOG_FILE`: Which file to log to if file logging
     - `CLICON_DEBUG`: Debug flags
