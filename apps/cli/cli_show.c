@@ -1816,6 +1816,45 @@ clixon_cli2cbuf(clixon_handle     h,
     return retval;
 }
 
+/* Transform uin64 to KiB / MiB / GiB / TiB and postfix
+ *
+ * @param[in]  inr  Input number
+ * @param[out] onr  Translated number
+ * @param[out] unit Multiple byte unit: K/M/G/T
+ * @retval     0
+ */
+static int
+translatenumber(uint64_t   inr,
+                uint64_t  *onr,
+                char     **unit)
+{
+    if (inr/(10*1024) == 0) {
+        *onr = inr;
+        *unit = "";
+    }
+    else if (inr/(10LL*1024LL*1024LL*1024LL*1024LL) != 0) {
+        *onr = inr/(1024LL*1024LL*1024LL*1024LL);
+        *unit = "T";
+    }
+    else if (inr/(10LL*1024LL*1024LL*1024LL) != 0) {
+        *onr = inr/(1024LL*1024LL*1024LL);
+        *unit = "G";
+    }
+    else if (inr/(10LL*1024LL*1024LL) != 0) {
+        *onr = inr/(1024LL*1024LL);
+        *unit = "M";
+    }
+    else if (inr/(10LL*1024LL) != 0) {
+        *onr = inr/(1024LL);
+        *unit = "K";
+    }
+    else{
+        *onr = inr;
+        *unit = "";
+    }
+    return 0;
+}
+
 /*! CLI callback show memory statistics (and numbers)
  *
  * mempry in KiB
@@ -1858,6 +1897,9 @@ cli_show_statistics(clixon_handle h,
     cxobj      *xp;
     char       *name;
     cxobj      *x;
+    uint64_t    u64;
+    char       *unit;
+
 
     if (argv == NULL || (cvec_len(argv) < 1 || cvec_len(argv) > 2)){
         clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [(cli|backend|all) [detail]]");
@@ -1893,7 +1935,7 @@ cli_show_statistics(clixon_handle h,
     }
     if (cli) {
         if (!detail) {
-            cligen_output(stdout, "%-25s %-10s\n", "YANG", "Mem[KiB]");
+            cligen_output(stdout, "%-25s %-10s\n", "YANG", "Mem");
         }
         nr = 0; sz = 0;
         if (yang_stats(yspec, &nr, &sz) < 0)
@@ -1904,8 +1946,10 @@ cli_show_statistics(clixon_handle h,
             cligen_output(stdout, "YANG-top-level-size: %" PRIu64 "\n", sz);
             cligen_output(stdout, "YANG-top-level-nr: %" PRIu64 "\n", nr);
         }
-        else
-            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "Top-level", sz/1024);
+        else{
+            translatenumber(sz, &u64, &unit);
+            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "Top-level", u64, unit);
+        }
         if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")) {
             if (yang_mount_yspec2ymnt(yspec, &cvv1) < 0)
                 goto done;
@@ -1930,7 +1974,9 @@ cli_show_statistics(clixon_handle h,
                         }
                         if (cv3 != NULL){
                             if (detail){
-                                cligen_output(stdout, "YANG-mount-point-%s: shared\n", cv_name_get(cv2));
+                                /* Maybe use "0" instead of "shared"? */
+                                cligen_output(stdout, "YANG-mount-point-%s-size: shared\n", cv_name_get(cv2));
+                                cligen_output(stdout, "YANG-mount-point-%s-nr: shared\n", cv_name_get(cv2));
                             }
                             else
                                 cligen_output(stdout, "%s\n", cv_name_get(cv2));
@@ -1948,7 +1994,8 @@ cli_show_statistics(clixon_handle h,
                                     cligen_output(stdout, "%s \n %-25s", cv_name_get(cv2), "");
                                 else
                                     cligen_output(stdout, "%-25s", cv_name_get(cv2));
-                                cligen_output(stdout, "%-10" PRIu64 "\n", sz/1024);
+                                translatenumber(sz, &u64, &unit);
+                                cligen_output(stdout, "%" PRIu64 "%-10s\n", u64, unit);
                             }
                         }
                     }
@@ -1959,9 +2006,10 @@ cli_show_statistics(clixon_handle h,
             cligen_output(stdout, "YANG-total-size: %" PRIu64 "\n", sz);
             cligen_output(stdout, "YANG-total-nr: %" PRIu64 "\n", sz);
         }
-        else
-            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "YANG Total", tsz/1024);
-
+        else {
+            translatenumber(sz, &u64, &unit);
+            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "YANG Total", u64, unit);
+        }
         tnr0 = tnr;
         tsz0 = tsz;
         tnr = 0;
@@ -1986,8 +2034,10 @@ cli_show_statistics(clixon_handle h,
             cligen_output(stdout, "Mem-Total-nr: %" PRIu64 "\n", tnr0+tnr);
         }
         else {
-            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "CLIspec Total", tsz/1024);
-            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "Mem Total", (tsz0+tsz)/1024);
+            translatenumber(tsz, &u64, &unit);
+            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "CLIspec Total", u64, unit);
+            translatenumber(tsz0+tsz, &u64, &unit);
+            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "Mem Total", u64, unit);
         }
     }
     if (backend) {
@@ -2013,7 +2063,7 @@ cli_show_statistics(clixon_handle h,
                 goto done;
         }
         else {
-            cligen_output(stdout, "%-25s %-10s\n", "XML Datastore", "Mem[KiB]");
+            cligen_output(stdout, "%-25s %-10s\n", "XML Datastore", "Mem");
             tsz = 0;
             if ((xp = xml_find_type(xret, NULL, "datastores", CX_ELMNT)) != NULL){
                 x = NULL;
@@ -2023,15 +2073,18 @@ cli_show_statistics(clixon_handle h,
                     parse_uint64(xml_find_body(x, "size"), &sz, NULL);
                     tsz += sz;
                     name = xml_find_body(x, "name");
+                    translatenumber(sz, &u64, &unit);
                     if (strlen(name) > 25){
                         cligen_output(stdout, "%s \\\n", name);
-                        cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "", sz/1024);
+                        cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "", u64, unit);
                     }
-                    else
-                        cligen_output(stdout, "%-25s %-10" PRIu64 "\n", name, sz/1024);
+                    else{
+                        cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", name, u64, unit);
+                    }
                 }
             }
-            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "XML Total", tsz/1024);
+            translatenumber(tsz, &u64, &unit);
+            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "XML Total", u64, unit);
             tsz0 = tsz;
             tsz = 0;
             cligen_output(stdout, "%s\n", "YANG");
@@ -2043,17 +2096,22 @@ cli_show_statistics(clixon_handle h,
                     parse_uint64(xml_find_body(x, "size"), &sz, NULL);
                     tsz += sz;
                     name = xml_find_body(x, "name");
+                    translatenumber(sz, &u64, &unit);
                     if (strlen(name) > 25){
-                        cligen_output(stdout, "%s \\\n", name);
-                        cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "", sz/1024);
+                        cligen_output(stdout, "%s\n", name);
+                        if (sz != 0){
+                            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "", u64, unit);
+                        }
                     }
-                    else
-                        cligen_output(stdout, "%-25s %-10" PRIu64 "\n", name, sz/1024);
+                    else{
+                        cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", name, u64, unit);
+                    }
                 }
             }
-            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "YANG Total*", tsz/1024);
-            cligen_output(stdout, "%-25s %-10" PRIu64 "\n", "Mem Total*", (tsz0+tsz)/1024);
-            cligen_output(stdout, "(*) May be shared YANG\n");
+            translatenumber(tsz, &u64, &unit);
+            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "YANG Total", u64, unit);
+            translatenumber(tsz0+tsz, &u64, &unit);
+            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "Mem Total", u64, unit);
         }
     }
     retval = 0;

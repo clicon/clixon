@@ -1094,8 +1094,8 @@ yang_parse_filename(clixon_handle h,
  * @param[in] revision Revision (or NULL)
  * @param[in] yspec    Yang statement
  * @param[in] origname Name of yang module triggering this parsing, for logging
- * @retval    0        OK
- * @retval   -1        Error
+ * @retval    ymod     YANG (sub)module
+ * @retval    NULL     Failed
  *
  * See top of file for diagram of calling order
  * @note does not check wether the module is already loaded
