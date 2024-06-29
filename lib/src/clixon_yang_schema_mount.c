@@ -865,7 +865,7 @@ yang_schema_cmp_kludge(clixon_handle h,
             }
         }
         revision2 = xml_find_body(x2, "revision");
-        if (clicon_strcmp(revision1, revision2) != 0){
+        if (revision1 && revision2 && clicon_strcmp(revision1, revision2) != 0){
             clixon_debug(CLIXON_DBG_YANG, "revision mismatch %s %s\n", revision1, revision2);
             goto noteq;
         }
@@ -899,7 +899,7 @@ yang_schema_cmp_kludge(clixon_handle h,
             }
         }
         revision1 = xml_find_body(x1, "revision");
-        if (clicon_strcmp(revision1, revision2) != 0){
+        if (revision1 && revision2 && clicon_strcmp(revision1, revision2) != 0){
             clixon_debug(CLIXON_DBG_YANG, "revision mismatch %s %s\n", revision1, revision2);
             goto noteq;
         }
@@ -1037,11 +1037,14 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
         /* Parse it and set mount-point */
         if ((yspec = yspec_new()) == NULL)
             goto done;
+        clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec);
         if ((ret = yang_lib2yspec(h, xyanglib, yspec)) < 0)
             goto done;
         if (ret == 0)
             goto anydata;
     }
+    else
+        clixon_debug(CLIXON_DBG_YANG, "shared yang-spec: %p", yspec);
     if (xml_yang_mount_set(h, xt, yspec) < 0)
         goto done;
     if (shared)

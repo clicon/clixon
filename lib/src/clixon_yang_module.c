@@ -855,6 +855,8 @@ yang_lib2yspec(clixon_handle h,
     int        retval = -1;
     cxobj     *xi;
     char      *name;
+    char      *ns;
+    char      *ns2;
     char      *revision;
     cvec      *nsc = NULL;
     cxobj    **vec = NULL;
@@ -870,6 +872,7 @@ yang_lib2yspec(clixon_handle h,
         xi = vec[i];
         if ((name = xml_find_body(xi, "name")) == NULL)
             continue;
+        ns = xml_find_body(xi, "namespace");
         revision = xml_find_body(xi, "revision");
         if ((ymod = yang_find(yspec, Y_MODULE, name)) != NULL ||
             (ymod = yang_find(yspec, Y_SUBMODULE, name)) != NULL){
@@ -887,6 +890,17 @@ yang_lib2yspec(clixon_handle h,
         }
         if (yang_parse_module(h, name, revision, yspec, NULL) == NULL)
             goto fail;
+        /* Sanity check: if given namespace differs from namespace in file */
+        if (ns != NULL) {
+            if ((ymod = yang_find(yspec, Y_MODULE, name)) != NULL) {
+                if ((ns2 = yang_find_mynamespace(ymod)) != NULL){
+                    if (strcmp(ns, ns2) != 0){
+                        clixon_err(OE_YANG, 0, "Module:%s namespace mismatch %s vs %s", name, ns, ns2);
+                        goto fail;
+                    }
+                }
+            }
+        }
     }
 #ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
     /* Force add ietf-yang-library@2019-01-04 on all mount-points 
