@@ -891,15 +891,11 @@ yang_lib2yspec(clixon_handle h,
         if (yang_parse_module(h, name, revision, yspec, NULL) == NULL)
             goto fail;
         /* Sanity check: if given namespace differs from namespace in file */
-        if (ns != NULL) {
-            if ((ymod = yang_find(yspec, Y_MODULE, name)) != NULL) {
-                if ((ns2 = yang_find_mynamespace(ymod)) != NULL){
-                    if (strcmp(ns, ns2) != 0){
-                        clixon_err(OE_YANG, 0, "Module:%s namespace mismatch %s vs %s", name, ns, ns2);
-                        goto fail;
-                    }
-                }
-            }
+        if (ns != NULL &&
+            (ymod = yang_find(yspec, Y_MODULE, name)) != NULL &&
+            (ns2 = yang_find_mynamespace(ymod)) != NULL &&
+            strcmp(ns, ns2) != 0) {
+            clixon_log(h, LOG_WARNING, "Module:%s namespace mismatch %s vs %s", name, ns, ns2);
         }
     }
 #ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
