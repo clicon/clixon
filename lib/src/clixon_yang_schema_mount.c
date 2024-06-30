@@ -339,15 +339,15 @@ yang_mount_xmnt2ymnt_xpath(clixon_handle h,
     goto done;
 }
 
-/*! Get yangspec mount-point
+/*! Given XML mount-point get yangspec mount-point
  *
- * @param[in]  h     Clixon handle
- * @param[in]  xmnt  XML mount-point
+ * @param[in]  h        Clixon handle
+ * @param[in]  xmnt     XML mount-point
  * @param[out] vallevel Do or dont do full RFC 7950 validation if given
- * @param[out] yspec YANG stmt spec of mount-point (if ret is 1)
- * @retval     1     x is a mount-point: yspec may be set
- * @retval     0     x is not a mount point
- * @retval    -1     Error
+ * @param[out] yspec    YANG stmt spec of mount-point (if ret is 1)
+ * @retval     1        x is a mount-point: yspec may be set
+ * @retval     0        x is not a mount-point
+ * @retval    -1        Error
  */
 int
 xml_yang_mount_get(clixon_handle   h,
@@ -818,125 +818,16 @@ yang_schema_mount_statistics(clixon_handle h,
     return retval;
 }
 
-#ifdef YANG_SCHEMA_CMP_KLUDGE
-/*! XXX: This comparison is kludgy since xyanglib is not proper RFC8525
- * XXX: it should be enough to compare xyanglib with xmodst
- * XXX openconfig xy2 have submodules but in xy1 they are modules and the counting is wrong
- * @param[in] h        CLixon handle
- * @param[in] xyanglib Only modules
- * @param[in] xmodst   Has submodules
- * @retval    1        Equal
- * @retval    0        Found
- * @retval   -1        Error
- */
-static int
-yang_schema_cmp_kludge(clixon_handle h,
-                       cxobj        *xyanglib,
-                       cxobj        *xmodst)
-{
-    int    retval = -1;
-    cxobj *xy1;
-    cxobj *xy2;
-    cxobj *x1;
-    cxobj *x2;
-    char  *name;
-    char  *revision1;
-    char  *revision2;
-    int    nr1;
-    int    nr2;
-
-    if ((xy1 = xml_find_type(xyanglib, NULL, "module-set", CX_ELMNT)) == NULL ||
-        (xy2 = xml_find_type(xmodst, NULL, "module-set", CX_ELMNT)) == NULL)
-        goto noteq;
-    nr1 = 0;
-    x1 = NULL;
-    while ((x1 = xml_child_each(xy1, x1, CX_ELMNT)) != NULL) {
-        if (strcmp(xml_name(x1), "module"))
-            continue;
-        if ((name = xml_find_body(x1, "name")) == NULL){
-            clixon_debug(CLIXON_DBG_YANG, "no name");
-            goto noteq;
-        }
-        revision1 = xml_find_body(x1, "revision");
-        if ((x2 = xpath_first(xy2, NULL, "module[name='%s']", name)) == NULL){
-            if ((x2 = xpath_first(xy2, NULL, "module/submodule[name='%s']", name)) == NULL){
-                clixon_debug(CLIXON_DBG_YANG, "name mismatch %s\n", name);
-                goto noteq;
-            }
-        }
-        revision2 = xml_find_body(x2, "revision");
-        if (revision1 && revision2 && clicon_strcmp(revision1, revision2) != 0){
-            clixon_debug(CLIXON_DBG_YANG, "revision mismatch %s %s\n", revision1, revision2);
-            goto noteq;
-        }
-        nr1++;
-    }
-    nr2 = 0;
-    x2 = NULL;
-    while ((x2 = xml_child_each(xy2, x2, CX_ELMNT)) != NULL) {
-        if (strcmp(xml_name(x2), "module"))
-            continue;
-        if ((name = xml_find_body(x2, "name")) == NULL){
-            clixon_debug(CLIXON_DBG_YANG, "no name");
-            goto noteq;
-        }
-        revision2 = xml_find_body(x2, "revision");
-        if ((x1 = xpath_first(xy1, NULL, "module[name='%s']", name)) == NULL){
-#ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
-            /* Skip ietf-yang-library and imports since they are force-loaded in
-             * yang_lib2yspec
-             */
-            if (strcmp(name, "ietf-yang-library") == 0 ||
-                strcmp(name, "ietf-yang-types") == 0 ||
-                strcmp(name, "ietf-inet-types") == 0 ||
-                strcmp(name, "ietf-datastores") == 0){
-                continue;
-            }
-#endif
-            if ((x1 = xpath_first(xy1, NULL, "module/submodule[name='%s']", name)) == NULL){
-                clixon_debug(CLIXON_DBG_YANG, "name mismatch %s\n", name);
-                goto noteq;
-            }
-        }
-        revision1 = xml_find_body(x1, "revision");
-        if (revision1 && revision2 && clicon_strcmp(revision1, revision2) != 0){
-            clixon_debug(CLIXON_DBG_YANG, "revision mismatch %s %s\n", revision1, revision2);
-            goto noteq;
-        }
-        nr2++;
-    }
-    /* kludge in kludge, does not work with submodules, eg openconfig:
-     * xy2 have submodules but in xy1 they are modules and the counting is wrong
-     */
-    if (0 && nr1 != nr2){
-        clixon_debug(CLIXON_DBG_YANG, "nr mismatch %d %d", nr1, nr2);
-        goto noteq;
-    }
-    retval = 1;
- done:
-    return retval;
- noteq:
-    retval = 0;
-    goto done;
-}
-#endif // KLUDGE
-
-/*! Given xml mount-point node, find existing mountpoint
+/*! Given xml mount-point and yanglib, find existing yspec
  *
- * 1. Get modstate (xyanglib) of node: xyanglib, by querying backend state (via callback)
- *    XXX this xyanglib is not proper RFC8525, submodules appear as modules WHY?
- * 2. Loop through other existing mountpoints of same YANG (dont consider other YANG mtpoints):
- * 3. Get yspec of mountpoint.
- * 4: Get RFC 8525 module-state of yspec (proper RFC 8525)
- * 5: Compare to given modstate
- *    XXX: This comparison is kludgy since xyanglib is not proper RFC8525
- * 6. If equal, then use existing yspec
- * 7. Otherwise create new and parse yspec
- * 8. set as new
- * @param[in]     h     Clixon handle
- * @param[in]     xt    XML tree node
- * @retval        0     OK
- * @retval       -1     Error
+ * Get and loop through all XML from xt mount-points.
+ * Get xyanglib and if equal to xt, find and return yspec
+ * @param[in]   h        Clixon handle
+ * @param[in]   xt       XML tree node
+ * @param[in]   xyanglib yanglib in XML
+ * @param[out]  yspecp   Yang spec
+ * @retval      0        OK
+ * @retval     -1        Error
  */
 static int
 yang_schema_find_share(clixon_handle h,
@@ -945,58 +836,44 @@ yang_schema_find_share(clixon_handle h,
                        yang_stmt   **yspecp)
 {
     int        retval = -1;
-    yang_stmt *yt;
-    cvec      *cvv;
+    cvec      *cvv = NULL;
     cg_var    *cv;
-    yang_stmt *yspec1 = NULL;
-    cbuf      *cb = NULL;
-    cxobj     *xmodst = NULL;
+    cxobj     *xroot;
+    cxobj     *xmnt;
+    cxobj     *xylib;
+    int        config = 1;
     int        ret;
 
-    yt = xml_spec(xt);
-    if ((cvv = yang_cvec_get(yt)) != NULL){
-        if ((cb = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, 0, "clicon buffer");
+    xroot = xml_root(xt);
+    /* Get all XML mtpoints */
+    if (yang_mount_xtop2xmnt(xroot, &cvv) < 0)
+        goto done;
+    /* Loop through XML mount-points */
+    cv = NULL;
+    while ((cv = cvec_each(cvv, cv)) != NULL) {
+        xmnt = cv_void_get(cv);
+        if (xmnt == xt)
+            continue;
+        xylib = NULL;
+        /* Get xyanglib */
+        if (clixon_plugin_yang_mount_all(h, xmnt, &config, NULL, &xylib) < 0)
             goto done;
-        }
-        /* 2. Loop through other existing mountpoints of same YANG */
-        cv = NULL;
-        while ((cv = cvec_each(cvv, cv)) != NULL) {
-            /* 3. Get yspec of mountpoint */
-            if ((yspec1 = cv_void_get(cv)) == NULL)
-                continue;
-            /* 4: Get RFC 8525 module-state of yspec */
-            cbuf_reset(cb);
-            /* Build a cb string: <modules-state>... */
-            if (yang_modules_state_build(h, yspec1, "4242", 1, cb) < 0)
-                goto done;
-            /* Parse cb, x is on the form: <top><modules-state>...
-             * Note, list is not sorted since it is state (should not be)
-             */
-            if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec1, &xmodst, NULL) < 0)
-                goto done;
-            /* 5: Compare to given modstate
-             */
-            if (xml_rootchild(xmodst, 0, &xmodst) < 0)
-                goto done;
-            if ((ret = yang_schema_cmp_kludge(h, xyanglib, xmodst)) < 0)
-                goto done;
-            if (ret == 1){ /* equal */
-                *yspecp = yspec1;
-                break;
-            }
-            if (xmodst){
-                xml_free(xmodst);
-                xmodst = NULL;
-            }
-        } /* while */
+        if (xylib == NULL)
+            continue;
+        /* Check if equal */
+        if (xml_tree_equal(xyanglib, xylib) == 1)
+            continue;
+        /* Find and return yspec */
+        *yspecp = NULL;
+        if ((ret = xml_yang_mount_get(h, xmnt, NULL, yspecp)) < 0)
+            goto done;
+        if (ret == 1 && *yspecp != NULL)
+            break;
     }
     retval = 0;
  done:
-    if (xmodst)
-        xml_free(xmodst);
-    if (cb)
-        cbuf_free(cb);
+    if (cvv)
+        cvec_free(cvv);
     return retval;
 }
 

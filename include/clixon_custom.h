@@ -212,10 +212,6 @@
  */
 #undef USE_SHA256
 
-/*! Temporary comparison of xyanglibs, should be removed asap
- */
-#define YANG_SCHEMA_CMP_KLUDGE
-
 /*! Force add ietf-yang-library@2019-01-04 on all mount-points
  *
  * This is a limitation of of the current implementation
