@@ -786,12 +786,15 @@ cli_set_mode(clixon_handle h,
  *
  * Example usage:
  * @code
- *      run_program_err("Run program"), cli_start_program();
- *      run_program_python3("Run program"), cli_start_program("python3");
- *      run_program_python3_source_arg("Run program"), cli_start_program("python3", "/tmp/test.py");
- *      run_program_python3_source_arg_vector("Run program") <source:rest>("Path program"), cli_start_program("python3");
- *      run_program_python3_source_arg_vector_err("Run program") <source:rest>("Path program"), cli_start_program("python3", "/tmp/test2.py");
- *      run_program_bash("Run program"), cli_start_program("bash");
+ * python3_args("Run program"), cli_start_program("python3"); {
+ *       <argument:string>("Single shell command"), cli_start_program("python3", "/tmp/test.py");
+ * }
+ *
+ * python3_single("Run program"), cli_start_program("python3"); {
+ *       <source:rest>("Single shell command"), cli_start_program("python3");
+ * }
+ *
+ * python3_script("Run program") <source:rest>("Path program"), cli_start_program("python3");
  * @endcode
  *
  * @warning Please note that the usage of this function consists of executing an arbitrary command given to
@@ -808,98 +811,113 @@ cli_set_mode(clixon_handle h,
  */
 int
 cli_start_program(clixon_handle h,
-                  cvec         *cvv,
-                  cvec         *argv)
+		  cvec         *cvv,
+		  cvec         *argv)
 {
-    int pid = 0;
-    int retval = -1;
-    char *script_path = NULL;
-    char *runner = NULL;
-    char *buf = NULL;
-    char *work_dir = NULL, *reserve_path = NULL;
+    int      pid = 0;
+    int      retval = -1;
+    int      s = 0;
+    int      arg_count = 0;
+    int      cvv_count = 0;
+    int      i = 0;
+    int      status = 0;
+    char     *script_path = NULL;
+    char     *runner = NULL;
+    char     *buf = NULL;
+    char     *work_dir = NULL;
+    char     *reserve_path = NULL;
+    char     **args = NULL;
+    size_t   bufsize = 0;
     struct passwd pw, *pwresult = NULL;
-    size_t bufsize;
-    int s;
+
 
     /* Check parameters */
     if (cvec_len(argv) == 0){
-        clixon_err(OE_PLUGIN, EINVAL, "Can not found argument in a function");
-        goto done;
-    }
-    if ((cvec_len(argv) >= 2) && (cvec_len(cvv) >= 2)){
-        clixon_err(OE_PLUGIN, EINVAL, "A lot of arguments");
-        goto done;
-    }
-    if ((cvec_len(argv) == 2) && (cvec_len(cvv) == 2)){
-        clixon_err(OE_PLUGIN, EINVAL, "You cannot use 2 arguments in a function and 1 argument in a vector");
-        goto done;
+	clixon_err(OE_PLUGIN, EINVAL, "Can not find argument");
+	goto done;
     }
 
     /* get data */
-    if (cvec_len(argv) == 1){
-        runner = cv_string_get(cvec_i(argv, 0));
+    arg_count = cvec_len(argv);
+    cvv_count = cvec_len(cvv);
+
+    runner = cv_string_get(cvec_i(argv, 0));
+
+    if (arg_count > 1) {
+	script_path = cv_string_get(cvec_i(argv, 1));
     }
-    if (cvec_len(argv) == 2){
-        runner = cv_string_get(cvec_i(argv, 0));
-        script_path = cv_string_get(cvec_i(argv, 1));
-    }
-    if (cvec_len(cvv) == 2){
-        script_path = cv_string_get(cvec_i(cvv, 1));
-    }
+
     if (script_path){
-        reserve_path = strdup(script_path);
-        work_dir = dirname(reserve_path);
+	reserve_path = strdup(script_path);
+	work_dir = dirname(reserve_path);
     }
+
     bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
     if (bufsize == -1){
-        bufsize = 16384;
+	bufsize = 16384;
     }
     buf = malloc(bufsize);
     if (buf == NULL) {
-        perror("malloc");
-        goto done;
+	perror("malloc");
+	goto done;
     }
-
     s = getpwuid_r(getuid(), &pw, buf, bufsize, &pwresult);
     if (pwresult == NULL) {
-        if (s == 0)
-            clixon_err(OE_PLUGIN, errno, "getpwuid_r");
-        else
-            perror("getpwuid_r");
-        goto done;
+	if (s == 0)
+	    clixon_err(OE_PLUGIN, errno, "getpwuid_r");
+	else
+	    perror("getpwuid_r");
+	goto done;
+    }
+
+    /* Prepare arguments for execlp */
+    args = malloc((arg_count + cvv_count) * sizeof(char *));
+    if (args == NULL) {
+	perror("malloc");
+	goto done;
+    }
+
+    for (i = 0; i < arg_count; i++) {
+	args[i] = cv_string_get(cvec_i(argv, i));
+    }
+
+    for (i = 0; i < cvv_count; i++) {
+	args[arg_count + i] = cv_string_get(cvec_i(cvv, i + 1));
     }
 
     /* main run */
     if ((pid = fork()) == 0) {
-        /* child process */
-        if ((work_dir ? chdir(work_dir) : chdir(pw.pw_dir)) < 0) {
-            clixon_err(OE_PLUGIN, errno, "chdir");
-        }
-        execlp(runner, runner, script_path, NULL);
-        clixon_err(OE_PLUGIN, errno, "Error run script");
-        return -1;
+	/* child process */
+	if ((work_dir ? chdir(work_dir) : chdir(pw.pw_dir)) < 0) {
+	    clixon_err(OE_PLUGIN, errno, "chdir");
+	}
+	execvp(runner, args);
+	clixon_err(OE_PLUGIN, errno, "Error running script");
+	goto done;
     }
     else if(pid == -1){
-        clixon_err(OE_PLUGIN, errno, "fork");
+	clixon_err(OE_PLUGIN, errno, "fork");
     }
     else{
-        /* parent process */
-        int status;
-        if (waitpid(pid, &status, 0) != pid ){
-            clixon_err(OE_PLUGIN, errno, "waitpid error");
-            goto done;
-        }
-        else {
-            return WEXITSTATUS(status);
-        }
+	/* parent process */
+	if (waitpid(pid, &status, 0) != pid ){
+	    clixon_err(OE_PLUGIN, errno, "waitpid error");
+	    goto done;
+	}
+	else {
+	    retval = WEXITSTATUS(status);
+	    goto done;
+	}
     }
-    retval = 0;
-    done:
-        if(buf)
-            free(buf);
-        if(reserve_path)
-            free(reserve_path);
-        return retval;
+
+done:
+    if(buf)
+	free(buf);
+    if(reserve_path)
+	free(reserve_path);
+    if(args)
+	free(args);
+    return retval;
 }
 
 /*! Start bash from cli callback
