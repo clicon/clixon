@@ -786,15 +786,15 @@ cli_set_mode(clixon_handle h,
  *
  * Example usage:
  * @code
- * python3_args("Run program"), cli_start_program("python3"); {
+ *   python3_args("Run program"), cli_start_program("python3"); {
  *       <argument:string>("Single shell command"), cli_start_program("python3", "/tmp/test.py");
- * }
+ *   }
  *
- * python3_single("Run program"), cli_start_program("python3"); {
+ *   python3_single("Run program"), cli_start_program("python3"); {
  *       <source:rest>("Single shell command"), cli_start_program("python3");
- * }
+ *   }
  *
- * python3_script("Run program") <source:rest>("Path program"), cli_start_program("python3");
+ *   python3_script("Run program") <source:rest>("Path program"), cli_start_program("python3");
  * @endcode
  *
  * @warning Please note that the usage of this function consists of executing an arbitrary command given to
