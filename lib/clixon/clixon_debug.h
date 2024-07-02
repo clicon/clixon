@@ -68,7 +68,7 @@
 #define CLIXON_DBG_YANG		0x00000020	/* YANG processing */
 #define CLIXON_DBG_BACKEND	0x00000040	/* Backend-specific */
 #define CLIXON_DBG_CLI	        0x00000080	/* CLI frontend */
-#define CLIXON_DBG_NETCONF      0x00000100	/* NETCONF frontend */
+#define CLIXON_DBG_NETCONF      0x00000100	/* NETCONF frontend/client */
 #define CLIXON_DBG_RESTCONF     0x00000200	/* RESTCONF frontend */
 #define CLIXON_DBG_SNMP	        0x00000400	/* SNMP frontend */
 #define CLIXON_DBG_NACM		0x00000800	/* NACM processing */

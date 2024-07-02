@@ -282,13 +282,10 @@ cxobj    *xml_find_type(cxobj *xn_parent, const char *prefix, const char *name, 
 char     *xml_find_value(cxobj *xn_parent, const char *name);
 char     *xml_find_body(cxobj *xn, const char *name);
 cxobj    *xml_find_body_obj(cxobj *xt, const char *name, char *val);
-
 int       xml_free(cxobj *xn);
-
 int       xml_copy_one(cxobj *xn0, cxobj *xn1);
 int       xml_copy(cxobj *x0, cxobj *x1);
 cxobj    *xml_dup(cxobj *x0);
-
 int       cxvec_dup(cxobj **vec0, int len0, cxobj ***vec1, int *len1);
 int       cxvec_append(cxobj *x, cxobj ***vec, int *len);
 int       cxvec_prepend(cxobj *x, cxobj ***vec, int *len);
@@ -297,7 +294,6 @@ int       xml_apply0(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *ar
 int       xml_apply_ancestor(cxobj *xn, xml_applyfn_t fn, void *arg);
 int       xml_isancestor(cxobj *x, cxobj *xp);
 cxobj    *xml_root(cxobj *xn);
-
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
 int       xml_attr_insert2val(char *instr, enum insert_type *ins);

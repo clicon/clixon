@@ -265,10 +265,10 @@ clicon_rpc_connect_unix(clixon_handle  h,
  * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
-clicon_rpc_connect_inet(clixon_handle      h,
-                        char              *dst,
-                        uint16_t           port,
-                        int               *sock0)
+clicon_rpc_connect_inet(clixon_handle h,
+                        char         *dst,
+                        uint16_t      port,
+                        int          *sock0)
 {
     int                retval = -1;
     int                s = -1;
@@ -290,7 +290,7 @@ clicon_rpc_connect_inet(clixon_handle      h,
         return -1;
     }
     if (connect(s, (struct sockaddr*)&addr, sizeof(addr)) < 0){
-        clixon_err(OE_CFG, errno, "connecting socket inet4");
+        clixon_err(OE_CFG, errno, "connecting socket inet");
         close(s);
         goto done;
     }
@@ -651,10 +651,14 @@ clicon_rpc(int                sock,
 {
     int                retval = -1;
     struct clicon_msg *reply = NULL;
-    cbuf              *cbsend = cbuf_new();
+    cbuf              *cbsend = NULL;
     cbuf              *cbrcv = NULL;
 
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
+    if ((cbsend = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
     cprintf(cbsend, "%s", msg->op_body);
     if (clixon_msg_send11(sock, descr, cbsend) < 0)
         goto done;

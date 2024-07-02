@@ -571,8 +571,8 @@ xml_diff(cxobj     *x0,
  * @see text_diff2cbuf  Diff buffer in curly
  */
 int
-xml_tree_equal(cxobj     *x0,
-               cxobj     *x1)
+xml_tree_equal(cxobj *x0,
+               cxobj *x1)
 {
     int        retval = 1; /* Not equal */
     int        eq;

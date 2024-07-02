@@ -402,7 +402,7 @@ clixon_client_connect(clixon_handle      h,
     goto done;
 }
 
-/*! Connect client to clixon backend according to config and return a socket
+/*! Disconnect client
  *
  * @param[in]  ch        Clixon client session handle
  * @retval     0         OK
