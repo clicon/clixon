@@ -481,31 +481,15 @@ xml2json_encode_identityref(cxobj     *xb,
     if (xml2ns(xb, prefix, &namespace) < 0)
         goto done;
     /* We got the namespace, now get the module */
-    //    clixon_debug(CLIXON_DBG_DEFAULT, "body:%s prefix:%s namespace:%s", body, prefix, namespace);
-#ifdef IDENTITYREF_KLUDGE
-    if (namespace == NULL){
-        /* If we dont find namespace here, we assume it is because of a missing
-         * xmlns that should be there, as a kludge we search for its (own)
-         * prefix in mymodule.
-         */
-        if ((ymod = yang_find_module_by_prefix_yspec(yspec, prefix)) != NULL)
-            cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-        else
+    if ((ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
+        if (ymod == my_ymod)
             cprintf(cb, "%s", id);
+        else{
+            cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
+        }
     }
     else
-#endif
-        {
-            if ((ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
-                if (ymod == my_ymod)
-                    cprintf(cb, "%s", id);
-                else{
-                    cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-                }
-            }
-            else
-                cprintf(cb, "%s", id);
-        }
+        cprintf(cb, "%s", id);
     retval = 0;
  done:
     if (prefix)

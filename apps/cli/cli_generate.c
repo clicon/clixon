@@ -291,8 +291,6 @@ yang2cli_var_identityref(yang_stmt *ys,
             if (nodeid_split(cv_name_get(cv), &prefix, &id) < 0)
                 goto done;
             /* Translate from module-name(prefix) to global prefix
-             * This is really a kludge for true identityref prefix handling
-             * IDENTITYREF_KLUDGE 
              * This is actually quite complicated: the cli needs to generate
              * a netconf statement with correct xmlns binding
              */

@@ -47,20 +47,6 @@
  */
 #undef RPC_USERNAME_ASSERT
 
-/*! Tag for wrong handling of identityref prefixes (XML encoding)
- *
- * See https://github.com/clicon/clixon/issues/90
- * Instead of using generic xmlns prefix bindings, the module's own prefix
- * is used.
- * In the CLI generation case, this is actually quite complicated: the cli 
- * needs to generate a netconf statement with correct xmlns binding.
- * The easy way to do this is to always generate all prefix/namespace bindings 
- * on the top-level for the modules involved in the netconf operation.
- * Update 2022-11: seems most cornercases are covered and this is now disabled.
- * I am sure there are remaining cases but undef this for now and close #90
- */
-#undef IDENTITYREF_KLUDGE
-
 /*! Optimize special list key searches in XPath finds
  *
  * Identify xpaths that search for exactly a list key, eg: "y[k='3']" and then call
@@ -197,14 +183,6 @@
  * Plan is to remove this (undef:d) in next release
  */
 #undef RESTCONF_INLINE
-
-/*! Backward compatible with 6.5 for Error, Log and Debug APIs
- *
- * Note: many(most) not covered by this constant need to GREP
- * This includes lots of clicon->clixon namechanges, see CHANGELOG for whole list
- * This constant will be removed after the 7.0 release
- */
-#define COMPAT_6_5
 
 /*! Use SHA256 (32 bytes) instead of SHA1 (20 bytes)
  *

@@ -238,20 +238,6 @@ check_body_namespace(cxobj     *x0,
     }
 #endif
     else{ /* Namespace does not exist in x0: error */
-#ifdef IDENTITYREF_KLUDGE
-        int ret;
-        if (ns1 == NULL){
-            if ((ret = yang_find_namespace_by_prefix(y, prefix, &ns0)) < 0)
-                goto done;
-            if (ret == 0){ /* no such namespace in yang */
-                ;
-            }
-            else{ /* Add it according to the kludge,... */
-                if (xml_add_attr(x0, prefix, ns0, "xmlns", NULL) == NULL)
-                    goto done;
-            }
-        }
-#else
         if ((cberr = cbuf_new()) == NULL){
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
@@ -260,7 +246,6 @@ check_body_namespace(cxobj     *x0,
         if (netconf_invalid_value(cbret, "application", cbuf_get(cberr)) < 0)
             goto done;
         goto fail;
-#endif
     }
  ok:
     retval = 1;

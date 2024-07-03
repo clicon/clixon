@@ -579,9 +579,6 @@ yang_find_module_by_prefix(yang_stmt *ys,
 
 /*! Get module from its own prefix 
  *
- * This is really not a valid usecase, a kludge for the identityref derived
- * list workaround (IDENTITYREF_KLUDGE)
- * Actually, for canonical prefixes it is!
  */
 yang_stmt *
 yang_find_module_by_prefix_yspec(yang_stmt *yspec,

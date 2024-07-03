@@ -48,11 +48,11 @@ AC_CONFIG_SRCDIR([lib/clixon/clixon.h.in])
 # where autotool scripts are: install-sh, config.sub, config.guess
 AC_CONFIG_AUX_DIR(config-aux)
 
-CLIXON_VERSION_MAJOR="7"
-CLIXON_VERSION_MINOR="1"
-CLIXON_VERSION_PATCH="0"
-# Use GIT, if this does not work, need a fallback mechanism
+# Use GIT version (what if no git?)
 CLIXON_VERSION="$(git log --pretty="format:%(describe) %ci" -n1)"
+CLIXON_VERSION_MAJOR="$(echo $CLIXON_VERSION | awk -F "." '{print $1}')"
+CLIXON_VERSION_MINOR="$(echo $CLIXON_VERSION | awk -F "." '{print $2}')"
+CLIXON_VERSION_PATCH="$(echo $CLIXON_VERSION | awk -F "." '{print $3}' | awk -F " " '{print $1}')"
 
 # Debug flag
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
@@ -88,6 +88,7 @@ AC_CANONICAL_TARGET
 AC_SUBST(CLIXON_VERSION)
 AC_SUBST(CLIXON_VERSION_MAJOR)
 AC_SUBST(CLIXON_VERSION_MINOR)
+AC_SUBST(CLIXON_VERSION_PATCH)
 
 AC_MSG_RESULT(CLIXON version is ${CLIXON_VERSION})
 

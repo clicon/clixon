@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [7.2.0](#720) Expected: October 2024
 * [7.1.0](#710) 3 July 2024
 * [7.0.1](#701) 3 April 2024
 * [7.0.0](#700) 8 March 2024
@@ -10,10 +11,14 @@
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
 
+## 7.2.0
+Expected: October 2024
+
 ## 7.1.0
 3 July 2024
 
-
+The 7.1.0 release features RESTCONF notifications for native mode,
+multi-datastore, and many new configure options.
 
 ### Features
 

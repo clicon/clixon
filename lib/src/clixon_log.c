@@ -161,19 +161,6 @@ clixon_log_init(clixon_handle h,
     return 0;
 }
 
-#ifdef COMPAT_6_5
-/* Required for clixon-example autoconf
- */
-int
-clicon_log_init(char         *ident,
-                int           upto, 
-                int           flags)
-{
-    return clixon_log_init(NULL, ident, upto, flags);
-}
-
-#endif
-
 int
 clixon_log_exit(void)
 {

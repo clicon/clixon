@@ -83,19 +83,4 @@ int clixon_get_logflags(void);
 int clixon_log_str(int level, char *msg);
 int clixon_log_fn(clixon_handle h, int user, int level, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
 
-#if 1 /* COMPAT_6_5 */
-#define CLICON_LOG_SYSLOG CLIXON_LOG_SYSLOG
-#define CLICON_LOG_STDERR CLIXON_LOG_STDERR
-#define CLICON_LOG_STDOUT CLIXON_LOG_STDOUT
-#define CLICON_LOG_FILE   CLIXON_LOG_FILE
-
-#define clicon_log(l, f, args...) clixon_log(NULL, (l), (f), ##args)
-#define clicon_log_exit() clixon_log_exit()
-#define clicon_log_opt(c) clixon_log_opt((c))
-#define clicon_log_file(f) clixon_log_file((f)) 
-
-int clicon_log_init(char *ident, int upto, int flags);
-
-#endif /* COMPAT_6_5 */
-
 #endif  /* _CLIXON_LOG_H_ */

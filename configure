@@ -694,6 +694,7 @@ INSTALL_DATA
 INSTALL_SCRIPT
 INSTALL_PROGRAM
 INCLUDES
+CLIXON_VERSION_PATCH
 CLIXON_VERSION_MINOR
 CLIXON_VERSION_MAJOR
 CLIXON_VERSION
@@ -2811,11 +2812,11 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # where autotool scripts are: install-sh, config.sub, config.guess
 
 
-CLIXON_VERSION_MAJOR="7"
-CLIXON_VERSION_MINOR="1"
-CLIXON_VERSION_PATCH="0"
-# Use GIT, if this does not work, need a fallback mechanism
+# Use GIT version (what if no git?)
 CLIXON_VERSION="$(git log --pretty="format:%(describe) %ci" -n1)"
+CLIXON_VERSION_MAJOR="$(echo $CLIXON_VERSION | awk -F "." '{print $1}')"
+CLIXON_VERSION_MINOR="$(echo $CLIXON_VERSION | awk -F "." '{print $2}')"
+CLIXON_VERSION_PATCH="$(echo $CLIXON_VERSION | awk -F "." '{print $3}' | awk -F " " '{print $1}')"
 
 # Debug flag
 # Check whether --enable-debug was given.
@@ -4012,6 +4013,7 @@ test -n "$target_alias" &&
 
 # AC_SUBST(var) makes @var@ appear in makefiles.
 # Clixon versions is used in Makefile's (.so files) and variable in build.c
+
 
 
 
