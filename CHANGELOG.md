@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [7.1.0](#710) Expected: June 2024
+* [7.1.0](#710) 3 July 2024
 * [7.0.1](#701) 3 April 2024
 * [7.0.0](#700) 8 March 2024
 * [6.5.0](#650) 6 December 2023
@@ -11,21 +11,28 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 7.1.0
-Expected: June 2024
+3 July 2024
+
+
 
 ### Features
 
 * RESTCONF notification for native mode
   * Previously only for FCGI
-  * Limitations, ie only HTTP/1, regular subscription + stop-time
-* Optimization of yang schema mount: share yang-specs if equal
+  * The following does not work: Regular subscription + stop-time
+* Optimization of yang schema mount: share yang-specs if all YANGs are equal
+  * This reduces memory if many mount-points share YANGs
 * Changed datastore modstate to be last in file, as prior to 7.0
-* New: Event priority. Backend socket has higher prio
-* New: Split configure datastore multiple sub-files on mount-point boundaries
-  * Avoid writing sub-files without new data (dirty cache)
-* Added: Code for SHA digests.
-* New: [Autolock](https://github.com/clicon/clixon/issues/508)
-* CLI configurable format: [Default format should be configurable](https://github.com/clicon/clixon-controller/issues/87)
+* Event priority. Backend socket has higher prio
+* Multi-datastore
+  * You can split configure datastore into multiple sub-files
+  * On edit, only changed sub-files are updated.
+  * Curently only implemented for mount-points
+* Code for SHA digests.
+* Option for automatic lock of datastore on edit-config
+  * See [Autolock](https://github.com/clicon/clixon/issues/508)
+* Option to set default CLI output format
+  * See [Default format should be configurable](https://github.com/clicon/clixon-controller/issues/87)
 * CLI support for multiple inline commands separated by semi-colon
 * New `clixon-config@2024-04-01.yang` revision
   * Added options:
@@ -53,7 +60,7 @@ Users may have to change how they access the system
    * In particular, the top-level is moved from `<db>_db` to `<db>.d/0.xml`
    * Backward-compatible:
      * If backend is started with `-s startup` or `-s running` then `<db>_db` is read if `<db>.d/0.xml` is not found
-* Openssl mandatory for all configs, not only restconf
+* Autoconf: Openssl mandatory for all configure, not only restconf, due to digest code
 
 ### C/CLI-API changes on existing features
 

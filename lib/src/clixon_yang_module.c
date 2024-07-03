@@ -395,7 +395,6 @@ yang_modules_state_get(clixon_handle    h,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_YANG, "retval:%d", retval);
     if (xvec)
         free(xvec);
     if (cb)
