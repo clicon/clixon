@@ -17,7 +17,7 @@ module ietf-list-pagination-nc {
   }
 
   import ietf-list-pagination {
-    prefix lp;
+    prefix lpg;
     reference
       "RFC XXXX: List Pagination for YANG-driven Protocols";
   }
@@ -28,11 +28,12 @@ module ietf-list-pagination-nc {
   contact
       "WG Web:   https://datatracker.ietf.org/wg/netconf
        WG List:  NETCONF WG list <mailto:netconf@ietf.org>";
+
   description
     "This module augments the <get>, <get-config>, and <get-data>
      'rpc' statements to support list pagination.
 
-     Copyright (c) 2021 IETF Trust and the persons identified
+     Copyright (c) 2024 IETF Trust and the persons identified
      as authors of the code. All rights reserved.
 
      Redistribution and use in source and binary forms, with
@@ -53,7 +54,7 @@ module ietf-list-pagination-nc {
      (RFC 8174) when, and only when, they appear in all
      capitals, as shown here.";
 
-  revision 2022-07-24 {
+  revision 2024-07-08 {
     description
       "Initial revision.";
     reference
@@ -64,12 +65,14 @@ module ietf-list-pagination-nc {
     description "A grouping for list pagination parameters.";
     container list-pagination {
       description "List pagination parameters.";
-      uses lp:where-param-grouping;
-      uses lp:sort-by-param-grouping;
-      uses lp:direction-param-grouping;
-      uses lp:offset-param-grouping;
-      uses lp:limit-param-grouping;
-      uses lp:sublist-limit-param-grouping;
+      uses lpg:where-param-grouping;
+      uses lpg:sort-by-param-grouping;
+      uses lpg:locale-param-grouping;
+      uses lpg:direction-param-grouping;
+      uses lpg:cursor-param-grouping;
+      uses lpg:offset-param-grouping;
+      uses lpg:limit-param-grouping;
+      uses lpg:sublist-limit-param-grouping;
     }
   }
 
