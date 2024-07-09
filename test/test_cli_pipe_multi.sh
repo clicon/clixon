@@ -73,7 +73,7 @@ commit("Commit the changes"), cli_commit();
 show("Show a particular state of the system"){
    version("Show version"), cli_show_version("candidate", "text", "/");
    configuration("Show configuration"), cli_show_auto_mode("candidate", "xml", true, false);{
-      @|show, cli_show_auto_mode("candidate", "xml", true, false, "report-all");
+      @|show, cli_show_auto_mode("candidate", "xml", true, false);
       @datamodelshow, cli_show_auto("candidate", "xml", true, false, "report-all", "set ", true);
    }
    autocli("Generated tree") @datamodelshow, cli_show_auto("candidate", "xml", true, false, "report-all");

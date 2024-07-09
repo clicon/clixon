@@ -21,15 +21,13 @@ module ietf-list-pagination {
     reference
       "RFC 7952: Defining and Using Metadata with YANG";
   }
-
-    /* XXX Clixon FIXME: system-capabilities brings in NACM that breaks clixon testing
   import ietf-system-capabilities  {
     prefix sysc;
     reference
       "RFC 9196: YANG Modules Describing Capabilities for Systems and
                  Datastore Update Notifications";
   }
-  */
+
   organization
     "IETF NETCONF (Network Configuration) Working Group";
 
@@ -344,7 +342,6 @@ module ietf-list-pagination {
     }
   }
 
-    /* XXX Clixon FIXME: system-capabilities brings in NACM that breaks clixon testing
   // Protocol-accessible nodes
   augment
     "/sysc:system-capabilities/sysc:datastore-capabilities"
@@ -386,5 +383,4 @@ module ietf-list-pagination {
          'cursor' parameter.";
     }
   }
-    */
 }
