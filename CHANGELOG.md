@@ -14,6 +14,10 @@
 ## 7.2.0
 Expected: October 2024
 
+### Features
+
+* List pagination: added sort-by parameter
+
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code

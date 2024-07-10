@@ -31,7 +31,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * RFC 8525 Yang schema mount support
+ * RFC 8528 Yang schema mount support
  *
  * Extend a container with ietf-yang-schema-mount:mount-point.
  * Structure of mount-points in YANG anc config:
@@ -118,7 +118,7 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_yang_schema_mount.h"
 
-/*! Check if YANG node is a RFC 8525 YANG schema mount
+/*! Check if YANG node is a RFC 8528 YANG schema mount
  *
  * Check if:
  * - y is CONTAINER or LIST, AND
@@ -126,7 +126,7 @@
  * - the extension label matches y (see note below)
  * If so, then return 1
  * @param[in] y   Yang statement
- * @retval    1   Yes, y is a RFC 8525 YANG mount-point
+ * @retval    1   Yes, y is a RFC 8528 YANG mount-point
  * @retval    0   No, y is not
  * @retval   -1   Error
  * @note That this may be a restriction on the usage of "label". The RFC is somewhat unclear.

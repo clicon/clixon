@@ -508,7 +508,7 @@ yang_when_nsc_set(yang_stmt *ys,
     return retval;
 }
 
-/*! Get yang filename for error/debug purpose
+/*! Get yang filename for error/debug purpose (only modules)
  *
  * @param[in]  ys       Yang statement
  * @retval     filename
@@ -3053,7 +3053,7 @@ ys_populate2(yang_stmt    *ys,
     default:
         break;
     }
-    /* RFC 8525 Yang schema mount  flag for optimization */
+    /* RFC 8528 Yang schema mount  flag for optimization */
     if ((ret = yang_schema_mount_point0(ys)) < 0)
         goto done;
     if (ret == 1)

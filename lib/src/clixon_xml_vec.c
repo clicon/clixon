@@ -34,6 +34,7 @@
   ***** END LICENSE BLOCK *****
 
  * Clixon XML object vectors
+ * Note these are used only occasionally, instead the more primitive cxobj** is mostly used.
  */
 
 #ifdef HAVE_CONFIG_H

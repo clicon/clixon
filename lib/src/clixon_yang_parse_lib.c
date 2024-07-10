@@ -527,7 +527,6 @@ ys_iskey(yang_stmt *y,
     return 0;
 }
 
-
 /*! Helper function to yang_expand_grouping
  *
  * @param[in] yn     Yang parent node of uses ststement
@@ -549,6 +548,7 @@ yang_expand_uses_node(yang_stmt *yn,
     yang_stmt *yg;         /* grouping child */
     yang_stmt *yr;         /* refinement */
     yang_stmt *yp;
+    yang_stmt *ym;
     int        glen;
     size_t     size;
     int        j;
@@ -564,8 +564,13 @@ yang_expand_uses_node(yang_stmt *yn,
     if (ys_grouping_resolve(ys, prefix, id, &ygrouping) < 0)
         goto done;
     if (ygrouping == NULL){
-        clixon_log(NULL, LOG_NOTICE, "%s: Yang error : grouping \"%s\" not found in module \"%s\"",
-                   __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        if ((ym = ys_module(yn)) != NULL)
+            clixon_err(OE_YANG, 0, "Yang error : grouping \"%s\" not found in module \"%s\" in file: %s:%d",
+                       yang_argument_get(ys), yang_argument_get(ys_module(ys)),
+                       yang_filename_get(ym), yang_linenum_get(yn));
+        else
+            clixon_err(OE_YANG, 0, "Yang error : grouping \"%s\" not found in module \"%s\"",
+                       yang_argument_get(ys), yang_argument_get(ys_module(ys)));
         goto done;
     }
     /* Check so that this uses statement is not a descendant of the grouping

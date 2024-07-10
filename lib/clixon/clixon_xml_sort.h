@@ -42,7 +42,8 @@
  * Prototypes
  */
 int xml_cmp(cxobj *x1, cxobj *x2, int same, int skip1, char *expl);
-int xml_sort(cxobj *x0);
+int xml_sort(cxobj *x);
+int xml_sort_by(cxobj *x, char *indexvar);
 int xml_sort_recurse(cxobj *xn);
 int xml_insert(cxobj *xp, cxobj *xc, enum insert_type ins, char *key_val, cvec *nsckey);
 int xml_sort_verify(cxobj *x, void *arg);

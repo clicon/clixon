@@ -41,6 +41,7 @@
 #endif
 
 #include <stdio.h>
+#define __USE_GNU /* for qsort_r */
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
@@ -166,7 +167,7 @@ xml_cv_cache_clear(cxobj *xt)
  * @param[in]  same  If set, x1 and x2 are member of same parent & enumeration 
  *                   is used (see explanation below)
  * @param[in]  skip1 Key matching skipped for keys not in x1 (see explanation)
- * @param[in]  explicit For list nodes, use explicit index variables, not keys
+ * @param[in]  indexvar For (leaf)list nodes, use explicit index variable xpaths
  * @retval     0     If equal
  * @retval    <0     If x1 is less than x2
  * @retval    >0     If x1 is greater than x2
@@ -273,6 +274,7 @@ xml_cmp(cxobj  *x1,
      * existing list.
      */
     if (same &&
+        indexvar == NULL &&
         (
 #ifndef STATE_ORDERED_BY_SYSTEM
          yang_config(y1)==0 ||
@@ -283,8 +285,25 @@ xml_cmp(cxobj  *x1,
         }
     switch (yang_keyword_get(y1)){
     case Y_LEAF_LIST: /* Match with name and value */
+#ifdef XML_EXPLICIT_INDEX
+        if (indexvar){
+            if ((x1b = xpath_first(x1, 0, "%s", indexvar)) != NULL)
+                b1 = xml_body(x1b);
+            else
+                b1 = NULL;
+            if ((x2b = xpath_first(x2, 0, "%s", indexvar)) != NULL)
+                b2 = xml_body(x2b);
+            else
+                b2 = NULL;
+        }
+        else {
+            b1 = xml_body(x1);
+            b2 = xml_body(x2);
+        }
+#else
         b1 = xml_body(x1);
         b2 = xml_body(x2);
+#endif
         if (b1 == NULL && b2 == NULL)
             ;
         else if (b1 == NULL)
@@ -309,8 +328,8 @@ xml_cmp(cxobj  *x1,
     case Y_LIST: /* Match with key values  */
         if (indexvar != NULL){
 #ifdef XML_EXPLICIT_INDEX
-            x1b = xml_find(x1, indexvar);
-            x2b = xml_find(x2, indexvar);
+            x1b = xpath_first(x1, 0, "%s", indexvar);
+            x2b = xpath_first(x2, 0, "%s", indexvar);
             if (x1b == NULL && x2b == NULL)
                 ;
             else if (x1b == NULL)
@@ -396,19 +415,35 @@ xml_cmp(cxobj  *x1,
  * @note args are pointer to pointers, to fit into qsort cmp function
  */
 static int
-xml_cmp_qsort(const void* arg1,
-              const void* arg2)
+xml_cmp_qsort(const void *arg1,
+              const void *arg2,
+              void       *indexvar)
 {
-    return xml_cmp(*(struct xml**)arg1, *(struct xml**)arg2, 1, 0, NULL);
+    return xml_cmp(*(struct xml**)arg1, *(struct xml**)arg2, 1, 0, indexvar);
+}
+
+/*! Sort children of an XML node using an index
+ *
+ * @param[in] x        XML node
+ * @param[in] indexvar Descendant-schema-nodeid
+ * @retval    0        OK, all nodes traversed (subparts may have been skipped)
+ */
+int
+xml_sort_by(cxobj *x,
+            char  *indexvar)
+{
+    xml_enumerate_children(x); /* This is to make sorting "stable", ie not change existing order */
+    qsort_r(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, indexvar);
+    return 0;
 }
 
 /*! Sort children of an XML node 
  *
  * Assume populated by yang spec.
- * @param[in] x0   XML node
- * @retval     1    OK, aborted on first fn returned 1
- * @retval     0    OK, all nodes traversed (subparts may have been skipped)
- * @retval    -1    Error, aborted at first error encounter
+ * @param[in] x   XML node
+ * @retval    1   OK, aborted on first fn returned 1
+ * @retval    0   OK, all nodes traversed (subparts may have been skipped)
+ * @retval   -1   Error, aborted at first error encounter
  * @see xml_apply  - typically called by recursive apply function
  * @see xml_sort_verify
  */
@@ -423,7 +458,7 @@ xml_sort(cxobj *x)
         return 1;
 #endif
     xml_enumerate_children(x); /* This is to make sorting "stable", ie not change existing order */
-    qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort);
+    qsort_r(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, NULL);
     return 0;
 }
 

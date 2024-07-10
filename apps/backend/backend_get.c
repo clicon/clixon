@@ -531,27 +531,27 @@ get_list_pagination(clixon_handle        h,
                     cbuf                *cbret
                     )
 {
-    int             retval = -1;
-    uint32_t        offset = 0;
-    uint32_t        limit = 0;
-    cbuf           *cbpath = NULL;
-    int             list_config;
-    yang_stmt      *ylist;
-    cxobj          *xerr = NULL;
-    cbuf           *cbmsg = NULL; /* For error msg */
-    cxobj          *xret = NULL;
-    char           *xpath2; /* With optional pagination predicate */
-    uint32_t        iddb; /* DBs lock, if any */
-    int             locked;
-    cbuf           *cberr = NULL; 
-    cxobj         **xvec = NULL;
-    size_t          xlen;
-    int             ret;
+    int        retval = -1;
+    uint32_t   offset = 0;
+    uint32_t   limit = 0;
+    cbuf      *cbpath = NULL;
+    int        list_config;
+    yang_stmt *ylist;
+    cxobj     *xerr = NULL;
+    cbuf      *cbmsg = NULL; /* For error msg */
+    cxobj     *xret = NULL;
+    char      *xpath2; /* With optional pagination predicate */
+    uint32_t   iddb; /* DBs lock, if any */
+    int        locked;
+    cbuf      *cberr = NULL;
+    cxobj    **xvec = NULL;
+    size_t     xlen;
+    int        ret;
+    cxobj     *x;
+    char      *sort_by = NULL;
 #ifdef NOTYET
-    cxobj          *x;
-    char           *direction = NULL;
-    char           *sort = NULL;
-    char           *where = NULL;
+    char      *direction = NULL;
+    char      *where = NULL;
 #endif
 
     if (cbret == NULL){
@@ -606,16 +606,16 @@ get_list_pagination(clixon_handle        h,
             goto ok;
         }
     }
-    /* sort */
-    if (ret && (x = xml_find_type(xe, NULL, "sort-by", CX_ELMNT)) != NULL)
-        sort = xml_body(x);
-    if (sort) {
-        /* XXX: nothing yet */
-    }
     /* where */
     if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
         where = xml_body(x);
-#endif
+#endif /* NOTYET */
+    /* sort-by */
+    if (ret && (x = xml_find_type(xe, NULL, "sort-by", CX_ELMNT)) != NULL){
+        sort_by = xml_body(x);
+        if (strcmp(sort_by, "none") == 0)
+            sort_by = NULL;
+    }
     if (ret == 0)
         goto ok;
     /* Read config */
@@ -664,7 +664,6 @@ get_list_pagination(clixon_handle        h,
         if (ret == 0){
             if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
                 goto done;
-
             goto ok;
         }
         break;
@@ -674,10 +673,32 @@ get_list_pagination(clixon_handle        h,
         break;
     }/* switch content */
 
+    /* Read state */
+    switch (content){
+    case CONTENT_CONFIG:    /* config data only */
+        break;
+    case CONTENT_ALL:       /* both config and state */
+    case CONTENT_NONCONFIG: /* state data only */
+        if (list_config == 0)
+            break;
+        if ((ret = get_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
+            goto done;
+        if (ret == 0){ /* Error from callback (error in xret) */
+            if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        /* Add defaults to state data. This consumes some cycles */
+        /* Ensure all state-data is report-all */
+        if (xml_global_defaults(h, xret, nsc, xpath, yspec, 1) < 0)
+            goto done;
+        /* Apply default values */
+        if (xml_default_recurse(xret, 1, 0) < 0)
+            goto done;
+    }
     if (list_config){
 #ifdef LIST_PAGINATION_REMAINING
         /* Get total/remaining
-         * XXX: Works only for cache
          */
         if ((xcache = xmldb_cache_get(h, db)) != NULL){
             if (xpath_count(xcache, nsc, xpath, &total) < 0)
@@ -731,6 +752,12 @@ get_list_pagination(clixon_handle        h,
     /* Help function to filter out anything that is outside of xpath */
     if (filter_xpath_again(h, yspec, xret, xvec, xlen, xpath, nsc) < 0)
         goto done;
+    if (sort_by){
+        cxobj *x, *xp;
+        if ((x = xpath_first(xret, nsc, "%s", xpath?xpath:"/")) != NULL &&
+            (xp = xml_parent(x)) != NULL)
+            xml_sort_by(xp, sort_by); // XXX sort_by
+    }
 #ifdef LIST_PAGINATION_REMAINING
     /* Add remaining attribute Sec 3.1.5: 
        Any list or leaf-list that is limited includes, on the first element in the result set, 
@@ -793,29 +820,27 @@ get_common(clixon_handle        h,
            cbuf                *cbret
            )
 {
-    int             retval = -1;
-    cxobj          *xfilter;
-    char           *xpath = NULL;
-    cxobj          *xret = NULL;
-    char           *username;
-    cvec           *nsc0 = NULL; /* Create a netconf namespace context from filter */
-    cvec           *nsc = NULL;
-    char           *attr;
-    int32_t         depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
-    yang_stmt      *yspec;
-    cxobj          *xerr = NULL;
-    int             ret;
-    char           *reason = NULL;
-    cbuf           *cbmsg = NULL; /* For error msg */
-    char           *xpath0;
-    char           *xpath01 = NULL;
-    cbuf           *cbreason = NULL;
-    int             list_pagination = 0;
-    cxobj         **xvec = NULL;
-    size_t          xlen;
-    cxobj          *xfind;
-    uint32_t        offset = 0;
-    uint32_t        limit = 0;
+    int               retval = -1;
+    cxobj            *xfilter;
+    char             *xpath = NULL;
+    cxobj            *xret = NULL;
+    char             *username;
+    cvec             *nsc0 = NULL; /* Create a netconf namespace context from filter */
+    cvec             *nsc = NULL;
+    char             *attr;
+    int32_t           depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
+    yang_stmt        *yspec;
+    cxobj            *xerr = NULL;
+    int               ret;
+    char             *reason = NULL;
+    cbuf             *cbmsg = NULL; /* For error msg */
+    char             *xpath0;
+    char             *xpath01 = NULL;
+    cbuf             *cbreason = NULL;
+    cxobj           **xvec = NULL;
+    size_t            xlen;
+    cxobj            *xlpg;
+    cxobj            *xlpg2 = NULL;
     withdefaults_type wdef;
     char             *wdefstr;
 
@@ -862,33 +887,26 @@ get_common(clixon_handle        h,
     }
     if ((wdefstr = xml_find_body(xe, "with-defaults")) != NULL) 
         wdef = withdefaults_str2int(wdefstr);
-    /* Check if list pagination */
-    if ((xfind = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL){
-        /* with non-presence list-pagination, use ad-hoc algorithm to determine
-         * whether list-pagination is enabled:
-         * offset!=0 && limit!=unbounded
-         */
-        /* offset */
-        if ((ret = element2value(h, xfind, "offset", "none", cbret, &offset)) < 0)
-            goto done;
-        /* limit */
-        if (ret && (ret = element2value(h, xfind, "limit", "unbounded", cbret, &limit)) < 0)
-            goto done;
-        if (ret == 0)
-            goto ok;
-        list_pagination = (offset != 0 || limit != 0);
-    }
-    /* Sanity check for list pagination: path must be a list/leaf-list, if it is,
-     * check config/state
+    /* How to check if list-pagination?
+     * Problem is clixon expands messages on entry and pagination default values + non-presence cont
+     * Therefore reverse expands by removing  defaults/nopresence and see if it is empty
+     * If it is empty, all are default values and is regular get
      */
-    if (list_pagination){
-        if (get_list_pagination(h, ce,
-                                xfind,
-                                content, db,
-                                depth, yspec, xpath, nsc, username, wdef,
-                                cbret) < 0)
+    if ((xlpg = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL){
+
+        if ((xlpg2 = xml_dup(xlpg)) == NULL)
             goto done;
-        goto ok;
+        if (xml_default_nopresence(xlpg2, 2, 0) < 0)
+            goto done;
+        if (xml_child_nr_type(xlpg2, CX_ELMNT) != 0) {
+            if (get_list_pagination(h, ce,
+                                    xlpg,
+                                    content, db,
+                                    depth, yspec, xpath, nsc, username, wdef,
+                                    cbret) < 0)
+                goto done;
+            goto ok;
+        }
     }
     /* Read configuration */
     switch (content){
@@ -1022,6 +1040,8 @@ get_common(clixon_handle        h,
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    if (xlpg2)
+        xml_free(xlpg2);
     if (xvec)
         free(xvec);
     if (xret)

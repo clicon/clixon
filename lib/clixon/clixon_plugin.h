@@ -279,7 +279,7 @@ typedef int (datastore_upgrade_t)(clixon_handle h, const char *db, cxobj *xt, mo
 /*! YANG schema mount
  *
  * Given an XML mount-point xt, return XML yang-lib modules-set
- * Return yanglib as XML tree on the RFC8525 form: 
+ * Return yanglib as XML tree on the RFC8528 form:
  *   <yang-library>
  *      <module-set>
  *         <module>...</module>
