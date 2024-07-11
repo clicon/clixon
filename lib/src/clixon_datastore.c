@@ -353,21 +353,29 @@ xmldb_copy(clixon_handle h,
     }
     clicon_db_elmnt_set(h, to, &de0);
     /* Copy the files themselves (above only in-memory cache)
-     * Alt, dump the cache to file
+     * or flush the running data to file if we are only storing running
+     * on disk.
      */
-    if (xmldb_db2file(h, from, &fromfile) < 0)
-        goto done;
-    if (xmldb_db2file(h, to, &tofile) < 0)
-        goto done;
-    if (clicon_file_copy(fromfile, tofile) < 0)
-        goto done;
-    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")) {
-        if (xmldb_db2subdir(h, from, &fromdir) < 0)
-            goto done;
-        if (xmldb_db2subdir(h, to, &todir) < 0)
-            goto done;
-        if (clicon_dir_copy(fromdir, todir) < 0)
-            goto done;
+    if (clicon_option_bool(h, "CLIXON_TMPDB_VOLATILE")){
+	if (strcmp(to, "running") == 0) {
+	    if (xmldb_write_cache2file(h, to) < 0)
+		goto done;
+	}
+    } else {
+	if (xmldb_db2file(h, from, &fromfile) < 0)
+	    goto done;
+	if (xmldb_db2file(h, to, &tofile) < 0)
+	    goto done;
+	if (clicon_file_copy(fromfile, tofile) < 0)
+	    goto done;
+	if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")) {
+	    if (xmldb_db2subdir(h, from, &fromdir) < 0)
+		goto done;
+	    if (xmldb_db2subdir(h, to, &todir) < 0)
+		goto done;
+	    if (clicon_dir_copy(fromdir, todir) < 0)
+		goto done;
+	}
     }
     retval = 0;
  done:

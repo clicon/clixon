@@ -498,7 +498,8 @@ validate_common(clixon_handle       h,
     if (xmldb_cache_get(h, db) != NULL){
         if (xmldb_populate(h, db) < 0)
             goto done;
-        if (xmldb_write_cache2file(h, db) < 0)
+        if (!clicon_option_bool(h, "CLIXON_TMPDB_VOLATILE") &&
+                xmldb_write_cache2file(h, db) < 0)
             goto done;
     }
     /* This is the state we are going to */

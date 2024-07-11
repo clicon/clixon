@@ -1428,7 +1428,8 @@ xmldb_put(clixon_handle       h,
     de0.de_empty = (xml_child_nr(de0.de_xml) == 0);
     clicon_db_elmnt_set(h, db, &de0);
     /* Write cache to file unless volatile (ie stop syncing to store) */
-    if (xmldb_volatile_get(h, db) == 0){
+    if (xmldb_volatile_get(h, db) == 0 &&
+            !clicon_option_bool(h, "CLIXON_TMPDB_VOLATILE")){
         if (xmldb_write_cache2file(h, db) < 0)
             goto done;
         /* Clear flags from previous steps + dirty */
