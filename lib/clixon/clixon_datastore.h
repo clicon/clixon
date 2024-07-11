@@ -56,6 +56,7 @@ struct db_elmnt {
                                  */
     int            de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
     int            de_volatile; /* Disable auto-sync of cache to disk on every update (ie xmldb_put) */
+    int            de_has_stateonly; /* Is the stateonly data loaded? */
 };
 typedef struct db_elmnt db_elmnt;
 
@@ -104,5 +105,8 @@ int xmldb_print(clixon_handle h, FILE *f);
 int xmldb_rename(clixon_handle h, const char *db, const char *newdb, const char *suffix);
 int xmldb_populate(clixon_handle h, const char *db);
 int xmldb_multi_upgrade(clixon_handle h, const char *db);
+int xmldb_read_stateonly(clixon_handle h, const char *db);
+int xmldb_remove_stateonly(clixon_handle h, const char *db);
+int xmldb_has_stateonly(clixon_handle h, const char *db);
 
 #endif /* _CLIXON_DATASTORE_H */

@@ -944,6 +944,12 @@ get_common(clixon_handle        h,
     cxobj            *xlpg2 = NULL;
     withdefaults_type wdef;
     char             *wdefstr;
+    int              had_stateonly = xmldb_has_stateonly(h, db);
+
+    if (!had_stateonly) {
+	if (xmldb_read_stateonly(h, db) < 0)
+	    goto done;
+    }
 
     wdef = WITHDEFAULTS_EXPLICIT;
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
@@ -1163,6 +1169,8 @@ get_common(clixon_handle        h,
         free(xpath);
     if (xpath01)
         free(xpath01);
+    if (!had_stateonly)
+	xmldb_remove_stateonly(h, db);
     return retval;
 }
 

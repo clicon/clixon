@@ -1021,3 +1021,27 @@ xmldb_multi_upgrade(clixon_handle h,
         free(tofile);
     return retval;
 }
+
+int
+xmldb_read_stateonly(clixon_handle h, const char *db)
+{
+    return 0;
+}
+
+int
+xmldb_remove_stateonly(clixon_handle h, const char *db)
+{
+    return 0;
+}
+
+int
+xmldb_has_stateonly(clixon_handle h, const char *db)
+{
+    db_elmnt *de;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
+    }
+    return de->de_has_stateonly;
+}

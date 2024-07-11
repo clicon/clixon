@@ -857,6 +857,7 @@ candidate_commit(clixon_handle  h,
         goto done;
     /* 8. Success: Copy candidate to running 
      */
+    xmldb_remove_stateonly(h, db);
     if (xmldb_copy(h, db, "running") < 0)
         goto done;
     xmldb_modified_set(h, db, 0); /* reset dirty bit */
@@ -877,8 +878,10 @@ candidate_commit(clixon_handle  h,
  done:
     /* In case of failure (or error), call plugin transaction termination callbacks */
     if (td){
-        if (retval < 1)
+        if (retval < 1) {
             plugin_transaction_abort_all(h, td);
+	    xmldb_remove_stateonly(h, db);
+	}
         transaction_free(td);
     }
     if (xret)
