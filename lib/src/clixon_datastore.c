@@ -80,6 +80,10 @@
 #include "clixon_xml_bind.h"
 #include "clixon_xml_default.h"
 #include "clixon_xml_io.h"
+#include "clixon_map.h"
+#include "clixon_xml_nsctx.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_json.h"
 #include "clixon_datastore.h"
 #include "clixon_datastore_write.h"
@@ -1033,13 +1037,71 @@ xmldb_multi_upgrade(clixon_handle h,
 int
 xmldb_read_stateonly(clixon_handle h, const char *db)
 {
-    return 0;
+    int       retval = -1;
+    db_elmnt *de;
+    cxobj    *x;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
+    }
+    if (de->de_has_stateonly)
+	goto finished;
+
+    if ((x = xmldb_cache_get(h, db)) == NULL){
+        clixon_err(OE_XML, 0, "XML cache not found");
+        goto done;
+    }
+
+    de->de_has_stateonly = 1;
+ finished:
+    retval = 0;
+ done:
+    return retval;
 }
 
 int
 xmldb_remove_stateonly(clixon_handle h, const char *db)
 {
-    return 0;
+    int       retval = -1;
+    db_elmnt *de;
+    cxobj    *x;
+    cxobj   **xvec = NULL;
+    size_t    xlen;
+    char     *ns;
+    cvec     *nsc = NULL;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
+    }
+    if (!de->de_has_stateonly)
+	goto finished;
+
+    if ((x = xmldb_cache_get(h, db)) == NULL){
+        clixon_err(OE_XML, 0, "XML cache not found");
+        goto done;
+    }
+
+    ns = "urn:ietf:params:xml:ns:yang:ietf-system";
+    if ((nsc = xml_nsctx_init(NULL, ns)) == NULL)
+	goto done;
+    if (xpath_vec(x, nsc, "%s", &xvec, &xlen, "/system/authentication") < 0)
+	goto done;
+    if (xlen == 0)
+	goto finished;
+    if (xml_rm(xvec[xlen - 1]) < 0)
+	goto done;
+    xml_free(xvec[xlen - 1]);
+ finished:
+    de->de_has_stateonly = 0;
+    retval = 0;
+ done:
+    if (nsc)
+	cvec_free(nsc);
+    if (xvec)
+	free(xvec);
+    return retval;
 }
 
 int
