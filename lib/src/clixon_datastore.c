@@ -82,6 +82,7 @@
 #include "clixon_xml_io.h"
 #include "clixon_map.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_xml_sort.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_json.h"
@@ -1034,12 +1035,155 @@ xmldb_multi_upgrade(clixon_handle h,
     return retval;
 }
 
+//"/system/authentication"
+struct clixon_stateonly_data {
+    cvec *nsc;
+    char **path;
+    int (*getstate)(void *, cxobj **);
+    void *sdata;
+};
+
+static void
+free_sstr(char **sstr)
+{
+    unsigned int i;
+
+    for (i = 0; sstr[i]; i++)
+	free(sstr[i]);
+    free(sstr);
+}
+
+/*
+ * Split a string into an array of substrings separated by the
+ * character 'c'.  'c' characters at the beginning and end are
+ * ignored, and duplicated ones count as one.  The array is NULL
+ * terminated, and the number of values (not including the NULL) is
+ * returned in slen.  slen may be NULL if you don't care.
+ *
+ * So if c is '/':
+ *    "/a///b/c/"
+ * will return
+ *    [ "a", "b", "c", NULL ]
+ * and slen will be 3.
+ */
+static int
+split_str(const char *s, char c, char ***sstr, int *slen)
+{
+    unsigned int i, j, start, count = 0;
+    char       **ss = NULL;
+    int          last_match = 1; /* Did the previous character match 'c'? */
+
+    /* Count how many chars 'c' are present. */
+    for (i = 0; s[i]; i++) {
+	if (s[i] == c) {
+	    if (!last_match) {
+		count++;
+		last_match = 1;
+	    }
+	} else {
+	    last_match = 0;
+	}
+    }
+    if (i > 0 && s[i-1] == c)
+	count--; /* characters at the end don't count. */
+    count++; /* will have one more than the number of split characters. */
+
+    /* Need one extra for the terminating NULL. */
+    if ((ss = calloc(count + 1, sizeof(*ss))) == NULL)
+	return -1;
+    start = 0;
+    last_match = 1;
+    for (i = 0, j = 0; s[i]; i++) {
+	if (s[i] == c) {
+	    if (!last_match) {
+		if ((ss[j] = strndup(s + start, i - start)) == NULL) {
+		    free_sstr(ss);
+		    return -1;
+		}
+		j++;
+		last_match = 1;
+	    }
+	    start = i + 1;
+	} else {
+	    last_match = 0;
+	}
+    }
+    *sstr = ss;
+    if (slen)
+	*slen = count;
+    return 0;
+}
+
+int
+xmldb_add_stateonly(clixon_handle h, char *prefix, char *namespace,
+		    char *path,
+		    int (*getstate)(void *, cxobj **), void *sdata)
+{
+    int                           retval = -1;
+    cvec                         *c;
+    cg_var                       *cv = NULL;
+    struct clixon_stateonly_data *sodata = NULL;
+
+    c = clicon_data_cvec_get(h, "stateonly");
+    if (!c) {
+	c = cvec_new(0);
+	if (!c) {
+	    clixon_err(OE_XML, 0, "Out of memory allocating statonly cvec");
+	    goto done;
+	}
+	if (clicon_data_cvec_set(h, "stateonly", c) < 0) {
+	    cvec_free(c);
+	    goto done;
+	}
+    }
+    sodata = calloc(1, sizeof(*sodata));
+    if (!sodata) {
+	clixon_err(OE_XML, 0, "Out of memory allocating statonly cvec");
+	goto done;
+    }
+    if ((sodata->nsc = xml_nsctx_init(prefix, namespace)) == NULL)
+	goto done;
+    if (split_str(path, '/', &sodata->path, NULL) < 0) {
+	clixon_err(OE_XML, 0, "Error splitting path");
+	goto done;
+    }
+    sodata->getstate = getstate;
+    sodata->sdata = sdata;
+    cv = cv_new(CGV_VOID);
+    if (!cv)
+	goto done;
+    if (cv_void_set(cv, sodata) < 0)
+	goto done;
+    if (cvec_append_var(c, cv) < 0)
+	goto done;
+    sodata = NULL;
+    cv = NULL;
+ done:
+    if (sodata) {
+	if (sodata->nsc)
+	    xml_nsctx_free(sodata->nsc);
+	if (sodata->path)
+	    free_sstr(sodata->path);
+	free(sodata);
+    }
+    if (cv)
+	cv_free(cv);
+    return retval;
+}
+
 int
 xmldb_read_stateonly(clixon_handle h, const char *db)
 {
     int       retval = -1;
+    int       ret;
     db_elmnt *de;
-    cxobj    *x;
+    cxobj    *x, *xc, *xp, *xn;
+    cvec     *c;
+    int       i;
+
+    c = clicon_data_cvec_get(h, "stateonly");
+    if (!c)
+	return 0;
 
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
         clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
@@ -1053,23 +1197,75 @@ xmldb_read_stateonly(clixon_handle h, const char *db)
         goto done;
     }
 
+    for (i = 0; i < cvec_len(c); i++) {
+	struct clixon_stateonly_data *data;
+	cg_var                       *cv = cvec_i(c, i);
+	int                           j;
+
+	if (!cv)
+	    continue;
+	data = cv_void_get(cv);
+	if (!data)
+	    continue;
+
+	if ((ret = data->getstate(data->sdata, &xn)) < 0)
+	    goto done;
+	if (xn == NULL)
+	    continue;
+
+	xc = x;
+	xp = NULL;
+	for (j = 0; data->path[j]; j++) {
+	    xp = xc;
+	    if ((xc = xml_find(xc, data->path[j])) == NULL)
+		break;
+	}
+	if (xp == NULL) {
+	    xml_free(xn);
+	    continue; /* Empty paths aren't allowed. */
+	}
+	if (xc) {
+	    if (xml_rm(xc) == 0)
+		xml_free(xc);
+	} else {
+	    for (; data->path[j]; j++) {
+		if (data->path[j + 1] == NULL)
+		    break;
+		if ((xp = xml_new(data->path[j], xp, CX_ELMNT)) == NULL) {
+		    xml_free(xn);
+		    goto done;
+		}
+	    }
+	}
+	if (xml_addsub(xp, xn) < 0) {
+	    xml_free(xn);
+	    goto done;
+	}
+	if (xml_sort_recurse(xp) < 0)
+	    goto done;
+    }
+    
     de->de_has_stateonly = 1;
  finished:
     retval = 0;
  done:
+    if (retval == -1)
+	xmldb_remove_stateonly(h, db);
     return retval;
 }
 
 int
 xmldb_remove_stateonly(clixon_handle h, const char *db)
 {
-    int       retval = -1;
-    db_elmnt *de;
-    cxobj    *x;
-    cxobj   **xvec = NULL;
-    size_t    xlen;
-    char     *ns;
-    cvec     *nsc = NULL;
+    int         retval = -1;
+    db_elmnt    *de;
+    cxobj       *x, *xc;
+    cvec        *c;
+    unsigned int i;
+
+    c = clicon_data_cvec_get(h, "stateonly");
+    if (!c)
+	return 0;
 
     if ((de = clicon_db_elmnt_get(h, db)) == NULL){
         clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
@@ -1083,24 +1279,30 @@ xmldb_remove_stateonly(clixon_handle h, const char *db)
         goto done;
     }
 
-    ns = "urn:ietf:params:xml:ns:yang:ietf-system";
-    if ((nsc = xml_nsctx_init(NULL, ns)) == NULL)
-	goto done;
-    if (xpath_vec(x, nsc, "%s", &xvec, &xlen, "/system/authentication") < 0)
-	goto done;
-    if (xlen == 0)
-	goto finished;
-    if (xml_rm(xvec[xlen - 1]) < 0)
-	goto done;
-    xml_free(xvec[xlen - 1]);
+    
+    for (i = 0; i < cvec_len(c); i++) {
+	struct clixon_stateonly_data *data;
+	cg_var                       *cv = cvec_i(c, i);
+	int                           j;
+
+	if (!cv)
+	    continue;
+	data = cv_void_get(cv);
+	if (!data)
+	    continue;
+
+	xc = x;
+	for (j = 0; data->path[j]; j++) {
+	    if ((xc = xml_find(xc, data->path[j])) == NULL)
+		break;
+	}
+	if (xc && xml_rm(xc) == 0)
+	    xml_free(xc);
+    }
  finished:
     de->de_has_stateonly = 0;
     retval = 0;
  done:
-    if (nsc)
-	cvec_free(nsc);
-    if (xvec)
-	free(xvec);
     return retval;
 }
 

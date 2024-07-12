@@ -105,6 +105,9 @@ int xmldb_print(clixon_handle h, FILE *f);
 int xmldb_rename(clixon_handle h, const char *db, const char *newdb, const char *suffix);
 int xmldb_populate(clixon_handle h, const char *db);
 int xmldb_multi_upgrade(clixon_handle h, const char *db);
+int xmldb_add_stateonly(clixon_handle h, char *prefix, char *namespace,
+			char *xpath,
+			int (*getstate)(void *, cxobj **), void *sdata);
 int xmldb_read_stateonly(clixon_handle h, const char *db);
 int xmldb_remove_stateonly(clixon_handle h, const char *db);
 int xmldb_has_stateonly(clixon_handle h, const char *db);
