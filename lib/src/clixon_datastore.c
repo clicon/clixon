@@ -1035,89 +1035,15 @@ xmldb_multi_upgrade(clixon_handle h,
     return retval;
 }
 
-//"/system/authentication"
 struct clixon_stateonly_data {
-    cvec *nsc;
-    char **path;
-    int (*getstate)(void *, cxobj **);
+    cxobj *path;
+    int (*getstate)(void *, cxobj *);
     void *sdata;
 };
 
-static void
-free_sstr(char **sstr)
-{
-    unsigned int i;
-
-    for (i = 0; sstr[i]; i++)
-	free(sstr[i]);
-    free(sstr);
-}
-
-/*
- * Split a string into an array of substrings separated by the
- * character 'c'.  'c' characters at the beginning and end are
- * ignored, and duplicated ones count as one.  The array is NULL
- * terminated, and the number of values (not including the NULL) is
- * returned in slen.  slen may be NULL if you don't care.
- *
- * So if c is '/':
- *    "/a///b/c/"
- * will return
- *    [ "a", "b", "c", NULL ]
- * and slen will be 3.
- */
-static int
-split_str(const char *s, char c, char ***sstr, int *slen)
-{
-    unsigned int i, j, start, count = 0;
-    char       **ss = NULL;
-    int          last_match = 1; /* Did the previous character match 'c'? */
-
-    /* Count how many chars 'c' are present. */
-    for (i = 0; s[i]; i++) {
-	if (s[i] == c) {
-	    if (!last_match) {
-		count++;
-		last_match = 1;
-	    }
-	} else {
-	    last_match = 0;
-	}
-    }
-    if (i > 0 && s[i-1] == c)
-	count--; /* characters at the end don't count. */
-    count++; /* will have one more than the number of split characters. */
-
-    /* Need one extra for the terminating NULL. */
-    if ((ss = calloc(count + 1, sizeof(*ss))) == NULL)
-	return -1;
-    start = 0;
-    last_match = 1;
-    for (i = 0, j = 0; s[i]; i++) {
-	if (s[i] == c) {
-	    if (!last_match) {
-		if ((ss[j] = strndup(s + start, i - start)) == NULL) {
-		    free_sstr(ss);
-		    return -1;
-		}
-		j++;
-		last_match = 1;
-	    }
-	    start = i + 1;
-	} else {
-	    last_match = 0;
-	}
-    }
-    *sstr = ss;
-    if (slen)
-	*slen = count;
-    return 0;
-}
-
 int
-xmldb_add_stateonly(clixon_handle h, char *prefix, char *namespace,
-		    char *path,
-		    int (*getstate)(void *, cxobj **), void *sdata)
+xmldb_add_stateonly(clixon_handle h, cxobj *path,
+		    int (*getstate)(void *, cxobj *), void *sdata)
 {
     int                           retval = -1;
     cvec                         *c;
@@ -1141,14 +1067,9 @@ xmldb_add_stateonly(clixon_handle h, char *prefix, char *namespace,
 	clixon_err(OE_XML, 0, "Out of memory allocating statonly cvec");
 	goto done;
     }
-    if ((sodata->nsc = xml_nsctx_init(prefix, namespace)) == NULL)
-	goto done;
-    if (split_str(path, '/', &sodata->path, NULL) < 0) {
-	clixon_err(OE_XML, 0, "Error splitting path");
-	goto done;
-    }
     sodata->getstate = getstate;
     sodata->sdata = sdata;
+    sodata->path = path;
     cv = cv_new(CGV_VOID);
     if (!cv)
 	goto done;
@@ -1158,14 +1079,10 @@ xmldb_add_stateonly(clixon_handle h, char *prefix, char *namespace,
 	goto done;
     sodata = NULL;
     cv = NULL;
+    retval = 0;
  done:
-    if (sodata) {
-	if (sodata->nsc)
-	    xml_nsctx_free(sodata->nsc);
-	if (sodata->path)
-	    free_sstr(sodata->path);
+    if (sodata)
 	free(sodata);
-    }
     if (cv)
 	cv_free(cv);
     return retval;
@@ -1177,7 +1094,8 @@ xmldb_read_stateonly(clixon_handle h, const char *db)
     int       retval = -1;
     int       ret;
     db_elmnt *de;
-    cxobj    *x, *xc, *xp, *xn;
+    cxobj    *x, *xc, *xp, *xn, *xo;
+    char     *ns;
     cvec     *c;
     int       i;
 
@@ -1200,7 +1118,6 @@ xmldb_read_stateonly(clixon_handle h, const char *db)
     for (i = 0; i < cvec_len(c); i++) {
 	struct clixon_stateonly_data *data;
 	cg_var                       *cv = cvec_i(c, i);
-	int                           j;
 
 	if (!cv)
 	    continue;
@@ -1208,40 +1125,52 @@ xmldb_read_stateonly(clixon_handle h, const char *db)
 	if (!data)
 	    continue;
 
-	if ((ret = data->getstate(data->sdata, &xn)) < 0)
-	    goto done;
-	if (xn == NULL)
-	    continue;
-
 	xc = x;
 	xp = NULL;
-	for (j = 0; data->path[j]; j++) {
+	xn = data->path;
+	while (xn) {
 	    xp = xc;
-	    if ((xc = xml_find(xc, data->path[j])) == NULL)
+	    if ((xc = xml_find(xc, xml_name(xn))) == NULL)
 		break;
+	    xn = xml_child_i_type(xn, 0, CX_ELMNT);
 	}
-	if (xp == NULL) {
-	    xml_free(xn);
+	if (xp == NULL)
 	    continue; /* Empty paths aren't allowed. */
-	}
 	if (xc) {
 	    if (xml_rm(xc) == 0)
 		xml_free(xc);
 	} else {
-	    for (; data->path[j]; j++) {
-		if (data->path[j + 1] == NULL)
-		    break;
-		if ((xp = xml_new(data->path[j], xp, CX_ELMNT)) == NULL) {
-		    xml_free(xn);
+	    while (xn) {
+		cbuf *cb;
+
+		if ((xo = xml_child_i_type(xn, 0, CX_ELMNT)) == NULL)
+		    break; /* Don't do the bottom element of the tree. */
+		if ((cb = cbuf_new()) == NULL) {
+		    clixon_err(OE_XML, 0, "Out of memory");
 		    goto done;
 		}
+		ns = xml_find_type_value(xn, NULL, "xmlns", CX_ATTR);
+		if (ns)
+		    ret = cprintf(cb, "<%s xmlns=\"%s\"/>", xml_name(xn), ns);
+		else
+		    ret = cprintf(cb, "<%s/>", xml_name(xn));
+		if (ret < 0) {
+		    cbuf_free(cb);
+		    goto done;
+		}
+		if (clixon_xml_parse_string(cbuf_get(cb), YB_PARENT, NULL,
+					    &xp, NULL) < 0) {
+		    cbuf_free(cb);
+		    goto done;
+		}
+		cbuf_free(cb);
+		xn = xo;
+		/* Get the newly added child, should be last. */
+		if ((xp = xml_child_i(xp, xml_child_nr(xp) - 1)) == NULL)
+		    goto done; /* FIXME - Shouldn't be possible? */
 	    }
 	}
-	if (xml_addsub(xp, xn) < 0) {
-	    xml_free(xn);
-	    goto done;
-	}
-	if (xml_sort_recurse(xp) < 0)
+	if ((ret = data->getstate(data->sdata, xp)) < 0)
 	    goto done;
     }
     
@@ -1259,7 +1188,7 @@ xmldb_remove_stateonly(clixon_handle h, const char *db)
 {
     int         retval = -1;
     db_elmnt    *de;
-    cxobj       *x, *xc;
+    cxobj       *x, *xc, *xn;
     cvec        *c;
     unsigned int i;
 
@@ -1283,7 +1212,6 @@ xmldb_remove_stateonly(clixon_handle h, const char *db)
     for (i = 0; i < cvec_len(c); i++) {
 	struct clixon_stateonly_data *data;
 	cg_var                       *cv = cvec_i(c, i);
-	int                           j;
 
 	if (!cv)
 	    continue;
@@ -1292,9 +1220,11 @@ xmldb_remove_stateonly(clixon_handle h, const char *db)
 	    continue;
 
 	xc = x;
-	for (j = 0; data->path[j]; j++) {
-	    if ((xc = xml_find(xc, data->path[j])) == NULL)
+	xn = data->path;
+	while (xn) {
+	    if ((xc = xml_find(xc, xml_name(xn))) == NULL)
 		break;
+	    xn = xml_child_i_type(xn, 0, CX_ELMNT);
 	}
 	if (xc && xml_rm(xc) == 0)
 	    xml_free(xc);
