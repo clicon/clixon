@@ -68,6 +68,7 @@
 
 #include "snmp_lib.h"
 #include "snmp_register.h"
+#include "snmp_stream.h"
 
 /* Command line options to be passed to getopt(3) */
 #define SNMP_OPTS "hVD:f:l:C:o:z"
@@ -112,6 +113,7 @@ snmp_terminate(clixon_handle h)
     cxobj     *x = NULL;
     char      *pidfile = clicon_snmp_pidfile(h);
 
+    clixon_snmp_stream_shutdown(h);
     snmp_shutdown(__FUNCTION__);
     shutdown_agent();
     clixon_snmp_api_agent_cleanup();
@@ -581,6 +583,9 @@ main(int    argc,
 
     /* Init and traverse mib-translated yangs and register callbacks */
     if (clixon_snmp_traverse_mibyangs(h) < 0)
+        goto done;
+    /* init snmp stream (traps) */
+    if (clixon_snmp_stream_init(h) < 0)
         goto done;
 
     /* Write pid-file */
