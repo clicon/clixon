@@ -435,7 +435,8 @@ get_nacm_and_reply(clixon_handle        h,
 
 /*! Help function for parsing restconf query parameter and setting netconf attribute
  *
- * If not "unbounded", parse and set a numeric value
+ * Parse and set a uint32 numeric value,
+ * Accept also a default string (such as none/unbounded) which sets value to 0
  * @param[in]     h          Clixon handle
  * @param[in]     name       Name of attribute
  * @param[in]     defaultstr Default string which is accepted and sets value to 0
@@ -514,7 +515,14 @@ list_pagination_hdr(clixon_handle h,
  * @retval    -1       Error
  * @note pagination uses appending xpath with predicate, eg [position()<limit], this may not work 
  *       if there is an existing predicate
- * XXX Lots of this code (in particular at the end) is copy of get_common
+ * XXX Reuse code with get_common
+ * From draft-ietf-netconf-list-pagination-04.txt 3.1:
+   The order is as follows: a server first processes the "where"
+   parameter (see Section 3.1.1), then the "sort-by" parameter (see
+   Section 3.1.2), then the "direction" parameter (see Section 3.1.4),
+   and either a combination of the "offset" parameter (see
+   Section 3.1.5) or the "cursor" parameter (see Section 3.1.6), and
+   lastly "the "limit" parameter (see Section 3.1.7).
  */
 static int
 get_list_pagination(clixon_handle        h,
@@ -534,25 +542,26 @@ get_list_pagination(clixon_handle        h,
     int        retval = -1;
     uint32_t   offset = 0;
     uint32_t   limit = 0;
-    cbuf      *cbpath = NULL;
+    uint32_t   upper;
     int        list_config;
     yang_stmt *ylist;
     cxobj     *xerr = NULL;
     cbuf      *cbmsg = NULL; /* For error msg */
     cxobj     *xret = NULL;
-    char      *xpath2; /* With optional pagination predicate */
     uint32_t   iddb; /* DBs lock, if any */
     int        locked;
     cbuf      *cberr = NULL;
     cxobj    **xvec = NULL;
     size_t     xlen;
-    int        ret;
     cxobj     *x;
+    cxobj     *xj;
+    cxobj     *xp;
     char      *sort_by = NULL;
-#ifdef NOTYET
     char      *direction = NULL;
     char      *where = NULL;
-#endif
+    int        i;
+    int        j;
+    int        ret;
 
     if (cbret == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "cbret is NULL");
@@ -593,65 +602,43 @@ get_list_pagination(clixon_handle        h,
             goto ok;
         }
     }
-    if ((ret = list_pagination_hdr(h, xe, &offset, &limit, cbret)) < 0)
-        goto done;
-#ifdef NOTYET
-    /* direction */
-    if (ret && (x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL){
-        direction = xml_body(x);
-        if (strcmp(direction, "forward") != 0 && strcmp(direction, "reverse") != 0){
+    /* first processes the "where" parameter (see Section 3.1.1) */
+    if ((x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL &&
+        (where = xml_body(x)) != NULL){
+        if (strcmp(where, "unfiltered") == 0)
+            where = NULL;
+    }
+    /* then the "sort-by" parameter (see Section 3.1.2) */
+    if ((x = xml_find_type(xe, NULL, "sort-by", CX_ELMNT)) != NULL){
+        sort_by = xml_body(x);
+        if (strcmp(sort_by, "none") == 0)
+            sort_by = NULL;
+    }
+    /* then the "direction" parameter (see Section 3.1.4) */
+    if ((x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL &&
+        (direction = xml_body(x)) != NULL) {
+        if (strcmp(direction, "forwards") != 0 && strcmp(direction, "backwards") != 0){
             if (netconf_bad_attribute(cbret, "application",
                                       "direction", "Unrecognized value of direction attribute") < 0)
                 goto done;
             goto ok;
         }
+        if (strcmp(direction, "forwards") == 0)
+            direction = NULL;
     }
-    /* where */
-    if (ret && (x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL)
-        where = xml_body(x);
-#endif /* NOTYET */
-    /* sort-by */
-    if (ret && (x = xml_find_type(xe, NULL, "sort-by", CX_ELMNT)) != NULL){
-        sort_by = xml_body(x);
-        if (strcmp(sort_by, "none") == 0)
-            sort_by = NULL;
-    }
+    /* the "offset" parameter (see Section 3.1.5) or
+       NYI: the "cursor" parameter (see Section 3.1.6)
+       lastly "the "limit" parameter (see Section 3.1.7) */
+    if ((ret = list_pagination_hdr(h, xe, &offset, &limit, cbret)) < 0)
+        goto done;
     if (ret == 0)
         goto ok;
     /* Read config */
     switch (content){
     case CONTENT_CONFIG:    /* config data only */
     case CONTENT_ALL:       /* both config and state */
-        /* Build a "predicate" cbuf 
-         * This solution uses xpath predicates to translate "limit" and "offset" to
-         * relational operators <>.
-         */
-        if ((cbpath = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, errno, "cbuf_new");
-            goto done;
-        }
-        /* This uses xpath. Maybe limit should use parameters */
-        if (xpath)
-            cprintf(cbpath, "%s", xpath);
-        else
-            cprintf(cbpath, "/");
-#ifdef NOTYET
-        if (where)
-            cprintf(cbpath, "[%s]", where);
-#endif
-        if (offset){
-            cprintf(cbpath, "[%u <= position()", offset);
-            if (limit)
-                cprintf(cbpath, " and position() < %u", limit+offset);
-            cprintf(cbpath, "]");
-        }
-        else if (limit)
-            cprintf(cbpath, "[position() < %u]", limit);
-
-        /* Append predicate to original xpath and replace it */
-        xpath2 = cbuf_get(cbpath);
-        /* specific xpath */
-        if ((ret = xmldb_get0(h, db, YB_MODULE, nsc, xpath2?xpath2:"/", 1, wdef, &xret, NULL, &xerr)) < 0) {
+        /* Build a "predicate" cbuf */
+        if ((ret = xmldb_get0(h, db, YB_MODULE, nsc, xpath?xpath:"/", 1, wdef, &xret, NULL, &xerr)) < 0) {
             if ((cbmsg = cbuf_new()) == NULL){
                 clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
@@ -672,14 +659,12 @@ get_list_pagination(clixon_handle        h,
             goto done;
         break;
     }/* switch content */
-
-    /* Read state */
-    switch (content){
+    switch (content){     /* Read state */
     case CONTENT_CONFIG:    /* config data only */
         break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
-        if (list_config == 0)
+        if (list_config == 0) /* Special handling */
             break;
         if ((ret = get_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
             goto done;
@@ -697,6 +682,75 @@ get_list_pagination(clixon_handle        h,
             goto done;
     }
     if (list_config){
+        /* first processes the "where" parameter (see Section 3.1.1) */
+        if (where){
+            if (xpath_vec(xret, nsc, "%s[%s]", &xvec, &xlen, xpath?xpath:"/", where) < 0)
+                goto done;
+            for (i=0; i<xlen; i++){
+                if ((x = xvec[i]) == NULL)
+                    break;
+                xml_flag_set(x, XML_FLAG_MARK);
+            }
+            /* Remove everything that is not marked */
+            if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
+                goto done;
+            if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+                          (void*)XML_FLAG_MARK) < 0)
+                goto done;
+        }
+        /* then the "sort-by" parameter (see Section 3.1.2) */
+        if (sort_by){
+            if ((x = xpath_first(xret, nsc, "%s", xpath?xpath:"/")) != NULL &&
+                (xp = xml_parent(x)) != NULL)
+                xml_sort_by(xp, sort_by); // XXX sort_by
+        }
+        /* then the "direction" parameter (see Section 3.1.4), != NULL means backwards */
+        if (direction &&
+            (x = xpath_first(xret, nsc, "%s", xpath?xpath:"/")) != NULL &&
+            (xp = xml_parent(x)) != NULL &&
+            (xvec = xml_childvec_get(xp)) != NULL){
+            j = xml_child_nr(xp);
+            for (i=0; i<j; i++){
+                x = xvec[i];
+                if (xml_type(x) != CX_ELMNT)
+                    continue;
+                j--;
+                for (; j>i; j--){
+                    xj = xvec[j];
+                    if (xml_type(xj) == CX_ELMNT){
+                        xvec[j] = x;
+                        xvec[i] = xj;
+                    }
+                    break;
+                }
+            }
+        }
+        /* the "offset" parameter (see Section 3.1.5)
+           lastly "the "limit" parameter (see Section 3.1.7) */
+        if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
+            goto done;
+        if (limit == 0)
+            upper = xlen;
+        else{
+            if ((upper = offset+limit) > xlen)
+                upper = xlen;
+        }
+        for (i=offset; i<upper; i++){
+            if ((x = xvec[i]) == NULL)
+                break;
+            xml_flag_set(x, XML_FLAG_MARK);
+        }
+        /* Remove everything that is not marked */
+        if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
+            goto done;
+        /* Clear flags */
+        if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+                      (void*)XML_FLAG_MARK) < 0)
+            goto done;
+        if (xvec){
+            free(xvec);
+            xvec = NULL;
+        }
 #ifdef LIST_PAGINATION_REMAINING
         /* Get total/remaining
          */
@@ -752,12 +806,6 @@ get_list_pagination(clixon_handle        h,
     /* Help function to filter out anything that is outside of xpath */
     if (filter_xpath_again(h, yspec, xret, xvec, xlen, xpath, nsc) < 0)
         goto done;
-    if (sort_by){
-        cxobj *x, *xp;
-        if ((x = xpath_first(xret, nsc, "%s", xpath?xpath:"/")) != NULL &&
-            (xp = xml_parent(x)) != NULL)
-            xml_sort_by(xp, sort_by); // XXX sort_by
-    }
 #ifdef LIST_PAGINATION_REMAINING
     /* Add remaining attribute Sec 3.1.5: 
        Any list or leaf-list that is limited includes, on the first element in the result set, 
@@ -787,8 +835,6 @@ get_list_pagination(clixon_handle        h,
         free(xvec);
     if (cbmsg)
         cbuf_free(cbmsg);
-    if (cbpath)
-        cbuf_free(cbpath);
     if (xerr)
         xml_free(xerr);
     if (cberr)

@@ -649,23 +649,23 @@ example_pagination(void            *h0,
                    pagination_data  pd,
                    void            *arg)
 {
-    int               retval = -1;
-    clixon_handle     h = (clixon_handle)h0;
-    int               locked;
-    uint32_t          offset;
-    uint32_t          limit;
-    cxobj            *xstate;
-    cxobj           **xvec = NULL;
-    size_t            xlen = 0;
-    int               i;
-    cxobj            *xt = NULL;
-    yang_stmt        *yspec = NULL;
-    FILE             *fp = NULL;
-    cxobj            *x1;
-    uint32_t          lower;
-    uint32_t          upper;
-    int               ret;
-    cvec             *nsc = NULL;
+    int           retval = -1;
+    clixon_handle h = (clixon_handle)h0;
+    int           locked;
+    uint32_t      offset;
+    uint32_t      limit;
+    cxobj        *xstate;
+    cxobj       **xvec = NULL;
+    size_t        xlen = 0;
+    int           i;
+    cxobj        *xt = NULL;
+    yang_stmt    *yspec = NULL;
+    FILE         *fp = NULL;
+    cxobj        *x1;
+    uint32_t      lower;
+    uint32_t      upper;
+    int           ret;
+    cvec         *nsc = NULL;
 
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)

@@ -17,7 +17,7 @@ to get the idea.
 Most scripts are bash scripts using standard awk/sed etc. There is
 also (at least one) expect script.
 
-Note that some IETF yangs need to be available, by default these are in `/usr/local//share/yang/standard`. You can change this location with configure option `--with-yang-standard-dir=DIR`
+Note that some IETF yangs need to be available, by default these are in `/usr/local/share/yang/standard`. You can change this location with configure option `--with-yang-standard-dir=DIR`
 
 See also the [site.sh](#site-sh) for example for skipping tests or setting some site-specific variables.
 
@@ -40,7 +40,7 @@ To download the openconfig and yang models required for the tests:
 
 Some tests require ssh and even sshd (eg test_netconf_ssh_callhome.sh), and requires generated host-keys:
 ```
-  # ssh-keygen -a
+  # ssh-keygen -A
 ```
 
 ## Continuous Integration

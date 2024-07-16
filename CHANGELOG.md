@@ -16,7 +16,7 @@ Expected: October 2024
 
 ### Features
 
-* List pagination: added sort-by parameter
+* List pagination: Added where, sort-by and direction parameter for configured data
 
 ### C/CLI-API changes on existing features
 
