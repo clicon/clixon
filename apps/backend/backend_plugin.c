@@ -485,20 +485,25 @@ clixon_plugin_lockdb_all(clixon_handle h,
     return retval;
 }
 
-/*! Traverse state data callbacks
+/*! Traverse state data callbacks for partial pagination state callbacks
  * 
+ * Only if list-pagination-partial-state extension is set
  * @param[in]  h      Clixon handle
  * @param[in]  xpath  Registered XPath using canonical prefixes
+ * @param[in]  locked Running datastore is locked by this caller
+ * @param[in]  offset Start of pagination interval
+ * @param[in]  limit  Number of elements (limit)
+ * @param[out] xstate Returned xml state tree
  * @retval     1      OK
  * @retval    -1      Error
  */
 int
 clixon_pagination_cb_call(clixon_handle h,
-                          char        *xpath,
-                          int          locked,
-                          uint32_t     offset,
-                          uint32_t     limit,
-                          cxobj       *xstate)
+                          char         *xpath,
+                          int           locked,
+                          uint32_t      offset,
+                          uint32_t      limit,
+                          cxobj        *xstate)
 {
     int                 retval = -1;
     pagination_data_t   pd;

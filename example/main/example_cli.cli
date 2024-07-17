@@ -97,7 +97,7 @@ show("Show a particular state of the system"){
     		     xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
 		     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
     }
-    pagination("Show list pagination") xpath("Show configuration") <xpath:string>("XPATH expression"), cli_pagination("use xpath var", "es", "http://example.com/ns/example-social", "default", "10");
+    pagination("Show list pagination") xpath("Show configuration") <xpath:string>("XPATH expression"), cli_pagination("use xpath var", "es", "https://example.com/ns/example-social", "default", "10");
     configuration("Show configuration"), cli_show_auto_mode("candidate", "default", true, false, "explicit", "set ");{
        @|example_pipe, cli_show_auto_mode("candidate", "xml", true, false, "explicit");
        default("With-default mode"){

@@ -101,7 +101,7 @@
  * and thus an xpath on the form "../PARENT" may not be evaluated as they should. x0 is eventually 
  * added to its parent but then it is more difficult to check the when condition.
  * This fix add the parent x0p as a "candidate" so that the xpath-eval function can use it as
- * an alernative if it exists.
+ * an alternative if it exists.
  * Note although this solves many usecases involving parents and absolute paths, it still does not
  * solve all usecases, such as absolute usecases where the added node is looked for
  */

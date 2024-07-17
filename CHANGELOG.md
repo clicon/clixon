@@ -17,6 +17,16 @@ Expected: October 2024
 ### Features
 
 * List pagination: Added where, sort-by and direction parameter for configured data
+* New `clixon-lib@2024-04-01.yang` revision
+    - Added: list_pagination_partial_state
+
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* List pagination of large lists
+  * For backward-compatibility, mark the list with extension cl:list_pagination_partial_state extension
+  * New default is to use regular state read mechanism, which could have poorer performance but more functionality
 
 ### C/CLI-API changes on existing features
 

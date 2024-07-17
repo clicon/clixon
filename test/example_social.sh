@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Example-social from draft-netconf-list-pagination-00.txt appendix A.1
 # Assumes variable fexample is set to name of yang file
-# Note audit-logs/audit-log/outcome is changed from mandatory to default
 # Also: leaf-list member/state/numbers is added
+# Mark deviation from original with "Clixon"
 
 cat <<EOF > $fexample
    module example-social {
      yang-version 1.1;
-     namespace "http://example.com/ns/example-social";
+     namespace "https://example.com/ns/example-social";
      prefix es;
 
      import ietf-yang-types {
@@ -20,18 +20,21 @@ cat <<EOF > $fexample
        reference
          "RFC 6991: Common YANG Data Types";
      }
-
      import iana-crypt-hash {
        prefix ianach;
        reference
          "RFC 7317: A YANG Data Model for System Management";
      }
-
+     import clixon-lib { // Clixon
+       prefix cl;
+     }
      organization "Example, Inc.";
      contact      "support@example.com";
      description  "Example Social Data Model.";
 
-     revision 2021-07-21 { /* clixon edit */
+
+//    revision YYYY-MM-DD {
+    revision 2021-07-21 { // Clixon
        description
          "Initial version.";
        reference
@@ -58,7 +61,8 @@ cat <<EOF > $fexample
          }
 
          leaf email-address {
-           type string;
+//             type inet:email-address;
+           type string; // Clixon
            mandatory true;
            description
              "The member's email address.";
@@ -119,7 +123,7 @@ cat <<EOF > $fexample
          leaf-list following {
            type leafref {
              path "/members/member/member-id";
-             require-instance false;
+             require-instance false; // Clixon
            }
            description
              "Other members this members is following.";
@@ -216,7 +220,7 @@ cat <<EOF > $fexample
            config false;
            description
              "Operational state members values.";
-           leaf-list numbers {
+           leaf-list numbers { // Clixon
              description "config false extension";
              type int32;
            }
@@ -261,6 +265,7 @@ cat <<EOF > $fexample
        list audit-log {
          description
            "List of audit logs.";
+         cl:list_pagination_partial_state; // Clixon
          leaf timestamp {
            type yang:date-and-time;
            mandatory true;
@@ -287,7 +292,7 @@ cat <<EOF > $fexample
          }
          leaf outcome {
            type boolean;
-           default true; /* Note changed from mandatory in original */
+           mandatory true;
            description
              "Indicate if request was permitted.";
          }

@@ -1,4 +1,5 @@
 #!/usr/bin/env expect -f
+# Use of expect to emulate a terminal with given size, difficult in shell-based test-scripts
 # Tests of paginated state scrolling using expect. Simply that --More-- is shown and
 # that first two pages scroll OK. More tests could be done.
 # Arguments:
@@ -10,7 +11,7 @@
 set timeout 1
 #log_user 0
 
-set stty_init "rows 20 cols 128"
+set stty_init "rows 22 cols 128"
 
 send_user "\nTest State paginate cli scrolling\n"
 

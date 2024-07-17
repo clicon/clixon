@@ -495,6 +495,87 @@ list_pagination_hdr(clixon_handle h,
     return retval;
 }
 
+/*! Special handling of state data for partial reading
+ *
+ * Only if extension list-pagination-partial-state is enabled on the list
+ * @param[in]  h       Clixon handle
+ * @param[in]  ce      Client entry, for locking
+ * @param[in]  yspec   (Top-level) yang spec
+ * @param[in]  xpath   XPath point to object to get
+ * @param[in]  offset  Start of pagination interval
+ * @param[in]  limit   Number of elements (limit)
+ * @param[out] xret    Returned xml state tree
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @retval     1       OK
+ * @retval     0       Fail, cbret contains error message
+ * @retval    -1       Error
+ */
+static int
+get_pagination_partial(clixon_handle        h,
+                       struct client_entry *ce,
+                       yang_stmt           *yspec,
+                       char                *xpath,
+                       uint32_t             offset,
+                       uint32_t             limit,
+                       cxobj               *xret,
+                       cbuf                *cbret)
+{
+    int      retval = -1;
+    int      locked;
+    cbuf    *cberr = NULL;
+    uint32_t iddb; /* DBs lock, if any */
+    cxobj   *xerr = NULL;
+    int      ret;
+
+    if ((iddb = xmldb_islocked(h, "running")) != 0 &&
+        iddb == ce->ce_id)
+        locked = 1;
+    else
+        locked = 0;
+    if ((ret = clixon_pagination_cb_call(h, xpath, locked,
+                                         offset, limit,
+                                         xret)) < 0)
+        goto done;
+    if (ret == 0){
+        if ((cberr = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        /* error reason should be in clixon_err_reason */
+        cprintf(cberr, "Internal error, pagination state callback invalid return : %s",
+                clixon_err_reason());
+        if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
+            goto done;
+        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+        goto fail;
+    }
+
+    /* System makes the binding */
+    if ((ret = xml_bind_yang(h, xret, YB_MODULE, yspec, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        clixon_debug_xml(CLIXON_DBG_BACKEND, xret, "Yang bind pagination state");
+        if (clixon_netconf_internal_error(xerr,
+                                          ". Internal error, state callback returned invalid XML",
+                                          NULL) < 0)
+            goto done;
+        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+        goto fail;
+    }
+    retval = 1;
+ done:
+    if (cberr)
+        cbuf_free(cberr);
+    if (xerr)
+        xml_free(xerr);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Specialized get for list-pagination
  *
  * It is specialized enough to have its own function. Specifically, extra attributes as well
@@ -543,14 +624,11 @@ get_list_pagination(clixon_handle        h,
     uint32_t   offset = 0;
     uint32_t   limit = 0;
     uint32_t   upper;
-    int        list_config;
+    int        partial_pagination_cb = 0; /* use state partial reads callback */
     yang_stmt *ylist;
     cxobj     *xerr = NULL;
     cbuf      *cbmsg = NULL; /* For error msg */
     cxobj     *xret = NULL;
-    uint32_t   iddb; /* DBs lock, if any */
-    int        locked;
-    cbuf      *cberr = NULL;
     cxobj    **xvec = NULL;
     size_t     xlen;
     cxobj     *x;
@@ -559,6 +637,7 @@ get_list_pagination(clixon_handle        h,
     char      *sort_by = NULL;
     char      *direction = NULL;
     char      *where = NULL;
+    int        extflag = 0;
     int        i;
     int        j;
     int        ret;
@@ -588,7 +667,7 @@ get_list_pagination(clixon_handle        h,
         goto ok;
     }
     /* Sanity checks on state/config */
-    if ((list_config = yang_config_ancestor(ylist)) != 0){ /* config list */
+    if (yang_config_ancestor(ylist) != 0){ /* config list */
         if (content == CONTENT_NONCONFIG){
             if (netconf_invalid_value(cbret, "application", "list-pagination targets a config list but content request is nonconfig") < 0)
                 goto done;
@@ -601,7 +680,13 @@ get_list_pagination(clixon_handle        h,
                 goto done;
             goto ok;
         }
+        if (yang_extension_value(ylist, "list-pagination-partial-state", CLIXON_LIB_NS, &extflag, NULL) < 0)
+            goto done;
+        if (extflag){ /* pagination_cb / partial state API */
+            partial_pagination_cb = 1;
+        }
     }
+
     /* first processes the "where" parameter (see Section 3.1.1) */
     if ((x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL &&
         (where = xml_body(x)) != NULL){
@@ -664,7 +749,7 @@ get_list_pagination(clixon_handle        h,
         break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
-        if (list_config == 0) /* Special handling */
+        if (partial_pagination_cb) /* Partial reads, special handling */
             break;
         if ((ret = get_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
             goto done;
@@ -681,7 +766,13 @@ get_list_pagination(clixon_handle        h,
         if (xml_default_recurse(xret, 1, 0) < 0)
             goto done;
     }
-    if (list_config){
+    if (partial_pagination_cb) {
+        if ((ret = get_pagination_partial(h, ce, yspec, xpath, offset, limit, xret, cbret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto ok;
+    }
+    else {
         /* first processes the "where" parameter (see Section 3.1.1) */
         if (where){
             if (xpath_vec(xret, nsc, "%s[%s]", &xvec, &xlen, xpath?xpath:"/", where) < 0)
@@ -762,45 +853,6 @@ get_list_pagination(clixon_handle        h,
         }
 #endif
     }
-    else {/* Check if running locked (by this session) */
-        if ((iddb = xmldb_islocked(h, "running")) != 0 &&
-            iddb == ce->ce_id)
-            locked = 1;
-        else
-            locked = 0;
-        if ((ret = clixon_pagination_cb_call(h, xpath, locked,
-                                             offset, limit,
-                                             xret)) < 0)
-            goto done;
-        if (ret == 0){
-            if ((cberr = cbuf_new()) == NULL){
-                clixon_err(OE_UNIX, errno, "cbuf_new");
-                goto done;
-            }
-            /* error reason should be in clixon_err_reason */
-            cprintf(cberr, "Internal error, pagination state callback invalid return : %s",
-                    clixon_err_reason());
-            if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
-                goto done;
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
-                goto done;
-            goto ok;
-        }
-
-        /* System makes the binding */
-        if ((ret = xml_bind_yang(h, xret, YB_MODULE, yspec, &xerr)) < 0)
-            goto done;
-        if (ret == 0){
-            clixon_debug_xml(CLIXON_DBG_BACKEND, xret, "Yang bind pagination state");
-            if (clixon_netconf_internal_error(xerr,
-                                              ". Internal error, state callback returned invalid XML",
-                                              NULL) < 0)
-                goto done;
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
-                goto done;
-            goto ok;
-        }
-    }
     if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
         goto done;
     /* Help function to filter out anything that is outside of xpath */
@@ -837,8 +889,6 @@ get_list_pagination(clixon_handle        h,
         cbuf_free(cbmsg);
     if (xerr)
         xml_free(xerr);
-    if (cberr)
-        cbuf_free(cberr);
     if (xret)
         xml_free(xret);
     return retval;
