@@ -293,6 +293,11 @@ startup_common(clixon_handle       h,
     if (xml_default_recurse(xt, 0, 0) < 0)
         goto done;
 
+    /*
+     * At startup we always remove the stateonly data from the XML
+     * tree here.  That data always comes from the system, not from
+     * defaults or from the startup database.
+     */
     xmldb_remove_stateonly(h, db, xt);
 
     /* Handcraft transition with with only add tree */
