@@ -571,7 +571,7 @@ from_client_edit_config(clixon_handle h,
     }
     had_stateonly = xmldb_has_stateonly(h, target);
     if (!had_stateonly) {
-	if (xmldb_read_stateonly(h, target) < 0)
+	if (xmldb_read_stateonly(h, target, NULL) < 0)
 	    goto done;
     }
     if ((cbx = cbuf_new()) == NULL){
@@ -760,7 +760,7 @@ from_client_edit_config(clixon_handle h,
     if (cbx)
         cbuf_free(cbx);
     if (!had_stateonly && retval < 0)
-	xmldb_remove_stateonly(h, target);
+	xmldb_remove_stateonly(h, target, NULL);
     clixon_debug(CLIXON_DBG_BACKEND, "done cbret:%s", cbuf_get(cbret));
     return retval;
 } /* from_client_edit_config */

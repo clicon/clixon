@@ -293,6 +293,8 @@ startup_common(clixon_handle       h,
     if (xml_default_recurse(xt, 0, 0) < 0)
         goto done;
 
+    xmldb_remove_stateonly(h, db, xt);
+
     /* Handcraft transition with with only add tree */
     td->td_target = xt;
     xt = NULL;
@@ -430,7 +432,7 @@ startup_commit(clixon_handle  h,
     /* [Delete and] create running db */
     if (xmldb_exists(h, "running") == 1){
         if (xmldb_delete(h, "running") != 0 && errno != ENOENT)
-            goto done;;
+            goto done;
     }
     if (xmldb_create(h, "running") < 0)
         goto done;
@@ -858,7 +860,7 @@ candidate_commit(clixon_handle  h,
         goto done;
     /* 8. Success: Copy candidate to running 
      */
-    xmldb_remove_stateonly(h, db);
+    xmldb_remove_stateonly(h, db, NULL);
     if (xmldb_copy(h, db, "running") < 0)
         goto done;
     xmldb_modified_set(h, db, 0); /* reset dirty bit */
@@ -881,7 +883,7 @@ candidate_commit(clixon_handle  h,
     if (td){
         if (retval < 1) {
             plugin_transaction_abort_all(h, td);
-	    xmldb_remove_stateonly(h, db);
+	    xmldb_remove_stateonly(h, db, NULL);
 	}
         transaction_free(td);
     }

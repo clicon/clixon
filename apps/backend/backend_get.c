@@ -947,7 +947,7 @@ get_common(clixon_handle        h,
     int              had_stateonly = xmldb_has_stateonly(h, db);
 
     if (!had_stateonly) {
-	if (xmldb_read_stateonly(h, db) < 0)
+	if (xmldb_read_stateonly(h, db, NULL) < 0)
 	    goto done;
     }
 
@@ -1170,7 +1170,7 @@ get_common(clixon_handle        h,
     if (xpath01)
         free(xpath01);
     if (!had_stateonly)
-	xmldb_remove_stateonly(h, db);
+	xmldb_remove_stateonly(h, db, NULL);
     return retval;
 }
 

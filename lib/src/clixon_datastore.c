@@ -1041,6 +1041,22 @@ struct clixon_stateonly_data {
     void *sdata;
 };
 
+/*! Add a namespace that is not stored in the disk database, only in system state
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  path   XML representing the path not stored
+ * @param[in]  getstate Function to fetch the state
+ * @param[in]  sdata  Passed to getstate() when called
+ * @retval     0      OK
+ * @retval    -1      General error, check specific clicon_errno, clicon_suberrno
+ *
+ * Some data may not be suitable for storing on disk.  It may be
+ * security sensitive, or it may be dynamic outside the clixon database
+ * and may change without clixon knowing.  This adds an XML path that
+ * will be re-requested each time during an operation and will be removed
+ * before storage to disk.  When the data is needed to put into one of the
+ * in-memory trees, the getstate function is called to fetch that data.
+ */
 int
 xmldb_add_stateonly(clixon_handle h, cxobj *path,
 		    int (*getstate)(void *, cxobj *), void *sdata)
@@ -1088,13 +1104,21 @@ xmldb_add_stateonly(clixon_handle h, cxobj *path,
     return retval;
 }
 
+/*! Read stateonly data into the database
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  db     The database to get the statedata for
+ * @param[in]  x      The xml data, if NULL fetch from the database
+ * @retval     0      OK
+ * @retval    -1      General error, check specific clicon_errno, clicon_suberrno
+ */
 int
-xmldb_read_stateonly(clixon_handle h, const char *db)
+xmldb_read_stateonly(clixon_handle h, const char *db, cxobj *x)
 {
     int       retval = -1;
     int       ret;
     db_elmnt *de;
-    cxobj    *x, *xc, *xp, *xn, *xo;
+    cxobj    *xc, *xp, *xn, *xo;
     char     *ns;
     cvec     *c;
     int       i;
@@ -1110,9 +1134,11 @@ xmldb_read_stateonly(clixon_handle h, const char *db)
     if (de->de_has_stateonly)
 	goto finished;
 
-    if ((x = xmldb_cache_get(h, db)) == NULL){
-        clixon_err(OE_XML, 0, "XML cache not found");
-        goto done;
+    if (!x) {
+	if ((x = xmldb_cache_get(h, db)) == NULL){
+	    clixon_err(OE_XML, 0, "XML cache not found");
+	    goto done;
+	}
     }
 
     for (i = 0; i < cvec_len(c); i++) {
@@ -1179,16 +1205,24 @@ xmldb_read_stateonly(clixon_handle h, const char *db)
     retval = 0;
  done:
     if (retval == -1)
-	xmldb_remove_stateonly(h, db);
+	xmldb_remove_stateonly(h, db, x);
     return retval;
 }
 
+/*! Remove stateonly data from the database
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  db     The database to remove the statedata from
+ * @param[in]  x      The xml data, if NULL fetch from the database
+ * @retval     0      OK
+ * @retval    -1      General error, check specific clicon_errno, clicon_suberrno
+ */
 int
-xmldb_remove_stateonly(clixon_handle h, const char *db)
+xmldb_remove_stateonly(clixon_handle h, const char *db, cxobj *x)
 {
     int         retval = -1;
     db_elmnt    *de;
-    cxobj       *x, *xc, *xn;
+    cxobj       *xc, *xn;
     cvec        *c;
     unsigned int i;
 
@@ -1200,14 +1234,16 @@ xmldb_remove_stateonly(clixon_handle h, const char *db)
         clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
         return -1;
     }
-    if (!de->de_has_stateonly)
-	goto finished;
 
-    if ((x = xmldb_cache_get(h, db)) == NULL){
-        clixon_err(OE_XML, 0, "XML cache not found");
-        goto done;
+    if (!x) {
+	if (!de->de_has_stateonly)
+	    goto finished;
+
+	if ((x = xmldb_cache_get(h, db)) == NULL){
+	    clixon_err(OE_XML, 0, "XML cache not found");
+	    goto done;
+	}
     }
-
     
     for (i = 0; i < cvec_len(c); i++) {
 	struct clixon_stateonly_data *data;
@@ -1236,14 +1272,19 @@ xmldb_remove_stateonly(clixon_handle h, const char *db)
     return retval;
 }
 
+/*! Does the database have any stateonly data?
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  db     The database to get if stateonly data present
+ * @retval     0      No stateonly data is present
+ * @retval     1      stateonly data is present
+ */
 int
 xmldb_has_stateonly(clixon_handle h, const char *db)
 {
     db_elmnt *de;
 
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
-        return -1;
-    }
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL)
+        return 0;
     return de->de_has_stateonly;
 }
