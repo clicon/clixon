@@ -497,6 +497,7 @@ validate_common(clixon_handle       h,
     int         i;
     cxobj      *xn;
     int         ret;
+    int         running_had_stateonly = 1;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -523,6 +524,13 @@ validate_common(clixon_handle       h,
         goto done;
     if (ret == 0)
         goto fail;
+    running_had_stateonly = xmldb_has_stateonly(h, "running");
+    if (!running_had_stateonly) {
+	if ((ret = xmldb_read_stateonly(h, "running", td->td_src)) < 0) {
+	    running_had_stateonly = 1;
+	    goto done;
+	}
+    }
     /* Clear flags xpath for get */
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
@@ -580,6 +588,8 @@ validate_common(clixon_handle       h,
         goto done;
     retval = 1;
  done:
+    if (!running_had_stateonly && td->td_src)
+	xmldb_remove_stateonly(h, "running", td->td_src);
     return retval;
  fail:
     retval = 0;
