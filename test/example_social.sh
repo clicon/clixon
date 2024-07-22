@@ -265,7 +265,7 @@ cat <<EOF > $fexample
        list audit-log {
          description
            "List of audit logs.";
-         cl:list_pagination_partial_state; // Clixon
+         cl:list-pagination-partial-state; // Clixon
          leaf timestamp {
            type yang:date-and-time;
            mandatory true;

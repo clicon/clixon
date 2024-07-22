@@ -7,7 +7,7 @@
 # 3. CLI get audit logs (only interactive)
 # This tests contains a large state list: audit-logs from the example
 # Only CLI is used
-# Test also of list_pagination_partial_state extension
+# Test also of list-pagination-partial-state extension
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

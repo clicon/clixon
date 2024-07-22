@@ -18,7 +18,7 @@ Expected: October 2024
 
 * List pagination: Added where, sort-by and direction parameter for configured data
 * New `clixon-lib@2024-04-01.yang` revision
-    - Added: list_pagination_partial_state
+    - Added: list-pagination-partial-state extension
 
 ### API changes on existing protocol/config features
 
