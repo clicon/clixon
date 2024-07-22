@@ -133,7 +133,6 @@ validate_leafref(cxobj     *xt,
     cvec        *nsc = NULL;
     cbuf        *cberr = NULL;
     char        *path_arg;
-    yang_stmt   *ymod;
     cg_var      *cv;
     int          require_instance = 1;
 
@@ -179,13 +178,12 @@ validate_leafref(cxobj     *xt,
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
-        ymod = ys_module(ys);
-        cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s in %s.yang:%d",
-                leafrefbody,
-                path_arg,
-                yang_argument_get(ymod),
-                yang_linenum_get(ys));
-        if (xret && netconf_bad_element_xml(xret, "application", leafrefbody, cbuf_get(cberr)) < 0)
+        /* RFC 7950 15.5 requires:
+           error-tag:      data-missing
+           error-app-tag:  instance-required
+           error-path:     Path to the instance-identifier or leafref leaf.
+         */
+        if (xret && netconf_missing_yang_xml(xret, path_arg, "instance-required", leafrefbody, NULL) < 0)
             goto done;
         goto fail;
     }

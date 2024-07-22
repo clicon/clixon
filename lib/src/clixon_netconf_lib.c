@@ -1060,32 +1060,30 @@ netconf_data_missing_xml(cxobj **xret,
     return retval;
 }
 
-/*! Create Netconf data-missing / missing-choice as defeind in RFC 7950 15.6
+/*! Create Netconf data-missing / missing-choice as defined in RFC 7950 15.5/15.6
  *
- * If a NETCONF operation would result in configuration data where no
- * nodes exists in a mandatory choice, the following error MUST be
- * returned:
- * @param[out] xret       Error XML tree. Free with xml_free after use
- * @param[in]  x          Element with missing choice
- * @param[in]  name       Name of missing mandatory choice   
- * @param[in]  message    Error message
- * @retval     0       OK
- * @retval    -1       Error
+ * @param[out] xret     Error XML tree. Free with xml_free after use
+ * @param[in]  path     Path
+ * @param[in]  app-tag  Error app-tag
+ * @param[in]  info     Error info
+ * @param[in]  message  Error message
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
-netconf_missing_choice_xml(cxobj **xret,
-                           cxobj  *x,
-                           char   *name,
-                           char   *message)
+netconf_missing_yang_xml(cxobj **xret,
+                         char   *path,
+                         char   *app_tag,
+                         char   *info,
+                         char   *message)
 {
     int    retval = -1;
     char  *encstr = NULL;
     cxobj *xerr;
-    char  *path = NULL;
     char  *encpath = NULL;
 
-    if (xret == NULL || name == NULL){
-        clixon_err(OE_NETCONF, EINVAL, "xret or name is NULL");
+    if (xret == NULL || path == NULL){
+        clixon_err(OE_NETCONF, EINVAL, "xret or path is NULL");
         goto done;      
     }
     if (*xret == NULL){
@@ -1098,21 +1096,23 @@ netconf_missing_choice_xml(cxobj **xret,
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
-    /* error-path:     Path to the element with the missing choice. */
-    if (xml2xpath(x, NULL, 0, 0, &path) < 0)
-        goto done;
     if (xml_chardata_encode(&encpath, 0, "%s", path) < 0)
         goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
                             "<error-type>application</error-type>"
                             "<error-tag>data-missing</error-tag>"
-                            "<error-app-tag>missing-choice</error-app-tag>"
-                            "<error-path>%s</error-path>"
-                            "<error-info><missing-choice xmlns=\"%s\">%s</missing-choice></error-info>"
-                            "<error-severity>error</error-severity>",
-                            encpath,
-                            YANG_XML_NAMESPACE,
-                            name) < 0)
+                            "<error-app-tag>%s</error-app-tag>"
+                            "<error-path>%s</error-path>",
+                            app_tag,
+                            encpath) < 0)
+        goto done;
+    if (info) {
+        if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+                                "<error-info>%s</error-info>", info) < 0)
+            goto done;
+    }
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+                            "<error-severity>error</error-severity>") < 0)
         goto done;
     if (message){
         if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
@@ -1123,12 +1123,56 @@ netconf_missing_choice_xml(cxobj **xret,
     }
     retval = 0;
  done:
-    if (path)
-        free(path);
     if (encstr)
         free(encstr);
     if (encpath)
         free(encpath);
+    return retval;
+}
+
+/*! Create Netconf data-missing / missing-choice as defined in RFC 7950 15.6
+ *
+ * If a NETCONF operation would result in configuration data where no
+ * nodes exists in a mandatory choice, the following error MUST be
+ * returned:
+ * @param[out] xret       Error XML tree. Free with xml_free after use
+ * @param[in]  x          Element with missing choice
+ * @param[in]  name       Name of missing mandatory choice
+ * @param[in]  message    Error message
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+
+int
+netconf_missing_choice_xml(cxobj **xret,
+                           cxobj  *x,
+                           char   *name,
+                           char   *message)
+{
+    int    retval = -1;
+    cbuf  *cbinfo = NULL;
+    char  *path = NULL;
+
+    if (name == NULL){
+        clixon_err(OE_NETCONF, EINVAL, "xret or name is NULL");
+        goto done;
+    }
+    /* error-path:  Path to the element. */
+    if (xml2xpath(x, NULL, 0, 0, &path) < 0)
+        goto done;
+    if ((cbinfo = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cbinfo, "<missing-choice xmlns=\"%s\">%s</missing-choice>", YANG_XML_NAMESPACE, name);
+    if (netconf_missing_yang_xml(xret, path, "missing-choice", cbuf_get(cbinfo), message) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (path)
+        free(path);
+    if (cbinfo)
+        cbuf_free(cbinfo);
     return retval;
 }
 

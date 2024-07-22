@@ -24,8 +24,9 @@ Expected: October 2024
 
 Users may have to change how they access the system
 
+* NETCONF error returns of failed leafref references, see https://github.com/clicon/clixon/issues/536
 * List pagination of large lists
-  * For backward-compatibility, mark the list with extension cl:list_pagination_partial_state extension
+  * For backward-compatibility, mark the list with extension cl:list-pagination-partial-state extension
   * New default is to use regular state read mechanism, which could have poorer performance but more functionality
 
 ### C/CLI-API changes on existing features
@@ -36,6 +37,10 @@ Developers may need to change their code
   * Use an integer iteratorinstead of yang object
   * Replace `y1 = NULL; y1 = yn_each(y0, y1)` with `int inext = 0; yn_iter(y0, &inext)`
 * Add `keyw`argument to `yang_stats()`
+
+### Corrected Busg
+
+* Fixed: [NETCONF error reply from failed leafref rquire-instance does not comply to RFC 7950](https://github.com/clicon/clixon/issues/536)
 
 ## 7.1.0
 3 July 2024

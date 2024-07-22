@@ -243,7 +243,7 @@ EOF
     expectpart "$($clixon_cli -f $cfg -1 set table parameter x index1 a scope 43)" 0 ""
     
     new "validate expect fail"
-    expectpart "$($clixon_cli -f $cfg -1 validate 2>&1)" 255 "bad-element Leafref validation failed: No leaf 43 matching path"
+    expectpart "$($clixon_cli -f $cfg -1 validate 2>&1)" 255 "data-missing" "instance-required : ../../value0"
 
     new "set leafref expect fail"
     expectpart "$($clixon_cli -f $cfg -1 set table parameter x value0 43)" 0 ""
