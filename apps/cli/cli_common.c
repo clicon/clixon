@@ -2086,3 +2086,207 @@ cli_process_control(clixon_handle h,
         cbuf_free(cb);
     return retval;
 }
+
+/*! Alias function
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  cvv   Vector of variables: function parameters
+ * @param[in]  argv  Arguments given at the callback: this is the command to be executed
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @see cliread_eval  original fn
+ */
+int
+cli_alias_call(cligen_handle h,
+               cvec         *cvv,
+               cvec         *argv)
+{
+    return cligen_alias_call(cli_cligen(h), cvv, argv);
+}
+
+/*! Define an alias CLI command, insert in top-level of parse-tree
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  cvv   Vector of variables: function parameters
+ * @param[in]  argv   Arguments given at the callback: <name> <command> [<treename>]
+ *   <name>    Name of variable containing alias name
+ *   <command> Name of variable containing alias command
+ *   <treename> Optional name of treename (mode), default is active pt
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @code
+ *   alias <name:string> <command:rest>, alias_cb("name", "command");
+ * @endcode
+ * @see cli_aliasref_add  add using a tree reference
+ */
+int
+cli_alias_add(clixon_handle h,
+              cvec         *cvv,
+              cvec         *argv)
+{
+    int     retval = -1;
+    char   *cvname;
+    char   *cvcommand;
+    cg_var *cv;
+    char   *name;
+    char   *command;
+    char   *treename = NULL;
+    int     argi = 0;
+
+    if (argv == NULL || cvec_len(argv) < 2 || cvec_len(argv) > 3){
+        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: <name> <command> [<ptname>]");
+        goto done;
+    }
+    /* Indirectopn of name argument */
+    if ((cvname = cvec_i_str(argv, argi++)) == NULL){
+        clixon_err(OE_PLUGIN, 0, "No <name> argument");
+        goto done;
+    }
+    if ((cv = cvec_find_var(cvv, cvname)) == NULL){
+        clixon_err(OE_PLUGIN, 0, "Expected name argument");
+        goto done;
+    }
+    else
+        name = cv_string_get(cv);
+    /* Indirection of command argument */
+    if ((cvcommand = cvec_i_str(argv, argi++)) == NULL){
+        clixon_err(OE_PLUGIN, 0, "No <command> argument");
+        goto done;
+    }
+    if ((cv = cvec_find_var(cvv, cvcommand)) == NULL){
+        clixon_err(OE_PLUGIN, 0, "Expected command argument");
+        goto done;
+    }
+    else
+        command = cv_string_get(cv);
+    /* Optional parse-tree name argument */
+    if (cvec_len(argv) > argi)
+        treename = cvec_i_str(argv, argi++);
+    if (cligen_alias_add(cli_cligen(h), treename, name, NULL, command, cli_alias_call) < 0){
+        clixon_err(OE_PLUGIN, errno, "Error adding alias %s", name);
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Define an alias CLI command via a tree refernce, insert in top-level of parse-tree
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  cvv   Vector of variables: function parameters
+ * @param[in]  argv   Arguments given at the callback: <name>
+ *   <name>    Name of variable containing alias name
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @code
+ *   aliasref <name:string> , aliasref_cb("name");
+ * @endcode
+ * @see cli_alias_add  add a constant string command
+ * @note  Not generic implementation, assumes cmd string: <cmd> <name> <rest>
+ */
+int
+cli_aliasref_add(clixon_handle h,
+                 cvec         *cvv,
+                 cvec         *argv)
+{
+    int     retval = -1;
+    cg_var *cv;
+    char   *name;
+    char   *command =NULL;
+    char   *treename = NULL;
+
+    /* argv handling is ad-hoc, unkown argv list */
+    if ((cv = cvec_find_var(cvv, "name")) == NULL){
+        clixon_err(OE_PLUGIN, 0, "Expected name argument");
+        goto done;
+    }
+    else
+        name = cv_string_get(cv);
+    if ((command = cvec_i_str(cvv, 0)) == NULL){
+        clixon_err(OE_PLUGIN, 0, "Expected cvv[0]");
+        goto done;
+    }
+    /* skip fisrt two elements */
+    if ((command = index(command, ' ')) == NULL) {
+        clixon_err(OE_PLUGIN, 0, "No command string");
+        goto done;
+    }
+    command++;
+    if ((command = index(command, ' ')) == NULL) {
+        clixon_err(OE_PLUGIN, 0, "No command string");
+        goto done;
+    }
+    command++;
+    if (cligen_alias_add(cli_cligen(h), treename, name, NULL, command, cli_alias_call) < 0){
+        clixon_err(OE_PLUGIN, errno, "Error adding alias %s", name);
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+int
+cli_alias_show(clixon_handle h,
+               cvec         *cvv,
+               cvec         *argv)
+{
+    int           retval = -1;
+    pt_head      *ph;
+    char         *phname = NULL;
+    cligen_handle ch = cli_cligen(h);
+    int           i;
+    cg_obj       *co;
+    parse_tree   *pt;
+    cg_callback  *cc;
+    cg_var       *cv;
+    cbuf         *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (phname == NULL) {
+        if ((ph = cligen_ph_active_get(ch)) == NULL){
+            errno = ENOENT;
+            goto done;
+        }
+    }
+    else {
+        if ((ph = cligen_ph_find(ch, phname)) == NULL) {
+            errno = ENOENT;
+            goto done;
+        }
+    }
+    if ((pt = cligen_ph_parsetree_get(ph)) == NULL){
+        errno = ENOENT;
+        goto done;
+    }
+    for (i=0; i<pt_len_get(pt); i++){
+        if ((co = pt_vec_i_get(pt, i)) == NULL)
+            continue;
+        if (co->co_type == CO_EMPTY)
+            continue;
+        if (co_flags_get(co, CO_FLAGS_ALIAS) == 0x0)
+            continue;
+        cligen_output(stdout, "%s:", co->co_command);
+        if ((cc = co->co_callbacks) != NULL && cc->cc_cvec){
+            cbuf_reset(cb);
+            cv = NULL;
+            while ((cv = cvec_each(cc->cc_cvec, cv)) != NULL) {
+                cprintf(cb, " ");
+                if (cv2cbuf(cv, cb) < 0){
+                    clixon_err(OE_UNIX, errno, "cv2cbuf");
+                    goto done;
+                }
+            }
+            cligen_output(stdout, "%s\n", cbuf_get(cb));
+        }
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}

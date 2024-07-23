@@ -16,6 +16,8 @@ Expected: October 2024
 
 ### Features
 
+* New: [CLI simple alias](https://github.com/clicon/cligen/issues/112)
+  * See: https://clixon-docs.readthedocs.io/en/latest/cli.html#cli-aliases
 * List pagination: Added where, sort-by and direction parameter for configured data
 * New `clixon-lib@2024-04-01.yang` revision
     - Added: list-pagination-partial-state extension
