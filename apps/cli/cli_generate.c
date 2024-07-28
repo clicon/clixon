@@ -1581,7 +1581,7 @@ yang2cli_grouping(clixon_handle      h,
     }
     /* Parse the buffer using cligen parser. load cli syntax */
     if (clispec_parse_str(cli_cligen(h), cbuf_get(cb), (char*)__FUNCTION__, NULL, pt, NULL) < 0){
-        fprintf(stderr, "%s\n", cbuf_get(cb));
+        clixon_err(OE_PLUGIN, 0, "%s", cbuf_get(cb));
         goto done;
     }
     clixon_debug(CLIXON_DBG_CLI, "Generated auto-cli for grouping:%s",

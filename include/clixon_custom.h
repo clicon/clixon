@@ -195,3 +195,12 @@
  * This is a limitation of of the current implementation
  */
 #define YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
+
+/*! For debug, YANG linenr shown in some YANG error-messages
+ *
+ * If set, report line-numbers in some error-messages (grouping/mandatory key),
+ *   However, almost all parsing still reports linenr on error.
+ *   Only exception is schema-nodeid sub-parsing
+ * If not set, reduces memory with 8 bytes per yang-stmt.
+ */
+#undef YANG_SPEC_LINENR

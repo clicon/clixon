@@ -263,7 +263,7 @@ ys_resolve_type(yang_stmt    *ys,
     /* Cache the type resolving locally. Only place where this is done. 
      * Why not do it in yang_type_resolve? (compile regexps needs clixon_handle)
      */
-    if (yang_type_cache_set(ys, resolved, options, cvv,
+    if (yang_type_cache_set2(ys, resolved, options, cvv,
                             patterns, fraction) < 0)
         goto done;
     retval = 0;
@@ -1345,14 +1345,14 @@ yang_type_resolve(yang_stmt   *yorig,
         goto done;
     /* Cache does not work for eg string length 32? */
 #if 1
-    if ((ret = yang_type_cache_get(ytype, yrestype,
+    if ((ret = yang_type_cache_get2(ytype, yrestype,
                                    options, cvv, patterns, NULL, regexps, fraction)) < 0)
         goto done;
     if (ret == 1)
         goto ok;
 #else
-    if (ytype->ys_typecache != NULL){
-        if (yang_type_cache_get(ytype, yrestype,
+    if (yang_typecache_get(ytype) != NULL){
+        if (yang_type_cache_get2(ytype, yrestype,
                                 options, cvv, patterns, NULL, regexps, fraction) < 0)
             goto done;
         goto ok;

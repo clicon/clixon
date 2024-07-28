@@ -65,53 +65,103 @@ typedef struct yang_type_cache yang_type_cache;
  *
  * This is an internal type, not exposed in the API
  * The external type is "yang_stmt" defined in clixon_yang.h
+ * @see struct yang_stmt_extended   for extended struct (same beginning)
+ * @note  This struct MUST be identical in size to first part of yang_stmt_extended struct
  */
-struct yang_stmt{
-    int                ys_len;       /* Number of children */
+struct yang_stmt {
+    /* On x86_64, the following three fields take 8 bytes */
+    enum rfc_6020      ys_keyword:16; /* YANG keyword */
+    uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
+    uint32_t           ys_len;       /* Number of children */
+#ifdef YANG_SPEC_LINENR
+    /* Increases memory w 8 extra bytes on x86_64
+     * XXX: can we enable this when needed for schema nodeid sub-parsing? */
+    uint32_t           ys_linenum;   /* For debug/errors: line number (in ys_filename) */
+#endif
     struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
     struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
-    struct yang_stmt  *ys_orig;      /* Backpointer to grouping/augment original */
-    enum rfc_6020      ys_keyword;   /* YANG keyword */
     char              *ys_argument;  /* String / argument depending on keyword */
-    uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
-    yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Used by:
-                                        1) Augmented nodes "belong" to the module where the 
-                                           augment is declared, which may be different from
-                                           the direct ancestor module 
-                                        2) Unknown nodes "belong" to where the extension is
-                                           declared
-                                      */
+    /* XXX: can we move this to union, No SPEC is already there */
     cg_var            *ys_cv;        /* cligen variable. See ys_populate()
                                         Following stmts have cv:s:
-                                        leaf: for default value
-                                        leaf-list, 
-                                        config: boolean true or false
-                                        mandatory: boolean true or false
-                                        require-instance: true or false
-                                        fraction-digits for fraction-digits
-                                        revision (uint32)
-                                        unknown-stmt (optional argument)
-                                        spec: mount-point xpath
-                                        enum: value
+                                        Y_FEATURE: boolean true or false
+                                        Y_CONFIG: boolean true or false
+                                        Y_LEAF: for default value
+                                        Y_LEAF_LIST,
+                                        Y_MAX_ELEMENTS:
+                                        Y_MIN_ELEMENTS: inte
+                                        Y_MANDATORY: boolean true or false
+                                        Y_REQUIRE_INSTANCE: true or false
+                                        Y_FRACTION_DIGITS for fraction-digits
+                                        Y_REVISION (uint32)
+                                        Y_REVISION_DATE (uint32)
+                                        Y_UNKNOWN (optional argument)
+                                        Y_SPEC: mount-point xpath
+                                        Y_ENUM: value
                                      */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
-                                        Y_RANGE: range_min, range_max 
-                                        Y_LIST: vector of keys
-                                        Y_TYPE & identity: store all derived 
-                                           types as <module>:<id> list
-                                        Y_UNIQUE: vector of descendant schema node ids
+                                        Y_CONTAINER: XXX or U_UNKNOWN?
                                         Y_EXTENSION: vector of instantiated UNKNOWNS
-                                        Y_UNKNOWN: app-dep: yang-mount-points
+                                        Y_IDENTITY: store all derived types as <module>:<id> list
+                                        Y_LENGTH: length_min, length_max
+                                        Y_LIST: vector of keys
+                                        Y_RANGE: range_min, range_max
+                                        Y_TYPE: store all derived types as <module>:<id> list
+                                        Y_UNIQUE: vector of descendant schema node ids
+                                     #   Y_UNKNOWN: app-dep: yang-mount-points
                                      */
-    int                ys_ref;       /* Reference count for free, only YS_SPEC: 0 means
-                                      * no sharing, 1: two references
-                                      */
-    yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
-    char              *ys_when_xpath; /* Special conditional for a "when"-associated augment/uses xpath */
-    cvec              *ys_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */
-    char              *ys_filename;   /* For debug/errors: filename (only (sub)modules) */
-    int                ys_linenum;    /* For debug/errors: line number (in ys_filename) */
-    rpc_callback_t    *ys_action_cb;  /* Action callback list, only for Y_ACTION */
+    union {                           /* depends on ys_keyword */
+        rpc_callback_t    *ysu_action_cb;  /* Y_ACTION: Action callback list*/
+        char              *ysu_filename;   /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
+        yang_type_cache   *ysu_typecache;  /* Y_TYPE: cache all typedef data except unions */
+        int                ysu_ref;        /* Y_SPEC: Reference count for free: 0 means
+                                            * no sharing, 1: two references */
+    } u;
 };
+
+/*! An extended yang struct for use of extra fields that consumes more memory
+ *
+ * Cannot fit this into the ysu union because keyword is unknown (or at least a set)
+ * @see struct yang_stmt for the original struct
+ * @note First part of this struct MUST resemble yang_stmt fields (in memory).
+ */
+struct yang_stmt_extended {
+    /* On x86_64, the following four fields take 16 bytes */
+    enum rfc_6020      ys_keyword:16; /* YANG keyword */
+    uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
+    uint32_t           ys_len;       /* Number of children */
+#ifdef YANG_SPEC_LINENR
+    uint32_t           ys_linenum;   /* For debug/errors: line number (in ys_filename) */
+#endif
+    struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
+    struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
+    char              *ys_argument;  /* String / argument depending on keyword */
+    cg_var            *yse_cv;       /* cligen variable. See ys_populate() */
+    cvec              *yse_cvec;     /* List of stmt-specific variables */
+    union {                          /* depends on ys_keyword */
+        rpc_callback_t    *ysu_action_cb;  /* Y_ACTION: Action callback list*/
+        char              *ysu_filename;   /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
+        yang_type_cache   *ysu_typecache;  /* Y_TYPE: cache all typedef data except unions */
+        int                ysu_ref;        /* Y_SPEC: Reference count for free: 0 means
+                                            * no sharing, 1: two references */
+    } ue;
+    /* Following fields could be extended only for unknown, grouped and augmented nodes
+     */
+    char              *yse_when_xpath; /* Special conditional for a "when"-associated augment/uses XPath */
+    cvec              *yse_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */
+    yang_stmt         *yse_mymodule;  /* Shortcut to "my" module. Used by:
+                                      * 1) Augmented nodes "belong" to the module where the
+                                      *    augment is declared, which may be different from
+                                      *    the direct ancestor module
+                                      * 2) Unknown nodes "belong" to where the extension is
+                                      *    declared */
+};
+typedef struct yang_stmt_extended yang_stmt_extended;
+
+/* Access macros */
+#define ys_action_cb      u.ysu_action_cb
+#define ys_filename       u.ysu_filename
+#define ys_typecache      u.ysu_typecache
+#define ys_ref            u.ysu_ref
 
 #endif  /* _CLIXON_YANG_INTERNAL_H_ */

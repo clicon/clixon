@@ -105,7 +105,7 @@ new "wait restconf"
 wait_restconf
 
 new "restconf POST tree without key"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 400" "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"application\",\"error-tag\":\"missing-element\",\"error-info\":{\"bad-element\":\"name\"},\"error-severity\":\"error\",\"error-message\":\"Mandatory key in 'list interface' in example.yang:7\"}}}"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 400" "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"application\",\"error-tag\":\"missing-element\",\"error-info\":{\"bad-element\":\"name\"},\"error-severity\":\"error\",\"error-message\":\"Mandatory key in 'list interface' in example.yang"
 
 new "restconf POST initial tree"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
@@ -137,7 +137,7 @@ new "restconf POST interface without mandatory type"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"TEST"}}')" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"type"},"error-severity":"error","error-message":"Mandatory variable of interface in module example"}}}'
 
 new "restconf POST interface without mandatory key"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"type":"regular"}}')" 0 "HTTP/$HVER 400" "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"application\",\"error-tag\":\"missing-element\",\"error-info\":{\"bad-element\":\"name\"},\"error-severity\":\"error\",\"error-message\":\"Mandatory key in 'list interface' in example.yang:7\"}}}"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"type":"regular"}}')" 0 "HTTP/$HVER 400" "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"application\",\"error-tag\":\"missing-element\",\"error-info\":{\"bad-element\":\"name\"},\"error-severity\":\"error\",\"error-message\":\"Mandatory key in 'list interface' in example.yang"
 
 new "restconf POST interface"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 201"

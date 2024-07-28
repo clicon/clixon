@@ -181,8 +181,8 @@ ys_grouping_resolve(yang_stmt  *yuses,
     else {
         ys = yuses;         /* Check upwards in hierarchy for matching groupings */
         while (1){
-            if (ys->ys_mymodule){
-                yp = ys->ys_mymodule;
+            if (yang_mymodule_get(ys)){
+                yp = yang_mymodule_get(ys);
             }
             else
                 if ((yp = yang_parent_get(ys)) == NULL)
@@ -356,13 +356,13 @@ yang_augment_node(clixon_handle h,
         default:
             break;
         }
-        if ((yc = ys_dup(yc0)) == NULL)
+        if ((yc = yse_dup(yc0)) == NULL) /* Extended */
             goto done;
 #ifdef YANG_GROUPING_AUGMENT_SKIP
         /* cornercase: always expand uses under augment */
         yang_flag_reset(yc, YANG_FLAG_GROUPING);
 #endif
-        yc->ys_mymodule = ymod;
+        yang_mymodule_set(yc, ymod);
         if (yn_insert(ytarget, yc) < 0)
             goto done;
         /* If there is an associated when statement, add a special when struct to the yang 
@@ -564,10 +564,17 @@ yang_expand_uses_node(yang_stmt *yn,
     if (ys_grouping_resolve(ys, prefix, id, &ygrouping) < 0)
         goto done;
     if (ygrouping == NULL){
-        if ((ym = ys_module(yn)) != NULL)
-            clixon_err(OE_YANG, 0, "Yang error : grouping \"%s\" not found in module \"%s\" in file: %s:%d",
+        if ((ym = ys_module(yn)) != NULL){
+#ifdef YANG_SPEC_LINENR
+            clixon_err(OE_YANG, 0, "Yang error : grouping \"%s\" not found in module \"%s\" in file: %s:%u",
                        yang_argument_get(ys), yang_argument_get(ys_module(ys)),
                        yang_filename_get(ym), yang_linenum_get(yn));
+#else
+            clixon_err(OE_YANG, 0, "Yang error : grouping \"%s\" not found in module \"%s\" in file: %s",
+                       yang_argument_get(ys), yang_argument_get(ys_module(ys)),
+                       yang_filename_get(ym));
+#endif
+        }
         else
             clixon_err(OE_YANG, 0, "Yang error : grouping \"%s\" not found in module \"%s\"",
                        yang_argument_get(ys), yang_argument_get(ys_module(ys)));
@@ -594,13 +601,42 @@ yang_expand_uses_node(yang_stmt *yn,
         if (yang_expand_grouping(ygrouping) < 0)
             goto done;
     }
+    /* Find when statement, if present */
+    if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
+        wxpath = yang_argument_get(ywhen);
+        if (xml_nsctx_yang(ywhen, &wnsc) < 0)
+            goto done;
+    }
     /* Make a copy of the grouping, then make refinements to this copy
      * Note this ygrouping2 object does not have a parent and does not work in many
      * functions which assume a full hierarchy, use the original ygrouping in those cases.
      */
-    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
+    if ((ygrouping2 = ys_new(ygrouping->ys_keyword)) == NULL)
         goto done;
+    /* Use yse_new() etc for ygrouping2 CHILDREN IF ywhen is set */
+    if (ys_cp_one(ygrouping2, ygrouping) < 0){
+        ys_free(ygrouping2);
+        goto done;
+    }
+    {
+        yang_stmt *ycn; /* new child */
+        yang_stmt *yco; /* old child */
+        int        i;
 
+        for (i=0; i<ygrouping2->ys_len; i++){
+            yco = ygrouping->ys_stmt[i];
+            if (ywhen != NULL){
+                if ((ycn = yse_dup(yco)) == NULL)
+                    goto done;
+            }
+            else {
+                if ((ycn = ys_dup(yco)) == NULL)
+                    goto done;
+            }
+            ygrouping2->ys_stmt[i] = ycn;
+            ycn->ys_parent = ygrouping2;
+        }
+    }
     /* Only replace data/schemanodes and unknowns:
      * Compute the number of such nodes, and extend the child vector with that below
      */
@@ -630,12 +666,6 @@ yang_expand_uses_node(yang_stmt *yn,
         /* Move existing elements if any */
         if (size)
             memmove(&yn->ys_stmt[i+glen+1], &yn->ys_stmt[i+1], size);
-    }
-    /* Find when statement, if present */
-    if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
-        wxpath = yang_argument_get(ywhen);
-        if (xml_nsctx_yang(ywhen, &wnsc) < 0)
-            goto done;
     }
     /* Note: yang_desc_schema_nodeid() requires ygrouping2 to be in yspec tree,
      * due to correct module prefixes etc.

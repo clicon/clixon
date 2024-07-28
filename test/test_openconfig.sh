@@ -19,7 +19,7 @@ cfg=$dir/conf_yang.xml
 new "openconfig"
 if [ ! -d "$OPENCONFIG" ]; then
 #    err "Hmm Openconfig dir does not seem to exist, try git clone https://github.com/openconfig/public?"
-    echo "...skipped: OPENCONFIG not set"
+    echo "...skipped: OPENCONFIG not set or dir not exist"
     rm -rf $dir
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi

@@ -280,11 +280,13 @@ validate_identityref(cxobj     *xt,
         ymod = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
     }
     if (ymod == NULL){
-        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d",
+        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang",
                 node,
                 yang_argument_get(ybaseid),
-                yang_argument_get(ys_module(ybaseid)),
-                yang_linenum_get(ybaseid));
+                yang_argument_get(ys_module(ybaseid)));
+#ifdef YANG_SPEC_LINENR
+        cprintf(cberr, ":%d", yang_linenum_get(ybaseid));
+#endif
         if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
             goto done;
         goto fail;
@@ -296,11 +298,14 @@ validate_identityref(cxobj     *xt,
      */
     idrefvec = yang_cvec_get(ybaseid);
     if (cvec_find(idrefvec, idref) == NULL){
-        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d",
+
+        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang",
                 node,
                 yang_argument_get(ybaseid),
-                yang_argument_get(ys_module(ybaseid)),
-                yang_linenum_get(ybaseid));
+                yang_argument_get(ys_module(ybaseid)));
+#ifdef YANG_SPEC_LINENR
+                cprintf(cberr, ":%d", yang_linenum_get(ybaseid));
+#endif
         if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
             goto done;
         goto fail;
@@ -684,9 +689,11 @@ check_list_key(cxobj     *xt,
                     }
                     ymod = ys_module(yt);
                     keyw = yang_keyword_get(yt);
-                    cprintf(cb, "Mandatory key in '%s %s' in %s.yang:%d",
-                            yang_key2str(keyw), xml_name(xt), yang_argument_get(ymod),
-                            yang_linenum_get(yc));
+                    cprintf(cb, "Mandatory key in '%s %s' in %s.yang",
+                            yang_key2str(keyw), xml_name(xt), yang_argument_get(ymod));
+#ifdef YANG_SPEC_LINENR
+                    cprintf(cb, ":%d", yang_linenum_get(yc));
+#endif
                     if (netconf_missing_element_xml(xret, "application", keyname, cbuf_get(cb)) < 0)
                         goto done;
                     cbuf_free(cb);

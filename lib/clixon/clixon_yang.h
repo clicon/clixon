@@ -90,6 +90,9 @@
                                       * Set by yang_mount_set 
                                       * Read by ys_free1
                                       */
+#define YANG_FLAG_EXTENDED   0x400   /* Use extended struct to access uncommon fields
+                                      * Memory optimization
+                                      */
 
 /*
  * Types
@@ -254,22 +257,29 @@ cvec      *yang_when_nsc_get(yang_stmt *ys);
 int        yang_when_nsc_set(yang_stmt *ys, cvec *nsc);
 const char *yang_filename_get(yang_stmt *ys);
 int        yang_filename_set(yang_stmt *ys, const char *filename);
-int        yang_linenum_get(yang_stmt *ys);
-int        yang_linenum_set(yang_stmt *ys, int linenum);
+uint32_t   yang_linenum_get(yang_stmt *ys);
+int        yang_linenum_set(yang_stmt *ys, uint32_t linenum);
+void      *yang_typecache_get(yang_stmt *ys);
+int        yang_typecache_set(yang_stmt *ys, void *ycache);
+yang_stmt* yang_mymodule_get(yang_stmt *ys);
+int        yang_mymodule_set(yang_stmt *ys, yang_stmt *ym);
 
 /* Stats */
-int       yang_stats_global(uint64_t *nr);
-int       yang_stats(yang_stmt *y, enum rfc_6020 keyw, uint64_t *nrp, size_t *szp);
+int        yang_stats_global(uint64_t *nr);
+int        yang_stats(yang_stmt *y, enum rfc_6020 keyw, uint64_t *nrp, size_t *szp);
 
 /* Other functions */
 yang_stmt *yspec_new(void);
 yang_stmt *ys_new(enum rfc_6020 keyw);
+yang_stmt *yse_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
 int        ys_prune_self(yang_stmt *ys);
 int        ys_free1(yang_stmt *ys, int self);
 int        ys_free(yang_stmt *ys);
+int        ys_cp_one(yang_stmt *nw, yang_stmt *old);
 int        ys_cp(yang_stmt *nw, yang_stmt *old);
 yang_stmt *ys_dup(yang_stmt *old);
+yang_stmt *yse_dup(yang_stmt *old);
 int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);
 int        yn_insert1(yang_stmt *ys_parent, yang_stmt *ys_child);
 yang_stmt *yn_iter(yang_stmt *yparent, int *inext);
@@ -309,9 +319,9 @@ int        yang_features(clixon_handle h, yang_stmt *yt);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_stmt *yn, char *name, int *lastkey);
 int        yang_type_cache_regexp_set(yang_stmt *ytype, int rxmode, cvec *regexps);
-int        yang_type_cache_get(yang_stmt *ytype, yang_stmt **resolved, int *options,
+int        yang_type_cache_get2(yang_stmt *ytype, yang_stmt **resolved, int *options,
                    cvec **cvv, cvec *patterns, int *rxmode, cvec *regexps, uint8_t *fraction);
-int        yang_type_cache_set(yang_stmt *ys, yang_stmt *resolved, int options, cvec *cvv,
+int        yang_type_cache_set2(yang_stmt *ys, yang_stmt *resolved, int options, cvec *cvv,
                                cvec *patterns, uint8_t fraction);
 yang_stmt *yang_anydata_add(yang_stmt *yp, char *name);
 int        yang_extension_value(yang_stmt *ys, char *name, char *ns, int *exist, char **value);

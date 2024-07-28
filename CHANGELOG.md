@@ -16,6 +16,9 @@ Expected: October 2024
 
 ### Features
 
+* Added YANG struct memory optimization
+  * Added union and extended struct for uncommon fields
+  * Removed per-object YANG linenr info
 * New: [CLI simple alias](https://github.com/clicon/cligen/issues/112)
   * See: https://clixon-docs.readthedocs.io/en/latest/cli.html#cli-aliases
 * List pagination: Added where, sort-by and direction parameter for configured data
@@ -26,6 +29,8 @@ Expected: October 2024
 
 Users may have to change how they access the system
 
+* Removed YANG line-number in error-messages for memory optimization
+  * Re-enable by setting `YANG_SPEC_LINENR` compile-time option
 * NETCONF error returns of failed leafref references, see https://github.com/clicon/clixon/issues/536
 * List pagination of large lists
   * For backward-compatibility, mark the list with extension cl:list-pagination-partial-state extension
