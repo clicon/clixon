@@ -141,6 +141,8 @@ RUN echo "agentaddress  127.0.0.1" >> /etc/snmp/snmpd.conf
 RUN echo "rwcommunity   public  localhost" >> /etc/snmp/snmpd.conf
 RUN echo "agentXSocket  unix:/var/run/snmp.sock" >> /etc/snmp/snmpd.conf
 RUN echo "agentxperms   777 777" >> /etc/snmp/snmpd.conf
+RUN echo "trap2sink     localhost public 162" >> /etc/snmp/snmpd.conf
+RUN echo "disableAuthorization yes" >> /etc/snmp/snmptrapd.conf
 
 # Need to add www user manually, but group www-data already exists on Alpine
 RUN adduser -D -H -G www-data www-data
