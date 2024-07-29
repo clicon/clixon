@@ -179,10 +179,14 @@ add_snmp_var_bindings(netsnmp_variable_list **var_list,
                     clixon_debug(CLIXON_DBG_SNMP, "type %s not supported in snmp trap", yang_key2str(yang_keyword_get(ychild)));
                     break;
             }
-            if (xmlstr)
+            if (xmlstr) {
                 free(xmlstr);
-            if (snmpval)
+                xmlstr = NULL;
+            }
+            if (snmpval) {
                 free(snmpval);
+                snmpval = NULL;
+            }
         } else {
             clixon_debug(CLIXON_DBG_SNMP, "no yang def found for %s", node_name);
         }
