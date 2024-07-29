@@ -133,6 +133,8 @@ RUN echo "agentaddress  127.0.0.1" >> /etc/snmp/snmpd.conf
 RUN echo "rwcommunity   public  localhost" >> /etc/snmp/snmpd.conf
 RUN echo "agentXSocket  unix:/var/run/snmp.sock" >> /etc/snmp/snmpd.conf
 RUN echo "agentxperms   777 777" >> /etc/snmp/snmpd.conf
+RUN echo "trap2sink     localhost public 162" >> /etc/snmp/snmpd.conf
+RUN echo "disableAuthorization yes" >> /etc/snmp/snmptrapd.conf
 
 # Test-specific (for test scripts)
 RUN apk add --update sudo curl procps grep make bash expect openssh coreutils
