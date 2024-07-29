@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2024 Olof Hagsand
                 2024 Mico Micic and Moser-Baer AG
 
@@ -24,7 +24,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -55,14 +55,13 @@
 
 #include "snmp_lib.h"
 
-/*
- * SNMP v2 notification OID
+/* SNMP v2 notification OID
  */
 static oid notificationOid[] = {1, 3, 6, 1, 6, 3, 1, 1, 4, 1, 0};
 
 struct stream_socket{
-    qelem_t    sc_q;   /* queue header */
-    int        socket; /* socket */
+    qelem_t    sc_q;      /* queue header */
+    int        sc_socket; /* socket */
 };
 /* Linked list of sockets used to listen for events
  */
@@ -77,7 +76,9 @@ static struct stream_socket *STREAM_SOCKETS = NULL;
  * @retval    -1  Error
  */
 int
-get_oid_for_yang_node(yang_stmt *ys, oid *objid, size_t *objidlen)
+get_oid_for_yang_node(yang_stmt *ys,
+                      oid       *objid,
+                      size_t    *objidlen)
 {
     int   retval = -1;
     int   exist = 0;
@@ -100,13 +101,15 @@ done:
 }
 
 /*! Add snmp trap v2 oid to the variable list and bind the given notification oid as value.
- * 
+ *
  * @param[in]  var_list   Variable list
  * @param[in]  notify_oid OID of the notification to set as value
  * @param[in]  oid_len    Length of notify_oid
  */
-void 
-add_snmp_trapv2_oid(netsnmp_variable_list **var_list, oid *notify_oid, int oid_len)
+void
+add_snmp_trapv2_oid(netsnmp_variable_list **var_list,
+                    oid                    *notify_oid,
+                    int                     oid_len)
 {
     snmp_varlist_add_variable(
         var_list,
@@ -118,16 +121,18 @@ add_snmp_trapv2_oid(netsnmp_variable_list **var_list, oid *notify_oid, int oid_l
 }
 
 /*! Add snmp var binding for all child nodes of cxparent.
- * 
+ *
  * All child elements are read recursively. A var binding is created for each LEAF element
  * with an existing oid and added to the snmp variable list.
- * 
+ *
  * @param[in]  var_list Variable list
  * @param[in]  cxparent Parent xml node
  * @param[in]  ys       YANG node
  */
 int
-add_snmp_var_bindings(netsnmp_variable_list **var_list, cxobj *cxparent, yang_stmt *ys)
+add_snmp_var_bindings(netsnmp_variable_list **var_list,
+                      cxobj                  *cxparent,
+                      yang_stmt              *ys)
 {
     int             retval = -1;
     int             ret;
@@ -180,7 +185,7 @@ add_snmp_var_bindings(netsnmp_variable_list **var_list, cxobj *cxparent, yang_st
     }
 
     retval = 0;
-done: 
+done:
     if (reason)
         free(reason);
     if (xmlstr)
@@ -194,14 +199,15 @@ done:
  *
  * The OID is read from the YANG definition. If the notification contains data, all values
  * are bound to the corresponding OIDs and sent with the snmp trap.
- * 
+ *
  * @param[in]  s    Socket
  * @param[in]  arg  expected to be clixon_handle
  * @retval     0    OK
  * @retval    -1    Error
  */
 static int
-snmp_publish_notification(clixon_handle h, cxobj *xn)
+snmp_publish_notification(clixon_handle h,
+                          cxobj        *xn)
 {
     int                    retval = -1;
     cxobj                 *xncont = NULL;   /* notification content xml */
@@ -235,7 +241,7 @@ snmp_publish_notification(clixon_handle h, cxobj *xn)
     retval = 0;
 
  done:
-    if (var_list) 
+    if (var_list)
         snmp_free_varbind(var_list);
 
     return retval;
@@ -249,7 +255,8 @@ snmp_publish_notification(clixon_handle h, cxobj *xn)
  * @retval    -1    Error
  */
 static int
-snmp_stream_cb(int s, void *arg)
+snmp_stream_cb(int   s,
+               void *arg)
 {
     int           retval = -1;
     clixon_handle h = (clixon_handle)arg;
@@ -302,7 +309,9 @@ snmp_stream_cb(int s, void *arg)
  * @retval    -1  Error
  */
 static int
-snmp_stream_subscribe(clixon_handle h, char *stream, int *socket)
+snmp_stream_subscribe(clixon_handle  h,
+                      char          *stream,
+                      int           *socket)
 {
     int     retval = -1;
     cxobj  *xret = NULL;
@@ -343,8 +352,8 @@ clixon_snmp_stream_shutdown(clixon_handle h)
 
     while ((sc = STREAM_SOCKETS) != NULL){
         DELQ(sc, STREAM_SOCKETS, struct stream_socket *);
-        clixon_event_unreg_fd(sc->socket, snmp_stream_cb);
-        close(sc->socket);
+        clixon_event_unreg_fd(sc->sc_socket, snmp_stream_cb);
+        close(sc->sc_socket);
         free(sc);
     }
     return 0;
@@ -359,7 +368,9 @@ clixon_snmp_stream_shutdown(clixon_handle h)
  * @retval    -1  Error
  */
 int
-get_all_streams_from_backend(clixon_handle h, char ***streams, int *count)
+get_all_streams_from_backend(clixon_handle    h,
+                             char          ***streams,
+                             int             *count)
 {
     int     retval = -1;
     cxobj  *xret = NULL;
@@ -433,11 +444,11 @@ get_all_streams_from_backend(clixon_handle h, char ***streams, int *count)
 int
 clixon_snmp_stream_init(clixon_handle h)
 {
-    int     retval = -1;
-    struct stream_socket *stream_socket;
-    char **streams = NULL;
-    int streams_num = 0;
-    int socket = -1;
+    int                    retval = -1;
+    struct stream_socket  *stream_socket;
+    char                 **streams = NULL;
+    int                    streams_num = 0;
+    int                    socket = -1;
 
     clixon_debug(CLIXON_DBG_SNMP, "");
     if (get_all_streams_from_backend(h, &streams, &streams_num) < 0)
@@ -449,7 +460,7 @@ clixon_snmp_stream_init(clixon_handle h)
         if (socket != -1){
             /* Listen to backend socket */
             if (clixon_event_reg_fd(socket,
-                                    snmp_stream_cb, 
+                                    snmp_stream_cb,
                                     h,
                                     "stream socket") < 0)
                 goto done;
@@ -457,7 +468,7 @@ clixon_snmp_stream_init(clixon_handle h)
                 clixon_err(OE_SNMP, errno, "malloc");
                 goto done;
             }
-            stream_socket->socket = socket;
+            stream_socket->sc_socket = socket;
             ADDQ(stream_socket, STREAM_SOCKETS);
         }
     }
@@ -470,7 +481,6 @@ clixon_snmp_stream_init(clixon_handle h)
             free(streams[i]);
         free(streams);
     }
-    
     clixon_debug(CLIXON_DBG_SNMP, "retval: %d", retval);
     return retval;
 }
