@@ -233,7 +233,7 @@ xml2file_recurse(FILE                *f,
     int           haselement;
     char         *val;
     char         *encstr = NULL; /* xml encoded string */
-    int           exist = 0;
+    int           exist;
     yang_stmt    *y;
     int           level1;
     int           tag = 0;
@@ -244,11 +244,22 @@ xml2file_recurse(FILE                *f,
 
     if (x == NULL)
         goto ok;
+    y = xml_spec(x);
+    /* Check if system-only, then do not write to datastore */
+    if (y != NULL) {
+        exist = 0;
+        if (yang_extension_value(y, "system-only-config", CLIXON_LIB_NS, &exist, NULL) < 0)
+            goto done;
+        if (exist){
+            goto ok;
+        }
+    }
     level1 = level*PRETTYPRINT_INDENT;
     if (prefix)
         level1 -= strlen(prefix);
-    if ((y = xml_spec(x)) != NULL){
+    if (y != NULL){
         if (autocliext){
+            exist = 0;
             if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
                 goto done;
             if (exist)

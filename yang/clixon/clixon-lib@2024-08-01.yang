@@ -72,6 +72,7 @@ module clixon-lib {
     revision 2024-08-01 {
         description
             "Added: list-pagination-partial-state
+             Added: system-only-config extension
              Released in Clixon 7.2";
     }
     revision 2024-04-01 {
@@ -349,6 +350,16 @@ module clixon-lib {
              A designer adds the 'xmldb-split' extension to a YANG node which should be split.
              For example, a split could be made at mountpoints.
              See also the 'link 'attribute.
+             ";
+    }
+    extension system-only-config {
+        description
+            "This extension marks which fields in the configuration tree should not be
+             saved to datastore and be removed from memory after commit.
+             Instead, the application provides a mechanism to save the system-only-config
+             in the system.
+             Note that the XML with these values removed need to be correct XML, which means
+             that e.g., list keys must not be marked.
              ";
     }
     md:annotation creator {
