@@ -614,7 +614,7 @@ yang_stmt *
 yang_find_module_by_namespace(yang_stmt *yspec,
                               char      *ns)
 {
-    yang_stmt *ymod;
+    yang_stmt *ymod = NULL;
     int        inext;
 
     if (ns == NULL)

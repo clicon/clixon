@@ -43,7 +43,7 @@ Developers may need to change their code
 * New `yn_iter()` yang iterator replaces `yn_each()`
   * Use an integer iteratorinstead of yang object
   * Replace `y1 = NULL; y1 = yn_each(y0, y1)` with `int inext = 0; yn_iter(y0, &inext)`
-* Add `keyw`argument to `yang_stats()`
+* Add `keyw` argument to `yang_stats()`
 
 ### Corrected Busg
 

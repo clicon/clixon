@@ -86,7 +86,7 @@
 #include "clixon_yang_cardinality.h"
 #include "clixon_yang_type.h"
 #include "clixon_yang_schema_mount.h"
-#include "clixon_yang_internal.h" /* internal included by this file only, not API*/
+#include "clixon_yang_internal.h" /* internal included by this file only, not API */
 
 #ifdef XML_EXPLICIT_INDEX
 static int yang_search_index_extension(clixon_handle h, yang_stmt *yext, yang_stmt *ys);
@@ -252,6 +252,41 @@ yang_argument_set(yang_stmt *ys,
                   char      *arg)
 {
     ys->ys_argument = arg; /* not strdup/copied */
+    return 0;
+}
+
+/*! Get original back-pointer if node is grouping or augmented
+ *
+ * Defined only if this statement was created as part of a uses/grouping or augment expansion
+ * @param[in] ys    Yang statement node
+ * @retval    y0    Original yang statement node
+ * @retval    NULL  Not part of grouping
+ */
+yang_stmt *
+yang_orig_get(yang_stmt *ys)
+{
+    if (ys->ys_orig)
+        assert(ys->ys_orig->ys_orig == NULL);
+    return ys->ys_orig;
+}
+
+/*! Set original back-pointer if any
+ *
+ * Will recursively evaluate to set to original node in case of chain of groupings
+ * @param[in] ys    Yang statement node
+ * @param[in] y0    Original yang statement node
+ * @retval    NULL  Not part of grouping
+ */
+int
+yang_orig_set(yang_stmt *ys,
+              yang_stmt *y0)
+{
+    if (y0->ys_orig){
+        assert(y0->ys_orig->ys_orig == NULL);
+        yang_orig_set(ys, y0->ys_orig);
+    }
+    else
+        ys->ys_orig = y0;
     return 0;
 }
 
@@ -449,7 +484,7 @@ yang_when_xpath_get(yang_stmt *ys)
 {
     yang_stmt_extended *yse = (yang_stmt_extended *)ys;
 
-    if ((ys->ys_flags & YANG_FLAG_EXTENDED) == 0x0)
+    if ((ys->ys_flags & YANG_FLAG_WHEN) == 0x0)
         return NULL;
     else
         return yse->yse_when_xpath;
@@ -475,8 +510,8 @@ yang_when_xpath_set(yang_stmt *ys,
         clixon_err(OE_YANG, EINVAL, "xpath is NULL");
         goto done;
     }
-    if ((ys->ys_flags & YANG_FLAG_EXTENDED) == 0x0){
-        clixon_err(OE_YANG, EINVAL, "Yang node %s %s must have flag YANG_FLAG_EXTENDED for this operation",
+    if ((ys->ys_flags & YANG_FLAG_WHEN) == 0x0){
+        clixon_err(OE_YANG, EINVAL, "Yang node %s %s must have flag YANG_FLAG_WHEN for this operation",
                    yang_key2str(ys->ys_keyword), ys->ys_argument);
         goto done;
     }
@@ -502,7 +537,7 @@ yang_when_nsc_get(yang_stmt *ys)
 {
     yang_stmt_extended *yse = (yang_stmt_extended *)ys;
 
-    if ((ys->ys_flags & YANG_FLAG_EXTENDED) == 0x0)
+    if ((ys->ys_flags & YANG_FLAG_WHEN) == 0x0)
         return NULL;
     else
         return yse->yse_when_nsc;
@@ -524,8 +559,8 @@ yang_when_nsc_set(yang_stmt *ys,
     int                 retval = -1;
     yang_stmt_extended *yse = (yang_stmt_extended *)ys;
 
-    if ((ys->ys_flags & YANG_FLAG_EXTENDED) == 0x0){
-        clixon_err(OE_YANG, EINVAL, "Yang node %s %s must have flag YANG_FLAG_EXTENDED for this operation",
+    if ((ys->ys_flags & YANG_FLAG_WHEN) == 0x0){
+        clixon_err(OE_YANG, EINVAL, "Yang node %s %s must have flag YANG_FLAG_WHEN for this operation",
                    yang_key2str(ys->ys_keyword), ys->ys_argument);
         return -1;
     }
@@ -609,7 +644,6 @@ yang_linenum_set(yang_stmt *ys,
 void *
 yang_typecache_get(yang_stmt *ys)
 {
-    //    assert(ys->ys_keyword == Y_TYPE);
     return ys->ys_typecache;
 }
 
@@ -623,7 +657,6 @@ int
 yang_typecache_set(yang_stmt *ys,
                    void      *ycache)
 {
-    //    assert(ys->ys_keyword == Y_TYPE);
     ys->ys_typecache = ycache;
     return 0;
 }
@@ -637,12 +670,7 @@ yang_typecache_set(yang_stmt *ys,
 yang_stmt*
 yang_mymodule_get(yang_stmt *ys)
 {
-    yang_stmt_extended *yse = (yang_stmt_extended *)ys;
-
-    if ((ys->ys_flags & YANG_FLAG_EXTENDED) == 0x0)
-        return NULL;
-    else
-        return yse->yse_mymodule;
+    return ys->ys_mymodule;
 }
 
 /*! Set mymodule
@@ -651,19 +679,13 @@ yang_mymodule_get(yang_stmt *ys)
  * @param[in]  ys    YANG statement
  * @param[in]  ymod  YANG module
  * @retval     0     OK
+ * @retval    -1     Error
  */
 int
 yang_mymodule_set(yang_stmt *ys,
                   yang_stmt *ym)
 {
-    yang_stmt_extended *yse = (yang_stmt_extended *)ys;
-
-    if ((ys->ys_flags & YANG_FLAG_EXTENDED) == 0x0){
-        clixon_err(OE_YANG, EINVAL, "Yang node %s %s must have flag YANG_FLAG_EXTENDED for this operation",
-                   yang_key2str(ys->ys_keyword), ys->ys_argument);
-        return -1;
-    }
-    yse->yse_mymodule = ym;
+    ys->ys_mymodule = ym;
     return 0;
 }
 
@@ -698,7 +720,7 @@ yang_stats_one(yang_stmt *ys,
     size_t           sz = 0;
     yang_type_cache *yc;
 
-    if (yang_flag_get(ys, YANG_FLAG_EXTENDED) == 0x0)
+    if (yang_flag_get(ys, YANG_FLAG_WHEN) == 0x0)
         sz += sizeof(struct yang_stmt_extended);
     else
         sz += sizeof(struct yang_stmt);
@@ -707,7 +729,7 @@ yang_stats_one(yang_stmt *ys,
         sz += strlen(ys->ys_argument) + 1;
     if (ys->ys_cvec)
         sz += cvec_size(ys->ys_cvec);
-    if (yang_flag_get(ys, YANG_FLAG_EXTENDED) != 0x0) {
+    if (yang_flag_get(ys, YANG_FLAG_WHEN) != 0x0) {
         yang_stmt_extended *yse = (yang_stmt_extended *)ys;
         if (yse->yse_when_xpath)
             sz += strlen(yse->yse_when_xpath) + 1;
@@ -837,18 +859,7 @@ ys_new_sz(enum rfc_6020 keyw,
 yang_stmt *
 ys_new(enum rfc_6020 keyw)
 {
-    size_t     sz;
-    yang_stmt *ys;
-
-    if (keyw == Y_UNKNOWN)
-        sz = sizeof(struct yang_stmt_extended);
-    else
-        sz = sizeof(*ys);
-    if ((ys = ys_new_sz(keyw, sz)) != NULL &&
-        keyw == Y_UNKNOWN){
-        yang_flag_set(ys, YANG_FLAG_EXTENDED);
-    }
-    return ys;
+    return ys_new_sz(keyw, sizeof(struct yang_stmt));
 }
 
 /*! Create new extended yang node/statement
@@ -857,13 +868,13 @@ ys_new(enum rfc_6020 keyw)
  * @retval    ys    New yang-stmt. Free with ys_free()
  * @retval    NULL  Error
  */
-yang_stmt *
+static yang_stmt *
 yse_new(enum rfc_6020 keyw)
 {
     yang_stmt *ys;
 
     if ((ys = ys_new_sz(keyw, sizeof(struct yang_stmt_extended))) != NULL)
-        yang_flag_set(ys, YANG_FLAG_EXTENDED);
+        yang_flag_set(ys, YANG_FLAG_WHEN);
     return ys;
 }
     
@@ -899,7 +910,7 @@ ys_free1(yang_stmt *ys,
         free(ys->ys_argument);
         ys->ys_argument = NULL;
     }
-    if (yang_flag_get(ys, YANG_FLAG_EXTENDED) != 0x0) {
+    if (yang_flag_get(ys, YANG_FLAG_WHEN) != 0x0) {
         yang_stmt_extended *yse = (yang_stmt_extended *)ys;
         if (yse->yse_when_xpath)
             free(yse->yse_when_xpath);
@@ -1067,22 +1078,77 @@ yn_realloc(yang_stmt *yn)
     return 0;
 }
 
+#ifdef YANG_ORIG_PTR_SKIP
+/*! Return 1 if yang stmt should be skipped in derived trees
+ *
+ * @param[in] keyword YANG keyword
+ * @retval    1       Yes, use orig-ptr if exists to fetch original object
+ * @retval    0       No, use existing object
+ * Comments includes for:
+ * - nodes that could not be skipped and the failed test
+ * - nodes that have children in turn
+ */
+static int
+uses_orig_ptr(enum rfc_6020 keyword)
+{
+    return
+        //        keyword == Y_CONFIG // NO (test_openconfig.sh)
+        // keyword == Y_DEFAULT // NO (test_augment.sh)
+           keyword == Y_DESCRIPTION
+        || keyword == Y_ENUM // children
+        || keyword == Y_ERROR_APP_TAG
+        || keyword == Y_ERROR_MESSAGE
+        || keyword == Y_FRACTION_DIGITS
+        // || keyword ==  Y_KEY // NO
+        || keyword == Y_LENGTH // children
+        || keyword == Y_MANDATORY
+        || keyword == Y_MAX_ELEMENTS
+        || keyword == Y_MIN_ELEMENTS
+        || keyword == Y_MODIFIER
+        || keyword == Y_ORDERED_BY
+        || keyword == Y_PATH
+        || keyword == Y_PATTERN // children
+        || keyword == Y_POSITION
+        || keyword == Y_PREFIX
+        || keyword == Y_PRESENCE
+        || keyword == Y_RANGE // children
+        || keyword == Y_REQUIRE_INSTANCE
+        || keyword == Y_STATUS
+        || keyword == Y_UNIQUE
+        || keyword == Y_UNITS
+        || keyword == Y_UNKNOWN
+        || keyword == Y_VALUE
+        || keyword == Y_YIN_ELEMENT
+        ;
+}
+#endif /* YANG_ORIG_PTR_SKIP */
+
+/*! Copy single yang statement no children
+ *
+ * @param[in] ynew  New empty (but created) yang statement (to)
+ * @param[in] yold  Old existing yang statement (from)
+ * @retval    0     OK
+ * @retval   -1     Error
+ * @code
+ * yang_stmt *new = ys_new(Y_LEAF);
+ * if (ys_cp_one(new, old) < 0)
+ *    err;
+ * @endcode
+ * @see ys_cp  for recursive copy
+ */
 int
 ys_cp_one(yang_stmt *ynew,
           yang_stmt *yold)
 {
-    int        retval = -1;
-    char      *xpath;
-    cvec      *cvv;
-    cg_var    *cvn;
-    cg_var    *cvo;
-    size_t     sz;
+    int     retval = -1;
+    cvec   *cvv;
+    cg_var *cvn;
+    cg_var *cvo;
+    size_t  sz;
 
-    if (yang_flag_get(yold, YANG_FLAG_EXTENDED) != 0x0)
-        sz = sizeof(struct yang_stmt_extended);
-    else
-        sz = sizeof(*yold);
+    sz = sizeof(*yold);
     memcpy(ynew, yold, sz);
+    yang_flag_reset(ynew, YANG_FLAG_WHEN); /* Dont inherit WHENs */
     ynew->ys_parent = NULL;
     if (yold->ys_stmt)
         if ((ynew->ys_stmt = calloc(yold->ys_len, sizeof(yang_stmt *))) == NULL){
@@ -1121,14 +1187,6 @@ ys_cp_one(yang_stmt *ynew,
     default:
         break;
     }
-    if ((xpath = yang_when_xpath_get(yold)) != NULL){
-        if (yang_when_xpath_set(ynew, xpath) < 0)
-            goto done;
-    }
-    if ((cvv = yang_when_nsc_get(yold)) != NULL){
-        if (yang_when_nsc_set(ynew, cvv) < 0)
-            goto done;
-    }
     retval = 0;
  done:
     return retval;
@@ -1153,20 +1211,23 @@ ys_cp(yang_stmt *ynew,
 {
     int        retval = -1;
     int        i;
+    int        j;
     yang_stmt *ycn; /* new child */
     yang_stmt *yco; /* old child */
 
     if (ys_cp_one(ynew, yold) < 0)
         goto done;
-    for (i=0; i<ynew->ys_len; i++){
+    for (i=0,j=0; i<yold->ys_len; i++){
         yco = yold->ys_stmt[i];
-        if (yang_flag_get(yco, YANG_FLAG_EXTENDED) != 0x0){
-            if ((ycn = yse_dup(yco)) == NULL)
-                goto done;
+#ifdef YANG_ORIG_PTR_SKIP
+        if (uses_orig_ptr(yang_keyword_get(yco))) {
+            ynew->ys_len--;
+            continue;
         }
-        else if ((ycn = ys_dup(yco)) == NULL)
+#endif
+        if ((ycn = ys_dup(yco)) == NULL)
             goto done;
-        ynew->ys_stmt[i] = ycn;
+         ynew->ys_stmt[j++] = ycn;
         ycn->ys_parent = ynew;
     }
     retval = 0;
@@ -1202,18 +1263,37 @@ ys_dup(yang_stmt *old)
 /*! Create a new extdended yang node and copy the contents recursively from the original.
  */
 yang_stmt *
-yse_dup(yang_stmt *old)
+yse_dup(yang_stmt *yold)
 {
-    yang_stmt *nw;
+    yang_stmt *ynew;
+    char      *xpath;
+    cvec      *cvv;
 
-    if ((nw = yse_new(old->ys_keyword)) == NULL)
+    if ((ynew = yse_new(yold->ys_keyword)) == NULL)
         return NULL;
-    if (ys_cp(nw, old) < 0){
-        ys_free(nw);
+    if (ys_cp(ynew, yold) < 0){
+        ys_free(ynew);
         return NULL;
     }
-    yang_flag_set(nw, YANG_FLAG_EXTENDED);
-    return nw;
+    yang_flag_set(ynew, YANG_FLAG_WHEN);
+    if (yang_flag_get(yold, YANG_FLAG_WHEN) != 0x0) {
+        if ((xpath = yang_when_xpath_get(yold)) != NULL){
+            if (yang_when_xpath_set(ynew, xpath) < 0)
+                goto done;
+        }
+        if ((cvv = yang_when_nsc_get(yold)) != NULL){
+            if (yang_when_nsc_set(ynew, cvv) < 0)
+                goto done;
+        }
+    }
+ ok:
+    return ynew;
+ done:
+    if (ynew){
+        ys_free(ynew);
+        ynew = NULL;
+    }
+    goto ok;
 }
 
 /*! Replace yold with ynew (insert ynew at the exact place of yold). Keep yold pointer as-is.
@@ -1340,7 +1420,14 @@ yang_find(yang_stmt  *yn,
     char      *name;
     yang_stmt *yspec;
     yang_stmt *ym;
-    
+#ifdef YANG_ORIG_PTR_SKIP
+    yang_stmt *yorig;
+
+    if ((yorig = yang_orig_get(yn)) != NULL) {
+        if (uses_orig_ptr(keyword))
+            return yang_find(yorig, keyword, argument);
+    }
+#endif
     for (i=0; i<yn->ys_len; i++){
         ys = yn->ys_stmt[i];
         if (keyword == 0 || ys->ys_keyword == keyword){
@@ -1367,7 +1454,6 @@ yang_find(yang_stmt  *yn,
     }
     return yret?yret:yretsub;
 }
-
 
 /*! Find child data node with matching argument (container, leaf, list, leaf-list)
  *
@@ -2558,7 +2644,6 @@ ys_populate_list(clixon_handle h,
 
     if ((ykey = yang_find(ys, Y_KEY, NULL)) == NULL)
         return 0;
-
     if ((cvv = yang_arg2cvec(ykey, " ")) == NULL)
         return -1;
     yang_cvec_set(ys, cvv);
@@ -4202,6 +4287,12 @@ yang_sort_subelements(yang_stmt *ys)
 #endif
 }
 
+/*! Init yang code
+ *
+ * @param[in]  h  Clixon handle
+ * @retval     0  OK
+ * @retval    -1  Error
+ */
 int
 yang_init(clixon_handle h)
 {

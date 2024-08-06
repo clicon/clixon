@@ -90,9 +90,8 @@
                                       * Set by yang_mount_set 
                                       * Read by ys_free1
                                       */
-#define YANG_FLAG_EXTENDED   0x400   /* Use extended struct to access uncommon fields
-                                      * Memory optimization
-                                      */
+#define YANG_FLAG_WHEN         0x400   /* Use extended struct to access when-info for
+                                        * augment/grouping */
 
 /*
  * Types
@@ -240,6 +239,8 @@ yang_stmt *yang_parent_get(yang_stmt *ys);
 enum rfc_6020 yang_keyword_get(yang_stmt *ys);
 char      *yang_argument_get(yang_stmt *ys);
 int        yang_argument_set(yang_stmt *ys, char *arg);
+yang_stmt *yang_orig_get(yang_stmt *ys);
+int        yang_orig_set(yang_stmt *ys, yang_stmt *y0);
 cg_var    *yang_cv_get(yang_stmt *ys);
 int        yang_cv_set(yang_stmt *ys, cg_var *cv);
 cvec      *yang_cvec_get(yang_stmt *ys);
@@ -271,7 +272,6 @@ int        yang_stats(yang_stmt *y, enum rfc_6020 keyw, uint64_t *nrp, size_t *s
 /* Other functions */
 yang_stmt *yspec_new(void);
 yang_stmt *ys_new(enum rfc_6020 keyw);
-yang_stmt *yse_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
 int        ys_prune_self(yang_stmt *ys);
 int        ys_free1(yang_stmt *ys, int self);

@@ -521,7 +521,7 @@ usage(clixon_handle h,
             "\t-h \t\tHelp\n"
             "\t-V \t\tPrint version and exit\n"
             "\t-D <level> \tDebug level (see available levels below)\n"
-            "\t-f <file> \tConfig-file (mandatory)\n"
+            "\t-f <file> \tConfig-file\n"
             "\t-E <dir>  \tExtra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (stderr is default)\n"
             "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"

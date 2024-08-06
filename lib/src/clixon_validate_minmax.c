@@ -796,16 +796,10 @@ xml_yang_validate_minmax(cxobj  *xt,
                 goto fail;
             if (presence && keyw == Y_CONTAINER &&
                 yang_find(y, Y_PRESENCE, NULL) == NULL){
-                yang_stmt *yc;
-                int        inext;
-
-                inext = 0;
-                while ((yc = yn_iter(y, &inext)) != NULL) {
-                    if ((ret = xml_yang_validate_minmax(x, presence, xret)) < 0)
-                        goto done;
-                    if (ret == 0)
-                        goto fail;
-                }
+                if ((ret = xml_yang_validate_minmax(x, presence, xret)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
             }
             yprev = y;
         }

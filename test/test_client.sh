@@ -166,14 +166,7 @@ new "Check entries"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-client:table -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" "$XML"
 
 new "Run $app"
-# Extra test for some archs, eg ubuntu 18 that have problems with:
-# Sorry, user <user> is not allowed to execute as <user>:clicon on <arch>
-sudo -g ${CLICON_GROUP} $clixon_netconf 2> /dev/null
-if [ $? -eq 0 ]; then
-    expectpart "$(sudo -g ${CLICON_GROUP} $app)" 0 '^42$'
-else
-    expectpart "$($app)" 0 '^42$'
-fi
+expectpart "$(sudo -g ${CLICON_GROUP} $app)" 0 '^42$'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

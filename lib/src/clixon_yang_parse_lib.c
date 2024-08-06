@@ -204,6 +204,36 @@ ys_grouping_resolve(yang_stmt  *yuses,
     return retval;
 }
 
+/*! Recursively add pointer from derived node to original grouping
+ *
+ * Cannot use yang_apply since one needs to traverse two trees simultaneously
+ * @param[in] yp0  Original statement
+ * @param[in] yp1  Instantiated statement
+ * @retval    0    Ok
+ * @retval   -1    Error
+ */
+static int
+ys_add_orig_ptr(yang_stmt *yp0,
+                yang_stmt *yp1)
+{
+    int        retval = -1;
+    yang_stmt *y0;
+    yang_stmt *y1;
+    int        inext;
+
+    inext = 0;
+    while ((y1 = yn_iter(yp1, &inext)) != NULL) {
+        if ((y0 = yang_find(yp0, yang_keyword_get(y1), yang_argument_get(y1))) == NULL)
+            continue;
+        yang_orig_set(y1, y0);
+        if (ys_add_orig_ptr(y0, y1) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! This is an augment node, augment the original datamodel. 
  *
  * @param[in]  h    Clicon handle
@@ -233,8 +263,8 @@ yang_augment_node(clixon_handle h,
     yang_stmt    *yc0;
     yang_stmt    *yc;
     yang_stmt    *ymod;
-    yang_stmt    *ywhen;
-    char         *wxpath = NULL; /* xpath of when statement */
+    yang_stmt    *ywhen = NULL;
+    char         *wxpath; /* xpath of when statement */
     cvec         *wnsc = NULL;   /* namespace context of when statement */
     enum rfc_6020 targetkey;
     enum rfc_6020 childkey;
@@ -356,13 +386,27 @@ yang_augment_node(clixon_handle h,
         default:
             break;
         }
-        if ((yc = yse_dup(yc0)) == NULL) /* Extended */
+        /* If expanded by uses / when */
+        if (yang_flag_get(yc0, YANG_FLAG_WHEN) != 0x0){
+            if ((yc = yse_dup(yc0)) == NULL)
+                goto done;
+        }
+        /* If augment when */
+        else if (ywhen) {
+            if ((yc = yse_dup(yc0)) == NULL) /* Extended */
+                goto done;
+        }
+        else if ((yc = ys_dup(yc0)) == NULL)
             goto done;
 #ifdef YANG_GROUPING_AUGMENT_SKIP
         /* cornercase: always expand uses under augment */
         yang_flag_reset(yc, YANG_FLAG_GROUPING);
 #endif
         yang_mymodule_set(yc, ymod);
+        /* Add backpointer to orig. */
+        yang_orig_set(yc, yc0);
+        if (ys_add_orig_ptr(yc0, yc) < 0)
+            goto done;
         if (yn_insert(ytarget, yc) < 0)
             goto done;
         /* If there is an associated when statement, add a special when struct to the yang 
@@ -602,7 +646,7 @@ yang_expand_uses_node(yang_stmt *yn,
             goto done;
     }
     /* Find when statement, if present */
-    if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
+    if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL) {
         wxpath = yang_argument_get(ywhen);
         if (xml_nsctx_yang(ywhen, &wnsc) < 0)
             goto done;
@@ -613,7 +657,6 @@ yang_expand_uses_node(yang_stmt *yn,
      */
     if ((ygrouping2 = ys_new(ygrouping->ys_keyword)) == NULL)
         goto done;
-    /* Use yse_new() etc for ygrouping2 CHILDREN IF ywhen is set */
     if (ys_cp_one(ygrouping2, ygrouping) < 0){
         ys_free(ygrouping2);
         goto done;
@@ -625,7 +668,7 @@ yang_expand_uses_node(yang_stmt *yn,
 
         for (i=0; i<ygrouping2->ys_len; i++){
             yco = ygrouping->ys_stmt[i];
-            if (ywhen != NULL){
+            if (ywhen != NULL) {
                 if ((ycn = yse_dup(yco)) == NULL)
                     goto done;
             }
@@ -698,6 +741,9 @@ yang_expand_uses_node(yang_stmt *yn,
     } /* while yr */
     /* Note: prune here to make dangling again after while loop */
     if (ys_prune_self(ygrouping2) < 0)
+        goto done;
+    /* Add backpointer to orig. */
+    if (ys_add_orig_ptr(ygrouping, ygrouping2) < 0)
         goto done;
     /* Then copy and insert each child element from ygrouping2 to yn */
     k=0;
@@ -1585,6 +1631,39 @@ yang_parse_post(clixon_handle h,
  done:
     if (ylist)
         free(ylist);
+    return retval;
+}
+
+/*! Optimize yang-stmt parse-tree by recursively removing USES stmt in derived trees
+ *
+ * @param[in] h     Clixon handle
+ * @param[in] yspec Yang spec tree
+ * @retval    0     OK
+ * @retval   -1     Error
+ * @note  This must be done after yang_parse_post (and yang2cli calls if CLI).
+ */
+int
+yang_parse_optimize_uses(clixon_handle h,
+                         yang_stmt    *yt)
+{
+    int        retval = -1;
+    yang_stmt *ys;
+    int        i;
+
+    /* Dont increment due to prune in loop */
+    for (i=0; i<yang_len_get(yt); ){
+        ys = yang_child_i(yt, i);
+        if (yang_orig_get(ys) && yang_keyword_get(ys) == Y_USES){
+            ys_prune(yt, i);
+            ys_free(ys);
+            continue;
+        }
+        if (yang_parse_optimize_uses(h, ys) < 0)
+            goto done;
+        i++;
+    }
+    retval = 0;
+ done:
     return retval;
 }
 

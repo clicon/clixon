@@ -110,17 +110,26 @@ struct yang_stmt {
                                         Y_UNIQUE: vector of descendant schema node ids
                                      #   Y_UNKNOWN: app-dep: yang-mount-points
                                      */
-    union {                           /* depends on ys_keyword */
-        rpc_callback_t    *ysu_action_cb;  /* Y_ACTION: Action callback list*/
-        char              *ysu_filename;   /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
-        yang_type_cache   *ysu_typecache;  /* Y_TYPE: cache all typedef data except unions */
-        int                ysu_ref;        /* Y_SPEC: Reference count for free: 0 means
-                                            * no sharing, 1: two references */
+    yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Used by:
+                                      * 1) Augmented nodes "belong" to the module where the
+                                      *    augment is declared, which may be different from
+                                      *    the direct ancestor module
+                                      * 2) Unknown nodes "belong" to where the extension is
+                                      *    declared */
+    yang_stmt         *ys_orig;      /* Pointer to original (for uses/augment copies) */
+    union {                          /* Depends on ys_keyword */
+        rpc_callback_t  *ysu_action_cb; /* Y_ACTION: Action callback list*/
+        char            *ysu_filename;  /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
+        yang_type_cache *ysu_typecache; /* Y_TYPE: cache all typedef data except unions */
+        int              ysu_ref;     /* Y_SPEC: Reference count for free: 0 means
+                                       * no sharing, 1: two references */
     } u;
 };
 
 /*! An extended yang struct for use of extra fields that consumes more memory
  *
+ * See end of struct. The fields that fit here are extended only fot the original object.,
+ * they may not be copied. Currently only tow WHEN fields.
  * Cannot fit this into the ysu union because keyword is unknown (or at least a set)
  * @see struct yang_stmt for the original struct
  * @note First part of this struct MUST resemble yang_stmt fields (in memory).
@@ -138,6 +147,13 @@ struct yang_stmt_extended {
     char              *ys_argument;  /* String / argument depending on keyword */
     cg_var            *yse_cv;       /* cligen variable. See ys_populate() */
     cvec              *yse_cvec;     /* List of stmt-specific variables */
+    yang_stmt         *yse_mymodule;  /* Shortcut to "my" module. Used by:
+                                      * 1) Augmented nodes "belong" to the module where the
+                                      *    augment is declared, which may be different from
+                                      *    the direct ancestor module
+                                      * 2) Unknown nodes "belong" to where the extension is
+                                      *    declared */
+     yang_stmt             *yse_orig;      /* Pointer to original (for uses/augment copies) */
     union {                          /* depends on ys_keyword */
         rpc_callback_t    *ysu_action_cb;  /* Y_ACTION: Action callback list*/
         char              *ysu_filename;   /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
@@ -145,16 +161,12 @@ struct yang_stmt_extended {
         int                ysu_ref;        /* Y_SPEC: Reference count for free: 0 means
                                             * no sharing, 1: two references */
     } ue;
-    /* Following fields could be extended only for unknown, grouped and augmented nodes
+
+    /* The following fields are only in extended
+     * -----------------------------------------
      */
     char              *yse_when_xpath; /* Special conditional for a "when"-associated augment/uses XPath */
     cvec              *yse_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */
-    yang_stmt         *yse_mymodule;  /* Shortcut to "my" module. Used by:
-                                      * 1) Augmented nodes "belong" to the module where the
-                                      *    augment is declared, which may be different from
-                                      *    the direct ancestor module
-                                      * 2) Unknown nodes "belong" to where the extension is
-                                      *    declared */
 };
 typedef struct yang_stmt_extended yang_stmt_extended;
 

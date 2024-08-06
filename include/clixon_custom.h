@@ -204,3 +204,9 @@
  * If not set, reduces memory with 8 bytes per yang-stmt.
  */
 #undef YANG_SPEC_LINENR
+
+/*! Use ref origin pointer to skip as many derived yang nodes as possible
+ *
+ * If set, do not copy some YANG nodes to derived trees (ie augmented or grouped trees)
+ */
+#define YANG_ORIG_PTR_SKIP
