@@ -128,17 +128,32 @@ netconf_input_read2(int            s,
                     ssize_t        buflen,
                     int           *eof)
 {
-    int      retval = -1;
-    ssize_t  len;
+    int     retval = -1;
+    ssize_t len;
+    int     restarts = 0;
+    int     maxrestarts = 5;
 
     memset(buf, 0, buflen);
-    if ((len = read(s, buf, buflen)) < 0){
-        if (errno == ECONNRESET)
-            len = 0; /* emulate EOF */
-        else{
+    while ((len = read(s, buf, buflen)) < 0) {
+        switch (errno){
+        case EINTR:
+        case EAGAIN:
+            if (restarts++ >= maxrestarts){
+                clixon_log(NULL, LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
+                goto done;
+            }
+            break;       /* Try again */
+        case ECONNRESET: /* Connection reset by peer */
+        case EPIPE:      /* Client shutdown */
+        case EBADF:      /* Client shutdown - freebsd */
+            len = 0;     /* Emulate EOF */
+            break;
+        default:
             clixon_log(NULL, LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
             goto done;
         }
+        if (len == 0)
+            break;
     } /* read */
     clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "len:%ld", len);
     if (len == 0){  /* EOF */

@@ -47,6 +47,8 @@ Developers may need to change their code
 
 ### Corrected Busg
 
+* Fixed: Signal handling of recv message
+   Revert to signal handling in 6.5 that was changed in the netconf uniform handling in 7.0
 * Fixed: [NETCONF error reply from failed leafref rquire-instance does not comply to RFC 7950](https://github.com/clicon/clixon/issues/536)
 
 ## 7.1.0

@@ -549,7 +549,7 @@ clixon_msg_rcv11(int         s,
     size_t           frame_size = 0;
     unsigned char   *p = buf;
     size_t           plen;
-    cbuf            *cbmsg=NULL;
+    cbuf            *cbmsg = NULL;
     ssize_t          len;
     int              eom = 0;
     cxobj           *xtop = NULL;
@@ -557,10 +557,6 @@ clixon_msg_rcv11(int         s,
     sigset_t         oldsigset = {0,};
     struct sigaction oldsigaction[32] = {{{0,},},};
 
-    if ((cbmsg = cbuf_new()) == NULL){
-        clixon_err(OE_XML, errno, "cbuf_new");
-        goto done;
-    }
     eom = 0;
     *eof = 0;
     if (intr){
@@ -572,6 +568,10 @@ clixon_msg_rcv11(int         s,
         set_signal_flags(SIGINT, 0, atomicio_sig_handler, NULL);
         /* May be more signals to ignore */
         set_signal(SIGWINCH, SIG_IGN, NULL);
+    }
+    if ((cbmsg = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
     }
     while (*eof == 0 && eom == 0) {
         /* Read input data from socket and append to cbbuf */
