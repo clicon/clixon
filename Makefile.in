@@ -166,6 +166,6 @@ loc:
 	find . -name '*.[chyl]' -type f | xargs wc -l | tail -1 2> /dev/null
 
 TAGS:
-	find $(srcdir) -not \( -type d \( -path './.git' -o -path './docker' -o -path './doc' \) -prune \) -name '*.[chyl]' -type f | grep -v \.tab\.[ch] | grep -v lex.*.c | grep -v .yy.c | etags -
+	find $(srcdir) -not \( -type d \( -path './.git' -o -path './docker' -o -path './doc' \) -prune \) -name '*.[chyl]' -type f | grep -v \.tab\.[ch] | grep -v lex.*.c | grep -v .yy.c | xargs etags
 
 

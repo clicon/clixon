@@ -40,7 +40,7 @@
 
 struct clicon_hash {
     qelem_t     h_qelem;
-    char       *h_key;
+    char       *h_key;  /* Key must be NULL-terinated string */
     size_t      h_vlen;
     void       *h_val;
 };

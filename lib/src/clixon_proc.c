@@ -124,6 +124,7 @@
 #include "clixon_uid.h"
 #include "clixon_event.h"
 #include "clixon_sig.h"
+#include "clixon_map.h"
 #include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_netconf_lib.h"

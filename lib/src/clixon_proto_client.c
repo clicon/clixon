@@ -71,6 +71,7 @@
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_proto.h"

@@ -71,7 +71,7 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_file.h"
 #include "clixon_json.h"
 #include "clixon_text_syntax.h"

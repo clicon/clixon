@@ -38,34 +38,6 @@
 #ifndef _CLIXON_STRING_H_
 #define _CLIXON_STRING_H_
 
-/*! Struct used to map between int and strings. Typically used to map between
- *
- * values and their names. Note NULL terminated
- * Example:
- * @code
-static const map_str2int atmap[] = {
-    {"One",               1},
-    {"Two",               2},
-    {NULL,               -1}
-};
- * @endcode
- * @see clicon_int2str
- * @see clicon_str2int
- */
-struct map_str2int{
-    char         *ms_str;
-    int           ms_int;
-};
-typedef struct map_str2int map_str2int;
-
-/*! Struct used to map between two strings.
- */
-struct map_str2str{
-    char         *ms_s0;
-    char         *ms_s1;
-};
-typedef struct map_str2str map_str2str;
-
 /*! A malloc version that aligns on 4 bytes. To avoid warning from valgrind */
 #define align4(s) (((s)/4)*4 + 4)
 
@@ -99,11 +71,6 @@ int    xml_chardata_encode(char **escp, int quote, const char *fmt, ... ) __attr
 int    xml_chardata_cbuf_append(cbuf *cb, int quote, char *str);
 int    xml_chardata_decode(char **escp, const char *fmt,...);
 int    uri_percent_decode(char *enc, char **str);
-
-const char *clicon_int2str(const map_str2int *mstab, int i);
-int    clicon_str2int(const map_str2int *mstab, char *str);
-int    clicon_str2int_search(const map_str2int *mstab, char *str, int upper);
-char  *clicon_str2str(const map_str2str *mstab, char *str);
 int    nodeid_split(char *nodeid, char **prefix, char **id);
 char  *clixon_trim(char *str);
 char  *clixon_trim2(char *str, char *trims);

@@ -80,6 +80,7 @@ extern "C" {
 #include <clixon/clixon_netns.h>
 #include <clixon/clixon_yang_type.h>
 #include <clixon/clixon_event.h>
+#include <clixon/clixon_map.h>
 #include <clixon/clixon_string.h>
 #include <clixon/clixon_proc.h>
 #include <clixon/clixon_file.h>

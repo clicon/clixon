@@ -308,7 +308,7 @@ xml_nsctx_node(cxobj *xn,
  * Primary use is Yang path statements, eg leafrefs and others
  * Fully explore all prefix:namespace pairs from context of one node
  * @param[in]  yn     Yang statement in module tree (or module itself)
- * @param[out] ncp    XML namespace context
+ * @param[out] ncp    XML namespace context (caller frees with cvec_free)
  * @retval     0      OK
  * @retval    -1      Error
  * @code
