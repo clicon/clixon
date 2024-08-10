@@ -324,6 +324,8 @@ check_when_condition(cxobj              *x0p,
     }
     retval = 1;
  done:
+    if (nsc)
+        cvec_free(nsc);
     if (cberr)
         cbuf_free(cberr);
     return retval;

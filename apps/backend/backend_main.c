@@ -116,6 +116,7 @@ backend_terminate(clixon_handle h)
     if ((yspec = clicon_dbspec_yang(h)) != NULL){
         ys_free(yspec);
     }
+    yang_exit(h);
     if ((yspec = clicon_config_yang(h)) != NULL)
         ys_free(yspec);
     if ((yspec = clicon_nacm_ext_yang(h)) != NULL)

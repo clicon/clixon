@@ -644,7 +644,7 @@ yang_find_module_by_namespace_revision(yang_stmt  *yspec,
                                        const char *ns,
                                        const char *rev)
 {
-    yang_stmt *ymod;
+    yang_stmt *ymod = NULL;
     yang_stmt *yrev;
     char      *rev1;
     int        inext;
@@ -682,7 +682,7 @@ yang_find_module_by_name_revision(yang_stmt  *yspec,
                                   const char *name,
                                   const char *rev)
 {
-    yang_stmt *ymod;
+    yang_stmt *ymod = NULL;
     yang_stmt *yrev;
     char      *rev1;
     int        inext;

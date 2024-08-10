@@ -34,8 +34,8 @@
 
  * Yang type related functions
  * Part of this is type resolving which is pretty complex
- *                   +--> yang_type_cache_set
- * (called at parse) |
+ *                    +--> yang_type_cache_set
+ * (called at parse)  |
  * ys_resolve_type  --+     ys_populate_range, yang_enum_int_value(NULL)
  *                     \    |  cml
  *                      v   v  v
@@ -46,7 +46,7 @@
  * |  yang2cli_var          |  yang2cli_var_union_one
  * ys_cv_validate---+      ys_cv_validate_union_one
  * |                 \    /
- * |                  \  /    yang_type_cache_regex_set
+ * |                  \  /    yang_type_cache_regexp_set
  * ys_populate_leaf,   +--> compile_pattern2regexp (compile regexps)
  * xml_cv_cache (NULL) +--> cv_validate1 --> cv_validate_pattern (exec regexps)
  * yang_type2cv (simplified)
@@ -223,11 +223,11 @@ compile_pattern2regexp(clixon_handle h,
 
 /*! Resolve types: populate type caches
  *
+ * Typically only called once when loading the yang type system.
  * @param[in]  ys   This is a type statement
  * @param[in]  arg  Not used
  * @retval     0    OK
  * @retval    -1    Error
- * Typically only called once when loading the yang type system.
  * @note unions not cached
  */
 int

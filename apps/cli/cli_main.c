@@ -180,6 +180,7 @@ cli_terminate(clixon_handle h)
         clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
         ys_free(yspec);
+    yang_exit(h);
     if ((yspec = clicon_config_yang(h)) != NULL)
         ys_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)

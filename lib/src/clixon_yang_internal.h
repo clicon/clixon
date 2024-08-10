@@ -46,17 +46,16 @@
  * @note unions not cached
 */
 struct yang_type_cache{
-    int        yc_options;  /* See YANG_OPTIONS_* that determines pattern/
+    uint8_t    yc_options;  /* See YANG_OPTIONS_* that determines pattern/
                                fraction fields. */
-    int        yc_rxmode;   /* need to store mode for freeing since handle may not be available
-                             * see regexp_mode
-                             */
+    uint8_t    yc_rxmode;   /* Need to store mode for freeing since handle may not be
+                             * available. See enum regexp_mode */
     uint8_t    yc_fraction; /* Fraction digits for decimal64 (if YANG_OPTIONS_FRACTION_DIGITS */
     cvec      *yc_cvv;      /* Range and length restriction. (if YANG_OPTION_
                                LENGTH|RANGE. Can be a vector if multiple 
-                               ranges*/
-    cvec      *yc_patterns; /* list of regexp, if cvec_len() > 0 */
-    cvec      *yc_regexps;  /* list of _compiled_ regexp, if cvec_len() > 0 */
+                               ranges */
+    cvec      *yc_patterns; /* List of regexp, if cvec_len() > 0 */
+    cvec      *yc_regexps;  /* List of _compiled_ regexp, if cvec_len() > 0 */
     yang_stmt *yc_resolved; /* Resolved type object, can be NULL - note direct ptr */
 };
 typedef struct yang_type_cache yang_type_cache;
@@ -65,8 +64,7 @@ typedef struct yang_type_cache yang_type_cache;
  *
  * This is an internal type, not exposed in the API
  * The external type is "yang_stmt" defined in clixon_yang.h
- * @see struct yang_stmt_extended   for extended struct (same beginning)
- * @note  This struct MUST be identical in size to first part of yang_stmt_extended struct
+ * @note  There is additional info in maps, yang_when_set and yang_mymodule_set
  */
 struct yang_stmt {
     /* On x86_64, the following three fields take 8 bytes */
@@ -110,12 +108,6 @@ struct yang_stmt {
                                         Y_UNIQUE: vector of descendant schema node ids
                                      #   Y_UNKNOWN: app-dep: yang-mount-points
                                      */
-    yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Used by:
-                                      * 1) Augmented nodes "belong" to the module where the
-                                      *    augment is declared, which may be different from
-                                      *    the direct ancestor module
-                                      * 2) Unknown nodes "belong" to where the extension is
-                                      *    declared */
     yang_stmt         *ys_orig;      /* Pointer to original (for uses/augment copies) */
     union {                          /* Depends on ys_keyword */
         rpc_callback_t  *ysu_action_cb; /* Y_ACTION: Action callback list*/
@@ -125,50 +117,6 @@ struct yang_stmt {
                                        * no sharing, 1: two references */
     } u;
 };
-
-/*! An extended yang struct for use of extra fields that consumes more memory
- *
- * See end of struct. The fields that fit here are extended only fot the original object.,
- * they may not be copied. Currently only tow WHEN fields.
- * Cannot fit this into the ysu union because keyword is unknown (or at least a set)
- * @see struct yang_stmt for the original struct
- * @note First part of this struct MUST resemble yang_stmt fields (in memory).
- */
-struct yang_stmt_extended {
-    /* On x86_64, the following four fields take 16 bytes */
-    enum rfc_6020      ys_keyword:16; /* YANG keyword */
-    uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
-    uint32_t           ys_len;       /* Number of children */
-#ifdef YANG_SPEC_LINENR
-    uint32_t           ys_linenum;   /* For debug/errors: line number (in ys_filename) */
-#endif
-    struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
-    struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
-    char              *ys_argument;  /* String / argument depending on keyword */
-    cg_var            *yse_cv;       /* cligen variable. See ys_populate() */
-    cvec              *yse_cvec;     /* List of stmt-specific variables */
-    yang_stmt         *yse_mymodule;  /* Shortcut to "my" module. Used by:
-                                      * 1) Augmented nodes "belong" to the module where the
-                                      *    augment is declared, which may be different from
-                                      *    the direct ancestor module
-                                      * 2) Unknown nodes "belong" to where the extension is
-                                      *    declared */
-     yang_stmt             *yse_orig;      /* Pointer to original (for uses/augment copies) */
-    union {                          /* depends on ys_keyword */
-        rpc_callback_t    *ysu_action_cb;  /* Y_ACTION: Action callback list*/
-        char              *ysu_filename;   /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
-        yang_type_cache   *ysu_typecache;  /* Y_TYPE: cache all typedef data except unions */
-        int                ysu_ref;        /* Y_SPEC: Reference count for free: 0 means
-                                            * no sharing, 1: two references */
-    } ue;
-
-    /* The following fields are only in extended
-     * -----------------------------------------
-     */
-    char              *yse_when_xpath; /* Special conditional for a "when"-associated augment/uses XPath */
-    cvec              *yse_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */
-};
-typedef struct yang_stmt_extended yang_stmt_extended;
 
 /* Access macros */
 #define ys_action_cb      u.ysu_action_cb

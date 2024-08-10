@@ -90,8 +90,10 @@
                                       * Set by yang_mount_set 
                                       * Read by ys_free1
                                       */
-#define YANG_FLAG_WHEN         0x400   /* Use extended struct to access when-info for
-                                        * augment/grouping */
+#define YANG_FLAG_WHEN         0x400 /* Use external map to access when-info for
+                                      * augment/grouping */
+#define YANG_FLAG_MYMODULE     0x800 /* Use external map to access my-module for
+                                      * UNKNOWNS and augment/grouping */
 
 /*
  * Types
@@ -252,10 +254,10 @@ int        yang_ref_dec(yang_stmt *ys);
 uint16_t   yang_flag_get(yang_stmt *ys, uint16_t flag);
 int        yang_flag_set(yang_stmt *ys, uint16_t flag);
 int        yang_flag_reset(yang_stmt *ys, uint16_t flag);
+yang_stmt *yang_when_get(clixon_handle h, yang_stmt *ys);
+int        yang_when_set(clixon_handle h, yang_stmt *ys, yang_stmt *ywhen);
 char      *yang_when_xpath_get(yang_stmt *ys);
-int        yang_when_xpath_set(yang_stmt *ys, char *xpath);
 cvec      *yang_when_nsc_get(yang_stmt *ys);
-int        yang_when_nsc_set(yang_stmt *ys, cvec *nsc);
 const char *yang_filename_get(yang_stmt *ys);
 int        yang_filename_set(yang_stmt *ys, const char *filename);
 uint32_t   yang_linenum_get(yang_stmt *ys);
@@ -279,7 +281,6 @@ int        ys_free(yang_stmt *ys);
 int        ys_cp_one(yang_stmt *nw, yang_stmt *old);
 int        ys_cp(yang_stmt *nw, yang_stmt *old);
 yang_stmt *ys_dup(yang_stmt *old);
-yang_stmt *yse_dup(yang_stmt *old);
 int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);
 int        yn_insert1(yang_stmt *ys_parent, yang_stmt *ys_child);
 yang_stmt *yn_iter(yang_stmt *yparent, int *inext);
@@ -326,10 +327,11 @@ int        yang_type_cache_set2(yang_stmt *ys, yang_stmt *resolved, int options,
 yang_stmt *yang_anydata_add(yang_stmt *yp, char *name);
 int        yang_extension_value(yang_stmt *ys, char *name, char *ns, int *exist, char **value);
 int        yang_sort_subelements(yang_stmt *ys);
-int        yang_init(clixon_handle h);
 int        yang_single_child_type(yang_stmt *ys, enum rfc_6020 subkeyw);
 void      *yang_action_cb_get(yang_stmt *ys);
 int        yang_action_cb_add(yang_stmt *ys, void *rc);
 int        ys_populate_feature(clixon_handle h, yang_stmt *ys);
+int        yang_init(clixon_handle h);
+int        yang_exit(clixon_handle h);
 
 #endif  /* _CLIXON_YANG_H_ */

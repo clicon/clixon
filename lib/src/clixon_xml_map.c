@@ -2089,7 +2089,6 @@ yang_check_when_xpath(cxobj        *xn,
     int        nr = 0;
     cvec      *nsc = NULL;
     int        xmalloc = 0;   /* ugly help variable to clean temporary object */
-    int        nscmalloc = 0; /* ugly help variable to remove */
 
     /* First variant */
     if ((xpath = yang_when_xpath_get(yn)) != NULL){
@@ -2111,7 +2110,6 @@ yang_check_when_xpath(cxobj        *xn,
             x = xn;
         if (xml_nsctx_yang(yn, &nsc) < 0)
             goto done;
-        nscmalloc++;
         *hit = 1;
     }
     else
@@ -2128,7 +2126,7 @@ yang_check_when_xpath(cxobj        *xn,
  done:
     if (xmalloc)
         xml_purge(x);
-    if (nsc && nscmalloc)
+    if (nsc)
         xml_nsctx_free(nsc);
     return retval;
 }

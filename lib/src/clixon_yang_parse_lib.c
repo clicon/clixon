@@ -106,7 +106,7 @@
 #define BUFLEN 1024
 
 /* Forward */
-static int yang_expand_grouping(yang_stmt *yn);
+static int yang_expand_grouping(clixon_handle h, yang_stmt *yn);
 
 /*! Resolve a grouping name from a module, includes looking in submodules
  */
@@ -253,6 +253,7 @@ ys_add_orig_ptr(yang_stmt *yp0,
  * @note If the augment has a when statement, which is commonplace, the when statement is not 
  * copied as datanodes are, since it should not apply to the target node. Instead it is added as 
  * a special "when" struct to the yang statements being inserted.
+ * @see yang_expand_uses_node  similar but for uses/grouping
  */
 static int
 yang_augment_node(clixon_handle h,
@@ -265,8 +266,7 @@ yang_augment_node(clixon_handle h,
     yang_stmt    *yc;
     yang_stmt    *ymod;
     yang_stmt    *ywhen = NULL;
-    char         *wxpath; /* xpath of when statement */
-    cvec         *wnsc = NULL;   /* namespace context of when statement */
+    yang_stmt    *ywhen0;
     enum rfc_6020 targetkey;
     enum rfc_6020 childkey;
     int           inext;
@@ -308,11 +308,7 @@ yang_augment_node(clixon_handle h,
         goto ok;
 
     /* Find when statement, if present */
-    if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
-        wxpath = yang_argument_get(ywhen);
-        if (xml_nsctx_yang(ywhen, &wnsc) < 0)
-            goto done;
-    }
+    ywhen = yang_find(ys, Y_WHEN, NULL);
     /* Extend ytarget with ys' schemanode children */
     inext = 0;
     while ((yc0 = yn_iter(ys, &inext)) != NULL) {
@@ -388,16 +384,7 @@ yang_augment_node(clixon_handle h,
             break;
         }
         /* If expanded by uses / when */
-        if (yang_flag_get(yc0, YANG_FLAG_WHEN) != 0x0){
-            if ((yc = yse_dup(yc0)) == NULL)
-                goto done;
-        }
-        /* If augment when */
-        else if (ywhen) {
-            if ((yc = yse_dup(yc0)) == NULL) /* Extended */
-                goto done;
-        }
-        else if ((yc = ys_dup(yc0)) == NULL)
+        if ((yc = ys_dup(yc0)) == NULL)
             goto done;
 #ifdef YANG_GROUPING_AUGMENT_SKIP
         /* cornercase: always expand uses under augment */
@@ -413,10 +400,19 @@ yang_augment_node(clixon_handle h,
         /* If there is an associated when statement, add a special when struct to the yang 
          * see xml_yang_validate_all
          */
-        if (ywhen){
-            if (yang_when_xpath_set(yc, wxpath) < 0)
+        /* ywhen of uses node (already present) */
+        if ((ywhen0 = yang_when_get(h, yc0)) != NULL) {
+            if (yang_when_set(h, yc, ywhen0) < 0)
                 goto done;
-            if (yang_when_nsc_set(yc, wnsc) < 0)
+        }
+        /* ywhen of augmented node
+         * Note: double whens not supported
+         */
+        if (ywhen){
+            if (ywhen0 != NULL)
+                clixon_log(h, LOG_WARNING, "Warning: Double when statement, both augment and existing (uses) not supported in %s",
+                           yang_argument_get(ys_module(ys)));
+            if (yang_when_set(h, yc, ywhen) < 0)
                 goto done;
         }
         /* Note: ys_populate2 called as a special case here since the inserted child is
@@ -430,8 +426,6 @@ yang_augment_node(clixon_handle h,
  ok:
    retval = 0;
  done:
-    if (wnsc)
-        cvec_free(wnsc);
     return retval;
 }
 
@@ -574,16 +568,19 @@ ys_iskey(yang_stmt *y,
 
 /*! Helper function to yang_expand_grouping
  *
- * @param[in] yn     Yang parent node of uses ststement
- * @param[in] ys     Uses statement
- * @param[in] i
- * @retval    0      OK
- * @retval   -1      Error
+ * @param[in]  h   Clixon handle
+ * @param[in]  yn  Yang parent node of uses ststement
+ * @param[in]  ys  Uses statement
+ * @param[in]  i   ys is i:th element of yn:s children
+ * @retval     0   OK
+ * @retval    -1   Error
+ * @see yang_augment_node  similar but for augment
  */
 static int
-yang_expand_uses_node(yang_stmt *yn,
-                      yang_stmt *ys,
-                      int        i)
+yang_expand_uses_node(clixon_handle h,
+                      yang_stmt    *yn,
+                      yang_stmt    *ys,
+                      int           i)
 {
     int        retval = -1;
     char      *id = NULL;
@@ -599,8 +596,6 @@ yang_expand_uses_node(yang_stmt *yn,
     int        j;
     int        k;
     yang_stmt *ywhen;
-    char      *wxpath = NULL; /* xpath of when statement */
-    cvec      *wnsc = NULL;   /* namespace context of when statement */
     int        inext;
 
     /* Split argument into prefix and name */
@@ -643,15 +638,11 @@ yang_expand_uses_node(yang_stmt *yn,
          * A mark could be completely normal (several uses) or it could be a recursion.
          */
         yang_flag_set(ygrouping, YANG_FLAG_GROUPING); /* Mark as (being)  expanded */
-        if (yang_expand_grouping(ygrouping) < 0)
+        if (yang_expand_grouping(h, ygrouping) < 0)
             goto done;
     }
     /* Find when statement, if present */
-    if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL) {
-        wxpath = yang_argument_get(ywhen);
-        if (xml_nsctx_yang(ywhen, &wnsc) < 0)
-            goto done;
-    }
+    ywhen = yang_find(ys, Y_WHEN, NULL);
     /* Make a copy of the grouping, then make refinements to this copy
      * Note this ygrouping2 object does not have a parent and does not work in many
      * functions which assume a full hierarchy, use the original ygrouping in those cases.
@@ -669,14 +660,8 @@ yang_expand_uses_node(yang_stmt *yn,
 
         for (i=0; i<ygrouping2->ys_len; i++){
             yco = ygrouping->ys_stmt[i];
-            if (ywhen != NULL) {
-                if ((ycn = yse_dup(yco)) == NULL)
-                    goto done;
-            }
-            else {
-                if ((ycn = ys_dup(yco)) == NULL)
-                    goto done;
-            }
+            if ((ycn = ys_dup(yco)) == NULL)
+                goto done;
             ygrouping2->ys_stmt[i] = ycn;
             ycn->ys_parent = ygrouping2;
         }
@@ -770,9 +755,7 @@ yang_expand_uses_node(yang_stmt *yn,
                        );
                 goto done;
             }
-            if (yang_when_xpath_set(yg, wxpath) < 0)
-                goto done;
-            if (yang_when_nsc_set(yg, wnsc) < 0)
+            if (yang_when_set(h, yg, ywhen) < 0)
                 goto done;
         }
         /* This is for extensions that allow list keys to be optional, see restconf_main_extension_cb */
@@ -788,8 +771,6 @@ yang_expand_uses_node(yang_stmt *yn,
     ys_free(ygrouping2);
     retval = 0;
  done:
-    if (wnsc)
-        cvec_free(wnsc);
     if (prefix)
         free(prefix);
     if (id)
@@ -807,12 +788,14 @@ yang_expand_uses_node(yang_stmt *yn,
  * until the contents of the grouping are added to the schema tree via a
  * "uses" statement that does not appear inside a "grouping" statement,
  * at which point they are bound to the namespace of the current module.
+ * @param[in]  h     Clixon handle (may be NULL)
  * @param[in] yn   Yang node for recursive iteration
  * @retval    0    OK
  * @retval   -1    Error
  */
 static int
-yang_expand_grouping(yang_stmt *yn)
+yang_expand_grouping(clixon_handle h,
+                     yang_stmt    *yn)
 {
     int        retval = -1;
     yang_stmt *ys = NULL;
@@ -825,7 +808,7 @@ yang_expand_grouping(yang_stmt *yn)
         switch (yang_keyword_get(ys)){
         case Y_USES:
             if (yang_flag_get(ys, YANG_FLAG_GROUPING) == 0){
-                if (yang_expand_uses_node(yn, ys, i) < 0)
+                if (yang_expand_uses_node(h, yn, ys, i) < 0)
                     goto done;
                 yang_flag_set(ys, YANG_FLAG_GROUPING);
             }
@@ -846,14 +829,12 @@ yang_expand_grouping(yang_stmt *yn)
              */
             if (yang_flag_get(ys, YANG_FLAG_GROUPING) == 0){
                 yang_flag_set(ys, YANG_FLAG_GROUPING); /* Mark as (being) expanded */
-                if (yang_expand_grouping(ys) < 0)
+                if (yang_expand_grouping(h, ys) < 0)
                     goto done;
             }
         }
-        else
-
-            {
-            if (yang_expand_grouping(ys) < 0)
+        else {
+            if (yang_expand_grouping(h, ys) < 0)
                 goto done;
         }
     }
@@ -1591,7 +1572,7 @@ yang_parse_post(clixon_handle h,
      *    This alters the original YANG: after this all YANG uses have been expanded
      */
     for (i=0; i<ylen; i++){
-        if (yang_expand_grouping(ylist[i]) < 0)
+        if (yang_expand_grouping(h, ylist[i]) < 0)
             goto done;
     }
     /* 7: Top-level augmentation of all modules. 

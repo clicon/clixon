@@ -174,6 +174,10 @@ static const map_str2int ykmap[] = {
     {NULL,               -1}
 };
 
+/* XXX: Global variables, should really be on handle but not available in some cases */
+static map_ptr2ptr *_yang_when_map = NULL;
+static map_ptr2ptr *_yang_mymodule_map = NULL;
+
 /* Forward static */
 static int yang_type_cache_free(yang_type_cache *ycache);
 static int yang_type_cache_cp(yang_stmt *ynew, yang_stmt *yold);
@@ -266,8 +270,6 @@ yang_argument_set(yang_stmt *ys,
 yang_stmt *
 yang_orig_get(yang_stmt *ys)
 {
-    if (ys->ys_orig)
-        assert(ys->ys_orig->ys_orig == NULL);
     return ys->ys_orig;
 }
 
@@ -283,7 +285,6 @@ yang_orig_set(yang_stmt *ys,
               yang_stmt *y0)
 {
     if (y0->ys_orig){
-        assert(y0->ys_orig->ys_orig == NULL);
         yang_orig_set(ys, y0->ys_orig);
     }
     else
@@ -299,7 +300,6 @@ yang_orig_set(yang_stmt *ys,
 cg_var*
 yang_cv_get(yang_stmt *ys)
 {
-    //    assert(ys->ys_keyword == Y_FEATURE ||ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_LEAF_LIST || ys->ys_keyword == Y_CONFIG || ys->ys_keyword == Y_MANDATORY || ys->ys_keyword == Y_MAX_ELEMENTS|| ys->ys_keyword == Y_MIN_ELEMENTS || ys->ys_keyword == Y_REQUIRE_INSTANCE || ys->ys_keyword == Y_FRACTION_DIGITS || ys->ys_keyword == Y_REVISION || ys->ys_keyword == Y_REVISION_DATE || ys->ys_keyword == Y_UNKNOWN || ys->ys_keyword == Y_SPEC || ys->ys_keyword == Y_ENUM);
     return ys->ys_cv;
 }
 
@@ -314,7 +314,6 @@ int
 yang_cv_set(yang_stmt *ys,
             cg_var    *cv)
 {
-    //    assert(ys->ys_keyword == Y_FEATURE || ys->ys_keyword == Y_LEAF || ys->ys_keyword == Y_LEAF_LIST || ys->ys_keyword == Y_CONFIG || ys->ys_keyword == Y_MANDATORY || ys->ys_keyword == Y_MAX_ELEMENTS|| ys->ys_keyword == Y_MIN_ELEMENTS || ys->ys_keyword == Y_REQUIRE_INSTANCE || ys->ys_keyword == Y_FRACTION_DIGITS || ys->ys_keyword == Y_REVISION || ys->ys_keyword == Y_REVISION_DATE || ys->ys_keyword == Y_UNKNOWN || ys->ys_keyword == Y_SPEC || ys->ys_keyword == Y_ENUM);
     if (cv != NULL && ys->ys_cv != NULL)
         cv_free(ys->ys_cv);
     ys->ys_cv = cv;
@@ -330,7 +329,6 @@ yang_cv_set(yang_stmt *ys,
 cvec*
 yang_cvec_get(yang_stmt *ys)
 {
-    //    assert(ys->ys_keyword == Y_EXTENSION || ys->ys_keyword == Y_IDENTITY ||ys->ys_keyword == Y_LENGTH || ys->ys_keyword == Y_LIST ||ys->ys_keyword == Y_RANGE || ys->ys_keyword == Y_TYPE ||ys->ys_keyword == Y_UNIQUE ||ys->ys_keyword == Y_CONTAINER);
     return ys->ys_cvec;
 }
 
@@ -345,7 +343,6 @@ int
 yang_cvec_set(yang_stmt *ys,
               cvec      *cvv)
 {
-    //    assert(ys->ys_keyword == Y_EXTENSION || ys->ys_keyword == Y_IDENTITY ||ys->ys_keyword == Y_LENGTH || ys->ys_keyword == Y_LIST ||ys->ys_keyword == Y_RANGE || ys->ys_keyword == Y_TYPE ||ys->ys_keyword == Y_UNIQUE ||ys->ys_keyword == Y_CONTAINER);
     if (ys->ys_cvec)
         cvec_free(ys->ys_cvec);
     ys->ys_cvec = cvv;
@@ -368,7 +365,6 @@ yang_cvec_add(yang_stmt    *ys,
     cg_var *cv;
     cvec   *cvv;
 
-    //    assert(ys->ys_keyword == Y_EXTENSION || ys->ys_keyword == Y_IDENTITY ||ys->ys_keyword == Y_LENGTH || ys->ys_keyword == Y_LIST ||ys->ys_keyword == Y_RANGE || ys->ys_keyword == Y_TYPE ||ys->ys_keyword == Y_UNIQUE ||ys->ys_keyword == Y_CONTAINER);
     if ((cvv = yang_cvec_get(ys)) == NULL){
         if ((cvv = cvec_new(0)) == NULL){
             clixon_err(OE_YANG, errno, "cvec_new");
@@ -470,6 +466,65 @@ yang_flag_reset(yang_stmt *ys,
     return 0;
 }
 
+/*! Get Yang when statement from external map
+ *
+ * @param[in]  h     Clixon handle (may be NULL)
+ * @param[in]  ys    Yang statement
+ * @retval     ywhen Yang when statement
+ * @retval     NULL  No yang when
+ * @note  h may be NULL since may not be available by caller
+ */
+yang_stmt *
+yang_when_get(clixon_handle h,
+              yang_stmt    *ys)
+{
+    map_ptr2ptr *mp = _yang_when_map;
+
+    if (mp == NULL){
+        clixon_log(h, LOG_WARNING, "when_map not defined, yang_init() not called?");
+        return NULL;
+    }
+    else {
+        if (yang_flag_get(ys, YANG_FLAG_WHEN) != 0x0 && mp != NULL)
+            return clixon_ptr2ptr(mp, ys);
+    }
+    return NULL;
+}
+
+/*! Set Yang when statement to external map
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  ys    Yang statement
+ * @param[int] ywhen Yang when statement
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+yang_when_set(clixon_handle h,
+              yang_stmt    *ys,
+              yang_stmt    *ywhen)
+{
+    int          retval = -1;
+    map_ptr2ptr *mp = _yang_when_map;
+
+    if (mp == NULL){
+        clixon_log(h, LOG_WARNING, "when_map not defined, yang_init() not called?");
+        goto done;
+    }
+    else {
+        if (clixon_ptr2ptr(mp, ys) != NULL) {
+            clixon_err(OE_YANG, 0, "when pointer already set");
+            goto done;
+        }
+        if (clixon_ptr2ptr_add(&_yang_when_map, ys, ywhen) < 0)
+            goto done;
+        yang_flag_set(ys, YANG_FLAG_WHEN);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Get yang xpath for "when"-associated augment
  *
  * Ie, for yang structures like: augment <path> { when <xpath>; ... }
@@ -477,52 +532,17 @@ yang_flag_reset(yang_stmt *ys,
  * @param[in]  ys     Yang statement
  * @retval     xpath  xpath should evaluate to true at validation
  * @retval     NULL   Not set
- * @note xpath context is PARENT which is different from when actual when child which is 
+ * @note xpath context is PARENT which is different from when actual when child which is
  * child itself
  */
 char*
 yang_when_xpath_get(yang_stmt *ys)
 {
-    yang_stmt_extended *yse = (yang_stmt_extended *)ys;
+    yang_stmt   *ywhen;
 
-    if ((ys->ys_flags & YANG_FLAG_WHEN) == 0x0)
-        return NULL;
-    else
-        return yse->yse_when_xpath;
-}
-
-/*! Set yang xpath and namespace context for "when"-associated augment
- *
- * Ie, for yang structures like: augment <path> { when <xpath>; ... }
- * Will insert new yang nodes at <path> with this special "when" struct (not yang node)
- * @param[in]  ys     Yang statement
- * @param[in]  xpath  If set, this xpath should evaluate to true at validation, copied
- * @retval     0      OK
- * @retval    -1      Error
- */
-int
-yang_when_xpath_set(yang_stmt *ys,
-                    char      *xpath)
-{
-    int                 retval = -1;
-    yang_stmt_extended *yse = (yang_stmt_extended *)ys;
-
-    if (xpath == NULL){
-        clixon_err(OE_YANG, EINVAL, "xpath is NULL");
-        goto done;
-    }
-    if ((ys->ys_flags & YANG_FLAG_WHEN) == 0x0){
-        clixon_err(OE_YANG, EINVAL, "Yang node %s %s must have flag YANG_FLAG_WHEN for this operation",
-                   yang_key2str(ys->ys_keyword), ys->ys_argument);
-        goto done;
-    }
-    if ((yse->yse_when_xpath = strdup(xpath)) == NULL){
-        clixon_err(OE_YANG, errno, "strdup");
-        goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    if ((ywhen = yang_when_get(NULL, ys)) != NULL)
+        return yang_argument_get(ywhen);
+    return NULL;
 }
 
 /*! Get yang namespace context for "when"-associated augment
@@ -530,48 +550,20 @@ yang_when_xpath_set(yang_stmt *ys,
  * Ie, for yang structures like: augment <path> { when <xpath>; ... }
  * Will insert new yang nodes at <path> with this special "when" struct (not yang node)
  * @param[in]  ys     Yang statement
- * @retval     nsc    Namespace context
+ * @retval     nsc    Namespace context (caller frees with cvec_free)
  * @note retval is direct pointer, may need to be copied
  */
 cvec *
 yang_when_nsc_get(yang_stmt *ys)
 {
-    yang_stmt_extended *yse = (yang_stmt_extended *)ys;
+    yang_stmt   *ywhen;
+    cvec        *wnsc = NULL;
 
-    if ((ys->ys_flags & YANG_FLAG_WHEN) == 0x0)
-        return NULL;
-    else
-        return yse->yse_when_nsc;
-}
-
-/*! Set yang namespace context for "when"-associated augment
- *
- * Ie, for yang structures like: augment <path> { when <xpath>; ... }
- * Will insert new yang nodes at <path> with this special "when" struct (not yang node)
- * @param[in]  ys     Yang statement
- * @param[in]  nsc    Namespace context for when xpath
- * @retval     0      OK
- * @retval    -1      Error
- */
-int
-yang_when_nsc_set(yang_stmt *ys,
-                  cvec      *nsc)
-{
-    int                 retval = -1;
-    yang_stmt_extended *yse = (yang_stmt_extended *)ys;
-
-    if ((ys->ys_flags & YANG_FLAG_WHEN) == 0x0){
-        clixon_err(OE_YANG, EINVAL, "Yang node %s %s must have flag YANG_FLAG_WHEN for this operation",
-                   yang_key2str(ys->ys_keyword), ys->ys_argument);
-        return -1;
+    if ((ywhen = yang_when_get(NULL, ys)) != NULL) {
+        if (xml_nsctx_yang(ywhen, &wnsc) < 0)
+            wnsc = NULL;
     }
-    if (nsc && (yse->yse_when_nsc = cvec_dup(nsc)) == NULL){
-        clixon_err(OE_YANG, errno, "cvec_dup");
-        goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    return wnsc;
 }
 
 /*! Get yang filename for error/debug purpose (only modules)
@@ -671,7 +663,16 @@ yang_typecache_set(yang_stmt *ys,
 yang_stmt*
 yang_mymodule_get(yang_stmt *ys)
 {
-    return ys->ys_mymodule;
+    map_ptr2ptr *mp = _yang_mymodule_map;
+
+    if (mp == NULL){
+        clixon_log(NULL, LOG_WARNING, "mymodule_map not defined, yang_init() not called?");
+        return NULL;
+    }
+    else if (yang_flag_get(ys, YANG_FLAG_MYMODULE) == 0x0)
+        return NULL;
+    else
+        return clixon_ptr2ptr(mp, ys);
 }
 
 /*! Set mymodule
@@ -686,8 +687,23 @@ int
 yang_mymodule_set(yang_stmt *ys,
                   yang_stmt *ym)
 {
-    ys->ys_mymodule = ym;
-    return 0;
+    int          retval = -1;
+    map_ptr2ptr *mp = _yang_mymodule_map;
+
+    if (mp == NULL){
+        clixon_log(NULL, LOG_WARNING, "mymodule_map not defined, yang_init() not called?");
+        goto done;
+    }
+    else {
+        if (clixon_ptr2ptr(mp, ys) == NULL) {
+            if (clixon_ptr2ptr_add(&_yang_mymodule_map, ys, ym) < 0)
+                goto done;
+        }
+    }
+    yang_flag_set(ys, YANG_FLAG_MYMODULE);
+    retval = 0;
+ done:
+    return retval;
 }
 
 /* End access functions */
@@ -721,22 +737,12 @@ yang_stats_one(yang_stmt *ys,
     size_t           sz = 0;
     yang_type_cache *yc;
 
-    if (yang_flag_get(ys, YANG_FLAG_WHEN) == 0x0)
-        sz += sizeof(struct yang_stmt_extended);
-    else
-        sz += sizeof(struct yang_stmt);
+    sz += sizeof(struct yang_stmt);
     sz += ys->ys_len*sizeof(struct yang_stmt*);
     if (ys->ys_argument)
         sz += strlen(ys->ys_argument) + 1;
     if (ys->ys_cvec)
         sz += cvec_size(ys->ys_cvec);
-    if (yang_flag_get(ys, YANG_FLAG_WHEN) != 0x0) {
-        yang_stmt_extended *yse = (yang_stmt_extended *)ys;
-        if (yse->yse_when_xpath)
-            sz += strlen(yse->yse_when_xpath) + 1;
-        if (yse->yse_when_nsc)
-            sz += cvec_size(yse->yse_when_nsc);
-    }
     switch (ys->ys_keyword) {
     case Y_TYPE:
         if ((yc = yang_typecache_get(ys)) != NULL){
@@ -863,22 +869,6 @@ ys_new(enum rfc_6020 keyw)
     return ys_new_sz(keyw, sizeof(struct yang_stmt));
 }
 
-/*! Create new extended yang node/statement
- *
- * @param[in] keyw  Yang stmt keyword
- * @retval    ys    New yang-stmt. Free with ys_free()
- * @retval    NULL  Error
- */
-static yang_stmt *
-yse_new(enum rfc_6020 keyw)
-{
-    yang_stmt *ys;
-
-    if ((ys = ys_new_sz(keyw, sizeof(struct yang_stmt_extended))) != NULL)
-        yang_flag_set(ys, YANG_FLAG_WHEN);
-    return ys;
-}
-    
 /*! Free a single yang statement, dont remove children, called after children freed
  * 
  * @param[in]  ys   Yang node to remove 
@@ -910,13 +900,6 @@ ys_free1(yang_stmt *ys,
     if (ys->ys_argument){
         free(ys->ys_argument);
         ys->ys_argument = NULL;
-    }
-    if (yang_flag_get(ys, YANG_FLAG_WHEN) != 0x0) {
-        yang_stmt_extended *yse = (yang_stmt_extended *)ys;
-        if (yse->yse_when_xpath)
-            free(yse->yse_when_xpath);
-        if (yse->yse_when_nsc)
-            cvec_free(yse->yse_when_nsc);
     }
     if (ys->ys_stmt)
         free(ys->ys_stmt);
@@ -1117,9 +1100,10 @@ uses_orig_ptr(enum rfc_6020 keyword)
         || keyword == Y_STATUS
         || keyword == Y_UNIQUE
         || keyword == Y_UNITS
-        || keyword == Y_UNKNOWN
+        //  || keyword == Y_UNKNOWN // NO (test_snmp_ifmib.sh)
         || keyword == Y_VALUE
         || keyword == Y_YIN_ELEMENT
+        || keyword == Y_WHEN // children
         ;
 }
 #endif /* YANG_ORIG_PTR_SKIP */
@@ -1188,6 +1172,8 @@ ys_cp_one(yang_stmt *ynew,
     default:
         break;
     }
+    if (yang_flag_get(yold, YANG_FLAG_MYMODULE) != 0x0)
+        yang_mymodule_set(ynew, yang_mymodule_get(yold));
     retval = 0;
  done:
     return retval;
@@ -1259,42 +1245,6 @@ ys_dup(yang_stmt *old)
         return NULL;
     }
     return nw;
-}
-
-/*! Create a new extdended yang node and copy the contents recursively from the original.
- */
-yang_stmt *
-yse_dup(yang_stmt *yold)
-{
-    yang_stmt *ynew;
-    char      *xpath;
-    cvec      *cvv;
-
-    if ((ynew = yse_new(yold->ys_keyword)) == NULL)
-        return NULL;
-    if (ys_cp(ynew, yold) < 0){
-        ys_free(ynew);
-        return NULL;
-    }
-    yang_flag_set(ynew, YANG_FLAG_WHEN);
-    if (yang_flag_get(yold, YANG_FLAG_WHEN) != 0x0) {
-        if ((xpath = yang_when_xpath_get(yold)) != NULL){
-            if (yang_when_xpath_set(ynew, xpath) < 0)
-                goto done;
-        }
-        if ((cvv = yang_when_nsc_get(yold)) != NULL){
-            if (yang_when_nsc_set(ynew, cvv) < 0)
-                goto done;
-        }
-    }
- ok:
-    return ynew;
- done:
-    if (ynew){
-        ys_free(ynew);
-        ynew = NULL;
-    }
-    goto ok;
 }
 
 /*! Replace yold with ynew (insert ynew at the exact place of yold). Keep yold pointer as-is.
@@ -3927,7 +3877,7 @@ yang_key_match(yang_stmt *yn,
 
 /*! Set type cache for yang type
  *
- * @param[in] rxmode  Kludge to know which regexp engine is used
+ * @param[in] rxmode  Which regexp engine to use, see enum regexp_mode
  * @retval    0       OK
  * @retval   -1       Error
  * @see yang_type_cache_regexp_set where cache is extended w compiled regexps
@@ -3974,6 +3924,8 @@ yang_type_cache_set2(yang_stmt *ys,
 /*! Extend yang type cache with compiled regexps
  *
  * Compiled Regexps are computed in validate code - after initial cache set
+ * @param[in] ytype   YANG type statement
+ * @param[in] rxmode  Which regexp engine to use, see enum regexp_mode
  * @param[in] regexps   
  * @retval    0       OK
  * @retval   -1       Error
@@ -3983,13 +3935,21 @@ yang_type_cache_regexp_set(yang_stmt *ytype,
                            int        rxmode,
                            cvec      *regexps)
 {
-    int               retval = -1;
-    yang_type_cache  *ycache;
+    int              retval = -1;
+    yang_type_cache *ycache;
 
-    assert(regexps);
-    assert(yang_keyword_get(ytype) == Y_TYPE);
-    assert((ycache = ytype->ys_typecache) != NULL);
-    assert(ycache->yc_regexps == NULL);
+    if (regexps == NULL || yang_keyword_get(ytype) != Y_TYPE) {
+        clixon_err(OE_YANG, EINVAL, "regexps is NULL, or are already set, or ytype is not YTYPE");
+        goto done;
+    }
+    if ((ycache = ytype->ys_typecache) == NULL){
+        clixon_err(OE_YANG, 0, "Typecache is NULL");
+        goto done;
+    }
+    if (ycache->yc_regexps != NULL){
+        clixon_err(OE_YANG, 0, "regexp is already set");
+        goto done;
+    }
     ycache->yc_rxmode = rxmode;
     if ((ycache->yc_regexps  = cvec_dup(regexps)) == NULL){
         clixon_err(OE_UNIX, errno, "cvec_dup");
@@ -4003,12 +3963,13 @@ yang_type_cache_regexp_set(yang_stmt *ytype,
 /*! Get individual fields (direct/destructively) from yang type cache. 
  *
  * @param[out] patterns Initialized cvec of regexp patterns strings
- * @retval   1   OK
- * @retval   0   No cache
- * @retval  -1   Error
+ * @param[out] rxmode   Which regexp engine to use, see enum regexp_mode
+ * @retval     1        OK
+ * @retval     0        No cache
+ * @retval    -1        Error
  */
 int
-yang_type_cache_get2(yang_stmt   *ytype,
+yang_type_cache_get2(yang_stmt  *ytype,
                     yang_stmt  **resolved,
                     int         *options,
                     cvec       **cvv,
@@ -4288,17 +4249,6 @@ yang_sort_subelements(yang_stmt *ys)
 #endif
 }
 
-/*! Init yang code
- *
- * @param[in]  h  Clixon handle
- * @retval     0  OK
- * @retval    -1  Error
- */
-int
-yang_init(clixon_handle h)
-{
-    return yang_cardinality_init(h);
-}
 
 #ifdef XML_EXPLICIT_INDEX
 /*! Mark element as search_index in list
@@ -4438,5 +4388,53 @@ yang_action_cb_add(yang_stmt *ys,
         return -1;
     }
     ADDQ(rc, ys->ys_action_cb);
+    return 0;
+}
+
+/*! Init yang code
+ *
+ * Add two external tables for YANGs
+ * @param[in]  h  Clixon handle
+ * @retval     0  OK
+ * @retval    -1  Error
+ */
+int
+yang_init(clixon_handle h)
+{
+    int          retval = -1;
+    map_ptr2ptr *mp;
+
+    if ((mp = calloc(1, sizeof(*mp))) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    _yang_when_map = mp;
+    if ((mp = calloc(1, sizeof(*mp))) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    _yang_mymodule_map = mp;
+    if (yang_cardinality_init(h) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Exit yang code
+ *
+ * @param[in]  h  Clixon handle
+ */
+int
+yang_exit(clixon_handle h)
+{
+    if (_yang_when_map != NULL) {
+        free(_yang_when_map);
+        _yang_when_map = NULL;
+    }
+    if (_yang_mymodule_map != NULL) {
+        free(_yang_mymodule_map);
+        _yang_mymodule_map = NULL;
+    }
     return 0;
 }

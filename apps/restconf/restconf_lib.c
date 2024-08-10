@@ -365,12 +365,12 @@ restconf_terminate(clixon_handle h)
         close(fs);
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
-
     clicon_rpc_close_session(h);
     if ((yspec = clicon_dbspec_yang(h)) != NULL)
         ys_free(yspec);
     if ((yspec = clicon_config_yang(h)) != NULL)
         ys_free(yspec);
+    yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
