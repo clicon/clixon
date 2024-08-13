@@ -16,9 +16,10 @@ Expected: October 2024
 
 ### Features
 
-* Added YANG struct memory optimization
+* Optimize YANG memory
   * Added union and extended struct for uncommon fields
   * Removed per-object YANG linenr info
+  * Yang-type cache only for original trees (not derived via grouping/augment)
 * New: [CLI simple alias](https://github.com/clicon/cligen/issues/112)
   * See: https://clixon-docs.readthedocs.io/en/latest/cli.html#cli-aliases
 * List pagination: Added where, sort-by and direction parameter for configured data

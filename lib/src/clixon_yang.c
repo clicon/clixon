@@ -180,7 +180,6 @@ static map_ptr2ptr *_yang_mymodule_map = NULL;
 
 /* Forward static */
 static int yang_type_cache_free(yang_type_cache *ycache);
-static int yang_type_cache_cp(yang_stmt *ynew, yang_stmt *yold);
 
 /* Access functions
  */
@@ -1071,30 +1070,40 @@ yn_realloc(yang_stmt *yn)
  * Comments includes for:
  * - nodes that could not be skipped and the failed test
  * - nodes that have children in turn
+ * - nodes that can be refined
+ * @note RFC 7950 Sec 7.13.2.  The "refine" Statement can change the following nodes
+ * - default values
+ * - description
+ * - reference
+ * - config
+ * - mandatory
+ * - presence
+ * - min/max-elements
+ * - if-feature
  */
 static int
 uses_orig_ptr(enum rfc_6020 keyword)
 {
     return
-        //        keyword == Y_CONFIG // NO (test_openconfig.sh)
-        // keyword == Y_DEFAULT // NO (test_augment.sh)
-           keyword == Y_DESCRIPTION
+        //        keyword == Y_CONFIG // NO (test_openconfig.sh) + refine
+        // keyword == Y_DEFAULT // NO (test_augment.sh) + refine
+        keyword == Y_DESCRIPTION // XXX refine
         || keyword == Y_ENUM // children
         || keyword == Y_ERROR_APP_TAG
         || keyword == Y_ERROR_MESSAGE
         || keyword == Y_FRACTION_DIGITS
         // || keyword ==  Y_KEY // NO
         || keyword == Y_LENGTH // children
-        || keyword == Y_MANDATORY
-        || keyword == Y_MAX_ELEMENTS
-        || keyword == Y_MIN_ELEMENTS
+        || keyword == Y_MANDATORY // XXX refine
+        || keyword == Y_MAX_ELEMENTS // XXX refine
+        || keyword == Y_MIN_ELEMENTS // XXX refine
         || keyword == Y_MODIFIER
         || keyword == Y_ORDERED_BY
         || keyword == Y_PATH
         || keyword == Y_PATTERN // children
         || keyword == Y_POSITION
         || keyword == Y_PREFIX
-        || keyword == Y_PRESENCE
+        || keyword == Y_PRESENCE // XXX refine
         || keyword == Y_RANGE // children
         || keyword == Y_REQUIRE_INSTANCE
         || keyword == Y_STATUS
@@ -1163,11 +1172,8 @@ ys_cp_one(yang_stmt *ynew,
     }
     switch (yold->ys_keyword) {     /* type-specifi union fields */
     case Y_TYPE:
-        if (yang_typecache_get(yold)){
+        if (yang_typecache_get(yold)) /* Dont copy type cache, use only original */
             yang_typecache_set(ynew, NULL);
-            if (yang_type_cache_cp(ynew, yold) < 0)
-                goto done;
-        }
         break;
     default:
         break;
@@ -2503,10 +2509,10 @@ ys_populate_leaf(clixon_handle h,
     int             cvret;
     int             ret;
     char           *reason = NULL;
-    yang_stmt      *yrestype;  /* resolved type */
+    yang_stmt      *yrestype = NULL;  /* resolved type */
     char           *restype;  /* resolved type */
     char           *origtype=NULL;   /* original type */
-    uint8_t         fraction_digits;
+    uint8_t         fraction_digits = 0;
     int             options = 0x0;
     yang_stmt      *ytypedef; /* where type is define */
 
@@ -3275,6 +3281,12 @@ ys_populate(yang_stmt    *ys,
 
 /*! Run after grouping expand and augment
  *
+ * Run in yang_apply but also other places
+ * @param[in]  yn   yang node
+ * @param[in]  arg  Argument
+ * @retval     n    OK, abort traversal and return to caller with "n"
+ * @retval     0    OK, continue with next
+ * @retval    -1    Error, abort
  * @see ys_populate   run before grouping expand and augment
  */
 int
@@ -3287,6 +3299,11 @@ ys_populate2(yang_stmt    *ys,
     int           ret;
 
     switch(ys->ys_keyword){
+    case Y_AUGMENT:
+    case Y_GROUPING:
+        retval = 2; /* Skip sub-tree */
+        goto done;
+        break;
     case Y_LEAF:
     case Y_LEAF_LIST:
         if (ys_populate_leaf(h, ys) < 0)
@@ -3828,7 +3845,6 @@ yang_arg2cvec(yang_stmt *ys,
     return cvv;
 }
 
-
 /*! Check if yang node yn has key-stmt as child which matches name
  *
  * The function looks at the LIST argument string (not actual children)
@@ -3883,7 +3899,6 @@ yang_key_match(yang_stmt *yn,
  * @param[in] rxmode  Which regexp engine to use, see enum regexp_mode
  * @retval    0       OK
  * @retval   -1       Error
- * @see yang_type_cache_regexp_set where cache is extended w compiled regexps
  */
 int
 yang_type_cache_set2(yang_stmt *ys,
@@ -3891,7 +3906,9 @@ yang_type_cache_set2(yang_stmt *ys,
                      int        options,
                      cvec      *cvv,
                      cvec      *patterns,
-                     uint8_t    fraction)
+                     uint8_t    fraction,
+                     int        rxmode,
+                     cvec      *regexps)
 {
     int              retval = -1;
     yang_type_cache *ycache;
@@ -3919,44 +3936,12 @@ yang_type_cache_set2(yang_stmt *ys,
         goto done;
     }
     ycache->yc_fraction  = fraction;
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Extend yang type cache with compiled regexps
- *
- * Compiled Regexps are computed in validate code - after initial cache set
- * @param[in] ytype   YANG type statement
- * @param[in] rxmode  Which regexp engine to use, see enum regexp_mode
- * @param[in] regexps   
- * @retval    0       OK
- * @retval   -1       Error
- */
-int
-yang_type_cache_regexp_set(yang_stmt *ytype,
-                           int        rxmode,
-                           cvec      *regexps)
-{
-    int              retval = -1;
-    yang_type_cache *ycache;
-
-    if (regexps == NULL || yang_keyword_get(ytype) != Y_TYPE) {
-        clixon_err(OE_YANG, EINVAL, "regexps is NULL, or are already set, or ytype is not YTYPE");
-        goto done;
-    }
-    if ((ycache = ytype->ys_typecache) == NULL){
-        clixon_err(OE_YANG, 0, "Typecache is NULL");
-        goto done;
-    }
-    if (ycache->yc_regexps != NULL){
-        clixon_err(OE_YANG, 0, "regexp is already set");
-        goto done;
-    }
-    ycache->yc_rxmode = rxmode;
-    if ((ycache->yc_regexps  = cvec_dup(regexps)) == NULL){
-        clixon_err(OE_UNIX, errno, "cvec_dup");
-        goto done;
+    if (regexps != NULL) {
+        ycache->yc_rxmode = rxmode;
+        if ((ycache->yc_regexps  = cvec_dup(regexps)) == NULL){
+            clixon_err(OE_UNIX, errno, "cvec_dup");
+            goto done;
+        }
     }
     retval = 0;
  done:
@@ -3973,13 +3958,12 @@ yang_type_cache_regexp_set(yang_stmt *ytype,
  */
 int
 yang_type_cache_get2(yang_stmt  *ytype,
-                    yang_stmt  **resolved,
-                    int         *options,
-                    cvec       **cvv,
-                    cvec        *patterns,
-                    int         *rxmode,
-                    cvec        *regexps,
-                    uint8_t     *fraction)
+                     yang_stmt **resolved,
+                     int        *options,
+                     cvec      **cvv,
+                     cvec       *patterns,
+                     cvec       *regexps,
+                     uint8_t    *fraction)
 {
     int              retval = -1;
     cg_var          *cv = NULL;
@@ -4006,46 +3990,10 @@ yang_type_cache_get2(yang_stmt  *ytype,
         while ((cv = cvec_each(ycache->yc_regexps, cv)) != NULL)
             cvec_append_var(regexps, cv);
     }
-    if (rxmode)
-        *rxmode = ycache->yc_rxmode;
     if (fraction)
         *fraction = ycache->yc_fraction;
     retval = 1; /* cache exists and is returned OK */
  done:
-    return retval;
-}
-
-/*! Copy yang type cache
- */
-static int
-yang_type_cache_cp(yang_stmt *ynew,
-                   yang_stmt *yold)
-{
-    int        retval = -1;
-    int        options;
-    cvec      *cvv;
-    cvec      *patterns = NULL;
-    uint8_t    fraction;
-    yang_stmt *resolved;
-    int        ret;
-
-    if ((patterns = cvec_new(0)) == NULL){
-        clixon_err(OE_UNIX, errno, "cvec_new");
-        goto done;
-    }
-    /* Note, regexps are not copied since they are voids, if they were, they
-     * could not be freed in a simple way since copies are made at augment/group
-     */
-    if ((ret = yang_type_cache_get2(yold,
-                                   &resolved, &options, &cvv, patterns, NULL, NULL, &fraction)) < 0)
-        goto done;
-    if (ret == 1 &&
-        yang_type_cache_set2(ynew, resolved, options, cvv, patterns, fraction) < 0)
-        goto done;
-    retval = 0;
- done:
-    if (patterns)
-        cvec_free(patterns);
     return retval;
 }
 
@@ -4251,7 +4199,6 @@ yang_sort_subelements(yang_stmt *ys)
     return retval;
 #endif
 }
-
 
 #ifdef XML_EXPLICIT_INDEX
 /*! Mark element as search_index in list

@@ -320,11 +320,10 @@ int        yang_config_ancestor(yang_stmt *ys);
 int        yang_features(clixon_handle h, yang_stmt *yt);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_stmt *yn, char *name, int *lastkey);
-int        yang_type_cache_regexp_set(yang_stmt *ytype, int rxmode, cvec *regexps);
 int        yang_type_cache_get2(yang_stmt *ytype, yang_stmt **resolved, int *options,
-                   cvec **cvv, cvec *patterns, int *rxmode, cvec *regexps, uint8_t *fraction);
+                                cvec **cvv, cvec *patterns, cvec *regexps, uint8_t *fraction);
 int        yang_type_cache_set2(yang_stmt *ys, yang_stmt *resolved, int options, cvec *cvv,
-                               cvec *patterns, uint8_t fraction);
+                                cvec *patterns, uint8_t fraction, int rxmode, cvec *regexps);
 yang_stmt *yang_anydata_add(yang_stmt *yp, char *name);
 int        yang_extension_value(yang_stmt *ys, char *name, char *ns, int *exist, char **value);
 int        yang_sort_subelements(yang_stmt *ys);
