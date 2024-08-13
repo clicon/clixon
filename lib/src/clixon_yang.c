@@ -3403,7 +3403,8 @@ yang_features(clixon_handle h,
  * @param[in]  fn   Callback
  * @param[in]  depth Depth argument: where to start. If <=0 call the calling node yn, if 1 start with its children, etc
  * @param[in]  arg  Argument
- * @retval     n    OK, aborted at first encounter of first match
+ * @retval     2    OK, yn was skipped
+ * @retval     1    OK, aborted at first encounter of first match
  * @retval     0    OK, all nodes traversed
  * @retval    -1    Error, aborted at first error encounter
  * @code
@@ -3441,7 +3442,9 @@ yang_apply(yang_stmt     *yn,
         ys = yn->ys_stmt[i];
         if ((ret = yang_apply(ys, keyword, fn, depth-1, arg)) < 0)
             goto done;
-        if (ret > 0){
+        if (ret == 2)
+            continue;
+        else if (ret > 0){
             retval = ret;
             goto done;
         }

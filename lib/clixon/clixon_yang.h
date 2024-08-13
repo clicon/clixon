@@ -201,7 +201,8 @@ typedef struct yang_stmt yang_stmt;
  *
  * @param[in]  yn   yang node
  * @param[in]  arg  Argument
- * @retval     n    OK, abort traversal and return to caller with "n"
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    OK, abort traversal and return to caller with "n"
  * @retval     0    OK, continue with next
  * @retval    -1    Error, abort
  */
