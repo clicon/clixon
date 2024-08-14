@@ -182,6 +182,7 @@ yang_builtin(char *type)
  */
 static int
 compile_pattern2regexp(clixon_handle h,
+                       yang_stmt    *ytype,
                        cvec         *patterns,
                        cvec         *regexps)
 {
@@ -199,10 +200,22 @@ compile_pattern2regexp(clixon_handle h,
         if ((ret = regex_compile(h, pattern, &re)) < 0)
             goto done;
         if (ret == 0){
-            clixon_err(OE_YANG, errno, "regexp compile fail: \"%s\"",
-                       pattern);
-            goto done;
-            break;
+            yang_stmt *ymod;
+
+            clixon_err(OE_YANG, 0, "regexp compile fail: \"%s\"", pattern);
+            if (regex_free(h, re) < 0)
+                goto done;
+            re = NULL;
+            ymod = ys_module(ytype);
+            clixon_log(h, LOG_WARNING, "Regexp compile fail: \"%s\" in file %s, fallback using .*",
+                       pattern, yang_filename_get(ymod));
+            if ((ret = regex_compile(h, ".*", &re)) < 0)
+                goto done;
+            if (ret == 0){
+                clixon_err(OE_YANG, 0, "regexp compile fail: \"%s\"",
+                           pattern);
+                goto done;
+            }
         }
         if ((rcv = cvec_add(regexps, CGV_VOID)) == NULL){
             clixon_err(OE_UNIX, errno, "cvec_add");
@@ -217,6 +230,8 @@ compile_pattern2regexp(clixon_handle h,
     }
     retval = 1;
  done:
+    if (re != NULL)
+        retval = regex_free(h, re);
     return retval;
 }
 
@@ -269,7 +284,7 @@ ys_resolve_type(yang_stmt *ytype,
             clixon_err(OE_UNIX, errno, "cvec_new");
             goto done;
         }
-        if (compile_pattern2regexp(h, patterns, regexps) < 1)
+        if (compile_pattern2regexp(h, ytype, patterns, regexps) < 1)
             goto done;
     }
     if (yang_type_cache_set2(ytype, resolved, options, cvv,

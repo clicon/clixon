@@ -83,6 +83,9 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
+new "wait backend"
+wait_backend
+
 new "Set alias"
 expectpart "$($clixon_cli -1f $cfg alias newcmd show config)" 0 "^$"
 
