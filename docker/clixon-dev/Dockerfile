@@ -33,7 +33,7 @@
 #
 
 FROM alpine
-MAINTAINER Olof Hagsand <olof@hagsand.se>
+LABEL maintainer="Olof Hagsand <olof@hagsand.se>"
 
 # For clixon and cligen
 RUN apk add --update git make build-base gcc flex bison curl-dev
