@@ -2358,6 +2358,7 @@ yang_deviation(yang_stmt *ys,
     enum rfc_6020 kw;
     int           min;
     int           max;
+    int           inext0;
     int           inext;
 
     if (yang_keyword_get(ys) != Y_DEVIATION)
@@ -2379,8 +2380,8 @@ yang_deviation(yang_stmt *ys,
         */
     }
     /* Go through deviates of deviation */
-    inext = 0;
-    while ((yd = yn_iter(ys, &inext)) != NULL) {
+    inext0 = 0;
+    while ((yd = yn_iter(ys, &inext0)) != NULL) {
         /* description / if-feature / reference */
         if (yang_keyword_get(yd) != Y_DEVIATE)
             continue;
@@ -2448,6 +2449,7 @@ yang_deviation(yang_stmt *ys,
                 /* Make a copy of deviate child and insert. */
                 if ((yc1 = ys_dup(yc)) == NULL)
                     goto done;
+                yang_flag_set(yc1, YANG_FLAG_NOORIG);
                 if (yn_insert(ytarget, yc1) < 0)
                     goto done;
             }

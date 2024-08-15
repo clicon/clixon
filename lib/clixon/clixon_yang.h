@@ -94,6 +94,7 @@
                                       * augment/grouping */
 #define YANG_FLAG_MYMODULE     0x800 /* Use external map to access my-module for
                                       * UNKNOWNS and augment/grouping */
+#define YANG_FLAG_NOORIG      0x1000 /* Node different from orig, do not use orig-link */
 
 /*
  * Types

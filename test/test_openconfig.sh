@@ -76,10 +76,60 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-        new "$clixon_cli -D $DBG  -1f $cfg -o CLICON_YANG_MAIN_FILE=$f show version"
+        new "$clixon_cli -D $DBG  -1f $cfg -y $f show version"
         expectpart "$($clixon_cli -D $DBG -1f $cfg -y $f show version)" 0 "${CLIXON_VERSION}"
     fi
 done
+
+# The following test is a special case: A deviation of a grouped type did not appear in
+# type resolution
+f=$dir/my.yang
+cat <<EOF > $f
+module my {
+   namespace "urn:example:clixon";
+   prefix "ex";
+
+   import "openconfig-network-instance" {
+      prefix "oc-netinst";
+   }
+   deviation "/oc-netinst:network-instances/oc-netinst:network-instance/oc-netinst:protocols/oc-netinst:protocol/oc-netinst:isis/oc-netinst:interfaces/oc-netinst:interface/oc-netinst:levels/oc-netinst:level/oc-netinst:afi-safi/oc-netinst:af/oc-netinst:config/oc-netinst:metric" {
+      description "metric range is restricted";
+      deviate "replace" {
+         type "union" {
+            type "uint32";
+            type "enumeration" {
+               enum "MYTEXT";
+            }
+         }
+         default "MYTEXT";
+      }
+   }
+}
+EOF
+
+modname=$(basename $f | awk -F "." '{print $1}')
+# Generate autocli for these modules
+AUTOCLI=$(autocli_config openconfig-* kw-nokey false)
+
+cat <<EOF > $cfg
+<clixon-config xmlns="http://clicon.org/config">
+   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+   <CLICON_YANG_DIR>${OPENCONFIG}</CLICON_YANG_DIR>
+   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
+   <CLICON_YANG_AUGMENT_ACCEPT_BROKEN>true</CLICON_YANG_AUGMENT_ACCEPT_BROKEN>
+   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+   <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+   ${AUTOCLI}
+</clixon-config>
+EOF
+
+new "deviation: $clixon_cli -D $DBG  -1f $cfg  -y $f show version"
+expectpart "$($clixon_cli -D $DBG -1f $cfg -y $f show version)" 0 "${CLIXON_VERSION}"
 
 rm -rf $dir
 

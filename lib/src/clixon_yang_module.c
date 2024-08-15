@@ -924,7 +924,7 @@ yang_lib2yspec(clixon_handle h,
     if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)
         goto fail;
     if (yang_parse_post(h, yspec, modmin) < 0)
-        goto done;
+        goto fail;
     retval = 1;
  done:
     if (vec)
