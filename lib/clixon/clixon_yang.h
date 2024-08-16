@@ -94,7 +94,10 @@
                                       * augment/grouping */
 #define YANG_FLAG_MYMODULE     0x800 /* Use external map to access my-module for
                                       * UNKNOWNS and augment/grouping */
-#define YANG_FLAG_NOORIG      0x1000 /* Node different from orig, do not use orig-link */
+#define YANG_FLAG_REFINE      0x1000 /* In derived trees from grouping and augments, this node
+                                      * may be different from orig, therefore do not use link to
+                                      * original. May also be due to deviations of derived trees
+                                      */
 
 /*
  * Types

@@ -2416,6 +2416,8 @@ yang_deviation(yang_stmt *ys,
                 /* Make a copy of deviate child and insert. */
                 if ((yc1 = ys_dup(yc)) == NULL)
                     goto done;
+                if (yang_apply(yc1, -1, (yang_applyfn_t*)yang_flag_set, -1, (void*)YANG_FLAG_REFINE) < 0)
+                    goto done;
                 if (yn_insert(ytarget, yc1) < 0)
                     goto done;
             }
@@ -2449,7 +2451,8 @@ yang_deviation(yang_stmt *ys,
                 /* Make a copy of deviate child and insert. */
                 if ((yc1 = ys_dup(yc)) == NULL)
                     goto done;
-                yang_flag_set(yc1, YANG_FLAG_NOORIG);
+                if (yang_apply(yc1, -1, (yang_applyfn_t*)yang_flag_set, -1, (void*)YANG_FLAG_REFINE) < 0)
+                    goto done;
                 if (yn_insert(ytarget, yc1) < 0)
                     goto done;
             }

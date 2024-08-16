@@ -1486,7 +1486,7 @@ yang_type_get(yang_stmt    *ys,
         clixon_err(OE_DB, ENOENT, "mandatory type object is not found");
         goto done;
     }
-    if ((yorig = yang_orig_get(ys)) != NULL && yang_flag_get(ytype, YANG_FLAG_NOORIG) == 0){
+    if ((yorig = yang_orig_get(ys)) != NULL && yang_flag_get(ytype, YANG_FLAG_REFINE) == 0){
         ys = yorig;
         if ((ytype = yang_find(ys, Y_TYPE, NULL)) == NULL){
             clixon_err(OE_DB, ENOENT, "mandatory type object is not found");

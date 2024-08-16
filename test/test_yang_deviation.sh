@@ -32,38 +32,42 @@ EOF
 
 cat <<EOF > $fyangbase
 module example-base{
-   yang-version 1.1;
-   prefix base;
-   namespace "urn:example:base";
-   grouping system-top {
-     container system {
-      must "daytime or time"; /* deviate delete removes this */
-      leaf daytime{           /* deviate not-supported removes this */
-         type string;
-      }
-      leaf time{            
-         type string;
-      }
-      list name-server {
-         max-elements 1;      /* deviate replace replaces to "max.elements 3" here */
-         key name;
-         leaf name {
-            type string;
-         } 
-      }
-      list user {
-         key name;
-         leaf name {
-            type string;
-         } 
-         leaf type {
-            type string;
-            /* deviate add adds "default admin" here */
-         } 
-      }
-     }
-   }
-   uses system-top;
+    yang-version 1.1;
+    prefix base;
+    namespace "urn:example:base";
+    grouping system-top {
+        container system {
+            must "daytime or time"; /* deviate delete removes this */
+            leaf daytime{           /* deviate not-supported removes this */
+                type string;
+            }
+            leaf time{
+                type string;
+            }
+            list name-server {
+                max-elements 1;      /* deviate replace replaces to "max.elements 3" here */
+                key name;
+                leaf name {
+                    type string;
+                }
+            }
+            list user {
+                key name;
+                leaf name {
+                    type string;
+                }
+                leaf type {
+                    type string;
+                    /* deviate add adds "default admin" here */
+                }
+            }
+            leaf my {
+                /* deviate replaces with int and default -42 */
+                type uint16;
+            }
+        }
+    }
+    uses system-top;
 }
 EOF
 
@@ -241,6 +245,69 @@ EOF
 
 new "5. deviate delete"
 testrun true false false true
+
+# Replace example from RFC 7950 Sec 7.20.3.3
+cat <<EOF > $fyangdev
+module example-deviations{
+   yang-version 1.1;
+   prefix md;
+   namespace "urn:example:deviations";
+   import example-base {
+         prefix base;
+   }
+   deviation /base:system/base:my {
+      deviate replace {
+         type int8;
+      }
+   }
+   deviation /base:system/base:my {
+      deviate add {
+         default -42;
+      }
+   }
+}
+EOF
+
+new "6. deviate replace default"
+
+if [ "$BE" -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf "$cfg"
+    if [ $? -ne 0 ]; then
+        err
+    fi
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f "$cfg"
+fi
+
+new "wait backend"
+wait_backend
+
+new "show default value, expect deviated"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><running/></source><filter type=\"xpath\" select=\"/base:system/base:my\" xmlns:base=\"urn:example:base\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:base\"><my>-42</my></system></data></rpc-reply>"
+
+new "set negative value"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><daytime>Sept17</daytime><my>-77</my></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "set large value"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><my>98735</my></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate expect fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>my</bad-element></error-info><error-severity>error</error-severity><error-message>Number 98735 out of range: -128 - 127</error-message></rpc-error></rpc-reply>"
+
+if [ "$BE" -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+        err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f "$cfg"
+fi
 
 rm -rf "$dir"
 
