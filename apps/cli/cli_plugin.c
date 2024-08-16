@@ -487,7 +487,7 @@ cli_handler_err(FILE *f)
 {
     if (clixon_err_category()){
         /* Check if error is already logged on stderr */
-        if ((clixon_get_logflags() & CLIXON_LOG_STDERR) == 0){
+        if ((clixon_logflags_get() & CLIXON_LOG_STDERR) == 0){
             if (clixon_err_category() != -1)
                 fprintf(f,  "%s: ", clixon_err_str());
             fprintf(f,  "%s", clixon_err_reason());
@@ -537,7 +537,7 @@ clicon_parse(clixon_handle  h,
     pt_head          *ph;
 
     ch = cli_cligen(h);
-    if (clixon_get_logflags()&CLIXON_LOG_STDOUT)
+    if (clixon_logflags_get()&CLIXON_LOG_STDOUT)
         f = stdout;
     else
         f = stderr;

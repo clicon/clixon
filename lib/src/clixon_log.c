@@ -80,7 +80,7 @@
 static clixon_handle _log_clixon_h    = NULL;
 
 /* Bitmask whether to log to syslog or stderr: CLIXON_LOG_STDERR | CLIXON_LOG_SYSLOG */
-static int _log_flags = 0x0;
+static uint16_t _log_flags = 0x0;
 
 /* Set to open file to write debug messages directly to file */
 static FILE *_log_file = NULL;
@@ -148,7 +148,7 @@ int
 clixon_log_init(clixon_handle h,
                 char         *ident,
                 int           upto, 
-                int           flags)
+                uint16_t      flags)
 {
     _log_clixon_h = h;
     _log_flags = flags;
@@ -222,10 +222,21 @@ clixon_log_file(char *filename)
     return 0;
 }
 
-int
-clixon_get_logflags(void)
+/*! Get log flags
+ */
+uint16_t
+clixon_logflags_get(void)
 {
     return _log_flags;
+}
+
+/*! Replace log flags
+ */
+int
+clixon_logflags_set(uint16_t flags)
+{
+    _log_flags = flags;
+    return 0;
 }
 
 /*! Truncate log/debug string length

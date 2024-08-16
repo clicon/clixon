@@ -68,19 +68,25 @@ enum clixon_log_type{
 #define clixon_log(h, l, _fmt, args...) clixon_log_fn((h), 1, (l), NULL, _fmt , ##args)
 #define clixon_log_xml(h, l, x, _fmt, args...) clixon_log_fn((h), 1, (l), x, _fmt , ##args)
 
+// COMPAT_7_1
+#define clixon_get_logflags() clixon_logflags_get()
+
 /*
  * Prototypes
  */
-char *clixon_logdst_key2str(int keyword);
-int clixon_logdst_str2key(char *str);
-int clixon_log_init(clixon_handle h, char *ident, int upto, int flags);
-int clixon_log_exit(void);
-int clixon_log_opt(char c);
-int clixon_log_file(char *filename);
-int clixon_log_string_limit_set(size_t sz);
-size_t clixon_log_string_limit_get(void);
-int clixon_get_logflags(void);
-int clixon_log_str(int level, char *msg);
-int clixon_log_fn(clixon_handle h, int user, int level, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
+char    *clixon_logdst_key2str(int keyword);
+int      clixon_logdst_str2key(char *str);
+int      clixon_log_init(clixon_handle h, char *ident, int upto, uint16_t flags);
+int      clixon_log_exit(void);
+int      clixon_log_opt(char c);
+int      clixon_log_file(char *filename);
+int      clixon_log_string_limit_set(size_t sz);
+size_t   clixon_log_string_limit_get(void);
+uint16_t clixon_logflags_get(void);
+int      clixon_logflags_set(uint16_t flags);
+int      clixon_log_str(int level, char *msg);
+int      clixon_log_fn(clixon_handle h, int user, int level, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
+
+
 
 #endif  /* _CLIXON_LOG_H_ */

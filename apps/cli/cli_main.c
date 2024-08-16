@@ -977,7 +977,7 @@ main(int    argc,
         free(restarg);
     /* Dont log terminate on stderr or stdout */
     clixon_log_init(h, __PROGRAM__, LOG_INFO,
-                    clixon_get_logflags() & ~(CLIXON_LOG_STDERR|CLIXON_LOG_STDOUT));
+                    clixon_logflags_get() & ~(CLIXON_LOG_STDERR|CLIXON_LOG_STDOUT));
     clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
     if (h)
         cli_terminate(h);
