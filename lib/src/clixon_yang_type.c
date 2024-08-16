@@ -256,9 +256,14 @@ ys_resolve_type(yang_stmt *ytype,
     uint8_t       fraction = 0;
     yang_stmt    *resolved = NULL;
     cvec         *regexps = NULL;
+    yang_stmt    *yp;
 
     if (yang_keyword_get(ytype) != Y_TYPE){
         clixon_err(OE_YANG, EINVAL, "Expected Y_TYPE");
+        goto done;
+    }
+    if ((yp = yang_parent_get(ytype)) == NULL){
+        clixon_err(OE_YANG, EINVAL, "ytype has no parent");
         goto done;
     }
     if ((patterns = cvec_new(0)) == NULL){
@@ -268,8 +273,7 @@ ys_resolve_type(yang_stmt *ytype,
     /* Recursively resolve ytype -> resolve with restrictions(options, etc)
      * Note that the resolved type could be ytype itself.
      */
-    if (yang_type_resolve(yang_parent_get(ytype), yang_parent_get(ytype),
-                          ytype, &resolved,
+    if (yang_type_resolve(yp, yp, ytype, &resolved,
                           &options, &cvv, patterns, NULL, &fraction) < 0){
         goto done;
     }

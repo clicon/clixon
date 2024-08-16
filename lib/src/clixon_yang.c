@@ -2416,6 +2416,14 @@ yang_deviation(yang_stmt *ys,
                 /* Make a copy of deviate child and insert. */
                 if ((yc1 = ys_dup(yc)) == NULL)
                     goto done;
+                /* Special case: resolve types in temporary old deviation context */
+                if (yn_insert(yd, yc1) < 0)
+                    goto done;
+                if (yang_apply(yc1, Y_TYPE, ys_resolve_type, -1, h) < 0)
+                    goto done;
+                if (ys_prune_self(yc1) < 0)
+                    goto done;
+                /* Mark all as refined */
                 if (yang_apply(yc1, -1, (yang_applyfn_t*)yang_flag_set, -1, (void*)YANG_FLAG_REFINE) < 0)
                     goto done;
                 if (yn_insert(ytarget, yc1) < 0)
@@ -2451,6 +2459,14 @@ yang_deviation(yang_stmt *ys,
                 /* Make a copy of deviate child and insert. */
                 if ((yc1 = ys_dup(yc)) == NULL)
                     goto done;
+                /* Special case: resolve types in temporary old deviation context */
+                if (yn_insert(yd, yc1) < 0)
+                    goto done;
+                if (yang_apply(yc1, Y_TYPE, ys_resolve_type, -1, h) < 0)
+                    goto done;
+                if (ys_prune_self(yc1) < 0)
+                    goto done;
+                /* Mark all as refined */
                 if (yang_apply(yc1, -1, (yang_applyfn_t*)yang_flag_set, -1, (void*)YANG_FLAG_REFINE) < 0)
                     goto done;
                 if (yn_insert(ytarget, yc1) < 0)
