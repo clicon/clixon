@@ -6,7 +6,10 @@
      <edit-mode-default>list container</edit-mode-default>
      <completion-default>true</completion-default>
      <rule>
-       <name>exclude nacm</name>
+       <name>Exclude all ietf modules</name>
+       <description>
+         This is to avoid generating autocli rules for standard top-level IETF YANGs, such as NACM
+       </description>
        <module-name>ietf-netconf-acm</module-name>
        <operation>disable</operation>
      </rule>
