@@ -1096,7 +1096,7 @@ xpath_traverse_canonical(xpath_tree *xs,
  *  Then incoming:
  *    xpath0: /x/c:y
  *    nsc0:   NULL:"urn:example:a"; c:"urn:example:b"
- *  will be translated to:
+ *  is translated to:
  *    xpath1: /a:x/b:y
  *    nsc1:   a:"urn:example:a"; b:"urn:example:b"
  * @code

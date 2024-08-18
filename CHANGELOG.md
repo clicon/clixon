@@ -16,6 +16,8 @@ Expected: October 2024
 
 ### Features
 
+* New `clixon-autocli@2024-08-01.yang` revision
+    - Added: disable operation for module rules
 * Optimize YANG memory
   * Added union and extended struct for uncommon fields
   * Removed per-object YANG linenr info
@@ -23,7 +25,7 @@ Expected: October 2024
 * New: [CLI simple alias](https://github.com/clicon/cligen/issues/112)
   * See: https://clixon-docs.readthedocs.io/en/latest/cli.html#cli-aliases
 * List pagination: Added where, sort-by and direction parameter for configured data
-* New `clixon-lib@2024-04-01.yang` revision
+* New `clixon-lib@2024-08-01.yang` revision
     - Added: list-pagination-partial-state extension
 
 ### API changes on existing protocol/config features

@@ -59,8 +59,9 @@
 /* Mapping from YANG autocli-op to C enum */
 static const map_str2int autocli_op_map[] = {
     {"enable",   AUTOCLI_OP_ENABLE},
+    {"disable",  AUTOCLI_OP_DISABLE},
     {"compress", AUTOCLI_OP_COMPRESS},
-    {NULL,       -1}
+    {NULL,      -1}
 };
 
 /* Mapping from YANG list-keyword-type to C enum */
@@ -68,7 +69,7 @@ static const map_str2int list_kw_map[] = {
     {"kw-none",  AUTOCLI_LISTKW_NONE},
     {"kw-nokey", AUTOCLI_LISTKW_NOKEY},
     {"kw-all",   AUTOCLI_LISTKW_ALL},
-    {NULL,       -1}
+    {NULL,      -1}
 };
 
 
@@ -108,6 +109,7 @@ autocli_listkw_int2str(int listkw)
  * @param[out] enablep  Include this module in autocli
  * @retval     0        OK, and enablep set
  * @retval    -1        Error
+ * Special rule: module-default=false and no operation=enable rules is disable
  */
 int
 autocli_module(clixon_handle    h,
@@ -120,6 +122,7 @@ autocli_module(clixon_handle    h,
     char  *str;
     char  *element;
     int    enable = 0;
+    int    op;
     cxobj *xautocli;
     char  *body;
 
@@ -136,18 +139,18 @@ autocli_module(clixon_handle    h,
         goto done;
     }
     enable = strcmp(str, "true") == 0;
-    if (!enable){
-        xrule = NULL;
-        while ((xrule = xml_child_each(xautocli, xrule, CX_ELMNT)) != NULL) {
-            if (strcmp(xml_name(xrule), "rule") != 0)
-                continue;
-            if ((str = xml_find_body(xrule, "operation")) == NULL)
-                continue;
-            /* Peek in element of rule to skip non-compress operations */
-            if (autocli_str2op(str) != AUTOCLI_OP_ENABLE)
-                continue;
-            /* At this point this rule is a compress rule
-             * enable rules logic is:
+    if (enable && modname == NULL)
+        goto ok;
+    xrule = NULL;
+    while ((xrule = xml_child_each(xautocli, xrule, CX_ELMNT)) != NULL) {
+        if (strcmp(xml_name(xrule), "rule") != 0)
+            continue;
+        if ((str = xml_find_body(xrule, "operation")) == NULL)
+            continue;
+        /* Skip other than enable/disable */
+        op = autocli_str2op(str);
+        if (!enable && op == AUTOCLI_OP_ENABLE) {
+            /* Enable rules logic is:
              * - If match, break, done
              */
             xmod = NULL;
@@ -165,6 +168,23 @@ autocli_module(clixon_handle    h,
             }
             if (xmod != NULL){ /* break: found match */
                 enable = 1;
+                break;
+            }
+        }
+        else if (enable && op == AUTOCLI_OP_DISABLE) {
+            xmod = NULL;
+            while ((xmod = xml_child_each(xrule, xmod, CX_ELMNT)) != NULL) {
+                if ((element = xml_name(xmod)) == NULL)
+                    continue;
+                if (strcmp(element, "module-name") == 0){
+                    if ((body = xml_body(xmod)) == NULL)
+                        continue; /* invalid rule? */
+                    if (fnmatch(body, modname, 0) == 0)
+                        break; /* match */
+                }
+            }
+            if (xmod != NULL){ /* break: found match */
+                enable = 0;
                 break;
             }
         }
