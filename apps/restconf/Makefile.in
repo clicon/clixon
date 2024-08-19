@@ -41,13 +41,6 @@ top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LINKAGE         = @LINKAGE@
-
-ifeq ($(HOST_VENDOR),apple)
-INSTALLFLAGS =
-else
-INSTALLFLAGS = @INSTALLFLAGS@
-endif
-
 LDFLAGS 	= @LDFLAGS@
 
 prefix 		= @prefix@
@@ -70,6 +63,13 @@ SH_SUFFIX	= @SH_SUFFIX@
 LIBSTATIC_SUFFIX = @LIBSTATIC_SUFFIX@
 CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
 CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
+
+# Don't strip if running MacOS
+ifeq ($(HOST_VENDOR),apple)
+	INSTALLFLAGS =
+else
+	INSTALLFLAGS = -s
+endif
 
 # Use this clixon lib for linking
 ifeq ($(LINKAGE),dynamic)
