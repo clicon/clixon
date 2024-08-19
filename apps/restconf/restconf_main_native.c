@@ -158,6 +158,11 @@
 #include "restconf_http1.h"
 #endif
 
+#ifndef SOCK_NONBLOCK
+#include <fcntl.h>
+#define SOCK_NONBLOCK O_NONBLOCK
+#endif
+
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hVD:f:E:l:C:p:y:a:u:rW:R:t:o:"
 
@@ -761,7 +766,7 @@ openssl_init_socket(clixon_handle h,
         if (restconf_socket_init(netns, address, addrtype, port,
                              SOCKET_LISTEN_BACKLOG,
 #ifdef RESTCONF_OPENSSL_NONBLOCKING
-                                 SOCK_NONBLOCK, /* Also 0 is possible */
+				 SOCK_NONBLOCK, /* Also 0 is possible */
 #else /* blocking */
                                  0,
 #endif
