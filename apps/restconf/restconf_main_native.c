@@ -158,6 +158,11 @@
 #include "restconf_http1.h"
 #endif
 
+#ifndef SOCK_NONBLOCK
+#include <fcntl.h>
+#define SOCK_NONBLOCK O_NONBLOCK
+#endif
+
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hVD:f:E:l:C:p:y:a:u:rW:R:t:o:"
 
