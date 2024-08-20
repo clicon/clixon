@@ -448,7 +448,7 @@ clixon_err_fn(clixon_handle h,
         strncpy(_err_reason, cbuf_get(cb), ERR_STRLEN-1);
         _err_category = category;
         _err_subnr = suberr;
-        clixon_log_fn(h, 0, LOG_ERR, xerr, "%s", cbuf_get(cb));
+        clixon_log_fn(h, 0, LOG_ERR, NULL, "%s", cbuf_get(cb));
         goto ok;
     }
     if ((cb = cbuf_new()) == NULL){

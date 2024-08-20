@@ -406,7 +406,7 @@ clixon_log_fn(clixon_handle h,
             goto done;
         va_end(ap);
         if (cb != NULL){ /* Customized: expand clixon_err_args */
-            clixon_log(h, LOG_ERR, "%s", cbuf_get(cb));            
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s", cbuf_get(cb));
             goto ok;
         }
     }
