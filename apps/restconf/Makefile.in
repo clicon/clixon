@@ -41,13 +41,6 @@ top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LINKAGE         = @LINKAGE@
-
-ifeq ($(HOST_VENDOR),apple)
-INSTALLFLAGS =
-else
-INSTALLFLAGS = @INSTALLFLAGS@
-endif
-
 LDFLAGS 	= @LDFLAGS@
 
 prefix 		= @prefix@
@@ -61,7 +54,14 @@ libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@
+
 HOST_VENDOR     = @host_vendor@
+
+ifeq ($(HOST_VENDOR),apple)
+INSTALLFLAGS =
+else
+INSTALLFLAGS = @INSTALLFLAGS@
+endif
 
 # one of fcgi or native:
 with_restconf	= @with_restconf@
