@@ -51,6 +51,7 @@ Developers may need to change their code
 
 ### Corrected Busg
 
+* Fixed: [Deletion of leaf in YANG choice removes leaf in a different choice/case](https://github.com/clicon/clixon/issues/542)
 * Fixed: Deviated types were resolved in target context, not lexically in deviation context
 * Fixed: Signal handling of recv message
    Revert to signal handling in 6.5 that was changed in the netconf uniform handling in 7.0

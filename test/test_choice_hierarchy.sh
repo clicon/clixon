@@ -135,16 +135,23 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "show config, only A2x"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><A2x>bbb</A2x></c>$"
 
+new "delete 1st A stmt"
+expectpart "$($clixon_cli -1 -f $cfg -l o delete c A1x aaa)" 0 "^$"
+
+new "show config, A2x remains"
+expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><A2x>bbb</A2x></c>$"
+
 new "cli set 3rd A stmt"
 expectpart "$($clixon_cli -1 -f $cfg -l o set c Ay ccc)" 0 "^$"
 
-new "show config: A2x + Ay"
+new "show config: both A2x + Ay"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><A2x>bbb</A2x><Ay>ccc</Ay></c>$"
 
 new "cli set 1st B stmt"
 expectpart "$($clixon_cli -1 -f $cfg -l o set c B1x ddd)" 0 "^$"
+# Ay + B1x Ay should not be there
 
-new "show config: B1x"
+new "show config: only B1x"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config)" 0 "^<c xmlns=\"urn:example:config\"><B1x>ddd</B1x></c>$"
 
 new "cli set 3rd A stmt"

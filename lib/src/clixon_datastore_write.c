@@ -109,6 +109,7 @@ struct xmldb_multi_write_arg {
  * @param[in]  x         XML node (where to look for attribute)
  * @param[in]  name      Attribute name
  * @param[in]  ns        (Expected) Namespace of attribute
+ * @param[in]  peek      If 0 dont remove attribute
  * @param[out] cbret     Error message (if retval=0)
  * @param[out] valp      Malloced value (if retval=1)
  * @retval     1         OK
@@ -120,6 +121,7 @@ static int
 attr_ns_value(cxobj *x,
               char  *name,
               char  *ns,
+              int    peek,
               cbuf  *cbret,
               char **valp)
 {
@@ -144,7 +146,8 @@ attr_ns_value(cxobj *x,
                 clixon_err(OE_UNIX, errno, "malloc");
                 goto done;
             }
-            xml_purge(xa);
+            if (!peek)
+                xml_purge(xa);
         }
     }
     *valp = val;
@@ -373,14 +376,16 @@ choice_is_other(yang_stmt *y0c,
     return 0;
 }
 
-/*! Check if choice nodes and implicitly remove all other cases.
+/*! Check if choice nodes and if add implicitly remove all other cases, or fail if delete
  *
  * Special case is if yc parent (yp) is choice/case
  * then find x0 child with same yc even though it does not match lexically
  * However this will give another y0c != yc
  * @param[in]  x0      Base tree node
- * @param[in]  y1c     Yang spec of tree child. If null revert to linear search.
- * @retval     0       OK
+ * @param[in]  x1c     Tree child
+ * @param[in]  y1c     Yang spec of x1c
+ * @retval     1       OK
+ * @retval     0       Fail with cbret set
  * @retval    -1       Error
  *
  * From RFC 7950 Sec 7.9
@@ -391,8 +396,11 @@ choice_is_other(yang_stmt *y0c,
  * other cases inside the choice.
  */
 static int
-choice_delete_other(cxobj     *x0,
-                    yang_stmt *y1c)
+choice_other_match(cxobj              *x0,
+                   cxobj              *x1c,
+                   yang_stmt          *y1c,
+                   enum operation_type op,
+                   cbuf               *cbret)
 {
     int        retval = -1;
     cxobj     *x0c;
@@ -402,7 +410,16 @@ choice_delete_other(cxobj     *x0,
     yang_stmt *y0choice;
     yang_stmt *y1case = NULL;
     yang_stmt *y1choice = NULL;
+    char      *opstr = NULL;
+    int        ret;
 
+    if ((ret = attr_ns_value(x1c, "operation", NETCONF_BASE_NAMESPACE, 1, cbret, &opstr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    if (opstr != NULL)
+        if (xml_operation(opstr, &op) < 0)
+            goto done;
     if (yang_choice_case_get(y1c, &y1case, &y1choice) == 0)
         goto ok;
     x0prev = NULL;
@@ -419,18 +436,36 @@ choice_delete_other(cxobj     *x0,
         }
         /* Check if x0/y0 is part of other choice/case than y1 recursively , if so purge */
         if (choice_is_other(y0c, y0case, y0choice, y1c, y1case, y1choice) == 1){
-            if (xml_purge(x0c) < 0)
-                goto done;
-            x0c = x0prev;
+            switch (op){
+            case OP_MERGE:
+            case OP_REPLACE:
+            case OP_CREATE:
+                if (xml_purge(x0c) < 0)
+                    goto done;
+                x0c = x0prev;
                 continue;
+                break;
+            case OP_DELETE:
+                if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+                    goto done;
+                goto fail;
+                break;
+            case OP_REMOVE:
+            case OP_NONE:
+                break;
+            }
         }
         x0prev = x0c;
     }
  ok:
-    retval = 0;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
+
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
  *
@@ -506,7 +541,7 @@ text_modify(clixon_handle       h,
     if (ret == 0)
         goto fail;
     /* Check for operations embedded in tree according to netconf */
-    if ((ret = attr_ns_value(x1, "operation", NETCONF_BASE_NAMESPACE,
+    if ((ret = attr_ns_value(x1, "operation", NETCONF_BASE_NAMESPACE, 0,
                              cbret, &opstr)) < 0)
         goto done;
     if (ret == 0)
@@ -514,7 +549,7 @@ text_modify(clixon_handle       h,
     if (opstr != NULL)
         if (xml_operation(opstr, &op) < 0)
             goto done;
-    if ((ret = attr_ns_value(x1, "objectcreate", NULL, cbret, &createstr)) < 0)
+    if ((ret = attr_ns_value(x1, "objectcreate", NULL, 0, cbret, &createstr)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -554,7 +589,7 @@ text_modify(clixon_handle       h,
         if (yang_keyword_get(y0) == Y_LEAF_LIST &&
             yang_find(y0, Y_ORDERED_BY, "user") != NULL){
             if ((ret = attr_ns_value(x1,
-                                     "insert", YANG_XML_NAMESPACE,
+                                     "insert", YANG_XML_NAMESPACE, 0,
                                      cbret, &instr)) < 0)
                 goto done;
             if (ret == 0)
@@ -563,7 +598,7 @@ text_modify(clixon_handle       h,
                 xml_attr_insert2val(instr, &insert) < 0)
                 goto done;
             if ((ret = attr_ns_value(x1,
-                                     "value", YANG_XML_NAMESPACE,
+                                     "value", YANG_XML_NAMESPACE, 0,
                                      cbret, &valstr)) < 0)
                 goto done;
             /* if insert/before, value attribute must be there */
@@ -752,7 +787,7 @@ text_modify(clixon_handle       h,
         if (yang_keyword_get(y0) == Y_LIST &&
             yang_find(y0, Y_ORDERED_BY, "user") != NULL){
             if ((ret = attr_ns_value(x1,
-                                     "insert", YANG_XML_NAMESPACE,
+                                     "insert", YANG_XML_NAMESPACE, 0,
                                      cbret, &instr)) < 0)
                 goto done;
             if (ret == 0)
@@ -761,7 +796,7 @@ text_modify(clixon_handle       h,
                 xml_attr_insert2val(instr, &insert) < 0)
                 goto done;
             if ((ret = attr_ns_value(x1,
-                                     "key", YANG_XML_NAMESPACE,
+                                     "key", YANG_XML_NAMESPACE, 0,
                                      cbret, &keystr)) < 0)
                 goto done;
 
@@ -903,9 +938,11 @@ text_modify(clixon_handle       h,
                                x1cname, yang_find_mynamespace(y0));
                     goto done;
                 }
-                /* Check if existing choice/case should be deleted */
-                if (choice_delete_other(x0, yc) < 0)
+                /* Check if existing choice/case, if so may be error or delete */
+                if ((ret = choice_other_match(x0, x1c, yc, op, cbret)) < 0)
                     goto done;
+                if (ret == 0)
+                    goto fail;
                 /* See if there is a corresponding node in the base tree */
                 x0c = NULL;
                 if (match_base_child(x0, x1c, yc, &x0c) < 0)
@@ -1052,7 +1089,7 @@ text_modify_top(clixon_handle       h,
 
     /* Check for operations embedded in tree according to netconf */
     if ((ret = attr_ns_value(x1t,
-                             "operation", NETCONF_BASE_NAMESPACE,
+                             "operation", NETCONF_BASE_NAMESPACE, 0,
                              cbret, &opstr)) < 0)
         goto done;
     if (ret == 0)
@@ -1060,7 +1097,7 @@ text_modify_top(clixon_handle       h,
     if (opstr != NULL)
         if (xml_operation(opstr, &op) < 0)
             goto done;
-    if ((ret = attr_ns_value(x1t, "objectcreate", NULL, cbret, &createstr)) < 0)
+    if ((ret = attr_ns_value(x1t, "objectcreate", NULL, 0, cbret, &createstr)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
