@@ -109,7 +109,7 @@
 
 /*! Enable "remaining" attribute (sub-feature of list pagination)
  *
- * As defined in draft-wwlh-netconf-list-pagination-00 using Yang metadata value [RFC7952] 
+ * See "remaining" annotation defined in module ietf-list-pagination.yang
  */
 #undef LIST_PAGINATION_REMAINING
 

@@ -641,6 +641,11 @@ get_list_pagination(clixon_handle        h,
     int        i;
     int        j;
     int        ret;
+#ifdef LIST_PAGINATION_REMAINING
+    cxobj     *xcache;
+    uint32_t   total;
+    uint32_t   remaining = 0;
+#endif
 
     if (cbret == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "cbret is NULL");

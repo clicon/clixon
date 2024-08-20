@@ -12,6 +12,9 @@ cfg=$dir/conf.xml
 fexample=$dir/example-social.yang
 fstate=$dir/mystate.xml
 
+# Set to true if LIST_PAGINATION_REMAINING is enabled
+REMAINING=false
+
 # Common example-module spec (fexample must be set)
 . ./example_social.sh
 
@@ -285,13 +288,13 @@ function testlimit()
         if [ $i = 0 ]; then
             # Note: if REMAINING is enabled:
             #       if [ $limit == 0 ]; then
-            if true; then
-                el="<uint8-numbers>$li</uint8-numbers>"
-                el2="<uint8-numbers xmlns=\"https://example.com/ns/example-social\">$li</uint8-numbers>"
-            else
+            if ${REMAINING}; then
                 el="<uint8-numbers lp:remaining=\"$remaining\" xmlns:lp=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\">$li</uint8-numbers>"
                 el2="<uint8-numbers lp:remaining=\"$remaining\" xmlns:lp=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\" xmlns=\"https://example.com/ns/example-social\">$li</uint8-numbers>"
                 jsonmeta=",\"@example-social:uint8-numbers\":\[{\"ietf-list-pagination:remaining\":$remaining}\]"
+            else
+                el="<uint8-numbers>$li</uint8-numbers>"
+                el2="<uint8-numbers xmlns=\"https://example.com/ns/example-social\">$li</uint8-numbers>"
             fi
             jsonlist="$li"
         else
