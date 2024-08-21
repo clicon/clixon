@@ -974,21 +974,78 @@ xpath_vec_bool(cxobj      *xcur,
     return retval;
 }
 
+/*! Translate literal string to "canonical" form
+ *
+ * the prefix according to actual namespace.
+ * Actually it depends on context if the rewrite should be made.
+ */
+static int
+traverse_canonical_str(xpath_tree *xs,
+                       yang_stmt  *yspec,
+                       cvec       *nsc0,
+                       cvec       *nsc1)
+{
+    int        retval = -1;
+    char      *name = NULL;
+    char      *prefix0 = NULL;
+    char      *prefix1 = NULL;
+    char      *namespace;
+    yang_stmt *ymod;
+    cbuf      *cb = NULL;
+
+    if (nodeid_split(xs->xs_s0, &prefix0, &name) < 0)
+        goto done;
+    if (prefix0 != NULL && name != NULL &&
+        (namespace = xml_nsctx_get(nsc0, prefix0)) != NULL) {
+        if ((ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL &&
+            (prefix1 = yang_find_myprefix(ymod)) != NULL){
+            if (xml_nsctx_get(nsc1, prefix1) == NULL)
+                if (xml_nsctx_add(nsc1, prefix1, namespace) < 0)
+                    goto done;
+            free(xs->xs_s0);
+            xs->xs_s0 = NULL;
+            if ((cb = cbuf_new()) == NULL){
+                clixon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cb, "%s:%s", prefix1, name);
+            if ((xs->xs_s0 = strdup(cbuf_get(cb))) == NULL){
+                clixon_err(OE_UNIX, errno, "strdup");
+                goto done;
+            }
+        }
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (name)
+        free(name);
+    if (prefix0)
+        free(prefix0);
+    return retval;
+}
+
 /*! Translate an xpath/nsc pair to a "canonical" form using yang prefixes
  *
+ * Returns new namespace context and rewrites the xpath tree
  * @param[in]  xs      Parsed xpath - xpath_tree
  * @param[in]  yspec   Yang spec containing all modules, associated with namespaces
  * @param[in]  nsc0    Input namespace context
+ * @param[in]  exprstr Interpret strings as <prefix>:<name> (primaryexpr/literal/string)
  * @param[out] nsc1    Output namespace context. Free after use with xml_nsctx_free
  * @param[out] reason  Error reason if result is 0 - failed
  * @retval     1       OK with nsc1 containing the transformed nsc
  * @retval     0       XPath failure with reason set to why
  * @retval    -1       Fatal Error
+ * @note Setting str to 1 requires a knowledge of the context of the xpath, ie that strings are
+ *       something like identityref and is safe to translate into canonical form
  */
 static int
 xpath_traverse_canonical(xpath_tree *xs,
                          yang_stmt  *yspec,
                          cvec       *nsc0,
+                         int         exprstr,
                          cvec       *nsc1,
                          cbuf      **reason)
 {
@@ -999,9 +1056,13 @@ xpath_traverse_canonical(xpath_tree *xs,
     yang_stmt *ymod;
     cbuf      *cb = NULL;
     int        ret;
-    //    char      *name;
     
     switch (xs->xs_type){
+    case XP_PRIME_STR:
+        if (exprstr != 0)
+            if (traverse_canonical_str(xs, yspec, nsc0, nsc1) < 0)
+                goto done;
+        break;
     case XP_NODE: /* s0 is namespace prefix, s1 is name */
         /* Nodetest = * needs no prefix */
         if (xs->xs_s1 && strcmp(xs->xs_s1, "*") == 0)
@@ -1061,13 +1122,13 @@ xpath_traverse_canonical(xpath_tree *xs,
         break;
     }   
     if (xs->xs_c0){
-        if ((ret = xpath_traverse_canonical(xs->xs_c0, yspec, nsc0, nsc1, reason)) < 0)
+        if ((ret = xpath_traverse_canonical(xs->xs_c0, yspec, nsc0, exprstr, nsc1, reason)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
     }
     if (xs->xs_c1){
-        if ((ret = xpath_traverse_canonical(xs->xs_c1, yspec, nsc0, nsc1, reason)) < 0)
+        if ((ret = xpath_traverse_canonical(xs->xs_c1, yspec, nsc0, exprstr, nsc1, reason)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -1085,8 +1146,10 @@ xpath_traverse_canonical(xpath_tree *xs,
  * @param[in]  xpath0  Input xpath
  * @param[in]  nsc0    Input namespace context
  * @param[in]  yspec   Yang spec containing all modules, associated with namespaces
+ * @param[in]  exprstr Interpret strings as <prefix>:<name> (primaryexpr/literal/string)
  * @param[out] xpath1  Output xpath. Free after use with free
  * @param[out] nsc1    Output namespace context. Free after use with xml_nsctx_free
+ * @param[out] cbreason reason if retval = 0
  * @retval     1       OK, xpath1 and nsc1 allocated
  * @retval     0       XPath failure with reason set to why
  * @retval    -1       Fatal Error
@@ -1116,12 +1179,13 @@ xpath_traverse_canonical(xpath_tree *xs,
  * @see xpath2xml
  */
 int
-xpath2canonical(const char *xpath0,
-                cvec       *nsc0,
-                yang_stmt  *yspec,
-                char      **xpath1,
-                cvec      **nsc1p,
-                cbuf      **cbreason)
+xpath2canonical1(const char *xpath0,
+                 cvec       *nsc0,
+                 yang_stmt  *yspec,
+                 int         exprstr,
+                 char      **xpath1,
+                 cvec      **nsc1p,
+                 cbuf      **cbreason)
 {
     int         retval = -1;
     xpath_tree *xpt = NULL;
@@ -1133,13 +1197,14 @@ xpath2canonical(const char *xpath0,
     /* Parse input xpath into an xpath-tree */
     if (xpath_parse(xpath0, &xpt) < 0)
         goto done;
+    //    xpath_tree_print(stderr, xpt);
     /* Create new nsc */
      if ((nsc1 = xml_nsctx_init(NULL, NULL)) == NULL)
          goto done;
     /* Traverse tree to find prefixes, transform them to canonical form and
      * create a canonical network namespace
      */
-     if ((ret = xpath_traverse_canonical(xpt, yspec, nsc0, nsc1, cbreason)) < 0)
+     if ((ret = xpath_traverse_canonical(xpt, yspec, nsc0, exprstr, nsc1, cbreason)) < 0)
         goto done;
      if (ret == 0)
          goto fail;
@@ -1172,6 +1237,17 @@ xpath2canonical(const char *xpath0,
  fail:
     retval = 0;
     goto done;
+}
+
+int
+xpath2canonical(const char *xpath0,
+                cvec       *nsc0,
+                yang_stmt  *yspec,
+                char      **xpath1,
+                cvec      **nsc1p,
+                cbuf      **cbreason)
+{
+   return xpath2canonical1(xpath0, nsc0, yspec, 0, xpath1, nsc1p, cbreason);
 }
 
 /*! Return a count(xpath)

@@ -77,6 +77,8 @@
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_data.h"
@@ -524,45 +526,68 @@ yang_when_set(clixon_handle h,
     return retval;
 }
 
-/*! Get yang xpath for "when"-associated augment
+/*! Get xpath and namespace context for "when"-associated augment
  *
  * Ie, for yang structures like: augment <path> { when <xpath>; ... }
- * Will insert new yang nodes at <path> with this special "when" struct (not yang node)
+ * Inserts new yang nodes at <path> with this special "when" struct (not yang node)
  * @param[in]  ys     Yang statement
- * @retval     xpath  xpath should evaluate to true at validation
- * @retval     NULL   Not set
- * @note xpath context is PARENT which is different from when actual when child which is
- * child itself
+ * @param[out] xpath
+ * @param[out] nsc
  */
-char*
-yang_when_xpath_get(yang_stmt *ys)
+int
+yang_when_xpath_get(yang_stmt *ys,
+                    char      **xpath,
+                    cvec      **nsc)
 {
-    yang_stmt   *ywhen;
-
-    if ((ywhen = yang_when_get(NULL, ys)) != NULL)
-        return yang_argument_get(ywhen);
-    return NULL;
-}
-
-/*! Get yang namespace context for "when"-associated augment
- *
- * Ie, for yang structures like: augment <path> { when <xpath>; ... }
- * Will insert new yang nodes at <path> with this special "when" struct (not yang node)
- * @param[in]  ys     Yang statement
- * @retval     nsc    Namespace context (caller frees with cvec_free)
- * @note retval is direct pointer, may need to be copied
- */
-cvec *
-yang_when_nsc_get(yang_stmt *ys)
-{
-    yang_stmt   *ywhen;
-    cvec        *wnsc = NULL;
+    int        retval = -1;
+    yang_stmt *ywhen;
+    cvec      *nsc0 = NULL;
 
     if ((ywhen = yang_when_get(NULL, ys)) != NULL) {
-        if (xml_nsctx_yang(ywhen, &wnsc) < 0)
-            wnsc = NULL;
+        if (xml_nsctx_yang(ywhen, nsc) < 0)
+            goto done;
+        if (xpath)
+            *xpath = yang_argument_get(ywhen);
     }
-    return wnsc;
+    retval = 0;
+ done:
+    if (nsc0)
+        cvec_free(nsc0);
+    return retval;
+}
+
+/*! Get canonical xpath and namespace context for "when"-associated augment
+ *
+ * Ie, for yang structures like: augment <path> { when <xpath>; ... }
+ * Inserts new yang nodes at <path> with this special "when" struct (not yang node)
+ * @param[in]  ys     Yang statement
+ * @param[out] xpath
+ * @param[out] nsc
+ */
+int
+yang_when_canonical_xpath_get(yang_stmt *ys,
+                              char      **xpath,
+                              cvec      **nsc)
+{
+    int        retval = -1;
+    yang_stmt *ywhen;
+    char      *xpath0;
+    cvec      *nsc0 = NULL;
+
+    if ((ywhen = yang_when_get(NULL, ys)) != NULL) {
+        if (xml_nsctx_yang(ywhen, &nsc0) < 0)
+            goto done;
+        xpath0 = yang_argument_get(ywhen);
+        if (xpath0 && nsc0){
+            if (xpath2canonical1(xpath0, nsc0, ys_spec(ys), 1, xpath, nsc, NULL) < 0)
+                goto done;
+        }
+    }
+    retval = 0;
+ done:
+    if (nsc0)
+        cvec_free(nsc0);
+    return retval;
 }
 
 /*! Get yang filename for error/debug purpose (only modules)

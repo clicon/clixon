@@ -14,15 +14,37 @@ fi
 
 # canonical namespace xpath tests
 # need yang modules
+cat <<EOF > $ydir/t.yang
+module t {
+   namespace "urn:example:t";
+   prefix t;
+
+   identity baseid {
+      description "Base identity";
+   }
+   identity des {
+      base "baseid";
+   }
+}
+EOF
+
 cat <<EOF > $ydir/a.yang
 module a{
-  namespace "urn:example:a";
-  prefix a;
-  container x{
-    leaf xa{
-      type string;
-    }
-  }
+   namespace "urn:example:a";
+   prefix a;
+   import t {
+      prefix t;
+   }
+   container x{
+      leaf xa{
+        type string;
+      }
+      leaf xb{
+         type identityref {
+            base "t:baseid";
+         }
+      }
+   }
 }
 EOF
 
@@ -37,6 +59,17 @@ module b{
   }
 }
 EOF
+new "xpath canonical identity predicate"
+expectpart "$($clixon_util_xpath -c -y $ydir -p "/x[xb=t2:des]" -n null:urn:example:a -n t2:urn:example:t)" 0 "/a:x\[a:xb=t:des\]" '0 : a = "urn:example:a"' '1 : t = "urn:example:t"'
+
+new "xpath canonical identity predicate"
+expectpart "$($clixon_util_xpath -c -y $ydir -p "/x[xb='t2:des']" -n null:urn:example:a -n t2:urn:example:t)" 0 "/a:x\[a:xb='t:des'\]" '0 : a = "urn:example:a"' '1 : t = "urn:example:t"'
+
+new "xpath canonical identity boolean"
+expectpart "$($clixon_util_xpath -c -y $ydir -p /x/xb='t2:des' -n null:urn:example:a -n t2:urn:example:t)" 0 "/a:x/a:xb=t:des" '0 : a = "urn:example:a"' '1 : t = "urn:example:t"'
+
+new "xpath canonical identity boolean with quotes"
+expectpart "$($clixon_util_xpath -c -y $ydir -p "/x/xb='t2:des'" -n null:urn:example:a -n t2:urn:example:t)" 0 "/a:x/a:xb='t:des'" '0 : a = "urn:example:a"' '1 : t = "urn:example:t"'
 
 new "xpath canonical form (already canonical)"
 expectpart "$($clixon_util_xpath -c -y $ydir -p /a:x/b:y -n a:urn:example:a -n b:urn:example:b)" 0 '/a:x/b:y' '0 : a = "urn:example:a"' '1 : b = "urn:example:b"'

@@ -281,56 +281,94 @@ check_body_namespace(cxobj     *x0,
  * @retval     1        OK
  * @retval     0        Failed (cbret set)
  * @retval    -1        Error
- * @note There may be some combination cases (x0+x1) that are not covered in this function.
+ * XXX this code is a mess. It tries multiple methods, one after the other. The solution
+ * is probably to make xpath evaluation namespace aware in combination with XML evaluation
+ * (3+4)
  */
 static int
-check_when_condition(cxobj              *x0p,
-                     cxobj              *x1,
-                     yang_stmt          *y0,
-                     cbuf               *cbret)
+check_when_condition(cxobj     *x0p,
+                     cxobj     *x1,
+                     yang_stmt *y0,
+                     cbuf      *cbret)
 {
-    int       retval = -1;
+    int        retval = -1;
     char      *xpath = NULL;
     cvec      *nsc = NULL;
     int        nr;
     yang_stmt *y = NULL;
     cbuf      *cberr = NULL;
     cxobj     *x1p;
+    cvec      *cnsc = NULL;
+    cvec      *nnsc = NULL;
+    char      *cxpath = NULL;
 
     if ((y = y0) != NULL ||
         (y = (yang_stmt*)xml_spec(x1)) != NULL){
-        if ((xpath = yang_when_xpath_get(y)) != NULL){
-            nsc = yang_when_nsc_get(y);
-            x1p = xml_parent(x1);
-            if ((nr = xpath_vec_bool(x1p, nsc, "%s", xpath)) < 0) /* Try request */
-                goto done;
-            if (nr == 0){
-                /* Try existing tree */
-                if ((nr = xpath_vec_bool(x0p, nsc, "%s", xpath)) < 0)
-                    goto done;
-                if (nr == 0){
-                    if ((cberr = cbuf_new()) == NULL){
-                        clixon_err(OE_UNIX, errno, "cbuf_new");
-                        goto done;
-                    }
-                    cprintf(cberr, "Node '%s' tagged with 'when' condition '%s' in module '%s' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)",
-                            yang_argument_get(y),
-                            xpath,
-                            yang_argument_get(ys_module(y)));
-                    if (netconf_unknown_element(cbret, "application", yang_argument_get(y),
-                                                cbuf_get(cberr)) < 0)
-                        goto done;
-                    goto fail;
-                }
-            }
+        x1p = xml_parent(x1);
+        if (yang_when_xpath_get(y, &xpath, &nsc) < 0)
+            goto done;
+        if (xpath == NULL)
+            goto ok;
+        /* 1. Try yang context for existing xml
+         * Sufficient for all clixon/controller tests.
+         * Required for test_augment */
+        if ((nr = xpath_vec_bool(x0p, nsc, "%s", xpath)) < 0)
+            goto done;
+        if (nr != 0)
+            goto ok;
+        if (xml_nsctx_node(x1p, &nnsc) < 0)
+            goto done;
+        /* 2. Try yang context for incoming xml */
+        if ((nr = xpath_vec_bool(x1p, nsc, "%s", xpath)) < 0)
+            goto done;
+        if (nr != 0)
+            goto ok;
+        /* 3. Try xml context for incoming xml */
+        if ((nr = xpath_vec_bool(x1p, nnsc, "%s", xpath)) < 0) /* Try request */
+            goto done;
+        if (nr != 0)
+            goto ok;
+        /* 4. Try xml context for existing xml */
+        if ((nr = xpath_vec_bool(x0p, nnsc, "%s", xpath)) < 0) /* Try request */
+            goto done;
+        if (nr != 0)
+            goto ok;
+        if (yang_when_canonical_xpath_get(y, &cxpath, &cnsc) < 0)
+            goto done;
+        /* 5. Try yang canonical context for incoming xml */
+        if ((nr = xpath_vec_bool(x1p, cnsc, "%s", cxpath)) < 0)
+            goto done;
+        if (nr != 0)
+            goto ok;
+        /* 6. Try yang canonical context for existing xml */
+        if ((nr = xpath_vec_bool(x0p, cnsc, "%s", cxpath)) < 0)
+            goto done;
+        if (nr != 0)
+            goto ok;
+        if ((cberr = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
         }
+        cprintf(cberr, "Node '%s' tagged with 'when' condition '%s' in module '%s' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)",
+                yang_argument_get(y),
+                xpath,
+                yang_argument_get(ys_module(y)));
+        if (netconf_unknown_element(cbret, "application", yang_argument_get(y),
+                                    cbuf_get(cberr)) < 0)
+            goto done;
+        goto fail;
     }
+ ok:
     retval = 1;
  done:
     if (nsc)
         cvec_free(nsc);
     if (cberr)
         cbuf_free(cberr);
+    if (cxpath)
+        free(cxpath);
+    if (nnsc)
+        cvec_free(nnsc);
     return retval;
  fail:
     retval = 0;
@@ -465,7 +503,6 @@ choice_other_match(cxobj              *x0,
     retval = 0;
     goto done;
 }
-
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
  *

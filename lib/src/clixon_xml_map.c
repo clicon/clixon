@@ -2091,9 +2091,10 @@ yang_check_when_xpath(cxobj        *xn,
     int        xmalloc = 0;   /* ugly help variable to clean temporary object */
 
     /* First variant */
-    if ((xpath = yang_when_xpath_get(yn)) != NULL){
+    if (yang_when_canonical_xpath_get(yn, &xpath, &nsc) < 0)
+        goto done;
+    if (xpath != NULL){
         x = xp;
-        nsc = yang_when_nsc_get(yn);
         *hit = 1;
     }
     /* Second variant */
