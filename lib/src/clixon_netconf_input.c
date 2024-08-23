@@ -210,7 +210,7 @@ netconf_input_msg2(unsigned char      **bufp,
                 goto done;
             switch (ret){
             case 1: /* chunk-data */
-                cprintf(cbmsg, "%c", ch);
+                cbuf_append(cbmsg, ch);
                 break;
             case 2: /* end-of-data */
                 /* Somewhat complex error-handling:
@@ -223,7 +223,7 @@ netconf_input_msg2(unsigned char      **bufp,
             }
         }
         else{
-            cprintf(cbmsg, "%c", ch);
+            cbuf_append(cbmsg, ch);
             if (detect_endtag("]]>]]>", ch, frame_state)){
                 *frame_state = 0;
                 /* OK, we have an xml string from a client */
