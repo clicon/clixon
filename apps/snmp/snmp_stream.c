@@ -208,10 +208,10 @@ done:
  * The OID is read from the YANG definition. If the notification contains data, all values
  * are bound to the corresponding OIDs and sent with the snmp trap.
  *
- * @param[in]  s    Socket
- * @param[in]  arg  expected to be clixon_handle
- * @retval     0    OK
- * @retval    -1    Error
+ * @param[in]  h   Clixon handle
+ * @param[in]  xn  Notification data received from backend
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 static int
 snmp_publish_notification(clixon_handle h,
@@ -270,6 +270,7 @@ snmp_stream_cb(int   s,
     clixon_handle h = (clixon_handle)arg;
     int           eof;
     cxobj        *xtop = NULL;   /* top xml */
+    cxobj        *xncont = NULL; /* notification content xml */
     cxobj        *xn;            /* notification xml */
     cbuf         *cbmsg = NULL;
     int           ret;
@@ -291,11 +292,13 @@ snmp_stream_cb(int   s,
         clixon_err(OE_XML, EFAULT, "Invalid notification");
         goto done;
     }
-    if ((xn = xpath_first(xtop, NULL, "notification")) == NULL)
-        goto ok;
-    /* forward notification as snmp trap */
-    if(snmp_publish_notification(h, xn) < 0)
-        goto done;
+    /* forward notification(s) as snmp trap */
+    while ((xncont = xml_child_each(xtop, xncont, CX_ELMNT)) != NULL){
+        if (strcmp(xml_name(xncont), "notification") == 0) {
+            if(snmp_publish_notification(h, xncont) < 0)
+                goto done;
+        }
+    }
 
  ok:
     retval = 0;
