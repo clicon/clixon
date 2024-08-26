@@ -80,11 +80,33 @@ get_oid_for_yang_node(yang_stmt *ys,
                       oid       *objid,
                       size_t    *objidlen)
 {
-    int   retval = -1;
-    int   exist = 0;
-    char *oidstr = NULL;
+    int        retval = -1;
+    int        exist = 0;
+    char      *oidstr = NULL;
+    char      *path;
+    yang_stmt *ytype;
+    yang_stmt *ypath;
+    yang_stmt *yref;
+    yang_stmt *ys_to_use;
 
-    if (yang_extension_value_opt(ys, "smiv2:oid", &exist, &oidstr) < 0)
+    ys_to_use = ys;
+
+    /* Special case for leafref: Use smiv2:oid from referenced node if available. */
+    if ((ytype = yang_find(ys, Y_TYPE, NULL)) != NULL &&
+        strcmp(yang_argument_get(ytype), "leafref") == 0){
+        if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
+            clixon_err(OE_YANG, 0, "No path in leafref");
+            goto done;
+        }
+        if (yang_path_arg(ys, yang_argument_get(ypath), &yref) < 0)
+            goto done;
+        if (yref == NULL){
+            clixon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", yang_argument_get(ypath));
+            goto done;
+        }
+        ys_to_use = yref;
+    }
+    if (yang_extension_value_opt(ys_to_use, "smiv2:oid", &exist, &oidstr) < 0)
         goto done;
     if (exist == 0 || oidstr == NULL){
         clixon_debug(CLIXON_DBG_SNMP, "oid not found as SMIv2 yang extension of %s", yang_argument_get(ys));
