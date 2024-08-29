@@ -281,8 +281,11 @@ check_body_namespace(cxobj     *x0,
  * @retval     1        OK
  * @retval     0        Failed (cbret set)
  * @retval    -1        Error
- * XXX this code is a mess. It tries multiple methods, one after the other. The solution
- * is probably to make xpath evaluation namespace aware in combination with XML evaluation
+ * XXX this code is a mess. It tries multiple methods, one after the other.
+ * Observations:
+ *  (1) is enough and required by clixon/controller tests
+ *  (1+4+6) is required by some Arista machines
+ * The solution is probably to make xpath evaluation namespace aware in combination with XML evaluation
  * (3+4)
  */
 static int
@@ -316,9 +319,10 @@ check_when_condition(cxobj     *x0p,
             goto done;
         if (nr != 0)
             goto ok;
+        /* 2. Try yang context for incoming xml */
         if (xml_nsctx_node(x1p, &nnsc) < 0)
             goto done;
-        /* 2. Try yang context for incoming xml */
+#if 0
         if ((nr = xpath_vec_bool(x1p, nsc, "%s", xpath)) < 0)
             goto done;
         if (nr != 0)
@@ -328,18 +332,21 @@ check_when_condition(cxobj     *x0p,
             goto done;
         if (nr != 0)
             goto ok;
+#endif
         /* 4. Try xml context for existing xml */
         if ((nr = xpath_vec_bool(x0p, nnsc, "%s", xpath)) < 0) /* Try request */
             goto done;
         if (nr != 0)
             goto ok;
+        /* 5. Try yang canonical context for incoming xml */
         if (yang_when_canonical_xpath_get(y, &cxpath, &cnsc) < 0)
             goto done;
-        /* 5. Try yang canonical context for incoming xml */
+#if 0
         if ((nr = xpath_vec_bool(x1p, cnsc, "%s", cxpath)) < 0)
             goto done;
         if (nr != 0)
             goto ok;
+#endif
         /* 6. Try yang canonical context for existing xml */
         if ((nr = xpath_vec_bool(x0p, cnsc, "%s", cxpath)) < 0)
             goto done;
@@ -361,12 +368,14 @@ check_when_condition(cxobj     *x0p,
  ok:
     retval = 1;
  done:
+    if (cxpath)
+        free(cxpath);
+    if (cnsc)
+        cvec_free(cnsc);
     if (nsc)
         cvec_free(nsc);
     if (cberr)
         cbuf_free(cberr);
-    if (cxpath)
-        free(cxpath);
     if (nnsc)
         cvec_free(nnsc);
     return retval;
@@ -498,6 +507,8 @@ choice_other_match(cxobj              *x0,
  ok:
     retval = 1;
  done:
+    if (opstr)
+        free(opstr);
     return retval;
  fail:
     retval = 0;

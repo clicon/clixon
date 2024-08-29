@@ -2068,7 +2068,7 @@ xml_copy_marked(cxobj *x0,
  * @param[in]   yn     Yang node
  * @param[out]  hit    when statement found
  * @param[out]  nrp    1: when stmt evaluates to true
- * @param[out]  xpathp when stmts xpath
+ * @param[out]  xpathp when stmts xpath, free after use
  * @retval      0      OK
  * @retval     -1      Error
  * First variants of WHEN: Augmented and uses when using special info in node
@@ -2088,24 +2088,26 @@ yang_check_when_xpath(cxobj        *xn,
     cxobj     *x = NULL;
     int        nr = 0;
     cvec      *nsc = NULL;
-    int        xmalloc = 0;   /* ugly help variable to clean temporary object */
+    int        variant = 0;   /* ugly help variable to clean temporary object */
 
-    /* First variant */
     if (yang_when_canonical_xpath_get(yn, &xpath, &nsc) < 0)
         goto done;
     if (xpath != NULL){
         x = xp;
         *hit = 1;
     }
-    /* Second variant */
     else if ((yc = yang_find(yn, Y_WHEN, NULL)) != NULL){
-        xpath = yang_argument_get(yc); /* "when" has xpath argument */
+        /* "when" has xpath argument */
+        if ((xpath = strdup(yang_argument_get(yc))) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
         /* Create dummy */
         if (xn == NULL){
             if ((x = xml_new(yang_argument_get(yn), xp, CX_ELMNT)) == NULL)
                 goto done;
             xml_spec_set(x, yn);
-            xmalloc++;
+            variant = 1;
         }
         else
             x = xn;
@@ -2121,12 +2123,16 @@ yang_check_when_xpath(cxobj        *xn,
     }
     if (nrp)
         *nrp = nr;
-    if (xpathp)
+    if (xpathp){
         *xpathp = xpath;
+        xpath = NULL;
+    }
     retval = 0;
  done:
-    if (xmalloc)
+    if (variant)
         xml_purge(x);
+    if (xpath)
+        free(xpath);
     if (nsc)
         xml_nsctx_free(nsc);
     return retval;

@@ -1147,7 +1147,7 @@ xpath_traverse_canonical(xpath_tree *xs,
  * @param[in]  nsc0    Input namespace context
  * @param[in]  yspec   Yang spec containing all modules, associated with namespaces
  * @param[in]  exprstr Interpret strings as <prefix>:<name> (primaryexpr/literal/string)
- * @param[out] xpath1  Output xpath. Free after use with free
+ * @param[out] xpath1  Output xpath. Free after use
  * @param[out] nsc1    Output namespace context. Free after use with xml_nsctx_free
  * @param[out] cbreason reason if retval = 0
  * @retval     1       OK, xpath1 and nsc1 allocated
@@ -1239,6 +1239,8 @@ xpath2canonical1(const char *xpath0,
     goto done;
 }
 
+/*! Backward compatible wrapper around xpath2canonical1
+ */
 int
 xpath2canonical(const char *xpath0,
                 cvec       *nsc0,

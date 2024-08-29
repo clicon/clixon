@@ -299,7 +299,6 @@ xml_default(yang_stmt *yt,
     cxobj     *xc;
     int        top = 0; /* Top symbol (set default namespace) */
     int        create = 0;
-    char      *xpath;
     int        nr = 0;
     int        hit = 0;
     cg_var    *cv;
@@ -336,7 +335,7 @@ xml_default(yang_stmt *yt,
                 }
                 if (!cv_flag(cv, V_UNSET)){  /* Default value exists */
                     /* Check when condition */
-                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, NULL) < 0)
                         goto done;
                     if (hit && nr == 0)
                         break; /* Do not create default if xpath fails */
@@ -351,7 +350,7 @@ xml_default(yang_stmt *yt,
             case Y_CONTAINER:
                 if (yang_find(yc, Y_PRESENCE, NULL) == NULL){
                     /* Check when condition */
-                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, NULL) < 0)
                         goto done;
                     if (hit && nr == 0)
                         break; /* Do not create default if xpath fails */

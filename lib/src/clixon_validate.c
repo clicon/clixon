@@ -1239,6 +1239,7 @@ xml_yang_validate_all(clixon_handle h,
     yang_stmt *yc;  /* yang child */
     yang_stmt *ye;  /* yang must error-message */
     char      *xpath;
+    char      *xpath1 = NULL;
     int        nr;
     int        ret;
     cxobj     *x;
@@ -1283,8 +1284,8 @@ xml_yang_validate_all(clixon_handle h,
         goto fail;
     }
     if (yang_config(yt) != 0){
-        ret = yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath);
-        clixon_debug(CLIXON_DBG_XPATH|CLIXON_DBG_DETAIL, "nr:%d xpath:%s return:%d", nr, xpath, ret);
+        ret = yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath1);
+        clixon_debug(CLIXON_DBG_XPATH|CLIXON_DBG_DETAIL, "nr:%d xpath:%s return:%d", nr, xpath1, ret);
         if (ret < 0)
             goto done;
 
@@ -1296,7 +1297,7 @@ xml_yang_validate_all(clixon_handle h,
             cprintf(cb, "Failed WHEN condition of %s in module %s (WHEN xpath is %s)",
                     xml_name(xt),
                     yang_argument_get(ys_module(yt)),
-                    xpath);
+                    xpath1);
             if (xret && netconf_operation_failed_xml(xret, "application",
                                                      cbuf_get(cb)) < 0)
                 goto done;
@@ -1403,6 +1404,8 @@ xml_yang_validate_all(clixon_handle h,
  ok:
     retval = 1;
  done:
+    if (xpath1)
+        free(xpath1);
     if (cb)
         cbuf_free(cb);
     if (nsc)
