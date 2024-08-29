@@ -318,7 +318,34 @@ clicon_data_int_del(clixon_handle h,
     return clicon_hash_del(cdat, (char*)name);
 }
 
-/*! Get data yangspec, yspec 
+/*! Get top-level yang mounts
+ *
+ * @param[in]  h     Clixon handle
+ * @retval     ymnts Yang mounts
+ */
+yang_stmt *
+clixon_yang_mounts_get(clixon_handle h)
+{
+    yang_stmt *ys = NULL;
+
+    if (clicon_ptr_get(h, "yang-mounts", (void**)&ys) < 0)
+        return NULL;
+    return ys;
+}
+
+/*! Set top-level yang mounts
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  yspec Yang spec (malloced pointer)
+ */
+int
+clixon_yang_mounts_set(clixon_handle h,
+                       yang_stmt    *ys)
+{
+    return clicon_ptr_set(h, "yang-mounts", ys);
+}
+
+/*! Get data yangspec, yspec
  *
  * @param[in]  h     Clixon handle
  * @retval     yspec Yang spec
@@ -328,23 +355,11 @@ yang_stmt *
 clicon_dbspec_yang(clixon_handle h)
 {
     yang_stmt *ys = NULL;
+    yang_stmt *ymounts = NULL;
 
-    if (clicon_ptr_get(h, "dbspec_yang", (void**)&ys) < 0)
-        return NULL;
+    if ((ymounts = clixon_yang_mounts_get(h)) != NULL)
+        ys = yang_find(ymounts, Y_SPEC, YANG_DATA_TOP);
     return ys;
-}
-
-/*! Set yang specification for application specifications
- *
- * @param[in]  h     Clixon handle
- * @param[in]  yspec Yang spec (malloced pointer)
- * @see clicon_config_yang_set  for the configuration yang
- */
-int
-clicon_dbspec_yang_set(clixon_handle h,
-                       yang_stmt    *ys)
-{
-    return clicon_ptr_set(h, "dbspec_yang", ys);
 }
 
 /*! Get YANG specification for clixon config (separate from application yangs)
@@ -356,24 +371,12 @@ clicon_dbspec_yang_set(clixon_handle h,
 yang_stmt *
 clicon_config_yang(clixon_handle h)
 {
+    yang_stmt *ymounts = NULL;
     yang_stmt *ys = NULL;
 
-    if (clicon_ptr_get(h, "control_yang", (void**)&ys) < 0)
-        return NULL;
+    if ((ymounts = clixon_yang_mounts_get(h)) != NULL)
+        ys = yang_find(ymounts, Y_SPEC, YANG_CONFIG_TOP);
     return ys;
-}
-
-/*! Set yang specification for configuration
- *
- * @param[in]  h     Clixon handle
- * @param[in]  yspec Yang spec (malloced pointer)
- * @see clicon_dbspec_yang_set  for the application specs
- */
-int
-clicon_config_yang_set(clixon_handle   h,
-                       yang_stmt      *ys)
-{
-    return clicon_ptr_set(h, "control_yang", ys);
 }
 
 /*! Get YANG specification for external NACM (separate from application yangs)
@@ -385,24 +388,12 @@ clicon_config_yang_set(clixon_handle   h,
 yang_stmt *
 clicon_nacm_ext_yang(clixon_handle h)
 {
+    yang_stmt *ymounts = NULL;
     yang_stmt *ys = NULL;
 
-    if (clicon_ptr_get(h, "nacm_ext_yang", (void**)&ys) < 0)
-        return NULL;
+    if ((ymounts = clixon_yang_mounts_get(h)) != NULL)
+        ys = yang_find(ymounts, Y_SPEC, YANG_NACM_TOP);
     return ys;
-}
-
-/*! Set yang specification for external NACM
- *
- * @param[in]  h     Clixon handle
- * @param[in]  yspec Yang spec (malloced pointer)
- * @see clicon_nacm_ext_set  for external NACM XML
- */
-int
-clicon_nacm_ext_yang_set(clixon_handle   h,
-                         yang_stmt      *ys)
-{
-    return clicon_ptr_set(h, "nacm_ext_yang", ys);
 }
 
 /*! Get Global "canonical" namespace context

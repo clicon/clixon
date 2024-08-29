@@ -65,14 +65,14 @@ int   clicon_data_int_get(clixon_handle h, const char *name);
 int   clicon_data_int_set(clixon_handle h, const char *name, int val);
 int   clicon_data_int_del(clixon_handle h, const char *name);
 
+yang_stmt *clixon_yang_mounts_get(clixon_handle h);
+int clixon_yang_mounts_set(clixon_handle h, yang_stmt *ys);
+
 yang_stmt * clicon_dbspec_yang(clixon_handle h);
-int clicon_dbspec_yang_set(clixon_handle h, yang_stmt *ys);
 
 yang_stmt * clicon_config_yang(clixon_handle h);
-int clicon_config_yang_set(clixon_handle h, yang_stmt *ys);
 
 yang_stmt * clicon_nacm_ext_yang(clixon_handle h);
-int clicon_nacm_ext_yang_set(clixon_handle h, yang_stmt *ys);
 
 cvec *clicon_nsctx_global_get(clixon_handle h);
 int clicon_nsctx_global_set(clixon_handle h, cvec *nsctx);

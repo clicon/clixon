@@ -122,10 +122,6 @@ snmp_terminate(clixon_handle h)
         x = NULL;
     }
     clicon_rpc_close_session(h);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL)
-        ys_free(yspec);
-    if ((yspec = clicon_config_yang(h)) != NULL)
-        ys_free(yspec);
     yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
@@ -524,9 +520,8 @@ main(int    argc,
         goto done;
 
     /* Create top-level yang spec and store as option */
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new(h, YANG_DATA_TOP)) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);
 
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */

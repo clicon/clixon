@@ -16,6 +16,8 @@ Expected: October 2024
 
 ### Features
 
+* Refactoring of schema mount-points
+  * Add new top-level `Y_MOUNTS` and add top-level yangs and mountpoints in yspecs
 * New `clixon-autocli@2024-08-01.yang` revision
     - Added: disable operation for module rules
 * Optimize YANG memory

@@ -238,26 +238,37 @@ yang_argument_get(yang_stmt *ys)
     return ys->ys_argument;
 }
 
-/*
- * Note on cvec on XML nodes:
- * 1. It is always created in xml_new. It could be lazily created on use to save a little memory
- * 2. Only some yang statements use the cvec, as follows:
- *  2a. ranges and lengths: [min, max]
- *  2b. list: keys
- *  2c. identity types: derived instances: identityrefs, save <module>:<idref>
- *  2d. type: leafref types: derived instances.
- */
 /*! Set yang argument, not not copied
  *
  * @param[in] ys   Yang statement node
  * @param[in] arg  Argument, note must be malloced
  * Typically only done at parsing / initiation
+ * @see yang_argument_dup
  */
 int
 yang_argument_set(yang_stmt *ys,
                   char      *arg)
 {
     ys->ys_argument = arg; /* not strdup/copied */
+    return 0;
+}
+
+/*! Set yang argument, copied
+ *
+ * @param[in] ys   Yang statement node
+ * @param[in] arg  Argument, is copied
+ */
+int
+yang_argument_dup(yang_stmt *ys,
+                  char      *arg)
+{
+    char *dup;
+
+    if ((dup = strdup(arg)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        return -1;
+    }
+    ys->ys_argument = dup; /* not strdup/copied */
     return 0;
 }
 
@@ -561,13 +572,13 @@ yang_when_xpath_get(yang_stmt *ys,
  * Ie, for yang structures like: augment <path> { when <xpath>; ... }
  * Inserts new yang nodes at <path> with this special "when" struct (not yang node)
  * @param[in]  ys     Yang statement
- * @param[out] xpath
- * @param[out] nsc
+ * @param[out] xpath  Free after use
+ * @param[out] nsc    Free with cvec_free
  */
 int
 yang_when_canonical_xpath_get(yang_stmt *ys,
-                              char      **xpath,
-                              cvec      **nsc)
+                              char     **xpath,
+                              cvec     **nsc)
 {
     int        retval = -1;
     yang_stmt *ywhen;
@@ -836,24 +847,34 @@ yang_stats(yang_stmt    *yt,
 
 /* stats end */
 
-/*! Create new yang specification
+/*! Create new yang specification, addd as child to top-level yang_mounts
  *
  * @retval  yspec    Free with ys_free()
  * @retval  NULL     Error
  */
 yang_stmt *
-yspec_new(void)
+yspec_new(clixon_handle h,
+          char         *name)
 {
+    yang_stmt *ymounts;
     yang_stmt *yspec;
 
-    if ((yspec = malloc(sizeof(*yspec))) == NULL){
-        clixon_err(OE_YANG, errno, "malloc");
-        return NULL;
+    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
+        clixon_err(OE_YANG, 0, "Yang-mounts not created");
+        goto done;
     }
-    memset(yspec, 0, sizeof(*yspec));
-    yspec->ys_keyword = Y_SPEC;
-    _stats_yang_nr++;
+    if ((yspec = ys_new(Y_SPEC)) == NULL)
+        goto done;
+    if (yang_argument_dup(yspec, name) < 0)
+        goto done;
+    if (yn_insert(ymounts, yspec) < 0)
+        goto done;
+    /* Special trick for shared yspecs */
+    if (yang_cvec_add(yspec, CGV_STRING, name) < 0)
+        goto done;
     return yspec;
+ done:
+    return NULL;
 }
 
 /*! Create new yang node/statement given size
@@ -1357,7 +1378,6 @@ yn_insert1(yang_stmt *ys_parent,
  *     ...ynext...
  *   }
  * @endcode
- * @see yn_each
  */
 yang_stmt *
 yn_iter(yang_stmt *yparent,
@@ -2155,7 +2175,28 @@ ys_spec(yang_stmt *ys)
         ys = (yang_stmt*)yn;
     }
     /* Here it is either NULL or is a typedef-kind yang-stmt */
-    return (yang_stmt*)ys;
+    return ys;
+}
+
+/*! Find top of tree, the yang specification from within the tree
+ *
+ * @param[in] ys    Any yang statement in a yang tree
+ * @retval    yspec The top yang specification
+ * @see  ys_module
+ * @see  yang_augment_node where shortcut is set for augment
+ * @see  yang_myroot for first node under (sub)module
+ */
+yang_stmt *
+ys_mounts(yang_stmt *ys)
+{
+    yang_stmt *yn;
+
+    while (ys != NULL && ys->ys_keyword != Y_MOUNTS){
+        yn = ys->ys_parent;
+        ys = (yang_stmt*)yn;
+    }
+    /* Here it is either NULL or is a typedef-kind yang-stmt */
+    return ys;
 }
 
 /*! String is quoted if it contains space or tab, needs double ''
@@ -4096,18 +4137,14 @@ yang_type_cache_free(yang_type_cache *ycache)
  */
 yang_stmt *
 yang_anydata_add(yang_stmt *yp,
-                 char      *name0)
+                 char      *name)
 {
     yang_stmt *ys = NULL;
-    char      *name = NULL;
 
     if ((ys = ys_new(Y_ANYDATA)) == NULL)
         goto done;
-    if ((name = strdup(name0)) == NULL){
-        clixon_err(OE_UNIX, errno, "strdup");
+    if (yang_argument_dup(ys, name) < 0)
         goto done;
-    }
-    yang_argument_set(ys, name);
     if (yp && yn_insert(yp, ys) < 0){ /* Insert into hierarchy */
         ys = NULL;
         goto done;
@@ -4399,6 +4436,7 @@ yang_init(clixon_handle h)
 {
     int          retval = -1;
     map_ptr2ptr *mp;
+    yang_stmt   *ymounts;
 
     if ((mp = calloc(1, sizeof(*mp))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
@@ -4412,6 +4450,10 @@ yang_init(clixon_handle h)
     _yang_mymodule_map = mp;
     if (yang_cardinality_init(h) < 0)
         goto done;
+    if ((ymounts = ys_new(Y_MOUNTS)) == NULL)
+        goto done;
+    if (clixon_yang_mounts_set(h, ymounts) < 0)
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -4424,6 +4466,8 @@ yang_init(clixon_handle h)
 int
 yang_exit(clixon_handle h)
 {
+    yang_stmt *ymounts;
+
     if (_yang_when_map != NULL) {
         free(_yang_when_map);
         _yang_when_map = NULL;
@@ -4432,5 +4476,9 @@ yang_exit(clixon_handle h)
         free(_yang_mymodule_map);
         _yang_mymodule_map = NULL;
     }
+    if ((ymounts = clixon_yang_mounts_get(h)) != NULL){
+        ys_free(ymounts);
+    }
+    clixon_yang_mounts_set(h, NULL);
     return 0;
 }

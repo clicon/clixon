@@ -104,10 +104,12 @@ struct yang_stmt {
                                         Y_LENGTH: length_min, length_max
                                         Y_LIST: vector of keys
                                         Y_RANGE: range_min, range_max
+                                        Y_SPEC: shared mount-point xpaths
                                         Y_TYPE: store all derived types as <module>:<id> list
                                         Y_UNIQUE: vector of descendant schema node ids
-                                     #   Y_UNKNOWN: app-dep: yang-mount-points
+                                        Y_UNKNOWN: app-dep: yang-mount-points
                                      */
+
     yang_stmt         *ys_orig;      /* Pointer to original (for uses/augment copies) */
     union {                          /* Depends on ys_keyword */
         rpc_callback_t  *ysu_action_cb; /* Y_ACTION: Action callback list*/

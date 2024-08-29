@@ -98,6 +98,11 @@
                                       * may be different from orig, therefore do not use link to
                                       * original. May also be due to deviations of derived trees
                                       */
+/*! Names of top-level data YANGs
+ */
+#define YANG_DATA_TOP   "data"    /* "dbspec" */
+#define YANG_CONFIG_TOP "config"
+#define YANG_NACM_TOP   "nacm_ext_yang"
 
 /*
  * Types
@@ -110,6 +115,7 @@
  * - Dont want to expose a generated yacc file to the API
  * - Cant use the symbols in this file because yacc needs token definitions
  * - Use 0 as no keyword --> therefore start enumeration with 1.
+ * @see ykmap for string/symbol mapping
  */
 enum rfc_6020{
     Y_ACTION = 1,
@@ -181,7 +187,9 @@ enum rfc_6020{
     Y_WHEN, /* See also ys_when_xpath / ys_when_nsc */
     Y_YANG_VERSION,
     Y_YIN_ELEMENT,
-    Y_SPEC  /* XXX: NOTE NOT YANG STATEMENT, reserved for top level spec */
+    /* Note, from here not actual yang statement from the RFC */
+    Y_MOUNTS, /* Top-level all mounts */
+    Y_SPEC    /* Specifications on top, config or mount-points */
 };
 
 /* Type used to group yang nodes used in some functions
@@ -241,11 +249,11 @@ typedef enum validate_level_t validate_level;
 /* Access functions */
 int        yang_len_get(yang_stmt *ys);
 yang_stmt *yang_child_i(yang_stmt *ys, int i);
-
 yang_stmt *yang_parent_get(yang_stmt *ys);
 enum rfc_6020 yang_keyword_get(yang_stmt *ys);
 char      *yang_argument_get(yang_stmt *ys);
 int        yang_argument_set(yang_stmt *ys, char *arg);
+int        yang_argument_dup(yang_stmt *ys, char *arg);
 yang_stmt *yang_orig_get(yang_stmt *ys);
 int        yang_orig_set(yang_stmt *ys, yang_stmt *y0);
 cg_var    *yang_cv_get(yang_stmt *ys);
@@ -277,7 +285,7 @@ int        yang_stats_global(uint64_t *nr);
 int        yang_stats(yang_stmt *y, enum rfc_6020 keyw, uint64_t *nrp, size_t *szp);
 
 /* Other functions */
-yang_stmt *yspec_new(void);
+yang_stmt *yspec_new(clixon_handle h, char *name);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
 int        ys_prune_self(yang_stmt *ys);
@@ -295,6 +303,7 @@ int        ys_module_by_xml(yang_stmt *ysp, struct xml *xt, yang_stmt **ymodp);
 yang_stmt *ys_module(yang_stmt *ys);
 int        ys_real_module(yang_stmt *ys, yang_stmt **ymod);
 yang_stmt *ys_spec(yang_stmt *ys);
+yang_stmt *ys_mounts(yang_stmt *ys);
 yang_stmt *yang_find(yang_stmt *yn, int keyword, const char *argument);
 yang_stmt *yang_find_datanode(yang_stmt *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_stmt *yn, char *argument);

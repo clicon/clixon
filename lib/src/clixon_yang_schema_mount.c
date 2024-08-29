@@ -63,6 +63,7 @@
  * The calls in this code are:
  * - yang_schema_mount_point(): Is ymnt a yang mount-point? (ymnt)
  * - yang_mount_get(): ymnt + xpath -> yspec
+ * - yang_mount_get2(): ymnt + xpath -> yspec # NEW
  * - yang_mount_set(): ymnt + xpath -> yspec
  * - xml_yang_mount_get(): xmnt-> yspec
  * - xml_yang_mount_set(): xmnt -> yspec
@@ -188,21 +189,31 @@ yang_schema_mount_point(yang_stmt *y)
  * @retval     0     OK
  */
 int
-yang_mount_get(yang_stmt  *y,
+yang_mount_get(yang_stmt  *ys,
                char       *xpath,
-               yang_stmt **yspec)
+               yang_stmt **yspecp)
 {
-    cvec   *cvv;
-    cg_var *cv;
+    int        retval = 1;
+    yang_stmt *ymounts;
+    yang_stmt *yspec = NULL;
+    int        inext;
 
-    clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s %p", xpath, y);
-    if ((cvv = yang_cvec_get(y)) != NULL &&
-        (cv = cvec_find(cvv, xpath)) != NULL &&
-        yspec)
-        *yspec = cv_void_get(cv);
-    else
-        *yspec = NULL;
-    return 0;
+    if ((ymounts = ys_mounts(ys)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
+        goto done;
+    }
+    inext = 0;
+    while ((yspec = yn_iter(ymounts, &inext)) != NULL) {
+        if (yang_keyword_get(yspec) != Y_SPEC ||
+            yang_cvec_get(yspec) == NULL)
+            continue;
+        if (cvec_find(yang_cvec_get(yspec), xpath) != NULL)
+            break;
+    }
+    *yspecp = yspec;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Get any yspec of a mount-point, special function
@@ -235,7 +246,7 @@ yang_mount_get_yspec_any(yang_stmt  *y,
 
 /*! Set yangspec mount-point on yang node containing extension
  *
- * Mount-points are stored in yang cvec in container/list node taht is a mount-point
+ * Mount-points are stored in yang cvec in container/list node that is a mount-point
  * as defined in yang_schema_mount_point()
  * @param[in]  y      Yang container/list containing unknown node
  * @param[in]  xpath  Key for yspec on y, in canonical form
@@ -285,7 +296,7 @@ yang_mount_set(yang_stmt *y,
  * @param[in]  h     Clixon handle
  * @param[in]  xmnt  XML mount-point
  * @param[out] ymnt  YANG mount-point
- * @param[out] xpath Canonical XPath from XML top-level to xmnt
+ * @param[out] xpath Canonical XPath from XML top-level to xmnt, free after use
  * @retval     1     OK, xmnt is a mount-point with ymnt and xpath returned
  * @retval     0     OK, xmnt is not a mount point
  * @retval    -1     Error
@@ -395,7 +406,7 @@ xml_yang_mount_set(clixon_handle h,
                    yang_stmt    *yspec)
 {
     int        retval = -1;
-    yang_stmt *ymnt;
+    yang_stmt *ymnt = NULL;
     char      *xpath = NULL;
     int        ret;
 
@@ -897,6 +908,7 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
     yang_stmt *yspec = NULL;
     int        ret;
     int        shared = 0;
+    char      *xpath = NULL;
 
     /* 1. Get modstate (xyanglib) of node: xyanglib, by querying backend state (via callback)
      *    XXX this xyanglib is not proper RFC8525, submodules appear as modules WHY?
@@ -912,9 +924,16 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
         if (yspec)
             shared++;
     }
+        /* XXX done later too */
+    if ((ret = yang_mount_xmnt2ymnt_xpath(h, xt, NULL, &xpath)) < 0)
+        goto done;
+    if (ret == 0){
+        clixon_err(OE_YANG, 0, "Mapping xmnt to ymnt and xpath");
+        goto done;
+    }
     if (yspec == NULL){
         /* Parse it and set mount-point */
-        if ((yspec = yspec_new()) == NULL)
+        if ((yspec = yspec_new(h, xpath)) == NULL)
             goto done;
         clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec);
         if ((ret = yang_lib2yspec(h, xyanglib, yspec)) < 0)
@@ -927,10 +946,14 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
     if (xml_yang_mount_set(h, xt, yspec) < 0)
         goto done;
     if (shared)
-        yang_ref_inc(yspec);
+        if (yang_cvec_add(yspec, CGV_STRING, xpath) < 0)
+            goto done;
+    yang_ref_inc(yspec);
     yspec = NULL;
     retval = 1;
  done:
+    if (xpath)
+        free(xpath);
     if (yspec)
         ys_free(yspec);
     if (xyanglib)

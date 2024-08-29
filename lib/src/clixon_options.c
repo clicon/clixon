@@ -639,7 +639,7 @@ clicon_options_main(clixon_handle h)
     char          *yangspec = "clixon-config";
 
     /* Create configure yang-spec */
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new(h, YANG_CONFIG_TOP)) == NULL)
         goto done;
     /*
      * Set configure file if not set by command-line above
@@ -708,19 +708,13 @@ clicon_options_main(clixon_handle h)
         clixon_err(OE_CFG, 0, "Config file %s: did not find corresponding Yang specification\nHint: File does not begin with: <clixon-config xmlns=\"%s\"> or clixon-config.yang not found?", configfile, CLIXON_CONF_NS);
         goto done;
     }
-    /* Set yang config spec (must store to free at exit, since conf_xml below uses it) */
-    if (clicon_config_yang_set(h, yspec) < 0)
-       goto done;
     yspec = NULL;
     /* Set clixon_conf pointer to handle */
     xml_sort(xconfig);
     if (clicon_conf_xml_set(h, xconfig) < 0)
         goto done;
-
     retval = 0;
  done:
-    if (yspec)
-        ys_free(yspec);
     if (extraconfdir)
         free(extraconfdir);
     return retval;

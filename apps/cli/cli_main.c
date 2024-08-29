@@ -170,7 +170,6 @@ cli_history_save(clixon_handle h)
 static int
 cli_terminate(clixon_handle h)
 {
-    yang_stmt  *yspec;
     cvec       *nsctx;
     cxobj      *x;
 
@@ -178,11 +177,7 @@ cli_terminate(clixon_handle h)
         clixon_exit_set(1);
     if (clicon_data_get(h, "session-transport", NULL) == 0)
         clicon_rpc_close_session(h);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL)
-        ys_free(yspec);
     yang_exit(h);
-    if ((yspec = clicon_config_yang(h)) != NULL)
-        ys_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
@@ -850,9 +845,8 @@ main(int    argc,
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
     /* Create top-level and store as option */
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new(h, YANG_DATA_TOP)) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);
 
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */

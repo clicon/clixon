@@ -91,7 +91,6 @@
 static int
 backend_terminate(clixon_handle h)
 {
-    yang_stmt *yspec;
     char      *pidfile = clicon_backend_pidfile(h);
     int       sockfamily = clicon_sock_family(h);
     char      *sockpath = clicon_sock_str(h);
@@ -113,14 +112,7 @@ backend_terminate(clixon_handle h)
     /* Free changelog */
     if ((x = clicon_xml_changelog_get(h)) != NULL)
         xml_free(x);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL){
-        ys_free(yspec);
-    }
     yang_exit(h);
-    if ((yspec = clicon_config_yang(h)) != NULL)
-        ys_free(yspec);
-    if ((yspec = clicon_nacm_ext_yang(h)) != NULL)
-        ys_free(yspec);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
     clicon_data_cvec_del(h, "netconf-statistics");
@@ -229,7 +221,7 @@ nacm_load_external(clixon_handle h)
         clixon_err(OE_UNIX, errno, "configure file: %s", filename);
         return -1;
     }
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new(h, YANG_NACM_TOP)) == NULL)
         goto done;
     if (yang_spec_parse_module(h, "ietf-netconf-acm", NULL, yspec) < 0)
         goto done;
@@ -240,8 +232,6 @@ nacm_load_external(clixon_handle h)
         clixon_err(OE_XML, 0, "No xml tree in %s", filename);
         goto done;
     }
-    if (clicon_nacm_ext_yang_set(h, yspec) < 0)
-        goto done;
     if (clicon_nacm_ext_set(h, xt) < 0)
         goto done;
 
@@ -617,7 +607,6 @@ main(int    argc,
     clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
     clixon_debug_init(h, dbg);
     yang_init(h);
-
     /* Find and read configfile */
     if (clicon_options_main(h) < 0){
         if (help)
@@ -836,14 +825,13 @@ main(int    argc,
      * Note, loads yang -> extensions -> plugins
      */
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
-    if (nacm_mode && strcmp(nacm_mode, "external") == 0)
+    if (nacm_mode && strcmp(nacm_mode, "external") == 0){
         if (nacm_load_external(h) < 0)
             goto done;
-
-    /* Create top-level yang spec and store as option */
-    if ((yspec = yspec_new()) == NULL)
+    }
+    /* Create top-level data yangs */
+    if ((yspec = yspec_new(h, YANG_DATA_TOP)) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);   
 
     /* Load backend plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_backend_dir(h)) != NULL &&

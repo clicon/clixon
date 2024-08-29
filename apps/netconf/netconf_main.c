@@ -575,7 +575,6 @@ send_hello(clixon_handle h,
 static int
 netconf_terminate(clixon_handle h)
 {
-    yang_stmt  *yspec;
     cvec       *nsctx;
     cxobj      *x;
 
@@ -584,10 +583,6 @@ netconf_terminate(clixon_handle h)
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
     clicon_rpc_close_session(h);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL)
-        ys_free(yspec);
-    if ((yspec = clicon_config_yang(h)) != NULL)
-        ys_free(yspec);
     yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
@@ -874,9 +869,8 @@ main(int    argc,
     if (yang_metadata_init(h) < 0)
         goto done;
     /* Create top-level yang spec and store as option */
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new(h, YANG_DATA_TOP)) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);
 
     /* Load netconf plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_netconf_dir(h)) != NULL &&

@@ -967,9 +967,8 @@ restconf_clixon_init(clixon_handle h,
     if (yang_metadata_init(h) < 0)
         goto done;
     /* Create top-level yang spec and store as option */
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new(h, YANG_DATA_TOP)) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);
 
     /* Load restconf plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_restconf_dir(h)) != NULL)
