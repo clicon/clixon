@@ -852,6 +852,7 @@ yang_metadata_init(clixon_handle h)
  * an XML mount-point.
  * @param[in] h        Clixon handle
  * @param[in] xyanglib XML tree on the form <yang-lib>...
+ * @param[in] mntpnt   Name of mount-point for logs
  * @param[in] yspec    Will be populated with YANGs, is consumed
  * @retval    1        OK
  * @retval    0        Parse error
@@ -862,6 +863,7 @@ yang_metadata_init(clixon_handle h)
 int
 yang_lib2yspec(clixon_handle h,
                cxobj        *xyanglib,
+               char         *mntpnt,
                yang_stmt    *yspec)
 {
     int        retval = -1;
@@ -907,7 +909,7 @@ yang_lib2yspec(clixon_handle h,
             (ymod = yang_find(yspec, Y_MODULE, name)) != NULL &&
             (ns2 = yang_find_mynamespace(ymod)) != NULL &&
             strcmp(ns, ns2) != 0) {
-            clixon_log(h, LOG_WARNING, "Module:%s namespace mismatch %s vs %s", name, ns, ns2);
+            clixon_log(h, LOG_WARNING, "Mount:%s module %s namespace mismatch %s announced vs %s in loaded module", mntpnt, name, ns, ns2);
         }
     }
 #ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE

@@ -936,7 +936,7 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
         if ((yspec = yspec_new(h, xpath)) == NULL)
             goto done;
         clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec);
-        if ((ret = yang_lib2yspec(h, xyanglib, yspec)) < 0)
+        if ((ret = yang_lib2yspec(h, xyanglib, xpath, yspec)) < 0)
             goto done;
         if (ret == 0)
             goto anydata;

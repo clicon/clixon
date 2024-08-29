@@ -550,7 +550,7 @@ expand_yang_list(void   *h,
  * @param[in]  argv  
  * @retval     0     OK
  * @retval    -1     Error
-*/
+ */
 int
 show_yang(clixon_handle h,
           cvec         *cvv,
@@ -2008,7 +2008,7 @@ cli_show_statistics(clixon_handle h,
             cligen_output(stdout, "YANG-total-nr: %" PRIu64 "\n", sz);
         }
         else {
-            translatenumber(sz, &u64, &unit);
+            translatenumber(tsz, &u64, &unit);
             cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "YANG Total", u64, unit);
         }
         tnr0 = tnr;
