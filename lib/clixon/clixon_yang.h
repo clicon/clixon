@@ -90,11 +90,13 @@
                                       * Set by yang_mount_set 
                                       * Read by ys_free1
                                       */
-#define YANG_FLAG_WHEN         0x400 /* Use external map to access when-info for
+#define YANG_FLAG_SPEC_MOUNT   0x400 /* Top-level spec is mounted by other top-level tree
+                                      */
+#define YANG_FLAG_WHEN         0x800 /* Use external map to access when-info for
                                       * augment/grouping */
-#define YANG_FLAG_MYMODULE     0x800 /* Use external map to access my-module for
+#define YANG_FLAG_MYMODULE    0x1000 /* Use external map to access my-module for
                                       * UNKNOWNS and augment/grouping */
-#define YANG_FLAG_REFINE      0x1000 /* In derived trees from grouping and augments, this node
+#define YANG_FLAG_REFINE      0x2000 /* In derived trees from grouping and augments, this node
                                       * may be different from orig, therefore do not use link to
                                       * original. May also be due to deviations of derived trees
                                       */
@@ -261,9 +263,6 @@ int        yang_cv_set(yang_stmt *ys, cg_var *cv);
 cvec      *yang_cvec_get(yang_stmt *ys);
 int        yang_cvec_set(yang_stmt *ys, cvec *cvv);
 cg_var    *yang_cvec_add(yang_stmt *ys, enum cv_type type, char *name);
-int        yang_ref_get(yang_stmt *ys);
-int        yang_ref_inc(yang_stmt *ys);
-int        yang_ref_dec(yang_stmt *ys);
 uint16_t   yang_flag_get(yang_stmt *ys, uint16_t flag);
 int        yang_flag_set(yang_stmt *ys, uint16_t flag);
 int        yang_flag_reset(yang_stmt *ys, uint16_t flag);

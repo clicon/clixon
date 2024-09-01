@@ -98,7 +98,6 @@ struct yang_stmt {
                                         Y_ENUM: value
                                      */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
-                                        Y_CONTAINER: XXX or U_UNKNOWN?
                                         Y_EXTENSION: vector of instantiated UNKNOWNS
                                         Y_IDENTITY: store all derived types as <module>:<id> list
                                         Y_LENGTH: length_min, length_max

@@ -187,6 +187,7 @@ yang_schema_mount_point(yang_stmt *y)
  * @param[in]  xpath Key for yspec on y
  * @param[out] yspec YANG stmt spec
  * @retval     0     OK
+ * @retval    -1     Error
  */
 int
 yang_mount_get(yang_stmt  *ys,
@@ -205,9 +206,10 @@ yang_mount_get(yang_stmt  *ys,
     inext = 0;
     while ((yspec = yn_iter(ymounts, &inext)) != NULL) {
         if (yang_keyword_get(yspec) != Y_SPEC ||
-            yang_cvec_get(yspec) == NULL)
+            yang_cvec_get(yspec) == NULL ||
+            yang_flag_get(yspec, YANG_FLAG_SPEC_MOUNT) == 0)
             continue;
-        if (cvec_find(yang_cvec_get(yspec), xpath) != NULL)
+        if (xpath == NULL || cvec_find(yang_cvec_get(yspec), xpath) != NULL)
             break;
     }
     *yspecp = yspec;
@@ -221,27 +223,25 @@ yang_mount_get(yang_stmt  *ys,
  * Get (the first) mounted yspec.
  * A more generic way would be to call plugin_mount to get the yanglib and from that get the
  * yspec. But there is clixon code that cant call the plugin since h is not available
- * @param[in]  y     Yang container/list containing unknown node
+ * @param[in]  ys    Yang container/list containing unknown node
  * @param[out] yspec YANG stmt spec
  * @retval     1     yspec found and set
  * @retval     0     Not found
+ * @retval    -1     Error
+ * XXX Should be in-lined
  */
 int
-yang_mount_get_yspec_any(yang_stmt  *y,
-                         yang_stmt **yspec)
+yang_mount_get_yspec_any(yang_stmt  *ys,
+                         yang_stmt **yspecp)
 {
-    cvec   *cvv;
-    cg_var *cv;
-    void   *p;
+    yang_stmt *yspec = NULL;
 
-    /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
-    if ((cvv = yang_cvec_get(y)) != NULL &&
-        (cv = cvec_i(cvv, 0)) != NULL &&
-        (p = cv_void_get(cv)) != NULL){
-        *yspec = p;
-        return 1;
-    }
-    return 0;
+    if (yang_mount_get(ys, NULL, &yspec) < 0)
+        return -1;
+    if (yspec == NULL)
+        return 0;
+    *yspecp = yspec;
+    return 1;
 }
 
 /*! Set yangspec mount-point on yang node containing extension
@@ -260,20 +260,8 @@ yang_mount_set(yang_stmt *y,
                yang_stmt *yspec)
 {
     int        retval = -1;
-    yang_stmt *yspec0;
-    cvec      *cvv;
-    cg_var    *cv;
     cg_var    *cv2;
 
-    clixon_debug(CLIXON_DBG_YANG, "%s %p", xpath, y);
-    if ((cvv = yang_cvec_get(y)) != NULL &&
-        (cv = cvec_find(cvv, xpath)) != NULL &&
-        (yspec0 = cv_void_get(cv)) != NULL){
-        ys_free(yspec0);
-        cv_void_set(cv, NULL);
-    }
-    else if ((cv = yang_cvec_add(y, CGV_VOID, xpath)) == NULL)
-        goto done;
     if ((cv2 = cv_new(CGV_STRING)) == NULL){
         clixon_err(OE_YANG, errno, "cv_new");
         goto done;
@@ -284,7 +272,6 @@ yang_mount_set(yang_stmt *y,
     }
     /* tag yspec with key/xpath */
     yang_cv_set(yspec, cv2);
-    cv_void_set(cv, yspec);
     yang_flag_set(y, YANG_FLAG_MOUNTPOINT); /* Cache value */
     retval = 0;
  done:
@@ -423,28 +410,6 @@ xml_yang_mount_set(clixon_handle h,
     if (xpath)
         free(xpath);
     return retval;
-}
-
-/*! Free all yspec yang-mounts
- *
- * @param[in] ymnt YANG mount-point
- * @retval    0    OK
- */
-int
-yang_mount_freeall(yang_stmt *ymnt)
-{
-    cvec      *cvv;
-    cg_var    *cv;
-    yang_stmt *ys;
-
-    if ((cvv = yang_cvec_get(ymnt)) != NULL){
-        cv = NULL;
-        while ((cv = cvec_each(cvv, cv)) != NULL){
-            if ((ys = cv_void_get(cv)) != NULL)
-                ys_free(ys);
-        }
-    }
-    return 0;
 }
 
 /*! Find schema mounts - callback function for xml_apply
@@ -935,6 +900,7 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
         /* Parse it and set mount-point */
         if ((yspec = yspec_new(h, xpath)) == NULL)
             goto done;
+        yang_flag_set(yspec, YANG_FLAG_SPEC_MOUNT);
         clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec);
         if ((ret = yang_lib2yspec(h, xyanglib, xpath, yspec)) < 0)
             goto done;
@@ -948,7 +914,6 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
     if (shared)
         if (yang_cvec_add(yspec, CGV_STRING, xpath) < 0)
             goto done;
-    yang_ref_inc(yspec);
     yspec = NULL;
     retval = 1;
  done:
