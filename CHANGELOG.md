@@ -16,6 +16,7 @@ Expected: October 2024
 
 ### Features
 
+* Restconf: Support for list of media in Accept header
 * Refactoring of schema mount-points
   * Add new top-level `Y_MOUNTS` and add top-level yangs and mountpoints in yspecs
 * New `clixon-autocli@2024-08-01.yang` revision
@@ -34,6 +35,7 @@ Expected: October 2024
 
 Users may have to change how they access the system
 
+* Restconf: Better RFC compliance with Accept errors: 406 vs 415
 * Removed YANG line-number in error-messages for memory optimization
   * Re-enable by setting `YANG_SPEC_LINENR` compile-time option
 * NETCONF error returns of failed leafref references, see https://github.com/clicon/clixon/issues/536
@@ -53,6 +55,7 @@ Developers may need to change their code
 
 ### Corrected Busg
 
+* Fixed: [RESTCONF exit on cert error + complex accept](https://github.com/clicon/clixon/issues/551)
 * Fixed: [Deletion of leaf in YANG choice removes leaf in a different choice/case](https://github.com/clicon/clixon/issues/542)
 * Fixed: Deviated types were resolved in target context, not lexically in deviation context
 * Fixed: Signal handling of recv message

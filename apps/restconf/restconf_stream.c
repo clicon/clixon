@@ -234,7 +234,7 @@ api_stream(clixon_handle h,
     int            pretty;
     int            besock = -1;
     restconf_media media_reply = YANG_DATA_XML;
-    char          *media_str = NULL;
+    char          *media_list = NULL;
     char          *stream_name;
     int            ret;
 
@@ -259,15 +259,14 @@ api_stream(clixon_handle h,
     }
     /* Get media for output (proactive negotiation) RFC7231 by using
      */
-    media_str = restconf_param_get(h, "HTTP_ACCEPT");
-    if (media_str == NULL){
+    if ((media_list = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
         if (restconf_not_acceptable(h, req, pretty, media_reply) < 0)
             goto done;
         goto ok;
     }
     /* Accept only text_event-stream or */
-    if (strcmp(media_str, "*/*") != 0 &&
-        strcmp(media_str, "text/event-stream") != 0){
+    if (restconf_media_in_list("text/event-stream", media_list) != 1 &&
+        restconf_media_in_list("*/*", media_list) != 1) {
         if (restconf_not_acceptable(h, req, pretty, media_reply) < 0)
             goto done;
         goto ok;

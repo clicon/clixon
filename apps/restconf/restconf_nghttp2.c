@@ -625,6 +625,7 @@ on_frame_recv_callback(nghttp2_session     *session,
     }
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_RESTCONF|CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
 }
 
@@ -969,7 +970,7 @@ http2_recv(restconf_conn       *rc,
              *     when |session| was configured as server and
              *     `nghttp2_option_set_no_recv_client_magic()` is not used with
              *     nonzero value. */
-            clixon_log(NULL, LOG_INFO, "%s Received bad client magic byte strin", __FUNCTION__);
+            clixon_log(NULL, LOG_INFO, "%s Received bad client magic byte string", __FUNCTION__);
             /* unsure if this does anything, byt does not seem to hurt */
             if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, ngerr)) < 0)
                 clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);

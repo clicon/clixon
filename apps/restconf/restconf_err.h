@@ -44,8 +44,8 @@
  */
 
 int restconf_method_notallowed(clixon_handle h, void *req, char *allow, int pretty, restconf_media media);
-int restconf_unsupported_media(clixon_handle h, void *req, int pretty, restconf_media media);
 int restconf_not_acceptable(clixon_handle h, void *req, int pretty, restconf_media media);
+int restconf_unsupported_media(clixon_handle h, void *req, int pretty, restconf_media media);
 int restconf_notimplemented(clixon_handle h, void *req, int pretty, restconf_media media);
 
 int api_return_err(clixon_handle h, void *req, cxobj *xerr, int pretty, restconf_media media, int code0);

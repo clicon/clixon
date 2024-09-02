@@ -102,6 +102,35 @@ restconf_method_notallowed(clixon_handle  h,
     return retval;
 }
 
+/*! HTTP error 406 Not acceptable
+ *
+ * @param[in]  req      Generic http handle
+ * @retval     0    OK
+ * @retval    -1    Error
+ * @see RFC8040, section 5.2:
+ * If the server does not support any of the requested output encodings for a request, then it MUST
+ * return an error response with a "406 Not Acceptable" status-line.
+ */
+int
+restconf_not_acceptable(clixon_handle  h,
+                        void          *req,
+                        int            pretty,
+                        restconf_media media)
+{
+    int    retval = -1;
+    cxobj *xerr = NULL;
+
+    if (netconf_operation_not_supported_xml(&xerr, "protocol", "Unacceptable output encoding") < 0)
+        goto done;
+    if (api_return_err0(h, req, xerr, pretty, media, 406) < 0)
+        goto done;
+    if (restconf_reply_send(req, 406, NULL, 0) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! HTTP error 415 Unsupported media
  *
  * @param[in]  req      Generic http handle
@@ -129,36 +158,6 @@ restconf_unsupported_media(clixon_handle  h,
  done:
     if (xerr)
         xml_free(xerr);
-    return retval;
-}
-
-/*! HTTP error 406 Not acceptable
- *
- * @param[in]  req      Generic http handle
- * @retval     0    OK
- * @retval    -1    Error
- * @see RFC8040, section 5.2:
- * If the server does not support any of the requested output encodings for a request, then it MUST
- * return an error response with a "406 Not Acceptable" status-line.
- */
-int
-restconf_not_acceptable(clixon_handle  h,
-                        void          *req,
-                        int            pretty,
-                        restconf_media media)
-{
-    int    retval = -1;
-    cxobj *xerr = NULL;
-
-    if (netconf_operation_not_supported_xml(&xerr, "protocol", "Unacceptable output encoding") < 0)
-        goto done;
-    /* Override with 415 netconf->restoconf translation which gives a 405 */
-    if (api_return_err0(h, req, xerr, pretty, media, 415) < 0)
-        goto done;
-    if (restconf_reply_send(req, 415, NULL, 0) < 0)
-        goto done;
-    retval = 0;
- done:
     return retval;
 }
 
@@ -286,6 +285,7 @@ api_return_err(clixon_handle  h,
     case YANG_DATA_XML:
     case YANG_PATCH_XML:
     case YANG_PAGINATION_XML:
+    case HTTP_DATA_TEXT_HTML:
         clixon_debug(CLIXON_DBG_RESTCONF, "code:%d", code);
         if (pretty){
             cprintf(cb, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n");
@@ -302,6 +302,7 @@ api_return_err(clixon_handle  h,
         break;
     case YANG_DATA_JSON:
     case YANG_PATCH_JSON:
+    default: /* Override -1 with JSON return, not technically correct */
         clixon_debug(CLIXON_DBG_RESTCONF, "code:%d", code);
         if (pretty){
             cprintf(cb, "{\n\"ietf-restconf:errors\" : ");
@@ -317,10 +318,11 @@ api_return_err(clixon_handle  h,
             cprintf(cb, "}\r\n");
         }
         break;
-    default: /* Just ignore the body so that there is a reply */
-        clixon_err(OE_YANG, EINVAL, "Invalid media type %d", media);
-        goto done;
+#if 0 /* Maybe this is correct, but content-type may not yet be known */
+    default: /* Override -1 or anything else to ensure there is an error reply */
+        cprintf(cb, "\r\n\r\n");
         break;
+#endif
     } /* switch media */
     assert(cbuf_len(cb));
     if (restconf_reply_send(req, code, cb, 0) < 0)
@@ -363,6 +365,7 @@ api_return_err0(clixon_handle  h,
     int    retval = -1;
     cxobj *xe;
 
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((xe = xml_find_type(xerr, NULL, "rpc-error", CX_ELMNT)) == NULL){
         clixon_err(OE_XML, EINVAL, "Expected xml on the form <rpc-error>..");
         goto done;

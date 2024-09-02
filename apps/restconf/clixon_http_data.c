@@ -416,7 +416,7 @@ api_http_data(clixon_handle  h,
 {
     int   retval = -1;
     char *request_method = NULL;
-    char *media_str = NULL;
+    char *media_list = NULL;
     int   head = 0;
     int   options = 0;
     int   ret;
@@ -469,14 +469,17 @@ api_http_data(clixon_handle  h,
     }
     /* 5. Accepted media_out: should check text/html, JavaScript, image, and css
      */
-    if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
-    }
-    else if (strcmp(media_str, "*/*") != 0 &&
-             strcmp(media_str, "text/html") != 0){
-#ifdef NOTYET
-        clixon_log(h, LOG_NOTICE, "%s: media error %s", __FUNCTION__, media_str);
-        goto done;
-#endif
+    if ((media_list = restconf_param_get(h, "HTTP_ACCEPT")) != NULL){
+        if (restconf_media_in_list("text/html", media_list) != 1 &&
+            restconf_media_in_list("*/*", media_list) != 1
+            && 0) { /* XXX: not yet */
+        /* If the server does not support any of the requested
+         * output encodings for a request, then it MUST return an error response
+         * with a "406 Not Acceptable" status-line. */
+        if (restconf_not_acceptable(h, req, 1, HTTP_DATA_TEXT_HTML) < 0)
+            goto done;
+        goto ok;
+        }
     }
     /* 6. Authenticate
      * Note, error handling may need change since it is restconf based

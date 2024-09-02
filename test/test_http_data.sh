@@ -205,7 +205,19 @@ EOF
         
         new "WWW get index.html"
         expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
-        
+
+        new "List of medias"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html,*/*' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
+
+        new "List of medias2"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: wrong/media,*/*' $proto://localhost/data/index.html)" 0 "HT
+TP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
+
+if false; then # XXX Se step 5 in api_http_data, unclear which media should be accepted
+        new "Server does not support list of medias Expect 406"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: wrong/media' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 406" "content-type: text/html" "<error-message>Unacceptable output encoding</error-message>"
+fi
+
         new "WWW get dir -> expect index.html"
         expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
 
@@ -259,7 +271,7 @@ EOF
             expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 GET /data/../../outside.html HTTP/1.1
 Host: localhost
-Accept: text_html
+Accept: text/html
 
 EOF
 )" 0 "HTTP/1.1 403" "Forbidden"
