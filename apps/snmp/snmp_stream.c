@@ -358,8 +358,12 @@ snmp_stream_subscribe(clixon_handle  h,
         clixon_err(OE_SNMP, errno, "cbuf_new");
         goto done;
     }
-    cprintf(cb, "<rpc xmlns=\"%s\" %s><create-subscription xmlns=\"%s\"><stream>%s</stream>",
-            NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR, EVENT_RFC5277_NAMESPACE, stream);
+    cprintf(cb, "<rpc xmlns=\"%s\" username=\"%s\" %s><create-subscription xmlns=\"%s\"><stream>%s</stream>",
+            NETCONF_BASE_NAMESPACE,
+            clicon_username_get(h),
+            NETCONF_MESSAGE_ID_ATTR,
+            EVENT_RFC5277_NAMESPACE,
+            stream);
     cprintf(cb, "</create-subscription></rpc>]]>]]>");
     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, &s) < 0)
         goto done;
@@ -421,9 +425,13 @@ get_all_streams_from_backend(clixon_handle    h,
         clixon_err(OE_SNMP, errno, "cbuf_new");
         goto done;
     }
-    /* get alle streams from backend */
-    cprintf(cb, "<rpc xmlns=\"%s\" %s><get><filter type=\"subtree\"><netconf xmlns=\"%s\"><streams/></netconf></filter></get></rpc>]]>]]>",
-            NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR, EVENT_RFC5277_NAMESPACE);
+    /* get all streams from backend */
+    cprintf(cb, "<rpc xmlns=\"%s\" username=\"%s\" %s><get><filter type=\"subtree\">"
+            "<netconf xmlns=\"%s\"><streams/></netconf></filter></get></rpc>]]>]]>",
+            NETCONF_BASE_NAMESPACE,
+            clicon_username_get(h),
+            NETCONF_MESSAGE_ID_ATTR,
+            EVENT_RFC5277_NAMESPACE);
     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
         goto done;
     if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL)
