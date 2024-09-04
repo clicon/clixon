@@ -85,7 +85,7 @@
  * @param[out] val  Data value as string
  * @retval     0    OK
  * @retval    -1    Not found (or error)
- * @see clicon_option_str
+ * @see clicon_option_str  For file options
  */
 int
 clicon_data_get(clixon_handle h,

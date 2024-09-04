@@ -466,6 +466,7 @@ You can set-up the example for a simple RFC 8528 Yang schema mount. A single top
 1. Enable CLICON_YANG_SCHEMA_MOUNT
 2. Define the mount-point using the ietf-yang-schema-mount mount-point extension
 3. Start the backend, cli and restconf with `-- -m <name> -M <urn>`, where `name` and `urn` is the name and namespace of the mounted YANG, respectively.
+4. Note that the module-set name is hard-coded to "mylabel". If you support isolated domains this must be changed.
 
 A simple example on how to define a mount-point
 ```

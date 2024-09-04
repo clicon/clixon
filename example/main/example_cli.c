@@ -37,6 +37,7 @@
   * argc/argv after -- in clixon_cli:
   *  -m <yang> Mount this yang on mountpoint
   *  -M <namespace> Namespace of mountpoint, note both -m and -M must exist
+  * Note module-set hard-coded to "mylabel"
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -221,7 +222,7 @@ example_cli_yang_mount(clixon_handle   h,
         }
         cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
         cprintf(cb, "<module-set>");
-        cprintf(cb, "<name>mount</name>");
+        cprintf(cb, "<name>mylabel</name>");
         cprintf(cb, "<module>");
         /* In yang name+namespace is mandatory, but not revision */
         cprintf(cb, "<name>%s</name>", _mount_yang); // mandatory

@@ -354,7 +354,6 @@ clixon_err_args(clixon_handle h,
  *     printf("%s", cbuf_get(cb));
  *     cbuf_free(cb);
  * @endcode
- * @see clixon_error_netconf
  */
 int
 netconf_err2cb(clixon_handle h,

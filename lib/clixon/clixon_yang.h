@@ -285,6 +285,7 @@ int        yang_stats(yang_stmt *y, enum rfc_6020 keyw, uint64_t *nrp, size_t *s
 
 /* Other functions */
 yang_stmt *yspec_new(clixon_handle h, char *name);
+yang_stmt *yspec_new_shared(clixon_handle h, char *name, yang_stmt *yspec0);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
 int        ys_prune_self(yang_stmt *ys);
@@ -320,6 +321,7 @@ int        yang_print_cbuf(cbuf *cb, yang_stmt *yn, int marginal, int pretty);
 int        yang_deviation(yang_stmt *ys, void *arg);
 int        yang_spec_print(FILE *f, yang_stmt *yspec);
 int        yang_spec_dump(yang_stmt *yspec, int debuglevel);
+int        yang_mounts_print(FILE *f, yang_stmt *ymounts);
 int        if_feature(yang_stmt *yspec, char *module, char *feature);
 int        ys_populate(yang_stmt *ys, void *arg);
 int        ys_populate2(yang_stmt *ys, void *arg);

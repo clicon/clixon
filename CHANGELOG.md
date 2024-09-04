@@ -16,6 +16,8 @@ Expected: October 2024
 
 ### Features
 
+* Added yang domains for mount-point isolation
+  * New option: `CLICON_YANG_DOMAIN_DIR`
 * Restconf: Support for list of media in Accept header
 * Refactoring of schema mount-points
   * Add new top-level `Y_MOUNTS` and add top-level yangs and mountpoints in yspecs
@@ -28,6 +30,8 @@ Expected: October 2024
 * New: [CLI simple alias](https://github.com/clicon/cligen/issues/112)
   * See: https://clixon-docs.readthedocs.io/en/latest/cli.html#cli-aliases
 * List pagination: Added where, sort-by and direction parameter for configured data
+* New `clixon-config@2024-08-01.yang` revision
+    - Added: CLICON_YANG_DOMAIN_DIR
 * New `clixon-lib@2024-08-01.yang` revision
     - Added: list-pagination-partial-state extension
 
@@ -47,6 +51,9 @@ Users may have to change how they access the system
 
 Developers may need to change their code
 
+* Added `domain` argument to yang parse functions. Upgrade as follows:
+  * `yang_file_find_match(h, m, r, f)` -> `yang_file_find_match(h, m, r, NULL, f)`
+  * `yang_parse_module(h, m, r, y, o)` -> `yang_parse_module(h, m, r, y, NULL, o)`
 * Replaced `clixon_get_logflags()` with `clixon_logflags_get()`
 * New `yn_iter()` yang iterator replaces `yn_each()`
   * Use an integer iterator instead of yang object

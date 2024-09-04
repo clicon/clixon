@@ -823,12 +823,42 @@ yspec_new(clixon_handle h,
         goto done;
     if (yn_insert(ymounts, yspec) < 0)
         goto done;
-    /* Special trick for shared yspecs */
-    if (yang_cvec_add(yspec, CGV_STRING, name) < 0)
-        goto done;
     return yspec;
  done:
     return NULL;
+}
+
+/*! Create or add a shared yspec
+ *
+ * @param[in]     h      Clixon handle
+ * @param[in]     name   Typically an xpath
+ * @param[in]     yspec0 Input NULL if no previous shared exist, otherwise a shared yspec but new name
+ * @retval        yspec1 New or (previously shared)
+ * @retval        NULL   Error
+ */
+yang_stmt *
+yspec_new_shared(clixon_handle h,
+                 char         *name,
+                 yang_stmt    *yspec0)
+{
+    yang_stmt *yspec1 = NULL;
+
+    if (yspec0 != NULL){ /* shared */
+        assert(clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT_SHARE") != 0);
+        yspec1 = yspec0;
+    }
+    else {
+        if ((yspec1 = yspec_new(h, name)) == NULL)
+            goto done;
+        yang_flag_set(yspec1, YANG_FLAG_SPEC_MOUNT);
+        clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec1);
+    }
+    if (yang_cvec_add(yspec1, CGV_STRING, name) < 0){
+        yspec1 = NULL;
+        goto done;
+    }
+ done:
+    return yspec1;
 }
 
 /*! Create new yang node/statement given size
@@ -2199,7 +2229,7 @@ yang_print(FILE      *f,
 /*! Print yang top-level modules only
  *
  * @param[in]  f         File to print to.
- * @param[in]  yn        Yang node to print
+ * @param[in]  yspec     Yang spec to print
  * @see yang_print_cbuf
  */
 int
@@ -2211,7 +2241,7 @@ yang_spec_print(FILE      *f,
     int        inext;
 
     if (yspec == NULL || yang_keyword_get(yspec) != Y_SPEC){
-        clixon_err(OE_YANG, EINVAL, "yspec is not of type YSPEC");
+        clixon_err(OE_YANG, EINVAL, "yspec is not of type Y_SPEC");
         return -1;
     }
     inext = 0;
@@ -2223,6 +2253,39 @@ yang_spec_print(FILE      *f,
         }
         fprintf(f, ".yang");
         fprintf(f, "\n");
+    }
+    return 0;
+}
+
+/*! Print yang top-level specs
+ *
+ * @param[in]  f         File to print to.
+ * @param[in]  ymounts        Yang mounts to print
+ */
+int
+yang_mounts_print(FILE      *f,
+                  yang_stmt *ymounts)
+{
+    yang_stmt *yspec;
+    int        inext;
+    cg_var    *cv;
+    cvec      *cvv;
+
+    if (ymounts == NULL || yang_keyword_get(ymounts) != Y_MOUNTS){
+        clixon_err(OE_YANG, EINVAL, "yspec is not of type Y_MOUNTS");
+        return -1;
+    }
+    inext = 0;
+    while ((yspec = yn_iter(ymounts, &inext)) != NULL) {
+        fprintf(f, " %s\n", yang_argument_get(yspec));
+        if ((cv = yang_cv_get(yspec)) != NULL){
+            cv_print(f, yang_cv_get(yspec));
+            fprintf(f, "\n");
+        }
+        if ((cvv = yang_cvec_get(yspec)) != NULL){
+            cvec_print(f, cvv);
+            fprintf(f, "\n");
+        }
     }
     return 0;
 }

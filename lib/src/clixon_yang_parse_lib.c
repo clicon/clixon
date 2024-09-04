@@ -1002,31 +1002,44 @@ filename2revision(const char *filename,
     return retval;
 }
 
-/*! No specific revision give. Match a yang file given module 
+/*! Find matching YANG file given module name. No specific revision given
  *
+ * Look first in CLICON_YANG_MAIN_DIR for top-level, or CLICON_YANG_DOMAIN_DIR for specific domains.
+ * Then look in recursive CLICON_YANG_DIRs
  * @param[in]  h        CLICON handle
  * @param[in]  module   Name of main YANG module. 
  * @param[in]  revision Revision or NULL
+ * @param[in]  domain   YANG isolation device-domain or NULL for yang main
  * @param[out] fbuf     Buffer containing filename or NULL (if retval=1)
- * @retval     1        Match found, Most recent entry returned in fbuf
+ * @retval     1        Match found, Entry returned in fbuf if given
  * @retval     0        No matching entry found
  * @retval    -1        Error 
- * @note for bootstrapping, dir may have to be set.
-*/
+ * Returned entry in fbuf according to the following algorithm:
+ * 1) Exact or most recent revision match in CLICON_YANG_MAIN_DIR or CLICON_YANG_DOMAIN_DIR
+ * 2) Exact or most recent revision match in first CLICON_YANG_DIR recursively
+ * 3) Exact or most recent revision match in second CLICON_YANG_DIR
+ * 4) ...
+ * @note  This means that the most recent revision entry globally may not be returned,
+ *        only most recent in first first match
+ */
 int
 yang_file_find_match(clixon_handle h,
                      const char   *module,
                      const char   *revision,
+                     const char   *domain,
                      cbuf         *fbuf)
 {
-    int           retval = -1;
-    cbuf         *regex = NULL;
-    cxobj        *x;
-    cxobj        *xc;
-    char         *dir;
-    cvec         *cvv = NULL;
-    cg_var       *cv = NULL;
-    cg_var       *bestcv = NULL;
+    int            retval = -1;
+    cbuf          *regex = NULL;
+    cxobj         *x;
+    cxobj         *xc;
+    char          *dir;
+    cvec          *cvv = NULL;
+    cg_var        *cv = NULL;
+    cg_var        *bestcv = NULL;
+    cbuf          *cb = NULL;
+    struct dirent *dp = NULL;
+    int            ndp;
 
     /* get clicon config file in xml form */
     if ((x = clicon_conf_xml(h)) == NULL)
@@ -1044,35 +1057,38 @@ yang_file_find_match(clixon_handle h,
     else
         cprintf(regex, "^%s(@[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])?(.yang)$",
                 module);
-    xc = NULL;
-
-    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
-        if (strcmp(xml_name(xc), "CLICON_YANG_MAIN_DIR") == 0){
-            struct dirent *dp = NULL;
-            int ndp;
-
-            dir = xml_body(xc);
-            /* get all matching files in this directory */
-            if ((ndp = clicon_file_dirent(dir,
-                                          &dp,
-                                          cbuf_get(regex),
-                                          S_IFREG)) < 0)
-                goto done;
-            /* Entries are sorted, last entry should be most recent date 
-             */
-            if (ndp != 0){
-                if (fbuf)
-                    cprintf(fbuf, "%s/%s", dir, dp[ndp-1].d_name);
-                if (dp)
-                    free(dp);
-                retval = 1;
-                goto done;
-            }
-            if (dp)
-                free(dp);
+    /* First look in Main YANG dir, either MAIN or DOMAIN */
+    if (domain != NULL &&
+        (dir = clicon_yang_domain_dir(h)) != NULL){
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
         }
-        else if (strcmp(xml_name(xc), "CLICON_YANG_DIR") == 0 &&
-                 (dir = xml_body(xc)) != NULL){
+        cprintf(cb, "%s/%s", dir, domain);
+        dir = cbuf_get(cb);
+    }
+    else
+        dir = clicon_yang_main_dir(h);
+    if (dir != NULL) {
+        /* get all matching files in this directory */
+        if ((ndp = clicon_file_dirent(dir,
+                                      &dp,
+                                      cbuf_get(regex),
+                                      S_IFREG)) < 0)
+        goto done;
+        /* Entries are sorted, last entry should be most recent date
+         */
+        if (ndp != 0){
+            if (fbuf)
+                cprintf(fbuf, "%s/%s", dir, dp[ndp-1].d_name);
+            goto found;
+        }
+    }
+    /* Second look in recursive YANG lib dirs */
+    xc = NULL;
+    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+        if (strcmp(xml_name(xc), "CLICON_YANG_DIR") == 0 &&
+            (dir = xml_body(xc)) != NULL){
             /* get all matching files in this directory recursively */
             if ((cvv = cvec_new(0)) == NULL){
                 clixon_err(OE_UNIX, errno, "cvec_new");
@@ -1094,8 +1110,7 @@ yang_file_find_match(clixon_handle h,
             if (bestcv){
                 if (fbuf)
                     cprintf(fbuf, "%s", cv_string_get(bestcv));      /* file path */
-                retval = 1; /* found */
-                goto done;
+                goto found;
             }
             if (cvv){
                 cvec_free(cvv);
@@ -1106,11 +1121,18 @@ yang_file_find_match(clixon_handle h,
 ok:
     retval = 0;
 done:
+    if (dp)
+        free(dp);
+    if (cb)
+        cbuf_free(cb);
     if (cvv)
         cvec_free(cvv);
     if (regex)
         cbuf_free(regex);
     return retval;
+ found:
+    retval = 1;
+    goto done;
 }
 
 /*! Open a file, read into a string and invoke yang parsing
@@ -1161,6 +1183,7 @@ yang_parse_filename(clixon_handle h,
  * @param[in] module   Module name
  * @param[in] revision Revision (or NULL)
  * @param[in] yspec    Yang statement
+ * @param[in]  domain  YANG isolation device-domain or NULL for yang-main
  * @param[in] origname Name of yang module triggering this parsing, for logging
  * @retval    ymod     YANG (sub)module
  * @retval    NULL     Failed
@@ -1173,6 +1196,7 @@ yang_parse_module(clixon_handle h,
                   const char   *module,
                   const char   *revision,
                   yang_stmt    *yspec,
+                  char         *domain,
                   char         *origname)
 {
     cbuf      *fbuf = NULL;
@@ -1189,7 +1213,7 @@ yang_parse_module(clixon_handle h,
         goto done;
     }
     /* Match a yang file with or without revision in yang-dir list */
-    if ((nr = yang_file_find_match(h, module, revision, fbuf)) < 0)
+    if ((nr = yang_file_find_match(h, module, revision, domain, fbuf)) < 0)
         goto done;
     if (nr == 0){
         if ((cb = cbuf_new()) == NULL){
@@ -1289,7 +1313,7 @@ yang_parse_recurse(clixon_handle h,
                       keyw==Y_IMPORT?Y_MODULE:Y_SUBMODULE,
                       submodule) == NULL){
             /* recursive call */
-            if ((subymod = yang_parse_module(h, submodule, subrevision, ysp, yang_argument_get(ymod))) == NULL)
+            if ((subymod = yang_parse_module(h, submodule, subrevision, ysp, NULL, yang_argument_get(ymod))) == NULL)
                 goto done;
             /* Sanity check: if submodule, its belongs-to statement shall point to the module */
             if (keyw == Y_INCLUDE){
@@ -1683,7 +1707,7 @@ yang_spec_parse_module(clixon_handle h,
     if (yang_find_module_by_name_revision(yspec, name, revision) != NULL)
         goto ok;
     /* Find a yang module and parse it and all its submodules */
-    if (yang_parse_module(h, name, revision, yspec, NULL) == NULL)
+    if (yang_parse_module(h, name, revision, yspec, NULL, NULL) == NULL)
         goto done;
     if (yang_parse_post(h, yspec, modmin) < 0)
         goto done;

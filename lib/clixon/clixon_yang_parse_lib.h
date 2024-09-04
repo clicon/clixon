@@ -53,9 +53,9 @@
  */
 int        ys_grouping_resolve(yang_stmt *yuses, char *prefix, char *name, yang_stmt **ygrouping0);
 yang_stmt *yang_parse_file(FILE *fp, const char *name, yang_stmt *ysp);
-int        yang_file_find_match(clixon_handle h, const char *module, const char *revision, cbuf *fbuf);
+int        yang_file_find_match(clixon_handle h, const char *module, const char *revision, const char *domain, cbuf *fbuf);
 yang_stmt *yang_parse_filename(clixon_handle h, const char *filename, yang_stmt  *ysp);
-yang_stmt *yang_parse_module(clixon_handle h, const char *module, const char *revision, yang_stmt *yspec, char *origname);
+yang_stmt *yang_parse_module(clixon_handle h, const char *module, const char *revision, yang_stmt *yspec, char *domain, char *origname);
 int        yang_parse_post(clixon_handle h, yang_stmt *yspec, int modmin);
 int        yang_parse_optimize_uses(clixon_handle h, yang_stmt *yspec);
 int        yang_spec_parse_module(clixon_handle h, const char *module,

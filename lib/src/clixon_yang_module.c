@@ -853,6 +853,7 @@ yang_metadata_init(clixon_handle h)
  * @param[in] h        Clixon handle
  * @param[in] xyanglib XML tree on the form <yang-lib>...
  * @param[in] mntpnt   Name of mount-point for logs
+ * @param[in] domain   YANG domain (NULL is default)
  * @param[in] yspec    Will be populated with YANGs, is consumed
  * @retval    1        OK
  * @retval    0        Parse error
@@ -864,6 +865,7 @@ int
 yang_lib2yspec(clixon_handle h,
                cxobj        *xyanglib,
                char         *mntpnt,
+               char         *domain,
                yang_stmt    *yspec)
 {
     int        retval = -1;
@@ -902,7 +904,7 @@ yang_lib2yspec(clixon_handle h,
                 continue;
             }
         }
-        if (yang_parse_module(h, name, revision, yspec, NULL) == NULL)
+        if (yang_parse_module(h, name, revision, yspec, domain, NULL) == NULL)
             goto fail;
         /* Sanity check: if given namespace differs from namespace in file */
         if (ns != NULL &&
@@ -920,7 +922,7 @@ yang_lib2yspec(clixon_handle h,
         strcmp(yang_argument_get(yrev), "2019-01-04") == 0){
         modmin++;
     }
-    else if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, NULL) < 0)
+    else if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, domain, NULL) < 0)
         goto fail;
 #endif
     if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)

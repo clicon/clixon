@@ -33,10 +33,10 @@
 
   ***** END LICENSE BLOCK *****
 
- * This file contains access functions for two types of clixon vars:
- * - options, ie string based variables from Clixon configuration files.
+ * This file contains access functions for options, one type of clixon variables
+ * ie string based variables from Clixon configuration files.
  *            Accessed with clicon_options(h).
- * @see clixon_data.[ch] for free-type runtime get/set *
+ * @see clixon_data.[ch] for the other type: free-type runtime get/set *
  */
 
 #ifndef _CLIXON_OPTIONS_H_
@@ -142,6 +142,9 @@ static inline char *clicon_yang_main_file(clixon_handle h){
 }
 static inline char *clicon_yang_main_dir(clixon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MAIN_DIR");
+}
+static inline char *clicon_yang_domain_dir(clixon_handle h){
+    return clicon_option_str(h, "CLICON_YANG_DOMAIN_DIR");
 }
 static inline char *clicon_yang_module_main(clixon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MODULE_MAIN");

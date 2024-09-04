@@ -44,6 +44,7 @@
  *   container root{ (ymnt)
  *     yangmnt:mount-point "mylabel";  (yext)
  *   }
+ * (note the argument "mylabel" defines an optional isolated YANG domain
  *
  * <config>         # Your XML config
  *   ...
@@ -813,14 +814,14 @@ yang_schema_find_share(clixon_handle h,
                        cxobj        *xyanglib,
                        yang_stmt   **yspecp)
 {
-    int        retval = -1;
-    cvec      *cvv = NULL;
-    cg_var    *cv;
-    cxobj     *xroot;
-    cxobj     *xmnt;
-    cxobj     *xylib;
-    int        config = 1;
-    int        ret;
+    int     retval = -1;
+    cvec   *cvv = NULL;
+    cg_var *cv;
+    cxobj  *xroot;
+    cxobj  *xmnt;
+    cxobj  *xylib;
+    int     config = 1;
+    int     ret;
 
     xroot = xml_root(xt);
     /* Get all XML mtpoints */
@@ -870,10 +871,12 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
 {
     int        retval = -1;
     cxobj     *xyanglib = NULL;
-    yang_stmt *yspec = NULL;
-    int        ret;
-    int        shared = 0;
+    cxobj     *xb;
+    yang_stmt *yspec0 = NULL;
+    yang_stmt *yspec1 = NULL;
     char      *xpath = NULL;
+    char      *domain = NULL;
+    int        ret;
 
     /* 1. Get modstate (xyanglib) of node: xyanglib, by querying backend state (via callback)
      *    XXX this xyanglib is not proper RFC8525, submodules appear as modules WHY?
@@ -882,45 +885,42 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
         goto done;
     if (xyanglib == NULL)
         goto anydata;
-    /* Optimization: find equal yspec from other mount-point */
-    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT_SHARE")) {
-        if (yang_schema_find_share(h, xt, xyanglib, &yspec) < 0)
-            goto done;
-        if (yspec)
-            shared++;
+    if ((xb = xpath_first(xyanglib, NULL, "module-set/name")) != NULL)
+        domain = xml_body(xb);
+    if (domain == NULL){
+        clixon_err(OE_YANG, 0, "domain not found");
+        goto done;
     }
-        /* XXX done later too */
+    /* Get xpath */
     if ((ret = yang_mount_xmnt2ymnt_xpath(h, xt, NULL, &xpath)) < 0)
         goto done;
     if (ret == 0){
         clixon_err(OE_YANG, 0, "Mapping xmnt to ymnt and xpath");
         goto done;
     }
-    if (yspec == NULL){
-        /* Parse it and set mount-point */
-        if ((yspec = yspec_new(h, xpath)) == NULL)
+    /* Optimization: find equal yspec from other mount-point */
+    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT_SHARE")) {
+        if (yang_schema_find_share(h, xt, xyanglib, &yspec0) < 0)
             goto done;
-        yang_flag_set(yspec, YANG_FLAG_SPEC_MOUNT);
-        clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec);
-        if ((ret = yang_lib2yspec(h, xyanglib, xpath, yspec)) < 0)
+    }
+    if ((yspec1 = yspec_new_shared(h, xpath, yspec0)) < 0)
+        goto done;
+    /* Either yspec0 = NULL and yspec1 is new, or yspec0 == yspec1 != NULL (shared) */
+    if (yspec0 == NULL && yspec1 != NULL){
+        if ((ret = yang_lib2yspec(h, xyanglib, xpath, domain, yspec1)) < 0)
             goto done;
         if (ret == 0)
             goto anydata;
     }
-    else
-        clixon_debug(CLIXON_DBG_YANG, "shared yang-spec: %p", yspec);
-    if (xml_yang_mount_set(h, xt, yspec) < 0)
+    if (xml_yang_mount_set(h, xt, yspec1) < 0)
         goto done;
-    if (shared)
-        if (yang_cvec_add(yspec, CGV_STRING, xpath) < 0)
-            goto done;
-    yspec = NULL;
+    yspec1 = NULL;
     retval = 1;
  done:
     if (xpath)
         free(xpath);
-    if (yspec)
-        ys_free(yspec);
+    if (yspec1)
+        ys_free(yspec1);
     if (xyanglib)
         xml_free(xyanglib);
     return retval;

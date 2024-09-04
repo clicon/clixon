@@ -108,14 +108,11 @@ struct yang_stmt {
                                         Y_UNIQUE: vector of descendant schema node ids
                                         Y_UNKNOWN: app-dep: yang-mount-points
                                      */
-
     yang_stmt         *ys_orig;      /* Pointer to original (for uses/augment copies) */
     union {                          /* Depends on ys_keyword */
         rpc_callback_t  *ysu_action_cb; /* Y_ACTION: Action callback list*/
         char            *ysu_filename;  /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
         yang_type_cache *ysu_typecache; /* Y_TYPE: cache all typedef data except unions */
-        int              ysu_ref;     /* Y_SPEC: Reference count for free: 0 means
-                                       * no sharing, 1: two references */
     } u;
 };
 
@@ -123,6 +120,5 @@ struct yang_stmt {
 #define ys_action_cb      u.ysu_action_cb
 #define ys_filename       u.ysu_filename
 #define ys_typecache      u.ysu_typecache
-#define ys_ref            u.ysu_ref
 
 #endif  /* _CLIXON_YANG_INTERNAL_H_ */

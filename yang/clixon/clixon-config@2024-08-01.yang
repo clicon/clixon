@@ -49,6 +49,26 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2024-08-01 {
+        description
+            "Added options:
+                CLICON_YANG_DOMAIN_DIR
+             Released in Clixon 7.2";
+    }
+    revision 2024-04-01 {
+        description
+            "Added options:
+                CLICON_NETCONF_DUPLICATE_ALLOW: Disable duplicate check in NETCONF messages.
+                CLICON_LOG_DESTINATION: Default log destination
+                CLICON_LOG_FILE: Which file to log to if file logging
+                CLICON_DEBUG: Debug flags.
+                CLICON_YANG_SCHEMA_MOUNT_SHARE: Share same YANGs of equal moint-points.
+                CLICON_SOCK_PRIO: Enable socket event priority
+                CLICON_XMLDB_MULTI: Split datastore into multiple sub files
+                CLICON_CLI_OUTPUT_FORMAT: Default CLI output format
+                CLICON_AUTOLOCK: Implicit locks
+             Released in Clixon 7.1";
+    }
     revision 2024-01-01 {
         description
             "Changed semantics:
@@ -415,6 +435,33 @@ module clixon-config {
             }
         }
     }
+    typedef log_destination_t {
+        description
+            "Log destination flags
+             Can also be given directly as -l <flag> to clixon commands
+             Note there are also constants in the code (logdstmap) that need to be
+             in sync with these values.
+             The duplication is because of bootstrapping, logging is needed before YANG
+             loaded";
+        type bits {
+            bit syslog {
+                position 0;
+                description "Syslog";
+            }
+            bit stderr {
+                position 1;
+                description "Standard I/O Error";
+            }
+            bit stdout {
+                position 2;
+                description "Standard I/O Output";
+            }
+            bit file {
+                position 3;
+                description "Log to file. By default clixon.log int current directory";
+            }
+        }
+    }
     container clixon-config {
         container restconf {
             uses clrc:clixon-restconf;
@@ -445,6 +492,7 @@ module clixon-config {
                  Ensure that YANG_INSTALLDIR (default 
                  /usr/local/share/clixon) is present in the path";
         }
+        /* Configuration */
         leaf CLICON_CONFIGFILE{
             type string;
             description
@@ -462,7 +510,9 @@ module clixon-config {
                 AFTER the main config file (CLICON_CONFIGFILE) in the following way:
                 - leaf values are overwritten
                 - leaf-list values are appended
-                The files in this directory will be loaded alphabetically.
+                The files in this directory are loaded alphabetically.
+                Only files ending with .xml are read
+                Sub-structures, eg <autocli> are replaced with the latest (alphabetically)
                 If the dir is given but does not exist will result in an error.
                 You can override file setting with -E <dir> command-line option.
                 Note that due to bootstraping this value is only meaningful in the main config file";
@@ -476,6 +526,7 @@ module clixon-config {
                  This field is a 'bootstrap' field.
                 ";
         }
+        /* YANG */
         leaf CLICON_YANG_MAIN_FILE {
             type string;
             description
@@ -488,6 +539,18 @@ module clixon-config {
             description
                 "If given, load all modules in this directory (all .yang files)
                  See also CLICON_YANG_DIR which specifies a path of dirs";
+        }
+        leaf CLICON_YANG_DOMAIN_DIR {
+            type string;
+            description
+                "Virtual domain directory for RFC 8528 mount-points.
+                 If set and domain is given, instead of loading from CLICON_YANG_MAIN_DIR,
+                 look for .yang files first in CLICON_YANG_DOMAIN_DIR/domain,
+                 where domain is given as yangmnt:mount-point <domain>;
+                 Useful in eg mountpoints where another YANG domain may be required,
+                 even isolated from the main YANG context, as well as from other moint-points.
+                 Note that CLICON_YANG_DIR that may be given as library YANGs are not isolated.
+                 If not set, use CLICON_YANG_MAIN_DIR as default.";
         }
         leaf CLICON_YANG_MODULE_MAIN {
             type string;
@@ -526,12 +589,6 @@ module clixon-config {
                  Note this is similar to what happens to YANG nodes that are disabled by a false
                  if-feature statement.";
         }
-        leaf CLICON_BACKEND_DIR {
-            type string;
-            description
-                "Location of backend .so plugins. Load all .so 
-                 plugins in this dir as backend plugins";
-        }
         leaf CLICON_YANG_SCHEMA_MOUNT{
             type boolean;
             description
@@ -544,12 +601,102 @@ module clixon-config {
                  Further, autocli syntax is added by definining a tree resolve wrapper";
             default false;
         }
+        leaf CLICON_YANG_SCHEMA_MOUNT_SHARE {
+            type boolean;
+            description
+                "For optimization purposes, share same YANGs of equal moint-points.
+                 The mount-points need to be 'equal' in the sense that it has the same YANG
+                 (yangmnt:mount-point is on same node).
+                 A comparison is made between yang modules and revision and must match exactly.
+                 If so, a new yang-spec is not created, instead the other is used.
+                 Only if CLICON_YANG_SCHEMA_MOUNT is enabled";
+            default false;
+        }
+        leaf CLICON_YANG_AUGMENT_ACCEPT_BROKEN {
+            type boolean;
+            default false;
+            description
+                "Debug option. If enabled, accept broken augments on the form:
+                    augment <target> { ... }
+                 where <target> is an XPath which MUST be an existing node but for many
+                 yangmodels do not.
+                 There are several cases why this may be the case:
+                 - syntax errors,
+                 - features that need to be enabled
+                 - wrong XPaths, etc
+                 This option should be enabled only for passing some testcases it should
+                 normally never be enabled in system YANGs that are used in a system.";
+        }
+        leaf CLICON_YANG_LIBRARY {
+            type boolean;
+            default true;
+            description
+                "Enable YANG library support as state data according to RFC8525.
+                 If enabled, module info will appear when doing netconf get or
+                 restconf GET.
+                 The module state data is on the form:
+                       <yang-library><module-set>...
+                 instead where the module state is on the form:
+                       <modules-state>...
+                 See also CLICON_XMLDB_MODSTATE where the module state info is used to tag datastores
+                 with module information.";
+        }
+        /* Backend */
+        leaf CLICON_BACKEND_DIR {
+            type string;
+            description
+                "Location of backend .so plugins. Load all .so
+                 plugins in this dir as backend plugins";
+        }
         leaf CLICON_BACKEND_REGEXP {
             type string;
             description
                 "Regexp of matching backend plugins in CLICON_BACKEND_DIR";
             default "(.so)$";
         }
+        leaf CLICON_BACKEND_USER {
+            type string;
+            description
+                "User name for backend (both foreground and daemonized).
+                 If you set this value the backend if started as root will lower
+                 the privileges after initialization.
+                 The ownership of files created by the backend will also be set to this
+                 user (eg datastores).
+                 It also sets the backend unix socket owner to this user, but its group
+                 is set by CLICON_SOCK_GROUP.
+                 See also CLICON_BACKEND_PRIVILEGES setting";
+        }
+        leaf CLICON_BACKEND_PRIVILEGES {
+            type priv_mode;
+            default none;
+            description
+                "Backend privileges mode.
+                 If CLICON_BACKEND_USER user is set, mode can be set to drop_perm or
+                 drop_temp.
+                 Drop privs may not be used together with CLICON_XMLDB_MULTI";
+        }
+        leaf CLICON_BACKEND_PIDFILE {
+            type string;
+            mandatory true;
+            description "Process-id file of backend daemon";
+        }
+        leaf CLICON_BACKEND_RESTCONF_PROCESS {
+            type boolean;
+            default false;
+            description
+                "If set, enable process-control of restconf daemon, ie start/stop restconf
+                 daemon internally from backend daemon.
+                 Also, if set, restconf daemon queries backend for its config
+                 if not set, restconf daemon reads its config from main config file
+                 It uses clixon-restconf.yang for config and clixon-lib.yang for RPC
+                 Process control of restconf daemon is as follows:
+                 - on RPC start, if enable is true, start the service, if false, error or ignore it
+                 - on RPC stop, stop the service
+                 - on backend start make the state as configured
+                 - on enable change, make the state as configured
+                 Disable if you start the restconf daemon by other means.";
+        }
+        /* Netconf */
         leaf CLICON_NETCONF_DIR{
             type string;
             description "Location of netconf (frontend) .so plugins";
@@ -607,6 +754,32 @@ module clixon-config {
                  config";
             status obsolete;
         }
+        leaf CLICON_NETCONF_MONITORING {
+            type boolean;
+            default true;
+            description
+                "Enable Netconf monitoring support as state data according to RFC6022.
+                 If enabled, netconf monitoring info will appear when doing netconf get or
+                 restconf GET.";
+        }
+        leaf CLICON_NETCONF_MONITORING_LOCATION {
+            type string;
+            description
+                "Extra Netconf monitoring location directory where schemas can be retrieved
+                 apart from NETCONF.
+                 Only if CLICON_NETCONF_MONITORING";
+        }
+        leaf CLICON_NETCONF_DUPLICATE_ALLOW {
+            type boolean;
+            default false;
+            description
+                "Disable duplicate check in NETCONF messages.
+                 In Clixon 7.0, a stricter check of duplicate entries in incoming NETCONF messages was made.
+                 More specifically: lists and leaf-lists with non-unique entries.
+                 Enable to disable this check, and to allow duplicates in incoming NETCONF messages.
+                 Note that this is an error by such a client, but there is some legacy code that uses this";
+        }
+        /* HTTP and  Restconf */
         leaf CLICON_RESTCONF_API_ROOT {
             type string;
             default "/restconf";
@@ -722,6 +895,7 @@ module clixon-config {
                  Both feature clixon-restconf:http-data and restconf/enable-http-data 
                  must be enabled for this match to occur.";
         }
+        /* Clixon CLI */
         leaf CLICON_CLI_DIR {
             type string;
             description
@@ -760,8 +934,8 @@ module clixon-config {
             type int32;
             default 1;
             description
-                "Set to 0 if you want CLI to wrap to next line.
-                 Set to 1 if you  want CLI to scroll sideways when approaching 
+                "Set to 0 if you want CLI INPUT to wrap to next line.
+                 Set to 1 if you  want CLI INPUT to scroll sideways when approaching 
                       right margin";
         }
         leaf CLICON_CLI_LINES_DEFAULT {
@@ -863,6 +1037,13 @@ module clixon-config {
                  While setting this value makes sense for adding new values, it makes less sense for
                  deleting.";
         }
+        leaf CLICON_CLI_OUTPUT_FORMAT {
+            type cl:datastore_format;
+            default xml;
+            description
+                "Default CLI output format.";
+        }
+        /* Internal socket */
         leaf CLICON_SOCK_FAMILY {
             type socket_address_family;
             default UNIX;
@@ -900,46 +1081,17 @@ module clixon-config {
                 "Group membership to access clixon_backend unix socket and gid for 
                  deamon";
         }
-        leaf CLICON_BACKEND_USER {
-            type string;
-            description 
-                "User name for backend (both foreground and daemonized).
-                 If you set this value the backend if started as root will lower 
-                 the privileges after initialization. 
-                 The ownership of files created by the backend will also be set to this
-                 user (eg datastores).
-                 It also sets the backend unix socket owner to this user, but its group
-                 is set by CLICON_SOCK_GROUP.
-                 See also CLICON_BACKEND_PRIVILEGES setting";
-        }
-        leaf CLICON_BACKEND_PRIVILEGES {
-            type priv_mode;
-            default none;
-            description 
-                "Backend privileges mode. 
-                 If CLICON_BACKEND_USER user is set, mode can be set to drop_perm or 
-                 drop_temp.";
-        }
-        leaf CLICON_BACKEND_PIDFILE {
-            type string;
-            mandatory true;
-            description "Process-id file of backend daemon";
-        }
-        leaf CLICON_BACKEND_RESTCONF_PROCESS {
+        leaf CLICON_SOCK_PRIO {
             type boolean;
             default false;
             description
-                "If set, enable process-control of restconf daemon, ie start/stop restconf 
-                 daemon internally from backend daemon.
-                 Also, if set, restconf daemon queries backend for its config
-                 if not set, restconf daemon reads its config from main config file
-                 It uses clixon-restconf.yang for config and clixon-lib.yang for RPC
-                 Process control of restconf daemon is as follows:
-                 - on RPC start, if enable is true, start the service, if false, error or ignore it
-                 - on RPC stop, stop the service 
-                 - on backend start make the state as configured
-                 - on enable change, make the state as configured
-                 Disable if you start the restconf daemon by other means.";
+                "Enable socket event priority.
+                 If enabled, a file-descriptor can be registered as high prio.
+                 Presently, the backend socket has higher prio than others.
+                 (should be made more generic)
+                 Note that a side-effect of enabling this option is that fairness of
+                 non-prio events is disabled
+                 This is useful if the backend opens other sockets, such as the controller";
         }
         leaf CLICON_AUTOCOMMIT {
             type int32;
@@ -951,12 +1103,17 @@ module clixon-config {
                  persistent confirming commit.
                  (consider boolean)";
         }
-        leaf CLICON_XMLDB_DIR {
-            type string;
-            mandatory true;
+        leaf CLICON_AUTOLOCK {
+            type boolean;
+            default false;
             description
-                "Directory where \"running\", \"candidate\" and \"startup\" are placed.";
+                "Set if all edit-config implicitly locks without the need of an explicit lock-db
+                 In short, the lock is obtained by edit-config and copy-config and released by 
+                 discard and commit.
+                 Also, any edits in candidate are discarded if the client closes the connection.
+                 This effectively disables shared candidate";
         }
+        /* Datastore XMLDB */
         leaf CLICON_DATASTORE_CACHE {
             type datastore_cache;
             default cache;
@@ -967,6 +1124,16 @@ module clixon-config {
                  Others are experimental (in Clixon 5.5)
                  Note that from 7.0 this is OBSOLETED, only datastore_cache is supported";
             status obsolete;
+        }
+        leaf CLICON_XMLDB_DIR {
+            type string;
+            mandatory true;
+            description
+                "Directory where datastores such as \"running\", \"candidate\" and \"startup\"
+                 are placed.
+                 If CLICON_XMLDB_MULTI is enabled, this is the directory where a datastore
+                 subdir is stored, such as \"running.d/\"
+                ";
         }
         leaf CLICON_XMLDB_FORMAT {
             type cl:datastore_format;
@@ -986,7 +1153,9 @@ module clixon-config {
             default false;
             description
                 "If set, tag datastores with RFC 8525 YANG Module Library 
-                 info. When loaded at startup, a check is made if the system
+                 info.
+                 By default, modstate is added last in datastore.
+                 When loaded at startup, a check is made if the system
                  yang modules match.";
         }
         leaf CLICON_XMLDB_UPGRADE_CHECKOLD {
@@ -998,6 +1167,20 @@ module clixon-config {
                  The old yang must be accessible via YANG_DIR.
                  Will fail startup if old yang not found or if old config does not match.
                  If not set, no yang check of old config is made until it is upgraded to new yang.";
+        }
+        leaf CLICON_XMLDB_MULTI {
+            type boolean;
+            default false;
+            description
+                "Split configure datastore into multiple sub files
+                 Uses .d/ directory structure with <digest>.xml and 0.xml as root
+                 JSON not supported.
+                 Splits are marked in YANG using extension xl:xmldb-split, (typical usage is
+                 mount-points).
+                 Note that algorithm for not updating unchanged files only applies to edits,
+                 commit copies all files regardless.
+                 May not work together with CLICON_BACKEND_PRIVILEGES=drop and root, since
+                 new files need to be created in XMLDB_DIR";
         }
         leaf CLICON_XML_CHANGELOG {
             type boolean;
@@ -1056,21 +1239,6 @@ module clixon-config {
                  If true: The symbols defined by this shared object will be made available for symbol res‐
                  olution of subsequently loaded shared objects.";
         }
-        leaf CLICON_YANG_AUGMENT_ACCEPT_BROKEN {
-            type boolean;
-            default false;
-            description
-                "Debug option. If enabled, accept broken augments on the form:
-                    augment <target> { ... }
-                 where <target> is an XPath which MUST be an existing node but for many
-                 yangmodels do not.
-                 There are several cases why this may be the case:
-                 - syntax errors,
-                 - features that need to be enabled
-                 - wrong XPaths, etc
-                 This option should be enabled only for passing some testcases it should 
-                 normally never be enabled in system YANGs that are used in a system.";
-        }
         leaf CLICON_NAMESPACE_NETCONF_DEFAULT {
             type boolean;
             default false;
@@ -1080,7 +1248,6 @@ module clixon-config {
                  If defined, top-level rpc calls need not have namespaces (eg using xmlns=<ns>) 
                  since the default NETCONF namespace will be assumed. (This is not standard).
                  See rfc6241 3.1: urn:ietf:params:xml:ns:netconf:base:1.0.";
-
         }
         leaf CLICON_STARTUP_MODE {
             type startup_mode;
@@ -1094,6 +1261,7 @@ module clixon-config {
                  The current only case where such a user is used is in RESTCONF authentication when
                  auth-type=none and no known user is known.";
         }
+        /* Network Configuration Access Control Model (NACM) */
         leaf CLICON_NACM_MODE {
             type nacm_mode;
             default disabled;
@@ -1136,20 +1304,6 @@ module clixon-config {
                  If this option is set, Clixon disables NACM if a datastore does NOT contain a
                  NACM config on load.";
         }
-        leaf CLICON_YANG_LIBRARY {
-            type boolean;
-            default true;
-            description
-                "Enable YANG library support as state data according to RFC8525. 
-                 If enabled, module info will appear when doing netconf get or 
-                 restconf GET.
-                 The module state data is on the form:
-                       <yang-library><module-set>...
-                 instead where the module state is on the form:
-                       <modules-state>...
-                 See also CLICON_XMLDB_MODSTATE where the module state info is used to tag datastores
-                 with module information.";
-        }
         leaf CLICON_MODULE_SET_ID {
             type string;
             default "0";
@@ -1162,21 +1316,7 @@ module clixon-config {
                  If CLICON_MODULE_LIBRARY_RFC7895 is enabled, it sets the modules-state/module-set-id 
                  instead";
         }
-        leaf CLICON_NETCONF_MONITORING {
-            type boolean;
-            default true;
-            description
-                "Enable Netconf monitoring support as state data according to RFC6022. 
-                 If enabled, netconf monitoring info will appear when doing netconf get or 
-                 restconf GET.";
-        }
-        leaf CLICON_NETCONF_MONITORING_LOCATION {
-            type string;
-            description
-                "Extra Netconf monitoring location directory where schemas can be retrieved
-                 apart from NETCONF.
-                 Only if CLICON_NETCONF_MONITORING";
-        }
+        /* Notification streams */
         leaf CLICON_STREAM_DISCOVERY_RFC5277 {
             type boolean;
             default false;
@@ -1232,7 +1372,27 @@ module clixon-config {
             units s;
             description "Retention for stream replay buffers in seconds, ie how much
                          data to store before dropping. 0 means no retention";
-
+        }
+        /* Log and debug */
+        leaf CLICON_DEBUG{
+            type cl:clixon_debug_t;
+            description
+                "Debug flags as bitfields.
+                 Can also be given directly as -D <flag> to clixon commands (which overrides this).";
+        }
+        leaf CLICON_LOG_DESTINATION {
+            type log_destination_t;
+            description
+                "Log destination.
+                 If not given, default log destination is syslog for all applications,
+                 except clixon_cli where default is stderr.
+                 See also command-line option -l <s|e|o|n|f>";
+        }
+        leaf CLICON_LOG_FILE {
+            type string;
+            description
+                "Which file to log to if log destination is file
+                 That is CLIXON_LOG_DESTINATION is FILE or command started with -l f";
         }
         leaf CLICON_LOG_STRING_LIMIT {
             type uint32;
@@ -1241,8 +1401,8 @@ module clixon-config {
                 "Length limitation of debug and log strings. 
                  Especially useful for dynamic debug strings, such as packet dumps.
                  0 means no limit";
-
         }
+        /* SNMP */
         leaf-list CLICON_SNMP_MIB {
             description
                 "Names of MIBs that are used by clixon_snmp. 

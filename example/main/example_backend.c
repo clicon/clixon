@@ -90,6 +90,7 @@ static char *_action_instanceid = NULL;
  *
  * Start backend with -- -m <yang> -M <namespace>
  * Mount this yang on mountpoint
+ * Note module-set hard-coded to "mylabel"
  */
 static char *_mount_yang = NULL;
 static char *_mount_namespace = NULL;
