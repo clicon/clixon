@@ -55,6 +55,7 @@ Developers may need to change their code
 
 ### Corrected Busg
 
+* Fixed: Double top-levels in xmldb_get that could occur with xpath containing choice.
 * Fixed: [RESTCONF exit on cert error + complex accept](https://github.com/clicon/clixon/issues/551)
 * Fixed: [Deletion of leaf in YANG choice removes leaf in a different choice/case](https://github.com/clicon/clixon/issues/542)
 * Fixed: Deviated types were resolved in target context, not lexically in deviation context
