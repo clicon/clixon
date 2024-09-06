@@ -320,7 +320,7 @@ restconf_connection_sanity(clixon_handle         h,
     long           code;
     cbuf          *cberr = NULL;
     restconf_media media_out = YANG_DATA_JSON;
-    char          *media_str = NULL;
+    char          *media_list = NULL;
     char          *oneline = NULL;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
@@ -331,12 +331,11 @@ restconf_connection_sanity(clixon_handle         h,
         clixon_debug(CLIXON_DBG_RESTCONF, "Sanity check http/2 non-tls failed, disconnect");
         if (netconf_invalid_value_xml(&xerr, "protocol", "Only HTTP/2 with TLS is enabled, plain http/2 is disabled") < 0)
             goto done;
-        if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
+        if ((media_list = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
              media_out = YANG_DATA_JSON;
         }
-        else if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
-            if (strcmp(media_str, "*/*") == 0) /* catch-all */
-                media_out = YANG_DATA_JSON;
+        else {
+            media_out = restconf_media_list_str2int(media_list);
         }
         if (api_return_err0(h, sd, xerr, 1, media_out, 0) < 0)
             goto done;
@@ -362,12 +361,8 @@ restconf_connection_sanity(clixon_handle         h,
                 X509_verify_cert_error_string(code), code);
         if (netconf_invalid_value_xml(&xerr, "protocol", cbuf_get(cberr)) < 0)
             goto done;
-        if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
-             media_out = YANG_DATA_JSON;
-        }
-        else if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
-            if (strcmp(media_str, "*/*") == 0) /* catch-all */
-                media_out = YANG_DATA_JSON;
+        if ((media_list = restconf_param_get(h, "HTTP_ACCEPT")) != NULL){
+            media_out = restconf_media_list_str2int(media_list);
         }
         if (api_return_err0(sd->sd_conn->rc_h, sd, xerr, 1, media_out, 0) < 0)
             goto done;

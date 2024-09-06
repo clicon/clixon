@@ -1888,19 +1888,16 @@ cli_show_statistics(clixon_handle h,
     size_t      tsz0;
     size_t      tsz;
     yang_stmt  *yspec;
-    yang_stmt  *yspec1;
-    yang_stmt  *yspec2;
-    yang_stmt  *ymnt;
     cvec       *cvv1 = NULL;
-    cvec       *cvv2;
     cg_var     *cv;
-    cg_var     *cv2;
-    cg_var     *cv3;
     cxobj      *xp;
     char       *name;
     cxobj      *x;
     uint64_t    u64;
     char       *unit;
+    yang_stmt  *ymounts;
+    int         inext;
+    int         i;
 
     if (argv == NULL || (cvec_len(argv) < 1 || cvec_len(argv) > 2)){
         clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [(cli|backend|all) [detail]]");
@@ -1952,53 +1949,47 @@ cli_show_statistics(clixon_handle h,
             cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "Top-level", u64, unit);
         }
         if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")) {
-            if (yang_mount_yspec2ymnt(yspec, &cvv1) < 0)
+            if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
+                clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
                 goto done;
-            cv = NULL;
-            while ((cv = cvec_each(cvv1, cv)) != NULL) {
-                ymnt = cv_void_get(cv);
-                if ((cvv2 = yang_cvec_get(ymnt)) != NULL){
-                    cv2 = NULL;
-                    while ((cv2 = cvec_each(cvv2, cv2)) != NULL) {
-                        yspec1 = cv_void_get(cv2);
-                        nr = 0; sz = 0;
-                        if (yang_stats(yspec1, 0, &nr, &sz) < 0)
-                            goto done;
-                        /* check if not duplicate */
-                        cv3 = cv2;
-                        while ((cv3 = cvec_each(cvv2, cv3)) != NULL) {
-                            if (cv2 == cv3)
-                                continue;
-                            yspec2 = cv_void_get(cv3);
-                            if (yspec1 == yspec2)
-                                break;
-                        }
-                        if (cv3 != NULL){
-                            if (detail){
-                                /* Maybe use "0" instead of "shared"? */
-                                cligen_output(stdout, "YANG-mount-point-%s-size: shared\n", cv_name_get(cv2));
-                                cligen_output(stdout, "YANG-mount-point-%s-nr: shared\n", cv_name_get(cv2));
+            }
+            inext = 0;
+            while ((yspec = yn_iter(ymounts, &inext)) != NULL) {
+                cvv1 = NULL;
+                if (yang_keyword_get(yspec) == Y_SPEC &&
+                    yang_flag_get(yspec, YANG_FLAG_SPEC_MOUNT) != 0x0 &&
+                    (cvv1 = yang_cvec_get(yspec)) != NULL){
+                    nr = 0; sz = 0;
+                    if (yang_stats(yspec, 0, &nr, &sz) < 0)
+                        goto done;
+                    tnr += nr;
+                    tsz += sz;
+                    i = 0;
+                    cv = NULL;
+                    while ((cv = cvec_each(cvv1, cv)) != NULL) {
+                        if (detail){
+                            if (i == cvec_len(cvv1)-1) {
+                                cligen_output(stdout, "YANG-mount-point-%s-size: %"  PRIu64 "\n", cv_name_get(cv), sz);
+                                cligen_output(stdout, "YANG-mount-point-%s-nr: %"  PRIu64 "\n", cv_name_get(cv), nr);
                             }
-                            else
-                                cligen_output(stdout, "%s\n", cv_name_get(cv2));
+                            else {
+                                cligen_output(stdout, "YANG-mount-point-%s-size: shared\n", cv_name_get(cv));
+                                cligen_output(stdout, "YANG-mount-point-%s-nr: shared\n", cv_name_get(cv));
+                            }
                         }
                         else {
-                            tnr += nr;
-                            tsz += sz;
-
-                            if (detail) {
-                                cligen_output(stdout, "YANG-mount-point-%s-size: %"  PRIu64 "\n", cv_name_get(cv2), sz);
-                                cligen_output(stdout, "YANG-mount-point-%s-nr: %"  PRIu64 "\n", cv_name_get(cv2), nr);
-                            }
-                            else{
-                                if (strlen(cv_name_get(cv2)) > 25)
-                                    cligen_output(stdout, "%s \n %-25s", cv_name_get(cv2), "");
+                            if (i == cvec_len(cvv1)-1) {
+                                if (strlen(cv_name_get(cv)) > 25)
+                                    cligen_output(stdout, "%s \n %-25s", cv_name_get(cv), "");
                                 else
-                                    cligen_output(stdout, "%-25s", cv_name_get(cv2));
+                                    cligen_output(stdout, "%-25s", cv_name_get(cv));
                                 translatenumber(sz, &u64, &unit);
                                 cligen_output(stdout, "%" PRIu64 "%-10s\n", u64, unit);
                             }
+                            else
+                                cligen_output(stdout, "%s\n", cv_name_get(cv));
                         }
+                        i++;
                     }
                 }
             }
@@ -2117,8 +2108,6 @@ cli_show_statistics(clixon_handle h,
     }
     retval = 0;
  done:
-    if (cvv1)
-        cvec_free(cvv1);
     if (xret)
         xml_free(xret);
     if (cb)

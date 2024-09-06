@@ -474,7 +474,7 @@ api_root_restconf(clixon_handle        h,
     int            pn;
     int            pretty;
     cbuf          *cb = NULL;
-    char          *media_str = NULL;
+    char          *media_list = NULL;
     restconf_media media_out = YANG_DATA_JSON;
     char          *indata = NULL;
     char          *username = NULL;
@@ -495,23 +495,21 @@ api_root_restconf(clixon_handle        h,
      * operation POST, etc
      * If accept is * default is yang-json
      */
-    if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
-#if 0 /* Use default +json */
-        if (restconf_not_acceptable(h, r, pretty, media_out) < 0)
-            goto done;
-        goto ok;
-#endif
-    }
-    else if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
-        if (strcmp(media_str, "*/*") == 0) /* catch-all */
-            media_out = YANG_DATA_JSON;
-        else{
-            if (restconf_not_acceptable(h, req, pretty, YANG_DATA_JSON) < 0)
-                goto done;
-            goto ok;
+    if ((media_list = restconf_param_get(h, "HTTP_ACCEPT")) != NULL){
+        if ((int)(media_out = restconf_media_list_str2int(media_list)) == -1) {
+            if (restconf_media_in_list("*/*", media_list) == 1)
+                media_out = YANG_DATA_JSON;
+            else{
+                /* If the server does not support any of the requested
+                 * output encodings for a request, then it MUST return an error response
+                 * with a "406 Not Acceptable" status-line. */
+                if (restconf_not_acceptable(h, req, pretty, YANG_DATA_JSON) < 0)
+                    goto done;
+                goto ok;
+            }
         }
     }
-    clixon_debug(CLIXON_DBG_RESTCONF, "ACCEPT: %s %s", media_str, restconf_media_int2str(media_out));
+    clixon_debug(CLIXON_DBG_RESTCONF, "ACCEPT: %s %s", media_list, restconf_media_int2str(media_out));
 
     if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
         goto done;

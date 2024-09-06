@@ -1577,9 +1577,10 @@ upgrade_callback_call(clixon_handle h,
     goto done;
 }
 
-/* Authentication type
+/*! Authentication type
+ *
  * @see http-auth-type in clixon-restconf.yang
- * @see restconf_media_str2int
+ * @see clixon_auth_type_str2int
  */
 static const map_str2int clixon_auth_type[] = {
     {"none",               CLIXON_AUTH_NONE},

@@ -395,50 +395,6 @@ yang_cvec_add(yang_stmt    *ys,
     return cv;
 }
 
-/*! Get yang object reference count
- *
- * @param[in]  ys    Yang statement
- * @retval     ref   Reference coun t
- */
-int 
-yang_ref_get(yang_stmt *ys)
-{
-    //    assert(ys->ys_keyword == Y_SPEC);
-    return ys->ys_ref;
-}
-
-/*! Increment yang object reference count with +1
- *
- * @param[in]  ys    Yang statement
- * @retval     0
- */
-int 
-yang_ref_inc(yang_stmt *ys)
-{
-    //    assert(ys->ys_keyword == Y_SPEC);
-    ys->ys_ref++;
-    return 0;
-}
-
-/*! Decrement yang object reference count with -1
- *
- * @param[in]  ys    Yang statement
- * @retval     0     Ok
- * @retval    -1     Error
- */
-int 
-yang_ref_dec(yang_stmt *ys)
-{
-    int retval = -1;
-    
-    //    assert(ys->ys_keyword == Y_SPEC);
-    if (ys->ys_ref > 0)
-        ys->ys_ref--;
-    retval = 0;
-    // done:
-    return retval;
-}
-
 /*! Get yang stmt flags, used for internal algorithms
  *
  * @param[in]  ys     Yang statement
@@ -610,7 +566,6 @@ yang_when_canonical_xpath_get(yang_stmt *ys,
 const char *
 yang_filename_get(yang_stmt *ys)
 {
-    //    assert(ys->ys_keyword == Y_MODULE || ys->ys_keyword == Y_SUBMODULE);
     return ys->ys_filename;
 }
 
@@ -626,7 +581,6 @@ int
 yang_filename_set(yang_stmt  *ys,
                   const char *filename)
 {
-    //    assert(ys->ys_keyword == Y_MODULE || ys->ys_keyword == Y_SUBMODULE);
     if ((ys->ys_filename = strdup(filename)) == NULL){
         clixon_err(OE_UNIX, errno, "strdup");
         return -1;
@@ -933,15 +887,6 @@ ys_free1(yang_stmt *ys,
         ys->ys_cv = NULL;
         cv_free(cv);
     }
-    if (ys->ys_cvec){
-        /* Schema mount uses cvec in unknown to keep track of all yspecs
-         * Freed here once.
-         */
-        if (yang_flag_get(ys, YANG_FLAG_MOUNTPOINT))
-            yang_mount_freeall(ys);
-        cvec_free(ys->ys_cvec);
-        ys->ys_cvec = NULL;
-    }
     if (ys->ys_argument){
         free(ys->ys_argument);
         ys->ys_argument = NULL;
@@ -1081,14 +1026,8 @@ ys_freechildren(yang_stmt *ys)
 int
 ys_free(yang_stmt *ys)
 {
-    if (yang_keyword_get(ys) == Y_SPEC &&
-        yang_ref_get(ys) > 0){
-        yang_ref_dec(ys);
-    }
-    else {
-        ys_freechildren(ys);
-        ys_free1(ys, 1);
-    }
+    ys_freechildren(ys);
+    ys_free1(ys, 1);
     return 0;
 }
 

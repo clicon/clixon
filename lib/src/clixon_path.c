@@ -862,7 +862,7 @@ api_path2xpath_cvv(cvec      *api_path,
             goto done;
         if (ymtpoint){
             /* If we cant find a specific mountpoint, we just assign the first.
-             * XXX: note that maybe this may cause later errors?
+             * XXX: Ignore return value: if none are mounted, no change of yspec is made here
              */
             if (yang_mount_get_yspec_any(y, &yspec) < 0)
                 goto done;
@@ -1106,6 +1106,7 @@ api_path2xml_vec(char      **vec,
             goto fail;
         }
         if (ymtpoint){
+            /* XXX: Ignore return value: if none are mounted, no change of yspec is made here */
             if (yang_mount_get_yspec_any(y0, &y0) < 0)
                 goto done;
         }
@@ -1598,7 +1599,7 @@ instance_id_resolve(clixon_path *cplist,
     yang_stmt   *yspec;
     char        *kname;
     int          ret;
-    
+
     yspec = ys_spec(yt);
     if ((cp = cplist) != NULL){
         do {

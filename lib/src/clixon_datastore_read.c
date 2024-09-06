@@ -140,8 +140,12 @@ singleconfigroot(cxobj  *xt,
 
 /*! Recurse up from x0 up to x0t then create objects from x1t down to new object x1
  *
+ * @param[in]  x0t  Orig top-level
+ * @param[in]  x0   Orig node (go up from this until = x0t)
+ * @param[in]  x1t  New tree on entry
+ * @param[out] x1pp
  * @retval     0    OK
- * @retval    -1    OK
+ * @retval    -1    Error
  */
 static int
 xml_copy_bottom_recurse(cxobj  *x0t,
@@ -211,6 +215,8 @@ xml_copy_bottom_recurse(cxobj  *x0t,
 
             }
         }
+        if (xml_sort(x1p) < 0)
+            goto done;
     }
     *x1pp = x1;
     x1 = NULL;

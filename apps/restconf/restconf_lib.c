@@ -208,6 +208,7 @@ static const map_str2int http_media_map[] = {
     {"application/yang-patch+xml",       YANG_PATCH_XML},
     {"application/yang-patch+json",      YANG_PATCH_JSON},
     {"application/yang-data+xml-list",   YANG_PAGINATION_XML},  /* draft-wwlh-netconf-list-pagination-rc-02 */
+    {"text/html",                        HTTP_DATA_TEXT_HTML}, /* for http_data */
     {NULL,                              -1}
 };
 
@@ -231,10 +232,80 @@ restconf_code2reason(int code)
     return clicon_int2str(http_reason_phrase_map, code);
 }
 
+/*! One media to integer representation
+ */
 const restconf_media
 restconf_media_str2int(char *media)
 {
     return clicon_str2int(http_media_map, media);
+}
+
+/*! Select first registered media in media list to integer
+ *
+ * Example: list="imag/avif,application/yang-data+xml,**"
+ * returns: YANG_DATA_XML
+ * Note that if no registered medias are found, then return -1
+ * Filters any "; q=.."
+ * @param[in]  list
+ * @retval    -1     No registered media found
+ */
+const restconf_media
+restconf_media_list_str2int(char *list)
+{
+    int     reti = -1;
+    cg_var *cv;
+    cvec   *cvv = NULL;
+    char   *str;
+
+    if (uri_str2cvec(list, ',', ';', 0, &cvv) < 0)
+        return -1;
+    cv = NULL;
+    while ((cv = cvec_each(cvv, cv)) != NULL){
+        str = cv_name_get(cv);
+        if ((reti = clicon_str2int(http_media_map, str)) != -1)
+            break;
+    }
+    if (cvv)
+        cvec_free(cvv);
+    return reti;
+}
+
+/*! Check if media exists in media string
+ *
+ * Example: media="text/html";
+ *          list="img/avif,text/html,application/yang-data+xml,**"
+ * Returns: 1
+ * @param[in]  media  Single media string
+ * @param[in]  list   Comma-separated list of medias
+ * @retval     1      Found
+ * @retval     0      Not found
+ * @retval    -1      Error
+ */
+int
+restconf_media_in_list(char *media,
+                       char *list)
+{
+    int     retval = -1;
+    cg_var *cv;
+    cvec   *cvv = NULL;
+    char   *str;
+
+    if (uri_str2cvec(list, ',', ';', 0, &cvv) < 0)
+        goto done;
+    cv = NULL;
+    while ((cv = cvec_each(cvv, cv)) != NULL){
+        str = cv_name_get(cv);
+        if (strcmp(str, media) == 0)
+            break;
+    }
+    if (cv != NULL)
+        retval = 1;
+    else
+        retval = 0;
+ done:
+    if (cvv)
+        cvec_free(cvv);
+    return retval;
 }
 
 const char *

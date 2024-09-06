@@ -293,6 +293,9 @@ EOF
     new "limited invalid cert"
     expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0  "HTTP/$HVER 400" "\"error-message\": \"HTTP cert verification failed: certificate has expired"
 
+    # https://github.com/clicon/clixon/issues/551
+    new "limited invalid cert, multiple media"
+    expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -H "Accept: application/yang-data+xml,*/*" -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0  "HTTP/$HVER 400" "<error-message>HTTP cert verification failed: certificate has expired"
     new "limited invalid cert, xml"
     expectpart "$(curl $CURLOPTS --key $certdir/limited.key --cert $certdir/limited.crt -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data/example:x 2>&1)" 0  "HTTP/$HVER 400" "<error-message>HTTP cert verification failed: certificate has expired"
 
