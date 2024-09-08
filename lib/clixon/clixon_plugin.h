@@ -402,7 +402,7 @@ struct clixon_plugin_api{
             trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
             trans_cb_t       *cb_trans_commit;   /* Transaction commit */
             trans_cb_t       *cb_trans_commit_done; /* Transaction when commit done */
-            trans_cb_t       *cb_trans_commit_failed;   /* Transaction revert failed*/
+            trans_cb_t       *cb_trans_commit_failed;   /* Transaction commit failed*/
             trans_cb_t       *cb_trans_revert;   /* Transaction revert */
             trans_cb_t       *cb_trans_end;      /* Transaction completed  */
             trans_cb_t       *cb_trans_abort;    /* Transaction aborted */
