@@ -108,7 +108,6 @@ clixon_snmp_sig_term(int arg)
 static int
 snmp_terminate(clixon_handle h)
 {
-    yang_stmt *yspec;
     cvec      *nsctx;
     cxobj     *x = NULL;
     char      *pidfile = clicon_snmp_pidfile(h);

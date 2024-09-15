@@ -1249,7 +1249,8 @@ main(int    argc,
         goto done;
 #endif
     clixon_debug_init(h, dbg);
-    clixon_log(h, LOG_NOTICE, "%s native %u Started", __PROGRAM__, getpid());
+    clixon_log(h, LOG_NOTICE, "%s native %u Started, SSL version:%lx", __PROGRAM__, getpid(), OPENSSL_VERSION_NUMBER);
+
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
         clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;

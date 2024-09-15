@@ -83,7 +83,6 @@ get_oid_for_yang_node(yang_stmt *ys,
     int        retval = -1;
     int        exist = 0;
     char      *oidstr = NULL;
-    char      *path;
     yang_stmt *ytype;
     yang_stmt *ypath;
     yang_stmt *yref;
@@ -293,7 +292,6 @@ snmp_stream_cb(int   s,
     int           eof;
     cxobj        *xtop = NULL;   /* top xml */
     cxobj        *xncont = NULL; /* notification content xml */
-    cxobj        *xn;            /* notification xml */
     cbuf         *cbmsg = NULL;
     int           ret;
 
@@ -321,8 +319,6 @@ snmp_stream_cb(int   s,
                 goto done;
         }
     }
-
- ok:
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_SNMP, "retval: %d", retval);
@@ -372,7 +368,6 @@ snmp_stream_subscribe(clixon_handle  h,
     }
     *socket = s;
     retval = 0;
-
  done:
     clixon_debug(CLIXON_DBG_SNMP, "retval: %d", retval);
     if (xret)
