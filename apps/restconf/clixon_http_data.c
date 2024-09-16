@@ -282,19 +282,20 @@ api_http_data_file(clixon_handle h,
                    char         *pathname,
                    int           head)
 {
-    int         retval = -1;
-    cbuf       *cbfile = NULL;
-    char       *filename = NULL;
-    cbuf       *cbdata = NULL;
-    FILE       *f = NULL;
-    off_t       fsz = 0;
-    long        fsize;
-    char       *www_data_root = NULL;
-    char       *suffix;
-    char       *media;
-    int         ret;
-    char       *buf = NULL;
-    size_t      sz;
+    int    retval = -1;
+    cbuf  *cbfile = NULL;
+    char  *filename = NULL;
+    cbuf  *cbdata = NULL;
+    FILE  *f = NULL;
+    off_t  fsz = 0;
+    long   fsize;
+    char  *www_data_root = NULL;
+    char  *suffix;
+    char  *media;
+    char  *buf = NULL;
+    size_t sz;
+    char  *media_list = NULL;
+    int    ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((cbfile = cbuf_new()) == NULL){
@@ -305,7 +306,6 @@ api_http_data_file(clixon_handle h,
         clixon_err(OE_RESTCONF, ENOENT, "CLICON_HTTP_DATA_ROOT missing");
         goto done;
     }
-
     cprintf(cbfile, "%s", www_data_root);
     if (pathname){
         if (strlen(pathname) && pathname[0] != '/'){
@@ -330,6 +330,19 @@ api_http_data_file(clixon_handle h,
         suffix++;
         if ((media = clicon_str2str(mime_map, suffix)) == NULL)
             media = "application/octet-stream";
+    }
+    /* 5. Accepted media_out: should check text/html, JavaScript, image, and css
+     */
+    if ((media_list = restconf_param_get(h, "HTTP_ACCEPT")) != NULL){
+        if (restconf_media_in_list(media, media_list) != 1 &&
+            restconf_media_in_list("*/*", media_list) != 1) {
+            /* If the server does not support any of the requested
+             * output encodings for a request, then it MUST return an error response
+             * with a "406 Not Acceptable" status-line. */
+            if (restconf_not_acceptable(h, req, 1, HTTP_DATA_TEXT_HTML) < 0)
+                goto done;
+            goto ok;
+        }
     }
     /* Size could have been taken from stat() but this reduces the race condition interval 
      * There is still one without flock
@@ -416,12 +429,11 @@ api_http_data(clixon_handle  h,
 {
     int   retval = -1;
     char *request_method = NULL;
-    char *media_list = NULL;
     int   head = 0;
     int   options = 0;
-    int   ret;
     cbuf *indata = NULL;
     char *path = NULL;
+    int   ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (req == NULL){
@@ -466,20 +478,6 @@ api_http_data(clixon_handle  h,
         if (api_http_data_err(h, req, 400) < 0) /* bad request */
             goto done;
         goto ok;
-    }
-    /* 5. Accepted media_out: should check text/html, JavaScript, image, and css
-     */
-    if ((media_list = restconf_param_get(h, "HTTP_ACCEPT")) != NULL){
-        if (restconf_media_in_list("text/html", media_list) != 1 &&
-            restconf_media_in_list("*/*", media_list) != 1
-            && 0) { /* XXX: not yet */
-        /* If the server does not support any of the requested
-         * output encodings for a request, then it MUST return an error response
-         * with a "406 Not Acceptable" status-line. */
-        if (restconf_not_acceptable(h, req, 1, HTTP_DATA_TEXT_HTML) < 0)
-            goto done;
-        goto ok;
-        }
     }
     /* 6. Authenticate
      * Note, error handling may need change since it is restconf based

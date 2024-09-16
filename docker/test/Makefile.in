@@ -78,7 +78,7 @@ openconfig:
 	./getopenconfig.sh
 
 docker: clixon yang openconfig $(DOCKERFILE)
-	sudo docker build -f $(DOCKERFILE) -t $(IMG)  $(DOCKERFLAGS) .
+	sudo docker build --progress plain -f $(DOCKERFILE) -t $(IMG)  $(DOCKERFLAGS) .
 
 push:
 	sudo docker push $(IMG)

@@ -213,10 +213,8 @@ EOF
         expectpart "$(curl $CURLOPTS -X GET -H 'Accept: wrong/media,*/*' $proto://localhost/data/index.html)" 0 "HT
 TP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
 
-if false; then # XXX Se step 5 in api_http_data, unclear which media should be accepted
         new "Server does not support list of medias Expect 406"
         expectpart "$(curl $CURLOPTS -X GET -H 'Accept: wrong/media' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 406" "content-type: text/html" "<error-message>Unacceptable output encoding</error-message>"
-fi
 
         new "WWW get dir -> expect index.html"
         expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
@@ -231,7 +229,13 @@ fi
         mv $dir/www/data/tmp.index.html $dir/www/data/index.html 
         
         new "WWW get css"
-        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/css' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
+
+        new "WWW get css accept *"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html,*/*' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
+
+        new "WWW get css, operation-not-supported"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 406" "operation-not-supported"
 
         new "WWW head"
         expectpart "$(curl $CURLOPTS --head -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" --not-- "<title>Welcome to Clixon!</title>"
