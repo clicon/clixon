@@ -17,7 +17,7 @@ module clixon-restconf {
         "This YANG module provides a data-model for the Clixon RESTCONF daemon.
          There is also clixon-config also including some restconf options.
          The separation is not always logical but there are some reasons for the split:
-         1. Some data (ie 'socket') is structurally complex and cannot be expressed as a 
+         1. Some data (ie 'socket') is structurally complex and cannot be expressed as a
             simple option
          2. clixon-restconf is defined as a macro/grouping and can be included in
             other YANGs. In particular, it can be used inside a datastore, which
@@ -25,7 +25,7 @@ module clixon-restconf {
          3. Related to (2), options that should not be settable in a datastore should be
             in clixon-config
 
-       Some of this spec if in-lined from ietf-restconf-server@2022-05-24.yang 
+       Some of this spec if in-lined from ietf-restconf-server@2022-05-24.yang
        ";
     revision 2022-08-01 {
         description
@@ -162,7 +162,7 @@ module clixon-restconf {
         }
         leaf log-destination {
             description
-                "Log destination. 
+                "Log destination.
                  If debug is not set, only notice, error and warning will be logged";
             type log-destination;
             default syslog;
@@ -252,7 +252,7 @@ module clixon-restconf {
             container call-home {
                 presence
                     "Identifies that the server has been configured to initiate
-                     call home connections. 
+                     call home connections.
                      If set, address/port refers to destination.";
                 description
                     "See RFC 8071 NETCONF Call Home and RESTCONF Call Home";

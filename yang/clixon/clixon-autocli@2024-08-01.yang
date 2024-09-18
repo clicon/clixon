@@ -12,10 +12,10 @@ module clixon-autocli{
     description
         "Clixon CLIgen specification declarations, including autocli.
          Design inspired by ietf-netconf-acm.yang
-      
+
        ***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2020-2021 Olof Hagsand and Rubicon Communications, LLC(Netgate)
-       
+
        This file is part of CLIXON
 
        Licensed under the Apache License, Version 2.0 (the \"License\");
@@ -33,7 +33,7 @@ module clixon-autocli{
        in which case the provisions of the GPL are applicable instead
        of those above. If you wish to allow use of your version of this file only
        under the terms of the GPL, and not to allow others to
-       use your version of this file under the terms of Apache License version 2, 
+       use your version of this file under the terms of Apache License version 2,
        indicate your decision by deleting the provisions above and replace them with
        the notice and other provisions required by the GPL. If you do not delete
        the provisions above, a recipient may use your version of this file under
@@ -67,30 +67,30 @@ module clixon-autocli{
              Released in Clixon 5.5";
     }
     extension hide {
-        description 
-            "Hide the command associated with a YANG node and its 
+        description
+            "Hide the command associated with a YANG node and its
              sub-commands.
              The command is active but not shown by ? or TAB. In other words, it hides the
              auto-completion of commands";
     }
     extension hide-show {
-        description 
-            "Hide the command associated with a YANG node and its 
+        description
+            "Hide the command associated with a YANG node and its
              sub-commands in CLI show commands.";
     }
     extension skip {
-        description 
+        description
             "Skip the command associated with a YANG node and its sub-commands altogether.
              The command is completely removed from the CLI, but still exists in NETCONF/
              RESTCONF.";
     }
     extension strict-expand {
-        description 
+        description
             "Modify the autocli by only showing exactly the expanded values of a variable.
              It should not be possible to add a new value that is not in the expanded list.";
     }
     extension alias {
-        description 
+        description
             "Replace the command name with a new value.
              Instead of using the YANG argument name, use new argument instead.
              Only implemented for YANG leafs";
@@ -98,13 +98,13 @@ module clixon-autocli{
     }
     typedef autocli-op {
         description
-            "Autocli rule-type operation, each rule use different fields as 
+            "Autocli rule-type operation, each rule use different fields as
              described in the individual enums below.";
         type enumeration {
             enum enable {
                 description
-                    "Include a complete subtree to rendering of autocli. 
-                     Example: 
+                    "Include a complete subtree to rendering of autocli.
+                     Example:
                         <module-default>false</module-default>
                         <rule>
                            <name>wifi</name>
@@ -131,21 +131,21 @@ module clixon-autocli{
                            <yang-keyword>container</yang-keyword>
                            <yang-keyword-child>list</yang-keyword-child>
                         </rule>
-                 Rule fields used: 
+                 Rule fields used:
                     module-name, yang-keyword, schema-nodeid, yang-keyword-child, extension";
             }
             enum edit-mode {
                 description
                     "Autocli CLI edit modes for YANG symbols.
-                     For example, 
-                         edit interface eth0<CR> 
+                     For example,
+                         edit interface eth0<CR>
                      enters a new mode with local context.";
             }
         }
     }
     typedef list-keyword-type {
         description
-            "Autocli CLI keyword behaviour in YANG lists. 
+            "Autocli CLI keyword behaviour in YANG lists.
              With 'keyword' is meant CLIgen 'constants' rather than 'variables'.
              Assume a YANG LIST: list a{ key x; leaf x; leaf y;} and how to generate
              the autocli";
@@ -192,7 +192,7 @@ module clixon-autocli{
         }
         leaf treeref-state-default {
             description
-                "If 'true', generate CLI from YANG state/non-config statements as well, not only config data. 
+                "If 'true', generate CLI from YANG state/non-config statements as well, not only config data.
                  Many specs have very large state parts, for example openconfig has ca 10 times
                  larger state than config parts, see for example openconfig-isis.yang.";
             type boolean;
@@ -201,18 +201,18 @@ module clixon-autocli{
         leaf edit-mode-default {
             description
                 "Open automatic edit-modes for some YANG keywords and do not allow others.
-                 A CLI edit mode opens a carriage-return option and changes the context to be 
+                 A CLI edit mode opens a carriage-return option and changes the context to be
                  in that local context.
-                 For example:  
+                 For example:
                     cli> interfaces interface e0<cr>
-                    eth0> 
+                    eth0>
                  Default is to generate edit-modes for all containers and lists.";
             type yang-keywords;
             default "list container";
         }
         leaf completion-default {
             description
-                "Generate code for CLI completion of existing db symbols. 
+                "Generate code for CLI completion of existing db symbols.
                  That is, check existing configure database for completion options.
                  This is normally always enabled.";
             type boolean;
@@ -227,7 +227,7 @@ module clixon-autocli{
                  If 'true' use indirect tree reference '@treeref' to reference the grouping definition. This
                  saves memory for large YANGs.
 
-                 See also AUTOCLI_GROUPING_TOPLEVEL_SKIP and AUTOCLI_GROUPING_AUGMENT_SKIP for 
+                 See also AUTOCLI_GROUPING_TOPLEVEL_SKIP and AUTOCLI_GROUPING_AUGMENT_SKIP for
                  temporary disabled cornercases.
                  This option was introduced in Clixon 6.3";
             type boolean;

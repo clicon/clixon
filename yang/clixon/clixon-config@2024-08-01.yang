@@ -23,7 +23,7 @@ module clixon-config {
        ***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2009-2019 Olof Hagsand
        Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
-       
+
        This file is part of CLIXON
 
        Licensed under the Apache License, Version 2.0 (the \"License\");
@@ -41,7 +41,7 @@ module clixon-config {
        in which case the provisions of the GPL are applicable instead
        of those above. If you wish to allow use of your version of this file only
        under the terms of the GPL, and not to allow others to
-       use your version of this file under the terms of Apache License version 2, 
+       use your version of this file under the terms of Apache License version 2,
        indicate your decision by deleting the provisions above and replace them with
        the notice and other provisions required by the GPL. If you do not delete
        the provisions above, a recipient may use your version of this file under
@@ -76,7 +76,7 @@ module clixon-config {
              Marked as obsolete:
                     CLICON_DATASTORE_CACHE
                     CLICON_NETCONF_CREATOR_ATTR
-             Changed semantics of 
+             Changed semantics of
              Released in Clixon 7.0";
     }
     revision 2023-11-01 {
@@ -213,7 +213,7 @@ module clixon-config {
     }
     revision 2020-11-03 {
         description
-            "Added CLICON_BACKEND_RESTCONF_PROCESS 
+            "Added CLICON_BACKEND_RESTCONF_PROCESS
              Copied to clixon-restconf.yang and marked as obsolete:
                    CLICON_RESTCONF_IPV4_ADDR
                    CLICON_RESTCONF_IPV6_ADDR
@@ -230,9 +230,9 @@ module clixon-config {
     }
     revision 2020-08-17 {
         description
-            "Added: CLICON_RESTCONF_IPV4_ADDR, CLICON_RESTCONF_IPV6_ADDR, 
+            "Added: CLICON_RESTCONF_IPV4_ADDR, CLICON_RESTCONF_IPV6_ADDR,
                     CLICON_RESTCONF_HTTP_PORT, CLICON_RESTCONF_HTTPS_PORT
-                    CLICON_NAMESPACE_NETCONF_DEFAULT, 
+                    CLICON_NAMESPACE_NETCONF_DEFAULT,
                     CLICON_CLI_HELPSTRING_TRUNCATE, CLICON_CLI_HELPSTRING_LINES";
     }
     revision 2020-06-17 {
@@ -266,8 +266,8 @@ module clixon-config {
     }
     revision 2019-06-05 {
         description
-            "Added: CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE, 
-                    CLICON_CLI_HIST_FILE, CLICON_CLI_HIST_SIZE, 
+            "Added: CLICON_YANG_REGEXP, CLICON_CLI_TAB_MODE,
+                    CLICON_CLI_HIST_FILE, CLICON_CLI_HIST_SIZE,
                     CLICON_XML_CHANGELOG, CLICON_XML_CHANGELOG_FILE;
              Renamed CLICON_XMLDB_CACHE to CLICON_DATASTORE_CACHE (changed type)
              Deleted: CLICON_XMLDB_PLUGIN, CLICON_USE_STARTUP_CONFIG";
@@ -329,7 +329,7 @@ module clixon-config {
                 description "No cache always work directly with file";
             }
             enum cache{
-                description "Use in-memory cache. 
+                description "Use in-memory cache.
                              Make copies when accessing internally.";
             }
             enum cache-zerocopy{
@@ -366,7 +366,7 @@ module clixon-config {
         type enumeration{
             enum posix {
                 description
-                  "Translate XSD XML Schema regexp:s to Posix regexp. This is 
+                  "Translate XSD XML Schema regexp:s to Posix regexp. This is
                    not a complete translation, but can be considered good-enough
                    for Yang use-cases as defined by openconfig and yang-models
                    for example.";
@@ -375,7 +375,7 @@ module clixon-config {
                 description
                   "Use libxml2 XSD XML Schema regexp engine. This is a complete
                    XSD regexp engine..
-                   Requires libxml2 to be available at configure time 
+                   Requires libxml2 to be available at configure time
                    (HAVE_LIBXML2 should be set)";
             }
         }
@@ -402,7 +402,7 @@ module clixon-config {
     typedef nacm_cred_mode{
         description
                 "How NACM user should be matched with unix socket peer credentials.
-                 This means nacm user must match socket peer user accessing the 
+                 This means nacm user must match socket peer user accessing the
                  backend socket. For IP sockets only mode none makes sense.";
         type enumeration{
             enum none {
@@ -479,32 +479,19 @@ module clixon-config {
                 *:<feature> means enable the specific feature in all modules";
             type string;
         }
-        leaf-list CLICON_YANG_DIR {
-            ordered-by user;
-            type string;
-            description
-                "Yang directory path for finding module and submodule files. 
-                 A list of these options should be in the configuration. 
-                 When loading a Yang module, Clixon searches this list in the order
-                 they appear. 
-                 Note since Clixon 5.4 such a directory is searched recursively, not just the
-                 directory itself. 
-                 Ensure that YANG_INSTALLDIR (default 
-                 /usr/local/share/clixon) is present in the path";
-        }
         /* Configuration */
         leaf CLICON_CONFIGFILE{
             type string;
             description
                 "Location of the main configuration-file.
-                Default is CLIXON_DEFAULT_CONFIG=/usr/local/etc/clicon.xml set in configure. 
+                Default is CLIXON_DEFAULT_CONFIG=/usr/local/etc/clicon.xml set in configure.
                 Note that due to bootstrapping, this value is not actually read from file
                 and therefore a default value would be meaningless.";
         }
         leaf CLICON_CONFIGDIR{
             type string;
             description
-                "Location of directory of extra configuration files. 
+                "Location of directory of extra configuration files.
                 If not given, only main configfile is read.
                 If given, and if the directory exists, all files in this directory will be loaded
                 AFTER the main config file (CLICON_CONFIGFILE) in the following way:
@@ -521,12 +508,25 @@ module clixon-config {
             type string;
             description
                 "If specified load an application-specific configuration YANG that overrides
-                 this config. 
+                 this config.
                  Normally, that YANG imports clixon-config.
                  This field is a 'bootstrap' field.
                 ";
         }
         /* YANG */
+        leaf-list CLICON_YANG_DIR {
+            ordered-by user;
+            type string;
+            description
+                "Yang directory path for finding module and submodule files.
+                 A list of these options should be in the configuration.
+                 When loading a Yang module, Clixon searches this list in the order
+                 they appear.
+                 Note since Clixon 5.4 such a directory is searched recursively, not just the
+                 directory itself.
+                 Ensure that YANG_INSTALLDIR (default
+                 /usr/local/share/clixon) is present in the path";
+        }
         leaf CLICON_YANG_MAIN_FILE {
             type string;
             description
@@ -555,13 +555,13 @@ module clixon-config {
         leaf CLICON_YANG_MODULE_MAIN {
             type string;
             description
-                "Option used to construct initial yang file: 
+                "Option used to construct initial yang file:
                  <module>[@<revision>]";
         }
         leaf CLICON_YANG_MODULE_REVISION {
             type string;
             description
-                "Option used to construct initial yang file: 
+                "Option used to construct initial yang file:
                  <module>[@<revision>].
                  Used together with CLICON_YANG_MODULE_MAIN";
         }
@@ -595,7 +595,7 @@ module clixon-config {
                 "YANG schema mount, RFC 8528.
                  When enabled, mount-points as defined by the 'yangmnt:mount-point' extension can
                  be populated by other YANGs than the root.
-                 This is controlled by the ca_yang_mount plugin callback by returning a assigning a 
+                 This is controlled by the ca_yang_mount plugin callback by returning a assigning a
                  yanglib module-set section that corresponds to the mounted YANGs.
                  Also, schema mount statistics is added to state data
                  Further, autocli syntax is added by definining a tree resolve wrapper";
@@ -706,7 +706,7 @@ module clixon-config {
             default false;
             description
                 "This option relates to RFC 6241 Sec 8.1 Capabilies Exchange where it says:
-                   When the NETCONF session is opened, each peer (both client and server) MUST 
+                   When the NETCONF session is opened, each peer (both client and server) MUST
                    send a <hello> element...
                  If true, an RPC can be processed directly with no preceeding hello message.
                  This is legacy clixon but invalid according to the RFC.
@@ -729,9 +729,9 @@ module clixon-config {
             type int32;
             default 1;
             description
-                "This option relates to RFC6241 Sec 8.1 capabilities exchange. 
+                "This option relates to RFC6241 Sec 8.1 capabilities exchange.
                  This number is the highest netconf  base capability announced during
-                 the hello protocol. 
+                 the hello protocol.
                  Specifically, If the option number is 0, only 'urn:ietf:params:netconf:base:1.0'
                  is announced, if it is 1, both 'urn:ietf:params:netconf:base:1.0' and
                  'urn:ietf:params:netconf:base:1.1' are announced.
@@ -745,10 +745,10 @@ module clixon-config {
             description
                 "If set, clixon will accept the 'creator' attribute as defined by the
                  creator annotation in clixon-lib.
-                 It can be used when several clients (such as a 'service') can create the same object. 
+                 It can be used when several clients (such as a 'service') can create the same object.
                  If one such client/service is deleted, the object is deleted only if all services
                  that created the object are deleted.
-                 The clixon controller uses this feature, but could in principle be used by other 
+                 The clixon controller uses this feature, but could in principle be used by other
                  applications.
                  Marked as obsolete in 7.0 since creators attribute replaced by clixon-lib creators
                  config";
@@ -799,16 +799,16 @@ module clixon-config {
         leaf CLICON_RESTCONF_INSTALLDIR {
             type string;
             description
-                "If set, path to dir of clixon-restconf daemon binary as used by backend if 
+                "If set, path to dir of clixon-restconf daemon binary as used by backend if
                  started internally (run-time).
                  If this path is not set, clixon_restconf will be looked for according to
                  configured installdir: $(sbindir) (install-time)
                  Since programs can be moved around at install/cross-compile time the installed
-                 dir may be difficult to know at install time, which is the reason why 
-                 CLICON_RESTCONF_INSTALLDIR exists, in order to override the Makefile 
+                 dir may be difficult to know at install time, which is the reason why
+                 CLICON_RESTCONF_INSTALLDIR exists, in order to override the Makefile
                  installdir.
                  Note on the installdir, DESTDIR is not included since according to man pages:
-                     by specifying DESTDIR should not change the operation of the software in 
+                     by specifying DESTDIR should not change the operation of the software in
                      any way, so its value should not be included in any file contents. ";
         }
         leaf CLICON_RESTCONF_STARTUP_DONTUPDATE {
@@ -825,7 +825,7 @@ module clixon-config {
         }
         leaf CLICON_RESTCONF_USER {
             type string;
-            description 
+            description
                 "Run clixon_daemon as this user
                  When drop privileges is used, the daemon will drop privileges to this user.
                  In pre-5.2 code this was configured as compile-time constant WWWUSER with
@@ -836,8 +836,8 @@ module clixon-config {
         leaf CLICON_RESTCONF_PRIVILEGES {
             type priv_mode;
             default drop_perm;
-            description 
-                "Restconf privileges mode. 
+            description
+                "Restconf privileges mode.
                  If drop_perm or drop_temp then drop privileges to CLICON_RESTCONF_USER.
                  If the platform does not support getresuid and accompanying functions, the mode
                  must be set to 'none'.
@@ -851,7 +851,7 @@ module clixon-config {
                  If false, disable direct and upgrade for plain(non-tls) HTTP/2.
                  If true, allow direct and upgrade for plain(non-tls) HTTP/2.
                  It may especially useful to disable in http/1 + http/2 mode to avoid the complex
-                 upgrade/switch from http/1 to http/2. 
+                 upgrade/switch from http/1 to http/2.
                  Note this also disables plain http/2 in prior-knowledge, that is, in http/2-only mode.
                  HTTP/2 in https(TLS) is unaffected";
         }
@@ -864,9 +864,9 @@ module clixon-config {
                  If the value is not set (or other value), Clixon closes the socket(reset)
                  If the value is 'http/1.1' then HTTP/1.1 is selected
                  If the value is 'http/2' then HTTP/2 is selected
-                 Note that if Clixon is configured for only HTTP/1 (--disable-nghttp2), 
+                 Note that if Clixon is configured for only HTTP/1 (--disable-nghttp2),
                  then HTTP/1 is selected if the client does not use ALPN.
-                 Likewise, if Clixon is configured for only HTTP/2 (--disable-http1), 
+                 Likewise, if Clixon is configured for only HTTP/2 (--disable-http1),
                  then HTTP/2 is selected if the client does not use ALPN.
                  This option does not apply for plain (non-TLS) HTTP";
         }
@@ -877,11 +877,11 @@ module clixon-config {
             description
                 "URI match for http-data serving files specified by CLICON_HTTP_DATA_ROOT.
                  Must start with / (example: /)
-                 Restconf paths at /restconf is always done before data (or streams) 
+                 Restconf paths at /restconf is always done before data (or streams)
                  The PATH is appended to CLICON_HTTP_DATA_ROOT to find a file.
                  Example, if PATH is /data and ROOT is /www, and a GET /index.html, the
                  corresponding file is '/www/data/index.html'
-                 Both feature clixon-restconf:http-data and restconf/enable-http-data 
+                 Both feature clixon-restconf:http-data and restconf/enable-http-data
                  must be enabled for this match to occur.";
         }
         leaf CLICON_HTTP_DATA_ROOT{
@@ -890,22 +890,22 @@ module clixon-config {
             default "/var/www";
             description
                 "Location in file system where http-data files are looked for.
-                 Soft links, '..', '~' etc are not followed. 
+                 Soft links, '..', '~' etc are not followed.
                  See also CLICON_HTTP_DATA_PATH
-                 Both feature clixon-restconf:http-data and restconf/enable-http-data 
+                 Both feature clixon-restconf:http-data and restconf/enable-http-data
                  must be enabled for this match to occur.";
         }
         /* Clixon CLI */
         leaf CLICON_CLI_DIR {
             type string;
             description
-                "Directory containing frontend cli loadable plugins. Load all .so 
+                "Directory containing frontend cli loadable plugins. Load all .so
                  plugins in this directory as CLI object plugins";
         }
         leaf CLICON_CLISPEC_DIR {
             type string;
             description
-                "Directory containing frontend cligen spec files. Load all .cli 
+                "Directory containing frontend cligen spec files. Load all .cli
                  files in this directory as CLI specification files.
                  See also CLICON_CLISPEC_FILE.";
         }
@@ -926,7 +926,7 @@ module clixon-config {
             type int32;
             default 1;
             description
-                "Dont include keys in cvec in cli vars callbacks, 
+                "Dont include keys in cvec in cli vars callbacks,
                  ie a & k in 'a <b> k <c>' ignored
                  (consider boolean)";
         }
@@ -935,7 +935,7 @@ module clixon-config {
             default 1;
             description
                 "Set to 0 if you want CLI INPUT to wrap to next line.
-                 Set to 1 if you  want CLI INPUT to scroll sideways when approaching 
+                 Set to 1 if you  want CLI INPUT to scroll sideways when approaching
                       right margin";
         }
         leaf CLICON_CLI_LINES_DEFAULT {
@@ -968,7 +968,7 @@ module clixon-config {
             default 0;
             description
                 "Set to 1 to enable CLIgen UTF-8 experimental mode.
-                 Note that this feature is EXPERIMENTAL and may not properly handle 
+                 Note that this feature is EXPERIMENTAL and may not properly handle
                  scrolling, control characters, etc
                  (consider boolean)";
         }
@@ -983,7 +983,7 @@ module clixon-config {
             type int32;
             default 300;
             description
-                "Number of lines to save in CLI history. 
+                "Number of lines to save in CLI history.
                  Also, if CLICON_CLI_HIST_FILE is set, also the size in lines
                  of the saved history.";
         }
@@ -991,9 +991,9 @@ module clixon-config {
             type uint32;
             default 256;
             description
-                "CLIgen buffer (cbuf) initial size. 
+                "CLIgen buffer (cbuf) initial size.
                  When the buffer needs to grow, the allocation grows quadratic up to a threshold
-                 after which linear growth continues. 
+                 after which linear growth continues.
                  See CLICON_CLI_BUF_THRESHOLD";
         }
         leaf CLICON_CLI_BUF_THRESHOLD {
@@ -1019,16 +1019,16 @@ module clixon-config {
             default 0;
             description
                 "CLIgen help string on query (?) limit of number of lines to show, 0 means unlimited.
-                 This only applies if you have multi-line help strings, such as when generating 
+                 This only applies if you have multi-line help strings, such as when generating
                  from a spec, such as in the autocli.";
         }
         leaf CLICON_CLI_EXPAND_LEAFREF {
             type boolean;
             default false;
             description
-                "If true, then CLI expansion of leafrefs (in expand_dbvar) are done using the 
-                 source values, not the references. 
-                 This applies to the autocli but also in a handcrafted CLI if expand_dbvar is used. 
+                "If true, then CLI expansion of leafrefs (in expand_dbvar) are done using the
+                 source values, not the references.
+                 This applies to the autocli but also in a handcrafted CLI if expand_dbvar is used.
                  Example, assume ifref with leafref pointing to source if values:
                    <if>a</if><if>b</if><if>c</if>
                    <ifref>b</ifref>
@@ -1051,7 +1051,7 @@ module clixon-config {
                 "Address family for communicating with clixon_backend with one of:
                  Note IPv6 not implemented.
                  Note that UNIX socket makes credential check as follows:
-                 (1) client needs rw access to the socket 
+                 (1) client needs rw access to the socket
                  (2) NACM credentials can be checked according to CLICON_NACM_CREDENTIALS
                  Warning: Only UNIX (not IPv4) sockets have credential mechanism.
                  ";
@@ -1071,14 +1071,14 @@ module clixon-config {
             type int32;
             default 4535;
             description
-                "Inet socket port for communicating with clixon_backend 
+                "Inet socket port for communicating with clixon_backend
                  (only IPv4|IPv6)";
         }
         leaf CLICON_SOCK_GROUP {
             type string;
             default "clicon";
             description
-                "Group membership to access clixon_backend unix socket and gid for 
+                "Group membership to access clixon_backend unix socket and gid for
                  deamon";
         }
         leaf CLICON_SOCK_PRIO {
@@ -1097,7 +1097,7 @@ module clixon-config {
             type int32;
             default 0;
             description
-                "Set if all configuration changes are committed automatically 
+                "Set if all configuration changes are committed automatically
                  on every edit change. Explicit commit commands unnecessary
                  If confirm-commit, follow RESTCONF semantics: commit ephemeral but fail on
                  persistent confirming commit.
@@ -1108,7 +1108,7 @@ module clixon-config {
             default false;
             description
                 "Set if all edit-config implicitly locks without the need of an explicit lock-db
-                 In short, the lock is obtained by edit-config and copy-config and released by 
+                 In short, the lock is obtained by edit-config and copy-config and released by
                  discard and commit.
                  Also, any edits in candidate are discarded if the client closes the connection.
                  This effectively disables shared candidate";
@@ -1118,7 +1118,7 @@ module clixon-config {
             type datastore_cache;
             default cache;
             description
-                "Clixon datastore cache behaviour. There are three values: no cache, 
+                "Clixon datastore cache behaviour. There are three values: no cache,
                  cache with copy, or cache without copy.
                  Note: 'cache' is default value and supported with regressions etc.
                  Others are experimental (in Clixon 5.5)
@@ -1144,7 +1144,7 @@ module clixon-config {
             type boolean;
             default true;
             description
-                "XMLDB datastore pretty print. 
+                "XMLDB datastore pretty print.
                  If set, insert spaces and line-feeds making the XML/JSON human
                  readable. If not set, make the XML/JSON more compact.";
         }
@@ -1152,7 +1152,7 @@ module clixon-config {
             type boolean;
             default false;
             description
-                "If set, tag datastores with RFC 8525 YANG Module Library 
+                "If set, tag datastores with RFC 8525 YANG Module Library
                  info.
                  By default, modstate is added last in datastore.
                  When loaded at startup, a check is made if the system
@@ -1163,7 +1163,7 @@ module clixon-config {
             default true;
             description
                 "Controls behavior of check of startup in upgrade scenarios.
-                 If set, yang bind and check datastore syntax against the old Yang. 
+                 If set, yang bind and check datastore syntax against the old Yang.
                  The old yang must be accessible via YANG_DIR.
                  Will fail startup if old yang not found or if old config does not match.
                  If not set, no yang check of old config is made until it is upgraded to new yang.";
@@ -1201,8 +1201,8 @@ module clixon-config {
                 "Validate user state callback content.
                  AND NETCONF reply sanity (misnomer)
                  Users may register state callbacks using ca_statedata callback
-                 When set, the XML returned from the callback is validated after merging with 
-                 the running db. If it fails, an internal error is returned to the originating 
+                 When set, the XML returned from the callback is validated after merging with
+                 the running db. If it fails, an internal error is returned to the originating
                  user.
                  If the option is not set, the XML returned by the user is not validated.
                  Note that enabling currently causes a large performance overhead for large
@@ -1216,7 +1216,7 @@ module clixon-config {
                 "Debug option.
                  If >0, make a check of resources before and after each plugin callback code
                  to check if the plugin violated resources.
-                 This is primarily intended for development and debugging but may also be enabled 
+                 This is primarily intended for development and debugging but may also be enabled
                  in a running system.
                  If 1, errors will be logged to syslog as WARNINGs.
                  If 2, the program will abort using assert() on first error
@@ -1233,7 +1233,7 @@ module clixon-config {
             description
                 "Local/global flag for dlopen as described in the man page.
                  This applies to the opening of all clixon plugins (backend/cli/netconf/restconf)
-                 when loading the shared .so file with dlopen.  
+                 when loading the shared .so file with dlopen.
                  If false:  Symbols defined in this shared object are not made available  to  resolve
                  references in subsequently loaded shared objects (default).
                  If true: The symbols defined by this shared object will be made available for symbol res‐
@@ -1245,7 +1245,7 @@ module clixon-config {
             description
                 "Undefine if you want to ensure strict namespace assignment on all netconf
                  and XML statements according to the standard RFC 6241.
-                 If defined, top-level rpc calls need not have namespaces (eg using xmlns=<ns>) 
+                 If defined, top-level rpc calls need not have namespaces (eg using xmlns=<ns>)
                  since the default NETCONF namespace will be assumed. (This is not standard).
                  See rfc6241 3.1: urn:ietf:params:xml:ns:netconf:base:1.0.";
         }
@@ -1266,7 +1266,7 @@ module clixon-config {
             type nacm_mode;
             default disabled;
             description
-                "RFC8341 network access configuration control model (NACM) mode: disabled, 
+                "RFC8341 network access configuration control model (NACM) mode: disabled,
                  in regular (internal) config or separate external file given by CLICON_NACM_FILE";
         }
         leaf CLICON_NACM_FILE {
@@ -1297,7 +1297,7 @@ module clixon-config {
             default false;
             description
                 "RFC 8341 and ietf-netconf-acm@2018-02-14.yang defines enable-nacm as true by
-                 default. Since also write-default is deny by default it leads to that empty 
+                 default. Since also write-default is deny by default it leads to that empty
                  configs can not be edited.
                  This means that a startup config must always have a NACM configuration or
                  that the NACM recovery session is used to edit an empty config.
@@ -1309,11 +1309,11 @@ module clixon-config {
             default "0";
             description
                 "Only if CLICON_YANG_LIBRARY enabled.
-                 Contains a server-specific identifier representing the current set of modules 
+                 Contains a server-specific identifier representing the current set of modules
                  and submodules.  The server MUST change the value of this leaf if the
                  information represented by the 'module' list instances has changed.
                  The /yang-library/content-id state-data leaf is set with this value
-                 If CLICON_MODULE_LIBRARY_RFC7895 is enabled, it sets the modules-state/module-set-id 
+                 If CLICON_MODULE_LIBRARY_RFC7895 is enabled, it sets the modules-state/module-set-id
                  instead";
         }
         /* Notification streams */
@@ -1348,8 +1348,8 @@ module clixon-config {
             type string;
             default "https://localhost";
             description "Prepend this to CLICON_STREAM_PATH to form URL.
-                  See RFC 8040 Sec 9.3 location leaf: 
-                  'Contains a URL that represents the entry point for 
+                  See RFC 8040 Sec 9.3 location leaf:
+                  'Contains a URL that represents the entry point for
                   establishing notification delivery via server-sent events.'
                   Prepend this constant to name of stream.
                   Example: https://localhost/streams/NETCONF. Note this is the
@@ -1362,7 +1362,7 @@ module clixon-config {
             description "For stream publish using eg nchan, the base address
                   to publish to. Example value: http://localhost/pub
                   Example: stream NETCONF would then be pushed to
-                  http://localhost/pub/NETCONF. 
+                  http://localhost/pub/NETCONF.
                   Note this may be a local/provate URL behind reverse-proxy.
                   If not given, do NOT enable stream publishing using NCHAN.";
         }
@@ -1398,14 +1398,14 @@ module clixon-config {
             type uint32;
             default 0;
             description
-                "Length limitation of debug and log strings. 
+                "Length limitation of debug and log strings.
                  Especially useful for dynamic debug strings, such as packet dumps.
                  0 means no limit";
         }
         /* SNMP */
         leaf-list CLICON_SNMP_MIB {
             description
-                "Names of MIBs that are used by clixon_snmp. 
+                "Names of MIBs that are used by clixon_snmp.
                  For each MIB M, a YANG file M.yang is expected to be found.
                  If not found, an error is genereated.
                  The YANG file M.yang is typically generated from the source MIB but can also
