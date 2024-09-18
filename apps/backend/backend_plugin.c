@@ -806,6 +806,20 @@ plugin_transaction_revert_all(clixon_handle       h,
     return retval; /* ignore errors */
 }
 
+/*! Revert a commit for failed plugin
+ * The commit failed is called for only failed plugin before revert all cb.
+ */
+static int
+plugin_transaction_commit_failed(clixon_plugin_t      *cp,
+                                clixon_handle       h,
+                                transaction_data_t *td)
+{
+    trans_cb_t *fn;
+
+    if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit_failed) != NULL)
+        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+    return 0;
+}
 
 /*! Call single plugin transaction_commit() in a commit transaction
  *
@@ -848,6 +862,8 @@ plugin_transaction_commit_all(clixon_handle       h,
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
         i++;
         if (plugin_transaction_commit_one(cp, h, td) < 0){
+            /* First make an effort ro revert transaction for the failed plugin */
+            plugin_transaction_commit_failed(cp, h, td);
             /* Make an effort to revert transaction */
             plugin_transaction_revert_all(h, td, i-1);
             goto done;
