@@ -355,7 +355,7 @@ if test "$enable_netsnmp" = "yes"; then
 fi
 
 # Set default config file location
-CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
+CLIXON_DEFAULT_CONFIG=${SYSCONFDIR}/clixon.xml
 AC_ARG_WITH([configfile],
 	    [AS_HELP_STRING([--with-configfile=FILE],[Set default path to config file])],
 	    [CLIXON_DEFAULT_CONFIG="$withval"],)
