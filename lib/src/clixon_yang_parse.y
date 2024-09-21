@@ -624,6 +624,7 @@ argument_substmts : argument_substmts argument_substmt
 
 argument_substmt : yin_element_stmt1 { _PARSE_DEBUG("argument-substmt -> yin-element-stmt1");}
                  | unknown_stmt   { _PARSE_DEBUG("argument-substmt -> unknown-stmt");}
+                 |
                  ;
 
 

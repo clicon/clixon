@@ -62,6 +62,7 @@ Developers may need to change their code
 
 ### Corrected Busg
 
+* Fixed: [Clixon fails to load yang with extension](https://github.com/clicon/clixon/issues/554)
 * Fixed: Double top-levels in xmldb_get that could occur with xpath containing choice.
 * Fixed: [RESTCONF exit on cert error + complex accept](https://github.com/clicon/clixon/issues/551)
 * Fixed: [Deletion of leaf in YANG choice removes leaf in a different choice/case](https://github.com/clicon/clixon/issues/542)
