@@ -337,7 +337,7 @@ yang_augment_node(clixon_handle h,
                            yang_argument_get(yc0),
                            yang_key2str(childkey),
                            schema_nodeid);
-                goto ok;
+                continue;
             }
             break;
         case Y_CASE:

@@ -62,6 +62,7 @@ Developers may need to change their code
 
 ### Corrected Busg
 
+* Fixed: [Clixon handle if-feature incorrectly](https://github.com/clicon/clixon/issues/555)
 * Fixed: [Clixon fails to load yang with extension](https://github.com/clicon/clixon/issues/554)
 * Fixed: Double top-levels in xmldb_get that could occur with xpath containing choice.
 * Fixed: [RESTCONF exit on cert error + complex accept](https://github.com/clicon/clixon/issues/551)
