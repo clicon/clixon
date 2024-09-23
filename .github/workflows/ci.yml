@@ -203,6 +203,12 @@ jobs:
         run: make
       - name: install
         run: sudo make install
+      - name: configure
+        run: ./configure
+      - name: make
+        run: make
+      - name: install
+        run: sudo make install DESTDIR=${{ github.workspace }}/build        
       - name: copy file for build deb packet dev
         run: cp -r ${{ github.workspace }}/debian ${{ github.workspace }}/build
       - name: add change log
@@ -229,5 +235,5 @@ jobs:
       - name: Upload artefact (clixon)
         uses: actions/upload-artifact@v4
         with:
-          name: libclixon7_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
-          path: ${{ github.workspace }}/libclixon7_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
+          name: clixon7_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
+          path: ${{ github.workspace }}/clixon7_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
