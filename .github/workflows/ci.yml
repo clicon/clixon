@@ -176,6 +176,19 @@ jobs:
     - name: run test r-y
       run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh" ./sum.sh'
 
+  reset-run-number:
+    needs: ubuntu-coverage
+    runs-on: ubuntu-latest
+    outputs:
+      run-number: ${{ steps.get-build.outputs.build-number }}
+    steps:
+      - name: Get build number and reset it
+        id: get-build
+        uses: mlilback/build-number@v1
+        with:
+          base: 0 # Update this number to reset counter
+          run-id: ${{ github.run_number }}
+
   create_deb_packet:
     needs: reset-run-number
     #if: github.ref == 'refs/heads/master'
