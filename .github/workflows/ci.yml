@@ -229,16 +229,6 @@ jobs:
         run: cd ${{ github.workspace }}/build && dpkg-buildpackage -us -uc
       - name: show directory
         run: ls -l ${{ github.workspace }}
-      - name: Create deb packet
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{env.VERSION}}_${{env.RUN_NUMBER}}
-          release_name: clixon_${{env.VERSION}}-${{env.RUN_NUMBER}}
-          draft: false
-          prerelease: false
       - name: Upload artefact (clixon)
         uses: actions/upload-artifact@v4
         with:
