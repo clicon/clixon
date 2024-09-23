@@ -912,10 +912,15 @@ ys_free1(yang_stmt *ys,
 {
     rpc_callback_t *rc;
     cg_var         *cv;
+    cvec           *cvv;
 
-    if ((cv = ys->ys_cv) != NULL){ // To not trigger asserts
+    if ((cv = ys->ys_cv) != NULL){
         ys->ys_cv = NULL;
         cv_free(cv);
+    }
+    if ((cvv = ys->ys_cvec) != NULL){
+        ys->ys_cvec = NULL;
+        cvec_free(cvv);
     }
     if (ys->ys_argument){
         free(ys->ys_argument);
