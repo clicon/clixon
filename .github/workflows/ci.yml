@@ -177,7 +177,6 @@ jobs:
       run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh" ./sum.sh'
 
   reset-run-number:
-    needs: ubuntu-coverage
     runs-on: ubuntu-latest
     outputs:
       run-number: ${{ steps.get-build.outputs.build-number }}
