@@ -10,14 +10,6 @@ Build-Depends:
  libssl-dev
 Standards-Version: 4.5.0
 
-Package: libclixon-dev
-Architecture: any
-Multi-Arch: foreign
-Depends: ${misc:Depends},
-         ${shlibs:Depends},
-         libcligen7
-Description: Clixon development package
-
 Package: clixon7
 Architecture: any
 Multi-Arch: foreign

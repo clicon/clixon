@@ -208,12 +208,12 @@ jobs:
       - name: make
         run: make
       - name: install
-        run: sudo make install DESTDIR=${{ github.workspace }}/build        
+        run: sudo make install DESTDIR=${{ github.workspace }}/build
       - name: copy file for build deb packet dev
         run: cp -r ${{ github.workspace }}/debian ${{ github.workspace }}/build
       - name: add change log
         run: cd ${{ github.workspace }}/build/debian && export NAME_VERSION="clixon (${{env.VERSION}}-${{env.RUN_NUMBER}})" && git --no-pager log --no-walk --encoding=utf-8 --expand-tabs=4 --pretty=format:"${NAME_VERSION} stable; urgency=medium%n%n  * %w(,,2)%B%w()%n -- %an <%ae>  %aD%n" > changelog && cat changelog
-      - name: run build packet lib and dev
+      - name: run build packet
         run: cd ${{ github.workspace }}/build && dpkg-buildpackage -us -uc
       - name: show directory
         run: ls -l ${{ github.workspace }}
@@ -227,11 +227,6 @@ jobs:
           release_name: clixon_${{env.VERSION}}-${{env.RUN_NUMBER}}
           draft: false
           prerelease: false
-      - name: Upload artefact
-        uses: actions/upload-artifact@v4
-        with:
-          name: libclixon-dev_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
-          path: ${{ github.workspace }}/libclixon-dev_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
       - name: Upload artefact (clixon)
         uses: actions/upload-artifact@v4
         with:
