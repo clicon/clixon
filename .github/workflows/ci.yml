@@ -27,7 +27,7 @@ jobs:
     - name: make install
       run: sudo make install install-include
     - name: make example
-      run: (cd example; make)   
+      run: (cd example; make)
     - name: install example
       run: (cd example; sudo make install)
   ubuntu-build-restconf-fcgi:
@@ -48,7 +48,7 @@ jobs:
     - name: make install
       run: sudo make install install-include
     - name: make example
-      run: (cd example; make)   
+      run: (cd example; make)
     - name: install example
       run: (cd example; sudo make install)
 
@@ -175,3 +175,72 @@ jobs:
       run: ./start.sh
     - name: run test r-y
       run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh" ./sum.sh'
+
+  reset-run-number:
+    runs-on: ubuntu-latest
+    outputs:
+      run-number: ${{ steps.get-build.outputs.build-number }}
+    steps:
+      - name: Get build number and reset it
+        id: get-build
+        uses: mlilback/build-number@v1
+        with:
+          base: 0 # Update this number to reset counter
+          run-id: ${{ github.run_number }}
+
+  create_deb_packet:
+    needs: reset-run-number
+    #if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: "7.1.0"
+      RUN_NUMBER: ${{ needs.reset-run-number.outputs.run-number }}
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: create dir for build
+        run: mkdir ${{ github.workspace }}/build
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install -y build-essential flex fakeroot bison lsb-release make debhelper libnghttp2-dev libssl-dev git
+      - name: Clone cligen
+        run: git clone https://github.com/clicon/cligen.git
+      - name: Install cligen
+        run: (cd cligen; ./configure; make; sudo make install)
+      - name: configure
+        run: ./configure
+      - name: make
+        run: make
+      - name: install
+        run: sudo make install
+      - name: configure
+        run: ./configure
+      - name: make
+        run: make
+      - name: install
+        run: sudo make install DESTDIR=${{ github.workspace }}/build
+      - name: copy file for build deb packet dev
+        run: cp -r ${{ github.workspace }}/debian ${{ github.workspace }}/build
+      - name: add change log
+        run: cd ${{ github.workspace }}/build/debian && export NAME_VERSION="clixon (${{env.VERSION}}-${{env.RUN_NUMBER}})" && git --no-pager log --no-walk --encoding=utf-8 --expand-tabs=4 --pretty=format:"${NAME_VERSION} stable; urgency=medium%n%n  * %w(,,2)%B%w()%n -- %an <%ae>  %aD%n" > changelog && cat changelog
+      - name: run build packet
+        run: cd ${{ github.workspace }}/build && dpkg-buildpackage -us -uc
+      - name: show directory
+        run: ls -l ${{ github.workspace }}
+      - name: Create deb packet
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{env.VERSION}}_${{env.RUN_NUMBER}}
+          release_name: clixon_${{env.VERSION}}-${{env.RUN_NUMBER}}
+          draft: false
+          prerelease: false
+      - name: Upload artefact (clixon)
+        uses: actions/upload-artifact@v4
+        with:
+          name: clixon7_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
+          path: ${{ github.workspace }}/clixon7_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb

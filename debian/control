@@ -1,0 +1,18 @@
+Source: clixon
+Section: devel
+Priority: optional
+Maintainer: olof@hagsand.se
+Build-Depends:
+ debhelper-compat (= 12),
+ flex,
+ bison,
+ libnghttp2-dev,
+ libssl-dev
+Standards-Version: 4.5.0
+
+Package: clixon7
+Architecture: any
+Multi-Arch: foreign
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Description: Clixon package
