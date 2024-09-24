@@ -26,10 +26,13 @@ Expected: October 2024
 * New `clixon-autocli@2024-08-01.yang` revision
     - Added: disable operation for module rules
 * Optimize YANG memory
-  * Added union and extended struct for uncommon fields
-  * Removed per-object YANG linenr info
-  * Yang-type cache only for original trees (not derived via grouping/augment)
-  * Added option `CLICON_YANG_USE_ORIGINAL` to use original yang object in grouping/augment
+  * Autocli
+    * Late evaluation of uses/grouping
+  * YANG
+    * Added union and extended struct for uncommon fields
+    * Removed per-object YANG linenr info
+    * Yang-type cache only for original trees (not derived via grouping/augment)
+    * Added option `CLICON_YANG_USE_ORIGINAL` to use original yang object in grouping/augment
 * New: [CLI simple alias](https://github.com/clicon/cligen/issues/112)
   * See: https://clixon-docs.readthedocs.io/en/latest/cli.html#cli-aliases
 * List pagination: Added where, sort-by and direction parameter for configured data

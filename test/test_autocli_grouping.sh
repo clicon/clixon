@@ -209,10 +209,10 @@ EOF
     # The testcase assumes enabled
     if ${grouping_treeref}; then
         new "verify grouping is enabled"
-        expectpart "$($clixon_cli -f $cfg -G -1 2>&1)" 0 "@grouping-urn:example:clixon-pg1" "@grouping-urn:example:external-pg2" "@grouping-urn:example:external-pg3"
+        expectpart "$($clixon_cli -f $cfg -G -1 2>&1)" 0 "@grouping--data--example--pg1" "@grouping--data--example-external--pg2" # "@grouping--data--example-external--pg3"
     else
         new "verify grouping is disabled"
-        expectpart "$($clixon_cli -f $cfg -G -1 2>&1)" 0 --not-- "@grouping-urn:example:clixon-pg1" "@grouping-urn:example:external-pg2" "@grouping-urn:example:external-pg3"
+        expectpart "$($clixon_cli -f $cfg -G -1 2>&1)" 0 --not-- "@grouping--data--example--pg1" "@grouping--data--example-external--pg2" "@grouping--data-example-external-pg3"
     fi
 
     new "set top-level grouping"
