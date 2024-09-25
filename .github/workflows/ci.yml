@@ -242,5 +242,5 @@ jobs:
       - name: Upload artefact (clixon)
         uses: actions/upload-artifact@v4
         with:
-          name: clixon7_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
-          path: ${{ github.workspace }}/clixon7_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
+          name: clixon_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
+          path: ${{ github.workspace }}/clixon_${{env.VERSION}}-${{env.RUN_NUMBER}}_amd64.deb
