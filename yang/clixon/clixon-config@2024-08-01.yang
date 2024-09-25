@@ -53,6 +53,8 @@ module clixon-config {
         description
             "Added options:
                 CLICON_YANG_DOMAIN_DIR
+             Deprecated:
+                CLICON_YANG_SCHEMA_MOUNT_SHARE
              Released in Clixon 7.2";
     }
     revision 2024-04-01 {
@@ -609,7 +611,9 @@ module clixon-config {
                  (yangmnt:mount-point is on same node).
                  A comparison is made between yang modules and revision and must match exactly.
                  If so, a new yang-spec is not created, instead the other is used.
-                 Only if CLICON_YANG_SCHEMA_MOUNT is enabled";
+                 Only if CLICON_YANG_SCHEMA_MOUNT is enabled
+                 Deprecated, replaced by yang domain";
+            status deprecated;
             default false;
         }
         leaf CLICON_YANG_AUGMENT_ACCEPT_BROKEN {

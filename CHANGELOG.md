@@ -17,7 +17,9 @@ Expected: October 2024
 ### Features
 
 * Added yang domains for mount-point isolation
+  * This replaces the computation of shared yang-specs
   * New option: `CLICON_YANG_DOMAIN_DIR`
+  * Deprecated: `CLICON_YANG_SCHEMA_MOUNT_SHARE`
 * Restconf: Support for list of media in Accept header
 * Refactoring of schema mount-points
   * Add new top-level `Y_MOUNTS` and add top-level yangs and mountpoints in yspecs
@@ -32,6 +34,7 @@ Expected: October 2024
 * List pagination: Added where, sort-by and direction parameter for configured data
 * New `clixon-config@2024-08-01.yang` revision
     - Added: CLICON_YANG_DOMAIN_DIR
+    - Deprecated: `CLICON_YANG_SCHEMA_MOUNT_SHARE`
 * New `clixon-lib@2024-08-01.yang` revision
     - Added: list-pagination-partial-state extension
 

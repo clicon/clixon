@@ -856,21 +856,20 @@ yspec_new(clixon_handle h,
 /*! Create or add a shared yspec
  *
  * @param[in]     h      Clixon handle
- * @param[in]     name   Typically an xpath
+ * @param[in]     tag    Typically an xpath
  * @param[in]     yspec0 Input NULL if no previous shared exist, otherwise a shared yspec but new name
  * @retval        yspec1 New or (previously shared)
  * @retval        NULL   Error
  */
 yang_stmt *
 yspec_new_shared(clixon_handle h,
-                 char         *name,
+                 char         *tag,
                  char         *domain,
                  yang_stmt    *yspec0)
 {
     yang_stmt *yspec1 = NULL;
 
     if (yspec0 != NULL){ /* shared */
-        assert(clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT_SHARE") != 0);
         yspec1 = yspec0;
     }
     else {
@@ -879,7 +878,7 @@ yspec_new_shared(clixon_handle h,
         yang_flag_set(yspec1, YANG_FLAG_SPEC_MOUNT);
         clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec1);
     }
-    if (yang_cvec_add(yspec1, CGV_STRING, name) < 0){
+    if (yang_cvec_add(yspec1, CGV_STRING, tag) < 0){
         yspec1 = NULL;
         goto done;
     }

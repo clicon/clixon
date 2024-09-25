@@ -789,65 +789,6 @@ yang_schema_mount_statistics(clixon_handle h,
     return retval;
 }
 
-/*! Given xml mount-point and yanglib, find existing yspec
- *
- * Get and loop through all XML from xt mount-points.
- * Get xyanglib and if equal to xt, find and return yspec
- * @param[in]   h        Clixon handle
- * @param[in]   xt       XML tree node
- * @param[in]   xyanglib yanglib in XML
- * @param[out]  yspecp   Yang spec
- * @retval      0        OK
- * @retval     -1        Error
- */
-static int
-yang_schema_find_share(clixon_handle h,
-                       cxobj        *xt,
-                       cxobj        *xyanglib,
-                       yang_stmt   **yspecp)
-{
-    int     retval = -1;
-    cvec   *cvv = NULL;
-    cg_var *cv;
-    cxobj  *xroot;
-    cxobj  *xmnt;
-    cxobj  *xylib;
-    int     config = 1;
-    int     ret;
-
-    xroot = xml_root(xt);
-    /* Get all XML mtpoints */
-    if (yang_mount_xtop2xmnt(xroot, &cvv) < 0)
-        goto done;
-    /* Loop through XML mount-points */
-    cv = NULL;
-    while ((cv = cvec_each(cvv, cv)) != NULL) {
-        xmnt = cv_void_get(cv);
-        if (xmnt == xt)
-            continue;
-        xylib = NULL;
-        /* Get xyanglib */
-        if (clixon_plugin_yang_mount_all(h, xmnt, &config, NULL, &xylib) < 0)
-            goto done;
-        if (xylib == NULL)
-            continue;
-        /* Check if equal */
-        if (xml_tree_equal(xyanglib, xylib) == 1)
-            continue;
-        /* Find and return yspec */
-        *yspecp = NULL;
-        if ((ret = xml_yang_mount_get(h, xmnt, NULL, NULL, yspecp)) < 0)
-            goto done;
-        if (ret == 1 && *yspecp != NULL)
-            break;
-    }
-    retval = 0;
- done:
-    if (cvv)
-        cvec_free(cvv);
-    return retval;
-}
-
 /*! Get yanglib from user plugin callback, parse it and mount it
  *
  * Optionally check for shared yspec
@@ -864,6 +805,7 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
     int        retval = -1;
     cxobj     *xyanglib = NULL;
     cxobj     *xb;
+    yang_stmt *ymounts;
     yang_stmt *yspec0 = NULL;
     yang_stmt *yspec1 = NULL;
     char      *xpath = NULL;
@@ -890,11 +832,11 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
         clixon_err(OE_YANG, 0, "Mapping xmnt to ymnt and xpath");
         goto done;
     }
-    /* Optimization: find equal yspec from other mount-point */
-    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT_SHARE")) {
-        if (yang_schema_find_share(h, xt, xyanglib, &yspec0) < 0)
-            goto done;
+    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
+        goto done;
     }
+    yspec0 = yang_find(ymounts, Y_SPEC, domain);
     if ((yspec1 = yspec_new_shared(h, xpath, domain, yspec0)) < 0)
         goto done;
     /* Either yspec0 = NULL and yspec1 is new, or yspec0 == yspec1 != NULL (shared) */
