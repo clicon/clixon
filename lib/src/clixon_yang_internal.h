@@ -94,7 +94,6 @@ struct yang_stmt {
                                         Y_REVISION (uint32)
                                         Y_REVISION_DATE (uint32)
                                         Y_UNKNOWN (optional argument)
-                                        Y_SPEC: mount-point xpath
                                         Y_ENUM: value
                                      */
     cvec              *ys_cvec;      /* List of stmt-specific variables 

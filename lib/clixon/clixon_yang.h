@@ -263,6 +263,7 @@ int        yang_cv_set(yang_stmt *ys, cg_var *cv);
 cvec      *yang_cvec_get(yang_stmt *ys);
 int        yang_cvec_set(yang_stmt *ys, cvec *cvv);
 cg_var    *yang_cvec_add(yang_stmt *ys, enum cv_type type, char *name);
+int        yang_cvec_rm(yang_stmt *ys, char *name);
 uint16_t   yang_flag_get(yang_stmt *ys, uint16_t flag);
 int        yang_flag_set(yang_stmt *ys, uint16_t flag);
 int        yang_flag_reset(yang_stmt *ys, uint16_t flag);
@@ -285,7 +286,7 @@ int        yang_stats(yang_stmt *y, enum rfc_6020 keyw, uint64_t *nrp, size_t *s
 
 /* Other functions */
 yang_stmt *yspec_new(clixon_handle h, char *name);
-yang_stmt *yspec_new_shared(clixon_handle h, char *name, yang_stmt *yspec0);
+yang_stmt *yspec_new_shared(clixon_handle h, char *name, char *domain, yang_stmt *yspec0);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
 int        ys_prune_self(yang_stmt *ys);

@@ -1020,7 +1020,7 @@ text_modify(clixon_handle       h,
                 }
                 if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
                     /* Check if xc is unresolved mountpoint, ie no yang mount binding yet */
-                    if ((ismount = xml_yang_mount_get(h, x1c, NULL, &mount_yspec)) < 0)
+                    if ((ismount = xml_yang_mount_get(h, x1c, NULL, NULL, &mount_yspec)) < 0)
                         goto done;
                     if (ismount && mount_yspec == NULL &&
                         !xml_flag(x1c, XML_FLAG_ANYDATA)){

@@ -1027,7 +1027,7 @@ xml_yang_validate_add(clixon_handle h,
     validate_level vl = VL_NONE;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
-        if ((ret = xml_yang_mount_get(h, xt, &vl, NULL)) < 0)
+        if ((ret = xml_yang_mount_get(h, xt, &vl, NULL, NULL)) < 0)
             goto done;
         /* Check if validate beyond mountpoints */
         if (ret == 1 && vl == VL_NONE)
@@ -1253,7 +1253,7 @@ xml_yang_validate_all(clixon_handle h,
     int        inext;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
-        if ((ret = xml_yang_mount_get(h, xt, &vl, NULL)) < 0)
+        if ((ret = xml_yang_mount_get(h, xt, &vl, NULL, NULL)) < 0)
             goto done;
         /* Check if validate beyond mountpoints */
         if (ret == 1 && vl == VL_NONE)

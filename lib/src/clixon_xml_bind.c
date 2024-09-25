@@ -464,7 +464,7 @@ xml_bind_yang0_opt(clixon_handle h,
     ybc = YB_PARENT;
     if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
         yspec1 = NULL;
-        if ((ret = xml_yang_mount_get(h, xt, NULL, &yspec1)) < 0)
+        if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0) // XXX read här
             goto done;
         if (ret == 0)
             yspec1 = yspec;
@@ -474,14 +474,14 @@ xml_bind_yang0_opt(clixon_handle h,
             else if (h == NULL)
                 goto ok; /* treat as anydata */
             else{
-                if ((ret = yang_schema_yanglib_parse_mount(h, xt)) < 0)
+                if ((ret = yang_schema_yanglib_parse_mount(h, xt)) < 0) // XXX malloc + freed här
                     goto done;
                 if (ret == 0){ /* Special flag if mount-point but no yanglib */
                     xml_flag_set(xt, XML_FLAG_ANYDATA);
                     goto ok;
                 }
                 /* Try again */
-                if ((ret = xml_yang_mount_get(h, xt, NULL, &yspec1)) < 0)
+                if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0)
                     goto done;
                 if (yspec1)
                     ybc = YB_MODULE;

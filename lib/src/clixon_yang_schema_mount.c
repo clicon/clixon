@@ -261,21 +261,9 @@ yang_mount_set(yang_stmt *y,
                yang_stmt *yspec)
 {
     int        retval = -1;
-    cg_var    *cv2;
 
-    if ((cv2 = cv_new(CGV_STRING)) == NULL){
-        clixon_err(OE_YANG, errno, "cv_new");
-        goto done;
-    }
-    if (cv_string_set(cv2, xpath) == NULL){
-        clixon_err(OE_UNIX, errno, "cv_string_set");
-        goto done;
-    }
-    /* tag yspec with key/xpath */
-    yang_cv_set(yspec, cv2);
     yang_flag_set(y, YANG_FLAG_MOUNTPOINT); /* Cache value */
     retval = 0;
- done:
     return retval;
 }
 
@@ -344,6 +332,7 @@ yang_mount_xmnt2ymnt_xpath(clixon_handle h,
  * @param[in]  h        Clixon handle
  * @param[in]  xmnt     XML mount-point
  * @param[out] vallevel Do or dont do full RFC 7950 validation if given
+ * @param[out] xpathp   malloced xpath in canonical form (if ret is 1)
  * @param[out] yspec    YANG stmt spec of mount-point (if ret is 1)
  * @retval     1        x is a mount-point: yspec may be set
  * @retval     0        x is not a mount-point
@@ -353,6 +342,7 @@ int
 xml_yang_mount_get(clixon_handle   h,
                    cxobj          *xmnt,
                    validate_level *vl,
+                   char          **xpathp,
                    yang_stmt     **yspec)
 {
     int        retval = -1;
@@ -369,6 +359,10 @@ xml_yang_mount_get(clixon_handle   h,
         goto done;
     if (yspec && yang_mount_get(ymnt, xpath, yspec) < 0)
         goto done;
+    if (xpathp){
+        *xpathp = xpath;
+        xpath = NULL;
+    }
     retval = 1;
  done:
     if (xpath)
@@ -737,12 +731,10 @@ yang_schema_mount_statistics(clixon_handle h,
     while ((cv = cvec_each(cvv, cv)) != NULL) {
         if ((xmnt = cv_void_get(cv)) == NULL)
             continue;
-        if ((ret = xml_yang_mount_get(h, xmnt, NULL, &yspec)) < 0)
+        if ((ret = xml_yang_mount_get(h, xmnt, NULL, &xpath, &yspec)) < 0)
             goto done;
         if (ret == 0)
             continue;
-        if (xml2xpath(xmnt, NULL, 1, 0, &xpath) < 0)
-            goto done;
         cprintf(cb, "<module-set><name>mountpoint: ");
         xml_chardata_cbuf_append(cb, 0, xpath);
         cprintf(cb, "</name>");
@@ -753,7 +745,7 @@ yang_schema_mount_statistics(clixon_handle h,
             while ((cv1 = cvec_each(cvv, cv1)) != NULL) {
                 if (cv == cv1)
                     continue;
-                if ((ret = xml_yang_mount_get(h, cv_void_get(cv1), NULL, &yspec1)) < 0)
+                if ((ret = xml_yang_mount_get(h, cv_void_get(cv1), NULL, NULL, &yspec1)) < 0)
                     goto done;
                 if (yspec1 && yspec == yspec1)
                     break;
@@ -844,7 +836,7 @@ yang_schema_find_share(clixon_handle h,
             continue;
         /* Find and return yspec */
         *yspecp = NULL;
-        if ((ret = xml_yang_mount_get(h, xmnt, NULL, yspecp)) < 0)
+        if ((ret = xml_yang_mount_get(h, xmnt, NULL, NULL, yspecp)) < 0)
             goto done;
         if (ret == 1 && *yspecp != NULL)
             break;
@@ -903,14 +895,16 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
         if (yang_schema_find_share(h, xt, xyanglib, &yspec0) < 0)
             goto done;
     }
-    if ((yspec1 = yspec_new_shared(h, xpath, yspec0)) < 0)
+    if ((yspec1 = yspec_new_shared(h, xpath, domain, yspec0)) < 0)
         goto done;
     /* Either yspec0 = NULL and yspec1 is new, or yspec0 == yspec1 != NULL (shared) */
     if (yspec0 == NULL && yspec1 != NULL){
         if ((ret = yang_lib2yspec(h, xyanglib, xpath, domain, yspec1)) < 0)
             goto done;
-        if (ret == 0)
+        if (ret == 0){
+            ys_prune_self(yspec1); /* remove from tree, free in done code */
             goto anydata;
+        }
     }
     if (xml_yang_mount_set(h, xt, yspec1) < 0)
         goto done;
@@ -953,7 +947,7 @@ yang_schema_get_child(clixon_handle h,
     int        ret;
 
     x1cname = xml_name(x1c);
-    if ((ret = xml_yang_mount_get(h, x1, NULL, &yspec1)) < 0)
+    if ((ret = xml_yang_mount_get(h, x1, NULL, NULL, &yspec1)) < 0)
         goto done;
     if (ret == 1 && yspec1 != NULL){
         if (ys_module_by_xml(yspec1, x1c, &ymod1) <0)
@@ -970,4 +964,32 @@ yang_schema_get_child(clixon_handle h,
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Remove xpath from yspec cvec list, remove yspec if empty
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  xmnt XML mount-point
+ */
+int
+yang_schema_yspec_rm(clixon_handle h,
+                     cxobj        *xmnt)
+{
+    /* Remove mountpoint from yspec cvec */
+    int        retval = -1;
+    yang_stmt *yspec = NULL;
+    char      *xpath = NULL;
+    int        ret;
+
+    if ((ret = xml_yang_mount_get(h, xmnt, NULL, &xpath, &yspec)) < 0)
+        goto done;
+    if (ret == 1 && xpath != NULL && yspec != NULL){
+        if (yang_cvec_rm(yspec, xpath) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    if (xpath)
+        free(xpath);
+    return retval;
 }

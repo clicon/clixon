@@ -81,7 +81,7 @@
  * @param[out]  nvec       Number of entries in returned vector
  * @retval      vec        Vector of strings. NULL terminated. Free after use
  * @retval      NULL       Error * 
- * @see clicon_strsplit
+ * @see clixon_strsplit
  */
 char **
 clicon_strsep(char *string,

@@ -90,6 +90,7 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include <fcntl.h>
 #include <syslog.h>
 #include <signal.h>
+#include <assert.h> // XXX
 #include <sys/param.h>
 
 /* cligen */
@@ -102,6 +103,23 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include "cli_plugin.h"
 #include "cli_autocli.h"
 #include "cli_generate.h"
+
+/*! mount helper
+ *
+ * @param[in] yspec
+ * @retval    name   First name ib cvec
+ */
+static char*
+cli_get_mntpoint(yang_stmt *yspec)
+{
+    cvec   *cvv = NULL;
+    cg_var *cv = NULL;
+
+    if ((cvv = yang_cvec_get(yspec)) != NULL &&
+        (cv = cvec_i(cvv, 0)) != NULL)
+        return cv_name_get(cv);
+    return NULL;
+}
 
 /*! Create cligen variable expand entry with api-pathfmt format string as argument
  *
@@ -134,10 +152,11 @@ cli_expand_var_generate(clixon_handle h,
     char      *api_path_fmt = NULL;
     int        extvalue = 0;
     yang_stmt *yspec;
-    cg_var    *cv = NULL;
+    char      *mntpoint = NULL;
 
-    if ((yspec = ys_spec(ys)) != NULL)
-        cv = yang_cv_get(yspec);
+    if ((yspec = ys_spec(ys)) != NULL){
+        mntpoint = cli_get_mntpoint(yspec);
+    }
     if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
         goto done;
     if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL)
@@ -152,8 +171,8 @@ cli_expand_var_generate(clixon_handle h,
     cprintf(cb, " %s(\"candidate\",\"%s\"",
             GENERATE_EXPAND_XMLDB,
             api_path_fmt);
-    if (cv){     /* Add optional mountpoint */
-        cprintf(cb, ",\"%s%s\"", MTPOINT_PREFIX, cv_string_get(cv));
+    if (mntpoint){     /* Add optional mountpoint */
+        cprintf(cb, ",\"%s%s\"", MTPOINT_PREFIX, mntpoint);
     }
     cprintf(cb, ")>");
     retval = 1;
@@ -184,15 +203,16 @@ cli_callback_generate(clixon_handle h,
     int        retval = -1;
     char      *api_path_fmt = NULL;
     yang_stmt *yspec;
-    cg_var    *cv = NULL;
+    char      *mntpoint = NULL;
 
-    if ((yspec = ys_spec(ys)) != NULL)
-        cv = yang_cv_get(yspec);
+    if ((yspec = ys_spec(ys)) != NULL){
+        mntpoint = cli_get_mntpoint(yspec);
+    }
     if (yang2api_path_fmt(ys, 0, &api_path_fmt) < 0)
         goto done;
     cprintf(cb, ",%s(\"%s\"", GENERATE_CALLBACK, api_path_fmt);
-    if (cv){     /* Add optional mountpoint */
-        cprintf(cb, ",\"%s%s\"", MTPOINT_PREFIX, cv_string_get(cv));
+    if (mntpoint){     /* Add optional mountpoint */
+        cprintf(cb, ",\"%s%s\"", MTPOINT_PREFIX, mntpoint);
     }
     cprintf(cb, ")");
     retval = 0;

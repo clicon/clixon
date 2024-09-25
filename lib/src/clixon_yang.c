@@ -395,6 +395,31 @@ yang_cvec_add(yang_stmt    *ys,
     return cv;
 }
 
+/*! Remove old value to yang cvec
+ *
+ * @param[in] ys    Yang statement
+ * @param[in] name  Name of variable
+ * @retval    0     OK
+ * @retval   -1     Error
+ */
+int
+yang_cvec_rm(yang_stmt *ys,
+             char      *name)
+{
+    cvec   *cvv;
+    cg_var *cv;
+
+    if ((cvv = yang_cvec_get(ys)) != NULL &&
+        (cv = cvec_find(cvv, name)) != NULL){
+        if (cvec_len(cvv) <= 1){
+            yang_cvec_set(ys, NULL);
+        }
+        else
+            cvec_del(cvv, cv);
+    }
+    return 0;
+}
+
 /*! Get yang stmt flags, used for internal algorithms
  *
  * @param[in]  ys     Yang statement
@@ -839,6 +864,7 @@ yspec_new(clixon_handle h,
 yang_stmt *
 yspec_new_shared(clixon_handle h,
                  char         *name,
+                 char         *domain,
                  yang_stmt    *yspec0)
 {
     yang_stmt *yspec1 = NULL;
@@ -848,7 +874,7 @@ yspec_new_shared(clixon_handle h,
         yspec1 = yspec0;
     }
     else {
-        if ((yspec1 = yspec_new(h, name)) == NULL)
+        if ((yspec1 = yspec_new(h, domain)) == NULL)
             goto done;
         yang_flag_set(yspec1, YANG_FLAG_SPEC_MOUNT);
         clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec1);
