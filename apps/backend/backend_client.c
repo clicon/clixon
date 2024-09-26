@@ -1423,10 +1423,12 @@ from_client_stats(clixon_handle h,
     char      *str;
     int        modules = 0;
     yang_stmt *yspec;
-    yang_stmt *ymodext;
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
     cxobj     *xt = NULL;
-    int        ret;
+    char      *name;
     int        inext;
+    int        inext2;
 
     if ((str = xml_find_body(xe, "modules")) != NULL)
         modules = strcmp(str, "true") == 0;
@@ -1449,46 +1451,29 @@ from_client_stats(clixon_handle h,
 	if (clixon_stats_datastore_get(h, "startup", cbret) < 0)
 	    goto done;
     cprintf(cbret, "</datastores>");
-    /* per module-set, first configuration, then main dbspec, then mountpoints */
+    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
+        goto done;
+    }
     cprintf(cbret, "<module-sets xmlns=\"%s\">", CLIXON_LIB_NS);
-    cprintf(cbret, "<module-set><name>clixon-config</name>");
-    yspec = clicon_config_yang(h); /* Note switch yspec to config (not data) */
-    if (clixon_stats_module_get(h, yspec, cbret) < 0)
-        goto done;
-    if (modules){
-        inext = 0;
-        while ((ym = yn_iter(yspec, &inext)) != NULL) {
-            cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ym));
-            if (clixon_stats_module_get(h, ym, cbret) < 0)
-                goto done;
-            cprintf(cbret, "</module>");
-        }
-    }
-    cprintf(cbret, "</module-set>");
-    cprintf(cbret, "<module-set><name>main</name>");
-    yspec = clicon_dbspec_yang(h);
-    if (clixon_stats_module_get(h, yspec, cbret) < 0)
-        goto done;
-    if (modules){
-        inext = 0;
-        while ((ym = yn_iter(yspec, &inext)) != NULL) {
-            cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ym));
-            if (clixon_stats_module_get(h, ym, cbret) < 0)
-                goto done;
-            cprintf(cbret, "</module>");
-        }
-    }
-    cprintf(cbret, "</module-set>");
-    /* Mountpoints */
-    if ((ymodext = yang_find(yspec, Y_MODULE, "ietf-yang-schema-mount")) != NULL){
-        if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 1, 0, &xt, NULL, NULL)) < 0)
+    inext = 0;
+    while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
+        name = yang_argument_get(ydomain);
+        /* per module-set, first configuration, then main dbspec, then mountpoints */
+        cprintf(cbret, "<module-set>");
+        cprintf(cbret, "<name>%s</name>", name);
+        if (clixon_stats_module_get(h, ydomain, cbret) < 0)
             goto done;
-        if (ret == 0){
-            clixon_err(OE_DB, 0, "Error when reading from running, unknown error");
-            goto done;
+        if (modules){
+            inext2 = 0;
+            while ((ym = yn_iter(ydomain, &inext2)) != NULL) {
+                cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ym));
+                if (clixon_stats_module_get(h, ym, cbret) < 0)
+                    goto done;
+                cprintf(cbret, "</module>");
+            }
         }
-        if (xt && yang_schema_mount_statistics(h, xt, modules, cbret) < 0)
-            goto done;
+        cprintf(cbret, "</module-set>");
     }
     cprintf(cbret, "</module-sets>");
     cprintf(cbret, "</rpc-reply>");

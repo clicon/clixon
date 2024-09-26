@@ -90,7 +90,6 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include <fcntl.h>
 #include <syslog.h>
 #include <signal.h>
-#include <assert.h> // XXX
 #include <sys/param.h>
 
 /* cligen */

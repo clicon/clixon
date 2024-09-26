@@ -423,10 +423,10 @@ module clixon-lib {
             }
             container module-sets{
                 list module-set{
-                    description "Statistics per group of module, eg top-level and mount-points";
+                    description "Statistics per domain, eg top-level and mount-points";
                     key "name";
                     leaf name{
-                        description "Name of YANG module.";
+                        description "Name of YANG domain.";
                         type string;
                     }
                     leaf nr{

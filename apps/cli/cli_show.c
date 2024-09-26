@@ -1887,23 +1887,21 @@ cli_show_statistics(clixon_handle h,
     size_t      sz;
     size_t      tsz0;
     size_t      tsz;
-    yang_stmt  *yspec;
-    cvec       *cvv1 = NULL;
+    yang_stmt  *ymounts;
+    yang_stmt  *ydomain;
     cg_var     *cv;
     cxobj      *xp;
     char       *name;
     cxobj      *x;
     uint64_t    u64;
     char       *unit;
-    yang_stmt  *ymounts;
     int         inext;
-    int         i;
 
     if (argv == NULL || (cvec_len(argv) < 1 || cvec_len(argv) > 2)){
         clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [(cli|backend|all) [detail]]");
         goto done;
     }
-    yspec = clicon_dbspec_yang(h);
+    ydomain = clicon_dbspec_yang(h);
     cv = cvec_i(argv, 0);
     what = cv_string_get(cv);
     if (strcmp(what, "cli") == 0)
@@ -1931,67 +1929,29 @@ cli_show_statistics(clixon_handle h,
         clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
+    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
+        goto done;
+    }
     if (cli) {
         if (!detail) {
             cligen_output(stdout, "%-25s %-10s\n", "YANG", "Mem");
         }
-        nr = 0; sz = 0;
-        if (yang_stats(yspec, 0, &nr, &sz) < 0)
-            goto done;
-        tnr = nr;
-        tsz = sz;
-        if (detail) {
-            cligen_output(stdout, "YANG-top-level-size: %" PRIu64 "\n", sz);
-            cligen_output(stdout, "YANG-top-level-nr: %" PRIu64 "\n", nr);
-        }
-        else{
-            translatenumber(sz, &u64, &unit);
-            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "Top-level", u64, unit);
-        }
-        if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")) {
-            if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
-                clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
+        inext = 0;
+        while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
+            name = yang_argument_get(ydomain);
+            nr = 0; sz = 0;
+            if (yang_stats(ydomain, 0, &nr, &sz) < 0)
                 goto done;
+            tnr = nr;
+            tsz = sz;
+            if (detail) {
+                cligen_output(stdout, "YANG-%s-size: %" PRIu64 "\n", name, sz);
+                cligen_output(stdout, "YANG-%s-nr: %" PRIu64 "\n", name, nr);
             }
-            inext = 0;
-            while ((yspec = yn_iter(ymounts, &inext)) != NULL) {
-                cvv1 = NULL;
-                if (yang_keyword_get(yspec) == Y_SPEC &&
-                    yang_flag_get(yspec, YANG_FLAG_SPEC_MOUNT) != 0x0 &&
-                    (cvv1 = yang_cvec_get(yspec)) != NULL){
-                    nr = 0; sz = 0;
-                    if (yang_stats(yspec, 0, &nr, &sz) < 0)
-                        goto done;
-                    tnr += nr;
-                    tsz += sz;
-                    i = 0;
-                    cv = NULL;
-                    while ((cv = cvec_each(cvv1, cv)) != NULL) {
-                        if (detail){
-                            if (i == cvec_len(cvv1)-1) {
-                                cligen_output(stdout, "YANG-mount-point-%s-size: %"  PRIu64 "\n", cv_name_get(cv), sz);
-                                cligen_output(stdout, "YANG-mount-point-%s-nr: %"  PRIu64 "\n", cv_name_get(cv), nr);
-                            }
-                            else {
-                                cligen_output(stdout, "YANG-mount-point-%s-size: shared\n", cv_name_get(cv));
-                                cligen_output(stdout, "YANG-mount-point-%s-nr: shared\n", cv_name_get(cv));
-                            }
-                        }
-                        else {
-                            if (i == cvec_len(cvv1)-1) {
-                                if (strlen(cv_name_get(cv)) > 25)
-                                    cligen_output(stdout, "%s \n %-25s", cv_name_get(cv), "");
-                                else
-                                    cligen_output(stdout, "%-25s", cv_name_get(cv));
-                                translatenumber(sz, &u64, &unit);
-                                cligen_output(stdout, "%" PRIu64 "%-10s\n", u64, unit);
-                            }
-                            else
-                                cligen_output(stdout, "%s\n", cv_name_get(cv));
-                        }
-                        i++;
-                    }
-                }
+            else{
+                translatenumber(sz, &u64, &unit);
+                cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", yang_argument_get(ydomain), u64, unit);
             }
         }
         if (detail){
@@ -2001,6 +1961,9 @@ cli_show_statistics(clixon_handle h,
         else {
             translatenumber(tsz, &u64, &unit);
             cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "YANG Total", u64, unit);
+        }
+        if (!detail) {
+            cligen_output(stdout, "%-25s\n", "CLIspec");
         }
         tnr0 = tnr;
         tsz0 = tsz;
@@ -2031,6 +1994,7 @@ cli_show_statistics(clixon_handle h,
             translatenumber(tsz0+tsz, &u64, &unit);
             cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "Mem Total", u64, unit);
         }
+
     }
     if (backend) {
         cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
@@ -2055,7 +2019,7 @@ cli_show_statistics(clixon_handle h,
                 goto done;
         }
         else {
-            cligen_output(stdout, "%-25s %-10s\n", "XML Datastore", "Mem");
+            cligen_output(stdout, "%-25s %-10s\n", "Datastore", "Mem");
             tsz = 0;
             if ((xp = xml_find_type(xret, NULL, "datastores", CX_ELMNT)) != NULL){
                 x = NULL;
@@ -2085,9 +2049,10 @@ cli_show_statistics(clixon_handle h,
                 while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
                     if (strcmp(xml_name(x), "module-set") != 0)
                         continue;
+                    if ((name = xml_find_body(x, "name")) == NULL)
+                        continue;
                     parse_uint64(xml_find_body(x, "size"), &sz, NULL);
                     tsz += sz;
-                    name = xml_find_body(x, "name");
                     translatenumber(sz, &u64, &unit);
                     if (strlen(name) > 25){
                         cligen_output(stdout, "%s\n", name);
