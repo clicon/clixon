@@ -29,12 +29,14 @@ Expected: October 2024
   * Added union and extended struct for uncommon fields
   * Removed per-object YANG linenr info
   * Yang-type cache only for original trees (not derived via grouping/augment)
+  * Added option `CLICON_YANG_USE_ORIGINAL` to use original yang object in grouping/augment
 * New: [CLI simple alias](https://github.com/clicon/cligen/issues/112)
   * See: https://clixon-docs.readthedocs.io/en/latest/cli.html#cli-aliases
 * List pagination: Added where, sort-by and direction parameter for configured data
 * New `clixon-config@2024-08-01.yang` revision
-    - Added: CLICON_YANG_DOMAIN_DIR
-    - Deprecated: `CLICON_YANG_SCHEMA_MOUNT_SHARE`
+  * Added: `CLICON_YANG_DOMAIN_DIR`
+  * Added: `CLICON_YANG_USE_ORIGINAL`
+  * Deprecated: `CLICON_YANG_SCHEMA_MOUNT_SHARE`
 * New `clixon-lib@2024-08-01.yang` revision
     - Added: list-pagination-partial-state extension
 

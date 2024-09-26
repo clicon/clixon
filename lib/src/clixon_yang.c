@@ -180,6 +180,9 @@ static const map_str2int ykmap[] = {
 static map_ptr2ptr *_yang_when_map = NULL;
 static map_ptr2ptr *_yang_mymodule_map = NULL;
 
+/* See option CLICON_YANG_USE_ORIGINAL */
+static int _yang_use_orig = 0;
+
 /* Forward static */
 static int yang_type_cache_free(yang_type_cache *ycache);
 
@@ -1106,7 +1109,6 @@ yn_realloc(yang_stmt *yn)
     return 0;
 }
 
-#ifdef YANG_ORIG_PTR_SKIP
 /*! Return 1 if yang stmt should be skipped in derived trees
  *
  * @param[in] keyword YANG keyword
@@ -1125,6 +1127,7 @@ yn_realloc(yang_stmt *yn)
  * - presence
  * - min/max-elements
  * - if-feature
+ * @see CLICON_YANG_USE_ORIGINAL
  */
 static int
 uses_orig_ptr(enum rfc_6020 keyword)
@@ -1160,7 +1163,6 @@ uses_orig_ptr(enum rfc_6020 keyword)
         || keyword == Y_WHEN // children
         ;
 }
-#endif /* YANG_ORIG_PTR_SKIP */
 
 /*! Copy single yang statement no children
  *
@@ -1257,12 +1259,11 @@ ys_cp(yang_stmt *ynew,
         goto done;
     for (i=0,j=0; i<yold->ys_len; i++){
         yco = yold->ys_stmt[i];
-#ifdef YANG_ORIG_PTR_SKIP
-        if (uses_orig_ptr(yang_keyword_get(yco))) {
+        if (_yang_use_orig &&
+            uses_orig_ptr(yang_keyword_get(yco))) {
             ynew->ys_len--;
             continue;
         }
-#endif
         if ((ycn = ys_dup(yco)) == NULL)
             goto done;
          ynew->ys_stmt[j++] = ycn;
@@ -1421,14 +1422,13 @@ yang_find(yang_stmt  *yn,
     char      *name;
     yang_stmt *yspec;
     yang_stmt *ym;
-#ifdef YANG_ORIG_PTR_SKIP
     yang_stmt *yorig;
 
-    if ((yorig = yang_orig_get(yn)) != NULL) {
-        if (uses_orig_ptr(keyword))
-            return yang_find(yorig, keyword, argument);
+    if (_yang_use_orig &&
+        (yorig = yang_orig_get(yn)) != NULL &&
+        uses_orig_ptr(keyword)){
+        return yang_find(yorig, keyword, argument);
     }
-#endif
     for (i=0; i<yn->ys_len; i++){
         ys = yn->ys_stmt[i];
         if (keyword == 0 || ys->ys_keyword == keyword){
@@ -4470,6 +4470,7 @@ yang_init(clixon_handle h)
     map_ptr2ptr *mp;
     yang_stmt   *ymounts;
 
+    _yang_use_orig = clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL");
     if ((mp = calloc(1, sizeof(*mp))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;

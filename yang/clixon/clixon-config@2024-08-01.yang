@@ -53,6 +53,7 @@ module clixon-config {
         description
             "Added options:
                 CLICON_YANG_DOMAIN_DIR
+                CLICON_YANG_USE_ORIGINAL
              Deprecated:
                 CLICON_YANG_SCHEMA_MOUNT_SHARE
              Released in Clixon 7.2";
@@ -644,6 +645,17 @@ module clixon-config {
                        <modules-state>...
                  See also CLICON_XMLDB_MODSTATE where the module state info is used to tag datastores
                  with module information.";
+        }
+        leaf CLICON_YANG_USE_ORIGINAL{
+            type boolean;
+            default false;
+            description
+                "YANG memory optimization.
+                 If set, for a selected set of YANG nodes, (see uses_orig_ptr()):
+                 For augmented  and grouping/uses, use original YANG node instead of the derived node.
+                 This is safe if all content of derived node is not changed (eg read-only).
+                 It is not safe if the derived node is in some way different than the original node.
+                 ";
         }
         /* Backend */
         leaf CLICON_BACKEND_DIR {
