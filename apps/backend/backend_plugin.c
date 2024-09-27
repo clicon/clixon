@@ -589,8 +589,9 @@ plugin_transaction_call_one(clixon_handle       h,
     if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), fnname) < 0)
         goto done;
     if (rv < 0) {
-        if (!clixon_err_category()) /* sanity: log if clixon_err() is not called ! */
-            clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err call on error",
+        if (!plugin_rpc_err_set() && !clixon_err_category())
+	    /* sanity: log if err is not called ! */
+            clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err or plugin_rpc_err call on error",
                        fnname, clixon_plugin_name_get(cp));
         goto done;
     }
