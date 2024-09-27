@@ -552,4 +552,11 @@ const char *clixon_auth_type_int2str(clixon_auth_type_t auth_type);
 int              clixon_plugin_module_init(clixon_handle h);
 int              clixon_plugin_module_exit(clixon_handle h);
 
+int clixon_plugin_rpc_err(clixon_handle h, const char *ns,
+                          const char *type, const char *tag, const char *info,
+                          const char *severity, const char *fmt, ...);
+int clixon_plugin_rpc_err_set(clixon_handle h);
+int clixon_plugin_report_err(clixon_handle h, cbuf *cbret);
+int clixon_plugin_report_err_xml(clixon_handle h, cxobj **xreg, char *err, ...);
+
 #endif  /* _CLIXON_PLUGIN_H_ */

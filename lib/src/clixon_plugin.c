@@ -77,6 +77,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_validate.h"
 #include "clixon_proc.h"
+#include "clixon_data.h"
 #include "clixon_plugin.h"
 
 /*
@@ -1767,6 +1768,207 @@ clixon_auth_type_int2str(clixon_auth_type_t auth_type)
     return clicon_int2str(clixon_auth_type, auth_type);
 }
 
+/*! Save an RPC error to be reported by clixon.
+ *
+ * @param[in]  h        Clixon
+ * @param[in]  ns       Namespace.  If NULL the netconf base ns will be used
+ * @param[in]  type     Error type: "rpc", "application" or "protocol"
+ * @param[in]  severity Severity: "error" or "warning"
+ * @param[in]  tag      Error tag, like "invalid-value" or "unknown-attribute"
+ * @param[in]  info     bad-attribute or bad-element xml.  If NULL not included.
+ * @param[in]  fmt      Error message format.  May be NULL.
+ * @retval     0        Success
+ * @retval    -1        Error
+ */
+int
+clixon_plugin_rpc_err(clixon_handle h,
+                      const char *ns,
+                      const char *type,
+                      const char *tag,
+                      const char *info,
+                      const char *severity,
+                      const char *fmt, ...)
+{
+    int retval = -1;
+    int err;
+    cvec *cvv = NULL;
+    cvec *old_cvv = clicon_data_cvec_get(h, "rpc_err");
+
+    cvv = cvec_new(0);
+    if (!cvv)
+        goto done;
+    if (ns) {
+        if (cvec_add_string(cvv, "ns", ns))
+            goto done;
+    }
+    if (cvec_add_string(cvv, "type", type))
+        goto done;
+    if (cvec_add_string(cvv, "tag", tag))
+        goto done;
+    if (info) {
+        if (cvec_add_string(cvv, "info", info))
+            goto done;
+    }
+    if (cvec_add_string(cvv, "severity", severity))
+        goto done;
+    if (fmt) {
+        va_list args;
+        cbuf *cb;
+
+        cb = cbuf_new();
+        if (!cb)
+            goto done;
+        va_start(args, fmt);
+        err = vcprintf(cb, fmt, args);
+        va_end(args);
+        if (err < 0) {
+            cbuf_free(cb);
+            goto done;
+        }
+        cvec_add_string(cvv, "message", cbuf_get(cb));
+        cbuf_free(cb);
+    }
+
+    err = clicon_data_cvec_set(h, "rpc_err", cvv);
+    if (err)
+        goto done;
+
+    retval = 0;
+
+ done:
+    if (retval && cvv)
+        cvec_free(cvv);
+    if (!retval && old_cvv)
+        cvec_free(old_cvv);
+    return retval;
+}
+
+/*! Frees memory associated with clixon_rpc_err().
+ *
+ * @param[in]  h        Clixon
+ */
+static void
+clixon_plugin_rpc_err_exit(clixon_handle h)
+{
+    cvec *cvv = clicon_data_cvec_get(h, "rpc_err");
+
+    clicon_ptr_del(h, "rpc_err");
+    cvec_free(cvv);
+}
+
+/*! Returns if the rpc error has already been set.
+ *
+ * @param[in]  h        Clixon
+ *
+ * @retval     0        The rpc error is not set
+ * @retval     1        The rpc error is set
+ */
+int
+clixon_plugin_rpc_err_set(clixon_handle h)
+{
+    return clicon_data_cvec_get(h, "rpc_err") != NULL;
+}
+
+static int
+netconf_gen_rpc_err(clixon_handle h, cbuf *cbret)
+{
+    cvec *cvv = clicon_data_cvec_get(h, "rpc_err");
+    int retval;
+
+    /* Delete the pointer so the cvec doesn't get freed. */
+    clicon_ptr_del(h, "rpc_err");
+    retval = netconf_common_rpc_err(cbret,
+                                    cvec_find_str(cvv, "ns"),
+                                    cvec_find_str(cvv, "type"),
+                                    cvec_find_str(cvv, "tag"),
+                                    cvec_find_str(cvv, "severity"),
+                                    cvec_find_str(cvv, "info"),
+                                    cvec_find_str(cvv, "message"));
+    cvec_free(cvv);
+
+    return retval;
+}
+
+static int
+netconf_gen_rpc_err_xml(clixon_handle h, cxobj **xret)
+{
+    cvec *cvv = clicon_data_cvec_get(h, "rpc_err");
+    int retval;
+
+    /* Delete the pointer so the cvec doesn't get freed. */
+    clicon_ptr_del(h, "rpc_err");
+    retval = netconf_common_rpc_err_xml(xret,
+                                        cvec_find_str(cvv, "ns"),
+                                        cvec_find_str(cvv, "type"),
+                                        cvec_find_str(cvv, "tag"),
+                                        cvec_find_str(cvv, "severity"),
+                                        NULL,
+                                        cvec_find_str(cvv, "info"),
+                                        cvec_find_str(cvv, "message"));
+    cvec_free(cvv);
+
+    return retval;
+}
+
+/*! Report an error from a plugin.
+ *
+ * @param[in]  h      Clixon
+ * @param[out] cbret  CLIgen buffer w error stmt if retval = 0
+ * @retval     0      Success
+ * @retval    -1      Error
+ */
+int
+clixon_plugin_report_err(clixon_handle h,
+                         cbuf *cbret)
+{
+    int ret;
+
+    if (clixon_plugin_rpc_err_set(h)) {
+        if ((ret = netconf_gen_rpc_err(h, cbret)) < 0)
+            return ret;
+    } else if ((ret = netconf_operation_failed(cbret, "application",
+                                               clixon_err_reason())) < 0) {
+        return ret;
+    }
+
+    return 0;
+}
+
+/*! Report an error from a plugin.
+ *
+ * @param[in]  h     Clixon
+ * @param[out] xret  Error XML tree. Free with xml_free after use
+ * @retval     0     Success
+ * @retval    -1     Error
+ */
+int
+clixon_plugin_report_err_xml(clixon_handle h,
+                             cxobj **xret,
+                             char *err,
+                             ...)
+{
+    int ret = -1;
+    cbuf *cberr;
+    va_list ap;
+
+    if (clixon_plugin_rpc_err_set(h)) {
+        ret = netconf_gen_rpc_err_xml(h, xret);
+    } else {
+        if ((cberr = cbuf_new()) == NULL) {
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        va_start(ap, err);
+        vcprintf(cberr, err, ap);
+        ret = netconf_operation_failed_xml(xret, "application",
+                                           cbuf_get(cberr));
+        cbuf_free(cberr);
+    }
+
+done:
+    return ret;
+}
+
 /*! Initialize plugin module by creating a handle holding plugin and callback lists
  *
  * This should be called once at start by every application
@@ -1818,5 +2020,7 @@ clixon_plugin_module_exit(clixon_handle h)
         free(ph);
         plugin_module_struct_set(h, NULL);
     }
+    /* Free memory associated with plugin_rpc_err() */
+    clixon_plugin_rpc_err_exit(h);
     return 0;
 }
