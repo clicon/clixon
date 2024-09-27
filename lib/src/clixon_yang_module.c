@@ -911,7 +911,11 @@ yang_lib2yspec(clixon_handle h,
             (ymod = yang_find(yspec, Y_MODULE, name)) != NULL &&
             (ns2 = yang_find_mynamespace(ymod)) != NULL &&
             strcmp(ns, ns2) != 0) {
+#if 1
+            clixon_debug(CLIXON_DBG_YANG, "Mount:%s module %s namespace mismatch %s announced vs %s in loaded module", mntpnt, name, ns, ns2);
+#else
             clixon_log(h, LOG_WARNING, "Mount:%s module %s namespace mismatch %s announced vs %s in loaded module", mntpnt, name, ns, ns2);
+#endif
         }
     }
 #ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
