@@ -705,8 +705,14 @@ from_client_edit_config(clixon_handle h,
             }
         }
         if ((ret = candidate_commit(h, NULL, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
-            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
-                goto done;
+	    if (clixon_err_category()) {
+		if (netconf_operation_failed(cbret, "application",
+					     clixon_err_reason()) < 0)
+		    goto done;
+	    } else if (plugin_rpc_err_set()) {
+		if (netconf_gen_rpc_err(cbret) < 0)
+		    goto done;
+	    }
             xmldb_copy(h, "running", "candidate");
             goto ok;
         }
