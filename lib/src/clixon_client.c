@@ -132,6 +132,7 @@ clixon_client_init(const char *config_file)
     /* Find, read and parse configfile */
     if (clicon_options_main(h) < 0)
         return NULL;
+    yang_start(h);
     return h;
 }
 

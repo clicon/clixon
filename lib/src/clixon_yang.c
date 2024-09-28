@@ -4456,7 +4456,7 @@ yang_action_cb_add(yang_stmt *ys,
     return 0;
 }
 
-/*! Init yang code
+/*! Init yang code. Called before any yang code, before options
  *
  * Add two external tables for YANGs
  * @param[in]  h  Clixon handle
@@ -4470,7 +4470,6 @@ yang_init(clixon_handle h)
     map_ptr2ptr *mp;
     yang_stmt   *ymounts;
 
-    _yang_use_orig = clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL");
     if ((mp = calloc(1, sizeof(*mp))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
@@ -4490,6 +4489,21 @@ yang_init(clixon_handle h)
     retval = 0;
  done:
     return retval;
+}
+
+/*! Start yang code. Called after yang options loaded
+ *
+ * Called after YANG config and -o options and plugins init
+ * But before YANG data loaded
+ * Set local CLICON_YANG_USE_ORIGINAL variable
+ * @param[in]  h  Clixon handle
+ * @retval     0  OK
+ */
+int
+yang_start(clixon_handle h)
+{
+    _yang_use_orig = clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL");
+    return 0;
 }
 
 /*! Exit yang code

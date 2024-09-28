@@ -347,6 +347,7 @@ void      *yang_action_cb_get(yang_stmt *ys);
 int        yang_action_cb_add(yang_stmt *ys, void *rc);
 int        ys_populate_feature(clixon_handle h, yang_stmt *ys);
 int        yang_init(clixon_handle h);
+int        yang_start(clixon_handle h);
 int        yang_exit(clixon_handle h);
 
 #endif  /* _CLIXON_YANG_H_ */

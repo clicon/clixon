@@ -842,8 +842,10 @@ main(int    argc,
     /* In case ietf-yang-metadata is loaded by application, handle annotation extension */
     if (yang_metadata_init(h) < 0)
         goto done;
+    yang_start(h);
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
+
     /* Create top-level and store as option */
     if ((yspec = yspec_new(h, YANG_DATA_TOP)) == NULL)
         goto done;

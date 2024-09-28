@@ -829,6 +829,7 @@ main(int    argc,
         if (nacm_load_external(h) < 0)
             goto done;
     }
+    yang_start(h);
     /* Create top-level data yangs */
     if ((yspec = yspec_new(h, YANG_DATA_TOP)) == NULL)
         goto done;

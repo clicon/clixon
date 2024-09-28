@@ -866,6 +866,7 @@ main(int    argc,
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
         goto done;
+    yang_start(h);
     /* In case ietf-yang-metadata is loaded by application, handle annotation extension */
     if (yang_metadata_init(h) < 0)
         goto done;
