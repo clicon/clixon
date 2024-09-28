@@ -894,6 +894,7 @@ candidate_commit(clixon_handle  h,
     plugin_transaction_end_all(h, td);
     retval = 1;
  done:
+    xmldb_remove_stateonly(h, db, NULL);
     /* In case of failure (or error), call plugin transaction termination callbacks */
     if (td){
         if (retval < 1)

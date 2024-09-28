@@ -571,8 +571,10 @@ from_client_edit_config(clixon_handle h,
     }
     had_stateonly = xmldb_has_stateonly(h, target);
     if (!had_stateonly) {
-	if (xmldb_read_stateonly(h, target, NULL) < 0)
+	if (xmldb_read_stateonly(h, target, NULL) < 0) {
+	    had_stateonly = 1; /* It didn't get read, don't clear it. */
 	    goto done;
+	}
     }
     if ((cbx = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
