@@ -1640,39 +1640,6 @@ yang_parse_post(clixon_handle h,
     return retval;
 }
 
-/*! Optimize yang-stmt parse-tree by recursively removing USES stmt in derived trees
- *
- * @param[in] h     Clixon handle
- * @param[in] yspec Yang spec tree
- * @retval    0     OK
- * @retval   -1     Error
- * @note  This must be done after yang_parse_post (and yang2cli calls if CLI).
- */
-int
-yang_parse_optimize_uses(clixon_handle h,
-                         yang_stmt    *yt)
-{
-    int        retval = -1;
-    yang_stmt *ys;
-    int        i;
-
-    /* Dont increment due to prune in loop */
-    for (i=0; i<yang_len_get(yt); ){
-        ys = yang_child_i(yt, i);
-        if (yang_orig_get(ys) && yang_keyword_get(ys) == Y_USES){
-            ys_prune(yt, i);
-            ys_free(ys);
-            continue;
-        }
-        if (yang_parse_optimize_uses(h, ys) < 0)
-            goto done;
-        i++;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Parse yang specification and its dependencies recursively given module
  *
  * @param[in]  h         clicon handle

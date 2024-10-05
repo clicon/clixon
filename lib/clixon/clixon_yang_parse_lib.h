@@ -57,7 +57,6 @@ int        yang_file_find_match(clixon_handle h, const char *module, const char 
 yang_stmt *yang_parse_filename(clixon_handle h, const char *filename, yang_stmt  *ysp);
 yang_stmt *yang_parse_module(clixon_handle h, const char *module, const char *revision, yang_stmt *yspec, char *domain, char *origname);
 int        yang_parse_post(clixon_handle h, yang_stmt *yspec, int modmin);
-int        yang_parse_optimize_uses(clixon_handle h, yang_stmt *yspec);
 int        yang_spec_parse_module(clixon_handle h, const char *module,
                                   const char *revision, yang_stmt *yspec);
 yang_stmt *yang_parse_str(char *str, const char *name, yang_stmt *yspec);
