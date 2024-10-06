@@ -1889,19 +1889,21 @@ cli_show_statistics(clixon_handle h,
     size_t      tsz;
     yang_stmt  *ymounts;
     yang_stmt  *ydomain;
+    yang_stmt  *yspec;
     cg_var     *cv;
     cxobj      *xp;
+    char       *domain;
     char       *name;
     cxobj      *x;
     uint64_t    u64;
     char       *unit;
     int         inext;
+    int         inext2;
 
     if (argv == NULL || (cvec_len(argv) < 1 || cvec_len(argv) > 2)){
         clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [(cli|backend|all) [detail]]");
         goto done;
     }
-    ydomain = clicon_dbspec_yang(h);
     cv = cvec_i(argv, 0);
     what = cv_string_get(cv);
     if (strcmp(what, "cli") == 0)
@@ -1939,19 +1941,25 @@ cli_show_statistics(clixon_handle h,
         }
         inext = 0;
         while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
-            name = yang_argument_get(ydomain);
-            nr = 0; sz = 0;
-            if (yang_stats(ydomain, 0, &nr, &sz) < 0)
-                goto done;
-            tnr = nr;
-            tsz = sz;
-            if (detail) {
-                cligen_output(stdout, "YANG-%s-size: %" PRIu64 "\n", name, sz);
-                cligen_output(stdout, "YANG-%s-nr: %" PRIu64 "\n", name, nr);
-            }
-            else{
-                translatenumber(sz, &u64, &unit);
-                cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", yang_argument_get(ydomain), u64, unit);
+            domain = yang_argument_get(ydomain);
+            inext2 = 0;
+            while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
+                name = yang_argument_get(yspec);
+                nr = 0; sz = 0;
+                if (yang_stats(ydomain, 0, &nr, &sz) < 0)
+                    goto done;
+                tnr = nr;
+                tsz = sz;
+                if (detail) {
+                    cligen_output(stdout, "YANG-%s-%s-size: %" PRIu64 "\n", domain, name, sz);
+                    cligen_output(stdout, "YANG-%s-%s-nr: %" PRIu64 "\n", domain, name, nr);
+                }
+                else{
+                    translatenumber(sz, &u64, &unit);
+                    cprintf(cb, "%s/%s", domain, name);
+                    cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", cbuf_get(cb), u64, unit);
+                    cbuf_reset(cb);
+                }
             }
         }
         if (detail){
@@ -1994,7 +2002,6 @@ cli_show_statistics(clixon_handle h,
             translatenumber(tsz0+tsz, &u64, &unit);
             cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "Mem Total", u64, unit);
         }
-
     }
     if (backend) {
         cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
