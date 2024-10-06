@@ -416,7 +416,7 @@ clixon_stats_datastore_get(clixon_handle h,
     return retval;
 }
 
-/*! Get clixon per datastore stats
+/*! Get clixon per yang-spec stats
  *
  * @param[in]     h       Clixon handle
  * @param[in]     dbname  Datastore name
@@ -1462,13 +1462,13 @@ from_client_stats(clixon_handle h,
     while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
         domain = yang_argument_get(ydomain);
         /* per module-set, first configuration, then main dbspec, then mountpoints */
-        cprintf(cbret, "<module-set>");
-        cprintf(cbret, "<name>%s</name>", domain);
-        if (clixon_stats_module_get(h, ydomain, cbret) < 0)
-            goto done;
-        if (modules){
-            inext2 = 0;
-            while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
+        inext2 = 0;
+        while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
+            cprintf(cbret, "<module-set>");
+            cprintf(cbret, "<name>%s/%s</name>", domain, yang_argument_get(yspec));
+            if (clixon_stats_module_get(h, ydomain, cbret) < 0)
+                goto done;
+            if (modules){
                 inext3 = 0;
                 while ((ymodule = yn_iter(yspec, &inext3)) != NULL) {
                     cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ymodule));
@@ -1477,8 +1477,8 @@ from_client_stats(clixon_handle h,
                     cprintf(cbret, "</module>");
                 }
             }
+            cprintf(cbret, "</module-set>");
         }
-        cprintf(cbret, "</module-set>");
     }
     cprintf(cbret, "</module-sets>");
     cprintf(cbret, "</rpc-reply>");

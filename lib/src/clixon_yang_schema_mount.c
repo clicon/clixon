@@ -784,7 +784,9 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
     yang_stmt *yspec1 = NULL;
     char      *xpath = NULL;
     char      *domain = NULL;
+    cbuf      *cb = NULL;
     int        ret;
+    static unsigned int nr = 0;
 
     /* 1. Get modstate (xyanglib) of node: xyanglib, by querying backend state (via callback)
      *    XXX this xyanglib is not proper RFC8525, submodules appear as modules WHY?
@@ -819,7 +821,12 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
         if (yang_schema_find_share(h, xt, xyanglib, &yspec0) < 0)
             goto done;
     }
-    if ((yspec1 = yspec_new_shared(h, xpath, domain, yspec0)) < 0)
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_YANG, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "%u", nr++);
+    if ((yspec1 = yspec_new_shared(h, xpath, domain, cbuf_get(cb), yspec0)) < 0)
         goto done;
     /* Either yspec0 = NULL and yspec1 is new, or yspec0 == yspec1 != NULL (shared) */
     if (yspec0 == NULL && yspec1 != NULL){
@@ -835,6 +842,8 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
     yspec1 = NULL;
     retval = 1;
  done:
+    if (cb)
+        cbuf_free(cb);
     if (xpath)
         free(xpath);
     if (yspec1)

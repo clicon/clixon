@@ -218,7 +218,7 @@ new "get yang-lib at mountpoint"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><top xmlns=\"urn:example:clixon\"><mylist/></top>></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>mylabel</name><module><name>clixon-mount0</name><namespace>urn:example:mount0</namespace></module></module-set></yang-library></root></mylist><mylist><name>y</name><root><yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>mylabel</name><module><name>clixon-mount0</name><namespace>urn:example:mount0</namespace></module></module-set></yang-library></root></mylist></top></data></rpc-reply>"
 
 new "check there is statistics from mountpoint"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><stats xmlns=\"http://clicon.org/lib\"></stats></rpc>" "<module-set><name>mylabel</name>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><stats xmlns=\"http://clicon.org/lib\"></stats></rpc>" "<module-set><name>mylabel/0</name>"
 
 new "Add data to mounts"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x1</name1></mylist1></mount1></root></mylist></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"

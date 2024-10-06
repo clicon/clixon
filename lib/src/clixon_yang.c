@@ -886,44 +886,38 @@ yspec_new1(clixon_handle h,
 
 /*! Create or add a shared yspec
  *
- * @param[in]     h      Clixon handle
- * @param[in]     tag    Typically an xpath, saved in cvec
- * @param[in]     yspec0 Input NULL if no previous shared exist, otherwise a shared yspec but new name
- * @retval        yspec1 New or (previously shared)
- * @retval        NULL   Error
+ * @param[in]   h       Clixon handle
+ * @param[in]   xpath   Mount xpath, saved in cvec
+ * @param[in]   domain  YANG domain
+ * @param[in]   domain  YANG spec name
+ * @param[in]   yspec0  Input NULL if no previous shared exist, otherwise a shared yspec but new name
+ * @retval      yspec1  New or (previously shared)
+ * @retval      NULL    Error
  * @note yspec name used by concatenating domain and a unique number.
  */
 yang_stmt *
 yspec_new_shared(clixon_handle h,
-                 char         *tag,
+                 char         *xpath,
                  char         *domain,
+                 char         *name,
                  yang_stmt    *yspec0)
 {
     yang_stmt *yspec1 = NULL;
-    cbuf      *cb = NULL;
-    static int nr = 0;
 
     if (yspec0 != NULL){ /* shared */
         yspec1 = yspec0;
     }
     else {
-        if ((cb = cbuf_new()) == NULL){
-            clixon_err(OE_YANG, errno, "cbuf_new");
-            goto done;
-        }
-        cprintf(cb, "%s%d", domain, nr++);
-        if ((yspec1 = yspec_new1(h, domain, cbuf_get(cb))) == NULL)
+        if ((yspec1 = yspec_new1(h, domain, name)) == NULL)
             goto done;
         yang_flag_set(yspec1, YANG_FLAG_SPEC_MOUNT);
         clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec1);
     }
-    if (yang_cvec_add(yspec1, CGV_STRING, tag) < 0){
+    if (yang_cvec_add(yspec1, CGV_STRING, xpath) < 0){
         yspec1 = NULL;
         goto done;
     }
  done:
-    if (cb)
-        cbuf_free(cb);
     return yspec1;
 }
 

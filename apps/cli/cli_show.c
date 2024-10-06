@@ -1883,10 +1883,10 @@ cli_show_statistics(clixon_handle h,
     parse_tree *pt;
     uint64_t    nr;
     uint64_t    tnr0;
-    uint64_t    tnr;
+    uint64_t    tnr = 0;
     size_t      sz;
     size_t      tsz0;
-    size_t      tsz;
+    size_t      tsz = 0;
     yang_stmt  *ymounts;
     yang_stmt  *ydomain;
     yang_stmt  *yspec;
@@ -1946,10 +1946,10 @@ cli_show_statistics(clixon_handle h,
             while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
                 name = yang_argument_get(yspec);
                 nr = 0; sz = 0;
-                if (yang_stats(ydomain, 0, &nr, &sz) < 0)
+                if (yang_stats(yspec, 0, &nr, &sz) < 0)
                     goto done;
-                tnr = nr;
-                tsz = sz;
+                tnr += nr;
+                tsz += sz;
                 if (detail) {
                     cligen_output(stdout, "YANG-%s-%s-size: %" PRIu64 "\n", domain, name, sz);
                     cligen_output(stdout, "YANG-%s-%s-nr: %" PRIu64 "\n", domain, name, nr);
@@ -1963,8 +1963,8 @@ cli_show_statistics(clixon_handle h,
             }
         }
         if (detail){
-            cligen_output(stdout, "YANG-total-size: %" PRIu64 "\n", sz);
-            cligen_output(stdout, "YANG-total-nr: %" PRIu64 "\n", sz);
+            cligen_output(stdout, "YANG-total-size: %" PRIu64 "\n", tsz);
+            cligen_output(stdout, "YANG-total-nr: %" PRIu64 "\n", tnr);
         }
         else {
             translatenumber(tsz, &u64, &unit);
