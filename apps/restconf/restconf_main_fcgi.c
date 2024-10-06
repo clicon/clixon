@@ -498,7 +498,7 @@ main(int    argc,
         goto done;
 
     /* Create top-level yang spec and store as option */
-    if ((yspec = yspec_new(h, YANG_DATA_TOP)) == NULL)
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_DATA_TOP)) == NULL)
         goto done;
 
     /* Initialize plugin module by creating a handle holding plugin and callback lists */

@@ -270,7 +270,8 @@ yang2cli_print_alias(cbuf         *cb,
  * @param[out] cb     CLIgen buf
  * @param[in]  delim  Delimiter string that may not occur in any of the elements (except the last)
  * @param[in]  tag    Context-specific tag, eg "grouping"
- * @param[in]  domain Domain name (= yspec name)
+ * @param[in]  domain Domain name
+ * @param[in]  spec   yspec name
  * @param[in]  module Name of module (in domain context)
  * @param[in]  id     Top-level nodeid (schema-id)
  * @retval     0      Ok
@@ -281,15 +282,17 @@ yang2cli_cmd_encode(cbuf       *cb,
                     const char *delim,
                     char       *tag,
                     char       *domain,
+                    char       *spec,
                     char       *module,
                     char       *id)
 {
-    if (tag == NULL || domain == NULL || module == NULL || id == NULL){
+    if (tag == NULL || domain == NULL || spec == NULL || module == NULL || id == NULL){
         clixon_err(OE_YANG, EINVAL, "tag, domain, module or id is NULL");
         return -1;
     }
     cprintf(cb, "%s", tag);
     cprintf(cb, "%s%s", delim, domain);
+    cprintf(cb, "%s%s", delim, spec);
     cprintf(cb, "%s%s", delim, module);
     cprintf(cb, "%s%s", delim, id);
     return 0;
@@ -300,7 +303,8 @@ yang2cli_cmd_encode(cbuf       *cb,
  * @param[in]  cmd    CLIgen cmd string
  * @param[in]  delim  Delimiter string that may not occur in any of the elements (except the last)
  * @param[out] tag    Context-specific tag, eg "grouping"
- * @param[out] domain Domain name (= yspec name)
+ * @param[out] domain Domain name
+ * @param[out] spec   Yspec name
  * @param[out] module Name of module (in domain context)
  * @param[out] id     Top-level nodeid (schema-id)
  * @retval     0      Ok
@@ -311,6 +315,7 @@ yang2cli_cmd_decode(char       *cmd,
                     const char *delim,
                     char      **tag,
                     char      **domain,
+                    char      **spec,
                     char      **modname,
                     char      **id)
 {
@@ -334,6 +339,13 @@ yang2cli_cmd_decode(char       *cmd,
     s2 += strlen(delim);
     if (domain)
         *domain = s2;
+    s1 = s2;
+    if ((s2 = strstr(s1, delim)) == NULL)
+        goto ok;
+    *s2 = '\0';
+    s2 += strlen(delim);
+    if (spec)
+        *spec = s2;
     s1 = s2;
     if ((s2 = strstr(s1, delim)) == NULL)
         goto ok;
@@ -1307,6 +1319,7 @@ yang2cli_uses(clixon_handle h,
     if ((ns = yang_find_mynamespace(ygrouping)) == NULL)
         goto done;
     if (yang2cli_cmd_encode(cbtree, AUTOCLI_CMD_DELIM, "grouping",
+                            yang_argument_get(ys_domain(ygrouping)),
                             yang_argument_get(ys_spec(ygrouping)),
                             yang_argument_get(ys_module(ygrouping)),
                             id) < 0)
@@ -1897,11 +1910,13 @@ yang2cli_grouping_wrap(cligen_handle ch,
     int           retval = -1;
     clixon_handle h;
     yang_stmt    *ymnt;
+    yang_stmt    *ydomain;
     yang_stmt    *yspec;
     yang_stmt    *ymod;
     yang_stmt    *ygrouping;
     char         *tag = NULL;
     char         *domain = NULL;
+    char         *spec = NULL;
     char         *modname = NULL;
     char         *grouping = NULL;
     int           ret;
@@ -1912,7 +1927,7 @@ yang2cli_grouping_wrap(cligen_handle ch,
     }
     h = cligen_userhandle(ch);
     yspec = clicon_dbspec_yang(h);
-    if (yang2cli_cmd_decode(name, AUTOCLI_CMD_DELIM, &tag, &domain, &modname, &grouping) < 0)
+    if (yang2cli_cmd_decode(name, AUTOCLI_CMD_DELIM, &tag, &domain, &spec, &modname, &grouping) < 0)
         goto done;
     if (tag == NULL || strcmp(tag, "grouping") != 0)
         goto ok;
@@ -1920,13 +1935,17 @@ yang2cli_grouping_wrap(cligen_handle ch,
         *namep = strdup(name);
         goto ok;
     }
-    if (domain == NULL || modname == NULL || grouping == NULL){
+    if (domain == NULL || spec == NULL || modname == NULL || grouping == NULL){
         clixon_err(OE_YANG, 0, "yang2cli cmd label invalid format");
         goto done;
     }
     ymnt = clixon_yang_mounts_get(h);
-    if ((yspec = yang_find(ymnt, Y_SPEC, domain)) == NULL){
-        clixon_err(OE_YANG, 0, "yang2cli cmd label no yspec %s", domain);
+    if ((ydomain = yang_find(ymnt, Y_DOMAIN, domain)) == NULL){
+        clixon_err(OE_YANG, 0, "yang2cli cmd label no ydomain %s", domain);
+        goto done;
+    }
+    if ((yspec = yang_find(ydomain, Y_SPEC, spec)) == NULL){
+        clixon_err(OE_YANG, 0, "yang2cli cmd label no yspec %s", spec);
         goto done;
     }
     if ((ymod = yang_find(yspec, 0, modname)) == NULL){

@@ -102,6 +102,7 @@
                                       */
 /*! Names of top-level data YANGs
  */
+#define YANG_DOMAIN_TOP "top"
 #define YANG_DATA_TOP   "data"    /* "dbspec" */
 #define YANG_CONFIG_TOP "config"
 #define YANG_NACM_TOP   "nacm_ext_yang"
@@ -190,8 +191,9 @@ enum rfc_6020{
     Y_YANG_VERSION,
     Y_YIN_ELEMENT,
     /* Note, from here not actual yang statement from the RFC */
-    Y_MOUNTS, /* Top-level all mounts */
-    Y_SPEC    /* Specifications on top, config or mount-points */
+    Y_MOUNTS, /* Top-level root single object, see clixon_yang_mounts_get() */
+    Y_DOMAIN, /* YANG domain: many module revisions allowed but name+revision unique */
+    Y_SPEC    /* Module set for single data, config and mount-point: unique module name */
 };
 
 /* Type used to group yang nodes used in some functions
@@ -286,7 +288,9 @@ int        yang_stats(yang_stmt *y, enum rfc_6020 keyw, uint64_t *nrp, size_t *s
 
 /* Other functions */
 yang_stmt *yspec_new(clixon_handle h, char *name);
+yang_stmt *yspec_new1(clixon_handle h, char *domain, char *name);
 yang_stmt *yspec_new_shared(clixon_handle h, char *name, char *domain, yang_stmt *yspec0);
+yang_stmt *ydomain_new(clixon_handle h, char *domain);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
 int        ys_prune_self(yang_stmt *ys);
@@ -304,6 +308,7 @@ int        ys_module_by_xml(yang_stmt *ysp, struct xml *xt, yang_stmt **ymodp);
 yang_stmt *ys_module(yang_stmt *ys);
 int        ys_real_module(yang_stmt *ys, yang_stmt **ymod);
 yang_stmt *ys_spec(yang_stmt *ys);
+yang_stmt *ys_domain(yang_stmt *ys);
 yang_stmt *ys_mounts(yang_stmt *ys);
 yang_stmt *yang_find(yang_stmt *yn, int keyword, const char *argument);
 yang_stmt *yang_find_datanode(yang_stmt *yn, char *argument);

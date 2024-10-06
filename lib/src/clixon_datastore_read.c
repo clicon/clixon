@@ -708,7 +708,7 @@ xmldb_readfile(clixon_handle    h,
              * Same ymodules are inserted into yspec1, ie pointers only
              */
             if (needclone && xmodfile){
-                if ((yspec1 = yspec_new(h, "tmp")) == NULL)
+                if ((yspec1 = yspec_new1(h, YANG_DOMAIN_TOP, "tmp")) == NULL)
                     goto done;
                 xmsd = NULL;
                 while ((xmsd = xml_child_each(xmodfile, xmsd, CX_ELMNT)) != NULL) {

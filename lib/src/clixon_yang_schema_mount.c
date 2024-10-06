@@ -197,20 +197,28 @@ yang_mount_get(yang_stmt  *ys,
 {
     int        retval = 1;
     yang_stmt *ymounts;
+    yang_stmt *ydomain;
     yang_stmt *yspec = NULL;
     int        inext;
+    int        inext2;
 
     if ((ymounts = ys_mounts(ys)) == NULL){
         clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
         goto done;
     }
     inext = 0;
-    while ((yspec = yn_iter(ymounts, &inext)) != NULL) {
-        if (yang_keyword_get(yspec) != Y_SPEC ||
-            yang_cvec_get(yspec) == NULL ||
-            yang_flag_get(yspec, YANG_FLAG_SPEC_MOUNT) == 0)
-            continue;
-        if (xpath == NULL || cvec_find(yang_cvec_get(yspec), xpath) != NULL)
+    ydomain = NULL;
+    while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
+        inext2 = 0;
+        while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
+            if (yang_keyword_get(yspec) != Y_SPEC ||
+                yang_cvec_get(yspec) == NULL ||
+                yang_flag_get(yspec, YANG_FLAG_SPEC_MOUNT) == 0)
+                continue;
+            if (xpath == NULL || cvec_find(yang_cvec_get(yspec), xpath) != NULL)
+                break;
+        }
+        if (yspec != NULL)
             break;
     }
     *yspecp = yspec;
@@ -712,6 +720,7 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
     cxobj     *xyanglib = NULL;
     cxobj     *xb;
     yang_stmt *ymounts;
+    yang_stmt *ydomain;
     yang_stmt *yspec0 = NULL;
     yang_stmt *yspec1 = NULL;
     char      *xpath = NULL;
@@ -742,7 +751,11 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
         clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
         goto done;
     }
-    yspec0 = yang_find(ymounts, Y_SPEC, domain);
+    if ((ydomain = yang_find(ymounts, Y_DOMAIN, domain)) == NULL){
+        if ((ydomain = ydomain_new(h, domain)) == NULL)
+            goto done;
+    }
+    yspec0 = yang_find(ydomain, Y_SPEC, domain); // XXX name?
     if ((yspec1 = yspec_new_shared(h, xpath, domain, yspec0)) < 0)
         goto done;
     /* Either yspec0 = NULL and yspec1 is new, or yspec0 == yspec1 != NULL (shared) */

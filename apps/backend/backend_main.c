@@ -221,7 +221,7 @@ nacm_load_external(clixon_handle h)
         clixon_err(OE_UNIX, errno, "configure file: %s", filename);
         return -1;
     }
-    if ((yspec = yspec_new(h, YANG_NACM_TOP)) == NULL)
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_NACM_TOP)) == NULL)
         goto done;
     if (yang_spec_parse_module(h, "ietf-netconf-acm", NULL, yspec) < 0)
         goto done;
@@ -831,7 +831,7 @@ main(int    argc,
     }
     yang_start(h);
     /* Create top-level data yangs */
-    if ((yspec = yspec_new(h, YANG_DATA_TOP)) == NULL)
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_DATA_TOP)) == NULL)
         goto done;
 
     /* Load backend plugins before yangs are loaded (eg extension callbacks) */

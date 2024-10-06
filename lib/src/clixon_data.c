@@ -354,11 +354,13 @@ clixon_yang_mounts_set(clixon_handle h,
 yang_stmt *
 clicon_dbspec_yang(clixon_handle h)
 {
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
     yang_stmt *ys = NULL;
-    yang_stmt *ymounts = NULL;
 
-    if ((ymounts = clixon_yang_mounts_get(h)) != NULL)
-        ys = yang_find(ymounts, Y_SPEC, YANG_DATA_TOP);
+    if ((ymounts = clixon_yang_mounts_get(h)) != NULL &&
+        (ydomain = yang_find(ymounts, Y_DOMAIN, YANG_DOMAIN_TOP)) != NULL)
+        ys = yang_find(ydomain, Y_SPEC, YANG_DATA_TOP);
     return ys;
 }
 
@@ -371,11 +373,13 @@ clicon_dbspec_yang(clixon_handle h)
 yang_stmt *
 clicon_config_yang(clixon_handle h)
 {
-    yang_stmt *ymounts = NULL;
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
     yang_stmt *ys = NULL;
 
-    if ((ymounts = clixon_yang_mounts_get(h)) != NULL)
-        ys = yang_find(ymounts, Y_SPEC, YANG_CONFIG_TOP);
+    if ((ymounts = clixon_yang_mounts_get(h)) != NULL &&
+        (ydomain = yang_find(ymounts, Y_DOMAIN, YANG_DOMAIN_TOP)) != NULL)
+        ys = yang_find(ydomain, Y_SPEC, YANG_CONFIG_TOP);
     return ys;
 }
 
@@ -388,11 +392,13 @@ clicon_config_yang(clixon_handle h)
 yang_stmt *
 clicon_nacm_ext_yang(clixon_handle h)
 {
-    yang_stmt *ymounts = NULL;
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
     yang_stmt *ys = NULL;
 
-    if ((ymounts = clixon_yang_mounts_get(h)) != NULL)
-        ys = yang_find(ymounts, Y_SPEC, YANG_NACM_TOP);
+    if ((ymounts = clixon_yang_mounts_get(h)) != NULL &&
+        (ydomain = yang_find(ymounts, Y_DOMAIN, YANG_DOMAIN_TOP)) != NULL)
+        ys = yang_find(ydomain, Y_SPEC, YANG_NACM_TOP);
     return ys;
 }
 

@@ -189,7 +189,7 @@ RULES=$(cat <<EOF
    </nacm>
 EOF
 )
-//           /ex:top/ex:mylist/ex:mnt/m0:mymount0/m0:mylist0
+#           /ex:top/ex:mylist/ex:mnt/m0:mymount0/m0:mylist0
 
 new "test params: -f $cfg"
 

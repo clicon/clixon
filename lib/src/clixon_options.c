@@ -639,7 +639,7 @@ clicon_options_main(clixon_handle h)
     char          *yangspec = "clixon-config";
 
     /* Create configure yang-spec */
-    if ((yspec = yspec_new(h, YANG_CONFIG_TOP)) == NULL)
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_CONFIG_TOP)) == NULL)
         goto done;
     /*
      * Set configure file if not set by command-line above

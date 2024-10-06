@@ -1419,20 +1419,22 @@ from_client_stats(clixon_handle h,
 {
     int        retval = -1;
     uint64_t   nr;
-    yang_stmt *ym;
     char      *str;
     int        modules = 0;
-    yang_stmt *yspec;
+    yang_stmt *yspec0;
     yang_stmt *ymounts;
     yang_stmt *ydomain;
+    yang_stmt *yspec;
+    yang_stmt *ymodule;
     cxobj     *xt = NULL;
-    char      *name;
+    char      *domain;
     int        inext;
     int        inext2;
+    int        inext3;
 
     if ((str = xml_find_body(xe, "modules")) != NULL)
         modules = strcmp(str, "true") == 0;
-    yspec = clicon_dbspec_yang(h);
+    yspec0 = clicon_dbspec_yang(h);
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cbret, "<global xmlns=\"%s\">", CLIXON_LIB_NS);
     nr=0;
@@ -1447,7 +1449,7 @@ from_client_stats(clixon_handle h,
         goto done;
     if (clixon_stats_datastore_get(h, "candidate", cbret) < 0)
         goto done;
-    if (if_feature(yspec, "ietf-netconf", "startup"))
+    if (if_feature(yspec0, "ietf-netconf", "startup"))
 	if (clixon_stats_datastore_get(h, "startup", cbret) < 0)
 	    goto done;
     cprintf(cbret, "</datastores>");
@@ -1458,19 +1460,22 @@ from_client_stats(clixon_handle h,
     cprintf(cbret, "<module-sets xmlns=\"%s\">", CLIXON_LIB_NS);
     inext = 0;
     while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
-        name = yang_argument_get(ydomain);
+        domain = yang_argument_get(ydomain);
         /* per module-set, first configuration, then main dbspec, then mountpoints */
         cprintf(cbret, "<module-set>");
-        cprintf(cbret, "<name>%s</name>", name);
+        cprintf(cbret, "<name>%s</name>", domain);
         if (clixon_stats_module_get(h, ydomain, cbret) < 0)
             goto done;
         if (modules){
             inext2 = 0;
-            while ((ym = yn_iter(ydomain, &inext2)) != NULL) {
-                cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ym));
-                if (clixon_stats_module_get(h, ym, cbret) < 0)
-                    goto done;
-                cprintf(cbret, "</module>");
+            while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
+                inext3 = 0;
+                while ((ymodule = yn_iter(yspec, &inext3)) != NULL) {
+                    cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ymodule));
+                    if (clixon_stats_module_get(h, ymodule, cbret) < 0)
+                        goto done;
+                    cprintf(cbret, "</module>");
+                }
             }
         }
         cprintf(cbret, "</module-set>");

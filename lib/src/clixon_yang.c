@@ -260,6 +260,8 @@ yang_argument_set(yang_stmt *ys,
  *
  * @param[in] ys   Yang statement node
  * @param[in] arg  Argument, is copied
+ * @retval    0    Ok
+ * @retval   -1    Error
  */
 int
 yang_argument_dup(yang_stmt *ys,
@@ -829,27 +831,53 @@ yang_stats(yang_stmt    *yt,
 
 /* stats end */
 
-/*! Create new yang specification, addd as child to top-level yang_mounts
+/*! Create new yang specification for top domain, add as child to top-level yang_mounts
  *
- * @retval  yspec    Free with ys_free()
- * @retval  NULL     Error
+ * @param[in] h      Clixon handle
+ * @param[in] domain Yang domain
+ * @param[in] name   Yang spec name
+ * @retval    yspec  Yang spec, free with ys_free
+ * @retval    NULL   Error
+ * XXX Backward-compatible 7.1
  */
 yang_stmt *
 yspec_new(clixon_handle h,
           char         *name)
 {
+    return yspec_new1(h, YANG_DOMAIN_TOP, name);
+}
+
+/*! Create new yang specification, addd as child to top-level yang_mounts
+ *
+ * @param[in] h      Clixon handle
+ * @param[in] domain Yang domain
+ * @param[in] name   Yang spec name
+ * @retval    yspec  Yang spec, free with ys_free
+ * @retval    NULL   Error
+ * @see yspec_new  Hardcoded to top-domain
+ */
+yang_stmt *
+yspec_new1(clixon_handle h,
+           char         *domain,
+           char         *name)
+{
     yang_stmt *ymounts;
+    yang_stmt *ydomain;
     yang_stmt *yspec;
 
     if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
         clixon_err(OE_YANG, 0, "Yang-mounts not created");
         goto done;
     }
+    if ((ydomain = yang_find(ymounts, Y_DOMAIN, domain)) == NULL){
+        clixon_err(OE_YANG, 0, "Yang domain %s not found", domain);
+        goto done;
+    }
     if ((yspec = ys_new(Y_SPEC)) == NULL)
         goto done;
-    if (yang_argument_dup(yspec, name) < 0)
+    if (name != NULL && yang_argument_dup(yspec, name) < 0)
         goto done;
-    if (yn_insert(ymounts, yspec) < 0)
+    if (yn_insert(ydomain, yspec) < 0)
         goto done;
     return yspec;
  done:
@@ -876,7 +904,8 @@ yspec_new_shared(clixon_handle h,
         yspec1 = yspec0;
     }
     else {
-        if ((yspec1 = yspec_new(h, domain)) == NULL)
+        // XXX domain used as name
+        if ((yspec1 = yspec_new1(h, domain, domain)) == NULL)
             goto done;
         yang_flag_set(yspec1, YANG_FLAG_SPEC_MOUNT);
         clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec1);
@@ -887,6 +916,39 @@ yspec_new_shared(clixon_handle h,
     }
  done:
     return yspec1;
+}
+
+/*! Create new yang domain
+ *
+ * @param[in] h       Clixon handle
+ * @param[in] domain  Yang domain name
+ * @retval    ydomain Yang spec, free with ys_free
+ * @retval    NULL    Error
+ */
+yang_stmt *
+ydomain_new(clixon_handle h,
+            char         *domain)
+{
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
+
+    if (domain == NULL){
+        clixon_err(OE_YANG, EINVAL, "domain is NULL");
+        goto done;
+    }
+    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
+        clixon_err(OE_YANG, 0, "Yang-mounts not created");
+        goto done;
+    }
+    if ((ydomain = ys_new(Y_DOMAIN)) == NULL)
+        goto done;
+    if (yang_argument_dup(ydomain, domain) < 0)
+        goto done;
+    if (yn_insert(ymounts, ydomain) < 0)
+        goto done;
+    return ydomain;
+ done:
+    return NULL;
 }
 
 /*! Create new yang node/statement given size
@@ -2156,10 +2218,10 @@ ys_real_module(yang_stmt  *ys,
     return retval;
 }
 
-/*! Find top of tree, the yang specification from within the tree
+/*! Find spec tree, the yang specification from within the tree
  *
  * @param[in] ys    Any yang statement in a yang tree
- * @retval    yspec The top yang specification
+ * @retval    yspec The yang specification
  * @see  ys_module
  * @see  yang_augment_node where shortcut is set for augment
  * @see  yang_myroot for first node under (sub)module
@@ -2175,6 +2237,21 @@ ys_spec(yang_stmt *ys)
     }
     /* Here it is either NULL or is a typedef-kind yang-stmt */
     return ys;
+}
+
+/*! Find domain tree,
+ *
+ * @param[in] ys      Any yang statement in a yang tree
+ * @retval    ydomain The yang domain specification
+ */
+yang_stmt *
+ys_domain(yang_stmt *ys)
+{
+    yang_stmt *yn;
+
+    if ((yn = ys_spec(ys)) != NULL)
+        return yn->ys_parent;
+    return NULL;
 }
 
 /*! Find top of tree, the yang specification from within the tree
@@ -2296,8 +2373,10 @@ int
 yang_mounts_print(FILE      *f,
                   yang_stmt *ymounts)
 {
+    yang_stmt *ydomain;
     yang_stmt *yspec;
     int        inext;
+    int        inext2;
     cg_var    *cv;
     cvec      *cvv;
 
@@ -2306,15 +2385,19 @@ yang_mounts_print(FILE      *f,
         return -1;
     }
     inext = 0;
-    while ((yspec = yn_iter(ymounts, &inext)) != NULL) {
-        fprintf(f, " %s\n", yang_argument_get(yspec));
-        if ((cv = yang_cv_get(yspec)) != NULL){
-            cv_print(f, yang_cv_get(yspec));
-            fprintf(f, "\n");
-        }
-        if ((cvv = yang_cvec_get(yspec)) != NULL){
-            cvec_print(f, cvv);
-            fprintf(f, "\n");
+    while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
+        fprintf(f, "domain:%s\n", yang_argument_get(ydomain));
+        inext2 = 0;
+        while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
+            fprintf(f, "  spec:%s\n", yang_argument_get(yspec));
+            if ((cv = yang_cv_get(yspec)) != NULL){
+                cv_print(f, yang_cv_get(yspec));
+                fprintf(f, "\n");
+            }
+            if ((cvv = yang_cvec_get(yspec)) != NULL){
+                cvec_print(f, cvv);
+                fprintf(f, "\n");
+            }
         }
     }
     return 0;
@@ -4485,6 +4568,8 @@ yang_init(clixon_handle h)
     if ((ymounts = ys_new(Y_MOUNTS)) == NULL)
         goto done;
     if (clixon_yang_mounts_set(h, ymounts) < 0)
+        goto done;
+    if (ydomain_new(h, YANG_DOMAIN_TOP) == NULL)
         goto done;
     retval = 0;
  done:

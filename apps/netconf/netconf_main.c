@@ -871,7 +871,7 @@ main(int    argc,
     if (yang_metadata_init(h) < 0)
         goto done;
     /* Create top-level yang spec and store as option */
-    if ((yspec = yspec_new(h, YANG_DATA_TOP)) == NULL)
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_DATA_TOP)) == NULL)
         goto done;
 
     /* Load netconf plugins before yangs are loaded (eg extension callbacks) */
