@@ -487,6 +487,62 @@ netconf_unknown_attribute(cbuf *cb,
     goto done;
 }
 
+/*! Create Netconf rpc-error XML tree with all parameters available.
+ *
+ * An unexpected attribute is present.
+ * @param[out] cb       CLIgen buf. Error XML is written in this buffer
+ * @param[in]  ns       Namespace.  If NULL the netconf base ns will be used
+ * @param[in]  type     Error type: "rpc", "application" or "protocol"
+ * @param[in]  severity Severity: "error" or "warning"
+ * @param[in]  tag      Error tag, like "invalid-value" or "unknown-attribute"
+ * @param[in]  info     bad-attribute or bad-element xml.  If NULL not included.
+ * @param[in]  message  Error message.  May be NULL.
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+int
+netconf_common_rpc_err(cbuf *cb,
+		       char *ns,
+		       char *type,
+		       char *tag,
+		       char *severity,
+		       char *info,
+		       char *message)
+{
+    int   retval = -1;
+    char *encstr = NULL;
+
+    if (!ns)
+	ns = NETCONF_BASE_NAMESPACE;
+
+    if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
+                "<error-type>%s</error-type>"
+                "<error-tag>%s</error-tag>"
+                "<error-severity>%s</error-severity>",
+                ns, type, tag, severity) < 0)
+        goto err;
+    if (info){
+        if (cprintf(cb, "<error-info>%s</error-info>", info) < 0)
+            goto err;
+    }
+    if (message){
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
+            goto done;
+        if (cprintf(cb, "<error-message>%s</error-message>", encstr) < 0)
+            goto err;
+    }
+    if (cprintf(cb, "</rpc-error></rpc-reply>") < 0)
+        goto err;
+    retval = 0;
+ done:
+    if (encstr)
+        free(encstr);
+    return retval;
+ err:
+    clixon_err(OE_XML, errno, "cprintf");
+    goto done;
+}
+
 /*! Common Netconf element XML tree according to RFC 6241 App A
  *
  * @param[out] xret    Error XML tree. Free with xml_free after use
