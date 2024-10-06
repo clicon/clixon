@@ -557,6 +557,7 @@ from_client_edit_config(clixon_handle h,
     char               *val = NULL;
     cvec               *nsc = NULL;
     char               *prefix = NULL;
+    int                had_stateonly = 1;
 
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -567,6 +568,13 @@ from_client_edit_config(clixon_handle h,
         if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
             goto done;
         goto ok;
+    }
+    had_stateonly = xmldb_has_stateonly(h, target);
+    if (!had_stateonly) {
+	if (xmldb_read_stateonly(h, target, NULL) < 0) {
+	    had_stateonly = 1; /* It didn't get read, don't clear it. */
+	    goto done;
+	}
     }
     if ((cbx = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
@@ -705,8 +713,14 @@ from_client_edit_config(clixon_handle h,
             }
         }
         if ((ret = candidate_commit(h, NULL, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
-            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
-                goto done;
+	    if (clixon_err_category()) {
+		if (netconf_operation_failed(cbret, "application",
+					     clixon_err_reason()) < 0)
+		    goto done;
+	    } else if (plugin_rpc_err_set()) {
+		if (netconf_gen_rpc_err(cbret) < 0)
+		    goto done;
+	    }
             xmldb_copy(h, "running", "candidate");
             goto ok;
         }
@@ -747,6 +761,8 @@ from_client_edit_config(clixon_handle h,
         xml_free(xret);
     if (cbx)
         cbuf_free(cbx);
+    if (!had_stateonly && retval < 0)
+	xmldb_remove_stateonly(h, target, NULL);
     clixon_debug(CLIXON_DBG_BACKEND, "done cbret:%s", cbuf_get(cbret));
     return retval;
 } /* from_client_edit_config */

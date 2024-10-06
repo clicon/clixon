@@ -80,6 +80,11 @@
 #include "clixon_xml_bind.h"
 #include "clixon_xml_default.h"
 #include "clixon_xml_io.h"
+#include "clixon_map.h"
+#include "clixon_xml_nsctx.h"
+#include "clixon_xml_sort.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_json.h"
 #include "clixon_datastore.h"
 #include "clixon_datastore_write.h"
@@ -353,21 +358,29 @@ xmldb_copy(clixon_handle h,
     }
     clicon_db_elmnt_set(h, to, &de0);
     /* Copy the files themselves (above only in-memory cache)
-     * Alt, dump the cache to file
+     * or flush the running data to file if we are only storing running
+     * on disk.
      */
-    if (xmldb_db2file(h, from, &fromfile) < 0)
-        goto done;
-    if (xmldb_db2file(h, to, &tofile) < 0)
-        goto done;
-    if (clicon_file_copy(fromfile, tofile) < 0)
-        goto done;
-    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")) {
-        if (xmldb_db2subdir(h, from, &fromdir) < 0)
-            goto done;
-        if (xmldb_db2subdir(h, to, &todir) < 0)
-            goto done;
-        if (clicon_dir_copy(fromdir, todir) < 0)
-            goto done;
+    if (clicon_option_bool(h, "CLIXON_TMPDB_VOLATILE")){
+	if (strcmp(to, "running") == 0) {
+	    if (xmldb_write_cache2file(h, to) < 0)
+		goto done;
+	}
+    } else {
+	if (xmldb_db2file(h, from, &fromfile) < 0)
+	    goto done;
+	if (xmldb_db2file(h, to, &tofile) < 0)
+	    goto done;
+	if (clicon_file_copy(fromfile, tofile) < 0)
+	    goto done;
+	if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")) {
+	    if (xmldb_db2subdir(h, from, &fromdir) < 0)
+		goto done;
+	    if (xmldb_db2subdir(h, to, &todir) < 0)
+		goto done;
+	    if (clicon_dir_copy(fromdir, todir) < 0)
+		goto done;
+	}
     }
     retval = 0;
  done:
@@ -1020,4 +1033,274 @@ xmldb_multi_upgrade(clixon_handle h,
     if (tofile)
         free(tofile);
     return retval;
+}
+
+struct clixon_stateonly_data {
+    cxobj *path;
+    int (*getstate)(void *, cxobj *);
+    void *sdata;
+};
+
+/*! Add a namespace that is not stored in the disk database, only in system state
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  path   XML representing the path not stored
+ * @param[in]  getstate Function to fetch the state
+ * @param[in]  sdata  Passed to getstate() when called
+ * @retval     0      OK
+ * @retval    -1      General error, check specific clicon_errno, clicon_suberrno
+ *
+ * Some data may not be suitable for storing on disk.  It may be
+ * security sensitive, or it may be dynamic outside the clixon database
+ * and may change without clixon knowing.  This adds an XML path that
+ * will be re-requested each time during an operation and will be removed
+ * before storage to disk.  When the data is needed to put into one of the
+ * in-memory trees, the getstate function is called to fetch that data.
+ */
+int
+xmldb_add_stateonly(clixon_handle h, cxobj *path,
+		    int (*getstate)(void *, cxobj *), void *sdata)
+{
+    int                           retval = -1;
+    cvec                         *c;
+    cg_var                       *cv = NULL;
+    struct clixon_stateonly_data *sodata = NULL;
+
+    c = clicon_data_cvec_get(h, "stateonly");
+    if (!c) {
+	c = cvec_new(0);
+	if (!c) {
+	    clixon_err(OE_XML, 0, "Out of memory allocating statonly cvec");
+	    goto done;
+	}
+	if (clicon_data_cvec_set(h, "stateonly", c) < 0) {
+	    cvec_free(c);
+	    goto done;
+	}
+    }
+    sodata = calloc(1, sizeof(*sodata));
+    if (!sodata) {
+	clixon_err(OE_XML, 0, "Out of memory allocating statonly cvec");
+	goto done;
+    }
+    sodata->getstate = getstate;
+    sodata->sdata = sdata;
+    sodata->path = path;
+    cv = cv_new(CGV_VOID);
+    if (!cv)
+	goto done;
+    if (cv_void_set(cv, sodata) < 0)
+	goto done;
+    if (cvec_append_var(c, cv) < 0)
+	goto done;
+    sodata = NULL;
+    cv = NULL;
+    retval = 0;
+ done:
+    if (sodata)
+	free(sodata);
+    if (cv)
+	cv_free(cv);
+    return retval;
+}
+
+/*! Read stateonly data into the database
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  db     The database to get the statedata for
+ * @param[in]  x      The xml data, if NULL fetch from the database
+ * @retval     0      OK
+ * @retval    -1      General error, check specific clicon_errno, clicon_suberrno
+ */
+int
+xmldb_read_stateonly(clixon_handle h, const char *db, cxobj *x)
+{
+    int       retval = -1;
+    int       ret;
+    db_elmnt *de = NULL;
+    cxobj    *xc, *xp, *xn, *xo;
+    char     *ns;
+    cvec     *c;
+    int       i;
+
+    c = clicon_data_cvec_get(h, "stateonly");
+    if (!c)
+	return 0;
+
+    if (!x) {
+	if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+	    clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+	    return -1;
+	}
+	if (de->de_has_stateonly)
+	    goto finished;
+
+	if ((x = xmldb_cache_get(h, db)) == NULL){
+	    clixon_err(OE_XML, 0, "XML cache not found");
+	    goto done;
+	}
+    }
+
+    /* Go through all the stateonly registrations to add each of them. */
+    for (i = 0; i < cvec_len(c); i++) {
+	struct clixon_stateonly_data *data;
+	cg_var                       *cv = cvec_i(c, i);
+
+	if (!cv)
+	    continue;
+	data = cv_void_get(cv);
+	if (!data)
+	    continue;
+
+	/* Find the place in the tree to add this item. */
+	xc = x;
+	xp = NULL;
+	xn = data->path;
+	while (xn) {
+	    xp = xc;
+	    if ((xc = xml_find(xc, xml_name(xn))) == NULL)
+		break;
+	    xn = xml_child_i_type(xn, 0, CX_ELMNT);
+	}
+	if (xp == NULL)
+	    continue; /* Empty paths aren't allowed. */
+	if (xc) {
+	    /* If it already exists, remove it. */
+	    if (xml_rm(xc) == 0)
+		xml_free(xc);
+	} else {
+	    /*
+	     * If it doesn't already exists, we may need to add things
+	     * to the tree to reach the place we want.
+	     */
+	    while (xn) {
+		cbuf *cb;
+
+		if ((xo = xml_child_i_type(xn, 0, CX_ELMNT)) == NULL)
+		    break; /* Don't do the bottom element of the tree. */
+		if ((cb = cbuf_new()) == NULL) {
+		    clixon_err(OE_XML, 0, "Out of memory");
+		    goto done;
+		}
+		ns = xml_find_type_value(xn, NULL, "xmlns", CX_ATTR);
+		if (ns)
+		    ret = cprintf(cb, "<%s xmlns=\"%s\"/>", xml_name(xn), ns);
+		else
+		    ret = cprintf(cb, "<%s/>", xml_name(xn));
+		if (ret < 0) {
+		    cbuf_free(cb);
+		    goto done;
+		}
+		if (clixon_xml_parse_string(cbuf_get(cb), YB_PARENT, NULL,
+					    &xp, NULL) < 0) {
+		    cbuf_free(cb);
+		    goto done;
+		}
+		cbuf_free(cb);
+		xn = xo;
+		/* Get the newly added child, should be last. */
+		if ((xp = xml_child_i(xp, xml_child_nr(xp) - 1)) == NULL)
+		    goto done; /* FIXME - Shouldn't be possible? */
+	    }
+	}
+	/* Now add the data. */
+	if ((ret = data->getstate(data->sdata, xp)) < 0)
+	    goto done;
+    }
+
+    if (xml_sort_recurse(x) < 0)
+	goto done;
+
+    if (de)
+	de->de_has_stateonly = 1;
+ finished:
+    retval = 0;
+ done:
+    if (retval == -1)
+	xmldb_remove_stateonly(h, db, x);
+    return retval;
+}
+
+/*! Remove stateonly data from the database
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  db     The database to remove the statedata from
+ * @param[in]  x      The xml data, if NULL fetch from the database
+ * @retval     0      OK
+ * @retval    -1      General error, check specific clicon_errno, clicon_suberrno
+ */
+int
+xmldb_remove_stateonly(clixon_handle h, const char *db, cxobj *x)
+{
+    int         retval = -1;
+    db_elmnt    *de = NULL;
+    cxobj       *xc, *xn;
+    cvec        *c;
+    unsigned int i;
+
+    c = clicon_data_cvec_get(h, "stateonly");
+    if (!c)
+	return 0;
+
+    if (!x) {
+	if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+	    clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+	    return -1;
+	}
+
+	if (!de->de_has_stateonly)
+	    goto finished;
+
+	if ((x = xmldb_cache_get(h, db)) == NULL){
+	    clixon_err(OE_XML, 0, "XML cache not found");
+	    goto done;
+	}
+    }
+
+    /* For each registered stateonly. */
+    for (i = 0; i < cvec_len(c); i++) {
+	struct clixon_stateonly_data *data;
+	cg_var                       *cv = cvec_i(c, i);
+
+	if (!cv)
+	    continue;
+	data = cv_void_get(cv);
+	if (!data)
+	    continue;
+
+	/* Search down the tree to find this item. */
+	xc = x;
+	xn = data->path;
+	while (xn) {
+	    if ((xc = xml_find(xc, xml_name(xn))) == NULL)
+		break;
+	    xn = xml_child_i_type(xn, 0, CX_ELMNT);
+	}
+	/* If we found it, remove it. */
+	if (xc && xml_rm(xc) == 0)
+	    xml_free(xc);
+    }
+ finished:
+    if (de)
+	de->de_has_stateonly = 0;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Does the database have any stateonly data?
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  db     The database to get if stateonly data present
+ * @retval     0      No stateonly data is present
+ * @retval     1      stateonly data is present
+ */
+int
+xmldb_has_stateonly(clixon_handle h, const char *db)
+{
+    db_elmnt *de;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL)
+        return 0;
+    return de->de_has_stateonly;
 }
