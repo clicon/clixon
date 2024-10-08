@@ -183,7 +183,7 @@ jobs:
     steps:
       - name: Get build number and reset it
         id: get-build
-        uses: mlilback/build-number@v1
+        uses: citypaul/build-number@1.0.3
         with:
           base: 0 # Update this number to reset counter
           run-id: ${{ github.run_number }}
