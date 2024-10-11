@@ -203,6 +203,7 @@ xml2output_wdef(cxobj            *x,
  * @param[in]   autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @param[in]   wdef       With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
  * @param[in]   multi      Multi-file split datastore, see CLICON_XMLDB_MULTI
+ * @param[in]   system_only Enable checks for system-only-config extension
  * @retval      0          OK
  * @retval     -1          Error
  * One can use clixon_xml2cbuf to get common code, but using fprintf is
@@ -223,30 +224,32 @@ xml2file_recurse(FILE                *f,
                  clicon_output_cb    *fn,
                  int                  autocliext,
                  withdefaults_type    wdef,
-                 int                  multi)
+                 int                  multi,
+                 int                  system_only)
 {
-    int           retval = -1;
-    char         *name;
-    char         *namespace;
-    cxobj        *xc;
-    int           hasbody;
-    int           haselement;
-    char         *val;
-    char         *encstr = NULL; /* xml encoded string */
-    int           exist;
-    yang_stmt    *y;
-    int           level1;
-    int           tag = 0;
-    int           ret;
-    int           subfile = 0;   /* File is split into subfile */
-    char         *xpath = NULL;
-    char         *hexstr = NULL;
+    int        retval = -1;
+    char      *name;
+    char      *namespace;
+    cxobj     *xc;
+    int        hasbody;
+    int        haselement;
+    char      *val;
+    char      *encstr = NULL; /* xml encoded string */
+    int        exist;
+    yang_stmt *y;
+    int        level1;
+    int        tag = 0;
+    int        subfile = 0;   /* File is split into subfile */
+    char      *xpath = NULL;
+    char      *hexstr = NULL;
+    int        ret;
 
     if (x == NULL)
         goto ok;
     y = xml_spec(x);
-    /* Check if system-only, then do not write to datastore */
-    if (y != NULL) {
+    /* Check if system-only, then do not write to datastore
+     */
+    if (y != NULL && system_only){
         exist = 0;
         if (yang_extension_value(y, "system-only-config", CLIXON_LIB_NS, &exist, NULL) < 0)
             goto done;
@@ -302,7 +305,7 @@ xml2file_recurse(FILE                *f,
         while ((xc = xml_child_each(x, xc, -1)) != NULL) {
             switch (xml_type(xc)){
             case CX_ATTR:
-                if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext, wdef, multi) < 0)
+                if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext, wdef, multi, system_only) < 0)
                     goto done;
                 break;
             case CX_BODY:
@@ -360,7 +363,7 @@ xml2file_recurse(FILE                *f,
                 }
                 if (xml_type(xc) != CX_ATTR && !subfile)
                         if (xml2file_recurse(f, xc, level+1, pretty, prefix,
-                                             fn, autocliext, wdef, multi) <0)
+                                             fn, autocliext, wdef, multi, system_only) <0)
                             goto done;
                 if (xa){
                     if (xml_purge(xa) < 0)
@@ -412,6 +415,7 @@ xml2file_recurse(FILE                *f,
  * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @param[in]  wdef       With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
  * @param[in]  multi      Multi-file split datastore, see CLICON_XMLDB_MULTI
+ * @param[in]  system_only Enable checks for system-only-config extension
  * @retval     0          OK
  * @retval    -1          Error
  * @see clixon_xml2cbuf print to a cbuf string
@@ -428,7 +432,8 @@ clixon_xml2file1(FILE                *f,
                  int                  skiptop,
                  int                  autocliext,
                  withdefaults_type    wdef,
-                 int                  multi)
+                 int                  multi,
+                 int                  system_only)
 {
     int   retval = 1;
     cxobj *xc;
@@ -438,11 +443,11 @@ clixon_xml2file1(FILE                *f,
     if (skiptop){
         xc = NULL;
         while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-            if (xml2file_recurse(f, xc, level, pretty, prefix, fn, autocliext, wdef, multi) < 0)
+            if (xml2file_recurse(f, xc, level, pretty, prefix, fn, autocliext, wdef, multi, system_only) < 0)
                 goto done;
     }
     else {
-        if (xml2file_recurse(f, xn, level, pretty, prefix, fn, autocliext, wdef, multi) < 0)
+        if (xml2file_recurse(f, xn, level, pretty, prefix, fn, autocliext, wdef, multi, system_only) < 0)
             goto done;
     }
     retval = 0;
@@ -478,7 +483,7 @@ clixon_xml2file(FILE             *f,
                 int               skiptop,
                 int               autocliext)
 {
-    return clixon_xml2file1(f, xn, level, pretty, prefix, fn, skiptop, autocliext, 0, 0);
+    return clixon_xml2file1(f, xn, level, pretty, prefix, fn, skiptop, autocliext, 0, 0, 0);
 }
 
 /*! Print an XML tree structure to an output stream
@@ -493,7 +498,7 @@ int
 xml_print(FILE  *f,
           cxobj *x)
 {
-    return xml2file_recurse(f, x, 0, 1, NULL, fprintf, 0, WITHDEFAULTS_REPORT_ALL, 0);
+    return xml2file_recurse(f, x, 0, 1, NULL, fprintf, 0, WITHDEFAULTS_REPORT_ALL, 0, 0);
 }
 
 /*! Dump cxobj structure with pointers and flags for debugging, internal function
@@ -541,7 +546,7 @@ xml_dump(FILE  *f,
     return xml_dump1(f, x, 0);
 }
 
-/*! Internal: print  XML tree structure to a cligen buffer and encode chars "<>&"
+/*! Internal: print XML tree structure to a cligen buffer and encode chars "<>&"
  *
  * @param[in,out] cb       Cligen buffer to write to
  * @param[in]     xn       Clixon xml tree
@@ -724,14 +729,14 @@ xml2cbuf_recurse(cbuf             *cb,
  * @see  clixon_xml2file  to file, which is faster
  */
 int
-clixon_xml2cbuf1(cbuf                *cb,
-                 cxobj               *xn,
-                 int                  level,
-                 int                  pretty,
-                 char                *prefix,
-                 int32_t              depth,
-                 int                  skiptop,
-                 withdefaults_type    wdef)
+clixon_xml2cbuf1(cbuf             *cb,
+                 cxobj            *xn,
+                 int               level,
+                 int               pretty,
+                 char             *prefix,
+                 int32_t           depth,
+                 int               skiptop,
+                 withdefaults_type wdef)
 {
     int    retval = -1;
     cxobj *xc;

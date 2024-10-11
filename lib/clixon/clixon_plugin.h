@@ -214,12 +214,12 @@ typedef int (plgreset_t)(clixon_handle h, const char *db);
  * XXX: This callback may be replaced with a "dispatcher" type API in the future where the
  *      XPath binding is stricter, similar to the pagination API.
  *
- * @param[in]  h          Clixon handle
- * @param[in]  xpath      Part of state requested
- * @param[in]  nsc        XPath namespace context.
- * @param[out] xtop       XML tree where statedata is added
- * @retval     0          OK
- * @retval    -1          Fatal error
+ * @param[in]  h      Clixon handle
+ * @param[in]  xpath  Part of state requested
+ * @param[in]  nsc    XPath namespace context.
+ * @param[out] xtop   XML tree where data is added
+ * @retval     0      OK
+ * @retval    -1      Fatal error
  *
  * @note The system will make an xpath check and filter out non-matching trees
  * @note The system does not validate the xml, unless CLICON_VALIDATE_STATE_XML is set
@@ -251,7 +251,13 @@ typedef int (plglockdb_t)(clixon_handle h, char *db, int lock, int id);
  */
 typedef void *transaction_data;
 
-/* Transaction callback */
+/* Transaction callback
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  td  Transaction data
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
 typedef int (trans_cb_t)(clixon_handle h, transaction_data td);
 
 /*! Hook to override default prompt with explicit function
@@ -396,6 +402,7 @@ struct clixon_plugin_api{
             plgdaemon_t      *cb_daemon;         /* Plugin daemonized (always called) */
             plgreset_t       *cb_reset;          /* Reset system status */
             plgstatedata_t   *cb_statedata;      /* Provide state data XML from plugin */
+            plgstatedata_t   *cb_system_only;    /* Provide system-only config XML from plugin */
             plglockdb_t      *cb_lockdb;         /* Database lock changed state */
             trans_cb_t       *cb_trans_begin;    /* Transaction start */
             trans_cb_t       *cb_trans_validate; /* Transaction validation */
@@ -419,6 +426,7 @@ struct clixon_plugin_api{
 #define ca_daemon         u.cau_backend.cb_daemon
 #define ca_reset          u.cau_backend.cb_reset
 #define ca_statedata      u.cau_backend.cb_statedata
+#define ca_system_only    u.cau_backend.cb_system_only
 #define ca_lockdb         u.cau_backend.cb_lockdb
 #define ca_trans_begin    u.cau_backend.cb_trans_begin
 #define ca_trans_validate u.cau_backend.cb_trans_validate
@@ -507,6 +515,8 @@ int clixon_plugin_datastore_upgrade_all(clixon_handle h, const char *db, cxobj *
 
 int clixon_plugin_yang_mount_one(clixon_plugin_t *cp, clixon_handle h, cxobj *xt, int *config, validate_level *vl, cxobj **yanglib);
 int clixon_plugin_yang_mount_all(clixon_handle h, cxobj *xt, int *config, validate_level *vl, cxobj **yanglib);
+
+int clixon_plugin_system_only_all(clixon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath, cxobj **xtop);
 
 int clixon_plugin_yang_patch_one(clixon_plugin_t *cp, clixon_handle h, yang_stmt *ymod);
 int clixon_plugin_yang_patch_all(clixon_handle h, yang_stmt *ymod);

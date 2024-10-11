@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Datastore system only config test
 # see https://github.com/clicon/clixon/pull/534 and extension system-only-config
-# Test uses a "standard" yang and a "local" yang which augmanets the standard
+# Test uses a "standard" yang and a "local" yang which augments the standard
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -21,9 +21,6 @@ test -d $CFD || mkdir -p $CFD
 
 AUTOCLI=$(autocli_config clixon-\* kw-nokey false)
 
-# Well-known digest of mount-point xpath
-subfilename=9121a04a6f67ca5ac2184286236d42f3b7301e97.xml
-
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -39,6 +36,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_SYSTEM_ONLY_CONFIG>true</CLICON_XMLDB_SYSTEM_ONLY_CONFIG>
   <CLICON_NETCONF_MONITORING>true</CLICON_NETCONF_MONITORING>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   <CLICON_STREAM_DISCOVERY_RFC5277>true</CLICON_STREAM_DISCOVERY_RFC5277>
@@ -142,16 +140,8 @@ show("Show a particular state of the system"){
 }
 EOF
 
-# Check content of db
-# Args:
-# 0: dbname
-function check_db()
-{
-    dbname=$1
-
-    sudo chmod 755 $dir/${dbname}_db
-    sudo rm -f $dir/x_db
-    cat <<EOF > $dir/x_db
+# Two reference files: What is expected in the datastore
+cat <<EOF > $dir/x_db
 <config>
    <store xmlns="urn:example:std">
       <keys>
@@ -162,12 +152,48 @@ function check_db()
    </store>
 </config>
 EOF
-    new "Check ${dbname}_db"
-    #    ret=$(diff $dir/x_db $dir/${dbname}_db)
+
+# What is expected in the system-only-config file (simulated system)
+cat <<EOF > $dir/y_db
+<store xmlns="urn:example:std">
+   <keys>
+      <key>
+         <name>a</name>
+         <system-only-data>mydata</system-only-data>
+      </key>
+   </keys>
+</store>
+EOF
+
+
+# Check content of db
+# Args:
+# 0: dbname
+# 1: system  true/false check in system or not (only after commit)
+function check_db()
+{
+    dbname=$1
+    system=$2
+
+    sudo chmod 755 $dir/${dbname}_db
+
+    new "Check not in ${dbname}_db"
     ret=$(diff $dir/x_db $dir/${dbname}_db)
     if [ $? -ne 0 ]; then
-        #        err "$(cat $dir/x_db)" "$(cat $dir/${dbname}_db)"
         err "$(cat $dir/x_db)" "$(cat $dir/${dbname}_db)"
+    fi
+
+    if $system; then
+        new "Check $dir/system-only.xml"
+        ret=$(diff $dir/y_db $dir/system-only.xml)
+        if [ $? -ne 0 ]; then
+            err "$(cat $dir/y_db)" "$(cat $dir/system-only.xml)"
+        fi
+    else
+        new "Check no $dir/system-only.xml"
+        if [ -s $dir/system-only.xml ]; then
+            err "No file" "$(cat $dir/system-only.xml)"
+        fi
     fi
 }
 
@@ -179,30 +205,88 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
         err
     fi
-    new "start backend -s init -f $cfg"
-    start_backend -s init -f $cfg
+    new "start backend -s init -f $cfg -- -o store/keys/key/system-only-data -O $dir/system-only.xml"
+    start_backend -s init -f $cfg -- -o store/keys/key/system-only-data -O $dir/system-only.xml
 fi
 
-new "wait backend"
+new "wait backend 1"
 wait_backend
+
+sudo rm -f $dir/system-only.xml
 
 new "Add mydata"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data></key></keys></store></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "Check mydata not in candidate"
-check_db candidate
+new "Check mydata present, but not in candidate datastore"
+check_db candidate false
 
 new "Get mydata from candidate"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data></key></keys></store></data></rpc-reply>"
 
-new "Commit"
+new "Commit 1"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "Check mydata not in running"
-check_db running
+new "Check mydata present, but not in running datastore"
+check_db running true
 
 new "Get mydata from running"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data></key></keys></store></data></rpc-reply>"
+
+new "Remove mydata"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data nc:operation=\"delete\" xmlns:nc=\"${BASENS}\">mydata</system-only-data></key></keys></store></config><default-operation>none</default-operation></edit-config></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Check mydata present, but not in candidate datastore"
+check_db candidate true
+
+new "Commit 2"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Get mydata from running, expected not"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name></key></keys></store></data></rpc-reply>"
+
+new "Check mydata not present, but not in running datastore"
+check_db running false
+
+new "Add mydata again"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data></key></keys></store></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Commit 3"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Restart"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+fi
+
+if [ $BE -ne 0 ]; then
+    new "start backend -s running -f $cfg -- -o store/keys/key/system-only-data -O $dir/system-only.xml"
+    start_backend -s running -f $cfg -- -o store/keys/key/system-only-data -O $dir/system-only.xml
+fi
+
+new "wait backend 2"
+wait_backend
+
+new "Check mydata present, but not in running datastore"
+check_db running true
+
+new "Get mydata from running"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data></key></keys></store></data></rpc-reply>"
+
+new "Remove mydata"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data nc:operation=\"delete\" xmlns:nc=\"${BASENS}\">mydata</system-only-data></key></keys></store></config><default-operation>none</default-operation></edit-config></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Commit 4"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Get mydata from running, expected not"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name></key></keys></store></data></rpc-reply>"
+
+new "Check mydata not present, but not in running datastore"
+check_db running false
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

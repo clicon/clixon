@@ -19,6 +19,12 @@ Expected: January 2025
 
 * New: [feature request: support xpath functions for strings](https://github.com/clicon/clixon/issues/556)
   * Added: re-match, substring, string, string-length, translate, substring-before, substring-after, starts-with
+* Added support for system-only-config data
+  * A mechanism to not store sensitive data in the datastore, instead use application callbacks to store the data in system state.
+  * New `CLICON_XMLDB_SYSTEM_ONLY_CONFIG` configuration option
+  * New `system-only-config` extension
+  * New `ca_system_only` backend callback for reading system-only data
+
 ### Corrected Bugs
 
 * Fixed: [string length validation doesn't work for the entry "" in case it has default value specified](https://github.com/clicon/clixon/issues/563)

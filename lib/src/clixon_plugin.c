@@ -68,6 +68,11 @@
 #include "clixon_options.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
+#include "clixon_xml_bind.h"
+#include "clixon_xml_sort.h"
+#include "clixon_xml_default.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
 #include "clixon_yang_module.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_validate.h"
@@ -925,6 +930,166 @@ clixon_plugin_yang_mount_all(clixon_handle   h,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Call single backend statedata callback
+ *
+ * Create an xml tree (xret) for one callback only on the form:
+ *   <config>...</config>,
+ * call a user supplied function (ca_system_only) which can do two things:
+ *  - Fill in config XML in the tree and return 0
+ *  - Call cli_error() and return -1
+ * In the former case, this function returns the config XML tree to the caller (which
+ * typically merges the tree with other config trees).
+ * In the latter error case, this function returns 0 (invalid) to the caller with no tree
+ * If a fatal error occurs in this function, -1 is returned.
+ *
+ * @param[in]  cp      Plugin handle
+ * @param[in]  h       clicon handle
+ * @param[in]  nsc     namespace context for xpath
+ * @param[in]  xpath   String with XPATH syntax. or NULL for all
+ * @param[out] xp      If retval=1, tree created and returned: <config>...
+ * @retval     1       OK if callback found (and called) xret is set
+ * @retval     0       Callback failed. no XML tree returned
+ * @retval    -1       Fatal error
+ */
+static int
+clixon_plugin_system_only_one(clixon_plugin_t *cp,
+                              clixon_handle    h,
+                              cvec            *nsc,
+                              char            *xpath,
+                              cxobj          **xp)
+{
+    int             retval = -1;
+    plgstatedata_t *fn;          /* Plugin statedata fn */
+    cxobj          *x = NULL;
+    void           *wh = NULL;
+
+    if ((fn = clixon_plugin_api_get(cp)->ca_system_only) != NULL){
+        if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+            goto done;
+        wh = NULL;
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+            goto done;
+        if (fn(h, nsc, xpath, x) < 0){
+            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+                goto done;
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Stateonly callback in plugin: %s returned -1 but did not make a clixon_err call",
+                           __FUNCTION__, clixon_plugin_name_get(cp));
+            goto fail;  /* Dont quit here on user callbacks */
+        }
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+            goto done;
+    }
+    if (xp && x){
+        *xp = x;
+        x = NULL;
+    }
+    retval = 1;
+ done:
+    if (x)
+        xml_free(x);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Go through all backend system-only callbacks and collect config data
+ *
+ * @param[in]     h       clicon handle
+ * @param[in]     yspec   Yang spec
+ * @param[in]     nsc     Namespace context
+ * @param[in]     xpath   String with XPATH syntax. or NULL for all
+ * @param[in,out] xret    Config XML tree is merged with existing tree.
+ * @retval        1       OK
+ * @retval        0       Callback failed (xret set with netconf-error)
+ * @retval       -1       Error
+ * @note xret can be replaced in this function
+ */
+int
+clixon_plugin_system_only_all(clixon_handle   h,
+                              yang_stmt      *yspec,
+                              cvec           *nsc,
+                              char           *xpath,
+                              cxobj         **xret)
+{
+    int              retval = -1;
+    int              ret;
+    cxobj           *x = NULL;
+    clixon_plugin_t *cp = NULL;
+    cbuf            *cberr = NULL;
+    cxobj           *xerr = NULL;
+
+    clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+        if ((ret = clixon_plugin_system_only_one(cp, h, nsc, xpath, &x)) < 0)
+            goto done;
+        if (ret == 0){
+            if ((cberr = cbuf_new()) == NULL){
+                clixon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            /* error reason should be in clixon_err_reason */
+            cprintf(cberr, "Internal error, system-only callback in plugin %s returned invalid XML: %s",
+                    clixon_plugin_name_get(cp), clixon_err_reason());
+            if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
+                goto done;
+            xml_free(*xret);
+            *xret = xerr;
+            xerr = NULL;
+            goto fail;
+        }
+        if (x == NULL)
+            continue;
+        if (xml_child_nr(x) == 0){
+            xml_free(x);
+            x = NULL;
+            continue;
+        }
+        clixon_debug_xml(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, x, "%s SYSTEM-ONLY:", clixon_plugin_name_get(cp));
+        /* XXX: ret == 0 invalid yang binding should be handled as internal error */
+        if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if (clixon_netconf_internal_error(xerr,
+                                              ". Internal error, system-only callback returned invalid XML from plugin: ",
+                                              clixon_plugin_name_get(cp)) < 0)
+                goto done;
+            xml_free(*xret);
+            *xret = xerr;
+            xerr = NULL;
+            goto fail;
+        }
+        if (xml_sort_recurse(x) < 0)
+            goto done;
+        /* Remove global defaults and empty non-presence containers */
+        if (xml_default_nopresence(x, 2, 0) < 0)
+            goto done;
+        if (xpath_first(x, nsc, "%s", xpath) != NULL){
+            if ((ret = netconf_trymerge(x, yspec, xret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
+        if (x){
+            xml_free(x);
+            x = NULL;
+        }
+    } /* while plugin */
+    retval = 1;
+ done:
+    if (xerr)
+        xml_free(xerr);
+    if (cberr)
+        cbuf_free(cberr);
+    if (x)
+        xml_free(x);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Call plugin YANG schema patch

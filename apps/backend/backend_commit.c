@@ -720,6 +720,10 @@ candidate_commit(clixon_handle  h,
      */
     if (xmldb_copy(h, db, "running") < 0)
         goto done;
+    /* Remove system-only-config data from destination */
+    if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
+        xmldb_clear(h, "running");
+    }
     xmldb_modified_set(h, db, 0); /* reset dirty bit */
     /* Here pointers to old (source) tree are obsolete */
     if (td->td_dvec){
@@ -731,7 +735,6 @@ candidate_commit(clixon_handle  h,
         free(td->td_scvec);
         td->td_scvec = NULL;
     }
-
     /* 9. Call plugin transaction end callbacks */
     plugin_transaction_end_all(h, td);
     retval = 1;
