@@ -42,11 +42,14 @@
   *  -r  enable the reset function
   *  -s  enable the state function
   *  -S <file>  read state data from file, otherwise construct it programmatically (requires -s)
+  *  -o <xpath> System-only-config of xpath saved in mem
+  *  -O <file> read/write system-only-config to/from this file
   *  -i  read state file on init not by request for optimization (requires -sS <file>)
   *  -u  enable upgrade function - auto-upgrade testing
   *  -U  general-purpose upgrade
   *  -t  enable transaction logging (call syslog for every transaction)
   *  -V <xpath> Failing validate and commit if <xpath> is present (synthetic error)
+
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,7 +73,7 @@
 #include <clixon/clixon_backend.h>
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "a:m:M:n:rsS:x:iuUtV:"
+#define BACKEND_EXAMPLE_OPTS "a:m:M:n:o:O:rsS:x:iuUtV:"
 
 /* Enabling this improves performance in tests, but there may trigger the "double XPath"
  * problem.
@@ -102,6 +105,20 @@ static char *_mount_namespace = NULL;
  * where <sec> is period of stream
  */
 static int _notification_stream_s = 0;
+
+/*! System-only config xpath
+ *
+ * Start backend with -o <xpath>
+ * Combined with -O <file> to write to file
+ */
+static char *_system_only_xpath = NULL;
+
+/*! System-only config file
+ *
+ * Start backend with -O <file>
+ * Combined with -o <file> to write to file
+ */
+static char *_system_only_file = NULL;
 
 /*! Variable to control if reset code is run.
  *
@@ -185,6 +202,7 @@ static int   _validate_fail_toggle = 0; /* fail at validate and commit */
 
 /* forward */
 static int example_stream_timer_setup(clixon_handle h, int sec);
+static int main_system_only_commit(clixon_handle h, transaction_data td);
 
 int
 main_begin(clixon_handle    h,
@@ -224,17 +242,29 @@ main_complete(clixon_handle    h,
 }
 
 /*! This is called on commit. Identify modifications and adjust machine state
+ *
+ * Somewhat complex due to the different test-cases
+ * @param[in]  h   Clixon handle
+ * @param[in]  td  Transaction data
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 int
 main_commit(clixon_handle    h,
             transaction_data td)
 {
+    int     retval = -1;
     cxobj  *target = transaction_target(td); /* wanted XML tree */
     cxobj **vec = NULL;
     int     i;
     size_t  len;
     cvec   *nsc = NULL;
 
+    if (_system_only_xpath != NULL){
+        if (main_system_only_commit(h, td) < 0)
+            goto done;
+        goto ok;
+    }
     if (_transaction_log)
         transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     if (_validate_fail_xpath){
@@ -242,7 +272,7 @@ main_commit(clixon_handle    h,
             xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
             _validate_fail_toggle = 0; /* toggle if triggered */
             clixon_err(OE_XML, 0, "User error");
-            return -1; /* induce fail */
+            goto done; /* simulate fail */
         }
     }
 
@@ -256,12 +286,14 @@ main_commit(clixon_handle    h,
     if (clixon_debug_get())
         for (i=0; i<len; i++)             /* Loop over added i/fs */
             xml_print(stdout, vec[i]); /* Print the added interface */
-  done:
+ ok:
+    retval = 0;
+ done:
     if (nsc)
         xml_nsctx_free(nsc);
     if (vec)
         free(vec);
-    return 0;
+    return retval;
 }
 
 int
@@ -634,6 +666,131 @@ example_statefile(clixon_handle     h,
         xml_free(xt);
     if (xvec)
         free(xvec);
+    return retval;
+}
+
+/*! System-only config commit data
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  td  Transaction data
+ * @retval     0   OK
+ * @retval    -1   Error
+ *
+ * System-only config data as defined by _ is not written to datastore.
+ * Instead, in this ocmmit action, it is written to file _state_file
+ * @see main_system_only_commit  callback for reading data
+ * @note  Only single system-only config data supported
+ */
+static int
+main_system_only_commit(clixon_handle    h,
+                        transaction_data td)
+{
+    int        retval = -1;
+    cxobj     *src;
+    cxobj     *target;
+    cvec      *nsc = NULL;
+    cxobj   **vec0 = NULL;
+    size_t    veclen0;
+    cxobj   **vec1 = NULL;
+    cxobj    *x0t;
+    cxobj    *x1t = NULL;
+    size_t    veclen1;
+    cxobj    *x;
+    int       i;
+    char     *xpath;
+    char     *file;
+    FILE     *fp = NULL;
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
+    xpath = _system_only_xpath;
+    file = _system_only_file;
+    if (xpath == NULL || file == NULL){
+        clixon_err(OE_PLUGIN, EINVAL, "Both -o and -O must be given system-only config");
+        goto done;
+    }
+    src = transaction_src(td);    /* existing XML tree */
+    target = transaction_target(td); /* wanted XML tree */
+    if (xpath_vec_flag(target, nsc, "%s", XML_FLAG_ADD | XML_FLAG_CHANGE,
+                       &vec0, &veclen0, xpath) < 0)
+        goto done;
+    for (i=0; i<veclen0; i++){
+        x = vec0[i];
+        if (fp == NULL &&
+            (fp = fopen(file, "w")) == NULL){
+            clixon_err(OE_UNIX, errno, "open(%s)", file);
+            goto done;
+        }
+        xml_flag_set(x, XML_FLAG_MARK);
+        x0t = xml_root(x);
+        if ((x1t = xml_new(xml_name(x0t), NULL, CX_ELMNT)) == NULL)
+            goto done;
+        xml_apply_ancestor(x, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+        if (xml_copy_marked(x0t, x1t) < 0) /* config */
+            goto done;
+        if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+            goto done;
+        if (clixon_xml2file(fp, x1t, 0, 1, NULL, fprintf, 1, 0) < 0)
+            goto done;
+        xml_flag_reset(x, XML_FLAG_MARK);
+        break; // XXX only single data
+    }
+    if (xpath_vec_flag(src, nsc, "%s", XML_FLAG_DEL,
+                       &vec1, &veclen1, xpath) < 0)
+        goto done;
+    for (i=0; i<veclen1; i++){
+        x = vec1[i];
+        if (fp == NULL &&
+            (fp = fopen(file, "w")) == NULL){
+            clixon_err(OE_UNIX, errno, "open(%s)", file);
+            goto done;
+        }
+        break; // XXX only single data
+    }
+    retval = 0;
+ done:
+    if (fp)
+        fclose(fp);
+    if (vec0)
+        free(vec0);
+    if (vec1)
+        free(vec1);
+    if (x1t)
+        xml_free(x1t);
+    return retval;
+}
+
+/*! Called to get system-only config data
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  nsc     External XML namespace context, or NULL
+ * @param[in]  xpath   String with XPATH syntax. or NULL for all
+ * @param[out] xstate  XML tree, <config/> on entry.
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see example_statedata
+ * @see main_system_only_commit  where data is written
+ */
+int
+main_system_only_callback(clixon_handle h,
+                          cvec         *nsc,
+                          char         *xpath,
+                          cxobj        *xconfig)
+{
+    int    retval = -1;
+    char  *file;
+    FILE  *fp = NULL;
+
+    if ((file = _system_only_file) == NULL)
+        goto ok;
+    if ((fp = fopen(file, "r")) == NULL)
+        goto ok;
+    if (clixon_xml_parse_file(fp, YB_NONE, NULL, &xconfig, NULL) < 0)
+        goto done;
+ ok:
+    retval = 0;
+ done:
+    if (fp)
+        fclose(fp);
     return retval;
 }
 
@@ -1411,6 +1568,7 @@ static clixon_plugin_api api = {
     .ca_daemon=example_daemon,              /* daemon */
     .ca_reset=example_reset,                /* reset */
     .ca_statedata=example_statedata,        /* statedata : Note fn is switched if -sS <file> */
+    .ca_system_only=main_system_only_callback, /* System-only-config callback */
     .ca_lockdb=example_lockdb,              /* Database lock changed state */
     .ca_trans_begin=main_begin,             /* trans begin */
     .ca_trans_validate=main_validate,       /* trans validate */
@@ -1460,6 +1618,12 @@ clixon_plugin_init(clixon_handle h)
             break;
         case 'n':
             _notification_stream_s = atoi(optarg);
+            break;
+        case 'o':
+            _system_only_xpath = optarg;
+            break;
+        case 'O':
+            _system_only_file = optarg;
             break;
         case 'r':
             _reset = 1;

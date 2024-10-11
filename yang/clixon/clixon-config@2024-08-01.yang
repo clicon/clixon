@@ -54,6 +54,7 @@ module clixon-config {
             "Added options:
                 CLICON_YANG_DOMAIN_DIR
                 CLICON_YANG_USE_ORIGINAL
+                CLICON_XMLDB_SYSTEM_ONLY_CONFIG (tentative)
              Released in Clixon 7.2";
     }
     revision 2024-04-01 {
@@ -1193,6 +1194,15 @@ module clixon-config {
                  commit copies all files regardless.
                  May not work together with CLICON_BACKEND_PRIVILEGES=drop and root, since
                  new files need to be created in XMLDB_DIR";
+        }
+        leaf CLICON_XMLDB_SYSTEM_ONLY_CONFIG {
+            type boolean;
+            default true;
+            description
+                "If set, some fields in the configuration tree are not stored to datastore.
+                 Instead, the application must provide a mechanism to save the system-only-config
+                 in the system via commit/system-only-config callbacks.
+                 See also extension system-only-config in clixon-lib.yang";
         }
         leaf CLICON_XML_CHANGELOG {
             type boolean;

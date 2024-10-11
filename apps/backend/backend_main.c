@@ -1030,6 +1030,13 @@ main(int    argc,
     /* Initiate the shared candidate. */
     if (xmldb_copy(h, "running", "candidate") < 0)
         goto done;
+    /* Add system-only config to candidate */
+    if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
+        cxobj *x;
+        if ((x = xmldb_cache_get(h, "candidate")) != NULL)
+            if (xmldb_system_only_config(h, "/", NULL, &x) < 0)
+                goto done;
+    }
     if (xmldb_modified_set(h, "candidate", 0) <0)
         goto done;
     

@@ -11,6 +11,14 @@
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
 
+## System-only-config branch
+
+* Added support for system-only-config data
+  * A mechanism to not store sensitive data in the datastore, instead use application callbacks to store the data in system state.
+  * New `CLICON_XMLDB_SYSTEM_ONLY_CONFIG` configuration option
+  * New `system-only-config` extension
+  * New `ca_system_only` backend callback for reading system-only data
+
 ## 7.2.0
 Expected: October 2024
 

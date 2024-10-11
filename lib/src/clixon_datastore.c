@@ -1021,3 +1021,40 @@ xmldb_multi_upgrade(clixon_handle h,
         free(tofile);
     return retval;
 }
+
+/*! Get system-only config data by calling user callback
+ *
+ * @param[in]     h       Clixon handle
+ * @param[in]     xpath   XPath selection, may be used to filter early
+ * @param[in]     nsc     XML Namespace context for xpath
+ * @param[in,out] xret    Existing XML tree, merge x into this, or rpc-error
+ * @retval        1       OK
+ * @retval        0       Statedata callback failed (error in xret)
+ * @retval       -1       Error (fatal)
+ */
+int
+xmldb_system_only_config(clixon_handle h,
+                         const char   *xpath,
+                         cvec         *nsc,
+                         cxobj       **xret)
+{
+    int        retval = -1;
+    yang_stmt *yspec;
+    int        ret;
+
+    clixon_debug(CLIXON_DBG_BACKEND, "");
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
+    }
+    if ((ret = clixon_plugin_system_only_all(h, yspec, nsc, (char*)xpath, xret)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    retval = 1; /* OK */
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}

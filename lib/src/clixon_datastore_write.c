@@ -1560,7 +1560,7 @@ xmldb_multi_write_applyfn(cxobj *x,
                     goto done;
                 }
                 /* Dont recurse multi-file yet */
-                if (clixon_xml2file1(fsub, x, 0, mw->mw_pretty, NULL, fprintf, 1, 0, mw->mw_wdef, 0) < 0)
+                if (clixon_xml2file1(fsub, x, 0, mw->mw_pretty, NULL, fprintf, 1, 0, mw->mw_wdef, 0, 0) < 0)
                     goto done;
             }
             retval = 2; /* Locally abort */
@@ -1627,7 +1627,9 @@ xmldb_dump(clixon_handle     h,
     }
     switch (format){
     case FORMAT_XML:
-        if (clixon_xml2file1(f, xt, 0, pretty, NULL, fprintf, 0, 0, wdef, multi) < 0)
+        if (clixon_xml2file1(f, xt, 0, pretty, NULL, fprintf, 0, 0, wdef, multi,
+                             clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")
+                             ) < 0)
             goto done;
         if (multi){
             mw.mw_h = h;
