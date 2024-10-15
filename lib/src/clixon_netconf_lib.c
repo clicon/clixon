@@ -1886,7 +1886,10 @@ netconf_capabilites(clixon_handle h,
     xml_chardata_cbuf_append(cb, 0, "urn:ietf:params:netconf:capability:with-defaults:1.0?basic-mode=explicit&also-supported=report-all,trim,report-all-tagged");
     cprintf(cb, "</capability>");
     /* RFC5277 Notification Capability */
-    cprintf(cb, "<capability>%s</capability>", NETCONF_NOTIFICATION_CAPABILITY);
+    if (clicon_option_bool(h, "CLICON_NETCONF_NOTIFICATION_CAP"))
+    {
+        cprintf(cb, "<capability>%s</capability>", NETCONF_NOTIFICATION_CAPABILITY);
+    }
     /* RFC6022 YANG Module for NETCONF Monitoring 
      * This seems non-standard but necessary for most existing boxes and software
      */
