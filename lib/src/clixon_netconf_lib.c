@@ -1862,7 +1862,7 @@ netconf_capabilites(clixon_handle h,
 
     /* Check if RFC7895 loaded and revision found */
     if ((ietf_yang_library_revision = yang_modules_revision(h)) != NULL){
-        if (xml_chardata_encode(&encstr, 0, "urn:ietf:params:netconf:capability:yang-library:1.0?revision=%s&module-set-id=%s",
+        if (xml_chardata_encode(&encstr, 0, "urn:ietf:params:netconf:capability:yang-library:1.1?revision=%s&module-set-id=%s",
                                 ietf_yang_library_revision,
                                 module_set_id) < 0)
             goto done;
