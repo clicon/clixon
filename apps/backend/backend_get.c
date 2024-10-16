@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -93,7 +93,7 @@ restconf_client_get_capabilities(clixon_handle h,
     int     retval = -1;
     cxobj  *xrstate = NULL; /* xml restconf-state node */
     cbuf   *cb = NULL;
-    
+
     if ((xrstate = xpath_first(*xret, NULL, "restconf-state")) == NULL){
         clixon_err(OE_YANG, ENOENT, "restconf-state not found in config node");
         goto done;
@@ -206,7 +206,7 @@ get_statedata(clixon_handle     h,
     int        ret;
     cbuf      *cb = NULL;
     cxobj     *xerr = NULL;
-    
+
     clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
@@ -271,7 +271,7 @@ get_statedata(clixon_handle     h,
                 xerr = NULL;
                 goto fail;
             }
-            /* Some state, client state, is avaliable in backend only, not in lib 
+            /* Some state, client state, is avaliable in backend only, not in lib
              * Needs merge since same subtree as previous lib state
              */
             if ((ret = backend_monitoring_state_get(h, yspec, xpath, nsc, &x1, &xerr)) < 0)
@@ -325,16 +325,16 @@ get_statedata(clixon_handle     h,
     goto done;
 }
 
-/*! Help function to filter out anything that is outside of xpath 
+/*! Help function to filter out anything that is outside of xpath
  *
- * Code complex to filter out anything that is outside of xpath 
+ * Code complex to filter out anything that is outside of xpath
  * Actually this is a safety catch, should really be done in plugins
  * and modules_state functions.
  * But it is problematic, because defaults, at least of config data, is in place
  * and we need to re-add it.
  * Note original xpath
  *
- * @param[in]  h       Clixon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  yspec   Yang spec
  * @param[in]  xret    Result XML tree
  * @param[in]  xvec    xpath lookup result on xret
@@ -382,7 +382,7 @@ filter_xpath_again(clixon_handle h,
 
 /*! Help function for NACM access and return message
  *
- * @param[in]  h        Clixon handle 
+ * @param[in]  h        Clixon handle
  * @param[in]  xret     Result XML tree
  * @param[in]  xvec    xpath lookup result on xret
  * @param[in]  xlen    length of xvec
@@ -391,7 +391,7 @@ filter_xpath_again(clixon_handle h,
  * @param[in]  username User name for NACM access
  * @param[in]  depth    Nr of levels to print, -1 is all, 0 is none
  * @param[in]  wdef     With-defaults parameter
- * @param[out] cbret    Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[out] cbret    Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @retval     0        OK
  * @retval    -1        Error
  */
@@ -414,7 +414,7 @@ get_nacm_and_reply(clixon_handle        h,
     xnacm = clicon_nacm_cache(h);
     if (xnacm != NULL){ /* Do NACM validation */
         /* NACM datanode/module read validation */
-        if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0) 
+        if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0)
             goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);     /* OK */
@@ -456,7 +456,7 @@ element2value(clixon_handle  h,
 {
     char  *valstr;
     cxobj *x;
-    
+
     *value = 0;
     if ((x = xml_find_type(xe, NULL, name, CX_ELMNT)) != NULL &&
         (valstr = xml_body(x)) != NULL){
@@ -467,11 +467,11 @@ element2value(clixon_handle  h,
 
 /*! Extract offset and limit from get/list-pagination
  *
- * @param[in]  h      Clixon handle 
- * @param[in]  xe     Request: <rpc><xn></rpc> 
+ * @param[in]  h      Clixon handle
+ * @param[in]  xe     Request: <rpc><xn></rpc>
  * @param[out] offset Number of entries in the working result-set that should be skipped
  * @param[out] limit  Limits the number of entries returned from the working result-set
- * @param[out] cbret  Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[out] cbret  Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @retval     1      OK
  * @retval     0      Invalid, netconf bad-element error cbret set
  * @retval    -1      Error
@@ -484,7 +484,7 @@ list_pagination_hdr(clixon_handle h,
                     cbuf         *cbret)
 {
     int retval = -1;
-    
+
     /* offset */
     if ((retval = element2value(h, xe, "offset", "none", cbret, offset)) < 0)
         goto done;
@@ -497,58 +497,72 @@ list_pagination_hdr(clixon_handle h,
 
 /*! Special handling of state data for partial reading
  *
- * Only if extension list-pagination-partial-state is enabled on the list
  * @param[in]  h       Clixon handle
- * @param[in]  ce      Client entry, for locking
- * @param[in]  yspec   (Top-level) yang spec
- * @param[in]  xpath   XPath point to object to get
- * @param[in]  offset  Start of pagination interval
- * @param[in]  limit   Number of elements (limit)
- * @param[out] xret    Returned xml state tree
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
- * @retval     1       OK
- * @retval     0       Fail, cbret contains error message
- * @retval    -1       Error
+ * @param[in]  ce        Client entry, for locking
+ * @param[in]  yspec     (Top-level) yang spec
+ * @param[in]  xpath     XPath point to object to get
+ * @param[in]  where
+ * @param[in]  sort_by
+ * @param[in]  direction NULL means forward
+ * @param[in]  offset    Start of pagination interval
+ * @param[in]  limit     Number of elements (limit)
+ * @param[out] xret      Returned xml state tree
+ * @param[out] cbret     Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @retval     1         OK
+ * @retval     0         Fail, cbret contains error message
+ * @retval    -1         Error
  */
 static int
-get_pagination_partial(clixon_handle        h,
-                       struct client_entry *ce,
-                       yang_stmt           *yspec,
-                       char                *xpath,
-                       uint32_t             offset,
-                       uint32_t             limit,
-                       cxobj               *xret,
-                       cbuf                *cbret)
+get_pagination_state_partial(clixon_handle        h,
+                             struct client_entry *ce,
+                             yang_stmt           *yspec,
+                             char                *xpath,
+                             char                *where,
+                             char                *sort_by,
+                             char                *direction,
+                             uint32_t             offset,
+                             uint32_t             limit,
+                             cxobj               *xret,
+                             cbuf                *cbret)
 {
-    int      retval = -1;
-    int      locked;
-    cbuf    *cberr = NULL;
-    uint32_t iddb; /* DBs lock, if any */
-    cxobj   *xerr = NULL;
-    int      ret;
+    int                 retval = -1;
+    int                 locked;
+    cbuf               *cberr = NULL;
+    uint32_t            iddb; /* DBs lock, if any */
+    cxobj              *xerr = NULL;
+    pagination_data_t   pd = {0,};
+    dispatcher_entry_t *htable = NULL;
+    int                 ret;
 
+    clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     if ((iddb = xmldb_islocked(h, "running")) != 0 &&
         iddb == ce->ce_id)
         locked = 1;
     else
         locked = 0;
-    if ((ret = clixon_pagination_cb_call(h, xpath, locked,
-                                         offset, limit,
-                                         xret)) < 0)
-        goto done;
-    if (ret == 0){
-        if ((cberr = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, errno, "cbuf_new");
-            goto done;
+    pd.pd_where = where;
+    pd.pd_sort_by = sort_by;
+    pd.pd_direction = direction;
+    pd.pd_offset = offset;
+    pd.pd_limit = limit;
+    pd.pd_locked = locked;
+    pd.pd_xstate = xret;
+    clicon_ptr_get(h, "pagination-entries", (void**)&htable);
+    if (htable){
+        if (dispatcher_call_handlers(htable, h, xpath, &pd) < 0){
+            if ((cberr = cbuf_new()) == NULL){
+                clixon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            /* error reason should be in clixon_err_reason */
+            cprintf(cberr, "Internal error, pagination state callback invalid return : %s",
+                    clixon_err_reason());
+            if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
+                goto done;
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+                goto done;
+            goto fail;
         }
-        /* error reason should be in clixon_err_reason */
-        cprintf(cberr, "Internal error, pagination state callback invalid return : %s",
-                clixon_err_reason());
-        if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
-            goto done;
-        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
-            goto done;
-        goto fail;
     }
 
     /* System makes the binding */
@@ -580,9 +594,9 @@ get_pagination_partial(clixon_handle        h,
  *
  * It is specialized enough to have its own function. Specifically, extra attributes as well
  * as the list-paginaiton API
- * @param[in]  h       Clixon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  ce      Client entry, for locking
- * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[in]  xe      Request: <rpc><xn></rpc>
  * @param[in]  content Get config/state/both
  * @param[in]  db      Database name
  * @param[in]  depth   Depth attribute
@@ -591,10 +605,10 @@ get_pagination_partial(clixon_handle        h,
  * @param[in]  nsc     Namespace context of xpath
  * @param[in]  username
  * @param[in]  wdef    With-defaults parameter, see RFC 6243
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @retval     0       OK
  * @retval    -1       Error
- * @note pagination uses appending xpath with predicate, eg [position()<limit], this may not work 
+ * @note pagination uses appending xpath with predicate, eg [position()<limit], this may not work
  *       if there is an existing predicate
  * XXX Reuse code with get_common
  * From draft-ietf-netconf-list-pagination-04.txt 3.1:
@@ -637,16 +651,18 @@ get_list_pagination(clixon_handle        h,
     char      *sort_by = NULL;
     char      *direction = NULL;
     char      *where = NULL;
-    int        extflag = 0;
     int        i;
     int        j;
     int        ret;
+    dispatcher_entry_t *htable = NULL;
+    //    int        extflag = 0;
 #ifdef LIST_PAGINATION_REMAINING
     cxobj     *xcache;
     uint32_t   total;
     uint32_t   remaining = 0;
 #endif
 
+    clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     if (cbret == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "cbret is NULL");
         goto done;
@@ -685,13 +701,14 @@ get_list_pagination(clixon_handle        h,
                 goto done;
             goto ok;
         }
-        if (yang_extension_value(ylist, "list-pagination-partial-state", CLIXON_LIB_NS, &extflag, NULL) < 0)
-            goto done;
-        if (extflag){ /* pagination_cb / partial state API */
-            partial_pagination_cb = 1;
+        clicon_ptr_get(h, "pagination-entries", (void**)&htable);
+        if (htable) {
+            if ((ret = dispatcher_match_exact(htable, xpath)) < 0)
+                goto done;
+            if (ret > 0)
+                partial_pagination_cb = 1;
         }
     }
-
     /* first processes the "where" parameter (see Section 3.1.1) */
     if ((x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL &&
         (where = xml_body(x)) != NULL){
@@ -749,35 +766,32 @@ get_list_pagination(clixon_handle        h,
             goto done;
         break;
     }/* switch content */
-    switch (content){     /* Read state */
-    case CONTENT_CONFIG:    /* config data only */
-        break;
-    case CONTENT_ALL:       /* both config and state */
-    case CONTENT_NONCONFIG: /* state data only */
-        if (partial_pagination_cb) /* Partial reads, special handling */
-            break;
-        if ((ret = get_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
-            goto done;
-        if (ret == 0){ /* Error from callback (error in xret) */
-            if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
-                goto done;
-            goto ok;
-        }
-        /* Add defaults to state data. This consumes some cycles */
-        /* Ensure all state-data is report-all */
-        if (xml_global_defaults(h, xret, nsc, xpath, yspec, 1) < 0)
-            goto done;
-        /* Apply default values */
-        if (xml_default_recurse(xret, 1, 0) < 0)
-            goto done;
-    }
     if (partial_pagination_cb) {
-        if ((ret = get_pagination_partial(h, ce, yspec, xpath, offset, limit, xret, cbret)) < 0)
+        if ((ret = get_pagination_state_partial(h, ce, yspec, xpath,
+                                                where, sort_by, direction,
+                                                offset, limit,
+                                                xret, cbret)) < 0)
             goto done;
         if (ret == 0)
             goto ok;
     }
     else {
+        if (content != CONTENT_CONFIG){
+            if ((ret = get_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
+                goto done;
+            if (ret == 0){ /* Error from callback (error in xret) */
+                if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+                    goto done;
+                goto ok;
+            }
+            /* Add defaults to state data. This consumes some cycles */
+            /* Ensure all state-data is report-all */
+            if (xml_global_defaults(h, xret, nsc, xpath, yspec, 1) < 0)
+                goto done;
+            /* Apply default values */
+            if (xml_default_recurse(xret, 1, 0) < 0)
+                goto done;
+        }
         /* first processes the "where" parameter (see Section 3.1.1) */
         if (where){
             if (xpath_vec(xret, nsc, "%s[%s]", &xvec, &xlen, xpath?xpath:"/", where) < 0)
@@ -864,10 +878,10 @@ get_list_pagination(clixon_handle        h,
     if (filter_xpath_again(h, yspec, xret, xvec, xlen, xpath, nsc) < 0)
         goto done;
 #ifdef LIST_PAGINATION_REMAINING
-    /* Add remaining attribute Sec 3.1.5: 
-       Any list or leaf-list that is limited includes, on the first element in the result set, 
+    /* Add remaining attribute Sec 3.1.5:
+       Any list or leaf-list that is limited includes, on the first element in the result set,
        a metadata value [RFC7952] called "remaining"*/
-    if (limit && x1){ 
+    if (limit && x1){
         cxobj *xa;
         cbuf  *cba = NULL;
 
@@ -901,16 +915,16 @@ get_list_pagination(clixon_handle        h,
 
 /*! Common get/get-config code for retrieving  configuration and state information.
  *
- * @param[in]  h       Clixon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  ce      Client entry, for locking
- * @param[in]  xe      Request: <rpc><xn></rpc> 
+ * @param[in]  xe      Request: <rpc><xn></rpc>
  * @param[in]  content Get config/state/both
  * @param[in]  db      Database name
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @retval     0       OK
  * @retval    -1       Error
  * @see from_client_get
- * @see from_client_get_config 
+ * @see from_client_get_config
  */
 static int
 get_common(clixon_handle        h,
@@ -986,7 +1000,7 @@ get_common(clixon_handle        h,
             goto ok;
         }
     }
-    if ((wdefstr = xml_find_body(xe, "with-defaults")) != NULL) 
+    if ((wdefstr = xml_find_body(xe, "with-defaults")) != NULL)
         wdef = withdefaults_str2int(wdefstr);
     /* How to check if list-pagination?
      * Problem is clixon expands messages on entry and pagination default values + non-presence cont
@@ -1073,7 +1087,7 @@ get_common(clixon_handle        h,
         break;
     }/* switch content */
     /* If not only config,
-     * get state data from plugins as defined by plugin_statedata(), if any 
+     * get state data from plugins as defined by plugin_statedata(), if any
      */
     /* Read state */
     switch (content){
@@ -1099,11 +1113,11 @@ get_common(clixon_handle        h,
     }
     if (content != CONTENT_CONFIG &&
         clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML")){
-        /* Check XML  by validating it. return internal error with error cause 
+        /* Check XML  by validating it. return internal error with error cause
          * Primarily intended for user-supplied state-data.
          * The whole config tree must be present in case the state data references config data
          */
-        if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0) 
+        if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0)
             goto done;
         if (ret > 0 &&
             (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
@@ -1197,8 +1211,8 @@ from_client_get_config(clixon_handle h,
     return retval;
 }
 
-/*! Retrieve running configuration and device state information.
- * 
+/*! Retrieve running configuration and device state
+ *
  * @param[in]  h       Clixon handle
  * @param[in]  xe      Request: <rpc><xn></rpc>
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
@@ -1207,7 +1221,7 @@ from_client_get_config(clixon_handle h,
  * @retval     0       OK
  * @retval    -1       Error
  *
- * @see from_client_get_config 
+ * @see from_client_get_config
  */
 int
 from_client_get(clixon_handle h,

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# List pagination tests according to draft-wwlh-netconf-list-pagination-00
+# List pagination tests according to draft-ietf-netconf-list-pagination-04
 # Follow the example-social example in the draft and the tests in Appendix A.2 + A.3.1/A.3.2
-# Basically only offset and limit supported
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -49,7 +48,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-# See draft-wwlh-netconf-list-pagination-00 A.2 (except stats and audit-log)
+# See draft-netconf-list-pagination-04.txt A.2 (except stats and audit-log)
 # XXX: "config" without 
 cat <<'EOF' > $dir/startup_db
 {"config":
@@ -167,7 +166,7 @@ cat <<'EOF' > $dir/startup_db
 }
 EOF
 
-# See draft-wwlh-netconf-list-pagination-00 A.2 (only stats and audit-log)
+# See draft-netconf-list-pagination-04.txt A.2 (only stats and audit-log)
 cat<<EOF > $fstate
 <members xmlns="https://example.com/ns/example-social">
    <member>

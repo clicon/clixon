@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2021 Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
@@ -23,7 +23,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -45,6 +45,8 @@
  * @param[in]  xpath    Registered XPath using canonical prefixes
  * @param[in]  userargs Per-call user arguments
  * @param[in]  arg      Per-path user argument
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 typedef int (*handler_function)(void *handle, char *path, void *userargs, void *arg);
 
@@ -68,36 +70,36 @@ struct _dispatcher_entry {
     /*
      * the name of this node, NOT the complete path
      */
-    char *node_name;
+    char              *de_node_name;
 
     /*
      * peer points at peer to the right of this one
      * if NULL then this is the rightmost and last on list
      */
-    dispatcher_entry_t *peer;
+    dispatcher_entry_t *de_peer;
 
     /*
      * peer_head points at leftmost peer at this level
      * if NULL, then this is the leftmost and first on the list
-     * XXX: it seems it points to itself if it is first on the list? 
+     * XXX: it seems it points to itself if it is first on the list?
      */
-    dispatcher_entry_t *peer_head;
+    dispatcher_entry_t *de_peer_head;
 
     /*
      * points at peer_head of children list
      * if NULL, then no children
      */
-    dispatcher_entry_t *children;
+    dispatcher_entry_t *de_children;
 
     /*
      * pointer to handler function for this node
      */
-    handler_function handler;
+    handler_function    de_handler;
 
     /*
      * End-user argument
      */
-    void *arg;
+    void               *de_arg;
 };
 
 /*
@@ -105,6 +107,7 @@ struct _dispatcher_entry {
  */
 int dispatcher_register_handler(dispatcher_entry_t **root, dispatcher_definition *x);
 int dispatcher_call_handlers(dispatcher_entry_t *root, void *handle, char *path, void *user_args);
+int dispatcher_match_exact(dispatcher_entry_t *root, char *path);
 int dispatcher_free(dispatcher_entry_t *root);
 int dispatcher_print(FILE *f, int level, dispatcher_entry_t *root);
 

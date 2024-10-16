@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# List pagination tests loosely based on draft-wwlh-netconf-list-pagination-00
+# List pagination tests loosely based on draft-ietf-netconf-list-pagination-04
 # The example-social yang file is used
 # Three tests to get state pagination data:
 # 1. NETCONF get a specific list (alice->numbers)
@@ -7,7 +7,6 @@
 # 3. CLI get audit logs (only interactive)
 # This tests contains a large state list: audit-logs from the example
 # Only CLI is used
-# Test also of list-pagination-partial-state extension
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -52,7 +51,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-# See draft-wwlh-netconf-list-pagination-00 A.2 (only stats and audit-log)
+# See draft-netconf-list-pagination-04.txt A.2 (only stats and audit-log)
 cat<<EOF > $fstate
 <members xmlns="https://example.com/ns/example-social">
    <member>
@@ -135,6 +134,7 @@ function testrun_stop()
 
 xpath0="/es:members/es:member[es:member-id='alice']/es:stats"
 xpath="$xpath0/es:numbers"
+
 testrun_start $xpath
 
 new "NETCONF get leaf-list member/numbers 0-10 alice"

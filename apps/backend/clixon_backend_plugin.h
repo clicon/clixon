@@ -85,6 +85,9 @@ typedef struct {
  * @see pagination_offset() and other accessor functions
 */
 typedef struct {
+    char             *pd_where;
+    char             *pd_sort_by;
+    char             *pd_direction;
     uint32_t          pd_offset;    /* Start of pagination interval */
     uint32_t          pd_limit;     /* Number of elements (limit) */
     int               pd_locked;    /* Running datastore is locked by this caller */
@@ -104,9 +107,6 @@ int clixon_plugin_statedata_all(clixon_handle h, yang_stmt *yspec, cvec *nsc, ch
 int clixon_plugin_lockdb_all(clixon_handle h, char *db, int lock, int id);
 
 int clixon_pagination_cb_register(clixon_handle h, handler_function fn, char *path, void *arg);
-int clixon_pagination_cb_call(clixon_handle h, char *xpath, int locked,
-                              uint32_t offset, uint32_t limit,
-                              cxobj *xstate);
 int clixon_pagination_free(clixon_handle h);
 
 transaction_data_t * transaction_new(void);

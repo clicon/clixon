@@ -207,7 +207,7 @@ static const map_str2int http_media_map[] = {
     {"application/yang-data+json",       YANG_DATA_JSON},
     {"application/yang-patch+xml",       YANG_PATCH_XML},
     {"application/yang-patch+json",      YANG_PATCH_JSON},
-    {"application/yang-data+xml-list",   YANG_PAGINATION_XML},  /* draft-wwlh-netconf-list-pagination-rc-02 */
+    {"application/yang-data+xml-list",   YANG_PAGINATION_XML},  /* sdraft-netconf-list-pagination-04.txt */
     {"text/html",                        HTTP_DATA_TEXT_HTML}, /* for http_data */
     {NULL,                              -1}
 };

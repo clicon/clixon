@@ -38,8 +38,6 @@ Expected: October 2024
 * New `clixon-config@2024-08-01.yang` revision
   * Added: `CLICON_YANG_DOMAIN_DIR`
   * Added: `CLICON_YANG_USE_ORIGINAL`
-* New `clixon-lib@2024-08-01.yang` revision
-    - Added: list-pagination-partial-state extension
 
 ### API changes on existing protocol/config features
 

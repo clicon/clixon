@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Example-social from draft-netconf-list-pagination-00.txt appendix A.1
+# Example-social from draft-netconf-list-pagination-04.txt appendix A.1
 # Assumes variable fexample is set to name of yang file
 # Also: leaf-list member/state/numbers is added
 # Mark deviation from original with "Clixon"
@@ -265,7 +265,6 @@ cat <<EOF > $fexample
        list audit-log {
          description
            "List of audit logs.";
-         cl:list-pagination-partial-state; // Clixon
          leaf timestamp {
            type yang:date-and-time;
            mandatory true;

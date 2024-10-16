@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# List pagination tests loosely based on draft-wwlh-netconf-list-pagination-00
+# List pagination tests loosely based on draft-ietf-netconf-list-pagination-04
 # The example-social yang file is used
 # This tests contains a large config list: members/member/favorites/uint8-numbers
 
@@ -56,7 +56,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-# Based on draft-wwlh-netconf-list-pagination-00 A.2 but bob has a generated uint8-numbers list
+# Based on draft-netconf-list-pagination-04.txt A.2 but bob has a generated uint8-numbers list
 # start file
 cat <<'EOF' > $dir/startup_db
 <config>

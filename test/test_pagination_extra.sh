@@ -38,7 +38,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-# See draft-wwlh-netconf-list-pagination-00 A.2 (except stats and audit-log)
+# See draft-netconf-list-pagination-04.txt A.2 (except stats and audit-log)
 cat <<'EOF' > $dir/startup_db
 {"config":
    {
@@ -155,7 +155,7 @@ cat <<'EOF' > $dir/startup_db
 }
 EOF
 
-# See draft-wwlh-netconf-list-pagination-00 A.2 (only stats and audit-log)
+# See draft-netconf-list-pagination-04.txt A.2 (only stats and audit-log)
 cat<<EOF > $fstate
 <members xmlns="https://example.com/ns/example-social">
    <member>

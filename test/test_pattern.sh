@@ -368,7 +368,7 @@ module pattern{
          }
       }
       leaf p47 {
-         description "draft-wwlh-netconf-list-pagination-00 module example-social";
+         description "draft-netconf-list-pagination-04 module example-social";
          type string {
              length "1..80";
              pattern '.*[\n].*' {

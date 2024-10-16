@@ -22,7 +22,7 @@ module clixon-lib {
         "***** BEGIN LICENSE BLOCK *****
        Copyright (C) 2009-2019 Olof Hagsand
        Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
-       
+
        This file is part of CLIXON
 
        Licensed under the Apache License, Version 2.0 (the \"License\");
@@ -40,7 +40,7 @@ module clixon-lib {
        in which case the provisions of the GPL are applicable instead
        of those above. If you wish to allow use of your version of this file only
        under the terms of the GPL, and not to allow others to
-       use your version of this file under the terms of Apache License version 2, 
+       use your version of this file under the terms of Apache License version 2,
        indicate your decision by deleting the provisions above and replace them with
        the notice and other provisions required by the GPL. If you do not delete
        the provisions above, a recipient may use your version of this file under
@@ -50,7 +50,7 @@ module clixon-lib {
 
        Clixon Netconf extensions for communication between clients and backend.
        This scheme adds:
-       - Added values of RFC6022 transport identityref 
+       - Added values of RFC6022 transport identityref
        - RPCs for debug, stats and process-control
        - Informal description of attributes
 
@@ -68,7 +68,6 @@ module clixon-lib {
        - objectexisted
        - link # For split multiple XML files
       ";
-
     revision 2024-04-01 {
         description
             "Added: debug bits type
@@ -100,7 +99,7 @@ module clixon-lib {
     }
     revision 2022-12-01 {
         description
-            "Added values of RFC6022 transport identityref 
+            "Added values of RFC6022 transport identityref
              Added description of internal netconf attributes";
     }
     revision 2021-12-05 {
@@ -302,7 +301,7 @@ module clixon-lib {
     }
     identity netconf {
         description
-            "Just NETCONF without specific underlying transport, 
+            "Just NETCONF without specific underlying transport,
              Clixon uses stdio for its netconf client and therefore does not know whether it is
              invoked in a script, by a NETCONF/SSH subsystem, etc";
         base ncm:transport;
@@ -328,7 +327,7 @@ module clixon-lib {
         description
             "When split configuration stores are used, ie CLICON_XMLDB_MULTI is set,
              This extension marks where in the configuration tree, one file terminates
-             and a new sub-file is written. 
+             and a new sub-file is written.
              A designer adds the 'xmldb-split' extension to a YANG node which should be split.
              For example, a split could be made at mountpoints.
              See also the 'link 'attribute.
@@ -341,7 +340,7 @@ module clixon-lib {
              One application is the clixon controller where multiple services can
              create the same object. When such a service is deleted (or changed) one needs to keep
              track of which service created what.
-             Limitations: only objects that are actually added or deleted. 
+             Limitations: only objects that are actually added or deleted.
              A sub-object will not be noted";
     }
     rpc debug {
@@ -369,7 +368,7 @@ module clixon-lib {
         output {
             container global{
                 description
-                    "Clixon global statistics. 
+                    "Clixon global statistics.
                      These are global counters incremented by new() and decreased by free() calls.
                      This number is higher than the sum of all datastore/module residing objects, since
                      objects may be used for other purposes than datastore/modules";
@@ -406,10 +405,10 @@ module clixon-lib {
             }
             container module-sets{
                 list module-set{
-                    description "Statistics per group of module, eg top-level and mount-points";
+                    description "Statistics per domain, eg top-level and mount-points";
                     key "name";
                     leaf name{
-                        description "Name of YANG module.";
+                        description "Name of YANG domain.";
                         type string;
                     }
                     leaf nr{
@@ -456,7 +455,7 @@ module clixon-lib {
     rpc process-control {
         description
             "Control a specific process or daemon: start/stop, etc.
-             This is for direct managing of a process by the backend. 
+             This is for direct managing of a process by the backend.
              Alternatively one can manage a daemon via systemd, containerd, kubernetes, etc.";
         input {
             leaf name {
@@ -478,7 +477,7 @@ module clixon-lib {
                         "Output from status rpc";
                     leaf active {
                         description
-                            "True if process is running, false if not. 
+                            "True if process is running, false if not.
                              More specifically, there is a process-id and it exists (in Linux: kill(pid,0).
                              Note that this is actual state and status is administrative state,
                              which means that changing the administrative state, eg stopped->running

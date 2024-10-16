@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2021 Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
@@ -23,7 +23,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -196,13 +196,13 @@ find_peer(dispatcher_entry_t *node, char *node_name)
         return NULL;
     }
 
-    i = node->peer_head;
+    i = node->de_peer_head;
 
     while (i != NULL) {
-        if (strcmp(node_name, i->node_name) == 0) {
+        if (strcmp(node_name, i->de_node_name) == 0) {
             break;
         }
-        i = i->peer;
+        i = i->de_peer;
     }
 
     return i;
@@ -228,10 +228,10 @@ add_peer_node(dispatcher_entry_t *node,
     if (node == NULL) {
         /* this is a new node */
 
-        new_node->node_name = strdup(name);
-        new_node->peer = NULL;
-        new_node->children = NULL;
-        new_node->peer_head = new_node;
+        new_node->de_node_name = strdup(name);
+        new_node->de_peer = NULL;
+        new_node->de_children = NULL;
+        new_node->de_peer_head = new_node;
 
         return new_node;
     }
@@ -239,27 +239,27 @@ add_peer_node(dispatcher_entry_t *node,
         /* possibly adding to the list */
 
         /* search for existing, or get tail end of list */
-        eptr = node->peer_head;
-        while (eptr->peer != NULL) {
-            if (strcmp(eptr->node_name, name) == 0) {
+        eptr = node->de_peer_head;
+        while (eptr->de_peer != NULL) {
+            if (strcmp(eptr->de_node_name, name) == 0) {
                 free(new_node);
                 return eptr;
             }
-            eptr = eptr->peer;
+            eptr = eptr->de_peer;
         }
 
-        // if eptr->node_name == name, we done
-        if (strcmp(eptr->node_name, name) == 0) {
+        // if eptr->de_node_name == name, we done
+        if (strcmp(eptr->de_node_name, name) == 0) {
             free(new_node);
             return eptr;
         }
 
-        new_node->node_name = strdup(name);
-        new_node->peer = NULL;
-        new_node->children = NULL;
-        new_node->peer_head = node->peer_head;
+        new_node->de_node_name = strdup(name);
+        new_node->de_peer = NULL;
+        new_node->de_children = NULL;
+        new_node->de_peer_head = node->de_peer_head;
 
-        eptr->peer = new_node;
+        eptr->de_peer = new_node;
 
         return new_node;
     }
@@ -282,19 +282,19 @@ add_child_node(dispatcher_entry_t *node,
 {
     dispatcher_entry_t *child_ptr;
 
-    if ((child_ptr = add_peer_node(node->children, name)) == NULL)
+    if ((child_ptr = add_peer_node(node->de_children, name)) == NULL)
         return NULL;
-    node->children = child_ptr->peer_head;
+    node->de_children = child_ptr->de_peer_head;
 
     return child_ptr;
 }
 
-/**
+/*!
  *
- * @param root
- * @param path
- * @retval
- * @retval NULL Error
+ * @param[in] root
+ * @param[in] path
+ * @retval    entry
+ * @retval    NULL  Error
  */
 static dispatcher_entry_t *
 get_entry(dispatcher_entry_t *root,
@@ -317,20 +317,19 @@ get_entry(dispatcher_entry_t *root,
 
     /* search down the tree */
     for (int i = 0; i < split_path_len; i++) {
-
         char *query = split_path_list[i];
         if ((ptr = find_peer(ptr, query)) == NULL) {
             split_path_free(split_path_list, split_path_len);
             /* we ran out of matches, use last found handler */
             return best;
         }
-        if (ptr->handler != NULL) {
+        if (ptr->de_handler != NULL) {
             /* if handler is defined, save it */
             best = ptr;
         }
 
         /* skip to next element */
-        ptr = ptr->children;
+        ptr = ptr->de_children;
     }
 
     /* clean up */
@@ -338,13 +337,14 @@ get_entry(dispatcher_entry_t *root,
     return best;
 }
 
-/**
- * given a pointer to an entry, call the handler and all
- * descendant and peer handlers.
+/*! Given a pointer to an entry, call the handler and all descendant and peer handlers.
  *
- * @param entry
- * @param path
- * @retval
+ * @param[in] entry
+ * @param[in] handle
+ * @param[in] path
+ * @param[in] user_args
+ * @retval    0         OK
+ * @retval   -1         Error
  */
 static int
 call_handler_helper(dispatcher_entry_t *entry,
@@ -352,17 +352,23 @@ call_handler_helper(dispatcher_entry_t *entry,
                     char               *path,
                     void               *user_args)
 {
-    if (entry->children != NULL) {
-        call_handler_helper(entry->children, handle, path, user_args);
-    }
-    if (entry->peer != NULL) {
-        call_handler_helper(entry->peer, handle, path, user_args);
-    }
-    if (entry->handler != NULL) {
-        (entry->handler)(handle, path, user_args, entry->arg);
-    }
+    int retval = -1;
 
-    return 1;
+    if (entry->de_children != NULL) {
+        if (call_handler_helper(entry->de_children, handle, path, user_args) < 0)
+            goto done;
+    }
+    if (entry->de_peer != NULL) {
+        if (call_handler_helper(entry->de_peer, handle, path, user_args) < 0)
+            goto done;
+    }
+    if (entry->de_handler != NULL) {
+        if ((entry->de_handler)(handle, path, user_args, entry->de_arg) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*
@@ -416,8 +422,8 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
     }
 
     /* when we get here, ptr points at last entry added */
-    ptr->handler = x->dd_handler;
-    ptr->arg = x->dd_arg;
+    ptr->de_handler = x->dd_handler;
+    ptr->de_arg = x->dd_arg;
 
     /* clean up */
     split_path_free(split_path_list, split_path_len);
@@ -436,8 +442,7 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
  * @param[in]  handle
  * @param[in]  root
  * @param[in]  path   Note must be on the form: /a/b (no keys)
- * @retval     1      OK
- * @retval     0      Invalid
+ * @retval     0      OK
  * @retval    -1      Error
  */
 int
@@ -446,20 +451,67 @@ dispatcher_call_handlers(dispatcher_entry_t *root,
                          char               *path,
                          void               *user_args)
 {
-    int                 ret = 0;
+    int                 retval = -1;
     dispatcher_entry_t *best;
 
     if ((best = get_entry(root, path)) == NULL){
         errno = ENOENT;
-        return -1;
+        goto done;
     }
-    if (best->children != NULL) {
-        call_handler_helper(best->children, handle, path, user_args);
+    if (best->de_children != NULL) {
+        if (call_handler_helper(best->de_children, handle, path, user_args) < 0)
+            goto done;
     }
-    if (best->handler != NULL) {
-        ret = (*best->handler)(handle, path, user_args, best->arg);
+    if (best->de_handler != NULL) {
+        if ((*best->de_handler)(handle, path, user_args, best->de_arg) < 0)
+            goto done;
     }
-    return ret;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Check if any handler is registered for the path
+ * @param[in]  root
+ * @param[in]  path   Note must be on the form: /a/b (no keys)
+ * @retval     1      Yes, at least one handler
+ * @retval     0      No handler
+ * @retval    -1      Error
+ */
+int
+dispatcher_match_exact(dispatcher_entry_t *root,
+                       char               *path)
+{
+    int                 retval = -1;
+    dispatcher_entry_t *ptr;
+    dispatcher_entry_t *ptr1 = NULL;
+    char              **split_path_list = NULL;
+    size_t              split_path_len = 0;
+    char               *str;
+    int                 i;
+
+    /* cut the path up into individual elements */
+    if (split_path(path, &split_path_list, &split_path_len) < 0)
+        goto done;
+    ptr = root;
+    /* search down the tree */
+    for (i = 0; i < split_path_len; i++) {
+        str = split_path_list[i];
+        strsep(&str, "=[]");
+        str = split_path_list[i];
+        if ((ptr1 = find_peer(ptr, str)) == NULL)
+            break;
+        ptr = ptr1->de_children;
+    }
+    if (i == split_path_len && ptr1 && ptr1->de_handler)
+        retval = 1;
+    else
+        retval = 0;
+ done:
+    /* clean up */
+    if (split_path_list)
+        split_path_free(split_path_list, split_path_len);
+    return retval;
 }
 
 /*! Free a dispatcher tree
@@ -469,12 +521,12 @@ dispatcher_free(dispatcher_entry_t *root)
 {
     if (root == NULL)
         return 0;
-    if (root->children)
-        dispatcher_free(root->children);
-    if (root->peer)
-        dispatcher_free(root->peer);
-    if (root->node_name)
-        free(root->node_name);
+    if (root->de_children)
+        dispatcher_free(root->de_children);
+    if (root->de_peer)
+        dispatcher_free(root->de_peer);
+    if (root->de_node_name)
+        free(root->de_node_name);
     free(root);
     return 0;
 }
@@ -487,15 +539,15 @@ dispatcher_print(FILE               *f,
                  int                 level,
                  dispatcher_entry_t *de)
 {
-    fprintf(f, "%*s%s", level*INDENT, "", de->node_name);
-    if (de->handler)
-        fprintf(f, " %p", de->handler);
-    if (de->arg)
-        fprintf(f, " (%p)", de->arg);
+    fprintf(f, "%*s%s", level*INDENT, "", de->de_node_name);
+    if (de->de_handler)
+        fprintf(f, " %p", de->de_handler);
+    if (de->de_arg)
+        fprintf(f, " (%p)", de->de_arg);
     fprintf(f, "\n");
-    if (de->children)
-        dispatcher_print(f, level+1, de->children);
-    if (de->peer)
-        dispatcher_print(f, level, de->peer);
+    if (de->de_children)
+        dispatcher_print(f, level+1, de->de_children);
+    if (de->de_peer)
+        dispatcher_print(f, level, de->de_peer);
     return 0;
 }

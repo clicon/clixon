@@ -54,7 +54,7 @@ enum restconf_media{
     YANG_DATA_XML,       /* "application/yang-data+xml" */
     YANG_PATCH_JSON,     /* "application/yang-patch+json" */
     YANG_PATCH_XML,      /* "application/yang-patch+xml" */
-    YANG_PAGINATION_XML, /* draft-wwlh-netconf-list-pagination-rc-02.txt */
+    YANG_PAGINATION_XML, /* draft-netconf-list-pagination-04.txt */
     HTTP_DATA_TEXT_HTML  /* For http_data */
 };
 typedef enum restconf_media restconf_media;
