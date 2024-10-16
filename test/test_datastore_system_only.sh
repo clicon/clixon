@@ -23,6 +23,7 @@ AUTOCLI=$(autocli_config clixon-\* kw-nokey false)
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_CONFIGDIR>$CFD</CLICON_CONFIGDIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
@@ -74,6 +75,11 @@ module clixon-standard{
            "System-only config data";
         type string;
      }
+     leaf normal-data {
+        description
+           "Normal config data";
+        type string;
+     }
   }
   grouping store-grouping {
      container keys {
@@ -95,7 +101,7 @@ EOF
 
 # A "local" YANG
 cat <<EOF > $flocal
-module clixon-mount1{
+module clixon-local{
    yang-version 1.1;
    namespace "urn:example:local";
    prefix local;
@@ -147,6 +153,7 @@ cat <<EOF > $dir/x_db
       <keys>
          <key>
             <name>a</name>
+            <normal-data>otherdata</normal-data>
          </key>
       </keys>
    </store>
@@ -164,7 +171,6 @@ cat <<EOF > $dir/y_db
    </keys>
 </store>
 EOF
-
 
 # Check content of db
 # Args:
@@ -217,11 +223,14 @@ sudo rm -f $dir/system-only.xml
 new "Add mydata"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data></key></keys></store></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
+new "Add normal data"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><store xmlns=\"urn:example:std\"><keys><key><name>a</name><normal-data>otherdata</normal-data></key></keys></store></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 new "Check mydata present, but not in candidate datastore"
 check_db candidate false
 
 new "Get mydata from candidate"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data></key></keys></store></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
 
 new "Commit 1"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -230,7 +239,7 @@ new "Check mydata present, but not in running datastore"
 check_db running true
 
 new "Get mydata from running"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data></key></keys></store></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
 
 new "Remove mydata"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data nc:operation=\"delete\" xmlns:nc=\"${BASENS}\">mydata</system-only-data></key></keys></store></config><default-operation>none</default-operation></edit-config></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -241,8 +250,8 @@ check_db candidate true
 new "Commit 2"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "Get mydata from running, expected not"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name></key></keys></store></data></rpc-reply>"
+new "Get mydata from running, expecte no system-nly"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
 
 new "Check mydata not present, but not in running datastore"
 check_db running false
@@ -274,7 +283,7 @@ new "Check mydata present, but not in running datastore"
 check_db running true
 
 new "Get mydata from running"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data></key></keys></store></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
 
 new "Remove mydata"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data nc:operation=\"delete\" xmlns:nc=\"${BASENS}\">mydata</system-only-data></key></keys></store></config><default-operation>none</default-operation></edit-config></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -282,11 +291,35 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "Commit 4"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "Get mydata from running, expected not"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name></key></keys></store></data></rpc-reply>"
+new "Get mydata from running, expected no system-only"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
 
 new "Check mydata not present, but not in running datastore"
 check_db running false
+
+new "Restart"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+fi
+
+# Setup startup and saved system-only
+sudo cp $dir/x_db $dir/startup_db
+sudo cp $dir/y_db $dir/system-only.xml
+
+if [ $BE -ne 0 ]; then
+    new "start backend -s startup -f $cfg -- -o store/keys/key/system-only-data -O $dir/system-only.xml"
+    start_backend -s startup -f $cfg -- -o store/keys/key/system-only-data -O $dir/system-only.xml
+fi
+
+new "wait backend 3"
+wait_backend
+
+new "Get mydata from running"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
