@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,15 +25,15 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
- * 
-  * The example have the following optional arguments that you can pass as 
+  *
+  * The example have the following optional arguments that you can pass as
   * argc/argv after -- in clixon_cli:
   *  -m <yang> Mount this yang on mountpoint
   *  -M <namespace> Namespace of mountpoint, note both -m and -M must exist
@@ -74,7 +74,7 @@ static char *_mount_namespace = NULL;
 
 static clixon_plugin_api api;
 
-/*! Example cli function 
+/*! Example cli function
  */
 int
 mycallback(clixon_handle h,
@@ -110,7 +110,7 @@ mycallback(clixon_handle h,
     return retval;
 }
 
-/*! Example "downcall", ie initiate an RPC to the backend 
+/*! Example "downcall", ie initiate an RPC to the backend
  */
 int
 example_client_rpc(clixon_handle h,
@@ -356,7 +356,7 @@ example_cli_errmsg(clixon_handle        h,
 
 /*! Callback for printing version output and exit
  *
- * A plugin can customize a version (or banner) output on stdout. 
+ * A plugin can customize a version (or banner) output on stdout.
  * Several version strings can be printed if there are multiple callbacks.
  * If no registered plugins exist, clixon prints CLIXON_GITHASH
  * Typically invoked by command-line option -V

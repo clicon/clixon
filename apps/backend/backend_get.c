@@ -194,10 +194,10 @@ client_get_streams(clixon_handle   h,
  * message. But this needs to be explored in all sub-functions
  */
 static int
-get_statedata(clixon_handle     h,
-              char             *xpath,
-              cvec             *nsc,
-              cxobj           **xret)
+get_state_data(clixon_handle h,
+               char         *xpath,
+               cvec         *nsc,
+               cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -777,7 +777,7 @@ get_list_pagination(clixon_handle        h,
     }
     else {
         if (content != CONTENT_CONFIG){
-            if ((ret = get_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
+            if ((ret = get_state_data(h, xpath?xpath:"/", nsc, &xret)) < 0)
                 goto done;
             if (ret == 0){ /* Error from callback (error in xret) */
                 if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
@@ -959,8 +959,8 @@ get_common(clixon_handle        h,
     withdefaults_type wdef;
     char             *wdefstr;
 
-    wdef = WITHDEFAULTS_EXPLICIT;
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
+    wdef = WITHDEFAULTS_EXPLICIT;
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec9");
@@ -1008,7 +1008,6 @@ get_common(clixon_handle        h,
      * If it is empty, all are default values and is regular get
      */
     if ((xlpg = xml_find_type(xe, NULL, "list-pagination", CX_ELMNT)) != NULL){
-
         if ((xlpg2 = xml_dup(xlpg)) == NULL)
             goto done;
         if (xml_default_nopresence(xlpg2, 2, 0) < 0)
@@ -1095,7 +1094,7 @@ get_common(clixon_handle        h,
         break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
-        if ((ret = get_statedata(h, xpath?xpath:"/", nsc, &xret)) < 0)
+        if ((ret = get_state_data(h, xpath?xpath:"/", nsc, &xret)) < 0)
             goto done;
         if (ret == 0){ /* Error from callback (error in xret) */
             if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)

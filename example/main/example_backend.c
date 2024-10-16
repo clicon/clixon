@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -26,20 +26,20 @@
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
   use your version of this file under the terms of Apache License version 2, indicate
-  your decision by deleting the provisions above and replace them with the 
+  your decision by deleting the provisions above and replace them with the
   notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
 
-  * The example have the following optional arguments that you can pass as 
+  * The example have the following optional arguments that you can pass as
   * argc/argv after -- in clixon_backend:
   *  -a <..> Register callback for this yang action
   *  -m <yang> Mount this yang on mountpoint
   *  -M <namespace> Namespace of mountpoint, note both -m and -M must exist
   *  -n  Notification streams example
-  *  -r  enable the reset function 
+  *  -r  enable the reset function
   *  -s  enable the state function
   *  -S <file>  read state data from file, otherwise construct it programmatically (requires -s)
   *  -i  read state file on init not by request for optimization (requires -sS <file>)
@@ -97,7 +97,7 @@ static char *_mount_namespace = NULL;
 
 /*! Notification stream
  *
- * Enable notification streams for netconf/restconf 
+ * Enable notification streams for netconf/restconf
  * Start backend with -- -n <sec>
  * where <sec> is period of stream
  */
@@ -149,7 +149,7 @@ static int _state_file_transaction = 0;
 
 /*! Variable to control module-specific upgrade callbacks.
  *
- * If set, call test-case for upgrading ietf-interfaces, otherwise call 
+ * If set, call test-case for upgrading ietf-interfaces, otherwise call
  * auto-upgrade
  * Start backend with -- -u
  */
@@ -163,7 +163,7 @@ static int _general_upgrade = 0;
 
 /*! Variable to control transaction logging (for debug)
  *
- * If set, call syslog for every transaction callback 
+ * If set, call syslog for every transaction callback
  * Start backend with -- -t
  */
 static int _transaction_log = 0;
@@ -300,7 +300,7 @@ main_abort(clixon_handle    h,
     return 0;
 }
 
-/*! Routing example notification timer handler. Here is where the periodic action is 
+/*! Routing example notification timer handler. Here is where the periodic action is
  */
 static int
 example_stream_timer(int   fd,
@@ -319,7 +319,7 @@ example_stream_timer(int   fd,
     return retval;
 }
 
-/*! Set up example stream notification timer 
+/*! Set up example stream notification timer
  *
  * @param[in]  h  Clixon handle
  * @param[in]  s  Timeout period in seconds
@@ -335,7 +335,7 @@ example_stream_timer_setup(clixon_handle h,
     return clixon_event_reg_timeout(t, example_stream_timer, h, "example stream timer");
 }
 
-/*! Smallest possible RPC declaration for test 
+/*! Smallest possible RPC declaration for test
  *
  * Yang/XML:
  * If the RPC operation invocation succeeded and no output parameters
@@ -442,7 +442,7 @@ example_action_reset(clixon_handle h,            /* Clixon handle */
  * @param[in]    h        Clixon handle
  * @param[in]    nsc      External XML namespace context, or NULL
  * @param[in]    xpath    String with XPATH syntax. or NULL for all
- * @param[out]   xstate   XML tree, <config/> on entry. 
+ * @param[out]   xstate   XML tree, <config/> on entry.
  * @retval       0        OK
  * @retval      -1        Error
  * @see xmldb_get
@@ -458,10 +458,10 @@ example_action_reset(clixon_handle h,            /* Clixon handle */
  * @see example_statefile  where state is read from file and also pagination
  */
 int
-example_statedata(clixon_handle   h,
-                  cvec           *nsc,
-                  char           *xpath,
-                  cxobj          *xstate)
+example_statedata(clixon_handle h,
+                  cvec         *nsc,
+                  char         *xpath,
+                  cxobj        *xstate)
 {
     int        retval = -1;
     cxobj    **xvec = NULL;
@@ -481,7 +481,7 @@ example_statedata(clixon_handle   h,
         goto done;
     }
     yspec = clicon_dbspec_yang(h);
-    /* Example of statedata, in this case merging state data with 
+    /* Example of statedata, in this case merging state data with
      * state information. In this case adding dummy interface operation state
      * to configured interfaces.
      * Get config according to xpath */
@@ -518,8 +518,8 @@ example_statedata(clixon_handle   h,
                                     NULL, &xstate, NULL) < 0)
             goto done; /* For the case when urn:example:clixon is not loaded */
     }
-    /* Event state from RFC8040 Appendix B.3.1 
-     * Note: (1) order is by-system so is different, 
+    /* Event state from RFC8040 Appendix B.3.1
+     * Note: (1) order is by-system so is different,
      *       (2) event-count is XOR on name, so is not 42 and 4
      */
     if (yang_find_module_by_namespace(yspec, "urn:example:events") != NULL){
@@ -600,7 +600,7 @@ example_statefile(clixon_handle     h,
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0)
         goto done;
     /* Mark elements to copy:
-     * For every node found in x0, mark the tree as changed 
+     * For every node found in x0, mark the tree as changed
      */
     for (i=0; i<xlen; i++){
         if ((x1 = xvec[i]) == NULL)
@@ -608,8 +608,8 @@ example_statefile(clixon_handle     h,
         xml_flag_set(x1, XML_FLAG_MARK);
         xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
-    /* Copy the marked elements: 
-     * note is yang-aware for copying of keys which means XML must be bound 
+    /* Copy the marked elements:
+     * note is yang-aware for copying of keys which means XML must be bound
      */
     if (xml_copy_marked(xt, xstate) < 0)
         goto done;
@@ -645,10 +645,10 @@ example_statefile(clixon_handle     h,
  * @param[in]  arg      Per-path user argument (at register time)
  */
 int
-example_pagination(void            *h0,
-                   char            *xpath,
-                   pagination_data  pd,
-                   void            *arg)
+example_pagination(void           *h0,
+                   char           *xpath,
+                   pagination_data pd,
+                   void           *arg)
 {
     int           retval = -1;
     clixon_handle h = (clixon_handle)h0;
@@ -665,13 +665,12 @@ example_pagination(void            *h0,
     cxobj        *x1;
     uint32_t      lower;
     uint32_t      upper;
-    int           ret;
     cvec         *nsc = NULL;
+    int           ret;
 
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
         goto ok;
-
     locked = pagination_locked(pd);
     offset = pagination_offset(pd);
     limit = pagination_limit(pd);
@@ -707,7 +706,7 @@ example_pagination(void            *h0,
             upper = xlen;
     }
     /* Mark elements to copy:
-     * For every node found in x0, mark the tree as changed 
+     * For every node found in x0, mark the tree as changed
      */
     for (i=lower; i<upper; i++){
         if ((x1 = xvec[i]) == NULL)
@@ -715,8 +714,8 @@ example_pagination(void            *h0,
         xml_flag_set(x1, XML_FLAG_MARK);
         xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
-    /* Copy the marked elements: 
-     * note is yang-aware for copying of keys which means XML must be bound 
+    /* Copy the marked elements:
+     * note is yang-aware for copying of keys which means XML must be bound
      */
     if (xml_copy_marked(xt, xstate) < 0) /* Copy the marked elements */
         goto done;
@@ -745,7 +744,7 @@ example_pagination(void            *h0,
     return retval;
 }
 
-/*! Lock databse status has changed status
+/*! Lock database status has changed
  *
  * @param[in]  h    Clixon handle
  * @param[in]  db   Database name (eg "running")
@@ -781,7 +780,7 @@ example_lockdb(clixon_handle h,
 /*! Callback for yang extensions example:e4
  *
  * @param[in] h    Clixon handle
- * @param[in] yext Yang node of extension 
+ * @param[in] yext Yang node of extension
  * @param[in] ys   Yang node of (unknown) statement belonging to extension
  * @retval    0    OK, all callbacks executed OK
  * @retval   -1    Error in one callback
@@ -830,8 +829,8 @@ static const char *remove_map[] = {
     NULL
 };
 
-/* Rename the namespaces of these paths. 
- * That is, paths (on the left) should get namespaces (to the right) 
+/* Rename the namespaces of these paths.
+ * That is, paths (on the left) should get namespaces (to the right)
  */
 static const map_str2str namespace_map[] = {
     {"/a:x/a:y/a:z/descendant-or-self::node()", "urn:example:b"},
@@ -842,7 +841,7 @@ static const map_str2str namespace_map[] = {
 /*! General-purpose datastore upgrade callback called once on startup
  *
  * Gets called on startup after initial XML parsing, but before module-specific upgrades
- * and before validation. 
+ * and before validation.
  * @param[in] h    Clixon handle
  * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
  * @param[in] xt   XML tree. Upgrade this "in place"
@@ -986,13 +985,13 @@ main_yang_mount(clixon_handle   h,
 
 /*! Testcase module-specific upgrade function moving interfaces-state to interfaces
  *
- * @param[in]  h       Clixon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
- * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[in]  arg     User argument given at rpc_callback_register()
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  if retval = 0
  * @retval     1       OK
  * @retval     0       Invalid
@@ -1001,11 +1000,11 @@ main_yang_mount(clixon_handle   h,
  * @see test_upgrade_interfaces.sh
  * @see upgrade_2014_to_2016
  * This example shows a two-step upgrade where the 2014 function does:
- * - Move /if:interfaces-state/if:interface/if:admin-status to 
+ * - Move /if:interfaces-state/if:interface/if:admin-status to
  *        /if:interfaces/if:interface/
  * - Move /if:interfaces-state/if:interface/if:statistics to
  *        /if:interfaces/if:interface/
- * - Rename /interfaces/interface/description to descr 
+ * - Rename /interfaces/interface/description to descr
  */
 static int
 upgrade_2014_to_2016(clixon_handle h,
@@ -1091,13 +1090,13 @@ upgrade_2014_to_2016(clixon_handle h,
 
 /*! Testcase upgrade function removing interfaces-state
  *
- * @param[in]  h       Clixon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
- * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[in]  arg     User argument given at rpc_callback_register()
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  if retval = 0
  * @retval     1       OK
  * @retval     0       Invalid
@@ -1159,8 +1158,8 @@ upgrade_2016_to_2018(clixon_handle h,
                 if ((x = xml_find(xi, "descr")) != NULL)
                     if (xml_wrap(x, "docs") < 0)
                         goto done;
-                /* Change type /interfaces/interface/statistics/in-octets to 
-                 * decimal64 with fraction-digits 3 and divide values with 1000 
+                /* Change type /interfaces/interface/statistics/in-octets to
+                 * decimal64 with fraction-digits 3 and divide values with 1000
                  */
                 if ((x = xpath_first(xi, NULL, "statistics/in-octets")) != NULL){
                     if ((xb = xml_body_get(x)) != NULL){
@@ -1197,7 +1196,7 @@ upgrade_2016_to_2018(clixon_handle h,
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
- * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[in]  arg     User argument given at rpc_callback_register()
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  if retval = 0
  * @retval     1       OK
  * @retval     0       Invalid
@@ -1206,11 +1205,11 @@ upgrade_2016_to_2018(clixon_handle h,
  * @see test_upgrade_interfaces.sh
  * @see upgrade_2014_to_2016
  * This example shows a two-step upgrade where the 2014 function does:
- * - Move /if:interfaces-state/if:interface/if:admin-status to 
+ * - Move /if:interfaces-state/if:interface/if:admin-status to
  *        /if:interfaces/if:interface/
  * - Move /if:interfaces-state/if:interface/if:statistics to
  *        /if:interfaces/if:interface/
- * - Rename /interfaces/interface/description to descr 
+ * - Rename /interfaces/interface/description to descr
  */
 static int
 upgrade_interfaces(clixon_handle h,
@@ -1250,10 +1249,10 @@ upgrade_interfaces(clixon_handle h,
 /*! Plugin state reset. Add xml or set state in backend machine.
  *
  * Add xml or set state in backend system.
- * plugin_reset in each backend plugin after all plugins have been initialized. 
- * This gives the application a chance to reset system state back to a base state. 
+ * plugin_reset in each backend plugin after all plugins have been initialized.
+ * This gives the application a chance to reset system state back to a base state.
  * This is generally done when a system boots up to make sure the initial system state
- * is well defined. 
+ * is well defined.
  * This involves creating default configuration files for various daemons, set interface
  * flags etc.
  * @param[in] h   Clixon handle
@@ -1313,8 +1312,8 @@ example_reset(clixon_handle h,
 
 /*! Plugin start.
  *
- * Called when application is "started", (almost) all initialization is complete 
- * Backend: daemon is in the background. If daemon privileges are dropped 
+ * Called when application is "started", (almost) all initialization is complete
+ * Backend: daemon is in the background. If daemon privileges are dropped
  * this callback is called *before* privileges are dropped.
  * @param[in]  h    Clixon handle
  * @retval     0    OK
@@ -1354,7 +1353,7 @@ example_start(clixon_handle h)
  * @retval     0    OK
  * @retval    -1    Error
  * plugin_daemon is called once after daemonization has been made but before lowering of privileges
- * the main event loop is entered. 
+ * the main event loop is entered.
  */
 int
 example_daemon(clixon_handle h)
@@ -1430,7 +1429,7 @@ static clixon_plugin_api api = {
  * @param[in]  h    Clixon handle
  * @retval     NULL Error
  * @retval     api  Pointer to API struct
- * In this example, you can pass -r, -s, -u to control the behaviour, mainly 
+ * In this example, you can pass -r, -s, -u to control the behaviour, mainly
  * for use in the test suites.
  */
 clixon_plugin_api *
@@ -1508,7 +1507,7 @@ clixon_plugin_init(clixon_handle h)
 
     if (_notification_stream_s){
         /* Example stream initialization:
-         * 1) Register EXAMPLE stream 
+         * 1) Register EXAMPLE stream
          * 2) setup timer for notifications, so something happens on stream
          * 3) setup stream callbacks for notification to push channel
          */
@@ -1525,7 +1524,7 @@ clixon_plugin_init(clixon_handle h)
         if (example_stream_timer_setup(h, _notification_stream_s) < 0)
             goto done;
     }
-    /* Register callback for routing rpc calls 
+    /* Register callback for routing rpc calls
      */
     /* From example.yang (clicon) */
     if (rpc_callback_register(h, empty_rpc,
@@ -1548,8 +1547,8 @@ clixon_plugin_init(clixon_handle h)
                               "example"/* Xml tag when callback is made */
                               ) < 0)
         goto done;
-    /* Called before the regular system copy_config callback 
-     * If you want to have it called _after_ the system callback, place this call in 
+    /* Called before the regular system copy_config callback
+     * If you want to have it called _after_ the system callback, place this call in
      * the _start function.
      */
     if (rpc_callback_register(h, example_copy_extra,

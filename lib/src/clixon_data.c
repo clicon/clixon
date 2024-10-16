@@ -281,11 +281,11 @@ clicon_data_int_get(clixon_handle h,
     return atoi(s);
 }
 
-/*! Set a single string data via handle
+/*! Set a single int data via handle
  *
  * @param[in] h       clixon_handle
  * @param[in] name    option name
- * @param[in] val     option value, must be null-terminated string
+ * @param[in] val     option value
  * @retval    0       OK
  * @retval   -1       Error
  */

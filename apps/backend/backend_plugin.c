@@ -269,10 +269,6 @@ clixon_plugin_daemon_all(clixon_handle h)
  * @param[in]  h       clicon handle
  * @param[in]  nsc     namespace context for xpath
  * @param[in]  xpath   String with XPATH syntax. or NULL for all
- * @param[in]  pagmode List pagination mode
- * @param[in]  offset  Offset, for list pagination
- * @param[in]  limit   Limit, for list pagination
- * @param[out] remaining  Remaining elements (if limit is non-zero)
  * @param[out] xp      If retval=1, state tree created and returned: <config>...
  * @retval     1       OK if callback found (and called) xret is set
  * @retval     0       Statedata callback failed. no XML tree returned

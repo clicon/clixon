@@ -82,6 +82,7 @@ Send netconf command:
     clixon_netconf -f /usr/local/etc/clixon/example.xml
 ```
 Start clixon restconf daemon (default config listens on http IPv4 0.0.0.0 on port 8080):
+(Warning: starting the native restconf daemon opens ports that may make your system less secure)
 ```
     sudo clixon_restconf -f /usr/local/etc/clixon/example.xml
 ```

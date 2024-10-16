@@ -278,7 +278,7 @@ xmldb_disconnect(clixon_handle h)
     return retval;
 }
 
-/*! Copy datastore from db1 to db2
+/*! Copy datastore from db1 to db2, both cache and datastore
  *
  * May include copying datastore directory structure
  * @param[in]  h     Clixon handle

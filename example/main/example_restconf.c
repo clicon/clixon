@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgat)e
@@ -25,14 +25,14 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
- * 
+ *
  */
 
 #include <stdlib.h>
@@ -49,7 +49,7 @@
 #include <clixon/clixon.h>
 #include <clixon/clixon_restconf.h>  /* minor use */
 
-/* Command line options to be passed to getopt(3) 
+/* Command line options to be passed to getopt(3)
  */
 #define RESTCONF_EXAMPLE_OPTS "m:M:"
 
@@ -197,7 +197,7 @@ b64_decode(const char *src,
  *
  * @param[in]  h         Clixon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
- * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
+ * @param[out] authp     NULL: Credentials failed, no user set (401 returned).
  *                       String: Credentials OK, the associated user, must be mallloc:ed
  *                       Parameter signtificant only if retval is 1/OK
  * @retval     1         OK, see authp parameter for result.
@@ -281,7 +281,7 @@ example_basic_auth(clixon_handle      h,
  * @param[in]  h         Clixon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
- * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
+ * @param[out] authp     NULL: Credentials failed, no user set (401 returned).
  *                       String: Credentials OK, the associated user, must be mallloc:ed
  *                       Parameter signtificant only if retval is 1/OK
  * @retval     1         OK, see authp parameter for result.
@@ -315,7 +315,7 @@ example_restconf_credentials(clixon_handle      h,
     return retval;
 }
 
-/*! Local example restconf rpc callback 
+/*! Local example restconf rpc callback
  */
 int
 restconf_client_rpc(clixon_handle h,
