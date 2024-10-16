@@ -308,14 +308,14 @@ api_return_err(clixon_handle  h,
         clixon_debug(CLIXON_DBG_RESTCONF, "code:%d", code);
         if (pretty){
             cprintf(cb, "{\n\"ietf-restconf:errors\" : ");
-            if (clixon_json2cbuf(cb, xerr, pretty, 0, 0) < 0)
+            if (clixon_json2cbuf(cb, xerr, pretty, 0, 0, 0) < 0)
                 goto done;
             cprintf(cb, "\n}\r\n");
         }
         else{
             cprintf(cb, "{");
             cprintf(cb, "\"ietf-restconf:errors\":");
-            if (clixon_json2cbuf(cb, xerr, pretty, 0, 0) < 0)
+            if (clixon_json2cbuf(cb, xerr, pretty, 0, 0, 0) < 0)
                 goto done;
             cprintf(cb, "}\r\n");
         }

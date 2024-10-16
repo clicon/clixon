@@ -1628,8 +1628,7 @@ xmldb_dump(clixon_handle     h,
     switch (format){
     case FORMAT_XML:
         if (clixon_xml2file1(f, xt, 0, pretty, NULL, fprintf, 0, 0, wdef, multi,
-                             clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")
-                             ) < 0)
+                             clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")) < 0)
             goto done;
         if (multi){
             mw.mw_h = h;
@@ -1646,7 +1645,8 @@ xmldb_dump(clixon_handle     h,
             clixon_err(OE_CFG, errno, "JSON+multi not supported");
             goto done;
         }
-        if (clixon_json2file(f, xt, pretty, fprintf, 0, 0) < 0)
+        if (clixon_json2file(f, xt, pretty, fprintf, 0, 0,
+                             clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")) < 0)
             goto done;
         break;
     default:

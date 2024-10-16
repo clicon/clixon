@@ -71,8 +71,7 @@ module clixon-lib {
 
     revision 2024-08-01 {
         description
-            "Added: list-pagination-partial-state
-             Added: system-only-config extension (tentative)
+            "Added: system-only-config extension (tentative)
              Released in Clixon 7.2";
     }
     revision 2024-04-01 {
@@ -322,18 +321,6 @@ module clixon-lib {
         description
             "A CLI session";
         base ncm:transport;
-    }
-    extension list-pagination-partial-state {
-        description
-            "List should be partially read according to the clixon_pagination_cb_register API.
-             This is a performance enhancement of pagination state data.
-             This means that a special callback is used for retreiving list state which is aware of
-             offset/limit attributes.
-             In this way the non-config data can be partially read by the server, instead of reading
-             the whole state on every pagination request.
-             It affects only the server/backend-side
-             It only handles the offset and limit attributes, all other attributes,
-             such as where, sort-by, direction, etc, are ignored";
     }
     extension ignore-compare {
         description

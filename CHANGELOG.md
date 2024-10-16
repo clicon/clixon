@@ -24,9 +24,12 @@ Expected: January 2025
   * New `CLICON_XMLDB_SYSTEM_ONLY_CONFIG` configuration option
   * New `system-only-config` extension
   * New `ca_system_only` backend callback for reading system-only data
+  * Changed C-API: add `system-only` parameter with default value `0` last:
+    * `clixon_json2file()` -> `clixon_json2file(,0)`
+    * `clixon_json2cbuf()` -> `clixon_json2cbuf(,0)`
 
 ### Corrected Bugs
-
+	
 * Fixed: [string length validation doesn't work for the entry "" in case it has default value specified](https://github.com/clicon/clixon/issues/563)
 * Fixed: [SNMP: snmpwalk is slow and can timeout](https://github.com/clicon/clixon/issues/404)
 

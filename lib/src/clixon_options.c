@@ -253,7 +253,7 @@ clicon_option_dump1(clixon_handle h,
             goto done;
         break;
     case FORMAT_JSON:
-        if (clixon_json2file(f, xc, pretty, cligen_output, 0, 0) < 0)
+        if (clixon_json2file(f, xc, pretty, cligen_output, 0, 0, 0) < 0)
             goto done;
         break;
     case FORMAT_TEXT:

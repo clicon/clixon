@@ -237,7 +237,7 @@ api_data_get2(clixon_handle  h,
                 goto done;
             break;
         case YANG_DATA_JSON:
-            if (clixon_json2cbuf(cbx, xret, pretty, 0, 0) < 0)
+            if (clixon_json2cbuf(cbx, xret, pretty, 0, 0, 0) < 0)
                 goto done;
             break;
         default:

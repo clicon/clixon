@@ -1461,7 +1461,7 @@ save_config_file(clixon_handle h,
             goto done;
         break;
     case FORMAT_JSON:
-        if (clixon_json2file(f, xt, pretty, fprintf, 0, 1) < 0)
+        if (clixon_json2file(f, xt, pretty, fprintf, 0, 1, 0) < 0)
             goto done;
         break;
     case FORMAT_TEXT:
@@ -1587,7 +1587,7 @@ cli_notification_cb(int   s,
         goto done;
     switch (format){
     case FORMAT_JSON:
-        if (clixon_json2file(stdout, xt, 1, cligen_output, 1, 1) < 0)
+        if (clixon_json2file(stdout, xt, 1, cligen_output, 1, 1, 0) < 0)
             goto done;
     case FORMAT_TEXT:
         if (clixon_text2file(stdout, xt, 0, cligen_output, 1, 1) < 0)

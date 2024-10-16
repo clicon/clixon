@@ -887,7 +887,7 @@ xmldb_get_cache(clixon_handle     h,
             goto done;
     }
     if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG") &&
-        strcmp(db, "running") == 0){
+        (strcmp(db, "candidate") != 0)) {
         if (xmldb_system_only_config(h, xpath?xpath:"/", nsc, &x1t) < 0)
             goto done;
     }

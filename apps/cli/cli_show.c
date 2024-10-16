@@ -1434,7 +1434,7 @@ cli_pagination(clixon_handle h,
                     goto done;
                 break;
             case FORMAT_JSON:
-                if (clixon_json2file(stdout, xc, 1, cligen_output, 0, 1) < 0)
+                if (clixon_json2file(stdout, xc, 1, cligen_output, 0, 1, 0) < 0)
                     goto done;
                 break;
             case FORMAT_TEXT:

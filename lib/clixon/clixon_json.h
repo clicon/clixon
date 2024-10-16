@@ -44,9 +44,9 @@
  * Prototypes
  */
 int json2xml_decode(cxobj *x, cxobj **xerr);
-int clixon_json2cbuf(cbuf *cb, cxobj *x, int pretty, int skiptop, int autocliext);
+int clixon_json2cbuf(cbuf *cb, cxobj *x, int pretty, int skiptop, int autocliext, int system_only);
 int xml2json_cbuf_vec(cbuf *cb, cxobj **vec, size_t veclen, int pretty, int skiptop);
-int clixon_json2file(FILE *f, cxobj *x, int pretty, clicon_output_cb *fn, int skiptop, int autocliext);
+int clixon_json2file(FILE *f, cxobj *x, int pretty, clicon_output_cb *fn, int skiptop, int autocliext, int system_only);
 int json_print(FILE *f, cxobj *x);
 int xml2json_vec(FILE *f, cxobj **vec, size_t veclen, int pretty, clicon_output_cb *fn, int skiptop);
 int clixon_json_parse_string(char *str, int rfc7951, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xret);

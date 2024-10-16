@@ -213,7 +213,7 @@ api_root_restconf_exact(clixon_handle  h,
         break;
     case YANG_DATA_JSON:
     case YANG_PATCH_JSON:
-        if (clixon_json2cbuf(cb, xt, pretty, 0, 0) < 0)
+        if (clixon_json2cbuf(cb, xt, pretty, 0, 0, 0) < 0)
             goto done;
         break;
     default:
@@ -299,7 +299,7 @@ api_yang_library_version(clixon_handle h,
         break;
     case YANG_DATA_JSON:
     case YANG_PATCH_JSON:
-        if (clixon_json2cbuf(cb, xt, pretty, 0, 0) < 0)
+        if (clixon_json2cbuf(cb, xt, pretty, 0, 0, 0) < 0)
             goto done;
         break;
     default:
