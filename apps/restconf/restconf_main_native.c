@@ -1189,7 +1189,7 @@ main(int    argc,
             usage(h, argv0);
             break;
         case 'V': /* version */
-            cligen_output(stdout, "Clixon version: %s\n", CLIXON_GITHASH);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' :  /* debug. Note this overrides any setting in the config */

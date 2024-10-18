@@ -43,6 +43,7 @@ Expected: October 2024
 
 Users may have to change how they access the system
 
+* New version string on the form: `7.1.0-1+11+g2b25294`
 * Restconf: Better RFC compliance with Accept errors: 406 vs 415
 * Removed YANG line-number in error-messages for memory optimization
   * Re-enable by setting `YANG_SPEC_LINENR` compile-time option

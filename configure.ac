@@ -49,10 +49,11 @@ AC_CONFIG_SRCDIR([lib/clixon/clixon.h.in])
 AC_CONFIG_AUX_DIR(config-aux)
 
 # Use GIT version (what if no git?)
-CLIXON_VERSION="$(git log --pretty="format:%(describe) %ci" -n1)"
-CLIXON_VERSION_MAJOR="7"
-CLIXON_VERSION_MINOR="1"
-CLIXON_VERSION_PATCH="0"
+CLIXON_VERSION="$(./scripts/version.sh)"
+CLIXON_VERSION2=$(echo ${CLIXON_VERSION} | awk -F- '{print $1}')
+CLIXON_VERSION_MAJOR=$(echo ${CLIXON_VERSION2} | awk -F. '{print $1}')
+CLIXON_VERSION_MINOR=$(echo ${CLIXON_VERSION2} | awk -F. '{print $2}')
+CLIXON_VERSION_PATCH=$(echo ${CLIXON_VERSION2} | awk -F. '{print $3}')
 
 # Debug flag
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
