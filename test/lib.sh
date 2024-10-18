@@ -198,22 +198,6 @@ BUSER=clicon
 
 : ${clixon_snmp_pidfile:="/var/tmp/clixon_snmp.pid"}
 
-: ${_ALREADY_HERE:=0}
-
-if [ -n "$CLICON_GROUP" ] && [ $_ALREADY_HERE -eq 0 ]; then
-    # Extra test for some archs, eg ubuntu 18 that have problems with:
-    # Sorry, user <user> is not allowed to execute as <user>:clicon on <arch>
-    sudo -g ${CLICON_GROUP} $clixon_netconf 2> /dev/null
-    if [ $? -eq 0 ]; then
-        clixon_cli="sudo -g ${CLICON_GROUP} $clixon_cli"
-        clixon_netconf="sudo -g ${CLICON_GROUP} $clixon_netconf"
-        clixon_restconf="sudo -g ${CLICON_GROUP} $clixon_restconf"
-        clixon_snmp="sudo -g ${CLICON_GROUP} --preserve-env=MIBDIRS $clixon_snmp"
-        clixon_util_socket="sudo -g ${CLICON_GROUP} $clixon_util_socket"
-    fi
-fi
-_ALREADY_HERE=1
-
 # Source the site-specific definitions for test script variables, if site.sh
 # exists. The variables defined in site.sh override any variables of the same
 # names in the environment in the current execution.
