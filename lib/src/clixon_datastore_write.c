@@ -109,13 +109,12 @@ struct xmldb_multi_write_arg {
  * @param[in]  x         XML node (where to look for attribute)
  * @param[in]  name      Attribute name
  * @param[in]  ns        (Expected) Namespace of attribute
- * @param[in]  peek      If 0 dont remove attribute
+ * @param[in]  peek      If 1 dont remove attribute
  * @param[out] cbret     Error message (if retval=0)
  * @param[out] valp      Malloced value (if retval=1)
  * @retval     1         OK
  * @retval     0         Failed (cbret set)
  * @retval    -1         Error
- * @note as a side.effect the attribute is removed
  */
 static int
 attr_ns_value(cxobj *x,
@@ -384,7 +383,7 @@ check_when_condition(cxobj     *x0p,
     goto done;
 }
 
-/*! Check if x0/y0 is part of other choice/case than y1 recursively , if so purge 
+/*! Check if y0 is part of other choice/case than y1 recursively
  *
  * @retval 1 yes, y0 is in other case than y1
  * @retval 0 No, y0 it is not in other case than y1
@@ -423,6 +422,56 @@ choice_is_other(yang_stmt *y0c,
     return 0;
 }
 
+/*! Find/peek operation recursively other than NONE
+ *
+ * @param[in]  x      Base tree node
+ * @param[in]  op     NETCONF operation
+ * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0. 
+ * @retval     1      OK
+ * @retval     0      Fail with cbret set
+ * @retval    -1      Error
+ */
+static int
+find_first_op_recurse(cxobj               *x,
+                      enum operation_type *op,
+                      cbuf                *cbret)
+{
+    int    retval = -1;
+    char  *opstr = NULL;
+    cxobj *xc;
+    int    ret;
+
+    if (*op != OP_NONE)
+        goto ok;
+    if ((ret = attr_ns_value(x, "operation", NETCONF_BASE_NAMESPACE, 1, cbret, &opstr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    if (opstr != NULL)
+        if (xml_operation(opstr, op) < 0)
+            goto done;
+    if (*op == OP_NONE){
+        xc = NULL;
+        while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+            if ((ret = find_first_op_recurse(xc, op, cbret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+            if (*op != OP_NONE)
+                break;
+        }
+    }
+ ok:
+    retval = 1;
+ done:
+    if (opstr)
+        free(opstr);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Check if choice nodes and if add implicitly remove all other cases, or fail if delete
  *
  * Special case is if yc parent (yp) is choice/case
@@ -431,6 +480,8 @@ choice_is_other(yang_stmt *y0c,
  * @param[in]  x0      Base tree node
  * @param[in]  x1c     Tree child
  * @param[in]  y1c     Yang spec of x1c
+ * @param[in]  op      NETCONF operation
+ * @param[out] cbret   Initialized cligen buffer. Contains return XML if retval is 0. 
  * @retval     1       OK
  * @retval     0       Fail with cbret set
  * @retval    -1       Error
@@ -441,6 +492,7 @@ choice_is_other(yang_stmt *y0c,
  * all nodes from all other cases.  If a request creates a node from a
  * case, the server will delete any existing nodes that are defined in
  * other cases inside the choice.
+ * XXX just looks for first op, handling could be improved if several
  */
 static int
 choice_other_match(cxobj              *x0,
@@ -457,16 +509,14 @@ choice_other_match(cxobj              *x0,
     yang_stmt *y0choice;
     yang_stmt *y1case = NULL;
     yang_stmt *y1choice = NULL;
-    char      *opstr = NULL;
     int        ret;
 
-    if ((ret = attr_ns_value(x1c, "operation", NETCONF_BASE_NAMESPACE, 1, cbret, &opstr)) < 0)
+    if ((ret = find_first_op_recurse(x1c, &op, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
-    if (opstr != NULL)
-        if (xml_operation(opstr, &op) < 0)
-            goto done;
+    if (op == OP_REMOVE || op == OP_NONE)
+        goto ok;
     if (yang_choice_case_get(y1c, &y1case, &y1choice) == 0)
         goto ok;
     x0prev = NULL;
@@ -507,8 +557,6 @@ choice_other_match(cxobj              *x0,
  ok:
     retval = 1;
  done:
-    if (opstr)
-        free(opstr);
     return retval;
  fail:
     retval = 0;
