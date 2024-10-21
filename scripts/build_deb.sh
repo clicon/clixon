@@ -6,7 +6,13 @@ set -e
 # This script is used to build Debian packages for Clixon.
 #
 
-VERSION=$(./version.sh)
+# Make sure the script is started from the cligen directory
+if [ ! -f scripts/version.sh ]; then
+    echo "This script must be run from the clixon directory."
+    exit 1
+fi
+
+VERSION=$(./scripts/version.sh)
 
 if [ $? -ne 0 ]; then
     echo "Failed to determine the version of Clixon."
