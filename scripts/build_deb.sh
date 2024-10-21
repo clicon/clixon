@@ -40,7 +40,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Build Clixon and install it to the build/ directory
-./configure && make clean && make && make install DESTDIR=build/
+./configure && make clean && make && make install DESTDIR=`pwd`/build/
 
 if [ $? -ne 0 ]; then
     echo "Failed to build Clixon."
