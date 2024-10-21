@@ -1827,7 +1827,7 @@ netconf_content_int2str(netconf_content nr)
  *    MUST announce the modules it implements by implementing the YANG module 
  *    "ietf-yang-library" (RFC7895) and listing all implemented modules in the
  *    "/modules-state/module" list.
- *    MUST advertise urn:ietf:params:netconf:capability:yang-library:1.0?
+ *    MUST advertise urn:ietf:params:netconf:capability:yang-library:1.1?
  *    revision=<date>&module-set-id=<id> in the <hello> message.
  *
  * Question: should the NETCONF in RFC6241 sections 8.2-8.9 be announced both 
@@ -1860,7 +1860,7 @@ netconf_capabilites(clixon_handle h,
        that it supports multiple protocol versions. */
     cprintf(cb, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_0);
 
-    /* Check if RFC7895 loaded and revision found */
+    /* Check if RFC8526 (RFC7950 1.0) loaded and revision found */
     if ((ietf_yang_library_revision = yang_modules_revision(h)) != NULL){
         if (xml_chardata_encode(&encstr, 0, "urn:ietf:params:netconf:capability:yang-library:1.1?revision=%s&module-set-id=%s",
                                 ietf_yang_library_revision,

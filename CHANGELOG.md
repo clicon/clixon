@@ -43,6 +43,8 @@ Expected: October 2024
 
 Users may have to change how they access the system
 
+* Capability announce urn:ietf:params:netconf:capability:yang-library:1.1 (instead of 1.0)
+  * RFC 7950->8526
 * New version string on the form: `7.1.0-1+11+g2b25294`
 * Restconf: Better RFC compliance with Accept errors: 406 vs 415
 * Removed YANG line-number in error-messages for memory optimization
