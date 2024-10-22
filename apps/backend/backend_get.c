@@ -644,6 +644,7 @@ get_list_pagination(clixon_handle        h,
     cbuf      *cbmsg = NULL; /* For error msg */
     cxobj     *xret = NULL;
     cxobj    **xvec = NULL;
+    cxobj    **xvec2;
     size_t     xlen;
     cxobj     *x;
     cxobj     *xj;
@@ -807,6 +808,10 @@ get_list_pagination(clixon_handle        h,
             if (xml_apply(xret, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                           (void*)XML_FLAG_MARK) < 0)
                 goto done;
+            if (xvec){
+                free(xvec);
+                xvec = NULL;
+            }
         }
         /* then the "sort-by" parameter (see Section 3.1.2) */
         if (sort_by){
@@ -818,18 +823,18 @@ get_list_pagination(clixon_handle        h,
         if (direction &&
             (x = xpath_first(xret, nsc, "%s", xpath?xpath:"/")) != NULL &&
             (xp = xml_parent(x)) != NULL &&
-            (xvec = xml_childvec_get(xp)) != NULL){
+            (xvec2 = xml_childvec_get(xp)) != NULL){
             j = xml_child_nr(xp);
             for (i=0; i<j; i++){
-                x = xvec[i];
+                x = xvec2[i];
                 if (xml_type(x) != CX_ELMNT)
                     continue;
                 j--;
                 for (; j>i; j--){
-                    xj = xvec[j];
+                    xj = xvec2[j];
                     if (xml_type(xj) == CX_ELMNT){
-                        xvec[j] = x;
-                        xvec[i] = xj;
+                        xvec2[j] = x;
+                        xvec2[i] = xj;
                     }
                     break;
                 }
