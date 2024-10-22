@@ -596,6 +596,7 @@ function start_restconf(){
     if [ $? -ne 0 ]; then
         err1 "expected 0" "$?"
     fi
+    RCPID=$!
 }
 
 # Stop restconf daemon before test
@@ -609,10 +610,12 @@ function stop_restconf_pre(){
 # 2) Dont use -u $WWWUSER since clixon_restconf may drop privileges.
 # 3) After fork, it seems to take some time before name is right
 function stop_restconf(){
-    sudo pkill -f clixon_restconf
-    if [ $valgrindtest -eq 3 ]; then 
+    if [ $valgrindtest -eq 3 ]; then
+        sudo kill ${RCPID}
         sleep 1
         checkvalgrind
+    else
+        sudo pkill -f clixon_restconf
     fi
 }
 

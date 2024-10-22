@@ -1202,20 +1202,24 @@ netconf_operation_not_supported_xml(cxobj **xret,
     int   retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
+    cxobj *x = NULL;
     
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;      
     }
     if (*xret == NULL){
-        if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
+        if ((x = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
             goto done;
     }
-    else if (xml_name_set(*xret, "rpc-reply") < 0)
+    else {
+        x = *xret;
+        if (xml_name_set(x, "rpc-reply") < 0)
+            goto done;
+    }
+    if (xml_add_attr(x, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) == NULL)
         goto done;
-    if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) == NULL)
-        goto done;
-    if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
+    if ((xerr = xml_new("rpc-error", x, CX_ELMNT)) == NULL)
         goto done;
     if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
                             "<error-tag>operation-not-supported</error-tag>"
@@ -1225,12 +1229,17 @@ netconf_operation_not_supported_xml(cxobj **xret,
     if (message){
         if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
              goto done;
-         if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
-                                 encstr) < 0)
-        goto done;
+        if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
+                                encstr) < 0)
+            goto done;
     }
+    if (x != *xret)
+        *xret = x;
+    x = NULL;
     retval = 0;
  done:
+    if (x && x != *xret)
+        xml_free(x);
     if (encstr)
         free(encstr);
     return retval;

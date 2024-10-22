@@ -912,7 +912,6 @@ xml_yang_validate_unique(cxobj  *xt,
     yang_stmt    *y;
     yang_stmt    *yprev = NULL;
     enum rfc_6020 keyw;
-    int           nr = 0;
     int           ret;
 
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
@@ -922,10 +921,8 @@ xml_yang_validate_unique(cxobj  *xt,
         if (keyw == Y_LIST || keyw == Y_LEAF_LIST){
             /* equal: just continue*/
             if (y == yprev){
-                nr++;
                 continue;
             }
-            nr=1;
             /* new list check */
             switch (keyw){
             case Y_LIST:

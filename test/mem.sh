@@ -13,7 +13,6 @@ function memonce(){
 
     valgrindfile=$(mktemp)
     echo "valgrindfile:$valgrindfile"
-
     clixon_backend=
     clixon_restconf=
     clixon_cli=
@@ -30,9 +29,10 @@ function memonce(){
             ;;
         'restconf')
             valgrindtest=3 # This means restconf valgrind test
+            sudo chown root $valgrindfile
+            sudo chmod 777  $valgrindfile
             : ${DEMWAIT:=15} # valgrind backend needs some time to get up
             clixon_restconf="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile clixon_restconf"
-
             ;;
         'cli')
             valgrindtest=1

@@ -128,6 +128,8 @@ restconf_not_acceptable(clixon_handle  h,
         goto done;
     retval = 0;
  done:
+    if (xerr)
+        xml_free(xerr);
     return retval;
 }
 

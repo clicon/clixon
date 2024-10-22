@@ -1533,7 +1533,6 @@ upgrade_callback_call(clixon_handle h,
 {
     int                 retval = -1;
     upgrade_callback_t *uc;
-    int                 nr = 0; /* How many callbacks */
     int                 ret;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
@@ -1564,7 +1563,6 @@ upgrade_callback_call(clixon_handle h,
                     }
                     goto fail;
                 }
-                nr++;
             }
             uc = NEXTQ(upgrade_callback_t *, uc);
         } while (uc != ms->ms_upgrade_callbacks);
