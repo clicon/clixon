@@ -184,9 +184,10 @@ rpc "<cancel-commit><persist-id>ab</persist-id></cancel-commit>" "<ok/>"
 new "6. netconf persistent confirmed-commit with timeout"
 reset
 edit_config "candidate" "$CONFIGB"
-commit "<confirmed/><confirm-timeout>3</confirm-timeout><persist>abcd</persist>"
+# need 5 for valgrind netconf that takes a couple of seconds to finish
+commit "<confirmed/><confirm-timeout>5</confirm-timeout><persist>abcd</persist>"
 assert_config_equals "running" "$CONFIGB"
-sleep 3
+sleep 5
 assert_config_equals "running" ""
 
 ################################################################################

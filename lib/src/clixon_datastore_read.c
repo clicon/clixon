@@ -708,7 +708,7 @@ xmldb_readfile(clixon_handle    h,
              * Same ymodules are inserted into yspec1, ie pointers only
              */
             if (needclone && xmodfile){
-                if ((yspec1 = yspec_new1(h, YANG_DOMAIN_TOP, "tmp")) == NULL)
+                if ((yspec1 = yspec_new1(h, YANG_DOMAIN_TOP, "prevyang")) == NULL)
                     goto done;
                 xmsd = NULL;
                 while ((xmsd = xml_child_each(xmodfile, xmsd, CX_ELMNT)) != NULL) {
@@ -722,6 +722,7 @@ xmldb_readfile(clixon_handle    h,
                         continue; // XXX error?
                     if (yn_insert1(yspec1, ymod) < 0)
                         goto done;
+                    yang_ref_inc(ymod);
                 }
             }
         } /* if msdiff */
@@ -747,8 +748,6 @@ xmldb_readfile(clixon_handle    h,
  done:
     if (mr.mr_subdir)
         free(mr.mr_subdir);
-    if (yspec1)
-        ys_free1(yspec1, 1);
     if (xmodfile)
         xml_free(xmodfile);
     if (msdiff)

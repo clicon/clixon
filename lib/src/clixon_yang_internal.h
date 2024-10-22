@@ -68,7 +68,9 @@ typedef struct yang_type_cache yang_type_cache;
  */
 struct yang_stmt {
     /* On x86_64, the following three fields take 8 bytes */
-    enum rfc_6020      ys_keyword:16; /* YANG keyword */
+    enum rfc_6020      ys_keyword:8; /* YANG keyword */
+    uint8_t            ys_ref;       /* Reference count for free: 0 means
+                                      * no sharing, 1: two references */
     uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
     uint32_t           ys_len;       /* Number of children */
 #ifdef YANG_SPEC_LINENR
@@ -112,6 +114,7 @@ struct yang_stmt {
         rpc_callback_t  *ysu_action_cb; /* Y_ACTION: Action callback list*/
         char            *ysu_filename;  /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
         yang_type_cache *ysu_typecache; /* Y_TYPE: cache all typedef data except unions */
+
     } u;
 };
 
