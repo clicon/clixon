@@ -211,6 +211,9 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
         err
     fi
+fi
+
+if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg -- -o store/keys/key/system-only-data -O $dir/system-only.xml"
     start_backend -s init -f $cfg -- -o store/keys/key/system-only-data -O $dir/system-only.xml
 fi
@@ -318,7 +321,7 @@ fi
 new "wait backend 3"
 wait_backend
 
-new "Get mydata from running"
+new "Get mydata from running after startup"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then

@@ -172,13 +172,22 @@ startup_common(clixon_handle       h,
     cxobj              *xret = NULL;
     cxobj              *xerr = NULL;
 
+    clixon_debug(CLIXON_DBG_BACKEND, "Reading initial config from %s", db);
     /* If CLICON_XMLDB_MODSTATE is enabled, then get the db XML with 
      * potentially non-matching module-state in msdiff
      */
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
         if ((msdiff = modstate_diff_new()) == NULL)
             goto done;
-    clixon_debug(CLIXON_DBG_BACKEND, "Reading initial config from %s", db);
+    /* Add system-only config to running */
+    if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
+        if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, 0, &xt, NULL, NULL)) < 0)
+            goto done;
+        if (xmldb_system_only_config(h, "/", NULL, &xt) < 0)
+            goto done;
+        td->td_src = xt;
+        xt = NULL;
+    }
     if (clicon_option_bool(h, "CLICON_XMLDB_UPGRADE_CHECKOLD")){
         if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &xt, msdiff, &xerr)) < 0)
             goto done;
@@ -659,6 +668,7 @@ candidate_validate(clixon_handle h,
  * @retval     1          Validation OK       
  * @retval     0          Validation failed (with cbret set)
  * @retval    -1          Error - or validation failed 
+ * @see startup_commit  for commit on startup
  */
 int
 candidate_commit(clixon_handle  h,
