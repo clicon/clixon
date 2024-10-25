@@ -102,6 +102,9 @@
 /* Define to 1 if you have the <nghttp2/nghttp2.h> header file. */
 #undef HAVE_NGHTTP2_NGHTTP2_H
 
+/* Define to 1 if you have the `qsort_s' function. */
+#undef HAVE_QSORT_S
+
 /* Define to 1 if you have the `setns' function. */
 #undef HAVE_SETNS
 

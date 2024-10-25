@@ -7006,6 +7006,15 @@ then :
 fi
 
 
+# Check to use freebsd:s qsort_s instead of linux qsort_r
+ac_fn_c_check_func "$LINENO" "qsort_s" "ac_cv_func_qsort_s"
+if test "x$ac_cv_func_qsort_s" = xyes
+then :
+  printf "%s\n" "#define HAVE_QSORT_S 1" >>confdefs.h
+
+fi
+
+
 
 
 test "x$prefix" = xNONE && prefix=$ac_default_prefix

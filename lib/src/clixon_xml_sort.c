@@ -41,7 +41,7 @@
 #endif
 
 #include <stdio.h>
-#define __USE_GNU /* for qsort_r */
+#define __USE_GNU /* for qsort_r or qsort_s */
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
@@ -434,7 +434,11 @@ xml_sort_by(cxobj *x,
             char  *indexvar)
 {
     xml_enumerate_children(x); /* This is to make sorting "stable", ie not change existing order */
+#ifdef HAVE_QSORT_S    
+    qsort_s(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, indexvar);
+#else
     qsort_r(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, indexvar);
+#endif
     return 0;
 }
 
@@ -459,7 +463,11 @@ xml_sort(cxobj *x)
         return 1;
 #endif
     xml_enumerate_children(x); /* This is to make sorting "stable", ie not change existing order */
+#ifdef HAVE_QSORT_S
+    qsort_s(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, NULL);
+#else
     qsort_r(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, NULL);
+#endif
     return 0;
 }
 

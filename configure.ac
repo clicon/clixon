@@ -458,6 +458,9 @@ fi
 # Dummy to disable native language support (nls) to remove warnings in buildroot
 AC_ARG_ENABLE(nls)
 
+# Check to use freebsd:s qsort_s instead of linux qsort_r
+AC_CHECK_FUNCS(qsort_s)
+
 AH_BOTTOM([#include <clixon_custom.h>])
 
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
