@@ -166,7 +166,7 @@ new "Check entries"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-client:table -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" "$XML"
 
 new "Run $app"
-expectpart "$(sudo -g ${CLICON_GROUP} $app)" 0 '^42$'
+expectpart "$(sudo $app)" 0 '^42$'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
