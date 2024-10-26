@@ -676,8 +676,6 @@ clicon_rpc(int                sock,
     cprintf(cbsend, "%s", msg->op_body);
     if (clixon_msg_send11(sock, descr, cbsend) < 0)
         goto done;
-    if (cbsend)
-        cbuf_free(cbsend);
     if (clixon_msg_rcv11(sock, descr, 0, &cbrcv, eof) < 0)
         goto done;
     if (*eof)
@@ -687,11 +685,14 @@ clicon_rpc(int                sock,
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
-        cbuf_free(cbrcv);
     }
  ok:
     retval = 0;
  done:
+    if (cbsend)
+        cbuf_free(cbsend);
+    if (cbrcv)
+        cbuf_free(cbrcv);
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (reply)
         free(reply);
