@@ -341,7 +341,12 @@ main(int    argc,
     char          *argv0 = argv[0];
     clixon_handle  h;
     int            logdst = CLIXON_LOG_STDERR;
+#if 1
+    struct passwd  pw = {0,};
+    struct passwd *pwresult = NULL;
+#else
     struct passwd *pw;
+#endif
     yang_stmt     *yspec = NULL;
     char          *str;
     uint32_t       id;
@@ -358,6 +363,11 @@ main(int    argc,
     enum format_enum config_dump_format = FORMAT_XML;
     int              print_version = 0;
     int32_t          d;
+#if 1
+    char            *buf = NULL;
+    size_t           bufsize = 0;
+    int              err;
+#endif
 
     /* Create handle */
     if ((h = clixon_handle_init()) == NULL)
@@ -369,12 +379,35 @@ main(int    argc,
         goto done;
 
     /* Set username to clixon handle. Use in all communication to backend */
+#if 1
+    {
+        bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+        if (bufsize == -1){
+            bufsize = 16384;
+        }
+        if ((buf = malloc(bufsize)) == NULL){
+            clixon_err(OE_UNIX, errno, "malloc");
+            goto done;
+        }
+        err = getpwuid_r(getuid(), &pw, buf, bufsize, &pwresult);
+        if (pwresult == NULL) {
+            if (err == 0)
+                clixon_err(OE_UNIX, errno, "getpwuid_r");
+            else
+                clixon_err(OE_UNIX, err, "getpwuid_r");
+            goto done;
+        }
+    }
+    if (clicon_username_set(h, pw.pw_name) < 0)
+        goto done;
+#else
     if ((pw = getpwuid(getuid())) == NULL){
         clixon_err(OE_UNIX, errno, "getpwuid");
         goto done;
     }
     if (clicon_username_set(h, pw->pw_name) < 0)
         goto done;
+#endif
     while ((c = getopt(argc, argv, SNMP_OPTS)) != -1)
         switch (c) {
         case 'h' : /* help */
@@ -592,6 +625,10 @@ main(int    argc,
  ok:
     retval = 0;
  done:
+#if 1
+    if (buf)
+        free(buf);
+#endif
     clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
     snmp_terminate(h);
