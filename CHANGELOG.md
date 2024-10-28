@@ -68,7 +68,7 @@ Developers may need to change their code
      y1 = yn_iter(y0, &inext) { ...`
 * Add `keyw` argument to `yang_stats()`
 
-### Corrected Busg
+### Corrected Bugs
 
 * Fixed: [YANG 'when' does not work in multiple grouping](https://github.com/clicon/clixon/issues/572)
 * Fixed: [Error when changing choice/case with different structure](https://github.com/clicon/clixon/issues/568)
