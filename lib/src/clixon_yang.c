@@ -518,14 +518,17 @@ yang_when_get(clixon_handle h,
               yang_stmt    *ys)
 {
     map_ptr2ptr *mp = _yang_when_map;
+    yang_stmt   *ys2;
 
     if (mp == NULL){
         clixon_log(h, LOG_WARNING, "when_map not defined, yang_init() not called?");
         return NULL;
     }
     else {
-        if (yang_flag_get(ys, YANG_FLAG_WHEN) != 0x0 && mp != NULL)
-            return clixon_ptr2ptr(mp, ys);
+        if ((ys2 = yang_orig_get(ys)) == NULL)
+            ys2 = ys;
+        if (yang_flag_get(ys2, YANG_FLAG_WHEN) != 0x0 && mp != NULL)
+            return clixon_ptr2ptr(mp, ys2);
     }
     return NULL;
 }
@@ -544,6 +547,7 @@ yang_when_set(clixon_handle h,
               yang_stmt    *ywhen)
 {
     int          retval = -1;
+    yang_stmt   *ys2;
     map_ptr2ptr *mp = _yang_when_map;
 
     if (mp == NULL){
@@ -551,13 +555,16 @@ yang_when_set(clixon_handle h,
         goto done;
     }
     else {
-        if (clixon_ptr2ptr(mp, ys) != NULL) {
-            clixon_err(OE_YANG, 0, "when pointer already set");
-            goto done;
+        if ((ys2 = yang_orig_get(ys)) == NULL)
+            ys2 = ys;
+        if (clixon_ptr2ptr(mp, ys2) == NULL) {
+            assert(yang_flag_set(ys2, YANG_FLAG_WHEN)==0); // XXX
+            if (clixon_ptr2ptr_add(&_yang_when_map, ys2, ywhen) < 0)
+                goto done;
+            yang_flag_set(ys2, YANG_FLAG_WHEN);
         }
-        if (clixon_ptr2ptr_add(&_yang_when_map, ys, ywhen) < 0)
-            goto done;
-        yang_flag_set(ys, YANG_FLAG_WHEN);
+        else
+            assert(yang_flag_set(ys2, YANG_FLAG_WHEN) == 0); // XXX
     }
     retval = 0;
  done:
@@ -2453,6 +2460,7 @@ yang_mounts_print(FILE      *f,
 }
 
 /* Log/debug info about top-level (sub)modules no recursion
+ *
  * @param[in]  yspec     Yang spec
  * @param[in]  dbglevel  Debug level
  */
@@ -2537,6 +2545,7 @@ yang_print_cbuf(cbuf      *cb,
         else
             cprintf(cb, " %s", arg);
     }
+    //    cprintf(cb, " %p ", yn);  For debugging object ptr
     if (yang_len_get(yn)){
         cprintf(cb, " {");
         if (pretty)

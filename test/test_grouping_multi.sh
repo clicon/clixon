@@ -42,7 +42,7 @@ create @datamodel, cli_auto_create();
 commit("Commit the changes"), cli_commit();
 validate("Validate changes"), cli_validate();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del(); 
+      @datamodel, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system"){
@@ -52,36 +52,55 @@ EOF
 
 # Yang specs must be here first for backend. But then the specs are changed but just for CLI
 # Annotate original Yang spec example  directly
-# First annotate /table/parameter 
+# First annotate /table/parameter
 # Had a problem with unknown in grouping -> test uses uses/grouping
 cat <<EOF > $fyang
 module example {
-  namespace "urn:example:clixon";
-  prefix ex;
-    grouping L3-top {
-        leaf L3{
-            type string;
-        }
-    }
-    grouping L2-top {
-        container L2 {
-            uses L3-top {
-                when 'false';
-            }
-        }
-    }
-    container L1x {
-        /* Does not work */
-        uses L2-top;
-    }
-    container L1y {
-        /* Works */
-        container L2 {
-            uses L3-top {
-                when 'false';
-            }
-        }
-    }
+   namespace "urn:example:clixon";
+   prefix ex;
+   grouping L0-group {
+      leaf L0{
+         type string;
+      }
+   }
+   grouping L1-group {
+      list L1 {
+         key x;
+         leaf x {
+            type uint32;
+         }
+         uses L0-group {
+            when 'x=42';
+//            when 'false';
+         }
+      }
+   }
+   container L2x {
+      description "Two-level";
+      list L1 {
+         key x;
+         leaf x {
+            type uint32;
+         }
+         uses L0-group {
+            when 'x=42';
+//            when 'false';
+         }
+      }
+   }
+   container L2y {
+      description "Three levels";
+      uses L1-group;
+   }
+   grouping L2-group {
+      container L2 {
+         uses L1-group;
+      }
+   }
+   container L3 {
+      description "Four levels";
+      uses L2-group;
+   }
 }
 EOF
 
@@ -99,6 +118,35 @@ fi
 new "wait backend"
 wait_backend
 
+new "CLI: L2 17, expect fail"
+expectpart "$($clixon_cli -f $cfg -1 set L2x L1 17 L0 x 2>&1)" 255 "Node 'L0' tagged with 'when' condition 'x=42' in module 'example'"
+
+new "CLI: L2 42, expect ok"
+expectpart "$($clixon_cli -f $cfg -1 set L2x L1 42 L0 x 2>&1)" 0 ""
+
+new "NETCONF: L2x, expect fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><L2x xmlns=\"urn:example:clixon\"><L1><x>17</x><L0>x</L0></L1></L2x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>L0</bad-element></error-info><error-severity>error</error-severity><error-message>Node 'L0' tagged with 'when' condition 'x=42' in module 'example' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)</error-message></rpc-error></rpc-reply>"
+
+new "NETCONF: L2x, expect ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><L2x xmlns=\"urn:example:clixon\"><L1><x>42</x><L0>x</L0></L1></L2x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "NETCONF validate, expect ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "L2y grouping, expect fail"
+expectpart "$($clixon_cli -f $cfg -1 set L2y L1 17 L0 x 2>&1)" 255 "Node 'L0' tagged with 'when' condition 'x=42' in module 'example'"
+
+new "L2y grouping, expect ok"
+expectpart "$($clixon_cli -f $cfg -1 set L2y L1 42 L0 x 2>&1)" 0 ""
+
+new "NETCONF: L2y, expect fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><L2y xmlns=\"urn:example:clixon\"><L1><x>17</x><L0>x</L0></L1></L2y></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>L0</bad-element></error-info><error-severity>error</error-severity><error-message>Node 'L0' tagged with 'when' condition 'x=42' in module 'example' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)</error-message></rpc-error></rpc-reply>"
+
+new "NETCONF: L2y, expect ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><L2y xmlns=\"urn:example:clixon\"><L1><x>42</x><L0>x</L0></L1></L2y></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "L3, expect fail"
+expectpart "$($clixon_cli -f $cfg -1 set L3 L2 L1 17 L0 x 2>&1)" 255 ""
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -110,7 +158,7 @@ if [ $BE -ne 0 ]; then
     # kill backend
     stop_backend -f $cfg
 fi
-    
+
 rm -rf $dir
 
 new "endtest"

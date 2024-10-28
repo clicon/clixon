@@ -69,6 +69,7 @@ Developers may need to change their code
 
 ### Corrected Busg
 
+* Fixed: [YANG 'when' does not work in multiple grouping](https://github.com/clicon/clixon/issues/572)
 * Fixed: [Error when changing choice/case with different structure](https://github.com/clicon/clixon/issues/568)
 * Fixed: [Clixon handle if-feature incorrectly](https://github.com/clicon/clixon/issues/555)
 * Fixed: [Clixon fails to load yang with extension](https://github.com/clicon/clixon/issues/554)

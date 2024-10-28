@@ -195,7 +195,7 @@ clixon_ptr2ptr(map_ptr2ptr *mptab,
     return 0;
 }
 
-/*! Add pointer pairto mptab map
+/*! Add pointer pair to mptab map
  *
  * @param[in]  mptab  Ptr to ptr map
  * @param[in]  ptr0   Input pointer
