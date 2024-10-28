@@ -425,9 +425,9 @@ clixon_stats_datastore_get(clixon_handle h,
  * @retval       -1       Error
  */
 static int
-clixon_stats_module_get(clixon_handle h,
-                        yang_stmt    *ys,
-                        cbuf         *cb)
+clixon_stats_yang_get(clixon_handle h,
+                      yang_stmt    *ys,
+                      cbuf         *cb)
 {
     int       retval = -1;
     uint64_t  nr = 0;
@@ -1466,13 +1466,13 @@ from_client_stats(clixon_handle h,
         while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
             cprintf(cbret, "<module-set>");
             cprintf(cbret, "<name>%s/%s</name>", domain, yang_argument_get(yspec));
-            if (clixon_stats_module_get(h, ydomain, cbret) < 0)
+            if (clixon_stats_yang_get(h, yspec, cbret) < 0)
                 goto done;
             if (modules){
                 inext3 = 0;
                 while ((ymodule = yn_iter(yspec, &inext3)) != NULL) {
                     cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ymodule));
-                    if (clixon_stats_module_get(h, ymodule, cbret) < 0)
+                    if (clixon_stats_yang_get(h, ymodule, cbret) < 0)
                         goto done;
                     cprintf(cbret, "</module>");
                 }

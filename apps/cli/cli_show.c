@@ -1936,6 +1936,8 @@ cli_show_statistics(clixon_handle h,
         goto done;
     }
     if (cli) {
+        if (backend)
+            cligen_output(stdout, "CLI:\n====\n");
         if (!detail) {
             cligen_output(stdout, "%-25s %-10s\n", "YANG", "Mem");
         }
@@ -2004,6 +2006,8 @@ cli_show_statistics(clixon_handle h,
         }
     }
     if (backend) {
+        if (cli)
+            cligen_output(stdout, "\nBackend:\n========\n");
         cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
         cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
         cprintf(cb, ">");
