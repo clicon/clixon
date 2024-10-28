@@ -20,4 +20,4 @@ Matrix clixon forum https://matrix.to/#/#clixonforum:matrix.org.
 
 Other clixon projects include [CLIgen](https://github.com/clicon/cligen), [the Clixon controller](https://github.com/clicon/clixon-controller), [Clixon applications](https://github.com/clicon/clixon-examples) and others.
 
-Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/) and [Akamai Technologies, Inc.](https://www.akamai.com).
+Clixon is sponsored primarily by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/).

@@ -341,12 +341,8 @@ main(int    argc,
     char          *argv0 = argv[0];
     clixon_handle  h;
     int            logdst = CLIXON_LOG_STDERR;
-#if 1
     struct passwd  pw = {0,};
     struct passwd *pwresult = NULL;
-#else
-    struct passwd *pw;
-#endif
     yang_stmt     *yspec = NULL;
     char          *str;
     uint32_t       id;

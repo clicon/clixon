@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [7.2.0](#720) Expected: October 2024
+* [7.2.0](#720) 28 October 2024
 * [7.1.0](#710) 3 July 2024
 * [7.0.1](#701) 3 April 2024
 * [7.0.0](#700) 8 March 2024
@@ -12,18 +12,15 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 7.2.0
-Expected: October 2024
+28 October 2024
+
+The 7.2.0 release lots of minor changes and bugfixes including memory optimizations and package builds.
 
 ### Features
 
-* Added yang domains for mount-point isolation
-  * This replaces the computation of shared yang-specs
-  * New option: `CLICON_YANG_DOMAIN_DIR`
 * Restconf: Support for list of media in Accept header
-* Refactoring of schema mount-points
-  * Add new top-level `Y_MOUNTS` and add top-level yangs and mountpoints in yspecs
-* New `clixon-autocli@2024-08-01.yang` revision
-    - Added: disable operation for module rules
+* Rearranged YANG top-levels into YANG domains, mounts, and specs
+* Deb build script
 * Optimize YANG memory
   * Autocli
     * Late evaluation of uses/grouping
@@ -34,7 +31,10 @@ Expected: October 2024
     * Added option `CLICON_YANG_USE_ORIGINAL` to use original yang object in grouping/augment
 * New: [CLI simple alias](https://github.com/clicon/cligen/issues/112)
   * See: https://clixon-docs.readthedocs.io/en/latest/cli.html#cli-aliases
-* List pagination: Added where, sort-by and direction parameter for configured data
+* List pagination more ietf-draft compliance
+  * Added where, sort-by and direction parameter for configured data
+* New `clixon-autocli@2024-08-01.yang` revision
+  * Added: disable operation for module rules
 * New `clixon-config@2024-08-01.yang` revision
   * Added: `CLICON_YANG_DOMAIN_DIR`
   * Added: `CLICON_YANG_USE_ORIGINAL`
@@ -50,9 +50,6 @@ Users may have to change how they access the system
 * Removed YANG line-number in error-messages for memory optimization
   * Re-enable by setting `YANG_SPEC_LINENR` compile-time option
 * NETCONF error returns of failed leafref references, see https://github.com/clicon/clixon/issues/536
-* List pagination of large lists
-  * For backward-compatibility, mark the list with extension cl:list-pagination-partial-state extension
-  * New default is to use regular state read mechanism, which could have poorer performance but more functionality
 
 ### C/CLI-API changes on existing features
 
@@ -64,7 +61,11 @@ Developers may need to change their code
 * Replaced `clixon_get_logflags()` with `clixon_logflags_get()`
 * New `yn_iter()` yang iterator replaces `yn_each()`
   * Use an integer iterator instead of yang object
-  * Replace `y1 = NULL; y1 = yn_each(y0, y1)` with `int inext = 0; yn_iter(y0, &inext)`
+  * Replace:
+    `y1 = yn_each(y0, y1) { ...`
+  * with:
+    `int inext = 0;
+     y1 = yn_iter(y0, &inext) { ...`
 * Add `keyw` argument to `yang_stats()`
 
 ### Corrected Busg

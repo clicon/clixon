@@ -30,8 +30,12 @@ if [ -n "$PREFIX" ]; then
 fi
 V="${V}${TAG}"
 V="${V}-${INDEX}"
-V="${V}+${NR}"
-V="${V}+${HASH}"
+if [ -n "${NR}" ]; then
+   V="${V}+${NR}"
+fi
+if [ -n "${HASH}" ]; then
+    V="${V}+${HASH}"
+fi
 if [ -n "$ARCH" ]; then
     V="${V}_${ARCH}"
 fi
