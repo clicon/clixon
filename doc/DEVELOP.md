@@ -171,11 +171,6 @@ What to think about when doing a new release.
   * Draft a new release and review generated release notes and use info to update CHANGELOG
 * Review README.md 
 * New yang/clicon/clixon-config@XXX.yang revision?
-* In configure.ac, for minor releases change CLIXON_VERSION in configure.ac to eg: (minor should have been bumped) (OBSOLETE):
-```
-  CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
-```
-* For patch releases change CLIXON_VERSION_PATCH
 * Run autoconf
 * Git stuff:
 ```
@@ -186,11 +181,6 @@ What to think about when doing a new release.
 * Add a github release and copy release info from CHANGELOG
 
 After release:
-* Bump minor version.
-```
-  CLIXON_VERSION_MINOR="10" ++
-  CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
-```
 * Run autoconf
 
 Create release branch:

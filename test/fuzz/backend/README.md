@@ -1,6 +1,6 @@
 # Clixon fuzzing
 
-This dir contains code for fuzzing clixon backend.  (NOTE DOES NOT WORK)
+This dir contains code for fuzzing clixon backend.
 
 It requires the preeny package to change sockets to stdio. 
 
@@ -12,15 +12,9 @@ Install AFL and preeny, see [..](..)
 
 ## Build
 
-Make a modification to how Clixon sends internal messages in `include/clixon_custom.h`:
-```
-  #define CLIXON_PROTO_PLAIN
-```
-(Note this is obsolete)
-
 Build clixon statically with the afl-clang compiler:
 ```
-  CC=/usr/bin/afl-clang-fast LINKAGE=static ./configure --with-restconf=native
+  CC=/usr/bin/afl-clang-fast LINKAGE=static ./configure
   make clean
   make
   sudo make install

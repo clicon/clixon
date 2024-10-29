@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [7.3.0](#730) Expected: January 2025
 * [7.2.0](#720) 28 October 2024
 * [7.1.0](#710) 3 July 2024
 * [7.0.1](#701) 3 April 2024
@@ -11,10 +12,13 @@
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
 
+## 7.3.0
+Expected: January 2025
+
 ## 7.2.0
 28 October 2024
 
-The 7.2.0 release lots of minor changes and bugfixes including memory optimizations and package builds.
+The 7.2.0 release features several minor changes and bug-fixes including memory optimizations and package builds.
 
 ### Features
 

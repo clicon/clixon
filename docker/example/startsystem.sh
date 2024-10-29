@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # ***** BEGIN LICENSE BLOCK *****
 # 
 # Copyright (C) 2017-2019 Olof Hagsand
@@ -54,10 +54,8 @@ touch /run/openrc/softlevel
 #/usr/local/bin/clixon_restconf -l f/var/log/restconf.log -D $DBG &
 #>&2 echo "clixon_restconf started"
 
-#ln -s /usr/local/etc/example.xml clixon.xml
-
 # Start clixon backend 
-/usr/local/sbin/clixon_backend -D $DBG -s running -l e -f /usr/local/etc/example.xml 
+/usr/local/sbin/clixon_backend -D $DBG -s running -l e -f /usr/local/etc/clixon/example.xml 
 >&2 echo "clixon_backend started"
 
 # Alt: let backend be in foreground, but test scripts may
