@@ -69,10 +69,10 @@ module clixon-lib {
        - link # For split multiple XML files
       ";
 
-    revision 2024-08-01 {
+    revision 2024-11-01 {
         description
-            "Added: system-only-config extension (tentative)
-             Released in Clixon 7.2";
+            "Added: system-only-config extension
+             Released in Clixon 7.3";
     }
     revision 2024-04-01 {
         description
