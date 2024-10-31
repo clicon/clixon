@@ -60,6 +60,12 @@
 #include "snmp_register.h"
 #include "snmp_handler.h"
 
+struct snmp_getnext_cache {
+    cxobj         *sg_xml;
+    char          *sg_xpath;
+    struct timeval sg_timer;
+};
+
 /*! Common code for handling incoming SNMP request
  * 
  * Get clixon handle from snmp request, print debug data
@@ -1143,6 +1149,86 @@ snmp_table_set(clixon_handle               h,
     goto done;
 }
 
+
+
+/*! Use a cache for getnext tables instead of an RPC to the backend every time
+ *
+ * The cache works as follows:
+ * It has three parts:
+ * - xpath     Of the requested YANG
+ * - xml tree  Saved from previous rpc to this xpath
+ * - timestamp Time of last rpc call for this xpath
+ * On a new call, the cache is used if:
+ * - the cache exist, and
+ * - the xpath is the same as the requested xpath, and
+ * - the age of the cache entry is less than a threshold
+ * @param[in]  h      Clixon handle
+ * @param[in]  xpath  XPath of requetsed YANG
+ * @param[in]  nsc    Namespace context
+ * @param[out] xt     XML, either cached or new, dont free
+ * @retval     0      OK
+ * @retval    -1      Error
+ */
+#define GETNEXT_THRESHOLD_US 1000000
+static int
+table_getnext_cache(clixon_handle h,
+                    char         *xpath,
+                    cvec         *nsc,
+                    cxobj       **xtp)
+{
+    int                        retval = -1;
+    cxobj                     *xerr;
+    cxobj                     *xt = NULL;
+    int64_t                    tdiff_us = 0;
+    struct timeval             now;
+    struct timeval             td;
+    struct snmp_getnext_cache *sg = NULL;
+
+    clicon_ptr_get(h, "snmp-getnext-cache", (void**)&sg);
+    if (sg == NULL){
+        if ((sg = calloc(1, sizeof(*sg))) == NULL){
+            clixon_err(OE_UNIX, errno, "calloc");
+            goto done;
+        }
+        clicon_ptr_set(h, "snmp-getnext-cache", sg);
+    }
+    if (timerisset(&sg->sg_timer)){
+        gettimeofday(&now, NULL);
+        timersub(&now, &sg->sg_timer, &td);
+        tdiff_us = 1000000*td.tv_sec + td.tv_usec;
+    }
+    if (sg->sg_xml == NULL || sg->sg_xpath == NULL ||
+        strcmp(xpath, sg->sg_xpath) != 0 || tdiff_us > 1000000){ // gettime
+        if (sg->sg_xml){
+            xml_free(sg->sg_xml);
+            sg->sg_xml = NULL;
+        }
+        if (sg->sg_xpath){
+            free(sg->sg_xpath);
+            sg->sg_xpath = NULL;
+        }
+        if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, NULL, &xt) < 0)
+            goto done;
+        if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+            clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
+            goto done;
+        }
+        gettimeofday(&sg->sg_timer, NULL);
+        if ((sg->sg_xpath = strdup(xpath)) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+        sg->sg_xml = xt;
+        xt = NULL;
+    }
+    *xtp = sg->sg_xml;
+    retval = 0;
+ done:
+    if (xt)
+        xml_free(xt);
+    return retval;
+}
+
 /*! Find "next" object from oids minus key and return that.
  *
  * @param[in]  h        Clixon handle
@@ -1168,7 +1254,6 @@ snmp_table_getnext(clixon_handle               h,
     cvec      *nsc = NULL;
     char      *xpath = NULL;
     cxobj     *xt = NULL;
-    cxobj     *xerr;
     cxobj     *xtable;
     cxobj     *xrow;
     cxobj     *xcol;
@@ -1197,12 +1282,9 @@ snmp_table_getnext(clixon_handle               h,
         goto done;
     if (snmp_yang2xpath(ys, NULL, &xpath) < 0)
         goto done;
-    if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, NULL, &xt) < 0)
+    /* Get next via cache */
+    if (table_getnext_cache(h, xpath, nsc, &xt) < 0)
         goto done;
-    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
-        goto done;
-    }
     if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
         /* Make a clone of key-list, but replace names with values */
         if ((cvk_name = yang_cvec_get(ylist)) == NULL){
@@ -1253,12 +1335,10 @@ snmp_table_getnext(clixon_handle               h,
     }
     retval = found;
  done:
-    if (cb)
-        cbuf_free(cb);
     if (xpath)
         free(xpath);
-    if (xt)
-        xml_free(xt);
+    if (cb)
+        cbuf_free(cb);
     if (nsc)
         xml_nsctx_free(nsc);
     return retval;
@@ -1422,4 +1502,21 @@ clixon_snmp_table_handler(netsnmp_mib_handler          *handler,
     retval = SNMP_ERR_NOERROR;
  done:
     return retval;
+}
+
+/*! Clear cache
+ */
+int
+clixon_snmp_table_exit(clixon_handle h)
+{
+    struct snmp_getnext_cache *sg = NULL;
+
+    if (clicon_ptr_get(h, "snmp-getnext-cache", (void**)&sg) == 0 && sg){
+        if (sg->sg_xml)
+            xml_free(sg->sg_xml);
+        if (sg->sg_xpath)
+            free(sg->sg_xpath);
+        free(sg);
+    }
+    return 0;
 }

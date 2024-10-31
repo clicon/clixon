@@ -15,6 +15,10 @@
 ## 7.3.0
 Expected: January 2025
 
+### Corrected Bugs
+
+* Fixed: [SNMP: snmpwalk is slow and can timeout](https://github.com/clicon/clixon/issues/404)
+
 ## 7.2.0
 28 October 2024
 
@@ -303,7 +307,7 @@ Users may have to change how they access the system
 
 ### C/CLI-API changes on existing features
 Developers may need to change their code
-
+p
 * Changed return value of `xml_add_attr` from 0/-1 to xa/NULL
   * You need to change eg `if (xml_add_attr < 0)` to if (xml_add_attr == NULL)`
 * Changed signature of `clicon_netconf_error()` and `netconf_err2cb()`
