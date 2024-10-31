@@ -428,6 +428,7 @@ xmldb_unlock(clixon_handle h,
         de->de_id = 0;
         memset(&de->de_tv, 0, sizeof(struct timeval));
         clicon_db_elmnt_set(h, db, de);
+
     }
     return 0;
 }
@@ -472,7 +473,7 @@ xmldb_unlock_all(clixon_handle h,
  *
  * @param[in] h   Clixon handle
  * @param[in] db  Database
- * @retval    >0  Session id of locker
+ * @retval   >0   Session id of locker
  * @retval    0   Not locked
  * @retval   -1   Error
  */
@@ -562,6 +563,9 @@ xmldb_clear(clixon_handle h,
             xml_free(xt);
             de->de_xml = NULL;
         }
+        de->de_modified = 0;
+        de->de_id = 0;
+        memset(&de->de_tv, 0, sizeof(struct timeval));
     }
     return 0;
 }
@@ -572,8 +576,8 @@ xmldb_clear(clixon_handle h,
  * @param[in]  db  Database
  * @retval     0   OK
  * @retval    -1   Error
-
- * @note  Datastore is not actually deleted so that a backend after dropping priviliges can re-create it
+ * @note Datastores / dirs are not actually deleted so that a backend after dropping priviliges
+ *       can re-create them
  */
 int
 xmldb_delete(clixon_handle h,
@@ -612,16 +616,10 @@ xmldb_delete(clixon_handle h,
             for (i = 0; i < ndp; i++){
                 cbuf_reset(cb);
                 cprintf(cb, "%s/%s", subdir, dp[i].d_name);
-                if (unlink(cbuf_get(cb)) < 0){
-                    clixon_err(OE_DB, errno, "unlink(%s)", cbuf_get(cb));
+                if (truncate(cbuf_get(cb), 0) < 0){
+                    clixon_err(OE_DB, errno, "truncate %s", filename);
                     goto done;
                 }
-            }
-            if (rmdir(subdir) < 0){
-#if 0 /* Ignore this for now, there are some cornercases where this is problamatic, see confirmed-commit */
-                clixon_err(OE_DB, errno, "rmdir(%s)", subdir);
-                goto done;
-#endif
             }
         }
     }

@@ -187,14 +187,14 @@ release_all_dbs(clixon_handle h,
     char    **keys = NULL;
     size_t    klen;
     int       i;
-    uint32_t  iddb;
     db_elmnt *de;
 
-    if (clicon_option_bool(h, "CLICON_AUTOLOCK") &&
-        (iddb = xmldb_islocked(h, "candidate")) == id){
-        if (xmldb_copy(h, "running", "candidate") < 0)
-            goto done;
-        xmldb_modified_set(h, "candidate", 0); /* reset dirty bit */
+    if (xmldb_islocked(h, "candidate") == id){
+        if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
+            if (xmldb_copy(h, "running", "candidate") < 0)
+                goto done;
+            xmldb_modified_set(h, "candidate", 0); /* reset dirty bit */
+        }
     }
     /* get all db:s */
     if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
@@ -204,8 +204,6 @@ release_all_dbs(clixon_handle h,
         if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
             de->de_id == id){
             de->de_id = 0; /* unlock */
-
-
             clicon_db_elmnt_set(h, keys[i], de);
             if (clixon_plugin_lockdb_all(h, keys[i], 0, id) < 0)
                 goto done;
@@ -477,12 +475,13 @@ do_lock(clixon_handle h,
     /* 2) The target configuration is <candidate>, it has already been modified, and
      *    these changes have not been committed or rolled back.
      */
-    if (strcmp(db, "candidate") == 0 &&
-        xmldb_modified_get(h, db)){
-        if (netconf_lock_denied(cbret, "<session-id>0</session-id>",
-                                "Operation failed, candidate has already been modified and the changes have not been committed or rolled back (RFC 6241 7.5)") < 0)
-            goto done;
-        goto failed;
+    if (strcmp(db, "candidate") == 0) {
+        if (xmldb_exists(h, db) && xmldb_modified_get(h, db)){
+            if (netconf_lock_denied(cbret, "<session-id>0</session-id>",
+                                    "Operation failed, candidate has already been modified and the changes have not been committed or rolled back (RFC 6241 7.5)") < 0)
+                goto done;
+            goto failed;
+        }
     }
     /* 3) The target configuration is <running>, and another NETCONF
      *    session has an ongoing confirmed commit
@@ -500,6 +499,13 @@ do_lock(clixon_handle h,
     }
     if (xmldb_lock(h, db, id) < 0)
         goto done;
+    if (strcmp(db, "candidate") == 0) {
+        /* Add system-only config to candidate cache */
+        if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
+            if (system_only_data_add(h, "candidate") < 0)
+                goto done;
+        }
+    }
     /* user callback */
     if (clixon_plugin_lockdb_all(h, db, 1, id) < 0)
         goto done;
@@ -585,6 +591,13 @@ from_client_edit_config(clixon_handle h,
             goto done;
         if (ret == 0)
             goto ok;
+    }
+    if (strcmp(target, "candidate") == 0) {
+        /* Add system-only config to candidate cache */
+        if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
+            if (system_only_data_add(h, "candidate") < 0)
+                goto done;
+        }
     }
     if (xml_nsctx_node(xn, &nsc) < 0)
         goto done;
@@ -733,6 +746,7 @@ from_client_edit_config(clixon_handle h,
         goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok", NETCONF_BASE_NAMESPACE);
+    // Set in text_modify
     if (clicon_data_get(h, "objectexisted", &val) == 0)
         cprintf(cbret, " %s:objectexisted=\"%s\" xmlns:%s=\"%s\"",
                 CLIXON_LIB_PREFIX, val,
@@ -820,7 +834,21 @@ from_client_copy_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    xmldb_modified_set(h, target, 1); /* mark as dirty */
+
+    if (strcmp(target, "candidate") == 0){
+        xmldb_modified_set(h, target, 1); /* mark as dirty */
+        /* Add system-only config to candidate */
+        if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
+            if (system_only_data_add(h, "candidate") < 0)
+                goto done;
+        }
+    }
+    /* Remove system-only-config data from destination cache */
+    if (strcmp(source, "candidate") == 0){
+        if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
+            xmldb_clear(h, target);
+        }
+    }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
@@ -974,6 +1002,10 @@ from_client_lock(clixon_handle h,
  * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
+ *
+ * RFC 6241, 8.3.5.2: To facilitate easy recovery, any outstanding changes are discarded when the
+ * lock is released, whether explicitly with the <unlock> operation or implicitly from session
+ * failure. (XXX This is not implemented)
  */
 static int
 from_client_unlock(clixon_handle h,

@@ -730,9 +730,10 @@ candidate_commit(clixon_handle  h,
      */
     if (xmldb_copy(h, db, "running") < 0)
         goto done;
-    /* Remove system-only-config data from destination */
+    /* Remove system-only-config data from destination cache */
     if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
         xmldb_clear(h, "running");
+        xmldb_clear(h, db);
     }
     xmldb_modified_set(h, db, 0); /* reset dirty bit */
     /* Here pointers to old (source) tree are obsolete */
@@ -1124,5 +1125,42 @@ load_failsafe(clixon_handle h,
  done:
     if (cbret)
         cbuf_free(cbret);
+    return retval;
+}
+
+/*! Add system-only data to db
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  db  Datastore
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+system_only_data_add(clixon_handle h,
+                     char         *db)
+{
+    int    retval = -1;
+    cxobj *x;
+
+    if ((x = xmldb_cache_get(h, db)) != NULL){
+        if (xmldb_system_only_config(h, "/", NULL, &x) < 0)
+            goto done;
+    }
+    else{ // XXX extra complexity
+        if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+            goto done;
+        xml_flag_set(x, XML_FLAG_TOP);
+        if (xmldb_system_only_config(h, "/", NULL, &x) < 0)
+            goto done;
+        if (xml_child_nr(x)){
+            db_elmnt *de;
+            if ((de = clicon_db_elmnt_get(h, db)) != NULL)
+                de->de_xml = x;
+        }
+        else
+            xml_free(x);
+    }
+    retval = 0;
+ done:
     return retval;
 }

@@ -377,9 +377,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<xx:rpc xmlns:xx
 
 new "asynchronous lock running"
 sleep 60 |  cat <(echo "$HELLONO11<rpc $DEFAULTNS><lock><target><running/></target></lock></rpc>]]>]]>") -| $clixon_netconf -qf $cfg  >> /dev/null &
-if [ $valgrindtest -eq 1 ]; then
-    sleep 1
-fi
+sleep 1
 PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
 
 new "try commit should fail"
@@ -415,7 +413,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "netconf lock"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "copy startup to candidate"
+new "copy candidate to startup"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><copy-config><target><startup/></target><source><candidate/></source></copy-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "copy startup to candidate using prefix xx"

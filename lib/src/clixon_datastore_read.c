@@ -886,10 +886,13 @@ xmldb_get_cache(clixon_handle     h,
         if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
             goto done;
     }
-    if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG") &&
-        (strcmp(db, "candidate") != 0)) {
-        if (xmldb_system_only_config(h, xpath?xpath:"/", nsc, &x1t) < 0)
-            goto done;
+    /* Unless a modified/locked candidate, add system-only-config data */
+    if (strcmp(db, "candidate") != 0 ||
+        (xmldb_modified_get(h, db) == 0 &&
+         xmldb_islocked(h, db) == 0)){
+        if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG"))
+            if (xmldb_system_only_config(h, xpath?xpath:"/", nsc, &x1t) < 0)
+                goto done;
     }
     /* If empty NACM config, then disable NACM if loaded
      */

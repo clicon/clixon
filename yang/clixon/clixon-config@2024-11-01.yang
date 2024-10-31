@@ -60,7 +60,6 @@ module clixon-config {
             "Added options:
                 CLICON_YANG_DOMAIN_DIR
                 CLICON_YANG_USE_ORIGINAL
-                CLICON_XMLDB_SYSTEM_ONLY_CONFIG (tentative)
              Released in Clixon 7.2";
     }
     revision 2024-04-01 {
@@ -1206,8 +1205,13 @@ module clixon-config {
             default true;
             description
                 "If set, some fields in the configuration tree are not stored to datastore.
-                 Instead, the application must provide a mechanism to save the system-only-config
+                 Instead, the application provides a mechanism to save the system-only-config
                  in the system via commit/system-only-config callbacks.
+                 Specifically, system-only data is read from the system except in the following case:
+                    datastore is candidate, and either locked or modified
+                 In that case, the system-only config is stored in the cache (not in file) and
+                 not read from the system.
+                 The system-only data is still not stored in the datastore however.
                  See also extension system-only-config in clixon-lib.yang";
         }
         leaf CLICON_XML_CHANGELOG {
