@@ -172,8 +172,8 @@ expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "H
 new "restconf GET null datastore"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 404" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
-new "restconf PUT initial datastore" 
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 204"  # 201 Created (new resource) -> 204 No Content (existing modified)
+new "restconf PUT initial datastore"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"  # 201 Created (new resource) -> 204 No Content (existing modified)
 
 new "restconf GET datastore"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 200" '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'

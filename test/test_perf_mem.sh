@@ -110,7 +110,8 @@ function testrun(){
         echo -n "   /proc/$pid/statm: "
         cat /proc/$pid/statm|awk '{print $1*4/1000 "M"}'
     fi
-    for db in running candidate startup; do
+    dbs="running candidate startup";
+    for db in $dbs; do
         echo "$db"
         resdb0=$(echo "$res" | $clixon_util_xpath -p "/rpc-reply/datastores/datastore[name=\"$db\"]")
         resdb=${resdb0#"nodeset:0:"}

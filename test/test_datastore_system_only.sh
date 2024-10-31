@@ -276,6 +276,56 @@ check_db running true xml
 new "Get mydata from running"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
 
+new "Get mydata from candidate"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
+
+new "Source-of-truth: modify system-only"
+sudo chmod 666 $dir/system-only.xml
+cat <<EOF > $dir/system-only.xml
+<store xmlns="urn:example:std">
+   <keys>
+      <key>
+         <name>a</name>
+         <system-only-data>CHANGED</system-only-data>
+      </key>
+   </keys>
+</store>
+EOF
+
+new "Get mydata from candidate again"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>CHANGED</system-only-data><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
+
+new "Restore original"
+cp $dir/y_db $dir/system-only.xml
+
+new "Get mydata from candidate again"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
+
+new "Source-of-truth: modify system-only, then edit"
+cat <<EOF > $dir/system-only.xml
+<store xmlns="urn:example:std">
+   <keys>
+      <key>
+         <name>a</name>
+         <system-only-data>CHANGED</system-only-data>
+      </key>
+   </keys>
+</store>
+EOF
+
+new "Add normal data"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><store xmlns=\"urn:example:std\"><keys><key><name>a</name><normal-data>otherdata2</normal-data></key></keys></store></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Get mydata from candidate expect CHANGED"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>CHANGED</system-only-data><normal-data>otherdata2</normal-data></key></keys></store></data></rpc-reply>"
+
+new "Restore original"
+cp $dir/y_db $dir/system-only.xml
+
+new "Discard"
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 new "Remove mydata"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data nc:operation=\"delete\" xmlns:nc=\"${BASENS}\">mydata</system-only-data></key></keys></store></config><default-operation>none</default-operation></edit-config></rpc>" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
@@ -419,7 +469,7 @@ fi
 new "wait restconf"
 wait_restconf
 
-new "Add mydata"
+new "Add system-only data"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-standard:store":{"keys":{"key":[{"name":"a","system-only-data":"mydata"}]}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
 
 new "Add normal data"

@@ -1239,7 +1239,15 @@ text_modify_top(clixon_handle       h,
     /* Special case top-level replace */
     else if (op == OP_REPLACE || op == OP_DELETE){
         if (createstr != NULL){
-            if (xml_child_nr_type(x0t, CX_ELMNT)) /* base tree not empty */
+            x0c = NULL;
+            /* Specialization of xml_default_nopresence for skiptop and mode=0 */
+            while ((x0c = xml_child_each(x0t, x0c, CX_ELMNT)) != NULL) {
+                if ((ret = xml_default_nopresence(x0c, 0, 0)) < 0)
+                    goto done;
+                if (ret == 0)
+                    break;
+            }
+            if (x0c != NULL)
                 clicon_data_set(h, "objectexisted", "true");
             else
                 clicon_data_set(h, "objectexisted", "false");
@@ -1421,6 +1429,12 @@ xmldb_put(clixon_handle       h,
             goto done;
         if (ret == 0)
             goto fail;
+        /* Add default global values (see also xmldb_populate) */
+        if (xml_global_defaults(h, x0, nsc, "/", yspec, 0) < 0)
+            goto done;
+        /* Add default recursive values */
+        if (xml_default_recurse(x0, 0, 0) < 0)
+            goto done;
     }
     if (strcmp(xml_name(x0), DATASTORE_TOP_SYMBOL) !=0 ||
         xml_flag(x0, XML_FLAG_TOP) == 0){
@@ -1461,7 +1475,7 @@ xmldb_put(clixon_handle       h,
      */
     if (xml_default_nopresence(x0, 3, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
         goto done;
-    /* Complete defaults in incoming x1
+    /* Complete defaults
      */
     if (xml_global_defaults(h, x0, nsc, "/", yspec, 0) < 0)
         goto done;

@@ -1030,6 +1030,7 @@ main(int    argc,
     /* Initiate the shared candidate. */
     if (xmldb_copy(h, "running", "candidate") < 0)
         goto done;
+
     /* Add system-only config to candidate */
     if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
         cxobj *x;
@@ -1039,7 +1040,6 @@ main(int    argc,
     }
     if (xmldb_modified_set(h, "candidate", 0) <0)
         goto done;
-    
     /* Set startup status */
     if (clicon_startup_status_set(h, status) < 0)
         goto done;

@@ -133,6 +133,7 @@ EOF
     new "check datastore using netconf"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:table/ex:parameter[ex:name='x']\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
 
+    sudo chmod a+r $dir/candidate_db
     new "check datastore direct access"
     expectpart "$($clixon_util_datastore -d candidate -b $dir -y $fyang -Y ${YANG_INSTALLDIR} -Y $dir get /)" 0 "$XML"
 

@@ -97,30 +97,9 @@ wait_backend
 # clixon_cli < $dir/cli1 &
 # echo "show devices" > $dir/cli1
 
-if false; then
-    mkfifo $dir/cli1
-#    cat > $dir/cli1 &
-    $clixon_cli -f $cfg < $dir/cli1 &
-    new "cli 1st edit async"
-    echo "set table parameter x value a" > $dir/cli1
-    jobs -l %
-    PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
-#    echo "PIDS:$PIDS"
-
-    new "cli 2nd edit expect fail"
-    expectpart "$($clixon_cli -1f $cfg set table parameter y value b 2>&1)" 255 "lock-denied" "lock is already held"
-
-    kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st
-    wait
-
-    new "cli 3rd edit expect ok"
-expectpart "$($clixon_cli -1f $cfg set table parameter z value c)" 0 "^$"
-else
 new "cli 1st edit async"
 sleep 60 | expectpart "$($clixon_cli -f $cfg set table parameter x value a)" 0 "" &
-if [ $valgrindtest -eq 1 ]; then
-    sleep 1
-fi
+sleep 1
 PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
 
 new "cli 2nd edit expect fail"
@@ -152,7 +131,7 @@ PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
 
 new "cli edit 2nd expected ok"
 expectpart "$($clixon_cli -1f $cfg set table parameter x value a)" 0 "^$"
-fi
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
