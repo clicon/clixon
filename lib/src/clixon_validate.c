@@ -1065,6 +1065,13 @@ xml_yang_validate_add(clixon_handle h,
                         goto done;
                     goto fail;
                 }
+                if (cvtype != CGV_EMPTY && cvtype != CGV_VOID){
+                    if (cv_parse1("", cv, &reason) != 1){
+                        if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
+                            goto done;
+                        goto fail;
+                    }
+                }
             }
             else{
                 if (cv_parse1(body, cv, &reason) != 1){

@@ -17,6 +17,7 @@ Expected: January 2025
 
 ### Corrected Bugs
 
+* Fixed: [string length validation doesn't work for the entry "" in case it has default value specified](https://github.com/clicon/clixon/issues/563)
 * Fixed: [SNMP: snmpwalk is slow and can timeout](https://github.com/clicon/clixon/issues/404)
 
 ## 7.2.0
