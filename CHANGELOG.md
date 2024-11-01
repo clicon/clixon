@@ -15,6 +15,10 @@
 ## 7.3.0
 Expected: January 2025
 
+### Features
+
+* New: [feature request: support xpath functions for strings](https://github.com/clicon/clixon/issues/556)
+  * Added: re-match, substring, string, string-length, translate, substring-before, substring-after, starts-with
 ### Corrected Bugs
 
 * Fixed: [string length validation doesn't work for the entry "" in case it has default value specified](https://github.com/clicon/clixon/issues/563)

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# XPATH tests
+# Basic XPATH tests
+# See also test_xpath_functions.sh for XPaths with YANG conditionals
 # Some XPATH cases clixon cannot handle
 # - /aaa/bbb/comment, where "comment" is nodetype
 # - //b*, combinations of // and "*"
-# For more (outdated info): https://github.com/clicon/clixon/issues/54
 # Test has three parts:
 # - Only XML no YANG
 # - negative tests with YANG
@@ -22,7 +22,6 @@ xml4=$dir/xml4.xml
 xmlfn=$dir/xmlfn.xml
 
 fyang=$dir/clixon-example.yang
-
 
 cat <<EOF > $xml
 <aaa>
@@ -71,6 +70,8 @@ cat <<EOF > $xml2
     <ifType>ethernet</ifType>
     <ifMTU>1500</ifMTU>
     <namespace>urn:example:foo</namespace>
+    <mylength>7</mylength>
+    <myaddr>10.22.33.44</myaddr>
   </bbb>
 </aaa>
 EOF
@@ -166,7 +167,6 @@ expectpart "$($clixon_util_xpath -D $DBG -f $xml -p aaa)" 0 "^nodeset:0:<aaa><bb
 
 new "xpath /bbb"
 expectpart "$($clixon_util_xpath -D $DBG -f $xml -p /bbb)" 0 "^nodeset:$" 
-
 
 new "xpath /aaa/bbb"
 expectpart "$($clixon_util_xpath -D $DBG -f $xml -p /aaa/bbb)" 0  "^0:<bbb x=\"hello\"><ccc>42</ccc></bbb>
@@ -309,8 +309,112 @@ expectpart "$($clixon_util_xpath -D $DBG -f $xml3 -p 'derived-from(../../change-
 new "xpath derived-from-or-self"
 expectpart "$($clixon_util_xpath -D $DBG -f $xml3 -p 'derived-from-or-self(../../change-operation,"modify")')" 0 "bool:false"
 
-new "xpath contains"
-expectpart "$($clixon_util_xpath -D $DBG -f $xml3 -p "contains(../../objectClass,'BTSFunction') or contains(../../objectClass,'RNCFunction')")" 0 "bool:false"
+# re-match
+new "xpath re-match match true" # example from rfc 7950
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p 're-match("1.22.333", "\d{1,3}\.\d{1,3}\.\d{1,3}")')" 0 "bool:true"
+
+new "xpath re-match match path"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p 're-match(aaa/bbb/myaddr, "\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")')" 0 "bool:true"
+
+new "xpath re-match match path fail"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p 're-match(aaa/bbb/myaddr, "\d{1,3}\.\d{1,3}\.\d{1,3}")')" 0 "bool:false"
+
+# string
+new "xpath string empty"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml3 -p "string()")" 0 "string:$"
+
+new "xpath string path"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml4 -p "string(root/y/a)")" 0 "string:222$"
+
+# starts-with
+new "xpath starts-with true"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml3 -p "starts-with('kalle','kal')")" 0 "bool:true"
+
+new "xpath starts-with false"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml3 -p "starts-with('kalle','all')")" 0 "bool:false"
+
+new "xpath starts-with empty"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml3 -p "starts-with('kalle','')")" 0 "bool:true"
+
+new "xpath starts-with too long"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml3 -p "starts-with('kalle','kalle42')")" 0 "bool:false"
+
+new "xpath contains direct strings true"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml3 -p "contains('kalle','all')")" 0 "bool:true"
+
+new "xpath contains direct strings false"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml3 -p "contains('kalle','ball')")" 0 "bool:false"
+
+new "xpath contains path true"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "contains(aaa/bbb/namespace,aaa/name)")" 0 "bool:true"
+
+new "xpath contains path false"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "contains(aaa/bbb/ifMTU,aaa/name)")" 0 "bool:false"
+
+# substring-before / after
+new "xpath substring-before 1"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring-before(\"1999/04/01\",\"/\")")" 0 "string:1999" --not-- "1999/"
+
+new "xpath substring-before 2"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring-before(\"1999/04/01\",\"04\")")" 0 "string:1999/" --not-- "04"
+
+new "xpath substring-before 3"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring-before(\"1999/04/01\",\"zzz\")")" 0 "string:" --not-- "string:1"
+
+new "xpath substring-after 1"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring-after(\"1999/04/01\",\"/\")")" 0 "string:04/01"
+
+new "xpath substring-after 2"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring-after(\"1999/04/01\",\"19\")")" 0 "string:99/04/01"
+
+new "xpath substring-after 3"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring-after(\"1999/04/01\",\"z\")")" 0 "string:" --not-- "1999"
+
+# substring, see examples in https://www.w3.org/TR/xpath-10/ Sections 4.2
+new "xpath substring 1"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring(\"12345\",2,3)")" 0 "string:234" --not-- "45"
+
+new "xpath substring 2"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring(\"12345\",1.5,2.6)")" 0 "string:234" --not-- "45"
+
+new "xpath substring 3"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring(\"12345\",0,3)")" 0 "string:12" --not-- "123"
+
+new "xpath substring 4"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring(\"12345\",0 div 0,3)")" 0 "string:" --not-- "12"
+
+new "xpath substring 5"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring(\"12345\",1, 0 div 0)")" 0 "string:" --not-- "12"
+
+# XXX cornercase does not work
+#new "xpath substring 6"
+#expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring(\"12345\",-42, 1 div 0)")" 0 "string:12345"
+
+new "xpath substring 7"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring(\"12345\",-1, 1 div 0)")" 0 "string:" --not-- "string:1"
+
+new "xpath substring paths"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "substring(aaa/bbb/namespace,5,aaa/bbb/mylength)")" 0 "string:example" --not-- "example:"
+
+# string-length
+new "xpath string-length empty" # XXX without args not supported
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "string-length()")" 0 "number:0"
+
+new "xpath string-length direct"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "string-length(\"12345\")")" 0 "number:5"
+
+new "xpath string-length path"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "string-length(aaa/name)")" 0 "number:3"
+
+# translate
+new "xpath translate" # modified
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "translate(\"bar\", \"abc\",\"DEF\")")" 0 "string:EDr$"
+
+new "xpath translate remove"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "translate(\"--aaa--\", \"abc-\",\"DEF\")")" 0 "string:DDD$"
+
+new "xpath translate none"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "translate(\"bar\", \"cde-\",\"fgh\")")" 0 "string:bar$"
 
 # Nodetests
 

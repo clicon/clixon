@@ -1197,6 +1197,11 @@ xp_eval(xp_ctx     *xc,
                     goto done;
                 goto ok;
                 break;
+            case XPATHFN_RE_MATCH:
+                if (xp_function_re_match(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
             case XPATHFN_DEREF:
                 if (xp_function_deref(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
                     goto done;
@@ -1232,8 +1237,43 @@ xp_eval(xp_ctx     *xc,
                     goto done;
                 goto ok;
                 break;
+            case XPATHFN_STRING:
+                if (xp_function_string(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_STARTS_WITH:
+                if (xp_function_contains(xc, xs->xs_c0, nsc, 1, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
             case XPATHFN_CONTAINS:
-                if (xp_function_contains(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                if (xp_function_contains(xc, xs->xs_c0, nsc, 0, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_SUBSTRING_BEFORE:
+                if (xp_function_substring_str(xc, xs->xs_c0, nsc, 1, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_SUBSTRING_AFTER:
+                if (xp_function_substring_str(xc, xs->xs_c0, nsc, 0, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_SUBSTRING:
+                if (xp_function_substring(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_STRING_LENGTH:
+                if (xp_function_string_length(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_TRANSLATE:
+                if (xp_function_translate(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
                     goto done;
                 goto ok;
                 break;
