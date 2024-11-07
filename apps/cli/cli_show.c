@@ -185,6 +185,112 @@ xpath_append(cbuf      *cb0,
     return retval;
 }
 
+/*! Insert (escaped) strings into expand coammnds
+ *
+ * Help function to expand_dbvar
+ * Detect duplicates: for ordered-by system assume list is ordered, so you need
+ * just remember previous but for ordered-by system, check the whole list
+ * Also escape strings if necessary
+ * @param[in]  h        Clixon handle
+ * @param[in]  xvec     XML vector
+ * @param[in]  xlen     Length of XML vector
+ * @param[out] commands Vector of function pointers to callback functions
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+static int
+expand_dbvar_insert(clixon_handle h,
+                    cxobj       **xvec,
+                    size_t        xlen,
+                    cvec         *commands)
+{
+    int        retval = -1;
+    cxobj     *x;
+    char      *body;
+    char      *bodyesc = NULL; /* escaped */
+    char      *bodyprev = NULL; /* previous */
+    cg_var    *cv;
+    yang_stmt *y;
+    yang_stmt *yp = NULL;
+    int        user_ordered_list = 0;
+    cg_obj    *co;
+    int        doesc;
+    int        i;
+    int        ret;
+
+    /* Dont escape if REST, peek on cligen-object */
+    if ((co = cligen_co_match(cli_cligen(h))) != NULL &&
+        ISREST(co)){
+        doesc = 0;
+    }
+    else
+        doesc = 1;
+    for (i = 0; i < xlen; i++) {
+        x = xvec[i];
+        /* First element, check if in ordered-by-user list */
+        if (i == 0){
+            if ((y = xml_spec(xvec[i])) != NULL &&
+                (yp = yang_parent_get(y)) != NULL &&
+                yang_keyword_get(yp) == Y_LIST &&
+                yang_find(yp, Y_ORDERED_BY, "user") != NULL){
+                user_ordered_list = 1;
+            }
+        }
+        if (xml_type(x) == CX_BODY)
+            body = xml_value(x);
+        else
+            body = xml_body(x);
+        if (body == NULL)
+            continue;
+        bodyesc = NULL;
+        if (doesc) {
+            if ((ret = cligen_escape_need(body)) < 0)
+                goto done;
+            if (ret){
+                if ((bodyesc = cligen_escape_do(body)) == NULL)
+                    goto done;
+            }
+        }
+        if (user_ordered_list) {
+            /* Detect duplicates linearly in existing values */
+            cv = NULL;
+            while ((cv = cvec_each(commands, cv)) != NULL)
+                if (strcmp(cv_string_get(cv), bodyesc?bodyesc:body) == 0)
+                    break;
+            if (cv == NULL){
+                if (cvec_add_string(commands, NULL, bodyesc?bodyesc:body) < 0) {
+                    clixon_err(OE_UNIX, errno, "cvec_add_string");
+                    goto done;
+                }
+            }
+        }
+        else{
+            /* Remember previous */
+            if (bodyprev && strcmp(body, bodyprev) == 0){
+                if (bodyesc){
+                    free(bodyesc);
+                    bodyesc = NULL;
+                }
+                continue; /* duplicate, assume sorted */
+            }
+            bodyprev = body;
+            if (cvec_add_string(commands, NULL, bodyesc?bodyesc:body) < 0){
+                clixon_err(OE_UNIX, errno, "cvec_add_string");
+                goto done;
+            }
+        }
+        if (bodyesc){
+            free(bodyesc);
+            bodyesc = NULL;
+        }
+    }
+    retval = 0;
+ done:
+    if (bodyesc)
+        free(bodyesc);
+    return retval;
+}
+
 /*! Completion callback of variable for configured data and automatically generated data model
  *
  * Returns an expand-type list of commands as used by cligen 'expand' 
@@ -227,15 +333,10 @@ expand_dbvar(void   *h,
     cxobj           *xe; /* direct ptr */
     cxobj           *xerr = NULL; /* free */
     size_t           xlen = 0;
-    cxobj           *x;
-    char            *bodystr;
-    int              i;
-    char            *bodystr0 = NULL; /* previous */
     cg_var          *cv;
     cxobj           *xtop = NULL; /* xpath root */
     cxobj           *xbot = NULL; /* xpath, NULL if datastore */
     yang_stmt       *y = NULL; /* yang spec of xpath */
-    yang_stmt       *yp;
     cvec            *nsc = NULL;
     int              ret;
     int              cvvi = 0;
@@ -390,42 +491,9 @@ expand_dbvar(void   *h,
     }
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, cbuf_get(cbxpath)) < 0)
         goto done;
-    /* Loop for inserting into commands cvec. 
-     * Detect duplicates: for ordered-by system assume list is ordered, so you need
-     * just remember previous
-     * but for ordered-by system, check the whole list
-     */
-    bodystr0 = NULL;
-    for (i = 0; i < xlen; i++) {
-        x = xvec[i];
-        if (xml_type(x) == CX_BODY)
-            bodystr = xml_value(x);
-        else
-            bodystr = xml_body(x);
-        if (bodystr == NULL)
-            continue; /* no body, cornercase */
-        if ((y = xml_spec(x)) != NULL &&
-            (yp = yang_parent_get(y)) != NULL &&
-            yang_keyword_get(yp) == Y_LIST &&
-            yang_find(yp, Y_ORDERED_BY, "user") != NULL){
-            /* Detect duplicates linearly in existing values */
-            {
-                cg_var *cv = NULL;
-                while ((cv = cvec_each(commands, cv)) != NULL)
-                    if (strcmp(cv_string_get(cv), bodystr) == 0)
-                        break;
-                if (cv == NULL)
-                    cvec_add_string(commands, NULL, bodystr);
-            }
-        }
-        else{
-            if (bodystr0 && strcmp(bodystr, bodystr0) == 0)
-                continue; /* duplicate, assume sorted */
-            bodystr0 = bodystr;
-            /* RFC3986 decode */
-            cvec_add_string(commands, NULL, bodystr);
-        }
-    }
+    /* Loop for inserting into commands cvec. */
+    if (expand_dbvar_insert(h, xvec, xlen, commands) < 0)
+        goto done;
  ok:
     retval = 0;
  done:

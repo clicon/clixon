@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # CLIgen rest and delimiters test
-# Special code for <var:rest> and if the value has delimiters, such as "a b"
+# Special code for <var:rest> and if the value has delimiters and needs to be escaped,
+# such as "a b"
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -37,7 +38,10 @@ module clixon-example{
   yang-version 1.1;
   namespace "urn:example:clixon";
   prefix ex;
-  leaf description{
+  leaf myrest{
+      type string;
+  }
+  leaf mystr{
       type string;
   }
 }
@@ -47,11 +51,20 @@ EOF
 
 cat <<EOF > $clidir/cli1.cli
    CLICON_MODE="example";
-   description
-    ( <desc:rest>
-    | <desc:rest expand_dbvar("candidate","/clixon-example:description")> ),
-        cli_set("/clixon-example:description");
-    show configuration("Show configuration"), cli_show_auto_mode("candidate", "xml", false, false);
+   set {
+      myrest ( <rest> | <rest expand_dbvar("candidate","/clixon-example:myrest")> ),
+         cli_set("/clixon-example:myrest");
+      mystr ( <string> | <string expand_dbvar("candidate","/clixon-example:mystr")> ),
+         cli_set("/clixon-example:mystr");
+   }
+   delete {
+      myrest ( <rest> | <rest expand_dbvar("candidate","/clixon-example:myrest")> ),
+         cli_del("/clixon-example:myrest");
+      mystr ( <string> | <string expand_dbvar("candidate","/clixon-example:mystr")> ),
+         cli_del("/clixon-example:mystr");
+
+   }
+   show configuration("Show configuration"), cli_show_auto_mode("candidate", "xml", true, false);
 EOF
 
 new "test params: -f $cfg"
@@ -69,31 +82,61 @@ new "wait backend"
 wait_backend
 
 new "Add a b"
-expectpart "$($clixon_cli -1 -f $cfg description a b)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set mystr \"a b\")" 0 "^$"
 
 new "Add a b c"
-expectpart "$($clixon_cli -1 -f $cfg description a b c)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set mystr \"a b c\")" 0 "^$"
 
 new "Show config"
-expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<description xmlns=\"urn:example:clixon\">a b c</description>$"
+expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<mystr xmlns=\"urn:example:clixon\">a b c</mystr>$"
 
 new "Re-add a b c"
-expectpart "$($clixon_cli -1 -f $cfg description a b c)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set mystr \"a b c\")" 0 "^$"
 
 new "Show config again"
-expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<description xmlns=\"urn:example:clixon\">a b c</description>$"
+expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<mystr xmlns=\"urn:example:clixon\">a b c</mystr>$"
 
 new "Expand <TAB>"
-expectpart "$(echo "description 	" | $clixon_cli -f $cfg 2>&1)" 0 "description a b c"
+expectpart "$(echo "set mystr 	" | $clixon_cli -f $cfg 2>&1)" 0 "set mystr \"a b c\""
 
 new "Expand a <TAB>"
-expectpart "$(echo "description a 	" | $clixon_cli -f $cfg 2>&1)" 0 "description a b c"
+expectpart "$(echo "set mystr \"a 	" | $clixon_cli -f $cfg 2>&1)" 0 "set mystr \"a b c\""
 
 new "Show config again"
-expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<description xmlns=\"urn:example:clixon\">a b c</description>$"
+expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<mystr xmlns=\"urn:example:clixon\">a b c</mystr>$"
+
+new "Delete a b c"
+expectpart "$($clixon_cli -1 -f $cfg delete mystr \"a b c\")" 0 "^$"
+
+new "Show config again"
+expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^$"
 
 new "Add a b"
-expectpart "$($clixon_cli -1 -f $cfg description a b)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set myrest a b)" 0 "^$"
+
+new "Add a b c"
+expectpart "$($clixon_cli -1 -f $cfg set myrest a b c)" 0 "^$"
+
+new "Show config"
+expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<myrest xmlns=\"urn:example:clixon\">a b c</myrest>$"
+
+new "Re-add a b c"
+expectpart "$($clixon_cli -1 -f $cfg set myrest a b c)" 0 "^$"
+
+new "Show config again"
+expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<myrest xmlns=\"urn:example:clixon\">a b c</myrest>$"
+
+new "Expand <TAB>"
+expectpart "$(echo "set myrest 	" | $clixon_cli -f $cfg 2>&1)" 0 "set myrest a b c"
+
+new "Expand a <TAB>"
+expectpart "$(echo "set myrest a 	" | $clixon_cli -f $cfg 2>&1)" 0 "set myrest a b c"
+
+new "Show config again"
+expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<myrest xmlns=\"urn:example:clixon\">a b c</myrest>$"
+
+new "Add a b"
+expectpart "$($clixon_cli -1 -f $cfg set myrest a b)" 0 "^$"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
