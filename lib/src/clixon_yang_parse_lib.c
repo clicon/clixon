@@ -2060,7 +2060,7 @@ ys_parse_sub(yang_stmt  *ys,
          * pass 1 is not yet resolved, only check syntax, actual feature check made in next pass
          * @see yang_features
          */
-        if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, filename, yang_linenum_get(ys), NULL, NULL) < 0)
+        if (yang_subparse(NULL, yang_argument_get(ys), ys, YA_IF_FEATURE, filename, yang_linenum_get(ys), NULL) < 0)
             goto done;
         break;
     case Y_AUGMENT: /* If parent is module/submodule: absolute-schema-nodeid

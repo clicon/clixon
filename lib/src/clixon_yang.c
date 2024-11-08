@@ -3613,7 +3613,7 @@ yang_features(clixon_handle h,
     yang_stmt *ys = NULL;
     yang_stmt *ymod;
     const char *mainfile = NULL;
-    int        ret;
+    int        enabled;
 
     i = 0;
     while (i<yt->ys_len){
@@ -3622,16 +3622,16 @@ yang_features(clixon_handle h,
             /* Parse the if-feature-expr string using yang sub-parser */
             if ((ymod = ys_module(ys)) != NULL)
                 mainfile = yang_filename_get(ymod);
-            ret = 0;
-            if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, mainfile, 1, &ret, h) < 0)
+            enabled = 0;
+            if (yang_subparse(h, yang_argument_get(ys), ys, YA_IF_FEATURE, mainfile, 1, &enabled) < 0)
                 goto done;
-            clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s %d", yang_argument_get(ys), ret);
-            if (ret == 0)
+            clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s %d", yang_argument_get(ys), enabled);
+            if (enabled == 0)
                 goto disabled;
         }
         else if (ys->ys_keyword == Y_FEATURE){
-                if (ys_populate_feature(h, ys) < 0)
-                    goto done;
+            if (ys_populate_feature(h, ys) < 0)
+                goto done;
         }
         else
             switch (yang_features(h, ys)){

@@ -61,24 +61,24 @@
 
 /*! Invoke yang sub-parser on string
  *
- * @param[in]  str           yang string
- * @param[in]  ys            Yang statement
- * @param[in]  accept        Sub-parse rule to accept
- * @param[in]  mainfile      Name of main parse file
- * @param[in]  linenum       Line number context in mainfile (assume parse module of ys)
- * @param[in]  h             Clixon handle
- * @param[out] enabled       0: Disabled, 1: Enabled (if present)
- * @retval     0             OK
- * @retval    -1             Error
+ * @param[in]  h         Clixon handle (can be NULL)
+ * @param[in]  str       Yang string
+ * @param[in]  ys        Yang statement
+ * @param[in]  accept    Sub-parse rule to accept
+ * @param[in]  mainfile  Name of main parse file
+ * @param[in]  linenum   Line number context in mainfile (assume parse module of ys)
+ * @param[out] enabled   0: Disabled, 1: Enabled (if present)
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 int
-yang_subparse(char                      *str,
+yang_subparse(clixon_handle              h,
+              char                      *str,
               yang_stmt                 *ys,
               enum yang_sub_parse_accept accept,
               const char                *mainfile,
               int                        linenum,
-              int                       *enabled,
-              clixon_handle             h)
+              int                       *enabled)
 {
     int                    retval = -1;
     clixon_yang_sub_parse_yacc ife = {0,};
@@ -90,7 +90,7 @@ yang_subparse(char                      *str,
         ife.if_ys = ys; /* Used as trigger to check if enabled */
     ife.if_accept = accept;
     ife.if_mainfile = mainfile;
-    ife.h = h;
+    ife.if_h = h;
     if (clixon_yang_sub_parsel_init(&ife) < 0)
         goto done;
     if (clixon_yang_sub_parseparse(&ife) != 0) { /* yacc returns 1 on error */

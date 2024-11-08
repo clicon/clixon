@@ -37,6 +37,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Error with submodules and feature Interaction](https://github.com/clicon/clixon-controller/issues/158)
 * Fixed: [Expansion removes the double quote](https://github.com/clicon/clixon/issues/524)
   *  Add escaping in expand_dbvar instead of automatic in cligen expand
 * Fixed: [string length validation doesn't work for the entry "" in case it has default value specified](https://github.com/clicon/clixon/issues/563)

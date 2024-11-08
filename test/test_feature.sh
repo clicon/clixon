@@ -23,7 +23,8 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 APPNAME=example
 
 cfg=$dir/conf_yang.xml
-fyang=$dir/test.yang
+fyang=$dir/example.yang
+fsub1=$dir/sub1.yang
 
 # Note ietf-routing@2018-03-13 assumed
 cat <<EOF > $cfg
@@ -34,6 +35,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>${dir}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
@@ -45,11 +47,36 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
+cat <<EOF > $fsub1
+submodule sub1{
+   yang-version 1.1;
+   belongs-to example {
+      prefix ex;
+   }
+   feature S1{
+      description "submodule feature";
+   }
+   leaf subA1{
+     if-feature A;
+     type "string";
+   }
+   leaf subA2{
+     if-feature ex:A;
+     type "string";
+   }
+   leaf subS1{
+     if-feature S1;
+     type "string";
+   }
+}
+EOF
+
 cat <<EOF > $fyang
 module example{
    yang-version 1.1;
    namespace "urn:example:clixon";
    prefix ex;
+   include sub1;
    import ietf-routing {
         prefix rt;
    }
@@ -76,18 +103,18 @@ module example{
    leaf u {
     if-feature rt:router-id;
     type "string";
-   } 
+   }
    leaf z{
      type "string";
    }
    leaf m1{
-     if-feature "A and 
+     if-feature "A and
         A1";
      description "Enabled";
      type "string";
    }
    leaf m2{
-     if-feature "A or 
+     if-feature "A or
         A1";
      description "Enabled";
      type "string";
@@ -139,6 +166,10 @@ module example{
      description "Disabled";
      type "string";
    }
+   leaf subS1{
+     if-feature S1;
+     type "string";
+   }
 }
 EOF
 
@@ -147,12 +178,12 @@ EOF
 # 2: disabled or enabled
 # NOTE, this was before failures when disabled, but after https://github.com/clicon/clixon/issues/322 that
 # disabled nodes should be "ignored". Instead now if disabled a random node is inserted under the disabled node
-# which should not work 
+# which should not work
 function testrun()
 {
     node=$1
     enabled=$2
-    
+
     new "netconf set $node"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\">foo</$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
@@ -227,7 +258,7 @@ testrun m11 false
 # reply since the modules change so often
 new "netconf schema resource, RFC 7895"
 rpc=$(chunked_framing "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"l:yang-library/l:module-set[l:name='default']/l:module\" xmlns:l=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>")
-ret=$($clixon_netconf -qf $cfg<<EOF 
+ret=$($clixon_netconf -qf $cfg<<EOF
 $DEFAULTHELLO$rpc
 EOF
    )
@@ -241,13 +272,13 @@ if [ -z "$match" ]; then
 fi
 
 new "netconf module A"
-expect="<module><name>example</name><namespace>urn:example:clixon</namespace><feature>A</feature><feature>A1</feature></module>"
+expect="<module><name>example</name><namespace>urn:example:clixon</namespace><submodule><name>sub1</name></submodule><feature>A</feature><feature>A1</feature></module>"
 match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"
 fi
 
-if false ; then # clixon "config" is a meta-config and not visisble in regular features
+if false ; then # clixon "config" is a meta-config and not visible in regular features
 new "netconf module clixon-config"
 expect="<module><name>clixon-config</name><revision>2018-09-30</revision><namespace/></module>"
 match=`echo "$ret" | grep --null -Go "$expect"`
@@ -308,8 +339,17 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
+new "test params: -f $cfg"
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+fi
+
 #------------------------
-# Negative test, if if-feature but no feature, signal error
+# Negative test 1, if if-feature but no feature, signal error
 cat <<EOF > $fyang
 module example{
    yang-version 1.1;
@@ -324,17 +364,53 @@ module example{
    }
 }
 EOF
-
-new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
-    new "kill old backend"
-    sudo clixon_backend -zf $cfg
-    if [ $? -ne 0 ]; then
-        err
-    fi
-
-    new "start backend -s init -f $cfg: feature missing expected fail"
+    new "Feature B missing expected fail"
     expectpart "$(sudo $clixon_backend -F1s init -f $cfg -l o)" 255 " Yang module example has IF_FEATURE B, but no such FEATURE statement exists"
+
+    stop_backend -f $cfg
+fi
+
+# Negative test 2, if if-feature but no feature, signal error
+cat <<EOF > $fyang
+module example{
+   yang-version 1.1;
+   namespace "urn:example:clixon";
+   prefix ex;
+   include sub1;
+   leaf x{
+     if-feature "S2";
+     type "string";
+   }
+}
+EOF
+if [ $BE -ne 0 ]; then
+    new "Feature S2 missing expected fail"
+    expectpart "$(sudo $clixon_backend -F1s init -f $cfg -l o)" 255 " Yang module example has IF_FEATURE S2, but no such FEATURE statement exists"
+
+    stop_backend -f $cfg
+fi
+
+# Negative test 3, if if-feature but no feature, signal error
+cat <<EOF > $fsub1
+submodule sub1{
+   yang-version 1.1;
+   belongs-to example {
+      prefix ex;
+   }
+   feature S2{
+      description "submodule feature";
+   }
+   leaf x{
+     if-feature "A";
+     type "string";
+   }
+}
+EOF
+
+if [ $BE -ne 0 ]; then
+    new "Feature A missing expected fail"
+    expectpart "$(sudo $clixon_backend -F1s init -f $cfg -l o)" 255 " Yang module example has IF_FEATURE A, but no such FEATURE statement exists"
 
     stop_backend -f $cfg
 fi
