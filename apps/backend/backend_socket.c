@@ -178,7 +178,7 @@ config_socket_init_unix(clixon_handle h,
         clixon_err(OE_UNIX, errno, "lchown(%s, %s)", sock, config_group);
         goto err;
     }
-    clixon_debug(CLIXON_DBG_BACKEND, "Listen on server socket at %s", addr.sun_path);
+    clixon_debug(CLIXON_DBG_INIT, "Listen on server socket at %s", addr.sun_path);
     if (listen(s, 5) < 0){
         clixon_err(OE_UNIX, errno, "listen");
         goto err;

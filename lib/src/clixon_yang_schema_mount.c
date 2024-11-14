@@ -64,15 +64,14 @@
  * The calls in this code are:
  * - yang_schema_mount_point(): Is ymnt a yang mount-point? (ymnt)
  * - yang_mount_get(): ymnt + xpath -> yspec
- * - yang_mount_get2(): ymnt + xpath -> yspec # NEW
- * - yang_mount_set(): ymnt + xpath -> yspec
+ * - yang_mount_set(): ymnt
  * - xml_yang_mount_get(): xmnt-> yspec
  * - xml_yang_mount_set(): xmnt -> yspec
  * - yang_mount_get_yspec_any(): ymnt -> yspec
  * - yang_mounto_freeall(): ymnt-> free cvec
  * - yang_mount_xmnt2ymnt_xpath(): xmnt -> ymnt + xpath
  * - yang_mount_xtop2xmnt(): top-level xml -> xmnt vector
- * - yang_mount_yspec2ymnt(): top-level yspec -> ymnt vector
+ * - yang_mount_yspec2ymnt(): top-level yspec -> ymnt vector NOTUSED
  * - yang_schema_mount_statistics(): Given xtop -> find all xmnt -> stats
 
  *
@@ -264,15 +263,10 @@ yang_mount_get_yspec_any(yang_stmt  *ys,
  * @retval    -1      Error
  */
 int
-yang_mount_set(yang_stmt *y,
-               char      *xpath,
-               yang_stmt *yspec)
+yang_mount_set(yang_stmt *y)
 {
-    int        retval = -1;
-
     yang_flag_set(y, YANG_FLAG_MOUNTPOINT); /* Cache value */
-    retval = 0;
-    return retval;
+    return 0;
 }
 
 /*! Given an XML mount-point return YANG mount and XPath
@@ -406,7 +400,7 @@ xml_yang_mount_set(clixon_handle h,
         clixon_err(OE_YANG, 0, "Mapping xmnt to ymnt and xpath");
         goto done;
     }
-    if (yang_mount_set(ymnt, xpath, yspec) < 0)
+    if (yang_mount_set(ymnt) < 0)
         goto done;
     retval = 0;
  done:
@@ -477,6 +471,7 @@ yang_mount_xtop2xmnt(cxobj *xtop,
     return retval;
 }
 
+#ifdef NOTUSED
 /*! Find schema mounts - callback function for yang_apply
  *
  * @param[in]  yn   yang node
@@ -534,6 +529,7 @@ yang_mount_yspec2ymnt(yang_stmt *yspec,
  done:
     return retval;
 }
+#endif
 
 /*! Find mount-points and return yang-library state
  *
