@@ -134,6 +134,63 @@ generic_validate(clixon_handle       h,
     goto done;
 }
 
+/*! Given a transaction src/target, compute diffs and set flags
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  td      Transaction data
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+static int
+compute_diffs(clixon_handle       h,
+              transaction_data_t *td)
+{
+    int    retval = -1;
+    int    i;
+    cxobj *xn;
+
+    /* Clear flags xpath for get */
+    xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+               (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
+    /* 3. Compute differences */
+    if (xml_diff(td->td_src,
+                 td->td_target,
+                 &td->td_dvec,      /* removed: only in running */
+                 &td->td_dlen,
+                 &td->td_avec,      /* added: only in candidate */
+                 &td->td_alen,
+                 &td->td_scvec,     /* changed: original values */
+                 &td->td_tcvec,     /* changed: wanted values */
+                 &td->td_clen) < 0)
+        goto done;
+    if (clixon_debug_get() & CLIXON_DBG_DETAIL)
+        transaction_dbg(h, CLIXON_DBG_DETAIL, td, __FUNCTION__);
+    /* Mark as changed in tree */
+    for (i=0; i<td->td_dlen; i++){ /* Also down */
+        xn = td->td_dvec[i];
+        xml_flag_set(xn, XML_FLAG_DEL);
+        xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_DEL);
+        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }
+    for (i=0; i<td->td_alen; i++){ /* Also down */
+        xn = td->td_avec[i];
+        xml_flag_set(xn, XML_FLAG_ADD);
+        xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
+        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }
+    for (i=0; i<td->td_clen; i++){ /* Also up */
+        xn = td->td_scvec[i];
+        xml_flag_set(xn, XML_FLAG_CHANGE);
+        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+        xn = td->td_tcvec[i];
+        xml_flag_set(xn, XML_FLAG_CHANGE);
+        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Common startup validation
  *
  * Get db, upgrade it w potential transformed XML, populate it w yang spec,
@@ -168,7 +225,6 @@ startup_common(clixon_handle       h,
     int                 ret;
     modstate_diff_t    *msdiff = NULL;
     cxobj              *xt = NULL;
-    cxobj              *x;
     cxobj              *xret = NULL;
     cxobj              *xerr = NULL;
 
@@ -181,7 +237,7 @@ startup_common(clixon_handle       h,
             goto done;
     /* Add system-only config to running */
     if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
-        if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, 0, &xt, NULL, NULL)) < 0)
+        if ((xt = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
             goto done;
         if (xmldb_system_only_config(h, "/", NULL, &xt) < 0)
             goto done;
@@ -301,17 +357,17 @@ startup_common(clixon_handle       h,
     /* Apply default values (removed in clear function) */
     if (xml_default_recurse(xt, 0, 0) < 0)
         goto done;
-
     /* Handcraft transition with with only add tree */
     td->td_target = xt;
     xt = NULL;
-    x = NULL;
-    while ((x = xml_child_each(td->td_target, x, CX_ELMNT)) != NULL){
-        xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
-        if (cxvec_append(x, &td->td_avec, &td->td_alen) < 0)
-            goto done;
-    }
-
+    /* Add global src defaults. */
+    if (xml_global_defaults(h, td->td_src, NULL, NULL, yspec, 0) < 0)
+        goto done;
+    /* Apply default values (removed in clear function) */
+    if (xml_default_recurse(td->td_src, 0, 0) < 0)
+        goto done;
+    if (compute_diffs(h, td) < 0)
+        goto done;
     /* 4. Call plugin transaction start callbacks */
     if (plugin_transaction_begin_all(h, td) < 0)
         goto done;
@@ -496,8 +552,6 @@ validate_common(clixon_handle       h,
 {
     int         retval = -1;
     yang_stmt  *yspec;
-    int         i;
-    cxobj      *xn;
     int         ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -524,43 +578,8 @@ validate_common(clixon_handle       h,
         goto done;
     if (ret == 0)
         goto fail;
-    /* Clear flags xpath for get */
-    xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-               (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
-    /* 3. Compute differences */
-    if (xml_diff(td->td_src,
-                 td->td_target,
-                 &td->td_dvec,      /* removed: only in running */
-                 &td->td_dlen,
-                 &td->td_avec,      /* added: only in candidate */
-                 &td->td_alen,
-                 &td->td_scvec,     /* changed: original values */
-                 &td->td_tcvec,     /* changed: wanted values */
-                 &td->td_clen) < 0)
+    if (compute_diffs(h, td) < 0)
         goto done;
-    if (clixon_debug_get() & CLIXON_DBG_DETAIL)
-        transaction_dbg(h, CLIXON_DBG_DETAIL, td, __FUNCTION__);
-    /* Mark as changed in tree */
-    for (i=0; i<td->td_dlen; i++){ /* Also down */
-        xn = td->td_dvec[i];
-        xml_flag_set(xn, XML_FLAG_DEL);
-        xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_DEL);
-        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-    }
-    for (i=0; i<td->td_alen; i++){ /* Also down */
-        xn = td->td_avec[i];
-        xml_flag_set(xn, XML_FLAG_ADD);
-        xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
-        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-    }
-    for (i=0; i<td->td_clen; i++){ /* Also up */
-        xn = td->td_scvec[i];
-        xml_flag_set(xn, XML_FLAG_CHANGE);
-        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-        xn = td->td_tcvec[i];
-        xml_flag_set(xn, XML_FLAG_CHANGE);
-        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-    }
     /* 4. Call plugin transaction start callbacks */
     if (plugin_transaction_begin_all(h, td) < 0)
         goto done;

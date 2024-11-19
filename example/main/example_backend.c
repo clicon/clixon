@@ -260,13 +260,13 @@ main_commit(clixon_handle    h,
     size_t  len;
     cvec   *nsc = NULL;
 
+    if (_transaction_log)
+        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     if (_system_only_xpath != NULL){
         if (main_system_only_commit(h, td) < 0)
             goto done;
         goto ok;
     }
-    if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     if (_validate_fail_xpath){
         if (_validate_fail_toggle==1 &&
             xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){

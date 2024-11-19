@@ -24,6 +24,9 @@ AUTOCLI=$(autocli_config clixon-\* kw-nokey false)
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
 
+flog=$dir/backend.log
+touch $flog
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
@@ -235,6 +238,37 @@ function check_db()
     fi
 }
 
+# Check statements in log
+# arg1: a statement to look for (eg "0 main_commit")
+# arg2: expected line number
+function checklog(){
+    s=$1 # statement
+    l0=$2 # linenr
+
+    new "Check $s in log"
+    echo "grep \"transaction_log $s line:$l0\"  $flog"
+    t=$(grep -n "transaction_log $s" $flog)
+    if [ -z "$t" ]; then
+        echo -e "\e[31m\nError in Test$testnr [$testname]:"
+        if [ $# -gt 0 ]; then
+            echo "Not found \"$s\" on line $l0"
+            echo
+        fi
+        echo -e "\e[0m"
+        exit -1
+    fi
+    l1=$(echo "$t" | awk -F ":" '{print $1}')
+    if [ $l1 -ne $l0 ]; then
+        echo -e "\e[31m\nError in Test$testnr [$testname]:"
+        if [ $# -gt 0 ]; then
+            echo "Expected match on line $l0, found on $l1"
+            echo
+        fi
+        echo -e "\e[0m"
+        exit -1
+    fi
+}
+
 new "test params: -f $cfg"
 
 if [ $BE -ne 0 ]; then
@@ -396,12 +430,15 @@ sudo cp $dir/x_db_xml $dir/startup_db
 sudo cp $dir/y_db $dir/system-only.xml
 
 if [ $BE -ne 0 ]; then
-    new "start backend -s startup -f $cfg -- -o store/keys/key/system-only-data -O $dir/system-only.xml"
-    start_backend -s startup -f $cfg -- -o store/keys/key/system-only-data -O $dir/system-only.xml
+    # -t means transaction logging, -o/-O means system-only-config
+    new "start backend -s startup -f $cfg -l f$flog -- -t -o store/keys/key/system-only-data -O $dir/system-only.xml"
+    start_backend -s startup -f $cfg -l f$flog -- -t -o store/keys/key/system-only-data -O $dir/system-only.xml
 fi
 
 new "wait backend 3"
 wait_backend
+
+checklog '0 main_commit add: <normal-data>otherdata</normal-data>' 7
 
 new "Get mydata from running after startup"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><store xmlns=\"urn:example:std\"><keys><key><name>a</name><system-only-data>mydata</system-only-data><normal-data>otherdata</normal-data></key></keys></store></data></rpc-reply>"
