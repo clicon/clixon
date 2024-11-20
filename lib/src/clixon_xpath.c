@@ -1112,7 +1112,7 @@ xpath_traverse_canonical(xpath_tree *xs,
                 free(xs->xs_s0);
                 xs->xs_s0 = NULL;
             }
-            if ((xs->xs_s0 = strdup(prefix1)) == NULL){
+            if (prefix1 && (xs->xs_s0 = strdup(prefix1)) == NULL){
                 clixon_err(OE_UNIX, errno, "strdup");
                 goto done;
             }
