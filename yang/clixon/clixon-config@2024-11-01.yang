@@ -1365,7 +1365,21 @@ module clixon-config {
                  in module ietf-restconf-monitoring.yang
                  Note that the name of this option is misleading, the monitoring module defines state
                  for both capabilities and streams, not only streams which the name indicates.
-                 Also, consider changinf default to true.";
+                 Also, consider changing default to true.";
+        }
+        leaf CLICON_STREAM_URL {
+            type string;
+            default "https://localhost";
+            description
+                "Stream URL
+                 See RFC 8040 Sec 9.3 location leaf:
+                  'Contains a URL that represents the entry point for
+                 establishing notification delivery via server-sent events.'
+                 Prepend this constant to name of stream.
+                 Example: https://localhost/streams/NETCONF. Note this is the
+                 external URL, not local behind a reverse-proxy.
+                 Note that -s <stream> command-line option to clixon_restconf
+                 should correspond to last path of url (eg 'streams')";
         }
         leaf CLICON_STREAM_PATH {
             type string;
@@ -1376,34 +1390,24 @@ module clixon-config {
                  See CLICON_RESTCONF_API_ROOT and CLICON_HTTP_DATA_ROOT
                  Should be changed to include '/' ";
         }
-        leaf CLICON_STREAM_URL {
-            type string;
-            default "https://localhost";
-            description "Prepend this to CLICON_STREAM_PATH to form URL.
-                  See RFC 8040 Sec 9.3 location leaf:
-                  'Contains a URL that represents the entry point for
-                  establishing notification delivery via server-sent events.'
-                  Prepend this constant to name of stream.
-                  Example: https://localhost/streams/NETCONF. Note this is the
-                  external URL, not local behind a reverse-proxy.
-                  Note that -s <stream> command-line option to clixon_restconf
-                  should correspond to last path of url (eg 'streams')";
+        leaf CLICON_STREAM_RETENTION {
+            type uint32;
+            default 3600;
+            units s;
+            description
+                "Retention for stream replay buffers in seconds, ie how much
+                 data to store before dropping. 0 means no retention";
         }
         leaf CLICON_STREAM_PUB {
             type string;
-            description "For stream publish using eg nchan, the base address
+            description
+                "For stream publish using eg nchan, the base address
                   to publish to. Example value: http://localhost/pub
                   Example: stream NETCONF would then be pushed to
                   http://localhost/pub/NETCONF.
                   Note this may be a local/provate URL behind reverse-proxy.
                   If not given, do NOT enable stream publishing using NCHAN.";
-        }
-        leaf CLICON_STREAM_RETENTION {
-            type uint32;
-            default 3600;
-            units s;
-            description "Retention for stream replay buffers in seconds, ie how much
-                         data to store before dropping. 0 means no retention";
+            status obsolete;
         }
         /* Log and debug */
         leaf CLICON_DEBUG{

@@ -5,7 +5,7 @@
   * [Compile and run](#compile)
   * [Using the CLI](#using-the-cli)
   * [Using netconf](#using-netconf)
-  * [Streams](#streams)
+  * [Event Streams](#event-streams)
   * [RPC Operations](#rpc-operations)
   * [State data](#state-data)
   * [Extensions](#extension)
@@ -265,7 +265,7 @@ then access using curl or wget:
    curl -X GET http://127.0.0.1/restconf/data/clixon-example:table/parameter=a/value
 ```
 
-## Streams
+## Event streams
 
 The example has an EXAMPLE stream notification triggering every 5s. To start a notification 
 stream in the session using netconf, create a subscription:

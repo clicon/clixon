@@ -1970,7 +1970,7 @@ yang2cli_grouping_wrap(cligen_handle ch,
 /*! Init yang2cli
  *
  * Initialize CLIgen generation from YANG models.
- * Some logic around grouping-treeref: if enabled, then groupings are sperate trees with lazy
+ * Some logic around grouping-treeref: if enabled, then groupings are separate trees with lazy
  * evaluation.  Only expanded when referenced, but need a callback. If one is not already installed.
  * @param[in]  h      Clixon handle
  */
