@@ -295,7 +295,7 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
         if (fn(h, nsc, xpath, x) < 0){
             if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
                 goto done;
-            if (clixon_err_category() < 0)
+            if (clixon_err_category() < 0 && !plugin_rpc_err_set())
                 clixon_log(h, LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __FUNCTION__, clixon_plugin_name_get(cp));
             goto fail;  /* Dont quit here on user callbacks */
@@ -354,9 +354,14 @@ clixon_plugin_statedata_all(clixon_handle   h,
                 clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
-            /* error reason should be in clixon_err_reason */
-            cprintf(cberr, "Internal error, state callback in plugin %s returned invalid XML: %s",
-                    clixon_plugin_name_get(cp), clixon_err_reason());
+	    if (plugin_rpc_err_set()) {
+		if (netconf_gen_rpc_err(cberr) < 0)
+		    goto done;
+	    } else {
+		/* error reason should be in clixon_err_reason */
+		cprintf(cberr, "Internal error, state callback in plugin %s returned invalid XML: %s",
+			clixon_plugin_name_get(cp), clixon_err_reason());
+	    }
             if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
                 goto done;
             xml_free(*xret);
