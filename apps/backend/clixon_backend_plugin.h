@@ -138,5 +138,6 @@ int plugin_rpc_err(clixon_handle h, const char *ns,
 		   const char *severity, const char *fmt, ...);
 int plugin_rpc_err_set(void);
 int netconf_gen_rpc_err(cbuf *cbret);
+int netconf_gen_rpc_err_xml(cxobj **xret);
 
 #endif  /* _CLIXON_BACKEND_PLUGIN_H_ */

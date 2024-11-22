@@ -734,6 +734,26 @@ netconf_gen_rpc_err(cbuf *cbret)
     return ret;
 }
 
+int
+netconf_gen_rpc_err_xml(cxobj **xret)
+{
+    char *type = _plugin_rpc_err_type;
+    int ret;
+
+    /* Type marks it as set, clear it before handling. */
+    _plugin_rpc_err_type = NULL;
+    ret = netconf_common_rpc_err_xml(xret, _plugin_rpc_err_ns,
+				     type,
+				     _plugin_rpc_err_tag,
+				     _plugin_rpc_err_severity,
+				     NULL,
+				     _plugin_rpc_err_info,
+				     cbuf_get(_plugin_rpc_err_message));
+    free(type);
+
+    return ret;
+}
+
 
 /*! Start a validate transaction
  *

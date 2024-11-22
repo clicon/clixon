@@ -350,20 +350,20 @@ clixon_plugin_statedata_all(clixon_handle   h,
         if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, &x)) < 0)
             goto done;
         if (ret == 0){
-            if ((cberr = cbuf_new()) == NULL){
-                clixon_err(OE_UNIX, errno, "cbuf_new");
-                goto done;
-            }
 	    if (plugin_rpc_err_set()) {
-		if (netconf_gen_rpc_err(cberr) < 0)
+		if (netconf_gen_rpc_err_xml(&xerr) < 0)
 		    goto done;
 	    } else {
+		if ((cberr = cbuf_new()) == NULL){
+		    clixon_err(OE_UNIX, errno, "cbuf_new");
+		    goto done;
+		}
 		/* error reason should be in clixon_err_reason */
 		cprintf(cberr, "Internal error, state callback in plugin %s returned invalid XML: %s",
 			clixon_plugin_name_get(cp), clixon_err_reason());
+		if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
+		    goto done;
 	    }
-            if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
-                goto done;
             xml_free(*xret);
             *xret = xerr;
             xerr = NULL;

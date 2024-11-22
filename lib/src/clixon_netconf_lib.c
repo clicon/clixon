@@ -543,6 +543,91 @@ netconf_common_rpc_err(cbuf *cb,
     goto done;
 }
 
+/*! Common Netconf element XML tree according to RFC 6241 App A, allow a
+ *  passed in namespace.
+ *
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[in]  ns      Namespace to use, if NULL it will use the default
+ * @param[in]  type    Error type: "application" or "protocol"
+ * @param[in]  tag     Error tag
+ * @param[in]  severity Message severity
+ * @param[in]  infotag Tag for the info, may be NULL if not tag required
+ * @param[in]  info    info, may be NULL if no info
+ * @param[in]  message Error message (will be XML encoded), may be NULL
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+netconf_common_rpc_err_xml(cxobj **xret,
+			   char  *ns,
+			   char  *type,
+			   char  *tag,
+			   char  *severity,
+			   char  *infotag,
+			   char  *info,
+			   char  *message)
+{
+    int    retval =-1;
+    cxobj *xerr;
+    char  *encstr = NULL;
+    
+    if (xret == NULL){
+        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
+        goto done;      
+    }
+
+    if (!ns)
+	ns = NETCONF_BASE_NAMESPACE;
+
+    if (*xret == NULL){
+        if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
+            goto done;
+        if (xml_add_attr(*xret, "xmlns", ns, NULL, NULL) == NULL)
+            goto done;
+    }
+    else if (xml_name_set(*xret, "rpc-reply") < 0)
+        goto done;
+    if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
+        goto done;
+    if (infotag) {
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+				"<error-type>%s</error-type>"
+				"<error-tag>%s</error-tag>"
+				"<error-info><%s>%s</%s></error-info>"
+				"<error-severity>%s</error-severity>",
+				type, tag, infotag, info, infotag,
+				severity) < 0)
+	    goto done;
+    } else if (info) {
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+				"<error-type>%s</error-type>"
+				"<error-tag>%s</error-tag>"
+				"<error-info>%s</error-info>"
+				"<error-severity>%s</error-severity>",
+				type, tag, info, severity) < 0)
+	    goto done;
+    } else {
+	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+				"<error-type>%s</error-type>"
+				"<error-tag>%s</error-tag>"
+				"<error-severity>%s</error-severity>",
+				type, tag, severity) < 0)
+	    goto done;
+    }
+    if (message){
+        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
+            goto done;
+        if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
+                                encstr) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    if (encstr)
+        free(encstr);
+    return retval;
+}
+
 /*! Common Netconf element XML tree according to RFC 6241 App A
  *
  * @param[out] xret    Error XML tree. Free with xml_free after use
@@ -561,42 +646,9 @@ netconf_common_xml(cxobj **xret,
                    char   *element,
                    char   *message)
 {
-    int    retval =-1;
-    cxobj *xerr;
-    char  *encstr = NULL;
-    
-    if (xret == NULL){
-        clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
-    }
-    if (*xret == NULL){
-        if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
-            goto done;
-        if (xml_add_attr(*xret, "xmlns", NETCONF_BASE_NAMESPACE, NULL, NULL) == NULL)
-            goto done;
-    }
-    else if (xml_name_set(*xret, "rpc-reply") < 0)
-        goto done;
-    if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
-        goto done;
-    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-type>%s</error-type>"
-                            "<error-tag>%s</error-tag>"
-                            "<error-info><%s>%s</%s></error-info>"
-                            "<error-severity>error</error-severity>",
-                            type, tag, infotag, element, infotag) < 0)
-        goto done;
-    if (message){
-        if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
-            goto done;
-        if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, "<error-message>%s</error-message>",
-                                encstr) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    if (encstr)
-        free(encstr);
-    return retval;
+    return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE,
+				      type, tag, "error", infotag, element,
+				      message);
 }    
 
 /*! Create Netconf missing-element error XML tree according to RFC 6241 App A
