@@ -657,10 +657,20 @@ from_client_edit_config(clixon_handle h,
      */
     if ((ret = xml_yang_validate_minmax(xc, 1, &xret)) < 0)
         goto done;
-    /* Disable duplicate check in NETCONF messages.*/
-    if (clicon_option_bool(h, "CLICON_NETCONF_DUPLICATE_ALLOW"))
-        ;
-    else if (ret == 1 && (ret = xml_yang_validate_unique_recurse(xc, &xret)) < 0)
+    if (ret == 0){
+        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+        goto ok;
+    }
+    /* Must do before duplicate check */
+    if (xml_sort_recurse(xc) < 0)
+        goto done;
+    /* Disable duplicate check in NETCONF messages. */
+    if (clicon_option_bool(h, "CLICON_NETCONF_DUPLICATE_ALLOW")){
+        if ((ret = xml_duplicate_remove_recurse(xc, &xret)) < 0)
+            goto done;
+    }
+    else if ((ret = xml_yang_validate_unique_recurse(xc, &xret)) < 0)
         goto done;
     /* xmldb_put (difflist handling) requires list keys */
     if (ret == 1 && (ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
@@ -670,11 +680,6 @@ from_client_edit_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    /* Cant do this earlier since we dont have a yang spec to
-     * the upper part of the tree, until we get the "config" tree.
-     */
-    if (xml_sort_recurse(xc) < 0)
-        goto done;
     if ((ret = xmldb_put(h, target, operation, xc, username, cbret)) < 0){
         if (netconf_operation_failed(cbret, "protocol", clixon_err_reason())< 0)
             goto done;

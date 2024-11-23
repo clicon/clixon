@@ -53,6 +53,7 @@ module clixon-config {
         description
             "Added options:
                 CLICON_XMLDB_SYSTEM_ONLY_CONFIG
+             Changed: CLICON_NETCONF_DUPLICATE_ALLOW to not only check but remove duplicates
              Released in Clixon 7.3";
     }
     revision 2024-08-01 {
@@ -72,7 +73,7 @@ module clixon-config {
                 CLICON_YANG_SCHEMA_MOUNT_SHARE: Share same YANGs of equal moint-points.
                 CLICON_SOCK_PRIO: Enable socket event priority
                 CLICON_XMLDB_MULTI: Split datastore into multiple sub files
-                CLICON_CLI_OUTPUT_FORMAT: Default CLI output format
+                CLICON_CLI_OUTPUT_FORMAT: Defauldirt CLI output format
                 CLICON_AUTOLOCK: Implicit locks
              Released in Clixon 7.1";
     }
@@ -791,10 +792,11 @@ module clixon-config {
             type boolean;
             default false;
             description
-                "Disable duplicate check in NETCONF messages.
+                "Remove duplicates in incoming NETCONF messages instead of signaling errors.
                  In Clixon 7.0, a stricter check of duplicate entries in incoming NETCONF messages was made.
                  More specifically: lists and leaf-lists with non-unique entries.
-                 Enable to disable this check, and to allow duplicates in incoming NETCONF messages.
+                 Enable to disable this check, and to REMOVE duplicates in incoming NETCONF messages.
+                 When duplicates are removed, only the latest entry is kept.
                  Note that this is an error by such a client, but there is some legacy code that uses this";
         }
         /* HTTP and  Restconf */

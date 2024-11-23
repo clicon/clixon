@@ -2,6 +2,7 @@
 # Detect duplicates in incoming edit-configs (not top-level)
 # Both list and leaf-list
 # See https://github.com/clicon/clixon-controller/issues/107
+# Also, check CLICON_NETCONF_DUPLICATE_ALLOW
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -31,22 +32,33 @@ module unique{
   yang-version 1.1;
   namespace "urn:example:clixon";
   prefix un;
-  container c{
-     presence "trigger"; // force presence container to trigger error
-        list server {
-           description "";
-           key "name";
-           leaf name {
-              type string;
-           }
-           leaf value {
-              type string;
-           }
-        }
-        leaf-list b{
-           type string;
-        }
-  }
+   container c{
+      presence "trigger"; // force presence container to trigger error
+      list server {
+         description "";
+         key "name";
+         leaf name {
+            type string;
+         }
+         leaf value {
+            type string;
+         }
+      }
+      list user {
+         description "";
+         ordered-by user;
+         key "name";
+         leaf name {
+            type string;
+         }
+         leaf value {
+            type string;
+         }
+      }
+      leaf-list b{
+         type string;
+      }
+   }
 }
 EOF
 
@@ -98,12 +110,152 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
      </server>
 </c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique xmlns=\"urn:ietf:params:xml:ns:yang:1\">/rpc/edit-config/config/c/server[name=\"one\"]/name</non-unique></error-info></rpc-error></rpc-reply>"
 
+new "Add user sorted list with duplicate"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\">
+     <user>
+       <name>one</name>
+       <value>foo</value>
+     </user>
+     <user>
+       <name>two</name>
+       <value>bar</value>
+     </user>
+     <user>
+       <name>one</name>
+       <value>foo</value>
+     </user>
+</c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique xmlns=\"urn:ietf:params:xml:ns:yang:1\">/rpc/edit-config/config/c/user[name=\"one\"]/name</non-unique></error-info></rpc-error></rpc-reply>"
+
 new "Add leaf-list with duplicate"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\">
        <b>one</b>
        <b>two</b>
        <b>one</b>
 </c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>data-not-unique</error-app-tag><error-severity>error</error-severity><error-info><non-unique xmlns=\"urn:ietf:params:xml:ns:yang:1\">/rpc/edit-config/config/c/b[.=\"one\"]/one</non-unique></error-info></rpc-error></rpc-reply>"
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+fi
+
+# Check CLICON_NETCONF_DUPLICATE_ALLOW
+
+if [ $BE -ne 0 ]; then
+    new "start backend -s init -f $cfg"
+    # start new backend
+    start_backend -s init -f $cfg -o CLICON_NETCONF_DUPLICATE_ALLOW=true
+fi
+
+new "Wait backend 2"
+wait_backend
+
+new "Add list with duplicate"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\">
+     <server>
+       <name>bbb</name>
+       <value>foo</value>
+     </server>
+     <server>
+       <name>bbb</name>
+       <value>bar</value>
+     </server>
+</c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Check no duplicates"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><c xmlns=\"urn:example:clixon\"><server><name>bbb</name><value>bar</value></server></c></data></rpc-reply>"
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Add complex list with duplicate"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\">
+     <server>
+       <name>aaa</name>
+       <value>foo</value>
+     </server>
+     <server>
+       <name>bbb</name>
+       <value>foo</value>
+     </server>
+     <server>
+       <name>ccc</name>
+       <value>foo</value>
+     </server>
+     <server>
+       <name>bbb</name>
+       <value>bar</value>
+     </server>
+     <server>
+       <name>ccc</name>
+       <value>bar</value>
+     </server>
+     <server>
+       <name>bbb</name>
+       <value>fie</value>
+     </server>
+     <server>
+       <name>ddd</name>
+       <value>foo</value>
+     </server>
+</c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Check complex no duplicates"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><c xmlns=\"urn:example:clixon\"><server><name>aaa</name><value>foo</value></server><server><name>bbb</name><value>fie</value></server><server><name>ccc</name><value>bar</value></server><server><name>ddd</name><value>foo</value></server></c></data></rpc-reply>"
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Add user sorted list with duplicate"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\">
+     <user>
+       <name>aaa</name>
+       <value>foo</value>
+     </user>
+     <user>
+       <name>bbb</name>
+       <value>foo</value>
+     </user>
+     <user>
+       <name>ccc</name>
+       <value>foo</value>
+     </user>
+     <user>
+       <name>bbb</name>
+       <value>bar</value>
+     </user>
+     <user>
+       <name>ccc</name>
+       <value>bar</value>
+     </user>
+     <user>
+       <name>bbb</name>
+       <value>fie</value>
+     </user>
+     <user>
+       <name>ddd</name>
+       <value>foo</value>
+     </user>
+</c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Check user sorted no duplicates"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><c xmlns=\"urn:example:clixon\"><user><name>aaa</name><value>foo</value></user><user><name>ccc</name><value>bar</value></user><user><name>bbb</name><value>fie</value></user><user><name>ddd</name><value>foo</value></user></c></data></rpc-reply>"
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Add leaf-list with duplicate"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config><c xmlns=\"urn:example:clixon\">
+     <b>aaa</b>
+     <b>aaa</b>
+     <b>bbb</b>
+</c></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Check leaf-list no duplicates"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><c xmlns=\"urn:example:clixon\"><b>aaa</b><b>bbb</b></c></data></rpc-reply>"
+
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

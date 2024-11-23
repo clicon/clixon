@@ -79,7 +79,7 @@
 #include "clixon_xml_bind.h"
 #include "clixon_validate_minmax.h"
 
-/*! New element last in list, check if already exists if sp return -1
+/*! New element last in list, check if already exists if so return -1
  *
  * @param[in]  vec   Vector of existing entries (new is last)
  * @param[in]  i1    The new entry is placed at vec[i1]
@@ -139,19 +139,21 @@ unique_search_xpath(cxobj  *x,
 
 /*! New element last in list, return error if already exists 
  *
- * @param[in]  vec   Vector of existing entries (new is last)
- * @param[in]  i1    The new entry is placed at vec[i1]
- * @param[in]  vlen  Length of vec
+ * @param[in]  vec    Vector of existing entries (new is last)
+ * @param[in]  i1     The new entry is placed at vec[i1]
+ * @param[in]  vlen   Length of vec
  * @param[in]  sorted Sorted by system, ie sorted by key, otherwise no assumption
- * @retval     0     OK, entry is unique
- * @retval    -1     Duplicate detected
+ * @param[out] dupl   Index of duplicated element (if retval = -1)
+ * @retval     0      OK, entry is unique
+ * @retval    -1      Duplicate detected
  * @note This is currently quadratic complexity. It could be improved by inserting new element sorted and binary search.
  */
 static int
 check_insert_duplicate(char **vec,
                        int    i1,
                        int    vlen,
-                       int    sorted)
+                       int    sorted,
+                       int   *dupl)
 {
     int i;
     int v;
@@ -168,6 +170,8 @@ check_insert_duplicate(char **vec,
                 return 0;
         }
         /* here we have passed thru all keys of previous element and they are all equal */
+        if (dupl)
+            *dupl = i;
         return -1;
     }
     else{
@@ -180,7 +184,13 @@ check_insert_duplicate(char **vec,
             if (v==vlen) /* duplicate */
                 break;
         }
-        return i==i1?0:-1;
+        if (i<i1){
+            if (dupl)
+                *dupl = i;
+            return -1;
+        }
+        else
+            return 0;
     }
 }
 
@@ -190,6 +200,7 @@ check_insert_duplicate(char **vec,
  * @param[in]  xt    The parent of x (a list)
  * @param[in]  y     Its yang spec (Y_LIST)
  * @param[in]  yu    A yang unique (Y_UNIQUE) for unique schema node ids or (Y_LIST) for list keys
+ * @param[in]  mark  If set, a flag mask to mark (prior) duplicate object with
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
@@ -213,12 +224,14 @@ check_unique_list_direct(cxobj     *x,
                          cxobj     *xt,
                          yang_stmt *y,
                          yang_stmt *yu,
+                         int        mark,
                          cxobj    **xret)
 {
     int       retval = -1;
     cg_var   *cvi; /* unique node name */
     cxobj    *xi;
     char    **vec = NULL; /* 2xmatrix */
+    cxobj   **xvec = NULL;
     int       clen;
     int       i;
     int       v;
@@ -226,6 +239,7 @@ check_unique_list_direct(cxobj     *x,
     int       sorted;
     char     *str;
     cvec     *cvk;
+    int       dupl;
 
     /* If list and is sorted by system, then it is assumed elements are in key-order which is optimized
      * Other cases are "unique" constraint or list sorted by user which is quadratic in complexity
@@ -239,7 +253,12 @@ check_unique_list_direct(cxobj     *x,
         /* No keys: no checks necessary */
         goto ok;
     }
+    /* x need not be child 0, which could make the vector larger than necessary */
     if ((vec = calloc(clen*xml_child_nr(xt), sizeof(char*))) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    if ((xvec = calloc(xml_child_nr(xt), sizeof(cxobj*))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
@@ -248,6 +267,7 @@ check_unique_list_direct(cxobj     *x,
      */
     i = 0; /* x element index */
     do {
+        xvec[i] = x;
         cvi = NULL;
         v = 0; /* index in each tuple */
         /* XXX Quadratic if clen > 1 */
@@ -267,7 +287,9 @@ check_unique_list_direct(cxobj     *x,
         }
         if (cvi==NULL){
             /* Last element (i) is newly inserted, see if it is already there */
-            if (check_insert_duplicate(vec, i, clen, sorted) < 0){
+            if (check_insert_duplicate(vec, i, clen, sorted, &dupl) < 0){
+                if (mark)
+                    xml_flag_set(xvec[dupl], mark);
                 if (xret && netconf_data_not_unique_xml(xret, x, cvk) < 0)
                     goto done;
                 goto fail;
@@ -280,6 +302,8 @@ check_unique_list_direct(cxobj     *x,
     /* It would be possible to cache vec here as an optimization */
     retval = 1;
  done:
+    if (xvec)
+        free(xvec);
     if (vec)
         free(vec);
     return retval;
@@ -294,6 +318,7 @@ check_unique_list_direct(cxobj     *x,
  * @param[in]  xt    The parent of x (a list)
  * @param[in]  y     Its yang spec (Y_LIST)
  * @param[in]  yu    A yang unique (Y_UNIQUE) for unique schema node ids or (Y_LIST) for list keys
+ * @param[in]  mark  If set, a flag mask to mark (prior) duplicate object with
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (xret set)
@@ -317,6 +342,7 @@ check_unique_list(cxobj     *x,
                   cxobj     *xt,
                   yang_stmt *y,
                   yang_stmt *yu,
+                  uint16_t   mark,
                   cxobj    **xret)
 {
     int       retval = -1;
@@ -333,7 +359,7 @@ check_unique_list(cxobj     *x,
     /* Check if multiple direct children */
     cvk = yang_cvec_get(yu);
     if (cvec_len(cvk) > 1){
-        retval = check_unique_list_direct(x, xt, y, yu, xret);
+        retval = check_unique_list_direct(x, xt, y, yu, mark, xret);
         goto done;
     }
     cvi = cvec_i(cvk, 0);
@@ -343,7 +369,7 @@ check_unique_list(cxobj     *x,
     }
     /* Check if direct schmeanode-id , ie not xpath */
     if (index(xpath0, '/') == NULL){
-        retval = check_unique_list_direct(x, xt, y, yu, xret);
+        retval = check_unique_list_direct(x, xt, y, yu, mark, xret);
         goto done;
     }
     /* Here proper xpath with at least one slash (can there be a descendant schemanodeid w/o slash?) */
@@ -484,6 +510,7 @@ check_empty_list_minmax(cxobj     *xt,
  * @param[in]  x     XML LIST node
  * @param[in]  xt    XML parent
  * @param[in]  y     YANG of x
+ * @param[in]  mark  If set, a flag mask to mark (prior) duplicate object with
  * @param[out] xret  Error as XML if ret = 0
  * @retval     1     Validation OK
  * @retval     0     Validation failed (xret set)
@@ -493,6 +520,7 @@ static int
 xml_yang_minmax_new_list(cxobj     *x,
                          cxobj     *xt,
                          yang_stmt *y,
+                         int        mark,
                          cxobj    **xret)
 {
     int        retval = -1;
@@ -503,7 +531,7 @@ xml_yang_minmax_new_list(cxobj     *x,
     /* Here new (first element) of lists only
      * First check unique keys direct children
      */
-    if ((ret = check_unique_list_direct(x, xt, y, y, xret)) < 0)
+    if ((ret = check_unique_list_direct(x, xt, y, y, mark, xret)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -520,7 +548,7 @@ xml_yang_minmax_new_list(cxobj     *x,
          * 1) multiple direct children (no prefixes), eg "a b"
          * 2) single xpath with canonical prefixes, eg "/ex:a/ex:b"
          */
-        if ((ret = check_unique_list(x, xt, y, yu, xret)) < 0)
+        if ((ret = check_unique_list(x, xt, y, yu, 0, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -538,6 +566,7 @@ xml_yang_minmax_new_list(cxobj     *x,
  * @param[in]  x0    XML LIST node
  * @param[in]  xt    XML parent
  * @param[in]  y0    YANG of x0
+ * @param[in]  mark  If set, a flag mask to mark (prior) duplicate object with
  * @param[out] xret  Error as XML if ret = 0
  * @retval     1     Validation OK
  * @retval     0     Validation failed (xret set)
@@ -548,6 +577,7 @@ static int
 xml_yang_minmax_new_leaf_list(cxobj     *x0,
                               cxobj     *xt,
                               yang_stmt *y0,
+                              int        mark,
                               cxobj    **xret)
 {
     int        retval = -1;
@@ -567,6 +597,8 @@ xml_yang_minmax_new_leaf_list(cxobj     *x0,
             if ((bj = xml_body(xj)) == NULL)
                 continue;
             if (bi && bj && strcmp(bi, bj) == 0){
+                if (mark)
+                    xml_flag_set(xi, mark);
                 if ((cvv = cvec_new(0)) == NULL){
                     clixon_err(OE_UNIX, errno, "cvec_new");
                     goto done;
@@ -758,7 +790,7 @@ xml_yang_validate_minmax(cxobj  *xt,
             /* new list check */
             if (ret){
                 if (keyw == Y_LIST){
-                    if ((ret = xml_yang_minmax_new_list(x, xt, y, xret)) < 0)
+                    if ((ret = xml_yang_minmax_new_list(x, xt, y, 0, xret)) < 0)
                         goto done;
                 }
 #ifdef NOTYET /* XXX This is enforced in xml_yang_validate_unique instead */
@@ -926,13 +958,13 @@ xml_yang_validate_unique(cxobj  *xt,
             /* new list check */
             switch (keyw){
             case Y_LIST:
-                if ((ret = xml_yang_minmax_new_list(x, xt, y, xret)) < 0)
+                if ((ret = xml_yang_minmax_new_list(x, xt, y, 0, xret)) < 0)
                     goto done;
                 if (ret == 0)
                     goto fail;
                 break;
             case Y_LEAF_LIST:
-                if ((ret = xml_yang_minmax_new_leaf_list(x, xt, y, xret)) < 0)
+                if ((ret = xml_yang_minmax_new_leaf_list(x, xt, y, 0, xret)) < 0)
                     goto done;
                 if (ret == 0)
                     goto fail;
@@ -992,6 +1024,122 @@ xml_yang_validate_unique_recurse(cxobj  *xt,
     int ret;
 
     if ((ret = xml_apply0(xt, CX_ELMNT, xml_yang_unique_apply, xret)) < 0)
+        goto done;
+    if (ret == 1)
+        goto fail;
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! YANG unique check and remove duplicates, keep last
+ *
+ * Assume xt:s children are sorted and yang populated.
+ * @param[in]  xt      XML parent (may have lists w unique constraints as child)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @retval     2       Locally abort this subtree, continue with others
+ * @retval     1       Abort, dont continue with others, return 1 to end user
+ * @retval     0       OK, continue
+ * @retval    -1       Error, aborted at first error encounter, return -1 to end user
+ * @see xml_yang_validate_minmax  which include these unique tests
+ */
+static int
+xml_duplicate_remove(cxobj *xt,
+                     void  *arg)
+{
+    int           retval = -1;
+    cxobj       **xret = (cxobj **)arg;
+    cxobj        *x;
+    yang_stmt    *y;
+    yang_stmt    *yprev;
+    enum rfc_6020 keyw;
+    int           again;
+    int           ret;
+
+    again = 1;
+    while (again){
+        again = 0;
+        yprev = NULL;
+        x = NULL;
+        while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
+            if ((y = xml_spec(x)) == NULL)
+                continue;
+            keyw = yang_keyword_get(y);
+            if (keyw == Y_LIST || keyw == Y_LEAF_LIST){
+                if (y == yprev){                 /* equal: continue, assume list check does look-forward */
+                    continue;
+                }
+                /* new list check */
+                switch (keyw){
+                case Y_LIST:
+                    if ((ret = xml_yang_minmax_new_list(x, xt, y, XML_FLAG_DEL, xret)) < 0)
+                        goto done;
+                    if (ret == 0){
+                        if (xml_tree_prune_flags1(xt, XML_FLAG_DEL, XML_FLAG_DEL, 0, &again) < 0)
+                            goto done;
+                        if (again){
+                            if (xret && *xret){
+                                xml_free(*xret);
+                                *xret = NULL;
+                            }
+                            break;
+                        }
+                        goto fail;
+                    }
+                    break;
+                case Y_LEAF_LIST:
+                    if ((ret = xml_yang_minmax_new_leaf_list(x, xt, y, XML_FLAG_DEL, xret)) < 0)
+                        goto done;
+                    if (ret == 0){
+                        if (xml_tree_prune_flags1(xt, XML_FLAG_DEL, XML_FLAG_DEL, 0, &again) < 0)
+                            goto done;
+                        if (again){
+                            if (xret && *xret){
+                                xml_free(*xret);
+                                *xret = NULL;
+                            }
+                            break;
+                        }
+                        goto fail;
+                    }
+                    break;
+                default:
+                    break;
+                }
+                if (again)
+                    break;
+                yprev = y;
+            }
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+ fail:
+    retval = 1;
+    goto done;
+}
+
+/*! Recursive YANG unique check and remove duplicates, keep last
+ *
+ * @param[in]  xt      XML parent (may have lists w unique constraints as child)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @retval     1       Validation OK
+ * @retval     0       Validation failed (xret set)
+ * @retval    -1       Error
+ * @see xml_yang_validate_unique_recurse
+ */
+int
+xml_duplicate_remove_recurse(cxobj  *xt,
+                             cxobj **xret)
+{
+    int retval = -1;
+    int ret;
+
+    if ((ret = xml_apply0(xt, CX_ELMNT, xml_duplicate_remove, xret)) < 0)
         goto done;
     if (ret == 1)
         goto fail;

@@ -312,9 +312,8 @@ startup_common(clixon_handle       h,
             clixon_err(OE_XML, EFAULT, "Yang sort error");
         }
         /* clear XML tree of defaults */
-        if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
+        if (xml_tree_prune_flags(xt, XML_FLAG_DEFAULT, XML_FLAG_DEFAULT) < 0)
             goto done;
-
         if (xmldb_dump(h, stdout, xt, FORMAT_XML,
                        clicon_option_bool(h, "CLICON_XMLDB_PRETTY"),
                        WITHDEFAULTS_REPORT_ALL, 0, NULL) < 0)

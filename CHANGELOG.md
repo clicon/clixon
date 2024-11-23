@@ -25,6 +25,7 @@ Expected: January 2025
   * New `system-only-config` extension
   * New `ca_system_only` backend callback for reading system-only data
 * New `clixon-config@2024-11-01.yang` revision
+  * Changed: `CLICON_NETCONF_DUPLICATE_ALLOW` to not only check but remove duplicates
   * Added: `CLICON_XMLDB_SYSTEM_ONLY_CONFIG`
 
 ### C/CLI-API changes on existing features
@@ -37,6 +38,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Change CLICON_NETCONF_DUPLICATE_ALLOW to remove duplicates](https://github.com/clicon/clixon-controller/issues/160)
 * Fixed: Segv in canonical xpath transform
 * Fixed: [Error with submodules and feature Interaction](https://github.com/clicon/clixon-controller/issues/158)
 * Fixed: [Expansion removes the double quote](https://github.com/clicon/clixon/issues/524)

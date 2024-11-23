@@ -676,7 +676,7 @@ xml_tree_equal(cxobj *x0,
  *    xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL);
  * @endcode
  * @note This function seems a little too complex semantics
- * @see xml_tree_prune_flagged for a simpler variant
+ * @see xml_tree_prune_flags1 for a simpler variant
  */
 int
 xml_tree_prune_flagged_sub(cxobj *xt,
@@ -750,46 +750,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     return retval;
 }
 
-/*! Prune everything that passes test
- *
- * @param[in]   xt      XML tree with some node marked
- * @param[in]   flag    Which flag to test for
- * @param[in]   test    1: test that flag is set, 0: test that flag is not set
- * @retval      0       OK
- * @retval     -1       Error
- * The function removes all branches that does not pass test
- * @code
- *    xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1);
- * @endcode
- */
-int
-xml_tree_prune_flagged(cxobj *xt,
-                       int    flag,
-                       int    test)
-{
-    int        retval = -1;
-    cxobj     *x;
-    cxobj     *xprev;
-
-    x = NULL;
-    xprev = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-        if (xml_flag(x, flag) == (test?flag:0)){        /* Pass test means purge */
-            if (xml_purge(x) < 0)
-                goto done;
-            x = xprev;
-            continue;
-        }
-        if (xml_tree_prune_flagged(x, flag, test) < 0)
-            goto done;
-        xprev = x;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Prune everything that passes test
+/*! Prune everything that passes test recursively
  *
  * @param[in]   xt      XML tree with some node marked
  * @param[in]   flags   Flags set
@@ -800,15 +761,40 @@ xml_tree_prune_flagged(cxobj *xt,
  * @code
  *    xml_tree_prune_flags(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT);
  * @endcode
+ * @see xml_tree_prune_flags1
  */
 int
 xml_tree_prune_flags(cxobj *xt,
-                       int    flags,
-                       int    mask)
+                     int    flags,
+                     int    mask)
 {
-    int        retval = -1;
-    cxobj     *x;
-    cxobj     *xprev;
+    return xml_tree_prune_flags1(xt, flags, mask, 1, NULL);
+}
+
+/*! Prune everything that passes test
+ *
+ * @param[in]   xt      XML tree with some node marked
+ * @param[in]   flags   Flags set
+ * @param[in]   mask    Which flags to test for
+ * @param[in]   recurse 0: one level only, 1: recursive
+ * @param[out]  removed Number of entities removed
+ * @retval      0       OK
+ * @retval     -1       Error
+ * The function removes all branches that does pass test
+ * @code
+ *    xml_tree_prune_flags1(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT, 1);
+ * @endcode
+ */
+int
+xml_tree_prune_flags1(cxobj *xt,
+                      int    flags,
+                      int    mask,
+                      int    recursive,
+                      int   *removed)
+{
+    int     retval = -1;
+    cxobj  *x;
+    cxobj  *xprev;
 
     x = NULL;
     xprev = NULL;
@@ -817,17 +803,19 @@ xml_tree_prune_flags(cxobj *xt,
             if (xml_purge(x) < 0)
                 goto done;
             x = xprev;
+            if (removed)
+                (*removed)++;
             continue;
         }
-        if (xml_tree_prune_flags(x, flags, mask) < 0)
-            goto done;
+        if (recursive)
+            if (xml_tree_prune_flags1(x, flags, mask, 1, removed) < 0)
+                goto done;
         xprev = x;
     }
     retval = 0;
  done:
     return retval;
 }
-
 
 /*! Change namespace of XML node 
  *
