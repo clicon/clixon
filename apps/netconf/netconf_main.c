@@ -476,8 +476,10 @@ netconf_input_cb(int   s,
             cbmsg = NULL;
             break;
         }
-        clixon_debug(CLIXON_DBG_MSG, "Recv ext len: %lu", cbuf_len(cbmsg));
-        clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv ext: %s", cbuf_get(cbmsg));
+        if (clixon_debug_isset(CLIXON_DBG_DETAIL))
+            clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv ext: %s", cbuf_get(cbmsg));
+        else
+            clixon_debug(CLIXON_DBG_MSG, "Recv ext len: %lu", cbuf_len(cbmsg));
         if ((ret = netconf_input_frame2(cbmsg, YB_RPC, yspec, &xtop, &xerr)) < 0)
             goto done;
         cbuf_reset(cbmsg);

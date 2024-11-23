@@ -354,12 +354,16 @@ clixon_msg_send(int         s,
     int retval = -1;
 
     if (descr){
-        clixon_debug(CLIXON_DBG_MSG, "Send [%s] len: %lu", descr, cbuf_len(cb));
-        clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Send [%s] %s", descr, cbuf_get(cb));
+        if (clixon_debug_isset(CLIXON_DBG_DETAIL))
+            clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Send [%s] %s", descr, cbuf_get(cb));
+        else
+            clixon_debug(CLIXON_DBG_MSG, "Send [%s] len: %lu", descr, cbuf_len(cb));
     }
     else{
-        clixon_debug(CLIXON_DBG_MSG, "Send len: %lu", cbuf_len(cb));
-        clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Send %s", cbuf_get(cb));
+        if (clixon_debug_isset(CLIXON_DBG_DETAIL))
+            clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Send %s", cbuf_get(cb));
+        else
+            clixon_debug(CLIXON_DBG_MSG, "Send len: %lu", cbuf_len(cb));
     }
 
     if (atomicio((ssize_t (*)(int, void *, size_t))write,
@@ -433,12 +437,16 @@ clixon_msg_rcv10(int         s,
     }
     else {
         if (descr){
-            clixon_debug(CLIXON_DBG_MSG, "Recv [%s] len: %lu", descr, cbuf_len(cb));
-            clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv [%s]: %s", descr, cbuf_get(cb));
+            if (clixon_debug_isset(CLIXON_DBG_DETAIL))
+                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv [%s]: %s", descr, cbuf_get(cb));
+            else
+                clixon_debug(CLIXON_DBG_MSG, "Recv [%s] len: %lu", descr, cbuf_len(cb));
         }
         else{
-            clixon_debug(CLIXON_DBG_MSG, "Recv len: %lu", cbuf_len(cb));
-            clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv: %s", cbuf_get(cb));
+            if (clixon_debug_isset(CLIXON_DBG_DETAIL))
+                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv: %s", cbuf_get(cb));
+            else
+                clixon_debug(CLIXON_DBG_MSG, "Recv len: %lu", cbuf_len(cb));
         }
 
     }
@@ -612,12 +620,17 @@ clixon_msg_rcv11(int         s,
     }
     else {
         if (descr){
-            clixon_debug(CLIXON_DBG_MSG, "Recv [%s] len: %lu", descr, cbuf_len(cbmsg));
-            clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv [%s]: %s", descr, cbuf_get(cbmsg));
+            if (clixon_debug_isset(CLIXON_DBG_DETAIL))
+                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv [%s]: %s", descr, cbuf_get(cbmsg));
+            else
+                clixon_debug(CLIXON_DBG_MSG, "Recv [%s] len: %lu", descr, cbuf_len(cbmsg));
         }
         else{
-            clixon_debug(CLIXON_DBG_MSG, "Recv len: %lu", cbuf_len(cbmsg));
-            clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv: %s", cbuf_get(cbmsg));
+            if (clixon_debug_isset(CLIXON_DBG_DETAIL))
+                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv: %s", cbuf_get(cbmsg));
+            else
+                clixon_debug(CLIXON_DBG_MSG, "Recv len: %lu", cbuf_len(cbmsg));
+
         }
 
     }
