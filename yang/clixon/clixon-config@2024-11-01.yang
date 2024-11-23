@@ -1202,7 +1202,7 @@ module clixon-config {
         }
         leaf CLICON_XMLDB_SYSTEM_ONLY_CONFIG {
             type boolean;
-            default true;
+            default false;
             description
                 "If set, some fields in the configuration tree are not stored to datastore.
                  Instead, the application provides a mechanism to save the system-only-config

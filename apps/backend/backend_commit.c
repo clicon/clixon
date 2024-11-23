@@ -236,13 +236,11 @@ startup_common(clixon_handle       h,
         if ((msdiff = modstate_diff_new()) == NULL)
             goto done;
     /* Add system-only config to running */
+    if ((td->td_src = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+        goto done;
     if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
-        if ((xt = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+        if (xmldb_system_only_config(h, "/", NULL, &td->td_src) < 0)
             goto done;
-        if (xmldb_system_only_config(h, "/", NULL, &xt) < 0)
-            goto done;
-        td->td_src = xt;
-        xt = NULL;
     }
     if (clicon_option_bool(h, "CLICON_XMLDB_UPGRADE_CHECKOLD")){
         if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &xt, msdiff, &xerr)) < 0)
