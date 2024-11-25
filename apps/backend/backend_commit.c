@@ -749,7 +749,9 @@ candidate_commit(clixon_handle  h,
     /* Remove system-only-config data from destination cache */
     if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
         xmldb_clear(h, "running");
+#ifdef SYSTEM_ONLY_CONFIG_CANDIDATE_CLEAR
         xmldb_clear(h, db);
+#endif
     }
     xmldb_modified_set(h, db, 0); /* reset dirty bit */
     /* Here pointers to old (source) tree are obsolete */

@@ -204,3 +204,13 @@
  * If not set, reduces memory with 8 bytes per yang-stmt.
  */
 #undef YANG_SPEC_LINENR
+
+/*! Effort to clear system-only config data from candidate cache after commit
+ *
+ * The idea was that the candidate would be re-loaded from file and populated (as running)
+ * However, there may be instances where the candidate cache is loaded without YANG binding,
+ * such as in xmldb_get0(h, "candidate", YB_NONE,...), whereas running cache is loaded with YANG.
+ * This causes xml_cmp to show that the datastores are unequal and may cause a wrong diff, or
+ * worse case an overwrite.
+ */
+#undef SYSTEM_ONLY_CONFIG_CANDIDATE_CLEAR
