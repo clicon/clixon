@@ -476,7 +476,7 @@ netconf_input_cb(int   s,
             cbmsg = NULL;
             break;
         }
-        if (clixon_debug_isset(CLIXON_DBG_DETAIL))
+        if (clixon_debug_detail())
             clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv ext: %s", cbuf_get(cbmsg));
         else
             clixon_debug(CLIXON_DBG_MSG, "Recv ext len: %lu", cbuf_len(cbmsg));

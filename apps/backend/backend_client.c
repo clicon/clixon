@@ -739,7 +739,7 @@ from_client_edit_config(clixon_handle h,
     }
     /* Clixon extension: copy */
     if ((attr = xml_find_value(xn, "copystartup")) != NULL &&
-        strcmp(attr,"true") == 0){
+        strcmp(attr, "true") == 0){
         if (xmldb_copy(h, "running", "startup") < 0){
             if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                 goto done;

@@ -2203,7 +2203,7 @@ netconf_output(int   s,
     char *buf = cbuf_get(cb);
     int   len = cbuf_len(cb);
 
-    if (clixon_debug_isset(CLIXON_DBG_DETAIL))
+    if (clixon_debug_detail())
         clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Send ext: %s", cbuf_get(cb));
     else
         clixon_debug(CLIXON_DBG_MSG, "Send ext len: %lu", cbuf_len(cb));

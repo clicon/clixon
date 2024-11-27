@@ -139,16 +139,25 @@ int clixon_debug_init(clixon_handle h, int dbglevel);
 int clixon_debug_get(void);
 int clixon_debug_fn(clixon_handle h, const char *fn, const int line, int dbglevel, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 6, 7)));
 
+/* Is subject set ? */
 static inline int clixon_debug_isset(unsigned n)
 {
-	unsigned level = clixon_debug_get();
-	unsigned detail = (n & CLIXON_DBG_DMASK) >> CLIXON_DBG_DSHIFT;
-	unsigned subject = (n & CLIXON_DBG_SMASK);
+    unsigned level = clixon_debug_get();
+    unsigned detail = (n & CLIXON_DBG_DMASK) >> CLIXON_DBG_DSHIFT;
+    unsigned subject = (n & CLIXON_DBG_SMASK);
 
-	/* not this subject */
-	if ((level & subject) == 0)
-		return 0;
-	return ((level & CLIXON_DBG_DMASK) >= detail);
+    /* not this subject */
+    if ((level & subject) == 0)
+        return 0;
+    return ((level & CLIXON_DBG_DMASK) >= detail);
+}
+
+/* Is detail set ?, return detail level 0-7 */
+static inline int clixon_debug_detail()
+{
+    unsigned level = clixon_debug_get();
+
+    return (level & CLIXON_DBG_DMASK) >> CLIXON_DBG_DSHIFT;
 }
 
 #endif  /* _CLIXON_DEBUG_H_ */
