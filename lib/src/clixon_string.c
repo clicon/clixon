@@ -1184,7 +1184,7 @@ clixon_str_subst(char *str,
                 if (strcmp(varname, var) != 0)
                     continue;
                 varval = cv_string_get(cv);
-                cprintf(cb, "%s", varval);
+                cprintf(cb, "%s", varval?varval:"");
                 break;
             }
         }
