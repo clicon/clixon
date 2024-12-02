@@ -53,6 +53,7 @@ module clixon-config {
         description
             "Added options:
                 CLICON_XMLDB_SYSTEM_ONLY_CONFIG
+                CLICON_CLI_PIPE_DIR
              Changed: CLICON_NETCONF_DUPLICATE_ALLOW to not only check but remove duplicates
              Released in Clixon 7.3";
     }
@@ -1063,6 +1064,17 @@ module clixon-config {
             description
                 "Default CLI output format.";
         }
+        leaf CLICON_CLI_PIPE_DIR {
+            type string;
+            description
+                "Directory containing generic pipe functions.
+                 The pipe function pipe_generic() uses this dir
+                 May be used for formatting and should use stdin and stdout.
+                 If scripts should be shebanged
+                 Recommend to jail this dir
+                 ";
+        }
+
         /* Internal socket */
         leaf CLICON_SOCK_FAMILY {
             type socket_address_family;

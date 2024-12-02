@@ -49,7 +49,6 @@
 #include <time.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <dirent.h>
 #include <syslog.h>
 #include <pwd.h>
 #include <inttypes.h>
@@ -611,6 +610,72 @@ expand_yang_list(void   *h,
     return retval;
 }
 
+/*! Completion callback of variable for file directory
+ *
+ * Returns an expand-type list of commands as used by cligen 'expand'
+ * functionality.
+ *
+ * Assume callback given in a cligen spec: a <x:int expand_dbvar("db" "<xmlkeyfmt>")
+ * @param[in]   h        clicon handle
+ * @param[in]   name     Name of this function (eg "expand_dbvar")
+ * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
+ * @param[in]   argv     Arguments given at the callback:
+ *   <dir>    File directory
+ *   <regex>  Regexp of files to show
+ * @param[out]  commands vector of function pointers to callback functions
+ * @param[out]  helptxt  vector of pointers to helptexts
+ * @retval      0        OK
+ * @retval     -1        Error
+ * @code
+ *    <callback:string expand_dir("/usr/local/var/pipedir", "\.sh$")>("comment"), Command;
+ * @endcode
+ * @see expand_dbvar
+ */
+int
+expand_dir(void   *h,
+           char   *name,
+           cvec   *cvv,
+           cvec   *argv,
+           cvec   *commands,
+           cvec   *helptexts)
+{
+    int            retval = -1;
+    int            argc = 0;
+    cg_var        *cv;
+    char          *dir;
+    char          *regexp = NULL;
+    struct dirent *dp;
+    int            ndp;
+    int            i;
+
+    if (argv == NULL || cvec_len(argv) < 1 || cvec_len(argv) > 2){
+        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <dir> [<regexp>]");
+        goto done;
+    }
+    if ((cv = cvec_i(argv, argc++)) == NULL){
+        clixon_err(OE_PLUGIN, 0, "Error when accessing argument <schemanode>");
+        goto done;
+    }
+    dir = cv_string_get(cv);
+    if (cvec_len(argv) > argc){
+        if ((cv = cvec_i(argv, argc++)) == NULL){
+            clixon_err(OE_PLUGIN, 0, "Error when accessing argument <schemanode>");
+            goto done;
+        }
+        regexp = cv_string_get(cv);
+    }
+    if ((ndp = clicon_file_dirent(dir, &dp, regexp, S_IFREG)) < 0)
+        goto done;
+    for (i = 0; i < ndp; i++) {
+        cvec_add_string(commands, NULL, dp[i].d_name);
+    }
+    retval = 0;
+ done:
+    if (dp)
+        free(dp);
+    return retval;
+}
+
 /*! CLI callback show yang spec. If arg given matches yang argument string 
  *
  * @param[in]  h     Clixon handle
@@ -1080,7 +1145,7 @@ cli_show_version(clixon_handle h,
  *  [<mt-point>]     Optional YANG path-arg/xpath from mount-point
  *   <dbname>        Name of datastore, such as "running"
  * -- from here optional:
- *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
+ *   <format>        text|xml|json|cli|netconf|default (see format_enum), default: xml
  *   <pretty>        true|false: pretty-print or not
  *   <state>         true|false: also print state
  *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 

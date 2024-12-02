@@ -50,9 +50,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <ctype.h>
-
 #include <unistd.h>
-#include <dirent.h>
 #include <syslog.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -71,24 +69,25 @@
 #include <clixon/clixon.h>
 
 #include "clixon_cli_api.h"
+#include "cli_pipe.h"
 
 /* General-purpose pipe output function
  *
  * @param[in]  h      Clixon handle
- * @param[in]  cmd    Command to exec
+ * @param[in]  cmd    Command/file to exec
  * @param[in]  option Option to command (or NULL)
  * @param[in]  value  Command argument value (or NULL)
  */
-int
+static int
 pipe_arg_fn(clixon_handle h,
             char         *cmd,
             char         *option,
             char         *value)
 {
-    int          retval = -1;
-    struct stat  fstat;
-    char       **argv = NULL;
-    int          i;
+    int         retval = -1;
+    struct stat fstat;
+    char      **argv = NULL;
+    int         i;
 
     if (cmd == NULL || strlen(cmd) == 0){
         clixon_err(OE_PLUGIN, EINVAL, "cmd '%s' NULL or empty", cmd);
@@ -108,8 +107,10 @@ pipe_arg_fn(clixon_handle h,
     }
     i = 0;
     argv[i++] = cmd;
-    argv[i++] = option;
-    argv[i++] = value;
+    if (option) {
+        argv[i++] = option;
+        argv[i++] = value;
+    }
     argv[i++] = NULL;
     retval = execv(cmd, argv);
  done:
@@ -198,6 +199,7 @@ pipe_wc_fn(clixon_handle h,
     if (cvec_len(argv) != 1){
         clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <NUM>", cvec_len(argv));
         goto done;
+
     }
     if ((cv = cvec_i(argv, 0)) != NULL &&
         (str = cv_string_get(cv)) != NULL &&
@@ -389,6 +391,66 @@ pipe_save_file(clixon_handle h,
         return pipe_arg_fn(h, CAT_BIN, NULL, NULL);
     }
  done:
+    return retval;
+}
+
+/*! pipe function: start script
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  cvv   Vector of cli string and instantiated variables
+ * @param[in]  argv  String vector of options. Format:
+ *                     name     Name of cv containing script filename
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @code
+ *  format("Generic format by callback") <callback:string>("Name of generic format"),
+ *         pipe_generic_callback("callback");
+ * @endcode
+ */
+int
+pipe_generic(clixon_handle h,
+             cvec         *cvv,
+             cvec         *argv)
+{
+    int     retval = -1;
+    char   *cvname;
+    cg_var *cv;
+    char   *dir;
+    char   *filename;
+    char   *script = NULL;
+    cbuf   *cb = NULL;
+
+    if (cvec_len(argv) != 1) {
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <script>", cvec_len(argv));
+        goto done;
+    }
+    if ((cvname = cv_string_get(cvec_i(argv, 0))) != NULL) {
+        if ((cv = cvec_find(cvv, cvname)) != NULL){
+            if ((script = cv_string_get(cv)) == NULL){
+                clixon_err(OE_PLUGIN, EINVAL, "cv name is empty");
+                goto done;
+            }
+        }
+    }
+    if (script == NULL || strlen(script) == 0)
+        goto ok;
+    if ((dir = clicon_option_str(h, "CLICON_CLI_PIPE_DIR")) == NULL){
+        clixon_err(OE_UNIX, 0, "CLICON_CLI_PIPE_DIR not set");
+        goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "%s/%s", dir, script);
+    filename = cbuf_get(cb);
+    if (pipe_arg_fn(h, filename, NULL, NULL) < 0)
+        goto done;
+ ok:
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }
 

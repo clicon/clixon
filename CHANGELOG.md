@@ -17,6 +17,8 @@ Expected: January 2025
 
 ### Features
 
+* New: CLI generic pipe callbacks
+  * Add scripts in `CLICON_CLI_PIPE_DIR`
 * New: [feature request: support xpath functions for strings](https://github.com/clicon/clixon/issues/556)
   * Added: re-match, substring, string, string-length, translate, substring-before, substring-after, starts-with
 * Added support for system-only-config data
@@ -26,6 +28,7 @@ Expected: January 2025
   * New `ca_system_only` backend callback for reading system-only data
 * New `clixon-config@2024-11-01.yang` revision
   * Changed: `CLICON_NETCONF_DUPLICATE_ALLOW` to not only check but remove duplicates
+  * Added: `CLICON_CLI_PIPE_DIR`
   * Added: `CLICON_XMLDB_SYSTEM_ONLY_CONFIG`
 
 ### C/CLI-API changes on existing features

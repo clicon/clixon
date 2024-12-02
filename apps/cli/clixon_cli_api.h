@@ -33,7 +33,7 @@
 
   ***** END LICENSE BLOCK *****
 
-  * Note, this is a CLICON API file, only exprorted function prototypes should appear here
+  * Note, this is a CLICON API file, only exported function prototypes should appear here
  */
 
 #ifndef _CLIXON_CLI_API_H_

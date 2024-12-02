@@ -48,7 +48,6 @@
 #include <time.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <dirent.h>
 #include <syslog.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -807,7 +806,8 @@ cli_set_mode(clixon_handle h,
  * @param[in] argv Function arguments
  * @retval   0 OK, returns the exit code of the program
  * @retval  -1 Error
- *
+ * @note utility, should probably not be in lib
+ * @see cli_start_shell
  */
 int
 cli_start_program(clixon_handle h,
@@ -926,6 +926,8 @@ done:
  * @param[in]   argv  [<shell>], defaults to "sh"
  * @retval      0     OK
  * @retval     -1     Error
+ * @note utility, should probably not be in lib
+ * @see cli_start_program
  */
 int
 cli_start_shell(clixon_handle h,
