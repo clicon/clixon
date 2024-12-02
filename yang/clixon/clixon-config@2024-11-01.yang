@@ -53,6 +53,7 @@ module clixon-config {
         description
             "Added options:
                 CLICON_XMLDB_SYSTEM_ONLY_CONFIG
+                CLICON_CLI_SCRIPT_DIR
              Changed: CLICON_NETCONF_DUPLICATE_ALLOW to not only check but remove duplicates
              Released in Clixon 7.3";
     }
@@ -1063,6 +1064,13 @@ module clixon-config {
             description
                 "Default CLI output format.";
         }
+        leaf CLICON_CLI_SCRIPT_DIR {
+            type string;
+            description
+                "Directory where CLI scripts are stored.
+                 Scripts may be used for formatting";
+        }
+
         /* Internal socket */
         leaf CLICON_SOCK_FAMILY {
             type socket_address_family;

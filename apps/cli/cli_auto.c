@@ -52,9 +52,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <ctype.h>
-
 #include <unistd.h>
-#include <dirent.h>
 #include <syslog.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>

@@ -45,7 +45,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <dlfcn.h>
-#include <dirent.h>
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>

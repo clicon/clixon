@@ -49,7 +49,6 @@
 #include <time.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <dirent.h>
 #include <syslog.h>
 #include <pwd.h>
 #include <inttypes.h>
@@ -1080,7 +1079,7 @@ cli_show_version(clixon_handle h,
  *  [<mt-point>]     Optional YANG path-arg/xpath from mount-point
  *   <dbname>        Name of datastore, such as "running"
  * -- from here optional:
- *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
+ *   <format>        text|xml|json|cli|netconf|default (see format_enum), default: xml
  *   <pretty>        true|false: pretty-print or not
  *   <state>         true|false: also print state
  *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
