@@ -2419,12 +2419,21 @@ xml_template_apply(cxobj *x,
 {
     int    retval = -1;
     cvec  *cvv = (cvec *)arg;
-    cxobj *xb;
+    cxobj *xb = NULL;
     char  *b;
     cbuf  *cb = NULL;
 
-    if ((xb = xml_body_get(x)) != NULL &&
-        (b = xml_value(xb)) != NULL){
+    switch (xml_type(x)){
+    case CX_ELMNT:
+        xb = xml_body_get(x);
+        break;
+    case CX_ATTR:
+        xb = x;
+        break;
+    default:
+        break;
+    }
+    if (xb && (b = xml_value(xb)) != NULL){
         if ((cb = cbuf_new()) == NULL){
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
