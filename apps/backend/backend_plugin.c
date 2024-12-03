@@ -342,7 +342,6 @@ clixon_plugin_statedata_all(clixon_handle   h,
     int              ret;
     cxobj           *x = NULL;
     clixon_plugin_t *cp = NULL;
-    cbuf            *cberr = NULL;
     cxobj           *xerr = NULL;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
@@ -350,20 +349,11 @@ clixon_plugin_statedata_all(clixon_handle   h,
         if ((ret = clixon_plugin_statedata_one(cp, h, nsc, xpath, &x)) < 0)
             goto done;
         if (ret == 0){
-	    if (plugin_rpc_err_set()) {
-		if (netconf_gen_rpc_err_xml(&xerr) < 0)
-		    goto done;
-	    } else {
-		if ((cberr = cbuf_new()) == NULL){
-		    clixon_err(OE_UNIX, errno, "cbuf_new");
-		    goto done;
-		}
-		/* error reason should be in clixon_err_reason */
-		cprintf(cberr, "Internal error, state callback in plugin %s returned invalid XML: %s",
-			clixon_plugin_name_get(cp), clixon_err_reason());
-		if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
-		    goto done;
-	    }
+            /* error reason should be in clixon_err_reason */
+            if (plugin_report_err_xml(&xerr,
+                                      "Internal error, state callback in plugin %s returned invalid XML: %s",
+                                      clixon_plugin_name_get(cp), clixon_err_reason()) < 0)
+                goto done;
             xml_free(*xret);
             *xret = xerr;
             xerr = NULL;
@@ -411,8 +401,6 @@ clixon_plugin_statedata_all(clixon_handle   h,
  done:
     if (xerr)
         xml_free(xerr);
-    if (cberr)
-        cbuf_free(cberr);
     if (x)
         xml_free(x);
     return retval;
@@ -595,7 +583,7 @@ plugin_transaction_call_one(clixon_handle       h,
         goto done;
     if (rv < 0) {
         if (!plugin_rpc_err_set() && !clixon_err_category())
-	    /* sanity: log if err is not called ! */
+            /* sanity: log if err is not called ! */
             clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err or plugin_rpc_err call on error",
                        fnname, clixon_plugin_name_get(cp));
         goto done;

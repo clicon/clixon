@@ -502,18 +502,18 @@ netconf_unknown_attribute(cbuf *cb,
  */
 int
 netconf_common_rpc_err(cbuf *cb,
-		       char *ns,
-		       char *type,
-		       char *tag,
-		       char *severity,
-		       char *info,
-		       char *message)
+                       char *ns,
+                       char *type,
+                       char *tag,
+                       char *severity,
+                       char *info,
+                       char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
 
     if (!ns)
-	ns = NETCONF_BASE_NAMESPACE;
+        ns = NETCONF_BASE_NAMESPACE;
 
     if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
                 "<error-type>%s</error-type>"
@@ -559,13 +559,13 @@ netconf_common_rpc_err(cbuf *cb,
  */
 int
 netconf_common_rpc_err_xml(cxobj **xret,
-			   char  *ns,
-			   char  *type,
-			   char  *tag,
-			   char  *severity,
-			   char  *infotag,
-			   char  *info,
-			   char  *message)
+                           char  *ns,
+                           char  *type,
+                           char  *tag,
+                           char  *severity,
+                           char  *infotag,
+                           char  *info,
+                           char  *message)
 {
     int    retval =-1;
     cxobj *xerr;
@@ -577,7 +577,7 @@ netconf_common_rpc_err_xml(cxobj **xret,
     }
 
     if (!ns)
-	ns = NETCONF_BASE_NAMESPACE;
+        ns = NETCONF_BASE_NAMESPACE;
 
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -590,29 +590,29 @@ netconf_common_rpc_err_xml(cxobj **xret,
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
     if (infotag) {
-	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
-				"<error-type>%s</error-type>"
-				"<error-tag>%s</error-tag>"
-				"<error-info><%s>%s</%s></error-info>"
-				"<error-severity>%s</error-severity>",
-				type, tag, infotag, info, infotag,
-				severity) < 0)
-	    goto done;
+        if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+                                "<error-type>%s</error-type>"
+                                "<error-tag>%s</error-tag>"
+                                "<error-info><%s>%s</%s></error-info>"
+                                "<error-severity>%s</error-severity>",
+                                type, tag, infotag, info, infotag,
+                                severity) < 0)
+            goto done;
     } else if (info) {
-	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
-				"<error-type>%s</error-type>"
-				"<error-tag>%s</error-tag>"
-				"<error-info>%s</error-info>"
-				"<error-severity>%s</error-severity>",
-				type, tag, info, severity) < 0)
-	    goto done;
+        if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+                                "<error-type>%s</error-type>"
+                                "<error-tag>%s</error-tag>"
+                                "<error-info>%s</error-info>"
+                                "<error-severity>%s</error-severity>",
+                                type, tag, info, severity) < 0)
+            goto done;
     } else {
-	if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
-				"<error-type>%s</error-type>"
-				"<error-tag>%s</error-tag>"
-				"<error-severity>%s</error-severity>",
-				type, tag, severity) < 0)
-	    goto done;
+        if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
+                                "<error-type>%s</error-type>"
+                                "<error-tag>%s</error-tag>"
+                                "<error-severity>%s</error-severity>",
+                                type, tag, severity) < 0)
+            goto done;
     }
     if (message){
         if (xml_chardata_encode(&encstr, 0, "%s", message) < 0)
@@ -647,8 +647,8 @@ netconf_common_xml(cxobj **xret,
                    char   *message)
 {
     return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE,
-				      type, tag, "error", infotag, element,
-				      message);
+                                      type, tag, "error", infotag, element,
+                                      message);
 }    
 
 /*! Create Netconf missing-element error XML tree according to RFC 6241 App A

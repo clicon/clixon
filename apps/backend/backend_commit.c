@@ -624,9 +624,9 @@ static cbuf *_plugin_rpc_err_message;
  */
 int
 plugin_rpc_err(clixon_handle h, const char *ns,
-	       const char *type, const char *tag, const char *info,
-	       const char *severity,
-	       const char *fmt, ...)
+               const char *type, const char *tag, const char *info,
+               const char *severity,
+               const char *fmt, ...)
 {
     char *n_ns = NULL, *n_type = NULL, *n_tag = NULL;
     char *n_info = NULL, *n_severity = NULL;
@@ -634,56 +634,56 @@ plugin_rpc_err(clixon_handle h, const char *ns,
     int err;
 
     if (ns) {
-	n_ns = strdup(ns);
-	if (!n_ns)
-	    goto out_nomem;
+        n_ns = strdup(ns);
+        if (!n_ns)
+            goto out_nomem;
     }
     n_type = strdup(type);
     if (!n_type)
-	goto out_nomem;
+        goto out_nomem;
     n_tag = strdup(tag);
     if (!n_tag)
-	goto out_nomem;
+        goto out_nomem;
     if (ns) {
-	n_ns = strdup(ns);
-	if (!n_ns)
-	    goto out_nomem;
+        n_ns = strdup(ns);
+        if (!n_ns)
+            goto out_nomem;
     }
     if (info) {
-	n_info = strdup(info);
-	if (!n_info)
-	    goto out_nomem;
+        n_info = strdup(info);
+        if (!n_info)
+            goto out_nomem;
     }
     n_severity = strdup(severity);
     if (!n_severity)
-	goto out_nomem;
+        goto out_nomem;
     if (fmt) {
-	va_list args;
-	n_message = cbuf_new();
-	if (!n_message)
-	    goto out_nomem;
-	va_start(args, fmt);
-	err = vcprintf(n_message, fmt, args);
-	va_end(args);
-	if (err < 0)
-	    goto out_nomem;
+        va_list args;
+        n_message = cbuf_new();
+        if (!n_message)
+            goto out_nomem;
+        va_start(args, fmt);
+        err = vcprintf(n_message, fmt, args);
+        va_end(args);
+        if (err < 0)
+            goto out_nomem;
     }
     /*
      * Everything is allocated, we cannot fail from here, so clean up the
      * old stuff.
      */
     if (_plugin_rpc_err_ns)
-	free(_plugin_rpc_err_ns);
+        free(_plugin_rpc_err_ns);
     if (_plugin_rpc_err_type)
-	free(_plugin_rpc_err_type);
+        free(_plugin_rpc_err_type);
     if (_plugin_rpc_err_tag)
-	free(_plugin_rpc_err_tag);
+        free(_plugin_rpc_err_tag);
     if (_plugin_rpc_err_info)
-	free(_plugin_rpc_err_info);
+        free(_plugin_rpc_err_info);
     if (_plugin_rpc_err_severity)
-	free(_plugin_rpc_err_severity);
+        free(_plugin_rpc_err_severity);
     if (_plugin_rpc_err_message)
-	cbuf_free(_plugin_rpc_err_message);
+        cbuf_free(_plugin_rpc_err_message);
 
     _plugin_rpc_err_ns = n_ns;
     _plugin_rpc_err_type = n_type;
@@ -695,17 +695,17 @@ plugin_rpc_err(clixon_handle h, const char *ns,
 
  out_nomem:
     if (n_ns)
-	free(n_ns);
+        free(n_ns);
     if (n_type)
-	free(n_type);
+        free(n_type);
     if (n_tag)
-	free(n_tag);
+        free(n_tag);
     if (n_info)
-	free(n_info);
+        free(n_info);
     if (n_severity)
-	free(n_severity);
+        free(n_severity);
     if (n_message)
-	cbuf_free(n_message);
+        cbuf_free(n_message);
     return -1;
 }
 
@@ -715,7 +715,7 @@ plugin_rpc_err_set(void)
     return _plugin_rpc_err_type != NULL;
 }
 
-int
+static int
 netconf_gen_rpc_err(cbuf *cbret)
 {
     char *type = _plugin_rpc_err_type;
@@ -724,17 +724,17 @@ netconf_gen_rpc_err(cbuf *cbret)
     /* Type marks it as set, clear it before handling. */
     _plugin_rpc_err_type = NULL;
     ret = netconf_common_rpc_err(cbret, _plugin_rpc_err_ns,
-				 type,
-				 _plugin_rpc_err_tag,
-				 _plugin_rpc_err_severity,
-				 _plugin_rpc_err_info,
-				 cbuf_get(_plugin_rpc_err_message));
+                                 type,
+                                 _plugin_rpc_err_tag,
+                                 _plugin_rpc_err_severity,
+                                 _plugin_rpc_err_info,
+                                 cbuf_get(_plugin_rpc_err_message));
     free(type);
 
     return ret;
 }
 
-int
+static int
 netconf_gen_rpc_err_xml(cxobj **xret)
 {
     char *type = _plugin_rpc_err_type;
@@ -743,17 +743,57 @@ netconf_gen_rpc_err_xml(cxobj **xret)
     /* Type marks it as set, clear it before handling. */
     _plugin_rpc_err_type = NULL;
     ret = netconf_common_rpc_err_xml(xret, _plugin_rpc_err_ns,
-				     type,
-				     _plugin_rpc_err_tag,
-				     _plugin_rpc_err_severity,
-				     NULL,
-				     _plugin_rpc_err_info,
-				     cbuf_get(_plugin_rpc_err_message));
+                                     type,
+                                     _plugin_rpc_err_tag,
+                                     _plugin_rpc_err_severity,
+                                     NULL,
+                                     _plugin_rpc_err_info,
+                                     cbuf_get(_plugin_rpc_err_message));
     free(type);
 
     return ret;
 }
 
+int
+plugin_report_err(cbuf *cbret)
+{
+    int ret;
+
+    if (plugin_rpc_err_set()) {
+        if ((ret = netconf_gen_rpc_err(cbret)) < 0)
+            return ret;
+    } else if ((ret = netconf_operation_failed(cbret, "application",
+                                               clixon_err_reason())) < 0) {
+        return ret;
+    }
+
+    return 0;
+}
+
+int
+plugin_report_err_xml(cxobj **cbret, char *err, ...)
+{
+    int ret = -1;
+    cbuf *cberr;
+    va_list ap;
+
+    if (plugin_rpc_err_set()) {
+        ret = netconf_gen_rpc_err_xml(cbret);
+    } else {
+        if ((cberr = cbuf_new()) == NULL) {
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        va_start(ap, err);
+        vcprintf(cberr, err, ap);
+        ret = netconf_operation_failed_xml(cbret, "application",
+                                           cbuf_get(cberr));
+        cbuf_free(cberr);
+    }
+
+done:
+    return ret;
+}
 
 /*! Start a validate transaction
  *
@@ -789,15 +829,9 @@ candidate_validate(clixon_handle h,
          * use clixon_err. 
          * TODO: -1 return should be fatal error, not failed validation
          */
-        if (cbuf_len(cbret))
-	    goto fail;
-	if (plugin_rpc_err_set()) {
-	    if (netconf_gen_rpc_err(cbret) < 0)
-		goto done;
-	} else if (netconf_operation_failed(cbret, "application",
-					  clixon_err_reason()) < 0) {
-	    goto done;
-	}
+        if (!cbuf_len(cbret) &&
+            plugin_report_err(cbret) < 0)
+            goto done;
         goto fail;
     }
     if (ret == 0){
@@ -1015,16 +1049,9 @@ from_client_commit(clixon_handle h,
     }
     if ((ret = candidate_commit(h, xe, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
         clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
-        if (ret < 0) {
-	    if (clixon_err_category()) {
-		if (netconf_operation_failed(cbret, "application",
-					     clixon_err_reason()) < 0)
-		    goto done;
-	    } else if (plugin_rpc_err_set()) {
-		if (netconf_gen_rpc_err(cbret) < 0)
-		    goto done;
-	    }
-	}
+        if (ret < 0)
+            if (plugin_report_err(cbret) < 0)
+                goto done;
         goto ok;
     }
     if (clicon_option_bool(h, "CLICON_AUTOLOCK"))
