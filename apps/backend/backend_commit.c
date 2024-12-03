@@ -789,15 +789,14 @@ candidate_validate(clixon_handle h,
          * use clixon_err. 
          * TODO: -1 return should be fatal error, not failed validation
          */
-        if (!cbuf_len(cbret))
-	    goto done;
-	if (clixon_err_category()) {
-	    if (netconf_operation_failed(cbret, "application",
-					 clixon_err_reason()) < 0)
-		goto done;
-	} else if (plugin_rpc_err_set()) {
+        if (cbuf_len(cbret))
+	    goto fail;
+	if (plugin_rpc_err_set()) {
 	    if (netconf_gen_rpc_err(cbret) < 0)
 		goto done;
+	} else if (netconf_operation_failed(cbret, "application",
+					  clixon_err_reason()) < 0) {
+	    goto done;
 	}
         goto fail;
     }
