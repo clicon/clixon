@@ -569,9 +569,9 @@ ys_iskey(yang_stmt *y,
 /*! Helper function to yang_expand_grouping
  *
  * @param[in]  h   Clixon handle
- * @param[in]  yn  Yang parent node of uses ststement
+ * @param[in]  yn  Yang parent node of uses statement
  * @param[in]  ys  Uses statement
- * @param[in]  i   ys is i:th element of yn:s children
+ * @param[in]  ysi ys is i:th element of yn:s children
  * @retval     0   OK
  * @retval    -1   Error
  * @see yang_augment_node  similar but for augment
@@ -580,13 +580,14 @@ static int
 yang_expand_uses_node(clixon_handle h,
                       yang_stmt    *yn,
                       yang_stmt    *ys,
-                      int           i)
+                      int           ysi)
 {
     int        retval = -1;
     char      *id = NULL;
     char      *prefix = NULL;
     yang_stmt *ygrouping;  /* grouping original */
     yang_stmt *ygrouping2; /* grouping copy */
+    yang_stmt *ygp;        /* parent of ygrouping */
     yang_stmt *yg;         /* grouping child */
     yang_stmt *yr;         /* refinement */
     yang_stmt *yp;
@@ -601,6 +602,7 @@ yang_expand_uses_node(clixon_handle h,
     /* Split argument into prefix and name */
     if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
         goto done;
+    ygrouping = NULL;
     if (ys_grouping_resolve(ys, prefix, id, &ygrouping) < 0)
         goto done;
     if (ygrouping == NULL){
@@ -675,6 +677,7 @@ yang_expand_uses_node(clixon_handle h,
         if (yang_schemanode(yg) || yang_keyword_get(yg) == Y_UNKNOWN)
             glen++;
     }
+    ygp = yang_parent_get(ygrouping);
     /* 
      * yn is parent: the children of ygrouping replaces ys.
      * Is there a case when glen == 0?  YES AND THIS BREAKS
@@ -682,7 +685,7 @@ yang_expand_uses_node(clixon_handle h,
     if (glen > 0){
         int oldbuflen = yn->ys_len;
         /* size of existing elements up from i+1 (not uses-stmt) */
-        size = (yang_len_get(yn) - i - 1)*sizeof(struct yang_stmt *);
+        size = (yang_len_get(yn) - ysi - 1)*sizeof(struct yang_stmt *);
         yn->ys_len += glen;
         if ((yn->ys_stmt = realloc(yn->ys_stmt, (yang_len_get(yn))*sizeof(yang_stmt *))) == 0){
             clixon_err(OE_YANG, errno, "realloc");
@@ -694,13 +697,13 @@ yang_expand_uses_node(clixon_handle h,
         memset(&yn->ys_stmt[oldbuflen], 0, glen*sizeof(yang_stmt *));
         /* Move existing elements if any */
         if (size)
-            memmove(&yn->ys_stmt[i+glen+1], &yn->ys_stmt[i+1], size);
+            memmove(&yn->ys_stmt[ysi+glen+1], &yn->ys_stmt[ysi+1], size);
     }
     /* Note: yang_desc_schema_nodeid() requires ygrouping2 to be in yspec tree,
      * due to correct module prefixes etc.
      * cannot be dangling, insert into tree here and then prune immediately after while loop
      */
-    if (yn_insert(yang_parent_get(ygrouping), ygrouping2) < 0)
+    if (yn_insert(ygp, ygrouping2) < 0)
         goto done;
     /* Iterate through refinements and modify grouping copy 
      * See RFC 7950 7.13.2 yrt is the refine target node
@@ -761,7 +764,7 @@ yang_expand_uses_node(clixon_handle h,
         /* This is for extensions that allow list keys to be optional, see restconf_main_extension_cb */
         if (yang_flag_get(ys, YANG_FLAG_NOKEY))
             yang_flag_set(yg, YANG_FLAG_NOKEY);
-        yn->ys_stmt[i+k+1] = yg;
+        yn->ys_stmt[ysi+k+1] = yg;
         yg->ys_parent = yn;
         yang_flag_set(yg, YANG_FLAG_GROUPING);
         k++;

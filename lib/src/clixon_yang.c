@@ -1148,21 +1148,18 @@ ys_prune_self(yang_stmt *ys)
     int        retval = -1;
     yang_stmt *yp;
     yang_stmt *yc;
-    int        i;
     int        inext;
 
     if ((yp = yang_parent_get(ys)) != NULL){
-        i = 0;
         inext = 0;
         /* Find order of ys in child-list */
         while ((yc = yn_iter(yp, &inext)) != NULL) {
             if (ys == yc)
                 break;
-            i++;
         }
         if (yc != NULL){
             assert(yc == ys);
-            ys_prune(yp, i);
+            ys_prune(yp, inext-1);
         }
     }
     retval = 0;

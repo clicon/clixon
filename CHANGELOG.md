@@ -38,6 +38,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Mem error when more multiple uses on top level with multiple statements in grouping](https://github.com/clicon/clixon/issues/583)
 * Fixed: [Change CLICON_NETCONF_DUPLICATE_ALLOW to remove duplicates](https://github.com/clicon/clixon-controller/issues/160)
 * Fixed: Segv in canonical xpath transform
 * Fixed: [Error with submodules and feature Interaction](https://github.com/clicon/clixon-controller/issues/158)

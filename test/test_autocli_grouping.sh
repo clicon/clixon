@@ -101,6 +101,12 @@ module example {
 */
      }
   }
+  grouping pg4 {
+     leaf value4{
+        description "a value";
+        type string;
+     }
+  }
   container table{
     list parameter{
       key name;
@@ -116,6 +122,7 @@ module example {
     }
   }
   uses pg1;
+  uses pg4;
 }
 EOF
 
