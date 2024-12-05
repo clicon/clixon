@@ -1611,6 +1611,29 @@ yang2cli_post(clixon_handle h,
     return retval;
 }
 
+/*! Helper function: add parsetree header and add parsetree
+ */
+static int
+ph_add_set(cligen_handle h,
+           char         *treename,
+           parse_tree   *pt)
+{
+    int      retval = -1;
+    pt_head *ph;
+
+    if ((ph = cligen_ph_add(h, treename)) == NULL){
+        clixon_err(OE_UNIX, 0, "cligen_ph_add");
+        goto done;
+    }
+    if (cligen_ph_parsetree_set(ph, pt) < 0){
+        clixon_err(OE_UNIX, 0, "cligen_ph_parsetree_set");
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Generate clispec for all modules in a grouping
  *
  * Called in cli main function for top-level yangs. But may also be called dynamically for
@@ -1625,7 +1648,7 @@ yang2cli_post(clixon_handle h,
  * @see yang2cli_yspec and yang2cli_stmt for original
  * XXX merge with yang2cli_yspec
  */
-int
+static int
 yang2cli_grouping(clixon_handle      h,
                   yang_stmt         *ys,
                   char              *treename)
@@ -1634,7 +1657,6 @@ yang2cli_grouping(clixon_handle      h,
     parse_tree     *pt0 = NULL;
     parse_tree     *pt = NULL;
     yang_stmt      *yc;
-    pt_head        *ph;
     cbuf           *cb = NULL;
     int             treeref_state = 0;
     char           *prefix;
@@ -1668,8 +1690,13 @@ yang2cli_grouping(clixon_handle      h,
             if (yang2cli_stmt(h, yc, 1, cb) < 0)
                 goto done;
     }
-    if (cbuf_len(cb) == 0)
-        goto empty;
+    if (cbuf_len(cb) == 0){
+        /* Create empty tree */
+        if (ph_add_set(cli_cligen(h), treename, pt0) < 0)
+            goto done;
+        pt0 = NULL;
+        goto ok;
+    }
     /* Note Tie-break of same top-level symbol: prefix is NYI
      * Needs to move cligen_parse_str() call here instead of later
      */
@@ -1726,15 +1753,10 @@ yang2cli_grouping(clixon_handle      h,
     if (cligen_expandv_str2fn(pt0, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)
         goto done;
     /* Append cligen tree and name it */
-    if ((ph = cligen_ph_add(cli_cligen(h), treename)) == NULL){
-        clixon_err(OE_UNIX, 0, "cligen_ph_add");
+    if (ph_add_set(cli_cligen(h), treename, pt0) < 0)
         goto done;
-    }
-    if (cligen_ph_parsetree_set(ph, pt0) < 0){
-        clixon_err(OE_UNIX, 0, "cligen_ph_parsetree_set");
-        goto done;
-    }
     pt0 = NULL;
+ ok:
     retval = 1;
  done:
     if (pt)
@@ -1769,7 +1791,6 @@ yang2cli_yspec(clixon_handle      h,
     parse_tree     *pt0 = NULL;
     parse_tree     *pt = NULL;
     yang_stmt      *ymod;
-    pt_head        *ph;
     int             enable;
     cbuf           *cb = NULL;
     char           *prefix;
@@ -1858,14 +1879,8 @@ yang2cli_yspec(clixon_handle      h,
     if (cligen_expandv_str2fn(pt0, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)
         goto done;
     /* Append cligen tree and name it */
-    if ((ph = cligen_ph_add(cli_cligen(h), treename)) == NULL){
-        clixon_err(OE_UNIX, 0, "cligen_ph_add");
+    if (ph_add_set(cli_cligen(h), treename, pt0) < 0)
         goto done;
-    }
-    if (cligen_ph_parsetree_set(ph, pt0) < 0){
-        clixon_err(OE_UNIX, 0, "cligen_ph_parsetree_set");
-        goto done;
-    }
     pt0 = NULL;
 #if 0
     if (clicon_data_int_get(h, "autocli-print-debug") == 1){
@@ -1956,8 +1971,10 @@ yang2cli_grouping_wrap(cligen_handle ch,
         goto ok;
     if ((ret = yang2cli_grouping(h, ygrouping, name)) < 0)
         goto done;
-    if (ret == 0) /* tree empty */
-        goto ok;
+    if (ret == 0){ /* tree empty */
+        clixon_err(OE_UNIX, 0, "Tree empty %s", name);
+        goto done;
+    }
     *namep = strdup(name);
  ok:
     retval = 0;

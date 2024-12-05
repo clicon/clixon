@@ -107,6 +107,10 @@ module example {
         type string;
      }
   }
+  grouping pg5 {
+     description "Empty, see https://github.com/clicon/clixon/issues/579";
+     action reset;
+  }
   container table{
     list parameter{
       key name;
@@ -119,6 +123,7 @@ module example {
       }
       uses pg1;
       uses ext:pg2;
+      uses pg5;
     }
   }
   uses pg1;

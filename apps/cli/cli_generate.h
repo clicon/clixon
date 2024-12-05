@@ -65,7 +65,6 @@
  */
 int yang2cli_cmd_encode(cbuf *cb, const char *delim, char *tag, char *domain, char *spec, char *modname, char *id);
 int yang2cli_cmd_decode(char *cmd, const char *delim, char **tag, char **domain, char **spec, char **modname, char **id);
-int yang2cli_grouping(clixon_handle h, yang_stmt *ys, char *treename);
 int yang2cli_yspec(clixon_handle h, yang_stmt *yspec, char *treename);
 int yang2cli_grouping_wrap(cligen_handle ch, char *name, cvec *cvt, void *arg, char **namep);
 int yang2cli_init(clixon_handle h);
