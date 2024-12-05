@@ -761,7 +761,6 @@ choice_mandatory_check(cxobj     *xt,
     return retval;
 }
 
-
 /*! Find yang node which is ancestor of ys (or ys itself) and child of ytop
  *
  * Assume tree: ytop ... ys

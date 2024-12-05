@@ -796,4 +796,3 @@ cli_syntax_mode(clixon_handle h)
         return NULL;
     return cligen_ph_name_get(ph);
 }
-

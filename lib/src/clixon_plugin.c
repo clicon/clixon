@@ -501,7 +501,6 @@ clixon_pseudo_plugin(clixon_handle     h,
     return plugin_add_one(h, name, NULL, NULL, cpp);
 }
 
-
 /*! Call single plugin start callback
  *
  * @param[in]  cp      Plugin handle

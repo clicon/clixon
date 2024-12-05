@@ -713,7 +713,6 @@ stream_notify_xml(clixon_handle h,
     return retval;
 }
 
-
 /*! Replay a stream by sending notification messages
  *
  * @see RFC5277 Sec 2.1.1:

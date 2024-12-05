@@ -2169,7 +2169,6 @@ cxvec_prepend(cxobj   *x,
 }
 #endif
 
-
 /*! Apply a function call recursively on all xml node children recursively
  *
  * Recursively traverse all xml nodes in a parse-tree and apply fn(arg) for 

@@ -234,4 +234,3 @@ backend_client_print(clixon_handle h,
     }
     return 0;
 }
-

@@ -158,7 +158,6 @@ static const map_str2int axis_type_map[] = {
     {NULL,                  -1}
 };
 
-
 /*
  * XPath parse tree type
  */

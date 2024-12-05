@@ -127,4 +127,3 @@ extern const char CLIXON_VERSION[];
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-

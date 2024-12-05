@@ -51,5 +51,4 @@ int restconf_notimplemented(clixon_handle h, void *req, int pretty, restconf_med
 int api_return_err(clixon_handle h, void *req, cxobj *xerr, int pretty, restconf_media media, int code0);
 int api_return_err0(clixon_handle h, void *req, cxobj *xerr, int pretty, restconf_media media, int code0);
 
-
 #endif /* _RESTCONF_ERR_H_ */

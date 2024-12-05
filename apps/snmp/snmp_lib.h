@@ -119,4 +119,3 @@ int    clixon_snmp_api_oid_find(oid *oid1, size_t oidlen);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-

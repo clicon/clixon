@@ -352,7 +352,6 @@ ysp_add_push(clixon_yang_yacc *yy,
     return ys;
 }
 
-
 %}
 
 %%
@@ -500,7 +499,6 @@ include_substmt : revision_date_stmt { _PARSE_DEBUG("include-stmt -> revision-da
                 | reference_stmt     { _PARSE_DEBUG("include-stmt -> reference-stmt"); }
                ;
 
-
 /* namespace-stmt = namespace-keyword sep uri-str */
 namespace_stmt : K_NAMESPACE string stmtend
                 { if (ysp_add(_yy, Y_NAMESPACE, $2, NULL)== NULL) _YYERROR("namespace_stmt");
@@ -567,7 +565,6 @@ revision_substmt : description_stmt { _PARSE_DEBUG("revision-substmt -> descript
               |                     { _PARSE_DEBUG("revision-substmt -> "); }
               ;
 
-
 /* revision */
 revision_stmts : revision_stmts revision_stmt
                        { _PARSE_DEBUG("revision-stmts -> revision-stmts revision-stmt"); }
@@ -626,7 +623,6 @@ argument_substmt : yin_element_stmt1 { _PARSE_DEBUG("argument-substmt -> yin-ele
                  | unknown_stmt   { _PARSE_DEBUG("argument-substmt -> unknown-stmt");}
                  |
                  ;
-
 
 /* Example of optional rule, eg [yin-element-stmt] */
 yin_element_stmt1 : K_YIN_ELEMENT bool_str stmtend {free($2);}
@@ -1060,7 +1056,6 @@ grouping_substmt : status_stmt       { _PARSE_DEBUG("grouping-substmt -> status-
               | unknown_stmt         { _PARSE_DEBUG("container-substmt -> unknown-stmt");}
               |                      { _PARSE_DEBUG("grouping-substmt -> "); }
               ;
-
 
 /* container */
 container_stmt : K_CONTAINER identifier_str ';'
@@ -1895,7 +1890,6 @@ bool_str       : '"' BOOL '"' { $$ = $2;
                |     BOOL     { $$ = $1;
                    _PARSE_DEBUG("bool_str -> BOOL ");}
                ;
-
 
 /* ;;; Basic Rules */
 

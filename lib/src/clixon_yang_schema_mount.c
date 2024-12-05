@@ -908,7 +908,6 @@ yang_schema_yspec_rm(clixon_handle h,
     int        retval = -1;
     yang_stmt *yspec = NULL;
     char      *xpath = NULL;
-
     int        ret;
 
     if ((ret = xml_yang_mount_get(h, xmnt, NULL, &xpath, &yspec)) < 0)

@@ -824,4 +824,3 @@ api_data_delete(clixon_handle h,
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
    return retval;
 }
-

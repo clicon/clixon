@@ -139,7 +139,6 @@ hex [A-Fa-f0-9]
 
 %%
 
-
 /*! Initialize scanner.
  */
 int
@@ -166,4 +165,3 @@ json_scan_exit(clixon_json_yacc *jy)
     clixon_json_parselex_destroy();  /* modern */
     return 0;
 }
-

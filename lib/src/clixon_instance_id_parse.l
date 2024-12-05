@@ -153,4 +153,3 @@ instance_id_scan_exit(clixon_instance_id_yacc *iy)
     clixon_instance_id_parselex_destroy();  /* modern */
     return 0;
 }
-

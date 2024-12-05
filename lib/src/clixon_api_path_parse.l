@@ -147,4 +147,3 @@ api_path_scan_exit(clixon_api_path_yacc *ay)
     clixon_api_path_parselex_destroy();  /* modern */
     return 0;
 }
-

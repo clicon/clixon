@@ -36,7 +36,6 @@
  * Restconf YANG PATCH implementation (RFC8072)
  */
 
-
 #ifndef _RESTCONF_METHODS_PATCH_H_
 #define _RESTCONF_METHODS_PATCH_H_
 

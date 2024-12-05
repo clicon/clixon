@@ -38,7 +38,6 @@
 #ifndef _CLIXON_XPATH_OPTIMIZE_H
 #define _CLIXON_XPATH_OPTIMIZE_H
 
-
 int  xpath_list_optimize_stats(int *hits);
 int  xpath_list_optimize_set(int enable);
 void xpath_optimize_exit(void);

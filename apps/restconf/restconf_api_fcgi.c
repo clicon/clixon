@@ -67,7 +67,6 @@
 #include "restconf_lib.h"
 #include "restconf_api.h"  /* Virtual api */
 
-
 /*! HTTP headers done, if there is a message body coming next
  *
  * @param[in]  req   Fastcgi request handle

@@ -35,7 +35,6 @@
 
  */
 
-
 #ifndef _BACKEND_SOCKET_H_
 #define _BACKEND_SOCKET_H_
 

@@ -158,7 +158,6 @@ xpath_optimize_init(xpath_tree **xm,
     return retval;
 }
 
-
 /*! Recursive function to loop over all EXPR and pattern match them
  *
  * @param[in]  xt    XPath tree of type PRED
@@ -366,4 +365,3 @@ xpath_optimize_check(xpath_tree *xs,
     return 0; /* use regular code */
 #endif
 }
-

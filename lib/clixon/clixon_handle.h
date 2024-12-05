@@ -35,7 +35,6 @@
 
  */
 
-
 #ifndef _CLIXON_HANDLE_H_
 #define _CLIXON_HANDLE_H_
 

@@ -52,4 +52,3 @@ int clixon_snmp_traverse_mibyangs(clixon_handle h);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-

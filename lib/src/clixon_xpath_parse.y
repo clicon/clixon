@@ -567,6 +567,4 @@ string      : string CHARS  {
             | CHARS         { _PARSE_DEBUG("string-> "); }
             ;
 
-
 %%
-

@@ -334,4 +334,3 @@ ctx_nodeset_replace(xp_ctx   *xc,
     xc->xc_size = veclen;
     return 0;
 }
-

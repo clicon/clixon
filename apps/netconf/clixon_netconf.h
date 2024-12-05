@@ -50,5 +50,4 @@ int netconf_xpath(cxobj *xsearch,
                    cbuf *xf, cbuf *xf_err,
                   cxobj *xt);
 
-
 #endif /* _CLIXON_NETCONF_H_ */

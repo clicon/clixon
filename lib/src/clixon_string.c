@@ -850,7 +850,6 @@ xml_chardata_decode(char      **decp,
     return retval;
 }
 
-
 /*! Split a string into a cligen variable vector using 1st and 2nd delimiter
  * 
  * (1) Split a string into elements delimited by delim1, 

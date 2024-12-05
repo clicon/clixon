@@ -385,4 +385,3 @@ clixon_xvec_print(FILE        *f,
             return -1;
     return 0;
 }
-

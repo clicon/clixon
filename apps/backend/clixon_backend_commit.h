@@ -35,7 +35,6 @@
 
  */
 
-
 #ifndef _CLIXON_BACKEND_COMMIT_H_
 #define _CLIXON_BACKEND_COMMIT_H_
 

@@ -35,7 +35,6 @@
 
  */
 
-
 #ifndef _BACKEND_STARTUP_H_
 #define _BACKEND_STARTUP_H_
 

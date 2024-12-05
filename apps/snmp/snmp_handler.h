@@ -59,4 +59,3 @@ int clixon_snmp_table_exit(clixon_handle h);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-

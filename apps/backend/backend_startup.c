@@ -113,7 +113,6 @@ running                         |--------+------------> RUNNING
                 parse validate OK       / commit 
 startup -------+--+-------+------------+          
 
-
 INVALID (requires manual edit of candidate)
 failsafe      ----------------------+
                             reset    \ commit

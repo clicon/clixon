@@ -46,4 +46,3 @@ int clixon_text_syntax_parse_string(char *str, yang_bind yb, yang_stmt *yspec, c
 int clixon_text_syntax_parse_file(FILE *fp, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 
 #endif /* _CLIXON_TEXT_SYNTAX_H */
-

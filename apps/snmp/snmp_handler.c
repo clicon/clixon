@@ -1149,8 +1149,6 @@ snmp_table_set(clixon_handle               h,
     goto done;
 }
 
-
-
 /*! Use a cache for getnext tables instead of an RPC to the backend every time
  *
  * The cache works as follows:

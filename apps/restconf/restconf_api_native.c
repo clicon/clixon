@@ -204,4 +204,3 @@ restconf_get_indata(void *req0)
  done:
     return cb;
 }
-

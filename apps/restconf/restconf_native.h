@@ -189,8 +189,6 @@ int               restconf_callhome_timer(restconf_socket *rsock, int status);
 int               restconf_socket_extract(clixon_handle h, cxobj *xs, cvec *nsc, restconf_socket *rsock,
                                           char **namespace, char **address, char **addrtype, uint16_t *port);
 
-
-
 #endif /* _RESTCONF_NATIVE_H_ */
 
 #ifdef __cplusplus

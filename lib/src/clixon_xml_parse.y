@@ -123,7 +123,6 @@ xml_parse_content(clixon_xml_yacc *xy,
     cxobj *xn = xy->xy_xelement;
     cxobj *xp = xy->xy_xparent;
 
-
     xy->xy_xelement = NULL; /* init */
     if (xn == NULL){
         if ((xn = xml_new("body", xp, CX_BODY)) == NULL)
@@ -486,7 +485,6 @@ pi          : BQMARK NAME EQMARK {_PARSE_DEBUG("pi -> <? NAME ?>"); free($2); }
             | BQMARK NAME STRING EQMARK
                 { _PARSE_DEBUG("pi -> <? NAME STRING ?>"); free($2); free($3);}
             ;
-
 
 attrs       : attrs attr { _PARSE_DEBUG("attrs -> attrs attr"); }
             |            { _PARSE_DEBUG("attrs ->"); }

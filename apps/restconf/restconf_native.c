@@ -1870,4 +1870,3 @@ restconf_socket_extract(clixon_handle    h,
         free(reason);
     return retval;
 }
-

@@ -427,7 +427,6 @@ restconf_ssl_context_configure(clixon_handle h,
         SSL_CTX_set_verify_depth(ctx, VERIFY_DEPTH+1);
     }
 
-
     X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), 0);
 
     SSL_CTX_set_session_id_context(ctx, (void *)&session_id_context, sizeof(session_id_context));

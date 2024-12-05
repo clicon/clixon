@@ -464,7 +464,6 @@ cv_validate_pattern(clixon_handle h,
     ((rmin && (i) < cv_##type##_get(rmin)) ||  \
      (rmax && (i) > cv_##type##_get(rmax)))
 
-
 /*! Error messsage for int violating ranges 
  *
  * @note contains kludge - duplicate loop

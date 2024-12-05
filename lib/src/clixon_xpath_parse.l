@@ -196,7 +196,6 @@ ncname     {namestart}{namechar}*
 
 %%
 
-
 /*! Initialize scanner.
  */
 int
@@ -223,4 +222,3 @@ xpath_scan_exit(clixon_xpath_yacc *xpy)
     clixon_xpath_parselex_destroy();  /* modern */
     return 0;
 }
-

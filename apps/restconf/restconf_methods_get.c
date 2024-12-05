@@ -795,4 +795,3 @@ api_operations_get(clixon_handle h,
         xml_free(xt);
     return retval;
 }
-

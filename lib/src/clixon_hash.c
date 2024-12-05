@@ -35,7 +35,6 @@
 
  */
 
-
 /*
  * A simple implementation of a associative array style data store. Keys
  * are always strings while values can be some arbitrary data referenced

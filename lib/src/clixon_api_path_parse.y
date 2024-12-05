@@ -73,7 +73,6 @@
 %type  <stack>  key_values
 %type  <stack>  key_value
 
-
 %lex-param     {void *_ay} /* Add this argument to parse() and lex() function */
 %parse-param   {void *_ay}
 
@@ -309,4 +308,3 @@ key_value      : STRING { $$ = keyval_set(NULL, $1); free($1); _PARSE_DEBUG("key
                ;
 
 %%
-

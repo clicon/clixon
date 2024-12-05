@@ -112,7 +112,6 @@ static const map_str2int snmp_type_map[] = {
     {NULL,           -1}
 };
 
-
 /* Map between clixon "orig" resolved type and ASN.1 types. 
  */
 static const map_str2int snmp_orig_map[] = {
@@ -156,7 +155,6 @@ static const map_str2str yang_snmp_types[] = {
     {"uint16",  "uint32"},
     { NULL,    NULL} /* if not found */
 };
-
 
 /*! A function that checks that all subtypes of the union are the same
  *
@@ -514,7 +512,6 @@ yangext_is_oid_exist(yang_stmt *yn)
         return 1;
     }
 }
-
 
 /*! Duplicate clixon snmp handler struct
  *

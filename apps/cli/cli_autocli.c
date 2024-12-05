@@ -72,7 +72,6 @@ static const map_str2int list_kw_map[] = {
     {NULL,      -1}
 };
 
-
 static int
 autocli_str2op(char *str)
 {

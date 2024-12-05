@@ -1451,5 +1451,3 @@ xp_eval(xp_ctx     *xc,
         ctx_free(xr0);
     return retval;
 } /* xp_eval */
-
-

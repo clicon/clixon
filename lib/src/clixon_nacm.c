@@ -1088,7 +1088,6 @@ nacm_datanode_read(clixon_handle h,
     return retval;
 }
 
-
 /*---------------------------------------------------------------
  * NACM pre-procesing
  */

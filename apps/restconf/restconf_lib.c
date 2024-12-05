@@ -930,4 +930,3 @@ restconf_socket_init(const char   *netns0,
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
-

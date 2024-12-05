@@ -34,9 +34,7 @@
   *
   * Return errors
   * @see RFC 7231 Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content
-
-
- * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
+  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
 */
 
 #ifdef HAVE_CONFIG_H

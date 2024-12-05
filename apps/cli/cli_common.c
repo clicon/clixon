@@ -830,7 +830,6 @@ cli_start_program(clixon_handle h,
     size_t   bufsize = 0;
     struct passwd pw, *pwresult = NULL;
 
-
     /* Check parameters */
     if (cvec_len(argv) == 0){
 	clixon_err(OE_PLUGIN, EINVAL, "Can not find argument");

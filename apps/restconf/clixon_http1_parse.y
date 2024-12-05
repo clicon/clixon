@@ -368,7 +368,6 @@ field_values   : field_vchars
                |           { $$ = NULL; _PARSE_DEBUG("field-values -> "); }
 ;
 
-
 field_vchars   : field_vchars RWS VCHARS
                      {
                          if (($$ = clixon_string_del_join($1, " ", $3)) == NULL) YYABORT;
@@ -393,4 +392,3 @@ ows          : RWS
 ;
 
 %%
-

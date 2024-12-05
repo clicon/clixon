@@ -82,4 +82,3 @@ int   restconf_param_set(clixon_handle h, const char *param, char *val);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-
