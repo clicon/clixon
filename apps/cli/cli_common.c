@@ -47,7 +47,6 @@
 #include <stdarg.h>
 #include <time.h>
 #include <ctype.h>
-
 #include <unistd.h>
 #include <dirent.h>
 #include <syslog.h>
@@ -83,6 +82,7 @@
  * @retval    0       OK
  * @retval   -1       Error
  * @note this calls cligen_regfd which may callback on cli command interpretator
+ * @note  NYI: On stop, should call close_session on event socket, see https://github.com/clicon/clixon/issues/578
  */
 int
 cli_notification_register(clixon_handle    h,
@@ -127,8 +127,8 @@ cli_notification_register(clixon_handle    h,
             cligen_unregfd(s_exist);
         }
         clicon_hash_del(cdat, logname);
-#if 0 /* cant turn off */
-        if (clicon_rpc_create_subscription(h, status, stream, format, filter, NULL) < 0)
+#ifdef NYI
+        if (clicon_rpc_close_session(h) < 0)
             goto done;
 #endif
     }
@@ -909,7 +909,6 @@ cli_start_program(clixon_handle h,
 	    goto done;
 	}
     }
-
 done:
     if(buf)
 	free(buf);
@@ -1622,7 +1621,6 @@ cli_notification_cb(int   s,
  * @code
  * cmd("comment"), cli_notify("mystream","1","xml"); 
  * @endcode
- * XXX: format is a memory leak
  */
 int
 cli_notify(clixon_handle h,
@@ -2069,6 +2067,43 @@ cli_process_control(clixon_handle h,
     cprintf(cb, "<name>%s</name>", name);
     cprintf(cb, "<operation>%s</operation>", opstr);
     cprintf(cb, "</process-control>");
+    cprintf(cb, "</rpc>");
+    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
+        goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
+        goto done;
+    }
+    if (clixon_xml2file(stdout, xml_child_i(xret, 0), 0, 1, NULL, cligen_output, 0, 1) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (xret)
+        xml_free(xret);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+int
+cli_ping(clixon_handle h,
+         cvec         *cvv,
+         cvec         *argv)
+{
+    int            retval = -1;
+    cbuf          *cb = NULL;
+    cxobj         *xret = NULL;
+    cxobj         *xerr;
+
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<rpc xmlns=\"%s\" username=\"%s\" %s>",
+            NETCONF_BASE_NAMESPACE,
+            clicon_username_get(h),
+            NETCONF_MESSAGE_ID_ATTR);
+    cprintf(cb, "<ping xmlns=\"%s\"/>", CLIXON_LIB_NS);
     cprintf(cb, "</rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
         goto done;

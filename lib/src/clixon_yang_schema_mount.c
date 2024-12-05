@@ -908,6 +908,7 @@ yang_schema_yspec_rm(clixon_handle h,
     int        retval = -1;
     yang_stmt *yspec = NULL;
     char      *xpath = NULL;
+
     int        ret;
 
     if ((ret = xml_yang_mount_get(h, xmnt, NULL, &xpath, &yspec)) < 0)
@@ -915,6 +916,18 @@ yang_schema_yspec_rm(clixon_handle h,
     if (ret == 1 && xpath != NULL && yspec != NULL){
         if (yang_cvec_rm(yspec, xpath) < 0)
             goto done;
+#if 0
+        cvec      *cvv;
+        /* see https://github.com/clicon/clixon-controller/issues/169
+         * cannot remove yspec since it may still be in use by caches
+         */
+        cvv = yang_cvec_get(yspec);
+        if (cvv && cvec_len(cvv) == 0){
+            ys_prune_self(yspec);
+            ys_free(yspec);
+            yspec = NULL;
+        }
+#endif
     }
     retval = 0;
  done:

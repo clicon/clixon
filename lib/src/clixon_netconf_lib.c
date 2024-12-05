@@ -1959,7 +1959,6 @@ netconf_hello_server(clixon_handle h,
     return retval;
 }
 
-
 /*! Add internal error info to existing netconf error message by rewriting
  *
  * If a eg sanity check detects errors in internal messages passing, such as from a plugin or

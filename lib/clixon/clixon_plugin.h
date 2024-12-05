@@ -217,7 +217,7 @@ typedef int (plgreset_t)(clixon_handle h, const char *db);
  * @param[in]  h      Clixon handle
  * @param[in]  xpath  Part of state requested
  * @param[in]  nsc    XPath namespace context.
- * @param[out] xtop   XML tree where data is added
+ * @param[out] xconfig XML tree where data is added
  * @retval     0      OK
  * @retval    -1      Fatal error
  *
@@ -225,7 +225,7 @@ typedef int (plgreset_t)(clixon_handle h, const char *db);
  * @note The system does not validate the xml, unless CLICON_VALIDATE_STATE_XML is set
  * @see clixon_pagination_cb_register for special paginated state data callback
  */
-typedef int (plgstatedata_t)(clixon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
+typedef int (plgstatedata_t)(clixon_handle h, cvec *nsc, char *xpath, cxobj *xconfig);
 
 /*! Pagination-data type
  *

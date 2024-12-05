@@ -1496,6 +1496,7 @@ yn_insert1(yang_stmt *ys_parent,
  *     ...ynext...
  *   }
  * @endcode
+ * @note  NULL children are skipped, which means inext may increment by more than 1
  */
 yang_stmt *
 yn_iter(yang_stmt *yparent,
@@ -2494,6 +2495,22 @@ yang_spec_dump(yang_stmt *yspec,
     if (cb)
         cbuf_free(cb);
     return retval;
+}
+
+/*! Dump pointers to children, debug function
+ */
+int
+yang_dump1(FILE      *f,
+           yang_stmt *yn)
+{
+    yang_stmt *ys;
+    int inext;
+
+    inext = 0;
+    while ((ys = yn_iter(yn, &inext)) != NULL) {
+        fprintf(stderr, "%2d %p %s %s\n", inext-1, ys, yang_key2str(yang_keyword_get(ys)), yang_argument_get(ys));
+    }
+    return 0;
 }
 
 /*! Print yang specification to cligen buf
