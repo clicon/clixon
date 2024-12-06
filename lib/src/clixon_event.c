@@ -53,6 +53,7 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <poll.h>
 
 #include <cligen/cligen.h>
 
@@ -346,24 +347,27 @@ clixon_event_unreg_timeout(int (*fn)(int, void*),
     return found?0:-1;
 }
 
-/*! Poll to see if there is any data available on this file descriptor.
+/*!
+ * Poll to see if there is any data available on this file descriptor.
  *
  * @param[in]  fd   File descriptor
  * @retval     1    Something to read on fd
  * @retval     0    Nothing to read/empty fd
  * @retval    -1    Error
  */
-int
-clixon_event_poll(int fd)
-{
-    int            retval = -1;
-    fd_set         fdset;
-    struct timeval tnull = {0,};
+int clixon_event_poll(int fd) {
+    struct pollfd pfd;
+    int retval;
 
-    FD_ZERO(&fdset);
-    FD_SET(fd, &fdset);
-    if ((retval = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull)) < 0)
-        clixon_err(OE_EVENTS, errno, "select");
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+
+    retval = poll(&pfd, 1, 0);
+
+    if (retval < 0) {
+        clixon_err(OE_EVENTS, errno, "poll");
+    }
+
     return retval;
 }
 
