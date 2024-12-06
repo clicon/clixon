@@ -11,7 +11,8 @@
 # 4. Validate user-error (invalidation by user callback)
 # 5. Commit user-error (invalidation by user callback)
 # -- to here only basic callback tests (that they occur). Below transaction data
-# 6. Detailed transaction vector add/del/change tests
+# 6. Validate user-error with plugin_rpc_err (invalidation by user callback)
+# 7. Detailed transaction vector add/del/change tests
 # For the last test, the yang is a list with three members, so that you can do
 # add/delete/change in a single go.
 # The user-error uses a trick feature in the example nacm plugin which is started
@@ -277,7 +278,34 @@ for op in abort; do
     let line++
 done
 
-# 6. Detailed transaction vector add/del/change tests
+# 6. Validate only user-error with plugin_rpc_err (invalidation by user callback)
+# XXX Note Commit user-error must immediately preceede this due to toggling
+# in nacm/transaction example test module
+let nr++
+new "6. Validate user-error with plugin_rpc_err ($errnr is invalid)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><y><a>$errnr</a><c>99</c></y></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Validate user-error validate (should fail)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>test_error_tag</error-tag><error-severity>error</error-severity><error-info>test_error_info</error-info><error-message>test_error_data 1234</error-message></rpc-error></rpc-reply>"
+
+new "Validate user-error discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+for op in begin validate; do
+    checklog "$nr main_$op add: <y><a>$errnr</a><c>99</c></y>" $line
+    let line++
+    checklog "$nr nacm_$op add: <y><a>$errnr</a><c>99</c></y>" $line
+    let line++
+done
+# No error message here, don't increment line.
+for op in abort; do
+    checklog "$nr main_$op add: <y><a>$errnr</a><c>99</c></y>" $line
+    let line++
+    checklog "$nr nacm_$op add: <y><a>$errnr</a><c>99</c></y>" $line
+    let line++
+done
+
+# 7. Detailed transaction vector add/del/change tests
 let nr++
 let base=nr
 new "Add base <a>$base entry"
@@ -289,7 +317,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 let line+=12
 
 let nr++
-new "6. netconf mixed change: change b, del c, add d"
+new "7. netconf mixed change: change b, del c, add d"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><y><a>$base</a><b>42</b><d>0</d></y></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit change"
@@ -325,7 +353,7 @@ let line+=12
 
 # Variant check that only b,c
 let nr++
-new "7. netconf insert b,c between end-points"
+new "8. netconf insert b,c between end-points"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><y><a>$base</a><b>1</b><c>1</c></y></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit base"
@@ -339,7 +367,7 @@ for op in begin validate complete commit commit_done end; do
     let line++
 done
 
-new "8. Choice"
+new "9. Choice"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><first>true</first></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit same"
@@ -374,7 +402,7 @@ let line++
 checklog "$nr nacm_end add: <second>true</second>" $line
 let line++
 
-new "9. Choice/case with empty type"
+new "10. Choice/case with empty type"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><aaa/></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit first"
@@ -411,7 +439,7 @@ let line++
 
 #---------------------------------------------
 
-new "10. Choice/case with anydata"
+new "11. Choice/case with anydata"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns='urn:example:clixon'><ddd><foo>a</foo></ddd></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf commit first"
