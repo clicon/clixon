@@ -189,8 +189,9 @@ enum format_enum{
     FORMAT_JSON,
     FORMAT_TEXT,
     FORMAT_CLI,
-    FORMAT_NETCONF,
-    FORMAT_DEFAULT
+    FORMAT_NETCONF,  /* Last concrete format, used in code */
+    FORMAT_DEFAULT,  /* Indirect: actual value in CLICON_CLI_OUTPUT_FORMAT */
+    FORMAT_PIPE_XML_DEFAULT /* Meta: If pipe, xml, if not default */
 };
 
 /*

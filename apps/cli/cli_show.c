@@ -870,11 +870,22 @@ cli_show_option_format(clixon_handle     h,
         clixon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
         goto done;
     }
+    /* Special pipe xml default handling */
+    if (format == FORMAT_PIPE_XML_DEFAULT){
+        if (cligen_spipe_get(cli_cligen(h)) != -1)
+            format = FORMAT_XML;
+        else
+            format = FORMAT_DEFAULT;
+    }
     /* Special default format handling */
     if (format == FORMAT_DEFAULT){
         formatstr = clicon_option_str(h, "CLICON_CLI_OUTPUT_FORMAT");
         if ((int)(format = format_str2int(formatstr)) < 0){
             clixon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
+            goto done;
+        }
+        if (format > FORMAT_NETCONF){
+            clixon_err(OE_PLUGIN, 0, "Not concrete format: %d", format);
             goto done;
         }
     }
