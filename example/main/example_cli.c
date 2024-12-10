@@ -46,6 +46,8 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <signal.h>
+#include <pwd.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>
@@ -107,6 +109,84 @@ mycallback(clixon_handle h,
         xml_nsctx_free(nsc);
     if (xret)
         xml_free(xret);
+    return retval;
+}
+
+/*! Start bash from cli callback
+ *
+ * Typical usage: shell("System Bash") <source:rest>, cli_start_shell();
+ * @param[in]   h     Clixon handle
+ * @param[in]   cvv   Vector of command variables
+ * @param[in]   argv  [<shell>], defaults to "sh"
+ * @retval      0     OK
+ * @retval     -1     Error
+ * @note  Code potentially unsafe
+ */
+int
+cli_start_shell(clixon_handle h,
+                cvec         *cvv,
+                cvec         *argv)
+{
+    int            retval = -1;
+    char          *cmd;
+    char          *shcmd = "sh";
+    struct passwd *pw;
+    char           bcmd[128];
+    cg_var        *cv1 = cvec_i(cvv, 1);
+    sigset_t       oldsigset;
+    struct sigaction oldsigaction[32] = {{{0,},},};
+
+    if (cvec_len(argv) > 1){
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: [<shell>]",
+                   cvec_len(argv));
+        goto done;
+    }
+    if (cvec_len(argv) == 1){
+        shcmd = cv_string_get(cvec_i(argv, 0));
+    }
+    cmd = (cvec_len(cvv)>1 ? cv_string_get(cv1) : NULL);
+    if ((pw = getpwuid(getuid())) == NULL){
+        clixon_err(OE_UNIX, errno, "getpwuid");
+        goto done;
+    }
+    if (chdir(pw->pw_dir) < 0){
+        clixon_err(OE_UNIX, errno, "chdir");
+        endpwent();
+        goto done;
+    }
+    endpwent();
+
+    if (clixon_signal_save(&oldsigset, oldsigaction) < 0)
+        goto done;
+    cli_signal_flush(h);
+    cli_signal_unblock(h);
+    if (cmd){
+        snprintf(bcmd, 128, "%s -c \"%s\"", shcmd, cmd);
+        if (system(bcmd) < 0){
+            cli_signal_block(h);
+            clixon_err(OE_UNIX, errno, "system(bash -c)");
+            goto done;
+        }
+    }
+    else{
+        snprintf(bcmd, 128, "%s ", shcmd); /* -l (login shell) but is applicable to bash only */
+        if (system(bcmd) < 0){
+            cli_signal_block(h);
+            clixon_err(OE_UNIX, errno, "system(bash)");
+            goto done;
+        }
+    }
+    cli_signal_block(h);
+#if 0 /* Allow errcodes from bash */
+    if (retval != 0){
+        clixon_err(OE_UNIX, errno, "system(%s) %d", cmd, retval);
+        goto done;
+    }
+#endif
+    if (clixon_signal_restore(&oldsigset, oldsigaction) < 0)
+        goto done;
+    retval = 0;
+ done:
     return retval;
 }
 
