@@ -30,6 +30,7 @@ Expected: January 2025
   * Changed: `CLICON_NETCONF_DUPLICATE_ALLOW` to not only check but remove duplicates
   * Added: `CLICON_CLI_PIPE_DIR`
   * Added: `CLICON_XMLDB_SYSTEM_ONLY_CONFIG`
+  * Deprecated:  `CLICON_YANG_SCHEMA_MOUNT_SHARE`
 
 ### C/CLI-API changes on existing features
 

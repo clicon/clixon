@@ -53,6 +53,10 @@
  * The API handles the relation between yext -->* ymnt -->* xmnt
  * Structure:
  *
+ *   ymounts(top)
+ *   |
+ *   ydomain*
+ *   |
  *   yspec0(1)     xtop(1)
  *   |             | (xpath)
  *   ymnt(*)  <--  xmnt(*)
@@ -64,11 +68,11 @@
  * The calls in this code are:
  * - yang_schema_mount_point(): Is ymnt a yang mount-point? (ymnt)
  * - yang_mount_get(): ymnt + xpath -> yspec
+ *                     XXXX - yang_mount_get(): ymnt + xpath -> yspec
  * - yang_mount_set(): ymnt
  * - xml_yang_mount_get(): xmnt-> yspec
  * - xml_yang_mount_set(): xmnt -> yspec
  * - yang_mount_get_yspec_any(): ymnt -> yspec
- * - yang_mounto_freeall(): ymnt-> free cvec
  * - yang_mount_xmnt2ymnt_xpath(): xmnt -> ymnt + xpath
  * - yang_mount_xtop2xmnt(): top-level xml -> xmnt vector
  * - yang_mount_yspec2ymnt(): top-level yspec -> ymnt vector NOTUSED
@@ -183,11 +187,13 @@ yang_schema_mount_point(yang_stmt *y)
 
 /*! Get yangspec mount-point
  *
- * @param[in]  y     Yang container/list containing unknown node
+ * @param[in]  ys    Yang container/list containing unknown node
  * @param[in]  xpath Key for yspec on y
  * @param[out] yspec YANG stmt spec
  * @retval     0     OK
  * @retval    -1     Error
+ * With domains it is assumed an xpath is unique across domains, which is true if the xpath
+ * has eg a list name which is unique. But there could be cases where this is not true.
  */
 int
 yang_mount_get(yang_stmt  *ys,
@@ -721,7 +727,7 @@ yang_schema_find_share(clixon_handle h,
     cg_var *cv;
     cxobj  *xroot;
     cxobj  *xmnt;
-    cxobj  *xylib;
+    cxobj  *xylib = NULL;
     int     config = 1;
     int     ret;
 
@@ -735,7 +741,10 @@ yang_schema_find_share(clixon_handle h,
         xmnt = cv_void_get(cv);
         if (xmnt == xt)
             continue;
-        xylib = NULL;
+        if (xylib){
+            xml_free(xylib);
+            xylib = NULL;
+        }
         /* Get xyanglib */
         if (clixon_plugin_yang_mount_all(h, xmnt, &config, NULL, &xylib) < 0)
             goto done;
@@ -753,44 +762,41 @@ yang_schema_find_share(clixon_handle h,
     }
     retval = 0;
  done:
+    if (xylib)
+        xml_free(xylib);
     if (cvv)
         cvec_free(cvv);
     return retval;
 }
 
-/*! Get yanglib from user plugin callback, parse it and mount it
+/*! Given yanglib, mount it, potentially create a new yspec, and parse all its yangs
  *
  * Optionally check for shared yspec
- * @param[in]  h   Clixon handle
- * @param[in]  xt  XML tree node
- * @retval     1   OK
- * @retval     0   No yanglib or problem when parsing yanglib
- * @retval    -1   Error
+ * @param[in]  h        Clixon handle
+ * @param[in]  xt       XML tree node
+ * @param[in]  xyanglib XML yang-lib
+ * @retval     1        OK
+ * @retval     0        No yanglib or problem when parsing yanglib
+ * @retval    -1        Error
  */
 int
-yang_schema_yanglib_parse_mount(clixon_handle h,
-                                cxobj        *xt)
+yang_schema_yanglib_mount_parse(clixon_handle h,
+                                cxobj        *xt,
+                                cxobj        *xyanglib,
+                                yang_stmt   **yspecp)
 {
     int        retval = -1;
-    cxobj     *xyanglib = NULL;
     cxobj     *xb;
+    char      *domain = NULL;
     yang_stmt *ymounts;
     yang_stmt *ydomain;
     yang_stmt *yspec0 = NULL;
     yang_stmt *yspec1 = NULL;
     char      *xpath = NULL;
-    char      *domain = NULL;
     cbuf      *cb = NULL;
     int        ret;
     static unsigned int nr = 0;
 
-    /* 1. Get modstate (xyanglib) of node: xyanglib, by querying backend state (via callback)
-     *    XXX this xyanglib is not proper RFC8525, submodules appear as modules WHY?
-     */
-    if (clixon_plugin_yang_mount_all(h, xt, NULL, NULL, &xyanglib) < 0)
-        goto done;
-    if (xyanglib == NULL)
-        goto anydata;
     if ((xb = xpath_first(xyanglib, NULL, "module-set/name")) != NULL)
         domain = xml_body(xb);
     if (domain == NULL){
@@ -813,10 +819,8 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
             goto done;
     }
     /* Optimization: find equal yspec from other mount-point */
-    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT_SHARE")) {
-        if (yang_schema_find_share(h, xt, xyanglib, &yspec0) < 0)
-            goto done;
-    }
+    if (yang_schema_find_share(h, xt, xyanglib, &yspec0) < 0)
+        goto done;
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_YANG, errno, "cbuf_new");
         goto done;
@@ -835,15 +839,54 @@ yang_schema_yanglib_parse_mount(clixon_handle h,
     }
     if (xml_yang_mount_set(h, xt, yspec1) < 0)
         goto done;
+    if (yspecp)
+        *yspecp = yspec1;
     yspec1 = NULL;
     retval = 1;
  done:
+    if (yspec1)
+        ys_free(yspec1);
     if (cb)
         cbuf_free(cb);
     if (xpath)
         free(xpath);
-    if (yspec1)
-        ys_free(yspec1);
+    return retval;
+ anydata:
+    retval = 0;
+    goto done;
+}
+
+/*! Get yanglib from user plugin callback, create yspec, mount it and parse all yangs
+ *
+ * Optionally check for shared yspec
+ * @param[in]  h   Clixon handle
+ * @param[in]  xt  XML tree node
+ * @retval     1   OK
+ * @retval     0   No yanglib or problem when parsing yanglib
+ * @retval    -1   Error
+ */
+int
+yang_schema_yanglib_get_mount_parse(clixon_handle h,
+                                    cxobj        *xt)
+{
+    int        retval = -1;
+    cxobj     *xyanglib = NULL;
+    int        ret;
+
+    clixon_debug(CLIXON_DBG_APP, "");
+    /* 1. Get modstate (xyanglib) of node: xyanglib, by querying backend state (via callback)
+     *    XXX this xyanglib is not proper RFC8525, submodules appear as modules WHY?
+     */
+    if (clixon_plugin_yang_mount_all(h, xt, NULL, NULL, &xyanglib) < 0)
+        goto done;
+    if (xyanglib == NULL)
+        goto anydata;
+    if ((ret = yang_schema_yanglib_mount_parse(h, xt, xyanglib, NULL)) < 0)
+        goto done;
+    if (ret == 0)
+        goto anydata;
+    retval = 1;
+ done:
     if (xyanglib)
         xml_free(xyanglib);
     return retval;

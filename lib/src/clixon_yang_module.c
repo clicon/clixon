@@ -851,10 +851,10 @@ yang_metadata_init(clixon_handle h)
  * This function is used where a yang-lib module-set is available to populate
  * an XML mount-point.
  * @param[in] h        Clixon handle
- * @param[in] xyanglib XML tree on the form <yang-lib>...
- * @param[in] mntpnt   Name of mount-point for logs
+ * @param[in] xyanglib XML tree on the form <any><module-set><module>*
+ * @param[in] mntpnt   Name of mount-point for logs (debug)
  * @param[in] domain   YANG domain (NULL is default)
- * @param[in] yspec    Will be populated with YANGs, is consumed
+ * @param[in] yspec    Will be populated with YANGs
  * @retval    1        OK
  * @retval    0        Parse error
  * @retval   -1        Error

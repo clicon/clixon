@@ -48,7 +48,7 @@
  *    such as <n:a><n:b>. An xml with <m:a><m:b> (or <a><b>) will NOT match EVEN IF they have the
  *    same namespace given by xmlns settings.
  * 2) RFC6241 8.9.1
- * In the scope of get-.config, the set of namespace declarations are those in scope on the 
+ * In the scope of get-config, the set of namespace declarations are those in scope on the
  * <filter> element.
  * <rpc message-id="101" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
  *    <get-config>
