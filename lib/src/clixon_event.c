@@ -53,7 +53,6 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <poll.h>
 
 #include <cligen/cligen.h>
 
@@ -69,6 +68,10 @@
 #include "clixon_proc.h"
 #include "clixon_options.h"
 #include "clixon_event.h"
+
+#ifdef CLIXON_EVENT_POLL
+#include <poll.h>
+#endif
 
 /*
  * Constants
@@ -347,17 +350,18 @@ clixon_event_unreg_timeout(int (*fn)(int, void*),
     return found?0:-1;
 }
 
-/*!
- * Poll to see if there is any data available on this file descriptor.
+/*! Poll to see if there is any data available on this file descriptor.
  *
  * @param[in]  fd   File descriptor
  * @retval     1    Something to read on fd
  * @retval     0    Nothing to read/empty fd
  * @retval    -1    Error
  */
-int clixon_event_poll(int fd) {
-    struct pollfd pfd;
-    int retval;
+#ifdef CLIXON_EVENT_POLL
+int
+clixon_event_poll(int fd) {
+    struct pollfd 	pfd;
+    int 			retval;
 
     pfd.fd = fd;
     pfd.events = POLLIN;
@@ -370,6 +374,21 @@ int clixon_event_poll(int fd) {
 
     return retval;
 }
+#else
+int
+clixon_event_poll(int fd)
+{
+    int            retval = -1;
+    fd_set         fdset;
+    struct timeval tnull = {0,};
+
+    FD_ZERO(&fdset);
+    FD_SET(fd, &fdset);
+    if ((retval = select(FD_SETSIZE, &fdset, NULL, NULL, &tnull)) < 0)
+        clixon_err(OE_EVENTS, errno, "select");
+    return retval;
+}
+#endif
 
 /*! Dispatch file descriptor events (and timeouts) by invoking callbacks.
  *
