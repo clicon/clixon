@@ -447,7 +447,6 @@ new "xpath /root/*/*[.='111']"
 expecteof "$clixon_util_xpath -D $DBG -f $xml4 -p /root/*/*[.='111']" 0 "" "nodeset:0:<a>111</a>1:<b>111</b>2:<a>111</a>"
 
 # Try functionnames in place of node nc-names
-
 new "xpath nodetest: node"
 expectpart "$($clixon_util_xpath -D $DBG -f $xmlfn -p "count(/root/count)")" 0 "number:1"
 
