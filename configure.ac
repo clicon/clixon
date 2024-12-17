@@ -465,6 +465,13 @@ AH_BOTTOM([#include <clixon_custom.h>])
 
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 
+AC_ARG_ENABLE([event-poll],
+    AS_HELP_STRING([--enable-event-poll], [Enable event polling feature]),
+    [if test "$enable_event_poll" = "yes"; then
+        AC_DEFINE([CLIXON_EVENT_POLL], 1, [Enable event polling feature])
+     fi]
+)
+
 AC_CONFIG_FILES([Makefile
 	  lib/Makefile
 	  lib/src/Makefile

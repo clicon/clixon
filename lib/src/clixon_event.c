@@ -69,6 +69,10 @@
 #include "clixon_options.h"
 #include "clixon_event.h"
 
+#ifdef CLIXON_EVENT_POLL
+#include <poll.h>
+#endif
+
 /*
  * Constants
  */
@@ -353,6 +357,24 @@ clixon_event_unreg_timeout(int (*fn)(int, void*),
  * @retval     0    Nothing to read/empty fd
  * @retval    -1    Error
  */
+#ifdef CLIXON_EVENT_POLL
+int
+clixon_event_poll(int fd) {
+    struct pollfd 	pfd;
+    int 			retval;
+
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+
+    retval = poll(&pfd, 1, 0);
+
+    if (retval < 0) {
+        clixon_err(OE_EVENTS, errno, "poll");
+    }
+
+    return retval;
+}
+#else
 int
 clixon_event_poll(int fd)
 {
@@ -366,6 +388,7 @@ clixon_event_poll(int fd)
         clixon_err(OE_EVENTS, errno, "select");
     return retval;
 }
+#endif
 
 /*! Dispatch file descriptor events (and timeouts) by invoking callbacks.
  *
