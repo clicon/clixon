@@ -21,11 +21,9 @@ cfg=$dir/conf_yang.xml
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
-  <CLICON_FEATURE>ni-ieee1588-ptp:cmlds</CLICON_FEATURE>
+  <CLICON_FEATURE>ieee1588-ptp-tt:cmlds</CLICON_FEATURE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_STANDARD_DIR}/ietf/RFC</CLICON_YANG_DIR>
-  <!--CLICON_YANG_DIR>${YANG_STANDARD_DIR}/ieee/draft/802.1/Qcr</CLICON_YANG_DIR> 
-  <CLICON_YANG_DIR>${YANG_STANDARD_DIR}/ieee/draft/802</CLICON_YANG_DIR--> 
   <CLICON_YANG_DIR>${YANG_STANDARD_DIR}/ieee/published</CLICON_YANG_DIR> 
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
