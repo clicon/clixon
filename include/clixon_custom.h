@@ -213,4 +213,15 @@
  * This causes xml_cmp to show that the datastores are unequal and may cause a wrong diff, or
  * worse case an overwrite.
  */
+
 #undef SYSTEM_ONLY_CONFIG_CANDIDATE_CLEAR
+/*! In full XPath namespace resolve, match even if namespace not resolved
+ *
+ * In the case of xpath lookup functions (eg xpath_vec_ctx) where nsc is defined, then
+ * matching with XML requires equal namespaces.
+ * However, some code is OK with the XPATH NSC being unresolved to NULL, even if the XML
+ * namespace is defined.
+ * This seems wrong and should be changed, but need further investigation
+ */
+#define XPATH_NS_ACCEPT_UNRESOLVED
+

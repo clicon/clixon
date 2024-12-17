@@ -95,10 +95,10 @@ const char *xp_fnname_int2str(enum clixon_xpath_function code);
 
 int xp_function_current(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_re_match(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
-int xp_function_deref(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_deref(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, xp_ctx **xrp);
 int xp_function_derived_from(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, int self, xp_ctx **xrp);
 int xp_function_bit_is_set(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
-int xp_function_position(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_position(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, xp_ctx **xrp);
 int xp_function_count(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_name(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_string(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
@@ -109,7 +109,7 @@ int xp_function_string_length(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int 
 int xp_function_translate(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_boolean(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_not(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
-int xp_function_true(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
-int xp_function_false(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_true(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, xp_ctx **xrp);
+int xp_function_false(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, xp_ctx **xrp);
 
 #endif /* _CLIXON_XPATH_FUNCTION_H */

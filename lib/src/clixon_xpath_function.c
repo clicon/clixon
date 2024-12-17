@@ -280,7 +280,6 @@ xp_function_re_match(xp_ctx            *xc,
  * @param[in]  xc0  Incoming context
  * @param[in]  xs   XPath node tree
  * @param[in]  nsc  XML Namespace context
- * @param[in]  localonly Skip prefix and namespace tests (non-standard)
  * @param[out] xrp  Resulting context
  * @retval     0    OK
  * @retval    -1    Error
@@ -290,7 +289,6 @@ int
 xp_function_deref(xp_ctx            *xc0,
                   struct xpath_tree *xs,
                   cvec              *nsc,
-                  int                localonly,
                   xp_ctx           **xrp)
 {
     int         retval = -1;
@@ -587,7 +585,6 @@ xp_function_bit_is_set(xp_ctx            *xc,
  * @param[in]  xc   Incoming context
  * @param[in]  xs   XPath node tree
  * @param[in]  nsc  XML Namespace context
- * @param[in]  localonly Skip prefix and namespace tests (non-standard)
  * @param[out] xrp  Resulting context
  * @retval     0    OK
  * @retval    -1    Error
@@ -596,7 +593,6 @@ int
 xp_function_position(xp_ctx            *xc,
                      struct xpath_tree *xs,
                      cvec              *nsc,
-                     int                localonly,
                      xp_ctx           **xrp)
 {
     int         retval = -1;
@@ -1253,7 +1249,6 @@ int
 xp_function_true(xp_ctx            *xc,
                  struct xpath_tree *xs,
                  cvec              *nsc,
-                 int                localonly,
                  xp_ctx           **xrp)
 {
     int         retval = -1;
@@ -1280,7 +1275,6 @@ int
 xp_function_false(xp_ctx            *xc,
                   struct xpath_tree *xs,
                   cvec              *nsc,
-                  int                localonly,
                   xp_ctx           **xrp)
 {
     int         retval = -1;

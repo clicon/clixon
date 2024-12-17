@@ -937,7 +937,6 @@ yspec_new1(clixon_handle h,
  * @param[in]   h       Clixon handle
  * @param[in]   xpath   Mount xpath, saved in cvec
  * @param[in]   domain  YANG domain
- * @param[in]   domain  YANG spec name
  * @param[in]   yspec0  Input NULL if no previous shared exist, otherwise a shared yspec but new name
  * @retval      yspec1  New or (previously shared)
  * @retval      NULL    Error

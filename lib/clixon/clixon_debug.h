@@ -153,7 +153,7 @@ static inline int clixon_debug_isset(unsigned n)
 }
 
 /* Is detail set ?, return detail level 0-7 */
-static inline int clixon_debug_detail()
+static inline int clixon_debug_detail(void)
 {
     unsigned level = clixon_debug_get();
 

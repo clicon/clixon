@@ -656,6 +656,7 @@ get_list_pagination(clixon_handle        h,
     int        j;
     int        ret;
     dispatcher_entry_t *htable = NULL;
+    cvec      *wherens = NULL;
     //    int        extflag = 0;
 #ifdef LIST_PAGINATION_REMAINING
     cxobj     *xcache;
@@ -715,6 +716,8 @@ get_list_pagination(clixon_handle        h,
         (where = xml_body(x)) != NULL){
         if (strcmp(where, "unfiltered") == 0)
             where = NULL;
+        else if (xml_nsctx_node(x, &wherens) < 0)
+            goto done;
     }
     /* then the "sort-by" parameter (see Section 3.1.2) */
     if ((x = xml_find_type(xe, NULL, "sort-by", CX_ELMNT)) != NULL){
@@ -907,6 +910,8 @@ get_list_pagination(clixon_handle        h,
  ok:
     retval = 0;
  done:
+    if (wherens)
+        cvec_free(wherens);
     if (xvec)
         free(xvec);
     if (cbmsg)

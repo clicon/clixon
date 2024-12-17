@@ -131,12 +131,13 @@ static const map_str2int yang_regexp_map[] = {
  * @see enum format_enum
  */
 static const map_str2int _FORMATS[] = {
-    {"xml",     FORMAT_XML},
-    {"text",    FORMAT_TEXT},
-    {"json",    FORMAT_JSON},
-    {"cli",     FORMAT_CLI},
-    {"netconf", FORMAT_NETCONF},
-    {"default", FORMAT_DEFAULT},
+    {"xml",              FORMAT_XML},
+    {"text",             FORMAT_TEXT},
+    {"json",             FORMAT_JSON},
+    {"cli",              FORMAT_CLI},
+    {"netconf",          FORMAT_NETCONF},
+    {"default",          FORMAT_DEFAULT},
+    {"pipe-xml-default", FORMAT_PIPE_XML_DEFAULT},
     {NULL,      -1}
 };
 

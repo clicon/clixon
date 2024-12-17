@@ -30,11 +30,15 @@ Expected: January 2025
   * Changed: `CLICON_NETCONF_DUPLICATE_ALLOW` to not only check but remove duplicates
   * Added: `CLICON_CLI_PIPE_DIR`
   * Added: `CLICON_XMLDB_SYSTEM_ONLY_CONFIG`
+  * Deprecated:  `CLICON_YANG_SCHEMA_MOUNT_SHARE`
 
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code
 
+* Moved callbacks starting programs from libclixon_cli to example code
+  * The functions are: `cli_start_shell` and `cli_start_program`
+  * If you need them, add them to your application plugin code instead
 * Changed C-API: add `system-only` parameter with default value `0` last:
   * `clixon_json2file()` -> `clixon_json2file(,0)`
   * `clixon_json2cbuf()` -> `clixon_json2cbuf(,0)`

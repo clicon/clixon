@@ -58,7 +58,9 @@ enum xp_objtype{
     XT_STRING
 };
 
-/* Expression evaluation occurs with respect to a context. XSLT and XPointer specify how the 
+/*! XPath context and result
+ *
+ * Expression evaluation occurs with respect to a context. XSLT and XPointer specify how the
  * context is determined for XPath expressions used in XSLT and XPointer respectively. The 
  * context consists of:
  *  a node (the context node)

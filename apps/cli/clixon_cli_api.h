@@ -80,11 +80,12 @@ cligen_handle cli_cligen(clixon_handle h);
 int cli_notification_register(clixon_handle h, char *stream, enum format_enum format,
                               char *filter, int status,
                               int (*fn)(int, void*), void *arg);
-
+void cli_signal_block(clixon_handle h);
+void cli_signal_unblock(clixon_handle h);
+void cli_signal_flush(clixon_handle h);
 int mtpoint_paths(yang_stmt *yspec0, char *mtpoint, char *api_path_fmt1, char **api_path_fmt01);
 int dbxml_body(cxobj *xbot, cvec *cvv);
 int identityref_add_ns(cxobj *x, void *arg);
-
 int cli_dbxml(clixon_handle h, cvec *vars, cvec *argv, enum operation_type op, cvec *nsctx);
 int cli_set(clixon_handle h, cvec *vars, cvec *argv);
 int cli_merge(clixon_handle h, cvec *vars, cvec *argv);

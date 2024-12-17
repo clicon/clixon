@@ -63,7 +63,8 @@ int xml_yang_mount_get(clixon_handle h, cxobj *x, validate_level *vl, char **xpa
 int xml_yang_mount_set(clixon_handle h, cxobj *x,  yang_stmt *yspec);
 int yang_mount_xtop2xmnt(cxobj *xtop, cvec **cvvp);
 int yang_schema_mount_statedata(clixon_handle h, yang_stmt *yspec, char *xpath, cvec *nsc, cxobj **xret, cxobj **xerr);
-int yang_schema_yanglib_parse_mount(clixon_handle h, cxobj *xt);
+int yang_schema_yanglib_mount_parse(clixon_handle h, cxobj *xt, cxobj *xyanglib, yang_stmt **yspecp);
+int yang_schema_yanglib_get_mount_parse(clixon_handle h, cxobj *xt);
 int yang_schema_get_child(clixon_handle h, cxobj *x1, cxobj *x1c, yang_stmt **yc);
 int yang_schema_yspec_rm(clixon_handle h, cxobj *xmnt);
 
