@@ -441,9 +441,8 @@ startup_validate(clixon_handle  h,
     }
     retval = 1;
  done:
-     if (td){
-         transaction_free(td);
-     }
+     if (td)
+         transaction_free1(td, 1);
     return retval;
  fail: /* cbret should be set */
     retval = 0;
@@ -662,7 +661,7 @@ candidate_validate(clixon_handle h,
      if (td){
          if (retval < 1)
              plugin_transaction_abort_all(h, td);
-         transaction_free(td);
+        transaction_free1(td, 1);
      }
     return retval;
  fail:
@@ -772,7 +771,7 @@ candidate_commit(clixon_handle  h,
     if (td){
         if (retval < 1)
             plugin_transaction_abort_all(h, td);
-        transaction_free(td);
+        transaction_free1(td, 1);
     }
     if (xret)
         xml_free(xret);
@@ -1081,9 +1080,8 @@ from_client_restart_one(clixon_handle    h,
         goto fail;
     retval = 1;
  done:
-    if (td){
-         transaction_free(td);
-     }
+    if (td)
+        transaction_free1(td, 1);
     return retval;
  fail:
     retval = 0;

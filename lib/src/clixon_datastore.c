@@ -717,6 +717,7 @@ xmldb_db_reset(clixon_handle h,
  * @param[in]  h    Clixon handle
  * @param[in]  db   Database name
  * @retval     xml  XML cached tree or NULL
+ * @see xmldb_get_cache  Read from store if miss
  */
 cxobj *
 xmldb_cache_get(clixon_handle h,
@@ -950,6 +951,7 @@ xmldb_rename(clixon_handle h,
  * @retval     1      OK
  * @retval     0      YANG assigment and default assignment not made
  * @retval    -1      General error, check specific clicon_errno, clicon_suberrno
+ * @see xmldb_get_cache  Consider using this instead
  */
 int
 xmldb_populate(clixon_handle h,

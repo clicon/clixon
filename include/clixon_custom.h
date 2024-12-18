@@ -213,8 +213,8 @@
  * This causes xml_cmp to show that the datastores are unequal and may cause a wrong diff, or
  * worse case an overwrite.
  */
-
 #undef SYSTEM_ONLY_CONFIG_CANDIDATE_CLEAR
+
 /*! In full XPath namespace resolve, match even if namespace not resolved
  *
  * In the case of xpath lookup functions (eg xpath_vec_ctx) where nsc is defined, then
@@ -222,6 +222,14 @@
  * However, some code is OK with the XPATH NSC being unresolved to NULL, even if the XML
  * namespace is defined.
  * This seems wrong and should be changed, but need further investigation
+ * @see https://github.com/clicon/clixon/issues/588
  */
 #define XPATH_NS_ACCEPT_UNRESOLVED
 
+/*! Default algorithm needs two passes to resolve "when"-protected non-presence containers
+ *
+ * A non-presence container may be protected by a YANG "when" statement which relies on
+ * default values that have not yet been resolved.
+ * A more intelligent algorithm is needed
+ */
+#define XML_DEFAULT_WHEN_TWICE

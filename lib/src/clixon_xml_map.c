@@ -345,6 +345,9 @@ xml_diff_ordered_by_user(cxobj     *x0,
  * (*) "comparing" a&b here is made by xml_cmp() which judges equality from a structural
  *     perspective, ie both have the same yang spec, if they are lists, they have the
  *     the same keys. NOT that the values are equal!
+ * Also, a node is skipped if:
+ * 1) its xml flag has XML_FLAG_SKIP
+ * 2) its yang has extension clixon-lib:ignore-compare
  * @see xml_diff2cbuf, clixon_text_diff2cbuf  for +/- diff for XML and TEXT formats
  * @see text_diff2cbuf for curly
  * @see xml_tree_equal Equal or not
@@ -383,29 +386,35 @@ xml_diff1(cxobj     *x0,
         y0c = NULL;
         y1c = NULL;
         /* If cl:ignore-compare extension, return equal */
-        if (x0c && (y0c = xml_spec(x0c)) != NULL){
-            if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
-                goto done;
-            if (extflag){ /* skip */
-                if (x1c) {
-                    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-                    continue;
-                }
-                else
-                    goto ok;
+        if (x0c) {
+            if (xml_flag(x0c, XML_FLAG_SKIP) != 0x0){ /* skip */
+                x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                continue;
             }
+            else
+                if ((y0c = xml_spec(x0c)) != NULL){
+                    if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                        goto done;
+                    if (extflag){ /* skip */
+                        x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                        continue;
+                    }
+                }
         }
-        if (x1c && (y1c = xml_spec(x1c)) != NULL){
-            if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
-                goto done;
-            if (extflag){ /* skip */
-                if (x1c) {
-                    x1c = xml_child_each(x1, x1c, CX_ELMNT);
-                    continue;
-                }
-                else
-                    goto ok;
+        if (x1c) {
+            if (xml_flag(x1c, XML_FLAG_SKIP) != 0x0){ /* skip */
+                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                continue;
             }
+            else
+                if ((y1c = xml_spec(x1c)) != NULL){
+                    if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                        goto done;
+                    if (extflag){ /* skip */
+                        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                        continue;
+                    }
+                }
         }
         if (x0c == NULL){
             if (cxvec_append(x1c, x1vec, x1veclen) < 0)

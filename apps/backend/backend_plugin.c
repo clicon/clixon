@@ -555,10 +555,32 @@ transaction_new(void)
 int
 transaction_free(transaction_data_t *td)
 {
-    if (td->td_src)
-        xml_free(td->td_src);
-    if (td->td_target)
-        xml_free(td->td_target);
+    return transaction_free1(td, 1);
+}
+
+/*! Free transaction structure
+ *
+ * @param[in]  td    Transaction data will be deallocated after the call
+ * @param[in]  copy  0: XML trees are no-copy, clear and dont free, 1: free XML trees
+ */
+int
+transaction_free1(transaction_data_t *td,
+                  int                 copy)
+{
+    if (td->td_src){
+        if (copy)
+            xml_free(td->td_src);
+        else
+            xml_apply(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+                      (void*)(XML_FLAG_NONE|XML_FLAG_ADD|XML_FLAG_DEL|XML_FLAG_CHANGE|XML_FLAG_SKIP|XML_FLAG_MARK));
+    }
+    if (td->td_target){
+        if (copy)
+            xml_free(td->td_target);
+        else
+            xml_apply(td->td_target, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+                      (void*)(XML_FLAG_NONE|XML_FLAG_ADD|XML_FLAG_DEL|XML_FLAG_CHANGE|XML_FLAG_SKIP|XML_FLAG_MARK));
+    }
     if (td->td_dvec)
         free(td->td_dvec);
     if (td->td_avec)

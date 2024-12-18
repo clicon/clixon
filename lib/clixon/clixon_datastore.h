@@ -76,6 +76,8 @@ int xmldb_get(clixon_handle h, const char *db, cvec *nsc, char *xpath, cxobj **x
 int xmldb_get0(clixon_handle h, const char *db, yang_bind yb,
                cvec *nsc, const char *xpath, int copy, withdefaults_type wdef,
                cxobj **xret, modstate_diff_t *msd, cxobj **xerr);
+int xmldb_get_cache(clixon_handle h, const char *db, yang_bind yb,
+                    cxobj **xtp, modstate_diff_t *msdiff, cxobj **xerr);
 /* in clixon_datastore_write.[ch]: */
 int xmldb_put(clixon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
 int xmldb_dump(clixon_handle h, FILE *f, cxobj *xt, enum format_enum format, int pretty, withdefaults_type wdef, int multi, const char *multidb);

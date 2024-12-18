@@ -1482,6 +1482,12 @@ xmldb_put(clixon_handle       h,
     /* Add default recursive values */
     if (xml_default_recurse(x0, 0, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
         goto done;
+#ifdef XML_DEFAULT_WHEN_TWICE
+    /* Defaults a second time for when statements that depend on defaults that have not yet been evaluated
+     */
+    if (xml_default_recurse(x0, 0, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
+        goto done;
+#endif
     /* Write back to datastore cache if first time */
     if (de != NULL)
         de0 = *de;

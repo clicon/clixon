@@ -111,6 +111,7 @@ int clixon_pagination_free(clixon_handle h);
 
 transaction_data_t * transaction_new(void);
 int transaction_free(transaction_data_t *);
+int transaction_free1(transaction_data_t *, int copy);
 
 int plugin_transaction_begin_one(clixon_plugin_t *cp, clixon_handle h, transaction_data_t *td);
 int plugin_transaction_begin_all(clixon_handle h, transaction_data_t *td);
