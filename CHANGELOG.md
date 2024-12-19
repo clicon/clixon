@@ -17,7 +17,9 @@ Expected: January 2025
 
 ### Features
 
-* C-API: New no-copy `xmldb_get_cache` function for performance
+* Performance optimization
+  * New no-copy `xmldb_get_cache` function for performance
+  * Optimized duplicate detection
 * New: CLI generic pipe callbacks
   * Add scripts in `CLICON_CLI_PIPE_DIR`
 * New: [feature request: support xpath functions for strings](https://github.com/clicon/clixon/issues/556)

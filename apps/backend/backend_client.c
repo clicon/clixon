@@ -667,13 +667,20 @@ from_client_edit_config(clixon_handle h,
         goto done;
     /* Disable duplicate check in NETCONF messages. */
     if (clicon_option_bool(h, "CLICON_NETCONF_DUPLICATE_ALLOW")){
-        if ((ret = xml_duplicate_remove_recurse(xc, &xret)) < 0)
+        if (xml_duplicate_remove_recurse(xc) < 0)
             goto done;
     }
-    else if ((ret = xml_yang_validate_unique_recurse(xc, &xret)) < 0)
-        goto done;
+    else {
+        if ((ret = xml_yang_validate_unique_recurse(xc, &xret)) < 0)
+            goto done;
+        if (ret == 0){
+            if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+                goto done;
+            goto ok;
+        }
+    }
     /* xmldb_put (difflist handling) requires list keys */
-    if (ret == 1 && (ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
+    if ((ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
         goto done;
     if (ret == 0){
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)

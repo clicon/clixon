@@ -250,6 +250,7 @@ cxobj    *xml_child_i(cxobj *xn, int i);
 cxobj    *xml_child_i_type(cxobj *xn, int i, enum cxobj_type type);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
 int       xml_child_order(cxobj *xn, cxobj *xc);
+int       xml_vector_decrement(cxobj *x, int nr);
 cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 cxobj    *xml_child_each_attr(cxobj *xparent, cxobj *xprev);
 int       xml_child_insert_pos(cxobj *x, cxobj *xc, int pos);

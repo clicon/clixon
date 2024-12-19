@@ -909,6 +909,16 @@ xml_child_order(cxobj *xp,
     return -1;
 }
 
+/*! Advanced function to decrement _x_vector_i if objects have been removed
+ */
+int
+xml_vector_decrement(cxobj *x,
+                     int    nr)
+{
+    x->_x_vector_i -= nr;
+    return 0;
+}
+
 /*! Iterator over xml children objects
  *
  * @param[in] xparent xml tree node whose children should be iterated

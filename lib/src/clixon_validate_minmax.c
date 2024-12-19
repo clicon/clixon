@@ -46,6 +46,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <string.h>
+#include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
@@ -78,6 +79,19 @@
 #include "clixon_xml_map.h"
 #include "clixon_xml_bind.h"
 #include "clixon_validate_minmax.h"
+
+/*
+ * Local types
+ */
+
+/*! List used to order values, object and strings for leaf-lists, cvk:s for lists
+ * consider union
+ */
+struct vec_order {
+    cxobj        *vo_xml;
+    char        **vo_strvec;
+    size_t        vo_slen; /* length of vo_strvec (is actually global to vector) */
+};
 
 /*! New element last in list, check if already exists if so return -1
  *
@@ -112,7 +126,7 @@ unique_search_xpath(cxobj  *x,
         xi = xvec[i];
         if ((bi = xml_body(xi)) == NULL)
             break;
-        /* Check if bi is duplicate? 
+        /* Check if bi is duplicate?
          * XXX: sort svec?
          */
         for (s=0; s<(*slen); s++){
@@ -137,7 +151,7 @@ unique_search_xpath(cxobj  *x,
     goto done;
 }
 
-/*! New element last in list, return error if already exists 
+/*! New element last in list, return error if already exists
  *
  * @param[in]  vec    Vector of existing entries (new is last)
  * @param[in]  i1     The new entry is placed at vec[i1]
@@ -253,18 +267,19 @@ check_unique_list_direct(cxobj     *x,
         /* No keys: no checks necessary */
         goto ok;
     }
-    /* x need not be child 0, which could make the vector larger than necessary */
+    /* Vector of key values, k00,k01,..,k0n,k10,k11,..
+     * Ie, if nr of keys is n, and nr of children is m, then length is n*m
+     * x need not be child 0, which could make the vector larger than necessary */
     if ((vec = calloc(clen*xml_child_nr(xt), sizeof(char*))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
+    /* Vector of xml objects (children), not really necessary, is a direct copy of x_childvec */
     if ((xvec = calloc(xml_child_nr(xt), sizeof(cxobj*))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
-    /* A vector is built with key-values, for each iteration check "backward" in the vector
-     * for duplicates
-     */
+    /* Loop over children, then over each key, then search "backwards" */
     i = 0; /* x element index */
     do {
         xvec[i] = x;
@@ -465,7 +480,7 @@ check_minmax(cxobj     *xp,
  * @retval     1     Validation OK
  * @retval     0     Validation failed (xret set)
  * @retval    -1     Error
- * @note recurse for non-presence container 
+ * @note recurse for non-presence container
  */
 static int
 check_empty_list_minmax(cxobj     *xt,
@@ -542,9 +557,9 @@ xml_yang_minmax_new_list(cxobj     *x,
         if (yang_keyword_get(yu) != Y_UNIQUE)
             continue;
         /* Here is a list w unique constraints identified by:
-         * its first element x, its yang spec y, its parent xt, and 
+         * its first element x, its yang spec y, its parent xt, and
          * a unique yang spec yu,
-         * Two cases: 
+         * Two cases:
          * 1) multiple direct children (no prefixes), eg "a b"
          * 2) single xpath with canonical prefixes, eg "/ex:a/ex:b"
          */
@@ -625,7 +640,7 @@ xml_yang_minmax_new_leaf_list(cxobj     *x0,
 /*! Perform gap analysis in a child-vector interval [ye,y]
  *
  * Gap analysis here meaning if there is a list x with min-element constraint but there are no
- * x elements in an interval of the children of xt. 
+ * x elements in an interval of the children of xt.
  * For example, assume the yang of xt is yt and is defined as:
  *   yt {
  *     list a;
@@ -634,8 +649,8 @@ xml_yang_minmax_new_leaf_list(cxobj     *x0,
  *   }
  * Further assume that xt is:
  *   <xt><a><a><b><b></xt>
- * Then a call to this function could be ye=a, y=b. 
- * By iterating over the children of yt in the interval [a,b] it will find "x" with a min-element 
+ * Then a call to this function could be ye=a, y=b.
+ * By iterating over the children of yt in the interval [a,b] it will find "x" with a min-element
  * constraint.
  */
 static int
@@ -702,13 +717,13 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
  *          x ->  bc
  *          x ->  ab
  *
- * Min-max constraints: 
+ * Min-max constraints:
  * Find upper and lower bound of existing lists and report violations
  * Somewhat tricky to find violation of min-elements of empty
  * lists, but this is done by a "gap-detection" mechanism, which detects
- * gaps in the xml nodes given the ancestor Yang structure. 
+ * gaps in the xml nodes given the ancestor Yang structure.
  * But no gap analysis is done if the yang spec of the top-level xml is unknown
- * Example: 
+ * Example:
  *   Yang structure: y1, y2, y3,
  *   XML structure: [x1, x1], [x3, x3] where [x2] list is missing
  * @note min-element constraints on empty lists are not detected on top-level.
@@ -716,8 +731,8 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
  * XML node. This may not be a large problem since it would mean empty configs
  * are not allowed.
  * RFC 7950 7.7.5: regarding min-max elements check
- * The behavior of the constraint depends on the type of the 
- * leaf-list's or list's closest ancestor node in the schema tree 
+ * The behavior of the constraint depends on the type of the
+ * leaf-list's or list's closest ancestor node in the schema tree
  * that is not a non-presence container (see Section 7.5.1):
  * o If no such ancestor exists in the schema tree, the constraint
  * is enforced.
@@ -733,9 +748,9 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
  * 3   null             list    neq   gap analysis, new: list key check
  * 4   nolist           list    neq   gap analysis, new: list key check
  * 5   nolist           nolist  eq    error
- * 6   nolist           nolist  neq   gap analysis; nopresence-check; 
- * 7   null             nolist  neq   gap analysis; nopresence-check; 
- * 8   list             nolist  neq   gap analysis; yprev: check-minmax; nopresence-check; 
+ * 6   nolist           nolist  neq   gap analysis; nopresence-check;
+ * 7   null             nolist  neq   gap analysis; nopresence-check;
+ * 8   list             nolist  neq   gap analysis; yprev: check-minmax; nopresence-check;
  * @param[in]  xt      XML parent (may have lists w unique constraints as child)
  * @param[in]  presence Set if called in a recursive loop (the caller will recurse anyway),
  *                     otherwise non-presence containers will be traversed
@@ -1035,118 +1050,253 @@ xml_yang_validate_unique_recurse(cxobj  *xt,
     goto done;
 }
 
-/*! YANG unique check and remove duplicates, keep last
- *
- * Assume xt:s children are sorted and yang populated.
- * @param[in]  xt      XML parent (may have lists w unique constraints as child)
- * @param[out] xret    Error XML tree. Free with xml_free after use
- * @retval     2       Locally abort this subtree, continue with others
- * @retval     1       Abort, dont continue with others, return 1 to end user
- * @retval     0       OK, continue
- * @retval    -1       Error, aborted at first error encounter, return -1 to end user
- * @see xml_yang_validate_minmax  which include these unique tests
+/*----------- New linear vector code -----------------*/
+
+static int
+vec_free(struct vec_order *vec,
+         size_t            vlen)
+{
+    int v;
+
+    for (v=0; v<vlen; v++){
+        if (vec[v].vo_strvec)
+            free(vec[v].vo_strvec);
+    }
+    free(vec);
+    return 0;
+}
+
+/*! Leaf-list qsort comparison function
  */
 static int
-xml_duplicate_remove(cxobj *xt,
-                     void  *arg)
+cmp_list_qsort(const void *arg1,
+               const void *arg2)
 {
-    int           retval = -1;
-    cxobj       **xret = (cxobj **)arg;
-    cxobj        *x;
-    yang_stmt    *y;
-    yang_stmt    *yprev;
-    enum rfc_6020 keyw;
-    int           again;
-    int           ret;
+    struct vec_order *v1 = (struct vec_order *)arg1;
+    struct vec_order *v2 = (struct vec_order *)arg2;
+    int               i1;
+    int               i2;
+    int               eq;
+    int               i;
 
-    again = 1;
-    while (again){
-        again = 0;
-        yprev = NULL;
-        x = NULL;
-        while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-            if ((y = xml_spec(x)) == NULL)
-                continue;
-            keyw = yang_keyword_get(y);
-            if (keyw == Y_LIST || keyw == Y_LEAF_LIST){
-                if (y == yprev){                 /* equal: continue, assume list check does look-forward */
-                    continue;
-                }
-                /* new list check */
-                switch (keyw){
-                case Y_LIST:
-                    if ((ret = xml_yang_minmax_new_list(x, xt, y, XML_FLAG_DEL, xret)) < 0)
-                        goto done;
-                    if (ret == 0){
-                        if (xml_tree_prune_flags1(xt, XML_FLAG_DEL, XML_FLAG_DEL, 0, &again) < 0)
-                            goto done;
-                        if (again){
-                            if (xret && *xret){
-                                xml_free(*xret);
-                                *xret = NULL;
-                            }
-                            break;
-                        }
-                        goto fail;
-                    }
-                    break;
-                case Y_LEAF_LIST:
-                    if ((ret = xml_yang_minmax_new_leaf_list(x, xt, y, XML_FLAG_DEL, xret)) < 0)
-                        goto done;
-                    if (ret == 0){
-                        if (xml_tree_prune_flags1(xt, XML_FLAG_DEL, XML_FLAG_DEL, 0, &again) < 0)
-                            goto done;
-                        if (again){
-                            if (xret && *xret){
-                                xml_free(*xret);
-                                *xret = NULL;
-                            }
-                            break;
-                        }
-                        goto fail;
-                    }
-                    break;
-                default:
-                    break;
-                }
-                if (again)
-                    break;
-                yprev = y;
-            }
+    eq = 0;
+    for (i=0; i<v1->vo_slen; i++){
+        assert(v1->vo_strvec[i]);
+        assert(v2->vo_strvec[i]);
+        if ((eq = strcmp(v1->vo_strvec[i], v2->vo_strvec[i])) != 0)
+            break;
+    }
+    if (eq != 0)
+        return eq;
+    i1 = xml_enumerate_get(v1->vo_xml);
+    i2 = xml_enumerate_get(v2->vo_xml);
+    if (i1 > i2)
+        return 1;
+    else if (i1 < i2)
+        return -1;
+    else
+        return 0;
+}
+
+/*! Remove duplicates list
+ */
+static int
+remove_duplicates_list(struct vec_order *vec,
+                       size_t             vlen,
+                       int               *nr)
+{
+    int retval = -1;
+    int v;
+    int i;
+
+    if (nr)
+        *nr = 0;
+    for (v=1; v<vlen; v++){
+        for (i=0; i<vec[v-1].vo_slen; i++){
+            if (clicon_strcmp(vec[v-1].vo_strvec[i], vec[v].vo_strvec[i]) != 0)
+                break;
+        }
+        if (i==vec[v-1].vo_slen){
+            if (xml_purge(vec[v-1].vo_xml) < 0)
+                goto done;
+            if (nr)
+                (*nr)++;
         }
     }
     retval = 0;
  done:
     return retval;
- fail:
-    retval = 1;
-    goto done;
+}
+
+static int
+vec_order_analyze(yang_stmt        *y,
+                  struct vec_order *vec,
+                  size_t            vlen,
+                  cxobj            *x)
+{
+    int           retval = -1;
+    int           nr = 0;
+
+    if (yang_find(y, Y_ORDERED_BY, "user") != NULL)
+        qsort(vec, vlen, sizeof(*vec), cmp_list_qsort);
+    if (remove_duplicates_list(vec, vlen, &nr) < 0)
+        goto done;
+    if (x && nr)
+        xml_vector_decrement(x, nr);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! YANG unique check and remove duplicates, keep last
+ *
+ * Assume xt:s children are sorted and yang populated.
+ * @param[in]  xt      XML parent (may have lists w unique constraints as child)
+ * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see xml_yang_validate_minmax  which include these unique tests
+ */
+static int
+xml_duplicate_remove(cxobj *xt)
+{
+    int               retval = -1;
+    cxobj            *x;
+    yang_stmt        *y;
+    yang_stmt        *y0;
+    enum rfc_6020     keyw;
+    char             *b;
+    size_t            vlen = 0;
+    struct vec_order *vec = NULL;
+    cvec             *cvk;
+    cg_var           *cvi;
+    size_t            clen;
+    size_t            slen0; /* sanity check, ensure all vectors are equal length */
+    char             *str;
+    cxobj            *xi;
+    int               v;
+
+    xml_enumerate_children(xt); // Could be done in-line
+    y0 = NULL;
+    slen0 = 0;
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+        if ((y = xml_spec(x)) == NULL)
+            continue;
+        if (y != y0 && vec != NULL){ /* New */
+            if (vec_order_analyze(y0, vec, vlen, x) < 0)
+                goto done;
+            if (vec_free(vec, vlen) < 0)
+                goto done;
+            vec = NULL;
+            vlen = 0;
+            slen0 = 0;
+        }
+        keyw = yang_keyword_get(y);
+        switch (keyw){
+        case Y_LIST:
+            if ((cvk = yang_cvec_get(y)) == NULL)
+                continue;
+            if ((clen = cvec_len(cvk)) == 0)
+                continue;
+            if (vec>0 && slen0 != clen){ /* Sanity check */
+                clixon_err(OE_YANG, 0, "List key vector mismatch %lu != %lu", slen0, clen);
+                goto done;
+            }
+            /* see check_unique_list_direct */
+            if ((vec = realloc(vec, (vlen+1)*sizeof(*vec))) == NULL){
+                clixon_err(OE_UNIX, errno, "cvec_new");
+                goto done;
+            }
+            vec[vlen].vo_slen = clen;
+            vec[vlen].vo_xml = x;
+            if ((vec[vlen].vo_strvec = calloc(vec[vlen].vo_slen , sizeof(char*))) == NULL){
+                clixon_err(OE_UNIX, errno, "calloc");
+                goto done;
+            }
+            cvi = NULL;
+            v = 0;
+            while ((cvi = cvec_each(cvk, cvi)) != NULL){
+                if ((str = cv_string_get(cvi)) == NULL)
+                    break;
+                if ((xi = xml_find(x, str)) == NULL)
+                    break;
+                if ((b = xml_body(xi)) == NULL)
+                  vec[vlen].vo_strvec[v++] = "";
+                else
+                  vec[vlen].vo_strvec[v++] = b;
+            }
+            if (cvi != NULL){ /* No key or null: revert and skip */
+                free(vec[vlen].vo_strvec);
+                memset(&vec[vlen], 0, sizeof(*vec));
+                vec[vlen].vo_strvec = NULL;
+            }
+            else{
+                slen0 = clen;
+                vlen++;
+            }
+            break;
+        case Y_LEAF_LIST:
+            if (vec>0 && slen0 != 1){ /* Sanity check */
+                clixon_err(OE_YANG, 0, "Leaf-list key vector mismatch %lu != 1", slen0);
+                goto done;
+            }
+            if ((vec = realloc(vec, (vlen+1)*sizeof(struct vec_order))) == NULL){
+                clixon_err(OE_UNIX, errno, "cvec_new");
+                goto done;
+            }
+            vec[vlen].vo_xml = x;
+            vec[vlen].vo_slen = 1;
+            if ((vec[vlen].vo_strvec = calloc(vec[vlen].vo_slen, sizeof(char*))) == NULL){
+                clixon_err(OE_UNIX, errno, "calloc");
+                goto done;
+            }
+            b = xml_body(x);
+            vec[vlen].vo_strvec[0] = b;
+            slen0 = 1;
+            vlen++;
+            break;
+        default:
+            break;
+        }
+        y0 = y;
+    }
+    if (y0 && vec != NULL){
+        if (vec_order_analyze(y0, vec, vlen, NULL) < 0)
+            goto done;
+        if (vec_free(vec, vlen) < 0)
+            goto done;
+        vec = NULL;
+        vlen = 0;
+    }
+    retval = 0;
+ done:
+    if (vec)
+        free(vec);
+    return retval;
 }
 
 /*! Recursive YANG unique check and remove duplicates, keep last
  *
  * @param[in]  xt      XML parent (may have lists w unique constraints as child)
- * @param[out] xret    Error XML tree. Free with xml_free after use
- * @retval     1       Validation OK
- * @retval     0       Validation failed (xret set)
+ * @retval     0       Validation OK
  * @retval    -1       Error
- * @see xml_yang_validate_unique_recurse
+ * @see xml_yang_validate_unique_recurse  This function destructively removes
  */
 int
-xml_duplicate_remove_recurse(cxobj  *xt,
-                             cxobj **xret)
+xml_duplicate_remove_recurse(cxobj *xt)
 {
-    int retval = -1;
-    int ret;
+    int    retval = -1;
+    cxobj *x;
 
-    if ((ret = xml_apply0(xt, CX_ELMNT, xml_duplicate_remove, xret)) < 0)
+    if (xml_duplicate_remove(xt) < 0)
         goto done;
-    if (ret == 1)
-        goto fail;
-    retval = 1;
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+        if (xml_duplicate_remove_recurse(x) < 0)
+            goto done;
+    }
+    retval = 0;
  done:
     return retval;
- fail:
-    retval = 0;
-    goto done;
 }
