@@ -602,6 +602,198 @@ validate_common(clixon_handle       h,
     goto done;
 }
 
+static char *_plugin_rpc_err_ns;
+static char *_plugin_rpc_err_type;
+static char *_plugin_rpc_err_tag;
+static char *_plugin_rpc_err_info;
+static char *_plugin_rpc_err_severity;
+static cbuf *_plugin_rpc_err_message;
+
+/*! Save an RPC error to be reported by clixon.
+ *
+ * @param[in]  h        Clixon
+ * @param[in]  ns       Namespace.  If NULL the netconf base ns will be used
+ * @param[in]  type     Error type: "rpc", "application" or "protocol"
+ * @param[in]  severity Severity: "error" or "warning"
+ * @param[in]  tag      Error tag, like "invalid-value" or "unknown-attribute"
+ * @param[in]  info     bad-attribute or bad-element xml.  If NULL not included.
+ * @param[in]  fmt      Error message format.  May be NULL.
+ * @retval     0        Success
+ * @retval    -1        Error
+ */
+int
+plugin_rpc_err(clixon_handle h, const char *ns,
+               const char *type, const char *tag, const char *info,
+               const char *severity,
+               const char *fmt, ...)
+{
+    char *n_ns = NULL, *n_type = NULL, *n_tag = NULL;
+    char *n_info = NULL, *n_severity = NULL;
+    cbuf *n_message = NULL;
+    int err;
+
+    if (ns) {
+        n_ns = strdup(ns);
+        if (!n_ns)
+            goto out_nomem;
+    }
+    n_type = strdup(type);
+    if (!n_type)
+        goto out_nomem;
+    n_tag = strdup(tag);
+    if (!n_tag)
+        goto out_nomem;
+    if (ns) {
+        n_ns = strdup(ns);
+        if (!n_ns)
+            goto out_nomem;
+    }
+    if (info) {
+        n_info = strdup(info);
+        if (!n_info)
+            goto out_nomem;
+    }
+    n_severity = strdup(severity);
+    if (!n_severity)
+        goto out_nomem;
+    if (fmt) {
+        va_list args;
+        n_message = cbuf_new();
+        if (!n_message)
+            goto out_nomem;
+        va_start(args, fmt);
+        err = vcprintf(n_message, fmt, args);
+        va_end(args);
+        if (err < 0)
+            goto out_nomem;
+    }
+    /*
+     * Everything is allocated, we cannot fail from here, so clean up the
+     * old stuff.
+     */
+    if (_plugin_rpc_err_ns)
+        free(_plugin_rpc_err_ns);
+    if (_plugin_rpc_err_type)
+        free(_plugin_rpc_err_type);
+    if (_plugin_rpc_err_tag)
+        free(_plugin_rpc_err_tag);
+    if (_plugin_rpc_err_info)
+        free(_plugin_rpc_err_info);
+    if (_plugin_rpc_err_severity)
+        free(_plugin_rpc_err_severity);
+    if (_plugin_rpc_err_message)
+        cbuf_free(_plugin_rpc_err_message);
+
+    _plugin_rpc_err_ns = n_ns;
+    _plugin_rpc_err_type = n_type;
+    _plugin_rpc_err_tag = n_tag;
+    _plugin_rpc_err_info = n_info;
+    _plugin_rpc_err_severity = n_severity;
+    _plugin_rpc_err_message = n_message;
+    return 0;
+
+ out_nomem:
+    if (n_ns)
+        free(n_ns);
+    if (n_type)
+        free(n_type);
+    if (n_tag)
+        free(n_tag);
+    if (n_info)
+        free(n_info);
+    if (n_severity)
+        free(n_severity);
+    if (n_message)
+        cbuf_free(n_message);
+    return -1;
+}
+
+int
+plugin_rpc_err_set(void)
+{
+    return _plugin_rpc_err_type != NULL;
+}
+
+static int
+netconf_gen_rpc_err(cbuf *cbret)
+{
+    char *type = _plugin_rpc_err_type;
+    int ret;
+
+    /* Type marks it as set, clear it before handling. */
+    _plugin_rpc_err_type = NULL;
+    ret = netconf_common_rpc_err(cbret, _plugin_rpc_err_ns,
+                                 type,
+                                 _plugin_rpc_err_tag,
+                                 _plugin_rpc_err_severity,
+                                 _plugin_rpc_err_info,
+                                 cbuf_get(_plugin_rpc_err_message));
+    free(type);
+
+    return ret;
+}
+
+static int
+netconf_gen_rpc_err_xml(cxobj **xret)
+{
+    char *type = _plugin_rpc_err_type;
+    int ret;
+
+    /* Type marks it as set, clear it before handling. */
+    _plugin_rpc_err_type = NULL;
+    ret = netconf_common_rpc_err_xml(xret, _plugin_rpc_err_ns,
+                                     type,
+                                     _plugin_rpc_err_tag,
+                                     _plugin_rpc_err_severity,
+                                     NULL,
+                                     _plugin_rpc_err_info,
+                                     cbuf_get(_plugin_rpc_err_message));
+    free(type);
+
+    return ret;
+}
+
+int
+plugin_report_err(cbuf *cbret)
+{
+    int ret;
+
+    if (plugin_rpc_err_set()) {
+        if ((ret = netconf_gen_rpc_err(cbret)) < 0)
+            return ret;
+    } else if ((ret = netconf_operation_failed(cbret, "application",
+                                               clixon_err_reason())) < 0) {
+        return ret;
+    }
+
+    return 0;
+}
+
+int
+plugin_report_err_xml(cxobj **cbret, char *err, ...)
+{
+    int ret = -1;
+    cbuf *cberr;
+    va_list ap;
+
+    if (plugin_rpc_err_set()) {
+        ret = netconf_gen_rpc_err_xml(cbret);
+    } else {
+        if ((cberr = cbuf_new()) == NULL) {
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        va_start(ap, err);
+        vcprintf(cberr, err, ap);
+        ret = netconf_operation_failed_xml(cbret, "application",
+                                           cbuf_get(cberr));
+        cbuf_free(cberr);
+    }
+
+done:
+    return ret;
+}
+
 /*! Start a validate transaction
  *
  * @param[in]  h      Clixon handle
@@ -637,7 +829,7 @@ candidate_validate(clixon_handle h,
          * TODO: -1 return should be fatal error, not failed validation
          */
         if (!cbuf_len(cbret) &&
-            netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+            plugin_report_err(cbret) < 0)
             goto done;
         goto fail;
     }
@@ -857,7 +1049,7 @@ from_client_commit(clixon_handle h,
     if ((ret = candidate_commit(h, xe, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
         clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
         if (ret < 0)
-            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+            if (plugin_report_err(cbret) < 0)
                 goto done;
         goto ok;
     }
