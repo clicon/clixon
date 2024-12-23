@@ -399,6 +399,75 @@ clixon_event_poll(int fd)
  *       Currently a socket that is not read/emptied properly starve timeouts.
  *       One could try to poll the file descriptors after a timeout?
  */
+#ifdef CLIXON_EVENT_POLL
+int
+clixon_event_loop(clixon_handle h)
+{
+    struct      event_data *e = NULL;
+    struct      pollfd fds[MAX_EVENTS];
+    int         retval = -1;
+    int         nfds = 0;
+
+    while (clixon_exit_get() != 1) {
+        nfds = 0;
+        for (e = ee; e; e = e->e_next) {
+            if (e->e_type == EVENT_FD) {
+                fds[nfds].fd = e->e_fd;
+                fds[nfds].events = POLLIN;
+                nfds++;
+            }
+        }
+
+        int timeout = -1;
+        if (ee_timers != NULL) {
+            struct timeval t0, t;
+            gettimeofday(&t0, NULL);
+            timersub(&ee_timers->e_time, &t0, &t);
+            timeout = t.tv_sec * 1000 + t.tv_usec / 1000;
+        }
+
+        int n = poll(fds, nfds, timeout);
+
+        if (n == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            clixon_err(OE_EVENTS, errno, "poll");
+            goto err;
+        }
+
+        if (n == 0) {
+            // Таймаут
+            e = ee_timers;
+            ee_timers = ee_timers->e_next;
+            if ((*e->e_fn)(0, e->e_arg) < 0) {
+                free(e);
+                goto err;
+            }
+            free(e);
+            continue;
+        }
+
+        for (int i = 0; i < nfds; i++) {
+            if (fds[i].revents & POLLIN) {
+                for (e = ee; e; e = e->e_next) {
+                    if (e->e_type == EVENT_FD && e->e_fd == fds[i].fd) {
+                        if ((*e->e_fn)(e->e_fd, e->e_arg) < 0) {
+                            goto err;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    retval = 0;
+
+    err:
+        return retval;
+}
+#else
 int
 clixon_event_loop(clixon_handle h)
 {
@@ -531,6 +600,7 @@ clixon_event_loop(clixon_handle h)
     clixon_debug(CLIXON_DBG_EVENT, "retval:%d", retval);
     return retval;
 }
+#endif
 
 int
 clixon_event_exit(void)
