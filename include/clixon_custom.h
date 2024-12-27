@@ -233,3 +233,16 @@
  * A more intelligent algorithm is needed
  */
 #define XML_DEFAULT_WHEN_TWICE
+
+/*! If set, make optimized lookup of yspec + namespace -> module
+ *
+ * see yang_find_module_by_namespace
+ */
+#define OPTIMIZE_YSPEC_NAMESPACE
+
+/*! If set, make optimization of non-presence default container
+ *
+ * Save the default XML in YANG and reuse next time
+ * see xml_default
+ */
+#define OPTIMIZE_NO_PRESENCE_CONTAINER

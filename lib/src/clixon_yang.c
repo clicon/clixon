@@ -1090,6 +1090,19 @@ ys_free1(yang_stmt *ys,
         if (ys->ys_filename)
             free(ys->ys_filename);
         break;
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+    case Y_CONTAINER:
+        if (ys->ys_nopres_cache)
+            xml_free(ys->ys_nopres_cache);
+        break;
+#endif
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+    case Y_SPEC:
+        if (ys->ys_nscache)
+            free(ys->ys_nscache);
+        break;
+#endif
+
     default:
         break;
     }
@@ -1220,6 +1233,11 @@ yn_realloc(yang_stmt *yn)
         return -1;
     }
     yn->ys_stmt[yn->ys_len - 1] = NULL; /* init field */
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+    if (yn->ys_keyword == Y_SPEC && yn->ys_nscache){         /* Clear cache */
+        yspec_nscache_clear(yn);
+    }
+#endif
     return 0;
 }
 
@@ -1336,6 +1354,16 @@ ys_cp_one(yang_stmt *ynew,
         if (yang_typecache_get(yold)) /* Dont copy type cache, use only original */
             yang_typecache_set(ynew, NULL);
         break;
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+    case Y_CONTAINER:
+        yold->ys_nopres_cache = NULL;
+        break;
+#endif
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+    case Y_SPEC:
+        yold->ys_nscache = NULL;
+        break;
+#endif
     default:
         break;
     }
@@ -4034,11 +4062,12 @@ int
 yang_config(yang_stmt *ys)
 {
     yang_stmt *ym;
+    cg_var    *cv;
 
     if ((ym = yang_find(ys, Y_CONFIG, NULL)) != NULL){
-        if (yang_cv_get(ym) == NULL) /* shouldnt happen */
+        if ((cv = yang_cv_get(ym)) == NULL) /* shouldnt happen */
             return 1;
-        return cv_bool_get(yang_cv_get(ym));
+        return cv_bool_get(cv);
     }
     return 1;
 }
@@ -4609,6 +4638,24 @@ yang_action_cb_add(yang_stmt *ys,
     ADDQ(rc, ys->ys_action_cb);
     return 0;
 }
+
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+void *
+yang_nopresence_cache_get(yang_stmt *ys)
+{
+    return ys->ys_nopres_cache;
+}
+
+int
+yang_nopresence_cache_set(yang_stmt *ys,
+                          void      *x)
+{
+    if (ys->ys_nopres_cache)
+        xml_free(ys->ys_nopres_cache);
+    ys->ys_nopres_cache = x;
+    return 0;
+}
+#endif
 
 /*! Init yang code. Called before any yang code, before options
  *

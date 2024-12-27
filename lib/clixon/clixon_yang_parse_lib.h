@@ -65,5 +65,10 @@ int        yang_spec_load_dir(clixon_handle h, char *dir, yang_stmt *yspec);
 int        ys_parse_date_arg(char *datearg, uint32_t *dateint);
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys, const char *filename, char *extra);
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+int        yspec_nscache_clear(yang_stmt *yspec);
+yang_stmt *yspec_nscache_get(yang_stmt *yspec, char *ns);
+int        yspec_nscache_new(yang_stmt *yspec);
+#endif
 
 #endif  /* _CLIXON_YANG_LIB_H_ */

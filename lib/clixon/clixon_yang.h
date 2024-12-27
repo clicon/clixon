@@ -354,6 +354,10 @@ int        yang_sort_subelements(yang_stmt *ys);
 int        yang_single_child_type(yang_stmt *ys, enum rfc_6020 subkeyw);
 void      *yang_action_cb_get(yang_stmt *ys);
 int        yang_action_cb_add(yang_stmt *ys, void *rc);
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+void      *yang_nopresence_cache_get(yang_stmt *ys);
+int        yang_nopresence_cache_set(yang_stmt *ys, void *x);
+#endif
 int        ys_populate_feature(clixon_handle h, yang_stmt *ys);
 int        yang_init(clixon_handle h);
 int        yang_start(clixon_handle h);

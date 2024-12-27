@@ -297,6 +297,9 @@ xml_default(yang_stmt *yt,
     int        retval = -1;
     yang_stmt *yc;
     cxobj     *xc;
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+    cxobj     *xc1;
+#endif
     int        top = 0; /* Top symbol (set default namespace) */
     int        create = 0;
     int        nr = 0;
@@ -361,19 +364,37 @@ xml_default(yang_stmt *yt,
                      * defaults.
                      */
                     if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
-                        /* No such container exist, recursively try if needed */
-                        if (xml_nopresence_try(yc, state, &create) < 0)
-                            goto done;
-                        if (create){
-                            /* Retval shows there is a default value need to create the
-                             * container */
-                            if (xml_default_create1(yc, xt, &xc) < 0)
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+                        if ((xc = yang_nopresence_cache_get(yc)) != NULL){
+                            if ((xc1 = xml_dup(xc)) == NULL)
+                                goto done;
+                            if (xml_addsub(xt, xc1) < 0)
                                 goto done;
                             xml_sort(xt);
-                            /* Then call it recursively */
-                            if (xml_default(yc, xc, state) < 0)
-                                goto done;
                         }
+                        else
+#endif
+                            {
+                                /* No such container exist, recursively try if needed */
+                                if (xml_nopresence_try(yc, state, &create) < 0)
+                                    goto done;
+                                if (create){
+                                    /* Retval shows there is a default value need to create the
+                                     * container */
+                                    if (xml_default_create1(yc, xt, &xc) < 0)
+                                        goto done;
+                                    xml_sort(xt);
+                                    /* Then call it recursively */
+                                    if (xml_default(yc, xc, state) < 0)
+                                        goto done;
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+                                    if ((xc1 = xml_dup(xc)) == NULL)
+                                        goto done;
+                                    if (yang_nopresence_cache_set(yc, xc1) < 0)
+                                        goto done;
+#endif
+                                }
+                            }
                     }
                 }
                 break;

@@ -55,6 +55,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_err.h"
+#include "clixon_string.h"
 
 /*! Map from int to string using str2int map
  *
@@ -116,9 +117,9 @@ str2int_search1(const map_str2int *mstab,
                 int                len,
                 int               *found)
 {
-    const struct map_str2int *ms;
-    int                       mid;
-    int                       cmp;
+    const map_str2int *ms;
+    int                mid;
+    int                cmp;
 
     if (upper < low)
         return 0; /* not found */
@@ -136,10 +137,58 @@ str2int_search1(const map_str2int *mstab,
         return str2int_search1(mstab, str, mid+1, upper, len, found);
 }
 
+/*! Map from string to ptr using binary (alphatical) search
+ *
+ * Assumes sorted strings, tree search. If two are equal take first
+ * @param[in]  ms    String, integer map
+ * @param[in]  str   Input string
+ * @param[in]  low   Lower bound index
+ * @param[in]  upper Upper bound index
+ * @param[in]  len   Length of array (max)
+ * @param[out] found element
+ * @retval     1     Found with "found" value set.
+ * @retval     0     Not found
+
+ */
+static int
+str2ptr_search1(const map_str2ptr *mptab,
+                char              *str,
+                size_t             low,
+                size_t             upper,
+                size_t             len,
+                map_str2ptr      **found)
+{
+    const map_str2ptr *mp;
+    int                mid;
+    int                cmp;
+    int                i;
+
+    if (upper < low)
+        return 0; /* not found */
+    mid = (low + upper) / 2;
+    if (mid >= len)  /* beyond range */
+        return 0; /* not found */
+    mp = &mptab[mid];
+    if ((cmp = clicon_strcmp(str, mp->mp_str)) == 0){
+        i = mid;
+        while (i >= 0 && clicon_strcmp(str, mptab[i].mp_str) == 0){
+            mp = &mptab[i];
+            i--;
+        }
+        *found = (map_str2ptr *)mp;
+        return 1; /* found */
+    }
+    else if (cmp < 0)
+        return str2ptr_search1(mptab, str, low, mid-1, len, found);
+    else
+        return str2ptr_search1(mptab, str, mid+1, upper, len, found);
+}
+
 /*! Map from string to int using str2int map
  *
  * @param[in] ms   String, integer map
  * @param[in] str  Input string
+ * @param[in] len
  * @retval    int  Value
  * @retval   -1    Error, not found
  * @note Assumes sorted strings, tree search
@@ -174,6 +223,67 @@ clicon_str2str(const map_str2str *mstab,
         if (strcmp(ms->ms_s0, str) == 0)
             return ms->ms_s1;
     return NULL;
+}
+
+static int
+str2ptr_qsort(const void* arg1,
+              const void* arg2)
+{
+    map_str2ptr *mp1 = (map_str2ptr*)arg1;
+    map_str2ptr *mp2 = (map_str2ptr*)arg2;
+    int          eq;
+    yang_stmt   *yrev;
+    char        *rev1 = NULL;
+    char        *rev2 = NULL;
+
+    eq = clicon_strcmp(mp1->mp_str, mp2->mp_str);
+    if (0 && eq == 0){
+        if ((yrev = yang_find(mp1->mp_ptr, Y_REVISION, NULL)) != NULL)
+            rev1 = yang_argument_get(yrev);
+        if ((yrev = yang_find(mp2->mp_ptr, Y_REVISION, NULL)) != NULL)
+            rev2 = yang_argument_get(yrev);
+        eq = clicon_strcmp(rev1, rev2);
+    }
+    return eq;
+}
+
+void
+clixon_str2ptr_sort(map_str2ptr *mptab,
+                    size_t       len)
+{
+    qsort(mptab, len, sizeof(*mptab), str2ptr_qsort);
+}
+
+/*! Map from string to string using str2str map
+ *
+ * @param[in] mptab String to ptr map
+ * @param[in] str   Input string
+ * @retval    ptr   Output pointer
+ * @retval    NULL  Error, not found
+ */
+void*
+clixon_str2ptr(map_str2ptr *mptab,
+               char         *str,
+               size_t        len)
+{
+    map_str2ptr *mp = NULL;
+
+    if (str2ptr_search1(mptab, str, 0, len, len, &mp))
+        return mp->mp_ptr;
+    return NULL; /* not found */
+}
+
+int
+clixon_str2ptr_print(FILE        *f,
+                     map_str2ptr *mptab)
+{
+    map_str2ptr *mp = NULL;
+    int          i;
+
+    i = 0;
+    for (mp = &mptab[0]; mp->mp_str; mp++)
+        fprintf(f, "%d %s %p\n", i++, mp->mp_str, mp->mp_ptr);
+    return 0;
 }
 
 /*! Map from pointer to pointer using mptab map

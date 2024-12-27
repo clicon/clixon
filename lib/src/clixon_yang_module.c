@@ -609,6 +609,9 @@ yang_stmt *
 yang_find_module_by_namespace(yang_stmt *yspec,
                               char      *ns)
 {
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+    return yspec_nscache_get(yspec, ns);
+#else
     yang_stmt *ymod = NULL;
     int        inext;
 
@@ -621,6 +624,7 @@ yang_find_module_by_namespace(yang_stmt *yspec,
     }
  done:
     return ymod;
+#endif
 }
 
 /*! Given a yang spec, a namespace and revision, return yang module 

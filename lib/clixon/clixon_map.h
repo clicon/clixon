@@ -54,18 +54,26 @@ static const map_str2int atmap[] = {
  * @see clicon_str2int
  */
 struct map_str2int{
-    char         *ms_str;
-    int           ms_int;
+    char *ms_str;
+    int   ms_int;
 };
 typedef struct map_str2int map_str2int;
 
 /*! Struct used to map between two strings.
  */
 struct map_str2str{
-    char         *ms_s0;
-    char         *ms_s1;
+    char *ms_s0;
+    char *ms_s1;
 };
 typedef struct map_str2str map_str2str;
+
+/*! Struct used to map from string to pointer
+ */
+struct map_str2ptr{
+    char *mp_str;
+    void *mp_ptr;
+};
+typedef struct map_str2ptr map_str2ptr;
 
 /*! Map from ptr to ptr
  */
@@ -82,6 +90,9 @@ const char *clicon_int2str(const map_str2int *mstab, int i);
 int         clicon_str2int(const map_str2int *mstab, char *str);
 int         clicon_str2int_search(const map_str2int *mstab, char *str, int upper);
 char       *clicon_str2str(const map_str2str *mstab, char *str);
+void        clixon_str2ptr_sort(map_str2ptr *mptab, size_t len);
+void       *clixon_str2ptr(map_str2ptr *mptab, char *str, size_t len);
+int         clixon_str2ptr_print(FILE *f, map_str2ptr *mptab);
 void       *clixon_ptr2ptr(map_ptr2ptr *mptab, void *ptr);
 int         clixon_ptr2ptr_add(map_ptr2ptr **mptab, void *ptr0, void *ptr1);
 

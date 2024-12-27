@@ -114,7 +114,12 @@ struct yang_stmt {
         rpc_callback_t  *ysu_action_cb; /* Y_ACTION: Action callback list*/
         char            *ysu_filename;  /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
         yang_type_cache *ysu_typecache; /* Y_TYPE: cache all typedef data except unions */
-
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+        map_str2ptr     *ysu_nscache;   /* Y_SPEC: namespace to module cache */
+#endif
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+        cxobj           *ysu_nopres_cache; /* Y_CONTAINER: no-presence XML cache */
+#endif
     } u;
 };
 
@@ -122,5 +127,11 @@ struct yang_stmt {
 #define ys_action_cb      u.ysu_action_cb
 #define ys_filename       u.ysu_filename
 #define ys_typecache      u.ysu_typecache
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+#define ys_nscache        u.ysu_nscache
+#endif
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+#define ys_nopres_cache   u.ysu_nopres_cache
+#endif
 
 #endif  /* _CLIXON_YANG_INTERNAL_H_ */

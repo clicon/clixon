@@ -903,6 +903,9 @@ yang_parse_str(char         *str,
     /* Add filename for debugging and errors, see also ys_linenum on (each symbol?) */
     if (yang_filename_set(ymod, name) < 0)
         goto done;
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+    yspec_nscache_clear(yspec);
+#endif
  done:
     clixon_debug(CLIXON_DBG_PARSE, "retval:%p", ymod);
     ystack_pop(&yy);
@@ -2109,3 +2112,57 @@ ys_parse_sub(yang_stmt  *ys,
         free(extra);
     return retval;
 }
+
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+int
+yspec_nscache_clear(yang_stmt *yspec)
+{
+    if (yspec->ys_nscache){         /* Clear cache */
+        free(yspec->ys_nscache);
+        yspec->ys_nscache = NULL;
+    }
+    return 0;
+}
+
+/*!
+ */
+yang_stmt *
+yspec_nscache_get(yang_stmt *yspec,
+                  char      *ns)
+{
+    if (yspec->ys_nscache == NULL){
+        if (yspec_nscache_new(yspec) < 0)
+            return NULL;
+    }
+    return clixon_str2ptr(yspec->ys_nscache, ns, yang_len_get(yspec)+1);
+}
+
+/*!
+ */
+int
+yspec_nscache_new(yang_stmt *yspec)
+{
+    int          retval = -1;
+    map_str2ptr *mp;
+    yang_stmt   *ym;
+    int          i;
+
+    yspec_nscache_clear(yspec);
+    if ((yspec->ys_nscache = calloc(yang_len_get(yspec)+1, sizeof(*yspec->ys_nscache))) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    for (i=0; i<yang_len_get(yspec); i++){
+        ym = yang_child_i(yspec, i);
+        if (yang_keyword_get(ym) != Y_MODULE)
+            continue;
+        mp = &yspec->ys_nscache[i];
+        mp->mp_str = yang_find_mynamespace(ym);
+        mp->mp_ptr = ym;
+    }
+    clixon_str2ptr_sort(yspec->ys_nscache, yang_len_get(yspec)+1);
+    retval = 0;
+ done:
+    return retval;
+}
+#endif
