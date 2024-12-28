@@ -134,4 +134,11 @@ int plugin_transaction_end_all(clixon_handle h, transaction_data_t *td);
 int plugin_transaction_abort_one(clixon_plugin_t *cp, clixon_handle h, transaction_data_t *td);
 int plugin_transaction_abort_all(clixon_handle h, transaction_data_t *td);
 
+int plugin_rpc_err(clixon_handle h, const char *ns,
+                   const char *type, const char *tag, const char *info,
+                   const char *severity, const char *fmt, ...);
+int plugin_rpc_err_set(void);
+int plugin_report_err(cbuf *cbret);
+int plugin_report_err_xml(cxobj **xreg, char *err, ...);
+
 #endif  /* _CLIXON_BACKEND_PLUGIN_H_ */
