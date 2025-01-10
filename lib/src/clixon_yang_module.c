@@ -84,12 +84,6 @@
 #include "clixon_xml_map.h"
 #include "clixon_yang_parse_lib.h"
 
-/*! Force add ietf-yang-library@2019-01-04 on all mount-points
- *
- * This is a limitation of of the current implementation
- */
-#define YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
-
 /*! Create modstate structure
  *
  * @retval     md    modstate struct

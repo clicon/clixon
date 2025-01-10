@@ -184,7 +184,7 @@ text2file(cxobj            *xn,
         else{
             *leafl = 0;
             *leaflname = NULL;
-            (*fn)(f, "%*s\n", PRETTYPRINT_INDENT*(level), "]");
+            (*fn)(f, "%*s]\n", PRETTYPRINT_INDENT*(level), "");
         }
     }
     xc = NULL;     /* count children (elements and bodies, not attributes) */
@@ -260,7 +260,7 @@ text2file(cxobj            *xn,
     /* Stop leaf-list printing (ie []) if no longer leaflist and same name */
     if (yn && yang_keyword_get(yn) != Y_LEAF_LIST && *leafl != 0){
         *leafl = 0;
-        (*fn)(f, "%*s\n", PRETTYPRINT_INDENT*(level+1), "]");
+        (*fn)(f, "%*s]\n", PRETTYPRINT_INDENT*(level+1), "");
     }
     if (!tleaf(xn))
         (*fn)(f, "%*s}\n", PRETTYPRINT_INDENT*level, "");

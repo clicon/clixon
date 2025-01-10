@@ -136,8 +136,8 @@ clicon_db_elmnt_set(clixon_handle h,
  * @retval     -1        Error
  */
 static int
-xmldb_db2file1(clixon_handle  h,
-              const char    *db,
+xmldb_db2file1(clixon_handle h,
+               const char   *db,
                int           multi,
               char         **filename)
 {
@@ -206,10 +206,10 @@ xmldb_db2subdir(clixon_handle h,
                 const char   *db,
                 char        **subdirp)
 {
-    int         retval = -1;
-    cbuf       *cb = NULL;
-    char       *dir;
-    char       *subdir = NULL;
+    int   retval = -1;
+    cbuf *cb = NULL;
+    char *dir;
+    char *subdir = NULL;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");

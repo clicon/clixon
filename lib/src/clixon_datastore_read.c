@@ -212,7 +212,6 @@ xml_copy_bottom_recurse(cxobj  *x0t,
                     if (xml_copy(x0k, x1k) < 0)
                         goto done;
                 }
-
             }
         }
         if (xml_sort(x1p) < 0)

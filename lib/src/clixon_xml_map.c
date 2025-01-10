@@ -1970,10 +1970,10 @@ done:
  * until nodes marked with XML_FLAG_MARK are reached, where 
  * (2) the complete subtree of that node is copied. 
  * (3) Special case: key nodes in lists are copied if any node in list is marked
- * @param[in]   x0
- * @param[in]   x1
- * @retval      0       OK
- * @retval     -1       Error
+ * @param[in]   x0   XML tree source
+ * @param[in]   x1   XML tree target
+ * @retval      0    OK
+ * @retval     -1    Error
  *  @note you may want to check:!yang_config(ys)
  */
 int
