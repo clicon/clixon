@@ -2134,7 +2134,7 @@ yspec_nscache_get(yang_stmt *yspec,
         if (yspec_nscache_new(yspec) < 0)
             return NULL;
     }
-    return clixon_str2ptr(yspec->ys_nscache, ns, yang_len_get(yspec)+1);
+    return clixon_str2ptr(yspec->ys_nscache, ns, yang_len_get(yspec));
 }
 
 /*!
@@ -2146,9 +2146,11 @@ yspec_nscache_new(yang_stmt *yspec)
     map_str2ptr *mp;
     yang_stmt   *ym;
     int          i;
+    size_t       sz;
 
     yspec_nscache_clear(yspec);
-    if ((yspec->ys_nscache = calloc(yang_len_get(yspec)+1, sizeof(*yspec->ys_nscache))) == NULL){
+    sz = sizeof(*yspec->ys_nscache);
+    if ((yspec->ys_nscache = calloc(yang_len_get(yspec)+1, sz)) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
@@ -2160,7 +2162,7 @@ yspec_nscache_new(yang_stmt *yspec)
         mp->mp_str = yang_find_mynamespace(ym);
         mp->mp_ptr = ym;
     }
-    clixon_str2ptr_sort(yspec->ys_nscache, yang_len_get(yspec)+1);
+    clixon_str2ptr_sort(yspec->ys_nscache, yang_len_get(yspec));
     retval = 0;
  done:
     return retval;

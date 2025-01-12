@@ -171,9 +171,9 @@ str2ptr_search1(const map_str2ptr *mptab,
     mp = &mptab[mid];
     if ((cmp = clicon_strcmp(str, mp->mp_str)) == 0){
         i = mid;
-        while (i >= 0 && clicon_strcmp(str, mptab[i].mp_str) == 0){
+        while (i < len && clicon_strcmp(str, mptab[i].mp_str) == 0){
             mp = &mptab[i];
-            i--;
+            i++;
         }
         *found = (map_str2ptr *)mp;
         return 1; /* found */
@@ -232,17 +232,26 @@ str2ptr_qsort(const void* arg1,
     map_str2ptr *mp1 = (map_str2ptr*)arg1;
     map_str2ptr *mp2 = (map_str2ptr*)arg2;
     int          eq;
-    yang_stmt   *yrev;
-    char        *rev1 = NULL;
-    char        *rev2 = NULL;
+    yang_stmt   *yp;
+    yang_stmt   *y;
+    int          i;
+    int          i1 = -1;
+    int          i2 = -1;
 
     eq = clicon_strcmp(mp1->mp_str, mp2->mp_str);
-    if (0 && eq == 0){
-        if ((yrev = yang_find(mp1->mp_ptr, Y_REVISION, NULL)) != NULL)
-            rev1 = yang_argument_get(yrev);
-        if ((yrev = yang_find(mp2->mp_ptr, Y_REVISION, NULL)) != NULL)
-            rev2 = yang_argument_get(yrev);
-        eq = clicon_strcmp(rev1, rev2);
+    if (eq == 0 && mp1->mp_ptr){
+        yp = yang_parent_get(mp1->mp_ptr);
+        i = 0;
+        while ((y = yn_iter(yp, &i)) != NULL){
+            if (y == mp1->mp_ptr)
+                i1 = i;
+            else if (y == mp2->mp_ptr)
+                i2 = i;
+            if (i1 >= 0 && i2 >= 0){
+                eq = i1 < i2;
+                break;
+            }
+        }
     }
     return eq;
 }
@@ -263,8 +272,8 @@ clixon_str2ptr_sort(map_str2ptr *mptab,
  */
 void*
 clixon_str2ptr(map_str2ptr *mptab,
-               char         *str,
-               size_t        len)
+               char        *str,
+               size_t       len)
 {
     map_str2ptr *mp = NULL;
 
@@ -273,6 +282,12 @@ clixon_str2ptr(map_str2ptr *mptab,
     return NULL; /* not found */
 }
 
+/*! Print a str2ptr map
+ *
+ * @param[in]  f     FILE
+ * @param[in]  mptab String to ptr map
+ * @retval     0     OK
+ */
 int
 clixon_str2ptr_print(FILE        *f,
                      map_str2ptr *mptab)

@@ -238,7 +238,7 @@
  *
  * see yang_find_module_by_namespace
  */
-#define OPTIMIZE_YSPEC_NAMESPACE
+#undef OPTIMIZE_YSPEC_NAMESPACE
 
 /*! If set, make optimization of non-presence default container
  *

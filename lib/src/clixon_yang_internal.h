@@ -81,7 +81,6 @@ struct yang_stmt {
     struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
     struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
     char              *ys_argument;  /* String / argument depending on keyword */
-    /* XXX: can we move this to union, No SPEC is already there */
     cg_var            *ys_cv;        /* cligen variable. See ys_populate()
                                         Following stmts have cv:s:
                                         Y_FEATURE: boolean true or false
