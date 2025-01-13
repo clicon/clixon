@@ -1805,7 +1805,7 @@ clixon_plugin_rpc_err(clixon_handle h,
         goto done;
     if (cvec_add_string(cvv, "tag", tag))
         goto done;
-    if (ns) {
+    if (info) {
         if (cvec_add_string(cvv, "info", info))
             goto done;
     }
