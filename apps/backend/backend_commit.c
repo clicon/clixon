@@ -603,189 +603,6 @@ validate_common(clixon_handle       h,
     goto done;
 }
 
-/*! Save an RPC error to be reported by clixon.
- *
- * @param[in]  h        Clixon
- * @param[in]  ns       Namespace.  If NULL the netconf base ns will be used
- * @param[in]  type     Error type: "rpc", "application" or "protocol"
- * @param[in]  severity Severity: "error" or "warning"
- * @param[in]  tag      Error tag, like "invalid-value" or "unknown-attribute"
- * @param[in]  info     bad-attribute or bad-element xml.  If NULL not included.
- * @param[in]  fmt      Error message format.  May be NULL.
- * @retval     0        Success
- * @retval    -1        Error
- */
-int
-plugin_rpc_err(clixon_handle h,
-               const char *ns,
-               const char *type,
-               const char *tag,
-               const char *info,
-               const char *severity,
-               const char *fmt, ...)
-{
-    int retval = -1;
-    int err;
-    cvec *cvv = NULL;
-
-    cvv = cvec_new(0);
-    if (!cvv)
-        goto done;
-    if (ns) {
-        if (cvec_add_string(cvv, "ns", ns))
-            goto done;
-    }
-    if (cvec_add_string(cvv, "type", type))
-        goto done;
-    if (cvec_add_string(cvv, "tag", tag))
-        goto done;
-    if (ns) {
-        if (cvec_add_string(cvv, "info", info))
-            goto done;
-    }
-    if (cvec_add_string(cvv, "severity", severity))
-        goto done;
-    if (fmt) {
-        va_list args;
-        cbuf *cb;
-
-        cb = cbuf_new();
-        if (!cb)
-            goto done;
-        va_start(args, fmt);
-        err = vcprintf(cb, fmt, args);
-        va_end(args);
-        if (err < 0) {
-            cbuf_free(cb);
-            goto done;
-        }
-        cvec_add_string(cvv, "message", cbuf_get(cb));
-        cbuf_free(cb);
-    }
-
-    err = clicon_data_cvec_set(h, "rpc_err", cvv);
-    if (err)
-        goto done;
-
-    retval = 0;
-
- done:
-    if (retval && cvv)
-        cvec_free(cvv);
-    return retval;
-}
-
-/*! Returns if the rpc error has already been set.
- *
- * @retval     0        The rpc error is not set
- * @retval     1        The rpc error is set
- */
-int
-plugin_rpc_err_set(clixon_handle h)
-{
-    return clicon_data_cvec_get(h, "rpc_err") != NULL;
-}
-
-static int
-netconf_gen_rpc_err(clixon_handle h, cbuf *cbret)
-{
-    cvec *cvv = clicon_data_cvec_get(h, "rpc_err");
-    int retval;
-
-    /* Delete the pointer so the cvec doesn't get freed. */
-    clicon_ptr_del(h, "rpc_err");
-    retval = netconf_common_rpc_err(cbret,
-                                    cvec_find_str(cvv, "ns"),
-                                    cvec_find_str(cvv, "type"),
-                                    cvec_find_str(cvv, "tag"),
-                                    cvec_find_str(cvv, "severity"),
-                                    cvec_find_str(cvv, "info"),
-                                    cvec_find_str(cvv, "message"));
-    cvec_free(cvv);
-
-    return retval;
-}
-
-static int
-netconf_gen_rpc_err_xml(clixon_handle h, cxobj **xret)
-{
-    cvec *cvv = clicon_data_cvec_get(h, "rpc_err");
-    int retval;
-
-    /* Delete the pointer so the cvec doesn't get freed. */
-    clicon_ptr_del(h, "rpc_err");
-    retval = netconf_common_rpc_err_xml(xret,
-                                        cvec_find_str(cvv, "ns"),
-                                        cvec_find_str(cvv, "type"),
-                                        cvec_find_str(cvv, "tag"),
-                                        cvec_find_str(cvv, "severity"),
-                                        NULL,
-                                        cvec_find_str(cvv, "info"),
-                                        cvec_find_str(cvv, "message"));
-    cvec_free(cvv);
-
-    return retval;
-}
-
-/*! Report an error from a plugin.
- *
- * @param[in]  h      Clixon
- * @param[out] cbret  CLIgen buffer w error stmt if retval = 0
- * @retval     0      Success
- * @retval    -1      Error
- */
-int
-plugin_report_err(clixon_handle h,
-                  cbuf *cbret)
-{
-    int ret;
-
-    if (plugin_rpc_err_set(h)) {
-        if ((ret = netconf_gen_rpc_err(h, cbret)) < 0)
-            return ret;
-    } else if ((ret = netconf_operation_failed(cbret, "application",
-                                               clixon_err_reason())) < 0) {
-        return ret;
-    }
-
-    return 0;
-}
-
-/*! Report an error from a plugin.
- *
- * @param[in]  h     Clixon
- * @param[out] xret  Error XML tree. Free with xml_free after use
- * @retval     0     Success
- * @retval    -1     Error
- */
-int
-plugin_report_err_xml(clixon_handle h,
-                      cxobj **xret,
-                      char *err,
-                      ...)
-{
-    int ret = -1;
-    cbuf *cberr;
-    va_list ap;
-
-    if (plugin_rpc_err_set(h)) {
-        ret = netconf_gen_rpc_err_xml(h, xret);
-    } else {
-        if ((cberr = cbuf_new()) == NULL) {
-            clixon_err(OE_UNIX, errno, "cbuf_new");
-            goto done;
-        }
-        va_start(ap, err);
-        vcprintf(cberr, err, ap);
-        ret = netconf_operation_failed_xml(xret, "application",
-                                           cbuf_get(cberr));
-        cbuf_free(cberr);
-    }
-
-done:
-    return ret;
-}
-
 /*! Start a validate transaction
  *
  * @param[in]  h      Clixon handle
@@ -821,7 +638,7 @@ candidate_validate(clixon_handle h,
          * TODO: -1 return should be fatal error, not failed validation
          */
         if (!cbuf_len(cbret) &&
-            plugin_report_err(h, cbret) < 0)
+            clixon_plugin_report_err(h, cbret) < 0)
             goto done;
         goto fail;
     }
@@ -1041,7 +858,7 @@ from_client_commit(clixon_handle h,
     if ((ret = candidate_commit(h, xe, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
         clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
         if (ret < 0)
-            if (plugin_report_err(h, cbret) < 0)
+            if (clixon_plugin_report_err(h, cbret) < 0)
                 goto done;
         goto ok;
     }

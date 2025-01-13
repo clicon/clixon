@@ -295,7 +295,7 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
         if (fn(h, nsc, xpath, x) < 0){
             if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
                 goto done;
-            if (clixon_err_category() < 0 && !plugin_rpc_err_set())
+            if (clixon_err_category() < 0 && !clixon_plugin_rpc_err_set(h))
                 clixon_log(h, LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __FUNCTION__, clixon_plugin_name_get(cp));
             goto fail;  /* Dont quit here on user callbacks */
@@ -350,9 +350,9 @@ clixon_plugin_statedata_all(clixon_handle   h,
             goto done;
         if (ret == 0){
             /* error reason should be in clixon_err_reason */
-            if (plugin_report_err_xml(h, &xerr,
-                                      "Internal error, state callback in plugin %s returned invalid XML: %s",
-                                      clixon_plugin_name_get(cp), clixon_err_reason()) < 0)
+            if (clixon_plugin_report_err_xml(h, &xerr,
+                                             "Internal error, state callback in plugin %s returned invalid XML: %s",
+                                             clixon_plugin_name_get(cp), clixon_err_reason()) < 0)
                 goto done;
             xml_free(*xret);
             *xret = xerr;
@@ -582,9 +582,9 @@ plugin_transaction_call_one(clixon_handle       h,
     if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), fnname) < 0)
         goto done;
     if (rv < 0) {
-        if (!plugin_rpc_err_set() && !clixon_err_category())
+        if (!clixon_plugin_rpc_err_set(h) && !clixon_err_category())
             /* sanity: log if err is not called ! */
-            clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err or plugin_rpc_err call on error",
+            clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' callback does not make clixon_err or clixon_plugin_rpc_err call on error",
                        fnname, clixon_plugin_name_get(cp));
         goto done;
     }
