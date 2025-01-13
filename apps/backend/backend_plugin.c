@@ -350,7 +350,7 @@ clixon_plugin_statedata_all(clixon_handle   h,
             goto done;
         if (ret == 0){
             /* error reason should be in clixon_err_reason */
-            if (plugin_report_err_xml(&xerr,
+            if (plugin_report_err_xml(h, &xerr,
                                       "Internal error, state callback in plugin %s returned invalid XML: %s",
                                       clixon_plugin_name_get(cp), clixon_err_reason()) < 0)
                 goto done;

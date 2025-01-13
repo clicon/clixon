@@ -723,7 +723,7 @@ from_client_edit_config(clixon_handle h,
             }
         }
         if ((ret = candidate_commit(h, NULL, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
-            if (plugin_report_err(cbret) < 0)
+            if (plugin_report_err(h, cbret) < 0)
                 goto done;
             xmldb_copy(h, "running", "candidate");
             goto ok;

@@ -764,12 +764,14 @@ netconf_gen_rpc_err_xml(cxobj **xret)
 
 /*! Report an error from a plugin.
  *
+ * @param[in]  h      Clixon
  * @param[out] cbret  CLIgen buffer w error stmt if retval = 0
  * @retval     0      Success
  * @retval    -1      Error
  */
 int
-plugin_report_err(cbuf *cbret)
+plugin_report_err(clixon_handle h,
+                  cbuf *cbret)
 {
     int ret;
 
@@ -786,12 +788,14 @@ plugin_report_err(cbuf *cbret)
 
 /*! Report an error from a plugin.
  *
+ * @param[in]  h     Clixon
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     0     Success
  * @retval    -1     Error
  */
 int
-plugin_report_err_xml(cxobj **xret,
+plugin_report_err_xml(clixon_handle h,
+                      cxobj **xret,
                       char *err,
                       ...)
 {
@@ -852,7 +856,7 @@ candidate_validate(clixon_handle h,
          * TODO: -1 return should be fatal error, not failed validation
          */
         if (!cbuf_len(cbret) &&
-            plugin_report_err(cbret) < 0)
+            plugin_report_err(h, cbret) < 0)
             goto done;
         goto fail;
     }
@@ -1072,7 +1076,7 @@ from_client_commit(clixon_handle h,
     if ((ret = candidate_commit(h, xe, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
         clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
         if (ret < 0)
-            if (plugin_report_err(cbret) < 0)
+            if (plugin_report_err(h, cbret) < 0)
                 goto done;
         goto ok;
     }

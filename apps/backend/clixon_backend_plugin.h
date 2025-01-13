@@ -137,7 +137,7 @@ int plugin_rpc_err(clixon_handle h, const char *ns,
                    const char *type, const char *tag, const char *info,
                    const char *severity, const char *fmt, ...);
 int plugin_rpc_err_set(void);
-int plugin_report_err(cbuf *cbret);
-int plugin_report_err_xml(cxobj **xreg, char *err, ...);
+int plugin_report_err(clixon_handle h, cbuf *cbret);
+int plugin_report_err_xml(clixon_handle h, cxobj **xreg, char *err, ...);
 
 #endif  /* _CLIXON_BACKEND_PLUGIN_H_ */
