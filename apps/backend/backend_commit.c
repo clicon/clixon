@@ -623,8 +623,11 @@ static cbuf *_plugin_rpc_err_message;
  * @retval    -1        Error
  */
 int
-plugin_rpc_err(clixon_handle h, const char *ns,
-               const char *type, const char *tag, const char *info,
+plugin_rpc_err(clixon_handle h,
+               const char *ns,
+               const char *type,
+               const char *tag,
+               const char *info,
                const char *severity,
                const char *fmt, ...)
 {
@@ -709,6 +712,11 @@ plugin_rpc_err(clixon_handle h, const char *ns,
     return -1;
 }
 
+/*! Returns if the rpc error has already been set.
+ *
+ * @retval     0        The rpc error is not set
+ * @retval     1        The rpc error is set
+ */
 int
 plugin_rpc_err_set(void)
 {
@@ -754,6 +762,12 @@ netconf_gen_rpc_err_xml(cxobj **xret)
     return ret;
 }
 
+/*! Report an error from a plugin.
+ *
+ * @param[out] cbret  CLIgen buffer w error stmt if retval = 0
+ * @retval     0      Success
+ * @retval    -1      Error
+ */
 int
 plugin_report_err(cbuf *cbret)
 {
@@ -770,15 +784,23 @@ plugin_report_err(cbuf *cbret)
     return 0;
 }
 
+/*! Report an error from a plugin.
+ *
+ * @param[out] xret  Error XML tree. Free with xml_free after use
+ * @retval     0     Success
+ * @retval    -1     Error
+ */
 int
-plugin_report_err_xml(cxobj **cbret, char *err, ...)
+plugin_report_err_xml(cxobj **xret,
+                      char *err,
+                      ...)
 {
     int ret = -1;
     cbuf *cberr;
     va_list ap;
 
     if (plugin_rpc_err_set()) {
-        ret = netconf_gen_rpc_err_xml(cbret);
+        ret = netconf_gen_rpc_err_xml(xret);
     } else {
         if ((cberr = cbuf_new()) == NULL) {
             clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -786,7 +808,7 @@ plugin_report_err_xml(cxobj **cbret, char *err, ...)
         }
         va_start(ap, err);
         vcprintf(cberr, err, ap);
-        ret = netconf_operation_failed_xml(cbret, "application",
+        ret = netconf_operation_failed_xml(xret, "application",
                                            cbuf_get(cberr));
         cbuf_free(cberr);
     }
