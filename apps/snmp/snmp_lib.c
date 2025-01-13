@@ -1069,7 +1069,7 @@ snmp_yang2xpath_cb(yang_stmt *ys,
     }
     switch (yang_keyword_get(ys)){
     case Y_LIST:
-        if ((cvk = yang_cvec_get(ys)) == NULL) /* Use Y_LIST cache, see ys_populate_list() */
+        if (clixon_snmp_ylist_keys(ys, &cvk) < 0)
             break;
         /* Iterate over individual keys  */
         assert(keyvec && cvec_len(cvk) == cvec_len(keyvec));
@@ -1081,6 +1081,7 @@ snmp_yang2xpath_cb(yang_stmt *ys,
                     cv_string_get(cvec_i(cvk, i)),
                     cv_string_get(cvec_i(keyvec, i)));
         }
+        cvec_free(cvk);
         break;
     case Y_LEAF_LIST:
         assert(0); // NYI
@@ -1426,5 +1427,43 @@ clixon_snmp_api_oid_find(oid   *oid0,
     else
         retval = 0;
     // done:
+    return retval;
+}
+
+/*! Get an SNMP key list from a ylist. 
+ * @param[in]  ylist   ylist 
+ * @param[out] ylist_keys  Vector of key names (strings). 
+ * @retval -1 Error
+ * @retval  0 OK
+ * Note: ylist_keys need to be freed.
+ */
+int clixon_snmp_ylist_keys(yang_stmt *ylist, cvec **ylist_keys) {
+    int retval = -1;
+    cvec *cvk = NULL;
+    char *smi_key_name = NULL;
+    if (yang_extension_value(ylist, "table-key", CLIXON_SNMP_NS, NULL, &smi_key_name) < 0){ 
+        clixon_err(OE_XML, errno, "could not lookup table-key");
+        goto done;
+    }
+
+    if (!smi_key_name){
+        /* Keys, go through keys */
+        if ((cvk = yang_cvec_get(ylist)) == NULL){
+            clixon_err(OE_YANG, 0, "No keys");
+            goto done;
+        }
+
+        cvk = cvec_dup(cvk);
+    } else {
+        cvk = cvec_new(0);
+        if (cvec_add_string(cvk, NULL, smi_key_name) < 0){
+            clixon_err(OE_UNIX, 0, "Could not add key");
+            goto done;
+        }
+    }
+
+    *ylist_keys = cvk;
+    retval = 0;
+done:
     return retval;
 }
