@@ -628,29 +628,6 @@ netconf_common_rpc_err_xml(cxobj **xret,
     return retval;
 }
 
-/*! Common Netconf element XML tree according to RFC 6241 App A
- *
- * @param[out] xret    Error XML tree. Free with xml_free after use
- * @param[in]  type    Error type: "application" or "protocol"
- * @param[in]  tag     Error tag
- * @param[in]  element bad-element xml
- * @param[in]  message Error message (will be XML encoded)
- * @retval     0       OK
- * @retval    -1       Error
- */
-static int
-netconf_common_xml(cxobj **xret,
-                   char   *type,
-                   char   *tag,
-                   char   *infotag,
-                   char   *element,
-                   char   *message)
-{
-    return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE,
-                                      type, tag, "error", infotag, element,
-                                      message);
-}    
-
 /*! Create Netconf missing-element error XML tree according to RFC 6241 App A
  *
  * An expected element is missing.
@@ -670,8 +647,9 @@ netconf_missing_element(cbuf      *cb,
     int    retval = -1;
     cxobj *xret = NULL;
 
-    if (netconf_common_xml(&xret, type, "missing-element",
-                           "bad-element", element, message) < 0)
+    if (netconf_common_rpc_err_xml(&xret, NETCONF_BASE_NAMESPACE, type,
+                                   "missing-element", "error",
+                                   "bad-element", element, message) < 0)
         goto done;
     if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
@@ -696,8 +674,9 @@ netconf_missing_element_xml(cxobj **xret,
                             char   *element,
                             char   *message)
 {
-    return netconf_common_xml(xret, type, "missing-element",
-                              "bad-element", element, message);
+    return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE, type,
+                                      "missing-element", "error",
+                                      "bad-element", element, message);
 }
 
 /*! Create Netconf bad-element error XML tree according to RFC 6241 App A
@@ -720,8 +699,9 @@ netconf_bad_element(cbuf *cb,
     int    retval = -1;
     cxobj *xret = NULL;
 
-    if (netconf_common_xml(&xret, type, "bad-element",
-                           "bad-element",element, message) < 0)
+    if (netconf_common_rpc_err_xml(&xret, NETCONF_BASE_NAMESPACE, type,
+                                   "bad-element", "error",
+                                   "bad-element",element, message) < 0)
         goto done;
     if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
@@ -738,7 +718,9 @@ netconf_bad_element_xml(cxobj **xret,
                         char   *element,
                         char   *message)
 {
-    return netconf_common_xml(xret, type, "bad-element", "bad-element", element, message);
+    return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE, type,
+                                      "bad-element", "error",
+                                      "bad-element", element, message);
 }
 
 /*! Create Netconf unknown-element error XML tree according to RFC 6241 App A
@@ -760,8 +742,9 @@ netconf_unknown_element(cbuf *cb,
     int    retval = -1;
     cxobj *xret = NULL;
 
-    if (netconf_common_xml(&xret, type, "unknown-element",
-                           "bad-element", element, message) < 0)
+    if (netconf_common_rpc_err_xml(&xret, NETCONF_BASE_NAMESPACE, type,
+                                   "unknown-element", "error",
+                                   "bad-element", element, message) < 0)
         goto done;
     if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
@@ -788,8 +771,9 @@ netconf_unknown_element_xml(cxobj **xret,
                             char   *element,
                             char   *message)
 {
-    return netconf_common_xml(xret, type, "unknown-element",
-                              "bad-element", element, message);
+    return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE, type,
+                                      "unknown-element", "error",
+                                      "bad-element", element, message);
 }
 
 /*! Create Netconf unknown-namespace error XML tree according to RFC 6241 App A
@@ -811,8 +795,9 @@ netconf_unknown_namespace(cbuf *cb,
     int    retval = -1;
     cxobj *xret = NULL;
 
-    if (netconf_common_xml(&xret, type, "unknown-namespace",
-                           "bad-namespace", ns, message) < 0)
+    if (netconf_common_rpc_err_xml(&xret, NETCONF_BASE_NAMESPACE, type,
+                                   "unknown-namespace", "error",
+                                   "bad-namespace", ns, message) < 0)
         goto done;
     if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
@@ -829,8 +814,9 @@ netconf_unknown_namespace_xml(cxobj **xret,
                               char   *ns,
                               char   *message)
 {
-    return netconf_common_xml(xret, type, "unknown-namespace",
-                              "bad-namespace", ns, message);
+    return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE, type,
+                                      "unknown-namespace", "error",
+                                      "bad-namespace", ns, message);
 }
 
 /*! Create Netconf access-denied error cbuf according to RFC 6241 App A
