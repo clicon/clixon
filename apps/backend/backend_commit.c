@@ -603,13 +603,6 @@ validate_common(clixon_handle       h,
     goto done;
 }
 
-static char *_plugin_rpc_err_ns;
-static char *_plugin_rpc_err_type;
-static char *_plugin_rpc_err_tag;
-static char *_plugin_rpc_err_info;
-static char *_plugin_rpc_err_severity;
-static cbuf *_plugin_rpc_err_message;
-
 /*! Save an RPC error to be reported by clixon.
  *
  * @param[in]  h        Clixon
@@ -631,85 +624,55 @@ plugin_rpc_err(clixon_handle h,
                const char *severity,
                const char *fmt, ...)
 {
-    char *n_ns = NULL, *n_type = NULL, *n_tag = NULL;
-    char *n_info = NULL, *n_severity = NULL;
-    cbuf *n_message = NULL;
+    int retval = -1;
     int err;
+    cvec *cvv = NULL;
 
+    cvv = cvec_new(0);
+    if (!cvv)
+        goto done;
     if (ns) {
-        n_ns = strdup(ns);
-        if (!n_ns)
-            goto out_nomem;
+        if (cvec_add_string(cvv, "ns", ns))
+            goto done;
     }
-    n_type = strdup(type);
-    if (!n_type)
-        goto out_nomem;
-    n_tag = strdup(tag);
-    if (!n_tag)
-        goto out_nomem;
+    if (cvec_add_string(cvv, "type", type))
+        goto done;
+    if (cvec_add_string(cvv, "tag", tag))
+        goto done;
     if (ns) {
-        n_ns = strdup(ns);
-        if (!n_ns)
-            goto out_nomem;
+        if (cvec_add_string(cvv, "info", info))
+            goto done;
     }
-    if (info) {
-        n_info = strdup(info);
-        if (!n_info)
-            goto out_nomem;
-    }
-    n_severity = strdup(severity);
-    if (!n_severity)
-        goto out_nomem;
+    if (cvec_add_string(cvv, "severity", severity))
+        goto done;
     if (fmt) {
         va_list args;
-        n_message = cbuf_new();
-        if (!n_message)
-            goto out_nomem;
+        cbuf *cb;
+
+        cb = cbuf_new();
+        if (!cb)
+            goto done;
         va_start(args, fmt);
-        err = vcprintf(n_message, fmt, args);
+        err = vcprintf(cb, fmt, args);
         va_end(args);
-        if (err < 0)
-            goto out_nomem;
+        if (err < 0) {
+            cbuf_free(cb);
+            goto done;
+        }
+        cvec_add_string(cvv, "message", cbuf_get(cb));
+        cbuf_free(cb);
     }
-    /*
-     * Everything is allocated, we cannot fail from here, so clean up the
-     * old stuff.
-     */
-    if (_plugin_rpc_err_ns)
-        free(_plugin_rpc_err_ns);
-    if (_plugin_rpc_err_type)
-        free(_plugin_rpc_err_type);
-    if (_plugin_rpc_err_tag)
-        free(_plugin_rpc_err_tag);
-    if (_plugin_rpc_err_info)
-        free(_plugin_rpc_err_info);
-    if (_plugin_rpc_err_severity)
-        free(_plugin_rpc_err_severity);
-    if (_plugin_rpc_err_message)
-        cbuf_free(_plugin_rpc_err_message);
 
-    _plugin_rpc_err_ns = n_ns;
-    _plugin_rpc_err_type = n_type;
-    _plugin_rpc_err_tag = n_tag;
-    _plugin_rpc_err_info = n_info;
-    _plugin_rpc_err_severity = n_severity;
-    _plugin_rpc_err_message = n_message;
-    return 0;
+    err = clicon_data_cvec_set(h, "rpc_err", cvv);
+    if (err)
+        goto done;
 
- out_nomem:
-    if (n_ns)
-        free(n_ns);
-    if (n_type)
-        free(n_type);
-    if (n_tag)
-        free(n_tag);
-    if (n_info)
-        free(n_info);
-    if (n_severity)
-        free(n_severity);
-    if (n_message)
-        cbuf_free(n_message);
-    return -1;
+    retval = 0;
+
+ done:
+    if (retval && cvv)
+        cvec_free(cvv);
+    return retval;
 }
 
 /*! Returns if the rpc error has already been set.
@@ -718,48 +681,50 @@ plugin_rpc_err(clixon_handle h,
  * @retval     1        The rpc error is set
  */
 int
-plugin_rpc_err_set(void)
+plugin_rpc_err_set(clixon_handle h)
 {
-    return _plugin_rpc_err_type != NULL;
+    return clicon_data_cvec_get(h, "rpc_err") != NULL;
 }
 
 static int
-netconf_gen_rpc_err(cbuf *cbret)
+netconf_gen_rpc_err(clixon_handle h, cbuf *cbret)
 {
-    char *type = _plugin_rpc_err_type;
-    int ret;
+    cvec *cvv = clicon_data_cvec_get(h, "rpc_err");
+    int retval;
 
-    /* Type marks it as set, clear it before handling. */
-    _plugin_rpc_err_type = NULL;
-    ret = netconf_common_rpc_err(cbret, _plugin_rpc_err_ns,
-                                 type,
-                                 _plugin_rpc_err_tag,
-                                 _plugin_rpc_err_severity,
-                                 _plugin_rpc_err_info,
-                                 cbuf_get(_plugin_rpc_err_message));
-    free(type);
+    /* Delete the pointer so the cvec doesn't get freed. */
+    clicon_ptr_del(h, "rpc_err");
+    retval = netconf_common_rpc_err(cbret,
+                                    cvec_find_str(cvv, "ns"),
+                                    cvec_find_str(cvv, "type"),
+                                    cvec_find_str(cvv, "tag"),
+                                    cvec_find_str(cvv, "severity"),
+                                    cvec_find_str(cvv, "info"),
+                                    cvec_find_str(cvv, "message"));
+    cvec_free(cvv);
 
-    return ret;
+    return retval;
 }
 
 static int
-netconf_gen_rpc_err_xml(cxobj **xret)
+netconf_gen_rpc_err_xml(clixon_handle h, cxobj **xret)
 {
-    char *type = _plugin_rpc_err_type;
-    int ret;
+    cvec *cvv = clicon_data_cvec_get(h, "rpc_err");
+    int retval;
 
-    /* Type marks it as set, clear it before handling. */
-    _plugin_rpc_err_type = NULL;
-    ret = netconf_common_rpc_err_xml(xret, _plugin_rpc_err_ns,
-                                     type,
-                                     _plugin_rpc_err_tag,
-                                     _plugin_rpc_err_severity,
-                                     NULL,
-                                     _plugin_rpc_err_info,
-                                     cbuf_get(_plugin_rpc_err_message));
-    free(type);
+    /* Delete the pointer so the cvec doesn't get freed. */
+    clicon_ptr_del(h, "rpc_err");
+    retval = netconf_common_rpc_err_xml(xret,
+                                        cvec_find_str(cvv, "ns"),
+                                        cvec_find_str(cvv, "type"),
+                                        cvec_find_str(cvv, "tag"),
+                                        cvec_find_str(cvv, "severity"),
+                                        NULL,
+                                        cvec_find_str(cvv, "info"),
+                                        cvec_find_str(cvv, "message"));
+    cvec_free(cvv);
 
-    return ret;
+    return retval;
 }
 
 /*! Report an error from a plugin.
@@ -775,8 +740,8 @@ plugin_report_err(clixon_handle h,
 {
     int ret;
 
-    if (plugin_rpc_err_set()) {
-        if ((ret = netconf_gen_rpc_err(cbret)) < 0)
+    if (plugin_rpc_err_set(h)) {
+        if ((ret = netconf_gen_rpc_err(h, cbret)) < 0)
             return ret;
     } else if ((ret = netconf_operation_failed(cbret, "application",
                                                clixon_err_reason())) < 0) {
@@ -803,8 +768,8 @@ plugin_report_err_xml(clixon_handle h,
     cbuf *cberr;
     va_list ap;
 
-    if (plugin_rpc_err_set()) {
-        ret = netconf_gen_rpc_err_xml(xret);
+    if (plugin_rpc_err_set(h)) {
+        ret = netconf_gen_rpc_err_xml(h, xret);
     } else {
         if ((cberr = cbuf_new()) == NULL) {
             clixon_err(OE_UNIX, errno, "cbuf_new");
