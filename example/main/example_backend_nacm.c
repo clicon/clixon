@@ -100,11 +100,19 @@ nacm_validate(clixon_handle    h,
     if (_transaction_log)
         transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
     if (_validate_fail_xpath){
-        if (_validate_fail_toggle==0 &&
-            xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
-            _validate_fail_toggle = 1; /* toggle if triggered */
-            clixon_err(OE_XML, 0, "User error");
-            return -1; /* induce fail */
+        if (xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)) {
+            if (_validate_fail_toggle==0) {
+                _validate_fail_toggle = 1; /* toggle if triggered */
+                clixon_err(OE_XML, 0, "User error");
+                return -1; /* induce fail */
+            } else if (_validate_fail_toggle==2) {
+                _validate_fail_toggle = 0; /* toggle if triggered */
+                clixon_plugin_rpc_err(h, NULL,
+                                      "application", "test_error_tag",
+                                      "test_error_info", "error",
+                                      "test_error_data %d", 1234);
+                return -1; /* induce fail */
+            }
         }
     }
     return 0;
@@ -130,7 +138,7 @@ nacm_commit(clixon_handle    h,
     if (_validate_fail_xpath){
         if (_validate_fail_toggle==1 &&
             xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
-            _validate_fail_toggle = 0; /* toggle if triggered */
+            _validate_fail_toggle = 2; /* toggle if triggered */
             clixon_err(OE_XML, 0, "User error");
             return -1; /* induce fail */
         }
