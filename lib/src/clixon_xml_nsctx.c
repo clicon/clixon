@@ -62,12 +62,12 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_options.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_yang_module.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_sort.h"
@@ -308,7 +308,7 @@ xml_nsctx_node(cxobj *xn,
  * Primary use is Yang path statements, eg leafrefs and others
  * Fully explore all prefix:namespace pairs from context of one node
  * @param[in]  yn     Yang statement in module tree (or module itself)
- * @param[out] ncp    XML namespace context
+ * @param[out] ncp    XML namespace context (caller frees with cvec_free)
  * @retval     0      OK
  * @retval    -1      Error
  * @code
@@ -340,6 +340,7 @@ xml_nsctx_yang(yang_stmt *yn,
     char      *prefix;
     char      *mynamespace;
     char      *myprefix;
+    int        inext;
 
     if (yang_keyword_get(yn) == Y_SPEC){
         clixon_err(OE_YANG, EINVAL, "yang spec node is invalid argument");
@@ -371,8 +372,8 @@ xml_nsctx_yang(yang_stmt *yn,
 
     /* Iterate over module and register all import prefixes
      */
-    y = NULL;
-    while ((y = yn_each(ymod, y)) != NULL) {
+    inext = 0;
+    while ((y = yn_iter(ymod, &inext)) != NULL) {
         if (yang_keyword_get(y) == Y_IMPORT){
             if ((name = yang_argument_get(y)) == NULL)
                 continue; /* Just skip - shouldnt happen) */
@@ -424,6 +425,7 @@ xml_nsctx_yangspec(yang_stmt *yspec,
     yang_stmt *ymod = NULL;
     yang_stmt *yprefix;
     yang_stmt *ynamespace;
+    int        inext;
 
     if (ncp && *ncp)
         nc = *ncp;
@@ -431,8 +433,8 @@ xml_nsctx_yangspec(yang_stmt *yspec,
         clixon_err(OE_XML, errno, "cvec_new");
         goto done;
     }
-    ymod = NULL;
-    while ((ymod = yn_each(yspec, ymod)) != NULL){
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL){
         if (yang_keyword_get(ymod) != Y_MODULE)
             continue;
         if ((yprefix = yang_find(ymod, Y_PREFIX, NULL)) == NULL)

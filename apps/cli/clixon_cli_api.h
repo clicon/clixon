@@ -33,7 +33,7 @@
 
   ***** END LICENSE BLOCK *****
 
-  * Note, this is a CLICON API file, only exprorted function prototypes should appear here
+  * Note, this is a CLICON API file, only exported function prototypes should appear here
  */
 
 #ifndef _CLIXON_CLI_API_H_
@@ -80,21 +80,24 @@ cligen_handle cli_cligen(clixon_handle h);
 int cli_notification_register(clixon_handle h, char *stream, enum format_enum format,
                               char *filter, int status,
                               int (*fn)(int, void*), void *arg);
-
+void cli_signal_block(clixon_handle h);
+void cli_signal_unblock(clixon_handle h);
+void cli_signal_flush(clixon_handle h);
 int mtpoint_paths(yang_stmt *yspec0, char *mtpoint, char *api_path_fmt1, char **api_path_fmt01);
 int dbxml_body(cxobj *xbot, cvec *cvv);
 int identityref_add_ns(cxobj *x, void *arg);
-
 int cli_dbxml(clixon_handle h, cvec *vars, cvec *argv, enum operation_type op, cvec *nsctx);
 int cli_set(clixon_handle h, cvec *vars, cvec *argv);
 int cli_merge(clixon_handle h, cvec *vars, cvec *argv);
 int cli_create(clixon_handle h, cvec *vars, cvec *argv);
 int cli_remove(clixon_handle h, cvec *vars, cvec *argv);
 int cli_del(clixon_handle h, cvec *vars, cvec *argv);
+int cli_debug_show(clixon_handle h, cvec *cvv, cvec *argv);
 int cli_debug_cli(clixon_handle h, cvec *vars, cvec *argv);
 int cli_debug_backend(clixon_handle h, cvec *vars, cvec *argv);
 int cli_debug_restconf(clixon_handle h, cvec *vars, cvec *argv);
 int cli_set_mode(clixon_handle h, cvec *vars, cvec *argv);
+int cli_start_program(clixon_handle h, cvec *vars, cvec *argv);
 int cli_start_shell(clixon_handle h, cvec *vars, cvec *argv);
 int cli_quit(clixon_handle h, cvec *vars, cvec *argv);
 int cli_commit(clixon_handle h, cvec *vars, cvec *argv);
@@ -115,10 +118,13 @@ int cli_help(clixon_handle h, cvec *vars, cvec *argv);
 cvec *cvec_append(cvec *cvv0, cvec *cvv1);
 int   cvec_concat_cb(cvec *cvv, cbuf *cb);
 int cli_process_control(clixon_handle h, cvec *vars, cvec *argv);
+int cli_alias_cb(clixon_handle h, cvec *cvv, cvec *argv);
 
 /* In cli_show.c */
 int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv,
                   cvec *commands, cvec *helptexts);
+int expand_yang_list(void *h, char *name, cvec *cvv, cvec *argv,
+                     cvec *commands, cvec *helptexts);
 int clixon_cli2file(clixon_handle h, FILE *f, cxobj *xn, char *prepend, clicon_output_cb *fn, int skiptop);
 int clixon_cli2cbuf(clixon_handle h, cbuf *cb, cxobj *xn, char *prepend, int skiptop);
 /* cli_show.c: CLIgen new vector arg callbacks */
@@ -126,7 +132,7 @@ int cli_show_common(clixon_handle h, char *db, enum format_enum format, int pret
 
 int show_yang(clixon_handle h, cvec *vars, cvec *argv);
 int show_conf_xpath(clixon_handle h, cvec *cvv, cvec *argv);
-int cli_show_option_format(cvec *argv, int argc, enum format_enum *format);
+int cli_show_option_format(clixon_handle h, cvec *argv, int argc, enum format_enum *format);
 int cli_show_option_bool(cvec *argv, int argc, int *result);
 int cli_show_option_withdefault(cvec *argv, int argc, char **withdefault, char **extdefault);
 int cli_show_config(clixon_handle h, cvec *cvv, cvec *argv);

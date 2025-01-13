@@ -96,14 +96,17 @@
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_stream.h"
+#include "restconf_lib.h"
+#include "restconf_stream.h"
 
 /*
  * Constants
  */
 /* Enable for forking stream subscription loop. 
  * Disable to get single threading but blocking on streams
+ * XXX: Integrate with top-level events
  */
-#define STREAM_FORK
+#undef STREAM_FORK
 
 /* Keep track of children - when they exit - their FCGX handle needs to be 
  * freed with  FCGX_Free(&rbk, 0);
@@ -118,35 +121,7 @@ struct stream_child{
  */
 static struct stream_child *STREAM_CHILD = NULL;
 
-/*! Check if uri path denotes a stream/notification path
- *
- * @retval     1    Yes, a stream path
- * @retval     0    No, not a stream path
- */
-int
-api_path_is_stream(clixon_handle h)
-{
-    int    retval = 0;
-    char  *path = NULL;
-    char  *stream_path;
-
-   if ((path = restconf_uripath(h)) == NULL)
-       goto done;
-   if ((stream_path = clicon_option_str(h, "CLICON_STREAM_PATH")) == NULL)
-       goto done;
-   if (strlen(path) < 1 + strlen(stream_path)) /* "/" + stream */
-       goto done;
-   if (path[0] != '/')
-       goto done;
-   if (strncmp(path+1, stream_path, strlen(stream_path)) != 0)
-       goto done;
-    retval = 1;
- done:
-    if (path)
-        free(path);
-    return retval;
-
-}
+static int backend_eof = 0;
 
 /*! Find restconf child using PID and cleanup FCGI Request data
  *
@@ -170,7 +145,7 @@ stream_child_free(clixon_handle h,
                 goto done;
             }
             sc = NEXTQ(struct stream_child *, sc);
-        } while (sc && sc !=  STREAM_CHILD);
+        } while (sc && sc != STREAM_CHILD);
     }
  done:
     return 0;
@@ -202,38 +177,34 @@ stream_child_freeall(clixon_handle h)
  * @see netconf_notification_cb
  */
 static int
-restconf_stream_cb(int   s,
-                   void *arg)
+stream_fcgi_backend_cb(int   s,
+                       void *arg)
 {
-    int                retval = -1;
-    FCGX_Request      *r = (FCGX_Request *)arg;
-    int                eof;
-    struct clicon_msg *reply = NULL;
-    cxobj             *xtop = NULL; /* top xml */
-    cxobj             *xn;        /* notification xml */
-    cbuf              *cb = NULL;
-    int                pretty = 0; /* XXX should be via arg */
-    int                ret;
+    int           retval = -1;
+    FCGX_Request *req = (FCGX_Request *)arg;
+    int           eof;
+    cxobj        *xtop = NULL; /* top xml */
+    cxobj        *xn;        /* notification xml */
+    cbuf         *cb = NULL;
+    cbuf         *cbmsg = NULL;
+    int           pretty = 0; /* XXX should be via arg */
+    int           ret;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    /* get msg (this is the reason this function is called) */
-    if (clicon_msg_rcv(s, NULL, 0, &reply, &eof) < 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s msg_rcv error", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "");
+    if (clixon_msg_rcv11(s, NULL, 0, &cbmsg, &eof) < 0)
         goto done;
-    }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s msg: %s", __FUNCTION__, reply?reply->op_body:"null");
+    clixon_debug(CLIXON_DBG_STREAM, "%s", cbuf_get(cbmsg)); // Also MSG
     /* handle close from remote end: this will exit the client */
     if (eof){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s eof", __FUNCTION__);
-        clixon_err(OE_PROTO, ESHUTDOWN, "Socket unexpected close");
-        errno = ESHUTDOWN;
-        FCGX_FPrintF(r->out, "SHUTDOWN\r\n");
-        FCGX_FPrintF(r->out, "\r\n");
-        FCGX_FFlush(r->out);
-        clixon_exit_set(1);
-        goto done;
+        clixon_debug(CLIXON_DBG_STREAM, "eof, terminate stream");
+        backend_eof = 1;
+        clixon_exit_set(1); // local timeout
+        FCGX_FPrintF(req->out, "SHUTDOWN\r\n");
+        FCGX_FPrintF(req->out, "\r\n");
+        FCGX_FFlush(req->out);
+        goto ok;
     }
-    if ((ret = clicon_msg_decode(reply, NULL, NULL, &xtop, NULL)) < 0)  /* XXX pass yang_spec */
+    if ((ret = clixon_xml_parse_string(cbuf_get(cbmsg), YB_NONE, NULL, &xtop, NULL)) < 0)
         goto done;
     if (ret == 0){
         clixon_err(OE_XML, EFAULT, "Invalid notification");
@@ -260,110 +231,21 @@ restconf_stream_cb(int   s,
 #endif
     if (clixon_xml2cbuf(cb, xn, 0, pretty, NULL, -1, 0) < 0)
         goto done;
-    FCGX_FPrintF(r->out, "data: %s\r\n", cbuf_get(cb));
-    FCGX_FPrintF(r->out, "\r\n");
-    FCGX_FFlush(r->out);
+    FCGX_FPrintF(req->out, "data: %s\r\n", cbuf_get(cb));
+    FCGX_FPrintF(req->out, "\r\n");
+    FCGX_FFlush(req->out);
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval: %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "retval: %d", retval);
     if (xtop != NULL)
         xml_free(xtop);
-    if (reply)
-        free(reply);
+    if (cbmsg)
+        cbuf_free(cbmsg);
     if (cb)
         cbuf_free(cb);
     return retval;
 }
-
-/*! Send subscription to backend
- *
- * @param[in]  h     Clixon handle
- * @param[in]  req   Generic Www handle (can be part of clixon handle)
- * @param[in]  name  Stream name
- * @param[in]  qvec
- * @param[in]  pretty    Pretty-print json/xml reply
- * @param[in]  media_out Restconf output media
- * @param[out] sp    Socket -1 if not set
- * @retval     0    OK
- * @retval    -1    Error
- */
-static int
-restconf_stream(clixon_handle h,
-                void         *req,
-                char         *name,
-                cvec         *qvec,
-                int           pretty,
-                restconf_media media_out,
-                int          *sp)
-{
-    int     retval = -1;
-    cxobj  *xret = NULL;
-    cxobj  *xe;
-    cbuf   *cb = NULL;
-    int     s; /* socket */
-    int     i;
-    cg_var *cv;
-    char   *vname;
-
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    *sp = -1;
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_XML, errno, "cbuf_new");
-        goto done;
-    }
-    cprintf(cb, "<rpc xmlns=\"%s\" %s><create-subscription xmlns=\"%s\"><stream>%s</stream>",
-            NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR, EVENT_RFC5277_NAMESPACE, name);
-    /* Print all fields */
-    for (i=0; i<cvec_len(qvec); i++){
-        cv = cvec_i(qvec, i);
-        vname = cv_name_get(cv);
-        if (strcmp(vname, "start-time") == 0){
-            cprintf(cb, "<startTime>");
-            cv2cbuf(cv, cb);
-            cprintf(cb, "</startTime>");
-        }
-        else if (strcmp(vname, "stop-time") == 0){
-            cprintf(cb, "<stopTime>");
-            cv2cbuf(cv, cb);
-            cprintf(cb, "</stopTime>");
-        }
-    }
-    cprintf(cb, "</create-subscription></rpc>]]>]]>");
-    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, &s) < 0)
-        goto done;
-    if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
-        if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
-            goto done;
-        goto ok;
-    }
-
-    /* Setting up stream */
-    if (restconf_reply_header(req, "Content-Type", "text/event-stream") < 0)
-        goto done;
-    if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
-        goto done;
-    if (restconf_reply_header(req, "Connection", "keep-alive") < 0)
-        goto done;
-    if (restconf_reply_header(req, "X-Accel-Buffering", "no") < 0)
-        goto done;
-    if (restconf_reply_send(req, 201, NULL, 0) < 0)
-        goto done;
-    *sp = s;
- ok:
-    retval = 0;
- done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval: %d", __FUNCTION__, retval);
-    if (xret)
-        xml_free(xret);
-    if (cb)
-        cbuf_free(cb);
-    return retval;
-}
-
-/* restconf */
-#include "restconf_lib.h"
-#include "restconf_stream.h"
 
 /*! Listen sock callback (from proxy?)
  *
@@ -371,209 +253,144 @@ restconf_stream(clixon_handle h,
  * @param[in]  req  Generic Www handle (can be part of clixon handle)
  */
 static int
-stream_checkuplink(int   s,
-                   void *arg)
+stream_fcgi_uplink_cb(int   s,
+                      void *arg)
 {
     FCGX_Request      *r = (FCGX_Request *)arg;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM, "");
     if (FCGX_GetError(r->out) != 0){ /* break loop */
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s FCGX_GetError upstream", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_STREAM, "FCGX_GetError upstream");
         clixon_exit_set(1);
     }
     return 0;
 }
 
-int
-stream_timeout(int   s,
-               void *arg)
+/*! Timeout of notification stream, check fcgi socket
+ */
+static int
+fcgi_stream_timeout(int   s,
+                    void *arg)
 {
     struct timeval t;
-    struct timeval t1;
-    FCGX_Request *r = (FCGX_Request *)arg;
+    FCGX_Request  *r = (FCGX_Request *)arg;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "");
     if (FCGX_GetError(r->out) != 0){ /* break loop */
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s FCGX_GetError upstream", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_STREAM, "FCGX_GetError upstream");
         clixon_exit_set(1);
     }
     else{
         gettimeofday(&t, NULL);
-        t1.tv_sec = 1; t1.tv_usec = 0;
-        timeradd(&t, &t1, &t);
-        clixon_event_reg_timeout(t, stream_timeout, arg, "Stream timeout");
+        t.tv_sec++;
+        clixon_event_reg_timeout(t, fcgi_stream_timeout, arg, "Stream timeout");
     }
     return 0;
 }
 
-/*! Process a stream request
+/*! Timeout of notification stream, limit lifetime, for debug
+ */
+static int
+stream_timeout_end(int   s,
+                   void *arg)
+{
+    clixon_debug(CLIXON_DBG_STREAM, "Terminate stream");
+    clixon_exit_set(1); // XXX This is local eventloop see below, not global
+    return 0;
+}
+
+/*! FCGI specific code for setting up stream sockets
  *
  * @param[in]  h       Clixon handle
  * @param[in]  req     Generic Www handle (can be part of clixon handle)
- * @param[in]  qvec    Query parameters, ie the ?<id>=<val>&<id>=<val> stuff
+ * @param[in]  timeout Stream timeout
+ * @param[in]  besock  Socket to backend
  * @param[out] finish  Set to zero, if request should not be finnished by upper layer
  * @retval     0       OK
  * @retval    -1       Error
+ * Consider moving timeout and backend sock to generic code
  */
 int
-api_stream(clixon_handle h,
-           void         *req,
-           cvec         *qvec,
-           int          *finish)
+stream_sockets_setup(clixon_handle h,
+                     void         *req,
+                     int           timeout,
+                     int           besock,
+                     int          *finish)
 {
     int            retval = -1;
     FCGX_Request  *rfcgi = (FCGX_Request *)req; /* XXX */
-    char          *path = NULL;
-    char          *method;
-    char         **pvec = NULL;
-    int            pn;
-    cvec          *pcvec = NULL; /* for rest api */
-    cbuf          *cb = NULL;
-    char          *indata;
-    int            pretty;
-    restconf_media media_out = YANG_DATA_XML; /* XXX default */
-    cbuf          *cbret = NULL;
-    int            s = -1;
-    int            ret;
-    cxobj         *xerr = NULL;
-    char          *streampath;
 #ifdef STREAM_FORK
     int            pid;
     struct stream_child *sc;
+
+    if ((pid = fork()) == 0){ /* child */
+#if 0 // Leaks
+        if (pvec)
+            free(pvec);
+        if (qvec)
+            cvec_free(qvec);
+        if (pcvec)
+            cvec_free(pcvec);
 #endif
-
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    streampath = clicon_option_str(h, "CLICON_STREAM_PATH");
-    if ((path = restconf_uripath(h)) == NULL)
-        goto done;
-    pretty = restconf_pretty_get(h);
-    if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
-        goto done;
-    /* Sanity check of path. Should be /stream/<name> */
-    if (pn != 3){
-        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
-            goto done;
-        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-            goto done;
-        goto ok;
-    }
-    if (strlen(pvec[0]) != 0){
-        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
-            goto done;
-        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-            goto done;
-        goto ok;
-    }
-    if (strcmp(pvec[1], streampath)){
-        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
-            goto done;
-        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-            goto done;
-        goto ok;
-    }
-    if ((method = pvec[2]) == NULL){
-        if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, /stream/<name> expected") < 0)
-            goto done;
-        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-            goto done;
-        goto ok;
-    }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s: method=%s", __FUNCTION__, method);
-
-    if (uri_str2cvec(path, '/', '=', 1, &pcvec) < 0) /* rest url eg /album=ricky/foo */
-        goto done;
-    /* data */
-    if ((cb = restconf_get_indata(req)) == NULL)
-        goto done;
-    indata = cbuf_get(cb);
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s DATA=%s", __FUNCTION__, indata);
-
-    /* If present, check credentials. See "plugin_credentials" in plugin  
-     * See RFC 8040 section 2.5
-     */
-    if ((ret = restconf_authentication_cb(h, req, pretty, media_out)) < 0)
-        goto done;
-    if (ret == 0)
-        goto ok;
-    if (restconf_stream(h, req, method, qvec, pretty, media_out, &s) < 0)
-        goto done;
-    if (s != -1){
-#ifdef STREAM_FORK
-        if ((pid = fork()) == 0){ /* child */
-            if (pvec)
-                free(pvec);
-            if (qvec)
-                cvec_free(qvec);
-            if (pcvec)
-                cvec_free(pcvec);
-            if (cb)
-                cbuf_free(cb);
-            if (cbret)
-                cbuf_free(cbret);
 #endif /* STREAM_FORK */
-            /* Listen to backend socket */
-            if (clixon_event_reg_fd(s,
-                                    restconf_stream_cb, 
-                                    req,
-                                    "stream socket") < 0)
+        backend_eof = 0;
+        /* Listen to backend socket */
+        if (clixon_event_reg_fd(besock,
+                                stream_fcgi_backend_cb,
+                                req,
+                                "stream socket") < 0)
+            goto done;
+        if (clixon_event_reg_fd(rfcgi->listen_sock,
+                                stream_fcgi_uplink_cb,
+                                req,
+                                "stream socket") < 0)
+            goto done;
+        /* Timeout of notification stream, close after limited lifetime, for debug */
+        if (timeout){
+            struct timeval   t;
+            gettimeofday(&t, NULL);
+            t.tv_sec += timeout;
+            clixon_event_reg_timeout(t, stream_timeout_end, req, "Stream timeout");
+        }
+        /* Poll upstream errors */
+        fcgi_stream_timeout(0, req);
+        /* Start loop */
+        clixon_event_loop(h);
+        clixon_debug(CLIXON_DBG_STREAM, "after loop");
+        if (backend_eof == 0)
+            if (clicon_rpc_close_session(h) < 0)
                 goto done;
-            if (clixon_event_reg_fd(rfcgi->listen_sock,
-                                    stream_checkuplink,
-                                    req,
-                                    "stream socket") < 0)
-                goto done;
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s before loop", __FUNCTION__);
-            /* Poll upstream errors */
-            stream_timeout(0, req);
-            /* Start loop */
-            clixon_event_loop(h);
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s after loop", __FUNCTION__);
-            clicon_rpc_close_session(h);
-            clixon_event_unreg_fd(s, restconf_stream_cb);
-            close(s);
-            clixon_event_unreg_fd(rfcgi->listen_sock,
-                                  restconf_stream_cb);
-            clixon_event_unreg_timeout(stream_timeout, (void*)req);
-            clixon_exit_set(0); /* reset */
+        clixon_event_unreg_fd(besock, stream_fcgi_backend_cb);
+        close(besock);
+        clixon_event_unreg_fd(rfcgi->listen_sock, stream_fcgi_uplink_cb);
+        clixon_event_unreg_timeout(fcgi_stream_timeout, (void*)req);
+        clixon_event_unreg_timeout(stream_timeout_end, (void*)req);
+        clixon_exit_set(0); /* reset */
 #ifdef STREAM_FORK
 #if 0 /* Seems to be a global resource, but there is till some timing error here */
-            FCGX_Finish_r(rfcgi);
-            FCGX_Free(rfcgi, 0);
+        FCGX_Finish_r(rfcgi);
+        FCGX_Free(rfcgi, 0);
 #endif
-            restconf_terminate(h);
-            exit(0);
-        }
-        /* parent */
-        /* Create stream_child struct and store pid and FCGI data, when child
-         * killed, call FCGX_Free
-         */
-        if ((sc = malloc(sizeof(struct stream_child))) == NULL){
-            clixon_err(OE_XML, errno, "malloc");
-            goto done;
-        }
-        memset(sc, 0, sizeof(struct stream_child));
-        sc->sc_pid = pid;
-        sc->sc_r = *rfcgi; /* XXX by value */
-
-        ADDQ(sc, STREAM_CHILD);
-        *finish = 0; /* If spawn child, we should not finish this stream */
-#endif /* STREAM_FORK */
+        restconf_terminate(h);
+        exit(0);
     }
- ok:
+    /* parent */
+    /* Create stream_child struct and store pid and FCGI data, when child
+     * killed, call FCGX_Free
+     */
+    if ((sc = malloc(sizeof(struct stream_child))) == NULL){
+        clixon_err(OE_XML, errno, "malloc");
+        goto done;
+    }
+    memset(sc, 0, sizeof(struct stream_child));
+    sc->sc_pid = pid;
+    sc->sc_r = *rfcgi; /* XXX by value */
+
+    ADDQ(sc, STREAM_CHILD);
+    *finish = 0; /* If spawn child, we should not finish this stream */
+#endif /* STREAM_FORK */
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
-    if (xerr)
-        xml_free(xerr);
-    if (pvec)
-        free(pvec);
-    if (pcvec)
-        cvec_free(pcvec);
-    if (cb)
-        cbuf_free(cb);
-    if (cbret)
-        cbuf_free(cbret);
-    if (path)
-        free(path);
+    clixon_debug(CLIXON_DBG_STREAM, "retval:%d", retval);
     return retval;
 }

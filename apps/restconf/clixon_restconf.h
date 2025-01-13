@@ -54,7 +54,8 @@ enum restconf_media{
     YANG_DATA_XML,       /* "application/yang-data+xml" */
     YANG_PATCH_JSON,     /* "application/yang-patch+json" */
     YANG_PATCH_XML,      /* "application/yang-patch+xml" */
-    YANG_PAGINATION_XML, /* draft-wwlh-netconf-list-pagination-rc-02.txt */
+    YANG_PAGINATION_XML, /* draft-netconf-list-pagination-04.txt */
+    HTTP_DATA_TEXT_HTML  /* For http_data */
     /*   For JSON, the existing "application/yang-data+json" media type is
          sufficient, as the JSON format has built-in support for encoding
          arrays. */
@@ -81,4 +82,3 @@ int   restconf_param_set(clixon_handle h, const char *param, char *val);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-

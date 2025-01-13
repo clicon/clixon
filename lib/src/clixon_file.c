@@ -60,6 +60,8 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_string.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
@@ -86,12 +88,11 @@ clicon_files_recursive1(const char *dir,
                         regex_t    *re,
                         cvec       *cvv)
 {
-    int retval = -1;
-    struct  dirent *dent = NULL;
-    char    path[MAXPATHLEN];
-    DIR     *dirp = NULL;
-    int     res = 0;
-    struct stat    st;
+    int            retval = -1;
+    struct dirent *dent = NULL;
+    char           path[MAXPATHLEN];
+    DIR           *dirp = NULL;
+    struct stat    st = {0,};
 
     if (dir == NULL){
         clixon_err(OE_UNIX, EINVAL, "Requires dir != NULL");
@@ -117,7 +118,7 @@ clicon_files_recursive1(const char *dir,
                     regexec(re, dent->d_name, (size_t)0, NULL, 0) != 0)
                     continue;
                 snprintf(path, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
-                if ((res = lstat(path, &st)) != 0){
+                if (lstat(path, &st) < 0){
                     clixon_err(OE_UNIX, errno, "lstat");
                     goto done;
                 }
@@ -148,7 +149,7 @@ clicon_files_recursive(const char *dir,
     int     res = 0;
     char    errbuf[128];
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s dir:%s", __FUNCTION__, dir);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "dir:%s", dir);
     if (regexp && (res = regcomp(&re, regexp, REG_EXTENDED)) != 0) {
         regerror(res, &re, errbuf, sizeof(errbuf));
         clixon_err(OE_DB, 0, "regcomp: %s", errbuf);
@@ -175,7 +176,8 @@ clicon_files_recursive(const char *dir,
  * @code
  *   char          *dir = "/root/fs";
  *   struct dirent *dp;
- *   if ((ndp = clicon_file_dirent(dir, &dp, "(.so)$", S_IFREG)) < 0)
+ *   int            ndp;
+ *   if ((ndp = clicon_file_dirent(dir, &dp, "\\.so$", S_IFREG)) < 0)
  *       return -1;
  *   for (i = 0; i < ndp; i++) 
  *       do something with dp[i].d_name;
@@ -220,6 +222,8 @@ clicon_file_dirent(const char     *dir,
      goto quit;
    }
    while((dent = readdir(dirp)) != NULL) {
+       if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0)
+           continue;
        /* Filename matching */
        if (regexp) {
            if (regexec(&re, dent->d_name, (size_t) 0, NULL, 0) != 0)
@@ -241,7 +245,7 @@ clicon_file_dirent(const char     *dir,
            clixon_err(OE_UNIX, errno, "realloc");
            goto quit;
        } /* realloc */
-       clixon_debug(CLIXON_DBG_DETAIL, "%s memcpy(%p %p %u", __FUNCTION__, &new[nent], dent, direntStructSize);
+       clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "memcpy(%p %p %u", &new[nent], dent, direntStructSize);
        /* man (3) readdir: 
         * By implication, the  use sizeof(struct dirent) to capture the size of the record including 
         * the size of d_name is also incorrect. */
@@ -249,7 +253,6 @@ clicon_file_dirent(const char     *dir,
        memcpy(&new[nent], dent, direntStructSize);
        nent++;
    } /* while */
-
    qsort((void *)new, nent, sizeof(*new), clicon_file_dirent_sort);
    *ent = new;
    new = NULL;
@@ -270,6 +273,7 @@ quit:
  * @param[out] target  Destination filename
  * @retval     0       OK
  * @retval    -1       Error
+ * XXX This is probably faster with stdio?
  */
 int
 clicon_file_copy(char *src,
@@ -308,6 +312,43 @@ clicon_file_copy(char *src,
         close(ouF);
     if (retval < 0)
         errno = err;
+    return retval;
+}
+
+/*! Make a copy of directory non-recursive
+ *
+ * @param[in]  srcdir  Source dirname
+ * @param[out] dstdir  Destination dirname
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clicon_dir_copy(char *srcdir,
+                char *dstdir)
+{
+    int            retval = -1;
+    struct dirent *dent = NULL;
+    DIR           *dirp = NULL;
+    char           srcfile[MAXPATHLEN];
+    char           dstfile[MAXPATHLEN];
+
+    if (srcdir == NULL || dstdir == NULL){
+        clixon_err(OE_UNIX, EINVAL, "Requires src and dst dir != NULL");
+        goto done;
+    }
+    if ((dirp = opendir(srcdir)) != NULL)
+        while ((dent = readdir(dirp)) != NULL) {
+            if (dent->d_type != DT_REG)
+                continue;
+            snprintf(srcfile, MAXPATHLEN-1, "%s/%s", srcdir, dent->d_name);
+            snprintf(dstfile, MAXPATHLEN-1, "%s/%s", dstdir, dent->d_name);
+            if (clicon_file_copy(srcfile, dstfile) < 0)
+                goto done;
+        }
+    retval = 0;
+ done:
+    if (dirp)
+        closedir(dirp);
     return retval;
 }
 

@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -26,27 +26,30 @@
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
   use your version of this file under the terms of Apache License version 2, indicate
-  your decision by deleting the provisions above and replace them with the 
+  your decision by deleting the provisions above and replace them with the
   notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
 
-  * The example have the following optional arguments that you can pass as 
+  * The example have the following optional arguments that you can pass as
   * argc/argv after -- in clixon_backend:
   *  -a <..> Register callback for this yang action
   *  -m <yang> Mount this yang on mountpoint
   *  -M <namespace> Namespace of mountpoint, note both -m and -M must exist
   *  -n  Notification streams example
-  *  -r  enable the reset function 
+  *  -r  enable the reset function
   *  -s  enable the state function
   *  -S <file>  read state data from file, otherwise construct it programmatically (requires -s)
+  *  -o <xpath> System-only-config of xpath saved in mem
+  *  -O <file> read/write system-only-config to/from this file
   *  -i  read state file on init not by request for optimization (requires -sS <file>)
   *  -u  enable upgrade function - auto-upgrade testing
   *  -U  general-purpose upgrade
   *  -t  enable transaction logging (call syslog for every transaction)
   *  -V <xpath> Failing validate and commit if <xpath> is present (synthetic error)
+
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,7 +73,7 @@
 #include <clixon/clixon_backend.h>
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "a:m:M:nrsS:x:iuUtV:"
+#define BACKEND_EXAMPLE_OPTS "a:m:M:n:o:O:rsS:x:iuUtV:"
 
 /* Enabling this improves performance in tests, but there may trigger the "double XPath"
  * problem.
@@ -90,16 +93,32 @@ static char *_action_instanceid = NULL;
  *
  * Start backend with -- -m <yang> -M <namespace>
  * Mount this yang on mountpoint
+ * Note module-set hard-coded to "mylabel"
  */
 static char *_mount_yang = NULL;
 static char *_mount_namespace = NULL;
 
 /*! Notification stream
  *
- * Enable notification streams for netconf/restconf 
- * Start backend with -- -n
+ * Enable notification streams for netconf/restconf
+ * Start backend with -- -n <sec>
+ * where <sec> is period of stream
  */
-static int _notification_stream = 0;
+static int _notification_stream_s = 0;
+
+/*! System-only config xpath
+ *
+ * Start backend with -o <xpath>
+ * Combined with -O <file> to write to file
+ */
+static char *_system_only_xpath = NULL;
+
+/*! System-only config file
+ *
+ * Start backend with -O <file>
+ * Combined with -o <file> to write to file
+ */
+static char *_system_only_file = NULL;
 
 /*! Variable to control if reset code is run.
  *
@@ -147,7 +166,7 @@ static int _state_file_transaction = 0;
 
 /*! Variable to control module-specific upgrade callbacks.
  *
- * If set, call test-case for upgrading ietf-interfaces, otherwise call 
+ * If set, call test-case for upgrading ietf-interfaces, otherwise call
  * auto-upgrade
  * Start backend with -- -u
  */
@@ -161,7 +180,7 @@ static int _general_upgrade = 0;
 
 /*! Variable to control transaction logging (for debug)
  *
- * If set, call syslog for every transaction callback 
+ * If set, call syslog for every transaction callback
  * Start backend with -- -t
  */
 static int _transaction_log = 0;
@@ -182,7 +201,8 @@ static char *_validate_fail_xpath = NULL;
 static int   _validate_fail_toggle = 0; /* fail at validate and commit */
 
 /* forward */
-static int example_stream_timer_setup(clixon_handle h);
+static int example_stream_timer_setup(clixon_handle h, int sec);
+static int main_system_only_commit(clixon_handle h, transaction_data td);
 
 int
 main_begin(clixon_handle    h,
@@ -222,11 +242,18 @@ main_complete(clixon_handle    h,
 }
 
 /*! This is called on commit. Identify modifications and adjust machine state
+ *
+ * Somewhat complex due to the different test-cases
+ * @param[in]  h   Clixon handle
+ * @param[in]  td  Transaction data
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 int
 main_commit(clixon_handle    h,
             transaction_data td)
 {
+    int     retval = -1;
     cxobj  *target = transaction_target(td); /* wanted XML tree */
     cxobj **vec = NULL;
     int     i;
@@ -235,12 +262,17 @@ main_commit(clixon_handle    h,
 
     if (_transaction_log)
         transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+    if (_system_only_xpath != NULL){
+        if (main_system_only_commit(h, td) < 0)
+            goto done;
+        goto ok;
+    }
     if (_validate_fail_xpath){
         if (_validate_fail_toggle==1 &&
             xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
             _validate_fail_toggle = 0; /* toggle if triggered */
             clixon_err(OE_XML, 0, "User error");
-            return -1; /* induce fail */
+            goto done; /* simulate fail */
         }
     }
 
@@ -254,12 +286,14 @@ main_commit(clixon_handle    h,
     if (clixon_debug_get())
         for (i=0; i<len; i++)             /* Loop over added i/fs */
             xml_print(stdout, vec[i]); /* Print the added interface */
-  done:
+ ok:
+    retval = 0;
+ done:
     if (nsc)
         xml_nsctx_free(nsc);
     if (vec)
         free(vec);
-    return 0;
+    return retval;
 }
 
 int
@@ -298,7 +332,7 @@ main_abort(clixon_handle    h,
     return 0;
 }
 
-/*! Routing example notification timer handler. Here is where the periodic action is 
+/*! Routing example notification timer handler. Here is where the periodic action is
  */
 static int
 example_stream_timer(int   fd,
@@ -310,27 +344,30 @@ example_stream_timer(int   fd,
     /* XXX Change to actual netconf notifications and namespace */
     if (stream_notify(h, "EXAMPLE", "<event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
         goto done;
-    if (example_stream_timer_setup(h) < 0)
+    if (example_stream_timer_setup(h, _notification_stream_s) < 0)
         goto done;
     retval = 0;
  done:
     return retval;
 }
 
-/*! Set up example stream notification timer 
+/*! Set up example stream notification timer
+ *
+ * @param[in]  h  Clixon handle
+ * @param[in]  s  Timeout period in seconds
  */
 static int
-example_stream_timer_setup(clixon_handle h)
+example_stream_timer_setup(clixon_handle h,
+                           int           sec)
 {
-    struct timeval t, t1;
+    struct timeval t;
 
     gettimeofday(&t, NULL);
-    t1.tv_sec = 5; t1.tv_usec = 0;
-    timeradd(&t, &t1, &t);
+    t.tv_sec += sec;
     return clixon_event_reg_timeout(t, example_stream_timer, h, "example stream timer");
 }
 
-/*! Smallest possible RPC declaration for test 
+/*! Smallest possible RPC declaration for test
  *
  * Yang/XML:
  * If the RPC operation invocation succeeded and no output parameters
@@ -437,7 +474,7 @@ example_action_reset(clixon_handle h,            /* Clixon handle */
  * @param[in]    h        Clixon handle
  * @param[in]    nsc      External XML namespace context, or NULL
  * @param[in]    xpath    String with XPATH syntax. or NULL for all
- * @param[out]   xstate   XML tree, <config/> on entry. 
+ * @param[out]   xstate   XML tree, <config/> on entry.
  * @retval       0        OK
  * @retval      -1        Error
  * @see xmldb_get
@@ -453,10 +490,10 @@ example_action_reset(clixon_handle h,            /* Clixon handle */
  * @see example_statefile  where state is read from file and also pagination
  */
 int
-example_statedata(clixon_handle   h,
-                  cvec           *nsc,
-                  char           *xpath,
-                  cxobj          *xstate)
+example_statedata(clixon_handle h,
+                  cvec         *nsc,
+                  char         *xpath,
+                  cxobj        *xstate)
 {
     int        retval = -1;
     cxobj    **xvec = NULL;
@@ -467,6 +504,7 @@ example_statedata(clixon_handle   h,
     char      *name;
     cvec      *nsc1 = NULL;
     yang_stmt *yspec = NULL;
+    int        ret;
 
     if (!_state)
         goto ok;
@@ -475,14 +513,18 @@ example_statedata(clixon_handle   h,
         goto done;
     }
     yspec = clicon_dbspec_yang(h);
-    /* Example of statedata, in this case merging state data with 
+    /* Example of statedata, in this case merging state data with
      * state information. In this case adding dummy interface operation state
      * to configured interfaces.
      * Get config according to xpath */
     if ((nsc1 = xml_nsctx_init(NULL, "urn:ietf:params:xml:ns:yang:ietf-interfaces")) == NULL)
         goto done;
-    if (xmldb_get0(h, "running", YB_MODULE, nsc1, "/interfaces/interface/name", 1, 0, &xt, NULL, NULL) < 0)
+    if ((ret = xmldb_get0(h, "running", YB_MODULE, nsc1, "/interfaces/interface/name", 1, 0, &xt, NULL, NULL)) < 0)
         goto done;
+    if (ret == 0){
+        clixon_err(OE_DB, 0, "Error when reading from running, unknown error");
+        goto done;
+    }
     if (xpath_vec(xt, nsc1, "/interfaces/interface/name", &xvec, &xlen) < 0)
         goto done;
     if (xlen){
@@ -508,8 +550,8 @@ example_statedata(clixon_handle   h,
                                     NULL, &xstate, NULL) < 0)
             goto done; /* For the case when urn:example:clixon is not loaded */
     }
-    /* Event state from RFC8040 Appendix B.3.1 
-     * Note: (1) order is by-system so is different, 
+    /* Event state from RFC8040 Appendix B.3.1
+     * Note: (1) order is by-system so is different,
      *       (2) event-count is XOR on name, so is not 42 and 4
      */
     if (yang_find_module_by_namespace(yspec, "urn:example:events") != NULL){
@@ -590,7 +632,7 @@ example_statefile(clixon_handle     h,
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0)
         goto done;
     /* Mark elements to copy:
-     * For every node found in x0, mark the tree as changed 
+     * For every node found in x0, mark the tree as changed
      */
     for (i=0; i<xlen; i++){
         if ((x1 = xvec[i]) == NULL)
@@ -598,8 +640,8 @@ example_statefile(clixon_handle     h,
         xml_flag_set(x1, XML_FLAG_MARK);
         xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
-    /* Copy the marked elements: 
-     * note is yang-aware for copying of keys which means XML must be bound 
+    /* Copy the marked elements:
+     * note is yang-aware for copying of keys which means XML must be bound
      */
     if (xml_copy_marked(xt, xstate) < 0)
         goto done;
@@ -627,6 +669,131 @@ example_statefile(clixon_handle     h,
     return retval;
 }
 
+/*! System-only config commit data
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  td  Transaction data
+ * @retval     0   OK
+ * @retval    -1   Error
+ *
+ * System-only config data is not written to datastore.
+ * Instead, in this ocmmit action, it is written to file _state_file
+ * @see main_system_only_commit  callback for reading data
+ * @note  Only single system-only config data supported
+ */
+static int
+main_system_only_commit(clixon_handle    h,
+                        transaction_data td)
+{
+    int        retval = -1;
+    cxobj     *src;
+    cxobj     *target;
+    cvec      *nsc = NULL;
+    cxobj   **vec0 = NULL;
+    size_t    veclen0;
+    cxobj   **vec1 = NULL;
+    cxobj    *x0t;
+    cxobj    *x1t = NULL;
+    size_t    veclen1;
+    cxobj    *x;
+    int       i;
+    char     *xpath;
+    char     *file;
+    FILE     *fp = NULL;
+
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
+    xpath = _system_only_xpath;
+    file = _system_only_file;
+    if (xpath == NULL || file == NULL){
+        clixon_err(OE_PLUGIN, EINVAL, "Both -o and -O must be given system-only config");
+        goto done;
+    }
+    src = transaction_src(td);    /* existing XML tree */
+    target = transaction_target(td); /* wanted XML tree */
+    if (xpath_vec_flag(target, nsc, "%s", XML_FLAG_ADD | XML_FLAG_CHANGE,
+                       &vec0, &veclen0, xpath) < 0)
+        goto done;
+    for (i=0; i<veclen0; i++){
+        x = vec0[i];
+        if (fp == NULL &&
+            (fp = fopen(file, "w")) == NULL){
+            clixon_err(OE_UNIX, errno, "open(%s)", file);
+            goto done;
+        }
+        xml_flag_set(x, XML_FLAG_MARK);
+        x0t = xml_root(x);
+        if ((x1t = xml_new(xml_name(x0t), NULL, CX_ELMNT)) == NULL)
+            goto done;
+        xml_apply_ancestor(x, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+        if (xml_copy_marked(x0t, x1t) < 0) /* config */
+            goto done;
+        if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
+            goto done;
+        if (clixon_xml2file(fp, x1t, 0, 1, NULL, fprintf, 1, 0) < 0)
+            goto done;
+        xml_flag_reset(x, XML_FLAG_MARK);
+        break; // XXX only single data
+    }
+    if (xpath_vec_flag(src, nsc, "%s", XML_FLAG_DEL,
+                       &vec1, &veclen1, xpath) < 0)
+        goto done;
+    for (i=0; i<veclen1; i++){
+        x = vec1[i];
+        if (fp == NULL &&
+            (fp = fopen(file, "w")) == NULL){
+            clixon_err(OE_UNIX, errno, "open(%s)", file);
+            goto done;
+        }
+        break; // XXX only single data
+    }
+    retval = 0;
+ done:
+    if (fp)
+        fclose(fp);
+    if (vec0)
+        free(vec0);
+    if (vec1)
+        free(vec1);
+    if (x1t)
+        xml_free(x1t);
+    return retval;
+}
+
+/*! Called to get system-only config data
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  nsc     External XML namespace context, or NULL
+ * @param[in]  xpath   String with XPATH syntax. or NULL for all
+ * @param[out] xstate  XML tree, <config/> on entry.
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see example_statedata
+ * @see main_system_only_commit  where data is written
+ */
+int
+main_system_only_callback(clixon_handle h,
+                          cvec         *nsc,
+                          char         *xpath,
+                          cxobj        *xconfig)
+{
+    int    retval = -1;
+    char  *file;
+    FILE  *fp = NULL;
+
+    if ((file = _system_only_file) == NULL)
+        goto ok;
+    if ((fp = fopen(file, "r")) == NULL)
+        goto ok;
+    if (clixon_xml_parse_file(fp, YB_NONE, NULL, &xconfig, NULL) < 0)
+        goto done;
+ ok:
+    retval = 0;
+ done:
+    if (fp)
+        fclose(fp);
+    return retval;
+}
+
 /*! Example of state pagination callback and how to use pagination_data
  *
  * @param[in]  h        Generic handler
@@ -635,33 +802,32 @@ example_statefile(clixon_handle     h,
  * @param[in]  arg      Per-path user argument (at register time)
  */
 int
-example_pagination(void            *h0,
-                   char            *xpath,
-                   pagination_data  pd,
-                   void            *arg)
+example_pagination(void           *h0,
+                   char           *xpath,
+                   pagination_data pd,
+                   void           *arg)
 {
-    int               retval = -1;
-    clixon_handle     h = (clixon_handle)h0;
-    int               locked;
-    uint32_t          offset;
-    uint32_t          limit;
-    cxobj            *xstate;
-    cxobj           **xvec = NULL;
-    size_t            xlen = 0;
-    int               i;
-    cxobj            *xt = NULL;
-    yang_stmt        *yspec = NULL;
-    FILE             *fp = NULL;
-    cxobj            *x1;
-    uint32_t          lower;
-    uint32_t          upper;
-    int               ret;
-    cvec             *nsc = NULL;
+    int           retval = -1;
+    clixon_handle h = (clixon_handle)h0;
+    int           locked;
+    uint32_t      offset;
+    uint32_t      limit;
+    cxobj        *xstate;
+    cxobj       **xvec = NULL;
+    size_t        xlen = 0;
+    int           i;
+    cxobj        *xt = NULL;
+    yang_stmt    *yspec = NULL;
+    FILE         *fp = NULL;
+    cxobj        *x1;
+    uint32_t      lower;
+    uint32_t      upper;
+    cvec         *nsc = NULL;
+    int           ret;
 
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
         goto ok;
-
     locked = pagination_locked(pd);
     offset = pagination_offset(pd);
     limit = pagination_limit(pd);
@@ -697,7 +863,7 @@ example_pagination(void            *h0,
             upper = xlen;
     }
     /* Mark elements to copy:
-     * For every node found in x0, mark the tree as changed 
+     * For every node found in x0, mark the tree as changed
      */
     for (i=lower; i<upper; i++){
         if ((x1 = xvec[i]) == NULL)
@@ -705,8 +871,8 @@ example_pagination(void            *h0,
         xml_flag_set(x1, XML_FLAG_MARK);
         xml_apply_ancestor(x1, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
     }
-    /* Copy the marked elements: 
-     * note is yang-aware for copying of keys which means XML must be bound 
+    /* Copy the marked elements:
+     * note is yang-aware for copying of keys which means XML must be bound
      */
     if (xml_copy_marked(xt, xstate) < 0) /* Copy the marked elements */
         goto done;
@@ -735,7 +901,7 @@ example_pagination(void            *h0,
     return retval;
 }
 
-/*! Lock databse status has changed status
+/*! Lock database status has changed
  *
  * @param[in]  h    Clixon handle
  * @param[in]  db   Database name (eg "running")
@@ -752,7 +918,7 @@ example_lockdb(clixon_handle h,
 {
     int retval = -1;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Lock callback: db%s: locked:%d", __FUNCTION__, db, lock);
+    clixon_debug(CLIXON_DBG_DEFAULT, "Lock callback: db%s: locked:%d", db, lock);
     /* Part of cached pagination example
      */
     if (strcmp(db, "running") == 0 && lock == 0 &&
@@ -771,7 +937,7 @@ example_lockdb(clixon_handle h,
 /*! Callback for yang extensions example:e4
  *
  * @param[in] h    Clixon handle
- * @param[in] yext Yang node of extension 
+ * @param[in] yext Yang node of extension
  * @param[in] ys   Yang node of (unknown) statement belonging to extension
  * @retval    0    OK, all callbacks executed OK
  * @retval   -1    Error in one callback
@@ -793,7 +959,7 @@ example_extension(clixon_handle h,
     extname = yang_argument_get(yext);
     if (strcmp(modname, "example") != 0 || strcmp(extname, "e4") != 0)
         goto ok;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    clixon_debug(CLIXON_DBG_DEFAULT, "Enabled extension:%s:%s", modname, extname);
     if ((yc = yang_find(ys, 0, NULL)) == NULL)
         goto ok;
     if ((yn = ys_dup(yc)) == NULL)
@@ -820,8 +986,8 @@ static const char *remove_map[] = {
     NULL
 };
 
-/* Rename the namespaces of these paths. 
- * That is, paths (on the left) should get namespaces (to the right) 
+/* Rename the namespaces of these paths.
+ * That is, paths (on the left) should get namespaces (to the right)
  */
 static const map_str2str namespace_map[] = {
     {"/a:x/a:y/a:z/descendant-or-self::node()", "urn:example:b"},
@@ -832,7 +998,7 @@ static const map_str2str namespace_map[] = {
 /*! General-purpose datastore upgrade callback called once on startup
  *
  * Gets called on startup after initial XML parsing, but before module-specific upgrades
- * and before validation. 
+ * and before validation.
  * @param[in] h    Clixon handle
  * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
  * @param[in] xt   XML tree. Upgrade this "in place"
@@ -967,7 +1133,6 @@ main_yang_mount(clixon_handle   h,
         if (xml_rootchild(*yanglib, 0, yanglib) < 0)
             goto done;
     }
-
     retval = 0;
  done:
     if (cb)
@@ -977,13 +1142,13 @@ main_yang_mount(clixon_handle   h,
 
 /*! Testcase module-specific upgrade function moving interfaces-state to interfaces
  *
- * @param[in]  h       Clixon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
- * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[in]  arg     User argument given at rpc_callback_register()
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  if retval = 0
  * @retval     1       OK
  * @retval     0       Invalid
@@ -992,11 +1157,11 @@ main_yang_mount(clixon_handle   h,
  * @see test_upgrade_interfaces.sh
  * @see upgrade_2014_to_2016
  * This example shows a two-step upgrade where the 2014 function does:
- * - Move /if:interfaces-state/if:interface/if:admin-status to 
+ * - Move /if:interfaces-state/if:interface/if:admin-status to
  *        /if:interfaces/if:interface/
  * - Move /if:interfaces-state/if:interface/if:statistics to
  *        /if:interfaces/if:interface/
- * - Rename /interfaces/interface/description to descr 
+ * - Rename /interfaces/interface/description to descr
  */
 static int
 upgrade_2014_to_2016(clixon_handle h,
@@ -1020,7 +1185,7 @@ upgrade_2014_to_2016(clixon_handle h,
     int        i;
     char      *name;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s from:%d to:%d", __FUNCTION__, from, to);
+    clixon_debug(CLIXON_DBG_DEFAULT, "from:%d to:%d", from, to);
     if (op != XML_FLAG_CHANGE) /* Only treat fully present modules */
         goto ok;
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
@@ -1082,13 +1247,13 @@ upgrade_2014_to_2016(clixon_handle h,
 
 /*! Testcase upgrade function removing interfaces-state
  *
- * @param[in]  h       Clixon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module (for info)
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
- * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[in]  arg     User argument given at rpc_callback_register()
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  if retval = 0
  * @retval     1       OK
  * @retval     0       Invalid
@@ -1123,14 +1288,14 @@ upgrade_2016_to_2018(clixon_handle h,
     size_t     vlen;
     int        i;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s from:%d to:%d", __FUNCTION__, from, to);
+    clixon_debug(CLIXON_DBG_DEFAULT, "from:%d to:%d", from, to);
     if (op != XML_FLAG_CHANGE) /* Only treat fully present modules */
         goto ok;
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
     yspec = clicon_dbspec_yang(h);
     if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
         goto ok; /* shouldnt happen */
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s module %s", __FUNCTION__, ym?yang_argument_get(ym):"none");
+    clixon_debug(CLIXON_DBG_DEFAULT, "module %s", ym?yang_argument_get(ym):"none");
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)
         goto done;
@@ -1150,8 +1315,8 @@ upgrade_2016_to_2018(clixon_handle h,
                 if ((x = xml_find(xi, "descr")) != NULL)
                     if (xml_wrap(x, "docs") < 0)
                         goto done;
-                /* Change type /interfaces/interface/statistics/in-octets to 
-                 * decimal64 with fraction-digits 3 and divide values with 1000 
+                /* Change type /interfaces/interface/statistics/in-octets to
+                 * decimal64 with fraction-digits 3 and divide values with 1000
                  */
                 if ((x = xpath_first(xi, NULL, "statistics/in-octets")) != NULL){
                     if ((xb = xml_body_get(x)) != NULL){
@@ -1188,7 +1353,7 @@ upgrade_2016_to_2018(clixon_handle h,
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
  * @param[in]  from    From revision on the form YYYYMMDD
  * @param[in]  to      To revision on the form YYYYMMDD (0 not in system)
- * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[in]  arg     User argument given at rpc_callback_register()
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  if retval = 0
  * @retval     1       OK
  * @retval     0       Invalid
@@ -1197,11 +1362,11 @@ upgrade_2016_to_2018(clixon_handle h,
  * @see test_upgrade_interfaces.sh
  * @see upgrade_2014_to_2016
  * This example shows a two-step upgrade where the 2014 function does:
- * - Move /if:interfaces-state/if:interface/if:admin-status to 
+ * - Move /if:interfaces-state/if:interface/if:admin-status to
  *        /if:interfaces/if:interface/
  * - Move /if:interfaces-state/if:interface/if:statistics to
  *        /if:interfaces/if:interface/
- * - Rename /interfaces/interface/description to descr 
+ * - Rename /interfaces/interface/description to descr
  */
 static int
 upgrade_interfaces(clixon_handle h,
@@ -1241,10 +1406,10 @@ upgrade_interfaces(clixon_handle h,
 /*! Plugin state reset. Add xml or set state in backend machine.
  *
  * Add xml or set state in backend system.
- * plugin_reset in each backend plugin after all plugins have been initialized. 
- * This gives the application a chance to reset system state back to a base state. 
+ * plugin_reset in each backend plugin after all plugins have been initialized.
+ * This gives the application a chance to reset system state back to a base state.
  * This is generally done when a system boots up to make sure the initial system state
- * is well defined. 
+ * is well defined.
  * This involves creating default configuration files for various daemons, set interface
  * flags etc.
  * @param[in] h   Clixon handle
@@ -1304,8 +1469,8 @@ example_reset(clixon_handle h,
 
 /*! Plugin start.
  *
- * Called when application is "started", (almost) all initialization is complete 
- * Backend: daemon is in the background. If daemon privileges are dropped 
+ * Called when application is "started", (almost) all initialization is complete
+ * Backend: daemon is in the background. If daemon privileges are dropped
  * this callback is called *before* privileges are dropped.
  * @param[in]  h    Clixon handle
  * @retval     0    OK
@@ -1345,7 +1510,7 @@ example_start(clixon_handle h)
  * @retval     0    OK
  * @retval    -1    Error
  * plugin_daemon is called once after daemonization has been made but before lowering of privileges
- * the main event loop is entered. 
+ * the main event loop is entered.
  */
 int
 example_daemon(clixon_handle h)
@@ -1403,6 +1568,7 @@ static clixon_plugin_api api = {
     .ca_daemon=example_daemon,              /* daemon */
     .ca_reset=example_reset,                /* reset */
     .ca_statedata=example_statedata,        /* statedata : Note fn is switched if -sS <file> */
+    .ca_system_only=main_system_only_callback, /* System-only-config callback */
     .ca_lockdb=example_lockdb,              /* Database lock changed state */
     .ca_trans_begin=main_begin,             /* trans begin */
     .ca_trans_validate=main_validate,       /* trans validate */
@@ -1421,7 +1587,7 @@ static clixon_plugin_api api = {
  * @param[in]  h    Clixon handle
  * @retval     NULL Error
  * @retval     api  Pointer to API struct
- * In this example, you can pass -r, -s, -u to control the behaviour, mainly 
+ * In this example, you can pass -r, -s, -u to control the behaviour, mainly
  * for use in the test suites.
  */
 clixon_plugin_api *
@@ -1432,7 +1598,7 @@ clixon_plugin_init(clixon_handle h)
     char         **argv;
     int            c;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s backend", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_INIT, "backend");
 
     /* Get user command-line options (after --) */
     if (clicon_argv_get(h, &argc, &argv) < 0)
@@ -1451,7 +1617,13 @@ clixon_plugin_init(clixon_handle h)
             _mount_namespace = optarg;
             break;
         case 'n':
-            _notification_stream = 1;
+            _notification_stream_s = atoi(optarg);
+            break;
+        case 'o':
+            _system_only_xpath = optarg;
+            break;
+        case 'O':
+            _system_only_file = optarg;
             break;
         case 'r':
             _reset = 1;
@@ -1497,9 +1669,9 @@ clixon_plugin_init(clixon_handle h)
         }
     }
 
-    if (_notification_stream){
+    if (_notification_stream_s){
         /* Example stream initialization:
-         * 1) Register EXAMPLE stream 
+         * 1) Register EXAMPLE stream
          * 2) setup timer for notifications, so something happens on stream
          * 3) setup stream callbacks for notification to push channel
          */
@@ -1513,10 +1685,10 @@ clixon_plugin_init(clixon_handle h)
         if (clicon_option_exists(h, "CLICON_STREAM_PUB") &&
             stream_publish(h, "EXAMPLE") < 0)
             goto done;
-        if (example_stream_timer_setup(h) < 0)
+        if (example_stream_timer_setup(h, _notification_stream_s) < 0)
             goto done;
     }
-    /* Register callback for routing rpc calls 
+    /* Register callback for routing rpc calls
      */
     /* From example.yang (clicon) */
     if (rpc_callback_register(h, empty_rpc,
@@ -1539,8 +1711,8 @@ clixon_plugin_init(clixon_handle h)
                               "example"/* Xml tag when callback is made */
                               ) < 0)
         goto done;
-    /* Called before the regular system copy_config callback 
-     * If you want to have it called _after_ the system callback, place this call in 
+    /* Called before the regular system copy_config callback
+     * If you want to have it called _after_ the system callback, place this call in
      * the _start function.
      */
     if (rpc_callback_register(h, example_copy_extra,

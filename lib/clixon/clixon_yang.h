@@ -61,11 +61,7 @@
 #define YANG_FLAG_INDEX 0x08  /* This yang node under list is (extra) index. --> you can access
                                * list elements using this index with binary search */
 #endif
-#ifdef USE_CONFIG_FLAG_CACHE
-#define YANG_FLAG_CONFIG_CACHE 0x10  /* Ancestor config cache is active */
-#define YANG_FLAG_CONFIG_VALUE 0x20  /* Ancestor config cache value */
-#endif
-
+#define YANG_FLAG_STATE_LOCAL  0x10  /* Local inverted value of Y_CONFIG child */
 #define YANG_FLAG_DISABLED     0x40  /* Disabled due to if-feature evaluate to false
                                       * Transformed to ANYDATA but some code may need to check
                                       * why it is an ANYDATA
@@ -94,6 +90,22 @@
                                       * Set by yang_mount_set 
                                       * Read by ys_free1
                                       */
+#define YANG_FLAG_SPEC_MOUNT   0x400 /* Top-level spec is mounted by other top-level tree
+                                      */
+#define YANG_FLAG_WHEN         0x800 /* Use external map to access when-info for
+                                      * augment/grouping. Only orig object */
+#define YANG_FLAG_MYMODULE    0x1000 /* Use external map to access my-module for
+                                      * UNKNOWNS and augment/grouping */
+#define YANG_FLAG_REFINE      0x2000 /* In derived trees from grouping and augments, this node
+                                      * may be different from orig, therefore do not use link to
+                                      * original. May also be due to deviations of derived trees
+                                      */
+/*! Names of top-level data YANGs
+ */
+#define YANG_DOMAIN_TOP "top"
+#define YANG_DATA_TOP   "data"    /* "dbspec" */
+#define YANG_CONFIG_TOP "config"
+#define YANG_NACM_TOP   "nacm_ext_yang"
 
 /*
  * Types
@@ -106,6 +118,7 @@
  * - Dont want to expose a generated yacc file to the API
  * - Cant use the symbols in this file because yacc needs token definitions
  * - Use 0 as no keyword --> therefore start enumeration with 1.
+ * @see ykmap for string/symbol mapping
  */
 enum rfc_6020{
     Y_ACTION = 1,
@@ -177,7 +190,10 @@ enum rfc_6020{
     Y_WHEN, /* See also ys_when_xpath / ys_when_nsc */
     Y_YANG_VERSION,
     Y_YIN_ELEMENT,
-    Y_SPEC  /* XXX: NOTE NOT YANG STATEMENT, reserved for top level spec */
+    /* Note, from here not actual yang statement from the RFC */
+    Y_MOUNTS, /* Top-level root single object, see clixon_yang_mounts_get() */
+    Y_DOMAIN, /* YANG domain: many module revisions allowed but name+revision unique */
+    Y_SPEC    /* Module set for single data, config and mount-point: unique module name */
 };
 
 /* Type used to group yang nodes used in some functions
@@ -201,7 +217,8 @@ typedef struct yang_stmt yang_stmt;
  *
  * @param[in]  yn   yang node
  * @param[in]  arg  Argument
- * @retval     n    OK, abort traversal and return to caller with "n"
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    OK, abort traversal and return to caller with "n"
  * @retval     0    OK, continue with next
  * @retval    -1    Error, abort
  */
@@ -236,56 +253,67 @@ typedef enum validate_level_t validate_level;
 /* Access functions */
 int        yang_len_get(yang_stmt *ys);
 yang_stmt *yang_child_i(yang_stmt *ys, int i);
-
 yang_stmt *yang_parent_get(yang_stmt *ys);
 enum rfc_6020 yang_keyword_get(yang_stmt *ys);
 char      *yang_argument_get(yang_stmt *ys);
 int        yang_argument_set(yang_stmt *ys, char *arg);
-
+int        yang_argument_dup(yang_stmt *ys, char *arg);
+yang_stmt *yang_orig_get(yang_stmt *ys);
+int        yang_orig_set(yang_stmt *ys, yang_stmt *y0);
 cg_var    *yang_cv_get(yang_stmt *ys);
 int        yang_cv_set(yang_stmt *ys, cg_var *cv);
 cvec      *yang_cvec_get(yang_stmt *ys);
 int        yang_cvec_set(yang_stmt *ys, cvec *cvv);
 cg_var    *yang_cvec_add(yang_stmt *ys, enum cv_type type, char *name);
+int        yang_cvec_rm(yang_stmt *ys, char *name);
 int        yang_ref_get(yang_stmt *ys);
 int        yang_ref_inc(yang_stmt *ys);
 int        yang_ref_dec(yang_stmt *ys);
 uint16_t   yang_flag_get(yang_stmt *ys, uint16_t flag);
 int        yang_flag_set(yang_stmt *ys, uint16_t flag);
 int        yang_flag_reset(yang_stmt *ys, uint16_t flag);
-char      *yang_when_xpath_get(yang_stmt *ys);
-int        yang_when_xpath_set(yang_stmt *ys, char *xpath);
-cvec      *yang_when_nsc_get(yang_stmt *ys);
-int        yang_when_nsc_set(yang_stmt *ys, cvec *nsc);
+yang_stmt *yang_when_get(clixon_handle h, yang_stmt *ys);
+int        yang_when_set(clixon_handle h, yang_stmt *ys, yang_stmt *ywhen);
+int        yang_when_xpath_get(yang_stmt *ys, char **xpath, cvec **nsc);
+int        yang_when_canonical_xpath_get(yang_stmt *ys, char **xpath, cvec **nsc);
 const char *yang_filename_get(yang_stmt *ys);
 int        yang_filename_set(yang_stmt *ys, const char *filename);
-int        yang_linenum_get(yang_stmt *ys);
-int        yang_linenum_set(yang_stmt *ys, int linenum);
+uint32_t   yang_linenum_get(yang_stmt *ys);
+int        yang_linenum_set(yang_stmt *ys, uint32_t linenum);
+void      *yang_typecache_get(yang_stmt *ys);
+int        yang_typecache_set(yang_stmt *ys, void *ycache);
+yang_stmt* yang_mymodule_get(yang_stmt *ys);
+int        yang_mymodule_set(yang_stmt *ys, yang_stmt *ym);
 
 /* Stats */
-int       yang_stats_global(uint64_t *nr);
-int       yang_stats(yang_stmt *y, uint64_t *nrp, size_t *szp);
+int        yang_stats_global(uint64_t *nr);
+int        yang_stats(yang_stmt *y, enum rfc_6020 keyw, uint64_t *nrp, size_t *szp);
 
 /* Other functions */
-yang_stmt *yspec_new(void);
+yang_stmt *yspec_new(clixon_handle h, char *name);
+yang_stmt *yspec_new1(clixon_handle h, char *domain, char *name);
+yang_stmt *yspec_new_shared(clixon_handle h, char *xpath, char *domain, char *name, yang_stmt *yspec0);
+yang_stmt *ydomain_new(clixon_handle h, char *domain);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);
 int        ys_prune_self(yang_stmt *ys);
 int        ys_free1(yang_stmt *ys, int self);
 int        ys_free(yang_stmt *ys);
+int        ys_cp_one(yang_stmt *nw, yang_stmt *old);
 int        ys_cp(yang_stmt *nw, yang_stmt *old);
 yang_stmt *ys_dup(yang_stmt *old);
 int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);
 int        yn_insert1(yang_stmt *ys_parent, yang_stmt *ys_child);
-yang_stmt *yn_each(yang_stmt *yn, yang_stmt *ys);
+yang_stmt *yn_iter(yang_stmt *yparent, int *inext);
 char      *yang_key2str(int keyword);
 int        yang_str2key(char *str);
 int        ys_module_by_xml(yang_stmt *ysp, struct xml *xt, yang_stmt **ymodp);
 yang_stmt *ys_module(yang_stmt *ys);
 int        ys_real_module(yang_stmt *ys, yang_stmt **ymod);
 yang_stmt *ys_spec(yang_stmt *ys);
+yang_stmt *ys_domain(yang_stmt *ys);
+yang_stmt *ys_mounts(yang_stmt *ys);
 yang_stmt *yang_find(yang_stmt *yn, int keyword, const char *argument);
-int        yang_match(yang_stmt *yn, int keyword, char *argument);
 yang_stmt *yang_find_datanode(yang_stmt *yn, char *argument);
 yang_stmt *yang_find_schemanode(yang_stmt *yn, char *argument);
 char      *yang_find_myprefix(yang_stmt *ys);
@@ -293,15 +321,17 @@ char      *yang_find_mynamespace(yang_stmt *ys);
 int        yang_find_prefix_by_namespace(yang_stmt *ys, char *ns, char **prefix);
 int        yang_find_namespace_by_prefix(yang_stmt *ys, char *prefix, char **ns);
 yang_stmt *yang_myroot(yang_stmt *ys);
-int        choice_case_get(yang_stmt *yc, yang_stmt **ycase, yang_stmt **ychoice);
+int        yang_choice_case_get(yang_stmt *yc, yang_stmt **ycase, yang_stmt **ychoice);
 yang_stmt *yang_choice(yang_stmt *y);
 int        yang_order(yang_stmt *y);
 int        yang_print_cb(FILE *f, yang_stmt *yn, clicon_output_cb *fn);
 int        yang_print(FILE *f, yang_stmt *yn);
 int        yang_print_cbuf(cbuf *cb, yang_stmt *yn, int marginal, int pretty);
+int        yang_dump1(FILE *f, yang_stmt *yn);
 int        yang_deviation(yang_stmt *ys, void *arg);
 int        yang_spec_print(FILE *f, yang_stmt *yspec);
 int        yang_spec_dump(yang_stmt *yspec, int debuglevel);
+int        yang_mounts_print(FILE *f, yang_stmt *ymounts);
 int        if_feature(yang_stmt *yspec, char *module, char *feature);
 int        ys_populate(yang_stmt *ys, void *arg);
 int        ys_populate2(yang_stmt *ys, void *arg);
@@ -314,18 +344,23 @@ int        yang_config_ancestor(yang_stmt *ys);
 int        yang_features(clixon_handle h, yang_stmt *yt);
 cvec      *yang_arg2cvec(yang_stmt *ys, char *delimi);
 int        yang_key_match(yang_stmt *yn, char *name, int *lastkey);
-int        yang_type_cache_regexp_set(yang_stmt *ytype, int rxmode, cvec *regexps);
-int        yang_type_cache_get(yang_stmt *ytype, yang_stmt **resolved, int *options,
-                   cvec **cvv, cvec *patterns, int *rxmode, cvec *regexps, uint8_t *fraction);
-int        yang_type_cache_set(yang_stmt *ys, yang_stmt *resolved, int options, cvec *cvv,
-                               cvec *patterns, uint8_t fraction);
+int        yang_type_cache_get2(yang_stmt *ytype, yang_stmt **resolved, int *options,
+                                cvec **cvv, cvec *patterns, cvec *regexps, uint8_t *fraction);
+int        yang_type_cache_set2(yang_stmt *ys, yang_stmt *resolved, int options, cvec *cvv,
+                                cvec *patterns, uint8_t fraction, int rxmode, cvec *regexps);
 yang_stmt *yang_anydata_add(yang_stmt *yp, char *name);
 int        yang_extension_value(yang_stmt *ys, char *name, char *ns, int *exist, char **value);
 int        yang_sort_subelements(yang_stmt *ys);
-int        yang_init(clixon_handle h);
 int        yang_single_child_type(yang_stmt *ys, enum rfc_6020 subkeyw);
 void      *yang_action_cb_get(yang_stmt *ys);
 int        yang_action_cb_add(yang_stmt *ys, void *rc);
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+void      *yang_nopresence_cache_get(yang_stmt *ys);
+int        yang_nopresence_cache_set(yang_stmt *ys, void *x);
+#endif
 int        ys_populate_feature(clixon_handle h, yang_stmt *ys);
+int        yang_init(clixon_handle h);
+int        yang_start(clixon_handle h);
+int        yang_exit(clixon_handle h);
 
 #endif  /* _CLIXON_YANG_H_ */

@@ -15,6 +15,9 @@ fyang=$dir/restconf.yang
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 #  <CLICON_YANG_MODULE_MAIN>example</CLICON_YANG_MODULE_MAIN>
 cat <<EOF > $cfg
@@ -102,7 +105,7 @@ new "wait restconf"
 wait_restconf
 
 new "restconf POST tree without key"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 400" "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"application\",\"error-tag\":\"missing-element\",\"error-info\":{\"bad-element\":\"name\"},\"error-severity\":\"error\",\"error-message\":\"Mandatory key in 'list interface' in example.yang:7\"}}}"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 400" "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"application\",\"error-tag\":\"missing-element\",\"error-info\":{\"bad-element\":\"name\"},\"error-severity\":\"error\",\"error-message\":\"Mandatory key in 'list interface' in example.yang"
 
 new "restconf POST initial tree"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
@@ -134,7 +137,7 @@ new "restconf POST interface without mandatory type"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"TEST"}}')" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"missing-element","error-info":{"bad-element":"type"},"error-severity":"error","error-message":"Mandatory variable of interface in module example"}}}'
 
 new "restconf POST interface without mandatory key"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"type":"regular"}}')" 0 "HTTP/$HVER 400" "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"application\",\"error-tag\":\"missing-element\",\"error-info\":{\"bad-element\":\"name\"},\"error-severity\":\"error\",\"error-message\":\"Mandatory key in 'list interface' in example.yang:7\"}}}"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"type":"regular"}}')" 0 "HTTP/$HVER 400" "{\"ietf-restconf:errors\":{\"error\":{\"error-type\":\"application\",\"error-tag\":\"missing-element\",\"error-info\":{\"bad-element\":\"name\"},\"error-severity\":\"error\",\"error-message\":\"Mandatory key in 'list interface' in example.yang"
 
 new "restconf POST interface"
 expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"example:interface":{"name":"TEST","type":"eth0"}}' $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 201"
@@ -169,8 +172,8 @@ expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "H
 new "restconf GET null datastore"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 404" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"invalid-value","error-severity":"error","error-message":"Instance does not exist"}}}'
 
-new "restconf PUT initial datastore" 
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"
+new "restconf PUT initial datastore"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" -d '{"ietf-restconf:data":{"example:cont1":{"interface":{"name":"local0","type":"regular"}}}}' $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 201"  # 201 Created (new resource) -> 204 No Content (existing modified)
 
 new "restconf GET datastore"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example:cont1)" 0 "HTTP/$HVER 200" '{"example:cont1":{"interface":\[{"name":"local0","type":"regular"}\]}}'

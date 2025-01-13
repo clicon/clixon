@@ -72,10 +72,10 @@ There are some special lexical rules in https://www.w3.org/TR/xpath-10
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
+#include "clixon_map.h"
+#include "clixon_xml.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_string.h"
-#include "clixon_xml.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_parse.h"
@@ -196,7 +196,6 @@ ncname     {namestart}{namechar}*
 
 %%
 
-
 /*! Initialize scanner.
  */
 int
@@ -223,4 +222,3 @@ xpath_scan_exit(clixon_xpath_yacc *xpy)
     clixon_xpath_parselex_destroy();  /* modern */
     return 0;
 }
-

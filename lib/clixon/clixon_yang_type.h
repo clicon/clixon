@@ -73,5 +73,4 @@ int        yang_type_resolve(yang_stmt *yorig, yang_stmt *ys,
                              uint8_t *fraction);
 enum cv_type yang_type2cv(yang_stmt *ys);
 
-
 #endif  /* _CLIXON_YANG_TYPE_H_ */

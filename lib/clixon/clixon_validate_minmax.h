@@ -43,6 +43,7 @@
 /*
  * Prototypes
  */
-int xml_yang_minmax_recurse(cxobj *xt, int recurse, cxobj **xret);
+int xml_yang_validate_minmax(cxobj *xt, int presence, cxobj **xret);
+int xml_duplicate_detect(cxobj *xt, int rm, cxobj **xret);
 
 #endif  /* _CLIXON_VALIDATE_MINMAX_H_ */

@@ -81,7 +81,6 @@ clixon_yang_parsewrap(void)
    Example: keyword argument ; keyword ; keyword { keyword argument; } keyword
 */
 
-
 %}
 
 identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
@@ -109,7 +108,6 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <KEYWORD,DEVIATE,DEVIATESTR,BOOLEAN,INTEGER,STRARG,STRING,COMMENT1,UNKNOWN,UNKNOWN2>\r
 <KEYWORD,DEVIATE,DEVIATESTR,STRARG,STRING,UNKNOWN,UNKNOWN2>"/*"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT1); }
 <KEYWORD,DEVIATE,DEVIATESTR,STRARG,STRING,UNKNOWN,UNKNOWN2>"//"    { _YY->yy_lex_state = YYSTATE; BEGIN(COMMENT2); }
-
 
 <KEYWORD>input            { return K_INPUT; } /* No argument */
 <KEYWORD>output           { return K_OUTPUT;} /* No argument */
@@ -312,4 +310,3 @@ yang_scan_exit(clixon_yang_yacc *yy)
     clixon_yang_parselex_destroy();  /* modern */
     return 0;
 }
-

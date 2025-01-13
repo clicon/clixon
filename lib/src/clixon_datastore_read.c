@@ -45,7 +45,6 @@
 #include <limits.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <assert.h>
@@ -56,16 +55,16 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_file.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_bind.h"
 #include "clixon_options.h"
@@ -87,7 +86,18 @@
 
 #define handle(xh) (assert(text_handle_check(xh)==0),(struct text_handle *)(xh))
 
-/*! Ensure that xt only has a single sub-element and that is "config" 
+/* Local types */
+/* Argument to apply for recursive call to xmldb_multi calls
+ * @see xmldb_multi_write_arg
+ */
+struct xmldb_multi_read_arg {
+    char            *mr_subdir;
+    yang_stmt       *mr_yspec;
+    enum format_enum mr_format;
+    cxobj          **mr_xerr;
+};
+
+/*! Ensure that xt only has a single sub-element and that is "config"
  *
  * @retval     0     There exists a single "config" sub-element
  * @retval    -1     Error: Top element not "config" or "config" element not unique or other
@@ -130,8 +140,12 @@ singleconfigroot(cxobj  *xt,
 
 /*! Recurse up from x0 up to x0t then create objects from x1t down to new object x1
  *
+ * @param[in]  x0t  Orig top-level
+ * @param[in]  x0   Orig node (go up from this until = x0t)
+ * @param[in]  x1t  New tree on entry
+ * @param[out] x1pp
  * @retval     0    OK
- * @retval    -1    OK
+ * @retval    -1    Error
  */
 static int
 xml_copy_bottom_recurse(cxobj  *x0t,
@@ -143,6 +157,7 @@ xml_copy_bottom_recurse(cxobj  *x0t,
     cxobj     *x0p = NULL;
     cxobj     *x1p = NULL;
     cxobj     *x1 = NULL;
+    int        x1malloc = 0;
     cxobj     *x1a = NULL;
     cxobj     *x0a = NULL;
     cxobj     *x0k;
@@ -169,6 +184,7 @@ xml_copy_bottom_recurse(cxobj  *x0t,
     if (x1 == NULL){ /* If not, create it and copy it one level only */
         if ((x1 = xml_new(xml_name(x0), x1p, CX_ELMNT)) == NULL)
             goto done;
+        x1malloc++;
         if (xml_copy_one(x0, x1) < 0)
             goto done;
         /* Copy all attributes */
@@ -196,14 +212,18 @@ xml_copy_bottom_recurse(cxobj  *x0t,
                     if (xml_copy(x0k, x1k) < 0)
                         goto done;
                 }
-
             }
         }
+        if (xml_sort(x1p) < 0)
+            goto done;
     }
     *x1pp = x1;
+    x1 = NULL;
  ok:
     retval = 0;
  done:
+    if (x1 && x1malloc)
+        xml_free(x1);
     return retval;
 }
 
@@ -248,7 +268,7 @@ xml_copy_from_bottom(cxobj  *x0t,
 /*! Read module-state in an XML tree
  *
  * @param[in]  th     Datastore text handle
- * @param[in]  yspec  Top-level yang spec 
+ * @param[in]  yspec  Top-level yang spec
  * @param[in]  xt     XML tree
  * @param[out] msdiff Modules-state differences
  * @retval     0      OK
@@ -260,7 +280,7 @@ xml_copy_from_bottom(cxobj  *x0t,
  * - An entry for each modstate that differs marked with flag: ADD|DEL|CHANGE
  *
  * Algorithm:
- * Read mst (module-state-tree) from xml tree (if any) and compare it with 
+ * Read mst (module-state-tree) from xml tree (if any) and compare it with
  * the system state mst.
  * This can happen:
  * 1) There is no modules-state info in the file
@@ -303,7 +323,7 @@ text_read_modstate(clixon_handle       h,
         rfc7895++;
     if (xmodfile && xmodsystem && msdiff){
         msdiff->md_status = 1;  /* There is module state in the file */
-        /* Create modstate tree for this file 
+        /* Create modstate tree for this file
          * Note, module-set is not a top-level symbol, so cannot bind using module-set
          */
         if (clixon_xml_parse_string("<module-set xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/>",
@@ -398,7 +418,7 @@ text_read_modstate(clixon_handle       h,
 /*! Check if nacm only contains default values, if so disable NACM
  *
  * @param[in]  xt    Top-level XML
- * @param[in]  yspec YANG spec  
+ * @param[in]  yspec YANG spec
  * @retval     0     OK
  * @retval    -1     Error
  */
@@ -442,53 +462,65 @@ disable_nacm_on_empty(cxobj     *xt,
     return retval;
 }
 
-/*! Read creator data from meta-data and add to xml internal annotation
+/*! Callback function for xmldb-multi read
  *
- * Iterate creator meta-data using xpaths and create internal creator annotations
- * @param[in]   h   Clixon handle
- * @param[in]   xt  XML top node
- * @param[in]   xn  XML creators node
- * On the form:
- *     <creator>
- *       <name>testA[name='foo']</name>
- *       <xpath>...</xpath>
- *       ...
- *     </creator>
- * @see xml_creator_metadata_write
+ * Look for link attribute in XML, and if found open the linked file for parsing
+ * @param[in]  x    XML node
+ * @param[in]  arg
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
  */
 static int
-xml_creator_metadata_read(clixon_handle h,
-                          cxobj        *xn)
+xmldb_multi_read_applyfn(cxobj *x,
+                         void  *arg)
 {
-    int    retval = -1;
-    cxobj *xt;
-    cxobj *xc;
-    cxobj *xp;
-    cxobj *x;
-    char  *name;
-    char  *xpath;
+    struct xmldb_multi_read_arg *mr = (struct xmldb_multi_read_arg *) arg;
+    int                     retval = -1;
+    cxobj                  *xa;
+    char                   *filename;
+    cbuf                   *cb = NULL;
+    char                   *dbfile;
+    FILE                   *fp = NULL;
 
-    xt = xml_root(xn);
-    xc = NULL;
-    while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL) {
-        if (strcmp(xml_name(xc), "creator"))
-            continue;
-        if ((name = xml_find_body(xc, "name")) == NULL)
-            continue;
-        xp = NULL;
-        while ((xp = xml_child_each(xc, xp, CX_ELMNT)) != NULL) {
-            if (strcmp(xml_name(xp), "path"))
-                continue;
-            if ((xpath = xml_body(xp)) == NULL)
-                continue;
-            if ((x = xpath_first(xt, NULL, "%s", xpath)) == NULL)
-                continue;
-            if (xml_creator_add(x, name) < 0)
+    if ((xa = xml_find_type(x, CLIXON_LIB_PREFIX, "link", CX_ATTR)) != NULL &&
+        (filename = xml_value(xa)) != NULL){
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "%s/%s", mr->mr_subdir, filename);
+        xml_purge(xa);
+        if ((xa = xml_find_type(x, "xmlns", CLIXON_LIB_PREFIX, CX_ATTR)) != NULL)
+            xml_purge(xa);
+        dbfile = cbuf_get(cb);
+        clixon_debug(CLIXON_DBG_DATASTORE, "Parsing: %s", dbfile);
+        if ((fp = fopen(dbfile, "r")) == NULL){
+            clixon_err(OE_CFG, errno, "fopen(%s)", dbfile);
+            goto done;
+        }
+        switch (mr->mr_format){
+        case FORMAT_JSON:
+            if (clixon_json_parse_file(fp, 1, YB_NONE, mr->mr_yspec, &x, mr->mr_xerr) < 0)
                 goto done;
+            break;
+        case FORMAT_XML:
+            if (clixon_xml_parse_file(fp, YB_NONE, mr->mr_yspec, &x, mr->mr_xerr) < 0)
+                goto done;
+            break;
+        default:
+            clixon_err(OE_DB, 0, "Format not supported");
+            goto done;
+            break;
         }
     }
     retval = 0;
  done:
+    if (cb)
+        cbuf_free(cb);
+    if (fp)
+        fclose(fp);
     return retval;
 }
 
@@ -523,7 +555,8 @@ xmldb_readfile(clixon_handle    h,
     cxobj           *x0 = NULL;
     char            *dbfile = NULL;
     FILE            *fp = NULL;
-    char            *format;
+    char            *formatstr;
+    enum format_enum format;
     int              ret;
     modstate_diff_t *msdiff = NULL;
     cxobj           *xmsd;           /* XML module state diff */
@@ -535,6 +568,7 @@ xmldb_readfile(clixon_handle    h,
     cxobj           *xmodfile = NULL;
     cxobj           *x;
     yang_stmt       *yspec1 = NULL;
+    struct xmldb_multi_read_arg mr = {0, };
 
     if (yb != YB_MODULE && yb != YB_NONE){
         clixon_err(OE_XML, EINVAL, "yb is %d but should be module or none", yb);
@@ -546,11 +580,15 @@ xmldb_readfile(clixon_handle    h,
         clixon_err(OE_XML, 0, "dbfile NULL");
         goto done;
     }
-    if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
+    if ((formatstr = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
         clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "Reading datastore %s using %s", dbfile, format);
+    if ((format = format_str2int(formatstr)) < 0){
+        clixon_err(OE_XML, 0, "format not found %s", formatstr);
+        goto done;
+    }
+    clixon_debug(CLIXON_DBG_DATASTORE, "Reading datastore %s using %s", dbfile, formatstr);
     /* Parse file into internal XML tree from different formats */
     if ((fp = fopen(dbfile, "r")) == NULL) {
         clixon_err(OE_UNIX, errno, "open(%s)", dbfile);
@@ -562,18 +600,32 @@ xmldb_readfile(clixon_handle    h,
      *   config*
      * </config>
      * ret == 0 should not happen with YB_NONE. Binding is done later */
-    if (strcmp(format, "json")==0){
+    switch (format){
+    case FORMAT_JSON:
         if (clixon_json_parse_file(fp, 1, YB_NONE, yspec, &x0, xerr) < 0)
             goto done;
-    }
-    else {
-        if (clixon_xml_parse_file(fp, YB_NONE, yspec, &x0, xerr) < 0){
+        break;
+    case FORMAT_XML:
+        if (clixon_xml_parse_file(fp, YB_NONE, yspec, &x0, xerr) < 0)
             goto done;
-        }
+        break;
+    default:
+        clixon_err(OE_DB, 0, "Format %s not supported", formatstr);
+        goto done;
+        break;
     }
-    /* Always assert a top-level called "config". 
+    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
+        if (xmldb_db2subdir(h, db, &mr.mr_subdir) < 0)
+            goto done;
+        mr.mr_format = format;
+        mr.mr_yspec = yspec;
+        mr.mr_xerr = xerr;
+        if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xmldb_multi_read_applyfn, &mr) < 0)
+            goto done;
+    }
+    /* Always assert a top-level called "config".
      * To ensure that, deal with two cases:
-     * 1. File is empty <top/> -> rename top-level to "config" 
+     * 1. File is empty <top/> -> rename top-level to "config"
      */
     if (xml_child_nr(x0) == 0){
         if (xml_name_set(x0, DATASTORE_TOP_SYMBOL) < 0)
@@ -593,19 +645,6 @@ xmldb_readfile(clixon_handle    h,
     xml_flag_set(x0, XML_FLAG_TOP);
     if (xml_child_nr(x0) == 0 && de)
         de->de_empty = 1;
-    /* Check if creator attributes are supported*/
-    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
-        if ((x = xpath_first(x0, NULL, "creators")) != NULL){
-            ns = NULL;
-            if (xml2ns(x, NULL, &ns) < 0)
-                goto done;
-            if (strcmp(ns, CLIXON_LIB_NS) == 0){
-                if (xml_creator_metadata_read(h, x) < 0)
-                    goto done;
-                xml_purge(x);
-            }
-        }
-    }
     /* Check if we support modstate */
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
         if ((msdiff = modstate_diff_new()) == NULL)
@@ -617,7 +656,7 @@ xmldb_readfile(clixon_handle    h,
             goto done;
     }
     /* Datastore files may contain module-state defining
-     * which modules are used in the file. 
+     * which modules are used in the file.
      * Strip module-state, analyze it with CHANGE/ADD/RM and return msdiff
      */
     if (text_read_modstate(h, yspec, x0, msdiff) < 0)
@@ -664,11 +703,11 @@ xmldb_readfile(clixon_handle    h,
                 }
             }
             /* If we found an obsolete yang module, we need to make a clone yspec with the
-             * exactly the yang modules found 
+             * exactly the yang modules found
              * Same ymodules are inserted into yspec1, ie pointers only
              */
             if (needclone && xmodfile){
-                if ((yspec1 = yspec_new()) == NULL)
+                if ((yspec1 = yspec_new1(h, YANG_DOMAIN_TOP, "prevyang")) == NULL)
                     goto done;
                 xmsd = NULL;
                 while ((xmsd = xml_child_each(xmodfile, xmsd, CX_ELMNT)) != NULL) {
@@ -682,10 +721,11 @@ xmldb_readfile(clixon_handle    h,
                         continue; // XXX error?
                     if (yn_insert1(yspec1, ymod) < 0)
                         goto done;
+                    yang_ref_inc(ymod);
                 }
             }
         } /* if msdiff */
-        /* xml looks like: <top><config><x>... actually YB_MODULE_NEXT 
+        /* xml looks like: <top><config><x>... actually YB_MODULE_NEXT
          */
         if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec1?yspec1:yspec, xerr)) < 0)
             goto done;
@@ -705,8 +745,8 @@ xmldb_readfile(clixon_handle    h,
     }
     retval = 1;
  done:
-    if (yspec1)
-        ys_free1(yspec1, 1);
+    if (mr.mr_subdir)
+        free(mr.mr_subdir);
     if (xmodfile)
         xml_free(xmodfile);
     if (msdiff)
@@ -723,7 +763,78 @@ xmldb_readfile(clixon_handle    h,
     goto done;
 }
 
-/*! Get content of database using xpath. return a set of matching sub-trees
+/*! Get cache directly, read from datastore file if cache-miss
+ *
+ * Return the actual cache tree. With-default is report-all.
+ * @param[in]  h      Clixon handle
+ * @param[in]  db     Name of database to search in (filename including dir path
+ * @param[in]  yb     How to bind yang to XML top-level when parsing
+ * @param[out] xtp    Top-level XML tree, direct cache pointer
+ * @param[out] msdiff If set, return modules-state differences
+ * @param[out] xerr   XML error if retval is 0
+ * @retval     1      OK
+ * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
+ * @retval    -1      Error
+ * @see xmldb_get_copy
+ * @note Do not modify or free xtp
+ */
+int
+xmldb_get_cache(clixon_handle     h,
+                const char       *db,
+                yang_bind         yb,
+                cxobj           **xtp,
+                modstate_diff_t  *msdiff,
+                cxobj           **xerr)
+{
+    int        retval = -1;
+    cxobj     *xt = NULL; /* (cached) top of tree */
+    db_elmnt  *de = NULL;
+    db_elmnt   de0 = {0,};
+    yang_stmt *yspec0;
+    int        ret;
+
+    clixon_debug(CLIXON_DBG_DATASTORE, "db %s", db);
+    de = clicon_db_elmnt_get(h, db);
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
+    }
+    if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
+        /* If there is no xml x0 tree (in cache), then read it from file */
+        /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
+        if ((ret = xmldb_readfile(h, db, yb, yspec0, &xt, &de0, msdiff, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        /* Should we validate file if read from disk?
+         * No, argument against: we may want to have a semantically wrong file and wish to edit?
+         */
+        de0.de_xml = xt;
+        if (de)
+            de0.de_id = de->de_id;
+        clicon_db_elmnt_set(h, db, &de0); /* Content is copied */
+        /* Add default global values (to make xpath below include defaults) */
+        // Alt:  xmldb_populate(h, db)
+        if (yb != YB_NONE) {
+            if (xml_global_defaults(h, xt, NULL, "/", yspec0, 0) < 0)
+                goto done;
+            /* Add default recursive values */
+            if (xml_default_recurse(xt, 0, 0) < 0)
+                goto done;
+        }
+    } /* xt == NULL */
+    else
+        xt = de->de_xml;
+    *xtp = xt;
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Get a copy of datastore cache using xpath. return a set of matching sub-trees
  *
  * The function returns a minimal tree that includes all sub-trees that match
  * xpath.
@@ -740,239 +851,54 @@ xmldb_readfile(clixon_handle    h,
  * @retval     1      OK
  * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
  * @retval    -1      Error
- * @note Use of 1 for OK
- * @see xmldb_get  the generic API function
+ * @see xmldb_get_cache
  */
 static int
-xmldb_get_nocache(clixon_handle    h,
-                  const char      *db,
-                  yang_bind        yb,
-                  cvec            *nsc,
-                  const char      *xpath,
-                  withdefaults_type wdef,
-                  cxobj          **xtop,
-                  modstate_diff_t *msdiff,
-                  cxobj          **xerr)
+xmldb_get_copy(clixon_handle     h,
+               const char       *db,
+               yang_bind         yb,
+               cvec             *nsc,
+               const char       *xpath,
+               withdefaults_type wdef,
+               cxobj           **xret,
+               modstate_diff_t  *msdiff,
+               cxobj           **xerr)
 {
     int        retval = -1;
-    yang_stmt *yspec;
-    cxobj     *xt = NULL;
-    cxobj     *x;
-    int        fd = -1;
-    cxobj    **xvec = NULL;
-    size_t     xlen;
-    int        i;
-    int        ret;
-    db_elmnt   de0 = {0,};
-
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "No yang spec");
-        goto done;
-    }
-    /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
-    if ((ret = xmldb_readfile(h, db, yb, yspec, &xt, &de0, msdiff, xerr)) < 0)
-        goto done;
-    if (ret == 0)
-        goto fail;
-    clicon_db_elmnt_set(h, db, &de0); /* Content is copied */
-    /* Here xt looks like: <config>...</config> */
-    /* Given the xpath, return a vector of matches in xvec */
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-        goto done;
-
-    /* If vectors are specified then mark the nodes found with all ancestors
-     * and filter out everything else,
-     * otherwise return complete tree.
-     */
-    if (xvec != NULL)
-        for (i=0; i<xlen; i++){
-            x = xvec[i];
-            xml_flag_set(x, XML_FLAG_MARK);
-        }
-    /* Remove everything that is not marked */
-    if (!xml_flag(xt, XML_FLAG_MARK))
-        if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
-            goto done;
-    /* reset flag */
-    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-        goto done;
-
-    if (yb != YB_NONE){
-        /* Add global defaults. */
-        if (xml_global_defaults(h, xt, nsc, xpath, yspec, 0) < 0)
-            goto done;
-        /* Add default values (if not set) */
-        if (xml_default_recurse(xt, 0) < 0)
-            goto done;
-    }
-#if 1
-    /* Sub-optimal: first add  defaults, then remove them in some cases
-     * Reason is code is primarily test for _cache case and I dont have time to "revert" it here
-     */
-    switch (wdef){
-    case WITHDEFAULTS_REPORT_ALL:
-        break;
-    case WITHDEFAULTS_TRIM:
-        /* Mark and remove nodes having schema default values */
-        if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-            goto done;
-        if (xml_tree_prune_flags(xt, XML_FLAG_MARK, XML_FLAG_MARK)
-            < 0)
-            goto done;
-        if (xml_defaults_nopresence(xt, 1) < 0)
-            goto done;
-        break;
-    case WITHDEFAULTS_EXPLICIT:
-        if (xml_defaults_nopresence(xt, 2) < 0)
-            goto done;
-        break;
-    case WITHDEFAULTS_REPORT_ALL_TAGGED:{
-        cxobj *x;
-        char  *ns;
-        x = NULL;
-        while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-            ns = NULL;
-            if (xml2ns(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, &ns) < 0)
-                goto done;
-            if (ns == NULL){
-                if (xmlns_set(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
-                    goto done;
-            }
-            else if (strcmp(ns, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) != 0){
-                /* XXX: Assume if namespace is set that it is withdefaults otherwise just ignore?  */
-                    continue;
-            }
-        }
-        /* Mark nodes having default schema values */
-        if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-            goto done;
-        /* Add tag attributes to default nodes */
-        if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
-            goto done;
-        break;
-    }
-    } /* switch wdef */
-#endif
-    /* If empty NACM config, then disable NACM if loaded
-     */
-    if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
-        if (disable_nacm_on_empty(xt, yspec) < 0)
-            goto done;
-    }
-#if 0 /* debug */
-    if (xml_apply0(xt, -1, xml_sort_verify, NULL) < 0)
-        clixon_log(h, LOG_NOTICE, "%s: sort verify failed #2", __FUNCTION__);
-#endif
-    if (clixon_debug_get()>1)
-        if (clixon_xml2file(stderr, xt, 0, 1, NULL, fprintf, 0, 0) < 0)
-            goto done;
-    *xtop = xt;
-    xt = NULL;
-    retval = 1;
- done:
-    if (xt)
-        xml_free(xt);
-    if (xvec)
-        free(xvec);
-    if (fd != -1)
-        close(fd);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
-/*! Get content of database using xpath. return a set of matching sub-trees
- *
- * The function returns a minimal tree that includes all sub-trees that match
- * xpath.
- * This is a clixon datastore plugin of the the xmldb api
- * @param[in]  h      Clixon handle
- * @param[in]  db     Name of database to search in (filename including dir path
- * @param[in]  yb     How to bind yang to XML top-level when parsing
- * @param[in]  nsc    External XML namespace context, or NULL
- * @param[in]  xpath  String with XPath syntax. or NULL for all
- * @param[in]  wdef   With-defaults parameter, see RFC 6243
- * @param[out] xtop   Single return XML tree. Free with xml_free()
- * @param[out] msdiff If set, return modules-state differences
- * @param[out] xerr   XML error if retval is 0
- * @retval     1      OK
- * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
- * @retval    -1      Error
- * @note Use of 1 for OK
- * @see xmldb_get  the generic API function
- */
-static int
-xmldb_get_cache(clixon_handle     h,
-                const char       *db,
-                yang_bind         yb,
-                cvec             *nsc,
-                const char       *xpath,
-                withdefaults_type wdef,
-                cxobj           **xtop,
-                modstate_diff_t  *msdiff,
-                cxobj           **xerr)
-
-{
-    int        retval = -1;
-    yang_stmt *yspec;
+    yang_stmt *yspec0;
     cxobj     *x0t = NULL; /* (cached) top of tree */
     cxobj     *x0;
     cxobj    **xvec = NULL;
     size_t     xlen;
     int        i;
-    db_elmnt  *de = NULL;
     cxobj     *x1t = NULL;
-    db_elmnt   de0 = {0,};
     int        ret;
 
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+    clixon_debug(CLIXON_DBG_DATASTORE, "db %s", db);
+    if (xret == NULL){
+        clixon_err(OE_DB, EINVAL, "xret is NULL");
+        return -1;
+    }
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-    de = clicon_db_elmnt_get(h, db);
-    if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
-        /* If there is no xml x0 tree (in cache), then read it from file */
-        /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
-        if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, &de0, msdiff, xerr)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
-        /* Should we validate file if read from disk?
-         * No, argument against: we may want to have a semantically wrong file and wish to edit?
-         */
-        de0.de_xml = x0t;
-        if (de)
-            de0.de_id = de->de_id;
-        clicon_db_elmnt_set(h, db, &de0); /* Content is copied */
-    } /* x0t == NULL */
-    else
-        x0t = de->de_xml;
-    if (yb == YB_MODULE && !xml_spec(x0t)){ 
-        /* Seems unneccesary to always do this, but breaks test_plugin_reset.sh if removed */
-        if ((ret = xml_bind_yang(h, x0t, YB_MODULE, yspec, xerr)) < 0)
-            goto done;
-        if (ret == 1) {
-            /* Add default global values (to make xpath below include defaults) */
-            if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
-                goto done;
-            /* Add default recursive values */
-            if (xml_default_recurse(x0t, 0) < 0)
-                goto done;
-        }
-    }
+    if ((ret = xmldb_get_cache(h, db, yb, &x0t, msdiff, xerr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
     /* Here x0t looks like: <config>...</config> */
-    /* Given the xpath, return a vector of matches in xvec 
+    /* Given the xpath, return a vector of matches in xvec
      * Can we do everything in one go?
      * 0) Make a new tree
-     * 1) make the xpath check 
+     * 1) make the xpath check
      * 2) iterate thru matches (maybe this can be folded into the xpath_vec?)
      *   a) for every node that is found, copy to new tree
      *   b) if config dont dont state data
      */
     if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
         goto done;
-
+    // XXX: Remove copying and return x0 eventually
     /* Make new tree by copying top-of-tree from x0t to x1t */
     if ((x1t = xml_new(xml_name(x0t), NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -1006,214 +932,25 @@ xmldb_get_cache(clixon_handle     h,
         if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
             goto done;
     }
-    /* Original tree: Remove global defaults and empty non-presence containers */
-    if (xml_defaults_nopresence(x0t, 2) < 0)
-        goto done;
-    switch (wdef){
-    case WITHDEFAULTS_REPORT_ALL:
-        break;
-    case WITHDEFAULTS_TRIM:
-        /* Mark and remove nodes having schema default values */
-        if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-            goto done;
-        if (xml_tree_prune_flags(x1t, XML_FLAG_MARK, XML_FLAG_MARK)
-            < 0)
-            goto done;
-        if (xml_defaults_nopresence(x1t, 1) < 0)
-            goto done;
-        break;
-    case WITHDEFAULTS_EXPLICIT:
-        if (xml_defaults_nopresence(x1t, 2) < 0)
-            goto done;
-        break;
-    case WITHDEFAULTS_REPORT_ALL_TAGGED:{
-        cxobj *x;
-        char  *ns;
-        x = NULL;
-        while ((x = xml_child_each(x1t, x, CX_ELMNT)) != NULL){
-            ns = NULL;
-            if (xml2ns(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, &ns) < 0)
+    /* Unless a modified/locked candidate, add system-only-config data */
+    if (strcmp(db, "candidate") != 0 ||
+        (xmldb_modified_get(h, db) == 0 &&
+         xmldb_islocked(h, db) == 0)){
+        if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG"))
+            if (xmldb_system_only_config(h, xpath?xpath:"/", nsc, &x1t) < 0)
                 goto done;
-            if (ns == NULL){
-                if (xmlns_set(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
-                    goto done;
-            }
-            else if (strcmp(ns, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) != 0){
-                /* XXX: Assume if namespace is set that it is withdefaults otherwise just ignore?  */
-                    continue;
-            }
-        }
-        /* Mark nodes having default schema values */
-        if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-            goto done;
-        /* Add tag attributes to default nodes */
-        if (xml_apply(x1t, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
-            goto done;
-        break;
     }
-    } /* switch wdef */
     /* If empty NACM config, then disable NACM if loaded
      */
     if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
-        if (disable_nacm_on_empty(x1t, yspec) < 0)
+        if (disable_nacm_on_empty(x1t, yspec0) < 0)
             goto done;
     }
-    clixon_debug_xml(CLIXON_DBG_DETAIL, x1t, "%s", __FUNCTION__);
-    *xtop = x1t;
+    clixon_debug_xml(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, x1t, "");
+    *xret = x1t;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
-    if (xvec)
-        free(xvec);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
-/*! Get the raw cache of whole tree
- *
- * Useful for some higer level usecases for optimized access
- * This is a clixon datastore plugin of the the xmldb api
- * @param[in]  h      Clixon handle
- * @param[in]  db     Name of database to search in (filename including dir path
- * @param[in]  yb     How to bind yang to XML top-level when parsing
- * @param[in]  nsc    External XML namespace context, or NULL
- * @param[in]  xpath  String with XPath syntax. or NULL for all
- * @param[in]  wdef   With-defaults parameter, see RFC 6243
- * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] msdiff If set, return modules-state differences
- * @param[out] xerr   XML error if retval is 0
- * @retval     1      OK
- * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
- * @retval    -1      Error
- * @note Use of 1 for OK
- */
-static int
-xmldb_get_zerocopy(clixon_handle    h,
-                   const char      *db,
-                   yang_bind        yb,
-                   cvec            *nsc,
-                   const char      *xpath,
-                   withdefaults_type wdef,
-                   cxobj          **xtop,
-                   modstate_diff_t *msdiff,
-                   cxobj          **xerr)
-
-{
-    int             retval = -1;
-    yang_stmt      *yspec;
-    cxobj          *x0t = NULL; /* (cached) top of tree */
-    cxobj         **xvec = NULL;
-    size_t          xlen;
-    int             i;
-    cxobj          *x0;
-    db_elmnt       *de = NULL;
-    db_elmnt        de0 = {0,};
-    int             ret;
-
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "No yang spec");
-        goto done;
-    }
-    de = clicon_db_elmnt_get(h, db);
-    if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
-        /* If there is no xml x0 tree (in cache), then read it from file */
-        /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
-        if ((ret = xmldb_readfile(h, db, yb, yspec, &x0t, &de0, msdiff, xerr)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
-        /* Should we validate file if read from disk? 
-         * No, argument against: we may want to have a semantically wrong file and wish to edit?
-         */
-        de0.de_xml = x0t;
-        if (de)
-            de0.de_id = de->de_id;
-        clicon_db_elmnt_set(h, db, &de0);
-    } /* x0t == NULL */
-    else
-        x0t = de->de_xml;
-
-    /* Here xt looks like: <config>...</config> */
-    if (xpath_vec(x0t, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
-        goto done;
-    /* Iterate through the match vector
-     * For every node found in x0, mark the tree up to t1
-     */
-    for (i=0; i<xlen; i++){
-        x0 = xvec[i];
-        xml_flag_set(x0, XML_FLAG_MARK);
-        xml_apply_ancestor(x0, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-    }
-    if (yb != YB_NONE){
-        /* Add global defaults. */
-        if (xml_global_defaults(h, x0t, nsc, xpath, yspec, 0) < 0)
-            goto done;
-        /* Apply default values (removed in clear function) */
-        if (xml_default_recurse(x0t, 0) < 0)
-            goto done;
-    }
-#if 1
-    /* Sub-optimal: first add  defaults, then remove them in some cases
-     * Reason is code is primarily test for _cache case and I dont have time to "revert" it here
-     */
-    switch (wdef){
-    case WITHDEFAULTS_REPORT_ALL:
-        break;
-    case WITHDEFAULTS_TRIM:
-        /* Mark and remove nodes having schema default values */
-        if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-            goto done;
-        if (xml_tree_prune_flags(x0t, XML_FLAG_MARK, XML_FLAG_MARK) < 0)
-            goto done;
-        if (xml_defaults_nopresence(x0t, 1) < 0)
-            goto done;
-        break;
-    case WITHDEFAULTS_EXPLICIT:
-        if (xml_defaults_nopresence(x0t, 2) < 0)
-            goto done;
-        break;
-    case WITHDEFAULTS_REPORT_ALL_TAGGED:{
-        cxobj *x;
-        char  *ns;
-        x = NULL;
-        while ((x = xml_child_each(x0t, x, CX_ELMNT)) != NULL){
-            ns = NULL;
-            if (xml2ns(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, &ns) < 0)
-                goto done;
-            if (ns == NULL){
-                if (xmlns_set(x, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
-                    goto done;
-            }
-            else if (strcmp(ns, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) != 0){
-                /* XXX: Assume if namespace is set that it is withdefaults otherwise just ignore?  */
-                    continue;
-            }
-        }
-        /* Mark nodes having default schema values */
-        if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*) xml_flag_default_value, (void*) XML_FLAG_MARK) < 0)
-            goto done;
-        /* Add tag attributes to default nodes */
-        if (xml_apply(x0t, CX_ELMNT, (xml_applyfn_t*) xml_add_default_tag, (void*) (XML_FLAG_DEFAULT | XML_FLAG_MARK)) < 0)
-            goto done;
-        break;
-    }
-    } /* switch wdef */
-#endif
-    /* If empty NACM config, then disable NACM if loaded
-     */
-    if (clicon_option_bool(h, "CLICON_NACM_DISABLED_ON_EMPTY")){
-        if (disable_nacm_on_empty(x0t, yspec) < 0)
-            goto done;
-    }
-    if (clixon_debug_get() > 1)
-        if (clixon_xml2file(stderr, x0t, 0, 1, NULL, fprintf, 0, 0) < 0)
-            goto done;
-    *xtop = x0t;
-    retval = 1;
- done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xvec)
         free(xvec);
     return retval;
@@ -1234,11 +971,14 @@ xmldb_get_zerocopy(clixon_handle    h,
  * @retval    -1      Error
  * @note Use of 1 for OK
  * @code
- *   if (xmldb_get(xh, "running", NULL, "/interfaces/interface[name="eth"]", &xt) < 0)
+ *   if ((ret = xmldb_get(xh, "running", NULL, "/interfaces/interface[name="eth"]", &xt)) < 0)
+ *      err;
+ *   if (ret == 0)
  *      err;
  *   xml_free(xt);
  * @endcode
  * @see xmldb_get0  Underlying more capable API for enabling zero-copy
+ * XXX: OBSOLETE: use xmldb_get0 directly
  */
 int
 xmldb_get(clixon_handle    h,
@@ -1250,20 +990,16 @@ xmldb_get(clixon_handle    h,
     return xmldb_get0(h, db, YB_MODULE, nsc, xpath, 1, 0, xret, NULL, NULL);
 }
 
-/*! Zero-copy variant of get content of database
+/*! Get content of datastore, use cache if present
  *
  * The function returns a minimal tree that includes all sub-trees that match
- * xpath. 
- * It can be used for zero-copying if CLICON_DATASTORE_CACHE is set
- * appropriately.
- * The tree returned may be the actual cache, therefore calls for cleaning and
- * freeing tree must be made after use.
+ * xpath.
  * @param[in]  h      Clixon handle
  * @param[in]  db     Name of datastore, eg "running"
  * @param[in]  yb     How to bind yang to XML top-level when parsing (if YB_NONE, no defaults)
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPath syntax. or NULL for all
- * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache 
+ * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache
  * @param[in]  wdef   With-defaults parameter, see RFC 6243
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff If set, return modules-state differences (upgrade code)
@@ -1281,23 +1017,21 @@ xmldb_get(clixon_handle    h,
  *      # Error handling
  *   }
  *   ...
- *   xmldb_get0_clear(h, xt);   # Clear tree from default values and flags 
- *   xmldb_get0_free(h, &xt);   # Free tree
  *   xml_free(xerr);
  * @endcode
  * @see xml_nsctx_node  to get a XML namespace context from XML tree
  * @see xmldb_get for a copy version (old-style)
  * @note An annoying issue is one with default values and xpath miss:
- *   Assume a yang spec: 
- *      module m { 
- *         container c { 
- *            leaf x { 
+ *   Assume a yang spec:
+ *      module m {
+ *         container c {
+ *            leaf x {
  *               default 0;
  *   And a db content:
  *      <c><x>1</x></c>
  *   With the following call:
  *      xmldb_get0(h, "running", NULL, NULL, "/c[x=0]", 1, 0, &xt, NULL, NULL)
- *   which result in a miss (there is no c with x=0), but when the returned xt is printed 
+ *   which result in a miss (there is no c with x=0), but when the returned xt is printed
  *   (the existing tree is discarded), the default (empty) xml tree is:
  *      <c><x>0</x></c>
  */
@@ -1307,98 +1041,32 @@ xmldb_get0(clixon_handle    h,
            yang_bind        yb,
            cvec            *nsc,
            const char      *xpath,
-           int              copy,
+           int              copy, // XXX notused
            withdefaults_type wdef,
            cxobj          **xret,
            modstate_diff_t *msdiff,
            cxobj          **xerr)
 {
-    int               retval = -1;
+    int    retval = -1;
+    int    ret;
+    cxobj *x = NULL;
 
-    if (xret == NULL){
-        clixon_err(OE_DB, EINVAL, "xret is NULL");
+    if (wdef != WITHDEFAULTS_EXPLICIT)
+        return xmldb_get_copy(h, db, yb, nsc, xpath, 0, xret, msdiff, xerr);
+    if ((ret = xmldb_get_copy(h, db, yb, nsc, xpath, 0, &x, msdiff, xerr)) < 0)
         goto done;
-    }
-    switch (clicon_datastore_cache(h)){
-    case DATASTORE_NOCACHE:
-        /* Read from file into created/copy tree, prune non-matching xpath 
-         * Add default values in copy
-         * Copy deleted by xmldb_free
-         */
-        retval = xmldb_get_nocache(h, db, yb, nsc, xpath, wdef, xret, msdiff, xerr);
-        break;
-    case DATASTORE_CACHE_ZEROCOPY:
-        /* Get cache (file if empty) mark xpath match in original tree 
-         * add default values in original tree and return that.
-         * Default values and markings removed in xmldb_clear
-         */
-        if (!copy){
-            retval = xmldb_get_zerocopy(h, db, yb, nsc, xpath, wdef, xret, msdiff, xerr);
-            break;
-        }
-        /* fall through */
-    case DATASTORE_CACHE:
-        /* Get cache (file if empty) mark xpath match and copy marked into copy 
-         * Add default values in copy, return copy
-         * Copy deleted by xmldb_free
-         */
-        retval = xmldb_get_cache(h, db, yb, nsc, xpath, wdef, xret, msdiff, xerr);
-        break;
-    }
+    if (ret == 0)
+        goto fail;
+    if (xml_default_nopresence(x, 2, 0) < 0)
+        goto done;
+    *xret = x;
+    x = NULL;
+    retval = 1;
  done:
+    if (x)
+        xml_free(x);
     return retval;
-}
-
-/*! Clear cached xml tree obtained with xmldb_get0, if zerocopy
- *
- * @param[in]  h    Clixon handle
- * @param[in]  db   Name of datastore
- * @retval     0    OK
- * @retval    -1    Error
- * @note "Clear" an xml tree means removing default values and resetting all flags.
- * @see xmldb_get0
- */
-int
-xmldb_get0_clear(clixon_handle    h,
-                 cxobj           *x)
-{
-    int        retval = -1;
-
-    if (x == NULL)
-        goto ok;
-    /* Remove global defaults and empty non-presence containers */
-    if (xml_defaults_nopresence(x, 2) < 0)
-        goto done;
-    /* Clear XML tree of defaults */
-    if (xml_tree_prune_flagged(x, XML_FLAG_TRANSIENT, 1) < 0)
-        goto done;
-    /* clear mark and change */
-    xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-               (void*)(XML_FLAG_MARK|XML_FLAG_ADD|XML_FLAG_CHANGE));
- ok:
+ fail:
     retval = 0;
- done:
-    return retval;
+    goto done;
 }
-
-/*! Free xml tree obtained with xmldb_get0
- *
- * @param[in]     h   Clixon handle
- * @param[in,out] xp  Pointer to XML cache. 
- * @retval        0   Always.
- * @see xmldb_get0
- */
-int
-xmldb_get0_free(clixon_handle    h,
-               cxobj          **xp)
-{
-    if (*xp == NULL)
-        return 0;
-    /* Note that if clicon_datastore_cache(h) fails (returns -1), the following
-     * xml_free can fail (if **xp not obtained using xmldb_get0) */
-    if (clicon_datastore_cache(h) != DATASTORE_CACHE_ZEROCOPY)
-        xml_free(*xp);
-    *xp = NULL;
-    return 0;
-}
-

@@ -167,7 +167,7 @@
 /* typecast macro */
 #define _YY ((clixon_yang_yacc *)_yy)
 
-#define _YYERROR(msg) {clixon_debug(CLIXON_DBG_DEFAULT, "YYERROR %s '%s' %d", (msg), clixon_yang_parsetext, _YY->yy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_debug(CLIXON_DBG_YANG, "YYERROR %s '%s' %d", (msg), clixon_yang_parsetext, _YY->yy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
@@ -191,10 +191,11 @@
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_yang_parse.h"
 
@@ -203,8 +204,8 @@
  * Disable it to stop any calls to clixon_debug. Having it on by default would mean very large debug outputs.
  */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
-#define _PARSE_DEBUG1(s, s1) clixon_debug(1,(s), (s1))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, (s))
+#define _PARSE_DEBUG1(s, s1) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, (s), (s1))
 #else
 #define _PARSE_DEBUG(s)
 #define _PARSE_DEBUG1(s, s1)
@@ -233,7 +234,6 @@ yang_parse_init(clixon_yang_yacc *yy)
 {
     return 0;
 }
-
 
 int
 yang_parse_exit(clixon_yang_yacc *yy)
@@ -351,7 +351,6 @@ ysp_add_push(clixon_yang_yacc *yy,
         return NULL;
     return ys;
 }
-
 
 %}
 
@@ -500,7 +499,6 @@ include_substmt : revision_date_stmt { _PARSE_DEBUG("include-stmt -> revision-da
                 | reference_stmt     { _PARSE_DEBUG("include-stmt -> reference-stmt"); }
                ;
 
-
 /* namespace-stmt = namespace-keyword sep uri-str */
 namespace_stmt : K_NAMESPACE string stmtend
                 { if (ysp_add(_yy, Y_NAMESPACE, $2, NULL)== NULL) _YYERROR("namespace_stmt");
@@ -567,7 +565,6 @@ revision_substmt : description_stmt { _PARSE_DEBUG("revision-substmt -> descript
               |                     { _PARSE_DEBUG("revision-substmt -> "); }
               ;
 
-
 /* revision */
 revision_stmts : revision_stmts revision_stmt
                        { _PARSE_DEBUG("revision-stmts -> revision-stmts revision-stmt"); }
@@ -624,8 +621,8 @@ argument_substmts : argument_substmts argument_substmt
 
 argument_substmt : yin_element_stmt1 { _PARSE_DEBUG("argument-substmt -> yin-element-stmt1");}
                  | unknown_stmt   { _PARSE_DEBUG("argument-substmt -> unknown-stmt");}
+                 |
                  ;
-
 
 /* Example of optional rule, eg [yin-element-stmt] */
 yin_element_stmt1 : K_YIN_ELEMENT bool_str stmtend {free($2);}
@@ -1059,7 +1056,6 @@ grouping_substmt : status_stmt       { _PARSE_DEBUG("grouping-substmt -> status-
               | unknown_stmt         { _PARSE_DEBUG("container-substmt -> unknown-stmt");}
               |                      { _PARSE_DEBUG("grouping-substmt -> "); }
               ;
-
 
 /* container */
 container_stmt : K_CONTAINER identifier_str ';'
@@ -1894,7 +1890,6 @@ bool_str       : '"' BOOL '"' { $$ = $2;
                |     BOOL     { $$ = $1;
                    _PARSE_DEBUG("bool_str -> BOOL ");}
                ;
-
 
 /* ;;; Basic Rules */
 

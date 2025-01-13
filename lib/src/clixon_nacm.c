@@ -57,12 +57,13 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_netconf_lib.h"
@@ -72,6 +73,7 @@
 #include "clixon_datastore.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
+#include "clixon_xml_io.h"
 #include "clixon_path.h"
 #include "clixon_xml_vec.h"
 #include "clixon_nacm.h"
@@ -299,7 +301,7 @@ nacm_rpc(char         *rpc,
  permit:
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_NACM, "retval:%d (0:deny 1:permit)", retval);
     if (nsc)
         xml_nsctx_free(nsc);
     if (gvec)
@@ -694,16 +696,16 @@ nacm_datanode_write(clixon_handle    h,
                     cxobj           *xnacm,
                     cbuf            *cbret)
 {
-    int             retval = -1;
-    cxobj         **gvec = NULL; /* groups */
-    size_t          glen;
-    cxobj         **rlistvec = NULL; /* rule-list */
-    size_t          rlistlen;
-    cxobj         **rvec = NULL; /* rules */
-    char           *write_default = NULL;
-    cvec           *nsc = NULL;
-    int             ret;
-    prepvec        *pv_list = NULL;
+    int      retval = -1;
+    cxobj  **gvec = NULL; /* groups */
+    size_t   glen;
+    cxobj  **rlistvec = NULL; /* rule-list */
+    size_t   rlistlen;
+    cxobj  **rvec = NULL; /* rules */
+    char    *write_default = NULL;
+    cvec    *nsc = NULL;
+    int      ret;
+    prepvec *pv_list = NULL;
 
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
@@ -770,7 +772,7 @@ nacm_datanode_write(clixon_handle    h,
  permit:
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_NACM, "retval:%d (0:deny 1:permit)", retval);
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -885,8 +887,7 @@ nacm_data_read_xrule_xml(cxobj        *xn,
  *
  * @param[in]  h        Clixon handle
  * @param[in]  xn       XML node (requested node)
- * @param[in]  rulevec  Precomputed rules that apply to this user group
- * @param[in]  xpathvec Precomputed xpath results that apply to this XML tree
+ * @param[in]  pv_list  Precomputed rules + paths that apply to this user group
  * @param[in]  yspec    YANG spec
  * @retval     0        OK
  * @retval    -1        Error
@@ -1075,7 +1076,7 @@ nacm_datanode_read(clixon_handle h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_NACM, "retval:%d", retval);
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -1086,7 +1087,6 @@ nacm_datanode_read(clixon_handle h,
         free(rlistvec);
     return retval;
 }
-
 
 /*---------------------------------------------------------------
  * NACM pre-procesing
@@ -1100,6 +1100,7 @@ nacm_datanode_read(clixon_handle h,
  * @param[in]  h        Clixon handle
  * @param[in]  xnacm    NACM XML tree, root should be "nacm"
  * @param[in]  username User name of requestor
+ * @param[in]  peername Peer username if any
  * @retval     1        OK permitted. You do not need to do next NACM step
  * @retval     0        OK but not validated. Need to do NACM step using xnacm
  * @retval    -1        Error
@@ -1128,7 +1129,7 @@ nacm_access_check(clixon_handle h,
     char  *wwwuser;
 #endif
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_NACM, "");
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
     /* Do initial nacm processing common to all access validation in
@@ -1181,7 +1182,7 @@ nacm_access_check(clixon_handle h,
  done:
     if (nsc)
         xml_nsctx_free(nsc);
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d (0:deny 1:permit)", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_NACM, "retval:%d (0:deny 1:permit)", retval);
     return retval;
  permit:
     retval = 1;
@@ -1194,8 +1195,11 @@ nacm_access_check(clixon_handle h,
  * If retval=0 continue with next NACM step, eg rpc, module, 
  * etc. If retval = 1 access is OK and skip next NACM step.
  * @param[in]  h        Clixon handle
+ * @param[in]  peername Peer username if any
  * @param[in]  username User name of requestor
- * @param[out] xncam    NACM XML tree, set if retval=0. Free after use
+ * @param[out] xnacm    NACM XML tree, set if retval=0. Free after use
+ * @param[out] cbret    Error if ret == 2
+ * @retval     2        Failed on reading NACM from running (internal), cbret has error
  * @retval     1        OK permitted. You do not need to do next NACM step.
  * @retval     0        OK but not validated. Need to do NACM step using xnacm
  * @retval    -1        Error
@@ -1214,7 +1218,8 @@ int
 nacm_access_pre(clixon_handle  h,
                 char          *peername,
                 char          *username,
-                cxobj        **xnacmp)
+                cxobj        **xnacmp,
+                cbuf          *cbret)
 {
     int    retval = -1;
     char  *mode;
@@ -1222,6 +1227,8 @@ nacm_access_pre(clixon_handle  h,
     cxobj *xnacm0 = NULL;
     cxobj *xnacm = NULL;
     cvec  *nsc = NULL;
+    cxobj *xerr = NULL;
+    int    ret;
 
     /* Check clixon option: disabled, external tree or internal */
     mode = clicon_option_str(h, "CLICON_NACM_MODE");
@@ -1235,8 +1242,13 @@ nacm_access_pre(clixon_handle  h,
                 goto done;
     }
     else if (strcmp(mode, "internal")==0){
-        if (xmldb_get0(h, "running", YB_MODULE, nsc, "nacm", 1, 0, &xnacm0, NULL, NULL) < 0)
+        if ((ret = xmldb_get0(h, "running", YB_MODULE, nsc, "nacm", 1, 0, &xnacm0, NULL, &xerr)) < 0)
             goto done;
+        if (ret == 0){
+            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+                goto done;
+            goto fail;
+        }
     }
     else{
         clixon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
@@ -1267,18 +1279,24 @@ nacm_access_pre(clixon_handle  h,
         xml_free(xnacm0);
     else if (xnacm)
         xml_free(xnacm);
+    else if (xerr)
+        xml_free(xerr);
     return retval;
  permit:
     retval = 1;
     goto done;
+ fail:
+    retval = 2;
+    goto done;
 }
 
-/*! Verify nacm user with  peer uid credentials
+/*! Verify nacm user with peer uid credentials
  *
  * @param[in]  h         Clixon handle
  * @param[in]  mode      Peer credential mode: none, exact or except
  * @param[in]  peername  Peer username if any
- * @param[in]  username  username received in XML (eg for NACM)
+ * @param[in]  nacmname  username received in XML (eg for NACM)
+ * @param[in]  rpcname   Name of incoming rpc
  * @param[out] cbret     Set with netconf error message if ret == 0
  * @retval     1         Verified
  * @retval     0         Not verified (cbret set)
@@ -1298,6 +1316,7 @@ verify_nacm_user(clixon_handle           h,
                  enum nacm_credentials_t cred,
                  char                   *peername,
                  char                   *nacmname,
+                 char                   *rpcname,
                  cbuf                   *cbret)
 {
     int   retval = -1;
@@ -1314,7 +1333,12 @@ verify_nacm_user(clixon_handle           h,
         goto fail;
     }
     if (nacmname == NULL){
-        if (netconf_access_denied(cbret, "application", "No NACM available") < 0)
+        if ((cbmsg = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cbmsg, "No NACM username attribute present in incoming RPC: \"%s\"", rpcname);
+        if (netconf_access_denied(cbret, "application", cbuf_get(cbmsg)) < 0)
             goto done;
         goto fail;
     }

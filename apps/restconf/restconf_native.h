@@ -32,7 +32,7 @@
 
   ***** END LICENSE BLOCK *****
   *
-  * Data structures:
+  * Data structures: (NOT UPDATED)
   *                     1                                             1
   * +--------------------+   restconf_handle_get  +--------------------+
   * | rn restconf_native | <--------------------- |  h  clixon_handle  |
@@ -71,7 +71,7 @@ extern "C" {
 /* Forward */
 struct restconf_conn;
 
-/* session stream struct, mainly for http/2 but http/1 has a single pseudo-stream with id=0
+/* Session stream struct, mainly for http/2 but http/1 has a single pseudo-stream with id=0
  */
 typedef struct  {
     qelem_t               sd_qelem;     /* List header */
@@ -111,8 +111,8 @@ typedef struct restconf_conn {
     int                   rc_s;         /* Connection socket */
     clixon_handle         rc_h;         /* Clixon handle */
     SSL                  *rc_ssl;       /* Structure for SSL connection */
-    restconf_stream_data *rc_streams; /* List of http/2 session streams */
-    int                   rc_exit;    /* Set to close socket server-side */
+    restconf_stream_data *rc_streams;   /* List of http/2 session streams */
+    int                   rc_exit;      /* Set to close socket server-side */
     /* Decision to keep lib-specific data here, otherwise new struct necessary
      * drawback is specific includes need to go everywhere */
 #ifdef HAVE_LIBNGHTTP2
@@ -121,6 +121,7 @@ typedef struct restconf_conn {
     restconf_socket      *rc_socket;    /* Backpointer to restconf_socket needed for callhome */
     struct timeval        rc_t;         /* Timestamp of last read/write activity, used by callhome
                                            idle-timeout algorithm */
+    int                   rc_event_stream;    /* Event notification stream socket (maybe in sd?) */
 } restconf_conn;
 
 /* Restconf per socket handle
@@ -156,7 +157,7 @@ typedef struct restconf_socket{
                                  */
     restconf_conn *rs_conns;  /* List of transient connect sockets */
     char          *rs_from_addr; /* From IP address as seen by accept (mv to rc?) */
-
+    int            rs_stream_timeout; /* Close stream after <s> (debug) */
 } restconf_socket;
 
 /* Restconf handle 
@@ -179,11 +180,10 @@ int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
 
 int               restconf_close_ssl_socket(restconf_conn *rc, const char *callfn, int sslerr0);
 int               restconf_connection_sanity(clixon_handle h, restconf_conn *rc, restconf_stream_data *sd);
+int               native_buf_write(clixon_handle h, char *buf, size_t buflen, restconf_conn *rc, const char *callfn);
 restconf_native_handle *restconf_native_handle_get(clixon_handle h);
 int               restconf_connection(int s, void *arg);
 int               restconf_ssl_accept_client(clixon_handle h, int s, restconf_socket *rsock, restconf_conn  **rcp);
-int               restconf_idle_timer_unreg(restconf_conn *rc);
-int               restconf_idle_timer(restconf_conn *rc);
 int               restconf_callhome_timer_unreg(restconf_socket *rsock);
 int               restconf_callhome_timer(restconf_socket *rsock, int status);
 int               restconf_socket_extract(clixon_handle h, cxobj *xs, cvec *nsc, restconf_socket *rsock,

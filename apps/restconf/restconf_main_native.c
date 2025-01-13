@@ -158,8 +158,13 @@
 #include "restconf_http1.h"
 #endif
 
+#ifndef SOCK_NONBLOCK
+#include <fcntl.h>
+#define SOCK_NONBLOCK O_NONBLOCK
+#endif
+
 /* Command line options to be passed to getopt(3) */
-#define RESTCONF_OPTS "hVD:f:E:l:C:p:y:a:u:rW:R:o:"
+#define RESTCONF_OPTS "hVD:f:E:l:C:p:y:a:u:rW:R:t:o:"
 
 /* If set, open outwards socket non-blocking, as opposed to blocking
  * Should work both ways, but in the ninblocking case,
@@ -217,7 +222,7 @@ clixon_openssl_log_cb(void *handle,
                       int   suberr,
                       cbuf *cb)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     ERR_print_errors_cb(print_cb, cb);
     return 0;
 }
@@ -266,17 +271,17 @@ restconf_verify_certs(int             preverify_ok,
     depth      = X509_STORE_CTX_get_error_depth(store);
     //    ssl        = X509_STORE_CTX_get_ex_data(store, SSL_get_ex_data_X509_STORE_CTX_idx());
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s preverify_ok:%d err:%d depth:%d", __FUNCTION__, preverify_ok, err, depth);
+    clixon_debug(CLIXON_DBG_RESTCONF, "preverify_ok:%d err:%d depth:%d", preverify_ok, err, depth);
     X509_NAME_oneline(X509_get_subject_name(err_cert), buf, 256);
     switch (err){
     case X509_V_ERR_HOSTNAME_MISMATCH:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s X509_V_ERR_HOSTNAME_MISMATCH", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_RESTCONF, "X509_V_ERR_HOSTNAME_MISMATCH");
         break;
     case X509_V_ERR_CERT_HAS_EXPIRED:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s X509_V_ERR_CERT_HAS_EXPIRED", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_RESTCONF, "X509_V_ERR_CERT_HAS_EXPIRED");
         break;
     case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_RESTCONF, "X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT");
         break;
     }
     /* Catch a too long certificate chain. should be +1 in SSL_CTX_set_verify_depth() */
@@ -305,7 +310,7 @@ alpn_proto_dump(const char *label,
                 const char *inp,
                 unsigned    len)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %.*s", label, (int)len, inp);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s %.*s", label, (int)len, inp);
     return 0;
 }
 
@@ -327,7 +332,7 @@ alpn_select_proto_cb(SSL                  *ssl,
     unsigned char len;
     int           pref = 0;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* select http/1.1 */
     inp = (unsigned char*)in;
     while ((inp-in) < inlen) {
@@ -422,7 +427,6 @@ restconf_ssl_context_configure(clixon_handle h,
         SSL_CTX_set_verify_depth(ctx, VERIFY_DEPTH+1);
     }
 
-
     X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), 0);
 
     SSL_CTX_set_session_id_context(ctx, (void *)&session_id_context, sizeof(session_id_context));
@@ -456,18 +460,18 @@ restconf_listcerts(SSL *ssl)
     X509 *cert;
     char *line;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s get peer certificates:", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "get peer certificates:");
     if ((cert = SSL_get_peer_certificate(ssl)) != NULL) { /* Get certificates (if available) */
         if ((line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0)) != NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Subject: %s", line);
+            clixon_debug(CLIXON_DBG_RESTCONF, "Subject: %s", line);
             free(line);
         }
         if ((line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0)) != NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Issuer: %s", line);
+            clixon_debug(CLIXON_DBG_RESTCONF, "Issuer: %s", line);
             free(line);
         }
         if ((line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0)) != NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Subject: %s", line);
+            clixon_debug(CLIXON_DBG_RESTCONF, "Subject: %s", line);
             free(line);
         }
         X509_free(cert);
@@ -528,13 +532,13 @@ restconf_accept_client(int   fd,
     int                     retval = -1;
     restconf_socket        *rsock;
     clixon_handle           h;
-    int                     s;
+    int                     s = -1;
     struct sockaddr         from = {0,};
     socklen_t               len;
     char                   *name = NULL;
     void                   *addr;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, fd);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%d", fd);
     if ((rsock = (restconf_socket *)arg) == NULL){
         clixon_err(OE_YANG, EINVAL, "rsock is NULL");
         goto done;
@@ -568,9 +572,9 @@ restconf_accept_client(int   fd,
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
-    if (inet_ntop(from.sa_family, addr, rsock->rs_from_addr, INET6_ADDRSTRLEN) < 0)
+    if (inet_ntop(from.sa_family, addr, rsock->rs_from_addr, INET6_ADDRSTRLEN) == NULL)
         goto done;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s type:%s from:%s, dest:%s port:%hu", __FUNCTION__,
+    clixon_debug(CLIXON_DBG_RESTCONF, "type:%s from:%s, dest:%s port:%hu",
                  rsock->rs_addrtype,
                  rsock->rs_from_addr,
                  rsock->rs_addrstr,
@@ -579,11 +583,14 @@ restconf_accept_client(int   fd,
     /* Accept SSL */
     if (restconf_ssl_accept_client(h, s, rsock, NULL) < 0)
         goto done;
+    s = -1;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (name)
         free(name);
+    if (s != -1)
+        close(s);
     return retval;
 } /* restconf_accept_client */
 
@@ -596,7 +603,7 @@ restconf_native_terminate(clixon_handle h)
     restconf_socket        *rsock;
     restconf_conn          *rc;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((rn = restconf_native_handle_get(h)) != NULL){
         while ((rsock = rn->rn_sockets) != NULL){
             while ((rc = rsock->rs_conns) != NULL){
@@ -710,13 +717,15 @@ restconf_clixon_backend(clixon_handle h,
  * @param[in]  h        Clixon handle
  * @param[in]  xs       XML config of single restconf socket
  * @param[in]  nsc      Namespace context
+ * @param[in]  timeout  Terminate notification event stream after number of seconds
  * @retval     0        OK
  * @retval    -1        Error
  */
 static int
 openssl_init_socket(clixon_handle h,
                     cxobj        *xs,
-                    cvec         *nsc)
+                    cvec         *nsc,
+                    int           timeout)
 {
     int             retval = -1;
     char           *netns = NULL;
@@ -728,7 +737,7 @@ openssl_init_socket(clixon_handle h,
     restconf_socket *rsock = NULL; /* openssl per socket struct */
     struct timeval   now;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /*
      * Create per-socket openssl handle
      * See restconf_native_terminate for freeing
@@ -739,6 +748,7 @@ openssl_init_socket(clixon_handle h,
     }
     memset(rsock, 0, sizeof *rsock);
     rsock->rs_h = h;
+    rsock->rs_stream_timeout = timeout;
     gettimeofday(&now, NULL);
     rsock->rs_start = now.tv_sec;
     /* Extract socket parameters from single socket config: ns, addr, port, ssl */
@@ -782,6 +792,7 @@ openssl_init_socket(clixon_handle h,
         rsock->rs_ss = -1; /* Not applicable from callhome */
         if (restconf_callhome_timer(rsock, 0) < 0)
             goto done;
+        rsock = NULL;
     }
     else {
         /* ss is a server socket that the clients connect to. The callback
@@ -789,9 +800,12 @@ openssl_init_socket(clixon_handle h,
         rsock->rs_ss = ss;
         if (clixon_event_reg_fd(rsock->rs_ss, restconf_accept_client, rsock, "restconf socket") < 0)
             goto done;
+        rsock = NULL;
     }
     retval = 0;
  done:
+    if (rsock)
+        free(rsock);
     return retval;
 }
 
@@ -801,13 +815,15 @@ openssl_init_socket(clixon_handle h,
  * @param[in]  h         Clixon handle
  * @param[in]  dbg0      Manually set debug flag, if set overrides configuration setting
  * @param[in]  xrestconf XML tree containing restconf config
- * @retval     0     OK
- * @retval    -1     Error
+ * @param[in]  timeout   Terminate notification stream after number of seconds
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 int
 restconf_openssl_init(clixon_handle h,
                       int           dbg0,
-                      cxobj        *xrestconf)
+                      cxobj        *xrestconf,
+                      int           timeout)
 {
     int                retval = -1;
     SSL_CTX           *ctx; /* SSL context */
@@ -825,7 +841,7 @@ restconf_openssl_init(clixon_handle h,
     size_t             veclen;
     int                i;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* flag used for sanity of certs */
     ssl_enable = xpath_first(xrestconf, nsc, "socket[ssl='true']") != NULL;
     /* Auth type set in config */
@@ -839,11 +855,13 @@ restconf_openssl_init(clixon_handle h,
         /* If debug was enabled here from config and not initially,
          * print clixn options and loaded yang files
          */
-        clicon_option_dump(h, 1);
+        clicon_option_dump(h, CLIXON_DBG_INIT);
     }
     if ((x = xpath_first(xrestconf, nsc, "enable-core-dump")) != NULL) {
         /* core dump is enabled on RESTCONF process */
         struct rlimit rlp;
+        int    status;
+
         if (strcmp(xml_body(x), "true") == 0) {
             rlp.rlim_cur = RLIM_INFINITY;
             rlp.rlim_max = RLIM_INFINITY;
@@ -851,12 +869,11 @@ restconf_openssl_init(clixon_handle h,
             rlp.rlim_cur = 0;
             rlp.rlim_max = 0;
         }
-        int status = setrlimit(RLIMIT_CORE, &rlp);
+        status = setrlimit(RLIMIT_CORE, &rlp);
         if (status != 0) {
             clixon_log(h, LOG_INFO, "%s: setrlimit() failed, %s", __FUNCTION__, strerror(errno));
         }
     }
-
     if (init_openssl() < 0)
         goto done;
     if ((ctx = restconf_ssl_context_create(h)) == NULL)
@@ -879,7 +896,7 @@ restconf_openssl_init(clixon_handle h,
     if (xpath_vec(xrestconf, nsc, "socket", &vec, &veclen) < 0)
         goto done;
     for (i=0; i<veclen; i++){
-        if (openssl_init_socket(h, vec[i], nsc) < 0){
+        if (openssl_init_socket(h, vec[i], nsc, timeout) < 0){
             /* Bind errors are ignored, proceed with next after log */
             if (clixon_err_category() == OE_UNIX && clixon_err_subnr() == EADDRNOTAVAIL)
                 clixon_err_reset();
@@ -949,9 +966,8 @@ restconf_clixon_init(clixon_handle h,
     if (yang_metadata_init(h) < 0)
         goto done;
     /* Create top-level yang spec and store as option */
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_DATA_TOP)) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);
 
     /* Load restconf plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_restconf_dir(h)) != NULL)
@@ -961,7 +977,7 @@ restconf_clixon_init(clixon_handle h,
     if (print_version){
         if (clixon_plugin_version_all(h, stdout) < 0)
             goto done;
-        exit(0);
+        goto ok;
     }
     /* Create a pseudo-plugin to create extension callback to set the ietf-routing
      * yang-data extension for api-root top-level restconf function.
@@ -1022,7 +1038,7 @@ restconf_clixon_init(clixon_handle h,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
         goto done;
     if (inline_config != NULL && strlen(inline_config)){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s reading from inline config", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_RESTCONF, "reading from inline config");
         if ((ret = clixon_xml_parse_string(inline_config, YB_MODULE, yspec, &xrestconf, &xerr)) < 0)
             goto done;
         if (ret == 0){
@@ -1044,7 +1060,7 @@ restconf_clixon_init(clixon_handle h,
                 goto done;
     }
     else if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS") == 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s reading from clixon config", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_RESTCONF, "reading from clixon config");
         /* If not read from backend, try to get restconf config from local config-file */
         if ((xrestconf = clicon_conf_restconf(h)) != NULL){
             /* Basic config init, set auth-type, pretty, etc ret 0 means disabled */
@@ -1062,12 +1078,13 @@ restconf_clixon_init(clixon_handle h,
     /* If no local config, or it is disabled, try to query backend of config. 
      */
     else {
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s reading from backend datastore config", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_RESTCONF, "reading from backend datastore config");
         if ((ret = restconf_clixon_backend(h, xrestconfp)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
     }
+ ok:
     retval = 1;
  done:
     if (xerr)
@@ -1110,23 +1127,27 @@ usage(clixon_handle h,
     fprintf(stderr, "usage:%s [options]\n"
             "where options are\n"
             "\t-h \t\t  Help\n"
-            "\t-V \t\tPrint version and exit\n"
-            "\t-D <level>\t  Debug level, overrides any config debug setting\n"
+            "\t-V \t\t  Print version and exit\n"
+            "\t-D <level>\t  Debug level (see available levels below)\n"
             "\t-f <file>\t  Configuration file (mandatory)\n"
             "\t-E <dir> \t  Extra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
-            "\t-C <format>\tDump configuration options on stdout after loading and exit. Format is xml|json|text\n"
+            "\t-C <format>\t  Dump configuration options on stdout after loading and exit. Format is xml|json|text\n"
             "\t-p <dir>\t  Yang directory path (see CLICON_YANG_DIR)\n"
             "\t-y <file>\t  Load yang spec file (override yang main module)\n"
             "\t-a UNIX|IPv4|IPv6 Internal backend socket family\n"
             "\t-u <path|addr>\t  Internal socket domain path or IP addr (see -a)\n"
             "\t-r \t\t  Do not drop privileges if run as root\n"
             "\t-W <user>\t  Run restconf daemon as this user, drop according to CLICON_RESTCONF_PRIVILEGES\n"
-            "\t-R <xml> \t  Restconf configuration in-line overriding config file\n"
-            "\t-o <option>=<value> Set configuration option overriding config file (see clixon-config.yang)\n"
+            "\t-R <xml>\t  Restconf configuration in-line overriding config file\n"
+            "\t-t <sec>\t  Notification stream timeout in: quit after <sec>. For debug\n"
+            "\t-o <op>=<value>\t  Set configuration option overriding config file (see clixon-config.yang)\n"
             ,
             argv0
             );
+    fprintf(stderr, "Debug keys: ");
+    clixon_debug_key_dump(stderr);
+    fprintf(stderr, "\n");
     exit(0);
 }
 
@@ -1136,19 +1157,21 @@ int
 main(int    argc,
      char **argv)
 {
-    int             retval = -1;
-    char           *argv0 = argv[0];
-    int             c;
-    clixon_handle   h;
-    int             dbg = 0;
-    int             logdst = CLIXON_LOG_SYSLOG;
+    int                     retval = -1;
+    char                   *argv0 = argv[0];
+    int                     c;
+    clixon_handle           h;
+    int                     dbg = 0;
+    int                     logdst = CLIXON_LOG_SYSLOG;
     restconf_native_handle *rn = NULL;
-    int             ret;
-    cxobj          *xrestconf = NULL;
-    char           *inline_config = NULL;
-    int             config_dump = 0;
-    enum format_enum config_dump_format = FORMAT_XML;
-    int              print_version = 0;
+    int                     ret;
+    cxobj                  *xrestconf = NULL;
+    char                   *inline_config = NULL;
+    int                     config_dump = 0;
+    enum format_enum        config_dump_format = FORMAT_XML;
+    int                     print_version = 0;
+    int                     stream_timeout = 0;
+    int32_t                 d;
 
     /* Create handle */
     if ((h = restconf_handle_init()) == NULL)
@@ -1165,12 +1188,16 @@ main(int    argc,
             usage(h, argv0);
             break;
         case 'V': /* version */
-            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
-        case 'D' : /* debug. Note this overrides any setting in the config */
-            if (sscanf(optarg, "%d", &dbg) != 1)
-                usage(h, argv0);
+        case 'D' :  /* debug. Note this overrides any setting in the config */
+            /* Try first symbolic, then numeric match */
+            if ((d = clixon_debug_str2key(optarg)) < 0 &&
+                sscanf(optarg, "%d", &d) != 1){
+                usage(h, argv[0]);
+            }
+            dbg |= d;
             break;
          case 'f': /* override config file */
             if (!strlen(optarg))
@@ -1183,13 +1210,18 @@ main(int    argc,
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
          case 'l': /* Log destination: s|e|o */
-             if ((logdst = clixon_log_opt(optarg[0])) < 0)
-                usage(h, argv0);
-            if (logdst == CLIXON_LOG_FILE &&
-                strlen(optarg)>1 &&
-                clixon_log_file(optarg+1) < 0)
-                goto done;
-           break;
+            if ((d = clixon_logdst_str2key(optarg)) < 0){
+                if (optarg[0] == 'f'){ /* Check for special -lf<file> syntax */
+                    d = CLIXON_LOG_FILE;
+                    if (strlen(optarg) > 1 &&
+                        clixon_log_file(optarg+1) < 0)
+                        goto done;
+                }
+                else
+                    usage(h, argv[0]);
+            }
+            logdst = d;
+            break;
         } /* switch getopt */
 
     /* 
@@ -1216,7 +1248,8 @@ main(int    argc,
         goto done;
 #endif
     clixon_debug_init(h, dbg);
-    clixon_log(h, LOG_NOTICE, "%s native %u Started", __PROGRAM__, getpid());
+    clixon_log(h, LOG_NOTICE, "%s native %u Started, SSL version:%lx", __PROGRAM__, getpid(), OPENSSL_VERSION_NUMBER);
+
     if (set_signal(SIGTERM, restconf_sig_term, NULL) < 0){
         clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;
@@ -1278,6 +1311,9 @@ main(int    argc,
         case 'R':  /* Restconf on-line config */
             inline_config = optarg;
             break;
+        case 't': /* Stream timeout */
+            stream_timeout = atoi(optarg);
+            break;
         case 'o':{ /* Configuration option */
             char          *val;
             if ((val = index(optarg, '=')) == NULL)
@@ -1294,6 +1330,10 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+    /* Read debug and log options from config file if not given by command-line */
+    if (clixon_options_main_helper(h, dbg, logdst, __PROGRAM__) < 0)
+        goto done;
+
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
 
@@ -1307,11 +1347,12 @@ main(int    argc,
         goto ok;
     }
     /* Dump configuration options on debug */
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
 
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
         goto done;
+    yang_start(h);
     /* Call start function in all plugins before we go interactive */
     if (clixon_plugin_start_all(h) < 0)
         goto done;
@@ -1333,7 +1374,7 @@ main(int    argc,
     if (restconf_native_handle_set(h, rn) < 0)
         goto done;
     /* Openssl inits */
-    if (restconf_openssl_init(h, dbg, xrestconf) < 0)
+    if (restconf_openssl_init(h, dbg, xrestconf, stream_timeout) < 0)
         goto done;
     /* Drop privileges if started as root to CLICON_RESTCONF_USER
      * and use drop mode: CLICON_RESTCONF_PRIVILEGES
@@ -1352,7 +1393,7 @@ main(int    argc,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "restconf_main_openssl done");
+    clixon_debug(CLIXON_DBG_RESTCONF, "restconf_main_openssl done");
     if (xrestconf)
         xml_free(xrestconf);
     restconf_native_terminate(h);

@@ -52,27 +52,38 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 /* cligen */
 #include <cligen/cligen.h>
 
 /* clixon */
 #include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_digest.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_yang_module.h"
+#include "clixon_yang_schema_mount.h"
 #include "clixon_xml_bind.h"
 #include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_parse.h"
+#include "clixon_netconf_lib.h"
+#include "clixon_xml_default.h"
+#include "clixon_xpath_ctx.h"
+#include "clixon_xpath.h"
+#include "clixon_datastore.h"
 #include "clixon_xml_io.h"
 
 /*
@@ -81,34 +92,140 @@
 /* Size of xml read buffer */
 #define BUFLEN 1024
 
+/* Forward */
+static int xml_diff2cbuf(cbuf *cb, cxobj *x0, cxobj *x1, int level, int skiptop);
+
 /*------------------------------------------------------------------------
  * XML printing functions. Output a parse tree to file, string cligen buf
  *------------------------------------------------------------------------*/
 
+/*! For xml2 output: compute with-defaults: if object should be printed or not
+ *
+ * @param[in]   x    Clixon xml tree
+ * @param[in]   wdef With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
+ * @param[out]  tag  If set, use XML tag to mark value (WITHDEFAULTS_REPORT_ALL_TAGGED)
+ * @retval      1    Keep it
+ * @retval      0    Remove it
+ * @retval     -1    Error
+ */
+static int
+xml2output_wdef(cxobj            *x,
+                withdefaults_type wdef,
+                int              *tag)
+{
+    int        retval = -1;
+    int        keep = 1;
+    cg_var    *cv;
+    char      *yv = NULL;
+    char      *body;
+    cxobj     *xc;
+    yang_stmt *y;
+    int        ret;
+    int        config;
+
+    if ((y = xml_spec(x)) == NULL)
+        goto ok;
+    switch (wdef){
+    case WITHDEFAULTS_EXPLICIT:
+    case WITHDEFAULTS_TRIM:
+        /* inline of xml_default_nopresence()
+           and xml_flag_state_default_value()
+        */
+        switch(yang_keyword_get(y)){
+        case Y_CONTAINER:
+            if (yang_find(y, Y_PRESENCE, NULL) == NULL){
+                keep = 0;
+                /* Loop thru children */
+                xc = NULL;
+                while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+                    if ((ret = xml2output_wdef(xc, wdef, NULL)) < 0)
+                        goto done;
+                    if (ret == 1)
+                        keep = 1;
+                }
+            }
+            break;
+        case Y_LEAF:
+            config = yang_config_ancestor(y);
+            if (xml_flag(x, XML_FLAG_DEFAULT)) {
+                /* RFC 6243: Any value set by the NETCONF server [eg: state-data] that is not the schema
+                   defined default value is also considered explicitly set data.*/
+                if (!config && wdef == WITHDEFAULTS_EXPLICIT)
+                    ;
+                else
+                    keep = 0;
+            }
+            else if (wdef == WITHDEFAULTS_TRIM &&
+                     (cv = yang_cv_get(y)) != NULL &&
+                     (body = xml_body(x)) != NULL){
+                if ((yv = cv2str_dup(cv)) == NULL)
+                    goto done;
+                if (body && strcmp(body, yv) == 0)
+                    keep = 0;
+            }
+            break;
+        default:
+            break;
+        }
+        break;
+    case WITHDEFAULTS_REPORT_ALL_TAGGED:
+        if (tag && yang_keyword_get(y) == Y_LEAF){
+            if (xml_flag(x, XML_FLAG_DEFAULT))
+                *tag = 1;
+            else if ((cv = yang_cv_get(y)) != NULL &&
+                     (body = xml_body(x)) != NULL){
+                if ((yv = cv2str_dup(cv)) == NULL)
+                    goto done;
+                if (body && strcmp(body, yv) == 0)
+                    *tag = 1;
+            }
+        }
+        break;
+    default:
+        break;
+    }
+ ok:
+    retval = keep;
+ done:
+    if (yv)
+        free(yv);
+    return retval;
+}
+
 /*! Print an XML tree structure to an output stream and encode chars "<>&"
  *
  * @param[in]   f          UNIX output stream
- * @param[in]   xn         Clicon xml tree
+ * @param[in]   x          Clixon xml tree
  * @param[in]   level      How many spaces to insert before each line
  * @param[in]   pretty     Insert \n and spaces to make the xml more readable.
  * @param[in]   prefix     Add string to beginning of each line (if pretty)
  * @param[in]   fn         Callback to make print function
  * @param[in]   autocliext How to handle autocli extensions: 0: ignore 1: follow
+ * @param[in]   wdef       With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
+ * @param[in]   multi      Multi-file split datastore, see CLICON_XMLDB_MULTI
+ * @param[in]   system_only Enable checks for system-only-config extension
  * @retval      0          OK
  * @retval     -1          Error
- * @see clixon_xml2cbuf
  * One can use clixon_xml2cbuf to get common code, but using fprintf is
  * much faster than using cbuf and then printing that,...
- *
+ * wdef changes the output as follows:
+ * - WITHDEFAULTS_REPORT_ALL        - keep as-is
+ * - WITHDEFAULTS_TRIM              - remove defaults + equal value, and no-presence
+ * - WITHDEFAULTS_EXPLICIT          - remove defaults and no-presence
+ * - WITHDEFAULTS_REPORT_ALL_TAGGED
+ * @see xml2cbuf_recurse  same with cbuf
  */
 static int
-xml2file_recurse(FILE             *f,
-                 cxobj            *x,
-                 int               level,
-                 int               pretty,
-                 char             *prefix,
-                 clicon_output_cb *fn,
-                 int               autocliext)
+xml2file_recurse(FILE                *f,
+                 cxobj               *x,
+                 int                  level,
+                 int                  pretty,
+                 char                *prefix,
+                 clicon_output_cb    *fn,
+                 int                  autocliext,
+                 withdefaults_type    wdef,
+                 int                  multi,
+                 int                  system_only)
 {
     int        retval = -1;
     char      *name;
@@ -118,20 +235,42 @@ xml2file_recurse(FILE             *f,
     int        haselement;
     char      *val;
     char      *encstr = NULL; /* xml encoded string */
-    int        exist = 0;
+    int        exist;
     yang_stmt *y;
     int        level1;
+    int        tag = 0;
+    int        subfile = 0;   /* File is split into subfile */
+    char      *xpath = NULL;
+    char      *hexstr = NULL;
+    int        ret;
 
     if (x == NULL)
         goto ok;
+    y = xml_spec(x);
+    /* Check if system-only, then do not write to datastore
+     */
+    if (y != NULL && system_only){
+        exist = 0;
+        if (yang_extension_value(y, "system-only-config", CLIXON_LIB_NS, &exist, NULL) < 0)
+            goto done;
+        if (exist){
+            goto ok;
+        }
+    }
     level1 = level*PRETTYPRINT_INDENT;
     if (prefix)
         level1 -= strlen(prefix);
-    if (autocliext &&
-        (y = xml_spec(x)) != NULL){
-        if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+    if (y != NULL){
+        if (autocliext){
+            exist = 0;
+            if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+                goto done;
+            if (exist)
+                goto ok;
+        }
+        if ((ret = xml2output_wdef(x, wdef, &tag)) < 0)
             goto done;
-        if (exist)
+        if (ret == 0)
             goto ok;
     }
     name = xml_name(x);
@@ -140,7 +279,7 @@ xml2file_recurse(FILE             *f,
     case CX_BODY:
         if ((val = xml_value(x)) == NULL) /* incomplete tree */
             break;
-        if (xml_chardata_encode(&encstr, "%s", val) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", val) < 0)
             goto done;
         (*fn)(f, "%s", encstr);
         break;
@@ -157,6 +296,8 @@ xml2file_recurse(FILE             *f,
         if (namespace)
             (*fn)(f, "%s:", namespace);
         (*fn)(f, "%s", name);
+        if (tag) /* If default and WITHDEFAULTS_REPORT_ALL_TAGGED */
+            (*fn)(f, " wd:default=\"true\"");
         hasbody = 0;
         haselement = 0;
         xc = NULL;
@@ -164,7 +305,7 @@ xml2file_recurse(FILE             *f,
         while ((xc = xml_child_each(x, xc, -1)) != NULL) {
             switch (xml_type(xc)){
             case CX_ATTR:
-                if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext) <0)
+                if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext, wdef, multi, system_only) < 0)
                     goto done;
                 break;
             case CX_BODY:
@@ -183,25 +324,63 @@ xml2file_recurse(FILE             *f,
         if (hasbody==0 && haselement==0)
             (*fn)(f, "/>");
         else{
-            (*fn)(f, ">");
-            if (pretty && hasbody == 0){
+            /* Check if this is a multi-file split-point */
+            if (multi && (y = xml_spec(x)) != NULL){
+                if (yang_extension_value(y, "xmldb-split", CLIXON_LIB_NS, &exist, NULL) < 0)
+                    goto done;
+                if (exist){
+                    subfile++;
+                    if (xml2xpath(x, NULL, 1, 0, &xpath) < 0)
+                        goto done;
+                    if (clixon_digest_hex(xpath, &hexstr) < 0)
+                        goto done;
+                    (*fn)(f, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+                    (*fn)(f, " %s:link=\"%s.xml\"", CLIXON_LIB_PREFIX, hexstr);
+                    (*fn)(f, "/>");
+                }
+            }
+            if (!subfile) {
+                (*fn)(f, ">");
+                if (pretty && hasbody == 0){
                     (*fn)(f, "\n");
+                }
             }
             xc = NULL;
             while ((xc = xml_child_each(x, xc, -1)) != NULL) {
-                if (xml_type(xc) != CX_ATTR)
-                    if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext) <0)
+                cxobj *xa = NULL;
+                char  *ns = NULL;
+
+                if (wdef == WITHDEFAULTS_REPORT_ALL_TAGGED &&
+                    y == NULL &&
+                    xml_spec(xc) != NULL){
+                    if (xml2ns(xc, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, &ns) < 0)
                         goto done;
+                    if (ns == NULL){
+                        if (xmlns_set(xc, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
+                            goto done;
+                        xa = xml_find_type(xc, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE, CX_ATTR);
+                    }
+                }
+                if (xml_type(xc) != CX_ATTR && !subfile)
+                        if (xml2file_recurse(f, xc, level+1, pretty, prefix,
+                                             fn, autocliext, wdef, multi, system_only) <0)
+                            goto done;
+                if (xa){
+                    if (xml_purge(xa) < 0)
+                        goto done;
+                }
             }
-            if (pretty && hasbody==0){
-                if (pretty && prefix)
-                    (*fn)(f, "%s", prefix);
-                (*fn)(f, "%*s", level1, "");
+            if (subfile == 0){
+                if (pretty && hasbody==0){
+                    if (pretty && prefix)
+                        (*fn)(f, "%s", prefix);
+                    (*fn)(f, "%*s", level1, "");
+                }
+                (*fn)(f, "</");
+                if (namespace)
+                    (*fn)(f, "%s:", namespace);
+                (*fn)(f, "%s>", name);
             }
-            (*fn)(f, "</");
-            if (namespace)
-                (*fn)(f, "%s:", namespace);
-            (*fn)(f, "%s>", name);
         }
         if (pretty){
             (*fn)(f, "\n");
@@ -215,24 +394,84 @@ xml2file_recurse(FILE             *f,
  done:
     if (encstr)
         free(encstr);
+    if (xpath)
+        free(xpath);
+    if (hexstr)
+        free(hexstr);
     return retval;
 }
 
 /*! Print an XML tree structure to an output stream and encode chars "<>&"
  *
- * @param[in]  f       Output file
- * @param[in]  xn      XML tree
- * @param[in]  level   How many spaces to insert before each line
- * @param[in]  pretty  Insert \n and spaces to make the xml more readable.
- * @param[in]  prefix  Add string to beginning of each line (if pretty)
- * @param[in]  fn      File print function (if NULL, use fprintf)
- * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
+ * Extended version with with-defaults
+ * Assume xn being in REPORT_ALL state, modify default values according to wdef
+ * @param[in]  f          Output file
+ * @param[in]  xn         XML tree
+ * @param[in]  level      How many spaces to insert before each line
+ * @param[in]  pretty     Insert \n and spaces to make the xml more readable.
+ * @param[in]  prefix     Add string to beginning of each line (if pretty)
+ * @param[in]  fn         File print function (if NULL, use fprintf)
+ * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children,
  * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
- * @retval     0       OK
- * @retval    -1       Error
+ * @param[in]  wdef       With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
+ * @param[in]  multi      Multi-file split datastore, see CLICON_XMLDB_MULTI
+ * @param[in]  system_only Enable checks for system-only-config extension
+ * @retval     0          OK
+ * @retval    -1          Error
  * @see clixon_xml2cbuf print to a cbuf string
  * @note There is a slight "layer violation" with the autocli parameter: it should normally be set
  *       for CLI calls, but not for others.
+ */
+int
+clixon_xml2file1(FILE                *f,
+                 cxobj               *xn,
+                 int                  level,
+                 int                  pretty,
+                 char                *prefix,
+                 clicon_output_cb    *fn,
+                 int                  skiptop,
+                 int                  autocliext,
+                 withdefaults_type    wdef,
+                 int                  multi,
+                 int                  system_only)
+{
+    int   retval = 1;
+    cxobj *xc;
+
+    if (fn == NULL)
+        fn = fprintf;
+    if (skiptop){
+        xc = NULL;
+        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+            if (xml2file_recurse(f, xc, level, pretty, prefix, fn, autocliext, wdef, multi, system_only) < 0)
+                goto done;
+    }
+    else {
+        if (xml2file_recurse(f, xn, level, pretty, prefix, fn, autocliext, wdef, multi, system_only) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Print an XML tree structure to an output stream and encode chars "<>&"
+ *
+ * Assume xn being in REPORT_ALL state, modify default values according to wdef
+ * @param[in]  f          Output file
+ * @param[in]  xn         XML tree
+ * @param[in]  level      How many spaces to insert before each line
+ * @param[in]  pretty     Insert \n and spaces to make the xml more readable.
+ * @param[in]  prefix     Add string to beginning of each line (if pretty)
+ * @param[in]  fn         File print function (if NULL, use fprintf)
+ * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children,
+ * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
+ * @retval     0          OK
+ * @retval    -1          Error
+ * @see clixon_xml2cbuf print to a cbuf string
+ * @note There is a slight "layer violation" with the autocli parameter: it should normally be set
+ *       for CLI calls, but not for others.
+ * @see  clixon_xml2file1 for extended version with wdef
  */
 int
 clixon_xml2file(FILE             *f,
@@ -244,31 +483,14 @@ clixon_xml2file(FILE             *f,
                 int               skiptop,
                 int               autocliext)
 {
-    int   retval = 1;
-    cxobj *xc;
-
-    if (fn == NULL)
-        fn = fprintf;
-    if (skiptop){
-        xc = NULL;
-        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-            if (xml2file_recurse(f, xc, level, pretty, prefix, fn, autocliext) < 0)
-                goto done;
-    }
-    else {
-        if (xml2file_recurse(f, xn, level, pretty, prefix, fn, autocliext) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    return clixon_xml2file1(f, xn, level, pretty, prefix, fn, skiptop, autocliext, 0, 0, 0);
 }
 
 /*! Print an XML tree structure to an output stream
  *
  * Utility function eg in gdb. For code, use clixon_xml2file
  * @param[in]   f           UNIX output stream
- * @param[in]   xn          clicon xml tree
+ * @param[in]   xn          clixon xml tree
  * @see clixon_xml2cbuf
  * @see clixon_xml2cbuf_cb print using a callback
  */
@@ -276,7 +498,7 @@ int
 xml_print(FILE  *f,
           cxobj *x)
 {
-    return xml2file_recurse(f, x, 0, 1, NULL, fprintf, 0);
+    return xml2file_recurse(f, x, 0, 1, NULL, fprintf, 0, WITHDEFAULTS_REPORT_ALL, 0, 0);
 }
 
 /*! Dump cxobj structure with pointers and flags for debugging, internal function
@@ -290,20 +512,20 @@ xml_dump1(FILE  *f,
 
     if (xml_type(x) != CX_ELMNT)
         return 0;
-    fprintf(stderr, "%*s %s(%s)",
+    fprintf(f, "%*s %s(%s)",
             indent*PRETTYPRINT_INDENT, "",
             //      x,
             xml_name(x),
             xml_type2str(xml_type(x)));
     if (xml_flag(x, XML_FLAG_ADD))
-        fprintf(stderr, " add");
+        fprintf(f, " add");
     if (xml_flag(x, XML_FLAG_DEL))
-        fprintf(stderr, " delete");
+        fprintf(f, " delete");
     if (xml_flag(x, XML_FLAG_CHANGE))
-        fprintf(stderr, " change");
+        fprintf(f, " change");
     if (xml_flag(x, XML_FLAG_MARK))
-        fprintf(stderr, " mark");
-    fprintf(stderr, "\n");
+        fprintf(f, " mark");
+    fprintf(f, "\n");
     xc = NULL;
     while ((xc = xml_child_each(x, xc, -1)) != NULL) {
         xml_dump1(f, xc, indent+1);
@@ -324,7 +546,7 @@ xml_dump(FILE  *f,
     return xml_dump1(f, x, 0);
 }
 
-/*! Internal: print  XML tree structure to a cligen buffer and encode chars "<>&"
+/*! Internal: print XML tree structure to a cligen buffer and encode chars "<>&"
  *
  * @param[in,out] cb       Cligen buffer to write to
  * @param[in]     xn       Clixon xml tree
@@ -332,28 +554,46 @@ xml_dump(FILE  *f,
  * @param[in]     pretty   Insert \n and spaces to make the xml more readable.
  * @param[in]     prefix   Add string to beginning of each line (if pretty)
  * @param[in]     depth    Limit levels of child resources: -1 is all, 0 is none, 1 is node itself
+ * @param[in]     wdef     With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
  * @retval        0        OK
  * @retval       -1        Error
+ * wdef changes the output as follows:
+ * - WITHDEFAULTS_REPORT_ALL        - keep as-is
+ * - WITHDEFAULTS_TRIM              - remove defaults + equal value, and no-presence
+ * - WITHDEFAULTS_EXPLICIT          - remove defaults and no-presence
+ * - WITHDEFAULTS_REPORT_ALL_TAGGED
+ * @see xml2file_recurse  same with FILE
  */
 static int
-clixon_xml2cbuf1(cbuf   *cb,
-                 cxobj  *x,
-                 int     level,
-                 int     pretty,
-                 char   *prefix,
-                 int32_t depth)
+xml2cbuf_recurse(cbuf             *cb,
+                 cxobj            *x,
+                 int               level,
+                 int               pretty,
+                 char             *prefix,
+                 int32_t           depth,
+                 withdefaults_type wdef)
 {
-    int    retval = -1;
-    cxobj *xc;
-    char  *name;
-    int    hasbody;
-    int    haselement;
-    char  *namespace;
-    char  *val;
-    int    level1;
+    int        retval = -1;
+    cxobj     *xc;
+    char      *name;
+    int        hasbody;
+    int        haselement;
+    char      *namespace;
+    char      *val;
+    int        level1;
+    yang_stmt *y;
+    int        tag = 0;
+    int        ret;
 
     if (depth == 0)
         goto ok;
+    if ((y = xml_spec(x)) != NULL){
+        /* with-defaults: if object should be printed or not */
+        if ((ret = xml2output_wdef(x, wdef, &tag)) < 0)
+            goto done;
+        if (ret == 0)
+            goto ok;
+    }
     level1 = level*PRETTYPRINT_INDENT;
     if (prefix)
         level1 -= strlen(prefix);
@@ -363,7 +603,7 @@ clixon_xml2cbuf1(cbuf   *cb,
     case CX_BODY:
         if ((val = xml_value(x)) == NULL) /* incomplete tree */
             break;
-        if (xml_chardata_cbuf_append(cb, val) < 0)
+        if (xml_chardata_cbuf_append(cb, 0, val) < 0)
             goto done;
         break;
     case CX_ATTR:
@@ -387,6 +627,8 @@ clixon_xml2cbuf1(cbuf   *cb,
             cbuf_append_str(cb, ":");
         }
         cbuf_append_str(cb, name);
+        if (tag) /* If default and WITHDEFAULTS_REPORT_ALL_TAGGED */
+            cbuf_append_str(cb, " wd:default=\"true\"");
         hasbody = 0;
         haselement = 0;
         xc = NULL;
@@ -394,7 +636,7 @@ clixon_xml2cbuf1(cbuf   *cb,
         while ((xc = xml_child_each(x, xc, -1)) != NULL)
             switch (xml_type(xc)){
             case CX_ATTR:
-                if (clixon_xml2cbuf1(cb, xc, level+1, pretty, prefix, -1) < 0)
+                if (xml2cbuf_recurse(cb, xc, level+1, pretty, prefix, -1, wdef) < 0)
                     goto done;
                 break;
             case CX_BODY:
@@ -415,9 +657,29 @@ clixon_xml2cbuf1(cbuf   *cb,
                 cbuf_append_str(cb, "\n");
             xc = NULL;
             while ((xc = xml_child_each(x, xc, -1)) != NULL)
-                if (xml_type(xc) != CX_ATTR)
-                    if (clixon_xml2cbuf1(cb, xc, level+1, pretty, prefix, depth-1) < 0)
+                if (xml_type(xc) != CX_ATTR){
+                    cxobj *xa = NULL;
+                    char  *ns = NULL;
+
+                    /* If tagged withdefaults */
+                    if (wdef == WITHDEFAULTS_REPORT_ALL_TAGGED &&
+                        y == NULL &&
+                        xml_spec(xc) != NULL){
+                        if (xml2ns(xc, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, &ns) < 0)
+                            goto done;
+                        if (ns == NULL){
+                            if (xmlns_set(xc, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE) < 0)
+                                goto done;
+                            xa = xml_find_type(xc, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE, CX_ATTR);
+                        }
+                    }
+                    if (xml2cbuf_recurse(cb, xc, level+1, pretty, prefix, depth-1, wdef) < 0)
                         goto done;
+                    if (xa){
+                        if (xml_purge(xa) < 0)
+                            goto done;
+                    }
+                }
             if (pretty && hasbody == 0){
                 if (prefix)
                     cprintf(cb, "%s", prefix);
@@ -443,6 +705,57 @@ clixon_xml2cbuf1(cbuf   *cb,
     return retval;
 }
 
+/*! Print an XML tree structure to a cligen buffer and encode chars "<>&" 
+ *
+ * Extended version with with-defaults
+ * @param[in,out] cb      Cligen buffer to write to
+ * @param[in]     xn      Top-level xml object
+ * @param[in]     level   Indentation level for pretty
+ * @param[in]     pretty  Insert \n and spaces to make the xml more readable.
+ * @param[in]     prefix  Add string to beginning of each line (or NULL) (if pretty)
+ * @param[in]     depth   Limit levels of child resources: -1: all, 0: none, 1: node itself
+ * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children,
+ * @param[in]     wdef    With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
+ * @retval        0       OK
+ * @retval       -1       Error
+ * Depth is used in NACM
+ * @code
+ *   cbuf *cb = cbuf_new();
+ *   if (clixon_xml2cbuf(cb, xn, 0, 1, NULL, -1, 0, 0) < 0)
+ *     goto err;
+ *   fprintf(stderr, "%s", cbuf_get(cb));
+ *   cbuf_free(cb);
+ * @endcode
+ * @see  clixon_xml2file  to file, which is faster
+ */
+int
+clixon_xml2cbuf1(cbuf             *cb,
+                 cxobj            *xn,
+                 int               level,
+                 int               pretty,
+                 char             *prefix,
+                 int32_t           depth,
+                 int               skiptop,
+                 withdefaults_type wdef)
+{
+    int    retval = -1;
+    cxobj *xc;
+
+    if (skiptop){
+        xc = NULL;
+        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+            if (xml2cbuf_recurse(cb, xc, level, pretty, prefix, depth, wdef) < 0)
+                goto done;
+    }
+    else {
+        if (xml2cbuf_recurse(cb, xn, level, pretty, prefix, depth, wdef) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Print an XML tree structure to a cligen buffer and encode chars "<>&"
  *
  * @param[in,out] cb      Cligen buffer to write to
@@ -451,18 +764,19 @@ clixon_xml2cbuf1(cbuf   *cb,
  * @param[in]     pretty  Insert \n and spaces to make the xml more readable.
  * @param[in]     prefix  Add string to beginning of each line (or NULL) (if pretty)
  * @param[in]     depth   Limit levels of child resources: -1: all, 0: none, 1: node itself
- * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children, 
+ * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children,
  * @retval        0       OK
  * @retval       -1       Error
  * Depth is used in NACM
  * @code
  *   cbuf *cb = cbuf_new();
- *   if (clixon_xml2cbuf(cb, xn, 0, 1, NULL, -1, 0) < 0)
+ *   if (clixon_xml2cbuf(cb, xn, 0, 1, NULL, -1, 0, 0) < 0)
  *     goto err;
  *   fprintf(stderr, "%s", cbuf_get(cb));
  *   cbuf_free(cb);
  * @endcode
- * @see  clixon_xml2file
+ * @see  clixon_xml2file  to file, which is faster
+ * @see  clixon_xml2cbuf1 for extended version with wdef
  */
 int
 clixon_xml2cbuf(cbuf   *cb,
@@ -473,28 +787,13 @@ clixon_xml2cbuf(cbuf   *cb,
                 int32_t depth,
                 int     skiptop)
 {
-    int    retval = -1;
-    cxobj *xc;
-
-    if (skiptop){
-        xc = NULL;
-        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-            if (clixon_xml2cbuf1(cb, xc, level, pretty, prefix, depth) < 0)
-                goto done;
-    }
-    else {
-        if (clixon_xml2cbuf1(cb, xn, level, pretty, prefix, depth) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
+    return clixon_xml2cbuf1(cb, xn, level, pretty, prefix, depth, skiptop, 0);
 }
 
 /*! Print actual xml tree datastructures (not xml), mainly for debugging
  *
  * @param[in,out] cb          Cligen buffer to write to
- * @param[in]     xn          Clicon xml tree
+ * @param[in]     xn          Clixon xml tree
  * @param[in]     level       Indentation level
  */
 int
@@ -537,7 +836,7 @@ xmltree2cbuf(cbuf  *cb,
 /*! Common internal xml parsing function string to parse-tree
  *
  * Given a string containing XML, parse into existing XML tree and return
- * @param[in]     str   Pointer to string containing XML definition. 
+ * @param[in]     str   Pointer to string containing XML definition.
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification (only if bind is TOP or CONFIG)
  * @param[in,out] xtop  Top of XML parse tree. Assume created. Holds new tree.
@@ -553,9 +852,9 @@ xmltree2cbuf(cbuf  *cb,
  *    A well-formed document ... contains one or more elements.
  * But in clixon one can invoke a parser on a sub-part of a document where it makes sense to accept
  * an empty XML. For example where an empty config: <config></config> is parsed.
- * In other cases, such as receiving netconf ]]>]]> it should represent a complete document and 
+ * In other cases, such as receiving netconf ]]>]]> it should represent a complete document and
  * therefore not well-formed.
- * Therefore checking for empty XML must be done by a calling function which knows wether the 
+ * Therefore checking for empty XML must be done by a calling function which knows wether the
  * the XML represents a full document or not.
  * @note may be called recursively, some yang-bind (eg rpc) semantic checks may trigger error message
  * @note yang-binding over schema mount-points do not work, you need to make a separate bind call
@@ -574,7 +873,7 @@ _xml_parse(const char *str,
     int             failed = 0; /* yang assignment */
     int             i;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_PARSE, "%s", str);
     if (strlen(str) == 0){
         return 1; /* OK */
     }
@@ -617,7 +916,6 @@ _xml_parse(const char *str,
             if (ret == 0)
                 failed++;
             break;
-
         case YB_MODULE_NEXT:
             if ((ret = xml_bind_yang(NULL, x, YB_MODULE, yspec, xerr)) < 0)
                 goto done;
@@ -652,7 +950,8 @@ _xml_parse(const char *str,
         if (xml_sort_recurse(xt) < 0)
             goto done;
     retval = 1;
-  done:
+ done:
+    clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
     clixon_xml_parsel_exit(&xy);
     if (xy.xy_parse_string != NULL)
         free(xy.xy_parse_string);
@@ -706,11 +1005,13 @@ clixon_xml_parse_file(FILE      *fp,
     int   xmlbuflen = BUFLEN; /* start size */
     int   oldxmlbuflen;
     int   failed = 0;
+    int   xtempty; /* empty on entry */
 
-    if (xt==NULL || fp == NULL){
+    if (xt == NULL || fp == NULL){
         clixon_err(OE_XML, EINVAL, "arg is NULL");
         return -1;
     }
+    xtempty = (*xt == NULL);
     if (yb == YB_MODULE && yspec == NULL){
         clixon_err(OE_XML, EINVAL, "yspec is required if yb == YB_MODULE");
         return -1;
@@ -752,7 +1053,7 @@ clixon_xml_parse_file(FILE      *fp,
     } /* while */
     retval = (failed==0) ? 1 : 0;
  done:
-    if (retval < 0 && *xt){
+    if (retval < 0 && *xt && xtempty){
         free(*xt);
         *xt = NULL;
     }
@@ -763,7 +1064,7 @@ clixon_xml_parse_file(FILE      *fp,
 
 /*! Read an XML definition from string and parse it into a parse-tree, advanced API
  *
- * @param[in]     str   String containing XML definition. 
+ * @param[in]     str   String containing XML definition.
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to XML parse tree. If empty will be created.
@@ -814,7 +1115,7 @@ clixon_xml_parse_string(const char *str,
  * Utility function using stdarg instead of static string.
  * @param[in]     yb     How to bind yang to XML top-level when parsing
  * @param[in]     yspec  Yang specification, or NULL
- * @param[in,out] xtop   Top of XML parse tree. If it is NULL, top element 
+ * @param[in,out] xtop   Top of XML parse tree. If it is NULL, top element
  *                       called 'top' will be created. Call xml_free() after use
  * @param[out]    xerr   Reason for failure (yang assignment not made)
  * @param[in]     format Format string for stdarg according to printf(3)
@@ -924,7 +1225,7 @@ xml_diff_keys(cbuf      *cb,
     return 0;
 }
 
-/*! Print one line of context around diff 
+/*! Print one line of context around diff
  */
 static int
 xml_diff_context(cbuf  *cb,
@@ -955,6 +1256,131 @@ xml_diff_context(cbuf  *cb,
     return retval;
 }
 
+/*! Handle order-by user(leaf)list for xml_diff2cbuf
+ *
+ * @param[out] cb      CLIgen buffer
+ * @param[in]  x0      First XML tree
+ * @param[in]  x1      Second XML tree
+ * @param[in]  x0c     Start of sublist in first XML tree
+ * @param[in]  x1c     Start of sublist in second XML tree
+ * @param[in]  yc      Yang of x0c/x1c. If NULL special case of anydata
+ * @param[in]  level   How many spaces to insert before each line
+ * @retval     0       Ok
+ * @retval    -1       Error
+ * @see xml_diff_ordered_by_user
+ * @see text_diff2cbuf_ordered_by_user
+ */
+static int
+xml_diff2cbuf_ordered_by_user(cbuf      *cb,
+                              cxobj     *x0,
+                              cxobj     *x1,
+                              cxobj     *x0c,
+                              cxobj     *x1c,
+                              yang_stmt *yc,
+                              int        level)
+{
+    int    retval = 1;
+    cxobj *xi;
+    cxobj *xj;
+
+    xj = x1c;
+    do { /* Mark all  x1 as ADD */
+        xml_flag_set(xj, XML_FLAG_ADD);
+    } while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+             xml_spec(xj) == yc);
+    /* If in both sets, unmark add/del */
+    xi = x0c;
+    do {
+        xml_flag_set(xi, XML_FLAG_DEL);
+        xj = x1c;
+        do {
+            if (xml_flag(xj, XML_FLAG_ADD) &&
+                xml_cmp(xi, xj, 0, 0, NULL) == 0){
+                /* Unmark node in x0 and x1 */
+                xml_flag_reset(xi, XML_FLAG_DEL);
+                xml_flag_reset(xj, XML_FLAG_ADD);
+                if (xml_diff2cbuf(cb, xi, xj, level+1, 0) < 0)
+                    goto done;
+                break;
+            }
+        }
+        while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+               xml_spec(xj) == yc);
+    }
+    while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+           xml_spec(xi) == yc);
+
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! xml_diff2cbuf helper function to compute leaf difference
+ *
+ * @param[out] cb      CLIgen buffer
+ * @param[in]  x0      First XML tree
+ * @param[in]  x1      Second XML tree
+ * @param[in]  level   How many spaces to insert before each line
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children,
+ * @retval     0       Ok
+ * @retval    -1       Error
+ */
+static int
+xml_diff2cbuf_leaf(cbuf      *cb,
+                   cxobj     *x0,
+                   cxobj     *x1,
+                   int        level,
+                   int        skiptop,
+                   yang_stmt *y0,
+                   cxobj     *x0c,
+                   cxobj     *x1c,
+                   char      *b0,
+                   char      *b1,
+                   int       *nr)
+{
+    int   retval = -1;
+    char *e0 = NULL;
+    char *e1 = NULL;
+
+    if (*nr==0 && skiptop==0){
+        xml_diff_context(cb, x0, level*PRETTYPRINT_INDENT);
+        xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
+        (*nr)++;
+    }
+    /* Encode data to XML */
+    if (b0){
+        if (xml_chardata_encode(&e0, 0, "%s", b0) < 0)
+            goto done;
+    }
+    else
+        e0 = NULL;
+    if (b1){
+        if (xml_chardata_encode(&e1, 0, "%s", b1) < 0)
+            goto done;
+    }
+    else
+        e1 = NULL;
+    cprintf(cb, "-%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
+            xml_name(x0c), e0, xml_name(x0c));
+    cprintf(cb, "+%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
+            xml_name(x1c), e1, xml_name(x1c));
+    if (e0){
+        free(e0);
+        e0 = NULL;
+    }
+    if (e1){
+        free(e1);
+        e1 = NULL;
+    }
+    retval = 0;
+ done:
+    if (e0)
+        free(e0);
+    if (e1)
+        free(e1);
+    return retval;
+}
+
 /*! Print XML diff of two cxobj trees into a cbuf
  *
  * YANG dependent
@@ -963,10 +1389,10 @@ xml_diff_context(cbuf  *cb,
  * @param[in]  x0      First XML tree
  * @param[in]  x1      Second XML tree
  * @param[in]  level   How many spaces to insert before each line
- * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children,
  * @retval     0       Ok
  * @retval    -1       Error
- * @cod
+ * @code
  *    cbuf *cb = cbuf_new();
  *    if (clixon_xml_diff2cbuf(cb, 0, x0, x1) < 0)
  *       err();
@@ -974,8 +1400,11 @@ xml_diff_context(cbuf  *cb,
  * @endcode
  * @see xml_diff which returns diff sets
  * @see clixon_compare_xmls which uses files and is independent of YANG
+ * @see text_diff2cbuf for curly
+ * @see xml_tree_equal Equal or not
+ * @see xml_diff       Diff sets
  */
-int
+static int
 xml_diff2cbuf(cbuf  *cb,
               cxobj *x0,
               cxobj *x1,
@@ -986,15 +1415,16 @@ xml_diff2cbuf(cbuf  *cb,
     cxobj     *x0c = NULL; /* x0 child */
     cxobj     *x1c = NULL; /* x1 child */
     yang_stmt *y0;
-    yang_stmt *yc0;
-    yang_stmt *yc1;
+    yang_stmt *y0c;
+    yang_stmt *y1c;
     char      *b0;
     char      *b1;
-    char      *e0 = NULL;
-    char      *e1 = NULL;
     int        eq;
     int        nr=0;
     int        level1;
+    cxobj     *xi;
+    cxobj     *xj;
+    int        extflag;
 
     level1 = level*PRETTYPRINT_INDENT;
     y0 = xml_spec(x0);
@@ -1005,7 +1435,26 @@ xml_diff2cbuf(cbuf  *cb,
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
-        else if (x0c == NULL){
+        y0c = NULL;
+        y1c = NULL;
+        /* If cl:ignore-compare extension, skip */
+        if (x0c && (y0c = xml_spec(x0c)) != NULL){
+            if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag){ /* skip */
+                x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                continue;
+            }
+        }
+        if (x1c && (y1c = xml_spec(x1c)) != NULL){
+            if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag){ /* skip */
+                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                continue;
+            }
+        }
+        if (x0c == NULL){
             /* Check if one or both subtrees are NULL */
             if (nr==0 && skiptop==0){
                 xml_diff_context(cb, x1, level1);
@@ -1028,9 +1477,52 @@ xml_diff2cbuf(cbuf  *cb,
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
             continue;
         }
-        /* Both x0c and x1c exists, check if they are yang-equal. */
+        /* Both x0c and x1c exists, check if yang equal */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        if (eq < 0){
+        b0 = xml_body(x0c);
+        b1 = xml_body(x1c);
+        if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
+            if (xml_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, y0c, level) < 0)
+                goto done;
+            /* Show all marked as DELETE as - entries
+             */
+            xi = x0c;
+            do {
+                if (xml_flag(xi, XML_FLAG_DEL)){
+                    xml_flag_reset(xi, XML_FLAG_DEL);
+                    if (nr==0 && skiptop==0){
+                        xml_diff_context(cb, x0, level1);
+                        xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
+                        nr++;
+                    }
+                    if (clixon_xml2cbuf(cb, xi, level+1, 1, "-", -1, 0) < 0)
+                        goto done;
+                }
+            }
+            while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+                   xml_spec(xi) == y0c);
+            x0c = xi; /* skip entries in this yang class */
+            /* Show all marked as ADD as + entries
+             */
+            xj = x1c;
+            do {
+                if (xml_flag(xj, XML_FLAG_ADD)){
+                    xml_flag_reset(xj, XML_FLAG_ADD);
+                    if (nr==0 && skiptop==0){
+                        xml_diff_context(cb, x1, level1);
+                        xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
+                        nr++;
+                    }
+                    if (clixon_xml2cbuf(cb, xj, level+1, 1, "+", -1, 0) < 0)
+                        goto done;
+                }
+            }
+            while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+                   xml_spec(xj) == y1c);
+            x1c = xj;
+            continue;
+        } /* ordered-by user */
+        else if (eq < 0){
             if (nr==0 && skiptop==0){
                 xml_diff_context(cb, x0, level1);
                 xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
@@ -1056,9 +1548,7 @@ xml_diff2cbuf(cbuf  *cb,
             /* xml-spec NULL could happen with anydata children for example,
              * if so, continute compare children but without yang
              */
-            yc0 = xml_spec(x0c);
-            yc1 = xml_spec(x1c);
-            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+            if (y0c && y1c && y0c != y1c){ /* choice */
                 if (nr==0 && skiptop==0){
                     xml_diff_context(cb, x0, level1);
                     xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
@@ -1069,48 +1559,26 @@ xml_diff2cbuf(cbuf  *cb,
                 if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
                     goto done;
             }
-            else if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+            else if (y0c && yang_keyword_get(y0c) == Y_LEAF){
                 /* if x0c and x1c are leafs w bodies, then they may be changed */
-                b0 = xml_body(x0c);
-                b1 = xml_body(x1c);
                 if (b0 == NULL && b1 == NULL)
                     ;
-                else if (b0 == NULL || b1 == NULL
-                         || strcmp(b0, b1) != 0){
-                    if (nr==0 && skiptop==0){
-                        xml_diff_context(cb, x0, level1);
-                        xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
-                        nr++;
-                    }
-                    /* Encode data to XML */
-                    if (b0){
-                        if (xml_chardata_encode(&e0, "%s", b0) < 0)
-                            goto done;
-                    }
-                    else
-                        e0 = NULL;
-                    if (b1){
-                        if (xml_chardata_encode(&e1, "%s", b1) < 0)
-                            goto done;
-                    }
-                    else
-                        e1 = NULL;
-                    cprintf(cb, "-%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
-                            xml_name(x0c), e0, xml_name(x0c));
-                    cprintf(cb, "+%*s%s>%s</%s>\n", ((level+1)*PRETTYPRINT_INDENT-1), "<",
-                            xml_name(x1c), e1, xml_name(x1c));
-                    if (e0){
-                        free(e0);
-                        e0 = NULL;
-                    }
-                    if (e1){
-                        free(e1);
-                        e1 = NULL;
-                    }
+                else if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0){
+                    if (xml_diff2cbuf_leaf(cb, x0, x1, level, skiptop,
+                                           y0, x0c, x1c, b0, b1, &nr) < 0)
+                        goto done;
+                }
+            }
+            else if (y0c == NULL && y1c == NULL && (b0 || b1)) { /* Anydata terminals */
+                if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0){
+                    if (xml_diff2cbuf_leaf(cb, x0, x1, level, skiptop,
+                                           y0, x0c, x1c, b0, b1, &nr) < 0)
+                        goto done;
                 }
             }
             else if (xml_diff2cbuf(cb, x0c, x1c, level+1, 0) < 0)
                 goto done;
+
         }
         /* Get next */
         x0c = xml_child_each(x0, x0c, CX_ELMNT);
@@ -1121,10 +1589,6 @@ xml_diff2cbuf(cbuf  *cb,
         cprintf(cb, "%*s</%s>\n", level*PRETTYPRINT_INDENT, "", xml_name(x0));
     retval = 0;
  done:
-    if (e0)
-        free(e0);
-    if (e1)
-        free(e1);
     return retval;
 }
 
@@ -1145,6 +1609,7 @@ xml_diff2cbuf(cbuf  *cb,
  * @endcode
  * @see xml_diff which returns diff sets
  * @see clixon_compare_xmls which uses files and is independent of YANG
+ * @see clixon_text_diff2cbuf
  */
 int
 clixon_xml_diff2cbuf(cbuf    *cb,

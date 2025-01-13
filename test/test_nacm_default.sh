@@ -15,6 +15,9 @@ fyang=$dir/nacm-example.yang
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config user false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

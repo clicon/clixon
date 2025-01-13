@@ -34,6 +34,7 @@
   ***** END LICENSE BLOCK *****
 
  * Clixon XML object vectors
+ * Note these are used only occasionally, instead the more primitive cxobj** is mostly used.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -57,11 +58,12 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
 #include "clixon_xml_vec.h"
 
@@ -383,4 +385,3 @@ clixon_xvec_print(FILE        *f,
             return -1;
     return 0;
 }
-

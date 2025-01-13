@@ -170,7 +170,7 @@ echo "$clixon_cli -1 -f $cfg show compare xml"
 expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "<table xmlns=\"urn:example:clixon\">" "^\-\ *<parameter>" "^+\ *<parameter>" "^\-\ *<name>a</name>" "^+\ *<name>c</name>" --not-- "^+\ *<name>a</name>" "^\-\ *<name>c</name>"
 
 new "check compare text"
-expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^\ *table {" "^\-\ *parameter a {" "^+\ *parameter c {" "^\-\ *value 98;" "^+\ *value 99;"
+expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^\ *table {" "^\-\ *parameter a {" "^+\ *parameter c {" "^\-\ *value \"98\";" "^+\ *value \"99\";"
 
 new "delete section x"
 expectpart "$($clixon_cli -1 -f $cfg delete top section x)" 0 "^$"

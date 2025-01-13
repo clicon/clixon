@@ -45,6 +45,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#include <sys/param.h>
 #include <netinet/in.h>
 
 #include "clixon_json_parse.tab.h" /* generated */
@@ -56,9 +57,9 @@
 #include "clixon_handle.h"
 #include "clixon_string.h"
 #include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_xml.h"
 #include "clixon_json_parse.h"
 
 /* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
@@ -138,7 +139,6 @@ hex [A-Fa-f0-9]
 
 %%
 
-
 /*! Initialize scanner.
  */
 int
@@ -165,4 +165,3 @@ json_scan_exit(clixon_json_yacc *jy)
     clixon_json_parselex_destroy();  /* modern */
     return 0;
 }
-

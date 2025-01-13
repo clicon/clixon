@@ -44,9 +44,9 @@
  *               select="/t:top/t:users/t:user[t:name='fred']"/>
  *       </get-config>
  * We need to add namespace context to the cpath tree, typically in eval. How do
- * we do that? 
+ * we do that?
  * One observation is that the namespace context is static, so it can not be a part
- * of the xpath-tree, which is context-dependent. 
+ * of the xpath-tree, which is context-dependent.
  * Best is to send it as a (read-only) parameter to the xp_eval family of functions
  * as an exlicit namespace context.
  * For that you need an API to get/set namespaces: clixon_xml_nscache.c?
@@ -73,19 +73,20 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
 #include "clixon_yang_type.h"
-#include "clixon_xml.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
+#include "clixon_string.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_optimize.h"
 #include "clixon_xpath_function.h"
@@ -110,99 +111,148 @@ const map_str2int xpopmap[] = {
     {NULL,               -1}
 };
 
-/*! Eval an XPath nodetest
+/*! Eval an XPath nodetest with full namespace test
  *
- * @retval    1     Match 
- * @retval    0     No match  
- * @retval   -1     Error  XXX: retval -1 not properly handled 
+ * XML x    -> prefix1 + name1
+ * XPATH xs -> prefix2 + name2
+ * Unless name2=*, if name1 != name2 -> fail
+ * Lookup(prefix1, XML) -> ns1
+ * Lookup(prefix2, NSC) -> ns2
+ * if ns1 = NULL -> fail
+ * if ns2 = NULL -> fail (see  XPATH_NS_ACCEPT_UNRESOLVED)
+ * if ns1 = ns2 -> match
+ * otherwise fail
+ * @param[in] x     XML sub-tree given by the the context node
+ * @param[in] xs    XPath stack of type XP_NODE or XP_NODE_FN
+ * @param[in] nsc   XML Namespace context as given by xpath_vec_ctx()
+ * @retval    1     Match
+ * @retval    0     No match
+ * @retval   -1     Error
  */
 static int
-nodetest_eval_node(cxobj      *x,
-                   xpath_tree *xs,
-                   cvec       *nsc)
+nodetest_eval_namespace(cxobj      *x,
+                        xpath_tree *xs,
+                        cvec       *nsc)
 {
-    int  retval = -1;
-    char *name1 = xml_name(x);
-    char *prefix1 = xml_prefix(x);
-    char *nsxml = NULL;     /* xml body namespace */
-    char *nsxpath = NULL; /* xpath context namespace */
-    char *prefix2 = NULL;
-    char *name2 = NULL;
+    int   retval = -1;
+    char *name1;
+    char *prefix1;
+    char *prefix2;
+    char *name2;
+    char *ns1 = NULL; /* xml namespace */
+    char *ns2 = NULL; /* xpath namespace */
 
-    /* Namespaces is s0, name is s1 */
-    if (strcmp(xs->xs_s1, "*")==0)
-        return 1;
-    /* get namespace of xml tree */
-    if (xml2ns(x, prefix1, &nsxml) < 0)
-        goto done;
+    /* XML x ->  prefix1 + name1 */
+    prefix1 = xml_prefix(x);
+    name1 = xml_name(x);
+    /* XPATH xs -> prefix2 + name2 */
     prefix2 = xs->xs_s0;
     name2 = xs->xs_s1;
-    /* Before going into namespaces, check name equality and filter out noteq  */
-    if (strcmp(name1, name2) != 0){
-        retval = 0; /* no match */
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s %s", name1, name2);
+    if (strcmp(name2, "*") != 0){
+        /* if name1 != name2 -> fail */
+        if (strcmp(name1, name2) != 0)
+            goto fail;
+    }
+    /* get namespace of xml tree */
+    if (xml2ns(x, prefix1, &ns1) < 0)
         goto done;
-    }
-    /* Here names are equal
-     * Now look for namespaces
-     * 1) prefix1 and prefix2 point to same namespace <<-- try this first
-     * 2) prefix1 is equal to prefix2 <<-- then try this
-     * (1) is strict yang xml
-     * (2) without yang
-     */
-    if (nsc != NULL) { /* solution (1) */
-        nsxpath = xml_nsctx_get(nsc, prefix2);
-        if (nsxml != NULL && nsxpath != NULL)
-            retval = (strcmp(nsxml, nsxpath) == 0);
-        else if (nsxpath == NULL){
-            /* We have a namespace from xml, but none in yang.
-             * This can happen in eg augments and ../foo, where foo is
-             * augmented from another namespace
-             */
-            retval = 1;
-        }
-        else
-            retval = (nsxml == nsxpath); /* True only if both are NULL */
-    }
-    else{ /* solution (2) */
-        if (prefix1 == NULL && prefix2 == NULL)
-            retval = 1;
-        else if (prefix1 == NULL || prefix2 == NULL)
-            retval = 0;
-        else
-            retval = strcmp(prefix1, prefix2) == 0;
-    }
-#if 0 /* debugging */
-    /* If retval == 0 here, then there is name match, but not ns match */
-    if (retval == 0){
-        fprintf(stderr, "%s NOMATCH xml: (%s)%s\n\t\t xpath: (%s)%s\n", __FUNCTION__,
-                name1, nsxml,
-                name2, nsxpath);
-    }
+    if (ns1 == NULL)
+        goto fail;
+    ns2 = xml_nsctx_get(nsc, prefix2);
+    if (ns2 == NULL){
+#ifdef XPATH_NS_ACCEPT_UNRESOLVED
+        goto ok;
+#else
+        goto fail;
 #endif
+    }
+    else if (strcmp(ns1, ns2) != 0)
+        goto fail;
+#ifdef XPATH_NS_ACCEPT_UNRESOLVED
+ ok:
+#endif
+    retval = 1;
  done:  /* retval set in preceding statement */
     return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Eval an XPath nodetest but skip namespace tests
+ *
+ * XML x    -> prefix1 + name1
+ * XPATH xs -> prefix2 + name2
+ * Unless name2=*, if name1 != name2 -> fail
+ * if prefix1 and prefix2 are string-equal or both NULL -> match
+ * else -> fail
+ * @param[in] x     XML node
+ * @param[in] xs    XPath stack of type XP_NODE or XP_NODE_FN
+ * @retval    1     Match
+ * @retval    0     No match
+ * @retval   -1     Error  XXX: retval -1 not properly handled
+ */
+static int
+nodetest_eval_prefixonly(cxobj      *x,
+                         xpath_tree *xs)
+{
+    int   retval = -1;
+    char *name1;
+    char *prefix1;
+    char *prefix2;
+    char *name2;
+    int   ret;
+
+    /* XML x ->  prefix1 + name1 */
+    prefix1 = xml_prefix(x);
+    name1 = xml_name(x);
+    /* XPATH xs -> prefix2 + name2 */
+    prefix2 = xs->xs_s0;
+    name2 = xs->xs_s1;
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s:%s %s:%s", prefix1, name1, prefix2, name2);
+    if (strcmp(name2, "*") != 0){
+        /* if name1 != name2 -> fail */
+        if (strcmp(name1, name2) != 0)
+            goto fail;
+    }
+    ret = clicon_strcmp(prefix1, prefix2);
+    if (ret != 0)
+        goto fail;
+    retval = 1;
+ done:  /* retval set in preceding statement */
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Eval an XPath nodetest but skip prefix and namespace tests
  *
- * This is NOT according to standard
+ * If name2 = "*" -> match     # A node test * is true for any node of the principal node type.
+ * If name1 = name2 -> match (string-equal or both NULL)
+ * @param[in] x     XML node
+ * @param[in] xs    XPath stack of type XP_NODE or XP_NODE_FN
+ * @retval    1     Match
+ * @retval    0     No match
+ * @retval   -1     Error
  */
 static int
-nodetest_eval_node_localonly(cxobj      *x,
-                             xpath_tree *xs,
-                             cvec       *nsc)
+nodetest_eval_localonly(cxobj      *x,
+                        xpath_tree *xs)
 {
     int   retval = -1;
-    char *name1 = xml_name(x);
-    char *name2 = NULL;
+    char *name1;
+    char *name2;
 
-    /* Namespaces is s0, name is s1 */
-    if (strcmp(xs->xs_s1, "*")==0){
+    name1 = xml_name(x);
+    name2 = xs->xs_s1;
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s %s", name1, name2);
+    if (strcmp(name2, "*")==0){
         retval = 1;
         goto done;
     }
-    name2 = xs->xs_s1;
-    /* Before going into namespaces, check name equality and filter out noteq  */
+    /* Check name only */
     if (strcmp(name1, name2) == 0){
         retval = 1;
         goto done;
@@ -219,7 +269,7 @@ nodetest_eval_node_localonly(cxobj      *x,
  * @param[in] nsc   XML Namespace context
  * @param[in] localonly  Skip prefix and namespace tests (non-standard)
  * @retval    1     Match
- * @retval    0     No match  
+ * @retval    0     No match
  * @retval   -1     Error
  * - node() is true for any node of any type whatsoever.
  * - text() is true for any text node.
@@ -234,9 +284,11 @@ nodetest_eval(cxobj      *x,
 
     if (xs->xs_type == XP_NODE){
         if (localonly)
-            retval = nodetest_eval_node_localonly(x, xs, nsc);
+            retval = nodetest_eval_localonly(x, xs);
+        else if (nsc == NULL)
+            retval = nodetest_eval_prefixonly(x, xs);
         else
-            retval = nodetest_eval_node(x, xs, nsc);
+            retval = nodetest_eval_namespace(x, xs, nsc);
     }
     else if (xs->xs_type == XP_NODE_FN){
         switch (xs->xs_int){
@@ -283,11 +335,11 @@ nodetest_recursive(cxobj      *xn,
     xsub = NULL;
     while ((xsub = xml_child_each(xn, xsub, node_type)) != NULL) {
         if (nodetest_eval(xsub, nodetest, nsc, localonly) == 1){
-            clixon_debug(CLIXON_DBG_DETAIL, "%s %x %x", __FUNCTION__, flags, xml_flag(xsub, flags));
+            clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%x %x", flags, xml_flag(xsub, flags));
             if (flags==0x0 || xml_flag(xsub, flags))
                 if (cxvec_append(xsub, &vec, &veclen) < 0)
                     goto done;
-            //      continue; /* Dont go deeper */
+            //      continue; /* Don't go deeper */
         }
         if (nodetest_recursive(xsub, nodetest, node_type, flags, nsc, localonly, &vec, &veclen) < 0)
             goto done;
@@ -295,7 +347,7 @@ nodetest_recursive(cxobj      *xn,
     retval = 0;
     *vec0 = vec;
     *vec0len = veclen;
-  done:
+ done:
     return retval;
 }
 
@@ -309,7 +361,7 @@ nodetest_recursive(cxobj      *xn,
  * @retval     0         OK
  * @retval    -1         Error
  *
- * - A node test that is a QName is true if and only if the type of the node (see [5 Data Model]) 
+ * - A node test that is a QName is true if and only if the type of the node (see [5 Data Model])
  * is the principal node type and has an expanded-name equal to the expanded-name specified by the QName.
  * - A node test * is true for any node of the principal node type.
  * - node() is true for any node of any type whatsoever.
@@ -371,6 +423,8 @@ xp_eval_step(xp_ctx     *xc0,
             }
         }
         ctx_nodeset_replace(xc, vec, veclen);
+        if (vec)
+            vec = NULL;
         break;
     case A_DESCENDANT_OR_SELF:
         for (i=0; i<xc->xc_size; i++){
@@ -621,8 +675,11 @@ xp_logop(xp_ctx    *xc1,
         goto done;
     }
     *xrp = xr;
+    xr = NULL;
     retval = 0;
  done:
+    if (xr)
+        ctx_free(xr);
     return retval;
 }
 
@@ -684,8 +741,11 @@ xp_numop(xp_ctx    *xc1,
             goto done;
         }
     *xrp = xr;
+    xr = NULL;
     retval = 0;
  done:
+    if (xr)
+        ctx_free(xr);
     return retval;
 }
 
@@ -699,6 +759,7 @@ xp_numop(xp_ctx    *xc1,
  * Move to clixon_xml.c?
  * As a side-effect sets the cache.
  * Clear cache with xml_cv_set(x, NULL)
+ * @see xml_cv_cache.c duplicated function
  */
 static int
 xml_cv_cache(cxobj   *x,
@@ -1010,7 +1071,7 @@ xp_relop(xp_ctx    *xc1,
                     break;
                 default:
                     clixon_err(OE_XML, 0, "Operator %s not supported for nodeset and string", clicon_int2str(xpopmap,op));
-                goto done;
+                    goto done;
                     break;
                 }
                 if (xr->xc_bool) /* enough to find a single node */
@@ -1046,7 +1107,7 @@ xp_relop(xp_ctx    *xc1,
                     break;
                 default:
                     clixon_err(OE_XML, 0, "Operator %s not supported for nodeset and number", clicon_int2str(xpopmap,op));
-                goto done;
+                    goto done;
                     break;
                 }
                 if (xr->xc_bool) /* enough to find a single node */
@@ -1111,8 +1172,11 @@ xp_union(xp_ctx    *xc1,
             goto done;
     }
     *xrp = xr;
+    xr = NULL;
     retval = 0;
  done:
+    if (xr)
+        ctx_free(xr);
     return retval;
 }
 
@@ -1185,8 +1249,13 @@ xp_eval(xp_ctx     *xc,
                     goto done;
                 goto ok;
                 break;
+            case XPATHFN_RE_MATCH:
+                if (xp_function_re_match(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
             case XPATHFN_DEREF:
-                if (xp_function_deref(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                if (xp_function_deref(xc, xs->xs_c0, nsc, xrp) < 0)
                     goto done;
                 goto ok;
                 break;
@@ -1206,7 +1275,7 @@ xp_eval(xp_ctx     *xc,
                 goto ok;
                 break;
             case XPATHFN_POSITION:
-                if (xp_function_position(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                if (xp_function_position(xc, xs->xs_c0, nsc, xrp) < 0)
                     goto done;
                 goto ok;
                 break;
@@ -1220,8 +1289,43 @@ xp_eval(xp_ctx     *xc,
                     goto done;
                 goto ok;
                 break;
+            case XPATHFN_STRING:
+                if (xp_function_string(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_STARTS_WITH:
+                if (xp_function_contains(xc, xs->xs_c0, nsc, 1, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
             case XPATHFN_CONTAINS:
-                if (xp_function_contains(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                if (xp_function_contains(xc, xs->xs_c0, nsc, 0, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_SUBSTRING_BEFORE:
+                if (xp_function_substring_str(xc, xs->xs_c0, nsc, 1, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_SUBSTRING_AFTER:
+                if (xp_function_substring_str(xc, xs->xs_c0, nsc, 0, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_SUBSTRING:
+                if (xp_function_substring(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_STRING_LENGTH:
+                if (xp_function_string_length(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_TRANSLATE:
+                if (xp_function_translate(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
                     goto done;
                 goto ok;
                 break;
@@ -1236,12 +1340,12 @@ xp_eval(xp_ctx     *xc,
                 goto ok;
                 break;
             case XPATHFN_TRUE:
-                if (xp_function_true(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                if (xp_function_true(xc, xs->xs_c0, nsc, xrp) < 0)
                     goto done;
                 goto ok;
                 break;
             case XPATHFN_FALSE:
-                if (xp_function_false(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                if (xp_function_false(xc, xs->xs_c0, nsc, xrp) < 0)
                     goto done;
                 goto ok;
                 break;
@@ -1399,5 +1503,3 @@ xp_eval(xp_ctx     *xc,
         ctx_free(xr0);
     return retval;
 } /* xp_eval */
-
-

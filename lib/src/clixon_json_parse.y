@@ -128,18 +128,18 @@ object.
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"    
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_string.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 
 #include "clixon_json_parse.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
@@ -188,7 +188,7 @@ json_current_new(clixon_json_yacc *jy,
     char      *prefix = NULL;
     char      *id = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     /* Find colon separator and if found split into prefix:name */
     if (nodeid_split(name, &prefix, &id) < 0)
         goto done;
@@ -215,7 +215,7 @@ json_current_new(clixon_json_yacc *jy,
 static int
 json_current_pop(clixon_json_yacc *jy)
 {
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (jy->jy_current)
         jy->jy_current = xml_parent(jy->jy_current);
     return 0;
@@ -226,7 +226,7 @@ json_current_clone(clixon_json_yacc *jy)
 {
     cxobj *xn;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if (jy->jy_current == NULL){
         return -1;
     }
@@ -258,7 +258,7 @@ json_current_body(clixon_json_yacc *jy,
     int retval = -1;
     cxobj *xn;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
     if ((xn = xml_new("body", jy->jy_current, CX_BODY)) == NULL)
         goto done;
     if (value && xml_value_append(xn, value) < 0)
@@ -333,4 +333,3 @@ number        : J_NUMBER { $$ = $1; }
               ;
 
 %%
-

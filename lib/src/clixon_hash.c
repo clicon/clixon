@@ -35,7 +35,6 @@
 
  */
 
-
 /*
  * A simple implementation of a associative array style data store. Keys
  * are always strings while values can be some arbitrary data referenced
@@ -97,6 +96,8 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 
 #define HASH_SIZE       1031    /* Number of hash buckets. Should be a prime */
@@ -118,7 +119,7 @@ hash_bucket(const char *str)
  *
  * @retval  hash  Pointer to new hash table.
  * @retval  NULL  Error
- * @see hash_free  For freeing the hash-table
+ * @see clicon_hash_free  For freeing the hash-table
  */
 clicon_hash_t *
 clicon_hash_init(void)
@@ -184,6 +185,7 @@ clicon_hash_lookup(clicon_hash_t *hash,
 }
 
 /*! Get value of hash
+ *
  * @param[in]  hash   Hash table
  * @param[in]  key    Variable name
  * @param[out] vlen   Length of value (as returned by function if != NULL)

@@ -46,5 +46,7 @@
  * Prototypes
  */
 int xmldb_put(clixon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
+int xmldb_write_cache2file(clixon_handle h, const char *db);
+int xmldb_dump(clixon_handle h, FILE *f, cxobj *xt, enum format_enum format, int pretty, withdefaults_type wdef, int multi, const char *multidb);
 
 #endif /* _CLIXON_DATASTORE_WRITE_H */

@@ -34,9 +34,7 @@
   *
   * Return errors
   * @see RFC 7231 Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content
-
-
- * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
+  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
 */
 
 #ifdef HAVE_CONFIG_H
@@ -102,6 +100,37 @@ restconf_method_notallowed(clixon_handle  h,
     return retval;
 }
 
+/*! HTTP error 406 Not acceptable
+ *
+ * @param[in]  req      Generic http handle
+ * @retval     0    OK
+ * @retval    -1    Error
+ * @see RFC8040, section 5.2:
+ * If the server does not support any of the requested output encodings for a request, then it MUST
+ * return an error response with a "406 Not Acceptable" status-line.
+ */
+int
+restconf_not_acceptable(clixon_handle  h,
+                        void          *req,
+                        int            pretty,
+                        restconf_media media)
+{
+    int    retval = -1;
+    cxobj *xerr = NULL;
+
+    if (netconf_operation_not_supported_xml(&xerr, "protocol", "Unacceptable output encoding") < 0)
+        goto done;
+    if (api_return_err0(h, req, xerr, pretty, media, 406) < 0)
+        goto done;
+    if (restconf_reply_send(req, 406, NULL, 0) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (xerr)
+        xml_free(xerr);
+    return retval;
+}
+
 /*! HTTP error 415 Unsupported media
  *
  * @param[in]  req      Generic http handle
@@ -129,36 +158,6 @@ restconf_unsupported_media(clixon_handle  h,
  done:
     if (xerr)
         xml_free(xerr);
-    return retval;
-}
-
-/*! HTTP error 406 Not acceptable
- *
- * @param[in]  req      Generic http handle
- * @retval     0    OK
- * @retval    -1    Error
- * @see RFC8040, section 5.2:
- * If the server does not support any of the requested output encodings for a request, then it MUST
- * return an error response with a "406 Not Acceptable" status-line.
- */
-int
-restconf_not_acceptable(clixon_handle  h,
-                        void          *req,
-                        int            pretty,
-                        restconf_media media)
-{
-    int    retval = -1;
-    cxobj *xerr = NULL;
-
-    if (netconf_operation_not_supported_xml(&xerr, "protocol", "Unacceptable output encoding") < 0)
-        goto done;
-    /* Override with 415 netconf->restoconf translation which gives a 405 */
-    if (api_return_err0(h, req, xerr, pretty, media, 415) < 0)
-        goto done;
-    if (restconf_reply_send(req, 415, NULL, 0) < 0)
-        goto done;
-    retval = 0;
- done:
     return retval;
 }
 
@@ -218,7 +217,7 @@ api_return_err(clixon_handle  h,
     cxobj     *xmsg;
     char      *mb;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -249,7 +248,7 @@ api_return_err(clixon_handle  h,
         }
     }
 #if 1
-    clixon_debug_xml(CLIXON_DBG_DEFAULT, xerr, "%s Send error:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_RESTCONF, xerr, "Send error:");
 #endif
     if (xml_name_set(xerr, "error") < 0)
         goto done;
@@ -286,7 +285,8 @@ api_return_err(clixon_handle  h,
     case YANG_DATA_XML:
     case YANG_PATCH_XML:
     case YANG_PAGINATION_XML:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s code:%d", __FUNCTION__, code);
+    case HTTP_DATA_TEXT_HTML:
+        clixon_debug(CLIXON_DBG_RESTCONF, "code:%d", code);
         if (pretty){
             cprintf(cb, "    <errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\">\n");
             if (clixon_xml2cbuf(cb, xerr, 2, pretty, NULL, -1, 0) < 0)
@@ -302,25 +302,27 @@ api_return_err(clixon_handle  h,
         break;
     case YANG_DATA_JSON:
     case YANG_PATCH_JSON:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s code:%d", __FUNCTION__, code);
+    default: /* Override -1 with JSON return, not technically correct */
+        clixon_debug(CLIXON_DBG_RESTCONF, "code:%d", code);
         if (pretty){
             cprintf(cb, "{\n\"ietf-restconf:errors\" : ");
-            if (clixon_json2cbuf(cb, xerr, pretty, 0, 0) < 0)
+            if (clixon_json2cbuf(cb, xerr, pretty, 0, 0, 0) < 0)
                 goto done;
             cprintf(cb, "\n}\r\n");
         }
         else{
             cprintf(cb, "{");
             cprintf(cb, "\"ietf-restconf:errors\":");
-            if (clixon_json2cbuf(cb, xerr, pretty, 0, 0) < 0)
+            if (clixon_json2cbuf(cb, xerr, pretty, 0, 0, 0) < 0)
                 goto done;
             cprintf(cb, "}\r\n");
         }
         break;
-    default: /* Just ignore the body so that there is a reply */
-        clixon_err(OE_YANG, EINVAL, "Invalid media type %d", media);
-        goto done;
+#if 0 /* Maybe this is correct, but content-type may not yet be known */
+    default: /* Override -1 or anything else to ensure there is an error reply */
+        cprintf(cb, "\r\n\r\n");
         break;
+#endif
     } /* switch media */
     assert(cbuf_len(cb));
     if (restconf_reply_send(req, code, cb, 0) < 0)
@@ -329,7 +331,7 @@ api_return_err(clixon_handle  h,
     // ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (cb)
         cbuf_free(cb);
     if (cberr)
@@ -353,17 +355,18 @@ api_return_err(clixon_handle  h,
  * @see api_return_err where top level is expected to be <rpc-error>
  */
 int
-api_return_err0(clixon_handle h,
-                void         *req,
-                cxobj        *xerr,
-                int           pretty,
+api_return_err0(clixon_handle  h,
+                void          *req,
+                cxobj         *xerr,
+                int            pretty,
                 restconf_media media,
-                int           code)
+                int            code)
 {
     int    retval = -1;
     cxobj *xe;
 
-    if ((xe = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
+    if ((xe = xml_find_type(xerr, NULL, "rpc-error", CX_ELMNT)) == NULL){
         clixon_err(OE_XML, EINVAL, "Expected xml on the form <rpc-error>..");
         goto done;
     }

@@ -98,8 +98,8 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
         err
     fi
-    new "start backend -s init -f $cfg -- -n"
-    start_backend -s init -f $cfg -- -n # create example notification stream
+    new "start backend -s init -f $cfg -- -n 5"
+    start_backend -s init -f $cfg -- -n 5 # create example notification stream
 fi
 
 new "wait backend"

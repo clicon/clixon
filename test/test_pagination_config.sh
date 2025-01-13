@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# List pagination tests loosely based on draft-wwlh-netconf-list-pagination-00
+# List pagination tests loosely based on draft-ietf-netconf-list-pagination-04
 # The example-social yang file is used
 # This tests contains a large config list: members/member/favorites/uint8-numbers
 
@@ -30,7 +30,7 @@ fexample=$dir/example-social.yang
 # Validate internal state xml
 : ${validatexml:=false}
 
-# Number of audit-log entries 
+# Number of leaf-list entries
 # Note mem.sh sets it
 : ${perfnr:=20000}
 
@@ -50,16 +50,17 @@ cat <<EOF > $cfg
   <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_OUTPUT_FORMAT>cli</CLICON_CLI_OUTPUT_FORMAT>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_VALIDATE_STATE_XML>$validatexml</CLICON_VALIDATE_STATE_XML>
 </clixon-config>
 EOF
 
-# Based on draft-wwlh-netconf-list-pagination-00 A.2 but bob has a generated uint8-numbers list
+# Based on draft-netconf-list-pagination-04.txt A.2 but bob has a generated uint8-numbers list
 # start file
 cat <<'EOF' > $dir/startup_db
 <config>
-  <members xmlns="http://example.com/ns/example-social">
+  <members xmlns="https://example.com/ns/example-social">
     <member>
       <member-id>alice</member-id>
       <email-address>alice@example.com</email-address>
@@ -162,7 +163,7 @@ xpath="/es:members/es:member[es:member-id=\'bob\']/es:favorites/es:uint64-number
 new "cli show pagination config using expect"
 sudo="sudo -g ${CLICON_GROUP}"		## cheat
 clixon_cli_="${clixon_cli##$sudo }"
-clixon_cli="$clixon_cli_" $sudo --preserve-env=clixon_cli expect ./test_pagination_expect.exp "$cfg" "$xpath" "uint64-numbers 18" "uint64-numbers 19"
+clixon_cli="$clixon_cli_" $sudo --preserve-env=clixon_cli expect ./test_pagination_expect.exp "$cfg" "$xpath" "uint64-numbers 20" "uint64-numbers 21"
 if [ $? -ne 0 ]; then
     err1 "Failed: CLI show paginate config scroll using expect"
 fi

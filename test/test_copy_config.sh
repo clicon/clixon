@@ -31,6 +31,9 @@ fyang=$dir/ietf-interfaces@2019-03-04.yang
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none true)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

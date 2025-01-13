@@ -33,10 +33,10 @@
 
   ***** END LICENSE BLOCK *****
 
- * This file contains access functions for two types of clixon vars:
- * - options, ie string based variables from Clixon configuration files.
+ * This file contains access functions for options, one type of clixon variables
+ * ie string based variables from Clixon configuration files.
  *            Accessed with clicon_options(h).
- * @see clixon_data.[ch] for free-type runtime get/set *
+ * @see clixon_data.[ch] for the other type: free-type runtime get/set *
  */
 
 #ifndef _CLIXON_OPTIONS_H_
@@ -85,16 +85,6 @@ enum nacm_credentials_t{
     NC_EXCEPT    /* Exact match except for root and www user  */
 };
 
-/*! Datastore cache behaviour, see clixon_datastore.[ch] 
- *
- * See config option type datastore_cache in clixon-config.yang
- */
-enum datastore_cache{
-    DATASTORE_NOCACHE,
-    DATASTORE_CACHE,
-    DATASTORE_CACHE_ZEROCOPY
-};
-
 /*! yang clixon regexp engine
  *
  * @see regexp_mode in clixon-config.yang
@@ -107,6 +97,8 @@ enum regexp_mode{
 /*
  * Prototypes
  */
+char *format_int2str(enum format_enum showas);
+enum format_enum format_str2int(char *str);
 
 /* Debug dump config options */
 int clicon_option_dump(clixon_handle h, int dblevel);
@@ -119,6 +111,9 @@ int clicon_option_add(clixon_handle h, const char *name, char *value);
 
 /* Initialize options: set defaults, read config-file, etc */
 int clicon_options_main(clixon_handle h);
+
+/* Options debug and log helper function */
+int clixon_options_main_helper(clixon_handle h, uint32_t dbg, uint32_t logdst, char *ident);
 
 /*! Check if a clicon option has a value */
 int clicon_option_exists(clixon_handle h, const char *name);
@@ -147,6 +142,9 @@ static inline char *clicon_yang_main_file(clixon_handle h){
 }
 static inline char *clicon_yang_main_dir(clixon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MAIN_DIR");
+}
+static inline char *clicon_yang_domain_dir(clixon_handle h){
+    return clicon_option_str(h, "CLICON_YANG_DOMAIN_DIR");
 }
 static inline char *clicon_yang_module_main(clixon_handle h){
     return clicon_option_str(h, "CLICON_YANG_MODULE_MAIN");
@@ -204,7 +202,6 @@ enum priv_mode_t clicon_backend_privileges_mode(clixon_handle h);
 enum priv_mode_t clicon_restconf_privileges_mode(clixon_handle h);
 enum nacm_credentials_t clicon_nacm_credentials(clixon_handle h);
 
-enum datastore_cache clicon_datastore_cache(clixon_handle h);
 enum regexp_mode clicon_yang_regexp(clixon_handle h);
 /*-- Specific option access functions for non-yang options --*/
 int clicon_quiet_mode(clixon_handle h);

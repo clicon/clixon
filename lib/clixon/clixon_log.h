@@ -40,42 +40,51 @@
 #ifndef _CLIXON_LOG_H_
 #define _CLIXON_LOG_H_
 
+#include "clixon_xml.h"			/* for cxobj */
+
 /*
  * Constants
  */
-/* Where to log (masks) */
-#define CLIXON_LOG_SYSLOG 1 /* print logs on syslog */
-#define CLIXON_LOG_STDERR 2 /* print logs on stderr */
-#define CLIXON_LOG_STDOUT 4 /* print logs on stdout */
-#define CLIXON_LOG_FILE   8 /* print logs on clicon_log_filename */
+/*! Log destination as bitfields (masks)
+ *
+ * @see logdstmap Symbolic mapping (if you change here you may need to change logdstmap)
+ * @see also log_desination_t in clixon-config.yang
+ */
+#define CLIXON_LOG_SYSLOG 0x01 /* print logs on syslog */
+#define CLIXON_LOG_STDERR 0x02 /* print logs on stderr */
+#define CLIXON_LOG_STDOUT 0x04 /* print logs on stdout */
+#define CLIXON_LOG_FILE   0x08 /* print logs on clixon_log_filename */
+
+/* What kind of log (only for customizable error/logs) */
+enum clixon_log_type{
+    LOG_TYPE_LOG,
+    LOG_TYPE_ERR,
+    LOG_TYPE_DEBUG
+};
+
+/*
+ * Macros
+ */
+#define clixon_log(h, l, _fmt, args...) clixon_log_fn((h), 1, (l), NULL, _fmt , ##args)
+#define clixon_log_xml(h, l, x, _fmt, args...) clixon_log_fn((h), 1, (l), x, _fmt , ##args)
+
+// COMPAT_7_1
+#define clixon_get_logflags() clixon_logflags_get()
 
 /*
  * Prototypes
  */
-int clixon_log_init(clixon_handle h, char *ident, int upto, int flags);
-int clixon_log_exit(void);
-int clixon_log_opt(char c);
-int clixon_log_file(char *filename);
-int clixon_log_string_limit_set(size_t sz);
-size_t clixon_log_string_limit_get(void);
-int clixon_get_logflags(void);
-int clixon_log_str(int level, char *msg);
-int clixon_log(clixon_handle h, int level, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
-char *clixon_log_mon2name(int md);
-
-#if 1 /* COMPAT_6_5 */
-#define CLICON_LOG_SYSLOG CLIXON_LOG_SYSLOG
-#define CLICON_LOG_STDERR CLIXON_LOG_STDERR
-#define CLICON_LOG_STDOUT CLIXON_LOG_STDOUT
-#define CLICON_LOG_FILE   CLIXON_LOG_FILE
-
-#define clicon_log(l, f, args...) clixon_log(NULL, (l), (f), ##args)
-#define clicon_log_exit() clixon_log_exit()
-#define clicon_log_opt(c) clixon_log_opt((c))
-#define clicon_log_file(f) clixon_log_file((f)) 
-
-int clicon_log_init(char *ident, int upto, int flags);
-
-#endif /* COMPAT_6_5 */
+char    *clixon_logdst_key2str(int keyword);
+int      clixon_logdst_str2key(char *str);
+int      clixon_log_init(clixon_handle h, char *ident, int upto, uint16_t flags);
+int      clixon_log_exit(void);
+int      clixon_log_opt(char c);
+int      clixon_log_file(char *filename);
+int      clixon_log_string_limit_set(size_t sz);
+size_t   clixon_log_string_limit_get(void);
+uint16_t clixon_logflags_get(void);
+int      clixon_logflags_set(uint16_t flags);
+int      clixon_log_str(int level, char *msg);
+int      clixon_log_fn(clixon_handle h, int user, int level, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
 
 #endif  /* _CLIXON_LOG_H_ */

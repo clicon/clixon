@@ -68,6 +68,7 @@ set x,cli_merge("/example:x");{
       a <a:string> b <b:string>,cli_merge("/example:x/m1=%s,%s/");{
          c <c:string>,cli_merge("/example:x/m1=%s,%s/c");
       }
+      ax <a:string>("special case") c <c:string>,cli_merge("/example:x/m1=,%s/c");
 }
 # Negative
 err x,cli_set("/example2:x");{
@@ -105,12 +106,24 @@ expectpart "$($clixon_cli -1 -f $cfg set x a 22 b 33 c 55)" 0 ""
 new "show conf x"
 expectpart "$($clixon_cli -1 -f $cfg show conf x)" 0 "x m1 a 22 b 33"
 
+new "set conf x, special case comma"
+expectpart "$($clixon_cli -1 -f $cfg set x ax 11 c 33)" 0 "^$"
+
+new "show conf ax"
+expectpart "$($clixon_cli -1 -f $cfg show conf x)" 0 "x m1 a (null) b 11 c 33"
+
+new "set conf x, special case comma encoding"
+expectpart "$($clixon_cli -1 -f $cfg set x ax 22/22 c 44)" 0 "^$"
+
+new "show conf ax"
+expectpart "$($clixon_cli -1 -f $cfg show conf x)" 0 "x m1 a (null) b 22/22 c 44"
+
 # Negative tests
 new "err x"
-expectpart "$($clixon_cli -1 -f $cfg -l n err x)" 255 "Config error: api-path syntax error \"/example2:x\": application unknown-element No such yang module prefix <bad-element>example2</bad-element>: Invalid argument"
+expectpart "$($clixon_cli -1 -f $cfg -l o err x)" 255 "Config error: api-path syntax error \"/example2:x\": application unknown-element No such yang module prefix <bad-element>example2</bad-element>: Invalid argument"
 
 new "err x a"
-expectpart "$($clixon_cli -1 -f $cfg -l n err x a 99)" 255 "Config error: api-path syntax error \"/example:x/m1=%s\": rpc malformed-message List key m1 length mismatch : Invalid argument"
+expectpart "$($clixon_cli -1 -f $cfg -l o err x a 99)" 255 "Config error: api-path syntax error \"/example:x/m1=%s\": rpc malformed-message List key m1 length mismatch : Invalid argument"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
@@ -123,6 +136,7 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
-endtest
-
 rm -rf $dir
+
+new "endtest"
+endtest

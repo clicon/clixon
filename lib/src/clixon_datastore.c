@@ -1,4 +1,4 @@
-/*
+ /*
  *
   ***** BEGIN LICENSE BLOCK *****
  
@@ -65,38 +65,80 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_string.h"
 #include "clixon_file.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_bind.h"
+#include "clixon_xml_default.h"
+#include "clixon_xml_io.h"
+#include "clixon_json.h"
 #include "clixon_datastore.h"
 #include "clixon_datastore_write.h"
 #include "clixon_datastore_read.h"
 
+/*! Get xml database element including id, xml cache, empty on startup and dirty bit
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  db   Name of database
+ * @retval     de   Database element
+ * @retval     NULL None found
+ */
+db_elmnt *
+clicon_db_elmnt_get(clixon_handle h,
+                    const char   *db)
+{
+    clicon_hash_t *cdat = clicon_db_elmnt(h);
+    void          *p;
+
+    if ((p = clicon_hash_value(cdat, db, NULL)) != NULL)
+        return (db_elmnt *)p;
+    return NULL;
+}
+
+/*! Set xml database element including id, xml cache, empty on startup and dirty bit
+ *
+ * @param[in] h   Clixon handle
+ * @param[in] db  Name of database
+ * @param[in] de  Database element
+ * @retval    0   OK
+ * @retval   -1   Error
+ * @see xmldb_disconnect
+*/
+int
+clicon_db_elmnt_set(clixon_handle h,
+                    const char   *db,
+                    db_elmnt     *de)
+{
+    clicon_hash_t  *cdat = clicon_db_elmnt(h);
+
+    if (clicon_hash_add(cdat, db, de, sizeof(*de))==NULL)
+        return -1;
+    return 0;
+}
 
 /*! Translate from symbolic database name to actual filename in file-system
  *
- * @param[in]   th       text handle handle
+ * Internal function for explicit XMLDB_MULTI use or not
+ * @param[in]   h        Clixon handle
  * @param[in]   db       Symbolic database name, eg "candidate", "running"
+ * @param[in]   multi    Use multi/split datastores, see CLICON_XMLDB_MULTI
  * @param[out]  filename Filename. Unallocate after use with free()
  * @retval      0        OK
  * @retval     -1        Error
- * @note Could need a way to extend which databases exists, eg to register new.
- * The currently allowed databases are: 
- *   candidate, tmp, running, result
- * The filename reside in CLICON_XMLDB_DIR option
  */
-int
-xmldb_db2file(clixon_handle  h, 
-              const char    *db,
+static int
+xmldb_db2file1(clixon_handle h,
+               const char   *db,
+               int           multi,
               char         **filename)
 {
     int   retval = -1;
@@ -108,16 +150,86 @@ xmldb_db2file(clixon_handle  h,
         goto done;
     }
     if ((dir = clicon_xmldb_dir(h)) == NULL){
-        clixon_err(OE_XML, errno, "dbdir not set");
+        clixon_err(OE_XML, errno, "CLICON_XMLDB_DIR not set");
         goto done;
     }
-    cprintf(cb, "%s/%s_db", dir, db);
+    /* Multi: write (root) to: <db>.d/0.xml
+     * Classic: write to: <db>_db
+     */
+    if (multi)
+        cprintf(cb, "%s/%s.d/0.xml", dir, db); /* Hardcoded to XML, XXX: JSON? */
+    else
+        cprintf(cb, "%s/%s_db", dir, db);
     if ((*filename = strdup4(cbuf_get(cb))) == NULL){
         clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     retval = 0;
  done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+/*! Translate from symbolic database name to actual filename in file-system
+ *
+ * @param[in]   h        Clixon handle
+ * @param[in]   db       Symbolic database name, eg "candidate", "running"
+ * @param[out]  filename Filename. Unallocate after use with free()
+ * @retval      0        OK
+ * @retval     -1        Error
+ * @note Could need a way to extend which databases exists, eg to register new.
+ * The currently allowed databases are:
+ *   candidate, tmp, running, result
+ * The filename reside in CLICON_XMLDB_DIR option
+ */
+int
+xmldb_db2file(clixon_handle  h,
+              const char    *db,
+              char         **filename)
+{
+    return xmldb_db2file1(h, db, clicon_option_bool(h, "CLICON_XMLDB_MULTI"), filename);
+}
+
+/*! Translate from symbolic database name to sub-directory of configure sub-files, no checks
+ *
+ * @param[in]   h       Clixon handle
+ * @param[in]   db      Symbolic database name, eg "candidate", "running"
+ * @param[out]  subdirp Sub-directory name. Unallocate after use with free()
+ * @retval      0       OK
+ * @retval     -1       Error
+ * The dir is subdir to CLICON_XMLDB_DIR option
+ * @see xmldb_db2file  For top-level config file
+ */
+int
+xmldb_db2subdir(clixon_handle h,
+                const char   *db,
+                char        **subdirp)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+    char *dir;
+    char *subdir = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    if ((dir = clicon_xmldb_dir(h)) == NULL){
+        clixon_err(OE_XML, errno, "CLICON_XMLDB_DIR not set");
+        goto done;
+    }
+    cprintf(cb, "%s/%s.d", dir, db);
+    if ((subdir = strdup4(cbuf_get(cb))) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+    *subdirp = subdir;
+    subdir = NULL;
+    retval = 0;
+ done:
+    if (subdir)
+        free(subdir);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -166,77 +278,106 @@ xmldb_disconnect(clixon_handle h)
     return retval;
 }
 
-/*! Copy database from db1 to db2
+/*! Copy datastore from db1 to db2, both cache and datastore
  *
+ * May include copying datastore directory structure
  * @param[in]  h     Clixon handle
- * @param[in]  from  Source database
- * @param[in]  to    Destination database
+ * @param[in]  from  Source datastore
+ * @param[in]  to    Destination datastore
  * @retval     0     OK
  * @retval    -1     Error
   */
 int 
-xmldb_copy(clixon_handle h, 
-           const char   *from, 
+xmldb_copy(clixon_handle h,
+           const char   *from,
            const char   *to)
 {
-    int                 retval = -1;
-    char               *fromfile = NULL;
-    char               *tofile = NULL;
-    db_elmnt           *de1 = NULL; /* from */
-    db_elmnt           *de2 = NULL; /* to */
-    db_elmnt            de0 = {0,};
-    cxobj              *x1 = NULL;  /* from */
-    cxobj              *x2 = NULL;  /* to */
+    int         retval = -1;
+    char       *fromfile = NULL;
+    char       *tofile = NULL;
+    db_elmnt   *de1 = NULL; /* from */
+    db_elmnt   *de2 = NULL; /* to */
+    db_elmnt    de0 = {0,};
+    cxobj      *x1 = NULL;  /* from */
+    cxobj      *x2 = NULL;  /* to */
+    char       *fromdir = NULL;
+    char       *todir = NULL;
+    char       *subdir = NULL;
+    struct stat st = {0,};
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %s", __FUNCTION__, from, to);
+    clixon_debug(CLIXON_DBG_DATASTORE, "%s %s", from, to);
     /* XXX lock */
-    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
-        /* Copy in-memory cache */
-        /* 1. "to" xml tree in x1 */
-        if ((de1 = clicon_db_elmnt_get(h, from)) != NULL)
-            x1 = de1->de_xml;
-        if ((de2 = clicon_db_elmnt_get(h, to)) != NULL)
-            x2 = de2->de_xml;
-        if (x1 == NULL && x2 == NULL){
-            /* do nothing */
-        }
-        else if (x1 == NULL){  /* free x2 and set to NULL */
-            xml_free(x2);
-            x2 = NULL;
-        }
-        else  if (x2 == NULL){ /* create x2 and copy from x1 */
-            if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
+    /* Copy in-memory cache */
+    /* 1. "to" xml tree in x1 */
+    if ((de1 = clicon_db_elmnt_get(h, from)) != NULL)
+        x1 = de1->de_xml;
+    if ((de2 = clicon_db_elmnt_get(h, to)) != NULL)
+        x2 = de2->de_xml;
+    if (x1 == NULL && x2 == NULL){
+        /* do nothing */
+    }
+    else if (x1 == NULL){  /* free x2 and set to NULL */
+        xml_free(x2);
+        x2 = NULL;
+    }
+    else  if (x2 == NULL){ /* create x2 and copy from x1 */
+        if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
+            goto done;
+        xml_flag_set(x2, XML_FLAG_TOP);
+        if (xml_copy(x1, x2) < 0) 
+            goto done;
+    }
+    else{ /* copy x1 to x2 */
+        xml_free(x2);
+        if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
+            goto done;
+        xml_flag_set(x2, XML_FLAG_TOP);
+        if (xml_copy(x1, x2) < 0) 
+            goto done;
+    }
+    /* always set cache although not strictly necessary in case 1
+     * above, but logic gets complicated due to differences with
+     * de and de->de_xml */
+    if (de2)
+        de0 = *de2;
+    de0.de_xml = x2; /* The new tree */
+    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
+        if (xmldb_db2subdir(h, to, &subdir) < 0)
+            goto done;
+        if (stat(subdir, &st) < 0){
+            if (mkdir(subdir, S_IRWXU|S_IRGRP|S_IWGRP|S_IROTH|S_IXOTH) < 0){
+                clixon_err(OE_UNIX, errno, "mkdir(%s)", subdir);
                 goto done;
-            xml_flag_set(x2, XML_FLAG_TOP);
-            if (xml_copy(x1, x2) < 0) 
-                goto done;
+            }
         }
-        else{ /* copy x1 to x2 */
-            xml_free(x2);
-            if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
-                goto done;
-            xml_flag_set(x2, XML_FLAG_TOP);
-            if (xml_copy(x1, x2) < 0) 
-                goto done;
-        }
-        /* always set cache although not strictly necessary in case 1
-         * above, but logic gets complicated due to differences with
-         * de and de->de_xml */
-        if (de2)
-            de0 = *de2;
-        de0.de_xml = x2; /* The new tree */
     }
     clicon_db_elmnt_set(h, to, &de0);
-
-    /* Copy the files themselves (above only in-memory cache) */
+    /* Copy the files themselves (above only in-memory cache)
+     * Alt, dump the cache to file
+     */
     if (xmldb_db2file(h, from, &fromfile) < 0)
         goto done;
     if (xmldb_db2file(h, to, &tofile) < 0)
         goto done;
     if (clicon_file_copy(fromfile, tofile) < 0)
         goto done;
+    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")) {
+        if (xmldb_db2subdir(h, from, &fromdir) < 0)
+            goto done;
+        if (xmldb_db2subdir(h, to, &todir) < 0)
+            goto done;
+        if (clicon_dir_copy(fromdir, todir) < 0)
+            goto done;
+    }
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_DATASTORE, "retval:%d", retval);
+    if (subdir)
+        free(subdir);
+    if (fromdir)
+        free(fromdir);
+    if (todir)
+        free(todir);
     if (fromfile)
         free(fromfile);
     if (tofile)
@@ -265,7 +406,7 @@ xmldb_lock(clixon_handle h,
     de0.de_id = id;
     gettimeofday(&de0.de_tv, NULL);
     clicon_db_elmnt_set(h, db, &de0);
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s: locked by %u",  db, id);
+    clixon_debug(CLIXON_DBG_DATASTORE, "%s: locked by %u",  db, id);
     return 0;
 }
 
@@ -287,6 +428,7 @@ xmldb_unlock(clixon_handle h,
         de->de_id = 0;
         memset(&de->de_tv, 0, sizeof(struct timeval));
         clicon_db_elmnt_set(h, db, de);
+
     }
     return 0;
 }
@@ -331,7 +473,7 @@ xmldb_unlock_all(clixon_handle h,
  *
  * @param[in] h   Clixon handle
  * @param[in] db  Database
- * @retval    >0  Session id of locker
+ * @retval   >0   Session id of locker
  * @retval    0   Not locked
  * @retval   -1   Error
  */
@@ -384,12 +526,11 @@ xmldb_exists(clixon_handle h,
     char               *filename = NULL;
     struct stat         sb;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
     if (lstat(filename, &sb) < 0)
         retval = 0;
-
     else{
         if (sb.st_size == 0)
             retval = 0;
@@ -397,6 +538,7 @@ xmldb_exists(clixon_handle h,
             retval = 1;
     }
  done:
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (filename)
         free(filename);
     return retval;
@@ -421,39 +563,75 @@ xmldb_clear(clixon_handle h,
             xml_free(xt);
             de->de_xml = NULL;
         }
+        de->de_modified = 0;
+        de->de_id = 0;
+        memset(&de->de_tv, 0, sizeof(struct timeval));
     }
     return 0;
 }
 
-/*! Delete database, clear cache if any. Remove file 
+/*! Delete database, clear cache if any. Remove file and dir
  *
  * @param[in]  h   Clixon handle
  * @param[in]  db  Database
  * @retval     0   OK
  * @retval    -1   Error
-
- * @note  Datastore is not actually deleted so that a backend after dropping priviliges can re-create it
+ * @note Datastores / dirs are not actually deleted so that a backend after dropping priviliges
+ *       can re-create them
  */
 int
 xmldb_delete(clixon_handle h,
              const char   *db)
 {
-    int                 retval = -1;
-    char               *filename = NULL;
-    struct stat         sb;
+    int            retval = -1;
+    char          *filename = NULL;
+    struct stat    st = {0,};
+    cbuf          *cb = NULL;
+    char          *subdir = NULL;
+    struct dirent *dp = NULL;
+    int            ndp;
+    int            i;
+    char          *regexp = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if (xmldb_clear(h, db) < 0)
         goto done;
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
-    if (lstat(filename, &sb) == 0)
+    if (lstat(filename, &st) == 0)
         if (truncate(filename, 0) < 0){
             clixon_err(OE_DB, errno, "truncate %s", filename);
             goto done;
         }
+    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
+        if (xmldb_db2subdir(h, db, &subdir) < 0)
+            goto done;
+        if (stat(subdir, &st) == 0){
+            if ((ndp = clicon_file_dirent(subdir, &dp, regexp, S_IFREG)) < 0)
+                goto done;
+            if ((cb = cbuf_new()) == NULL){
+                clixon_err(OE_XML, errno, "cbuf_new");
+                goto done;
+            }
+            for (i = 0; i < ndp; i++){
+                cbuf_reset(cb);
+                cprintf(cb, "%s/%s", subdir, dp[i].d_name);
+                if (truncate(cbuf_get(cb), 0) < 0){
+                    clixon_err(OE_DB, errno, "truncate %s", filename);
+                    goto done;
+                }
+            }
+        }
+    }
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    if (dp)
+        free(dp);
+    if (cb)
+        cbuf_free(cb);
+    if (subdir)
+        free(subdir);
     if (filename)
         free(filename);
     return retval;
@@ -470,17 +648,29 @@ int
 xmldb_create(clixon_handle h,
              const char   *db)
 {
-    int                 retval = -1;
-    char               *filename = NULL;
-    int                 fd = -1;
-    db_elmnt           *de = NULL;
-    cxobj              *xt = NULL;
+    int         retval = -1;
+    char       *filename = NULL;
+    int         fd = -1;
+    db_elmnt   *de = NULL;
+    cxobj      *xt = NULL;
+    char       *subdir = NULL;
+    struct stat st = {0,};
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, db);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
         if ((xt = de->de_xml) != NULL){
             xml_free(xt);
             de->de_xml = NULL;
+        }
+    }
+    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
+        if (xmldb_db2subdir(h, db, &subdir) < 0)
+            goto done;
+        if (stat(subdir, &st) < 0){
+            if (mkdir(subdir, S_IRWXU|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH) < 0){
+                clixon_err(OE_UNIX, errno, "mkdir(%s)", subdir);
+                goto done;
+            }
         }
     }
     if (xmldb_db2file(h, db, &filename) < 0)
@@ -489,8 +679,11 @@ xmldb_create(clixon_handle h,
         clixon_err(OE_UNIX, errno, "open(%s)", filename);
         goto done;
     }
-   retval = 0;
+    retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    if (subdir)
+        free(subdir);
     if (filename)
         free(filename);
     if (fd != -1)
@@ -524,6 +717,7 @@ xmldb_db_reset(clixon_handle h,
  * @param[in]  h    Clixon handle
  * @param[in]  db   Database name
  * @retval     xml  XML cached tree or NULL
+ * @see xmldb_get_cache  Read from store if miss
  */
 cxobj *
 xmldb_cache_get(clixon_handle h,
@@ -559,6 +753,30 @@ xmldb_modified_get(clixon_handle h,
     return de->de_modified;
 }
 
+/*! Set modified flag from datastore
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  db    Database name
+ * @param[in]  value 0 or 1
+ * @retval     0     OK
+ * @retval    -1     Error (datastore does not exist)
+ * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
+ */
+int
+xmldb_modified_set(clixon_handle h,
+                   const char   *db,
+                   int           value)
+{
+    db_elmnt *de;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
+    }
+    de->de_modified = value;
+    return 0;
+}
+
 /*! Get empty flag from datastore (the datastore was empty ON LOAD)
  *
  * @param[in]  h     Clixon handle
@@ -580,18 +798,62 @@ xmldb_empty_get(clixon_handle h,
     return de->de_empty;
 }
 
-/*! Set modified flag from datastore
+/*! Set empty flag from datastore (the datastore was empty ON LOAD)
  *
  * @param[in]  h     Clixon handle
  * @param[in]  db    Database name
  * @param[in]  value 0 or 1
  * @retval     0     OK
  * @retval    -1     Error (datastore does not exist)
- * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
- * @note This only works if db cache is used,...
  */
 int
-xmldb_modified_set(clixon_handle h,
+xmldb_empty_set(clixon_handle h,
+                const char   *db,
+                int           value)
+{
+    db_elmnt *de;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
+    }
+    de->de_empty = value;
+    return 0;
+}
+
+/*! Get volatile flag of datastore cache
+ *
+ * Whether to sync cache to disk on every update (ie xmldb_put)
+ * @param[in]  h     Clixon handle
+ * @param[in]  db    Database name
+ * @retval     1     Db was empty on load
+ * @retval     0     Db was not empty on load
+ * @retval    -1     Error (datastore does not exist)
+ */
+int
+xmldb_volatile_get(clixon_handle h,
+                   const char   *db)
+{
+    db_elmnt *de;
+
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
+        return -1;
+    }
+    return de->de_volatile;
+}
+
+/*! Set datastore status of datastore cache
+ *
+ * Whether to sync cache to disk on every update (ie xmldb_put)
+ * @param[in]  h     Clixon handle
+ * @param[in]  db    Database name
+ * @param[in]  value 0 or 1
+ * @retval     0     OK
+ * @retval    -1     Error (datastore does not exist)
+ */
+int
+xmldb_volatile_set(clixon_handle h,
                    const char   *db,
                    int           value)
 {
@@ -601,7 +863,7 @@ xmldb_modified_set(clixon_handle h,
         clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
         return -1;
     }
-    de->de_modified = value;
+    de->de_volatile = value;
     return 0;
 }
 
@@ -631,6 +893,8 @@ xmldb_print(clixon_handle h,
     }
     retval = 0;
  done:
+    if (keys)
+        free(keys);
     return retval;
 }
 
@@ -678,4 +942,119 @@ xmldb_rename(clixon_handle h,
     if (old)
         free(old);
     return retval;
+}
+
+/*! Given a datastore, populate its cache with yang binding and default values
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  db     Name of database to search in (filename including dir path
+ * @retval     1      OK
+ * @retval     0      YANG assigment and default assignment not made
+ * @retval    -1      General error, check specific clicon_errno, clicon_suberrno
+ * @see xmldb_get_cache  Consider using this instead
+ */
+int
+xmldb_populate(clixon_handle h,
+               const char   *db)
+{
+    int        retval = -1;
+    cxobj     *x;
+    yang_stmt *yspec;
+    int        ret;
+
+    if ((x = xmldb_cache_get(h, db)) == NULL){
+        clixon_err(OE_XML, 0, "XML cache not found");
+        goto done;
+    }
+    yspec = clicon_dbspec_yang(h);
+    if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, NULL)) < 0)
+        goto done;
+    if (ret == 1){
+        /* Add default global values (to make xpath below include defaults) */
+        if (xml_global_defaults(h, x, NULL, "/", yspec, 0) < 0)
+            goto done;
+        /* Add default recursive values */
+        if (xml_default_recurse(x, 0, 0) < 0)
+            goto done;
+    }
+    retval = ret;
+ done:
+    return retval;
+}
+
+/*! Upgrade datastore from original non-multi to multi/split mode
+ *
+ * This is for upgrading the datastores on startup using CLICON_XMLDB_MULTI
+ * (1) If <db>.d/0.xml does not exist AND
+ * (2) <db>_db does exist and is a regular file
+ * (3) THEN copy file from <db>_db to <db>.d/0.xml
+ * @param[in]  h   Clixon handle
+ * @param[in]  db  Datastore
+ */
+int
+xmldb_multi_upgrade(clixon_handle h,
+                    const char   *db)
+{
+    int         retval = -1;
+    char       *fromfile = NULL;
+    char       *tofile = NULL;
+    struct stat st = {0,};
+
+    if (xmldb_db2file1(h, db, 1, &tofile) < 0)
+        goto done;
+    if (stat(tofile, &st) < 0 && errno == ENOENT) {
+        /* db.d/0.xml does not exist */
+        if (xmldb_create(h, db) < 0)
+            goto done;
+        if (xmldb_db2file1(h, db, 0, &fromfile) < 0)
+            goto done;
+        if (stat(fromfile, &st) == 0 && S_ISREG(st.st_mode)){
+            if (clicon_file_copy(fromfile, tofile) < 0)
+                goto done;
+        }
+    }
+    retval = 0;
+ done:
+    if (fromfile)
+        free(fromfile);
+    if (tofile)
+        free(tofile);
+    return retval;
+}
+
+/*! Get system-only config data by calling user callback
+ *
+ * @param[in]     h       Clixon handle
+ * @param[in]     xpath   XPath selection, may be used to filter early
+ * @param[in]     nsc     XML Namespace context for xpath
+ * @param[in,out] xret    Existing XML tree, merge x into this, or rpc-error
+ * @retval        1       OK
+ * @retval        0       Statedata callback failed (error in xret)
+ * @retval       -1       Error (fatal)
+ */
+int
+xmldb_system_only_config(clixon_handle h,
+                         const char   *xpath,
+                         cvec         *nsc,
+                         cxobj       **xret)
+{
+    int        retval = -1;
+    yang_stmt *yspec;
+    int        ret;
+
+    clixon_debug(CLIXON_DBG_BACKEND, "");
+    if ((yspec = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
+    }
+    if ((ret = clixon_plugin_system_only_all(h, yspec, nsc, (char*)xpath, xret)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    retval = 1; /* OK */
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }

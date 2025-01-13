@@ -126,13 +126,13 @@ function testrun()
 
     new "get config"
     if [ -z "$config" ]; then
-        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get-config></rpc>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>$"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">explicit</with-defaults></get-config></rpc>" "^<rpc-reply $DEFAULTNS><data/></rpc-reply>$"
     else
-        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get-config></rpc>" "^<rpc-reply $DEFAULTNS><data>$config</data></rpc-reply>$"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">explicit</with-defaults></get-config></rpc>" "^<rpc-reply $DEFAULTNS><data>$config</data></rpc-reply>$"
     fi
 
     new "get state"
-    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get></rpc>" "^<rpc-reply $DEFAULTNS><data>$state</data></rpc-reply>$"
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">explicit</with-defaults></get></rpc>" "^<rpc-reply $DEFAULTNS><data>$state</data></rpc-reply>$"
 }
 
 new "test params: -f $cfg"

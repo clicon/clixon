@@ -103,6 +103,23 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include "cli_autocli.h"
 #include "cli_generate.h"
 
+/*! mount helper
+ *
+ * @param[in] yspec
+ * @retval    name   First name ib cvec
+ */
+static char*
+cli_get_mntpoint(yang_stmt *yspec)
+{
+    cvec   *cvv = NULL;
+    cg_var *cv = NULL;
+
+    if ((cvv = yang_cvec_get(yspec)) != NULL &&
+        (cv = cvec_i(cvv, 0)) != NULL)
+        return cv_name_get(cv);
+    return NULL;
+}
+
 /*! Create cligen variable expand entry with api-pathfmt format string as argument
  *
  * Add api-fmt as first argument to callback, eg:
@@ -134,10 +151,11 @@ cli_expand_var_generate(clixon_handle h,
     char      *api_path_fmt = NULL;
     int        extvalue = 0;
     yang_stmt *yspec;
-    cg_var    *cv = NULL;
+    char      *mntpoint = NULL;
 
-    if ((yspec = ys_spec(ys)) != NULL)
-        cv = yang_cv_get(yspec);
+    if ((yspec = ys_spec(ys)) != NULL){
+        mntpoint = cli_get_mntpoint(yspec);
+    }
     if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
         goto done;
     if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL)
@@ -152,8 +170,8 @@ cli_expand_var_generate(clixon_handle h,
     cprintf(cb, " %s(\"candidate\",\"%s\"",
             GENERATE_EXPAND_XMLDB,
             api_path_fmt);
-    if (cv){     /* Add optional mountpoint */
-        cprintf(cb, ",\"%s%s\"", MTPOINT_PREFIX, cv_string_get(cv));
+    if (mntpoint){     /* Add optional mountpoint */
+        cprintf(cb, ",\"%s%s\"", MTPOINT_PREFIX, mntpoint);
     }
     cprintf(cb, ")>");
     retval = 1;
@@ -184,15 +202,16 @@ cli_callback_generate(clixon_handle h,
     int        retval = -1;
     char      *api_path_fmt = NULL;
     yang_stmt *yspec;
-    cg_var    *cv = NULL;
+    char      *mntpoint = NULL;
 
-    if ((yspec = ys_spec(ys)) != NULL)
-        cv = yang_cv_get(yspec);
+    if ((yspec = ys_spec(ys)) != NULL){
+        mntpoint = cli_get_mntpoint(yspec);
+    }
     if (yang2api_path_fmt(ys, 0, &api_path_fmt) < 0)
         goto done;
     cprintf(cb, ",%s(\"%s\"", GENERATE_CALLBACK, api_path_fmt);
-    if (cv){     /* Add optional mountpoint */
-        cprintf(cb, ",\"%s%s\"", MTPOINT_PREFIX, cv_string_get(cv));
+    if (mntpoint){     /* Add optional mountpoint */
+        cprintf(cb, ",\"%s%s\"", MTPOINT_PREFIX, mntpoint);
     }
     cprintf(cb, ")");
     retval = 0;
@@ -246,6 +265,107 @@ yang2cli_print_alias(cbuf         *cb,
     return retval;
 }
 
+/*! Use cligen cmd name to encode info: <tag>-<domain>-<module>-<id>>
+ *
+ * @param[out] cb     CLIgen buf
+ * @param[in]  delim  Delimiter string that may not occur in any of the elements (except the last)
+ * @param[in]  tag    Context-specific tag, eg "grouping"
+ * @param[in]  domain Domain name
+ * @param[in]  spec   yspec name
+ * @param[in]  module Name of module (in domain context)
+ * @param[in]  id     Top-level nodeid (schema-id)
+ * @retval     0      Ok
+ * @retval    -1      Error
+ */
+int
+yang2cli_cmd_encode(cbuf       *cb,
+                    const char *delim,
+                    char       *tag,
+                    char       *domain,
+                    char       *spec,
+                    char       *module,
+                    char       *id)
+{
+    if (tag == NULL || domain == NULL || spec == NULL || module == NULL || id == NULL){
+        clixon_err(OE_YANG, EINVAL, "tag, domain, module or id is NULL");
+        return -1;
+    }
+    cprintf(cb, "%s", tag);
+    cprintf(cb, "%s%s", delim, domain);
+    cprintf(cb, "%s%s", delim, spec);
+    cprintf(cb, "%s%s", delim, module);
+    cprintf(cb, "%s%s", delim, id);
+    return 0;
+}
+
+/*! Use cligen cmd name to decode info: <tag>-<domain>-<module>-<id>>
+ *
+ * @param[in]  cmd    CLIgen cmd string
+ * @param[in]  delim  Delimiter string that may not occur in any of the elements (except the last)
+ * @param[out] tag    Context-specific tag, eg "grouping"
+ * @param[out] domain Domain name
+ * @param[out] spec   Yspec name
+ * @param[out] module Name of module (in domain context)
+ * @param[out] id     Top-level nodeid (schema-id)
+ * @retval     0      Ok
+ * @retval    -1      Error
+ */
+int
+yang2cli_cmd_decode(char       *cmd,
+                    const char *delim,
+                    char      **tag,
+                    char      **domain,
+                    char      **spec,
+                    char      **modname,
+                    char      **id)
+{
+    int   retval = -1;
+    char *s1;
+    char *s2 = NULL;
+
+    if (cmd == NULL || delim == NULL || tag == NULL){
+        clixon_err(OE_YANG, EINVAL, "cmd, delim or tag is NULL");
+        goto done;
+    }
+    if ((s2 = strdup(cmd)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+    *tag = s2;
+    s1 = s2;
+    if ((s2 = strstr(s1, delim)) == NULL)
+        goto ok;
+    *s2 = '\0';
+    s2 += strlen(delim);
+    if (domain)
+        *domain = s2;
+    s1 = s2;
+    if ((s2 = strstr(s1, delim)) == NULL)
+        goto ok;
+    *s2 = '\0';
+    s2 += strlen(delim);
+    if (spec)
+        *spec = s2;
+    s1 = s2;
+    if ((s2 = strstr(s1, delim)) == NULL)
+        goto ok;
+    *s2 = '\0';
+    s2 += strlen(delim);
+    if (modname)
+        *modname = s2;
+    s1 = s2;
+    if ((s2 = strstr(s1, delim)) == NULL)
+        goto ok;
+    *s2 = '\0';
+    s2 += strlen(delim);
+    if (id)
+        *id = s2;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Generate identityref statements for CLI variables
  *
  * @param[in]  ys        Yang statement
@@ -291,8 +411,6 @@ yang2cli_var_identityref(yang_stmt *ys,
             if (nodeid_split(cv_name_get(cv), &prefix, &id) < 0)
                 goto done;
             /* Translate from module-name(prefix) to global prefix
-             * This is really a kludge for true identityref prefix handling
-             * IDENTITYREF_KLUDGE 
              * This is actually quite complicated: the cli needs to generate
              * a netconf statement with correct xmlns binding
              */
@@ -485,7 +603,8 @@ yang2cli_var_sub(clixon_handle h,
     int           retval = -1;
     char         *type;
     yang_stmt    *yi = NULL;
-    int           i = 0;
+    int           i;
+    int           inext;
     int           j;
     const char   *cvtypestr;
     char         *arg;
@@ -505,8 +624,8 @@ yang2cli_var_sub(clixon_handle h,
         if (strcmp(type, "enumeration") == 0 || strcmp(type, "bits") == 0){
             cprintf(cb, " choice:");
             i = 0;
-            yi = NULL;
-            while ((yi = yn_each(ytype, yi)) != NULL){
+            inext = 0;
+            while ((yi = yn_iter(ytype, &inext)) != NULL){
                 if (yang_keyword_get(yi) != Y_ENUM && yang_keyword_get(yi) != Y_BIT)
                     continue;
                 if (i)
@@ -631,15 +750,17 @@ yang2cli_var_union(clixon_handle h,
                    cbuf         *cb)
 {
     int        retval = -1;
-    yang_stmt *ytsub = NULL;
+    yang_stmt *ytsub;
     int        i;
+    int        inext;
 
     i = 0;
+    inext = 0;
     /* Loop over all sub-types in the resolved union type, note these are
      * not resolved types (unless they are built-in, but the resolve call is
      * made in the union_one call.
      */
-    while ((ytsub = yn_each(ytype, ytsub)) != NULL){
+    while ((ytsub = yn_iter(ytype, &inext)) != NULL){
         if (yang_keyword_get(ytsub) != Y_TYPE)
             continue;
         if (i++)
@@ -954,6 +1075,7 @@ yang2cli_container(clixon_handle h,
     int           compress = 0;
     yang_stmt    *ymod = NULL;
     int           extvalue = 0;
+    int           inext;
     int           ret;
 
     if (ys_real_module(ys, &ymod) < 0)
@@ -983,7 +1105,6 @@ yang2cli_container(clixon_handle h,
             cprintf(cb, ", hide");
         }
         cprintf(cb, ", act-container;{\n");
-
     }
     /* Is schema mount-point? */
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
@@ -993,8 +1114,8 @@ yang2cli_container(clixon_handle h,
             cprintf(cb, "%*s%s", (level+1)*3, "", "@mountpoint;\n");
         }
     }
-    yc = NULL;
-    while ((yc = yn_each(ys, yc)) != NULL)
+    inext = 0;
+    while ((yc = yn_iter(ys, &inext)) != NULL)
         if (yang2cli_stmt(h, yc, level+1, cb) < 0)
             goto done;
     if (!compress)
@@ -1033,6 +1154,7 @@ yang2cli_list(clixon_handle h,
     int           last_key = 0;
     int           exist = 0;
     int           keynr = 0;
+    int           inext;
 
     cprintf(cb, "%*s%s", level*3, "", yang_argument_get(ys));
     if ((yd = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL){
@@ -1081,8 +1203,8 @@ yang2cli_list(clixon_handle h,
         keynr++;
     }
     cprintf(cb, "{\n");
-    yc = NULL;
-    while ((yc = yn_each(ys, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(ys, &inext)) != NULL) {
         /*  cvk is a cvec of strings containing variable names
             yc is a leaf that may match one of the values of cvk.
         */
@@ -1131,11 +1253,12 @@ yang2cli_choice(clixon_handle h,
                 int           level,
                 cbuf         *cb)
 {
-    int           retval = -1;
-    yang_stmt    *yc;
+    int        retval = -1;
+    yang_stmt *yc;
+    int        inext;
 
-    yc = NULL;
-    while ((yc = yn_each(ys, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(ys, &inext)) != NULL) {
         switch (yang_keyword_get(yc)){
         case Y_CASE:
             if (yang2cli_stmt(h, yc, level+2, cb) < 0)
@@ -1156,20 +1279,6 @@ yang2cli_choice(clixon_handle h,
     return retval;
 }
 
-/*! Generate clispec for all modules in a grouping
- *
- * Called in cli main function for top-level yangs. But may also be called dynamically for
- * mountpoints.
- * @param[in]  h         Clixon handle
- * @param[in]  ys        Top-level Yang statement
- * @param[in]  treename  Name of tree
- * @retval     0         OK
- * @retval    -1         Error
- * @note Tie-break of same top-level symbol: prefix is NYI
- * @see yang2cli_yspec  for original
- */
-static int yang2cli_grouping(clixon_handle h, yang_stmt *ys, char *treename);
-
 /*! Generate CLI code for Yang uses statement
  *
  * @param[in]  h     Clixon handle
@@ -1178,6 +1287,7 @@ static int yang2cli_grouping(clixon_handle h, yang_stmt *ys, char *treename);
  * @param[out] cb    Buffer where cligen code is written
  * @retval     0     OK
  * @retval    -1     Error
+ * @note  This function is called only if autcli grouping_treeref
  */
 static int
 yang2cli_uses(clixon_handle h,
@@ -1193,7 +1303,6 @@ yang2cli_uses(clixon_handle h,
     cbuf      *cbtree = NULL;
     char      *api_path_fmt = NULL;
     yang_stmt *yp;
-    int        ret;
 
     if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
         goto done;
@@ -1206,27 +1315,23 @@ yang2cli_uses(clixon_handle h,
     if ((cbtree = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
-    }
-    /* prefix is not globally unique, need namespace */
+    }    /* prefix is not globally unique, need namespace */
     if ((ns = yang_find_mynamespace(ygrouping)) == NULL)
         goto done;
-    cprintf(cbtree, "grouping-%s-%s", ns, id);
-    if (cligen_ph_find(cli_cligen(h), cbuf_get(cbtree)) == NULL){
-        /* No such tree, generate it */
-        if ((ret = yang2cli_grouping(h, ygrouping, cbuf_get(cbtree))) < 0)
-            goto done;
-        if (ret == 0) /* tree empty */
-            goto ok;
-    }
+    if (yang2cli_cmd_encode(cbtree, AUTOCLI_CMD_DELIM, "grouping",
+                            yang_argument_get(ys_domain(ygrouping)),
+                            yang_argument_get(ys_spec(ygrouping)),
+                            yang_argument_get(ys_module(ygrouping)),
+                            id) < 0)
+        goto done;
     cprintf(cb, "%*s@%s", level*3, "", cbuf_get(cbtree));
     /* get api-path to parent, do not include "uses" argument since it is replaced */
     yp = yang_parent_get(ys);
     if (yang2api_path_fmt(yp, 0, &api_path_fmt) < 0)
         goto done;
-    /* This adds a "prepend" callback with decendant argument */
+    /* This adds a "prepend" callback with descendant argument */
     cprintf(cb, ",%s(\"%s\")", GROUPING_CALLBACK, api_path_fmt);
     cprintf(cb, ";\n");
- ok:
     retval = 0;
  done:
     if (api_path_fmt)
@@ -1260,17 +1365,18 @@ yang2cli_stmt(clixon_handle h,
     int        treeref_state = 0;
     int        grouping_treeref = 0;
     int        extvalue = 0;
+    int        inext;
 
     if (ys == NULL){
         clixon_err(OE_YANG, EINVAL, "No yang spec");
         goto done;
     }
     if (yang_find(ys, Y_STATUS, "obsolete") != NULL){
-        clixon_debug(CLIXON_DBG_DETAIL, "%s obsolete: %s %s, skipped", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "obsolete: %s %s, skipped", yang_argument_get(ys), yang_argument_get(ys_module(ys)));
         goto ok;
     }
     if (yang_find(ys, Y_STATUS, "deprecated") != NULL){
-        clixon_debug(CLIXON_DBG_DETAIL, "%s deprecated: %s %s", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "deprecated: %s %s", yang_argument_get(ys), yang_argument_get(ys_module(ys)));
     }
     /* Check if autocli skip */
     if (yang_extension_value(ys, "skip", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
@@ -1315,14 +1421,15 @@ yang2cli_stmt(clixon_handle h,
                 goto done;
             break;
         case Y_USES:
-            if (grouping_treeref && !cornercase && yang2cli_uses(h, ys, level, cb) < 0)
-                goto done;
+            if (grouping_treeref && !cornercase)
+                if (yang2cli_uses(h, ys, level, cb) < 0)
+                    goto done;
             break;
         case Y_CASE:
         case Y_SUBMODULE:
         case Y_MODULE:
-            yc = NULL;
-            while ((yc = yn_each(ys, yc)) != NULL)
+            inext = 0;
+            while ((yc = yn_iter(ys, &inext)) != NULL)
                 if (yang2cli_stmt(h, yc, level+1, cb) < 0)
                     goto done;
             break;
@@ -1445,8 +1552,10 @@ yang2cli_post(clixon_handle h,
         if ((yc = yang_find_datanode(yp, co->co_command)) == NULL){
 #if 1
             /* XXX In case of compress, look at next level */
-            yang_stmt *y = NULL;
-            while ((y = yn_each(yp, y)) != NULL){
+            yang_stmt *y;
+            int        inext = 0;
+
+            while ((y = yn_iter(yp, &inext)) != NULL){
                 if (yang_datanode(y)){
                     if ((yc = yang_find_datanode(y, co->co_command)) != NULL)
                         break;
@@ -1502,6 +1611,29 @@ yang2cli_post(clixon_handle h,
     return retval;
 }
 
+/*! Helper function: add parsetree header and add parsetree
+ */
+static int
+ph_add_set(cligen_handle h,
+           char         *treename,
+           parse_tree   *pt)
+{
+    int      retval = -1;
+    pt_head *ph;
+
+    if ((ph = cligen_ph_add(h, treename)) == NULL){
+        clixon_err(OE_UNIX, 0, "cligen_ph_add");
+        goto done;
+    }
+    if (cligen_ph_parsetree_set(ph, pt) < 0){
+        clixon_err(OE_UNIX, 0, "cligen_ph_parsetree_set");
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Generate clispec for all modules in a grouping
  *
  * Called in cli main function for top-level yangs. But may also be called dynamically for
@@ -1525,13 +1657,13 @@ yang2cli_grouping(clixon_handle      h,
     parse_tree     *pt0 = NULL;
     parse_tree     *pt = NULL;
     yang_stmt      *yc;
-    pt_head        *ph;
     cbuf           *cb = NULL;
     int             treeref_state = 0;
     char           *prefix;
     cg_obj         *co;
     int             config;
     int             i;
+    int             inext;
 
     if ((pt0 = pt_new()) == NULL){
         clixon_err(OE_UNIX, errno, "pt_new");
@@ -1543,23 +1675,28 @@ yang2cli_grouping(clixon_handle      h,
     }
     /* Traverse YANG, loop through all modules and generate CLI, inline of yang2cli_stmt */
     if (yang_find(ys, Y_STATUS, "obsolete") != NULL){
-        clixon_debug(CLIXON_DBG_DETAIL, "%s obsolete: %s %s, skipped", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "obsolete: %s %s, skipped", yang_argument_get(ys), yang_argument_get(ys_module(ys)));
         goto empty;
     }
     if (yang_find(ys, Y_STATUS, "deprecated") != NULL){
-        clixon_debug(CLIXON_DBG_DETAIL, "%s deprecated: %s %s", __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "deprecated: %s %s", yang_argument_get(ys), yang_argument_get(ys_module(ys)));
     }
     /* Only produce autocli for YANG non-config only if autocli-treeref-state is true */
     if (autocli_treeref_state(h, &treeref_state) < 0)
         goto done;
     if (treeref_state || yang_config(ys)){
-        yc = NULL;
-        while ((yc = yn_each(ys, yc)) != NULL)
+        inext = 0;
+        while ((yc = yn_iter(ys, &inext)) != NULL)
             if (yang2cli_stmt(h, yc, 1, cb) < 0)
                 goto done;
     }
-    if (cbuf_len(cb) == 0)
-        goto empty;
+    if (cbuf_len(cb) == 0){
+        /* Create empty tree */
+        if (ph_add_set(cli_cligen(h), treename, pt0) < 0)
+            goto done;
+        pt0 = NULL;
+        goto ok;
+    }
     /* Note Tie-break of same top-level symbol: prefix is NYI
      * Needs to move cligen_parse_str() call here instead of later
      */
@@ -1573,16 +1710,16 @@ yang2cli_grouping(clixon_handle      h,
     }
     /* Parse the buffer using cligen parser. load cli syntax */
     if (clispec_parse_str(cli_cligen(h), cbuf_get(cb), (char*)__FUNCTION__, NULL, pt, NULL) < 0){
-        fprintf(stderr, "%s\n", cbuf_get(cb));
+        clixon_err(OE_PLUGIN, 0, "%s", cbuf_get(cb));
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Generated auto-cli for grouping:%s",
-                 __FUNCTION__, yang_argument_get(ys));
+    clixon_debug(CLIXON_DBG_CLI, "Generated auto-cli for grouping:%s",
+                 yang_argument_get(ys));
     /* Add prefix: assume new are appended */
     for (i=0; i<pt_len_get(pt); i++){
         if ((co = pt_vec_i_get(pt, i)) != NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s command: %s",
-                         __FUNCTION__, co->co_command);
+            clixon_debug(CLIXON_DBG_CLI, "command: %s",
+                         co->co_command);
             co_prefix_set(co, prefix);
         }
     }
@@ -1599,8 +1736,8 @@ yang2cli_grouping(clixon_handle      h,
         clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
                    __FUNCTION__, treename, cbuf_get(cb));
     else
-        clixon_debug(CLIXON_DBG_DETAIL, "%s: Top-level cli-spec %s:\n%s",
-                     __FUNCTION__, treename, cbuf_get(cb));
+        clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "Top-level cli-spec %s:\n%s",
+                     treename, cbuf_get(cb));
     if (cligen_parsetree_merge(pt0, NULL, pt) < 0){
         clixon_err(OE_YANG, errno, "cligen_parsetree_merge");
         goto done;
@@ -1616,15 +1753,10 @@ yang2cli_grouping(clixon_handle      h,
     if (cligen_expandv_str2fn(pt0, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)
         goto done;
     /* Append cligen tree and name it */
-    if ((ph = cligen_ph_add(cli_cligen(h), treename)) == NULL){
-        clixon_err(OE_UNIX, 0, "cligen_ph_add");
+    if (ph_add_set(cli_cligen(h), treename, pt0) < 0)
         goto done;
-    }
-    if (cligen_ph_parsetree_set(ph, pt0) < 0){
-        clixon_err(OE_UNIX, 0, "cligen_ph_parsetree_set");
-        goto done;
-    }
     pt0 = NULL;
+ ok:
     retval = 1;
  done:
     if (pt)
@@ -1659,13 +1791,13 @@ yang2cli_yspec(clixon_handle      h,
     parse_tree     *pt0 = NULL;
     parse_tree     *pt = NULL;
     yang_stmt      *ymod;
-    pt_head        *ph;
     int             enable;
     cbuf           *cb = NULL;
     char           *prefix;
     cg_obj         *co;
     int             i;
     int             config;
+    int             inext;
 
     if ((pt0 = pt_new()) == NULL){
         clixon_err(OE_UNIX, errno, "pt_new");
@@ -1676,8 +1808,8 @@ yang2cli_yspec(clixon_handle      h,
         goto done;
     }
     /* Traverse YANG, loop through all modules and generate CLI */
-    ymod = NULL;
-    while ((ymod = yn_each(yspec, ymod)) != NULL){
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL){
         /* Filter module name according to cli_autocli.yang setting
          * Default is pass and ordering is significant
          */
@@ -1706,13 +1838,13 @@ yang2cli_yspec(clixon_handle      h,
             fprintf(stderr, "%s\n", cbuf_get(cb));
             goto done;
         }
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s Generated auto-cli for module:%s",
-                     __FUNCTION__, yang_argument_get(ymod));
+        clixon_debug(CLIXON_DBG_CLI, "Generated auto-cli for module:%s",
+                     yang_argument_get(ymod));
         /* Add prefix: assume new are appended */
         for (i=0; i<pt_len_get(pt); i++){
             if ((co = pt_vec_i_get(pt, i)) != NULL){
-                clixon_debug(CLIXON_DBG_DEFAULT, "%s command: %s",
-                             __FUNCTION__, co->co_command);
+                clixon_debug(CLIXON_DBG_CLI, "command: %s",
+                             co->co_command);
                 co_prefix_set(co, prefix);
             }
         }
@@ -1730,8 +1862,8 @@ yang2cli_yspec(clixon_handle      h,
             clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
                        __FUNCTION__, treename, cbuf_get(cb));
         else
-            clixon_debug(CLIXON_DBG_DETAIL, "%s: Top-level cli-spec %s:\n%s",
-                         __FUNCTION__, treename, cbuf_get(cb));
+            clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "Top-level cli-spec %s:\n%s",
+                         treename, cbuf_get(cb));
         if (cligen_parsetree_merge(pt0, NULL, pt) < 0){
             clixon_err(OE_YANG, errno, "cligen_parsetree_merge");
             goto done;
@@ -1747,14 +1879,8 @@ yang2cli_yspec(clixon_handle      h,
     if (cligen_expandv_str2fn(pt0, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)
         goto done;
     /* Append cligen tree and name it */
-    if ((ph = cligen_ph_add(cli_cligen(h), treename)) == NULL){
-        clixon_err(OE_UNIX, 0, "cligen_ph_add");
+    if (ph_add_set(cli_cligen(h), treename, pt0) < 0)
         goto done;
-    }
-    if (cligen_ph_parsetree_set(ph, pt0) < 0){
-        clixon_err(OE_UNIX, 0, "cligen_ph_parsetree_set");
-        goto done;
-    }
     pt0 = NULL;
 #if 0
     if (clicon_data_int_get(h, "autocli-print-debug") == 1){
@@ -1773,15 +1899,113 @@ yang2cli_yspec(clixon_handle      h,
     return retval;
 }
 
+/*! CLIgen wrap function for making treeref lookup: generate clispec tree from YANG
+ *
+ * This adds an indirection based on name and context
+ * If a yang and specific tree is created, the name of that tree is returned in namep,
+ * That tree is called something like mountpoint-<device-name>
+ * otherwise the generic name "mountpoint" is used.
+ * @param[in]  ch    CLIgen handle
+ * @param[in]  name  Base tree name
+ * @param[in]  cvt   Tokenized string: vector of tokens
+ * @param[in]  arg   Argument given when registering wrap function (maybe not needed?)
+ * @param[out] namep New (malloced) name
+ * @retval     1     New malloced name in namep
+ * @retval     0     No wrapper, use existing
+ * @retval    -1     Error
+ * @see yang2cli_container  where @mountpoint is added as a generic treeref causing this call
+ */
+int
+yang2cli_grouping_wrap(cligen_handle ch,
+                       char         *name,
+                       cvec         *cvt,
+                       void         *arg,
+                       char        **namep)
+{
+    int           retval = -1;
+    clixon_handle h;
+    yang_stmt    *ymnt;
+    yang_stmt    *ydomain;
+    yang_stmt    *yspec;
+    yang_stmt    *ymod;
+    yang_stmt    *ygrouping;
+    char         *tag = NULL;
+    char         *domain = NULL;
+    char         *spec = NULL;
+    char         *modname = NULL;
+    char         *grouping = NULL;
+    int           ret;
+
+    if (namep == NULL){
+        clixon_err(OE_UNIX, EINVAL, "Missing namep");
+        goto done;
+    }
+    h = cligen_userhandle(ch);
+    yspec = clicon_dbspec_yang(h);
+    if (yang2cli_cmd_decode(name, AUTOCLI_CMD_DELIM, &tag, &domain, &spec, &modname, &grouping) < 0)
+        goto done;
+    if (tag == NULL || strcmp(tag, "grouping") != 0)
+        goto ok;
+    if (cligen_ph_find(ch, name) != NULL){
+        *namep = strdup(name);
+        goto ok;
+    }
+    if (domain == NULL || spec == NULL || modname == NULL || grouping == NULL){
+        clixon_err(OE_YANG, 0, "yang2cli cmd label invalid format");
+        goto done;
+    }
+    ymnt = clixon_yang_mounts_get(h);
+    if ((ydomain = yang_find(ymnt, Y_DOMAIN, domain)) == NULL){
+        clixon_err(OE_YANG, 0, "yang2cli cmd label no ydomain %s", domain);
+        goto done;
+    }
+    if ((yspec = yang_find(ydomain, Y_SPEC, spec)) == NULL){
+        clixon_err(OE_YANG, 0, "yang2cli cmd label no yspec %s", spec);
+        goto done;
+    }
+    if ((ymod = yang_find(yspec, 0, modname)) == NULL){
+        clixon_err(OE_YANG, 0, "yang2cli cmd label no module %s", modname);
+        goto done;
+    }
+    if ((ygrouping = yang_find(ymod, Y_GROUPING, grouping)) == NULL)
+        goto ok;
+    if ((ret = yang2cli_grouping(h, ygrouping, name)) < 0)
+        goto done;
+    if (ret == 0){ /* tree empty */
+        clixon_err(OE_UNIX, 0, "Tree empty %s", name);
+        goto done;
+    }
+    *namep = strdup(name);
+ ok:
+    retval = 0;
+ done:
+    if (tag)
+        free(tag);
+    return retval;
+}
+
 /*! Init yang2cli
  *
  * Initialize CLIgen generation from YANG models.
- * Nothing now
- *
+ * Some logic around grouping-treeref: if enabled, then groupings are separate trees with lazy
+ * evaluation.  Only expanded when referenced, but need a callback. If one is not already installed.
  * @param[in]  h      Clixon handle
  */
 int
 yang2cli_init(clixon_handle h)
 {
-    return 0;
+    int                             retval = -1;
+    int                             grouping_treeref = 0;
+    cligen_tree_resolve_wrapper_fn *fn = NULL;
+
+    if (autocli_grouping_treeref(h, &grouping_treeref) < 0)
+        goto done;
+    if (grouping_treeref) {
+        cligen_tree_resolve_wrapper_get(cli_cligen(h), &fn, NULL);
+        if (fn == NULL)
+            cligen_tree_resolve_wrapper_set(cli_cligen(h), yang2cli_grouping_wrap, NULL);
+    }
+    retval = 0;
+ done:
+    return retval;
 }

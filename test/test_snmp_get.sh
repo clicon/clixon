@@ -68,6 +68,7 @@ cat <<EOF > $fstate
     <ifPromiscuousMode>true</ifPromiscuousMode>
     <ifCounterDiscontinuityTime>1234567890</ifCounterDiscontinuityTime>
     <ifStackStatus>active</ifStackStatus>
+    <bitTest>bit00 bit12 bit22 bit35</bitTest>
   </clixonExampleScalars>
   <clixonIETFWGTable>
     <clixonIETFWGEntry>
@@ -160,17 +161,20 @@ OID9="${MIB}.1.9.0"      # ifHCInOctets 4294967296
 OID10="${MIB}.1.10.0"    # ifPromiscuousMode true(1)
 OID11="${MIB}.1.11.0"    # ifCounterDiscontinuityTime 1234567890 TimeStamp
 OID12="${MIB}.1.12.0"    # ifStackStatus active(1)
-OID13="${MIB}.2.1"     # netSnmpIETFWGTable
-OID14="${MIB}.2.1.1"   # netSnmpIETFWGEntry
-OID15="${MIB}.2.1.1.1.42" # nsIETFWGName
-OID16="${MIB}.2.1.1.2.42" # nsIETFWGChair1
-OID17="${MIB}.2.1.1.3.42" # nsIETFWGChair2
-OID18="${MIB}.2.2"     # netSnmpHostsTable
-OID19="${MIB}.2.2.1.1.4.116.101.115.116" # netSnmpHostName
-OID20="${MIB}.2.2.1.2.4.116.101.115.116" # netSnmpHostAddressType
-OID21="${MIB}.2.2.1.3" # netSnmpHostAddress
-OID22="${MIB}.2.2.1.4" # netSnmpHostStorage
-OID23="${MIB}.2.2.1.5" # netSnmpHostRowStatus
+OID13="${MIB}.1.13.0"    # ifIpAddr
+OID14="${MIB}.1.14.0"    # bitTest bit00(0) bit12(12) bit22(22) bit35(35)
+
+OID15="${MIB}.2.1"     # netSnmpIETFWGTable
+OID16="${MIB}.2.1.1"   # netSnmpIETFWGEntry
+OID17="${MIB}.2.1.1.1.42" # nsIETFWGName
+OID18="${MIB}.2.1.1.2.42" # nsIETFWGChair1
+OID19="${MIB}.2.1.1.3.42" # nsIETFWGChair2
+OID20="${MIB}.2.2"     # netSnmpHostsTable
+OID21="${MIB}.2.2.1.1.4.116.101.115.116" # netSnmpHostName
+OID22="${MIB}.2.2.1.2.4.116.101.115.116" # netSnmpHostAddressType
+OID23="${MIB}.2.2.1.3" # netSnmpHostAddress
+OID24="${MIB}.2.2.1.4" # netSnmpHostStorage
+OID25="${MIB}.2.2.1.5" # netSnmpHostRowStatus
 
 NAME1="CLIXON-TYPES-MIB::clixonExampleInteger.0"
 NAME2="CLIXON-TYPES-MIB::clixonExampleSleeper.0"
@@ -184,17 +188,20 @@ NAME9="CLIXON-TYPES-MIB::ifHCInOctets.0"
 NAME10="CLIXON-TYPES-MIB::ifPromiscuousMode.0"
 NAME11="CLIXON-TYPES-MIB::ifCounterDiscontinuityTime.0"
 NAME12="CLIXON-TYPES-MIB::ifStackStatus.0"
-NAME13="CLIXON-TYPES-MIB::netSnmpIETFWGTable"
-NAME14="CLIXON-TYPES-MIB::netSnmpIETFWGEntry"
-NAME15="CLIXON-TYPES-MIB::nsIETFWGName"
-NAME16="CLIXON-TYPES-MIB::nsIETFWGChair1"
-NAME17="CLIXON-TYPES-MIB::nsIETFWGChair2"
-NAME18="CLIXON-TYPES-MIB::netSnmpHostsTable"
-NAME19="CLIXON-TYPES-MIB::netSnmpHostName"
-NAME20="CLIXON-TYPES-MIB::netSnmpHostAddressType"
-NAME21="CLIXON-TYPES-MIB::netSnmpHostAddress"
-NAME22="CLIXON-TYPES-MIB::netSnmpHostStorage"
-NAME23="CLIXON-TYPES-MIB::netSnmpHostRowStatus"
+NAME13="CLIXON-TYPES-MIB::ifIpAddr.0"
+NAME14="CLIXON-TYPES-MIB::bitTest.0"
+
+NAME15="CLIXON-TYPES-MIB::netSnmpIETFWGTable"
+NAME16="CLIXON-TYPES-MIB::netSnmpIETFWGEntry"
+NAME17="CLIXON-TYPES-MIB::nsIETFWGName"
+NAME18="CLIXON-TYPES-MIB::nsIETFWGChair1"
+NAME19="CLIXON-TYPES-MIB::nsIETFWGChair2"
+NAME20="CLIXON-TYPES-MIB::netSnmpHostsTable"
+NAME21="CLIXON-TYPES-MIB::netSnmpHostName"
+NAME22="CLIXON-TYPES-MIB::netSnmpHostAddressType"
+NAME23="CLIXON-TYPES-MIB::netSnmpHostAddress"
+NAME24="CLIXON-TYPES-MIB::netSnmpHostStorage"
+NAME25="CLIXON-TYPES-MIB::netSnmpHostRowStatus"
 
 new "$snmpget"
 
@@ -269,26 +276,30 @@ new "Get ifStackStatus"
 validate_oid $OID12 $OID12 "INTEGER" 1
 validate_oid $NAME12 $NAME12 "INTEGER" "active(1)"
 
+new "Get bitTest"
+validate_oid $OID14 $OID14 "Hex-STRING" "80 08 02 00 10"
+validate_oid $NAME14 $NAME14 "BITS" "80 08 02 00 10 bit00(0) bit12(12) bit22(22) bit35(35)"
+
 new "Get bulk OIDs"
 expectpart "$($snmpbulkget $OID1)" 0 "$OID2 = INTEGER: -1" "$OID3 = STRING: \"This is not default\"" "$OID4 = Timeticks: (12345) 0:02:03.45" "$OID5 = INTEGER: 48" "$OID6 = Gauge32: 123123123" "$OID7 = INTEGER: 3" "$OID8 = Counter32: 123456" "$OID9 = Counter64: 4294967296" "$OID10 = INTEGER: 1" "$OID11 = Timeticks: (1234567890) 142 days, 21:21:18.90"
 
 new "Test SNMP getnext netSnmpIETFWGTable"
-validate_oid $OID15 $OID15 "INTEGER" 42
+validate_oid $OID17 $OID17 "INTEGER" 42
 
 new "Test SNMP get nsIETFWGName"
-validate_oid $OID15 $OID15 "INTEGER" 42
+validate_oid $OID17 $OID17 "INTEGER" 42
 
 new "Test SNMP getnext nsIETFWGName"
-expectpart "$($snmpgetnext $OID15)" 0 "Hex-STRING: 4E 61 6D 65 31 00"
+expectpart "$($snmpgetnext $OID17)" 0 "STRING: \"Name1\""
 
 new "Test SNMP getnext netSnmpHostsTable"
-expectpart "$($snmpgetnext $OID18)" 0 "$OID19 = Hex-STRING: 74 65 73 74 00"
+expectpart "$($snmpgetnext $OID20)" 0 "$OID21 = STRING: \"test\""
 
 new "Test SNMP get netSnmpHostName"
-expectpart "$($snmpget $OID19)" 0 "$OID19 = Hex-STRING: 74 65 73 74 00"
+expectpart "$($snmpget $OID21)" 0 "$OID21 = STRING: \"test\""
 
 new "Test SNMP getnext netSnmpHostName"
-expectpart "$($snmpgetnext $OID19)" 0 "$OID20 = INTEGER: 1"
+expectpart "$($snmpgetnext $OID21)" 0 "$OID22 = INTEGER: 1"
 
 new "Negative test: Try to set object"
 expectpart "$($snmpset $OID1 i 4 2> /dev/null)" 2 "^$"

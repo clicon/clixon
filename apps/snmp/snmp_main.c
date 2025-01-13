@@ -68,6 +68,8 @@
 
 #include "snmp_lib.h"
 #include "snmp_register.h"
+#include "snmp_stream.h"
+#include "snmp_handler.h"
 
 /* Command line options to be passed to getopt(3) */
 #define SNMP_OPTS "hVD:f:l:C:o:z"
@@ -107,11 +109,11 @@ clixon_snmp_sig_term(int arg)
 static int
 snmp_terminate(clixon_handle h)
 {
-    yang_stmt *yspec;
     cvec      *nsctx;
     cxobj     *x = NULL;
     char      *pidfile = clicon_snmp_pidfile(h);
 
+    clixon_snmp_stream_shutdown(h);
     snmp_shutdown(__FUNCTION__);
     shutdown_agent();
     clixon_snmp_api_agent_cleanup();
@@ -119,11 +121,9 @@ snmp_terminate(clixon_handle h)
         xml_free(x);
         x = NULL;
     }
+    clixon_snmp_table_exit(h);
     clicon_rpc_close_session(h);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL)
-        ys_free(yspec);
-    if ((yspec = clicon_config_yang(h)) != NULL)
-        ys_free(yspec);
+    yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
@@ -170,7 +170,7 @@ clixon_snmp_fdset_register(clixon_handle h,
     /* eg 4, 6, 8 */
     for (s=0; s<numfds; s++){
         if (FD_ISSET(s, &readfds)){
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, s);
+            clixon_debug(CLIXON_DBG_SNMP, "%d", s);
             if (regfd){
                 if (clixon_event_reg_fd(s, clixon_snmp_input_cb, h, "snmp socket") < 0)
                     goto done;
@@ -205,7 +205,7 @@ clixon_snmp_input_cb(int   s,
     clixon_handle  h = (clixon_handle)arg;
     int            ret;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, s);
+    clixon_debug(CLIXON_DBG_SNMP | CLIXON_DBG_DETAIL, "%d", s);
     FD_ZERO(&readfds);
     FD_SET(s, &readfds);
     (void)snmp_read(&readfds);
@@ -253,7 +253,7 @@ clixon_snmp_init_subagent(clixon_handle h,
     int   retval = -1;
     char *sockpath = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_SNMP, "");
     if (logdst == CLIXON_LOG_SYSLOG)
         snmp_enable_calllog();
     else
@@ -320,7 +320,7 @@ usage(clixon_handle h,
             "where options are\n"
             "\t-h\t\tHelp\n"
             "\t-V \t\tPrint version and exit\n"
-            "\t-D <level>\tDebug level (>1 for extensive libnetsnmp debug)\n"
+            "\t-D <level> \tDebug level (see available levels below)\n"
             "\t-f <file>\tConfiguration file (mandatory)\n"
             "\t-l (e|o|s|f<file>) Log on std(e)rr, std(o)ut, (s)yslog(default), (f)ile\n"
             "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"
@@ -328,6 +328,9 @@ usage(clixon_handle h,
             "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
             argv0, argv0
             );
+    fprintf(stderr, "Debug keys: ");
+    clixon_debug_key_dump(stderr);
+    fprintf(stderr, "\n");
     exit(0);
 }
 
@@ -340,7 +343,8 @@ main(int    argc,
     char          *argv0 = argv[0];
     clixon_handle  h;
     int            logdst = CLIXON_LOG_STDERR;
-    struct passwd *pw;
+    struct passwd  pw = {0,};
+    struct passwd *pwresult = NULL;
     yang_stmt     *yspec = NULL;
     char          *str;
     uint32_t       id;
@@ -355,6 +359,11 @@ main(int    argc,
     int            zap = 0;
     int           config_dump = 0;
     enum format_enum config_dump_format = FORMAT_XML;
+    int              print_version = 0;
+    int32_t          d;
+    char            *buf = NULL;
+    size_t           bufsize = 0;
+    int              ret;
 
     /* Create handle */
     if ((h = clixon_handle_init()) == NULL)
@@ -366,11 +375,23 @@ main(int    argc,
         goto done;
 
     /* Set username to clixon handle. Use in all communication to backend */
-    if ((pw = getpwuid(getuid())) == NULL){
-        clixon_err(OE_UNIX, errno, "getpwuid");
+    bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (bufsize == -1){
+        bufsize = 16384;
+    }
+    if ((buf = malloc(bufsize)) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
-    if (clicon_username_set(h, pw->pw_name) < 0)
+    ret = getpwuid_r(getuid(), &pw, buf, bufsize, &pwresult);
+    if (pwresult == NULL) {
+        if (ret == 0)
+            clixon_err(OE_UNIX, errno, "getpwuid_r");
+        else
+            clixon_err(OE_UNIX, ret, "getpwuid_r");
+        goto done;
+    }
+    if (clicon_username_set(h, pw.pw_name) < 0)
         goto done;
     while ((c = getopt(argc, argv, SNMP_OPTS)) != -1)
         switch (c) {
@@ -378,28 +399,40 @@ main(int    argc,
             usage(h, argv[0]);
             break;
         case 'V': /* version */
-            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
-            exit(0);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION);
+            print_version++; /* plugins may also print versions w ca-version callback */
             break;
-        case 'D' : /* debug */
-            if (sscanf(optarg, "%d", &dbg) != 1)
+        case 'D' : { /* debug */
+            int32_t d = 0;
+            /* Try first symbolic, then numeric match */
+            if ((d = clixon_debug_str2key(optarg)) < 0 &&
+                sscanf(optarg, "%d", &d) != 1){
                 usage(h, argv[0]);
+            }
+            dbg |= d;
             break;
+        }
         case 'f': /* override config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);
             clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
             break;
-         case 'l': /* Log destination: s|e|o */
-            if ((logdst = clixon_log_opt(optarg[0])) < 0)
-                usage(h, argv[0]);
-            if (logdst == CLIXON_LOG_FILE &&
-                strlen(optarg)>1 &&
-                clixon_log_file(optarg+1) < 0)
-                goto done;
+        case 'l': /* Log destination: s|e|o */
+            if ((d = clixon_logdst_str2key(optarg)) < 0){
+                if (optarg[0] == 'f'){ /* Check for special -lf<file> syntax */
+                    d = CLIXON_LOG_FILE;
+                    if (strlen(optarg) > 1 &&
+                        clixon_log_file(optarg+1) < 0)
+                        goto done;
+                }
+                else
+                    usage(h, argv[0]);
+            }
+            logdst = d;
             break;
         }
-
+    if (print_version)
+        goto ok;
     /*
      * Logs, error and debug to stderr or syslog, set debug level
      */
@@ -456,6 +489,9 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+    /* Read debug and log options from config file if not given by command-line */
+    if (clixon_options_main_helper(h, dbg, logdst, __PROGRAM__) < 0)
+        goto done;
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
 
@@ -493,7 +529,7 @@ main(int    argc,
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
-
+    yang_start(h);
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below
      */
@@ -501,9 +537,8 @@ main(int    argc,
         goto done;
 
     /* Create top-level yang spec and store as option */
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_DATA_TOP)) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);
 
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
@@ -544,7 +579,7 @@ main(int    argc,
             goto done;
         goto ok;
     }
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
 
     /* Send hello request to backend to get session-id back
      * This is done once at the beginning of the session and then this is
@@ -562,6 +597,9 @@ main(int    argc,
     /* Init and traverse mib-translated yangs and register callbacks */
     if (clixon_snmp_traverse_mibyangs(h) < 0)
         goto done;
+    /* init snmp stream (traps) */
+    if (clixon_snmp_stream_init(h) < 0)
+        goto done;
 
     /* Write pid-file */
     if (pidfile_write(pidfile) <  0)
@@ -571,9 +609,11 @@ main(int    argc,
         goto done;
  ok:
     retval = 0;
-  done:
-    snmp_terminate(h);
+ done:
+    if (buf)
+        free(buf);
     clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+    snmp_terminate(h);
     return retval;
 }

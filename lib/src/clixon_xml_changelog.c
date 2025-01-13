@@ -59,13 +59,13 @@
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_handle.h"
-#include "clixon_err.h"
 #include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
@@ -314,7 +314,7 @@ changelog_op(clixon_handle h,
     return retval;
  fail:
     retval = 0;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s fail op:%s ", __FUNCTION__, op);
+    clixon_debug(CLIXON_DBG_XML, "fail op:%s", op);
     goto done;
 }
     
@@ -349,7 +349,7 @@ changelog_iterate(clixon_handle h,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval: %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_XML, "retval: %d", retval);
     if (vec)
         free(vec);
     return retval;
@@ -469,10 +469,7 @@ clixon_xml_changelog_init(clixon_handle h)
                 clixon_err(OE_XML, errno, "cbuf_new");
                 goto done;
             }
-            if (netconf_err2cb(h, xret, cbret) < 0)
-                goto done;
-            clixon_err(OE_YANG, 0, "validation failed: %s", cbuf_get(cbret));
-            goto done;
+            clixon_err_netconf(h, OE_YANG, 0, xret, "validation failed");
         }
         if (clicon_xml_changelog_set(h, xt) < 0)
             goto done;

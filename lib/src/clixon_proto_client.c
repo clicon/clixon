@@ -61,16 +61,17 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_proto.h"
@@ -80,8 +81,8 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_bind.h"
 #include "clixon_xml_sort.h"
-#include "clixon_xml_io.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_io.h"
 #include "clixon_proto_client.h"
 
 #define PERSIST_ID_XML_FMT "<persist-id>%s</persist-id>"
@@ -206,7 +207,7 @@ clicon_rpc_msg(clixon_handle      h,
     int     s = -1;
     int     eof = 0;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
 #endif
@@ -253,7 +254,7 @@ clicon_rpc_msg(clixon_handle      h,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (retdata)
         free(retdata);
     if (xret)
@@ -291,7 +292,7 @@ clicon_rpc_msg_persistent(clixon_handle      h,
 #ifdef RPC_USERNAME_ASSERT
     assert(strstr(msg->op_body, "username")!=NULL); /* XXX */
 #endif
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s request:%s", __FUNCTION__, msg->op_body);
+    clixon_debug(CLIXON_DBG_DEFAULT, "request:%s", msg->op_body);
     /* Create a socket and connect to it, either UNIX, IPv4 or IPv6 per config options */
     if (clicon_rpc_msg_once(h, msg, 0, &retdata, &eof, &s) < 0)
         goto done;
@@ -306,7 +307,7 @@ clicon_rpc_msg_persistent(clixon_handle      h,
         clixon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retdata:%s", __FUNCTION__, retdata);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retdata:%s", retdata);
 
     if (retdata){
         /* Cannot populate xret here because need to know RPC name (eg "lock") in order to associate yang
@@ -549,9 +550,11 @@ clicon_rpc_get_config(clixon_handle h,
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, "><get-config><source><%s/></source>", db);
     if (xpath && strlen(xpath)){
-        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
-                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
-                xpath);
+        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"",
+                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX);
+        if (xml_chardata_cbuf_append(cb, 1, xpath) < 0)
+            goto done;
+        cprintf(cb, "\"");
         if (xml_nsctx_cbuf(cb, nsc) < 0)
             goto done;
         cprintf(cb, "/>");
@@ -601,6 +604,7 @@ clicon_rpc_get_config(clixon_handle h,
             goto done;
         xml_sort(xd); /* Ensure attr is first */
         *xt = xd;
+        xd = NULL;
     }
     retval = 0;
   done:
@@ -614,6 +618,8 @@ clicon_rpc_get_config(clixon_handle h,
         xml_free(xret);
     if (msg)
         free(msg);
+    if (xd)
+        xml_free(xd);
     return retval;
 }
 
@@ -1018,7 +1024,7 @@ clicon_rpc_get2(clixon_handle   h,
     yang_stmt         *yspec;
     cvec              *nscd = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -1048,9 +1054,11 @@ clicon_rpc_get2(clixon_handle   h,
     cprintf(cb, ">"); /* get */
     /* If xpath, add a filter */
     if (xpath && strlen(xpath)) {
-        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
-                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
-                xpath);
+        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"",
+                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX);
+        if (xml_chardata_cbuf_append(cb, 1, xpath) < 0)
+            goto done;
+        cprintf(cb, "\"");
         if (xml_nsctx_cbuf(cb, nsc) < 0)
             goto done;
         cprintf(cb, "/>");
@@ -1105,7 +1113,7 @@ clicon_rpc_get2(clixon_handle   h,
     }
     retval = 0;
   done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (nscd)
         cvec_free(nscd);
     if (cb)
@@ -1205,9 +1213,11 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
     cprintf(cb, ">"); /* get */
     /* If xpath, add a filter */
     if (xpath && strlen(xpath)) {
-        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"%s\"",
-                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX,
-                xpath);
+        cprintf(cb, "<%s:filter %s:type=\"xpath\" %s:select=\"",
+                NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX, NETCONF_BASE_PREFIX);
+        if (xml_chardata_cbuf_append(cb, 1, xpath) < 0)
+            goto done;
+        cprintf(cb, "\"");
         if (xml_nsctx_cbuf(cb, nsc) < 0)
             goto done;
         cprintf(cb, "/>");
@@ -1271,6 +1281,7 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
             goto done;
         xml_sort(xd); /* Ensure attr is first */
         *xt = xd;
+        xd = NULL;
     }
     retval = 0;
   done:
@@ -1284,6 +1295,8 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
         xml_free(xret);
     if (msg)
         free(msg);
+    if (xd)
+        xml_free(xd);
     return retval;
 }
 
@@ -1441,7 +1454,7 @@ clicon_rpc_validate(clixon_handle h,
         goto done;
     if (clicon_rpc_msg(h, msg, &xret) < 0)
         goto done;
-    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+    if ((xerr = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, CLIXON_ERRSTR_VALIDATE_FAILED);
         retval = 0;
         goto done;
@@ -1662,11 +1675,14 @@ clicon_rpc_create_subscription(clixon_handle    h,
     cprintf(cb, ">");
     cprintf(cb, "<create-subscription xmlns=\"%s\">"
             "<stream>%s</stream>"
-            "<filter type=\"xpath\" select=\"%s\" />"
-            "</create-subscription>",
+            "<filter type=\"xpath\" select=\"",
             EVENT_RFC5277_NAMESPACE,
-            stream?stream:"",
-            filter?filter:"");
+            stream?stream:"");
+    if (filter) {
+        if (xml_chardata_cbuf_append(cb, 1, filter) < 0)
+            goto done;
+    }
+    cprintf(cb, "\" />" "</create-subscription>");
     cprintf(cb, "</rpc>");
     if ((msg = clicon_msg_encode(session_id, "%s", cbuf_get(cb))) == NULL)
         goto done;

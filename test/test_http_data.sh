@@ -128,6 +128,9 @@ function testrun()
     enable=$2 # true/false
     
     RESTCONFIG=$(restconf_config none false $proto $enable)
+    if [ $? -ne 0 ]; then
+        err1 "Error when generating certs"
+    fi
 
     if true; then
         # Proper test setup
@@ -202,7 +205,17 @@ EOF
         
         new "WWW get index.html"
         expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
-        
+
+        new "List of medias"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html,*/*' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
+
+        new "List of medias2"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: wrong/media,*/*' $proto://localhost/data/index.html)" 0 "HT
+TP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
+
+        new "Server does not support list of medias Expect 406"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: wrong/media' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 406" "content-type: text/html" # "<error-message>Unacceptable output encoding</error-message>"
+
         new "WWW get dir -> expect index.html"
         expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data)" 0 "HTTP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
 
@@ -216,7 +229,13 @@ EOF
         mv $dir/www/data/tmp.index.html $dir/www/data/index.html 
         
         new "WWW get css"
-        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/css' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
+
+        new "WWW get css accept *"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html,*/*' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 200" "Content-Type: text/css" "display: inline;" --not-- "Content-Type: text/html"
+
+        new "WWW get css, operation-not-supported"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/example.css)" 0 "HTTP/$HVER 406" # "operation-not-supported"
 
         new "WWW head"
         expectpart "$(curl $CURLOPTS --head -H 'Accept: text/html' $proto://localhost/data/index.html)" 0 "HTTP/$HVER 200" "Content-Type: text/html" --not-- "<title>Welcome to Clixon!</title>"
@@ -256,7 +275,7 @@ EOF
             expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 GET /data/../../outside.html HTTP/1.1
 Host: localhost
-Accept: text_html
+Accept: text/html
 
 EOF
 )" 0 "HTTP/1.1 403" "Forbidden"

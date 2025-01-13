@@ -76,6 +76,7 @@
 #ifdef HAVE_HTTP1
 #include "restconf_http1.h"
 #endif
+#include "restconf_stream.h"
 
 /* Forward */
 static int restconf_idle_cb(int fd, void *arg);
@@ -89,7 +90,7 @@ restconf_stream_data *
 restconf_stream_data_new(restconf_conn *rc,
                          int32_t        stream_id)
 {
-    restconf_stream_data *sd;
+    restconf_stream_data *sd = NULL;
 
     if ((sd = malloc(sizeof(restconf_stream_data))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
@@ -100,23 +101,30 @@ restconf_stream_data_new(restconf_conn *rc,
     sd->sd_fd = -1;
     if ((sd->sd_inbuf = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
-        return NULL;
+        goto done;
     }
     if ((sd->sd_indata = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
-        return NULL;
+        goto done;
     }
     if ((sd->sd_outp_hdrs = cvec_new(0)) == NULL){
         clixon_err(OE_UNIX, errno, "cvec_new");
-        return NULL;
+        goto done;
     }
     if ((sd->sd_outp_buf = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
-        return NULL;
+        goto done;
     }
     sd->sd_conn = rc;
     INSQ(sd, rc->rc_streams);
+ ok:
     return sd;
+ done:
+    if (sd){
+        restconf_stream_free(sd);
+        sd = NULL;
+    }
+    goto ok;
 }
 
 /*! Find restconf stream data
@@ -192,7 +200,7 @@ restconf_conn_new(clixon_handle    h,
     rc->rc_callhome = rsock->rs_callhome;
     rc->rc_socket = rsock;
     INSQ(rc, rsock->rs_conns);
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %p", __FUNCTION__, rc);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%p", rc);
     return rc;
 }
 
@@ -208,7 +216,7 @@ restconf_conn_free(restconf_conn *rc)
     restconf_socket      *rsock;
     restconf_conn        *rc1;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (rc == NULL){
         clixon_err(OE_RESTCONF, EINVAL, "rc is NULL");
         goto done;
@@ -312,21 +320,22 @@ restconf_connection_sanity(clixon_handle         h,
     long           code;
     cbuf          *cberr = NULL;
     restconf_media media_out = YANG_DATA_JSON;
-    char          *media_str = NULL;
+    char          *media_list = NULL;
     char          *oneline = NULL;
 
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* 1) Check if http/2 non-tls is disabled */
     if (rc->rc_ssl == NULL &&
         rc->rc_proto == HTTP_2 &&
         clicon_option_bool(h, "CLICON_RESTCONF_HTTP2_PLAIN") == 0){
+        clixon_debug(CLIXON_DBG_RESTCONF, "Sanity check http/2 non-tls failed, disconnect");
         if (netconf_invalid_value_xml(&xerr, "protocol", "Only HTTP/2 with TLS is enabled, plain http/2 is disabled") < 0)
             goto done;
-        if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
+        if ((media_list = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
              media_out = YANG_DATA_JSON;
         }
-        else if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
-            if (strcmp(media_str, "*/*") == 0) /* catch-all */
-                media_out = YANG_DATA_JSON;
+        else {
+            media_out = restconf_media_list_str2int(media_list);
         }
         if (api_return_err0(h, sd, xerr, 1, media_out, 0) < 0)
             goto done;
@@ -335,6 +344,7 @@ restconf_connection_sanity(clixon_handle         h,
     /* 2) Check if ssl client cert is valid */
     else if (rc->rc_ssl != NULL &&
              (code = SSL_get_verify_result(rc->rc_ssl)) != 0){
+        clixon_debug(CLIXON_DBG_RESTCONF, "Sanity check cert error SSL_get_verify_result: %ld, disconnect", code);
         /* Syslog cert failure */
         if (ssl_x509_name_oneline(rc->rc_ssl, &oneline) < 0)
             goto done;
@@ -351,12 +361,8 @@ restconf_connection_sanity(clixon_handle         h,
                 X509_verify_cert_error_string(code), code);
         if (netconf_invalid_value_xml(&xerr, "protocol", cbuf_get(cberr)) < 0)
             goto done;
-        if ((media_str = restconf_param_get(h, "HTTP_ACCEPT")) == NULL){
-             media_out = YANG_DATA_JSON;
-        }
-        else if ((int)(media_out = restconf_media_str2int(media_str)) == -1){
-            if (strcmp(media_str, "*/*") == 0) /* catch-all */
-                media_out = YANG_DATA_JSON;
+        if ((media_list = restconf_param_get(h, "HTTP_ACCEPT")) != NULL){
+            media_out = restconf_media_list_str2int(media_list);
         }
         if (api_return_err0(sd->sd_conn->rc_h, sd, xerr, 1, media_out, 0) < 0)
             goto done;
@@ -364,6 +370,7 @@ restconf_connection_sanity(clixon_handle         h,
     }
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (oneline)
         free(oneline);
     if (cberr)
@@ -374,7 +381,8 @@ restconf_connection_sanity(clixon_handle         h,
 }
 
 /* Write buf to socket
- * see also this function in restcont_api_openssl.c
+ *
+ * Only (at least mostly?) for HTTP/1
  * @param[in]  h        Clixon handle
  * @param[in]  buf      Buffer to write
  * @param[in]  buflen   Length of buffer
@@ -384,7 +392,7 @@ restconf_connection_sanity(clixon_handle         h,
  * @retval  0  OK, but socket write returned error, caller should close rc
  * @retval -1  Error
  */
-static int
+int
 native_buf_write(clixon_handle    h,
                  char            *buf,
                  size_t           buflen,
@@ -406,7 +414,7 @@ native_buf_write(clixon_handle    h,
      * 1. they are not "strings" in the sense they are not NULL-terminated
      * 2. they are often very long
      */
-    if (clixon_debug_get()) {
+    if ((clixon_debug_get() & CLIXON_DBG_RESTCONF) != 0) {
         char *dbgstr = NULL;
         size_t sz;
         sz = buflen>256?256:buflen; /* Truncate to 256 */
@@ -416,7 +424,7 @@ native_buf_write(clixon_handle    h,
         }
         memcpy(dbgstr, buf, sz);
         dbgstr[sz] = '\0';
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s %s buflen:%zu buf:\n%s", __FUNCTION__, callfn, buflen, dbgstr);
+        clixon_debug(CLIXON_DBG_RESTCONF, "%s buflen:%zu buf:\n%s", callfn, buflen, dbgstr);
         free(dbgstr);
     }
     while (totlen < buflen){
@@ -430,7 +438,7 @@ native_buf_write(clixon_handle    h,
                         goto closed; /* Close socket and ssl */
                     }
                     else if (er == EAGAIN){
-                        clixon_debug(CLIXON_DBG_DEFAULT, "%s write EAGAIN", __FUNCTION__);
+                        clixon_debug(CLIXON_DBG_RESTCONF, "write EAGAIN");
                         usleep(10000);
                         continue;
                     }
@@ -451,7 +459,7 @@ native_buf_write(clixon_handle    h,
             if ((len = write(rc->rc_s, buf+totlen, buflen-totlen)) < 0){
                 switch (errno){
                 case EAGAIN:     /* Operation would block */
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s write EAGAIN", __FUNCTION__);
+                    clixon_debug(CLIXON_DBG_RESTCONF, "write EAGAIN");
                     usleep(10000);
                     continue;
                     break;
@@ -471,7 +479,7 @@ native_buf_write(clixon_handle    h,
     } /* while */
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
  closed:
     retval = 0;
@@ -498,7 +506,7 @@ native_send_badrequest(clixon_handle    h,
     int retval = -1;
     cbuf *cb = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -570,7 +578,7 @@ read_ssl(restconf_conn *rc,
 
     if ((*np = SSL_read(rc->rc_ssl, buf, sz)) <= 0){
         sslerr = SSL_get_error(rc->rc_ssl, *np);
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s SSL_read() n:%zd errno:%d sslerr:%d", __FUNCTION__, *np, errno, sslerr);
+        clixon_debug(CLIXON_DBG_RESTCONF, "SSL_read() n:%zd errno:%d sslerr:%d", *np, errno, sslerr);
         switch (sslerr){
         case SSL_ERROR_WANT_READ:            /* 2 */
             /* SSL_ERROR_WANT_READ is returned when the last operation was a read operation 
@@ -578,7 +586,7 @@ read_ssl(restconf_conn *rc,
              * That is, it can happen if restconf_socket_init() below is called 
              * with SOCK_NONBLOCK
              */
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s SSL_read SSL_ERROR_WANT_READ", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_RESTCONF, "SSL_read SSL_ERROR_WANT_READ");
             usleep(1000);
             *again = 1;
             break;
@@ -593,7 +601,7 @@ read_ssl(restconf_conn *rc,
     }
     retval = 0;
     // done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 
@@ -623,14 +631,14 @@ read_regular(restconf_conn *rc,
     if ((*np = read(rc->rc_s, buf, sz)) < 0){ /* XXX atomicio ? */
         switch(errno){
         case ECONNRESET:/* Connection reset by peer */
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s %d Connection reset by peer", __FUNCTION__, rc->rc_s);
+            clixon_debug(CLIXON_DBG_RESTCONF, "%d Connection reset by peer", rc->rc_s);
             if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
                 goto done;
             retval = 0; /* Close socket and ssl */
             goto done;
             break;
         case EAGAIN:
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s read EAGAIN", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_RESTCONF, "read EAGAIN");
             usleep(1000);
             *again = 1;
             break;
@@ -870,7 +878,6 @@ restconf_http2_upgrade(restconf_conn *rc)
  * @param[in]  rc       Restconf connection
  * @param[in]  buf      Input buffer
  * @param[in]  n        Size of input buffer
- * @param[in]  n        Length of data in input buffer
  * @param[out] readmore If set, read data again, do not continue processing
  * @retval     1        OK
  * @retval     0        Socket closed, quit
@@ -886,7 +893,7 @@ restconf_http2_process(restconf_conn *rc,
     int           ret;
     nghttp2_error ngerr;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (rc->rc_exit){ /* Server-initiated exit for http/2 */
         if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, 0)) < 0){
             clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
@@ -913,7 +920,7 @@ restconf_http2_process(restconf_conn *rc,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 #endif /* HAVE_LIBNGHTTP2 */
@@ -961,7 +968,7 @@ restconf_connection(int   s,
     int            readmore = 1;
     int            ret;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, s);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%d", s);
     if ((rc = (restconf_conn*)arg) == NULL){
         clixon_err(OE_RESTCONF, EINVAL, "arg is NULL");
         goto done;
@@ -972,7 +979,7 @@ restconf_connection(int   s,
     }
     gettimeofday(&rc->rc_t, NULL); /* activity timer */
     while (readmore) {
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s readmore", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_RESTCONF, "readmore");
         readmore = 0;
         /* Example: curl -Ssik -u wilma:bar -X GET https://localhost/restconf/data/example:x */
         if (rc->rc_ssl){
@@ -985,11 +992,11 @@ restconf_connection(int   s,
             if (ret == 0)
                 goto ok; /* abort here */
         }
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s read:%zd", __FUNCTION__, n);
+        clixon_debug(CLIXON_DBG_RESTCONF, "read:%zd", n);
         if (readmore)
             continue;
         if (n == 0){
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s n=0 closing socket", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_RESTCONF, "n=0 closing socket");
             if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
                 goto done;
             rc = NULL;
@@ -1015,9 +1022,9 @@ restconf_connection(int   s,
 #endif /* HAVE_HTTP1 */
 #ifdef HAVE_LIBNGHTTP2
         case HTTP_2:
-            if ((ret = restconf_http2_process(rc, buf, n, &readmore)) < 0)
-                goto done;
             gettimeofday(&rc->rc_t, NULL); /* activity timer */
+            if ((ret = restconf_http2_process(rc, buf, n, &readmore)) < 0) // XXX frees rc
+                goto done;
             if (ret == 0)
                 goto ok;
             break;
@@ -1029,11 +1036,17 @@ restconf_connection(int   s,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 } /* restconf_connection */
 
 /*----------------------------- Close socket ------------------------------*/
+
+static int
+restconf_idle_timer_unreg(restconf_conn *rc)
+{
+    return clixon_event_unreg_timeout(restconf_idle_cb, rc);
+}
 
 /*! Close Restconf native connection socket and unregister callback
  *
@@ -1053,7 +1066,7 @@ restconf_connection_close1(restconf_conn *rc)
         goto done;
     }
     rsock = rc->rc_socket;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\"", __FUNCTION__, rsock->rs_description);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", rsock->rs_description?rsock->rs_description:"");
     if (close(rc->rc_s) < 0){
         clixon_err(OE_UNIX, errno, "close");
         goto done;
@@ -1066,9 +1079,12 @@ restconf_connection_close1(restconf_conn *rc)
         if (restconf_callhome_timer(rsock, 1) < 0)
             goto done;
     }
+    if (rc->rc_event_stream){
+        stream_close(rc->rc_h, rc);
+    }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 
@@ -1092,13 +1108,13 @@ restconf_close_ssl_socket(restconf_conn *rc,
     int sslerr;
     int er;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, callfn);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", callfn);
     if (rc->rc_ssl != NULL){
         if (!dontshutdown &&
             (ret = SSL_shutdown(rc->rc_ssl)) < 0){
             er = errno;
             sslerr = SSL_get_error(rc->rc_ssl, ret);
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s errno:%s(%d) sslerr:%d", __FUNCTION__, strerror(er), er, sslerr);
+            clixon_debug(CLIXON_DBG_RESTCONF, "errno:%s(%d) sslerr:%d", strerror(er), er, sslerr);
             if (sslerr == SSL_ERROR_SSL || /* 1 */
                 sslerr == SSL_ERROR_ZERO_RETURN){  /* 6 */
             }
@@ -1126,7 +1142,7 @@ restconf_close_ssl_socket(restconf_conn *rc,
         goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 
@@ -1150,7 +1166,7 @@ ssl_alpn_check(clixon_handle        h,
     int   retval = -1;
     cbuf *cberr = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* Alternatively, call  restconf_str2proto but alpn is not a proper string */
     if (alpn && alpnlen == 8 && memcmp("http/1.1", alpn, 8) == 0){
         *proto = HTTP_11;
@@ -1202,7 +1218,7 @@ ssl_alpn_check(clixon_handle        h,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (cberr)
         cbuf_free(cberr);
     return retval;
@@ -1240,7 +1256,7 @@ restconf_ssl_accept_client(clixon_handle    h,
     unsigned int            alpnlen = 0;
     restconf_http_proto     proto = HTTP_11;  /* Non-SSL negotiation NYI */
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
 #ifdef HAVE_LIBNGHTTP2
 #ifndef HAVE_HTTP1
     proto = HTTP_2;     /* If nghttp2 only let default be 2.0  */
@@ -1255,13 +1271,13 @@ restconf_ssl_accept_client(clixon_handle    h,
      */
     if ((rc = restconf_conn_new(h, s, rsock)) == NULL)
         goto done;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s s:%d", __FUNCTION__, rc->rc_s);
+    clixon_debug(CLIXON_DBG_RESTCONF, "s:%d", rc->rc_s);
     if (rsock->rs_ssl){
         if ((rc->rc_ssl = SSL_new(rn->rn_ctx)) == NULL){
             clixon_err(OE_SSL, 0, "SSL_new");
             goto done;
         }
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s SSL_new(%p)", __FUNCTION__, rc->rc_ssl);
+        clixon_debug(CLIXON_DBG_RESTCONF, "SSL_new(%p)", rc->rc_ssl);
         /* CCL_CTX_set_verify already set, need not call SSL_set_verify again for this server
          */
         /* X509_CHECK_FLAG_NO_WILDCARDS disables wildcard expansion */
@@ -1298,11 +1314,11 @@ restconf_ssl_accept_client(clixon_handle    h,
              * Both error cases: Call SSL_get_error() with the return value ret 
              */
             if ((ret = SSL_accept(rc->rc_ssl)) != 1) {
-                clixon_debug(CLIXON_DBG_DEFAULT, "%s SSL_accept() ret:%d errno:%d", __FUNCTION__, ret, er=errno);
+                clixon_debug(CLIXON_DBG_RESTCONF, "SSL_accept() ret:%d errno:%d", ret, er=errno);
                 e = SSL_get_error(rc->rc_ssl, ret);
                 switch (e){
                 case SSL_ERROR_SSL:                  /* 1 */
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s SSL_ERROR_SSL (non-ssl message on ssl socket)", __FUNCTION__);
+                    clixon_debug(CLIXON_DBG_RESTCONF, "SSL_ERROR_SSL (non-ssl message on ssl socket)");
 #ifdef HTTP_ON_HTTPS_REPLY
                     SSL_free(rc->rc_ssl);
                     rc->rc_ssl = NULL;
@@ -1320,7 +1336,7 @@ restconf_ssl_accept_client(clixon_handle    h,
                        consult errno for details. If this error occurs then no further I/O
                        operations should be performed on the connection and SSL_shutdown() must 
                        not be called.*/
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s SSL_accept() SSL_ERROR_SYSCALL %d", __FUNCTION__, er);
+                    clixon_debug(CLIXON_DBG_RESTCONF, "SSL_accept() SSL_ERROR_SYSCALL %d", er);
                     if (restconf_close_ssl_socket(rc, __FUNCTION__, 1) < 0)
                         goto done;
                     rc = NULL;
@@ -1333,7 +1349,7 @@ restconf_ssl_accept_client(clixon_handle    h,
                      * That is, it can happen if restconf_socket_init() below is called 
                      * with SOCK_NONBLOCK
                      */
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s write SSL_ERROR_WANT_READ", __FUNCTION__);
+                    clixon_debug(CLIXON_DBG_RESTCONF, "write SSL_ERROR_WANT_READ");
                     usleep(10000);
                     readmore = 1;
                     break;
@@ -1367,36 +1383,8 @@ restconf_ssl_accept_client(clixon_handle    h,
         if (ret == 0){
             goto closed;
         }
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s proto:%s", __FUNCTION__, restconf_proto2str(proto));
+        clixon_debug(CLIXON_DBG_RESTCONF, "proto:%s", restconf_proto2str(proto));
 
-#if 0 /* Seems too early to fail here, instead let authentication callback deal with this */
-        /* For client-cert authentication, check if any certs are present,
-        * if not, send bad request
-        * Alt: set SSL_CTX_set_verify(ctx, SSL_VERIFY_FAIL_IF_NO_PEER_CERT)
-        * but then SSL_accept fails.
-        */
-        if (restconf_auth_type_get(h) == CLIXON_AUTH_CLIENT_CERTIFICATE){
-            X509 *peercert;
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-            if ((peercert = SSL_get_peer_certificate(rc->rc_ssl)) != NULL){
-                X509_free(peercert);
-            }
-#else
-            if ((peercert = SSL_get1_peer_certificate(rc->rc_ssl)) != NULL){
-                X509_free(peercert);
-            }
-#endif
-            else { /* Get certificates (if available) */
-                if (proto != HTTP_2 &&
-                    native_send_badrequest(h, rc->rc_s, rc->rc_ssl, "application/yang-data+xml",
-                                                  "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>Peer certificate required</error-message></error></errors>", rc->rc_socket, rc) < 0)
-                    goto done;
-                if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
-                    goto done;
-                goto closed;
-            }
-        }
-#endif
         /* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 
          * Note this _only_ works if SSL_set1_host() was set previously,...
          */
@@ -1404,7 +1392,7 @@ restconf_ssl_accept_client(clixon_handle    h,
             const char *peername = SSL_get0_peername(rc->rc_ssl);
             if (peername != NULL) {
                 /* Name checks were in scope and matched the peername */
-                clixon_debug(CLIXON_DBG_DEFAULT, "%s peername:%s", __FUNCTION__, peername);
+                clixon_debug(CLIXON_DBG_RESTCONF, "peername:%s", peername);
             }
         }
 #if 0
@@ -1457,7 +1445,7 @@ restconf_ssl_accept_client(clixon_handle    h,
         *rcp = rc;
     retval = 1; /* OK, up */
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (name)
         free(name);
     return retval;
@@ -1528,7 +1516,7 @@ restconf_idle_cb(int   fd,
         clixon_err(OE_YANG, EINVAL, "rsock is NULL");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\"", __FUNCTION__, rsock->rs_description);
+    clixon_debug(CLIXON_DBG_RESTCONF, "\"%s\"", rsock->rs_description);
     if (rc->rc_callhome && rsock->rs_periodic && rc->rc_s > 0 && rsock->rs_idle_timeout){
         gettimeofday(&now, NULL);
         timersub(&now, &rc->rc_t, &td); /* Last packet timestamp */
@@ -1539,7 +1527,7 @@ restconf_idle_cb(int   fd,
         else{
             to.tv_sec = rsock->rs_idle_timeout;
             timeradd(&now, &to, &tn);
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s now:%lu timeout:%lu.%lu", __FUNCTION__,
+            clixon_debug(CLIXON_DBG_RESTCONF, "now:%lu timeout:%lu.%lu",
                          now.tv_sec, tn.tv_sec, tn.tv_usec);
             if (restconf_idle_timer_set(tn, rc, rsock->rs_description) < 0)
                 goto done;
@@ -1548,12 +1536,6 @@ restconf_idle_cb(int   fd,
     retval = 0;
  done:
     return retval;
-}
-
-int
-restconf_idle_timer_unreg(restconf_conn *rc)
-{
-    return clixon_event_unreg_timeout(restconf_idle_cb, rc);
 }
 
 /*! Set callhome periodic idle-timeout
@@ -1567,7 +1549,7 @@ restconf_idle_timer_unreg(restconf_conn *rc)
  * XXX: now just timeout dont keep track of data (td)
  * @see restconf_idle_timer_unreg
  */
-int
+static int
 restconf_idle_timer(restconf_conn *rc)
 {
     int              retval = -1;
@@ -1585,7 +1567,7 @@ restconf_idle_timer(restconf_conn *rc)
         clixon_err(OE_YANG, EINVAL, "rsock is NULL or not periodic");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\" register", __FUNCTION__, rsock->rs_description);
+    clixon_debug(CLIXON_DBG_RESTCONF, "\"%s\" register", rsock->rs_description);
     gettimeofday(&now, NULL);
     to.tv_sec = rsock->rs_idle_timeout;
     timeradd(&now, &to, &t);
@@ -1623,7 +1605,7 @@ restconf_callhome_cb(int   fd,
         clixon_err(OE_YANG, EINVAL, "rsock is NULL");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\"", __FUNCTION__, rsock->rs_description);
+    clixon_debug(CLIXON_DBG_RESTCONF, "\"%s\"", rsock->rs_description);
     h = rsock->rs_h;
     /* Already computed in restconf_socket_init, could be saved in rsock? */
     if (clixon_inet2sin(rsock->rs_addrtype, rsock->rs_addrstr, rsock->rs_port, sa, &sa_len) < 0)
@@ -1633,7 +1615,7 @@ restconf_callhome_cb(int   fd,
         goto done;
     }
     if (connect(s, sa, sa_len) < 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s connect %hu fail:%d %s", __FUNCTION__, rsock->rs_port, errno, strerror(errno));
+        clixon_debug(CLIXON_DBG_RESTCONF, "connect %hu fail:%d %s", rsock->rs_port, errno, strerror(errno));
         close(s);
         rsock->rs_attempts++;
         /* Fail: Initiate new timer */
@@ -1641,7 +1623,7 @@ restconf_callhome_cb(int   fd,
             goto done;
     }
     else {
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s connect %hu OK", __FUNCTION__, rsock->rs_port);
+        clixon_debug(CLIXON_DBG_RESTCONF, "connect %hu OK", rsock->rs_port);
         rsock->rs_attempts = 0;
         if ((ret = restconf_ssl_accept_client(h, s, rsock, &rc)) < 0)
             goto done;
@@ -1686,7 +1668,7 @@ restconf_callhome_timer(restconf_socket *rsock,
         clixon_err(OE_YANG, EINVAL, "rsock is NULL or not callhome");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s \"%s\"", __FUNCTION__, rsock->rs_description);
+    clixon_debug(CLIXON_DBG_RESTCONF, "\"%s\"", rsock->rs_description);
     if (!rsock->rs_callhome)
         goto ok; /* shouldnt happen */
     gettimeofday(&now, NULL);
@@ -1714,9 +1696,9 @@ restconf_callhome_timer(restconf_socket *rsock,
     }
     cprintf(cb, "restconf callhome timer %s", rsock->rs_description);
     if (rsock->rs_description)
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s registering \"%s\": +%lu", __FUNCTION__, rsock->rs_description, t.tv_sec-now.tv_sec);
+        clixon_debug(CLIXON_DBG_RESTCONF, "registering \"%s\": +%lu", rsock->rs_description, t.tv_sec-now.tv_sec);
     else
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s: %lu", __FUNCTION__, t.tv_sec);
+        clixon_debug(CLIXON_DBG_RESTCONF, "%lu", t.tv_sec);
     /* Should be only place restconf_callhome_cb is registered */
     if (clixon_event_reg_timeout(t,
                                  restconf_callhome_cb,
@@ -1888,4 +1870,3 @@ restconf_socket_extract(clixon_handle    h,
         free(reason);
     return retval;
 }
-

@@ -31,20 +31,53 @@
 
   ***** END LICENSE BLOCK *****
 
- * RFC 8525 Yang schema mount support
+ * RFC 8528 Yang schema mount support
  *
- * Structure of mount-points in XML:
- * YANG mount extentsion -->* YANG unknown mount stmt -->* XML mount-points
- *                            |
- *                            cvec mapping xpath->yspec mountpoint
+ * Extend a container with ietf-yang-schema-mount:mount-point.
+ * Structure of mount-points in YANG anc config:
  *
- * The calls into this code are:
- * 1. yang_schema_mount_point() Check that a yang nod eis mount-point
- * 2. xml_yang_mount_get(): from xml_bind_yang and xmldb_put 
- * 3. xml_yang_mount_freeall(): from ys_free1 when deallocating YANG trees
- * 4. yang_schema_mount_statedata(): from get_common/get_statedata to retrieve system state
- * 5. yang_schema_yanglib_parse_mount(): from xml_bind_yang to parse and mount
- * 6. yang_schema_get_child(): from xmldb_put/text_modify when adding new XML nodes
+ * module ietf-yang-schema-mount { # Existing module
+ *   extension mount-point
+ *
+ * module mymodule { # Your module
+ *   ...
+ *   container root{ (ymnt)
+ *     yangmnt:mount-point "mylabel";  (yext)
+ *   }
+ * (note the argument "mylabel" defines an optional isolated YANG domain
+ *
+ * <config>         # Your XML config
+ *   ...
+ *   <root>         (xmnt)
+ *
+ * The API handles the relation between yext -->* ymnt -->* xmnt
+ * Structure:
+ *
+ *   ymounts(top)
+ *   |
+ *   ydomain*
+ *   |
+ *   yspec0(1)     xtop(1)
+ *   |             | (xpath)
+ *   ymnt(*)  <--  xmnt(*)
+ *  /     \
+ * yext(1) cvec: [xpath = yspec](*)
+ * |                      |
+ * cv:label               ymod(*)
+ *
+ * The calls in this code are:
+ * - yang_schema_mount_point(): Is ymnt a yang mount-point? (ymnt)
+ * - yang_mount_get(): ymnt + xpath -> yspec
+ *                     XXXX - yang_mount_get(): ymnt + xpath -> yspec
+ * - yang_mount_set(): ymnt
+ * - xml_yang_mount_get(): xmnt-> yspec
+ * - xml_yang_mount_set(): xmnt -> yspec
+ * - yang_mount_get_yspec_any(): ymnt -> yspec
+ * - yang_mount_xmnt2ymnt_xpath(): xmnt -> ymnt + xpath
+ * - yang_mount_xtop2xmnt(): top-level xml -> xmnt vector
+ * - yang_mount_yspec2ymnt(): top-level yspec -> ymnt vector NOTUSED
+ * - yang_schema_mount_statistics(): Given xtop -> find all xmnt -> stats
+
  *
  * Note: the xpath used as key in yang unknown cvec is "canonical" in the sense:
  * - it uses prefixes of the yang spec of relevance
@@ -70,12 +103,15 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
+#include "clixon_options.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
 #include "clixon_xml_map.h"
 #include "clixon_data.h"
@@ -86,10 +122,9 @@
 #include "clixon_plugin.h"
 #include "clixon_xml_bind.h"
 #include "clixon_xml_nsctx.h"
-#include "clixon_netconf_lib.h"
 #include "clixon_yang_schema_mount.h"
 
-/*! Check if YANG node is a RFC 8525 YANG schema mount
+/*! Check if YANG node is a RFC 8528 YANG schema mount
  *
  * Check if:
  * - y is CONTAINER or LIST, AND
@@ -97,7 +132,7 @@
  * - the extension label matches y (see note below)
  * If so, then return 1
  * @param[in] y   Yang statement
- * @retval    1   Yes, y is a RFC 8525 YANG mount-point
+ * @retval    1   Yes, y is a RFC 8528 YANG mount-point
  * @retval    0   No, y is not
  * @retval   -1   Error
  * @note That this may be a restriction on the usage of "label". The RFC is somewhat unclear.
@@ -138,7 +173,11 @@ yang_schema_mount_point0(yang_stmt *y)
     goto done;
 }
 
-/*! Cached variant of yang_schema_mount_point
+/*! Cached variant of yang_schema_mount_point0
+ *
+ * @param[in]  y   Yang node
+ * @retval     1   Yes, node is potential mountpoint
+ * @retval     0   No, node is not potential mountpoint
  */
 int
 yang_schema_mount_point(yang_stmt *y)
@@ -148,34 +187,80 @@ yang_schema_mount_point(yang_stmt *y)
 
 /*! Get yangspec mount-point
  *
- * @param[in]  y     Yang container/list containing unknown node
+ * @param[in]  ys    Yang container/list containing unknown node
  * @param[in]  xpath Key for yspec on y
  * @param[out] yspec YANG stmt spec
  * @retval     0     OK
- * @see yang_mount_get_yspec_any for ANY yspec not for a specific xpath
+ * @retval    -1     Error
+ * With domains it is assumed an xpath is unique across domains, which is true if the xpath
+ * has eg a list name which is unique. But there could be cases where this is not true.
  */
 int
-yang_mount_get(yang_stmt  *y,
+yang_mount_get(yang_stmt  *ys,
                char       *xpath,
-               yang_stmt **yspec)
+               yang_stmt **yspecp)
 {
-    cvec   *cvv;
-    cg_var *cv;
+    int        retval = 1;
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
+    yang_stmt *yspec = NULL;
+    int        inext;
+    int        inext2;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %s %p", __FUNCTION__, xpath, y);
-    /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
-    if ((cvv = yang_cvec_get(y)) != NULL &&
-        (cv = cvec_find(cvv, xpath)) != NULL &&
-        yspec)
-        *yspec = cv_void_get(cv);
-    else
-        *yspec = NULL;
-    return 0;
+    if ((ymounts = ys_mounts(ys)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
+        goto done;
+    }
+    inext = 0;
+    ydomain = NULL;
+    while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
+        inext2 = 0;
+        while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
+            if (yang_keyword_get(yspec) != Y_SPEC ||
+                yang_cvec_get(yspec) == NULL ||
+                yang_flag_get(yspec, YANG_FLAG_SPEC_MOUNT) == 0)
+                continue;
+            if (xpath == NULL || cvec_find(yang_cvec_get(yspec), xpath) != NULL)
+                break;
+        }
+        if (yspec != NULL)
+            break;
+    }
+    *yspecp = yspec;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Get any yspec of a mount-point, special function
+ *
+ * Get (the first) mounted yspec.
+ * A more generic way would be to call plugin_mount to get the yanglib and from that get the
+ * yspec. But there is clixon code that cant call the plugin since h is not available
+ * @param[in]  ys    Yang container/list containing unknown node
+ * @param[out] yspec YANG stmt spec
+ * @retval     1     yspec found and set
+ * @retval     0     Not found
+ * @retval    -1     Error
+ * XXX Should be in-lined
+ */
+int
+yang_mount_get_yspec_any(yang_stmt  *ys,
+                         yang_stmt **yspecp)
+{
+    yang_stmt *yspec = NULL;
+
+    if (yang_mount_get(ys, NULL, &yspec) < 0)
+        return -1;
+    if (yspec == NULL)
+        return 0;
+    *yspecp = yspec;
+    return 1;
 }
 
 /*! Set yangspec mount-point on yang node containing extension
  *
- * Mount-points are stored in yang cvec in container/list node taht is a mount-point
+ * Mount-points are stored in yang cvec in container/list node that is a mount-point
  * as defined in yang_schema_mount_point()
  * @param[in]  y      Yang container/list containing unknown node
  * @param[in]  xpath  Key for yspec on y, in canonical form
@@ -184,96 +269,60 @@ yang_mount_get(yang_stmt  *y,
  * @retval    -1      Error
  */
 int
-yang_mount_set(yang_stmt *y,
-               char      *xpath,
-               yang_stmt *yspec)
+yang_mount_set(yang_stmt *y)
 {
-    int        retval = -1;
-    yang_stmt *yspec0;
-    cvec      *cvv;
-    cg_var    *cv;
-    cg_var    *cv2;
-
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %p", __FUNCTION__, xpath, y);
-    if ((cvv = yang_cvec_get(y)) != NULL &&
-        (cv = cvec_find(cvv, xpath)) != NULL &&
-        (yspec0 = cv_void_get(cv)) != NULL){
-#if 0 /* Problematic to free yang specs here, upper layers should handle it? */
-        ys_free(yspec0);
-#endif
-        cv_void_set(cv, NULL);
-    }
-    else if ((cv = yang_cvec_add(y, CGV_VOID, xpath)) == NULL)
-        goto done;
-    if ((cv2 = cv_new(CGV_STRING)) == NULL){
-        clixon_err(OE_YANG, errno, "cv_new");
-        goto done;
-    }
-    if (cv_string_set(cv2, xpath) == NULL){
-        clixon_err(OE_UNIX, errno, "cv_string_set");
-        goto done;
-    }
-    /* tag yspec with key/xpath */
-    yang_cv_set(yspec, cv2);
-    cv_void_set(cv, yspec);
     yang_flag_set(y, YANG_FLAG_MOUNTPOINT); /* Cache value */
-    retval = 0;
- done:
-    return retval;
+    return 0;
 }
 
-/*! Get yangspec mount-point
+/*! Given an XML mount-point return YANG mount and XPath
  *
  * @param[in]  h     Clixon handle
- * @param[in]  x     XML mount-point node
- * @param[out] vallevel Do or dont do full RFC 7950 validation if given
- * @param[out] yspec YANG stmt spec of mount-point (if ret is 1)
- * @retval     1     x is a mount-point: yspec may be set
- * @retval     0     x is not a mount point
+ * @param[in]  xmnt  XML mount-point
+ * @param[out] ymnt  YANG mount-point
+ * @param[out] xpath Canonical XPath from XML top-level to xmnt, free after use
+ * @retval     1     OK, xmnt is a mount-point with ymnt and xpath returned
+ * @retval     0     OK, xmnt is not a mount point
  * @retval    -1     Error
  */
-int
-xml_yang_mount_get(clixon_handle   h,
-                   cxobj          *xt,
-                   validate_level *vl,
-                   yang_stmt     **yspec)
+static int
+yang_mount_xmnt2ymnt_xpath(clixon_handle h,
+                           cxobj        *xmnt,
+                           yang_stmt   **ymntp,
+                           char        **xpath)
 {
     int        retval = -1;
-    yang_stmt *y;
+    yang_stmt *yspec;
+    yang_stmt *ymnt;
     char      *xpath0 = NULL;
-    int        ret;
     cvec      *nsc0 = NULL;
-    yang_stmt *yspec0;
-    char      *xpath1 = NULL;
     cvec      *nsc1 = NULL;
     cbuf      *reason = NULL;
+    int        ret;
 
-    if ((y = xml_spec(xt)) == NULL)
+    if (xmnt == NULL){
+        clixon_err(OE_YANG, EINVAL, "xmnt is NULL");
+        goto done;
+    }
+    if ((ymnt = xml_spec(xmnt)) == NULL)
         goto fail;
-    if ((ret = yang_schema_mount_point(y)) < 0)
+    if (yang_schema_mount_point(ymnt) == 0)
+        goto fail;
+    if (xml2xpath(xmnt, NULL, 1, 0, &xpath0) < 0)
+        goto done;
+    if (xml_nsctx_node(xmnt, &nsc0) < 0)
+        goto done;
+    yspec = clicon_dbspec_yang(h);
+    if ((ret = xpath2canonical(xpath0, nsc0, yspec, xpath, &nsc1, &reason)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
-    /* Check validate level */
-    if (vl && clixon_plugin_yang_mount_all(h, xt, NULL, vl, NULL) < 0)
-        goto done;
-    if (xml2xpath(xt, NULL, 1, 0, &xpath0) < 0)
-        goto done;
-    if (xml_nsctx_node(xt, &nsc0) < 0)
-        goto done;
-    yspec0 = clicon_dbspec_yang(h);
-    if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc1, &reason)) < 0)
-        goto done;
-    if (ret == 0)
-        goto fail;
-    if (yspec && yang_mount_get(y, xpath1, yspec) < 0)
-        goto done;
+    if (ymntp)
+        *ymntp = ymnt;
     retval = 1;
  done:
     if (xpath0)
         free(xpath0);
-    if (xpath1)
-        free(xpath1);
     if (nsc0)
         cvec_free(nsc0);
     if (nsc1)
@@ -286,106 +335,84 @@ xml_yang_mount_get(clixon_handle   h,
     goto done;
 }
 
+/*! Given XML mount-point get yangspec mount-point
+ *
+ * @param[in]  h        Clixon handle
+ * @param[in]  xmnt     XML mount-point
+ * @param[out] vallevel Do or dont do full RFC 7950 validation if given
+ * @param[out] xpathp   malloced xpath in canonical form (if ret is 1)
+ * @param[out] yspec    YANG stmt spec of mount-point (if ret is 1)
+ * @retval     1        x is a mount-point: yspec may be set
+ * @retval     0        x is not a mount-point
+ * @retval    -1        Error
+ */
+int
+xml_yang_mount_get(clixon_handle   h,
+                   cxobj          *xmnt,
+                   validate_level *vl,
+                   char          **xpathp,
+                   yang_stmt     **yspec)
+{
+    int        retval = -1;
+    yang_stmt *ymnt = NULL;
+    char      *xpath = NULL;
+    int        ret;
+
+    if ((ret = yang_mount_xmnt2ymnt_xpath(h, xmnt, &ymnt, &xpath)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    /* Check validate level */
+    if (vl && clixon_plugin_yang_mount_all(h, xmnt, NULL, vl, NULL) < 0)
+        goto done;
+    if (yspec && yang_mount_get(ymnt, xpath, yspec) < 0)
+        goto done;
+    if (xpathp){
+        *xpathp = xpath;
+        xpath = NULL;
+    }
+    retval = 1;
+ done:
+    if (xpath)
+        free(xpath);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Set yangspec mount-point via XML mount-point node
  *
  * Stored in a separate structure (not in XML config tree)
- * @param[in]  x      XML mount-point node
+ * @param[in]  h      Clixon handle
+ * @param[in]  xmnt   XML mount-point
  * @param[in]  yspec  Yangspec for this mount-point (consumed)
  * @retval     0      OK
  * @retval    -1      Error
  */
 int
 xml_yang_mount_set(clixon_handle h,
-                   cxobj        *x,
+                   cxobj        *xmnt,
                    yang_stmt    *yspec)
 {
     int        retval = -1;
-    yang_stmt *y;
-    char      *xpath0 = NULL;
-    char      *xpath1 = NULL;
-    cvec      *nsc0 = NULL;
-    cvec      *nsc1 = NULL;
-    yang_stmt *yspec0;
-    cbuf      *reason = NULL;
+    yang_stmt *ymnt = NULL;
+    char      *xpath = NULL;
     int        ret;
 
-    if ((y = xml_spec(x)) == NULL){
-        clixon_err(OE_YANG, 0, "No yang-spec");
-        goto done;
-    }
-    if (xml2xpath(x, NULL, 1, 0, &xpath0) < 0)
-        goto done;
-    if (xml_nsctx_node(x, &nsc0) < 0)
-        goto done;
-    yspec0 = clicon_dbspec_yang(h);
-    if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc1, &reason)) < 0)
+    if ((ret = yang_mount_xmnt2ymnt_xpath(h, xmnt, &ymnt, &xpath)) < 0)
         goto done;
     if (ret == 0){
-        clixon_err(OE_YANG, 0, "%s", cbuf_get(reason));
+        clixon_err(OE_YANG, 0, "Mapping xmnt to ymnt and xpath");
         goto done;
     }
-    if (yang_mount_set(y, xpath1, yspec) < 0)
+    if (yang_mount_set(ymnt) < 0)
         goto done;
     retval = 0;
  done:
-    if (xpath0)
-        free(xpath0);
-    if (xpath1)
-        free(xpath1);
-    if (nsc0)
-        cvec_free(nsc0);
-    if (nsc1)
-        cvec_free(nsc1);
-    if (reason)
-        cbuf_free(reason);
+    if (xpath)
+        free(xpath);
     return retval;
-}
-
-/*! Get any yspec of a mount-point, special function
- *
- * Get (the first) mounted yspec. 
- * A more generic way would be to call plugin_mount to get the yanglib and from that get the
- * yspec. But there is clixon code that cant call the plugin since h is not available
- * @param[in]  y     Yang container/list containing unknown node
- * @param[out] yspec YANG stmt spec
- * @retval     1     yspec found and set
- * @retval     0     Not found
- */
-int
-yang_mount_get_yspec_any(yang_stmt  *y,
-                         yang_stmt **yspec)
-{
-    cvec   *cvv;
-    cg_var *cv;
-    void   *p;
-
-    /* Special value in yang unknown node for mount-points: mapping from xpath->mounted yspec */
-    if ((cvv = yang_cvec_get(y)) != NULL &&
-        (cv = cvec_i(cvv, 0)) != NULL &&
-        (p = cv_void_get(cv)) != NULL){
-        *yspec = p;
-        return 1;
-    }
-    return 0;
-}
-
-/*! Free all yspec yang-mounts
- *
- * @param[in] cvv  Cligen-variable vector containing xpath -> yspec mapping
- * @retval    0    OK
- */
-int
-yang_mount_freeall(cvec *cvv)
-{
-    cg_var    *cv = NULL;
-    yang_stmt *ys;
-
-    cv = NULL;
-    while ((cv = cvec_each(cvv, cv)) != NULL){
-        if ((ys = cv_void_get(cv)) != NULL)
-            ys_free(ys);
-    }
-    return 0;
 }
 
 /*! Find schema mounts - callback function for xml_apply
@@ -398,8 +425,8 @@ yang_mount_freeall(cvec *cvv)
  * @retval    -1    Error, aborted at first error encounter, return -1 to end user
  */
 static int
-find_schema_mounts(cxobj *x,
-                   void  *arg)
+find_xml_schema_mounts(cxobj *x,
+                       void  *arg)
 {
     int        ret;
     yang_stmt *y;
@@ -422,6 +449,94 @@ find_schema_mounts(cxobj *x,
     return 0;
 }
 
+/*! Given XML top-of-tree, find all XML mount-points and return in a vector
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  xtop  XML top-node
+ * @param[out] cvv   Cligen vector of XML moint-points, deallocate with cvec_fee()
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+yang_mount_xtop2xmnt(cxobj *xtop,
+                     cvec **cvvp)
+{
+    int    retval = -1;
+    cvec  *cvv = NULL;
+
+    if ((cvv = cvec_new(0)) == NULL){
+        clixon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
+    }
+    if (xml_apply(xtop, CX_ELMNT, find_xml_schema_mounts, cvv) < 0)
+        goto done;
+    if (cvvp)
+        *cvvp = cvv;
+    retval = 0;
+ done:
+    return retval;
+}
+
+#ifdef NOTUSED
+/*! Find schema mounts - callback function for yang_apply
+ *
+ * @param[in]  yn   yang node
+ * @param[in]  arg  Argument
+ * @retval     n    OK, abort traversal and return to caller with "n"
+ * @retval     0    OK, continue with next
+ * @retval    -1    Error, abort
+ */
+static int
+find_yang_schema_mounts(yang_stmt *y,
+                        void      *arg)
+{
+    int     ret;
+    cvec   *cvv = (cvec *)arg;
+    cg_var *cv;
+
+    if (yang_config(y) == 0)
+        return 0;
+    if ((ret = yang_schema_mount_point(y)) < 0)
+        return -1;
+    if (ret == 0)
+        return 0;
+    if ((cv = cvec_add(cvv, CGV_VOID)) == NULL){
+        clixon_err(OE_UNIX, errno, "cvec_add");
+        return -1;
+    }
+    cv_void_set(cv, y);
+    return 0;
+}
+
+/*! Given top-level YANG spec, find all YANG mount-points and return in a vector
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  yspec  YANG top-level spec
+ * @param[out] cvv    Cligen vector of YANG moint-points, free with cvec_fee()
+ * @retval     0      OK
+ * @retval    -1      Error
+ */
+int
+yang_mount_yspec2ymnt(yang_stmt *yspec,
+                      cvec     **cvvp)
+{
+    int    retval = -1;
+    cvec  *cvv = NULL;
+
+    if ((cvv = cvec_new(0)) == NULL){
+        clixon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
+    }
+    if (yang_apply(yspec, -1, find_yang_schema_mounts, 1, cvv) < 0)
+        goto done;
+    if (cvvp)
+        *cvvp = cvv;
+    retval = 0;
+ done:
+    return retval;
+}
+#endif
+
 /*! Find mount-points and return yang-library state
  *
  * Brute force: traverse whole XML, match all x that have ymount as yspec
@@ -441,7 +556,11 @@ find_schema_mounts(cxobj *x,
  *   "ietf-yang-schema-mount" modules in the mounted schema and specifying
  *   the schemas in exactly the same way as the top-level schema.
  * Alt: see snmp_yang2xml to get instances instead of brute force traverse of whole tree
- * @note: Mountpoints must exist in xret on entry
+ * XXX  Mountpoints must exist in xret on entry, which is problematic:
+ * XXX  A get state may have an xpath not including their config, ie:
+ * XXX  xpath=/top/mymount/yang-library does not include /top/mymount and therefore
+ * XXX  the mountpoint will not be present in xret
+ * XXX see: https://github.com/clicon/clixon/issues/485
  */
 static int
 yang_schema_mount_statedata_yanglib(clixon_handle h,
@@ -453,7 +572,7 @@ yang_schema_mount_statedata_yanglib(clixon_handle h,
     int            retval = -1;
     cvec          *cvv = NULL;
     cg_var        *cv;
-    cxobj         *xmp;          /* xml mount-point */
+    cxobj         *xmnt;
     cxobj         *yanglib = NULL; /* xml yang-lib */
     cbuf          *cb = NULL;
     yang_stmt     *yspec;
@@ -465,19 +584,15 @@ yang_schema_mount_statedata_yanglib(clixon_handle h,
         clixon_err(OE_UNIX, 0, "clicon buffer");
         goto done;
     }
-    if ((cvv = cvec_new(0)) == NULL){
-        clixon_err(OE_UNIX, errno, "cvec_new");
-        goto done;
-    }
-    if (xml_apply(*xret, CX_ELMNT, find_schema_mounts, cvv) < 0)
+    if (yang_mount_xtop2xmnt(*xret, &cvv) < 0)
         goto done;
     yspec = clicon_dbspec_yang(h);
     cv = NULL;
     while ((cv = cvec_each(cvv, cv)) != NULL) {
-        xmp = cv_void_get(cv);
+        xmnt = cv_void_get(cv);
         yanglib = NULL;
         /* User callback */
-        if (clixon_plugin_yang_mount_all(h, xmp, &config, &vl, &yanglib) < 0)
+        if (clixon_plugin_yang_mount_all(h, xmnt, &config, &vl, &yanglib) < 0)
             goto done;
         if (yanglib == NULL)
             continue;
@@ -485,7 +600,7 @@ yang_schema_mount_statedata_yanglib(clixon_handle h,
             goto done;
         if (ret == 0)
             goto fail;
-        if (xml_addsub(xmp, yanglib) < 0)
+        if (xml_addsub(xmnt, yanglib) < 0)
             goto done;
         yanglib = NULL;
     }
@@ -590,118 +705,190 @@ yang_schema_mount_statedata(clixon_handle h,
     goto done;
 }
 
-/*! Statistics about mountpoints
+/*! Given xml mount-point and yanglib, find existing yspec
  *
- * @param[in]  h     Clixon handle
- * @retval     0     OK
- * @retval    -1     Error
- * @see yang_schema_mount_statedata
+ * Get and loop through all XML from xt mount-points.
+ * Get xyanglib and if equal to xt, find and return yspec
+ * @param[in]   h        Clixon handle
+ * @param[in]   xt       XML tree node
+ * @param[in]   xyanglib yanglib in XML
+ * @param[out]  yspecp   Yang spec
+ * @retval      0        OK
+ * @retval     -1        Error
  */
-int
-yang_schema_mount_statistics(clixon_handle h,
-                             cxobj        *xt,
-                             int           modules,
-                             cbuf         *cb)
+static int
+yang_schema_find_share(clixon_handle h,
+                       cxobj        *xt,
+                       cxobj        *xyanglib,
+                       yang_stmt   **yspecp)
 {
-    int        retval = -1;
-    cvec      *cvv = NULL;
-    cg_var    *cv;
-    cxobj     *xmp;          /* xml mount-point */
-    yang_stmt *yspec;
-    yang_stmt *ym;
-    int        ret;
-    char      *xpath = NULL;
-    uint64_t   nr;
-    size_t     sz;
+    int     retval = -1;
+    cvec   *cvv = NULL;
+    cg_var *cv;
+    cxobj  *xroot;
+    cxobj  *xmnt;
+    cxobj  *xylib = NULL;
+    int     config = 1;
+    int     ret;
 
-    if ((cvv = cvec_new(0)) == NULL){
-        clixon_err(OE_UNIX, errno, "cvec_new");
+    xroot = xml_root(xt);
+    /* Get all XML mtpoints */
+    if (yang_mount_xtop2xmnt(xroot, &cvv) < 0)
         goto done;
-    }
-    if (xml_apply(xt, CX_ELMNT, find_schema_mounts, cvv) < 0)
-        goto done;
+    /* Loop through XML mount-points */
     cv = NULL;
     while ((cv = cvec_each(cvv, cv)) != NULL) {
-        if ((xmp = cv_void_get(cv)) == NULL)
+        xmnt = cv_void_get(cv);
+        if (xmnt == xt)
             continue;
-        if ((ret = xml_yang_mount_get(h, xmp, NULL, &yspec)) < 0)
+        if (xylib){
+            xml_free(xylib);
+            xylib = NULL;
+        }
+        /* Get xyanglib */
+        if (clixon_plugin_yang_mount_all(h, xmnt, &config, NULL, &xylib) < 0)
             goto done;
-        if (ret == 0)
+        if (xylib == NULL)
             continue;
-        if (xml2xpath(xmp, NULL, 1, 0, &xpath) < 0)
+        /* Check if equal */
+        if (xml_tree_equal(xyanglib, xylib) == 1)
+            continue;
+        /* Find and return yspec */
+        *yspecp = NULL;
+        if ((ret = xml_yang_mount_get(h, xmnt, NULL, NULL, yspecp)) < 0)
             goto done;
-        cprintf(cb, "<module-set><name>mountpoint: ");
-        xml_chardata_cbuf_append(cb, xpath);
-        cprintf(cb, "</name>");
-        nr = 0; sz = 0;
-        if (yang_stats(yspec, &nr, &sz) < 0)
-            goto done;
-        cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
-        if (modules){
-            ym = NULL;
-            while ((ym = yn_each(yspec, ym)) != NULL) {
-                cprintf(cb, "<module><name>%s</name>", yang_argument_get(ym));
-                nr = 0; sz = 0;
-                if (yang_stats(ym, &nr, &sz) < 0)
-                    goto done;
-                cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
-                cprintf(cb, "</module>");
-            }
-        }
-        cprintf(cb, "</module-set>");
-        if (xpath){
-            free(xpath);
-            xpath = NULL;
-        }
+        if (ret == 1 && *yspecp != NULL)
+            break;
     }
     retval = 0;
  done:
-    if (xpath)
-        free(xpath);
+    if (xylib)
+        xml_free(xylib);
     if (cvv)
         cvec_free(cvv);
     return retval;
 }
 
-/*! Get yanglib from user plugin callback, parse it and mount it
- * 
- * @param[in]     h     Clixon handle
- * @param[in]     xt       
- * @retval        1     OK
- * @retval        0     No yanglib or problem when parsing yanglib
- * @retval       -1     Error
+/*! Given yanglib, mount it, potentially create a new yspec, and parse all its yangs
+ *
+ * Optionally check for shared yspec
+ * @param[in]  h        Clixon handle
+ * @param[in]  xt       XML tree node
+ * @param[in]  xyanglib XML yang-lib
+ * @retval     1        OK
+ * @retval     0        No yanglib or problem when parsing yanglib
+ * @retval    -1        Error
  */
 int
-yang_schema_yanglib_parse_mount(clixon_handle h,
-                                cxobj        *xt)
+yang_schema_yanglib_mount_parse(clixon_handle h,
+                                cxobj        *xt,
+                                cxobj        *xyanglib,
+                                yang_stmt   **yspecp)
 {
-    int            retval = -1;
-    cxobj         *yanglib = NULL;
-    yang_stmt     *yspec = NULL;
-    int            ret;
-    int            config = 1;
-    validate_level vl = VL_FULL;
+    int        retval = -1;
+    cxobj     *xb;
+    char      *domain = NULL;
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
+    yang_stmt *yspec0 = NULL;
+    yang_stmt *yspec1 = NULL;
+    char      *xpath = NULL;
+    cbuf      *cb = NULL;
+    int        ret;
+    static unsigned int nr = 0;
 
-    if (clixon_plugin_yang_mount_all(h, xt, &config, &vl, &yanglib) < 0)
+    if ((xb = xpath_first(xyanglib, NULL, "module-set/name")) != NULL)
+        domain = xml_body(xb);
+    if (domain == NULL){
+        clixon_err(OE_YANG, 0, "domain not found");
         goto done;
-    if (yanglib == NULL)
+    }
+    /* Get xpath */
+    if ((ret = yang_mount_xmnt2ymnt_xpath(h, xt, NULL, &xpath)) < 0)
+        goto done;
+    if (ret == 0){
+        clixon_err(OE_YANG, 0, "Mapping xmnt to ymnt and xpath");
+        goto done;
+    }
+    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
+        goto done;
+    }
+    if ((ydomain = yang_find(ymounts, Y_DOMAIN, domain)) == NULL){
+        if ((ydomain = ydomain_new(h, domain)) == NULL)
+            goto done;
+    }
+    /* Optimization: find equal yspec from other mount-point */
+    if (yang_schema_find_share(h, xt, xyanglib, &yspec0) < 0)
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_YANG, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "%u", nr++);
+    if ((yspec1 = yspec_new_shared(h, xpath, domain, cbuf_get(cb), yspec0)) < 0)
+        goto done;
+    /* Either yspec0 = NULL and yspec1 is new, or yspec0 == yspec1 != NULL (shared) */
+    if (yspec0 == NULL && yspec1 != NULL){
+        if ((ret = yang_lib2yspec(h, xyanglib, xpath, domain, yspec1)) < 0)
+            goto done;
+        if (ret == 0){
+            ys_prune_self(yspec1); /* remove from tree, free in done code */
+            goto anydata;
+        }
+    }
+    if (xml_yang_mount_set(h, xt, yspec1) < 0)
+        goto done;
+    if (yspecp)
+        *yspecp = yspec1;
+    yspec1 = NULL;
+    retval = 1;
+ done:
+    if (yspec1)
+        ys_free(yspec1);
+    if (cb)
+        cbuf_free(cb);
+    if (xpath)
+        free(xpath);
+    return retval;
+ anydata:
+    retval = 0;
+    goto done;
+}
+
+/*! Get yanglib from user plugin callback, create yspec, mount it and parse all yangs
+ *
+ * Optionally check for shared yspec
+ * @param[in]  h   Clixon handle
+ * @param[in]  xt  XML tree node
+ * @retval     1   OK
+ * @retval     0   No yanglib or problem when parsing yanglib
+ * @retval    -1   Error
+ */
+int
+yang_schema_yanglib_get_mount_parse(clixon_handle h,
+                                    cxobj        *xt)
+{
+    int        retval = -1;
+    cxobj     *xyanglib = NULL;
+    int        ret;
+
+    clixon_debug(CLIXON_DBG_APP, "");
+    /* 1. Get modstate (xyanglib) of node: xyanglib, by querying backend state (via callback)
+     *    XXX this xyanglib is not proper RFC8525, submodules appear as modules WHY?
+     */
+    if (clixon_plugin_yang_mount_all(h, xt, NULL, NULL, &xyanglib) < 0)
+        goto done;
+    if (xyanglib == NULL)
         goto anydata;
-    /* Parse it and set mount-point */
-    if ((yspec = yspec_new()) == NULL)
-        goto done;
-    if ((ret = yang_lib2yspec(h, yanglib, yspec)) < 0)
+    if ((ret = yang_schema_yanglib_mount_parse(h, xt, xyanglib, NULL)) < 0)
         goto done;
     if (ret == 0)
         goto anydata;
-    if (xml_yang_mount_set(h, xt, yspec) < 0)
-        goto done;
-    yspec = NULL;
     retval = 1;
  done:
-    if (yspec)
-        ys_free(yspec);
-    if (yanglib)
-        xml_free(yanglib);
+    if (xyanglib)
+        xml_free(xyanglib);
     return retval;
  anydata:   // Treat as anydata
     retval = 0;
@@ -732,7 +919,7 @@ yang_schema_get_child(clixon_handle h,
     int        ret;
 
     x1cname = xml_name(x1c);
-    if ((ret = xml_yang_mount_get(h, x1, NULL, &yspec1)) < 0)
+    if ((ret = xml_yang_mount_get(h, x1, NULL, NULL, &yspec1)) < 0)
         goto done;
     if (ret == 1 && yspec1 != NULL){
         if (ys_module_by_xml(yspec1, x1c, &ymod1) <0)
@@ -749,4 +936,44 @@ yang_schema_get_child(clixon_handle h,
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Remove xpath from yspec cvec list, remove yspec if empty
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  xmnt XML mount-point
+ */
+int
+yang_schema_yspec_rm(clixon_handle h,
+                     cxobj        *xmnt)
+{
+    /* Remove mountpoint from yspec cvec */
+    int        retval = -1;
+    yang_stmt *yspec = NULL;
+    char      *xpath = NULL;
+    int        ret;
+
+    if ((ret = xml_yang_mount_get(h, xmnt, NULL, &xpath, &yspec)) < 0)
+        goto done;
+    if (ret == 1 && xpath != NULL && yspec != NULL){
+        if (yang_cvec_rm(yspec, xpath) < 0)
+            goto done;
+#if 0
+        cvec      *cvv;
+        /* see https://github.com/clicon/clixon-controller/issues/169
+         * cannot remove yspec since it may still be in use by caches
+         */
+        cvv = yang_cvec_get(yspec);
+        if (cvv && cvec_len(cvv) == 0){
+            ys_prune_self(yspec);
+            ys_free(yspec);
+            yspec = NULL;
+        }
+#endif
+    }
+    retval = 0;
+ done:
+    if (xpath)
+        free(xpath);
+    return retval;
 }

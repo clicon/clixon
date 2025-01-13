@@ -25,6 +25,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_YANG_LIBRARY>true</CLICON_YANG_LIBRARY>
+  <CLICON_CLI_OUTPUT_FORMAT>xml</CLICON_CLI_OUTPUT_FORMAT>
 </clixon-config>
 EOF
 
@@ -89,19 +90,19 @@ new "wait backend"
 wait_backend
 
 new "cli show config startup"
-expectpart "$($clixon_cli -1 -f $cfg -l o show config xml default report-all)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<enable>true</enable>'
+expectpart "$($clixon_cli -1 -f $cfg -l o show config default report-all)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<enable>true</enable>'
 
 new "cli delete map name"
 expectpart "$($clixon_cli -1 -f $cfg -l o delete table map name me)" 0 ""
 
 new "cli show config deleted"
-expectpart "$($clixon_cli -1 -f $cfg -l o show config xml default report-all)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<enable>true</enable>'
+expectpart "$($clixon_cli -1 -f $cfg -l o show config default report-all)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<enable>true</enable>'
 
 new "cli set map name"
 expectpart "$($clixon_cli -1 -f $cfg -l o set table map name x)" 0 ""
 
 new "cli show config set"
-expectpart "$($clixon_cli -1 -f $cfg -l o show config xml default report-all)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<enable>true</enable>'
+expectpart "$($clixon_cli -1 -f $cfg -l o show config default report-all)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<enable>true</enable>'
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

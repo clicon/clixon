@@ -51,15 +51,15 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_parse.h"
@@ -319,6 +319,9 @@ ctx2number(xp_ctx *xc,
 }
 
 /*! Replace a nodeset of a XPath context with a new nodeset 
+ *
+ * @param[in] vec    XML vector, is consumed
+ * @param[in] veclen
  */
 int
 ctx_nodeset_replace(xp_ctx   *xc,
@@ -331,4 +334,3 @@ ctx_nodeset_replace(xp_ctx   *xc,
     xc->xc_size = veclen;
     return 0;
 }
-

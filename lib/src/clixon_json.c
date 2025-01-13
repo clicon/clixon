@@ -62,12 +62,12 @@
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_options.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_yang_type.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_sort.h"
@@ -318,7 +318,7 @@ json2xml_decode_identityref(cxobj     *x,
     char      *prefix2 = NULL;
     cbuf      *cbv = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     yspec = ys_spec(y);
     if ((xb = xml_body_get(x)) == NULL)
         goto ok;
@@ -336,8 +336,8 @@ json2xml_decode_identityref(cxobj     *x,
              */
             if (xml_nsctx_node(x, &nsc) < 0)
                 goto done;
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s prefix:%s body:%s namespace:%s",
-                         __FUNCTION__, prefix, body, ns);
+            clixon_debug(CLIXON_DBG_DEFAULT, "prefix:%s body:%s namespace:%s",
+                         prefix, body, ns);
             if (!xml_nsctx_get_prefix(nsc, ns, &prefix2)){
                 /* (no)  insert a xmlns:<prefix> statement
                  * Get yang prefix from import statement of my mod 
@@ -472,7 +472,7 @@ xml2json_encode_identityref(cxobj     *xb,
     yang_stmt *yspec;
     yang_stmt *my_ymod;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, body);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s", body);
     my_ymod = ys_module(yp);
     yspec = ys_spec(yp);
     if (nodeid_split(body, &prefix, &id) < 0)
@@ -481,31 +481,15 @@ xml2json_encode_identityref(cxobj     *xb,
     if (xml2ns(xb, prefix, &namespace) < 0)
         goto done;
     /* We got the namespace, now get the module */
-    //    clixon_debug(CLIXON_DBG_DEFAULT, "%s body:%s prefix:%s namespace:%s", __FUNCTION__, body, prefix, namespace);
-#ifdef IDENTITYREF_KLUDGE
-    if (namespace == NULL){
-        /* If we dont find namespace here, we assume it is because of a missing
-         * xmlns that should be there, as a kludge we search for its (own)
-         * prefix in mymodule.
-         */
-        if ((ymod = yang_find_module_by_prefix_yspec(yspec, prefix)) != NULL)
-            cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-        else
+    if ((ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
+        if (ymod == my_ymod)
             cprintf(cb, "%s", id);
+        else{
+            cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
+        }
     }
     else
-#endif
-        {
-            if ((ymod = yang_find_module_by_namespace(yspec, namespace)) != NULL){
-                if (ymod == my_ymod)
-                    cprintf(cb, "%s", id);
-                else{
-                    cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
-                }
-            }
-            else
-                cprintf(cb, "%s", id);
-        }
+        cprintf(cb, "%s", id);
     retval = 0;
  done:
     if (prefix)
@@ -805,6 +789,7 @@ xml2json_encode_attr(cxobj     *xa,
  * @param[in]   level     Indentation level
  * @param[in]   pretty    Pretty-print output (2 means debug)
  * @param[in]   flat      Dont print NO_ARRAY object name (for _vec call)
+ * @param[in]   system_only Enable checks for system-only-config extension
  * @param[in]   modname0
  * @param[out]  metacbp   Meta encoding of attribute
  * @retval      0         OK
@@ -845,6 +830,7 @@ xml2json1_cbuf(cbuf                   *cb,
                int                     level,
                int                     pretty,
                int                     flat,
+               int                     system_only,
                char                   *modname0,
                cbuf                   *metacbp)
 {
@@ -854,11 +840,13 @@ xml2json1_cbuf(cbuf                   *cb,
     cxobj           *xp;
     enum childtype   childt;
     enum array_element_type xc_arraytype;
+    yang_stmt       *yc;
     yang_stmt       *ys;
     yang_stmt       *ymod = NULL; /* yang module */
     int              commas;
     char            *modname = NULL;
     cbuf            *metacbc = NULL;
+    int              exist;
 
     if ((ys = xml_spec(x)) != NULL){
         if (ys_real_module(ys, &ymod) < 0)
@@ -973,21 +961,29 @@ xml2json1_cbuf(cbuf                   *cb,
         xc_arraytype = array_eval(i?xml_child_i(x,i-1):NULL,
                                   xc,
                                   xml_child_i(x, i+1));
-        if (xml2json1_cbuf(cb,
-                           xc,
-                           xc_arraytype,
-                           level+1, pretty, 0, modname0,
-                           metacbc) < 0)
-            goto done;
-        if (commas > 0) {
-            cprintf(cb, ",%s", pretty?"\n":"");
-            --commas;
+        exist = 0;
+        if ((yc = xml_spec(xc)) != NULL && system_only){
+            if (yang_extension_value(yc, "system-only-config", CLIXON_LIB_NS, &exist, NULL) < 0)
+                goto done;
+            if (exist && commas)
+                commas--;
+        }
+        if (!exist) {
+            if (xml2json1_cbuf(cb,
+                               xc,
+                               xc_arraytype,
+                               level+1, pretty, 0, system_only, modname0,
+                               metacbc) < 0)
+                goto done;
+            if (commas > 0) {
+                cprintf(cb, ",%s", pretty?"\n":"");
+                --commas;
+            }
         }
     }
     if (cbuf_len(metacbc)){
         cprintf(cb, "%s", cbuf_get(metacbc));
     }
-
     switch (arraytype){
     case BODY_ARRAY:
         break;
@@ -1057,21 +1053,23 @@ xml2json1_cbuf(cbuf                   *cb,
  * XML-style namespace notation in tree, but RFC7951 in output assume yang 
  * populated 
  *
- * @param[in,out] cb     Cligen buffer to write to
- * @param[in]     x      XML tree to translate from
- * @param[in]     pretty Set if output is pretty-printed
- * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
- * @retval        0      OK
- * @retval       -1      Error
+ * @param[in,out] cb          Cligen buffer to write to
+ * @param[in]     x           XML tree to translate from
+ * @param[in]     pretty      Set if output is pretty-printed
+ * @param[in]     autocliext  How to handle autocli extensions: 0: ignore 1: follow
+ * @param[in]     system_only Enable checks for system-only-config extension
+ * @retval        0           OK
+ * @retval       -1           Error
  *
  * @see clixon_xml2cbuf     XML corresponding function
  * @see xml2json_cbuf_vec   Top symbol is list
  */
 static int
-xml2json_cbuf1(cbuf   *cb,
-               cxobj  *x,
-               int     pretty,
-               int     autocliext)
+xml2json_cbuf1(cbuf  *cb,
+               cxobj *x,
+               int    pretty,
+               int    autocliext,
+               int    system_only)
 {
     int                     retval = 1;
     int                     level = 0;
@@ -1086,6 +1084,7 @@ xml2json_cbuf1(cbuf   *cb,
         if (exist)
             goto ok;
     }
+
     cprintf(cb, "%*s{%s",
             pretty?level*PRETTYPRINT_INDENT:0,"",
             pretty?"\n":"");
@@ -1106,6 +1105,7 @@ xml2json_cbuf1(cbuf   *cb,
                        level+1,
                        pretty,
                        0,
+                       system_only,
                        NULL, /* ancestor modname / namespace */
                        NULL) < 0)
         goto done;
@@ -1124,13 +1124,14 @@ xml2json_cbuf1(cbuf   *cb,
  * XML-style namespace notation in tree, but RFC7951 in output assume yang 
  * populated 
  *
- * @param[in,out] cb      Cligen buffer to write to
- * @param[in]     xt      Top-level xml object
- * @param[in]     pretty  Set if output is pretty-printed
- * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children, 
- * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
- * @retval        0       OK
- * @retval       -1       Error
+ * @param[in,out] cb          Cligen buffer to write to
+ * @param[in]     xt          Top-level xml object
+ * @param[in]     pretty      Set if output is pretty-printed
+ * @param[in]     skiptop     0: Include top object 1: Skip top-object, only children,
+ * @param[in]     autocliext  How to handle autocli extensions: 0: ignore 1: follow
+ * @param[in]     system_only Enable checks for system-only-config extension
+ * @retval        0           OK
+ * @retval       -1           Error
  * @code
  *   cbuf *cb = cbuf_new();
  *   if (xml2json_cbuf(cb, xn, 0, 0, 0) < 0)
@@ -1144,7 +1145,8 @@ clixon_json2cbuf(cbuf  *cb,
                  cxobj *xt,
                  int    pretty,
                  int    skiptop,
-                 int    autocliext)
+                 int    autocliext,
+                 int    system_only)
 {
     int    retval = -1;
     cxobj *xc;
@@ -1155,12 +1157,12 @@ clixon_json2cbuf(cbuf  *cb,
         while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
             if (i++)
                 cprintf(cb, ",");
-            if (xml2json_cbuf1(cb, xc, pretty, autocliext) < 0)
+            if (xml2json_cbuf1(cb, xc, pretty, autocliext, system_only) < 0)
                 goto done;
         }
     }
     else {
-        if (xml2json_cbuf1(cb, xt, pretty, autocliext) < 0)
+        if (xml2json_cbuf1(cb, xt, pretty, autocliext, system_only) < 0)
             goto done;
     }
     retval = 0;
@@ -1233,7 +1235,7 @@ xml2json_cbuf_vec(cbuf      *cb,
                        NO_ARRAY,
                        level,
                        pretty,
-                       1, NULL, NULL) < 0)
+                       1, 0, NULL, NULL) < 0)
         goto done;
 
     if (0){
@@ -1253,19 +1255,20 @@ xml2json_cbuf_vec(cbuf      *cb,
 
 /*! Translate from xml tree to JSON and print to file using a callback
  *
- * @param[in]  f       File to print to
- * @param[in]  xn      XML tree to translate from
- * @param[in]  pretty  Set if output is pretty-printed
- * @param[in]  fn       File print function
- * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
- * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
- * @retval     0       OK
- * @retval    -1       Error
+ * @param[in]  f           File to print to
+ * @param[in]  xn          XML tree to translate from
+ * @param[in]  pretty      Set if output is pretty-printed
+ * @param[in]  fn          File print function
+ * @param[in]  skiptop 0:  Include top object 1: Skip top-object, only children,
+ * @param[in]  autocliext  How to handle autocli extensions: 0: ignore 1: follow
+ * @param[in]  system_only Enable checks for system-only-config extension
+ * @retval     0           OK
+ * @retval    -1           Error
  *
  * @note yang is necessary to translate to one-member lists,
  * eg if a is a yang LIST <a>0</a> -> {"a":["0"]} and not {"a":"0"}
  * @code
- * if (clixon_json2file(stderr, xn, 0, fprintf, 0, 0) < 0)
+ * if (clixon_json2file(stderr, xn, 0, fprintf, 0, 0, 0) < 0)
  *   goto err;
  * @endcode
  */
@@ -1275,7 +1278,8 @@ clixon_json2file(FILE             *f,
                  int               pretty,
                  clicon_output_cb *fn,
                  int               skiptop,
-                 int               autocliext)
+                 int               autocliext,
+                 int               system_only)
 {
     int   retval = 1;
     cbuf *cb = NULL;
@@ -1286,7 +1290,7 @@ clixon_json2file(FILE             *f,
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    if (clixon_json2cbuf(cb, xn, pretty, skiptop, autocliext) < 0)
+    if (clixon_json2cbuf(cb, xn, pretty, skiptop, autocliext, system_only) < 0)
         goto done;
     (*fn)(f, "%s", cbuf_get(cb));
     retval = 0;
@@ -1305,7 +1309,7 @@ int
 json_print(FILE  *f,
            cxobj *x)
 {
-    return clixon_json2file(f, x, 1, fprintf, 0, 0);
+    return clixon_json2file(f, x, 1, fprintf, 0, 0, 0);
 }
 
 /*! Translate a vector of xml objects to JSON File.
@@ -1451,7 +1455,7 @@ _json_parse(char      *str,
     int              i;
     int              failed = 0; /* yang assignment */
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d %s", __FUNCTION__, yb, str);
+    clixon_debug(CLIXON_DBG_PARSE, "%s", str);
     jy.jy_parse_string = str;
     jy.jy_linenum = 1;
     jy.jy_current = xt;
@@ -1537,7 +1541,7 @@ _json_parse(char      *str,
             goto done;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
     if (cberr)
         cbuf_free(cberr);
     json_parse_exit(&jy);
@@ -1580,7 +1584,7 @@ clixon_json_parse_string(char      *str,
                          cxobj    **xt,
                          cxobj    **xerr)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (xt==NULL){
         clixon_err(OE_JSON, EINVAL, "xt is NULL");
         return -1;
@@ -1696,5 +1700,3 @@ clixon_json_parse_file(FILE      *fp,
     retval = 0;
     goto done;
 }
-
-

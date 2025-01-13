@@ -18,6 +18,9 @@ nacmfile=$dir/nacmfile
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config user false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 # Note filter out example_backend_nacm.so in CLICON_BACKEND_REGEXP below
 cat <<EOF > $cfg
@@ -38,6 +41,7 @@ cat <<EOF > $cfg
   <CLICON_NACM_MODE>external</CLICON_NACM_MODE>
   <CLICON_NACM_FILE>$nacmfile</CLICON_NACM_FILE>
   <CLICON_NACM_CREDENTIALS>none</CLICON_NACM_CREDENTIALS>
+  <CLICON_CLI_OUTPUT_FORMAT>text</CLICON_CLI_OUTPUT_FORMAT>
   $RESTCONFIG
 </clixon-config>
 EOF

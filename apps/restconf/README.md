@@ -4,21 +4,37 @@
   * [Nginx](#nginx)
   * [Streams](#streams)
   * [Nchan Streams](#nchan)
-  * [Debugging](#debugging)     
+  * [Debugging](#debugging)
 
 There are two installation instructions: for native and nginx.
 
 ## Native
+
+Native with http1 and http2 is the main variant, with most regression testing.
 
 Configure clixon with native restconf:
 ```
   ./configure --with-restconf=native
 ```
 
+You can disable http1 and http2:
+```
+  --disable-http1         Disable native http/1.1 (ie http/2 only)
+  --disable-nghttp2       Disable native http/2 using libnghttp2 (ie http/1 only)
+```
+
 Ensure www-data is member of the CLICON_SOCK_GROUP (default clicon). If not, add it:
 ```
   sudo usermod -a -G clicon www-data
 ```
+
+### nghttp2
+
+For details on the C API see https://nghttp2.org
+
+### openssl
+
+For details on the C-API see https://www.openssl.org/ docs/manual pages
 
 ## Nginx
 
@@ -68,7 +84,7 @@ Or on FreeBSD:
 
 Start clixon backend daemon (if not already started)
 ```
-  sudo clixon_backend -s init -f /usr/local/etc/example.xml
+  sudo clixon_backend -s init -f /usr/local/etc/clixon/example.xml
 ```
 
 Start clixon restconf daemon
@@ -156,6 +172,8 @@ See (stream tests)[../test/test_streams.sh] for more examples.
 
 ## Nchan
 
+This is not supported
+
 As an alternative streams implementation, Nginx/Nchan can be used. 
 Nginx uses pub/sub channels and can be configured in a variety of
 ways. The following uses a simple variant with one generic subscription
@@ -213,7 +231,7 @@ See (https://nchan.io/#eventsource) on more info on how to access an SSE sub end
 
 Start the restconf fastcgi program with debug flag:
 ```
-sudo clixon_restconf -D 1 -f /usr/local/etc/example.xml
+sudo clixon_restconf -D 1 -f /usr/local/etc/clixon/example.xml
 ```
 Look at syslog:
 ```
@@ -228,7 +246,7 @@ curl -G http://127.0.0.1/restconf/data/*
 You can also run restconf in a debugger.
 ```
 sudo gdb clixon_restconf
-(gdb) run -D 1 -f /usr/local/etc/example.xml
+(gdb) run -D 1 -f /usr/local/etc/clixon/example.xml
 ```
 but you need to ensure /www-data/fastcgi_restconf.sock has the following access (may need to be done after restconf has started)
 ```
@@ -239,3 +257,16 @@ You can set debug level of the backend via restconf:
 ```
    curl -is -X POST -H "Content-Type: application/yang-data+json" -d '{"clixon-lib:input":{"level":1}}' http://localhost/restconf/operations/clixon-lib:debug
 ```
+
+## Code structure
+
+Due to the native and fcgi variants, and also native http1/http2, the
+source file structure is complex.
+
+There are the following blocks of files:
+
+* COMMON: Common code, such as HTTP methods processing, error and common lib functions
+* FCGI: Top-level main, stream and low-level lib (as defined by restconf_api.h)
+* NATIVE-COMMON: Top-level main, stream and low-level lib
+* NATIVE-HTTP1: Native for HTTP/1 only
+* NATIVE-HTTP2: Native for Libnghttp2 only

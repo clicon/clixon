@@ -1,4 +1,4 @@
- /*
+/*
  *
   ***** BEGIN LICENSE BLOCK *****
  
@@ -50,6 +50,7 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/types.h>
 
@@ -59,10 +60,17 @@
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_map.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_debug.h"
 #include "clixon_log.h"
+#include "clixon_netconf_lib.h"
+#include "clixon_xml_io.h"
+#include "clixon_yang_module.h"
+#include "clixon_plugin.h"
 
 /*
  * Local Variables
@@ -72,13 +80,54 @@
 static clixon_handle _log_clixon_h    = NULL;
 
 /* Bitmask whether to log to syslog or stderr: CLIXON_LOG_STDERR | CLIXON_LOG_SYSLOG */
-static int _log_flags = 0x0;
+static uint16_t _log_flags = 0x0;
 
 /* Set to open file to write debug messages directly to file */
 static FILE *_log_file = NULL;
 
 /* Truncate debug strings to this length. 0 means unlimited */
 static int _log_trunc = 0;
+
+/*! Mapping between Clixon debug symbolic names <--> bitfields
+ *
+ * Also inclode shorthands: s|e|o|f|n
+ * Mapping between specific bitfields and symbolic names, note only perfect matches
+ * @see typedef log_destination_t in clixon-config.yang
+ */
+static const map_str2int logdstmap[] = {
+    {"syslog",   CLIXON_LOG_SYSLOG},
+    {"s",        CLIXON_LOG_SYSLOG},
+    {"stderr",   CLIXON_LOG_STDERR},
+    {"e",        CLIXON_LOG_STDERR},
+    {"stdout",   CLIXON_LOG_STDOUT},
+    {"o",        CLIXON_LOG_STDOUT},
+    {"file",     CLIXON_LOG_FILE},
+    {"f",        CLIXON_LOG_FILE},
+    {"n",        0x0},
+    {NULL,       -1}
+};
+
+/*! Map from clixon debug (specific) bitmask to string
+ *
+ * @param[in] int  Bitfield, see CLIXON_LOG_SYSLOG and others
+ * @retval    str  String representation of bitfield
+ */
+char *
+clixon_logdst_key2str(int keyword)
+{
+    return (char*)clicon_int2str(logdstmap, keyword);
+}
+
+/*! Map from clixon log destination symbolic string to bitfield
+ *
+ * @param[in] str  String representation of Clixon log destination bit
+ * @retval    int  Bit representation of bitfield
+ */
+int
+clixon_logdst_str2key(char *str)
+{
+    return clicon_str2int(logdstmap, str);
+}
 
 /*! Initialize system logger.
  *
@@ -89,9 +138,7 @@ static int _log_trunc = 0;
  * @param[in]  h       Clixon handle
  * @param[in]  ident   prefix that appears on syslog (eg 'cli')
  * @param[in]  upto    log priority, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG (see syslog(3)).
- * @param[in]  flags   bitmask: if CLIXON_LOG_STDERR, then print logs to stderr
- *                              if CLIXON_LOG_SYSLOG, then print logs to syslog
- *                              You can do a combination of both
+ * @param[in]  flags   Log destination bitmask
  * @retval     0       OK
  * @code
  *  clixon_log_init(__PROGRAM__, LOG_INFO, CLIXON_LOG_STDERR); 
@@ -101,7 +148,7 @@ int
 clixon_log_init(clixon_handle h,
                 char         *ident,
                 int           upto, 
-                int           flags)
+                uint16_t      flags)
 {
     _log_clixon_h = h;
     _log_flags = flags;
@@ -113,19 +160,6 @@ clixon_log_init(clixon_handle h,
     }
     return 0;
 }
-
-#ifdef COMPAT_6_5
-/* Required for clixon-example autoconf
- */
-int
-clicon_log_init(char         *ident,
-                int           upto, 
-                int           flags)
-{
-    return clixon_log_init(NULL, ident, upto, flags);
-}
-
-#endif
 
 int
 clixon_log_exit(void)
@@ -188,10 +222,21 @@ clixon_log_file(char *filename)
     return 0;
 }
 
-int
-clixon_get_logflags(void)
+/*! Get log flags
+ */
+uint16_t
+clixon_logflags_get(void)
 {
     return _log_flags;
+}
+
+/*! Replace log flags
+ */
+int
+clixon_logflags_set(uint16_t flags)
+{
+    _log_flags = flags;
+    return 0;
 }
 
 /*! Truncate log/debug string length
@@ -247,9 +292,10 @@ flogtime(FILE *f)
 
     gettimeofday(&tv, NULL);
     localtime_r((time_t*)&tv.tv_sec, &tm);
-    fprintf(f, "%s %2d %02d:%02d:%02d: ",
+    fprintf(f, "%s %2d %02d:%02d:%02d.%06ld: ",
             mon2name(tm.tm_mon), tm.tm_mday,
-            tm.tm_hour, tm.tm_min, tm.tm_sec);
+            tm.tm_hour, tm.tm_min, tm.tm_sec,
+            tv.tv_usec);
     return 0;
 }
 
@@ -288,9 +334,12 @@ slogtime(void)
  * @see  clixon_debug
  */
 int
-clixon_log_str(int     level,
-               char   *msg)
+clixon_log_str(int   level,
+               char *msg)
 {
+    /* Remove trailing CR if any */
+    if (strlen(msg) && msg[strlen(msg)-1] == '\n')
+        msg[strlen(msg)-1] = '\0';
     if (_log_flags & CLIXON_LOG_SYSLOG)
         syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg); // XXX this may block
    /* syslog makes own filtering, we do it here:
@@ -320,58 +369,68 @@ clixon_log_str(int     level,
 
 /*! Make a logging call to syslog using variable arg syntax.
  *
- * @param[in]  h       Clixon handle (may be NULL)
- * @param[in]  level   Log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. This 
- *                     is OR:d with facility == LOG_USER
- * @param[in]  format  Message to print as argv.
- * @retval     0       OK
- * @retval    -1       Error
+ * Do not use this fn directly, use the clixon_log() macro
+ * @param[in]  h      Clixon handle (may be NULL)
+ * @param[in]  user   If set, invoke user callback
+ * @param[in]  level  Log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. This 
+ *                    is OR:d with facility == LOG_USER
+ * @param[in]  x      XML tree that is logged without prettyprint
+ * @param[in]  format Message to print as argv.
+ * @retval     0      OK
+ * @retval    -1      Error
  * @code
         clixon_log(h, LOG_NOTICE, "%s: dump to dtd not supported", __PROGRAM__);
  * @endcode
  * @see clixon_log_init clixon_log_str 
- * @see clixon_log_xml
+ * The reason the "user" parameter is present is that internal calls (eg from clixon_err) may not
+ * want to invoke user callbacks a second time.
  */
 int
-clixon_log(clixon_handle h,
-           int           level,
-           const char   *format, ...)
+clixon_log_fn(clixon_handle h,
+              int           user,
+              int           level,
+              cxobj        *x,
+              const char   *format, ...)
 {
     int     retval = -1;
-    va_list args;
-    size_t  len;
-    char   *msg    = NULL;
+    va_list ap;
     size_t  trunc;
+    cbuf   *cb = NULL;
 
-    /* first round: compute length of debug message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-
+    if (h == NULL)     /* Accept NULL, use saved clixon handle */
+        h = _log_clixon_h;
+    if (user){
+        va_start(ap, format);
+        if (clixon_plugin_errmsg_all(h, NULL, 0, LOG_TYPE_LOG,
+                                     NULL, NULL, x, format, ap, &cb) < 0)
+            goto done;
+        va_end(ap);
+        if (cb != NULL){ /* Customized: expand clixon_err_args */
+            clixon_log_fn(h, 0, LOG_ERR, NULL, "%s", cbuf_get(cb));
+            goto ok;
+        }
+    }
+    if ((cb = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
+        goto done;
+    }
+    va_start(ap, format);
+    vcprintf(cb, format, ap);
+    va_end(ap);
+    if (x){
+        cprintf(cb, ": ");
+        if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+    }
     /* Truncate long debug strings */
-    if ((trunc = clixon_log_string_limit_get()) && trunc < len)
-        len = trunc;
-
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-    va_end(args);
+    if ((trunc = clixon_log_string_limit_get()) && trunc < cbuf_len(cb))
+        cbuf_trunc(cb, trunc);
     /* Actually log it */
-    clixon_log_str(level, msg);
-
+    clixon_log_str(level, cbuf_get(cb));
+ ok:
     retval = 0;
-  done:
-    if (msg)
-        free(msg);
+ done:
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }

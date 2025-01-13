@@ -71,17 +71,17 @@
 
 /* clixon */
 #include "clixon_queue.h"
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_event.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
-#include "clixon_xml_io.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_io.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
@@ -115,6 +115,21 @@ stream_find(clixon_handle h,
     return NULL;
 }
 
+/*! Delete event stream core components 
+ *
+ * @param[in]     es   Event notification stream structure
+ */
+static int
+stream_delete(event_stream_t *es)
+{
+    if (es->es_name)
+        free(es->es_name);
+    if (es->es_description)
+        free(es->es_description);
+    free(es);
+    return 0;
+}
+
 /*! Add notification event stream
  *
  * @param[in]  h              Clixon handle
@@ -133,7 +148,7 @@ stream_add(clixon_handle   h,
            struct timeval *retention)
 {
     int             retval = -1;
-    event_stream_t *es;
+    event_stream_t *es = NULL;
 
     if ((es = stream_find(h, name)) != NULL)
         goto ok;
@@ -154,9 +169,12 @@ stream_add(clixon_handle   h,
     if (retention)
         es->es_retention = *retention;
     clicon_stream_append(h, es);
+    es = NULL;
  ok:
     retval = 0;
  done:
+    if (es)
+        stream_delete(es);
     return retval;
 }
 
@@ -179,10 +197,6 @@ stream_delete_all(clixon_handle h,
     while ((es = clicon_stream(h)) != NULL){
         DELQ(es, head, event_stream_t *);
         clicon_stream_set(h, head);
-        if (es->es_name)
-            free(es->es_name);
-        if (es->es_description)
-            free(es->es_description);
         while ((ss = es->es_subscription) != NULL){
             if (stream_ss_rm(h, es, ss, force) < 0)
                 goto done;
@@ -193,7 +207,8 @@ stream_delete_all(clixon_handle h,
                 xml_free(r->r_xml);
             free(r);
         }
-        free(es);
+        if (stream_delete(es) < 0)
+            goto done;
     }
     retval = 0;
  done:
@@ -267,7 +282,7 @@ stream_timer_setup(int   fd,
     struct stream_replay        *r;
     struct stream_replay        *r1;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "");
     /* Go thru callbacks and see if any have timed out, if so remove them 
      * Could also be done by a separate timer.
      */
@@ -348,7 +363,7 @@ stream_ss_add(clixon_handle     h,
     event_stream_t             *es;
     struct stream_subscription *ss = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM, "");
     if ((es = stream_find(h, stream)) == NULL){
         clixon_err(OE_CFG, ENOENT, "Stream %s not found", stream);
         goto done;
@@ -395,7 +410,7 @@ stream_ss_rm(clixon_handle                h,
              struct stream_subscription  *ss,
              int                          force)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM, "");
     DELQ(ss, es->es_subscription, struct stream_subscription *);
     /* Remove from upper layers - close socket etc. */
     (*ss->ss_fn)(h, 1, NULL, ss->ss_arg);
@@ -406,7 +421,7 @@ stream_ss_rm(clixon_handle                h,
             free(ss->ss_xpath);
         free(ss);
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval: 0", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM, "retval: 0");
     return 0;
 }
 
@@ -519,7 +534,7 @@ stream_notify1(clixon_handle   h,
     int                         retval = -1;
     struct stream_subscription *ss;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM, "");
     /* Go thru all subscriptions and find matches */
     if ((ss = es->es_subscription) != NULL)
         do {
@@ -557,7 +572,7 @@ stream_notify1(clixon_handle   h,
  *  if (stream_notify(h, "NETCONF", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
  *    err;
  * @endcode
- * @see stream_notify1 Internal
+ * @see  stream_notify_xml  Similar but with XML data
  */
 int
 stream_notify(clixon_handle h,
@@ -575,7 +590,7 @@ stream_notify(clixon_handle h,
     struct timeval  tv;
     event_stream_t *es;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM, "");
     if ((es = stream_find(h, stream)) == NULL)
         goto ok;
     va_start(args, event);
@@ -652,7 +667,7 @@ stream_notify_xml(clixon_handle h,
     struct timeval tv;
     event_stream_t *es;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM, "");
     if ((es = stream_find(h, stream)) == NULL)
         goto ok;
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -697,7 +712,6 @@ stream_notify_xml(clixon_handle h,
         free(str);
     return retval;
 }
-
 
 /*! Replay a stream by sending notification messages
  *
@@ -857,7 +871,7 @@ stream_replay_trigger(clixon_handle h,
 {
     int                retval = -1;
     struct timeval     now;
-    struct replay_arg *ra;
+    struct replay_arg *ra = NULL;
 
     if ((ra = malloc(sizeof(*ra))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
@@ -875,8 +889,11 @@ stream_replay_trigger(clixon_handle h,
     if (clixon_event_reg_timeout(now, stream_replay_cb, ra,
                           "create-subscribtion stream replay") < 0)
         goto done;
+    ra = NULL;
     retval = 0;
  done:
+    if (ra)
+        free(ra);
     return retval;
 }
 
@@ -940,15 +957,15 @@ url_post(char *url,
     CURLcode       errcode;
 
     /* Try it with  curl -X PUT -d '*/
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s:  curl -X POST -d '%s' %s",
-        __FUNCTION__, postfields, url);
+    clixon_debug(CLIXON_DBG_STREAM, "curl -X POST -d '%s' %s",
+        postfields, url);
     /* Set up curl for doing the communication with the controller */
     if ((curl = curl_easy_init()) == NULL) {
-        clixon_debug(CLIXON_DBG_DEFAULT, "curl_easy_init");
+        clixon_debug(CLIXON_DBG_STREAM, "curl_easy_init");
         goto done;
     }
     if ((err = malloc(CURL_ERROR_SIZE)) == NULL) {
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s: malloc", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_STREAM, "malloc");
         goto done;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -962,7 +979,7 @@ url_post(char *url,
     if (clixon_debug_get())
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
     if ((errcode = curl_easy_perform(curl)) != CURLE_OK){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s: curl: %s(%d)", __FUNCTION__, err, errcode);
+        clixon_debug(CLIXON_DBG_STREAM, "curl: %s(%d)", err, errcode);
         retval = 0;
         goto done;
     }
@@ -1005,7 +1022,7 @@ stream_publish_cb(clixon_handle h,
     char *result = NULL;
     char *stream = (char*)arg;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_STREAM, "");
     if (op != 0)
         goto ok;
     /* Create pub url */
@@ -1030,7 +1047,7 @@ stream_publish_cb(clixon_handle h,
                  &result) < 0)    /* result as xml */
         goto done;
     if (result)
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s", __FUNCTION__, result);
+        clixon_debug(CLIXON_DBG_STREAM, "%s", result);
  ok:
     retval = 0;
  done:

@@ -58,13 +58,13 @@
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_handle.h"
-#include "clixon_log.h"
-#include "clixon_debug.h"
-#include "clixon_err.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_data.h"
@@ -72,6 +72,9 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_default.h"
+#include "clixon_netconf_lib.h"
+#include "clixon_yang_module.h"
+#include "clixon_datastore.h"
 
 /* Forward */
 static int xml_default(yang_stmt *yt, cxobj *xt, int state);
@@ -83,11 +86,11 @@ xml_default_create1(yang_stmt *y,
                     cxobj     *xt,
                     cxobj    **xcp)
 {
-    int        retval = -1;
-    char      *namespace;
-    char      *prefix;
-    int        ret;
-    cxobj     *xc = NULL;
+    int    retval = -1;
+    char  *namespace;
+    char  *prefix;
+    int    ret;
+    cxobj *xc = NULL;
 
     if ((xc = xml_new(yang_argument_get(y), NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -113,8 +116,11 @@ xml_default_create1(yang_stmt *y,
     if (xml_addsub(xt, xc) < 0)
         goto done;
     *xcp = xc;
+    xc = NULL;
     retval = 0;
  done:
+    if (xc)
+        xml_free(xc);
     return retval;
 }
 
@@ -178,7 +184,7 @@ xml_default_choice(yang_stmt *yc,
     yang_stmt *yca = NULL;
     yang_stmt *ydef;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "");
     /* 1. Is there a default case and no child under this choice?
      */
     x = NULL;
@@ -187,7 +193,7 @@ xml_default_choice(yang_stmt *yc,
             continue;
         /* Check if this child is a child of yc */
         yca = ych = NULL;
-        if (choice_case_get(y, &yca, &ych) == 1 &&
+        if (yang_choice_case_get(y, &yca, &ych) == 1 &&
             ych == yc){
             x0 = x;
             break;
@@ -223,14 +229,15 @@ xml_nopresence_try(yang_stmt *yt,
     int        retval = -1;
     yang_stmt *y;
     yang_stmt *ydef;
+    int        inext;
 
     if (yt == NULL || yang_keyword_get(yt) != Y_CONTAINER){
         clixon_err(OE_XML, EINVAL, "yt argument is not container");
         goto done;
     }
     *createp = 0;
-    y = NULL;
-    while ((y = yn_each(yt, y)) != NULL) {
+    inext = 0;
+    while ((y = yn_iter(yt, &inext)) != NULL) {
         switch (yang_keyword_get(y)){
         case Y_LEAF:
             /* Default value exists */
@@ -290,12 +297,15 @@ xml_default(yang_stmt *yt,
     int        retval = -1;
     yang_stmt *yc;
     cxobj     *xc;
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+    cxobj     *xc1;
+#endif
     int        top = 0; /* Top symbol (set default namespace) */
     int        create = 0;
-    char      *xpath;
     int        nr = 0;
     int        hit = 0;
     cg_var    *cv;
+    int        inext;
 
     if (xt == NULL){ /* No xml */
         clixon_err(OE_XML, EINVAL, "No XML argument");
@@ -310,16 +320,17 @@ xml_default(yang_stmt *yt,
     case Y_INPUT:
     case Y_OUTPUT:
     case Y_CASE:
-        yc = NULL;
-        while ((yc = yn_each(yt, yc)) != NULL) {
+        inext = 0;
+        while ((yc = yn_iter(yt, &inext)) != NULL) {
+            // XXX consider only data nodes for optimization?
             /* If config parameter and local is config false */
             if (!state && !yang_config(yc))
                 continue;
+            /* Want to add state defaults, but this is config */
+            if (state && yang_config_ancestor(yc))
+                continue;
             switch (yang_keyword_get(yc)){
             case Y_LEAF:
-                /* Want to add state defaults, but this is config */
-                if (state && yang_config_ancestor(yc))
-                    break;
                 if ((cv = yang_cv_get(yc)) == NULL){
                     clixon_err(OE_YANG,0, "Internal error: yang leaf %s not populated with cv as it should",
                                yang_argument_get(yc));
@@ -327,7 +338,7 @@ xml_default(yang_stmt *yt,
                 }
                 if (!cv_flag(cv, V_UNSET)){  /* Default value exists */
                     /* Check when condition */
-                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, NULL) < 0)
                         goto done;
                     if (hit && nr == 0)
                         break; /* Do not create default if xpath fails */
@@ -342,28 +353,48 @@ xml_default(yang_stmt *yt,
             case Y_CONTAINER:
                 if (yang_find(yc, Y_PRESENCE, NULL) == NULL){
                     /* Check when condition */
-                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, &xpath) < 0)
+                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, NULL) < 0)
                         goto done;
                     if (hit && nr == 0)
                         break; /* Do not create default if xpath fails */
                     /* If this is non-presence, (and it does not exist in xt) call 
                      * recursively and create nodes if any default value exist first. 
                      * Then continue and populate?
+                     * Also this code expands some "when" statements that have nothing to do with 
+                     * defaults.
                      */
                     if (xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
-                        /* No such container exist, recursively try if needed */
-                        if (xml_nopresence_try(yc, state, &create) < 0)
-                            goto done;
-                        if (create){
-                            /* Retval shows there is a default value need to create the
-                             * container */
-                            if (xml_default_create1(yc, xt, &xc) < 0)
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+                        if ((xc = yang_nopresence_cache_get(yc)) != NULL){
+                            if ((xc1 = xml_dup(xc)) == NULL)
+                                goto done;
+                            if (xml_addsub(xt, xc1) < 0)
                                 goto done;
                             xml_sort(xt);
-                            /* Then call it recursively */
-                            if (xml_default(yc, xc, state) < 0)
-                                goto done;
                         }
+                        else
+#endif
+                            {
+                                /* No such container exist, recursively try if needed */
+                                if (xml_nopresence_try(yc, state, &create) < 0)
+                                    goto done;
+                                if (create){
+                                    /* Retval shows there is a default value need to create the
+                                     * container */
+                                    if (xml_default_create1(yc, xt, &xc) < 0)
+                                        goto done;
+                                    xml_sort(xt);
+                                    /* Then call it recursively */
+                                    if (xml_default(yc, xc, state) < 0)
+                                        goto done;
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+                                    if ((xc1 = xml_dup(xc)) == NULL)
+                                        goto done;
+                                    if (yang_nopresence_cache_set(yc, xc1) < 0)
+                                        goto done;
+#endif
+                                }
+                            }
                     }
                 }
                 break;
@@ -385,35 +416,51 @@ xml_default(yang_stmt *yt,
     return retval;
 }
 
-/*! Recursively fill in default values in an XML tree
+/*! Selectively recursively fill in default values in an XML tree using flags
  *
+ * Skip nodes that are not either CHANGE or "flag" (typically ADD|DEL)
+ * When ADD is encountered process all children.
+ * This will process all nodes that lead to ADD nodes and skip others.
  * @param[in]   xt      XML tree
  * @param[in]   state   If set expand defaults also for state data, otherwise only config
+ * @param[in]   flag    If set only traverse nodes marked with flag (or CHANGE)
  * @retval      0       OK
  * @retval     -1       Error
- * @see xml_global_defaults
+ * @see xml_default_recurse
  */
 int
 xml_default_recurse(cxobj *xn,
-                    int    state)
+                    int    state,
+                    int    flag)
 {
     int        retval = -1;
     yang_stmt *yn;
     cxobj     *x;
     yang_stmt *y;
 
-    if ((yn = (yang_stmt*)xml_spec(xn)) != NULL)
+    if (flag){
+        if (xml_flag(xn, XML_FLAG_CHANGE) != 0)
+            ; /* continue */
+        else if (xml_flag(xn, flag) != 0){
+            flag = 0x0; /* Pass all */
+        }
+        else
+            goto skip;
+    }
+    if ((yn = (yang_stmt*)xml_spec(xn)) != NULL){
         if (xml_default(yn, xn, state) < 0)
             goto done;
+    }
     x = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
         if ((y = (yang_stmt*)xml_spec(x)) != NULL){
             if (!state && !yang_config(y))
                 continue;
         }
-        if (xml_default_recurse(x, state) < 0)
+        if (xml_default_recurse(x, state, flag) < 0)
             goto done;
     }
+ skip:
     retval = 0;
  done:
     return retval;
@@ -434,13 +481,15 @@ xml_global_defaults_create(cxobj     *xt,
                            int        state)
 {
     int        retval = -1;
-    yang_stmt *ymod = NULL;
+    yang_stmt *ymod;
+    int        inext;
 
     if (yspec == NULL || yang_keyword_get(yspec) != Y_SPEC){
         clixon_err(OE_XML, EINVAL, "yspec argument is not yang spec");
         goto done;
     }
-    while ((ymod = yn_each(yspec, ymod)) != NULL)
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL)
         if (xml_default(ymod, xt, state) < 0)
             goto done;
     retval = 0;
@@ -456,6 +505,7 @@ xml_global_defaults_create(cxobj     *xt,
  * @param[in]   xpath   Filter global defaults with this and merge with xt
  * @param[in]   yspec   Top-level YANG specification tree, all modules
  * @param[in]   state   Set if global state, otherwise config
+ * @param[in]   flags   Only traverse nodes where flag is set
  * @retval      0       OK
  * @retval     -1       Error
  * Uses cache?
@@ -532,19 +582,23 @@ xml_global_defaults(clixon_handle h,
 
 /*! Recursively find empty nopresence containers and default leaves, optionally purge
  *
+ * Semantics of mode parameter somewhat complex
  * @param[in] xn       XML tree
- * @param[in] purge    0: Dont remove any nodes
+ * @param[in] mode     0: Dont remove any nodes
  *                     1: Remove config sub-nodes that are empty non-presence container or default leaf
  *                     2: Remove all sub-nodes that are empty non-presence container or default leaf
+ *                     3: Remove all sub-nodes that are empty non-presence containers
+ * @param[in] flag     If set only traverse nodes marked with flag (or CHANGE)
  * @retval    1        Node is an (recursive) empty non-presence container or default leaf
  * @retval    0        Other node
  * @retval   -1        Error
- * @note xn is not itself removed if purge
- * @note for purge=1 are removed only if config or no yang spec(!)
+ * @note xn is not itself removed if mode
+ * @note for mode=1 are removed only if config or no yang spec(!)
  */
 int
-xml_defaults_nopresence(cxobj *xn,
-                        int    purge)
+xml_default_nopresence(cxobj *xn,
+                       int    mode,
+                       int    flag)
 {
     int           retval = -1;
     cxobj        *x;
@@ -556,13 +610,25 @@ xml_defaults_nopresence(cxobj *xn,
     enum rfc_6020 keyw;
     int           config = 1;
 
+    if (flag){
+        if (xml_flag(xn, XML_FLAG_CHANGE) != 0)
+            ; /* continue */
+        else if (xml_flag(xn, flag) != 0){
+            flag = 0x0; /* Pass all */
+        }
+        else{
+            retval = 0;
+            goto done;
+        }
+    }
     if ((yn = xml_spec(xn)) != NULL){
         keyw = yang_keyword_get(yn);
         if (keyw == Y_CONTAINER &&
             yang_find(yn, Y_PRESENCE, NULL) == NULL)
             rmx = 1;
         else if (keyw == Y_LEAF &&
-                 xml_flag(xn, XML_FLAG_DEFAULT))
+                 xml_flag(xn, XML_FLAG_DEFAULT) &&
+                 mode != 3)
             rmx = 1;
         config = yang_config_ancestor(yn);
     }
@@ -570,10 +636,11 @@ xml_defaults_nopresence(cxobj *xn,
     x = NULL;
     xprev = NULL;
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
-        if ((ret = xml_defaults_nopresence(x, purge)) < 0)
+        /* 1: node is empty non-presence or default leaf (eg rmx) */
+        if ((ret = xml_default_nopresence(x, mode, flag)) < 0)
             goto done;
         if (ret == 1){
-            switch (purge){
+            switch (mode){
             case 1: /* config nodes only */
                 if (!config)
                     break;
@@ -582,6 +649,7 @@ xml_defaults_nopresence(cxobj *xn,
                     break;
                 /* fall thru */
             case 2: /* purge all nodes */
+            case 3:
                 if (xml_purge(x) < 0)
                     goto done;
                 x = xprev;
@@ -646,8 +714,6 @@ xml_flag_state_default_value(cxobj   *x,
     if ((y = xml_spec(x)) == NULL)
         goto done;
     if (yang_config_ancestor(y) == 1)
-        goto done;
-    if ((cv = yang_cv_get(y)) == NULL)
         goto done;
     if ((cv = yang_cv_get(y)) == NULL)
         goto done;

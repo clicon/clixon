@@ -49,7 +49,6 @@
 #include <errno.h>
 #include <assert.h>
 #include <dlfcn.h>
-#include <dirent.h>
 #include <grp.h>
 #include <signal.h>
 #include <sys/types.h>

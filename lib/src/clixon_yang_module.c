@@ -62,15 +62,17 @@
 
 /* clixon */
 #include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
-#include "clixon_log.h"
-#include "clixon_debug.h"
-#include "clixon_err.h"
 #include "clixon_file.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
+#include "clixon_err.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
@@ -79,15 +81,8 @@
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
-#include "clixon_netconf_lib.h"
 #include "clixon_xml_map.h"
 #include "clixon_yang_parse_lib.h"
-
-/*! Force add ietf-yang-library@2019-01-04 on all mount-points
- *
- * This is a limitation of of the current implementation
- */
-#define YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
 
 /*! Create modstate structure
  *
@@ -216,6 +211,8 @@ yang_modules_state_build(clixon_handle    h,
     yang_stmt  *yinc;
     yang_stmt  *ysub;
     char       *name;
+    int        inext;
+    int        inext2;
 
     /* In case of several mountpoints, this is always the top-level */
     if ((ylib = yang_find(yspec, Y_MODULE, module)) == NULL
@@ -232,8 +229,8 @@ yang_modules_state_build(clixon_handle    h,
     cprintf(cb,"<yang-library xmlns=\"%s\">", yang_argument_get(yns));
     cprintf(cb,"<content-id>%s</content-id>", msid);
     cprintf(cb,"<module-set><name>default</name>");
-    ymod = NULL;
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         if (yang_keyword_get(ymod) != Y_MODULE)
             continue;
         cprintf(cb,"<module>");
@@ -256,8 +253,8 @@ yang_modules_state_build(clixon_handle    h,
         /* This follows order in rfc 7895: feature, conformance-type, 
            submodules */
         if (!brief){
-            yc = NULL;
-            while ((yc = yn_each(ymod, yc)) != NULL) {
+            inext2 = 0;
+            while ((yc = yn_iter(ymod, &inext2)) != NULL) {
                 switch(yang_keyword_get(yc)){
                 case Y_FEATURE:
                     if (yang_cv_get(yc) && cv_bool_get(yang_cv_get(yc)))
@@ -268,8 +265,8 @@ yang_modules_state_build(clixon_handle    h,
                 }
             }
         }
-        yinc = NULL;
-        while ((yinc = yn_each(ymod, yinc)) != NULL) {
+        inext2 = 0;
+        while ((yinc = yn_iter(ymod, &inext2)) != NULL) {
             if (yang_keyword_get(yinc) != Y_INCLUDE)
                 continue;
             cprintf(cb,"<submodule>");
@@ -354,7 +351,7 @@ yang_modules_state_get(clixon_handle    h,
     }
     else { /* No cache -> build the tree */
         if ((cb = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, 0, "clicon buffer");
+            clixon_err(OE_UNIX, 0, "cligen buffer");
             goto done;
         }
         /* Build a cb string: <modules-state>... */
@@ -395,7 +392,6 @@ yang_modules_state_get(clixon_handle    h,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
     if (xvec)
         free(xvec);
     if (cb)
@@ -541,6 +537,7 @@ yang_find_module_by_prefix(yang_stmt *ys,
     yang_stmt *ymod = NULL;
     yang_stmt *yspec;
     char      *myprefix;
+    int        inext;
 
     if ((yspec = ys_spec(ys)) == NULL){
         clixon_err(OE_YANG, 0, "My yang spec not found");
@@ -557,8 +554,8 @@ yang_find_module_by_prefix(yang_stmt *ys,
         goto done;
     }
     /* If no match, try imported modules */
-    yimport = NULL;
-    while ((yimport = yn_each(my_ymod, yimport)) != NULL) {
+    inext = 0;
+    while ((yimport = yn_iter(my_ymod, &inext)) != NULL) {
         if (yang_keyword_get(yimport) != Y_IMPORT)
             continue;
         if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) != NULL &&
@@ -580,18 +577,17 @@ yang_find_module_by_prefix(yang_stmt *ys,
 
 /*! Get module from its own prefix 
  *
- * This is really not a valid usecase, a kludge for the identityref derived
- * list workaround (IDENTITYREF_KLUDGE)
- * Actually, for canonical prefixes it is!
  */
 yang_stmt *
 yang_find_module_by_prefix_yspec(yang_stmt *yspec,
                                  char      *prefix)
 {
-    yang_stmt *ymod = NULL;
+    yang_stmt *ymod;
     yang_stmt *yprefix;
+    int        inext;
 
-    while ((ymod = yn_each(yspec, ymod)) != NULL)
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL)
         if (yang_keyword_get(ymod) == Y_MODULE &&
             (yprefix = yang_find(ymod, Y_PREFIX, NULL)) != NULL &&
             strcmp(yang_argument_get(yprefix), prefix) == 0)
@@ -613,16 +609,22 @@ yang_stmt *
 yang_find_module_by_namespace(yang_stmt *yspec,
                               char      *ns)
 {
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+    return yspec_nscache_get(yspec, ns);
+#else
     yang_stmt *ymod = NULL;
+    int        inext;
 
     if (ns == NULL)
         goto done;
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
             break;
     }
  done:
     return ymod;
+#endif
 }
 
 /*! Given a yang spec, a namespace and revision, return yang module 
@@ -643,12 +645,14 @@ yang_find_module_by_namespace_revision(yang_stmt  *yspec,
     yang_stmt *ymod = NULL;
     yang_stmt *yrev;
     char      *rev1;
+    int        inext;
 
     if (ns == NULL || rev == NULL){
         clixon_err(OE_CFG, EINVAL, "No ns or rev");
         goto done;
     }
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         if (yang_find(ymod, Y_NAMESPACE, ns) != NULL)
             /* Get FIRST revision */
             if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL){
@@ -679,12 +683,14 @@ yang_find_module_by_name_revision(yang_stmt  *yspec,
     yang_stmt *ymod = NULL;
     yang_stmt *yrev;
     char      *rev1;
+    int        inext;
 
     if (name == NULL){
         clixon_err(OE_CFG, EINVAL, "No ns or rev");
         goto done;
     }
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         if (yang_keyword_get(ymod) != Y_MODULE)
             continue;
         if (strcmp(yang_argument_get(ymod), name) != 0)
@@ -715,9 +721,11 @@ yang_stmt *
 yang_find_module_by_name(yang_stmt *yspec,
                          char      *name)
 {
-    yang_stmt *ymod = NULL;
+    yang_stmt *ymod;
+    int        inext;
 
-    while ((ymod = yn_each(yspec, ymod)) != NULL)
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL)
         if ((yang_keyword_get(ymod) == Y_MODULE || yang_keyword_get(ymod) == Y_SUBMODULE) &&
             strcmp(yang_argument_get(ymod), name)==0)
             return ymod;
@@ -756,7 +764,7 @@ ietf_yang_metadata_extension_cb(clixon_handle h,
     if (strcmp(modname, "ietf-yang-metadata") != 0 || strcmp(extname, "annotation") != 0)
         goto ok;
     name = cv_string_get(yang_cv_get(ys));
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Enabled extension:%s:%s:%s", __FUNCTION__, modname, extname, name);
+    clixon_debug(CLIXON_DBG_YANG, "Enabled extension:%s:%s:%s", modname, extname, name);
     /* XXX Nothing yet - this should signal that xml attribute annotations are allowed 
      * Possibly, add an "annotation" YANG node.
      */
@@ -783,12 +791,14 @@ yang_metadata_annotation_check(cxobj     *xa,
                                int       *ismeta)
 {
     int        retval = -1;
-    yang_stmt *yma = NULL;
+    yang_stmt *yma;
     char      *name;
     cg_var    *cv;
+    int        inext;
 
     /* Loop through annotations */
-    while ((yma = yn_each(ymod, yma)) != NULL){
+    inext = 0;
+    while ((yma = yn_iter(ymod, &inext)) != NULL){
         /* Assume here md:annotation is written using canonical prefix */
         if (yang_keyword_get(yma) != Y_UNKNOWN)
             continue;
@@ -838,23 +848,29 @@ yang_metadata_init(clixon_handle h)
  * Skip module if already loaded
  * This function is used where a yang-lib module-set is available to populate
  * an XML mount-point.
- * @param[in] h       Clixon handle
- * @param[in] xyanglib XML tree on the form <yang-lib>...
- * @param[in] yspec   Will be populated with YANGs, is consumed
- * @retval    1       OK
- * @retval    0       Parse error
- * @retval   -1       Error
+ * @param[in] h        Clixon handle
+ * @param[in] xyanglib XML tree on the form <any><module-set><module>*
+ * @param[in] mntpnt   Name of mount-point for logs (debug)
+ * @param[in] domain   YANG domain (NULL is default)
+ * @param[in] yspec    Will be populated with YANGs
+ * @retval    1        OK
+ * @retval    0        Parse error
+ * @retval   -1        Error
  * @see xml_schema_add_mount_points
  * XXX: Ensure yang-lib is always there otherwise get state dont work for mountpoint
  */
 int
 yang_lib2yspec(clixon_handle h,
                cxobj        *xyanglib,
+               char         *mntpnt,
+               char         *domain,
                yang_stmt    *yspec)
 {
     int        retval = -1;
     cxobj     *xi;
     char      *name;
+    char      *ns;
+    char      *ns2;
     char      *revision;
     cvec      *nsc = NULL;
     cxobj    **vec = NULL;
@@ -870,6 +886,7 @@ yang_lib2yspec(clixon_handle h,
         xi = vec[i];
         if ((name = xml_find_body(xi, "name")) == NULL)
             continue;
+        ns = xml_find_body(xi, "namespace");
         revision = xml_find_body(xi, "revision");
         if ((ymod = yang_find(yspec, Y_MODULE, name)) != NULL ||
             (ymod = yang_find(yspec, Y_SUBMODULE, name)) != NULL){
@@ -885,8 +902,19 @@ yang_lib2yspec(clixon_handle h,
                 continue;
             }
         }
-        if (yang_parse_module(h, name, revision, yspec, NULL) == NULL)
+        if (yang_parse_module(h, name, revision, yspec, domain, NULL) == NULL)
             goto fail;
+        /* Sanity check: if given namespace differs from namespace in file */
+        if (ns != NULL &&
+            (ymod = yang_find(yspec, Y_MODULE, name)) != NULL &&
+            (ns2 = yang_find_mynamespace(ymod)) != NULL &&
+            strcmp(ns, ns2) != 0) {
+#if 1
+            clixon_debug(CLIXON_DBG_YANG, "Mount:%s module %s namespace mismatch %s announced vs %s in loaded module", mntpnt, name, ns, ns2);
+#else
+            clixon_log(h, LOG_WARNING, "Mount:%s module %s namespace mismatch %s announced vs %s in loaded module", mntpnt, name, ns, ns2);
+#endif
+        }
     }
 #ifdef YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
     /* Force add ietf-yang-library@2019-01-04 on all mount-points 
@@ -896,18 +924,13 @@ yang_lib2yspec(clixon_handle h,
         strcmp(yang_argument_get(yrev), "2019-01-04") == 0){
         modmin++;
     }
-    else if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, NULL) < 0)
+    else if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, domain, NULL) < 0)
         goto fail;
-    if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)
-        goto fail;
-    if (yang_parse_post(h, yspec, modmin) < 0)
-        goto done;
-#else
-    if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)
-        goto fail;
-    if (yang_parse_post(h, yspec, modmin) < 0)
-        goto done;
 #endif
+    if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)
+        goto fail;
+    if (yang_parse_post(h, yspec, modmin) < 0)
+        goto fail;
     retval = 1;
  done:
     if (vec)

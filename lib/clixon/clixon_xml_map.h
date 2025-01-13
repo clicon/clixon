@@ -41,6 +41,15 @@
 #define _CLIXON_XML_MAP_H_
 
 /*
+ * Maximum number of supported bit positions in YANG "bits" data 
+ * type. As defined in RFC7950 (section 9.7.4.2.) the position 
+ * value must be in the range 0 to 4294967295. But who needs
+ * that much bit positions? (To set bit 4'294'967'295 it would be
+ * necessary to tranfer 4294967295/8 = 536'870'911 bytes!)
+ */
+#define CLIXON_BITS_POS_MAX 1024
+
+/*
  * Types
  */
 /* Declared in clixon_yang_internal */
@@ -59,8 +68,8 @@ int xml_diff(cxobj *x0, cxobj *x1,
              cxobj ***changed_x0, cxobj ***changed_x1, int *changedlen);
 int xml_tree_equal(cxobj *x0, cxobj *x1);
 int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
-int xml_tree_prune_flagged(cxobj *xt, int flag, int test);
 int xml_tree_prune_flags(cxobj *xt, int flags, int mask);
+int xml_tree_prune_flags1(cxobj *xt, int flags, int mask, int recurse, int *removed);
 int xml_namespace_change(cxobj *x, char *ns, char *prefix);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, cxobj **xerr);
@@ -68,7 +77,12 @@ int assign_namespace_element(cxobj *x0, cxobj *x1, cxobj *x1p);
 int assign_namespace_body(cxobj *x0, cxobj *x1);
 int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 int yang_valstr2enum(yang_stmt *ytype, char *valstr, char **enumstr);
+int yang_bitsstr2val(clixon_handle h, yang_stmt *ytype, char *bitsstr, unsigned char **outval, size_t *outlen);
+int yang_bitsstr2flags(yang_stmt *ytype, char *bitsstr, uint32_t *flags);
+int yang_val2bitsstr(clixon_handle h, yang_stmt *ytype, unsigned char *outval, size_t snmplen, cbuf *cb);
+int yang_bits_map(yang_stmt *yt, char *str, char *nodeid, uint32_t *flags);
 int yang_enum2valstr(yang_stmt *ytype, char *enumstr, char **valstr);
+int yang_enum2int(yang_stmt *ytype, char *enumstr, int32_t *val);
 int yang_enum_int_value(cxobj *node, int32_t *val);
 int xml_copy_marked(cxobj *x0, cxobj *x1);
 int yang_check_when_xpath(cxobj *xn, cxobj *xp, yang_stmt *yn, int *hit, int *nrp, char **xpathp);
@@ -77,5 +91,6 @@ int xml_rpc_isaction(cxobj *xn);
 int xml_find_action(cxobj *xn, int top, cxobj **xap);
 int purge_tagged_nodes(cxobj *xn, char *ns, char *name, char *value, int keepnode);
 int clixon_compare_xmls(cxobj *xc1, cxobj *xc2, enum format_enum format);
+int xml_template_apply(cxobj *x, void *arg);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

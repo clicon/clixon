@@ -56,16 +56,16 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_string.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_data.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_options.h"
@@ -133,13 +133,12 @@ validate_leafref(cxobj     *xt,
     cvec        *nsc = NULL;
     cbuf        *cberr = NULL;
     char        *path_arg;
-    yang_stmt   *ymod;
     cg_var      *cv;
     int          require_instance = 1;
 
     /* require instance */
     if ((yreqi = yang_find(ytype, Y_REQUIRE_INSTANCE, NULL)) != NULL){
-        if ((cv = yang_cv_get(yreqi)) != NULL) /* shouldnt happen */
+        if ((cv = yang_cv_get(yreqi)) != NULL) /* shouldn't happen */
             require_instance = cv_bool_get(cv);
     }
     /* Find referred XML instances */
@@ -179,13 +178,12 @@ validate_leafref(cxobj     *xt,
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
-        ymod = ys_module(ys);
-        cprintf(cberr, "Leafref validation failed: No leaf %s matching path %s in %s.yang:%d",
-                leafrefbody,
-                path_arg,
-                yang_argument_get(ymod),
-                yang_linenum_get(ys));
-        if (xret && netconf_bad_element_xml(xret, "application", leafrefbody, cbuf_get(cberr)) < 0)
+        /* RFC 7950 15.5 requires:
+           error-tag:      data-missing
+           error-app-tag:  instance-required
+           error-path:     Path to the instance-identifier or leafref leaf.
+         */
+        if (xret && netconf_missing_yang_xml(xret, path_arg, "instance-required", leafrefbody, NULL) < 0)
             goto done;
         goto fail;
     }
@@ -282,11 +280,13 @@ validate_identityref(cxobj     *xt,
         ymod = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
     }
     if (ymod == NULL){
-        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d",
+        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang",
                 node,
                 yang_argument_get(ybaseid),
-                yang_argument_get(ys_module(ybaseid)),
-                yang_linenum_get(ybaseid));
+                yang_argument_get(ys_module(ybaseid)));
+#ifdef YANG_SPEC_LINENR
+        cprintf(cberr, ":%d", yang_linenum_get(ybaseid));
+#endif
         if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
             goto done;
         goto fail;
@@ -298,11 +298,14 @@ validate_identityref(cxobj     *xt,
      */
     idrefvec = yang_cvec_get(ybaseid);
     if (cvec_find(idrefvec, idref) == NULL){
-        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang:%d",
+
+        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang",
                 node,
                 yang_argument_get(ybaseid),
-                yang_argument_get(ys_module(ybaseid)),
-                yang_linenum_get(ybaseid));
+                yang_argument_get(ys_module(ybaseid)));
+#ifdef YANG_SPEC_LINENR
+                cprintf(cberr, ":%d", yang_linenum_get(ybaseid));
+#endif
         if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
             goto done;
         goto fail;
@@ -408,7 +411,7 @@ xml_yang_validate_rpc(clixon_handle h,
             goto done; /* error or validation fail */
         if (ret == 0)
             goto fail;
-        if (expanddefault && xml_default_recurse(xn, 0) < 0)
+        if (expanddefault && xml_default_recurse(xn, 0, 0) < 0)
             goto done;
     }
     // ok: /* pass validation */
@@ -469,7 +472,7 @@ xml_yang_validate_rpc_reply(clixon_handle h,
             goto done; /* error or validation fail */
         if (ret == 0)
             goto fail;
-        if (xml_default_recurse(xn, 0) < 0)
+        if (xml_default_recurse(xn, 0, 0) < 0)
             goto done;
     }
     // ok: /* pass validation */
@@ -659,13 +662,14 @@ check_list_key(cxobj     *xt,
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
     char      *keyname;
+    int        inext;
 
     if (yt == NULL || !yang_config(yt) || yang_keyword_get(yt) != Y_LIST){
         clixon_err(OE_YANG, EINVAL, "yt is not a config true list node");
         goto done;
     }
-    yc = NULL;
-    while ((yc = yn_each(yt, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(yt, &inext)) != NULL) {
         if (yang_keyword_get(yc) != Y_KEY)
             continue;
         /* Check if a list does not have mandatory key leafs */
@@ -685,9 +689,11 @@ check_list_key(cxobj     *xt,
                     }
                     ymod = ys_module(yt);
                     keyw = yang_keyword_get(yt);
-                    cprintf(cb, "Mandatory key in '%s %s' in %s.yang:%d",
-                            yang_key2str(keyw), xml_name(xt), yang_argument_get(ymod),
-                            yang_linenum_get(yc));
+                    cprintf(cb, "Mandatory key in '%s %s' in %s.yang",
+                            yang_key2str(keyw), xml_name(xt), yang_argument_get(ymod));
+#ifdef YANG_SPEC_LINENR
+                    cprintf(cb, ":%d", yang_linenum_get(yc));
+#endif
                     if (netconf_missing_element_xml(xret, "application", keyname, cbuf_get(cb)) < 0)
                         goto done;
                     cbuf_free(cb);
@@ -716,12 +722,14 @@ choice_mandatory_check(cxobj     *xt,
                        cxobj    **xret)
 {
     int        retval = -1;
-    yang_stmt *yc = NULL;
+    yang_stmt *yc;
     cbuf      *cb = NULL;
     int        fail = 0;
+    int        inext;
     int        ret;
 
-    while ((yc = yn_each(ycase, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(ycase, &inext)) != NULL) {
         if ((ret = yang_xml_mandatory(xt, yc)) < 0)
             goto done;
         if (ret == 1){
@@ -752,7 +760,6 @@ choice_mandatory_check(cxobj     *xt,
         cbuf_free(cb);
     return retval;
 }
-
 
 /*! Find yang node which is ancestor of ys (or ys itself) and child of ytop
  *
@@ -836,7 +843,7 @@ check_mandatory_case(cxobj     *xt,
                     goto done;
                 if (ret == 1){
                 if (yang_flag_get(ym, YANG_FLAG_MARK) != 0){
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s Already marked, shouldnt happen", __FUNCTION__);
+                    clixon_debug(CLIXON_DBG_DEFAULT, "Already marked, shouldn't happen");
                 }
                 yang_flag_set(ym, YANG_FLAG_MARK);
                 }
@@ -898,6 +905,7 @@ check_mandatory(cxobj     *xt,
     yang_stmt *yc;
     yang_stmt *yp;
     cbuf      *cb = NULL;
+    int        inext;
     int        ret;
 
     if (yt == NULL || !yang_config(yt)){
@@ -910,8 +918,8 @@ check_mandatory(cxobj     *xt,
         if (ret == 0)
             goto fail;
     }
-    yc = NULL;
-    while ((yc = yn_each(yt, yc)) != NULL) {
+    inext = 0;
+    while ((yc = yn_iter(yt, &inext)) != NULL) {
         /* Choice is more complex because of choice/case structure and possibly hierarchical */
         if (yang_keyword_get(yc) == Y_CHOICE){
             if (yang_xml_mandatory(xt, yc)){
@@ -985,7 +993,7 @@ check_mandatory(cxobj     *xt,
  * 1. Check if mandatory leafs present as subs.
  * 2. Check leaf values, eg int ranges and string regexps.
  * @param[in]  xt    XML node to be validated
- * @param[out] xret    Error XML tree. Free with xml_free after use
+ * @param[out] xret  Error XML tree, as rpc-reply/rpc-error. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
  * @retval    -1     Error
@@ -1018,7 +1026,7 @@ xml_yang_validate_add(clixon_handle h,
     validate_level vl = VL_NONE;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
-        if ((ret = xml_yang_mount_get(h, xt, &vl, NULL)) < 0)
+        if ((ret = xml_yang_mount_get(h, xt, &vl, NULL, NULL)) < 0)
             goto done;
         /* Check if validate beyond mountpoints */
         if (ret == 1 && vl == VL_NONE)
@@ -1055,6 +1063,13 @@ xml_yang_validate_add(clixon_handle h,
                     if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), "Invalid NULL value") < 0)
                         goto done;
                     goto fail;
+                }
+                if (cvtype != CGV_EMPTY && cvtype != CGV_VOID){
+                    if (cv_parse1("", cv, &reason) != 1){
+                        if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
+                            goto done;
+                        goto fail;
+                    }
                 }
             }
             else{
@@ -1146,13 +1161,15 @@ xml_yang_validate_leaf_union(clixon_handle h,
 {
     int        retval = -1;
     int        ret;
-    yang_stmt *ytsub = NULL;
+    yang_stmt *ytsub;
     cxobj     *xret1 = NULL;
     yang_stmt *ytype; /* resolved type */
     char      *restype;
+    int        inext;
 
     /* Enough that one is valid, eg returns 1,otherwise fail */
-    while ((ytsub = yn_each(yrestype, ytsub)) != NULL){
+    inext = 0;
+    while ((ytsub = yn_iter(yrestype, &inext)) != NULL){
         if (yang_keyword_get(ytsub) != Y_TYPE)
             continue;
         /* Resolve the sub-union type to a resolved type */
@@ -1228,6 +1245,7 @@ xml_yang_validate_all(clixon_handle h,
     yang_stmt *yc;  /* yang child */
     yang_stmt *ye;  /* yang must error-message */
     char      *xpath;
+    char      *xpath1 = NULL;
     int        nr;
     int        ret;
     cxobj     *x;
@@ -1237,9 +1255,11 @@ xml_yang_validate_all(clixon_handle h,
     cvec      *nsc = NULL;
     int        hit = 0;
     validate_level vl = VL_NONE;
+    int        saw_node = 0;
+    int        inext;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
-        if ((ret = xml_yang_mount_get(h, xt, &vl, NULL)) < 0)
+        if ((ret = xml_yang_mount_get(h, xt, &vl, NULL, NULL)) < 0)
             goto done;
         /* Check if validate beyond mountpoints */
         if (ret == 1 && vl == VL_NONE)
@@ -1270,8 +1290,11 @@ xml_yang_validate_all(clixon_handle h,
         goto fail;
     }
     if (yang_config(yt) != 0){
-        if (yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath) < 0)
+        ret = yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath1);
+        clixon_debug(CLIXON_DBG_XPATH|CLIXON_DBG_DETAIL, "nr:%d xpath:%s return:%d", nr, xpath1, ret);
+        if (ret < 0)
             goto done;
+
         if (hit && nr == 0){
             if ((cb = cbuf_new()) == NULL){
                 clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -1280,7 +1303,7 @@ xml_yang_validate_all(clixon_handle h,
             cprintf(cb, "Failed WHEN condition of %s in module %s (WHEN xpath is %s)",
                     xml_name(xt),
                     yang_argument_get(ys_module(yt)),
-                    xpath);
+                    xpath1);
             if (xret && netconf_operation_failed_xml(xret, "application",
                                                      cbuf_get(cb)) < 0)
                 goto done;
@@ -1329,18 +1352,26 @@ xml_yang_validate_all(clixon_handle h,
         }
         /* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
          * XXX. use yang path instead? */
-        yc = NULL;
-        while ((yc = yn_each(yt, yc)) != NULL) {
+        inext = 0;
+        while ((yc = yn_iter(yt, &inext)) != NULL) {
             if (yang_keyword_get(yc) != Y_MUST)
                 continue;
+            if (!saw_node)
+                clixon_debug_xml(CLIXON_DBG_XPATH, xt, "");
+            saw_node = 1;
+
             xpath = yang_argument_get(yc); /* "must" has xpath argument */
+            clixon_debug(CLIXON_DBG_XPATH, "xpath '%s'", xpath);
             /* the context node is the node in the accessible tree for
              * which the "must" statement is defined. 
              * The set of namespace declarations is the set of all "import" statements' 
              */
-           if (xml_nsctx_yang(yc, &nsc) < 0)
-               goto done;
-            if ((nr = xpath_vec_bool(xt, nsc, "%s", xpath)) < 0)
+            if (xml_nsctx_yang(yc, &nsc) < 0)
+                goto done;
+            clixon_debug(CLIXON_DBG_XPATH, "namespace '%s'", xml_nsctx_get(nsc, NULL));
+            nr = xpath_vec_bool(xt, nsc, "%s", xpath);
+            clixon_debug(CLIXON_DBG_XPATH, "result %s", (nr < 0 ? "error" : (nr != 0 ? "true" : "false")));
+            if (nr < 0)
                 goto done;
             if (!nr){
                 ye = yang_find(yc, Y_ERROR_MESSAGE, NULL);
@@ -1371,7 +1402,7 @@ xml_yang_validate_all(clixon_handle h,
     /* Check unique and min-max after choice test for example*/
     if (yang_config(yt) != 0){
         /* Checks if next level contains any unique list constraints */
-        if ((ret = xml_yang_minmax_recurse(xt, 1, xret)) < 0)
+        if ((ret = xml_yang_validate_minmax(xt, 1, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -1379,6 +1410,8 @@ xml_yang_validate_all(clixon_handle h,
  ok:
     retval = 1;
  done:
+    if (xpath1)
+        free(xpath1);
     if (cb)
         cbuf_free(cb);
     if (nsc)
@@ -1410,7 +1443,7 @@ xml_yang_validate_all_top(clixon_handle h,
         if ((ret = xml_yang_validate_all(h, x, xret)) < 1)
             return ret;
     }
-    if ((ret = xml_yang_minmax_recurse(xt, 0, xret)) < 1)
+    if ((ret = xml_yang_validate_minmax(xt, 0, xret)) < 1)
         return ret;
     return 1;
 }
@@ -1453,7 +1486,7 @@ rpc_reply_check(clixon_handle h,
     if ((ret = xml_bind_yang_rpc_reply(h, x, rpcname, yspec, &xret)) < 0)
         goto done;
     if (ret == 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
+        clixon_debug(CLIXON_DBG_DEFAULT, "failure when validating:%s", cbuf_get(cbret));
         cbuf_reset(cbret);
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;
@@ -1462,7 +1495,7 @@ rpc_reply_check(clixon_handle h,
     if ((ret = xml_yang_validate_rpc_reply(h, x, &xret)) < 0)
         goto done;
     if (ret == 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s failure when validating:%s", __FUNCTION__, cbuf_get(cbret));
+        clixon_debug(CLIXON_DBG_DEFAULT, "failure when validating:%s", cbuf_get(cbret));
         cbuf_reset(cbret);
         if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
             goto done;

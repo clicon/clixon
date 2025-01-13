@@ -207,8 +207,9 @@ static const map_str2int http_media_map[] = {
     {"application/yang-data+json",       YANG_DATA_JSON},
     {"application/yang-patch+xml",       YANG_PATCH_XML},
     {"application/yang-patch+json",      YANG_PATCH_JSON},
-    {"application/yang-data+xml-list",  YANG_PAGINATION_XML},  /* draft-wwlh-netconf-list-pagination-rc-02 */
-    {NULL,                            -1}
+    {"application/yang-data+xml-list",   YANG_PAGINATION_XML},  /* sdraft-netconf-list-pagination-04.txt */
+    {"text/html",                        HTTP_DATA_TEXT_HTML}, /* for http_data */
+    {NULL,                              -1}
 };
 
 /* Mapping to http proto types */
@@ -231,10 +232,80 @@ restconf_code2reason(int code)
     return clicon_int2str(http_reason_phrase_map, code);
 }
 
+/*! One media to integer representation
+ */
 const restconf_media
 restconf_media_str2int(char *media)
 {
     return clicon_str2int(http_media_map, media);
+}
+
+/*! Select first registered media in media list to integer
+ *
+ * Example: list="imag/avif,application/yang-data+xml,**"
+ * returns: YANG_DATA_XML
+ * Note that if no registered medias are found, then return -1
+ * Filters any "; q=.."
+ * @param[in]  list
+ * @retval    -1     No registered media found
+ */
+const restconf_media
+restconf_media_list_str2int(char *list)
+{
+    int     reti = -1;
+    cg_var *cv;
+    cvec   *cvv = NULL;
+    char   *str;
+
+    if (uri_str2cvec(list, ',', ';', 0, &cvv) < 0)
+        return -1;
+    cv = NULL;
+    while ((cv = cvec_each(cvv, cv)) != NULL){
+        str = cv_name_get(cv);
+        if ((reti = clicon_str2int(http_media_map, str)) != -1)
+            break;
+    }
+    if (cvv)
+        cvec_free(cvv);
+    return reti;
+}
+
+/*! Check if media exists in media string
+ *
+ * Example: media="text/html";
+ *          list="img/avif,text/html,application/yang-data+xml,**"
+ * Returns: 1
+ * @param[in]  media  Single media string
+ * @param[in]  list   Comma-separated list of medias
+ * @retval     1      Found
+ * @retval     0      Not found
+ * @retval    -1      Error
+ */
+int
+restconf_media_in_list(char *media,
+                       char *list)
+{
+    int     retval = -1;
+    cg_var *cv;
+    cvec   *cvv = NULL;
+    char   *str;
+
+    if (uri_str2cvec(list, ',', ';', 0, &cvv) < 0)
+        goto done;
+    cv = NULL;
+    while ((cv = cvec_each(cvv, cv)) != NULL){
+        str = cv_name_get(cv);
+        if (strcmp(str, media) == 0)
+            break;
+    }
+    if (cv != NULL)
+        retval = 1;
+    else
+        retval = 0;
+ done:
+    if (cvv)
+        cvec_free(cvv);
+    return retval;
 }
 
 const char *
@@ -355,30 +426,25 @@ get_user_cookie(char  *cookiestr,
 int
 restconf_terminate(clixon_handle h)
 {
-    yang_stmt *yspec;
     cvec      *nsctx;
     cxobj     *x;
     int        fs; /* fgcx socket */
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((fs = clicon_socket_get(h)) != -1)
         close(fs);
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
-
     clicon_rpc_close_session(h);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL)
-        ys_free(yspec);
-    if ((yspec = clicon_config_yang(h)) != NULL)
-        ys_free(yspec);
+    yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
         xml_free(x);
     xpath_optimize_exit();
-    restconf_handle_exit(h);
     clixon_err_exit();
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s pid:%u done", __FUNCTION__, getpid());
+    clixon_debug(CLIXON_DBG_RESTCONF, "pid:%u done", getpid());
+    restconf_handle_exit(h);
     clixon_log_exit(); /* Must be after last clixon_debug */
     return 0;
 }
@@ -524,7 +590,7 @@ restconf_main_extension_cb(clixon_handle h,
     extname = yang_argument_get(yext);
     if (strcmp(modname, "ietf-restconf") != 0 || strcmp(extname, "yang-data") != 0)
         goto ok;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Enabled extension:%s:%s", __FUNCTION__, modname, extname);
+    clixon_debug(CLIXON_DBG_RESTCONF, "Enabled extension:%s:%s", modname, extname);
     if ((yc = yang_find(ys, 0, NULL)) == NULL)
         goto ok;
     if ((yn = ys_dup(yc)) == NULL)
@@ -584,7 +650,7 @@ restconf_drop_privileges(clixon_handle h)
     char *user;
     enum priv_mode_t priv_mode = PM_NONE;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* Sanity check: backend group exists */
     if ((group = clicon_sock_group(h)) == NULL){
         clixon_err(OE_FATAL, 0, "clicon_sock_group option not set");
@@ -639,8 +705,8 @@ restconf_drop_privileges(clixon_handle h)
     case PM_NONE:
         break; /* catched above */
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s dropped privileges from root to %s(%d)",
-                 __FUNCTION__, user, newuid);
+    clixon_debug(CLIXON_DBG_RESTCONF, "dropped privileges from root to %s(%d)",
+                 user, newuid);
  ok:
     retval = 0;
  done:
@@ -673,7 +739,7 @@ restconf_authentication_cb(clixon_handle  h,
     char              *anonymous = NULL;
 
     auth_type = restconf_auth_type_get(h);
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s auth-type:%s", __FUNCTION__, clixon_auth_type_int2str(auth_type));
+    clixon_debug(CLIXON_DBG_RESTCONF, "auth-type:%s", clixon_auth_type_int2str(auth_type));
     ret = 0;
     authenticated = 0;
     /* ret: -1 Error, 0: Ignore/not handled, 1: OK see authenticated parameter */
@@ -725,8 +791,8 @@ restconf_authentication_cb(clixon_handle  h,
     /* If set but no user, set a dummy user */
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d authenticated:%d user:%s",
-                 __FUNCTION__, retval, authenticated, clicon_username_get(h));
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d authenticated:%d user:%s",
+                 retval, authenticated, clicon_username_get(h));
     if (username)
         free(username);
     if (xret)
@@ -749,12 +815,12 @@ int
 restconf_config_init(clixon_handle h,
                      cxobj        *xrestconf)
 {
-    int    retval = -1;
-    char  *enable;
-    cxobj *x;
-    char  *bstr;
-    cvec  *nsc = NULL;
-    int    auth_type;
+    int        retval = -1;
+    char      *enable;
+    cxobj     *x;
+    char      *bstr;
+    cvec      *nsc = NULL;
+    int        auth_type;
     yang_stmt *yspec;
     yang_stmt *y;
 
@@ -763,12 +829,12 @@ restconf_config_init(clixon_handle h,
         goto done;
     }
     /* Apply default values (removed in clear function) */
-    if (xml_default_recurse(xrestconf, 0) < 0)
+    if (xml_default_recurse(xrestconf, 0, 0) < 0)
         goto done;
     if ((x = xpath_first(xrestconf, nsc, "enable")) != NULL &&
         (enable = xml_body(x)) != NULL){
         if (strcmp(enable, "false") == 0){
-            clixon_debug(CLIXON_DBG_DEFAULT, "%s restconf disabled", __FUNCTION__);
+            clixon_debug(CLIXON_DBG_RESTCONF, "restconf disabled");
             goto disable;
         }
     }
@@ -848,7 +914,7 @@ restconf_socket_init(const char   *netns0,
     size_t              sa_len;
     const char         *netns;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %s %s %hu", __FUNCTION__, netns0, addrtype, addrstr, port);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s %s %s %hu", netns0, addrtype, addrstr, port);
     /* netns default -> NULL */
     if (netns0 != NULL && strcmp(netns0, RESTCONF_NETNS_DEFAULT)==0)
         netns = NULL;
@@ -858,10 +924,9 @@ restconf_socket_init(const char   *netns0,
         goto done;
     if (clixon_netns_socket(netns, sa, sa_len, backlog, flags, addrstr, ss) < 0)
         goto done;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s ss=%d", __FUNCTION__, *ss);
+    clixon_debug(CLIXON_DBG_RESTCONF, "ss=%d", *ss);
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
-

@@ -49,14 +49,14 @@ enum yang_sub_parse_accept{
 
 /*! XML parser yacc handler struct */
 struct clixon_yang_sub_parse_yacc {
-    char       *if_parse_string; /* original (copy of) parse string */
-    const char *if_mainfile;     /* Original main-file (this is a sib-parser) */
-    int         if_linenum;      /* Number of \n in parsed buffer (in mainfile) */
-    void      *if_lexbuf;       /* Internal parse buffer from lex */
-    yang_stmt *if_ys;           /* Yang statement, NULL if no check */
-    enum yang_sub_parse_accept if_accept; /* Which sub-parse rule to accept */
-    int         if_enabled;      /* Result: 0: feature disabled, 1: enabled */
-    clixon_handle h;
+    char                      *if_parse_string; /* original (copy of) parse string */
+    const char                *if_mainfile;     /* Original main-file (this is a sib-parser) */
+    int                        if_linenum;      /* Number of \n in parsed buffer (in mainfile) */
+    void                      *if_lexbuf;       /* Internal parse buffer from lex */
+    yang_stmt                 *if_ys;           /* Yang statement, NULL if no check */
+    enum yang_sub_parse_accept if_accept;       /* Which sub-parse rule to accept */
+    int                        if_enabled;      /* Result: 0: feature disabled, 1: enabled */
+    clixon_handle              if_h;
 };
 typedef struct clixon_yang_sub_parse_yacc clixon_yang_sub_parse_yacc;
 
@@ -74,7 +74,7 @@ int clixon_yang_sub_parsel_linenr(void);
 int clixon_yang_sub_parselex(void *);
 int clixon_yang_sub_parseparse(void *);
 
-int  yang_subparse(char *str, yang_stmt *ys, enum yang_sub_parse_accept accept, const char *mainfile, int linenum, int *enabled, clixon_handle h);
+int  yang_subparse(clixon_handle h, char *str, yang_stmt *ys, enum yang_sub_parse_accept accept, const char *mainfile, int linenum, int *enabled);
 int  yang_schema_nodeid_subparse(char *str, enum yang_sub_parse_accept accept, const char *mainfile, int linenum);
 
 #endif  /* _CLIXON_YANG_SUB_PARSER_H_ */

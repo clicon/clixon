@@ -66,14 +66,13 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_file.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
-#include "clixon_xml_sort.h"
 #include "clixon_json.h"
 #include "clixon_text_syntax.h"
 #include "clixon_proto.h"
@@ -83,8 +82,10 @@
 #include "clixon_xpath.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_io.h"
+#include "clixon_xml_map.h"
 #include "clixon_validate.h"
 #include "clixon_xml_default.h"
 
@@ -117,15 +118,6 @@ static const map_str2int nacm_credentials_map[] = {
     {NULL,        -1}
 };
 
-/* Mapping between datastore cache string <--> constants, 
- * see clixon-config.yang type datastore_cache */
-static const map_str2int datastore_cache_map[] = {
-    {"nocache",               DATASTORE_NOCACHE},
-    {"cache",                 DATASTORE_CACHE},
-    {"cache-zerocopy",        DATASTORE_CACHE_ZEROCOPY},
-    {NULL,                    -1}
-};
-
 /* Mapping between regular expression type string <--> constants, 
  * see clixon-config.yang type regexp_mode */
 static const map_str2int yang_regexp_map[] = {
@@ -133,6 +125,43 @@ static const map_str2int yang_regexp_map[] = {
     {"libxml2",             REGEXP_LIBXML2},
     {NULL,                 -1}
 };
+
+/*! Translate between int and string of tree formats
+ *
+ * @see enum format_enum
+ */
+static const map_str2int _FORMATS[] = {
+    {"xml",              FORMAT_XML},
+    {"text",             FORMAT_TEXT},
+    {"json",             FORMAT_JSON},
+    {"cli",              FORMAT_CLI},
+    {"netconf",          FORMAT_NETCONF},
+    {"default",          FORMAT_DEFAULT},
+    {"pipe-xml-default", FORMAT_PIPE_XML_DEFAULT},
+    {NULL,      -1}
+};
+
+/*! Translate from numeric format to string representation
+ *
+ * @param[in]  showas   Format value (see enum format_enum)
+ * @retval     str      String value
+ */
+char *
+format_int2str(enum format_enum showas)
+{
+    return (char*)clicon_int2str(_FORMATS, showas);
+}
+
+/*! Translate from string to numeric format representation
+ *
+ * @param[in]  str       String value
+ * @retval     enum      Format value (see enum format_enum)
+ */
+enum format_enum
+format_str2int(char *str)
+{
+    return clicon_str2int(_FORMATS, str);
+}
 
 /*! Debug dump config options
  *
@@ -225,7 +254,7 @@ clicon_option_dump1(clixon_handle h,
             goto done;
         break;
     case FORMAT_JSON:
-        if (clixon_json2file(f, xc, pretty, cligen_output, 0, 0) < 0)
+        if (clixon_json2file(f, xc, pretty, cligen_output, 0, 0, 0) < 0)
             goto done;
         break;
     case FORMAT_TEXT:
@@ -268,7 +297,7 @@ parse_configfile_one(clixon_handle h,
         clixon_err(OE_UNIX, errno, "open configure file: %s", filename);
         return -1;
     }
-    clixon_debug(CLIXON_DBG_DETAIL, "%s: Reading config file %s", __FUNCTION__, filename);
+    clixon_debug(CLIXON_DBG_INIT, "Reading config file %s", filename);
     if ((ret = clixon_xml_parse_file(fp, yspec?YB_MODULE:YB_NONE, yspec, &xt, &xerr)) < 0)
         goto done;
     if (ret == 0){
@@ -293,7 +322,7 @@ parse_configfile_one(clixon_handle h,
     xt = NULL;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s: Done w/ config file %s returning %d", __FUNCTION__, filename, retval);
+    clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "Done w/ config file %s retval:%d", filename, retval);
     if (xt)
         xml_free(xt);
     if (fp)
@@ -304,6 +333,12 @@ parse_configfile_one(clixon_handle h,
 }
 
 /*! Merge XML sub config file into main config-file
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  xt  Existing target XML 
+ * @param[in]  xe  Source XML (merge this to xt)
+ * @retval     0   OK
+ * @retval    -1   Error
  */
 static int
 merge_control_xml(clixon_handle h,
@@ -316,6 +351,7 @@ merge_control_xml(clixon_handle h,
     cxobj *xec;
     cxobj *xtc;
     cxobj *x;
+    //    int    ret;
 
     /* One could have used xml_merge, but there are several special conditions */
     xec = NULL;
@@ -324,7 +360,9 @@ merge_control_xml(clixon_handle h,
             continue;
         if ((body = xml_body(xec)) == NULL){
             if ((xtc = xml_find_type(xt, NULL, name, CX_ELMNT)) != NULL){
-                if (merge_control_xml(h, xtc, xec) < 0)
+                if (xml_rm_children(xtc, -1) < 0)
+                    goto done;
+                if (xml_copy(xec, xtc) < 0)
                     goto done;
             }
             else{
@@ -341,25 +379,31 @@ merge_control_xml(clixon_handle h,
             continue;
         }
         /* List options for configure options that are lists or leaf-lists: append to main */
-        if (strcmp(name,"CLICON_FEATURE")==0 ||
-            strcmp(name,"CLICON_YANG_DIR")==0 ||
-            strcmp(name,"CLICON_SNMP_MIB")==0){
+        if (strcmp(name,"CLICON_FEATURE") == 0 ||
+            strcmp(name,"CLICON_YANG_DIR") == 0 ||
+            strcmp(name,"CLICON_SNMP_MIB") == 0){
             if ((x = xml_dup(xec)) == NULL)
                 goto done;
             if (xml_addsub(xt, x) < 0)
                 goto done;
             continue;
         }
-        /* Overwrite: remove existing in master if any */
-        if ((x = xml_find_type(xt, NULL, name, CX_ELMNT)) != NULL)
-            xml_purge(x);
-        /* Copy and add to master */
-        if ((x = xml_dup(xec)) == NULL)
-            goto done;
-        if (xml_addsub(xt, x) < 0)
-            goto done;
+        /* Replace existing  */
+        xtc = xml_find_type(xt, NULL, name, CX_ELMNT);
+        if (xtc != NULL){
+            if (xml_rm_children(xtc, -1) < 0)
+                goto done;
+            if (xml_copy(xec, xtc) < 0)
+                goto done;
+        }
+        else {
+            /* Copy and add to master */
+            if ((x = xml_dup(xec)) == NULL)
+                goto done;
+            if (xml_addsub(xt, x) < 0)
+                goto done;
+        }
     }
-
     retval = 0;
  done:
     return retval;
@@ -415,8 +459,7 @@ parse_configfile(clixon_handle  h,
         clixon_err(OE_UNIX, 0, "%s is not a regular file", filename);
         goto done;
     }
-
-    clixon_debug(CLIXON_DBG_DETAIL, "%s: Reading config file %s", __FUNCTION__, filename);
+    clixon_debug(CLIXON_DBG_INIT, "Reading config file %s", filename);
     /* Parse main config file */
     if (parse_configfile_one(h, filename, yspec, &xt) < 0)
         goto done;
@@ -433,7 +476,7 @@ parse_configfile(clixon_handle  h,
             goto done;
         }
         closedir(dirp);
-        if((ndp = clicon_file_dirent(extraconfdir, &dp, NULL, S_IFREG)) < 0)  /* Read dir */
+        if((ndp = clicon_file_dirent(extraconfdir, &dp, "\\.xml$", S_IFREG)) < 0)  /* Read dir */
             goto done;
         /* Loop through files */
         for (i = 0; i < ndp; i++){
@@ -459,7 +502,7 @@ parse_configfile(clixon_handle  h,
             }
         }
     }
-    if (xml_default_recurse(xt, 0) < 0)
+    if (xml_default_recurse(xt, 0, 0) < 0)
         goto done;
     if ((ret = xml_yang_validate_add(h, xt, &xerr)) < 0)
         goto done;
@@ -499,12 +542,12 @@ parse_configfile(clixon_handle  h,
                             strlen(body)+1) == NULL)
             goto done;
     }
-    xml_sort(xt);
+    xml_sort_recurse(xt);
     retval = 0;
     *xconfig = xt;
     xt = NULL;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s: Done w/ config file %s returning %d", __FUNCTION__, filename, retval);
+    clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "Done w/ config file %s retval:%d", filename, retval);
     if (dp)
         free(dp);
     if (nsc)
@@ -597,7 +640,7 @@ clicon_options_main(clixon_handle h)
     char          *yangspec = "clixon-config";
 
     /* Create configure yang-spec */
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_CONFIG_TOP)) == NULL)
         goto done;
     /*
      * Set configure file if not set by command-line above
@@ -608,7 +651,7 @@ clicon_options_main(clixon_handle h)
     configfile = clicon_hash_value(copt, "CLICON_CONFIGFILE", NULL);
     if (strlen(configfile) == 0)
         configfile = clicon_hash_value(copt, "CLICON_CONFIGFILE", NULL);
-    clixon_debug(CLIXON_DBG_DEFAULT, "CLICON_CONFIGFILE=%s", configfile);
+    clixon_debug(CLIXON_DBG_INIT, "CLICON_CONFIGFILE=%s", configfile);
     /* File must end with .xml */
     if ((suffix = rindex(configfile, '.')) != NULL){
         suffix++;
@@ -666,21 +709,68 @@ clicon_options_main(clixon_handle h)
         clixon_err(OE_CFG, 0, "Config file %s: did not find corresponding Yang specification\nHint: File does not begin with: <clixon-config xmlns=\"%s\"> or clixon-config.yang not found?", configfile, CLIXON_CONF_NS);
         goto done;
     }
-    /* Set yang config spec (must store to free at exit, since conf_xml below uses it) */
-    if (clicon_config_yang_set(h, yspec) < 0)
-       goto done;
     yspec = NULL;
     /* Set clixon_conf pointer to handle */
     xml_sort(xconfig);
     if (clicon_conf_xml_set(h, xconfig) < 0)
         goto done;
-
     retval = 0;
  done:
-    if (yspec)
-        ys_free(yspec);
     if (extraconfdir)
         free(extraconfdir);
+    return retval;
+}
+
+/*! Options debug and log helper function
+ *
+ * If no debug or log option set in command-line, read debug or log options from
+ * configure file.
+ * Also set log file if CLICON_LOG_FILE is set
+ * @param[in]  h       Clixon handle
+ * @param[in]  dbg     Debug bitmask
+ * @param[in]  logdst  Log destination bitmask
+ * @param[in]  ident   prefix that appears on syslog
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_options_main_helper(clixon_handle h,
+                           uint32_t      dbg,
+                           uint32_t      logdst,
+                           char         *ident)
+{
+    int   retval = -1;
+    int   relog = 0;
+    char *dstr;
+
+    relog = 0;
+    dstr = clicon_option_str(h, "CLICON_DEBUG");
+    if (dbg == 0 && dstr && strlen(dstr)){
+        if (yang_bits_map(clicon_config_yang(h),
+                          dstr,
+                          "/cc:clixon-config/cc:CLICON_DEBUG",
+                          &dbg) < 0)
+            goto done;
+        relog++;
+    }
+    dstr = clicon_option_str(h, "CLICON_LOG_DESTINATION");
+    if (logdst == 0 && dstr && strlen(dstr)){
+        logdst = 0;
+        if (yang_bits_map(clicon_config_yang(h),
+                          dstr,
+                          "/cc:clixon-config/cc:CLICON_LOG_DESTINATION",
+                          &logdst) < 0)
+            goto done;
+        relog++;
+    }
+    if (relog){
+        clixon_debug_init(h, dbg);
+        clixon_log_init(h, ident, dbg?LOG_DEBUG:LOG_INFO, logdst?logdst:CLIXON_LOG_STDERR);
+    }
+    if ((dstr = clicon_option_str(h, "CLICON_LOG_FILE")) != NULL)
+        clixon_log_file(dstr);
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -995,23 +1085,6 @@ clicon_nacm_credentials(clixon_handle h)
     if ((mode = clicon_option_str(h, "CLICON_NACM_CREDENTIALS")) == NULL)
         return -1;
     return clicon_str2int(nacm_credentials_map, mode);
-}
-
-/*! Which datastore cache method to use
- *
- * @param[in] h      Clixon handle
- * @retval    method Datastore cache method
- * @see clixon-config@<date>.yang CLICON_DATASTORE_CACHE
- */
-enum datastore_cache
-clicon_datastore_cache(clixon_handle h)
-{
-    char *str;
-
-    if ((str = clicon_option_str(h, "CLICON_DATASTORE_CACHE")) == NULL)
-        return DATASTORE_CACHE;
-    else
-        return clicon_str2int(datastore_cache_map, str);
 }
 
 /*! Which Yang regexp/pattern engine to use

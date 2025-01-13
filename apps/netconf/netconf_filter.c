@@ -211,4 +211,3 @@ xml_filter(cxobj *xfilter,
                                   &remove_s);
     return retval;
 }
-

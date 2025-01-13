@@ -44,6 +44,7 @@
  */
 enum autocli_op{
     AUTOCLI_OP_ENABLE,
+    AUTOCLI_OP_DISABLE,
     AUTOCLI_OP_COMPRESS,
 };
 

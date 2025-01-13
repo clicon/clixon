@@ -27,6 +27,9 @@ fi
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -75,19 +78,17 @@ cat<<EOF > $cfile
 #include <unistd.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <syslog.h> // debug
 
 #include <clixon/clixon_queue.h>
 #include <clixon/clixon_hash.h>
 #include <clixon/clixon_handle.h>
-#include <clixon/clixon_log.h> // debug
 #include <clixon/clixon_client.h>
 
 int
 main(int    argc,
      char **argv)
 {
-    int retval = -1;
+    int                  retval = -1;
     clixon_handle        h = NULL; /* clixon handle */
     clixon_client_handle ch = NULL; /* clixon client handle */
     int                  s;
@@ -95,10 +96,6 @@ main(int    argc,
     /* Provide a clixon config-file, get a clixon handle */
     if ((h = clixon_client_init("$cfg")) == NULL)
        return -1;
-    clixon_log_init(h, "client", LOG_DEBUG, CLIXON_LOG_STDERR);
-    clixon_err_init(h);
-    clixon_debug_init(h, $debug, NULL);
-
     /* Make a connection over netconf or ssh/netconf */
     if ((ch = clixon_client_connect(h, CLIXON_CLIENT_NETCONF, NULL)) == NULL)
        return -1;
@@ -169,14 +166,7 @@ new "Check entries"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-client:table -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" "$XML"
 
 new "Run $app"
-# Extra test for some archs, eg ubuntu 18 that have problems with:
-# Sorry, user <user> is not allowed to execute as <user>:clicon on <arch>
-sudo -g ${CLICON_GROUP} $clixon_netconf 2> /dev/null
-if [ $? -eq 0 ]; then
-    expectpart "$(sudo -g ${CLICON_GROUP} $app)" 0 '^42$'
-else
-    expectpart "$($app)" 0 '^42$'
-fi
+expectpart "$(sudo $app)" 0 '^42$'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

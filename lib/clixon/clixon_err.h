@@ -43,6 +43,8 @@
 #ifndef _CLIXON_ERR_H_
 #define _CLIXON_ERR_H_
 
+#include "clixon_xml.h"			/* for cxobj */
+
 /*
  * Constants
  */
@@ -94,7 +96,8 @@ typedef int (clixon_cat_log_cb)(void *handle, int suberr, cbuf *cb);
 /*
  * Macros
  */
-#define clixon_err(e,s,_fmt, args...) clixon_err_fn(__FUNCTION__, __LINE__, (e), (s), _fmt , ##args)
+#define clixon_err(c,s,_fmt, args...) clixon_err_fn(NULL, __FUNCTION__, __LINE__, (c), (s), NULL, _fmt , ##args)
+#define clixon_err_netconf(h,c,s,x,_fmt, args...) clixon_err_fn((h), __FUNCTION__, __LINE__, (c), (s), (x), _fmt , ##args)
 
 /*
  * Prototypes
@@ -105,21 +108,15 @@ int   clixon_err_subnr(void);
 char *clixon_err_reason(void);
 char *clixon_err_str(void);
 int   clixon_err_reset(void);
-int   clixon_err_args(clixon_handle h, const char *fn, const int line, int category, int suberr, char *msg);
-int   clixon_err_fn(const char *fn, const int line, int category, int err, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
+int   clixon_err_fn(clixon_handle h, const char *fn, const int line, int category, int suberr, cxobj *xerr, const char *format, ...) __attribute__ ((format (printf, 7, 8)));
+int   netconf_err2cb(clixon_handle h, cxobj *xerr, cbuf *cberr);
 
 void *clixon_err_save(void);
 int   clixon_err_restore(void *handle);
 int   clixon_err_cat_reg(enum clixon_err category, void *handle, clixon_cat_log_cb logfn);
 int   clixon_err_exit(void);
 
-#if 1 /* COMPAT_6_5 */
-#define clicon_err(e,s,_fmt, args...) clixon_err_fn(__FUNCTION__, __LINE__, (e), (s), _fmt , ##args)
-#define clicon_err_reset() clixon_err_reset()
-
-#define clicon_errno      clixon_err_category()
-#define clicon_suberrno   clixon_err_subnr()
-#define clicon_err_reason clixon_err_reason()
-#endif
+/* doesnt work if arg != NULL */
+#define clixon_netconf_error(h, x, f, a) clixon_err_fn((h), __FUNCTION__, __LINE__, OE_XML, 0,(x), (f)) 
 
 #endif  /* _CLIXON_ERR_H_ */

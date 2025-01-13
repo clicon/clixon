@@ -96,7 +96,7 @@ new "Set local-definition"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><certificate xmlns=\"urn:example:clixon\"><local-definition/></certificate></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Get config expected foo2 refined default value (report-all)"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><certificate xmlns=\"urn:example:clixon\"><local-definition><dummy1>foo2</dummy1></local-definition></certificate></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><certificate xmlns=\"urn:example:clixon\"><local-definition><dummy1>foo2</dummy1></local-definition></certificate>"
 
 new "Get config expected foo2 refined default value"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><certificate xmlns=\"urn:example:clixon\"><local-definition/></certificate></data></rpc-reply>"
@@ -105,7 +105,7 @@ new "Set keystore-reference"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><certificate xmlns=\"urn:example:clixon\"><keystore-reference/></certificate></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Get config expected bar2 refined default value (report-all)"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><certificate xmlns=\"urn:example:clixon\"><keystore-reference><dummy2>bar2</dummy2></keystore-reference></certificate></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><certificate xmlns=\"urn:example:clixon\"><keystore-reference><dummy2>bar2</dummy2></keystore-reference></certificate>"
 
 new "Get config expected bar2 refined default value"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><certificate xmlns=\"urn:example:clixon\"><keystore-reference/></certificate></data></rpc-reply>"

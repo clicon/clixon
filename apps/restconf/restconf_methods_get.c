@@ -128,7 +128,7 @@ api_data_get2(clixon_handle  h,
     char      *defaults = NULL;
     cvec      *nscd = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -168,7 +168,7 @@ api_data_get2(clixon_handle  h,
     }
     /* Check for content attribute */
     if ((attr = cvec_find_str(qvec, "content")) != NULL){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s content=%s", __FUNCTION__, attr);
+        clixon_debug(CLIXON_DBG_RESTCONF, "content=%s", attr);
         if ((int)(content = netconf_content_str2int(attr)) == -1){
             if (netconf_bad_attribute_xml(&xerr, "application",
                                           "content", "Unrecognized value of content attribute") < 0)
@@ -180,7 +180,7 @@ api_data_get2(clixon_handle  h,
     }
     /* Check for depth attribute */
     if ((attr = cvec_find_str(qvec, "depth")) != NULL){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s depth=%s", __FUNCTION__, attr);
+        clixon_debug(CLIXON_DBG_RESTCONF, "depth=%s", attr);
         if (strcmp(attr, "unbounded") != 0){
             char *reason = NULL;
             if ((ret = parse_int32(attr, &depth, &reason)) < 0){
@@ -198,11 +198,11 @@ api_data_get2(clixon_handle  h,
         }
     }
     if ((attr = cvec_find_str(qvec, "with-defaults")) != NULL){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s with_defaults=%s", __FUNCTION__, attr);
+        clixon_debug(CLIXON_DBG_RESTCONF, "with_defaults=%s", attr);
         defaults = attr;
     }
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s path:%s", __FUNCTION__, xpath);
+    clixon_debug(CLIXON_DBG_RESTCONF, "path:%s", xpath);
     ret = clicon_rpc_get(h, xpath, nsc, content, depth, defaults, &xret);
 
     if (ret < 0){
@@ -217,7 +217,7 @@ api_data_get2(clixon_handle  h,
      */
 #if 0 /* DEBUG */
     if (clixon_debug_get())
-        clixon_debug_xml(CLIXON_DBG_DEFAULT, xret, "%s xret:", __FUNCTION__);
+        clixon_debug_xml(CLIXON_DBG_RESTCONF, xret, "xret:");
 #endif
     /* Check if error return  */
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
@@ -237,7 +237,7 @@ api_data_get2(clixon_handle  h,
                 goto done;
             break;
         case YANG_DATA_JSON:
-            if (clixon_json2cbuf(cbx, xret, pretty, 0, 0) < 0)
+            if (clixon_json2cbuf(cbx, xret, pretty, 0, 0, 0) < 0)
                 goto done;
             break;
         default:
@@ -292,7 +292,7 @@ api_data_get2(clixon_handle  h,
             break;
         }
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
+    clixon_debug(CLIXON_DBG_RESTCONF, "cbuf:%s", cbuf_get(cbx));
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
         goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
@@ -303,7 +303,7 @@ api_data_get2(clixon_handle  h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (xpath)
         free(xpath);
     if (nscd)
@@ -380,7 +380,7 @@ api_data_pagination(clixon_handle  h,
     char      *where;
     char      *ns;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
@@ -429,7 +429,7 @@ api_data_pagination(clixon_handle  h,
 
     /* Check for content attribute */
     if ((attr = cvec_find_str(qvec, "content")) != NULL){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s content=%s", __FUNCTION__, attr);
+        clixon_debug(CLIXON_DBG_RESTCONF, "content=%s", attr);
         if ((int)(content = netconf_content_str2int(attr)) == -1){
             if (netconf_bad_attribute_xml(&xerr, "application",
                                           "content", "Unrecognized value of content attribute") < 0)
@@ -443,7 +443,7 @@ api_data_pagination(clixon_handle  h,
             goto ok;
         }
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s path:%s", __FUNCTION__, xpath);
+    clixon_debug(CLIXON_DBG_RESTCONF, "path:%s", xpath);
     if (content != CONTENT_CONFIG && content != CONTENT_NONCONFIG && content != CONTENT_ALL){
         clixon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
         goto done;
@@ -451,7 +451,7 @@ api_data_pagination(clixon_handle  h,
     /* Clixon extensions and collection attributes */
     /* Check for depth attribute */
     if ((attr = cvec_find_str(qvec, "depth")) != NULL){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s depth=%s", __FUNCTION__, attr);
+        clixon_debug(CLIXON_DBG_RESTCONF, "depth=%s", attr);
         if (strcmp(attr, "unbounded") != 0){
             char *reason = NULL;
             if ((ret = parse_int32(attr, &depth, &reason)) < 0){
@@ -506,7 +506,7 @@ api_data_pagination(clixon_handle  h,
      * We need to cut that tree to only the object.
      */
 #if 0 /* DEBUG */
-    clixon_debug_xml(CLIXON_DBG_DEFAULT, xret, "%s xret:", __FUNCTION__);
+    clixon_debug_xml(CLIXON_DBG_RESTCONF, xret, "xret:");
 #endif
     /* Check if error return  */
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
@@ -555,7 +555,7 @@ api_data_pagination(clixon_handle  h,
     default:
         break;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s cbuf:%s", __FUNCTION__, cbuf_get(cbx));
+    clixon_debug(CLIXON_DBG_RESTCONF, "cbuf:%s", cbuf_get(cbx));
     if (restconf_reply_header(req, "Content-Type", "%s", restconf_media_int2str(media_out)) < 0)
         goto done;
     if (restconf_reply_header(req, "Cache-Control", "no-cache") < 0)
@@ -566,7 +566,7 @@ api_data_pagination(clixon_handle  h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (xpath)
         free(xpath);
     if (nsc)
@@ -716,9 +716,11 @@ api_operations_get(clixon_handle h,
     char      *namespace;
     cbuf      *cbx = NULL;
     cxobj     *xt = NULL;
+    int        inext;
+    int        inext2;
     int        i;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     yspec = clicon_dbspec_yang(h);
     if ((cbx = cbuf_new()) == NULL)
         goto done;
@@ -735,12 +737,12 @@ api_operations_get(clixon_handle h,
     default:
         break;
     }
-    ymod = NULL;
     i = 0;
-    while ((ymod = yn_each(yspec, ymod)) != NULL) {
+    inext = 0;
+    while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         namespace = yang_find_mynamespace(ymod);
-        yc = NULL;
-        while ((yc = yn_each(ymod, yc)) != NULL) {
+        inext2 = 0;
+        while ((yc = yn_iter(ymod, &inext2)) != NULL) {
             if (yang_keyword_get(yc) != Y_RPC)
                 continue;
             switch (media_out){
@@ -786,11 +788,10 @@ api_operations_get(clixon_handle h,
     // ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (cbx)
         cbuf_free(cbx);
     if (xt)
         xml_free(xt);
     return retval;
 }
-

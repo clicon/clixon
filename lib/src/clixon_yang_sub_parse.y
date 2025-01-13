@@ -86,6 +86,8 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
+#include <assert.h> // XXX
+
 /* cligen */
 #include <cligen/cligen.h>
 
@@ -94,11 +96,11 @@
 #include "clixon_hash.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_yang_module.h"
 #include "clixon_xml_vec.h"
 #include "clixon_data.h"
@@ -106,18 +108,18 @@
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, (s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
 
 void 
 clixon_yang_sub_parseerror(void *arg,
-                             char *s)
+                           char *s)
 {
     clixon_yang_sub_parse_yacc *ife = (clixon_yang_sub_parse_yacc *)arg;
 
-    clixon_err_fn(NULL, 0, OE_YANG, 0, "yang_sub_parse: file:%s:%d \"%s\" %s: at or before: %s",
+    clixon_err(OE_YANG, 0, "yang_sub_parse: file:%s:%d \"%s\" %s: at or before: %s",
                   ife->if_mainfile,
                   ife->if_linenum,
                   ife->if_parse_string,
@@ -128,10 +130,11 @@ clixon_yang_sub_parseerror(void *arg,
 
 /*! Check if feature "str" is enabled or not in context of yang node ys
  *
+ * @param[in]  ife  If-feature struct
  * @param[in]  str  feature str. 
- * @param[in]  ys   If-feature type yang node
  * @retval     0    OK
  * @retval    -1    Error
+ * @note ife->if_ys is used as implicit flag to perform actual checks
  */
 static int
 if_feature_check(clixon_yang_sub_parse_yacc *ife,
@@ -150,12 +153,19 @@ if_feature_check(clixon_yang_sub_parse_yacc *ife,
     if (nodeid_split(str, &prefix, &feature) < 0)
         goto done;
     /* Specifically need to handle? strcmp(prefix, myprefix)) */
-    if (prefix == NULL)
-        ymod = ys_module(ys);
-    else
+    if (prefix != NULL){
         ymod = yang_find_module_by_prefix(ys, prefix);
-    if (ymod == NULL)
+        if (ys_real_module(ymod, &ymod) < 0)
+            goto done;
+    }
+    else {
+        if (ys_real_module(ys, &ymod) < 0)
+            goto done;
+    }
+    if (ymod == NULL){
+        clixon_err(OE_YANG, 0, "Module not found: %s", str);
         goto done;
+    }
     /* Check if feature exists, and is set, otherwise remove */
     if ((yfeat = yang_find(ymod, Y_FEATURE, feature)) == NULL){
         clixon_err(OE_YANG, EINVAL, "Yang module %s has IF_FEATURE %s, but no such FEATURE statement exists",
@@ -167,8 +177,8 @@ if_feature_check(clixon_yang_sub_parse_yacc *ife,
      * Continue loop to catch unbound features and make verdict at end
      */
     cv = yang_cv_get(yfeat);
-    if (cv == NULL && ife->h) {
-        ys_populate_feature(ife->h, yfeat);
+    if (cv == NULL && ife->if_h) {
+        ys_populate_feature(ife->if_h, yfeat);
     }
 
     cv = yang_cv_get(yfeat);
@@ -280,4 +290,3 @@ sep1       : sep1 SEP              { _PARSE_DEBUG("sep->sep SEP"); }
            ;
 
 %%
-

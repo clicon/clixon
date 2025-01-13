@@ -190,7 +190,7 @@ mibyang_leaf_register(clixon_handle h,
         goto done;
     }
     oid_cbuf(cboid, oid1, oid1len);
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s register: %s %s", __FUNCTION__, name, cbuf_get(cboid));
+    clixon_debug(CLIXON_DBG_SNMP, "register: %s %s", name, cbuf_get(cboid));
   ok:
     retval = 0;
  done:
@@ -237,6 +237,7 @@ mibyang_table_register(clixon_handle h,
     int                              asn1type;
     yang_stmt                       *ys;
     char                            *name;
+    int                              inext;
 
     if ((ys = yang_parent_get(ylist)) == NULL ||
         yang_keyword_get(ys) != Y_CONTAINER){
@@ -316,9 +317,9 @@ mibyang_table_register(clixon_handle h,
     table_info->min_column = 1;
 
     /* Count columns */
-    yleaf = NULL;
     table_info->max_column = 0;
-    while ((yleaf = yn_each(ylist, yleaf)) != NULL) {
+    inext = 0;
+    while ((yleaf = yn_iter(ylist, &inext)) != NULL) {
            if ((yang_keyword_get(yleaf) != Y_LEAF) || (ret = yangext_is_oid_exist(yleaf)) != 1)
             continue;
         table_info->max_column++;
@@ -328,7 +329,7 @@ mibyang_table_register(clixon_handle h,
         goto done;
     }
     sh->sh_table_info = table_info; /* Keep to free at exit */
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s register: %s %s", __FUNCTION__, name, oidstr);
+    clixon_debug(CLIXON_DBG_SNMP, "register: %s %s", name, oidstr);
  ok:
     retval = 0;
  done:
@@ -482,7 +483,7 @@ mibyang_table_poll(clixon_handle h,
     oid        oidk[MAX_OID_LEN] = {0,};
     size_t     oidklen = MAX_OID_LEN;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_SNMP, "");
     if ((ys = yang_parent_get(ylist)) == NULL ||
         yang_keyword_get(ys) != Y_CONTAINER){
         clixon_err(OE_YANG, EINVAL, "ylist parent is not list");
@@ -564,9 +565,10 @@ mibyang_traverse(clixon_handle h,
     yang_stmt *ys = NULL;
     yang_stmt *yp;
     int        ret;
+    int        inext;
     static oid zero_oid = 0;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, yang_argument_get(yn));
+    clixon_debug(CLIXON_DBG_SNMP, "%s", yang_argument_get(yn));
     switch(yang_keyword_get(yn)){
     case Y_AUGMENT:
         if (mibyang_augment_register(h, yn) < 0)
@@ -593,8 +595,8 @@ mibyang_traverse(clixon_handle h,
         break;
     }
     /* Traverse data nodes in tree (module is special case */
-    ys = NULL;
-    while ((ys = yn_each(yn, ys)) != NULL) {
+    inext = 0;
+    while ((ys = yn_iter(yn, &inext)) != NULL) {
         /* augment special case of table */
         if (!yang_schemanode(ys) && yang_keyword_get(ys) != Y_AUGMENT)
             continue;
@@ -639,7 +641,7 @@ clixon_snmp_traverse_mibyangs(clixon_handle h)
             continue;
         if ((modname = xml_body(x)) == NULL)
             continue;
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s %s: \"%s\"", __FUNCTION__, xml_name(x), modname);
+        clixon_debug(CLIXON_DBG_SNMP, "%s: \"%s\"", xml_name(x), modname);
         /* Note, here we assume the Yang is loaded by some other mechanism and
          * error if it not found.
          * Alternatively, that YANG could be loaded.

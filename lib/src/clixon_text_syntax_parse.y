@@ -73,12 +73,12 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_string.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_vec.h"
 #include "clixon_data.h"
@@ -86,7 +86,7 @@
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
@@ -298,4 +298,3 @@ substr     : substr TOKEN      { _PARSE_DEBUG("substr->substr TOKEN");
            ;
 
 %%
-

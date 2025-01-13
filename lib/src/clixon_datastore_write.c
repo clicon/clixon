@@ -45,27 +45,29 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 /* cligen */
 #include <cligen/cligen.h>
 
 /* clixon */
 #include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_digest.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_file.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_xml_sort.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
@@ -86,6 +88,18 @@
 #include "clixon_datastore_write.h"
 #include "clixon_datastore_read.h"
 
+/* Local types */
+/* Argument to apply for recursive call to xmldb_multi write calls
+ * @see xmldb_multi_read_arg
+*/
+struct xmldb_multi_write_arg {
+    clixon_handle    *mw_h;
+    const char       *mw_db;
+    int               mw_pretty;
+    withdefaults_type mw_wdef;
+    enum format_enum  mw_format;
+};
+
 /*! Given an attribute name and its expected namespace, find its value
  * 
  * An attribute may have a prefix(or NULL). The routine finds the associated
@@ -95,17 +109,18 @@
  * @param[in]  x         XML node (where to look for attribute)
  * @param[in]  name      Attribute name
  * @param[in]  ns        (Expected) Namespace of attribute
+ * @param[in]  peek      If 1 dont remove attribute
  * @param[out] cbret     Error message (if retval=0)
  * @param[out] valp      Malloced value (if retval=1)
  * @retval     1         OK
  * @retval     0         Failed (cbret set)
  * @retval    -1         Error
- * @note as a side.effect the attribute is removed
  */
 static int
 attr_ns_value(cxobj *x,
               char  *name,
               char  *ns,
+              int    peek,
               cbuf  *cbret,
               char **valp)
 {
@@ -130,7 +145,8 @@ attr_ns_value(cxobj *x,
                 clixon_err(OE_UNIX, errno, "malloc");
                 goto done;
             }
-            xml_purge(xa);
+            if (!peek)
+                xml_purge(xa);
         }
     }
     *valp = val;
@@ -143,70 +159,6 @@ attr_ns_value(cxobj *x,
  fail:
     retval = 0;
     goto done;
-}
-
-/*! Add creator data to metadata xml object on the form name:xpath* 
- *
- * Callback function type for xml_apply
- * @param[in]  x    XML node  
- * @param[in]  arg  General-purpose argument
- * @retval    -1    Error, aborted at first error encounter, return -1 to end user
- * @retval     0    OK, continue
- * @retval     1    Abort, dont continue with others, return 1 to end user
- * @retval     2    Locally abort this subtree, continue with others
- * On the form:
- *     <creator>
- *       <name>testA[name='foo']</name>
- *       <xpath>...</xpath>
- *       ...
- *     </creator>
- * @see xml_creator_metadata_read
- */
-static int
-xml_creator_metadata_write(cxobj *x,
-                           void  *arg)
-{
-    int     retval = -1;
-    cxobj  *xmeta = (cxobj*)arg;
-    cxobj  *xmc;
-    cvec   *cvv;
-    cg_var *cv;
-    char   *val;
-    cvec   *nsc = NULL;
-    char   *xpath = NULL;
-
-    if ((cvv = xml_creator_get(x)) == NULL){
-        retval = 0;
-        goto done;
-    }
-    /* Note this requires x to have YANG spec */
-    if (xml2xpath(x, nsc, 0, 0, &xpath) < 0)
-        goto done;
-    cv = NULL;
-    while ((cv = cvec_each(cvv, cv)) != NULL){
-        val = cv_name_get(cv);
-        /* Find existing entry where name is val */
-        xmc = NULL;
-        while ((xmc = xml_child_each(xmeta, xmc, CX_ELMNT)) != NULL){
-            if (strcmp(xml_find_body(xmc, "name"), val) == 0)
-                break;
-        }
-        if (xmc != NULL){
-            if (clixon_xml_parse_va(YB_NONE, NULL, &xmc, NULL, "<path>%s</path>", xpath) < 0)
-                goto done;
-        }
-        else {
-            if (clixon_xml_parse_va(YB_NONE, NULL, &xmeta, NULL,
-                                    "<creator><name>%s</name><path>%s</path></creator>",
-                                    val, xpath) < 0)
-                goto done;
-        }
-    }
-    retval = 2;
- done:
-    if (xpath)
-        free(xpath);
-    return retval;
 }
 
 /*! When new body is added, some needs type lookup is made and namespace checked
@@ -289,20 +241,6 @@ check_body_namespace(cxobj     *x0,
     }
 #endif
     else{ /* Namespace does not exist in x0: error */
-#ifdef IDENTITYREF_KLUDGE
-        int ret;
-        if (ns1 == NULL){
-            if ((ret = yang_find_namespace_by_prefix(y, prefix, &ns0)) < 0)
-                goto done;
-            if (ret == 0){ /* no such namespace in yang */
-                ;
-            }
-            else{ /* Add it according to the kludge,... */
-                if (xml_add_attr(x0, prefix, ns0, "xmlns", NULL) == NULL)
-                    goto done;
-            }
-        }
-#else
         if ((cberr = cbuf_new()) == NULL){
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
@@ -311,7 +249,6 @@ check_body_namespace(cxobj     *x0,
         if (netconf_invalid_value(cbret, "application", cbuf_get(cberr)) < 0)
             goto done;
         goto fail;
-#endif
     }
  ok:
     retval = 1;
@@ -343,61 +280,110 @@ check_body_namespace(cxobj     *x0,
  * @retval     1        OK
  * @retval     0        Failed (cbret set)
  * @retval    -1        Error
- * @note There may be some combination cases (x0+x1) that are not covered in this function.
+ * XXX this code is a mess. It tries multiple methods, one after the other.
+ * Observations:
+ *  (1) is enough and required by clixon/controller tests
+ *  (1+4+6) is required by some Arista machines
+ * The solution is probably to make xpath evaluation namespace aware in combination with XML evaluation
+ * (3+4)
  */
 static int
-check_when_condition(cxobj              *x0p,
-                     cxobj              *x1,
-                     yang_stmt          *y0,
-                     cbuf               *cbret)
+check_when_condition(cxobj     *x0p,
+                     cxobj     *x1,
+                     yang_stmt *y0,
+                     cbuf      *cbret)
 {
-    int       retval = -1;
+    int        retval = -1;
     char      *xpath = NULL;
     cvec      *nsc = NULL;
     int        nr;
     yang_stmt *y = NULL;
     cbuf      *cberr = NULL;
     cxobj     *x1p;
+    cvec      *cnsc = NULL;
+    cvec      *nnsc = NULL;
+    char      *cxpath = NULL;
 
     if ((y = y0) != NULL ||
         (y = (yang_stmt*)xml_spec(x1)) != NULL){
-        if ((xpath = yang_when_xpath_get(y)) != NULL){
-            nsc = yang_when_nsc_get(y);
-            x1p = xml_parent(x1);
-            if ((nr = xpath_vec_bool(x1p, nsc, "%s", xpath)) < 0) /* Try request */
-                goto done;
-            if (nr == 0){
-                /* Try existing tree */
-                if ((nr = xpath_vec_bool(x0p, nsc, "%s", xpath)) < 0)
-                    goto done;
-                if (nr == 0){
-                    if ((cberr = cbuf_new()) == NULL){
-                        clixon_err(OE_UNIX, errno, "cbuf_new");
-                        goto done;
-                    }
-                    cprintf(cberr, "Node '%s' tagged with 'when' condition '%s' in module '%s' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)",
-                            yang_argument_get(y),
-                            xpath,
-                            yang_argument_get(ys_module(y)));
-                    if (netconf_unknown_element(cbret, "application", yang_argument_get(y),
-                                                cbuf_get(cberr)) < 0)
-                        goto done;
-                    goto fail;
-                }
-            }
+        x1p = xml_parent(x1);
+        if (yang_when_xpath_get(y, &xpath, &nsc) < 0)
+            goto done;
+        if (xpath == NULL)
+            goto ok;
+        /* 1. Try yang context for existing xml
+         * Sufficient for all clixon/controller tests.
+         * Required for test_augment */
+        if ((nr = xpath_vec_bool(x0p, nsc, "%s", xpath)) < 0)
+            goto done;
+        if (nr != 0)
+            goto ok;
+        /* 2. Try yang context for incoming xml */
+        if (xml_nsctx_node(x1p, &nnsc) < 0)
+            goto done;
+#if 0
+        if ((nr = xpath_vec_bool(x1p, nsc, "%s", xpath)) < 0)
+            goto done;
+        if (nr != 0)
+            goto ok;
+        /* 3. Try xml context for incoming xml */
+        if ((nr = xpath_vec_bool(x1p, nnsc, "%s", xpath)) < 0) /* Try request */
+            goto done;
+        if (nr != 0)
+            goto ok;
+#endif
+        /* 4. Try xml context for existing xml */
+        if ((nr = xpath_vec_bool(x0p, nnsc, "%s", xpath)) < 0) /* Try request */
+            goto done;
+        if (nr != 0)
+            goto ok;
+        /* 5. Try yang canonical context for incoming xml */
+        if (yang_when_canonical_xpath_get(y, &cxpath, &cnsc) < 0)
+            goto done;
+#if 0
+        if ((nr = xpath_vec_bool(x1p, cnsc, "%s", cxpath)) < 0)
+            goto done;
+        if (nr != 0)
+            goto ok;
+#endif
+        /* 6. Try yang canonical context for existing xml */
+        if ((nr = xpath_vec_bool(x0p, cnsc, "%s", cxpath)) < 0)
+            goto done;
+        if (nr != 0)
+            goto ok;
+        if ((cberr = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
         }
+        cprintf(cberr, "Node '%s' tagged with 'when' condition '%s' in module '%s' evaluates to false in edit-config operation (see RFC 7950 Sec 8.3.2)",
+                yang_argument_get(y),
+                xpath,
+                yang_argument_get(ys_module(y)));
+        if (netconf_unknown_element(cbret, "application", yang_argument_get(y),
+                                    cbuf_get(cberr)) < 0)
+            goto done;
+        goto fail;
     }
+ ok:
     retval = 1;
  done:
+    if (cxpath)
+        free(cxpath);
+    if (cnsc)
+        cvec_free(cnsc);
+    if (nsc)
+        cvec_free(nsc);
     if (cberr)
         cbuf_free(cberr);
+    if (nnsc)
+        cvec_free(nnsc);
     return retval;
  fail:
     retval = 0;
     goto done;
 }
 
-/*! Check if x0/y0 is part of other choice/case than y1 recursively , if so purge 
+/*! Check if y0 is part of other choice/case than y1 recursively
  *
  * @retval 1 yes, y0 is in other case than y1
  * @retval 0 No, y0 it is not in other case than y1
@@ -421,13 +407,13 @@ choice_is_other(yang_stmt *y0c,
     }
     else {
         /* First recurse y0 */
-        if (choice_case_get(y0choice, &ycase, &ychoice)){
+        if (yang_choice_case_get(y0choice, &ycase, &ychoice)){
             if (choice_is_other(y0choice, ycase, ychoice,
                                 y1c, y1case, y1choice) == 1)
                 return 1;
         }
-        /* Second  recurse y1 */
-        if (choice_case_get(y1choice, &ycase, &ychoice)){
+        /* Second recurse y1 */
+        if (yang_choice_case_get(y1choice, &ycase, &ychoice)){
             if (choice_is_other(y0choice, y0case, y0choice,
                                 y1choice, ycase, ychoice) == 1)
                 return 1;
@@ -436,14 +422,68 @@ choice_is_other(yang_stmt *y0c,
     return 0;
 }
 
-/*! Check if choice nodes and implicitly remove all other cases.
+/*! Find/peek operation recursively other than NONE
+ *
+ * @param[in]  x      Base tree node
+ * @param[in]  op     NETCONF operation
+ * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0. 
+ * @retval     1      OK
+ * @retval     0      Fail with cbret set
+ * @retval    -1      Error
+ */
+static int
+find_first_op_recurse(cxobj               *x,
+                      enum operation_type *op,
+                      cbuf                *cbret)
+{
+    int    retval = -1;
+    char  *opstr = NULL;
+    cxobj *xc;
+    int    ret;
+
+    if (*op != OP_NONE)
+        goto ok;
+    if ((ret = attr_ns_value(x, "operation", NETCONF_BASE_NAMESPACE, 1, cbret, &opstr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    if (opstr != NULL)
+        if (xml_operation(opstr, op) < 0)
+            goto done;
+    if (*op == OP_NONE){
+        xc = NULL;
+        while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+            if ((ret = find_first_op_recurse(xc, op, cbret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+            if (*op != OP_NONE)
+                break;
+        }
+    }
+ ok:
+    retval = 1;
+ done:
+    if (opstr)
+        free(opstr);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Check if choice nodes and if add implicitly remove all other cases, or fail if delete
  *
  * Special case is if yc parent (yp) is choice/case
  * then find x0 child with same yc even though it does not match lexically
  * However this will give another y0c != yc
  * @param[in]  x0      Base tree node
- * @param[in]  y1c     Yang spec of tree child. If null revert to linear search.
- * @retval     0       OK
+ * @param[in]  x1c     Tree child
+ * @param[in]  y1c     Yang spec of x1c
+ * @param[in]  op      NETCONF operation
+ * @param[out] cbret   Initialized cligen buffer. Contains return XML if retval is 0. 
+ * @retval     1       OK
+ * @retval     0       Fail with cbret set
  * @retval    -1       Error
  *
  * From RFC 7950 Sec 7.9
@@ -452,10 +492,14 @@ choice_is_other(yang_stmt *y0c,
  * all nodes from all other cases.  If a request creates a node from a
  * case, the server will delete any existing nodes that are defined in
  * other cases inside the choice.
+ * XXX just looks for first op, handling could be improved if several
  */
 static int
-choice_delete_other(cxobj     *x0,
-                    yang_stmt *y1c)
+choice_other_match(cxobj              *x0,
+                   cxobj              *x1c,
+                   yang_stmt          *y1c,
+                   enum operation_type op,
+                   cbuf               *cbret)
 {
     int        retval = -1;
     cxobj     *x0c;
@@ -465,8 +509,15 @@ choice_delete_other(cxobj     *x0,
     yang_stmt *y0choice;
     yang_stmt *y1case = NULL;
     yang_stmt *y1choice = NULL;
+    int        ret;
 
-    if (choice_case_get(y1c, &y1case, &y1choice) == 0)
+    if ((ret = find_first_op_recurse(x1c, &op, cbret)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    if (op == OP_REMOVE || op == OP_NONE)
+        goto ok;
+    if (yang_choice_case_get(y1c, &y1case, &y1choice) == 0)
         goto ok;
     x0prev = NULL;
     x0c = NULL;
@@ -476,23 +527,40 @@ choice_delete_other(cxobj     *x0,
             x0prev = x0c;
             continue;
         }
-        if (choice_case_get(y0c, &y0case, &y0choice) == 0){
+        if (yang_choice_case_get(y0c, &y0case, &y0choice) == 0){
             x0prev = x0c;
             continue;
         }
         /* Check if x0/y0 is part of other choice/case than y1 recursively , if so purge */
         if (choice_is_other(y0c, y0case, y0choice, y1c, y1case, y1choice) == 1){
-            if (xml_purge(x0c) < 0)
-                goto done;
-            x0c = x0prev;
+            switch (op){
+            case OP_MERGE:
+            case OP_REPLACE:
+            case OP_CREATE:
+                if (xml_purge(x0c) < 0)
+                    goto done;
+                x0c = x0prev;
                 continue;
+                break;
+            case OP_DELETE:
+                if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
+                    goto done;
+                goto fail;
+                break;
+            case OP_REMOVE:
+            case OP_NONE:
+                break;
+            }
         }
         x0prev = x0c;
     }
  ok:
-    retval = 0;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Modify a base tree x0 with x1 with yang spec y according to operation op
@@ -518,6 +586,7 @@ choice_delete_other(cxobj     *x0,
  * In an "ordered-by user" list, the attributes "insert" and "key" in
  * the YANG XML namespace can be used to control where
  * in the list the entry is inserted.
+ * Marks added objects with XML_FLAG_ADD
  */
 static int
 text_modify(clixon_handle       h,
@@ -545,6 +614,7 @@ text_modify(clixon_handle       h,
     yang_stmt *yc;      /* yang child */
     cxobj    **x0vec = NULL;
     int        i;
+    int        j;
     int        ret;
     char      *instr = NULL;
     char      *keystr = NULL;
@@ -557,7 +627,6 @@ text_modify(clixon_handle       h,
     char      *restype;
     int        ismount = 0;
     yang_stmt *mount_yspec = NULL;
-    char      *creator = NULL;
 
     if (x1 == NULL){
         clixon_err(OE_XML, EINVAL, "x1 is missing");
@@ -568,7 +637,7 @@ text_modify(clixon_handle       h,
     if (ret == 0)
         goto fail;
     /* Check for operations embedded in tree according to netconf */
-    if ((ret = attr_ns_value(x1, "operation", NETCONF_BASE_NAMESPACE,
+    if ((ret = attr_ns_value(x1, "operation", NETCONF_BASE_NAMESPACE, 0,
                              cbret, &opstr)) < 0)
         goto done;
     if (ret == 0)
@@ -576,13 +645,13 @@ text_modify(clixon_handle       h,
     if (opstr != NULL)
         if (xml_operation(opstr, &op) < 0)
             goto done;
-    if ((ret = attr_ns_value(x1, "objectcreate", NULL, cbret, &createstr)) < 0)
+    if ((ret = attr_ns_value(x1, "objectcreate", NULL, 0, cbret, &createstr)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
     if (createstr != NULL &&
         (op == OP_REPLACE || op == OP_MERGE || op == OP_CREATE)){
-        if (x0 == NULL || xml_defaults_nopresence(x0, 0)){ /* does not exist or is default */
+        if (x0 == NULL || xml_default_nopresence(x0, 0, 0)){ /* does not exist or is default */
             if (strcmp(createstr, "false")==0){
                 /* RFC 8040 4.6 PATCH:
                  * If the target resource instance does not exist, the server MUST NOT create it. 
@@ -597,13 +666,6 @@ text_modify(clixon_handle       h,
         else{  /* exists */
             clicon_data_set(h, "objectexisted", "true");
         }
-    }
-    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
-        /* Special clixon-lib attribute for keeping track of creator of objects */
-        if ((ret = attr_ns_value(x1, "creator", CLIXON_LIB_NS, cbret, &creator)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
     }
     x1name = xml_name(x1);
 
@@ -623,7 +685,7 @@ text_modify(clixon_handle       h,
         if (yang_keyword_get(y0) == Y_LEAF_LIST &&
             yang_find(y0, Y_ORDERED_BY, "user") != NULL){
             if ((ret = attr_ns_value(x1,
-                                     "insert", YANG_XML_NAMESPACE,
+                                     "insert", YANG_XML_NAMESPACE, 0,
                                      cbret, &instr)) < 0)
                 goto done;
             if (ret == 0)
@@ -632,7 +694,7 @@ text_modify(clixon_handle       h,
                 xml_attr_insert2val(instr, &insert) < 0)
                 goto done;
             if ((ret = attr_ns_value(x1,
-                                     "value", YANG_XML_NAMESPACE,
+                                     "value", YANG_XML_NAMESPACE, 0,
                                      cbret, &valstr)) < 0)
                 goto done;
             /* if insert/before, value attribute must be there */
@@ -646,19 +708,21 @@ text_modify(clixon_handle       h,
         x1bstr = xml_body(x1);
         switch(op){
         case OP_CREATE:
-            if (x0){
+            if (x0 && xml_flag(x0, XML_FLAG_DEFAULT)==0){
                 if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
                     goto done;
                 goto fail;
             }
         case OP_REPLACE: /* fall thru */
         case OP_MERGE:
-            if (!(op == OP_MERGE && instr==NULL)){
+            if (!(op == OP_MERGE && (instr==NULL))) {
                 /* Remove existing, also applies to merge in the special case
                  * of ordered-by user and (changed) insert attribute.
                  */
                 if (!permit && xnacm){
-                    if ((ret = nacm_datanode_write(h, x1, x1t, x0?NACM_UPDATE:NACM_CREATE, username, xnacm, cbret)) < 0)
+                    if ((ret = nacm_datanode_write(h, x1, x1t,
+                                                   (x0 == NULL || xml_default_nopresence(x0, 0, 0))?NACM_CREATE:NACM_UPDATE,
+                                                   username, xnacm, cbret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
@@ -672,6 +736,9 @@ text_modify(clixon_handle       h,
                     x0 = NULL;
                 }
             } /* OP_MERGE & insert */
+            /* If default flag, clear it, since replaced */
+            if (x0 && xml_flag(x0, XML_FLAG_DEFAULT))
+                xml_flag_reset(x0, XML_FLAG_DEFAULT);
         case OP_NONE: /* fall thru */
             if (x0==NULL){
                 if ((op != OP_NONE) && !permit && xnacm){
@@ -686,7 +753,6 @@ text_modify(clixon_handle       h,
                 if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
                     goto done;
                 xml_spec_set(x0, y0);
-
                 /* Get namespace from x1
                  * Check if namespace exists in x0 parent
                  * if not add new binding and replace in x0.
@@ -759,22 +825,20 @@ text_modify(clixon_handle       h,
                     }
                     if (xml_value_set(x0b, x1bstr) < 0)
                         goto done;
+                    xml_flag_set(x0, XML_FLAG_ADD);
                     /* If a default value ies replaced, then reset default flag */
                     if (xml_flag(x0, XML_FLAG_DEFAULT))
                         xml_flag_reset(x0, XML_FLAG_DEFAULT);
                 }
             } /* x1bstr */
-            if (creator){
-                if (xml_creator_add(x0, creator) < 0)
-                    goto done;
-            }
             if (changed){
                 if (xml_insert(x0p, x0, insert, valstr, NULL) < 0)
                     goto done;
+                xml_flag_set(x0, XML_FLAG_ADD);
             }
             break;
         case OP_DELETE:
-            if (x0==NULL){
+            if (x0==NULL || xml_flag(x0, XML_FLAG_DEFAULT) != 0){
                 if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
                     goto done;
                 goto fail;
@@ -793,6 +857,7 @@ text_modify(clixon_handle       h,
                     ((x0bstr=xml_body(x0)) != NULL && strcmp(x0bstr, x1bstr)==0)){
                     if (xml_purge(x0) < 0)
                         goto done;
+                    xml_flag_set(x0p, XML_FLAG_DEL);
                 }
                 else {
                     if (op == OP_DELETE){
@@ -818,7 +883,7 @@ text_modify(clixon_handle       h,
         if (yang_keyword_get(y0) == Y_LIST &&
             yang_find(y0, Y_ORDERED_BY, "user") != NULL){
             if ((ret = attr_ns_value(x1,
-                                     "insert", YANG_XML_NAMESPACE,
+                                     "insert", YANG_XML_NAMESPACE, 0,
                                      cbret, &instr)) < 0)
                 goto done;
             if (ret == 0)
@@ -827,7 +892,7 @@ text_modify(clixon_handle       h,
                 xml_attr_insert2val(instr, &insert) < 0)
                 goto done;
             if ((ret = attr_ns_value(x1,
-                                     "key", YANG_XML_NAMESPACE,
+                                     "key", YANG_XML_NAMESPACE, 0,
                                      cbret, &keystr)) < 0)
                 goto done;
 
@@ -844,8 +909,8 @@ text_modify(clixon_handle       h,
         }
         switch(op){
         case OP_CREATE:
-            if (x0){
-                if (xml_defaults_nopresence(x0, 0) == 0){
+            if (x0 && xml_flag(x0, XML_FLAG_DEFAULT)==0){
+                if (xml_default_nopresence(x0, 0, 0) == 0){
                     if (netconf_data_exists(cbret, "Data already exists; cannot create new resource") < 0)
                         goto done;
                     goto fail;
@@ -868,11 +933,6 @@ text_modify(clixon_handle       h,
                  * original object is not reverted.
                  */
                 if (x0){
-                    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
-                        /* Recursively copy creator attributes from existing tree */
-                        if (xml_creator_copy_all(x0, x1) < 0)
-                            goto done;
-                    }
                     xml_purge(x0);
                     x0 = NULL;
                 }
@@ -923,10 +983,6 @@ text_modify(clixon_handle       h,
 #ifdef XML_PARENT_CANDIDATE
                 xml_parent_candidate_set(x0, x0p);
 #endif
-                if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
-                    if (xml_creator_copy_one(x1, x0) < 0)
-                        goto done;
-                }
                 changed++;
                 /* Get namespace from x1
                  * Check if namespace exists in x0 parent
@@ -978,14 +1034,24 @@ text_modify(clixon_handle       h,
                                x1cname, yang_find_mynamespace(y0));
                     goto done;
                 }
-                /* Check if existing choice/case should be deleted */
-                if (choice_delete_other(x0, yc) < 0)
+                /* Check if existing choice/case, if so may be error or delete */
+                if ((ret = choice_other_match(x0, x1c, yc, op, cbret)) < 0)
                     goto done;
+                if (ret == 0)
+                    goto fail;
                 /* See if there is a corresponding node in the base tree */
                 x0c = NULL;
                 if (match_base_child(x0, x1c, yc, &x0c) < 0)
                     goto done;
-                x0vec[i++] = x0c; /* != NULL if x0c is matching x1c */
+                if (x0c) {
+                    /* Duplicate check can happen if multiple operations on same object, whihc should be filtered, just silently drop */
+                    for (j=0; j<i; j++)
+                        if (x0vec[j] == x0c)
+                            break;
+                    if (j==i)
+                        x0vec[i] = x0c; /* != NULL if x0c is matching x1c */
+                }
+                i++;
             }
             /* Second pass: Loop through children of the x1 modification tree again
              * Now potentially modify x0:s children 
@@ -1002,7 +1068,7 @@ text_modify(clixon_handle       h,
                 }
                 if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
                     /* Check if xc is unresolved mountpoint, ie no yang mount binding yet */
-                    if ((ismount = xml_yang_mount_get(h, x1c, NULL, &mount_yspec)) < 0)
+                    if ((ismount = xml_yang_mount_get(h, x1c, NULL, NULL, &mount_yspec)) < 0)
                         goto done;
                     if (ismount && mount_yspec == NULL &&
                         !xml_flag(x1c, XML_FLAG_ANYDATA)){
@@ -1023,21 +1089,17 @@ text_modify(clixon_handle       h,
                 if (ret == 0)
                     goto fail;
             }
-            if (creator){
-                if (xml_creator_add(x0, creator) < 0)
-                    goto done;
-            }
             if (changed){
 #ifdef XML_PARENT_CANDIDATE
                 xml_parent_candidate_set(x0, NULL);
 #endif
                 if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
                     goto done;
-
+                xml_flag_set(x0, XML_FLAG_ADD);
             }
             break;
         case OP_DELETE:
-            if (x0==NULL){
+            if (x0==NULL || xml_flag(x0, XML_FLAG_DEFAULT) != 0){
                 if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
                     goto done;
                 goto fail;
@@ -1052,6 +1114,7 @@ text_modify(clixon_handle       h,
                 }
                 if (xml_purge(x0) < 0)
                     goto done;
+                xml_flag_set(x0p, XML_FLAG_DEL);
             }
             break;
         default:
@@ -1068,8 +1131,6 @@ text_modify(clixon_handle       h,
         free(instr);
     if (opstr)
         free(opstr);
-    if (creator)
-        free(creator);
     if (createstr)
         free(createstr);
     if (nscx1)
@@ -1124,7 +1185,7 @@ text_modify_top(clixon_handle       h,
 
     /* Check for operations embedded in tree according to netconf */
     if ((ret = attr_ns_value(x1t,
-                             "operation", NETCONF_BASE_NAMESPACE,
+                             "operation", NETCONF_BASE_NAMESPACE, 0,
                              cbret, &opstr)) < 0)
         goto done;
     if (ret == 0)
@@ -1132,7 +1193,7 @@ text_modify_top(clixon_handle       h,
     if (opstr != NULL)
         if (xml_operation(opstr, &op) < 0)
             goto done;
-    if ((ret = attr_ns_value(x1t, "objectcreate", NULL, cbret, &createstr)) < 0)
+    if ((ret = attr_ns_value(x1t, "objectcreate", NULL, 0, cbret, &createstr)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -1178,7 +1239,15 @@ text_modify_top(clixon_handle       h,
     /* Special case top-level replace */
     else if (op == OP_REPLACE || op == OP_DELETE){
         if (createstr != NULL){
-            if (xml_child_nr_type(x0t, CX_ELMNT)) /* base tree not empty */
+            x0c = NULL;
+            /* Specialization of xml_default_nopresence for skiptop and mode=0 */
+            while ((x0c = xml_child_each(x0t, x0c, CX_ELMNT)) != NULL) {
+                if ((ret = xml_default_nopresence(x0c, 0, 0)) < 0)
+                    goto done;
+                if (ret == 0)
+                    break;
+            }
+            if (x0c != NULL)
                 clicon_data_set(h, "objectexisted", "true");
             else
                 clicon_data_set(h, "objectexisted", "false");
@@ -1251,6 +1320,45 @@ text_modify_top(clixon_handle       h,
     goto done;
 } /* text_modify_top */
 
+/*! Mark ancestor if any changes to children. Also mark changed xml as cache dirty
+ *
+ * @param[in]  x    XML node  
+ * @param[in]  arg  General-purpose argument
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ * @note WHEN node are not checked, but should be updated when doing validate. The reason is
+ *       that clixon needs a global traversal to re-evaluate WHEN nodes depending on changed targets
+ */
+static int
+xml_mark_added_ancestors(cxobj *x,
+                         void  *arg)
+{
+    int        flags = (intptr_t)arg;
+
+    if (xml_flag(x, flags)){
+        xml_apply_ancestor(x, (xml_applyfn_t*)xml_flag_set, (void*)(XML_FLAG_CHANGE));
+        return 2;
+    }
+    return 0;
+}
+
+static int
+xml_mark_cache_dirty(cxobj *x,
+                     void  *arg)
+{
+    if (xml_flag(x, XML_FLAG_CHANGE)){
+        xml_flag_set(x, XML_FLAG_CACHE_DIRTY);
+        return 0;
+    }
+    else if (xml_flag(x, XML_FLAG_ADD|XML_FLAG_DEL)){
+        if (xml_apply0(x, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)(XML_FLAG_CACHE_DIRTY)) < 0)
+            return -1;
+    }
+    return 2;
+}
+
 /*! Modify database given an xml tree and an operation
  *
  * @param[in]  h      CLICON handle
@@ -1274,6 +1382,7 @@ text_modify_top(clixon_handle       h,
  *     cbret contains netconf error message
  * @endcode
  * @note if xret is non-null, it may contain error message
+ * @note x1 may change as a side-effect (eg operation attributes are stripped)
  */
 int
 xmldb_put(clixon_handle       h,
@@ -1284,23 +1393,18 @@ xmldb_put(clixon_handle       h,
           cbuf               *cbret)
 {
     int         retval = -1;
-    char       *dbfile = NULL;
-    FILE       *f = NULL;
     yang_stmt  *yspec;
     cxobj      *x0 = NULL;
     db_elmnt   *de = NULL;
+    db_elmnt    de0 = {0,};
     int         ret;
     cxobj      *xnacm = NULL;
-    cxobj      *xmodst = NULL;
-    cxobj      *x;
     int         permit = 0; /* nacm permit all */
-    char       *format;
     cvec       *nsc = NULL; /* nacm namespace context */
     int         firsttime = 0;
-    int         pretty;
     cxobj      *xerr = NULL;
-    cxobj      *xmeta = NULL;
 
+    clixon_debug(CLIXON_DBG_DATASTORE|CLIXON_DBG_DETAIL, "db %s", db);
     if (cbret == NULL){
         clixon_err(OE_XML, EINVAL, "cbret is NULL");
         goto done;
@@ -1315,8 +1419,7 @@ xmldb_put(clixon_handle       h,
         goto done;
     }
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-        if (clicon_datastore_cache(h) != DATASTORE_NOCACHE)
-            x0 = de->de_xml; /* XXX flag is not XML_FLAG_TOP */
+        x0 = de->de_xml; /* XXX flag is not XML_FLAG_TOP */
     }
     /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
@@ -1326,6 +1429,12 @@ xmldb_put(clixon_handle       h,
             goto done;
         if (ret == 0)
             goto fail;
+        /* Add default global values (see also xmldb_populate) */
+        if (xml_global_defaults(h, x0, nsc, "/", yspec, 0) < 0)
+            goto done;
+        /* Add default recursive values */
+        if (xml_default_recurse(x0, 0, 0) < 0)
+            goto done;
     }
     if (strcmp(xml_name(x0), DATASTORE_TOP_SYMBOL) !=0 ||
         xml_flag(x0, XML_FLAG_TOP) == 0){
@@ -1333,24 +1442,9 @@ xmldb_put(clixon_handle       h,
                    xml_name(x0), DATASTORE_TOP_SYMBOL);
         goto done;
     }
-
-    /* XXX Ad-hoc: 
-     * In yang mounts yang specs may not be available
-     * in initial parsing, but may be at a later stage.
-     * But it should be possible to find a more precise triggering
-     */
-    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
-        if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec, NULL)) < 0)
-            goto done;
-    }
     /* Here x0 looks like: <config>...</config> */
-#if 0 /* debug */
-    if (xml_apply0(x1, -1, xml_sort_verify, NULL) < 0)
-        clixon_log(h, LOG_NOTICE, "%s: verify failed #1", __FUNCTION__);
-#endif
     xnacm = clicon_nacm_cache(h);
     permit = (xnacm==NULL);
-
     /* Here assume if xnacm is set and !permit do NACM */
     clicon_data_del(h, "objectexisted");
     /*
@@ -1368,135 +1462,273 @@ xmldb_put(clixon_handle       h,
         }
         goto fail;
     }
-
     /* Remove NONE nodes if all subs recursively are also NONE */
     if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
         goto done;
-    if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-                  (void*)(XML_FLAG_NONE|XML_FLAG_MARK)) < 0)
+    /* Mark ancestor if any changes to children. */
+    if (xml_apply(x0, CX_ELMNT, xml_mark_added_ancestors, (void*)(XML_FLAG_ADD|XML_FLAG_DEL)) < 0)
         goto done;
-    /* Remove global defaults and empty non-presence containers */
-    if (xml_defaults_nopresence(x0, 2) < 0)
+    /* Mark changed xml as cache dirty */
+    if (xml_apply(x0, CX_ELMNT, xml_mark_cache_dirty, NULL) < 0)
         goto done;
-#if 0 /* debug */
-    if (xml_apply0(x0, -1, xml_sort_verify, NULL) < 0)
-        clixon_log(h, LOG_NOTICE, "%s: verify failed #3", __FUNCTION__);
+    /* Remove empty non-presence containers recursively.
+     */
+    if (xml_default_nopresence(x0, 3, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
+        goto done;
+    /* Complete defaults
+     */
+    if (xml_global_defaults(h, x0, nsc, "/", yspec, 0) < 0)
+        goto done;
+    /* Add default recursive values */
+    if (xml_default_recurse(x0, 0, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
+        goto done;
+#ifdef XML_DEFAULT_WHEN_TWICE
+    /* Defaults a second time for when statements that depend on defaults that have not yet been evaluated
+     */
+    if (xml_default_recurse(x0, 0, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
+        goto done;
 #endif
     /* Write back to datastore cache if first time */
-    if (clicon_datastore_cache(h) != DATASTORE_NOCACHE){
-        db_elmnt de0 = {0,};
-        if (de != NULL)
-            de0 = *de;
-        if (de0.de_xml == NULL)
-            de0.de_xml = x0;
-        de0.de_empty = (xml_child_nr(de0.de_xml) == 0);
-        clicon_db_elmnt_set(h, db, &de0);
-    }
-    if (xmldb_db2file(h, db, &dbfile) < 0)
-        goto done;
-    if (dbfile==NULL){
-        clixon_err(OE_XML, 0, "dbfile NULL");
-        goto done;
-    }
-    /* Add module revision info before writing to file)
-     * Only if CLICON_XMLDB_MODSTATE is set
-     */
-    if ((x = clicon_modst_cache_get(h, 1)) != NULL){
-        if ((xmodst = xml_dup(x)) == NULL)
+    if (de != NULL)
+        de0 = *de;
+    if (de0.de_xml == NULL)
+        de0.de_xml = x0;
+    de0.de_empty = (xml_child_nr(de0.de_xml) == 0);
+    clicon_db_elmnt_set(h, db, &de0);
+    /* Write cache to file unless volatile (ie stop syncing to store) */
+    if (xmldb_volatile_get(h, db) == 0){
+        if (xmldb_write_cache2file(h, db) < 0)
             goto done;
-        if (xml_addsub(x0, xmodst) < 0)
+        /* Clear flags from previous steps + dirty */
+        if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+                      (void*)(XML_FLAG_NONE|XML_FLAG_ADD|XML_FLAG_DEL|XML_FLAG_CHANGE|XML_FLAG_CACHE_DIRTY)) < 0)
             goto done;
     }
-    if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
-        clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
-        goto done;
-    }
-    if ((f = fopen(dbfile, "w")) == NULL){
-        clixon_err(OE_CFG, errno, "Creating file %s", dbfile);
-        goto done;
-    }
-    pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
-    /* Add creator attribute */
-    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR")){
-        if ((xmeta = xml_new("creators", x0, CX_ELMNT)) == NULL)
-            goto done;
-        if (xmlns_set(xmeta, NULL, CLIXON_LIB_NS) < 0)
-            goto done;
-        if (xml_apply(x0, CX_ELMNT, xml_creator_metadata_write, xmeta) < 0)
-            goto done;
-        if (xml_child_nr_type(xmeta, CX_ELMNT) == 0){
-            xml_purge(xmeta);
-            xmeta = NULL;
-        }
-    }
-    if (strcmp(format,"json")==0){
-        if (clixon_json2file(f, x0, pretty, fprintf, 0, 0) < 0)
-            goto done;
-    }
-    else if (clixon_xml2file(f, x0, 0, pretty, NULL, fprintf, 0, 0) < 0)
-        goto done;
-    /* Remove modules state after writing to file
-     */
-    if (xmodst && xml_purge(xmodst) < 0)
-        goto done;
-    if (clicon_option_bool(h, "CLICON_NETCONF_CREATOR_ATTR") && xmeta){
-        if (xml_purge(xmeta) < 0)
+    else {
+        /* Clear flags from previous steps */
+        if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+                      (void*)(XML_FLAG_NONE|XML_FLAG_ADD|XML_FLAG_DEL|XML_FLAG_CHANGE)) < 0)
             goto done;
     }
     retval = 1;
  done:
-    if (f != NULL)
-        fclose(f);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xerr)
         xml_free(xerr);
     if (nsc)
         xml_nsctx_free(nsc);
-    if (dbfile)
-        free(dbfile);
-    if (x0 && clicon_datastore_cache(h) == DATASTORE_NOCACHE)
-        xml_free(x0);
     return retval;
  fail:
     retval = 0;
     goto done;
 }
 
-/* Dump a datastore to file including modstate
+/*! Callback function for xmldb-multi write
+ *
+ * Look for link attribute in XML, and if found open the linked file for parsing
+ * @param[in]  x    XML node
+ * @param[in]  arg
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ */
+static int
+xmldb_multi_write_applyfn(cxobj *x,
+                          void  *arg)
+{
+    struct xmldb_multi_write_arg *mw = (struct xmldb_multi_write_arg *) arg;
+    int           retval = -1;
+    clixon_handle h = mw->mw_h;
+    yang_stmt    *y;
+    int           exist = 0;
+    char         *xpath = NULL;
+    char         *hexstr = NULL;
+    cbuf         *cb = NULL;
+    char         *subdir = NULL;
+    char         *dbfile;
+    struct stat   st = {0,};
+    int           fd = -1;
+    FILE         *fsub = NULL;
+
+    if (xml_child_nr_type(x, CX_ELMNT) > 0 &&
+        (y = xml_spec(x)) != NULL){
+        if (yang_extension_value(y, "xmldb-split", CLIXON_LIB_NS, &exist, NULL) < 0)
+            goto done;
+        if (exist){
+            if (xml2xpath(x, NULL, 1, 0, &xpath) < 0)
+                goto done;
+            if (clixon_digest_hex(xpath, &hexstr) < 0)
+                goto done;
+            if (xmldb_db2subdir(h, mw->mw_db, &subdir) < 0)
+                goto done;
+            if ((cb = cbuf_new()) == NULL){
+                clixon_err(OE_XML, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cb, "%s/%s.xml", subdir, hexstr);
+            dbfile = cbuf_get(cb);
+            if (xml_flag(x, XML_FLAG_CACHE_DIRTY) ||
+                lstat(dbfile, &st) < 0){
+                clixon_debug(CLIXON_DBG_DATASTORE, "Open: %s for writing", dbfile);
+                if ((fd = open(dbfile, O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU)) < 0) {
+                    clixon_err(OE_UNIX, errno, "open(%s)", dbfile);
+                    goto done;
+                }
+                if ((fsub = fdopen(fd, "w")) == NULL){
+                    clixon_err(OE_CFG, errno, "fdopen(%s)", dbfile);
+                    goto done;
+                }
+                /* Dont recurse multi-file yet */
+                if (clixon_xml2file1(fsub, x, 0, mw->mw_pretty, NULL, fprintf, 1, 0, mw->mw_wdef, 0, 0) < 0)
+                    goto done;
+            }
+            retval = 2; /* Locally abort */
+            goto done;
+        }
+    }
+    retval = 0;
+ done:
+    if (fsub != NULL)
+        fclose(fsub);
+    if (cb)
+        cbuf_free(cb);
+    if (subdir)
+        free(subdir);
+    if (xpath)
+        free(xpath);
+    if (hexstr)
+        free(hexstr);
+    return retval;
+}
+
+/* Given open file, xml-tree, and wdef, add modstate, get format and write to file
+ *
+ * @param[in]  h        Clixon handle
+ * @param[in]  f        Output file
+ * @param[in]  xt       Top of XML tree
+ * @param[in]  format   Output format
+ * @param[in]  pretty   Pretty-print
+ * @param[in]  wdef     With-defaults parameter
+ * @param[in]  multi    If split into multiple files
+ * @param[in]  multidb  Database name (only if multi)
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 int
-xmldb_dump(clixon_handle   h,
-           FILE           *f,
-           cxobj          *xt)
+xmldb_dump(clixon_handle     h,
+           FILE             *f,
+           cxobj            *xt,
+           enum format_enum  format,
+           int               pretty,
+           withdefaults_type wdef,
+           int               multi,
+           const char       *multidb)
 {
-    int    retval = -1;
-    cxobj *x;
-    cxobj *xmodst = NULL;
-    char  *format;
-    int    pretty;
+    int                          retval = -1;
+    struct xmldb_multi_write_arg mw = {0,};
+    cxobj                       *xm;
+    cxobj                       *xmodst = NULL;
 
-    /* clear XML tree of defaults */
-    if (xml_tree_prune_flagged(xt, XML_FLAG_DEFAULT, 1) < 0)
-        goto done;
-    /* Add modstate first */
-    if ((x = clicon_modst_cache_get(h, 1)) != NULL){
-        if ((xmodst = xml_dup(x)) == NULL)
+    /* Add modstate */
+    if ((xm = clicon_modst_cache_get(h, 1)) != NULL){
+        if ((xmodst = xml_dup(xm)) == NULL)
             goto done;
+#if 1
+        /* This is inserted last in config, seems preferred */
+        if (xml_addsub(xt, xmodst) < 0)
+            goto done;
+#else
+        /* This is inserted first in config */
         if (xml_child_insert_pos(xt, xmodst, 0) < 0)
             goto done;
+#endif
+        xml_parent_set(xmodst, xt);
     }
-    if ((format = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) == NULL){
-        clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
-        goto done;
-    }
-    pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
-    if (strcmp(format,"json")==0){
-        if (clixon_json2file(f, xt, pretty, fprintf, 0, 0) < 0)
+    switch (format){
+    case FORMAT_XML:
+        if (clixon_xml2file1(f, xt, 0, pretty, NULL, fprintf, 0, 0, wdef, multi,
+                             clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")) < 0)
             goto done;
+        if (multi){
+            mw.mw_h = h;
+            mw.mw_db = multidb;
+            mw.mw_pretty = pretty;
+            mw.mw_wdef = wdef;
+            mw.mw_format = format;
+            if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xmldb_multi_write_applyfn, &mw) < 0)
+                goto done;
+        }
+        break;
+    case FORMAT_JSON:
+        if (multi){
+            clixon_err(OE_CFG, errno, "JSON+multi not supported");
+            goto done;
+        }
+        if (clixon_json2file(f, xt, pretty, fprintf, 0, 0,
+                             clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")) < 0)
+            goto done;
+        break;
+    default:
+        clixon_err(OE_XML, 0, "Format %s not supported", format_int2str(format));
+        goto done;
+        break;
     }
-    else if (clixon_xml2file(f, xt, 0, pretty, NULL, fprintf, 0, 0) < 0)
+    /* Remove modules state after writing to file */
+    if (xmodst && xml_purge(xmodst) < 0)
         goto done;
     retval = 0;
  done:
     return retval;
 }
 
+/*! Given datastore, get cache and format, set wdef, add modstate and print to multiple files
+ *
+ * Also add mod-state if applicable
+ * @param[in]  h   Clixon handle
+ * @param[in]  db  Name of database to search in (filename including dir path
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+xmldb_write_cache2file(clixon_handle h,
+                       const char   *db)
+{
+    int               retval = -1;
+    cxobj            *xt;
+    char             *formatstr;
+    enum format_enum  format = FORMAT_XML;
+    withdefaults_type wdef = WITHDEFAULTS_EXPLICIT;
+    int               pretty;
+    int               multi;
+    FILE             *f = NULL;
+    char             *dbfile = NULL;
+
+    if ((xt = xmldb_cache_get(h, db)) == NULL){
+        clixon_err(OE_XML, 0, "XML cache not found");
+        goto done;
+    }
+    pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
+    multi = clicon_option_bool(h, "CLICON_XMLDB_MULTI");
+    if ((formatstr = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) != NULL){
+        if ((format = format_str2int(formatstr)) < 0){
+            clixon_err(OE_XML, 0, "Format %s invalid", formatstr);
+            goto done;
+        }
+    }
+    if (xmldb_db2file(h, db, &dbfile) < 0)
+        goto done;
+    if ((f = fopen(dbfile, "w")) == NULL){
+        clixon_err(OE_CFG, errno, "fopen(%s)", dbfile);
+        goto done;
+    }
+    if (xmldb_dump(h, f, xt, format, pretty, wdef, multi, db) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (dbfile)
+        free(dbfile);
+    if (f)
+        fclose(f);
+    return retval;
+}

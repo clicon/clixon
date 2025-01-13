@@ -42,13 +42,13 @@
  * Types 
  */
 /*
- * XPath functions from Xpath 1.0 spec or YANG
+ * XPath functions from XPath 1.0 spec or YANG
  * @see xp_eval,xp_primary_function where they are parsed and checked
- * @see clixon_xpath_function.ch] for implementation
+ * @see clixon_xpath_function.ch for implementation
  */
 enum clixon_xpath_function{
     XPATHFN_CURRENT,                /* RFC 7950 10.1.1 */
-    XPATHFN_RE_MATCH,               /* RFC 7950 10.2.1 NYI */
+    XPATHFN_RE_MATCH,               /* RFC 7950 10.2.1 */
     XPATHFN_DEREF,                  /* RFC 7950 10.3.1 */
     XPATHFN_DERIVED_FROM,           /* RFC 7950 10.4.1 */
     XPATHFN_DERIVED_FROM_OR_SELF,   /* RFC 7950 10.4.2 */
@@ -61,16 +61,16 @@ enum clixon_xpath_function{
     XPATHFN_LOCAL_NAME,             /* XPATH 1.0 4.1   NYI */
     XPATHFN_NAMESPACE_URI,          /* XPATH 1.0 4.1   NYI */
     XPATHFN_NAME,                   /* XPATH 1.0 4.1 */
-    XPATHFN_STRING,                 /* XPATH 1.0 4.2   NYI */
+    XPATHFN_STRING,                 /* XPATH 1.0 4.2 */
     XPATHFN_CONCAT,                 /* XPATH 1.0 4.2   NYI */
-    XPATHFN_STARTS_WITH,            /* XPATH 1.0 4.2   NYI */
+    XPATHFN_STARTS_WITH,            /* XPATH 1.0 4.2 */
     XPATHFN_CONTAINS,               /* XPATH 1.0 4.2 */
-    XPATHFN_SUBSTRING_BEFORE,       /* XPATH 1.0 4.2   NYI */
-    XPATHFN_SUBSTRING_AFTER,        /* XPATH 1.0 4.2   NYI */
-    XPATHFN_SUBSTRING,              /* XPATH 1.0 4.2   NYI */
-    XPATHFN_STRING_LENGTH,          /* XPATH 1.0 4.2   NYI */
+    XPATHFN_SUBSTRING_BEFORE,       /* XPATH 1.0 4.2 */
+    XPATHFN_SUBSTRING_AFTER,        /* XPATH 1.0 4.2 */
+    XPATHFN_SUBSTRING,              /* XPATH 1.0 4.2 */
+    XPATHFN_STRING_LENGTH,          /* XPATH 1.0 4.2 */
     XPATHFN_NORMALIZE_SPACE,        /* XPATH 1.0 4.2   NYI */
-    XPATHFN_TRANSLATE,              /* XPATH 1.0 4.2   NYI */
+    XPATHFN_TRANSLATE,              /* XPATH 1.0 4.2 */
     XPATHFN_BOOLEAN,                /* XPATH 1.0 4.3 */
     XPATHFN_NOT,                    /* XPATH 1.0 4.3 */
     XPATHFN_TRUE,                   /* XPATH 1.0 4.3 */
@@ -94,16 +94,22 @@ int xp_fnname_str2int(char *fnname);
 const char *xp_fnname_int2str(enum clixon_xpath_function code);
 
 int xp_function_current(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
-int xp_function_deref(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_re_match(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_deref(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, xp_ctx **xrp);
 int xp_function_derived_from(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, int self, xp_ctx **xrp);
 int xp_function_bit_is_set(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
-int xp_function_position(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_position(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, xp_ctx **xrp);
 int xp_function_count(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_name(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
-int xp_function_contains(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_string(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_contains(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int starts, int localonly, xp_ctx **xrp);
+int xp_function_substring_str(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int before, int localonly, xp_ctx **xrp);
+int xp_function_substring(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_string_length(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_translate(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_boolean(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_not(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
-int xp_function_true(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
-int xp_function_false(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_true(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, xp_ctx **xrp);
+int xp_function_false(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, xp_ctx **xrp);
 
 #endif /* _CLIXON_XPATH_FUNCTION_H */

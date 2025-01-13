@@ -73,7 +73,6 @@
 %type  <stack>  key_values
 %type  <stack>  key_value
 
-
 %lex-param     {void *_ay} /* Add this argument to parse() and lex() function */
 %parse-param   {void *_ay}
 
@@ -108,11 +107,11 @@
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_path.h"
 #include "clixon_api_path_parse.h"
 
@@ -121,8 +120,8 @@
  * Disable it to stop any calls to clixon_debug. Having it on by default would mean very large debug outputs.
  */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
-#define _PARSE_DEBUG1(s, s1) clixon_debug(1,(s), (s1))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s))
+#define _PARSE_DEBUG1(s, s1) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s), (s1))
 #else
 #define _PARSE_DEBUG(s)
 #define _PARSE_DEBUG1(s, s1)
@@ -161,7 +160,7 @@ static clixon_path *
 path_append(clixon_path *list,
             clixon_path *new)
 {
-    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (new == NULL)
         return NULL;
     ADDQ(new, list);
@@ -174,7 +173,7 @@ static clixon_path *
 path_add_keyvalue(clixon_path *cp,
                   cvec        *cvk)
 {
-    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cp)
         cp->cp_cvk = cvk;
     return cp;
@@ -186,7 +185,7 @@ path_new(char *module_name,
 {
     clixon_path *cp = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, module_name, id);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, module_name, id);
     if ((cp = malloc(sizeof(*cp))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
         goto done;
@@ -217,7 +216,7 @@ static cvec *
 keyval_add(cvec   *cvv,
            cg_var *cv)
 {
-    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cv == NULL)
         goto done;
     if (cvv == NULL &&
@@ -243,7 +242,7 @@ keyval_set(char *name,
 {
     cg_var *cv = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name?name:"NULL", val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
         clixon_err(OE_UNIX, errno, "cv_new");
         goto done;
@@ -309,4 +308,3 @@ key_value      : STRING { $$ = keyval_set(NULL, $1); free($1); _PARSE_DEBUG("key
                ;
 
 %%
-

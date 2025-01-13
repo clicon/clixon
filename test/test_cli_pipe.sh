@@ -12,9 +12,13 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/clixon-example.yang
 clidir=$dir/clidir
+pipedir=$dir/pipedir
 
 if [ ! -d $clidir ]; then
     mkdir $clidir
+fi
+if [ ! -d $pipedir ]; then
+    mkdir $pipedir
 fi
 
 cat <<EOF > $cfg
@@ -24,6 +28,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_PIPE_DIR>$pipedir</CLICON_CLI_PIPE_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
@@ -87,6 +92,7 @@ show("Show a particular state of the system"){
 }
 EOF
 
+
 # First file of mode does not have CLICON_PIPETREE, next have
 cat <<EOF > $clidir/before.cli
 CLICON_MODE="default";
@@ -131,9 +137,23 @@ CLICON_MODE="|mypipe"; # Must start with |
    show {
      json, pipe_showas_fn("json");
      text, pipe_showas_fn("text");
+
    }
+   generic("Generic callbacks") <callback:string expand_dir("$pipedir", "\.sh$")>("Callback"), pipe_generic("callback");
 }
 EOF
+
+cat <<EOF > $pipedir/first.sh
+#!/usr/bin/env bash
+head -1
+EOF
+chmod 755  $pipedir/first.sh
+
+cat <<EOF > $pipedir/last.sh
+#!/usr/bin/env bash
+tail -1
+EOF
+chmod 755  $pipedir/last.sh
 
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
@@ -204,7 +224,6 @@ expectpart "$($clixon_cli -1 -m $mode -f $cfg show autocli table \| grep par 2>&
 
 new "Pipes with default rule"
 mode=default
-
 new "$mode show implicit"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show implicit config)" 0 "<parameter>" "</parameter>" "table" "value"
 
@@ -228,6 +247,13 @@ expectpart "$($clixon_cli -1 -m $mode -f $cfg show autocli table \| grep par 2>&
 
 new "$mode show autocli table parameter x value | grep value"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show autocli table parameter x value \| grep value)" 0 "<value>a</value>" --not-- "table" "parameter"
+
+# Generic callbacks
+new "generic pipe: first"
+expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| generic first.sh)" 0 "^<table xmlns=\"urn:example:clixon\">$" --not-- "parameter"
+
+new "generic pipe: last"
+expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| generic last.sh)" 0 "^</table>$" --not-- parameter
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

@@ -55,14 +55,14 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_yang_module.h"
-#include "clixon_xml_io.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_xml_io.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_datastore.h"
@@ -144,14 +144,16 @@ netconf_monitoring_schemas(clixon_handle h,
                            cbuf         *cb)
 {
     int        retval = -1;
-    yang_stmt *ym = NULL;
+    yang_stmt *ym;
     yang_stmt *y1;
     char      *identifier;
     char      *revision;
     char      *dir;
+    int        inext;
 
     cprintf(cb, "<schemas>");
-    while ((ym = yn_each(yspec, ym)) != NULL) {
+    inext = 0;
+    while ((ym = yn_iter(yspec, &inext)) != NULL) {
         cprintf(cb, "<schema>");
         identifier = yang_argument_get(ym);
         cprintf(cb, "<identifier>%s</identifier>", identifier);
@@ -277,7 +279,7 @@ netconf_monitoring_state_get(clixon_handle h,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT|CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (cb)
         cbuf_free(cb);
     return retval;

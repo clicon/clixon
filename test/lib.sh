@@ -198,22 +198,6 @@ BUSER=clicon
 
 : ${clixon_snmp_pidfile:="/var/tmp/clixon_snmp.pid"}
 
-: ${_ALREADY_HERE:=0}
-
-if [ -n "$CLICON_GROUP" ] && [ $_ALREADY_HERE -eq 0 ]; then
-    # Extra test for some archs, eg ubuntu 18 that have problems with:
-    # Sorry, user <user> is not allowed to execute as <user>:clicon on <arch>
-    sudo -g ${CLICON_GROUP} $clixon_netconf 2> /dev/null
-    if [ $? -eq 0 ]; then
-        clixon_cli="sudo -g ${CLICON_GROUP} $clixon_cli"
-        clixon_netconf="sudo -g ${CLICON_GROUP} $clixon_netconf"
-        clixon_restconf="sudo -g ${CLICON_GROUP} $clixon_restconf"
-        clixon_snmp="sudo -g ${CLICON_GROUP} --preserve-env=MIBDIRS $clixon_snmp"
-        clixon_util_socket="sudo -g ${CLICON_GROUP} $clixon_util_socket"
-    fi
-fi
-_ALREADY_HERE=1
-
 # Source the site-specific definitions for test script variables, if site.sh
 # exists. The variables defined in site.sh override any variables of the same
 # names in the environment in the current execution.
@@ -247,8 +231,8 @@ if $SNMPCHECK; then
     snmpgetnextstr="$(type -p snmpgetnext) -c public -v2c localhost "
     if [ $valgrindtest -ne 0 ]; then 
         # To avoid "Timeout: No Response from localhost" from netsnmp/snmpd set timeout to 10s
-        snmptable="$(type -p snmptable) -c public -v2c localhost -t 10 "
-        snmpwalk="$(type -p snmpwalk) -c public -v2c localhost -t 10 "
+        snmptable="$(type -p snmptable) -c public -t 10 -v2c localhost "
+        snmpwalk="$(type -p snmpwalk) -c public -t 10 -v2c localhost "
     else
         snmptable="$(type -p snmptable) -c public -v2c localhost "
         snmpwalk="$(type -p snmpwalk) -c public -v2c localhost "
@@ -598,6 +582,7 @@ function wait_backend(){
             err "backend timeout $DEMWAIT seconds"
         fi
     done
+    stty $STTYSETTINGS >/dev/null
 }
 
 # Start restconf daemon
@@ -611,6 +596,7 @@ function start_restconf(){
     if [ $? -ne 0 ]; then
         err1 "expected 0" "$?"
     fi
+    RCPID=$!
 }
 
 # Stop restconf daemon before test
@@ -624,10 +610,12 @@ function stop_restconf_pre(){
 # 2) Dont use -u $WWWUSER since clixon_restconf may drop privileges.
 # 3) After fork, it seems to take some time before name is right
 function stop_restconf(){
-    sudo pkill -f clixon_restconf
-    if [ $valgrindtest -eq 3 ]; then 
+    if [ $valgrindtest -eq 3 ]; then
+        sudo kill ${RCPID}
         sleep 1
         checkvalgrind
+    else
+        sudo pkill -f clixon_restconf
     fi
 }
 
@@ -1093,7 +1081,7 @@ function expecteof_file(){
   fi
 }
 
-# test script with timeout, used for notificatin streams
+# test script for NETCONF with timeout, used for notification streams
 # - (not-evaluated) expression
 # - expected command return value (0 if OK) (NOOP for now)
 # - stdin input1  This is NOT encoded, eg preamble/hello
@@ -1264,11 +1252,12 @@ emailAddress           = olof@hagsand.se
 [ req_attributes ]
 challengePassword      = test
 
+[ x509v3_extensions ]
+basicConstraints = critical,CA:true
 EOF
 
     # Generate CA cert
-    openssl req -batch -new -x509 -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err "Generate CA cert"
-
+    openssl req -batch -new -x509 -extensions x509v3_extensions -days 1 -config $tmpdir/ca.cnf -keyout $cakey -out $cacert || err1 "Generate CA cert"
     rm -rf $tmpdir
 }
 

@@ -38,34 +38,6 @@
 #ifndef _CLIXON_STRING_H_
 #define _CLIXON_STRING_H_
 
-/*! Struct used to map between int and strings. Typically used to map between
- *
- * values and their names. Note NULL terminated
- * Example:
- * @code
-static const map_str2int atmap[] = {
-    {"One",               1},
-    {"Two",               2},
-    {NULL,               -1}
-};
- * @endcode
- * @see clicon_int2str
- * @see clicon_str2int
- */
-struct map_str2int{
-    char         *ms_str;
-    int           ms_int;
-};
-typedef struct map_str2int map_str2int;
-
-/*! Struct used to map between two strings.
- */
-struct map_str2str{
-    char         *ms_s0;
-    char         *ms_s1;
-};
-typedef struct map_str2str map_str2str;
-
 /*! A malloc version that aligns on 4 bytes. To avoid warning from valgrind */
 #define align4(s) (((s)/4)*4 + 4)
 
@@ -89,25 +61,22 @@ static inline char * strdup4(char *str)
  * Prototypes
  */
 char **clicon_strsep(char *string, char *delim, int  *nvec0);
+int    clixon_strsep2(char *str, char *delim1, char *delim2, char ***vcp, int *nvec);
 char  *clicon_strjoin (int argc, char **argv, char *delim);
 char  *clixon_string_del_join(char *str1, char *del, char *str2);
 int    clixon_strsplit(char *nodeid, const int delim, char **prefix, char **id);
 int    uri_str2cvec(char *string, char delim1, char delim2, int decode, cvec **cvp);
 int    uri_percent_encode(char **encp, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-int    xml_chardata_encode(char **escp, const char *fmt, ... ) __attribute__ ((format (printf, 2, 3)));
-int    xml_chardata_cbuf_append(cbuf *cb, char *str);
+int    xml_chardata_encode(char **escp, int quote, const char *fmt, ... ) __attribute__ ((format (printf, 3, 4)));
+int    xml_chardata_cbuf_append(cbuf *cb, int quote, char *str);
 int    xml_chardata_decode(char **escp, const char *fmt,...);
 int    uri_percent_decode(char *enc, char **str);
-
-const char *clicon_int2str(const map_str2int *mstab, int i);
-int    clicon_str2int(const map_str2int *mstab, char *str);
-int    clicon_str2int_search(const map_str2int *mstab, char *str, int upper);
-char  *clicon_str2str(const map_str2str *mstab, char *str);
 int    nodeid_split(char *nodeid, char **prefix, char **id);
 char  *clixon_trim(char *str);
 char  *clixon_trim2(char *str, char *trims);
 int    clicon_strcmp(char *s1, char *s2);
 int    clixon_unicode2utf8(char *ucstr, char *utfstr, size_t utflen);
+int    clixon_str_subst(char *str, cvec *cvv, cbuf *cb);
 
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);

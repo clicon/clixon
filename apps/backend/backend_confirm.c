@@ -369,10 +369,8 @@ schedule_rollback_event(clixon_handle h,
         /* error is logged in called function */
         goto done;
     };
-
     retval = 0;
-
-    done:
+ done:
     return retval;
 }
 
@@ -457,7 +455,7 @@ check_valid_confirming_commit(clixon_handle h,
                                   "not issued on the same session as the confirmed-commit");
             goto invalid;
         default:
-            clixon_debug(CLIXON_DBG_DEFAULT, "commit-confirmed state !? %d", confirmed_commit_state_get(h));
+            clixon_debug(CLIXON_DBG_BACKEND, "commit-confirmed state !? %d", confirmed_commit_state_get(h));
             goto invalid;
     }
     retval = 1; // valid

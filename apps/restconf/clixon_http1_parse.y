@@ -109,8 +109,8 @@
  * Disable it to stop any calls to clixon_debug. Having it on by default would mean very large debug outputs.
  */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
-#define _PARSE_DEBUG1(s, s1) clixon_debug(1,(s), (s1))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s))
+#define _PARSE_DEBUG1(s, s1) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s), (s1))
 #else
 #define _PARSE_DEBUG(s)
 #define _PARSE_DEBUG1(s, s1)
@@ -368,7 +368,6 @@ field_values   : field_vchars
                |           { $$ = NULL; _PARSE_DEBUG("field-values -> "); }
 ;
 
-
 field_vchars   : field_vchars RWS VCHARS
                      {
                          if (($$ = clixon_string_del_join($1, " ", $3)) == NULL) YYABORT;
@@ -393,4 +392,3 @@ ows          : RWS
 ;
 
 %%
-

@@ -52,6 +52,8 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_string.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 
 /*! Split string into a vector based on character delimiters. Using malloc
@@ -79,7 +81,7 @@
  * @param[out]  nvec       Number of entries in returned vector
  * @retval      vec        Vector of strings. NULL terminated. Free after use
  * @retval      NULL       Error * 
- * @see clicon_strsplit
+ * @see clixon_strsplit
  */
 char **
 clicon_strsep(char *string,
@@ -117,6 +119,72 @@ clicon_strsep(char *string,
     *nvec0 = nvec;
  done:
     return vec;
+}
+
+/*! Split string using start and stop delimiter strings usable for variable substitution
+ *
+ * Example: "foo ${NAME} bar"
+ * where delim1="${" and delim2="}"
+ * returns vec: "foo ", "NAME", "bar"
+ * Both delim1 and delim2 must match
+ * @param[in]  str
+ * @param[in]  delim1  prefix delimiter string
+ * @param[in]  delim2  postfix delimiter string
+ * @param[out] cvp     Created cligen variable vector, deallocate w cvec_free
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_strsep2(char   *str,
+               char   *delim1,
+               char   *delim2,
+               char ***vcp,
+               int    *nvec)
+{
+    int   retval = -1;
+    size_t sz;
+    char **vec = NULL;
+    char  *s1;
+    char  *s2;
+    int    nr = 0;
+    char  *ptr = NULL;
+    int    i;
+
+    s1 = str;
+    while ((s1 = strstr(s1, delim1)) != NULL){
+        if ((s2 = strstr(s1+strlen(delim1), delim2)) != NULL)
+            nr += 2;
+        s1 = s2 + strlen(delim2);
+    }
+    /* alloc vector and append copy of string */
+    sz = (nr+1)* sizeof(char*) + strlen(str)+1;
+    if ((vec = (char**)malloc(sz)) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    memset(vec, 0, sz);
+    ptr = (char*)vec + (nr+1)* sizeof(char*); /* this is where ptr starts */
+    strcpy(ptr, str);
+    i = 0;
+    s1 = ptr;
+    vec[i++] = ptr;
+    while ((s1 = strstr(s1, delim1)) != NULL){
+        if ((s2 = strstr(s1+strlen(delim1), delim2)) != NULL){
+            *s1 = '\0';
+            *s2 = '\0';
+            vec[i++] = s1 + strlen(delim1);
+            vec[i++] = s2 + strlen(delim2);
+        }
+        s1 = s2 + strlen(delim2);
+    }
+    *vcp = vec;
+    ptr = NULL;
+    *nvec = i;
+    retval = 0;
+ done:
+    if (ptr)
+        free(ptr);
+    return retval;
 }
 
 /*! Concatenate elements of a string array into a string. 
@@ -306,10 +374,9 @@ uri_percent_encode(char **encp,
     va_start(args, fmt); /* real */
     fmtlen = vsnprintf(str, fmtlen, fmt, args) + 1;
     va_end(args);
-    /* Now str is the combined fmt + ... */
-
-    /* Step (2) encode and expand str --> enc */
-    /* This is max */
+    /* Now str is the combined fmt + ...
+     * Step (2) encode and expand str --> enc
+     * This is max */
     len = strlen(str)*3+1;
     if ((enc = malloc(len)) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
@@ -394,13 +461,14 @@ uri_percent_decode(char  *enc,
 /*! Encode escape characters according to XML definition
  *
  * @param[out]  encp   Encoded malloced output string
+ * @param[in]   quote  Also encode ' and " (eg for attributes)
  * @param[in]   fmt    Not-encoded input string (stdarg format string)
  * @param[in]   ...    stdarg variable parameters
  * @retval      0      OK
  * @retval     -1      Error
  * @code
  *   char *encstr = NULL;
- *   if (xml_chardata_encode(&encstr, "fmtstr<>& %s", "substr<>") < 0)
+ *   if (xml_chardata_encode(&encstr, 0, "fmtstr<>& %s", "substr<>") < 0)
  *      err;
  *   if (encstr)
  *      free(encstr);
@@ -419,6 +487,7 @@ uri_percent_decode(char  *enc,
  */
 int
 xml_chardata_encode(char      **escp,
+                    int         quote,
                     const char *fmt,...)
 {
     int     retval = -1;
@@ -444,10 +513,9 @@ xml_chardata_encode(char      **escp,
     va_start(args, fmt); /* real */
     fmtlen = vsnprintf(str, fmtlen, fmt, args) + 1;
     va_end(args);
-    /* Now str is the combined fmt + ... */
-
-    /* Step (2) encode and expand str --> enc */
-    /* First compute length (do nothing) */
+    /* Now str is the combined fmt + ... 
+     * Step (2) encode and expand str --> enc
+     * First compute length (do nothing) */
     len = 0; cdata = 0;
     slen = strlen(str);
     for (i=0; i<slen; i++){
@@ -472,6 +540,18 @@ xml_chardata_encode(char      **escp,
             case '>':
                 len += strlen("&gt;");
                 break;
+            case '\'':
+                if (quote)
+                    len += strlen("&apos;");
+                else
+                    len++;
+            break;
+            case '"':
+                if (quote)
+                    len += strlen("&quot;");
+                else
+                    len++;
+                break;
             default:
                 len++;
             }
@@ -483,7 +563,6 @@ xml_chardata_encode(char      **escp,
         goto done;
     }
     memset(esc, 0, len);
-
     /* Same code again, but now actually encode into output buffer */
     j = 0; cdata = 0;
     slen = strlen(str);
@@ -524,6 +603,28 @@ xml_chardata_encode(char      **escp,
             }
             j += l;
             break;
+        case '\'':
+            if (quote){
+                if ((l=snprintf(&esc[j], 7, "&apos;")) < 0){
+                    clixon_err(OE_UNIX, errno, "snprintf");
+                    goto done;
+                }
+                j += l;
+            }
+            else
+                esc[j++] = str[i];
+            break;
+        case '"':
+            if (quote){
+                if ((l=snprintf(&esc[j], 7, "&quot;")) < 0){
+                    clixon_err(OE_UNIX, errno, "snprintf");
+                    goto done;
+                }
+                j += l;
+            }
+            else
+                esc[j++] = str[i];
+            break;
         default:
             esc[j++] = str[i];
         }
@@ -541,24 +642,25 @@ xml_chardata_encode(char      **escp,
 /*! Escape characters according to XML definition and append to cbuf
  *
  * @param[in]   cb     CLIgen buf
+ * @param[in]   quote  Also encode ' and " (eg for attributes)
  * @param[in]   str    Not-encoded input string
  * @retdata     0      OK
  * @see xml_chardata_encode for the generic function
  */
 int
 xml_chardata_cbuf_append(cbuf *cb,
+                         int   quote,
                          char *str)
 {
-    int  retval = -1;
-    int  i;
-    int  cdata; /* when set, skip encoding */
+    int    retval = -1;
+    int    i;
+    int    cdata; /* when set, skip encoding */
     size_t len;
 
     /* The orignal of this code is in xml_chardata_encode */
     /* Step: encode and expand str --> enc */
     /* Same code again, but now actually encode into output buffer */
     cdata = 0;
-
     len = strlen(str);
     for (i=0; i<len; i++){
         if (cdata){
@@ -570,27 +672,38 @@ xml_chardata_cbuf_append(cbuf *cb,
             cbuf_append(cb, str[i]);
         }
         else
-        switch (str[i]){
-        case '&':
-            cbuf_append_str(cb, "&amp;");
-            break;
-        case '<':
-            if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
-                cbuf_append(cb, str[i]);
-                cdata++;
+            switch (str[i]){
+            case '&':
+                cbuf_append_str(cb, "&amp;");
                 break;
+            case '<':
+                if (strncmp(&str[i], "<![CDATA[", strlen("<![CDATA[")) == 0){
+                    cbuf_append(cb, str[i]);
+                    cdata++;
+                    break;
+                }
+                cbuf_append_str(cb, "&lt;");
+                break;
+            case '>':
+                cbuf_append_str(cb, "&gt;");
+                break;
+            case '\'':
+                if (quote)
+                    cbuf_append_str(cb, "&apos;");
+                else
+                    cbuf_append(cb, str[i]);
+                break;
+            case '"':
+                if (quote)
+                    cbuf_append_str(cb, "&quot;");
+                else
+                    cbuf_append(cb, str[i]);
+                break;
+            default:
+                cbuf_append(cb, str[i]);
             }
-            cbuf_append_str(cb, "&lt;");
-            break;
-        case '>':
-            cbuf_append_str(cb, "&gt;");
-            break;
-        default:
-            cbuf_append(cb, str[i]);
-        }
     }
     retval = 0;
-    // done:
     return retval;
 }
 
@@ -737,7 +850,6 @@ xml_chardata_decode(char      **decp,
     return retval;
 }
 
-
 /*! Split a string into a cligen variable vector using 1st and 2nd delimiter
  * 
  * (1) Split a string into elements delimited by delim1, 
@@ -772,7 +884,7 @@ uri_str2cvec(char  *string,
     char   *s;
     char   *s0 = NULL;;
     char   *val;     /* value */
-    char   *valu;    /* unescaped value */
+    char   *valu = NULL;    /* unescaped value */
     char   *snext; /* next element in string */
     cvec   *cvv = NULL;
     cg_var *cv;
@@ -815,7 +927,10 @@ uri_str2cvec(char  *string,
                 s++;
             cv_name_set(cv, s);
             cv_string_set(cv, valu);
-            free(valu); valu = NULL;
+            if (valu) {
+                free(valu);
+                valu = NULL;
+            }
         }
         else{
             if (strlen(s)){
@@ -833,6 +948,8 @@ uri_str2cvec(char  *string,
     *cvp = cvv;
     if (s0)
         free(s0);
+    if (valu)
+        free(valu);
     return retval;
  err:
     if (cvv){
@@ -840,126 +957,6 @@ uri_str2cvec(char  *string,
         cvv = NULL;
     }
     goto done;
-}
-
-/*! Map from int to string using str2int map
- *
- * @param[in] ms   String, integer map
- * @param[in] i    Input integer
- * @retval    str  String value
- * @retval    NULL Error, not found
- * @note linear search
- */
-const char *
-clicon_int2str(const map_str2int *mstab,
-               int                i)
-{
-    const struct map_str2int *ms;
-
-    for (ms = &mstab[0]; ms->ms_str; ms++)
-        if (ms->ms_int == i)
-            return ms->ms_str;
-    return NULL;
-}
-
-/*! Map from string to int using str2int map
- *
- * @param[in] ms   String, integer map
- * @param[in] str  Input string
- * @retval    int  Value
- * @retval   -1    Error, not found
- * @see clicon_str2int_search for optimized lookup, but strings must be sorted
- */
-int
-clicon_str2int(const map_str2int *mstab,
-               char              *str)
-{
-    const struct map_str2int *ms;
-
-    for (ms = &mstab[0]; ms->ms_str; ms++)
-        if (strcmp(ms->ms_str, str) == 0)
-            return ms->ms_int;
-    return -1;
-}
-
-/*! Map from string to int using binary (alphatical) search
- *
- * @param[in]  ms    String, integer map
- * @param[in]  str   Input string
- * @param[in]  low   Lower bound index
- * @param[in]  upper Upper bound index
- * @param[in]  len   Length of array (max)
- * @param[out] found Integer found (can also be negative)
- * @retval     1     Found with "found" value set.
- * @retval     0     Not found
- * @note Assumes sorted strings, tree search
- */
-static int
-str2int_search1(const map_str2int *mstab,
-                char              *str,
-                int                low,
-                int                upper,
-                int                len,
-                int               *found)
-{
-    const struct map_str2int *ms;
-    int                       mid;
-    int                       cmp;
-
-    if (upper < low)
-        return 0; /* not found */
-    mid = (low + upper) / 2;
-    if (mid >= len)  /* beyond range */
-        return 0; /* not found */
-    ms = &mstab[mid];
-    if ((cmp = strcmp(str, ms->ms_str)) == 0){
-        *found = ms->ms_int;
-        return 1; /* found */
-    }
-    else if (cmp < 0)
-        return str2int_search1(mstab, str, low, mid-1, len, found);
-    else
-        return str2int_search1(mstab, str, mid+1, upper, len, found);
-}
-
-/*! Map from string to int using str2int map
- *
- * @param[in] ms   String, integer map
- * @param[in] str  Input string
- * @retval    int  Value
- * @retval   -1    Error, not found
- * @note Assumes sorted strings, tree search
- * @note -1 can not be value
- */
-int
-clicon_str2int_search(const map_str2int *mstab,
-                      char              *str,
-                      int                len)
-{
-    int found;
-
-    if (str2int_search1(mstab, str, 0, len, len, &found))
-        return found;
-    return -1; /* not found */
-}
-
-/*! Map from string to string using str2str map
- *
- * @param[in] mstab String, string map
- * @param[in] str   Input string
- * @retval    str   Output string
- * @retval    NULL  Error, not found
- */
-char*
-clicon_str2str(const map_str2str *mstab,
-               char              *str)
-{
-    const struct map_str2str *ms;
-
-    for (ms = &mstab[0]; ms->ms_s0; ms++)
-        if (strcmp(ms->ms_s0, str) == 0)
-            return ms->ms_s1;
-    return NULL;
 }
 
 /*! Split colon-separated node identifier into prefix and name
@@ -1141,6 +1138,63 @@ clixon_unicode2utf8(char  *ucstr,
         goto done;
     retval = 0;
  done:
+    return retval;
+}
+
+/*! Substitute ${var} in string with variables in cvv
+ *
+ * @param[in]  str  Input string
+ * @param[in]  cvv  Variable name/value vector
+ * @param[out] cb   Result buffer (assumed created on entry)
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+clixon_str_subst(char *str,
+                 cvec *cvv,
+                 cbuf *cb)
+{
+    int     retval = -1;
+    char  **vec = NULL;
+    int     nvec = 0;
+    int     i;
+    cg_var *cv;
+    char   *var;
+    char   *varname;
+    char   *varval;
+
+    if (cb == NULL){
+        clixon_err(OE_UNIX, EINVAL, "cb is NULL");
+        goto done;
+    }
+    if (clixon_strsep2(str, "${", "}", &vec, &nvec) < 0)
+        goto done;
+    if (nvec > 1){
+        i = 0;
+        while (i < nvec){
+            cprintf(cb, "%s", vec[i++]);
+            if (i == nvec)
+                break;
+            var = vec[i++];
+            cv = NULL;
+            while ((cv = cvec_each(cvv, cv)) != NULL){
+                if ((varname = cv_name_get(cv)) == NULL)
+                    continue;
+                if (strcmp(varname, var) != 0)
+                    continue;
+                varval = cv_string_get(cv);
+                cprintf(cb, "%s", varval?varval:"");
+                break;
+            }
+        }
+    }
+    else {
+        cprintf(cb, "%s", str);
+    }
+    retval = 0;
+ done:
+    if (vec)
+        free(vec);
     return retval;
 }
 

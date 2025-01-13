@@ -101,7 +101,7 @@ cat <<EOF > $dir/startup_db
        <group>
          <name>admin</name>
          <user-name>root</user-name>
-         <user-name>$USER</user-name>
+         $EXTRAUSER
        </group>
      </groups>
      <rule-list>
@@ -179,6 +179,9 @@ function testrun()
     
     # Change restconf configuration before start restconf daemon
     RESTCONFIG=$(restconf_config $auth false)
+    if [ $? -ne 0 ]; then
+        err1 "Error when generating certs"
+    fi
 
     # Start with common config, then append fcgi/native specific config
     cat <<EOF > $cfg

@@ -62,6 +62,8 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
@@ -183,7 +185,7 @@ drop_priv_temp(uid_t new_uid)
 #ifdef HAVE_GETRESUID
     int retval = -1;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s uid:%u", __FUNCTION__, new_uid);
+    clixon_debug(CLIXON_DBG_DEFAULT, "uid:%u", new_uid);
     /* XXX: implicit declaration of function 'setresuid' on travis */
     if (setresuid(-1, new_uid, geteuid()) < 0){
         clixon_err(OE_UNIX, errno, "setresuid");
@@ -197,7 +199,7 @@ drop_priv_temp(uid_t new_uid)
  done:
     return retval;
 #else
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "Drop privileges not implemented on this platform since getresuid is not available");
     return 0;
 #endif
 }
@@ -217,7 +219,7 @@ drop_priv_perm(uid_t new_uid)
     uid_t euid;
     uid_t suid;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s uid:%u", __FUNCTION__, new_uid);
+    clixon_debug(CLIXON_DBG_DEFAULT, "uid:%u", new_uid);
 
     if (setresuid(new_uid, new_uid, new_uid) < 0){
         clixon_err(OE_UNIX, errno, "setresuid");
@@ -237,7 +239,7 @@ drop_priv_perm(uid_t new_uid)
  done:
     return retval;
 #else
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "Drop privileges not implemented on this platform since getresuid is not available");
     return 0;
 #endif
 }
@@ -252,7 +254,7 @@ restore_priv(void)
     uid_t euid;
     uid_t suid;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "");
 
     if (getresuid(&ruid, &euid, &suid) < 0){
         clixon_err(OE_UNIX, errno, "setresuid");
@@ -270,7 +272,7 @@ restore_priv(void)
  done:
     return retval;
 #else
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s Drop privileges not implemented on this platform since getresuid is not available", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT, "Drop privileges not implemented on this platform since getresuid is not available");
     return 0;
 #endif
 }

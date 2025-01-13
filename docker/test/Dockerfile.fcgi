@@ -34,7 +34,7 @@
 # Clixon dockerfile with fcgi restconf
 
 FROM alpine
-MAINTAINER Olof Hagsand <olof@hagsand.se>
+LABEL maintainer="Olof Hagsand <olof@hagsand.se>"
 
 # For clixon and cligen
 RUN apk add --update git make build-base gcc flex bison curl-dev
@@ -141,6 +141,8 @@ RUN echo "agentaddress  127.0.0.1" >> /etc/snmp/snmpd.conf
 RUN echo "rwcommunity   public  localhost" >> /etc/snmp/snmpd.conf
 RUN echo "agentXSocket  unix:/var/run/snmp.sock" >> /etc/snmp/snmpd.conf
 RUN echo "agentxperms   777 777" >> /etc/snmp/snmpd.conf
+RUN echo "trap2sink     localhost public 162" >> /etc/snmp/snmpd.conf
+RUN echo "disableAuthorization yes" >> /etc/snmp/snmptrapd.conf
 
 # Need to add www user manually, but group www-data already exists on Alpine
 RUN adduser -D -H -G www-data www-data
@@ -148,7 +150,7 @@ RUN adduser -D -H -G www-data www-data
 RUN apk add --update nginx
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash expect openssh
+RUN apk add --update sudo curl procps grep make bash expect openssh coreutils
 
 # Dont need to expose restconf ports for internal tests
 #EXPOSE 80/tcp

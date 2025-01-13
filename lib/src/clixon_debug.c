@@ -1,4 +1,4 @@
- /*
+/*
  *
   ***** BEGIN LICENSE BLOCK *****
  
@@ -50,6 +50,7 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/types.h>
 
@@ -59,22 +60,108 @@
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_map.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
+#include "clixon_netconf_lib.h"
+#include "clixon_xml_io.h"
+#include "clixon_yang_module.h"
+#include "clixon_plugin.h"
 
 /*
  * Local Variables
  */
 
-/*! The global debug level. 0 means no debug 
+/* Cache handle since debug calls do not have handle parameter */
+static clixon_handle _debug_clixon_h    = NULL;
+
+/*! The global debug level. 0 means no debug
  *
- * @note There are pros and cons in having the debug state as a global variable. The 
+ * @note There are pros and cons in having the debug state as a global variable. The
  * alternative to bind it to the clicon handle (h) was considered but it limits its
- * usefulness, since not all functions have h
+ * usefulness, since not all functions have access to a handle.
+ * A compromise solution is now in place where h can be provided in the function call, but
+ * tolerates NULL, in which case a cached handle is used.
  */
 static int _debug_level = 0;
+
+/*! Mapping between Clixon debug symbolic names <--> bitfields
+ *
+ * Mapping between specific bitfields and symbolic names, note only perfect matches
+ * @note yang_bits_map can be used as alternative but this still neeeded in bootstrapping
+ */
+static const map_str2int dbgmap[] = {
+    {"default",   CLIXON_DBG_DEFAULT},
+    {"msg",       CLIXON_DBG_MSG},
+    {"init",      CLIXON_DBG_INIT},
+    {"xml",       CLIXON_DBG_XML},
+    {"xpath",     CLIXON_DBG_XPATH},
+    {"yang",      CLIXON_DBG_YANG},
+    {"backend",   CLIXON_DBG_BACKEND},
+    {"cli",       CLIXON_DBG_CLI},
+    {"netconf",   CLIXON_DBG_NETCONF},
+    {"restconf",  CLIXON_DBG_RESTCONF},
+    {"snmp",      CLIXON_DBG_SNMP},
+    {"nacm",      CLIXON_DBG_NACM},
+    {"proc",      CLIXON_DBG_PROC},
+    {"datastore", CLIXON_DBG_DATASTORE},
+    {"event",     CLIXON_DBG_EVENT},
+    {"rpc",       CLIXON_DBG_RPC},
+    {"stream",    CLIXON_DBG_STREAM},
+    {"parse",     CLIXON_DBG_PARSE},
+    {"app",       CLIXON_DBG_APP},
+    {"app2",      CLIXON_DBG_APP2},
+    {"app3",      CLIXON_DBG_APP3},
+    {"all",       CLIXON_DBG_SMASK},
+    {"always",    CLIXON_DBG_ALWAYS},
+    {"detail",    CLIXON_DBG_DETAIL},
+    {"detail2",   CLIXON_DBG_DETAIL2},
+    {"detail3",   CLIXON_DBG_DETAIL3},
+    {NULL,        -1}
+};
+
+/*! Map from clixon debug (specific) bitmask to string
+ *
+ * @param[in] int  Bitfield, see CLIXON_DBG_DEFAULT and others
+ * @retval    str  String representation of bitfield
+ */
+char *
+clixon_debug_key2str(int keyword)
+{
+    return (char*)clicon_int2str(dbgmap, keyword);
+}
+
+/*! Map from clixon debug symbolic string to bitfield
+ *
+ * @param[in] str  String representation of Clixon debug bit
+ * @retval    int  Bit representation of bitfield
+ */
+int
+clixon_debug_str2key(char *str)
+{
+    return clicon_str2int(dbgmap, str);
+}
+
+/*! Dump the symbolic bitfield names
+ *
+ * @param[in] f   Output file
+ */
+int
+clixon_debug_key_dump(FILE *f)
+{
+    const struct map_str2int *ms;
+
+    for (ms = &dbgmap[0]; ms->ms_str; ms++){
+        if (ms != &dbgmap[0])
+            fprintf(f, ", ");
+        fprintf(f, "%s", ms->ms_str);
+    }
+    return -1;
+}
 
 /*! Initialize debug messages. Set debug level.
  *
@@ -96,6 +183,7 @@ int
 clixon_debug_init(clixon_handle h,
                   int           dbglevel)
 {
+    _debug_clixon_h = h;
     _debug_level = dbglevel; /* Global variable */
     return 0;
 }
@@ -110,56 +198,70 @@ clixon_debug_get(void)
 
 /*! Print a debug message with debug-level. Settings determine where msg appears.
  *
+ * Do not use this fn directly, use the clixon_debug() macro
  * If the dbglevel passed in the function is equal to or lower than the one set by 
  * clixon_debug_init(level).  That is, only print debug messages <= than what you want:
  *      print message if level >= dbglevel.
  * The message is sent to clixon_log. EIther to syslog, stderr or both, depending on 
  * clixon_log_init() setting
+ * @param[in] h         Clixon handle
+ * @param[in] fn        Inline function name (when called from clixon_debug() macro)
+ * @param[in] line      Inline file line number (when called from clixon_debug() macro)
  * @param[in] dbglevel  Mask of CLIXON_DBG_DEFAULT and other masks
+ * @param[in] x         XML tree logged without prettyprint
  * @param[in] format    Message to print as argv.
  * @retval    0         OK
  * @retval   -1         Error
- * @see clixon_debug_xml Specialization for XML tree
  * @see CLIXON_DBG_DEFAULT and other flags
  */
 int
-clixon_debug(int         dbglevel,
-             const char *format, ...)
+clixon_debug_fn(clixon_handle h,
+                const char   *fn,
+                const int     line,
+                int           dbglevel,
+                cxobj        *x,
+                const char   *format, ...)
 {
     int     retval = -1;
-    va_list args;
-    size_t  len;
-    char   *msg    = NULL;
+    va_list ap;
     size_t  trunc;
+    cbuf   *cb = NULL;
 
     /* Mask debug level with global dbg variable */
-    if ((dbglevel & clixon_debug_get()) == 0)
+    if (!clixon_debug_isset(dbglevel))
         return 0;
-    /* first round: compute length of debug message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-
+    if (h == NULL)     /* Accept NULL, use saved clixon handle */
+        h = _debug_clixon_h;
+    va_start(ap, format);
+    if (clixon_plugin_errmsg_all(h, fn, line, LOG_TYPE_DEBUG,
+                                 NULL, NULL, x, format, ap, &cb) < 0)
+        goto done;
+    va_end(ap);
+    if (cb != NULL){ /* Customized: expand clixon_err_args */
+        clixon_log_str(LOG_DEBUG, cbuf_get(cb));
+        goto ok;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
+        goto done;
+    }
+    cprintf(cb, "%s:%d: ", fn, line);
+    va_start(ap, format);
+    vcprintf(cb, format, ap);
+    va_end(ap);    
+    if (x){
+        cprintf(cb, ": ");
+        if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+    }
     /* Truncate long debug strings */
-    if ((trunc = clixon_log_string_limit_get()) && trunc < len)
-        len = trunc;
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        clixon_err(OE_UNIX, errno, "malloc");
-        goto done;
-    }
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        clixon_err(OE_UNIX, errno, "vsnprintf");
-        goto done;
-    }
-    va_end(args);
-    clixon_log_str(LOG_DEBUG, msg);
+    if ((trunc = clixon_log_string_limit_get()) && trunc < cbuf_len(cb))
+        cbuf_trunc(cb, trunc);
+    clixon_log_str(LOG_DEBUG, cbuf_get(cb));
+ ok:
     retval = 0;
-  done:
-    if (msg)
-        free(msg);
+ done:
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }

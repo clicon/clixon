@@ -61,7 +61,6 @@ extern "C" {
  * CLIXON version macros, set in configure and resolved when expanding to 
  * clixon.h
  */
-#undef CLIXON_VERSION_STRING
 #undef CLIXON_VERSION_MAJOR
 #undef CLIXON_VERSION_MINOR
 #undef CLIXON_VERSION_PATCH
@@ -70,18 +69,20 @@ extern "C" {
 #include <clixon/clixon_uid.h>
 #include <clixon/clixon_queue.h>
 #include <clixon/clixon_hash.h>
+#include <clixon/clixon_digest.h>
 #include <clixon/clixon_handle.h>
+#include <clixon/clixon_yang.h>
+#include <clixon/clixon_xml.h>
 #include <clixon/clixon_err.h>
 #include <clixon/clixon_log.h>
 #include <clixon/clixon_debug.h>
 #include <clixon/clixon_netns.h>
-#include <clixon/clixon_yang.h>
 #include <clixon/clixon_yang_type.h>
 #include <clixon/clixon_event.h>
+#include <clixon/clixon_map.h>
 #include <clixon/clixon_string.h>
 #include <clixon/clixon_proc.h>
 #include <clixon/clixon_file.h>
-#include <clixon/clixon_xml.h>
 #include <clixon/clixon_xml_sort.h>
 #include <clixon/clixon_yang_parse_lib.h>
 #include <clixon/clixon_yang_module.h>
@@ -126,4 +127,3 @@ extern const char CLIXON_VERSION[];
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-

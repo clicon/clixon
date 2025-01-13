@@ -91,7 +91,6 @@
 static int
 backend_terminate(clixon_handle h)
 {
-    yang_stmt *yspec;
     char      *pidfile = clicon_backend_pidfile(h);
     int       sockfamily = clicon_sock_family(h);
     char      *sockpath = clicon_sock_str(h);
@@ -100,7 +99,7 @@ backend_terminate(clixon_handle h)
     int        ss;
     cvec      *nsctx;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((ss = clicon_socket_get(h)) != -1)
         close(ss);
     /* Disconnect datastore */
@@ -113,13 +112,7 @@ backend_terminate(clixon_handle h)
     /* Free changelog */
     if ((x = clicon_xml_changelog_get(h)) != NULL)
         xml_free(x);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL){
-        ys_free(yspec);
-    }
-    if ((yspec = clicon_config_yang(h)) != NULL)
-        ys_free(yspec);
-    if ((yspec = clicon_nacm_ext_yang(h)) != NULL)
-        ys_free(yspec);
+    yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
     clicon_data_cvec_del(h, "netconf-statistics");
@@ -141,11 +134,11 @@ backend_terminate(clixon_handle h)
         unlink(pidfile);   
     if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)
         unlink(sockpath);
-    backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     clixon_event_exit();
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s done", __FUNCTION__); 
+    clixon_debug(CLIXON_DBG_BACKEND, "done");
     clixon_err_exit();
     clixon_log_exit();
+    backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
     return 0;
 }
 
@@ -172,7 +165,7 @@ backend_sig_term(int arg)
 static void
 backend_sig_child(int arg)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_BACKEND, "");
     clicon_sig_child_set(1);
 }
 
@@ -228,7 +221,7 @@ nacm_load_external(clixon_handle h)
         clixon_err(OE_UNIX, errno, "configure file: %s", filename);
         return -1;
     }
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_NACM_TOP)) == NULL)
         goto done;
     if (yang_spec_parse_module(h, "ietf-netconf-acm", NULL, yspec) < 0)
         goto done;
@@ -239,8 +232,6 @@ nacm_load_external(clixon_handle h)
         clixon_err(OE_XML, 0, "No xml tree in %s", filename);
         goto done;
     }
-    if (clicon_nacm_ext_yang_set(h, yspec) < 0)
-        goto done;
     if (clicon_nacm_ext_set(h, xt) < 0)
         goto done;
 
@@ -428,7 +419,7 @@ backend_timer_setup(int   fd,
     struct timeval t;
     struct timeval t1 = {10, 0};
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_BACKEND, "");
     gettimeofday(&now, NULL);
 
     backend_client_print(h, stderr);
@@ -463,7 +454,7 @@ usage(clixon_handle h,
             "where options are\n"
             "\t-h\t\tHelp\n"
             "\t-V \t\tPrint version and exit\n"
-            "\t-D <level>\tDebug level\n"
+            "\t-D <level>\tDebug level (see available levels below)\n"
             "\t-f <file>\tClixon config file\n"
             "\t-E <dir> \tExtra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
@@ -491,6 +482,9 @@ usage(clixon_handle h,
             confpid ? confpid : "none",
             group ? group : "none"
             );
+    fprintf(stderr, "Debug keys: ");
+    clixon_debug_key_dump(stderr);
+    fprintf(stderr, "\n");
     exit(-1);
 }
 
@@ -534,6 +528,7 @@ main(int    argc,
     int           config_dump;
     enum format_enum config_dump_format = FORMAT_XML;
     int           print_version = 0;
+    int32_t       d;
     
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
@@ -566,12 +561,17 @@ main(int    argc,
             help = 1; 
             break;
         case 'V':
-            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
         case 'D' : /* debug */
-            if (sscanf(optarg, "%d", &dbg) != 1)
+            /* Try first symbolic, then numeric match
+             * Cant use yang_bits_map, too early in bootstrap, there is no yang */
+            if ((d = clixon_debug_str2key(optarg)) < 0 &&
+                sscanf(optarg, "%u", &d) != 1){
                 usage(h, argv[0]);
+            }
+            dbg |= d;
             break;
         case 'f': /* config file */
             if (!strlen(optarg))
@@ -583,13 +583,18 @@ main(int    argc,
                 usage(h, argv[0]);
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
-        case 'l': /* Log destination: s|e|o */
-            if ((logdst = clixon_log_opt(optarg[0])) < 0)
-                usage(h, argv[0]);
-            if (logdst == CLIXON_LOG_FILE &&
-                strlen(optarg)>1 &&
-                clixon_log_file(optarg+1) < 0)
-                goto done;
+        case 'l': /* Log destination: s|e|o|f<file> */
+            if ((d = clixon_logdst_str2key(optarg)) < 0){
+                if (optarg[0] == 'f'){ /* Check for special -lf<file> syntax */
+                    d = CLIXON_LOG_FILE;
+                    if (strlen(optarg) > 1 &&
+                        clixon_log_file(optarg+1) < 0)
+                        goto done;
+                }
+                else
+                    usage(h, argv[0]);
+            }
+            logdst = d;
             break;
         }
     /* 
@@ -602,14 +607,15 @@ main(int    argc,
     clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
     clixon_debug_init(h, dbg);
     yang_init(h);
-
     /* Find and read configfile */
     if (clicon_options_main(h) < 0){
         if (help)
             usage(h, argv[0]);
         goto done;
     }
-    
+    /* Read debug and log options from config file if not given by command-line */
+    if (clixon_options_main_helper(h, dbg, logdst, __PROGRAM__) < 0)
+        goto done;
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
         goto done;
@@ -819,14 +825,14 @@ main(int    argc,
      * Note, loads yang -> extensions -> plugins
      */
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
-    if (nacm_mode && strcmp(nacm_mode, "external") == 0)
+    if (nacm_mode && strcmp(nacm_mode, "external") == 0){
         if (nacm_load_external(h) < 0)
             goto done;
-
-    /* Create top-level yang spec and store as option */
-    if ((yspec = yspec_new()) == NULL)
+    }
+    yang_start(h);
+    /* Create top-level data yangs */
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_DATA_TOP)) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);   
 
     /* Load backend plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_backend_dir(h)) != NULL &&
@@ -837,7 +843,7 @@ main(int    argc,
     if (print_version){
         if (clixon_plugin_version_all(h, stdout) < 0)
             goto done;
-        exit(0);
+        goto ok;
     }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
@@ -912,6 +918,13 @@ main(int    argc,
         goto done;
     }
 
+    /* Multi-upgrade: If <db>.d/0.xml does not exist, but <db>_d does, copy <db>_db to <db>.d/0.xml */
+    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
+        if (xmldb_multi_upgrade(h, "running") < 0)
+            goto done;
+        if (xmldb_multi_upgrade(h, "startup") < 0)
+            goto done;
+    }
     /* Init running db if it is not there
      * change running_startup -> running or startup depending on if running exists or not
      */
@@ -1017,9 +1030,9 @@ main(int    argc,
     /* Initiate the shared candidate. */
     if (xmldb_copy(h, "running", "candidate") < 0)
         goto done;
+
     if (xmldb_modified_set(h, "candidate", 0) <0)
         goto done;
-    
     /* Set startup status */
     if (clicon_startup_status_set(h, status) < 0)
         goto done;
@@ -1041,7 +1054,7 @@ main(int    argc,
         goto ok;
 
     /* Debug dump of config options */
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
     
     /* Daemonize and initiate logging. Note error is initiated here to make
        daemonized errors OK. Before this stage, errors are logged on stderr 

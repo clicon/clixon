@@ -160,7 +160,7 @@ restconf_param_set(clixon_handle h,
 {
     struct restconf_handle *rh = handle(h);
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s=%s", __FUNCTION__, param, val);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s=%s", param, val);
     if (rh->rh_params == NULL)
         if ((rh->rh_params = clicon_hash_init()) == NULL)
             return -1;

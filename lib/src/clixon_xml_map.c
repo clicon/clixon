@@ -57,16 +57,16 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_string.h"
+#include "clixon_map.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_err.h"
-#include "clixon_string.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_yang_module.h"
@@ -92,6 +92,11 @@ typedef struct  {
     cxobj     *mt_x1c;
     yang_stmt *mt_yc;
 } merge_twophase;
+
+/* Forward declaration */
+static int xml_diff1(cxobj *x0, cxobj *x1, cxobj ***x0vec, int *x0veclen,
+                     cxobj ***x1vec, int *x1veclen,
+                     cxobj ***changed_x0, cxobj ***changed_x1, int *changedlen);
 
 /*! Is attribute and is either of form xmlns="", or xmlns:x="" */
 int
@@ -159,8 +164,8 @@ xml2cvec(cxobj      *xt,
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
         name = xml_name(xc);
         if ((ys = yang_find_datanode(yt, name)) == NULL){
-            clixon_debug(0, "%s: yang sanity problem: %s in xml but not present in yang under %s",
-                         __FUNCTION__, name, yang_argument_get(yt));
+            clixon_debug(CLIXON_DBG_ALWAYS, "yang sanity problem: %s in xml but not present in yang under %s",
+                         name, yang_argument_get(yt));
             if ((body = xml_body(xc)) != NULL){
                 if ((cv = cv_new(CGV_STRING)) == NULL){
                     clixon_err(OE_PLUGIN, errno, "cv_new");
@@ -207,8 +212,8 @@ xml2cvec(cxobj      *xt,
             }
         }
     }
-    if (clixon_debug_get() > 1){
-        clixon_debug(CLIXON_DBG_DETAIL, "%s cvv:\n", __FUNCTION__);
+    if (clixon_debug_isset(CLIXON_DBG_XML | CLIXON_DBG_DETAIL)){
+        clixon_debug(CLIXON_DBG_ALWAYS, "cvv:");
         cvec_print(stderr, cvv);
     }
     *cvv0 = cvv;
@@ -276,6 +281,45 @@ cvec2xml_1(cvec   *cvv,
     return retval;
 }
 
+/*! Handle order-by user(leaf)list for xml_diff
+ *
+ * Loop over sublists started by x0c and x1c respectively until end or yang is no longer yc
+ * Just mark all nodes from x0c to end as DEL and all nodes from x1c as ADD
+ * @param[in]  x0    First XML tree
+ * @param[in]  x1    Second XML tree
+ * @param[in]  x0c   Start of sublist in first XML tree
+ * @param[in]  x1c   Start of sublist in second XML tree
+ * @param[in]  yc    Yang of ordered-by user (leaf)list
+ * @retval     0     Ok
+ * @retval    -1     rror
+ */
+static int
+xml_diff_ordered_by_user(cxobj     *x0,
+                         cxobj     *x1,
+                         cxobj     *x0c,
+                         cxobj     *x1c,
+                         yang_stmt *yc)
+{
+    int    retval = -1;
+    cxobj *xi;
+    cxobj *xj;
+
+    /* Simpler algoithm: Just delete whole old list and add new list if ANY changes */
+    xi = x0c;
+    do {
+        xml_flag_set(xi, XML_FLAG_DEL);
+    } while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+           xml_spec(xi) == yc);
+    xj = x1c;
+    do {
+        xml_flag_set(xj, XML_FLAG_ADD);
+    } while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+             xml_spec(xj) == yc);
+    retval = 0;
+    // done:
+    return retval;
+}
+
 /*! Recursive help function to compute differences between two xml trees
  *
  * @param[in]  x0         First XML tree
@@ -301,7 +345,13 @@ cvec2xml_1(cvec   *cvv,
  * (*) "comparing" a&b here is made by xml_cmp() which judges equality from a structural
  *     perspective, ie both have the same yang spec, if they are lists, they have the
  *     the same keys. NOT that the values are equal!
- * @see xml_diff  API function, this one is internal and recursive
+ * Also, a node is skipped if:
+ * 1) its xml flag has XML_FLAG_SKIP
+ * 2) its yang has extension clixon-lib:ignore-compare
+ * @see xml_diff2cbuf, clixon_text_diff2cbuf  for +/- diff for XML and TEXT formats
+ * @see text_diff2cbuf for curly
+ * @see xml_tree_equal Equal or not
+ * @note reordering in ordered-by user is NOT supported
  */
 static int
 xml_diff1(cxobj     *x0,
@@ -317,11 +367,14 @@ xml_diff1(cxobj     *x0,
     int        retval = -1;
     cxobj     *x0c = NULL; /* x0 child */
     cxobj     *x1c = NULL; /* x1 child */
-    yang_stmt *yc0;
-    yang_stmt *yc1;
+    yang_stmt *y0c;
+    yang_stmt *y1c;
     char      *b0;
     char      *b1;
     int        eq;
+    cxobj     *xi;
+    cxobj     *xj;
+    int        extflag;
 
     /* Traverse x0 and x1 in lock-step */
     x0c = x1c = NULL;
@@ -330,7 +383,40 @@ xml_diff1(cxobj     *x0,
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
-        else if (x0c == NULL){
+        y0c = NULL;
+        y1c = NULL;
+        /* If cl:ignore-compare extension, return equal */
+        if (x0c) {
+            if (xml_flag(x0c, XML_FLAG_SKIP) != 0x0){ /* skip */
+                x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                continue;
+            }
+            else
+                if ((y0c = xml_spec(x0c)) != NULL){
+                    if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                        goto done;
+                    if (extflag){ /* skip */
+                        x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                        continue;
+                    }
+                }
+        }
+        if (x1c) {
+            if (xml_flag(x1c, XML_FLAG_SKIP) != 0x0){ /* skip */
+                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                continue;
+            }
+            else
+                if ((y1c = xml_spec(x1c)) != NULL){
+                    if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                        goto done;
+                    if (extflag){ /* skip */
+                        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                        continue;
+                    }
+                }
+        }
+        if (x0c == NULL){
             if (cxvec_append(x1c, x1vec, x1veclen) < 0)
                 goto done;
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
@@ -344,7 +430,37 @@ xml_diff1(cxobj     *x0,
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        if (eq < 0){
+        /* override ordered-by user with special look-ahead checks */
+        if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
+            if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, y0c) < 0)
+                goto done;
+            /* Add all in x0 marked as DELETE in x0vec 
+             * Flags can remain: XXX should apply to all
+             */
+            xi = x0c;
+            do {
+                if (xml_flag(xi, XML_FLAG_DEL)){
+                    if (cxvec_append(xi, x0vec, x0veclen) < 0)
+                        goto done;
+                }
+            }
+            while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+                   xml_spec(xi) == y0c);
+            x0c = xi;
+
+            /* Add all in x1 marked as ADD in x1vec */
+            xj = x1c;
+            do {
+                if (xml_flag(xj, XML_FLAG_ADD))
+                    if (cxvec_append(xj, x1vec, x1veclen) < 0)
+                        goto done;
+            }
+            while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+                   xml_spec(xj) == y1c);
+            x1c = xj;
+            continue;
+        }
+        else if (eq < 0){
             if (cxvec_append(x0c, x0vec, x0veclen) < 0)
                 goto done;
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
@@ -360,15 +476,13 @@ xml_diff1(cxobj     *x0,
             /* xml-spec NULL could happen with anydata children for example,
              * if so, continute compare children but without yang
              */
-            yc0 = xml_spec(x0c);
-            yc1 = xml_spec(x1c);
-            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+            if (y0c && y1c && y0c != y1c){ /* choice */
                 if (cxvec_append(x0c, x0vec, x0veclen) < 0)
                     goto done;
                 if (cxvec_append(x1c, x1vec, x1veclen) < 0)
                     goto done;
             }
-            else if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+            else if (y0c && yang_keyword_get(y0c) == Y_LEAF){
                 /* if x0c and x1c are leafs w bodies, then they may be changed */
                 b0 = xml_body(x0c);
                 b1 = xml_body(x1c);
@@ -462,15 +576,17 @@ xml_diff(cxobj     *x0,
  * @retval     1    Not equal
  * @retval     0    Equal
  * @see xml_diff which returns diff sets
+ * @see xml_diff2cbuf   Diff buffer in XML
+ * @see text_diff2cbuf  Diff buffer in curly
  */
 int
-xml_tree_equal(cxobj     *x0,
-               cxobj     *x1)
+xml_tree_equal(cxobj *x0,
+               cxobj *x1)
 {
     int        retval = 1; /* Not equal */
     int        eq;
-    yang_stmt *yc0;
-    yang_stmt *yc1;
+    yang_stmt *y0c;
+    yang_stmt *y1c;
     char      *b0;
     char      *b1;
     cxobj     *x0c; /* x0 child */
@@ -484,31 +600,37 @@ xml_tree_equal(cxobj     *x0,
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
-        else if (x0c == NULL){
-            /* If cl:ignore-compare extension, return equal */
-            if ((yc1 = xml_spec(x1c)) != NULL){
-                if (yang_extension_value(yc1, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
-                    goto done;
-                if (extflag)
-                    goto ok;
-            }
-            goto done;
-        }
-        else if (x1c == NULL){
-            if ((yc0 = xml_spec(x0c)) != NULL){
-                if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
-                    goto done;
-                if (extflag)
-                    goto ok;
-            }
-            goto done;
-        }
-        if ((yc0 = xml_spec(x0c)) != NULL){
-            if (yang_extension_value(yc0, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+        y0c = NULL;
+        y1c = NULL;
+        /* If cl:ignore-compare extension, return equal */
+        if (x0c && (y0c = xml_spec(x0c)) != NULL){
+            if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                 goto done;
-            if (extflag)
-                goto ok;
+            if (extflag){ /* skip */
+                if (x1c) {
+                    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                    continue;
+                }
+                else
+                    goto ok;
+            }
         }
+        if (x1c && (y1c = xml_spec(x1c)) != NULL){
+            if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag){ /* skip */
+                if (x1c) {
+                    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                    continue;
+                }
+                else
+                    goto ok;
+            }
+        }
+        if (x0c == NULL)
+            goto done;
+        else if (x1c == NULL)
+            goto done;
         /* Both x0c and x1c exists, check if they are yang-equal. */
         if ((eq = xml_cmp(x0c, x1c, 0, 0, NULL)) != 0){
             goto done;
@@ -517,13 +639,11 @@ xml_tree_equal(cxobj     *x0,
             /* xml-spec NULL could happen with anydata children for example,
              * if so, continue compare children but without yang
              */
-            yc0 = xml_spec(x0c);
-            yc1 = xml_spec(x1c);
-            if (yc0 && yc1 && yc0 != yc1){ /* choice */
+            if (y0c && y1c && y0c != y1c){ /* choice */
                 goto done;
             }
             else
-                if (yc0 && yang_keyword_get(yc0) == Y_LEAF){
+                if (y0c && yang_keyword_get(y0c) == Y_LEAF){
                     /* if x0c and x1c are leafs w bodies, then they may be changed */
                     b0 = xml_body(x0c);
                     b1 = xml_body(x1c);
@@ -565,7 +685,7 @@ xml_tree_equal(cxobj     *x0,
  *    xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL);
  * @endcode
  * @note This function seems a little too complex semantics
- * @see xml_tree_prune_flagged for a simpler variant
+ * @see xml_tree_prune_flags1 for a simpler variant
  */
 int
 xml_tree_prune_flagged_sub(cxobj *xt,
@@ -639,46 +759,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     return retval;
 }
 
-/*! Prune everything that passes test
- *
- * @param[in]   xt      XML tree with some node marked
- * @param[in]   flag    Which flag to test for
- * @param[in]   test    1: test that flag is set, 0: test that flag is not set
- * @retval      0       OK
- * @retval     -1       Error
- * The function removes all branches that does not pass test
- * @code
- *    xml_tree_prune_flagged(xt, XML_FLAG_MARK, 1);
- * @endcode
- */
-int
-xml_tree_prune_flagged(cxobj *xt,
-                       int    flag,
-                       int    test)
-{
-    int        retval = -1;
-    cxobj     *x;
-    cxobj     *xprev;
-
-    x = NULL;
-    xprev = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-        if (xml_flag(x, flag) == (test?flag:0)){        /* Pass test means purge */
-            if (xml_purge(x) < 0)
-                goto done;
-            x = xprev;
-            continue;
-        }
-        if (xml_tree_prune_flagged(x, flag, test) < 0)
-            goto done;
-        xprev = x;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Prune everything that passes test
+/*! Prune everything that passes test recursively
  *
  * @param[in]   xt      XML tree with some node marked
  * @param[in]   flags   Flags set
@@ -689,15 +770,40 @@ xml_tree_prune_flagged(cxobj *xt,
  * @code
  *    xml_tree_prune_flags(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT);
  * @endcode
+ * @see xml_tree_prune_flags1
  */
 int
 xml_tree_prune_flags(cxobj *xt,
-                       int    flags,
-                       int    mask)
+                     int    flags,
+                     int    mask)
 {
-    int        retval = -1;
-    cxobj     *x;
-    cxobj     *xprev;
+    return xml_tree_prune_flags1(xt, flags, mask, 1, NULL);
+}
+
+/*! Prune everything that passes test
+ *
+ * @param[in]   xt      XML tree with some node marked
+ * @param[in]   flags   Flags set
+ * @param[in]   mask    Which flags to test for
+ * @param[in]   recurse 0: one level only, 1: recursive
+ * @param[out]  removed Number of entities removed
+ * @retval      0       OK
+ * @retval     -1       Error
+ * The function removes all branches that does pass test
+ * @code
+ *    xml_tree_prune_flags1(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT, 1);
+ * @endcode
+ */
+int
+xml_tree_prune_flags1(cxobj *xt,
+                      int    flags,
+                      int    mask,
+                      int    recursive,
+                      int   *removed)
+{
+    int     retval = -1;
+    cxobj  *x;
+    cxobj  *xprev;
 
     x = NULL;
     xprev = NULL;
@@ -706,17 +812,19 @@ xml_tree_prune_flags(cxobj *xt,
             if (xml_purge(x) < 0)
                 goto done;
             x = xprev;
+            if (removed)
+                (*removed)++;
             continue;
         }
-        if (xml_tree_prune_flags(x, flags, mask) < 0)
-            goto done;
+        if (recursive)
+            if (xml_tree_prune_flags1(x, flags, mask, 1, removed) < 0)
+                goto done;
         xprev = x;
     }
     retval = 0;
  done:
     return retval;
 }
-
 
 /*! Change namespace of XML node 
  *
@@ -1199,6 +1307,22 @@ xml_merge1(cxobj              *x0,  /* the target */
             x1cname = xml_name(x1c);
             /* Get yang spec of the child */
             if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
+                /*
+                 * Actually the CLICON_YANG_SCHEMA_MOUNT option should be checked below
+                 * to be consistent with what is done e.g. in
+                 * clixon_datastore_write.c::text_modify() when yang_find_datanode()
+                 * returns NULL.
+                 * However the clixon_handle needed to check this option is not
+                 * available here.
+                 * So check for the YANG_FLAG_MOUNTPOINT flag on y0 as an alternative.
+                 * It will only have been set if CLICON_YANG_SCHEMA_MOUNT is enabled
+                 * and it will be set for exactly those cases where the xml_spec()
+                 * call is needed.
+                 */
+                if (yang_flag_get(y0, YANG_FLAG_MOUNTPOINT))
+                    yc = xml_spec(x1c);
+            }
+            if (yc == NULL) {
                 if (reason){
                     if ((cbr = cbuf_new()) == NULL){
                         clixon_err(OE_XML, errno, "cbuf_new");
@@ -1233,9 +1357,9 @@ xml_merge1(cxobj              *x0,  /* the target */
         for (i=0; i<twophase_len; i++){
             assert(twophase[i].mt_x1c);
             if ((ret = xml_merge1(twophase[i].mt_x0c,
-                           twophase[i].mt_yc,
-                           x0,
-                           twophase[i].mt_x1c,
+                                  twophase[i].mt_yc,
+                                  x0,
+                                  twophase[i].mt_x1c,
                                   reason)) < 0)
                 goto done;
             if (ret == 0)
@@ -1269,7 +1393,7 @@ xml_merge1(cxobj              *x0,  /* the target */
  * @retval     1      OK
  * @retval     0      Yang error, reason is set
  * @retval    -1      Error
- * @note both x0 and x1 need to be top-level trees
+ * @note both x0 and x1 need to be top-level trees AND bound to YANG
  */
 int
 xml_merge(cxobj     *x0,
@@ -1383,14 +1507,16 @@ yang_valstr2enum(yang_stmt *ytype,
                  char     **enumstr)
 {
     int        retval = -1;
-    yang_stmt *yenum = NULL;
+    yang_stmt *yenum;
     yang_stmt *yval; 
+    int        inext;
 
     if (enumstr == NULL){
         clixon_err(OE_UNIX, EINVAL, "str is NULL");
         goto done;
     }
-    while ((yenum = yn_each(ytype, yenum)) != NULL) {
+    inext = 0;
+    while ((yenum = yn_iter(ytype, &inext)) != NULL) {
         if ((yval = yang_find(yenum, Y_VALUE, NULL)) == NULL)
             goto done;
         if (strcmp(yang_argument_get(yval), valstr) == 0)
@@ -1403,14 +1529,16 @@ yang_valstr2enum(yang_stmt *ytype,
     return retval;
 }
 
-/*! Given a YANG (enum) type node and a value, return the string containing corresponding int str
+/*! Given a YANG (enum) type node and an enum name, return the string containing corresponding int str
  *
+ * Only handles explicit values
  * @param[in]  ytype   YANG type noden
  * @param[in]  enumstr Value of enum
  * @param[out] valstr  Corresponding string containing an int (direct pointer, dont free)
  * @retval     1       OK, result in valstr
  * @retval     0       Invalid, not found
  * @retval    -1       Error
+ * @see yang_enum2int handles implicit values
  */
 int
 yang_enum2valstr(yang_stmt *ytype,
@@ -1439,6 +1567,353 @@ yang_enum2valstr(yang_stmt *ytype,
     goto done;
 }
 
+/*! Given a YANG (enum) type node and an enum name, return the corresponding int
+ *
+ * Handles implicit values
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  enumstr Value of enum
+ * @param[out] int32   Int value
+ * @retval     0       OK, result in val
+ * @retval    -1       Error
+ */
+int
+yang_enum2int(yang_stmt *ytype,
+              char      *enumstr,
+              int32_t   *val)
+{
+    int        retval = -1;
+    yang_stmt *yenum;
+    cg_var    *cv;
+
+    if (val == NULL){
+        clixon_err(OE_UNIX, EINVAL, "val is NULL");
+        goto done;
+    }
+    if ((yenum = yang_find(ytype, Y_ENUM, enumstr)) == NULL){
+        clixon_err(OE_YANG, 0, "No such enum %s", enumstr);
+        goto done;
+    }
+    if ((cv = yang_cv_get(yenum)) == NULL){
+        clixon_err(OE_YANG, 0, "Enum lacks cv");
+        goto done;
+    }
+    *val = cv_int32_get(cv);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Given a YANG (bits) type node and a bit string, return the bit position.
+ *
+ * Example:
+ * type bits {
+ *     bit stateA {
+ *         position "0"; << This one
+ *     }
+ *     bit stateB {
+ *         position "1"; << And this one
+ *     }
+ * }
+ * 
+ * If the position is not specified, it will be automatically assigned as defined
+ * in RFC7950, section 9.7.4.2
+ * 
+ * @param[in]  ytype  YANG type node
+ * @param[in]  bitstr bit (flag) string
+ * @param[out] bitpos position for the given bit (flag)
+ * @retval     1      OK, result in flagpos
+ * @retval     0      Invalid, not found
+ * @retval    -1      Error
+ */
+int
+yang_bits_pos(yang_stmt *ytype,
+              char      *bitstr,
+              uint32_t  *bitpos)
+{
+    int        retval = 0;
+    int        ret = 0;
+    int        is_first = 1;
+    char      *reason;
+    yang_stmt *yprev;
+    yang_stmt *ypos = NULL;
+    int        inext;
+
+    inext = 0;
+    while ((yprev = yn_iter(ytype, &inext)) != NULL){
+        /* Check for the given bit name (flag) */
+        if (yang_keyword_get(yprev) == Y_BIT){
+            /* Use position from Y_POSITION statement if defined */
+            if ((ypos = yang_find(yprev, Y_POSITION, NULL)) != NULL){
+                if ((ret = parse_uint32(yang_argument_get(ypos), bitpos, &reason)) < 0){
+                    clixon_err(OE_UNIX, EINVAL, "cannot parse bit position val: %s", reason);
+                    goto done;
+                }
+                if (ret == 0)
+                    goto fail;
+            } else {
+                /* Position not defined. Use last known position + 1 (skip first node to start with 0) */
+                if (is_first == 0) (*bitpos)++;
+            }
+            if (strcmp(bitstr, yang_argument_get(yprev)) == 0){
+                retval = 1;
+                goto done;
+            }
+            is_first = 0;
+        }
+    }
+    clixon_debug(CLIXON_DBG_YANG, "flag %s not found", bitstr);
+    goto fail;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Given a YANG (bits) type node and string value, return value for bits set.
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  bitsstr Value of bits as space separated string
+ * @param[out] outval  Value with all bits set for given bitsstr (free with free)
+ * @param[out] outlen  Length of outval
+ * @retval     1       OK, result in outval
+ * @retval     0       Invalid, not found
+ * @retval    -1       Error
+ * @see yang_val2bitsstr
+ * @note that the output is a vector of bits originally made for SNMP bitvectors (not integers)
+ */
+int
+yang_bitsstr2val(clixon_handle   h,
+                 yang_stmt      *ytype,
+                 char           *bitsstr,
+                 unsigned char **outval,
+                 size_t         *outlen)
+{
+    int      retval = -1;
+    int      i = 0;
+    int      byte = 0;
+    char   **vec = NULL;
+    char    *v;
+    char    *buffer = NULL;
+    int      nvec;
+    int      ret = 0;
+    uint32_t bitpos;
+
+    *outlen = 0;
+    if ((buffer = calloc(CLIXON_BITS_POS_MAX / 8, sizeof(unsigned char))) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    if ((vec = clicon_strsep(bitsstr, " ", &nvec)) == NULL){
+        clixon_err(OE_UNIX, EINVAL, "split string failed");
+        goto done;
+    }
+    /* Go over all set flags in given bitstring */
+    for (i=0; i<nvec; i++){
+        v = clixon_trim(vec[i]);
+        if (strlen(v) > 0) {
+            if ((ret = yang_bits_pos(ytype, v, &bitpos)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+            /* Set bit at correct byte and bit position */
+            byte = bitpos / 8;
+            buffer[byte] = buffer[byte] | (1 << (7 - (bitpos % 8)));
+            *outlen = byte + 1;
+            if (*outlen >= CLIXON_BITS_POS_MAX) {
+                clixon_err(OE_UNIX, EINVAL, "bit position %zu out of range. (max. allowed %d)",
+                        *outlen, CLIXON_BITS_POS_MAX);
+                goto done;
+            }
+        }
+    }
+    if ((*outval = malloc(*outlen)) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    memcpy(*outval, buffer, *outlen);
+    retval = 1;
+ done:
+    if (buffer)
+        free(buffer);
+    if (vec)
+        free(vec);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Given a YANG (bits) type node and string value, return bit values in a uint64
+ *
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  bitsstr Value of bits as space separated string
+ * @param[out] flags   Pointer to integer with bit values set according to C type
+ * @retval     1       OK, result in u64
+ * @retval     0       Invalid, not found
+ * @retval    -1       Error
+ * @see yang_bitsstr2val for bit vector (snmp-like)
+ */
+int
+yang_bitsstr2flags(yang_stmt *ytype,
+                   char      *bitsstr,
+                   uint32_t  *flags)
+{
+    int      retval = -1;
+    int      i = 0;
+    char   **vec = NULL;
+    char    *v;
+    int      nvec;
+    int      ret = 0;
+    uint32_t bitpos;
+
+    if (flags == NULL){
+        clixon_err(OE_UNIX, EINVAL, "flags is NULL");
+        goto done;
+    }
+    if ((vec = clicon_strsep(bitsstr, " ", &nvec)) == NULL){
+        clixon_err(OE_UNIX, EINVAL, "split string failed");
+        goto done;
+    }
+    /* Go over all set flags in given bitstring */
+    for (i=0; i<nvec; i++){
+        v = clixon_trim(vec[i]);
+        if (strlen(v) > 0) {
+            if ((ret = yang_bits_pos(ytype, v, &bitpos)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+            if (bitpos >= 32) {
+                clixon_err(OE_UNIX, EINVAL, "bit position %u out of range. (max. allowed %d)",
+                        bitpos, 32);
+                goto done;
+            }
+            *flags |= (1 << bitpos);
+        }
+    }
+    retval = 1;
+ done:
+    if (vec)
+        free(vec);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Given a YANG (bits) type node and value, return the string value for all bits (flags) that are set.
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  ytype   YANG type noden
+ * @param[in]  inval   Input string
+ * @param[in]  inlen   Length of inval
+ * @param[out] cb      space separated string with bit labels for all bits that are set in inval
+ * @retval     1       OK, result in cb
+ * @retval     0       Invalid, not found
+ * @retval    -1       Error
+ * @see yang_bitsstr2val
+ * @note that the output is a vector of bits originally made for SNMP bitvectors (not integers)
+ */
+int 
+yang_val2bitsstr(clixon_handle  h,
+                 yang_stmt     *ytype,
+                 unsigned char *inval,
+                 size_t         inlen,
+                 cbuf          *cb)
+{
+    int        retval = -1;
+    int        is_first = 1;
+    int        ret = 0;
+    int        byte = 0;
+    char      *reason = NULL;
+    yang_stmt *yprev;
+    yang_stmt *ypos;
+    uint32_t   bitpos = 0;
+    int        inext;
+
+    if (cb == NULL){
+        clixon_err(OE_UNIX, EINVAL, "cb is NULL");
+        goto done;
+    }
+    /* Go over all defined bits and check if it is seet in intval */
+    inext = 0;
+    while ((yprev = yn_iter(ytype, &inext)) != NULL && byte < inlen){
+        if (yang_keyword_get(yprev) == Y_BIT) {
+            /* Use position from Y_POSITION statement if defined */
+            if ((ypos = yang_find(yprev, Y_POSITION, NULL)) != NULL){
+                if ((ret = parse_uint32(yang_argument_get(ypos), &bitpos, &reason)) < 0){
+                    clixon_err(OE_UNIX, EINVAL, "cannot parse bit position val: %s", reason);
+                    goto done;
+                }
+                if (ret == 0) 
+                    goto fail;
+            } else {
+                /* Position not defined. Use last known position + 1 (skip first node to start with 0) */
+                if (is_first == 0) bitpos++;
+            }
+            byte = bitpos / 8;
+            if (inval[byte] & (1 << (7 - (bitpos % 8)))){
+                if (is_first == 0) cbuf_append_str(cb, " ");
+                cbuf_append_str(cb, yang_argument_get(yprev));
+            }
+            is_first = 0;
+        }
+    }
+    /* append space if no flag is set to indicate that */
+    if (cbuf_len(cb) == 0)
+        cbuf_append_str(cb, " ");
+    retval = 1;
+ done:
+    if (reason)
+        free(reason);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Map from bit string to integer bitfield given YANG mapping
+ *
+ * Given YANG node, schema-nodeid and a bits string, return a bitmap as u64
+ * Example: "default app2" --> CLIXON_DBG_DEFAULT | CLIXON_DBG_APP2
+ * @param[in]  yt     YANG node in tree (eg yspec)
+ * @param[in]  str    String representation of Clixon debug bits, such as "msg app2"
+ * @param[in]  nodeid Absolute schema node identifier to leaf of option
+ * @param[out] u64    Bit representation
+ */
+int
+yang_bits_map(yang_stmt *yt,
+              char      *str,
+              char      *nodeid,
+              uint32_t  *flags)
+{
+    int            retval = -1;
+    yang_stmt     *yn = NULL;
+    yang_stmt     *yrestype;
+    int            ret;
+
+    if (yang_abs_schema_nodeid(yt, nodeid, &yn) < 0)
+        goto done;
+    if (yn == NULL){
+        clixon_err(OE_YANG, 0, "yang node not found: %s", nodeid);
+        goto done;
+    }
+    if (yang_type_get(yn, NULL, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
+    if (yrestype != NULL) {
+        if ((ret = yang_bitsstr2flags(yrestype, str, flags)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_err(OE_YANG, 0, "Bit string invalid: %s", str);
+            goto done;
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Get integer value from xml node from yang enumeration 
  *
  * @param[in]  node XML node in a tree
@@ -1457,13 +1932,11 @@ int
 yang_enum_int_value(cxobj   *node,
                     int32_t *val)
 {
-    int retval = -1;
+    int        retval = -1;
     yang_stmt *yspec;
     yang_stmt *ys;
     yang_stmt *ytype;
     yang_stmt *yrestype;  /* resolved type */
-    char      *reason = NULL;
-    char      *intstr = NULL;
 
     if (node == NULL)
         goto done;
@@ -1480,12 +1953,9 @@ yang_enum_int_value(cxobj   *node,
         clixon_err(OE_YANG, 0, "result-type should not be NULL");
         goto done;
     }
-    if (yrestype==NULL || strcmp(yang_argument_get(yrestype), "enumeration"))
+    if (strcmp(yang_argument_get(yrestype), "enumeration"))
         goto done;
-    if (yang_enum2valstr(yrestype, xml_body(node), &intstr) < 0)
-        goto done;
-    /* reason is string containing why int could not be parsed */
-    if (parse_int32(intstr, val, &reason) < 0)
+    if (yang_enum2int(yrestype, xml_body(node), val) < 0)
         goto done;
     retval = 0;
 done:
@@ -1500,10 +1970,10 @@ done:
  * until nodes marked with XML_FLAG_MARK are reached, where 
  * (2) the complete subtree of that node is copied. 
  * (3) Special case: key nodes in lists are copied if any node in list is marked
- * @param[in]   x0
- * @param[in]   x1
- * @retval      0       OK
- * @retval     -1       Error
+ * @param[in]   x0   XML tree source
+ * @param[in]   x1   XML tree target
+ * @retval      0    OK
+ * @retval     -1    Error
  *  @note you may want to check:!yang_config(ys)
  */
 int
@@ -1519,7 +1989,10 @@ xml_copy_marked(cxobj *x0,
     char      *name;
     char      *prefix;
 
-    assert(x0 && x1);
+    if (x0 == NULL || x1 == NULL){
+        clixon_err(OE_UNIX, EINVAL, "x0 or x1 is NULL");
+        goto done;
+    }
     yt = xml_spec(x0); /* can be null */
     xml_spec_set(x1, yt);
    /* Copy prefix*/
@@ -1592,7 +2065,7 @@ xml_copy_marked(cxobj *x0,
  * @param[in]   yn     Yang node
  * @param[out]  hit    when statement found
  * @param[out]  nrp    1: when stmt evaluates to true
- * @param[out]  xpathp when stmts xpath
+ * @param[out]  xpathp when stmts xpath, free after use
  * @retval      0      OK
  * @retval     -1      Error
  * First variants of WHEN: Augmented and uses when using special info in node
@@ -1612,30 +2085,31 @@ yang_check_when_xpath(cxobj        *xn,
     cxobj     *x = NULL;
     int        nr = 0;
     cvec      *nsc = NULL;
-    int        xmalloc = 0;   /* ugly help variable to clean temporary object */
-    int        nscmalloc = 0; /* ugly help variable to remove */
+    int        variant = 0;   /* ugly help variable to clean temporary object */
 
-    /* First variant */
-    if ((xpath = yang_when_xpath_get(yn)) != NULL){
+    if (yang_when_canonical_xpath_get(yn, &xpath, &nsc) < 0)
+        goto done;
+    if (xpath != NULL){
         x = xp;
-        nsc = yang_when_nsc_get(yn);
         *hit = 1;
     }
-    /* Second variant */
     else if ((yc = yang_find(yn, Y_WHEN, NULL)) != NULL){
-        xpath = yang_argument_get(yc); /* "when" has xpath argument */
+        /* "when" has xpath argument */
+        if ((xpath = strdup(yang_argument_get(yc))) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
         /* Create dummy */
         if (xn == NULL){
             if ((x = xml_new(yang_argument_get(yn), xp, CX_ELMNT)) == NULL)
                 goto done;
             xml_spec_set(x, yn);
-            xmalloc++;
+            variant = 1;
         }
         else
             x = xn;
         if (xml_nsctx_yang(yn, &nsc) < 0)
             goto done;
-        nscmalloc++;
         *hit = 1;
     }
     else
@@ -1646,13 +2120,17 @@ yang_check_when_xpath(cxobj        *xn,
     }
     if (nrp)
         *nrp = nr;
-    if (xpathp)
+    if (xpathp){
         *xpathp = xpath;
+        xpath = NULL;
+    }
     retval = 0;
  done:
-    if (xmalloc)
+    if (variant)
         xml_purge(x);
-    if (nsc && nscmalloc)
+    if (xpath)
+        free(xpath);
+    if (nsc)
         xml_nsctx_free(nsc);
     return retval;
 }
@@ -1686,6 +2164,7 @@ yang_xml_mandatory(cxobj     *xt,
     yang_stmt    *yc;
     int           hit;
     int           nr;
+    int           inext;
 
     /* Create dummy xs if not exist */
     if ((xs = xml_new(yang_argument_get(ys), xt, CX_ELMNT)) == NULL)
@@ -1710,8 +2189,8 @@ yang_xml_mandatory(cxobj     *xt,
      *    least one mandatory node as a child. */
     else if (keyw == Y_CONTAINER &&
              yang_find(ys, Y_PRESENCE, NULL) == NULL){
-        yc = NULL;
-        while ((yc = yn_each(ys, yc)) != NULL) {
+        inext = 0;
+        while ((yc = yn_iter(ys, &inext)) != NULL) {
             if ((ret = yang_xml_mandatory(xs, yc)) < 0)
                 goto done;
             if (ret == 1)
@@ -1873,8 +2352,10 @@ clixon_compare_xmls(cxobj            *xc1,
         clixon_err(OE_UNDEF, errno, "tmpfile");
         goto done;
     }
-    if ((f = fdopen(fd, "w")) == NULL)
+    if ((f = fdopen(fd, "w")) == NULL){
+        clixon_err(OE_XML, errno, "fdopen(%s)", filename1);
         goto done;
+    }
     switch(format){
     case FORMAT_TEXT:
         if (clixon_text2file(f, xc1, 0, cligen_output, 1, 1) < 0)
@@ -1888,14 +2369,14 @@ clixon_compare_xmls(cxobj            *xc1,
     }
     fclose(f);
     close(fd);
-
     if ((fd = mkstemp(filename2)) < 0){
         clixon_err(OE_UNDEF, errno, "mkstemp: %s", strerror(errno));
         goto done;
     }
-    if ((f = fdopen(fd, "w")) == NULL)
+    if ((f = fdopen(fd, "w")) == NULL){
+        clixon_err(OE_XML, errno, "fdopen(%s)", filename2);
         goto done;
-
+    }
     switch(format){
     case FORMAT_TEXT:
         if (clixon_text2file(f, xc2, 0, cligen_output, 1, 1) < 0)
@@ -1925,5 +2406,54 @@ clixon_compare_xmls(cxobj            *xc1,
         cbuf_free(cb);
     unlink(filename1);
     unlink(filename2);
+    return retval;
+}
+
+/*! XML apply function: replace ${} variables with values from cligen variable vector
+ *
+ * Example: x=<a>${name}</a>, cvv=["name","bert"] --> <a>bert</a>
+ * @param[in]  x    XML node
+ * @param[in]  arg  cvv: vector of name/value pairs
+ * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
+ * @code
+ *     xml_apply(xtmpl, CX_ELMNT, xml_template_apply, cvv);
+ * @endcode
+ */
+int
+xml_template_apply(cxobj *x,
+                   void  *arg)
+{
+    int    retval = -1;
+    cvec  *cvv = (cvec *)arg;
+    cxobj *xb = NULL;
+    char  *b;
+    cbuf  *cb = NULL;
+
+    switch (xml_type(x)){
+    case CX_ELMNT:
+        xb = xml_body_get(x);
+        break;
+    case CX_ATTR:
+        xb = x;
+        break;
+    default:
+        break;
+    }
+    if (xb && (b = xml_value(xb)) != NULL){
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if (clixon_str_subst(b, cvv, cb) < 0)
+            goto done;
+        xml_value_set(xb, cbuf_get(cb));
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }

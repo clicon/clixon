@@ -2,7 +2,11 @@
 # Authentication and authorization and IETF NACM
 # Library variable and functions
 
-USER=$(whoami)
+if [ $(whoami) != root ]; then
+    EXTRAUSER="<user-name>$(whoami)</user-name>"
+else
+    EXTRAUSER=""
+fi
 
 # Three groups from RFC8341 A.1 (admin extended with $USER)
 NGROUPS=$(cat <<EOF
@@ -12,7 +16,7 @@ NGROUPS=$(cat <<EOF
          <user-name>root</user-name>
          <user-name>admin</user-name>
          <user-name>andy</user-name>
-         <user-name>$USER</user-name>
+         $EXTRAUSER
        </group>
        <group>
          <name>limited</name>

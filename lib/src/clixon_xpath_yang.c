@@ -54,15 +54,15 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_yang_module.h"
 #include "clixon_xpath_ctx.h"
@@ -195,7 +195,23 @@ xp_yang_eval_step(xp_yang_ctx  *xy0,
         } /* nodetest xs_type */
         break;
     case A_PARENT:
-        xy->xy_node = yang_parent_get(ys);
+        {
+            yang_stmt *yp;
+            ys1 = ys;
+            while ((yp = yang_parent_get(ys1)) != NULL){
+                if (yang_datanode(yp)){
+                    ys1 = yp;
+                    break;
+                }
+                if (yang_keyword_get(yp) == Y_MODULE ||
+                    yang_keyword_get(yp) == Y_SUBMODULE){
+                    ys1 = yp;
+                    break;
+                }
+                ys1 = yp;
+            }
+            xy->xy_node = ys1;
+        }
         break;
     default:
         clixon_err(OE_YANG, 0, "Invalid path-arg step: %s",
@@ -471,7 +487,7 @@ yang_path_arg(yang_stmt  *ys,
     xp_yang_ctx *xyr = NULL;
     xp_yang_ctx *xy = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "");
     if (path_arg == NULL){
         clixon_err(OE_XML, EINVAL, "path-arg is NULL");
         goto done;

@@ -134,7 +134,7 @@ show("Show a particular state of the system"){
 		     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
     }
     configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
-            cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "report-all", "set ");
+            cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "explicit", "set ");
             xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false);
             text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", true, false);
   }
@@ -177,7 +177,7 @@ new "wait backend"
 wait_backend
     
 new "cli version"
-expectpart "$($clixon_cli -1 -f $cfg -V)" 0 "Clixon version $CLIXON_VERSION" "Clixon main example version"
+expectpart "$($clixon_cli -1 -f $cfg -V)" 0 "Clixon version: $CLIXON_VERSION" "Clixon main example version"
 
 new "cli configure top"
 expectpart "$($clixon_cli -1 -f $cfg set interfaces)" 0 "^$"
@@ -194,8 +194,8 @@ expectpart "$($clixon_cli -1 -f $cfg show conf cli)" 0 "^$"
 new "cli configure set interfaces"
 expectpart "$($clixon_cli -1 -f $cfg set interfaces interface eth/0/0)" 0 "^$"
 
-new "cli show configuration"
-expectpart "$($clixon_cli -1 -f $cfg show conf cli)" 0 "^set interfaces interface eth/0/0" "^set interfaces interface eth/0/0 enabled true"
+new "cli show configuration XX"
+expectpart "$($clixon_cli -1 -f $cfg show conf cli)" 0 "^set interfaces interface eth/0/0"
 
 new "cli configure using encoded chars data <&"
 # problems in changing to expectpart with escapes
@@ -247,7 +247,7 @@ new "cli load"
 expectpart "$($clixon_cli -1 -f $cfg -l o load $dir/foo cli)" 0 "^$"
 
 new "cli check load"
-expectpart "$($clixon_cli -1 -f $cfg -l o show conf cli)" 0 "interfaces interface eth/0/0 ipv4 enabled true"
+expectpart "$($clixon_cli -1 -f $cfg -l o show conf cli)" 0 "interfaces interface eth/0/0 ipv4"
 
 new "cli debug set"
 expectpart "$($clixon_cli -1 -f $cfg -l o debug cli 1)" 0 "^$"

@@ -67,10 +67,10 @@
 #include "clixon_hash.h"
 #include "clixon_handle.h"
 #include "clixon_yang.h"
-#include "clixon_log.h"
-#include "clixon_debug.h"
 #include "clixon_string.h"
 #include "clixon_xml.h"
+#include "clixon_log.h"
+#include "clixon_debug.h"
 #include "clixon_path.h"
 #include "clixon_api_path_parse.h"
 
@@ -147,4 +147,3 @@ api_path_scan_exit(clixon_api_path_yacc *ay)
     clixon_api_path_parselex_destroy();  /* modern */
     return 0;
 }
-

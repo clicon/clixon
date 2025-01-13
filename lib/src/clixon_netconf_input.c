@@ -66,15 +66,52 @@
 #include "clixon_hash.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
 #include "clixon_proto.h"
-#include "clixon_netconf_lib.h"
 #include "clixon_netconf_input.h"
+
+/*! Look for a text pattern in an input string, one char at a time
+ *
+ * @param[in]     tag     What to look for
+ * @param[in]     ch      New input character
+ * @param[in,out] state   A state integer holding how far we have parsed.
+ * @retval        1       Yes, we have detected end tag!
+ * @retval        0       No, we havent detected end tag
+ * @code
+ *   int state = 0;
+ *   char ch;
+ *   while (1) {
+ *     // read ch
+ *     if (detect_endtag("mypattern", ch, &state)) {
+ *       // mypattern is matched
+ *     }
+ *   }
+ * @endcode
+ */
+int
+detect_endtag(char *tag,
+              char  ch,
+              int  *state)
+{
+    int retval = 0;
+
+    if (tag[*state] == ch){
+        (*state)++;
+        if (*state == strlen(tag)){
+            *state = 0;
+            retval = 1;
+        }
+    }
+    else
+        *state = 0;
+    return retval;
+}
 
 /*! Read from socket and append to cbuf
  *
@@ -91,26 +128,41 @@ netconf_input_read2(int            s,
                     ssize_t        buflen,
                     int           *eof)
 {
-    int      retval = -1;
-    ssize_t  len;
+    int     retval = -1;
+    ssize_t len;
+    int     restarts = 0;
+    int     maxrestarts = 5;
 
     memset(buf, 0, buflen);
-    if ((len = read(s, buf, buflen)) < 0){
-        if (errno == ECONNRESET)
-            len = 0; /* emulate EOF */
-        else{
+    while ((len = read(s, buf, buflen)) < 0) {
+        switch (errno){
+        case EINTR:
+        case EAGAIN:
+            if (restarts++ >= maxrestarts){
+                clixon_log(NULL, LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
+                goto done;
+            }
+            break;       /* Try again */
+        case ECONNRESET: /* Connection reset by peer */
+        case EPIPE:      /* Client shutdown */
+        case EBADF:      /* Client shutdown - freebsd */
+            len = 0;     /* Emulate EOF */
+            break;
+        default:
             clixon_log(NULL, LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
             goto done;
         }
+        if (len == 0)
+            break;
     } /* read */
-    clixon_debug(CLIXON_DBG_DETAIL, "%s len:%ld", __FUNCTION__, len);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "len:%ld", len);
     if (len == 0){  /* EOF */
-        clixon_debug(CLIXON_DBG_DETAIL, "%s len==0, closing", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "len==0, closing");
         *eof = 1;
     }
     retval = len;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
 }
 
@@ -124,7 +176,7 @@ netconf_input_read2(int            s,
  * @param[in,out] frame_size   Chunked framing size parameter
  * @param[out]    eom          If frame found in cb?
  * @retval        0            OK
- * @retval       -1            Error
+ * @retval       -1            Error (from chunked framing)
  * The routine should be called continuously with more data from input socket in buf
  * State of previous reads is saved in:
  * - bufp/lenp
@@ -147,7 +199,7 @@ netconf_input_msg2(unsigned char      **bufp,
     size_t    len;
     char      ch;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
     len = *lenp;
     for (i=0; i<len; i++){
         if ((ch = (*bufp)[i]) == 0)
@@ -158,7 +210,7 @@ netconf_input_msg2(unsigned char      **bufp,
                 goto done;
             switch (ret){
             case 1: /* chunk-data */
-                cprintf(cbmsg, "%c", ch);
+                cbuf_append(cbmsg, ch);
                 break;
             case 2: /* end-of-data */
                 /* Somewhat complex error-handling:
@@ -171,7 +223,7 @@ netconf_input_msg2(unsigned char      **bufp,
             }
         }
         else{
-            cprintf(cbmsg, "%c", ch);
+            cbuf_append(cbmsg, ch);
             if (detect_endtag("]]>]]>", ch, frame_state)){
                 *frame_state = 0;
                 /* OK, we have an xml string from a client */
@@ -190,13 +242,14 @@ netconf_input_msg2(unsigned char      **bufp,
     *eom = found;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
 }
 
-/*! Process incoming frame, ie a char message framed by ]]>]]>
+/*! Parse incoming frame (independent of framing)
  *
  * Parse string to xml, check only one netconf message within a frame
+ * A relatively high-level function.
  * @param[in]   cb    Packet buffer
  * @param[in]   yb    Yang binding: Y_RPC for server-side, Y_NONE for client-side (for now)
  * @param[in]   yspec Yang spec
@@ -218,7 +271,7 @@ netconf_input_frame2(cbuf      *cb,
     cxobj  *xtop = NULL; /* Request (in) */
     int     ret;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
     if (xrecv == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "xrecv is NULL");
         goto done;
@@ -268,4 +321,3 @@ netconf_input_frame2(cbuf      *cb,
     retval = 0;
     goto done;
 }
-

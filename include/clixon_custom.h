@@ -47,20 +47,6 @@
  */
 #undef RPC_USERNAME_ASSERT
 
-/*! Tag for wrong handling of identityref prefixes (XML encoding)
- *
- * See https://github.com/clicon/clixon/issues/90
- * Instead of using generic xmlns prefix bindings, the module's own prefix
- * is used.
- * In the CLI generation case, this is actually quite complicated: the cli 
- * needs to generate a netconf statement with correct xmlns binding.
- * The easy way to do this is to always generate all prefix/namespace bindings 
- * on the top-level for the modules involved in the netconf operation.
- * Update 2022-11: seems most cornercases are covered and this is now disabled.
- * I am sure there are remaining cases but undef this for now and close #90
- */
-#undef IDENTITYREF_KLUDGE
-
 /*! Optimize special list key searches in XPath finds
  *
  * Identify xpaths that search for exactly a list key, eg: "y[k='3']" and then call
@@ -115,7 +101,7 @@
  * and thus an xpath on the form "../PARENT" may not be evaluated as they should. x0 is eventually 
  * added to its parent but then it is more difficult to check the when condition.
  * This fix add the parent x0p as a "candidate" so that the xpath-eval function can use it as
- * an alernative if it exists.
+ * an alternative if it exists.
  * Note although this solves many usecases involving parents and absolute paths, it still does not
  * solve all usecases, such as absolute usecases where the added node is looked for
  */
@@ -123,15 +109,9 @@
 
 /*! Enable "remaining" attribute (sub-feature of list pagination)
  *
- * As defined in draft-wwlh-netconf-list-pagination-00 using Yang metadata value [RFC7952] 
+ * See "remaining" annotation defined in module ietf-list-pagination.yang
  */
 #undef LIST_PAGINATION_REMAINING
-
-/*! Use Ancestor config cache 
- *
- * The cache uses two yang stmt flag bits. One to say it is active, the second its value
- */
-#define USE_CONFIG_FLAG_CACHE
 
 /*! If backend is restarted, cli and netconf client will retry (once) and reconnect
  *
@@ -204,10 +184,65 @@
  */
 #undef RESTCONF_INLINE
 
-/*! Backward compatible with 6.5 for Error, Log and Debug APIs
+/*! Use SHA256 (32 bytes) instead of SHA1 (20 bytes)
  *
- * Note: many(most) not covered by this constant need to GREP
- * This includes lots of clicon->clixon namechanges, see CHANGELOG for whole list
- * This constant will be removed after the 6.6 release
+ * Digest use is not cryptographic use, so SHA1 is enough for now
  */
-#define COMPAT_6_5
+#undef USE_SHA256
+
+/*! Force add ietf-yang-library@2019-01-04 on all mount-points
+ *
+ * This is a limitation of of the current implementation
+ */
+#define YANG_SCHEMA_MOUNT_YANG_LIB_FORCE
+
+/*! For debug, YANG linenr shown in some YANG error-messages
+ *
+ * If set, report line-numbers in some error-messages (grouping/mandatory key),
+ *   However, almost all parsing still reports linenr on error.
+ *   Only exception is schema-nodeid sub-parsing
+ * If not set, reduces memory with 8 bytes per yang-stmt.
+ */
+#undef YANG_SPEC_LINENR
+
+/*! Effort to clear system-only config data from candidate cache after commit
+ *
+ * The idea was that the candidate would be re-loaded from file and populated (as running)
+ * However, there may be instances where the candidate cache is loaded without YANG binding,
+ * such as in xmldb_get0(h, "candidate", YB_NONE,...), whereas running cache is loaded with YANG.
+ * This causes xml_cmp to show that the datastores are unequal and may cause a wrong diff, or
+ * worse case an overwrite.
+ */
+#undef SYSTEM_ONLY_CONFIG_CANDIDATE_CLEAR
+
+/*! In full XPath namespace resolve, match even if namespace not resolved
+ *
+ * In the case of xpath lookup functions (eg xpath_vec_ctx) where nsc is defined, then
+ * matching with XML requires equal namespaces.
+ * However, some code is OK with the XPATH NSC being unresolved to NULL, even if the XML
+ * namespace is defined.
+ * This seems wrong and should be changed, but need further investigation
+ * @see https://github.com/clicon/clixon/issues/588
+ */
+#define XPATH_NS_ACCEPT_UNRESOLVED
+
+/*! Default algorithm needs two passes to resolve "when"-protected non-presence containers
+ *
+ * A non-presence container may be protected by a YANG "when" statement which relies on
+ * default values that have not yet been resolved.
+ * A more intelligent algorithm is needed
+ */
+#define XML_DEFAULT_WHEN_TWICE
+
+/*! If set, make optimized lookup of yspec + namespace -> module
+ *
+ * see yang_find_module_by_namespace
+ */
+#undef OPTIMIZE_YSPEC_NAMESPACE
+
+/*! If set, make optimization of non-presence default container
+ *
+ * Save the default XML in YANG and reuse next time
+ * see xml_default
+ */
+#define OPTIMIZE_NO_PRESENCE_CONTAINER

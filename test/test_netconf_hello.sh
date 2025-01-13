@@ -107,7 +107,7 @@ expecteof "$clixon_netconf -qef $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\
 
 new "netconf snd + rcv hello"
 expecteof "$clixon_netconf -f $cfg" 0 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability></capabilities></hello>]]>]]>" "^<hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:base:1.0</capability>
-<capability>urn:ietf:params:netconf:capability:yang-library:1.0?revision=2019-01-04&amp;module-set-id=42</capability>
+<capability>urn:ietf:params:netconf:capability:yang-library:1.1?revision=2019-01-04&amp;module-set-id=42</capability>
 <capability>urn:ietf:params:netconf:capability:candidate:1.0</capability>
 <capability>urn:ietf:params:netconf:capability:validate:1.1</capability>
 <capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>

@@ -112,11 +112,11 @@ static const map_str2int snmp_type_map[] = {
     {NULL,           -1}
 };
 
-
 /* Map between clixon "orig" resolved type and ASN.1 types. 
  */
 static const map_str2int snmp_orig_map[] = {
     {"counter32",             ASN_COUNTER},   // 0x41 / 65
+    {"bits",                  ASN_OCTET_STR}, // 3
     {"object-identifier-128", ASN_OBJECT_ID}, // 6
     {"AutonomousType",        ASN_OBJECT_ID}, // 6
     {"DateAndTime",           ASN_OCTET_STR}, // 4
@@ -156,7 +156,6 @@ static const map_str2str yang_snmp_types[] = {
     { NULL,    NULL} /* if not found */
 };
 
-
 /*! A function that checks that all subtypes of the union are the same
  *
  * @param[in]  ytype Yang resolved type (a union in this case)
@@ -169,7 +168,7 @@ is_same_subtypes_union(yang_stmt *ytype,
                        char     **restype)
 {
     int        retval = 0;
-    yang_stmt *y_sub_type = NULL;
+    yang_stmt *y_sub_type;
     yang_stmt *y_resolved_type = NULL;        /* resolved type */
     char      *resolved_type_str;             /* resolved type */
     char      *type_str = NULL;
@@ -177,12 +176,14 @@ is_same_subtypes_union(yang_stmt *ytype,
     cvec      *cvv = NULL;
     cvec      *patterns = NULL;
     uint8_t    fraction_digits = 0;
+    int        inext;
 
     /* Loop over all sub-types in the resolved union type, note these are
      * not resolved types (unless they are built-in, but the resolve call is
      * made in the union_one call.
      */
-    while ((y_sub_type = yn_each(ytype, y_sub_type)) != NULL){
+    inext = 0;
+    while ((y_sub_type = yn_iter(ytype, &inext)) != NULL){
         if (yang_keyword_get(y_sub_type) != Y_TYPE)
             continue;
 
@@ -412,6 +413,7 @@ yang_extension_value_opt(yang_stmt *ys,
     int        retval = -1;
     yang_stmt *yext;
     cg_var    *cv;
+    int        inext;
 
     if (ys == NULL){
         clixon_err(OE_YANG, EINVAL, "ys is NULL");
@@ -419,8 +421,9 @@ yang_extension_value_opt(yang_stmt *ys,
     }
     if (exist)
         *exist = 0;
-    yext = NULL; /* This loop gets complicated in the case the extension is augmented */
-    while ((yext = yn_each(ys, yext)) != NULL) {
+    /* This loop gets complicated in the case the extension is augmented */
+    inext = 0;
+    while ((yext = yn_iter(ys, &inext)) != NULL) {
         if (yang_keyword_get(yext) != Y_UNKNOWN)
             continue;
         if (strcmp(yang_argument_get(yext), id) != 0)
@@ -470,7 +473,7 @@ yangext_oid_get(yang_stmt *yn,
     if (yang_extension_value_opt(yref, "smiv2:oid", &exist, &oidstr) < 0)
         goto done;
     if (exist == 0 || oidstr == NULL){
-        clixon_debug(CLIXON_DBG_DEFAULT, "OID not found as SMIv2 yang extension of %s", yang_argument_get(yref));
+        clixon_debug(CLIXON_DBG_SNMP, "OID not found as SMIv2 yang extension of %s", yang_argument_get(yref));
         goto fail;
     }
     if (snmp_parse_oid(oidstr, objid, objidlen) == NULL){
@@ -509,7 +512,6 @@ yangext_is_oid_exist(yang_stmt *yn)
         return 1;
     }
 }
-
 
 /*! Duplicate clixon snmp handler struct
  *
@@ -610,6 +612,11 @@ type_yang2asn1(yang_stmt    *ys,
             (strcmp(display_hint, "255a")==0 ||
              strcmp(display_hint, "255t")==0))
             at = CLIXON_ASN_FIXED_STRING;
+        /* Special case for bits type because netsnmp lib returns ASN_OCTET_STRING. In this case
+           we have to define an extended type to be able to handle bits type correctly later on. */
+        if (strcmp(restype, "bits") == 0){
+            at = CLIXON_ASN_BIT_STRING;
+        }
     }
     if (asn1_type)
         *asn1_type = at;
@@ -647,9 +654,10 @@ type_snmp2xml(yang_stmt                  *ys,
     char        *restype = NULL;         /* resolved type */
     char        *origtype = NULL; /* original type */
     yang_stmt   *yrestype = NULL;
+    cbuf        *cb = NULL;
     int          ret;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_SNMP, "");
     if (valstr == NULL){
         clixon_err(OE_UNIX, EINVAL, "valstr is NULL");
         goto done;
@@ -705,6 +713,20 @@ type_snmp2xml(yang_stmt                  *ys,
     case ASN_GAUGE:     // 0x42
         cv_uint32_set(cv, *requestvb->val.integer);
         break;
+    case CLIXON_ASN_BIT_STRING:{ /* special case for bit string */
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if ((ret = yang_val2bitsstr(NULL, yrestype, requestvb->val.bitstring, requestvb->val_len, cb)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits value");
+            goto fail;
+        }
+        cv_strncpy(cv, cbuf_get(cb), cbuf_len(cb));
+        break;
+    }
     case ASN_IPADDRESS:{
         struct in_addr addr;
         memcpy(&addr.s_addr, requestvb->val.string, 4);
@@ -733,7 +755,7 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     default:
         assert(0); // XXX
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s %s not supported", __FUNCTION__, cv_type2str(cvtype));
+        clixon_debug(CLIXON_DBG_SNMP, "%s not supported", cv_type2str(cvtype));
         if ((ret = netsnmp_request_set_error(request, SNMP_ERR_WRONGTYPE)) != SNMPERR_SUCCESS){
             clixon_err(OE_SNMP, ret, "netsnmp_request_set_error");
             goto done;
@@ -747,11 +769,13 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_SNMP | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (origtype)
         free(origtype);
     if (cv)
         cv_free(cv);
+    if (cb)
+        cbuf_free(cb);
     return retval;
  fail:
     retval = 0;
@@ -778,7 +802,7 @@ type_xml2snmp_pre(char      *xmlstr0,
 {
     int        retval = -1;
     yang_stmt *yrestype;        /* resolved type */
-    char      *restype = NULL;         /* resolved type */
+    char      *restype = NULL;  /* resolved type */
     char      *str = NULL;
     int        ret;
     cbuf      *cb = NULL;
@@ -794,7 +818,7 @@ type_xml2snmp_pre(char      *xmlstr0,
         if ((ret = yang_enum2valstr(yrestype, xmlstr0, &str)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid enum valstr %s", xmlstr0);
+            clixon_debug(CLIXON_DBG_SNMP, "Invalid enum valstr %s", xmlstr0);
             goto fail;
         }
     }
@@ -809,7 +833,7 @@ type_xml2snmp_pre(char      *xmlstr0,
         else
             str = "1";
     }
-    else if( strcmp(restype, "decimal64") == 0 ) {
+    else if (strcmp(restype, "decimal64") == 0 ) {
         cg_var* cv = yang_cv_get(ys);
         int64_t num;
 
@@ -820,7 +844,7 @@ type_xml2snmp_pre(char      *xmlstr0,
         if ((ret = parse_dec64(xmlstr0, cv_dec64_n_get(cv), &num, NULL)) < 0)
             goto done;
         if (ret == 0){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid decimal64 valstr %s", xmlstr0);
+            clixon_debug(CLIXON_DBG_SNMP, "Invalid decimal64 valstr %s", xmlstr0);
             goto fail;
         }
         cv_dec64_i_set(cv, num);
@@ -836,7 +860,7 @@ type_xml2snmp_pre(char      *xmlstr0,
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_SNMP | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -848,6 +872,7 @@ type_xml2snmp_pre(char      *xmlstr0,
 /*! Given snmp string value (as translated from XML) parse into snmp value
  *
  * @param[in]     snmpstr  SNMP type string
+ * @param[in]     ys       YANG node
  * @param[in,out] asn1type ASN.1 type id
  * @param[out]    snmpval  Malloc:ed snmp type
  * @param[out]    snmplen  Length of snmp type
@@ -860,18 +885,22 @@ type_xml2snmp_pre(char      *xmlstr0,
  */
 int
 type_xml2snmp(char       *snmpstr,
+              yang_stmt  *ys,
               int        *asn1type,
               u_char    **snmpval,
               size_t     *snmplen,
               char      **reason)
 {
-    int   retval = -1;
-    int   ret;
+    int        retval = -1;
+    int        ret;
+    yang_stmt *yrestype;  /* resolved type */
 
     if (snmpval == NULL || snmplen == NULL){
         clixon_err(OE_UNIX, EINVAL, "snmpval or snmplen is NULL");
         goto done;
     }
+    if (snmp_yang_type_get(ys, NULL, NULL, &yrestype, NULL)) // XXX yrestype
+        goto done;
     switch (*asn1type){
     case CLIXON_ASN_ROWSTATUS:
         *asn1type = ASN_INTEGER;
@@ -905,7 +934,7 @@ type_xml2snmp(char       *snmpstr,
         oid    oid1[MAX_OID_LEN] = {0,};
         size_t sz1 = MAX_OID_LEN;
         if (snmp_parse_oid(snmpstr, oid1, &sz1) == NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "Failed to parse OID %s", snmpstr);
+            clixon_debug(CLIXON_DBG_SNMP, "Failed to parse OID %s", snmpstr);
             goto fail;
         }
         *snmplen = sizeof(oid)*sz1;
@@ -917,11 +946,12 @@ type_xml2snmp(char       *snmpstr,
         break;
     }
     case ASN_OCTET_STR: // 4
-        *snmplen = strlen(snmpstr)+1;
-        if ((*snmpval = (u_char*)strdup((snmpstr))) == NULL){
-            clixon_err(OE_UNIX, errno, "strdup");
+        *snmplen = strlen(snmpstr);
+        if ((*snmpval = malloc(*snmplen)) == NULL){
+            clixon_err(OE_UNIX, errno, "malloc");
             goto done;
         }
+        memcpy(*snmpval, snmpstr, *snmplen);
         break;
     case ASN_COUNTER64:{ // 0x46 / 70
         uint64_t u64;
@@ -961,7 +991,7 @@ type_xml2snmp(char       *snmpstr,
         }
         memset(*snmpval, 0, *snmplen + 1);
         if ((eaddr = ether_aton(snmpstr)) == NULL){
-            clixon_debug(CLIXON_DBG_DEFAULT, "ether_aton(%s)", snmpstr);
+            clixon_debug(CLIXON_DBG_SNMP, "ether_aton(%s)", snmpstr);
             goto fail;
         }
         memcpy(*snmpval, eaddr, sizeof(*eaddr));
@@ -976,12 +1006,21 @@ type_xml2snmp(char       *snmpstr,
         }
         *asn1type = ASN_OCTET_STR;
         break;
+    case CLIXON_ASN_BIT_STRING:
+        if ((ret = yang_bitsstr2val(NULL, yrestype, snmpstr, snmpval, snmplen)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_debug(CLIXON_DBG_DEFAULT, "Invalid bits valstr %s", snmpstr);
+            goto fail;
+        }
+        *asn1type = ASN_OCTET_STR;
+        break;
     default:
         assert(0);
     }
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_SNMP | CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
  fail:
     retval = 0;
@@ -1233,7 +1272,7 @@ clixon_snmp_err_cb(void *handle,
 {
     const char *errstr;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_SNMP, "");
     if (suberr < 0){
         if (suberr < -CLIXON_ERR_SNMP_MIB){
             switch (suberr+CLIXON_ERR_SNMP_MIB){

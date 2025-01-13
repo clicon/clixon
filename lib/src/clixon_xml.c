@@ -58,20 +58,21 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_options.h" /* xml_bind_yang */
 #include "clixon_yang_module.h"
 #include "clixon_xml_map.h" /* xml_bind_yang */
 #include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
 #include "clixon_xml_parse.h"
 #include "clixon_xml_nsctx.h"
@@ -80,7 +81,7 @@
  * Constants
  */
 /* How many XML children to start with if any. Then add quadratic until threshold when
- * add lineraly 
+ * add linearly
  * Heurestics: if child is body only single child is expected, but element children may
  * have siblings
  */
@@ -186,8 +187,6 @@ struct xml{
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang, 
                                        by reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
-    cvec             *x_creators;   /* Support clixon-lib creator annotation.
-                                       Only if CLICON_NETCONF_CREATOR_ATTR = true */
 #ifdef XML_EXPLICIT_INDEX
     struct search_index *x_search_index; /* explicit search index vectors */
 #endif
@@ -640,221 +639,6 @@ xml_flag_reset(cxobj   *xn,
     return 0;
 }
 
-/*! Add a creator tag
- *
- * @param[in]  xn    XML tree
- * @param[in]  name  Name of creator tag
- * @retval     0     OK
- * @retval    -1     Error
- */
-int
-xml_creator_add(cxobj *xn,
-                char  *name)
-{
-    int     retval = -1;
-    cg_var *cv;
-
-    if (!is_element(xn))
-        goto ok;
-    if (xn->x_creators == NULL){
-        if ((xn->x_creators = cvec_new(0)) == NULL){
-            clixon_err(OE_XML, errno, "cvec_new");
-            goto done;
-        }
-    }
-    if ((cv = cvec_find(xn->x_creators, name)) == NULL)
-        cvec_add_string(xn->x_creators, name, NULL);
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Remove a creator tag
- *
- * @param[in]  xn    XML tree
- * @param[in]  name  Name of creator tag
- * @retval     0     OK
- * @retval    -1     Error
- */
-int
-xml_creator_rm(cxobj *xn,
-               char  *name)
-{
-    cg_var *cv;
-
-    if (!is_element(xn))
-        return 0;
-    if ((cv = cvec_find(xn->x_creators, name)) == NULL)
-        return 0;
-    return cvec_del(xn->x_creators, cv);
-}
-
-/*! Find a creator string
- *
- * @param[in]  xn    XML tree
- * @param[in]  name  Name of creator tag
- * @retval     1     Yes, xn is tagged with creator tag "name"
- * @retval     0     No, xn is not tagged with creator tag "name"
- */
-int
-xml_creator_find(cxobj *xn,
-                 char  *name)
-{
-    if (!is_element(xn))
-        return 0;
-    if (xn->x_creators != NULL &&
-        cvec_find(xn->x_creators, name) != NULL)
-        return 1;
-    return 0;
-}
-
-/*! Get number of creator strings
- *
- * @param[in]  xn    XML tree
- * @retval     len   Number of creator tags assigned to xn
- * @retval     0     No creator tags or non-applicable
- */
-size_t
-xml_creator_len(cxobj *xn)
-{
-    if (!is_element(xn))
-        return 0;
-    if (xn->x_creators)
-        return cvec_len(xn->x_creators);
-    else
-        return 0;
-}
-
-/*! Get all creator attributes
- */
-cvec*
-xml_creator_get(cxobj *xn)
-{
-    if (!is_element(xn))
-        return 0;
-    return xn->x_creators;
-}
-
-/*! Copy creator info from x0 to x1 single object
- *
- * @param[in]  x0  Source XML node
- * @param[in]  x1  Destination XML node
- * @retval     0   OK
- * @retval    -1   Error
- */
-int
-xml_creator_copy_one(cxobj *x0,
-                     cxobj *x1)
-{
-    int retval = -1;
-
-    if (x0->x_creators)
-        if ((x1->x_creators = cvec_dup(x0->x_creators)) == NULL){
-            clixon_err(OE_UNIX, errno, "cvec_dup");
-            goto done;
-        }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Recursively copy creator attributes from existing tree based on equivalence algorithm
- *
- * @param[in]  x0  Source XML node
- * @param[in]  x1  Destination XML node
- * @retval     0   OK
- * @retval    -1   Error
- * @see xml_tree_equal  equivalence algorithm
- */
-int
-xml_creator_copy_all(cxobj *x0,
-                     cxobj *x1)
-{
-    int        retval = -1;
-    int        eq;
-    cxobj     *x0c; /* x0 child */
-    cxobj     *x1c; /* x1 child */
-    yang_stmt *yc0;
-    yang_stmt *yc1;
-
-    /* Traverse x0 and x1 in lock-step */
-    x0c = x1c = NULL;
-    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-    x1c = xml_child_each(x1, x1c, CX_ELMNT);
-    for (;;){
-        if (x0c == NULL || x1c == NULL)
-            goto ok;
-        eq = xml_cmp(x0c, x1c, 0, 0, NULL);
-        if (eq < 0){
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
-            continue;
-        }
-        else if (eq > 0){
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
-            continue;
-        }
-        else { /* equal */
-            /* Both x0c and x1c exists and are equal, check if they are yang-equal. */
-            yc0 = xml_spec(x0c);
-            yc1 = xml_spec(x1c);
-            if (yc0 && yc1 && yc0 != yc1){ /* choice */
-                ;
-            }
-            else {
-                if (x0c->x_creators){
-                    if (xml_creator_copy_one(x0c, x1c) < 0)
-                        goto done;
-                }
-                else if (xml_creator_copy_all(x0c, x1c) < 0)
-                    goto done;
-            }
-        }
-        x0c = xml_child_each(x0, x0c, CX_ELMNT);
-        x1c = xml_child_each(x1, x1c, CX_ELMNT);
-    }
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Print XML and creator tags where they exists, apply help function
- *
- * @param[in]  x    XML tree
- * @param[in]  arg  FIle
- * @retval     see xml_apply
- */
-static int
-creator_print_fn(cxobj *x,
-                 void  *arg)
-{
-    FILE   *f = (FILE *)arg;
-    cg_var *cv;
-
-    if (x->x_creators == NULL)
-        return 0;
-    cv = NULL;
-    while ((cv = cvec_each(x->x_creators, cv)) != NULL){
-        fprintf(f, "%s ", cv_name_get(cv));
-    }
-    fprintf(f, ":\n");
-    clixon_xml2file(f, x, 3, 1, NULL, cligen_output, 0, 0);
-    return 2; /* Locally abort this subtree, continue with others */
-}
-
-/*! Print XML and creator tags where they exists recursively, for debugging
- *
- * @param[in]  xn    XML tree
- * @retval     see xml_apply
- */
-int
-xml_creator_print(FILE  *f,
-                  cxobj *xn)
-{
-    return xml_apply0(xn, CX_ELMNT, creator_print_fn, f);
-}
-
 /*! Get value of xnode
  *
  * @param[in]  xn    xml node
@@ -1125,6 +909,16 @@ xml_child_order(cxobj *xp,
     return -1;
 }
 
+/*! Advanced function to decrement _x_vector_i if objects have been removed
+ */
+int
+xml_vector_decrement(cxobj *x,
+                     int    nr)
+{
+    x->_x_vector_i -= nr;
+    return 0;
+}
+
 /*! Iterator over xml children objects
  *
  * @param[in] xparent xml tree node whose children should be iterated
@@ -1142,7 +936,7 @@ xml_child_order(cxobj *xp,
  * Further, never manipulate the child-list during operation or using the
  * same object recursively, the function uses an internal field to remember the
  * index used. It works as long as the same object is not iterated concurrently. 
- * If you need to delete a node you can do somethhing like:
+ * If you need to delete a node you can do something like:
  * @code
  *   cxobj *xprev = NULL;
  *   cxobj *x = NULL;
@@ -1260,15 +1054,20 @@ xml_child_append(cxobj *xp,
     return 0;
 }
 
-/*! Insert child xc at position i under parent xp
+/*! Insert child XML at specific position under XML parent
  * 
+ * @param[in]  xp  Parent XML node
+ * @param[in]  xc  Child XML node
+ * @param[in]  pos Position
+ * @retval     0   OK
+ * @retval    -1   Error
  * @see xml_child_append
  * @note does not do anything with child, you may need to set its parent, etc
  */
 int
 xml_child_insert_pos(cxobj *xp,
                      cxobj *xc,
-                     int    i)
+                     int    pos)
 {
     size_t size;
 
@@ -1286,9 +1085,9 @@ xml_child_insert_pos(cxobj *xp,
             return -1;
         }
     }
-    size = (xml_child_nr(xp) - i - 1)*sizeof(cxobj *);
-    memmove(&xp->x_childvec[i+1], &xp->x_childvec[i], size);
-    xp->x_childvec[i] = xc;
+    size = (xml_child_nr(xp) - pos - 1)*sizeof(cxobj *);
+    memmove(&xp->x_childvec[pos+1], &xp->x_childvec[pos], size);
+    xp->x_childvec[pos] = xc;
     return 0;
 }
 
@@ -1444,7 +1243,6 @@ xml_new_body(char  *name,
     }
     return new_node;
 }
-
 
 /*! Return yang spec of node. 
  *
@@ -1770,7 +1568,7 @@ xml_rm(cxobj *xc)
 /*! Remove all children of specific type
  *
  * @param[in] x    XML node
- * @param[in] type Remove all children of xn of this type
+ * @param[in] type Remove all children of xn of this type, or -1 for all
  * @retval    0    OK
  * @retval   -1    Error
  */
@@ -1786,7 +1584,7 @@ xml_rm_children(cxobj          *xp,
         return 0;
     for (i=0; i<xml_child_nr(xp);){
         xc = xml_child_i(xp, i);
-        if (xml_type(xc) != type){
+        if (type != -1 && xml_type(xc) != type){
             i++;
             continue;
         }
@@ -1798,7 +1596,6 @@ xml_rm_children(cxobj          *xp,
  done:
     return retval;
 }
-
 
 /*! Remove top XML object and all children except a single child
  *
@@ -1948,9 +1745,9 @@ xml_enumerate_get(cxobj *x)
 
 /*! Get the first sub-node which is an XML body.
  *
- * @param[in]   xn          xml tree node
- * @retval  The returned body as a pointer to the name string
- * @retval  NULL if no such node or no body in found node
+ * @param[in]   xn     XML tree node
+ * @retval      body   The returned body as a pointer to the name string
+ * @retval      NULL   If no such node or no body in found node
  * Note, make a copy of the return value to use it properly
  * @see xml_find_body
  * Explaining picture:
@@ -2183,8 +1980,6 @@ xml_free(cxobj *x)
 #ifdef XML_EXPLICIT_INDEX
         xml_search_index_free(x);
 #endif
-        if (x->x_creators)
-            cvec_free(x->x_creators);
         break;
     case CX_BODY:
     case CX_ATTR:
@@ -2227,8 +2022,6 @@ xml_copy_one(cxobj *x0,
     switch (xml_type(x0)){
     case CX_ELMNT:
         xml_spec_set(x1, xml_spec(x0));
-        if (xml_creator_copy_one(x0, x1) < 0)
-            goto done;
         break;
     case CX_BODY:
     case CX_ATTR:
@@ -2241,7 +2034,7 @@ xml_copy_one(cxobj *x0,
     default:
         break;
     }
-    xml_flag_set(x1, xml_flag(x0, XML_FLAG_DEFAULT | XML_FLAG_TOP | XML_FLAG_ANYDATA)); /* Maybe more flags */
+    xml_flag_set(x1, xml_flag(x0, XML_FLAG_DEFAULT | XML_FLAG_TOP | XML_FLAG_ANYDATA | XML_FLAG_CACHE_DIRTY)); /* Maybe more flags */
     retval = 0;
  done:
     return retval;
@@ -2286,11 +2079,14 @@ xml_copy(cxobj *x0,
 
 /*! Create and return a copy of xml tree.
  *
+ * @param[in] x0   Old object
+ * @retval    x1   New object, free with xml_free
+ * @retval    NULL Error
  * @code
  *   cxobj *x1;
- *   x1 = xml_dup(x0);
+ *   if ((x1 = xml_dup(x0)) == NULL)
+ *      err;
  * @endcode
- * Note, returned tree should be freed as: xml_free(x1)
  * @see xml_cp
  */
 cxobj *
@@ -2382,7 +2178,6 @@ cxvec_prepend(cxobj   *x,
     return retval;
 }
 #endif
-
 
 /*! Apply a function call recursively on all xml node children recursively
  *
@@ -2697,139 +2492,6 @@ xml_add_attr(cxobj *xn,
         xa = NULL;
     }
     goto ret;
-}
-
-/*! Specialization of clixon_log with xml tree 
- *
- * @param[in]  h        Clixon handle
- * @param[in]  dbglevel 
- * @param[in]  level    log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. 
- * @param[in]  x        XML tree that is logged without prettyprint
- * @param[in]  format   Message to print as argv.
- * @retval     0        OK
- * @retval    -1        Error
- * @see clixon_debug_xml  which uses debug setting instead of direct syslog
- */
-int
-clixon_log_xml(clixon_handle h,
-               int           level,
-               cxobj        *x,
-               const char   *format, ...)
-{
-    int     retval = -1;
-    va_list args;
-    size_t  len;
-    char   *msg = NULL;
-    cbuf   *cb = NULL;
-    size_t  trunc;
-
-    /* Print xml as cbuf */
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_XML, errno, "cbuf_new");
-        goto done;
-    }
-    if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
-        goto done;
-    /* first round: compute length of debug message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-    /* Truncate long debug strings */
-    if ((trunc = clixon_log_string_limit_get()) && trunc < len)
-        len = trunc;
-
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-    va_end(args);
-
-    /* Actually log it */
-    clixon_log(h, level, "%s: %s", msg, cbuf_get(cb));
-
-    retval = 0;
-  done:
-    if (cb)
-        cbuf_free(cb);
-    if (msg)
-        free(msg);
-    return retval;
-}
-
-/*! Specialization of clixon_debug with xml tree 
- *
- * @param[in]  dbglevel Mask of CLIXON_DBG_DEFAULT and other masks
- * @param[in]  x        XML tree that is logged without prettyprint
- * @param[in]  format   Message to print as argv.
- * @retval     0        OK
- * @retval    -1        Error
- * @see clicon_log_xml  For syslog
- * @see clixon_debug    base function and see CLIXON_DBG_* flags
-*/
-int
-clixon_debug_xml(int         dbglevel,
-                 cxobj      *x,
-                 const char *format, ...)
-{
-    int     retval = -1;
-    va_list args;
-    size_t  len;
-    char   *msg = NULL;
-    cbuf   *cb = NULL;
-    size_t  trunc;
-
-    /* Mask debug level with global dbg variable */
-    if ((dbglevel & clixon_debug_get()) == 0)
-        return 0;
-    /* Print xml as cbuf */
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_XML, errno, "cbuf_new");
-        goto done;
-    }
-    if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)
-        goto done;
-    /* first round: compute length of debug message */
-    va_start(args, format);
-    len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-    /* Truncate long debug strings */
-    if ((trunc = clixon_log_string_limit_get()) && trunc < len)
-        len = trunc;
-
-    /* allocate a message string exactly fitting the message length */
-    if ((msg = malloc(len+1)) == NULL){
-        fprintf(stderr, "malloc: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-
-    /* second round: compute write message from format and args */
-    va_start(args, format);
-    if (vsnprintf(msg, len+1, format, args) < 0){
-        va_end(args);
-        fprintf(stderr, "vsnprintf: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
-        goto done;
-    }
-    va_end(args);
-
-    /* Actually log it */
-    clixon_debug(dbglevel, "%s: %s", msg, cbuf_get(cb));
-
-    retval = 0;
-  done:
-    if (cb)
-        cbuf_free(cb);
-    if (msg)
-        free(msg);
-    return retval;
 }
 
 #ifdef XML_EXPLICIT_INDEX

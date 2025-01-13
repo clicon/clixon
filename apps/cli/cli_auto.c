@@ -52,9 +52,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <ctype.h>
-
 #include <unistd.h>
-#include <dirent.h>
 #include <syslog.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -119,6 +117,7 @@ cli_auto_edit(clixon_handle h,
 {
     int           retval = -1;
     char         *api_path_fmt;  /* xml key format */
+    char         *api_path_fmt01 = NULL;
     char         *api_path = NULL;
     char         *treename;
     pt_head      *ph;
@@ -128,16 +127,22 @@ cli_auto_edit(clixon_handle h,
     int           argc = 0;
     char         *str;
     char         *mtpoint = NULL;
+    yang_stmt    *yspec0;
+    char         *mtpoint2 = NULL;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
         clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>*, <treename>)", __FUNCTION__);
+        goto done;
+    }
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     api_path_fmt = cv_string_get(cvec_i(argv, argc++));
     str = cv_string_get(cvec_i(argv, argc++));
     if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
         mtpoint = str + strlen("mtpoint:");
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s mtpoint:%s", __FUNCTION__, mtpoint);
+        clixon_debug(CLIXON_DBG_CLI, "mtpoint:%s", mtpoint);
         treename = cv_string_get(cvec_i(argv, argc++));
     }
     else
@@ -171,14 +176,22 @@ cli_auto_edit(clixon_handle h,
         clixon_err(OE_YANG, EINVAL, "No apipath found");
         goto done;
     }
-    /* get api-path and xpath */
-    if (api_path_fmt2api_path(api_path_fmt, cvv2, &api_path, NULL) < 0)
-        goto done;
+    if (mtpoint){
+        /* Get and combine api-path01 */
+        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+            goto done;
+        if (api_path_fmt2api_path(api_path_fmt01, cvv2, yspec0, &api_path, NULL) < 0)
+            goto done;
+    }
+    else{
+        /* get api-path and xpath */
+        if (api_path_fmt2api_path(api_path_fmt, cvv2, yspec0, &api_path, NULL) < 0)
+            goto done;
+    }
     /* Store this as edit-mode */
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
         goto done;
     if (mtpoint){
-        char *mtpoint2;
         if ((mtpoint2 = strdup(mtpoint)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
@@ -199,6 +212,10 @@ cli_auto_edit(clixon_handle h,
     }
     retval = 0;
  done:
+    if (api_path_fmt01)
+        free(api_path_fmt01);
+    if (mtpoint2)
+        free(mtpoint2);
     if (api_path)
         free(api_path);
     return retval;
@@ -229,14 +246,21 @@ cli_auto_up(clixon_handle h,
     cvec    *cvv1 = NULL; /* copy */
     char    *api_path_fmt0;  /* from */
     char    *api_path_fmt1;  /* to */
+    char    *api_path_fmt2 = NULL;  /* 'to' with mountpoint prepended */
     char    *api_path = NULL;
     int      i;
     int      j;
     size_t   len;
     cvec    *cvv_filter = NULL;
+    yang_stmt *yspec0;
+    char    *mtpoint = "";
 
     if (cvec_len(argv) != 1){
         clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
+        goto done;
+    }
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     cv = cvec_i(argv, 0);
@@ -270,6 +294,7 @@ cli_auto_up(clixon_handle h,
         clicon_data_set(h, "cli-edit-mode", "");
         clicon_data_cvec_del(h, "cli-edit-cvv");
         clicon_data_cvec_del(h, "cli-edit-filter");
+        clicon_data_set(h, "cli-edit-mtpoint", "");
         goto ok;
     }
     /* get before and after api-path-fmt (as generated from yang) */
@@ -288,15 +313,26 @@ cli_auto_up(clixon_handle h,
         cv = cvec_i(cvv0, i);
         cvec_append_var(cvv1, cv);
     }
-    /* get api-path and xpath */
-    if (api_path_fmt2api_path(api_path_fmt1, cvv1, &api_path, NULL) < 0)
-        goto done;
+    clicon_data_get(h, "cli-edit-mtpoint", &mtpoint);
+    if (strlen(mtpoint)) {
+        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt1, &api_path_fmt2) < 0)
+            goto done;
+        if (api_path_fmt2api_path(api_path_fmt2, cvv1, yspec0, &api_path, NULL) < 0)
+            goto done;
+    }
+    else{
+        /* get api-path and xpath */
+        if (api_path_fmt2api_path(api_path_fmt1, cvv1, yspec0, &api_path, NULL) < 0)
+            goto done;
+    }
     /* Store this as edit-mode */
     clicon_data_set(h, "cli-edit-mode", api_path);
     clicon_data_cvec_set(h, "cli-edit-cvv", cvv1);
  ok:
     retval = 0;
  done:
+    if (api_path_fmt2)
+        free(api_path_fmt2);
     if (api_path)
         free(api_path);
     return retval;
@@ -333,6 +369,7 @@ cli_auto_top(clixon_handle h,
     clicon_data_set(h, "cli-edit-mode", "");
     clicon_data_cvec_del(h, "cli-edit-cvv");
     clicon_data_cvec_del(h, "cli-edit-filter");
+    clicon_data_set(h, "cli-edit-mtpoint", "");
     retval = 0;
  done:
     return retval;
@@ -506,9 +543,14 @@ cli_auto_sub_enter(clixon_handle h,
     cg_var       *cv = NULL;
     pt_head      *ph;
     struct findpt_arg fa = {0,};
+    yang_stmt        *yspec0;
 
     if (cvec_len(argv) < 2){
         clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<tree> <api_path_fmt> (,vars)*)", __FUNCTION__);
+        goto done;
+    }
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     /* First argv argument: treename */
@@ -540,7 +582,7 @@ cli_auto_sub_enter(clixon_handle h,
         if (cvec_append_var(cvv1, cvec_i(cvv, i)) < 0)
             goto done;
     }
-    if (api_path_fmt2api_path(api_path_fmt, cvv1, &api_path, NULL) < 0)
+    if (api_path_fmt2api_path(api_path_fmt, cvv1, yspec0, &api_path, NULL) < 0)
         goto done;
     /* Assign the variables */
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv1)) == NULL)

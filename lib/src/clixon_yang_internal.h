@@ -46,16 +46,16 @@
  * @note unions not cached
 */
 struct yang_type_cache{
-    int        yc_options;  /* See YANG_OPTIONS_* that determines pattern/
+    uint8_t    yc_options;  /* See YANG_OPTIONS_* that determines pattern/
                                fraction fields. */
+    uint8_t    yc_rxmode;   /* Need to store mode for freeing since handle may not be
+                             * available. See enum regexp_mode */
+    uint8_t    yc_fraction; /* Fraction digits for decimal64 (if YANG_OPTIONS_FRACTION_DIGITS */
     cvec      *yc_cvv;      /* Range and length restriction. (if YANG_OPTION_
                                LENGTH|RANGE. Can be a vector if multiple 
-                               ranges*/
-    cvec      *yc_patterns; /* list of regexp, if cvec_len() > 0 */
-    int        yc_rxmode; /* need to store mode for freeing since handle may not be available */
-    cvec      *yc_regexps;  /* list of _compiled_ regexp, if cvec_len() > 0 */
-    uint8_t    yc_fraction; /* Fraction digits for decimal64 (if 
-                               YANG_OPTIONS_FRACTION_DIGITS */
+                               ranges */
+    cvec      *yc_patterns; /* List of regexp, if cvec_len() > 0 */
+    cvec      *yc_regexps;  /* List of _compiled_ regexp, if cvec_len() > 0 */
     yang_stmt *yc_resolved; /* Resolved type object, can be NULL - note direct ptr */
 };
 typedef struct yang_type_cache yang_type_cache;
@@ -64,52 +64,73 @@ typedef struct yang_type_cache yang_type_cache;
  *
  * This is an internal type, not exposed in the API
  * The external type is "yang_stmt" defined in clixon_yang.h
+ * @note  There is additional info in maps, yang_when_set and yang_mymodule_set
  */
-struct yang_stmt{
-    int                ys_len;       /* Number of children */
+struct yang_stmt {
+    /* On x86_64, the following three fields take 8 bytes */
+    enum rfc_6020      ys_keyword:8; /* YANG keyword */
+    uint8_t            ys_ref;       /* Reference count for free: 0 means
+                                      * no sharing, 1: two references */
+    uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
+    uint32_t           ys_len;       /* Number of children */
+#ifdef YANG_SPEC_LINENR
+    /* Increases memory w 8 extra bytes on x86_64
+     * XXX: can we enable this when needed for schema nodeid sub-parsing? */
+    uint32_t           ys_linenum;   /* For debug/errors: line number (in ys_filename) */
+#endif
     struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
     struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
-    enum rfc_6020      ys_keyword;   /*  */
-
     char              *ys_argument;  /* String / argument depending on keyword */
-    uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
-    yang_stmt         *ys_mymodule;  /* Shortcut to "my" module. Used by:
-                                        1) Augmented nodes "belong" to the module where the 
-                                           augment is declared, which may be differnt from
-                                           the direct ancestor module 
-                                        2) Unknown nodes "belong" to where the extension is
-                                           declared
-                                      */
     cg_var            *ys_cv;        /* cligen variable. See ys_populate()
                                         Following stmts have cv:s:
-                                        leaf: for default value
-                                        leaf-list, 
-                                        config: boolean true or false
-                                        mandatory: boolean true or false
-                                        require-instance: true or false
-                                        fraction-digits for fraction-digits
-                                        revision (uint32)
-                                        unknown-stmt (optional argument)
-                                        spec: mount-point xpath
+                                        Y_FEATURE: boolean true or false
+                                        Y_CONFIG: boolean true or false
+                                        Y_LEAF: for default value
+                                        Y_LEAF_LIST,
+                                        Y_MAX_ELEMENTS:
+                                        Y_MIN_ELEMENTS: inte
+                                        Y_MANDATORY: boolean true or false
+                                        Y_REQUIRE_INSTANCE: true or false
+                                        Y_FRACTION_DIGITS for fraction-digits
+                                        Y_REVISION (uint32)
+                                        Y_REVISION_DATE (uint32)
+                                        Y_UNKNOWN (optional argument)
+                                        Y_ENUM: value
                                      */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
-                                        Y_RANGE: range_min, range_max 
-                                        Y_LIST: vector of keys
-                                        Y_TYPE & identity: store all derived 
-                                           types as <module>:<id> list
-                                        Y_UNIQUE: vector of descendant schema node ids
                                         Y_EXTENSION: vector of instantiated UNKNOWNS
+                                        Y_IDENTITY: store all derived types as <module>:<id> list
+                                        Y_LENGTH: length_min, length_max
+                                        Y_LIST: vector of keys
+                                        Y_RANGE: range_min, range_max
+                                        Y_SPEC: shared mount-point xpaths
+                                        Y_TYPE: store all derived types as <module>:<id> list
+                                        Y_UNIQUE: vector of descendant schema node ids
                                         Y_UNKNOWN: app-dep: yang-mount-points
                                      */
-    int                ys_ref;       /* Reference count for free, only YS_SPEC */
-    yang_type_cache   *ys_typecache; /* If ys_keyword==Y_TYPE, cache all typedef data except unions */
-    char              *ys_when_xpath; /* Special conditional for a "when"-associated augment/uses xpath */
-    cvec              *ys_when_nsc;   /* Special conditional for a "when"-associated augment/uses namespace ctx */
-    char              *ys_filename;   /* For debug/errors: filename (only (sub)modules) */
-    int                ys_linenum;    /* For debug/errors: line number (in ys_filename) */
-    rpc_callback_t    *ys_action_cb;  /* Action callback list, only for Y_ACTION */
-    /* Internal use */
-    int               _ys_vector_i;   /* internal use: yn_each */
+    yang_stmt         *ys_orig;      /* Pointer to original (for uses/augment copies) */
+    union {                          /* Depends on ys_keyword */
+        rpc_callback_t  *ysu_action_cb; /* Y_ACTION: Action callback list*/
+        char            *ysu_filename;  /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
+        yang_type_cache *ysu_typecache; /* Y_TYPE: cache all typedef data except unions */
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+        map_str2ptr     *ysu_nscache;   /* Y_SPEC: namespace to module cache */
+#endif
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+        cxobj           *ysu_nopres_cache; /* Y_CONTAINER: no-presence XML cache */
+#endif
+    } u;
 };
+
+/* Access macros */
+#define ys_action_cb      u.ysu_action_cb
+#define ys_filename       u.ysu_filename
+#define ys_typecache      u.ysu_typecache
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+#define ys_nscache        u.ysu_nscache
+#endif
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+#define ys_nopres_cache   u.ysu_nopres_cache
+#endif
 
 #endif  /* _CLIXON_YANG_INTERNAL_H_ */

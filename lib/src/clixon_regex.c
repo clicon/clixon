@@ -59,10 +59,11 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
 #include "clixon_options.h"
 #include "clixon_regex.h"
 
@@ -152,7 +153,6 @@ utf16_literal_to_utf8(const unsigned char *const input, int len,
             /* invalid second half of the surrogate pair */
             goto fail;
         }
-
 
         /* calculate the unicode codepoint from the surrogate pair */
         codepoint = 0x10000 + (((first_code & 0x3FF) << 10) | (second_code & 0x3FF));
@@ -470,4 +470,3 @@ regex_free(clixon_handle h,
  done:
     return retval;
 }
-

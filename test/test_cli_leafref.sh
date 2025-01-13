@@ -288,7 +288,7 @@ new "set leafref require-instance 99 (non-existent)"
 expectpart "$($clixon_cli -1 -f $cfg set leafrefsreqinst leafref 99)" 0 "^"$
 
 new "cli validate expect failure"
-expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "Leafref validation failed: No leaf 99 matching path"
+expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "data-missing 99: instance-required : /table/parameter/name"
 
 new "cli discard"
 expectpart "$($clixon_cli -1 -f $cfg -l o discard)" 0 ""

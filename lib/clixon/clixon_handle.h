@@ -35,7 +35,6 @@
 
  */
 
-
 #ifndef _CLIXON_HANDLE_H_
 #define _CLIXON_HANDLE_H_
 
@@ -91,12 +90,5 @@ struct event_stream *clicon_stream(clixon_handle h);
 struct event_stream;
 int clicon_stream_set(clixon_handle h, struct event_stream *es);
 int clicon_stream_append(clixon_handle h, struct event_stream *es);
-
-/* COMPAT_6_5 */
-#if 1
-typedef void *clicon_handle; 
-#define clicon_handle_init() clixon_handle_init()
-#define clicon_handle_exit(h) clixon_handle_exit(h)
-#endif
 
 #endif  /* _CLIXON_HANDLE_H_ */

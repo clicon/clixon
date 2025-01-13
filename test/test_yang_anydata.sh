@@ -23,6 +23,9 @@ fstate=$dir/state.xml
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $fanydata
 module any{
@@ -147,6 +150,7 @@ function testrun()
   <CLICON_YANG_UNKNOWN_ANYDATA>$unknown</CLICON_YANG_UNKNOWN_ANYDATA>
   <CLICON_STREAM_DISCOVERY_RFC8040>false</CLICON_STREAM_DISCOVERY_RFC8040>
   <CLICON_NETCONF_MONITORING>false</CLICON_NETCONF_MONITORING>
+  <CLICON_CLI_OUTPUT_FORMAT>xml</CLICON_CLI_OUTPUT_FORMAT>
   $F
   $RESTCONFIG
 </clixon-config>
@@ -209,7 +213,7 @@ EOF
 
     # Add other functions, (based on previous errors), eg cli show config, cli commit.
     new "cli show configuration"
-    expectpart "$($clixon_cli -1 -f $cfg show conf xml)" 0 "<u31>42</u31>"
+    expectpart "$($clixon_cli -1 -f $cfg show conf)" 0 "<u31>42</u31>"
 
     new "cli commit"
     expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"

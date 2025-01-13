@@ -44,22 +44,6 @@
 #define _CLIXON_DATA_H_
 
 /*
- * Types
- */
-/* Struct per database in hash 
- * Semantics of de_modified is to implement this from RFC 6241 Sec 7.5:
- *       The target configuration is <candidate>, it has already been
- *       modified, and these changes have not been committed or rolled back.
- */
-typedef struct {
-    uint32_t  de_id;       /* If set, locked by this client/session id */
-    struct timeval de_tv;       /* Timevalue */
-    cxobj    *de_xml;      /* cache */
-    int       de_modified; /* Dirty since loaded/copied/committed/etc XXX:nocache? */
-    int       de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
-} db_elmnt;
-
-/*
  * Prototypes
  */
 /* Generic clixon data API the form <name>=<val> where <val> is string */
@@ -81,14 +65,14 @@ int   clicon_data_int_get(clixon_handle h, const char *name);
 int   clicon_data_int_set(clixon_handle h, const char *name, int val);
 int   clicon_data_int_del(clixon_handle h, const char *name);
 
+yang_stmt *clixon_yang_mounts_get(clixon_handle h);
+int clixon_yang_mounts_set(clixon_handle h, yang_stmt *ys);
+
 yang_stmt * clicon_dbspec_yang(clixon_handle h);
-int clicon_dbspec_yang_set(clixon_handle h, yang_stmt *ys);
 
 yang_stmt * clicon_config_yang(clixon_handle h);
-int clicon_config_yang_set(clixon_handle h, yang_stmt *ys);
 
 yang_stmt * clicon_nacm_ext_yang(clixon_handle h);
-int clicon_nacm_ext_yang_set(clixon_handle h, yang_stmt *ys);
 
 cvec *clicon_nsctx_global_get(clixon_handle h);
 int clicon_nsctx_global_set(clixon_handle h, cvec *nsctx);
@@ -104,9 +88,6 @@ int clicon_conf_xml_set(clixon_handle h, cxobj *x);
 
 cxobj *clicon_conf_restconf(clixon_handle h);
 cxobj *clicon_conf_autocli(clixon_handle h);
-
-db_elmnt *clicon_db_elmnt_get(clixon_handle h, const char *db);
-int clicon_db_elmnt_set(clixon_handle h, const char *db, db_elmnt *xc);
 
 /**/
 /* Set and get authorized user name */

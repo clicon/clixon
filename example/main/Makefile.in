@@ -78,6 +78,9 @@ CPPFLAGS  	= @CPPFLAGS@
 ifeq ($(LINKAGE),dynamic)
 CPPFLAGS       	+= -fPIC
 endif
+ifeq ($(LINKAGE),dynamic)
+CFLAGS  	+= -DDYNAMICLINKAGE
+endif
 
 BE_PLUGIN       = $(APPNAME)_backend.so
 BE2_PLUGIN      = $(APPNAME)_backend_nacm.so
@@ -100,7 +103,8 @@ all:	$(PLUGINS)
 .c.o:
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $<
 
-CLISPECS =  $(APPNAME)_cli.cli
+CLISPECS  =  $(APPNAME)_cli.cli
+CLISPECS +=  $(APPNAME)_pipe.cli
 
 YANGSPECS	= clixon-example@2022-11-01.yang
 
@@ -111,7 +115,7 @@ $(BE_PLUGIN): $(BE_OBJ)
 ifeq ($(LINKAGE),dynamic)
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 else
-	# can include -L in LDFLAGS?
+# can include -L in LDFLAGS?
 	$(CC) -Wall -shared $(LDFLAGS) -o $@ -lc $< -lclixon -lclixon_backend
 endif
 
@@ -175,9 +179,10 @@ install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml restconf.xml autocli
 	[ -n "$$(getent group "$(CLICON_GROUP)")" ] || groupadd "$(CLICON_GROUP)"
 	[ -n "$$(getent passwd "$(CLICON_USER)")" ] || useradd -M -s /usr/sbin/nologin -g "$(CLICON_GROUP)" "$(CLICON_USER)"
 	install -d -m 0755 $(DESTDIR)$(sysconfdir)/clixon
+	install -d -m 0755 $(DESTDIR)$(sysconfdir)/clixon/$(APPNAME)
 	install -m 0644 $(APPNAME).xml $(DESTDIR)$(sysconfdir)/clixon
-	install -m 0644 autocli.xml $(DESTDIR)$(sysconfdir)/clixon
-	install -m 0644 restconf.xml $(DESTDIR)$(sysconfdir)/clixon
+	install -m 0644 autocli.xml $(DESTDIR)$(sysconfdir)/clixon/$(APPNAME)
+	install -m 0644 restconf.xml $(DESTDIR)$(sysconfdir)/clixon/$(APPNAME)
 	install -d -m 0755 $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
 	install -d -m 0755 $(DESTDIR)$(YANG_INSTALLDIR)
 	install -m 0644 $(YANGSPECS) $(DESTDIR)$(YANG_INSTALLDIR)

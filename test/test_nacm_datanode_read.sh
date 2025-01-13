@@ -27,6 +27,9 @@ fyang2=$dir/nacm-example2.yang
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config user false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -60,6 +63,7 @@ module nacm-example{
     prefix ex2;
   } 
   container table{
+    presence "Tests rely on empty table";
     container parameters{
       list parameter{
         key name;

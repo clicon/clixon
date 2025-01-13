@@ -93,6 +93,7 @@ APPSRC   += snmp_main.c
 APPSRC   += snmp_register.c
 APPSRC   += snmp_handler.c
 APPSRC   += snmp_lib.c
+APPSRC   += snmp_stream.c
 
 APPOBJ    = $(APPSRC:.c=.o)
 

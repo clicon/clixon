@@ -81,9 +81,11 @@ module $APPNAME{
    ex:e4 arg1{
       uses bar;
    }
-   
    extension posix-pattern {
       argument "pattern";
+   }
+   extension extra {
+      argument "pattern"{} /* See https://github.com/clicon/clixon/issues/554 */
    }
    typedef dotted-quad {
       description "Only present for complex parsing of unknown-stmt";

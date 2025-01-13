@@ -43,6 +43,8 @@
 #ifndef _CLIXON_XML_H
 #define _CLIXON_XML_H
 
+#include "clixon_yang.h"			/* for yang_stmt */
+
 /*
  * Constants
  */
@@ -170,24 +172,26 @@ typedef struct xml cxobj; /* struct defined in clicon_xml.c */
  *
  * @param[in]  x    XML node  
  * @param[in]  arg  General-purpose argument
- * @retval    -1    Error, aborted at first error encounter, return -1 to end user
- * @retval     0    OK, continue
- * @retval     1    Abort, dont continue with others, return 1 to end user
  * @retval     2    Locally abort this subtree, continue with others
+ * @retval     1    Abort, dont continue with others, return 1 to end user
+ * @retval     0    OK, continue
+ * @retval    -1    Error, aborted at first error encounter, return -1 to end user
  */
 typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 
 typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c */
 
 /* Alternative tree formats,
- * @see format_int2str, format_str2int
+ * @see format_int2str, format_str2int, datastore_format in clixon-lib.yang
  */
 enum format_enum{
     FORMAT_XML,
     FORMAT_JSON,
     FORMAT_TEXT,
     FORMAT_CLI,
-    FORMAT_NETCONF
+    FORMAT_NETCONF,  /* Last concrete format, used in code */
+    FORMAT_DEFAULT,  /* Indirect: actual value in CLICON_CLI_OUTPUT_FORMAT */
+    FORMAT_PIPE_XML_DEFAULT /* Meta: If pipe, xml, if not default */
 };
 
 /*
@@ -199,11 +203,13 @@ enum format_enum{
 #define XML_FLAG_ADD       0x04 /* Node is added (commits) or parent added rec*/
 #define XML_FLAG_DEL       0x08 /* Node is deleted (commits) or parent deleted rec */
 #define XML_FLAG_CHANGE    0x10 /* Node is changed (commits) or child changed rec */
-#define XML_FLAG_NONE      0x20 /* Node is added as NONE */
+#define XML_FLAG_NONE      0x20 /* Node is added as NETCONF edit-config operation=NONE */
 #define XML_FLAG_DEFAULT   0x40 /* Added when a value is set as default @see xml_default */
 #define XML_FLAG_TOP       0x80 /* Top datastore symbol */
 #define XML_FLAG_BODYKEY  0x100 /* Text parsing key to be translated from body to key */
 #define XML_FLAG_ANYDATA  0x200 /* Treat as anydata, eg mount-points before bound */
+#define XML_FLAG_CACHE_DIRTY 0x400 /* This part of XML tree is not synced to disk */
+#define XML_FLAG_SKIP      0x800 /* Node is skipped in xml_diff */
 
 /*
  * Prototypes
@@ -232,15 +238,6 @@ uint16_t  xml_flag(cxobj *xn, uint16_t flag);
 int       xml_flag_set(cxobj *xn, uint16_t flag);
 int       xml_flag_reset(cxobj *xn, uint16_t flag);
 
-int       xml_creator_add(cxobj *xn, char *name);
-int       xml_creator_rm(cxobj *xn, char *name);
-int       xml_creator_find(cxobj *xn, char *name);
-size_t    xml_creator_len(cxobj *xn);
-cvec     *xml_creator_get(cxobj *xn);
-int       xml_creator_copy_one(cxobj *x0, cxobj *x1);
-int       xml_creator_copy_all(cxobj *x0, cxobj *x1);
-int       xml_creator_print(FILE *f, cxobj *xn);
-
 char     *xml_value(cxobj *xn);
 int       xml_value_set(cxobj *xn, char *val);
 int       xml_value_append(cxobj *xn, char *val);
@@ -253,9 +250,10 @@ cxobj    *xml_child_i(cxobj *xn, int i);
 cxobj    *xml_child_i_type(cxobj *xn, int i, enum cxobj_type type);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
 int       xml_child_order(cxobj *xn, cxobj *xc);
+int       xml_vector_decrement(cxobj *x, int nr);
 cxobj    *xml_child_each(cxobj *xparent, cxobj *xprev,  enum cxobj_type type);
 cxobj    *xml_child_each_attr(cxobj *xparent, cxobj *xprev);
-int       xml_child_insert_pos(cxobj *x, cxobj *xc, int i);
+int       xml_child_insert_pos(cxobj *x, cxobj *xc, int pos);
 int       xml_childvec_set(cxobj *x, int len);
 cxobj   **xml_childvec_get(cxobj *x);
 int       clixon_child_xvec_append(cxobj *x, clixon_xvec *xv);
@@ -287,13 +285,10 @@ cxobj    *xml_find_type(cxobj *xn_parent, const char *prefix, const char *name, 
 char     *xml_find_value(cxobj *xn_parent, const char *name);
 char     *xml_find_body(cxobj *xn, const char *name);
 cxobj    *xml_find_body_obj(cxobj *xt, const char *name, char *val);
-
 int       xml_free(cxobj *xn);
-
 int       xml_copy_one(cxobj *xn0, cxobj *xn1);
 int       xml_copy(cxobj *x0, cxobj *x1);
 cxobj    *xml_dup(cxobj *x0);
-
 int       cxvec_dup(cxobj **vec0, int len0, cxobj ***vec1, int *len1);
 int       cxvec_append(cxobj *x, cxobj ***vec, int *len);
 int       cxvec_prepend(cxobj *x, cxobj ***vec, int *len);
@@ -302,14 +297,10 @@ int       xml_apply0(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *ar
 int       xml_apply_ancestor(cxobj *xn, xml_applyfn_t fn, void *arg);
 int       xml_isancestor(cxobj *x, cxobj *xp);
 cxobj    *xml_root(cxobj *xn);
-
 int       xml_operation(char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);
 int       xml_attr_insert2val(char *instr, enum insert_type *ins);
 cxobj    *xml_add_attr(cxobj *xn, char *name, char *value, char *prefix, char *ns);
-int       clixon_log_xml(clixon_handle h, int level, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 4, 5)));
-int       clixon_debug_xml(int dbglevel, cxobj *x, const char *format, ...)  __attribute__ ((format (printf, 3, 4)));
-
 #ifdef XML_EXPLICIT_INDEX
 int       xml_search_index_p(cxobj *x);
 int       xml_search_vector_get(cxobj *x, char *name, clixon_xvec **xvec);

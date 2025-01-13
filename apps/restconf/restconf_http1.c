@@ -67,6 +67,7 @@
 #include "clixon_http1_parse.h"
 #include "restconf_http1.h"
 #include "clixon_http_data.h"
+#include "restconf_stream.h"
 
 /* Size of xml read buffer */
 #define BUFLEN 1024
@@ -90,7 +91,7 @@ _http1_parse(clixon_handle  h,
     clixon_http1_yacc hy = {0,};
     int               ret;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s:\n%s", __FUNCTION__, str);
+    clixon_debug(CLIXON_DBG_PARSE, "%s", str);
     if (strlen(str) == 0)
         goto ok;
     hy.hy_parse_string = str;
@@ -119,7 +120,7 @@ _http1_parse(clixon_handle  h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
     return retval;
 }
 
@@ -147,7 +148,7 @@ clixon_http1_parse_file(clixon_handle  h,
     int   len = 0;
     int   oldbuflen;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, filename);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", filename);
     if (f == NULL){
         clixon_err(OE_RESTCONF, EINVAL, "f is NULL");
         goto done;
@@ -302,7 +303,7 @@ restconf_http1_reply(restconf_conn        *rc,
     int     retval = -1;
     cg_var *cv;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* If body, add a content-length header 
      *    A server MUST NOT send a Content-Length header field in any response
      * with a status code of 1xx (Informational) or 204 (No Content).  A
@@ -310,7 +311,7 @@ restconf_http1_reply(restconf_conn        *rc,
      * (Successful) response to a CONNECT request (Section 4.3.6 of
      * [RFC7231]).
      */
-    if (sd->sd_code != 204 && sd->sd_code > 199)
+    if (sd->sd_code != 204 && sd->sd_code > 199 && !rc->rc_event_stream)
         if (restconf_reply_header(sd, "Content-Length", "%zu", sd->sd_body_len) < 0)
             goto done;
     /* Create reply and write headers */
@@ -365,7 +366,7 @@ restconf_http1_path_root(clixon_handle  h,
     int                   ret;
 #endif
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "------------");
+    clixon_debug(CLIXON_DBG_RESTCONF, "------------");
     pretty = restconf_pretty_get(h);
     if ((sd = restconf_stream_find(rc, 0)) == NULL){
         clixon_err(OE_RESTCONF, EINVAL, "No stream_data");
@@ -450,6 +451,11 @@ restconf_http1_path_root(clixon_handle  h,
         if (api_http_data(h, sd, sd->sd_qvec) < 0)
             goto done;
     }
+    else if (api_path_is_stream(h)){
+        restconf_socket *rs = rc->rc_socket;
+        if (api_stream(h, sd, sd->sd_qvec, rs->rs_stream_timeout, NULL) < 0)
+            goto done;
+    }
     else
         sd->sd_code = 404; /* catch all without body/media */
  fail:
@@ -463,7 +469,7 @@ restconf_http1_path_root(clixon_handle  h,
             goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (subject)
         free(subject);
     if (xerr)

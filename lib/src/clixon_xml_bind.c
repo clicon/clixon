@@ -57,25 +57,24 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_string.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_string.h"
+#include "clixon_map.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_err.h"
-#include "clixon_string.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
-#include "clixon_yang_module.h"
 #include "clixon_yang_schema_mount.h"
-#include "clixon_plugin.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_xml_sort.h"
 #include "clixon_yang_type.h"
@@ -143,7 +142,6 @@ strip_body_objects(cxobj *xt)
  * @param[in]   h      Clixon handle
  * @param[in]   xt     XML tree node
  * @param[in]   xsibling
- * @param[in]   yspec  Top-level YANG spec / mount-point
  * @param[out]  xerr   Reason for failure, or NULL
  * @retval      2      OK Yang assignment not made because yang parent is anyxml or anydata
  * @retval      1      OK Yang assignment made
@@ -156,7 +154,6 @@ static int
 populate_self_parent(clixon_handle h,
                      cxobj        *xt,
                      cxobj        *xsibling,
-                     yang_stmt    *yspec,
                      cxobj       **xerr)
 {
     int        retval = -1;
@@ -449,7 +446,7 @@ xml_bind_yang0_opt(clixon_handle h,
             goto done;
         break;
     case YB_PARENT:
-        if ((ret = populate_self_parent(h, xt, xsibling, yspec, xerr)) < 0)
+        if ((ret = populate_self_parent(h, xt, xsibling, xerr)) < 0)
             goto done;
         break;
     default:
@@ -465,7 +462,7 @@ xml_bind_yang0_opt(clixon_handle h,
     ybc = YB_PARENT;
     if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
         yspec1 = NULL;
-        if ((ret = xml_yang_mount_get(h, xt, NULL, &yspec1)) < 0)
+        if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0) // XXX read här
             goto done;
         if (ret == 0)
             yspec1 = yspec;
@@ -475,14 +472,14 @@ xml_bind_yang0_opt(clixon_handle h,
             else if (h == NULL)
                 goto ok; /* treat as anydata */
             else{
-                if ((ret = yang_schema_yanglib_parse_mount(h, xt)) < 0)
+                if ((ret = yang_schema_yanglib_get_mount_parse(h, xt)) < 0)
                     goto done;
                 if (ret == 0){ /* Special flag if mount-point but no yanglib */
                     xml_flag_set(xt, XML_FLAG_ANYDATA);
                     goto ok;
                 }
                 /* Try again */
-                if ((ret = xml_yang_mount_get(h, xt, NULL, &yspec1)) < 0)
+                if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0)
                     goto done;
                 if (yspec1)
                     ybc = YB_MODULE;
@@ -558,7 +555,7 @@ xml_bind_yang0(clixon_handle h,
             goto done;
         break;
     case YB_PARENT:
-        if ((ret = populate_self_parent(h, xt, NULL, yspec, xerr)) < 0)
+        if ((ret = populate_self_parent(h, xt, NULL, xerr)) < 0)
             goto done;
         break;
     case YB_NONE:

@@ -76,16 +76,17 @@
 
 /* clixon */
 #include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_file.h"
+#include "clixon_hash.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_err.h"
-#include "clixon_file.h"
-#include "clixon_yang.h"
-#include "clixon_hash.h"
-#include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
@@ -105,7 +106,7 @@
 #define BUFLEN 1024
 
 /* Forward */
-static int yang_expand_grouping(yang_stmt *yn);
+static int yang_expand_grouping(clixon_handle h, yang_stmt *yn);
 
 /*! Resolve a grouping name from a module, includes looking in submodules
  */
@@ -119,6 +120,7 @@ ys_grouping_module_resolve(yang_stmt *ymod,
     yang_stmt *yrealmod = NULL;
     yang_stmt *ygrouping = NULL;
     char      *submname;
+    int        inext;
 
     /* Find grouping from own sub/module */
     if ((ygrouping = yang_find(ymod, Y_GROUPING, name)) != NULL)
@@ -132,8 +134,8 @@ ys_grouping_module_resolve(yang_stmt *ymod,
     if ((ygrouping = yang_find(yrealmod, Y_GROUPING, name)) != NULL)
         goto done;
     /* Find grouping from sub-modules */
-    yinc = NULL;
-    while ((yinc = yn_each(yrealmod, yinc)) != NULL){
+    inext = 0;
+    while ((yinc = yn_iter(yrealmod, &inext)) != NULL){
         if (yang_keyword_get(yinc) != Y_INCLUDE)
             continue;
         submname = yang_argument_get(yinc);
@@ -180,8 +182,8 @@ ys_grouping_resolve(yang_stmt  *yuses,
     else {
         ys = yuses;         /* Check upwards in hierarchy for matching groupings */
         while (1){
-            if (ys->ys_mymodule){
-                yp = ys->ys_mymodule;
+            if (yang_mymodule_get(ys)){
+                yp = yang_mymodule_get(ys);
             }
             else
                 if ((yp = yang_parent_get(ys)) == NULL)
@@ -203,6 +205,36 @@ ys_grouping_resolve(yang_stmt  *yuses,
     return retval;
 }
 
+/*! Recursively add pointer from derived node to original grouping
+ *
+ * Cannot use yang_apply since one needs to traverse two trees simultaneously
+ * @param[in] yp0  Original statement
+ * @param[in] yp1  Instantiated statement
+ * @retval    0    Ok
+ * @retval   -1    Error
+ */
+static int
+ys_add_orig_ptr(yang_stmt *yp0,
+                yang_stmt *yp1)
+{
+    int        retval = -1;
+    yang_stmt *y0;
+    yang_stmt *y1;
+    int        inext;
+
+    inext = 0;
+    while ((y1 = yn_iter(yp1, &inext)) != NULL) {
+        if ((y0 = yang_find(yp0, yang_keyword_get(y1), yang_argument_get(y1))) == NULL)
+            continue;
+        yang_orig_set(y1, y0);
+        if (ys_add_orig_ptr(y0, y1) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! This is an augment node, augment the original datamodel. 
  *
  * @param[in]  h    Clicon handle
@@ -221,6 +253,7 @@ ys_grouping_resolve(yang_stmt  *yuses,
  * @note If the augment has a when statement, which is commonplace, the when statement is not 
  * copied as datanodes are, since it should not apply to the target node. Instead it is added as 
  * a special "when" struct to the yang statements being inserted.
+ * @see yang_expand_uses_node  similar but for uses/grouping
  */
 static int
 yang_augment_node(clixon_handle h,
@@ -232,18 +265,18 @@ yang_augment_node(clixon_handle h,
     yang_stmt    *yc0;
     yang_stmt    *yc;
     yang_stmt    *ymod;
-    yang_stmt    *ywhen;
-    char         *wxpath = NULL; /* xpath of when statement */
-    cvec         *wnsc = NULL;   /* namespace context of when statement */
+    yang_stmt    *ywhen = NULL;
+    yang_stmt    *ywhen0;
     enum rfc_6020 targetkey;
     enum rfc_6020 childkey;
+    int           inext;
 
     if ((ymod = ys_module(ys)) == NULL){
         clixon_err(OE_YANG, 0, "My yang module not found");
         goto done;
     }
     schema_nodeid = yang_argument_get(ys);
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, schema_nodeid);
+    clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s", schema_nodeid);
     /* Find the target */
     if (yang_abs_schema_nodeid(ys, schema_nodeid, &ytarget) < 0)
         goto done;
@@ -275,14 +308,10 @@ yang_augment_node(clixon_handle h,
         goto ok;
 
     /* Find when statement, if present */
-    if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
-        wxpath = yang_argument_get(ywhen);
-        if (xml_nsctx_yang(ywhen, &wnsc) < 0)
-            goto done;
-    }
+    ywhen = yang_find(ys, Y_WHEN, NULL);
     /* Extend ytarget with ys' schemanode children */
-    yc0 = NULL;
-    while ((yc0 = yn_each(ys, yc0)) != NULL) {
+    inext = 0;
+    while ((yc0 = yn_iter(ys, &inext)) != NULL) {
         childkey = yang_keyword_get(yc0);
         /* Only shemanodes and extensions */
         if (!yang_schemanode(yc0) && childkey != Y_UNKNOWN
@@ -308,7 +337,7 @@ yang_augment_node(clixon_handle h,
                            yang_argument_get(yc0),
                            yang_key2str(childkey),
                            schema_nodeid);
-                goto ok;
+                continue;
             }
             break;
         case Y_CASE:
@@ -354,23 +383,36 @@ yang_augment_node(clixon_handle h,
         default:
             break;
         }
+        /* If expanded by uses / when */
         if ((yc = ys_dup(yc0)) == NULL)
             goto done;
 #ifdef YANG_GROUPING_AUGMENT_SKIP
         /* cornercase: always expand uses under augment */
         yang_flag_reset(yc, YANG_FLAG_GROUPING);
 #endif
-        yc->ys_mymodule = ymod;
-
+        yang_mymodule_set(yc, ymod);
+        /* Add backpointer to orig. */
+        yang_orig_set(yc, yc0);
+        if (ys_add_orig_ptr(yc0, yc) < 0)
+            goto done;
         if (yn_insert(ytarget, yc) < 0)
             goto done;
         /* If there is an associated when statement, add a special when struct to the yang 
          * see xml_yang_validate_all
          */
-        if (ywhen){
-            if (yang_when_xpath_set(yc, wxpath) < 0)
+        /* ywhen of uses node (already present) */
+        if ((ywhen0 = yang_when_get(h, yc0)) != NULL) {
+            if (yang_when_set(h, yc, ywhen0) < 0)
                 goto done;
-            if (yang_when_nsc_set(yc, wnsc) < 0)
+        }
+        /* ywhen of augmented node
+         * Note: double whens not supported
+         */
+        if (ywhen){
+            if (ywhen0 != NULL)
+                clixon_log(h, LOG_WARNING, "Warning: Double when statement, both augment and existing (uses) not supported in %s",
+                           yang_argument_get(ys_module(ys)));
+            if (yang_when_set(h, yc, ywhen) < 0)
                 goto done;
         }
         /* Note: ys_populate2 called as a special case here since the inserted child is
@@ -384,8 +426,6 @@ yang_augment_node(clixon_handle h,
  ok:
    retval = 0;
  done:
-    if (wnsc)
-        cvec_free(wnsc);
     return retval;
 }
 
@@ -405,9 +445,10 @@ yang_augment_module(clixon_handle h,
 {
     int        retval = -1;
     yang_stmt *ys;
+    int        inext;
 
-    ys = NULL;
-    while ((ys = yn_each(ymod, ys)) != NULL){
+    inext = 0;
+    while ((ys = yn_iter(ymod, &inext)) != NULL){
         switch (yang_keyword_get(ys)){
         case Y_AUGMENT: /* top-level */
             if (yang_augment_node(h, ys) < 0)
@@ -443,12 +484,13 @@ ys_do_refine(yang_stmt *yr,
     yang_stmt    *ytc; /* target child */
     enum rfc_6020 keyw;
     int           i;
+    int           inext;
 
     /* Loop through refine node children. First if remove do that first 
      * In some cases remove a set of nodes.
      */
-    yrc = NULL;
-    while ((yrc = yn_each(yr, yrc)) != NULL) {
+    inext = 0;
+    while ((yrc = yn_iter(yr, &inext)) != NULL) {
         keyw = yang_keyword_get(yrc);
         switch (keyw){
         case Y_DEFAULT: /* remove old, add new */
@@ -479,8 +521,8 @@ ys_do_refine(yang_stmt *yr,
         }
     }
     /* Second, add the node(s) */
-    yrc = NULL;
-    while ((yrc = yn_each(yr, yrc)) != NULL) {
+    inext = 0;
+    while ((yrc = yn_iter(yr, &inext)) != NULL) {
         keyw = yang_keyword_get(yrc);
         /* Make copy */
         if ((yrc1 = ys_dup(yrc)) == NULL)
@@ -526,41 +568,58 @@ ys_iskey(yang_stmt *y,
 
 /*! Helper function to yang_expand_grouping
  *
- * @param[in] yn     Yang parent node of uses ststement
- * @param[in] ys     Uses statement
- * @param[in] i
- * @retval    0      OK
- * @retval   -1      Error
+ * @param[in]  h   Clixon handle
+ * @param[in]  yn  Yang parent node of uses statement
+ * @param[in]  ys  Uses statement
+ * @param[in]  ysi ys is i:th element of yn:s children
+ * @retval     0   OK
+ * @retval    -1   Error
+ * @see yang_augment_node  similar but for augment
  */
 static int
-yang_expand_uses_node(yang_stmt *yn,
-                      yang_stmt *ys,
-                      int        i)
+yang_expand_uses_node(clixon_handle h,
+                      yang_stmt    *yn,
+                      yang_stmt    *ys,
+                      int           ysi)
 {
     int        retval = -1;
     char      *id = NULL;
     char      *prefix = NULL;
     yang_stmt *ygrouping;  /* grouping original */
     yang_stmt *ygrouping2; /* grouping copy */
+    yang_stmt *ygp;        /* parent of ygrouping */
     yang_stmt *yg;         /* grouping child */
     yang_stmt *yr;         /* refinement */
     yang_stmt *yp;
+    yang_stmt *ym;
     int        glen;
     size_t     size;
     int        j;
     int        k;
     yang_stmt *ywhen;
-    char      *wxpath = NULL; /* xpath of when statement */
-    cvec      *wnsc = NULL;   /* namespace context of when statement */
+    int        inext;
 
     /* Split argument into prefix and name */
     if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
         goto done;
+    ygrouping = NULL;
     if (ys_grouping_resolve(ys, prefix, id, &ygrouping) < 0)
         goto done;
     if (ygrouping == NULL){
-        clixon_log(NULL, LOG_NOTICE, "%s: Yang error : grouping \"%s\" not found in module \"%s\"",
-                   __FUNCTION__, yang_argument_get(ys), yang_argument_get(ys_module(ys)));
+        if ((ym = ys_module(yn)) != NULL){
+#ifdef YANG_SPEC_LINENR
+            clixon_err(OE_YANG, 0, "Yang error : grouping \"%s\" not found in module \"%s\" in file: %s:%u",
+                       yang_argument_get(ys), yang_argument_get(ys_module(ys)),
+                       yang_filename_get(ym), yang_linenum_get(yn));
+#else
+            clixon_err(OE_YANG, 0, "Yang error : grouping \"%s\" not found in module \"%s\" in file: %s",
+                       yang_argument_get(ys), yang_argument_get(ys_module(ys)),
+                       yang_filename_get(ym));
+#endif
+        }
+        else
+            clixon_err(OE_YANG, 0, "Yang error : grouping \"%s\" not found in module \"%s\"",
+                       yang_argument_get(ys), yang_argument_get(ys_module(ys)));
         goto done;
     }
     /* Check so that this uses statement is not a descendant of the grouping
@@ -581,25 +640,44 @@ yang_expand_uses_node(yang_stmt *yn,
          * A mark could be completely normal (several uses) or it could be a recursion.
          */
         yang_flag_set(ygrouping, YANG_FLAG_GROUPING); /* Mark as (being)  expanded */
-        if (yang_expand_grouping(ygrouping) < 0)
+        if (yang_expand_grouping(h, ygrouping) < 0)
             goto done;
     }
+    /* Find when statement, if present */
+    ywhen = yang_find(ys, Y_WHEN, NULL);
     /* Make a copy of the grouping, then make refinements to this copy
      * Note this ygrouping2 object does not have a parent and does not work in many
      * functions which assume a full hierarchy, use the original ygrouping in those cases.
      */
-    if ((ygrouping2 = ys_dup(ygrouping)) == NULL)
+    if ((ygrouping2 = ys_new(ygrouping->ys_keyword)) == NULL)
         goto done;
+    if (ys_cp_one(ygrouping2, ygrouping) < 0){
+        ys_free(ygrouping2);
+        goto done;
+    }
+    {
+        yang_stmt *ycn; /* new child */
+        yang_stmt *yco; /* old child */
+        int        i;
 
+        for (i=0; i<ygrouping2->ys_len; i++){
+            yco = ygrouping->ys_stmt[i];
+            if ((ycn = ys_dup(yco)) == NULL)
+                goto done;
+            ygrouping2->ys_stmt[i] = ycn;
+            ycn->ys_parent = ygrouping2;
+        }
+    }
     /* Only replace data/schemanodes and unknowns:
      * Compute the number of such nodes, and extend the child vector with that below
      */
     glen = 0;
-    yg = NULL;
-    while ((yg = yn_each(ygrouping2, yg)) != NULL) {
+    inext = 0;
+    while ((yg = yn_iter(ygrouping2, &inext)) != NULL) {
         if (yang_schemanode(yg) || yang_keyword_get(yg) == Y_UNKNOWN)
             glen++;
     }
+    ygp = yang_parent_get(ygrouping);
     /* 
      * yn is parent: the children of ygrouping replaces ys.
      * Is there a case when glen == 0?  YES AND THIS BREAKS
@@ -607,7 +685,7 @@ yang_expand_uses_node(yang_stmt *yn,
     if (glen > 0){
         int oldbuflen = yn->ys_len;
         /* size of existing elements up from i+1 (not uses-stmt) */
-        size = (yang_len_get(yn) - i - 1)*sizeof(struct yang_stmt *);
+        size = (yang_len_get(yn) - ysi - 1)*sizeof(struct yang_stmt *);
         yn->ys_len += glen;
         if ((yn->ys_stmt = realloc(yn->ys_stmt, (yang_len_get(yn))*sizeof(yang_stmt *))) == 0){
             clixon_err(OE_YANG, errno, "realloc");
@@ -619,25 +697,19 @@ yang_expand_uses_node(yang_stmt *yn,
         memset(&yn->ys_stmt[oldbuflen], 0, glen*sizeof(yang_stmt *));
         /* Move existing elements if any */
         if (size)
-            memmove(&yn->ys_stmt[i+glen+1], &yn->ys_stmt[i+1], size);
-    }
-    /* Find when statement, if present */
-    if ((ywhen = yang_find(ys, Y_WHEN, NULL)) != NULL){
-        wxpath = yang_argument_get(ywhen);
-        if (xml_nsctx_yang(ywhen, &wnsc) < 0)
-            goto done;
+            memmove(&yn->ys_stmt[ysi+glen+1], &yn->ys_stmt[ysi+1], size);
     }
     /* Note: yang_desc_schema_nodeid() requires ygrouping2 to be in yspec tree,
      * due to correct module prefixes etc.
      * cannot be dangling, insert into tree here and then prune immediately after while loop
      */
-    if (yn_insert(yang_parent_get(ygrouping), ygrouping2) < 0)
+    if (yn_insert(ygp, ygrouping2) < 0)
         goto done;
     /* Iterate through refinements and modify grouping copy 
      * See RFC 7950 7.13.2 yrt is the refine target node
      */
-    yr = NULL;
-    while ((yr = yn_each(ys, yr)) != NULL) {
+    inext = 0;
+    while ((yr = yn_iter(ys, &inext)) != NULL) {
         yang_stmt *yrt; /* refine target node */
         if (yang_keyword_get(yr) != Y_REFINE)
             continue;
@@ -658,6 +730,9 @@ yang_expand_uses_node(yang_stmt *yn,
     } /* while yr */
     /* Note: prune here to make dangling again after while loop */
     if (ys_prune_self(ygrouping2) < 0)
+        goto done;
+    /* Add backpointer to orig. */
+    if (ys_add_orig_ptr(ygrouping, ygrouping2) < 0)
         goto done;
     /* Then copy and insert each child element from ygrouping2 to yn */
     k=0;
@@ -683,15 +758,13 @@ yang_expand_uses_node(yang_stmt *yn,
                        );
                 goto done;
             }
-            if (yang_when_xpath_set(yg, wxpath) < 0)
-                goto done;
-            if (yang_when_nsc_set(yg, wnsc) < 0)
+            if (yang_when_set(h, yg, ywhen) < 0)
                 goto done;
         }
         /* This is for extensions that allow list keys to be optional, see restconf_main_extension_cb */
         if (yang_flag_get(ys, YANG_FLAG_NOKEY))
             yang_flag_set(yg, YANG_FLAG_NOKEY);
-        yn->ys_stmt[i+k+1] = yg;
+        yn->ys_stmt[ysi+k+1] = yg;
         yg->ys_parent = yn;
         yang_flag_set(yg, YANG_FLAG_GROUPING);
         k++;
@@ -701,8 +774,6 @@ yang_expand_uses_node(yang_stmt *yn,
     ys_free(ygrouping2);
     retval = 0;
  done:
-    if (wnsc)
-        cvec_free(wnsc);
     if (prefix)
         free(prefix);
     if (id)
@@ -720,12 +791,14 @@ yang_expand_uses_node(yang_stmt *yn,
  * until the contents of the grouping are added to the schema tree via a
  * "uses" statement that does not appear inside a "grouping" statement,
  * at which point they are bound to the namespace of the current module.
+ * @param[in]  h     Clixon handle (may be NULL)
  * @param[in] yn   Yang node for recursive iteration
  * @retval    0    OK
  * @retval   -1    Error
  */
 static int
-yang_expand_grouping(yang_stmt *yn)
+yang_expand_grouping(clixon_handle h,
+                     yang_stmt    *yn)
 {
     int        retval = -1;
     yang_stmt *ys = NULL;
@@ -738,7 +811,7 @@ yang_expand_grouping(yang_stmt *yn)
         switch (yang_keyword_get(ys)){
         case Y_USES:
             if (yang_flag_get(ys, YANG_FLAG_GROUPING) == 0){
-                if (yang_expand_uses_node(yn, ys, i) < 0)
+                if (yang_expand_uses_node(h, yn, ys, i) < 0)
                     goto done;
                 yang_flag_set(ys, YANG_FLAG_GROUPING);
             }
@@ -759,14 +832,12 @@ yang_expand_grouping(yang_stmt *yn)
              */
             if (yang_flag_get(ys, YANG_FLAG_GROUPING) == 0){
                 yang_flag_set(ys, YANG_FLAG_GROUPING); /* Mark as (being) expanded */
-                if (yang_expand_grouping(ys) < 0)
+                if (yang_expand_grouping(h, ys) < 0)
                     goto done;
             }
         }
-        else
-
-            {
-            if (yang_expand_grouping(ys) < 0)
+        else {
+            if (yang_expand_grouping(h, ys) < 0)
                 goto done;
         }
     }
@@ -795,6 +866,7 @@ yang_parse_str(char         *str,
     clixon_yang_yacc yy = {0,};
     yang_stmt       *ymod = NULL;
 
+    clixon_debug(CLIXON_DBG_PARSE, "%s", str);
     if (yspec == NULL){
         clixon_err(OE_YANG, 0, "Yang parse need top level yang spec");
         goto done;
@@ -831,7 +903,11 @@ yang_parse_str(char         *str,
     /* Add filename for debugging and errors, see also ys_linenum on (each symbol?) */
     if (yang_filename_set(ymod, name) < 0)
         goto done;
-  done:
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+    yspec_nscache_clear(yspec);
+#endif
+ done:
+    clixon_debug(CLIXON_DBG_PARSE, "retval:%p", ymod);
     ystack_pop(&yy);
     if (yy.yy_stack)
         free (yy.yy_stack);
@@ -913,7 +989,7 @@ filename2revision(const char *filename,
         clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DETAIL, "%s %s", __FUNCTION__, base);
+    clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s", base);
     if ((p = rindex(base, '.')) != NULL) /* strip postfix .yang */
         *p = '\0';
     if ((p = index(base, '@')) != NULL){ /* extract revision date */
@@ -932,31 +1008,44 @@ filename2revision(const char *filename,
     return retval;
 }
 
-/*! No specific revision give. Match a yang file given module 
+/*! Find matching YANG file given module name. No specific revision given
  *
+ * Look first in CLICON_YANG_MAIN_DIR for top-level, or CLICON_YANG_DOMAIN_DIR for specific domains.
+ * Then look in recursive CLICON_YANG_DIRs
  * @param[in]  h        CLICON handle
  * @param[in]  module   Name of main YANG module. 
  * @param[in]  revision Revision or NULL
+ * @param[in]  domain   YANG isolation device-domain or NULL for yang main
  * @param[out] fbuf     Buffer containing filename or NULL (if retval=1)
- * @retval     1        Match found, Most recent entry returned in fbuf
+ * @retval     1        Match found, Entry returned in fbuf if given
  * @retval     0        No matching entry found
  * @retval    -1        Error 
- * @note for bootstrapping, dir may have to be set.
-*/
+ * Returned entry in fbuf according to the following algorithm:
+ * 1) Exact or most recent revision match in CLICON_YANG_MAIN_DIR or CLICON_YANG_DOMAIN_DIR
+ * 2) Exact or most recent revision match in first CLICON_YANG_DIR recursively
+ * 3) Exact or most recent revision match in second CLICON_YANG_DIR
+ * 4) ...
+ * @note  This means that the most recent revision entry globally may not be returned,
+ *        only most recent in first first match
+ */
 int
 yang_file_find_match(clixon_handle h,
                      const char   *module,
                      const char   *revision,
+                     const char   *domain,
                      cbuf         *fbuf)
 {
-    int           retval = -1;
-    cbuf         *regex = NULL;
-    cxobj        *x;
-    cxobj        *xc;
-    char         *dir;
-    cvec         *cvv = NULL;
-    cg_var       *cv = NULL;
-    cg_var       *bestcv = NULL;
+    int            retval = -1;
+    cbuf          *regex = NULL;
+    cxobj         *x;
+    cxobj         *xc;
+    char          *dir;
+    cvec          *cvv = NULL;
+    cg_var        *cv = NULL;
+    cg_var        *bestcv = NULL;
+    cbuf          *cb = NULL;
+    struct dirent *dp = NULL;
+    int            ndp;
 
     /* get clicon config file in xml form */
     if ((x = clicon_conf_xml(h)) == NULL)
@@ -974,35 +1063,38 @@ yang_file_find_match(clixon_handle h,
     else
         cprintf(regex, "^%s(@[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])?(.yang)$",
                 module);
-    xc = NULL;
-
-    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
-        if (strcmp(xml_name(xc), "CLICON_YANG_MAIN_DIR") == 0){
-            struct dirent *dp = NULL;
-            int ndp;
-
-            dir = xml_body(xc);
-            /* get all matching files in this directory */
-            if ((ndp = clicon_file_dirent(dir,
-                                          &dp,
-                                          cbuf_get(regex),
-                                          S_IFREG)) < 0)
-                goto done;
-            /* Entries are sorted, last entry should be most recent date 
-             */
-            if (ndp != 0){
-                if (fbuf)
-                    cprintf(fbuf, "%s/%s", dir, dp[ndp-1].d_name);
-                if (dp)
-                    free(dp);
-                retval = 1;
-                goto done;
-            }
-            if (dp)
-                free(dp);
+    /* First look in Main YANG dir, either MAIN or DOMAIN */
+    if (domain != NULL &&
+        (dir = clicon_yang_domain_dir(h)) != NULL){
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
         }
-        else if (strcmp(xml_name(xc), "CLICON_YANG_DIR") == 0 &&
-                 (dir = xml_body(xc)) != NULL){
+        cprintf(cb, "%s/%s", dir, domain);
+        dir = cbuf_get(cb);
+    }
+    else
+        dir = clicon_yang_main_dir(h);
+    if (dir != NULL) {
+        /* get all matching files in this directory */
+        if ((ndp = clicon_file_dirent(dir,
+                                      &dp,
+                                      cbuf_get(regex),
+                                      S_IFREG)) < 0)
+        goto done;
+        /* Entries are sorted, last entry should be most recent date
+         */
+        if (ndp != 0){
+            if (fbuf)
+                cprintf(fbuf, "%s/%s", dir, dp[ndp-1].d_name);
+            goto found;
+        }
+    }
+    /* Second look in recursive YANG lib dirs */
+    xc = NULL;
+    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+        if (strcmp(xml_name(xc), "CLICON_YANG_DIR") == 0 &&
+            (dir = xml_body(xc)) != NULL){
             /* get all matching files in this directory recursively */
             if ((cvv = cvec_new(0)) == NULL){
                 clixon_err(OE_UNIX, errno, "cvec_new");
@@ -1024,8 +1116,7 @@ yang_file_find_match(clixon_handle h,
             if (bestcv){
                 if (fbuf)
                     cprintf(fbuf, "%s", cv_string_get(bestcv));      /* file path */
-                retval = 1; /* found */
-                goto done;
+                goto found;
             }
             if (cvv){
                 cvec_free(cvv);
@@ -1036,11 +1127,18 @@ yang_file_find_match(clixon_handle h,
 ok:
     retval = 0;
 done:
+    if (dp)
+        free(dp);
+    if (cb)
+        cbuf_free(cb);
     if (cvv)
         cvec_free(cvv);
     if (regex)
         cbuf_free(regex);
     return retval;
+ found:
+    retval = 1;
+    goto done;
 }
 
 /*! Open a file, read into a string and invoke yang parsing
@@ -1064,7 +1162,7 @@ yang_parse_filename(clixon_handle h,
     FILE         *fp = NULL;
     struct stat   st;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, filename);
+    clixon_debug(CLIXON_DBG_YANG, "%s", filename);
     if (stat(filename, &st) < 0){
         clixon_err(OE_YANG, errno, "%s not found", filename);
         goto done;
@@ -1091,9 +1189,10 @@ yang_parse_filename(clixon_handle h,
  * @param[in] module   Module name
  * @param[in] revision Revision (or NULL)
  * @param[in] yspec    Yang statement
+ * @param[in]  domain  YANG isolation device-domain or NULL for yang-main
  * @param[in] origname Name of yang module triggering this parsing, for logging
- * @retval    0        OK
- * @retval   -1        Error
+ * @retval    ymod     YANG (sub)module
+ * @retval    NULL     Failed
  *
  * See top of file for diagram of calling order
  * @note does not check wether the module is already loaded
@@ -1103,6 +1202,7 @@ yang_parse_module(clixon_handle h,
                   const char   *module,
                   const char   *revision,
                   yang_stmt    *yspec,
+                  char         *domain,
                   char         *origname)
 {
     cbuf      *fbuf = NULL;
@@ -1119,7 +1219,7 @@ yang_parse_module(clixon_handle h,
         goto done;
     }
     /* Match a yang file with or without revision in yang-dir list */
-    if ((nr = yang_file_find_match(h, module, revision, fbuf)) < 0)
+    if ((nr = yang_file_find_match(h, module, revision, domain, fbuf)) < 0)
         goto done;
     if (nr == 0){
         if ((cb = cbuf_new()) == NULL){
@@ -1189,7 +1289,7 @@ yang_parse_recurse(clixon_handle h,
                    yang_stmt    *ysp)
 {
     int           retval = -1;
-    yang_stmt    *yi = NULL; /* import */
+    yang_stmt    *yi; /* import */
     yang_stmt    *yrev;
     yang_stmt    *ybelongto;
     yang_stmt    *yrealmod;
@@ -1197,11 +1297,13 @@ yang_parse_recurse(clixon_handle h,
     char         *subrevision;
     yang_stmt    *subymod;
     enum rfc_6020 keyw;
+    int           inext;
 
     if (ys_real_module(ymod, &yrealmod) < 0)
         goto done;
     /* go through all import (modules) and include(submodules) of ysp */
-    while ((yi = yn_each(ymod, yi)) != NULL){
+    inext = 0;
+    while ((yi = yn_iter(ymod, &inext)) != NULL){
         keyw = yang_keyword_get(yi);
         if (keyw != Y_IMPORT && keyw != Y_INCLUDE)
             continue;
@@ -1217,7 +1319,7 @@ yang_parse_recurse(clixon_handle h,
                       keyw==Y_IMPORT?Y_MODULE:Y_SUBMODULE,
                       submodule) == NULL){
             /* recursive call */
-            if ((subymod = yang_parse_module(h, submodule, subrevision, ysp, yang_argument_get(ymod))) == NULL)
+            if ((subymod = yang_parse_module(h, submodule, subrevision, ysp, NULL, yang_argument_get(ymod))) == NULL)
                 goto done;
             /* Sanity check: if submodule, its belongs-to statement shall point to the module */
             if (keyw == Y_INCLUDE){
@@ -1266,6 +1368,7 @@ ys_list_check(clixon_handle h,
     yang_stmt    *yc = NULL;
     enum rfc_6020 keyw;
     yang_stmt    *yroot;
+    int           inext;
 
     /* This node is state, not config */
     if (yang_config_ancestor(ys) == 0)
@@ -1291,8 +1394,8 @@ ys_list_check(clixon_handle h,
     }
     /* Traverse subs */
     if (yang_schemanode(ys) || keyw == Y_MODULE || keyw == Y_SUBMODULE){
-        yc = NULL;
-        while ((yc = yn_each(ys, yc)) != NULL){
+        inext = 0;
+        while ((yc = yn_iter(ys, &inext)) != NULL){
             if (ys_list_check(h, yc) < 0)
                 goto done;
         }
@@ -1486,7 +1589,6 @@ yang_parse_post(clixon_handle h,
     for (i=modmin; i<modmax; i++)
         if (yang_apply(yang_child_i(yspec, i), Y_TYPE, ys_resolve_type, 1, h) < 0)
             goto done;
-
     /* Up to here resolving is made in the context they are defined, rather 
      * than the context they are used (except for submodules being merged w 
      * modules). Like static scoping. 
@@ -1500,7 +1602,7 @@ yang_parse_post(clixon_handle h,
      *    This alters the original YANG: after this all YANG uses have been expanded
      */
     for (i=0; i<ylen; i++){
-        if (yang_expand_grouping(ylist[i]) < 0)
+        if (yang_expand_grouping(h, ylist[i]) < 0)
             goto done;
     }
     /* 7: Top-level augmentation of all modules. 
@@ -1511,7 +1613,6 @@ yang_parse_post(clixon_handle h,
     for (i=0; i<ylen; i++)
         if (yang_augment_module(h, ylist[i]) < 0)
             goto done;
-
     /* 8: Check deviations: not-supported add/delete/replace statements 
      *    done late since eg groups must be expanded
      */
@@ -1579,7 +1680,7 @@ yang_spec_parse_module(clixon_handle h,
     if (yang_find_module_by_name_revision(yspec, name, revision) != NULL)
         goto ok;
     /* Find a yang module and parse it and all its submodules */
-    if (yang_parse_module(h, name, revision, yspec, NULL) == NULL)
+    if (yang_parse_module(h, name, revision, yspec, NULL, NULL) == NULL)
         goto done;
     if (yang_parse_post(h, yspec, modmin) < 0)
         goto done;
@@ -1682,7 +1783,7 @@ yang_spec_load_dir(clixon_handle h,
      * a@2000-01-01.yang, 
      * a@2111-11-11.yang
      */
-    if((ndp = clicon_file_dirent(dir, &dp, "(.yang)$", S_IFREG)) < 0)
+    if((ndp = clicon_file_dirent(dir, &dp, "\\.yang$", S_IFREG)) < 0)
         goto done;
     if (ndp == 0)
         goto ok;
@@ -1965,7 +2066,7 @@ ys_parse_sub(yang_stmt  *ys,
          * pass 1 is not yet resolved, only check syntax, actual feature check made in next pass
          * @see yang_features
          */
-        if (yang_subparse(yang_argument_get(ys), ys, YA_IF_FEATURE, filename, yang_linenum_get(ys), NULL, NULL) < 0)
+        if (yang_subparse(NULL, yang_argument_get(ys), ys, YA_IF_FEATURE, filename, yang_linenum_get(ys), NULL) < 0)
             goto done;
         break;
     case Y_AUGMENT: /* If parent is module/submodule: absolute-schema-nodeid
@@ -2011,3 +2112,59 @@ ys_parse_sub(yang_stmt  *ys,
         free(extra);
     return retval;
 }
+
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+int
+yspec_nscache_clear(yang_stmt *yspec)
+{
+    if (yspec->ys_nscache){         /* Clear cache */
+        free(yspec->ys_nscache);
+        yspec->ys_nscache = NULL;
+    }
+    return 0;
+}
+
+/*!
+ */
+yang_stmt *
+yspec_nscache_get(yang_stmt *yspec,
+                  char      *ns)
+{
+    if (yspec->ys_nscache == NULL){
+        if (yspec_nscache_new(yspec) < 0)
+            return NULL;
+    }
+    return clixon_str2ptr(yspec->ys_nscache, ns, yang_len_get(yspec));
+}
+
+/*!
+ */
+int
+yspec_nscache_new(yang_stmt *yspec)
+{
+    int          retval = -1;
+    map_str2ptr *mp;
+    yang_stmt   *ym;
+    int          i;
+    size_t       sz;
+
+    yspec_nscache_clear(yspec);
+    sz = sizeof(*yspec->ys_nscache);
+    if ((yspec->ys_nscache = calloc(yang_len_get(yspec)+1, sz)) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    for (i=0; i<yang_len_get(yspec); i++){
+        ym = yang_child_i(yspec, i);
+        if (yang_keyword_get(ym) != Y_MODULE)
+            continue;
+        mp = &yspec->ys_nscache[i];
+        mp->mp_str = yang_find_mynamespace(ym);
+        mp->mp_ptr = ym;
+    }
+    clixon_str2ptr_sort(yspec->ys_nscache, yang_len_get(yspec));
+    retval = 0;
+ done:
+    return retval;
+}
+#endif

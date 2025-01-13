@@ -63,8 +63,9 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
-#include "clixon_err.h"
 #include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_err.h"
 #include "clixon_yang_cardinality.h"
 
 /*
@@ -467,7 +468,7 @@ static const struct ycard *_yc_search[Y_SPEC][Y_SPEC] = {{0,},{0,}};
  * and = 0 in the following vector.
  * Example: Y_REFINE
  */
-static int _yc_exist[Y_SPEC] = {0,};
+static const struct ycard *_yc_exist[Y_SPEC] = {NULL,}; /* First */
 
 /*! Check cardinality, ie if each yang node has the expected nr of children 
  *
@@ -491,21 +492,23 @@ yang_cardinality(clixon_handle h,
     yang_stmt          *ys = NULL;
     int                 pk;
     int                 ck;
-    int                 i;
+    const struct ycard *yc0;
     const struct ycard *yc;
     int                 order;
     yang_stmt          *yprev = NULL;
     int                 nr;
+    int                 yc_count[Y_SPEC] = {0,};
+    int                 inext;
 
     pk = yang_keyword_get(yt);
-    if (_yc_exist[pk] == 0)
+    if ((yc0 = _yc_exist[pk]) == NULL)
         goto ok;
-    /* 1) For all children, if neither in 0..n, 0..1, 1 or 1..n   ->ERROR  
+    /* 1) For all children, if neither in 0..n, 0..1, 1 or 1..n   ->ERROR
      * Also: check monotonically increasing order
      */
     order = 0;
-    ys = NULL;
-    while ((ys = yn_each(yt, ys)) != NULL) {
+    inext = 0;
+    while ((ys = yn_iter(yt, &inext)) != NULL) {
         ck = yang_keyword_get(ys);
         if (pk == Y_UNKNOWN || ck == Y_UNKNOWN) /* special case */
             continue;
@@ -532,36 +535,33 @@ yang_cardinality(clixon_handle h,
         }
         if (order < yc->yc_order)
             order = yc->yc_order;
+        yc_count[yang_keyword_get(ys)]++; /* used in loop (2) */
+        /* 4) Recurse */
+        if (yang_cardinality(h, ys, modname) < 0)
+            goto done;
         yprev = ys;
-   }
-    /* 2) For all in 1 and 1..n list, if 0 such children          ->ERROR */
-    for (i=0; i<Y_SPEC; i++){
-        yc = _yc_search[pk][i];
-        if (yc == NULL)
-            continue;
+    }
+    /* 2) For all in 1 and 1..n list, if 0 such children -> ERROR
+     */
+    for (yc = yc0; (int)yc->yc_parent && yc->yc_parent == pk; yc++){
         if (yc->yc_min  &&
             yang_find(yt, yc->yc_child, NULL) == NULL){
             clixon_err(OE_YANG, 0, "%s: \"%s\" is missing but is mandatory child of \"%s\"",
                        modname, yang_key2str(yc->yc_child), yang_key2str(pk));
             goto done;
         }
-        if (yc->yc_max<NMAX &&
-            (nr = yang_match(yt, yc->yc_child, NULL)) > yc->yc_max){
-            clixon_err(OE_YANG, 0, "%s: \"%s\" has %d children of type \"%s\", but only %d allowed",
-                       modname,
-                       yang_key2str(pk),
-                       nr,
-                       yang_key2str(yc->yc_child),
-                       yc->yc_max);
-            goto done;
+        if (yc->yc_max<NMAX){
+            nr = yc_count[yc->yc_child];
+            if (nr > yc->yc_max){
+                clixon_err(OE_YANG, 0, "%s: \"%s\" has %d children of type \"%s\", but only %d allowed",
+                           modname,
+                           yang_key2str(pk),
+                           nr,
+                           yang_key2str(yc->yc_child),
+                           yc->yc_max);
+                goto done;
+            }
         }
-    }
-    /* 4) Recurse */
-    i = 0;
-    while (i< yang_len_get(yt)){ /* Note, children may be removed cant use yn_each */
-        ys = yang_child_i(yt, i++);
-        if (yang_cardinality(h, ys, modname) < 0)
-            goto done;
     }
  ok:
     retval = 0;
@@ -611,7 +611,8 @@ yang_cardinality_init(clixon_handle h)
      const struct ycard *yc;
 
      for (yc = &_yclist[0]; (int)yc->yc_parent; yc++){
-         _yc_exist[yc->yc_parent] = 1;
+         if (_yc_exist[yc->yc_parent] == NULL)
+             _yc_exist[yc->yc_parent] = yc;
          _yc_search[yc->yc_parent][yc->yc_child] = yc;
      }
      return 0;

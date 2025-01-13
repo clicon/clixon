@@ -651,6 +651,7 @@ LIBOBJS
 CLICON_GROUP
 CLICON_USER
 CLIGEN_DIR
+CAT_BIN
 WC_BIN
 TAIL_BIN
 GREP
@@ -693,9 +694,9 @@ INSTALL_DATA
 INSTALL_SCRIPT
 INSTALL_PROGRAM
 INCLUDES
+CLIXON_VERSION_PATCH
 CLIXON_VERSION_MINOR
 CLIXON_VERSION_MAJOR
-CLIXON_VERSION_STRING
 CLIXON_VERSION
 target_os
 target_vendor
@@ -2811,10 +2812,12 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # where autotool scripts are: install-sh, config.sub, config.guess
 
 
-CLIXON_VERSION_MAJOR="6"
-CLIXON_VERSION_MINOR="6"
-CLIXON_VERSION_PATCH="0"
-CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
+# Use GIT version (what if no git?)
+CLIXON_VERSION="$(./scripts/version.sh)"
+CLIXON_VERSION2=$(echo ${CLIXON_VERSION} | awk -F- '{print $1}')
+CLIXON_VERSION_MAJOR=$(echo ${CLIXON_VERSION2} | awk -F. '{print $1}')
+CLIXON_VERSION_MINOR=$(echo ${CLIXON_VERSION2} | awk -F. '{print $2}')
+CLIXON_VERSION_PATCH=$(echo ${CLIXON_VERSION2} | awk -F. '{print $3}')
 
 # Debug flag
 # Check whether --enable-debug was given.
@@ -2843,9 +2846,6 @@ fi
 
 ac_config_headers="$ac_config_headers include/clixon_config.h lib/clixon/clixon.h"
 
-
-
-printf "%s\n" "#define CLIXON_VERSION_STRING $CLIXON_VERSION" >>confdefs.h
 
 
 printf "%s\n" "#define CLIXON_VERSION_MAJOR $CLIXON_VERSION_MAJOR" >>confdefs.h
@@ -4013,7 +4013,7 @@ test -n "$target_alias" &&
   program_prefix=${target_alias}-
 
 # AC_SUBST(var) makes @var@ appear in makefiles.
-# clixon versions spread to Makefile's (.so files) and variable in build.c
+# Clixon versions is used in Makefile's (.so files) and variable in build.c
 
 
 
@@ -5305,11 +5305,11 @@ if test x$ac_prog_cxx_stdcxx = xno
 then :
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CXX option to enable C++11 features" >&5
 printf %s "checking for $CXX option to enable C++11 features... " >&6; }
-if test ${ac_cv_prog_cxx_11+y}
+if test ${ac_cv_prog_cxx_cxx11+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
-  ac_cv_prog_cxx_11=no
+  ac_cv_prog_cxx_cxx11=no
 ac_save_CXX=$CXX
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -5351,11 +5351,11 @@ if test x$ac_prog_cxx_stdcxx = xno
 then :
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CXX option to enable C++98 features" >&5
 printf %s "checking for $CXX option to enable C++98 features... " >&6; }
-if test ${ac_cv_prog_cxx_98+y}
+if test ${ac_cv_prog_cxx_cxx98+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
-  ac_cv_prog_cxx_98=no
+  ac_cv_prog_cxx_cxx98=no
 ac_save_CXX=$CXX
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -5904,6 +5904,54 @@ fi
 
 printf "%s\n" "#define WC_BIN \"$WC_BIN\"" >>confdefs.h
 
+# Extract the first word of "cat", so it can be a program name with args.
+set dummy cat; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_CAT_BIN+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $CAT_BIN in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_CAT_BIN="$CAT_BIN" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_CAT_BIN="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+CAT_BIN=$ac_cv_path_CAT_BIN
+if test -n "$CAT_BIN"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $CAT_BIN" >&5
+printf "%s\n" "$CAT_BIN" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+
+printf "%s\n" "#define CAT_BIN \"$CAT_BIN\"" >>confdefs.h
+
 
 # Get "bison" from bison -y or other string
 if test "$YACC" = "${YACC##bison}" ; then
@@ -6229,96 +6277,6 @@ fi
 printf "%s\n" "#define WITH_RESTCONF_FCGI 1" >>confdefs.h
  # For c-code that cant use strings
 elif test "x${with_restconf}" = xnative; then
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
-printf %s "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
-if test ${ac_cv_lib_ssl_OPENSSL_init_ssl_+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lssl  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-char OPENSSL_init_ssl  ();
-int
-main (void)
-{
-return OPENSSL_init_ssl  ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_ssl_OPENSSL_init_ssl_=yes
-else $as_nop
-  ac_cv_lib_ssl_OPENSSL_init_ssl_=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_OPENSSL_init_ssl_" >&5
-printf "%s\n" "$ac_cv_lib_ssl_OPENSSL_init_ssl_" >&6; }
-if test "x$ac_cv_lib_ssl_OPENSSL_init_ssl_" = xyes
-then :
-  printf "%s\n" "#define HAVE_LIBSSL 1" >>confdefs.h
-
-  LIBS="-lssl $LIBS"
-
-else $as_nop
-  as_fn_error $? "libssl missing" "$LINENO" 5
-fi
-
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for CRYPTO_new_ex_data in -lcrypto" >&5
-printf %s "checking for CRYPTO_new_ex_data in -lcrypto... " >&6; }
-if test ${ac_cv_lib_crypto_CRYPTO_new_ex_data+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcrypto  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-char CRYPTO_new_ex_data ();
-int
-main (void)
-{
-return CRYPTO_new_ex_data ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_crypto_CRYPTO_new_ex_data=yes
-else $as_nop
-  ac_cv_lib_crypto_CRYPTO_new_ex_data=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_CRYPTO_new_ex_data" >&5
-printf "%s\n" "$ac_cv_lib_crypto_CRYPTO_new_ex_data" >&6; }
-if test "x$ac_cv_lib_crypto_CRYPTO_new_ex_data" = xyes
-then :
-  printf "%s\n" "#define HAVE_LIBCRYPTO 1" >>confdefs.h
-
-  LIBS="-lcrypto $LIBS"
-
-else $as_nop
-  as_fn_error $? "libcrypto missing" "$LINENO" 5
-fi
-
    # Check if http/1 enabled
    # Check whether --enable-http1 was given.
 if test ${enable_http1+y}
@@ -6592,7 +6550,7 @@ printf "%s\n" "Generated YANGs from MIB files are expected to be in ${MIB_GENERA
 fi
 
 # Set default config file location
-CLIXON_DEFAULT_CONFIG=/usr/local/etc/clixon.xml
+CLIXON_DEFAULT_CONFIG=${SYSCONFDIR}/clixon.xml
 
 # Check whether --with-configfile was given.
 if test ${with_configfile+y}
@@ -6703,6 +6661,98 @@ then :
 
   LIBS="-ldl $LIBS"
 
+fi
+
+
+# This is for digest / restconf
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for CRYPTO_new_ex_data in -lcrypto" >&5
+printf %s "checking for CRYPTO_new_ex_data in -lcrypto... " >&6; }
+if test ${ac_cv_lib_crypto_CRYPTO_new_ex_data+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcrypto  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char CRYPTO_new_ex_data ();
+int
+main (void)
+{
+return CRYPTO_new_ex_data ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_crypto_CRYPTO_new_ex_data=yes
+else $as_nop
+  ac_cv_lib_crypto_CRYPTO_new_ex_data=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypto_CRYPTO_new_ex_data" >&5
+printf "%s\n" "$ac_cv_lib_crypto_CRYPTO_new_ex_data" >&6; }
+if test "x$ac_cv_lib_crypto_CRYPTO_new_ex_data" = xyes
+then :
+  printf "%s\n" "#define HAVE_LIBCRYPTO 1" >>confdefs.h
+
+  LIBS="-lcrypto $LIBS"
+
+else $as_nop
+  as_fn_error $? "libcrypto missing" "$LINENO" 5
+fi
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl  in -lssl" >&5
+printf %s "checking for OPENSSL_init_ssl  in -lssl... " >&6; }
+if test ${ac_cv_lib_ssl_OPENSSL_init_ssl_+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lssl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char OPENSSL_init_ssl  ();
+int
+main (void)
+{
+return OPENSSL_init_ssl  ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_ssl_OPENSSL_init_ssl_=yes
+else $as_nop
+  ac_cv_lib_ssl_OPENSSL_init_ssl_=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_OPENSSL_init_ssl_" >&5
+printf "%s\n" "$ac_cv_lib_ssl_OPENSSL_init_ssl_" >&6; }
+if test "x$ac_cv_lib_ssl_OPENSSL_init_ssl_" = xyes
+then :
+  printf "%s\n" "#define HAVE_LIBSSL 1" >>confdefs.h
+
+  LIBS="-lssl $LIBS"
+
+else $as_nop
+  as_fn_error $? "libssl missing" "$LINENO" 5
 fi
 
 
@@ -6953,6 +7003,15 @@ fi
 if test ${enable_nls+y}
 then :
   enableval=$enable_nls;
+fi
+
+
+# Check to use freebsd:s qsort_s instead of linux qsort_r
+ac_fn_c_check_func "$LINENO" "qsort_s" "ac_cv_func_qsort_s"
+if test "x$ac_cv_func_qsort_s" = xyes
+then :
+  printf "%s\n" "#define HAVE_QSORT_S 1" >>confdefs.h
+
 fi
 
 

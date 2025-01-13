@@ -1,14 +1,17 @@
 <clixon-config xmlns="http://clicon.org/config">
   <autocli>
-     <module-default>false</module-default>
+     <module-default>true</module-default>
      <list-keyword-default>kw-nokey</list-keyword-default>
      <treeref-state-default>false</treeref-state-default>
      <edit-mode-default>list container</edit-mode-default>
      <completion-default>true</completion-default>
      <rule>
-       <name>include clixon-example</name>
-       <module-name>clixon-example</module-name>
-       <operation>enable</operation>
+       <name>Exclude all ietf modules</name>
+       <description>
+         This is to avoid generating autocli rules for standard top-level IETF YANGs, such as NACM
+       </description>
+       <module-name>ietf-netconf-acm</module-name>
+       <operation>disable</operation>
      </rule>
   </autocli>
 </clixon-config>

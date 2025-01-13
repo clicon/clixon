@@ -50,11 +50,12 @@ extern "C" {
  * @note DUPLICATED in clixon_restconf.h
  */
 enum restconf_media{
-    YANG_DATA_JSON,  /* "application/yang-data+json" */
-    YANG_DATA_XML,   /* "application/yang-data+xml" */
-    YANG_PATCH_JSON, /* "application/yang-patch+json" */
-    YANG_PATCH_XML,  /* "application/yang-patch+xml" */
-    YANG_PAGINATION_XML, /* draft-wwlh-netconf-list-pagination-rc-02.txt */
+    YANG_DATA_JSON,      /* "application/yang-data+json" */
+    YANG_DATA_XML,       /* "application/yang-data+xml" */
+    YANG_PATCH_JSON,     /* "application/yang-patch+json" */
+    YANG_PATCH_XML,      /* "application/yang-patch+xml" */
+    YANG_PAGINATION_XML, /* draft-netconf-list-pagination-04.txt */
+    HTTP_DATA_TEXT_HTML  /* For http_data */
 };
 typedef enum restconf_media restconf_media;
 
@@ -84,6 +85,8 @@ typedef enum restconf_http_proto restconf_http_proto;
 int restconf_err2code(char *tag);
 const char *restconf_code2reason(int code);
 const restconf_media restconf_media_str2int(char *media);
+int   restconf_media_in_list(char *media, char *list);
+const restconf_media restconf_media_list_str2int(char *list);
 const char *restconf_media_int2str(restconf_media media);
 int   restconf_str2proto(char *str);
 const char *restconf_proto2str(int proto);

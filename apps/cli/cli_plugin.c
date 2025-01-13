@@ -413,11 +413,11 @@ clispec_load(clixon_handle h)
     /* Load all clispec .cli files in directory */
     if (clispec_dir){
         /* Get directory list of files */
-        if ((ndp = clicon_file_dirent(clispec_dir, &dp, "(.cli)$", S_IFREG)) < 0)
+        if ((ndp = clicon_file_dirent(clispec_dir, &dp, "\\.cli$", S_IFREG)) < 0)
             goto done;
         /* Load the syntax parse trees into cli_syntax stx structure */
         for (i = 0; i < ndp; i++) {
-            clixon_debug(CLIXON_DBG_DEFAULT, "Loading clispec syntax: '%s/%s'",
+            clixon_debug(CLIXON_DBG_CLI, "Loading clispec syntax: '%s/%s'",
                          clispec_dir, dp[i].d_name);
             if (clispec_load_file(h, dp[i].d_name, clispec_dir, ptall, modes) < 0)
                 goto done;
@@ -487,8 +487,10 @@ cli_handler_err(FILE *f)
 {
     if (clixon_err_category()){
         /* Check if error is already logged on stderr */
-        if ((clixon_get_logflags() & CLIXON_LOG_STDERR) == 0){
-            fprintf(f,  "%s: %s", clixon_err_str(), clixon_err_reason());
+        if ((clixon_logflags_get() & CLIXON_LOG_STDERR) == 0){
+            if (clixon_err_category() != -1)
+                fprintf(f,  "%s: ", clixon_err_str());
+            fprintf(f,  "%s", clixon_err_reason());
             if (clixon_err_subnr())
                 fprintf(f, ": %s", strerror(clixon_err_subnr()));
             fprintf(f,  "\n");
@@ -535,7 +537,7 @@ clicon_parse(clixon_handle  h,
     pt_head          *ph;
 
     ch = cli_cligen(h);
-    if (clixon_get_logflags()&CLIXON_LOG_STDOUT)
+    if (clixon_logflags_get()&CLIXON_LOG_STDOUT)
         f = stdout;
     else
         f = stderr;
@@ -553,7 +555,7 @@ clicon_parse(clixon_handle  h,
         if (cliread_parse(ch, cmd, pt, &match_obj, &cvv, result, &reason) < 0)
             goto done;
         /* Debug command and result code */
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s result:%d command: \"%s\"", __FUNCTION__, *result, cmd);
+        clixon_debug(CLIXON_DBG_CLI, "result:%d command: \"%s\"", *result, cmd);
         switch (*result) {
         case CG_EOF: /* eof */
         case CG_ERROR:
@@ -746,7 +748,6 @@ clicon_cliread(clixon_handle h,
             goto done;
         goto fail;
     }
-
     retval = 1;
  done:
     if (pfmt)
@@ -795,4 +796,3 @@ cli_syntax_mode(clixon_handle h)
         return NULL;
     return cligen_ph_name_get(ph);
 }
-

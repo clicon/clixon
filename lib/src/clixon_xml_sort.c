@@ -41,6 +41,7 @@
 #endif
 
 #include <stdio.h>
+#define __USE_GNU /* for qsort_r or qsort_s */
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
@@ -55,15 +56,17 @@
 
 /* clixon */
 #include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_xml_nsctx.h"
+#include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
@@ -165,7 +168,7 @@ xml_cv_cache_clear(cxobj *xt)
  * @param[in]  same  If set, x1 and x2 are member of same parent & enumeration 
  *                   is used (see explanation below)
  * @param[in]  skip1 Key matching skipped for keys not in x1 (see explanation)
- * @param[in]  explicit For list nodes, use explicit index variables, not keys
+ * @param[in]  indexvar For (leaf)list nodes, use explicit index variable xpaths
  * @retval     0     If equal
  * @retval    <0     If x1 is less than x2
  * @retval    >0     If x1 is greater than x2
@@ -272,6 +275,7 @@ xml_cmp(cxobj  *x1,
      * existing list.
      */
     if (same &&
+        indexvar == NULL &&
         (
 #ifndef STATE_ORDERED_BY_SYSTEM
          yang_config(y1)==0 ||
@@ -282,8 +286,25 @@ xml_cmp(cxobj  *x1,
         }
     switch (yang_keyword_get(y1)){
     case Y_LEAF_LIST: /* Match with name and value */
+#ifdef XML_EXPLICIT_INDEX
+        if (indexvar){
+            if ((x1b = xpath_first(x1, 0, "%s", indexvar)) != NULL)
+                b1 = xml_body(x1b);
+            else
+                b1 = NULL;
+            if ((x2b = xpath_first(x2, 0, "%s", indexvar)) != NULL)
+                b2 = xml_body(x2b);
+            else
+                b2 = NULL;
+        }
+        else {
+            b1 = xml_body(x1);
+            b2 = xml_body(x2);
+        }
+#else
         b1 = xml_body(x1);
         b2 = xml_body(x2);
+#endif
         if (b1 == NULL && b2 == NULL)
             ;
         else if (b1 == NULL)
@@ -308,8 +329,8 @@ xml_cmp(cxobj  *x1,
     case Y_LIST: /* Match with key values  */
         if (indexvar != NULL){
 #ifdef XML_EXPLICIT_INDEX
-            x1b = xml_find(x1, indexvar);
-            x2b = xml_find(x2, indexvar);
+            x1b = xpath_first(x1, 0, "%s", indexvar);
+            x2b = xpath_first(x2, 0, "%s", indexvar);
             if (x1b == NULL && x2b == NULL)
                 ;
             else if (x1b == NULL)
@@ -386,7 +407,7 @@ xml_cmp(cxobj  *x1,
         break;
     } /* switch */
  done:
-    clixon_debug(CLIXON_DBG_EXTRA, "%s %s %s eq:%d nr: %d %d yi: %d %d", __FUNCTION__, xml_name(x1), xml_name(x2), equal, nr1, nr2, yi1, yi2);
+    clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL2, "%s %s eq:%d nr: %d %d yi: %d %d", xml_name(x1), xml_name(x2), equal, nr1, nr2, yi1, yi2);
     return equal;
 }
 
@@ -395,19 +416,39 @@ xml_cmp(cxobj  *x1,
  * @note args are pointer to pointers, to fit into qsort cmp function
  */
 static int
-xml_cmp_qsort(const void* arg1,
-              const void* arg2)
+xml_cmp_qsort(const void *arg1,
+              const void *arg2,
+              void       *indexvar)
 {
-    return xml_cmp(*(struct xml**)arg1, *(struct xml**)arg2, 1, 0, NULL);
+    return xml_cmp(*(struct xml**)arg1, *(struct xml**)arg2, 1, 0, indexvar);
+}
+
+/*! Sort children of an XML node using an index
+ *
+ * @param[in] x        XML node
+ * @param[in] indexvar Descendant-schema-nodeid
+ * @retval    0        OK, all nodes traversed (subparts may have been skipped)
+ */
+int
+xml_sort_by(cxobj *x,
+            char  *indexvar)
+{
+    xml_enumerate_children(x); /* This is to make sorting "stable", ie not change existing order */
+#ifdef HAVE_QSORT_S    
+    qsort_s(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, indexvar);
+#else
+    qsort_r(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, indexvar);
+#endif
+    return 0;
 }
 
 /*! Sort children of an XML node 
  *
  * Assume populated by yang spec.
- * @param[in] x0   XML node
- * @retval     1    OK, aborted on first fn returned 1
- * @retval     0    OK, all nodes traversed (subparts may have been skipped)
- * @retval    -1    Error, aborted at first error encounter
+ * @param[in] x   XML node
+ * @retval    1   OK, aborted on first fn returned 1
+ * @retval    0   OK, all nodes traversed (subparts may have been skipped)
+ * @retval   -1   Error, aborted at first error encounter
  * @see xml_apply  - typically called by recursive apply function
  * @see xml_sort_verify
  */
@@ -422,7 +463,11 @@ xml_sort(cxobj *x)
         return 1;
 #endif
     xml_enumerate_children(x); /* This is to make sorting "stable", ie not change existing order */
-    qsort(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort);
+#ifdef HAVE_QSORT_S
+    qsort_s(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, NULL);
+#else
+    qsort_r(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, NULL);
+#endif
     return 0;
 }
 
@@ -1011,12 +1056,8 @@ xml_insert2(cxobj           *xp,
     }
     xc = xml_child_i(xp, mid);
     if ((yc = xml_spec(xc)) == NULL){
-        if (xml_type(xc) != CX_ELMNT)
-            clixon_err(OE_XML, 0, "No spec found %s (wrong xml type:%s)",
-                       xml_name(xc), xml_type2str(xml_type(xc)));
-        else
-            clixon_err(OE_XML, 0, "No spec found %s", xml_name(xc));
-        goto done;
+        /* These are eg attributes, like a NETCONF message */
+        cmp = 1;
     }
     if (yc == yn){ /* Same yang */
         if (userorder){ /* append: increment linearly until no longer equal */
@@ -1400,7 +1441,7 @@ xml_find_index_yang(cxobj       *xp,
                 revert++;
                 break;
             }
-            if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
+            if (xml_chardata_encode(&encstr, 0, "%s", cv_string_get(cvi)) < 0)
                 goto done;
             cprintf(cb, "<%s>%s</%s>", kname, encstr, kname);
             free(encstr);
@@ -1416,7 +1457,7 @@ xml_find_index_yang(cxobj       *xp,
             goto done;
         }
         cvi = cvec_i(cvk, 0);
-        if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", cv_string_get(cvi)) < 0)
             goto done;
         cprintf(cb, "<%s>%s</%s>", name, encstr, name);
         free(encstr);
@@ -1436,7 +1477,7 @@ xml_find_index_yang(cxobj       *xp,
             yang_flag_get(yi, YANG_FLAG_INDEX) == 0)
             goto revert;
         cbuf_reset(cb);
-        if (xml_chardata_encode(&encstr, "%s", cv_string_get(cvi)) < 0)
+        if (xml_chardata_encode(&encstr, 0, "%s", cv_string_get(cvi)) < 0)
             goto done;
         cprintf(cb, "<%s><%s>%s</%s></%s>", name, iname, encstr, iname, name);
         free(encstr);

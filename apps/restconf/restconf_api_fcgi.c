@@ -67,7 +67,6 @@
 #include "restconf_lib.h"
 #include "restconf_api.h"  /* Virtual api */
 
-
 /*! HTTP headers done, if there is a message body coming next
  *
  * @param[in]  req   Fastcgi request handle
@@ -78,7 +77,7 @@
  * XXX may be unecessary (or body start or something)
  */
 FCGX_Request *
-restconf_reply_body_start(void  *req0)
+restconf_reply_body_start(void *req0)
 {
     FCGX_Request *req = (FCGX_Request *)req0;
 
@@ -102,10 +101,10 @@ restconf_reply_header(void       *req0,
                       ...)
 {
     FCGX_Request *req = (FCGX_Request *)req0;
-    int        retval = -1;
-    size_t     vlen;
-    char      *value = NULL;
-    va_list    ap;
+    int           retval = -1;
+    size_t        vlen;
+    char         *value = NULL;
+    va_list       ap;
 
     if (req == NULL || name == NULL || vfmt == NULL){
         clixon_err(OE_CFG, EINVAL, "req, name or value is NULL");
@@ -151,11 +150,11 @@ restconf_reply_body_add(void     *req0,
                         ...)
 {
     FCGX_Request *req = (FCGX_Request *)req0;
-    int     retval = -1;
-    size_t  sz;
-    size_t  blen;
-    char   *body = NULL;
-    va_list ap;
+    int           retval = -1;
+    size_t        sz;
+    size_t        blen;
+    char         *body = NULL;
+    va_list       ap;
 
     if (req == NULL || bfmt == NULL){
         clixon_err(OE_CFG, EINVAL, "req or body is NULL");
@@ -208,7 +207,7 @@ restconf_reply_send(void  *req0,
 {
     FCGX_Request *req = (FCGX_Request *)req0;
     int           retval = -1;
-    const char *reason_phrase;
+    const char   *reason_phrase;
 
     FCGX_SetExitStatus(code, req->out);
     if ((reason_phrase = restconf_code2reason(code)) == NULL)
@@ -241,8 +240,8 @@ cbuf *
 restconf_get_indata(void *req0)
 {
     FCGX_Request *req = (FCGX_Request *)req0;
-    int   c;
-    cbuf *cb = NULL;
+    int           c;
+    cbuf         *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL)
         return NULL;

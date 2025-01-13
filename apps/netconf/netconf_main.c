@@ -116,7 +116,7 @@ netconf_add_request_attr(cxobj *xrpc,
         if (xml_find_type(xrep, NULL, xml_name(xa), CX_ATTR) != NULL)
             continue; /* Skip already present (dont overwrite) */
         /* Filter all clixon-lib attributes and namespace declaration 
-         * to acvoid leaking internal attributes to external NETCONF
+         * to avoid leaking internal attributes to external NETCONF
          * note this is only done on top-level.
          */
         if (xml_prefix(xa) && strcmp(xml_prefix(xa), CLIXON_LIB_PREFIX) == 0)
@@ -159,7 +159,7 @@ netconf_hello_msg(clixon_handle h,
     int     foundbase_11 = 0;
     char   *body;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_NETCONF, "");
     _netconf_hello_nr++;
     if (xml_find_type(xn, NULL, "session-id", CX_ELMNT) != NULL) {
         clixon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1");
@@ -179,12 +179,12 @@ netconf_hello_msg(clixon_handle h,
              * event any parameters are encoded at the end of the URI string. */
             if (strncmp(body, NETCONF_BASE_CAPABILITY_1_0, strlen(NETCONF_BASE_CAPABILITY_1_0)) == 0){ /* RFC 4741 */
                 foundbase_10++;
-                clixon_debug(CLIXON_DBG_DEFAULT, "%s foundbase10", __FUNCTION__);
+                clixon_debug(CLIXON_DBG_NETCONF, "foundbase10");
             }
             else if (strncmp(body, NETCONF_BASE_CAPABILITY_1_1, strlen(NETCONF_BASE_CAPABILITY_1_1)) == 0 &&
                      clicon_option_int(h, "CLICON_NETCONF_BASE_CAPABILITY") > 0){ /* RFC 6241 */
                 foundbase_11++;
-                clixon_debug(CLIXON_DBG_DEFAULT, "%s foundbase11", __FUNCTION__);
+                clixon_debug(CLIXON_DBG_NETCONF, "foundbase11");
                 clicon_data_int_set(h, NETCONF_FRAMING_TYPE, NETCONF_SSH_CHUNKED); /* enable chunked enc */
             }
         }
@@ -334,8 +334,8 @@ netconf_input_packet(clixon_handle h,
     cxobj  *xret = NULL;
     netconf_framing_type framing;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    clixon_debug_xml(1, xreq, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_NETCONF, "");
+    clixon_debug_xml(CLIXON_DBG_NETCONF, xreq, "");
     rpcname = xml_name(xreq);
     rpcprefix = xml_prefix(xreq);
     framing = clicon_data_int_get(h, NETCONF_FRAMING_TYPE);
@@ -469,14 +469,17 @@ netconf_input_cb(int   s,
                                &eom) < 0)
             goto done;
         if (eom == 0){ /* frame not complete */
-            clixon_debug(CLIXON_DBG_DETAIL, "%s: frame: %lu", __FUNCTION__, cbuf_len(cbmsg));
+            clixon_debug(CLIXON_DBG_NETCONF | CLIXON_DBG_DETAIL, "frame: %lu", cbuf_len(cbmsg));
             /* Extra data to read, save data and continue on next round */
             if (clicon_hash_add(cdat, NETCONF_FRAME_MSG, &cbmsg, sizeof(cbmsg)) == NULL)
                 goto done;
             cbmsg = NULL;
             break;
         }
-        clixon_debug(CLIXON_DBG_MSG, "Recv ext: %s", cbuf_get(cbmsg));
+        if (clixon_debug_detail())
+            clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv ext: %s", cbuf_get(cbmsg));
+        else
+            clixon_debug(CLIXON_DBG_MSG, "Recv ext len: %lu", cbuf_len(cbmsg));
         if ((ret = netconf_input_frame2(cbmsg, YB_RPC, yspec, &xtop, &xerr)) < 0)
             goto done;
         cbuf_reset(cbmsg);
@@ -511,7 +514,7 @@ netconf_input_cb(int   s,
         }
     }
     if (eof){ /* socket closed / read returns 0 */
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s len==0, closing", __FUNCTION__);
+        clixon_debug(CLIXON_DBG_NETCONF, "len==0, closing");
         clixon_event_unreg_fd(s, netconf_input_cb);
         close(s);
         clixon_exit_set(1);
@@ -575,7 +578,6 @@ send_hello(clixon_handle h,
 static int
 netconf_terminate(clixon_handle h)
 {
-    yang_stmt  *yspec;
     cvec       *nsctx;
     cxobj      *x;
 
@@ -584,10 +586,7 @@ netconf_terminate(clixon_handle h)
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
     clicon_rpc_close_session(h);
-    if ((yspec = clicon_dbspec_yang(h)) != NULL)
-        ys_free(yspec);
-    if ((yspec = clicon_config_yang(h)) != NULL)
-        ys_free(yspec);
+    yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
@@ -637,7 +636,7 @@ usage(clixon_handle h,
             "where options are\n"
             "\t-h\t\tHelp\n"
             "\t-V \t\tPrint version and exit\n"
-            "\t-D <level>\tDebug level\n"
+            "\t-D <level>\tDebug level (see available levels below)\n"
             "\t-f <file>\tConfiguration file (mandatory)\n"
             "\t-E <dir> \tExtra configuration file directory\n"
             "\t-l <s|e|o|n|f<file>> \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (syslog is default)\n"
@@ -657,6 +656,9 @@ usage(clixon_handle h,
             argv0,
             clicon_netconf_dir(h)
             );
+    fprintf(stderr, "Debug keys: ");
+    clixon_debug_key_dump(stderr);
+    fprintf(stderr, "\n");
     exit(0);
 }
 
@@ -684,6 +686,7 @@ main(int    argc,
     int              config_dump = 0;
     enum format_enum config_dump_format = FORMAT_XML;
     int              print_version = 0;
+    int32_t          d;
 
     /* Create handle */
     if ((h = clixon_handle_init()) == NULL)
@@ -700,20 +703,24 @@ main(int    argc,
     }
     if (clicon_username_set(h, pw->pw_name) < 0)
         goto done;
-    while ((c = getopt(argc, argv, NETCONF_OPTS)) != -1)
+    while ((c = getopt(argc, argv, NETCONF_OPTS)) != -1) {
         switch (c) {
         case 'h' : /* help */
             usage(h, argv[0]);
             break;
         case 'V': /* version */
-            cligen_output(stdout, "Clixon version %s\n", CLIXON_VERSION_STRING);
+            cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION);
             print_version++; /* plugins may also print versions w ca-version callback */
             break;
-        case 'D' : /* debug */
-            if (sscanf(optarg, "%d", &dbg) != 1)
+        case 'D' :  /* debug */
+            /* Try first symbolic, then numeric match */
+            if ((d = clixon_debug_str2key(optarg)) < 0 &&
+                sscanf(optarg, "%u", &d) != 1){
                 usage(h, argv[0]);
+            }
+            dbg |= d;
             break;
-         case 'f': /* override config file */
+        case 'f': /* override config file */
             if (!strlen(optarg))
                 usage(h, argv[0]);
             clicon_option_str_set(h, "CLICON_CONFIGFILE", optarg);
@@ -723,15 +730,22 @@ main(int    argc,
                 usage(h, argv[0]);
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
-         case 'l': /* Log destination: s|e|o */
-            if ((logdst = clixon_log_opt(optarg[0])) < 0)
-                usage(h, argv[0]);
-            if (logdst == CLIXON_LOG_FILE &&
-                strlen(optarg)>1 &&
-                clixon_log_file(optarg+1) < 0)
-                goto done;
-             break;
+        case 'l': /* Log destination: s|e|o */
+            d = 0;
+            if ((d = clixon_logdst_str2key(optarg)) < 0){
+                if (optarg[0] == 'f'){ /* Check for special -lf<file> syntax */
+                    d = CLIXON_LOG_FILE;
+                    if (strlen(optarg) > 1 &&
+                        clixon_log_file(optarg+1) < 0)
+                        goto done;
+                }
+                else
+                    usage(h, argv[0]);
+            }
+            logdst = d;
+            break;
         }
+    }
 
     /* 
      * Logs, error and debug to stderr or syslog, set debug level
@@ -824,6 +838,9 @@ main(int    argc,
     argc -= optind;
     argv += optind;
 
+    /* Read debug and log options from config file if not given by command-line */
+    if (clixon_options_main_helper(h, dbg, logdst, __PROGRAM__) < 0)
+        goto done;
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
 
@@ -851,13 +868,13 @@ main(int    argc,
     /* Initialize plugin module by creating a handle holding plugin and callback lists */
     if (clixon_plugin_module_init(h) < 0)
         goto done;
+    yang_start(h);
     /* In case ietf-yang-metadata is loaded by application, handle annotation extension */
     if (yang_metadata_init(h) < 0)
         goto done;
     /* Create top-level yang spec and store as option */
-    if ((yspec = yspec_new()) == NULL)
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_DATA_TOP)) == NULL)
         goto done;
-    clicon_dbspec_yang_set(h, yspec);
 
     /* Load netconf plugins before yangs are loaded (eg extension callbacks) */
     if ((dir = clicon_netconf_dir(h)) != NULL &&
@@ -867,7 +884,7 @@ main(int    argc,
     if (print_version){
         if (clixon_plugin_version_all(h, stdout) < 0)
             goto done;
-        exit(0);
+        goto ok;
     }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
@@ -889,7 +906,7 @@ main(int    argc,
     /* Load clixon lib yang module */
     if (yang_spec_parse_module(h, "clixon-lib", NULL, yspec) < 0)
         goto done;
-     /* Load yang module library, RFC7895 */
+    /* Load yang module library, RFC7895 */
     if (yang_modules_init(h) < 0)
         goto done;
     /* Add netconf yang spec, used by netconf client and as internal protocol */
@@ -914,7 +931,7 @@ main(int    argc,
         goto ok;
     }
     /* Debug dump of config options */
-    clicon_option_dump(h, 1);
+    clicon_option_dump(h, CLIXON_DBG_INIT);
 
     /* Send hello request to backend to get session-id back
      * This is done once at the beginning of the session and then this is
@@ -935,7 +952,7 @@ main(int    argc,
     }
 #ifdef __AFL_HAVE_MANUAL_CONTROL
     /* American fuzzy loop deferred init, see CLICON_NETCONF_HELLO_OPTIONAL=true, see a speedup of x10 */
-        __AFL_INIT();
+    __AFL_INIT();
 #endif
     if (clixon_event_reg_fd(0, netconf_input_cb, h, "netconf socket") < 0)
         goto done;
@@ -950,12 +967,12 @@ main(int    argc,
         goto done;
  ok:
     retval = 0;
-  done:
+ done:
     if (ignore_packet_errors)
         retval = 0;
     clixon_exit_set(1); /* This is to disable resend mechanism in close-session */
-    netconf_terminate(h);
     clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
     clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+    netconf_terminate(h);
     return retval;
 }

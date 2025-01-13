@@ -76,19 +76,19 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_string.h"
 #include "clixon_handle.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_parse.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
@@ -122,7 +122,6 @@ xml_parse_content(clixon_xml_yacc *xy,
     int    retval = -1;
     cxobj *xn = xy->xy_xelement;
     cxobj *xp = xy->xy_xparent;
-
 
     xy->xy_xelement = NULL; /* init */
     if (xn == NULL){
@@ -450,7 +449,7 @@ element1    :  ESLASH         {_XY->xy_xelement = NULL;
             | '>'             { xml_parse_endslash_pre(_XY); }
               elist           { xml_parse_endslash_mid(_XY); }
               endtag          { xml_parse_endslash_post(_XY);
-                               _PARSE_DEBUG("element1 -> > elist endtag");}
+                               _PARSE_DEBUG("element1 -> elist endtag");}
             ;
 
 endtag      : BSLASH NAME '>'
@@ -487,7 +486,6 @@ pi          : BQMARK NAME EQMARK {_PARSE_DEBUG("pi -> <? NAME ?>"); free($2); }
                 { _PARSE_DEBUG("pi -> <? NAME STRING ?>"); free($2); free($3);}
             ;
 
-
 attrs       : attrs attr { _PARSE_DEBUG("attrs -> attrs attr"); }
             |            { _PARSE_DEBUG("attrs ->"); }
             ;
@@ -505,4 +503,3 @@ attvalue    : '\"' STRING '\"'   { $$=$2; /* $2 must be consumed */}
             ;
 
 %%
-

@@ -93,7 +93,8 @@ db_merge(clixon_handle h,
     /* Merge xml into db2. Without commit */
     retval = xmldb_put(h, (char*)db2, OP_MERGE, xt, clicon_username_get(h), cbret);
  done:
-    xmldb_get0_free(h, &xt);
+    if (xt)
+        xml_free(xt);
     return retval;
 }
 
@@ -111,7 +112,6 @@ OK:
 running                         |--------+------------> RUNNING
                 parse validate OK       / commit 
 startup -------+--+-------+------------+          
-
 
 INVALID (requires manual edit of candidate)
 failsafe      ----------------------+
@@ -279,9 +279,9 @@ tmp     |-------+-----+-----+
              reset   extrafile
  */
 int
-startup_extraxml(clixon_handle        h,
-                 char                *file,
-                 cbuf                *cbret)
+startup_extraxml(clixon_handle h,
+                 char         *file,
+                 cbuf         *cbret)
 {
     int         retval = -1;
     char       *tmp_db = "tmp";
@@ -308,8 +308,12 @@ startup_extraxml(clixon_handle        h,
      * It should be empty if extra-xml is null and reset plugins did nothing
      * then skip validation.
      */
-    if (xmldb_get(h, tmp_db, NULL, NULL, &xt0) < 0)
+    if ((ret = xmldb_get0(h, tmp_db, YB_MODULE, NULL, NULL, 1, 0, &xt0, NULL, NULL)) < 0)
         goto done;
+    if (ret == 0){
+        clixon_err(OE_DB, 0, "Error when reading from %s, unknown error", tmp_db);
+        goto done;
+    }
     if ((ret = xmldb_empty_get(h, tmp_db)) < 0)
         goto done;
     if (ret == 1)
@@ -324,6 +328,9 @@ startup_extraxml(clixon_handle        h,
         goto fail;
     if (xt==NULL || xml_child_nr(xt)==0)
         goto ok;
+    /* Ensure yang bindings and defaults that were scratched in startup_validate */
+    if (xmldb_populate(h, tmp_db) < 0)
+        goto done;
     /* Merge tmp into running (no commit) */
     if ((ret = db_merge(h, tmp_db, "running", cbret)) < 0)
         goto fail;
@@ -332,9 +339,10 @@ startup_extraxml(clixon_handle        h,
  ok:
     retval = 1;
  done:
+    if (xt)
+        xml_free(xt);
     if (xt0)
         xml_free(xt0);
-    xmldb_get0_free(h, &xt);
     if (xmldb_delete(h, tmp_db) != 0 && errno != ENOENT)
         return -1;
     return retval;

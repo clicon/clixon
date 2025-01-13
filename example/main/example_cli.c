@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,18 +25,19 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
- * 
-  * The example have the following optional arguments that you can pass as 
+  *
+  * The example have the following optional arguments that you can pass as
   * argc/argv after -- in clixon_cli:
   *  -m <yang> Mount this yang on mountpoint
   *  -M <namespace> Namespace of mountpoint, note both -m and -M must exist
+  * Note module-set hard-coded to "mylabel"
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,17 +45,26 @@
 #include <errno.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <signal.h>
+#include <pwd.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>
 #include <netinet/in.h>
-#include <signal.h> /* matching strings */
 
 /* clixon */
 #include <cligen/cligen.h>
 #include <clixon/clixon.h>
 #include <clixon/clixon_cli.h>
 #include <clixon/cli_generate.h>
+
+/*! Error/log message callback
+ *
+ * Start cli with -- -e
+ * make errmsg/logmsg callback
+ */
+static errmsg_t *_errmsg_callback_fn = NULL;
 
 /*! Yang schema mount
  *
@@ -64,7 +74,9 @@
 static char *_mount_yang = NULL;
 static char *_mount_namespace = NULL;
 
-/*! Example cli function 
+static clixon_plugin_api api;
+
+/*! Example cli function
  */
 int
 mycallback(clixon_handle h,
@@ -100,7 +112,85 @@ mycallback(clixon_handle h,
     return retval;
 }
 
-/*! Example "downcall", ie initiate an RPC to the backend 
+/*! Start bash from cli callback
+ *
+ * Typical usage: shell("System Bash") <source:rest>, cli_start_shell();
+ * @param[in]   h     Clixon handle
+ * @param[in]   cvv   Vector of command variables
+ * @param[in]   argv  [<shell>], defaults to "sh"
+ * @retval      0     OK
+ * @retval     -1     Error
+ * @note  Code potentially unsafe
+ */
+int
+cli_start_shell(clixon_handle h,
+                cvec         *cvv,
+                cvec         *argv)
+{
+    int            retval = -1;
+    char          *cmd;
+    char          *shcmd = "sh";
+    struct passwd *pw;
+    char           bcmd[128];
+    cg_var        *cv1 = cvec_i(cvv, 1);
+    sigset_t       oldsigset;
+    struct sigaction oldsigaction[32] = {{{0,},},};
+
+    if (cvec_len(argv) > 1){
+        clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: [<shell>]",
+                   cvec_len(argv));
+        goto done;
+    }
+    if (cvec_len(argv) == 1){
+        shcmd = cv_string_get(cvec_i(argv, 0));
+    }
+    cmd = (cvec_len(cvv)>1 ? cv_string_get(cv1) : NULL);
+    if ((pw = getpwuid(getuid())) == NULL){
+        clixon_err(OE_UNIX, errno, "getpwuid");
+        goto done;
+    }
+    if (chdir(pw->pw_dir) < 0){
+        clixon_err(OE_UNIX, errno, "chdir");
+        endpwent();
+        goto done;
+    }
+    endpwent();
+
+    if (clixon_signal_save(&oldsigset, oldsigaction) < 0)
+        goto done;
+    cli_signal_flush(h);
+    cli_signal_unblock(h);
+    if (cmd){
+        snprintf(bcmd, 128, "%s -c \"%s\"", shcmd, cmd);
+        if (system(bcmd) < 0){
+            cli_signal_block(h);
+            clixon_err(OE_UNIX, errno, "system(bash -c)");
+            goto done;
+        }
+    }
+    else{
+        snprintf(bcmd, 128, "%s ", shcmd); /* -l (login shell) but is applicable to bash only */
+        if (system(bcmd) < 0){
+            cli_signal_block(h);
+            clixon_err(OE_UNIX, errno, "system(bash)");
+            goto done;
+        }
+    }
+    cli_signal_block(h);
+#if 0 /* Allow errcodes from bash */
+    if (retval != 0){
+        clixon_err(OE_UNIX, errno, "system(%s) %d", cmd, retval);
+        goto done;
+    }
+#endif
+    if (clixon_signal_restore(&oldsigset, oldsigaction) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Example "downcall", ie initiate an RPC to the backend
  */
 int
 example_client_rpc(clixon_handle h,
@@ -212,7 +302,7 @@ example_cli_yang_mount(clixon_handle   h,
         }
         cprintf(cb, "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">");
         cprintf(cb, "<module-set>");
-        cprintf(cb, "<name>mount</name>");
+        cprintf(cb, "<name>mylabel</name>");
         cprintf(cb, "<module>");
         /* In yang name+namespace is mandatory, but not revision */
         cprintf(cb, "<name>%s</name>", _mount_yang); // mandatory
@@ -226,7 +316,6 @@ example_cli_yang_mount(clixon_handle   h,
         if (xml_rootchild(*yanglib, 0, yanglib) < 0)
             goto done;
     }
-
     retval = 0;
  done:
     if (cb)
@@ -234,48 +323,122 @@ example_cli_yang_mount(clixon_handle   h,
     return retval;
 }
 
-/*! Callback to customize Netconf error message
+/*! Callback to customize log, error, or debug message
  *
- * @param[in]  h       Clixon handle
- * @param[in]  xerr    Netconf error message on the level: <rpc-error>
- * @param[out] cberr   Translation from netconf err to cbuf.
- * @retval     0       OK, with cberr set
- * @retval    -1       Error
- * @see netconf_err2cb  this errmsg is the same as the default
+ * @param[in]     h        Clixon handle
+ * @param[in]     fn       Inline function name (when called from clixon_err() macro)
+ * @param[in]     line     Inline file line number (when called from clixon_err() macro)
+ * @param[in]     type     Log message type
+ * @param[in,out] category Clixon error category, See enum clixon_err
+ * @param[in,out] suberr   Error number, typically errno
+ * @param[in]     xerr     Netconf error xml tree on the form: <rpc-error>
+ * @param[in]     format   Format string
+ * @param[in]     ap       Variable argument list
+ * @param[out]    cbmsg    Log string as cbuf, if set bypass ordinary logging
+ * @retval        0        OK
+ * @retval       -1        Error
+ * When cbmsg is set by a plugin, no other plugins are called. category and suberr
+ * can be rewritten by any plugin.
  */
 int
-example_cli_errmsg(clixon_handle h,
-                   cxobj        *xerr,
-                   cbuf         *cberr)
+myerrmsg(clixon_handle        h,
+         const char          *fn,
+         const int            line,
+         enum clixon_log_type type,
+         int                 *category,
+         int                 *suberr,
+         cxobj               *xerr,
+         const char          *format,
+         va_list              ap,
+         cbuf               **cbmsg)
 {
     int    retval = -1;
-    cxobj *x;
-    
-    if ((x = xml_find_type(xerr, NULL, "error-type", CX_ELMNT)) != NULL)
-        cprintf(cberr, "%s ", xml_body(x));
-    if ((x = xml_find_type(xerr, NULL, "error-tag", CX_ELMNT)) != NULL)
-        cprintf(cberr, "%s ", xml_body(x));
-    if ((x = xml_find_type(xerr, NULL, "error-message", CX_ELMNT)) != NULL)
-        cprintf(cberr, "%s ", xml_body(x));
-    if ((x = xml_find_type(xerr, NULL, "error-info", CX_ELMNT)) != NULL &&
-        xml_child_nr(x) > 0){
-        if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
-            goto done;
+    cbuf  *cb = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
+        goto done;
     }
-    if ((x = xml_find_type(xerr, NULL, "error-app-tag", CX_ELMNT)) != NULL)
-        cprintf(cberr, ": %s ", xml_body(x));
-    if ((x = xml_find_type(xerr, NULL, "error-path", CX_ELMNT)) != NULL)
-        cprintf(cberr, ": %s ", xml_body(x));
+    // XXX Number of args in ap (eg %:s) must be known
+    // vcprintf(cb, "My new err-string %s : %s", ap);
+    cprintf(cb, "My new err-string");
+    if (category)
+        *category = -1;
+    if (suberr)
+        *suberr = 0;
+    *cbmsg = cb;
     retval = 0;
  done:
     return retval;
 }
 
+/*! Example cli function which redirects customized error to myerrmsg above
+ */
+int
+myerror(clixon_handle h,
+        cvec         *cvv,
+        cvec         *argv)
+{
+    int       retval = -1;
+    cxobj    *xret = NULL;
+    errmsg_t *oldfn = NULL;
+
+    _errmsg_callback_fn = myerrmsg;
+#ifdef DYNAMICLINKAGE
+    /* This does not link statically */
+    if (cli_remove(h, cvv, argv) < 0)
+        goto done;
+#endif
+    retval = 0;
+#ifdef DYNAMICLINKAGE
+ done:
+#endif
+    _errmsg_callback_fn = oldfn;
+    if (xret)
+        xml_free(xret);
+    return retval;
+}
+
+/*! Callback to customize log, error, or debug message
+ *
+ * @param[in]     h        Clixon handle
+ * @param[in]     fn       Inline function name (when called from clixon_err() macro)
+ * @param[in]     line     Inline file line number (when called from clixon_err() macro)
+ * @param[in]     type     Log message type
+ * @param[in,out] category Clixon error category, See enum clixon_err
+ * @param[in,out] suberr   Error number, typically errno
+ * @param[in]     xerr     Netconf error xml tree on the form: <rpc-error>
+ * @param[in]     format   Format string
+ * @param[in]     ap       Variable argument list
+ * @param[out]    cbmsg    Log string as cbuf, if set bypass ordinary logging
+ * @retval        0        OK
+ * @retval       -1        Error
+ * When cbmsg is set by a plugin, no other plugins are called. category and suberr
+ * can be rewritten by any plugin.
+ */
+int
+example_cli_errmsg(clixon_handle        h,
+                   const char          *fn,
+                   const int            line,
+                   enum clixon_log_type type,
+                   int                 *category,
+                   int                 *suberr,
+                   cxobj               *xerr,
+                   const char          *format,
+                   va_list              ap,
+                   cbuf               **cbmsg)
+{
+    if (_errmsg_callback_fn != NULL){
+        return (_errmsg_callback_fn)(h, fn, line, type, category, suberr, xerr, format, ap, cbmsg);
+    }
+    return 0;
+}
+
 /*! Callback for printing version output and exit
  *
- * A plugin can customize a version (or banner) output on stdout. 
+ * A plugin can customize a version (or banner) output on stdout.
  * Several version strings can be printed if there are multiple callbacks.
- * If not regstered plugins exist, clixon prints CLIXON_VERSION_STRING
+ * If no registered plugins exist, clixon prints CLIXON_VERSION
  * Typically invoked by command-line option -V
  * @param[in]  h   Clixon handle
  * @param[in]  f   Output file
@@ -297,7 +460,7 @@ static clixon_plugin_api api = {
     NULL,                                   /* start */
     NULL,                                   /* exit */
     .ca_yang_mount= example_cli_yang_mount, /* RFC 8528 schema mount */
-    .ca_errmsg    = example_cli_errmsg,     /* customize errmsg */
+    .ca_errmsg = example_cli_errmsg,        /* customize log, error, debug message */
     .ca_version   = example_version         /* Customized version string */
 };
 
@@ -342,4 +505,3 @@ clixon_plugin_init(clixon_handle h)
     return NULL;
 }
 #endif /* CLIXON_STATIC_PLUGINS */
-

@@ -55,6 +55,8 @@
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
@@ -300,7 +302,7 @@ pidfile_write(char *pidfile)
         clixon_err(OE_DAEMON, errno, "Could not write pid to %s", pidfile);
         goto done;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "Opened pidfile %s with pid %d", pidfile, getpid());
+    clixon_debug(CLIXON_DBG_INIT, "Opened pidfile %s with pid %d", pidfile, getpid());
     retval = 0;
  done:
     if (f != NULL)

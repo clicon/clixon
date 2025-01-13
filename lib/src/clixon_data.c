@@ -60,15 +60,15 @@
 #include <cligen/cligen.h>
 
 /* clixon */
-#include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_queue.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_xml_sort.h"
 #include "clixon_yang_module.h"
 #include "clixon_options.h"
@@ -85,7 +85,7 @@
  * @param[out] val  Data value as string
  * @retval     0    OK
  * @retval    -1    Not found (or error)
- * @see clicon_option_str
+ * @see clicon_option_str  For file options
  */
 int
 clicon_data_get(clixon_handle h,
@@ -281,11 +281,11 @@ clicon_data_int_get(clixon_handle h,
     return atoi(s);
 }
 
-/*! Set a single string data via handle
+/*! Set a single int data via handle
  *
  * @param[in] h       clixon_handle
  * @param[in] name    option name
- * @param[in] val     option value, must be null-terminated string
+ * @param[in] val     option value
  * @retval    0       OK
  * @retval   -1       Error
  */
@@ -318,7 +318,34 @@ clicon_data_int_del(clixon_handle h,
     return clicon_hash_del(cdat, (char*)name);
 }
 
-/*! Get data yangspec, yspec 
+/*! Get top-level yang mounts
+ *
+ * @param[in]  h     Clixon handle
+ * @retval     ymnts Yang mounts
+ */
+yang_stmt *
+clixon_yang_mounts_get(clixon_handle h)
+{
+    yang_stmt *ys = NULL;
+
+    if (clicon_ptr_get(h, "yang-mounts", (void**)&ys) < 0)
+        return NULL;
+    return ys;
+}
+
+/*! Set top-level yang mounts
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  yspec Yang spec (malloced pointer)
+ */
+int
+clixon_yang_mounts_set(clixon_handle h,
+                       yang_stmt    *ys)
+{
+    return clicon_ptr_set(h, "yang-mounts", ys);
+}
+
+/*! Get data yangspec, yspec
  *
  * @param[in]  h     Clixon handle
  * @retval     yspec Yang spec
@@ -327,24 +354,14 @@ clicon_data_int_del(clixon_handle h,
 yang_stmt *
 clicon_dbspec_yang(clixon_handle h)
 {
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
     yang_stmt *ys = NULL;
 
-    if (clicon_ptr_get(h, "dbspec_yang", (void**)&ys) < 0)
-        return NULL;
+    if ((ymounts = clixon_yang_mounts_get(h)) != NULL &&
+        (ydomain = yang_find(ymounts, Y_DOMAIN, YANG_DOMAIN_TOP)) != NULL)
+        ys = yang_find(ydomain, Y_SPEC, YANG_DATA_TOP);
     return ys;
-}
-
-/*! Set yang specification for application specifications
- *
- * @param[in]  h     Clixon handle
- * @param[in]  yspec Yang spec (malloced pointer)
- * @see clicon_config_yang_set  for the configuration yang
- */
-int
-clicon_dbspec_yang_set(clixon_handle h,
-                       yang_stmt    *ys)
-{
-    return clicon_ptr_set(h, "dbspec_yang", ys);
 }
 
 /*! Get YANG specification for clixon config (separate from application yangs)
@@ -356,24 +373,14 @@ clicon_dbspec_yang_set(clixon_handle h,
 yang_stmt *
 clicon_config_yang(clixon_handle h)
 {
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
     yang_stmt *ys = NULL;
 
-    if (clicon_ptr_get(h, "control_yang", (void**)&ys) < 0)
-        return NULL;
+    if ((ymounts = clixon_yang_mounts_get(h)) != NULL &&
+        (ydomain = yang_find(ymounts, Y_DOMAIN, YANG_DOMAIN_TOP)) != NULL)
+        ys = yang_find(ydomain, Y_SPEC, YANG_CONFIG_TOP);
     return ys;
-}
-
-/*! Set yang specification for configuration
- *
- * @param[in]  h     Clixon handle
- * @param[in]  yspec Yang spec (malloced pointer)
- * @see clicon_dbspec_yang_set  for the application specs
- */
-int
-clicon_config_yang_set(clixon_handle   h,
-                       yang_stmt      *ys)
-{
-    return clicon_ptr_set(h, "control_yang", ys);
 }
 
 /*! Get YANG specification for external NACM (separate from application yangs)
@@ -385,24 +392,14 @@ clicon_config_yang_set(clixon_handle   h,
 yang_stmt *
 clicon_nacm_ext_yang(clixon_handle h)
 {
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
     yang_stmt *ys = NULL;
 
-    if (clicon_ptr_get(h, "nacm_ext_yang", (void**)&ys) < 0)
-        return NULL;
+    if ((ymounts = clixon_yang_mounts_get(h)) != NULL &&
+        (ydomain = yang_find(ymounts, Y_DOMAIN, YANG_DOMAIN_TOP)) != NULL)
+        ys = yang_find(ydomain, Y_SPEC, YANG_NACM_TOP);
     return ys;
-}
-
-/*! Set yang specification for external NACM
- *
- * @param[in]  h     Clixon handle
- * @param[in]  yspec Yang spec (malloced pointer)
- * @see clicon_nacm_ext_set  for external NACM XML
- */
-int
-clicon_nacm_ext_yang_set(clixon_handle   h,
-                         yang_stmt      *ys)
-{
-    return clicon_ptr_set(h, "nacm_ext_yang", ys);
 }
 
 /*! Get Global "canonical" namespace context
@@ -572,8 +569,9 @@ clicon_conf_autocli(clixon_handle h)
 {
     cxobj  *xconfig = NULL;
 
-    if ((xconfig = clicon_conf_xml(h)) != NULL)          /* Get local config */
-        return xpath_first(xconfig, NULL, "autocli");
+    if ((xconfig = clicon_conf_xml(h)) != NULL){          /* Get local config */
+        return xml_find_type(xconfig, NULL, "autocli", CX_ELMNT);
+    }
     return NULL;
 }
 
@@ -862,46 +860,6 @@ clicon_argv_set(clixon_handle h,
     if (argvv)
         free(argvv);
     return retval;
-}
-
-/*! Get xml database element including id, xml cache, empty on startup and dirty bit
- *
- * @param[in]  h    Clixon handle
- * @param[in]  db   Name of database
- * @retval     de   Database element
- * @retval     NULL None found
- */
-db_elmnt *
-clicon_db_elmnt_get(clixon_handle h,
-                    const char   *db)
-{
-    clicon_hash_t *cdat = clicon_db_elmnt(h);
-    void          *p;
-
-    if ((p = clicon_hash_value(cdat, db, NULL)) != NULL)
-        return (db_elmnt *)p;
-    return NULL;
-}
-
-/*! Set xml database element including id, xml cache, empty on startup and dirty bit
- *
- * @param[in] h   Clixon handle
- * @param[in] db  Name of database
- * @param[in] de  Database element
- * @retval    0   OK
- * @retval   -1   Error
- * @see xmldb_disconnect
-*/
-int
-clicon_db_elmnt_set(clixon_handle h,
-                    const char   *db,
-                    db_elmnt     *de)
-{
-    clicon_hash_t  *cdat = clicon_db_elmnt(h);
-
-    if (clicon_hash_add(cdat, db, de, sizeof(*de))==NULL)
-        return -1;
-    return 0;
 }
 
 /*! Get session id

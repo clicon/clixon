@@ -119,17 +119,17 @@
 #include "clixon_string.h"
 #include "clixon_hash.h"
 #include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
 #include "clixon_path.h"
 #include "clixon_instance_id_parse.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s))
 #else
 #define _PARSE_DEBUG(s)
 #endif
@@ -167,7 +167,7 @@ static clixon_path *
 path_append(clixon_path *list,
             clixon_path *new)
 {
-    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (new == NULL)
         return NULL;
     ADDQ(new, list);
@@ -183,7 +183,7 @@ static clixon_path *
 path_add_keyvalue(clixon_path *cp,
                   cvec        *cvk)
 {
-    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cp == NULL)
         goto done;
     cp->cp_cvk = cvk;
@@ -197,7 +197,7 @@ path_new(char *prefix,
 {
     clixon_path *cp = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, prefix, id);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s(%s,%s)", __FUNCTION__, prefix, id);
     if ((cp = malloc(sizeof(*cp))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
         goto done;
@@ -227,7 +227,7 @@ keyval_pos(char *uint)
     char   *reason=NULL;
     int     ret;
     
-    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s)", __FUNCTION__, uint);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s(%s)", __FUNCTION__, uint);
     if ((cvv = cvec_new(1)) == NULL) {
         clixon_err(OE_UNIX, errno, "cvec_new");
         goto done;
@@ -261,7 +261,7 @@ static cvec *
 keyval_add(cvec   *cvv,
            cg_var *cv)
 {
-    clixon_debug(CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s()", __FUNCTION__);
     if (cv == NULL)
         goto done;
     if (cvv == NULL &&
@@ -287,7 +287,7 @@ keyval_set(char *name,
 {
     cg_var *cv = NULL;
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name, val);
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s(%s=%s)", __FUNCTION__, name, val);
     if ((cv = cv_new(CGV_STRING)) == NULL){
         clixon_err(OE_UNIX, errno, "cv_new");
         goto done;
@@ -305,8 +305,6 @@ keyval_set(char *name,
  done:
     return cv;
 }
-
-
 
 %} 
  

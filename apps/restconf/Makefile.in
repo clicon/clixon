@@ -41,13 +41,6 @@ top_srcdir  	= @top_srcdir@
 CC		= @CC@
 CFLAGS  	= @CFLAGS@ 
 LINKAGE         = @LINKAGE@
-
-ifeq ($(HOST_VENDOR),apple)
-INSTALLFLAGS =
-else
-INSTALLFLAGS = @INSTALLFLAGS@
-endif
-
 LDFLAGS 	= @LDFLAGS@
 
 prefix 		= @prefix@
@@ -61,7 +54,14 @@ libexecdir	= @libexecdir@
 localstatedir	= @localstatedir@
 sysconfdir	= @sysconfdir@
 includedir	= @includedir@
+
 HOST_VENDOR     = @host_vendor@
+
+ifeq ($(HOST_VENDOR),apple)
+INSTALLFLAGS =
+else
+INSTALLFLAGS = @INSTALLFLAGS@
+endif
 
 # one of fcgi or native:
 with_restconf	= @with_restconf@
@@ -83,8 +83,10 @@ LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB)
 
 LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ 
 
-CPPFLAGS  	= @CPPFLAGS@
+YACC		= @YACC@
+LEX		= @LEX@
 
+CPPFLAGS  	= @CPPFLAGS@
 
 ifeq ($(LINKAGE),dynamic)
 CPPFLAGS  	+= -fPIC
@@ -97,13 +99,13 @@ APPL	  = clixon_restconf
 
 # Common source - not accessible from plugin - independent of restconf package (fcgi|native)
 APPSRC    =
-APPSRC   += restconf_api.c # maybe empty
 APPSRC   += restconf_err.c 
 APPSRC   += restconf_methods.c
 APPSRC   += restconf_methods_post.c
 APPSRC   += restconf_methods_get.c
 APPSRC   += restconf_methods_patch.c
 APPSRC   += restconf_root.c
+APPSRC   += restconf_stream.c
 APPSRC   += clixon_http_data.c
 APPSRC   += restconf_main_$(with_restconf).c
 ifeq ($(with_restconf),native)
@@ -112,11 +114,8 @@ APPSRC   += restconf_native.c
 APPSRC   += restconf_nghttp2.c # HTTP/2
 endif
 
-# Fcgi-specific source including main
-ifeq ($(with_restconf),fcgi)
-# Streams notifications have some fcgi specific handling
+# Streams notifications have some fcgi/nghttp2 specific handling
 APPSRC   += restconf_stream_$(with_restconf).c
-endif
 
 # internal http/1 parser
 YACCOBJS =

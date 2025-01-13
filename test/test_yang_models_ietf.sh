@@ -25,8 +25,11 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>ietf-vpn-common:multicast</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-vpn-common:igmp</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-vpn-common:mld</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-tcg-algs:tpm12</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-tcg-algs:tpm20</CLICON_FEATURE>
 
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
+  <CLICON_YANG_DIR>${YANG_STANDARD_DIR}/iana</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_STANDARD_DIR}/ietf/RFC</CLICON_YANG_DIR>
   <!-- order is significant, ieee has duplicate of ietf-interfaces.yang -->
   <CLICON_YANG_DIR>${YANG_STANDARD_DIR}/ieee/published</CLICON_YANG_DIR> 

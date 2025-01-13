@@ -119,7 +119,7 @@ RUN git clone https://github.com/clicon/mib-yangs.git /usr/local/share/mib-yangs
 # Stage 2
 # The second step skips the development environment and builds a runtime system
 FROM alpine
-MAINTAINER Olof Hagsand <olof@hagsand.se>
+LABEL maintainer="Olof Hagsand <olof@hagsand.se>"
 
 # For clixon and cligen
 RUN apk add --update flex bison fcgi-dev
@@ -133,9 +133,11 @@ RUN echo "agentaddress  127.0.0.1" >> /etc/snmp/snmpd.conf
 RUN echo "rwcommunity   public  localhost" >> /etc/snmp/snmpd.conf
 RUN echo "agentXSocket  unix:/var/run/snmp.sock" >> /etc/snmp/snmpd.conf
 RUN echo "agentxperms   777 777" >> /etc/snmp/snmpd.conf
+RUN echo "trap2sink     localhost public 162" >> /etc/snmp/snmpd.conf
+RUN echo "disableAuthorization yes" >> /etc/snmp/snmptrapd.conf
 
 # Test-specific (for test scripts)
-RUN apk add --update sudo curl procps grep make bash expect openssh
+RUN apk add --update sudo curl procps grep make bash expect openssh coreutils
 
 # Create clicon user and group
 RUN adduser -D -H clicon

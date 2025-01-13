@@ -28,6 +28,7 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_CLI_OUTPUT_FORMAT>cli</CLICON_CLI_OUTPUT_FORMAT>
 </clixon-config>
 EOF
 
@@ -73,10 +74,10 @@ new "cli set 43 exclude keys"
 expectpart "$($clixon_cli -1 -o CLICON_CLI_VARONLY=1 -f $cfg set table parameter 43)" 0 "^$"
 
 new "cli show 42 43 include"
-expectpart "$($clixon_cli -1 -o CLICON_CLI_VARONLY=0 -f $cfg show conf cli)" 0 "set table parameter 42" "set table parameter 43"
+expectpart "$($clixon_cli -1 -o CLICON_CLI_VARONLY=0 -f $cfg show conf)" 0 "set table parameter 42" "set table parameter 43"
 
 new "cli show 42 43 exclude"
-expectpart "$($clixon_cli -1 -o CLICON_CLI_VARONLY=1 -f $cfg show conf cli)" 0 "set table parameter 42" "set table parameter 43"
+expectpart "$($clixon_cli -1 -o CLICON_CLI_VARONLY=1 -f $cfg show conf)" 0 "set table parameter 42" "set table parameter 43"
 
 new "cli expand include keys"
 expectpart "$(echo "set table parameter ?" | $clixon_cli -o CLICON_CLI_VARONLY=0 -f $cfg 2>&1)" 0 42 43

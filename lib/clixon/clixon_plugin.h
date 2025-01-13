@@ -110,7 +110,7 @@ typedef enum clixon_auth_type clixon_auth_type_t;
 
 /*! Common plugin function names, function types and signatures.
  *
- * This plugin code is exytended by backend, cli, netconf, restconf plugins
+ * This plugin code is extended by backend, cli, netconf, restconf plugins
  *   Cli     see cli_plugin.c
  *   Backend see config_plugin.c
  */
@@ -214,18 +214,18 @@ typedef int (plgreset_t)(clixon_handle h, const char *db);
  * XXX: This callback may be replaced with a "dispatcher" type API in the future where the
  *      XPath binding is stricter, similar to the pagination API.
  *
- * @param[in]  h          Clixon handle
- * @param[in]  xpath      Part of state requested
- * @param[in]  nsc        XPath namespace context.
- * @param[out] xtop       XML tree where statedata is added
- * @retval     0          OK
- * @retval    -1          Fatal error
+ * @param[in]  h      Clixon handle
+ * @param[in]  xpath  Part of state requested
+ * @param[in]  nsc    XPath namespace context.
+ * @param[out] xconfig XML tree where data is added
+ * @retval     0      OK
+ * @retval    -1      Fatal error
  *
  * @note The system will make an xpath check and filter out non-matching trees
  * @note The system does not validate the xml, unless CLICON_VALIDATE_STATE_XML is set
  * @see clixon_pagination_cb_register for special paginated state data callback
  */
-typedef int (plgstatedata_t)(clixon_handle h, cvec *nsc, char *xpath, cxobj *xtop);
+typedef int (plgstatedata_t)(clixon_handle h, cvec *nsc, char *xpath, cxobj *xconfig);
 
 /*! Pagination-data type
  *
@@ -251,7 +251,13 @@ typedef int (plglockdb_t)(clixon_handle h, char *db, int lock, int id);
  */
 typedef void *transaction_data;
 
-/* Transaction callback */
+/* Transaction callback
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  td  Transaction data
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
 typedef int (trans_cb_t)(clixon_handle h, transaction_data td);
 
 /*! Hook to override default prompt with explicit function
@@ -279,7 +285,7 @@ typedef int (datastore_upgrade_t)(clixon_handle h, const char *db, cxobj *xt, mo
 /*! YANG schema mount
  *
  * Given an XML mount-point xt, return XML yang-lib modules-set
- * Return yanglib as XML tree on the RFC8525 form: 
+ * Return yanglib as XML tree on the RFC8528 form:
  *   <yang-library>
  *      <module-set>
  *         <module>...</module>
@@ -314,21 +320,33 @@ typedef int (yang_mount_t)(clixon_handle h, cxobj *xt, int *config,
  */
 typedef int (yang_patch_t)(clixon_handle h, yang_stmt *ymod);
 
-/*! Callback to customize Netconf error message
+/*! Callback to customize log, error, or debug message
  *
- * @param[in]  h       Clixon handle
- * @param[in]  xerr    Netconf error message on the level: <rpc-error>
- * @param[out] cberr   Translation from netconf err to cbuf.
- * @retval     0       OK, with cberr set
- * @retval    -1       Error
+ * @param[in]     h        Clixon handle
+ * @param[in]     fn       Inline function name (when called from clixon_err() macro)
+ * @param[in]     line     Inline file line number (when called from clixon_err() macro)
+ * @param[in]     type     Log message type
+ * @param[in,out] category Clixon error category, See enum clixon_err
+ * @param[in,out] suberr   Error number, typically errno
+ * @param[in]     xerr     Netconf error xml tree on the form: <rpc-error>
+ * @param[in]     format   Format string
+ * @param[in]     ap       Variable argument list
+ * @param[out]    cbmsg    Log string as cbuf, if set bypass ordinary logging
+ * @retval        0        OK
+ * @retval       -1        Error
+ * When cbmsg is set by a plugin, no other plugins are called. category and suberr
+ * can be rewritten by any plugin.
  */
-typedef int (netconf_errmsg_t)(clixon_handle, cxobj *xerr, cbuf *cberr);
+typedef int (errmsg_t)(clixon_handle h, const char *fn, const int line,
+                       enum clixon_log_type type,
+                       int *category, int *suberr, cxobj *xerr,
+                       const char *format, va_list ap, cbuf **cbmsg);
 
 /*! Callback for printing version output and exit
  *
  * A plugin can customize a version (or banner) output on stdout.
  * Several version strings can be printed if there are multiple callbacks.
- * If not regstered plugins exist, clixon prints CLIXON_VERSION_STRING
+ * If no registered plugins exist, clixon prints CLIXON_VERSION
  * Typically invoked by command-line option -V
  * @param[in]  h   Clixon handle
  * @param[in]  f   Output file
@@ -366,7 +384,7 @@ struct clixon_plugin_api{
     plgextension_t   *ca_extension;        /* Yang extension/unknown handler */
     yang_mount_t     *ca_yang_mount;       /* RFC 8528 schema mount */
     yang_patch_t     *ca_yang_patch;       /* Patch yang after parse */
-    netconf_errmsg_t *ca_errmsg;           /* Customize error message callback */
+    errmsg_t         *ca_errmsg;           /* Customize log/error/debug callback */
     plgversion_t     *ca_version;          /* Output a customized version message */
     union {
         struct { /* cli-specific */
@@ -384,12 +402,14 @@ struct clixon_plugin_api{
             plgdaemon_t      *cb_daemon;         /* Plugin daemonized (always called) */
             plgreset_t       *cb_reset;          /* Reset system status */
             plgstatedata_t   *cb_statedata;      /* Provide state data XML from plugin */
+            plgstatedata_t   *cb_system_only;    /* Provide system-only config XML from plugin */
             plglockdb_t      *cb_lockdb;         /* Database lock changed state */
             trans_cb_t       *cb_trans_begin;    /* Transaction start */
             trans_cb_t       *cb_trans_validate; /* Transaction validation */
             trans_cb_t       *cb_trans_complete; /* Transaction validation complete */
             trans_cb_t       *cb_trans_commit;   /* Transaction commit */
             trans_cb_t       *cb_trans_commit_done; /* Transaction when commit done */
+            trans_cb_t       *cb_trans_commit_failed;   /* Transaction commit failed*/
             trans_cb_t       *cb_trans_revert;   /* Transaction revert */
             trans_cb_t       *cb_trans_end;      /* Transaction completed  */
             trans_cb_t       *cb_trans_abort;    /* Transaction aborted */
@@ -406,12 +426,14 @@ struct clixon_plugin_api{
 #define ca_daemon         u.cau_backend.cb_daemon
 #define ca_reset          u.cau_backend.cb_reset
 #define ca_statedata      u.cau_backend.cb_statedata
+#define ca_system_only    u.cau_backend.cb_system_only
 #define ca_lockdb         u.cau_backend.cb_lockdb
 #define ca_trans_begin    u.cau_backend.cb_trans_begin
 #define ca_trans_validate u.cau_backend.cb_trans_validate
 #define ca_trans_complete u.cau_backend.cb_trans_complete
 #define ca_trans_commit   u.cau_backend.cb_trans_commit
 #define ca_trans_commit_done u.cau_backend.cb_trans_commit_done
+#define ca_trans_commit_failed   u.cau_backend.cb_trans_commit_failed
 #define ca_trans_revert   u.cau_backend.cb_trans_revert
 #define ca_trans_end      u.cau_backend.cb_trans_end
 #define ca_trans_abort    u.cau_backend.cb_trans_abort
@@ -494,11 +516,21 @@ int clixon_plugin_datastore_upgrade_all(clixon_handle h, const char *db, cxobj *
 int clixon_plugin_yang_mount_one(clixon_plugin_t *cp, clixon_handle h, cxobj *xt, int *config, validate_level *vl, cxobj **yanglib);
 int clixon_plugin_yang_mount_all(clixon_handle h, cxobj *xt, int *config, validate_level *vl, cxobj **yanglib);
 
+int clixon_plugin_system_only_all(clixon_handle h, yang_stmt *yspec, cvec *nsc, char *xpath, cxobj **xtop);
+
 int clixon_plugin_yang_patch_one(clixon_plugin_t *cp, clixon_handle h, yang_stmt *ymod);
 int clixon_plugin_yang_patch_all(clixon_handle h, yang_stmt *ymod);
 
-int clixon_plugin_netconf_errmsg_one(clixon_plugin_t *cp, clixon_handle h, cxobj *xerr, cbuf *cberr);
-int clixon_plugin_netconf_errmsg_all(clixon_handle h, cxobj *xerr, cbuf *cberr);
+int clixon_plugin_errmsg_one(clixon_plugin_t *cp, clixon_handle h,
+                             const char *fn, const int line,
+                             enum clixon_log_type type,
+                             int *category, int *suberr, cxobj *xerr,
+                             const char *format, va_list ap, cbuf **cbmsg);
+int clixon_plugin_errmsg_all(clixon_handle h,
+                             const char *fn, const int line,
+                             enum clixon_log_type type,
+                             int *category, int *suberr, cxobj *xerr,
+                             const char *format, va_list ap, cbuf **cbmsg);
 
 int clixon_plugin_version_one(clixon_plugin_t *cp, clixon_handle h, FILE *f);
 int clixon_plugin_version_all(clixon_handle h, FILE *f);

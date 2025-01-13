@@ -145,6 +145,7 @@ case $release in
             native)
                 ;;
         esac
+        $sshcmd sudo pkg install -y coreutils # gnustat
         ;;
     centos)
         # enable ipv6

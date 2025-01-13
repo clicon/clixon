@@ -53,9 +53,9 @@
  */
 int        ys_grouping_resolve(yang_stmt *yuses, char *prefix, char *name, yang_stmt **ygrouping0);
 yang_stmt *yang_parse_file(FILE *fp, const char *name, yang_stmt *ysp);
-int        yang_file_find_match(clixon_handle h, const char *module, const char *revision, cbuf *fbuf);
+int        yang_file_find_match(clixon_handle h, const char *module, const char *revision, const char *domain, cbuf *fbuf);
 yang_stmt *yang_parse_filename(clixon_handle h, const char *filename, yang_stmt  *ysp);
-yang_stmt *yang_parse_module(clixon_handle h, const char *module, const char *revision, yang_stmt *yspec, char *origname);
+yang_stmt *yang_parse_module(clixon_handle h, const char *module, const char *revision, yang_stmt *yspec, char *domain, char *origname);
 int        yang_parse_post(clixon_handle h, yang_stmt *yspec, int modmin);
 int        yang_spec_parse_module(clixon_handle h, const char *module,
                                   const char *revision, yang_stmt *yspec);
@@ -65,5 +65,10 @@ int        yang_spec_load_dir(clixon_handle h, char *dir, yang_stmt *yspec);
 int        ys_parse_date_arg(char *datearg, uint32_t *dateint);
 cg_var    *ys_parse(yang_stmt *ys, enum cv_type cvtype);
 int        ys_parse_sub(yang_stmt *ys, const char *filename, char *extra);
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+int        yspec_nscache_clear(yang_stmt *yspec);
+yang_stmt *yspec_nscache_get(yang_stmt *yspec, char *ns);
+int        yspec_nscache_new(yang_stmt *yspec);
+#endif
 
 #endif  /* _CLIXON_YANG_LIB_H_ */

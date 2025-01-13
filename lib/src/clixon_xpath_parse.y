@@ -120,13 +120,13 @@
 
 #include "clixon_queue.h"
 #include "clixon_hash.h"
-#include "clixon_handle.h"    
+#include "clixon_handle.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
-#include "clixon_string.h"
-#include "clixon_yang.h"
-#include "clixon_xml.h"
+#include "clixon_map.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_function.h"
@@ -138,9 +138,9 @@
  * Disable it to stop any calls to clixon_debug. Having it on by default would mean very large debug outputs.
  */
 #if 0
-#define _PARSE_DEBUG(s) clixon_debug(1,(s))
-#define _PARSE_DEBUG1(s, s1) clixon_debug(1,(s), (s1))
-#define _PARSE_DEBUG2(s, s1, s2) clixon_debug(1,(s), (s1), (s2))
+#define _PARSE_DEBUG(s) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s))
+#define _PARSE_DEBUG1(s, s1) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s), (s1))
+#define _PARSE_DEBUG2(s, s1, s2) clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL,(s), (s1), (s2))
 #else
 #define _PARSE_DEBUG(s)
 #define _PARSE_DEBUG1(s, s1)
@@ -251,21 +251,13 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     }
     fn = ret;
     switch (fn){
-    case XPATHFN_RE_MATCH:  /* Group of NOT IMPLEMENTED xpath functions */
-    case XPATHFN_ENUM_VALUE:
+    case XPATHFN_ENUM_VALUE: /* Group of NOT IMPLEMENTED xpath functions */
     case XPATHFN_LAST:
     case XPATHFN_ID:
     case XPATHFN_LOCAL_NAME:
     case XPATHFN_NAMESPACE_URI:
-    case XPATHFN_STRING:
     case XPATHFN_CONCAT:
-    case XPATHFN_STARTS_WITH:
-    case XPATHFN_SUBSTRING_BEFORE:
-    case XPATHFN_SUBSTRING_AFTER:
-    case XPATHFN_SUBSTRING:
-    case XPATHFN_STRING_LENGTH:
     case XPATHFN_NORMALIZE_SPACE:
-    case XPATHFN_TRANSLATE:
     case XPATHFN_LANG:
     case XPATHFN_NUMBER:
     case XPATHFN_SUM:
@@ -280,7 +272,8 @@ xp_primary_function(clixon_xpath_yacc *xpy,
         clixon_xpath_parseerror(xpy, cbuf_get(cb));
         goto done;
         break;
-    case XPATHFN_CURRENT:  /* Group of implemented xpath functions */
+    case XPATHFN_RE_MATCH:  /* Group of implemented xpath functions */
+    case XPATHFN_CURRENT:
     case XPATHFN_DEREF:
     case XPATHFN_DERIVED_FROM:
     case XPATHFN_BIT_IS_SET:
@@ -288,7 +281,14 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_POSITION:
     case XPATHFN_COUNT:
     case XPATHFN_NAME:
+    case XPATHFN_STRING:
+    case XPATHFN_STARTS_WITH:
     case XPATHFN_CONTAINS:
+    case XPATHFN_SUBSTRING_BEFORE:
+    case XPATHFN_SUBSTRING_AFTER:
+    case XPATHFN_SUBSTRING:
+    case XPATHFN_STRING_LENGTH:
+    case XPATHFN_TRANSLATE:
     case XPATHFN_BOOLEAN:
     case XPATHFN_NOT:
     case XPATHFN_TRUE:
@@ -567,6 +567,4 @@ string      : string CHARS  {
             | CHARS         { _PARSE_DEBUG("string-> "); }
             ;
 
-
 %%
-

@@ -87,7 +87,7 @@ Notes:
 
 ### Comments
 
-Use `/* */`. Use `//` only for temporal comments.
+Use `/* */`. Use `//` only for temporary comments.
 
 Do not use "======", ">>>>>" or "<<<<<<" in comments since git merge conflict uses that.
 

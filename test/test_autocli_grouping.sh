@@ -101,6 +101,16 @@ module example {
 */
      }
   }
+  grouping pg4 {
+     leaf value4{
+        description "a value";
+        type string;
+     }
+  }
+  grouping pg5 {
+     description "Empty, see https://github.com/clicon/clixon/issues/579";
+     action reset;
+  }
   container table{
     list parameter{
       key name;
@@ -113,9 +123,11 @@ module example {
       }
       uses pg1;
       uses ext:pg2;
+      uses pg5;
     }
   }
   uses pg1;
+  uses pg4;
 }
 EOF
 
@@ -209,10 +221,10 @@ EOF
     # The testcase assumes enabled
     if ${grouping_treeref}; then
         new "verify grouping is enabled"
-        expectpart "$($clixon_cli -f $cfg -G -1 2>&1)" 0 "@grouping-urn:example:clixon-pg1" "@grouping-urn:example:external-pg2" "@grouping-urn:example:external-pg3"
+        expectpart "$($clixon_cli -f $cfg -G -1 2>&1)" 0 "@grouping--top--data--example--pg1" "@grouping--top--data--example-external--pg2" # "@grouping--top--data--example-external--pg3"
     else
         new "verify grouping is disabled"
-        expectpart "$($clixon_cli -f $cfg -G -1 2>&1)" 0 --not-- "@grouping-urn:example:clixon-pg1" "@grouping-urn:example:external-pg2" "@grouping-urn:example:external-pg3"
+        expectpart "$($clixon_cli -f $cfg -G -1 2>&1)" 0 --not-- "@grouping--top--data--example--pg1" "@grouping--top--data--example-external--pg2" "@grouping--top--data-example-external-pg3"
     fi
 
     new "set top-level grouping"
@@ -243,7 +255,7 @@ EOF
     expectpart "$($clixon_cli -f $cfg -1 set table parameter x index1 a scope 43)" 0 ""
     
     new "validate expect fail"
-    expectpart "$($clixon_cli -f $cfg -1 validate 2>&1)" 255 "bad-element Leafref validation failed: No leaf 43 matching path"
+    expectpart "$($clixon_cli -f $cfg -1 validate 2>&1)" 255 "data-missing" "instance-required : ../../value0"
 
     new "set leafref expect fail"
     expectpart "$($clixon_cli -f $cfg -1 set table parameter x value0 43)" 0 ""

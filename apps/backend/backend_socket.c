@@ -111,7 +111,7 @@ config_socket_init_ipv4(clixon_handle h,
         clixon_err(OE_UNIX, errno, "bind");
         goto err;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "Listen on server socket at %s:%hu", dst, port);
+    clixon_debug(CLIXON_DBG_BACKEND, "Listen on server socket at %s:%hu", dst, port);
     if (listen(s, 5) < 0){
         clixon_err(OE_UNIX, errno, "listen");
         goto err;
@@ -178,7 +178,7 @@ config_socket_init_unix(clixon_handle h,
         clixon_err(OE_UNIX, errno, "lchown(%s, %s)", sock, config_group);
         goto err;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "Listen on server socket at %s", addr.sun_path);
+    clixon_debug(CLIXON_DBG_INIT, "Listen on server socket at %s", addr.sun_path);
     if (listen(s, 5) < 0){
         clixon_err(OE_UNIX, errno, "listen");
         goto err;
@@ -232,7 +232,7 @@ backend_accept_client(int   fd,
 {
     int                  retval = -1;
     clixon_handle        h = (clixon_handle)arg;
-    int                  s;
+    int                  s = -1;
     struct sockaddr      from = {0,};
     socklen_t            len;
     struct client_entry *ce;
@@ -245,7 +245,7 @@ backend_accept_client(int   fd,
     uid_t                guid;
 #endif
 
-    clixon_debug(CLIXON_DBG_DETAIL, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     len = sizeof(from);
     if ((s = accept(fd, &from, &len)) < 0){
         clixon_err(OE_UNIX, errno, "accept");
@@ -253,7 +253,6 @@ backend_accept_client(int   fd,
     }
     if ((ce = backend_client_add(h, &from)) == NULL)
         goto done;
-
     /*
      * Get credentials of connected peer - only for unix socket 
      */
@@ -291,14 +290,17 @@ backend_accept_client(int   fd,
         break;
     }
     ce->ce_s = s;
-
     /*
-     * Here we register callbacks for actual data socket 
+     * Register callback for actual data socket
      */
-    if (clixon_event_reg_fd(s, from_client, (void*)ce, "local netconf client socket") < 0)
+    if (clixon_event_reg_fd_prio(s, from_client, (void*)ce, "local netconf client socket",
+                                 clicon_option_bool(h, "CLICON_SOCK_PRIO")) < 0)
         goto done;
+    s = -1;
     retval = 0;
  done:
+    if (s != -1)
+        close(s);
     if (name)
         free(name);
     return retval;

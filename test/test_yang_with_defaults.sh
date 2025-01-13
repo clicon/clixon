@@ -18,6 +18,9 @@ fyang=$dir/example-default.yang
 fstate=$dir/state.xml
 clispec=$dir/spec.cli
 RESTCONFIG=$(restconf_config none false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -50,11 +53,8 @@ EOF
 # data model.
 cat <<EOF > $fyang
 module example {
-
      namespace "http://example.com/ns/interfaces";
-
      prefix exam;
-
      typedef status-type {
         description "Interface status";
         type enumeration {
@@ -66,7 +66,6 @@ module example {
         }
         default ok;
      }
-
      container interfaces {
          description "Example interfaces group";
 
@@ -173,7 +172,6 @@ cat <<EOF > $fstate
 <interface><name>eth3</name><status>waking up</status></interface>
 </interfaces>
 EOF
-
 
 db=startup
 if [ $db = startup ]; then
@@ -334,7 +332,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>\
 <interfaces $EXAMPLENS xmlns:nc=\"${BASENS}\">\
 <interface><name>eth1</name><mtu nc:operation=\"create\">3000</mtu></interface>\
-</interfaces></config><default-operation>none</default-operation> </edit-config></rpc>" \
+</interfaces></config><default-operation>none</default-operation></edit-config></rpc>" \
 "" \
 "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 

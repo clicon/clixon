@@ -13,7 +13,7 @@ Clixon uses semantic versioning (https://semver.org).
 
 Try to keep a single master branch always working. Currently testing is made using [Travis CI](https://travis-ci.org/clicon/clixon).
 
-However, releases are made periodically (ca every 1 month) which is more tested.
+However, releases are made periodically (ca every 3 months) which are tested more.
 
 A release branch can be made, eg release-4.0 where 4.0.0, 4.0.1 are tagged
 
@@ -103,6 +103,12 @@ Get restconf daemon status:
 curl -Ssik -X POST -H "Content-Type: application/yang-data+json" http://localhost/restconf/operations/clixon-lib:process-control -d '{"clixon-lib:input":{"name":"restconf","operation":"status"}}'
 ```
 
+### Debug parsing
+
+Yacc: Enable _PARSE_DEBUG macro in corresponding yacc file.
+Lex: Add -d in Makefile for corresponding lex file.
+Run program with -D parse -D detail
+
 ### Make your own simplified yang and configuration file.
 ```
 cat <<EOF > /tmp/my.yang
@@ -165,11 +171,6 @@ What to think about when doing a new release.
   * Draft a new release and review generated release notes and use info to update CHANGELOG
 * Review README.md 
 * New yang/clicon/clixon-config@XXX.yang revision?
-* In configure.ac, for minor releases change CLIXON_VERSION in configure.ac to eg: (minor should have been bumped):
-```
-  CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}\""
-```
-* For patch releases change CLIXON_VERSION_PATCH
 * Run autoconf
 * Git stuff:
 ```
@@ -180,11 +181,6 @@ What to think about when doing a new release.
 * Add a github release and copy release info from CHANGELOG
 
 After release:
-* Bump minor version and add a "PRE":
-```
-  CLIXON_VERSION_MINOR="10" ++
-  CLIXON_VERSION="\"${CLIXON_VERSION_MAJOR}.${CLIXON_VERSION_MINOR}.${CLIXON_VERSION_PATCH}.PRE\""
-```
 * Run autoconf
 
 Create release branch:
@@ -192,6 +188,7 @@ Create release branch:
   git checkout -b release-4.2 4.2.0
   git push origin release-4.2
 ```
+* Add release branch to .github/workflows/ci.yml
 
 Merge a branch back:
 ```
@@ -204,7 +201,7 @@ Use MAXPATHLEN (not PATH_MAX) in sys/param.h
 
 ## Emulating a serial console
 
-socat PTY,link=/tmp/clixon-tty,rawer EXEC:"/usr/local/bin/clixon_cli -f /usr/local/etc/example.xml",pty,stderr &
+socat PTY,link=/tmp/clixon-tty,rawer EXEC:"/usr/local/bin/clixon_cli -f /usr/local/etc/clixon/example.xml",pty,stderr &
 screen /tmp/clixon-tty
 
 ## Coverage

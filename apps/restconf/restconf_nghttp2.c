@@ -32,6 +32,7 @@
 
   ***** END LICENSE BLOCK *****
 
+  * @see RFC9113
   * nghttp2 callback mechanism
   *
   * nghttp2_session_mem_recv()
@@ -85,6 +86,7 @@
 #include "restconf_err.h"
 #include "restconf_root.h"
 #include "restconf_native.h"    /* Restconf-openssl mode specific headers*/
+#include "restconf_stream.h"
 #ifdef HAVE_LIBNGHTTP2          /* Ends at end-of-file */
 #include "restconf_nghttp2.h"   /* Restconf-openssl mode specific headers*/
 #include "clixon_http_data.h"
@@ -111,16 +113,18 @@ static const map_str2int nghttp2_frame_type_map[] = {
 };
 
 /* Clixon error category specialized log callback for nghttp2
- * @param[in]    handle  Application-specific handle
- * @param[in]    suberr  Application-specific handle
- * @param[out]   cb      Read log/error string into this buffer
+ *
+ * @param[in]   handle  Application-specific handle
+ * @param[in]   suberr  Application-specific handle
+ * @param[out]  cb      Read log/error string into this buffer
+ * @retval      0       OK
  */
 int
 clixon_nghttp2_log_cb(void *handle,
                       int   suberr,
                       cbuf *cb)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     cprintf(cb, "Fatal error: %s", nghttp2_strerror(suberr));
     return 0;
 }
@@ -132,23 +136,23 @@ nghttp2_print_header(const uint8_t *name,
                      const uint8_t *value,
                      size_t         valuelen)
 {
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", name, value);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s %s", name, value);
 }
 
-/*! Print HTTP headers to |f|. 
+/*! Print HTTP headers to |f|.
  *
  * Please note that this function does not
  * take into account that header name and value are sequence of
- *  octets, therefore they may contain non-printable characters. 
+ * octets, therefore they may contain non-printable characters.
  */
 static void
 nghttp2_print_headers(nghttp2_nv *nva,
                       size_t      nvlen)
 {
-  size_t i;
+    size_t i;
 
-  for (i = 0; i < nvlen; ++i)
-      nghttp2_print_header(nva[i].name, nva[i].namelen, nva[i].value, nva[i].valuelen);
+    for (i = 0; i < nvlen; ++i)
+        nghttp2_print_header(nva[i].name, nva[i].namelen, nva[i].value, nva[i].valuelen);
 }
 #endif /* NOTUSED */
 
@@ -162,6 +166,8 @@ nghttp2_print_headers(nghttp2_nv *nva,
  * If it cannot send any single byte without blocking,
  * it must return :enum:`NGHTTP2_ERR_WOULDBLOCK`.  
  * For other errors, it must return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] user_data  User data, in effect Restconf connection
  */
 static ssize_t
 session_send_callback(nghttp2_session *session,
@@ -178,20 +184,20 @@ session_send_callback(nghttp2_session *session,
     int            s;
     int            sslerr;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s buflen:%zu", __FUNCTION__, buflen);
+    clixon_debug(CLIXON_DBG_RESTCONF, "buflen:%zu", buflen);
     s = rc->rc_s;
     while (totlen < buflen){
         if (rc->rc_ssl){
             if ((len = SSL_write(rc->rc_ssl, buf+totlen, buflen-totlen)) <= 0){
                 er = errno;
                 sslerr = SSL_get_error(rc->rc_ssl, len);
-                clixon_debug(CLIXON_DBG_DEFAULT, "%s SSL_write: errno:%s(%d) sslerr:%d", __FUNCTION__,
+                clixon_debug(CLIXON_DBG_RESTCONF, "SSL_write: errno:%s(%d) sslerr:%d",
                              strerror(er),
                              er,
                              sslerr);
                 switch (sslerr){
                 case SSL_ERROR_WANT_WRITE:           /* 3 */
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s write SSL_ERROR_WANT_WRITE", __FUNCTION__);
+                    clixon_debug(CLIXON_DBG_RESTCONF, "write SSL_ERROR_WANT_WRITE");
                     usleep(1000);
                     continue;
                     break;
@@ -205,7 +211,7 @@ session_send_callback(nghttp2_session *session,
                          * platforms, linux here, freebsd want_write, or possibly differnt
                          * ssl lib versions?
                          */
-                        clixon_debug(CLIXON_DBG_DEFAULT, "%s write EAGAIN", __FUNCTION__);
+                        clixon_debug(CLIXON_DBG_RESTCONF, "write EAGAIN");
                         usleep(1000);
                         continue;
                     }
@@ -225,7 +231,7 @@ session_send_callback(nghttp2_session *session,
         else{
             if ((len = write(s, buf+totlen, buflen-totlen)) < 0){
                 if (errno == EAGAIN){
-                    clixon_debug(CLIXON_DBG_DEFAULT, "%s write EAGAIN", __FUNCTION__);
+                    clixon_debug(CLIXON_DBG_RESTCONF, "write EAGAIN");
                     usleep(10000);
                     continue;
                 }
@@ -252,14 +258,17 @@ session_send_callback(nghttp2_session *session,
     retval = 0;
  done:
     if (retval < 0){
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+        clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
         return retval;
     }
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%zd", __FUNCTION__, totlen);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%zd", totlen);
     return retval == 0 ? totlen : retval;
 }
 
 /*! Invoked when |session| wants to receive data from the remote peer.  
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] user_data  User data, in effect Restconf connection
  */
 static ssize_t
 recv_callback(nghttp2_session *session,
@@ -269,7 +278,7 @@ recv_callback(nghttp2_session *session,
               void            *user_data)
 {
     // restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -277,7 +286,7 @@ recv_callback(nghttp2_session *session,
  *
  * This are all messages except /.well-known, 
  *
- * @param[in] sd    session stream struct (http/1 has a single)
+ * @param[in] sd        Restconf native stream struct
  * @retval    void
  * Discussion: problematic if fatal error -1 is returned from clixon routines 
  * without actually terminating. Consider:
@@ -294,7 +303,7 @@ restconf_nghttp2_path(restconf_stream_data *sd)
     cvec          *cvv = NULL;
     char          *cn;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "------------");
+    clixon_debug(CLIXON_DBG_RESTCONF, "------------");
     rc = sd->sd_conn;
     if ((h = rc->rc_h) == NULL){
         clixon_err(OE_RESTCONF, EINVAL, "arg is NULL");
@@ -338,6 +347,11 @@ restconf_nghttp2_path(restconf_stream_data *sd)
             if (api_http_data(h, sd, sd->sd_qvec) < 0)
                 goto done;
         }
+        else if (api_path_is_stream(h)){
+            restconf_socket *rs = rc->rc_socket;
+            if (api_stream(h, sd, sd->sd_qvec, rs->rs_stream_timeout, NULL) < 0)
+                goto done;
+        }
         else if (api_root_restconf(h, sd, sd->sd_qvec) < 0) /* error handling */
             goto done;
     }
@@ -346,7 +360,7 @@ restconf_nghttp2_path(restconf_stream_data *sd)
         goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (cvv)
         cvec_free(cvv);
     if (oneline)
@@ -354,11 +368,27 @@ restconf_nghttp2_path(restconf_stream_data *sd)
     return retval; /* void */
 }
 
-/*! data callback, just pass pointer to cbuf
+/*! Data callback, just pass pointer to cbuf
  *
- * XXX handle several chunks with cbuf 
+ * @param[in] session    Nghttp2 session struct
+ * @param[in] stream_id  Nghttp2 stream id
+ * @param[in] buf
+ * @param[in] length
+ * @param[in] data_flags
+ * @param[in] source
+ * @param[in] user_data  User data, in effect Restconf stream data
+ * @retval    0          OK
+ * @retval   -1          Error
+ *
+ * If the application wants to postpone DATA frames (e.g.,
+ * asynchronous I/O, or reading data blocks for long time), it is
+ * achieved by returning :enum:`nghttp2_error.NGHTTP2_ERR_DEFERRED`
+ * without reading any data in this invocation.  The library removes
+ * DATA frame from the outgoing queue temporarily.  To move back
+ * deferred DATA frame to outgoing queue, call
+ * `nghttp2_session_resume_data()`.
  */
-static ssize_t
+ssize_t
 restconf_sd_read(nghttp2_session     *session,
                  int32_t              stream_id,
                  uint8_t             *buf,
@@ -368,30 +398,21 @@ restconf_sd_read(nghttp2_session     *session,
                  void                *user_data)
 {
     restconf_stream_data *sd = (restconf_stream_data *)source->ptr;
+    restconf_conn        *rc = sd->sd_conn;
     cbuf                 *cb;
     size_t                len = 0;
     size_t                remain;
 
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((cb = sd->sd_body) == NULL){ /* shouldnt happen */
+        if (rc->rc_event_stream && rc->rc_exit == 0) {
+            return NGHTTP2_ERR_DEFERRED;
+        }
         *data_flags |= NGHTTP2_DATA_FLAG_EOF;
         return 0;
     }
-#if 0
-    if (cbuf_len(cb) <= length){
-        len = remain;
-        *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-    }
-    else{
-        len = length;
-    }
-    memcpy(buf, cbuf_get(cb) + sd->sd_body_offset, len);
-    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-    return len;
-#endif
-    assert(cbuf_len(cb) > sd->sd_body_offset);
     remain = cbuf_len(cb) - sd->sd_body_offset;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s length:%zu totlen:%zu, offset:%zu remain:%zu",
-                 __FUNCTION__,
+    clixon_debug(CLIXON_DBG_RESTCONF, "length:%zu totlen:%zu, offset:%zu remain:%zu",
                  length,
                  cbuf_len(cb),
                  sd->sd_body_offset,
@@ -406,10 +427,22 @@ restconf_sd_read(nghttp2_session     *session,
     }
     memcpy(buf, cbuf_get(cb) + sd->sd_body_offset, len);
     sd->sd_body_offset += len;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%zu", __FUNCTION__, len);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%zu", len);
     return len;
 }
 
+/*! Create nghttp2 response message
+ *
+ * Create nghttp2 name/value pairs from previously assigned sd_outp_hdrs
+ * Call nghttp2 submit response function
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] rc        Restconf connection
+ * @param[in] stream_id Nghttp2 stream id
+ * @param[in] sd        Restconf native stream struct
+ * @retval    0         OK
+ * @retval   -1         Error
+ * @see restconf_reply_header
+ */
 static int
 restconf_submit_response(nghttp2_session      *session,
                          restconf_conn        *rc,
@@ -434,48 +467,68 @@ restconf_submit_response(nghttp2_session      *session,
     hdr = &hdrs[i++];
     hdr->name = (uint8_t*)":status";
     snprintf(valstr, 15, "%u", sd->sd_code);
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s status %d", __FUNCTION__, sd->sd_code);
+    clixon_debug(CLIXON_DBG_RESTCONF, "Status: %d", sd->sd_code);
     hdr->value = (uint8_t*)valstr;
     hdr->namelen = strlen(":status");
     hdr->valuelen = strlen(valstr);
     hdr->flags = 0;
-
     cv = NULL;
     while ((cv = cvec_each(sd->sd_outp_hdrs, cv)) != NULL){
         hdr = &hdrs[i++];
         hdr->name = (uint8_t*)cv_name_get(cv);
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s hdr: %s", __FUNCTION__, hdr->name);
         hdr->value = (uint8_t*)cv_string_get(cv);
         hdr->namelen = strlen(cv_name_get(cv));
         hdr->valuelen = strlen(cv_string_get(cv));
+        clixon_debug(CLIXON_DBG_RESTCONF, "%s: %s", hdr->name, hdr->value);
         hdr->flags = 0;
     }
-    if ((ngerr = nghttp2_submit_response(session,
-                                         stream_id,
-                                         hdrs, i,
-                                         (data_prd.source.ptr != NULL)?&data_prd:NULL)) < 0){
-        clixon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_response");
-        goto done;
+    if (rc->rc_event_stream){
+        if ((ngerr = nghttp2_submit_headers(session,
+                                            0, // flags
+                                            stream_id,
+                                            NULL, // pri_spec
+                                            hdrs, i,
+                                            NULL // stream_user_data
+                                            )) < 0){
+            clixon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_response");
+            goto done;
+        }
+    }
+    else {
+         if ((ngerr = nghttp2_submit_response(session,
+                                              stream_id,
+                                              hdrs, i,
+                                              (data_prd.source.ptr != NULL)?&data_prd:NULL)) < 0){
+             clixon_err(OE_NGHTTP2, ngerr, "nghttp2_submit_response");
+             goto done;
+         }
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (hdrs)
         free(hdrs);
     return retval;
 }
 
 /*! Simulate a received request in an upgrade scenario by talking the http/1 parameters
+ *
+ * @param[in] rc        Restconf connection
+ * @param[in] sd        Restconf native stream struct
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] stream_id Nghttp2 stream id
+ * @retval    0         OK
+ * @retval   -1         Error
  */
 int
 http2_exec(restconf_conn        *rc,
            restconf_stream_data *sd,
-           nghttp2_session     *session,
-           int32_t              stream_id)
+           nghttp2_session      *session,
+           int32_t               stream_id)
 {
     int retval = -1;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (sd->sd_path){
         free(sd->sd_path);
         sd->sd_path = NULL;
@@ -483,13 +536,19 @@ http2_exec(restconf_conn        *rc,
     if ((sd->sd_path = restconf_uripath(rc->rc_h)) == NULL)
         goto done;
     sd->sd_proto = HTTP_2; /* XXX is this necessary? */
+    clixon_debug(CLIXON_DBG_RESTCONF, "path:%s", sd->sd_path);
+    /* Early sanity check. Full dispatch in restconf_nghttp2_path */
     if (strcmp(sd->sd_path, RESTCONF_WELL_KNOWN) == 0
         || api_path_is_restconf(rc->rc_h)
-        || api_path_is_data(rc->rc_h)){
+        || api_path_is_data(rc->rc_h)
+        || api_path_is_stream(rc->rc_h)
+        ) {
+        clixon_debug(CLIXON_DBG_RESTCONF, "path found");
         if (restconf_nghttp2_path(sd) < 0)
             goto done;
     }
     else{
+        clixon_debug(CLIXON_DBG_RESTCONF, "path not found");
         sd->sd_code = 404;    /* not found */
     }
     if (restconf_param_del_all(rc->rc_h) < 0) // XXX
@@ -514,11 +573,17 @@ http2_exec(restconf_conn        *rc,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 
 /*! A frame is received
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] frame     Nghttp2 frame
+ * @param[in] user_data User-data, in effect Restconf connection
+ * @retval    0         OK
+ * @retval   -1         Error
  */
 static int
 on_frame_recv_callback(nghttp2_session     *session,
@@ -530,7 +595,7 @@ on_frame_recv_callback(nghttp2_session     *session,
     restconf_stream_data *sd = NULL;
     char                 *query;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %d", __FUNCTION__,
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s %d",
                  clicon_int2str(nghttp2_frame_type_map, frame->hd.type),
                  frame->hd.stream_id);
     switch (frame->hd.type) {
@@ -560,19 +625,24 @@ on_frame_recv_callback(nghttp2_session     *session,
     }
     retval = 0;
  done:
+    clixon_debug(CLIXON_DBG_RESTCONF|CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
 }
 
 /*! An invalid non-DATA frame is received. 
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] frame     Nghttp2 frame
+ * @param[in] user_data  User data, in effect Restconf connection
  */
 static int
-on_invalid_frame_recv_callback(nghttp2_session *session,
+on_invalid_frame_recv_callback(nghttp2_session     *session,
                                const nghttp2_frame *frame,
-                               int lib_error_code,
-                               void *user_data)
+                               int                  lib_error_code,
+                               void                *user_data)
 {
     // restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
@@ -582,6 +652,8 @@ on_invalid_frame_recv_callback(nghttp2_session *session,
  * necessarily mean this chunk of data is the last one in the stream.
  * You should use :type:`nghttp2_on_frame_recv_callback` to know all
  * data frames are received.
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] user_data User data, in effect Restconf connection
  */
 static int
 on_data_chunk_recv_callback(nghttp2_session *session,
@@ -594,7 +666,7 @@ on_data_chunk_recv_callback(nghttp2_session *session,
     restconf_conn *rc = (restconf_conn *)user_data;
     restconf_stream_data *sd;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, stream_id);
+    clixon_debug(CLIXON_DBG_RESTCONF, "%d", stream_id);
     if ((sd = restconf_stream_find(rc, stream_id)) != NULL){
         cbuf_append_buf(sd->sd_indata, (void*)data, len);
     }
@@ -602,6 +674,10 @@ on_data_chunk_recv_callback(nghttp2_session *session,
 }
 
 /*! Just before the non-DATA frame |frame| is sent
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] frame     Nghttp2 frame
+ * @param[in] user_data User data, in effect Restconf connection
  */
 static int
 before_frame_send_callback(nghttp2_session     *session,
@@ -609,11 +685,15 @@ before_frame_send_callback(nghttp2_session     *session,
                            void                *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
 /*! After the frame |frame| is sent
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] frame     Nghttp2 frame
+ * @param[in] user_data User data, in effect Restconf connection
  */
 static int
 on_frame_send_callback(nghttp2_session     *session,
@@ -621,24 +701,31 @@ on_frame_send_callback(nghttp2_session     *session,
                        void                *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
 /*! After the non-DATA frame |frame| is not sent because of error
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] frame     Nghttp2 frame
+ * @param[in] user_data  User data, in effect Restconf connection
  */
 static int
-on_frame_not_send_callback(nghttp2_session *session,
+on_frame_not_send_callback(nghttp2_session     *session,
                            const nghttp2_frame *frame,
-                           int lib_error_code,
-                           void *user_data)
+                           int                  lib_error_code,
+                           void                *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
 /*! Stream |stream_id| is closed. 
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] user_data User data, in effect Restconf connection
  */
 static int
 on_stream_close_callback(nghttp2_session   *session,
@@ -648,7 +735,7 @@ on_stream_close_callback(nghttp2_session   *session,
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d %s", __FUNCTION__, error_code, nghttp2_strerror(error_code));
+    clixon_debug(CLIXON_DBG_RESTCONF, "%d %s", error_code, nghttp2_strerror(error_code));
 #if 0 // NOTNEEDED /* XXX think this is not necessary? */
     if (error_code){
         if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
@@ -659,16 +746,20 @@ on_stream_close_callback(nghttp2_session   *session,
 }
 
 /*! Reception of header block in HEADERS or PUSH_PROMISE is started.
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] frame     Nghttp2 frame
+ * @param[in] user_data  User data, in effect Restconf connection
  */
 static int
 on_begin_headers_callback(nghttp2_session     *session,
                           const nghttp2_frame *frame,
                           void                *user_data)
 {
-    restconf_conn      *rc = (restconf_conn *)user_data;
+    restconf_conn        *rc = (restconf_conn *)user_data;
     restconf_stream_data *sd;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, clicon_int2str(nghttp2_frame_type_map, frame->hd.type));
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", clicon_int2str(nghttp2_frame_type_map, frame->hd.type));
     if (frame->hd.type == NGHTTP2_HEADERS &&
         frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
         sd = restconf_stream_data_new(rc, frame->hd.stream_id);
@@ -719,6 +810,9 @@ nghttp2_hdr2clixon(clixon_handle  h,
  * If the application uses `nghttp2_session_mem_recv()`, it can return
  * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
  * return without processing further input bytes.
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] frame     Nghttp2 frame
+ * @param[in] user_data User data, in effect Restconf connection
  */
 static int
 on_header_callback(nghttp2_session     *session,
@@ -736,12 +830,12 @@ on_header_callback(nghttp2_session     *session,
     switch (frame->hd.type){
     case NGHTTP2_HEADERS:
         assert (frame->headers.cat == NGHTTP2_HCAT_REQUEST);
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s HEADERS %s %s", __FUNCTION__, name, value);
+        clixon_debug(CLIXON_DBG_RESTCONF, "HEADERS %s %s", name, value);
         if (nghttp2_hdr2clixon(rc->rc_h, (char*)name, (char*)value) < 0)
             goto done;
         break;
     default:
-        clixon_debug(CLIXON_DBG_DEFAULT, "%s %s %s", __FUNCTION__, clicon_int2str(nghttp2_frame_type_map, frame->hd.type), name);
+        clixon_debug(CLIXON_DBG_RESTCONF, "%s %s", clicon_int2str(nghttp2_frame_type_map, frame->hd.type), name);
         break;
     }
     retval = 0;
@@ -749,49 +843,21 @@ on_header_callback(nghttp2_session     *session,
     return retval;
 }
 
-#ifdef NOTUSED
-/*! How many padding bytes are required for the transmission of the |frame|?
- */
-static ssize_t
-select_padding_callback(nghttp2_session *session,
-                        const nghttp2_frame *frame,
-                        size_t max_payloadlen,
-                        void *user_data)
-{
-    //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    return frame->hd.length;
-}
-
-/*! Get max length of data to send data to the remote peer
- */
-static ssize_t
-data_source_read_length_callback(nghttp2_session *session,
-                                 uint8_t frame_type,
-                                 int32_t stream_id,
-                                 int32_t session_remote_window_size,
-                                 int32_t stream_remote_window_size,
-                                 uint32_t remote_max_frame_size,
-                                 void *user_data)
-{
-    //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    return 0;
-}
-#endif /* NOTUSED */
-
 /*! Invoked when a frame header is received.
  *
  * Unlike :type:`nghttp2_on_frame_recv_callback`, this callback will
  * also be called when frame header of CONTINUATION frame is received.
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] hd         Nghttp2 frame header
+ * @param[in] user_data  User data, in effect Restconf connection
  */
 static int
-on_begin_frame_callback(nghttp2_session *session,
+on_begin_frame_callback(nghttp2_session        *session,
                         const nghttp2_frame_hd *hd,
-                        void *user_data)
+                        void                   *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %s", __FUNCTION__, clicon_int2str(nghttp2_frame_type_map, hd->type));
+    clixon_debug(CLIXON_DBG_RESTCONF, "%s", clicon_int2str(nghttp2_frame_type_map, hd->type));
     if (hd->type == NGHTTP2_CONTINUATION)
         assert(0);
     return 0;
@@ -802,86 +868,72 @@ on_begin_frame_callback(nghttp2_session *session,
  * Callback function invoked when :enum:`NGHTTP2_DATA_FLAG_NO_COPY` is
  * used in :type:`nghttp2_data_source_read_callback` to send complete
  * DATA frame.
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] frame     Nghttp2 frame
+ * @param[in] user_data User data, in effect Restconf connection
  */
 static int
-send_data_callback(nghttp2_session *session,
-                   nghttp2_frame *frame,
-                   const uint8_t *framehd, size_t length,
+send_data_callback(nghttp2_session     *session,
+                   nghttp2_frame       *frame,
+                   const uint8_t       *framehd,
+                   size_t               length,
                    nghttp2_data_source *source,
-                   void *user_data)
+                   void                *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
-
-#ifdef NOTUSED
-/*! Pack extension payload in its wire format
- */
-static ssize_t
-pack_extension_callback(nghttp2_session *session,
-                        uint8_t *buf, size_t len,
-                        const nghttp2_frame *frame,
-                        void *user_data)
-{
-    //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    return 0;
-}
-
-/*! Unpack extension payload from its wire format. 
- */
-static int
-unpack_extension_callback(nghttp2_session *session,
-                          void **payload,
-                          const nghttp2_frame_hd *hd,
-                          void *user_data)
-{
-    //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
-    return 0;
-}
-#endif /* NOTUSED */
 
 /*! Chunk of extension frame payload is received
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] hd        Nghttp2 frame header
+ * @param[in] user_data User data, in effect Restconf connection
  */
 static int
-on_extension_chunk_recv_callback(nghttp2_session *session,
+on_extension_chunk_recv_callback(nghttp2_session        *session,
                                  const nghttp2_frame_hd *hd,
-                                 const uint8_t *data,
-                                 size_t len,
-                                 void *user_data)
+                                 const uint8_t          *data,
+                                 size_t                  len,
+                                 void                   *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
 /*! Library provides the error code, and message for debugging purpose.
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] user_data User data, in effect Restconf connection
  */
 static int
 error_callback(nghttp2_session *session,
-               const char *msg,
-               size_t len,
-               void *user_data)
+               const char      *msg,
+               size_t           len,
+               void            *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     return 0;
 }
 
 #if (NGHTTP2_VERSION_NUM > 0x011201) /* Unsure of version number */
 /*! Library provides the error code, and message for debugging purpose.
+ *
+ * @param[in] session   Nghttp2 session struct
+ * @param[in] user_data User data, in effect Restconf connection
  */
 static int
 error_callback2(nghttp2_session *session,
-                int lib_error_code,
-                const char *msg,
-                size_t len,
-                void *user_data)
+                int              lib_error_code,
+                const char      *msg,
+                size_t           len,
+                void            *user_data)
 {
     //    restconf_conn *rc = (restconf_conn *)user_data;
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     clixon_err(OE_NGHTTP2, lib_error_code, "%s", msg);
     return 0;
 }
@@ -904,7 +956,7 @@ http2_recv(restconf_conn       *rc,
     int           retval = -1;
     nghttp2_error ngerr;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (rc->rc_ngsession == NULL){
         /* http2_session_init not called */
         clixon_err(OE_RESTCONF, EINVAL, "No nghttp2 session");
@@ -918,7 +970,7 @@ http2_recv(restconf_conn       *rc,
              *     when |session| was configured as server and
              *     `nghttp2_option_set_no_recv_client_magic()` is not used with
              *     nonzero value. */
-            clixon_log(NULL, LOG_INFO, "%s Received bad client magic byte strin", __FUNCTION__);
+            clixon_log(NULL, LOG_INFO, "%s Received bad client magic byte string", __FUNCTION__);
             /* unsure if this does anything, byt does not seem to hurt */
             if ((ngerr = nghttp2_session_terminate_session(rc->rc_ngsession, ngerr)) < 0)
                 clixon_err(OE_NGHTTP2, ngerr, "nghttp2_session_terminate_session %d", ngerr);
@@ -941,7 +993,7 @@ http2_recv(restconf_conn       *rc,
     }
     retval = 1; /* OK */
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s retval:%d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
  fail:
     retval = 0;
@@ -958,7 +1010,7 @@ http2_send_server_connection(restconf_conn *rc)
                                     ,{NGHTTP2_SETTINGS_ENABLE_PUSH, 0}};
     nghttp2_error          ngerr;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((ngerr = nghttp2_submit_settings(rc->rc_ngsession,
                                          NGHTTP2_FLAG_NONE,
                                          iv,
@@ -972,11 +1024,12 @@ http2_send_server_connection(restconf_conn *rc)
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s %d", __FUNCTION__, retval);
+    clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
 
 /*! Initialize callbacks
+ *
  */
 int
 http2_session_init(restconf_conn *rc)
@@ -998,17 +1051,10 @@ http2_session_init(restconf_conn *rc)
     nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, on_stream_close_callback);
     nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, on_begin_headers_callback);
     nghttp2_session_callbacks_set_on_header_callback(callbacks, on_header_callback);
-#ifdef NOTUSED
-    nghttp2_session_callbacks_set_select_padding_callback(callbacks, select_padding_callback);
-    nghttp2_session_callbacks_set_data_source_read_length_callback(callbacks, data_source_read_length_callback);
-#endif
+
     nghttp2_session_callbacks_set_on_begin_frame_callback(callbacks, on_begin_frame_callback);
 
     nghttp2_session_callbacks_set_send_data_callback(callbacks, send_data_callback);
-#ifdef NOTUSED
-    nghttp2_session_callbacks_set_pack_extension_callback(callbacks, pack_extension_callback);
-    nghttp2_session_callbacks_set_unpack_extension_callback(callbacks, unpack_extension_callback);
-#endif
     nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(callbacks, on_extension_chunk_recv_callback);
     nghttp2_session_callbacks_set_error_callback(callbacks, error_callback);
 #if (NGHTTP2_VERSION_NUM > 0x011201) /* Unsure of version number */

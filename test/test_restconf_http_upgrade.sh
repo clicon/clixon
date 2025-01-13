@@ -29,6 +29,9 @@ cfg=$dir/conf.xml
 
 RCPROTO=http
 RESTCONFIG=$(restconf_config none false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
 
 # Clixon config
 cat <<EOF > $cfg
