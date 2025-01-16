@@ -242,7 +242,7 @@ char     *xml_value(cxobj *xn);
 int       xml_value_set(cxobj *xn, char *val);
 int       xml_value_append(cxobj *xn, char *val);
 enum cxobj_type xml_type(cxobj *xn);
-
+enum cxobj_type xml_type_set(cxobj *xn, enum cxobj_type type);
 int       xml_child_nr(cxobj *xn);
 int       xml_child_nr_type(cxobj *xn, enum cxobj_type type);
 int       xml_child_nr_notype(cxobj *xn, enum cxobj_type type);
@@ -285,6 +285,7 @@ cxobj    *xml_find_type(cxobj *xn_parent, const char *prefix, const char *name, 
 char     *xml_find_value(cxobj *xn_parent, const char *name);
 char     *xml_find_body(cxobj *xn, const char *name);
 cxobj    *xml_find_body_obj(cxobj *xt, const char *name, char *val);
+int       xml_free0(cxobj *x);
 int       xml_free(cxobj *xn);
 int       xml_copy_one(cxobj *xn0, cxobj *xn1);
 int       xml_copy(cxobj *x0, cxobj *x1);

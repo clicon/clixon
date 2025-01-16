@@ -743,7 +743,7 @@ xml_type(cxobj *xn)
  * @param[in]  type  new type
  * @retval     type  old type
  */
-static enum cxobj_type
+enum cxobj_type
 xml_type_set(cxobj          *xn,
              enum cxobj_type type)
 {
@@ -1945,26 +1945,28 @@ xml_find_body_obj(cxobj      *xt,
     return x;
 }
 
-/*! Free an xl sub-tree recursively, but do not remove it from parent
+/*! Free an xml sub-tree recursively, reset it, but not object itself, do not remove it from parent
  *
- * @param[in]  x  the xml tree to be freed.
+ * @param[in]  x  the xml tree to be reset
  * @see xml_purge where x is also removed from parent
+ * @see xml_free also free object
  */
 int
-xml_free(cxobj *x)
+xml_free0(cxobj *x)
 {
     int    i;
     cxobj *xc;
+    size_t sz;
 
-    if (x == NULL){
+    if (x == NULL)
         return 0;
-    }
     if (x->x_name)
         free(x->x_name);
     if (x->x_prefix)
         free(x->x_prefix);
     switch (xml_type(x)){
     case CX_ELMNT:
+        sz = sizeof(struct xml);
         for (i=0; i<x->x_childvec_len; i++){
             if ((xc = x->x_childvec[i]) != NULL){
                 xml_free(xc);
@@ -1983,12 +1985,28 @@ xml_free(cxobj *x)
         break;
     case CX_BODY:
     case CX_ATTR:
+        sz = sizeof(struct xmlbody);
         if (x->x_value_cb)
             cbuf_free(x->x_value_cb);
         break;
     default:
         break;
     }
+    memset(x, 0, sz);
+    return 0;
+}
+
+/*! Free an xml sub-tree recursively, but do not remove it from parent
+ *
+ * @param[in]  x  the xml tree to be freed.
+ * @see xml_purge where x is also removed from parent
+ */
+int
+xml_free(cxobj *x)
+{
+    if (x == NULL)
+        return 0;
+    xml_free0(x);
     free(x);
     _stats_xml_nr--;
     return 0;

@@ -328,8 +328,9 @@ xmldb_copy(clixon_handle h,
             goto done;
     }
     else{ /* copy x1 to x2 */
-        xml_free(x2);
-        if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
+        xml_free0(x2);
+        xml_type_set(x2, CX_ELMNT);
+        if (xml_name_set(x2, xml_name(x1)) < 0)
             goto done;
         xml_flag_set(x2, XML_FLAG_TOP);
         if (xml_copy(x1, x2) < 0) 
