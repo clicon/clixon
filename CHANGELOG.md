@@ -48,6 +48,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Backend hangs when doing "process services restart" in the CLI](https://github.com/clicon/clixon-controller/issues/178)
 * Fixed: [Autocli: error when empty YANG group and grouping-treeref=true](https://github.com/clicon/clixon/issues/579)
 * Fixed: [Mem error when more multiple uses on top level with multiple statements in grouping](https://github.com/clicon/clixon/issues/583)
 * Fixed: [Change CLICON_NETCONF_DUPLICATE_ALLOW to remove duplicates](https://github.com/clicon/clixon-controller/issues/160)

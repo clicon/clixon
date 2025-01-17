@@ -340,8 +340,14 @@ clixon_log_str(int   level,
     /* Remove trailing CR if any */
     if (strlen(msg) && msg[strlen(msg)-1] == '\n')
         msg[strlen(msg)-1] = '\0';
-    if (_log_flags & CLIXON_LOG_SYSLOG)
-        syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg); // XXX this may block
+    if (_log_flags & CLIXON_LOG_SYSLOG){
+        static int _recurse = 0;
+        /* avoid mutex if called recursively */
+        if (_recurse++ == 0){
+            syslog(LOG_MAKEPRI(LOG_USER, level), "%s", msg);
+            _recurse = 0;
+        }
+    }
    /* syslog makes own filtering, we do it here:
     * if normal (not debug) then filter loglevels >= debug
     */
