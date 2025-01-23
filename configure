@@ -777,6 +777,7 @@ with_yang_standard_dir
 with_clicon_user
 with_clicon_group
 enable_nls
+enable_event_poll
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1423,6 +1424,7 @@ Optional Features:
                           http/1 only
   --enable-netsnmp        Enable net-snmp Clixon YANG mapping
 
+  --enable-event-poll     Enable event polling feature
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2838,10 +2840,10 @@ fi
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: debug is $ac_enable_debug" >&5
 printf "%s\n" "debug is $ac_enable_debug" >&6; }
 if test "$ac_enable_debug" = "yes"; then
-   : ${CFLAGS="-g -Wall"}
+   : ${CFLAGS="-g -Wall -Werror"}
    INSTALLFLAGS=""
 else
-   : ${CFLAGS="-O2 -Wall"}
+   : ${CFLAGS="-O2 -Wall -Werror"}
 fi
 
 ac_config_headers="$ac_config_headers include/clixon_config.h lib/clixon/clixon.h"
@@ -7018,6 +7020,18 @@ fi
 
 
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
+
+# Check whether --enable-event-poll was given.
+if test ${enable_event_poll+y}
+then :
+  enableval=$enable_event_poll; if test "$enable_event_poll" = "yes"; then
+
+printf "%s\n" "#define CLIXON_EVENT_POLL 1" >>confdefs.h
+
+     fi
+
+fi
+
 
 ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml docker/Makefile docker/clixon-dev/Makefile docker/example/Makefile docker/test/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
 

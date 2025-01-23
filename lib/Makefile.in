@@ -54,7 +54,7 @@ depend:
 		do (cd $$i; $(MAKE) $(MFLAGS) depend); done
 
 $(SUBDIRS):
-		(cd $@; $(MAKE) $(MFLAGS) all)
+		(cd $@; $(MAKE) $(MFLAGS) all || exit 1)
 
 install:
 	for i in $(SUBDIRS); \

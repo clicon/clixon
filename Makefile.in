@@ -86,10 +86,10 @@ checkinstall:
 
 # May cause circular include->include,lib
 $(SUBDIRS2): $(SUBDIRS1) # Cannot build app before lib (for parallel make -j)
-	(cd $@ && $(MAKE) $(MFLAGS) all)
+	(cd $@ && $(MAKE) $(MFLAGS) all || exit 1)
 
 $(SUBDIRS1): 
-	(cd $@ && $(MAKE) $(MFLAGS) all)
+	(cd $@ && $(MAKE) $(MFLAGS) all || exit 1)
 
 depend:
 	for i in $(SUBDIRS) doc example docker; \
