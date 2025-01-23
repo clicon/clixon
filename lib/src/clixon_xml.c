@@ -1956,7 +1956,7 @@ xml_free0(cxobj *x)
 {
     int    i;
     cxobj *xc;
-    size_t sz;
+    size_t sz = 0;
 
     if (x == NULL)
         return 0;
@@ -1992,7 +1992,8 @@ xml_free0(cxobj *x)
     default:
         break;
     }
-    memset(x, 0, sz);
+    if (sz)
+        memset(x, 0, sz);
     return 0;
 }
 

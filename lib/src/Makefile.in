@@ -69,7 +69,7 @@ INSTALLFLAGS = @INSTALLFLAGS@
 endif
 
 LDFLAGS 	= @LDFLAGS@
-LIBS    	= @LIBS@ 
+LIBS    	= @LIBS@ -lm
 
 YACC		= @YACC@
 LEX		= @LEX@
