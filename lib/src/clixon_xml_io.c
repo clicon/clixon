@@ -1461,7 +1461,7 @@ xml_diff2cbuf(cbuf  *cb,
                 xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
-            if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
+            if (clixon_xml2cbuf1(cb, x1c, level+1, 1, "+", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
             continue;
@@ -1472,7 +1472,7 @@ xml_diff2cbuf(cbuf  *cb,
                 xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
-            if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
+            if (clixon_xml2cbuf1(cb, x0c, level+1, 1, "-", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
             continue;
@@ -1495,7 +1495,7 @@ xml_diff2cbuf(cbuf  *cb,
                         xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                         nr++;
                     }
-                    if (clixon_xml2cbuf(cb, xi, level+1, 1, "-", -1, 0) < 0)
+                    if (clixon_xml2cbuf1(cb, xi, level+1, 1, "-", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                         goto done;
                 }
             }
@@ -1513,7 +1513,7 @@ xml_diff2cbuf(cbuf  *cb,
                         xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
                         nr++;
                     }
-                    if (clixon_xml2cbuf(cb, xj, level+1, 1, "+", -1, 0) < 0)
+                    if (clixon_xml2cbuf1(cb, xj, level+1, 1, "+", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                         goto done;
                 }
             }
@@ -1528,7 +1528,7 @@ xml_diff2cbuf(cbuf  *cb,
                 xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
-            if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
+            if (clixon_xml2cbuf1(cb, x0c, level+1, 1, "-", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
             continue;
@@ -1539,7 +1539,7 @@ xml_diff2cbuf(cbuf  *cb,
                 xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
-            if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
+            if (clixon_xml2cbuf1(cb, x1c, level+1, 1, "+", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
             continue;
@@ -1554,9 +1554,9 @@ xml_diff2cbuf(cbuf  *cb,
                     xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                     nr++;
                 }
-                if (clixon_xml2cbuf(cb, x0c, level+1, 1, "-", -1, 0) < 0)
+                if (clixon_xml2cbuf1(cb, x0c, level+1, 1, "-", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                     goto done;
-                if (clixon_xml2cbuf(cb, x1c, level+1, 1, "+", -1, 0) < 0)
+                if (clixon_xml2cbuf1(cb, x1c, level+1, 1, "+", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                     goto done;
             }
             else if (y0c && yang_keyword_get(y0c) == Y_LEAF){

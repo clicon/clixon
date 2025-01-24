@@ -844,7 +844,6 @@ xmldb_get_cache(clixon_handle     h,
  * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPath syntax. or NULL for all
- * @param[in]  wdef   With-defaults parameter, see RFC 6243
  * @param[out] xret   Single return XML tree. Free with xml_free()
  * @param[out] msdiff If set, return modules-state differences
  * @param[out] xerr   XML error if retval is 0
@@ -859,7 +858,6 @@ xmldb_get_copy(clixon_handle     h,
                yang_bind         yb,
                cvec             *nsc,
                const char       *xpath,
-               withdefaults_type wdef,
                cxobj           **xret,
                modstate_diff_t  *msdiff,
                cxobj           **xerr)
@@ -1052,8 +1050,8 @@ xmldb_get0(clixon_handle    h,
     cxobj *x = NULL;
 
     if (wdef != WITHDEFAULTS_EXPLICIT)
-        return xmldb_get_copy(h, db, yb, nsc, xpath, 0, xret, msdiff, xerr);
-    if ((ret = xmldb_get_copy(h, db, yb, nsc, xpath, 0, &x, msdiff, xerr)) < 0)
+        return xmldb_get_copy(h, db, yb, nsc, xpath, xret, msdiff, xerr);
+    if ((ret = xmldb_get_copy(h, db, yb, nsc, xpath, &x, msdiff, xerr)) < 0)
         goto done;
     if (ret == 0)
         goto fail;

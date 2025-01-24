@@ -120,6 +120,7 @@ tleaf(cxobj *x)
  * 0: No leaflist
  * 1: In leaflist
  * @see text2cbuf to buffer (slower)
+ * XXX No with-defaults support as in xml2cbuf
  */
 static int
 text2file(cxobj            *xn,

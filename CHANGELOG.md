@@ -48,6 +48,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Incorrect fields displayed for "show compare" and "commit diff"](https://github.com/clicon/clixon-controller/issues/177)
 * Fixed: [Documentation corresponding to specific release](https://github.com/clicon/clixon-controller/issues/178)
   * https://clixon-docs.readthedocs.io/en/stable points to lastest release, starting with 7.2.0
 * Fixed: [Backend hangs when doing "process services restart" in the CLI](https://github.com/clicon/clixon-controller/issues/178)
