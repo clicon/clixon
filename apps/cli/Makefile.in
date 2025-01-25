@@ -88,7 +88,7 @@ endif # LINKAGE
 # even though it may exist in $(libdir). But the new version may not have been installed yet.
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
-LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@
+LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ -lm
 
 INCLUDES	= -I. -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 

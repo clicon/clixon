@@ -315,7 +315,7 @@ EOF
 new "b payload only"
 testall '<dummy xmlns="urn:example:b"/>' '<dummy xmlns="urn:example:b"/>'
 
-new "b payload and interfaces payload---------"
+new "b payload and interfaces payload"
 testall '<dummy xmlns="urn:example:b"/><dummy xmlns="urn:example:interfaces"/>' '<dummy xmlns="urn:example:b"/>'
 
 new "a payload only"

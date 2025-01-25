@@ -553,6 +553,9 @@ function start_backend(){
 }
 
 function stop_backend(){
+    if [ $valgrindtest -eq 2 ]; then
+        sleep 1
+    fi
     sudo clixon_backend -z $*
     if [ $? -ne 0 ]; then
         err "kill backend"

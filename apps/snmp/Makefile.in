@@ -74,7 +74,7 @@ endif
 # For dependency
 LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
 
-LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ 
+LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ -lm
 
 CPPFLAGS  	= @CPPFLAGS@
 

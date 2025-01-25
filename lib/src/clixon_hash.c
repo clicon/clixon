@@ -384,7 +384,7 @@ clicon_hash_dump(clicon_hash_t *hash,
     char **keys = NULL;
     void  *val;
     size_t klen;
-    size_t vlen;
+    size_t vlen = 0;
 
     if (hash == NULL)
         goto ok;

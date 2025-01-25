@@ -579,7 +579,6 @@ clixon_msg_rcv11(int         s,
     if (intr){
         if (clixon_signal_save(&oldsigset, oldsigaction) < 0)
             goto done;
-
         set_signal(SIGINT, SIG_IGN, NULL);
         clicon_signal_unblock(SIGINT);
         set_signal_flags(SIGINT, 0, atomicio_sig_handler, NULL);
