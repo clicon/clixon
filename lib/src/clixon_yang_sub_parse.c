@@ -126,7 +126,7 @@ yang_schema_nodeid_subparse(char                      *str,
     int                         retval = -1;
     clixon_yang_schemanode_yacc ife = {0,};
 
-    clixon_debug(CLIXON_DBG_PARSE, "%s", str);
+    clixon_debug(CLIXON_DBG_PARSE | CLIXON_DBG_DETAIL, "%s", str);
     ife.if_parse_string = str;
     ife.if_linenum = linenum;
     ife.if_mainfile = mainfile;
@@ -140,7 +140,7 @@ yang_schema_nodeid_subparse(char                      *str,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_PARSE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     clixon_yang_schemanode_parsel_exit(&ife);
     return retval;
 }

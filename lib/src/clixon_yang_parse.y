@@ -1812,6 +1812,7 @@ input_substmts : input_substmts input_substmt
 input_substmt : typedef_stmt         { _PARSE_DEBUG("input-substmt -> typedef-stmt"); }
               | grouping_stmt        { _PARSE_DEBUG("input-substmt -> grouping-stmt"); }
               | data_def_stmt        { _PARSE_DEBUG("input-substmt -> data-def-stmt"); }
+              | unknown_stmt         { _PARSE_DEBUG("input-substmt -> unknown-stmt");}
               |                      { _PARSE_DEBUG("input-substmt -> "); }
               ;
 
