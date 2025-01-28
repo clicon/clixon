@@ -361,10 +361,11 @@ if [ $BE -ne 0 ]; then
     if [ -z "$pid" ]; then
         err "backend already dead"
     fi
-    # kill backend
-    stop_backend -f $cfg
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
 fi
-
 
 sudo rm -rf $dir
 

@@ -1793,6 +1793,7 @@ yang2cli_yspec(clixon_handle      h,
     yang_stmt      *ymod;
     int             enable;
     cbuf           *cb = NULL;
+    cbuf           *cbname = NULL;
     char           *prefix;
     cg_obj         *co;
     int             i;
@@ -1833,13 +1834,19 @@ yang2cli_yspec(clixon_handle      h,
             clixon_err(OE_UNIX, errno, "pt_new");
             goto done;
         }
+        /* Make a proper clispec name for debugging */
+        if ((cbname = cbuf_new()) == NULL){
+            clixon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cbname, "Auto-cli for module: %s", yang_filename_get(ymod));
         /* Parse the buffer using cligen parser. load cli syntax */
-        if (clispec_parse_str(cli_cligen(h), cbuf_get(cb), "yang2cli", NULL, pt, NULL) < 0){
-            fprintf(stderr, "%s\n", cbuf_get(cb));
+        if (clispec_parse_str(cli_cligen(h), cbuf_get(cb), cbuf_get(cbname), NULL, pt, NULL) < 0){
+            clixon_err(OE_YANG, errno, "Failing clispec: %s", cbuf_get(cb));
             goto done;
         }
         clixon_debug(CLIXON_DBG_CLI, "Generated auto-cli for module:%s",
-                     yang_argument_get(ymod));
+                     yang_filename_get(ymod));
         /* Add prefix: assume new are appended */
         for (i=0; i<pt_len_get(pt); i++){
             if ((co = pt_vec_i_get(pt, i)) != NULL){
@@ -1896,6 +1903,8 @@ yang2cli_yspec(clixon_handle      h,
         pt_free(pt0, 1);
     if (cb)
         cbuf_free(cb);
+    if (cbname)
+        cbuf_free(cbname);
     return retval;
 }
 
