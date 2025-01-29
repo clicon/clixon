@@ -638,7 +638,7 @@ candidate_validate(clixon_handle h,
          * TODO: -1 return should be fatal error, not failed validation
          */
         if (!cbuf_len(cbret) &&
-            netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+            clixon_plugin_report_err(h, cbret) < 0)
             goto done;
         goto fail;
     }
@@ -858,7 +858,7 @@ from_client_commit(clixon_handle h,
     if ((ret = candidate_commit(h, xe, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
         clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
         if (ret < 0)
-            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+            if (clixon_plugin_report_err(h, cbret) < 0)
                 goto done;
         goto ok;
     }
