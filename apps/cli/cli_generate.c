@@ -1845,8 +1845,11 @@ yang2cli_yspec(clixon_handle      h,
             clixon_err(OE_YANG, errno, "Failing clispec: %s", cbuf_get(cb));
             goto done;
         }
-        clixon_debug(CLIXON_DBG_CLI, "Generated auto-cli for module:%s",
-                     yang_filename_get(ymod));
+        clixon_debug(CLIXON_DBG_CLI, "%s", cbuf_get(cbname));
+        if (cbname){
+            cbuf_free(cbname);
+            cbname = NULL;
+        }
         /* Add prefix: assume new are appended */
         for (i=0; i<pt_len_get(pt); i++){
             if ((co = pt_vec_i_get(pt, i)) != NULL){

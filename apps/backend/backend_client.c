@@ -320,27 +320,22 @@ backend_client_rm(clixon_handle        h,
     struct client_entry **ce_prev;
     uint32_t              myid = ce->ce_id;
     yang_stmt            *yspec;
-    int                   retval = -1;
 
     /* If the confirmed-commit feature is enabled, rollback any ephemeral commit originated by this client */
-    if ((yspec = clicon_dbspec_yang(h)) == NULL) {
-        clixon_err(OE_YANG, ENOENT, "No yang spec");
-        goto done;
-    }
-    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
-        if (confirmed_commit_state_get(h) == EPHEMERAL) {
-            /* See if this client is the origin */
-            clixon_debug(CLIXON_DBG_BACKEND, "session_id: %u, confirmed_commit.session_id: %u", ce->ce_id, confirmed_commit_session_id_get(h));
-
-            if (myid == confirmed_commit_session_id_get(h)) {
-                clixon_debug(CLIXON_DBG_BACKEND, "ok, rolling back");
-                clixon_log(h, LOG_NOTICE, "a client with an active ephemeral confirmed-commit has disconnected; rolling back");
-
-                /* do_rollback errors are logged internally and there is no client to report errors to, so errors are
-                 * ignored here.
-                 */
-                cancel_rollback_event(h);
-                do_rollback(h, NULL);
+    if ((yspec = clicon_dbspec_yang(h)) != NULL) {
+        if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+            if (confirmed_commit_state_get(h) == EPHEMERAL) {
+                /* See if this client is the origin */
+                clixon_debug(CLIXON_DBG_BACKEND, "session_id: %u, confirmed_commit.session_id: %u", ce->ce_id, confirmed_commit_session_id_get(h));
+                if (myid == confirmed_commit_session_id_get(h)) {
+                    clixon_debug(CLIXON_DBG_BACKEND, "ok, rolling back");
+                    clixon_log(h, LOG_NOTICE, "a client with an active ephemeral confirmed-commit has disconnected; rolling back");
+                    /* do_rollback errors are logged internally and there is no client to report errors to, so errors are
+                     * ignored here.
+                     */
+                    cancel_rollback_event(h);
+                    do_rollback(h, NULL);
+                }
             }
         }
     }
@@ -363,9 +358,7 @@ backend_client_rm(clixon_handle        h,
         }
         ce_prev = &c->ce_next;
     }
-    retval = backend_client_delete(h, ce); /* actually purge it */
- done:
-    return retval;
+    return backend_client_delete(h, ce); /* actually purge it */
 }
 
 /*! Get clixon per datastore stats

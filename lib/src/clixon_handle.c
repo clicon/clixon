@@ -167,7 +167,6 @@ clixon_handle_exit(clixon_handle h)
         clicon_hash_free(ha);
     if ((ha = clicon_db_elmnt(h)) != NULL)
         clicon_hash_free(ha);
-    stream_delete_all(h, 1);
     free(ch);
     retval = 0;
     return retval;

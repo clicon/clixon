@@ -960,7 +960,7 @@ yspec_new_shared(clixon_handle h,
         yang_flag_set(yspec1, YANG_FLAG_SPEC_MOUNT);
         clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec1);
     }
-    if (yang_cvec_add(yspec1, CGV_STRING, xpath) < 0){
+    if (yang_cvec_add(yspec1, CGV_STRING, xpath) == NULL){
         yspec1 = NULL;
         goto done;
     }
@@ -1102,7 +1102,6 @@ ys_free1(yang_stmt *ys,
             free(ys->ys_nscache);
         break;
 #endif
-
     default:
         break;
     }

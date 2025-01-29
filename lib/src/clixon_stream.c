@@ -181,8 +181,9 @@ stream_add(clixon_handle   h,
 /*! Delete complete notification event stream list (not just single stream)
  *
  * @param[in] h     Clixon handle
- * @param[in] force Force deletion of 
- * @retval     0    OK
+ * @param[in] force Also free ss
+ * @retval    0     OK
+ * @retval   -1     Error
  */
 int
 stream_delete_all(clixon_handle h,
@@ -395,20 +396,20 @@ stream_ss_add(clixon_handle     h,
     return NULL;
 }
 
-/*! Delete event stream subscription to a stream given a callback and arg
+/*! Delete event stream subscription
  *
  * @param[in]  h      Clixon handle
- * @param[in]  stream Name of stream or NULL for all streams
- * @param[in]  fn     Callback when event occurs
- * @param[in]  arg    Argument to use with callback. Also handle when deleting
+ * @param[in]  es     Event stream
+ * @param[in]  ss     Stream subscription
+ * @param[in]  force  1: free ss
  * @retval     0      OK
  * @retval    -1      Error
  */
 int
-stream_ss_rm(clixon_handle                h,
-             event_stream_t              *es,
-             struct stream_subscription  *ss,
-             int                          force)
+stream_ss_rm(clixon_handle               h,
+             event_stream_t             *es,
+             struct stream_subscription *ss,
+             int                         force)
 {
     clixon_debug(CLIXON_DBG_STREAM, "");
     DELQ(ss, es->es_subscription, struct stream_subscription *);

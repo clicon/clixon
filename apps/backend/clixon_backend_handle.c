@@ -118,6 +118,7 @@ backend_handle_exit(clixon_handle h)
 {
     struct client_entry   *ce;
 
+    stream_delete_all(h, 1);
     /* only delete client structs, not close sockets, etc, see backend_client_rm WHY NOT? */
     while ((ce = backend_client_list(h)) != NULL){
         if (ce->ce_s){
