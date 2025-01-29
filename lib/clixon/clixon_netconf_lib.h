@@ -161,6 +161,11 @@ int netconf_missing_attribute_xml(cxobj **xret, char *type, char *info, char *me
 int netconf_bad_attribute(cbuf *cb, char *type, char *info, char *message);
 int netconf_bad_attribute_xml(cxobj **xret, char *type, char *info, char *message);
 int netconf_unknown_attribute(cbuf *cb, char *type, char *info, char *message);
+int netconf_common_rpc_err(cbuf *cb, char *ns, char *type, char *tag, char *info,
+                           char *severity, char *message);
+int netconf_common_rpc_err_xml(cxobj **xret, char *ns, char *type, char *tag,
+                               char *severity, char *infotag, char *info,
+                               char *message);
 int netconf_missing_element(cbuf *cb, char *type, char *element, char *message);
 int netconf_missing_yang_xml(cxobj **xret, char *path, char *app_tag, char *info, char *message);
 int netconf_missing_element_xml(cxobj **xret, char *type, char *element, char *message);
