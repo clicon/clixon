@@ -170,6 +170,7 @@ What to think about when doing a new release.
 * Review CHANGELOG, write one-liner
   * Draft a new release and review generated release notes and use info to update CHANGELOG
 * Review README.md 
+* Build packages: scripts/build_deb.sh
 * New yang/clicon/clixon-config@XXX.yang revision?
 * Run autoconf
 * Git stuff:
@@ -177,17 +178,25 @@ What to think about when doing a new release.
   git tag -a <version>
   git push origin <version>
 ```
-
 * Add a github release and copy release info from CHANGELOG
+* Tag associated repos:
+  * cligen
+  * clixon-example
+  * clixon-docs
+  * clixon-controller
+* Build and push docker releases
 
 After release:
 * Run autoconf
+
+### Optional release branch
 
 Create release branch:
 ```
   git checkout -b release-4.2 4.2.0
   git push origin release-4.2
 ```
+
 * Add release branch to .github/workflows/ci.yml
 
 Merge a branch back:

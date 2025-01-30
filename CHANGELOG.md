@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [7.3.0](#730) Expected: January 2025
+* [7.3.0](#730) 30 January 2025
 * [7.2.0](#720) 28 October 2024
 * [7.1.0](#710) 3 July 2024
 * [7.0.1](#701) 3 April 2024
@@ -13,17 +13,12 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 7.3.0
-Expected: January 2025
+30 January 2025
+
+Clixon 7.3 features "system-only-config" for secure in-mem handling of selected config data, several cycle optimizations, generic CLI pipe callbacks and lots of bug-fixes.
 
 ### Features
 
-* Performance optimization
-  * New no-copy `xmldb_get_cache` function for performance
-  * Optimized duplicate detection
-* New: CLI generic pipe callbacks
-  * Add scripts in `CLICON_CLI_PIPE_DIR`
-* New: [feature request: support xpath functions for strings](https://github.com/clicon/clixon/issues/556)
-  * Added: re-match, substring, string, string-length, translate, substring-before, substring-after, starts-with
 * Added support for system-only-config data
   * Store sensitive data in the "system" instead of in datastores
   * New `CLICON_XMLDB_SYSTEM_ONLY_CONFIG` configuration option
@@ -34,6 +29,13 @@ Expected: January 2025
   * Added: `CLICON_CLI_PIPE_DIR`
   * Added: `CLICON_XMLDB_SYSTEM_ONLY_CONFIG`
   * Deprecated:  `CLICON_YANG_SCHEMA_MOUNT_SHARE`
+* Performance optimization
+  * New no-copy `xmldb_get_cache` function for performance, as alternative to `xmldb_get`
+  * Optimized duplicate detection of incoming NETCONF requests
+* New: CLI generic pipe callbacks
+  * Add scripts in `CLICON_CLI_PIPE_DIR`
+* New: [feature request: support xpath functions for strings](https://github.com/clicon/clixon/issues/556)
+  * Added: `re-match`, `substring`, `string`, `string-length`, `translate`, `substring-before`, `substring-after`, `starts-with`
 
 ### C/CLI-API changes on existing features
 
