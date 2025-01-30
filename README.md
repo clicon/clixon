@@ -8,7 +8,7 @@ Clixon is a YANG-based configuration manager, with interactive CLI,
 NETCONF and RESTCONF interfaces, an embedded database and transaction
 mechanism.
 
-See [documentation](https://clixon-docs.readthedocs.io/en/stable), [project page](https://www.clicon.org) and [examples](https://github.com/clicon/clixon-examples), [Github actions CI](https://github.com/clicon/clixon/actions/workflows/ci.yml)
+See [documentation](https://clixon-docs.readthedocs.io/en/stable), [project page](https://www.clicon.org), [examples](https://github.com/clicon/clixon-examples), [Github actions CI](https://github.com/clicon/clixon/actions/workflows/ci.yml) and [community links](doc/LINKS.md).
 
 Clixon is open-source and dual licensed. Either Apache License, Version 2.0 or GNU
 General Public License Version 2; you choose, see [LICENSE.md](LICENSE.md).
@@ -19,7 +19,5 @@ Clixon interaction is best done posting issues, pull requests, or joining the
 Matrix clixon forum https://matrix.to/#/#clixonforum:matrix.org.
 
 Other clixon projects include [CLIgen](https://github.com/clicon/cligen), [the Clixon controller](https://github.com/clicon/clixon-controller), [Clixon applications](https://github.com/clicon/clixon-examples) and others.
-
-See also doc/[useful links](doc/LINKS.md).
 
 Clixon is sponsored by [Rubicon Communications LLC(Netgate)](https://www.netgate.com/) and others.
