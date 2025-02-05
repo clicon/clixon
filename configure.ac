@@ -463,21 +463,6 @@ AH_BOTTOM([#include <clixon_custom.h>])
 
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 
-AC_ARG_ENABLE([event-poll],
-    AS_HELP_STRING([--enable-event-poll], [Enable event polling feature]),
-    [if test "$enable_event_poll" = "yes"; then
-        AC_DEFINE([CLIXON_EVENT_POLL], 1, [Enable event polling feature])
-     fi]
-)
-
-AC_ARG_WITH([max-events],
-    AS_HELP_STRING([--with-max-events=VALUE], [Set the maximum number of events (default: 1024)]),
-    [MAX_EVENTS=$withval],
-    [MAX_EVENTS=1024]  # Значение по умолчанию, если не указано
-)
-
-AC_DEFINE_UNQUOTED([MAX_EVENTS], [$MAX_EVENTS], [Maximum number of events])
-
 AC_CONFIG_FILES([Makefile
 	  lib/Makefile
 	  lib/src/Makefile

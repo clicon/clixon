@@ -1631,7 +1631,7 @@ from_client_process_control(clixon_handle  h,
  * @retval    -1       Error
  */
 static int
-from_client_hello(clixon_handle       h,
+from_client_hello(clixon_handle         h,
                   cxobj               *x,
                   struct client_entry *ce,
                   cbuf                *cbret)

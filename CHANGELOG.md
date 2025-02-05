@@ -18,6 +18,8 @@ Planned: April 2025
 
 ### Features
 
+* Event handling: replace `select` with `poll`
+  * See [Support more than 100 devices](https://github.com/clicon/clixon-controller/issues/174)
 * Added new `ca_userdef` callback
 * New `clixon-restconf@2025-02-01.yang` revision
   * Added timeout parameter
