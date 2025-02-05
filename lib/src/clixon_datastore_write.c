@@ -1703,6 +1703,7 @@ xmldb_write_cache2file(clixon_handle h,
     int               multi;
     FILE             *f = NULL;
     char             *dbfile = NULL;
+    int               ret;
 
     if ((xt = xmldb_cache_get(h, db)) == NULL){
         clixon_err(OE_XML, 0, "XML cache not found");
@@ -1711,10 +1712,11 @@ xmldb_write_cache2file(clixon_handle h,
     pretty = clicon_option_bool(h, "CLICON_XMLDB_PRETTY");
     multi = clicon_option_bool(h, "CLICON_XMLDB_MULTI");
     if ((formatstr = clicon_option_str(h, "CLICON_XMLDB_FORMAT")) != NULL){
-        if ((format = format_str2int(formatstr)) < 0){
+        if ((ret = format_str2int(formatstr)) < 0){
             clixon_err(OE_XML, 0, "Format %s invalid", formatstr);
             goto done;
         }
+        format = ret;
     }
     if (xmldb_db2file(h, db, &dbfile) < 0)
         goto done;

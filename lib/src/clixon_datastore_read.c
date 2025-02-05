@@ -584,10 +584,11 @@ xmldb_readfile(clixon_handle    h,
         clixon_err(OE_CFG, ENOENT, "No CLICON_XMLDB_FORMAT");
         goto done;
     }
-    if ((format = format_str2int(formatstr)) < 0){
+    if ((ret = format_str2int(formatstr)) < 0){
         clixon_err(OE_XML, 0, "format not found %s", formatstr);
         goto done;
     }
+    format = ret;
     clixon_debug(CLIXON_DBG_DATASTORE, "Reading datastore %s using %s", dbfile, formatstr);
     /* Parse file into internal XML tree from different formats */
     if ((fp = fopen(dbfile, "r")) == NULL) {

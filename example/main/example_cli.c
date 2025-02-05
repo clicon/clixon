@@ -74,7 +74,9 @@ static errmsg_t *_errmsg_callback_fn = NULL;
 static char *_mount_yang = NULL;
 static char *_mount_namespace = NULL;
 
+#ifndef CLIXON_STATIC_PLUGINS
 static clixon_plugin_api api;
+#endif
 
 /*! Example cli function
  */

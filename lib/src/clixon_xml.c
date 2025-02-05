@@ -174,7 +174,7 @@ struct xml{
 #endif
     int              _x_vector_i;   /* internal use: xml_child_each */
     int              _x_i;          /* internal use for stable sorting:
-                                       see xml_enumerate and xml_cmp */
+                                       see xml_enumerate_children and xml_cmp */
     /*----- next is body/attribute only */
     cbuf             *x_value_cb;  /* attribute and body nodes have values (XXX: this consumes 
                                        memory) cv? */
@@ -1152,7 +1152,7 @@ clixon_child_xvec_append(cxobj       *xn,
     return retval;
 }
 
-/*! Create new xml node given a name and parent. Free with xml_free().
+/*! Create new xml node given a name and append it to parent if given. Free with xml_free().
  *
  * @param[in]  name      Name of XML node
  * @param[in]  xp        The parent where the new xml node will be appended
@@ -1228,6 +1228,7 @@ xml_new_body(char  *name,
     cxobj *body_node;
 
     if (!name || !parent || !val) {
+        clixon_err(OE_XML, EINVAL, "name, parent or val is NULL");
         return NULL;
     }
     if ((new_node = xml_new(name, parent, CX_ELMNT)) == NULL) {

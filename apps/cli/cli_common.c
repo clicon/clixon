@@ -92,13 +92,13 @@ cli_notification_register(clixon_handle    h,
                           int            (*fn)(int, void*),
                           void            *arg)
 {
-    int              retval = -1;
-    char            *logname = NULL;
-    void            *p;
-    int              s;
-    clicon_hash_t   *cdat = clicon_data(h);
-    size_t           len;
-    int              s_exist = -1;
+    int            retval = -1;
+    char          *logname = NULL;
+    void          *p;
+    int            s;
+    clicon_hash_t *cdat = clicon_data(h);
+    size_t         len;
+    int            s_exist = -1;
 
     len = strlen("log_socket_") + strlen(stream) + 1;
     if ((logname = malloc(len)) == NULL){
@@ -160,15 +160,18 @@ cli_signal_unblock(clixon_handle h)
     clicon_signal_unblock (SIGINT);
 }
 
-/*
- * Flush pending signals for a given signal type
+/*! Flush pending signals for a given signal type
+ *
+ * @param[in]  h   Clixon handle
+ * XXX A bit rough. Use sigpending() and more clever logic ??
  */
 void
 cli_signal_flush(clixon_handle h)
 {
-    /* XXX A bit rough. Use sigpending() and more clever logic ?? */
-
-    sigfn_t   h1, h2, h3, h4;
+    sigfn_t h1;
+    sigfn_t h2;
+    sigfn_t h3;
+    sigfn_t h4;
 
     set_signal(SIGTSTP, SIG_IGN, &h1);
     set_signal(SIGQUIT, SIG_IGN, &h2);
@@ -195,8 +198,8 @@ cli_signal_flush(clixon_handle h)
  * CLI variable vector element.
  */
 int
-dbxml_body(cxobj     *xbot,
-           cvec      *cvv)
+dbxml_body(cxobj *xbot,
+           cvec  *cvv)
 {
     int     retval = -1;
     char   *str = NULL;
@@ -636,8 +639,8 @@ cli_del(clixon_handle h,
  */
 int
 cli_debug_show(clixon_handle h,
-               cvec        *cvv,
-               cvec        *argv)
+               cvec         *cvv,
+               cvec         *argv)
 {
     cligen_output(stdout, "CLI debug:0x%x\n", clixon_debug_get());
     return 0;
@@ -655,8 +658,8 @@ cli_debug_show(clixon_handle h,
  */
 int
 cli_debug_cli(clixon_handle h,
-              cvec        *cvv,
-              cvec        *argv)
+              cvec         *cvv,
+              cvec         *argv)
 {
     int     retval = -1;
     cg_var *cv;
@@ -784,8 +787,8 @@ cli_set_mode(clixon_handle h,
  */
 int
 cli_quit(clixon_handle h,
-          cvec         *cvv,
-          cvec         *argv)
+         cvec         *cvv,
+         cvec         *argv)
 {
     cligen_exiting_set(cli_cligen(h), 1);
     return 0;
@@ -836,8 +839,8 @@ cli_commit(clixon_handle h,
  */
 int
 cli_validate(clixon_handle h,
-              cvec         *cvv,
-              cvec         *argv)
+             cvec         *cvv,
+             cvec         *argv)
 {
     int     retval = -1;
 
@@ -864,11 +867,11 @@ compare_db_names(clixon_handle    h,
                  char            *db1,
                  char            *db2)
 {
-    int              retval = -1;
-    cxobj           *xc1 = NULL;
-    cxobj           *xc2 = NULL;
-    cxobj           *xerr = NULL;
-    cbuf            *cb = NULL;
+    int    retval = -1;
+    cxobj *xc1 = NULL;
+    cxobj *xc2 = NULL;
+    cxobj *xerr = NULL;
+    cbuf  *cb = NULL;
 
     if (clicon_rpc_get_config(h, NULL, db1, "/", NULL, NULL, &xc1) < 0)
         goto done;
@@ -942,6 +945,7 @@ compare_dbs(clixon_handle h,
     char            *db1;
     char            *db2;
     char            *formatstr;
+    int              ret;
 
     if (cvec_len(argv) != 3){
         clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: <db1> <db2> <format>");
@@ -950,17 +954,19 @@ compare_dbs(clixon_handle h,
     db1 = cv_string_get(cvec_i(argv, 0));
     db2 = cv_string_get(cvec_i(argv, 1));
     formatstr = cv_string_get(cvec_i(argv, 2));
-    if ((format = format_str2int(formatstr)) < 0){
+    if ((ret = format_str2int(formatstr)) < 0){
         clixon_err(OE_XML, 0, "format not found %s", formatstr);
         goto done;
     }
+    format = ret;
     /* Special default format handling */
     if (format == FORMAT_DEFAULT){
         formatstr = clicon_option_str(h, "CLICON_CLI_OUTPUT_FORMAT");
-        if ((int)(format = format_str2int(formatstr)) < 0){
+        if ((ret = format_str2int(formatstr)) < 0){
             clixon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
             goto done;
         }
+        format = ret;
     }
     if (compare_db_names(h, format, db1, db2) < 0)
         goto done;
@@ -995,7 +1001,7 @@ load_config_file(clixon_handle h,
                  cvec         *cvv,
                  cvec         *argv)
 {
-    int              ret = -1;
+    int              retval = -1;
     struct stat      st;
     char            *filename = NULL;
     int              replace;
@@ -1011,6 +1017,7 @@ load_config_file(clixon_handle h,
     yang_stmt       *yspec;
     cxobj           *xerr = NULL;
     char            *lineptr = NULL;
+    int              ret;
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 4){
         clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<varname>[,<format>]",
@@ -1023,10 +1030,11 @@ load_config_file(clixon_handle h,
     }
     if (cvec_len(argv) > 2){
         formatstr = cv_string_get(cvec_i(argv, 2));
-        if ((int)(format = format_str2int(formatstr)) < 0){
+        if ((ret = format_str2int(formatstr)) < 0){
             clixon_err(OE_PLUGIN, 0, "Not valid format: %s", formatstr);
             goto done;
         }
+        format = ret;
     }
     varstr = cv_string_get(cvec_i(argv, 0));
     opstr  = cv_string_get(cvec_i(argv, 1));
@@ -1054,18 +1062,18 @@ load_config_file(clixon_handle h,
     }
     switch (format){
     case FORMAT_XML:
-        if ((ret = clixon_xml_parse_file(fp, YB_NONE, yspec, &xt, &xerr)) < 0)
+        if ((retval = clixon_xml_parse_file(fp, YB_NONE, yspec, &xt, &xerr)) < 0)
             goto done;
-        if (ret == 0){
+        if (retval == 0){
             if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Loading %s", filename) < 0)
                 goto done;
             goto done;
         }
         break;
     case FORMAT_JSON:
-        if ((ret = clixon_json_parse_file(fp, 1, YB_NONE, yspec, &xt, &xerr)) < 0)
+        if ((retval = clixon_json_parse_file(fp, 1, YB_NONE, yspec, &xt, &xerr)) < 0)
             goto done;
-        if (ret == 0){
+        if (retval == 0){
             if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Loading %s", filename) < 0)
                 goto done;
             goto done;
@@ -1075,9 +1083,9 @@ load_config_file(clixon_handle h,
         /* text parser requires YANG and since load/save files have a "config" top-level
          * the yang-bind parameter must be YB_MODULE_NEXT
          */
-        if ((ret = clixon_text_syntax_parse_file(fp, YB_MODULE_NEXT, yspec, &xt, &xerr)) < 0)
+        if ((retval = clixon_text_syntax_parse_file(fp, YB_MODULE_NEXT, yspec, &xt, &xerr)) < 0)
             goto done;
-        if (ret == 0){
+        if (retval == 0){
             if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Loading %s", filename) < 0)
                 goto done;
             goto done;
@@ -1135,7 +1143,7 @@ load_config_file(clixon_handle h,
                                cbuf_get(cbxml)) < 0)
         goto done;
  ok:
-    ret = 0;
+    retval = 0;
  done:
     if (cbxml)
         cbuf_free(cbxml);
@@ -1147,7 +1155,7 @@ load_config_file(clixon_handle h,
         xml_free(xt);
     if (fp)
         fclose(fp);
-    return ret;
+    return retval;
 }
 
 /*! Copy database to local file as XMLn
@@ -1174,18 +1182,18 @@ save_config_file(clixon_handle h,
                  cvec         *cvv,
                  cvec         *argv)
 {
-    int                retval = -1;
-    char              *filename = NULL;
-    cg_var            *cv;
-    char              *dbstr;
-    char              *varstr;
-    cxobj             *xt = NULL;
-    cxobj             *xerr;
-    FILE              *f = NULL;
-    char              *formatstr;
-    enum format_enum   format = FORMAT_XML;
-    char              *prefix = "set "; /* XXX hardcoded */
-    int                pretty = 1;     /* XXX hardcoded */
+    int              retval = -1;
+    char            *filename = NULL;
+    cg_var          *cv;
+    char            *dbstr;
+    char            *varstr;
+    cxobj           *xt = NULL;
+    cxobj           *xerr;
+    FILE            *f = NULL;
+    char            *formatstr;
+    enum format_enum format = FORMAT_XML;
+    char            *prefix = "set "; /* XXX hardcoded */
+    int              pretty = 1;     /* XXX hardcoded */
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 4){
         clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected: <dbname>,<varname>[,<format>]",
@@ -1284,8 +1292,8 @@ delete_all(clixon_handle h,
            cvec         *cvv,
            cvec         *argv)
 {
-    char            *dbstr;
-    int              retval = -1;
+    int   retval = -1;
+    char *dbstr;
 
     if (cvec_len(argv) != 1){
         clixon_err(OE_PLUGIN, EINVAL, "Requires one element: dbname");
@@ -1345,11 +1353,11 @@ static int
 cli_notification_cb(int   s,
                     void *arg)
 {
-    int                retval = -1;
-    int                eof = 0;
-    cxobj             *xt = NULL;
-    enum format_enum   format = (enum format_enum)(uintptr_t)arg;
-    cbuf              *cb = NULL;
+    int              retval = -1;
+    int              eof = 0;
+    cxobj           *xt = NULL;
+    enum format_enum format = (enum format_enum)(uintptr_t)arg;
+    cbuf            *cb = NULL;
 
     if (clixon_msg_rcv11(s, NULL, 0, &cb, &eof) < 0)
         goto done;
@@ -1452,8 +1460,8 @@ cli_lock(clixon_handle h,
          cvec         *cvv,
          cvec         *argv)
 {
-    int              retval = -1;
-    char            *db;
+    int   retval = -1;
+    char *db;
 
     if (cvec_len(argv) != 1){
         clixon_err(OE_PLUGIN, EINVAL, "Requires arguments: <db>");
@@ -1484,8 +1492,8 @@ cli_unlock(clixon_handle h,
            cvec         *cvv,
            cvec         *argv)
 {
-    int              retval = -1;
-    char            *db;
+    int   retval = -1;
+    char *db;
 
     if (cvec_len(argv) != 1){
         clixon_err(OE_PLUGIN, EINVAL, "Requires arguments: <db>");
@@ -1566,26 +1574,26 @@ cli_copy_config(clixon_handle h,
                 cvec         *cvv,
                 cvec         *argv)
 {
-    int          retval = -1;
-    char        *db;
-    cxobj       *x1 = NULL;
-    cxobj       *x2 = NULL;
-    cxobj       *x;
-    char        *xpath;
-    char        *namespace;
-    int          i;
-    int          j;
-    cbuf        *cb = NULL;
-    char        *keyname;
-    char        *fromvar;
-    cg_var      *fromcv;
-    char        *fromname = NULL;
-    char        *tovar;
-    cg_var      *tocv;
-    char        *toname;
-    cxobj       *xerr;
-    cvec        *nsc = NULL;
-    size_t       len;
+    int     retval = -1;
+    char   *db;
+    cxobj  *x1 = NULL;
+    cxobj  *x2 = NULL;
+    cxobj  *x;
+    char   *xpath;
+    char   *namespace;
+    int     i;
+    int     j;
+    cbuf   *cb = NULL;
+    char   *keyname;
+    char   *fromvar;
+    cg_var *fromcv;
+    char   *fromname = NULL;
+    char   *tovar;
+    cg_var *tocv;
+    char   *toname;
+    cxobj  *xerr;
+    cvec   *nsc = NULL;
+    size_t  len;
 
     if (cvec_len(argv) != 6){
         clixon_err(OE_PLUGIN, EINVAL, "Requires 6 elements: <db> <xpath> <namespace> <keyname> <from> <to>");
@@ -1820,12 +1828,12 @@ cli_process_control(clixon_handle h,
                     cvec         *cvv,
                     cvec         *argv)
 {
-    int            retval = -1;
-    char          *name;
-    char          *opstr;
-    cbuf          *cb = NULL;
-    cxobj         *xret = NULL;
-    cxobj         *xerr;
+    int    retval = -1;
+    char  *name;
+    char  *opstr;
+    cbuf  *cb = NULL;
+    cxobj *xret = NULL;
+    cxobj *xerr;
 
     if (cvec_len(argv) != 2){
         clixon_err(OE_PLUGIN, EINVAL, "Requires two element: process name and operation");
@@ -1872,10 +1880,10 @@ cli_ping(clixon_handle h,
          cvec         *cvv,
          cvec         *argv)
 {
-    int            retval = -1;
-    cbuf          *cb = NULL;
-    cxobj         *xret = NULL;
-    cxobj         *xerr;
+    int    retval = -1;
+    cbuf  *cb = NULL;
+    cxobj *xret = NULL;
+    cxobj *xerr;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");

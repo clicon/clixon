@@ -644,7 +644,7 @@ expand_dir(void   *h,
     cg_var        *cv;
     char          *dir;
     char          *regexp = NULL;
-    struct dirent *dp;
+    struct dirent *dp = NULL;
     int            ndp;
     int            i;
 

@@ -157,7 +157,7 @@ format_int2str(enum format_enum showas)
  * @param[in]  str       String value
  * @retval     enum      Format value (see enum format_enum)
  */
-enum format_enum
+int
 format_str2int(char *str)
 {
     return clicon_str2int(_FORMATS, str);

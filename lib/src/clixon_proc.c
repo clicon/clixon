@@ -477,7 +477,7 @@ static const map_str2int proc_operation_map[] = {
 /* List of process callback entries XXX move to handle */
 static process_entry_t *_proc_entry_list = NULL;
 
-proc_operation
+int
 clixon_process_op_str2int(char *opstr)
 {
     return clicon_str2int(proc_operation_map, opstr);

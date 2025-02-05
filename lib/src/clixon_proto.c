@@ -571,7 +571,7 @@ clixon_msg_rcv11(int         s,
     int              eom = 0;
     cxobj           *xtop = NULL;
     cxobj           *xerr = NULL;
-    sigset_t         oldsigset = {0,};
+    sigset_t         oldsigset = {{0,},};
     struct sigaction oldsigaction[32] = {{{0,},},};
 
     eom = 0;
