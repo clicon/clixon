@@ -354,7 +354,7 @@ nodetest_recursive(cxobj      *xn,
 /*! Evaluate xpath step rule of an XML tree
  *
  * @param[in]  xc0       Incoming context
- * @param[in]  xs        XPath node tree
+ * @param[in]  xs        Parsed XPath node tree
  * @param[in]  nsc       XML Namespace context
  * @param[in]  localonly Skip prefix and namespace tests (non-standard)
  * @param[out] xrp       Resulting context
@@ -405,12 +405,25 @@ xp_eval_step(xp_ctx     *xc0,
             xc->xc_descendant = 0;
         }
         else{
+            // XXX The handling of vec/vec0 is too complex
             for (i=0; i<xc->xc_size; i++){
+                cxobj **vec0 = NULL;
+                int     veclen0 = 0;
+                int     j;
+
                 xv = xc->xc_nodeset[i];
                 x = NULL;
-                if ((ret = xpath_optimize_check(xs, xv, &vec, &veclen)) < 0)
+                if ((ret = xpath_optimize_check(xs, xv, &vec0, &veclen0)) < 0)
                     goto done;
-                if (ret == 0){/* regular code, no optimization made */
+                if (ret == 1){
+                    for (j=0; j<veclen0; j++){
+                        if (cxvec_append(vec0[0], &vec, &veclen) < 0)
+                            goto done;
+                    }
+                    if (vec0)
+                        free(vec0);
+                }
+                else if (ret == 0){/* regular code, no optimization made */
                     while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
                         /* xs->xs_c0 is nodetest */
                         if (nodetest == NULL ||
