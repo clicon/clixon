@@ -146,6 +146,7 @@ restconf_subscription(clixon_handle  h,
     int     i;
     cg_var *cv;
     char   *vname;
+    char   *username;
 
     clixon_debug(CLIXON_DBG_STREAM, "");
     *sp = -1;
@@ -153,8 +154,15 @@ restconf_subscription(clixon_handle  h,
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    cprintf(cb, "<rpc xmlns=\"%s\" %s><create-subscription xmlns=\"%s\"><stream>%s</stream>",
-            NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR, EVENT_RFC5277_NAMESPACE, name);
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    }
+    cprintf(cb, " message-id=\"%d\"", netconf_message_id_next(h));
+    cprintf(cb, ">");
+    cprintf(cb, "<create-subscription xmlns=\"%s\"><stream>%s</stream>",
+            EVENT_RFC5277_NAMESPACE, name);
     /* Print all fields */
     for (i=0; i<cvec_len(qvec); i++){
         cv = cvec_i(qvec, i);
