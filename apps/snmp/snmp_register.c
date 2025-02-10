@@ -286,11 +286,12 @@ mibyang_table_register(clixon_handle h,
         clixon_err(OE_UNIX, errno, "SNMP_MALLOC_TYPEDEF");
         goto done;
     }
-    /* Keys, go through keys */
-    if ((cvk = yang_cvec_get(ylist)) == NULL){
-        clixon_err(OE_YANG, 0, "No keys");
+
+    if (clixon_snmp_ylist_keys(ylist, &cvk) < 0) {
+        clixon_err(OE_XML, errno, "clixon_snmp_ylist_keys");
         goto done;
     }
+
     cvi = NULL;
     /* Iterate over individual keys  */
     while ((cvi = cvec_each(cvk, cvi)) != NULL) {
@@ -332,6 +333,9 @@ mibyang_table_register(clixon_handle h,
  ok:
     retval = 0;
  done:
+    if (cvk)
+        cvec_free(cvk);
+
     return retval;
 }
 
@@ -497,7 +501,8 @@ mibyang_table_poll(clixon_handle h,
     }
     if ((xtable = xpath_first(xt, nsc, "%s", xpath)) != NULL) {
         /* Make a clone of key-list, but replace names with values */
-        if ((cvk_name = yang_cvec_get(ylist)) == NULL){
+        
+        if (clixon_snmp_ylist_keys(ylist, &cvk_name) < 0){
             clixon_err(OE_YANG, 0, "No keys");
             goto done;
         }
@@ -518,6 +523,8 @@ mibyang_table_poll(clixon_handle h,
     }
     retval = 0;
  done:
+    if (cvk_name)
+        cvec_free(cvk_name);
     if (xpath)
         free(xpath);
     if (cvk_val)
