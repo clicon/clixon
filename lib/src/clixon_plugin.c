@@ -1307,6 +1307,74 @@ clixon_plugin_version_all(clixon_handle h,
     return retval;
 }
 
+/*! Call user-defined callback in one plugin
+ *
+ * @param[in]  cp    Plugin handle
+ * @param[in]  h     Clixon handle
+ * @param[in]  type  User-defined type
+ * @param[in]  xn    XML tree
+ * @param[in]  arg   User-defined argument
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+clixon_plugin_userdef_one(clixon_plugin_t *cp,
+                          clixon_handle    h,
+                          int              type,
+                          cxobj           *xn,
+                          void            *arg)
+{
+    int           retval = -1;
+    plguserdef_t *fn;
+    void         *wh = NULL;
+
+    if ((fn = cp->cp_api.ca_userdef) != NULL){
+        wh = NULL;
+        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+            goto done;
+        if (fn(h, type, xn, arg) < 0) {
+            if (clixon_err_category() < 0)
+                clixon_log(h, LOG_WARNING, "%s: Internal error: userdef callback in plugin: %s returned -1 but did not make a clixon_err call",
+                           __FUNCTION__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+            goto done;
+        }
+        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Call user-defined callbacks in all plugins
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  type User-defined type
+ * @param[in]  xn   XML tree
+ * @param[in]  arg  User-defined argument
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+clixon_plugin_userdef_all(clixon_handle h,
+                          int           type,
+                          cxobj        *xn,
+                          void         *arg)
+{
+    int              retval = -1;
+    clixon_plugin_t *cp = NULL;
+
+    cp = NULL;
+    while ((cp = clixon_plugin_each(h, cp)) != NULL) {
+        if (clixon_plugin_userdef_one(cp, h, type, xn, arg) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*--------------------------------------------------------------------
  * RPC callbacks for both client/frontend and backend plugins.
  */

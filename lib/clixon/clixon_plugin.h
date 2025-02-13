@@ -355,6 +355,24 @@ typedef int (errmsg_t)(clixon_handle h, const char *fn, const int line,
  */
 typedef int (plgversion_t)(clixon_handle, FILE*);
 
+/* For 7.3 compatibility */
+#define CLIXON_PLUGIN_USERDEF
+
+/*! Callback for generic user-defined semantics
+ *
+ * An application may define a user-defined callback which is called from _within_
+ * an application callback. That is, not from within the Clixon base code.
+ * This means that the application needs to define semantics based on where and when the
+ * callback is called, and also the semantics of the arguments to the callback.
+ * @param[in]  h    Clixon handle
+ * @param[in]  type User-defined type
+ * @param[in]  x    XML tree
+ * @param[in]  arg  User-defined argument
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+typedef int (plguserdef_t)(clixon_handle, int type, cxobj *xn, void *arg);
+
 /*! Startup status for use in startup-callback
  *
  * Note that for STARTUP_ERR and STARTUP_INVALID, running runs in failsafe mode
@@ -386,6 +404,7 @@ struct clixon_plugin_api{
     yang_patch_t     *ca_yang_patch;       /* Patch yang after parse */
     errmsg_t         *ca_errmsg;           /* Customize log/error/debug callback */
     plgversion_t     *ca_version;          /* Output a customized version message */
+    plguserdef_t     *ca_userdef;          /* User-defined plugin */
     union {
         struct { /* cli-specific */
             cli_prompthook_t *ci_prompt;         /* Prompt hook */
@@ -534,6 +553,9 @@ int clixon_plugin_errmsg_all(clixon_handle h,
 
 int clixon_plugin_version_one(clixon_plugin_t *cp, clixon_handle h, FILE *f);
 int clixon_plugin_version_all(clixon_handle h, FILE *f);
+
+int clixon_plugin_userdef_one(clixon_plugin_t *cp, clixon_handle h, int type, cxobj *xn, void *arg);
+int clixon_plugin_userdef_all(clixon_handle h, int type, cxobj* xn, void *arg);
 
 /* rpc callback API */
 int rpc_callback_register(clixon_handle h, clicon_rpc_cb cb, void *arg, const char *ns, const char *name);

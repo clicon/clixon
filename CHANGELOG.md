@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [7.4.0](#730) Planned: April 2025
 * [7.3.0](#730) 30 January 2025
 * [7.2.0](#720) 28 October 2024
 * [7.1.0](#710) 3 July 2024
@@ -11,6 +12,13 @@
 * [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
+
+## 7.4.0
+Planned: April 2025
+
+### Features
+
+* Added new `ca_userdef` callback
 
 ## 7.3.0
 30 January 2025
