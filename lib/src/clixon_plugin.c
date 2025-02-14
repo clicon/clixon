@@ -1515,11 +1515,17 @@ rpc_callback_call(clixon_handle h,
                 wh = NULL;
                 if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
                     goto done;
+                /* This is for callback functions to check if this is part of an
+                 * incoming synchronous RPC (or another event such as timeout
+                 */
+                clicon_data_int_set(h, "clixon-client-rpc", 1);
                 if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
+                    clicon_data_int_set(h, "clixon-client-rpc", 0);
                     clixon_debug(CLIXON_DBG_RPC, "Error in: %s", rc->rc_name);
                     clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__);
                     goto done;
                 }
+                clicon_data_int_set(h, "clixon-client-rpc", 0);
                 nr++;
                 if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
                     goto done;
