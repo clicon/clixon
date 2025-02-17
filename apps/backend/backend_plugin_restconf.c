@@ -270,6 +270,8 @@ restconf_pseudo_process_control(clixon_handle h)
 #ifdef RESTCONF_INLINE
     nr += 2;
 #endif
+    if (clicon_option_str(h, "CLICON_CONFIGDIR"))
+        nr += 2;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
@@ -315,6 +317,10 @@ restconf_pseudo_process_control(clixon_handle h)
     argv[i++] = pgm;
     argv[i++] = "-f";
     argv[i++] = clicon_option_str(h, "CLICON_CONFIGFILE");
+    if (clicon_option_str(h, "CLICON_CONFIGDIR")) {
+        argv[i++] = "-E";
+        argv[i++] = clicon_option_str(h, "CLICON_CONFIGDIR");
+    }
     /* Add debug if backend has debug. 
      * There is also a debug flag in clixon-restconf.yang but it kicks in after it starts
      * see restconf_pseudo_set_log which sets flag when process starts

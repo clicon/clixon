@@ -676,7 +676,14 @@ restconf_clixon_backend(clixon_handle h,
         clicon_session_id_set(h, id);
         break;
     }
-    if ((nsc = xml_nsctx_init(NULL, CLIXON_RESTCONF_NS)) == NULL)
+    if ((nsc = xml_nsctx_init(NULL,
+                              /* XXX HARDCODED NAMESPACE NEEDS GENERIC MECHANISM */
+#if 1
+                              "http://clicon.org/controller"
+#else
+                              CLIXON_RESTCONF_NS
+#endif
+                              )) == NULL)
         goto done;
     if ((pw = getpwuid(getuid())) == NULL){
         clixon_err(OE_UNIX, errno, "getpwuid");
