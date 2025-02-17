@@ -561,7 +561,10 @@ xpath_parse(const char  *xpath,
     clixon_xpath_yacc xpy = {0,};
     cbuf             *cb = NULL;
 
-    clixon_debug(CLIXON_DBG_PARSE, "%s", xpath);
+    if (clixon_debug_get() & CLIXON_DBG_DETAIL)
+        clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "%s", xpath);
+    else
+        clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_TRUNC, "%s", xpath);
     if (xpath == NULL){
         clixon_err(OE_XML, EINVAL, "XPath is NULL");
         goto done;
@@ -596,7 +599,7 @@ xpath_parse(const char  *xpath,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (cb)
         cbuf_free(cb);
     if (xpy.xpy_top)

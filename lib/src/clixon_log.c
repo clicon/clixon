@@ -240,6 +240,8 @@ clixon_logflags_set(uint16_t flags)
 }
 
 /*! Truncate log/debug string length
+ *
+ * @see  CLICON_LOG_STRING_LIMIT option
  */
 int
 clixon_log_string_limit_set(size_t sz)

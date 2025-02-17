@@ -2299,7 +2299,7 @@ netconf_output(int   s,
     if (clixon_debug_detail())
         clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Send ext: %s", cbuf_get(cb));
     else
-        clixon_debug(CLIXON_DBG_MSG, "Send ext len: %lu", cbuf_len(cb));
+        clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_TRUNC, "Send ext: %s", cbuf_get(cb));
 #if 0 // Extra sanity check for debugging
     {
         cxobj *xt = NULL;

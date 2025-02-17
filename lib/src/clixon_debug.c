@@ -257,6 +257,8 @@ clixon_debug_fn(clixon_handle h,
     /* Truncate long debug strings */
     if ((trunc = clixon_log_string_limit_get()) && trunc < cbuf_len(cb))
         cbuf_trunc(cb, trunc);
+    else if ((dbglevel & CLIXON_DBG_TRUNC) && 80 < cbuf_len(cb))
+        cbuf_trunc(cb, 80);
     clixon_log_str(LOG_DEBUG, cbuf_get(cb));
  ok:
     retval = 0;

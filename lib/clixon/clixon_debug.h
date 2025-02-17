@@ -85,6 +85,11 @@
 #define CLIXON_DBG_APP3		0x00400000	/* External application 3 */
 #define CLIXON_DBG_SMASK	0x00ffffff	/* Subject mask */
 
+/* Misc */
+#define CLIXON_DBG_TRUNC	0x10000000	/* Explicit truncate debug message.
+                                                 * Note Implicit: log_string_limit overrides
+                                                 */
+
 /*
  * Macros
  */

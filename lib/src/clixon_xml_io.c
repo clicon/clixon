@@ -873,7 +873,10 @@ _xml_parse(const char *str,
     int             failed = 0; /* yang assignment */
     int             i;
 
-    clixon_debug(CLIXON_DBG_PARSE, "%s", str);
+    if (clixon_debug_get() & CLIXON_DBG_DETAIL)
+        clixon_debug(CLIXON_DBG_PARSE | CLIXON_DBG_DETAIL, "%s", str);
+    else
+        clixon_debug(CLIXON_DBG_PARSE & CLIXON_DBG_TRUNC, "%s", str);
     if (strlen(str) == 0){
         return 1; /* OK */
     }
@@ -951,7 +954,7 @@ _xml_parse(const char *str,
             goto done;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_PARSE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     clixon_xml_parsel_exit(&xy);
     if (xy.xy_parse_string != NULL)
         free(xy.xy_parse_string);

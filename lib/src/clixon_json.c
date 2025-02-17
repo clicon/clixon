@@ -1455,7 +1455,10 @@ _json_parse(char      *str,
     int              i;
     int              failed = 0; /* yang assignment */
 
-    clixon_debug(CLIXON_DBG_PARSE, "%s", str);
+    if (clixon_debug_get() & CLIXON_DBG_DETAIL)
+        clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "%s", str);
+    else
+        clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_TRUNC, "%s", str);
     jy.jy_parse_string = str;
     jy.jy_linenum = 1;
     jy.jy_current = xt;
@@ -1541,7 +1544,7 @@ _json_parse(char      *str,
             goto done;
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (cberr)
         cbuf_free(cberr);
     json_parse_exit(&jy);
