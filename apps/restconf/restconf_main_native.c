@@ -676,13 +676,13 @@ restconf_clixon_backend(clixon_handle h,
         clicon_session_id_set(h, id);
         break;
     }
+    /* XXX HARDCODED NAMESPACE NEEDS GENERIC MECHANISM
+     * It works if one uses "import clixon-restconf"
+     * But not if one does uses clixon-restdonf in which case the namespace is
+     * the local (top-level).
+     */
     if ((nsc = xml_nsctx_init(NULL,
-                              /* XXX HARDCODED NAMESPACE NEEDS GENERIC MECHANISM */
-#if 1
-                              "http://clicon.org/controller"
-#else
                               CLIXON_RESTCONF_NS
-#endif
                               )) == NULL)
         goto done;
     if ((pw = getpwuid(getuid())) == NULL){
@@ -822,15 +822,15 @@ openssl_init_socket(clixon_handle h,
  * @param[in]  h         Clixon handle
  * @param[in]  dbg0      Manually set debug flag, if set overrides configuration setting
  * @param[in]  xrestconf XML tree containing restconf config
- * @param[in]  timeout   Terminate notification stream after number of seconds
+ * @param[in]  timeout0  Command-line timeout (overrides if set config timeout)
  * @retval     0         OK
  * @retval    -1         Error
  */
-int
+static int
 restconf_openssl_init(clixon_handle h,
                       int           dbg0,
                       cxobj        *xrestconf,
-                      int           timeout)
+                      int           timeout0)
 {
     int                retval = -1;
     SSL_CTX           *ctx; /* SSL context */
@@ -847,12 +847,22 @@ restconf_openssl_init(clixon_handle h,
     cxobj            **vec = NULL;
     size_t             veclen;
     int                i;
+    int                timeout = 0;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* flag used for sanity of certs */
     ssl_enable = xpath_first(xrestconf, nsc, "socket[ssl='true']") != NULL;
     /* Auth type set in config */
     auth_type = restconf_auth_type_get(h);
+    /* Timeout */
+    if ((x = xpath_first(xrestconf, nsc, "timeout")) != NULL &&
+        (bstr = xml_body(x)) != NULL){
+        timeout = atoi(bstr);
+    }
+    /* Command-line overrides */
+    if (timeout0 != 0)
+        timeout = timeout0;
+
     /* Only set debug from config if not set manually */
     if (dbg0 == 0 &&
         (x = xpath_first(xrestconf, nsc, "debug")) != NULL &&
@@ -1311,7 +1321,7 @@ main(int    argc,
             if (clicon_option_add(h, "CLICON_RESTCONF_PRIVILEGES", "none") < 0)
                 goto done;
             break;
-        case 'W':  /* Run restconf daemon as this user (afetr drop) */
+        case 'W':  /* Run restconf daemon as this user (after drop) */
             if (clicon_option_add(h, "CLICON_RESTCONF_USER", optarg) < 0)
                 goto done;
             break;
@@ -1372,7 +1382,7 @@ main(int    argc,
         retval = 0;
         goto done;
     }
-    /* Create and stroe global openssl handle */
+    /* Create and store global openssl handle */
     if ((rn = malloc(sizeof *rn)) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
         goto done;

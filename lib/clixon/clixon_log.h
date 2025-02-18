@@ -53,7 +53,7 @@
 #define CLIXON_LOG_SYSLOG 0x01 /* print logs on syslog */
 #define CLIXON_LOG_STDERR 0x02 /* print logs on stderr */
 #define CLIXON_LOG_STDOUT 0x04 /* print logs on stdout */
-#define CLIXON_LOG_FILE   0x08 /* print logs on clixon_log_filename */
+#define CLIXON_LOG_FILE   0x08 /* print logs on clixon_log_file() */
 
 /* What kind of log (only for customizable error/logs) */
 enum clixon_log_type{

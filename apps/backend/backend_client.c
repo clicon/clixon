@@ -1187,6 +1187,7 @@ from_client_create_subscription(clixon_handle h,
     struct timeval       stop;
     cvec                *nsc = NULL;
 
+    clixon_debug(CLIXON_DBG_STREAM, "");
     /* XXX should use prefix cf edit_config */
     if ((nsc = xml_nsctx_init(NULL, EVENT_RFC5277_NAMESPACE)) == NULL)
         goto done;

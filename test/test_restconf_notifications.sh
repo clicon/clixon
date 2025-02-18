@@ -299,12 +299,11 @@ fi
 test-pause
 sleep 5
 
-# Try parallell
-# start background job
+# Start curl in background and save PID
 curl $CURLOPTS -X GET  -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" "$RCPROTO://localhost/streams/EXAMPLE" & # > /dev/null &
 PID=$!
 
-new "Start subscriptions in parallell"
+new "Start subscription"
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 8)
 expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
