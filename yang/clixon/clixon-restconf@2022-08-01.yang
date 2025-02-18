@@ -232,9 +232,6 @@ module clixon-restconf {
                      On platforms where namespaces are not suppported, 'default'
                      Default value can be changed by RESTCONF_NETNS_DEFAULT";
             }
-            leaf description{
-                type string;
-            }
             leaf address {
                 type inet:ip-address;
                 description "IP address to bind to";
@@ -242,6 +239,9 @@ module clixon-restconf {
             leaf port {
                 type inet:port-number;
                 description "TCP port to bind to";
+            }
+            leaf description{
+                type string;
             }
             leaf ssl {
                 type boolean;

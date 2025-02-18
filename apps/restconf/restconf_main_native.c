@@ -681,15 +681,12 @@ restconf_clixon_backend(clixon_handle h,
      * But not if one does uses clixon-restdonf in which case the namespace is
      * the local (top-level).
      */
-    if ((nsc = xml_nsctx_init(NULL,
-                              CLIXON_RESTCONF_NS
-                              )) == NULL)
+    if ((nsc = xml_nsctx_init(NULL, CLIXON_RESTCONF_NS)) == NULL)
         goto done;
     if ((pw = getpwuid(getuid())) == NULL){
         clixon_err(OE_UNIX, errno, "getpwuid");
         goto done;
     }
-    /* XXX xconfig leaked */
     if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, NULL, &xconfig) < 0)
         goto done;
     if ((xerr = xpath_first(xconfig, NULL, "/rpc-error")) != NULL){

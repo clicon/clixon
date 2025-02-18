@@ -25,38 +25,17 @@ module clixon-restconf {
          3. Related to (2), options that should not be settable in a datastore should be
             in clixon-config
 
-       ***** BEGIN LICENSE BLOCK *****
-       Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
-
-       This file is part of CLIXON
-
-       Licensed under the Apache License, Version 2.0 (the \"License\");
-       you may not use this file except in compliance with the License.
-       You may obtain a copy of the License at
-            http://www.apache.org/licenses/LICENSE-2.0
-       Unless required by applicable law or agreed to in writing, software
-       distributed under the License is distributed on an \"AS IS\" BASIS,
-       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-       See the License for the specific language governing permissions and
-       limitations under the License.
-
-       Alternatively, the contents of this file may be used under the terms of
-       the GNU General Public License Version 3 or later (the \"GPL\"),
-       in which case the provisions of the GPL are applicable instead
-       of those above. If you wish to allow use of your version of this file only
-       under the terms of the GPL, and not to allow others to
-       use your version of this file under the terms of Apache License version 2,
-       indicate your decision by deleting the provisions above and replace them with
-       the notice and other provisions required by the GPL. If you do not delete
-       the provisions above, a recipient may use your version of this file under
-       the terms of any one of the Apache License version 2 or the GPL.
-
-       ***** END LICENSE BLOCK *****";
-
+         Some of this spec if in-lined from ietf-restconf-server@2022-05-24.yang
+         ";
     revision 2025-02-01 {
         description
             "Added timeout parameter
              Released in Clixon 7.4";
+    }
+    revision 2022-08-01 {
+        description
+            "Added socket/call-home container
+             Released in Clixon 5.9";
     }
     revision 2022-03-21 {
         description
@@ -85,7 +64,6 @@ module clixon-restconf {
         description
             "Initial release";
     }
-
     feature fcgi {
         description
             "This feature indicates that the restconf server supports the fast-cgi reverse
@@ -113,7 +91,6 @@ module clixon-restconf {
              6. Authentication as restconf
              7. HTTP/1+2, TLS as restconf";
     }
-
     typedef http-auth-type {
         type enumeration {
             enum none {
@@ -277,10 +254,76 @@ module clixon-restconf {
                 type inet:port-number;
                 description "TCP port to bind to";
             }
+            leaf description{
+                type string;
+            }
             leaf ssl {
                 type boolean;
                 default true;
                 description "Enable for HTTPS otherwise HTTP protocol";
+            }
+            /* Some of this in-lined from ietf-restconf-server@2022-05-24.yang */
+            container call-home {
+                presence
+                    "Identifies that the server has been configured to initiate
+                     call home connections.
+                     If set, address/port refers to destination.";
+                description
+                    "See RFC 8071 NETCONF Call Home and RESTCONF Call Home";
+                container connection-type {
+                    description
+                        "Indicates the RESTCONF server's preference for how the
+                         RESTCONF connection is maintained.";
+                    choice connection-type {
+                        mandatory true;
+                        description
+                            "Selects between available connection types.";
+                        case persistent-connection {
+                            container persistent {
+                                presence
+                                    "Indicates that a persistent connection is to be
+                                     maintained.";
+                            }
+                        }
+                        case periodic-connection {
+                            container periodic {
+                                presence
+                                    "Indicates periodic connects";
+                                leaf period {
+                                    type uint32;     /* XXX: note uit16 in std */
+                                    units "seconds"; /* XXX: note minutes in draft */
+                                    default "3600";  /* XXX: same: 60min in draft */
+                                    description
+                                        "Duration of time between periodic connections.";
+                                }
+                                leaf idle-timeout {
+                                    type uint16;
+                                    units "seconds";
+                                    default "120"; // two minutes
+                                    description
+                                        "Specifies the maximum number of seconds that
+                                         the underlying TCP session may remain idle.
+                                         A TCP session will be dropped if it is idle
+                                         for an interval longer than this number of
+                                         seconds.  If set to zero, then the server
+                                         will never drop a session because it is idle.";
+                                }
+                            }
+                        }
+                    }
+                }
+                container reconnect-strategy {
+                    leaf max-attempts {
+                        type uint8 {
+                            range "1..max";
+                        }
+                        default "3";
+                        description
+                            "Specifies the number times the RESTCONF server tries
+                             to connect to a specific endpoint before moving on to
+                             the next endpoint in the list (round robin).";
+                    }
+                }
             }
         }
     }
