@@ -241,6 +241,9 @@ expectpart "$($clixon_cli -1 -f $cfg show config xml -- -m clixon-mount0 -M urn:
 new "restconf get config mntpoint"
 expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/clixon-example:top/mylist=x/root)" 0 "HTTP/$HVER 200" '<root xmlns="urn:example:clixon"><mount1 xmlns="urn:example:mount1"><mylist1><name1>x1</name1><options xmlns="urn:example:mount2"><option2>bar</option2></options></mylist1></mount1><yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"><module-set><name>mylabel</name><module><name>clixon-mount0</name><namespace>urn:example:mount0</namespace></module></module-set></yang-library></root>'
 
+new "restconf get across mountpoint"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data/clixon-example:top/mylist=x/root/clixon-mount1:mount1)" 0 "HTTP/$HVER 200" '<mount1 xmlns="urn:example:mount1"><mylist1><name1>x1</name1><options xmlns="urn:example:mount2"><option2>bar</option2></options></mylist1></mount1>' --not-- '<root' '<yang-library'
+
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf 

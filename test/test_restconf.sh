@@ -38,7 +38,6 @@ if [ -d ${TOP_SRCDIR}/yang/clixon ]; then
 else
     cp /usr/local/share/clixon/$y $dir/
 fi
-
 if [ "${WITH_RESTCONF}" = "native" ]; then
     # Create server certs
     certdir=$dir/certs

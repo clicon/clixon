@@ -930,3 +930,31 @@ restconf_socket_init(const char   *netns0,
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     return retval;
 }
+
+/*! Callback used by api_path2xml when yang mountpoint is empty
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  x   XML node
+ * @param[out] yp  YANG
+ */
+int
+restconf_apipath_mount_cb(clixon_handle h,
+                          cxobj        *x,
+                          yang_stmt   **yp)
+{
+    int    retval = -1;
+    cxobj *xyanglib = NULL;
+    int    ret;
+
+    if (clixon_plugin_yang_mount_all(h, x, NULL, NULL, &xyanglib) < 0)
+        goto done;
+    if (xyanglib != NULL){
+        if ((ret = yang_schema_yanglib_mount_parse(h, x, xyanglib, yp)) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    if (xyanglib)
+        xml_free(xyanglib);
+    return retval;
+}

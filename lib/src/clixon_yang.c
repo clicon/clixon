@@ -2445,9 +2445,9 @@ yang_spec_print(FILE      *f,
 }
 
 /*! Print yang top-level specs
- *
+ *a
  * @param[in]  f         File to print to.
- * @param[in]  ymounts        Yang mounts to print
+ * @param[in]  ymounts   Yang mounts to print
  */
 int
 yang_mounts_print(FILE      *f,

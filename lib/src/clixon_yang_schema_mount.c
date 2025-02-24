@@ -775,6 +775,7 @@ yang_schema_find_share(clixon_handle h,
  * @param[in]  h        Clixon handle
  * @param[in]  xt       XML tree node
  * @param[in]  xyanglib XML yang-lib
+ * @param[out] yspecp   Resulting mounted yang spec
  * @retval     1        OK
  * @retval     0        No yanglib or problem when parsing yanglib
  * @retval    -1        Error

@@ -86,10 +86,10 @@
  * @retval    -1    Error
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
- * @endcode                     
- * Minimal support: 
+ * @endcode
+ * Minimal support:
  * 200 OK
- * Allow: HEAD,GET,PUT,DELETE,OPTIONS              
+ * Allow: HEAD,GET,PUT,DELETE,OPTIONS
  * @see RFC5789 PATCH Method for HTTP Section 3.2
  */
 int
@@ -113,7 +113,7 @@ api_data_options(clixon_handle h,
 /*! Check matching keys
  *
  * Check that x1 and x2 are of type list/leaf-list and share the same key statements
- * I.e that if x1=<list><key>b</key></list> then x2 = <list><key>b</key></list> as 
+ * I.e that if x1=<list><key>b</key></list> then x2 = <list><key>b</key></list> as
  * well. Otherwise return -1.
  * @param[in] y        Yang statement, should be list or leaf-list
  * @param[in] x1       First XML tree (eg data)
@@ -180,7 +180,7 @@ match_list_keys(yang_stmt *y,
     return retval;
 }
 
-/*! Common PUT plain PATCH method 
+/*! Common PUT plain PATCH method
  *
  * Code checks if object exists.
  * PUT:   If it does not, set op to create, otherwise replace
@@ -246,6 +246,25 @@ api_data_write(clixon_handle h,
     /* strip /... from start */
     for (i=0; i<pi; i++)
         api_path = index(api_path+1, '/');
+    /* Create config top-of-tree */
+    if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
+        goto done;
+    /* Translate api_path to xml in the form of xtop/xbot */
+    xbot = xtop;
+    if (api_path){ /* If URI, otherwise top data/config object */
+        if ((ret = api_path2xml_mnt(api_path, yspec, xtop, YC_DATANODE, 1,
+                                    restconf_apipath_mount_cb, h, &xbot, &ybot, &xerr)) < 0)
+            goto done;
+        if (ret == 0){ /* validation failed */
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+        if (ybot){
+            if (ys_real_module(ybot, &ymodapi) < 0)
+                goto done;
+        }
+    }
     if (api_path){
         /* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */
         if ((ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
@@ -260,24 +279,6 @@ api_data_write(clixon_handle h,
         op = OP_MERGE; /* bad request if it does not exist */
     else
         op = OP_REPLACE; /* OP_CREATE if it does not exist */
-    /* Create config top-of-tree */
-    if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
-        goto done;
-    /* Translate api_path to xml in the form of xtop/xbot */
-    xbot = xtop;
-    if (api_path){ /* If URI, otherwise top data/config object */
-        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot, &xerr)) < 0)
-            goto done;
-        if (ret == 0){ /* validation failed */
-            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-                goto done;
-            goto ok;
-        }
-        if (ybot){
-            if (ys_real_module(ybot, &ymodapi) < 0)
-                goto done;
-        }
-    }
     /* 4.4.1: The message-body MUST contain exactly one instance of the
      * expected data resource.  (tested again below)
      */
@@ -319,7 +320,7 @@ api_data_write(clixon_handle h,
     else
         yb = YB_PARENT;
 
-    /* Parse input data as json or xml into xml 
+    /* Parse input data as json or xml into xml
      * Note that in POST (api_data_post) the new object is grafted on xbot, since it is a new
      * object. In that case all yang bindings can be made since xbot is available.
      * Here the new object replaces xbot and is therefore more complicated to make when parsing.
@@ -341,6 +342,7 @@ api_data_write(clixon_handle h,
         }
         break;
     case YANG_DATA_JSON:
+        // XXX yspec is top-level, but data may be mounted yspec
         if ((ret = clixon_json_parse_string(data, 1, yb, yspec, &xdata0, &xerr)) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
@@ -361,7 +363,7 @@ api_data_write(clixon_handle h,
     } /* switch media_in */
 
     /* The message-body MUST contain exactly one instance of the
-     * expected data resource. 
+     * expected data resource.
      */
     if (xml_child_nr_type(xdata0, CX_ELMNT) != 1){
         if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
@@ -387,7 +389,7 @@ api_data_write(clixon_handle h,
         }
     }
 
-    /* Add operation create as attribute. If that fails with Conflict, then 
+    /* Add operation create as attribute. If that fails with Conflict, then
      * try "replace" (see comment in function header)
      */
     if (xml_add_attr(xdata, "operation", xml_operation2str(op), NETCONF_BASE_PREFIX, NULL) == NULL)
@@ -397,7 +399,7 @@ api_data_write(clixon_handle h,
                      CLIXON_LIB_PREFIX, CLIXON_LIB_NS) == NULL)
         goto done;
     /* Top-of tree, no api-path
-     * Replace xparent with x, ie bottom of api-path with data 
+     * Replace xparent with x, ie bottom of api-path with data
      */
     dname = xml_name(xdata);
     if (api_path==NULL) {
@@ -438,7 +440,7 @@ api_data_write(clixon_handle h,
                 goto done;
             goto ok;
         }
-        /* If list or leaf-list, api-path keys must match data keys 
+        /* If list or leaf-list, api-path keys must match data keys
          * There are two cases, either the object is the list element itself,
          *   eg xpath:obj=a  data:<obj><key>b</key></obj>
          * or the object is the key element:
@@ -578,11 +580,11 @@ api_data_write(clixon_handle h,
     if (xdata0)
         xml_free(xdata0);
      if (cbx)
-        cbuf_free(cbx); 
+        cbuf_free(cbx);
    return retval;
 } /* api_data_write */
 
-/*! Generic REST PUT  method 
+/*! Generic REST PUT  method
  *
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
@@ -595,7 +597,7 @@ api_data_write(clixon_handle h,
  * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
  * @retval     0        OK
  * @retval    -1        Error
- * @note restconf PUT is mapped to edit-config replace. 
+ * @note restconf PUT is mapped to edit-config replace.
  * @see RFC8040 Sec 4.5  PUT
  * @see api_data_post
  * @example
@@ -605,7 +607,7 @@ api_data_write(clixon_handle h,
    A request message-body MUST be present, representing the new data resource, or the server
    MUST return a "400 Bad Request" status-line.
 
-   ...if the PUT request creates a new resource, a "201 Created" status-line is returned.  
+   ...if the PUT request creates a new resource, a "201 Created" status-line is returned.
    If an existing resource is modified, a "204 No Content" status-line is returned.
 
  * Netconf:  <edit-config> (nc:operation="create/replace")
@@ -637,7 +639,7 @@ api_data_put(clixon_handle h,
                           media_in, media_out, 0, ds);
 }
 
-/*! Generic REST PATCH method for plain patch 
+/*! Generic REST PATCH method for plain patch
  *
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
@@ -650,7 +652,7 @@ api_data_put(clixon_handle h,
  * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
  * @retval     0        OK
  * @retval    -1        Error
- * Netconf:  <edit-config> (nc:operation="merge")      
+ * Netconf:  <edit-config> (nc:operation="merge")
  * See RFC8040 Sec 4.6.1
  * Plain patch can be used to create or update, but not delete, a child
  * resource within the target resource.
@@ -709,7 +711,7 @@ api_data_patch(clixon_handle h,
  * See RFC 8040 Sec 4.7
  * Example:
  *  curl -X DELETE http://127.0.0.1/restconf/data/interfaces/interface=eth0
- * Netconf:  <edit-config> (nc:operation="delete")      
+ * Netconf:  <edit-config> (nc:operation="delete")
  */
 int
 api_data_delete(clixon_handle h,
@@ -749,7 +751,8 @@ api_data_delete(clixon_handle h,
         goto done;
     xbot = xtop;
     if (api_path){
-        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
+        if ((ret = api_path2xml_mnt(api_path, yspec, xtop, YC_DATANODE, 1,
+                                    restconf_apipath_mount_cb, h, &xbot, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){ /* validation failed */
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)

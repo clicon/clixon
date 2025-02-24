@@ -932,7 +932,7 @@ clixon_plugin_yang_mount_all(clixon_handle   h,
     return retval;
 }
 
-/*! Call single backend statedata callback
+/*! Call single backend system-only callback
  *
  * Create an xml tree (xret) for one callback only on the form:
  *   <config>...</config>,

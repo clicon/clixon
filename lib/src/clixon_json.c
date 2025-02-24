@@ -99,7 +99,7 @@ enum array_element_type{
 };
 
 enum childtype{
-    NULL_CHILD=0, /* eg <a/> no children. Translated to null if in 
+    NULL_CHILD=0, /* eg <a/> no children. Translated to null if in
                    * array or leaf terminal, and to {} if proper object, ie container.
                    * anyxml/anydata?
                    */
@@ -107,7 +107,7 @@ enum childtype{
     ANY_CHILD,    /* eg <a><b/></a> or <a><b/><c/></a> */
 };
 
-/*! x is element and has exactly one child which in turn has none 
+/*! x is element and has exactly one child which in turn has none
  *
  * remove attributes from x
  * @see tleaf in clixon_xml_map.c
@@ -182,14 +182,14 @@ arraytype2str(enum array_element_type lt)
 }
 
 /*! Check typeof x in array
- * 
+ *
  * Check if element is in an array, and if so, if it is in the start "[x,", in the middle: "[..,x,..]"
  * in the end: ",x]", or a single element: "[x]"
  * Some complexity when x is in different namespaces
  * @param[in]  xprev     The previous element (if any)
  * @param[in]  x         The element itself
  * @param[in]  xnext     The next element (if any)
- * @retval     arraytype Type of array 
+ * @retval     arraytype Type of array
  */
 static enum array_element_type
 array_eval(cxobj *xprev,
@@ -296,7 +296,7 @@ json_str_escape_cdata(cbuf *cb,
  * @param[in]     x     XML tree. Must be yang populated.
  * @param[in]     yspec Yang spec
  * @param[out]    xerr  Reason for invalid tree returned as netconf err msg or NULL
- * @retval        1     OK 
+ * @retval        1     OK
  * @retval        0     Invalid, wrt namespace.  xerr set
  * @retval       -1     Error
  * @see RFC7951 Sec 4 and 6.8
@@ -340,7 +340,7 @@ json2xml_decode_identityref(cxobj     *x,
                          prefix, body, ns);
             if (!xml_nsctx_get_prefix(nsc, ns, &prefix2)){
                 /* (no)  insert a xmlns:<prefix> statement
-                 * Get yang prefix from import statement of my mod 
+                 * Get yang prefix from import statement of my mod
                  * I am not sure this is correct
                  */
                 if (yang_find_prefix_by_namespace(y, ns, &prefix2) < 0)
@@ -396,11 +396,11 @@ json2xml_decode_identityref(cxobj     *x,
  *
  * Assume an xml tree where prefix:name have been split into "module":"name"
  * In other words, from JSON RFC7951 to XML namespace trees
- * 
+ *
  * @param[in]     x     XML tree. Must be yang populated. After json parsing
  * @param[in]     yspec Yang spec
  * @param[out]    xerr  Reason for invalid tree returned as netconf err msg or NULL
- * @retval        1     OK 
+ * @retval        1     OK
  * @retval        0     Invalid, wrt namespace.  xerr set
  * @retval       -1     Error
  * @see RFC7951 Sec 4 and 6.8
@@ -606,7 +606,7 @@ xml2json_encode_leafs(cxobj     *xb,
     }
  ok:
     /* write into original cb0
-     * includign quoting and encoding 
+     * includign quoting and encoding
      */
     if (quote){
         cprintf(cb0, "\"");
@@ -625,8 +625,9 @@ xml2json_encode_leafs(cxobj     *xb,
     return retval;
 }
 
-/* X has no XML child - no body.
- * If x is a container, use {} instead of null 
+/*! Check if X has no XML child - no body.
+ *
+ * If x is a container, use {} instead of null
  * if leaf or leaf-list then assume EMPTY type, then [null]
  * else null
  */
@@ -714,7 +715,7 @@ json_metadata_encoding(cbuf  *cb,
 /*! Encode XML attributes as JSON meta-data
  *
  * There are two methods for this:
- * 1) Registered meta-data according to RFC 7952 using md:annotate. 
+ * 1) Registered meta-data according to RFC 7952 using md:annotate.
  *    This is derived from a YANG module
  *    Examples: ietf-origin:origin, ietf-list-pagination: remaining
  * 2) Assigned, if someother mechanism, eg XSD is used
@@ -781,7 +782,7 @@ xml2json_encode_attr(cxobj     *xa,
     return retval;
 }
 
-/*! Do the actual work of translating XML to JSON 
+/*! Do the actual work of translating XML to JSON
  *
  * @param[out]  cb        Cligen text buffer containing json on exit
  * @param[in]   x         XML tree structure containing XML to translate
@@ -852,7 +853,7 @@ xml2json1_cbuf(cbuf                   *cb,
         if (ys_real_module(ys, &ymod) < 0)
             goto done;
         modname = yang_argument_get(ymod);
-        /* Special case for ietf-netconf -> ietf-restconf translation 
+        /* Special case for ietf-netconf -> ietf-restconf translation
          * A special case is for return data on the form {"data":...}
          * See also json_xmlns_translate()
          */
@@ -946,7 +947,7 @@ xml2json1_cbuf(cbuf                   *cb,
         goto done;
     }
     /* Check for typed sub-body if:
-     * arraytype=* but child-type is BODY_CHILD 
+     * arraytype=* but child-type is BODY_CHILD
      * This is code for writing <a>42</a> as "a":42 and not "a":"42"
      */
     commas = xml_child_nr_notype(x, CX_ATTR) - 1;
@@ -1050,9 +1051,8 @@ xml2json1_cbuf(cbuf                   *cb,
 
 /*! Translate an XML tree to JSON in a CLIgen buffer
  *
- * XML-style namespace notation in tree, but RFC7951 in output assume yang 
- * populated 
- *
+ * XML-style namespace notation in tree, but RFC7951 in output assume yang
+ * populated
  * @param[in,out] cb          Cligen buffer to write to
  * @param[in]     x           XML tree to translate from
  * @param[in]     pretty      Set if output is pretty-printed
@@ -1121,9 +1121,8 @@ xml2json_cbuf1(cbuf  *cb,
 
 /*! Translate an XML tree to JSON in a CLIgen buffer skip top-level object
  *
- * XML-style namespace notation in tree, but RFC7951 in output assume yang 
+ * XML-style namespace notation in tree, but RFC7951 in output assume yang
  * populated 
- *
  * @param[in,out] cb          Cligen buffer to write to
  * @param[in]     xt          Top-level xml object
  * @param[in]     pretty      Set if output is pretty-printed
@@ -1178,7 +1177,7 @@ clixon_json2cbuf(cbuf  *cb,
  * @param[in]  vec    Vector of xml objecst
  * @param[in]  veclen Length of vector
  * @param[in]  pretty Set if output is pretty-printed (2 for debug)
- * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children,
  * @retval     0      OK
  * @retval    -1      Error
  * @note This only works if the vector is uniform, ie same object name.
@@ -1320,8 +1319,8 @@ json_print(FILE  *f,
  * @param[in]  vec    Vector of xml objecst
  * @param[in]  veclen Length of vector
  * @param[in]  pretty Set if output is pretty-printed (2 for debug)
- * @param[in]  fn       File print function 
- * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  fn       File print function
+ * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children,
  * @retval     0      OK
  * @retval    -1      Error
  * @note This only works if the vector is uniform, ie same object name.
@@ -1357,11 +1356,11 @@ xml2json_vec(FILE             *f,
  *
  * Assume an xml tree where prefix:name have been split into "module":"name"
  * In other words, from JSON to XML namespace trees
- * 
+ *
  * @param[in]     yspec Yang spec
  * @param[in,out] x     XML tree. Translate it in-line
  * @param[out]    xerr  Reason for invalid tree returned as netconf err msg or NULL
- * @retval        1     OK 
+ * @retval        1     OK
  * @retval        0     Invalid, wrt namespace.  xerr set
  * @retval       -1     Error
  * @note the opposite - xml2ns is made inline in xml2json1_cbuf
@@ -1430,11 +1429,11 @@ json_xmlns_translate(yang_stmt *yspec,
  * @param[in]  yb     How to bind yang to XML top-level when parsing (if rfc7951)
  * @param[in]  yspec  Yang specification (if rfc 7951)
  * @param[out] xt     XML top of tree typically w/o children on entry (but created)
- * @param[out] xerr   Reason for invalid returned as netconf err msg 
+ * @param[out] xerr   Reason for invalid returned as netconf err msg
  * @retval     1      OK and valid
  * @retval     0      Invalid (only if yang spec)
  * @retval    -1      Error
- * 
+ *
  * @see _xml_parse for XML variant
  * @see http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
  * @see RFC 7951
@@ -1449,11 +1448,12 @@ _json_parse(char      *str,
 {
     int              retval = -1;
     clixon_json_yacc jy = {0,};
-    int              ret;
     cxobj           *x;
     cbuf            *cberr = NULL;
     int              i;
     int              failed = 0; /* yang assignment */
+    yang_stmt       *yspec1;
+    int              ret;
 
     if (clixon_debug_get() & CLIXON_DBG_DETAIL)
         clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "%s", str);
@@ -1473,11 +1473,15 @@ _json_parse(char      *str,
             clixon_err(OE_JSON, 0, "JSON parser error with no error code (should not happen)");
         goto done;
     }
+    if (xml_spec(xt))
+        yspec1 = ys_spec(xml_spec(xt));
+    else
+        yspec1 = yspec;
     /* Traverse new objects */
     for (i = 0; i < jy.jy_xlen; i++) {
         x = jy.jy_xvec[i];
-        /* RFC 7951 Section 4: A namespace-qualified member name MUST be used for all 
-         * members of a top-level JSON object 
+        /* RFC 7951 Section 4: A namespace-qualified member name MUST be used for all
+         * members of a top-level JSON object
          */
         if (rfc7951 && xml_prefix(x) == NULL){
             /* XXX: For top-level config file: */
@@ -1493,15 +1497,18 @@ _json_parse(char      *str,
             }
         }
         /* Names are split into name/prefix, but now add namespace info */
-        if ((ret = json_xmlns_translate(yspec, x, xerr)) < 0)
+        // XXX yspec is top-level but x may be across mtpoint
+        if ((ret = json_xmlns_translate(yspec1, x, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
-        /* Now assign yang stmts to each XML node 
+        /* Now assign yang stmts to each XML node
          * XXX should be xml_bind_yang0_parent() sometimes.
          */
         switch (yb){
-        case YB_PARENT:
+        case YB_NONE:
+            break;
+        case YB_MODULE:
             if ((ret = xml_bind_yang0(NULL, x, yb, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0)
@@ -1513,13 +1520,11 @@ _json_parse(char      *str,
             if (ret == 0)
                 failed++;
             break;
-        case YB_MODULE:
+        case YB_PARENT:
             if ((ret = xml_bind_yang0(NULL, x, yb, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
-            break;
-        case YB_NONE:
             break;
         case YB_RPC:
             if ((ret = xml_bind_yang_rpc(NULL, x, yspec, xerr)) < 0)
@@ -1528,7 +1533,7 @@ _json_parse(char      *str,
                 failed++;
             break;
         }
-        /* Now find leafs with identityrefs (+transitive) and translate 
+        /* Now find leafs with identityrefs (+transitive) and translate
          * prefixes in values to XML namespaces */
         if ((ret = json2xml_decode(x, xerr)) < 0)
             goto done;
@@ -1537,7 +1542,7 @@ _json_parse(char      *str,
     }
     if (failed)
         goto fail;
-    /* Sort the complete tree after parsing. Sorting is not really meaningful if Yang 
+    /* Sort the complete tree after parsing. Sorting is not really meaningful if Yang
        not bound */
     if (yb != YB_NONE)
         if (xml_sort_recurse(xt) < 0)
@@ -1564,7 +1569,7 @@ _json_parse(char      *str,
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, mandatory to make module->xmlns translation
  * @param[in,out] xt    Top object, if not exists, on success it is created with name 'top'
- * @param[out]    xerr  Reason for invalid returned as netconf err msg 
+ * @param[out]    xerr  Reason for invalid returned as netconf err msg
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
  * @retval       -1     Error
@@ -1599,24 +1604,24 @@ clixon_json_parse_string(char      *str,
     return _json_parse(str, rfc7951, yb, yspec, *xt, xerr);
 }
 
-/*! Read a JSON definition from file and parse it into a parse-tree. 
+/*! Read a JSON definition from file and parse it into a parse-tree.
  *
  * File will be parsed as follows:
  *   (1) parsed according to JSON; # Only this check if yspec is NULL
- *   (2) sanity checked wrt yang  
+ *   (2) sanity checked wrt yang
  *   (3) namespaces check (using <ns>:<name> notation
  *   (4) an xml parse tree will be returned
  * Note, only (1) and (4) will be done if yspec is NULL.
- * Part of (3) is to split json names if they contain colon, 
+ * Part of (3) is to split json names if they contain colon,
  *   eg: name="a:b" -> prefix="a", name="b"
  * But this is not done if yspec=NULL, and is not part of the JSON spec
- * 
+ *
  * @param[in]     fp    File descriptor to the JSON file (ASCII string)
  * @param[in]  rfc7951 Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to (XML) parse tree. If empty, create.
- * @param[out]    xerr  Reason for invalid returned as netconf err msg 
+ * @param[out]    xerr  Reason for invalid returned as netconf err msg
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
  * @retval       -1     Error

@@ -373,11 +373,11 @@ example_restconf_start(clixon_handle h)
  * @see RFC 8528
  */
 int
-restconf_yang_mount(clixon_handle   h,
-                    cxobj          *xt,
-                    int            *config,
-                    validate_level *vl,
-                    cxobj         **yanglib)
+example_restconf_yang_mount(clixon_handle   h,
+                            cxobj          *xt,
+                            int            *config,
+                            validate_level *vl,
+                            cxobj         **yanglib)
 {
     int   retval = -1;
     cbuf *cb = NULL;
@@ -407,7 +407,6 @@ restconf_yang_mount(clixon_handle   h,
         if (xml_rootchild(*yanglib, 0, yanglib) < 0)
             goto done;
     }
-
     retval = 0;
  done:
     if (cb)
@@ -423,7 +422,7 @@ static clixon_plugin_api api = {
     example_restconf_start,/* start */
     NULL,                /* exit */
     .ca_auth=example_restconf_credentials,   /* auth */
-    .ca_yang_mount=restconf_yang_mount,  /* RFC 8528 schema mount */
+    .ca_yang_mount=example_restconf_yang_mount,  /* RFC 8528 schema mount */
 };
 
 /*! Restconf plugin initialization

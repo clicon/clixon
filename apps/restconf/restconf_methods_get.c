@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
@@ -24,14 +24,14 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-  
+
  * Restconf method implementation for operations get and data get and head
  */
 
@@ -67,11 +67,12 @@
 static int api_data_pagination(clixon_handle h, void *req, char *api_path, int pi, cvec *qvec, int pretty, restconf_media media_out);
 
 /*! Generic GET (both HEAD and GET)
- * According to restconf 
+ *
+ * According to restconf
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pi       Offset, where path starts  
+ * @param[in]  pi       Offset, where path starts
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
@@ -80,20 +81,20 @@ static int api_data_pagination(clixon_handle h, void *req, char *api_path, int p
  * @retval    -1        Error
  * @code
  *  curl -X GET http://localhost/restconf/data/interfaces/interface=eth0
- * @endcode                                     
+ * @endcode
  * See RFC8040 Sec 4.2 and 4.3
- * XXX: cant find a way to use Accept request field to choose Content-Type  
- *      I would like to support both xml and json.           
- * Request may contain                                        
- *     Accept: application/yang.data+json,application/yang.data+xml   
- * Response contains one of:                           
- *     Content-Type: application/yang-data+xml    
- *     Content-Type: application/yang-data+json  
+ * XXX: cant find a way to use Accept request field to choose Content-Type
+ *      I would like to support both xml and json.
+ * Request may contain
+ *     Accept: application/yang.data+json,application/yang.data+xml
+ * Response contains one of:
+ *     Content-Type: application/yang-data+xml
+ *     Content-Type: application/yang-data+json
  * @note: If a retrieval request for a data resource representing a YANG leaf-
  * list or list object identifies more than one instance, and XML
  * encoding is used in the response, then an error response containing a
  * "400 Bad Request" status-line MUST be returned by the server.
- * Netconf: <get-config>, <get>                        
+ * Netconf: <get-config>, <get>
  * @note there is an ad-hoc method to determine json pagination request instead of regular GET
  */
 static int
@@ -117,16 +118,15 @@ api_data_get2(clixon_handle  h,
     size_t     xlen;
     int        i;
     cxobj     *x;
-    int        ret;
     cvec      *nsc = NULL;
     char      *attr; /* attribute value string */
     netconf_content content = CONTENT_ALL;
     int32_t    depth = -1;  /* Nr of levels to print, -1 is all, 0 is none */
     cxobj     *xtop = NULL;
-    cxobj     *xbot = NULL;
     yang_stmt *y = NULL;
     char      *defaults = NULL;
     cvec      *nscd = NULL;
+    int        ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -142,21 +142,28 @@ api_data_get2(clixon_handle  h,
         /* Translate api-path to xml, but to validate the api-path, note: strict=1
          * xtop and xbot unnecessary for this function but needed by function
          */
-        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
-            goto done;
-        /* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */
-        if (ret != 0 &&
-            (ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
+        if ((ret = api_path2xml_mnt(api_path, yspec, xtop, YC_DATANODE, 1,
+                                    restconf_apipath_mount_cb, h, NULL, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){ /* validation failed */
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
             goto ok;
         }
+        /* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */
+        if ((ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
+            goto done;
+        if (ret == 0){ /* validation failed */
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto ok;
+        }
+
+
         /* Ad-hoc method to determine json pagination request:
          * address list and one of "item/offset/.." is defined
          */
-        if (!head &&
+        if (!head && y &&
             (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST) &&
             (cvec_find(qvec, "where")     || cvec_find(qvec, "sort-by") ||
              cvec_find(qvec, "direction") || cvec_find(qvec, "offset") ||
@@ -203,16 +210,14 @@ api_data_get2(clixon_handle  h,
     }
 
     clixon_debug(CLIXON_DBG_RESTCONF, "path:%s", xpath);
-    ret = clicon_rpc_get(h, xpath, nsc, content, depth, defaults, &xret);
-
-    if (ret < 0){
+    if ((ret = clicon_rpc_get(h, xpath, nsc, content, depth, defaults, &xret)) < 0){
         if (netconf_operation_failed_xml(&xerr, "protocol", clixon_err_reason()) < 0)
             goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
             goto done;
         goto ok;
     }
-    /* We get return via netconf which is complete tree from root 
+    /* We get return via netconf which is complete tree from root
      * We need to cut that tree to only the object.
      */
 #if 0 /* DEBUG */
@@ -254,9 +259,9 @@ api_data_get2(clixon_handle  h,
         }
         /* Check if not exists */
         if (xlen == 0){
-            /* 4.3: If a retrieval request for a data resource represents an 
-               instance that does not exist, then an error response containing 
-               a "404 Not Found" status-line MUST be returned by the server.  
+            /* 4.3: If a retrieval request for a data resource represents an
+               instance that does not exist, then an error response containing
+               a "404 Not Found" status-line MUST be returned by the server.
                The error-tag value "invalid-value" is used in this case. */
             if (netconf_invalid_value_xml(&xerr, "application", "Instance does not exist") < 0)
                 goto done;
@@ -323,13 +328,13 @@ api_data_get2(clixon_handle  h,
     return retval;
 }
 
-/*! GET Collection 
+/*! GET pagination
  *
- * According to restconf collection draft. Lists, work in progress
+ * According to restconf pagination draft. Lists, work in progress
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pi       Offset, where path starts  
+ * @param[in]  pi       Offset, where path starts
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
@@ -338,11 +343,7 @@ api_data_get2(clixon_handle  h,
  * @retval    -1        Error
  * @code
  *  curl -X GET http://localhost/restconf/data/interfaces
- * @endcode                                     
- * A collection resource contains a set of data resources.  It is used
- * to represent a all instances or a subset of all instances in a YANG
- * list or leaf-list.
- * @see draft-ietf-netconf-restconf-collection-00.txt
+ * @endcode
  */
 static int
 api_data_pagination(clixon_handle  h,
@@ -391,14 +392,14 @@ api_data_pagination(clixon_handle  h,
     if (api_path){
         if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
             goto done;
-        /* Translate api-path to xml, but to validate the api-path, note: strict=1 
+        /* Translate api-path to xml, but to validate the api-path, note: strict=1
          * xtop and xbot unnecessary for this function but needed by function
          * Set strict=0 to accept list uri:s with =keys syntax
          */
-        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
+        if ((ret = api_path2xml_mnt(api_path, yspec, xtop, YC_DATANODE, 0,
+                                    restconf_apipath_mount_cb, h, &xbot, &y, &xerr)) < 0)
             goto done;
-        /* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) 
-         * XXX: xpath not used in collection?
+        /* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc)
          */
         if (ret != 0 &&
             (ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
@@ -448,7 +449,7 @@ api_data_pagination(clixon_handle  h,
         clixon_err(OE_XML, EINVAL, "Invalid content attribute %d", content);
         goto done;
     }
-    /* Clixon extensions and collection attributes */
+    /* Clixon extensions and pagination attributes */
     /* Check for depth attribute */
     if ((attr = cvec_find_str(qvec, "depth")) != NULL){
         clixon_debug(CLIXON_DBG_RESTCONF, "depth=%s", attr);
@@ -502,7 +503,7 @@ api_data_pagination(clixon_handle  h,
             goto done;
         goto ok;
     }
-    /* We get return via netconf which is complete tree from root 
+    /* We get return via netconf which is complete tree from root
      * We need to cut that tree to only the object.
      */
 #if 0 /* DEBUG */
@@ -588,14 +589,14 @@ api_data_pagination(clixon_handle  h,
 
 /*! REST HEAD method
  *
- * The HEAD method is sent by the client to retrieve just the header fields 
- * that would be returned for the comparable GET method, without the 
- * response message-body. 
- * Relation to netconf: none                        
+ * The HEAD method is sent by the client to retrieve just the header fields
+ * that would be returned for the comparable GET method, without the
+ * response message-body.
+ * Relation to netconf: none
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pi       Offset, where path starts  
+ * @param[in]  pi       Offset, where path starts
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
@@ -618,12 +619,12 @@ api_data_head(clixon_handle h,
 
 /*! REST GET method
  *
- * According to restconf 
+ * According to restconf
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element 
- * @param[in]  pi       Offset, where path starts  
+ * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element
+ * @param[in]  pi       Offset, where path starts
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
@@ -632,17 +633,17 @@ api_data_head(clixon_handle h,
  * @retval    -1         Error
  * @code
  *  curl -G http://localhost/restconf/data/interfaces/interface=eth0
- * @endcode                                     
- * Request may contain                                        
- *     Accept: application/yang.data+json,application/yang.data+xml   
- * Response contains one of:                           
- *     Content-Type: application/yang-data+xml    
- *     Content-Type: application/yang-data+json  
+ * @endcode
+ * Request may contain
+ *     Accept: application/yang.data+json,application/yang.data+xml
+ * Response contains one
+ *     Content-Type: application/yang-data+xml
+ *     Content-Type: application/yang-data+json
  * NOTE: If a retrieval request for a data resource representing a YANG leaf-
  * list or list object identifies more than one instance, and XML
  * encoding is used in the response, then an error response containing a
  * "400 Bad Request" status-line MUST be returned by the server.
- * Netconf: <get-config>, <get>                        
+ * Netconf: <get-config>, <get>
  */
 int
 api_data_get(clixon_handle h,
@@ -678,7 +679,7 @@ api_data_get(clixon_handle h,
  * @param[in]  h      Clixon handle
  * @param[in]  req    Generic Www handle
  * @param[in]  path   According to restconf (Sec 3.5.1.1 in [draft])
- * @param[in]  pi     Offset, where path starts  
+ * @param[in]  pi     Offset, where path starts
  * @param[in]  qvec   Vector of query string (QUERY_STRING)
  * @param[in]  data   Stream input data
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
@@ -687,7 +688,7 @@ api_data_get(clixon_handle h,
  * @retval    -1    Error
  * @code
  *  curl -G http://localhost/restconf/operations
- * @endcode                                     
+ * @endcode
  * @see RFC8040 Sec 3.3.2:
  * This optional resource is a container that provides access to the
  * data-model-specific RPC operations supported by the server.  The

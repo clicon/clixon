@@ -1035,6 +1035,8 @@ api_path2xpath(char      *api_path,
  * @param[in]   y0        Yang spec for x0
  * @param[in]   nodeclass Set to schema nodes, data nodes, etc
  * @param[in]   strict    Break if api-path is not "complete" otherwise ignore and continue
+ * @param[in]   mnt_cb    Callback to mount new yang if mount-point is empty
+ * @param[in]   arg       Argument to callback
  * @param[out]  xbotp     Resulting xml tree 
  * @param[out]  ybotp     Yang spec matching xpathp
  * @param[out]  xerr      Netconf error message (if retval=0)
@@ -1047,15 +1049,17 @@ api_path2xpath(char      *api_path,
  * @see api_path2xml
  */
 static int
-api_path2xml_vec(char      **vec,
-                 int         nvec,
-                 cxobj      *x0,
-                 yang_stmt  *y0,
-                 yang_class  nodeclass,
-                 int         strict,
-                 cxobj     **xbotp,
-                 yang_stmt **ybotp,
-                 cxobj     **xerr)
+api_path2xml_vec(char            **vec,
+                 int               nvec,
+                 cxobj            *x0,
+                 yang_stmt        *y0,
+                 yang_class        nodeclass,
+                 int               strict,
+                 api_path_mnt_cb_t mnt_cb,
+                 void             *arg,
+                 cxobj           **xbotp,
+                 yang_stmt       **ybotp,
+                 cxobj           **xerr)
 {
     int        retval = -1;
     char      *nodeid;
@@ -1081,6 +1085,7 @@ api_path2xml_vec(char      **vec,
     char      *xpath = NULL;
     cvec      *nsc = NULL;
     int        ymtpoint; /* y is mountpoint */
+    int        ret;
 
     if ((nodeid = vec[0]) == NULL || strlen(nodeid)==0){
         if (xbotp)
@@ -1112,9 +1117,12 @@ api_path2xml_vec(char      **vec,
             goto fail;
         }
         if (ymtpoint){
-            /* XXX: Ignore return value: if none are mounted, no change of yspec is made here */
-            if (yang_mount_get_yspec_any(y0, &y0) < 0)
+            if ((ret = yang_mount_get_yspec_any(y0, &y0)) < 0)
                 goto done;
+            if (ret == 0 && mnt_cb != NULL){
+                if (mnt_cb(arg, x0, &y0) < 0)
+                    goto done;
+            }
         }
         if ((ymod = yang_find_module_by_name(y0, prefix)) == NULL){
             cprintf(cberr, "No such yang module prefix");
@@ -1179,7 +1187,7 @@ api_path2xml_vec(char      **vec,
             }
         }
         else{
-            /* Transform restval "a,b,c" to "a" "b" "c" (nvalvec=3) 
+            /* Transform restval "a,b,c" to "a" "b" "c" (nvalvec=3)
              * Note that vnr can be < length of cvk, due to empty or unset values
              * Note also that valvec entries are encoded
              */
@@ -1269,7 +1277,7 @@ api_path2xml_vec(char      **vec,
             goto done;
         }
         /* cf xml_bind_yang0_opt/xml_yang_mount_get */
-        if (yang_mount_get(y, xpath, &y1) < 0) 
+        if (yang_mount_get(y, xpath, &y1) < 0)
             goto done;
         if (y1 != NULL)
             y = y1;
@@ -1277,6 +1285,7 @@ api_path2xml_vec(char      **vec,
     if ((retval = api_path2xml_vec(vec+1, nvec-1,
                                    x, y,
                                    nodeclass, strict,
+                                   mnt_cb, arg,
                                    xbotp, ybotp, xerr)) < 1)
         goto done;
  ok:
@@ -1345,6 +1354,44 @@ api_path2xml(char       *api_path,
              yang_stmt **ybotp,
              cxobj     **xerr)
 {
+    return api_path2xml_mnt(api_path, yspec, xtop, nodeclass, strict, NULL, NULL, xbotp, ybotp, xerr);
+}
+
+/*! Create xml tree from api-path as vector and as a side-effect mount yangs
+ *
+ * Specialized version of api_path2xml_vec
+ * @param[in]   h         Clixon handle
+ * @param[in]   vec       APIpath as char* vector
+ * @param[in]   nvec      Length of vec
+ * @param[in]   x0        XML tree so far
+ * @param[in]   y0        Yang spec for x0
+ * @param[in]   nodeclass Set to schema nodes, data nodes, etc
+ * @param[in]   strict    Break if api-path is not "complete" otherwise ignore and continue
+ * @param[in]   mnt_cb    Callback if mount-point is empty
+ * @param[in]   arg       Argument to callback
+ * @param[out]  xbotp     Resulting xml tree
+ * @param[out]  ybotp     Yang spec matching xpathp
+ * @param[out]  xerr      Netconf error message (if retval=0)
+ * @retval      1         OK
+ * @retval      0         Invalid api_path or associated XML, netconf error
+ * @retval     -1         Fatal error
+ *
+ * @note both retval -1 set clixon_err, retval 0 set xerr netconf xml
+ * @see api_path2xpath For api-path to xml xpath translation
+ * @see api_path2xml
+ */
+int
+api_path2xml_mnt(char             *api_path,
+                 yang_stmt        *yspec,
+                 cxobj            *xtop,
+                 yang_class        nodeclass,
+                 int               strict,
+                 api_path_mnt_cb_t mnt_cb,
+                 void             *arg,
+                 cxobj           **xbotp,
+                 yang_stmt       **ybotp,
+                 cxobj           **xerr)
+{
     int    retval = -1;
     char **vec = NULL;
     int    nvec;
@@ -1376,6 +1423,7 @@ api_path2xml(char       *api_path,
     nvec--; /* NULL-terminated */
     if ((retval = api_path2xml_vec(vec+1, nvec,
                                    xtop, yspec, nodeclass, strict,
+                                   mnt_cb, arg,
                                    xbotp, ybotp, xerr)) < 1)
         goto done;
     /* Fix namespace */
@@ -1471,14 +1519,6 @@ xml2api_path_1(cxobj *x,
     default:
         break;
     }
-#if 0
-    { /* Just for testing */
-        cxobj *xc;
-        if ((xc = xml_child_i_type(x, 0, CX_ELMNT)) != NULL)
-            if (xml2api_path_1(xc, cb) < 0)
-                goto done;
-    }
-#endif
  ok:
     retval = 0;
  done:

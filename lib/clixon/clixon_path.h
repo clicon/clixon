@@ -72,6 +72,9 @@ typedef struct {
     yang_stmt  *cp_yang;     /* Corresponding yang spec (after XML match - ie resolved) */
 } clixon_path;
 
+/*! Callback if empty mount-point is encountered */
+typedef int (api_path_mnt_cb_t)(clixon_handle h, cxobj *x, yang_stmt **yp);
+
 /*
  * Prototypes
  */
@@ -84,6 +87,10 @@ int api_path2xpath(char *api_path, yang_stmt *yspec, char **xpath, cvec **nsc, c
 int api_path2xml(char *api_path, yang_stmt *yspec, cxobj *xtop,
                  yang_class nodeclass, int strict,
                  cxobj **xpathp, yang_stmt **ypathp, cxobj **xerr);
+int api_path2xml_mnt(char *api_path, yang_stmt *yspec, cxobj *xtop,
+                     yang_class nodeclass, int strict,
+                     api_path_mnt_cb_t mnt_cb, void *arg,
+                     cxobj **xpathp, yang_stmt **ypathp, cxobj **xerr);
 int xml2api_path_1(cxobj *x, cbuf *cb);
 int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen, const char *format,
                      ...) __attribute__ ((format (printf, 5, 6)));;

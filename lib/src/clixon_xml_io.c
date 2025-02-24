@@ -890,7 +890,6 @@ _xml_parse(const char *str,
     }
     xy.xy_xtop = xt;
     xy.xy_xparent = xt;
-    xy.xy_yspec = yspec;
     if (clixon_xml_parsel_init(&xy) < 0)
         goto done;
     if (clixon_xml_parseparse(&xy) != 0)  /* yacc returns 1 on error */

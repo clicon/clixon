@@ -64,13 +64,13 @@
 #include "restconf_err.h"
 #include "restconf_methods_post.h"
 
-/*! Print location header from 
+/*! Print location header from
  *
  * @param[in]  req    Generic Www handle
  * @param[in]  xobj   If set (eg POST) add to api-path
  * @retval     0    OK
  * @retval    -1    Error
- * $https  “on” if connection operates in SSL mode, or an empty string otherwise 
+ * $https  “on” if connection operates in SSL mode, or an empty string otherwise
  * @note ports are ignored
  */
 static int
@@ -117,7 +117,7 @@ http_location_header(clixon_handle h,
     return retval;
 }
 
-/*! Generic REST POST  method 
+/*! Generic REST POST  method
  *
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
@@ -131,7 +131,7 @@ http_location_header(clixon_handle h,
  * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
  * @retval     0         OK
  * @retval    -1         Error
- * restconf POST is mapped to edit-config create. 
+ * restconf POST is mapped to edit-config create.
  * @see RFC8040 Sec 4.4.1
 
  POST:
@@ -203,7 +203,8 @@ api_data_post(clixon_handle h,
     xbot = xtop;
     if (api_path){
         /* Translate api-path to xml, side-effect: validate the api-path, note: strict=1 */
-        if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &ybot, &xerr)) < 0)
+        if ((ret = api_path2xml_mnt(api_path, yspec, xtop, YC_DATANODE, 1,
+                                    restconf_apipath_mount_cb, h, &xbot, &ybot, &xerr)) < 0)
             goto done;
         if (ret == 0){ /* validation failed */
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -233,8 +234,8 @@ api_data_post(clixon_handle h,
         yb = YB_MODULE;
     else
         yb = YB_PARENT;
-    /* Parse input data as json or xml into xml 
-     * If xbot is top-level (api_path=null) it does not have a spec therefore look for 
+    /* Parse input data as json or xml into xml
+     * If xbot is top-level (api_path=null) it does not have a spec therefore look for
      * top-level (yspec) otherwise assume parent (xbot) is populated.
      */
     switch (media_in){
@@ -273,7 +274,7 @@ api_data_post(clixon_handle h,
     } /* switch media_in */
 
     /* RFC 8040 4.4.1: The message-body MUST contain exactly one instance of the
-     * expected data resource. 
+     * expected data resource.
      */
     clixon_debug(CLIXON_DBG_RESTCONF, "nrchildren0: %d", nrchildren0);
     if (xml_child_nr_type(xbot, CX_ELMNT) - nrchildren0 != 1){
@@ -315,7 +316,7 @@ api_data_post(clixon_handle h,
                  goto done;
              goto ok;
         }
-        /* If URI points out an object, then data's parent should be that object 
+        /* If URI points out an object, then data's parent should be that object
          */
         if (ybot && yang_parent_get(ydata) != ybot){
              if (netconf_malformed_message_xml(&xerr, "Data is not prefixed with matching namespace") < 0)
@@ -399,12 +400,12 @@ api_data_post(clixon_handle h,
    return retval;
 } /* api_data_post */
 
-/*! Handle input data to api_operations_post 
+/*! Handle input data to api_operations_post
  *
  * @param[in]  h      Clixon handle
  * @param[in]  req    Generic Www handle
  * @param[in]  data   Stream input data
- * @param[in]  yspec  Yang top-level specification 
+ * @param[in]  yspec  Yang top-level specification
  * @param[in]  yrpc   Yang rpc spec
  * @param[in]  xrpc   XML pointer to rpc method
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
@@ -449,7 +450,7 @@ api_operations_post_input(clixon_handle h,
     media_in = restconf_content_type(h);
     switch (media_in){
     case YANG_DATA_XML:
-        /* XXX: Here data is on the form: <input xmlns="urn:example:clixon"/> and has no proper yang binding 
+        /* XXX: Here data is on the form: <input xmlns="urn:example:clixon"/> and has no proper yang binding
          * support */
         if ((ret = clixon_xml_parse_string(data, YB_NONE, yspec, &xdata, &xerr)) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
@@ -465,7 +466,7 @@ api_operations_post_input(clixon_handle h,
         }
         break;
     case YANG_DATA_JSON:
-        /* XXX: Here data is on the form: {"clixon-example:input":null} and has no proper yang binding 
+        /* XXX: Here data is on the form: {"clixon-example:input":null} and has no proper yang binding
          * support */
         if ((ret = clixon_json_parse_string(data, 1, YB_NONE, yspec, &xdata, &xerr)) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
@@ -486,7 +487,7 @@ api_operations_post_input(clixon_handle h,
         break;
     } /* switch media_in */
     xml_name_set(xdata, NETCONF_OUTPUT_DATA);
-    /* Here xdata is: 
+    /* Here xdata is:
      * <data><input xmlns="urn:example:clixon">...</input></data>
      */
 #if 1
@@ -532,12 +533,12 @@ api_operations_post_input(clixon_handle h,
     goto done;
 }
 
-/*! Handle output data to api_operations_post 
+/*! Handle output data to api_operations_post
  *
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
  * @param[in]  xret     XML reply messages from backend/handler
- * @param[in]  yspec    Yang top-level specification 
+ * @param[in]  yspec    Yang top-level specification
  * @param[in]  youtput  Yang rpc output specification
  * @param[in]  pretty Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
@@ -570,7 +571,7 @@ api_operations_post_output(clixon_handle h,
     /* Validate that exactly only <rpc-reply> tag with exactly one element child */
     if ((xoutput = xml_child_i_type(xret, 0, CX_ELMNT)) == NULL ||
         strcmp(xml_name(xoutput),"rpc-reply") != 0
-        /* See https://github.com/clicon/clixon/issues/158 
+        /* See https://github.com/clicon/clixon/issues/158
          * This is an internal error, they should not be double but the error should not be detected
          * here, it should be detected in the backend plugin caller.
          ||     xml_child_nr_type(xrpc, CX_ELMNT) != 1 XXX backend can have multiple callbacks
@@ -594,7 +595,7 @@ api_operations_post_output(clixon_handle h,
         if (xml_purge(xa) < 0)
             goto done;
 
-    /* Sanity check of outgoing XML 
+    /* Sanity check of outgoing XML
      * For now, skip outgoing checks.
      * (1) Does not handle <ok/> properly
      * (2) Uncertain how validation errors should be logged/handled
@@ -657,7 +658,7 @@ api_operations_post_output(clixon_handle h,
     goto done;
 }
 
-/*! REST operation POST method 
+/*! REST operation POST method
  *
  * @param[in]  h        Clixon handle
  * @param[in]  req      Generic Www handle
@@ -669,7 +670,7 @@ api_operations_post_output(clixon_handle h,
  * @retval     0        OK
  * @retval    -1        Error
  * See RFC 8040 Sec 3.6 / 4.4.2
- * @note We map post to edit-config create. 
+ * @note We map post to edit-config create.
  *      POST {+restconf}/operations/<operation>
  * 1. Initialize
  * 2. Get rpc module and name from uri (oppath) and find yang spec
@@ -740,7 +741,7 @@ api_operations_post(clixon_handle h,
             goto done;
         goto ok;
     }
-    /* 2. Get rpc module and name from uri (oppath) and find yang spec 
+    /* 2. Get rpc module and name from uri (oppath) and find yang spec
      *       POST {+restconf}/operations/<operation>
      *
      * The <operation> field identifies the module name and rpc identifier
@@ -762,7 +763,7 @@ api_operations_post(clixon_handle h,
             goto done;
         goto ok;
     }
-    /* 3. Build xml tree with user and rpc: 
+    /* 3. Build xml tree with user and rpc:
      * <rpc username="foo"><myfn xmlns="uri"/>
      */
     if ((username = clicon_username_get(h)) != NULL){
@@ -777,14 +778,15 @@ api_operations_post(clixon_handle h,
     if (xml_rootchild(xtop, 0, &xtop) < 0)
         goto done;
     xbot = xtop;
-    if ((ret = api_path2xml(oppath, yspec, xtop, YC_SCHEMANODE, 1, &xbot, &y, &xerr)) < 0)
+    if ((ret = api_path2xml_mnt(oppath, yspec, xtop, YC_SCHEMANODE, 1,
+                                restconf_apipath_mount_cb, h, &xbot, &y, &xerr)) < 0)
         goto done;
     if (ret == 0){ /* validation failed */
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
             goto done;
         goto ok;
     }
-    /* Here xtop is: <rpc username="foo"><myfn xmlns="uri"/></rpc> 
+    /* Here xtop is: <rpc username="foo"><myfn xmlns="uri"/></rpc>
      * xbot is <myfn xmlns="uri"/>
      * 4. Parse input data (arguments):
      *             JSON: {"example:input":{"x":0}}
@@ -799,7 +801,7 @@ api_operations_post(clixon_handle h,
         if (ret == 0)
             goto ok;
     }
-    /* Here xtop is: 
+    /* Here xtop is:
       <rpc username="foo"><myfn xmlns="uri"><x>42</x></myfn></rpc> */
 #if 1
     clixon_debug_xml(CLIXON_DBG_RESTCONF, xtop, ". Translate input args:");
@@ -829,8 +831,8 @@ api_operations_post(clixon_handle h,
      * Note (1) xtop is <rpc><method> xbot is <method>
      *      (2) local handler wants <method> and backend wants <rpc><method>
      */
-    /* Look for local (client-side) restconf plugins. 
-     * -1:Error, 0:OK local, 1:OK backend 
+    /* Look for local (client-side) restconf plugins.
+     * -1:Error, 0:OK local, 1:OK backend
      */
     if ((ret = rpc_callback_call(h, xbot, req, &nr, cbret)) < 0)
         goto done;

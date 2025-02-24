@@ -114,7 +114,7 @@ yang_patch_xml2json_modified_cbuf(cxobj *x_simple_patch)
     char *json_simple_patch_tmp;
     int   brace_count = 0;
     size_t len;
-        
+
     json_simple_patch = cbuf_new();
     if (json_simple_patch == NULL)
         return NULL;
@@ -150,7 +150,7 @@ yang_patch_xml2json_modified_cbuf(cxobj *x_simple_patch)
     return json_simple_patch;
 }
 
-/*! yang_patch_strip_after_last_slash 
+/*! yang_patch_strip_after_last_slash
  *
  * Strip /... from end  of val
  * so that e.g. "/interface=eth2" becomes "/"
@@ -166,7 +166,7 @@ yang_patch_strip_after_last_slash(char* val)
     cbuf *cb;
     cbuf *val_tmp;
     int   idx;
-    
+
     cb = cbuf_new();
     val_tmp = cbuf_new();
     cbuf_append_str(val_tmp, val);
@@ -212,7 +212,7 @@ yang_patch_do_replace(clixon_handle  h,
                       restconf_media media_out,
                       ietf_ds_t      ds,
                       cbuf          *simple_patch_request_uri,
-                      char          *target_val,       
+                      char          *target_val,
                       int            value_vec_len,
                       cxobj        **value_vec,
                       cxobj         *x_simple_patch
@@ -223,7 +223,7 @@ yang_patch_do_replace(clixon_handle  h,
     cbuf  *delete_req_uri = NULL;
     cbuf  *post_req_uri = NULL;
     cbuf  *json_simple_patch = NULL;
-    
+
     if ((delete_req_uri = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -322,7 +322,7 @@ yang_patch_do_create(clixon_handle  h,
     int    retval = -1;
     cxobj *value_vec_tmp = NULL;
     cbuf  *cb = NULL;
-    
+
     // Send the POST request
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -361,7 +361,7 @@ yang_patch_do_create(clixon_handle  h,
  * @param[in]  value_vec        pointer to the "value" array of an edit in YANG patch
  * @param[in]  x_simple_patch   pointer to XML containing module name, e.g. <ietf-interfaces:interface/>
  * @param[in]  where_val       value in "where" field of edit in YANG patch
- * @param[in]  api_path        full API path, e.g. "/restconf/data/example-jukebox:jukebox/playlist=Foo-One" 
+ * @param[in]  api_path        full API path, e.g. "/restconf/data/example-jukebox:jukebox/playlist=Foo-One"
  * @param[in]  point_val       value in "point" field of edit in YANG patch
  * @retval     0               OK
  * @retval    -1               Error
@@ -388,7 +388,7 @@ yang_patch_do_insert(clixon_handle  h,
     cg_var *cv;
     cbuf   *point_str = NULL;
     cvec   *qvec_tmp = NULL;
-    
+
     if ((point_str = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -476,14 +476,13 @@ yang_patch_do_merge(clixon_handle  h,
     cxobj *value_vec_tmp = NULL;
     cbuf  *cb = NULL;
     cbuf  *json_simple_patch = NULL;
-        
+
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if (key_xn != NULL)
         xml_addsub(x_simple_patch, key_xn);
-    
     // Loop through the XML, create JSON from each one, and submit a simple patch
     for (int k = 0; k < value_vec_len; k++) {
         if (value_vec[k] != NULL) {
@@ -618,7 +617,7 @@ yang_patch_do_edit(clixon_handle  h,
     size_t     veclen = 0;
     int        ret;
     cxobj     *xerr = NULL;    /* malloced must be freed */
-    cxobj     *xtop; 
+    cxobj     *xtop;
     cxobj     *xbot = NULL;
     yang_patch_op_t operation;
     char      *where_val = NULL;
@@ -683,7 +682,7 @@ yang_patch_do_edit(clixon_handle  h,
     // Get key field
     /* Translate api_path to xml in the form of xtop/xbot */
     xbot = xtop;
-    if ((ret = api_path2xml(cbuf_get(api_path_target), yspec, xtop, YC_DATANODE, 1, &xbot, &ybot, &xerr)) < 0)
+    if ((ret = api_path2xml_mnt(h, cbuf_get(api_path_target), yspec, xtop, YC_DATANODE, 1, &xbot, &ybot, &xerr)) < 0)
         goto done;
     if (ret == 0){ /* validation failed */
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
