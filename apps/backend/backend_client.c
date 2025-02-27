@@ -655,7 +655,8 @@ from_client_edit_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    /* Must do before duplicate check */
+    /* Must do before duplicate check,
+     * should probably be done before minmax check above */
     if (xml_sort_recurse(xc) < 0)
         goto done;
     /* Disable duplicate check in NETCONF messages. */

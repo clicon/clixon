@@ -91,8 +91,8 @@
  */
 struct vec_order {
     cxobj        *vo_xml;
-    char        **vo_strvec;
-    size_t        vo_slen; /* length of vo_strvec (is actually global to vector) */
+    char        **vo_strvec; /* vector of keys, 1 element if leaf-list, NULL if non-list */
+    size_t        vo_slen;   /* Length of vo_strvec (is actually global to vector) */
 };
 
 /*! New element last in list, check if already exists if so return -1
@@ -877,9 +877,10 @@ remove_duplicates_list(yang_stmt        *y,
                        int              *nr,
                        cxobj           **xret)
 {
-    int retval = -1;
-    int v;
-    int i;
+    int   retval = -1;
+    cvec *cvk;
+    int   v;
+    int   i;
 
     if (nr)
         *nr = 0;
@@ -896,7 +897,7 @@ remove_duplicates_list(yang_stmt        *y,
                     (*nr)++;
             }
             else{
-                cvec *cvk = NULL;
+                cvk = NULL;
                 if (yang_keyword_get(y) == Y_LEAF_LIST){
                     if ((cvk = cvec_new(0)) == NULL){
                         clixon_err(OE_UNIX, errno, "cvec_new");
@@ -920,6 +921,48 @@ remove_duplicates_list(yang_stmt        *y,
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Remove duplicates container or leaf
+ *
+ * @param[in]  vec   Ordered vector of string vectors
+ * @param[in]  vlen  Length of vec
+ * @param[in]  rm    0: return 0 on first duplicate, 1: remove all duplicates
+ * @param[in]  cvv   Vector of keys (for error)
+ * @param[out] xret  Error XML tree. Free with xml_free after use
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+static int
+remove_duplicates_single(yang_stmt        *y,
+                         struct vec_order *vec,
+                         size_t            vlen,
+                         int               rm,
+                         int              *nr,
+                         cxobj           **xret)
+{
+    int    retval = -1;
+    cxobj *x;
+    int    v;
+
+    if (nr)
+        *nr = 0;
+    for (v=1; v<vlen; v++){
+        x = vec[v-1].vo_xml;
+        if (rm){
+            if (xml_purge(x) < 0)
+                goto done;
+            if (nr)
+                (*nr)++;
+        }
+        else{
+            if (xret && netconf_minmax_elements_xml(xret, xml_parent(x), xml_name(x), 1) < 0)
+                    goto done;
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Analyze sorted list: detect and potentially remove duplicates
@@ -946,12 +989,25 @@ vec_order_analyze(yang_stmt        *y,
     int  nr = 0;
     int  ret;
 
-    if (yang_find(y, Y_ORDERED_BY, "user") != NULL)
-        qsort(vec, vlen, sizeof(*vec), cmp_list_qsort);
-    if ((ret = remove_duplicates_list(y, vec, vlen, rm, &nr, xret)) < 0)
-        goto done;
-    if (ret == 0) {
-        goto fail;
+    switch (yang_keyword_get(y)){
+    case Y_LIST:
+    case Y_LEAF_LIST:
+        if (yang_find(y, Y_ORDERED_BY, "user") != NULL)
+            qsort(vec, vlen, sizeof(*vec), cmp_list_qsort);
+        if ((ret = remove_duplicates_list(y, vec, vlen, rm, &nr, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        break;
+    case Y_LEAF:
+    case Y_CONTAINER:
+        if (vlen > 1){
+            if (remove_duplicates_single(y, vec, vlen, rm, &nr, xret) < 0)
+                goto done;
+        }
+        break;
+    default:
+        break;
     }
     if (x && nr)
         xml_vector_decrement(x, nr);
@@ -1016,12 +1072,28 @@ xml_duplicate_detect1(cxobj  *xt,
         }
         keyw = yang_keyword_get(y);
         switch (keyw){
+        case Y_CONTAINER:
+        case Y_LEAF:
+            if (vlen > 0 && slen0 != 0){ /* Sanity check */
+                clixon_err(OE_YANG, 0, "Container vector mismatch %lu != 0", slen0);
+                goto done;
+            }
+            if ((vec = realloc(vec, (vlen+1)*sizeof(*vec))) == NULL){
+                clixon_err(OE_UNIX, errno, "cvec_new");
+                goto done;
+            }
+            vec[vlen].vo_slen = 0;
+            vec[vlen].vo_strvec = NULL;
+            vec[vlen].vo_xml = x;
+            vlen++;
+            slen0 = 0;
+            break;
         case Y_LIST:
             if ((cvk = yang_cvec_get(y)) == NULL)
                 continue;
             if ((clen = cvec_len(cvk)) == 0)
                 continue;
-            if (vec>0 && slen0 != clen){ /* Sanity check */
+            if (vlen > 0 && slen0 != clen){ /* Sanity check */
                 clixon_err(OE_YANG, 0, "List key vector mismatch %lu != %lu", slen0, clen);
                 goto done;
             }
@@ -1063,7 +1135,7 @@ xml_duplicate_detect1(cxobj  *xt,
                 goto fail;
             break;
         case Y_LEAF_LIST:
-            if (vec>0 && slen0 != 1){ /* Sanity check */
+            if (vlen > 0 && slen0 != 1){ /* Sanity check */
                 clixon_err(OE_YANG, 0, "Leaf-list key vector mismatch %lu != 1", slen0);
                 goto done;
             }

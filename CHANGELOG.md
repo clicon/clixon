@@ -22,6 +22,10 @@ Planned: April 2025
 * New `clixon-restconf@2025-02-01.yang` revision
   * Added timeout parameter
 
+### Corrected Bugs
+
+* Fixed: [Templates with nc:operation "merge" causes bad diffs to be shows](https://github.com/clicon/clixon-controller/issues/187)
+
 ## 7.3.0
 30 January 2025
 

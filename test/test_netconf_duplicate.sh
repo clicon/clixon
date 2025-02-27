@@ -29,9 +29,9 @@ EOF
 # Example (the list server part) from RFC7950 Sec 7.8.3.1 w changed types
 cat <<EOF > $fyang
 module unique{
-  yang-version 1.1;
-  namespace "urn:example:clixon";
-  prefix un;
+   yang-version 1.1;
+   namespace "urn:example:clixon";
+   prefix un;
    container c{
       presence "trigger"; // force presence container to trigger error
       list server {
@@ -63,6 +63,8 @@ module unique{
          type string;
       }
    }
+   container d{
+   }
 }
 EOF
 
@@ -79,7 +81,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
-new "wait backend"
+new "Wait backend 1"
 wait_backend
 
 new "Add list entry"
@@ -325,6 +327,24 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "Check mix w empty"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><c xmlns=\"urn:example:clixon\"><user><name>aaa</name><value>foo</value></user><user><name/><value>foo</value></user><b/><b>bbb</b><b>ccc</b><buser>CCC</buser><buser>BBB</buser><buser>AAA</buser></c></data></rpc-reply>"
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# Note both unordered and duplicate
+new "Container dups"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config>
+<c xmlns=\"urn:example:clixon\">
+     <b>aaa</b>
+</c>
+<d xmlns=\"urn:example:clixon\"/>
+<c xmlns=\"urn:example:clixon\">
+     <b>bbb</b>
+</c>
+</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Check no container duplicates"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><c xmlns=\"urn:example:clixon\"><b>bbb</b></c></data></rpc-reply>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
