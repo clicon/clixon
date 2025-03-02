@@ -142,6 +142,9 @@ nodetest_eval_namespace(cxobj      *x,
     char *ns1 = NULL; /* xml namespace */
     char *ns2 = NULL; /* xpath namespace */
 
+    /* Namespaces is s0, name is s1 */
+    if (strcmp(xs->xs_s1, "*")==0)
+        goto ok;
     /* XML x ->  prefix1 + name1 */
     prefix1 = xml_prefix(x);
     name1 = xml_name(x);
@@ -169,9 +172,7 @@ nodetest_eval_namespace(cxobj      *x,
     }
     else if (strcmp(ns1, ns2) != 0)
         goto fail;
-#ifdef XPATH_NS_ACCEPT_UNRESOLVED
  ok:
-#endif
     retval = 1;
  done:  /* retval set in preceding statement */
     return retval;

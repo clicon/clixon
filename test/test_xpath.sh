@@ -143,6 +143,12 @@ module clixon-example {
                 type string;
             }
         }
+        container options {
+           leaf max-number {
+               type uint32;
+               default 50000;
+            }
+        }
     }
 }
 EOF
@@ -556,13 +562,27 @@ EOF
 new "given value show key"
 expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y $fyang < $dir/1.xpath)" 0 "<name>x</name>"
 
-
+# See https://github.com/clicon/clixon/issues/594
 cat <<EOF > $dir/1.xpath
 /table/parameter[value='42']/value
 EOF
 
 new "given value show value"
 expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y $fyang < $dir/1.xpath)" 0 "<value>42</value>"
+
+cat <<EOF > $dir/1.xml
+<table xmlns="urn:example:clixon">
+   <options>
+         <max-number>50000</max-number>
+   </options>
+</table>
+EOF
+
+new "xpath issue ok"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y $fyang -p "/ex:table/options/*")" 0 "<max-number>50000</max-number>"
+
+new "xpath issue fail"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n null:urn:ietf:params:xml:ns:netconf:base:1.0 -n ex:urn:example:clixon -y $fyang -p "/ex:table/ex:options/*")" 0 "<max-number>50000</max-number>"
 
 rm -rf $dir
 

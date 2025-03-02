@@ -24,6 +24,7 @@ Planned: April 2025
 
 ### Corrected Bugs
 
+* Fixed: [XPath * stopped working in 7.3](https://github.com/clicon/clixon/issues/594)
 * Fixed: [Templates with nc:operation "merge" causes bad diffs to be shows](https://github.com/clicon/clixon-controller/issues/187)
 
 ## 7.3.0
