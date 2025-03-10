@@ -1201,6 +1201,7 @@ cli_show_auto(clixon_handle h,
     yang_stmt       *yspec0;
     char            *api_path = NULL;
     int              cvvi = 0;
+    cvec            *cvv2 = NULL; /* cvv2 = cvv0 + cvv1 */
     char            *api_path_fmt;  /* xml key format */
     char            *api_path_fmt01 = NULL;
     char            *str;
@@ -1247,15 +1248,17 @@ cli_show_auto(clixon_handle h,
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
+    if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv)) == NULL)
+        goto done;
     if (mtpoint){
         /* Get and combined api-path01 */
         if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
             goto done;
-        if (api_path_fmt2api_path(api_path_fmt01, cvv, yspec0, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt01, cvv2, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     else{
-        if (api_path_fmt2api_path(api_path_fmt, cvv, yspec0, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt, cvv2, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     if (api_path2xpath(api_path, yspec0, &xpath, &nsc, NULL) < 0)
@@ -1270,6 +1273,8 @@ cli_show_auto(clixon_handle h,
         goto done;
     retval = 0;
  done:
+    if (cvv2)
+        cvec_free(cvv2);
     if (api_path_fmt01)
         free(api_path_fmt01);
     if (nsc)
