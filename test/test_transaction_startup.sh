@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Transaction functionality: Start from startup and ensure 
+# Transaction functionality: Start from startup and ensure
 # first transaction is OK including diff
 # See eg https://github.com/clicon/clixon/issues/596
 
@@ -72,7 +72,7 @@ function checklog(){
     t=$(grep -n "transaction_log $s" $flog)
     if [ -z "$t" ]; then
         echo -e "\e[31m\nError in Test$testnr [$testname]:"
-        if [ $# -gt 0 ]; then 
+        if [ $# -gt 0 ]; then
             echo "Not found \"$s\" on line $l0"
             echo
         fi
@@ -82,7 +82,7 @@ function checklog(){
     l1=$(echo "$t" | awk -F ":" '{print $1}')
     if [ $l1 -ne $l0 ]; then
         echo -e "\e[31m\nError in Test$testnr [$testname]:"
-        if [ $# -gt 0 ]; then 
+        if [ $# -gt 0 ]; then
             echo "Expected match on line $l0, found on $l1"
             echo
         fi

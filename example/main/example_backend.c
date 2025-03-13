@@ -49,7 +49,7 @@
   *  -U  general-purpose upgrade
   *  -t  enable transaction logging (call syslog for every transaction)
   *  -V <xpath> Failing validate and commit if <xpath> is present (synthetic error)
-
+ * Note example_backend uses -v
  */
 #include <stdio.h>
 #include <stdlib.h>

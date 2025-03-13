@@ -39,6 +39,7 @@
  * - transaction test
  *  -t  enable transaction logging (call syslog for every transaction)
  *  -v <xpath> Failing validate and commit if <xpath> is present (synthetic error)
+ * Note example_backend uses -V
  */
 #include <stdio.h>
 #include <stdlib.h>
