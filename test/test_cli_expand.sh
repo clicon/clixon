@@ -50,6 +50,15 @@ module clixon-example{
          }
       }
    }
+   container cont1 {
+        leaf leaf1 {
+            type enumeration {
+                enum ab;
+                enum ba;
+                enum bcd;
+            }
+        }
+    }
 }
 EOF
 
@@ -70,6 +79,7 @@ delete("Delete a configuration item") {
       @datamodel, cli_auto_del(); 
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
+discard("Discard edits (rollback 0)"), discard_changes();
 show("Show a particular state of the system"){
     configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
       xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", false, false);
@@ -105,6 +115,15 @@ expectpart "$(echo "set list1 xyz list2 ?" | $clixon_cli -f $cfg 2>&1)" 0 123 ab
 
 new "Expand <TAB>"
 expectpart "$(echo "set list1 xyz list2 	" | $clixon_cli -f $cfg 2>&1)" 0 123 abc "<key2>"
+
+new "Discard"
+expectpart "$($clixon_cli -1f $cfg discard)" 0 "^$"
+
+new "Expand enum"
+expectpart "$($clixon_cli -1f $cfg set cont1 leaf1 bc)" 0 "^$"
+
+new "Show expanded"
+expectpart "$($clixon_cli -1f $cfg show config xml)" 0 "<cont1 xmlns=\"urn:example:clixon\"><leaf1>bcd</leaf1></cont1>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
