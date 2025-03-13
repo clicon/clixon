@@ -357,12 +357,6 @@ startup_common(clixon_handle       h,
     /* Handcraft transition with with only add tree */
     td->td_target = xt;
     xt = NULL;
-    /* Add global src defaults. */
-    if (xml_global_defaults(h, td->td_src, NULL, NULL, yspec, 0) < 0)
-        goto done;
-    /* Apply default values (removed in clear function) */
-    if (xml_default_recurse(td->td_src, 0, 0) < 0)
-        goto done;
     if (compute_diffs(h, td) < 0)
         goto done;
     /* 4. Call plugin transaction start callbacks */

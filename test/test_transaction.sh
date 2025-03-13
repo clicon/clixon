@@ -152,8 +152,8 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
         err
     fi
-    new "start backend  -s init -f $cfg -l f$flog -- -t -v \"/x/y[a='$errnr']\""
-    start_backend -s init -f $cfg -l f$flog -- -t -v "/x/y[a='$errnr']" # -t means transaction logging
+    new "start backend  -s init -f $cfg -l f$flog -- -t -V \"/x/y[a='$errnr']\""
+    start_backend -s init -f $cfg -l f$flog -- -t -V "/x/y[a='$errnr']" # -t means transaction logging
 fi
 
 new "wait backend"
