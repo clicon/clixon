@@ -184,7 +184,7 @@ xpath_append(cbuf      *cb0,
     return retval;
 }
 
-/*! Insert (escaped) strings into expand coammnds
+/*! Insert (escaped) strings into expand commands
  *
  * Help function to expand_dbvar
  * Detect duplicates: for ordered-by system assume list is ordered, so you need

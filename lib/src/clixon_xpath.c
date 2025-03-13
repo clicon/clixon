@@ -858,7 +858,7 @@ xpath_vec(cxobj      *xcur,
  * @param[out] vec      vector of xml-trees. Vector must be free():d after use
  * @param[out] veclen   returns length of vector in return value
  * @retval     0        OK
- * @retval     -1       error.
+ * @retval    -1        Error.
  * @code
  *   cxobj **vec;
  *   size_t  veclen;

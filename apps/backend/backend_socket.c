@@ -275,11 +275,7 @@ backend_accept_client(int   fd,
 #error "Need getsockopt O_PEERCRED or getpeereid for unix socket peer cred"
 #endif
         if (name != NULL){
-            if ((ce->ce_username = name) == NULL){
-                clixon_err(OE_UNIX, errno, "strdup");
-                name = NULL;
-                goto done;
-            }
+            ce->ce_username = name;
             name = NULL;
         }
         break;

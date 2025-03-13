@@ -543,8 +543,8 @@ atomicio_sig_handler(int arg)
 /*! Receive a message using unified NETCONF w chunked framing
  *
  * @param[in]   s      socket (unix or inet) to communicate with backend
- * @param[in]   descr Description of peer for logging
- * @param[in]   intr  If set, make a ^C cause an error   (OBSOLETE?)
+ * @param[in]   descr  Description of peer for logging
+ * @param[in]   intr   If set, make a ^C cause an error   (OBSOLETE?)
  * @param[out]  cb     cligen buf struct containing the incoming message
  * @param[out]  eof    Set if eof encountered
  * @retval      0      OK (check eof)
