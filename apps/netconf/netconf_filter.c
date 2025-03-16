@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC (Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -67,15 +67,15 @@
 
 /* xf specifices a filter, and xn is an xml tree.
  * Select the part of xn that matches xf and return it.
- * Change xn destructively by removing the parts of the sub-tree that does 
+ * Change xn destructively by removing the parts of the sub-tree that does
  * not match.
  * Match according to Section 6 of RFC 4741.
-    NO_FILTER,       select all 
-    EMPTY_FILTER,    select nothing 
-    ATTRIBUTE_MATCH, select if attribute match 
-    SELECTION,       select this node 
-    CONTENT_MATCH,   select all siblings with matching content 
-    CONTAINMENT      select 
+    NO_FILTER,       select all
+    EMPTY_FILTER,    select nothing
+    ATTRIBUTE_MATCH, select if attribute match
+    SELECTION,       select this node
+    CONTENT_MATCH,   select all siblings with matching content
+    CONTAINMENT      select
  */
 
 /* return a string containing leafs value, NULL if no leaf or no value */
@@ -192,10 +192,10 @@ xml_filter_recursive(cxobj *xfilter,
 
 /*! Remove parts of configuration xml tree that does not match filter xml tree
  *
- * @param[in]  xfilter  Filter xml
- * @param[out] xconf    Configuration xml
- * @retval  0  OK
- * @retval -1  Error
+ * @param[in]  xfilter Filter xml
+ * @param[out] xconf   Configuration xml
+ * @retval     0       OK
+ * @retval    -1       Error
  * This is the top-level function, calls a recursive variant.
  */
 int

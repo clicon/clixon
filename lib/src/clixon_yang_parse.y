@@ -812,7 +812,6 @@ meta_stmt     : organization_stmt    { _PARSE_DEBUG("meta-stmt -> organization-s
               | reference_stmt       { _PARSE_DEBUG("meta-stmt -> reference-stmt"); }
               ;
 
-
 /* length-stmt */
 length_stmt   : K_LENGTH string ';' /* XXX length-arg-str */
                { if (ysp_add(_yy, Y_LENGTH, $2, NULL) == NULL) _YYERROR("length_stmt");

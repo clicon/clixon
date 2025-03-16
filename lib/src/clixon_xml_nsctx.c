@@ -112,8 +112,8 @@ xml_nsctx_namespace_netconf_default(clixon_handle h)
  * @see xml_nsctx_free  Free the reutned handle
  */
 cvec *
-xml_nsctx_init(char  *prefix,
-               char  *ns)
+xml_nsctx_init(char *prefix,
+               char *ns)
 {
     cvec *cvv = NULL;
 
@@ -194,16 +194,16 @@ xml_nsctx_get_prefix(cvec  *cvv,
 
 /*! Set or replace namespace in namespace context
  *
- * @param[in] cvv       Namespace context
- * @param[in] prefix    Namespace prefix, or NULL for default
- * @param[in] ns        Cached namespace to set (assume non-null?)
- * @retval    0         OK
- * @retval   -1         Error
+ * @param[in] cvv     Namespace context
+ * @param[in] prefix  Namespace prefix, or NULL for default
+ * @param[in] ns      Cached namespace to set (assume non-null?)
+ * @retval    0       OK
+ * @retval   -1       Error
  */
 int
-xml_nsctx_add(cvec  *cvv,
-              char  *prefix,
-              char  *ns)
+xml_nsctx_add(cvec *cvv,
+              char *prefix,
+              char *ns)
 {
     int     retval = -1;
     cg_var *cv;
@@ -219,7 +219,7 @@ xml_nsctx_add(cvec  *cvv,
 
 static int
 xml_nsctx_node1(cxobj *xn,
-                cvec   *nsc)
+                cvec  *nsc)
 {
     int    retval = -1;
     cxobj *xa = NULL;
@@ -546,9 +546,10 @@ xml2ns(cxobj *x,
 
 /*! Recursively check prefix / namespaces (and populate ns cache)
  *
- * @retval     1          OK
- * @retval     0          (Some) prefix not found
- * @retval    -1          Error
+ * @param[in] xt  XML node
+ * @retval    1   OK
+ * @retval    0   (Some) prefix not found
+ * @retval   -1   Error
  */
 int
 xml2ns_recurse(cxobj *xt)

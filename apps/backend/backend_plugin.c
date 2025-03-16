@@ -75,8 +75,8 @@
  */
 int
 clixon_plugin_reset_one(clixon_plugin_t *cp,
-                        clixon_handle  h,
-                        char         *db)
+                        clixon_handle    h,
+                        char            *db)
 {
     int         retval = -1;
     plgreset_t *fn;       /* callback */
@@ -137,7 +137,7 @@ clixon_plugin_reset_all(clixon_handle h,
  */
 static int
 clixon_plugin_pre_daemon_one(clixon_plugin_t *cp,
-                             clixon_handle  h)
+                             clixon_handle    h)
 {
     int          retval = -1;
     plgdaemon_t *fn;          /* Daemonize plugin callback function */
@@ -199,7 +199,7 @@ clixon_plugin_pre_daemon_all(clixon_handle h)
  */
 static int
 clixon_plugin_daemon_one(clixon_plugin_t *cp,
-                         clixon_handle  h)
+                         clixon_handle    h)
 {
     int          retval = -1;
     plgdaemon_t *fn;          /* Daemonize plugin callback function */
@@ -332,11 +332,11 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
  * @note xret can be replaced in this function
  */
 int
-clixon_plugin_statedata_all(clixon_handle   h,
-                            yang_stmt      *yspec,
-                            cvec           *nsc,
-                            char           *xpath,
-                            cxobj         **xret)
+clixon_plugin_statedata_all(clixon_handle h,
+                            yang_stmt    *yspec,
+                            cvec         *nsc,
+                            char         *xpath,
+                            cxobj       **xret)
 {
     int              retval = -1;
     int              ret;
@@ -457,8 +457,7 @@ int
 clixon_plugin_lockdb_all(clixon_handle h,
                          char         *db,
                          int           lock,
-                         int           id
-                         )
+                         int           id)
 
 {
     int              retval = -1;
@@ -786,9 +785,9 @@ plugin_transaction_revert_all(clixon_handle       h,
  * The commit failed is called for only failed plugin before revert all cb.
  */
 static int
-plugin_transaction_commit_failed(clixon_plugin_t      *cp,
-                                clixon_handle       h,
-                                transaction_data_t *td)
+plugin_transaction_commit_failed(clixon_plugin_t    *cp,
+                                 clixon_handle       h,
+                                 transaction_data_t *td)
 {
     trans_cb_t *fn;
 
@@ -806,7 +805,7 @@ plugin_transaction_commit_failed(clixon_plugin_t      *cp,
  * @retval    -1       Error
  */
 int
-plugin_transaction_commit_one(clixon_plugin_t      *cp,
+plugin_transaction_commit_one(clixon_plugin_t    *cp,
                               clixon_handle       h,
                               transaction_data_t *td)
 {

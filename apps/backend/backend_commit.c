@@ -408,10 +408,10 @@ startup_common(clixon_handle       h,
  * @retval    -1       Error - or validation failed (but cbret not set)
  */
 int
-startup_validate(clixon_handle  h,
-                 char          *db,
-                 cxobj        **xtr,
-                 cbuf          *cbret)
+startup_validate(clixon_handle h,
+                 char         *db,
+                 cxobj       **xtr,
+                 cbuf         *cbret)
 {
     int                 retval = -1;
     int                 ret;
@@ -454,9 +454,9 @@ startup_validate(clixon_handle  h,
  * Only called from startup_mode_startup
  */
 int
-startup_commit(clixon_handle  h,
-               char          *db,
-               cbuf          *cbret)
+startup_commit(clixon_handle h,
+               char         *db,
+               cbuf         *cbret)
 {
     int                 retval = -1;
     int                 ret;

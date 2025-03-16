@@ -160,8 +160,8 @@ module clixon-restconf {
         leaf debug {
             description
                 "Set debug level of restconf daemon.
-                 0 is no debug, 1 is debugging, more is detailed debug.
-                 Debug logs will be directed to log-destination with LOG_DEBUG level (for syslog)";
+                 Debug logs will be directed to log-destination with LOG_DEBUG level (for syslog)
+                 Note: must be decimal";
             type uint32;
             default 0;
         }

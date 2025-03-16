@@ -130,13 +130,13 @@ restconf_client_get_capabilities(clixon_handle h,
  * @retval       -1       Error (fatal)
  */
 static int
-client_get_streams(clixon_handle   h,
-                   yang_stmt      *yspec,
-                   char           *xpath,
-                   cvec           *nsc,
-                   yang_stmt      *ymod,
-                   char           *top,
-                   cxobj         **xret)
+client_get_streams(clixon_handle h,
+                   yang_stmt    *yspec,
+                   char         *xpath,
+                   cvec         *nsc,
+                   yang_stmt    *ymod,
+                   char         *top,
+                   cxobj       **xret)
 {
     int            retval = -1;
     yang_stmt     *yns = NULL;  /* yang namespace */
@@ -396,16 +396,16 @@ filter_xpath_again(clixon_handle h,
  * @retval    -1        Error
  */
 static int
-get_nacm_and_reply(clixon_handle        h,
-                   cxobj               *xret,
-                   cxobj              **xvec,
-                   size_t               xlen,
-                   char                *xpath,
-                   cvec                *nsc,
-                   char                *username,
-                   int32_t              depth,
-                   withdefaults_type    wdef,
-                   cbuf                *cbret)
+get_nacm_and_reply(clixon_handle     h,
+                   cxobj            *xret,
+                   cxobj           **xvec,
+                   size_t            xlen,
+                   char             *xpath,
+                   cvec             *nsc,
+                   char             *username,
+                   int32_t           depth,
+                   withdefaults_type wdef,
+                   cbuf             *cbret)
 {
     int     retval = -1;
     cxobj  *xnacm = NULL;
@@ -447,12 +447,12 @@ get_nacm_and_reply(clixon_handle        h,
  * @retval       -1          Error
  */
 static int
-element2value(clixon_handle  h,
-              cxobj         *xe,
-              char          *name,
-              char          *defaultstr,
-              cbuf          *cbret,
-              uint32_t      *value)
+element2value(clixon_handle h,
+              cxobj        *xe,
+              char         *name,
+              char         *defaultstr,
+              cbuf         *cbret,
+              uint32_t     *value)
 {
     char  *valstr;
     cxobj *x;

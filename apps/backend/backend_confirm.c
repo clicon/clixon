@@ -137,7 +137,7 @@ confirmed_commit_state_get(clixon_handle h)
 }
 
 static int
-confirmed_commit_state_set(clixon_handle h,
+confirmed_commit_state_set(clixon_handle               h,
                            enum confirmed_commit_state state)
 {
     struct confirmed_commit *cc = NULL;
@@ -211,8 +211,8 @@ confirmed_commit_fn_arg_get(clixon_handle h,
 
 static int
 confirmed_commit_fn_arg_set(clixon_handle h,
-                            int        (*fn)(int, void*),
-                            void        *arg)
+                            int         (*fn)(int, void*),
+                            void         *arg)
 {
     struct confirmed_commit *cc = NULL;
 
@@ -325,7 +325,7 @@ cancel_rollback_event(clixon_handle h)
  * @see                 do_rollback()
  */
 static int
-rollback_fn(int  fd,
+rollback_fn(int   fd,
             void *arg)
 {
     clixon_handle h = arg;

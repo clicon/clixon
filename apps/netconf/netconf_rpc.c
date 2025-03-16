@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -74,10 +74,10 @@
 #include "netconf_rpc.h"
 
 /*
- * <rpc [attributes]> 
-    <!- - tag elements in a request from a client application - -> 
-    </rpc> 
- */
+ * <rpc [attributes]>
+ <!- - tag elements in a request from a client application - ->
+ </rpc>
+*/
 
 static int
 netconf_get_config_subtree(clixon_handle h,
@@ -100,7 +100,7 @@ netconf_get_config_subtree(clixon_handle h,
                             NETCONF_BASE_NAMESPACE
                             );
     }
-ok:
+ ok:
     retval = 0;
     // done:
     return retval;
@@ -116,22 +116,22 @@ ok:
  * @note filter type subtree and xpath is supported, but xpath is preferred, and
  *              better performance and tested. Please use xpath.
  *
- *     <get-config> 
- *       <source> 
- *         <candidate/> | <running/> 
- *       </source> 
- *     </get-config> 
+ *     <get-config>
+ *       <source>
+ *         <candidate/> | <running/>
+ *       </source>
+ *     </get-config>
  *
- *     <get-config> 
- *       <source> 
- *         <candidate/> | <running/> 
- *       </source> 
- *       <filter type="subtree"> 
- *           <configuration> 
- *               <!- - tag elements for each configuration element to return - -> 
- *           </configuration> 
- *       </filter> 
- *     </get-config> 
+ *     <get-config>
+ *       <source>
+ *         <candidate/> | <running/>
+ *       </source>
+ *       <filter type="subtree">
+ *           <configuration>
+ *               <!- - tag elements for each configuration element to return - ->
+ *           </configuration>
+ *       </filter>
+ *     </get-config>
  *
  *  Example:
  *    <rpc><get-config><source><running /></source>
@@ -147,36 +147,36 @@ ok:
  * -----------------+-----------+---------------+--------------+
  * Example requests of each:
  * no filter + no config
-     <rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
+ <rpc><get-config><source><candidate/></source></get-config></rpc>]]>]]>
  * filter subnet + no config:
-     <rpc><get-config><source><candidate/></source><filter/></get-config></rpc>]]>]]>
+ <rpc><get-config><source><candidate/></source><filter/></get-config></rpc>]]>]]>
  * filter xpath + select all:
-     <rpc><get-config><source><candidate/></source><filter type="xpath" select="/"/></get-config></rpc>]]>]]>
+ <rpc><get-config><source><candidate/></source><filter type="xpath" select="/"/></get-config></rpc>]]>]]>
  * filter subtree + config:
-     <rpc><get-config><source><candidate/></source><filter type="subtree"><configuration><interfaces><interface><ipv4><enabled/></ipv4></interface></interfaces></configuration></filter></get-config></rpc>]]>]]>
+ <rpc><get-config><source><candidate/></source><filter type="subtree"><configuration><interfaces><interface><ipv4><enabled/></ipv4></interface></interfaces></configuration></filter></get-config></rpc>]]>]]>
  * filter xpath + select:
-     <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>
- */
+ <rpc><get-config><source><candidate/></source><filter type="xpath" select="/interfaces/interface/ipv4"/></get-config></rpc>]]>]]>
+*/
 static int
 netconf_get_config(clixon_handle h,
                    cxobj        *xn,
                    cxobj       **xret)
 {
-     int        retval = -1;
-     cxobj     *xfilter; /* filter */
-     char      *ftype = NULL;
-     cvec      *nsc = NULL;
-     char      *prefix = NULL;
+    int        retval = -1;
+    cxobj     *xfilter; /* filter */
+    char      *ftype = NULL;
+    cvec      *nsc = NULL;
+    char      *prefix = NULL;
 
-     if(xml_nsctx_node(xn, &nsc) < 0)
-         goto done;
+    if(xml_nsctx_node(xn, &nsc) < 0)
+        goto done;
 
-     /* Get prefix of netconf base namespace in the incoming message */
-     if (xml_nsctx_get_prefix(nsc, NETCONF_BASE_NAMESPACE, &prefix) == 0){
-         goto done;
-     }
+    /* Get prefix of netconf base namespace in the incoming message */
+    if (xml_nsctx_get_prefix(nsc, NETCONF_BASE_NAMESPACE, &prefix) == 0){
+        goto done;
+    }
 
-     /* ie <filter>...</filter> */
+    /* ie <filter>...</filter> */
     if ((xfilter = xpath_first(xn, nsc, "%s%sfilter", prefix ? prefix : "", prefix ? ":" : "")) != NULL)
         ftype = xml_find_value(xfilter, "type");
     if (xfilter == NULL || ftype == NULL || strcmp(ftype, "subtree") == 0) {
@@ -193,12 +193,12 @@ netconf_get_config(clixon_handle h,
         }
     } else {
         clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
-                                                       "<error-tag>operation-failed</error-tag>"
-                                                       "<error-type>applicatio</error-type>"
-                                                       "<error-severity>error</error-severity>"
-                                                       "<error-message>filter type not supported</error-message>"
-                                                       "<error-info>type</error-info>"
-                                                       "</rpc-error></rpc-reply>",
+                            "<error-tag>operation-failed</error-tag>"
+                            "<error-type>applicatio</error-type>"
+                            "<error-severity>error</error-severity>"
+                            "<error-message>filter type not supported</error-message>"
+                            "<error-info>type</error-info>"
+                            "</rpc-error></rpc-reply>",
                             NETCONF_BASE_NAMESPACE);
     }
     retval = 0;
@@ -220,16 +220,16 @@ netconf_get_config(clixon_handle h,
  * @example
  *  <edit-config>
  *     <config>...</config>
- *     <default-operation>(merge | none | replace)</default-operation> 
- *     <error-option>(stop-on-error | continue-on-error )</error-option> 
- *     <test-option>(set | test-then-set | test-only)</test-option> 
+ *     <default-operation>(merge | none | replace)</default-operation>
+ *     <error-option>(stop-on-error | continue-on-error )</error-option>
+ *     <test-option>(set | test-then-set | test-only)</test-option>
  *  </edit-config>
  */
 static int
-get_edit_opts(cxobj               *xn,
-              enum test_option    *testopt,
-              enum error_option   *erropt,
-              cxobj              **xret)
+get_edit_opts(cxobj             *xn,
+              enum test_option  *testopt,
+              enum error_option *erropt,
+              cxobj            **xret)
 {
     int    retval = -1;
     cxobj *x;
@@ -252,10 +252,10 @@ get_edit_opts(cxobj               *xn,
             if (strcmp(optstr, "stop-on-error") == 0)
                 *erropt = STOP_ON_ERROR;
             else
-            if (strcmp(optstr, "continue-on-error") == 0)
-                *erropt = CONTINUE_ON_ERROR;
-            else
-                goto parerr;
+                if (strcmp(optstr, "continue-on-error") == 0)
+                    *erropt = CONTINUE_ON_ERROR;
+                else
+                    goto parerr;
         }
     }
     retval = 1; /* hunky dory */
@@ -272,41 +272,41 @@ get_edit_opts(cxobj               *xn,
 
 /*! Netconf edit configuration
  *
-  Write the change on a tmp file, then load that into candidate configuration.
-    <edit-config> 
-        <target> 
-            <candidate/> 
-        </target> 
-    
-    <!- - EITHER - -> 
+ Write the change on a tmp file, then load that into candidate configuration.
+ <edit-config>
+ <target>
+ <candidate/>
+ </target>
 
-        <config> 
-            <configuration> 
-                <!- - tag elements representing the data to incorporate - -> 
-            </configuration> 
-        </config> 
+ <!- - EITHER - ->
 
-    <!- - OR - -> 
-    
-        <config-text> 
-            <configuration-text> 
-                <!- - tag elements inline configuration data in text format - -> 
-            </configuration-text> 
-        </config-text> 
+ <config>
+ <configuration>
+ <!- - tag elements representing the data to incorporate - ->
+ </configuration>
+ </config>
 
-    <!- - OR - -> 
+ <!- - OR - ->
 
-        <url> 
-            <!- - location specifier for file containing data - -> 
-        </url> 
-    
-        <default-operation>(merge | none | replace)</default-operation> 
-        <error-option>(stop-on-error | continue-on-error )</error-option> 
-        <test-option>(set | test-then-set | test-only)</test-option> 
-    <edit-config> 
+ <config-text>
+ <configuration-text>
+ <!- - tag elements inline configuration data in text format - ->
+ </configuration-text>
+ </config-text>
 
-CLIXON addition:
-    <filter type="restconf" select="/data/profile=a" />
+ <!- - OR - ->
+
+ <url>
+ <!- - location specifier for file containing data - ->
+ </url>
+
+ <default-operation>(merge | none | replace)</default-operation>
+ <error-option>(stop-on-error | continue-on-error )</error-option>
+ <test-option>(set | test-then-set | test-only)</test-option>
+ <edit-config>
+
+ CLIXON addition:
+ <filter type="restconf" select="/data/profile=a" />
 
  *
  * @param[in]  h       clicon handle
@@ -334,9 +334,9 @@ netconf_edit_config(clixon_handle h,
         goto done;
     if (optret == 0) /* error in opt parameters */
         goto ok;
-    /* These constraints are clixon-specific since :validate should 
-     * support all testopts, and erropts should be supported 
-     * And therefore extends the validation 
+    /* These constraints are clixon-specific since :validate should
+     * support all testopts, and erropts should be supported
+     * And therefore extends the validation
      * (implement the features before removing these checks)
      */
     if (testopt!=TEST_THEN_SET || erropt!=STOP_ON_ERROR){
@@ -357,7 +357,7 @@ netconf_edit_config(clixon_handle h,
 }
 
 /*! Get running configuration and device state information
- * 
+ *
  * @param[in]  h       Clixon handle
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
  * @param[out] xret    Return XML, error or OK
@@ -375,21 +375,21 @@ netconf_get(clixon_handle h,
             cxobj        *xn,
             cxobj       **xret)
 {
-     int        retval = -1;
-     cxobj     *xfilter; /* filter */
-     char      *ftype = NULL;
-     cvec      *nsc = NULL;
-     char      *prefix = NULL;
+    int        retval = -1;
+    cxobj     *xfilter; /* filter */
+    char      *ftype = NULL;
+    cvec      *nsc = NULL;
+    char      *prefix = NULL;
 
-     if(xml_nsctx_node(xn, &nsc) < 0)
-         goto done;
+    if(xml_nsctx_node(xn, &nsc) < 0)
+        goto done;
 
-     /* Get prefix of netconf base namespace in the incoming message */
-     if (xml_nsctx_get_prefix(nsc, NETCONF_BASE_NAMESPACE, &prefix) == 0){
-         goto done;
-     }
+    /* Get prefix of netconf base namespace in the incoming message */
+    if (xml_nsctx_get_prefix(nsc, NETCONF_BASE_NAMESPACE, &prefix) == 0){
+        goto done;
+    }
 
-       /* ie <filter>...</filter> */
+    /* ie <filter>...</filter> */
     if ((xfilter = xpath_first(xn, nsc, "%s%sfilter", prefix ? prefix : "", prefix ? ":" : "")) != NULL)
         ftype = xml_find_value(xfilter, "type");
     if (xfilter == NULL || ftype == NULL || strcmp(ftype, "subtree") == 0) {
@@ -405,12 +405,12 @@ netconf_get(clixon_handle h,
             goto done;
     } else {
         clixon_xml_parse_va(YB_NONE, NULL, xret, NULL, "<rpc-reply xmlns=\"%s\"><rpc-error>"
-                                                       "<error-tag>operation-failed</error-tag>"
-                                                       "<error-type>applicatio</error-type>"
-                                                       "<error-severity>error</error-severity>"
-                                                       "<error-message>filter type not supported</error-message>"
-                                                       "<error-info>type</error-info>"
-                                                       "</rpc-error></rpc-reply>",
+                            "<error-tag>operation-failed</error-tag>"
+                            "<error-type>applicatio</error-type>"
+                            "<error-severity>error</error-severity>"
+                            "<error-message>filter type not supported</error-message>"
+                            "<error-info>type</error-info>"
+                            "</rpc-error></rpc-reply>",
                             NETCONF_BASE_NAMESPACE);
     }
     retval = 0;
@@ -424,16 +424,16 @@ netconf_get(clixon_handle h,
  *
  * and this session has registered for that event.
  * Filter it and forward it.
-   <notification>
-      <eventTime>2007-07-08T00:01:00Z</eventTime>
-      <event xmlns="http://example.com/event/1.0">
-         <eventClass>fault</eventClass>
-         <reportingEntity>
-             <card>Ethernet0</card>
-         </reportingEntity>
-         <severity>major</severity>
-      </event>
-   </notification>
+ <notification>
+ <eventTime>2007-07-08T00:01:00Z</eventTime>
+ <event xmlns="http://example.com/event/1.0">
+ <eventClass>fault</eventClass>
+ <reportingEntity>
+ <card>Ethernet0</card>
+ </reportingEntity>
+ <severity>major</severity>
+ </event>
+ </notification>
  * @see rfc5277:
  *  An event notification is sent to the client who initiated a
  *  <create-subscription> command asynchronously when an event of
@@ -518,18 +518,18 @@ netconf_notification_cb(int   s,
 }
 
 /*
-    <create-subscription> 
-       <stream>RESULT</stream> # If not present, events in the default NETCONF stream will be sent.
-       <filter type="xpath" select="XPATHEXPR"/>
-       <startTime/> # only for replay (NYI)
-       <stopTime/>  # only for replay (NYI)
-    </create-subscription> 
-    Dont support replay
- * @param[in]  h       clicon handle
- * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
- * @param[out] xret    Return XML, error or OK
- * @see netconf_notification_cb for asynchronous stream notifications
- */
+  <create-subscription>
+  <stream>RESULT</stream> # If not present, events in the default NETCONF stream will be sent.
+  <filter type="xpath" select="XPATHEXPR"/>
+  <startTime/> # only for replay (NYI)
+  <stopTime/>  # only for replay (NYI)
+  </create-subscription>
+  Dont support replay
+  * @param[in]  h       clicon handle
+  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
+  * @param[out] xret    Return XML, error or OK
+  * @see netconf_notification_cb for asynchronous stream notifications
+  */
 static int
 netconf_create_subscription(clixon_handle h,
                             cxobj        *xn,
@@ -560,9 +560,9 @@ netconf_create_subscription(clixon_handle h,
     if (xpath_first(*xret, NULL, "rpc-reply/rpc-error") != NULL)
         goto ok;
     if (clixon_event_reg_fd(s,
-                     netconf_notification_cb,
-                     h,
-                     "notification socket") < 0)
+                            netconf_notification_cb,
+                            h,
+                            "notification socket") < 0)
         goto done;
  ok:
     retval = 0;
@@ -572,8 +572,8 @@ netconf_create_subscription(clixon_handle h,
 
 /*! See if there is any application defined RPC for this tag
  *
- * This may either be local client-side or backend. If backend send as netconf 
- * RPC. 
+ * This may either be local client-side or backend. If backend send as netconf
+ * RPC.
  * Assume already bound and validated.
  * @param[in]  h       clicon handle
  * @param[in]  xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
@@ -588,17 +588,17 @@ netconf_application_rpc(clixon_handle h,
                         cxobj        *xn,
                         cxobj       **xret)
 {
-    int            retval = -1;
-    yang_stmt     *yspec = NULL; /* application yspec */
-    yang_stmt     *yrpc = NULL;
-    yang_stmt     *ymod = NULL;
-    yang_stmt     *youtput;
-    cxobj         *xoutput;
-    cxobj         *xerr = NULL;
-    cbuf          *cb = NULL;
-    cbuf          *cbret = NULL;
-    int            ret;
-    int            nr = 0;
+    int        retval = -1;
+    yang_stmt *yspec = NULL; /* application yspec */
+    yang_stmt *yrpc = NULL;
+    yang_stmt *ymod = NULL;
+    yang_stmt *youtput;
+    cxobj     *xoutput;
+    cxobj     *xerr = NULL;
+    cbuf      *cb = NULL;
+    cbuf      *cbret = NULL;
+    int        nr = 0;
+    int        ret;
 
     /* First check system / netconf RPC:s */
     if ((cb = cbuf_new()) == NULL){
@@ -609,7 +609,7 @@ netconf_application_rpc(clixon_handle h,
         clixon_err(OE_UNIX, 0, "cbuf_new");
         goto done;
     }
-    /* Find yang rpc statement, return yang rpc statement if found 
+    /* Find yang rpc statement, return yang rpc statement if found
        Check application RPC */
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
@@ -647,7 +647,7 @@ netconf_application_rpc(clixon_handle h,
         else /* Send to backend */
             if (clicon_rpc_netconf_xml(h, xml_parent(xn), xret, NULL) < 0)
                 goto done;
-        /* Sanity check of outgoing XML 
+        /* Sanity check of outgoing XML
          * For now, skip outgoing checks.
          * (1) Does not handle <ok/> properly
          * (2) Uncertain how validation errors should be logged/handled
@@ -692,7 +692,7 @@ netconf_application_rpc(clixon_handle h,
  * @param[in]  xn      Sub-tree (under xorig) at <rpc>...</rpc> level.
  * @param[out] xret    Return XML, error or OK
  * @param[out] eof     Set to 1 if pending close socket
- * @retval     0       OK, can also be netconf error 
+ * @retval     0       OK, can also be netconf error
  * @retval    -1       Error, fatal
  */
 int
@@ -707,7 +707,7 @@ netconf_rpc_dispatch(clixon_handle h,
     cxobj      *xa;
 
     /* Tag username on all incoming requests in case they are forwarded as internal messages
-     * This may be unecesary since not all are forwarded. 
+     * This may be unecesary since not all are forwarded.
      * It may even be wrong if something else is done with the incoming message?
      */
     if ((username = clicon_username_get(h)) != NULL){
@@ -716,7 +716,7 @@ netconf_rpc_dispatch(clixon_handle h,
     }
     /* Many of these calls are now calling generic clicon_rpc_netconf_xml
      * directly, since the validation is generic and done before this place
-     * in the call. Some call however need extra validation, such as the 
+     * in the call. Some call however need extra validation, such as the
      * filter parameter to get/get-config and tes- err-opts of edit-config.
      */
     xe = NULL;
@@ -782,4 +782,5 @@ netconf_rpc_dispatch(clixon_handle h,
     if ((xa = xml_find(xn, "username")) != NULL)
         xml_purge(xa);
     return retval;
+
 }

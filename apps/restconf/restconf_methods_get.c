@@ -159,7 +159,6 @@ api_data_get2(clixon_handle  h,
             goto ok;
         }
 
-
         /* Ad-hoc method to determine json pagination request:
          * address list and one of "item/offset/.." is defined
          */

@@ -127,7 +127,7 @@ RUN git clone https://github.com/clicon/mib-yangs.git /usr/local/share/mib-yangs
 # The second step skips the development environment and builds a runtime system
 # 3.20
 FROM alpine:latest
-MAINTAINER Olof Hagsand <olof@hagsand.se>
+LABEL maintainer="Olof Hagsand <olof@hagsand.se>"
 
 # For clixon and cligen
 RUN apk add --update flex bison openssl

@@ -100,7 +100,7 @@
  */
 static int
 fcgi_params_set(clixon_handle h,
-                           char        **envp)
+                char        **envp)
 {
     int   retval = -1;
     int   i;

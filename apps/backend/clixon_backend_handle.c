@@ -85,15 +85,15 @@
  * @see struct clixon_handle, struct cli_handle
  */
 struct backend_handle {
-    int                      bh_magic;     /* magic (HDR)*/
-    clicon_hash_t           *bh_copt;      /* clicon option list (HDR) */
-    clicon_hash_t           *bh_data;      /* internal clicon data (HDR) */
-    clicon_hash_t           *ch_db_elmnt;  /* xml datastore element cache data */
-    event_stream_t          *bh_stream;    /* notification streams, see clixon_stream.[ch] */
+    int                  bh_magic;     /* magic (HDR)*/
+    clicon_hash_t       *bh_copt;      /* clicon option list (HDR) */
+    clicon_hash_t       *bh_data;      /* internal clicon data (HDR) */
+    clicon_hash_t       *ch_db_elmnt;  /* xml datastore element cache data */
+    event_stream_t      *bh_stream;    /* notification streams, see clixon_stream.[ch] */
 
     /* ------ end of common handle ------ */
-    struct client_entry     *bh_ce_list;   /* The client list */
-    int                      bh_ce_nr;     /* Number of clients, just increment */
+    struct client_entry *bh_ce_list;   /* The client list */
+    int                  bh_ce_nr;     /* Number of clients, just increment */
 };
 
 /*! Creates and returns a clicon config handle for other CLICON API calls

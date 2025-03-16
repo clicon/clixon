@@ -130,9 +130,9 @@ startup       --+-------------------------------------> BROKEN XML
  * @note: if commit fails, copy factory to running
  */
 int
-startup_mode_startup(clixon_handle        h,
-                     char                *db,
-                     cbuf                *cbret)
+startup_mode_startup(clixon_handle h,
+                     char         *db,
+                     cbuf         *cbret)
 {
     int        retval = -1;
     int        ret = 0;

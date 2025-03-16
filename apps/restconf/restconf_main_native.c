@@ -191,10 +191,10 @@ static int             session_id_context = 1;
  * @retval    -1    Error
  */
 static int
-restconf_native_handle_set(clixon_handle   h,
+restconf_native_handle_set(clixon_handle           h,
                            restconf_native_handle *rh)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
+    clicon_hash_t *cdat = clicon_data(h);
 
     /* It is the pointer to ys that should be copied by hash,
        so we send a ptr to the ptr to indicate what to copy.
@@ -204,10 +204,12 @@ restconf_native_handle_set(clixon_handle   h,
     return 0;
 }
 
-/* util function to append log string
+/*! util function to append log string
  */
 static int
-print_cb(const char *str, size_t len, void *cb)
+print_cb(const char *str,
+         size_t      len,
+         void       *cb)
 {
     return cbuf_append_str((cbuf*)cb, (char*)str); /* Assume string */
 }
@@ -529,14 +531,14 @@ static int
 restconf_accept_client(int   fd,
                        void *arg)
 {
-    int                     retval = -1;
-    restconf_socket        *rsock;
-    clixon_handle           h;
-    int                     s = -1;
-    struct sockaddr         from = {0,};
-    socklen_t               len;
-    char                   *name = NULL;
-    void                   *addr;
+    int              retval = -1;
+    restconf_socket *rsock;
+    clixon_handle    h;
+    int              s = -1;
+    struct sockaddr  from = {0,};
+    socklen_t        len;
+    char             *name = NULL;
+    void             *addr;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "%d", fd);
     if ((rsock = (restconf_socket *)arg) == NULL){

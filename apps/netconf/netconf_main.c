@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -115,7 +115,7 @@ netconf_add_request_attr(cxobj *xrpc,
         /* If attribute already exists, dont copy it */
         if (xml_find_type(xrep, NULL, xml_name(xa), CX_ATTR) != NULL)
             continue; /* Skip already present (dont overwrite) */
-        /* Filter all clixon-lib attributes and namespace declaration 
+        /* Filter all clixon-lib attributes and namespace declaration
          * to avoid leaking internal attributes to external NETCONF
          * note this is only done on top-level.
          */
@@ -137,7 +137,7 @@ netconf_add_request_attr(cxobj *xrpc,
 /*! Process netconf hello message
  *
  * A server receiving a <hello> message with a <session-id> element MUST
- * terminate the NETCONF session. 
+ * terminate the NETCONF session.
  * @param[in]   h    Clixon handle
  * @param[in]   xn
  * @param[out]  eof  Request termination
@@ -175,7 +175,7 @@ netconf_hello_msg(clixon_handle h,
                 continue;
             if ((body = xml_body(x)) == NULL)
                 continue;
-            /* When comparing protocol version capability URIs, only the base part is used, in the 
+            /* When comparing protocol version capability URIs, only the base part is used, in the
              * event any parameters are encoded at the end of the URI string. */
             if (strncmp(body, NETCONF_BASE_CAPABILITY_1_0, strlen(NETCONF_BASE_CAPABILITY_1_0)) == 0){ /* RFC 4741 */
                 foundbase_10++;
@@ -201,7 +201,7 @@ netconf_hello_msg(clixon_handle h,
     return retval;
 }
 
-/*! Process incoming Netconf RPC netconf message 
+/*! Process incoming Netconf RPC netconf message
  *
  * @param[in]   h     Clixon handle
  * @param[in]   xreq  XML tree containing netconf RPC message
@@ -389,7 +389,7 @@ netconf_input_packet(clixon_handle h,
     return retval;
 }
 
-/*! Get netconf message: detect end-of-msg 
+/*! Get netconf message: detect end-of-msg
  *
  * @param[in]  s    Socket where input arrived. read from this.
  * @param[in]  arg  Clixon handle.
@@ -454,7 +454,7 @@ netconf_input_cb(int   s,
         frame_size = 0;
     else
         frame_size = i32;
-    /* Read input data from socket and append to cbbuf */
+    /* Read input data from socket and append to cbuf */
     if ((len = netconf_input_read2(s, buf, buflen, &eof)) < 0)
         goto done;
     p = buf;
@@ -570,16 +570,16 @@ send_hello(clixon_handle h,
     return retval;
 }
 
-/*! Clean and close all state of netconf process (but dont exit). 
+/*! Clean and close all state of netconf process (but dont exit).
  *
- * Cannot use h after this 
+ * Cannot use h after this
  * @param[in]  h  Clixon handle
  */
 static int
 netconf_terminate(clixon_handle h)
 {
-    cvec       *nsctx;
-    cxobj      *x;
+    cvec  *nsctx;
+    cxobj *x;
 
     if (clixon_exit_get() == 0)
         clixon_exit_set(1);
@@ -602,7 +602,7 @@ netconf_terminate(clixon_handle h)
 /*! Setup signal handlers
  */
 static int
-netconf_signal_init (clixon_handle h)
+netconf_signal_init(clixon_handle h)
 {
     int retval = -1;
 
@@ -616,7 +616,7 @@ netconf_signal_init (clixon_handle h)
 }
 
 static int
-timeout_fn(int s,
+timeout_fn(int   s,
            void *arg)
 {
     clixon_err(OE_EVENTS, ETIMEDOUT, "User request timeout");
@@ -747,7 +747,7 @@ main(int    argc,
         }
     }
 
-    /* 
+    /*
      * Logs, error and debug to stderr or syslog, set debug level
      */
     clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
@@ -942,7 +942,7 @@ main(int    argc,
         goto done;
     clicon_session_id_set(h, id);
 
-    /* Send hello to northbound client 
+    /* Send hello to northbound client
      * Note that this is a violation of RDFC 6241 Sec 8.1:
      * When the NETCONF session is opened, each peer(both client and server) MUST send a <hello..
      */

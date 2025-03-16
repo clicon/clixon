@@ -1,6 +1,6 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
-# 
+#
 # Copyright (C) 2017-2019 Olof Hagsand
 # Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 #
@@ -23,7 +23,7 @@
 # in which case the provisions of the GPL are applicable instead
 # of those above. If you wish to allow use of your version of this file only
 # under the terms of the GPL, and not to allow others to
-# use your version of this file under the terms of Apache License version 2, 
+# use your version of this file under the terms of Apache License version 2,
 # indicate your decision by deleting the provisions above and replace them with
 # the notice and other provisions required by the GPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
@@ -67,26 +67,25 @@ YANGSPECS += ietf-origin@2018-02-14.yang
 YANGSPECS += ietf-netconf-with-defaults@2011-06-01.yang
 YANGSPECS += ietf-netconf-monitoring@2010-10-04.yang
 
-# in draft-ietf-netconf-list-pagination-04.html
-YANGSPECS += ietf-list-pagination@2024-07-08.yang
-# in draft-ietf-netconf-list-pagination-nc-04
-YANGSPECS += ietf-list-pagination-nc@2024-07-08.yang
+# IETF list-pagination drafts
+YANGSPECS += ietf-list-pagination@2024-10-21.yang
+YANGSPECS += ietf-list-pagination-nc@2024-10-21.yang
 
-all:	
+all:
 
 clean:
 
 distclean: clean
 	rm -f Makefile *~ .depend
 
-install: $(YANGSPECS) 
+install: $(YANGSPECS)
 	install -d -m 0755 $(DESTDIR)$(YANG_INSTALLDIR)
 	install -m 0644 $(YANGSPECS) $(DESTDIR)$(YANG_INSTALLDIR)
 
 uninstall:
 	(cd $(DESTDIR)$(YANG_INSTALLDIR); rm -rf *.yang)
 
-install-include:	
+install-include:
 
 depend:
 
