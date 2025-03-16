@@ -54,7 +54,7 @@ module ietf-list-pagination-nc {
      (RFC 8174) when, and only when, they appear in all
      capitals, as shown here.";
 
-  revision 2024-07-08 {
+  revision 2024-10-21 {
     description
       "Initial revision.";
     reference

@@ -9,7 +9,6 @@ module ietf-list-pagination {
     reference
       "RFC 8342: Network Management Datastore Architecture (NMDA)";
   }
-
   import ietf-yang-types {
     prefix yang;
     reference
@@ -21,6 +20,7 @@ module ietf-list-pagination {
     reference
       "RFC 7952: Defining and Using Metadata with YANG";
   }
+
   import ietf-system-capabilities  {
     prefix sysc;
     reference
@@ -63,13 +63,12 @@ module ietf-list-pagination {
      (RFC 8174) when, and only when, they appear in all
      capitals, as shown here.";
 
-  revision 2024-07-08 {
+  revision 2024-10-21 {
     description
       "Initial revision.";
     reference
       "RFC XXXX: List Pagination for YANG-driven Protocols";
   }
-
 
   // Annotations
 
@@ -343,6 +342,7 @@ module ietf-list-pagination {
   }
 
   // Protocol-accessible nodes
+
   augment
     "/sysc:system-capabilities/sysc:datastore-capabilities"
     + "/sysc:per-node-capabilities" {
