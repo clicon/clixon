@@ -161,26 +161,6 @@ restconf_pseudo_set_inline(clixon_handle h,
         for (i=0; i<argc; i++){
             if (argv[i] == NULL)
                 break;
-#ifdef RESTCONF_INLINE
-            char  *str;
-            if (strcmp(argv[i], "-R") == 0 && argc > i+1 && argv[i+1]){
-                if ((cb = cbuf_new()) == NULL){
-                    clixon_err(OE_XML, errno, "cbuf_new");
-                    goto done;
-                }
-                if (clixon_xml2cbuf(cb, xrestconf, 0, 0, NULL, -1, 0) < 0)
-                    goto done;
-                if ((str = strdup(cbuf_get(cb))) == NULL){
-                    clixon_err(OE_XML, errno, "stdup");
-                    goto done;
-                }
-                clixon_debug(CLIXON_DBG_BACKEND, "str:%s", str);
-                if (argv[i+1])
-                    free(argv[i+1]);
-                argv[i+1] = str;
-                break;
-            }
-#endif
         }
     retval = 0;
  done:
@@ -267,9 +247,6 @@ restconf_pseudo_process_control(clixon_handle h)
     int         found = 0;
 
     nr = 8; /* pgm -f <file> -D <dbg> -l <log> NULL */
-#ifdef RESTCONF_INLINE
-    nr += 2;
-#endif
     if (clicon_option_str(h, "CLICON_CONFIGDIR"))
         nr += 2;
     if ((argv = calloc(nr, sizeof(char *))) == NULL){
@@ -329,10 +306,6 @@ restconf_pseudo_process_control(clixon_handle h)
     argv[i++] = "0";
     argv[i++] = "-l";
     argv[i++] = "s"; /* There is also log-destination in clixon-restconf.yang */
-#ifdef RESTCONF_INLINE
-    argv[i++] = "-R";
-    argv[i++] = "";  /* The content is set in restconf_pseudo_set_inline */
-#endif
     argv[i++] = NULL;
     assert(i==nr);
     if (clixon_process_register(h, RESTCONF_PROCESS,

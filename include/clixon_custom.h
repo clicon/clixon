@@ -174,16 +174,6 @@
  */
 #define YANG_GROUPING_AUGMENT_SKIP
 
-/*! Start of restconf from backend (when CLICON_BACKEND_RESTCONF_PROCESS=true) using -R <inline>
- *
- * If set, send initial restconf config via -R <config> parameter at fork/exec.
- * Seems to be only an optimization since the config is queried from the backend anyway
- * The reason this probably should be undef:ed is that the restconf config appears in ps and other in 
- * cleartext
- * Plan is to remove this (undef:d) in next release
- */
-#undef RESTCONF_INLINE
-
 /*! Use SHA256 (32 bytes) instead of SHA1 (20 bytes)
  *
  * Digest use is not cryptographic use, so SHA1 is enough for now
