@@ -38,4 +38,4 @@ jobs:
     - name: start container
       run: ./start.sh
     - name: run test r-y
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_restconf_encoding.sh test_restconf_err.sh test_restconf_http_upgrade.sh test_restconf_internal.sh" ./sum.sh'
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_restconf_basic_auth.sh test_restconf_callhome.sh test_restconf_continue.sh test_restconf_internal.sh test_restconf_internal_usecases.sh" ./sum.sh'
