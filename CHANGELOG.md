@@ -26,6 +26,7 @@ Planned: April 2025
 
 ### Corrected Bugs
 
+* Fixed: Startup mem issue of end callback: copy target db before writing to running
 * Fixed: [Diff of top-level default values on startup stopped working in 7.3](https://github.com/clicon/clixon/issues/596)
 * Fixed: [cli_show_auto don't work](https://github.com/clicon/clixon/issues/595)
 * Fixed: [XPath * stopped working in 7.3](https://github.com/clicon/clixon/issues/594)

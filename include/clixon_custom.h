@@ -236,3 +236,11 @@
  * see xml_default
  */
 #define OPTIMIZE_NO_PRESENCE_CONTAINER
+
+/*! Fix startup mem issue of end callback: copy target db before writing to running
+ *
+ * diff may include default values, but these are removed before put.
+ * If diff is read by end callback, they may reference freed nodes.
+ * If no problem with patch, remove at next release
+ */
+#define STARTUP_COMMIT_REORDER

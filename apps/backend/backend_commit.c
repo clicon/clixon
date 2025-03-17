@@ -461,6 +461,9 @@ startup_commit(clixon_handle h,
     int                 retval = -1;
     int                 ret;
     transaction_data_t *td = NULL;
+#ifdef STARTUP_COMMIT_REORDER
+    cxobj              *xt = NULL;
+#endif
 
     if (strcmp(db,"running")==0){
         clixon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
@@ -479,9 +482,6 @@ startup_commit(clixon_handle h,
     /* After commit, make a post-commit call (sure that all plugins have committed) */
     if (plugin_transaction_commit_done_all(h, td) < 0)
         goto done;
-    /* Remove global defaults and empty non-presence containers */
-    if (xml_default_nopresence(td->td_target, 2, 0) < 0)
-        goto done;
     /* [Delete and] create running db */
     if (xmldb_exists(h, "running") == 1){
         if (xmldb_delete(h, "running") != 0 && errno != ENOENT)
@@ -493,21 +493,43 @@ startup_commit(clixon_handle h,
      * XXX note here startup is copied to candidate, which may confuse everything
      * XXX default values are overwritten
      */
-    if (td->td_target)
-        /* target is datastore, but is here transformed to mimic an incoming 
-         * edit-config
-         */
+    if (td->td_target){
+#ifdef STARTUP_COMMIT_REORDER
+        if ((xt = xml_dup(td->td_target)) == NULL)
+            goto done;
+        /* Remove global defaults and empty non-presence containers */
+        if (xml_default_nopresence(xt, 2, 0) < 0)
+            goto done;
+        xml_name_set(xt,  NETCONF_INPUT_CONFIG);
+        if ((ret = xmldb_put(h, "running", OP_REPLACE, xt,
+                             clicon_username_get(h), cbret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+#else
+        /* Remove global defaults and empty non-presence containers */
+        if (xml_default_nopresence(td->td_target, 2, 0) < 0) // XXX
+            goto done;
+        /* target is datastore, but is here transformed to mimic an incoming edit-config */
         xml_name_set(td->td_target,  NETCONF_INPUT_CONFIG);
-
-    if ((ret = xmldb_put(h, "running", OP_REPLACE, td->td_target,
-                         clicon_username_get(h), cbret)) < 0)
-        goto done;
-    if (ret == 0)
-        goto fail;
-    /* 10. Call plugin transaction end callbacks */
+        if ((ret = xmldb_put(h, "running", OP_REPLACE, td->td_target,
+                             clicon_username_get(h), cbret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+#endif
+    }
+    /* 10. Call plugin transaction end callbacks
+     * XXX Issue: diff may include default values, but these are removed ^
+     * If diff is read by end callback, they may reference freed nodes.
+     */
     plugin_transaction_end_all(h, td);
     retval = 1;
  done:
+#ifdef STARTUP_COMMIT_REORDER
+    if (xt)
+        xml_free(xt);
+#endif
     if (td){
         if (retval < 1)
             plugin_transaction_abort_all(h, td);
