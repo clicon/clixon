@@ -175,6 +175,13 @@ cat<<EOF > $startupdb
 </${DATASTORE_TOP}>
 EOF
 
+# prereq check no zombies BEFORE test
+new "Ensure no zombies before test"
+retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
+if [ -n "$retx" ]; then
+    err "No zombie process before test" "$retx"
+fi
+
 new "kill old restconf"
 stop_restconf_pre
 
@@ -321,6 +328,12 @@ sleep 1
 
 new "ps"
 ps aux|grep clixon
+
+new "Check zombies"
+retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
+if [ -n "$retx" ]; then
+    err "No zombie process" "$retx"
+fi
 
 new "11. Get restconf status rpc"
 rpcstatus true running
