@@ -131,7 +131,7 @@ EOF
         break
     done
     if [ $j -eq $jmax ]; then
-        err "$expect" "$retx"
+        err "timeout: $expect" "$retx"
     fi
 }
 
@@ -301,14 +301,26 @@ new "8. start restconf RPC"
 rpcoperation start
 if [ $? -ne 0 ]; then exit -1; fi
 
+new "sleep"
+sleep 1
+
 new "9. check status RPC on"
 rpcstatus true running
 pid5=$pid
 if [ $pid5 -eq 0 ]; then err "Pid" 0; fi
 
+new "sleep"
+sleep 1
+
 new "10. restart restconf RPC"
 rpcoperation restart
 if [ $? -ne 0 ]; then exit -1; fi
+
+new "sleep"
+sleep 1
+
+new "ps"
+ps aux|grep clixon
 
 new "11. Get restconf status rpc"
 rpcstatus true running
