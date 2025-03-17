@@ -194,7 +194,7 @@ if [ $BE -ne 0 ]; then
     fi
 
     new "start backend -s startup -f $cfg"
-    start_backend -s startup -f $cfg -D event -D proc -D detail -lf/usr/local/var/backend.log
+    start_backend -s startup -f $cfg -D proc -D detail -lf/usr/local/var/backend.log
 fi
 
 new "wait backend"

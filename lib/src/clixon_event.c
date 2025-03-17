@@ -583,7 +583,8 @@ clixon_event_loop(clixon_handle h)
         clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "poll timeout: %d", timeout);
         n = poll(fds, nfds, timeout);
         if (n == -1) {
-            clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "n=-1 Error");
+            clixon_debug(CLIXON_DBG_PROC, "n=-1 Error", errno);
+            clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "n=-1 Error %d", errno);
             if (errno == EINTR){
                 if (clixon_exit_get() == 1){
                     clixon_err(OE_EVENTS, errno, "poll");

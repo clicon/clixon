@@ -1599,6 +1599,7 @@ from_client_process_control(clixon_handle h,
     char    *opstr = NULL;
     proc_operation op = PROC_OP_NONE;
 
+    clixon_debug(CLIXON_DBG_PROC, "");
     if ((x = xml_find_type(xe, NULL, "name", CX_ELMNT)) != NULL)
         name = xml_body(x);
     if ((x = xml_find_type(xe, NULL, "operation", CX_ELMNT)) != NULL){
@@ -1611,6 +1612,7 @@ from_client_process_control(clixon_handle h,
             goto done;
     }
     else{
+        clixon_debug(CLIXON_DBG_PROC, "name:%s op:%d", name, op);
         if (clixon_process_operation(h, name, op, 1) < 0)
             goto done;
         cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok xmlns=\"%s\"/></rpc-reply>",

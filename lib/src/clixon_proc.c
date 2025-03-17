@@ -656,6 +656,7 @@ proc_op_run(pid_t pid0,
         /* Check if alive */
         run = 1;
         if ((kill(pid, 0)) < 0){
+            clixon_debug(CLIXON_DBG_PROC | CLIXON_DBG_DETAIL, "errno:%d", errno);
             if (errno == ESRCH){
                 run = 0;
             }
@@ -751,6 +752,7 @@ clixon_process_operation(clixon_handle  h,
                                  clicon_int2str(proc_operation_map, pe->pe_operation));
                     if (pe->pe_state==PROC_STATE_RUNNING &&
                         (op == PROC_OP_STOP || op == PROC_OP_RESTART)){
+                        clixon_debug(CLIXON_DBG_PROC | CLIXON_DBG_DETAIL, "AA");
                         isrunning = 0;
                         if (proc_op_run(pe->pe_pid, &isrunning) < 0)
                             goto done;
@@ -777,6 +779,8 @@ clixon_process_operation(clixon_handle  h,
             }
             pe = NEXTQ(process_entry_t *, pe);
         } while (pe != _proc_entry_list);
+    if (sched)
+        clixon_debug(CLIXON_DBG_PROC | CLIXON_DBG_DETAIL, "Before clixon_process_sched_register");
     if (sched && clixon_process_sched_register(h, delay) < 0)
         goto done;
  ok:
@@ -929,7 +933,7 @@ clixon_process_sched(int           fd,
         goto ok;
     pe = _proc_entry_list;
     do {
-        clixon_debug(CLIXON_DBG_PROC | CLIXON_DBG_DETAIL, "name: %s pid:%d %s --op:%s-->",
+        clixon_debug(CLIXON_DBG_PROC | CLIXON_DBG_DETAIL, "do proc_entry_list name: %s pid:%d %s --op:%s-->",
                      pe->pe_name, pe->pe_pid, clicon_int2str(proc_state_map, pe->pe_state), clicon_int2str(proc_operation_map, pe->pe_operation));
         /* Execute pending operations and not already exiting */
         if (pe->pe_operation != PROC_OP_NONE){
