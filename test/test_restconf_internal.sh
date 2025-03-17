@@ -340,7 +340,7 @@ if [ -n "$retx" ]; then
     err "No zombie process" "$retx"
 fi
 
-new "ps"
+new "ps 1"
 ps aux|grep clixon
 
 new "10. restart restconf RPC"
@@ -350,8 +350,10 @@ if [ $? -ne 0 ]; then exit -1; fi
 new "sleep"
 sleep 1
 
-new "ps"
+new "ps 2"
 ps aux|grep clixon
+
+sleep 1
 
 new "cat log"
 sudo cat /usr/local/var/backend.log

@@ -312,12 +312,16 @@ clixon_proc_socket_close(pid_t pid,
     clixon_debug(CLIXON_DBG_PROC, "pid %u sock %d", pid, sock);
     if (sock != -1)
         close(sock); /* usually kills */
-    kill(pid, SIGTERM);
+    if (kill(pid, SIGTERM) < 0){
+        clixon_err(OE_UNIX, errno, "kill(%d) %d", pid, errno);
+        goto done;
+    }
     //    usleep(100000);     /* Wait for child to finish */
     if(waitpid(pid, &status, 0) == pid){
         retval = WEXITSTATUS(status);
         clixon_debug(CLIXON_DBG_PROC, "waitpid status %#x", retval);
     }
+ done:
     clixon_debug(CLIXON_DBG_PROC, "retval:%d", retval);
     return retval;
 }
@@ -759,7 +763,10 @@ clixon_process_operation(clixon_handle  h,
                         if (isrunning) {
                             clixon_log(h, LOG_NOTICE, "Killing old process %s with pid: %d",
                                        pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
-                            kill(pe->pe_pid, SIGTERM);
+                            if (kill(pe->pe_pid, SIGTERM) < 0){
+                                clixon_err(OE_UNIX, errno, "kill(%d) %d", pe->pe_pid, errno);
+                                goto done;
+                            }
                             delay = 1;
                         }
                         clixon_debug(CLIXON_DBG_PROC | CLIXON_DBG_DETAIL, "%s(%d) %s --%s--> %s",
@@ -948,7 +955,10 @@ clixon_process_sched(int           fd,
                     if (isrunning) {
                         clixon_log(h, LOG_NOTICE, "Killing old process %s with pid: %d",
                                    pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
-                        kill(pe->pe_pid, SIGTERM);
+                        if (kill(pe->pe_pid, SIGTERM) < 0){
+                            clixon_err(OE_UNIX, errno, "kill(%d) %d", pe->pe_pid, errno);
+                            goto done;
+                        }
                         sched++; /* Not immediate: wait timeout */
                     }
                 default:
