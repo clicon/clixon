@@ -767,6 +767,7 @@ clixon_process_operation(clixon_handle  h,
                                 clixon_err(OE_UNIX, errno, "kill(%d) %d", pe->pe_pid, errno);
                                 goto done;
                             }
+                            usleep(1000);     /* Wait for child to finish */
                             delay = 1;
                         }
                         clixon_debug(CLIXON_DBG_PROC | CLIXON_DBG_DETAIL, "%s(%d) %s --%s--> %s",
