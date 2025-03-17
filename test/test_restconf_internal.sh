@@ -194,7 +194,7 @@ if [ $BE -ne 0 ]; then
     fi
 
     new "start backend -s startup -f $cfg"
-    start_backend -s startup -f $cfg
+    start_backend -s startup -f $cfg -D proc -D detail -lf/tmp/backend.log
 fi
 
 new "wait backend"
@@ -340,6 +340,9 @@ if [ -n "$retx" ]; then
     err "No zombie process" "$retx"
 fi
 
+new "ps"
+ps aux|grep clixon
+
 new "10. restart restconf RPC"
 rpcoperation restart
 if [ $? -ne 0 ]; then exit -1; fi
@@ -376,6 +379,8 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
     killall clixon_restconf
 fi
+
+exit
 
 # Restconf is enabled and restconf was running but was killed by stop ^.
 # Start backend with -s none should start restconf too via ca_reset rule

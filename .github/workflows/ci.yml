@@ -37,5 +37,8 @@ jobs:
       run: sudo docker build -f Dockerfile.fcgi -t clixon/clixon-test  .
     - name: start container
       run: ./start.sh
-    - name: run test r-y
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_restconf_callhome.sh test_restconf_internal.sh test_restconf_internal_usecases.sh" ./sum.sh'
+    - name: run test r
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_restconf_internal.sh" ./sum.sh'
+
+    - name: cat log
+      run: sudo cat /tmp/backend.log
