@@ -353,6 +353,11 @@ sleep 1
 new "ps"
 ps aux|grep clixon
 
+new "endtest"
+endtest
+
+exit
+
 new "Check zombies"
 retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
 if [ -n "$retx" ]; then
