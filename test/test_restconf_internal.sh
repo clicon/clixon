@@ -304,12 +304,27 @@ sudo kill $pid3
 new "Wait for restconf to stop"
 wait_restconf_stopped
 
+new "sleep"
+sleep 1
+
+new "Check zombies"
+retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
+if [ -n "$retx" ]; then
+    err "No zombie process" "$retx"
+fi
+
 new "8. start restconf RPC"
 rpcoperation start
 if [ $? -ne 0 ]; then exit -1; fi
 
 new "sleep"
 sleep 1
+
+new "Check zombies"
+retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
+if [ -n "$retx" ]; then
+    err "No zombie process" "$retx"
+fi
 
 new "9. check status RPC on"
 rpcstatus true running
@@ -318,6 +333,12 @@ if [ $pid5 -eq 0 ]; then err "Pid" 0; fi
 
 new "sleep"
 sleep 1
+
+new "Check zombies"
+retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
+if [ -n "$retx" ]; then
+    err "No zombie process" "$retx"
+fi
 
 new "10. restart restconf RPC"
 rpcoperation restart
