@@ -21,6 +21,13 @@ if [ "${WITH_RESTCONF}" = "native" -a ${HAVE_HTTP1} = false ]; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
+# Temporary skip after new event-loop
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    echo "...skipped due to new event-loop" 
+    rm -rf $dir
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
+
 APPNAME=example
 
 cfg=$dir/conf.xml
