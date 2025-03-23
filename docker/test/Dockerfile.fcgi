@@ -151,6 +151,7 @@ RUN apk add --update nginx
 
 # Test-specific (for test scripts)
 RUN apk add --update sudo curl procps grep make bash expect openssh coreutils
+RUN apk add --update strace
 
 # Dont need to expose restconf ports for internal tests
 #EXPOSE 80/tcp

@@ -33,6 +33,7 @@ HVER=1.1
 
 # log-destination in restconf xml: syslog or file
 : ${LOGDST:=syslog}
+LOGDST=file
 # Set daemon command-line to -f
 if [ "$LOGDST" = syslog ]; then
     LOGDST_CMD="s"      
@@ -194,7 +195,8 @@ if [ $BE -ne 0 ]; then
     fi
 
     new "start backend -s startup -f $cfg"
-    start_backend -s startup -f $cfg -D proc -D detail -lf/usr/local/var/backend.log
+    sudo strace clixon_backend -F -s startup -f $cfg -D proc -D detail -lf/usr/local/var/backend.log 2> /usr/local/var/backend_strace.log &
+#    start_backend -s startup -f $cfg -D proc -D detail -lf/usr/local/var/backend.log
 fi
 
 new "wait backend"
@@ -357,6 +359,18 @@ sleep 1
 
 new "cat log"
 sudo cat /usr/local/var/backend.log
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+fi
+
+sleep 1
+new "cat log"
+sudo cat /usr/local/var/backend_strace.log
 
 new "endtest"
 endtest
