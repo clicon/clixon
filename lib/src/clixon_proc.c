@@ -947,8 +947,7 @@ clixon_process_sched(int           fd,
             switch (pe->pe_state){
             case PROC_STATE_EXITING:
                 switch (pe->pe_operation){
-                case PROC_OP_STOP:
-                case PROC_OP_RESTART: /* Kill again */
+                case PROC_OP_STOP:  /* Kill again */
                     isrunning = 0;
                     if (proc_op_run(pe->pe_pid, &isrunning) < 0)
                         goto done;
@@ -961,6 +960,27 @@ clixon_process_sched(int           fd,
                         }
                         sched++; /* Not immediate: wait timeout */
                     }
+                    break;
+                case PROC_OP_RESTART:
+                    isrunning = 0;
+                    if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+                        goto done;
+                    if (isrunning) {
+#if 0
+                        clixon_log(h, LOG_NOTICE, "Killing old process %s with pid: %d",
+                                   pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
+                        if (kill(pe->pe_pid, SIGTERM) < 0){
+                            clixon_err(OE_UNIX, errno, "kill(%d) %d", pe->pe_pid, errno);
+                            goto done;
+                        }
+#else
+                        if (clixon_process_waitpid(h) < 0)
+                            goto done;
+                        clicon_sig_child_set(0);
+#endif
+                        sched++; /* Not immediate: wait timeout */
+                    }
+                    break;
                 default:
                     break;
                 }

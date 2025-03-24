@@ -390,31 +390,6 @@ clixon_event_unreg_timeout(int (*fn)(int, void*),
     return found?0:-1;
 }
 
-/*! Poll to see if there is any data available on this file descriptor.
- *
- * @param[in]  fd   File descriptor
- * @retval    >0    Nr of elements to read on fd
- * @retval     0    Nothing to read/empty fd
- * @retval    -1    Error
- */
-int
-clixon_event_poll(int fd)
-{
-    int 	  retval = -1;
-    struct pollfd pfd = {0,};
-    int           ret;
-
-    pfd.fd = fd;
-    pfd.events = POLLIN;
-    if ((ret = poll(&pfd, 1, 0)) < 0){
-        clixon_err(OE_EVENTS, errno, "poll");
-        goto done;
-    }
-    retval = ret;
- done:
-    return retval;
-}
-
 /*! Handle signal interrupt
  *
  * Signals are in three classes:
@@ -427,6 +402,9 @@ clixon_event_poll(int fd)
  *     clicon_sig_ignore_get.
  *     New select loop is called
  * (3) Other signals result in an error and return -1.
+ * @retval     1    OK
+ * @retval     0    Exit
+ * @retval    -1    Error
  */
 static int
 event_handle_eintr(clixon_handle h)
@@ -458,6 +436,32 @@ event_handle_eintr(clixon_handle h)
     retval = 0;
     goto done;
 }
+
+/*! Poll to see if there is any data available on this file descriptor.
+ *
+ * @param[in]  fd   File descriptor
+ * @retval    >0    Nr of elements to read on fd
+ * @retval     0    Nothing to read/empty fd
+ * @retval    -1    Error
+ */
+int
+clixon_event_poll(int fd)
+{
+    int 	  retval = -1;
+    struct pollfd pfd = {0,};
+    int           ret;
+
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+    if ((ret = poll(&pfd, 1, 0)) < 0){
+        clixon_err(OE_EVENTS, errno, "poll");
+        goto done;
+    }
+    retval = ret;
+ done:
+    return retval;
+}
+
 
 static int
 event_handle_fds(struct event_data *ee,
@@ -583,9 +587,10 @@ clixon_event_loop(clixon_handle h)
         clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "poll timeout: %d", timeout);
         n = poll(fds, nfds, timeout);
         if (n == -1) {
+            int e = errno;
             clixon_debug(CLIXON_DBG_PROC, "n=-1 Error %d", errno);
             clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "n=-1 Error %d", errno);
-            if (errno == EINTR){
+            if (e == EINTR){
                 if (clixon_exit_get() == 1){
                     clixon_err(OE_EVENTS, errno, "poll");
                     goto ok;
