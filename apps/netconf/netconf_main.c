@@ -66,7 +66,6 @@
 /* clixon */
 #include <clixon/clixon.h>
 
-//#include "clixon_netconf.h"
 #include "netconf_rpc.h"
 
 /* Command line options to be passed to getopt(3) */

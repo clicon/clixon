@@ -427,6 +427,9 @@ clixon_event_poll(int fd)
  *     clicon_sig_ignore_get.
  *     New select loop is called
  * (3) Other signals result in an error and return -1.
+ * @retval     1    OK
+ * @retval     0    Exit
+ * @retval    -1    Error
  */
 static int
 event_handle_eintr(clixon_handle h)
@@ -583,8 +586,9 @@ clixon_event_loop(clixon_handle h)
         clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "poll timeout: %d", timeout);
         n = poll(fds, nfds, timeout);
         if (n == -1) {
-            clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "n=-1 Error");
-            if (errno == EINTR){
+            int e = errno;
+            clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "n=-1 Error: %d", e);
+            if (e == EINTR){
                 if (clixon_exit_get() == 1){
                     clixon_err(OE_EVENTS, errno, "poll");
                     goto ok;

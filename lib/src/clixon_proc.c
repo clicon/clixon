@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -41,7 +41,7 @@
      STOPPED: pid=0,   No process running
      RUNNING: pid set, Process started and believed to be running
      EXITING: pid set, Process is killed by parent but not waited for
-   
+
   Operations:
      start, stop, restart
 
@@ -58,12 +58,12 @@
      1. It is killed externally: the process gets a SIGCHLD triggers a wait and it goes to STOPPED:
            RUNNING  --sigchld/wait-->  STOPPED
 
-     2. It is stopped due to a rpc or configuration remove: 
+     2. It is stopped due to a rpc or configuration remove:
         The parent kills the process and enters EXITING waiting for a SIGCHLD that triggers a wait,
         therafter it goes to STOPPED
            RUNNING --stop--> EXITING  --sigchld/wait--> STOPPED
-     
-     3. It is restarted due to rpc or config change (eg a server is added, a key modified, etc). 
+
+     3. It is restarted due to rpc or config change (eg a server is added, a key modified, etc).
         The parent kills the process and enters EXITING waiting for a SIGCHLD that triggers a wait,
         therafter a new process is started and it goes to RUNNING with a new pid
 
@@ -73,7 +73,7 @@
 
       STOPPED  --(re)start-->     RUNNING(pid)
           ^   <--1.wait(kill)---   |  ^
-          |                   stop/|  | 
+          |                   stop/|  |
           |                 restart|  | restart
           |                        v  |
           wait(stop) ------- EXITING(dying pid) <----> kill after timeout
@@ -298,7 +298,7 @@ clixon_proc_socket(clixon_handle h,
     return retval;
 }
 
-/*! Close socket 
+/*! Close socket
  *
  * @see clixon_proc_socket which creates the child and sockets closed and killed here
  */
@@ -312,13 +312,17 @@ clixon_proc_socket_close(pid_t pid,
     clixon_debug(CLIXON_DBG_PROC, "pid %u sock %d", pid, sock);
     if (sock != -1)
         close(sock); /* usually kills */
-    kill(pid, SIGTERM);
+    if (kill(pid, SIGTERM) < 0){
+        clixon_err(OE_UNIX, errno, "kill(%d) %d", pid, errno);
+        goto done;
+    }
     //    usleep(100000);     /* Wait for child to finish */
     if(waitpid(pid, &status, 0) == pid){
         retval = WEXITSTATUS(status);
         clixon_debug(CLIXON_DBG_PROC, "waitpid status %#x", retval);
     }
     clixon_debug(CLIXON_DBG_PROC, "retval:%d", retval);
+ done:
     return retval;
 }
 
@@ -404,7 +408,7 @@ clixon_proc_background(clixon_handle h,
                 close(i);
             }
 #ifdef HAVE_SETNS /* linux network namespaces */
-        /* If network namespace is defined, let child join it 
+        /* If network namespace is defined, let child join it
          * XXX: this is work-in-progress
          */
         if (netns != NULL) {
@@ -485,12 +489,12 @@ clixon_process_op_str2int(char *opstr)
 
 /*! Access function process list argv list
  *
- * @param[in]  h     Clixon handle 
+ * @param[in]  h     Clixon handle
  * @param[in]  name  Name of process
  * @param[out] argv  Malloced argv list (Null terminated)
  * @param[out] argc  Length of argv
  *
- * @note Can be used to change in the argv list elements directly with care: Dont change list 
+ * @note Can be used to change in the argv list elements directly with care: Dont change list
  * itself, but its elements can be freed and re-alloced.
  */
 int
@@ -520,9 +524,9 @@ clixon_process_argv_get(clixon_handle h,
  * @param[in]  netns    Namespace netspace (or NULL)
  * @param[in]  uid      UID of process (or -1 to keep same)
  * @param[in]  gid      GID of process (or -1 to keep same)
- * @param[in]  fdkeep   Unless -1 skip closing (one) filedes, typically 2/stderr 
+ * @param[in]  fdkeep   Unless -1 skip closing (one) filedes, typically 2/stderr
  * @param[in]  callback Wrapper function
- * @param[in]  argv     NULL-terminated vector of vectors 
+ * @param[in]  argv     NULL-terminated vector of vectors
  * @param[in]  argc     Length of argv
  * @retval     0        OK
  * @retval    -1        Error
@@ -674,7 +678,7 @@ proc_op_run(pid_t pid0,
 
 int
 clixon_process_pid(clixon_handle h,
-                   const char   *name, 
+                   const char   *name,
                    pid_t        *pid)
 {
     int             retval = -1;
@@ -757,7 +761,10 @@ clixon_process_operation(clixon_handle  h,
                         if (isrunning) {
                             clixon_log(h, LOG_NOTICE, "Killing old process %s with pid: %d",
                                        pe->pe_name, pe->pe_pid); /* XXX pid may be 0 */
-                            kill(pe->pe_pid, SIGTERM);
+                            if (kill(pe->pe_pid, SIGTERM) < 0){
+                                clixon_err(OE_UNIX, errno, "kill(%d) %d", pe->pe_pid, errno);
+                                goto done;
+                            }
                             delay = 1;
                         }
                         clixon_debug(CLIXON_DBG_PROC | CLIXON_DBG_DETAIL, "%s(%d) %s --%s--> %s",
@@ -936,8 +943,7 @@ clixon_process_sched(int           fd,
             switch (pe->pe_state){
             case PROC_STATE_EXITING:
                 switch (pe->pe_operation){
-                case PROC_OP_STOP:
-                case PROC_OP_RESTART: /* Kill again */
+                case PROC_OP_STOP: /* Kill again */
                     isrunning = 0;
                     if (proc_op_run(pe->pe_pid, &isrunning) < 0)
                         goto done;
@@ -947,6 +953,18 @@ clixon_process_sched(int           fd,
                         kill(pe->pe_pid, SIGTERM);
                         sched++; /* Not immediate: wait timeout */
                     }
+                    break;
+                case PROC_OP_RESTART:
+                     isrunning = 0;
+                     if (proc_op_run(pe->pe_pid, &isrunning) < 0)
+                         goto done;
+                     if (isrunning) {
+                         if (clixon_process_waitpid(h) < 0)
+                             goto done;
+                         clicon_sig_child_set(0);
+                         sched++; /* Not immediate: wait timeout */
+                     }
+                    break;
                 default:
                     break;
                 }
@@ -1023,7 +1041,7 @@ clixon_process_sched(int           fd,
 /*! Register scheduling of process start/stop/restart
  *
  * Schedule a process event. There are two cases:
- * 1) A process has been killed and is in EXITING, after a delay kill again. 
+ * 1) A process has been killed and is in EXITING, after a delay kill again.
  * 2) A process is started, dont delay
  * @param[in]  h     Clixon handle
  * @param[in]  delay If 0 dont add a delay, if 1 add a delay

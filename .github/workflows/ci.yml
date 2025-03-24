@@ -173,5 +173,5 @@ jobs:
       run: sudo docker build -f Dockerfile.fcgi -t clixon/clixon-test  .
     - name: start container
       run: ./start.sh
-    - name: run test r-y
+    - name: run test r
       run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh" ./sum.sh'
