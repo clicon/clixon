@@ -33,6 +33,183 @@ HVER=1.1
 
 # log-destination in restconf xml: syslog or file
 : ${LOGDST:=syslog}
+# Set daemon command-line to -f
+if [ "$LOGDST" = syslog ]; then
+    LOGDST_CMD="s"      
+elif [ "$LOGDST" = file ]; then
+    LOGDST_CMD="f/var/log/clixon_restconf.log" 
+else
+    err1 "No such logdst: $LOGDST"
+fi
+
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    EXTRACONF="<CLICON_FEATURE>clixon-restconf:fcgi</CLICON_FEATURE>"
+else
+    EXTRACONF=""
+fi
+cat <<EOF > $cfg
+<clixon-config $CONFNS>
+  <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
+  $EXTRACONF
+  <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
+  <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
+  <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
+  <CLICON_RESTCONF_DIR>/usr/local/lib/$APPNAME/restconf</CLICON_RESTCONF_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_YANG_LIBRARY>true</CLICON_YANG_LIBRARY>
+  <CLICON_RESTCONF_INSTALLDIR>/usr/local/sbin</CLICON_RESTCONF_INSTALLDIR>
+  <!-- start restconf from backend -->
+  <CLICON_BACKEND_RESTCONF_PROCESS>true</CLICON_BACKEND_RESTCONF_PROCESS>
+</clixon-config>
+EOF
+
+cat <<EOF > $dir/example.yang
+module example {
+   namespace "urn:example:clixon";
+   prefix ex;
+   revision 2021-03-05;
+   leaf val{
+      type string;
+   }
+}
+EOF
+
+# Subroutine send a process control RPC and tricks to echo process-id returned
+# Args, expected values of:
+# 0: ACTIVE: true or false
+# 1: STATUS: stopped/running/exiting
+# retvalue:
+# $pid
+function rpcstatus()
+{
+    if [ $# -ne 2 ]; then
+        err1 "rpcstatus: # arguments: 2" "$#"
+    fi
+    active=$1
+    status=$2
+    
+    jmax=10
+    for j in $(seq 1 $jmax); do
+        new "send rpc status"
+        rpc=$(chunked_framing "<rpc $DEFAULTNS><process-control $LIBNS><name>restconf</name><operation>status</operation></process-control></rpc>")
+        retx=$($clixon_netconf -qef $cfg<<EOF
+$DEFAULTHELLO$rpc
+EOF
+)
+        # Check pid
+        expect="<pid $LIBNS>[0-9]*</pid>"
+        match=$(echo "$retx" | grep --null -Go "$expect")
+        if [ -z "$match" ]; then
+            pid=0
+        else
+            pid=$(echo "$match" | awk -F'[<>]' '{print $3}')
+        fi
+        if [ -z "$pid" ]; then
+            err "No pid return value" "$retx"
+        fi
+        if $active; then
+            expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status><starttime $LIBNS>20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9]*Z</starttime><pid $LIBNS>$pid</pid></rpc-reply>$"
+        else
+            # inactive, no startime or pid
+            expect="^<rpc-reply $DEFAULTNS><active $LIBNS>$active</active><description $LIBNS>Clixon RESTCONF process</description><command $LIBNS>/.*/clixon_restconf -f $cfg -D [0-9] .*</command><status $LIBNS>$status</status></rpc-reply>$"
+        fi
+
+        match=$(echo "$retx" | grep --null -Go "$expect")
+        if [ -z "$match" ]; then
+            echo "retry after sleep"
+            sleep $DEMSLEEP
+            continue
+        fi
+        break
+    done
+    if [ $j -eq $jmax ]; then
+        err "$expect" "$retx"
+    fi
+}
+
+# Subroutine send a process control RPC and tricks to echo process-id returned
+# Args:
+# 1: operation   One of stop/start/restart
+function rpcoperation()
+{
+    operation=$1
+    
+    sleep $DEMSLEEP
+    new "send rpc $operation"
+    expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><process-control $LIBNS><name>restconf</name><operation>$operation</operation></process-control></rpc>" "" "<rpc-reply $DEFAULTNS><ok $LIBNS/></rpc-reply>"
+
+    sleep $DEMSLEEP
+}
+
+# This test is confusing:
+# The whole restconf config is in clixon-config which binds 0.0.0.0:80 which will be the only
+# config the restconf daemon ever reads.
+# However, enable (and debug) flag is stored in running db but only backend will ever read that.
+# It just controls how restconf is started, but thereafter the restconf daemon reads the static db in clixon-config file
+
+new "ENABLE true"
+# First basic operation with restconf enable is true
+cat<<EOF > $startupdb
+<${DATASTORE_TOP}>
+   <restconf xmlns="http://clicon.org/restconf">
+      <enable>true</enable>
+      <auth-type>none</auth-type>
+      <pretty>false</pretty>
+      <debug>$RESTCONFDBG</debug>
+      <log-destination>$LOGDST</log-destination>
+      <socket>
+         <namespace>default</namespace>
+         <address>0.0.0.0</address>
+         <port>80</port>
+         <ssl>false</ssl>
+      </socket>
+   </restconf>
+</${DATASTORE_TOP}>
+EOF
+
+#!/usr/bin/env bash
+# Restconf direct start/stop using RPC and config enable flag (as alternative to systemd or other)
+# According to the following behaviour:
+# - on RPC start, if enable is true, start the service, if false, error or ignore it
+# - on RPC stop, stop the service 
+# - on backend start make the state as configured
+# - on enable change, make the state as configured
+# - No restconf config means enable: false (extra rule)
+# See test_restconf_netns for network namespaces
+# See test_restconf_internal_cases for some special use-cases
+# XXX Lots of sleeps to remove race conditions. I am sure there are others way to fix this
+# Note you cant rely on ps aux|grep <cmd> since ps delays after fork from clixon_backend->restconf
+
+# Magic line must be first in script (see README.md)
+s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
+
+# Does not work with native http/2-only
+if [ "${WITH_RESTCONF}" = "native" -a ${HAVE_HTTP1} = false ]; then
+    echo "...skipped: Must run with http/1"
+    rm -rf $dir
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
+
+APPNAME=example
+
+cfg=$dir/conf.xml
+startupdb=$dir/startup_db
+
+# Restconf debug
+RESTCONFDBG=$DBG
+RCPROTO=http # no ssl here
+HVER=1.1
+
+# log-destination in restconf xml: syslog or file
+: ${LOGDST:=syslog}
 LOGDST=file
 # Set daemon command-line to -f
 if [ "$LOGDST" = syslog ]; then
@@ -176,7 +353,6 @@ cat<<EOF > $startupdb
 </${DATASTORE_TOP}>
 EOF
 
-# prereq check no zombies BEFORE test
 new "Ensure no zombies before test"
 retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
 if [ -n "$retx" ]; then
@@ -195,8 +371,7 @@ if [ $BE -ne 0 ]; then
     fi
 
     new "start backend -s startup -f $cfg"
-    sudo strace clixon_backend -F -s startup -f $cfg 2> /usr/local/var/backend_strace.log &
-#    start_backend -s startup -f $cfg -D proc -D detail -lf/usr/local/var/backend.log
+    start_backend -s startup -f $cfg
 fi
 
 new "wait backend"
@@ -306,84 +481,18 @@ sudo kill $pid3
 new "Wait for restconf to stop"
 wait_restconf_stopped
 
-new "sleep"
-sleep 1
-
-new "Check zombies"
-retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
-if [ -n "$retx" ]; then
-    err "No zombie process" "$retx"
-fi
-
 new "8. start restconf RPC"
 rpcoperation start
 if [ $? -ne 0 ]; then exit -1; fi
-
-new "sleep"
-sleep 1
-
-new "Check zombies"
-retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
-if [ -n "$retx" ]; then
-    err "No zombie process" "$retx"
-fi
 
 new "9. check status RPC on"
 rpcstatus true running
 pid5=$pid
 if [ $pid5 -eq 0 ]; then err "Pid" 0; fi
 
-new "sleep"
-sleep 1
-
-new "Check zombies"
-retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
-if [ -n "$retx" ]; then
-    err "No zombie process" "$retx"
-fi
-
-new "ps 1"
-ps aux|grep clixon
-
 new "10. restart restconf RPC"
 rpcoperation restart
 if [ $? -ne 0 ]; then exit -1; fi
-
-new "sleep"
-sleep 1
-
-new "ps 2"
-ps aux|grep clixon
-
-sleep 1
-
-#new "cat log"
-#sudo cat /usr/local/var/backend.log
-
-if [ $BE -ne 0 ]; then
-    new "kill old backend"
-    sudo clixon_backend -z -f $cfg
-    if [ $? -ne 0 ]; then
-        err
-    fi
-fi
-
-sleep 1
-new "cat log"
-sudo cat /usr/local/var/backend_strace.log
-
-new "endtest"
-endtest
-
-
-
-exit
-
-new "Check zombies"
-retx=$(ps aux| grep clixon | grep defunc | grep -v grep)
-if [ -n "$retx" ]; then
-    err "No zombie process" "$retx"
-fi
 
 new "11. Get restconf status rpc"
 rpcstatus true running
@@ -405,8 +514,6 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
     killall clixon_restconf
 fi
-
-exit
 
 # Restconf is enabled and restconf was running but was killed by stop ^.
 # Start backend with -s none should start restconf too via ca_reset rule
