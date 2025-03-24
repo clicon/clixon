@@ -195,7 +195,7 @@ if [ $BE -ne 0 ]; then
     fi
 
     new "start backend -s startup -f $cfg"
-    sudo strace clixon_backend -F -s startup -f $cfg -D proc -D detail -lf/usr/local/var/backend.log 2> /usr/local/var/backend_strace.log &
+    sudo strace clixon_backend -F -s startup -f $cfg 2> /usr/local/var/backend_strace.log &
 #    start_backend -s startup -f $cfg -D proc -D detail -lf/usr/local/var/backend.log
 fi
 
@@ -357,8 +357,8 @@ ps aux|grep clixon
 
 sleep 1
 
-new "cat log"
-sudo cat /usr/local/var/backend.log
+#new "cat log"
+#sudo cat /usr/local/var/backend.log
 
 if [ $BE -ne 0 ]; then
     new "kill old backend"
