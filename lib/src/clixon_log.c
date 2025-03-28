@@ -85,6 +85,9 @@ static uint16_t _log_flags = 0x0;
 /* Set to open file to write debug messages directly to file */
 static FILE *_log_file = NULL;
 
+/* Set to 1 if syslog openlog() has been called */
+static int _log_openlog = 0;
+
 /* Truncate debug strings to this length. 0 means unlimited */
 static int _log_trunc = 0;
 
@@ -156,17 +159,23 @@ clixon_log_init(clixon_handle h,
         if (setlogmask(LOG_UPTO(upto)) < 0)
             /* Cant syslog here */
             fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno));
+        _log_openlog = 1;
         openlog(ident, LOG_PID, LOG_USER); /* LOG_PUSER is achieved by direct stderr logs in clixon_log */
     }
     return 0;
 }
 
+/*! Exit system logger
+ */
 int
 clixon_log_exit(void)
 {
     if (_log_file)
         fclose(_log_file);
-    closelog(); /* optional */
+    if (_log_openlog){
+        closelog();
+        _log_openlog = 0;
+    }
     return 0;
 }
 
