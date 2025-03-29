@@ -1414,7 +1414,7 @@ rpc_callback_register(clixon_handle  h,
                       const char    *ns,
                       const char    *name)
 {
-    rpc_callback_t *rc = NULL;
+    rpc_callback_t       *rc = NULL;
     plugin_module_struct *ms = plugin_module_struct_get(h);
 
     clixon_debug(CLIXON_DBG_RPC, "%s", name);
@@ -1470,6 +1470,7 @@ rpc_callback_delete_all(clixon_handle h)
 
 /*! Search RPC callbacks and invoke if XML match with tag
  *
+ * Also hello messages
  * @param[in]   h       clicon handle
  * @param[in]   xn      Sub-tree (under xorig) at child of rpc: <rpc><xn></rpc>.
  * @param[in]   arg     Domain-speific arg (eg client_entry)
@@ -1537,6 +1538,7 @@ rpc_callback_call(clixon_handle h,
         } while (rc != ms->ms_rpc_callbacks);
     /* action reply checked in action_callback_call */
     if (nr &&
+        strcmp(name, "hello") != 0 &&
         clicon_option_bool(h, "CLICON_VALIDATE_STATE_XML") &&
         !xml_rpc_isaction(xe)){
         if ((ret = rpc_reply_check(h, name, cbret)) < 0)

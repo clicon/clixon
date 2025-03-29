@@ -1624,28 +1624,32 @@ from_client_process_control(clixon_handle h,
 /*! Clixon hello to check liveness
  *
  * @param[in]  h       Clixon handle
- * @param[in]  x       Incoming XML of hello request
- * @param[in]  ce      Client entry (from)
- * @param[out] cbret   Hello reply
+ * @param[in]  xn      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
+ * @note hello is not an RPC but uses rpc callback structure
  */
 static int
-from_client_hello(clixon_handle        h,
-                  cxobj               *x,
-                  struct client_entry *ce,
-                  cbuf                *cbret)
+from_client_hello(clixon_handle  h,
+                  cxobj         *xn,
+                  cbuf          *cbret,
+                  void          *arg,
+                  void          *regarg)
 {
-    int      retval = -1;
-    char    *val;
+    int                  retval = -1;
+    char                *val;
+    struct client_entry *ce = (struct client_entry *)arg;
 
-    if ((val = xml_find_type_value(x, "cl", "transport", CX_ATTR)) != NULL){
+    if ((val = xml_find_type_value(xn, "cl", "transport", CX_ATTR)) != NULL){
         if ((ce->ce_transport = strdup(val)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
     }
-    if ((val = xml_find_type_value(x, "cl", "source-host", CX_ATTR)) != NULL){
+    if ((val = xml_find_type_value(xn, "cl", "source-host", CX_ATTR)) != NULL){
         if ((ce->ce_source_host = strdup(val)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
@@ -1781,8 +1785,19 @@ from_client_msg(clixon_handle        h,
     if (strcmp(rpcname, "rpc") == 0){
     }
     else if (strcmp(rpcname, "hello") == 0){
-        if ((ret = from_client_hello(h, x, ce, cbret)) <0)
-            goto done;
+        if ((ret = rpc_callback_call(h, x, ce, &nr, cbret)) < 0){
+            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+                goto done;
+            clixon_log(h, LOG_NOTICE, "%s Error in rpc_callback_call: hello", __FUNCTION__);
+            ce->ce_out_rpc_errors++;
+            netconf_monitoring_counter_inc(h, "in-bad-hellos");
+            goto reply; /* Dont quit here on user callbacks */
+        }
+        if (ret == 0){
+            ce->ce_out_rpc_errors++;
+            netconf_monitoring_counter_inc(h, "in-bad-hellos");
+            goto reply;
+        }
         goto reply;
     }
     else{
@@ -1999,6 +2014,7 @@ from_client(int   s,
  * @retval     0     OK
  * @retval    -1     Error (fatal)
  * @see ietf-netconf@2011-06-01.yang 
+ * @see rpc_callback_call  where invocation is made
  */
 int
 backend_rpc_init(clixon_handle h)
@@ -2006,6 +2022,9 @@ backend_rpc_init(clixon_handle h)
     int retval = -1;
 
     /* In backend_client.? RFC 6241 */
+    if (rpc_callback_register(h, from_client_hello, NULL,
+                      NETCONF_BASE_NAMESPACE, "hello") < 0)
+        goto done;
     if (rpc_callback_register(h, from_client_get_config, NULL,
                       NETCONF_BASE_NAMESPACE, "get-config") < 0)
         goto done;

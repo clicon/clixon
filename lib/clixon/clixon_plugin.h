@@ -474,8 +474,8 @@ typedef struct clixon_plugin clixon_plugin_t;
  * The internal struct is defined in clixon_plugin.c */
 typedef struct plugin_context plugin_context_t;
 
-/*
- * RPC callbacks for both client/frontend and backend plugins.
+/*! RPC callbacks for both client/frontend and backend plugins.
+ *
  * RPC callbacks are explicitly registered in the plugin_init() function
  * with a tag and a function
  * When the the tag is encountered, the callback is called.
@@ -485,6 +485,7 @@ typedef struct plugin_context plugin_context_t;
  * It would be possible to use this rpc registering API for CLI plugins as well.
  * 
  * When namespace and name match, the callback is made
+ * Also for hellos in backend (but hello is not an RPC)
  */
 typedef struct {
     qelem_t       rc_qelem;     /* List header */

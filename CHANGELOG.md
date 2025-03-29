@@ -18,6 +18,7 @@ Planned: April 2025
 
 ### Features
 
+* Added generic callbacks for hello, not only rpc:s.
 * Event handling: replace `select` with `poll`
   * See [Support more than 100 devices](https://github.com/clicon/clixon-controller/issues/174)
 * Added new `ca_userdef` callback
