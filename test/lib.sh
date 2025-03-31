@@ -425,7 +425,7 @@ fi
 # be deleted.
 # Same with RC=0
 if [ $BE -ne 0 -a $RC -ne 0 ]; then
-    rm -rf $dir/*
+    sudo rm -rf $dir/*
 fi
 
 # error and exit,

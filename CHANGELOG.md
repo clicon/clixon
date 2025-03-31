@@ -18,6 +18,8 @@ Planned: April 2025
 
 ### Features
 
+* Enabled dropping privileges with multiple datastores
+  * Partly fixes: [controller to run as non root user](https://github.com/clicon/clixon-controller/issues/155)
 * Added generic callbacks for hello, not only rpc:s.
 * Event handling: replace `select` with `poll`
   * See [Support more than 100 devices](https://github.com/clicon/clixon-controller/issues/174)

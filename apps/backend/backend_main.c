@@ -242,28 +242,6 @@ nacm_load_external(clixon_handle h)
     return retval;
 }
 
-static int 
-xmldb_drop_priv(clixon_handle h, 
-                const char   *db, 
-                uid_t         uid,
-                gid_t         gid)
-{
-    int         retval = -1;
-    char       *filename = NULL;
-
-    if (xmldb_db2file(h, db, &filename) < 0)
-        goto done;
-    if (chown(filename, uid, gid) < 0){
-        clixon_err(OE_UNIX, errno, "chown");
-        goto done;
-    }
-    retval = 0;
- done:
-    if (filename)
-        free(filename);
-    return retval;
-}
-
 /*! Drop root privileges uid and gid to Clixon user/group and 
  * 
  * If config options are right, drop process uid/guid privileges and change some 

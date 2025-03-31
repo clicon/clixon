@@ -70,6 +70,7 @@
 #include "clixon_err.h"
 #include "clixon_log.h"
 #include "clixon_debug.h"
+#include "clixon_uid.h"
 #include "clixon_string.h"
 #include "clixon_file.h"
 #include "clixon_yang_module.h"
@@ -278,6 +279,56 @@ xmldb_disconnect(clixon_handle h)
     return retval;
 }
 
+/*! Check if subdirs for xmldb_multi exists, if not create it
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  db  Datastore
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+static int
+check_create_multidir(clixon_handle h,
+                      const char   *db)
+{
+    int         retval = -1;
+    char       *subdir = NULL;
+    char       *backend_user;
+    char       *backend_group;
+    uid_t       uid = -1;
+    gid_t       gid = -1;
+    struct stat st = {0,};
+
+    if (xmldb_db2subdir(h, db, &subdir) < 0)
+        goto done;
+    if (stat(subdir, &st) < 0){
+        /* User rwx, Group+other: r for ease of cd, files in dir will be rwx--- */
+        if (mkdir(subdir, S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH) < 0){
+            clixon_err(OE_UNIX, errno, "mkdir(%s)", subdir);
+            goto done;
+        }
+        backend_user = clicon_backend_user(h);
+        backend_group = clicon_sock_group(h);
+        if (backend_user && name2uid(backend_user, &uid) < 0){
+            clixon_err(OE_DB, errno, "'%s' is not a valid user .\n", backend_user);
+            goto done;
+        }
+        if (backend_group && group_name2gid(backend_group, &gid) < 0){
+            clixon_err(OE_DB, errno, "'%s' is not a valid group .\n", backend_group);
+            goto done;
+        }
+        if (uid != -1 && gid != -1)
+            if (chown(subdir, uid, gid) < 0){
+                clixon_err(OE_UNIX, errno, "chown");
+                goto done;
+            }
+    }
+    retval = 0;
+ done:
+    if (subdir)
+        free(subdir);
+    return retval;
+}
+
 /*! Copy datastore from db1 to db2, both cache and datastore
  *
  * May include copying datastore directory structure
@@ -302,8 +353,6 @@ xmldb_copy(clixon_handle h,
     cxobj      *x2 = NULL;  /* to */
     char       *fromdir = NULL;
     char       *todir = NULL;
-    char       *subdir = NULL;
-    struct stat st = {0,};
 
     clixon_debug(CLIXON_DBG_DATASTORE, "%s %s", from, to);
     /* XXX lock */
@@ -343,14 +392,8 @@ xmldb_copy(clixon_handle h,
         de0 = *de2;
     de0.de_xml = x2; /* The new tree */
     if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
-        if (xmldb_db2subdir(h, to, &subdir) < 0)
+        if (check_create_multidir(h, to) < 0)
             goto done;
-        if (stat(subdir, &st) < 0){
-            if (mkdir(subdir, S_IRWXU|S_IRGRP|S_IWGRP|S_IROTH|S_IXOTH) < 0){
-                clixon_err(OE_UNIX, errno, "mkdir(%s)", subdir);
-                goto done;
-            }
-        }
     }
     clicon_db_elmnt_set(h, to, &de0);
     /* Copy the files themselves (above only in-memory cache)
@@ -373,8 +416,6 @@ xmldb_copy(clixon_handle h,
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_DATASTORE, "retval:%d", retval);
-    if (subdir)
-        free(subdir);
     if (fromdir)
         free(fromdir);
     if (todir)
@@ -654,8 +695,6 @@ xmldb_create(clixon_handle h,
     int         fd = -1;
     db_elmnt   *de = NULL;
     cxobj      *xt = NULL;
-    char       *subdir = NULL;
-    struct stat st = {0,};
 
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
@@ -665,14 +704,8 @@ xmldb_create(clixon_handle h,
         }
     }
     if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
-        if (xmldb_db2subdir(h, db, &subdir) < 0)
+        if (check_create_multidir(h, db) < 0)
             goto done;
-        if (stat(subdir, &st) < 0){
-            if (mkdir(subdir, S_IRWXU|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH) < 0){
-                clixon_err(OE_UNIX, errno, "mkdir(%s)", subdir);
-                goto done;
-            }
-        }
     }
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
@@ -683,8 +716,6 @@ xmldb_create(clixon_handle h,
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
-    if (subdir)
-        free(subdir);
     if (filename)
         free(filename);
     if (fd != -1)
@@ -1020,6 +1051,37 @@ xmldb_multi_upgrade(clixon_handle h,
         free(fromfile);
     if (tofile)
         free(tofile);
+    return retval;
+}
+
+/*! Change owner of datastore file to given uid and gid
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  db   Datastore
+ * @param[in]  uid  User id
+ * @param[in]  gid  Group id
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+xmldb_drop_priv(clixon_handle h,
+                const char   *db,
+                uid_t         uid,
+                gid_t         gid)
+{
+    int         retval = -1;
+    char       *filename = NULL;
+
+    if (xmldb_db2file(h, db, &filename) < 0)
+        goto done;
+    if (chown(filename, uid, gid) < 0){
+        clixon_err(OE_UNIX, errno, "chown");
+        goto done;
+    }
+    retval = 0;
+ done:
+    if (filename)
+        free(filename);
     return retval;
 }
 

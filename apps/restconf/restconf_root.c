@@ -51,7 +51,7 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <libgen.h>
-#include <sys/stat.h> /* chmod */
+#include <sys/stat.h>
 
 /* cligen */
 #include <cligen/cligen.h>

@@ -106,6 +106,8 @@ int xmldb_print(clixon_handle h, FILE *f);
 int xmldb_rename(clixon_handle h, const char *db, const char *newdb, const char *suffix);
 int xmldb_populate(clixon_handle h, const char *db);
 int xmldb_multi_upgrade(clixon_handle h, const char *db);
+int xmldb_drop_priv(clixon_handle h, const char *db, uid_t uid, gid_t gid);
 int xmldb_system_only_config(clixon_handle h, const char *xpath, cvec *nsc, cxobj **xret);
+
 
 #endif /* _CLIXON_DATASTORE_H */

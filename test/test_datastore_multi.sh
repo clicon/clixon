@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Datastore split test, eg x_db has x.d/ directory with subdirs
-# Also test cache bevahour, that unmodified
-# subteres are not touched
+# Also test cache behavour, that unmodified subtrees are not touched
 # For now subdirs only enabled for mointpoints, so this test is with mountpoints as well
 
 # Magic line must be first in script (see README.md)
@@ -46,6 +45,8 @@ cat <<EOF > $cfg
   <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_BACKEND_PRIVILEGES>drop_perm</CLICON_BACKEND_PRIVILEGES>
+  <CLICON_BACKEND_USER>$BUSER</CLICON_BACKEND_USER>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_MULTI>true</CLICON_XMLDB_MULTI>
   <CLICON_NETCONF_MONITORING>true</CLICON_NETCONF_MONITORING>
@@ -297,9 +298,10 @@ new "cli show config"
 expectpart "$($clixon_cli -1 -f $cfg show config xml -- -m clixon-mount1 -M urn:example:mount1)" 0 "<top xmlns=\"urn:example:clixon\"><mylist><name>x</name><root><mount1 xmlns=\"urn:example:mount1\"><mylist1><name1>x1</name1></mylist1></mount1><extra xmlns=\"urn:example:mount1\"><extraval>foo</extraval></extra></root></mylist></top>"
 
 if [ $BE -ne 0 ]; then
-    new "Kill backend"
+
+    new "Kill backend 1"
     # Check if premature kill
-    pid=$(pgrep -u root -f clixon_backend)
+    pid=$(pgrep -u $BUSER -f clixon_backend)
     if [ -z "$pid" ]; then
         err "backend already dead"
     fi
@@ -329,9 +331,9 @@ new "Check running after restart"
 check_db running ${subfilename}
 
 if [ $BE -ne 0 ]; then
-    new "Kill backend"
+    new "Kill backend 2"
     # Check if premature kill
-    pid=$(pgrep -u root -f clixon_backend)
+    pid=$(pgrep -u $BUSER -f clixon_backend)
     if [ -z "$pid" ]; then
         err "backend already dead"
     fi
@@ -357,7 +359,7 @@ check_db running ${subfilename}
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
-    pid=$(pgrep -u root -f clixon_backend)
+    pid=$(pgrep -u $BUSER -f clixon_backend)
     if [ -z "$pid" ]; then
         err "backend already dead"
     fi
