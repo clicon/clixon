@@ -618,14 +618,14 @@ main(int    argc,
         goto done;
     }
     if (chown(sockpath, -1, wgid) < 0){
-        clixon_err(OE_CFG, errno, "chown");
+        clixon_err(OE_CFG, errno, "chown %s", sockpath);
         goto done;
     }
     if (clicon_socket_set(h, sock) < 0)
         goto done;
     /* umask settings may interfer: we want group to write: this is 774 */
     if (chmod(sockpath, S_IRWXU|S_IRWXG|S_IROTH) < 0){
-        clixon_err(OE_UNIX, errno, "chmod");
+        clixon_err(OE_UNIX, errno, "chmod %s", sockpath);
         goto done;
     }
 

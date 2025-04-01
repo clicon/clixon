@@ -318,7 +318,7 @@ check_create_multidir(clixon_handle h,
         }
         if (uid != -1 && gid != -1)
             if (chown(subdir, uid, gid) < 0){
-                clixon_err(OE_UNIX, errno, "chown");
+                clixon_err(OE_UNIX, errno, "chown %s", subdir);
                 goto done;
             }
     }
@@ -1075,7 +1075,7 @@ xmldb_drop_priv(clixon_handle h,
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
     if (chown(filename, uid, gid) < 0){
-        clixon_err(OE_UNIX, errno, "chown");
+        clixon_err(OE_UNIX, errno, "chown %s", filename);
         goto done;
     }
     retval = 0;
