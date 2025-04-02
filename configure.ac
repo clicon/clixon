@@ -55,6 +55,11 @@ CLIXON_VERSION_MAJOR=$(echo ${CLIXON_VERSION2} | awk -F. '{print $1}')
 CLIXON_VERSION_MINOR=$(echo ${CLIXON_VERSION2} | awk -F. '{print $2}')
 CLIXON_VERSION_PATCH=$(echo ${CLIXON_VERSION2} | awk -F. '{print $3}')
 
+AC_PROG_LEX(noyywrap)
+if test "$LEX" = ":"; then
+   AC_MSG_ERROR(CLIXON does not find lex or flex.)
+fi
+
 # Debug flag
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
 	  if test "$enableval" = no; then
@@ -145,10 +150,6 @@ AC_MSG_RESULT(LDFLAGS is $LDFLAGS)
 AC_MSG_RESULT(INSTALLFLAGS is $INSTALLFLAGS)
 
 AC_PROG_YACC
-AC_PROG_LEX(noyywrap)
-if test "$LEX" = ":"; then
-   AC_MSG_ERROR(CLIXON does not find lex or flex.)
-fi
 
 # SSH binary path for client and test
 AC_PATH_PROG(SSH_BIN, ssh)
