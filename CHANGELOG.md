@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [7.4.0](#740) Planned: April 2025
+* [7.4.0](#740) 3 April 2025
 * [7.3.0](#730) 30 January 2025
 * [7.2.0](#720) 28 October 2024
 * [7.1.0](#710) 3 July 2024
@@ -14,15 +14,17 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 7.4.0
-Planned: April 2025
+3 April 2025
+
+The Clixon 7.4 release supports RESTCONF for mount-points and changes the event handling using poll to scale better. It also fixes some bugs introduced in 7.3.
 
 ### Features
 
+* Event handling: replace `select` with `poll`
+  * See [Support more than 100 devices](https://github.com/clicon/clixon-controller/issues/174)
 * Enabled dropping privileges with multiple datastores
   * Partly fixes: [controller to run as non root user](https://github.com/clicon/clixon-controller/issues/155)
 * Added generic callbacks for hello, not only rpc:s.
-* Event handling: replace `select` with `poll`
-  * See [Support more than 100 devices](https://github.com/clicon/clixon-controller/issues/174)
 * Added new `ca_userdef` callback
 * New `clixon-restconf@2025-02-01.yang` revision
   * Added timeout parameter

@@ -175,7 +175,7 @@ What to think about when doing a new release.
 * Run autoconf
 * Git stuff:
 ```
-  git tag -a <version>
+  git tag -a <version> # eg 5.3.0
   git push origin <version>
 ```
 * Add a github release and copy release info from CHANGELOG
