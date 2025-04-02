@@ -333,7 +333,11 @@ check_db running ${subfilename}
 if [ $BE -ne 0 ]; then
     new "Kill backend 2"
     # Check if premature kill
-    pid=$(pgrep -u $BUSER -f clixon_backend)
+    if [ $valgrindtest -eq 2 ]; then
+        pid=$(pgrep -u root -f clixon_backend)
+    else
+        pid=$(pgrep -u $BUSER -f clixon_backend)
+    fi
     if [ -z "$pid" ]; then
         err "backend already dead"
     fi
@@ -357,7 +361,7 @@ new "Check running after restart"
 check_db running ${subfilename}
 
 if [ $BE -ne 0 ]; then
-    new "Kill backend"
+    new "Kill backend 3"
     # Check if premature kill
     pid=$(pgrep -u $BUSER -f clixon_backend)
     if [ -z "$pid" ]; then
