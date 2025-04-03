@@ -112,8 +112,8 @@ xml_nsctx_namespace_netconf_default(clixon_handle h)
  * @see xml_nsctx_free  Free the reutned handle
  */
 cvec *
-xml_nsctx_init(char *prefix,
-               char *ns)
+xml_nsctx_init(const char *prefix,
+               const char *ns)
 {
     cvec *cvv = NULL;
 
@@ -153,7 +153,7 @@ xml_nsctx_free(cvec *nsc)
  */
 char*
 xml_nsctx_get(cvec *cvv,
-              char *prefix)
+              const char *prefix)
 {
     cg_var *cv;
 
@@ -173,7 +173,7 @@ xml_nsctx_get(cvec *cvv,
  */
 int
 xml_nsctx_get_prefix(cvec  *cvv,
-                     char  *ns,
+                     const char  *ns,
                      char **prefix)
 {
     cg_var *cv = NULL;
@@ -202,8 +202,8 @@ xml_nsctx_get_prefix(cvec  *cvv,
  */
 int
 xml_nsctx_add(cvec *cvv,
-              char *prefix,
-              char *ns)
+              const char *prefix,
+              const char *ns)
 {
     int     retval = -1;
     cg_var *cv;
@@ -500,7 +500,7 @@ xml_nsctx_cbuf(cbuf *cb,
  */
 int
 xml2ns(cxobj *x,
-       char  *prefix,
+       const char  *prefix,
        char **namespace)
 {
     int    retval = -1;
@@ -590,8 +590,8 @@ xml2ns_recurse(cxobj *xt)
  */
 int
 xmlns_set(cxobj *x,
-          char  *prefix,
-          char  *ns)
+          const char  *prefix,
+          const char  *ns)
 {
     int    retval = -1;
     cxobj *xa;
@@ -733,8 +733,8 @@ xml2prefix(cxobj *xn,
 int
 xml_add_namespace(cxobj *x,
                   cxobj *xp,
-                  char  *prefix,
-                  char  *namespace)
+                  const char  *prefix,
+                  const char  *namespace)
 {
     int    retval = -1;
     cxobj *xa = NULL;

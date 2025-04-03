@@ -84,8 +84,8 @@
  * @see clixon_strsplit
  */
 char **
-clicon_strsep(char *string,
-              char *delim,
+clicon_strsep(const char *string,
+              const char *delim,
               int  *nvec0)
 {
     char **vec = NULL;
@@ -94,7 +94,7 @@ clicon_strsep(char *string,
     int   nvec = 1;
     int   i;
     size_t siz;
-    char *s;
+    const char *s;
     char *d;
 
     if ((s = string)==NULL)
@@ -136,8 +136,8 @@ clicon_strsep(char *string,
  */
 int
 clixon_strsep2(char   *str,
-               char   *delim1,
-               char   *delim2,
+               const char   *delim1,
+               const char   *delim2,
                char ***vcp,
                int    *nvec)
 {
@@ -197,7 +197,7 @@ clixon_strsep2(char   *str,
 char *
 clicon_strjoin(int    argc,
                char **argv,
-               char  *delim)
+               const char  *delim)
 {
     int i;
     int len;
@@ -230,8 +230,8 @@ clicon_strjoin(int    argc,
  */
 char*
 clixon_string_del_join(char *str1,
-                       char *del,
-                       char *str2)
+                       const char *del,
+                       const char *str2)
 {
     char *str;
     int   len;
@@ -275,7 +275,7 @@ clixon_string_del_join(char *str1,
  * @see clicon_strsep  not just single split
  */
 int
-clixon_strsplit(char     *string,
+clixon_strsplit(const char     *string,
                 const int delim,
                 char    **prefix,
                 char    **suffix)
@@ -413,7 +413,7 @@ uri_percent_encode(char **encp,
  * @see uri_percent_encode
  */
 int
-uri_percent_decode(char  *enc,
+uri_percent_decode(const char  *enc,
                    char **strp)
 {
     int   retval = -1;
@@ -650,7 +650,7 @@ xml_chardata_encode(char      **escp,
 int
 xml_chardata_cbuf_append(cbuf *cb,
                          int   quote,
-                         char *str)
+                         const char *str)
 {
     int    retval = -1;
     int    i;
@@ -874,7 +874,7 @@ xml_chardata_decode(char      **decp,
  * XXX differentiate between error and null cvec.
  */
 int
-uri_str2cvec(char  *string,
+uri_str2cvec(const char  *string,
              char   delim1,
              char   delim2,
              int    decode,
@@ -1040,8 +1040,8 @@ clixon_trim2(char *str,
  * @retval    >0   s1 is greater than s2
  */
 int
-clicon_strcmp(char *s1,
-              char *s2)
+clicon_strcmp(const char *s1,
+              const char *s2)
 {
     if (s1 == NULL && s2 == NULL)
         return 0;
@@ -1099,7 +1099,7 @@ clixon_unicode2utf8_one(uint16_t uc16,
  * @retval    -1        Error
  */
 int
-clixon_unicode2utf8(char  *ucstr,
+clixon_unicode2utf8(const char  *ucstr,
                     char  *utfstr,
                     size_t utflen)
 {

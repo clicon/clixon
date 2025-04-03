@@ -51,20 +51,20 @@
  * Prototypes
  */
 int     xml_nsctx_namespace_netconf_default(clixon_handle h);
-cvec   *xml_nsctx_init(char *prefix, char *ns);
+cvec   *xml_nsctx_init(const char *prefix, const char *ns);
 int     xml_nsctx_free(cvec *nsc);
-char   *xml_nsctx_get(cvec *nsc, char *prefix);
-int     xml_nsctx_get_prefix(cvec *cvv, char *ns, char **prefix);
-int     xml_nsctx_add(cvec *nsc, char *prefix, char *ns);
+char   *xml_nsctx_get(cvec *nsc, const char *prefix);
+int     xml_nsctx_get_prefix(cvec *cvv, const char *ns, char **prefix);
+int     xml_nsctx_add(cvec *nsc, const char *prefix, const char *ns);
 int     xml_nsctx_node(cxobj *x, cvec **ncp);
 int     xml_nsctx_yang(yang_stmt *yn, cvec **ncp);
 int     xml_nsctx_yangspec(yang_stmt *yspec, cvec **ncp);
 int     xml_nsctx_cbuf(cbuf *cb, cvec *nsc);
-int     xml2ns(cxobj *x, char *prefix, char **ns);
+int     xml2ns(cxobj *x, const char *prefix, char **ns);
 int     xml2ns_recurse(cxobj *x);
-int     xmlns_set(cxobj *x, char *prefix, char *ns);
+int     xmlns_set(cxobj *x, const char *prefix, const char *ns);
 int     xmlns_set_all(cxobj *x, cvec  *nsc);
 int     xml2prefix(cxobj *xn, char *ns, char **prefixp);
-int     xml_add_namespace(cxobj *x, cxobj *xp, char *prefix, char *ns);
+int     xml_add_namespace(cxobj *x, cxobj *xp, const char *prefix, const char *ns);
 
 #endif /* _CLIXON_XML_NSCTX_H */
