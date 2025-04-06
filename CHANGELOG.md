@@ -17,6 +17,12 @@
 ## 7.5.0
 Expected: July 2025
 
+### Features
+
+* Revised NACM work
+  * Generic handling of proxyusers, such as RESTCONF daemon
+  * See [NACM for Clixon Controller](https://github.com/clicon/clixon-controller/issues/189)
+
 ## 7.4.0
 3 April 2025
 

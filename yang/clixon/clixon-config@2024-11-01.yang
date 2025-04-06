@@ -427,7 +427,9 @@ module clixon-config {
             enum except {
                 description
                   "Exact match between NACM user and unix socket peer user, except
-                   for root and www user (restconf).";
+                   for root, CLICON_RESTCONF_USER and conroller:CONTROLLER_PYAPI_USER.
+                   Misleading term, 'proxy' would have been better.
+                   ";
             }
         }
     }
@@ -695,8 +697,7 @@ module clixon-config {
             description
                 "Backend privileges mode.
                  If CLICON_BACKEND_USER user is set, mode can be set to drop_perm or
-                 drop_temp.
-                 Drop privs may not be used together with CLICON_XMLDB_MULTI";
+                 drop_temp.";
         }
         leaf CLICON_BACKEND_PIDFILE {
             type string;
@@ -850,11 +851,10 @@ module clixon-config {
         leaf CLICON_RESTCONF_USER {
             type string;
             description
-                "Run clixon_daemon as this user
-                 When drop privileges is used, the daemon will drop privileges to this user.
-                 In pre-5.2 code this was configured as compile-time constant WWWUSER with
-                 default value www-data
-                 See also CLICON_PRIVILEGES setting";
+                "Run restconf daemon as this user
+                 When drop privileges is used, the daemon will drop privileges to this user
+                 Also: if CLICON_NACM_CREDENTIALS=except, the backend accepts this restconf
+                 user acting as a proxy for other users";
             default www-data;
         }
         leaf CLICON_RESTCONF_PRIVILEGES {
@@ -1329,7 +1329,11 @@ module clixon-config {
             description
                 "Verify nacm user credentials with unix socket peer cred.
                  This means nacm user must match unix user accessing the backend
-                 socket.";
+                 socket according to the nacm_cred_mode enum:
+                 none: sont check users
+                 exact: Only exact match between peer user and nacm user
+                 except: Exact match except some users that can act as proxy for other users
+                 ";
         }
         leaf CLICON_NACM_RECOVERY_USER {
             type string;

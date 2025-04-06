@@ -192,55 +192,6 @@ backend_server_socket(clixon_handle h)
     return ss;
 }
 
-/*! Load external NACM file
- */
-static int
-nacm_load_external(clixon_handle h)
-{
-    int         retval = -1;
-    char       *filename; /* NACM config file */
-    yang_stmt  *yspec = NULL;
-    cxobj      *xt = NULL;
-    struct stat st;
-    FILE       *f = NULL;
-
-    filename = clicon_option_str(h, "CLICON_NACM_FILE");
-    if (filename == NULL || strlen(filename)==0){
-        clixon_err(OE_UNIX, errno, "CLICON_NACM_FILE not set in NACM external mode");
-        goto done;
-    }
-    if (stat(filename, &st) < 0){
-        clixon_err(OE_UNIX, errno, "%s", filename);
-        goto done;
-    }
-    if (!S_ISREG(st.st_mode)){
-        clixon_err(OE_UNIX, 0, "%s is not a regular file", filename);
-        goto done;
-    }
-    if ((f = fopen(filename, "r")) == NULL) {
-        clixon_err(OE_UNIX, errno, "configure file: %s", filename);
-        return -1;
-    }
-    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_NACM_TOP)) == NULL)
-        goto done;
-    if (yang_spec_parse_module(h, "ietf-netconf-acm", NULL, yspec) < 0)
-        goto done;
-    /* Read configfile */
-    if (clixon_xml_parse_file(f, YB_MODULE, yspec, &xt, NULL) < 0)
-        goto done;
-    if (xt == NULL){
-        clixon_err(OE_XML, 0, "No xml tree in %s", filename);
-        goto done;
-    }
-    if (clicon_nacm_ext_set(h, xt) < 0)
-        goto done;
-
-    retval = 0;
- done:
-    if (f)
-        fclose(f);
-    return retval;
-}
 
 /*! Drop root privileges uid and gid to Clixon user/group and 
  * 
@@ -488,7 +439,6 @@ main(int    argc,
     char         *pidfile;
     char         *sock;
     int           sockfamily;
-    char         *nacm_mode;
     int           logdst = CLIXON_LOG_SYSLOG|CLIXON_LOG_STDERR;
     yang_stmt    *yspec = NULL;
     char         *str;
@@ -799,14 +749,8 @@ main(int    argc,
     /* In case ietf-yang-metadata is loaded by application, handle annotation extension */
     if (yang_metadata_init(h) < 0)
         goto done;
-    /* External NACM file? 
-     * Note, loads yang -> extensions -> plugins
-     */
-    nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
-    if (nacm_mode && strcmp(nacm_mode, "external") == 0){
-        if (nacm_load_external(h) < 0)
-            goto done;
-    }
+    if (nacm_init(h) < 0)
+        goto done;
     yang_start(h);
     /* Create top-level data yangs */
     if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_DATA_TOP)) == NULL)
@@ -850,15 +794,15 @@ main(int    argc,
     /* Load yang restconf module */
     if (yang_spec_parse_module(h, "ietf-restconf", NULL, yspec)< 0)
         goto done;
-    /* Load yang YANG module state */
-    if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE") &&
-        yang_spec_parse_module(h, "ietf-yang-library", NULL, yspec)< 0)
-        goto done;
     /* Check restconf start/stop from backend */
     if (clicon_option_bool(h, "CLICON_BACKEND_RESTCONF_PROCESS")){
         if (backend_plugin_restconf_register(h, yspec) < 0)
             goto done;
     }
+    /* Load yang YANG module state */
+    if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE") &&
+        yang_spec_parse_module(h, "ietf-yang-library", NULL, yspec)< 0)
+        goto done;
     /* Here all modules are loaded 
      * Compute and set canonical namespace context
      */
