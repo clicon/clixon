@@ -185,10 +185,9 @@ drop_priv_temp(uid_t new_uid)
 #ifdef HAVE_GETRESUID
     int retval = -1;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "uid:%u", new_uid);
-    /* XXX: implicit declaration of function 'setresuid' on travis */
+    clixon_debug(CLIXON_DBG_PROC, "from uid:%u to %u", getuid(), new_uid);
     if (setresuid(-1, new_uid, geteuid()) < 0){
-        clixon_err(OE_UNIX, errno, "setresuid");
+        clixon_err(OE_UNIX, errno, "setresuid(%u) from %u", new_uid, getuid());
         goto done;
     }
     if (geteuid() != new_uid){
@@ -199,7 +198,7 @@ drop_priv_temp(uid_t new_uid)
  done:
     return retval;
 #else
-    clixon_debug(CLIXON_DBG_DEFAULT, "Drop privileges not implemented on this platform since getresuid is not available");
+    clixon_debug(CLIXON_DBG_PROC, "Drop privileges not implemented on this platform since getresuid is not available");
     return 0;
 #endif
 }
@@ -219,10 +218,9 @@ drop_priv_perm(uid_t new_uid)
     uid_t euid;
     uid_t suid;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "uid:%u", new_uid);
-
+    clixon_debug(CLIXON_DBG_PROC, "from uid:%u to %u", getuid(), new_uid);
     if (setresuid(new_uid, new_uid, new_uid) < 0){
-        clixon_err(OE_UNIX, errno, "setresuid");
+        clixon_err(OE_UNIX, errno, "setresuid(%u) from %u", new_uid, getuid());
         goto done;
     }
     if (getresuid(&ruid, &euid, &suid) < 0){
@@ -239,7 +237,7 @@ drop_priv_perm(uid_t new_uid)
  done:
     return retval;
 #else
-    clixon_debug(CLIXON_DBG_DEFAULT, "Drop privileges not implemented on this platform since getresuid is not available");
+    clixon_debug(CLIXON_DBG_PROC, "Drop privileges not implemented on this platform since getresuid is not available");
     return 0;
 #endif
 }
@@ -254,14 +252,13 @@ restore_priv(void)
     uid_t euid;
     uid_t suid;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "");
-
+    clixon_debug(CLIXON_DBG_PROC, "");
     if (getresuid(&ruid, &euid, &suid) < 0){
-        clixon_err(OE_UNIX, errno, "setresuid");
+        clixon_err(OE_UNIX, errno, "getresuid");
         goto done;
     }
     if (setresuid(-1, suid, -1) < 0){
-        clixon_err(OE_UNIX, errno, "setresuid");
+        clixon_err(OE_UNIX, errno, "setresuid(%u) from %u", suid, getuid());
         goto done;
     }
     if (geteuid() != suid){
@@ -272,7 +269,7 @@ restore_priv(void)
  done:
     return retval;
 #else
-    clixon_debug(CLIXON_DBG_DEFAULT, "Drop privileges not implemented on this platform since getresuid is not available");
+    clixon_debug(CLIXON_DBG_PROC, "Drop privileges not implemented on this platform since getresuid is not available");
     return 0;
 #endif
 }

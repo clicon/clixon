@@ -49,6 +49,7 @@
 #include <assert.h>
 #include <syslog.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -76,10 +77,74 @@
 #include "clixon_xml_io.h"
 #include "clixon_path.h"
 #include "clixon_xml_vec.h"
+#include "clixon_yang_parse_lib.h"
 #include "clixon_nacm.h"
 
 /* NACM namespace for use with xml namespace contexts and xpath */
 #define NACM_NS "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
+
+/*! Add user to list of NACM proxyusers that may represent other users
+ *
+ * Typical case is restconf daemon which makes its own authentication
+ * @param[in]  h     Clixon handle
+ * @param[in]  user  Username
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+nacm_proxyuser_add(clixon_handle h,
+                   const char   *user)
+{
+    int     retval = -1;
+    cvec   *cvv = NULL;
+    cg_var *cv;
+
+    clicon_ptr_get(h, "nacm-proxyuser", (void**)&cvv);
+    if (cvv == NULL){
+        if ((cvv = cvec_new(0)) == NULL){
+            clixon_err(OE_UNIX, errno, "cvec_new");
+            goto done;
+        }
+        if (clicon_ptr_set(h, "nacm-proxyuser", (void*)cvv) < 0)
+            goto done;
+    }
+    if ((cv = cvec_add(cvv, CGV_EMPTY)) < 0){
+        clixon_err(OE_UNIX, errno, "cvec_add");
+        goto done;
+    }
+    if (cv_name_set(cv, user) < 0) {
+        clixon_err(OE_UNIX, errno, "cv_name_set");
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Is user in list of NACM proxyusers list?
+ *
+ * Typical case is restconf daemon which makes its own authentication
+ * @param[in]  h     Clixon handle
+ * @param[in]  user  Username
+ * @retval     1     Yes, user is a member
+ * @retval     0     No, user is not a member
+ */
+static int
+nacm_proxyuser_member(clixon_handle h,
+                      const char   *user)
+{
+    cvec *cvv = NULL;
+
+    clicon_ptr_get(h, "nacm-proxyuser", (void**)&cvv);
+    if (cvv) {
+        if (cvec_find(cvv, user) != 0)
+            return 1;
+        else
+            return 0;
+    }
+    else
+        return 0;
+}
 
 /*! Match nacm access operations according to RFC8341 3.4.4.  
  *
@@ -1309,7 +1374,7 @@ nacm_access_pre(clixon_handle  h,
  * or if cred mode is EXCEPT and one of the following is true
  * - peer user is same as NACM user
  * - peer user is root (can be any NACM user)
- * - peer user is www (can be any NACM user)
+ * - peer user is in the list pf proxyusers (can be any NACM user)
  */
 int
 verify_nacm_user(clixon_handle           h,
@@ -1321,10 +1386,8 @@ verify_nacm_user(clixon_handle           h,
 {
     int   retval = -1;
     cbuf *cbmsg = NULL;
-#ifdef WITH_RESTCONF
-    char  *wwwuser;
-#endif
 
+    clixon_debug(CLIXON_DBG_NACM, "Verifying user %s", nacmname);
     if (cred == NC_NONE)
         return 1;
     if (peername == NULL){
@@ -1343,13 +1406,11 @@ verify_nacm_user(clixon_handle           h,
         goto fail;
     }
     if (cred == NC_EXCEPT){
+        clixon_debug(CLIXON_DBG_NACM, "cred is EXCEPT");
         if (strcmp(peername, "root") == 0)
             goto ok;
-#ifdef WITH_RESTCONF
-        wwwuser=clicon_option_str(h,"CLICON_RESTCONF_USER");
-        if (wwwuser && strcmp(peername, wwwuser) == 0)
+        if (nacm_proxyuser_member(h, peername) == 1)
             goto ok;
-#endif
     }
     if (strcmp(peername, nacmname) != 0){
         if ((cbmsg = cbuf_new()) == NULL){
@@ -1370,4 +1431,87 @@ verify_nacm_user(clixon_handle           h,
  fail:
     retval = 0;
     goto done;
+}
+
+/*! Load external NACM file
+ */
+static int
+nacm_load_external(clixon_handle h)
+{
+    int         retval = -1;
+    char       *filename; /* NACM config file */
+    yang_stmt  *yspec = NULL;
+    cxobj      *xt = NULL;
+    struct stat st;
+    FILE       *f = NULL;
+
+    filename = clicon_option_str(h, "CLICON_NACM_FILE");
+    if (filename == NULL || strlen(filename)==0){
+        clixon_err(OE_UNIX, errno, "CLICON_NACM_FILE not set in NACM external mode");
+        goto done;
+    }
+    if (stat(filename, &st) < 0){
+        clixon_err(OE_UNIX, errno, "%s", filename);
+        goto done;
+    }
+    if (!S_ISREG(st.st_mode)){
+        clixon_err(OE_UNIX, 0, "%s is not a regular file", filename);
+        goto done;
+    }
+    if ((f = fopen(filename, "r")) == NULL) {
+        clixon_err(OE_UNIX, errno, "configure file: %s", filename);
+        return -1;
+    }
+    if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_NACM_TOP)) == NULL)
+        goto done;
+    if (yang_spec_parse_module(h, "ietf-netconf-acm", NULL, yspec) < 0)
+        goto done;
+    /* Read configfile */
+    if (clixon_xml_parse_file(f, YB_MODULE, yspec, &xt, NULL) < 0)
+        goto done;
+    if (xt == NULL){
+        clixon_err(OE_XML, 0, "No xml tree in %s", filename);
+        goto done;
+    }
+    if (clicon_nacm_ext_set(h, xt) < 0)
+        goto done;
+    clixon_debug(CLIXON_DBG_RESTCONF, "Loaded NACM external rules from %s", filename);
+    retval = 0;
+ done:
+    if (f)
+        fclose(f);
+    return retval;
+}
+
+/*! Init NACM module
+ *
+ * Check external mode, if so load NACM file
+ * Add restconf user as NACM proxy user
+ * @param[in]  h   Clixon handle
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+nacm_init(clixon_handle h)
+{
+    int   retval = -1;
+    char *nacm_mode;
+    char *user;
+
+    /* Check external mode, if so load NACM file
+     * Note, loads yang -> extensions -> plugins
+     */
+    nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
+    if (nacm_mode && strcmp(nacm_mode, "external") == 0){
+        if (nacm_load_external(h) < 0)
+            goto done;
+    }
+    /* Add restconf user as NACM proxy user */
+    if ((user = clicon_option_str(h, "CLICON_RESTCONF_USER")) != NULL){
+        if (nacm_proxyuser_add(h, user) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }

@@ -22,6 +22,11 @@ Expected: July 2025
 * Autocli cache for faster loading of generated CLIspecs
 * New `clixon-autocli@2025-05-01.yang` revision
   * Added `clispec-cache` and `clispec-cache-dir` options
+* Revised NACM work
+  * Generic handling of proxyusers, such as RESTCONF daemon
+  * Support for mount-points
+  * Improved debug trace
+  * See [NACM for Clixon Controller](https://github.com/clicon/clixon-controller/issues/189)
 
 ## 7.4.0
 3 April 2025
