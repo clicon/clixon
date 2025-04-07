@@ -962,7 +962,7 @@ yang_parse_file(FILE       *fp,
         }
         buf[i++] = (char)(c&0xff);
     } /* read a line */
-    if ((ymod = yang_parse_str(buf, name, yspec)) < 0)
+    if (NULL == (ymod = yang_parse_str(buf, name, yspec)))
         goto done;
   done:
     if (buf != NULL)
@@ -1174,7 +1174,7 @@ yang_parse_filename(clixon_handle h,
         clixon_err(OE_YANG, errno, "fopen(%s)", filename);
         goto done;
     }
-    if ((ymod = yang_parse_file(fp, filename, yspec)) < 0)
+    if (NULL == (ymod = yang_parse_file(fp, filename, yspec)))
         goto done;
     /* YANG patch hook */
     if (ymod && h && clixon_plugin_yang_patch_all(h, ymod) < 0)

@@ -394,7 +394,7 @@ clicon_rpc_netconf(clixon_handle  h,
 
     if (session_id_check(h, &session_id) < 0)
         goto done;
-    if ((msg = clicon_msg_encode(session_id, "%s", xmlstr)) < 0)
+    if (NULL == (msg = clicon_msg_encode(session_id, "%s", xmlstr)))
         goto done;
     if (sp){
         if (clicon_rpc_msg_persistent(h, msg, xret, sp) < 0)

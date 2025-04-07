@@ -3933,7 +3933,7 @@ yang_abs_schema_nodeid(yang_stmt  *yn,
         if (cv_type_get(cv) != CGV_STRING)
         cv_type_set(cv, CGV_STRING);
         if ((str = cv_string_get(cv)) == NULL || !strlen(str)){
-            if (cv_string_set(cv, cv_name_get(cv)) < 0){
+            if (NULL == cv_string_set(cv, cv_name_get(cv))){
                 clixon_err(OE_UNIX, errno, "cv_string_set");
                 goto done;
             }
@@ -4025,7 +4025,7 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
         if (cv_type_get(cv) != CGV_STRING)
             cv_type_set(cv, CGV_STRING);
         if ((str = cv_string_get(cv)) == NULL || !strlen(str)){
-            if (cv_string_set(cv, cv_name_get(cv)) < 0){
+            if (NULL == cv_string_set(cv, cv_name_get(cv))){
                 clixon_err(OE_UNIX, errno, "cv_string_set");
                 goto done;
             }
