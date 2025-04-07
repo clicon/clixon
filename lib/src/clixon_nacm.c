@@ -151,24 +151,25 @@ nacm_proxyuser_member(clixon_handle h,
  * Incoming RPC Message Validation Step 7 (c)
  *  The rule's "access-operations" leaf has the "exec" bit set or
  *  has the special value "*".
- * @param[in] mode  Primary mode, eg read, create, update, delete, exec
- * @param[in] mode2 Secondary mode, eg "write"
- * @retval    1     Match
- * @retval    0     No match
+ * @param[in] accops Access operations
+ * @param[in] mode   Primary mode, eg read, create, update, delete, exec
+ * @param[in] mode2  Secondary mode, eg "write"
+ * @retval    1      Match
+ * @retval    0      No match
  * @note access_operations is bit-fields
  */
 static int
-match_access(char *access_operations,
+match_access(char *accops,
              char *mode,
              char *mode2)
 {
-    if (access_operations==NULL)
+    if (accops==NULL)
         return 0;
-    if (strcmp(access_operations,"*")==0)
+    if (strcmp(accops, "*")==0)
         return 1;
-    if (strstr(access_operations, mode)!=NULL)
+    if (strstr(accops, mode) != NULL)
         return 1;
-    if (mode2 && strstr(access_operations, mode2)!=NULL)
+    if (mode2 && strstr(accops, mode2)!=NULL)
         return 1;
     return 0;
 }
@@ -201,10 +202,10 @@ nacm_rule_rpc(char         *rpc,
               char         *module,
               cxobj        *xrule)
 {
-    int    retval = -1;
-    char  *module_rule; /* rule module name */
-    char  *rpc_rule;
-    char  *access_operations;
+    int   retval = -1;
+    char *module_rule; /* rule module name */
+    char *rpc_rule;
+    char *access_operations;
 
     /*  7a) The rule's "module-name" leaf is "*" or equals the name of
         the YANG module where the protocol operation is defined. */
@@ -272,6 +273,7 @@ nacm_rpc(char         *rpc,
     int     match= 0;
     cvec   *nsc = NULL;
 
+    clixon_debug(CLIXON_DBG_NACM, "");
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
@@ -382,7 +384,10 @@ nacm_rpc(char         *rpc,
     goto done;
 }
 
-/* Local struct for keeping preparation/compiled data in NACM data path code */
+/*! Prepared compiled data for NACM data patch code
+ *
+ * Precomputed rules + paths that apply to user group
+ */
 struct prepvec{
     qelem_t       pv_q;
     cxobj        *pv_xrule;
@@ -391,6 +396,9 @@ struct prepvec{
 typedef struct prepvec prepvec;
 
 /*! Delete all Upgrade callbacks
+ *
+ * @param[in]  pv_list  Precomputed rules + paths that apply to this user group
+ * @retval     0        OK
  */
 int
 prepvec_free(prepvec *pv_list)
@@ -406,9 +414,14 @@ prepvec_free(prepvec *pv_list)
     return 0;
 }
 
+/*! Add rule to prepvec
+ *
+ * @param[in]  pv_list  Precomputed rules + paths that apply to user group
+ * @param[in]  xrule    NACM rule
+ */
 prepvec *
-prepvec_add(prepvec  **pv_listp,
-            cxobj     *xrule)
+prepvec_add(prepvec **pv_listp,
+            cxobj    *xrule)
 {
     prepvec *pv;
 
@@ -431,20 +444,28 @@ prepvec_add(prepvec  **pv_listp,
  *  - user/group
  *  - have read access-op, etc
  * Also make instance-id lookups on top object for each rule. Assume at most one result
- * @param[in] h      Clixon handle
- * @retval    0      OK
- * @retval   -1      Error
+ * @param[in]  h        Clixon handle
+ * @param[in]  xt       XML request root tree with "config" label at top.
+ * @param[in]  access   NACM access of xreq
+ * @param[in]  gvec     Vector of groups
+ * @param[in]  glen     Length of gvec
+ * @param[in]  rlistvec Rule-list entries
+ * @param[in]  rlistlen Length of rlistvec
+ * @param[in]  nsc      Namespace context of rule-list
+ * @param[in]  pv_listp Precomputed rules + paths that apply to user group
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 static int
-nacm_datanode_prepare(clixon_handle     h,
-                      cxobj            *xt,
-                      enum nacm_access  access,
-                      cxobj           **gvec,
-                      size_t            glen,
-                      cxobj           **rlistvec,
-                      size_t            rlistlen,
-                      cvec             *nsc,
-                      prepvec         **pv_listp)
+nacm_datanode_prepare(clixon_handle    h,
+                      cxobj           *xt,
+                      enum nacm_access access,
+                      cxobj          **gvec,
+                      size_t           glen,
+                      cxobj          **rlistvec,
+                      size_t           rlistlen,
+                      cvec            *nsc,
+                      prepvec        **pv_listp)
 {
     int        retval = -1;
     cxobj     *rlist;
@@ -464,7 +485,7 @@ nacm_datanode_prepare(clixon_handle     h,
     cxobj   **xvec = NULL;
     int       xlen = 0;
     int       ret;
-    prepvec *pv;
+    prepvec  *pv;
 
     yspec = clicon_dbspec_yang(h);
     for (i=0; i<rlistlen; i++){         /* Loop through rule list */
@@ -593,14 +614,14 @@ nacm_datanode_prepare(clixon_handle     h,
 
 /*! Match specific rule to specific requested node
  *
- * @param[in]  xn       XML node (requested node)
- * @param[in]  xrule    NACM rule
- * @param[in]  xp       Xpath match
- * @param[in]  yspec    YANG spec
- * @retval  2  OK and rule matches permit
- * @retval  1  OK and rule matches deny
- * @retval  0  OK and rule does not match
- * @retval -1  Error
+ * @param[in]  xn     XML node (requested node)
+ * @param[in]  xrule  NACM rule
+ * @param[in]  xp     XPath match
+ * @param[in]  yspec  YANG spec
+ * @retval     2      OK and rule matches permit
+ * @retval     1      OK and rule matches deny
+ * @retval     0      OK and rule does not match
+ * @retval    -1      Error
  */
 static int
 nacm_data_write_xrule_xml(cxobj       *xn,
@@ -662,8 +683,7 @@ nacm_data_write_xrule_xml(cxobj       *xn,
  *
  * @param[in]  h         Clixon handle
  * @param[in]  xn        XML node (requested node)
- * @param[in]  rulevec   Precomputed rules that apply to this user group
- * @param[in]  xpathvec  Precomputed xpath results that apply to this XML tree
+ * @param[in]  pv_list   Precomputed rules + paths that apply to user group
  * @param[in]  defpermit 0 if default deny, 1 is default permit
  * @param[in]  yspec     YANG spec
  * @param[out] cbret     Error message if retval = 0
@@ -739,9 +759,10 @@ nacm_datanode_write_recurse(clixon_handle h,
  * The operations of NACM are: create, read, update, delete, exec
  *  where write is short-hand for create+delete+update
  * @param[in]  h        Clixon handle
- * @param[in]  xreq     XML requestor node (part of xt) for delete it is existing, for others it is new
+ * @param[in]  xreq     XML requestor node (part of xt) for delete it is
+ *                      existing, for others it is new
  * @param[in]  xt       XML request root tree with "config" label at top.
- * @param[in]  op       NACM access of xreq
+ * @param[in]  access   NACM access of xreq
  * @param[in]  username User making access
  * @param[in]  xnacm    NACM xml tree
  * @param[out] cbret    Cligen buffer result. Set to an error msg if retval=0.
@@ -772,6 +793,7 @@ nacm_datanode_write(clixon_handle    h,
     int      ret;
     prepvec *pv_list = NULL;
 
+    clixon_debug(CLIXON_DBG_NACM, "");
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
@@ -861,10 +883,10 @@ nacm_datanode_write(clixon_handle    h,
 
 /*! Perform NACM action: mark if permit, del if deny
  *
- * @param[in] xrule    NACM rule
- * @param[in] xn       XML node (requested node)
- * @retval    0        OK
- * @retval   -1        Error
+ * @param[in]  xrule  NACM rule
+ * @param[in]  xn     XML node (requested node)
+ * @retval     0      OK
+ * @retval    -1      Error
 
  */
 static int
@@ -900,10 +922,10 @@ nacm_data_read_action(cxobj *xrule,
  *     mark all permit rules and ancestors, remove everything else
  */
 static int
-nacm_data_read_xrule_xml(cxobj        *xn,
-                         cxobj        *xrule,
-                         clixon_xvec  *xpathvec,
-                         yang_stmt    *yspec)
+nacm_data_read_xrule_xml(cxobj       *xn,
+                         cxobj       *xrule,
+                         clixon_xvec *xpathvec,
+                         yang_stmt   *yspec)
 {
     int        retval = -1;
     yang_stmt *ymod;
@@ -1069,16 +1091,17 @@ nacm_datanode_read(clixon_handle h,
                    char         *username,
                    cxobj        *xnacm)
 {
-    int             retval = -1;
-    cxobj         **gvec = NULL; /* groups */
-    size_t          glen;
-    cxobj         **rlistvec = NULL; /* rule-list */
-    size_t          rlistlen;
-    int             i;
-    char           *read_default = NULL;
-    cvec           *nsc = NULL;
-    prepvec        *pv_list = NULL;
+    int      retval = -1;
+    cxobj  **gvec = NULL; /* groups */
+    size_t   glen;
+    cxobj  **rlistvec = NULL; /* rule-list */
+    size_t   rlistlen;
+    int      i;
+    char    *read_default = NULL;
+    cvec    *nsc = NULL;
+    prepvec *pv_list = NULL;
 
+    clixon_debug(CLIXON_DBG_NACM, "");
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
@@ -1185,14 +1208,11 @@ nacm_access_check(clixon_handle h,
                   char         *peername,
                   char         *username)
 {
-    int     retval = -1;
-    char   *enabled;
-    cxobj  *x;
+    int    retval = -1;
+    char  *enabled;
+    cxobj *x;
     cvec  *nsc = NULL;
     char  *recovery_user;
-#ifdef WITH_RESTCONF
-    char  *wwwuser;
-#endif
 
     clixon_debug(CLIXON_DBG_NACM, "");
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
@@ -1234,12 +1254,8 @@ nacm_access_check(clixon_handle h,
             if (strcmp(username, recovery_user) == 0 &&
                 strcmp(peername, "root") == 0)
                 goto permit;
-#ifdef WITH_RESTCONF
-            wwwuser=clicon_option_str(h,"CLICON_RESTCONF_USER");
-            if (strcmp(username, recovery_user) == 0 &&
-                wwwuser && strcmp(peername, wwwuser) == 0)
+            if (nacm_proxyuser_member(h, recovery_user) == 1)
                 goto permit;
-#endif
             break;
         }
     }
@@ -1280,11 +1296,11 @@ nacm_access_check(clixon_handle h,
  * @see RFC8341 3.4 Access Control Enforcement Procedures
  */
 int
-nacm_access_pre(clixon_handle  h,
-                char          *peername,
-                char          *username,
-                cxobj        **xnacmp,
-                cbuf          *cbret)
+nacm_access_pre(clixon_handle h,
+                char         *peername,
+                char         *username,
+                cxobj       **xnacmp,
+                cbuf         *cbret)
 {
     int    retval = -1;
     char  *mode;
@@ -1295,6 +1311,7 @@ nacm_access_pre(clixon_handle  h,
     cxobj *xerr = NULL;
     int    ret;
 
+    clixon_debug(CLIXON_DBG_NACM, "");
     /* Check clixon option: disabled, external tree or internal */
     mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (mode == NULL)
@@ -1434,6 +1451,10 @@ verify_nacm_user(clixon_handle           h,
 }
 
 /*! Load external NACM file
+ *
+ * @param[in]  h  Clixon handle
+ * @retval     0  OK
+ * @retval    -1  Error
  */
 static int
 nacm_load_external(clixon_handle h)
