@@ -3931,7 +3931,7 @@ yang_abs_schema_nodeid(yang_stmt  *yn,
     cv = NULL;
     while ((cv = cvec_each(nodeid_cvv, cv)) != NULL){
         if (cv_type_get(cv) != CGV_STRING)
-        cv_type_set(cv, CGV_STRING);
+            cv_type_set(cv, CGV_STRING);
         if ((str = cv_string_get(cv)) == NULL || !strlen(str)){
             if (NULL == cv_string_set(cv, cv_name_get(cv))){
                 clixon_err(OE_UNIX, errno, "cv_string_set");

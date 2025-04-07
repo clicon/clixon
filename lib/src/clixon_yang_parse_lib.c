@@ -1084,7 +1084,7 @@ yang_file_find_match(clixon_handle h,
                                       &dp,
                                       cbuf_get(regex),
                                       S_IFREG)) < 0)
-        goto done;
+            goto done;
         /* Entries are sorted, last entry should be most recent date
          */
         if (ndp != 0){
