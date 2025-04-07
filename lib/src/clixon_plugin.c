@@ -395,7 +395,7 @@ plugin_load_one(clixon_handle h,
     }
     clixon_err_reset();
     wh = NULL;
-    if (clixon_resource_check(h, &wh, file, __FUNCTION__) < 0)
+    if (clixon_resource_check(h, &wh, file, __func__) < 0)
         goto done;
     if ((api = initfn(h)) == NULL) {
         if (!clixon_err_category()){     /* if clixon_err() is not called then log and continue */
@@ -408,7 +408,7 @@ plugin_load_one(clixon_handle h,
             goto done;
         }
     }
-    if (clixon_resource_check(h, &wh, file, __FUNCTION__) < 0)
+    if (clixon_resource_check(h, &wh, file, __func__) < 0)
         goto done;
 
     /* Extract string after last '/' in filename, if any */
@@ -519,16 +519,16 @@ clixon_plugin_start_one(clixon_plugin_t *cp,
 
     if ((fn = cp->cp_api.ca_start) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
         if (fn(h) < 0) {
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Start callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, cp->cp_name);
-            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+                           __func__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;
         }
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -578,16 +578,16 @@ clixon_plugin_exit_one(clixon_plugin_t *cp,
 
     if ((fn = cp->cp_api.ca_exit) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
         if (fn(h) < 0) {
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Exit callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, cp->cp_name);
-            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+                           __func__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;
         }
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
     }
     if (cp->cp_handle && dlclose(cp->cp_handle) != 0) {
@@ -654,16 +654,16 @@ clixon_plugin_auth_one(clixon_plugin_t   *cp,
     clixon_debug(CLIXON_DBG_DEFAULT, "");
     if ((fn = cp->cp_api.ca_auth) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
         if ((retval = fn(h, req, auth_type, authp)) < 0) {
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Auth callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, cp->cp_name);
-            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+                           __func__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;
         }
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
     }
     else
@@ -740,16 +740,16 @@ clixon_plugin_extension_one(clixon_plugin_t *cp,
 
     if ((fn = cp->cp_api.ca_extension) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
         if (fn(h, yext, ys) < 0) {
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Extension callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, cp->cp_name);
-            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+                           __func__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;
         }
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -811,16 +811,16 @@ clixon_plugin_datastore_upgrade_one(clixon_plugin_t *cp,
 
     if ((fn = cp->cp_api.ca_datastore_upgrade) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
         if (fn(h, db, xt, msd) < 0) {
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Datastore upgrade callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, cp->cp_name);
-            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+                           __func__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;
         }
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -883,16 +883,16 @@ clixon_plugin_yang_mount_one(clixon_plugin_t *cp,
 
     if ((fn = cp->cp_api.ca_yang_mount) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
         if (fn(h, xt, config, vl, yanglib) < 0) {
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Yang mount callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, cp->cp_name);
-            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+                           __func__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;
         }
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -969,17 +969,17 @@ clixon_plugin_system_only_one(clixon_plugin_t *cp,
         if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
             goto done;
         wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
         if (fn(h, nsc, xpath, x) < 0){
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
                 goto done;
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Stateonly callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, clixon_plugin_name_get(cp));
+                           __func__, clixon_plugin_name_get(cp));
             goto fail;  /* Dont quit here on user callbacks */
         }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
     }
     if (xp && x){
@@ -1111,16 +1111,16 @@ clixon_plugin_yang_patch_one(clixon_plugin_t *cp,
 
     if ((fn = cp->cp_api.ca_yang_patch) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
         if (fn(h, ymod) < 0) {
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Yang patch callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, cp->cp_name);
-            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+                           __func__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;
         }
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -1187,16 +1187,16 @@ clixon_plugin_errmsg_one(clixon_plugin_t     *cp,
 
     if ((fn = cp->cp_api.ca_errmsg) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
         if (fn(h, fn0, line, type, category, suberr, xerr, format, ap, cbmsg) < 0) {
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Logmsg callback in plugin: %s returned -1 but did not make a clixon_err call", 
-                           __FUNCTION__, cp->cp_name);
-            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+                           __func__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;
         }
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -1267,16 +1267,16 @@ clixon_plugin_version_one(clixon_plugin_t *cp,
 
     if ((fn = cp->cp_api.ca_version) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
         if (fn(h, f) < 0) {
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: version callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, cp->cp_name);
-            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+                           __func__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;
         }
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -1330,16 +1330,16 @@ clixon_plugin_userdef_one(clixon_plugin_t *cp,
 
     if ((fn = cp->cp_api.ca_userdef) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
         if (fn(h, type, xn, arg) < 0) {
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: userdef callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, cp->cp_name);
-            clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__);
+                           __func__, cp->cp_name);
+            clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;
         }
-        if (clixon_resource_check(h, &wh, cp->cp_name, __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, cp->cp_name, __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -1514,7 +1514,7 @@ rpc_callback_call(clixon_handle h,
                 ns && rc->rc_namespace &&
                 strcmp(rc->rc_namespace, ns) == 0){
                 wh = NULL;
-                if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
+                if (clixon_resource_check(h, &wh, rc->rc_name, __func__) < 0)
                     goto done;
                 /* This is for callback functions to check if this is part of an
                  * incoming synchronous RPC (or another event such as timeout
@@ -1523,12 +1523,12 @@ rpc_callback_call(clixon_handle h,
                 if (rc->rc_callback(h, xe, cbret, arg, rc->rc_arg) < 0){
                     clicon_data_int_set(h, "clixon-client-rpc", 0);
                     clixon_debug(CLIXON_DBG_RPC, "Error in: %s", rc->rc_name);
-                    clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__);
+                    clixon_resource_check(h, &wh, rc->rc_name, __func__);
                     goto done;
                 }
                 clicon_data_int_set(h, "clixon-client-rpc", 0);
                 nr++;
-                if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
+                if (clixon_resource_check(h, &wh, rc->rc_name, __func__) < 0)
                     goto done;
                 /* Ensure only one reply: first wins */
                 if (cbuf_len(cbret) > 0)
@@ -1653,15 +1653,15 @@ action_callback_call(clixon_handle h,
         do {
             if (strcmp(rc->rc_name, name) == 0){
                 wh = NULL;
-                if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
+                if (clixon_resource_check(h, &wh, rc->rc_name, __func__) < 0)
                     goto done;
                 if (rc->rc_callback(h, xa, cbret, arg, rc->rc_arg) < 0){
                     clixon_debug(CLIXON_DBG_RPC, "Error in: %s", rc->rc_name);
-                    clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__);
+                    clixon_resource_check(h, &wh, rc->rc_name, __func__);
                     goto done;
                 }
                 nr++;
-                if (clixon_resource_check(h, &wh, rc->rc_name, __FUNCTION__) < 0)
+                if (clixon_resource_check(h, &wh, rc->rc_name, __func__) < 0)
                     goto done;
             }
             rc = NEXTQ(rpc_callback_t *, rc);

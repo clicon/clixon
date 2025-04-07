@@ -164,7 +164,7 @@ compute_diffs(clixon_handle       h,
                  &td->td_clen) < 0)
         goto done;
     if (clixon_debug_get() & CLIXON_DBG_DETAIL)
-        transaction_dbg(h, CLIXON_DBG_DETAIL, td, __FUNCTION__);
+        transaction_dbg(h, CLIXON_DBG_DETAIL, td, __func__);
     /* Mark as changed in tree */
     for (i=0; i<td->td_dlen; i++){ /* Also down */
         xn = td->td_dvec[i];
@@ -1010,13 +1010,13 @@ from_client_restart_one(clixon_handle    h,
     /* Application may define extra xml in its reset function*/
     if ((resetfn = clixon_plugin_api_get(cp)->ca_reset) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
         if ((retval = resetfn(h, db)) < 0) {
             clixon_debug(CLIXON_DBG_BACKEND, "plugin_start() failed");
             goto done;
         }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
     }
     /* 1. Start transaction */

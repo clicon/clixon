@@ -369,7 +369,7 @@ clixon_msg_send(int         s,
     if (atomicio((ssize_t (*)(int, void *, size_t))write,
                  s, cbuf_get(cb), cbuf_len(cb)) < 0){
         clixon_err(OE_CFG, errno, "atomicio");
-        clixon_log(NULL, LOG_WARNING, "%s: write: %s", __FUNCTION__, strerror(errno));
+        clixon_log(NULL, LOG_WARNING, "%s: write: %s", __func__, strerror(errno));
         goto done;
     }
     retval = 0;
@@ -638,7 +638,7 @@ clixon_msg_rcv11(int         s,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s done", __FUNCTION__);
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "%s done", __func__);
     if (intr){
         if (clixon_signal_restore(&oldsigset, oldsigaction) < 0)
             goto done;

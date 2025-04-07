@@ -92,7 +92,7 @@ mycallback(clixon_handle h,
 
     /* Access cligen callback variables */
     myvar = cvec_find(cvv, "var"); /* get a cligen variable from vector */
-    fprintf(stderr, "%s: %d\n", __FUNCTION__, cv_int32_get(myvar)); /* get int value */
+    fprintf(stderr, "%s: %d\n", __func__, cv_int32_get(myvar)); /* get int value */
     fprintf(stderr, "arg = %s\n", cv_string_get(cvec_i(argv,0))); /* get string value */
 
     if ((nsc = xml_nsctx_init(NULL, "urn:example:clixon")) == NULL)

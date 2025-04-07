@@ -131,7 +131,7 @@ cli_auto_edit(clixon_handle h,
     char         *mtpoint2 = NULL;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
-        clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>*, <treename>)", __FUNCTION__);
+        clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>*, <treename>)", __func__);
         goto done;
     }
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
@@ -256,7 +256,7 @@ cli_auto_up(clixon_handle h,
     char    *mtpoint = "";
 
     if (cvec_len(argv) != 1){
-        clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __FUNCTION__);
+        clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<treename>)", __func__);
         goto done;
     }
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
@@ -546,7 +546,7 @@ cli_auto_sub_enter(clixon_handle h,
     yang_stmt        *yspec0;
 
     if (cvec_len(argv) < 2){
-        clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<tree> <api_path_fmt> (,vars)*)", __FUNCTION__);
+        clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(<tree> <api_path_fmt> (,vars)*)", __func__);
         goto done;
     }
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){

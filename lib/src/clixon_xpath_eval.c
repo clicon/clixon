@@ -685,7 +685,7 @@ xp_logop(xp_ctx    *xc1,
         break;
     default:
         clixon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
-                   __FUNCTION__, clicon_int2str(xpopmap,op));
+                   __func__, clicon_int2str(xpopmap,op));
         goto done;
     }
     *xrp = xr;
@@ -1167,7 +1167,7 @@ xp_union(xp_ctx    *xc1,
 
     if (op != XO_UNION){
         clixon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
-                   __FUNCTION__, clicon_int2str(xpopmap,op));
+                   __func__, clicon_int2str(xpopmap,op));
         goto done;
     }
     if ((xr = malloc(sizeof(*xr))) == NULL){

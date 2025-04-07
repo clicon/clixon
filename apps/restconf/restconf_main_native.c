@@ -341,7 +341,7 @@ alpn_select_proto_cb(SSL                  *ssl,
         len = *inp;
         inp++;
         if (clixon_debug_get()) /* debug print the protoocol */
-            alpn_proto_dump(__FUNCTION__, (const char*)inp, len);
+            alpn_proto_dump(__func__, (const char*)inp, len);
 #ifdef HAVE_HTTP1
         if (pref < 10 && len == 8 && strncmp((char*)inp, "http/1.1", len) == 0){
             *outlen = len;
@@ -614,7 +614,7 @@ restconf_native_terminate(clixon_handle h)
                     close(rc->rc_s);
                 }
                 DELQ(rc, rsock->rs_conns, restconf_conn *);
-                restconf_close_ssl_socket(rc, __FUNCTION__, 0);
+                restconf_close_ssl_socket(rc, __func__, 0);
             }
             if (rsock->rs_callhome){
                 restconf_callhome_timer_unreg(rsock);
@@ -887,7 +887,7 @@ restconf_openssl_init(clixon_handle h,
         }
         status = setrlimit(RLIMIT_CORE, &rlp);
         if (status != 0) {
-            clixon_log(h, LOG_INFO, "%s: setrlimit() failed, %s", __FUNCTION__, strerror(errno));
+            clixon_log(h, LOG_INFO, "%s: setrlimit() failed, %s", __func__, strerror(errno));
         }
     }
     if (init_openssl() < 0)
@@ -1121,7 +1121,7 @@ restconf_sig_term(int arg)
     static int i=0;
 
     clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
-               __PROGRAM__, __FUNCTION__, getpid(), arg);
+               __PROGRAM__, __func__, getpid(), arg);
     if (i++ > 0) /* Allow one sigterm before proper exit */
         exit(-1);
     /* This should ensure no more accepts or incoming packets are processed because next time eventloop

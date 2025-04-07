@@ -1709,7 +1709,7 @@ yang2cli_grouping(clixon_handle      h,
         goto done;
     }
     /* Parse the buffer using cligen parser. load cli syntax */
-    if (clispec_parse_str(cli_cligen(h), cbuf_get(cb), (char*)__FUNCTION__, NULL, pt, NULL) < 0){
+    if (clispec_parse_str(cli_cligen(h), cbuf_get(cb), (char*)__func__, NULL, pt, NULL) < 0){
         clixon_err(OE_PLUGIN, 0, "%s", cbuf_get(cb));
         goto done;
     }
@@ -1734,7 +1734,7 @@ yang2cli_grouping(clixon_handle      h,
     }
     if (clicon_data_int_get(h, "autocli-print-debug") == 1)
         clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
-                   __FUNCTION__, treename, cbuf_get(cb));
+                   __func__, treename, cbuf_get(cb));
     else
         clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "Top-level cli-spec %s:\n%s",
                      treename, cbuf_get(cb));
@@ -1870,7 +1870,7 @@ yang2cli_yspec(clixon_handle      h,
         //      pt_print(stderr,pt);
         if (clicon_data_int_get(h, "autocli-print-debug") == 1)
             clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
-                       __FUNCTION__, treename, cbuf_get(cb));
+                       __func__, treename, cbuf_get(cb));
         else
             clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "Top-level cli-spec %s:\n%s",
                          treename, cbuf_get(cb));
@@ -1894,7 +1894,7 @@ yang2cli_yspec(clixon_handle      h,
     pt0 = NULL;
 #if 0
     if (clicon_data_int_get(h, "autocli-print-debug") == 1){
-        clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s", __FUNCTION__, treename);
+        clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s", __func__, treename);
         pt_print1(stderr, pt0, 0);
     }
 #endif

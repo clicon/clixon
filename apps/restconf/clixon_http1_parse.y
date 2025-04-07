@@ -151,7 +151,7 @@ http1_parse_query(clixon_http1_yacc *hy,
     int                   retval = -1;
     restconf_stream_data *sd = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s: ?%s ", __FUNCTION__, query);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s: ?%s ", __func__, query);
     if ((sd = restconf_stream_find(hy->hy_rc, 0)) == NULL){
         clixon_err(OE_RESTCONF, 0, "stream 0 not found");
         goto done;
@@ -170,7 +170,7 @@ http1_body(clixon_http1_yacc *hy,
     int                   retval = -1;
     restconf_stream_data *sd = NULL;
 
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s ", __FUNCTION__, body);
+    clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s ", __func__, body);
     if ((sd = restconf_stream_find(hy->hy_rc, 0)) == NULL){
         clixon_err(OE_RESTCONF, 0, "stream 0 not found");
         goto done;

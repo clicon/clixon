@@ -158,7 +158,7 @@ clixon_log_init(clixon_handle h,
     if (flags & CLIXON_LOG_SYSLOG){
         if (setlogmask(LOG_UPTO(upto)) < 0)
             /* Cant syslog here */
-            fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno));
+            fprintf(stderr, "%s: setlogmask: %s\n", __func__, strerror(errno));
         _log_openlog = 1;
         /* LOG_PUSER is achieved by direct stderr logs in clixon_log.
          * In musl libc, closelog() may cause "Invalid file descriptor" error
@@ -328,7 +328,7 @@ slogtime(void)
 
     /* Example: "Apr 14 11:30:52: " len=17+1 */
     if ((str = malloc(18)) == NULL){
-        fprintf(stderr, "%s: malloc: %s\n", __FUNCTION__, strerror(errno));
+        fprintf(stderr, "%s: malloc: %s\n", __func__, strerror(errno));
         return NULL;
     }
     gettimeofday(&tv, NULL);

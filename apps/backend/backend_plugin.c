@@ -84,17 +84,17 @@ clixon_plugin_reset_one(clixon_plugin_t *cp,
 
     if ((fn = clixon_plugin_api_get(cp)->ca_reset) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
         if (fn(h, db) < 0) {
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
                 goto done;
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Reset callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, clixon_plugin_name_get(cp));
+                           __func__, clixon_plugin_name_get(cp));
             goto done;
         }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -145,18 +145,18 @@ clixon_plugin_pre_daemon_one(clixon_plugin_t *cp,
 
     if ((fn = clixon_plugin_api_get(cp)->ca_pre_daemon) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
         if (fn(h) < 0) {
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
                 goto done;
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Pre-daemon callback in plugin:\
  %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, clixon_plugin_name_get(cp));
+                           __func__, clixon_plugin_name_get(cp));
             goto done;
         }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -207,17 +207,17 @@ clixon_plugin_daemon_one(clixon_plugin_t *cp,
 
     if ((fn = clixon_plugin_api_get(cp)->ca_daemon) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
         if (fn(h) < 0) {
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
                 goto done;
             if (clixon_err_category() < 0)
                 clixon_log(h, LOG_WARNING, "%s: Internal error: Daemon callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, clixon_plugin_name_get(cp));
+                           __func__, clixon_plugin_name_get(cp));
             goto done;
         }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -290,17 +290,17 @@ clixon_plugin_statedata_one(clixon_plugin_t *cp,
         if ((x = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
             goto done;
         wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
         if (fn(h, nsc, xpath, x) < 0){
-            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+            if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
                 goto done;
             if (clixon_err_category() < 0 && !clixon_plugin_rpc_err_set(h))
                 clixon_log(h, LOG_WARNING, "%s: Internal error: State callback in plugin: %s returned -1 but did not make a clixon_err call",
-                           __FUNCTION__, clixon_plugin_name_get(cp));
+                           __func__, clixon_plugin_name_get(cp));
             goto fail;  /* Dont quit here on user callbacks */
         }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
     }
     if (xp && x){
@@ -432,11 +432,11 @@ clixon_plugin_lockdb_one(clixon_plugin_t *cp,
 
     if ((fn = clixon_plugin_api_get(cp)->ca_lockdb) != NULL){
         wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
         if (fn(h, db, lock, id) < 0)
             goto done;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __FUNCTION__) < 0)
+        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
             goto done;
     }
     retval = 0;
@@ -630,7 +630,7 @@ plugin_transaction_begin_one(clixon_plugin_t    *cp,
     trans_cb_t *fn;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_begin) != NULL)
-        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+        return plugin_transaction_call_one(h, cp, fn, __func__, td);
     return 0;
 }
 
@@ -676,7 +676,7 @@ plugin_transaction_validate_one(clixon_plugin_t    *cp,
     trans_cb_t *fn;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_validate) != NULL)
-        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+        return plugin_transaction_call_one(h, cp, fn, __func__, td);
     return 0;
 }
 
@@ -720,7 +720,7 @@ plugin_transaction_complete_one(clixon_plugin_t    *cp,
     trans_cb_t *fn;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_complete) != NULL)
-        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+        return plugin_transaction_call_one(h, cp, fn, __func__, td);
     return 0;
 }
 
@@ -774,7 +774,7 @@ plugin_transaction_revert_all(clixon_handle       h,
 
         if ((retval = fn(h, (transaction_data)td)) < 0){
             clixon_log(h, LOG_NOTICE, "%s: Plugin '%s' trans_revert callback failed",
-                           __FUNCTION__, clixon_plugin_name_get(cp));
+                           __func__, clixon_plugin_name_get(cp));
                 break;
         }
     }
@@ -792,7 +792,7 @@ plugin_transaction_commit_failed(clixon_plugin_t    *cp,
     trans_cb_t *fn;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit_failed) != NULL)
-        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+        return plugin_transaction_call_one(h, cp, fn, __func__, td);
     return 0;
 }
 
@@ -812,7 +812,7 @@ plugin_transaction_commit_one(clixon_plugin_t    *cp,
     trans_cb_t *fn;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit) != NULL)
-        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+        return plugin_transaction_call_one(h, cp, fn, __func__, td);
     return 0;
 }
 
@@ -865,7 +865,7 @@ plugin_transaction_commit_done_one(clixon_plugin_t    *cp,
     trans_cb_t *fn;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_commit_done) != NULL)
-        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+        return plugin_transaction_call_one(h, cp, fn, __func__, td);
     return 0;
 }
 
@@ -909,7 +909,7 @@ plugin_transaction_end_one(clixon_plugin_t    *cp,
     trans_cb_t *fn;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_end) != NULL)
-        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+        return plugin_transaction_call_one(h, cp, fn, __func__, td);
     return 0;
 }
 
@@ -945,7 +945,7 @@ plugin_transaction_abort_one(clixon_plugin_t    *cp,
     trans_cb_t *fn;
 
     if ((fn = clixon_plugin_api_get(cp)->ca_trans_abort) != NULL)
-        return plugin_transaction_call_one(h, cp, fn, __FUNCTION__, td);
+        return plugin_transaction_call_one(h, cp, fn, __func__, td);
     return 0;
 }
 
