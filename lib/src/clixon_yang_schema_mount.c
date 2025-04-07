@@ -827,7 +827,7 @@ yang_schema_yanglib_mount_parse(clixon_handle h,
         goto done;
     }
     cprintf(cb, "%u", nr++);
-    if ((yspec1 = yspec_new_shared(h, xpath, domain, cbuf_get(cb), yspec0)) < 0)
+    if (NULL == (yspec1 = yspec_new_shared(h, xpath, domain, cbuf_get(cb), yspec0)))
         goto done;
     /* Either yspec0 = NULL and yspec1 is new, or yspec0 == yspec1 != NULL (shared) */
     if (yspec0 == NULL && yspec1 != NULL){

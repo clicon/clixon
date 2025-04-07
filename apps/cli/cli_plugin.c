@@ -335,7 +335,7 @@ clispec_load_file(clixon_handle h,
                     goto done;
                 }
                 cv_string_set(cv, name);
-                if (cvec_append_var(modes, cv) < 0){
+                if (NULL == cvec_append_var(modes, cv)){
                     clixon_err(OE_UNIX, errno, "cvec_append_var");
                     goto done;
                 }

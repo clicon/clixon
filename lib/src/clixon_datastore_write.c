@@ -1011,7 +1011,7 @@ text_modify(clixon_handle       h,
                     if (yc == NULL){
                         if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
                             /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
-                            if ((yc = yang_anydata_add(y0, x1cname)) < 0)
+                            if (NULL == (yc = yang_anydata_add(y0, x1cname)))
                                 goto done;
                             xml_spec_set(x1c, yc);
                             clixon_log(h, LOG_WARNING,
@@ -1277,7 +1277,7 @@ text_modify_top(clixon_handle       h,
             if (ymod != NULL &&
                 clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1){
                 /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
-                if ((yc = yang_anydata_add(ymod, x1cname)) < 0)
+                if (NULL == (yc = yang_anydata_add(ymod, x1cname)))
                     goto done;
                 xml_spec_set(x1c, yc);
                 clixon_log(h, LOG_WARNING,

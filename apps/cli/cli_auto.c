@@ -574,12 +574,12 @@ cli_auto_sub_enter(clixon_handle h,
     }
     /* Append static variables (skip first treename) */
     for (i=1; i<cvec_len(argv); i++){
-        if (cvec_append_var(cvv1, cvec_i(argv, i)) < 0)
+        if (NULL == cvec_append_var(cvv1, cvec_i(argv, i)))
             goto done;
     }
     /* Append dynamic variables from the command line (skip first contains whole command line) */
     for (i=1; i<cvec_len(cvv); i++){
-        if (cvec_append_var(cvv1, cvec_i(cvv, i)) < 0)
+        if (NULL == cvec_append_var(cvv1, cvec_i(cvv, i)))
             goto done;
     }
     if (api_path_fmt2api_path(api_path_fmt, cvv1, yspec0, &api_path, NULL) < 0)

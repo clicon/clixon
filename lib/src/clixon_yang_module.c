@@ -924,7 +924,7 @@ yang_lib2yspec(clixon_handle h,
         strcmp(yang_argument_get(yrev), "2019-01-04") == 0){
         modmin++;
     }
-    else if (yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, domain, NULL) < 0)
+    else if (NULL == yang_parse_module(h, "ietf-yang-library", "2019-01-04", yspec, domain, NULL))
         goto fail;
 #endif
     if ((modmin = yang_len_get(yspec) - (1+veclen - modmin)) < 0)
