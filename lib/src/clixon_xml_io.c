@@ -213,7 +213,7 @@ xml2output_wdef(cxobj            *x,
  * - WITHDEFAULTS_TRIM              - remove defaults + equal value, and no-presence
  * - WITHDEFAULTS_EXPLICIT          - remove defaults and no-presence
  * - WITHDEFAULTS_REPORT_ALL_TAGGED
- * @see xml2cbuf_recurse  same with cbuf
+ * @see xml2cbuf_recurse same with cbuf
  */
 static int
 xml2file_recurse(FILE                *f,

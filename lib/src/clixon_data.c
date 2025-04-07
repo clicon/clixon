@@ -84,8 +84,6 @@
  * @param[in]  name Data name
  * @param[out] val  Data value as string
  * @retval     0    OK
- * @retval    -1    Not found (or error)
- * @see clicon_option_str  For file options
  */
 int
 clicon_data_get(clixon_handle h,
@@ -143,7 +141,7 @@ clicon_data_del(clixon_handle h,
  * @param[in]  name Data name
  * @param[out] ptr  Pointer
  * @retval     0    OK
- * @retval    -1    Not found (or error)
+ * @retval    -1    Not found
  * @see clicon_option_str
  */
 int
@@ -205,7 +203,7 @@ clicon_ptr_del(clixon_handle h,
  * @param[in]  h     Clixon handle
  * @param[in]  name  Data name
  * @retval     cvv   Data value as cvv
- * @retval     NULL  Not found (or error)
+ * @retval     NULL  Not found
  * @code
  *   cvec *cvv = NULL;
  *   if (clicon_data_cvec_get(h, "mycvv", &cvv) < 0)
