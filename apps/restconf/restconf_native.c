@@ -521,7 +521,7 @@ native_send_badrequest(clixon_handle    h,
     cprintf(cb, "\r\n");
     if (body)
         cprintf(cb, "%s\r\n", body);
-    retval = native_buf_write(h, cbuf_get(cb), cbuf_len(cb), rc, __FUNCTION__);
+    retval = native_buf_write(h, cbuf_get(cb), cbuf_len(cb), rc, __func__);
  done:
     if (cb)
         cbuf_free(cb);
@@ -594,7 +594,7 @@ read_ssl(restconf_conn *rc,
             *np = 0; /* should already be zero */
             break;
         default:
-            clixon_log(rc->rc_h, LOG_WARNING, "%s SSL_read(): %s sslerr:%d", __FUNCTION__, strerror(errno), sslerr);
+            clixon_log(rc->rc_h, LOG_WARNING, "%s SSL_read(): %s sslerr:%d", __func__, strerror(errno), sslerr);
             *np = 0;
             break;
         } /* switch */
@@ -632,7 +632,7 @@ read_regular(restconf_conn *rc,
         switch(errno){
         case ECONNRESET:/* Connection reset by peer */
             clixon_debug(CLIXON_DBG_RESTCONF, "%d Connection reset by peer", rc->rc_s);
-            if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+            if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
                 goto done;
             retval = 0; /* Close socket and ssl */
             goto done;
@@ -736,7 +736,7 @@ restconf_http1_process(restconf_conn *rc,
                 goto done;
             if (http1_native_clear_input(h, sd) < 0)
                 goto done;
-            if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+            if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
                 goto done;
             rc = NULL;
             goto closed;
@@ -748,12 +748,12 @@ restconf_http1_process(restconf_conn *rc,
             goto done;
         if (ret == 1){
             if ((ret = native_buf_write(h, cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
-                                        rc, __FUNCTION__)) < 0)
+                                        rc, __func__)) < 0)
                 goto done;
             cvec_reset(sd->sd_outp_hdrs);
             cbuf_reset(sd->sd_outp_buf);
             if (ret == 0){
-                if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+                if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
                     goto done;
                 rc = NULL;
                 goto closed;
@@ -782,7 +782,7 @@ restconf_http1_process(restconf_conn *rc,
     if (restconf_http1_path_root(h, rc) < 0)
         goto done;
     if ((ret = native_buf_write(h, cbuf_get(sd->sd_outp_buf), cbuf_len(sd->sd_outp_buf),
-                                rc, __FUNCTION__)) < 0)
+                                rc, __func__)) < 0)
         goto done;
     cvec_reset(sd->sd_outp_hdrs); /* Can be done in native_send_reply */
     cbuf_reset(sd->sd_outp_buf);
@@ -795,7 +795,7 @@ restconf_http1_process(restconf_conn *rc,
         sd->sd_qvec = NULL;
     }
     if (ret == 0 || rc->rc_exit){  /* Server-initiated exit */
-        if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+        if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
             goto done;
         goto closed;
     }
@@ -829,7 +829,7 @@ restconf_http2_upgrade(restconf_conn *rc)
         /* Switch to http/2 according to RFC 7540 Sec 3.2 and RFC 7230 Sec 6.7 */
         rc->rc_proto = HTTP_2;
         if (http2_session_init(rc) < 0){
-            restconf_close_ssl_socket(rc, __FUNCTION__, 0);
+            restconf_close_ssl_socket(rc, __func__, 0);
             goto done;
         }
         /* The HTTP/1.1 request that is sent prior to upgrade is assigned a
@@ -848,7 +848,7 @@ restconf_http2_upgrade(restconf_conn *rc)
             goto done;
         }
         if (http2_send_server_connection(rc) < 0){
-            restconf_close_ssl_socket(rc, __FUNCTION__, 0);
+            restconf_close_ssl_socket(rc, __func__, 0);
             goto done;
         }
         /* Use params from original http/1 session to http/2 stream */
@@ -904,7 +904,7 @@ restconf_http2_process(restconf_conn *rc,
         if ((ret = http2_recv(rc, (unsigned char *)buf, n)) < 0)
             goto done;
         if (ret == 0){
-            if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+            if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
                 goto done;
             retval = 0;
             goto done;
@@ -997,7 +997,7 @@ restconf_connection(int   s,
             continue;
         if (n == 0){
             clixon_debug(CLIXON_DBG_RESTCONF, "n=0 closing socket");
-            if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+            if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
                 goto done;
             rc = NULL;
             goto ok;
@@ -1183,12 +1183,12 @@ ssl_alpn_check(clixon_handle        h,
         }
         if (alpn != NULL){
             cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>ALPN: protocol not recognized: %s</error-message></error></errors>", alpn);
-            clixon_log(h, LOG_INFO, "%s Warning: %s", __FUNCTION__, cbuf_get(cberr));
+            clixon_log(h, LOG_INFO, "%s Warning: %s", __func__, cbuf_get(cberr));
             if (native_send_badrequest(h,
                                        "application/yang-data+xml",
                                        cbuf_get(cberr), rc) < 0)
                 goto done;
-            if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+            if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
                 goto done;
             goto fail;
         }
@@ -1202,8 +1202,8 @@ ssl_alpn_check(clixon_handle        h,
             if (pstr)
                 p = restconf_str2proto(pstr);
             if (pstr == NULL || p == -1){
-                clixon_log(h, LOG_INFO, "%s Warning: ALPN: No protocol selected, or no ALPN?", __FUNCTION__);
-                if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+                clixon_log(h, LOG_INFO, "%s Warning: ALPN: No protocol selected, or no ALPN?", __func__);
+                if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
                     goto done;
                 goto fail;
             }
@@ -1326,7 +1326,7 @@ restconf_ssl_accept_client(clixon_handle    h,
                                                "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>The plain HTTP request was sent to HTTPS port</error-message></error></errors>", rc) < 0)
                         goto done;
 #endif
-                    if (restconf_close_ssl_socket(rc, __FUNCTION__, 1) < 0)
+                    if (restconf_close_ssl_socket(rc, __func__, 1) < 0)
                         goto done;
                     goto closed;
                     break;
@@ -1337,7 +1337,7 @@ restconf_ssl_accept_client(clixon_handle    h,
                        operations should be performed on the connection and SSL_shutdown() must 
                        not be called.*/
                     clixon_debug(CLIXON_DBG_RESTCONF, "SSL_accept() SSL_ERROR_SYSCALL %d", er);
-                    if (restconf_close_ssl_socket(rc, __FUNCTION__, 1) < 0)
+                    if (restconf_close_ssl_socket(rc, __func__, 1) < 0)
                         goto done;
                     rc = NULL;
                     goto closed;
@@ -1423,12 +1423,12 @@ restconf_ssl_accept_client(clixon_handle    h,
 #ifdef HAVE_LIBNGHTTP2
     case HTTP_2:{
         if (http2_session_init(rc) < 0){
-            restconf_close_ssl_socket(rc, __FUNCTION__, 0);
+            restconf_close_ssl_socket(rc, __func__, 0);
             clixon_err_reset();
             goto closed;
         }
         if (http2_send_server_connection(rc) < 0){
-            restconf_close_ssl_socket(rc, __FUNCTION__, 0);
+            restconf_close_ssl_socket(rc, __func__, 0);
             clixon_err_reset();
             goto closed;
         }
@@ -1521,7 +1521,7 @@ restconf_idle_cb(int   fd,
         gettimeofday(&now, NULL);
         timersub(&now, &rc->rc_t, &td); /* Last packet timestamp */
         if (td.tv_sec >= rsock->rs_idle_timeout){
-            if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+            if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
                 goto done;
         }
         else{

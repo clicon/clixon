@@ -209,7 +209,7 @@ main_begin(clixon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 
@@ -220,7 +220,7 @@ main_validate(clixon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     if (_validate_fail_xpath){
         if (_validate_fail_toggle==0 &&
             xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
@@ -237,7 +237,7 @@ main_complete(clixon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 
@@ -261,7 +261,7 @@ main_commit(clixon_handle    h,
     cvec   *nsc = NULL;
 
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     if (_system_only_xpath != NULL){
         if (main_system_only_commit(h, td) < 0)
             goto done;
@@ -301,7 +301,7 @@ main_commit_done(clixon_handle    h,
                  transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 
@@ -310,7 +310,7 @@ main_revert(clixon_handle    h,
             transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 
@@ -319,7 +319,7 @@ main_end(clixon_handle    h,
          transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 
@@ -328,7 +328,7 @@ main_abort(clixon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 
@@ -440,7 +440,7 @@ example_copy_extra(clixon_handle h,            /* Clixon handle */
 {
     int    retval = -1;
 
-    //    fprintf(stderr, "%s\n", __FUNCTION__);
+    //    fprintf(stderr, "%s\n", __func__);
     retval = 0;
     // done:
     return retval;
@@ -1382,7 +1382,7 @@ upgrade_interfaces(clixon_handle h,
 
     if (_module_upgrade) /* For testing */
         clixon_log(h, LOG_NOTICE, "%s %s op:%s from:%d to:%d",
-                   __FUNCTION__, ns,
+                   __func__, ns,
                    (op&XML_FLAG_ADD)?"ADD":(op&XML_FLAG_DEL)?"DEL":"CHANGE",
                    from, to);
     if (from <= 20140508){

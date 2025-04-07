@@ -98,7 +98,7 @@
 	do { \
 		_Pragma("GCC diagnostic push") \
 		_Pragma("GCC diagnostic ignored \"-Wformat-zero-length\"") \
-		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), NULL, _fmt, ##args); \
+		clixon_debug_fn(NULL, __func__, __LINE__, (l), NULL, _fmt, ##args); \
 		_Pragma("GCC diagnostic pop") \
 	} while (0)
 
@@ -106,7 +106,7 @@
 	do { \
 		_Pragma("GCC diagnostic push") \
 		_Pragma("GCC diagnostic ignored \"-Wformat-zero-length\"") \
-		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), (x), _fmt, ##args); \
+		clixon_debug_fn(NULL, __func__, __LINE__, (l), (x), _fmt, ##args); \
 		_Pragma("GCC diagnostic pop") \
 	} while (0)
 
@@ -115,7 +115,7 @@
 	do { \
 		_Pragma("clang diagnostic push") \
 		_Pragma("clangGCC diagnostic ignored \"-Wformat-zero-length\"") \
-		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), NULL, _fmt, ##args); \
+		clixon_debug_fn(NULL, __func__, __LINE__, (l), NULL, _fmt, ##args); \
 		_Pragma("clangGCC diagnostic pop") \
 	} while (0)
 
@@ -123,15 +123,15 @@
 	do { \
 		_Pragma("clangGCC diagnostic push") \
 		_Pragma("clangGCC diagnostic ignored \"-Wformat-zero-length\"") \
-		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), (x), _fmt, ##args); \
+		clixon_debug_fn(NULL, __func__, __LINE__, (l), (x), _fmt, ##args); \
 		_Pragma("clangGCC diagnostic pop") \
 	} while (0)
 
 #else
 #define clixon_debug(l, _fmt, args...) \
-		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), NULL, _fmt, ##args)
+		clixon_debug_fn(NULL, __func__, __LINE__, (l), NULL, _fmt, ##args)
 #define clixon_debug_xml(l, x, _fmt, args...) \
-		clixon_debug_fn(NULL, __FUNCTION__, __LINE__, (l), (x), _fmt, ##args)
+		clixon_debug_fn(NULL, __func__, __LINE__, (l), (x), _fmt, ##args)
 #endif
 
 /*

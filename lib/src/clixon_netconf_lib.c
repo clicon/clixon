@@ -2315,7 +2315,7 @@ netconf_output(int   s,
         if (errno == EPIPE)
             clixon_debug(CLIXON_DBG_DEFAULT, "write err SIGPIPE");
         else
-            clixon_log(NULL, LOG_ERR, "%s: write: %s", __FUNCTION__, strerror(errno));
+            clixon_log(NULL, LOG_ERR, "%s: write: %s", __func__, strerror(errno));
         goto done;
     }
     retval = 0;

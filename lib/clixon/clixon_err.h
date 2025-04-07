@@ -96,8 +96,8 @@ typedef int (clixon_cat_log_cb)(void *handle, int suberr, cbuf *cb);
 /*
  * Macros
  */
-#define clixon_err(c,s,_fmt, args...) clixon_err_fn(NULL, __FUNCTION__, __LINE__, (c), (s), NULL, _fmt , ##args)
-#define clixon_err_netconf(h,c,s,x,_fmt, args...) clixon_err_fn((h), __FUNCTION__, __LINE__, (c), (s), (x), _fmt , ##args)
+#define clixon_err(c,s,_fmt, args...) clixon_err_fn(NULL, __func__, __LINE__, (c), (s), NULL, _fmt , ##args)
+#define clixon_err_netconf(h,c,s,x,_fmt, args...) clixon_err_fn((h), __func__, __LINE__, (c), (s), (x), _fmt , ##args)
 
 /*
  * Prototypes
@@ -117,6 +117,6 @@ int   clixon_err_cat_reg(enum clixon_err category, void *handle, clixon_cat_log_
 int   clixon_err_exit(void);
 
 /* doesnt work if arg != NULL */
-#define clixon_netconf_error(h, x, f, a) clixon_err_fn((h), __FUNCTION__, __LINE__, OE_XML, 0,(x), (f)) 
+#define clixon_netconf_error(h, x, f, a) clixon_err_fn((h), __func__, __LINE__, OE_XML, 0,(x), (f)) 
 
 #endif  /* _CLIXON_ERR_H_ */

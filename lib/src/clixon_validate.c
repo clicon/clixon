@@ -1271,7 +1271,7 @@ xml_yang_validate_all(clixon_handle h,
         if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1) {
             clixon_log(h, LOG_WARNING,
                        "%s: %d: No YANG spec for %s, validation skipped",
-                       __FUNCTION__, __LINE__, xml_name(xt));
+                       __func__, __LINE__, xml_name(xt));
             goto ok;
         }
         if ((cb = cbuf_new()) == NULL){

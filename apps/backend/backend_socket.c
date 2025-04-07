@@ -155,7 +155,7 @@ config_socket_init_unix(clixon_handle h,
         return -1;
 #if 0
     if (gid == 0)
-        clixon_log(h, LOG_WARNING, "%s: No such group: %s", __FUNCTION__, config_group);
+        clixon_log(h, LOG_WARNING, "%s: No such group: %s", __func__, config_group);
 #endif
     /* create unix socket */
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {

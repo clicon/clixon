@@ -89,7 +89,7 @@ nacm_begin(clixon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 /*! This is called on validate (and commit). Check validity of candidate
@@ -99,7 +99,7 @@ nacm_validate(clixon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     if (_validate_fail_xpath){
         if (xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)) {
             if (_validate_fail_toggle==0) {
@@ -124,7 +124,7 @@ nacm_complete(clixon_handle    h,
               transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 
@@ -135,7 +135,7 @@ nacm_commit(clixon_handle    h,
             transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     if (_validate_fail_xpath){
         if (_validate_fail_toggle==1 &&
             xpath_first(transaction_target(td), NULL, "%s", _validate_fail_xpath)){
@@ -152,7 +152,7 @@ nacm_commit_done(clixon_handle    h,
                  transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 
@@ -161,7 +161,7 @@ nacm_revert(clixon_handle    h,
             transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 
@@ -170,7 +170,7 @@ nacm_end(clixon_handle    h,
          transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE, __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE, __func__);
     return 0;
 }
 
@@ -179,7 +179,7 @@ nacm_abort(clixon_handle    h,
            transaction_data td)
 {
     if (_transaction_log)
-        transaction_log(h, td, LOG_NOTICE,  __FUNCTION__);
+        transaction_log(h, td, LOG_NOTICE,  __func__);
     return 0;
 }
 
@@ -268,7 +268,7 @@ clixon_plugin_init(clixon_handle h)
 
     nacm_mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (nacm_mode==NULL || strcmp(nacm_mode, "disabled") == 0){
-        clixon_log(h, LOG_DEBUG, "%s CLICON_NACM_MODE not enabled: example nacm module disabled", __FUNCTION__);
+        clixon_log(h, LOG_DEBUG, "%s CLICON_NACM_MODE not enabled: example nacm module disabled", __func__);
         /* Skip nacm module if not enabled _unless_ we use transaction tests */
         if (_transaction_log == 0)
             return NULL;

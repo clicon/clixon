@@ -1410,7 +1410,7 @@ from_client_debug(clixon_handle h,
 
     clixon_debug_init(h, level); /* 0: dont debug, 1:debug */
     setlogmask(LOG_UPTO(level?LOG_DEBUG:LOG_INFO)); /* for syslog */
-    clixon_log(h, LOG_NOTICE, "%s debug:%d", __FUNCTION__, clixon_debug_get());
+    clixon_log(h, LOG_NOTICE, "%s debug:%d", __func__, clixon_debug_get());
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
@@ -1788,7 +1788,7 @@ from_client_msg(clixon_handle        h,
         if ((ret = rpc_callback_call(h, x, ce, &nr, cbret)) < 0){
             if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                 goto done;
-            clixon_log(h, LOG_NOTICE, "%s Error in rpc_callback_call: hello", __FUNCTION__);
+            clixon_log(h, LOG_NOTICE, "%s Error in rpc_callback_call: hello", __func__);
             ce->ce_out_rpc_errors++;
             netconf_monitoring_counter_inc(h, "in-bad-hellos");
             goto reply; /* Dont quit here on user callbacks */
@@ -1887,7 +1887,7 @@ from_client_msg(clixon_handle        h,
         if ((ret = rpc_callback_call(h, xe, ce, &nr, cbret)) < 0){
             if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                 goto done;
-            clixon_log(h, LOG_NOTICE, "%s Error in rpc_callback_call:%s", __FUNCTION__, xml_name(xe));
+            clixon_log(h, LOG_NOTICE, "%s Error in rpc_callback_call:%s", __func__, xml_name(xe));
             ce->ce_out_rpc_errors++;
             netconf_monitoring_counter_inc(h, "out-rpc-errors");
             goto reply; /* Dont quit here on user callbacks */
@@ -1958,7 +1958,7 @@ from_client_msg(clixon_handle        h,
     /* Sanity: log if clixon_err() is not called ! */
     if (retval < 0 && clixon_err_category() < 0)
         clixon_log(h, LOG_NOTICE, "%s: Internal error: No clixon_err call on RPC error (message: %s)",
-                   __FUNCTION__, rpc?rpc:"");
+                   __func__, rpc?rpc:"");
     //    clixon_debug(CLIXON_DBG_BACKEND, "retval:%d", retval);
     return retval;// -1 here terminates backend
 }

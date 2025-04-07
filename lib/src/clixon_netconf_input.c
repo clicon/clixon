@@ -139,7 +139,7 @@ netconf_input_read2(int            s,
         case EINTR:
         case EAGAIN:
             if (restarts++ >= maxrestarts){
-                clixon_log(NULL, LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
+                clixon_log(NULL, LOG_ERR, "%s: read: %s", __func__, strerror(errno));
                 goto done;
             }
             break;       /* Try again */
@@ -149,7 +149,7 @@ netconf_input_read2(int            s,
             len = 0;     /* Emulate EOF */
             break;
         default:
-            clixon_log(NULL, LOG_ERR, "%s: read: %s", __FUNCTION__, strerror(errno));
+            clixon_log(NULL, LOG_ERR, "%s: read: %s", __func__, strerror(errno));
             goto done;
         }
         if (len == 0)

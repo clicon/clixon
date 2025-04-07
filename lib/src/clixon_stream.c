@@ -1077,7 +1077,7 @@ stream_publish(clixon_handle h,
  done:
     return retval;
 #else
-    clixon_log(h, LOG_WARNING, "%s called but CLIXON_PUBLISH_STREAMS not enabled (enable with configure --enable-publish)", __FUNCTION__);
+    clixon_log(h, LOG_WARNING, "%s called but CLIXON_PUBLISH_STREAMS not enabled (enable with configure --enable-publish)", __func__);
     clixon_log_init(h, "xpath", LOG_WARNING, CLIXON_LOG_STDERR);
     return 0;
 #endif

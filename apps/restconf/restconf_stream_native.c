@@ -154,7 +154,7 @@ stream_native_backend_cb(int   s,
     /* handle close from remote end: this will exit the client */
     if (eof){
         clixon_debug(CLIXON_DBG_STREAM, "eof");
-        restconf_close_ssl_socket(rc, __FUNCTION__, 0);
+        restconf_close_ssl_socket(rc, __func__, 0);
         goto ok;
     }
     if ((ret = clixon_xml_parse_string(cbuf_get(cbmsg), YB_NONE, NULL, &xtop, NULL)) < 0)
@@ -241,7 +241,7 @@ stream_timeout_end(int   s,
         clixon_debug(CLIXON_DBG_STREAM, "SSL pending: %d", ret);
     }
 #endif
-    if (restconf_close_ssl_socket(rc, __FUNCTION__, 0) < 0)
+    if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
         goto done;
     retval = 0;
  done:

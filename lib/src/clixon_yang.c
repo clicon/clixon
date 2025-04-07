@@ -733,7 +733,7 @@ yang_mymodule_get(yang_stmt *ys)
     map_ptr2ptr *mp = _yang_mymodule_map;
 
     if (mp == NULL){
-        clixon_log(NULL, LOG_WARNING, "%s: mymodule_map not defined, yang_init() not called?", __FUNCTION__);
+        clixon_log(NULL, LOG_WARNING, "%s: mymodule_map not defined, yang_init() not called?", __func__);
         return NULL;
     }
     else if (yang_flag_get(ys, YANG_FLAG_MYMODULE) == 0x0)

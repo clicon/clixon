@@ -231,7 +231,7 @@ restconf_sig_term(int arg)
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (i++ == 0)
         clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
-                   __PROGRAM__, __FUNCTION__, getpid(), arg);
+                   __PROGRAM__, __func__, getpid(), arg);
     else{
         clixon_debug(CLIXON_DBG_RESTCONF, "done");
         exit(-1);

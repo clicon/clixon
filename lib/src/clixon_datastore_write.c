@@ -1016,7 +1016,7 @@ text_modify(clixon_handle       h,
                             xml_spec_set(x1c, yc);
                             clixon_log(h, LOG_WARNING,
                                        "%s: %d: No YANG spec for %s, anydata used",
-                                       __FUNCTION__, __LINE__, x1cname);
+                                       __func__, __LINE__, x1cname);
                         }
                         else{
                             if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)
@@ -1282,7 +1282,7 @@ text_modify_top(clixon_handle       h,
                 xml_spec_set(x1c, yc);
                 clixon_log(h, LOG_WARNING,
                            "%s: %d: No YANG spec for %s, anydata used",
-                           __FUNCTION__, __LINE__, x1cname);
+                           __func__, __LINE__, x1cname);
             }
             else{
                 if (netconf_unknown_element(cbret, "application", x1cname, "Unassigned yang spec") < 0)

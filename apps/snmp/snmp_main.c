@@ -93,7 +93,7 @@ static void
 clixon_snmp_sig_term(int arg)
 {
     clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
-               __PROGRAM__, __FUNCTION__, getpid(), arg);
+               __PROGRAM__, __func__, getpid(), arg);
     /* This should ensure no more accepts or incoming packets are processed because next time eventloop
      * is entered, it will terminate.
      * However there may be a case of sockets closing rather abruptly for clients
@@ -114,7 +114,7 @@ snmp_terminate(clixon_handle h)
     char      *pidfile = clicon_snmp_pidfile(h);
 
     clixon_snmp_stream_shutdown(h);
-    snmp_shutdown(__FUNCTION__);
+    snmp_shutdown(__func__);
     shutdown_agent();
     clixon_snmp_api_agent_cleanup();
     if (clicon_ptr_get(h, "snmp-rowstatus-tree", (void**)&x) == 0 && x){

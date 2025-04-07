@@ -228,7 +228,7 @@ clixon_proc_socket(clixon_handle h,
         clixon_err(OE_UNIX, ENOMEM, "clicon_strjoin");
         goto done;
     }
-    clixon_log(h, LOG_INFO, "%s '%s'", __FUNCTION__, flattened);
+    clixon_log(h, LOG_INFO, "%s '%s'", __func__, flattened);
     free(flattened);
 
     if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
@@ -371,7 +371,7 @@ clixon_proc_background(clixon_handle h,
         clixon_err(OE_UNIX, ENOMEM, "clicon_strjoin");
         goto quit;
     }
-    clixon_log(h, LOG_INFO, "%s '%s'", __FUNCTION__, flattened);
+    clixon_log(h, LOG_INFO, "%s '%s'", __func__, flattened);
     free(flattened);
 
     /* Sanity check: program exists */
@@ -1255,28 +1255,28 @@ clixon_resource_check(clixon_handle h,
     if ((newrc = resource_context_get()) == NULL)
         goto done;
     if (oldrc->rc_termios.c_iflag != newrc->rc_termios.c_iflag){
-        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios input modes from 0x%x to 0x%x", __FUNCTION__,
+        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios input modes from 0x%x to 0x%x", __func__,
                    name, fn,
                    oldrc->rc_termios.c_iflag,
                    newrc->rc_termios.c_iflag);
         failed++;
     }
     if (oldrc->rc_termios.c_oflag != newrc->rc_termios.c_oflag){
-        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios output modes from 0x%x to 0x%x", __FUNCTION__,
+        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios output modes from 0x%x to 0x%x", __func__,
                    name, fn,
                    oldrc->rc_termios.c_oflag,
                    newrc->rc_termios.c_oflag);
         failed++;
     }
     if (oldrc->rc_termios.c_cflag != newrc->rc_termios.c_cflag){
-        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios control modes from 0x%x to 0x%x", __FUNCTION__,
+        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios control modes from 0x%x to 0x%x", __func__,
                    name, fn,
                    oldrc->rc_termios.c_cflag,
                    newrc->rc_termios.c_cflag);
         failed++;
     }
     if (oldrc->rc_termios.c_lflag != newrc->rc_termios.c_lflag){
-        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios local modes from 0x%x to 0x%x", __FUNCTION__,
+        clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed termios local modes from 0x%x to 0x%x", __func__,
                    name, fn,
                    oldrc->rc_termios.c_lflag,
                    newrc->rc_termios.c_lflag);
@@ -1289,7 +1289,7 @@ clixon_resource_check(clixon_handle h,
         abort();
     for (i=1; i<32; i++){
         if (sigismember(&oldrc->rc_sigset, i) != sigismember(&newrc->rc_sigset, i)){
-            clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed blocking of signal %s(%d) from %d to %d", __FUNCTION__,
+            clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed blocking of signal %s(%d) from %d to %d", __func__,
                        name, fn, strsignal(i), i,
                        sigismember(&oldrc->rc_sigset, i),
                        sigismember(&newrc->rc_sigset, i)
@@ -1297,14 +1297,14 @@ clixon_resource_check(clixon_handle h,
             failed++;
         }
         if (oldrc->rc_sigaction_vec[i].sa_flags != newrc->rc_sigaction_vec[i].sa_flags){
-            clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed flags of signal %s(%d) from 0x%x to 0x%x", __FUNCTION__,
+            clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed flags of signal %s(%d) from 0x%x to 0x%x", __func__,
                        name, fn, strsignal(i), i,
                        oldrc->rc_sigaction_vec[i].sa_flags,
                        newrc->rc_sigaction_vec[i].sa_flags);;
             failed++;
         }
         if (oldrc->rc_sigaction_vec[i].sa_sigaction != newrc->rc_sigaction_vec[i].sa_sigaction){
-            clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed action of signal %s(%d) from %p to %p", __FUNCTION__,
+            clixon_log(h, LOG_WARNING, "%s Plugin context %s %s: Changed action of signal %s(%d) from %p to %p", __func__,
                        name, fn, strsignal(i), i,
                        oldrc->rc_sigaction_vec[i].sa_sigaction,
                        newrc->rc_sigaction_vec[i].sa_sigaction);

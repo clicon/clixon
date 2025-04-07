@@ -552,7 +552,7 @@ send_hello(clixon_handle h,
     netconf_framing_type framing;
 
     if ((cb = cbuf_new()) == NULL){
-        clixon_log(h, LOG_ERR, "%s: cbuf_new", __FUNCTION__);
+        clixon_log(h, LOG_ERR, "%s: cbuf_new", __func__);
         goto done;
     }
     if (netconf_hello_server(h, cb, id) < 0)

@@ -201,7 +201,7 @@ populate_self_parent(clixon_handle h,
                 retval = 2; /* treat as anydata */
                 clixon_log(h, LOG_WARNING,
                            "%s: %d: No YANG spec for %s, anydata used",
-                           __FUNCTION__, __LINE__, name);
+                           __func__, __LINE__, name);
                 goto done;
             }
             if ((cb = cbuf_new()) == NULL){
@@ -316,7 +316,7 @@ populate_self_top(clixon_handle h,
             retval = 2; /* treat as anydata */
             clixon_log(h, LOG_WARNING,
                        "%s: %d: No YANG spec for %s, anydata used",
-                       __FUNCTION__, __LINE__, name);
+                       __func__, __LINE__, name);
             goto done;
         }
         if ((cb = cbuf_new()) == NULL){
