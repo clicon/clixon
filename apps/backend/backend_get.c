@@ -384,8 +384,8 @@ filter_xpath_again(clixon_handle h,
  *
  * @param[in]  h        Clixon handle
  * @param[in]  xret     Result XML tree
- * @param[in]  xvec    xpath lookup result on xret
- * @param[in]  xlen    length of xvec
+ * @param[in]  xvec     xpath lookup result on xret
+ * @param[in]  xlen     length of xvec
  * @param[in]  xpath    XPath point to object to get
  * @param[in]  nsc      Namespace context of xpath
  * @param[in]  username User name for NACM access

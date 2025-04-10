@@ -334,7 +334,7 @@ fi
 # Can be placed in clixon-config
 # Note that https clause assumes there exists certs and keys in /etc/ssl,...
 # Args:
-# 1: auth-type (one of none, client-cert, user)
+# 1: auth-type (one of none, client-certificate, user)
 # 2: pretty (if true pretty-print restconf return values)
 # [3: proto: http or https]
 # [4: http_data: true or false] # Note feature http-data must be enabled

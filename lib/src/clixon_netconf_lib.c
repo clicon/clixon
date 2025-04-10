@@ -126,7 +126,7 @@ netconf_in_use(cbuf *cb,
 {
     int   retval = -1;
     char *encstr = NULL;
-    
+
     if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
                 "<error-type>%s</error-type>"
                 "<error-tag>in-use</error-tag>"
@@ -169,10 +169,10 @@ netconf_invalid_value_xml(cxobj **xret,
     int    retval =-1;
     cxobj *xerr = NULL;
     char  *encstr = NULL;
-    
+
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -296,7 +296,7 @@ netconf_missing_attribute_xml(cxobj **xret,
 
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -412,7 +412,7 @@ netconf_bad_attribute_xml(cxobj **xret,
 
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -570,10 +570,10 @@ netconf_common_rpc_err_xml(cxobj **xret,
     int    retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
-    
+
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
 
     if (!ns)
@@ -639,7 +639,7 @@ netconf_common_rpc_err_xml(cxobj **xret,
  * @retval    -1       Error
  */
 int
-netconf_missing_element(cbuf      *cb, 
+netconf_missing_element(cbuf      *cb,
                         char      *type,
                         char      *element,
                         char      *message)
@@ -877,7 +877,7 @@ netconf_access_denied_xml(cxobj **xret,
 
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -966,7 +966,7 @@ netconf_resource_denied(cbuf *cb,
 {
     int   retval = -1;
     char *encstr = NULL;
-    
+
     if (cprintf(cb, "<rpc-reply xmlns=\"%s\"><rpc-error>"
                 "<error-type>%s</error-type>"
                 "<error-tag>resource-denied</error-tag>"
@@ -1044,7 +1044,7 @@ netconf_rollback_failed(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_data_exists(cbuf      *cb, 
+netconf_data_exists(cbuf      *cb,
                     char      *message)
 {
     int   retval = -1;
@@ -1122,7 +1122,7 @@ netconf_data_missing_xml(cxobj **xret,
 
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -1134,11 +1134,11 @@ netconf_data_missing_xml(cxobj **xret,
         goto done;
     if ((xerr = xml_new("rpc-error", *xret, CX_ELMNT)) == NULL)
         goto done;
-    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
                             "<error-type>application</error-type>"
                             "<error-tag>data-missing</error-tag>") < 0)
         goto done;
-    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
                             "<error-severity>error</error-severity>") < 0)
         goto done;
     if (message){
@@ -1179,7 +1179,7 @@ netconf_missing_yang_xml(cxobj **xret,
 
     if (xret == NULL || path == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret or path is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -1193,7 +1193,7 @@ netconf_missing_yang_xml(cxobj **xret,
         goto done;
     if (xml_chardata_encode(&encpath, 0, "%s", path) < 0)
         goto done;
-    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL, 
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
                             "<error-type>application</error-type>"
                             "<error-tag>data-missing</error-tag>"
                             "<error-app-tag>%s</error-app-tag>"
@@ -1297,10 +1297,10 @@ netconf_operation_not_supported_xml(cxobj **xret,
     cxobj *xerr;
     char  *encstr = NULL;
     cxobj *x = NULL;
-    
+
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((x = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -1423,10 +1423,10 @@ netconf_operation_failed_xml(cxobj **xret,
     int   retval =-1;
     cxobj *xerr;
     char  *encstr = NULL;
-    
+
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -1593,7 +1593,7 @@ netconf_data_not_unique_xml(cxobj **xret,
                             cvec   *cvk)
 {
     int     retval = -1;
-    cg_var *cvi = NULL; 
+    cg_var *cvi = NULL;
     cxobj  *xerr;
     cxobj  *xinfo = NULL;
     char   *path = NULL;
@@ -1601,7 +1601,7 @@ netconf_data_not_unique_xml(cxobj **xret,
 
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -1669,10 +1669,10 @@ netconf_minmax_elements_xml(cxobj **xret,
     cxobj *xerr;
     char  *path = NULL;
     char  *encpath = NULL;
-    
+
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -1725,10 +1725,10 @@ netconf_trymerge(cxobj       *x,
     int    retval = -1;
     char  *reason = NULL;
     cxobj *xc;
-    
+
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_dup(x)) == NULL)
@@ -1739,7 +1739,7 @@ netconf_trymerge(cxobj       *x,
         goto done;
     if (reason){
         while ((xc = xml_child_i(*xret, 0)) != NULL)
-            xml_purge(xc);          
+            xml_purge(xc);
         if (netconf_operation_failed_xml(xret, "rpc", reason)< 0)
             goto done;
         goto fail;
@@ -1777,7 +1777,7 @@ netconf_module_features(clixon_handle h)
 
     if ((xc = clicon_conf_xml(h)) == NULL){
         clixon_err(OE_CFG, ENOENT, "Clicon configuration not loaded");
-        goto done; 
+        goto done;
     }
     /* Enable features (hardcoded here) */
     if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-netconf:candidate</CLICON_FEATURE>",
@@ -1806,12 +1806,12 @@ netconf_module_load(clixon_handle h)
 {
     int              retval = -1;
     yang_stmt       *yspec;
-    
+
     yspec = clicon_dbspec_yang(h);
     /* Load yang spec */
     if (yang_spec_parse_module(h, "ietf-netconf", NULL, yspec)< 0)
         goto done;
-    /* Load yang Netconf stream discovery 
+    /* Load yang Netconf stream discovery
      * Actually add by default since create-subscription is in this module
      */
     if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277"))
@@ -1879,7 +1879,7 @@ netconf_module_load(clixon_handle h)
  * @endcode
  */
 char*
-netconf_db_find(cxobj *xn, 
+netconf_db_find(cxobj *xn,
                 char  *name)
 {
     cxobj *xs; /* source */
@@ -2045,7 +2045,7 @@ netconf_hello_server(clixon_handle h,
     cprintf(cb, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     if (netconf_capabilites(h, cb) < 0)
         goto done;
-    if (session_id) 
+    if (session_id)
         cprintf(cb, "<session-id>%lu</session-id>", (long unsigned int)session_id);
     cprintf(cb, "</hello>");
     retval = 0;
@@ -2210,7 +2210,7 @@ int
 netconf_message_id_next(clixon_handle h)
 {
     int msgid;
-    
+
     if ((msgid=clicon_option_int(h, "netconf-message-id")) < 0){
         clicon_option_str_set(h, "netconf-message-id", NETCONF_MESSAGE_ID_DEFAULT);
         msgid = clicon_option_int(h, "netconf-message-id");
@@ -2287,9 +2287,9 @@ netconf_framing_postamble(netconf_framing_type framing,
  * @retval     -1       Error
  * @see netconf_output_encap  for function with encapsulation
  */
-int 
+int
 netconf_output(int   s,
-               cbuf *cb, 
+               cbuf *cb,
                char *msg)
 {
     int   retval = -1;
@@ -2322,7 +2322,7 @@ netconf_output(int   s,
   done:
     return retval;
 }
-            
+
 /*! Encapsulate and send outgoing netconf packet as cbuf on socket
  *
  * @param[in]   framing Framing type, ie EOM(1.0) or chunked (1.1)
@@ -2333,12 +2333,12 @@ netconf_output(int   s,
  * @see netconf_output  without encapsulation
  * @see netconf_hello_msg where framing is set
  */
-int 
+int
 netconf_output_encap(netconf_framing_type framing,
                      cbuf                *cb)
 {
     int  retval = -1;
-    
+
     if (netconf_framing_preamble(framing, cb) < 0)
         goto done;
     if (netconf_framing_postamble(framing, cb) < 0)
@@ -2389,7 +2389,7 @@ netconf_output_encap(netconf_framing_type framing,
    C:  \n##\n
  */
 int
-netconf_input_chunked_framing(char    ch, 
+netconf_input_chunked_framing(char    ch,
                               int    *state,
                               size_t *size)
 {
@@ -2486,4 +2486,36 @@ netconf_input_chunked_framing(char    ch,
     *state = 0;
     retval = -1; /* Error */
     goto done;
+}
+
+/*! Transform netconf error msg from cbuf to cbuf in human readable form
+ *
+ * Utility function
+ * @param[in]  h      Clixon handle
+ * @param[in]  cb0    Netconf error message on some level: ...<rpc-
+ * @param[out] cberr  Translation from netconf err to cbuf.
+ * @retval     0      OK, with cberr set
+ * @retval    -1      Error
+ * @see netconf_err2cb  From xml to cbuf
+ */
+int
+netconf_cbuf_err2cb(clixon_handle h,
+                    cbuf         *cb0,
+                    cbuf         *cberr)
+{
+    int    retval = -1;
+    cxobj *xerr = NULL;
+    cxobj *xerr2;
+
+    if (clixon_xml_parse_string(cbuf_get(cb0), YB_NONE, NULL, &xerr, NULL) < 0)
+        goto done;
+    if (xerr && (xerr2 = xpath_first(xerr, NULL, "//rpc-error")) != NULL){
+        if (netconf_err2cb(h, xerr2, cberr) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    if (xerr)
+        xml_free(xerr);
+    return retval;
 }

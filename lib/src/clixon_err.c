@@ -338,13 +338,13 @@ clixon_err_args(clixon_handle h,
     return retval;
 }
 
-/*! Generate netconf error msg to cbuf using callback to use in string printout or logs
+/*! Generate netconf error msg to cbuf to use in string printout or logs
  *
- * If no callback is registered, a default error message is genereated
- * @param[in]     xerr    Netconf error message on the level: <rpc-error>
- * @param[out]    cberr   Translation from netconf err to cbuf.
- * @retval        0       OK, with cberr set
- * @retval       -1       Error
+ * @param[in]  h      Clixon handle
+ * @param[in]  xerr   Netconf error message on the level: <rpc-error>
+ * @param[out] cberr  Translation from netconf err to cbuf.
+ * @retval     0      OK, with cberr set
+ * @retval    -1      Error
  * @code
  *     cbuf *cb = NULL;
  *     if ((cb = cbuf_new()) ==NULL){
@@ -363,6 +363,10 @@ netconf_err2cb(clixon_handle h,
     int    retval = -1;
     cxobj *x;
 
+    if (cberr == NULL){
+        errno = EINVAL;
+        goto done;
+    }
     if ((x = xml_find_type(xerr, NULL, "error-type", CX_ELMNT)) != NULL)
         cprintf(cberr, "%s ", xml_body(x));
     if ((x = xml_find_type(xerr, NULL, "error-tag", CX_ELMNT)) != NULL)
