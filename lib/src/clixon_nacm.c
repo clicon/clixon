@@ -198,9 +198,9 @@ match_access(char *accops,
            has the special value "*".
  */
 static int
-nacm_rule_rpc(char         *rpc,
-              char         *module,
-              cxobj        *xrule)
+nacm_rule_rpc(char  *rpc,
+              char  *module,
+              cxobj *xrule)
 {
     int   retval = -1;
     char *module_rule; /* rule module name */
@@ -238,8 +238,8 @@ nacm_rule_rpc(char         *rpc,
 
 /*! Process nacm incoming RPC message validation steps
  *
- * @param[in]  module   Yang module name
  * @param[in]  rpc      rpc name
+ * @param[in]  module   Yang module name
  * @param[in]  username User name of requestor
  * @param[in]  xnacm    NACM xml tree
  * @param[out] cbret    Cligen buffer result. Set to an error msg if retval=0.
@@ -273,7 +273,6 @@ nacm_rpc(char         *rpc,
     int     match= 0;
     cvec   *nsc = NULL;
 
-    clixon_debug(CLIXON_DBG_NACM, "");
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
@@ -335,6 +334,7 @@ nacm_rpc(char         *rpc,
     if (match){
         if ((action = xml_find_body(xrule, "action")) == NULL)
             goto step10;
+        clixon_debug(CLIXON_DBG_NACM, "Match %s:%s: action:%s", module, rpc, action);
         if (strcmp(action, "deny")==0){
             if (netconf_access_denied(cbret, "application", "access denied") < 0)
                 goto done;
@@ -368,7 +368,8 @@ nacm_rpc(char         *rpc,
  permit:
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_NACM, "retval:%d (0:deny 1:permit)", retval);
+    clixon_debug(CLIXON_DBG_NACM, "%s %s:%s: %s",
+                 username, module, rpc, retval==1?"permit":retval==0?"deny":"error");
     if (nsc)
         xml_nsctx_free(nsc);
     if (gvec)
@@ -793,7 +794,6 @@ nacm_datanode_write(clixon_handle    h,
     int      ret;
     prepvec *pv_list = NULL;
 
-    clixon_debug(CLIXON_DBG_NACM, "");
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
@@ -859,7 +859,8 @@ nacm_datanode_write(clixon_handle    h,
  permit:
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_NACM, "retval:%d (0:deny 1:permit)", retval);
+    clixon_debug_xml(CLIXON_DBG_NACM, xreq, "Write %s: %s",
+                     username, retval==1?"permit":retval==0?"deny":"error");
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -1005,7 +1006,6 @@ nacm_datanode_read_recurse(clixon_handle h,
                 pv = NEXTQ(prepvec *, pv);
             } while (pv && pv != pv_list);
         }
-
 #if 0 /* 6(A) in algorithm
        * If N did not match any rule R, and default rule is deny, remove that subtree */
         if (strcmp(read_default, "deny") == 0)
@@ -1023,6 +1023,7 @@ nacm_datanode_read_recurse(clixon_handle h,
                 goto done;
             /* check for delayed remove */
             if (xml_flag(x, XML_FLAG_DEL)){
+                clixon_debug(CLIXON_DBG_NACM, "deny %s", xml_name(x));
                 if (xml_purge(x) < 0)
                     goto done;
                 x = xprev;
@@ -1101,7 +1102,6 @@ nacm_datanode_read(clixon_handle h,
     cvec    *nsc = NULL;
     prepvec *pv_list = NULL;
 
-    clixon_debug(CLIXON_DBG_NACM, "");
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
@@ -1164,7 +1164,6 @@ nacm_datanode_read(clixon_handle h,
  ok:
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_NACM, "retval:%d", retval);
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -1214,7 +1213,6 @@ nacm_access_check(clixon_handle h,
     cvec  *nsc = NULL;
     char  *recovery_user;
 
-    clixon_debug(CLIXON_DBG_NACM, "");
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
     /* Do initial nacm processing common to all access validation in
@@ -1242,6 +1240,7 @@ nacm_access_check(clixon_handle h,
          *  if cred is EXCEPT/NONE:;
          *   2b) peername is recovery user/root/WWWUSER
          */
+        clixon_debug(CLIXON_DBG_NACM, "recovery-user");
         if (strcmp(peername, recovery_user) == 0)
             goto permit;
         switch(clicon_nacm_credentials(h)){
@@ -1263,7 +1262,6 @@ nacm_access_check(clixon_handle h,
  done:
     if (nsc)
         xml_nsctx_free(nsc);
-    clixon_debug(CLIXON_DBG_NACM, "retval:%d (0:deny 1:permit)", retval);
     return retval;
  permit:
     retval = 1;
@@ -1282,7 +1280,7 @@ nacm_access_check(clixon_handle h,
  * @param[out] cbret    Error if ret == 2
  * @retval     2        Failed on reading NACM from running (internal), cbret has error
  * @retval     1        OK permitted. You do not need to do next NACM step.
- * @retval     0        OK but not validated. Need to do NACM step using xnacm
+ * @retval     0        OK but not validated yet. Need to do NACM step using xnacm
  * @retval    -1        Error
  * @code
  *   cxobj *xnacm = NULL;
@@ -1311,7 +1309,6 @@ nacm_access_pre(clixon_handle h,
     cxobj *xerr = NULL;
     int    ret;
 
-    clixon_debug(CLIXON_DBG_NACM, "");
     /* Check clixon option: disabled, external tree or internal */
     mode = clicon_option_str(h, "CLICON_NACM_MODE");
     if (mode == NULL)
@@ -1355,6 +1352,8 @@ nacm_access_pre(clixon_handle h,
         xnacm = NULL;
     }
  done:
+    clixon_debug(CLIXON_DBG_NACM | CLIXON_DBG_DETAIL, "%s %s", mode?mode:"NULL",
+                 retval==2?"fail":retval==1?"permit":retval==0?"ok":"error");
     if (nsc)
         xml_nsctx_free(nsc);
     if (xnacm0)
@@ -1404,9 +1403,8 @@ verify_nacm_user(clixon_handle           h,
     int   retval = -1;
     cbuf *cbmsg = NULL;
 
-    clixon_debug(CLIXON_DBG_NACM, "Verifying user %s", nacmname);
     if (cred == NC_NONE)
-        return 1;
+        goto ok;
     if (peername == NULL){
         if (netconf_access_denied(cbret, "application", "No peer user credentials available") < 0)
             goto done;
@@ -1423,11 +1421,12 @@ verify_nacm_user(clixon_handle           h,
         goto fail;
     }
     if (cred == NC_EXCEPT){
-        clixon_debug(CLIXON_DBG_NACM, "cred is EXCEPT");
         if (strcmp(peername, "root") == 0)
             goto ok;
-        if (nacm_proxyuser_member(h, peername) == 1)
+        if (nacm_proxyuser_member(h, peername) == 1){
+            clixon_debug(CLIXON_DBG_NACM, "Accept %s as proxy user", peername);
             goto ok;
+        }
     }
     if (strcmp(peername, nacmname) != 0){
         if ((cbmsg = cbuf_new()) == NULL){
@@ -1435,6 +1434,7 @@ verify_nacm_user(clixon_handle           h,
             goto done;
         }
         cprintf(cbmsg, "User %s credential not matching NACM user %s", peername, nacmname);
+        clixon_debug(CLIXON_DBG_NACM, "User %s credential not matching NACM user %s", peername, nacmname);
         if (netconf_access_denied(cbret, "application", cbuf_get(cbmsg)) < 0)
             goto done;
         goto fail;
@@ -1442,6 +1442,7 @@ verify_nacm_user(clixon_handle           h,
  ok:
     retval  = 1;
  done:
+    clixon_debug(CLIXON_DBG_NACM, "%s: %s", nacmname, retval==1?"verified":retval==0?"not verified":"Error");
     if (cbmsg)
         cbuf_free(cbmsg);
     return retval;
