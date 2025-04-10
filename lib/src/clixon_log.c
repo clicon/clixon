@@ -160,7 +160,11 @@ clixon_log_init(clixon_handle h,
             /* Cant syslog here */
             fprintf(stderr, "%s: setlogmask: %s\n", __FUNCTION__, strerror(errno));
         _log_openlog = 1;
-        openlog(ident, LOG_PID, LOG_USER); /* LOG_PUSER is achieved by direct stderr logs in clixon_log */
+        /* LOG_PUSER is achieved by direct stderr logs in clixon_log.
+         * In musl libc, closelog() may cause "Invalid file descriptor" error
+         * which is seen by valgrind unless LOG_NDELAY option is provided.
+         */
+        openlog(ident, LOG_PID | LOG_NDELAY, LOG_USER);
     }
     return 0;
 }
