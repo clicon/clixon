@@ -75,14 +75,6 @@ struct map_str2ptr{
 };
 typedef struct map_str2ptr map_str2ptr;
 
-/*! Map from ptr to ptr
- */
-struct map_ptr2ptr{
-    void *mp_p0;
-    void *mp_p1;
-};
-typedef struct map_ptr2ptr map_ptr2ptr;
-
 /*
  * Prototypes
  */
@@ -93,7 +85,5 @@ char       *clicon_str2str(const map_str2str *mstab, char *str);
 void        clixon_str2ptr_sort(map_str2ptr *mptab, size_t len);
 void       *clixon_str2ptr(map_str2ptr *mptab, char *str, size_t len);
 int         clixon_str2ptr_print(FILE *f, map_str2ptr *mptab);
-void       *clixon_ptr2ptr(map_ptr2ptr *mptab, void *ptr);
-int         clixon_ptr2ptr_add(map_ptr2ptr **mptab, void *ptr0, void *ptr1);
 
 #endif  /* _CLIXON_MAP_H_ */

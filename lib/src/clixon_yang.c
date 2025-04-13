@@ -90,6 +90,7 @@
 #include "clixon_yang_type.h"
 #include "clixon_yang_schema_mount.h"
 #include "clixon_yang_internal.h" /* internal included by this file only, not API */
+#include "clixon_hash.h"
 
 #ifdef XML_EXPLICIT_INDEX
 static int yang_search_index_extension(clixon_handle h, yang_stmt *yext, yang_stmt *ys);
@@ -177,8 +178,8 @@ static const map_str2int ykmap[] = {
 };
 
 /* XXX: Global variables, should really be on handle but not available in some cases */
-static map_ptr2ptr *_yang_when_map = NULL;
-static map_ptr2ptr *_yang_mymodule_map = NULL;
+static clicon_hash_t *_yang_when_h = NULL;
+static clicon_hash_t *_yang_mymodule_h = NULL;
 
 /* See option CLICON_YANG_USE_ORIGINAL */
 static int _yang_use_orig = 0;
@@ -517,7 +518,7 @@ yang_stmt *
 yang_when_get(clixon_handle h,
               yang_stmt    *ys)
 {
-    map_ptr2ptr *mp = _yang_when_map;
+    clicon_hash_t *mp = _yang_when_h;
     yang_stmt   *ys2;
 
     if (mp == NULL){
@@ -528,7 +529,7 @@ yang_when_get(clixon_handle h,
         if ((ys2 = yang_orig_get(ys)) == NULL)
             ys2 = ys;
         if (yang_flag_get(ys2, YANG_FLAG_WHEN) != 0x0 && mp != NULL)
-            return clixon_ptr2ptr(mp, ys2);
+            return clicon_hash_ptr_value(mp, ys2);
     }
     return NULL;
 }
@@ -548,7 +549,7 @@ yang_when_set(clixon_handle h,
 {
     int          retval = -1;
     yang_stmt   *ys2;
-    map_ptr2ptr *mp = _yang_when_map;
+    clicon_hash_t *mp = _yang_when_h;
 
     if (mp == NULL){
         clixon_log(h, LOG_WARNING, "when_map not defined, yang_init() not called?");
@@ -557,9 +558,9 @@ yang_when_set(clixon_handle h,
     else {
         if ((ys2 = yang_orig_get(ys)) == NULL)
             ys2 = ys;
-        if (clixon_ptr2ptr(mp, ys2) == NULL) {
+        if (clicon_hash_ptr_value(mp, ys2) == NULL) {
             assert(yang_flag_set(ys2, YANG_FLAG_WHEN)==0); // XXX
-            if (clixon_ptr2ptr_add(&_yang_when_map, ys2, ywhen) < 0)
+            if (clicon_hash_add_ptr(_yang_when_h, ys2, ywhen) < 0)
                 goto done;
             yang_flag_set(ys2, YANG_FLAG_WHEN);
         }
@@ -730,7 +731,7 @@ yang_typecache_set(yang_stmt *ys,
 yang_stmt*
 yang_mymodule_get(yang_stmt *ys)
 {
-    map_ptr2ptr *mp = _yang_mymodule_map;
+    clicon_hash_t *mp = _yang_mymodule_h;
 
     if (mp == NULL){
         clixon_log(NULL, LOG_WARNING, "%s: mymodule_map not defined, yang_init() not called?", __func__);
@@ -739,7 +740,7 @@ yang_mymodule_get(yang_stmt *ys)
     else if (yang_flag_get(ys, YANG_FLAG_MYMODULE) == 0x0)
         return NULL;
     else
-        return clixon_ptr2ptr(mp, ys);
+        return clicon_hash_ptr_value(mp, ys);
 }
 
 /*! Set mymodule
@@ -755,15 +756,15 @@ yang_mymodule_set(yang_stmt *ys,
                   yang_stmt *ym)
 {
     int          retval = -1;
-    map_ptr2ptr *mp = _yang_mymodule_map;
+    clicon_hash_t *mp = _yang_mymodule_h;
 
     if (mp == NULL){
         clixon_log(NULL, LOG_WARNING, "mymodule_map not defined, yang_init() not called?");
         goto done;
     }
     else {
-        if (clixon_ptr2ptr(mp, ys) == NULL) {
-            if (clixon_ptr2ptr_add(&_yang_mymodule_map, ys, ym) < 0)
+        if (clicon_hash_ptr_value(mp, ys) == NULL) {
+            if (clicon_hash_add_ptr(_yang_mymodule_h, ys, ym) < 0)
                 goto done;
         }
     }
@@ -4667,19 +4668,10 @@ int
 yang_init(clixon_handle h)
 {
     int          retval = -1;
-    map_ptr2ptr *mp;
     yang_stmt   *ymounts;
 
-    if ((mp = calloc(1, sizeof(*mp))) == NULL){
-        clixon_err(OE_UNIX, errno, "calloc");
-        goto done;
-    }
-    _yang_when_map = mp;
-    if ((mp = calloc(1, sizeof(*mp))) == NULL){
-        clixon_err(OE_UNIX, errno, "calloc");
-        goto done;
-    }
-    _yang_mymodule_map = mp;
+    _yang_when_h = clicon_hash_init();
+    _yang_mymodule_h = clicon_hash_init();
     if (yang_cardinality_init(h) < 0)
         goto done;
     if ((ymounts = ys_new(Y_MOUNTS)) == NULL)
@@ -4717,13 +4709,13 @@ yang_exit(clixon_handle h)
 {
     yang_stmt *ymounts;
 
-    if (_yang_when_map != NULL) {
-        free(_yang_when_map);
-        _yang_when_map = NULL;
+    if (_yang_when_h != NULL) {
+	clicon_hash_free(_yang_when_h);
+        _yang_when_h = NULL;
     }
-    if (_yang_mymodule_map != NULL) {
-        free(_yang_mymodule_map);
-        _yang_mymodule_map = NULL;
+    if (_yang_mymodule_h != NULL) {
+        clicon_hash_free(_yang_mymodule_h);
+        _yang_mymodule_h = NULL;
     }
     if ((ymounts = clixon_yang_mounts_get(h)) != NULL){
         ys_free(ymounts);
