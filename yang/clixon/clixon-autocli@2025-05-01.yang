@@ -41,6 +41,11 @@ module clixon-autocli{
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2025-05-01 {
+        description
+            "Added clispec-cache and clispec-cache-dir
+             Released in Clixon 7.5";
+    }
     revision 2024-08-01 {
         description
             "Added disable operation for module rules
@@ -172,6 +177,29 @@ module clixon-autocli{
            bit leaf; /* Also leaf-list (NYI) */
        }
     }
+    typedef cache-type {
+        description
+            "Autocli generated clispec cache behviour";
+        type enumeration {
+            enum disabled {
+                description
+                   "Do not use cache";
+            }
+            enum read {
+                description
+                   "If clispec file exists, read from cache, if not found, generate";
+            }
+            enum write {
+                description
+                   "Generate clispec and write to cache unconditionally";
+            }
+            enum readwrite {
+                description
+                   "If clispec file exists, read from cache,
+                    if not found, generate and write cache file";
+            }
+        }
+    }
     grouping clixon-autocli{
         /* options */
         leaf module-default {
@@ -232,6 +260,22 @@ module clixon-autocli{
                  This option was introduced in Clixon 6.3";
             type boolean;
             default false;
+        }
+
+        leaf clispec-cache{
+            description
+                "Autocli cache mode, none, read, write or both";
+            type cache-type;
+            default disabled;
+        }
+        leaf clispec-cache-dir {
+            type string;
+            description
+                "Directory for generated clispecs.
+                 Only relevant if clispec-cache is set (not disabled)
+                 The directory is further partitioned into domains.
+                 Directory is created if it does not exist.
+                 Typical location: $datadir/clixon/clispec";
         }
         /* rules */
         list rule {

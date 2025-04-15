@@ -244,3 +244,7 @@
  * If no problem with patch, remove at next release
  */
 #define STARTUP_COMMIT_REORDER
+
+/*! Use cache for autocli generated clispecs, value is directory
+ */
+#define AUTOCLI_CACHE

@@ -581,6 +581,8 @@ clicon_option_add(clixon_handle h,
     clicon_hash_t *copt = clicon_options(h);
     cxobj         *xconfig;
     cxobj         *xopt;
+    cxobj         *xsub;
+    const char    *subname;
 
     if ((xconfig = clicon_conf_xml(h)) == NULL){
         clixon_err(OE_UNIX, ENOENT, "option %s not found (clicon_conf_xml_set has not been called?)", name);
@@ -593,7 +595,27 @@ clicon_option_add(clixon_handle h,
                                 name, value, name) < 0)
             goto done;
     }
-    else{
+    else if (strncmp(name, "autocli/", strlen("autocli/")) == 0){
+        subname = name + strlen("autocli/");
+        if ((xsub = xml_find_type(xconfig, NULL, "autocli", CX_ELMNT)) != NULL){
+            if ((xopt = xpath_first(xconfig, 0, "%s", name)) != NULL)
+                xml_purge(xopt);
+            if (clixon_xml_parse_va(YB_NONE, NULL, &xsub, NULL, "<%s>%s</%s>",
+                                    subname, value, subname) < 0)
+                goto done;
+        }
+    }
+    else if (strncmp(name,"restconf/",(int)strlen("restconf/")) == 0){
+        subname = name + strlen("restconf/");
+        if ((xsub = xml_find_type(xconfig, NULL, "restconf", CX_ELMNT)) != NULL){
+            if ((xopt = xpath_first(xconfig, 0, "%s", name)) != NULL)
+                xml_purge(xopt);
+            if (clixon_xml_parse_va(YB_NONE, NULL, &xsub, NULL, "<%s>%s</%s>",
+                                    subname, value, subname) < 0)
+                goto done;
+        }
+    }
+    else {
         /* Add/change hash */
         if (clicon_hash_add(copt,
                             name,

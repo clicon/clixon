@@ -17,6 +17,12 @@
 ## 7.5.0
 Expected: July 2025
 
+### Features
+
+* Autocli cache for faster loading of generated CLIspecs
+* New `clixon-autocli@2025-05-01.yang` revision
+  * Added `clispec-cache` and `clispec-cache-dir` options
+
 ## 7.4.0
 3 April 2025
 
