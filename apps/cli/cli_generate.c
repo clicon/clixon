@@ -91,6 +91,7 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include <syslog.h>
 #include <signal.h>
 #include <sys/param.h>
+#include <sys/stat.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -298,7 +299,7 @@ yang2cli_cmd_encode(cbuf       *cb,
     return 0;
 }
 
-/*! Use cligen cmd name to decode info: <tag>-<domain>-<module>-<id>>
+/*! Use cligen cmd name to decode info: <tag>-<domain>-<module>-<id>
  *
  * @param[in]  cmd    CLIgen cmd string
  * @param[in]  delim  Delimiter string that may not occur in any of the elements (except the last)
@@ -1634,13 +1635,165 @@ ph_add_set(cligen_handle h,
     return retval;
 }
 
+/*! Read / write from autocli cache
+ *
+ * Cache entry is: <AUTOCLI_CACHE_DIR>/<domain>/<module>@<revision>[-<tag>-<name>].cli
+ * @param[in]  h       Clixon handle
+ * @param[in]  ymod    Yang module object
+ * @param[in]  domain  Domain string
+ * @param[in]  skiptop Do not include ymod when generating clispec
+ * @param[out] cb      Clispec
+ * XXX only disable and readwrite
+ */
+static int
+cli_autocli_cache(clixon_handle h,
+                  yang_stmt    *ys,
+                  yang_stmt    *ymod,
+                  char         *domain,
+                  int           skiptop,
+                  cbuf         *cb)
+{
+    int             retval = -1;
+    yang_stmt      *yrev;
+    cbuf           *dbuf = NULL;
+    cbuf           *fbuf = NULL;
+    char           *dir0 = NULL;
+    char           *dir = NULL;
+    char           *filename = NULL;
+    struct stat     fstat;
+    FILE           *f = NULL;
+    char           *str = NULL;
+    size_t          len;
+    autocli_cache_t type;
+    int             inext;
+    yang_stmt      *yc;
+
+    if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL){
+        clixon_debug(CLIXON_DBG_CLI, "CLI cache: skip %s: No revision", yang_argument_get(ymod));
+    }
+    if (autocli_cache(h, &type, &dir0) < 0)
+        goto done;
+    if (yrev != NULL && type != AUTOCLI_CACHE_DISABLED && dir0 != NULL){
+        /* If cache enabled and YANG domain and revision */
+        if ((dbuf = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(dbuf, "%s/%s", dir0, domain);
+        dir = cbuf_get(dbuf);
+        if ((fbuf = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(fbuf, "%s/%s@%s",
+                dir,
+                yang_argument_get(ymod),
+                yang_argument_get(yrev));
+        if (ys != ymod)
+            cprintf(fbuf, "-%s-%s", yang_key2str(yang_keyword_get(ys)), yang_argument_get(ys));
+        cprintf(fbuf, ".cli");
+        filename = cbuf_get(fbuf);
+        if (type == AUTOCLI_CACHE_WRITE ||
+            stat(filename, &fstat) < 0) { /* File does not exist or should be written*/
+            /* Generate clispec */
+            if (skiptop){
+                inext = 0;
+                while ((yc = yn_iter(ys, &inext)) != NULL)
+                    if (yang2cli_stmt(h, yc, 1, cb) < 0)
+                        goto done;
+            }
+            else if (yang2cli_stmt(h, ys, 0, cb) < 0)
+                goto done;
+            /* Write to cache, also if empty */
+            if (dir && filename &&
+                (type == AUTOCLI_CACHE_WRITE || type == AUTOCLI_CACHE_READWRITE)){
+                if (stat(dir0, &fstat) < 0) {
+                    if (mkdir(dir0, S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH) < 0){
+                        clixon_err(OE_UNIX, errno, "mkdir(%s)", dir0);
+                        goto done;
+                    }
+                }
+                if (stat(dir, &fstat) < 0) {
+                    if (mkdir(dir, S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH) < 0){
+                        clixon_err(OE_UNIX, errno, "mkdir(%s)", dir);
+                        goto done;
+                    }
+                }
+                if ((f = fopen(filename, "w")) == NULL){
+                    clixon_err(OE_UNIX, errno, "fopen(%s)", filename);
+                    goto done;
+                }
+                len = fwrite(cbuf_get(cb), 1, cbuf_len(cb), f);
+                if (len != cbuf_len(cb)){
+                    clixon_err(OE_UNIX, errno, "fread %lu != %lu", len, cbuf_len(cb));
+                    goto done;
+                }
+            }
+        } /* stat */
+        else if (type == AUTOCLI_CACHE_READ ||
+                 type == AUTOCLI_CACHE_READWRITE){ /* Read cache */
+            clixon_debug(CLIXON_DBG_CLI, "CLI cache: read %s", filename);
+            if ((f = fopen(filename, "r")) == NULL){
+                clixon_err(OE_UNIX, errno, "fopen(%s)", filename);
+                goto done;
+            }
+            if ((str = calloc(fstat.st_size+1, 1)) == NULL){
+                clixon_err(OE_UNIX, errno, "calloc");
+                goto done;
+            }
+            len = fread(str, 1, fstat.st_size, f);
+            if (len != fstat.st_size){
+                clixon_err(OE_UNIX, errno, "fread %lu != %lu", len, fstat.st_size);
+                goto done;
+            }
+            if (cbuf_append_str(cb, str) < 0){
+                clixon_err(OE_UNIX, errno, "cbuf_append_str");
+                goto done;
+            }
+        }
+        else {
+            if (skiptop){
+                inext = 0;
+                while ((yc = yn_iter(ys, &inext)) != NULL)
+                    if (yang2cli_stmt(h, yc, 1, cb) < 0)
+                        goto done;
+            }
+            else if (yang2cli_stmt(h, ys, 0, cb) < 0)
+                goto done;
+        }
+    }
+    else {
+        if (skiptop){
+            inext = 0;
+            while ((yc = yn_iter(ys, &inext)) != NULL)
+                if (yang2cli_stmt(h, yc, 1, cb) < 0)
+                    goto done;
+        }
+        else if (yang2cli_stmt(h, ys, 0, cb) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    if (str)
+        free(str);
+    if (fbuf)
+        cbuf_free(fbuf);
+    if (dbuf)
+        cbuf_free(dbuf);
+    if (f)
+        fclose(f);
+    return retval;
+}
+
 /*! Generate clispec for all modules in a grouping
  *
  * Called in cli main function for top-level yangs. But may also be called dynamically for
  * mountpoints.
  * @param[in]  h         Clixon handle
  * @param[in]  ys        Top-level Yang statement
- * @param[in]  treename  Name of tree
+ * @param[in]  ymod      Yang module
+ * @param[in]  domain    Domain name
+ * @param[in]  treename  Name of tree in the form <tag>-<domain>-<module>-<id>
  * @retval     1         OK
  * @retval     0         OK but empty clispec, no tree produced
  * @retval    -1         Error
@@ -1651,19 +1804,19 @@ ph_add_set(cligen_handle h,
 static int
 yang2cli_grouping(clixon_handle      h,
                   yang_stmt         *ys,
+                  yang_stmt         *ymod,
+                  char              *domain,
                   char              *treename)
 {
     int             retval = -1;
     parse_tree     *pt0 = NULL;
     parse_tree     *pt = NULL;
-    yang_stmt      *yc;
     cbuf           *cb = NULL;
     int             treeref_state = 0;
     char           *prefix;
     cg_obj         *co;
     int             config;
     int             i;
-    int             inext;
 
     if ((pt0 = pt_new()) == NULL){
         clixon_err(OE_UNIX, errno, "pt_new");
@@ -1685,10 +1838,8 @@ yang2cli_grouping(clixon_handle      h,
     if (autocli_treeref_state(h, &treeref_state) < 0)
         goto done;
     if (treeref_state || yang_config(ys)){
-        inext = 0;
-        while ((yc = yn_iter(ys, &inext)) != NULL)
-            if (yang2cli_stmt(h, yc, 1, cb) < 0)
-                goto done;
+        if (cli_autocli_cache(h, ys, ymod, domain, 1, cb) < 0)
+            goto done;
     }
     if (cbuf_len(cb) == 0){
         /* Create empty tree */
@@ -1772,7 +1923,7 @@ yang2cli_grouping(clixon_handle      h,
 }
 
 /*! Generate clispec for all modules in yspec (except excluded)
- * 
+ *
  * Called in cli main function for top-level yangs. But may also be called dynamically for
  * mountpoints.
  * @param[in]  h         Clixon handle
@@ -1783,14 +1934,15 @@ yang2cli_grouping(clixon_handle      h,
  * @note Tie-break of same top-level symbol: prefix is NYI
  */
 int
-yang2cli_yspec(clixon_handle      h,
-               yang_stmt         *yspec,
-               char              *treename)
+yang2cli_yspec(clixon_handle h,
+               yang_stmt    *yspec,
+               char         *treename)
 {
     int             retval = -1;
     parse_tree     *pt0 = NULL;
     parse_tree     *pt = NULL;
     yang_stmt      *ymod;
+    yang_stmt      *ydomain;
     int             enable;
     cbuf           *cb = NULL;
     cbuf           *cbname = NULL;
@@ -1808,6 +1960,10 @@ yang2cli_yspec(clixon_handle      h,
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
+    if ((ydomain = yang_parent_get(yspec)) == NULL){
+        clixon_err(OE_YANG, 0, "No domain");
+        goto done;
+    }
     /* Traverse YANG, loop through all modules and generate CLI */
     inext = 0;
     while ((ymod = yn_iter(yspec, &inext)) != NULL){
@@ -1819,7 +1975,8 @@ yang2cli_yspec(clixon_handle      h,
         if (!enable)
             continue;
         cbuf_reset(cb);
-        if (yang2cli_stmt(h, ymod, 0, cb) < 0)
+        /* See if they are in cache dir */
+        if (cli_autocli_cache(h, ymod, ymod, yang_argument_get(ydomain), 0, cb) < 0)
             goto done;
         if (cbuf_len(cb) == 0)
             continue;
@@ -1867,10 +2024,11 @@ yang2cli_yspec(clixon_handle      h,
         if (yang2cli_post(h, NULL, pt, 0, ymod, NULL, &config) < 0){
             goto done;
         }
-        //      pt_print(stderr,pt);
-        if (clicon_data_int_get(h, "autocli-print-debug") == 1)
+
+        if (clicon_data_int_get(h, "autocli-print-debug") == 1){
             clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
                        __func__, treename, cbuf_get(cb));
+        }
         else
             clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "Top-level cli-spec %s:\n%s",
                          treename, cbuf_get(cb));
@@ -1981,7 +2139,7 @@ yang2cli_grouping_wrap(cligen_handle ch,
     }
     if ((ygrouping = yang_find(ymod, Y_GROUPING, grouping)) == NULL)
         goto ok;
-    if ((ret = yang2cli_grouping(h, ygrouping, name)) < 0)
+    if ((ret = yang2cli_grouping(h, ygrouping, ymod, domain, name)) < 0)
         goto done;
     if (ret == 0){ /* tree empty */
         clixon_err(OE_UNIX, 0, "Tree empty %s", name);

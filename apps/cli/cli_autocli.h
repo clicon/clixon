@@ -48,6 +48,16 @@ enum autocli_op{
     AUTOCLI_OP_COMPRESS,
 };
 
+/* See clixon-autocli.yang cache-type */
+enum autocli_cache{
+    AUTOCLI_CACHE_DISABLED, /* Do not use cache  */
+    AUTOCLI_CACHE_READ,     /* If clispec file exists read from cache, if not found generate */
+    AUTOCLI_CACHE_WRITE,    /* Generate clispec and write to cache */
+    AUTOCLI_CACHE_READWRITE /* If clispec file exists, read from cache,
+                               if not found, generate and write cache file */
+};
+typedef enum autocli_cache autocli_cache_t;
+
 /*
  * Prototypes
  */
@@ -58,5 +68,6 @@ int autocli_list_keyword(clixon_handle h, autocli_listkw_t *listkw);
 int autocli_compress(clixon_handle h, yang_stmt *ys, int *compress);
 int autocli_treeref_state(clixon_handle h, int *treeref_state);
 int autocli_edit_mode(clixon_handle h, char *keyw, int *flag);
+int autocli_cache(clixon_handle h, autocli_cache_t *type, char **dir);
 
 #endif  /* _CLI_AUTOCLI_H_ */
