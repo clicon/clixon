@@ -286,9 +286,10 @@ nacm_rpc(char         *rpc,
        making the request.  (If the "enable-external-groups" leaf is
        "true", add to these groups the set of groups provided by the
        transport layer.)               */
-    if (username == NULL)
+    if (username == NULL){
+        clixon_debug(CLIXON_DBG_NACM, "NACM rpc deny: No user in message");
         goto step10;
-
+    }
     /* User's group */
     if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
         goto done;
@@ -334,8 +335,8 @@ nacm_rpc(char         *rpc,
     if (match){
         if ((action = xml_find_body(xrule, "action")) == NULL)
             goto step10;
-        clixon_debug(CLIXON_DBG_NACM, "Match %s:%s: action:%s", module, rpc, action);
-        if (strcmp(action, "deny")==0){
+        if (strcmp(action, "deny") == 0){
+            clixon_debug(CLIXON_DBG_NACM, "NACM rpc deny: %s:%s", module, rpc);
             if (netconf_access_denied(cbret, "application", "access denied") < 0)
                 goto done;
             goto deny;
@@ -362,13 +363,14 @@ nacm_rpc(char         *rpc,
     exec_default = xml_find_body(xnacm, "exec-default");
     if (exec_default ==NULL || strcmp(exec_default, "permit")==0)
         goto permit;
+    clixon_debug(CLIXON_DBG_NACM, "NACM rpc default deny");
     if (netconf_access_denied(cbret, "application", "default deny") < 0)
         goto done;
     goto deny;
  permit:
     retval = 1;
  done:
-    clixon_debug(CLIXON_DBG_NACM, "%s %s:%s: %s",
+    clixon_debug(CLIXON_DBG_NACM | CLIXON_DBG_DETAIL, "%s %s:%s: %s",
                  username, module, rpc, retval==1?"permit":retval==0?"deny":"error");
     if (nsc)
         xml_nsctx_free(nsc);
@@ -617,8 +619,9 @@ nacm_datanode_prepare(clixon_handle    h,
  *
  * @param[in]  xn     XML node (requested node)
  * @param[in]  xrule  NACM rule
- * @param[in]  xp     XPath match
+ * @param[in]  xpathvec XPath match
  * @param[in]  yspec  YANG spec
+ * @param[out] xpathp If deny, pointer to failing XPath
  * @retval     2      OK and rule matches permit
  * @retval     1      OK and rule matches deny
  * @retval     0      OK and rule does not match
@@ -628,13 +631,15 @@ static int
 nacm_data_write_xrule_xml(cxobj       *xn,
                           cxobj       *xrule,
                           clixon_xvec *xpathvec,
-                          yang_stmt   *yspec)
+                          yang_stmt   *yspec,
+                          char       **xpathp)
 {
     int        retval = -1;
     yang_stmt *ymod;
     char      *module_pattern; /* rule module name */
     char      *action;
     cxobj     *xp;
+    cxobj     *xpath;
     int        i;
 
     if ((module_pattern = xml_find_body(xrule, "module-name")) == NULL)
@@ -653,17 +658,21 @@ nacm_data_write_xrule_xml(cxobj       *xn,
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
         (2) the "rule-type" is "data-node" and the "path" matches the
         Requested data node, action node, or notification node. */    
-    if (xml_find_type(xrule, NULL, "path", CX_ELMNT) == NULL){
-        if (strcmp(action, "deny")==0)
+    if ((xpath = xml_find_type(xrule, NULL, "path", CX_ELMNT)) == NULL){
+        if (strcmp(action, "deny")==0){
+            *xpathp = NULL;
             goto deny;
+        }
         goto permit;
     }
     for (i=0; i<clixon_xvec_len(xpathvec); i++){
         xp = clixon_xvec_i(xpathvec, i);
         /* Check if ancestor is xp (for every xpathvec?) */
         if (xn == xp || xml_isancestor(xn, xp)){
-            if (strcmp(action, "deny")==0)
+            if (strcmp(action, "deny") == 0){
+                *xpathp = xml_body(xpath);
                 goto deny;
+            }
             goto permit;
         }
     }
@@ -688,6 +697,7 @@ nacm_data_write_xrule_xml(cxobj       *xn,
  * @param[in]  defpermit 0 if default deny, 1 is default permit
  * @param[in]  yspec     YANG spec
  * @param[out] cbret     Error message if retval = 0
+ * @param[out] xpathp    If deny, pointer to failing XPath
  * @retval     1         OK and accept
  * @retval     0         Deny and cbret set
  * @retval    -1         Error
@@ -702,9 +712,10 @@ nacm_datanode_write_recurse(clixon_handle h,
                             prepvec      *pv_list,
                             int           defpermit,
                             yang_stmt    *yspec,
-                            cbuf         *cbret)
+                            cbuf         *cbret,
+                            char        **xpathp)
 {
-    int       retval = -1;
+    int      retval = -1;
     cxobj   *x;
     int      ret = 0;
     prepvec *pv;
@@ -714,7 +725,7 @@ nacm_datanode_write_recurse(clixon_handle h,
         do {
             /* return values: -1:Error /0:no match /1: deny /2: permit
              */
-            if ((ret = nacm_data_write_xrule_xml(xn, pv->pv_xrule, pv->pv_xpathvec, yspec)) < 0)
+            if ((ret = nacm_data_write_xrule_xml(xn, pv->pv_xrule, pv->pv_xpathvec, yspec, xpathp)) < 0)
                 goto done;
             switch(ret){
             case 0: /* No match, continue with next rule */
@@ -742,7 +753,7 @@ nacm_datanode_write_recurse(clixon_handle h,
     x = NULL;   /* Recursively check XML */
     while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
         if ((ret = nacm_datanode_write_recurse(h, x, pv_list,
-                                               defpermit, yspec, cbret)) < 0)
+                                               defpermit, yspec, cbret, xpathp)) < 0)
             goto done;
         if (ret == 0)
             goto deny;
@@ -793,6 +804,7 @@ nacm_datanode_write(clixon_handle    h,
     cvec    *nsc = NULL;
     int      ret;
     prepvec *pv_list = NULL;
+    char    *xpath = NULL;
 
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
@@ -827,11 +839,11 @@ nacm_datanode_write(clixon_handle    h,
      */
     if (nacm_datanode_prepare(h, xt, access, gvec, glen, rlistvec, rlistlen, nsc, &pv_list) < 0)
         goto done;
-    /* Then recursivelyy traverse all requested nodes */
+    /* Then recursively traverse all requested nodes */
     if ((ret = nacm_datanode_write_recurse(h, xreq, pv_list,
                                            strcmp(write_default, "deny"),
                                            clicon_dbspec_yang(h),
-                                           cbret)) < 0)
+                                           cbret, &xpath)) < 0)
         goto done;
     if (ret == 0) /* deny */
         goto deny;
@@ -859,8 +871,9 @@ nacm_datanode_write(clixon_handle    h,
  permit:
     retval = 1;
  done:
-    clixon_debug_xml(CLIXON_DBG_NACM, xreq, "Write %s: %s",
-                     username, retval==1?"permit":retval==0?"deny":"error");
+    if (retval != 0)
+        clixon_debug_xml(CLIXON_DBG_NACM | CLIXON_DBG_DETAIL, xreq, "Write %s: %s",
+                         username, retval==1?"permit":retval==0?"deny":"error");
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -873,6 +886,10 @@ nacm_datanode_write(clixon_handle    h,
         free(rvec);
     return retval;
  deny: /* Here, cbret must contain a netconf error msg */
+    if (xpath)
+        clixon_debug_xml(CLIXON_DBG_NACM, xreq, "NACM data node write deny path:%s:", xpath);
+    else
+        clixon_debug(CLIXON_DBG_NACM, "NACM data node write deny");
     assert(cbuf_len(cbret));
     retval = 0;
     goto done;
@@ -888,18 +905,23 @@ nacm_datanode_write(clixon_handle    h,
  * @param[in]  xn     XML node (requested node)
  * @retval     0      OK
  * @retval    -1      Error
-
  */
 static int
 nacm_data_read_action(cxobj *xrule,
-                      cxobj *xn)
+                      cxobj *xn,
+                      char  *xpath)
 {
     int   retval = -1;
     char *action;
 
     if ((action = xml_find_body(xrule, "action")) != NULL){
-        if (strcmp(action, "deny")==0)
+        if (strcmp(action, "deny")==0){
+            if (xpath)
+                clixon_debug_xml(CLIXON_DBG_NACM, xn, "NACM data node read deny path:%s", xpath);
+            else
+                clixon_debug(CLIXON_DBG_NACM, "NACM data node read deny");
             xml_flag_set(xn, XML_FLAG_DEL);
+        }
         else if (strcmp(action, "permit")==0)
             xml_flag_set(xn, XML_FLAG_MARK);
     }
@@ -932,6 +954,7 @@ nacm_data_read_xrule_xml(cxobj       *xn,
     yang_stmt *ymod;
     char      *module_pattern; /* rule module name */
     cxobj     *xp;
+    cxobj     *xpath;
     int        i;
 
     if ((module_pattern = xml_find_body(xrule, "module-name")) == NULL)
@@ -948,8 +971,8 @@ nacm_data_read_xrule_xml(cxobj       *xn,
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
         (2) the "rule-type" is "data-node" and the "path" matches the
         requested data node, action node, or notification node. */    
-    if (xml_find_type(xrule, NULL, "path", CX_ELMNT) == NULL){
-        if (nacm_data_read_action(xrule, xn) < 0)
+    if ((xpath = xml_find_type(xrule, NULL, "path", CX_ELMNT)) == NULL){
+        if (nacm_data_read_action(xrule, xn, NULL) < 0)
             goto done;
         goto match;
     }
@@ -957,7 +980,7 @@ nacm_data_read_xrule_xml(cxobj       *xn,
         xp = clixon_xvec_i(xpathvec, i);
         /* Check if ancestor is xp (for every xpathvec?) */
         if (xn == xp || xml_isancestor(xn, xp)){
-            if (nacm_data_read_action(xrule, xn) < 0)
+            if (nacm_data_read_action(xrule, xn, xml_body(xpath)) < 0)
                 goto done;
             goto match;
         }
@@ -1013,7 +1036,6 @@ nacm_datanode_read_recurse(clixon_handle h,
                 goto done;
 #endif
     }
-
     /* If node should be purged, dont recurse and defer removal to caller */
     if (xml_flag(xn, XML_FLAG_DEL) == 0){
         x = NULL;       /* Recursively check XML */
@@ -1023,7 +1045,7 @@ nacm_datanode_read_recurse(clixon_handle h,
                 goto done;
             /* check for delayed remove */
             if (xml_flag(x, XML_FLAG_DEL)){
-                clixon_debug(CLIXON_DBG_NACM, "deny %s", xml_name(x));
+                //                clixon_debug(CLIXON_DBG_NACM, "NACM read deny %s", xml_name(x));
                 if (xml_purge(x) < 0)
                     goto done;
                 x = xprev;
@@ -1406,6 +1428,7 @@ verify_nacm_user(clixon_handle           h,
     if (cred == NC_NONE)
         goto ok;
     if (peername == NULL){
+        clixon_debug(CLIXON_DBG_NACM, "NACM user deny: No peer user credentials");
         if (netconf_access_denied(cbret, "application", "No peer user credentials available") < 0)
             goto done;
         goto fail;
@@ -1415,6 +1438,7 @@ verify_nacm_user(clixon_handle           h,
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
+        clixon_debug(CLIXON_DBG_NACM, "NACM user deny: No user in message");
         cprintf(cbmsg, "No NACM username attribute present in incoming RPC: \"%s\"", rpcname);
         if (netconf_access_denied(cbret, "application", cbuf_get(cbmsg)) < 0)
             goto done;
@@ -1424,7 +1448,7 @@ verify_nacm_user(clixon_handle           h,
         if (strcmp(peername, "root") == 0)
             goto ok;
         if (nacm_proxyuser_member(h, peername) == 1){
-            clixon_debug(CLIXON_DBG_NACM, "Accept %s as proxy user", peername);
+            clixon_debug(CLIXON_DBG_NACM | CLIXON_DBG_DETAIL, "Accept %s as proxy user", peername);
             goto ok;
         }
     }
@@ -1434,7 +1458,7 @@ verify_nacm_user(clixon_handle           h,
             goto done;
         }
         cprintf(cbmsg, "User %s credential not matching NACM user %s", peername, nacmname);
-        clixon_debug(CLIXON_DBG_NACM, "User %s credential not matching NACM user %s", peername, nacmname);
+        clixon_debug(CLIXON_DBG_NACM, "NACM user deny: credentials of user \"%s\" not matching NACM user \"%s\"", peername, nacmname);
         if (netconf_access_denied(cbret, "application", cbuf_get(cbmsg)) < 0)
             goto done;
         goto fail;
@@ -1442,7 +1466,7 @@ verify_nacm_user(clixon_handle           h,
  ok:
     retval  = 1;
  done:
-    clixon_debug(CLIXON_DBG_NACM, "%s: %s", nacmname, retval==1?"verified":retval==0?"not verified":"Error");
+    clixon_debug(CLIXON_DBG_NACM | CLIXON_DBG_DETAIL, "%s: %s", nacmname, retval==1?"verified":retval==0?"not verified":"Error");
     if (cbmsg)
         cbuf_free(cbmsg);
     return retval;
