@@ -1872,6 +1872,7 @@ from_client_msg(clixon_handle        h,
              * 1: Verified
              * 0: Not verified
              */
+            clixon_debug(CLIXON_DBG_NACM, "NACM check user:%s RPC:%s", username?username:"", rpc);
             if ((ret = verify_nacm_user(h, creds, ce->ce_username, username, rpc, cbret)) < 0)
                 goto done;
             if (ret == 0){ /* credentials fail */

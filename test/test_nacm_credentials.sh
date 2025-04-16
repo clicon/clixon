@@ -70,7 +70,7 @@ RULES=$(cat <<EOF
          <access-operations>exec</access-operations>
          <action>permit</action>
          <comment>
-             Allow get 
+             Allow get
          </comment>
        </rule>
        <rule>
@@ -104,9 +104,9 @@ function testrun(){
     username=$2
     family=$3
     sock=$4
-    exp=$5
+    ex=$5
     precmd=$6
-    
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
@@ -131,9 +131,9 @@ EOF
             err
         fi
         new "start backend -s init -f $cfg"
-        start_backend -s init -f $cfg 
+        start_backend -s init -f $cfg
     fi
-    
+
     new "wait backend"
     wait_backend
 
@@ -156,7 +156,7 @@ EOF
 
     new "get-config mode:$mode user:$username $family $precmd"
     expecteof_netconf "$precmd $clixon_util_socket -a $family -s $sock -D $DBG" 0 "" "$XML" "$ex"
-    
+
     if [ $BE -ne 0 ]; then     # Bring your own backend
         new "Kill backend"
         # Check if premature kill
@@ -169,18 +169,19 @@ EOF
     fi
 } # testrun
 
-OK='^<rpc-reply><data><x xmlns="urn:example:nacm">0</x></data></rpc-reply>$'
-ERROR='^<rpc-reply><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>'
+OK='^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><data><x xmlns="urn:example:nacm">0</x></data></rpc-reply>$'
+
+ERROR='^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><error-type>application</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>'
 
 # UNIX socket, no user, loop mode. All fail since null user cant access anything
 new "Credentials: mode=none, fam=UNIX user=none"
-testrun none "" UNIX $dir/backend.sock "$OK" ""
+testrun none "" UNIX $dir/backend.sock "$ERROR" ""
 
 new "Credentials: mode=exact, fam=UNIX user=none"
-testrun exact "" UNIX $dir/backend.sock "$OK" ""
+testrun exact "" UNIX $dir/backend.sock "$ERROR" ""
 
 new "Credentials: mode=except, fam=UNIX user=none"
-testrun except "" UNIX $dir/backend.sock "$OK" ""
+testrun except "" UNIX $dir/backend.sock "$ERROR" ""
 
 # UNIX socket, myuser, loop mode. All should work
 new "Credentials: mode=none, fam=UNIX user=me"
