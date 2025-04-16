@@ -264,7 +264,11 @@ module clixon-autocli{
 
         leaf clispec-cache{
             description
-                "Autocli cache mode, none, read, write or both";
+                "Autocli cache to save generated autocli specs between runs.
+
+                 If enabled, before generating clispecs from YANG, check if
+                 a cached clispec already exists.
+                 One of disabled, read, write or readwrite";
             type cache-type;
             default disabled;
         }
@@ -275,7 +279,8 @@ module clixon-autocli{
                  Only relevant if clispec-cache is set (not disabled)
                  The directory is further partitioned into domains.
                  Directory is created if it does not exist.
-                 Typical location: $datadir/clixon/clispec";
+                 Typical location: $datadir/clixon/clispec
+                 The cli client must have read/write access to this directory";
         }
         /* rules */
         list rule {
