@@ -4,7 +4,7 @@
 # magic things with the username and here it needs to be handled explicitly.
 # test matrix:
 # - mode: none, exact, except
-# - username: olof, admin, null, sudo
+# - username: <me>, admin, null, sudo/root
 # - socket family: unix|ip
 
 # Magic line must be first in script (see README.md)
@@ -200,8 +200,12 @@ testrun none admin UNIX $dir/backend.sock "$OK" ""
 new "Credentials: mode=exact, fam=UNIX user=admin"
 testrun exact admin UNIX $dir/backend.sock "$ERROR" ""
 
-new "Credentials: mode=except, fam=UNIX user=admin"
-testrun except admin UNIX $dir/backend.sock "$ERROR" ""
+# NACMUSER is root on docker for example
+if [[ $NACMUSER = root ]]; then
+    testrun except admin UNIX $dir/backend.sock "$OK" ""
+else
+    testrun except admin UNIX $dir/backend.sock "$ERROR" ""
+fi
 
 # UNIX socket, admin user. sudo self to root. First and last should work
 new "Credentials: mode=none, fam=UNIX user=admin sudo"
