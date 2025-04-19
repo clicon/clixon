@@ -280,7 +280,8 @@ module clixon-autocli{
                  The directory is further partitioned into domains.
                  Directory is created if it does not exist.
                  Typical location: $datadir/clixon/clispec
-                 The cli client must have read/write access to this directory";
+                 The cli client must have read/write access to this directory
+                 The dir is expanded, ie, can be relative and include tilde";
         }
         /* rules */
         list rule {

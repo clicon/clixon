@@ -90,6 +90,7 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include <fcntl.h>
 #include <syslog.h>
 #include <signal.h>
+#include <wordexp.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 
@@ -1659,6 +1660,7 @@ cli_autocli_cache(clixon_handle h,
     cbuf           *fbuf = NULL;
     char           *dir0 = NULL;
     char           *dir = NULL;
+    char           *filename0;
     char           *filename = NULL;
     struct stat     fstat;
     FILE           *f = NULL;
@@ -1667,6 +1669,8 @@ cli_autocli_cache(clixon_handle h,
     autocli_cache_t type;
     int             inext;
     yang_stmt      *yc;
+    wordexp_t       wresult = {0,}; /* for tilde expansion */
+    int             ret;
 
     if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL){
         clixon_debug(CLIXON_DBG_CLI, "CLI cache: skip %s: No revision", yang_argument_get(ymod));
@@ -1692,7 +1696,12 @@ cli_autocli_cache(clixon_handle h,
         if (ys != ymod)
             cprintf(fbuf, "-%s-%s", yang_key2str(yang_keyword_get(ys)), yang_argument_get(ys));
         cprintf(fbuf, ".cli");
-        filename = cbuf_get(fbuf);
+        filename0 = cbuf_get(fbuf);
+        if ((ret = wordexp(filename0, &wresult, 0)) != 0){
+            clixon_err(OE_UNIX, errno, "wordexp(%s) %d", filename0, ret);
+            goto done;
+        }
+        filename = wresult.we_wordv[0];
         if (type == AUTOCLI_CACHE_WRITE ||
             stat(filename, &fstat) < 0) { /* File does not exist or should be written*/
             /* Generate clispec */
@@ -1774,6 +1783,7 @@ cli_autocli_cache(clixon_handle h,
     }
     retval = 0;
  done:
+    wordfree(&wresult);
     if (str)
         free(str);
     if (fbuf)

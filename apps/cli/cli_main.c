@@ -89,6 +89,7 @@ cli_history_load(clixon_handle h)
     char     *filename;
     FILE     *f = NULL;
     wordexp_t result = {0,}; /* for tilde expansion */
+    int       ret;
 
     /* Get history size from clixon option, if not use cligen default. */
     if (clicon_option_exists(h, "CLICON_CLI_HIST_SIZE"))
@@ -100,8 +101,8 @@ cli_history_load(clixon_handle h)
         goto done;
     if ((filename = clicon_option_str(h,"CLICON_CLI_HIST_FILE")) == NULL)
         goto ok; /* ignore */
-    if (wordexp(filename, &result, 0) < 0){
-        clixon_err(OE_UNIX, errno, "wordexp");
+    if ((ret = wordexp(filename, &result, 0)) != 0){
+        clixon_err(OE_UNIX, errno, "wordexp(%s) %d", filename, ret);
         goto done;
     }
     if ((f = fopen(result.we_wordv[0], "r")) == NULL){
