@@ -52,6 +52,7 @@ module clixon-config {
     revision 2025-05-01 {
         description
             "Added options:
+                CLICON_EVENT_SELECT
              Release in Clixon 7.5";
     }
     revision 2024-11-01 {
@@ -924,7 +925,7 @@ module clixon-config {
                  Both feature clixon-restconf:http-data and restconf/enable-http-data
                  must be enabled for this match to occur.";
         }
-        /* Clixon CLI */
+        /* Clixon CLI, see also clixon-autocli.yang */
         leaf CLICON_CLI_DIR {
             type string;
             description
@@ -1006,7 +1007,8 @@ module clixon-config {
             default "~/.clixon_cli_history";
             description
                 "Name of CLI history file. If not given, history is not saved.
-                 The number of lines is saved is given by CLICON_CLI_HIST_SIZE.";
+                 The number of lines is saved is given by CLICON_CLI_HIST_SIZE.
+                 The filename is expanded, ie, can be relative and include tilde";
         }
         leaf CLICON_CLI_HIST_SIZE {
             type int32;
