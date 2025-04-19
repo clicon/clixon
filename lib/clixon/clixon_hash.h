@@ -40,7 +40,11 @@
 
 struct clicon_hash {
     qelem_t     h_qelem;
-    char       *h_key;  /* Key must be NULL-terinated string */
+    /*
+     * Key must be NULL-terminated string unless clicon_hash_add_ptr function
+     * is used to add keys.
+     */
+    void       *h_key;
     size_t      h_vlen;
     void       *h_val;
 };
@@ -49,9 +53,13 @@ typedef struct clicon_hash *clicon_hash_t;
 clicon_hash_t *clicon_hash_init (void);
 int            clicon_hash_free (clicon_hash_t *);
 clicon_hash_t  clicon_hash_lookup (clicon_hash_t *head, const char *key);
+clicon_hash_t  clicon_hash_lookup_ptr (clicon_hash_t *head, void *key);
 void          *clicon_hash_value (clicon_hash_t *head, const char *key, size_t *vlen);
+void          *clicon_hash_ptr_value (clicon_hash_t *head, void *key);
 clicon_hash_t  clicon_hash_add (clicon_hash_t *head, const char *key, void *val, size_t vlen);
+clicon_hash_t  clicon_hash_add_ptr (clicon_hash_t *head, void *key, void *val);
 int            clicon_hash_del (clicon_hash_t *head, const char *key);
+int            clicon_hash_del_ptr (clicon_hash_t *head, void *key);
 int            clicon_hash_dump(clicon_hash_t *head, FILE *f);
 int            clicon_hash_keys(clicon_hash_t *hash, char ***vector, size_t *nkeys);
 
@@ -66,7 +74,7 @@ int            clicon_hash_keys(clicon_hash_t *hash, char ***vector, size_t *nke
  *     clicon_hash_add(h, "colour", "red", 6);
  *     clicon_hash_add(h, "name", "rudolf" 7);
  *     clicon_hash_add(h, "species", "reindeer" 9);
- * 
+ *
  *     clicon_hash_each(h, k) {
  *       printf ("%s = %s\n", k, (char *)clicon_hash_value(h, k, NULL));
  *     } hash_each_end();
