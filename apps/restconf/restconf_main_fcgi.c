@@ -488,6 +488,9 @@ main(int    argc,
     if ((sz = clicon_option_int(h, "CLIXON_LOG_STRING_LIMIT")) != 0)
         clixon_log_string_limit_set(sz);
 
+    /* Init event handler */
+    clixon_event_init(h);
+
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
 

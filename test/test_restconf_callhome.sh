@@ -3,6 +3,7 @@
 # See RFC 8071 NETCONF Call Home and RESTCONF Call Home
 # Simple NACM for single "andy" user
 # The client is clixon_restconf_callhome_client that waits for accept, connects, sends a GET immediately,
+# It resides in repo clixon_util
 # closes the socket and re-listens
 # The server opens three sockets:
 # 1) regular listen socket for setting init value

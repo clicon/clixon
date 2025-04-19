@@ -19,9 +19,12 @@ Expected: July 2025
 
 ### Features
 
+* Added ability to switch between poll-based and select-based event handling
+* New `clixon-config@2025-05-01.yang` revision
+  * Added option: `CLICON_EVENT_SELECT`
 * Autocli cache for faster loading of generated CLIspecs
 * New `clixon-autocli@2025-05-01.yang` revision
-  * Added `clispec-cache` and `clispec-cache-dir` options
+  * Added options: `clispec-cache` and `clispec-cache-dir` options
 * Revised NACM work
   * Generic handling of proxyusers, such as RESTCONF daemon
   * Support for mount-points

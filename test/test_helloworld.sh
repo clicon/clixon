@@ -7,6 +7,7 @@
 # Restconf is internal native http port 80
 # The minimality extends to the test macros that use advanced grep, and therefore more
 # primitive pattern macthing is made
+# Two variants exist, for poll and select event handling.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -16,14 +17,18 @@ fyang=$dir/clixon-hello.yang
 clispec=$dir/clispec
 test -d $clispec || mkdir $clispec
 
+CFD=$dir/conf.d
+test -d $CFD || mkdir -p $CFD
+
 RCPROTO=http
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_CONFIGDIR>$CFD</CLICON_CONFIGDIR>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>$clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_MODE>hello</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/hello.sock</CLICON_SOCK>
@@ -34,6 +39,11 @@ cat <<EOF > $cfg
   <CLICON_SOCK_GROUP>${CLICON_GROUP}</CLICON_SOCK_GROUP>
   <CLICON_RESTCONF_PRIVILEGES>drop_perm</CLICON_RESTCONF_PRIVILEGES>
   <CLICON_RESTCONF_HTTP2_PLAIN>true</CLICON_RESTCONF_HTTP2_PLAIN>
+</clixon-config>
+EOF
+
+cat <<EOF > $CFD/restconf.xml
+<clixon-config xmlns="http://clicon.org/config">
   <restconf>
       <enable>true</enable>
       <auth-type>none</auth-type>
@@ -47,6 +57,11 @@ cat <<EOF > $cfg
          <ssl>false</ssl>
       </socket>
    </restconf>
+</clixon-config>
+EOF
+
+cat <<EOF > $CFD/autocli.xml
+<clixon-config xmlns="http://clicon.org/config">
   <autocli>
     <module-default>false</module-default>
      <rule>
@@ -93,101 +108,120 @@ show("Show a particular state of the system")
 
 EOF
 
-new "test params: -f $cfg"
-# Bring your own backend
-if [ $BE -ne 0 ]; then
-    # kill old backend (if any)
-    new "kill old backend"
-    sudo clixon_backend -zf $cfg
+# Args:
+# 1: bool: event-handler
+function testrun()
+{
+    eventhandler=$1
+
+    cat<<EOF > $CFD/diff.xml
+<?xml version="1.0" encoding="utf-8"?>
+<clixon-config xmlns="http://clicon.org/config">
+   <CLICON_EVENT_SELECT>$eventhandler</CLICON_EVENT_SELECT>
+</clixon-config>
+EOF
+    new "test params: -f $cfg"
+    # Bring your own backend
+    if [ $BE -ne 0 ]; then
+        # kill old backend (if any)
+        new "kill old backend"
+        sudo clixon_backend -zf $cfg
+        if [ $? -ne 0 ]; then
+            err
+        fi
+        new "start backend  -s init -f $cfg"
+        start_backend -s init -f $cfg
+    fi
+
+    new "wait backend"
+    wait_backend
+
+    if [ $RC -ne 0 ]; then
+        new "kill old restconf daemon"
+        stop_restconf_pre
+
+        new "start restconf daemon"
+        start_restconf -f $cfg
+    fi
+
+    new "wait restconf"
+    wait_restconf
+
+    new "cli configure"
+    #expectpart "$($clixon_cli -1 -f $cfg set hello world)" 0 "^$"
+    ret=$($clixon_cli -1 -f $cfg set hello world)
     if [ $? -ne 0 ]; then
-        err
+        err 0 $r
     fi
-    new "start backend  -s init -f $cfg"
-    start_backend -s init -f $cfg
-fi
 
-new "wait backend"
-wait_backend
-
-if [ $RC -ne 0 ]; then
-    new "kill old restconf daemon"
-    stop_restconf_pre
-
-    new "start restconf daemon"
-    start_restconf -f $cfg
-fi
-
-new "wait restconf"
-wait_restconf
-
-new "cli configure"
-#expectpart "$($clixon_cli -1 -f $cfg set hello world)" 0 "^$"
-ret=$($clixon_cli -1 -f $cfg set hello world)
-if [ $? -ne 0 ]; then
-    err 0 $r
-fi
-
-new "cli show config"
-ret=$($clixon_cli -1 -f $cfg show config)
-if [ $? -ne 0 ]; then
-    err 0 $r
-fi  
-if [ "$ret" != "clixon-hello:hello    world;" ]; then
-    err "clixon-hello:hello    world;" "$ret"
-fi
-
-new "netconf edit-config"
-rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><hello xmlns=\"urn:example:hello\"><world/></hello></config></edit-config></rpc>")
-ret=$(echo "$DEFAULTHELLO$rpc" | $clixon_netconf -qf $cfg)
-if [ $? -ne 0 ]; then
-    err 0 $r
-fi
-reply=$(chunked_framing "<rpc-reply $DEFAULTNS><ok/></rpc-reply>")
-if [ "$ret" != "$reply" ]; then
-    err "$ret" "$reply"
-fi
-
-new "netconf commit"
-rpc=$(chunked_framing "<rpc $DEFAULTNS><commit/></rpc>")
-ret=$(echo "$DEFAULTHELLO$rpc" | $clixon_netconf -qf $cfg)
-if [ $? -ne 0 ]; then
-    err 0 $r
-fi
-if [ "$ret" != "$reply" ]; then
-    err "$ret" "$reply"
-fi
-
-new "restconf GET"
-ret=$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-hello:hello)
-if [ $? -ne 0 ]; then
-    err 0 $r
-fi
-
-res=$(echo "$ret"|grep "HTTP/$HVER 200")
-if [ -z "$res" ]; then
-    err "$ret" "HTTP/$HVER 200"
-fi
-
-res=$(echo "$ret"|grep '{"clixon-hello:hello":{"world":{}}}')
-if [ -z "$res" ]; then
-    err "$ret" "{"clixon-hello:hello":{"world":{}}}"
-fi
-
-if [ $RC -ne 0 ]; then
-    new "Kill restconf daemon"
-    stop_restconf 
-fi
-
-if [ $BE -ne 0 ]; then
-    new "Kill backend"
-    # Check if premature kill
-    pid=$(pgrep -f clixon_backend)
-    if [ -z "$pid" ]; then
-        err "backend already dead"
+    new "cli show config"
+    ret=$($clixon_cli -1 -f $cfg show config)
+    if [ $? -ne 0 ]; then
+        err 0 $r
     fi
-    # kill backend
-    stop_backend -f $cfg
-fi
+    if [ "$ret" != "clixon-hello:hello    world;" ]; then
+        err "clixon-hello:hello    world;" "$ret"
+    fi
+
+    new "netconf edit-config"
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><hello xmlns=\"urn:example:hello\"><world/></hello></config></edit-config></rpc>")
+    ret=$(echo "$DEFAULTHELLO$rpc" | $clixon_netconf -qf $cfg)
+    if [ $? -ne 0 ]; then
+        err 0 $r
+    fi
+    reply=$(chunked_framing "<rpc-reply $DEFAULTNS><ok/></rpc-reply>")
+    if [ "$ret" != "$reply" ]; then
+        err "$ret" "$reply"
+    fi
+
+    new "netconf commit"
+    rpc=$(chunked_framing "<rpc $DEFAULTNS><commit/></rpc>")
+    ret=$(echo "$DEFAULTHELLO$rpc" | $clixon_netconf -qf $cfg)
+    if [ $? -ne 0 ]; then
+        err 0 $r
+    fi
+    if [ "$ret" != "$reply" ]; then
+        err "$ret" "$reply"
+    fi
+
+    new "restconf GET"
+    ret=$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/clixon-hello:hello)
+    if [ $? -ne 0 ]; then
+        err 0 $r
+    fi
+
+    res=$(echo "$ret"|grep "HTTP/$HVER 200")
+    if [ -z "$res" ]; then
+        err "$ret" "HTTP/$HVER 200"
+    fi
+
+    res=$(echo "$ret"|grep '{"clixon-hello:hello":{"world":{}}}')
+    if [ -z "$res" ]; then
+        err "$ret" "{"clixon-hello:hello":{"world":{}}}"
+    fi
+
+    if [ $RC -ne 0 ]; then
+        new "Kill restconf daemon"
+        stop_restconf
+    fi
+
+    if [ $BE -ne 0 ]; then
+        new "Kill backend"
+        # Check if premature kill
+        pid=$(pgrep -f clixon_backend)
+        if [ -z "$pid" ]; then
+            err "backend already dead"
+        fi
+        # kill backend
+        stop_backend -f $cfg
+    fi
+}
+
+new "Eventhandler=select"
+testrun true
+
+new "Eventhandler=poll"
+testrun false
 
 rm -rf $dir
 

@@ -43,22 +43,13 @@
 /*
  * Prototypes
  */
-int clixon_exit_set(int nr);
-int clixon_exit_get(void);
-int clixon_exit_decr(void);
-int clicon_sig_child_set(int val);
-int clicon_sig_child_get(void);
-int clicon_sig_ignore_set(int val);
-int clicon_sig_ignore_get(void);
-int clixon_event_reg_fd(int fd, int (*fn)(int, void*), void *arg, char *str);
-int clixon_event_reg_fd_prio(int fd, int (*fn)(int, void*), void *arg, char *str, int prio);
-int clixon_event_unreg_fd(int s, int (*fn)(int, void*));
-int clixon_event_reg_timeout(struct timeval t,  int (*fn)(int, void*),
+int clixon_event_select_reg_fd_prio(int fd, int (*fn)(int, void*), void *arg, char *str, int prio);
+int clixon_event_select_unreg_fd(int s, int (*fn)(int, void*));
+int clixon_event_select_reg_timeout(struct timeval t,  int (*fn)(int, void*),
                              void *arg, char *str);
-int clixon_event_unreg_timeout(int (*fn)(int, void*), void *arg);
-int clixon_event_poll(int fd);
-int clixon_event_loop(clixon_handle h);
-int clixon_event_exit(void);
-int clixon_event_init(clixon_handle h);
+int clixon_event_select_unreg_timeout(int (*fn)(int, void*), void *arg);
+int clixon_event_select_poll(int fd);
+int clixon_event_select_loop(clixon_handle h);
+int clixon_event_select_exit(void);
 
 #endif  /* _CLIXON_EVENT_H_ */

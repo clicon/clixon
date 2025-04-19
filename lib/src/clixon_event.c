@@ -68,6 +68,7 @@
 #include "clixon_sig.h"
 #include "clixon_proc.h"
 #include "clixon_options.h"
+#include "clixon_event_select.h"
 #include "clixon_event.h"
 
 /*
@@ -93,6 +94,13 @@ struct event_data{
  * Internal variables
  * Consider use handle variables instead of global, but needs API changes
  */
+
+/* Cache event handling type since most event calls do not have handle parameter
+ * @see  CLICON_EVENT_SELECT in clixon-config.yang
+ * 0: poll, 1: select
+ */
+static int _event_select = 0;
+
 /* File event handlers */
 static struct event_data *_ee = NULL;
 static int _ee_nr = 0;
@@ -145,7 +153,7 @@ clixon_exit_get(void)
 
 /*! If > 1 decrement exit counter
  */
-static int
+int
 clixon_exit_decr(void)
 {
     if (_clicon_exit > 1)
@@ -207,6 +215,9 @@ clixon_event_reg_fd_prio(int   fd,
 {
     struct event_data *e;
 
+    if (_event_select){
+        return clixon_event_select_reg_fd_prio(fd, fn, arg, str, prio);
+    }
     if ((e = (struct event_data *)malloc(sizeof(struct event_data))) == NULL){
         clixon_err(OE_EVENTS, errno, "malloc");
         return -1;
@@ -263,6 +274,9 @@ clixon_event_unreg_fd(int   s,
     int                found = 0;
     struct event_data **e_prev;
 
+    if (_event_select){
+        return clixon_event_select_unreg_fd(s, fn);
+    }
     /* First try prioritized */
     e_prev = &_ee_prio;
     for (e = _ee_prio; e; e = e->e_next){
@@ -328,6 +342,9 @@ clixon_event_reg_timeout(struct timeval t,
     struct event_data  *e1;
     struct event_data **e_prev;
 
+    if (_event_select){
+        return clixon_event_select_reg_timeout(t, fn, arg, str);
+    }
     if (str == NULL || fn == NULL){
         clixon_err(OE_CFG, EINVAL, "str or fn is NULL");
         goto done;
@@ -377,6 +394,9 @@ clixon_event_unreg_timeout(int (*fn)(int, void*),
     int                 found = 0;
     struct event_data **e_prev;
 
+    if (_event_select){
+        return clixon_event_select_unreg_timeout(fn, arg);
+    }
     e_prev = &_ee_timers;
     for (e = _ee_timers; e; e = e->e_next){
         if (fn == e->e_fn && arg == e->e_arg) {
@@ -404,6 +424,9 @@ clixon_event_poll(int fd)
     struct pollfd pfd = {0,};
     int           ret;
 
+    if (_event_select){
+        return clixon_event_select_poll(fd);
+    }
     pfd.fd = fd;
     pfd.events = POLLIN;
     if ((ret = poll(&pfd, 1, 0)) < 0){
@@ -534,6 +557,9 @@ clixon_event_loop(clixon_handle h)
     int                n;
     int                ret;
 
+    if (_event_select){
+        return clixon_event_select_loop(h);
+    }
     while (clixon_exit_get() != 1) {
         nfds = _ee_prio_nr + _ee_nr;
         if (nfds > nfds_max){
@@ -640,6 +666,9 @@ clixon_event_exit(void)
     struct event_data *e;
     struct event_data *e_next;
 
+    if (_event_select){
+        return clixon_event_select_exit();
+    }
     e_next = _ee_prio;
     while ((e = e_next) != NULL){
         e_next = e->e_next;
@@ -660,5 +689,16 @@ clixon_event_exit(void)
         free(e);
     }
     _ee_timers = NULL;
+    return 0;
+}
+
+/*! Init clixon event handling
+ *
+ * Set which event handler to use: original select or new poll
+ */
+int
+clixon_event_init(clixon_handle h)
+{
+    _event_select = clicon_option_bool(h, "CLICON_EVENT_SELECT");
     return 0;
 }

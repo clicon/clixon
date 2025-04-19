@@ -49,6 +49,11 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2025-05-01 {
+        description
+            "Added options:
+             Release in Clixon 7.5";
+    }
     revision 2024-11-01 {
         description
             "Added options:
@@ -1458,6 +1463,18 @@ module clixon-config {
                 "Length limitation of debug and log strings.
                  Especially useful for dynamic debug strings, such as packet dumps.
                  0 means no limit";
+        }
+        /* Events */
+        leaf CLICON_EVENT_SELECT {
+            description
+                "If false, use new poll event handler,
+                 This is newer and allows for more open files and is recommended for
+                 the controller
+                 If true, use original select event handler.
+                 This has been around for a long time and is more robust.
+                 But expected to phased out and made obsolete eventually";
+            type boolean;
+            default true;
         }
         /* SNMP */
         leaf-list CLICON_SNMP_MIB {

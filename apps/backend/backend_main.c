@@ -192,7 +192,6 @@ backend_server_socket(clixon_handle h)
     return ss;
 }
 
-
 /*! Drop root privileges uid and gid to Clixon user/group and 
  * 
  * If config options are right, drop process uid/guid privileges and change some 
@@ -669,6 +668,9 @@ main(int    argc,
     if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
         clixon_log_string_limit_set(sz);
     
+    /* Init event handler */
+    clixon_event_init(h);
+
 #ifndef HAVE_LIBXML2
     if (clicon_yang_regexp(h) ==  REGEXP_LIBXML2){
         clixon_err(OE_FATAL, 0, "CLICON_YANG_REGEXP set to libxml2, but HAVE_LIBXML2 not set (Either change CLICON_YANG_REGEXP to posix, or run: configure --with-libxml2))");
@@ -1001,7 +1003,6 @@ main(int    argc,
     /* Write pid-file */
     if (pidfile_write(pidfile) <  0)
         goto done;
-
     if (set_signal(SIGTERM, backend_sig_term, NULL) < 0){
         clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;

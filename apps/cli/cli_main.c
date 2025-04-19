@@ -802,6 +802,9 @@ main(int    argc,
     if ((nr = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
         clixon_log_string_limit_set(nr);
 
+    /* Init event handler */
+    clixon_event_init(h);
+
     /* Setup signal handlers */
     if (cli_signal_init(h) < 0)
         goto done;

@@ -1353,6 +1353,9 @@ main(int    argc,
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
 
+    /* Init event handler */
+    clixon_event_init(h);
+
     /* Init restconf auth-type */
     restconf_auth_type_set(h, CLIXON_AUTH_NONE);
 
