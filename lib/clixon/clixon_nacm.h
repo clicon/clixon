@@ -66,5 +66,6 @@ int nacm_datanode_write(clixon_handle h, cxobj *xr, cxobj *xt,
 int nacm_access_pre(clixon_handle h, char *peername, char *username, cxobj **xnacmp, cbuf *cbret);
 int verify_nacm_user(clixon_handle h, enum nacm_credentials_t cred, char *peername, char *nacmname, char *rpcname, cbuf *cbret);
 int nacm_init(clixon_handle h);
+int nacm_exit(clixon_handle h);
 
 #endif /* _CLIXON_NACM_H */

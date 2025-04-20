@@ -91,13 +91,13 @@
 static int
 backend_terminate(clixon_handle h)
 {
-    char      *pidfile = clicon_backend_pidfile(h);
-    int       sockfamily = clicon_sock_family(h);
-    char      *sockpath = clicon_sock_str(h);
-    cxobj     *x;
+    char       *pidfile = clicon_backend_pidfile(h);
+    int         sockfamily = clicon_sock_family(h);
+    char       *sockpath = clicon_sock_str(h);
+    cxobj      *x;
     struct stat st;
-    int        ss;
-    cvec      *nsctx;
+    int         ss;
+    cvec       *nsctx;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((ss = clicon_socket_get(h)) != -1)
@@ -116,8 +116,7 @@ backend_terminate(clixon_handle h)
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
     clicon_data_cvec_del(h, "netconf-statistics");
-    if ((x = clicon_nacm_ext(h)) != NULL)
-        xml_free(x);
+    nacm_exit(h);
     if ((x = clicon_conf_xml(h)) != NULL)
         xml_free(x);
     confirmed_commit_free(h);

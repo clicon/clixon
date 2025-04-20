@@ -1561,3 +1561,23 @@ nacm_init(clixon_handle h)
  done:
     return retval;
 }
+
+/*! Exit NACM module
+ *
+ * @param[in]  h   Clixon handle
+ */
+int
+nacm_exit(clixon_handle h)
+{
+    cxobj *x;
+    cvec  *cvv = NULL;
+
+    if ((x = clicon_nacm_ext(h)) != NULL)
+        xml_free(x);
+    if (clicon_ptr_get(h, "nacm-proxyuser", (void**)&cvv) == 0 &&
+        cvv != NULL){
+        cvec_free(cvv);
+        clicon_ptr_del(h, "nacm-proxyuser");
+    }
+    return 0;
+}
