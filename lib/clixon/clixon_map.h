@@ -93,7 +93,7 @@ char       *clicon_str2str(const map_str2str *mstab, char *str);
 void        clixon_str2ptr_sort(map_str2ptr *mptab, size_t len);
 void       *clixon_str2ptr(map_str2ptr *mptab, char *str, size_t len);
 int         clixon_str2ptr_print(FILE *f, map_str2ptr *mptab);
-void       *clixon_ptr2ptr(map_ptr2ptr *mptab, void *ptr);
-int         clixon_ptr2ptr_add(map_ptr2ptr **mptab, void *ptr0, void *ptr1);
+void       *clixon_ptr2ptr(map_ptr2ptr *mptab, size_t len, void *ptr);
+int         clixon_ptr2ptr_add(map_ptr2ptr **mptab, size_t *len, void *ptr0, void *ptr1);
 
 #endif  /* _CLIXON_MAP_H_ */

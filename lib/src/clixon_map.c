@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -225,6 +225,8 @@ clicon_str2str(const map_str2str *mstab,
     return NULL;
 }
 
+/*! Helper function for qsort of str2ptr map
+ */
 static int
 str2ptr_qsort(const void* arg1,
               const void* arg2)
@@ -256,6 +258,8 @@ str2ptr_qsort(const void* arg1,
     return eq;
 }
 
+/*! Sort a str2ptr map according to alphabetic string order
+ */
 void
 clixon_str2ptr_sort(map_str2ptr *mptab,
                     size_t       len)
@@ -301,6 +305,73 @@ clixon_str2ptr_print(FILE        *f,
     return 0;
 }
 
+/*! Map from string to ptr using binary (alphatical) search
+ *
+ * Assumes sorted strings, tree search. If two are equal take first
+ * @param[in]  ms    String, integer map
+ * @param[in]  str   Input string
+ * @param[in]  low   Lower bound index
+ * @param[in]  upper Upper bound index
+ * @param[in]  len   Length of array (max)
+ * @param[in]  exact 0: return next lowest match, 1: return exact match only
+ * @param[out] found element
+ * @retval     1     Found with "found" value set.
+ * @retval     0     Not found
+ */
+static int
+ptr2ptr_search(const map_ptr2ptr *mptab,
+               void              *ptr,
+               size_t             low,
+               size_t             upper,
+               size_t             len,
+               int                exact,
+               map_ptr2ptr      **found)
+{
+    const map_ptr2ptr *mp;
+    int                mid;
+    int                cmp;
+    size_t             i;
+
+    if (upper < low)
+        return 0; /* not found */
+    mid = (low + upper) / 2;
+    if (mid >= len)  /* beyond range */
+        return 0; /* not found */
+    mp = &mptab[mid];
+    if (ptr < mp->mp_p0){
+        cmp = -1;
+        if (exact == 0 && mid == low){
+            *found = (map_ptr2ptr *)mp;
+            return 1;
+        }
+    }
+    else if (ptr > mp->mp_p0){
+        cmp = 1;
+        if (exact == 0 && mid+1 >= upper){
+            mp = &mptab[mid];
+            for (i=mid; i<len; i++){
+                if (ptr < mp->mp_p0)
+                    break;
+                mp = &mptab[i+1];
+            }
+            if (i == len)
+                mp = &mptab[len];
+            *found = (map_ptr2ptr *)mp;
+            return 1;
+        }
+    }
+    else
+        cmp = 0;
+    if (cmp == 0){
+        *found = (map_ptr2ptr *)mp;
+        return 1; /* found */
+    }
+    else if (cmp < 0)
+        return ptr2ptr_search(mptab, ptr, low, mid-1, len, exact, found);
+    else
+        return ptr2ptr_search(mptab, ptr, mid+1, upper, len, exact, found);
+}
+
 /*! Map from pointer to pointer using mptab map
  *
  * @param[in] mptab Ptr to ptr map
@@ -310,14 +381,14 @@ clixon_str2ptr_print(FILE        *f,
  */
 void*
 clixon_ptr2ptr(map_ptr2ptr *mptab,
+               size_t       len,
                void        *ptr)
 {
     struct map_ptr2ptr *mp;
 
-    for (mp = &mptab[0]; mp->mp_p0; mp++)
-        if (mp->mp_p0 == ptr)
-            return mp->mp_p1;
-    return 0;
+    if (ptr2ptr_search(mptab, ptr, 0, len, len, 1, &mp))
+        return mp->mp_p1;
+    return NULL;
 }
 
 /*! Add pointer pair to mptab map
@@ -330,29 +401,45 @@ clixon_ptr2ptr(map_ptr2ptr *mptab,
  */
 int
 clixon_ptr2ptr_add(map_ptr2ptr **mptabp,
+                   size_t       *lenp,
                    void         *ptr0,
                    void         *ptr1)
 {
     int                 retval = -1;
     struct map_ptr2ptr *mp;
+    struct map_ptr2ptr *mptail;
     struct map_ptr2ptr *mptab0;
     struct map_ptr2ptr *mptab1;
-    int                 i;
+    size_t              len;
+    size_t              sz;
 
     if (mptabp == NULL) {
         clixon_err(OE_YANG, EINVAL, "mptabp is NULL");
         goto done;
     }
+    len = *lenp;
+    sz = sizeof(*mp);
     mptab0 = *mptabp;
-    for (i=0, mp = &mptab0[0]; mp->mp_p0; mp++, i++);
-    if ((mptab1 = realloc(mptab0, (i+2)*sizeof(*mp))) == NULL){
+    if ((mptab1 = realloc(mptab0, (len+1)*sz)) == NULL){
         clixon_err(OE_UNIX, errno, "realloc");
         goto done;
     }
-    mptab1[i].mp_p0 = ptr0;
-    mptab1[i++].mp_p1 = ptr1;
-    mptab1[i].mp_p0 = NULL;
-    mptab1[i].mp_p1 = NULL;
+    memset(&mptab1[len], 0, sz);
+    if (len == 0){
+        mp = &mptab1[0];
+    }
+    else {
+        if (ptr2ptr_search(mptab1, ptr0, 0, len, len, 0, &mp) == 0){
+            clixon_err(OE_UNIX, 0, "No map found");
+            goto done;
+        }
+        mptail = &mptab1[len];
+        if ((void*)mptail-(void*)mp > 0)
+            memmove(&mp[1], mp, (void*)mptail-(void*)mp);
+    }
+    mp->mp_p0 = ptr0;
+    mp->mp_p1 = ptr1;
+    *lenp = len+1;
     *mptabp = mptab1;
     retval = 0;
  done:

@@ -31,6 +31,10 @@ Expected: July 2025
   * Improved debug trace
   * See [NACM for Clixon Controller](https://github.com/clicon/clixon-controller/issues/189)
 
+### Minor features
+
+* Improved ptr2ptr search from linear to binary
+
 ## 7.4.0
 3 April 2025
 

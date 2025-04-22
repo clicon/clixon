@@ -177,8 +177,11 @@ static const map_str2int ykmap[] = {
 };
 
 /* XXX: Global variables, should really be on handle but not available in some cases */
+
 static map_ptr2ptr *_yang_when_map = NULL;
+static size_t       _yang_when_map_len = 0;
 static map_ptr2ptr *_yang_mymodule_map = NULL;
+static size_t       _yang_mymodule_map_len = 0;
 
 /* See option CLICON_YANG_USE_ORIGINAL */
 static int _yang_use_orig = 0;
@@ -518,18 +521,13 @@ yang_when_get(clixon_handle h,
               yang_stmt    *ys)
 {
     map_ptr2ptr *mp = _yang_when_map;
+    size_t       len = _yang_when_map_len;
     yang_stmt   *ys2;
 
-    if (mp == NULL){
-        clixon_log(h, LOG_WARNING, "when_map not defined, yang_init() not called?");
-        return NULL;
-    }
-    else {
-        if ((ys2 = yang_orig_get(ys)) == NULL)
-            ys2 = ys;
-        if (yang_flag_get(ys2, YANG_FLAG_WHEN) != 0x0 && mp != NULL)
-            return clixon_ptr2ptr(mp, ys2);
-    }
+    if ((ys2 = yang_orig_get(ys)) == NULL)
+        ys2 = ys;
+    if (yang_flag_get(ys2, YANG_FLAG_WHEN) != 0x0 && mp != NULL)
+        return clixon_ptr2ptr(mp, len, ys2);
     return NULL;
 }
 
@@ -549,23 +547,18 @@ yang_when_set(clixon_handle h,
     int          retval = -1;
     yang_stmt   *ys2;
     map_ptr2ptr *mp = _yang_when_map;
+    size_t       len = _yang_when_map_len;
 
-    if (mp == NULL){
-        clixon_log(h, LOG_WARNING, "when_map not defined, yang_init() not called?");
-        goto done;
+    if ((ys2 = yang_orig_get(ys)) == NULL)
+        ys2 = ys;
+    if (clixon_ptr2ptr(mp, len, ys2) == NULL) {
+        assert(yang_flag_set(ys2, YANG_FLAG_WHEN)==0); // XXX
+        if (clixon_ptr2ptr_add(&_yang_when_map, &_yang_when_map_len, ys2, ywhen) < 0)
+            goto done;
+        yang_flag_set(ys2, YANG_FLAG_WHEN);
     }
-    else {
-        if ((ys2 = yang_orig_get(ys)) == NULL)
-            ys2 = ys;
-        if (clixon_ptr2ptr(mp, ys2) == NULL) {
-            assert(yang_flag_set(ys2, YANG_FLAG_WHEN)==0); // XXX
-            if (clixon_ptr2ptr_add(&_yang_when_map, ys2, ywhen) < 0)
-                goto done;
-            yang_flag_set(ys2, YANG_FLAG_WHEN);
-        }
-        else
-            assert(yang_flag_set(ys2, YANG_FLAG_WHEN) == 0); // XXX
-    }
+    else
+        assert(yang_flag_set(ys2, YANG_FLAG_WHEN) == 0); // XXX
     retval = 0;
  done:
     return retval;
@@ -731,15 +724,12 @@ yang_stmt*
 yang_mymodule_get(yang_stmt *ys)
 {
     map_ptr2ptr *mp = _yang_mymodule_map;
+    size_t       len = _yang_mymodule_map_len;
 
-    if (mp == NULL){
-        clixon_log(NULL, LOG_WARNING, "%s: mymodule_map not defined, yang_init() not called?", __func__);
-        return NULL;
-    }
-    else if (yang_flag_get(ys, YANG_FLAG_MYMODULE) == 0x0)
+    if (yang_flag_get(ys, YANG_FLAG_MYMODULE) == 0x0)
         return NULL;
     else
-        return clixon_ptr2ptr(mp, ys);
+        return clixon_ptr2ptr(mp, len, ys);
 }
 
 /*! Set mymodule
@@ -756,16 +746,11 @@ yang_mymodule_set(yang_stmt *ys,
 {
     int          retval = -1;
     map_ptr2ptr *mp = _yang_mymodule_map;
+    size_t       len = _yang_mymodule_map_len;
 
-    if (mp == NULL){
-        clixon_log(NULL, LOG_WARNING, "mymodule_map not defined, yang_init() not called?");
-        goto done;
-    }
-    else {
-        if (clixon_ptr2ptr(mp, ys) == NULL) {
-            if (clixon_ptr2ptr_add(&_yang_mymodule_map, ys, ym) < 0)
-                goto done;
-        }
+    if (clixon_ptr2ptr(mp, len, ys) == NULL) {
+        if (clixon_ptr2ptr_add(&_yang_mymodule_map, &_yang_mymodule_map_len, ys, ym) < 0)
+            goto done;
     }
     yang_flag_set(ys, YANG_FLAG_MYMODULE);
     retval = 0;
@@ -4670,16 +4655,6 @@ yang_init(clixon_handle h)
     map_ptr2ptr *mp;
     yang_stmt   *ymounts;
 
-    if ((mp = calloc(1, sizeof(*mp))) == NULL){
-        clixon_err(OE_UNIX, errno, "calloc");
-        goto done;
-    }
-    _yang_when_map = mp;
-    if ((mp = calloc(1, sizeof(*mp))) == NULL){
-        clixon_err(OE_UNIX, errno, "calloc");
-        goto done;
-    }
-    _yang_mymodule_map = mp;
     if (yang_cardinality_init(h) < 0)
         goto done;
     if ((ymounts = ys_new(Y_MOUNTS)) == NULL)
