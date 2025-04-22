@@ -38,6 +38,9 @@
 #ifndef _CLIXON_SIG_H_
 #define _CLIXON_SIG_H_
 
+/* Includes */
+#include <signal.h>
+
 /*
  * Types
  */
