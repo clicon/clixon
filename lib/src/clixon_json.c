@@ -1654,6 +1654,7 @@ clixon_json_parse_file(FILE      *fp,
     char     *ptr;
     char      ch;
     int       len = 0;
+    size_t    sz;
 
     if (xt==NULL){
         clixon_err(OE_JSON, EINVAL, "xt is NULL");
@@ -1666,13 +1667,11 @@ clixon_json_parse_file(FILE      *fp,
     memset(jsonbuf, 0, jsonbuflen);
     ptr = jsonbuf;
     while (1){
-        if ((ret = fread(&ch, 1, 1, fp)) < 0){
-            clixon_err(OE_JSON, errno, "read");
-            break;
-        }
-        if (ret != 0)
+        sz = fread(&ch, 1, 1, fp);
+        if (sz == 1){
             jsonbuf[len++] = ch;
-        if (ret == 0){
+        }
+        else if (sz == 0 && feof(fp)){
             if (*xt == NULL)
                 if ((*xt = xml_new(JSON_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
                     goto done;
@@ -1683,6 +1682,10 @@ clixon_json_parse_file(FILE      *fp,
                     goto fail;
             }
             break;
+        }
+        else {
+            clixon_err(OE_JSON, errno, "fread sz=%lu", sz);
+            goto done;
         }
         if (len >= jsonbuflen-1){ /* Space: one for the null character */
             oldjsonbuflen = jsonbuflen;

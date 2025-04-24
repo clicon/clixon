@@ -453,7 +453,6 @@ clispec_load(clixon_handle h)
                 goto done;
     }
  ok:
-    /* All good. We can now proudly return a new group */
     retval = 0;
 done:
     cligen_parsetree_free(ptall, 1);

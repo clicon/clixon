@@ -1008,6 +1008,7 @@ clixon_xml_parse_file(FILE      *fp,
     int   oldxmlbuflen;
     int   failed = 0;
     int   xtempty; /* empty on entry */
+    size_t sz;
 
     if (xt == NULL || fp == NULL){
         clixon_err(OE_XML, EINVAL, "arg is NULL");
@@ -1025,14 +1026,11 @@ clixon_xml_parse_file(FILE      *fp,
     memset(xmlbuf, 0, xmlbuflen);
     ptr = xmlbuf;
     while (1){
-        if ((ret = fread(&ch, 1, 1, fp)) < 0){
-            clixon_err(OE_XML, errno, "read");
-            break;
-        }
-        if (ret != 0){
+        sz = fread(&ch, 1, 1, fp);
+        if (sz == 1){
             xmlbuf[len++] = ch;
         }
-        if (ret == 0) {
+        else if (sz == 0 && feof(fp)) {
             if (*xt == NULL)
                 if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
                     goto done;
@@ -1041,6 +1039,10 @@ clixon_xml_parse_file(FILE      *fp,
             if (ret == 0)
                 failed++;
             break;
+        }
+        else {
+            clixon_err(OE_XML, 0, "fread %lu", sz);
+            goto done;
         }
         if (len >= xmlbuflen-1){ /* Space: one for the null character */
             oldxmlbuflen = xmlbuflen;

@@ -147,6 +147,7 @@ clixon_http1_parse_file(clixon_handle  h,
     int   buflen = BUFLEN; /* start size */
     int   len = 0;
     int   oldbuflen;
+    size_t sz;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "%s", filename);
     if (f == NULL){
@@ -160,18 +161,22 @@ clixon_http1_parse_file(clixon_handle  h,
     memset(buf, 0, buflen);
     ptr = buf;
     while (1){
-        if ((ret = fread(&ch, 1, 1, f)) < 0){
+        if ((sz = fread(&ch, 1, 1, f)) == 0){
             clixon_err(OE_XML, errno, "read");
             break;
         }
-        if (ret != 0){
-            buf[len++] = ch;
-        }
-        if (ret == 0) { /* buffer read */
-            if (_http1_parse(h, rc, ptr, filename) < 0)
+        if (sz == 0) { /* buffer read */
+            if (feof(f)){
+                if (_http1_parse(h, rc, ptr, filename) < 0)
+                    goto done;
+                break;
+            }
+            else{
+                clixon_err(OE_XML, 0, "fread(%s)", filename);
                 goto done;
-            break;
+            }
         }
+        buf[len++] = ch;
         if (len >= buflen-1){ /* Space: one for the null character */
             oldbuflen = buflen;
             buflen *= 2;

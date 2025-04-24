@@ -931,12 +931,12 @@ yang_parse_file(FILE       *fp,
                 const char *name,
                 yang_stmt  *yspec)
 {
-    char         *buf = NULL;
-    int           i;
-    char          c;
-    int           len;
-    yang_stmt    *ymod = NULL;
-    int           ret;
+    char      *buf = NULL;
+    int        i;
+    char       c;
+    int        len;
+    yang_stmt *ymod = NULL;
+    size_t     sz;
 
     len = BUFLEN; /* any number is fine */
     if ((buf = malloc(len)) == NULL){
@@ -946,21 +946,25 @@ yang_parse_file(FILE       *fp,
     memset(buf, 0, len);
     i = 0; /* position in buf */
     while (1){ /* read the whole file */
-        if ((ret = fread(&c, 1, 1, fp)) < 0){
-            clixon_err(OE_XML, errno, "read");
+        sz = fread(&c, 1, 1, fp);
+        if (sz == 0 && feof(fp)){
             break;
         }
-        if (ret == 0)
-            break; /* eof */
-        if (i == len-1){
-            if ((buf = realloc(buf, 2*len)) == NULL){
-                clixon_err(OE_XML, errno, "realloc");
-                goto done;
+        else if (sz == 1) {
+            if (i == len-1){
+                if ((buf = realloc(buf, 2*len)) == NULL){
+                    clixon_err(OE_XML, errno, "realloc");
+                    goto done;
+                }
+                memset(buf+len, 0, len);
+                len *= 2;
             }
-            memset(buf+len, 0, len);
-            len *= 2;
+            buf[i++] = (char)(c&0xff);
         }
-        buf[i++] = (char)(c&0xff);
+        else {
+            clixon_err(OE_XML, errno, "fread %lu", sz);
+            goto done;
+        }
     } /* read a line */
     if (NULL == (ymod = yang_parse_str(buf, name, yspec)))
         goto done;

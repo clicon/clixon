@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
@@ -24,7 +24,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -1734,7 +1734,12 @@ cli_autocli_cache(clixon_handle h,
                 }
                 len = fwrite(cbuf_get(cb), 1, cbuf_len(cb), f);
                 if (len != cbuf_len(cb)){
-                    clixon_err(OE_UNIX, errno, "fread %lu != %lu", len, cbuf_len(cb));
+                    if (feof(f))
+                        clixon_err(OE_UNIX, 0, "fwrite(%s) eof",
+                                   filename);
+                    else
+                        clixon_err(OE_UNIX, 0, "fwrite(%s) %lu != %lu",
+                                   filename, len, cbuf_len(cb));
                     goto done;
                 }
             }

@@ -368,11 +368,12 @@ api_http_data_file(clixon_handle h,
         clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
-    if ((ret = fread(buf, fsize, 1, f)) < 0){
-        clixon_err(OE_UNIX, errno, "fread");
-        goto done;
+    if ((sz = fread(buf, fsize, 1, f)) == 0){
+        clixon_debug(CLIXON_DBG_RESTCONF, "Error fread(%s) err:%d", filename, ferror(f));
+        if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
+            goto done;
+        goto ok;
     }
-    sz = (size_t)ret;
     if (sz != 1){
         clixon_debug(CLIXON_DBG_RESTCONF, "Error fread(%s) sz:%zu", filename, sz);
         if (api_http_data_err(h, req, 500) < 0) /* Internal error? */
