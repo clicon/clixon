@@ -426,6 +426,36 @@ stream_ss_rm(clixon_handle               h,
     return 0;
 }
 
+/*! Delete all event stream subscriptions to a stream given a name of a stream
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  stream Name of stream
+ * @retval     0      OK
+ * @retval    -1      Error
+ */
+int
+stream_ss_rm_all(clixon_handle h,
+                 char          *stream)
+{
+    int                        retval = -1;
+    event_stream_t             *es;
+    struct stream_subscription *ss;
+
+    if (stream == NULL)
+        goto done;
+    if ((es = stream_find(h, stream)) == NULL)
+        goto done;
+    /* Don't iterate over queue, because removing element move pointer to a next
+     * element
+     */
+    while (es->es_subscription) {
+        stream_ss_rm(h, es, es->es_subscription, 1 /* force */);
+    }
+    retval = 0;
+  done:
+    return retval;
+}
+
 /*! Find stream callback given callback function and its (unique) argument
  *
  * @param[in]  es   Pointer to event stream
