@@ -1547,7 +1547,7 @@ xml_find_index_yang(cxobj       *xp,
  * @param[in]  name   Name of child 
  * @param[in]  cvk    List of keys and values as CLIgen vector on the form k1=foo, k2=bar
  * @param[out] xvec   Array of result nodes. Must be initialized on entry
- * @retval     0      OK, see xret
+ * @retval     0      OK, see xvec
  * @retval    -1      Error
  * @code
  *    clixon_xvec *xv = NULL;
@@ -1562,7 +1562,7 @@ xml_find_index_yang(cxobj       *xp,
  *       x = clixon_xvec_i(xv, i);
  *       ...
  *    }
- *    clixon_xvec_free(xvec);
+ *    clixon_xvec_free(xv);
  * @endcode
  * Discussion: 
  * (1) Rule 2 on how to get the child name election seems unecessary complex. First, it would be 

@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -79,8 +79,209 @@
 #include "clixon_xml_default.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_bind.h"
+#include "clixon_xml_vec.h"
+#include "clixon_xml_sort.h"
 #include "clixon_validate_minmax.h"
 #include "clixon_validate.h"
+
+#ifdef LEAFREF_OPTIMIZE
+/* cache: xptree is a derivation of xpath, so a cache of xpath would be OK
+ * AND a copy of xc and xr (no xr would have to be on each level?
+ * IT would only make sense if xr is unchanged,...
+ * We could make a new xp_eval where xcache, ie the cached xcur is saved
+ * if xcache and xcur match, then saved xr is used
+ */
+static yang_stmt *_leafref_cache_yang = NULL;
+static cxobj     *_leafref_cache_x0 = NULL;
+static cxobj    **_leafref_cache_xvec = NULL;
+static size_t     _leafref_cache_xlen = 0;
+static int        _leafref_bin_search = 0;
+static cxobj     *_leafref_bin_search_x0 = NULL;
+
+/* RFC 7950 15.5 requires:
+   error-tag:      data-missing
+   error-app-tag:  instance-required
+   error-path:     Path to the instance-identifier or leafref leaf.
+*/
+static int
+validate_leafref_err(char   *path_arg,
+                     char   *leafrefbody,
+                     cxobj **xret)
+{
+    int retval = -1;
+
+    if (xret && netconf_missing_yang_xml(xret, path_arg, "instance-required", leafrefbody, NULL) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Check cache hit
+ *
+ * @retval  1  Cache hit
+ * @retval  0  No cache hit
+ * @retval -1  Error
+ */
+static int
+leafref_opt_cache_check(cxobj *xp,
+                        cxobj *xpc,
+                        char  *path,
+                        int    check)
+{
+    int    retval = 0;
+
+    if (check && xp == xpc)
+        return 1;
+    else if (strncmp(path, "../", strlen("../")) == 0)
+        return leafref_opt_cache_check(xml_parent(xp),
+                                       xml_parent(xpc),
+                                       path+strlen("../"),
+                                       1);
+    return 0;
+}
+
+/*! Re-instate cache, after leafref yang/path change
+ */
+static int
+leafref_opt_cache_new(yang_stmt *ys,
+                      cxobj     *xt,
+                      cxobj    **xvec,
+                      size_t     xlen)
+{
+    _leafref_cache_yang = ys;
+    _leafref_cache_x0 = xt;
+    if (_leafref_cache_xvec){
+        free(_leafref_cache_xvec);
+        _leafref_cache_xvec = NULL;
+    }
+    _leafref_cache_xvec = xvec;
+    _leafref_cache_xlen = xlen;
+    return 0;
+}
+
+/*! Detect if binary search can be used
+ *
+ * If xlen is very large, this takes time
+ * Optimization:
+ * if all elements belong to the same LEAFLIST or LIST
+ * AND the leaflist/list is ordered-by system,
+ * THEN one can do binary search instead of linear
+ * Algorithm:
+ * IF yang of all elements is same YANG
+ * AND that yang parent is LEAF-LIST AND is ordered-by system
+ * OR that yang parent is LIST AND is ordered-by system
+ * THEN use binary search
+ */
+static int
+leafref_opt_search_detect(cxobj **xvec,
+                          size_t  xlen,
+                          int    *search,
+                          cxobj **search_x0)
+{
+    cxobj     *x;
+    cxobj     *x0;
+    yang_stmt *y;
+    yang_stmt *y0;
+    int        i;
+
+    x0 = NULL;
+    y0 = NULL;
+    for (i = 0; i < xlen; i++) {
+        x = xvec[i];
+        // XXX Maybe we could do this in xpath code if we use xpath_vec_ctx instead
+        if ((y = xml_spec(x)) == NULL)
+            break;
+        if (i == 0){
+            x0 = x;
+            y0 = y;
+            if (yang_keyword_get(y) == Y_LEAF_LIST){
+                ;
+            }
+            else if (yang_keyword_get(y) == Y_LIST){
+            }
+            else
+                break;
+        }
+        else if (y0 != y)
+            break;
+    }
+    if (i == xlen && x0 != NULL){
+        *search = 1;
+        *search_x0 = x0;
+    }
+    return 0;
+}
+
+/*! Do binary search
+ *
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed
+ * @retval    -1     Error
+ */
+static int
+leafref_opt_search(char   *path_arg,
+                   char   *leafrefbody,
+                   cxobj **xret)
+
+{
+    int        retval = -1;
+    cxobj     *x0;
+    yang_stmt *y0;
+    cxobj     *xf = NULL;
+    cxobj     *myx = NULL;
+
+    x0 = _leafref_bin_search_x0;
+    y0 = xml_spec(x0);
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xf, NULL, "<%s>%s</%s>",
+                            xml_name(x0), leafrefbody,
+                            xml_name(x0)) < 0)
+        goto done;
+    if (xml_rootchild(xf, 0, &xf) < 0)
+        goto done;
+    xml_spec_set(xf, y0);
+    if (match_base_child(xml_parent(x0), xf, y0, &myx) < 0)
+        goto done;
+    if (myx == NULL){
+        if (validate_leafref_err(path_arg, leafrefbody, xret) < 0)
+            goto done;
+        goto fail;
+    }
+    if (xf)
+        xml_free(xf);
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Leafref optimization init
+ */
+static int
+leafref_opt_init(clixon_handle h)
+{
+    return 0;
+}
+
+/*! Leafref optimization exit
+ */
+int
+leafref_opt_exit(clixon_handle h)
+{
+    _leafref_cache_yang = NULL;
+    _leafref_cache_x0 = NULL;
+    if (_leafref_cache_xvec)
+        free(_leafref_cache_xvec);
+    _leafref_cache_xvec = NULL;
+    _leafref_cache_xlen = 0;
+    _leafref_bin_search = 0;
+    _leafref_bin_search_x0 = NULL;
+    return 0;
+}
+
+#endif /* LEAFREF_OPTIMIZE */
 
 /*! Validate xml node of type leafref, ensure the value is one of that path's reference
  *
@@ -91,7 +292,7 @@
  * @retval     1     Validation OK
  * @retval     0     Validation failed
  * @retval    -1     Error
- * From rfc7950 
+ * From rfc7950
  * Sec 9.9:
  *     The leafref built-in type is restricted to the value space of some
  *  leaf or leaf-list node in the schema tree and optionally further
@@ -113,7 +314,6 @@
  *      references the typedef. (ie ys)
  *   o  Otherwise, the context node is the node in the data tree for which
  *      the "path" statement is defined. (ie ys)
- * 
  */
 static int
 validate_leafref(cxobj     *xt,
@@ -125,16 +325,19 @@ validate_leafref(cxobj     *xt,
     yang_stmt   *ypath;
     yang_stmt   *yreqi;
     cxobj      **xvec = NULL;
+    size_t       xlen = 0;
     cxobj       *x;
     int          i;
-    size_t       xlen = 0;
     char        *leafrefbody;
     char        *leafbody;
     cvec        *nsc = NULL;
-    cbuf        *cberr = NULL;
     char        *path_arg;
     cg_var      *cv;
     int          require_instance = 1;
+    int          search_done = 0;
+#ifdef LEAFREF_OPTIMIZE
+    int          ret;
+#endif
 
     /* require instance */
     if ((yreqi = yang_find(ytype, Y_REQUIRE_INSTANCE, NULL)) != NULL){
@@ -145,14 +348,9 @@ validate_leafref(cxobj     *xt,
     if (require_instance == 0)
         goto ok;
     if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-        if ((cberr = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, errno, "cbuf_new");
-            goto done;
-        }
-        cprintf(cberr, "Leafref requires path statement");
         if (xret && netconf_missing_element_xml(xret, "application",
                                                 yang_argument_get(ytype),
-                                                cbuf_get(cberr)) < 0)
+                                                "Leafref requires path statement") < 0)
             goto done;
         goto fail;
     }
@@ -164,38 +362,66 @@ validate_leafref(cxobj     *xt,
         goto ok;
     if (xml_nsctx_yang(ys, &nsc) < 0)
         goto done;
-    if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, path_arg) < 0)
-        goto done;
-    for (i = 0; i < xlen; i++) {
-        x = xvec[i];
-        if ((leafbody = xml_body(x)) == NULL)
-            continue;
-        if (strcmp(leafbody, leafrefbody) == 0)
-            break;
-    }
-    if (i==xlen){
-        if ((cberr = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, errno, "cbuf_new");
+#ifdef LEAFREF_OPTIMIZE
+    if (ys == _leafref_cache_yang &&
+         _leafref_cache_x0){
+        if ((ret = leafref_opt_cache_check(xt, _leafref_cache_x0, path_arg, 0)) < 0)
             goto done;
+        if (ret == 1){
+            xvec = _leafref_cache_xvec;
+            xlen = _leafref_cache_xlen;
         }
-        /* RFC 7950 15.5 requires:
-           error-tag:      data-missing
-           error-app-tag:  instance-required
-           error-path:     Path to the instance-identifier or leafref leaf.
-         */
-        if (xret && netconf_missing_yang_xml(xret, path_arg, "instance-required", leafrefbody, NULL) < 0)
-            goto done;
-        goto fail;
     }
+#endif /* LEAFREF_OPTIMIZE */
+    if (xvec == NULL)
+        if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, path_arg) < 0)
+            goto done;
+#ifdef LEAFREF_OPTIMIZE
+    if (ys != _leafref_cache_yang){
+        if (leafref_opt_cache_new(ys, xt, xvec, xlen) < 0)
+            goto done;
+        _leafref_bin_search = 0;
+        _leafref_bin_search_x0 = NULL;
+        if (leafref_opt_search_detect(xvec, xlen,
+                                      &_leafref_bin_search,
+                                      &_leafref_bin_search_x0) < 0)
+            goto done;
+    } /* ys != _leafref_cache_yang */
+    if (_leafref_bin_search){
+        if ((ret = leafref_opt_search(path_arg, leafrefbody, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+    }
+
+    if (_leafref_bin_search == 0)
+#endif
+        {
+            for (i = 0; i < xlen; i++) {
+                x = xvec[i];
+                if ((leafbody = xml_body(x)) == NULL)
+                    continue;
+                if (strcmp(leafbody, leafrefbody) == 0)
+                    break;
+            }
+            if (i==xlen){
+                if (validate_leafref_err(path_arg, leafrefbody, xret) < 0)
+                    goto done;
+                goto fail;
+            }
+        }
  ok:
     retval = 1;
  done:
-    if (cberr)
-        cbuf_free(cberr);
     if (nsc)
         xml_nsctx_free(nsc);
+#ifdef LEAFREF_OPTIMIZE
+    if (xvec != _leafref_cache_xvec)
+        free(xvec);
+#else
     if (xvec)
         free(xvec);
+#endif
     return retval;
  fail:
     retval = 0;
@@ -330,7 +556,7 @@ validate_identityref(cxobj     *xt,
  *
  * @param[in]  h     Clixon handle
  * @param[in]  xrpc  XML node to be validated
- * @param[in]  expanddefault 
+ * @param[in]  expand default
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed
@@ -499,7 +725,7 @@ xml_yang_validate_rpc_reply(clixon_handle h,
  * From RFC7950 Sec 7.9.3
  *  1. Default case,  the default if no child nodes from any of the choice's cases exist
  *  2. Default for child nodes under a case are only used if one of the nodes under that case
- *     is present 
+ *     is present
  */
 static int
 check_choice(cxobj     *xp,
@@ -549,7 +775,7 @@ check_choice(cxobj     *xp,
     goto done;
 }
 
-/*! Check if an xml node xt is a part of a choice and have >1 siblings 
+/*! Check if an xml node xt is a part of a choice and have >1 siblings
  *
  * @param[in]  xt    XML node to be validated
  * @param[in]  yt    xt:s yang statement
@@ -795,13 +1021,13 @@ yang_ancestor_child(yang_stmt  *ys,
     return 0;
 }
 
-/*! Check mandatory nodes in current case 
+/*! Check mandatory nodes in current case
  *
  * RFC7950 7.9.4 states:
  *   if this ancestor is a case node, the constraint is
  *   enforced if any other node from the case exists.
  * Algorithm uses a yang mark flag to detect if mandatory xml nodes exist:
- * A priori: 
+ * A priori:
  * - xt is any XML node
  * - xt has a choice child with YANG node yc (The xt child is not needed)
  * Algoritm:
@@ -932,7 +1158,7 @@ check_mandatory(cxobj     *xt,
                     }
                 }
                 if (x == NULL){
-                    /* @see RFC7950: 15.6 Error Message for Data That Violates 
+                    /* @see RFC7950: 15.6 Error Message for Data That Violates
                      * a Mandatory "choice" Statement */
                     if (xret && netconf_missing_choice_xml(xret, xt, yang_argument_get(yc), NULL) < 0)
                         goto done;
@@ -1032,7 +1258,7 @@ xml_yang_validate_add(clixon_handle h,
         if (ret == 1 && vl == VL_NONE)
             goto ok;
     }
-    /* if not given by argument (overide) use default link 
+    /* if not given by argument (overide) use default link
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL && yang_config(yt) != 0){
         if ((ret = check_choice_child(xt, yt, xret)) < 0)
@@ -1127,7 +1353,7 @@ xml_yang_validate_list_key_only(cxobj        *xt,
     int        ret;
     cxobj     *x;
 
-    /* if not given by argument (override) use default link 
+    /* if not given by argument (override) use default link
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) != NULL &&
         yang_config(yt) != 0 &&
@@ -1235,10 +1461,10 @@ xml_yang_validate_leaf_union(clixon_handle h,
  * @see xml_yang_validate_add
  * @see xml_yang_validate_rpc
  */
-int
-xml_yang_validate_all(clixon_handle h,
-                      cxobj        *xt,
-                      cxobj       **xret)
+static int
+xml_yang_validate_all1(clixon_handle h,
+                       cxobj        *xt,
+                       cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *yt;  /* yang node associated with xt */
@@ -1265,7 +1491,7 @@ xml_yang_validate_all(clixon_handle h,
         if (ret == 1 && vl == VL_NONE)
             goto ok;
     }
-    /* if not given by argument (overide) use default link 
+    /* if not given by argument (overide) use default link
        and !Node has a config sub-statement and it is false */
     if ((yt = xml_spec(xt)) == NULL){
         if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 1) {
@@ -1350,7 +1576,7 @@ xml_yang_validate_all(clixon_handle h,
         default:
             break;
         }
-        /* must sub-node RFC 7950 Sec 7.5.3. Can be several. 
+        /* must sub-node RFC 7950 Sec 7.5.3. Can be several.
          * XXX. use yang path instead? */
         inext = 0;
         while ((yc = yn_iter(yt, &inext)) != NULL) {
@@ -1363,8 +1589,8 @@ xml_yang_validate_all(clixon_handle h,
             xpath = yang_argument_get(yc); /* "must" has xpath argument */
             clixon_debug(CLIXON_DBG_XPATH, "xpath '%s'", xpath);
             /* the context node is the node in the accessible tree for
-             * which the "must" statement is defined. 
-             * The set of namespace declarations is the set of all "import" statements' 
+             * which the "must" statement is defined.
+             * The set of namespace declarations is the set of all "import" statements'
              */
             if (xml_nsctx_yang(yc, &nsc) < 0)
                 goto done;
@@ -1394,7 +1620,7 @@ xml_yang_validate_all(clixon_handle h,
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-        if ((ret = xml_yang_validate_all(h, x, xret)) < 0)
+        if ((ret = xml_yang_validate_all1(h, x, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -1422,6 +1648,23 @@ xml_yang_validate_all(clixon_handle h,
     goto done;
 }
 
+int
+xml_yang_validate_all(clixon_handle h,
+                      cxobj        *xt,
+                      cxobj       **xret)
+{
+    int retval;
+
+#ifdef LEAFREF_OPTIMIZE
+    leafref_opt_init(h);
+    retval = xml_yang_validate_all1(h, xt, xret);
+    leafref_opt_exit(h);
+#else
+    retval = xml_yang_validate_all1(h, xt, xret);
+#endif
+    return retval;
+}
+
 /*! Validate a single XML node with yang specification
  *
  * @param[in]  h     Clixon handle
@@ -1446,6 +1689,17 @@ xml_yang_validate_all_top(clixon_handle h,
     if ((ret = xml_yang_validate_minmax(xt, 0, xret)) < 1)
         return ret;
     return 1;
+}
+
+/*! Exit validation module
+ */
+int
+xml_yang_validate_exit(clixon_handle h)
+{
+#ifdef LEAFREF_OPTIMIZE
+    leafref_opt_exit(h);
+#endif
+    return 0;
 }
 
 /*! Check validity of outgoing RPC

@@ -30,10 +30,9 @@ Expected: July 2025
   * Support for mount-points
   * Improved debug trace
   * See [NACM for Clixon Controller](https://github.com/clicon/clixon-controller/issues/189)
-
-### Minor features
-
-* Improved ptr2ptr search from linear to binary
+* Optimizations:
+  * Improved ptr2ptr search from linear to binary
+  * [Leafref performance](https://github.com/clicon/clixon/issues/600)
 
 ## 7.4.0
 3 April 2025

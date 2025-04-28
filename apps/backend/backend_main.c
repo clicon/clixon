@@ -112,6 +112,7 @@ backend_terminate(clixon_handle h)
     /* Free changelog */
     if ((x = clicon_xml_changelog_get(h)) != NULL)
         xml_free(x);
+    xml_yang_validate_exit(h);
     yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
@@ -128,7 +129,6 @@ backend_terminate(clixon_handle h)
 
     xpath_optimize_exit();
     clixon_pagination_free(h);
-    
     if (pidfile)
         unlink(pidfile);   
     if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)

@@ -244,3 +244,28 @@
  * If no problem with patch, remove at next release
  */
 #define STARTUP_COMMIT_REORDER
+
+/*! Optimize validation of leafrefs by doing an XPath cache and binary search
+ *
+ * 1) First a cache is used for XPath lookup
+ * If a path is ../, ../../ etc, keep a cache of previous results
+ * If the same, yang/xpath is used, see if the xml object have a common parent,
+ * for ../ one level up, for ../../ two levels up, etc
+ * If they match, re-use the result of the previous call.
+ * This avoids costly XPath lookups if the number of results is large
+ * Caveat: This assumes that an XPath beginning ../ does not change result
+ * if ../ is removed. One could probably construct an XPath that does not
+ * behave like this.
+ * This is in validation code only, not generic XPath
+ *
+ * 2) Second, binary instead of linear search is done for results
+ * If a result of an XPath lookup contain elements that are part of the same
+ * LEAFLIST or LIST AND that list is ordered-by-system, then one can
+ * use binary search on that list instead of linear.
+ * LEAFREF_OPT_CACHE must be enabled
+ * Caveat: to find out whether all elements are one list a relatively costly
+ * loop is made once per yang, this could possibly change and the loop could
+ * be improved.
+
+ */
+#define LEAFREF_OPTIMIZE
