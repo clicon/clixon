@@ -404,7 +404,10 @@ plugin_load_one(clixon_handle h,
             goto done;
         }
         else{
-            clixon_err(OE_PLUGIN, errno, "Failed to initiate %s", strrchr(file,'/')?strchr(file, '/'):file);
+            char *reason = clixon_err_reason();
+            clixon_err(OE_PLUGIN, errno, "Failed to load plugin %s: %s",
+                       strrchr(file,'/')?strchr(file, '/'):file,
+                       reason?reason:"unknown");
             goto done;
         }
     }

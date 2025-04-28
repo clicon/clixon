@@ -36,6 +36,7 @@ Expected: July 2025
 
 ### Corrected Bugs
 
+  * Fixed: [Confusing error message if clixon_server.py is missing](https://github.com/clicon/clixon-controller/issues/192)
   * Fixed: [Remove "checkroot" from Makefiles](https://github.com/clicon/clixon/issues/605)
 
 ## 7.4.0
