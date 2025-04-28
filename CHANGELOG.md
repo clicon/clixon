@@ -34,6 +34,10 @@ Expected: July 2025
   * Improved ptr2ptr search from linear to binary
   * [Leafref performance](https://github.com/clicon/clixon/issues/600)
 
+### Corrected Bugs
+
+  * Fixed: [Remove "checkroot" from Makefiles](https://github.com/clicon/clixon/issues/605)
+
 ## 7.4.0
 3 April 2025
 
