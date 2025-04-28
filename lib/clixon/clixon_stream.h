@@ -99,6 +99,7 @@ struct stream_subscription *stream_ss_add(clixon_handle h, char *stream,
                   char *xpath, struct timeval *start, struct timeval *stop,
                   stream_fn_t fn, void *arg);
 int stream_ss_rm(clixon_handle h, event_stream_t *es, struct stream_subscription *ss, int force);
+int stream_ss_rm_all(clixon_handle h, char *stream);
 struct stream_subscription *stream_ss_find(event_stream_t *es,
                                            stream_fn_t fn, void *arg);
 int stream_ss_delete_all(clixon_handle h, stream_fn_t fn, void *arg);
