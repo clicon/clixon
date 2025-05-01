@@ -228,10 +228,10 @@ static const map_str2int xsmap[] = {
  * @param[in] type  Xml type
  * @retval    str   String keyword
  */
-char *
+const char *
 xml_type2str(enum cxobj_type type)
 {
-    return (char*)clicon_int2str(xsmap, type);
+    return clicon_int2str(xsmap, type);
 }
 
 /* Stats (too low-level to hang it on handle) */
@@ -362,7 +362,7 @@ xml_name(cxobj *xn)
  */
 int
 xml_name_set(cxobj *xn,
-             char  *name)
+             const char  *name)
 {
     if (xn->x_name){
         free(xn->x_name);
@@ -397,7 +397,7 @@ xml_prefix(cxobj *xn)
  */
 int
 xml_prefix_set(cxobj *xn,
-               char  *prefix)
+               const char  *prefix)
 {
     if (xn->x_prefix){
         free(xn->x_prefix);
@@ -422,7 +422,7 @@ xml_prefix_set(cxobj *xn,
  */
 char*
 nscache_get(cxobj *x,
-            char  *prefix)
+            const char  *prefix)
 {
     if (!is_element(x))
         return NULL;
@@ -441,7 +441,7 @@ nscache_get(cxobj *x,
  */
 int
 nscache_get_prefix(cxobj *x,
-                   char  *namespace,
+                   const char  *namespace,
                    char **prefix)
 {
     if (!is_element(x))
@@ -477,8 +477,8 @@ nscache_get_all(cxobj *x)
  */
 int
 nscache_set(cxobj *x,
-            char  *prefix,
-            char  *namespace)
+            const char  *prefix,
+            const char  *namespace)
 {
     int     retval = -1;
 
@@ -661,7 +661,7 @@ xml_value(cxobj *xn)
  */
 int
 xml_value_set(cxobj *xn,
-              char  *val)
+              const char  *val)
 {
     int    retval = -1;
     size_t sz;
@@ -696,7 +696,7 @@ xml_value_set(cxobj *xn,
  */
 int
 xml_value_append(cxobj *xn,
-                 char  *val)
+                 const char  *val)
 {
     int    retval = -1;
     size_t sz;
@@ -1170,7 +1170,7 @@ clixon_child_xvec_append(cxobj       *xn,
  * @see xml_insert
  */
 cxobj *
-xml_new(char           *name,
+xml_new(const char           *name,
         cxobj          *xp,
         enum cxobj_type type)
 {
@@ -1220,9 +1220,9 @@ xml_new(char           *name,
  * Thanks mgsmith@netgate.com
  */
 cxobj *
-xml_new_body(char  *name,
+xml_new_body(const char  *name,
              cxobj *parent,
-             char  *val)
+             const char  *val)
 {
     cxobj *new_node = NULL;
     cxobj *body_node;
@@ -1324,7 +1324,7 @@ xml_cv_set(cxobj  *x,
  */
 cxobj *
 xml_find(cxobj *xp,
-         char  *name)
+         const char  *name)
 {
     cxobj *x = NULL;
 
@@ -1414,7 +1414,7 @@ xml_addsub(cxobj *xp,
  */
 cxobj *
 xml_wrap_all(cxobj *xp,
-             char  *tag)
+             const char  *tag)
 {
     cxobj *xw; /* new wrap node */
 
@@ -1444,7 +1444,7 @@ xml_wrap_all(cxobj *xp,
  */
 cxobj *
 xml_wrap(cxobj *xc,
-         char  *tag)
+         const char  *tag)
 {
     cxobj *xw; /* new wrap node */
     cxobj *xp; /* parent */
@@ -2387,7 +2387,7 @@ xml_root(cxobj *xn)
  * @endcode
  */
 int
-xml_operation(char                *opstr,
+xml_operation(const char                *opstr,
               enum operation_type *op)
 {
     if (strcmp("merge", opstr) == 0)
@@ -2452,7 +2452,7 @@ xml_operation2str(enum operation_type op)
  * @endcode
  */
 int
-xml_attr_insert2val(char             *instr,
+xml_attr_insert2val(const char             *instr,
                     enum insert_type *ins)
 {
     if (strcmp("first", instr) == 0)
@@ -2482,10 +2482,10 @@ xml_attr_insert2val(char             *instr,
  */
 cxobj *
 xml_add_attr(cxobj *xn,
-             char  *name,
-             char  *value,
-             char  *prefix,
-             char  *namespace)
+             const char  *name,
+             const char  *value,
+             const char  *prefix,
+             const char  *namespace)
 {
     cxobj *xa = NULL;
     char  *ns = NULL;
@@ -2642,7 +2642,7 @@ xml_search_index_get(cxobj *x,
  */
 int
 xml_search_vector_get(cxobj        *xp,
-                      char         *name,
+                      const char         *name,
                       clixon_xvec **xvec)
 {
     struct search_index *si;
@@ -2761,7 +2761,7 @@ xml_search_child_rm(cxobj *xp,
  */
 cxobj *
 xml_child_index_each(cxobj           *xparent,
-                     char            *name,
+                     const char            *name,
                      cxobj           *xprev,
                      enum cxobj_type  type)
 {
