@@ -213,5 +213,4 @@ int netconf_output_encap(netconf_framing_type framing, cbuf *cb);
 int netconf_input_chunked_framing(char ch, int *state, size_t *size);
 int netconf_cbuf_err2cb(clixon_handle h, cbuf *cb0, cbuf *cberr);
 
-
 #endif /* _CLIXON_NETCONF_LIB_H */

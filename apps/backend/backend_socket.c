@@ -148,7 +148,7 @@ config_socket_init_unix(clixon_handle h,
     }
     /* then find configuration group (for clients) and find its groupid */
     if ((config_group = clicon_sock_group(h)) == NULL){
-        clixon_err(OE_FATAL, 0, "clicon_sock_group option not set");
+        clixon_err(OE_FATAL, 0, "clicon_sock_group option not set %s", sock);
         return -1;
     }
     if (group_name2gid(config_group, &gid) < 0)
@@ -159,7 +159,7 @@ config_socket_init_unix(clixon_handle h,
 #endif
     /* create unix socket */
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-        clixon_err(OE_UNIX, errno, "socket");
+        clixon_err(OE_UNIX, errno, "socket %s", sock);
         return -1;
     }
 //    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one));
@@ -168,7 +168,7 @@ config_socket_init_unix(clixon_handle h,
     strncpy(addr.sun_path, sock, sizeof(addr.sun_path)-1);
     old_mask = umask(S_IRWXO | S_IXGRP | S_IXUSR);
     if (bind(s, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0){
-        clixon_err(OE_UNIX, errno, "bind");
+        clixon_err(OE_UNIX, errno, "bind %s", sock);
         umask(old_mask);
         goto err;
     }

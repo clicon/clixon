@@ -4652,7 +4652,6 @@ int
 yang_init(clixon_handle h)
 {
     int          retval = -1;
-    map_ptr2ptr *mp;
     yang_stmt   *ymounts;
 
     if (yang_cardinality_init(h) < 0)

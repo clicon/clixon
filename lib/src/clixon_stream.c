@@ -439,7 +439,6 @@ stream_ss_rm_all(clixon_handle h,
 {
     int                        retval = -1;
     event_stream_t             *es;
-    struct stream_subscription *ss;
 
     if (stream == NULL)
         goto done;

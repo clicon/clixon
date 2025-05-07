@@ -140,7 +140,6 @@ clixon_http1_parse_file(clixon_handle  h,
                         const char    *filename)
 {
     int   retval = -1;
-    int   ret;
     char  ch;
     char *buf = NULL;
     char *ptr;
