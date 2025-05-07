@@ -22,6 +22,7 @@ Expected: July 2025
 * Added ability to switch between poll-based and select-based event handling
 * New `clixon-config@2025-05-01.yang` revision
   * Added option: `CLICON_EVENT_SELECT`
+  * Obsoleted: `CLICON_STREAM_URL`
 * Autocli cache for faster loading of generated CLIspecs
 * New `clixon-autocli@2025-05-01.yang` revision
   * Added options: `clispec-cache` and `clispec-cache-dir` options

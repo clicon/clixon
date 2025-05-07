@@ -53,6 +53,8 @@ module clixon-config {
         description
             "Added options:
                 CLICON_EVENT_SELECT
+             Obsoleted:
+                CLICON_STREAM_URL
              Release in Clixon 7.5";
     }
     revision 2024-11-01 {
@@ -1389,10 +1391,11 @@ module clixon-config {
             type boolean;
             default false;
             description
-                "Enable monitoring information for the RESTCONF protocol from RFC 8040 as specified
-                 in module ietf-restconf-monitoring.yang
-                 Note that the name of this option is misleading, the monitoring module defines state
-                 for both capabilities and streams, not only streams which the name indicates.
+                "Enable monitoring information for the RESTCONF protocol from RFC 8040
+                 as specified in module ietf-restconf-monitoring.yang
+                 Note that the name of this option is misleading, the monitoring
+                 module defines state for both capabilities and streams, not only
+                 streams which the name indicates.
                  Also, consider changing default to true.";
         }
         leaf CLICON_STREAM_URL {
@@ -1401,22 +1404,24 @@ module clixon-config {
             description
                 "Stream URL
                  See RFC 8040 Sec 9.3 location leaf:
-                  'Contains a URL that represents the entry point for
-                 establishing notification delivery via server-sent events.'
-                 Prepend this constant to name of stream.
+                    Contains a URL that represents the entry point for
+                    establishing notification delivery via server-sent events.
                  Example: https://localhost/streams/NETCONF. Note this is the
                  external URL, not local behind a reverse-proxy.
                  Note that -s <stream> command-line option to clixon_restconf
                  should correspond to last path of url (eg 'streams')";
+            status obsolete;
         }
         leaf CLICON_STREAM_PATH {
             type string;
             default "streams";
             description
-                "Stream path appended to CLICON_STREAM_URL to form
+                "Stream path appended to URI to form
                  stream subscription URL.
-                 See CLICON_RESTCONF_API_ROOT and CLICON_HTTP_DATA_ROOT
-                 Should be changed to include '/' ";
+                 Construct an URL for stream 'mystream' as follows:
+                    CLICON_STREAM_PATH/mystream
+                 See also CLICON_RESTCONF_API_ROOT and CLICON_HTTP_DATA_ROOT
+                 as alternative base URL:s";
         }
         leaf CLICON_STREAM_RETENTION {
             type uint32;
