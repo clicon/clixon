@@ -85,63 +85,106 @@
 #include "clixon_validate.h"
 
 #ifdef LEAFREF_OPTIMIZE
-/* cache: xptree is a derivation of xpath, so a cache of xpath would be OK
- * AND a copy of xc and xr (no xr would have to be on each level?
- * IT would only make sense if xr is unchanged,...
- * We could make a new xp_eval where xcache, ie the cached xcur is saved
- * if xcache and xcur match, then saved xr is used
- */
-static yang_stmt *_leafref_cache_yang = NULL;
-static cxobj     *_leafref_cache_x0 = NULL;
-static cxobj    **_leafref_cache_xvec = NULL;
-static size_t     _leafref_cache_xlen = 0;
-static int        _leafref_bin_search = 0;
-static cxobj     *_leafref_bin_search_x0 = NULL;
 
-/* RFC 7950 15.5 requires:
-   error-tag:      data-missing
-   error-app-tag:  instance-required
-   error-path:     Path to the instance-identifier or leafref leaf.
-*/
+/* Global cache data only directly used in validate_leafref()
+ */
+struct leafref_opt {
+    yang_stmt *lc_cache_yang;
+    cxobj     *lc_cache_x0;
+    cxobj    **lc_cache_xvec;
+    size_t     lc_cache_xlen;
+    int        lc_bin_search;  /* Result is binary searchable */
+    cxobj     *lc_bin_x0;      /* First object hit, derive y and parent */
+};
+struct leafref_opt leafref_opt = {0,};
+
+#endif
+
+/*! Leafref validation error
+ *
+ * RFC 7950 15.5 requires:
+ * error-tag:      data-missing
+ * error-app-tag:  instance-required
+ * error-path:     Path to the instance-identifier or leafref leaf.
+ * @param[in]  xpath error-path
+ * @param[in]  xt    Derive info, like: <ref>value</ref>
+ * @param[out] xret  Error XML tree. Free with xml_free after use
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
 static int
-validate_leafref_err(char   *path_arg,
-                     char   *leafrefbody,
+validate_leafref_err(char   *xpath,
+                     cxobj  *xt,
                      cxobj **xret)
 {
-    int retval = -1;
+    int   retval = -1;
+    cbuf *cb = NULL;
 
-    if (xret && netconf_missing_yang_xml(xret, path_arg, "instance-required", leafrefbody, NULL) < 0)
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<%s>%s</%s>", xml_name(xt), xml_body(xt), xml_name(xt));
+    if (xret && netconf_missing_yang_xml(xret, xpath, "instance-required", cbuf_get(cb), NULL) < 0)
         goto done;
     retval = 0;
  done:
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }
 
+#ifdef LEAFREF_OPTIMIZE
 /*! Check cache hit
  *
- * @retval  1  Cache hit
- * @retval  0  No cache hit
- * @retval -1  Error
+ * Find common ancestor, ie the parent of xp and xpc is the same object
+ * recursively IF they are reachable by an initial "../" xpath.
+ * @param[in]  xp    XML to check
+ * @param[in]  xpc   XML cache element
+ * @param[in]  xpath XPath
+ * @param[in]  check Skip check this level
+ * @retval     1     Cache hit
+ * @retval     0     No cache hit
  */
 static int
 leafref_opt_cache_check(cxobj *xp,
                         cxobj *xpc,
-                        char  *path,
+                        char  *xpath,
                         int    check)
 {
-    int    retval = 0;
-
     if (check && xp == xpc)
         return 1;
-    else if (strncmp(path, "../", strlen("../")) == 0)
+    else if (strncmp(xpath, "../", strlen("../")) == 0)
         return leafref_opt_cache_check(xml_parent(xp),
                                        xml_parent(xpc),
-                                       path+strlen("../"),
+                                       xpath+strlen("../"),
                                        1);
     return 0;
 }
 
+/*! Free and zero all data in cache
+ */
+int
+leafref_opt_free(struct leafref_opt *lc)
+{
+    lc->lc_cache_yang = NULL;
+    lc->lc_cache_x0 = NULL;
+    if (lc->lc_cache_xvec)
+        free(lc->lc_cache_xvec);
+    lc->lc_cache_xvec = NULL;
+    lc->lc_cache_xlen = 0;
+    lc->lc_bin_search = 0;
+    lc->lc_bin_x0 = NULL;
+    return 0;
+}
+
 /*! Re-instate cache, after leafref yang/path change
+ *
+ * @param[in]  ys    Cached YANG node
+ * @param[in]  xt    Cached XML node
+ * @param[in]  xvec  Vector of matching XML values
+ * @param[in]  xlen  Length of xvec
+ * @retval     0     OK
  */
 static int
 leafref_opt_cache_new(yang_stmt *ys,
@@ -149,14 +192,11 @@ leafref_opt_cache_new(yang_stmt *ys,
                       cxobj    **xvec,
                       size_t     xlen)
 {
-    _leafref_cache_yang = ys;
-    _leafref_cache_x0 = xt;
-    if (_leafref_cache_xvec){
-        free(_leafref_cache_xvec);
-        _leafref_cache_xvec = NULL;
-    }
-    _leafref_cache_xvec = xvec;
-    _leafref_cache_xlen = xlen;
+    leafref_opt_free(&leafref_opt);
+    leafref_opt.lc_cache_yang = ys;
+    leafref_opt.lc_cache_x0 = xt;
+    leafref_opt.lc_cache_xvec = xvec;
+    leafref_opt.lc_cache_xlen = xlen;
     return 0;
 }
 
@@ -169,20 +209,28 @@ leafref_opt_cache_new(yang_stmt *ys,
  * THEN one can do binary search instead of linear
  * Algorithm:
  * IF yang of all elements is same YANG
- * AND that yang parent is LEAF-LIST AND is ordered-by system
- * OR that yang parent is LIST AND is ordered-by system
+ * AND that yang is LEAF-LIST AND is ordered-by system
+ * OR that yang's parent is LIST AND is ordered-by system
  * THEN use binary search
+ * @param[in]  xvec   Vector of matching XML values
+ * @param[in]  xlen   Length of xvec
+ * @param[out] search Can do binary search (or not)
+ * @param[out] x0p    First object hit, if searchable
+ * @retval     0      OK
  */
 static int
 leafref_opt_search_detect(cxobj **xvec,
                           size_t  xlen,
                           int    *search,
-                          cxobj **search_x0)
+                          cxobj **x0p)
 {
     cxobj     *x;
     cxobj     *x0;
+    cxobj     *xp;
     yang_stmt *y;
     yang_stmt *y0;
+    yang_stmt *yp;
+    cvec      *cvk;
     int        i;
 
     x0 = NULL;
@@ -195,10 +243,16 @@ leafref_opt_search_detect(cxobj **xvec,
         if (i == 0){
             x0 = x;
             y0 = y;
+            if ((xp = xml_parent(x)) == NULL)
+                break;
+            if ((yp = xml_spec(xp)) == NULL)
+                break;
             if (yang_keyword_get(y) == Y_LEAF_LIST){
-                ;
             }
-            else if (yang_keyword_get(y) == Y_LIST){
+            else if (yang_keyword_get(yp) == Y_LIST &&
+                     (cvk = yang_cvec_get(yp)) != NULL &&
+                     cvec_len(cvk) == 1){
+                /* Only allow single key lists */
             }
             else
                 break;
@@ -206,49 +260,157 @@ leafref_opt_search_detect(cxobj **xvec,
         else if (y0 != y)
             break;
     }
-    if (i == xlen && x0 != NULL){
+    // Does not work in some cases for LISTs
+    if (i == xlen && x0 != NULL && xml_parent(x0) && xml_spec(x0)){
         *search = 1;
-        *search_x0 = x0;
+        *x0p = x0;
     }
     return 0;
 }
 
-/*! Do binary search
+/*! Create artificial object for match_base_child API
  *
- * @retval     1     Validation OK
- * @retval     0     Validation failed
- * @retval    -1     Error
+ * @param[in]  x0p
+ * @param[in]  yc
+ * @param[in]  body
+ * @param[out] x0cp
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Consider moving as uitlity functions to match_base_child
  */
 static int
-leafref_opt_search(char   *path_arg,
-                   char   *leafrefbody,
-                   cxobj **xret)
-
+match_leafref_child_leaflist(cxobj     *x0p,
+                             yang_stmt *yc,
+                             char      *body,
+                             cxobj    **x0cp)
 {
-    int        retval = -1;
-    cxobj     *x0;
-    yang_stmt *y0;
-    cxobj     *xf = NULL;
-    cxobj     *myx = NULL;
+    int    retval;
+    char  *name;
+    cxobj *xf = NULL;
 
-    x0 = _leafref_bin_search_x0;
-    y0 = xml_spec(x0);
+    name = yang_argument_get(yc);
     if (clixon_xml_parse_va(YB_NONE, NULL, &xf, NULL, "<%s>%s</%s>",
-                            xml_name(x0), leafrefbody,
-                            xml_name(x0)) < 0)
+                            name, body, name) < 0)
         goto done;
     if (xml_rootchild(xf, 0, &xf) < 0)
         goto done;
-    xml_spec_set(xf, y0);
-    if (match_base_child(xml_parent(x0), xf, y0, &myx) < 0)
+    xml_spec_set(xf, yc);
+    if (match_base_child(x0p, xf, yc, x0cp) < 0)
         goto done;
+    retval = 0;
+ done:
+    if (xf)
+        xml_free(xf);
+    return retval;
+}
+
+/*! Create artificial object for match_base_child API
+ *
+ * @param[in]  x0
+ * @param[in]  x0p
+ * @param[in]  yc
+ * @param[in]  body
+ * @param[out] x0cp
+ * @retval     0    OK
+ * @retval    -1    Error
+ * Consider moving as uitlity functions to match_base_child
+ */
+static int
+match_leafref_child_list(cxobj     *x0,
+                         cxobj     *x0p,
+                         yang_stmt *yc,
+                         char      *body,
+                         cxobj    **x0cp)
+{
+    int    retval;
+    cxobj *x1 = NULL;
+    char  *ns = NULL;
+    char  *name;
+    int    ret;
+
+    if (xml2ns(x0, NULL, &ns) < 0)
+        goto done;
+    name = yang_argument_get(yc);
+    if (clixon_xml_parse_va(YB_NONE, NULL, &x1, NULL, "<%s xmlns=\"%s\"><%s>%s</%s></%s>",
+                            name,
+                            ns,
+                            xml_name(x0),
+                            body,
+                            xml_name(x0),
+                            name) < 0)
+        goto done;
+    if (xml_rootchild(x1, 0, &x1) < 0)
+        goto done;
+    xml_spec_set(x1, yc);
+    if ((ret = xml_bind_yang(NULL, x1, YB_PARENT, NULL, NULL)) < 0)
+        goto done;
+    if (ret == 0)
+        ;
+    if (match_base_child(xml_parent(x0p), x1, yc, x0cp) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (x1)
+        xml_free(x1);
+    return retval;
+}
+
+/*! Do binary search of body in ni search cache
+ *
+ * @param[in]  xpath  leafref xpath
+ * @param[in]  body   Body to search for
+ * @param[in]  x0     Cached x0
+ * @param[out] xret   Matched object
+ * @retval     1      Validation OK
+ * @retval     0      Validation failed
+ * @retval    -1      Error
+ */
+static int
+leafref_opt_search(char   *xpath,
+                   cxobj  *xt,
+                   cxobj  *x0,
+                   cxobj **xret)
+{
+    int        retval = -1;
+    cxobj     *x0p;
+    yang_stmt *y0;
+    yang_stmt *y0p;
+    cxobj     *myx = NULL;
+    cvec      *cvk;
+    cg_var    *cvi;
+    char      *body;
+
+    body = xml_body(xt);
+    y0 = xml_spec(x0);
+    x0p = xml_parent(x0);
+    y0p = xml_spec(x0p);
+    if (yang_keyword_get(y0) == Y_LEAF_LIST){
+        if (match_leafref_child_leaflist(x0p, y0, body, &myx) < 0)
+            goto done;
+    }
+    else if (yang_keyword_get(y0p) == Y_LIST &&
+             (cvk = yang_cvec_get(y0p)) != NULL &&
+             (cvi = cvec_i(cvk, 0)) != NULL &&
+             strcmp(cv_string_get(cvi), yang_argument_get(y0)) == 0){
+        if (match_leafref_child_list(x0, x0p, y0p, body, &myx) < 0)
+            goto done;
+    }
+    else if (yang_keyword_get(y0) == Y_LEAF){
+        if (strcmp(xml_body(x0), body) == 0)
+            myx = x0;
+    }
+    else {
+        fprintf(stderr, "%s y0: %s y0p:%s\n", __FUNCTION__,
+                yang_key2str(yang_keyword_get(y0)),
+                yang_key2str(yang_keyword_get(y0p)));
+        if (match_leafref_child_leaflist(x0p, y0, body, &myx) < 0)
+            goto done;
+    }
     if (myx == NULL){
-        if (validate_leafref_err(path_arg, leafrefbody, xret) < 0)
+        if (validate_leafref_err(xpath, xt, xret) < 0)
             goto done;
         goto fail;
     }
-    if (xf)
-        xml_free(xf);
     retval = 1;
  done:
     return retval;
@@ -258,6 +420,9 @@ leafref_opt_search(char   *path_arg,
 }
 
 /*! Leafref optimization init
+ *
+ * @param[in]  h  Clixon handle
+ * @retval     0  OK
  */
 static int
 leafref_opt_init(clixon_handle h)
@@ -266,18 +431,14 @@ leafref_opt_init(clixon_handle h)
 }
 
 /*! Leafref optimization exit
+ *
+ * @param[in]  h  Clixon handle
+ * @retval     0  OK
  */
 int
 leafref_opt_exit(clixon_handle h)
 {
-    _leafref_cache_yang = NULL;
-    _leafref_cache_x0 = NULL;
-    if (_leafref_cache_xvec)
-        free(_leafref_cache_xvec);
-    _leafref_cache_xvec = NULL;
-    _leafref_cache_xlen = 0;
-    _leafref_bin_search = 0;
-    _leafref_bin_search_x0 = NULL;
+    leafref_opt_free(&leafref_opt);
     return 0;
 }
 
@@ -321,22 +482,21 @@ validate_leafref(cxobj     *xt,
                  yang_stmt *ytype,
                  cxobj    **xret)
 {
-    int          retval = -1;
-    yang_stmt   *ypath;
-    yang_stmt   *yreqi;
-    cxobj      **xvec = NULL;
-    size_t       xlen = 0;
-    cxobj       *x;
-    int          i;
-    char        *leafrefbody;
-    char        *leafbody;
-    cvec        *nsc = NULL;
-    char        *path_arg;
-    cg_var      *cv;
-    int          require_instance = 1;
-    int          search_done = 0;
+    int        retval = -1;
+    yang_stmt *ypath;
+    yang_stmt *yreqi;
+    cxobj    **xvec = NULL;
+    size_t     xlen = 0;
+    cxobj     *x;
+    int        i;
+    char      *leafrefbody;
+    char      *leafbody;
+    cvec      *nsc = NULL;
+    char      *xpath;
+    cg_var    *cv;
+    int        require_instance = 1;
 #ifdef LEAFREF_OPTIMIZE
-    int          ret;
+    int        ret;
 #endif
 
     /* require instance */
@@ -354,7 +514,7 @@ validate_leafref(cxobj     *xt,
             goto done;
         goto fail;
     }
-    if ((path_arg = yang_argument_get(ypath)) == NULL){
+    if ((xpath = yang_argument_get(ypath)) == NULL){
         clixon_err(OE_YANG, 0, "No argument for Y_PATH");
         goto done;
     }
@@ -363,38 +523,37 @@ validate_leafref(cxobj     *xt,
     if (xml_nsctx_yang(ys, &nsc) < 0)
         goto done;
 #ifdef LEAFREF_OPTIMIZE
-    if (ys == _leafref_cache_yang &&
-         _leafref_cache_x0){
-        if ((ret = leafref_opt_cache_check(xt, _leafref_cache_x0, path_arg, 0)) < 0)
+    if (ys == leafref_opt.lc_cache_yang &&
+         leafref_opt.lc_cache_x0){
+        if ((ret = leafref_opt_cache_check(xt, leafref_opt.lc_cache_x0, xpath, 0)) < 0)
             goto done;
         if (ret == 1){
-            xvec = _leafref_cache_xvec;
-            xlen = _leafref_cache_xlen;
+            xvec = leafref_opt.lc_cache_xvec;
+            xlen = leafref_opt.lc_cache_xlen;
         }
     }
 #endif /* LEAFREF_OPTIMIZE */
     if (xvec == NULL)
-        if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, path_arg) < 0)
+        if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0)
             goto done;
 #ifdef LEAFREF_OPTIMIZE
-    if (ys != _leafref_cache_yang){
+    if (ys != leafref_opt.lc_cache_yang){
         if (leafref_opt_cache_new(ys, xt, xvec, xlen) < 0)
             goto done;
-        _leafref_bin_search = 0;
-        _leafref_bin_search_x0 = NULL;
+        leafref_opt.lc_bin_search = 0;
+        leafref_opt.lc_bin_x0 = NULL;
         if (leafref_opt_search_detect(xvec, xlen,
-                                      &_leafref_bin_search,
-                                      &_leafref_bin_search_x0) < 0)
+                                      &leafref_opt.lc_bin_search,
+                                      &leafref_opt.lc_bin_x0) < 0)
             goto done;
-    } /* ys != _leafref_cache_yang */
-    if (_leafref_bin_search){
-        if ((ret = leafref_opt_search(path_arg, leafrefbody, xret)) < 0)
+    }
+    if (leafref_opt.lc_bin_search){
+        if ((ret = leafref_opt_search(xpath, xt, leafref_opt.lc_bin_x0, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
     }
-
-    if (_leafref_bin_search == 0)
+    else
 #endif
         {
             for (i = 0; i < xlen; i++) {
@@ -405,7 +564,7 @@ validate_leafref(cxobj     *xt,
                     break;
             }
             if (i==xlen){
-                if (validate_leafref_err(path_arg, leafrefbody, xret) < 0)
+                if (validate_leafref_err(xpath, xt, xret) < 0)
                     goto done;
                 goto fail;
             }
@@ -416,7 +575,7 @@ validate_leafref(cxobj     *xt,
     if (nsc)
         xml_nsctx_free(nsc);
 #ifdef LEAFREF_OPTIMIZE
-    if (xvec != _leafref_cache_xvec)
+    if (xvec != leafref_opt.lc_cache_xvec)
         free(xvec);
 #else
     if (xvec)

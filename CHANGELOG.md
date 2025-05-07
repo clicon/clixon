@@ -34,6 +34,13 @@ Expected: July 2025
   * Improved ptr2ptr search from linear to binary
   * [Leafref performance](https://github.com/clicon/clixon/issues/600)
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Modified data-missing/instance-required error-info field to include tag:
+  * Instead of eg `<error-info>42</error-info>` --> `<error-info><tag>42</tag></error-info>`
+
 ### Corrected Bugs
 
   * Fixed: [Confusing error message if clixon_server.py is missing](https://github.com/clicon/clixon-controller/issues/192)

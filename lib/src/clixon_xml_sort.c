@@ -1218,15 +1218,14 @@ xml_sort_verify(cxobj *x0,
  * @see xml_cmp regarding what "match" means in this context (model-match not value-match)
  */
 int
-match_base_child(cxobj      *x0,
-                 cxobj      *x1c,
-                 yang_stmt  *yc,
-                 cxobj     **x0cp)
+match_base_child(cxobj     *x0,
+                 cxobj     *x1c,
+                 yang_stmt *yc,
+                 cxobj    **x0cp)
 {
     int          retval = -1;
     cvec        *cvk = NULL; /* vector of index keys */
     cg_var      *cvi;
-    cxobj       *xb;
     char        *keyname;
     clixon_xvec *xvec = NULL;
 
@@ -1249,7 +1248,7 @@ match_base_child(cxobj      *x0,
         cvi = NULL;
         while ((cvi = cvec_each(cvk, cvi)) != NULL) {
             keyname = cv_string_get(cvi);
-            if ((xb = xml_find(x1c, keyname)) == NULL)
+            if (xml_find(x1c, keyname) == NULL) /* key absent */
                 goto ok;
         }
     default:

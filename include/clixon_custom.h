@@ -253,7 +253,10 @@
  * for ../ one level up, for ../../ two levels up, etc
  * If they match, re-use the result of the previous call.
  * This avoids costly XPath lookups if the number of results is large
- * Caveat: This assumes that an XPath beginning ../ does not change result
+ * Caveats:
+ * 1.1) There is only one cache.
+ *      Two leafref placed after each other invalidates the cache
+ * 1.2) This assumes that an XPath beginning ../ does not change result
  * if ../ is removed. One could probably construct an XPath that does not
  * behave like this.
  * This is in validation code only, not generic XPath
