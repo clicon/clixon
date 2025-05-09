@@ -1658,9 +1658,9 @@ cli_autocli_cache(clixon_handle h,
     yang_stmt      *yrev;
     cbuf           *dbuf = NULL;
     cbuf           *fbuf = NULL;
-    char           *dir0 = NULL;
+    char           *dir00 = NULL;
+    char           *dir0;
     char           *dir = NULL;
-    char           *filename0;
     char           *filename = NULL;
     struct stat     fstat;
     FILE           *f = NULL;
@@ -1675,8 +1675,16 @@ cli_autocli_cache(clixon_handle h,
     if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL){
         clixon_debug(CLIXON_DBG_CLI, "CLI cache: skip %s: No revision", yang_argument_get(ymod));
     }
-    if (autocli_cache(h, &type, &dir0) < 0)
+    if (autocli_cache(h, &type, &dir00) < 0)
         goto done;
+    if ((ret = wordexp(dir00, &wresult, 0)) != 0){
+        clixon_err(OE_UNIX, errno, "wordexp(%s) %d", dir00, ret);
+        goto done;
+    }
+    if ((dir0 = wresult.we_wordv[0]) != NULL && *dir0 == '~'){
+        clixon_err(OE_UNIX, errno, "%s tilde not expanded", dir0);
+        goto done;
+    }
     if (yrev != NULL && type != AUTOCLI_CACHE_DISABLED && dir0 != NULL){
         /* If cache enabled and YANG domain and revision */
         if ((dbuf = cbuf_new()) == NULL){
@@ -1696,12 +1704,7 @@ cli_autocli_cache(clixon_handle h,
         if (ys != ymod)
             cprintf(fbuf, "-%s-%s", yang_key2str(yang_keyword_get(ys)), yang_argument_get(ys));
         cprintf(fbuf, ".cli");
-        filename0 = cbuf_get(fbuf);
-        if ((ret = wordexp(filename0, &wresult, 0)) != 0){
-            clixon_err(OE_UNIX, errno, "wordexp(%s) %d", filename0, ret);
-            goto done;
-        }
-        filename = wresult.we_wordv[0];
+        filename =  cbuf_get(fbuf);
         if (type == AUTOCLI_CACHE_WRITE ||
             stat(filename, &fstat) < 0) { /* File does not exist or should be written*/
             /* Generate clispec */
@@ -1719,6 +1722,12 @@ cli_autocli_cache(clixon_handle h,
                 if (stat(dir0, &fstat) < 0) {
                     if (mkdir(dir0, S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH) < 0){
                         clixon_err(OE_UNIX, errno, "mkdir(%s)", dir0);
+                        goto done;
+                    }
+                }
+                else {
+                    if (!S_ISDIR(fstat.st_mode)){
+                        clixon_err(OE_UNIX, 0, "%s exists but is not a directory as expected", dir0);
                         goto done;
                     }
                 }
