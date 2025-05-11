@@ -464,6 +464,24 @@ AH_BOTTOM([#include <clixon_custom.h>])
 
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 
+AC_ARG_ENABLE([systemd-notify],
+  AS_HELP_STRING([--enable-systemd-notify], [Enable send notify systemd]),
+  [if test "$enable_systemd_notify" = "yes"; then
+      AC_DEFINE([SYSTEMD_NOTIFY], 1, [Enable systemd notify])
+
+      # Check for systemd headers and the libsystemd library
+      AC_CHECK_HEADERS([systemd/sd-daemon.h], [],
+          AC_MSG_ERROR([Missing systemd headers required for systemd notify.]))
+
+      # Check for the sd_notify function in the libsystemd library
+      AC_CHECK_LIB([systemd], [sd_notify], [],
+          AC_MSG_ERROR([Missing libsystemd library required for systemd notify.]))
+
+      # Append '-lsystemd' to LIBS preserving previous values
+      LIBS="$LIBS -lsystemd"
+  fi
+])
+
 AC_CONFIG_FILES([Makefile
 	  lib/Makefile
 	  lib/src/Makefile

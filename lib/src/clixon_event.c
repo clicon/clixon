@@ -55,6 +55,10 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#ifdef SYSTEMD_NOTIFY
+#include <systemd/sd-daemon.h>
+#endif
+
 #include <cligen/cligen.h>
 
 #include "clixon_queue.h"
@@ -561,6 +565,13 @@ clixon_event_loop(clixon_handle h)
         return clixon_event_select_loop(h);
     }
     while (clixon_exit_get() != 1) {
+
+#ifdef SYSTEMD_NOTIFY
+        if (sd_notify(0, "WATCHDOG=1") < 0) {
+            goto err;
+        }
+#endif
+
         nfds = _ee_prio_nr + _ee_nr;
         if (nfds > nfds_max){
             nfds_max = nfds;

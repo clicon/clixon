@@ -62,6 +62,10 @@
 #include <netinet/in.h>
 #include <libgen.h>
 
+#ifdef SYSTEMD_NOTIFY
+#include <systemd/sd-daemon.h>
+#endif
+
 /* cligen */
 #include <cligen/cligen.h>
 
@@ -1045,6 +1049,13 @@ main(int    argc,
     if (netconf_monitoring_statistics_init(h) < 0)
         goto done;
     clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
+
+#ifdef SYSTEMD_NOTIFY
+    if (sd_notify(0, "READY=1") < 0) {
+        goto done;
+    }
+#endif
+
     if (clixon_event_loop(h) < 0)
         goto done;
  ok:
