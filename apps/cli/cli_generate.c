@@ -1636,7 +1636,7 @@ ph_add_set(cligen_handle h,
     return retval;
 }
 
-/*! Read / write from autocli cache
+/*! Generate clispecs, read / write from autocli cache if defined
  *
  * Cache entry is: <AUTOCLI_CACHE_DIR>/<domain>/<module>@<revision>[-<tag>-<name>].cli
  * @param[in]  h       Clixon handle
@@ -1659,7 +1659,7 @@ cli_autocli_cache(clixon_handle h,
     cbuf           *dbuf = NULL;
     cbuf           *fbuf = NULL;
     char           *dir00 = NULL;
-    char           *dir0;
+    char           *dir0 = NULL;
     char           *dir = NULL;
     char           *filename = NULL;
     struct stat     fstat;
@@ -1677,13 +1677,15 @@ cli_autocli_cache(clixon_handle h,
     }
     if (autocli_cache(h, &type, &dir00) < 0)
         goto done;
-    if ((ret = wordexp(dir00, &wresult, 0)) != 0){
-        clixon_err(OE_UNIX, errno, "wordexp(%s) %d", dir00, ret);
-        goto done;
-    }
-    if ((dir0 = wresult.we_wordv[0]) != NULL && *dir0 == '~'){
-        clixon_err(OE_UNIX, errno, "%s tilde not expanded", dir0);
-        goto done;
+    if (dir00 != NULL){
+        if ((ret = wordexp(dir00, &wresult, 0)) != 0){
+            clixon_err(OE_UNIX, errno, "wordexp(%s) %d", dir00, ret);
+            goto done;
+        }
+        if ((dir0 = wresult.we_wordv[0]) != NULL && *dir0 == '~'){
+            clixon_err(OE_UNIX, errno, "%s tilde not expanded", dir0);
+            goto done;
+        }
     }
     if (yrev != NULL && type != AUTOCLI_CACHE_DISABLED && dir0 != NULL){
         /* If cache enabled and YANG domain and revision */
