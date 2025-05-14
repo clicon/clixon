@@ -2179,8 +2179,13 @@ yang_xml_mandatory(cxobj     *xt,
     keyw = yang_keyword_get(ys);
     if (keyw == Y_LEAF || keyw == Y_CHOICE || keyw == Y_ANYDATA || keyw == Y_ANYXML){
         if ((ym = yang_find(ys, Y_MANDATORY, NULL)) != NULL){
-            if ((cv = yang_cv_get(ym)) != NULL){ /* shouldnt happen */
+            /* cv set in ys_populate2 */
+            if ((cv = yang_cv_get(ym)) != NULL){
                 retval = cv_bool_get(cv);
+                goto done;
+            }
+            else {
+                clixon_err(OE_YANG, 0, "Mandatory cv not set");
                 goto done;
             }
         }

@@ -44,6 +44,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+  * Fixed: [Mandatory in service code does not work](https://github.com/clicon/clixon-controller/issues/202)
   * Fixed: [Confusing error message if clixon_server.py is missing](https://github.com/clicon/clixon-controller/issues/192)
   * Fixed: [Remove "checkroot" from Makefiles](https://github.com/clicon/clixon/issues/605)
 

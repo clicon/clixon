@@ -1249,7 +1249,7 @@ static int
 uses_orig_ptr(enum rfc_6020 keyword)
 {
     return
-        //        keyword == Y_CONFIG // NO (test_openconfig.sh) + refine
+        // keyword == Y_CONFIG // NO (test_openconfig.sh) + refine
         // keyword == Y_DEFAULT // NO (test_augment.sh) + refine
         keyword == Y_DESCRIPTION // XXX refine
         || keyword == Y_ENUM // children
@@ -3586,8 +3586,10 @@ ys_populate2(yang_stmt    *ys,
     switch(ys->ys_keyword){
     case Y_AUGMENT:
     case Y_GROUPING:
-        retval = 2; /* Skip sub-tree */
-        goto done;
+        if (!_yang_use_orig){
+            retval = 2; /* Skip sub-tree */
+            goto done;
+        }
         break;
     case Y_LEAF:
     case Y_LEAF_LIST:
