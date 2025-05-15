@@ -163,6 +163,13 @@ format_str2int(char *str)
     return clicon_str2int(_FORMATS, str);
 }
 
+static int
+cmpstringp(const void *p1,
+           const void *p2)
+{
+    return strcmp(*(const char **) p1, *(const char **) p2);
+}
+
 /*! Debug dump config options
  *
  * @param[in] h        Clixon handle
@@ -189,6 +196,8 @@ clicon_option_dump(clixon_handle h,
 
     if (clicon_hash_keys(hash, &keys, &klen) < 0)
         goto done;
+    /* sort keys */
+    qsort(keys, klen, sizeof(char*), cmpstringp);
     for(i = 0; i < klen; i++) {
         val = clicon_hash_value(hash, keys[i], &vlen);
         if (vlen){
