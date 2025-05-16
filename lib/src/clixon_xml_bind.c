@@ -366,14 +366,20 @@ populate_self_top(clixon_handle h,
  * @param[in]   xt     XML tree node
  * @param[in]   yb     How to bind yang to XML top-level when parsing
  * @param[in]   yspec  Yang spec
- * @param[out]  xerr   Reason for failure, or NULL
+ * @param[out]  xerr   Reason for failure, on the form <rpc-reply><rpc-error> or NULL,
+ *                     free with xml_free()
  * @retval      1      OK yang assignment made
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
  * @retval     -1      Error
  * @code
  *   cxobj *xerr = NULL;
- *   if (xml_bind_yang(h, x, YB_MODULE, yspec, &xerr) < 0)
+ *   int    ret;
+ *   if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, &xerr)) < 0)
  *     err;
+ *   if (ret == 0){
+ *     ...
+ *     xml_free(xerr);
+ *   }
  * @endcode
  * There are several functions in the API family
  * @see xml_bind_yang_rpc     for incoming rpc 
@@ -531,7 +537,7 @@ xml_bind_yang0_opt(clixon_handle h,
  * @param[in]   xt     XML tree node
  * @param[in]   yb     How to bind yang to XML top-level when parsing
  * @param[in]   yspec  Yang spec
- * @param[out]  xerr   Reason for failure, or NULL
+ * @param[out]  xerr   Reason for failure, or NULL (call xml_free() after use)
  * @retval      1      OK yang assignment made
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
  * @retval     -1      Error

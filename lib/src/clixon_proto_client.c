@@ -492,8 +492,8 @@ clicon_rpc_netconf_xml(clixon_handle  h,
  * @param[in]  xpath    XPath (or "")
  * @param[in]  nsc      Namespace context for filter
  * @param[in]  defaults Value of the with-defaults mode, rfc6243, or NULL
- * @param[out] xt       XML tree. Free with xml_free. 
- *                      Either <config> or <rpc-error>. 
+ * @param[out] xt       XML tree. Free with xml_free.
+ *                      Either <config> or <rpc-reply><rpc-error>
  * @retval     0        OK
  * @retval    -1        Error, fatal or xml
  * @code
@@ -511,10 +511,11 @@ clicon_rpc_netconf_xml(clixon_handle  h,
  * @endcode
  * @see clicon_rpc_get
  * @note the netconf return message is yang populated, as well as the return data
+ * XXX: why is this only rpc call with username parameter?
  */
 int
 clicon_rpc_get_config(clixon_handle h,
-                      char         *username, // XXX: why is this only rpc call with username parameter?
+                      char         *username,
                       char         *db,
                       char         *xpath,
                       cvec         *nsc,
@@ -588,6 +589,8 @@ clicon_rpc_get_config(clixon_handle h,
                                               ". Internal error, backend returned invalid XML.",
                                               NULL) < 0)
                 goto done;
+            xd = xerr;
+            xerr = NULL;
             if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
                 clixon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
                 goto done;
@@ -690,7 +693,7 @@ clicon_rpc_edit_config(clixon_handle       h,
     return retval;
 }
 
-/*! Send a request to backend to copy a file from one location to another 
+/*! Send a request to backend to copy a file from one location to another
  *
  * Note this assumes the backend can access these files and (usually) assumes
  * clients and servers have the access to the same filesystem.
@@ -928,7 +931,7 @@ clicon_rpc_unlock(clixon_handle h,
  * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
  * @param[in]  defaults  Value of the with-defaults mode, rfc6243, or NULL
  * @param[out] xt        XML tree. Free with xml_free. 
- *                       Either <config> or <rpc-error>. 
+ *                       Either <config> or <rpc-error>
  * @retval     0         OK
  * @retval    -1         Error, fatal or xml
  * @note if xpath is set but namespace is NULL, the default, netconf base 
@@ -957,7 +960,7 @@ clicon_rpc_unlock(clixon_handle h,
 int
 clicon_rpc_get(clixon_handle   h,
                char           *xpath,
-               cvec           *nsc, /* namespace context for filter */
+               cvec           *nsc,
                netconf_content content,
                int32_t         depth,
                char           *defaults,
@@ -976,7 +979,7 @@ clicon_rpc_get(clixon_handle   h,
  * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
  * @param[in]  defaults  Value of the with-defaults mode, rfc6243, or NULL
  * @param[out] xt        XML tree. Free with xml_free. 
- *                       Either <config> or <rpc-error>. 
+ *                       Either <config> or <rpc-reply><rpc-error>. 
  * @retval     0         OK
  * @retval    -1         Error, fatal or xml
  * @note if xpath is set but namespace is NULL, the default, netconf base 
