@@ -86,7 +86,7 @@ CLICON_PLUGIN="example_cli";
 CLICON_PIPETREE="|mypipe";  # Only difference from nodefault
 
 set @datamodel, cli_auto_set();
-delete("Delete a configuration item") @datamodel, cli_auto_del(); 
+delete("Delete a configuration item") @datamodel, @add:leafref-referred, cli_auto_del(); 
 commit("Commit the changes"), cli_commit();
 show("Show a particular state of the system"){
    compare("Compare candidate and running databases") {

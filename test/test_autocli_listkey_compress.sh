@@ -147,7 +147,7 @@ CLICON_PROMPT="%U@%H> ";
 set @datamodel, cli_set();
 merge @datamodel, cli_merge();
 create @datamodel, cli_create();
-delete @datamodel, cli_del();
+delete @datamodel, @add:leafref-referred, cli_del();
 show config, cli_show_config("candidate", "cli", "/", NULL, true, false, NULL,"set ");
 show config @datamodel, cli_show_auto("candidate", "cli", true, false, "report-all", "set ");
 

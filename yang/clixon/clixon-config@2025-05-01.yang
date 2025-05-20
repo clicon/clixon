@@ -53,6 +53,8 @@ module clixon-config {
         description
             "Added options:
                 CLICON_EVENT_SELECT
+             Deprecated
+                CLICON_CLI_EXPAND_LEAFREF {
              Obsoleted:
                 CLICON_STREAM_URL
              Release in Clixon 7.5";
@@ -1057,7 +1059,7 @@ module clixon-config {
         }
         leaf CLICON_CLI_EXPAND_LEAFREF {
             type boolean;
-            default false;
+            default true;
             description
                 "If true, then CLI expansion of leafrefs (in expand_dbvar) are done using the
                  source values, not the references.
@@ -1067,8 +1069,13 @@ module clixon-config {
                    <ifref>b</ifref>
                  If true, expansion will suggest a, b, c (source if values)
                  If false, expansion will suggest b (destination ifref values)
-                 While setting this value makes sense for adding new values, it makes less sense for
-                 deleting.";
+                 While setting this value makes sense for adding new values, it makes less sense
+                 for deleting.
+                 Deprecated in 7.5,
+                 Instead of 'false', use:
+                 label 'leafref-referring' or @add:leafref-referring in @tree syntax";
+            status deprecated;
+
         }
         leaf CLICON_CLI_OUTPUT_FORMAT {
             type cl:datastore_format;

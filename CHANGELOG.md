@@ -19,9 +19,12 @@ Expected: July 2025
 
 ### Features
 
+* Added label leafref-deferred to control CLI leafref expansion
+  * See https://clixon-docs.readthedocs.io/en/latest/cli.html#expanding-of-leafrefs
 * Added ability to switch between poll-based and select-based event handling
 * New `clixon-config@2025-05-01.yang` revision
   * Added option: `CLICON_EVENT_SELECT`
+  * Deprecated: `CLICON_CLI_EXPAND_LEAFREF`
   * Obsoleted: `CLICON_STREAM_URL`
 * Autocli cache for faster loading of generated CLIspecs
 * New `clixon-autocli@2025-05-01.yang` revision

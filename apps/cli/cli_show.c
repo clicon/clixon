@@ -191,6 +191,7 @@ xpath_append(cbuf      *cb0,
  * just remember previous but for ordered-by system, check the whole list
  * Also escape strings if necessary
  * @param[in]  h        Clixon handle
+ * @param[in]  co       Matching cligen object
  * @param[in]  xvec     XML vector
  * @param[in]  xlen     Length of XML vector
  * @param[out] commands Vector of function pointers to callback functions
@@ -199,6 +200,7 @@ xpath_append(cbuf      *cb0,
  */
 static int
 expand_dbvar_insert(clixon_handle h,
+                    cg_obj       *co,
                     cxobj       **xvec,
                     size_t        xlen,
                     cvec         *commands)
@@ -212,14 +214,12 @@ expand_dbvar_insert(clixon_handle h,
     yang_stmt *y;
     yang_stmt *yp = NULL;
     int        user_ordered_list = 0;
-    cg_obj    *co;
     int        doesc;
     int        i;
     int        ret;
 
     /* Dont escape if REST, peek on cligen-object */
-    if ((co = cligen_co_match(cli_cligen(h))) != NULL &&
-        ISREST(co)){
+    if (co != NULL && ISREST(co)){
         doesc = 0;
     }
     else
@@ -311,9 +311,10 @@ expand_dbvar_insert(clixon_handle h,
  * The syntax of <api_path_fmt> is of RFC8040 api-path with the following extension:
  *   %s  Represents the values of cvv in order starting from element 1
  *   %k  Represents the (first) key of the (previous) list
+ * @note Label leafref-referring means do not expand leafrefs referring values, instead use referred
  */
 int
-expand_dbvar(void   *h,
+expand_dbvar(clixon_handle h,
              char   *name,
              cvec   *cvv,
              cvec   *argv,
@@ -333,6 +334,7 @@ expand_dbvar(void   *h,
     cxobj           *xerr = NULL; /* free */
     size_t           xlen = 0;
     cg_var          *cv;
+    cg_obj          *co;
     cxobj           *xtop = NULL; /* xpath root */
     cxobj           *xbot = NULL; /* xpath, NULL if datastore */
     yang_stmt       *y = NULL; /* yang spec of xpath */
@@ -348,6 +350,7 @@ expand_dbvar(void   *h,
     char            *str;
     int              grouping_treeref;
     cvec            *callback_cvv;
+    //    cvec            *labels_cvv;
 
     if (argv == NULL || (cvec_len(argv) != 2 && cvec_len(argv) != 3)){
         clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
@@ -357,6 +360,7 @@ expand_dbvar(void   *h,
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
+    co = cligen_co_match(cli_cligen(h));
     if ((cv = cvec_i(argv, 0)) == NULL){
         clixon_err(OE_PLUGIN, 0, "Error when accessing argument <db>");
         goto done;
@@ -444,9 +448,10 @@ expand_dbvar(void   *h,
             cvec_append_var(nsc, cv);
     }
     cprintf(cbxpath, "%s", xpath);
-    if (clicon_option_bool(h, "CLICON_CLI_EXPAND_LEAFREF") &&
-        (ytype = yang_find(y, Y_TYPE, NULL)) != NULL &&
-        strcmp(yang_argument_get(ytype), "leafref") == 0){
+    if ((ytype = yang_find(y, Y_TYPE, NULL)) != NULL &&
+        strcmp(yang_argument_get(ytype), "leafref") == 0 &&
+        cvec_find(co->co_cvec, "leafref-referring") == NULL){
+
         /* Special case for leafref. Detect leafref via Yang-type, 
          * Get Yang path element, tentatively add the new syntax to the whole
          * tree and apply the path to that.
@@ -491,7 +496,7 @@ expand_dbvar(void   *h,
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, cbuf_get(cbxpath)) < 0)
         goto done;
     /* Loop for inserting into commands cvec. */
-    if (expand_dbvar_insert(h, xvec, xlen, commands) < 0)
+    if (expand_dbvar_insert(h, co, xvec, xlen, commands) < 0)
         goto done;
  ok:
     retval = 0;
@@ -543,7 +548,7 @@ expand_dbvar(void   *h,
  * @retval     -1        Error
  */
 int
-expand_yang_list(void   *h,
+expand_yang_list(clixon_handle h,
                  char   *name,
                  cvec   *cvv,
                  cvec   *argv,
@@ -632,7 +637,7 @@ expand_yang_list(void   *h,
  * @see expand_dbvar
  */
 int
-expand_dir(void   *h,
+expand_dir(clixon_handle h,
            char   *name,
            cvec   *cvv,
            cvec   *argv,
@@ -746,13 +751,13 @@ cli_show_common(clixon_handle    h,
                 int              skiptop
                 )
 {
-    int              retval = -1;
-    cxobj           *xt = NULL;
-    cxobj           *xerr;
-    cxobj          **vec = NULL;
-    size_t           veclen;
-    cxobj           *xp;
-    int              i;
+    int     retval = -1;
+    cxobj  *xt = NULL;
+    cxobj **vec = NULL;
+    size_t  veclen;
+    cxobj  *xp;
+    int     i;
+    cxobj  *xerr;
 
     if (state && strcmp(db, "running") != 0){
         clixon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);

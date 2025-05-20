@@ -94,7 +94,7 @@ function testrun()
     expectpart "$($clixon_cli -1f $cfg commit)" 0 "^$"
 
     new "expand fruit leafref"
-    expectpart "$(echo "set $prefix fruit-name ?" | $clixon_cli -f $cfg  -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 apple orange
+    expectpart "$(echo "set $prefix fruit-name ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 apple orange
 
     new "add fruit-name"
     expectpart "$($clixon_cli -1f $cfg set $prefix fruit-name apple)" 0 "^$"

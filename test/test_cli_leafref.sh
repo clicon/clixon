@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # transitive leafref->leafref leafref->identityref completion
-# 
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -185,7 +184,7 @@ set @datamodel, cli_auto_set();
 merge @datamodel, cli_auto_merge();
 create @datamodel, cli_auto_create();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del(); 
+      @datamodel, @add:leafref-referring, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system"){
@@ -228,25 +227,27 @@ fi
 
 new "wait backend"
 wait_backend
-    
+
 new "expand identityref 1st level"
 expectpart "$(echo "set identityrefs identityref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "ex:des" "ex:des2" "ex:des3"
 
-# XXX something wrong sometimes in this test on docker.
-# Expected:
-# <name>
-# CLI syntax error: "set leafrefs leafref": Incomplete command
-new "expand leafref 1st level"
-expectpart "$(echo "set leafrefs leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=false 2> /dev/null)" 0 "<name>" --not-- "91" "92" "93"
-
 new "expand leafref 1st level with leafref expand"
-expectpart "$(echo "set leafrefs leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 "91" "92" "93"
+expectpart "$(echo "set leafrefs leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
+
+new "set leafref 92"
+expectpart "$($clixon_cli -1f $cfg set leafrefs leafref 92 2> /dev/null)" 0 "^$"
+
+new "expand delete leafref"
+expectpart "$(echo "delete leafrefs leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "92" --not-- "91" "93"
+
+new "delete leafref 92"
+expectpart "$($clixon_cli -1f $cfg delete leafrefs leafref 92 2> /dev/null)" 0 "^$"
 
 new "expand leafref top"
-expectpart "$(echo "set leafrefsabs leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 "91" "92" "93"
+expectpart "$(echo "set leafrefsabs leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
 
 new "expand leafref require-instance"
-expectpart "$(echo "set leafrefsreqinst leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 "91" "92" "93"
+expectpart "$(echo "set leafrefsreqinst leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
 
 # First level id/leaf refs
 new "set identityref des"
@@ -299,7 +300,7 @@ expectpart "$(echo "set identityrefs2 identityref ?" | $clixon_cli -f $cfg 2> /d
 
 # Note CI may have random number as host which may match "92"
 new "expand leafref 2nd level"
-expectpart "$(echo "set leafrefs2 leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 " 91" " 93" --not-- " 92"
+expectpart "$(echo "set leafrefs2 leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 " 91" " 93" --not-- " 92"
 
 new "set identityref2 des"
 expectpart "$($clixon_cli -1 -f $cfg set identityrefs2 identityref ex:des)" 0 "^$"
@@ -314,7 +315,7 @@ new "show config"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config cli)" 0 "set table parameter 91" "set table parameter 92" "set table parameter 93" "set leafrefs leafref 91" "set leafrefs leafref 93" "set identityrefs identityref ex:des" "set identityrefs identityref ex:des3" "set leafrefs2 leafref 91" "set identityrefs2 identityref ex:des" --not-- "set identityrefs identityref ex:des2" "set leafrefs leafref 92"
 
 new "set leafrefother aaa"
-expectpart "$(echo "set leafrefother leafref ?" | $clixon_cli -f $cfg -o CLICON_CLI_EXPAND_LEAFREF=true 2> /dev/null)" 0 "91" "92" "93"
+expectpart "$(echo "set leafrefother leafref ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "91" "92" "93"
 
 new "cli commit"
 expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
