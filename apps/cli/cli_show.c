@@ -311,7 +311,8 @@ expand_dbvar_insert(clixon_handle h,
  * The syntax of <api_path_fmt> is of RFC8040 api-path with the following extension:
  *   %s  Represents the values of cvv in order starting from element 1
  *   %k  Represents the (first) key of the (previous) list
- * @note Label leafref-referring means do not expand leafrefs referring values, instead use referred
+ * @note Label leafref-no-refer means do not expand leafrefs referred values, instead use the
+ * once in place
  */
 int
 expand_dbvar(clixon_handle h,
@@ -450,7 +451,7 @@ expand_dbvar(clixon_handle h,
     cprintf(cbxpath, "%s", xpath);
     if ((ytype = yang_find(y, Y_TYPE, NULL)) != NULL &&
         strcmp(yang_argument_get(ytype), "leafref") == 0 &&
-        cvec_find(co->co_cvec, "leafref-referring") == NULL){
+        cvec_find(co->co_cvec, "leafref-no-refer") == NULL){
 
         /* Special case for leafref. Detect leafref via Yang-type, 
          * Get Yang path element, tentatively add the new syntax to the whole

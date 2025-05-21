@@ -99,7 +99,7 @@ CLICON_PROMPT="cli> ";
 set @datamodel, cli_set();
 merge @datamodel, cli_merge();
 create @datamodel, cli_create();
-delete("Delete a configuration item") @datamodel, @add:leafref-referred, cli_del();
+delete("Delete a configuration item") @datamodel, @add:leafref-no-refer, cli_del();
 validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();

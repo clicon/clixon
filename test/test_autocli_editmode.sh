@@ -75,7 +75,7 @@ top, cli_auto_top("basemodel");
 set @datamodel, cli_auto_set();
 merge @datamodel, cli_auto_merge();
 create @datamodel, cli_auto_create();
-delete("Delete a configuration item") @datamodel, @add:leafref-referred, cli_auto_del();
+delete("Delete a configuration item") @datamodel, @add:leafref-no-refer, cli_auto_del();
 validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();

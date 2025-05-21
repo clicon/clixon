@@ -184,7 +184,7 @@ set @datamodel, cli_auto_set();
 merge @datamodel, cli_auto_merge();
 create @datamodel, cli_auto_create();
 delete("Delete a configuration item") {
-      @datamodel, @add:leafref-referring, cli_auto_del();
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system"){

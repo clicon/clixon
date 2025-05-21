@@ -1073,7 +1073,7 @@ module clixon-config {
                  for deleting.
                  Deprecated in 7.5,
                  Instead of 'false', use:
-                 label 'leafref-referring' or @add:leafref-referring in @tree syntax";
+                 label 'leafref-no-refer' or @add:leafref-no-refer in @tree syntax";
             status deprecated;
 
         }

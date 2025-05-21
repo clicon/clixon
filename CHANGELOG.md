@@ -19,7 +19,7 @@ Expected: July 2025
 
 ### Features
 
-* Added label leafref-deferred to control CLI leafref expansion
+* Added label `leafref-no-refer` to control CLI leafref expansion
   * See https://clixon-docs.readthedocs.io/en/latest/cli.html#expanding-of-leafrefs
 * Added ability to switch between poll-based and select-based event handling
 * New `clixon-config@2025-05-01.yang` revision
