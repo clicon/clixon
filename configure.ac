@@ -55,11 +55,6 @@ CLIXON_VERSION_MAJOR=$(echo ${CLIXON_VERSION2} | awk -F. '{print $1}')
 CLIXON_VERSION_MINOR=$(echo ${CLIXON_VERSION2} | awk -F. '{print $2}')
 CLIXON_VERSION_PATCH=$(echo ${CLIXON_VERSION2} | awk -F. '{print $3}')
 
-AC_PROG_LEX(noyywrap)
-if test "$LEX" = ":"; then
-   AC_MSG_ERROR(CLIXON does not find lex or flex.)
-fi
-
 # Debug flag
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],[Build with debug symbols, default: no]),[
 	  if test "$enableval" = no; then
@@ -77,6 +72,13 @@ if test "$ac_enable_debug" = "yes"; then
 else
    : ${CFLAGS="-O2 -Wall -Werror"}
 fi
+
+AC_MSG_RESULT(CFLAGS is $CFLAGS)
+
+# AC macros themselves should not get strange CFLAGS, (eg AC_PROG_LEX) they are for Makefiles
+# therefore push/hide CFLAGS here into tmp variable and pop them later
+TMPCFLAGS=${CFLAGS}
+unset CFLAGS
 
 AC_CONFIG_HEADERS([include/clixon_config.h lib/clixon/clixon.h])
 
@@ -145,11 +147,14 @@ CPPFLAGS="-DHAVE_CONFIG_H ${CPPFLAGS}"
 AC_MSG_RESULT(compiler is $CC)
 
 AC_MSG_RESULT(CPPFLAGS is $CPPFLAGS)
-AC_MSG_RESULT(CFLAGS is $CFLAGS)
 AC_MSG_RESULT(LDFLAGS is $LDFLAGS)
 AC_MSG_RESULT(INSTALLFLAGS is $INSTALLFLAGS)
 
 AC_PROG_YACC
+AC_PROG_LEX(noyywrap)
+if test "$LEX" = ":"; then
+   AC_MSG_ERROR(CLIXON does not find lex or flex.)
+fi
 
 # SSH binary path for client and test
 AC_PATH_PROG(SSH_BIN, ssh)
@@ -463,6 +468,9 @@ AC_CHECK_FUNCS(qsort_s)
 AH_BOTTOM([#include <clixon_custom.h>])
 
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
+
+# Pop CFLAGS for Makefiles
+CFLAGS=${TMPCFLAGS}
 
 AC_CONFIG_FILES([Makefile
 	  lib/Makefile
