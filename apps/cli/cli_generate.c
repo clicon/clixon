@@ -131,7 +131,7 @@ cli_get_mntpoint(yang_stmt *yspec)
  * @param[in]  h      Clixon handle
  * @param[in]  ys     yang_stmt of the node at hand
  * @param[in]  cvtype Type of the cligen variable
- * @param[in]  options 
+ * @param[in]  options
  * @param[in]  fraction_digits
  * @param[out] cb     The string where the result format string is inserted.
  * @retval     1      OK
@@ -731,7 +731,7 @@ yang2cli_var_union_one(clixon_handle h,
     return retval;
 }
 
-/*! Loop over all sub-types of a Yang union 
+/*! Loop over all sub-types of a Yang union
  *
  * Part of generating CLI code for Yang leaf statement to CLIgen variable
  * @param[in]  h        Clixon handle
@@ -795,7 +795,7 @@ yang2cli_var_leafref(clixon_handle h,
     int   flag;
     int   regular_value = 1; /* if strict-expand==0 then regular-value is false */
 
-    /* Give up: use yreferred 
+    /* Give up: use yreferred
      * XXX: inline of else clause below
      */
     type = yrestype?yang_argument_get(yrestype):NULL;
@@ -842,7 +842,7 @@ yang2cli_var_leafref(clixon_handle h,
  * @retval    -1         Error
  *
  * Make a type lookup and complete a cligen variable expression such as <a:string>.
- * One complication is yang union, that needs a recursion since it consists of 
+ * One complication is yang union, that needs a recursion since it consists of
  * sub-types.
  * eg type union{ type int32; type string } --> (<x:int32>| <x:string>)
  * Another is multiple ranges
@@ -918,7 +918,7 @@ yang2cli_var(clixon_handle h,
         if (yang_path_arg(yreferred, path_arg, &yref) < 0)
             goto done;
         if (yref == NULL){
-            /* Give up: use yreferred 
+            /* Give up: use yreferred
              */
             if (yang2cli_var_leafref(h, ys, yrestype, helptext, cvtype, options,
                                      cvv, patterns, fraction_digits, cb) < 0)
@@ -960,7 +960,7 @@ yang2cli_var(clixon_handle h,
  * @retval     0          OK
  * @retval    -1          Error
  * Some complexity in callback, key_leaf and extralevel logic.
- * If extralevel -> add extra { } level 
+ * If extralevel -> add extra { } level
  *      + if callbacks add: cb();{}
  */
 static int
@@ -1082,7 +1082,7 @@ yang2cli_container(clixon_handle h,
 
     if (ys_real_module(ys, &ymod) < 0)
         goto done;
-    /* If non-presence container && HIDE mode && only child is 
+    /* If non-presence container && HIDE mode && only child is
      * a list, then skip container keyword
      * See also clixon_cli2file
      */
@@ -1184,7 +1184,7 @@ yang2cli_list(clixon_handle h,
                        yang_argument_get(ys), keyname);
             goto done;
         }
-        /* Print key variable now, and skip it in loop below 
+        /* Print key variable now, and skip it in loop below
          * Note, only print callback on last statement
          */
         last_key = cvec_next(cvk, cvi)?0:1;
@@ -1246,7 +1246,7 @@ yang2cli_list(clixon_handle h,
          container fddi { ... }
   }
   * @code.end
-  @note Removes 'meta-syntax' from cli syntax. They are not shown when xml is 
+  @note Removes 'meta-syntax' from cli syntax. They are not shown when xml is
   translated to cli. and therefore input-syntax != output syntax. Which is bad
  */
 static int
@@ -1478,7 +1478,7 @@ cvec_add_name(cvec *cvv,
  * These labels can be filtered when applying them with the @treeref, @add:<label> syntax.
  * (terminal entry means eg "a ;" where ; is an "empty" child of "a" representing a terminal)
  * 1. Add "act-prekey" label on terminal entries of LIST keys, except last
- * 2. Add "act-lastkey" label on terminal entries of last LIST keys, 
+ * 2. Add "act-lastkey" label on terminal entries of last LIST keys,
  * 3. Add "act-list" label on terminal entries of LIST
  * 4. Add "act-leafconst" label on terminal entries of non-empty LEAF/LEAF_LISTs
  * 5. Add "act-leafvar" label on nodes which are children of non-key LEAFs, eg "a <a>" -> "a <a>,leaf"
@@ -1496,7 +1496,7 @@ cvec_add_name(cvec *cvv,
  * @note A labels set as : "A, label;" is set on "A" not on ";", there is no way to set the
  *       label on the empty terminal ";". Therefore this function moves them all from the
  *       parent to the ";" child.
- * XXX: the above kludge can be fixed by: 
+ * XXX: the above kludge can be fixed by:
  *   (1) change cligen syntax
  *   (2) rewrite yang2cli code to create pt directly instead of via a cbuf.
  */
@@ -1548,7 +1548,7 @@ yang2cli_post(clixon_handle h,
             }
             continue;
         }
-        /* Filters out eg "name <name>" second instance if kw-all / kw-nokey 
+        /* Filters out eg "name <name>" second instance if kw-all / kw-nokey
          * But if only "<name>" it passes
          */
         if ((yc = yang_find_datanode(yp, co->co_command)) == NULL){
@@ -1647,12 +1647,12 @@ ph_add_set(cligen_handle h,
  * XXX only disable and readwrite
  */
 static int
-cli_autocli_cache(clixon_handle h,
-                  yang_stmt    *ys,
-                  yang_stmt    *ymod,
-                  char         *domain,
-                  int           skiptop,
-                  cbuf         *cb)
+cli_autocli_gen_cache(clixon_handle h,
+                      yang_stmt    *ys,
+                      yang_stmt    *ymod,
+                      char         *domain,
+                      int           skiptop,
+                      cbuf         *cb)
 {
     int             retval = -1;
     yang_stmt      *yrev;
@@ -1864,7 +1864,7 @@ yang2cli_grouping(clixon_handle      h,
     if (autocli_treeref_state(h, &treeref_state) < 0)
         goto done;
     if (treeref_state || yang_config(ys)){
-        if (cli_autocli_cache(h, ys, ymod, domain, 1, cb) < 0)
+        if (cli_autocli_gen_cache(h, ys, ymod, domain, 1, cb) < 0)
             goto done;
     }
     if (cbuf_len(cb) == 0){
@@ -2002,7 +2002,7 @@ yang2cli_yspec(clixon_handle h,
             continue;
         cbuf_reset(cb);
         /* See if they are in cache dir */
-        if (cli_autocli_cache(h, ymod, ymod, yang_argument_get(ydomain), 0, cb) < 0)
+        if (cli_autocli_gen_cache(h, ymod, ymod, yang_argument_get(ydomain), 0, cb) < 0)
             goto done;
         if (cbuf_len(cb) == 0)
             continue;
@@ -2025,7 +2025,8 @@ yang2cli_yspec(clixon_handle h,
         cprintf(cbname, "Auto-cli for module: %s", yang_filename_get(ymod));
         /* Parse the buffer using cligen parser. load cli syntax */
         if (clispec_parse_str(cli_cligen(h), cbuf_get(cb), cbuf_get(cbname), NULL, pt, NULL) < 0){
-            clixon_err(OE_YANG, errno, "Failing clispec: %s", cbuf_get(cb));
+            clixon_debug(CLIXON_DBG_CLI, "Failing clispec: %s", cbuf_get(cb));
+            clixon_err(OE_YANG, errno, "Failing clispec: %s (use -D cli for failing clispec)", cbuf_get(cbname));
             goto done;
         }
         clixon_debug(CLIXON_DBG_CLI, "%s", cbuf_get(cbname));

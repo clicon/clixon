@@ -1337,8 +1337,10 @@ api_path2xml_vec(char            **vec,
  *   xbotp:    <subid/>
  *   ybotp:    Y_LEAF subid
  * @code
+ *   cxobj     *xerr = NULL;
  *   if ((ret = api_path2xml(api_path, yspec, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
  *     err;
+
  * @endcode
  * @note "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  * @see api_path2xpath   For api-path to xpath translation (maybe could be combined?)

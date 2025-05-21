@@ -41,7 +41,6 @@
  * file in clicon lib-routines.
  */
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif

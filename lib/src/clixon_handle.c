@@ -97,8 +97,8 @@ struct clixon_handle {
 
 /*! Internal call to allocate a CLICON handle. 
  *
- * @param[in]  size  Size of handle (internal) struct.
- * @retval   h   Clixon handle
+ * @param[in] size Size of handle (internal) struct.
+ * @retval    h    Clixon handle
  *
  * There may be different variants of handles with some common options.
  * So far the only common options is a MAGIC cookie for sanity checks and 
@@ -150,8 +150,8 @@ clixon_handle_init(void)
 /*! Deallocate clicon handle, including freeing handle data.
  *
  * @param[in]  h   Clixon handle
- * @retval     0       OK
- * @retval    -1       Error
+ * @retval     0   OK
+ * @retval    -1   Error
  * @note: handle 'h' cannot be used in calls after this
  */
 int
@@ -225,7 +225,8 @@ clicon_db_elmnt(clixon_handle h)
 
 /*! Return stream hash-array given a clicon handle.
  *
- * @param[in]  h        Clixon handle
+ * @param[in]  h       Clixon handle
+ * @retval     stream  Stream
  */
 event_stream_t *
 clicon_stream(clixon_handle h)
@@ -235,6 +236,11 @@ clicon_stream(clixon_handle h)
     return ch->ch_stream;
 }
 
+/*! Set stream hash-array given a clicon handle.
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  stream Stream
+ */
 int
 clicon_stream_set(clixon_handle   h,
                   event_stream_t *es)
@@ -245,6 +251,11 @@ clicon_stream_set(clixon_handle   h,
     return 0;
 }
 
+/*! Append stream hash-array given a clicon handle.
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  stream Stream
+ */
 int
 clicon_stream_append(clixon_handle h,
                      event_stream_t *es)
