@@ -87,7 +87,7 @@ CLICON_PLUGIN="example_cli";
 # Autocli syntax tree operations
 set @datamodel, cli_auto_set();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del(); 
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 validate("Validate changes"), cli_validate();
@@ -109,7 +109,7 @@ if [ $BE -ne 0 ]; then
         err
     fi
     sudo pkill -f clixon_backend # to be sure
-    
+
     new "start backend -s init -f $cfg"
     start_backend -s init -f $cfg
 fi

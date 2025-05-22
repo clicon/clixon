@@ -44,7 +44,7 @@ module clixon-example {
     yang-version 1.1;
     namespace "urn:example:clixon";
     prefix ex;
-    import ietf-interfaces { 
+    import ietf-interfaces {
         prefix if;
     }
     import ietf-ip {
@@ -111,7 +111,7 @@ CLICON_PLUGIN="example_cli";
 
 set @datamodel, cli_auto_set();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del(); 
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 validate("Validate changes"), cli_validate();
@@ -175,7 +175,7 @@ fi
 
 new "wait backend"
 wait_backend
-    
+
 new "cli version"
 expectpart "$($clixon_cli -1 -f $cfg -V)" 0 "Clixon version: $CLIXON_VERSION" "Clixon main example version"
 
@@ -235,7 +235,7 @@ new "cli compare diff"
 expectpart "$($clixon_cli -1 -f $cfg -l o show compare text)" 0 "+\ *address 1.2.3.4"
 
 new "cli start shell"
-expectpart "$($clixon_cli -1 -f $cfg -l o shell echo foo)" 0 "foo" 
+expectpart "$($clixon_cli -1 -f $cfg -l o shell echo foo)" 0 "foo"
 
 new "cli save"
 expectpart "$($clixon_cli -1 -f $cfg -l o save $dir/foo cli)" 0 "^$"

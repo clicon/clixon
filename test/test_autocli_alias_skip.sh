@@ -59,18 +59,18 @@ set @datamodel, cli_auto_set();
 merge @datamodel, cli_auto_merge();
 create @datamodel, cli_auto_create();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del(); 
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
-show("Show a particular state of the system") configuration, 
+show("Show a particular state of the system") configuration,
      cli_show_auto_mode("candidate", "xml", false, false);
-cli, cli_show_auto_mode("candidate", "cli", false, false);      
+cli, cli_show_auto_mode("candidate", "cli", false, false);
 EOF
 #      @datamodelshow, cli_show_auto("candidate", "xml", false, false, "explicit");
 
 # Yang specs must be here first for backend. But then the specs are changed but just for CLI
 # Augment original Yang spec example  directly
-# First augment /table/parameter 
+# First augment /table/parameter
 # Had a problem with unknown in grouping -> test uses uses/grouping
 cat <<EOF > $fyang
 module example {
@@ -123,7 +123,7 @@ module example {
 }
 EOF
 
-# Skip /table/parameter 
+# Skip /table/parameter
 cat <<EOF > $fyang1
 module example-augment {
    namespace "urn:example:augment";
@@ -154,7 +154,7 @@ EOF
 
 cat <<EOF > $clidir/clipipe.cli
 CLICON_MODE="|mypipe"; # Must start with |
-as { 
+as {
      xml, pipe_showas_fn("xml", "false");
      cli, pipe_showas_fn("cli", "true", "set ");
 }
@@ -226,7 +226,7 @@ new "Test leaf aliases old fail"
 testfail table parameter orig
 
 new "Test leaf aliases new ok"
-testok table parameter orig table parameter alias 
+testok table parameter orig table parameter alias
 
 # Lists
 new "Test list skipped"

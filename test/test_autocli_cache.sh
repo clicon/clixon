@@ -50,7 +50,7 @@ create @datamodel, cli_auto_create();
 commit("Commit the changes"), cli_commit();
 validate("Validate changes"), cli_validate();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del(); 
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system"){
@@ -60,7 +60,7 @@ EOF
 
 # Yang specs must be here first for backend. But then the specs are changed but just for CLI
 # Annotate original Yang spec example  directly
-# First annotate /table/parameter 
+# First annotate /table/parameter
 # Had a problem with unknown in grouping -> test uses uses/grouping
 cat <<EOF > $fyang
 module clixon-example {

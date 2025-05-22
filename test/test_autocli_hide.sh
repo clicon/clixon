@@ -57,7 +57,7 @@ set @datamodel, cli_auto_set();
 merge @datamodel, cli_auto_merge();
 create @datamodel, cli_auto_create();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del(); 
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system"){
@@ -69,7 +69,7 @@ EOF
 
 # Yang specs must be here first for backend. But then the specs are changed but just for CLI
 # Augment original Yang spec example directly
-# First augment /table/parameter 
+# First augment /table/parameter
 # Had a problem with unknown in grouping -> test uses uses/grouping
 cat <<EOF > $fyang
 module example {
@@ -129,7 +129,7 @@ EOF
     new "set table parameter hidden"
     expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "set table parameter x" "<table xmlns=\"urn:example:clixon\"></table>"
     XML="<table xmlns=\"urn:example:clixon\"><parameter><name>x</name></parameter></table>"
-    
+
     new "check datastore using netconf"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:table/ex:parameter[ex:name='x']\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
 
@@ -157,13 +157,12 @@ EOF
     expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<table xmlns=\"urn:example:clixon\"><parameter><name>x</name></parameter></table>"
 
     XML="<table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>42</value></parameter></table>"
-    
+
     new "check datastore using netconf"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:table/ex:parameter[ex:name='x']\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
 
     new "check datastore direct access"
     expectpart "$($clixon_util_datastore -d candidate -b $dir -y $fyang -Y ${YANG_INSTALLDIR} -Y $dir get /)" 0 "$XML"
-    
 }
 
 new "test params: -f $cfg"
@@ -254,7 +253,7 @@ module example {
 }
 EOF
 
-# First augment /table/parameter 
+# First augment /table/parameter
 cat <<EOF > $fyang2
 module example-augment {
    namespace "urn:example:augment";

@@ -66,7 +66,7 @@ up, cli_auto_up("datamodel");
 top, cli_auto_top("datamodel");
 set @datamodel, cli_auto_set();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del(); 
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 commit("Commit the changes"), cli_commit();
@@ -82,7 +82,7 @@ EOF
 
 cat <<EOF > $clidir/common.cli
 CLICON_MODE="|common:|show";
-\| { 
+\| {
    grep <arg:string>, pipe_grep_fn("-e", "arg");
    except <arg:string>, pipe_grep_fn("-v", "arg");
    tail <arg:string>, pipe_tail_fn("-n", "arg");
@@ -92,7 +92,7 @@ EOF
 
 cat <<EOF > $clidir/show.cli
 CLICON_MODE="|show"; # Must start with |
-\| { 
+\| {
    showas {
      xml, pipe_showas_fn("xml");
      json, pipe_showas_fn("json");

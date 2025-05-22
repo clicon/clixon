@@ -42,7 +42,7 @@ create @datamodel, cli_auto_create();
 commit("Commit the changes"), cli_commit();
 validate("Validate changes"), cli_validate();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del();
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system"){

@@ -77,7 +77,7 @@ CLICON_PLUGIN="example_cli";
 
 set @datamodel, cli_auto_set();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del(); 
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 validate("Validate changes"), cli_validate();
@@ -217,7 +217,7 @@ new "cli check show config $format non-auto"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format config)" 0 "clixon-example:table {" "parameter x {" "array1 \[" "parameter y {"
 
 new "cli check show auto $format table"
-expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 
+expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0
 
 new "cli check show auto $format table parameter"
 expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table parameter)" 0 "parameter x {" "array1 \[" "parameter y {" --not-- "clixon-example:table {"
@@ -234,10 +234,10 @@ expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table parameter x ar
 format=cli
 
 new "cli check show config $format"
-expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "set table parameter x" "set table parameter x value 1" "set table parameter x array1 a" "set table parameter x array1 b" "set table parameter y" "set table parameter y value 2" 
+expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "set table parameter x" "set table parameter x value 1" "set table parameter x array1 a" "set table parameter x array1 b" "set table parameter y" "set table parameter y value 2"
 
 new "cli check show auto $format table"
-expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 "set table parameter x" "set table parameter x value 1" "set table parameter x array1 a" "set table parameter x array1 b" "set table parameter y" "set table parameter y value 2" 
+expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 "set table parameter x" "set table parameter x value 1" "set table parameter x array1 a" "set table parameter x array1 b" "set table parameter y" "set table parameter y value 2"
 
 # XXX rest does not print whole CLI path to root, eg does not include "table"
 

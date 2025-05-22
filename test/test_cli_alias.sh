@@ -44,7 +44,7 @@ CLICON_PROMPT="%U@%H %W> ";
 
 set @datamodel, cli_auto_set();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del();
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system") {

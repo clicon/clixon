@@ -49,7 +49,7 @@ create @datamodel, cli_auto_create();
 commit("Commit the changes"), cli_commit();
 validate("Validate changes"), cli_validate();
 delete("Delete a configuration item") {
-      @datamodel, cli_auto_del(); 
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
 show("Show a particular state of the system"){
@@ -59,7 +59,7 @@ EOF
 
 # Yang specs must be here first for backend. But then the specs are changed but just for CLI
 # Annotate original Yang spec example  directly
-# First annotate /table/parameter 
+# First annotate /table/parameter
 # Had a problem with unknown in grouping -> test uses uses/grouping
 cat <<EOF > $fyang
 module example {
@@ -85,7 +85,7 @@ module example {
            description "a value";
            type string;
         }
-        /* See https://github.com/clicon/clixon-controller/issues/26 
+        /* See https://github.com/clicon/clixon-controller/issues/26
          * reference that goes beyond the scope of this grouping
          */
         leaf-list scope {
@@ -96,7 +96,7 @@ module example {
 /*      leaf-list inscope {
            type leafref {
               path "../iv";
-           } 
+           }
         }
 */
      }
@@ -253,7 +253,7 @@ EOF
 
     new "set leafref lack origin"
     expectpart "$($clixon_cli -f $cfg -1 set table parameter x index1 a scope 43)" 0 ""
-    
+
     new "validate expect fail"
     expectpart "$($clixon_cli -f $cfg -1 validate 2>&1)" 255 "data-missing" "instance-required : ../../value0"
 
