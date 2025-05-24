@@ -1239,9 +1239,7 @@ match_base_child(cxobj     *x0,
     case Y_CONTAINER:   /* Equal regardless */
     case Y_LEAF:        /* Equal regardless */
         break;
-    case Y_LEAF_LIST: /* Match with name and value */
-        if (xml_body(x1c) == NULL) /* Treat as empty string */
-            goto ok;
+    case Y_LEAF_LIST:
         break;
     case Y_LIST: /* Match with key values */
         cvk = yang_cvec_get(yc); /* Use Y_LIST cache, see ys_populate_list() */

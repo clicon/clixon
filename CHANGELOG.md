@@ -47,9 +47,10 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
-  * Fixed: [Mandatory in service code does not work](https://github.com/clicon/clixon-controller/issues/202)
-  * Fixed: [Confusing error message if clixon_server.py is missing](https://github.com/clicon/clixon-controller/issues/192)
-  * Fixed: [Remove "checkroot" from Makefiles](https://github.com/clicon/clixon/issues/605)
+* Fixed: [Error when removing leafs in choice](https://github.com/clicon/clixon/issues/610)
+* Fixed: [Mandatory in service code does not work](https://github.com/clicon/clixon-controller/issues/202)
+* Fixed: [Confusing error message if clixon_server.py is missing](https://github.com/clicon/clixon-controller/issues/192)
+* Fixed: [Remove "checkroot" from Makefiles](https://github.com/clicon/clixon/issues/605)
 
 ## 7.4.0
 3 April 2025

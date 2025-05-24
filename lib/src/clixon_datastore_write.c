@@ -838,13 +838,14 @@ text_modify(clixon_handle       h,
             }
             break;
         case OP_DELETE:
-            if (x0==NULL || xml_flag(x0, XML_FLAG_DEFAULT) != 0){
+            if (x0==NULL || xml_flag(x0, XML_FLAG_DEFAULT) != 0
+                || strcmp(xml_name(x0), x1name) != 0){
                 if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
                     goto done;
                 goto fail;
             }
         case OP_REMOVE: /* fall thru */
-            if (x0){
+            if (x0 && strcmp(xml_name(x0), x1name) == 0){
                 if ((op != OP_NONE) && !permit && xnacm){
                     if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0)
                         goto done;
@@ -853,8 +854,10 @@ text_modify(clixon_handle       h,
                 }
                 x0bstr = xml_body(x0);
                 /* Purge if x1 value is NULL(match-all) or both values are equal */
-                if ((x1bstr == NULL) ||
-                    ((x0bstr=xml_body(x0)) != NULL && strcmp(x0bstr, x1bstr)==0)){
+                if (
+                    (x1bstr == NULL) ||
+                    (x0bstr == NULL && x1bstr == NULL) ||
+                    (x1bstr && (x0bstr=xml_body(x0)) != NULL && strcmp(x0bstr, x1bstr)==0)){
                     if (xml_purge(x0) < 0)
                         goto done;
                     xml_flag_set(x0p, XML_FLAG_DEL);
