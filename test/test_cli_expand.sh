@@ -125,6 +125,16 @@ expectpart "$($clixon_cli -1f $cfg set cont1 leaf1 bc)" 0 "^$"
 new "Show expanded"
 expectpart "$($clixon_cli -1f $cfg show config xml)" 0 "<cont1 xmlns=\"urn:example:clixon\"><leaf1>bcd</leaf1></cont1>"
 
+# See https://github.com/clicon/clixon-controller/issues/205
+new "Add entry 1"
+expectpart "$($clixon_cli -1 -f $cfg set list1 xyz)" 0 "^$"
+
+new "Add entry 2"
+expectpart "$($clixon_cli -1 -f $cfg set list1 zyx)" 0 "^$"
+
+new "Expand delete"
+expectpart "$(echo "delete list1 	" | $clixon_cli -f $cfg 2>&1)" 0 xyz zyx
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
