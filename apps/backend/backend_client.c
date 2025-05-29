@@ -450,7 +450,7 @@ static int
 do_lock(clixon_handle h,
         cbuf         *cbret,
         uint32_t      id,
-         char        *db)
+        char         *db)
 {
     int        retval = -1;
     uint32_t   otherid;
@@ -579,7 +579,8 @@ from_client_edit_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
+    /* Here iddb is =0 (not locked) or locked by this process =myid */
+    if (iddb == 0 && clicon_option_bool(h, "CLICON_AUTOLOCK")){
         if ((ret = do_lock(h, cbret, myid, target)) < 0)
             goto done;
         if (ret == 0)
@@ -824,7 +825,8 @@ from_client_copy_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
+    /* Here iddb is =0 (not locked) or locked by this process =myid */
+    if (iddb == 0 && clicon_option_bool(h, "CLICON_AUTOLOCK")){
         if ((ret = do_lock(h, cbret, myid, target)) < 0)
             goto done;
         if (ret == 0)

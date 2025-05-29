@@ -132,6 +132,13 @@ PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
 new "cli edit 2nd expected ok"
 expectpart "$($clixon_cli -1f $cfg set table parameter x value a)" 0 "^$"
 
+cat <<EOF > $fin
+set table parameter y value 42
+set table parameter y value 42
+EOF
+new "Two commands"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "" --not-- "lock-denied"
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
