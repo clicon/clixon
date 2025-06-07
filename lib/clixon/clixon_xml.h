@@ -210,6 +210,7 @@ enum format_enum{
 #define XML_FLAG_ANYDATA  0x200 /* Treat as anydata, eg mount-points before bound */
 #define XML_FLAG_CACHE_DIRTY 0x400 /* This part of XML tree is not synced to disk */
 #define XML_FLAG_SKIP      0x800 /* Node is skipped in xml_diff */
+#define XML_FLAG_DENY     0x1000 /* Marked as read denied by NACM  */
 
 /*
  * Prototypes

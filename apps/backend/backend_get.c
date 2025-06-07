@@ -384,8 +384,6 @@ filter_xpath_again(clixon_handle h,
  *
  * @param[in]  h        Clixon handle
  * @param[in]  xret     Result XML tree
- * @param[in]  xvec     xpath lookup result on xret
- * @param[in]  xlen     length of xvec
  * @param[in]  xpath    XPath point to object to get
  * @param[in]  nsc      Namespace context of xpath
  * @param[in]  username User name for NACM access
@@ -398,8 +396,6 @@ filter_xpath_again(clixon_handle h,
 static int
 get_nacm_and_reply(clixon_handle     h,
                    cxobj            *xret,
-                   cxobj           **xvec,
-                   size_t            xlen,
                    char             *xpath,
                    cvec             *nsc,
                    char             *username,
@@ -414,7 +410,9 @@ get_nacm_and_reply(clixon_handle     h,
     xnacm = clicon_nacm_cache(h);
     if (xnacm != NULL){ /* Do NACM validation */
         /* NACM datanode/module read validation */
-        if (nacm_datanode_read(h, xret, xvec, xlen, username, xnacm) < 0)
+        if (nacm_datanode_read1(h, xret, username, xnacm) < 0)
+            goto done;
+        if (nacm_datanode_read_prune(h, xret) < 0)
             goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);     /* OK */
@@ -905,7 +903,7 @@ get_list_pagination(clixon_handle        h,
             cbuf_free(cba);
     }
 #endif /* LIST_PAGINATION_REMAINING */
-    if (get_nacm_and_reply(h, xret, xvec, xlen, xpath, nsc, username, depth, wdef, cbret) < 0)
+    if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth, wdef, cbret) < 0)
         goto done;
  ok:
     retval = 0;
@@ -1158,7 +1156,7 @@ get_common(clixon_handle        h,
         goto done;
     if (filter_xpath_again(h, yspec, xret, xvec, xlen, xpath, nsc) < 0)
         goto done;
-    if (get_nacm_and_reply(h, xret, xvec, xlen, xpath, nsc, username, depth, wdef, cbret) < 0)
+    if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth, wdef, cbret) < 0)
         goto done;
  ok:
     retval = 0;

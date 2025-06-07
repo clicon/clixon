@@ -525,6 +525,8 @@ xml_dump1(FILE  *f,
         fprintf(f, " change");
     if (xml_flag(x, XML_FLAG_MARK))
         fprintf(f, " mark");
+    if (xml_flag(x, XML_FLAG_DENY))
+        fprintf(f, " deny");
     fprintf(f, "\n");
     xc = NULL;
     while ((xc = xml_child_each(x, xc, -1)) != NULL) {
@@ -1387,7 +1389,8 @@ xml_diff2cbuf_leaf(cbuf      *cb,
 
 /*! Print XML diff of two cxobj trees into a cbuf
  *
- * YANG dependent
+ * YANG dependent,
+ * Skip objects marked with XML_FLAG_DENY
  * Uses underlying XML diff algorithm with better result than clixon_compare_xmls
  * @param[out] cb      CLIgen buffer
  * @param[in]  x0      First XML tree
@@ -1439,6 +1442,15 @@ xml_diff2cbuf(cbuf  *cb,
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
+        /* Skip if marked as DENY by NACM */
+        if (x0c && xml_flag(x0c, XML_FLAG_DENY) != 0){
+            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            continue;
+        }
+        else if (x1c && xml_flag(x1c, XML_FLAG_DENY) != 0){
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
         y0c = NULL;
         y1c = NULL;
         /* If cl:ignore-compare extension, skip */

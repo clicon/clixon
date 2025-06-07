@@ -686,6 +686,7 @@ xml_tree_equal(cxobj *x0,
  * @endcode
  * @note This function seems a little too complex semantics
  * @see xml_tree_prune_flags1 for a simpler variant
+ * @see xml_tree_mark_flagged_sub  Mark instead of purge
  */
 int
 xml_tree_prune_flagged_sub(cxobj *xt,
@@ -759,6 +760,82 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     return retval;
 }
 
+/*! Mark everything that does not pass test or have at least a child* does not
+ *
+ * @param[in]   xt      XML tree with some node marked
+ * @param[in]   flag    Which flag to test for
+ * @param[in]   test    1: test that flag is set, 0: test that flag is not set
+ * @param[in]   delmark Use this flag when mark
+ * @param[out]  upmark  Set if a child (recursively) has marked set.
+ * @retval      0       OK
+ * @retval     -1       Error
+ * @see xml_tree_prune_flagged_sub  Purge instead of mark
+ */
+int
+xml_tree_mark_flagged_sub(cxobj *xt,
+                          int    flag,
+                          int    test,
+                          int    delmark,
+                          int   *upmark)
+{
+    int        retval = -1;
+    int        submark;
+    int        mark;
+    cxobj     *x;
+    int        iskey;
+    int        anykey=0;
+    yang_stmt *yt;
+
+    mark = 0;
+    yt = xml_spec(xt); /* can be null */
+    x = NULL;
+    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+        if (xml_flag(x, flag) == (test?flag:0)){
+            /* Pass test */
+            mark++;
+            continue; /* mark and stop here */
+        }
+        /* If it is key dont remove it yet (see second round) */
+        if (yt){
+            if ((iskey = yang_key_match(yt, xml_name(x), NULL)) < 0)
+                goto done;
+            if (iskey){
+                anykey++;
+                continue;
+            }
+        }
+        if (xml_tree_mark_flagged_sub(x, flag, test, delmark, &submark) < 0)
+            goto done;
+        /* if xt is list and submark anywhere, then key subs are also marked
+         */
+        if (submark)
+            mark++;
+        else{ /* Safe with xml_child_each if last */
+            xml_flag_set(x, delmark);
+        }
+    }
+    /* Second round: if any keys were found, and no marks detected, purge now */
+    if (anykey && !mark){
+        x = NULL;
+        x = NULL;
+        while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+            /* If it is key remove it here */
+            if (yt){
+                if ((iskey = yang_key_match(yt, xml_name(x), NULL)) < 0)
+                    goto done;
+                if (iskey){
+                    xml_flag_set(x, delmark);
+                }
+            }
+        }
+    }
+    retval = 0;
+ done:
+    if (upmark)
+        *upmark = mark;
+    return retval;
+}
+
 /*! Prune everything that passes test recursively
  *
  * @param[in]   xt      XML tree with some node marked
@@ -791,7 +868,7 @@ xml_tree_prune_flags(cxobj *xt,
  * @retval     -1       Error
  * The function removes all branches that does pass test
  * @code
- *    xml_tree_prune_flags1(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT, 1);
+ *    xml_tree_prune_flags1(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT, 1, NULL);
  * @endcode
  */
 int

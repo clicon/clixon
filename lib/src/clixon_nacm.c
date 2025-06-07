@@ -455,7 +455,7 @@ prepvec_add(prepvec **pv_listp,
  * @param[in]  rlistvec Rule-list entries
  * @param[in]  rlistlen Length of rlistvec
  * @param[in]  nsc      Namespace context of rule-list
- * @param[in]  pv_listp Precomputed rules + paths that apply to user group
+ * @param[out] pv_listp Precomputed rules + paths that apply to user group
  * @retval     0        OK
  * @retval    -1        Error
  */
@@ -920,10 +920,10 @@ nacm_data_read_action(cxobj *xrule,
                 clixon_debug_xml(CLIXON_DBG_NACM, xn, "NACM data node read deny path:%s", xpath);
             else
                 clixon_debug(CLIXON_DBG_NACM, "NACM data node read deny");
-            xml_flag_set(xn, XML_FLAG_DEL);
+            xml_flag_set(xn, XML_FLAG_DENY);
         }
         else if (strcmp(action, "permit")==0)
-            xml_flag_set(xn, XML_FLAG_MARK);
+            xml_flag_set(xn, XML_FLAG_ADD);
     }
     retval = 0;
     //done:
@@ -934,6 +934,7 @@ nacm_data_read_action(cxobj *xrule,
  *
  * @param[in]  xn       XML node (requested node)
  * @param[in]  xrule    NACM rule
+ * @param[in]  xpathvec
  * @param[in]  yspec    YANG spec
  * @retval     1        OK and rule matches
  * @retval     0        OK and rule does not match
@@ -994,7 +995,7 @@ nacm_data_read_xrule_xml(cxobj       *xn,
     goto done;
 }
 
-/*! Recursive check for NACM read rules among all XML nodes
+/*! Recursive check and mark with DEL flag for NACM read rules among all XML nodes
  *
  * @param[in]  h        Clixon handle
  * @param[in]  xn       XML node (requested node)
@@ -1011,7 +1012,6 @@ nacm_datanode_read_recurse(clixon_handle h,
 {
     int      retval = -1;
     cxobj   *x;
-    cxobj   *xprev;
     int      ret;
     prepvec *pv;
 
@@ -1019,6 +1019,7 @@ nacm_datanode_read_recurse(clixon_handle h,
         pv = pv_list;
         if (pv){
             do {
+                /* Marks xn with ADD/DENY */
                 if ((ret = nacm_data_read_xrule_xml(xn,
                                                     pv->pv_xrule,
                                                     pv->pv_xpathvec,
@@ -1029,27 +1030,13 @@ nacm_datanode_read_recurse(clixon_handle h,
                 pv = NEXTQ(prepvec *, pv);
             } while (pv && pv != pv_list);
         }
-#if 0 /* 6(A) in algorithm
-       * If N did not match any rule R, and default rule is deny, remove that subtree */
-        if (strcmp(read_default, "deny") == 0)
-            if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
-                goto done;
-#endif
     }
     /* If node should be purged, dont recurse and defer removal to caller */
-    if (xml_flag(xn, XML_FLAG_DEL) == 0){
+    if (xml_flag(xn, XML_FLAG_DENY) == 0){
         x = NULL;       /* Recursively check XML */
-        xprev = NULL;
         while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
             if (nacm_datanode_read_recurse(h, x, pv_list, yspec) < 0)
                 goto done;
-            /* check for delayed remove */
-            if (xml_flag(x, XML_FLAG_DEL)){
-                //                clixon_debug(CLIXON_DBG_NACM, "NACM read deny %s", xml_name(x));
-                if (xml_purge(x) < 0)
-                    goto done;
-                x = xprev;
-            }
         }
     }
     retval = 0;
@@ -1059,11 +1046,9 @@ nacm_datanode_read_recurse(clixon_handle h,
 
 /*! Make nacm datanode and module rule read access validation
  *
- * Just purge nodes that fail validation (dont send netconf error message)
+ * Mark nodes with XML_FLAG_DENY that fail validation (dont send netconf error message)
  * @param[in]  h        Clixon handle
  * @param[in]  xt       XML root tree with "config" label 
- * @param[in]  xrvec    Vector of requested nodes (sub-part of xt)
- * @param[in]  xrlen    Length of requsted node vector
  * @param[in]  username 
  * @param[in]  xnacm    NACM xml tree
  * @retval     1        Access
@@ -1103,27 +1088,26 @@ nacm_datanode_read_recurse(clixon_handle h,
  * 8(B) If default rule is deny, recursively remove all subtrees that are not marked
  *
  * @see RFC8341 3.4.5.  Data Node Access Validation
+ * @see nacm_datanode_prune   Call this function if you actually want to prune DELs
  * @see nacm_datanode_write
  * @see nacm_rpc
  */
 int
-nacm_datanode_read(clixon_handle h,
-                   cxobj        *xt,
-                   cxobj       **xrvec,
-                   size_t        xrlen,
-                   char         *username,
-                   cxobj        *xnacm)
+nacm_datanode_read1(clixon_handle h,
+                    cxobj        *xt,
+                    char         *username,
+                    cxobj        *xnacm)
 {
     int      retval = -1;
     cxobj  **gvec = NULL; /* groups */
     size_t   glen;
     cxobj  **rlistvec = NULL; /* rule-list */
     size_t   rlistlen;
-    int      i;
     char    *read_default = NULL;
     cvec    *nsc = NULL;
     prepvec *pv_list = NULL;
 
+    xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_DENY|XML_FLAG_ADD));
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
@@ -1155,37 +1139,42 @@ nacm_datanode_read(clixon_handle h,
      */
     if (nacm_datanode_prepare(h, xt, NACM_READ, gvec, glen, rlistvec, rlistlen, nsc, &pv_list) < 0)
         goto done;
-    /* Then recursivelyy traverse all nodes */
+    /* Then recursively traverse all nodes */
     if (nacm_datanode_read_recurse(h, xt, pv_list, clicon_dbspec_yang(h)) < 0)
         goto done;
-#if 1
     /* Step 8(B) above:
      * If default rule is deny, recursively remove all subtrees that are not marked
      */
-    if (strcmp(read_default, "deny") == 0)
-        if (xml_tree_prune_flagged_sub(xt, XML_FLAG_MARK, 1, NULL) < 0)
+    if (strcmp(read_default, "deny") == 0){
+        /* If default is deny, mark anything that does not have an ADD descendant as DEL */
+        if (xml_tree_mark_flagged_sub(xt, XML_FLAG_ADD, 1, XML_FLAG_DENY, NULL) < 0)
             goto done;
-#endif
-    /* reset flag */
-    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_MARK) < 0)
-        goto done;
-
+    }
+    else{
+        cxobj *x = NULL;
+        /* If default is permit, mark all top-level children is not DEL as ADD
+         */
+        while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+            if (xml_flag(xt, XML_FLAG_DENY) == 0x0)
+                xml_flag_set(x, XML_FLAG_ADD);
+        }
+    }
     goto ok;
     /* 8.   At this point, no matching rule was found in any rule-list
        entry. */
  step9:
-    /*    9.   For a "read" access operation, if the requested data node is
-        defined in a YANG module advertised in the server capabilities
-        and the data definition statement contains a
-        "nacm:default-deny-all" statement, then the requested data node
-        and all its descendants are not included in the reply.
+    /* 9.   For a "read" access operation, if the requested data node is
+       defined in a YANG module advertised in the server capabilities
+       and the data definition statement contains a
+       "nacm:default-deny-all" statement, then the requested data node
+       and all its descendants are not included in the reply.
     */
-    for (i=0; i<xrlen; i++)     /* Loop through requested nodes, safe since vector not children */
-        if (xml_purge(xrvec[i]) < 0)
-            goto done;
+    xml_flag_set(xt, XML_FLAG_DENY);
  ok:
     retval = 0;
  done:
+    if (xt)
+        xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_ADD);
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -1194,6 +1183,26 @@ nacm_datanode_read(clixon_handle h,
         free(gvec);
     if (rlistvec)
         free(rlistvec);
+    return retval;
+}
+
+/*! Actually prune tree according to algorithm in nacm_datanode_read
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  xt  XML root tree with "config" label
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+int
+nacm_datanode_read_prune(clixon_handle h,
+                         cxobj        *xt)
+{
+    int      retval = -1;
+
+    if (xml_tree_prune_flags(xt, XML_FLAG_DENY, XML_FLAG_DENY) < 0)
+        goto done;
+    retval = 0;
+ done:
     return retval;
 }
 

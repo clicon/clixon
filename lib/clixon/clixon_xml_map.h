@@ -68,6 +68,7 @@ int xml_diff(cxobj *x0, cxobj *x1,
              cxobj ***changed_x0, cxobj ***changed_x1, int *changedlen);
 int xml_tree_equal(cxobj *x0, cxobj *x1);
 int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
+int xml_tree_mark_flagged_sub(cxobj *xt, int flag, int test, int delmark, int *upmark);
 int xml_tree_prune_flags(cxobj *xt, int flags, int mask);
 int xml_tree_prune_flags1(cxobj *xt, int flags, int mask, int recurse, int *removed);
 int xml_namespace_change(cxobj *x, char *ns, char *prefix);

@@ -631,7 +631,8 @@ text_diff2cbuf_ordered_by_user(cbuf      *cb,
 
 /*! Print TEXT diff of two cxobj trees into a cbuf
  *
- * YANG dependent
+ * YANG dependent,
+ * Skip objects marked with XML_FLAG_DENY
  * @param[out] cb      CLIgen buffer
  * @param[in]  x0      First XML tree
  * @param[in]  x1      Second XML tree
@@ -699,6 +700,15 @@ text_diff2cbuf(cbuf  *cb,
         /* Check if one or both subtrees are NULL */
         if (x0c == NULL && x1c == NULL)
             goto ok;
+        /* Skip if marked as DENY */
+        if (x0c && xml_flag(x0c, XML_FLAG_DENY) != 0){
+            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            continue;
+        }
+        else if (x1c && xml_flag(x1c, XML_FLAG_DENY) != 0){
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
         y0c = NULL;
         y1c = NULL;
         /* If cl:ignore-compare extension, skip */
