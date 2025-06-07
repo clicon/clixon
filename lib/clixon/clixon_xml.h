@@ -264,7 +264,7 @@ yang_stmt *xml_spec(cxobj *x);
 int       xml_spec_set(cxobj *x, yang_stmt *spec);
 cg_var   *xml_cv(cxobj *x);
 int       xml_cv_set(cxobj *x, cg_var *cv);
-cxobj    *xml_find(cxobj *xn_parent, char *name);
+cxobj    *xml_find(cxobj *xn_parent, const char *name);
 int       xml_addsub(cxobj *xp, cxobj *xc);
 cxobj    *xml_wrap_all(cxobj *xp, char *tag);
 cxobj    *xml_wrap(cxobj *xc, char *tag);

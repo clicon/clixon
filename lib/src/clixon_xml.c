@@ -1323,8 +1323,8 @@ xml_cv_set(cxobj  *x,
  * @see xml_find_type  A more generic function fixes (1) and (2) above
  */
 cxobj *
-xml_find(cxobj *xp,
-         char  *name)
+xml_find(cxobj      *xp,
+         const char *name)
 {
     cxobj *x = NULL;
 
