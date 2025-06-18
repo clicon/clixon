@@ -379,7 +379,12 @@ xml_cmp(cxobj  *x1,
             else{
                 b1 = xml_body(x1b);
                 b2 = xml_body(x2b);
+                // XXX b1 = "" and b2 = NULL is not match
                 if (b1 == NULL && b2 == NULL)
+                    ;
+                else if (b1 == NULL && strcmp(b2,"") == 0)
+                    ;
+                else if (b2 == NULL && strcmp(b1,"") == 0)
                     ;
                 else if (b1 == NULL)
                     equal = -1;
