@@ -1090,7 +1090,7 @@ api_path2xml_vec(char            **vec,
         if (xbotp)
             *xbotp = x0;
         if (ybotp)
-            *ybotp = y0;
+            *ybotp = xml_spec(x0);
         goto ok;
     } /* E.g "x=1,2" -> nodeid:x restval=1,2 */
     if ((cberr = cbuf_new()) == NULL){
