@@ -55,7 +55,9 @@ struct db_elmnt {
                                  * reset by commit, discard
                                  */
     int            de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
-    int            de_volatile; /* Disable auto-sync of cache to disk on every update (ie xmldb_put) */
+    int            de_volatile; /* Disable auto-sync of cache to disk on every update (ie xmldb_put)
+                                 * Objects are marked with XML_FLAG_CACHE_DIRTY that are not written
+                                 */
 };
 typedef struct db_elmnt db_elmnt;
 

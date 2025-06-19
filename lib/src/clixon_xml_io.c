@@ -527,6 +527,8 @@ xml_dump1(FILE  *f,
         fprintf(f, " mark");
     if (xml_flag(x, XML_FLAG_DENY))
         fprintf(f, " deny");
+    if (xml_flag(x, XML_FLAG_CACHE_DIRTY))
+        fprintf(f, " cache-dirty");
     fprintf(f, "\n");
     xc = NULL;
     while ((xc = xml_child_each(x, xc, -1)) != NULL) {

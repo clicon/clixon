@@ -52,6 +52,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Applying a service twice causes error](https://github.com/clicon/clixon-controller/issues/212)
 * Fixed: [RESTCONF PUT/POST data does sometimes not work across mountpoint](https://github.com/clicon/clixon-controller/issues/210)
 * Fixed: Only single edit possible if CLICON_AUTOLOCK=true
 * Fixed: [Error when removing leafs in choice](https://github.com/clicon/clixon/issues/610)

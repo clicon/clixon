@@ -1680,6 +1680,8 @@ xmldb_dump(clixon_handle     h,
     /* Remove modules state after writing to file */
     if (xmodst && xml_purge(xmodst) < 0)
         goto done;
+    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_CACHE_DIRTY) < 0)
+            goto done;
     retval = 0;
  done:
     return retval;

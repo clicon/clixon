@@ -744,7 +744,7 @@ xmldb_db_reset(clixon_handle h,
     return 0;
 }
 
-/*! Get datastore XML cache
+/*! Get datastore XML cache (Dont treat cache miss)
  *
  * @param[in]  h    Clixon handle
  * @param[in]  db   Database name
